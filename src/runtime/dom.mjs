@@ -807,35 +807,42 @@ export class XMLSerializer {
 
 // minimal inline-style CSSOM (honest: only inline + explicitly set props)
 function makeStyle(el) {
+  // parse → { values: Map<prop,value>, prio: Map<prop,'important'|''> } (handles !important)
   const parse = () => {
-    const map = new Map();
+    const values = new Map();
+    const prio = new Map();
     for (const decl of (el.getAttribute('style') || '').split(';')) {
       const i = decl.indexOf(':');
       if (i === -1) continue;
       const prop = decl.slice(0, i).trim();
-      const val = decl.slice(i + 1).trim();
-      if (prop) map.set(prop, val);
+      let val = decl.slice(i + 1).trim();
+      if (!prop) continue;
+      const m = /\s*!\s*important\s*$/i.exec(val);
+      if (m) { val = val.slice(0, m.index).trim(); prio.set(prop, 'important'); }
+      values.set(prop, val);
     }
-    return map;
+    return { values, prio };
   };
-  const write = (map) => el.setAttribute('style', [...map].map(([k, v]) => `${k}: ${v}`).join('; '));
+  const write = ({ values, prio }) => {
+    el.setAttribute('style', [...values].map(([k, v]) => `${k}: ${v}${prio.get(k) === 'important' ? ' !important' : ''}`).join('; '));
+  };
   return new Proxy({}, {
     get(_t, key) {
-      if (key === 'getPropertyValue') return (p) => parse().get(p) ?? '';
-      if (key === 'getPropertyPriority') return () => ''; // we don't model !important
-      if (key === 'setProperty') return (p, v) => { const m = parse(); m.set(p, v); write(m); };
-      if (key === 'removeProperty') return (p) => { const m = parse(); const v = m.get(p) ?? ''; m.delete(p); write(m); return v; };
-      if (key === 'item') return (i) => [...parse().keys()][i] ?? '';
-      if (key === 'length') return parse().size;
+      if (key === 'getPropertyValue') return (p) => parse().values.get(p) ?? '';
+      if (key === 'getPropertyPriority') return (p) => parse().prio.get(p) ?? '';
+      if (key === 'setProperty') return (p, v, priority) => { const s = parse(); s.values.set(p, String(v)); if (priority) s.prio.set(p, 'important'); else s.prio.delete(p); write(s); };
+      if (key === 'removeProperty') return (p) => { const s = parse(); const v = s.values.get(p) ?? ''; s.values.delete(p); s.prio.delete(p); write(s); return v; };
+      if (key === 'item') return (i) => [...parse().values.keys()][i] ?? '';
+      if (key === 'length') return parse().values.size;
       if (key === 'cssText') return el.getAttribute('style') || '';
-      if (key === 'cssFloat') return parse().get('float') ?? '';
-      if (key === Symbol.iterator) { const keys = [...parse().keys()]; return keys[Symbol.iterator].bind(keys); }
+      if (key === 'cssFloat') return parse().values.get('float') ?? '';
+      if (key === Symbol.iterator) { const keys = [...parse().values.keys()]; return keys[Symbol.iterator].bind(keys); }
       if (typeof key !== 'string') return undefined;
-      return parse().get(kebab(key)) ?? '';
+      return parse().values.get(kebab(key)) ?? '';
     },
     set(_t, key, value) {
       if (key === 'cssText') { el.setAttribute('style', String(value)); return true; }
-      const m = parse(); m.set(kebab(key), String(value)); write(m); return true;
+      const s = parse(); s.values.set(kebab(key), String(value)); write(s); return true;
     },
     has(_t, key) { return typeof key === 'string'; },
   });

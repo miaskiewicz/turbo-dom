@@ -102,6 +102,9 @@ export function createWindow(document, { url = 'http://localhost/' } = {}) {
     structuredClone: (...a) => hostStructuredClone(...a),
     getSelection: () => document.getSelection(),
     scrollTo() {}, scroll() {}, scrollBy() {},
+    // window methods libraries/tests spy on — must exist as own props for vi.spyOn
+    open: () => null, close() {}, stop() {}, print() {}, focus() {}, blur() {},
+    moveTo() {}, moveBy() {}, resizeTo() {}, resizeBy() {},
     alert() {}, confirm: () => false, prompt: () => null,
     dispatchEvent: (e) => document.dispatchEvent(e),
     addEventListener: (...a) => document.addEventListener(...a),
