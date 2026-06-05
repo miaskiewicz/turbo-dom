@@ -40,7 +40,7 @@ export function createEnvironment(html = '<!doctype html><html><head></head><bod
       document.__load(soa);       // drops __cache + __kids overlay, keeps the buffer if reused
       win.resetGlobals();
       document.__active = null;
-      document.__cookie = '';
+      document.__cookieJar = null;
     },
   };
 }

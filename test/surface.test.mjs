@@ -154,3 +154,15 @@ test('positional pseudo-classes + anchor.download reflection', () => {
   assert.equal(a.getAttribute('download'), 'tpl.csv');
   assert.equal(a.rel, 'noopener');
 });
+
+test('document.cookie jar: strips attributes, dedupes, deletes', () => {
+  const { document } = fresh();
+  document.cookie = 'NEXT_LOCALE=en; path=/; Secure; SameSite=Lax';
+  assert.equal(document.cookie, 'NEXT_LOCALE=en');         // attributes stripped
+  document.cookie = 'theme=dark';
+  assert.equal(document.cookie, 'NEXT_LOCALE=en; theme=dark');
+  document.cookie = 'NEXT_LOCALE=fr';                       // update by name
+  assert.equal(document.cookie, 'NEXT_LOCALE=fr; theme=dark');
+  document.cookie = 'theme=; max-age=0';                    // delete
+  assert.equal(document.cookie, 'NEXT_LOCALE=fr');
+});

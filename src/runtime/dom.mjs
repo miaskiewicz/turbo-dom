@@ -1162,8 +1162,29 @@ export class Document extends Node {
   getElementsByClassName(cls) { const self = this; const classes = cls.split(/\s+/).filter(Boolean); return liveHTMLCollection(() => collectByClass(self, classes)); }
   contains(node) { return Node.prototype.contains.call(this, node); }
 
-  get cookie() { return this.__cookie || ''; }
-  set cookie(v) { this.__cookie = (this.__cookie ? this.__cookie + '; ' : '') + v; }
+  // cookie jar: store name=value, strip attributes (path/Secure/SameSite/…),
+  // dedupe by name, honor deletion via max-age<=0 or a past expires.
+  get cookie() {
+    if (!this.__cookieJar) return '';
+    return [...this.__cookieJar].map(([k, v]) => `${k}=${v}`).join('; ');
+  }
+  set cookie(str) {
+    if (!this.__cookieJar) this.__cookieJar = new Map();
+    const parts = String(str).split(';');
+    const pair = parts.shift();
+    const eq = pair.indexOf('=');
+    if (eq === -1) return;
+    const name = pair.slice(0, eq).trim();
+    if (!name) return;
+    const value = pair.slice(eq + 1).trim();
+    const attrs = parts.map((a) => a.trim().toLowerCase());
+    const maxAge = attrs.find((a) => a.startsWith('max-age='));
+    const expires = attrs.find((a) => a.startsWith('expires='));
+    const deleted = (maxAge && parseInt(maxAge.slice(8), 10) <= 0) ||
+      (expires && new Date(expires.slice(8)).getTime() <= Date.now());
+    if (deleted) this.__cookieJar.delete(name);
+    else this.__cookieJar.set(name, value);
+  }
 
   // document state (honest defaults for a headless, focused, loaded page)
   get visibilityState() { return 'visible'; }
