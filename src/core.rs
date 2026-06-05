@@ -67,6 +67,20 @@ pub fn parse_html_document(html: &str) -> Node {
     walk(&dom.document)
 }
 
+/// Parse a document and return only the node count — no `core::Node` tree, no
+/// marshaling. Isolates raw html5ever parse cost from tree-build + boundary cost.
+pub fn parse_html_document_count(html: &str) -> u32 {
+    let dom = parse_document(RcDom::default(), opts())
+        .from_utf8()
+        .read_from(&mut html.as_bytes())
+        .expect("RcDom read_from is infallible over a byte slice");
+    count(&dom.document)
+}
+
+fn count(handle: &Handle) -> u32 {
+    1 + handle.children.borrow().iter().map(count).sum::<u32>()
+}
+
 /// Parse an HTML fragment (e.g. an `innerHTML=` set) in `<body>` context.
 /// Returns a synthetic Document-fragment-ish root whose children are the parsed nodes.
 pub fn parse_html_fragment(html: &str) -> Node {

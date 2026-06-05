@@ -25,6 +25,11 @@ export interface JsAttr {
 /** Parse a full HTML document. Boundary crossed exactly once. */
 export declare function parse(html: string): JsNode
 /**
+ * Parse-only: returns node count, builds no JS tree. For isolating raw parse
+ * cost from tree-build + boundary marshaling in benchmarks.
+ */
+export declare function parseRaw(html: string): number
+/**
  * Parse an HTML fragment (innerHTML-style). `context` is the context element:
  * e.g. "body" (default), "td", or namespaced "svg path" / "math ms".
  */

@@ -60,6 +60,13 @@ mod napi_front {
         core::parse_html_document(&html).into()
     }
 
+    /// Parse-only: returns node count, builds no JS tree. For isolating raw parse
+    /// cost from tree-build + boundary marshaling in benchmarks.
+    #[napi(js_name = "parseRaw")]
+    pub fn parse_raw(html: String) -> u32 {
+        core::parse_html_document_count(&html)
+    }
+
     /// Parse an HTML fragment (innerHTML-style). `context` is the context element:
     /// e.g. "body" (default), "td", or namespaced "svg path" / "math ms".
     #[napi(js_name = "parseFragment")]

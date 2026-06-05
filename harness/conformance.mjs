@@ -17,25 +17,30 @@ import { parse, parseFragment } from '../index.js';
 const here = dirname(fileURLToPath(import.meta.url));
 export const fixturesDir = join(here, '..', 'vendor', 'html5lib-tests');
 
-function runOne(t) {
+// Default adapter: our native parser + html5lib serializer.
+export function fastDomAdapter(t) {
+  const tree = t.fragmentContext != null ? parseFragment(t.data, t.fragmentContext) : parse(t.data);
+  return serializeTree(tree);
+}
+
+function runOne(t, adapter) {
   // Scripting-enabled fixtures expect behavior we don't model (scripting flag off).
   if (t.scriptMode === 'on') return { status: 'skip', reason: 'script-on' };
   if (t.document == null) return { status: 'skip', reason: 'no-document' };
 
-  let tree;
+  let actual;
   try {
-    tree = t.fragmentContext != null ? parseFragment(t.data, t.fragmentContext) : parse(t.data);
+    actual = adapter(t);
   } catch (e) {
     return { status: 'error', reason: String(e && e.message || e) };
   }
-  const actual = serializeTree(tree);
   return actual === t.document
     ? { status: 'pass' }
     : { status: 'fail', expected: t.document, actual };
 }
 
 // Run the gate. Returns aggregate stats + per-file breakdown + sample failures.
-export function runConformance({ onlyFile = null, maxShow = 8 } = {}) {
+export function runConformance({ onlyFile = null, maxShow = 8, adapter = fastDomAdapter } = {}) {
   const files = (onlyFile ? [onlyFile] : readdirSync(fixturesDir).filter((f) => f.endsWith('.dat'))).sort();
   let totalPass = 0, totalFail = 0, totalSkip = 0, totalErr = 0;
   const perFile = [];
@@ -46,7 +51,7 @@ export function runConformance({ onlyFile = null, maxShow = 8 } = {}) {
     const tests = parseDatFile(text);
     let pass = 0, fail = 0, skip = 0, err = 0;
     for (const t of tests) {
-      const r = runOne(t);
+      const r = runOne(t, adapter);
       if (r.status === 'pass') pass++;
       else if (r.status === 'skip') skip++;
       else if (r.status === 'error') { err++; if (failures.length < maxShow) failures.push({ file, t, r }); }

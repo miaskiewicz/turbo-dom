@@ -21,9 +21,14 @@
     "test": "node --test 'test/*.mjs'",
     "test:rust": "cargo test --lib",
     "test:all": "npm run build && npm run test:rust && npm test",
-    "conformance": "node harness/conformance.mjs"
+    "conformance": "node harness/conformance.mjs",
+    "conformance:delta": "node harness/delta.mjs",
+    "bench": "node bench/parse.mjs"
   },
   "devDependencies": {
-    "@napi-rs/cli": "^2.18.4"
+    "@napi-rs/cli": "^2.18.4",
+    "happy-dom": "^20.10.1",
+    "jsdom": "^29.1.1",
+    "parse5": "^8.0.1"
   }
 }
