@@ -1,16 +1,51 @@
 {
-  "name": "turbodom-parser",
-  "version": "0.0.1",
-  "description": "html5ever-backed native parser for turbodom (Layer 1)",
+  "name": "turbodom",
+  "version": "0.1.0",
+  "description": "Faster, more spec-correct DOM for test runners — native html5ever (Rust/WASM) parser + lazy copy-on-write DOM. A drop-in-style alternative to jsdom/happy-dom for vitest & jest.",
   "main": "index.js",
   "types": "index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "import": "./index.js",
+      "require": "./index.js"
+    },
+    "./runtime": {
+      "types": "./src/runtime/index.d.ts",
+      "import": "./src/runtime/index.mjs"
+    },
+    "./environment/vitest": {
+      "import": "./src/environment/vitest.mjs"
+    },
+    "./jest": {
+      "require": "./src/environment/jest.cjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "index.js",
+    "index.d.ts",
+    "*.node",
+    "src/**/*.mjs",
+    "src/**/*.cjs",
+    "src/**/*.d.ts",
+    "src/*.rs",
+    "build.rs",
+    "Cargo.toml",
+    "Cargo.lock",
+    "LICENSE",
+    "README.md"
+  ],
   "napi": {
     "name": "turbodom-parser",
     "triples": {
       "defaults": true,
       "additional": [
+        "x86_64-unknown-linux-gnu",
         "x86_64-unknown-linux-musl",
-        "aarch64-unknown-linux-gnu"
+        "aarch64-unknown-linux-gnu",
+        "aarch64-apple-darwin",
+        "x86_64-pc-windows-msvc"
       ]
     }
   },
@@ -19,7 +54,6 @@
     "build:debug": "napi build --platform",
     "build:wasm": "cargo build --release --no-default-features --features wasm-bind --target wasm32-unknown-unknown",
     "build:wasm:pkg": "wasm-pack build --target nodejs --out-dir pkg --no-default-features --features wasm-bind",
-    "bench:wasm": "node bench/wasm.mjs",
     "test": "node --test 'test/*.mjs'",
     "test:rust": "cargo test --lib",
     "test:all": "npm run build && npm run test:rust && npm test",
@@ -28,12 +62,60 @@
     "bench": "node bench/parse.mjs",
     "bench:construct": "node bench/construct.mjs",
     "bench:suite": "node bench/suite.mjs",
-    "bench:all": "node bench/parse.mjs && node bench/construct.mjs && node bench/suite.mjs && node bench/wasm.mjs"
+    "bench:wasm": "node bench/wasm.mjs",
+    "bench:all": "node bench/parse.mjs && node bench/construct.mjs && node bench/suite.mjs && node bench/wasm.mjs",
+    "prepublishOnly": "napi build --platform --release"
+  },
+  "keywords": [
+    "dom",
+    "html",
+    "html5ever",
+    "parser",
+    "jsdom",
+    "happy-dom",
+    "vitest",
+    "jest",
+    "test-environment",
+    "testing",
+    "napi",
+    "wasm"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/miaskiewicz/turbodom.git"
+  },
+  "homepage": "https://github.com/miaskiewicz/turbodom#readme",
+  "bugs": {
+    "url": "https://github.com/miaskiewicz/turbodom/issues"
+  },
+  "author": "miaskiewicz",
+  "engines": {
+    "node": ">=18"
+  },
+  "peerDependencies": {
+    "jest-environment-node": ">=29",
+    "vitest": ">=1"
+  },
+  "peerDependenciesMeta": {
+    "jest-environment-node": {
+      "optional": true
+    },
+    "vitest": {
+      "optional": true
+    }
   },
   "devDependencies": {
+    "@headlessui/react": "^2.2.10",
     "@napi-rs/cli": "^2.18.4",
+    "@radix-ui/react-tabs": "^1.1.13",
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
+    "downshift": "^9.3.6",
     "happy-dom": "^20.10.1",
     "jsdom": "^29.1.1",
-    "parse5": "^8.0.1"
+    "parse5": "^8.0.1",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7"
   }
 }

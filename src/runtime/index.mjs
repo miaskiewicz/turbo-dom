@@ -31,6 +31,7 @@ export function createEnvironment(html = '<!doctype html><html><head></head><bod
     window: win.window,
     document,
     touched: win.touched,
+    globalKeys: win.globalKeys,
 
     // Layer 5: arena-style reset. Re-point at the (re)parsed buffer, drop the
     // owned overlay + node cache + materialized globals. Class machinery stays warm.

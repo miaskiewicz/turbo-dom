@@ -841,6 +841,14 @@ export class Document extends Node {
 
   get cookie() { return this.__cookie || ''; }
   set cookie(v) { this.__cookie = (this.__cookie ? this.__cookie + '; ' : '') + v; }
+
+  // document state (honest defaults for a headless, focused, loaded page)
+  get visibilityState() { return 'visible'; }
+  get hidden() { return false; }
+  get readyState() { return 'complete'; }
+  hasFocus() { return true; }
+  get characterSet() { return 'UTF-8'; }
+  get compatMode() { return 'CSS1Compat'; }
   get __owner() { return this.defaultView; }
 }
 

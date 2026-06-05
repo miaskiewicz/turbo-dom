@@ -31,6 +31,15 @@ class ClipboardEvent extends Event {
   constructor(type, init = {}) { super(type, init); this.clipboardData = init.clipboardData ?? new DataTransfer(); }
 }
 
+// Capture host functions at module load — BEFORE any installGlobals() can shadow
+// the bare names on globalThis (which would make these delegates call themselves).
+const hostSetTimeout = globalThis.setTimeout;
+const hostClearTimeout = globalThis.clearTimeout;
+const hostSetInterval = globalThis.setInterval;
+const hostClearInterval = globalThis.clearInterval;
+const hostQueueMicrotask = globalThis.queueMicrotask;
+const hostStructuredClone = globalThis.structuredClone;
+
 export function createWindow(document, { url = 'http://localhost/' } = {}) {
   const touched = new Set();
   let windowProxy;
@@ -48,20 +57,32 @@ export function createWindow(document, { url = 'http://localhost/' } = {}) {
     UIEvent, MouseEvent, PointerEvent, KeyboardEvent, InputEvent, FocusEvent,
     CompositionEvent, WheelEvent, TouchEvent, DragEvent, ProgressEvent, ClipboardEvent,
     DataTransfer,
+    // generic elements are plain Element → `el instanceof HTMLElement` is true.
+    // HTMLIFrameElement MUST be a distinct class so React's iframe-descent loop
+    // (`while (el instanceof HTMLIFrameElement)`) terminates on normal elements.
     HTMLElement: Element, SVGElement: Element,
+    HTMLIFrameElement: class HTMLIFrameElement extends Element {},
+    HTMLInputElement: Element, HTMLTextAreaElement: Element, HTMLSelectElement: Element,
+    HTMLOptionElement: Element, HTMLButtonElement: Element, HTMLAnchorElement: Element,
+    HTMLFormElement: Element, HTMLImageElement: Element, HTMLCanvasElement: Element,
+    HTMLTemplateElement: Element, HTMLLabelElement: Element, HTMLDivElement: Element,
+    HTMLSpanElement: Element, HTMLParagraphElement: Element, HTMLUListElement: Element,
+    HTMLLIElement: Element, HTMLHeadingElement: Element, HTMLBodyElement: Element,
+    HTMLDocument: Document, DocumentFragment, ShadowRoot: DocumentFragment,
     MutationObserver,
     URL: makeURL(), URLSearchParams,
     Blob: globalThis.Blob, File: makeFile(), FileReader,
     customElements: makeCustomElements(),
     AbortController: globalThis.AbortController, AbortSignal: globalThis.AbortSignal,
     TextEncoder: globalThis.TextEncoder, TextDecoder: globalThis.TextDecoder,
-    // timers delegate to the host (Node) — already lazy at the OS level
-    setTimeout: (...a) => setTimeout(...a),
-    clearTimeout: (...a) => clearTimeout(...a),
-    setInterval: (...a) => setInterval(...a),
-    clearInterval: (...a) => clearInterval(...a),
-    queueMicrotask: (...a) => queueMicrotask(...a),
-    structuredClone: (...a) => structuredClone(...a),
+    // timers delegate to the captured host fns (NOT the bare names — once these
+    // are installed on globalThis the bare names resolve back here → recursion)
+    setTimeout: (...a) => hostSetTimeout(...a),
+    clearTimeout: (...a) => hostClearTimeout(...a),
+    setInterval: (...a) => hostSetInterval(...a),
+    clearInterval: (...a) => hostClearInterval(...a),
+    queueMicrotask: (...a) => hostQueueMicrotask(...a),
+    structuredClone: (...a) => hostStructuredClone(...a),
     getSelection: () => document.getSelection(),
     scrollTo() {}, scroll() {}, scrollBy() {},
     alert() {}, confirm: () => false, prompt: () => null,
@@ -78,8 +99,8 @@ export function createWindow(document, { url = 'http://localhost/' } = {}) {
     getComputedStyle: () => makeGetComputedStyle(),
     IntersectionObserver: () => IntersectionObserver,
     ResizeObserver: () => ResizeObserver,
-    requestAnimationFrame: () => (cb) => setTimeout(() => cb(performanceNow()), 0),
-    cancelAnimationFrame: () => (id) => clearTimeout(id),
+    requestAnimationFrame: () => (cb) => hostSetTimeout(() => cb(performanceNow()), 0),
+    cancelAnimationFrame: () => (id) => hostClearTimeout(id),
     // subsystem grouping: history co-materializes with (and shares) location
     location: () => makeLocation(url),
     history: () => makeHistory(windowProxy.location),
@@ -117,6 +138,8 @@ export function createWindow(document, { url = 'http://localhost/' } = {}) {
     window: windowProxy,
     // which lazy globals this test materialized (the "DOM surface used" report)
     touched: () => [...touched],
+    // every global name this window can provide (for environment adapters)
+    globalKeys: [...Object.keys(base), ...Object.keys(lazy)],
     // Layer 5: drop materialized global slots, keep the class machinery warm.
     resetGlobals() {
       for (const k of touched) delete base[k];

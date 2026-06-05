@@ -185,3 +185,29 @@ export class EventTarget {
     return !event.defaultPrevented;
   }
 }
+
+// on<event> handler properties (onclick, oninput, …). Defining these makes
+// `'oninput' in document` true, so React skips its legacy attachEvent polyfill,
+// and lets libraries assign el.onX = fn directly.
+const ON_EVENTS = [
+  'click', 'dblclick', 'input', 'change', 'focus', 'blur', 'focusin', 'focusout',
+  'keydown', 'keyup', 'keypress', 'mousedown', 'mouseup', 'mousemove', 'mouseover',
+  'mouseout', 'mouseenter', 'mouseleave', 'submit', 'reset', 'load', 'error',
+  'scroll', 'wheel', 'contextmenu', 'pointerdown', 'pointerup', 'pointermove',
+  'pointerenter', 'pointerleave', 'pointercancel', 'touchstart', 'touchend',
+  'touchmove', 'animationstart', 'animationend', 'transitionend', 'paste', 'copy',
+  'cut', 'drop', 'dragstart', 'dragover', 'dragend', 'select', 'invalid', 'beforeinput',
+];
+for (const type of ON_EVENTS) {
+  const slot = '__on_' + type;
+  Object.defineProperty(EventTarget.prototype, 'on' + type, {
+    configurable: true,
+    get() { return this[slot] || null; },
+    set(fn) {
+      const prev = this[slot];
+      if (prev) this.removeEventListener(type, prev);
+      this[slot] = (typeof fn === 'function') ? fn : null;
+      if (this[slot]) this.addEventListener(type, this[slot]);
+    },
+  });
+}
