@@ -5,7 +5,7 @@
 //   node bench/parse.mjs
 
 import { createRequire } from 'node:module';
-import { parse, parseRaw } from '../index.js';
+import { parse, parseRaw, parseBuffer } from '../index.js';
 import { fixtures } from './fixtures.mjs';
 
 const require = createRequire(import.meta.url);
@@ -20,6 +20,7 @@ const jsWindow = new JSDOM('').window;
 const JsDOMParser = jsWindow.DOMParser;
 
 const engines = [
+  { name: 'fast-dom parseBuffer()', fn: (h) => parseBuffer(h) },
   { name: 'fast-dom parse()', fn: (h) => parse(h) },
   { name: 'fast-dom parseRaw()', fn: (h) => parseRaw(h) },
   { name: 'parse5', fn: (h) => parse5.parse(h) },
@@ -55,7 +56,7 @@ for (const fx of fixtures) {
     return { name: e.name, ...r };
   });
 
-  const baseline = results.find((r) => r.name === 'fast-dom parse()');
+  const baseline = results.find((r) => r.name === 'fast-dom parseBuffer()');
   console.log('engine'.padEnd(22), 'ops/sec'.padStart(12), 'ms/op'.padStart(10), 'rel'.padStart(8));
   console.log('-'.repeat(54));
   for (const r of results) {
@@ -74,5 +75,6 @@ for (const fx of fixtures) {
   console.log();
 }
 
-console.log('rel = speed relative to fast-dom parse() (>1 faster than us, <1 slower).');
-console.log('parseRaw() = html5ever parse only, no JS tree built → marshaling cost = parse() vs parseRaw() gap.');
+console.log('rel = speed relative to fast-dom parseBuffer() — the SoA fast path (>1 faster, <1 slower).');
+console.log('parseBuffer() = SoA typed-array buffer (runtime path). parse() = old full JS-tree marshaling.');
+console.log('parseRaw() = html5ever parse only, no JS output → the floor. SoA closes most of the parse()→parseRaw() gap.');

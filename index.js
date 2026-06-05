@@ -310,8 +310,9 @@ if (!nativeBinding) {
   throw new Error(`Failed to load native binding`)
 }
 
-const { parse, parseRaw, parseFragment } = nativeBinding
+const { parse, parseRaw, parseBuffer, parseFragment } = nativeBinding
 
 module.exports.parse = parse
 module.exports.parseRaw = parseRaw
+module.exports.parseBuffer = parseBuffer
 module.exports.parseFragment = parseFragment

@@ -11,6 +11,7 @@ import { EventTarget, Event, CustomEvent } from './events.mjs';
 import { liveNodeList, liveHTMLCollection } from './collections.mjs';
 import { matchesSelector, querySelector as qsel, querySelectorAll as qselAll } from './selectors.mjs';
 import { serializeInner, serializeOuter } from './html-serialize.mjs';
+import { Buffer } from './buffer.mjs';
 
 const require = createRequire(import.meta.url);
 const native = require('../../index.js');
@@ -40,19 +41,23 @@ export class Node extends EventTarget {
     super();
     this.ownerDocument = ownerDocument || null;
     this.parentNode = null;
-    this.__raw = null;            // backing buffer node, or null if owned/created
-    this.__kids = null;           // owned child array once inflated/promoted
+    this.__idx = -1;              // backing buffer index, or -1 if owned/created
+    this.__kids = null;          // owned child array once inflated/promoted
   }
 
-  // Lazy inflation: build child handles on first access, memoized for identity.
+  // Lazy inflation: walk the SoA buffer's firstChild/nextSib for this node, build
+  // handles on first access, memoize for identity. Mutation then operates on __kids
+  // (COW promotion). A buffer-backed read and an owned read are indistinguishable.
   __children() {
     if (this.__kids) return this.__kids;
     const kids = [];
-    if (this.__raw) {
-      for (const rawChild of this.__raw.children) {
+    const doc = this.ownerDocument;
+    if (this.__idx >= 0 && doc && doc.__buf) {
+      const buf = doc.__buf;
+      for (let c = buf.firstChild(this.__idx); c !== -1; c = buf.nextSib(c)) {
         // template content fragment is not a child — it's `.content`
-        if (rawChild.nodeType === DOCUMENT_FRAGMENT_NODE && rawChild.name === 'content') continue;
-        const child = this.ownerDocument.__inflate(rawChild);
+        if (buf.nodeType(c) === DOCUMENT_FRAGMENT_NODE && buf.tagName(c) === 'content') continue;
+        const child = doc.__nodeAt(c);
         child.parentNode = this;
         kids.push(child);
       }
@@ -300,9 +305,10 @@ export class Element extends Node {
     const frag = native.parseFragment(String(html), this.__ns ? `${this.__ns} ${this.localName}` : this.localName);
     this.__kids = [];
     for (const rawChild of frag.children) {
-      const child = this.ownerDocument.__inflate(rawChild);
+      if (rawChild.nodeType === DOCUMENT_FRAGMENT_NODE && rawChild.name === 'content') continue;
+      const child = this.ownerDocument.__inflateNested(rawChild);
       child.parentNode = this;
-      this.__children().push(child);
+      this.__kids.push(child);
     }
   }
   get outerHTML() { return serializeOuter(this); }
@@ -431,50 +437,89 @@ export class Document extends Node {
   constructor() {
     super(null);
     this.ownerDocument = this;
-    this.__cache = new Map();     // raw -> handle (identity memoization / nodeAt)
+    this.__buf = null;            // SoA buffer accessor
+    this.__cache = [];            // idx -> handle (identity memoization / nodeAt)
     this.__active = null;         // activeElement
     this.defaultView = null;      // set by environment (window)
-    this.__rawRoot = null;
   }
   get nodeType() { return DOCUMENT_NODE; }
   get nodeName() { return '#document'; }
 
-  // nodeAt-style: one handle per buffer node, memoized → preserves === identity.
-  __inflate(raw) {
-    const cached = this.__cache.get(raw);
-    if (cached) return cached;
+  // nodeAt: one handle per buffer index, memoized → preserves === identity.
+  __nodeAt(idx) {
+    if (idx < 0) return null;
+    const cached = this.__cache[idx];
+    if (cached !== undefined) return cached;
+    const buf = this.__buf;
     let node;
-    switch (raw.nodeType) {
+    switch (buf.nodeType(idx)) {
       case ELEMENT_NODE: {
-        node = new Element(this, raw.name, raw.namespace || '');
-        node.__attrs = raw.attrs.map((a) => ({ name: a.name, value: a.value, prefix: a.prefix || '' }));
-        node.__raw = raw;
-        // template content fragment
-        const contentRaw = raw.children.find((c) => c.nodeType === DOCUMENT_FRAGMENT_NODE && c.name === 'content');
-        if (raw.name === 'template' && contentRaw) {
-          const frag = new DocumentFragment(this);
-          frag.__raw = contentRaw;
-          node.content = frag;
+        node = new Element(this, buf.tagName(idx), buf.ns(idx));
+        node.__idx = idx;
+        node.__attrs = buf.attrs(idx);
+        // template content fragment: a child node typed 11 named "content"
+        if (buf.tagName(idx) === 'template') {
+          for (let c = buf.firstChild(idx); c !== -1; c = buf.nextSib(c)) {
+            if (buf.nodeType(c) === DOCUMENT_FRAGMENT_NODE && buf.tagName(c) === 'content') {
+              node.content = this.__nodeAt(c);
+              break;
+            }
+          }
         }
         defineValueProp(node);
         break;
       }
-      case TEXT_NODE: node = new Text(this, raw.value); break;
-      case COMMENT_NODE: node = new Comment(this, raw.value); break;
-      case DOCUMENT_TYPE_NODE: node = new DocumentType(this, raw.name, raw.publicId, raw.systemId); break;
-      case DOCUMENT_FRAGMENT_NODE: node = new DocumentFragment(this); node.__raw = raw; break;
-      default: node = new Comment(this, ''); break;
+      case TEXT_NODE: node = new Text(this, buf.text(idx)); node.__idx = idx; break;
+      case COMMENT_NODE: node = new Comment(this, buf.text(idx)); node.__idx = idx; break;
+      case DOCUMENT_TYPE_NODE:
+        node = new DocumentType(this, buf.text(idx), buf.publicId(idx), buf.systemId(idx));
+        node.__idx = idx;
+        break;
+      case DOCUMENT_FRAGMENT_NODE: node = new DocumentFragment(this); node.__idx = idx; break;
+      default: node = new Comment(this, ''); node.__idx = idx; break;
     }
-    this.__cache.set(raw, node);
+    this.__cache[idx] = node;
     return node;
   }
 
-  // build the top-level (doctype + <html>) lazily over the parse buffer
-  __load(rawRoot) {
-    this.__rawRoot = rawRoot;
-    this.__raw = rawRoot;
-    this.__kids = null;     // children inflate lazily from rawRoot
-    this.__cache.clear();
+  // Inflate an OWNED subtree from a nested parse tree (used by innerHTML= ).
+  __inflateNested(raw) {
+    let node;
+    switch (raw.nodeType) {
+      case ELEMENT_NODE:
+        node = new Element(this, raw.name, raw.namespace || '');
+        node.__attrs = raw.attrs.map((a) => ({ name: a.name, value: a.value, prefix: a.prefix || '' }));
+        defineValueProp(node);
+        if (raw.name === 'template') {
+          const contentRaw = raw.children.find((c) => c.nodeType === DOCUMENT_FRAGMENT_NODE && c.name === 'content');
+          if (contentRaw) { node.content = this.__inflateNested(contentRaw); }
+        }
+        break;
+      case TEXT_NODE: node = new Text(this, raw.value); break;
+      case COMMENT_NODE: node = new Comment(this, raw.value); break;
+      case DOCUMENT_TYPE_NODE: node = new DocumentType(this, raw.name, raw.publicId, raw.systemId); break;
+      case DOCUMENT_FRAGMENT_NODE: node = new DocumentFragment(this); break;
+      default: node = new Comment(this, ''); break;
+    }
+    if (raw.nodeType !== TEXT_NODE && raw.nodeType !== COMMENT_NODE && raw.nodeType !== DOCUMENT_TYPE_NODE) {
+      const kids = [];
+      for (const rc of raw.children) {
+        if (rc.nodeType === DOCUMENT_FRAGMENT_NODE && rc.name === 'content') continue;
+        const child = this.__inflateNested(rc);
+        child.parentNode = node;
+        kids.push(child);
+      }
+      node.__kids = kids;
+    }
+    return node;
+  }
+
+  // Layer 5: (re)point at the SoA buffer; children inflate lazily. Arena reset.
+  __load(soa) {
+    this.__buf = new Buffer(soa);
+    this.__idx = 0;          // node 0 is the document
+    this.__kids = null;      // drop overlay
+    this.__cache = [];       // drop node cache
     this.__active = null;
   }
 
@@ -524,10 +569,10 @@ export class Document extends Node {
 
 export { Event, CustomEvent };
 
-// Parse an HTML string into a fresh Document over the immutable buffer.
+// Parse an HTML string into a fresh Document over the immutable SoA buffer.
 export function parseDocument(html) {
-  const rawRoot = native.parse(String(html));
+  const soa = native.parseBuffer(String(html));
   const doc = new Document();
-  doc.__load(rawRoot);
+  doc.__load(soa);
   return doc;
 }

@@ -30,6 +30,30 @@ export declare function parse(html: string): JsNode
  */
 export declare function parseRaw(html: string): number
 /**
+ * SoA flat buffer: structure as typed arrays, crossed once. JS inflates node
+ * objects lazily from this — no eager full-tree allocation. The fast path.
+ */
+export interface JsSoa {
+  nodeType: Uint8Array
+  ns: Uint8Array
+  tagId: Uint32Array
+  parent: Int32Array
+  firstChild: Int32Array
+  nextSib: Int32Array
+  textId: Int32Array
+  pubId: Int32Array
+  sysId: Int32Array
+  attrStart: Int32Array
+  attrCount: Uint16Array
+  attrName: Array<string>
+  attrValue: Array<string>
+  attrPrefix: Array<string>
+  tagNames: Array<string>
+  strings: Array<string>
+}
+/** Parse a document into the SoA flat buffer (the fast runtime path). */
+export declare function parseBuffer(html: string): JsSoa
+/**
  * Parse an HTML fragment (innerHTML-style). `context` is the context element:
  * e.g. "body" (default), "td", or namespaced "svg path" / "math ms".
  */

@@ -67,6 +67,168 @@ pub fn parse_html_document(html: &str) -> Node {
     walk(&dom.document)
 }
 
+// ============================ SoA flat buffer ============================
+// Structure-of-Arrays: parser emits compact parallel arrays once, crossed over
+// the boundary as cheap typed-array copies. JS reads tree structure straight from
+// the arrays and inflates node objects only on access (no eager full-tree alloc).
+
+/// Index-addressed flat tree. Node index IS its id; node 0 is the document.
+#[cfg_attr(feature = "wasm-bind", derive(serde::Serialize))]
+#[derive(Default)]
+pub struct Soa {
+    pub node_type: Vec<u8>,    // DOM nodeType
+    pub ns: Vec<u8>,           // 0 html, 1 svg, 2 math
+    pub tag_id: Vec<u32>,      // index into tag_names (elements); 0 otherwise
+    pub parent: Vec<i32>,      // -1 for root
+    pub first_child: Vec<i32>, // -1 if none
+    pub next_sib: Vec<i32>,    // -1 if none
+    pub text_id: Vec<i32>,     // index into strings for text/comment/doctype-name; -1
+    pub pub_id: Vec<i32>,      // doctype PUBLIC id index into strings; -1
+    pub sys_id: Vec<i32>,      // doctype SYSTEM id index into strings; -1
+    pub attr_start: Vec<i32>,  // offset into attr_* tables; -1 if none
+    pub attr_count: Vec<u16>,  // attrs for this node
+    // flat attr tables
+    pub attr_name: Vec<String>,
+    pub attr_value: Vec<String>,
+    pub attr_prefix: Vec<String>,
+    // string tables
+    pub tag_names: Vec<String>, // interned, deduped
+    pub strings: Vec<String>,   // text/comment/doctype data, pooled
+}
+
+struct SoaBuilder {
+    soa: Soa,
+    tag_map: std::collections::HashMap<String, u32>,
+}
+
+impl SoaBuilder {
+    fn intern_tag(&mut self, name: &str) -> u32 {
+        if let Some(&id) = self.tag_map.get(name) {
+            return id;
+        }
+        let id = self.soa.tag_names.len() as u32;
+        self.soa.tag_names.push(name.to_string());
+        self.tag_map.insert(name.to_string(), id);
+        id
+    }
+    fn push_string(&mut self, s: &str) -> i32 {
+        let id = self.soa.strings.len() as i32;
+        self.soa.strings.push(s.to_string());
+        id
+    }
+
+    // Allocate this node + descendants; return its index.
+    fn alloc(&mut self, handle: &Handle, parent: i32) -> i32 {
+        let idx = self.soa.node_type.len();
+        // push placeholders; fill scalars below
+        self.soa.node_type.push(0);
+        self.soa.ns.push(0);
+        self.soa.tag_id.push(0);
+        self.soa.parent.push(parent);
+        self.soa.first_child.push(-1);
+        self.soa.next_sib.push(-1);
+        self.soa.text_id.push(-1);
+        self.soa.pub_id.push(-1);
+        self.soa.sys_id.push(-1);
+        self.soa.attr_start.push(-1);
+        self.soa.attr_count.push(0);
+
+        let mut template_content: Option<Handle> = None;
+
+        match &handle.data {
+            NodeData::Document => self.soa.node_type[idx] = DOCUMENT_NODE,
+            NodeData::Doctype { name, public_id, system_id } => {
+                self.soa.node_type[idx] = DOCUMENT_TYPE_NODE;
+                self.soa.text_id[idx] = self.push_string(name);
+                self.soa.pub_id[idx] = self.push_string(public_id);
+                self.soa.sys_id[idx] = self.push_string(system_id);
+            }
+            NodeData::Text { contents } => {
+                self.soa.node_type[idx] = TEXT_NODE;
+                self.soa.text_id[idx] = self.push_string(&contents.borrow());
+            }
+            NodeData::Comment { contents } => {
+                self.soa.node_type[idx] = COMMENT_NODE;
+                self.soa.text_id[idx] = self.push_string(contents);
+            }
+            NodeData::ProcessingInstruction { target, contents } => {
+                self.soa.node_type[idx] = PROCESSING_INSTRUCTION_NODE;
+                let combined = format!("{} {}", target, contents);
+                self.soa.text_id[idx] = self.push_string(&combined);
+            }
+            NodeData::Element { name, attrs, template_contents, .. } => {
+                self.soa.node_type[idx] = ELEMENT_NODE;
+                self.soa.ns[idx] = if name.ns == ns!(svg) { 1 } else if name.ns == ns!(mathml) { 2 } else { 0 };
+                self.soa.tag_id[idx] = self.intern_tag(&name.local);
+                let borrowed = attrs.borrow();
+                if !borrowed.is_empty() {
+                    self.soa.attr_start[idx] = self.soa.attr_name.len() as i32;
+                    self.soa.attr_count[idx] = borrowed.len() as u16;
+                    for attr in borrowed.iter() {
+                        self.soa.attr_name.push(attr.name.local.to_string());
+                        self.soa.attr_value.push(attr.value.to_string());
+                        self.soa.attr_prefix.push(
+                            attr.name.prefix.as_ref().map(|p| p.to_string()).unwrap_or_default(),
+                        );
+                    }
+                }
+                if &*name.local == "template" {
+                    if let Some(c) = &*template_contents.borrow() {
+                        template_content = Some(c.clone());
+                    }
+                }
+            }
+        }
+
+        // children, linking first_child / next_sib (inline; no closure to avoid borrow churn)
+        let mut prev = -1i32;
+        for child in handle.children.borrow().iter() {
+            let cidx = self.alloc(child, idx as i32);
+            if prev == -1 { self.soa.first_child[idx] = cidx; } else { self.soa.next_sib[prev as usize] = cidx; }
+            prev = cidx;
+        }
+        // <template> content as a synthetic document-fragment child named "content"
+        if let Some(content) = template_content {
+            let cidx = self.soa.node_type.len() as i32;
+            self.soa.node_type.push(DOCUMENT_FRAGMENT_NODE);
+            self.soa.ns.push(0);
+            let content_tag = self.intern_tag("content");
+            self.soa.tag_id.push(content_tag);
+            self.soa.parent.push(idx as i32);
+            self.soa.first_child.push(-1);
+            self.soa.next_sib.push(-1);
+            self.soa.text_id.push(-1);
+            self.soa.pub_id.push(-1);
+            self.soa.sys_id.push(-1);
+            self.soa.attr_start.push(-1);
+            self.soa.attr_count.push(0);
+            let mut cprev = -1i32;
+            for gc in content.children.borrow().iter() {
+                let gcidx = self.alloc(gc, cidx);
+                if cprev == -1 { self.soa.first_child[cidx as usize] = gcidx; } else { self.soa.next_sib[cprev as usize] = gcidx; }
+                cprev = gcidx;
+            }
+            // link the content fragment as a child of the template
+            if prev == -1 { self.soa.first_child[idx] = cidx; } else { self.soa.next_sib[prev as usize] = cidx; }
+            prev = cidx;
+        }
+        let _ = prev;
+
+        idx as i32
+    }
+}
+
+/// Parse a full document into the SoA flat buffer.
+pub fn parse_html_soa(html: &str) -> Soa {
+    let dom = parse_document(RcDom::default(), opts())
+        .from_utf8()
+        .read_from(&mut html.as_bytes())
+        .expect("RcDom read_from is infallible over a byte slice");
+    let mut b = SoaBuilder { soa: Soa::default(), tag_map: std::collections::HashMap::new() };
+    b.alloc(&dom.document, -1);
+    b.soa
+}
+
 /// Parse a document and return only the node count — no `core::Node` tree, no
 /// marshaling. Isolates raw html5ever parse cost from tree-build + boundary cost.
 pub fn parse_html_document_count(html: &str) -> u32 {

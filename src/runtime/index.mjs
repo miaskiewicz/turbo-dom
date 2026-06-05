@@ -17,12 +17,12 @@ export { Document } from './dom.mjs';
 export * from './dom.mjs';
 
 export function createEnvironment(html = '<!doctype html><html><head></head><body></body></html>', options = {}) {
-  // Layer 1: native parse → immutable buffer.
-  let rawRoot = native.parse(String(html));
+  // Layer 1: native parse → immutable SoA buffer (typed arrays, one boundary copy).
+  let soa = native.parseBuffer(String(html));
 
-  // Layer 2: Document over the buffer (nodes inflate lazily).
+  // Layer 2: Document over the buffer (nodes inflate lazily from the arrays).
   const document = new Document();
-  document.__load(rawRoot);
+  document.__load(soa);
 
   // Layer 3: lazy window.
   const win = createWindow(document, options);
@@ -35,8 +35,8 @@ export function createEnvironment(html = '<!doctype html><html><head></head><bod
     // Layer 5: arena-style reset. Re-point at the (re)parsed buffer, drop the
     // owned overlay + node cache + materialized globals. Class machinery stays warm.
     reset(nextHtml) {
-      if (nextHtml !== undefined) rawRoot = native.parse(String(nextHtml));
-      document.__load(rawRoot);   // clears __cache + __kids overlay, keeps buffer if reused
+      if (nextHtml !== undefined) soa = native.parseBuffer(String(nextHtml));
+      document.__load(soa);       // drops __cache + __kids overlay, keeps the buffer if reused
       win.resetGlobals();
       document.__active = null;
       document.__cookie = '';

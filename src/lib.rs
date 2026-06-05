@@ -67,6 +67,59 @@ mod napi_front {
         core::parse_html_document_count(&html)
     }
 
+    use napi::bindgen_prelude::{Int32Array, Uint16Array, Uint32Array, Uint8Array};
+
+    /// SoA flat buffer: structure as typed arrays, crossed once. JS inflates node
+    /// objects lazily from this — no eager full-tree allocation. The fast path.
+    #[napi(object)]
+    pub struct JsSoa {
+        pub node_type: Uint8Array,
+        pub ns: Uint8Array,
+        pub tag_id: Uint32Array,
+        pub parent: Int32Array,
+        pub first_child: Int32Array,
+        pub next_sib: Int32Array,
+        pub text_id: Int32Array,
+        pub pub_id: Int32Array,
+        pub sys_id: Int32Array,
+        pub attr_start: Int32Array,
+        pub attr_count: Uint16Array,
+        pub attr_name: Vec<String>,
+        pub attr_value: Vec<String>,
+        pub attr_prefix: Vec<String>,
+        pub tag_names: Vec<String>,
+        pub strings: Vec<String>,
+    }
+
+    impl From<core::Soa> for JsSoa {
+        fn from(s: core::Soa) -> Self {
+            JsSoa {
+                node_type: Uint8Array::new(s.node_type),
+                ns: Uint8Array::new(s.ns),
+                tag_id: Uint32Array::new(s.tag_id),
+                parent: Int32Array::new(s.parent),
+                first_child: Int32Array::new(s.first_child),
+                next_sib: Int32Array::new(s.next_sib),
+                text_id: Int32Array::new(s.text_id),
+                pub_id: Int32Array::new(s.pub_id),
+                sys_id: Int32Array::new(s.sys_id),
+                attr_start: Int32Array::new(s.attr_start),
+                attr_count: Uint16Array::new(s.attr_count),
+                attr_name: s.attr_name,
+                attr_value: s.attr_value,
+                attr_prefix: s.attr_prefix,
+                tag_names: s.tag_names,
+                strings: s.strings,
+            }
+        }
+    }
+
+    /// Parse a document into the SoA flat buffer (the fast runtime path).
+    #[napi(js_name = "parseBuffer")]
+    pub fn parse_buffer(html: String) -> JsSoa {
+        core::parse_html_soa(&html).into()
+    }
+
     /// Parse an HTML fragment (innerHTML-style). `context` is the context element:
     /// e.g. "body" (default), "td", or namespaced "svg path" / "math ms".
     #[napi(js_name = "parseFragment")]
@@ -94,5 +147,11 @@ mod wasm_front {
     pub fn parse_fragment(html: &str, context: Option<String>) -> Result<JsValue, JsValue> {
         let tree = core::parse_html_fragment_context(html, context.as_deref().unwrap_or(""));
         serde_wasm_bindgen::to_value(&tree).map_err(|e| JsValue::from_str(&e.to_string()))
+    }
+
+    #[wasm_bindgen(js_name = "parseBuffer")]
+    pub fn parse_buffer(html: &str) -> Result<JsValue, JsValue> {
+        let soa = core::parse_html_soa(html);
+        serde_wasm_bindgen::to_value(&soa).map_err(|e| JsValue::from_str(&e.to_string()))
     }
 }
