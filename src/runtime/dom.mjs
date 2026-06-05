@@ -545,7 +545,15 @@ export class Element extends Node {
     return el;
   }
 
-  click() { this.dispatchEvent(new Event('click', { bubbles: true, cancelable: true })); }
+  click() {
+    // WHATWG "click in progress" flag: a nested .click() on the same element
+    // (e.g. a parent onClick that re-clicks this element on the bubble path) is
+    // a no-op, which breaks the otherwise-infinite re-entrancy.
+    if (this.__clickInProgress) return;
+    this.__clickInProgress = true;
+    try { this.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, detail: 1 })); }
+    finally { this.__clickInProgress = false; }
+  }
   // pre-click activation (runs BEFORE click listeners; undone if preventDefault)
   __preClickActivation() {
     if (this.localName !== 'input') return null;
