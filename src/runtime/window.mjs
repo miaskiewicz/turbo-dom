@@ -6,11 +6,13 @@
 
 import {
   Storage, makeMatchMedia, makeGetComputedStyle,
-  IntersectionObserver, ResizeObserver, MutationObserver,
+  IntersectionObserver, ResizeObserver,
+  FileReader, makeCanvasStub, makeCustomElements,
   makeLocation, makeHistory,
 } from './stubs.mjs';
 import {
   Node, Element, Text, Comment, Document, DocumentFragment, DocumentType, Event, CustomEvent,
+  MutationObserver,
 } from './dom.mjs';
 import {
   EventTarget,
@@ -47,7 +49,12 @@ export function createWindow(document, { url = 'http://localhost/' } = {}) {
     CompositionEvent, WheelEvent, TouchEvent, DragEvent, ProgressEvent, ClipboardEvent,
     DataTransfer,
     HTMLElement: Element, SVGElement: Element,
-    URL, URLSearchParams,
+    MutationObserver,
+    URL: makeURL(), URLSearchParams,
+    Blob: globalThis.Blob, File: makeFile(), FileReader,
+    customElements: makeCustomElements(),
+    AbortController: globalThis.AbortController, AbortSignal: globalThis.AbortSignal,
+    TextEncoder: globalThis.TextEncoder, TextDecoder: globalThis.TextDecoder,
     // timers delegate to the host (Node) — already lazy at the OS level
     setTimeout: (...a) => setTimeout(...a),
     clearTimeout: (...a) => clearTimeout(...a),
@@ -55,7 +62,7 @@ export function createWindow(document, { url = 'http://localhost/' } = {}) {
     clearInterval: (...a) => clearInterval(...a),
     queueMicrotask: (...a) => queueMicrotask(...a),
     structuredClone: (...a) => structuredClone(...a),
-    getSelection: () => null,
+    getSelection: () => document.getSelection(),
     scrollTo() {}, scroll() {}, scrollBy() {},
     alert() {}, confirm: () => false, prompt: () => null,
     dispatchEvent: (e) => document.dispatchEvent(e),
@@ -71,7 +78,6 @@ export function createWindow(document, { url = 'http://localhost/' } = {}) {
     getComputedStyle: () => makeGetComputedStyle(),
     IntersectionObserver: () => IntersectionObserver,
     ResizeObserver: () => ResizeObserver,
-    MutationObserver: () => MutationObserver,
     requestAnimationFrame: () => (cb) => setTimeout(() => cb(performanceNow()), 0),
     cancelAnimationFrame: () => (id) => clearTimeout(id),
     // subsystem grouping: history co-materializes with (and shares) location
@@ -122,4 +128,18 @@ export function createWindow(document, { url = 'http://localhost/' } = {}) {
 function performanceNow() {
   const [s, ns] = process.hrtime();
   return s * 1000 + ns / 1e6;
+}
+
+let __objUrlSeq = 0;
+function makeURL() {
+  class TurboURL extends URL {}
+  TurboURL.createObjectURL = () => `blob:turbodom/${++__objUrlSeq}`;
+  TurboURL.revokeObjectURL = () => {};
+  return TurboURL;
+}
+function makeFile() {
+  const B = globalThis.Blob;
+  return class File extends B {
+    constructor(bits = [], name = 'file', opts = {}) { super(bits, opts); this.name = String(name); this.lastModified = opts.lastModified || 0; }
+  };
 }

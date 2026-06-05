@@ -12,6 +12,7 @@ import { liveNodeList, liveHTMLCollection } from './collections.mjs';
 import { matchesSelector, querySelector as qsel, querySelectorAll as qselAll } from './selectors.mjs';
 import { serializeInner, serializeOuter } from './html-serialize.mjs';
 import { Buffer } from './buffer.mjs';
+import { makeCanvasStub } from './stubs.mjs';
 
 const require = createRequire(import.meta.url);
 const native = require('../../index.js');
@@ -103,6 +104,7 @@ export class Node extends EventTarget {
     if (ref) kids.splice(i, 0, node); else kids.push(node);
     node.parentNode = this;
     node.ownerDocument = this.ownerDocument;
+    notifyMutation(this, { type: 'childList', target: this, addedNodes: [node], removedNodes: [], nextSibling: ref || null });
     return node;
   }
 
@@ -110,8 +112,10 @@ export class Node extends EventTarget {
     const kids = this.__children();
     const i = kids.indexOf(node);
     if (i === -1) throw new Error('NotFoundError: node is not a child');
+    const next = kids[i + 1] || null;
     kids.splice(i, 1);
     node.parentNode = null;
+    notifyMutation(this, { type: 'childList', target: this, addedNodes: [], removedNodes: [node], nextSibling: next });
     return node;
   }
 
@@ -150,12 +154,12 @@ export class Node extends EventTarget {
 class CharacterData extends Node {
   constructor(ownerDocument, data) { super(ownerDocument); this._data = data ?? ''; }
   get data() { return this._data; }
-  set data(v) { this._data = String(v); }
+  set data(v) { const old = this._data; this._data = String(v); notifyMutation(this, { type: 'characterData', target: this, oldValue: old, addedNodes: [], removedNodes: [] }); }
   get nodeValue() { return this._data; }
-  set nodeValue(v) { this._data = String(v); }
+  set nodeValue(v) { this.data = v; }
   get length() { return this._data.length; }
   get textContent() { return this._data; }
-  set textContent(v) { this._data = String(v); }
+  set textContent(v) { this.data = v; }
 }
 
 export class Text extends CharacterData {
@@ -207,6 +211,7 @@ export class Element extends Node {
     this.__ns = namespace;            // '', 'svg', 'math'
     this.__attrs = [];                // [{name, value, prefix}]
     this.content = null;              // <template> content fragment
+    this.shadowRoot = null;           // open shadow root, if attached
   }
 
   get nodeType() { return ELEMENT_NODE; }
@@ -220,10 +225,16 @@ export class Element extends Node {
   getAttributeNames() { return this.__attrs.map((a) => a.name); }
   setAttribute(name, value) {
     const a = this.__attrs.find((x) => x.name === name);
+    const old = a ? a.value : null;
     if (a) a.value = String(value);
     else this.__attrs.push({ name, value: String(value), prefix: '' });
+    notifyMutation(this, { type: 'attributes', target: this, attributeName: name, oldValue: old, addedNodes: [], removedNodes: [] });
   }
-  removeAttribute(name) { this.__attrs = this.__attrs.filter((x) => x.name !== name); }
+  removeAttribute(name) {
+    const a = this.__attrs.find((x) => x.name === name);
+    this.__attrs = this.__attrs.filter((x) => x.name !== name);
+    if (a) notifyMutation(this, { type: 'attributes', target: this, attributeName: name, oldValue: a.value, addedNodes: [], removedNodes: [] });
+  }
   toggleAttribute(name, force) {
     const has = this.hasAttribute(name);
     if (force === true || (force === undefined && !has)) { this.setAttribute(name, ''); return true; }
@@ -265,6 +276,91 @@ export class Element extends Node {
   get className() { return this.getAttribute('class') || ''; }
   set className(v) { this.setAttribute('class', v); }
   get classList() { return new ClassList(this); }
+
+  get dataset() {
+    if (!this.__dataset) this.__dataset = makeDataset(this);
+    return this.__dataset;
+  }
+
+  // ---- form-control properties (on the prototype so libraries that read
+  //      element.constructor.prototype descriptors — e.g. user-event — find them) ----
+  get value() {
+    const t = this.localName;
+    if (t === 'select') {
+      const list = Array.from(this.getElementsByTagName('option'));
+      const s = list.find((o) => o.selected);
+      if (s) return s.value;
+      return list.length && !this.multiple ? list[0].value : '';
+    }
+    if (t === 'option') return this.hasAttribute('value') ? this.getAttribute('value') : this.textContent;
+    if (t === 'input' || t === 'textarea') return this.__value !== undefined ? this.__value : (this.getAttribute('value') ?? '');
+    return undefined;
+  }
+  set value(x) {
+    const t = this.localName;
+    if (t === 'select') { for (const o of this.getElementsByTagName('option')) o.selected = (o.value === String(x)); return; }
+    if (t === 'option') { this.setAttribute('value', x); return; }
+    this.__value = String(x);
+    if (this.__selStart != null) { this.__selStart = Math.min(this.__selStart, this.__value.length); this.__selEnd = Math.min(this.__selEnd, this.__value.length); }
+  }
+  get defaultValue() { return this.getAttribute('value') ?? ''; }
+  set defaultValue(v) { this.setAttribute('value', v); }
+
+  get selectionStart() { return this.__selStart ?? null; }
+  set selectionStart(v) { this.__selStart = v; }
+  get selectionEnd() { return this.__selEnd ?? null; }
+  set selectionEnd(v) { this.__selEnd = v; }
+  get selectionDirection() { return this.__selDir ?? 'none'; }
+  set selectionDirection(v) { this.__selDir = v; }
+  setSelectionRange(s, e, dir = 'none') { this.__selStart = s; this.__selEnd = e; this.__selDir = dir; }
+  setRangeText(repl, start = this.__selStart ?? 0, end = this.__selEnd ?? 0) {
+    const v = this.value ?? ''; this.value = v.slice(0, start) + repl + v.slice(end);
+  }
+  select() { this.__selStart = 0; this.__selEnd = (this.value ?? '').length; }
+
+  get checked() { return this.__checked !== undefined ? this.__checked : this.hasAttribute('checked'); }
+  set checked(x) { this.__checked = !!x; }
+  get defaultChecked() { return this.hasAttribute('checked'); }
+  set defaultChecked(x) { if (x) this.setAttribute('checked', ''); else this.removeAttribute('checked'); }
+
+  get type() {
+    if (this.localName === 'input') return (this.getAttribute('type') || 'text').toLowerCase();
+    if (this.localName === 'button') return (this.getAttribute('type') || 'submit').toLowerCase();
+    return this.getAttribute('type') || undefined;
+  }
+  set type(x) { this.setAttribute('type', x); }
+  get disabled() { return this.hasAttribute('disabled'); }
+  set disabled(x) { if (x) this.setAttribute('disabled', ''); else this.removeAttribute('disabled'); }
+  get readOnly() { return this.hasAttribute('readonly'); }
+  set readOnly(x) { if (x) this.setAttribute('readonly', ''); else this.removeAttribute('readonly'); }
+  get required() { return this.hasAttribute('required'); }
+  set required(x) { if (x) this.setAttribute('required', ''); else this.removeAttribute('required'); }
+  get name() { return this.getAttribute('name') ?? ''; }
+  set name(x) { this.setAttribute('name', x); }
+  get placeholder() { return this.getAttribute('placeholder') ?? ''; }
+  set placeholder(x) { this.setAttribute('placeholder', x); }
+  get href() { return this.getAttribute('href') ?? ''; }
+  set href(x) { this.setAttribute('href', x); }
+
+  // option
+  get selected() { return this.__selected !== undefined ? this.__selected : this.hasAttribute('selected'); }
+  set selected(x) { this.__selected = !!x; }
+  get defaultSelected() { return this.hasAttribute('selected'); }
+  get text() { return this.textContent; }
+  set text(v) { this.textContent = v; }
+
+  // select
+  get options() { return this.localName === 'select' ? this.getElementsByTagName('option') : undefined; }
+  get multiple() { return this.hasAttribute('multiple'); }
+  set multiple(x) { if (x) this.setAttribute('multiple', ''); else this.removeAttribute('multiple'); }
+  get selectedOptions() { return Array.from(this.getElementsByTagName('option')).filter((o) => o.selected); }
+  get selectedIndex() {
+    const list = Array.from(this.getElementsByTagName('option'));
+    const i = list.findIndex((o) => o.selected);
+    if (i >= 0) return i;
+    return list.length && !this.multiple ? 0 : -1;
+  }
+  set selectedIndex(idx) { Array.from(this.getElementsByTagName('option')).forEach((o, i) => { o.selected = (i === Number(idx)); }); }
 
   get style() {
     // minimal honest CSSOM: parse/serialize the inline style attribute
@@ -341,48 +437,62 @@ export class Element extends Node {
   __runDefaultAction(e) {
     if (e.type !== 'click') return;
     if (this.localName === 'input') {
-      const t = this.getAttribute('type');
+      const t = (this.getAttribute('type') || 'text').toLowerCase();
       if (t === 'checkbox') this.checked = !this.checked;
       else if (t === 'radio') this.checked = true;
+      else if (t === 'submit') { const f = this.closest('form'); if (f) f.requestSubmit(); }
+    } else if (this.localName === 'button') {
+      const t = (this.getAttribute('type') || 'submit').toLowerCase();
+      if (t === 'submit') { const f = this.closest('form'); if (f) f.requestSubmit(); }
     } else if (this.localName === 'label') {
       const c = this.control;
       if (c && c !== e.target) c.click();
     }
   }
-  focus() { this.ownerDocument.__setActive(this); }
-  blur() { this.ownerDocument.__setActive(this.ownerDocument.body); }
+  focus() {
+    this.ownerDocument.__setActive(this);
+    this.dispatchEvent(new Event('focus'));
+    this.dispatchEvent(new Event('focusin', { bubbles: true }));
+  }
+  blur() {
+    this.ownerDocument.__setActive(this.ownerDocument.body);
+    this.dispatchEvent(new Event('blur'));
+    this.dispatchEvent(new Event('focusout', { bubbles: true }));
+  }
   getBoundingClientRect() { return zeroRect(); }
   getClientRects() { return []; }
   scrollIntoView() {}
-}
 
-// form-ish value reflection for inputs (common in RTL/user-event)
-function defineValueProp(el) {
-  const tag = el.localName;
-  if (!('value' in el) && (tag === 'input' || tag === 'textarea' || tag === 'select' || tag === 'option')) {
-    let v = el.getAttribute('value') ?? '';
-    let selStart = null, selEnd = null, selDir = 'none';
-    Object.defineProperty(el, 'value', {
-      get: () => v,
-      set: (x) => { v = String(x); if (selStart !== null) { selStart = Math.min(selStart, v.length); selEnd = Math.min(selEnd, v.length); } },
-      configurable: true,
-    });
-    if (tag === 'input' || tag === 'textarea') {
-      // text selection API (user-event tracks the cursor through these)
-      Object.defineProperty(el, 'selectionStart', { get: () => selStart, set: (x) => { selStart = x; }, configurable: true });
-      Object.defineProperty(el, 'selectionEnd', { get: () => selEnd, set: (x) => { selEnd = x; }, configurable: true });
-      Object.defineProperty(el, 'selectionDirection', { get: () => selDir, set: (x) => { selDir = x; }, configurable: true });
-      el.setSelectionRange = (s, e, dir = 'none') => { selStart = s; selEnd = e; selDir = dir; };
-      el.select = () => { selStart = 0; selEnd = v.length; };
-    }
-    if (tag === 'input') {
-      let checked = el.hasAttribute('checked');
-      Object.defineProperty(el, 'checked', { get: () => checked, set: (x) => { checked = !!x; }, configurable: true });
-      Object.defineProperty(el, 'disabled', { get: () => el.hasAttribute('disabled'), set: (x) => { if (x) el.setAttribute('disabled', ''); else el.removeAttribute('disabled'); }, configurable: true });
-      Object.defineProperty(el, 'type', { get: () => el.getAttribute('type') || 'text', set: (x) => el.setAttribute('type', x), configurable: true });
-    }
+  // canvas (no raster backend — honest no-op context)
+  getContext(type) { return this.localName === 'canvas' ? (this.__ctx ||= makeCanvasStub()) : null; }
+  toDataURL() { return 'data:,'; }
+
+  // shadow DOM (open by default; a detached fragment with a host back-reference)
+  attachShadow(init = {}) {
+    const root = new DocumentFragment(this.ownerDocument);
+    root.host = this;
+    root.mode = init.mode || 'open';
+    root.querySelector = (s) => qsel(root, s);
+    root.querySelectorAll = (s) => qselAll(root, s);
+    this.__shadow = root;
+    if (root.mode === 'open') this.shadowRoot = root;
+    return root;
+  }
+
+  // forms
+  get form() { return this.closest ? this.closest('form') : null; }
+  get elements() {
+    if (this.localName !== 'form') return undefined;
+    return liveHTMLCollection(() => collectByTag(this, '*').filter((e) => /^(input|select|textarea|button|fieldset|output)$/.test(e.localName)));
+  }
+  submit() { if (this.localName === 'form') this.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })); }
+  requestSubmit() { this.submit(); }
+  reset() {
+    if (this.localName !== 'form') return;
+    this.dispatchEvent(new Event('reset', { bubbles: true, cancelable: true }));
   }
 }
+
 
 // ---------------------------------------------------- DocumentFragment ----
 export class DocumentFragment extends Node {
@@ -507,6 +617,76 @@ function makeStyle(el) {
 }
 const kebab = (s) => s.replace(/[A-Z]/g, (m) => '-' + m.toLowerCase());
 
+// element.dataset — camelCase <-> data-* attribute mapping.
+const dataAttr = (key) => 'data-' + key.replace(/[A-Z]/g, (m) => '-' + m.toLowerCase());
+const dataKey = (attr) => attr.slice(5).replace(/-([a-z])/g, (_, c) => c.toUpperCase());
+function makeDataset(el) {
+  return new Proxy({}, {
+    get(_t, k) { if (typeof k !== 'string') return undefined; const v = el.getAttribute(dataAttr(k)); return v === null ? undefined : v; },
+    set(_t, k, v) { el.setAttribute(dataAttr(k), String(v)); return true; },
+    deleteProperty(_t, k) { el.removeAttribute(dataAttr(k)); return true; },
+    has(_t, k) { return el.hasAttribute(dataAttr(k)); },
+    ownKeys() { return el.getAttributeNames().filter((n) => n.startsWith('data-')).map(dataKey); },
+    getOwnPropertyDescriptor(_t, k) {
+      const n = dataAttr(k);
+      if (el.hasAttribute(n)) return { configurable: true, enumerable: true, value: el.getAttribute(n) };
+      return undefined;
+    },
+  });
+}
+
+// --- MutationObserver, wired to the mutation methods above via notifyMutation ---
+function isDescendant(node, ancestor) {
+  let n = node;
+  while (n) { if (n === ancestor) return true; n = n.parentNode; }
+  return false;
+}
+function notifyMutation(target, record) {
+  const doc = target.ownerDocument;
+  if (!doc || !doc.__mo || doc.__mo.length === 0) return;
+  for (const reg of doc.__mo) {
+    const { obs, target: obsTarget, options } = reg;
+    const onTarget = record.target === obsTarget;
+    const inSubtree = options.subtree && isDescendant(record.target, obsTarget);
+    if (!onTarget && !inSubtree) continue;
+    if (record.type === 'childList' && !options.childList) continue;
+    if (record.type === 'attributes' && !options.attributes) continue;
+    if (record.type === 'attributes' && options.attributeFilter && !options.attributeFilter.includes(record.attributeName)) continue;
+    if (record.type === 'characterData' && !options.characterData) continue;
+    const rec = {
+      type: record.type, target: record.target,
+      addedNodes: record.addedNodes || [], removedNodes: record.removedNodes || [],
+      previousSibling: record.previousSibling || null, nextSibling: record.nextSibling || null,
+      attributeName: record.attributeName || null, attributeNamespace: null,
+      oldValue: (record.type === 'attributes' && options.attributeOldValue) ||
+                (record.type === 'characterData' && options.characterDataOldValue) ? (record.oldValue ?? null) : null,
+    };
+    obs.__enqueue(rec);
+    doc.__scheduleMO(obs);
+  }
+}
+
+export class MutationObserver {
+  constructor(callback) { this.__cb = callback; this.__records = []; this.__regs = []; }
+  observe(target, options = {}) {
+    const opts = {
+      childList: !!options.childList,
+      attributes: options.attributes ?? (options.attributeFilter || options.attributeOldValue ? true : false),
+      characterData: options.characterData ?? (options.characterDataOldValue ? true : false),
+      subtree: !!options.subtree,
+      attributeOldValue: !!options.attributeOldValue,
+      characterDataOldValue: !!options.characterDataOldValue,
+      attributeFilter: options.attributeFilter || null,
+    };
+    const doc = target.ownerDocument || target;
+    doc.__moRegister(this, target, opts);
+    this.__regs.push(doc);
+  }
+  disconnect() { for (const doc of this.__regs) doc.__moUnregister(this); this.__regs = []; this.__records = []; }
+  takeRecords() { const r = this.__records; this.__records = []; return r; }
+  __enqueue(rec) { this.__records.push(rec); }
+}
+
 // ----------------------------------------------------------- Document ----
 export class Document extends Node {
   constructor() {
@@ -516,9 +696,29 @@ export class Document extends Node {
     this.__cache = [];            // idx -> handle (identity memoization / nodeAt)
     this.__active = null;         // activeElement
     this.defaultView = null;      // set by environment (window)
+    this.__mo = [];               // registered MutationObservers
+    this.__moPending = null;      // observers with queued records awaiting microtask
   }
   get nodeType() { return DOCUMENT_NODE; }
   get nodeName() { return '#document'; }
+
+  // ---- MutationObserver registry ----
+  __moRegister(obs, target, options) {
+    // replace existing registration for (obs,target) per spec
+    this.__mo = this.__mo.filter((r) => !(r.obs === obs && r.target === target));
+    this.__mo.push({ obs, target, options });
+  }
+  __moUnregister(obs) { this.__mo = this.__mo.filter((r) => r.obs !== obs); }
+  __scheduleMO(obs) {
+    if (!this.__moPending) this.__moPending = new Set();
+    if (this.__moPending.has(obs)) return;
+    this.__moPending.add(obs);
+    queueMicrotask(() => {
+      this.__moPending.delete(obs);
+      const recs = obs.takeRecords();
+      if (recs.length) { try { obs.__cb(recs, obs); } catch (e) { /* observer callbacks must not break the mutator */ } }
+    });
+  }
 
   // nodeAt: one handle per buffer index, memoized → preserves === identity.
   __nodeAt(idx) {
@@ -541,7 +741,6 @@ export class Document extends Node {
             }
           }
         }
-        defineValueProp(node);
         break;
       }
       case TEXT_NODE: node = new Text(this, buf.text(idx)); node.__idx = idx; break;
@@ -564,7 +763,6 @@ export class Document extends Node {
       case ELEMENT_NODE:
         node = new Element(this, raw.name, raw.namespace || '');
         node.__attrs = raw.attrs.map((a) => ({ name: a.name, value: a.value, prefix: a.prefix || '' }));
-        defineValueProp(node);
         if (raw.name === 'template') {
           const contentRaw = raw.children.find((c) => c.nodeType === DOCUMENT_FRAGMENT_NODE && c.name === 'content');
           if (contentRaw) { node.content = this.__inflateNested(contentRaw); }
@@ -596,6 +794,8 @@ export class Document extends Node {
     this.__kids = null;      // drop overlay
     this.__cache = [];       // drop node cache
     this.__active = null;
+    this.__mo = [];          // drop observers
+    this.__moPending = null;
   }
 
   get documentElement() { return this.__children().find((n) => n.nodeType === ELEMENT_NODE && n.localName === 'html') ?? null; }
@@ -606,7 +806,7 @@ export class Document extends Node {
   __setActive(el) { this.__active = el; }
 
   // ---- factories (owned nodes, no buffer) ----
-  createElement(tag) { const el = new Element(this, String(tag).toLowerCase(), ''); defineValueProp(el); return el; }
+  createElement(tag) { return new Element(this, String(tag).toLowerCase(), ''); }
   createElementNS(ns, qualified) {
     const short = ns === SVG_NS ? 'svg' : ns === MATHML_NS ? 'math' : '';
     const local = qualified.includes(':') ? qualified.split(':')[1] : qualified;
