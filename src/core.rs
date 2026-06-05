@@ -273,7 +273,7 @@ pub fn parse_html_fragment_in(html: &str, context_ns: &str, context_local: &str)
         _ => ns!(html),
     };
     let ctx = QualName::new(None, ns, LocalName::from(context_local));
-    let dom = parse_fragment(RcDom::default(), opts(), ctx, vec![])
+    let dom = parse_fragment(RcDom::default(), opts(), ctx, vec![], false)
         .from_utf8()
         .read_from(&mut html.as_bytes())
         .expect("RcDom read_from is infallible over a byte slice");

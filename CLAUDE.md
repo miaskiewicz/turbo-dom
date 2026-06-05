@@ -53,13 +53,13 @@ Toolchain: Node ≥ 24, Rust stable via rustup (`source $HOME/.cargo/env` if car
 
 ## Conformance gate
 
-`test/conformance.test.mjs` locks the rate ≥ 98% AND asserts **zero non-`<select>` failures**.
-The 28 known misses are all upstream html5ever 0.27 `<select>` insertion-mode divergences — if a
-failure appears whose input has no `<select>`, it's likely a marshaling/serializer bug in THIS
-repo and the test will fail loudly. Investigate before touching the threshold.
-
-To upgrade conformance: bump the `html5ever` version (picks up upstream `<select>` fixes), or
-add fragment/context handling — never by loosening the serializer to match.
+`test/conformance.test.mjs` locks the rate ≥ 99.5% AND asserts **zero non-`<select>` failures**.
+On `html5ever` 0.39 the 5 known misses are all bleeding-edge `<select>`-family proposals
+(`<selectedcontent>`, `<input>`/`<button>`-in-select) the newest html5lib-tests track but the
+crate hasn't adopted. If a failure appears whose input has no `<select>`, it's likely a
+marshaling/serializer bug in THIS repo and the test will fail loudly. Investigate before
+touching the threshold. To improve further: bump `html5ever` (picks up upstream fixes) — never
+by loosening the serializer to match.
 
 ## Adding a node-type or field
 

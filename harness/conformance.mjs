@@ -104,6 +104,6 @@ if (verbose && failures.length) {
 }
 
 // non-zero exit if anything regressed below the committed bar
-const BAR = 98.0;
+const BAR = 99.5;
 process.exit(parseFloat(rate) >= BAR ? 0 : 1);
 }

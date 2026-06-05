@@ -10,10 +10,10 @@ test('zero parser crashes across the whole suite', () => {
   assert.equal(stats.totalErr, 0, 'native parser must never throw on any fixture');
 });
 
-test('conformance rate >= 98%', () => {
+test('conformance rate >= 99.5%', () => {
   assert.ok(
-    stats.rate >= 98.0,
-    `conformance ${stats.rate.toFixed(2)}% < 98% (pass ${stats.totalPass}/${stats.evaluated})`
+    stats.rate >= 99.5,
+    `conformance ${stats.rate.toFixed(2)}% < 99.5% (pass ${stats.totalPass}/${stats.evaluated})`
   );
 });
 

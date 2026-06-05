@@ -10,9 +10,10 @@ constructor), exposed through two interchangeable front-ends:
 | **napi-rs** native addon | `npm run build` | default fast path |
 | **wasm-bindgen** `wasm32` | `npm run build:wasm` | StackBlitz / WebContainers / locked-down CI |
 
-Both expose the same API and the boundary is crossed **exactly once per parse** — the
-whole tree returns as a single value (the plan's "full marshaling" milestone; the SoA
-flat-buffer is a deliberately deferred optimization).
+Both expose the same API and the boundary is crossed **exactly once per parse**. The runtime
+uses `parseBuffer()` — a compact **Structure-of-Arrays** typed-array buffer that the JS DOM
+inflates node handles from lazily (the plan's SoA optimization, shipped). A full lazy
+copy-on-write DOM + lazy window (Layers 2–5) is assembled on top.
 
 ## Thesis, restated
 
@@ -27,20 +28,22 @@ Gated against [`html5lib-tests`](https://github.com/html5lib/html5lib-tests)
 tree-construction (the WHATWG conformance suite, fuzzed against browsers):
 
 ```
-PASS 1755  FAIL 28  ERROR 0  SKIP 8
-Conformance: 98.43%   (49/57 fixture files fully clean, 0 crashes)
+PASS 1778  FAIL 5  ERROR 0  SKIP 8
+Conformance: 99.72%   (55/57 fixture files fully clean, 0 crashes)
 ```
 
-**Every one of the 28 misses is the same upstream `html5ever` 0.27 divergence** on the
-`<select>` insertion mode (`<menuitem>`/`<keygen>`/`<svg>`/`<math>`/nested-select), where
-the crate lags a later WHATWG spec change. **Zero are marshaling or serializer bugs** —
-a regression test asserts any non-`<select>` failure fails the build (`test/conformance.test.mjs`).
+**All 5 remaining misses are bleeding-edge `<select>`-family proposals** the newest
+html5lib-tests track but `html5ever` 0.39 hasn't adopted — the experimental
+`<selectedcontent>` / customizable-`<select>` element and `<input>`/`<button>`-in-select
+edge cases. **Zero are marshaling or serializer bugs** — a regression test asserts any
+non-`<select>` failure fails the build (`test/conformance.test.mjs`). Chasing them means
+patching the parser, against the "inherit Servo's correctness" thesis.
 
 ### Delta vs happy-dom / jsdom (same suite, same serializer)
 
 | engine | pass | fail | crash | rate |
 |---|---:|---:|---:|---:|
-| **fast-dom** | 1755 | 28 | 0 | **98.43%** |
+| **fast-dom** | 1778 | 5 | 0 | **99.72%** |
 | jsdom | 1730 | 53 | 0 | 97.03% |
 | happy-dom | 666 | 1116 | 1 | **37.35%** |
 
@@ -92,25 +95,10 @@ parseFragment('<li>one</li>', );                   // body context
 parseFragment('<rect/>', 'svg path');             // foreign context
 ```
 
-`parse()` nodes: `{ nodeType, name, value, namespace, publicId, systemId, attrs, children }`.
-nodeTypes follow the DOM (`1` element, `3` text, `8` comment, `9` document, `10` doctype,
-`11` template-content fragment). The DOM runtime below uses `parseBuffer()`.
-
-## API
-
-```js
-const { parse, parseFragment } = require('fast-dom-parser');
-
-parse('<div id=a><span>hi</span></div>');
-// → { nodeType: 9, name: '#document', children: [ <html> … ] }
-
-parseFragment('<li>one</li><li>two</li>');            // body context
-parseFragment('<rect/>', 'svg path');                 // foreign context
-```
-
-Each node: `{ nodeType, name, value, namespace, publicId, systemId, attrs, children }`
-where `attrs` is `{ name, value, prefix }[]`. nodeTypes follow the DOM
-(`1` element, `3` text, `8` comment, `9` document, `10` doctype, `11` template-content fragment).
+`parse()` nodes: `{ nodeType, name, value, namespace, publicId, systemId, attrs, children }`
+where `attrs` is `{ name, value, prefix }[]`. nodeTypes follow the DOM (`1` element, `3` text,
+`8` comment, `9` document, `10` doctype, `11` template-content fragment). The DOM runtime below
+uses `parseBuffer()`.
 
 ## Test runtime (Layers 2–5)
 
@@ -189,7 +177,7 @@ Worst case 47% of native — fallback acceptable, same SoA contract, single boun
 | **2** | parse throughput vs JS parsers | `bench/parse.mjs` | 11–39× happy-dom/jsdom; SoA beats parse5 on large |
 | **2** | boundary-cost isolation (parse vs marshal) | `bench/parse.mjs` (`parseRaw`) | drove the SoA build; now within 1.4–1.65× of floor |
 | **2** | WASM-vs-native delta | `bench/wasm.mjs` | 49–105% of native — fallback acceptable |
-| **2** | html5lib conformance + delta | `harness/delta.mjs` | **98.43%** vs jsdom 97.03% vs happy-dom 37.35% |
+| **2** | html5lib conformance + delta | `harness/delta.mjs` | **99.72%** vs jsdom 97.03% vs happy-dom 37.35% |
 | **3** | differential vs jsdom (oracle) | `test/differential.test.mjs` | matches jsdom exactly across fuzz seeds |
 | **3** | real-library gauntlet (RTL + user-event) | `test/gauntlet.test.mjs`, `test/userevent.test.mjs` | both run **unmodified** |
 | **3** | liveness/identity property tests | `test/liveness.test.mjs`, `test/runtime.test.mjs` | adoption-agency, foster-parenting, WeakMap, `===` |
@@ -247,7 +235,7 @@ vendor/html5lib-tests/ 57 WHATWG tree-construction fixtures
 All layers built and tested:
 
 - **Layer 1** native parser — full-marshaling milestone. Faster than happy-dom/jsdom and
-  more spec-correct (98.43%).
+  more spec-correct (99.72%).
 - **Layers 2–5** lazy COW DOM + lazy window + honest stubs + fast reset — passing
   differential-vs-jsdom fuzzing and the unmodified RTL gauntlet.
 

@@ -9,8 +9,8 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 # Shared parser core
-html5ever = "0.27"
-markup5ever_rcdom = "0.3"
+html5ever = "0.39"
+markup5ever_rcdom = "0.39"
 
 # napi-rs front-end (native addon). Gated so the wasm build doesn't pull it.
 napi = { version = "2", default-features = false, features = ["napi6"], optional = true }
