@@ -117,8 +117,8 @@ export function createWindow(document, { url = 'http://localhost/' } = {}) {
     HTMLHeadingElement: tagClass(/^h[1-6]$/),
     HTMLDocument: Document, DocumentFragment, ShadowRoot: DocumentFragment,
     MutationObserver, DOMParser, XMLSerializer,
-    URL: makeURL(), URLSearchParams,
-    Blob: globalThis.Blob, File: makeFile(), FileReader,
+    URL: TURBO_URL, URLSearchParams,
+    Blob: globalThis.Blob, File: TURBO_FILE, FileReader,
     customElements: makeCustomElements(),
     AbortController: globalThis.AbortController, AbortSignal: globalThis.AbortSignal,
     TextEncoder: globalThis.TextEncoder, TextDecoder: globalThis.TextDecoder,
@@ -247,6 +247,9 @@ function makeFile() {
     constructor(bits = [], name = 'file', opts = {}) { super(bits, opts); this.name = String(name); this.lastModified = opts.lastModified || 0; }
   };
 }
+// stateless — build the classes ONCE, not per createWindow() (per test file).
+const TURBO_URL = makeURL();
+const TURBO_FILE = makeFile();
 
 // Minimal XMLHttpRequest backed by fetch — enough that libraries that construct
 // one and issue a request don't crash. No-network setups still get a clean object.
