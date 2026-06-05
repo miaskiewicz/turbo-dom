@@ -94,6 +94,14 @@ Latest (darwin-arm64, Node 24), vs jsdom / happy-dom:
 - `getByLabelText` was O(n²) (element.labels → getElementsByTagName('label') per element);
   the caches took it 1342→~270µs.
 Numbers in README.md — refresh both (bench against jsdom AND happy-dom) if you touch hot paths.
+- **Parse memoization (index.mjs `parseBufferCached`).** The SoA buffer is READ-ONLY — every
+  mutation goes to a Document's own `__kids`/`__attrs`/`__cache` overlay, never the buffer — so
+  the same buffer backs many Documents. Suites call setup with the same shell HTML per file →
+  parsed once, reused (near-free createEnvironment). Realistic suite ~40× happy-dom / ~120× jsdom.
+  If you ever write THROUGH to the buffer typed arrays, this breaks — don't.
+- **Lazy attrs.** Buffer-backed elements leave `__attrs` undefined + store `__attrIdx`; the array
+  builds from the SoA on first attribute touch (`__buildAttrs`, guarded by `?? (this.__attrs = …)`).
+  Traversal-only nodes never build attrs. Every `__attrs` read site must keep the guard.
 
 ## Conformance gate
 

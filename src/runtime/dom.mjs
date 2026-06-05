@@ -30,6 +30,18 @@ function cachedQSA(node, sel) {
   cache.set('a:' + sel, { v, r });
   return r;
 }
+// memoize the className → class-list split (pure; the regex split showed up per
+// getElementsByClassName call in profiles)
+const __classSplit = new Map();
+function splitClasses(cls) {
+  let c = __classSplit.get(cls);
+  if (c === undefined) {
+    c = cls.split(/\s+/).filter(Boolean);
+    if (__classSplit.size > 2000) __classSplit.clear();
+    __classSplit.set(cls, c);
+  }
+  return c;
+}
 function cachedQS(node, sel) {
   const doc = node.ownerDocument || node;
   const v = doc.__version || 0;
@@ -327,6 +339,7 @@ export class Element extends Node {
     this.localName = localName;
     this.__ns = namespace;            // '', 'svg', 'math'
     this.__attrs = [];                // [{name, value, prefix}]
+    this.__attrIdx = -1;              // buffer index for lazy attr inflation
     this.content = null;              // <template> content fragment
     this.shadowRoot = null;           // open shadow root, if attached
   }
@@ -337,10 +350,15 @@ export class Element extends Node {
   get namespaceURI() { return nsUri(this.__ns); }
 
   // ---- attributes ----
-  getAttribute(name) { const at = this.__attrs; for (let i = 0; i < at.length; i++) if (at[i].name === name) return at[i].value; return null; }
-  hasAttribute(name) { const at = this.__attrs; for (let i = 0; i < at.length; i++) if (at[i].name === name) return true; return false; }
-  getAttributeNames() { return this.__attrs.map((a) => a.name); }
+  // attrs inflate lazily: a buffer-backed element leaves __attrs undefined and
+  // builds the array from the SoA only when an attribute is first touched (many
+  // elements are inflated for traversal but never have attrs read).
+  __buildAttrs() { const doc = this.ownerDocument, buf = doc && doc.__buf; return (this.__attrIdx >= 0 && buf) ? buf.attrs(this.__attrIdx) : []; }
+  getAttribute(name) { const at = this.__attrs ?? (this.__attrs = this.__buildAttrs()); for (let i = 0; i < at.length; i++) if (at[i].name === name) return at[i].value; return null; }
+  hasAttribute(name) { const at = this.__attrs ?? (this.__attrs = this.__buildAttrs()); for (let i = 0; i < at.length; i++) if (at[i].name === name) return true; return false; }
+  getAttributeNames() { return (this.__attrs ?? (this.__attrs = this.__buildAttrs())).map((a) => a.name); }
   setAttribute(name, value) {
+    if (this.__attrs === undefined) this.__attrs = this.__buildAttrs();
     const a = this.__attrs.find((x) => x.name === name);
     const old = a ? a.value : null;
     if (a) a.value = String(value);
@@ -348,6 +366,7 @@ export class Element extends Node {
     notifyMutation(this, { type: 'attributes', target: this, attributeName: name, oldValue: old, addedNodes: [], removedNodes: [] });
   }
   removeAttribute(name) {
+    if (this.__attrs === undefined) this.__attrs = this.__buildAttrs();
     const a = this.__attrs.find((x) => x.name === name);
     this.__attrs = this.__attrs.filter((x) => x.name !== name);
     if (a) notifyMutation(this, { type: 'attributes', target: this, attributeName: name, oldValue: a.value, addedNodes: [], removedNodes: [] });
@@ -358,7 +377,7 @@ export class Element extends Node {
     this.removeAttribute(name); return false;
   }
   get attributes() {
-    return this.__attrs.map((a) => ({
+    return (this.__attrs ?? (this.__attrs = this.__buildAttrs())).map((a) => ({
       name: a.name, localName: a.name, value: a.value, prefix: a.prefix || null,
       namespaceURI: a.prefix === 'xlink' ? 'http://www.w3.org/1999/xlink' : null,
     }));
@@ -551,7 +570,7 @@ export class Element extends Node {
   querySelector(sel) { return cachedQS(this, sel); }
   querySelectorAll(sel) { return cachedQSA(this, sel); }
   getElementsByTagName(tag) { const self = this; return liveHTMLCollection(() => collectByTag(self, tag.toLowerCase())); }
-  getElementsByClassName(cls) { const self = this; const classes = cls.split(/\s+/).filter(Boolean); return liveHTMLCollection(() => collectByClass(self, classes)); }
+  getElementsByClassName(cls) { const self = this; const classes = splitClasses(cls); return liveHTMLCollection(() => collectByClass(self, classes)); }
 
   // ---- innerHTML / outerHTML ----
   get innerHTML() { return serializeInner(this); }
@@ -586,7 +605,7 @@ export class Element extends Node {
 
   cloneNode(deep = false) {
     const el = new Element(this.ownerDocument, this.localName, this.__ns);
-    el.__attrs = this.__attrs.map((a) => ({ ...a }));
+    el.__attrs = (this.__attrs ?? (this.__attrs = this.__buildAttrs())).map((a) => ({ ...a }));
     if (deep) for (const c of this.__children()) el.appendChild(c.cloneNode(true));
     return el;
   }
@@ -684,7 +703,7 @@ export class Element extends Node {
   setAttributeNS(_ns, name, value) { this.setAttribute(name, value); }
   hasAttributeNS(_ns, name) { return this.hasAttribute(name); }
   removeAttributeNS(_ns, name) { this.removeAttribute(name); }
-  getAttributeNode(name) { const a = this.__attrs.find((x) => x.name === name); return a ? { name: a.name, value: a.value, ownerElement: this } : null; }
+  getAttributeNode(name) { const a = (this.__attrs ?? (this.__attrs = this.__buildAttrs())).find((x) => x.name === name); return a ? { name: a.name, value: a.value, ownerElement: this } : null; }
 
   // adjacency
   insertAdjacentElement(position, el) {
@@ -1087,7 +1106,7 @@ export class Document extends Node {
       case ELEMENT_NODE: {
         node = new Element(this, buf.tagName(idx), buf.ns(idx));
         node.__idx = idx;
-        node.__attrs = buf.attrs(idx);
+        node.__attrIdx = idx; node.__attrs = undefined; // lazy: build on first attr access
         // template content fragment: a child node typed 11 named "content"
         if (buf.tagName(idx) === 'template') {
           for (let c = buf.firstChild(idx); c !== -1; c = buf.nextSib(c)) {
@@ -1266,7 +1285,7 @@ export class Document extends Node {
     return arr;
   }
   getElementsByTagName(tag) { const self = this; const t = tag.toLowerCase(); return liveHTMLCollection(() => self.__byTag(t)); }
-  getElementsByClassName(cls) { const self = this; const classes = cls.split(/\s+/).filter(Boolean); return liveHTMLCollection(() => self.__byClass(cls, classes)); }
+  getElementsByClassName(cls) { const self = this; const classes = splitClasses(cls); return liveHTMLCollection(() => self.__byClass(cls, classes)); }
   contains(node) { return Node.prototype.contains.call(this, node); }
 
   // cookie jar: store name=value, strip attributes (path/Secure/SameSite/…),

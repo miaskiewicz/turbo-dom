@@ -16,9 +16,24 @@ const native = require('../../index.js');
 export { Document } from './dom.mjs';
 export * from './dom.mjs';
 
+// Parse cache: the SoA buffer is READ-ONLY (every mutation goes to a Document's
+// own __kids/__attrs/__cache overlay, never the buffer), so the same buffer can
+// back many Documents. Test suites call setup with the SAME html per file
+// (usually the empty default) → parse once, reuse for every file, skipping the
+// native parse + boundary marshaling entirely. Bounded (fixtures are few).
+const __parseCache = new Map();
+function parseBufferCached(html) {
+  const hit = __parseCache.get(html);
+  if (hit !== undefined) return hit;
+  const soa = native.parseBuffer(html);
+  if (__parseCache.size > 64) __parseCache.clear();
+  __parseCache.set(html, soa);
+  return soa;
+}
+
 export function createEnvironment(html = '<!doctype html><html><head></head><body></body></html>', options = {}) {
   // Layer 1: native parse → immutable SoA buffer (typed arrays, one boundary copy).
-  let soa = native.parseBuffer(String(html));
+  let soa = parseBufferCached(String(html));
 
   // Layer 2: Document over the buffer (nodes inflate lazily from the arrays).
   const document = new Document();
@@ -36,7 +51,7 @@ export function createEnvironment(html = '<!doctype html><html><head></head><bod
     // Layer 5: arena-style reset. Re-point at the (re)parsed buffer, drop the
     // owned overlay + node cache + materialized globals. Class machinery stays warm.
     reset(nextHtml) {
-      if (nextHtml !== undefined) soa = native.parseBuffer(String(nextHtml));
+      if (nextHtml !== undefined) soa = parseBufferCached(String(nextHtml));
       document.__load(soa);       // drops __cache + __kids overlay, keeps the buffer if reused
       win.resetGlobals();
       document.__active = null;

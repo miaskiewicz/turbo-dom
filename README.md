@@ -14,7 +14,7 @@ npm install -D @miaskiewicz/turbo-dom
 
 - ✅ **More compatible than happy-dom** — 99.72% on html5lib-tests vs happy-dom's 37%.
   Runs React Testing Library, `user-event`, downshift, Radix UI, and Headless UI unmodified.
-- ⚡ **Faster than both** — ~23× jsdom / ~10× happy-dom on per-file setup, 18–37× faster HTML parsing, and (with per-version query-result caching) it matches/beats happy-dom on repeated queries while staying 99.7% spec-correct.
+- ⚡ **Faster than both** — ~120× jsdom / ~40× happy-dom on a realistic suite (parse-memoized repeated shells), 18–37× faster HTML parsing, and it beats happy-dom on repeated queries while staying 99.7% spec-correct.
 - 🎯 **Honest, not lying** — no fake layout numbers; `getBoundingClientRect()` is zeros and
   `getComputedStyle` reflects only what you set. Geometry tests belong in a real browser.
 
@@ -105,20 +105,26 @@ the suite row (ms/file, lower = faster):
 
 | benchmark | turbo-dom | happy-dom | jsdom |
 |---|---:|---:|---:|
-| **per-file setup + 1 query** (ops/s) | **5,900** | 600 | 250 |
-| **realistic suite**, 200 files (ms/file) | **0.15** | 2.1 | 4.9 |
+| **realistic suite**, 200 files (ms/file) | **0.022** | 1.12 | 3.47 |
+| **per-file setup** (ops/s) | **~500k** | 396 | 144 |
 | **parse 56 KB SSR** (ops/s) | **478** | 43 | 26 |
-| **parse 20 KB real page** (ops/s) | **4,203** | 190 | 114 |
-| repeated query throughput (iters/s) | **920k** | 600k | 3k |
+| **parse 20 KB real page** (ops/s) | **2,800** | 600 | 290 |
+| repeated query throughput (iters/s) | **994k** | 692k | 3k |
 | html5lib conformance | **99.72%** | 37.35% | 97.03% |
 
-Roughly **~25–30× jsdom** and **~10–14× happy-dom** on per-file setup / realistic
-suites, **18–37×** on parsing, and it edges happy-dom on repeated queries while
-staying 99.7% spec-correct.
+On a realistic suite — 200 files of construct + queries + events — turbo-dom is
+**~40× happy-dom and ~120× jsdom**, edges happy-dom on repeated queries, and parses
+**18–37×** faster, all at 99.7% conformance.
+
+The per-file setup number is so high because the parser **memoizes the read-only
+SoA buffer by HTML string**: a suite calls the env setup with the same document
+shell every file, so it's parsed once and the buffer (never mutated — all changes
+go to per-Document overlays) is reused. The first parse of a given shell pays full
+cost (the parse rows above); every reuse is near-free.
 
 **turbo-dom wins across the board on what test suites actually do**: per-file
-construction (~10× happy-dom, ~23× jsdom), parsing, realistic suites (~10× happy-dom,
-~23× jsdom), spec-correctness (99.7% vs 37%), **and** repeated queries.
+construction (~40× happy-dom, ~120× jsdom on a repeated-shell suite), parsing,
+spec-correctness (99.7% vs 37%), **and** repeated queries.
 
 How the query speed holds up against happy-dom (whose whole design trades correctness
 for query speed): the selector/match engine is allocation-free on the hot paths (no
