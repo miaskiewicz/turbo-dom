@@ -146,6 +146,10 @@ function lookup(map, prop) {
   if (v === undefined) return '';
   // px-normalize a bare `0` for length properties (browsers report `0px`)
   if (v === '0' && LENGTH_PROPS.has(prop)) return '0px';
+  // font-family: browsers serialize the list with ", " regardless of source spacing
+  // (emotion minifies to "a",b,c). Scoped to font-family so we don't rewrite commas
+  // inside rgb()/cubic-bezier() values, which browsers leave compact.
+  if (prop === 'font-family') return v.replace(/\s*,\s*/g, ', ');
   return v;
 }
 

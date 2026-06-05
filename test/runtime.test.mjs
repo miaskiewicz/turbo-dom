@@ -491,3 +491,11 @@ test('cascade expands border/margin/padding shorthands to longhands', () => {
   assert.equal(cs.marginBottom, '5px'); // 2-value: bottom=top
   assert.equal(cs.paddingLeft, '2px');  // 1-value: all sides
 });
+
+// #font-family: computed value normalizes comma spacing to ", " (emotion minifies)
+test('cascade normalizes font-family comma spacing', () => {
+  const { document, window } = env('<style>.t{font-family:"Open Sans",Inter,Roboto,"Helvetica Neue",Arial,sans-serif;color:rgb(1,2,3)}</style><div id=d class=t></div>');
+  const cs = window.getComputedStyle(document.getElementById('d'));
+  assert.equal(cs.fontFamily, '"Open Sans", Inter, Roboto, "Helvetica Neue", Arial, sans-serif');
+  assert.equal(cs.color, 'rgb(1,2,3)'); // non-font-family commas untouched
+});
