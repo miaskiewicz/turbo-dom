@@ -1,0 +1,141 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  # ---- Build napi prebuilt binaries across platforms ----
+  build:
+    name: build ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-latest,  target: x86_64-unknown-linux-gnu }
+          - { os: ubuntu-latest,  target: x86_64-unknown-linux-musl }
+          - { os: ubuntu-latest,  target: aarch64-unknown-linux-gnu }
+          - { os: macos-latest,   target: aarch64-apple-darwin }
+          - { os: macos-13,       target: x86_64-apple-darwin }
+          - { os: windows-latest, target: x86_64-pc-windows-msvc }
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Linux musl deps
+        if: matrix.target == 'x86_64-unknown-linux-musl'
+        run: sudo apt-get update && sudo apt-get install -y musl-tools
+
+      - name: Linux aarch64 cross toolchain
+        if: matrix.target == 'aarch64-unknown-linux-gnu'
+        run: |
+          sudo apt-get update && sudo apt-get install -y gcc-aarch64-linux-gnu
+          echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc" >> "$GITHUB_ENV"
+          echo "CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc" >> "$GITHUB_ENV"
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+
+      - run: npm install --ignore-scripts
+
+      - name: Build native addon
+        run: npx napi build --platform --release --target ${{ matrix.target }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bindings-${{ matrix.target }}
+          path: '*.node'
+          if-no-files-found: error
+
+  # ---- Run the full test suite + conformance on Linux ----
+  test:
+    name: test (linux-x64)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+
+      - run: npm install
+
+      - name: Build native addon
+        run: npx napi build --platform --release
+
+      - name: Rust core tests
+        run: cargo test --lib
+
+      - name: JS test suite (unit, conformance gate, differential, gauntlets)
+        run: node --test 'test/*.mjs'
+
+      - name: html5lib conformance report
+        run: npm run conformance
+
+  # ---- WASM fallback builds ----
+  wasm:
+    name: wasm fallback
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo build --release --no-default-features --features wasm-bind --target wasm32-unknown-unknown
+
+  # ---- Publish prebuilt binaries to npm on a version tag ----
+  # Requires repository secret NPM_TOKEN. napi-rs publishes one platform package
+  # per triple (optionalDependencies) plus the main package. CLI flags target
+  # @napi-rs/cli v2; adjust if you bump the CLI.
+  publish:
+    name: publish
+    needs: [build, test]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: https://registry.npmjs.org
+      - run: npm install --ignore-scripts
+      - name: Download all prebuilt binaries
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: Move binaries into per-platform npm dirs
+        run: |
+          npx napi create-npm-dir -t .
+          npx napi artifacts --dir artifacts
+          ls -R npm || true
+      - name: Publish platform packages + main
+        run: |
+          for dir in npm/*; do
+            [ -d "$dir" ] && (cd "$dir" && npm publish --access public || true)
+          done
+          npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
