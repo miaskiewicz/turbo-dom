@@ -45,10 +45,12 @@ export interface JsSoa {
   sysId: Int32Array
   attrStart: Int32Array
   attrCount: Uint16Array
-  attrName: Array<string>
+  attrNameId: Uint32Array
   attrValue: Array<string>
-  attrPrefix: Array<string>
+  attrPrefixId: Uint32Array
   tagNames: Array<string>
+  attrNames: Array<string>
+  attrPrefixes: Array<string>
   strings: Array<string>
 }
 /** Parse a document into the SoA flat buffer (the fast runtime path). */

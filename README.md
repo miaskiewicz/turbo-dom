@@ -81,7 +81,7 @@ marshaling; `parseRaw()` is parse-only (the floor):
 - **Why:** `parseRaw` ≈ parse5, so html5ever itself is fast — the cost was building the JS tree.
   SoA emits compact typed arrays once and inflates node objects only on access, deleting the
   eager full-tree allocation. This is the Phase-2.5 bet from the plan, now shipped.
-- **wasm fallback** (`npm run bench:wasm`): 49–105% of native throughput — acceptable, same SoA
+- **wasm fallback** (`npm run bench:wasm`): 51–125% of native throughput — acceptable, same SoA
   contract, single boundary copy.
 
 ## API
@@ -159,13 +159,14 @@ path is **7.4×** the full-inflation path (laziness pays when a test touches lit
 
 | fixture | native | wasm | wasm/native |
 |---|---:|---:|---:|
-| small | 71,396 | 71,430 | 100% |
-| ssr-large | 520 | 242 | 47% |
-| deep-nested | 2,599 | 2,015 | 78% |
-| malformed | 62,625 | 54,773 | 87% |
-| real-storybook | 4,716 | 2,746 | 58% |
+| small | 66,752 | 77,213 | 116% |
+| ssr-large | 524 | 269 | 51% |
+| deep-nested | 1,433 | 1,798 | 125% |
+| malformed | 58,213 | 53,525 | 92% |
+| real-storybook | 4,590 | 2,853 | 62% |
 
-Worst case 47% of native — fallback acceptable, same SoA contract, single boundary copy.
+Worst case 51% of native (wasm even edges native on small/deep, JIT variance) — fallback
+acceptable, same SoA contract, single boundary copy.
 
 ## Testing — every bench & test the plan specifies (§9)
 
@@ -176,7 +177,7 @@ Worst case 47% of native — fallback acceptable, same SoA contract, single boun
 | **1** | real-suite wall-clock, per-file | `bench/suite.mjs` (a) | **18.9× jsdom, 6.9× happy-dom** (0.12 ms/file) |
 | **2** | parse throughput vs JS parsers | `bench/parse.mjs` | 11–39× happy-dom/jsdom; SoA beats parse5 on large |
 | **2** | boundary-cost isolation (parse vs marshal) | `bench/parse.mjs` (`parseRaw`) | drove the SoA build; now within 1.4–1.65× of floor |
-| **2** | WASM-vs-native delta | `bench/wasm.mjs` | 49–105% of native — fallback acceptable |
+| **2** | WASM-vs-native delta | `bench/wasm.mjs` | 51–125% of native — fallback acceptable |
 | **2** | html5lib conformance + delta | `harness/delta.mjs` | **99.72%** vs jsdom 97.03% vs happy-dom 37.35% |
 | **3** | differential vs jsdom (oracle) | `test/differential.test.mjs` | matches jsdom exactly across fuzz seeds |
 | **3** | real-library gauntlet (RTL + user-event) | `test/gauntlet.test.mjs`, `test/userevent.test.mjs` | both run **unmodified** |
@@ -234,15 +235,18 @@ vendor/html5lib-tests/ 57 WHATWG tree-construction fixtures
 
 All layers built and tested:
 
-- **Layer 1** native parser — full-marshaling milestone. Faster than happy-dom/jsdom and
+- **Layer 1** native parser — `parseBuffer()` SoA fast path. Faster than happy-dom/jsdom and
   more spec-correct (99.72%).
-- **Layers 2–5** lazy COW DOM + lazy window + honest stubs + fast reset — passing
-  differential-vs-jsdom fuzzing and the unmodified RTL gauntlet.
+- **Layers 2–5** lazy COW DOM + lazy window + honest stubs + fast reset, all over the SoA
+  buffer — passing differential-vs-jsdom fuzzing and the unmodified RTL/user-event gauntlet.
 
-Next (optimization, not correctness): the **SoA flat buffer** the benches justify — `parse()`
-spends 2.2–8× longer than `parseRaw()` building the JS tree, and lazy nodes already avoid
-inflating untouched subtrees; moving the source-of-truth to a typed-array SoA would shrink
-both the marshaling cost and per-file reset further. Plus live wasm throughput numbers.
+The SoA flat buffer is **shipped** (the runtime uses it; 1.3–4.2× over the old full-marshaling
+`parse()`, within 1.4–1.65× of the parse-only floor). Tag names, attribute names, and prefixes
+are **interned** in the buffer — on attribute-heavy SSR that's up to **100% fewer name strings
+crossing the boundary** (e.g. 800 attrs → 2 unique names), cutting allocations and transfer
+size. The wasm fallback is benched (`npm run bench:wasm`, 51–125% of native). Remaining
+incremental work: unify the conformance harness onto `parseBuffer()` to retire the legacy
+nested `parse()`.
 
 ## License
 

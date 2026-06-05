@@ -84,10 +84,12 @@ mod napi_front {
         pub sys_id: Int32Array,
         pub attr_start: Int32Array,
         pub attr_count: Uint16Array,
-        pub attr_name: Vec<String>,
+        pub attr_name_id: Uint32Array,
         pub attr_value: Vec<String>,
-        pub attr_prefix: Vec<String>,
+        pub attr_prefix_id: Uint32Array,
         pub tag_names: Vec<String>,
+        pub attr_names: Vec<String>,
+        pub attr_prefixes: Vec<String>,
         pub strings: Vec<String>,
     }
 
@@ -105,10 +107,12 @@ mod napi_front {
                 sys_id: Int32Array::new(s.sys_id),
                 attr_start: Int32Array::new(s.attr_start),
                 attr_count: Uint16Array::new(s.attr_count),
-                attr_name: s.attr_name,
+                attr_name_id: Uint32Array::new(s.attr_name_id),
                 attr_value: s.attr_value,
-                attr_prefix: s.attr_prefix,
+                attr_prefix_id: Uint32Array::new(s.attr_prefix_id),
                 tag_names: s.tag_names,
+                attr_names: s.attr_names,
+                attr_prefixes: s.attr_prefixes,
                 strings: s.strings,
             }
         }

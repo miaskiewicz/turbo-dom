@@ -22,11 +22,12 @@ export class Buffer {
     if (start < 0) return [];
     const count = this.soa.attrCount[i];
     const out = new Array(count);
+    const { attrNameId, attrNames, attrValue, attrPrefixId, attrPrefixes } = this.soa;
     for (let k = 0; k < count; k++) {
       out[k] = {
-        name: this.soa.attrName[start + k],
-        value: this.soa.attrValue[start + k],
-        prefix: this.soa.attrPrefix[start + k] || '',
+        name: attrNames[attrNameId[start + k]],
+        value: attrValue[start + k],
+        prefix: attrPrefixes[attrPrefixId[start + k]] || '',
       };
     }
     return out;
