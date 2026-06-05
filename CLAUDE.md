@@ -102,6 +102,12 @@ Numbers in README.md — refresh both (bench against jsdom AND happy-dom) if you
 - **Lazy attrs.** Buffer-backed elements leave `__attrs` undefined + store `__attrIdx`; the array
   builds from the SoA on first attribute touch (`__buildAttrs`, guarded by `?? (this.__attrs = …)`).
   Traversal-only nodes never build attrs. Every `__attrs` read site must keep the guard.
+- **Lazy listeners.** `EventTarget.__listeners` starts `null` (most inflated nodes never get a
+  listener) and is created on first addEventListener. Every read must null-guard
+  (`this.__listeners && …`); dispatchEvent + removeEventListener already do.
+- **Live-collection index fast path.** `collections.mjs` detects numeric indices by first charCode
+  (48–57), not a `^\d+$` regex, and puts the index path first (hottest: `coll[i]`). `getArray()`
+  is called only when needed.
 
 ## Conformance gate
 

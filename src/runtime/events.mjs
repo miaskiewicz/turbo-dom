@@ -114,13 +114,16 @@ function normalizeOptions(options) {
 
 export class EventTarget {
   constructor() {
-    // type -> array of { callback, capture, once, passive }
-    this.__listeners = new Map();
+    // type -> array of { callback, capture, once, passive }. Lazily created on
+    // first addEventListener — most inflated nodes never get a listener, so this
+    // skips a Map allocation per node (inflation is a top hot path).
+    this.__listeners = null;
   }
 
   addEventListener(type, callback, options) {
     if (callback == null) return;
     const o = normalizeOptions(options);
+    if (!this.__listeners) this.__listeners = new Map();
     let list = this.__listeners.get(type);
     if (!list) { list = []; this.__listeners.set(type, list); }
     // dedupe on (callback, capture) per spec
@@ -129,6 +132,7 @@ export class EventTarget {
   }
 
   removeEventListener(type, callback, options) {
+    if (!this.__listeners) return;
     const o = normalizeOptions(options);
     const list = this.__listeners.get(type);
     if (!list) return;
