@@ -338,7 +338,7 @@ export class Element extends Node {
     super(ownerDocument);
     this.localName = localName;
     this.__ns = namespace;            // '', 'svg', 'math'
-    this.__attrs = [];                // [{name, value, prefix}]
+    this.__attrs = undefined;         // lazily built (buffer or []) on first attr touch
     this.__attrIdx = -1;              // buffer index for lazy attr inflation
     this.content = null;              // <template> content fragment
     this.shadowRoot = null;           // open shadow root, if attached
@@ -1106,7 +1106,7 @@ export class Document extends Node {
       case ELEMENT_NODE: {
         node = new Element(this, buf.tagName(idx), buf.ns(idx));
         node.__idx = idx;
-        node.__attrIdx = idx; node.__attrs = undefined; // lazy: build on first attr access
+        node.__attrIdx = idx; // attrs lazy (constructor left __attrs undefined)
         // template content fragment: a child node typed 11 named "content"
         if (buf.tagName(idx) === 'template') {
           for (let c = buf.firstChild(idx); c !== -1; c = buf.nextSib(c)) {
