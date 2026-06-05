@@ -25,13 +25,19 @@ npm install -D @miaskiewicz/turbo-dom
 ```ts
 // vitest.config.ts
 import { defineConfig } from 'vitest/config';
+import { createRequire } from 'node:module';
+
+const envPath = createRequire(import.meta.url).resolve('@miaskiewicz/turbo-dom/environment/vitest');
 
 export default defineConfig({
   test: {
-    environment: '@miaskiewicz/turbo-dom/environment/vitest',
+    environment: envPath, // vitest resolves a bare name only for `vitest-environment-*`
+                          // packages, so a scoped package is referenced by file path
   },
 });
 ```
+
+Works on vitest 1–4.
 
 ### jest
 

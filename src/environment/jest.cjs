@@ -5,7 +5,7 @@
 //
 // or point directly at this file:
 //
-//   testEnvironment: './node_modules/@miaskiewicz/turbo-dom/dist/environment/jest.cjs'
+//   testEnvironment: './node_modules/@miaskiewicz/turbo-dom/src/environment/jest.cjs'
 //
 // Per-file / project options:
 //   testEnvironmentOptions: { html: '<!doctype html>...', url: 'http://localhost/' }

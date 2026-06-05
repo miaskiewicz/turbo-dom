@@ -6,29 +6,56 @@ import { createEnvironment } from '../runtime/index.mjs';
 
 const DEFAULT_HTML = '<!doctype html><html><head></head><body></body></html>';
 
-// Globals that point at the window itself.
-const SELF_KEYS = ['window', 'self', 'globalThis', 'parent', 'top', 'frames'];
+// Globals that point at the window itself. Deliberately NOT `globalThis`/`global`
+// — redefining those breaks test runners (vitest builds its module-runner vm
+// primitives off globalThis; pointing it at our window Proxy hides Symbol et al).
+const SELF_KEYS = ['window', 'self', 'parent', 'top', 'frames'];
 
 export function installGlobals(target, { html = DEFAULT_HTML, url } = {}) {
   const env = createEnvironment(html, url ? { url } : {});
   const { window } = env;
 
-  const define = (name, getter) => {
-    Object.defineProperty(target, name, { configurable: true, get: getter, set(v) { Object.defineProperty(target, name, { configurable: true, writable: true, value: v }); } });
+  const installed = [];                 // keys we defined
+  const originals = new Map();          // prior descriptors to restore on teardown
+
+  const define = (name, descriptor) => {
+    const prior = Object.getOwnPropertyDescriptor(target, name);
+    if (prior) originals.set(name, prior);
+    Object.defineProperty(target, name, descriptor);
+    installed.push(name);
   };
 
   // window self-references
-  for (const k of SELF_KEYS) define(k, () => window);
+  for (const k of SELF_KEYS) {
+    define(k, {
+      configurable: true,
+      get: () => window,
+      set(v) { Object.defineProperty(target, k, { configurable: true, writable: true, value: v }); },
+    });
+  }
   // document is eager + universal
-  Object.defineProperty(target, 'document', { configurable: true, writable: true, value: env.document });
+  define('document', { configurable: true, writable: true, enumerable: true, value: env.document });
 
   // every other window global → lazy getter (materializes + traces on first read)
   for (const name of env.globalKeys) {
     if (name === 'document' || SELF_KEYS.includes(name)) continue;
-    define(name, () => window[name]);
+    define(name, {
+      configurable: true,
+      get: () => window[name],
+      set(v) { Object.defineProperty(target, name, { configurable: true, writable: true, value: v }); },
+    });
   }
 
-  // handy escape hatches for adapters / per-test reset
-  target.__turboDom = env;
-  return env;
+  // handy escape hatch
+  define('__turboDom', { configurable: true, writable: true, value: env });
+
+  const teardown = () => {
+    for (const name of installed) {
+      delete target[name];
+      const prior = originals.get(name);
+      if (prior) Object.defineProperty(target, name, prior);
+    }
+  };
+
+  return { env, window, teardown };
 }

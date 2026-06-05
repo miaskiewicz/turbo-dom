@@ -1,31 +1,36 @@
-// Vitest environment adapter. Use in vitest config:
+// Vitest environment adapter (vitest 1–4). Use in vitest config:
 //
-//   // vitest.config.ts
-//   export default defineConfig({ test: { environment: 'turbo-dom' } })
+//   import TurboDom from '@miaskiewicz/turbo-dom/environment/vitest';
+//   export default defineConfig({ test: { environment: TurboDom } });
 //
-// (resolves to the package "vitest-environment-turbo-dom", which re-exports this),
-// or point directly at this file:
+// or point at the file path:
 //
-//   test: { environment: './node_modules/@miaskiewicz/turbo-dom/dist/environment/vitest.mjs' }
+//   test: { environment: './node_modules/@miaskiewicz/turbo-dom/src/environment/vitest.mjs' }
+//
+// (vitest's bare-name `environment: 'name'` only works for a package literally
+// named `vitest-environment-<name>`; use the object or path form for a scoped pkg.)
 //
 // Per-file options via environmentOptions:
 //   test: { environmentOptions: { turboDom: { html: '<!doctype html>...', url: 'http://localhost/' } } }
 
 import { installGlobals } from './install.mjs';
 
-export default {
+const environment = {
   name: 'turbo-dom',
-  // tests run as web/browser-style modules
+  // vitest 3/4 read `viteEnvironment`; older versions read `transformMode`.
+  viteEnvironment: 'client',
   transformMode: 'web',
 
   setup(global, options) {
     const opts = (options && options.turboDom) || {};
-    const env = installGlobals(global, opts);
+    const { env, teardown } = installGlobals(global, opts);
     return {
-      teardown() {
-        // drop overlay + materialized globals; nothing leaks across files
+      teardown(g) {
+        teardown();
         env.reset();
       },
     };
   },
 };
+
+export default environment;

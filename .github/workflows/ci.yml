@@ -87,6 +87,9 @@ jobs:
       - name: JS test suite (unit, conformance gate, differential, gauntlets)
         run: node --test 'test/*.mjs'
 
+      - name: vitest integration (env adapter, React + RTL + user-event)
+        run: npm run test:vitest
+
       - name: html5lib conformance report
         run: npm run conformance
 
