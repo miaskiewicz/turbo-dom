@@ -573,14 +573,25 @@ export class Element extends Node {
     }
   }
   focus() {
-    this.ownerDocument.__setActive(this);
-    this.dispatchEvent(new Event('focus'));
-    this.dispatchEvent(new Event('focusin', { bubbles: true }));
+    const doc = this.ownerDocument;
+    const prev = doc.__active;
+    if (prev === this) return;
+    // moving focus blurs the previously-focused element first
+    if (prev && prev !== doc.body && typeof prev.dispatchEvent === 'function') {
+      doc.__active = null;
+      prev.dispatchEvent(new FocusEvent('blur', { relatedTarget: this }));
+      prev.dispatchEvent(new FocusEvent('focusout', { bubbles: true, relatedTarget: this }));
+    }
+    doc.__setActive(this);
+    this.dispatchEvent(new FocusEvent('focus', { relatedTarget: prev || null }));
+    this.dispatchEvent(new FocusEvent('focusin', { bubbles: true, relatedTarget: prev || null }));
   }
   blur() {
-    this.ownerDocument.__setActive(this.ownerDocument.body);
-    this.dispatchEvent(new Event('blur'));
-    this.dispatchEvent(new Event('focusout', { bubbles: true }));
+    const doc = this.ownerDocument;
+    if (doc.__active !== this) return;
+    doc.__setActive(doc.body);
+    this.dispatchEvent(new FocusEvent('blur'));
+    this.dispatchEvent(new FocusEvent('focusout', { bubbles: true }));
   }
   getBoundingClientRect() { return zeroRect(); }
   getClientRects() { return []; }

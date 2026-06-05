@@ -17,9 +17,10 @@ import { installGlobals } from './install.mjs';
 
 const environment = {
   name: 'turbo-dom',
-  // vitest 3/4 read `viteEnvironment`; older versions read `transformMode`.
+  // vitest 3/4 read `viteEnvironment` (this). vitest <3 used `transformMode: 'web'`
+  // — omitted here to avoid the v4 deprecation warning; on vitest <3 set
+  // `test.transformMode` (or add transformMode:'web' to this object) if needed.
   viteEnvironment: 'client',
-  transformMode: 'web',
 
   setup(global, options) {
     const opts = (options && options.turboDom) || {};

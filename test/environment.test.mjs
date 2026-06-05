@@ -5,9 +5,9 @@ import vitestEnv from '../src/environment/vitest.mjs';
 
 const require = createRequire(import.meta.url);
 
-test('vitest env: name + transformMode', () => {
+test('vitest env: name + viteEnvironment', () => {
   assert.equal(vitestEnv.name, 'turbo-dom');
-  assert.equal(vitestEnv.transformMode, 'web');
+  assert.equal(vitestEnv.viteEnvironment, 'client');
 });
 
 test('vitest env installs document/window/self + lazy globals', () => {

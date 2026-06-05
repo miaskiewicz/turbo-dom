@@ -31,6 +31,32 @@ class ClipboardEvent extends Event {
   constructor(type, init = {}) { super(type, init); this.clipboardData = init.clipboardData ?? new DataTransfer(); }
 }
 
+// FormData that preserves File/Blob identity. Node's global FormData clones
+// entries into anonymous Blobs (losing the File reference + filename); tests that
+// assert `fd.get('file') === file` need the original kept.
+class TurboFormData {
+  constructor() { this.__entries = []; }
+  append(name, value, filename) { this.__entries.push([String(name), this.__wrap(value, filename)]); }
+  set(name, value, filename) { this.delete(name); this.append(name, value, filename); }
+  __wrap(value, filename) {
+    // string values coerce; File/Blob are kept by reference (optionally re-named)
+    if (value == null || typeof value !== 'object') return String(value);
+    if (filename !== undefined && globalThis.Blob && value instanceof globalThis.Blob && value.name !== filename) {
+      const F = makeFile(); return new F([value], String(filename), { type: value.type });
+    }
+    return value;
+  }
+  get(name) { const e = this.__entries.find((x) => x[0] === String(name)); return e ? e[1] : null; }
+  getAll(name) { return this.__entries.filter((x) => x[0] === String(name)).map((x) => x[1]); }
+  has(name) { return this.__entries.some((x) => x[0] === String(name)); }
+  delete(name) { this.__entries = this.__entries.filter((x) => x[0] !== String(name)); }
+  forEach(cb, thisArg) { for (const [k, v] of this.__entries) cb.call(thisArg, v, k, this); }
+  *entries() { for (const e of this.__entries) yield [e[0], e[1]]; }
+  *keys() { for (const e of this.__entries) yield e[0]; }
+  *values() { for (const e of this.__entries) yield e[1]; }
+  [Symbol.iterator]() { return this.entries(); }
+}
+
 // Capture host functions at module load — BEFORE any installGlobals() can shadow
 // the bare names on globalThis (which would make these delegates call themselves).
 const hostSetTimeout = globalThis.setTimeout;
@@ -78,7 +104,7 @@ export function createWindow(document, { url = 'http://localhost/' } = {}) {
     // web platform globals Node already provides
     fetch: globalThis.fetch ? (...a) => globalThis.fetch(...a) : undefined,
     Headers: globalThis.Headers, Request: globalThis.Request, Response: globalThis.Response,
-    FormData: globalThis.FormData, ReadableStream: globalThis.ReadableStream,
+    FormData: TurboFormData, ReadableStream: globalThis.ReadableStream,
     crypto: globalThis.crypto, Crypto: globalThis.Crypto, SubtleCrypto: globalThis.SubtleCrypto,
     btoa: (s) => Buffer.from(String(s), 'binary').toString('base64'),
     atob: (s) => Buffer.from(String(s), 'base64').toString('binary'),
