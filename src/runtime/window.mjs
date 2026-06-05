@@ -12,7 +12,7 @@ import {
 } from './stubs.mjs';
 import {
   Node, Element, Text, Comment, Document, DocumentFragment, DocumentType, Event, CustomEvent,
-  MutationObserver,
+  MutationObserver, DOMParser, XMLSerializer,
 } from './dom.mjs';
 import {
   EventTarget,
@@ -69,12 +69,29 @@ export function createWindow(document, { url = 'http://localhost/' } = {}) {
     HTMLSpanElement: Element, HTMLParagraphElement: Element, HTMLUListElement: Element,
     HTMLLIElement: Element, HTMLHeadingElement: Element, HTMLBodyElement: Element,
     HTMLDocument: Document, DocumentFragment, ShadowRoot: DocumentFragment,
-    MutationObserver,
+    MutationObserver, DOMParser, XMLSerializer,
     URL: makeURL(), URLSearchParams,
     Blob: globalThis.Blob, File: makeFile(), FileReader,
     customElements: makeCustomElements(),
     AbortController: globalThis.AbortController, AbortSignal: globalThis.AbortSignal,
     TextEncoder: globalThis.TextEncoder, TextDecoder: globalThis.TextDecoder,
+    // web platform globals Node already provides
+    fetch: globalThis.fetch ? (...a) => globalThis.fetch(...a) : undefined,
+    Headers: globalThis.Headers, Request: globalThis.Request, Response: globalThis.Response,
+    FormData: globalThis.FormData, ReadableStream: globalThis.ReadableStream,
+    crypto: globalThis.crypto, Crypto: globalThis.Crypto, SubtleCrypto: globalThis.SubtleCrypto,
+    btoa: (s) => Buffer.from(String(s), 'binary').toString('base64'),
+    atob: (s) => Buffer.from(String(s), 'base64').toString('binary'),
+    MessageChannel: globalThis.MessageChannel, MessagePort: globalThis.MessagePort,
+    BroadcastChannel: globalThis.BroadcastChannel, EventSource: globalThis.EventSource,
+    reportError: (e) => { /* swallow; tests assert via handlers */ void e; },
+    requestIdleCallback: (cb) => hostSetTimeout(() => cb({ didTimeout: false, timeRemaining: () => 50 }), 0),
+    cancelIdleCallback: (id) => hostClearTimeout(id),
+    CSS: { supports: () => true, escape: (s) => String(s).replace(/[^a-zA-Z0-9_-]/g, (c) => '\\' + c) },
+    XMLHttpRequest: makeXHR(),
+    Image: function Image(w, h) { const img = document.createElement('img'); if (w != null) img.setAttribute('width', w); if (h != null) img.setAttribute('height', h); return img; },
+    Audio: function Audio(src) { const a = document.createElement('audio'); if (src) a.setAttribute('src', src); return a; },
+    Worker: class Worker { constructor() {} postMessage() {} terminate() {} addEventListener() {} removeEventListener() {} },
     // timers delegate to the captured host fns (NOT the bare names — once these
     // are installed on globalThis the bare names resolve back here → recursion)
     setTimeout: (...a) => hostSetTimeout(...a),
@@ -104,12 +121,26 @@ export function createWindow(document, { url = 'http://localhost/' } = {}) {
     // subsystem grouping: history co-materializes with (and shares) location
     location: () => makeLocation(url),
     history: () => makeHistory(windowProxy.location),
-    navigator: () => ({ userAgent: 'turbo-dom/0.0.1', platform: 'turbo-dom', language: 'en-US', languages: ['en-US'], onLine: true }),
-    performance: () => ({ now: performanceNow, timeOrigin: 0, mark() {}, measure() {} }),
+    navigator: () => ({
+      userAgent: 'Mozilla/5.0 (turbo-dom) AppleWebKit/537.36',
+      platform: 'turbo-dom', vendor: '', language: 'en-US', languages: ['en-US'],
+      onLine: true, cookieEnabled: true, doNotTrack: null, maxTouchPoints: 0,
+      hardwareConcurrency: 4, deviceMemory: 8, webdriver: false,
+      clipboard: { readText: async () => '', writeText: async () => {}, read: async () => [], write: async () => {} },
+      permissions: { query: async () => ({ state: 'prompt', addEventListener() {}, removeEventListener() {} }) },
+      sendBeacon: () => true, vibrate: () => false,
+    }),
+    performance: () => ({ now: performanceNow, timeOrigin: 0, mark() {}, measure() {}, getEntriesByName: () => [], getEntriesByType: () => [], clearMarks() {}, clearMeasures() {} }),
     Storage: () => Storage,
     devicePixelRatio: () => 1,
     innerWidth: () => 1024,
     innerHeight: () => 768,
+    outerWidth: () => 1024,
+    outerHeight: () => 768,
+    scrollX: () => 0, scrollY: () => 0, pageXOffset: () => 0, pageYOffset: () => 0,
+    screenX: () => 0, screenY: () => 0, screenLeft: () => 0, screenTop: () => 0,
+    screen: () => ({ width: 1024, height: 768, availWidth: 1024, availHeight: 768, colorDepth: 24, pixelDepth: 24, orientation: { type: 'landscape-primary', angle: 0, addEventListener() {}, removeEventListener() {} } }),
+    visualViewport: () => ({ width: 1024, height: 768, scale: 1, offsetLeft: 0, offsetTop: 0, pageLeft: 0, pageTop: 0, addEventListener() {}, removeEventListener() {} }),
   };
 
   windowProxy = new Proxy(base, {
@@ -164,5 +195,34 @@ function makeFile() {
   const B = globalThis.Blob;
   return class File extends B {
     constructor(bits = [], name = 'file', opts = {}) { super(bits, opts); this.name = String(name); this.lastModified = opts.lastModified || 0; }
+  };
+}
+
+// Minimal XMLHttpRequest backed by fetch — enough that libraries that construct
+// one and issue a request don't crash. No-network setups still get a clean object.
+function makeXHR() {
+  return class XMLHttpRequest {
+    constructor() {
+      this.readyState = 0; this.status = 0; this.statusText = ''; this.response = ''; this.responseText = '';
+      this.responseType = ''; this.timeout = 0; this.withCredentials = false;
+      this.onreadystatechange = null; this.onload = null; this.onerror = null; this.onabort = null;
+      this.__headers = {}; this.__method = 'GET'; this.__url = ''; this.__listeners = new Map(); this.__aborted = false;
+    }
+    open(method, url) { this.__method = method; this.__url = url; this.readyState = 1; this.__fire('readystatechange'); }
+    setRequestHeader(k, v) { this.__headers[k] = v; }
+    getResponseHeader() { return null; }
+    getAllResponseHeaders() { return ''; }
+    addEventListener(t, cb) { const l = this.__listeners.get(t) || []; l.push(cb); this.__listeners.set(t, l); }
+    removeEventListener(t, cb) { const l = this.__listeners.get(t); if (l) this.__listeners.set(t, l.filter((x) => x !== cb)); }
+    __fire(type) { const ev = { type, target: this }; if (typeof this['on' + type] === 'function') this['on' + type](ev); for (const cb of this.__listeners.get(type) || []) cb(ev); }
+    abort() { this.__aborted = true; this.readyState = 0; this.__fire('abort'); }
+    send(body) {
+      if (!globalThis.fetch) { this.readyState = 4; this.status = 0; this.__fire('error'); this.__fire('loadend'); return; }
+      globalThis.fetch(this.__url, { method: this.__method, headers: this.__headers, body }).then(async (res) => {
+        if (this.__aborted) return;
+        this.status = res.status; this.statusText = res.statusText; this.responseText = await res.text(); this.response = this.responseText;
+        this.readyState = 4; this.__fire('readystatechange'); this.__fire('load'); this.__fire('loadend');
+      }).catch(() => { if (this.__aborted) return; this.readyState = 4; this.status = 0; this.__fire('error'); this.__fire('loadend'); });
+    }
   };
 }

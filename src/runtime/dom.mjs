@@ -133,6 +133,49 @@ export class Node extends EventTarget {
     return false;
   }
 
+  get isConnected() {
+    let n = this;
+    while (n.parentNode) n = n.parentNode;
+    return n.nodeType === DOCUMENT_NODE;
+  }
+  getRootNode() {
+    let n = this;
+    while (n.parentNode) n = n.parentNode;
+    return n;
+  }
+  normalize() {
+    const kids = this.__children();
+    for (let i = kids.length - 1; i > 0; i--) {
+      if (kids[i].nodeType === TEXT_NODE && kids[i - 1].nodeType === TEXT_NODE) {
+        kids[i - 1]._data += kids[i].data; kids[i].parentNode = null; kids.splice(i, 1);
+      }
+    }
+    for (let i = kids.length - 1; i >= 0; i--) {
+      if (kids[i].nodeType === TEXT_NODE && kids[i].data === '') { kids[i].parentNode = null; kids.splice(i, 1); }
+      else if (kids[i].nodeType === ELEMENT_NODE) kids[i].normalize();
+    }
+  }
+  replaceChildren(...nodes) { this.__kids = []; for (const n of nodes) this.appendChild(typeof n === 'string' ? this.ownerDocument.createTextNode(n) : n); }
+  // bitmask: 1 DISCONNECTED, 2 PRECEDING, 4 FOLLOWING, 8 CONTAINS, 16 CONTAINED_BY
+  compareDocumentPosition(other) {
+    if (other === this) return 0;
+    if (this.contains(other)) return 16 + 4;
+    if (other.contains(this)) return 8 + 2;
+    // document order via a flat walk from the common root
+    const root = this.getRootNode();
+    const order = [];
+    (function walk(n) { order.push(n); for (const c of (n.__children ? n.__children() : [])) walk(c); })(root);
+    const a = order.indexOf(this), b = order.indexOf(other);
+    if (a === -1 || b === -1) return 1;
+    return a < b ? 4 : 2;
+  }
+  cloneNode(deep = false) {
+    // base fallback; Element/Text/Comment override
+    const n = new this.constructor(this.ownerDocument);
+    if (deep) for (const c of this.__children()) n.appendChild(c.cloneNode(true));
+    return n;
+  }
+
   get textContent() {
     let s = '';
     for (const c of this.__children()) {
@@ -160,11 +203,33 @@ class CharacterData extends Node {
   get length() { return this._data.length; }
   get textContent() { return this._data; }
   set textContent(v) { this.data = v; }
+  substringData(offset, count) { return this._data.slice(offset, offset + count); }
+  appendData(s) { this.data = this._data + s; }
+  insertData(offset, s) { this.data = this._data.slice(0, offset) + s + this._data.slice(offset); }
+  deleteData(offset, count) { this.data = this._data.slice(0, offset) + this._data.slice(offset + count); }
+  replaceData(offset, count, s) { this.data = this._data.slice(0, offset) + s + this._data.slice(offset + count); }
+  before(...nodes) { const p = this.parentNode; if (p) for (const n of nodes) p.insertBefore(typeof n === 'string' ? this.ownerDocument.createTextNode(n) : n, this); }
+  after(...nodes) { const p = this.parentNode; if (!p) return; const ref = this.nextSibling; for (const n of nodes) p.insertBefore(typeof n === 'string' ? this.ownerDocument.createTextNode(n) : n, ref); }
+  replaceWith(...nodes) { const p = this.parentNode; if (!p) return; const ref = this.nextSibling; this.remove(); for (const n of nodes) p.insertBefore(typeof n === 'string' ? this.ownerDocument.createTextNode(n) : n, ref); }
 }
 
 export class Text extends CharacterData {
   get nodeType() { return TEXT_NODE; }
   get nodeName() { return '#text'; }
+  get wholeText() {
+    let s = this._data, n = this.previousSibling;
+    while (n && n.nodeType === TEXT_NODE) { s = n.data + s; n = n.previousSibling; }
+    n = this.nextSibling;
+    while (n && n.nodeType === TEXT_NODE) { s += n.data; n = n.nextSibling; }
+    return s;
+  }
+  splitText(offset) {
+    const rest = this._data.slice(offset);
+    this.data = this._data.slice(0, offset);
+    const node = new Text(this.ownerDocument, rest);
+    if (this.parentNode) this.parentNode.insertBefore(node, this.nextSibling);
+    return node;
+  }
   cloneNode() { return new Text(this.ownerDocument, this._data); }
 }
 
@@ -462,6 +527,54 @@ export class Element extends Node {
   getBoundingClientRect() { return zeroRect(); }
   getClientRects() { return []; }
   scrollIntoView() {}
+  scroll() {} scrollTo() {} scrollBy() {}
+  // honest zero geometry (no layout)
+  get offsetWidth() { return 0; } get offsetHeight() { return 0; }
+  get offsetTop() { return 0; } get offsetLeft() { return 0; }
+  get offsetParent() { return null; }
+  get clientWidth() { return 0; } get clientHeight() { return 0; }
+  get clientTop() { return 0; } get clientLeft() { return 0; }
+  get scrollWidth() { return 0; } get scrollHeight() { return 0; }
+  get scrollTop() { return 0; } set scrollTop(_v) {} get scrollLeft() { return 0; } set scrollLeft(_v) {}
+
+  // namespaced attributes
+  getAttributeNS(_ns, name) { return this.getAttribute(name); }
+  setAttributeNS(_ns, name, value) { this.setAttribute(name, value); }
+  hasAttributeNS(_ns, name) { return this.hasAttribute(name); }
+  removeAttributeNS(_ns, name) { this.removeAttribute(name); }
+  getAttributeNode(name) { const a = this.__attrs.find((x) => x.name === name); return a ? { name: a.name, value: a.value, ownerElement: this } : null; }
+
+  // adjacency
+  insertAdjacentElement(position, el) {
+    const p = this.parentNode;
+    switch (position) {
+      case 'beforebegin': if (p) p.insertBefore(el, this); break;
+      case 'afterbegin': this.insertBefore(el, this.firstChild); break;
+      case 'beforeend': this.appendChild(el); break;
+      case 'afterend': if (p) p.insertBefore(el, this.nextSibling); break;
+    }
+    return el;
+  }
+  insertAdjacentText(position, text) { this.insertAdjacentElement(position, this.ownerDocument.createTextNode(text)); }
+
+  // commonly-reflected properties
+  get tabIndex() { return this.hasAttribute('tabindex') ? parseInt(this.getAttribute('tabindex'), 10) || 0 : (/^(a|button|input|select|textarea)$/.test(this.localName) ? 0 : -1); }
+  set tabIndex(v) { this.setAttribute('tabindex', String(v)); }
+  get title() { return this.getAttribute('title') ?? ''; } set title(v) { this.setAttribute('title', v); }
+  get lang() { return this.getAttribute('lang') ?? ''; } set lang(v) { this.setAttribute('lang', v); }
+  get dir() { return this.getAttribute('dir') ?? ''; } set dir(v) { this.setAttribute('dir', v); }
+  get hidden() { return this.hasAttribute('hidden'); } set hidden(v) { if (v) this.setAttribute('hidden', ''); else this.removeAttribute('hidden'); }
+  get role() { return this.getAttribute('role'); } set role(v) { this.setAttribute('role', v); }
+  get contentEditable() { return this.getAttribute('contenteditable') ?? 'inherit'; } set contentEditable(v) { this.setAttribute('contenteditable', v); }
+  get isContentEditable() { return this.getAttribute('contenteditable') === 'true' || this.getAttribute('contenteditable') === ''; }
+  get hreflang() { return this.getAttribute('hreflang') ?? ''; }
+  get target() { return this.getAttribute('target') ?? ''; } set target(v) { this.setAttribute('target', v); }
+
+  // pointer capture + animations (no-op honest stubs)
+  setPointerCapture() {} releasePointerCapture() {} hasPointerCapture() { return false; }
+  animate() { return { play() {}, pause() {}, cancel() {}, finish() {}, finished: Promise.resolve(), onfinish: null, cancel_: null }; }
+  getAnimations() { return []; }
+  requestFullscreen() { return Promise.resolve(); }
 
   // canvas (no raster backend — honest no-op context)
   getContext(type) { return this.localName === 'canvas' ? (this.__ctx ||= makeCanvasStub()) : null; }
@@ -584,6 +697,54 @@ function makeSelection() {
     collapse() {}, extend() {}, selectAllChildren() {}, setBaseAndExtent() {}, empty() { ranges = []; },
     toString() { return ''; },
   };
+}
+
+// TreeWalker / NodeIterator over the DOM (doubles for both — common subset).
+class TreeWalker {
+  constructor(root, whatToShow, filter) {
+    this.root = root; this.whatToShow = whatToShow >>> 0; this.filter = filter; this.currentNode = root;
+    this.referenceNode = root; this.pointerBeforeReferenceNode = true;
+  }
+  __show(node) {
+    const bit = node.nodeType === ELEMENT_NODE ? 1 : node.nodeType === TEXT_NODE ? 4 : node.nodeType === COMMENT_NODE ? 128 : 0xffffffff;
+    if (!(this.whatToShow & bit) && this.whatToShow !== 0xffffffff) return 3; // FILTER_SKIP
+    if (this.filter) {
+      const fn = typeof this.filter === 'function' ? this.filter : this.filter.acceptNode;
+      return fn.call(this.filter, node);
+    }
+    return 1; // FILTER_ACCEPT
+  }
+  __flat() {
+    const out = [];
+    (function walk(n) { for (const c of (n.__children ? n.__children() : [])) { out.push(c); walk(c); } })(this.root);
+    return out.filter((n) => this.__show(n) === 1);
+  }
+  nextNode() { const all = this.__flat(); const i = all.indexOf(this.currentNode); const next = all[i + 1] ?? (this.currentNode === this.root ? all[0] : null); this.currentNode = next; this.referenceNode = next; return next ?? null; }
+  previousNode() { const all = this.__flat(); const i = all.indexOf(this.currentNode); const prev = i > 0 ? all[i - 1] : null; if (prev) { this.currentNode = prev; this.referenceNode = prev; } return prev ?? null; }
+  firstChild() { const k = (this.currentNode.__children ? this.currentNode.__children() : []).filter((n) => this.__show(n) === 1); if (k[0]) { this.currentNode = k[0]; return k[0]; } return null; }
+  lastChild() { const k = (this.currentNode.__children ? this.currentNode.__children() : []).filter((n) => this.__show(n) === 1); const last = k[k.length - 1]; if (last) { this.currentNode = last; return last; } return null; }
+  parentNode() { const p = this.currentNode.parentNode; if (p && p !== this.root.parentNode) { this.currentNode = p; return p; } return null; }
+  nextSibling() { let n = this.currentNode.nextSibling; while (n && this.__show(n) !== 1) n = n.nextSibling; if (n) this.currentNode = n; return n ?? null; }
+  previousSibling() { let n = this.currentNode.previousSibling; while (n && this.__show(n) !== 1) n = n.previousSibling; if (n) this.currentNode = n; return n ?? null; }
+  detach() {}
+}
+
+// DOMParser — parses a string into a real Document via the native parser.
+export class DOMParser {
+  parseFromString(str, type = 'text/html') {
+    if (type === 'text/html') return parseDocument(String(str));
+    // XML-ish: parse as a fragment wrapped in a document
+    const doc = parseDocument(`<!doctype html><html><body>${str}</body></html>`);
+    return doc;
+  }
+}
+
+// XMLSerializer — serializes a node back to markup.
+export class XMLSerializer {
+  serializeToString(node) {
+    if (node.nodeType === DOCUMENT_NODE || node.nodeType === DOCUMENT_FRAGMENT_NODE) return serializeInner(node);
+    return serializeOuter(node);
+  }
 }
 
 // minimal inline-style CSSOM (honest: only inline + explicitly set props)
@@ -817,9 +978,43 @@ export class Document extends Node {
   createDocumentFragment() { return new DocumentFragment(this); }
   createEvent() { return new Event(''); }
   createRange() { return new Range(this); }
+  createAttribute(name) { return { name, value: '', ownerElement: null }; }
+  createComment(data) { return new Comment(this, String(data)); }
   getSelection() { if (!this.__selection) this.__selection = makeSelection(); return this.__selection; }
   importNode(node, deep) { return node.cloneNode(deep); }
   adoptNode(node) { if (node.parentNode) node.parentNode.removeChild(node); node.ownerDocument = this; return node; }
+
+  // TreeWalker / NodeIterator (whatToShow: 1 elements, 4 text, 0xFFFFFFFF all)
+  createTreeWalker(root, whatToShow = 0xffffffff, filter = null) { return new TreeWalker(root, whatToShow, filter); }
+  createNodeIterator(root, whatToShow = 0xffffffff, filter = null) { return new TreeWalker(root, whatToShow, filter); }
+
+  getElementsByName(name) {
+    const self = this; return liveHTMLCollection(() => collectByTag(self, '*').filter((e) => e.getAttribute('name') === name));
+  }
+  elementFromPoint() { return null; }
+  elementsFromPoint() { return []; }
+  execCommand() { return false; }
+  queryCommandSupported() { return false; }
+  queryCommandEnabled() { return false; }
+  hasFocus() { return true; }
+  write() {} writeln() {} open() { return this; } close() {}
+
+  get title() { const t = this.querySelector('title'); return t ? t.textContent : (this.__title || ''); }
+  set title(v) { const t = this.querySelector('title'); if (t) t.textContent = v; else this.__title = String(v); }
+  get location() { return this.defaultView ? this.defaultView.location : null; }
+  get baseURI() { return (this.defaultView && this.defaultView.location && this.defaultView.location.href) || 'about:blank'; }
+  get URL() { return this.baseURI; }
+  get documentURI() { return this.baseURI; }
+  get scrollingElement() { return this.documentElement; }
+  get fullscreenElement() { return null; }
+  get implementation() {
+    const self = this;
+    return {
+      createHTMLDocument(title) { const d = parseDocument(`<!doctype html><html><head><title>${title || ''}</title></head><body></body></html>`); return d; },
+      createDocumentType: (name, pub, sys) => new DocumentType(self, name, pub, sys),
+      hasFeature: () => true,
+    };
+  }
 
   // ---- queries ----
   getElementById(id) {
