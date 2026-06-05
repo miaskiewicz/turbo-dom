@@ -87,72 +87,20 @@ export function createWindow(document, { url = 'http://localhost/' } = {}) {
   const touched = new Set();
   let windowProxy;
 
-  // Universal globals (touched by ~every test) — eager, no point lazifying.
+  // Per-env globals: only the ~11 that capture document/url/windowProxy. Everything
+  // stateless (constructors, timers, stateless window methods) lives in the shared
+  // module-level STATIC_BASE, built ONCE — not rebuilt per createWindow (per test
+  // file). The Proxy below reads base first, then STATIC_BASE, then lazy; a
+  // `window.x = y` assignment writes to base, shadowing STATIC_BASE per-env.
   const base = {
     document,
     name: '',
     closed: false,
     origin: new URL(url).origin,
-    // constructors are cheap class refs — expose eagerly
-    Node, Element, Text, Comment, Document, DocumentFragment, DocumentType,
-    EventTarget,
-    Event, CustomEvent,
-    UIEvent, MouseEvent, PointerEvent, KeyboardEvent, InputEvent, FocusEvent,
-    CompositionEvent, WheelEvent, TouchEvent, DragEvent, ProgressEvent, ClipboardEvent,
-    DataTransfer,
-    // every element is a plain Element → `el instanceof HTMLElement` is true.
-    // Tag-specific interfaces match by localName via Symbol.hasInstance, so
-    // `el instanceof HTMLAnchorElement` is true ONLY for <a> (not every element),
-    // and React's `while (el instanceof HTMLIFrameElement)` loop terminates.
-    HTMLElement: Element, SVGElement: Element,
-    HTMLAnchorElement: tagClass('a'), HTMLInputElement: tagClass('input'),
-    HTMLTextAreaElement: tagClass('textarea'), HTMLSelectElement: tagClass('select'),
-    HTMLOptionElement: tagClass('option'), HTMLButtonElement: tagClass('button'),
-    HTMLFormElement: tagClass('form'), HTMLImageElement: tagClass('img'),
-    HTMLCanvasElement: tagClass('canvas'), HTMLTemplateElement: tagClass('template'),
-    HTMLLabelElement: tagClass('label'), HTMLDivElement: tagClass('div'),
-    HTMLSpanElement: tagClass('span'), HTMLParagraphElement: tagClass('p'),
-    HTMLUListElement: tagClass('ul'), HTMLLIElement: tagClass('li'),
-    HTMLBodyElement: tagClass('body'), HTMLIFrameElement: tagClass('iframe'),
-    HTMLHeadingElement: tagClass(/^h[1-6]$/),
-    HTMLDocument: Document, DocumentFragment, ShadowRoot: DocumentFragment,
-    MutationObserver, DOMParser, XMLSerializer,
-    URL: TURBO_URL, URLSearchParams,
-    Blob: globalThis.Blob, File: TURBO_FILE, FileReader,
     customElements: makeCustomElements(),
-    AbortController: globalThis.AbortController, AbortSignal: globalThis.AbortSignal,
-    TextEncoder: globalThis.TextEncoder, TextDecoder: globalThis.TextDecoder,
-    // web platform globals Node already provides
-    fetch: globalThis.fetch ? (...a) => globalThis.fetch(...a) : undefined,
-    Headers: globalThis.Headers, Request: globalThis.Request, Response: globalThis.Response,
-    FormData: TurboFormData, ReadableStream: globalThis.ReadableStream,
-    crypto: globalThis.crypto, Crypto: globalThis.Crypto, SubtleCrypto: globalThis.SubtleCrypto,
-    btoa: (s) => Buffer.from(String(s), 'binary').toString('base64'),
-    atob: (s) => Buffer.from(String(s), 'base64').toString('binary'),
-    MessageChannel: globalThis.MessageChannel, MessagePort: globalThis.MessagePort,
-    BroadcastChannel: globalThis.BroadcastChannel, EventSource: globalThis.EventSource,
-    reportError: (e) => { /* swallow; tests assert via handlers */ void e; },
-    requestIdleCallback: (cb) => hostSetTimeout(() => cb({ didTimeout: false, timeRemaining: () => 50 }), 0),
-    cancelIdleCallback: (id) => hostClearTimeout(id),
-    CSS: { supports: () => true, escape: (s) => String(s).replace(/[^a-zA-Z0-9_-]/g, (c) => '\\' + c) },
-    XMLHttpRequest: makeXHR(),
     Image: function Image(w, h) { const img = document.createElement('img'); if (w != null) img.setAttribute('width', w); if (h != null) img.setAttribute('height', h); return img; },
     Audio: function Audio(src) { const a = document.createElement('audio'); if (src) a.setAttribute('src', src); return a; },
-    Worker: class Worker { constructor() {} postMessage() {} terminate() {} addEventListener() {} removeEventListener() {} },
-    // timers delegate to the captured host fns (NOT the bare names — once these
-    // are installed on globalThis the bare names resolve back here → recursion)
-    setTimeout: (...a) => hostSetTimeout(...a),
-    clearTimeout: (...a) => hostClearTimeout(...a),
-    setInterval: (...a) => hostSetInterval(...a),
-    clearInterval: (...a) => hostClearInterval(...a),
-    queueMicrotask: (...a) => hostQueueMicrotask(...a),
-    structuredClone: (...a) => hostStructuredClone(...a),
     getSelection: () => document.getSelection(),
-    scrollTo() {}, scroll() {}, scrollBy() {},
-    // window methods libraries/tests spy on — must exist as own props for vi.spyOn
-    open: () => null, close() {}, stop() {}, print() {}, focus() {}, blur() {},
-    moveTo() {}, moveBy() {}, resizeTo() {}, resizeBy() {},
-    alert() {}, confirm: () => false, prompt: () => null,
     dispatchEvent: (e) => document.dispatchEvent(e),
     addEventListener: (...a) => document.addEventListener(...a),
     removeEventListener: (...a) => document.removeEventListener(...a),
@@ -196,7 +144,8 @@ export function createWindow(document, { url = 'http://localhost/' } = {}) {
   windowProxy = new Proxy(base, {
     get(t, k) {
       if (k === 'window' || k === 'self' || k === 'globalThis' || k === 'parent' || k === 'top') return windowProxy;
-      if (k in t) return t[k];
+      if (k in t) return t[k];            // per-env (incl. overrides + materialized lazy)
+      if (k in STATIC_BASE) return STATIC_BASE[k];  // shared stateless globals
       const factory = lazy[k];
       if (factory) {
         touched.add(k);
@@ -206,10 +155,18 @@ export function createWindow(document, { url = 'http://localhost/' } = {}) {
       }
       return undefined;
     },
-    set(t, k, v) { t[k] = v; return true; },
+    set(t, k, v) { t[k] = v; return true; },  // writes to base → shadows STATIC_BASE per-env
     has(t, k) {
-      return k in t || k in lazy ||
+      return k in t || k in STATIC_BASE || k in lazy ||
         k === 'window' || k === 'self' || k === 'globalThis' || k === 'parent' || k === 'top';
+    },
+    // so vi.spyOn(window, 'scrollTo'/'open'/…) finds STATIC_BASE methods as own
+    // props; spyOn then defineProperty's the spy onto base (target), shadowing it.
+    getOwnPropertyDescriptor(t, k) {
+      const own = Object.getOwnPropertyDescriptor(t, k);
+      if (own) return own;
+      if (k in STATIC_BASE) return { configurable: true, enumerable: true, writable: true, value: STATIC_BASE[k] };
+      return undefined;
     },
   });
 
@@ -220,7 +177,7 @@ export function createWindow(document, { url = 'http://localhost/' } = {}) {
     // which lazy globals this test materialized (the "DOM surface used" report)
     touched: () => [...touched],
     // every global name this window can provide (for environment adapters)
-    globalKeys: [...Object.keys(base), ...Object.keys(lazy)],
+    globalKeys: [...Object.keys(base), ...Object.keys(STATIC_BASE), ...Object.keys(lazy)],
     // Layer 5: drop materialized global slots, keep the class machinery warm.
     resetGlobals() {
       for (const k of touched) delete base[k];
@@ -279,3 +236,60 @@ function makeXHR() {
     }
   };
 }
+
+// Stateless globals — identical for every window, so built ONCE at module load
+// instead of per createWindow() (per test file). createWindow's Proxy falls back
+// to this after its tiny per-env `base`. Nothing here captures document/url/window.
+const STATIC_BASE = {
+  // DOM + event constructors (cheap class refs)
+  Node, Element, Text, Comment, Document, DocumentFragment, DocumentType, EventTarget,
+  Event, CustomEvent,
+  UIEvent, MouseEvent, PointerEvent, KeyboardEvent, InputEvent, FocusEvent,
+  CompositionEvent, WheelEvent, TouchEvent, DragEvent, ProgressEvent, ClipboardEvent,
+  DataTransfer,
+  // every element is a plain Element → `el instanceof HTMLElement` is true.
+  // Tag-specific interfaces match by localName via Symbol.hasInstance.
+  HTMLElement: Element, SVGElement: Element,
+  HTMLAnchorElement: tagClass('a'), HTMLInputElement: tagClass('input'),
+  HTMLTextAreaElement: tagClass('textarea'), HTMLSelectElement: tagClass('select'),
+  HTMLOptionElement: tagClass('option'), HTMLButtonElement: tagClass('button'),
+  HTMLFormElement: tagClass('form'), HTMLImageElement: tagClass('img'),
+  HTMLCanvasElement: tagClass('canvas'), HTMLTemplateElement: tagClass('template'),
+  HTMLLabelElement: tagClass('label'), HTMLDivElement: tagClass('div'),
+  HTMLSpanElement: tagClass('span'), HTMLParagraphElement: tagClass('p'),
+  HTMLUListElement: tagClass('ul'), HTMLLIElement: tagClass('li'),
+  HTMLBodyElement: tagClass('body'), HTMLIFrameElement: tagClass('iframe'),
+  HTMLHeadingElement: tagClass(/^h[1-6]$/),
+  HTMLDocument: Document, ShadowRoot: DocumentFragment,
+  MutationObserver, DOMParser, XMLSerializer,
+  URL: TURBO_URL, URLSearchParams,
+  Blob: globalThis.Blob, File: TURBO_FILE, FileReader,
+  AbortController: globalThis.AbortController, AbortSignal: globalThis.AbortSignal,
+  TextEncoder: globalThis.TextEncoder, TextDecoder: globalThis.TextDecoder,
+  fetch: globalThis.fetch ? (...a) => globalThis.fetch(...a) : undefined,
+  Headers: globalThis.Headers, Request: globalThis.Request, Response: globalThis.Response,
+  FormData: TurboFormData, ReadableStream: globalThis.ReadableStream,
+  crypto: globalThis.crypto, Crypto: globalThis.Crypto, SubtleCrypto: globalThis.SubtleCrypto,
+  btoa: (s) => Buffer.from(String(s), 'binary').toString('base64'),
+  atob: (s) => Buffer.from(String(s), 'base64').toString('binary'),
+  MessageChannel: globalThis.MessageChannel, MessagePort: globalThis.MessagePort,
+  BroadcastChannel: globalThis.BroadcastChannel, EventSource: globalThis.EventSource,
+  reportError: (e) => { void e; },
+  requestIdleCallback: (cb) => hostSetTimeout(() => cb({ didTimeout: false, timeRemaining: () => 50 }), 0),
+  cancelIdleCallback: (id) => hostClearTimeout(id),
+  CSS: { supports: () => true, escape: (s) => String(s).replace(/[^a-zA-Z0-9_-]/g, (c) => '\\' + c) },
+  XMLHttpRequest: makeXHR(),
+  Worker: class Worker { constructor() {} postMessage() {} terminate() {} addEventListener() {} removeEventListener() {} },
+  // timers delegate to captured host fns (NOT bare names — installed bare names
+  // would resolve back here → recursion)
+  setTimeout: (...a) => hostSetTimeout(...a),
+  clearTimeout: (...a) => hostClearTimeout(...a),
+  setInterval: (...a) => hostSetInterval(...a),
+  clearInterval: (...a) => hostClearInterval(...a),
+  queueMicrotask: (...a) => hostQueueMicrotask(...a),
+  structuredClone: (...a) => hostStructuredClone(...a),
+  scrollTo() {}, scroll() {}, scrollBy() {},
+  open: () => null, close() {}, stop() {}, print() {}, focus() {}, blur() {},
+  moveTo() {}, moveBy() {}, resizeTo() {}, resizeBy() {},
+  alert() {}, confirm: () => false, prompt: () => null,
+};
