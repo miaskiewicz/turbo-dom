@@ -57,6 +57,19 @@ class TurboFormData {
   [Symbol.iterator]() { return this.entries(); }
 }
 
+// A tag-specific HTML*Element interface. Not constructible — exists so
+// `el instanceof HTMLXElement` is true only for elements with the matching
+// localName (matcher = string or RegExp). Avoids aliasing every interface to
+// Element (which made `instanceof HTMLAnchorElement` true for ALL elements).
+function tagClass(matcher) {
+  const test = typeof matcher === 'string' ? (n) => n === matcher : (n) => matcher.test(n);
+  const C = function () { throw new TypeError('Illegal constructor'); };
+  Object.defineProperty(C, Symbol.hasInstance, {
+    value: (o) => o != null && o.nodeType === 1 && test(o.localName),
+  });
+  return C;
+}
+
 // Capture host functions at module load — BEFORE any installGlobals() can shadow
 // the bare names on globalThis (which would make these delegates call themselves).
 const hostSetTimeout = globalThis.setTimeout;
@@ -83,17 +96,21 @@ export function createWindow(document, { url = 'http://localhost/' } = {}) {
     UIEvent, MouseEvent, PointerEvent, KeyboardEvent, InputEvent, FocusEvent,
     CompositionEvent, WheelEvent, TouchEvent, DragEvent, ProgressEvent, ClipboardEvent,
     DataTransfer,
-    // generic elements are plain Element → `el instanceof HTMLElement` is true.
-    // HTMLIFrameElement MUST be a distinct class so React's iframe-descent loop
-    // (`while (el instanceof HTMLIFrameElement)`) terminates on normal elements.
+    // every element is a plain Element → `el instanceof HTMLElement` is true.
+    // Tag-specific interfaces match by localName via Symbol.hasInstance, so
+    // `el instanceof HTMLAnchorElement` is true ONLY for <a> (not every element),
+    // and React's `while (el instanceof HTMLIFrameElement)` loop terminates.
     HTMLElement: Element, SVGElement: Element,
-    HTMLIFrameElement: class HTMLIFrameElement extends Element {},
-    HTMLInputElement: Element, HTMLTextAreaElement: Element, HTMLSelectElement: Element,
-    HTMLOptionElement: Element, HTMLButtonElement: Element, HTMLAnchorElement: Element,
-    HTMLFormElement: Element, HTMLImageElement: Element, HTMLCanvasElement: Element,
-    HTMLTemplateElement: Element, HTMLLabelElement: Element, HTMLDivElement: Element,
-    HTMLSpanElement: Element, HTMLParagraphElement: Element, HTMLUListElement: Element,
-    HTMLLIElement: Element, HTMLHeadingElement: Element, HTMLBodyElement: Element,
+    HTMLAnchorElement: tagClass('a'), HTMLInputElement: tagClass('input'),
+    HTMLTextAreaElement: tagClass('textarea'), HTMLSelectElement: tagClass('select'),
+    HTMLOptionElement: tagClass('option'), HTMLButtonElement: tagClass('button'),
+    HTMLFormElement: tagClass('form'), HTMLImageElement: tagClass('img'),
+    HTMLCanvasElement: tagClass('canvas'), HTMLTemplateElement: tagClass('template'),
+    HTMLLabelElement: tagClass('label'), HTMLDivElement: tagClass('div'),
+    HTMLSpanElement: tagClass('span'), HTMLParagraphElement: tagClass('p'),
+    HTMLUListElement: tagClass('ul'), HTMLLIElement: tagClass('li'),
+    HTMLBodyElement: tagClass('body'), HTMLIFrameElement: tagClass('iframe'),
+    HTMLHeadingElement: tagClass(/^h[1-6]$/),
     HTMLDocument: Document, DocumentFragment, ShadowRoot: DocumentFragment,
     MutationObserver, DOMParser, XMLSerializer,
     URL: makeURL(), URLSearchParams,
