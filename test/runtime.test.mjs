@@ -76,6 +76,14 @@ test('innerHTML get + set (reparse)', () => {
   assert.equal(app.innerHTML, '<p class="x">hi</p><p>yo</p>');
 });
 
+test('innerHTML get on unmutated buffer-backed subtree (lazy __attrs)', () => {
+  const { document } = fresh();
+  const app = document.getElementById('app'); // never mutated → children keep lazy __attrs
+  const html = app.innerHTML;                  // serializes buffer-backed els with __attrs undefined
+  assert.ok(html.includes('<li class="sel">b</li>'));
+  assert.ok(html.includes('<input type="text" value="hi">'));
+});
+
 test('insertBefore / replaceChild / cloneNode(deep)', () => {
   const { document } = fresh();
   const ul = document.querySelector('ul');

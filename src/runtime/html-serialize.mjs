@@ -20,7 +20,10 @@ function serializeNode(node, out) {
     case 1: { // element
       const tag = node.localName;
       out.push('<' + tag);
-      for (const a of node.__attrs) {
+      // __attrs is lazy: buffer-backed elements leave it undefined (store __attrIdx).
+      // Build from the SoA on first touch, matching every other __attrs read site.
+      const attrs = node.__attrs ?? (node.__attrs = node.__buildAttrs());
+      for (const a of attrs) {
         const name = a.prefix ? `${a.prefix}:${a.name}` : a.name;
         out.push(` ${name}="${escapeAttr(a.value)}"`);
       }
