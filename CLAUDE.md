@@ -69,8 +69,18 @@ npm run bench:query     # query-heavy DOM work (RTL-style) vs jsdom
 npm run bench:wasm      # wasm vs native parseBuffer
 npm run bench:all       # all of the above
 ```
-Latest (darwin-arm64, Node 24): ~23× jsdom per-file setup, ~6× query-heavy, 18–37× parse.
-Numbers in README.md — refresh both if you touch the runtime hot paths.
+Latest (darwin-arm64, Node 24), vs jsdom / happy-dom:
+- per-file setup: ~23× jsdom, ~10× happy-dom
+- realistic 200-file suite (construct+query+events): ~23× jsdom, ~10× happy-dom
+- parse: 18–37× both
+- conformance: 99.72% vs jsdom 97.03% vs happy-dom 37.35%
+- raw query throughput: ~7× jsdom, but happy-dom is ~25× US here (its selector engine
+  trades correctness for speed). We win realistic suites because per-file CONSTRUCTION
+  dominates, and lazy construction crushes it — not because raw queries are fastest.
+- `getByLabelText` was O(n²) (element.labels → document.getElementsByTagName('label') per
+  element); fixed with a version-keyed getElementsBy* cache (Document.__byTag/__byClass,
+  invalidated by Document.__version which every mutation bumps). 1342→277µs.
+Numbers in README.md — refresh both (bench against jsdom AND happy-dom) if you touch hot paths.
 
 ## Conformance gate
 
