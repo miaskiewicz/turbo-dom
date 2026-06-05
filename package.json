@@ -117,12 +117,5 @@
     "parse5": "^8.0.1",
     "react": "^19.2.7",
     "react-dom": "^19.2.7"
-  },
-  "optionalDependencies": {
-    "turbo-dom-darwin-arm64": "0.1.0",
-    "turbo-dom-linux-arm64-gnu": "0.1.0",
-    "turbo-dom-linux-x64-gnu": "0.1.0",
-    "turbo-dom-linux-x64-musl": "0.1.0",
-    "turbo-dom-win32-x64-msvc": "0.1.0"
   }
 }

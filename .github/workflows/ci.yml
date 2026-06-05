@@ -102,10 +102,12 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - run: cargo build --release --no-default-features --features wasm-bind --target wasm32-unknown-unknown
 
-  # ---- Publish prebuilt binaries to npm on a version tag ----
-  # Requires repository secret NPM_TOKEN. napi-rs publishes one platform package
-  # per triple (optionalDependencies) plus the main package. CLI flags target
-  # @napi-rs/cli v2; adjust if you bump the CLI.
+  # ---- Publish to npm on a version tag ----
+  # Single bundled package: all platform *.node binaries ship inside `turbo-dom`
+  # (index.js loads the matching local binary). One package to publish — no
+  # per-platform sub-packages to create. Requires repository secret NPM_TOKEN
+  # (a token allowed to publish the `turbo-dom` package — a Classic Automation
+  # token is simplest).
   publish:
     name: publish
     needs: [build, test]
@@ -123,27 +125,13 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: artifacts
-          # each build job uploaded `bindings-<triple>` containing one *.node
 
-      - name: Assemble per-platform npm packages
+      - name: Bundle binaries into the package root
         run: |
-          npx napi create-npm-dir -t .
-          # move each downloaded *.node into its npm/<triple>/ dir
-          find artifacts -name '*.node' -print -exec cp {} . \;
-          npx napi artifacts --dir artifacts || true
-          ls -R npm
+          find artifacts -name '*.node' -exec cp {} . \;
+          ls -1 *.node
 
-      - name: Publish platform packages then main
-        run: |
-          set -e
-          for dir in npm/*/; do
-            if ls "$dir"/*.node >/dev/null 2>&1; then
-              echo "publishing $dir"
-              (cd "$dir" && npm publish --access public)
-            else
-              echo "skip $dir (no binary)"
-            fi
-          done
-          npm publish --access public
+      - name: Publish turbo-dom
+        run: npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
