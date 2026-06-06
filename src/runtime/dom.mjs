@@ -934,7 +934,14 @@ export class DocumentFragment extends Node {
   querySelectorAll(sel) { return cachedQSA(this, sel); }
   get children() { if (this.__childrenList) return this.__childrenList; const self = this; return (this.__childrenList = liveHTMLCollection(() => self.__children().filter((n) => n.nodeType === ELEMENT_NODE))); }
   append(...nodes) { for (const n of nodes) this.appendChild(toNode(this.ownerDocument, n)); }
-  cloneNode(deep = false) { const f = new DocumentFragment(this.ownerDocument); if (deep) for (const c of this.__children()) f.appendChild(c.cloneNode(true)); return f; }
+  cloneNode(deep = false) {
+    const f = new DocumentFragment(this.ownerDocument);
+    if (deep) { // direct __kids build — detached clone, per-child appendChild bookkeeping is waste (see Element.cloneNode)
+      const src = this.__children(), od = f.ownerDocument, kids = f.__kids = new Array(src.length);
+      for (let i = 0; i < src.length; i++) { const cl = src[i].cloneNode(true); cl.parentNode = f; cl.ownerDocument = od; kids[i] = cl; }
+    }
+    return f;
+  }
 }
 
 // A real shadow root: a detached document-fragment subtree with a back-reference
