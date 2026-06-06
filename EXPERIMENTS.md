@@ -128,6 +128,32 @@ Roughly ordered by expected value. Each must go through the full protocol.
     bigger lift, native; gate on marshaling being the proven cost (a separate bench). Likely
     out of scope for the pure-JS hot-swap loop.
 
+## Are we actually faster? — two signals
+
+1. **Microbench scorecard (the reliable signal).** Deterministic, low-noise. Run
+   `node bench/scorecard.mjs` on any version — it prints ops/s for the hot paths the
+   loop targets (createEnvironment, inflation, dispatch listener-less + single, mutation,
+   textContent, addEventListener). Compare across versions to KNOW if a change helped.
+   This — not suite wall-clock — is what proves a speedup.
+
+   Baseline @ v0.1.43 (darwin-arm64, Node 24, best-of-6 ops/s):
+   - createEnvironment (empty shell): ~768k
+   - inflate+traverse (~1200 els, fresh env): ~9.7k
+   - dispatch listener-less (bubbles): ~3.22M
+   - dispatch single-listener (bubbles): ~2.15M
+   - mutation append+setAttr+remove (no observer): ~15.7M
+   - textContent read (single text child): ~201M
+   - addEventListener (3 / fresh elem): ~14.4M
+2. **Suite wall-clock by version (coarse trend, NOT precision).** Single-run `Duration`
+   on each real suite at the SHIP run. The shared machine swings ±10-40s with load, so
+   read it as a trend, never a per-change verdict. Append a row on every ship.
+
+| version | ui-design-components (386f/6188t) | payroll-app (982f/9670t) | change |
+|---|---:|---:|---|
+| v0.1.41 | 49.6s | 94.9s | addEventListener inline |
+| v0.1.42 | (passed, untimed) | (passed, untimed) | single-listener slice skip |
+| v0.1.43 | (passed, untimed) | (passed, untimed) | tagName read once |
+
 ## Ledger (append one line per experiment; newest at bottom)
 
 - v0.1.34 — monomorphic Element shape — SHIPPED (~7-8% suite, +clean microbench).

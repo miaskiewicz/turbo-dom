@@ -70,7 +70,8 @@
     "prepublishOnly": "napi build --platform --release",
     "test:vitest": "vitest run -c test-vitest/vitest.config.mjs",
     "test:jest": "jest -c test-jest/jest.config.cjs",
-    "bench:query": "node bench/query.mjs"
+    "bench:query": "node bench/query.mjs",
+    "bench:scorecard": "node bench/scorecard.mjs"
   },
   "keywords": [
     "dom",
