@@ -1410,11 +1410,12 @@ export class Document extends Node {
     let node;
     switch (buf.nodeType(idx)) {
       case ELEMENT_NODE: {
-        node = new Element(this, buf.tagName(idx), buf.ns(idx));
+        const tag = buf.tagName(idx); // read once (was read twice — ctor + template check)
+        node = new Element(this, tag, buf.ns(idx));
         node.__idx = idx;
         node.__attrIdx = idx; // attrs lazy (constructor left __attrs undefined)
         // template content fragment: a child node typed 11 named "content"
-        if (buf.tagName(idx) === 'template') {
+        if (tag === 'template') {
           for (let c = buf.firstChild(idx); c !== -1; c = buf.nextSib(c)) {
             if (buf.nodeType(c) === DOCUMENT_FRAGMENT_NODE && buf.tagName(c) === 'content') {
               node.content = this.__nodeAt(c);
