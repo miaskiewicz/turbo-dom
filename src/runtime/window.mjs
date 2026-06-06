@@ -85,6 +85,7 @@ const hostClearTimeout = globalThis.clearTimeout;
 // self-replaces onto the per-env base, so each env gets its own instance; only
 // the factory objects/closures are shared, saving ~28 allocations per test file.
 const SHARED_LAZY = {
+  customElements: () => makeCustomElements(), // fresh registry per env, built on first access
   localStorage: () => new Storage(),
   sessionStorage: () => new Storage(),
   matchMedia: () => makeMatchMedia(),
@@ -133,7 +134,8 @@ export function createWindow(document, { url = 'http://localhost/' } = {}) {
     name: '',
     closed: false,
     origin: new URL(url).origin,
-    customElements: makeCustomElements(),
+    // customElements is lazy (SHARED_LAZY) — env-independent + rarely used; building
+    // its two Maps eagerly per createWindow was wasted for the typical test.
     Image: function Image(w, h) { const img = document.createElement('img'); if (w != null) img.setAttribute('width', w); if (h != null) img.setAttribute('height', h); return img; },
     Audio: function Audio(src) { const a = document.createElement('audio'); if (src) a.setAttribute('src', src); return a; },
     getSelection: () => document.getSelection(),
