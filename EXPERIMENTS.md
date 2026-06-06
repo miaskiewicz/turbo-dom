@@ -166,6 +166,7 @@ Roughly ordered by expected value. Each must go through the full protocol.
 | v0.1.42 | (passed, untimed) | (passed, untimed) | single-listener slice skip |
 | v0.1.43 | (passed, untimed) | (passed, untimed) | tagName read once |
 | v0.1.44 | 70.5s | 106.0s | nodeType read once (NOTE: machine loaded this run — wall higher than v0.1.41) |
+| v0.1.44 (quiet machine) | **48.1s** ✓<50 | 92.1s | clean re-run — uidc under target; payroll wall dominated by vitest import/setup (not turbo-dom) |
 
 ## Ledger (append one line per experiment; newest at bottom)
 
