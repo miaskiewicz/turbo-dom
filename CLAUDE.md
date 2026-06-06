@@ -22,6 +22,18 @@ npm run conformance   # html5lib-tests gate
 
 Toolchain: Node ≥ 24, Rust stable via rustup (`source $HOME/.cargo/env` if cargo isn't on PATH).
 
+## Releasing (`vX.Y.Z`)
+
+Every release is a commit AND a matching lightweight git tag — the tag is not optional. Flow:
+
+1. Bump `"version"` in `package.json` to the new `X.Y.Z`.
+2. Commit all changes; subject line is `vX.Y.Z: <summary>` (matches existing history).
+3. `git tag vX.Y.Z` (lightweight, no `-a`/message — matches existing tags).
+4. `git push origin main && git push origin vX.Y.Z` — push BOTH the branch and the tag.
+
+Tags listed newest-first with `git tag --list --sort=-v:refname` (plain `git tag` sorts
+lexically and hides `v0.1.10+` below `v0.1.9`).
+
 ## Architecture
 
 - `src/core.rs` — the only place html5ever is touched. `parse_html_document`,
