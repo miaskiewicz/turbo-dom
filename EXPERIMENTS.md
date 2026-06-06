@@ -209,3 +209,4 @@ Roughly ordered by expected value. Each must go through the full protocol.
 - v0.1.50 — version-cache Element/ShadowRoot getElementsByTagName/ClassName subtree walks (closure-local, per collection) — SHIPPED (~2.7× reused-collection microbench; both suites green). Document versions were already cached; this extends to scoped collections.
 | v0.1.51 | 48.1s ✓<50 | 95.4s (loaded) | nextElementSibling/prev O(n²)→O(n) (~2×) |
 - v0.1.51 — nextElementSibling/previousElementSibling one-indexOf+scan (was nextSibling-per-step, each O(n) indexOf → O(n²)) — SHIPPED (~2× text-interspersed walk; both suites green). Algorithmic, no cache.
+- NOTE v0.1.51 — rewrite dropped dom.mjs to 99.88% line (return-null edges); aggregate gate still passed; fixed forward with sibling-edge test → dom.mjs 100% line restored. Lesson: new branches in a hot getter need their edge (null/empty) cases tested even when the gate is aggregate.
