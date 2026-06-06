@@ -207,3 +207,5 @@ Roughly ordered by expected value. Each must go through the full protocol.
 - v0.1.49 — share version-cached element-child array across children/childElementCount/first/last (was re-filter per access) — SHIPPED (~18× on count/first/last microbench; uidc 47.5s best, payroll 91.0s loaded; both green). Extends v0.1.48 pattern.
 | v0.1.50 | 48.9s ✓<50 | 95.3s (loaded) | version-cache Element/ShadowRoot getElementsBy* (~2.7× reused) |
 - v0.1.50 — version-cache Element/ShadowRoot getElementsByTagName/ClassName subtree walks (closure-local, per collection) — SHIPPED (~2.7× reused-collection microbench; both suites green). Document versions were already cached; this extends to scoped collections.
+| v0.1.51 | 48.1s ✓<50 | 95.4s (loaded) | nextElementSibling/prev O(n²)→O(n) (~2×) |
+- v0.1.51 — nextElementSibling/previousElementSibling one-indexOf+scan (was nextSibling-per-step, each O(n) indexOf → O(n²)) — SHIPPED (~2× text-interspersed walk; both suites green). Algorithmic, no cache.
