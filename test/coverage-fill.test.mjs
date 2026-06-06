@@ -223,6 +223,28 @@ test('window honest-stub surface: geometry factories + chrome no-ops are callabl
   w.removeEventListener('message', () => {}); w.terminate();
 });
 
+test('single listener adding another mid-dispatch: new one does NOT fire this round', () => {
+  const { document, window } = fresh();
+  const el = document.createElement('div');
+  const order = [];
+  const second = () => order.push('second');
+  el.addEventListener('ping', () => { order.push('first'); el.addEventListener('ping', second); });
+  el.dispatchEvent(new window.Event('ping'));     // snapshot: only 'first' fires this round
+  assert.deepEqual(order, ['first']);
+  el.dispatchEvent(new window.Event('ping'));     // now both registered → first then second
+  assert.deepEqual(order, ['first', 'first', 'second']);
+});
+
+test('single once listener fires exactly once and is removed', () => {
+  const { document, window } = fresh();
+  const el = document.createElement('div');
+  let n = 0;
+  el.addEventListener('ping', () => { n++; }, { once: true });
+  el.dispatchEvent(new window.Event('ping'));
+  el.dispatchEvent(new window.Event('ping'));
+  assert.equal(n, 1);
+});
+
 test('composedPath() on a never-dispatched event is [] (lazy _path)', () => {
   const { window } = fresh();
   const e = new window.Event('x');

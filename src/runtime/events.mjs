@@ -238,8 +238,13 @@ export class EventTarget {
         event.target = retarget(target, node);
         if (relatedTarget != null) event.relatedTarget = retarget(relatedTarget, node);
       }
-      // snapshot — listeners added during dispatch don't fire this round
-      for (const l of list.slice()) {
+      // snapshot — listeners added during dispatch don't fire this round. Skip the
+      // slice alloc for the single-listener case (common React-delegated one): a
+      // 1-element, length-captured iteration can't be disturbed by an add/remove in
+      // that one call. Multi-listener keeps the slice (concurrent-mutation guard).
+      const snap = list.length === 1 ? list : list.slice();
+      for (let k = 0, len = snap.length; k < len; k++) {
+        const l = snap[k];
         if (phase === PHASE_CAPTURING && !l.capture) continue;
         if (phase === PHASE_BUBBLING && l.capture) continue;
         if (l.once) {
