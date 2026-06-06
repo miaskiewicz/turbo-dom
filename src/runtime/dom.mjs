@@ -630,7 +630,15 @@ export class Element extends Node {
   get children() {
     if (this.__childrenList) return this.__childrenList;
     const self = this;
-    return (this.__childrenList = liveHTMLCollection(() => self.__children().filter((n) => n.nodeType === ELEMENT_NODE)));
+    // version-cache the element-filtered array (like cachedQSA): re-filter only when
+    // the DOM version changes, not on every children[i]/length access. Live —
+    // every mutation bumps Document.__version, invalidating the cache.
+    return (this.__childrenList = liveHTMLCollection(() => {
+      const d = self.ownerDocument, v = d ? (d.__version || 0) : 0;
+      if (self.__childrenArr !== undefined && self.__childrenArrV === v) return self.__childrenArr;
+      self.__childrenArrV = v;
+      return (self.__childrenArr = self.__children().filter((n) => n.nodeType === ELEMENT_NODE));
+    }));
   }
   get childElementCount() { return this.__children().filter((n) => n.nodeType === ELEMENT_NODE).length; }
   get firstElementChild() { return this.__children().find((n) => n.nodeType === ELEMENT_NODE) ?? null; }
