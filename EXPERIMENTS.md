@@ -89,6 +89,14 @@ microbench win AND a careful read that the non-target path is unchanged.
   the suites are the regression guard.
 - **Batch `Object.defineProperties` is SLOWER** than N× `defineProperty` here (~25%). Don't.
 - **Dead-code elimination wrecks microbenches** — always use an observable sink + print it.
+- **Result caching gates the matchers.** `querySelectorAll`/`querySelector`/`getElementsBy*`
+  results are cached per `(selector, Document.__version)` (`cachedQSA`/`cachedQS`/`__byTag`…).
+  The selector MATCHER (`simpleMatcher`/`matchComplex`/`matchCompound`/`matchAttr`) therefore
+  runs only ONCE per selector per version — on a cache MISS — not per query. RTL's repeated
+  queries against an unchanged tree are cache hits. So optimizing the matcher (backlog #1, #3,
+  #6) has near-zero real-suite impact; a cache-busting microbench might show a delta but it
+  won't translate. Don't spend the loop on matcher micro-opts — target NON-cached hot paths
+  (event dispatch listener lookup, getAttribute, inflation, construction, mutation).
 
 ## Candidate backlog (grounded in the code; pick the next untried one)
 
@@ -132,3 +140,6 @@ Roughly ordered by expected value. Each must go through the full protocol.
   installGlobals batch (-25%), getAttribute lowercase (V8 free), getElementById index
   (loses early-exit), window-proxy reorder (risky), Text/Comment shapes (already mono),
   classList memoize (not hot), collections (already memoized, liveness-risky).
+- DITCHED — simpleMatcher attr fast-path (#6): microbench flat (2ms==2ms) — cachedQSA
+  memoizes results per version, so the matcher runs once per (selector,version), not per
+  query. Matcher micro-opts (#1/#3/#6) don't move real suites. Lesson recorded above.
