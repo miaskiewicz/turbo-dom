@@ -145,3 +145,4 @@ Roughly ordered by expected value. Each must go through the full protocol.
   query. Matcher micro-opts (#1/#3/#6) don't move real suites. Lesson recorded above.
 - v0.1.41 — inline addEventListener option parsing — SHIPPED (+33% listener attach; suites 6188 + 9670 green). Non-headline path → README numbers unchanged.
 - DITCHED — move dispatch invoke-closure inside hasListener: microbench overlapped (3.08-3.24M vs 3.15-3.18M). V8 escape-analysis already elides the non-escaping closure. No win.
+- v0.1.42 — skip listener-snapshot slice for single-listener dispatch — SHIPPED (+13% single-listener dispatch; suites 6188 + 9670 green). Snapshot semantics regression-tested.
