@@ -203,3 +203,5 @@ Roughly ordered by expected value. Each must go through the full protocol.
 - AUDIT (no ship) — makeLocation/makeHistory: single URL parse in makeLocation (lazy), makeHistory reads location.href (no re-parse). No double-parse. createEnvironment path now well-optimized (~1.2M ops/s, +60% since v0.1.43); remaining per-env costs (closures, small arrays, the one needed URL parse) are at/below the measurement floor.
 | v0.1.48 | 48.0s ✓<50 | 87.0s | version-cache children filter (+58% children access) — payroll lowest |
 - v0.1.48 — version-cache children element-filter (was re-filtered per access) — SHIPPED (+58% children access; uidc 48.0s, payroll 87.0s lowest; both green). First tests-bucket win; live via Document.__version key.
+| v0.1.49 | 47.5s ✓<50 | 91.0s (loaded) | shared element-child version-cache (childElementCount/first/last ~18×) |
+- v0.1.49 — share version-cached element-child array across children/childElementCount/first/last (was re-filter per access) — SHIPPED (~18× on count/first/last microbench; uidc 47.5s best, payroll 91.0s loaded; both green). Extends v0.1.48 pattern.
