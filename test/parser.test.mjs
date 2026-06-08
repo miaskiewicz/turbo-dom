@@ -6,11 +6,17 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import {
   createEnvironment, setParser, setParserMode, getParser,
 } from '../src/runtime/index.mjs';
+
+// The wasm builds are optional artifacts (npm run build:wasm:pkg / :web). Skip the
+// wasm-backed subtests when they aren't present so a fresh clone / native-only CI
+// stays green; native + injection paths always run.
+const HAS_WASM = existsSync(fileURLToPath(new URL('../pkg/turbo_dom_parser.js', import.meta.url)));
+const HAS_WASM_WEB = existsSync(fileURLToPath(new URL('../pkg-web/turbo_dom_parser.js', import.meta.url)));
 
 const reset = () => { setParser(null); setParserMode(null); delete globalThis.__TURBO_DOM_PARSER__; delete globalThis.__TURBO_DOM_PARSER_MODE__; delete process.env.TURBO_DOM_PARSER; };
 
@@ -23,7 +29,7 @@ test('auto (default) resolves a working parser', () => {
   reset();
 });
 
-test("setParserMode('wasm') and ('native') both parse", () => {
+test("setParserMode('wasm') and ('native') both parse", { skip: HAS_WASM ? false : 'wasm pkg not built' }, () => {
   reset();
   setParserMode('wasm');
   let e = createEnvironment('<div id=w>wasm</div>');
@@ -34,7 +40,7 @@ test("setParserMode('wasm') and ('native') both parse", () => {
   reset();
 });
 
-test('createEnvironment({ parser }) option selects the mode', () => {
+test('createEnvironment({ parser }) option selects the mode', { skip: HAS_WASM ? false : 'wasm pkg not built' }, () => {
   reset();
   const e = createEnvironment('<div id=o>opt</div>', { parser: 'wasm' });
   assert.equal(e.document.querySelector('#o').textContent, 'opt');
@@ -73,7 +79,7 @@ test('globalThis.__TURBO_DOM_PARSER__ is honored', () => {
   reset();
 });
 
-test('globalThis.__TURBO_DOM_PARSER_MODE__ and env TURBO_DOM_PARSER select wasm', () => {
+test('globalThis.__TURBO_DOM_PARSER_MODE__ and env TURBO_DOM_PARSER select wasm', { skip: HAS_WASM ? false : 'wasm pkg not built' }, () => {
   reset();
   globalThis.__TURBO_DOM_PARSER_MODE__ = 'wasm';
   let e = createEnvironment('<div id=gm>gmode</div>');
@@ -85,7 +91,7 @@ test('globalThis.__TURBO_DOM_PARSER_MODE__ and env TURBO_DOM_PARSER select wasm'
   reset();
 });
 
-test('node-free recipe: pkg-web initSync → setParser (no Node builtins in the glue)', async () => {
+test('node-free recipe: pkg-web initSync → setParser (no Node builtins in the glue)', { skip: HAS_WASM_WEB ? false : 'pkg-web not built' }, async () => {
   reset();
   // The embedder supplies wasm bytes (here via fs, in a non-Node host via its own
   // loader) and instantiates synchronously, then injects the binding.

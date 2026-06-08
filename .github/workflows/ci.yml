@@ -74,12 +74,18 @@ jobs:
           node-version: 22
 
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
       - uses: Swatinem/rust-cache@v2
+      - uses: jetli/wasm-pack-action@v0.4.0
 
       - run: npm install
 
       - name: Build native addon
         run: npx napi build --platform --release
+
+      - name: Build WASM parser (nodejs + web targets — exercised by parser.test.mjs)
+        run: npm run build:wasm:pkg && npm run build:wasm:web
 
       - name: Rust core tests
         run: cargo test --lib
@@ -125,6 +131,12 @@ jobs:
         with:
           node-version: 22
           registry-url: https://registry.npmjs.org
+      # prepublishOnly rebuilds the native addon AND both WASM targets (pkg/ + pkg-web/),
+      # which ship in the package — so the publish runner needs the Rust + wasm toolchain.
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: jetli/wasm-pack-action@v0.4.0
       - run: npm install --ignore-scripts
 
       - name: Download all prebuilt binaries
