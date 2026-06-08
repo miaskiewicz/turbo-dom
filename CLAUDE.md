@@ -65,6 +65,13 @@ lexically and hides `v0.1.10+` below `v0.1.9`).
   `getParser().parseBuffer(…)` (memoized, ~free). Two wasm builds ship: `pkg/` (nodejs
   target, used by the auto-fallback) and `pkg-web/` (web target, node-free `initSync` — the
   `./parser-wasm` export for embedders). Don't re-add a hardcoded `require('../../index.js')`.
+- **SVG props are on a real `SVGElement extends Element`** (`svg.mjs` wrappers): svg-namespace
+  elements expose `className`→`SVGAnimatedString`, geometry (`width`/`x`/`r`/… in
+  `SVG_LENGTH_ATTRS`)→`SVGAnimatedLength` (`.baseVal.value` number; `valueOf` so the wrapper
+  coerces numerically), `viewBox`→`SVGAnimatedRect`, plus honest `getBBox`/`getCTM` stubs.
+  Wrappers are built lazily on access (live over the attribute, no snapshot). `newElement()`
+  picks the subclass by ns at every construction site (inflate/innerHTML/cloneNode/createElementNS)
+  — HTML elements stay plain `Element` (no SVG getters, no regression, no hot-path cost).
 - **CSSOM is minimal + test-time only** (`cssom.mjs`): `<style>.sheet` (lazy `__sheet`, only
   emotion-touched styles allocate one) + live `document.styleSheets` + `insertRule`/`deleteRule`.
   `insertRule` bumps `Document.__version` (via owner `__touch()`), and `cascade.mjs` reads

@@ -15,6 +15,7 @@ import { liveNodeList, liveHTMLCollection } from './collections.mjs';
 import { matchesSelector, querySelector as qsel, querySelectorAll as qselAll } from './selectors.mjs';
 import { serializeInner, serializeOuter } from './html-serialize.mjs';
 import { CSSStyleSheet, styleSheetList } from './cssom.mjs';
+import { SVGAnimatedString, SVGAnimatedLength, SVGAnimatedRect, SVG_LENGTH_ATTRS } from './svg.mjs';
 
 // Per-node query-result cache keyed by (selector, document version). querySelectorAll
 // returns a STATIC list per spec, so caching is safe until the next mutation bumps
@@ -724,7 +725,7 @@ export class Element extends Node {
   }
 
   cloneNode(deep = false) {
-    const el = new Element(this.ownerDocument, this.localName, this.__ns);
+    const el = newElement(this.ownerDocument, this.localName, this.__ns);
     el.__attrs = (this.__attrs ?? (this.__attrs = this.__buildAttrs())).map((a) => ({ ...a }));
     if (deep) {
       // build the cloned child array directly — the clone is detached, so per-child
@@ -932,6 +933,46 @@ export class Element extends Node {
       }
     }
   }
+}
+
+
+// ------------------------------------------------------------- SVGElement ----
+// SVG elements expose their geometry/identity attributes as SVGAnimated{String,Length,
+// Rect} objects (el.className.baseVal, rect.width.baseVal.value, svg.viewBox.baseVal),
+// not the plain strings/numbers HTML uses. A real subclass keeps these off every HTML
+// element (zero regression, zero hot-path cost — the wrappers are built on access only).
+// Instantiated by newElement() whenever the namespace is "svg".
+export class SVGElement extends Element {
+  // className is a readonly SVGAnimatedString in the spec; we still allow assigning a
+  // string (common habit) by writing the class attribute, but reads return the wrapper.
+  get className() { return new SVGAnimatedString(this, 'class'); }
+  set className(v) { this.setAttribute('class', String(v)); }
+
+  get viewBox() { return new SVGAnimatedRect(this, 'viewBox'); }
+
+  // Honest geometry stubs (consistent with stubs.mjs — no layout engine, so zeros).
+  getBBox() { return { x: 0, y: 0, width: 0, height: 0 }; }
+  getCTM() { return null; }
+  getScreenCTM() { return null; }
+  get ownerSVGElement() {
+    let p = this.parentNode;
+    while (p && p.nodeType === ELEMENT_NODE) { if (p.localName === 'svg') return p; p = p.parentNode; }
+    return null;
+  }
+}
+// Length-valued geometry attributes → SVGAnimatedLength (built lazily per read).
+for (const attr of SVG_LENGTH_ATTRS) {
+  Object.defineProperty(SVGElement.prototype, attr, {
+    configurable: true,
+    get() { return new SVGAnimatedLength(this, attr); },
+    set(v) { this.setAttribute(attr, v != null && v.baseVal ? String(v.baseVal.value) : String(v)); },
+  });
+}
+
+// Element factory: SVG namespace → SVGElement, everything else → Element. One place so
+// every construction site (buffer inflation, innerHTML, cloneNode, createElementNS) agrees.
+function newElement(doc, tag, ns) {
+  return ns === 'svg' ? new SVGElement(doc, tag, ns) : new Element(doc, tag, ns);
 }
 
 
@@ -1473,7 +1514,7 @@ export class Document extends Node {
     switch (nt) {
       case ELEMENT_NODE: {
         const tag = buf.tagName(idx); // read once (was read twice — ctor + template check)
-        node = new Element(this, tag, buf.ns(idx));
+        node = newElement(this, tag, buf.ns(idx));
         node.__idx = idx;
         node.__attrIdx = idx; // attrs lazy (constructor left __attrs undefined)
         // template content fragment: a child node typed 11 named "content"
@@ -1505,7 +1546,7 @@ export class Document extends Node {
     let node;
     switch (raw.nodeType) {
       case ELEMENT_NODE:
-        node = new Element(this, raw.name, raw.namespace || '');
+        node = newElement(this, raw.name, raw.namespace || '');
         node.__attrs = raw.attrs.map((a) => ({ name: a.name, value: a.value, prefix: a.prefix || '' }));
         if (raw.name === 'template') {
           const contentRaw = raw.children.find((c) => c.nodeType === DOCUMENT_FRAGMENT_NODE && c.name === 'content');
@@ -1567,7 +1608,7 @@ export class Document extends Node {
   createElementNS(ns, qualified) {
     const short = ns === SVG_NS ? 'svg' : ns === MATHML_NS ? 'math' : '';
     const local = qualified.includes(':') ? qualified.split(':')[1] : qualified;
-    return new Element(this, local, short);
+    return newElement(this, local, short);
   }
   createTextNode(data) { return new Text(this, String(data)); }
   createComment(data) { return new Comment(this, String(data)); }

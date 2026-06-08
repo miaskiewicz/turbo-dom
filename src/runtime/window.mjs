@@ -13,7 +13,7 @@ import {
 import { makeGetComputedStyle } from './cascade.mjs';
 import { CSSStyleSheet } from './cssom.mjs';
 import {
-  Node, Element, Text, Comment, Document, DocumentFragment, DocumentType, Event, CustomEvent,
+  Node, Element, SVGElement, Text, Comment, Document, DocumentFragment, DocumentType, Event, CustomEvent,
   MutationObserver, DOMParser, XMLSerializer, ShadowRoot,
 } from './dom.mjs';
 import {
@@ -282,7 +282,7 @@ const STATIC_BASE = {
   DataTransfer,
   // every element is a plain Element → `el instanceof HTMLElement` is true.
   // Tag-specific interfaces match by localName via Symbol.hasInstance.
-  HTMLElement: Element, SVGElement: Element,
+  HTMLElement: Element, SVGElement,
   // SVG interface globals. Libs (and test setup mocks) do
   // `Object.defineProperty(SVGSVGElement.prototype, 'viewBox', …)` and
   // `el instanceof SVGSVGElement`; an undefined global is a hard ReferenceError.
