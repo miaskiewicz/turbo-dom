@@ -154,6 +154,18 @@ Latest (darwin-arm64, Node 24, `npm run bench:all`), vs jsdom / happy-dom:
   `matchMedia` (`stubs.mjs`) parses min/max-width/height + orientation and evaluates against the
   window viewport (feature-less queries stay `false`); `ResizeObserver`/`IntersectionObserver`
   fire their callback **once**, async, with one initial entry — never on a loop.
+- **Injectable clock + virtual-time-drivable scheduler** (`window.mjs`, since v0.2.4). Honest geometry
+  isn't enough: time-gated code (MUI Fade/Grow, react-transition-group: `progress=(now-start)/dur`)
+  loops forever if the clock never advances. So (1) `setClock(fn)` (exported from runtime) installs a
+  clock that `window.performance.now()` AND the **rAF callback timestamp** both read through `now()`;
+  default null → real host clock (no change for vitest/jest). (2) `requestAnimationFrame` schedules via
+  the **live `globalThis.setTimeout`** (not the module-captured host) with a **16ms** frame delay, so a
+  render tier that owns `setTimeout` (a virtual-clock pump) catches every reschedule and advances time
+  per frame. (3) `MessageChannel`/`MessagePort` are a **real built-in polyfill** (not a host
+  passthrough) whose delivery also routes through live `globalThis.setTimeout` (delay 0 = a yield) — so
+  React 19's scheduler (which posts its work loop through a MessagePort) runs in the owned/virtual
+  queue, and a `MessageChannel` exists in the bare V8 isolate (host has none). `Date.now` is the
+  embedder's to override — turbo-dom never shadows it. Pairs with turbo-crawl's virtual-clock drain.
 - **`<style>.textContent` reflects rules injected via `sheet.insertRule()`** (`dom.mjs` textContent
   getter, gated on `this.__sheet` — a single predicted-false read, only ever truthy on emotion-touched
   `<style>`s). emotion "speedy" mode injects via `insertRule` without writing node text; browsers/jsdom

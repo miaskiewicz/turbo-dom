@@ -18,6 +18,10 @@ export * from './dom.mjs';
 // or force 'wasm' | 'native' | 'auto'. See parser.mjs.
 export { setParser, setParserMode, getParser } from './parser.mjs';
 
+// Clock seam (public API): install a virtual clock so time-gated rAF loops (MUI
+// transitions) terminate under a synchronous timer-drain render tier. See window.mjs.
+export { setClock } from './window.mjs';
+
 // Parse cache: the SoA buffer is READ-ONLY (every mutation goes to a Document's
 // own __kids/__attrs/__cache overlay, never the buffer), so the same buffer can
 // back many Documents. Test suites call setup with the SAME html per file

@@ -81,6 +81,38 @@ function tagClass(matcher) {
 const hostSetTimeout = globalThis.setTimeout;
 const hostClearTimeout = globalThis.clearTimeout;
 
+// MessageChannel/MessagePort — React 19's scheduler posts its work loop through a
+// MessagePort hop (falling back to setTimeout only if absent). We ship a real,
+// self-contained polyfill whose delivery is scheduled via the LIVE globalThis.
+// setTimeout (read at call time, like rAF), so a render tier that owns setTimeout
+// (a virtual-clock pump) catches every scheduler hop → React runs in virtual time,
+// bounded by the drain/deadline — and it exists in the bare V8 isolate, which has
+// no host MessageChannel. See MESSAGECHANNEL-VIRTUALIZE.md + the clock note in
+// CLAUDE.md. Delivery uses delay 0 (a yield, not elapsed time — animations get
+// their time from rAF's 16ms frame).
+class MessagePort extends EventTarget {
+  constructor() { super(); this.onmessage = null; this.onmessageerror = null; this.__other = null; }
+  start() {}
+  close() { this.__other = null; }
+  postMessage(data) {
+    const target = this.__other;
+    if (!target) return;
+    (globalThis.setTimeout || hostSetTimeout)(() => {
+      const ev = new Event('message'); ev.data = data;
+      if (typeof target.onmessage === 'function') target.onmessage(ev);
+      target.dispatchEvent(ev);
+    }, 0);
+  }
+}
+class MessageChannel {
+  constructor() {
+    this.port1 = new MessagePort();
+    this.port2 = new MessagePort();
+    this.port1.__other = this.port2;
+    this.port2.__other = this.port1;
+  }
+}
+
 // Env-independent lazy global factories — built ONCE at module load, shared by
 // every window (none capture document/url/windowProxy). Materialization still
 // self-replaces onto the per-env base, so each env gets its own instance; only
@@ -92,8 +124,13 @@ const SHARED_LAZY = {
   getComputedStyle: () => makeGetComputedStyle(),
   IntersectionObserver: () => IntersectionObserver,
   ResizeObserver: () => ResizeObserver,
-  requestAnimationFrame: () => (cb) => hostSetTimeout(() => cb(performanceNow()), 0),
-  cancelAnimationFrame: () => (id) => hostClearTimeout(id),
+  // rAF: schedule via the LIVE setTimeout (so a render tier that swaps in a timer
+  // queue catches the reschedule) with a non-zero frame delay, and stamp the
+  // callback with the injectable clock now() — a virtual clock that ADVANCES per
+  // frame lets time-gated transitions (MUI Fade/Grow, react-transition-group:
+  // progress = (now-start)/duration) reach progress>=1 and stop rescheduling.
+  requestAnimationFrame: () => (cb) => (globalThis.setTimeout || hostSetTimeout)(() => cb(now()), 16),
+  cancelAnimationFrame: () => (id) => (globalThis.clearTimeout || hostClearTimeout)(id),
   navigator: () => ({
     userAgent: 'Mozilla/5.0 (turbo-dom) AppleWebKit/537.36',
     platform: 'turbo-dom', vendor: '', language: 'en-US', languages: ['en-US'],
@@ -103,7 +140,7 @@ const SHARED_LAZY = {
     permissions: { query: async () => ({ state: 'prompt', addEventListener() {}, removeEventListener() {} }) },
     sendBeacon: () => true, vibrate: () => false,
   }),
-  performance: () => ({ now: performanceNow, timeOrigin: 0, mark() {}, measure() {}, getEntriesByName: () => [], getEntriesByType: () => [], clearMarks() {}, clearMeasures() {} }),
+  performance: () => ({ now, timeOrigin: 0, mark() {}, measure() {}, getEntriesByName: () => [], getEntriesByType: () => [], clearMarks() {}, clearMeasures() {} }),
   Storage: () => Storage,
   devicePixelRatio: () => 1,
   innerWidth: () => 1024,
@@ -210,6 +247,17 @@ const hostPerformance = globalThis.performance;
 const performanceNow = typeof hostPerformance?.now === 'function'
   ? () => hostPerformance.now()
   : () => Date.now();
+
+// Injectable clock. `window.performance.now()` and the rAF callback timestamp both
+// read through now(), so a single setClock() drives both. Default (null) → real
+// host clock, no behavior change for vitest/jest. The render tier installs a VIRTUAL
+// clock that advances per drained frame so time-gated rAF loops terminate (see the
+// synthetic-geometry/clock note in CLAUDE.md). Resolves performanceNow lazily, so it
+// stays defined regardless of where setClock is called. (Date.now is the embedder's
+// to override — turbo-dom never shadows it.)
+let __clock = null;
+function now() { return __clock ? __clock() : performanceNow(); }
+export function setClock(fn) { __clock = typeof fn === 'function' ? fn : null; }
 
 // base64 without depending on the Node `Buffer` global — prefer the platform
 // btoa/atob, then Buffer (Node), then a pure-JS fallback so a bare-isolate page
@@ -386,7 +434,7 @@ const STATIC_BASE = {
   crypto: globalThis.crypto, Crypto: globalThis.Crypto, SubtleCrypto: globalThis.SubtleCrypto,
   btoa: (s) => turboBtoa(String(s)),
   atob: (s) => turboAtob(String(s)),
-  MessageChannel: globalThis.MessageChannel, MessagePort: globalThis.MessagePort,
+  MessageChannel, MessagePort,
   BroadcastChannel: globalThis.BroadcastChannel, EventSource: globalThis.EventSource,
   reportError: (e) => { void e; },
   requestIdleCallback: (cb) => hostSetTimeout(() => cb({ didTimeout: false, timeRemaining: () => 50 }), 0),

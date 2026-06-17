@@ -3,7 +3,7 @@
 // caught. Behavior is asserted to spec, never to whatever the impl happens to do.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createEnvironment } from '../src/runtime/index.mjs';
+import { createEnvironment, setClock } from '../src/runtime/index.mjs';
 
 const fresh = (html) => createEnvironment(html ?? '<!doctype html><html><head></head><body></body></html>');
 
@@ -2660,4 +2660,139 @@ test('MutationObserver childList-only ignores attribute mutations', async () => 
   await Promise.resolve();
   mo.disconnect();
   assert.ok(recs.every((x) => x.type === 'childList'));
+});
+
+// ====================================================================
+// ==== batch: injectable clock (virtual time for rAF transition loops)
+// ====================================================================
+
+test('setClock: virtual clock drives performance.now + the rAF timestamp', async () => {
+  try {
+    const { window } = fresh();
+    // default → real host clock (a number, not the virtual value)
+    assert.equal(typeof window.performance.now(), 'number');
+    // install a virtual clock
+    let vnow = 0;
+    setClock(() => vnow);
+    assert.equal(window.performance.now(), 0);
+    vnow = 1234;
+    assert.equal(window.performance.now(), 1234);
+    // rAF stamps its callback with now() — a clock that advances lets MUI-style
+    // progress=(now-start)/duration reach >=1 and stop rescheduling
+    vnow = 5000;
+    const ts = await new Promise((res) => window.requestAnimationFrame((t) => res(t)));
+    assert.equal(ts, 5000);
+    // non-function arg resets to the host clock
+    setClock('not a fn');
+    const hostNow = window.performance.now();
+    assert.equal(typeof hostNow, 'number');
+    assert.notEqual(hostNow, 5000);
+  } finally {
+    setClock(null); // never leak module state into other tests
+  }
+});
+
+test('rAF schedules via the LIVE globalThis.setTimeout (render-tier queue catches reschedules)', () => {
+  const { window } = fresh();
+  const realST = globalThis.setTimeout;
+  const queue = [];
+  globalThis.setTimeout = (cb) => { queue.push(cb); return queue.length; };
+  try {
+    let fired = false;
+    const id = window.requestAnimationFrame(() => { fired = true; });
+    assert.equal(id, 1);            // returned the queue id, not a host timer
+    assert.equal(queue.length, 1);  // enqueued, not run
+    assert.equal(fired, false);
+    queue[0]();                     // host "drains" the queue
+    assert.equal(fired, true);
+  } finally {
+    globalThis.setTimeout = realST;
+  }
+});
+
+test('rAF/cAF fall back to captured host timers when globalThis timers are absent', () => {
+  const { window } = fresh();
+  const realST = globalThis.setTimeout, realCT = globalThis.clearTimeout;
+  try {
+    globalThis.setTimeout = undefined;   // forces the `|| hostSetTimeout` fallback
+    const id = window.requestAnimationFrame(() => {});
+    assert.ok(id != null);               // host timer id returned
+    globalThis.clearTimeout = undefined; // forces the `|| hostClearTimeout` fallback
+    window.cancelAnimationFrame(id);     // no throw
+  } finally {
+    globalThis.setTimeout = realST;
+    globalThis.clearTimeout = realCT;
+  }
+});
+
+test('cancelAnimationFrame clears via the live clearTimeout', () => {
+  const { window } = fresh();
+  const realCT = globalThis.clearTimeout;
+  let cleared;
+  globalThis.clearTimeout = (id) => { cleared = id; };
+  try {
+    const id = window.requestAnimationFrame(() => {});
+    window.cancelAnimationFrame(id);
+    assert.equal(cleared, id);
+  } finally {
+    globalThis.clearTimeout = realCT;
+  }
+});
+
+// ====================================================================
+// ==== batch: MessageChannel/MessagePort (React 19 scheduler) =========
+// ====================================================================
+
+test('MessageChannel links two ports; postMessage delivers via onmessage + addEventListener', async () => {
+  const { window } = fresh();
+  const mc = new window.MessageChannel();
+  assert.ok(mc.port1 && mc.port2);
+  mc.port1.start(); mc.port2.start(); // no-op, must not throw
+  // onmessage handler
+  const viaHandler = await new Promise((res) => {
+    mc.port2.onmessage = (ev) => res(ev.data);
+    mc.port1.postMessage('ping');
+  });
+  assert.equal(viaHandler, 'ping');
+  // addEventListener('message') path (the dispatchEvent hop)
+  const viaListener = await new Promise((res) => {
+    mc.port1.addEventListener('message', (ev) => res(ev.data));
+    mc.port2.postMessage({ n: 42 });
+  });
+  assert.deepEqual(viaListener, { n: 42 });
+});
+
+test('MessagePort delivery routes through the LIVE globalThis.setTimeout', () => {
+  const { window } = fresh();
+  const realST = globalThis.setTimeout;
+  const queue = [];
+  globalThis.setTimeout = (cb) => { queue.push(cb); return queue.length; };
+  try {
+    const mc = new window.MessageChannel();
+    let got;
+    mc.port2.onmessage = (ev) => { got = ev.data; };
+    mc.port1.postMessage('hi');
+    assert.equal(queue.length, 1);   // enqueued, not delivered
+    assert.equal(got, undefined);
+    queue[0]();                      // owned pump drains it
+    assert.equal(got, 'hi');
+  } finally {
+    globalThis.setTimeout = realST;
+  }
+});
+
+test('MessagePort: closed/peerless port is a no-op; setTimeout fallback to host', () => {
+  const { window } = fresh();
+  const mc = new window.MessageChannel();
+  mc.port1.close();                       // drop the peer
+  mc.port1.postMessage('x');              // no peer → no-op, no throw
+  // fallback branch: globalThis.setTimeout absent → hostSetTimeout
+  const realST = globalThis.setTimeout;
+  try {
+    globalThis.setTimeout = undefined;
+    const mc2 = new window.MessageChannel();
+    mc2.port1.postMessage('y');           // uses hostSetTimeout, no throw
+  } finally {
+    globalThis.setTimeout = realST;
+  }
 });

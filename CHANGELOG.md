@@ -5,6 +5,30 @@ environment for vitest/jest. Format based on [Keep a Changelog](https://keepacha
 Early versions were released as lightweight tags / version-stamped commits (no per-release notes
 at the time); this file reconstructs them from history.
 
+## [0.2.4] — virtual-time scheduler (React/MUI hydration)
+- `setClock(fn)` (exported from `@miaskiewicz/turbo-dom/runtime`): injectable clock that both
+  `performance.now()` and the `requestAnimationFrame` callback timestamp read through; default =
+  real host clock. Lets a render tier drive virtual time so time-gated MUI/transition rAF loops
+  (`progress=(now-start)/duration`) reach completion instead of spinning.
+- `requestAnimationFrame` schedules via the **live** `globalThis.setTimeout` (16ms frame), so a
+  tier owning `setTimeout` catches every reschedule; `cancelAnimationFrame` uses live `clearTimeout`.
+- `MessageChannel`/`MessagePort` are now a real built-in polyfill (was a host passthrough) routing
+  delivery through live `globalThis.setTimeout` — React 19's scheduler runs in the owned/virtual
+  queue and a `MessageChannel` exists in the bare V8 isolate.
+
+## [0.2.3] — synthetic geometry
+- `getBoundingClientRect`/`offset*`/`client*`/`scroll*` **size** is now a cheap synthetic box model
+  (non-zero, stable per DOM version, children fit parents; positions stay 0) — breaks React/MUI's
+  measure→setState→re-measure hydration loop. `matchMedia` parses width/height/orientation against
+  the viewport; `ResizeObserver`/`IntersectionObserver` fire once with an initial entry.
+
+## [0.2.2] — React 19 attribute nodes
+- `Element.removeAttributeNode`/`setAttributeNode` (+ NS aliases) — fixes the React 19
+  `releaseSingletonInstance` crash during hydration.
+
+## [0.2.1] — bare-isolate runtime load
+- Drop the static `node:perf_hooks` import; `Buffer`-free base64 — runtime loads in a bare V8.
+
 ## [0.2.0] — CSSOM fidelity
 - `rgb()` color canonicalization, light-DOM style inheritance, `<style>` `textContent` reflects
   `insertRule`.
