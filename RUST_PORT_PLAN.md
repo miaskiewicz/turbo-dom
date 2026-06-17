@@ -296,3 +296,35 @@ Compare against `src/runtime/index.mjs` (current JS) doing the identical sequenc
 - Written verdict appended here: **CONTINUE** (within ~10% or faster → proceed to Phase 2) or **PIVOT**
   (boundary tax dominates → reconsider Option B-eager / keep JS front-end for the JS consumer, Rust API for
   the Rust consumer only).
+
+### Phase-1 verdict (measured 2026-06-17) — **PIVOT**
+
+Spike: `src/spike.rs` (feature `wasm-runtime`) + `bench/spike.mjs`, 300-card RTL-style fixture, chatty
+workload (qsa-once → per-node getAttribute×2 + tagName + parent-walk + listener-less dispatch walk),
+best-of-6, observable sink. Results (darwin-arm64, Node 24):
+
+| variant | crossings/node | ops/s | vs JS |
+|---|---:|---:|---:|
+| **JS runtime** (DOM is JS objects, zero boundary) | 0 | 39,869 | **1.00×** |
+| WASM prefetch-record + cache (Option A, best case; 1 crossing/node warm) | 1.0 | 22,471 | 0.56× |
+| WASM per-call ids (handles + interned ids) | 9.0 | 13,471 | 0.34× |
+| WASM naive (per-call String marshal) | 9.0 | 5,549 | 0.14× |
+
+**Finding:** even at the theoretical floor — whole node record prefetched in ONE crossing, cached on the
+wrapper, all reads served from cache, only the single dispatch walk crossing remaining — a WASM-backed DOM
+**accessed from JS is ~1.8× slower** than today's pure-JS runtime, and the naive shape is ~7× slower. The
+JS↔WASM crossing is a hard floor that zero-crossing in-process JS access always beats. This confirms
+`turbo-dom-spec.md` §3 ("WASM is wrong for the runtime") empirically.
+
+**The pivot (architecture of record going forward):**
+- **JS consumer (vitest/React/RTL) → KEEP the existing JS runtime (`src/runtime/*.mjs`) unchanged.** It is
+  already optimal and has zero boundary. A WASM port is a 1.8–7× regression for this path. Do not port it.
+- **Rust consumer (e.g. turbo-crawl in Rust) → build a pure-Rust runtime with a native Rust API.** That path
+  has NO boundary — `el.children`/`getAttribute`/`dispatch` are in-process Rust calls, faster than V8. Every
+  PERF_HISTORY PORTS technique applies and runs native. This is the real, unambiguous win.
+- Shared `core.rs` parser stays as-is (already Rust, already ALREADY-RUST-tagged wins).
+
+So it is a **dual-runtime** (one Rust-native, one JS), NOT a single Rust core behind a WASM front-end for
+JS. Phases 2–4 below retarget accordingly: build the Rust-native runtime + its Rust API and a Rust test
+gauntlet; the JS runtime is untouched. The "JS loads WASM for the DOM" idea is retired by the data — kept
+only as a fallback for a JS environment that has *no* JS runtime option (not our case).

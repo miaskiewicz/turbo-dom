@@ -6,6 +6,10 @@
 
 pub mod core;
 
+// Phase-1 boundary spike (Rust DOM runtime exported to JS via wasm-bindgen).
+#[cfg(feature = "wasm-runtime")]
+pub mod spike;
+
 // ---------------------------------------------------------------------------
 // napi-rs front-end (native addon)
 // ---------------------------------------------------------------------------

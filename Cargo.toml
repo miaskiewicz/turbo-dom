@@ -29,6 +29,8 @@ napi-build = { version = "2", optional = true }
 default = ["napi-bind"]
 napi-bind = ["dep:napi", "dep:napi-derive", "dep:napi-build"]
 wasm-bind = ["dep:wasm-bindgen", "dep:serde", "dep:serde-wasm-bindgen"]
+# Phase-1 boundary spike: Rust DOM runtime over the SoA, exported to JS via wasm-bindgen.
+wasm-runtime = ["dep:wasm-bindgen"]
 
 [profile.release]
 lto = true
