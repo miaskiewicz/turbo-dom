@@ -7,10 +7,15 @@
 //!   * `query` — selector matching + version-cached querySelectorAll/getElementBy*.
 //!   * `color` — CSS color canonicalization (rgb()/rgba()), pure functions.
 
+pub mod canvas;
 pub mod cascade;
 pub mod color;
 pub mod cssom;
+pub mod custom_elements;
 pub mod events;
+pub mod file;
+pub mod location;
+pub mod mutations;
 pub mod node_ref;
 pub mod query;
 pub mod serialize;
