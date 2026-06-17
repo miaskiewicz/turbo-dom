@@ -75,7 +75,7 @@
     "build:wasm:pkg": "wasm-pack build --target nodejs --out-dir pkg --no-default-features --features wasm-bind",
     "build:wasm:web": "wasm-pack build --target web --out-dir pkg-web --no-default-features --features wasm-bind",
     "test": "node --test 'test/*.mjs'",
-    "test:cov": "node --test --experimental-test-coverage --test-coverage-include='src/runtime/**' --test-coverage-lines=99 --test-coverage-functions=92 --test-coverage-branches=88 'test/*.mjs'",
+    "test:cov": "node --test --experimental-test-coverage --test-coverage-include='src/runtime/**' --test-coverage-lines=99 --test-coverage-functions=95 --test-coverage-branches=95 'test/*.mjs'",
     "test:rust": "cargo test --lib",
     "test:all": "npm run build && npm run test:rust && npm test",
     "prepare": "git config core.hooksPath .githooks || true",
