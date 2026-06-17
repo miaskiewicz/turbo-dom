@@ -19,6 +19,8 @@ pub mod svg;
 pub mod tree;
 
 #[cfg(test)]
+mod bench;
+#[cfg(test)]
 mod gauntlet;
 
 pub use events::{Dom, Event};

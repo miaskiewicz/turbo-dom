@@ -318,11 +318,22 @@ fn utf8_len(b: u8) -> usize {
 }
 
 #[derive(Clone)]
-struct Rule {
+pub(crate) struct Rule {
     selector: String,
     decls: HashMap<String, String>,
     spec: u32,
     order: u32,
+}
+
+/// Version-keyed cascade cache held on the `Tree` (mirrors the JS `__computedStyle`
+/// memo keyed on `Document.__version`). `build_index` runs once per version, and
+/// each element's resolved map is memoized — without this, `getComputedStyle`
+/// re-parses every `<style>` per call AND per inheritance-recursion ancestor.
+#[derive(Default)]
+pub(crate) struct CssCache {
+    pub version: u64,
+    pub rules: Option<std::rc::Rc<Vec<Rule>>>,
+    pub computed: HashMap<Handle, std::rc::Rc<HashMap<String, String>>>,
 }
 
 /// Brace-depth scan: emit only depth-1 rules whose selector isn't an at-rule;
@@ -544,13 +555,30 @@ pub fn computed_style(tree: &Tree, h: Handle) -> HashMap<String, String> {
         return map;
     }
 
+    // --- version-keyed memo: return a cached result, and build the rule index
+    // at most once per version (not per call / per inheritance-recursion hop). ---
+    let version = tree.version;
+    let light_rules: std::rc::Rc<Vec<Rule>> = {
+        let mut c = tree.css_cache.borrow_mut();
+        if c.version != version {
+            c.version = version;
+            c.rules = None;
+            c.computed.clear();
+        }
+        if let Some(cached) = c.computed.get(&h) {
+            return (**cached).clone();
+        }
+        c.rules
+            .get_or_insert_with(|| std::rc::Rc::new(build_index(tree)))
+            .clone()
+    };
+
     let mut matched = Vec::new();
 
     // Document <style> rules apply to LIGHT-DOM elements only (encapsulation).
     let in_shadow = tree.shadow_root_of(h);
     if in_shadow.is_none() {
-        let rules = build_index(tree);
-        collect_matched(tree, h, &rules, &mut matched);
+        collect_matched(tree, h, &light_rules, &mut matched);
     } else if let Some(sr) = in_shadow {
         // shadow-internal element: normal selectors from the shadow's own <style>.
         for r in shadow_rules(tree, sr) {
@@ -610,7 +638,10 @@ pub fn computed_style(tree: &Tree, h: Handle) -> HashMap<String, String> {
         }
     }
 
-    map
+    // memoize for this (handle, version) — inheritance recursion + repeat calls hit this.
+    let result = std::rc::Rc::new(map);
+    tree.css_cache.borrow_mut().computed.insert(h, result.clone());
+    (*result).clone()
 }
 
 /// Resolve one property from a computed-style map — `""` for absent (honest).

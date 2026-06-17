@@ -43,6 +43,8 @@ pub struct Tree {
     pub version: u64,
     /// version-keyed query result cache (mirrors JS cachedQSA / Document.__version).
     pub(crate) qcache: RefCell<QueryCache>,
+    /// version-keyed computed-style cache (mirrors JS `__computedStyle`).
+    pub(crate) css_cache: RefCell<crate::rtdom::cascade::CssCache>,
 }
 
 #[derive(Default)]
@@ -67,6 +69,7 @@ impl Tree {
             host_of_shadow_root: HashMap::new(),
             version: 0,
             qcache: RefCell::new(QueryCache::default()),
+            css_cache: RefCell::new(Default::default()),
         }
     }
 
