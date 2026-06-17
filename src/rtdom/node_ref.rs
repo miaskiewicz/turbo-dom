@@ -308,4 +308,115 @@ mod tests {
             Some(card.handle())
         );
     }
+
+    #[test]
+    fn reads_and_handle_tree_accessors() {
+        let tree = Tree::parse(HTML);
+        let card = tree.query("#c1").expect("card by id");
+
+        // tree() / handle() accessors.
+        assert_eq!(card.tree().node_type(card.handle()), ELEMENT_NODE);
+
+        // local_name (lowercase) vs tag_name (uppercase HTML).
+        assert_eq!(card.local_name(), Some("div"));
+        assert_eq!(card.node_type(), ELEMENT_NODE);
+
+        // has_attribute true/false.
+        assert!(card.has_attribute("class"));
+        assert!(!card.has_attribute("nope"));
+
+        // attributes() returns the (name, value) pairs.
+        let attrs = card.attributes();
+        assert!(attrs.iter().any(|(n, v)| n == "id" && v == "c1"));
+        assert!(attrs.iter().any(|(n, v)| n == "class" && v == "card"));
+
+        // local_name on a non-element (text node child of span) → None.
+        let span = card.first_element_child().expect("span");
+        let text = span.first_child().expect("text node");
+        assert_eq!(text.local_name(), None);
+        assert!(text.node_type() != ELEMENT_NODE);
+    }
+
+    #[test]
+    fn raw_child_and_sibling_navigation() {
+        let tree = Tree::parse(HTML);
+        let card = tree.query("#c1").expect("card by id");
+        let span = card.first_element_child().expect("span");
+
+        // first_child / last_child on the span (single text node → same handle).
+        let first = span.first_child().expect("first child");
+        let last = span.last_child().expect("last child");
+        assert_eq!(first.handle(), last.handle());
+        assert_eq!(first.text_content(), "hi");
+
+        // raw next/previous sibling navigation across the two card divs.
+        let next = card.next_sibling().expect("next sibling");
+        assert_eq!(next.tag_name().as_deref(), Some("DIV"));
+        assert_eq!(
+            next.previous_sibling().map(|n| n.handle()),
+            Some(card.handle())
+        );
+    }
+
+    #[test]
+    fn navigation_none_paths() {
+        // Single leaf element: exercises every None-returning branch.
+        let tree = Tree::parse("<main><p>solo</p></main>");
+        let p = tree.query("p").expect("p");
+
+        // No element children → first/last_element_child None (covers the loop falling through).
+        assert!(p.first_element_child().is_none());
+        assert!(p.last_element_child().is_none());
+
+        // Only sibling → no element siblings either direction (covers loop + None).
+        assert!(p.next_element_sibling().is_none());
+        assert!(p.previous_element_sibling().is_none());
+
+        // Text node leaf: no children, no siblings.
+        let txt = p.first_child().expect("text");
+        assert!(txt.first_child().is_none());
+        assert!(txt.last_child().is_none());
+        assert!(txt.next_sibling().is_none());
+        assert!(txt.previous_sibling().is_none());
+
+        // Root document has no parent.
+        assert!(tree.document().parent().is_none());
+    }
+
+    #[test]
+    fn element_sibling_skips_non_elements() {
+        // Mixed siblings force the element-sibling loops to skip text nodes (continue branch).
+        let tree = Tree::parse("<main><span>a</span>text<b>c</b></main>");
+        let main = tree.query("main").expect("main");
+
+        let first = main.first_element_child().expect("first element child");
+        assert_eq!(first.tag_name().as_deref(), Some("SPAN"));
+        let last = main.last_element_child().expect("last element child");
+        assert_eq!(last.tag_name().as_deref(), Some("B"));
+
+        // next_element_sibling from <span> must skip the intervening text node to reach <b>.
+        let nxt = first.next_element_sibling().expect("b after text");
+        assert_eq!(nxt.tag_name().as_deref(), Some("B"));
+        // previous_element_sibling from <b> must skip the text node back to <span>.
+        let prv = last.previous_element_sibling().expect("span before text");
+        assert_eq!(prv.handle(), first.handle());
+    }
+
+    #[test]
+    fn document_ext_node_and_document() {
+        let tree = Tree::parse(HTML);
+
+        // document() wraps the root.
+        let doc = tree.document();
+        assert_eq!(doc.handle(), tree.root());
+
+        // node() wraps an arbitrary handle.
+        let card_h = tree.query("#c1").unwrap().handle();
+        let wrapped = tree.node(card_h);
+        assert_eq!(wrapped.get_attribute("id"), Some("c1"));
+
+        // query() returning None for an unmatched selector.
+        assert!(tree.query(".does-not-exist").is_none());
+        assert_eq!(tree.query_all(".does-not-exist").len(), 0);
+    }
 }

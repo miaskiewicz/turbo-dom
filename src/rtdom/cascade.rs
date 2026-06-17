@@ -742,4 +742,252 @@ mod tests {
         // descendant of two types + a class
         assert_eq!(specificity("div .card span"), 100 + 2);
     }
+
+    #[test]
+    fn kebab_camel_to_kebab() {
+        // direct: camelCase → kebab (parity helper, only ever fed from the JS proxy)
+        assert_eq!(kebab("backgroundColor"), "background-color");
+        assert_eq!(kebab("color"), "color"); // already lowercase, no dashes
+        assert_eq!(kebab("WebkitBoxShadow"), "-webkit-box-shadow");
+    }
+
+    #[test]
+    fn looks_like_width_token_keywords_and_units() {
+        // keyword widths
+        assert!(looks_like_width_token("thin"));
+        assert!(looks_like_width_token("medium"));
+        assert!(looks_like_width_token("thick"));
+        // numeric with units
+        assert!(looks_like_width_token("1px"));
+        assert!(looks_like_width_token("2.5em"));
+        assert!(looks_like_width_token("0"));
+        assert!(looks_like_width_token("50%"));
+        // not numeric → false (no leading numeric part)
+        assert!(!looks_like_width_token("red"));
+        // numeric but unknown unit → false (rest not in units)
+        assert!(!looks_like_width_token("10foo"));
+    }
+
+    #[test]
+    fn border_shorthand_assembles_longhands() {
+        // border: 1px solid red → border-width/style/color + per-side widths
+        let mut map = HashMap::new();
+        set_prop(&mut map, "border", "1px solid red");
+        assert_eq!(map.get("border-width").unwrap(), "1px");
+        assert_eq!(map.get("border-top-width").unwrap(), "1px");
+        assert_eq!(map.get("border-left-width").unwrap(), "1px");
+        assert_eq!(map.get("border-style").unwrap(), "solid");
+        assert_eq!(map.get("border-color").unwrap(), "red");
+        // through gcs: border-style resolves
+        let got = gcs_prop(
+            "<div id=x style=\"border:2px dashed blue\">hi</div>",
+            "#x",
+            "border-style",
+        );
+        assert_eq!(got, "dashed");
+    }
+
+    #[test]
+    fn background_single_token_shorthand_to_color() {
+        // background:red (no whitespace) → background-color fallback via lookup
+        let got = gcs_prop(
+            "<div id=x style=\"background:red\">hi</div>",
+            "#x",
+            "background-color",
+        );
+        assert_eq!(got, "rgb(255, 0, 0)");
+    }
+
+    #[test]
+    fn specificity_attribute_selector() {
+        // `[...]` branch: attribute selector counts as a `b`
+        assert_eq!(specificity("[data-x]"), 100);
+        // empty `[]` still counts (per the `[^\]]*` zero-or-more comment)
+        assert_eq!(specificity("[]"), 100);
+        // unterminated `[` runs to end of string
+        assert_eq!(specificity("div["), 100 + 1);
+        // bare `.` / `:` with no ident don't count
+        assert_eq!(specificity(". :"), 0);
+    }
+
+    #[test]
+    fn strip_comments_and_multibyte() {
+        // CSS comment is stripped; a multibyte char survives (utf8_len path)
+        let got = gcs_prop(
+            "<style>/* note: \u{00e9}\u{4e2d} */ #x { color: red }</style><div id=x>hi</div>",
+            "#x",
+            "color",
+        );
+        assert_eq!(got, "rgb(255, 0, 0)");
+        // multibyte content selector text after a comment — content="café" 中
+        let got2 = gcs_prop(
+            "<style>/* x */ .caf\u{00e9} { color: blue }</style><div id=x class=\"caf\u{00e9}\">hi</div>",
+            "#x",
+            "color",
+        );
+        assert_eq!(got2, "rgb(0, 0, 255)");
+    }
+
+    #[test]
+    fn at_rule_and_stray_brace_skipped() {
+        // @media body is skipped wholesale; the trailing real rule still applies.
+        let got = gcs_prop(
+            "<style>@media (max-width:600px){ #x{color:red} } #x{color:green}</style><div id=x>hi</div>",
+            "#x",
+            "color",
+        );
+        assert_eq!(got, "rgb(0, 128, 0)"); // green from the depth-1 rule, not the @media one
+        // a stray leading `}` (depth underflow) is skipped, real rule still parses
+        let got2 = gcs_prop(
+            "<style>} #x{color:blue}</style><div id=x>hi</div>",
+            "#x",
+            "color",
+        );
+        assert_eq!(got2, "rgb(0, 0, 255)");
+    }
+
+    #[test]
+    fn trailing_selector_without_brace_breaks() {
+        // a selector with no `{` (j reaches n) breaks the scan; earlier rule applied.
+        let got = gcs_prop(
+            "<style>#x{color:red} #y</style><div id=x>hi</div>",
+            "#x",
+            "color",
+        );
+        assert_eq!(got, "rgb(255, 0, 0)");
+    }
+
+    #[test]
+    fn shadow_only_selector_skipped_in_light_dom() {
+        // light-DOM element: a `:host` rule in a doc <style> must NOT match it.
+        let got = gcs_prop(
+            "<style>:host{color:red} #x{color:green}</style><div id=x>hi</div>",
+            "#x",
+            "color",
+        );
+        assert_eq!(got, "rgb(0, 128, 0)"); // green, :host skipped
+        assert!(is_shadow_only_selector(":host"));
+        assert!(is_shadow_only_selector("::slotted(span)"));
+        assert!(!is_shadow_only_selector(".card"));
+    }
+
+    #[test]
+    fn host_selector_with_arg() {
+        // :host(sel) → Some(sel); :host → Some(""); other → None
+        assert_eq!(host_selector(":host(.foo)"), Some(".foo"));
+        assert_eq!(host_selector(":host"), Some(""));
+        assert_eq!(host_selector(".card"), None);
+    }
+
+    #[test]
+    fn normalize_font_family_comma_spacing() {
+        // through lookup/gcs: comma spacing canonicalized to ", "
+        let got = gcs_prop(
+            "<div id=x style='font-family: \"Helvetica Neue\",Arial , sans-serif'>hi</div>",
+            "#x",
+            "font-family",
+        );
+        assert_eq!(got, "\"Helvetica Neue\", Arial, sans-serif");
+        // direct helper
+        assert_eq!(normalize_font_family("a ,b"), "a, b");
+        assert_eq!(normalize_font_family("solo"), "solo");
+    }
+
+    #[test]
+    fn margin_shorthand_fallback_via_lookup() {
+        // margin-top resolves via the margin shorthand longhand expansion
+        let got = gcs_prop(
+            "<div id=x style=\"margin:10px 20px\">hi</div>",
+            "#x",
+            "margin-top",
+        );
+        assert_eq!(got, "10px");
+    }
+
+    #[test]
+    fn get_property_value_mixed_case_prop() {
+        // get_property_value lowercases the requested prop name
+        let tree = Tree::parse("<div id=x style=\"color:red\">hi</div>");
+        let h = tree.query_selector_all("#x")[0];
+        let map = computed_style(&tree, h);
+        assert_eq!(get_property_value(&map, "COLOR"), "rgb(255, 0, 0)");
+        assert_eq!(get_property_value(&map, "Color"), "rgb(255, 0, 0)");
+    }
+
+    #[test]
+    fn important_stripped() {
+        // !important is stripped from the value (strip_important branch)
+        let got = gcs_prop(
+            "<div id=x style=\"color:red !important\">hi</div>",
+            "#x",
+            "color",
+        );
+        assert_eq!(got, "rgb(255, 0, 0)");
+        // direct helper coverage of the matched branch + the non-important passthrough
+        assert_eq!(strip_important("10px ! important"), "10px");
+        assert_eq!(strip_important("10px"), "10px");
+    }
+
+    #[test]
+    fn parse_decls_skips_malformed() {
+        // a decl with no colon is skipped, and an empty-name decl is skipped;
+        // the valid one still applies.
+        let got = gcs_prop(
+            "<div id=x style=\"garbage; :nope; color:red\">hi</div>",
+            "#x",
+            "color",
+        );
+        assert_eq!(got, "rgb(255, 0, 0)");
+    }
+
+    #[test]
+    fn utf8_len_three_and_four_byte() {
+        // direct helper: 1/2/3/4-byte lead bytes
+        assert_eq!(utf8_len(b'a'), 1);
+        assert_eq!(utf8_len(0xC3), 2); // é lead
+        assert_eq!(utf8_len(0xE4), 3); // 中 lead
+        assert_eq!(utf8_len(0xF0), 4); // 😀 lead
+        // and through strip_comments: a 4-byte emoji outside a comment survives
+        let got = gcs_prop(
+            "<style>/* c */ #x{content:\"\u{1F600}\"; color:red}</style><div id=x>hi</div>",
+            "#x",
+            "color",
+        );
+        assert_eq!(got, "rgb(255, 0, 0)");
+    }
+
+    #[test]
+    fn lookup_shorthand_fallback_accepts_singletoken() {
+        // Direct lookup with a hand-built map that has the single-token shorthand
+        // present but the longhand ABSENT — exercises the fallback success branch.
+        // (In the full pipeline set_prop pre-expands single-token shorthands, so
+        // this state only arises by direct construction.)
+        let mut map = HashMap::new();
+        map.insert("margin".to_string(), "7px".to_string());
+        assert_eq!(lookup(&map, "margin-top"), "7px");
+    }
+
+    #[test]
+    fn shorthand_fallback_rejects_multitoken() {
+        // background:red url(x) (whitespace) → background-color fallback REJECTED,
+        // so background-color reads "" (lookup 486-487 false branch).
+        let got = gcs_prop(
+            "<div id=x style=\"background:red url(x.png)\">hi</div>",
+            "#x",
+            "background-color",
+        );
+        assert_eq!(got, "");
+    }
+
+    #[test]
+    fn non_element_node_empty_map() {
+        // computed_style on a non-element (text node) returns an empty map
+        let tree = Tree::parse("<div id=x>hello</div>");
+        let div = tree.query_selector_all("#x")[0];
+        let text = tree.descendants(div).into_iter().find(|&h| tree.node_type(h) != ELEMENT_NODE);
+        if let Some(t) = text {
+            let map = computed_style(&tree, t);
+            assert!(map.is_empty());
+        }
+    }
 }

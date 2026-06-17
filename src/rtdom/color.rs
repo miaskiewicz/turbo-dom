@@ -226,15 +226,10 @@ fn format_alpha(a: f64) -> String {
         // Integer value → no decimal point, matching JS String(0)/String(1).
         return format!("{}", rounded.trunc() as i64);
     }
-    // Render with up to 3 decimals, then strip trailing zeros.
-    let mut s = format!("{:.3}", rounded);
-    while s.ends_with('0') {
-        s.pop();
-    }
-    if s.ends_with('.') {
-        s.pop();
-    }
-    s
+    // Render with up to 3 decimals, then strip trailing zeros (and a bare trailing
+    // dot, though %.3 of a non-integer never produces one) in a single pass.
+    let s = format!("{:.3}", rounded);
+    s.trim_end_matches('0').trim_end_matches('.').to_string()
 }
 
 /// Serialize {r, g, b, a}. Browsers emit `rgb(r, g, b)` when fully opaque, else
@@ -603,6 +598,36 @@ mod tests {
     fn rgb_arity() {
         assert_eq!(canon("rgb(1,2)"), None);
         assert_eq!(canon("rgb(1,2,3,4,5)"), None);
+    }
+
+    #[test]
+    fn parse_edges_and_hsl_hue_segments() {
+        // exponent inside rgb() — plain and signed (hits the exponent-sign branch)
+        assert_eq!(canonicalize_color("rgb(1e1, 2, 3)", false).as_deref(), Some("rgb(10, 2, 3)"));
+        assert_eq!(canonicalize_color("rgb(2e+1, 0, 0)", false).as_deref(), Some("rgb(20, 0, 0)"));
+        // fractional alpha exercises the decimal trim path (rgba → 0.5)
+        assert_eq!(canonicalize_color("rgba(0,0,0,0.5)", false).as_deref(), Some("rgba(0, 0, 0, 0.5)"));
+        // missing closing paren → None (passthrough)
+        assert_eq!(canonicalize_color("rgb(1 2 3", false), None);
+        // non-numeric component → None
+        assert_eq!(canonicalize_color("rgb(x, 2, 3)", false), None);
+        // hsl arity too few / NaN saturation / NaN lightness → None
+        assert_eq!(canonicalize_color("hsl(120, 50%)", false), None);
+        assert_eq!(canonicalize_color("hsl(120, x%, 50%)", false), None);
+        assert_eq!(canonicalize_color("hsl(120, 50%, y%)", false), None);
+        // hsl across every hue segment + l<0.5 and l>=0.5 + t>1 wrap (hue 330)
+        for hsl in [
+            "hsl(0, 100%, 50%)",
+            "hsl(60, 100%, 50%)",
+            "hsl(120, 100%, 25%)",
+            "hsl(180, 100%, 50%)",
+            "hsl(240, 100%, 60%)",
+            "hsl(300, 100%, 50%)",
+            "hsl(330, 100%, 50%)",
+            "hsl(120, 0%, 50%)", // s==0 grey path
+        ] {
+            assert!(canonicalize_color(hsl, false).is_some(), "{hsl}");
+        }
     }
 
     #[test]

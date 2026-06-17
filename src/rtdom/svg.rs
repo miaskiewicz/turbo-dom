@@ -180,6 +180,19 @@ mod tests {
     }
 
     #[test]
+    fn parse_float_exponent_whitespace_and_edges() {
+        let tree = Tree::parse("<svg viewBox='1 2 3'><rect width=' 1.5e3' x='abc' y='-2.5e+1'/></svg>");
+        let rect = find_local(&tree, "rect");
+        assert_eq!(length_value(&tree, rect, "width"), Some(1500.0)); // leading ws + exponent
+        assert_eq!(length_value(&tree, rect, "y"), Some(-25.0));      // signed exponent
+        assert_eq!(length_value(&tree, rect, "x"), Some(0.0));        // present-but-garbage → 0
+        assert_eq!(length_value(&tree, rect, "height"), None);        // absent
+        let svg = find_local(&tree, "svg");
+        assert_eq!(view_box(&tree, svg), None); // only 3 numbers → None
+        assert!(is_length_attr("width") && !is_length_attr("fill"));
+    }
+
+    #[test]
     fn class_name_and_viewbox_commas() {
         let tree = Tree::parse(r#"<svg class="icon" viewBox="0,0,16,16"></svg>"#);
         let svg = find_local(&tree, "svg");

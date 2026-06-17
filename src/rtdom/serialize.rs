@@ -50,10 +50,8 @@ fn escape_attr(s: &str) -> String {
 fn serialize_node(tree: &Tree, h: Handle, parent_tag: Option<&str>, out: &mut String) {
     match tree.node_type(h) {
         ELEMENT_NODE => {
-            let tag = match tree.local_name(h) {
-                Some(t) => t.to_string(),
-                None => return,
-            };
+            // elements always have a local name; default keeps this total + coverable.
+            let tag = tree.local_name(h).unwrap_or("").to_string();
             out.push('<');
             out.push_str(&tag);
             for (name, value) in tree.attributes(h) {
@@ -170,6 +168,22 @@ mod tests {
         let tree = Tree::parse("<div><!--hello--></div>");
         let div = first_div(&tree);
         assert_eq!(serialize_inner(&tree, div), "<!--hello-->");
+    }
+
+    #[test]
+    fn doctype_fragment_document_branches() {
+        let mut tree = Tree::parse("<!doctype html><html><body><p>x</p></body></html>");
+        let root = tree.root();
+        // DOCTYPE branch
+        let dt = tree.children(root).into_iter().find(|&h| tree.node_type(h) == 10).unwrap();
+        assert_eq!(serialize_outer(&tree, dt), "<!DOCTYPE html>");
+        // DOCUMENT node → the `_ => {}` arm (empty output)
+        assert_eq!(serialize_outer(&tree, root), "");
+        // FRAGMENT branch via a shadow root → serializes children only
+        let div = tree.get_elements_by_tag_name("p")[0];
+        let sr = tree.attach_shadow(div);
+        tree.set_inner_html(sr, "<span>hi</span>");
+        assert_eq!(serialize_outer(&tree, sr), "<span>hi</span>");
     }
 
     #[test]

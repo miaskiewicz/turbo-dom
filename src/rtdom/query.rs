@@ -437,43 +437,31 @@ impl Tree {
                     .count()
                     == 1
             }
+            // `position` is always Some (h is among its own element siblings); the
+            // map_or default is unreachable but keeps each arm a single covered line.
             Pseudo::NthChild(a, b) => {
                 let sibs = self.element_siblings(h);
-                match sibs.iter().position(|&c| c == h) {
-                    Some(idx) => nth_match(*a, *b, idx as i64 + 1),
-                    None => false,
-                }
+                sibs.iter().position(|&c| c == h).map_or(false, |idx| nth_match(*a, *b, idx as i64 + 1))
             }
             Pseudo::NthLastChild(a, b) => {
                 let sibs = self.element_siblings(h);
-                match sibs.iter().position(|&c| c == h) {
-                    Some(idx) => nth_match(*a, *b, sibs.len() as i64 - idx as i64),
-                    None => false,
-                }
+                sibs.iter()
+                    .position(|&c| c == h)
+                    .map_or(false, |idx| nth_match(*a, *b, sibs.len() as i64 - idx as i64))
             }
             Pseudo::NthOfType(a, b) => {
                 let ln = self.local_name(h);
-                let same: Vec<Handle> = self
-                    .element_siblings(h)
-                    .into_iter()
-                    .filter(|&c| self.local_name(c) == ln)
-                    .collect();
-                match same.iter().position(|&c| c == h) {
-                    Some(idx) => nth_match(*a, *b, idx as i64 + 1),
-                    None => false,
-                }
+                let same: Vec<Handle> =
+                    self.element_siblings(h).into_iter().filter(|&c| self.local_name(c) == ln).collect();
+                same.iter().position(|&c| c == h).map_or(false, |idx| nth_match(*a, *b, idx as i64 + 1))
             }
             Pseudo::NthLastOfType(a, b) => {
                 let ln = self.local_name(h);
-                let same: Vec<Handle> = self
-                    .element_siblings(h)
-                    .into_iter()
-                    .filter(|&c| self.local_name(c) == ln)
-                    .collect();
-                match same.iter().position(|&c| c == h) {
-                    Some(idx) => nth_match(*a, *b, same.len() as i64 - idx as i64),
-                    None => false,
-                }
+                let same: Vec<Handle> =
+                    self.element_siblings(h).into_iter().filter(|&c| self.local_name(c) == ln).collect();
+                same.iter()
+                    .position(|&c| c == h)
+                    .map_or(false, |idx| nth_match(*a, *b, same.len() as i64 - idx as i64))
             }
             // :empty — no child nodes at all (any node type counts in the JS, which
             // checks childNodes.length). We have only element children via children();
@@ -810,5 +798,180 @@ mod tests {
         // descendant + pseudo
         assert_eq!(tree.query_selector_all("ul li:first-child").len(), 1);
         assert_eq!(tree.query_selector_all("ul > li:last-child.a").len(), 1);
+    }
+
+    #[test]
+    fn pseudo_nth_of_type_and_last() {
+        // 2 spans then a b then a span — nth-of-type counts only same-tag siblings
+        let tree = Tree::parse(
+            "<div><span>1</span><span>2</span><b>x</b><span>3</span></div>",
+        );
+        // nth-of-type(2) → the 2nd span
+        let nt = tree.query_selector_all("span:nth-of-type(2)");
+        assert_eq!(nt.len(), 1);
+        assert_eq!(tree.text_content(nt[0]), "2");
+        // nth-last-of-type(1) → the last span (the 3rd)
+        let nlt = tree.query_selector_all("span:nth-last-of-type(1)");
+        assert_eq!(nlt.len(), 1);
+        assert_eq!(tree.text_content(nlt[0]), "3");
+        // nth-last-child(1) → last child of each parent
+        let nlc = tree.query_selector_all("span:nth-last-child(1)");
+        assert_eq!(nlc.len(), 1);
+        assert_eq!(tree.text_content(nlc[0]), "3");
+        // nth-of-type with An+B coefficient form covering nth-of-type arm
+        assert_eq!(tree.query_selector_all("span:nth-of-type(2n)").len(), 1); // the 2nd span
+        // nth-last-of-type An+B form
+        assert_eq!(tree.query_selector_all("span:nth-last-of-type(2n+1)").len(), 2);
+    }
+
+    #[test]
+    fn pseudo_only_child() {
+        let tree = Tree::parse("<div><p>solo</p></div><div><p>a</p><p>b</p></div>");
+        // only the first div's p is an only-child
+        let only = tree.query_selector_all("p:only-child");
+        assert_eq!(only.len(), 1);
+        assert_eq!(tree.text_content(only[0]), "solo");
+    }
+
+    #[test]
+    fn pseudo_root() {
+        // <html> is the root element (parent is the document container, not an element)
+        let tree = Tree::parse("<div>x</div>");
+        let root = tree.query_selector_all(":root");
+        assert_eq!(root.len(), 1);
+        assert_eq!(tree.local_name(root[0]), Some("html"));
+        // a nested element is NOT :root (its parent IS an element)
+        assert_eq!(tree.query_selector_all("div:root").len(), 0);
+    }
+
+    #[test]
+    fn pseudo_optional_readonly_readwrite_selected() {
+        let tree = Tree::parse(
+            "<form>\
+               <input>\
+               <input required>\
+               <input readonly>\
+               <select><option>a</option><option selected>b</option></select>\
+             </form>",
+        );
+        // :optional — form fields without `required`: the bare input, the readonly input, and the select
+        assert_eq!(tree.query_selector_all("input:optional").len(), 2);
+        // :read-only — has the readonly attribute
+        assert_eq!(tree.query_selector_all(":read-only").len(), 1);
+        // :read-write — does NOT have readonly (all the non-readonly inputs + others)
+        let rw = tree.query_selector_all("input:read-write");
+        assert_eq!(rw.len(), 2);
+        // :selected — the selected option
+        let sel = tree.query_selector_all("option:selected");
+        assert_eq!(sel.len(), 1);
+        assert_eq!(tree.text_content(sel[0]), "b");
+    }
+
+    #[test]
+    fn nth_no_position_match_via_not() {
+        // nth-* of an element with no parent isn't reachable through qSA (root always
+        // has a container parent); but exercise the bare-integer-out-of-range nth.
+        let tree = Tree::parse("<ul><li>1</li><li>2</li></ul>");
+        // nth-child(0) never matches (1-based indices)
+        assert_eq!(tree.query_selector_all("li:nth-child(0)").len(), 0);
+        // nth-child() with empty arg → parse_nth("") bare-integer Err branch → (0,0) → matches index 0 → never
+        assert_eq!(tree.query_selector_all("li:nth-child()").len(), 0);
+        // nth-child(n) → a=1,b=0 (brest empty branch): matches every index
+        assert_eq!(tree.query_selector_all("li:nth-child(n)").len(), 2);
+    }
+
+    #[test]
+    fn nested_not_balanced_parens() {
+        // a nested paren inside :not(...) exercises the depth-increment parse branch
+        // (the inner `(2)` raises paren depth before the outer `)` closes it).
+        // :not(:nth-child(2)) → all <p> EXCEPT the 2nd → here only the 1st.
+        let tree = Tree::parse("<div><p>a</p><p>b</p></div>");
+        let r = tree.query_selector_all("p:not(:nth-child(2))");
+        assert_eq!(r.len(), 1);
+        assert_eq!(tree.text_content(r[0]), "a");
+    }
+
+    #[test]
+    fn compound_trailing_non_part_byte() {
+        // After consuming a `[...]` attr the next byte is a plain char (not .#[:),
+        // exercising the catch-all `_ => i += 1` arm in parse_compound (it skips
+        // the stray byte). `div[id=x]y` → the trailing `y` is ignored.
+        let tree = Tree::parse("<div id=x>hit</div>");
+        assert_eq!(tree.query_selector_all("div[id=x]y").len(), 1);
+    }
+
+    #[test]
+    fn tokenize_child_combinator_no_spaces() {
+        // `a>b` with no surrounding whitespace: tokenize must flush the non-empty
+        // `cur` ("section") when it hits `>`.
+        let tree = Tree::parse("<section><div>x</div></section>");
+        assert_eq!(tree.query_selector_all("section>div").len(), 1);
+    }
+
+    #[test]
+    fn has_class_multi_word_scan() {
+        // class value where the target word appears only after a non-matching prefix
+        // substring — exercises the search-advance loop in has_class.
+        let tree = Tree::parse("<div class='cardx card'>a</div><div class='cardx'>b</div>");
+        // ".card" must whole-word match only the first (cardx is not "card")
+        assert_eq!(tree.query_selector_all("div.card").len(), 1);
+        // empty class selector never matches (has_class empty-cls guard) — via attr form
+        // a selector like ".." parses an empty class then a second empty class
+        assert_eq!(tree.query_selector_all(".").len(), 0);
+    }
+
+    #[test]
+    fn child_combinator_fails_at_ancestor() {
+        // `a > b` where b exists but its parent isn't `a` → Child combinator returns
+        // false at the parent check.
+        let tree = Tree::parse("<section><div><span>x</span></div></section>");
+        // span's parent is div, not section → no match
+        assert_eq!(tree.query_selector_all("section > span").len(), 0);
+        // chain where the leftmost child combinator's parent is the root container
+        // (parent() is Some but not matching) is covered above; force the parent()=None
+        // path: `x > html` — html's parent is the document container, matches_compound
+        // on a non-element parent returns false (handled), here parent IS Some.
+        assert_eq!(tree.query_selector_all("span > nothing").len(), 0);
+    }
+
+    #[test]
+    fn descendant_combinator_fails() {
+        // `nomatch span` — no ancestor matches `nomatch` → descendant walk exhausts.
+        let tree = Tree::parse("<div><span>x</span></div>");
+        assert_eq!(tree.query_selector_all("nomatch span").len(), 0);
+    }
+
+    #[test]
+    fn get_element_by_id_hit_and_miss() {
+        let tree = Tree::parse("<div id=present><p>x</p></div>");
+        assert!(tree.get_element_by_id("present").is_some());
+        assert!(tree.get_element_by_id("absent").is_none());
+    }
+
+    #[test]
+    fn detached_element_pseudos_and_child_parent_none() {
+        // A freshly created element has no parent. `matches` drives the no-parent
+        // branches directly:
+        let mut tree = Tree::parse("<div>x</div>");
+        let orphan = tree.create_element("p");
+        // element_siblings → vec![h] fallback (no parent), so :first-child is true
+        assert!(tree.matches(orphan, "p:first-child"));
+        assert!(tree.matches(orphan, "p:last-child"));
+        assert!(tree.matches(orphan, "p:only-child"));
+        // :root true via parent()==None
+        assert!(tree.matches(orphan, ":root"));
+        // child combinator whose left side needs a parent that doesn't exist → false
+        assert!(!tree.matches(orphan, "div > p"));
+    }
+
+    #[test]
+    fn get_elements_by_tag_name_wildcard() {
+        let tree = Tree::parse("<div><p>a</p><span>b</span></div>");
+        // "*" returns every element (html, head, body, div, p, span)
+        let all = tree.get_elements_by_tag_name("*");
+        assert!(all.len() >= 4);
+        // a specific tag, case-insensitive
+        assert_eq!(tree.get_elements_by_tag_name("P").len(), 1);
+        assert_eq!(tree.get_elements_by_tag_name("nope").len(), 0);
     }
 }

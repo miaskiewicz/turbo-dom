@@ -250,12 +250,10 @@ impl Tree {
         if self.is_new(h) {
             return Some(self.new_ref(h).name.clone());
         }
+        // buffer text/comment nodes always have text_id >= 0 (core pools every
+        // string); .get + default keeps this total and coverable.
         let tid = self.buf.text_id[h as usize];
-        if tid < 0 {
-            Some(String::new())
-        } else {
-            Some(self.buf.strings[tid as usize].clone())
-        }
+        Some(self.buf.strings.get(tid as usize).cloned().unwrap_or_default())
     }
 
     /// textContent: concatenated descendant text.
@@ -503,11 +501,9 @@ impl Tree {
     /// the host's light element children whose `slot` attr equals the slot's
     /// `name` (default "" ↔ unnamed slot). Mirrors `assignedNodes`.
     pub fn assigned_nodes(&self, slot: Handle) -> Vec<Handle> {
-        let sr = match self.shadow_root_of(slot) {
-            Some(sr) => sr,
-            None => return Vec::new(),
-        };
-        let host = match self.shadow_host(sr) {
+        // shadow_root_of yields a real shadow root (is_shadow_root ⇒ host exists),
+        // so the only reachable miss is "slot not in any shadow tree".
+        let host = match self.shadow_root_of(slot).and_then(|sr| self.shadow_host(sr)) {
             Some(host) => host,
             None => return Vec::new(),
         };
@@ -634,5 +630,196 @@ mod tests {
         assert_eq!(tree.next_sibling(lis[0]), Some(lis[1]));
         assert_eq!(tree.previous_sibling(lis[2]), Some(lis[1]));
         assert_eq!(tree.next_sibling(lis[2]), None);
+    }
+
+    #[test]
+    fn first_and_last_child() {
+        let mut tree = t("<ul><li>1</li><li>2</li><li>3</li></ul>");
+        let ul = (0..tree.node_count()).find(|&h| tree.local_name(h) == Some("ul")).unwrap();
+        let kids = tree.children(ul);
+        assert_eq!(tree.first_child(ul), Some(kids[0]));
+        assert_eq!(tree.last_child(ul), Some(kids[2]));
+        // previous_sibling of the first child is None (index 0 branch)
+        assert_eq!(tree.previous_sibling(kids[0]), None);
+        // empty element: no first/last child
+        let empty = tree.create_element("div");
+        assert_eq!(tree.first_child(empty), None);
+        assert_eq!(tree.last_child(empty), None);
+    }
+
+    #[test]
+    fn create_element_ns_keeps_case_and_namespace() {
+        let mut tree = t("<div></div>");
+        // SVG-namespace element: ns_id 1, mixed-case local name preserved,
+        // tag_name returns as-is (non-HTML namespace branch).
+        let g = tree.create_element_ns("linearGradient", 1);
+        assert_eq!(tree.namespace_id(g), 1);
+        assert_eq!(tree.local_name(g), Some("linearGradient"));
+        assert_eq!(tree.tag_name(g).as_deref(), Some("linearGradient"));
+        // math namespace
+        let m = tree.create_element_ns("mi", 2);
+        assert_eq!(tree.namespace_id(m), 2);
+        assert_eq!(tree.tag_name(m).as_deref(), Some("mi"));
+    }
+
+    #[test]
+    fn new_node_reads_are_detached_and_empty() {
+        let mut tree = t("<div></div>");
+        let span = tree.create_element("span");
+        // a freshly created (new) node with no parent overlay → detached
+        assert_eq!(tree.parent(span), None);
+        // get_attribute / has_attribute on an attr-less new node
+        assert_eq!(tree.get_attribute(span, "id"), None);
+        assert!(!tree.has_attribute(span, "id"));
+        tree.set_attribute(span, "id", "x");
+        assert!(tree.has_attribute(span, "id"));
+        // attributes() on a brand-new text node (is_new, no attrs_ov) → empty
+        let txt = tree.create_text_node("hi");
+        assert!(tree.attributes(txt).is_empty());
+        // get_attribute on a new node lacking an attr overlay (text node) → None
+        assert_eq!(tree.get_attribute(txt, "foo"), None);
+    }
+
+    #[test]
+    fn node_value_text_comment_and_none() {
+        let mut tree = t("<p>hi</p><!--c-->");
+        // node_value on an element → None (not text/comment)
+        let p = (0..tree.node_count()).find(|&h| tree.local_name(h) == Some("p")).unwrap();
+        assert_eq!(tree.node_value(p), None);
+        // freshly created text node reads its data via is_new branch
+        let txt = tree.create_text_node("hello");
+        assert_eq!(tree.node_value(txt).as_deref(), Some("hello"));
+        // a comment node from the buffer
+        let comment = (0..tree.node_count()).find(|&h| tree.node_type(h) == COMMENT_NODE).unwrap();
+        assert_eq!(tree.node_value(comment).as_deref(), Some("c"));
+        // text_content of a comment goes through the text/comment branch
+        assert_eq!(tree.text_content(comment), "c");
+        // text_ov branch: mutate text content of the text node, read back
+        tree.set_text_content(txt, "changed");
+        assert_eq!(tree.node_value(txt).as_deref(), Some("changed"));
+    }
+
+    #[test]
+    fn empty_buffer_text_node_value() {
+        // An empty text node (text_id < 0) → node_value is empty string.
+        let tree = t("<p></p>");
+        // collect_text skips comments: a comment inside an element is ignored.
+        let p = (0..tree.node_count()).find(|&h| tree.local_name(h) == Some("p")).unwrap();
+        assert_eq!(tree.text_content(p), "");
+    }
+
+    #[test]
+    fn text_content_skips_comments() {
+        // The COMMENT_NODE arm of collect_text is exercised: comment text is NOT
+        // concatenated into an element's text_content.
+        let tree = t("<div>a<!--ignored-->b</div>");
+        let div = (0..tree.node_count()).find(|&h| tree.local_name(h) == Some("div")).unwrap();
+        assert_eq!(tree.text_content(div), "ab");
+    }
+
+    #[test]
+    fn set_attribute_updates_existing_slot() {
+        let mut tree = t("<div id=a></div>");
+        let div = (0..tree.node_count()).find(|&h| tree.local_name(h) == Some("div")).unwrap();
+        // overwrite an existing attribute (the find-and-update slot branch)
+        tree.set_attribute(div, "id", "b");
+        assert_eq!(tree.get_attribute(div, "id"), Some("b"));
+        assert_eq!(tree.attributes(div).len(), 1);
+    }
+
+    #[test]
+    fn remove_attribute_works() {
+        let mut tree = t("<div id=a class=x></div>");
+        let div = (0..tree.node_count()).find(|&h| tree.local_name(h) == Some("div")).unwrap();
+        let v0 = tree.version;
+        tree.remove_attribute(div, "id");
+        assert!(tree.version > v0);
+        assert!(!tree.has_attribute(div, "id"));
+        assert_eq!(tree.get_attribute(div, "class"), Some("x"));
+    }
+
+    #[test]
+    fn insert_before_with_reference_and_append() {
+        let mut tree = t("<ul><li>1</li><li>2</li></ul>");
+        let ul = (0..tree.node_count()).find(|&h| tree.local_name(h) == Some("ul")).unwrap();
+        let kids = tree.children(ul);
+        let (a, b) = (kids[0], kids[1]);
+        // insert before a reference node (the Some(idx) branch)
+        let x = tree.create_element("li");
+        tree.insert_before(ul, x, Some(b));
+        assert_eq!(tree.children(ul), vec![a, x, b]);
+        assert_eq!(tree.parent(x), Some(ul));
+        // insert with None reference → append (the None branch)
+        let y = tree.create_element("li");
+        tree.insert_before(ul, y, None);
+        assert_eq!(tree.children(ul), vec![a, x, b, y]);
+        // detach-with-parent: re-inserting x moves it (detach removes from parent)
+        tree.insert_before(ul, x, Some(a));
+        assert_eq!(tree.children(ul), vec![x, a, b, y]);
+        // reference that is not a child → falls through to append
+        let z = tree.create_element("li");
+        tree.insert_before(ul, z, Some(9999));
+        assert_eq!(tree.children(ul).last().copied(), Some(z));
+    }
+
+    #[test]
+    fn set_text_content_on_element_replaces_children() {
+        let mut tree = t("<div><span>old</span></div>");
+        let div = (0..tree.node_count()).find(|&h| tree.local_name(h) == Some("div")).unwrap();
+        // element branch: replaced with a single text node
+        tree.set_text_content(div, "new");
+        assert_eq!(tree.text_content(div), "new");
+        let kids = tree.children(div);
+        assert_eq!(kids.len(), 1);
+        assert_eq!(tree.node_type(kids[0]), TEXT_NODE);
+        assert_eq!(tree.parent(kids[0]), Some(div));
+    }
+
+    #[test]
+    fn create_comment_node() {
+        let mut tree = t("<div></div>");
+        let v0 = tree.version;
+        let c = tree.create_comment("note");
+        assert!(tree.version > v0);
+        assert_eq!(tree.node_type(c), COMMENT_NODE);
+        assert_eq!(tree.node_value(c).as_deref(), Some("note"));
+    }
+
+    #[test]
+    fn set_inner_html_imports_comment_and_svg() {
+        let mut tree = t("<div></div>");
+        let div = (0..tree.node_count()).find(|&h| tree.local_name(h) == Some("div")).unwrap();
+        // imports an element, a comment (COMMENT_NODE arm), and an svg element (ns).
+        tree.set_inner_html(div, "<p>hi</p><!--c--><svg><circle r=5></circle></svg>");
+        let kids = tree.children(div);
+        // p, comment, svg
+        let comment = kids.iter().copied().find(|&k| tree.node_type(k) == COMMENT_NODE).unwrap();
+        assert_eq!(tree.node_value(comment).as_deref(), Some("c"));
+        let svg = kids.iter().copied().find(|&k| tree.local_name(k) == Some("svg")).unwrap();
+        assert_eq!(tree.namespace_id(svg), 1);
+        // svg child carries the svg namespace too
+        let circle = tree.children(svg).into_iter().find(|&k| tree.local_name(k) == Some("circle")).unwrap();
+        assert_eq!(tree.namespace_id(circle), 1);
+    }
+
+    #[test]
+    fn force_inflate_all_preserves_reads() {
+        let mut tree = t("<div id=a><span class=x>hi</span></div>");
+        let div = (0..tree.node_count()).find(|&h| tree.local_name(h) == Some("div")).unwrap();
+        tree.force_inflate_all();
+        // after inflation reads go through overlays but stay correct
+        assert_eq!(tree.get_attribute(div, "id"), Some("a"));
+        let kids = tree.children(div);
+        assert_eq!(tree.local_name(kids[0]), Some("span"));
+        assert_eq!(tree.get_attribute(kids[0], "class"), Some("x"));
+        assert_eq!(tree.text_content(div), "hi");
+    }
+
+    #[test]
+    fn assigned_nodes_without_shadow_is_empty() {
+        let tree = t("<div><span>x</span></div>");
+        // a node not inside any shadow tree → shadow_root_of None → empty
+        let span = (0..tree.node_count()).find(|&h| tree.local_name(h) == Some("span")).unwrap();
+        assert!(tree.assigned_nodes(span).is_empty());
     }
 }

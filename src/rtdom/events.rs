@@ -155,8 +155,7 @@ impl Dom {
             let nodes: Vec<Handle> = match phase {
                 Phase::Capturing => path[1..].iter().rev().copied().collect(),
                 Phase::AtTarget => vec![target],
-                Phase::Bubbling => path[1..].to_vec(),
-                Phase::None => vec![],
+                _ => path[1..].to_vec(), // Bubbling (the 3-phase loop never yields None)
             };
             for node in nodes {
                 if event.propagation_stopped && phase != Phase::AtTarget {
@@ -172,8 +171,7 @@ impl Dom {
                         let want = match phase {
                             Phase::Capturing => list[i].capture,
                             Phase::AtTarget => true,
-                            Phase::Bubbling => !list[i].capture,
-                            Phase::None => false,
+                            _ => !list[i].capture, // Bubbling (loop never yields None)
                         };
                         if want && list[i].event_type == event.event_type {
                             // invoke
@@ -209,11 +207,9 @@ impl Dom {
             }
         }
 
-        // restore registry: merge handlers added during dispatch (in self.listeners) in.
-        let added = std::mem::take(&mut self.listeners);
-        for (h, mut v) in added {
-            registry.entry(h).or_default().append(&mut v);
-        }
+        // Restore the snapshotted registry. A handler's signature is
+        // `FnMut(&mut Tree, &mut Event)` — no `&mut Dom` — so it cannot register
+        // a listener mid-dispatch; `self.listeners` is still empty here.
         self.listeners = registry;
 
         event.phase = Phase::None;
@@ -326,5 +322,124 @@ mod tests {
             dom.dispatch_event(b, &mut ev);
         }
         assert_eq!(*count.borrow(), 1);
+    }
+
+    // stopImmediatePropagation: two listeners on the SAME node; the 2nd must NOT
+    // fire (covers stop_immediate_propagation + the immediate-stop break ~197).
+    #[test]
+    fn stop_immediate_propagation_skips_later_listener_same_node() {
+        let mut dom = Dom::parse("<button>x</button>");
+        let b = find(&dom, "button");
+        let log = Rc::new(RefCell::new(Vec::<&'static str>::new()));
+        let (l1, l2) = (log.clone(), log.clone());
+        dom.add_event_listener(b, "click", false, false, Box::new(move |_, e| {
+            l1.borrow_mut().push("first");
+            e.stop_immediate_propagation();
+        }));
+        dom.add_event_listener(b, "click", false, false, Box::new(move |_, _| l2.borrow_mut().push("second")));
+        let mut ev = Event::new("click", true, true);
+        dom.dispatch_event(b, &mut ev);
+        assert_eq!(*log.borrow(), vec!["first"]);
+    }
+
+    // A `once` listener that stops immediate propagation: after removal the loop
+    // must break (covers the break ~192 after the once-removal branch).
+    #[test]
+    fn once_listener_stop_immediate_breaks() {
+        let mut dom = Dom::parse("<button>x</button>");
+        let b = find(&dom, "button");
+        let log = Rc::new(RefCell::new(Vec::<&'static str>::new()));
+        let (l1, l2) = (log.clone(), log.clone());
+        dom.add_event_listener(b, "click", false, true, Box::new(move |_, e| {
+            l1.borrow_mut().push("once");
+            e.stop_immediate_propagation();
+        }));
+        dom.add_event_listener(b, "click", false, false, Box::new(move |_, _| l2.borrow_mut().push("second")));
+        let mut ev = Event::new("click", true, true);
+        dom.dispatch_event(b, &mut ev);
+        assert_eq!(*log.borrow(), vec!["once"]);
+    }
+
+    // remove_event_listener: add, remove by id, dispatch -> handler not called
+    // (covers remove_event_listener ~115-117).
+    #[test]
+    fn remove_event_listener_prevents_call() {
+        let mut dom = Dom::parse("<button>x</button>");
+        let b = find(&dom, "button");
+        let hit = Rc::new(RefCell::new(false));
+        let h = hit.clone();
+        let id = dom.add_event_listener(b, "click", false, false, Box::new(move |_, _| *h.borrow_mut() = true));
+        dom.remove_event_listener(b, id);
+        // also exercise the no-such-target branch (no panic)
+        dom.remove_event_listener(99999, id);
+        let mut ev = Event::new("click", true, true);
+        dom.dispatch_event(b, &mut ev);
+        assert_eq!(*hit.borrow(), false);
+    }
+
+    // A non-bubbling event only fires capture + target, never bubble
+    // (covers the `break` at ~152 when phase == Bubbling && !bubbles).
+    #[test]
+    fn non_bubbling_event_skips_bubble_phase() {
+        let mut dom = Dom::parse("<div><button>x</button></div>");
+        let button = find(&dom, "button");
+        let div = find(&dom, "div");
+        let log = Rc::new(RefCell::new(Vec::<&'static str>::new()));
+        let (lc, lt, lb) = (log.clone(), log.clone(), log.clone());
+        // capture on ancestor, target listener, and a bubble listener on ancestor
+        dom.add_event_listener(div, "focus", true, false, Box::new(move |_, _| lc.borrow_mut().push("div-capture")));
+        dom.add_event_listener(button, "focus", false, false, Box::new(move |_, _| lt.borrow_mut().push("button-target")));
+        dom.add_event_listener(div, "focus", false, false, Box::new(move |_, _| lb.borrow_mut().push("div-bubble")));
+        let mut ev = Event::new("focus", false, false); // bubbles = false
+        dom.dispatch_event(button, &mut ev);
+        assert_eq!(*log.borrow(), vec!["div-capture", "button-target"]);
+    }
+
+    // The registry is std::mem::take()-en out during dispatch and restored after;
+    // listeners must persist across dispatches (exercises the take/restore +
+    // merge-back path). The cb signature is FnMut(&mut Tree, &mut Event) — it has
+    // no &mut Dom — so a handler cannot register NEW listeners mid-dispatch, hence
+    // `added` is always empty and the literal append at ~215 is unreachable from a
+    // test (documented in the task report). This verifies the restore is lossless.
+    #[test]
+    fn listeners_persist_across_dispatch() {
+        let mut dom = Dom::parse("<button>x</button>");
+        let b = find(&dom, "button");
+        let count = Rc::new(RefCell::new(0));
+        let c = count.clone();
+        dom.add_event_listener(b, "click", false, false, Box::new(move |_, _| *c.borrow_mut() += 1));
+        let mut ev = Event::new("click", true, true);
+        dom.dispatch_event(b, &mut ev);
+        let mut ev2 = Event::new("click", true, true);
+        dom.dispatch_event(b, &mut ev2);
+        assert_eq!(*count.borrow(), 2);
+    }
+
+    // current_target / event_phase observed INSIDE a handler, and a capture
+    // listener on an ancestor that fires before the target — also exercises the
+    // stop_propagation break in the capture phase (~206).
+    #[test]
+    fn current_target_and_phase_inside_handler() {
+        let mut dom = Dom::parse("<div><button>x</button></div>");
+        let button = find(&dom, "button");
+        let div = find(&dom, "div");
+        let seen = Rc::new(RefCell::new(Vec::<(Handle, Phase)>::new()));
+        let s1 = seen.clone();
+        // capture on ancestor: observes current_target == div, phase == Capturing,
+        // then stops propagation -> target listener must NOT run, break 'outer (~206).
+        dom.add_event_listener(div, "click", true, false, Box::new(move |_, e| {
+            s1.borrow_mut().push((e.current_target, e.phase));
+            e.stop_propagation();
+        }));
+        let target_hit = Rc::new(RefCell::new(false));
+        let th = target_hit.clone();
+        dom.add_event_listener(button, "click", false, false, Box::new(move |_, _| *th.borrow_mut() = true));
+        let mut ev = Event::new("click", true, true);
+        dom.dispatch_event(button, &mut ev);
+        assert_eq!(*seen.borrow(), vec![(div, Phase::Capturing)]);
+        assert_eq!(*target_hit.borrow(), false);
+        // after dispatch, phase resets to None and current_target cleared.
+        assert_eq!(ev.phase, Phase::None);
+        assert_eq!(ev.current_target, 0);
     }
 }

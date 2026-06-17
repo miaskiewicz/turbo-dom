@@ -267,6 +267,32 @@ mod tests {
     }
 
     #[test]
+    fn parse_stylesheet_brace_edges() {
+        // leading stray `}` is skipped; trailing text with no brace breaks cleanly
+        let rules = parse_stylesheet("}.a{color:red} trailing-no-brace");
+        assert_eq!(rules.len(), 1);
+        assert_eq!(rules[0].selector_text, ".a");
+        // nested braces increment depth (outer body contains a `{ }` pair)
+        let nested = parse_stylesheet("x{ y{ z:1 } }");
+        assert_eq!(nested.len(), 1);
+        assert_eq!(nested[0].selector_text, "x");
+    }
+
+    #[test]
+    fn parse_edges_and_empty_css_text() {
+        // rule with '{' but no closing '}' → body is everything after '{'
+        let r = CssStyleRule::parse("a { color: red");
+        assert_eq!(r.selector_text, "a");
+        assert_eq!(r.declarations, vec![("color".to_string(), "red".to_string())]);
+        // rule with no '{' at all → whole string is the selector, no decls
+        let r2 = CssStyleRule::parse(".x");
+        assert_eq!(r2.selector_text, ".x");
+        assert!(r2.declarations.is_empty());
+        // empty-declaration css_text → "sel { }"
+        assert_eq!(CssStyleRule::parse(".x {}").css_text(), ".x { }");
+    }
+
+    #[test]
     fn declarations_with_important_preserved() {
         let rules = parse_stylesheet(".a { color: red !important; }");
         assert_eq!(rules[0].declarations[0].1, "red !important");

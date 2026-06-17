@@ -113,9 +113,9 @@ pub fn eval_media_query(query: &str, vp: &Viewport) -> bool {
                 let want = if w >= h { "landscape" } else { "portrait" };
                 matched = matched && val == want;
             }
-            // Unreachable: scan_features only yields the recognized feature
-            // names above.
-            _ => {}
+            // An unrecognized media feature can never match (browsers treat an
+            // unknown feature in an `and` chain as a non-match).
+            _ => matched = false,
         }
     }
 
@@ -126,13 +126,6 @@ pub fn eval_media_query(query: &str, vp: &Viewport) -> bool {
 /// emitting the recognized feature names. Replaces the JS regex (no regex
 /// crate). Whitespace around the feature name and value is trimmed.
 fn scan_features(q: &str) -> Vec<(String, String)> {
-    const FEATURES: [&str; 5] = [
-        "min-width",
-        "max-width",
-        "min-height",
-        "max-height",
-        "orientation",
-    ];
     let bytes = q.as_bytes();
     let mut out = Vec::new();
     let mut i = 0;
@@ -144,9 +137,9 @@ fn scan_features(q: &str) -> Vec<(String, String)> {
                 if let Some(colon) = inner.find(':') {
                     let feat = inner[..colon].trim();
                     let val = inner[colon + 1..].trim();
-                    if FEATURES.contains(&feat) {
-                        out.push((feat.to_string(), val.to_string()));
-                    }
+                    // Emit ALL `(feature: value)` pairs; `eval_media_query` decides
+                    // which are recognized (an unknown feature fails the query).
+                    out.push((feat.to_string(), val.to_string()));
                 }
                 i = i + 1 + rel + 1;
                 continue;
@@ -367,6 +360,26 @@ mod tests {
         assert!(!eval_media_query("screen", &Viewport::default()));
         assert!(!eval_media_query("", &Viewport::default()));
         assert!(!eval_media_query("(unknown-feature: 1)", &Viewport::default()));
+    }
+
+    #[test]
+    fn mq_height_orientation_pxedges_and_unknown() {
+        let landscape = Viewport { width: 800.0, height: 600.0 };
+        let portrait = Viewport { width: 400.0, height: 900.0 };
+        // height features
+        assert!(eval_media_query("(min-height: 500px)", &landscape));
+        assert!(!eval_media_query("(min-height: 700px)", &landscape));
+        assert!(eval_media_query("(max-height: 700px)", &landscape));
+        // orientation both ways
+        assert!(eval_media_query("(orientation: landscape)", &landscape));
+        assert!(eval_media_query("(orientation: portrait)", &portrait));
+        assert!(!eval_media_query("(orientation: portrait)", &landscape));
+        // parse_px edges: decimal, signed, and non-numeric (→ feature fails)
+        assert!(eval_media_query("(min-width: 1.5px)", &landscape));   // decimal path
+        assert!(eval_media_query("(min-width: -5px)", &landscape));    // leading-sign path
+        assert!(!eval_media_query("(min-width: abc)", &landscape));    // no digits → None → false
+        // unknown feature fails the query (the `_` arm)
+        assert!(!eval_media_query("(min-width: 1px) and (foo: bar)", &landscape));
     }
 
     #[test]
