@@ -845,6 +845,13 @@ export class Element extends Node {
   hasAttributeNS(_ns, name) { return this.hasAttribute(name); }
   removeAttributeNS(_ns, name) { this.removeAttribute(name); }
   getAttributeNode(name) { const a = (this.__attrs ?? (this.__attrs = this.__buildAttrs())).find((x) => x.name === name); return a ? { name: a.name, value: a.value, ownerElement: this } : null; }
+  getAttributeNodeNS(_ns, name) { return this.getAttributeNode(name); }
+  // Attr-node methods are thin shims over the name-based API (no real Attr/NamedNodeMap).
+  // React 19's releaseSingletonInstance reads node.attributes (a detached array copy) then
+  // removeAttributeNode(attr)s each — safe because the iterated copy isn't __attrs.
+  setAttributeNode(attr) { const prev = this.getAttributeNode(attr.name); this.setAttribute(attr.name, attr.value); return prev; }
+  setAttributeNodeNS(attr) { return this.setAttributeNode(attr); }
+  removeAttributeNode(attr) { const removed = this.getAttributeNode(attr && attr.name); if (attr && attr.name != null) this.removeAttribute(attr.name); return removed; }
 
   // adjacency
   insertAdjacentElement(position, el) {

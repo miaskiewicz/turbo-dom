@@ -538,6 +538,26 @@ test('getAttributeNode', () => {
   assert.equal(el.getAttributeNode('missing'), null);
 });
 
+test('setAttributeNode / removeAttributeNode (React 19 singleton release)', () => {
+  const { document } = fresh();
+  const el = document.createElement('div');
+  // setAttributeNode returns the replaced Attr (null first time)
+  assert.equal(el.setAttributeNode({ name: 'data-k', value: 'v' }), null);
+  assert.equal(el.getAttribute('data-k'), 'v');
+  const prev = el.setAttributeNode({ name: 'data-k', value: 'v2' });
+  assert.equal(prev.value, 'v');
+  assert.equal(el.getAttribute('data-k'), 'v2');
+  // React reads node.attributes (detached copy) then removeAttributeNode each
+  el.setAttribute('id', 'x');
+  for (const attr of el.attributes) el.removeAttributeNode(attr);
+  assert.equal(el.attributes.length, 0);
+  // removeAttributeNode returns the removed Attr
+  el.setAttribute('a', '1');
+  const removed = el.removeAttributeNode(el.getAttributeNode('a'));
+  assert.equal(removed.name, 'a');
+  assert.equal(el.hasAttribute('a'), false);
+});
+
 test('hasAttributeNS / removeAttributeNS', () => {
   const { document } = fresh();
   const el = document.createElement('div');
