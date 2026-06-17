@@ -256,4 +256,43 @@ and compute-shaped moves to Rust.
 - [x] `RUST_PORT_PERF_HISTORY.md` — per-commit perf optimization ledger with Rust portability tags (mined
       from real diffs by 6 batch agents).
 - [x] `RUST_PORT_PLAN.md` — this document.
-- [ ] **Awaiting your go** before any Rust code (Phase 0). Phase 1 spike is the real decision point.
+- [x] `../payroll-app` switched to `staging` + pulled latest — Phase-1 KPI validation target ready.
+- [x] Go given — Phase 0+1 building (see §7).
+
+---
+
+## 7. Phase-1 spike — concrete spec (the kill/continue gate)
+
+**Goal:** answer ONE question with a number — *does a Rust-core-in-WASM DOM, accessed from JS, beat (or stay
+within ~10% of) the current pure-JS runtime on the chattiest hot paths?* Build the thinnest possible vertical
+slice that exercises the boundary honestly. Do **not** port full modules.
+
+### Crate / file layout
+- Reuse `src/core.rs` (parser → `core::Node` tree) unchanged.
+- New `src/runtime/` Rust module (Rust side), behind a `wasm-runtime` cargo feature so the existing
+  `napi-bind`/`wasm-bind` parser builds are untouched:
+  - `src/runtime/tree.rs` — owns the document: `core::Node` tree in a flat `Vec<NodeRec>` arena (SoA-style
+    columns: `parent/first_child/next_sib/node_type/tag_id` + attr slices + a string-intern table). Index = handle.
+  - `src/runtime/query.rs` — a minimal selector matcher (tag, `.class`, `#id`, descendant) running entirely
+    Rust-side; `query_selector_all(doc, sel) -> packed Vec<u32>`. Alloc-free inner loop (slices, no per-node heap).
+  - `src/runtime/wasm.rs` — `#[wasm_bindgen]` exports: `create(html)->u32 docHandle`, `qsa(doc,sel)->Uint32Array`,
+    `get_attr(h, name_id)->i32 strId` (interned-id out, NOT a string), `tag_name(h)->u32 strId`,
+    `first_child/next_sib/parent(h)->i32`, `dispatch(h, type_id)->u32` (listener-less path: walk ancestors,
+    return path length — exercises the dispatch walk without JS callbacks), `intern_str(s)->u32` + `str_of(id)`.
+- JS shim `bench/spike-shim.mjs` — `Map<u32,Node>` identity memo, lazy wrapper creation, JS-side interned
+  string table, wrappers cache immutable scalars (`tagName`). Mirrors Option A + §2.5 laziness rules.
+
+### Spike workload (mirror RTL/React chatter)
+1. Parse a real fixture (one of the bench fixtures / a payroll-app shell).
+2. `qsa('div.card')` → for each result read `getAttribute('class')` + `tagName` + walk `parentNode` to root.
+3. `dispatch` a listener-less event on N nodes (React fires thousands).
+Compare against `src/runtime/index.mjs` (current JS) doing the identical sequence, best-of-6, observable sink.
+
+### Definition of done (what makes the gate decidable)
+- Spike compiles to `wasm32-unknown-unknown`, loads in Node, runs the workload, produces identical results
+  to the JS runtime for the same fixture (correctness first).
+- A bench script prints: ops/s (Rust+WASM vs JS), **boundary-crossing count** per workload iteration, and the
+  laziness counters from §2.5 (wrappers materialized, attr builds) for both impls.
+- Written verdict appended here: **CONTINUE** (within ~10% or faster → proceed to Phase 2) or **PIVOT**
+  (boundary tax dominates → reconsider Option B-eager / keep JS front-end for the JS consumer, Rust API for
+  the Rust consumer only).
