@@ -506,6 +506,73 @@ impl Tree {
         }
     }
 
+    // ---- CharacterData mutation (text/comment nodes) -------------------------------------------
+    // The DOM's CharacterData methods, operating on the node's text. Offsets/counts are in chars
+    // (BMP-correct; matches JS string indexing for the ASCII/typed-text these drive). Records a
+    // characterData mutation so a MutationObserver (Lexical's editor model) sees the edit.
+    /// Set the text of a text/comment node directly (`CharacterData.data` / `nodeValue` setter).
+    pub fn set_node_value(&mut self, h: Handle, text: &str) {
+        let nt = self.node_type(h);
+        if nt != TEXT_NODE && nt != COMMENT_NODE {
+            return;
+        }
+        let old = if self.is_recording() { self.node_value(h) } else { None };
+        self.text_ov.insert(h, text.to_string());
+        self.bump();
+        self.record(crate::rtdom::mutations::MutationRecord::character_data(h, old));
+    }
+    pub fn insert_data(&mut self, h: Handle, offset: usize, data: &str) {
+        let chars: Vec<char> = self.node_value(h).unwrap_or_default().chars().collect();
+        let off = offset.min(chars.len());
+        let mut out: String = chars[..off].iter().collect();
+        out.push_str(data);
+        out.extend(chars[off..].iter());
+        self.set_node_value(h, &out);
+    }
+    pub fn delete_data(&mut self, h: Handle, offset: usize, count: usize) {
+        let chars: Vec<char> = self.node_value(h).unwrap_or_default().chars().collect();
+        let off = offset.min(chars.len());
+        let end = off.saturating_add(count).min(chars.len());
+        let mut out: String = chars[..off].iter().collect();
+        out.extend(chars[end..].iter());
+        self.set_node_value(h, &out);
+    }
+    pub fn append_data(&mut self, h: Handle, data: &str) {
+        let mut s = self.node_value(h).unwrap_or_default();
+        s.push_str(data);
+        self.set_node_value(h, &s);
+    }
+    pub fn replace_data(&mut self, h: Handle, offset: usize, count: usize, data: &str) {
+        let chars: Vec<char> = self.node_value(h).unwrap_or_default().chars().collect();
+        let off = offset.min(chars.len());
+        let end = off.saturating_add(count).min(chars.len());
+        let mut out: String = chars[..off].iter().collect();
+        out.push_str(data);
+        out.extend(chars[end..].iter());
+        self.set_node_value(h, &out);
+    }
+    pub fn substring_data(&self, h: Handle, offset: usize, count: usize) -> String {
+        let chars: Vec<char> = self.node_value(h).unwrap_or_default().chars().collect();
+        let off = offset.min(chars.len());
+        let end = off.saturating_add(count).min(chars.len());
+        chars[off..end].iter().collect()
+    }
+    /// Split a text node at `offset`: truncate this node to the head, create a sibling holding the
+    /// tail (inserted right after), and return the new node's handle.
+    pub fn split_text(&mut self, h: Handle, offset: usize) -> Handle {
+        let chars: Vec<char> = self.node_value(h).unwrap_or_default().chars().collect();
+        let off = offset.min(chars.len());
+        let head: String = chars[..off].iter().collect();
+        let tail: String = chars[off..].iter().collect();
+        self.set_node_value(h, &head);
+        let new = self.create_text_node(&tail);
+        if let Some(p) = self.parent(h) {
+            let next = self.next_sibling(h);
+            self.insert_before(p, new, next);
+        }
+        new
+    }
+
     // ------------------------------------------------------------- creation
     fn push_new(&mut self, node_type: u8, name: String, ns: u8) -> Handle {
         let h = self.node_count();

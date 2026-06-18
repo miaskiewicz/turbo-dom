@@ -490,7 +490,7 @@ dependencies = [
 
 [[package]]
 name = "turbo-dom"
-version = "0.3.2"
+version = "0.3.3"
 dependencies = [
  "html5ever",
  "markup5ever_rcdom",
@@ -499,7 +499,7 @@ dependencies = [
 
 [[package]]
 name = "turbo-dom-parser"
-version = "0.3.2"
+version = "0.3.3"
 dependencies = [
  "html5ever",
  "markup5ever_rcdom",

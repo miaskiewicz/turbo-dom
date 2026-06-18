@@ -24,7 +24,20 @@ unaffected — `src/runtime/*.mjs` is byte-identical and the napi/wasm parser AP
   `RUST_PORT_PERF_HISTORY.md`. (A Phase-1 spike confirmed the spec's thesis: a Rust DOM exposed
   to JS via WASM is ~0.55× the JS runtime — the boundary loses — so rtdom is Rust-only.)
 
-## [0.2.4] — virtual-time scheduler (React/MUI hydration)
+## [0.3.3] — rtdom CharacterData mutation (`turbo-dom` crate)
+
+Crate-only (`crates/turbo-dom`); the npm JS runtime + parser are unchanged.
+
+### Added
+- **`Tree` CharacterData methods** — `set_node_value`, `insert_data`, `delete_data`, `append_data`,
+  `replace_data`, `substring_data`, and `split_text`, operating natively on rtdom's text storage
+  (offsets/counts in chars; each records a `characterData` mutation so a `MutationObserver` sees the
+  edit). These are the spec methods a contenteditable editor (Lexical) + `@testing-library/user-event`
+  drive when typing into a contenteditable: the keypress path inserts characters via
+  `textNode.insertData()` and a `Range` splits text with `splitText()`. Previously a consumer had to
+  shim these in JS over the `data` accessor (string-slicing per edit); native is cleaner and emits the
+  mutation record the editor model relies on. `cascade::computed_style` (already inheritance-aware,
+  incl. `visibility`) now also backs a consumer's `getComputedStyle` inherited-property resolution.
 - `setClock(fn)` (exported from `@miaskiewicz/turbo-dom/runtime`): injectable clock that both
   `performance.now()` and the `requestAnimationFrame` callback timestamp read through; default =
   real host clock. Lets a render tier drive virtual time so time-gated MUI/transition rAF loops
