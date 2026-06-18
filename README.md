@@ -202,6 +202,12 @@ called *from JS* is **~0.55×** the JS runtime (the boundary crossing dominates 
 the JS runtime on the same chatty workload (zero boundary). So: JS consumers keep the JS runtime,
 Rust consumers use `rtdom`.
 
+Add it to a Rust project from crates.io:
+
+```bash
+cargo add turbo-dom-rtdom
+```
+
 ```rust
 use turbo_dom_rtdom::{Dom, DocumentExt};
 use turbo_dom_rtdom::rtdom::cascade;
@@ -212,12 +218,14 @@ let id = dom.tree.get_attribute(cards[0], "id");            // Some("hero") — 
 let style = cascade::computed_style(&dom.tree, cards[0]);   // partial honest cascade
 ```
 
-- **In this repo:** `src/rtdom/` (15 modules), behind an off-by-default `rust-runtime` cargo feature
-  so the published npm `.node`/wasm parser artifacts stay lean. Build it with
-  `npm run build:rtdom` (= `cargo build --release --no-default-features --features rust-runtime`).
-  100% line coverage, 192 tests, a direct html5lib-tests gate at **99.75%** (`npm run conformance:rtdom`).
-- **Standalone crate:** extracted to a self-contained, vendorable crate (`turbo-dom-rtdom`) with
-  minimal deps (`html5ever` + `rustc-hash`, no napi/wasm) and a runnable `examples/crawl.rs`.
+- **crates.io:** [`turbo-dom-rtdom`](https://crates.io/crates/turbo-dom-rtdom) — the self-contained,
+  publishable crate (workspace member `crates/turbo-dom-rtdom/`) with minimal deps
+  (`html5ever` + `rustc-hash`, no napi/wasm) and a runnable `examples/crawl.rs`. 192 tests.
+- **In this repo (parser crate):** the same runtime also lives at `src/rtdom/` behind an
+  off-by-default `rust-runtime` cargo feature, so the published npm `.node`/wasm parser artifacts
+  stay lean. Build it with `npm run build:rtdom`
+  (= `cargo build --release --no-default-features --features rust-runtime`). 100% line coverage,
+  a direct html5lib-tests gate at **99.75%** (`npm run conformance:rtdom`).
 
 ## Limitations (by design)
 

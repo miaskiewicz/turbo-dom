@@ -29,8 +29,9 @@ and the Rust runtime (`src/rtdom/`, gated behind the off-by-default `rust-runtim
 in-process Rust consumers) never touch each other. `pub mod rtdom` is `#[cfg(feature = "rust-runtime")]`
 so the published `.node`/wasm parser artifacts stay lean. rtdom is held to **100% line coverage**
 (`cargo tarpaulin --lib --no-default-features --skip-clean`); its `dump`/`conformance` modules are
-`#[cfg(test)]` gate harness, not shipped. A self-contained extract lives in the sibling crate
-`../turbo-dom-rtdom` (clean deps, vendorable). See `RUST_PORT_PLAN.md`.
+`#[cfg(test)]` gate harness, not shipped. A self-contained extract lives in the workspace-member
+crate `crates/turbo-dom-rtdom` (clean deps, vendorable) — this is what publishes to crates.io as
+`turbo-dom-rtdom` (the `publish-crate` CI job on a `v*` tag). See `RUST_PORT_PLAN.md`.
 
 Toolchain: Node ≥ 24, Rust stable via rustup (`source $HOME/.cargo/env` if cargo isn't on PATH).
 

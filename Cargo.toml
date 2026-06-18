@@ -1,3 +1,8 @@
+[workspace]
+# The root package (turbo-dom-parser) plus the standalone Rust-native DOM runtime
+# crate published to crates.io. The parser ships to npm; turbo-dom-rtdom to crates.io.
+members = ["crates/turbo-dom-rtdom"]
+
 [package]
 name = "turbo-dom-parser"
 version = "0.3.0"

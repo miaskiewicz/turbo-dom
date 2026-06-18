@@ -1,0 +1,21 @@
+[package]
+name = "turbo-dom-rtdom"
+version = "0.3.0"
+edition = "2021"
+description = "Pure-Rust DOM runtime — lazy copy-on-write tree over an html5ever SoA, native Rust API, zero JS boundary. Extracted from turbo-dom's rtdom module for in-process Rust consumers (crawlers, extractors, SSR)."
+license = "MIT"
+repository = "https://github.com/miaskiewicz/turbo-dom"
+readme = "README.md"
+keywords = ["dom", "html", "parser", "html5ever", "scraping"]
+categories = ["parser-implementations", "web-programming"]
+
+[lib]
+crate-type = ["rlib"]
+
+[dependencies]
+# Spec-compliant WHATWG parser (same core as turbo-dom). The runtime builds its
+# COW tree directly over the SoA this produces.
+html5ever = "0.39"
+markup5ever_rcdom = "0.39"
+# Fast non-crypto hashing for SoA string interning (parse hot path).
+rustc-hash = "2"

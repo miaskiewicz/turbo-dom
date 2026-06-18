@@ -504,6 +504,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "turbo-dom-rtdom"
+version = "0.3.0"
+dependencies = [
+ "html5ever",
+ "markup5ever_rcdom",
+ "rustc-hash",
+]
+
+[[package]]
 name = "unicode-ident"
 version = "1.0.24"
 source = "registry+https://github.com/rust-lang/crates.io-index"
