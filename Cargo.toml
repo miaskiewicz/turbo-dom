@@ -5,7 +5,7 @@ members = ["crates/turbo-dom"]
 
 [package]
 name = "turbo-dom-parser"
-version = "0.3.3"
+version = "0.3.4"
 edition = "2021"
 description = "html5ever-backed native parser for turbo-dom (Layer 1)"
 

@@ -624,6 +624,97 @@ impl Tree {
         self.bump();
     }
 
+    // ---- ChildNode / ParentNode manipulation (spec methods) -----------------------------------
+    /// Insert `nodes` (in order) immediately before `h` within `h`'s parent. No-op if detached.
+    pub fn before(&mut self, h: Handle, nodes: &[Handle]) {
+        let Some(p) = self.parent(h) else { return };
+        for &n in nodes {
+            self.insert_before(p, n, Some(h));
+        }
+    }
+    /// Insert `nodes` (in order) immediately after `h` within `h`'s parent.
+    pub fn after(&mut self, h: Handle, nodes: &[Handle]) {
+        let Some(p) = self.parent(h) else { return };
+        let next = self.next_sibling(h);
+        for &n in nodes {
+            self.insert_before(p, n, next);
+        }
+    }
+    /// Replace `h` with `nodes` (in order) in `h`'s parent.
+    pub fn replace_with(&mut self, h: Handle, nodes: &[Handle]) {
+        let Some(p) = self.parent(h) else { return };
+        let next = self.next_sibling(h);
+        // Insert before h's next sibling so order is preserved, then remove h. (If a node in `nodes`
+        // is h itself it is first detached by insert_before — harmless; spec dedups similarly.)
+        for &n in nodes {
+            if n != h {
+                self.insert_before(p, n, next);
+            }
+        }
+        self.remove_child(p, h);
+    }
+    /// Replace all children of `h` with `nodes` (in order).
+    pub fn replace_children(&mut self, h: Handle, nodes: &[Handle]) {
+        for c in self.children(h) {
+            self.remove_child(h, c);
+        }
+        for &n in nodes {
+            self.append_child(h, n);
+        }
+    }
+    /// `insertAdjacentElement(position, element)` — position is beforebegin | afterbegin | beforeend
+    /// | afterend (case-insensitive). Returns true if inserted.
+    pub fn insert_adjacent_element(&mut self, h: Handle, position: &str, el: Handle) -> bool {
+        match position.to_ascii_lowercase().as_str() {
+            "beforebegin" => { if self.parent(h).is_some() { self.before(h, &[el]); true } else { false } }
+            "afterend" => { if self.parent(h).is_some() { self.after(h, &[el]); true } else { false } }
+            "afterbegin" => { let first = self.first_child(h); self.insert_before(h, el, first); true }
+            "beforeend" => { self.append_child(h, el); true }
+            _ => false,
+        }
+    }
+    /// `insertAdjacentHTML(position, html)` — parse `html` as a fragment (in `h`'s context for
+    /// beforeend/afterbegin, else the parent's) and insert the resulting nodes at `position`.
+    pub fn insert_adjacent_html(&mut self, h: Handle, position: &str, html: &str) {
+        let pos = position.to_ascii_lowercase();
+        let ctx_h = match pos.as_str() {
+            "beforebegin" | "afterend" => self.parent(h).unwrap_or(h),
+            _ => h,
+        };
+        let ctx = self.local_name(ctx_h).unwrap_or("body").to_string();
+        let frag = core::parse_html_fragment_context(html, &ctx);
+        let kids: Vec<Handle> = frag.children.iter().map(|c| self.import_node(c)).collect();
+        match pos.as_str() {
+            "beforebegin" => self.before(h, &kids),
+            "afterend" => self.after(h, &kids),
+            "afterbegin" => { let first = self.first_child(h); for &k in &kids { self.insert_before(h, k, first); } }
+            _ => for &k in &kids { self.append_child(h, k); }, // beforeend (default)
+        }
+    }
+    /// `toggleAttribute(name, force?)` — add when absent (or force=Some(true)), remove when present
+    /// (or force=Some(false)). Returns whether the attribute is present afterward.
+    pub fn toggle_attribute(&mut self, h: Handle, name: &str, force: Option<bool>) -> bool {
+        let present = self.has_attribute(h, name);
+        let want = force.unwrap_or(!present);
+        if want {
+            if !present { self.set_attribute(h, name, ""); }
+            true
+        } else {
+            if present { self.remove_attribute(h, name); }
+            false
+        }
+    }
+    /// `getAttributeNS(namespace, localName)` — our attrs are keyed by qualified name; match the
+    /// local name directly, then any `prefix:localName` form (covers SVG `xlink:href` etc.).
+    pub fn get_attribute_ns(&self, h: Handle, _ns: Option<&str>, local: &str) -> Option<String> {
+        if let Some(v) = self.get_attribute(h, local) { return Some(v.to_string()); }
+        let suffix = format!(":{local}");
+        for (n, v) in self.attributes(h) {
+            if n == local || n.ends_with(&suffix) { return Some(v); }
+        }
+        None
+    }
+
     /// Recursively import a parsed `core::Node` as owned nodes. Returns its handle.
     fn import_node(&mut self, n: &core::Node) -> Handle {
         match n.node_type {

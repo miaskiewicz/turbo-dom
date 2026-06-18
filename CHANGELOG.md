@@ -24,6 +24,21 @@ unaffected — `src/runtime/*.mjs` is byte-identical and the napi/wasm parser AP
   `RUST_PORT_PERF_HISTORY.md`. (A Phase-1 spike confirmed the spec's thesis: a Rust DOM exposed
   to JS via WASM is ~0.55× the JS runtime — the boundary loses — so rtdom is Rust-only.)
 
+## [0.3.4] — rtdom ChildNode/ParentNode + insertAdjacent + toggleAttribute + getAttributeNS
+
+Crate-only (`crates/turbo-dom`); the npm JS runtime + parser are unchanged. Found via turbo-crawl,
+which renders over rtdom — these are the DOM methods server-HTML hydration paths reach that rtdom
+lacked, so a consumer had to shim them in JS.
+
+### Added
+- **`Tree` ChildNode/ParentNode manipulation** — `before`, `after`, `replace_with`,
+  `replace_children` (insert/replace relative to a node or among a parent's children).
+- **`insert_adjacent_element` / `insert_adjacent_html`** — position-relative insertion
+  (`beforebegin` | `afterbegin` | `beforeend` | `afterend`); the HTML form parses a fragment in the
+  appropriate context and imports the nodes.
+- **`toggle_attribute`** (with optional `force`) and **`get_attribute_ns`** (namespaced read, matches
+  the local name then any `prefix:localName` — covers SVG `xlink:*`).
+
 ## [0.3.3] — rtdom CharacterData mutation (`turbo-dom` crate)
 
 Crate-only (`crates/turbo-dom`); the npm JS runtime + parser are unchanged.
