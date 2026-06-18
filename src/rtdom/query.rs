@@ -304,11 +304,24 @@ fn parse_complex(src: &str) -> Complex {
 }
 
 /// split on whitespace but keep `>` as its own token (with or without surrounding ws).
+/// Whitespace and `>` inside an attribute selector `[...]` or a quoted string are NOT separators —
+/// e.g. `svg[viewBox="0 0 10 10"]` is one token, not five.
 fn tokenize_complex(src: &str) -> Vec<String> {
     let mut out = Vec::new();
     let mut cur = String::new();
+    let mut depth: i32 = 0; // inside [...]
+    let mut quote: Option<char> = None;
     for ch in src.chars() {
+        if let Some(q) = quote {
+            cur.push(ch);
+            if ch == q { quote = None; }
+            continue;
+        }
         match ch {
+            '"' | '\'' => { quote = Some(ch); cur.push(ch); }
+            '[' => { depth += 1; cur.push(ch); }
+            ']' => { depth -= 1; cur.push(ch); }
+            c if depth > 0 => cur.push(c),
             c if c.is_whitespace() => {
                 if !cur.is_empty() {
                     out.push(std::mem::take(&mut cur));
