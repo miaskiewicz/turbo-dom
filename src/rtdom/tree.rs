@@ -489,13 +489,20 @@ impl Tree {
             self.bump();
             self.record(crate::rtdom::mutations::MutationRecord::character_data(h, old));
         } else {
-            // replace children with a single text node
+            // replace children with a single text node — but per the DOM spec, the EMPTY string
+            // produces NO child node (the element ends up empty). React's createRoot clears the
+            // container via `textContent = ''` and relies on it leaving zero children.
             let removed = self.children(h);
-            let t = self.create_text_node(text);
-            self.children_ov.insert(h, vec![t]);
-            self.parent_ov.insert(t, h as i32);
+            let added = if text.is_empty() {
+                Vec::new()
+            } else {
+                let t = self.create_text_node(text);
+                self.parent_ov.insert(t, h as i32);
+                vec![t]
+            };
+            self.children_ov.insert(h, added.clone());
             self.bump();
-            self.record(crate::rtdom::mutations::MutationRecord::child_list(h, vec![t], removed));
+            self.record(crate::rtdom::mutations::MutationRecord::child_list(h, added, removed));
         }
     }
 
