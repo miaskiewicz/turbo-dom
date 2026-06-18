@@ -1,15 +1,16 @@
-# turbo-dom-rtdom
+# turbo-dom
 
 A **pure-Rust DOM runtime** for in-process Rust consumers (crawlers, extractors,
 SSR, scraping). A lazy, copy-on-write DOM tree built directly over an
 [`html5ever`](https://github.com/servo/html5ever) Structure-of-Arrays parse
 buffer, with a **native Rust API and zero JS boundary**.
 
-Extracted standalone from [turbo-dom](../turbo-dom)'s `rtdom` module. No napi, no
-wasm-bindgen, no JavaScript — those exist only on turbo-dom's *JS-consumer* path
-(where an in-process JS runtime beats a WASM/napi boundary anyway). This crate is
-the path for a **Rust** consumer, where the DOM lives in-process and every read /
-mutation is a plain Rust call.
+This is the Rust-native runtime of the [turbo-dom](https://github.com/miaskiewicz/turbo-dom)
+project (the npm package `@miaskiewicz/turbo-dom` is the JS-consumer path). No napi,
+no wasm-bindgen, no JavaScript — those exist only on the JS-consumer path (where an
+in-process JS runtime beats a WASM/napi boundary anyway). This crate is the path for
+a **Rust** consumer, where the DOM lives in-process and every read / mutation is a
+plain Rust call.
 
 ## Why
 
@@ -21,16 +22,15 @@ exactly why this is Rust-only.)
 
 ## Install
 
-```toml
-[dependencies]
-turbo-dom-rtdom = { path = "../turbo-dom-rtdom" }   # or git = "..."
+```bash
+cargo add turbo-dom
 ```
 
 ## Use
 
 ```rust
-use turbo_dom_rtdom::{Dom, DocumentExt, Event};
-use turbo_dom_rtdom::rtdom::{cascade, serialize};
+use turbo_dom::{Dom, DocumentExt, Event};
+use turbo_dom::rtdom::{cascade, serialize};
 
 let mut dom = Dom::parse("<main class=grid><div class=card id=hero>hi</div></main>");
 
@@ -59,7 +59,7 @@ let html = serialize::serialize_inner(&dom.tree, dom.tree.root());
 
 Run the worked example: `cargo run --release --example crawl`.
 
-## What's inside (`turbo_dom_rtdom::rtdom::*`)
+## What's inside (`turbo_dom::rtdom::*`)
 
 | module | role |
 |---|---|
@@ -81,15 +81,9 @@ Run the worked example: `cargo run --release --example crawl`.
 ## Status
 
 - **100% line coverage** on every runtime module; **192 unit tests** (`cargo test`).
-- The parser core (`turbo_dom_rtdom::core`) is byte-identical to turbo-dom's and
+- The parser core (`turbo_dom::core`) is byte-identical to the parser crate's and
   passes html5lib-tests tree-construction conformance at **99.72%** there.
 - Honest by design: `getComputedStyle` only returns values a real rule/inline/
   inherited declaration set (no invented initial values, no layout/`@media`/state).
-
-## Re-syncing from turbo-dom
-
-`core.rs` and `src/rtdom/*` are copied verbatim from the [turbo-dom](../turbo-dom)
-repo (sans the `dump`/`conformance` gate harness). To pull upstream changes,
-re-copy those files; the public API and module layout are identical.
 
 MIT.

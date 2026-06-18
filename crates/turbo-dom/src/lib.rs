@@ -1,14 +1,14 @@
-//! turbo-dom-rtdom — pure-Rust DOM runtime for in-process Rust consumers.
+//! turbo-dom — pure-Rust DOM runtime for in-process Rust consumers.
 //!
 //! A lazy, copy-on-write DOM tree built directly over an html5ever Structure-of-
-//! Arrays parse buffer, with a native Rust API and ZERO JS boundary. Extracted
-//! standalone from turbo-dom's `rtdom` module (no napi/wasm/JS — those exist only
-//! for the JS-consumer path, where an in-process JS runtime is faster than a
-//! WASM/napi boundary anyway).
+//! Arrays parse buffer, with a native Rust API and ZERO JS boundary. This is the
+//! Rust-native `rtdom` runtime (no napi/wasm/JS — those exist only for the
+//! JS-consumer path, where an in-process JS runtime is faster than a WASM/napi
+//! boundary anyway).
 //!
 //! ```ignore
-//! use turbo_dom_rtdom::{Dom, Tree};
-//! use turbo_dom_rtdom::rtdom::cascade;
+//! use turbo_dom::{Dom, Tree};
+//! use turbo_dom::rtdom::cascade;
 //!
 //! let mut dom = Dom::parse("<main class=grid><div class=card id=hero>hi</div></main>");
 //! let cards = dom.tree.query_selector_all("div.card");

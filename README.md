@@ -202,15 +202,16 @@ called *from JS* is **~0.55×** the JS runtime (the boundary crossing dominates 
 the JS runtime on the same chatty workload (zero boundary). So: JS consumers keep the JS runtime,
 Rust consumers use `rtdom`.
 
-Add it to a Rust project from crates.io:
+Add it to a Rust project from crates.io (the `turbo-dom` crate is the Rust-native
+runtime; the npm `@miaskiewicz/turbo-dom` is the JS path):
 
 ```bash
-cargo add turbo-dom-rtdom
+cargo add turbo-dom
 ```
 
 ```rust
-use turbo_dom_rtdom::{Dom, DocumentExt};
-use turbo_dom_rtdom::rtdom::cascade;
+use turbo_dom::{Dom, DocumentExt};
+use turbo_dom::rtdom::cascade;
 
 let mut dom = Dom::parse("<main class=grid><div class=card id=hero>hi</div></main>");
 let cards = dom.tree.query_selector_all("div.card");        // version-cached, in-process
@@ -218,8 +219,8 @@ let id = dom.tree.get_attribute(cards[0], "id");            // Some("hero") — 
 let style = cascade::computed_style(&dom.tree, cards[0]);   // partial honest cascade
 ```
 
-- **crates.io:** [`turbo-dom-rtdom`](https://crates.io/crates/turbo-dom-rtdom) — the self-contained,
-  publishable crate (workspace member `crates/turbo-dom-rtdom/`) with minimal deps
+- **crates.io:** [`turbo-dom`](https://crates.io/crates/turbo-dom) — the self-contained,
+  publishable crate (workspace member `crates/turbo-dom/`) with minimal deps
   (`html5ever` + `rustc-hash`, no napi/wasm) and a runnable `examples/crawl.rs`. 192 tests.
 - **In this repo (parser crate):** the same runtime also lives at `src/rtdom/` behind an
   off-by-default `rust-runtime` cargo feature, so the published npm `.node`/wasm parser artifacts

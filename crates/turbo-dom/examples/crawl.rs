@@ -1,10 +1,10 @@
-//! Minimal in-process Rust consumer of turbo-dom-rtdom. Run:
+//! Minimal in-process Rust consumer of the turbo-dom crate. Run:
 //!   cargo run --release --example crawl
 //! Demonstrates the native API a crawler/extractor uses: parse → query →
 //! read attrs/text → getComputedStyle → mutate via an event → serialize.
 
-use turbo_dom_rtdom::rtdom::{cascade, serialize};
-use turbo_dom_rtdom::{Dom, DocumentExt, Event};
+use turbo_dom::rtdom::{cascade, serialize};
+use turbo_dom::{Dom, DocumentExt, Event};
 
 fn main() {
     let html = r#"<!doctype html><html><head><style>

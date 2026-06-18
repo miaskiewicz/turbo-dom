@@ -155,10 +155,10 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
   # ---- Publish the Rust-native runtime crate to crates.io on a version tag ----
-  # turbo-dom-rtdom is the pure-Rust DOM runtime (workspace member crates/turbo-dom-rtdom),
+  # The `turbo-dom` crate is the pure-Rust DOM runtime (workspace member crates/turbo-dom),
   # for in-process Rust consumers. Independent of the npm package above; same v* tag fires
   # both. Requires repository secret CARGO_REGISTRY_TOKEN (a crates.io API token allowed to
-  # publish turbo-dom-rtdom). cargo reads CARGO_REGISTRY_TOKEN from the environment natively.
+  # publish the turbo-dom crate). cargo reads CARGO_REGISTRY_TOKEN from the environment natively.
   publish-crate:
     name: publish-crate
     needs: [build, test]
@@ -167,7 +167,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - name: Publish turbo-dom-rtdom
-        run: cargo publish -p turbo-dom-rtdom
+      - name: Publish turbo-dom crate
+        run: cargo publish -p turbo-dom
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
