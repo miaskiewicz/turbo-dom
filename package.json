@@ -93,7 +93,8 @@
     "bench:scorecard": "node bench/scorecard.mjs",
     "conformance:rtdom": "cargo test --lib --features rust-runtime rtdom::conformance::rtdom_html5lib_conformance_full_document -- --nocapture",
     "build:rtdom": "cargo build --release --no-default-features --features rust-runtime",
-    "bench:compare": "node bench/dom-compare.mjs"
+    "bench:compare": "node bench/dom-compare.mjs",
+    "bench:compare:all": "RTDOM_JSON=\"$(cargo test --release --lib --features rust-runtime rtdom::bench::compare_all -- --ignored --nocapture 2>/dev/null | sed -n 's/.*RTDOM_JSON //p')\" node --expose-gc --max-old-space-size=8192 bench/compare-all.mjs"
   },
   "keywords": [
     "dom",

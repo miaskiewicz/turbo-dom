@@ -54,6 +54,50 @@ fn bench<F: FnMut() -> u64>(mut f: F, ms: u128) -> f64 {
     best
 }
 
+/// Multi-dimension numbers for the cross-DOM comparison (bench/compare-all.mjs reads
+/// the `RTDOM_JSON` line). Run:
+///   cargo test --release --lib --features rust-runtime rtdom::bench::compare_all -- --ignored --nocapture
+#[test]
+#[ignore]
+fn compare_all() {
+    use super::tree::Tree;
+    let html = fixture(300);
+
+    // D1 parse: unique HTML each iter (rtdom has no parse cache; keep it honest anyway)
+    let mut i = 0u64;
+    let parse = bench(|| { i += 1; Tree::parse(&format!("{html}<!--{i}-->")).node_count() as u64 }, 400);
+
+    // D2 construct + light query
+    let mut j = 0u64;
+    let construct = bench(|| {
+        j += 1;
+        let t = Tree::parse(&format!("{html}<!--{j}-->"));
+        t.query_selector_all("div.card").len() as u64
+    }, 400);
+
+    // D3 per-node chatty access over a fixed element list
+    let tree = Tree::parse(&html);
+    let cards = tree.query_selector_all("div.card");
+    let per_node = bench(|| {
+        let mut s = 0u64;
+        for &el in &cards {
+            if let Some(c) = tree.get_attribute(el, "class") { s += c.len() as u64; }
+            if let Some(t) = tree.get_attribute(el, "data-testid") { s += t.len() as u64; }
+            if let Some(t) = tree.tag_name(el) { s += t.len() as u64; }
+            let mut p = tree.parent(el);
+            while let Some(x) = p { s += 1; p = tree.parent(x); }
+        }
+        s
+    }, 400);
+
+    // D4 repeated query on an unchanged tree (version-cached)
+    let repeated = bench(|| tree.query_selector_all("div.card").len() as u64, 400);
+
+    println!(
+        "RTDOM_JSON {{\"parse\":{parse:.0},\"construct\":{construct:.0},\"per_node\":{per_node:.0},\"repeated_query\":{repeated:.0}}}"
+    );
+}
+
 #[test]
 #[ignore]
 fn hotspot_report() {
