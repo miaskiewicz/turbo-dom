@@ -239,15 +239,16 @@ fn parse_compound_tokens(toks: &[Token], i: &mut usize) -> Compound {
             Token::Colon => {
                 *i += 1;
                 let name = take_ident(toks, i);
+                // borrow the paren's argument text — parse_pseudo takes &str, so the
+                // old `.clone()` here only to immediately re-borrow was pure waste.
                 let arg = match toks.get(*i) {
                     Some(Token::Paren(p)) => {
-                        let p = p.clone();
                         *i += 1;
-                        Some(p)
+                        Some(p.as_str())
                     }
                     _ => None,
                 };
-                c.pseudos.push(parse_pseudo(&name, arg.as_deref()));
+                c.pseudos.push(parse_pseudo(&name, arg));
             }
             Token::Attr(inner) => {
                 c.attrs.push(parse_attr(inner));

@@ -57,6 +57,24 @@ function parseAttr(inner) {
   return { name: name.trim(), op, value };
 }
 
+// Scan from `start` (just past an opening `open`) to its matching `close`,
+// honoring quotes and nesting. Returns { inner, end } where `end` is the index of
+// the closing delimiter (or src.length if unterminated). One shared scanner for
+// both `[...]` and `(...)`, mirroring the Rust `scan_balanced` — a `]`/`)` inside a
+// quoted value never terminates early, and `:not(:nth-child(2))` nests correctly.
+function scanBalanced(src, start, open, close) {
+  const n = src.length;
+  let depth = 1, i = start, quote = null;
+  for (; i < n; i++) {
+    const d = src[i];
+    if (quote) { if (d === quote) quote = null; continue; }
+    if (d === '"' || d === "'") quote = d;
+    else if (d === open) depth++;
+    else if (d === close) { depth--; if (depth === 0) break; }
+  }
+  return { inner: src.slice(start, i), end: i };
+}
+
 function tokenize(src) {
   const tokens = [];
   const n = src.length;
@@ -85,18 +103,10 @@ function tokenize(src) {
       i = j; continue;
     }
     if (c === '[') {
-      // scan to the matching ']' — a ']' inside a quoted value is not the closer
-      let j = i + 1, quote = null;
-      while (j < n) {
-        const d = src[j];
-        if (quote) { if (d === quote) quote = null; j++; continue; }
-        if (d === '"' || d === "'") { quote = d; j++; continue; }
-        if (d === ']') break;
-        j++;
-      }
-      if (j >= n) throw new SyntaxError(`unterminated attribute selector: ${src.slice(i)}`);
-      tokens.push({ k: 'attr', ...parseAttr(src.slice(i + 1, j)) });
-      i = j + 1; continue;
+      const { inner, end } = scanBalanced(src, i + 1, '[', ']');
+      if (end >= n) throw new SyntaxError(`unterminated attribute selector: ${src.slice(i)}`);
+      tokens.push({ k: 'attr', ...parseAttr(inner) });
+      i = end + 1; continue;
     }
     if (c === ':') {
       let j = i + 1;
@@ -106,16 +116,9 @@ function tokenize(src) {
       if (j < n && src[j] === '(') {
         // balanced parens (quotes respected) so a nested ':not(:nth-child(2))'
         // or a quoted ')' survives intact for the recursive parse.
-        let depth = 1, k = j + 1, quote = null;
-        for (; k < n; k++) {
-          const d = src[k];
-          if (quote) { if (d === quote) quote = null; continue; }
-          if (d === '"' || d === "'") quote = d;
-          else if (d === '(') depth++;
-          else if (d === ')') { depth--; if (depth === 0) break; }
-        }
-        arg = src.slice(j + 1, k);
-        i = k < n ? k + 1 : n;
+        const { inner, end } = scanBalanced(src, j + 1, '(', ')');
+        arg = inner;
+        i = end < n ? end + 1 : n;
       } else {
         i = j;
       }
