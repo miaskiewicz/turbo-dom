@@ -8,22 +8,45 @@
 
 use super::tree::{Handle, NodeType, Tree};
 
-#[derive(Debug, Clone, Copy, PartialEq)]
-enum AttrOp {
-    Presence, // [attr]
-    Exact,    // [attr=v]
-    Includes, // [attr~=v]  whitespace-separated word
-    Dash,     // [attr|=v]  v or v-...
-    Prefix,   // [attr^=v]
-    Suffix,   // [attr$=v]
-    Substr,   // [attr*=v]
+/// How an `[attr...]` test compares against the element's attribute value. The
+/// operator and its operand are ONE inseparable thing: a presence test `[attr]`
+/// carries no value, and every value-bearing operator carries its value. This
+/// makes "presence with a value" / "equals with no value" unrepresentable — the
+/// old `Attr { op, value }` could express both.
+#[derive(Debug, Clone)]
+enum AttrMatch {
+    Present,          // [attr]
+    Equals(String),   // [attr=v]
+    Includes(String), // [attr~=v]  whitespace-separated word
+    Dash(String),     // [attr|=v]  v or v-...
+    Prefix(String),   // [attr^=v]
+    Suffix(String),   // [attr$=v]
+    Substr(String),   // [attr*=v]
+}
+
+impl AttrMatch {
+    /// Does `got` (the element's attribute value) satisfy this test? SAME
+    /// semantics as the old `attr_op_matches`: the `!want.is_empty()` guards on
+    /// prefix/suffix/substr/includes are preserved, `Dash` = `v` or `v-…`.
+    fn matches(&self, got: &str) -> bool {
+        match self {
+            AttrMatch::Present => true,
+            AttrMatch::Equals(want) => got == want,
+            AttrMatch::Prefix(want) => !want.is_empty() && got.starts_with(want.as_str()),
+            AttrMatch::Suffix(want) => !want.is_empty() && got.ends_with(want.as_str()),
+            AttrMatch::Substr(want) => !want.is_empty() && got.contains(want.as_str()),
+            AttrMatch::Includes(want) => {
+                !want.is_empty() && got.split_ascii_whitespace().any(|w| w == want)
+            }
+            AttrMatch::Dash(want) => got == want || got.starts_with(&format!("{want}-")),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
 struct Attr {
     name: String,
-    op: AttrOp,
-    value: String, // empty for Presence
+    m: AttrMatch,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -74,11 +97,16 @@ enum Combinator {
     Child,
 }
 
-/// A complex selector = a chain of (combinator, compound), left-to-right.
-/// The first compound has no meaningful combinator (use Descendant).
+/// A complex selector = a non-empty head compound + a tail of
+/// `(combinator, compound)` pairs, left-to-right. In `rest`, entry `i`'s
+/// combinator connects its compound to the one on its LEFT (`rest[i-1].1`, or
+/// `first` when `i==0`). Modeling the head separately makes "empty complex" and
+/// "meaningless leading combinator" unrepresentable — `parse_complex` returns
+/// `Option<Complex>`, so a `Complex` is always non-empty by construction.
 #[derive(Debug, Clone)]
 struct Complex {
-    parts: Vec<(Combinator, Compound)>,
+    first: Compound,
+    rest: Vec<(Combinator, Compound)>,
 }
 
 /// A lexical token. The lexer is the ONE pass that centrally handles quoted
@@ -361,43 +389,38 @@ fn parse_attr(inner: &str) -> Attr {
         Some(eq) => {
             // operator char (if any) sits immediately before '='
             let raw_name = &inner[..eq];
-            let (op, name) = match raw_name.as_bytes().last() {
-                Some(b'~') => (AttrOp::Includes, &raw_name[..raw_name.len() - 1]),
-                Some(b'|') => (AttrOp::Dash, &raw_name[..raw_name.len() - 1]),
-                Some(b'^') => (AttrOp::Prefix, &raw_name[..raw_name.len() - 1]),
-                Some(b'$') => (AttrOp::Suffix, &raw_name[..raw_name.len() - 1]),
-                Some(b'*') => (AttrOp::Substr, &raw_name[..raw_name.len() - 1]),
-                _ => (AttrOp::Exact, raw_name),
-            };
             let mut val = inner[eq + 1..].trim();
             if (val.starts_with('"') && val.ends_with('"')) || (val.starts_with('\'') && val.ends_with('\'')) {
                 val = &val[1..val.len() - 1];
             }
-            Attr { name: name.trim().to_string(), op, value: val.to_string() }
+            let val = val.to_string();
+            let (m, name) = match raw_name.as_bytes().last() {
+                Some(b'~') => (AttrMatch::Includes(val), &raw_name[..raw_name.len() - 1]),
+                Some(b'|') => (AttrMatch::Dash(val), &raw_name[..raw_name.len() - 1]),
+                Some(b'^') => (AttrMatch::Prefix(val), &raw_name[..raw_name.len() - 1]),
+                Some(b'$') => (AttrMatch::Suffix(val), &raw_name[..raw_name.len() - 1]),
+                Some(b'*') => (AttrMatch::Substr(val), &raw_name[..raw_name.len() - 1]),
+                _ => (AttrMatch::Equals(val), raw_name),
+            };
+            Attr { name: name.trim().to_string(), m }
         }
-        None => Attr { name: inner.trim().to_string(), op: AttrOp::Presence, value: String::new() },
+        None => Attr { name: inner.trim().to_string(), m: AttrMatch::Present },
     }
 }
 
-fn attr_op_matches(op: AttrOp, want: &str, got: &str) -> bool {
-    match op {
-        AttrOp::Presence => true,
-        AttrOp::Exact => got == want,
-        AttrOp::Prefix => !want.is_empty() && got.starts_with(want),
-        AttrOp::Suffix => !want.is_empty() && got.ends_with(want),
-        AttrOp::Substr => !want.is_empty() && got.contains(want),
-        AttrOp::Includes => !want.is_empty() && got.split_ascii_whitespace().any(|w| w == want),
-        AttrOp::Dash => got == want || got.starts_with(&format!("{want}-")),
-    }
-}
-
-/// Parse one complex selector (already comma-split + trimmed) into a `Complex`.
-/// A `Gt` between two compounds is a child combinator; otherwise (whitespace or
-/// nothing) it is descendant — matching the old "default descendant, `>` ⇒ child"
-/// rule exactly. Leading/trailing/extra `Ws` are inert separators.
-fn parse_complex(src: &str) -> Complex {
+/// Parse one complex selector (already comma-split + trimmed) into an
+/// `Option<Complex>` — `None` when the segment yields no compound at all (empty
+/// or combinator-only), so empty segments are dropped at PARSE time and a built
+/// `Complex` is always non-empty. A `Gt` between two compounds is a child
+/// combinator; otherwise (whitespace or nothing) it is descendant — matching the
+/// old "default descendant, `>` ⇒ child" rule exactly. Leading/trailing/extra
+/// `Ws` are inert separators, and a leading/trailing combinator simply never
+/// lands in `rest` (so `a >` parses to `Complex { first: a, rest: [] }` and
+/// matches exactly what `a` matches).
+fn parse_complex(src: &str) -> Option<Complex> {
     let toks = tokenize(src);
-    let mut parts: Vec<(Combinator, Compound)> = Vec::new();
+    let mut first: Option<Compound> = None;
+    let mut rest: Vec<(Combinator, Compound)> = Vec::new();
     let mut combinator = Combinator::Descendant;
     let mut i = 0;
     while i < toks.len() {
@@ -409,12 +432,17 @@ fn parse_complex(src: &str) -> Complex {
             }
             _ => {
                 let c = parse_compound_tokens(&toks, &mut i);
-                parts.push((combinator, c));
+                if first.is_none() {
+                    // the head carries no combinator (a leading `>` is inert)
+                    first = Some(c);
+                } else {
+                    rest.push((combinator, c));
+                }
                 combinator = Combinator::Descendant;
             }
         }
     }
-    Complex { parts }
+    first.map(|first| Complex { first, rest })
 }
 
 /// whole-word class scan, alloc-free — mirrors JS `hasClass`.
@@ -466,7 +494,7 @@ impl Tree {
         }
         for a in &c.attrs {
             match self.get_attribute(h, &a.name) {
-                Some(got) if attr_op_matches(a.op, &a.value, got) => {}
+                Some(got) if a.m.matches(got) => {}
                 _ => return false,
             }
         }
@@ -601,25 +629,37 @@ impl Tree {
         }
     }
 
+    /// The compound at position `k` in the chain: `k==0` is the head (`first`),
+    /// `k>0` is `rest[k-1].1`. (`rest` entry `i` pairs the combinator on its left
+    /// with the compound at chain position `i+1`.)
+    fn compound_at(cx: &Complex, k: usize) -> &Compound {
+        if k == 0 {
+            &cx.first
+        } else {
+            &cx.rest[k - 1].1
+        }
+    }
+
     /// Does `h` match the full complex selector, anchored at its rightmost compound?
     /// Recursive with backtracking: a descendant combinator tries EVERY matching
     /// ancestor, not just the nearest, so a mixed chain such as `.a > .b .c` — where
     /// the `.b` that is a direct child of `.a` is *farther* from `.c` than another
     /// `.b` — is matched correctly. A greedy nearest-ancestor walk would miss it.
     fn matches_complex(&self, h: Handle, cx: &Complex) -> bool {
-        self.matches_chain(h, cx, cx.parts.len() - 1)
+        self.matches_chain(h, cx, cx.rest.len())
     }
 
-    /// Match `cx.parts[0..=k]` ending at element `h`. The combinator stored on part
-    /// `k` connects it to part `k-1` (see `parse_complex`).
+    /// Match the chain prefix ending at position `k` against element `h`. The
+    /// combinator in `rest[k-1]` connects position `k` to position `k-1`
+    /// (see `parse_complex`); position 0 (the head) has no combinator.
     fn matches_chain(&self, h: Handle, cx: &Complex, k: usize) -> bool {
-        if !self.matches_compound(h, &cx.parts[k].1) {
+        if !self.matches_compound(h, Self::compound_at(cx, k)) {
             return false;
         }
         if k == 0 {
             return true; // matched the leftmost compound — the whole chain is satisfied
         }
-        match cx.parts[k].0 {
+        match cx.rest[k - 1].0 {
             // the direct parent must match the remaining prefix
             Combinator::Child => match self.parent(h) {
                 Some(p) => self.matches_chain(p, cx, k - 1),
@@ -640,10 +680,12 @@ impl Tree {
     }
 
     pub fn matches(&self, h: Handle, selector: &str) -> bool {
-        selector.split(',').any(|s| {
-            let cx = parse_complex(s.trim());
-            !cx.parts.is_empty() && self.matches_complex(h, &cx)
-        })
+        // empty/combinator-only segments are dropped at parse time (filter_map),
+        // so every `cx` reaching the matcher is a non-empty `Complex`.
+        selector
+            .split(',')
+            .filter_map(|s| parse_complex(s.trim()))
+            .any(|cx| self.matches_complex(h, &cx))
     }
 
     /// querySelectorAll, document-order, version-cached by selector string. Returns a
@@ -662,8 +704,7 @@ impl Tree {
         }
         let selectors: Vec<Complex> = selector
             .split(',')
-            .map(|s| parse_complex(s.trim()))
-            .filter(|cx| !cx.parts.is_empty())
+            .filter_map(|s| parse_complex(s.trim()))
             .collect();
         let mut out = Vec::new();
         let mut stack = vec![self.root()];
@@ -1189,5 +1230,26 @@ mod tests {
              </div>",
         );
         assert_eq!(tree.query_selector_all(".a > .b .c").len(), 1);
+    }
+
+    #[test]
+    fn dangling_trailing_combinator_matches_head_only() {
+        // A trailing combinator with nothing after it (`a >`) is inert: it never
+        // lands in `Complex.rest`, so the selector is exactly `a`. This preserves
+        // the old behavior BY RESULT now that "leading/trailing combinator" is
+        // unrepresentable in the AST (head+tail).
+        let tree = Tree::parse(
+            "<section><div><a>1</a></div><a>2</a></section>",
+        );
+        let plain = tree.query_selector_all("a");
+        let dangling = tree.query_selector_all("a >");
+        assert_eq!(dangling.len(), plain.len());
+        assert_eq!(*dangling, *plain); // same handles, same document order
+        // and `matches` agrees element-by-element
+        for &h in plain.iter() {
+            assert!(tree.matches(h, "a >"));
+        }
+        // a leading combinator is likewise inert: `> a` == `a`
+        assert_eq!(*tree.query_selector_all("> a"), *plain);
     }
 }
