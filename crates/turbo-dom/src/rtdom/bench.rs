@@ -120,7 +120,7 @@ fn hotspot_report() {
     }, 300)));
 
     // 4. getElementById (uncached full-tree walk)
-    rows.push(("getElementById".into(), bench(|| base.get_element_by_id("c250").map_or(0, |h| h as u64), 300)));
+    rows.push(("getElementById".into(), bench(|| base.get_element_by_id("c250").map_or(0, |h| h.0 as u64), 300)));
 
     // 5. getAttribute over all cards (per-node buffer scan)
     rows.push(("getAttribute x3/card".into(), bench(|| {

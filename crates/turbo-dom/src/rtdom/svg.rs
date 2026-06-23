@@ -137,7 +137,7 @@ mod tests {
     use crate::rtdom::tree::Tree;
 
     fn find_local<'a>(tree: &'a Tree, name: &str) -> Handle {
-        for h in 0..tree.node_count() {
+        for h in tree.handles() {
             if tree.local_name(h) == Some(name) {
                 return h;
             }

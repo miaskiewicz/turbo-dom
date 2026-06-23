@@ -39,8 +39,8 @@ impl Event {
             event_type: event_type.to_string(),
             bubbles,
             cancelable,
-            target: 0,
-            current_target: 0,
+            target: Handle(0),
+            current_target: Handle(0),
             phase: Phase::None,
             default_prevented: false,
             propagation_stopped: false,
@@ -213,7 +213,7 @@ impl Dom {
         self.listeners = registry;
 
         event.phase = Phase::None;
-        event.current_target = 0;
+        event.current_target = Handle(0);
         !event.default_prevented
     }
 }
@@ -371,7 +371,7 @@ mod tests {
         let id = dom.add_event_listener(b, "click", false, false, Box::new(move |_, _| *h.borrow_mut() = true));
         dom.remove_event_listener(b, id);
         // also exercise the no-such-target branch (no panic)
-        dom.remove_event_listener(99999, id);
+        dom.remove_event_listener(Handle(99999), id);
         let mut ev = Event::new("click", true, true);
         dom.dispatch_event(b, &mut ev);
         assert_eq!(*hit.borrow(), false);
@@ -440,6 +440,6 @@ mod tests {
         assert_eq!(*target_hit.borrow(), false);
         // after dispatch, phase resets to None and current_target cleared.
         assert_eq!(ev.phase, Phase::None);
-        assert_eq!(ev.current_target, 0);
+        assert_eq!(ev.current_target, Handle(0));
     }
 }
