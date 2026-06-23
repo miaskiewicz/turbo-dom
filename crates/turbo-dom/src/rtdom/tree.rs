@@ -12,12 +12,58 @@ use crate::core::{self, Soa};
 use std::cell::RefCell;
 use std::collections::HashMap;
 
-pub const ELEMENT_NODE: u8 = 1;
-pub const TEXT_NODE: u8 = 3;
-pub const COMMENT_NODE: u8 = 8;
-pub const DOCUMENT_NODE: u8 = 9;
-pub const DOCTYPE_NODE: u8 = 10;
-pub const FRAGMENT_NODE: u8 = 11;
+/// A DOM node type. `#[repr(u8)]` with the standard `nodeType` numeric values, so
+/// it round-trips the SoA's compact `u8` column by a plain cast — no lookup table.
+/// It enumerates exactly the node types the html5ever core can emit; nothing else
+/// is representable, so a `match` over a node's type is exhaustive and compiler-checked.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(u8)]
+pub enum NodeType {
+    Element = 1,
+    Text = 3,
+    ProcessingInstruction = 7,
+    Comment = 8,
+    Document = 9,
+    Doctype = 10,
+    Fragment = 11,
+}
+
+impl NodeType {
+    /// Read a node type back from the SoA's untyped `u8` column. Total over every
+    /// value the parser core writes (see the node-type constants in `core`).
+    fn from_u8(v: u8) -> NodeType {
+        match v {
+            1 => NodeType::Element,
+            3 => NodeType::Text,
+            7 => NodeType::ProcessingInstruction,
+            8 => NodeType::Comment,
+            9 => NodeType::Document,
+            10 => NodeType::Doctype,
+            11 => NodeType::Fragment,
+            _ => unreachable!("SoA node_type column only holds DOM node-type values"),
+        }
+    }
+}
+
+/// An element's namespace — the only three an HTML parser produces. The SoA stores
+/// it as `0`/`1`/`2`; this is the typed view at the API surface (`as u8` to store).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(u8)]
+pub enum Namespace {
+    Html = 0,
+    Svg = 1,
+    MathMl = 2,
+}
+
+impl Namespace {
+    fn from_u8(v: u8) -> Namespace {
+        match v {
+            1 => Namespace::Svg,
+            2 => Namespace::MathMl,
+            _ => Namespace::Html,
+        }
+    }
+}
 
 /// A node handle. Index into the buffer, or (>= buf_len) into `new_nodes`.
 pub type Handle = u32;
@@ -99,25 +145,27 @@ impl Tree {
     }
 
     // ----------------------------------------------------------------- reads
-    pub fn node_type(&self, h: Handle) -> u8 {
-        if self.is_new(h) {
+    pub fn node_type(&self, h: Handle) -> NodeType {
+        let raw = if self.is_new(h) {
             self.new_ref(h).node_type
         } else {
             self.buf.node_type[h as usize]
-        }
+        };
+        NodeType::from_u8(raw)
     }
 
-    pub fn namespace_id(&self, h: Handle) -> u8 {
-        if self.is_new(h) {
+    pub fn namespace(&self, h: Handle) -> Namespace {
+        let raw = if self.is_new(h) {
             self.new_ref(h).ns
         } else {
             self.buf.ns[h as usize]
-        }
+        };
+        Namespace::from_u8(raw)
     }
 
     /// localName (lowercase as parsed). None for non-elements.
     pub fn local_name(&self, h: Handle) -> Option<&str> {
-        if self.node_type(h) != ELEMENT_NODE {
+        if self.node_type(h) != NodeType::Element {
             return None;
         }
         if self.is_new(h) {
@@ -130,7 +178,7 @@ impl Tree {
     /// tagName: uppercased for HTML-namespace elements (DOM contract), as-is otherwise.
     pub fn tag_name(&self, h: Handle) -> Option<String> {
         let ln = self.local_name(h)?;
-        if self.namespace_id(h) == 0 {
+        if self.namespace(h) == Namespace::Html {
             Some(ln.to_ascii_uppercase())
         } else {
             Some(ln.to_string())
@@ -308,11 +356,11 @@ impl Tree {
     /// None for nodes without a tag id (text/comment/doctype/document).
     pub fn node_label(&self, h: Handle) -> Option<&str> {
         let nt = self.node_type(h);
-        if nt != ELEMENT_NODE && nt != FRAGMENT_NODE {
+        if nt != NodeType::Element && nt != NodeType::Fragment {
             return None;
         }
         if self.is_new(h) {
-            return if nt == ELEMENT_NODE { Some(&self.new_ref(h).name) } else { None };
+            return if nt == NodeType::Element { Some(&self.new_ref(h).name) } else { None };
         }
         Some(&self.buf.tag_names[self.buf.tag_id[h as usize] as usize])
     }
@@ -329,7 +377,7 @@ impl Tree {
         self.doctype_field(h, &self.buf.sys_id)
     }
     fn doctype_field<'a>(&'a self, h: Handle, col: &[i32]) -> Option<&'a str> {
-        if self.node_type(h) != DOCTYPE_NODE || self.is_new(h) {
+        if self.node_type(h) != NodeType::Doctype || self.is_new(h) {
             return None;
         }
         let id = col[h as usize];
@@ -339,7 +387,7 @@ impl Tree {
     // ----------------------------------------------------------------- text
     pub fn node_value(&self, h: Handle) -> Option<String> {
         let nt = self.node_type(h);
-        if nt != TEXT_NODE && nt != COMMENT_NODE {
+        if nt != NodeType::Text && nt != NodeType::Comment {
             return None;
         }
         if let Some(t) = self.text_ov.get(&h) {
@@ -357,7 +405,7 @@ impl Tree {
     /// textContent: concatenated descendant text.
     pub fn text_content(&self, h: Handle) -> String {
         let nt = self.node_type(h);
-        if nt == TEXT_NODE || nt == COMMENT_NODE {
+        if nt == NodeType::Text || nt == NodeType::Comment {
             return self.node_value(h).unwrap_or_default();
         }
         let mut out = String::new();
@@ -367,8 +415,8 @@ impl Tree {
     fn collect_text(&self, h: Handle, out: &mut String) {
         for c in self.children(h) {
             match self.node_type(c) {
-                TEXT_NODE => out.push_str(&self.node_value(c).unwrap_or_default()),
-                COMMENT_NODE => {}
+                NodeType::Text => out.push_str(&self.node_value(c).unwrap_or_default()),
+                NodeType::Comment => {}
                 _ => self.collect_text(c, out),
             }
         }
@@ -485,7 +533,7 @@ impl Tree {
 
     pub fn set_text_content(&mut self, h: Handle, text: &str) {
         let nt = self.node_type(h);
-        if nt == TEXT_NODE || nt == COMMENT_NODE {
+        if nt == NodeType::Text || nt == NodeType::Comment {
             let old = if self.is_recording() { self.node_value(h) } else { None };
             self.text_ov.insert(h, text.to_string());
             self.bump();
@@ -515,7 +563,7 @@ impl Tree {
     /// Set the text of a text/comment node directly (`CharacterData.data` / `nodeValue` setter).
     pub fn set_node_value(&mut self, h: Handle, text: &str) {
         let nt = self.node_type(h);
-        if nt != TEXT_NODE && nt != COMMENT_NODE {
+        if nt != NodeType::Text && nt != NodeType::Comment {
             return;
         }
         let old = if self.is_recording() { self.node_value(h) } else { None };
@@ -576,22 +624,22 @@ impl Tree {
     }
 
     // ------------------------------------------------------------- creation
-    fn push_new(&mut self, node_type: u8, name: String, ns: u8) -> Handle {
+    fn push_new(&mut self, node_type: NodeType, name: String, ns: Namespace) -> Handle {
         let h = self.node_count();
-        self.new_nodes.push(NewNode { node_type, name, ns });
+        self.new_nodes.push(NewNode { node_type: node_type as u8, name, ns: ns as u8 });
         h
     }
 
     pub fn create_element(&mut self, tag: &str) -> Handle {
-        let h = self.push_new(ELEMENT_NODE, tag.to_ascii_lowercase(), 0);
+        let h = self.push_new(NodeType::Element, tag.to_ascii_lowercase(), Namespace::Html);
         self.children_ov.insert(h, Vec::new());
         self.attrs_ov.insert(h, Vec::new());
         self.bump();
         h
     }
 
-    pub fn create_element_ns(&mut self, tag: &str, ns: u8) -> Handle {
-        let h = self.push_new(ELEMENT_NODE, tag.to_string(), ns);
+    pub fn create_element_ns(&mut self, tag: &str, ns: Namespace) -> Handle {
+        let h = self.push_new(NodeType::Element, tag.to_string(), ns);
         self.children_ov.insert(h, Vec::new());
         self.attrs_ov.insert(h, Vec::new());
         self.bump();
@@ -599,13 +647,13 @@ impl Tree {
     }
 
     pub fn create_text_node(&mut self, data: &str) -> Handle {
-        let h = self.push_new(TEXT_NODE, data.to_string(), 0);
+        let h = self.push_new(NodeType::Text, data.to_string(), Namespace::Html);
         self.bump();
         h
     }
 
     pub fn create_comment(&mut self, data: &str) -> Handle {
-        let h = self.push_new(COMMENT_NODE, data.to_string(), 0);
+        let h = self.push_new(NodeType::Comment, data.to_string(), Namespace::Html);
         self.bump();
         h
     }
@@ -719,8 +767,8 @@ impl Tree {
 
     /// Recursively import a parsed `core::Node` as owned nodes. Returns its handle.
     fn import_node(&mut self, n: &core::Node) -> Handle {
-        match n.node_type {
-            ELEMENT_NODE => {
+        match NodeType::from_u8(n.node_type) {
+            NodeType::Element => {
                 let ns = ns_id(&n.namespace);
                 let h = self.create_element_ns(&n.name, ns);
                 for a in &n.attrs {
@@ -736,7 +784,7 @@ impl Tree {
                 self.children_ov.insert(h, kids);
                 h
             }
-            COMMENT_NODE => self.create_comment(&n.value),
+            NodeType::Comment => self.create_comment(&n.value),
             _ => self.create_text_node(&n.value),
         }
     }
@@ -746,7 +794,7 @@ impl Tree {
     /// this, reads go through the HashMap overlay instead of the zero-alloc buffer.
     pub fn force_inflate_all(&mut self) {
         for h in 0..self.buf_len {
-            if self.node_type(h) == ELEMENT_NODE {
+            if self.node_type(h) == NodeType::Element {
                 self.ensure_attrs(h);
             }
             self.ensure_children(h);
@@ -759,7 +807,7 @@ impl Tree {
     /// includes it (encapsulation is free: queries over the light tree skip it).
     /// Populate it via `set_inner_html(shadow_root, ...)` or append_child.
     pub fn attach_shadow(&mut self, host: Handle) -> Handle {
-        let sr = self.push_new(FRAGMENT_NODE, String::new(), 0);
+        let sr = self.push_new(NodeType::Fragment, String::new(), Namespace::Html);
         self.children_ov.insert(sr, Vec::new());
         self.shadow_root_of_host.insert(host, sr);
         self.host_of_shadow_root.insert(sr, host);
@@ -817,17 +865,17 @@ impl Tree {
         let slot_name = self.get_attribute(slot, "name").unwrap_or("");
         self.children(host)
             .into_iter()
-            .filter(|&c| self.node_type(c) == ELEMENT_NODE)
+            .filter(|&c| self.node_type(c) == NodeType::Element)
             .filter(|&c| self.get_attribute(c, "slot").unwrap_or("") == slot_name)
             .collect()
     }
 }
 
-fn ns_id(namespace: &str) -> u8 {
+fn ns_id(namespace: &str) -> Namespace {
     match namespace {
-        "svg" => 1,
-        "math" => 2,
-        _ => 0,
+        "svg" => Namespace::Svg,
+        "math" => Namespace::MathMl,
+        _ => Namespace::Html,
     }
 }
 
@@ -897,13 +945,13 @@ mod tests {
     fn dump_accessors_doctype_prefix_label() {
         // doctype name + public/system ids
         let dt = t("<!DOCTYPE html PUBLIC \"-//W3C//DTD\" \"sys.dtd\"><html></html>");
-        let doctype = (0..dt.node_count()).find(|&h| dt.node_type(h) == DOCTYPE_NODE).unwrap();
+        let doctype = (0..dt.node_count()).find(|&h| dt.node_type(h) == NodeType::Doctype).unwrap();
         assert_eq!(dt.doctype_name(doctype), Some("html"));
         assert_eq!(dt.doctype_public_id(doctype), Some("-//W3C//DTD"));
         assert_eq!(dt.doctype_system_id(doctype), Some("sys.dtd"));
         // plain doctype: empty ids
         let dt2 = t("<!DOCTYPE html><html></html>");
-        let d2 = (0..dt2.node_count()).find(|&h| dt2.node_type(h) == DOCTYPE_NODE).unwrap();
+        let d2 = (0..dt2.node_count()).find(|&h| dt2.node_type(h) == NodeType::Doctype).unwrap();
         assert_eq!(dt2.doctype_public_id(d2), Some(""));
         // doctype accessors return None for non-doctype + new nodes
         let html = dt2.get_elements_by_tag_name("html")[0];
@@ -914,11 +962,11 @@ mod tests {
 
         // node_label: element, template-content fragment, and None for text
         let tpl = t("<template><i></i></template>");
-        let frag = (0..tpl.node_count()).find(|&h| tpl.node_type(h) == FRAGMENT_NODE).unwrap();
+        let frag = (0..tpl.node_count()).find(|&h| tpl.node_type(h) == NodeType::Fragment).unwrap();
         assert_eq!(tpl.node_label(frag), Some("content"));
         let i = (0..tpl.node_count()).find(|&h| tpl.local_name(h) == Some("i")).unwrap();
         assert_eq!(tpl.node_label(i), Some("i"));
-        let txt2 = (0..tpl.node_count()).find(|&h| tpl.node_type(h) == TEXT_NODE);
+        let txt2 = (0..tpl.node_count()).find(|&h| tpl.node_type(h) == NodeType::Text);
         if let Some(tx) = txt2 {
             assert_eq!(tpl.node_label(tx), None);
         }
@@ -1036,15 +1084,15 @@ mod tests {
     #[test]
     fn create_element_ns_keeps_case_and_namespace() {
         let mut tree = t("<div></div>");
-        // SVG-namespace element: ns_id 1, mixed-case local name preserved,
+        // SVG-namespace element: mixed-case local name preserved,
         // tag_name returns as-is (non-HTML namespace branch).
-        let g = tree.create_element_ns("linearGradient", 1);
-        assert_eq!(tree.namespace_id(g), 1);
+        let g = tree.create_element_ns("linearGradient", Namespace::Svg);
+        assert_eq!(tree.namespace(g), Namespace::Svg);
         assert_eq!(tree.local_name(g), Some("linearGradient"));
         assert_eq!(tree.tag_name(g).as_deref(), Some("linearGradient"));
         // math namespace
-        let m = tree.create_element_ns("mi", 2);
-        assert_eq!(tree.namespace_id(m), 2);
+        let m = tree.create_element_ns("mi", Namespace::MathMl);
+        assert_eq!(tree.namespace(m), Namespace::MathMl);
         assert_eq!(tree.tag_name(m).as_deref(), Some("mi"));
     }
 
@@ -1076,7 +1124,7 @@ mod tests {
         let txt = tree.create_text_node("hello");
         assert_eq!(tree.node_value(txt).as_deref(), Some("hello"));
         // a comment node from the buffer
-        let comment = (0..tree.node_count()).find(|&h| tree.node_type(h) == COMMENT_NODE).unwrap();
+        let comment = (0..tree.node_count()).find(|&h| tree.node_type(h) == NodeType::Comment).unwrap();
         assert_eq!(tree.node_value(comment).as_deref(), Some("c"));
         // text_content of a comment goes through the text/comment branch
         assert_eq!(tree.text_content(comment), "c");
@@ -1096,7 +1144,7 @@ mod tests {
 
     #[test]
     fn text_content_skips_comments() {
-        // The COMMENT_NODE arm of collect_text is exercised: comment text is NOT
+        // The NodeType::Comment arm of collect_text is exercised: comment text is NOT
         // concatenated into an element's text_content.
         let tree = t("<div>a<!--ignored-->b</div>");
         let div = (0..tree.node_count()).find(|&h| tree.local_name(h) == Some("div")).unwrap();
@@ -1157,7 +1205,7 @@ mod tests {
         assert_eq!(tree.text_content(div), "new");
         let kids = tree.children(div);
         assert_eq!(kids.len(), 1);
-        assert_eq!(tree.node_type(kids[0]), TEXT_NODE);
+        assert_eq!(tree.node_type(kids[0]), NodeType::Text);
         assert_eq!(tree.parent(kids[0]), Some(div));
     }
 
@@ -1167,7 +1215,7 @@ mod tests {
         let v0 = tree.version;
         let c = tree.create_comment("note");
         assert!(tree.version > v0);
-        assert_eq!(tree.node_type(c), COMMENT_NODE);
+        assert_eq!(tree.node_type(c), NodeType::Comment);
         assert_eq!(tree.node_value(c).as_deref(), Some("note"));
     }
 
@@ -1175,17 +1223,17 @@ mod tests {
     fn set_inner_html_imports_comment_and_svg() {
         let mut tree = t("<div></div>");
         let div = (0..tree.node_count()).find(|&h| tree.local_name(h) == Some("div")).unwrap();
-        // imports an element, a comment (COMMENT_NODE arm), and an svg element (ns).
+        // imports an element, a comment (NodeType::Comment arm), and an svg element (ns).
         tree.set_inner_html(div, "<p>hi</p><!--c--><svg><circle r=5></circle></svg>");
         let kids = tree.children(div);
         // p, comment, svg
-        let comment = kids.iter().copied().find(|&k| tree.node_type(k) == COMMENT_NODE).unwrap();
+        let comment = kids.iter().copied().find(|&k| tree.node_type(k) == NodeType::Comment).unwrap();
         assert_eq!(tree.node_value(comment).as_deref(), Some("c"));
         let svg = kids.iter().copied().find(|&k| tree.local_name(k) == Some("svg")).unwrap();
-        assert_eq!(tree.namespace_id(svg), 1);
+        assert_eq!(tree.namespace(svg), Namespace::Svg);
         // svg child carries the svg namespace too
         let circle = tree.children(svg).into_iter().find(|&k| tree.local_name(k) == Some("circle")).unwrap();
-        assert_eq!(tree.namespace_id(circle), 1);
+        assert_eq!(tree.namespace(circle), Namespace::Svg);
     }
 
     #[test]

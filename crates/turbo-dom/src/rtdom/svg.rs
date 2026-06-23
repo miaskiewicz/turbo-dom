@@ -10,7 +10,7 @@
 //!   * `view_box`     = SVGAnimatedRect `.baseVal` as (x, y, width, height).
 //! Only meaningful on svg-namespace elements; HTML elements are unaffected.
 
-use super::tree::{Handle, Tree};
+use super::tree::{Handle, Namespace, Tree};
 
 /// Attributes that surface as SVGAnimatedLength on SVG elements. Exact list
 /// mirrored from `svg.mjs` `SVG_LENGTH_ATTRS`.
@@ -46,10 +46,10 @@ pub fn is_length_attr(name: &str) -> bool {
     SVG_LENGTH_ATTRS.contains(&name)
 }
 
-/// True if `h` is an svg-namespace element (namespace_id == 1).
+/// True if `h` is an svg-namespace element.
 #[inline]
 pub fn is_svg(tree: &Tree, h: Handle) -> bool {
-    tree.namespace_id(h) == 1
+    tree.namespace(h) == Namespace::Svg
 }
 
 /// Leading-numeric float parse mirroring JS `parseFloat`: consumes an optional

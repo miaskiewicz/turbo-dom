@@ -13,7 +13,7 @@
 //! matching what a browser serializes.
 
 use crate::rtdom::color;
-use crate::rtdom::tree::{Handle, Tree, ELEMENT_NODE};
+use crate::rtdom::tree::{Handle, NodeType, Tree};
 use std::collections::HashMap;
 
 /// camelCase → kebab-case property name (only ever fed kebab from CSS, but kept
@@ -448,7 +448,7 @@ fn flattened_parent(tree: &Tree, h: Handle) -> Option<Handle> {
     if tree.is_shadow_root(p) {
         return tree.shadow_host(p); // shadow-root→host hop
     }
-    if tree.node_type(p) == ELEMENT_NODE {
+    if tree.node_type(p) == NodeType::Element {
         Some(p)
     } else {
         None
@@ -551,7 +551,7 @@ fn normalize_font_family(v: &str) -> String {
 /// rule/inline set, never an initial value).
 pub fn computed_style(tree: &Tree, h: Handle) -> HashMap<String, String> {
     let mut map: HashMap<String, String> = HashMap::new();
-    if tree.node_type(h) != ELEMENT_NODE {
+    if tree.node_type(h) != NodeType::Element {
         return map;
     }
 
@@ -1015,7 +1015,7 @@ mod tests {
         // computed_style on a non-element (text node) returns an empty map
         let tree = Tree::parse("<div id=x>hello</div>");
         let div = tree.query_selector_all("#x")[0];
-        let text = tree.descendants(div).into_iter().find(|&h| tree.node_type(h) != ELEMENT_NODE);
+        let text = tree.descendants(div).into_iter().find(|&h| tree.node_type(h) != NodeType::Element);
         if let Some(t) = text {
             let map = computed_style(&tree, t);
             assert!(map.is_empty());

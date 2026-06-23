@@ -17,7 +17,7 @@
 //! ancestor chain passes through `self` (matching the DOM `Element.querySelector*`
 //! contract, where the context node itself is excluded and only descendants count).
 
-use crate::rtdom::tree::{Handle, Tree, ELEMENT_NODE};
+use crate::rtdom::tree::{Handle, NodeType, Tree};
 
 /// A read-only cursor over one node of a [`Tree`].
 ///
@@ -59,8 +59,8 @@ impl<'a> NodeRef<'a> {
         self.tree.local_name(self.handle)
     }
 
-    /// `nodeType` (e.g. `ELEMENT_NODE`, `TEXT_NODE`).
-    pub fn node_type(&self) -> u8 {
+    /// `nodeType` (e.g. `NodeType::Element`, `NodeType::Text`).
+    pub fn node_type(&self) -> NodeType {
         self.tree.node_type(self.handle)
     }
 
@@ -123,7 +123,7 @@ impl<'a> NodeRef<'a> {
     /// First child that is an element.
     pub fn first_element_child(&self) -> Option<NodeRef<'a>> {
         for h in self.tree.children(self.handle) {
-            if self.tree.node_type(h) == ELEMENT_NODE {
+            if self.tree.node_type(h) == NodeType::Element {
                 return Some(self.wrap(h));
             }
         }
@@ -134,7 +134,7 @@ impl<'a> NodeRef<'a> {
     pub fn last_element_child(&self) -> Option<NodeRef<'a>> {
         let kids = self.tree.children(self.handle);
         for h in kids.into_iter().rev() {
-            if self.tree.node_type(h) == ELEMENT_NODE {
+            if self.tree.node_type(h) == NodeType::Element {
                 return Some(self.wrap(h));
             }
         }
@@ -145,7 +145,7 @@ impl<'a> NodeRef<'a> {
     pub fn next_element_sibling(&self) -> Option<NodeRef<'a>> {
         let mut cur = self.tree.next_sibling(self.handle);
         while let Some(h) = cur {
-            if self.tree.node_type(h) == ELEMENT_NODE {
+            if self.tree.node_type(h) == NodeType::Element {
                 return Some(self.wrap(h));
             }
             cur = self.tree.next_sibling(h);
@@ -157,7 +157,7 @@ impl<'a> NodeRef<'a> {
     pub fn previous_element_sibling(&self) -> Option<NodeRef<'a>> {
         let mut cur = self.tree.previous_sibling(self.handle);
         while let Some(h) = cur {
-            if self.tree.node_type(h) == ELEMENT_NODE {
+            if self.tree.node_type(h) == NodeType::Element {
                 return Some(self.wrap(h));
             }
             cur = self.tree.previous_sibling(h);
@@ -317,11 +317,11 @@ mod tests {
         let card = tree.query("#c1").expect("card by id");
 
         // tree() / handle() accessors.
-        assert_eq!(card.tree().node_type(card.handle()), ELEMENT_NODE);
+        assert_eq!(card.tree().node_type(card.handle()), NodeType::Element);
 
         // local_name (lowercase) vs tag_name (uppercase HTML).
         assert_eq!(card.local_name(), Some("div"));
-        assert_eq!(card.node_type(), ELEMENT_NODE);
+        assert_eq!(card.node_type(), NodeType::Element);
 
         // has_attribute true/false.
         assert!(card.has_attribute("class"));
@@ -336,7 +336,7 @@ mod tests {
         let span = card.first_element_child().expect("span");
         let text = span.first_child().expect("text node");
         assert_eq!(text.local_name(), None);
-        assert!(text.node_type() != ELEMENT_NODE);
+        assert!(text.node_type() != NodeType::Element);
     }
 
     #[test]

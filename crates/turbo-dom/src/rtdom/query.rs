@@ -6,7 +6,7 @@
 //! compounds of `tag` / `.class` / `#id` / `[attr]` / `[attr=val]`. Enough for
 //! RTL-style queries; extend as the gauntlet demands.
 
-use super::tree::{Handle, Tree, ELEMENT_NODE};
+use super::tree::{Handle, NodeType, Tree};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 enum AttrOp {
@@ -364,7 +364,7 @@ fn has_class(class_attr: &str, cls: &str) -> bool {
 
 impl Tree {
     fn matches_compound(&self, h: Handle, c: &Compound) -> bool {
-        if self.node_type(h) != ELEMENT_NODE {
+        if self.node_type(h) != NodeType::Element {
             return false;
         }
         if let Some(tag) = &c.tag {
@@ -410,7 +410,7 @@ impl Tree {
             Some(p) => self
                 .children(p)
                 .into_iter()
-                .filter(|&c| self.node_type(c) == ELEMENT_NODE)
+                .filter(|&c| self.node_type(c) == NodeType::Element)
                 .collect(),
             None => vec![h],
         }
@@ -483,7 +483,7 @@ impl Tree {
             Pseudo::Root => match self.parent(h) {
                 None => true,
                 // parent is the document/root container, not an element
-                Some(p) => self.node_type(p) != ELEMENT_NODE,
+                Some(p) => self.node_type(p) != NodeType::Element,
             },
             // Form-state. selectors.mjs reads the live DOM property (el.checked etc.);
             // this Rust port reads the corresponding attribute.
@@ -607,7 +607,7 @@ impl Tree {
             }
         }
         for h in order {
-            if self.node_type(h) == ELEMENT_NODE
+            if self.node_type(h) == NodeType::Element
                 && selectors.iter().any(|cx| self.matches_complex(h, cx))
             {
                 out.push(h);
@@ -645,7 +645,7 @@ impl Tree {
         let mut found = None;
         let mut stack = vec![self.root()];
         while let Some(h) = stack.pop() {
-            if self.node_type(h) == ELEMENT_NODE && self.get_attribute(h, "id") == Some(id) {
+            if self.node_type(h) == NodeType::Element && self.get_attribute(h, "id") == Some(id) {
                 found = Some(h);
                 break;
             }
@@ -669,7 +669,7 @@ impl Tree {
             }
         }
         for h in order {
-            if self.node_type(h) == ELEMENT_NODE
+            if self.node_type(h) == NodeType::Element
                 && (any || self.local_name(h).map_or(false, |ln| ln.eq_ignore_ascii_case(tag)))
             {
                 out.push(h);

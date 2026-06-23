@@ -5,9 +5,7 @@
 //! same exact escape character sets for text (`& <space> < >`) and attributes
 //! (`& <space> "`).
 
-use crate::rtdom::tree::{
-    Handle, Tree, COMMENT_NODE, DOCTYPE_NODE, ELEMENT_NODE, FRAGMENT_NODE, TEXT_NODE,
-};
+use crate::rtdom::tree::{Handle, NodeType, Tree};
 
 /// Elements that emit no closing tag and have no serialized children.
 const VOID: &[&str] = &[
@@ -72,7 +70,7 @@ fn push_escaped_attr(out: &mut String, s: &str) {
 /// lowercase local name of the parent element, used only for the raw-text text-node rule.
 fn serialize_node(tree: &Tree, h: Handle, parent_tag: Option<&str>, out: &mut String) {
     match tree.node_type(h) {
-        ELEMENT_NODE => {
+        NodeType::Element => {
             // local_name borrows &Tree; serialize is all-immutable, so no String alloc.
             let tag = tree.local_name(h).unwrap_or("");
             out.push('<');
@@ -93,7 +91,7 @@ fn serialize_node(tree: &Tree, h: Handle, parent_tag: Option<&str>, out: &mut St
             out.push_str(tag);
             out.push('>');
         }
-        TEXT_NODE => {
+        NodeType::Text => {
             let data = tree.node_value(h).unwrap_or_default();
             if parent_tag.map(is_raw_text).unwrap_or(false) {
                 out.push_str(&data);
@@ -101,17 +99,17 @@ fn serialize_node(tree: &Tree, h: Handle, parent_tag: Option<&str>, out: &mut St
                 push_escaped_text(out, &data);
             }
         }
-        COMMENT_NODE => {
+        NodeType::Comment => {
             out.push_str("<!--");
             out.push_str(&tree.node_value(h).unwrap_or_default());
             out.push_str("-->");
         }
-        DOCTYPE_NODE => {
+        NodeType::Doctype => {
             // JS reads `node.name`; the Tree API does not expose a doctype name, so emit
             // the practical default. (Fixtures do not exercise the name.)
             out.push_str("<!DOCTYPE html>");
         }
-        FRAGMENT_NODE => {
+        NodeType::Fragment => {
             serialize_children(tree, h, "", out);
         }
         _ => {}
@@ -208,7 +206,7 @@ mod tests {
         let mut tree = Tree::parse("<!doctype html><html><body><p>x</p></body></html>");
         let root = tree.root();
         // DOCTYPE branch
-        let dt = tree.children(root).into_iter().find(|&h| tree.node_type(h) == 10).unwrap();
+        let dt = tree.children(root).into_iter().find(|&h| tree.node_type(h) == NodeType::Doctype).unwrap();
         assert_eq!(serialize_outer(&tree, dt), "<!DOCTYPE html>");
         // DOCUMENT node → the `_ => {}` arm (empty output)
         assert_eq!(serialize_outer(&tree, root), "");
