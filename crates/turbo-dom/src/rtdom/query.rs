@@ -304,12 +304,14 @@ fn parse_complex(src: &str) -> Complex {
 }
 
 /// split on whitespace but keep `>` as its own token (with or without surrounding ws).
-/// Whitespace and `>` inside an attribute selector `[...]` or a quoted string are NOT separators —
-/// e.g. `svg[viewBox="0 0 10 10"]` is one token, not five.
+/// Whitespace and `>` inside an attribute selector `[...]`, a pseudo argument `(...)`,
+/// or a quoted string are NOT separators — so `svg[viewBox="0 0 10 10"]` is one token,
+/// and `:nth-child(2n + 1)` / `:not(a > b)` keep their parenthesised arg intact.
 fn tokenize_complex(src: &str) -> Vec<String> {
     let mut out = Vec::new();
     let mut cur = String::new();
-    let mut depth: i32 = 0; // inside [...]
+    let mut brackets: i32 = 0; // inside [...]
+    let mut parens: i32 = 0; // inside (...) — pseudo arguments
     let mut quote: Option<char> = None;
     for ch in src.chars() {
         if let Some(q) = quote {
@@ -319,9 +321,11 @@ fn tokenize_complex(src: &str) -> Vec<String> {
         }
         match ch {
             '"' | '\'' => { quote = Some(ch); cur.push(ch); }
-            '[' => { depth += 1; cur.push(ch); }
-            ']' => { depth -= 1; cur.push(ch); }
-            c if depth > 0 => cur.push(c),
+            '[' => { brackets += 1; cur.push(ch); }
+            ']' => { brackets -= 1; cur.push(ch); }
+            '(' => { parens += 1; cur.push(ch); }
+            ')' => { parens -= 1; cur.push(ch); }
+            c if brackets > 0 || parens > 0 => cur.push(c),
             c if c.is_whitespace() => {
                 if !cur.is_empty() {
                     out.push(std::mem::take(&mut cur));
@@ -1025,6 +1029,18 @@ mod tests {
         // a specific tag, case-insensitive
         assert_eq!(tree.get_elements_by_tag_name("P").len(), 1);
         assert_eq!(tree.get_elements_by_tag_name("nope").len(), 0);
+    }
+
+    #[test]
+    fn nth_child_with_whitespace_in_arg() {
+        // CSS `An+B` notation permits whitespace: `2n + 1` is valid and means "odd".
+        // The complex tokenizer must not split on the spaces inside the pseudo's
+        // parentheses (it already protects `[...]` and quotes; parens are the same).
+        let tree = Tree::parse("<ul><li>1</li><li>2</li><li>3</li><li>4</li></ul>");
+        let odd = tree.query_selector_all("li:nth-child(2n + 1)");
+        assert_eq!(odd.len(), 2);
+        assert_eq!(tree.text_content(odd[0]), "1");
+        assert_eq!(tree.text_content(odd[1]), "3");
     }
 
     #[test]
