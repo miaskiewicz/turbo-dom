@@ -10,55 +10,72 @@
 
 use super::tree::{Handle, Tree};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum MutationKind {
-    ChildList,
-    Attributes,
-    CharacterData,
-}
-
-/// One observed mutation. `added`/`removed` are populated for `ChildList`;
-/// `attribute_name`/`old_value` for `Attributes`; `old_value` for `CharacterData`.
+/// One observed mutation. Each variant carries exactly the fields the DOM defines
+/// for that record type, so a meaningless combination — a `childList` record that
+/// also has an `attributeName`, say — is simply not representable. Read it either
+/// by matching the variant, or via the DOM-faithful accessors below.
 #[derive(Debug, Clone, PartialEq)]
-pub struct MutationRecord {
-    pub kind: MutationKind,
-    pub target: Handle,
-    pub added: Vec<Handle>,
-    pub removed: Vec<Handle>,
-    pub attribute_name: Option<String>,
-    pub old_value: Option<String>,
+pub enum MutationRecord {
+    /// `type: "childList"` — nodes added to / removed from `target`'s children.
+    ChildList { target: Handle, added: Vec<Handle>, removed: Vec<Handle> },
+    /// `type: "attributes"` — attribute `name` on `target` changed.
+    Attributes { target: Handle, name: String, old_value: Option<String> },
+    /// `type: "characterData"` — `target`'s text data changed.
+    CharacterData { target: Handle, old_value: Option<String> },
 }
 
 impl MutationRecord {
-    pub(crate) fn attributes(target: Handle, name: &str, old_value: Option<String>) -> Self {
-        MutationRecord {
-            kind: MutationKind::Attributes,
-            target,
-            added: Vec::new(),
-            removed: Vec::new(),
-            attribute_name: Some(name.to_string()),
-            old_value,
+    /// The mutated node (DOM `MutationRecord.target`). Every record has one.
+    pub fn target(&self) -> Handle {
+        match *self {
+            MutationRecord::ChildList { target, .. }
+            | MutationRecord::Attributes { target, .. }
+            | MutationRecord::CharacterData { target, .. } => target,
         }
+    }
+
+    /// Nodes added under `target` (DOM `addedNodes`); empty for non-`childList`.
+    pub fn added(&self) -> &[Handle] {
+        match self {
+            MutationRecord::ChildList { added, .. } => added,
+            _ => &[],
+        }
+    }
+
+    /// Nodes removed from `target` (DOM `removedNodes`); empty for non-`childList`.
+    pub fn removed(&self) -> &[Handle] {
+        match self {
+            MutationRecord::ChildList { removed, .. } => removed,
+            _ => &[],
+        }
+    }
+
+    /// The changed attribute's name (DOM `attributeName`); `None` unless `attributes`.
+    pub fn attribute_name(&self) -> Option<&str> {
+        match self {
+            MutationRecord::Attributes { name, .. } => Some(name),
+            _ => None,
+        }
+    }
+
+    /// The prior attribute/text value (DOM `oldValue`); `None` when unrequested or
+    /// not applicable — `childList` records never carry one.
+    pub fn old_value(&self) -> Option<&str> {
+        match self {
+            MutationRecord::ChildList { .. } => None,
+            MutationRecord::Attributes { old_value, .. }
+            | MutationRecord::CharacterData { old_value, .. } => old_value.as_deref(),
+        }
+    }
+
+    pub(crate) fn attributes(target: Handle, name: &str, old_value: Option<String>) -> Self {
+        MutationRecord::Attributes { target, name: name.to_string(), old_value }
     }
     pub(crate) fn child_list(target: Handle, added: Vec<Handle>, removed: Vec<Handle>) -> Self {
-        MutationRecord {
-            kind: MutationKind::ChildList,
-            target,
-            added,
-            removed,
-            attribute_name: None,
-            old_value: None,
-        }
+        MutationRecord::ChildList { target, added, removed }
     }
     pub(crate) fn character_data(target: Handle, old_value: Option<String>) -> Self {
-        MutationRecord {
-            kind: MutationKind::CharacterData,
-            target,
-            added: Vec::new(),
-            removed: Vec::new(),
-            attribute_name: None,
-            old_value,
-        }
+        MutationRecord::CharacterData { target, old_value }
     }
 }
 
@@ -111,8 +128,8 @@ impl MutationObserver {
         };
         let all = tree.take_mutation_records();
         all.into_iter()
-            .filter(|r| self.type_enabled(r.kind))
-            .filter(|r| target_matches(tree, target, self.init.subtree, r.target))
+            .filter(|r| self.type_enabled(r))
+            .filter(|r| target_matches(tree, target, self.init.subtree, r.target()))
             .map(|mut r| {
                 self.strip_old_value(&mut r);
                 r
@@ -120,18 +137,22 @@ impl MutationObserver {
             .collect()
     }
 
-    fn type_enabled(&self, kind: MutationKind) -> bool {
-        match kind {
-            MutationKind::ChildList => self.init.child_list,
-            MutationKind::Attributes => self.init.attributes,
-            MutationKind::CharacterData => self.init.character_data,
+    fn type_enabled(&self, r: &MutationRecord) -> bool {
+        match r {
+            MutationRecord::ChildList { .. } => self.init.child_list,
+            MutationRecord::Attributes { .. } => self.init.attributes,
+            MutationRecord::CharacterData { .. } => self.init.character_data,
         }
     }
 
     fn strip_old_value(&self, r: &mut MutationRecord) {
-        match r.kind {
-            MutationKind::Attributes if !self.init.attribute_old_value => r.old_value = None,
-            MutationKind::CharacterData if !self.init.character_data_old_value => r.old_value = None,
+        match r {
+            MutationRecord::Attributes { old_value, .. } if !self.init.attribute_old_value => {
+                *old_value = None
+            }
+            MutationRecord::CharacterData { old_value, .. } if !self.init.character_data_old_value => {
+                *old_value = None
+            }
             _ => {}
         }
     }
@@ -176,9 +197,9 @@ mod tests {
         tree.remove_child(ul, li);
         let recs = obs.take_records(&mut tree);
         assert_eq!(recs.len(), 2);
-        assert_eq!(recs[0].kind, MutationKind::ChildList);
-        assert_eq!(recs[0].added, vec![li]);
-        assert_eq!(recs[1].removed, vec![li]);
+        assert!(matches!(&recs[0], MutationRecord::ChildList { .. }));
+        assert_eq!(recs[0].added(), &[li]);
+        assert_eq!(recs[1].removed(), &[li]);
         // drained
         assert!(obs.take_records(&mut tree).is_empty());
     }
@@ -193,8 +214,8 @@ mod tests {
         tree.set_attribute(div, "class", "b");
         let recs = obs.take_records(&mut tree);
         assert_eq!(recs.len(), 1);
-        assert_eq!(recs[0].attribute_name.as_deref(), Some("class"));
-        assert_eq!(recs[0].old_value.as_deref(), Some("a"));
+        assert_eq!(recs[0].attribute_name(), Some("class"));
+        assert_eq!(recs[0].old_value(), Some("a"));
         // without attributeOldValue → old_value nulled
         let mut obs2 = MutationObserver::new();
         obs2.observe(&mut tree, div, ObserverInit { attributes: true, ..Default::default() });
@@ -202,7 +223,7 @@ mod tests {
         tree.remove_attribute(div, "class");
         let r2 = obs2.take_records(&mut tree);
         assert_eq!(r2.len(), 2);
-        assert!(r2.iter().all(|r| r.old_value.is_none()));
+        assert!(r2.iter().all(|r| r.old_value().is_none()));
     }
 
     #[test]
@@ -215,8 +236,8 @@ mod tests {
         tree.set_text_content(text, "new");
         let recs = obs.take_records(&mut tree);
         assert_eq!(recs.len(), 1);
-        assert_eq!(recs[0].kind, MutationKind::CharacterData);
-        assert_eq!(recs[0].old_value.as_deref(), Some("old"));
+        assert!(matches!(&recs[0], MutationRecord::CharacterData { .. }));
+        assert_eq!(recs[0].old_value(), Some("old"));
     }
 
     #[test]
@@ -268,7 +289,7 @@ mod tests {
         tree.set_text_content(text, "new");
         let recs = obs.take_records(&mut tree);
         assert_eq!(recs.len(), 1);
-        assert!(recs[0].old_value.is_none());
+        assert!(recs[0].old_value().is_none());
         // subtree=true but the mutated node is OUTSIDE the observed subtree → filtered
         let mut t2 = Tree::parse("<section><a></a></section><aside><b></b></aside>");
         let section = el(&t2, "section");
@@ -288,8 +309,8 @@ mod tests {
         tree.set_text_content(div, "replaced");
         let recs = obs.take_records(&mut tree);
         assert_eq!(recs.len(), 1);
-        assert_eq!(recs[0].kind, MutationKind::ChildList);
-        assert_eq!(recs[0].added.len(), 1);
-        assert_eq!(recs[0].removed.len(), 2); // the old text + span
+        assert!(matches!(&recs[0], MutationRecord::ChildList { .. }));
+        assert_eq!(recs[0].added().len(), 1);
+        assert_eq!(recs[0].removed().len(), 2); // the old text + span
     }
 }
