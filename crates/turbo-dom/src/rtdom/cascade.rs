@@ -346,11 +346,21 @@ fn parse_stylesheet(css: &str, start_order: u32, rules: &mut Vec<Rule>) -> u32 {
     let mut i = 0;
     while i < n {
         let mut j = i;
-        while j < n && bytes[j] != b'{' && bytes[j] != b'}' {
+        while j < n && bytes[j] != b'{' && bytes[j] != b'}' && bytes[j] != b';' {
             j += 1;
         }
         if j >= n {
             break;
+        }
+        if bytes[j] == b';' {
+            // A `;` outside any block terminates a statement at-rule (@import/@charset/
+            // @namespace) or a stray semicolon — it has no block, so skip just the
+            // statement and keep scanning for the next real selector. Without this the
+            // statement would be glued onto the following selector and (starting with
+            // `@`) drag that whole rule into the skip.
+            order += 1;
+            i = j + 1;
+            continue;
         }
         if bytes[j] == b'}' {
             i = j + 1;
@@ -875,6 +885,34 @@ mod tests {
             "color",
         );
         assert_eq!(got2, "rgb(0, 0, 255)");
+    }
+
+    #[test]
+    fn statement_at_rule_does_not_swallow_following_rule() {
+        // A `;`-terminated statement at-rule (@import / @charset / @namespace) has no
+        // block. The rule that follows it must still apply — only the at-statement is
+        // skipped, not the next real selector.
+        let got = gcs_prop(
+            "<style>@import url(\"reset.css\"); #x{color:green}</style><div id=x>hi</div>",
+            "#x",
+            "color",
+        );
+        assert_eq!(got, "rgb(0, 128, 0)");
+        // @charset followed immediately by a rule
+        let got2 = gcs_prop(
+            "<style>@charset \"utf-8\"; .card{color:blue}</style><div id=x class=card>hi</div>",
+            "#x",
+            "color",
+        );
+        assert_eq!(got2, "rgb(0, 0, 255)");
+        // a block at-rule (@media) is still skipped wholesale, and a statement at-rule
+        // BEFORE it does not disturb the later depth-1 rule
+        let got3 = gcs_prop(
+            "<style>@import url(a); @media print { #x{color:red} } #x{color:green}</style><div id=x>hi</div>",
+            "#x",
+            "color",
+        );
+        assert_eq!(got3, "rgb(0, 128, 0)");
     }
 
     #[test]
