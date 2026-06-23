@@ -476,6 +476,12 @@ impl Tree {
             match self.node_type(c) {
                 NodeType::Text => out.push_str(&self.node_value(c).unwrap_or_default()),
                 NodeType::Comment => {}
+                // A <template>'s content is stored as a synthetic `content` fragment
+                // child, but in the DOM it lives in `template.content`, NOT among the
+                // element's child nodes — so it must not contribute to textContent
+                // (`template.textContent === ""`). It is the only fragment that ever
+                // appears in a child list here. Serialization still walks it directly.
+                NodeType::Fragment => {}
                 _ => self.collect_text(c, out),
             }
         }
@@ -1317,6 +1323,20 @@ mod tests {
         assert_eq!(tree.local_name(kids[0]), Some("span"));
         assert_eq!(tree.get_attribute(kids[0], "class"), Some("x"));
         assert_eq!(tree.text_content(div), "hi");
+    }
+
+    #[test]
+    fn template_content_excluded_from_text_content() {
+        // A <template>'s parsed content lives in a separate `content` document fragment,
+        // NOT among the element's child nodes. Per the DOM, `template.textContent` is ""
+        // and an ancestor's textContent does not include the template's content. (The JS
+        // runtime mirrors this by excluding the synthetic content fragment from its
+        // child iteration.)
+        let tree = t("<div>before<template><p>hidden</p></template>after</div>");
+        let div = tree.handles().find(|&h| tree.local_name(h) == Some("div")).unwrap();
+        assert_eq!(tree.text_content(div), "beforeafter");
+        let tpl = tree.handles().find(|&h| tree.local_name(h) == Some("template")).unwrap();
+        assert_eq!(tree.text_content(tpl), "");
     }
 
     #[test]
