@@ -9,9 +9,11 @@
 // which centrally handles the two things an ad-hoc character scanner keeps
 // getting wrong: quoted strings and balanced `[]`/`()` runs. The grammar layer
 // (`parseCompound`/`parseComplexTokens`) then only ever sees whole tokens, so it
-// never has to re-discover where an attribute or pseudo argument ends. The AST
-// it emits — `{ compounds[], combinators[] }` with the same compound/attr/pseudo
-// object shapes — is exactly what the matcher below consumes, unchanged.
+// never has to re-discover where an attribute or pseudo argument ends. The AST it
+// emits — a Complex `{ first, rest: [{ combinator, compound }] }` (mirroring the
+// Rust port's "parse, don't validate" shape: no parallel head/tail arrays that can
+// desync) with the same compound/attr/pseudo object shapes — is exactly what the
+// matcher below consumes.
 //
 // Token kinds:
 //   { k:'comma' }                       a top-level ','
@@ -21,7 +23,7 @@
 //   { k:'type', v }                     a type/element name
 //   { k:'id',    v }                    '#name'
 //   { k:'class', v }                    '.name'
-//   { k:'attr', name, op, value }       '[ … ]' (op null + value null ⇒ presence)
+//   { k:'attr', name, match }           '[ … ]' (match = { op:'present' } | { op, value })
 //   { k:'pseudo', name, arg }           ':name' / ':name( arg )' (arg null ⇒ no parens)
 
 const NAME_CHAR = /[a-zA-Z0-9_-]/;
@@ -32,18 +34,22 @@ function isWs(c) {
   return c === ' ' || c === '\t' || c === '\n' || c === '\r' || c === '\f';
 }
 
-// Split a raw `[ … ]` interior into { name, op, value }. The first '=' (if any)
-// splits name from value; an operator char (~ | ^ $ *) immediately before it
-// selects the operator. A surrounding matching quote pair on the value is
-// stripped. No '=' ⇒ a presence test (op null, value null).
+// Split a raw `[ … ]` interior into `{ name, match }`, where `match` FOLDS the
+// operator and value so an illegal state is unrepresentable: a presence test is
+// `{ op: 'present' }` (NO `value` key at all), and a valued test is
+// `{ op, value }` with op ∈ equals|includes|dash|prefix|suffix|substr (mirroring
+// the Rust `AttrMatch` variants). The first '=' (if any) splits name from value;
+// an operator char (~ | ^ $ *) immediately before it selects the operator. A
+// surrounding matching quote pair on the value is stripped. No '=' ⇒ presence.
+const ATTR_OP = { '~': 'includes', '|': 'dash', '^': 'prefix', $: 'suffix', '*': 'substr' };
 function parseAttr(inner) {
   const eq = inner.indexOf('=');
-  if (eq === -1) return { name: inner.trim(), op: null, value: null };
+  if (eq === -1) return { name: inner.trim(), match: { op: 'present' } };
   let name = inner.slice(0, eq);
-  let op = '=';
+  let op = 'equals';
   const last = name[name.length - 1];
-  if (last === '~' || last === '|' || last === '^' || last === '$' || last === '*') {
-    op = last + '=';
+  if (ATTR_OP[last] !== undefined) {
+    op = ATTR_OP[last];
     name = name.slice(0, -1);
   }
   let value = inner.slice(eq + 1).trim();
@@ -54,7 +60,7 @@ function parseAttr(inner) {
   ) {
     value = value.slice(1, -1);
   }
-  return { name: name.trim(), op, value };
+  return { name: name.trim(), match: { op, value } };
 }
 
 // Scan from `start` (just past an opening `open`) to its matching `close`,
@@ -149,7 +155,7 @@ function parseCompound(tokens, pos, end) {
     else if (t.k === 'type') { if (compound.tag === null) compound.tag = t.v.toLowerCase(); }
     else if (t.k === 'id') { compound.id = t.v; }
     else if (t.k === 'class') { compound.classes.push(t.v); }
-    else if (t.k === 'attr') { compound.attrs.push({ name: t.name, op: t.op, value: t.value }); }
+    else if (t.k === 'attr') { compound.attrs.push({ name: t.name, match: t.match }); }
     else if (t.k === 'pseudo') { compound.pseudos.push({ name: t.name, arg: t.arg }); }
     else break; // ws / comb / comma ends the compound
     pos++; matched = true;
@@ -158,41 +164,46 @@ function parseCompound(tokens, pos, end) {
   return { compound, pos };
 }
 
-// Parse tokens[lo..hi) (one complex selector — commas already split out) into
-// compounds[] + combinators[] (combinator[k] relates compounds[k] to
-// compounds[k+1], left to right).
+// Parse tokens[lo..hi) (one complex selector — commas already split out) into a
+// Complex `{ first, rest: [{ combinator, compound }] }`: `first` is the leftmost
+// compound and each `rest[i].combinator` connects `rest[i].compound` to the
+// compound on its LEFT (`rest[i-1].compound`, or `first` when i==0). Building the
+// pair only AFTER a trailing compound is read keeps combinator/compound in lockstep
+// — there is no way to represent a stray combinator (the parallel-array desync the
+// old shape allowed). An empty segment (no compound at all) returns `null`.
 function parseComplexTokens(tokens, lo, hi) {
-  const compounds = [];
-  const combinators = [];
   // trim leading / trailing ws tokens (mirrors the old `src.trim()`)
   let start = lo, end = hi;
   while (start < end && tokens[start].k === 'ws') start++;
   while (end > start && tokens[end - 1].k === 'ws') end--;
-  if (start >= end) return { compounds, combinators }; // empty selector ⇒ empty parse (no throw)
+  if (start >= end) return null; // empty segment ⇒ no compound (filtered by parseSelectorList)
   let r = parseCompound(tokens, start, end);
-  compounds.push(r.compound);
+  const first = r.compound;
+  const rest = [];
   let pos = r.pos;
   while (pos < end) {
     while (pos < end && tokens[pos].k === 'ws') pos++; // a ws run here ⇒ candidate descendant
     const t = tokens[pos];
+    let combinator;
     if (t.k === 'comb') {
-      combinators.push(t.v);
+      combinator = t.v;
       pos++;
       while (pos < end && tokens[pos].k === 'ws') pos++;
-      if (pos >= end) break; // dangling combinator (`a >`) — keep it, no trailing compound
+      if (pos >= end) break; // dangling combinator (`a >`) — drop it (no trailing compound to pair)
     } else {
       // the only token that can follow a compound after a ws run is the next
       // compound's first part ⇒ a descendant combinator
-      combinators.push(' ');
+      combinator = ' ';
     }
     r = parseCompound(tokens, pos, end);
-    compounds.push(r.compound);
+    rest.push({ combinator, compound: r.compound });
     pos = r.pos;
   }
-  return { compounds, combinators };
+  return { first, rest };
 }
 
 // Parse one complex selector STRING (no top-level comma). Exposed via `_internal`.
+// Returns the Complex `{ first, rest }` or `null` (empty selector).
 function parseComplex(src) {
   const tokens = tokenize(src);
   return parseComplexTokens(tokens, 0, tokens.length);
@@ -210,7 +221,8 @@ export function parseSelectorList(selector) {
   let start = 0;
   for (let i = 0; i <= tokens.length; i++) {
     if (i === tokens.length || tokens[i].k === 'comma') {
-      parsed.push(parseComplexTokens(tokens, start, i));
+      const cx = parseComplexTokens(tokens, start, i);
+      if (cx !== null) parsed.push(cx); // a Complex is always non-empty (empties dropped)
       start = i + 1;
     }
   }
@@ -222,16 +234,17 @@ export function parseSelectorList(selector) {
 function matchAttr(el, a) {
   const raw = el.getAttribute(a.name);   // single lookup (null = absent)
   if (raw === null) return false;
-  if (a.op === null) return true;
+  const m = a.match;
+  if (m.op === 'present') return true;   // presence carries no value
   const v = raw;
-  const t = a.value ?? '';
-  switch (a.op) {
-    case '=': return v === t;
-    case '^=': return t !== '' && v.startsWith(t);
-    case '$=': return t !== '' && v.endsWith(t);
-    case '*=': return t !== '' && v.includes(t);
-    case '~=': return v.split(/\s+/).includes(t);
-    case '|=': return v === t || v.startsWith(t + '-');
+  const t = m.value;
+  switch (m.op) {
+    case 'equals': return v === t;
+    case 'prefix': return t !== '' && v.startsWith(t);
+    case 'suffix': return t !== '' && v.endsWith(t);
+    case 'substr': return t !== '' && v.includes(t);
+    case 'includes': return v.split(/\s+/).includes(t);
+    case 'dash': return v === t || v.startsWith(t + '-');
     default: return false;
   }
 }
@@ -357,33 +370,38 @@ function matchCompound(el, compound) {
   return true;
 }
 
-// Match a parsed complex selector against `el` (the rightmost compound applies to el).
-function matchComplex(el, cx) {
-  const { compounds, combinators } = cx;
-  return matchChain(el, compounds, combinators, compounds.length - 1);
+// The k-th compound of a Complex, indexed left-to-right (0 = `first`, the leftmost).
+function compoundAt(cx, k) {
+  return k === 0 ? cx.first : cx.rest[k - 1].compound;
 }
 
-// Match compounds[0..=k] ending at `el`, recursing leftward. Descendant (' ') and
-// general-sibling ('~') combinators try EVERY candidate ancestor/sibling and
+// Match a parsed complex selector against `el` (the rightmost compound applies to el).
+// The rightmost compound sits at index `cx.rest.length`.
+function matchComplex(el, cx) {
+  return matchChain(el, cx, cx.rest.length);
+}
+
+// Match compounds 0..=k of `cx` ending at `el`, recursing leftward. Descendant (' ')
+// and general-sibling ('~') combinators try EVERY candidate ancestor/sibling and
 // backtrack — committing to the nearest one (the old greedy walk) wrongly rejected
 // chains like `.a > .b .c` where a farther `.b` is the one that is a child of `.a`.
-// combinators[i] is the relation between compounds[i] and compounds[i+1].
-function matchChain(el, compounds, combinators, k) {
-  if (!matchCompound(el, compounds[k])) return false;
+// `cx.rest[k-1].combinator` is the relation between compounds k-1 and k.
+function matchChain(el, cx, k) {
+  if (!matchCompound(el, compoundAt(cx, k))) return false;
   if (k === 0) return true; // matched the leftmost compound — whole chain satisfied
-  const comb = combinators[k - 1]; // relation between compounds[k-1] and compounds[k]
+  const comb = cx.rest[k - 1].combinator; // relation between compounds k-1 and k
   if (comb === '>') {
     const p = el.parentNode;
-    return !!p && p.nodeType === 1 && matchChain(p, compounds, combinators, k - 1);
+    return !!p && p.nodeType === 1 && matchChain(p, cx, k - 1);
   }
   if (comb === '+') {
     const prev = previousElement(el);
-    return !!prev && matchChain(prev, compounds, combinators, k - 1);
+    return !!prev && matchChain(prev, cx, k - 1);
   }
   if (comb === ' ') {
     let anc = el.parentNode;
     while (anc && anc.nodeType === 1) {
-      if (matchChain(anc, compounds, combinators, k - 1)) return true;
+      if (matchChain(anc, cx, k - 1)) return true;
       anc = anc.parentNode;
     }
     return false;
@@ -391,7 +409,7 @@ function matchChain(el, compounds, combinators, k) {
   // '~' general sibling
   let prev = previousElement(el);
   while (prev) {
-    if (matchChain(prev, compounds, combinators, k - 1)) return true;
+    if (matchChain(prev, cx, k - 1)) return true;
     prev = previousElement(prev);
   }
   return false;
