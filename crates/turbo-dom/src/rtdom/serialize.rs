@@ -113,9 +113,13 @@ fn serialize_node(tree: &Tree, h: Handle, parent_tag: Option<&str>, out: &mut St
             out.push_str("-->");
         }
         NodeType::Doctype => {
-            // JS reads `node.name`; the Tree API does not expose a doctype name, so emit
-            // the practical default. (Fixtures do not exercise the name.)
-            out.push_str("<!DOCTYPE html>");
+            // Serialize `<!DOCTYPE ` + the node's name + `>` (the JS serializer emits
+            // `<!DOCTYPE ${node.name}>`; public/system ids are not part of the HTML
+            // fragment serialization). Falls back to "html" only if the name is somehow
+            // unavailable (e.g. a runtime-created doctype, which has no constructor here).
+            out.push_str("<!DOCTYPE ");
+            out.push_str(tree.doctype_name(h).unwrap_or("html"));
+            out.push('>');
         }
         NodeType::Fragment => {
             serialize_children(tree, h, "", out);
@@ -223,6 +227,19 @@ mod tests {
         let sr = tree.attach_shadow(div);
         tree.set_inner_html(sr, "<span>hi</span>");
         assert_eq!(serialize_outer(&tree, sr), "<span>hi</span>");
+    }
+
+    #[test]
+    fn doctype_serializes_actual_name() {
+        // The HTML serialization of a DocumentType is `<!DOCTYPE ` + its name + `>`.
+        // The common case is "html", but a non-html doctype name must be preserved
+        // (the JS serializer emits `<!DOCTYPE ${node.name}>`).
+        let tree = Tree::parse("<!DOCTYPE math><html></html>");
+        let dt = tree
+            .handles()
+            .find(|&h| tree.node_type(h) == NodeType::Doctype)
+            .unwrap();
+        assert_eq!(serialize_outer(&tree, dt), "<!DOCTYPE math>");
     }
 
     #[test]
