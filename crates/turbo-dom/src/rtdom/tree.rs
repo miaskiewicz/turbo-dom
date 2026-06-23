@@ -68,10 +68,46 @@ impl Namespace {
 /// A node handle. Index into the buffer, or (>= buf_len) into `new_nodes`.
 pub type Handle = u32;
 
-struct NewNode {
-    node_type: u8,
-    name: String, // local name (elements) or data (text/comment)
-    ns: u8,
+/// A node created at runtime (not read from the parse buffer). Each variant carries
+/// exactly the data its node type needs — a text node cannot hold a namespace, an
+/// element always has one — so the old `(node_type, name, ns)` triple's invalid
+/// combinations (a `Text` with an `ns`, an element with no name) are unrepresentable.
+enum NewNode {
+    Element { name: String, ns: Namespace },
+    Text(String),
+    Comment(String),
+    Fragment,
+}
+
+impl NewNode {
+    fn node_type(&self) -> NodeType {
+        match self {
+            NewNode::Element { .. } => NodeType::Element,
+            NewNode::Text(_) => NodeType::Text,
+            NewNode::Comment(_) => NodeType::Comment,
+            NewNode::Fragment => NodeType::Fragment,
+        }
+    }
+    fn namespace(&self) -> Namespace {
+        match self {
+            NewNode::Element { ns, .. } => *ns,
+            _ => Namespace::Html,
+        }
+    }
+    /// The element's local name, if this is an element.
+    fn element_name(&self) -> Option<&str> {
+        match self {
+            NewNode::Element { name, .. } => Some(name),
+            _ => None,
+        }
+    }
+    /// The character data, if this is a text or comment node.
+    fn char_data(&self) -> Option<&str> {
+        match self {
+            NewNode::Text(s) | NewNode::Comment(s) => Some(s),
+            _ => None,
+        }
+    }
 }
 
 pub struct Tree {
@@ -146,21 +182,19 @@ impl Tree {
 
     // ----------------------------------------------------------------- reads
     pub fn node_type(&self, h: Handle) -> NodeType {
-        let raw = if self.is_new(h) {
-            self.new_ref(h).node_type
+        if self.is_new(h) {
+            self.new_ref(h).node_type()
         } else {
-            self.buf.node_type[h as usize]
-        };
-        NodeType::from_u8(raw)
+            NodeType::from_u8(self.buf.node_type[h as usize])
+        }
     }
 
     pub fn namespace(&self, h: Handle) -> Namespace {
-        let raw = if self.is_new(h) {
-            self.new_ref(h).ns
+        if self.is_new(h) {
+            self.new_ref(h).namespace()
         } else {
-            self.buf.ns[h as usize]
-        };
-        Namespace::from_u8(raw)
+            Namespace::from_u8(self.buf.ns[h as usize])
+        }
     }
 
     /// localName (lowercase as parsed). None for non-elements.
@@ -169,7 +203,7 @@ impl Tree {
             return None;
         }
         if self.is_new(h) {
-            Some(&self.new_ref(h).name)
+            self.new_ref(h).element_name()
         } else {
             Some(&self.buf.tag_names[self.buf.tag_id[h as usize] as usize])
         }
@@ -360,7 +394,7 @@ impl Tree {
             return None;
         }
         if self.is_new(h) {
-            return if nt == NodeType::Element { Some(&self.new_ref(h).name) } else { None };
+            return if nt == NodeType::Element { self.new_ref(h).element_name() } else { None };
         }
         Some(&self.buf.tag_names[self.buf.tag_id[h as usize] as usize])
     }
@@ -394,7 +428,7 @@ impl Tree {
             return Some(t.clone());
         }
         if self.is_new(h) {
-            return Some(self.new_ref(h).name.clone());
+            return self.new_ref(h).char_data().map(|s| s.to_string());
         }
         // buffer text/comment nodes always have text_id >= 0 (core pools every
         // string); .get + default keeps this total and coverable.
@@ -624,14 +658,14 @@ impl Tree {
     }
 
     // ------------------------------------------------------------- creation
-    fn push_new(&mut self, node_type: NodeType, name: String, ns: Namespace) -> Handle {
+    fn push_node(&mut self, node: NewNode) -> Handle {
         let h = self.node_count();
-        self.new_nodes.push(NewNode { node_type: node_type as u8, name, ns: ns as u8 });
+        self.new_nodes.push(node);
         h
     }
 
     pub fn create_element(&mut self, tag: &str) -> Handle {
-        let h = self.push_new(NodeType::Element, tag.to_ascii_lowercase(), Namespace::Html);
+        let h = self.push_node(NewNode::Element { name: tag.to_ascii_lowercase(), ns: Namespace::Html });
         self.children_ov.insert(h, Vec::new());
         self.attrs_ov.insert(h, Vec::new());
         self.bump();
@@ -639,7 +673,7 @@ impl Tree {
     }
 
     pub fn create_element_ns(&mut self, tag: &str, ns: Namespace) -> Handle {
-        let h = self.push_new(NodeType::Element, tag.to_string(), ns);
+        let h = self.push_node(NewNode::Element { name: tag.to_string(), ns });
         self.children_ov.insert(h, Vec::new());
         self.attrs_ov.insert(h, Vec::new());
         self.bump();
@@ -647,13 +681,13 @@ impl Tree {
     }
 
     pub fn create_text_node(&mut self, data: &str) -> Handle {
-        let h = self.push_new(NodeType::Text, data.to_string(), Namespace::Html);
+        let h = self.push_node(NewNode::Text(data.to_string()));
         self.bump();
         h
     }
 
     pub fn create_comment(&mut self, data: &str) -> Handle {
-        let h = self.push_new(NodeType::Comment, data.to_string(), Namespace::Html);
+        let h = self.push_node(NewNode::Comment(data.to_string()));
         self.bump();
         h
     }
@@ -807,7 +841,7 @@ impl Tree {
     /// includes it (encapsulation is free: queries over the light tree skip it).
     /// Populate it via `set_inner_html(shadow_root, ...)` or append_child.
     pub fn attach_shadow(&mut self, host: Handle) -> Handle {
-        let sr = self.push_new(NodeType::Fragment, String::new(), Namespace::Html);
+        let sr = self.push_node(NewNode::Fragment);
         self.children_ov.insert(sr, Vec::new());
         self.shadow_root_of_host.insert(host, sr);
         self.host_of_shadow_root.insert(sr, host);
