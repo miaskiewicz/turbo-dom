@@ -741,10 +741,20 @@ impl Tree {
             self.insert_before(p, n, Some(h));
         }
     }
+    /// The "viable next sibling" used by `after`/`replaceWith`: `h`'s first following
+    /// sibling that is NOT itself in `nodes`. Per the DOM spec these methods anchor the
+    /// insertion at this node, so a following sibling that is being moved by the call is
+    /// skipped over (using it as the anchor would corrupt the order once it's detached).
+    fn viable_next_sibling(&self, h: Handle, nodes: &[Handle]) -> Option<Handle> {
+        let p = self.parent(h)?;
+        let sibs = self.children(p);
+        let i = sibs.iter().position(|&x| x == h)?;
+        sibs[i + 1..].iter().copied().find(|s| !nodes.contains(s))
+    }
     /// Insert `nodes` (in order) immediately after `h` within `h`'s parent.
     pub fn after(&mut self, h: Handle, nodes: &[Handle]) {
         let Some(p) = self.parent(h) else { return };
-        let next = self.next_sibling(h);
+        let next = self.viable_next_sibling(h, nodes);
         for &n in nodes {
             self.insert_before(p, n, next);
         }
@@ -752,9 +762,10 @@ impl Tree {
     /// Replace `h` with `nodes` (in order) in `h`'s parent.
     pub fn replace_with(&mut self, h: Handle, nodes: &[Handle]) {
         let Some(p) = self.parent(h) else { return };
-        let next = self.next_sibling(h);
-        // Insert before h's next sibling so order is preserved, then remove h. (If a node in `nodes`
-        // is h itself it is first detached by insert_before — harmless; spec dedups similarly.)
+        let next = self.viable_next_sibling(h, nodes);
+        // Insert before the viable next sibling so order is preserved, then remove h. (If a
+        // node in `nodes` is h itself it is first detached by insert_before — harmless; spec
+        // dedups similarly.)
         for &n in nodes {
             if n != h {
                 self.insert_before(p, n, next);
@@ -1306,6 +1317,33 @@ mod tests {
         assert_eq!(tree.local_name(kids[0]), Some("span"));
         assert_eq!(tree.get_attribute(kids[0], "class"), Some("x"));
         assert_eq!(tree.text_content(div), "hi");
+    }
+
+    #[test]
+    fn after_and_replace_with_nodes_containing_next_sibling() {
+        // DOM spec: ChildNode.after()/replaceWith() insert before the "viable next
+        // sibling" — the first following sibling NOT in the argument list. When the
+        // immediate next sibling IS one of the inserted nodes, it must be skipped.
+        //
+        // <a><b><c> ; a.after(b, x) → a, b, x, c
+        let mut tree = t("<div><a></a><b></b><c></c></div>");
+        let a = tree.handles().find(|&h| tree.local_name(h) == Some("a")).unwrap();
+        let b = tree.handles().find(|&h| tree.local_name(h) == Some("b")).unwrap();
+        let x = tree.create_element("x");
+        tree.after(a, &[b, x]);
+        let div = tree.handles().find(|&h| tree.local_name(h) == Some("div")).unwrap();
+        let names: Vec<_> = tree.children(div).iter().map(|&h| tree.local_name(h).unwrap().to_string()).collect();
+        assert_eq!(names, vec!["a", "b", "x", "c"], "after() must skip a next sibling that is itself being inserted");
+
+        // <a><b><c> ; a.replaceWith(b, x) → b, x, c
+        let mut tree2 = t("<div><a></a><b></b><c></c></div>");
+        let a2 = tree2.handles().find(|&h| tree2.local_name(h) == Some("a")).unwrap();
+        let b2 = tree2.handles().find(|&h| tree2.local_name(h) == Some("b")).unwrap();
+        let x2 = tree2.create_element("x");
+        tree2.replace_with(a2, &[b2, x2]);
+        let div2 = tree2.handles().find(|&h| tree2.local_name(h) == Some("div")).unwrap();
+        let names2: Vec<_> = tree2.children(div2).iter().map(|&h| tree2.local_name(h).unwrap().to_string()).collect();
+        assert_eq!(names2, vec!["b", "x", "c"], "replaceWith() must skip a next sibling that is itself being inserted");
     }
 
     #[test]
