@@ -75,8 +75,16 @@ fn serialize_node(tree: &Tree, h: Handle, parent_tag: Option<&str>, out: &mut St
             let tag = tree.local_name(h).unwrap_or("");
             out.push('<');
             out.push_str(tag);
-            tree.for_each_attr(h, |name, value| {
+            // Foreign-content attributes carry a namespace prefix (xlink/xml/xmlns) that
+            // is stored separately from the local name; the HTML serialization re-qualifies
+            // them as `prefix:name` (e.g. `xlink:href`). Plain attributes have an empty
+            // prefix and serialize as just the name.
+            tree.for_each_attr_full(h, |prefix, name, value| {
                 out.push(' ');
+                if !prefix.is_empty() {
+                    out.push_str(prefix);
+                    out.push(':');
+                }
                 out.push_str(name);
                 out.push_str("=\"");
                 push_escaped_attr(out, value);
@@ -215,6 +223,17 @@ mod tests {
         let sr = tree.attach_shadow(div);
         tree.set_inner_html(sr, "<span>hi</span>");
         assert_eq!(serialize_outer(&tree, sr), "<span>hi</span>");
+    }
+
+    #[test]
+    fn foreign_attr_prefix_preserved() {
+        // An SVG element's prefixed attribute (xlink:href) must serialize WITH its
+        // prefix — browsers report `<use xlink:href="#i">`, not `<use href="#i">`.
+        // The parser stores the prefix separately from the local name; the serializer
+        // must re-qualify it.
+        let tree = Tree::parse("<svg><use xlink:href=\"#i\"></use></svg>");
+        let u = tree.get_elements_by_tag_name("use")[0];
+        assert_eq!(serialize_outer(&tree, u), "<use xlink:href=\"#i\"></use>");
     }
 
     #[test]
