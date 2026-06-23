@@ -81,91 +81,192 @@ struct Complex {
     parts: Vec<(Combinator, Compound)>,
 }
 
-/// is byte a compound-part boundary (start of the next `.`/`#`/`[`/`:` token)?
-#[inline]
-fn is_part_start(byte: u8) -> bool {
-    byte == b'.' || byte == b'#' || byte == b'[' || byte == b':'
+/// A lexical token. The lexer is the ONE pass that centrally handles quoted
+/// strings and balanced `[...]` / `(...)`; everything the grammar sees is already
+/// well-formed tokens, so the recursive-descent parser never tracks bracket/paren
+/// depth itself (the class of bug this refactor exists to kill).
+///
+/// `*` and digits are ordinary identifier characters here, so a leading `*` lexes
+/// as `Ident("*")` (the parser maps it to "any tag") and `*foo` stays `Ident("*foo")`
+/// — preserving the old substring-tag semantics. `[..]` / `(..)` carry their already
+/// quote-/depth-balanced inner text, so `svg[viewBox="0 0 10 10"]` is one `Attr` token
+/// and `:not(:nth-child(2))` is one `Paren` token.
+enum Token {
+    Ident(String), // run of non-special chars: tag / class / id / pseudo-name / stray
+    Hash,          // #
+    Dot,           // .
+    Colon,         // :
+    Attr(String),  // inner text of a balanced `[ ... ]`
+    Paren(String), // inner text of a balanced `( ... )` (a pseudo argument)
+    Ws,            // a run of significant whitespace (descendant separator)
+    Gt,            // > child combinator
 }
 
-fn parse_compound(src: &str) -> Compound {
-    let mut c = Compound::default();
-    let b = src.as_bytes();
-    let mut i = 0;
-    // type selector (stops at the first `.`/`#`/`[`/`:`)
-    if i < b.len() && !is_part_start(b[i]) {
-        let start = i;
-        while i < b.len() && !is_part_start(b[i]) {
-            i += 1;
+/// is `ch` a token boundary (the lexer can never put it inside an `Ident`)?
+#[inline]
+fn is_special(ch: char) -> bool {
+    ch.is_whitespace() || matches!(ch, '>' | '#' | '.' | ':' | '[' | ']' | '(' | ')')
+}
+
+/// Scan from just past an opening `open` to its matching `close`, honoring quotes
+/// and nesting. Returns the inner text and leaves `*i` on the closing delimiter
+/// (or at end if unterminated). Centralizing this is the whole point: `[...]` and
+/// `(...)` share one balanced, quote-aware scanner instead of two ad-hoc loops.
+fn scan_balanced(chars: &[char], i: &mut usize, open: char, close: char) -> String {
+    let start = *i;
+    let mut depth = 1i32;
+    let mut quote: Option<char> = None;
+    while *i < chars.len() {
+        let c = chars[*i];
+        if let Some(q) = quote {
+            if c == q {
+                quote = None;
+            }
+        } else if c == '"' || c == '\'' {
+            quote = Some(c);
+        } else if c == open {
+            depth += 1;
+        } else if c == close {
+            depth -= 1;
+            if depth == 0 {
+                break;
+            }
         }
-        let tag = &src[start..i];
-        if tag != "*" {
-            c.tag = Some(tag.to_string());
+        *i += 1;
+    }
+    chars[start..*i].iter().collect()
+}
+
+/// Lex one complex selector (already comma-split + trimmed) into tokens.
+fn tokenize(src: &str) -> Vec<Token> {
+    let chars: Vec<char> = src.chars().collect();
+    let n = chars.len();
+    let mut out = Vec::new();
+    let mut i = 0;
+    while i < n {
+        let ch = chars[i];
+        match ch {
+            c if c.is_whitespace() => {
+                // collapse a whitespace run into a single descendant separator
+                while i < n && chars[i].is_whitespace() {
+                    i += 1;
+                }
+                out.push(Token::Ws);
+            }
+            '>' => {
+                out.push(Token::Gt);
+                i += 1;
+            }
+            '#' => {
+                out.push(Token::Hash);
+                i += 1;
+            }
+            '.' => {
+                out.push(Token::Dot);
+                i += 1;
+            }
+            ':' => {
+                out.push(Token::Colon);
+                i += 1;
+            }
+            '[' => {
+                i += 1; // past '['
+                let inner = scan_balanced(&chars, &mut i, '[', ']');
+                if i < n {
+                    i += 1; // past ']'
+                }
+                out.push(Token::Attr(inner));
+            }
+            '(' => {
+                i += 1; // past '('
+                let inner = scan_balanced(&chars, &mut i, '(', ')');
+                if i < n {
+                    i += 1; // past ')'
+                }
+                out.push(Token::Paren(inner));
+            }
+            // a stray closer at top level isn't part of any token — drop it
+            ']' | ')' => i += 1,
+            _ => {
+                let start = i;
+                while i < n && !is_special(chars[i]) {
+                    i += 1;
+                }
+                out.push(Token::Ident(chars[start..i].iter().collect()));
+            }
         }
     }
-    while i < b.len() {
-        match b[i] {
-            b'.' => {
-                i += 1;
-                let start = i;
-                while i < b.len() && !is_part_start(b[i]) {
-                    i += 1;
-                }
-                c.classes.push(src[start..i].to_string());
+    out
+}
+
+/// Consume the `Ident` at `*i` (advancing past it) or `""` if the current token
+/// isn't an `Ident`. Lets `.`/`#`/`:` with no following name yield an empty
+/// class/id/pseudo-name — exactly the old "read until the next part-start" result.
+fn take_ident(toks: &[Token], i: &mut usize) -> String {
+    if let Some(Token::Ident(s)) = toks.get(*i) {
+        let s = s.clone();
+        *i += 1;
+        s
+    } else {
+        String::new()
+    }
+}
+
+/// Parse a single compound starting at `*i`, stopping at a combinator (`Ws`/`Gt`)
+/// or end. Leniency preserved: a bare `Ident` in the suffix position (e.g. the
+/// trailing `y` of `div[id=x]y`) is skipped, an unknown pseudo becomes
+/// `Pseudo::Unknown`, and a leading `Ident` of `"*"` means "any tag".
+fn parse_compound_tokens(toks: &[Token], i: &mut usize) -> Compound {
+    let mut c = Compound::default();
+    // optional leading type selector
+    if let Some(Token::Ident(s)) = toks.get(*i) {
+        if s != "*" {
+            c.tag = Some(s.clone());
+        }
+        *i += 1;
+    }
+    while let Some(tok) = toks.get(*i) {
+        match tok {
+            Token::Ws | Token::Gt => break,
+            Token::Dot => {
+                *i += 1;
+                c.classes.push(take_ident(toks, i));
             }
-            b'#' => {
-                i += 1;
-                let start = i;
-                while i < b.len() && !is_part_start(b[i]) {
-                    i += 1;
-                }
-                c.id = Some(src[start..i].to_string());
+            Token::Hash => {
+                *i += 1;
+                c.id = Some(take_ident(toks, i));
             }
-            b'[' => {
-                i += 1;
-                let start = i;
-                while i < b.len() && b[i] != b']' {
-                    i += 1;
-                }
-                let inner = &src[start..i];
-                if i < b.len() {
-                    i += 1; // skip ]
-                }
-                c.attrs.push(parse_attr(inner));
-            }
-            b':' => {
-                // `:name` then optional `(...)` arg (balanced parens, so a
-                // nested `:not(.a)` arg survives intact for recursive parse).
-                i += 1;
-                let start = i;
-                while i < b.len() && (b[i].is_ascii_alphabetic() || b[i] == b'-') {
-                    i += 1;
-                }
-                let name = &src[start..i];
-                let mut arg: Option<&str> = None;
-                if i < b.len() && b[i] == b'(' {
-                    let mut depth = 1usize;
-                    let astart = i + 1;
-                    i += 1;
-                    while i < b.len() && depth > 0 {
-                        match b[i] {
-                            b'(' => depth += 1,
-                            b')' => depth -= 1,
-                            _ => {}
-                        }
-                        i += 1;
+            Token::Colon => {
+                *i += 1;
+                let name = take_ident(toks, i);
+                let arg = match toks.get(*i) {
+                    Some(Token::Paren(p)) => {
+                        let p = p.clone();
+                        *i += 1;
+                        Some(p)
                     }
-                    // i now points just past the closing ')'
-                    let aend = if i > astart { i - 1 } else { astart };
-                    arg = Some(&src[astart..aend]);
-                }
-                c.pseudos.push(parse_pseudo(name, arg));
+                    _ => None,
+                };
+                c.pseudos.push(parse_pseudo(&name, arg.as_deref()));
             }
-            _ => {
-                i += 1;
+            Token::Attr(inner) => {
+                c.attrs.push(parse_attr(inner));
+                *i += 1;
             }
+            // bare ident (lenient trailing junk) or stray paren → ignore
+            Token::Ident(_) | Token::Paren(_) => *i += 1,
         }
     }
     c
+}
+
+/// Parse a whole string as a SINGLE compound (for a `:not(...)` argument). Mirrors
+/// the old `parse_compound(arg.trim())`: leading/trailing whitespace is ignored and
+/// any trailing combinator content is dropped (the AST holds one compound).
+fn parse_compound_str(src: &str) -> Compound {
+    let toks = tokenize(src.trim());
+    let mut i = 0;
+    parse_compound_tokens(&toks, &mut i)
 }
 
 /// Map a pseudo `name` + optional `arg` to a `Pseudo`. Unrecognized → `Unknown`
@@ -204,7 +305,7 @@ fn parse_pseudo(name: &str, arg: Option<&str>) -> Pseudo {
             let (a, b) = parse_nth(arg.unwrap_or(""));
             Pseudo::NthLastOfType(a, b)
         }
-        "not" => Pseudo::Not(Box::new(parse_compound(arg.unwrap_or("").trim()))),
+        "not" => Pseudo::Not(Box::new(parse_compound_str(arg.unwrap_or("")))),
         _ => Pseudo::Unknown,
     }
 }
@@ -289,61 +390,30 @@ fn attr_op_matches(op: AttrOp, want: &str, got: &str) -> bool {
     }
 }
 
+/// Parse one complex selector (already comma-split + trimmed) into a `Complex`.
+/// A `Gt` between two compounds is a child combinator; otherwise (whitespace or
+/// nothing) it is descendant — matching the old "default descendant, `>` ⇒ child"
+/// rule exactly. Leading/trailing/extra `Ws` are inert separators.
 fn parse_complex(src: &str) -> Complex {
-    let mut parts = Vec::new();
+    let toks = tokenize(src);
+    let mut parts: Vec<(Combinator, Compound)> = Vec::new();
     let mut combinator = Combinator::Descendant;
-    for tok in tokenize_complex(src) {
-        if tok == ">" {
-            combinator = Combinator::Child;
-        } else {
-            parts.push((combinator, parse_compound(&tok)));
-            combinator = Combinator::Descendant;
+    let mut i = 0;
+    while i < toks.len() {
+        match toks[i] {
+            Token::Ws => i += 1,
+            Token::Gt => {
+                combinator = Combinator::Child;
+                i += 1;
+            }
+            _ => {
+                let c = parse_compound_tokens(&toks, &mut i);
+                parts.push((combinator, c));
+                combinator = Combinator::Descendant;
+            }
         }
     }
     Complex { parts }
-}
-
-/// split on whitespace but keep `>` as its own token (with or without surrounding ws).
-/// Whitespace and `>` inside an attribute selector `[...]`, a pseudo argument `(...)`,
-/// or a quoted string are NOT separators — so `svg[viewBox="0 0 10 10"]` is one token,
-/// and `:nth-child(2n + 1)` / `:not(a > b)` keep their parenthesised arg intact.
-fn tokenize_complex(src: &str) -> Vec<String> {
-    let mut out = Vec::new();
-    let mut cur = String::new();
-    let mut brackets: i32 = 0; // inside [...]
-    let mut parens: i32 = 0; // inside (...) — pseudo arguments
-    let mut quote: Option<char> = None;
-    for ch in src.chars() {
-        if let Some(q) = quote {
-            cur.push(ch);
-            if ch == q { quote = None; }
-            continue;
-        }
-        match ch {
-            '"' | '\'' => { quote = Some(ch); cur.push(ch); }
-            '[' => { brackets += 1; cur.push(ch); }
-            ']' => { brackets -= 1; cur.push(ch); }
-            '(' => { parens += 1; cur.push(ch); }
-            ')' => { parens -= 1; cur.push(ch); }
-            c if brackets > 0 || parens > 0 => cur.push(c),
-            c if c.is_whitespace() => {
-                if !cur.is_empty() {
-                    out.push(std::mem::take(&mut cur));
-                }
-            }
-            '>' => {
-                if !cur.is_empty() {
-                    out.push(std::mem::take(&mut cur));
-                }
-                out.push(">".to_string());
-            }
-            _ => cur.push(ch),
-        }
-    }
-    if !cur.is_empty() {
-        out.push(cur);
-    }
-    out
 }
 
 /// whole-word class scan, alloc-free — mirrors JS `hasClass`.
@@ -1041,6 +1111,62 @@ mod tests {
         assert_eq!(odd.len(), 2);
         assert_eq!(tree.text_content(odd[0]), "1");
         assert_eq!(tree.text_content(odd[1]), "3");
+    }
+
+    #[test]
+    fn parser_parity_corpus() {
+        // The tricky-case corpus that the tokenizer + recursive-descent parser must
+        // handle identically to the old ad-hoc scanner (mirrors the parallel JS effort).
+        // Each selector is exercised against a fixture chosen to make it match exactly once.
+        let cases: &[(&str, &str)] = &[
+            ("div.card", "<div class='card'>x</div>"),
+            (".grid .t", "<div class='grid'><span class='t'>x</span></div>"),
+            ("main > div", "<main><div>x</div></main>"),
+            ("a[href]", "<a href='/x'>x</a>"),
+            ("a[data-k=v]", "<a data-k='v'>x</a>"),
+            ("[data-k='v']", "<a data-k='v'>x</a>"),
+            ("a[href^='/docs']", "<a href='/docs/intro'>x</a>"),
+            ("a[data-x*='oba']", "<a data-x='foobar'>x</a>"),
+            ("a[class~='primary']", "<a class='btn primary'>x</a>"),
+            ("a[lang|='en']", "<a lang='en-US'>x</a>"),
+            ("svg[viewBox=\"0 0 10 10\"]", "<svg viewBox=\"0 0 10 10\"></svg>"),
+            ("li:nth-child(2n + 1)", "<ul><li>1</li></ul>"),
+            (".a > .b .c", "<div class='a'><div class='b'><div class='c'>c</div></div></div>"),
+            ("div[id=x]y", "<div id='x'>hit</div>"), // lenient: trailing `y` ignored → matches
+        ];
+        for (sel, html) in cases {
+            let tree = Tree::parse(html);
+            assert_eq!(
+                tree.query_selector_all(sel).len(),
+                1,
+                "selector {sel:?} should match exactly once in {html:?}"
+            );
+        }
+        // :not with a NESTED pseudo whose argument itself contains balanced parens.
+        let tree = Tree::parse("<div><p>a</p><p>b</p></div>");
+        let r = tree.query_selector_all(":not(:nth-child(2))");
+        // every element except the 2nd child of its parent: html, head, body, div, the 1st p
+        assert!(r.iter().any(|&h| tree.local_name(h) == Some("p")));
+        assert_eq!(
+            tree.query_selector_all("p:not(:nth-child(2))").len(),
+            1,
+            "only the first <p> survives :not(:nth-child(2))"
+        );
+    }
+
+    #[test]
+    fn tokenizer_lenient_edges() {
+        let tree = Tree::parse("<div><p>x</p></div>");
+        // universal `*` selector: parsed compound has tag None → matches every element
+        // (exercises the `s == \"*\"` any-tag branch of parse_compound_tokens).
+        let all = tree.query_selector_all("*");
+        assert!(all.len() >= 4); // html, head, body, div, p
+        assert_eq!(tree.query_selector_all("*.nope").len(), 0); // `*` + a class that matches nothing
+        // a stray top-level closer is not part of any token — it is dropped, so the
+        // selector degrades to the rest (exercises the `']' | ')'` arm of tokenize;
+        // without that arm the ident scanner would stall on the special char).
+        assert_eq!(tree.query_selector_all("div]").len(), 1);
+        assert_eq!(tree.query_selector_all("p)").len(), 1);
     }
 
     #[test]
