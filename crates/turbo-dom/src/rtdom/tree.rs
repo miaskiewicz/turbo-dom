@@ -277,6 +277,27 @@ impl Tree {
         out
     }
 
+    /// Visit each child handle WITHOUT allocating a `Vec` — walks the child overlay
+    /// if the node was structurally mutated, else the buffer first-child/next-sib
+    /// chain straight off the SoA. Hot-path alternative to `children()` (which
+    /// clones a `Vec<Handle>`) for callers that only iterate. Mirrors `for_each_attr`.
+    pub fn for_each_child(&self, h: Handle, mut f: impl FnMut(Handle)) {
+        if let Some(c) = self.children_ov.get(&h) {
+            for &child in c {
+                f(child);
+            }
+            return;
+        }
+        if self.is_new(h) {
+            return;
+        }
+        let mut c = self.buf.first_child[h.idx()];
+        while c >= 0 {
+            f(Handle(c as u32));
+            c = self.buf.next_sib[c as usize];
+        }
+    }
+
     pub fn first_child(&self, h: Handle) -> Option<Handle> {
         self.children(h).first().copied()
     }
@@ -1093,6 +1114,29 @@ mod tests {
         let mut t4 = t("<div></div>");
         let txt = t4.create_text_node("hello");
         t4.for_each_attr(txt, |_, _| count += 1);
+        assert_eq!(count, 0);
+    }
+
+    #[test]
+    fn for_each_child_walks_buffer_overlay_and_new() {
+        // buffer chain (first_child/next_sib): matches children() exactly
+        let tree = t("<ul><li>1</li><li>2</li><li>3</li></ul>");
+        let ul = tree.handles().find(|&h| tree.local_name(h) == Some("ul")).unwrap();
+        let mut walked = Vec::new();
+        tree.for_each_child(ul, |c| walked.push(c));
+        assert_eq!(walked, tree.children(ul));
+        // overlay source after a structural mutation
+        let mut t2 = t("<div><a></a></div>");
+        let div = t2.handles().find(|&h| t2.local_name(h) == Some("div")).unwrap();
+        let b = t2.create_element("b");
+        t2.append_child(div, b);
+        let mut ov = Vec::new();
+        t2.for_each_child(div, |c| ov.push(c));
+        assert_eq!(ov, t2.children(div));
+        // is_new node with no overlay (a created text node) → no calls
+        let txt = t2.create_text_node("x");
+        let mut count = 0;
+        t2.for_each_child(txt, |_| count += 1);
         assert_eq!(count, 0);
     }
 

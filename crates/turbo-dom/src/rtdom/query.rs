@@ -635,11 +635,15 @@ impl Tree {
     /// Returns `[h]` if `h` has no parent — mirrors selectors.mjs `elementSiblings`.
     fn element_siblings(&self, h: Handle) -> Vec<Handle> {
         match self.parent(h) {
-            Some(p) => self
-                .children(p)
-                .into_iter()
-                .filter(|&c| self.node_type(c) == NodeType::Element)
-                .collect(),
+            Some(p) => {
+                let mut out = Vec::new();
+                self.for_each_child(p, |c| {
+                    if self.node_type(c) == NodeType::Element {
+                        out.push(c);
+                    }
+                });
+                out
+            }
             None => vec![h],
         }
     }
@@ -855,11 +859,18 @@ impl Tree {
                     .into_iter()
                     .any(|d| self.matches_complex_scoped(d, &rel.complex, Some(h)))
             }
-            Combinator::Child => self
-                .children(h)
-                .into_iter()
-                .filter(|&c| self.node_type(c) == NodeType::Element)
-                .any(|c| self.matches_complex_scoped(c, &rel.complex, Some(h))),
+            Combinator::Child => {
+                let mut found = false;
+                self.for_each_child(h, |c| {
+                    if !found
+                        && self.node_type(c) == NodeType::Element
+                        && self.matches_complex_scoped(c, &rel.complex, Some(h))
+                    {
+                        found = true;
+                    }
+                });
+                found
+            }
             Combinator::Adjacent => match self.next_element_sibling(h) {
                 // the sibling is outside `h`'s subtree → no scope cap
                 Some(sib) => self.matches_complex_scoped(sib, &rel.complex, None),
@@ -919,10 +930,11 @@ impl Tree {
         let mut order = Vec::new();
         while let Some(h) = stack.pop() {
             order.push(h);
-            let kids = self.children(h);
-            for &c in kids.iter().rev() {
-                stack.push(c);
-            }
+            // push children alloc-free, then reverse the just-added segment so they
+            // pop in document order (a `Vec`-free equivalent of `children().rev()`).
+            let base = stack.len();
+            self.for_each_child(h, |c| stack.push(c));
+            stack[base..].reverse();
         }
         for h in order {
             if self.node_type(h) == NodeType::Element
@@ -976,9 +988,9 @@ impl Tree {
                 found = Some(h);
                 break;
             }
-            for &c in self.children(h).iter().rev() {
-                stack.push(c);
-            }
+            let base = stack.len();
+            self.for_each_child(h, |c| stack.push(c));
+            stack[base..].reverse();
         }
         {
             let mut cache = self.qcache.borrow_mut();
@@ -997,9 +1009,9 @@ impl Tree {
         let mut order = Vec::new();
         while let Some(h) = stack.pop() {
             order.push(h);
-            for &c in self.children(h).iter().rev() {
-                stack.push(c);
-            }
+            let base = stack.len();
+            self.for_each_child(h, |c| stack.push(c));
+            stack[base..].reverse();
         }
         for h in order {
             if self.node_type(h) == NodeType::Element
