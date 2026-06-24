@@ -25,3 +25,9 @@ rustc-hash = "2"
 # all fit inline, so mutation churn no longer heap-allocs per node. Drop-in for
 # String (Deref<Target=str>). The parse-buffer SoA stays plain String (interned).
 compact_str = "0.9"
+# Small-vector optimization for the per-node overlay child/attr lists. Inlines
+# small lists (≤8 child handles / ≤2 attr pairs) so mutation churn doesn't heap-
+# alloc a Vec per mutated node; the rare wide node spills to the heap. API-compatible
+# with Vec (push/remove/iter/Deref to slice). Already in the tree transitively (via
+# parking_lot), so it adds no new crate.
+smallvec = "1"

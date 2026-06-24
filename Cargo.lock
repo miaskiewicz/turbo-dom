@@ -537,6 +537,7 @@ dependencies = [
  "html5ever",
  "markup5ever_rcdom",
  "rustc-hash",
+ "smallvec",
 ]
 
 [[package]]

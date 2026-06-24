@@ -11,6 +11,7 @@
 use crate::core::{self, Soa};
 use compact_str::CompactString;
 use rustc_hash::FxHashMap;
+use smallvec::SmallVec;
 use std::cell::RefCell;
 
 /// A DOM node type. `#[repr(u8)]` with the standard `nodeType` numeric values, so
@@ -129,6 +130,14 @@ impl NewNode {
     }
 }
 
+/// Per-node overlay child list. `SmallVec` inlines up to 8 child handles
+/// (32 bytes) before spilling to the heap — most elements have few children,
+/// so mutation churn no longer heap-allocs a `Vec` per mutated node.
+type ChildList = SmallVec<[Handle; 8]>;
+/// Per-node overlay attribute list. Inlines up to 2 `(name, value)` pairs
+/// (covers the common id/class case) before spilling to the heap.
+type AttrList = SmallVec<[(CompactString, CompactString); 2]>;
+
 /// A COW mutation overlay keyed by [`Handle`], split by the structural fact that
 /// created-node handles are **dense**: `push_node` assigns them `buf_len + i`
 /// monotonically (parallel to the `new_nodes` arena), while buffer nodes are the
@@ -225,8 +234,8 @@ pub struct Tree {
     // `None` = detached. No `-1` sentinel — a detached node is `None`, never a handle
     // that happens to read as negative.
     parent_ov: Overlay<Option<Handle>>,
-    children_ov: Overlay<Vec<Handle>>,
-    attrs_ov: Overlay<Vec<(CompactString, CompactString)>>,
+    children_ov: Overlay<ChildList>,
+    attrs_ov: Overlay<AttrList>,
     text_ov: Overlay<CompactString>,
     /// host → shadow-root handle, and shadow-root → host (the two shadow maps).
     shadow_root_of_host: FxHashMap<Handle, Handle>,
@@ -358,7 +367,7 @@ impl Tree {
     /// else walks the buffer first-child/next-sib chain (zero overlay alloc).
     pub fn children(&self, h: Handle) -> Vec<Handle> {
         if let Some(c) = self.children_ov.get(h) {
-            return c.clone();
+            return c.to_vec();
         }
         if self.is_new(h) {
             return Vec::new();
@@ -675,9 +684,9 @@ impl Tree {
     }
 
     /// Ensure a node's attr overlay exists (copy buffer attrs in on first write).
-    fn ensure_attrs(&mut self, h: Handle) -> &mut Vec<(CompactString, CompactString)> {
+    fn ensure_attrs(&mut self, h: Handle) -> &mut AttrList {
         if !self.attrs_ov.contains(h) {
-            let init: Vec<(CompactString, CompactString)> =
+            let init: AttrList =
                 self.attributes(h).into_iter().map(|(n, v)| (n.into(), v.into())).collect();
             self.attrs_ov.insert(h, init);
         }
@@ -713,9 +722,9 @@ impl Tree {
     }
 
     /// Ensure a node's child overlay exists (copy buffer children in on first mutate).
-    fn ensure_children(&mut self, h: Handle) -> &mut Vec<Handle> {
+    fn ensure_children(&mut self, h: Handle) -> &mut ChildList {
         if !self.children_ov.contains(h) {
-            let init = self.children(h);
+            let init: ChildList = self.children(h).into();
             self.children_ov.insert(h, init);
         }
         self.children_ov.get_mut(h).unwrap()
@@ -783,11 +792,11 @@ impl Tree {
             // recording, and avoid cloning `added` on the no-observer path.
             if self.is_recording() {
                 let removed = self.children(h);
-                self.children_ov.insert(h, added.clone());
+                self.children_ov.insert(h, added.clone().into());
                 self.bump();
                 self.record_child_list_batch(h, added, removed);
             } else {
-                self.children_ov.insert(h, added);
+                self.children_ov.insert(h, added.into());
                 self.bump();
             }
         }
@@ -869,16 +878,16 @@ impl Tree {
 
     pub fn create_element(&mut self, tag: &str) -> Handle {
         let h = self.push_node(NewNode::Element { name: tag.to_ascii_lowercase().into(), ns: Namespace::Html });
-        self.children_ov.insert(h, Vec::new());
-        self.attrs_ov.insert(h, Vec::new());
+        self.children_ov.insert(h, ChildList::new());
+        self.attrs_ov.insert(h, AttrList::new());
         self.bump();
         h
     }
 
     pub fn create_element_ns(&mut self, tag: &str, ns: Namespace) -> Handle {
         let h = self.push_node(NewNode::Element { name: tag.into(), ns });
-        self.children_ov.insert(h, Vec::new());
-        self.attrs_ov.insert(h, Vec::new());
+        self.children_ov.insert(h, ChildList::new());
+        self.attrs_ov.insert(h, AttrList::new());
         self.bump();
         h
     }
@@ -907,7 +916,7 @@ impl Tree {
         for &k in &kids {
             self.parent_ov.insert(k, Some(h));
         }
-        self.children_ov.insert(h, kids);
+        self.children_ov.insert(h, kids.into());
         self.bump();
     }
 
@@ -1029,7 +1038,7 @@ impl Tree {
                 for &k in &kids {
                     self.parent_ov.insert(k, Some(h));
                 }
-                self.children_ov.insert(h, kids);
+                self.children_ov.insert(h, kids.into());
                 h
             }
             NodeType::Comment => self.create_comment(&n.value),
@@ -1056,7 +1065,7 @@ impl Tree {
     /// Populate it via `set_inner_html(shadow_root, ...)` or append_child.
     pub fn attach_shadow(&mut self, host: Handle) -> Handle {
         let sr = self.push_node(NewNode::Fragment);
-        self.children_ov.insert(sr, Vec::new());
+        self.children_ov.insert(sr, ChildList::new());
         self.shadow_root_of_host.insert(host, sr);
         self.host_of_shadow_root.insert(sr, host);
         self.bump();
