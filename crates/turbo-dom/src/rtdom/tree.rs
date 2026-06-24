@@ -129,17 +129,105 @@ impl NewNode {
     }
 }
 
+/// A COW mutation overlay keyed by [`Handle`], split by the structural fact that
+/// created-node handles are **dense**: `push_node` assigns them `buf_len + i`
+/// monotonically (parallel to the `new_nodes` arena), while buffer nodes are the
+/// sparse ones that only sometimes get mutated. So:
+///   * a **created** node (`idx >= buf_len`) lives in a `Vec<Option<T>>` indexed by
+///     `idx - buf_len` — O(1), no hashing, no rehash, and zero memory waste (every
+///     created node already exists in `new_nodes`, so the slot is one it "owns").
+///   * a **buffer** node (`idx < buf_len`) lives in an `FxHashMap` (only the sparse
+///     subset of buffer nodes that are ever mutated allocate an entry).
+///
+/// The split is encapsulated ENTIRELY inside these methods — call sites never branch
+/// on `idx < buf_len`. A created node structurally always resolves to its dense slot;
+/// the only way to reach a slot is through this API, so "created node → dense, buffer
+/// node → map" can't be gotten wrong at a call site.
+struct Overlay<T> {
+    /// Indexed by `handle.idx() - buf_len`. Grows with `None` as created handles
+    /// appear; an absent (out-of-bounds) or `None` slot = no overlay for that node.
+    dense: Vec<Option<T>>,
+    /// Overrides for buffer nodes (`idx < buf_len`), the sparsely-mutated subset.
+    map: FxHashMap<Handle, T>,
+    /// The created-node boundary: handles `< buf_len` are buffer nodes (→ `map`),
+    /// `>= buf_len` are created nodes (→ `dense[idx - buf_len]`).
+    buf_len: u32,
+}
+
+impl<T> Overlay<T> {
+    fn new(buf_len: u32) -> Overlay<T> {
+        Overlay { dense: Vec::new(), map: FxHashMap::default(), buf_len }
+    }
+
+    /// `Some(handle.idx() - buf_len)` for a created node, `None` for a buffer node.
+    #[inline]
+    fn dense_idx(&self, h: Handle) -> Option<usize> {
+        if h.raw() >= self.buf_len {
+            Some((h.raw() - self.buf_len) as usize)
+        } else {
+            None
+        }
+    }
+
+    #[inline]
+    fn get(&self, h: Handle) -> Option<&T> {
+        match self.dense_idx(h) {
+            Some(i) => self.dense.get(i).and_then(Option::as_ref),
+            None => self.map.get(&h),
+        }
+    }
+
+    #[inline]
+    fn get_mut(&mut self, h: Handle) -> Option<&mut T> {
+        match self.dense_idx(h) {
+            Some(i) => self.dense.get_mut(i).and_then(Option::as_mut),
+            None => self.map.get_mut(&h),
+        }
+    }
+
+    #[inline]
+    fn contains(&self, h: Handle) -> bool {
+        match self.dense_idx(h) {
+            Some(i) => matches!(self.dense.get(i), Some(Some(_))),
+            None => self.map.contains_key(&h),
+        }
+    }
+
+    /// Grow the dense Vec so index `i` is addressable (filling with `None`).
+    #[inline]
+    fn ensure_dense_slot(&mut self, i: usize) {
+        if i >= self.dense.len() {
+            self.dense.resize_with(i + 1, || None);
+        }
+    }
+
+    #[inline]
+    fn insert(&mut self, h: Handle, v: T) {
+        match self.dense_idx(h) {
+            Some(i) => {
+                self.ensure_dense_slot(i);
+                self.dense[i] = Some(v);
+            }
+            None => {
+                self.map.insert(h, v);
+            }
+        }
+    }
+}
+
 pub struct Tree {
     buf: Soa,
     buf_len: u32,
     new_nodes: Vec<NewNode>,
     // --- COW overlays (present only for mutated/created nodes) ---
-    // `Some(parent)` = re-parented; `None` = detached. No `-1` sentinel — a
-    // detached node is `None`, never a handle that happens to read as negative.
-    parent_ov: FxHashMap<Handle, Option<Handle>>,
-    children_ov: FxHashMap<Handle, Vec<Handle>>,
-    attrs_ov: FxHashMap<Handle, Vec<(CompactString, CompactString)>>,
-    text_ov: FxHashMap<Handle, CompactString>,
+    // Hybrid `Overlay<T>`: created nodes (dense handles) live in a `Vec`, sparse
+    // buffer-node overrides in a map — see `Overlay`. `Some(parent)` = re-parented;
+    // `None` = detached. No `-1` sentinel — a detached node is `None`, never a handle
+    // that happens to read as negative.
+    parent_ov: Overlay<Option<Handle>>,
+    children_ov: Overlay<Vec<Handle>>,
+    attrs_ov: Overlay<Vec<(CompactString, CompactString)>>,
+    text_ov: Overlay<CompactString>,
     /// host → shadow-root handle, and shadow-root → host (the two shadow maps).
     shadow_root_of_host: FxHashMap<Handle, Handle>,
     host_of_shadow_root: FxHashMap<Handle, Handle>,
@@ -173,10 +261,10 @@ impl Tree {
             buf,
             buf_len,
             new_nodes: Vec::new(),
-            parent_ov: FxHashMap::default(),
-            children_ov: FxHashMap::default(),
-            attrs_ov: FxHashMap::default(),
-            text_ov: FxHashMap::default(),
+            parent_ov: Overlay::new(buf_len),
+            children_ov: Overlay::new(buf_len),
+            attrs_ov: Overlay::new(buf_len),
+            text_ov: Overlay::new(buf_len),
             shadow_root_of_host: FxHashMap::default(),
             host_of_shadow_root: FxHashMap::default(),
             version: 0,
@@ -252,7 +340,7 @@ impl Tree {
     }
 
     pub fn parent(&self, h: Handle) -> Option<Handle> {
-        if let Some(&p) = self.parent_ov.get(&h) {
+        if let Some(&p) = self.parent_ov.get(h) {
             return p;
         }
         if self.is_new(h) {
@@ -269,7 +357,7 @@ impl Tree {
     /// Live child list. Reads overlay if the node was structurally mutated,
     /// else walks the buffer first-child/next-sib chain (zero overlay alloc).
     pub fn children(&self, h: Handle) -> Vec<Handle> {
-        if let Some(c) = self.children_ov.get(&h) {
+        if let Some(c) = self.children_ov.get(h) {
             return c.clone();
         }
         if self.is_new(h) {
@@ -289,7 +377,7 @@ impl Tree {
     /// chain straight off the SoA. Hot-path alternative to `children()` (which
     /// clones a `Vec<Handle>`) for callers that only iterate. Mirrors `for_each_attr`.
     pub fn for_each_child(&self, h: Handle, mut f: impl FnMut(Handle)) {
-        if let Some(c) = self.children_ov.get(&h) {
+        if let Some(c) = self.children_ov.get(h) {
             for &child in c {
                 f(child);
             }
@@ -333,7 +421,7 @@ impl Tree {
     /// getAttribute. Reads overlay if attrs were mutated, else the buffer slice
     /// (lazy — no owned Vec built for unmutated nodes).
     pub fn get_attribute(&self, h: Handle, name: &str) -> Option<&str> {
-        if let Some(ov) = self.attrs_ov.get(&h) {
+        if let Some(ov) = self.attrs_ov.get(h) {
             return ov.iter().find(|(n, _)| n == name).map(|(_, v)| v.as_str());
         }
         if self.is_new(h) {
@@ -361,7 +449,7 @@ impl Tree {
 
     /// All (name, value) pairs for a node (owned copy).
     pub fn attributes(&self, h: Handle) -> Vec<(String, String)> {
-        if let Some(ov) = self.attrs_ov.get(&h) {
+        if let Some(ov) = self.attrs_ov.get(h) {
             return ov.iter().map(|(n, v)| (n.to_string(), v.to_string())).collect();
         }
         if self.is_new(h) {
@@ -387,7 +475,7 @@ impl Tree {
     /// straight from the overlay or the SoA tables. Hot-path alternative to
     /// `attributes()` (which clones a `Vec<(String, String)>`).
     pub fn for_each_attr(&self, h: Handle, mut f: impl FnMut(&str, &str)) {
-        if let Some(ov) = self.attrs_ov.get(&h) {
+        if let Some(ov) = self.attrs_ov.get(h) {
             for (n, v) in ov {
                 f(n, v);
             }
@@ -414,7 +502,7 @@ impl Tree {
     /// ("xlink"/"xml"/"xmlns", else ""). Needed by the html5lib dump. Overlay
     /// (created/mutated) attrs have no stored prefix → "".
     pub fn for_each_attr_full(&self, h: Handle, mut f: impl FnMut(&str, &str, &str)) {
-        if let Some(ov) = self.attrs_ov.get(&h) {
+        if let Some(ov) = self.attrs_ov.get(h) {
             for (n, v) in ov {
                 f("", n, v);
             }
@@ -477,7 +565,7 @@ impl Tree {
         if nt != NodeType::Text && nt != NodeType::Comment {
             return None;
         }
-        if let Some(t) = self.text_ov.get(&h) {
+        if let Some(t) = self.text_ov.get(h) {
             return Some(t.to_string());
         }
         if self.is_new(h) {
@@ -588,12 +676,12 @@ impl Tree {
 
     /// Ensure a node's attr overlay exists (copy buffer attrs in on first write).
     fn ensure_attrs(&mut self, h: Handle) -> &mut Vec<(CompactString, CompactString)> {
-        if !self.attrs_ov.contains_key(&h) {
+        if !self.attrs_ov.contains(h) {
             let init: Vec<(CompactString, CompactString)> =
                 self.attributes(h).into_iter().map(|(n, v)| (n.into(), v.into())).collect();
             self.attrs_ov.insert(h, init);
         }
-        self.attrs_ov.get_mut(&h).unwrap()
+        self.attrs_ov.get_mut(h).unwrap()
     }
 
     pub fn set_attribute(&mut self, h: Handle, name: &str, value: &str) {
@@ -626,11 +714,11 @@ impl Tree {
 
     /// Ensure a node's child overlay exists (copy buffer children in on first mutate).
     fn ensure_children(&mut self, h: Handle) -> &mut Vec<Handle> {
-        if !self.children_ov.contains_key(&h) {
+        if !self.children_ov.contains(h) {
             let init = self.children(h);
             self.children_ov.insert(h, init);
         }
-        self.children_ov.get_mut(&h).unwrap()
+        self.children_ov.get_mut(h).unwrap()
     }
 
     fn detach(&mut self, child: Handle) {
