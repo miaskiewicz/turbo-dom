@@ -1,8 +1,9 @@
 // Compact CSS selector engine. Correctness-first, right-to-left matching.
 // Supports: type, *, #id, .class, [attr], [attr op val] (= ^= $= *= ~= |=),
 // combinators (descendant ' ', child '>', adjacent '+', sibling '~'),
-// comma selector lists, and :not()/:is()/:where() (selector lists), :first-child,
-// :last-child, :only-child, :empty, :root. Enough for React Testing Library usage.
+// comma selector lists, :not()/:is()/:where() (selector lists), the relational
+// :has(), :first-child, :last-child, :only-child, :empty, :root. Enough for React
+// Testing Library usage.
 
 // ── Tokenizer + recursive-descent parser ─────────────────────────────────────
 // The selector string is first turned into a flat token stream by `tokenize`,
@@ -231,6 +232,37 @@ export function parseSelectorList(selector) {
   return parsed;
 }
 
+// :has() relative-selector-list parse + cache. Each top-level comma segment may
+// begin with a combinator ('>'/'+'/'~'); absent ⇒ descendant. The remainder is a
+// normal complex (reused parseComplex). Segments yielding no complex are dropped.
+// Mirrors the Rust parse_relative_selector_list.
+const __relativeCache = new Map();
+function parseRelativeSelectorList(arg) {
+  const src = arg || '';
+  const hit = __relativeCache.get(src);
+  if (hit !== undefined) return hit;
+  const tokens = tokenize(src);
+  const out = [];
+  let start = 0;
+  for (let i = 0; i <= tokens.length; i++) {
+    if (i === tokens.length || tokens[i].k === 'comma') {
+      let lo = start;
+      while (lo < i && tokens[lo].k === 'ws') lo++; // skip leading ws of the segment
+      let combinator = ' ';
+      if (lo < i && tokens[lo].k === 'comb') {
+        combinator = tokens[lo].v;
+        lo++;
+      }
+      const complex = parseComplexTokens(tokens, lo, i);
+      if (complex !== null) out.push({ combinator, complex });
+      start = i + 1;
+    }
+  }
+  if (__relativeCache.size > 10000) __relativeCache.clear();
+  __relativeCache.set(src, out);
+  return out;
+}
+
 function matchAttr(el, a) {
   const raw = el.getAttribute(a.name);   // single lookup (null = absent)
   if (raw === null) return false;
@@ -259,6 +291,10 @@ function matchPseudo(el, p) {
     case 'is':
     case 'where':
       return parseSelectorList(p.arg).some((cx) => matchComplex(el, cx));
+    // :has() — relational. SOME relative selector finds a matching element
+    // reachable from `el` per its leading combinator, scoped to `el`.
+    case 'has':
+      return parseRelativeSelectorList(p.arg).some((rel) => hasMatch(el, rel));
     case 'first-child':
       return previousElement(el) === null;
     case 'last-child':
@@ -416,6 +452,86 @@ function matchChain(el, cx, k) {
   let prev = previousElement(el);
   while (prev) {
     if (matchChain(prev, cx, k - 1)) return true;
+    prev = previousElement(prev);
+  }
+  return false;
+}
+
+// :has() forward existence search. Given the scope element `el` and one relative
+// selector, enumerate the candidate set per the leading combinator and test the
+// relative complex FORWARD (the opposite direction from the normal right-to-left
+// matcher), confined to `el`'s scope where applicable. Mirrors the Rust has_match.
+function hasMatch(el, rel) {
+  const { combinator, complex } = rel;
+  if (combinator === '>') {
+    const kids = rawChildren(el);
+    for (let i = 0; i < kids.length; i++) {
+      const c = kids[i];
+      if (c.nodeType === 1 && matchComplexScoped(c, complex, el)) return true;
+    }
+    return false;
+  }
+  if (combinator === '+') {
+    const sib = nextElement(el); // sibling is outside `el`'s subtree → no scope cap
+    return !!sib && matchComplexScoped(sib, complex, null);
+  }
+  if (combinator === '~') {
+    let sib = nextElement(el);
+    while (sib) {
+      if (matchComplexScoped(sib, complex, null)) return true;
+      sib = nextElement(sib);
+    }
+    return false;
+  }
+  // descendant: every descendant of `el`, capping the relative complex's own
+  // ancestor walk at `el` so a multi-compound `.a .b` stays in scope.
+  return someDescendant(el, (d) => matchComplexScoped(d, complex, el));
+}
+
+// Visit every descendant element of `node` (document order); short-circuit on the
+// first that satisfies `pred`. No filtered-copy allocation per level.
+function someDescendant(node, pred) {
+  const kids = rawChildren(node);
+  for (let i = 0; i < kids.length; i++) {
+    const c = kids[i];
+    if (c.nodeType !== 1) continue;
+    if (pred(c)) return true;
+    if (someDescendant(c, pred)) return true;
+  }
+  return false;
+}
+
+// Like matchComplex, but ancestor/parent steps (descendant ' ' / child '>') must
+// stay strictly BELOW `boundary` (exclusive) when one is given — so a :has()
+// relative complex cannot escape the scope element's subtree. `boundary === null`
+// makes this exactly matchComplex (used for sibling candidates).
+function matchComplexScoped(el, cx, boundary) {
+  return matchChainScoped(el, cx, cx.rest.length, boundary);
+}
+function matchChainScoped(el, cx, k, boundary) {
+  if (!matchCompound(el, compoundAt(cx, k))) return false;
+  if (k === 0) return true;
+  const comb = cx.rest[k - 1].combinator;
+  if (comb === '>') {
+    const p = el.parentNode;
+    return !!p && p.nodeType === 1 && p !== boundary && matchChainScoped(p, cx, k - 1, boundary);
+  }
+  if (comb === '+') {
+    const prev = previousElement(el);
+    return !!prev && matchChainScoped(prev, cx, k - 1, boundary);
+  }
+  if (comb === ' ') {
+    let anc = el.parentNode;
+    while (anc && anc.nodeType === 1 && anc !== boundary) {
+      if (matchChainScoped(anc, cx, k - 1, boundary)) return true;
+      anc = anc.parentNode;
+    }
+    return false;
+  }
+  // '~' general sibling
+  let prev = previousElement(el);
+  while (prev) {
+    if (matchChainScoped(prev, cx, k - 1, boundary)) return true;
     prev = previousElement(prev);
   }
   return false;

@@ -4,8 +4,9 @@
 //!
 //! Selector support: comma lists, descendant (` `), child (`>`), adjacent (`+`)
 //! and general-sibling (`~`) combinators, compounds of `tag` / `.class` / `#id` /
-//! `[attr]` / `[attr=val]`, and the `:is()` / `:where()` / `:not()` selector-list
-//! pseudo-classes. Enough for RTL-style queries; extend as the gauntlet demands.
+//! `[attr]` / `[attr=val]`, the `:is()` / `:where()` / `:not()` selector-list
+//! pseudo-classes, and the relational `:has()`. Enough for RTL-style queries;
+//! extend as the gauntlet demands.
 
 use super::tree::{Handle, NodeType, Tree};
 
@@ -93,8 +94,22 @@ enum Pseudo {
     Is(Vec<Complex>),
     Where(Vec<Complex>),
     Not(Vec<Complex>),
+    // `:has(<relative-selector-list>)` — relational. Each entry is a leading
+    // combinator (None = descendant) paired with the relative complex selector.
+    // `el:has(S)` is true iff SOME element reachable from `el` per S's leading
+    // combinator matches S, scoped to `el`. Empty list → never matches.
+    Has(Vec<RelativeSelector>),
     // Unrecognized / unparseable → never matches
     Unknown,
+}
+
+/// One relative selector inside `:has()`: an optional leading combinator (None =
+/// descendant) and the complex selector that follows. `> li.active` → `(Child,
+/// li.active)`; `.a .b` → `(Descendant, .a .b)`.
+#[derive(Debug, Clone)]
+struct RelativeSelector {
+    combinator: Combinator,
+    complex: Complex,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -345,6 +360,26 @@ fn parse_selector_list_str(src: &str) -> Vec<Complex> {
     split_top_level_commas(src).into_iter().filter_map(|s| parse_complex(s.trim())).collect()
 }
 
+/// Parse a `:has()` argument into a list of relative selectors. Each top-level
+/// comma segment may begin with a combinator (`>`/`+`/`~`); absent ⇒ descendant.
+/// The remainder is parsed as a normal complex (reusing `parse_complex`). Segments
+/// that yield no complex (empty, or a lone combinator) are dropped.
+fn parse_relative_selector_list(src: &str) -> Vec<RelativeSelector> {
+    split_top_level_commas(src)
+        .into_iter()
+        .filter_map(|seg| {
+            let seg = seg.trim_start();
+            let (combinator, rest) = match seg.as_bytes().first() {
+                Some(b'>') => (Combinator::Child, &seg[1..]),
+                Some(b'+') => (Combinator::Adjacent, &seg[1..]),
+                Some(b'~') => (Combinator::GeneralSibling, &seg[1..]),
+                _ => (Combinator::Descendant, seg),
+            };
+            parse_complex(rest.trim()).map(|complex| RelativeSelector { combinator, complex })
+        })
+        .collect()
+}
+
 /// Map a pseudo `name` + optional `arg` to a `Pseudo`. Unrecognized → `Unknown`
 /// (never matches). Mirrors selectors.mjs `matchPseudo` switch.
 fn parse_pseudo(name: &str, arg: Option<&str>) -> Pseudo {
@@ -384,6 +419,7 @@ fn parse_pseudo(name: &str, arg: Option<&str>) -> Pseudo {
         "is" => Pseudo::Is(parse_selector_list_str(arg.unwrap_or(""))),
         "where" => Pseudo::Where(parse_selector_list_str(arg.unwrap_or(""))),
         "not" => Pseudo::Not(parse_selector_list_str(arg.unwrap_or(""))),
+        "has" => Pseudo::Has(parse_relative_selector_list(arg.unwrap_or(""))),
         _ => Pseudo::Unknown,
     }
 }
@@ -576,6 +612,19 @@ impl Tree {
         None
     }
 
+    /// The immediately-FOLLOWING element sibling of `h` (walking `next_sibling`,
+    /// skipping text/comment nodes). Mirrors selectors.mjs `nextElement`.
+    fn next_element_sibling(&self, h: Handle) -> Option<Handle> {
+        let mut n = self.next_sibling(h);
+        while let Some(s) = n {
+            if self.node_type(s) == NodeType::Element {
+                return Some(s);
+            }
+            n = self.next_sibling(s);
+        }
+        None
+    }
+
     /// Element-only siblings of `h` (children of its parent that are elements).
     /// Returns `[h]` if `h` has no parent — mirrors selectors.mjs `elementSiblings`.
     fn element_siblings(&self, h: Handle) -> Vec<Handle> {
@@ -700,6 +749,9 @@ impl Tree {
                 list.iter().any(|cx| self.matches_complex(h, cx))
             }
             Pseudo::Not(list) => !list.iter().any(|cx| self.matches_complex(h, cx)),
+            // relational: SOME relative selector finds a matching element reachable
+            // from `h` per its leading combinator, scoped to `h`'s subtree.
+            Pseudo::Has(list) => list.iter().any(|rel| self.has_match(h, rel)),
             Pseudo::Unknown => false,
         }
     }
@@ -764,6 +816,105 @@ impl Tree {
                 let mut prev = self.previous_element_sibling(h);
                 while let Some(p) = prev {
                     if self.matches_chain(p, cx, k - 1) {
+                        return true;
+                    }
+                    prev = self.previous_element_sibling(p);
+                }
+                false
+            }
+        }
+    }
+
+    /// `:has()` forward existence search. Given the scope element `h` and one
+    /// relative selector, enumerate the candidate set per the leading combinator
+    /// and test the relative complex FORWARD (the opposite direction from the normal
+    /// right-to-left matcher), confined to `h`'s scope where applicable:
+    ///   - Descendant: SOME descendant of `h` matches (ancestor walk capped at `h`).
+    ///   - Child (`>`): SOME direct element child matches.
+    ///   - Adjacent (`+`): `h`'s next element sibling matches.
+    ///   - GeneralSibling (`~`): SOME following element sibling matches.
+    fn has_match(&self, h: Handle, rel: &RelativeSelector) -> bool {
+        match rel.combinator {
+            Combinator::Descendant => {
+                // every descendant of `h`, capping the relative complex's own
+                // ancestor walk at `h` so a multi-compound `.a .b` stays in scope.
+                self.descendants(h)
+                    .into_iter()
+                    .any(|d| self.matches_complex_scoped(d, &rel.complex, Some(h)))
+            }
+            Combinator::Child => self
+                .children(h)
+                .into_iter()
+                .filter(|&c| self.node_type(c) == NodeType::Element)
+                .any(|c| self.matches_complex_scoped(c, &rel.complex, Some(h))),
+            Combinator::Adjacent => match self.next_element_sibling(h) {
+                // the sibling is outside `h`'s subtree → no scope cap
+                Some(sib) => self.matches_complex_scoped(sib, &rel.complex, None),
+                None => false,
+            },
+            Combinator::GeneralSibling => {
+                let mut sib = self.next_element_sibling(h);
+                while let Some(s) = sib {
+                    if self.matches_complex_scoped(s, &rel.complex, None) {
+                        return true;
+                    }
+                    sib = self.next_element_sibling(s);
+                }
+                false
+            }
+        }
+    }
+
+    /// Like `matches_complex`, but ancestor/parent steps (Descendant/Child) must
+    /// stay strictly BELOW `boundary` (exclusive) when one is given — so a `:has()`
+    /// relative complex cannot escape the scope element's subtree. With `None`
+    /// boundary this is exactly `matches_complex` (used for sibling candidates).
+    fn matches_complex_scoped(&self, h: Handle, cx: &Complex, boundary: Option<Handle>) -> bool {
+        self.matches_chain_scoped(h, cx, cx.rest.len(), boundary)
+    }
+
+    fn matches_chain_scoped(
+        &self,
+        h: Handle,
+        cx: &Complex,
+        k: usize,
+        boundary: Option<Handle>,
+    ) -> bool {
+        if !self.matches_compound(h, Self::compound_at(cx, k)) {
+            return false;
+        }
+        if k == 0 {
+            return true;
+        }
+        // a parent step that would reach `boundary` (the scope element) or above
+        // leaves the scope → reject (the relative selector must stay inside).
+        let within = |p: Handle| boundary != Some(p);
+        match cx.rest[k - 1].0 {
+            Combinator::Child => match self.parent(h) {
+                Some(p) if within(p) => self.matches_chain_scoped(p, cx, k - 1, boundary),
+                _ => false,
+            },
+            Combinator::Descendant => {
+                let mut anc = self.parent(h);
+                while let Some(a) = anc {
+                    if !within(a) {
+                        break; // reached the scope boundary — stop ascending
+                    }
+                    if self.matches_chain_scoped(a, cx, k - 1, boundary) {
+                        return true;
+                    }
+                    anc = self.parent(a);
+                }
+                false
+            }
+            Combinator::Adjacent => match self.previous_element_sibling(h) {
+                Some(prev) => self.matches_chain_scoped(prev, cx, k - 1, boundary),
+                None => false,
+            },
+            Combinator::GeneralSibling => {
+                let mut prev = self.previous_element_sibling(h);
+                while let Some(p) = prev {
+                    if self.matches_chain_scoped(p, cx, k - 1, boundary) {
                         return true;
                     }
                     prev = self.previous_element_sibling(p);
@@ -1451,5 +1602,104 @@ mod tests {
         assert_eq!(tree.query_selector_all("li:not(div, span)").len(), 3);
         // :not(li, .c) → li that is neither (none) → 0
         assert_eq!(tree.query_selector_all("li:not(li, .c)").len(), 0);
+    }
+
+    #[test]
+    fn pseudo_has_descendant() {
+        let tree = Tree::parse(
+            "<div id=hit><span class=x>y</span></div><div id=miss><span>z</span></div>",
+        );
+        // div:has(.x) → only the div containing a .x descendant
+        let r = tree.query_selector_all("div:has(.x)");
+        assert_eq!(r.len(), 1);
+        assert_eq!(tree.get_attribute(r[0], "id"), Some("hit"));
+        // negative: nothing has a .absent descendant
+        assert_eq!(tree.query_selector_all("div:has(.absent)").len(), 0);
+    }
+
+    #[test]
+    fn pseudo_has_child_combinator() {
+        let tree = Tree::parse(
+            "<ul id=a><li class=active>1</li></ul>             <ul id=b><li>2</li></ul>             <ul id=c><div><li class=active>deep</li></div></ul>",
+        );
+        // ul:has(> li.active) → only the ul with a DIRECT li.active child (a).
+        // c has an li.active but it is a grandchild → must NOT match.
+        let r = tree.query_selector_all("ul:has(> li.active)");
+        assert_eq!(r.len(), 1);
+        assert_eq!(tree.get_attribute(r[0], "id"), Some("a"));
+        // descendant form (no `>`) DOES reach the grandchild → a and c match
+        assert_eq!(tree.query_selector_all("ul:has(li.active)").len(), 2);
+    }
+
+    #[test]
+    fn pseudo_has_adjacent_sibling() {
+        let tree = Tree::parse(
+            "<section><h2 id=p>t</h2><p>para</p></section>             <section><h2 id=q>t2</h2><div>not-p</div></section>",
+        );
+        // h2:has(+ p) → only the h2 immediately followed by a <p> (the first one)
+        let r = tree.query_selector_all("h2:has(+ p)");
+        assert_eq!(r.len(), 1);
+        assert_eq!(tree.get_attribute(r[0], "id"), Some("p"));
+    }
+
+    #[test]
+    fn pseudo_has_multi_compound_scoped() {
+        // :has(.a .b) — a multi-compound relative complex. The match must be
+        // CONFINED to the scope element's subtree: `.a` and `.b` both inside it.
+        let tree = Tree::parse(
+            "<section id=in><div class=a><span class=b>hit</span></div></section>             <section id=out><span class=b>noA</span></section>             <div class=a><section id=split><span class=b>aOutside</span></section></div>",
+        );
+        let r = tree.query_selector_all("section:has(.a .b)");
+        // `in` matches (.a and .b both inside). `out` has no .a. `split` has a .b
+        // but its only .a ancestor is OUTSIDE the section → scope cap rejects it.
+        assert_eq!(r.len(), 1);
+        assert_eq!(tree.get_attribute(r[0], "id"), Some("in"));
+    }
+
+    #[test]
+    fn pseudo_has_general_sibling_and_list() {
+        let tree = Tree::parse(
+            "<div><h3 id=a>x</h3><span>s</span><p>after</p></div>             <div><h3 id=b>y</h3><span>only</span></div>",
+        );
+        // h3:has(~ p) → an h3 with SOME following sibling <p> (a, not b)
+        let r = tree.query_selector_all("h3:has(~ p)");
+        assert_eq!(r.len(), 1);
+        assert_eq!(tree.get_attribute(r[0], "id"), Some("a"));
+        // a comma list of relative selectors: matches if ANY relative matches
+        assert_eq!(tree.query_selector_all("h3:has(~ p, ~ .none)").len(), 1);
+        // empty :has() never matches
+        assert_eq!(tree.query_selector_all("div:has()").len(), 0);
+    }
+
+    #[test]
+    fn pseudo_has_relative_complex_combinators() {
+        // The relative complex inside :has() may itself contain combinators —
+        // exercises the scoped matcher's Child/Adjacent/GeneralSibling arms.
+        let tree = Tree::parse(
+            "<section id=s1><div class=a><span class=b>x</span></div></section>             <section id=s2><div class=a></div><span class=b>y</span></section>             <section id=s3><div class=a></div><i>z</i><span class=b>w</span></section>",
+        );
+        // child combinator in the relative complex → s1 only
+        let gt = tree.query_selector_all("section:has(.a > .b)");
+        assert_eq!(gt.len(), 1);
+        assert_eq!(tree.get_attribute(gt[0], "id"), Some("s1"));
+        // adjacent → s2 only
+        let plus = tree.query_selector_all("section:has(.a + .b)");
+        assert_eq!(plus.len(), 1);
+        assert_eq!(tree.get_attribute(plus[0], "id"), Some("s2"));
+        // general sibling → s2 and s3
+        assert_eq!(tree.query_selector_all("section:has(.a ~ .b)").len(), 2);
+    }
+
+    #[test]
+    fn pseudo_has_ancestor_walk_iterates_within_scope() {
+        // `.b` nested two levels under `.a` with a non-`.a` wrapper between → the
+        // scoped descendant ancestor walk must skip the wrapper and keep ascending
+        // (but never reach/pass the scope element).
+        let tree = Tree::parse(
+            "<section id=hit><div class=a><div class=wrap><span class=b>x</span></div></div></section>             <section id=miss><div class=wrap><span class=b>y</span></div></section>",
+        );
+        let r = tree.query_selector_all("section:has(.a .b)");
+        assert_eq!(r.len(), 1);
+        assert_eq!(tree.get_attribute(r[0], "id"), Some("hit"));
     }
 }
