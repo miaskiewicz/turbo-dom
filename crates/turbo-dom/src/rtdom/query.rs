@@ -2,9 +2,10 @@
 //! alloc-free matcher discipline (whole-word class scan, index loops, no regex)
 //! and version-keyed result caching (`Document.__version` → `Tree.version`).
 //!
-//! Selector support: comma lists, descendant (` `) and child (`>`) combinators,
-//! compounds of `tag` / `.class` / `#id` / `[attr]` / `[attr=val]`. Enough for
-//! RTL-style queries; extend as the gauntlet demands.
+//! Selector support: comma lists, descendant (` `), child (`>`), adjacent (`+`)
+//! and general-sibling (`~`) combinators, compounds of `tag` / `.class` / `#id` /
+//! `[attr]` / `[attr=val]`. Enough for RTL-style queries; extend as the gauntlet
+//! demands.
 
 use super::tree::{Handle, NodeType, Tree};
 
@@ -95,6 +96,8 @@ enum Pseudo {
 enum Combinator {
     Descendant,
     Child,
+    Adjacent,       // + immediately-preceding element sibling
+    GeneralSibling, // ~ any preceding element sibling
 }
 
 /// A complex selector = a non-empty head compound + a tail of
@@ -128,12 +131,14 @@ enum Token {
     Paren(String), // inner text of a balanced `( ... )` (a pseudo argument)
     Ws,            // a run of significant whitespace (descendant separator)
     Gt,            // > child combinator
+    Plus,          // + adjacent-sibling combinator
+    Tilde,         // ~ general-sibling combinator
 }
 
 /// is `ch` a token boundary (the lexer can never put it inside an `Ident`)?
 #[inline]
 fn is_special(ch: char) -> bool {
-    ch.is_whitespace() || matches!(ch, '>' | '#' | '.' | ':' | '[' | ']' | '(' | ')')
+    ch.is_whitespace() || matches!(ch, '>' | '+' | '~' | '#' | '.' | ':' | '[' | ']' | '(' | ')')
 }
 
 /// Scan from just past an opening `open` to its matching `close`, honoring quotes
@@ -183,6 +188,14 @@ fn tokenize(src: &str) -> Vec<Token> {
             }
             '>' => {
                 out.push(Token::Gt);
+                i += 1;
+            }
+            '+' => {
+                out.push(Token::Plus);
+                i += 1;
+            }
+            '~' => {
+                out.push(Token::Tilde);
                 i += 1;
             }
             '#' => {
@@ -255,7 +268,7 @@ fn parse_compound_tokens(toks: &[Token], i: &mut usize) -> Compound {
     }
     while let Some(tok) = toks.get(*i) {
         match tok {
-            Token::Ws | Token::Gt => break,
+            Token::Ws | Token::Gt | Token::Plus | Token::Tilde => break,
             Token::Dot => {
                 *i += 1;
                 c.classes.push(take_ident(toks, i));
@@ -430,6 +443,14 @@ fn parse_complex(src: &str) -> Option<Complex> {
                 combinator = Combinator::Child;
                 i += 1;
             }
+            Token::Plus => {
+                combinator = Combinator::Adjacent;
+                i += 1;
+            }
+            Token::Tilde => {
+                combinator = Combinator::GeneralSibling;
+                i += 1;
+            }
             _ => {
                 let c = parse_compound_tokens(&toks, &mut i);
                 if first.is_none() {
@@ -504,6 +525,19 @@ impl Tree {
             }
         }
         true
+    }
+
+    /// The immediately-preceding ELEMENT sibling of `h` (walking `previous_sibling`
+    /// and skipping text/comment nodes). Mirrors selectors.mjs `previousElement`.
+    fn previous_element_sibling(&self, h: Handle) -> Option<Handle> {
+        let mut n = self.previous_sibling(h);
+        while let Some(s) = n {
+            if self.node_type(s) == NodeType::Element {
+                return Some(s);
+            }
+            n = self.previous_sibling(s);
+        }
+        None
     }
 
     /// Element-only siblings of `h` (children of its parent that are elements).
@@ -673,6 +707,25 @@ impl Tree {
                         return true;
                     }
                     anc = self.parent(a);
+                }
+                false
+            }
+            // the IMMEDIATELY-preceding element sibling must match the prefix
+            // (single step — mirrors the JS `'+'` arm).
+            Combinator::Adjacent => match self.previous_element_sibling(h) {
+                Some(prev) => self.matches_chain(prev, cx, k - 1),
+                None => false,
+            },
+            // ANY preceding element sibling may match the prefix — try each,
+            // backtracking (like Descendant but over previous element siblings;
+            // mirrors the JS `'~'` arm).
+            Combinator::GeneralSibling => {
+                let mut prev = self.previous_element_sibling(h);
+                while let Some(p) = prev {
+                    if self.matches_chain(p, cx, k - 1) {
+                        return true;
+                    }
+                    prev = self.previous_element_sibling(p);
                 }
                 false
             }
@@ -1251,5 +1304,55 @@ mod tests {
         }
         // a leading combinator is likewise inert: `> a` == `a`
         assert_eq!(*tree.query_selector_all("> a"), *plain);
+    }
+
+    #[test]
+    fn adjacent_sibling_combinator() {
+        // `a + b`: b must be the element IMMEDIATELY after an `a` sibling. A non-
+        // element node (text) between them is skipped (previous_element_sibling).
+        let tree = Tree::parse(
+            "<div><h2>t</h2> <p>after</p><span>x</span><p>not-after-h2</p></div>",
+        );
+        // the first <p> is the immediate element sibling after <h2> → matches once
+        let r = tree.query_selector_all("h2 + p");
+        assert_eq!(r.len(), 1);
+        assert_eq!(tree.text_content(r[0]), "after");
+        // `span + p` → the 2nd <p> immediately follows the <span>
+        let r2 = tree.query_selector_all("span + p");
+        assert_eq!(r2.len(), 1);
+        assert_eq!(tree.text_content(r2[0]), "not-after-h2");
+        // no previous element sibling → no match (the <h2> is first)
+        assert_eq!(tree.query_selector_all("p + h2").len(), 0);
+    }
+
+    #[test]
+    fn general_sibling_combinator() {
+        // `a ~ b`: b is ANY element preceded (at any distance) by a matching `a`.
+        let tree = Tree::parse(
+            "<div><span class=mark>m</span><p>1</p><b>x</b><p>2</p></div>",
+        );
+        // both <p> follow the .mark span → 2 matches
+        assert_eq!(tree.query_selector_all(".mark ~ p").len(), 2);
+        // a sibling with no preceding .mark → exhausts to false
+        let t2 = Tree::parse("<div><p>1</p><span class=mark>m</span></div>");
+        assert_eq!(t2.query_selector_all(".mark ~ p").len(), 0);
+    }
+
+    #[test]
+    fn general_sibling_backtracks() {
+        // Mirrors the descendant backtracking case but over PREVIOUS element
+        // siblings: `.a ~ .b ~ .c` must try every preceding sibling, not just the
+        // nearest. Here .c is preceded by .b which is preceded by .a, but a SECOND
+        // .b sits between .a and the first .b with no .a before it directly — the
+        // matcher must backtrack across siblings to satisfy the full chain.
+        let tree = Tree::parse(
+            "<ul>               <li class=a>a</li>               <li class=q>q</li>               <li class=b>b1</li>               <li class=c>c</li>             </ul>",
+        );
+        // .a ~ .b ~ .c : .c's preceding .b is li.b, whose preceding .a is li.a → 1
+        assert_eq!(tree.query_selector_all(".a ~ .b ~ .c").len(), 1);
+        // adjacent vs general: `.a + .c` (immediate) does NOT match (q is between)
+        assert_eq!(tree.query_selector_all(".a + .c").len(), 0);
+        // but `.a ~ .c` does (general sibling, any distance)
+        assert_eq!(tree.query_selector_all(".a ~ .c").len(), 1);
     }
 }
