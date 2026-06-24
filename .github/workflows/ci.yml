@@ -83,6 +83,9 @@ jobs:
       - name: Rust core tests
         run: cargo test --lib
 
+      - name: Clippy (turbo-dom crate — zero warnings)
+        run: cargo clippy -p turbo-dom --all-targets -- -D warnings
+
       - name: JS test suite (unit, conformance gate, differential, gauntlets)
         run: node --test 'test/*.mjs'
 
