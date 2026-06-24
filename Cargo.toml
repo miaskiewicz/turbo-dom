@@ -45,3 +45,12 @@ rust-runtime = []
 [profile.release]
 lto = true
 opt-level = 3
+
+# Profiling profile: identical codegen to `release` (lto + opt-level 3) but with
+# debug symbols, so `sample`/Instruments can attribute self-time to source lines.
+# Kept SEPARATE from `[profile.release]` on purpose — the shipped crate stays lean
+# (no debuginfo bloat); this profile is only used by `cargo build --profile profiling`
+# for the CPU profiling harness (examples/churn_profile.rs).
+[profile.profiling]
+inherits = "release"
+debug = true
