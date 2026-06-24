@@ -9,8 +9,8 @@
 //! Reads come straight off the buffer (zero alloc) unless an overlay exists.
 
 use crate::core::{self, Soa};
+use rustc_hash::FxHashMap;
 use std::cell::RefCell;
-use std::collections::HashMap;
 
 /// A DOM node type. `#[repr(u8)]` with the standard `nodeType` numeric values, so
 /// it round-trips the SoA's compact `u8` column by a plain cast — no lookup table.
@@ -135,13 +135,13 @@ pub struct Tree {
     // --- COW overlays (present only for mutated/created nodes) ---
     // `Some(parent)` = re-parented; `None` = detached. No `-1` sentinel — a
     // detached node is `None`, never a handle that happens to read as negative.
-    parent_ov: HashMap<Handle, Option<Handle>>,
-    children_ov: HashMap<Handle, Vec<Handle>>,
-    attrs_ov: HashMap<Handle, Vec<(String, String)>>,
-    text_ov: HashMap<Handle, String>,
+    parent_ov: FxHashMap<Handle, Option<Handle>>,
+    children_ov: FxHashMap<Handle, Vec<Handle>>,
+    attrs_ov: FxHashMap<Handle, Vec<(String, String)>>,
+    text_ov: FxHashMap<Handle, String>,
     /// host → shadow-root handle, and shadow-root → host (the two shadow maps).
-    shadow_root_of_host: HashMap<Handle, Handle>,
-    host_of_shadow_root: HashMap<Handle, Handle>,
+    shadow_root_of_host: FxHashMap<Handle, Handle>,
+    host_of_shadow_root: FxHashMap<Handle, Handle>,
     pub version: u64,
     /// version-keyed query result cache (mirrors JS cachedQSA / Document.__version).
     pub(crate) qcache: RefCell<QueryCache>,
@@ -156,7 +156,7 @@ pub struct Tree {
 pub(crate) struct QueryCache {
     pub version: u64,
     /// Shared so a cache hit is a pointer bump, not a Vec copy (repeated qSA is hot).
-    pub map: HashMap<String, std::rc::Rc<[Handle]>>,
+    pub map: FxHashMap<String, std::rc::Rc<[Handle]>>,
 }
 
 impl Tree {
@@ -167,12 +167,12 @@ impl Tree {
             buf,
             buf_len,
             new_nodes: Vec::new(),
-            parent_ov: HashMap::new(),
-            children_ov: HashMap::new(),
-            attrs_ov: HashMap::new(),
-            text_ov: HashMap::new(),
-            shadow_root_of_host: HashMap::new(),
-            host_of_shadow_root: HashMap::new(),
+            parent_ov: FxHashMap::default(),
+            children_ov: FxHashMap::default(),
+            attrs_ov: FxHashMap::default(),
+            text_ov: FxHashMap::default(),
+            shadow_root_of_host: FxHashMap::default(),
+            host_of_shadow_root: FxHashMap::default(),
             version: 0,
             qcache: RefCell::new(QueryCache::default()),
             css_cache: RefCell::new(Default::default()),
