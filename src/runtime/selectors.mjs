@@ -210,6 +210,18 @@ function parseComplex(src) {
   return parseComplexTokens(tokens, 0, tokens.length);
 }
 
+// Yield each top-level (comma-separated) segment of `tokens` as a `[lo, hi)` range.
+// One shared loop for both the selector-list and the relative-selector-list parses.
+function* splitTopLevelSegments(tokens) {
+  let start = 0;
+  for (let i = 0; i <= tokens.length; i++) {
+    if (i === tokens.length || tokens[i].k === 'comma') {
+      yield [start, i];
+      start = i + 1;
+    }
+  }
+}
+
 // parsed-selector cache: querySelector(All)/matches re-run the same selector
 // strings constantly; parsing once and reusing is a large win on query-heavy
 // suites. Bounded so a pathological generator can't grow it without limit.
@@ -219,13 +231,9 @@ export function parseSelectorList(selector) {
   if (hit !== undefined) return hit;
   const tokens = tokenize(selector);
   const parsed = [];
-  let start = 0;
-  for (let i = 0; i <= tokens.length; i++) {
-    if (i === tokens.length || tokens[i].k === 'comma') {
-      const cx = parseComplexTokens(tokens, start, i);
-      if (cx !== null) parsed.push(cx); // a Complex is always non-empty (empties dropped)
-      start = i + 1;
-    }
+  for (const [lo, hi] of splitTopLevelSegments(tokens)) {
+    const cx = parseComplexTokens(tokens, lo, hi);
+    if (cx !== null) parsed.push(cx); // a Complex is always non-empty (empties dropped)
   }
   if (__selectorCache.size > 10000) __selectorCache.clear();
   __selectorCache.set(selector, parsed);
@@ -243,20 +251,15 @@ function parseRelativeSelectorList(arg) {
   if (hit !== undefined) return hit;
   const tokens = tokenize(src);
   const out = [];
-  let start = 0;
-  for (let i = 0; i <= tokens.length; i++) {
-    if (i === tokens.length || tokens[i].k === 'comma') {
-      let lo = start;
-      while (lo < i && tokens[lo].k === 'ws') lo++; // skip leading ws of the segment
-      let combinator = ' ';
-      if (lo < i && tokens[lo].k === 'comb') {
-        combinator = tokens[lo].v;
-        lo++;
-      }
-      const complex = parseComplexTokens(tokens, lo, i);
-      if (complex !== null) out.push({ combinator, complex });
-      start = i + 1;
+  for (let [lo, hi] of splitTopLevelSegments(tokens)) {
+    while (lo < hi && tokens[lo].k === 'ws') lo++; // skip leading ws of the segment
+    let combinator = ' ';
+    if (lo < hi && tokens[lo].k === 'comb') {
+      combinator = tokens[lo].v;
+      lo++;
     }
+    const complex = parseComplexTokens(tokens, lo, hi);
+    if (complex !== null) out.push({ combinator, complex });
   }
   if (__relativeCache.size > 10000) __relativeCache.clear();
   __relativeCache.set(src, out);
@@ -420,7 +423,7 @@ function compoundAt(cx, k) {
 // Match a parsed complex selector against `el` (the rightmost compound applies to el).
 // The rightmost compound sits at index `cx.rest.length`.
 function matchComplex(el, cx) {
-  return matchChain(el, cx, cx.rest.length);
+  return matchChain(el, cx, cx.rest.length, null);
 }
 
 // Match compounds 0..=k of `cx` ending at `el`, recursing leftward. Descendant (' ')
@@ -428,10 +431,10 @@ function matchComplex(el, cx) {
 // backtrack — committing to the nearest one (the old greedy walk) wrongly rejected
 // chains like `.a > .b .c` where a farther `.b` is the one that is a child of `.a`.
 // `cx.rest[k-1].combinator` is the relation between compounds k-1 and k.
-// `boundary` (optional) caps the ancestor/parent walk for `:has()` scoping: a step
-// that reaches it has left the scope → reject. Omitted/undefined for normal matching
-// (the walk is unbounded), so this also serves matchComplex and sibling candidates.
-function matchChain(el, cx, k, boundary) {
+// `boundary` caps the ancestor/parent walk for `:has()` scoping: a step that reaches
+// it has left the scope → reject. `null` (the default, and what matchComplex passes)
+// means no cap, so this also serves matchComplex and sibling candidates — one sentinel.
+function matchChain(el, cx, k, boundary = null) {
   if (!matchCompound(el, compoundAt(cx, k))) return false;
   if (k === 0) return true; // matched the leftmost compound — whole chain satisfied
   const comb = cx.rest[k - 1].combinator; // relation between compounds k-1 and k
