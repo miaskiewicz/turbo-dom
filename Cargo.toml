@@ -36,11 +36,6 @@ napi-bind = ["dep:napi", "dep:napi-derive", "dep:napi-build"]
 wasm-bind = ["dep:wasm-bindgen", "dep:serde", "dep:serde-wasm-bindgen"]
 # Phase-1 boundary spike: Rust DOM runtime over the SoA, exported to JS via wasm-bindgen.
 wasm-runtime = ["dep:wasm-bindgen"]
-# Pure-Rust DOM runtime (the `rtdom` module). Off by default so the published
-# napi `.node` + wasm parser artifacts stay lean — no JS consumer uses rtdom (a
-# JS-side WASM/napi boundary measured SLOWER than the JS runtime). A Rust consumer
-# adds this crate as a dep and enables this feature; deps are pure std + core.
-rust-runtime = []
 
 [profile.release]
 lto = true
