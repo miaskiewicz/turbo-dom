@@ -76,7 +76,7 @@
     "build:wasm:web": "wasm-pack build --target web --out-dir pkg-web --no-default-features --features wasm-bind",
     "test": "node --test 'test/*.mjs'",
     "test:cov": "node --test --experimental-test-coverage --test-coverage-include='src/runtime/**' --test-coverage-lines=99 --test-coverage-functions=95 --test-coverage-branches=95 'test/*.mjs'",
-    "test:rust": "cargo test --lib --features rust-runtime",
+    "test:rust": "cargo test -p turbo-dom",
     "test:all": "npm run build && npm run test:rust && npm test",
     "prepare": "git config core.hooksPath .githooks || true",
     "conformance": "node harness/conformance.mjs",
@@ -91,10 +91,10 @@
     "test:jest": "jest -c test-jest/jest.config.cjs",
     "bench:query": "node bench/query.mjs",
     "bench:scorecard": "node bench/scorecard.mjs",
-    "conformance:rtdom": "cargo test --lib --features rust-runtime rtdom::conformance::rtdom_html5lib_conformance_full_document -- --nocapture",
-    "build:rtdom": "cargo build --release --no-default-features --features rust-runtime",
+    "conformance:rtdom": "cargo test -p turbo-dom rtdom::conformance::rtdom_html5lib_conformance_full_document -- --nocapture",
+    "build:rtdom": "cargo build -p turbo-dom --release",
     "bench:compare": "node bench/dom-compare.mjs",
-    "bench:compare:all": "RTDOM_JSON=\"$(cargo test --release --lib --features rust-runtime rtdom::bench::compare_all -- --ignored --nocapture 2>/dev/null | sed -n 's/.*RTDOM_JSON //p')\" node --expose-gc --max-old-space-size=8192 bench/compare-all.mjs"
+    "bench:compare:all": "RTDOM_JSON=\"$(cargo test -p turbo-dom --release rtdom::bench::compare_all -- --ignored --nocapture 2>/dev/null | sed -n 's/.*RTDOM_JSON //p')\" node --expose-gc --max-old-space-size=8192 bench/compare-all.mjs"
   },
   "keywords": [
     "dom",

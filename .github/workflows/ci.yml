@@ -86,6 +86,9 @@ jobs:
       - name: Clippy (turbo-dom crate — zero warnings)
         run: cargo clippy -p turbo-dom --all-targets -- -D warnings
 
+      - name: Rust DOM runtime tests (turbo-dom crate + conformance gate)
+        run: cargo test -p turbo-dom
+
       - name: JS test suite (unit, conformance gate, differential, gauntlets)
         run: node --test 'test/*.mjs'
 
