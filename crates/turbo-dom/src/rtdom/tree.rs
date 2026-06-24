@@ -145,6 +145,11 @@ pub struct Tree {
     pub version: u64,
     /// version-keyed query result cache (mirrors JS cachedQSA / Document.__version).
     pub(crate) qcache: RefCell<QueryCache>,
+    /// selector-string → parsed selector-list cache. A `matches()` driven over an
+    /// element loop re-parses the SAME selector per element; this memoizes the parse
+    /// (shared `Rc` so a hit is a pointer bump). Version-independent — a parsed
+    /// selector doesn't change when the tree mutates. Bounded like `qcache`.
+    pub(crate) parse_cache: RefCell<FxHashMap<String, std::rc::Rc<[crate::rtdom::query::Complex]>>>,
     /// version-keyed computed-style cache (mirrors JS `__computedStyle`).
     pub(crate) css_cache: RefCell<crate::rtdom::cascade::CssCache>,
     /// Mutation-record buffer. `None` until an observer calls `start_recording`
@@ -175,6 +180,7 @@ impl Tree {
             host_of_shadow_root: FxHashMap::default(),
             version: 0,
             qcache: RefCell::new(QueryCache::default()),
+            parse_cache: RefCell::new(FxHashMap::default()),
             css_cache: RefCell::new(Default::default()),
             mutation_log: None,
         }

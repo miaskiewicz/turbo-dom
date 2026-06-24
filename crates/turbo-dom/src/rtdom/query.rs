@@ -133,7 +133,7 @@ enum Combinator {
 /// "meaningless leading combinator" unrepresentable — `parse_complex` returns
 /// `Option<Complex>`, so a `Complex` is always non-empty by construction.
 #[derive(Debug, Clone)]
-struct Complex {
+pub(crate) struct Complex {
     first: Compound,
     rest: Vec<(Combinator, Compound)>,
 }
@@ -897,13 +897,34 @@ impl Tree {
         self.matches_chain(h, cx, cx.rest.len(), boundary)
     }
 
-    pub fn matches(&self, h: Handle, selector: &str) -> bool {
-        // empty/combinator-only segments are dropped at parse time (filter_map),
-        // so every `cx` reaching the matcher is a non-empty `Complex`.
-        split_top_level_commas(selector)
+    /// Parse `selector` into its selector-list, memoized by string in `parse_cache`
+    /// (shared `Rc`, so a repeated selector parses once). Empty/combinator-only
+    /// segments are dropped at parse time, so every `Complex` returned is non-empty.
+    /// Bounded like the query cache (clear-on-overflow) to stay leak-free.
+    fn parse_selector_cached(&self, selector: &str) -> std::rc::Rc<[Complex]> {
+        if let Some(hit) = self.parse_cache.borrow().get(selector) {
+            return hit.clone();
+        }
+        let list: std::rc::Rc<[Complex]> = split_top_level_commas(selector)
             .into_iter()
             .filter_map(|s| parse_complex(s.trim()))
-            .any(|cx| self.matches_complex(h, &cx))
+            .collect::<Vec<_>>()
+            .into();
+        let mut cache = self.parse_cache.borrow_mut();
+        if cache.len() >= CACHE_CAP {
+            cache.clear();
+        }
+        cache.insert(selector.to_string(), list.clone());
+        list
+    }
+
+    pub fn matches(&self, h: Handle, selector: &str) -> bool {
+        // every `cx` reaching the matcher is a non-empty `Complex` (parse_selector_cached
+        // drops empty/combinator-only segments). Re-parsing is avoided across an
+        // element-loop `matches()` via the parse cache.
+        self.parse_selector_cached(selector)
+            .iter()
+            .any(|cx| self.matches_complex(h, cx))
     }
 
     /// querySelectorAll, document-order, version-cached by selector string. Returns a
@@ -920,10 +941,7 @@ impl Tree {
                 return hit.clone();
             }
         }
-        let selectors: Vec<Complex> = split_top_level_commas(selector)
-            .into_iter()
-            .filter_map(|s| parse_complex(s.trim()))
-            .collect();
+        let selectors = self.parse_selector_cached(selector);
         let mut out = Vec::new();
         let mut stack = vec![self.root()];
         // document-order DFS
@@ -1087,6 +1105,26 @@ mod tests {
         tree.set_attribute(li, "class", "x");
         tree.append_child(ul, li);
         assert_eq!(tree.query_selector_all(".x").len(), 2); // cache cleared by version bump
+    }
+
+    #[test]
+    fn matches_parse_cache_repeated_selector() {
+        // Repeated matches() with the SAME selector over an element loop must hit the
+        // parse cache and still return the correct per-element verdict.
+        let tree = Tree::parse(
+            "<ul><li class=x>1</li><li>2</li><li class=x>3</li></ul>",
+        );
+        let lis = tree.get_elements_by_tag_name("li");
+        // first pass populates the parse cache; second pass hits it — both agree.
+        for _ in 0..2 {
+            let hits: Vec<_> = lis.iter().copied().filter(|&h| tree.matches(h, "li.x")).collect();
+            assert_eq!(hits.len(), 2);
+            assert_eq!(tree.text_content(hits[0]), "1");
+            assert_eq!(tree.text_content(hits[1]), "3");
+        }
+        // a different selector parses fresh and is also correct
+        assert!(tree.matches(lis[1], "li:not(.x)"));
+        assert!(!tree.matches(lis[0], "li:not(.x)"));
     }
 
     #[test]
