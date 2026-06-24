@@ -300,3 +300,182 @@ fn print_report(title: &str, rows: &[(String, Measure)]) {
     }
     println!();
 }
+
+/// A deep + wide tree for the crawler/extractor audience. Each level emits a
+/// *row* of `width` sibling `<section>` wrappers (width), and exactly ONE of
+/// them recurses one level deeper (depth grows linearly, not exponentially) —
+/// so the tree is ~`depth * width` sections, each holding a row of `width`
+/// cards, giving real descendant chains for `.a .b .c` and `:has(.x)`.
+/// `depth=6, width=8` is a few thousand element nodes; tune via the args.
+/// Classes are deliberately layered `wrap` > `row` > `card` >
+/// {`title`,`body`,`btn`}, with sparse `flag`/`hot` markers so `:has(.flag)`
+/// matches some-but-not-all subtrees.
+fn big_fixture(depth: usize, width: usize) -> String {
+    fn emit(s: &mut String, level: usize, depth: usize, width: usize, counter: &mut usize) {
+        if level >= depth {
+            return;
+        }
+        for w in 0..width {
+            *counter += 1;
+            let id = *counter;
+            let hot = if id % 5 == 0 { " hot" } else { "" };
+            s.push_str(&format!(
+                "<section class=\"wrap lvl-{level} w-{w}{hot}\" data-depth=\"{level}\" id=\"s{id}\">"
+            ));
+            // a row of cards at this level
+            for _c in 0..width {
+                *counter += 1;
+                let cid = *counter;
+                let flag = if cid % 9 == 0 {
+                    "<span class=flag>!</span>"
+                } else {
+                    ""
+                };
+                s.push_str(&format!(
+                    "<div class=\"row\"><article class=\"card sx-{}\" data-testid=\"card-{cid}\" id=\"c{cid}\">\
+<h3 class=title>Title {cid}</h3>\
+<p class=body>Body text for card {cid} at level {level}.</p>\
+<button class=btn type=button>Action</button>{flag}\
+</article></div>",
+                    cid % 7
+                ));
+            }
+            // recurse for depth in EXACTLY ONE sibling so node count stays
+            // ~depth*width (a single sibling carries the deep chain).
+            if w == 0 {
+                emit(s, level + 1, depth, width, counter);
+            }
+            s.push_str("</section>");
+        }
+    }
+
+    let mut s = String::from(
+        "<!doctype html><html><head><style>\
+.card{color:blue;padding:8px;margin:4px}\
+.card .title{font-weight:bold}\
+.wrap .row .card{border:1px solid}\
+.flag{color:red}\
+</style></head><body><main id=app class=grid>",
+    );
+    let mut counter = 0usize;
+    emit(&mut s, 0, depth, width, &mut counter);
+    s.push_str("</main></body></html>");
+    s
+}
+
+/// Large-tree workload: the paths the perf work targets (mutation churn,
+/// UNCACHED matching/querying with a varied selector set, and a `:has`-heavy
+/// pass) on a multi-thousand-node fixture. The 300-card hotspot fixture is
+/// parse-dominated and hides everything downstream; this is where allocs bite.
+#[test]
+#[ignore]
+fn large_tree_report() {
+    let depth = 6;
+    let width = 8;
+    let html = big_fixture(depth, width);
+    let base = Tree::parse(&html);
+    let nodes = base.node_count();
+    let elements = base.query_selector_all("*");
+    let cards = base.query_selector_all("article.card");
+    let mut rows: Vec<(String, Measure)> = Vec::new();
+
+    // A varied selector set. `matches()` is genuinely uncached, but
+    // `query_selector_all` is version-cached *by selector string*: on an
+    // unchanged tree, cycling a fixed handful would hit the cache after one
+    // lap. To stay honest we append a unique no-match comma arm (`, #__uN`) per
+    // iteration, forcing a distinct cache key and a full document walk every
+    // call while leaving the match set identical — the crawler's worst case.
+    let varied: &[&str] = &[
+        ".card",                  // simple class
+        ".wrap .card",            // descendant
+        ".row > .card",           // child
+        ".wrap .row .card",       // .a .b .c
+        "[data-testid^=card]",    // attribute op (prefix)
+        ".row:nth-child(1)",      // structural pseudo
+        ".card:has(.flag)",       // relational
+    ];
+
+    // 1. UNCACHED query_selector_all: unique selector string each call (no-match
+    //    comma arm) so the version cache always misses and a full walk runs.
+    {
+        let mut k = 0usize;
+        rows.push(("qsa varied (UNCACHED)".into(), measure(|| {
+            let sel = format!("{}, #__u{k}", varied[k % varied.len()]);
+            k += 1;
+            base.query_selector_all(&sel).len() as u64
+        }, 400, 300)));
+    }
+
+    // 2. UNCACHED matches(h, sel) across every element, cycling selectors.
+    {
+        let mut k = 0usize;
+        rows.push(("matches varied/elem (UNCACHED)".into(), measure(|| {
+            let sel = varied[k % varied.len()];
+            k += 1;
+            let mut hits = 0u64;
+            for &el in elements.iter() {
+                if base.matches(el, sel) {
+                    hits += 1;
+                }
+            }
+            hits
+        }, 400, 30)));
+    }
+
+    // 3. :has-heavy querySelectorAll — exercises the descendant search inside
+    //    the relational matcher. Varied :has() arms, each call uncached.
+    {
+        let has_sels: &[&str] = &[
+            ".wrap:has(.flag)",
+            ".wrap:has(.card .title)",
+            ".row:has(> .card)",
+            "section:has(.hot)",
+            ".card:has(.btn)",
+        ];
+        let mut k = 0usize;
+        rows.push((":has qsa (UNCACHED)".into(), measure(|| {
+            let sel = format!("{}, #__h{k}", has_sels[k % has_sels.len()]);
+            k += 1;
+            base.query_selector_all(&sel).len() as u64
+        }, 400, 100)));
+    }
+
+    // 4. mutation churn: build a subtree of many nodes, append, then tear it
+    //    down — exercises the create/children/parent overlays end to end.
+    rows.push(("mutation churn (200 nodes)".into(), measure(|| {
+        let mut t = Tree::parse("<main id=root></main>");
+        let root = t.query_selector("#root").unwrap();
+        let mut made = Vec::with_capacity(200);
+        for i in 0..100 {
+            let li = t.create_element("li");
+            t.set_attribute(li, "class", "item");
+            t.set_attribute(li, "data-i", &i.to_string());
+            let txt = t.create_text_node("x");
+            t.append_child(li, txt);
+            t.append_child(root, li);
+            made.push(li);
+        }
+        // remove half, re-append a fresh batch (overlay churn)
+        for (i, &li) in made.iter().enumerate() {
+            if i % 2 == 0 {
+                t.remove_child(root, li);
+            }
+        }
+        for _ in 0..50 {
+            let span = t.create_element("span");
+            t.append_child(root, span);
+            t.remove_child(root, span);
+        }
+        t.version
+    }, 300, 500)));
+
+    rows.sort_by(|a, b| a.1.ops_per_s.partial_cmp(&b.1.ops_per_s).unwrap());
+    print_report(
+        &format!(
+            "rtdom large-tree report (depth={depth} width={width} = {nodes} nodes, {} elements, {} cards; slowest first)",
+            elements.len(),
+            cards.len()
+        ),
+        &rows,
+    );
+}
