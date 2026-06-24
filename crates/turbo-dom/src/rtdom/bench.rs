@@ -317,7 +317,7 @@ fn big_fixture(depth: usize, width: usize) -> String {
         for w in 0..width {
             *counter += 1;
             let id = *counter;
-            let hot = if id % 5 == 0 { " hot" } else { "" };
+            let hot = if id.is_multiple_of(5) { " hot" } else { "" };
             s.push_str(&format!(
                 "<section class=\"wrap lvl-{level} w-{w}{hot}\" data-depth=\"{level}\" id=\"s{id}\">"
             ));
@@ -325,7 +325,7 @@ fn big_fixture(depth: usize, width: usize) -> String {
             for _c in 0..width {
                 *counter += 1;
                 let cid = *counter;
-                let flag = if cid % 9 == 0 {
+                let flag = if cid.is_multiple_of(9) {
                     "<span class=flag>!</span>"
                 } else {
                     ""
