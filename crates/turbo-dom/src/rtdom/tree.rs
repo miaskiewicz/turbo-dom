@@ -9,6 +9,7 @@
 //! Reads come straight off the buffer (zero alloc) unless an overlay exists.
 
 use crate::core::{self, Soa};
+use compact_str::CompactString;
 use rustc_hash::FxHashMap;
 use std::cell::RefCell;
 
@@ -91,9 +92,9 @@ impl Handle {
 /// element always has one — so the old `(node_type, name, ns)` triple's invalid
 /// combinations (a `Text` with an `ns`, an element with no name) are unrepresentable.
 enum NewNode {
-    Element { name: String, ns: Namespace },
-    Text(String),
-    Comment(String),
+    Element { name: CompactString, ns: Namespace },
+    Text(CompactString),
+    Comment(CompactString),
     Fragment,
 }
 
@@ -137,8 +138,8 @@ pub struct Tree {
     // detached node is `None`, never a handle that happens to read as negative.
     parent_ov: FxHashMap<Handle, Option<Handle>>,
     children_ov: FxHashMap<Handle, Vec<Handle>>,
-    attrs_ov: FxHashMap<Handle, Vec<(String, String)>>,
-    text_ov: FxHashMap<Handle, String>,
+    attrs_ov: FxHashMap<Handle, Vec<(CompactString, CompactString)>>,
+    text_ov: FxHashMap<Handle, CompactString>,
     /// host → shadow-root handle, and shadow-root → host (the two shadow maps).
     shadow_root_of_host: FxHashMap<Handle, Handle>,
     host_of_shadow_root: FxHashMap<Handle, Handle>,
@@ -361,7 +362,7 @@ impl Tree {
     /// All (name, value) pairs for a node (owned copy).
     pub fn attributes(&self, h: Handle) -> Vec<(String, String)> {
         if let Some(ov) = self.attrs_ov.get(&h) {
-            return ov.clone();
+            return ov.iter().map(|(n, v)| (n.to_string(), v.to_string())).collect();
         }
         if self.is_new(h) {
             return Vec::new();
@@ -477,7 +478,7 @@ impl Tree {
             return None;
         }
         if let Some(t) = self.text_ov.get(&h) {
-            return Some(t.clone());
+            return Some(t.to_string());
         }
         if self.is_new(h) {
             return self.new_ref(h).char_data().map(|s| s.to_string());
@@ -544,9 +545,10 @@ impl Tree {
     }
 
     /// Ensure a node's attr overlay exists (copy buffer attrs in on first write).
-    fn ensure_attrs(&mut self, h: Handle) -> &mut Vec<(String, String)> {
+    fn ensure_attrs(&mut self, h: Handle) -> &mut Vec<(CompactString, CompactString)> {
         if !self.attrs_ov.contains_key(&h) {
-            let init = self.attributes(h);
+            let init: Vec<(CompactString, CompactString)> =
+                self.attributes(h).into_iter().map(|(n, v)| (n.into(), v.into())).collect();
             self.attrs_ov.insert(h, init);
         }
         self.attrs_ov.get_mut(&h).unwrap()
@@ -560,9 +562,9 @@ impl Tree {
         };
         let ov = self.ensure_attrs(h);
         if let Some(slot) = ov.iter_mut().find(|(n, _)| n == name) {
-            slot.1 = value.to_string();
+            slot.1 = value.into();
         } else {
-            ov.push((name.to_string(), value.to_string()));
+            ov.push((name.into(), value.into()));
         }
         self.bump();
         self.record(crate::rtdom::mutations::MutationRecord::attributes(h, name, old));
@@ -627,7 +629,7 @@ impl Tree {
         let nt = self.node_type(h);
         if nt == NodeType::Text || nt == NodeType::Comment {
             let old = if self.is_recording() { self.node_value(h) } else { None };
-            self.text_ov.insert(h, text.to_string());
+            self.text_ov.insert(h, text.into());
             self.bump();
             self.record(crate::rtdom::mutations::MutationRecord::character_data(h, old));
         } else {
@@ -659,7 +661,7 @@ impl Tree {
             return;
         }
         let old = if self.is_recording() { self.node_value(h) } else { None };
-        self.text_ov.insert(h, text.to_string());
+        self.text_ov.insert(h, text.into());
         self.bump();
         self.record(crate::rtdom::mutations::MutationRecord::character_data(h, old));
     }
@@ -723,7 +725,7 @@ impl Tree {
     }
 
     pub fn create_element(&mut self, tag: &str) -> Handle {
-        let h = self.push_node(NewNode::Element { name: tag.to_ascii_lowercase(), ns: Namespace::Html });
+        let h = self.push_node(NewNode::Element { name: tag.to_ascii_lowercase().into(), ns: Namespace::Html });
         self.children_ov.insert(h, Vec::new());
         self.attrs_ov.insert(h, Vec::new());
         self.bump();
@@ -731,7 +733,7 @@ impl Tree {
     }
 
     pub fn create_element_ns(&mut self, tag: &str, ns: Namespace) -> Handle {
-        let h = self.push_node(NewNode::Element { name: tag.to_string(), ns });
+        let h = self.push_node(NewNode::Element { name: tag.into(), ns });
         self.children_ov.insert(h, Vec::new());
         self.attrs_ov.insert(h, Vec::new());
         self.bump();
@@ -739,13 +741,13 @@ impl Tree {
     }
 
     pub fn create_text_node(&mut self, data: &str) -> Handle {
-        let h = self.push_node(NewNode::Text(data.to_string()));
+        let h = self.push_node(NewNode::Text(data.into()));
         self.bump();
         h
     }
 
     pub fn create_comment(&mut self, data: &str) -> Handle {
-        let h = self.push_node(NewNode::Comment(data.to_string()));
+        let h = self.push_node(NewNode::Comment(data.into()));
         self.bump();
         h
     }
