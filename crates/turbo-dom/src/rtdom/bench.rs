@@ -445,32 +445,10 @@ fn large_tree_report() {
 
     // 4. mutation churn: build a subtree of many nodes, append, then tear it
     //    down — exercises the create/children/parent overlays end to end.
-    rows.push(("mutation churn (200 nodes)".into(), measure(|| {
-        let mut t = Tree::parse("<main id=root></main>");
-        let root = t.query_selector("#root").unwrap();
-        let mut made = Vec::with_capacity(200);
-        for i in 0..100 {
-            let li = t.create_element("li");
-            t.set_attribute(li, "class", "item");
-            t.set_attribute(li, "data-i", &i.to_string());
-            let txt = t.create_text_node("x");
-            t.append_child(li, txt);
-            t.append_child(root, li);
-            made.push(li);
-        }
-        // remove half, re-append a fresh batch (overlay churn)
-        for (i, &li) in made.iter().enumerate() {
-            if i % 2 == 0 {
-                t.remove_child(root, li);
-            }
-        }
-        for _ in 0..50 {
-            let span = t.create_element("span");
-            t.append_child(root, span);
-            t.remove_child(root, span);
-        }
-        t.version
-    }, 300, 500)));
+    rows.push((
+        "mutation churn (200 nodes)".into(),
+        measure(churn_workload, 300, 500),
+    ));
 
     rows.sort_by(|a, b| a.1.ops_per_s.partial_cmp(&b.1.ops_per_s).unwrap());
     print_report(
@@ -480,5 +458,71 @@ fn large_tree_report() {
             cards.len()
         ),
         &rows,
+    );
+}
+
+/// The mutation-churn workload: build a 100-element subtree (each `li` with two
+/// attributes + a text child), tear half down, then 50 append/remove spans —
+/// exercising the create/children/parent/attr overlays end to end. Returns
+/// `t.version` as an observable sink. Shared by `large_tree_report` (timing) and
+/// `churn_alloc_gate` (the CI regression gate) so both measure the same path.
+fn churn_workload() -> u64 {
+    let mut t = Tree::parse("<main id=root></main>");
+    let root = t.query_selector("#root").unwrap();
+    let mut made = Vec::with_capacity(200);
+    for i in 0..100 {
+        let li = t.create_element("li");
+        t.set_attribute(li, "class", "item");
+        t.set_attribute(li, "data-i", &i.to_string());
+        let txt = t.create_text_node("x");
+        t.append_child(li, txt);
+        t.append_child(root, li);
+        made.push(li);
+    }
+    // remove half, re-append a fresh batch (overlay churn)
+    for (i, &li) in made.iter().enumerate() {
+        if i % 2 == 0 {
+            t.remove_child(root, li);
+        }
+    }
+    for _ in 0..50 {
+        let span = t.create_element("span");
+        t.append_child(root, span);
+        t.remove_child(root, span);
+    }
+    t.version
+}
+
+/// CI regression gate on the mutation-churn allocation count. allocs/op is
+/// code-path-determined — independent of CPU load AND of opt-level (debug and
+/// release both measure 363.0 here) — which makes it a stable CI signal where a
+/// wall-clock gate would flake on a shared runner. It locks the SSO / lazy-
+/// `MutationRecord` / hybrid-overlay / `SmallVec` wins: a change that re-introduces
+/// a per-node allocation on the create/append/remove path moves this by hundreds.
+///
+/// `#[ignore]`d so it never runs inside the *parallel* test suite — `CountingAlloc`
+/// is a process-global `#[global_allocator]`, so a concurrently-running test would
+/// inflate the count between `reset()` and `snapshot()`. The CI perf-gate step runs
+/// it ALONE (`cargo test churn_alloc_gate -- --ignored`), where the bracket is honest.
+#[test]
+#[ignore = "perf gate — CI runs it in isolation via the alloc-gate step"]
+fn churn_alloc_gate() {
+    // Measured 363.0 allocs/op, 81510 bytes/op (darwin-arm64; debug == release).
+    // The small cushion absorbs platform/toolchain drift; a real regression dwarfs it.
+    const MAX_ALLOCS_PER_OP: f64 = 380.0;
+    const MAX_BYTES_PER_OP: f64 = 85_000.0;
+    let (allocs, bytes) = alloc_per_op(churn_workload, 500);
+    println!(
+        "churn alloc gate: {allocs:.1} allocs/op, {bytes:.0} bytes/op \
+         (ceilings {MAX_ALLOCS_PER_OP} / {MAX_BYTES_PER_OP})"
+    );
+    assert!(
+        allocs <= MAX_ALLOCS_PER_OP,
+        "churn allocs/op regressed: {allocs:.1} > {MAX_ALLOCS_PER_OP} — a per-node \
+         allocation likely crept back onto the create/append/remove path"
+    );
+    assert!(
+        bytes <= MAX_BYTES_PER_OP,
+        "churn bytes/op regressed: {bytes:.0} > {MAX_BYTES_PER_OP}"
     );
 }

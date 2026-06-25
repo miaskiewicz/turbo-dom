@@ -105,6 +105,13 @@ jobs:
       - name: Rust DOM runtime tests (turbo-dom crate + conformance gate)
         run: cargo test -p turbo-dom
 
+      - name: Perf gate (mutation-churn allocation regression)
+        # allocs/op is code-path-determined (load- and opt-level-independent), so it's a
+        # stable CI signal where wall-clock would flake. Run ALONE — CountingAlloc is a
+        # process-global allocator, so a parallel test would pollute the count. Asserts
+        # allocs/op + bytes/op stay under ceiling, locking the overlay/SSO churn wins.
+        run: cargo test -p turbo-dom churn_alloc_gate -- --ignored --nocapture
+
       - name: JS test suite (unit, conformance gate, differential, gauntlets)
         run: node --test 'test/*.mjs'
 
