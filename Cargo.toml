@@ -40,9 +40,6 @@ wasm-runtime = ["dep:wasm-bindgen"]
 [profile.release]
 lto = true
 opt-level = 3
-# Strip symbols from release binaries: the napi addon ships without its symbol
-# table (~13% / ~169 KiB smaller), with no speed or behavior change.
-strip = true
 
 # Profiling profile: identical codegen to `release` (lto + opt-level 3) but with
 # debug symbols, so `sample`/Instruments can attribute self-time to source lines.

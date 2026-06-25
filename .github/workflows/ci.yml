@@ -47,6 +47,11 @@ jobs:
       - run: npm install --ignore-scripts
 
       - name: Build native addon
+        # Strip symbols from the shipped addon (~13% / ~169 KiB smaller). Scoped to
+        # this napi step rather than [profile.release] so it does not touch the
+        # wasm-bindgen build, whose wasm-opt step cannot validate a stripped module.
+        env:
+          RUSTFLAGS: "-C strip=symbols"
         run: npx napi build --platform --release --target ${{ matrix.target }}
 
       - uses: actions/upload-artifact@v4
