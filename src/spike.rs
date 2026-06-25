@@ -6,10 +6,10 @@
 //! over `core::Soa` (handle = node index) — no mutation/COW needed for the gate.
 //!
 //! Two access shapes are exported so the bench can A/B them:
-//!   * MITIGATED (Option A) — qsa returns a packed Uint32Array in ONE crossing;
+//!   * MITIGATED (Option A) — qsa returns a packed `Uint32Array` in ONE crossing;
 //!     structure reads return ints (handles/ids); strings resolved JS-side from
 //!     bulk blobs pulled once. Boundary crossings ~ O(results), not O(nodes*fields).
-//!   * NAIVE — per-node string returns (tag_name/get_attr as String) to show the
+//!   * NAIVE — per-node string returns (`tag_name/get_attr` as String) to show the
 //!     cost the mitigations avoid.
 
 use crate::core::{self, Soa};
@@ -23,7 +23,7 @@ struct Doc {
 }
 
 thread_local! {
-    static DOCS: RefCell<Vec<Doc>> = RefCell::new(Vec::new());
+    static DOCS: RefCell<Vec<Doc>> = const { RefCell::new(Vec::new()) };
 }
 
 fn with_doc<R>(doc: u32, f: impl FnOnce(&Doc) -> R) -> R {
@@ -32,6 +32,7 @@ fn with_doc<R>(doc: u32, f: impl FnOnce(&Doc) -> R) -> R {
 
 /// Parse + register a document. Returns the doc handle. ONE crossing per parse.
 #[wasm_bindgen]
+#[must_use]
 pub fn create(html: &str) -> u32 {
     let soa = core::parse_html_soa(html);
     DOCS.with(|d| {
@@ -59,33 +60,40 @@ fn join_blob(v: &[String]) -> String {
 }
 
 #[wasm_bindgen]
+#[must_use]
 pub fn tag_names_blob(doc: u32) -> String {
     with_doc(doc, |d| join_blob(&d.soa.tag_names))
 }
 #[wasm_bindgen]
+#[must_use]
 pub fn attr_names_blob(doc: u32) -> String {
     with_doc(doc, |d| join_blob(&d.soa.attr_names))
 }
 #[wasm_bindgen]
+#[must_use]
 pub fn attr_values_blob(doc: u32) -> String {
     with_doc(doc, |d| join_blob(&d.soa.attr_values))
 }
 #[wasm_bindgen]
+#[must_use]
 pub fn strings_blob(doc: u32) -> String {
     with_doc(doc, |d| join_blob(&d.soa.strings))
 }
 
 #[wasm_bindgen]
+#[must_use]
 pub fn node_count(doc: u32) -> u32 {
     with_doc(doc, |d| d.soa.node_type.len() as u32)
 }
 
 // --- MITIGATED per-node structure reads (ints only, no string marshaling) ---
 #[wasm_bindgen]
+#[must_use]
 pub fn node_type(doc: u32, h: u32) -> u8 {
     with_doc(doc, |d| d.soa.node_type[h as usize])
 }
 #[wasm_bindgen]
+#[must_use]
 pub fn tag_id(doc: u32, h: u32) -> i32 {
     with_doc(doc, |d| {
         let i = h as usize;
@@ -93,32 +101,38 @@ pub fn tag_id(doc: u32, h: u32) -> i32 {
     })
 }
 #[wasm_bindgen]
+#[must_use]
 pub fn parent(doc: u32, h: u32) -> i32 {
     with_doc(doc, |d| d.soa.parent[h as usize])
 }
 #[wasm_bindgen]
+#[must_use]
 pub fn first_child(doc: u32, h: u32) -> i32 {
     with_doc(doc, |d| d.soa.first_child[h as usize])
 }
 #[wasm_bindgen]
+#[must_use]
 pub fn next_sib(doc: u32, h: u32) -> i32 {
     with_doc(doc, |d| d.soa.next_sib[h as usize])
 }
 #[wasm_bindgen]
+#[must_use]
 pub fn text_id(doc: u32, h: u32) -> i32 {
     with_doc(doc, |d| d.soa.text_id[h as usize])
 }
 
-/// MITIGATED getAttribute: returns the interned attr_value id (-1 if absent).
-/// JS resolves the id against the attr_values string table (no per-call string).
+/// MITIGATED getAttribute: returns the interned `attr_value` id (-1 if absent).
+/// JS resolves the id against the `attr_values` string table (no per-call string).
 /// `name` still crosses as &str (RTL passes a literal) — small inbound cost.
 #[wasm_bindgen]
+#[must_use]
 pub fn get_attr_id(doc: u32, h: u32, name: &str) -> i32 {
     with_doc(doc, |d| attr_value_id(&d.soa, h as usize, name).map_or(-1, |v| v as i32))
 }
 
 /// NAIVE getAttribute: returns the value String (per-call UTF-8 marshal).
 #[wasm_bindgen]
+#[must_use]
 pub fn get_attr_str(doc: u32, h: u32, name: &str) -> Option<String> {
     with_doc(doc, |d| {
         attr_value_id(&d.soa, h as usize, name).map(|v| d.soa.attr_values[v as usize].clone())
@@ -127,6 +141,7 @@ pub fn get_attr_str(doc: u32, h: u32, name: &str) -> Option<String> {
 
 /// NAIVE tagName: per-call String marshal.
 #[wasm_bindgen]
+#[must_use]
 pub fn tag_name_str(doc: u32, h: u32) -> Option<String> {
     with_doc(doc, |d| {
         let i = h as usize;
@@ -155,10 +170,11 @@ fn attr_value_id(soa: &Soa, i: usize, name: &str) -> Option<u32> {
 }
 
 /// MITIGATED+: prefetch a node's whole record in ONE crossing. Layout:
-/// [tag_id, parent, attr_count, (name_id, value_id)*]. JS caches it on the wrapper
+/// [`tag_id`, parent, `attr_count`, (`name_id`, `value_id`)*]. JS caches it on the wrapper
 /// and serves tagName/getAttribute/parentNode from the cache (0 further crossings
 /// until the version bumps). This is the Option-A "cache scalars on the wrapper" path.
 #[wasm_bindgen]
+#[must_use]
 pub fn node_record(doc: u32, h: u32) -> Vec<i32> {
     with_doc(doc, |d| {
         let i = h as usize;
@@ -183,6 +199,7 @@ pub fn node_record(doc: u32, h: u32) -> Vec<i32> {
 /// Listener-less dispatch path: walk ancestors to the root, return path length.
 /// Models the single ancestor-walk dispatch does (no JS callbacks crossed).
 #[wasm_bindgen]
+#[must_use]
 pub fn dispatch_walk(doc: u32, h: u32) -> u32 {
     with_doc(doc, |d| {
         let mut len = 1u32; // target
@@ -286,6 +303,7 @@ fn matches(soa: &Soa, i: usize, c: &Compound) -> bool {
 }
 
 #[wasm_bindgen]
+#[must_use]
 pub fn qsa(doc: u32, selector: &str) -> Vec<u32> {
     with_doc(doc, |d| {
         let c = parse_compound(selector);

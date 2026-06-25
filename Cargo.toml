@@ -37,6 +37,26 @@ wasm-bind = ["dep:wasm-bindgen", "dep:serde", "dep:serde-wasm-bindgen"]
 # Phase-1 boundary spike: Rust DOM runtime over the SoA, exported to JS via wasm-bindgen.
 wasm-runtime = ["dep:wasm-bindgen"]
 
+# Same clippy pedantic gate as the turbo-dom crate (crates/turbo-dom/Cargo.toml). The
+# allowed lints are intentional for a parser/marshaling layer that bridges f64 and integer
+# indices and hand-rolls hot loops — documented opt-outs, not silent suppression.
+[lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+cast_possible_truncation = "allow"
+cast_precision_loss = "allow"
+cast_sign_loss = "allow"
+cast_possible_wrap = "allow"
+float_cmp = "allow"
+many_single_char_names = "allow"
+missing_panics_doc = "allow"
+missing_errors_doc = "allow"
+struct_excessive_bools = "allow"
+too_many_lines = "allow"
+implicit_hasher = "allow"
+# The #[napi]/#[wasm_bindgen] parse fns take owned `String` per FFI convention — the
+# marshaled JS string is owned at the boundary and the copy is negligible vs parse cost.
+needless_pass_by_value = "allow"
+
 [profile.release]
 lto = true
 opt-level = 3

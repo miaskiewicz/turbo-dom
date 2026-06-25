@@ -93,8 +93,14 @@ jobs:
       - name: Rust core tests
         run: cargo test --lib
 
-      - name: Clippy (turbo-dom crate — zero warnings)
-        run: cargo clippy -p turbo-dom --all-targets -- -D warnings
+      - name: Clippy (workspace + feature variants — zero warnings, pedantic-gated)
+        # Both crates enable clippy::pedantic via [lints.clippy]; -D warnings makes any
+        # pedantic warning fail CI. --workspace covers turbo-dom + turbo-dom-parser
+        # (default/napi); the extra runs cover the root crate's wasm front-ends.
+        run: |
+          cargo clippy --workspace --all-targets -- -D warnings
+          cargo clippy -p turbo-dom-parser --all-targets --no-default-features --features wasm-bind -- -D warnings
+          cargo clippy -p turbo-dom-parser --all-targets --no-default-features --features wasm-runtime -- -D warnings
 
       - name: Rust DOM runtime tests (turbo-dom crate + conformance gate)
         run: cargo test -p turbo-dom
