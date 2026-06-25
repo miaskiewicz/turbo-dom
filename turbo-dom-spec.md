@@ -420,7 +420,7 @@ cache; naive per-call is ~0.14×). The boundary is a hard floor that zero-crossi
 beats. So the JS-consumer runtime stays in JS, exactly as specified.
 
 The corollary the spec didn't spell out: a **Rust** consumer (crawler/extractor/SSR) has the *opposite*
-boundary situation — in-process Rust, no JS. For that there's now **`rtdom`** (`src/rtdom/`), a pure-Rust
+boundary situation — in-process Rust, no JS. For that there's now **`rtdom`** (the published `crates/turbo-dom` crate), a pure-Rust
 port of the runtime that applies this spec's same load-bearing ideas (lazy COW tree over the SoA,
 identity by handle, version-keyed caches, partial honest `getComputedStyle`, full event model) natively.
 In-process from Rust it measured **~2.7×** the JS runtime on the chatty workload. So the rule generalizes:
