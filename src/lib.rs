@@ -13,7 +13,10 @@ pub mod spike;
 // ---------------------------------------------------------------------------
 // napi-rs front-end (native addon)
 // ---------------------------------------------------------------------------
-#[cfg(feature = "napi-bind")]
+// `not(test)`: this is cdylib boundary glue, exercised by the JS integration
+// tests, never Rust-unit-tested. napi's export registration doesn't emit under
+// `cfg(test)`, so building it for `cargo test` only yields dead-code warnings.
+#[cfg(all(feature = "napi-bind", not(test)))]
 mod napi_front {
     use crate::core;
     use napi_derive::napi;
@@ -71,7 +74,7 @@ mod napi_front {
         core::parse_html_document_count(&html)
     }
 
-    use napi::bindgen_prelude::{Int32Array, Uint16Array, Uint32Array, Uint8Array};
+    use napi::bindgen_prelude::{Uint32Array, Uint8Array};
 
     /// SoA flat buffer: structure as typed arrays, crossed once. JS inflates node
     /// objects lazily from this — no eager full-tree allocation. The fast path.

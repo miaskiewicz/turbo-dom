@@ -59,6 +59,11 @@ jobs:
   test:
     name: test (linux-x64)
     runs-on: ubuntu-latest
+    # Escalate ALL Rust compiler warnings in our crates to hard errors. Deps are
+    # unaffected — cargo applies `--cap-lints allow` to dependencies, so this only
+    # gates turbo-dom-parser + turbo-dom (complements the clippy `-D warnings` step).
+    env:
+      RUSTFLAGS: "-D warnings"
     steps:
       - uses: actions/checkout@v4
 
