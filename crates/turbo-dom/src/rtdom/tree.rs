@@ -81,10 +81,23 @@ impl Handle {
     fn idx(self) -> usize {
         self.0 as usize
     }
-    /// The raw index (buffer offset, or `new_nodes` slot once `>= buf_len`).
+    /// The raw `u32` a `Handle` wraps (buffer offset, or `new_nodes` slot once
+    /// `>= buf_len`). PUBLIC and stable: FFI consumers (turbo-test, turbo-surf) store
+    /// handles as plain integers across the JS/napi boundary and must round-trip them
+    /// through `raw()` / [`Handle::from_raw`]. Locked by `tests/consumer_contract.rs`.
     #[inline]
-    fn raw(self) -> u32 {
+    #[must_use]
+    pub const fn raw(self) -> u32 {
         self.0
+    }
+    /// Reconstruct a `Handle` from a raw `u32` previously obtained via [`Handle::raw`]
+    /// (e.g. a handle marshaled to JS as a number and handed back). The inverse of
+    /// `raw()`. No validation — an out-of-range value simply won't resolve to a node,
+    /// exactly as a bogus index did under the old `u32`-alias `Handle`.
+    #[inline]
+    #[must_use]
+    pub const fn from_raw(raw: u32) -> Handle {
+        Handle(raw)
     }
 }
 
@@ -345,6 +358,26 @@ impl Tree {
         } else {
             Namespace::from_u8(self.buf.ns[h.idx()])
         }
+    }
+
+    /// The DOM `nodeType` NUMBER for `h` (element = 1, text = 3, PI = 7, comment = 8,
+    /// document = 9, doctype = 10, fragment = 11). PUBLIC, stable FFI accessor: consumers
+    /// marshal `nodeType` to JS as a number, so they need the integer, not the
+    /// [`NodeType`] enum (which stays the internal, type-safe representation). Locked by
+    /// `tests/consumer_contract.rs`.
+    #[inline]
+    #[must_use]
+    pub fn node_type_id(&self, h: Handle) -> u8 {
+        self.node_type(h) as u8
+    }
+
+    /// The namespace as a NUMBER (HTML = 0, SVG = 1, `MathML` = 2). PUBLIC, stable FFI
+    /// accessor mirroring [`Tree::node_type_id`]: consumers branch on `namespace_id(h)
+    /// == 0` (is-HTML) at the JS/napi boundary. Locked by `tests/consumer_contract.rs`.
+    #[inline]
+    #[must_use]
+    pub fn namespace_id(&self, h: Handle) -> u8 {
+        self.namespace(h) as u8
     }
 
     /// localName (lowercase as parsed). None for non-elements.
