@@ -23,7 +23,7 @@
 use turbo_dom::rtdom::cascade::{computed_style, get_property_value};
 use turbo_dom::rtdom::node_ref::DocumentExt;
 use turbo_dom::rtdom::serialize::{serialize_inner, serialize_outer};
-use turbo_dom::rtdom::tree::{Handle, Tree};
+use turbo_dom::rtdom::tree::{Handle, Namespace, Tree};
 use turbo_dom::rtdom::NodeRef;
 
 /// Depth-first search for the first text node — exercises `children()` + `node_type_id()`.
@@ -101,6 +101,14 @@ fn mutation_surface_is_present() {
     tree.set_text_content(child, "bye");
     tree.remove_child(host, child);
     assert_eq!(tree.children(host).len(), 0);
+
+    // namespaced creation: consumers classify a namespace URI to a number, then build the
+    // element via `Namespace::from_id` (the public inverse of `namespace_id`). Round-trips.
+    let svg = tree.create_element_ns("svg", Namespace::from_id(1));
+    tree.append_child(host, svg);
+    assert_eq!(tree.namespace_id(svg), 1);
+    assert_eq!(Namespace::from_id(0), Namespace::Html);
+    assert_eq!(Namespace::from_id(2), Namespace::MathMl);
 }
 
 #[test]

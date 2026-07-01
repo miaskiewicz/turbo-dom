@@ -65,6 +65,20 @@ impl Namespace {
             _ => Namespace::Html,
         }
     }
+
+    /// Build a `Namespace` from its NUMBER (0 HTML, 1 SVG, 2 `MathML`; anything else HTML) —
+    /// the public inverse of [`Tree::namespace_id`]. FFI consumers that classify a namespace
+    /// URI to a small int can pass it straight to [`Tree::create_element_ns`] without
+    /// matching the enum themselves. Locked by `tests/consumer_contract.rs`.
+    #[inline]
+    #[must_use]
+    pub const fn from_id(id: u8) -> Namespace {
+        match id {
+            1 => Namespace::Svg,
+            2 => Namespace::MathMl,
+            _ => Namespace::Html,
+        }
+    }
 }
 
 /// A stable node identity within one [`Tree`]. Opaque: internally it indexes the
