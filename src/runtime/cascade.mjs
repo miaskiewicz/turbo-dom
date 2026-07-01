@@ -91,8 +91,14 @@ function parseStylesheet(css, startOrder, rules) {
   const n = css.length;
   while (i < n) {
     let j = i;
-    while (j < n && css[j] !== '{' && css[j] !== '}') j++;
+    while (j < n && css[j] !== '{' && css[j] !== '}' && css[j] !== ';') j++;
     if (j >= n) break;
+    // A `;` outside any block terminates a statement at-rule (@import/@charset/
+    // @namespace) or a stray semicolon — it has no block, so skip just the statement
+    // and keep scanning. Without this the statement is glued onto the following
+    // selector and (starting with `@`) drags that whole rule into the skip. Mirrors
+    // rtdom cascade::parse_stylesheet.
+    if (css[j] === ';') { order++; i = j + 1; continue; }
     if (css[j] === '}') { i = j + 1; continue; }
     const sel = css.slice(i, j).trim();
     let depth = 1, k = j + 1;

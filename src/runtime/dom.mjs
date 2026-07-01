@@ -298,6 +298,17 @@ Object.assign(Node.prototype, {
   DOCUMENT_POSITION_CONTAINED_BY: 16, DOCUMENT_POSITION_IMPLEMENTATION_SPECIFIC: 32,
 });
 
+// Viable next sibling (DOM spec): the first following sibling that is NOT itself
+// one of the nodes being inserted. Anchoring after()/replaceWith() on the raw
+// nextSibling breaks when that sibling is also an argument (e.g. a.after(b, c)
+// where b already follows a) — insertBefore(b, b) then throws NotFoundError.
+// Mirrors rtdom Tree::viable_next_sibling.
+function viableNextSibling(node, nodes) {
+  let s = node.nextSibling;
+  while (s && nodes.includes(s)) s = s.nextSibling;
+  return s;
+}
+
 // ----------------------------------------------------- CharacterData ----
 class CharacterData extends Node {
   constructor(ownerDocument, data) { super(ownerDocument); this._data = data ?? ''; }
@@ -314,8 +325,8 @@ class CharacterData extends Node {
   deleteData(offset, count) { this.data = this._data.slice(0, offset) + this._data.slice(offset + count); }
   replaceData(offset, count, s) { this.data = this._data.slice(0, offset) + s + this._data.slice(offset + count); }
   before(...nodes) { const p = this.parentNode; if (p) for (const n of nodes) p.insertBefore(typeof n === 'string' ? this.ownerDocument.createTextNode(n) : n, this); }
-  after(...nodes) { const p = this.parentNode; if (!p) return; const ref = this.nextSibling; for (const n of nodes) p.insertBefore(typeof n === 'string' ? this.ownerDocument.createTextNode(n) : n, ref); }
-  replaceWith(...nodes) { const p = this.parentNode; if (!p) return; const ref = this.nextSibling; this.remove(); for (const n of nodes) p.insertBefore(typeof n === 'string' ? this.ownerDocument.createTextNode(n) : n, ref); }
+  after(...nodes) { const p = this.parentNode; if (!p) return; const ref = viableNextSibling(this, nodes); for (const n of nodes) p.insertBefore(typeof n === 'string' ? this.ownerDocument.createTextNode(n) : n, ref); }
+  replaceWith(...nodes) { const p = this.parentNode; if (!p) return; const ref = viableNextSibling(this, nodes); for (const n of nodes) if (n !== this) p.insertBefore(typeof n === 'string' ? this.ownerDocument.createTextNode(n) : n, ref); this.remove(); }
 }
 
 export class Text extends CharacterData {
@@ -693,8 +704,8 @@ export class Element extends Node {
   append(...nodes) { for (const n of nodes) this.appendChild(toNode(this.ownerDocument, n)); }
   prepend(...nodes) { const first = this.firstChild; for (const n of nodes) this.insertBefore(toNode(this.ownerDocument, n), first); }
   before(...nodes) { const p = this.parentNode; if (!p) return; for (const n of nodes) p.insertBefore(toNode(this.ownerDocument, n), this); }
-  after(...nodes) { const p = this.parentNode; if (!p) return; const ref = this.nextSibling; for (const n of nodes) p.insertBefore(toNode(this.ownerDocument, n), ref); }
-  replaceWith(...nodes) { const p = this.parentNode; if (!p) return; const ref = this.nextSibling; this.remove(); for (const n of nodes) p.insertBefore(toNode(this.ownerDocument, n), ref); }
+  after(...nodes) { const p = this.parentNode; if (!p) return; const ref = viableNextSibling(this, nodes); for (const n of nodes) p.insertBefore(toNode(this.ownerDocument, n), ref); }
+  replaceWith(...nodes) { const p = this.parentNode; if (!p) return; const ref = viableNextSibling(this, nodes); for (const n of nodes) if (n !== this) p.insertBefore(toNode(this.ownerDocument, n), ref); this.remove(); }
   replaceChildren(...nodes) { this.__kids = []; this.__touch(); for (const n of nodes) this.appendChild(toNode(this.ownerDocument, n)); }
 
   // ---- queries ----

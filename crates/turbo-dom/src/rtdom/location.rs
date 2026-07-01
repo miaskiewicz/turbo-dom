@@ -33,6 +33,7 @@ impl Location {
     ///
     /// Grammar handled: `scheme:` then optional `//authority`, then
     /// `path`, then optional `?query`, then optional `#fragment`.
+    #[must_use]
     pub fn parse(href: &str) -> Location {
         // Split off the fragment first (everything after the first '#').
         let (before_hash, hash) = match href.find('#') {
@@ -77,7 +78,7 @@ impl Location {
         let host = if port.is_empty() {
             hostname.clone()
         } else {
-            format!("{}:{}", hostname, port)
+            format!("{hostname}:{port}")
         };
 
         // pathname defaults to "/".
@@ -88,7 +89,7 @@ impl Location {
         };
 
         // origin = protocol + "//" + host (mirrors URL.origin for hierarchical URLs).
-        let origin = format!("{}//{}", protocol, host);
+        let origin = format!("{protocol}//{host}");
 
         Location {
             href: href.to_string(),
@@ -121,6 +122,7 @@ pub struct History {
 
 impl History {
     /// Seed the stack with the initial location (state = "").
+    #[must_use]
     pub fn new(initial: Location) -> History {
         let url = initial.href.clone();
         History {
@@ -135,7 +137,7 @@ impl History {
 
     /// Push a new entry, truncating any forward entries (browser semantics).
     pub fn push_state(&mut self, state: String, url: Option<&str>) {
-        let url = url.map(str::to_string).unwrap_or_else(|| self.current_url());
+        let url = url.map_or_else(|| self.current_url(), str::to_string);
         self.stack.truncate(self.idx + 1);
         self.stack.push(Entry { state, url });
         self.idx += 1;
@@ -143,9 +145,7 @@ impl History {
 
     /// Replace the current entry in place (url defaults to the current url).
     pub fn replace_state(&mut self, state: String, url: Option<&str>) {
-        let url = url
-            .map(str::to_string)
-            .unwrap_or_else(|| self.stack[self.idx].url.clone());
+        let url = url.map_or_else(|| self.stack[self.idx].url.clone(), str::to_string);
         self.stack[self.idx] = Entry { state, url };
     }
 
@@ -165,23 +165,26 @@ impl History {
 
     /// Move by `delta` entries, clamped to `[0, len-1]`.
     pub fn go(&mut self, delta: i32) {
-        let target = self.idx as i64 + delta as i64;
+        let target = self.idx as i64 + i64::from(delta);
         let max = self.stack.len() as i64 - 1;
         let clamped = target.max(0).min(max);
         self.idx = clamped as usize;
     }
 
     /// Number of entries on the stack.
+    #[must_use]
     pub fn length(&self) -> usize {
         self.stack.len()
     }
 
     /// The location this history was seeded with.
+    #[must_use]
     pub fn current(&self) -> &Location {
         &self.location
     }
 
     /// The state of the current entry.
+    #[must_use]
     pub fn state(&self) -> &str {
         &self.stack[self.idx].state
     }

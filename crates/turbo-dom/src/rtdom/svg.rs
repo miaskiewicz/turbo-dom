@@ -1,18 +1,19 @@
 //! SVG DOM-property surface — pure-Rust port of `src/runtime/svg.mjs`.
 //!
-//! In JS these are live wrapper objects (SVGAnimatedLength `.baseVal.value`,
-//! SVGAnimatedString className, SVGAnimatedRect viewBox) that read/write the
+//! In JS these are live wrapper objects (`SVGAnimatedLength` `.baseVal.value`,
+//! `SVGAnimatedString` className, `SVGAnimatedRect` viewBox) that read/write the
 //! underlying attribute on demand — HONEST + LIVE, no cached snapshot, no
 //! animation engine (animVal === baseVal). The native Rust API exposes the
 //! same surface as plain FUNCTIONS that read the live attribute off the tree:
-//!   * `length_value` = SVGAnimatedLength `.baseVal.value` (a number),
-//!   * `class_name`   = SVGAnimatedString `.baseVal`,
-//!   * `view_box`     = SVGAnimatedRect `.baseVal` as (x, y, width, height).
+//!   * `length_value` = `SVGAnimatedLength` `.baseVal.value` (a number),
+//!   * `class_name`   = `SVGAnimatedString` `.baseVal`,
+//!   * `view_box`     = `SVGAnimatedRect` `.baseVal` as (x, y, width, height).
+//!
 //! Only meaningful on svg-namespace elements; HTML elements are unaffected.
 
-use super::tree::{Handle, Tree};
+use super::tree::{Handle, Namespace, Tree};
 
-/// Attributes that surface as SVGAnimatedLength on SVG elements. Exact list
+/// Attributes that surface as `SVGAnimatedLength` on SVG elements. Exact list
 /// mirrored from `svg.mjs` `SVG_LENGTH_ATTRS`.
 pub const SVG_LENGTH_ATTRS: &[&str] = &[
     "width",
@@ -40,16 +41,17 @@ pub const SVG_LENGTH_ATTRS: &[&str] = &[
     "textLength",
 ];
 
-/// True if `name` is one of the SVG geometry attributes (SVGAnimatedLength).
+/// True if `name` is one of the SVG geometry attributes (`SVGAnimatedLength`).
 #[inline]
+#[must_use]
 pub fn is_length_attr(name: &str) -> bool {
     SVG_LENGTH_ATTRS.contains(&name)
 }
 
-/// True if `h` is an svg-namespace element (namespace_id == 1).
+/// True if `h` is an svg-namespace element.
 #[inline]
 pub fn is_svg(tree: &Tree, h: Handle) -> bool {
-    tree.namespace_id(h) == 1
+    tree.namespace(h) == Namespace::Svg
 }
 
 /// Leading-numeric float parse mirroring JS `parseFloat`: consumes an optional
@@ -101,7 +103,7 @@ fn parse_leading_float(s: &str) -> Option<f64> {
     s[start..i].parse::<f64>().ok()
 }
 
-/// SVGAnimatedLength `.baseVal.value` for `attr` on `h`. Parses the live
+/// `SVGAnimatedLength` `.baseVal.value` for `attr` on `h`. Parses the live
 /// attribute to a number, stripping units ("50px" -> 50.0, "10%" -> 10.0).
 /// None if the attribute is absent. (JS coerces a NaN parse to 0 for an
 /// existing-but-unparseable attr; here an unparseable value also yields None
@@ -111,12 +113,12 @@ pub fn length_value(tree: &Tree, h: Handle, attr: &str) -> Option<f64> {
     Some(parse_leading_float(raw).unwrap_or(0.0))
 }
 
-/// SVGAnimatedString `.baseVal` — the `class` attribute, "" if absent.
+/// `SVGAnimatedString` `.baseVal` — the `class` attribute, "" if absent.
 pub fn class_name(tree: &Tree, h: Handle) -> String {
     tree.get_attribute(h, "class").unwrap_or("").to_string()
 }
 
-/// SVGAnimatedRect `.baseVal` for `viewBox` — "minX minY width height"
+/// `SVGAnimatedRect` `.baseVal` for `viewBox` — "minX minY width height"
 /// (whitespace/comma separated). None if absent or malformed (< 4 numbers).
 pub fn view_box(tree: &Tree, h: Handle) -> Option<(f64, f64, f64, f64)> {
     let raw = tree.get_attribute(h, "viewBox")?;
@@ -136,8 +138,8 @@ mod tests {
     use super::*;
     use crate::rtdom::tree::Tree;
 
-    fn find_local<'a>(tree: &'a Tree, name: &str) -> Handle {
-        for h in 0..tree.node_count() {
+    fn find_local(tree: &Tree, name: &str) -> Handle {
+        for h in tree.handles() {
             if tree.local_name(h) == Some(name) {
                 return h;
             }

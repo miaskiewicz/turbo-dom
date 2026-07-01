@@ -5,7 +5,7 @@ members = ["crates/turbo-dom"]
 
 [package]
 name = "turbo-dom-parser"
-version = "0.3.5"
+version = "0.4.0"
 edition = "2021"
 description = "html5ever-backed native parser for turbo-dom (Layer 1)"
 
@@ -36,12 +36,36 @@ napi-bind = ["dep:napi", "dep:napi-derive", "dep:napi-build"]
 wasm-bind = ["dep:wasm-bindgen", "dep:serde", "dep:serde-wasm-bindgen"]
 # Phase-1 boundary spike: Rust DOM runtime over the SoA, exported to JS via wasm-bindgen.
 wasm-runtime = ["dep:wasm-bindgen"]
-# Pure-Rust DOM runtime (the `rtdom` module). Off by default so the published
-# napi `.node` + wasm parser artifacts stay lean — no JS consumer uses rtdom (a
-# JS-side WASM/napi boundary measured SLOWER than the JS runtime). A Rust consumer
-# adds this crate as a dep and enables this feature; deps are pure std + core.
-rust-runtime = []
+
+# Same clippy pedantic gate as the turbo-dom crate (crates/turbo-dom/Cargo.toml). The
+# allowed lints are intentional for a parser/marshaling layer that bridges f64 and integer
+# indices and hand-rolls hot loops — documented opt-outs, not silent suppression.
+[lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+cast_possible_truncation = "allow"
+cast_precision_loss = "allow"
+cast_sign_loss = "allow"
+cast_possible_wrap = "allow"
+float_cmp = "allow"
+many_single_char_names = "allow"
+missing_panics_doc = "allow"
+missing_errors_doc = "allow"
+struct_excessive_bools = "allow"
+too_many_lines = "allow"
+implicit_hasher = "allow"
+# The #[napi]/#[wasm_bindgen] parse fns take owned `String` per FFI convention — the
+# marshaled JS string is owned at the boundary and the copy is negligible vs parse cost.
+needless_pass_by_value = "allow"
 
 [profile.release]
 lto = true
 opt-level = 3
+
+# Profiling profile: identical codegen to `release` (lto + opt-level 3) but with
+# debug symbols, so `sample`/Instruments can attribute self-time to source lines.
+# Kept SEPARATE from `[profile.release]` on purpose — the shipped crate stays lean
+# (no debuginfo bloat); this profile is only used by `cargo build --profile profiling`
+# for the CPU profiling harness (examples/churn_profile.rs).
+[profile.profiling]
+inherits = "release"
+debug = true

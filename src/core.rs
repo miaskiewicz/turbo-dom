@@ -2,13 +2,13 @@
 //! Both front-ends (napi-rs native, wasm-bindgen fallback) wrap this unchanged.
 //!
 //! Plan note: this is the "full marshaling" version — a *complete* tree.
-//! The SoA flat-buffer (architecture Layer 1) is a later optimization, gated on
+//! The `SoA` flat-buffer (architecture Layer 1) is a later optimization, gated on
 //! marshaling proving to be the actual cost. Do not SoA-ify here yet.
 
 use html5ever::driver::ParseOpts;
 use html5ever::tendril::TendrilSink;
 use html5ever::tree_builder::TreeBuilderOpts;
-use html5ever::{parse_document, parse_fragment, local_name, namespace_url, ns, LocalName, QualName};
+use html5ever::{parse_document, parse_fragment, ns, LocalName, QualName};
 use markup5ever_rcdom::{Handle, NodeData, RcDom};
 
 /// DOM nodeType constants (subset html5ever can emit).
@@ -59,6 +59,7 @@ fn opts() -> ParseOpts {
 }
 
 /// Parse a full HTML document. Always yields a Document root (nodeType 9).
+#[must_use]
 pub fn parse_html_document(html: &str) -> Node {
     let dom = parse_document(RcDom::default(), opts())
         .from_utf8()
@@ -186,7 +187,7 @@ impl SoaBuilder {
             }
             NodeData::ProcessingInstruction { target, contents } => {
                 self.soa.node_type[idx] = PROCESSING_INSTRUCTION_NODE;
-                let combined = format!("{} {}", target, contents);
+                let combined = format!("{target} {contents}");
                 self.soa.text_id[idx] = self.push_string(&combined);
             }
             NodeData::Element { name, attrs, template_contents, .. } => {
@@ -202,7 +203,7 @@ impl SoaBuilder {
                         self.soa.attr_name_id.push(nid);
                         let vid = self.intern_attr_value(&attr.value);
                         self.soa.attr_value_id.push(vid);
-                        let pfx = attr.name.prefix.as_ref().map(|p| p.to_string()).unwrap_or_default();
+                        let pfx = attr.name.prefix.as_ref().map(std::string::ToString::to_string).unwrap_or_default();
                         let pid = self.intern_attr_prefix(&pfx);
                         self.soa.attr_prefix_id.push(pid);
                     }
@@ -253,7 +254,8 @@ impl SoaBuilder {
     }
 }
 
-/// Parse a full document into the SoA flat buffer.
+/// Parse a full document into the `SoA` flat buffer.
+#[must_use]
 pub fn parse_html_soa(html: &str) -> Soa {
     let dom = parse_document(RcDom::default(), opts())
         .from_utf8()
@@ -263,10 +265,10 @@ pub fn parse_html_soa(html: &str) -> Soa {
         soa: Soa::default(),
         // pre-reserve typical intern-table sizes so the build loop doesn't rehash:
         // tag/attr-name sets are small + bounded; values vary more.
-        tag_map: rustc_hash::FxHashMap::with_capacity_and_hasher(32, Default::default()),
-        attr_name_map: rustc_hash::FxHashMap::with_capacity_and_hasher(64, Default::default()),
-        attr_prefix_map: rustc_hash::FxHashMap::with_capacity_and_hasher(8, Default::default()),
-        attr_value_map: rustc_hash::FxHashMap::with_capacity_and_hasher(128, Default::default()),
+        tag_map: rustc_hash::FxHashMap::with_capacity_and_hasher(32, rustc_hash::FxBuildHasher),
+        attr_name_map: rustc_hash::FxHashMap::with_capacity_and_hasher(64, rustc_hash::FxBuildHasher),
+        attr_prefix_map: rustc_hash::FxHashMap::with_capacity_and_hasher(8, rustc_hash::FxBuildHasher),
+        attr_value_map: rustc_hash::FxHashMap::with_capacity_and_hasher(128, rustc_hash::FxBuildHasher),
     };
     b.alloc(&dom.document, -1);
     b.soa
@@ -274,6 +276,7 @@ pub fn parse_html_soa(html: &str) -> Soa {
 
 /// Parse a document and return only the node count — no `core::Node` tree, no
 /// marshaling. Isolates raw html5ever parse cost from tree-build + boundary cost.
+#[must_use]
 pub fn parse_html_document_count(html: &str) -> u32 {
     let dom = parse_document(RcDom::default(), opts())
         .from_utf8()
@@ -288,12 +291,14 @@ fn count(handle: &Handle) -> u32 {
 
 /// Parse an HTML fragment (e.g. an `innerHTML=` set) in `<body>` context.
 /// Returns a synthetic Document-fragment-ish root whose children are the parsed nodes.
+#[must_use]
 pub fn parse_html_fragment(html: &str) -> Node {
     parse_html_fragment_in(html, "", "body")
 }
 
 /// Parse a fragment given an html5lib-style context string:
 /// "" / "body" / "td" (html ns) or "svg path" / "math ms" (foreign ns).
+#[must_use]
 pub fn parse_html_fragment_context(html: &str, context: &str) -> Node {
     let (ns, local) = match context {
         "" => ("", "body"),
@@ -309,6 +314,7 @@ pub fn parse_html_fragment_context(html: &str, context: &str) -> Node {
 
 /// Parse a fragment in an explicit context element.
 /// `context_ns`: "" (html), "svg", or "math"; `context_local`: the element local name.
+#[must_use]
 pub fn parse_html_fragment_in(html: &str, context_ns: &str, context_local: &str) -> Node {
     let ns = match context_ns {
         "svg" => ns!(svg),
@@ -383,7 +389,7 @@ fn walk(handle: &Handle) -> Node {
                 .map(|attr| Attr {
                     name: attr.name.local.to_string(),
                     value: attr.value.to_string(),
-                    prefix: attr.name.prefix.as_ref().map(|p| p.to_string()).unwrap_or_default(),
+                    prefix: attr.name.prefix.as_ref().map(std::string::ToString::to_string).unwrap_or_default(),
                 })
                 .collect();
             // html5lib short namespace form: "" (html), "svg", "math".
@@ -502,6 +508,6 @@ mod tests {
         let frag = parse_html_fragment_context("<rect/>", "svg path");
         // context is svg path, so a bare <rect> parses in the SVG namespace
         let rect = first(&frag, &|n| n.name == "rect");
-        assert!(rect.map(|n| n.namespace == "svg").unwrap_or(false));
+        assert!(rect.is_some_and(|n| n.namespace == "svg"));
     }
 }

@@ -7,7 +7,6 @@
 //! v1 scope: FULL-DOCUMENT tests. `#document-fragment` tests are skipped (counted)
 //! — rtdom fragment parsing into a buffer isn't wired yet; those stay covered by the
 //! transitive JS gate. `#script-on` fixtures are skipped (scripting flag is off).
-#![cfg(test)]
 
 use super::dump::dump_tree;
 use super::tree::Tree;
@@ -34,7 +33,7 @@ const HEADERS: &[&str] = &[
 
 fn trim_trailing_blank(lines: &[String]) -> Vec<String> {
     let mut v = lines.to_vec();
-    while v.last().map(|s| s.is_empty()).unwrap_or(false) {
+    while v.last().is_some_and(std::string::String::is_empty) {
         v.pop();
     }
     v
@@ -57,7 +56,8 @@ fn parse_dat(text: &str) -> Vec<DatTest> {
             }
             if hdr == "#data" {
                 if have_cur {
-                    tests.push(normalize(std::mem::take(&mut cur)));
+                    tests.push(normalize(&cur));
+                    cur.clear();
                 }
                 have_cur = true;
             }
@@ -71,12 +71,12 @@ fn parse_dat(text: &str) -> Vec<DatTest> {
         cur.insert(sec, std::mem::take(&mut buf));
     }
     if have_cur {
-        tests.push(normalize(cur));
+        tests.push(normalize(&cur));
     }
     tests
 }
 
-fn normalize(raw: HashMap<&str, Vec<String>>) -> DatTest {
+fn normalize(raw: &HashMap<&str, Vec<String>>) -> DatTest {
     let data = raw.get("#data").map(|v| v.join("\n")).unwrap_or_default();
     let document = raw
         .get("#document")
@@ -92,17 +92,14 @@ fn normalize(raw: HashMap<&str, Vec<String>>) -> DatTest {
 
 #[test]
 fn rtdom_html5lib_conformance_full_document() {
-    let dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("vendor/html5lib-tests");
-    let entries = match fs::read_dir(&dir) {
-        Ok(e) => e,
-        Err(_) => {
-            eprintln!("rtdom conformance: fixtures not found at {dir:?} — skipping");
-            return;
-        }
+    let dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../vendor/html5lib-tests");
+    let Ok(entries) = fs::read_dir(&dir) else {
+        eprintln!("rtdom conformance: fixtures not found at {dir:?} — skipping");
+        return;
     };
     let mut dat_files: Vec<PathBuf> = entries
         .filter_map(|e| e.ok().map(|e| e.path()))
-        .filter(|p| p.extension().map(|x| x == "dat").unwrap_or(false))
+        .filter(|p| p.extension().is_some_and(|x| x == "dat"))
         .collect();
     dat_files.sort();
 
@@ -112,10 +109,7 @@ fn rtdom_html5lib_conformance_full_document() {
     let mut bad: Vec<(String, String, String)> = Vec::new(); // (input, expected, actual)
 
     for path in &dat_files {
-        let text = match fs::read_to_string(path) {
-            Ok(t) => t,
-            Err(_) => continue,
-        };
+        let Ok(text) = fs::read_to_string(path) else { continue };
         for t in parse_dat(&text) {
             if t.script_on || t.fragment_context.is_some() {
                 skip += 1;

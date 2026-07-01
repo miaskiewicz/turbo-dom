@@ -2,28 +2,73 @@
 //! alloc-free matcher discipline (whole-word class scan, index loops, no regex)
 //! and version-keyed result caching (`Document.__version` → `Tree.version`).
 //!
-//! Selector support: comma lists, descendant (` `) and child (`>`) combinators,
-//! compounds of `tag` / `.class` / `#id` / `[attr]` / `[attr=val]`. Enough for
-//! RTL-style queries; extend as the gauntlet demands.
+//! Selector support: comma lists, descendant (` `), child (`>`), adjacent (`+`)
+//! and general-sibling (`~`) combinators, compounds of `tag` / `.class` / `#id` /
+//! `[attr]` / `[attr=val]`, the `:is()` / `:where()` / `:not()` selector-list
+//! pseudo-classes, and the relational `:has()`. Enough for RTL-style queries;
+//! extend as the gauntlet demands.
 
-use super::tree::{Handle, Tree, ELEMENT_NODE};
+use super::tree::{FormProp, Handle, NodeType, Tree};
 
-#[derive(Debug, Clone, Copy, PartialEq)]
-enum AttrOp {
-    Presence, // [attr]
-    Exact,    // [attr=v]
-    Includes, // [attr~=v]  whitespace-separated word
-    Dash,     // [attr|=v]  v or v-...
-    Prefix,   // [attr^=v]
-    Suffix,   // [attr$=v]
-    Substr,   // [attr*=v]
+/// Max distinct entries held in the version-keyed query cache (`Tree.qcache`)
+/// before it is cleared wholesale. Mirrors the JS `__selectorCache` cap (10000):
+/// the cache exists for the repeated-query RTL pattern, not to memoize an
+/// unbounded stream of unique selectors, so a hard ceiling keeps it from leaking.
+const CACHE_CAP: usize = 10_000;
+
+/// Insert `(key, val)` into a `CACHE_CAP`-bounded map, clearing it wholesale first
+/// if it has reached the cap. Shared by the parse cache and the two query caches so
+/// the clear-on-overflow idiom lives in one place.
+fn bounded_insert<K: std::hash::Hash + Eq, V>(
+    map: &mut rustc_hash::FxHashMap<K, V>,
+    key: K,
+    val: V,
+) {
+    if map.len() >= CACHE_CAP {
+        map.clear();
+    }
+    map.insert(key, val);
+}
+
+/// How an `[attr...]` test compares against the element's attribute value. The
+/// operator and its operand are ONE inseparable thing: a presence test `[attr]`
+/// carries no value, and every value-bearing operator carries its value. This
+/// makes "presence with a value" / "equals with no value" unrepresentable — the
+/// old `Attr { op, value }` could express both.
+#[derive(Debug, Clone)]
+enum AttrMatch {
+    Present,          // [attr]
+    Equals(String),   // [attr=v]
+    Includes(String), // [attr~=v]  whitespace-separated word
+    Dash(String),     // [attr|=v]  v or v-...
+    Prefix(String),   // [attr^=v]
+    Suffix(String),   // [attr$=v]
+    Substr(String),   // [attr*=v]
+}
+
+impl AttrMatch {
+    /// Does `got` (the element's attribute value) satisfy this test? SAME
+    /// semantics as the old `attr_op_matches`: the `!want.is_empty()` guards on
+    /// prefix/suffix/substr/includes are preserved, `Dash` = `v` or `v-…`.
+    fn matches(&self, got: &str) -> bool {
+        match self {
+            AttrMatch::Present => true,
+            AttrMatch::Equals(want) => got == want,
+            AttrMatch::Prefix(want) => !want.is_empty() && got.starts_with(want.as_str()),
+            AttrMatch::Suffix(want) => !want.is_empty() && got.ends_with(want.as_str()),
+            AttrMatch::Substr(want) => !want.is_empty() && got.contains(want.as_str()),
+            AttrMatch::Includes(want) => {
+                !want.is_empty() && got.split_ascii_whitespace().any(|w| w == want)
+            }
+            AttrMatch::Dash(want) => got == want || got.starts_with(&format!("{want}-")),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
 struct Attr {
     name: String,
-    op: AttrOp,
-    value: String, // empty for Presence
+    m: AttrMatch,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -62,110 +107,459 @@ enum Pseudo {
     ReadOnly,
     ReadWrite,
     Selected,
-    // Negation of a simple compound
-    Not(Box<Compound>),
+    // Matching pseudos whose argument is a SELECTOR LIST (comma-separated complex
+    // selectors), each anchored at the element under test. `:where` matches
+    // identically to `:is` (the specificity difference is a cascade concern, out of
+    // scope here); `:not` is the negation (NONE of the list may match).
+    Is(Vec<Complex>),
+    Where(Vec<Complex>),
+    Not(Vec<Complex>),
+    // `:has(<relative-selector-list>)` — relational. Each entry is a leading
+    // combinator (None = descendant) paired with the relative complex selector.
+    // `el:has(S)` is true iff SOME element reachable from `el` per S's leading
+    // combinator matches S, scoped to `el`. Empty list → never matches.
+    Has(Vec<RelativeSelector>),
     // Unrecognized / unparseable → never matches
     Unknown,
+}
+
+/// One relative selector inside `:has()`: an optional leading combinator (None =
+/// descendant) and the complex selector that follows. `> li.active` → `(Child,
+/// li.active)`; `.a .b` → `(Descendant, .a .b)`.
+#[derive(Debug, Clone)]
+struct RelativeSelector {
+    combinator: Combinator,
+    complex: Complex,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 enum Combinator {
     Descendant,
     Child,
+    Adjacent,       // + immediately-preceding element sibling
+    GeneralSibling, // ~ any preceding element sibling
 }
 
-/// A complex selector = a chain of (combinator, compound), left-to-right.
-/// The first compound has no meaningful combinator (use Descendant).
+/// A complex selector = a non-empty head compound + a tail of
+/// `(combinator, compound)` pairs, left-to-right. In `rest`, entry `i`'s
+/// combinator connects its compound to the one on its LEFT (`rest[i-1].1`, or
+/// `first` when `i==0`). Modeling the head separately makes "empty complex" and
+/// "meaningless leading combinator" unrepresentable — `parse_complex` returns
+/// `Option<Complex>`, so a `Complex` is always non-empty by construction.
 #[derive(Debug, Clone)]
-struct Complex {
-    parts: Vec<(Combinator, Compound)>,
+pub(crate) struct Complex {
+    first: Compound,
+    rest: Vec<(Combinator, Compound)>,
 }
 
-/// is byte a compound-part boundary (start of the next `.`/`#`/`[`/`:` token)?
+/// A lexical token. The lexer is the ONE pass that centrally handles quoted
+/// strings and balanced `[...]` / `(...)`; everything the grammar sees is already
+/// well-formed tokens, so the recursive-descent parser never tracks bracket/paren
+/// depth itself (the class of bug this refactor exists to kill).
+///
+/// `*` and digits are ordinary identifier characters here, so a leading `*` lexes
+/// as `Ident("*")` (the parser maps it to "any tag") and `*foo` stays `Ident("*foo")`
+/// — preserving the old substring-tag semantics. `[..]` / `(..)` carry their already
+/// quote-/depth-balanced inner text, so `svg[viewBox="0 0 10 10"]` is one `Attr` token
+/// and `:not(:nth-child(2))` is one `Paren` token.
+enum Token {
+    Ident(String), // run of non-special chars: tag / class / id / pseudo-name / stray
+    Hash,          // #
+    Dot,           // .
+    Colon,         // :
+    Attr(String),  // inner text of a balanced `[ ... ]`
+    Paren(String), // inner text of a balanced `( ... )` (a pseudo argument)
+    Ws,            // a run of significant whitespace (descendant separator)
+    Gt,            // > child combinator
+    Plus,          // + adjacent-sibling combinator
+    Tilde,         // ~ general-sibling combinator
+}
+
+/// is `ch` a token boundary (the lexer can never put it inside an `Ident`)?
 #[inline]
-fn is_part_start(byte: u8) -> bool {
-    byte == b'.' || byte == b'#' || byte == b'[' || byte == b':'
+fn is_special(ch: char) -> bool {
+    ch.is_whitespace() || matches!(ch, '>' | '+' | '~' | '#' | '.' | ':' | '[' | ']' | '(' | ')')
 }
 
-fn parse_compound(src: &str) -> Compound {
-    let mut c = Compound::default();
-    let b = src.as_bytes();
-    let mut i = 0;
-    // type selector (stops at the first `.`/`#`/`[`/`:`)
-    if i < b.len() && !is_part_start(b[i]) {
-        let start = i;
-        while i < b.len() && !is_part_start(b[i]) {
-            i += 1;
-        }
-        let tag = &src[start..i];
-        if tag != "*" {
-            c.tag = Some(tag.to_string());
+/// A type-selector / pseudo-name may START with an ASCII letter (mirrors the JS
+/// `isTypeStart`).
+#[inline]
+fn is_type_start(ch: char) -> bool {
+    ch.is_ascii_alphabetic()
+}
+
+/// A name character inside a type/id/class run (mirrors the JS `NAME_CHAR` `[\w-]`).
+#[inline]
+fn is_name_char(ch: char) -> bool {
+    ch.is_ascii_alphanumeric() || ch == '_' || ch == '-'
+}
+
+/// Why a selector string is invalid. The infallible `query_selector*`/`matches` path is
+/// deliberately lenient (drops the bad bits and does its best); the `_checked` variants
+/// return this instead, matching the `SyntaxError` the JS runtime — and real browsers —
+/// throw for the same inputs. Kept in lockstep with `selectors.mjs` `tokenize`/
+/// `parseCompound`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SelectorError {
+    /// An unterminated `[...]` attribute selector, e.g. `div[href` (JS: "unterminated
+    /// attribute selector").
+    UnterminatedAttribute,
+    /// A character that cannot start any selector token, e.g. the `!` in `div!p`
+    /// (JS: "unexpected '{c}' in selector").
+    UnexpectedChar(char),
+    /// A combinator with no compound on its left — a leading (`>`), doubled (`a > > b`),
+    /// or mixed (`a + > b`) combinator (JS: "empty compound"). A *trailing* combinator
+    /// (`a >`) is tolerated, matching the JS parser, which drops it.
+    EmptyCompound,
+}
+
+impl std::fmt::Display for SelectorError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            SelectorError::UnterminatedAttribute => f.write_str("unterminated attribute selector"),
+            SelectorError::UnexpectedChar(c) => write!(f, "unexpected '{c}' in selector"),
+            SelectorError::EmptyCompound => f.write_str("empty compound (stray combinator)"),
         }
     }
-    while i < b.len() {
-        match b[i] {
-            b'.' => {
+}
+
+impl std::error::Error for SelectorError {}
+
+/// One coarse token for STRICT validation only (not the matching lexer above): we care
+/// only about a token's structural role — a compound `Part`, a `Comb`inator, the `Ws`
+/// separator, or a `Comma` segment break — plus the two lexical errors a browser rejects
+/// (unterminated `[...]`, an unexpected char). Reuses `scan_balanced` for `[...]`/`(...)`.
+enum StrictTok {
+    Part,
+    Comb,
+    Ws,
+    Comma,
+}
+
+/// Strict lex mirroring `selectors.mjs` `tokenize`: same accept set, same two throw
+/// points (unterminated attribute, unexpected char). Unterminated `(...)` is tolerated
+/// (JS tolerates it too — only `[...]` throws).
+fn lex_strict(src: &str) -> Result<Vec<StrictTok>, SelectorError> {
+    let chars: Vec<char> = src.chars().collect();
+    let n = chars.len();
+    let mut out = Vec::new();
+    let mut i = 0;
+    while i < n {
+        let c = chars[i];
+        if c.is_whitespace() {
+            while i < n && chars[i].is_whitespace() {
                 i += 1;
-                let start = i;
-                while i < b.len() && !is_part_start(b[i]) {
-                    i += 1;
-                }
-                c.classes.push(src[start..i].to_string());
             }
-            b'#' => {
+            out.push(StrictTok::Ws);
+        } else if c == ',' {
+            out.push(StrictTok::Comma);
+            i += 1;
+        } else if matches!(c, '>' | '+' | '~') {
+            out.push(StrictTok::Comb);
+            i += 1;
+        } else if c == '*' {
+            out.push(StrictTok::Part);
+            i += 1;
+        } else if c == '#' || c == '.' {
+            i += 1;
+            while i < n && is_name_char(chars[i]) {
                 i += 1;
-                let start = i;
-                while i < b.len() && !is_part_start(b[i]) {
-                    i += 1;
-                }
-                c.id = Some(src[start..i].to_string());
             }
-            b'[' => {
+            out.push(StrictTok::Part);
+        } else if c == '[' {
+            i += 1; // past '['
+            let _ = scan_balanced(&chars, &mut i, '[', ']');
+            if i >= n {
+                return Err(SelectorError::UnterminatedAttribute); // no closing ']'
+            }
+            i += 1; // past ']'
+            out.push(StrictTok::Part);
+        } else if c == ':' {
+            i += 1; // past ':'
+            while i < n && (is_type_start(chars[i]) || chars[i] == '-') {
                 i += 1;
-                let start = i;
-                while i < b.len() && b[i] != b']' {
-                    i += 1;
-                }
-                let inner = &src[start..i];
-                if i < b.len() {
-                    i += 1; // skip ]
-                }
-                c.attrs.push(parse_attr(inner));
             }
-            b':' => {
-                // `:name` then optional `(...)` arg (balanced parens, so a
-                // nested `:not(.a)` arg survives intact for recursive parse).
+            if i < n && chars[i] == '(' {
+                i += 1; // past '('
+                let _ = scan_balanced(&chars, &mut i, '(', ')');
+                if i < n {
+                    i += 1; // past ')' (unterminated paren tolerated, matching JS)
+                }
+            }
+            out.push(StrictTok::Part);
+        } else if is_type_start(c) {
+            i += 1;
+            while i < n && is_name_char(chars[i]) {
                 i += 1;
-                let start = i;
-                while i < b.len() && (b[i].is_ascii_alphabetic() || b[i] == b'-') {
-                    i += 1;
-                }
-                let name = &src[start..i];
-                let mut arg: Option<&str> = None;
-                if i < b.len() && b[i] == b'(' {
-                    let mut depth = 1usize;
-                    let astart = i + 1;
-                    i += 1;
-                    while i < b.len() && depth > 0 {
-                        match b[i] {
-                            b'(' => depth += 1,
-                            b')' => depth -= 1,
-                            _ => {}
-                        }
-                        i += 1;
-                    }
-                    // i now points just past the closing ')'
-                    let aend = if i > astart { i - 1 } else { astart };
-                    arg = Some(&src[astart..aend]);
-                }
-                c.pseudos.push(parse_pseudo(name, arg));
             }
+            out.push(StrictTok::Part);
+        } else {
+            return Err(SelectorError::UnexpectedChar(c));
+        }
+    }
+    Ok(out)
+}
+
+/// Validate a selector list the way the JS runtime does: a combinator must have a
+/// non-empty compound on its LEFT (else "empty compound"), across every top-level
+/// comma segment. Empty segments (`''`, `,`, `a,,b`'s middle) are fine — they're
+/// dropped, not rejected — and a trailing combinator is tolerated. `Ok(())` means the
+/// infallible matcher will interpret the selector exactly as a browser would.
+fn validate_selector_list(src: &str) -> Result<(), SelectorError> {
+    let toks = lex_strict(src)?;
+    // `matched` = the compound currently being built has at least one part. A comma
+    // starts a fresh segment (reset); whitespace is a transparent separator.
+    let mut matched = false;
+    for t in &toks {
+        match t {
+            StrictTok::Comma => matched = false,
+            StrictTok::Ws => {}
+            StrictTok::Comb => {
+                if !matched {
+                    return Err(SelectorError::EmptyCompound);
+                }
+                matched = false; // a compound must follow (trailing combinator: tolerated)
+            }
+            StrictTok::Part => matched = true,
+        }
+    }
+    Ok(())
+}
+
+/// Scan from just past an opening `open` to its matching `close`, honoring quotes
+/// and nesting. Returns the inner text and leaves `*i` on the closing delimiter
+/// (or at end if unterminated). Centralizing this is the whole point: `[...]` and
+/// `(...)` share one balanced, quote-aware scanner instead of two ad-hoc loops.
+fn scan_balanced(chars: &[char], i: &mut usize, open: char, close: char) -> String {
+    let start = *i;
+    let mut depth = 1i32;
+    let mut quote: Option<char> = None;
+    while *i < chars.len() {
+        let c = chars[*i];
+        if let Some(q) = quote {
+            if c == q {
+                quote = None;
+            }
+        } else if c == '"' || c == '\'' {
+            quote = Some(c);
+        } else if c == open {
+            depth += 1;
+        } else if c == close {
+            depth -= 1;
+            if depth == 0 {
+                break;
+            }
+        }
+        *i += 1;
+    }
+    chars[start..*i].iter().collect()
+}
+
+/// Lex one complex selector (already comma-split + trimmed) into tokens.
+fn tokenize(src: &str) -> Vec<Token> {
+    let chars: Vec<char> = src.chars().collect();
+    let n = chars.len();
+    let mut out = Vec::new();
+    let mut i = 0;
+    while i < n {
+        let ch = chars[i];
+        match ch {
+            c if c.is_whitespace() => {
+                // collapse a whitespace run into a single descendant separator
+                while i < n && chars[i].is_whitespace() {
+                    i += 1;
+                }
+                out.push(Token::Ws);
+            }
+            '>' => {
+                out.push(Token::Gt);
+                i += 1;
+            }
+            '+' => {
+                out.push(Token::Plus);
+                i += 1;
+            }
+            '~' => {
+                out.push(Token::Tilde);
+                i += 1;
+            }
+            '#' => {
+                out.push(Token::Hash);
+                i += 1;
+            }
+            '.' => {
+                out.push(Token::Dot);
+                i += 1;
+            }
+            ':' => {
+                out.push(Token::Colon);
+                i += 1;
+            }
+            '[' => {
+                i += 1; // past '['
+                let inner = scan_balanced(&chars, &mut i, '[', ']');
+                if i < n {
+                    i += 1; // past ']'
+                }
+                out.push(Token::Attr(inner));
+            }
+            '(' => {
+                i += 1; // past '('
+                let inner = scan_balanced(&chars, &mut i, '(', ')');
+                if i < n {
+                    i += 1; // past ')'
+                }
+                out.push(Token::Paren(inner));
+            }
+            // a stray closer at top level isn't part of any token — drop it
+            ']' | ')' => i += 1,
             _ => {
-                i += 1;
+                let start = i;
+                while i < n && !is_special(chars[i]) {
+                    i += 1;
+                }
+                out.push(Token::Ident(chars[start..i].iter().collect()));
             }
+        }
+    }
+    out
+}
+
+/// Consume the `Ident` at `*i` (advancing past it) or `""` if the current token
+/// isn't an `Ident`. Lets `.`/`#`/`:` with no following name yield an empty
+/// class/id/pseudo-name — exactly the old "read until the next part-start" result.
+fn take_ident(toks: &[Token], i: &mut usize) -> String {
+    if let Some(Token::Ident(s)) = toks.get(*i) {
+        let s = s.clone();
+        *i += 1;
+        s
+    } else {
+        String::new()
+    }
+}
+
+/// Parse a single compound starting at `*i`, stopping at a combinator (`Ws`/`Gt`)
+/// or end. Leniency preserved: a bare `Ident` in the suffix position (e.g. the
+/// trailing `y` of `div[id=x]y`) is skipped, an unknown pseudo becomes
+/// `Pseudo::Unknown`, and a leading `Ident` of `"*"` means "any tag".
+fn parse_compound_tokens(toks: &[Token], i: &mut usize) -> Compound {
+    let mut c = Compound::default();
+    // optional leading type selector
+    if let Some(Token::Ident(s)) = toks.get(*i) {
+        if s != "*" {
+            c.tag = Some(s.clone());
+        }
+        *i += 1;
+    }
+    while let Some(tok) = toks.get(*i) {
+        match tok {
+            Token::Ws | Token::Gt | Token::Plus | Token::Tilde => break,
+            Token::Dot => {
+                *i += 1;
+                c.classes.push(take_ident(toks, i));
+            }
+            Token::Hash => {
+                *i += 1;
+                c.id = Some(take_ident(toks, i));
+            }
+            Token::Colon => {
+                *i += 1;
+                let name = take_ident(toks, i);
+                // borrow the paren's argument text — parse_pseudo takes &str, so the
+                // old `.clone()` here only to immediately re-borrow was pure waste.
+                let arg = match toks.get(*i) {
+                    Some(Token::Paren(p)) => {
+                        *i += 1;
+                        Some(p.as_str())
+                    }
+                    _ => None,
+                };
+                c.pseudos.push(parse_pseudo(&name, arg));
+            }
+            Token::Attr(inner) => {
+                c.attrs.push(parse_attr(inner));
+                *i += 1;
+            }
+            // bare ident (lenient trailing junk) or stray paren → ignore
+            Token::Ident(_) | Token::Paren(_) => *i += 1,
         }
     }
     c
+}
+
+/// Split a selector string on TOP-LEVEL commas only — commas inside `[...]`,
+/// `(...)`, or quoted strings are NOT separators. Mirrors the JS `splitTopLevel`
+/// and is required now that `:is()/:where()/:not()` arguments hold comma-separated
+/// lists: a naive `split(',')` would break `li:not(.a, .b)` mid-paren.
+fn split_top_level_commas(src: &str) -> Vec<&str> {
+    let bytes = src.as_bytes();
+    let mut out = Vec::new();
+    let mut depth = 0i32;
+    let mut quote: Option<u8> = None;
+    let mut last = 0usize;
+    for (i, &b) in bytes.iter().enumerate() {
+        if let Some(q) = quote {
+            if b == q {
+                quote = None;
+            }
+        } else if b == b'"' || b == b'\'' {
+            quote = Some(b);
+        } else if b == b'(' || b == b'[' {
+            depth += 1;
+        } else if b == b')' || b == b']' {
+            depth -= 1;
+        } else if b == b',' && depth == 0 {
+            out.push(&src[last..i]);
+            last = i + 1;
+        }
+    }
+    out.push(&src[last..]);
+    out
+}
+
+/// Parse a pseudo argument as a SELECTOR LIST (comma-separated complex selectors)
+/// for `:is(...)` / `:where(...)` / `:not(...)`. Each non-empty segment becomes a
+/// `Complex` (reusing `parse_complex`); empty segments are dropped. A single-item
+/// list is the degenerate `:not(.x)` case, so existing behavior is preserved.
+fn parse_selector_list_str(src: &str) -> Vec<Complex> {
+    split_top_level_commas(src).into_iter().filter_map(|s| parse_complex(s.trim())).collect()
+}
+
+/// Parse a `:has()` argument into a list of relative selectors. Each top-level
+/// comma segment may begin with a combinator (`>`/`+`/`~`); absent ⇒ descendant.
+/// The remainder is parsed as a normal complex (reusing `parse_complex`). Segments
+/// that yield no complex (empty, or a lone combinator) are dropped.
+fn parse_relative_selector_list(src: &str) -> Vec<RelativeSelector> {
+    split_top_level_commas(src)
+        .into_iter()
+        .filter_map(|seg| {
+            // Tokenize once, then strip the leading combinator at the TOKEN level
+            // (mirrors the JS parseRelativeSelectorList): skip a leading `Ws`, then
+            // peek for a `Gt`/`Plus`/`Tilde` combinator token — combinator recognition
+            // stays inside the lexer rather than re-spelled on raw bytes.
+            let toks = tokenize(seg);
+            let mut lo = 0;
+            while matches!(toks.get(lo), Some(Token::Ws)) {
+                lo += 1; // skip the segment's leading whitespace
+            }
+            let combinator = match toks.get(lo) {
+                Some(Token::Gt) => {
+                    lo += 1;
+                    Combinator::Child
+                }
+                Some(Token::Plus) => {
+                    lo += 1;
+                    Combinator::Adjacent
+                }
+                Some(Token::Tilde) => {
+                    lo += 1;
+                    Combinator::GeneralSibling
+                }
+                _ => Combinator::Descendant,
+            };
+            parse_complex_tokens(&toks[lo..]).map(|complex| RelativeSelector { combinator, complex })
+        })
+        .collect()
 }
 
 /// Map a pseudo `name` + optional `arg` to a `Pseudo`. Unrecognized → `Unknown`
@@ -204,7 +598,10 @@ fn parse_pseudo(name: &str, arg: Option<&str>) -> Pseudo {
             let (a, b) = parse_nth(arg.unwrap_or(""));
             Pseudo::NthLastOfType(a, b)
         }
-        "not" => Pseudo::Not(Box::new(parse_compound(arg.unwrap_or("").trim()))),
+        "is" => Pseudo::Is(parse_selector_list_str(arg.unwrap_or(""))),
+        "where" => Pseudo::Where(parse_selector_list_str(arg.unwrap_or(""))),
+        "not" => Pseudo::Not(parse_selector_list_str(arg.unwrap_or(""))),
+        "has" => Pseudo::Has(parse_relative_selector_list(arg.unwrap_or(""))),
         _ => Pseudo::Unknown,
     }
 }
@@ -259,87 +656,81 @@ fn parse_attr(inner: &str) -> Attr {
         Some(eq) => {
             // operator char (if any) sits immediately before '='
             let raw_name = &inner[..eq];
-            let (op, name) = match raw_name.as_bytes().last() {
-                Some(b'~') => (AttrOp::Includes, &raw_name[..raw_name.len() - 1]),
-                Some(b'|') => (AttrOp::Dash, &raw_name[..raw_name.len() - 1]),
-                Some(b'^') => (AttrOp::Prefix, &raw_name[..raw_name.len() - 1]),
-                Some(b'$') => (AttrOp::Suffix, &raw_name[..raw_name.len() - 1]),
-                Some(b'*') => (AttrOp::Substr, &raw_name[..raw_name.len() - 1]),
-                _ => (AttrOp::Exact, raw_name),
-            };
             let mut val = inner[eq + 1..].trim();
-            if (val.starts_with('"') && val.ends_with('"')) || (val.starts_with('\'') && val.ends_with('\'')) {
+            // Strip matching surrounding quotes. The `len >= 2` guard is load-bearing: a
+            // lone quote char (unterminated value, e.g. `[a="`) satisfies both
+            // starts_with AND ends_with on the same byte, and `val[1..0]` would panic.
+            // Mirrors the JS `value.length >= 2` guard in selectors.mjs parseAttr.
+            if val.len() >= 2
+                && ((val.starts_with('"') && val.ends_with('"'))
+                    || (val.starts_with('\'') && val.ends_with('\'')))
+            {
                 val = &val[1..val.len() - 1];
             }
-            Attr { name: name.trim().to_string(), op, value: val.to_string() }
+            let val = val.to_string();
+            let (m, name) = match raw_name.as_bytes().last() {
+                Some(b'~') => (AttrMatch::Includes(val), &raw_name[..raw_name.len() - 1]),
+                Some(b'|') => (AttrMatch::Dash(val), &raw_name[..raw_name.len() - 1]),
+                Some(b'^') => (AttrMatch::Prefix(val), &raw_name[..raw_name.len() - 1]),
+                Some(b'$') => (AttrMatch::Suffix(val), &raw_name[..raw_name.len() - 1]),
+                Some(b'*') => (AttrMatch::Substr(val), &raw_name[..raw_name.len() - 1]),
+                _ => (AttrMatch::Equals(val), raw_name),
+            };
+            Attr { name: name.trim().to_string(), m }
         }
-        None => Attr { name: inner.trim().to_string(), op: AttrOp::Presence, value: String::new() },
+        None => Attr { name: inner.trim().to_string(), m: AttrMatch::Present },
     }
 }
 
-fn attr_op_matches(op: AttrOp, want: &str, got: &str) -> bool {
-    match op {
-        AttrOp::Presence => true,
-        AttrOp::Exact => got == want,
-        AttrOp::Prefix => !want.is_empty() && got.starts_with(want),
-        AttrOp::Suffix => !want.is_empty() && got.ends_with(want),
-        AttrOp::Substr => !want.is_empty() && got.contains(want),
-        AttrOp::Includes => !want.is_empty() && got.split_ascii_whitespace().any(|w| w == want),
-        AttrOp::Dash => got == want || got.starts_with(&format!("{want}-")),
-    }
+/// Parse one complex selector (already comma-split + trimmed) into an
+/// `Option<Complex>` — `None` when the segment yields no compound at all (empty
+/// or combinator-only), so empty segments are dropped at PARSE time and a built
+/// `Complex` is always non-empty. A `Gt` between two compounds is a child
+/// combinator; otherwise (whitespace or nothing) it is descendant — matching the
+/// old "default descendant, `>` ⇒ child" rule exactly. Leading/trailing/extra
+/// `Ws` are inert separators, and a leading/trailing combinator simply never
+/// lands in `rest` (so `a >` parses to `Complex { first: a, rest: [] }` and
+/// matches exactly what `a` matches).
+fn parse_complex(src: &str) -> Option<Complex> {
+    parse_complex_tokens(&tokenize(src))
 }
 
-fn parse_complex(src: &str) -> Complex {
-    let mut parts = Vec::new();
+/// Token-level `parse_complex`: run the compound/combinator loop over an
+/// already-tokenized slice. Mirrors the JS `parseComplexTokens` so a caller that
+/// has tokenized once (e.g. the `:has()` relative parse) can hand off a sub-slice.
+fn parse_complex_tokens(toks: &[Token]) -> Option<Complex> {
+    let mut first: Option<Compound> = None;
+    let mut rest: Vec<(Combinator, Compound)> = Vec::new();
     let mut combinator = Combinator::Descendant;
-    for tok in tokenize_complex(src) {
-        if tok == ">" {
-            combinator = Combinator::Child;
-        } else {
-            parts.push((combinator, parse_compound(&tok)));
-            combinator = Combinator::Descendant;
-        }
-    }
-    Complex { parts }
-}
-
-/// split on whitespace but keep `>` as its own token (with or without surrounding ws).
-/// Whitespace and `>` inside an attribute selector `[...]` or a quoted string are NOT separators —
-/// e.g. `svg[viewBox="0 0 10 10"]` is one token, not five.
-fn tokenize_complex(src: &str) -> Vec<String> {
-    let mut out = Vec::new();
-    let mut cur = String::new();
-    let mut depth: i32 = 0; // inside [...]
-    let mut quote: Option<char> = None;
-    for ch in src.chars() {
-        if let Some(q) = quote {
-            cur.push(ch);
-            if ch == q { quote = None; }
-            continue;
-        }
-        match ch {
-            '"' | '\'' => { quote = Some(ch); cur.push(ch); }
-            '[' => { depth += 1; cur.push(ch); }
-            ']' => { depth -= 1; cur.push(ch); }
-            c if depth > 0 => cur.push(c),
-            c if c.is_whitespace() => {
-                if !cur.is_empty() {
-                    out.push(std::mem::take(&mut cur));
-                }
+    let mut i = 0;
+    while i < toks.len() {
+        match toks[i] {
+            Token::Ws => i += 1,
+            Token::Gt => {
+                combinator = Combinator::Child;
+                i += 1;
             }
-            '>' => {
-                if !cur.is_empty() {
-                    out.push(std::mem::take(&mut cur));
-                }
-                out.push(">".to_string());
+            Token::Plus => {
+                combinator = Combinator::Adjacent;
+                i += 1;
             }
-            _ => cur.push(ch),
+            Token::Tilde => {
+                combinator = Combinator::GeneralSibling;
+                i += 1;
+            }
+            _ => {
+                let c = parse_compound_tokens(toks, &mut i);
+                if first.is_none() {
+                    // the head carries no combinator (a leading `>` is inert)
+                    first = Some(c);
+                } else {
+                    rest.push((combinator, c));
+                }
+                combinator = Combinator::Descendant;
+            }
         }
     }
-    if !cur.is_empty() {
-        out.push(cur);
-    }
-    out
+    first.map(|first| Complex { first, rest })
 }
 
 /// whole-word class scan, alloc-free — mirrors JS `hasClass`.
@@ -364,7 +755,7 @@ fn has_class(class_attr: &str, cls: &str) -> bool {
 
 impl Tree {
     fn matches_compound(&self, h: Handle, c: &Compound) -> bool {
-        if self.node_type(h) != ELEMENT_NODE {
+        if self.node_type(h) != NodeType::Element {
             return false;
         }
         if let Some(tag) = &c.tag {
@@ -379,10 +770,7 @@ impl Tree {
             }
         }
         if !c.classes.is_empty() {
-            let cv = match self.get_attribute(h, "class") {
-                Some(v) => v,
-                None => return false,
-            };
+            let Some(cv) = self.get_attribute(h, "class") else { return false };
             for cls in &c.classes {
                 if !has_class(cv, cls) {
                     return false;
@@ -391,7 +779,7 @@ impl Tree {
         }
         for a in &c.attrs {
             match self.get_attribute(h, &a.name) {
-                Some(got) if attr_op_matches(a.op, &a.value, got) => {}
+                Some(got) if a.m.matches(got) => {}
                 _ => return false,
             }
         }
@@ -403,15 +791,47 @@ impl Tree {
         true
     }
 
+    /// The immediately-preceding ELEMENT sibling of `h` (walking `previous_sibling`
+    /// and skipping text/comment nodes). Mirrors selectors.mjs `previousElement`.
+    /// The single source of the element-skipping sibling walk (`node_ref.rs` wraps it).
+    pub(crate) fn previous_element_sibling(&self, h: Handle) -> Option<Handle> {
+        let mut n = self.previous_sibling(h);
+        while let Some(s) = n {
+            if self.node_type(s) == NodeType::Element {
+                return Some(s);
+            }
+            n = self.previous_sibling(s);
+        }
+        None
+    }
+
+    /// The immediately-FOLLOWING element sibling of `h` (walking `next_sibling`,
+    /// skipping text/comment nodes). Mirrors selectors.mjs `nextElement`.
+    /// The single source of the element-skipping sibling walk (`node_ref.rs` wraps it).
+    pub(crate) fn next_element_sibling(&self, h: Handle) -> Option<Handle> {
+        let mut n = self.next_sibling(h);
+        while let Some(s) = n {
+            if self.node_type(s) == NodeType::Element {
+                return Some(s);
+            }
+            n = self.next_sibling(s);
+        }
+        None
+    }
+
     /// Element-only siblings of `h` (children of its parent that are elements).
     /// Returns `[h]` if `h` has no parent — mirrors selectors.mjs `elementSiblings`.
     fn element_siblings(&self, h: Handle) -> Vec<Handle> {
         match self.parent(h) {
-            Some(p) => self
-                .children(p)
-                .into_iter()
-                .filter(|&c| self.node_type(c) == ELEMENT_NODE)
-                .collect(),
+            Some(p) => {
+                let mut out = Vec::new();
+                self.for_each_child(p, |c| {
+                    if self.node_type(c) == NodeType::Element {
+                        out.push(c);
+                    }
+                });
+                out
+            }
             None => vec![h],
         }
     }
@@ -451,22 +871,22 @@ impl Tree {
                     == 1
             }
             // `position` is always Some (h is among its own element siblings); the
-            // map_or default is unreachable but keeps each arm a single covered line.
+            // is_some_and false branch is unreachable but keeps each arm a single covered line.
             Pseudo::NthChild(a, b) => {
                 let sibs = self.element_siblings(h);
-                sibs.iter().position(|&c| c == h).map_or(false, |idx| nth_match(*a, *b, idx as i64 + 1))
+                sibs.iter().position(|&c| c == h).is_some_and(|idx| nth_match(*a, *b, idx as i64 + 1))
             }
             Pseudo::NthLastChild(a, b) => {
                 let sibs = self.element_siblings(h);
                 sibs.iter()
                     .position(|&c| c == h)
-                    .map_or(false, |idx| nth_match(*a, *b, sibs.len() as i64 - idx as i64))
+                    .is_some_and(|idx| nth_match(*a, *b, sibs.len() as i64 - idx as i64))
             }
             Pseudo::NthOfType(a, b) => {
                 let ln = self.local_name(h);
                 let same: Vec<Handle> =
                     self.element_siblings(h).into_iter().filter(|&c| self.local_name(c) == ln).collect();
-                same.iter().position(|&c| c == h).map_or(false, |idx| nth_match(*a, *b, idx as i64 + 1))
+                same.iter().position(|&c| c == h).is_some_and(|idx| nth_match(*a, *b, idx as i64 + 1))
             }
             Pseudo::NthLastOfType(a, b) => {
                 let ln = self.local_name(h);
@@ -474,7 +894,7 @@ impl Tree {
                     self.element_siblings(h).into_iter().filter(|&c| self.local_name(c) == ln).collect();
                 same.iter()
                     .position(|&c| c == h)
-                    .map_or(false, |idx| nth_match(*a, *b, same.len() as i64 - idx as i64))
+                    .is_some_and(|idx| nth_match(*a, *b, same.len() as i64 - idx as i64))
             }
             // :empty — no child nodes at all (any node type counts in the JS, which
             // checks childNodes.length). We have only element children via children();
@@ -483,97 +903,230 @@ impl Tree {
             Pseudo::Root => match self.parent(h) {
                 None => true,
                 // parent is the document/root container, not an element
-                Some(p) => self.node_type(p) != ELEMENT_NODE,
+                Some(p) => self.node_type(p) != NodeType::Element,
             },
-            // Form-state. selectors.mjs reads the live DOM property (el.checked etc.);
-            // this Rust port reads the corresponding attribute.
-            // TODO: live prop — JS reads el.checked / el.selected (set by React).
+            // Form-state. Mirrors selectors.mjs: read the live IDL property first (what a
+            // consumer / React sets via set_form_property, the analogue of `el.checked`),
+            // falling back to the HTML attribute when no live override is set.
             Pseudo::Checked => {
-                let ln = self.local_name(h);
-                if ln == Some("option") {
-                    self.has_attribute(h, "selected")
+                if self.local_name(h) == Some("option") {
+                    self.form_state(h, FormProp::Selected, "selected")
                 } else {
-                    self.has_attribute(h, "checked")
+                    self.form_state(h, FormProp::Checked, "checked")
                 }
             }
-            // TODO: live prop — JS reads el.disabled.
-            Pseudo::Disabled => self.has_attribute(h, "disabled"),
-            // TODO: live prop — JS reads el.disabled.
+            Pseudo::Disabled => self.form_state(h, FormProp::Disabled, "disabled"),
             Pseudo::Enabled => {
                 matches!(
                     self.local_name(h),
-                    Some("input") | Some("button") | Some("select") | Some("textarea")
-                        | Some("optgroup") | Some("option") | Some("fieldset")
-                ) && !self.has_attribute(h, "disabled")
+                    Some("input" | "button" | "select" | "textarea" | "optgroup" | "option" |
+"fieldset")
+                ) && !self.form_state(h, FormProp::Disabled, "disabled")
             }
-            // TODO: live prop — JS reads el.required.
-            Pseudo::Required => self.has_attribute(h, "required"),
-            // TODO: live prop — JS reads el.required.
+            Pseudo::Required => self.form_state(h, FormProp::Required, "required"),
             Pseudo::Optional => {
                 matches!(
                     self.local_name(h),
-                    Some("input") | Some("select") | Some("textarea")
-                ) && !self.has_attribute(h, "required")
+                    Some("input" | "select" | "textarea")
+                ) && !self.form_state(h, FormProp::Required, "required")
             }
-            // TODO: live prop — JS reads el.readOnly.
-            Pseudo::ReadOnly => self.has_attribute(h, "readonly"),
-            // TODO: live prop — JS reads el.readOnly.
-            Pseudo::ReadWrite => !self.has_attribute(h, "readonly"),
-            // TODO: live prop — JS reads el.selected.
-            Pseudo::Selected => self.has_attribute(h, "selected"),
-            Pseudo::Not(inner) => !self.matches_compound(h, inner),
+            Pseudo::ReadOnly => self.form_state(h, FormProp::ReadOnly, "readonly"),
+            Pseudo::ReadWrite => !self.form_state(h, FormProp::ReadOnly, "readonly"),
+            Pseudo::Selected => self.form_state(h, FormProp::Selected, "selected"),
+            // selector-list pseudos: each Complex is anchored at `h` (matches_complex
+            // tests the rightmost compound against `h` and walks left).
+            Pseudo::Is(list) | Pseudo::Where(list) => {
+                list.iter().any(|cx| self.matches_complex(h, cx))
+            }
+            Pseudo::Not(list) => !list.iter().any(|cx| self.matches_complex(h, cx)),
+            // relational: SOME relative selector finds a matching element reachable
+            // from `h` per its leading combinator, scoped to `h`'s subtree.
+            Pseudo::Has(list) => list.iter().any(|rel| self.has_match(h, rel)),
             Pseudo::Unknown => false,
         }
     }
 
+    /// The compound at position `k` in the chain: `k==0` is the head (`first`),
+    /// `k>0` is `rest[k-1].1`. (`rest` entry `i` pairs the combinator on its left
+    /// with the compound at chain position `i+1`.)
+    fn compound_at(cx: &Complex, k: usize) -> &Compound {
+        if k == 0 {
+            &cx.first
+        } else {
+            &cx.rest[k - 1].1
+        }
+    }
+
     /// Does `h` match the full complex selector, anchored at its rightmost compound?
+    /// Recursive with backtracking: a descendant combinator tries EVERY matching
+    /// ancestor, not just the nearest, so a mixed chain such as `.a > .b .c` — where
+    /// the `.b` that is a direct child of `.a` is *farther* from `.c` than another
+    /// `.b` — is matched correctly. A greedy nearest-ancestor walk would miss it.
+    /// A boolean form-state property: the live IDL override if a consumer set one, else
+    /// the presence of the HTML attribute. Mirrors the JS `__x !== undefined ? __x :
+    /// hasAttribute(x)` pattern shared by the form-state pseudo-classes.
+    fn form_state(&self, h: Handle, prop: FormProp, attr: &str) -> bool {
+        self.form_property(h, prop)
+            .unwrap_or_else(|| self.has_attribute(h, attr))
+    }
+
     fn matches_complex(&self, h: Handle, cx: &Complex) -> bool {
-        let n = cx.parts.len();
-        let (_, last) = &cx.parts[n - 1];
-        if !self.matches_compound(h, last) {
+        self.matches_chain(h, cx, cx.rest.len(), None)
+    }
+
+    /// Match the chain prefix ending at position `k` against element `h`. The
+    /// combinator in `rest[k-1]` connects position `k` to position `k-1`
+    /// (see `parse_complex`); position 0 (the head) has no combinator.
+    ///
+    /// `scope` supports `:has()`: when `Some((comb, el))`, the LEFTMOST compound must,
+    /// in addition to matching, relate to the scope element `el` by `comb` — so a
+    /// relative selector's head is anchored to the `:has()` subject. `None` (plain
+    /// matching) means the leftmost compound stands alone.
+    fn matches_chain(
+        &self,
+        h: Handle,
+        cx: &Complex,
+        k: usize,
+        scope: Option<(Combinator, Handle)>,
+    ) -> bool {
+        if !self.matches_compound(h, Self::compound_at(cx, k)) {
             return false;
         }
-        // walk leftwards matching ancestors
-        let mut cur = h;
-        for k in (0..n - 1).rev() {
-            let (combinator, compound) = &cx.parts[k];
-            match combinator_for(cx, k + 1) {
-                Combinator::Child => {
-                    let p = match self.parent(cur) {
-                        Some(p) => p,
-                        None => return false,
-                    };
-                    if !self.matches_compound(p, compound) {
-                        return false;
-                    }
-                    cur = p;
-                }
-                Combinator::Descendant => {
-                    let mut anc = self.parent(cur);
-                    let mut found = None;
-                    while let Some(a) = anc {
-                        if self.matches_compound(a, compound) {
-                            found = Some(a);
-                            break;
-                        }
-                        anc = self.parent(a);
-                    }
-                    match found {
-                        Some(a) => cur = a,
-                        None => return false,
-                    }
-                }
-            }
-            let _ = combinator; // combinator stored on the RIGHT part; see combinator_for
+        if k == 0 {
+            // matched the leftmost compound — plain matching is done; `:has()` must also
+            // check the head relates to the scope element by the leading combinator.
+            return match scope {
+                None => true,
+                Some((comb, el)) => self.relates_to_scope(h, comb, el),
+            };
         }
-        true
+        match cx.rest[k - 1].0 {
+            // the direct parent must match the remaining prefix
+            Combinator::Child => match self.parent(h) {
+                Some(p) => self.matches_chain(p, cx, k - 1, scope),
+                None => false,
+            },
+            // ANY ancestor may match the remaining prefix — try each, backtracking
+            Combinator::Descendant => {
+                let mut anc = self.parent(h);
+                while let Some(a) = anc {
+                    if self.matches_chain(a, cx, k - 1, scope) {
+                        return true;
+                    }
+                    anc = self.parent(a);
+                }
+                false
+            }
+            // the IMMEDIATELY-preceding element sibling must match the prefix
+            // (single step — mirrors the JS `'+'` arm).
+            Combinator::Adjacent => match self.previous_element_sibling(h) {
+                Some(prev) => self.matches_chain(prev, cx, k - 1, scope),
+                None => false,
+            },
+            // ANY preceding element sibling may match the prefix — try each,
+            // backtracking (like Descendant but over previous element siblings;
+            // mirrors the JS `'~'` arm).
+            Combinator::GeneralSibling => {
+                let mut prev = self.previous_element_sibling(h);
+                while let Some(p) = prev {
+                    if self.matches_chain(p, cx, k - 1, scope) {
+                        return true;
+                    }
+                    prev = self.previous_element_sibling(p);
+                }
+                false
+            }
+        }
+    }
+
+    /// Does `node` stand in relation `comb` to the `:has()` scope element `el`? This
+    /// anchors the HEAD (leftmost) compound of a relative selector to the subject:
+    /// `> .a` ⇒ the `.a` head is a direct child, `.a .b` ⇒ the `.a` head is a
+    /// descendant, etc. The leading combinator constrains the head — NOT the whole
+    /// complex (anchoring the entire complex at a child/sibling candidate was the bug).
+    fn relates_to_scope(&self, node: Handle, comb: Combinator, el: Handle) -> bool {
+        match comb {
+            Combinator::Child => self.parent(node) == Some(el),
+            Combinator::Adjacent => self.previous_element_sibling(node) == Some(el),
+            Combinator::GeneralSibling => {
+                let mut prev = self.previous_element_sibling(node);
+                while let Some(s) = prev {
+                    if s == el {
+                        return true;
+                    }
+                    prev = self.previous_element_sibling(s);
+                }
+                false
+            }
+            // Descendant: `el` is a proper ancestor of `node`.
+            Combinator::Descendant => {
+                let mut anc = self.parent(node);
+                while let Some(a) = anc {
+                    if a == el {
+                        return true;
+                    }
+                    anc = self.parent(a);
+                }
+                false
+            }
+        }
+    }
+
+    /// `:has()` existence search. The relative complex must match some target element
+    /// (its rightmost compound) reachable from the subject `h`, with its HEAD compound
+    /// related to `h` by the leading combinator (enforced at `k == 0` via
+    /// `relates_to_scope`). Candidate targets: descendants of `h` for `>`/descendant
+    /// heads (the head, and thus the whole match, lives in `h`'s subtree); a
+    /// following-sibling subtree for `+`/`~` heads. Mirrors the JS `hasMatch`.
+    fn has_match(&self, h: Handle, rel: &RelativeSelector) -> bool {
+        let scope = Some((rel.combinator, h));
+        let k = rel.complex.rest.len();
+        match rel.combinator {
+            Combinator::Adjacent => match self.next_element_sibling(h) {
+                Some(sib) => {
+                    self.some_self_or_descendant(sib, |x| self.matches_chain(x, &rel.complex, k, scope))
+                }
+                None => false,
+            },
+            Combinator::GeneralSibling => {
+                let mut sib = self.next_element_sibling(h);
+                while let Some(s) = sib {
+                    if self.some_self_or_descendant(s, |x| self.matches_chain(x, &rel.complex, k, scope)) {
+                        return true;
+                    }
+                    sib = self.next_element_sibling(s);
+                }
+                false
+            }
+            // Child / Descendant leading combinator: the head (hence every match) is
+            // within `h`'s subtree, so any descendant can be the target endpoint.
+            Combinator::Child | Combinator::Descendant => {
+                self.some_descendant(h, |x| self.matches_chain(x, &rel.complex, k, scope))
+            }
+        }
+    }
+
+    /// Parse `selector` into its selector-list, memoized by string in `parse_cache`
+    /// (shared `Rc`, so a repeated selector parses once). Empty/combinator-only
+    /// segments are dropped at parse time, so every `Complex` returned is non-empty.
+    /// Bounded like the query cache (clear-on-overflow) to stay leak-free.
+    fn parse_selector_cached(&self, selector: &str) -> std::rc::Rc<[Complex]> {
+        if let Some(hit) = self.parse_cache.borrow().get(selector) {
+            return hit.clone();
+        }
+        let list: std::rc::Rc<[Complex]> = parse_selector_list_str(selector).into();
+        let mut cache = self.parse_cache.borrow_mut();
+        bounded_insert(&mut cache, selector.to_string(), list.clone());
+        list
     }
 
     pub fn matches(&self, h: Handle, selector: &str) -> bool {
-        selector.split(',').any(|s| {
-            let cx = parse_complex(s.trim());
-            !cx.parts.is_empty() && self.matches_complex(h, &cx)
-        })
+        // every `cx` reaching the matcher is a non-empty `Complex` (parse_selector_cached
+        // drops empty/combinator-only segments). Re-parsing is avoided across an
+        // element-loop `matches()` via the parse cache.
+        self.parse_selector_cached(selector)
+            .iter()
+            .any(|cx| self.matches_complex(h, cx))
     }
 
     /// querySelectorAll, document-order, version-cached by selector string. Returns a
@@ -590,36 +1143,76 @@ impl Tree {
                 return hit.clone();
             }
         }
-        let selectors: Vec<Complex> = selector
-            .split(',')
-            .map(|s| parse_complex(s.trim()))
-            .filter(|cx| !cx.parts.is_empty())
-            .collect();
+        let selectors = self.parse_selector_cached(selector);
         let mut out = Vec::new();
         let mut stack = vec![self.root()];
         // document-order DFS
         let mut order = Vec::new();
         while let Some(h) = stack.pop() {
             order.push(h);
-            let kids = self.children(h);
-            for &c in kids.iter().rev() {
-                stack.push(c);
-            }
+            // push children alloc-free, then reverse the just-added segment so they
+            // pop in document order (a `Vec`-free equivalent of `children().rev()`).
+            let base = stack.len();
+            self.for_each_child(h, |c| stack.push(c));
+            stack[base..].reverse();
         }
         for h in order {
-            if self.node_type(h) == ELEMENT_NODE
+            if self.node_type(h) == NodeType::Element
                 && selectors.iter().any(|cx| self.matches_complex(h, cx))
             {
                 out.push(h);
             }
         }
         let rc: std::rc::Rc<[Handle]> = out.into();
-        self.qcache.borrow_mut().map.insert(selector.to_string(), rc.clone());
+        {
+            let mut cache = self.qcache.borrow_mut();
+            // Bound the cache (parity with the JS __selectorCache cap): once it grows
+            // past CACHE_CAP distinct keys, clear it wholesale rather than grow
+            // unbounded. A pathological caller cycling unique selectors can't leak.
+            bounded_insert(&mut cache.map, selector.to_string(), rc.clone());
+        }
         rc
     }
 
     pub fn query_selector(&self, selector: &str) -> Option<Handle> {
         self.query_selector_all(selector).first().copied()
+    }
+
+    /// Strict (`_checked`) variants: validate the selector first and return
+    /// `Err(SelectorError)` for input a browser would reject (a `SyntaxError` in the JS
+    /// runtime), instead of the lenient "do my best / return nothing" of the infallible
+    /// methods above. This is the opt-in parity path for consumers that want a typo'd or
+    /// user-supplied selector to fail loudly rather than silently match nothing. On a
+    /// valid selector they delegate to the (cached) lenient method — no extra matching
+    /// cost beyond the one validation pass.
+    ///
+    /// # Errors
+    /// Returns [`SelectorError`] when `selector` is malformed (unterminated `[...]`,
+    /// an unexpected character, or a combinator with no compound on its left).
+    pub fn query_selector_all_checked(
+        &self,
+        selector: &str,
+    ) -> Result<std::rc::Rc<[Handle]>, SelectorError> {
+        validate_selector_list(selector)?;
+        Ok(self.query_selector_all(selector))
+    }
+
+    /// Strict `query_selector` — see [`Tree::query_selector_all_checked`].
+    ///
+    /// # Errors
+    /// Returns [`SelectorError`] when `selector` is malformed.
+    pub fn query_selector_checked(&self, selector: &str) -> Result<Option<Handle>, SelectorError> {
+        validate_selector_list(selector)?;
+        Ok(self.query_selector(selector))
+    }
+
+    /// Strict `matches` — see [`Tree::query_selector_all_checked`].
+    ///
+    /// # Errors
+    /// Returns [`SelectorError`] when `selector` is malformed.
+    pub fn matches_checked(&self, h: Handle, selector: &str) -> Result<bool, SelectorError> {
+        validate_selector_list(selector)?;
+        Ok(self.matches(h, selector))
     }
 
     /// getElementById, version-cached. Shares `qcache` with querySelectorAll under a
@@ -645,15 +1238,18 @@ impl Tree {
         let mut found = None;
         let mut stack = vec![self.root()];
         while let Some(h) = stack.pop() {
-            if self.node_type(h) == ELEMENT_NODE && self.get_attribute(h, "id") == Some(id) {
+            if self.node_type(h) == NodeType::Element && self.get_attribute(h, "id") == Some(id) {
                 found = Some(h);
                 break;
             }
-            for &c in self.children(h).iter().rev() {
-                stack.push(c);
-            }
+            let base = stack.len();
+            self.for_each_child(h, |c| stack.push(c));
+            stack[base..].reverse();
         }
-        self.qcache.borrow_mut().map.insert(key, found.into_iter().collect());
+        {
+            let mut cache = self.qcache.borrow_mut();
+            bounded_insert(&mut cache.map, key, found.into_iter().collect());
+        }
         found
     }
 
@@ -664,24 +1260,19 @@ impl Tree {
         let mut order = Vec::new();
         while let Some(h) = stack.pop() {
             order.push(h);
-            for &c in self.children(h).iter().rev() {
-                stack.push(c);
-            }
+            let base = stack.len();
+            self.for_each_child(h, |c| stack.push(c));
+            stack[base..].reverse();
         }
         for h in order {
-            if self.node_type(h) == ELEMENT_NODE
-                && (any || self.local_name(h).map_or(false, |ln| ln.eq_ignore_ascii_case(tag)))
+            if self.node_type(h) == NodeType::Element
+                && (any || self.local_name(h).is_some_and(|ln| ln.eq_ignore_ascii_case(tag)))
             {
                 out.push(h);
             }
         }
         out
     }
-}
-
-/// The combinator that connects part `k` to part `k-1` is stored on part `k`.
-fn combinator_for(cx: &Complex, k: usize) -> Combinator {
-    cx.parts[k].0
 }
 
 #[cfg(test)]
@@ -702,7 +1293,7 @@ mod tests {
     #[test]
     fn qsa_id_and_attr() {
         let tree = Tree::parse("<a id=home href='/x' data-k=v>hi</a><a href='/y'>z</a>");
-        assert_eq!(tree.query_selector("#home").is_some(), true);
+        assert!(tree.query_selector("#home").is_some());
         assert_eq!(tree.query_selector_all("a[href]").len(), 2);
         assert_eq!(tree.query_selector_all("a[data-k=v]").len(), 1);
         assert_eq!(tree.query_selector_all("[data-k='v']").len(), 1);
@@ -750,13 +1341,33 @@ mod tests {
     }
 
     #[test]
+    fn matches_parse_cache_repeated_selector() {
+        // Repeated matches() with the SAME selector over an element loop must hit the
+        // parse cache and still return the correct per-element verdict.
+        let tree = Tree::parse(
+            "<ul><li class=x>1</li><li>2</li><li class=x>3</li></ul>",
+        );
+        let lis = tree.get_elements_by_tag_name("li");
+        // first pass populates the parse cache; second pass hits it — both agree.
+        for _ in 0..2 {
+            let hits: Vec<_> = lis.iter().copied().filter(|&h| tree.matches(h, "li.x")).collect();
+            assert_eq!(hits.len(), 2);
+            assert_eq!(tree.text_content(hits[0]), "1");
+            assert_eq!(tree.text_content(hits[1]), "3");
+        }
+        // a different selector parses fresh and is also correct
+        assert!(tree.matches(lis[1], "li:not(.x)"));
+        assert!(!tree.matches(lis[0], "li:not(.x)"));
+    }
+
+    #[test]
     fn matches_and_get_by_id() {
         let tree = Tree::parse("<div id=root><p class=lead>hi</p></div>");
         let p = tree.query_selector("p.lead").unwrap();
         assert!(tree.matches(p, "div#root p.lead"));
         assert!(tree.matches(p, ".lead"));
         assert!(!tree.matches(p, "span"));
-        assert_eq!(tree.get_element_by_id("root").is_some(), true);
+        assert!(tree.get_element_by_id("root").is_some());
     }
 
     #[test]
@@ -1035,5 +1646,448 @@ mod tests {
         // a specific tag, case-insensitive
         assert_eq!(tree.get_elements_by_tag_name("P").len(), 1);
         assert_eq!(tree.get_elements_by_tag_name("nope").len(), 0);
+    }
+
+    #[test]
+    fn nth_child_with_whitespace_in_arg() {
+        // CSS `An+B` notation permits whitespace: `2n + 1` is valid and means "odd".
+        // The complex tokenizer must not split on the spaces inside the pseudo's
+        // parentheses (it already protects `[...]` and quotes; parens are the same).
+        let tree = Tree::parse("<ul><li>1</li><li>2</li><li>3</li><li>4</li></ul>");
+        let odd = tree.query_selector_all("li:nth-child(2n + 1)");
+        assert_eq!(odd.len(), 2);
+        assert_eq!(tree.text_content(odd[0]), "1");
+        assert_eq!(tree.text_content(odd[1]), "3");
+    }
+
+    #[test]
+    fn parser_parity_corpus() {
+        // The tricky-case corpus that the tokenizer + recursive-descent parser must
+        // handle identically to the old ad-hoc scanner (mirrors the parallel JS effort).
+        // Each selector is exercised against a fixture chosen to make it match exactly once.
+        let cases: &[(&str, &str)] = &[
+            ("div.card", "<div class='card'>x</div>"),
+            (".grid .t", "<div class='grid'><span class='t'>x</span></div>"),
+            ("main > div", "<main><div>x</div></main>"),
+            ("a[href]", "<a href='/x'>x</a>"),
+            ("a[data-k=v]", "<a data-k='v'>x</a>"),
+            ("[data-k='v']", "<a data-k='v'>x</a>"),
+            ("a[href^='/docs']", "<a href='/docs/intro'>x</a>"),
+            ("a[data-x*='oba']", "<a data-x='foobar'>x</a>"),
+            ("a[class~='primary']", "<a class='btn primary'>x</a>"),
+            ("a[lang|='en']", "<a lang='en-US'>x</a>"),
+            ("svg[viewBox=\"0 0 10 10\"]", "<svg viewBox=\"0 0 10 10\"></svg>"),
+            ("li:nth-child(2n + 1)", "<ul><li>1</li></ul>"),
+            (".a > .b .c", "<div class='a'><div class='b'><div class='c'>c</div></div></div>"),
+            ("div[id=x]y", "<div id='x'>hit</div>"), // lenient: trailing `y` ignored → matches
+        ];
+        for (sel, html) in cases {
+            let tree = Tree::parse(html);
+            assert_eq!(
+                tree.query_selector_all(sel).len(),
+                1,
+                "selector {sel:?} should match exactly once in {html:?}"
+            );
+        }
+        // :not with a NESTED pseudo whose argument itself contains balanced parens.
+        let tree = Tree::parse("<div><p>a</p><p>b</p></div>");
+        let r = tree.query_selector_all(":not(:nth-child(2))");
+        // every element except the 2nd child of its parent: html, head, body, div, the 1st p
+        assert!(r.iter().any(|&h| tree.local_name(h) == Some("p")));
+        assert_eq!(
+            tree.query_selector_all("p:not(:nth-child(2))").len(),
+            1,
+            "only the first <p> survives :not(:nth-child(2))"
+        );
+    }
+
+    #[test]
+    fn tokenizer_lenient_edges() {
+        let tree = Tree::parse("<div><p>x</p></div>");
+        // universal `*` selector: parsed compound has tag None → matches every element
+        // (exercises the `s == \"*\"` any-tag branch of parse_compound_tokens).
+        let all = tree.query_selector_all("*");
+        assert!(all.len() >= 4); // html, head, body, div, p
+        assert_eq!(tree.query_selector_all("*.nope").len(), 0); // `*` + a class that matches nothing
+        // a stray top-level closer is not part of any token — it is dropped, so the
+        // selector degrades to the rest (exercises the `']' | ')'` arm of tokenize;
+        // without that arm the ident scanner would stall on the special char).
+        assert_eq!(tree.query_selector_all("div]").len(), 1);
+        assert_eq!(tree.query_selector_all("p)").len(), 1);
+    }
+
+    #[test]
+    fn descendant_then_child_backtracks() {
+        // `.a > .b .c`: a `.c` inside a `.b` that is a DIRECT child of `.a`.
+        // The matching `.b` (the outer one) is a child of `.a`; a *nearer* `.b`
+        // (the inner one) is NOT a child of `.a`. A greedy nearest-ancestor matcher
+        // picks the inner `.b`, fails the `> .a` child check, and wrongly reports no
+        // match. The correct answer is 1 — the outer `.b` satisfies the chain.
+        let tree = Tree::parse(
+            "<div class=a>\
+               <div class=b>\
+                 <div class=x>\
+                   <div class=b>\
+                     <div class=c>c</div>\
+                   </div>\
+                 </div>\
+               </div>\
+             </div>",
+        );
+        assert_eq!(tree.query_selector_all(".a > .b .c").len(), 1);
+    }
+
+    #[test]
+    fn dangling_trailing_combinator_matches_head_only() {
+        // A trailing combinator with nothing after it (`a >`) is inert: it never
+        // lands in `Complex.rest`, so the selector is exactly `a`. This preserves
+        // the old behavior BY RESULT now that "leading/trailing combinator" is
+        // unrepresentable in the AST (head+tail).
+        let tree = Tree::parse(
+            "<section><div><a>1</a></div><a>2</a></section>",
+        );
+        let plain = tree.query_selector_all("a");
+        let dangling = tree.query_selector_all("a >");
+        assert_eq!(dangling.len(), plain.len());
+        assert_eq!(*dangling, *plain); // same handles, same document order
+        // and `matches` agrees element-by-element
+        for &h in plain.iter() {
+            assert!(tree.matches(h, "a >"));
+        }
+        // a leading combinator is likewise inert: `> a` == `a`
+        assert_eq!(*tree.query_selector_all("> a"), *plain);
+    }
+
+    #[test]
+    fn adjacent_sibling_combinator() {
+        // `a + b`: b must be the element IMMEDIATELY after an `a` sibling. A non-
+        // element node (text) between them is skipped (previous_element_sibling).
+        let tree = Tree::parse(
+            "<div><h2>t</h2> <p>after</p><span>x</span><p>not-after-h2</p></div>",
+        );
+        // the first <p> is the immediate element sibling after <h2> → matches once
+        let r = tree.query_selector_all("h2 + p");
+        assert_eq!(r.len(), 1);
+        assert_eq!(tree.text_content(r[0]), "after");
+        // `span + p` → the 2nd <p> immediately follows the <span>
+        let r2 = tree.query_selector_all("span + p");
+        assert_eq!(r2.len(), 1);
+        assert_eq!(tree.text_content(r2[0]), "not-after-h2");
+        // no previous element sibling → no match (the <h2> is first)
+        assert_eq!(tree.query_selector_all("p + h2").len(), 0);
+    }
+
+    #[test]
+    fn general_sibling_combinator() {
+        // `a ~ b`: b is ANY element preceded (at any distance) by a matching `a`.
+        let tree = Tree::parse(
+            "<div><span class=mark>m</span><p>1</p><b>x</b><p>2</p></div>",
+        );
+        // both <p> follow the .mark span → 2 matches
+        assert_eq!(tree.query_selector_all(".mark ~ p").len(), 2);
+        // a sibling with no preceding .mark → exhausts to false
+        let t2 = Tree::parse("<div><p>1</p><span class=mark>m</span></div>");
+        assert_eq!(t2.query_selector_all(".mark ~ p").len(), 0);
+    }
+
+    #[test]
+    fn general_sibling_backtracks() {
+        // Mirrors the descendant backtracking case but over PREVIOUS element
+        // siblings: `.a ~ .b ~ .c` must try every preceding sibling, not just the
+        // nearest. Here .c is preceded by .b which is preceded by .a, but a SECOND
+        // .b sits between .a and the first .b with no .a before it directly — the
+        // matcher must backtrack across siblings to satisfy the full chain.
+        let tree = Tree::parse(
+            "<ul>               <li class=a>a</li>               <li class=q>q</li>               <li class=b>b1</li>               <li class=c>c</li>             </ul>",
+        );
+        // .a ~ .b ~ .c : .c's preceding .b is li.b, whose preceding .a is li.a → 1
+        assert_eq!(tree.query_selector_all(".a ~ .b ~ .c").len(), 1);
+        // adjacent vs general: `.a + .c` (immediate) does NOT match (q is between)
+        assert_eq!(tree.query_selector_all(".a + .c").len(), 0);
+        // but `.a ~ .c` does (general sibling, any distance)
+        assert_eq!(tree.query_selector_all(".a ~ .c").len(), 1);
+    }
+
+    #[test]
+    fn pseudo_is_selector_list() {
+        let tree = Tree::parse(
+            "<div class=a>1</div><div class=b>2</div><div class=c>3</div>",
+        );
+        // :is(.a, .b) → the .a and .b divs (2), not .c
+        assert_eq!(tree.query_selector_all(":is(.a, .b)").len(), 2);
+        // single-item list is the degenerate case
+        assert_eq!(tree.query_selector_all(":is(.c)").len(), 1);
+        // :is matching nothing
+        assert_eq!(tree.query_selector_all(":is(.nope)").len(), 0);
+    }
+
+    #[test]
+    fn pseudo_is_with_combinator_and_descendant_arg() {
+        // div:is(.x) anchors the :is list at the element; combine with a descendant.
+        let tree = Tree::parse(
+            "<div class=x><span class=y>hit</span></div>             <div class=z><span class=y>miss</span></div>",
+        );
+        // div:is(.x) .y → only the .y inside the div.x
+        let r = tree.query_selector_all("div:is(.x) .y");
+        assert_eq!(r.len(), 1);
+        assert_eq!(tree.text_content(r[0]), "hit");
+        // :is() argument may itself be a complex selector (descendant)
+        let t2 = Tree::parse(
+            "<section><p class=t>a</p></section><p class=t>b</p>",
+        );
+        // :is(section .t, .nope) → only the .t inside the section
+        let r2 = t2.query_selector_all(":is(section .t, .nope)");
+        assert_eq!(r2.len(), 1);
+        assert_eq!(t2.text_content(r2[0]), "a");
+    }
+
+    #[test]
+    fn pseudo_where_matches_like_is() {
+        let tree = Tree::parse("<i class=a>1</i><i class=b>2</i><i>3</i>");
+        // :where(.a,.b) matches identically to :is (specificity aside)
+        assert_eq!(tree.query_selector_all(":where(.a,.b)").len(), 2);
+        assert_eq!(tree.query_selector_all("i:where(.a)").len(), 1);
+    }
+
+    #[test]
+    fn pseudo_not_selector_list() {
+        let tree = Tree::parse(
+            "<ul><li class=a>1</li><li class=b>2</li><li class=c>3</li></ul>",
+        );
+        // :not(.a, .b) → only the .c li survives
+        let r = tree.query_selector_all("li:not(.a, .b)");
+        assert_eq!(r.len(), 1);
+        assert_eq!(tree.text_content(r[0]), "3");
+        // :not(div, span) on a tag list — none of these <li> are div or span → all 3
+        assert_eq!(tree.query_selector_all("li:not(div, span)").len(), 3);
+        // :not(li, .c) → li that is neither (none) → 0
+        assert_eq!(tree.query_selector_all("li:not(li, .c)").len(), 0);
+    }
+
+    #[test]
+    fn pseudo_has_descendant() {
+        let tree = Tree::parse(
+            "<div id=hit><span class=x>y</span></div><div id=miss><span>z</span></div>",
+        );
+        // div:has(.x) → only the div containing a .x descendant
+        let r = tree.query_selector_all("div:has(.x)");
+        assert_eq!(r.len(), 1);
+        assert_eq!(tree.get_attribute(r[0], "id"), Some("hit"));
+        // negative: nothing has a .absent descendant
+        assert_eq!(tree.query_selector_all("div:has(.absent)").len(), 0);
+    }
+
+    #[test]
+    fn pseudo_has_child_combinator() {
+        let tree = Tree::parse(
+            "<ul id=a><li class=active>1</li></ul>             <ul id=b><li>2</li></ul>             <ul id=c><div><li class=active>deep</li></div></ul>",
+        );
+        // ul:has(> li.active) → only the ul with a DIRECT li.active child (a).
+        // c has an li.active but it is a grandchild → must NOT match.
+        let r = tree.query_selector_all("ul:has(> li.active)");
+        assert_eq!(r.len(), 1);
+        assert_eq!(tree.get_attribute(r[0], "id"), Some("a"));
+        // descendant form (no `>`) DOES reach the grandchild → a and c match
+        assert_eq!(tree.query_selector_all("ul:has(li.active)").len(), 2);
+    }
+
+    #[test]
+    fn pseudo_has_adjacent_sibling() {
+        let tree = Tree::parse(
+            "<section><h2 id=p>t</h2><p>para</p></section>             <section><h2 id=q>t2</h2><div>not-p</div></section>",
+        );
+        // h2:has(+ p) → only the h2 immediately followed by a <p> (the first one)
+        let r = tree.query_selector_all("h2:has(+ p)");
+        assert_eq!(r.len(), 1);
+        assert_eq!(tree.get_attribute(r[0], "id"), Some("p"));
+    }
+
+    #[test]
+    fn pseudo_has_multi_compound_scoped() {
+        // :has(.a .b) — a multi-compound relative complex. The match must be
+        // CONFINED to the scope element's subtree: `.a` and `.b` both inside it.
+        let tree = Tree::parse(
+            "<section id=in><div class=a><span class=b>hit</span></div></section>             <section id=out><span class=b>noA</span></section>             <div class=a><section id=split><span class=b>aOutside</span></section></div>",
+        );
+        let r = tree.query_selector_all("section:has(.a .b)");
+        // `in` matches (.a and .b both inside). `out` has no .a. `split` has a .b
+        // but its only .a ancestor is OUTSIDE the section → scope cap rejects it.
+        assert_eq!(r.len(), 1);
+        assert_eq!(tree.get_attribute(r[0], "id"), Some("in"));
+    }
+
+    #[test]
+    fn pseudo_has_general_sibling_and_list() {
+        let tree = Tree::parse(
+            "<div><h3 id=a>x</h3><span>s</span><p>after</p></div>             <div><h3 id=b>y</h3><span>only</span></div>",
+        );
+        // h3:has(~ p) → an h3 with SOME following sibling <p> (a, not b)
+        let r = tree.query_selector_all("h3:has(~ p)");
+        assert_eq!(r.len(), 1);
+        assert_eq!(tree.get_attribute(r[0], "id"), Some("a"));
+        // a comma list of relative selectors: matches if ANY relative matches
+        assert_eq!(tree.query_selector_all("h3:has(~ p, ~ .none)").len(), 1);
+        // empty :has() never matches
+        assert_eq!(tree.query_selector_all("div:has()").len(), 0);
+    }
+
+    #[test]
+    fn pseudo_has_relative_complex_combinators() {
+        // The relative complex inside :has() may itself contain combinators —
+        // exercises the scoped matcher's Child/Adjacent/GeneralSibling arms.
+        let tree = Tree::parse(
+            "<section id=s1><div class=a><span class=b>x</span></div></section>             <section id=s2><div class=a></div><span class=b>y</span></section>             <section id=s3><div class=a></div><i>z</i><span class=b>w</span></section>",
+        );
+        // child combinator in the relative complex → s1 only
+        let gt = tree.query_selector_all("section:has(.a > .b)");
+        assert_eq!(gt.len(), 1);
+        assert_eq!(tree.get_attribute(gt[0], "id"), Some("s1"));
+        // adjacent → s2 only
+        let plus = tree.query_selector_all("section:has(.a + .b)");
+        assert_eq!(plus.len(), 1);
+        assert_eq!(tree.get_attribute(plus[0], "id"), Some("s2"));
+        // general sibling → s2 and s3
+        assert_eq!(tree.query_selector_all("section:has(.a ~ .b)").len(), 2);
+    }
+
+    #[test]
+    fn pseudo_has_ancestor_walk_iterates_within_scope() {
+        // `.b` nested two levels under `.a` with a non-`.a` wrapper between → the
+        // scoped descendant ancestor walk must skip the wrapper and keep ascending
+        // (but never reach/pass the scope element).
+        let tree = Tree::parse(
+            "<section id=hit><div class=a><div class=wrap><span class=b>x</span></div></div></section>             <section id=miss><div class=wrap><span class=b>y</span></div></section>",
+        );
+        let r = tree.query_selector_all("section:has(.a .b)");
+        assert_eq!(r.len(), 1);
+        assert_eq!(tree.get_attribute(r[0], "id"), Some("hit"));
+    }
+
+    #[test]
+    fn pseudo_has_leading_combinator_binds_head_not_whole_complex() {
+        // Regression: a leading combinator constrains the HEAD compound of the relative
+        // complex, not the whole thing. Anchoring the entire complex at a child/sibling
+        // candidate made `> .a .b` / `> .a > .b` return 0.
+        let tree = Tree::parse(
+            "<div id=u><span class=a><span class=b>hit</span></span></div>             <div id=v><div><span class=a><span class=b>deep</span></span></div></div>",
+        );
+        // u: `.a` is a DIRECT child, `.b` a descendant of it → match
+        assert_eq!(tree.query_selector_all("#u:has(> .a .b)").len(), 1);
+        assert_eq!(tree.query_selector_all("#u:has(> .a > .b)").len(), 1);
+        // v: `.a` is a grandchild, so `> .a …` must NOT match, but descendant form does
+        assert_eq!(tree.query_selector_all("#v:has(> .a .b)").len(), 0);
+        assert_eq!(tree.query_selector_all("#v:has(.a .b)").len(), 1);
+    }
+
+    #[test]
+    fn pseudo_has_sibling_combinator_binds_head_multi_compound() {
+        let tree = Tree::parse(
+            "<h2 id=h>t</h2><div class=s><span class=x>hit</span></div>             <p id=p>t</p><em>z</em><div class=s2><span class=x>y</span></div>",
+        );
+        // head bound to the subject's next / following sibling, then a descendant tail
+        assert_eq!(tree.query_selector_all("#h:has(+ div .x)").len(), 1);
+        assert_eq!(tree.query_selector_all("#h:has(~ div .x)").len(), 1);
+        // #p's IMMEDIATE next sibling is <em>, not the div → `+` fails, `~` succeeds
+        assert_eq!(tree.query_selector_all("#p:has(+ div .x)").len(), 0);
+        assert_eq!(tree.query_selector_all("#p:has(~ div .x)").len(), 1);
+    }
+
+    #[test]
+    fn form_state_pseudos_read_live_property_over_attribute() {
+        use super::super::tree::FormProp;
+        let mut tree = Tree::parse(
+            "<input id=a><input id=b checked><select id=s><option id=o>x</option></select>",
+        );
+        let a = tree.query_selector("#a").unwrap();
+        let b = tree.query_selector("#b").unwrap();
+        let o = tree.query_selector("#o").unwrap();
+        // baseline: attribute-driven (parity with the pre-existing behavior)
+        assert_eq!(tree.query_selector_all(":checked").len(), 1); // only #b (attr)
+        // set the live property on #a WITHOUT the attribute → now matches (like React)
+        tree.set_form_property(a, FormProp::Checked, true);
+        assert!(tree.matches(a, ":checked"));
+        assert_eq!(tree.query_selector_all("input:checked").len(), 2); // #a (prop) + #b (attr)
+        // live property overrides an attribute the other way: #b unchecked despite attr
+        tree.set_form_property(b, FormProp::Checked, false);
+        assert!(!tree.matches(b, ":checked"));
+        // clearing reverts to the attribute
+        tree.clear_form_property(b, FormProp::Checked);
+        assert!(tree.matches(b, ":checked"));
+        // clearing an unset property is a no-op (doesn't bump / panic)
+        let v = tree.version;
+        tree.clear_form_property(b, FormProp::ReadOnly);
+        assert_eq!(tree.version, v);
+        // option :selected / :checked via the live selected property
+        assert!(!tree.matches(o, ":checked"));
+        tree.set_form_property(o, FormProp::Selected, true);
+        assert!(tree.matches(o, ":checked")); // option → reads Selected
+        assert!(tree.matches(o, ":selected"));
+        // disabled / required / read-only likewise honor the live property
+        assert!(!tree.matches(a, ":disabled"));
+        tree.set_form_property(a, FormProp::Disabled, true);
+        assert!(tree.matches(a, ":disabled"));
+        assert!(!tree.matches(a, ":enabled"));
+    }
+
+    #[test]
+    fn checked_query_rejects_malformed_selectors_like_the_js_runtime() {
+        use super::super::query::SelectorError;
+        let tree = Tree::parse("<div class=a><span id=s>x</span></div>");
+        // valid selectors go through unchanged and return the same as the lenient path
+        assert_eq!(tree.query_selector_all_checked(".a span").unwrap().len(), 1);
+        assert_eq!(tree.query_selector_checked("#s").unwrap(), tree.query_selector("#s"));
+        let s = tree.query_selector("#s").unwrap();
+        assert!(tree.matches_checked(s, "span#s").unwrap());
+        // malformed selectors are rejected with the same taxonomy the JS side throws on
+        assert_eq!(
+            tree.query_selector_all_checked(">"),
+            Err(SelectorError::EmptyCompound) // leading combinator
+        );
+        assert_eq!(
+            tree.query_selector_all_checked("a > > b"),
+            Err(SelectorError::EmptyCompound) // doubled combinator
+        );
+        assert_eq!(
+            tree.query_selector_all_checked("a + > b"),
+            Err(SelectorError::EmptyCompound) // mixed combinator
+        );
+        assert_eq!(
+            tree.query_selector_all_checked("div!p"),
+            Err(SelectorError::UnexpectedChar('!'))
+        );
+        assert_eq!(
+            tree.query_selector_all_checked("[href"),
+            Err(SelectorError::UnterminatedAttribute)
+        );
+        assert!(tree.query_selector_checked("[href").is_err());
+        assert!(tree.matches_checked(s, ">").is_err());
+        // empties / commas are NOT errors (dropped, exactly like the JS parser)
+        assert!(tree.query_selector_all_checked("").is_ok());
+        assert!(tree.query_selector_all_checked(",").is_ok());
+        // empty middle segment dropped; `span` still matches the one span
+        assert_eq!(tree.query_selector_all_checked("a,,span").unwrap().len(), 1);
+        // a TRAILING combinator is tolerated (matches JS, which drops it)
+        assert!(tree.query_selector_all_checked("span >").is_ok());
+        // Display renders a human message
+        assert_eq!(
+            SelectorError::UnexpectedChar('!').to_string(),
+            "unexpected '!' in selector"
+        );
+        assert_eq!(SelectorError::EmptyCompound.to_string(), "empty compound (stray combinator)");
+        assert_eq!(
+            SelectorError::UnterminatedAttribute.to_string(),
+            "unterminated attribute selector"
+        );
+    }
+
+    #[test]
+    fn attr_selector_unterminated_quote_does_not_panic() {
+        // Regression: a lone quote char as the attribute value (unterminated `[a="`)
+        // used to panic in parse_attr via `val[1..0]`. Must degrade gracefully.
+        let tree = Tree::parse("<div a=\"\"></div><div a=x></div>");
+        // no panic; the queries simply return without crashing the process
+        let _ = tree.query_selector_all("div[a=\"");
+        let _ = tree.query_selector_all("div[a='");
+        let _ = tree.query_selector_all("div[a=\"\"]");
     }
 }

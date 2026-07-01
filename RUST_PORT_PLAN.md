@@ -263,8 +263,8 @@ and compute-shaped moves to Rust.
 
 ## 8. Build status (rtdom — the Rust-native runtime)
 
-Crate module `src/rtdom/` (pure Rust, native API, no wasm/napi; compiled into the default rlib).
-Verified by `cargo test --lib rtdom`.
+Published crate `crates/turbo-dom` (pure Rust, native API, no wasm/napi — its own workspace
+member, not an in-parser-crate module). Verified by `cargo test -p turbo-dom`.
 
 | Module | Status | Notes |
 |---|---|---|

@@ -10,9 +10,9 @@
 //! original string (honest passthrough for url()/gradients/var()/keywords).
 //!
 //! Two modes, matching real browsers:
-//!   * `include_named = false` (inline el.style): hex + rgb()/hsl() canonicalize;
+//!   * `include_named = false` (inline el.style): hex + `rgb()/hsl()` canonicalize;
 //!     NAMED keywords (`red`, `transparent`) stay as authored — Chrome keeps them.
-//!   * `include_named = true`  (computed getComputedStyle): names resolve to rgb()
+//!   * `include_named = true`  (computed getComputedStyle): names resolve to `rgb()`
 //!     too.
 
 /// Properties whose value is a `<color>` (longhands + the single-token shorthands
@@ -40,6 +40,7 @@ pub const COLOR_PROPS: &[&str] = &[
 ];
 
 /// Whether `name` (a CSS property name) carries a `<color>` value.
+#[must_use]
 pub fn is_color_prop(name: &str) -> bool {
     COLOR_PROPS.contains(&name)
 }
@@ -51,7 +52,7 @@ fn named_color_hex(name: &str) -> Option<&'static str> {
     Some(match name {
         "aliceblue" => "f0f8ff",
         "antiquewhite" => "faebd7",
-        "aqua" => "00ffff",
+        "aqua" | "cyan" => "00ffff",
         "aquamarine" => "7fffd4",
         "azure" => "f0ffff",
         "beige" => "f5f5dc",
@@ -69,13 +70,11 @@ fn named_color_hex(name: &str) -> Option<&'static str> {
         "cornflowerblue" => "6495ed",
         "cornsilk" => "fff8dc",
         "crimson" => "dc143c",
-        "cyan" => "00ffff",
         "darkblue" => "00008b",
         "darkcyan" => "008b8b",
         "darkgoldenrod" => "b8860b",
-        "darkgray" => "a9a9a9",
+        "darkgray" | "darkgrey" => "a9a9a9",
         "darkgreen" => "006400",
-        "darkgrey" => "a9a9a9",
         "darkkhaki" => "bdb76b",
         "darkmagenta" => "8b008b",
         "darkolivegreen" => "556b2f",
@@ -85,27 +84,24 @@ fn named_color_hex(name: &str) -> Option<&'static str> {
         "darksalmon" => "e9967a",
         "darkseagreen" => "8fbc8f",
         "darkslateblue" => "483d8b",
-        "darkslategray" => "2f4f4f",
-        "darkslategrey" => "2f4f4f",
+        "darkslategray" | "darkslategrey" => "2f4f4f",
         "darkturquoise" => "00ced1",
         "darkviolet" => "9400d3",
         "deeppink" => "ff1493",
         "deepskyblue" => "00bfff",
-        "dimgray" => "696969",
-        "dimgrey" => "696969",
+        "dimgray" | "dimgrey" => "696969",
         "dodgerblue" => "1e90ff",
         "firebrick" => "b22222",
         "floralwhite" => "fffaf0",
         "forestgreen" => "228b22",
-        "fuchsia" => "ff00ff",
+        "fuchsia" | "magenta" => "ff00ff",
         "gainsboro" => "dcdcdc",
         "ghostwhite" => "f8f8ff",
         "gold" => "ffd700",
         "goldenrod" => "daa520",
-        "gray" => "808080",
+        "gray" | "grey" => "808080",
         "green" => "008000",
         "greenyellow" => "adff2f",
-        "grey" => "808080",
         "honeydew" => "f0fff0",
         "hotpink" => "ff69b4",
         "indianred" => "cd5c5c",
@@ -120,21 +116,18 @@ fn named_color_hex(name: &str) -> Option<&'static str> {
         "lightcoral" => "f08080",
         "lightcyan" => "e0ffff",
         "lightgoldenrodyellow" => "fafad2",
-        "lightgray" => "d3d3d3",
+        "lightgray" | "lightgrey" => "d3d3d3",
         "lightgreen" => "90ee90",
-        "lightgrey" => "d3d3d3",
         "lightpink" => "ffb6c1",
         "lightsalmon" => "ffa07a",
         "lightseagreen" => "20b2aa",
         "lightskyblue" => "87cefa",
-        "lightslategray" => "778899",
-        "lightslategrey" => "778899",
+        "lightslategray" | "lightslategrey" => "778899",
         "lightsteelblue" => "b0c4de",
         "lightyellow" => "ffffe0",
         "lime" => "00ff00",
         "limegreen" => "32cd32",
         "linen" => "faf0e6",
-        "magenta" => "ff00ff",
         "maroon" => "800000",
         "mediumaquamarine" => "66cdaa",
         "mediumblue" => "0000cd",
@@ -181,8 +174,7 @@ fn named_color_hex(name: &str) -> Option<&'static str> {
         "silver" => "c0c0c0",
         "skyblue" => "87ceeb",
         "slateblue" => "6a5acd",
-        "slategray" => "708090",
-        "slategrey" => "708090",
+        "slategray" | "slategrey" => "708090",
         "snow" => "fffafa",
         "springgreen" => "00ff7f",
         "steelblue" => "4682b4",
@@ -204,13 +196,7 @@ fn named_color_hex(name: &str) -> Option<&'static str> {
 /// JS `clamp255 = (n) => (n < 0 ? 0 : n > 255 ? 255 : n) | 0`.
 /// The `| 0` is a truncation-toward-zero to i32 of an already-clamped value.
 fn clamp255(n: f64) -> i64 {
-    let c = if n < 0.0 {
-        0.0
-    } else if n > 255.0 {
-        255.0
-    } else {
-        n
-    };
+    let c = n.clamp(0.0, 255.0);
     // ToInt32 / `| 0` truncates toward zero.
     c.trunc() as i64
 }
@@ -228,7 +214,7 @@ fn format_alpha(a: f64) -> String {
     }
     // Render with up to 3 decimals, then strip trailing zeros (and a bare trailing
     // dot, though %.3 of a non-integer never produces one) in a single pass.
-    let s = format!("{:.3}", rounded);
+    let s = format!("{rounded:.3}");
     s.trim_end_matches('0').trim_end_matches('.').to_string()
 }
 
@@ -240,8 +226,8 @@ fn rgb(r: f64, g: f64, b: f64, a: Option<f64>) -> String {
     let g = clamp255(g);
     let b = clamp255(b);
     match a {
-        None => format!("rgb({}, {}, {})", r, g, b),
-        Some(av) if av >= 1.0 => format!("rgb({}, {}, {})", r, g, b),
+        None => format!("rgb({r}, {g}, {b})"),
+        Some(av) if av >= 1.0 => format!("rgb({r}, {g}, {b})"),
         Some(av) => {
             let av = if av < 0.0 { 0.0 } else { av };
             format!("rgba({}, {}, {}, {})", r, g, b, format_alpha(av))
@@ -270,7 +256,7 @@ fn hex_to_rgb(v: &str) -> Option<String> {
         // Each digit doubled: parseInt(h[i]+h[i], 16).
         let dbl = |i: usize| {
             let c = bytes[i] as char;
-            parse_hex_byte(&format!("{}{}", c, c))
+            parse_hex_byte(&format!("{c}{c}"))
         };
         let r = dbl(0);
         let g = dbl(1);
@@ -439,9 +425,10 @@ fn hsl_to_rgb(v: &str) -> Option<String> {
 /// Canonicalize one color value, or `None` if unrecognized (→ caller passthrough,
 /// keeping the original authored string).
 ///
-/// `include_named = false` (inline `el.style`): hex + rgb()/hsl() canonicalize;
+/// `include_named = false` (inline `el.style`): hex + `rgb()/hsl()` canonicalize;
 /// named keywords / `transparent` stay as authored (return `None`).
 /// `include_named = true` (computed style): names + `transparent` resolve too.
+#[must_use]
 pub fn canonicalize_color(value: &str, include_named: bool) -> Option<String> {
     if value.is_empty() {
         return None;
@@ -465,7 +452,7 @@ pub fn canonicalize_color(value: &str, include_named: bool) -> Option<String> {
             return Some("rgba(0, 0, 0, 0)".to_string());
         }
         if let Some(hex) = named_color_hex(&lower) {
-            return hex_to_rgb(&format!("#{}", hex));
+            return hex_to_rgb(&format!("#{hex}"));
         }
     }
     None

@@ -24,6 +24,7 @@ pub struct ImageData {
 
 impl ImageData {
     /// Allocate a zero-filled RGBA buffer of `width * height * 4` bytes.
+    #[must_use]
     pub fn new(width: u32, height: u32) -> Self {
         let len = (width as usize) * (height as usize) * 4;
         ImageData {
@@ -52,11 +53,13 @@ pub struct CanvasPattern;
 pub struct Canvas2dContext;
 
 impl Canvas2dContext {
+    #[must_use]
     pub fn new() -> Self {
         Canvas2dContext
     }
 
-    /// `measureText`: width = char count * CHAR_WIDTH (matches the JS stub).
+    /// `measureText`: width = char count * `CHAR_WIDTH` (matches the JS stub).
+    #[must_use]
     pub fn measure_text(&self, text: &str) -> TextMetrics {
         TextMetrics {
             width: text.chars().count() as f64 * CHAR_WIDTH,
@@ -64,10 +67,12 @@ impl Canvas2dContext {
     }
 
     /// `getImageData`: zero-filled RGBA buffer of length `w * h * 4`.
+    #[must_use]
     pub fn get_image_data(&self, _x: f64, _y: f64, w: u32, h: u32) -> ImageData {
         ImageData::new(w, h)
     }
 
+    #[must_use]
     pub fn create_linear_gradient(
         &self,
         _x0: f64,
@@ -78,6 +83,7 @@ impl Canvas2dContext {
         CanvasGradient
     }
 
+    #[must_use]
     pub fn create_radial_gradient(
         &self,
         _x0: f64,
@@ -90,6 +96,7 @@ impl Canvas2dContext {
         CanvasGradient
     }
 
+    #[must_use]
     pub fn create_pattern(&self) -> CanvasPattern {
         CanvasPattern
     }
@@ -123,10 +130,12 @@ pub struct HtmlCanvas {
 }
 
 impl HtmlCanvas {
+    #[must_use]
     pub fn new(width: u32, height: u32) -> Self {
         HtmlCanvas { width, height }
     }
 
+    #[must_use]
     pub fn get_context_2d(&self) -> Canvas2dContext {
         Canvas2dContext::new()
     }
@@ -176,16 +185,15 @@ mod tests {
         let mut rad = ctx.create_radial_gradient(0.0, 0.0, 1.0, 0.0, 0.0, 5.0);
         rad.add_color_stop(0.5, "red");
 
-        let mut standalone = CanvasGradient::default();
+        let mut standalone = CanvasGradient;
         standalone.add_color_stop(0.0, "blue");
 
         let _pat = ctx.create_pattern();
-        let _pat2 = CanvasPattern::default();
     }
 
     #[test]
     fn noop_draw_calls() {
-        let ctx = Canvas2dContext::default();
+        let ctx = Canvas2dContext;
         ctx.fill_rect(0.0, 0.0, 1.0, 1.0);
         ctx.clear_rect(0.0, 0.0, 1.0, 1.0);
         ctx.stroke_rect(0.0, 0.0, 1.0, 1.0);

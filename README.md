@@ -219,14 +219,13 @@ let id = dom.tree.get_attribute(cards[0], "id");            // Some("hero") — 
 let style = cascade::computed_style(&dom.tree, cards[0]);   // partial honest cascade
 ```
 
-- **crates.io:** [`turbo-dom`](https://crates.io/crates/turbo-dom) — the self-contained,
-  publishable crate (workspace member `crates/turbo-dom/`) with minimal deps
-  (`html5ever` + `rustc-hash`, no napi/wasm) and a runnable `examples/crawl.rs`. 192 tests.
-- **In this repo (parser crate):** the same runtime also lives at `src/rtdom/` behind an
-  off-by-default `rust-runtime` cargo feature, so the published npm `.node`/wasm parser artifacts
-  stay lean. Build it with `npm run build:rtdom`
-  (= `cargo build --release --no-default-features --features rust-runtime`). 100% line coverage,
-  a direct html5lib-tests gate at **99.75%** (`npm run conformance:rtdom`).
+- **crates.io:** [`turbo-dom`](https://crates.io/crates/turbo-dom) — the Rust DOM engine lives
+  here and only here (the workspace-member crate `crates/turbo-dom/`; there is no in-repo
+  `src/rtdom` copy and no `rust-runtime` cargo feature — an earlier feature gated a duplicate copy
+  that was consolidated away). Minimal deps (`html5ever` + `rustc-hash`, no napi/wasm), a runnable
+  `examples/crawl.rs`, 227 tests, 100% line coverage, and a direct html5lib-tests gate at
+  **99.75%**. From the repo: `npm run build:rtdom` (= `cargo build -p turbo-dom --release`),
+  `npm run test:rust` (= `cargo test -p turbo-dom`), `npm run conformance:rtdom`.
 
 ## Limitations (by design)
 
@@ -262,13 +261,13 @@ let style = cascade::computed_style(&dom.tree, cards[0]);   // partial honest ca
 
 ## Development
 
-Requires Node ≥ 18 and a Rust toolchain (`rustup`, stable).
+Requires Node ≥ 24 and a Rust toolchain (`rustup`, stable). `mise.toml` pins both.
 
 ```bash
 npm install
 npm run build           # native addon (.node) + wasm — the JS-consumer artifacts
 npm test                # JS suite (unit, conformance, differential, gauntlets)
-npm run test:rust       # Rust tests: parser core + rtdom (uses --features rust-runtime)
+npm run test:rust       # Rust tests: parser core + the turbo-dom crate (cargo test -p turbo-dom)
 npm run conformance     # html5lib-tests report (parser)
 npm run conformance:rtdom  # html5lib-tests gate run through the rtdom tree
 npm run bench:all       # JS-runtime benchmarks
@@ -276,8 +275,8 @@ npm run build:wasm      # wasm32 parser fallback
 npm run build:rtdom     # pure-Rust DOM runtime (no napi/wasm) — the Rust-consumer build
 ```
 
-The JS runtime (`src/runtime/*.mjs`) and the Rust runtime (`src/rtdom/`, gated behind
-`rust-runtime`) are independent — touching one never affects the other. See
+The JS runtime (`src/runtime/*.mjs`) and the Rust runtime (the `crates/turbo-dom` crate) are
+independent — touching one never affects the other. See
 [RUST_PORT_PLAN.md](./RUST_PORT_PLAN.md) for the dual-runtime architecture and
 [RUST_PORT_PERF_HISTORY.md](./RUST_PORT_PERF_HISTORY.md) for how each JS perf win maps to Rust.
 

@@ -1,0 +1,12 @@
+# Dev toolchain for turbo-dom — pins Rust + Node + wasm tooling so the build, tests,
+# coverage, and the wasm fallback all work out of the box.
+#   - rust 1.96: the repo was on 1.86, which broke napi-build (>=1.88) + cargo-llvm-cov (>=1.87).
+#   - node 24: the documented runtime (CLAUDE.md "Node >= 24").
+#   - wasm-pack / wasm-tools as PREBUILT binaries, NOT `cargo install`: building wasm-pack from
+#     source links the system liblzma, which fails on arm64 Macs carrying an x86_64 Homebrew xz
+#     (architecture mismatch). Prebuilt binaries sidestep the native-link step entirely.
+[tools]
+rust = "1.96.0"
+node = "24"
+"ubi:rustwasm/wasm-pack" = "latest"
+wasm-tools = "latest"

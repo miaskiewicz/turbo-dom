@@ -1,4 +1,4 @@
-//! Pure-Rust port of the FileReader / Blob / File surface.
+//! Pure-Rust port of the `FileReader` / Blob / File surface.
 //!
 //! Ported from `src/runtime/stubs.mjs` (`FileReader`) and `src/runtime/window.mjs`
 //! (`BlobBase`, `makeFile`). Standalone — no `Tree` dependency, pure `std` only.
@@ -28,17 +28,20 @@ impl Blob {
     }
 
     /// The number of bytes (the JS `.size`).
+    #[must_use]
     pub fn size(&self) -> usize {
         self.bytes.len()
     }
 
     /// Borrow the raw bytes.
+    #[must_use]
     pub fn bytes(&self) -> &[u8] {
         &self.bytes
     }
 
     /// `Blob.slice(start, end)` — a new blob over the half-open byte range
     /// `[start, end)`, clamped to the blob's bounds, preserving the MIME type.
+    #[must_use]
     pub fn slice(&self, start: usize, end: usize) -> Blob {
         let len = self.bytes.len();
         let s = start.min(len);
@@ -76,21 +79,25 @@ impl File {
     }
 
     /// Borrow the underlying blob.
+    #[must_use]
     pub fn blob(&self) -> &Blob {
         &self.blob
     }
 
     /// The file's bytes (delegates to the blob).
+    #[must_use]
     pub fn bytes(&self) -> &[u8] {
         self.blob.bytes()
     }
 
     /// The file's size in bytes (delegates to the blob).
+    #[must_use]
     pub fn size(&self) -> usize {
         self.blob.size()
     }
 
     /// The file's MIME type (delegates to the blob).
+    #[must_use]
     pub fn mime_type(&self) -> &str {
         &self.blob.mime_type
     }
@@ -102,15 +109,15 @@ const B64: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz012
 /// Hand-rolled standard base64 encode with `=` padding — no external crate.
 /// Mirrors the pure-JS fallback in `turboBtoa` (window.mjs).
 fn base64_encode(bytes: &[u8]) -> String {
-    let mut out = String::with_capacity((bytes.len() + 2) / 3 * 4);
+    let mut out = String::with_capacity(bytes.len().div_ceil(3) * 4);
     let mut i = 0;
     let len = bytes.len();
     while i < len {
-        let c1 = bytes[i] as u32;
+        let c1 = u32::from(bytes[i]);
         let has2 = i + 1 < len;
         let has3 = i + 2 < len;
-        let c2 = if has2 { bytes[i + 1] as u32 } else { 0 };
-        let c3 = if has3 { bytes[i + 2] as u32 } else { 0 };
+        let c2 = if has2 { u32::from(bytes[i + 1]) } else { 0 };
+        let c3 = if has3 { u32::from(bytes[i + 2]) } else { 0 };
         i += 3;
 
         let e1 = c1 >> 2;
@@ -132,16 +139,19 @@ pub struct FileReader;
 
 impl FileReader {
     /// `readAsText` — UTF-8 lossy decode of the blob's bytes.
+    #[must_use]
     pub fn read_as_text(blob: &Blob) -> String {
         String::from_utf8_lossy(blob.bytes()).into_owned()
     }
 
     /// `readAsDataURL` — `data:<mime>;base64,<base64(bytes)>`.
+    #[must_use]
     pub fn read_as_data_url(blob: &Blob) -> String {
         format!("data:{};base64,{}", blob.mime_type, base64_encode(blob.bytes()))
     }
 
     /// `readAsArrayBuffer` — a copy of the blob's bytes.
+    #[must_use]
     pub fn read_as_array_buffer(blob: &Blob) -> Vec<u8> {
         blob.bytes().to_vec()
     }

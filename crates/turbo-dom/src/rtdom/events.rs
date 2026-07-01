@@ -34,13 +34,14 @@ pub struct Event {
 }
 
 impl Event {
+    #[must_use]
     pub fn new(event_type: &str, bubbles: bool, cancelable: bool) -> Event {
         Event {
             event_type: event_type.to_string(),
             bubbles,
             cancelable,
-            target: 0,
-            current_target: 0,
+            target: Handle(0),
+            current_target: Handle(0),
             phase: Phase::None,
             default_prevented: false,
             propagation_stopped: false,
@@ -59,6 +60,7 @@ impl Event {
         self.propagation_stopped = true;
         self.immediate_stopped = true;
     }
+    #[must_use]
     pub fn default_prevented(&self) -> bool {
         self.default_prevented
     }
@@ -85,6 +87,7 @@ impl Dom {
     pub fn new(tree: Tree) -> Dom {
         Dom { tree, listeners: HashMap::new(), next_id: 0 }
     }
+    #[must_use]
     pub fn parse(html: &str) -> Dom {
         Dom::new(Tree::parse(html))
     }
@@ -122,7 +125,7 @@ impl Dom {
         path.iter().any(|h| {
             self.listeners
                 .get(h)
-                .map_or(false, |v| v.iter().any(|l| l.event_type == event_type))
+                .is_some_and(|v| v.iter().any(|l| l.event_type == event_type))
         })
     }
 
@@ -184,7 +187,7 @@ impl Dom {
                             if i < list.len() {
                                 list[i].cb = cb;
                             }
-                            if list.get(i).map_or(false, |l| l.once) {
+                            if list.get(i).is_some_and(|l| l.once) {
                                 list.remove(i);
                                 if event.immediate_stopped {
                                     break;
@@ -213,7 +216,7 @@ impl Dom {
         self.listeners = registry;
 
         event.phase = Phase::None;
-        event.current_target = 0;
+        event.current_target = Handle(0);
         !event.default_prevented
     }
 }
@@ -269,7 +272,7 @@ mod tests {
         dom.add_event_listener(div, "click", false, false, Box::new(move |_, _| *h.borrow_mut() = true));
         let mut ev = Event::new("click", true, true);
         dom.dispatch_event(button, &mut ev);
-        assert_eq!(*hit.borrow(), false);
+        assert!(!*hit.borrow());
     }
 
     #[test]
@@ -279,7 +282,7 @@ mod tests {
         dom.add_event_listener(a, "click", false, false, Box::new(|_, e| e.prevent_default()));
         let mut ev = Event::new("click", true, true);
         let ok = dom.dispatch_event(a, &mut ev);
-        assert_eq!(ok, false);
+        assert!(!ok);
         assert!(ev.default_prevented());
     }
 
@@ -371,10 +374,10 @@ mod tests {
         let id = dom.add_event_listener(b, "click", false, false, Box::new(move |_, _| *h.borrow_mut() = true));
         dom.remove_event_listener(b, id);
         // also exercise the no-such-target branch (no panic)
-        dom.remove_event_listener(99999, id);
+        dom.remove_event_listener(Handle(99999), id);
         let mut ev = Event::new("click", true, true);
         dom.dispatch_event(b, &mut ev);
-        assert_eq!(*hit.borrow(), false);
+        assert!(!*hit.borrow());
     }
 
     // A non-bubbling event only fires capture + target, never bubble
@@ -437,9 +440,9 @@ mod tests {
         let mut ev = Event::new("click", true, true);
         dom.dispatch_event(button, &mut ev);
         assert_eq!(*seen.borrow(), vec![(div, Phase::Capturing)]);
-        assert_eq!(*target_hit.borrow(), false);
+        assert!(!*target_hit.borrow());
         // after dispatch, phase resets to None and current_target cleared.
         assert_eq!(ev.phase, Phase::None);
-        assert_eq!(ev.current_target, 0);
+        assert_eq!(ev.current_target, Handle(0));
     }
 }

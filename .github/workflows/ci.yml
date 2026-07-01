@@ -47,6 +47,11 @@ jobs:
       - run: npm install --ignore-scripts
 
       - name: Build native addon
+        # Strip symbols from the shipped addon (~13% / ~169 KiB smaller). Scoped to
+        # this napi step rather than [profile.release] so it does not touch the
+        # wasm-bindgen build, whose wasm-opt step cannot validate a stripped module.
+        env:
+          RUSTFLAGS: "-C strip=symbols"
         run: npx napi build --platform --release --target ${{ matrix.target }}
 
       - uses: actions/upload-artifact@v4
@@ -59,6 +64,11 @@ jobs:
   test:
     name: test (linux-x64)
     runs-on: ubuntu-latest
+    # Escalate ALL Rust compiler warnings in our crates to hard errors. Deps are
+    # unaffected — cargo applies `--cap-lints allow` to dependencies, so this only
+    # gates turbo-dom-parser + turbo-dom (complements the clippy `-D warnings` step).
+    env:
+      RUSTFLAGS: "-D warnings"
     steps:
       - uses: actions/checkout@v4
 
@@ -82,6 +92,25 @@ jobs:
 
       - name: Rust core tests
         run: cargo test --lib
+
+      - name: Clippy (workspace + feature variants — zero warnings, pedantic-gated)
+        # Both crates enable clippy::pedantic via [lints.clippy]; -D warnings makes any
+        # pedantic warning fail CI. --workspace covers turbo-dom + turbo-dom-parser
+        # (default/napi); the extra runs cover the root crate's wasm front-ends.
+        run: |
+          cargo clippy --workspace --all-targets -- -D warnings
+          cargo clippy -p turbo-dom-parser --all-targets --no-default-features --features wasm-bind -- -D warnings
+          cargo clippy -p turbo-dom-parser --all-targets --no-default-features --features wasm-runtime -- -D warnings
+
+      - name: Rust DOM runtime tests (turbo-dom crate + conformance gate)
+        run: cargo test -p turbo-dom
+
+      - name: Perf gate (mutation-churn allocation regression)
+        # allocs/op is code-path-determined (load- and opt-level-independent), so it's a
+        # stable CI signal where wall-clock would flake. Run ALONE — CountingAlloc is a
+        # process-global allocator, so a parallel test would pollute the count. Asserts
+        # allocs/op + bytes/op stay under ceiling, locking the overlay/SSO churn wins.
+        run: cargo test -p turbo-dom churn_alloc_gate -- --ignored --nocapture
 
       - name: JS test suite (unit, conformance gate, differential, gauntlets)
         run: node --test 'test/*.mjs'

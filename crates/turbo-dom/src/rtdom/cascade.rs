@@ -9,15 +9,16 @@
 //! numbers or initial values. Out of scope (return `""`): @media/@supports/
 //! @keyframes, :hover & other stateful pseudo-classes, pseudo-elements, the
 //! `inherit`/`initial`/`unset` keywords, CSS custom-property resolution. Colors
-//! ARE canonicalized to rgb()/rgba() (`color.rs`) and bare-0 lengths to `0px`,
+//! ARE canonicalized to `rgb()/rgba()` (`color.rs`) and bare-0 lengths to `0px`,
 //! matching what a browser serializes.
 
 use crate::rtdom::color;
-use crate::rtdom::tree::{Handle, Tree, ELEMENT_NODE};
+use crate::rtdom::tree::{Handle, NodeType, Tree};
 use std::collections::HashMap;
 
 /// camelCase → kebab-case property name (only ever fed kebab from CSS, but kept
 /// for parity with the JS `kebab` used at the proxy boundary).
+#[must_use]
 pub fn kebab(s: &str) -> String {
     let mut out = String::with_capacity(s.len() + 4);
     for c in s.chars() {
@@ -135,20 +136,20 @@ fn looks_like_width_token(p: &str) -> bool {
 fn set_prop(map: &mut HashMap<String, String>, name: &str, val: &str) {
     map.insert(name.to_string(), val.to_string());
     if name == "margin" || name == "padding" {
-        let t: Vec<&str> = val.trim().split_whitespace().collect();
+        let t: Vec<&str> = val.split_whitespace().collect();
         let top = t.first().copied().unwrap_or("");
         let right = t.get(1).copied().unwrap_or(top);
         let bottom = t.get(2).copied().unwrap_or(top);
         let left = t.get(3).copied().unwrap_or(right);
-        map.insert(format!("{}-top", name), top.to_string());
-        map.insert(format!("{}-right", name), right.to_string());
-        map.insert(format!("{}-bottom", name), bottom.to_string());
-        map.insert(format!("{}-left", name), left.to_string());
+        map.insert(format!("{name}-top"), top.to_string());
+        map.insert(format!("{name}-right"), right.to_string());
+        map.insert(format!("{name}-bottom"), bottom.to_string());
+        map.insert(format!("{name}-left"), left.to_string());
     } else if name == "border" {
         let mut width: Option<&str> = None;
         let mut style: Option<&str> = None;
         let mut color_v: Option<&str> = None;
-        for p in val.trim().split_whitespace() {
+        for p in val.split_whitespace() {
             if BORDER_STYLES.contains(&p) {
                 style = Some(p);
             } else if looks_like_width_token(p) {
@@ -160,7 +161,7 @@ fn set_prop(map: &mut HashMap<String, String>, name: &str, val: &str) {
         if let Some(w) = width {
             map.insert("border-width".to_string(), w.to_string());
             for s in ["top", "right", "bottom", "left"] {
-                map.insert(format!("border-{}-width", s), w.to_string());
+                map.insert(format!("border-{s}-width"), w.to_string());
             }
         }
         if let Some(s) = style {
@@ -192,10 +193,7 @@ fn strip_important(v: &str) -> String {
 /// Parse a `prop:val;prop:val` declaration block into `map` (later wins).
 fn parse_decls(text: &str, map: &mut HashMap<String, String>) {
     for decl in text.split(';') {
-        let c = match decl.find(':') {
-            Some(c) => c,
-            None => continue,
-        };
+        let Some(c) = decl.find(':') else { continue };
         let name = decl[..c].trim().to_ascii_lowercase();
         if name.is_empty() {
             continue;
@@ -346,11 +344,21 @@ fn parse_stylesheet(css: &str, start_order: u32, rules: &mut Vec<Rule>) -> u32 {
     let mut i = 0;
     while i < n {
         let mut j = i;
-        while j < n && bytes[j] != b'{' && bytes[j] != b'}' {
+        while j < n && bytes[j] != b'{' && bytes[j] != b'}' && bytes[j] != b';' {
             j += 1;
         }
         if j >= n {
             break;
+        }
+        if bytes[j] == b';' {
+            // A `;` outside any block terminates a statement at-rule (@import/@charset/
+            // @namespace) or a stray semicolon — it has no block, so skip just the
+            // statement and keep scanning for the next real selector. Without this the
+            // statement would be glued onto the following selector and (starting with
+            // `@`) drag that whole rule into the skip.
+            order += 1;
+            i = j + 1;
+            continue;
         }
         if bytes[j] == b'}' {
             i = j + 1;
@@ -448,7 +456,7 @@ fn flattened_parent(tree: &Tree, h: Handle) -> Option<Handle> {
     if tree.is_shadow_root(p) {
         return tree.shadow_host(p); // shadow-root→host hop
     }
-    if tree.node_type(p) == ELEMENT_NODE {
+    if tree.node_type(p) == NodeType::Element {
         Some(p)
     } else {
         None
@@ -500,10 +508,7 @@ fn lookup(map: &HashMap<String, String>, prop: &str) -> String {
             }
         }
     }
-    let v = match v {
-        Some(v) => v,
-        None => return String::new(),
-    };
+    let Some(v) = v else { return String::new() };
     // px-normalize a bare `0` for length properties (browsers report `0px`)
     if v == "0" && is_length_prop(prop) {
         return "0px".to_string();
@@ -551,7 +556,7 @@ fn normalize_font_family(v: &str) -> String {
 /// rule/inline set, never an initial value).
 pub fn computed_style(tree: &Tree, h: Handle) -> HashMap<String, String> {
     let mut map: HashMap<String, String> = HashMap::new();
-    if tree.node_type(h) != ELEMENT_NODE {
+    if tree.node_type(h) != NodeType::Element {
         return map;
     }
 
@@ -645,6 +650,7 @@ pub fn computed_style(tree: &Tree, h: Handle) -> HashMap<String, String> {
 }
 
 /// Resolve one property from a computed-style map — `""` for absent (honest).
+#[must_use]
 pub fn get_property_value(map: &HashMap<String, String>, prop: &str) -> String {
     lookup(map, &prop.to_ascii_lowercase())
 }
@@ -878,6 +884,34 @@ mod tests {
     }
 
     #[test]
+    fn statement_at_rule_does_not_swallow_following_rule() {
+        // A `;`-terminated statement at-rule (@import / @charset / @namespace) has no
+        // block. The rule that follows it must still apply — only the at-statement is
+        // skipped, not the next real selector.
+        let got = gcs_prop(
+            "<style>@import url(\"reset.css\"); #x{color:green}</style><div id=x>hi</div>",
+            "#x",
+            "color",
+        );
+        assert_eq!(got, "rgb(0, 128, 0)");
+        // @charset followed immediately by a rule
+        let got2 = gcs_prop(
+            "<style>@charset \"utf-8\"; .card{color:blue}</style><div id=x class=card>hi</div>",
+            "#x",
+            "color",
+        );
+        assert_eq!(got2, "rgb(0, 0, 255)");
+        // a block at-rule (@media) is still skipped wholesale, and a statement at-rule
+        // BEFORE it does not disturb the later depth-1 rule
+        let got3 = gcs_prop(
+            "<style>@import url(a); @media print { #x{color:red} } #x{color:green}</style><div id=x>hi</div>",
+            "#x",
+            "color",
+        );
+        assert_eq!(got3, "rgb(0, 128, 0)");
+    }
+
+    #[test]
     fn trailing_selector_without_brace_breaks() {
         // a selector with no `{` (j reaches n) breaks the scan; earlier rule applied.
         let got = gcs_prop(
@@ -1015,7 +1049,7 @@ mod tests {
         // computed_style on a non-element (text node) returns an empty map
         let tree = Tree::parse("<div id=x>hello</div>");
         let div = tree.query_selector_all("#x")[0];
-        let text = tree.descendants(div).into_iter().find(|&h| tree.node_type(h) != ELEMENT_NODE);
+        let text = tree.descendants(div).into_iter().find(|&h| tree.node_type(h) != NodeType::Element);
         if let Some(t) = text {
             let map = computed_style(&tree, t);
             assert!(map.is_empty());

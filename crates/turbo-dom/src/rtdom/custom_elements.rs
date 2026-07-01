@@ -35,6 +35,7 @@ pub struct CustomElementDefinition {
 impl CustomElementDefinition {
     /// Convenience constructor for an autonomous custom element (no `extends`,
     /// no observed attributes).
+    #[must_use]
     pub fn new(name: &str) -> Self {
         CustomElementDefinition {
             name: name.to_string(),
@@ -56,6 +57,7 @@ pub struct CustomElementRegistry {
 
 impl CustomElementRegistry {
     /// Create an empty registry.
+    #[must_use]
     pub fn new() -> Self {
         CustomElementRegistry {
             defs: std::collections::HashMap::new(),
@@ -80,11 +82,13 @@ impl CustomElementRegistry {
     }
 
     /// Look up the definition record for a name. `None` if undefined.
+    #[must_use]
     pub fn get(&self, name: &str) -> Option<&CustomElementDefinition> {
         self.defs.get(name)
     }
 
     /// Whether a name has been defined.
+    #[must_use]
     pub fn is_defined(&self, name: &str) -> bool {
         self.defs.contains_key(name)
     }
@@ -118,7 +122,7 @@ mod tests {
         assert_eq!(d.extends, None);
         assert!(d.observed_attributes.is_empty());
         // Default impl path.
-        let def: CustomElementDefinition = Default::default();
+        let def: CustomElementDefinition = CustomElementDefinition::default();
         assert_eq!(def.name, "");
     }
 

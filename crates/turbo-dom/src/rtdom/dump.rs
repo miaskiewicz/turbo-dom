@@ -6,11 +6,9 @@
 //! Format: `line = "| " + "  "*depth + repr`; element `<tag>` (foreign `<svg svg>`),
 //! attrs on own lines depth+1 sorted by display name, text `"v"`, comment `<!-- v -->`,
 //! doctype `<!DOCTYPE name>` or `<!DOCTYPE name "pub" "sys">`, template `content`.
-#![cfg(test)]
 
-use super::tree::{
-    Handle, Tree, COMMENT_NODE, DOCTYPE_NODE, ELEMENT_NODE, FRAGMENT_NODE, TEXT_NODE,
-};
+use super::tree::{Handle, NodeType, Tree};
+use std::fmt::Write;
 
 const NS_LABEL: [&str; 3] = ["", "svg ", "math "];
 
@@ -23,10 +21,10 @@ fn indent(depth: usize, out: &mut String) {
 
 fn serialize_node(tree: &Tree, h: Handle, depth: usize, out: &mut String) {
     match tree.node_type(h) {
-        ELEMENT_NODE => {
+        NodeType::Element => {
             indent(depth, out);
             out.push('<');
-            out.push_str(NS_LABEL[tree.namespace_id(h) as usize]);
+            out.push_str(NS_LABEL[tree.namespace(h) as usize]);
             out.push_str(tree.node_label(h).unwrap_or(""));
             out.push_str(">\n");
             // attributes: own lines, depth+1, sorted by display name (prefix local)
@@ -51,30 +49,30 @@ fn serialize_node(tree: &Tree, h: Handle, depth: usize, out: &mut String) {
                 serialize_node(tree, c, depth + 1, out);
             }
         }
-        TEXT_NODE => {
+        NodeType::Text => {
             indent(depth, out);
             out.push('"');
             out.push_str(&tree.node_value(h).unwrap_or_default());
             out.push_str("\"\n");
         }
-        COMMENT_NODE => {
+        NodeType::Comment => {
             indent(depth, out);
             out.push_str("<!-- ");
             out.push_str(&tree.node_value(h).unwrap_or_default());
             out.push_str(" -->\n");
         }
-        DOCTYPE_NODE => {
+        NodeType::Doctype => {
             indent(depth, out);
             let name = tree.doctype_name(h).unwrap_or("");
             let pub_id = tree.doctype_public_id(h).unwrap_or("");
             let sys_id = tree.doctype_system_id(h).unwrap_or("");
             if pub_id.is_empty() && sys_id.is_empty() {
-                out.push_str(&format!("<!DOCTYPE {name}>\n"));
+                let _ = writeln!(out, "<!DOCTYPE {name}>");
             } else {
-                out.push_str(&format!("<!DOCTYPE {name} \"{pub_id}\" \"{sys_id}\">\n"));
+                let _ = writeln!(out, "<!DOCTYPE {name} \"{pub_id}\" \"{sys_id}\">");
             }
         }
-        FRAGMENT_NODE => {
+        NodeType::Fragment => {
             // <template> synthetic content fragment → prints the literal "content"
             indent(depth, out);
             out.push_str(tree.node_label(h).unwrap_or("content"));

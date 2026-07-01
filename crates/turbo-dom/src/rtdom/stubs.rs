@@ -14,6 +14,7 @@
 //!   * `makeCustomElements` — registry returning JS constructors + Promises.
 //!   * `MutationObserver` — queue keyed to live DOM mutations.
 //!   * `makeLocation` / `makeHistory` — `URL`-backed navigation models.
+//!
 //! The observer *callbacks* are async/JS in the source; here only the single
 //! initial entry value is modeled (the "fire once with one entry" contract).
 
@@ -30,6 +31,7 @@ pub struct Storage {
 }
 
 impl Storage {
+    #[must_use]
     pub fn new() -> Self {
         Storage {
             order: Vec::new(),
@@ -37,6 +39,7 @@ impl Storage {
         }
     }
 
+    #[must_use]
     pub fn get_item(&self, k: &str) -> Option<String> {
         self.map.get(k).cloned()
     }
@@ -61,12 +64,14 @@ impl Storage {
         self.map.clear();
     }
 
+    #[must_use]
     pub fn length(&self) -> usize {
         self.order.len()
     }
 
     /// The i-th key by insertion order (`None` if out of range), mirroring
     /// `Storage.key(i)`.
+    #[must_use]
     pub fn key(&self, i: usize) -> Option<String> {
         self.order.get(i).cloned()
     }
@@ -95,6 +100,7 @@ impl Default for Viewport {
 /// (portrait|landscape). Multiple features AND together. A query with no
 /// recognized feature (e.g. `"screen"`) returns `false` — matching the JS,
 /// which returns `any && matched` (and `any` is false for feature-less queries).
+#[must_use]
 pub fn eval_media_query(query: &str, vp: &Viewport) -> bool {
     let w = vp.width;
     let h = vp.height;
@@ -105,10 +111,10 @@ pub fn eval_media_query(query: &str, vp: &Viewport) -> bool {
     for (feat, val) in scan_features(&q) {
         any = true;
         match feat.as_str() {
-            "min-width" => matched = matched && parse_px(&val).map_or(false, |n| w >= n),
-            "max-width" => matched = matched && parse_px(&val).map_or(false, |n| w <= n),
-            "min-height" => matched = matched && parse_px(&val).map_or(false, |n| h >= n),
-            "max-height" => matched = matched && parse_px(&val).map_or(false, |n| h <= n),
+            "min-width" => matched = matched && parse_px(&val).is_some_and(|n| w >= n),
+            "max-width" => matched = matched && parse_px(&val).is_some_and(|n| w <= n),
+            "min-height" => matched = matched && parse_px(&val).is_some_and(|n| h >= n),
+            "max-height" => matched = matched && parse_px(&val).is_some_and(|n| h <= n),
             "orientation" => {
                 let want = if w >= h { "landscape" } else { "portrait" };
                 matched = matched && val == want;
@@ -195,6 +201,7 @@ pub struct Rect {
 impl Rect {
     /// Build a rect from a synthetic size, mirroring `rectOf`: positions 0,
     /// right/bottom = width/height.
+    #[must_use]
     pub fn from_size(width: f64, height: f64) -> Self {
         Rect {
             x: 0.0,
@@ -209,7 +216,7 @@ impl Rect {
     }
 }
 
-/// A single ResizeObserver entry (the "fire once with one entry" payload).
+/// A single `ResizeObserver` entry (the "fire once with one entry" payload).
 /// `target` is the caller's opaque handle id — the pure-Rust runtime has no JS
 /// element reference, so the consumer threads through its own node handle.
 #[derive(Debug, Clone)]
@@ -220,7 +227,7 @@ pub struct ResizeObserverEntry<T> {
     pub block_size: f64,
 }
 
-/// The single initial entry a ResizeObserver fires for `target`, given its
+/// The single initial entry a `ResizeObserver` fires for `target`, given its
 /// synthetic size. Mirrors `ResizeObserver.observe` building one entry.
 pub fn resize_observer_entry<T>(target: T, width: f64, height: f64) -> ResizeObserverEntry<T> {
     ResizeObserverEntry {
@@ -231,7 +238,7 @@ pub fn resize_observer_entry<T>(target: T, width: f64, height: f64) -> ResizeObs
     }
 }
 
-/// A single IntersectionObserver entry. The JS stub always reports the element
+/// A single `IntersectionObserver` entry. The JS stub always reports the element
 /// as fully intersecting (`isIntersecting: true`, `intersectionRatio: 1`).
 #[derive(Debug, Clone)]
 pub struct IntersectionObserverEntry<T> {
@@ -243,7 +250,7 @@ pub struct IntersectionObserverEntry<T> {
     pub time: f64,
 }
 
-/// The single initial entry an IntersectionObserver fires for `target`, given
+/// The single initial entry an `IntersectionObserver` fires for `target`, given
 /// its synthetic size. Mirrors `IntersectionObserver.observe`.
 pub fn intersection_observer_entry<T>(
     target: T,

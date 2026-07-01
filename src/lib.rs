@@ -1,15 +1,11 @@
 //! turbo-dom parser — Layer 1.
 //! One Rust core (`core`), two interchangeable front-ends selected by feature:
 //!   * `napi-bind`  → native Node addon (default, fast path)
-//!   * `wasm-bind`  → wasm32 fallback (StackBlitz / WebContainers / locked-down CI)
+//!   * `wasm-bind`  → wasm32 fallback (`StackBlitz` / `WebContainers` / locked-down CI)
+//!
 //! Both expose the same logical API: parse(html) -> tree, parseFragment(html) -> tree.
 
 pub mod core;
-
-// Pure-Rust DOM runtime (native Rust API; no wasm-bindgen / napi). Off by default
-// so shipped parser artifacts stay lean — a Rust consumer enables `rust-runtime`.
-#[cfg(feature = "rust-runtime")]
-pub mod rtdom;
 
 // Phase-1 boundary spike (Rust DOM runtime exported to JS via wasm-bindgen).
 #[cfg(feature = "wasm-runtime")]
@@ -18,7 +14,10 @@ pub mod spike;
 // ---------------------------------------------------------------------------
 // napi-rs front-end (native addon)
 // ---------------------------------------------------------------------------
-#[cfg(feature = "napi-bind")]
+// `not(test)`: this is cdylib boundary glue, exercised by the JS integration
+// tests, never Rust-unit-tested. napi's export registration doesn't emit under
+// `cfg(test)`, so building it for `cargo test` only yields dead-code warnings.
+#[cfg(all(feature = "napi-bind", not(test)))]
 mod napi_front {
     use crate::core;
     use napi_derive::napi;
@@ -76,9 +75,9 @@ mod napi_front {
         core::parse_html_document_count(&html)
     }
 
-    use napi::bindgen_prelude::{Int32Array, Uint16Array, Uint32Array, Uint8Array};
+    use napi::bindgen_prelude::{Uint32Array, Uint8Array};
 
-    /// SoA flat buffer: structure as typed arrays, crossed once. JS inflates node
+    /// `SoA` flat buffer: structure as typed arrays, crossed once. JS inflates node
     /// objects lazily from this — no eager full-tree allocation. The fast path.
     // All numeric columns packed into ONE little-endian byte blob (1 ArrayBuffer +
     // zero-copy views in JS, vs 13 separate addon buffers + finalizers per parse).
@@ -106,14 +105,14 @@ mod napi_front {
             let n = s.node_type.len();
             let m = s.attr_name_id.len();
             let mut buf: Vec<u8> = Vec::with_capacity(36 * n + 12 * m);
-            for col in [&s.tag_id] { for v in col.iter() { buf.extend_from_slice(&v.to_le_bytes()); } }
+            for col in [&s.tag_id] { for v in col { buf.extend_from_slice(&v.to_le_bytes()); } }
             for col in [&s.parent, &s.first_child, &s.next_sib, &s.text_id, &s.pub_id, &s.sys_id, &s.attr_start] {
-                for v in col.iter() { buf.extend_from_slice(&v.to_le_bytes()); }
+                for v in col { buf.extend_from_slice(&v.to_le_bytes()); }
             }
             for col in [&s.attr_name_id, &s.attr_value_id, &s.attr_prefix_id] {
-                for v in col.iter() { buf.extend_from_slice(&v.to_le_bytes()); }
+                for v in col { buf.extend_from_slice(&v.to_le_bytes()); }
             }
-            for v in s.attr_count.iter() { buf.extend_from_slice(&v.to_le_bytes()); }
+            for v in &s.attr_count { buf.extend_from_slice(&v.to_le_bytes()); }
             buf.extend_from_slice(&s.node_type);
             buf.extend_from_slice(&s.ns);
             // pack all five string tables into one byte blob + meta (5 counts, then
@@ -121,12 +120,12 @@ mod napi_front {
             let tables: [&Vec<String>; 5] =
                 [&s.tag_names, &s.attr_names, &s.attr_prefixes, &s.attr_values, &s.strings];
             let total_strs: usize = tables.iter().map(|t| t.len()).sum();
-            let total_bytes: usize = tables.iter().flat_map(|t| t.iter()).map(|x| x.len()).sum();
+            let total_bytes: usize = tables.iter().flat_map(|t| t.iter()).map(std::string::String::len).sum();
             let mut str_blob: Vec<u8> = Vec::with_capacity(total_bytes);
             let mut str_meta: Vec<u32> = Vec::with_capacity(5 + total_strs);
             for t in &tables { str_meta.push(t.len() as u32); }
             for t in &tables {
-                for x in t.iter() {
+                for x in *t {
                     str_meta.push(x.len() as u32);
                     str_blob.extend_from_slice(x.as_bytes());
                 }
@@ -141,7 +140,7 @@ mod napi_front {
         }
     }
 
-    /// Parse a document into the SoA flat buffer (the fast runtime path).
+    /// Parse a document into the `SoA` flat buffer (the fast runtime path).
     #[napi(js_name = "parseBuffer")]
     pub fn parse_buffer(html: String) -> JsSoa {
         core::parse_html_soa(&html).into()

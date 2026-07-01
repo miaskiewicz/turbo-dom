@@ -341,3 +341,46 @@ test('cascade resolves single-token background shorthand to background-color', (
   document.body.innerHTML = '<div class="bg" id="d"></div>';
   assert.equal(window.getComputedStyle(document.getElementById('d')).backgroundColor, 'rgb(255, 99, 71)');
 });
+
+// ----------------- parity with rtdom: after()/replaceWith() viable-next-sibling ----
+test('after() with an existing following sibling as an argument reorders (no throw)', () => {
+  const { document } = fresh();
+  document.body.innerHTML = '<i id="a"></i><i id="b"></i>';
+  const a = document.getElementById('a'), b = document.getElementById('b');
+  const c = document.createElement('i'); c.id = 'c';
+  a.after(b, c); // b is a's current nextSibling AND an argument
+  assert.deepEqual([...document.body.children].map(n => n.id), ['a', 'b', 'c']);
+});
+
+test('replaceWith() with an existing following sibling as an argument keeps order', () => {
+  const { document } = fresh();
+  document.body.innerHTML = '<i id="a"></i><i id="b"></i>';
+  const a = document.getElementById('a'), b = document.getElementById('b');
+  const c = document.createElement('i'); c.id = 'c';
+  a.replaceWith(b, c);
+  assert.deepEqual([...document.body.children].map(n => n.id), ['b', 'c']);
+});
+
+test('CharacterData.after() viable-next-sibling handles an argument that is a sibling', () => {
+  const { document } = fresh();
+  document.body.innerHTML = 'x<i id="b"></i>';
+  const t = document.body.firstChild, b = document.getElementById('b');
+  const c = document.createElement('i'); c.id = 'c';
+  t.after(b, c);
+  assert.deepEqual([...document.body.childNodes].map(n => n.id ?? n.data), ['x', 'b', 'c']);
+});
+
+// ----------------- parity with rtdom: statement at-rule doesn't swallow next rule ----
+test('cascade: @import does not swallow the following rule', () => {
+  const { window, document } = fresh();
+  document.head.innerHTML = '<style>@import url("x.css"); #d{color:green}</style>';
+  document.body.innerHTML = '<div id="d"></div>';
+  assert.equal(window.getComputedStyle(document.getElementById('d')).color, 'rgb(0, 128, 0)');
+});
+
+test('cascade: @charset then a real rule both handled', () => {
+  const { window, document } = fresh();
+  document.head.innerHTML = '<style>@charset "utf-8"; .c{color:blue}</style>';
+  document.body.innerHTML = '<div class="c" id="d"></div>';
+  assert.equal(window.getComputedStyle(document.getElementById('d')).color, 'rgb(0, 0, 255)');
+});

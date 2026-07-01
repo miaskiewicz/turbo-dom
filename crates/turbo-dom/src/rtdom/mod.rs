@@ -26,6 +26,10 @@ pub mod tree;
 #[cfg(test)]
 mod bench;
 #[cfg(test)]
+mod conformance;
+#[cfg(test)]
+mod dump;
+#[cfg(test)]
 mod gauntlet;
 
 pub use events::{Dom, Event};

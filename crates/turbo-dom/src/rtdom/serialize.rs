@@ -1,13 +1,11 @@
 //! HTML serialization for innerHTML / outerHTML (WHATWG-ish fragment serializer).
 //!
 //! Pure-Rust port of `src/runtime/html-serialize.mjs`. Output is byte-identical to
-//! the JS serializer: same VOID set, same RAW_TEXT set (unescaped content), and the
+//! the JS serializer: same VOID set, same `RAW_TEXT` set (unescaped content), and the
 //! same exact escape character sets for text (`& <space> < >`) and attributes
 //! (`& <space> "`).
 
-use crate::rtdom::tree::{
-    Handle, Tree, COMMENT_NODE, DOCTYPE_NODE, ELEMENT_NODE, FRAGMENT_NODE, TEXT_NODE,
-};
+use crate::rtdom::tree::{Handle, NodeType, Tree};
 
 /// Elements that emit no closing tag and have no serialized children.
 const VOID: &[&str] = &[
@@ -72,13 +70,21 @@ fn push_escaped_attr(out: &mut String, s: &str) {
 /// lowercase local name of the parent element, used only for the raw-text text-node rule.
 fn serialize_node(tree: &Tree, h: Handle, parent_tag: Option<&str>, out: &mut String) {
     match tree.node_type(h) {
-        ELEMENT_NODE => {
+        NodeType::Element => {
             // local_name borrows &Tree; serialize is all-immutable, so no String alloc.
             let tag = tree.local_name(h).unwrap_or("");
             out.push('<');
             out.push_str(tag);
-            tree.for_each_attr(h, |name, value| {
+            // Foreign-content attributes carry a namespace prefix (xlink/xml/xmlns) that
+            // is stored separately from the local name; the HTML serialization re-qualifies
+            // them as `prefix:name` (e.g. `xlink:href`). Plain attributes have an empty
+            // prefix and serialize as just the name.
+            tree.for_each_attr_full(h, |prefix, name, value| {
                 out.push(' ');
+                if !prefix.is_empty() {
+                    out.push_str(prefix);
+                    out.push(':');
+                }
                 out.push_str(name);
                 out.push_str("=\"");
                 push_escaped_attr(out, value);
@@ -93,25 +99,29 @@ fn serialize_node(tree: &Tree, h: Handle, parent_tag: Option<&str>, out: &mut St
             out.push_str(tag);
             out.push('>');
         }
-        TEXT_NODE => {
+        NodeType::Text => {
             let data = tree.node_value(h).unwrap_or_default();
-            if parent_tag.map(is_raw_text).unwrap_or(false) {
+            if parent_tag.is_some_and(is_raw_text) {
                 out.push_str(&data);
             } else {
                 push_escaped_text(out, &data);
             }
         }
-        COMMENT_NODE => {
+        NodeType::Comment => {
             out.push_str("<!--");
             out.push_str(&tree.node_value(h).unwrap_or_default());
             out.push_str("-->");
         }
-        DOCTYPE_NODE => {
-            // JS reads `node.name`; the Tree API does not expose a doctype name, so emit
-            // the practical default. (Fixtures do not exercise the name.)
-            out.push_str("<!DOCTYPE html>");
+        NodeType::Doctype => {
+            // Serialize `<!DOCTYPE ` + the node's name + `>` (the JS serializer emits
+            // `<!DOCTYPE ${node.name}>`; public/system ids are not part of the HTML
+            // fragment serialization). Falls back to "html" only if the name is somehow
+            // unavailable (e.g. a runtime-created doctype, which has no constructor here).
+            out.push_str("<!DOCTYPE ");
+            out.push_str(tree.doctype_name(h).unwrap_or("html"));
+            out.push('>');
         }
-        FRAGMENT_NODE => {
+        NodeType::Fragment => {
             serialize_children(tree, h, "", out);
         }
         _ => {}
@@ -127,7 +137,7 @@ fn serialize_children(tree: &Tree, h: Handle, parent_tag: &str, out: &mut String
 /// innerHTML: serialize only the children of `h`.
 pub fn serialize_inner(tree: &Tree, h: Handle) -> String {
     let mut out = String::new();
-    let parent_tag = tree.local_name(h).map(|s| s.to_string());
+    let parent_tag = tree.local_name(h).map(std::string::ToString::to_string);
     serialize_children(tree, h, parent_tag.as_deref().unwrap_or(""), &mut out);
     out
 }
@@ -135,7 +145,7 @@ pub fn serialize_inner(tree: &Tree, h: Handle) -> String {
 /// outerHTML: serialize `h` itself + its subtree.
 pub fn serialize_outer(tree: &Tree, h: Handle) -> String {
     let mut out = String::new();
-    let parent_tag = tree.parent(h).and_then(|p| tree.local_name(p).map(|s| s.to_string()));
+    let parent_tag = tree.parent(h).and_then(|p| tree.local_name(p).map(std::string::ToString::to_string));
     serialize_node(tree, h, parent_tag.as_deref(), &mut out);
     out
 }
@@ -208,7 +218,7 @@ mod tests {
         let mut tree = Tree::parse("<!doctype html><html><body><p>x</p></body></html>");
         let root = tree.root();
         // DOCTYPE branch
-        let dt = tree.children(root).into_iter().find(|&h| tree.node_type(h) == 10).unwrap();
+        let dt = tree.children(root).into_iter().find(|&h| tree.node_type(h) == NodeType::Doctype).unwrap();
         assert_eq!(serialize_outer(&tree, dt), "<!DOCTYPE html>");
         // DOCUMENT node → the `_ => {}` arm (empty output)
         assert_eq!(serialize_outer(&tree, root), "");
@@ -217,6 +227,30 @@ mod tests {
         let sr = tree.attach_shadow(div);
         tree.set_inner_html(sr, "<span>hi</span>");
         assert_eq!(serialize_outer(&tree, sr), "<span>hi</span>");
+    }
+
+    #[test]
+    fn doctype_serializes_actual_name() {
+        // The HTML serialization of a DocumentType is `<!DOCTYPE ` + its name + `>`.
+        // The common case is "html", but a non-html doctype name must be preserved
+        // (the JS serializer emits `<!DOCTYPE ${node.name}>`).
+        let tree = Tree::parse("<!DOCTYPE math><html></html>");
+        let dt = tree
+            .handles()
+            .find(|&h| tree.node_type(h) == NodeType::Doctype)
+            .unwrap();
+        assert_eq!(serialize_outer(&tree, dt), "<!DOCTYPE math>");
+    }
+
+    #[test]
+    fn foreign_attr_prefix_preserved() {
+        // An SVG element's prefixed attribute (xlink:href) must serialize WITH its
+        // prefix — browsers report `<use xlink:href="#i">`, not `<use href="#i">`.
+        // The parser stores the prefix separately from the local name; the serializer
+        // must re-qualify it.
+        let tree = Tree::parse("<svg><use xlink:href=\"#i\"></use></svg>");
+        let u = tree.get_elements_by_tag_name("use")[0];
+        assert_eq!(serialize_outer(&tree, u), "<use xlink:href=\"#i\"></use>");
     }
 
     #[test]

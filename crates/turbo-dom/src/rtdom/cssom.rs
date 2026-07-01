@@ -20,6 +20,7 @@ pub struct CssStyleRule {
 impl CssStyleRule {
     /// Parse one `selector { decls }` block into a rule. The braces are optional in
     /// the input; if absent the whole string is treated as the selector with no decls.
+    #[must_use]
     pub fn parse(rule: &str) -> CssStyleRule {
         let open = rule.find('{');
         match open {
@@ -45,6 +46,7 @@ impl CssStyleRule {
 
     /// Render as `selector { prop: val; ... }`, matching the JS cssText spacing:
     /// `"<selector> { <prop>: <val>; <prop>: <val>; }"`.
+    #[must_use]
     pub fn css_text(&self) -> String {
         let mut decls = String::new();
         for (i, (prop, val)) in self.declarations.iter().enumerate() {
@@ -91,10 +93,12 @@ pub struct CssStyleSheet {
 }
 
 impl CssStyleSheet {
+    #[must_use]
     pub fn new() -> CssStyleSheet {
         CssStyleSheet { rules: Vec::new() }
     }
 
+    #[must_use]
     pub fn from_css(css: &str) -> CssStyleSheet {
         CssStyleSheet {
             rules: parse_stylesheet(css),
@@ -102,7 +106,7 @@ impl CssStyleSheet {
     }
 
     /// Insert a rule at `index`, returning the index. Mirrors the JS:
-    /// valid range is `0..=len`; out-of-range is clamped (the JS throws a RangeError,
+    /// valid range is `0..=len`; out-of-range is clamped (the JS throws a `RangeError`,
     /// but as a standalone store we clamp to keep callers infallible — see note).
     ///
     /// NOTE: the JS `insertRule` throws on out-of-bounds. To keep this Rust port
@@ -113,7 +117,7 @@ impl CssStyleSheet {
         i
     }
 
-    /// Delete the rule at `index`. Out-of-range is a no-op (JS throws RangeError;
+    /// Delete the rule at `index`. Out-of-range is a no-op (JS throws `RangeError`;
     /// standalone store stays panic-free).
     pub fn delete_rule(&mut self, index: usize) {
         if index < self.rules.len() {
@@ -122,6 +126,7 @@ impl CssStyleSheet {
     }
 
     /// Render every rule joined by newlines.
+    #[must_use]
     pub fn css_text(&self) -> String {
         let mut out = String::new();
         for (i, r) in self.rules.iter().enumerate() {
@@ -137,6 +142,7 @@ impl CssStyleSheet {
 /// Split a stylesheet string into top-level `selector { decls }` rules and parse
 /// each. Brace-depth aware; skips `/* ... */` comments. Mirrors `splitTopLevelRules`
 /// in cascade.mjs / cssom.mjs (depth scan) plus comment stripping.
+#[must_use]
 pub fn parse_stylesheet(css: &str) -> Vec<CssStyleRule> {
     let cleaned = strip_comments(css);
     let bytes = cleaned.as_bytes();
@@ -236,7 +242,7 @@ mod tests {
     fn css_text_round_trip() {
         let rules = parse_stylesheet(".a{color:red;padding:0}");
         let txt = rules[0].css_text();
-        assert!(txt.contains("color: red"), "got: {}", txt);
+        assert!(txt.contains("color: red"), "got: {txt}");
         assert_eq!(txt, ".a { color: red; padding: 0; }");
     }
 
