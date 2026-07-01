@@ -8,7 +8,7 @@
 //! pseudo-classes, and the relational `:has()`. Enough for RTL-style queries;
 //! extend as the gauntlet demands.
 
-use super::tree::{Handle, NodeType, Tree};
+use super::tree::{FormProp, Handle, NodeType, Tree};
 
 /// Max distinct entries held in the version-keyed query cache (`Tree.qcache`)
 /// before it is cleared wholesale. Mirrors the JS `__selectorCache` cap (10000):
@@ -760,42 +760,34 @@ impl Tree {
                 // parent is the document/root container, not an element
                 Some(p) => self.node_type(p) != NodeType::Element,
             },
-            // Form-state. selectors.mjs reads the live DOM property (el.checked etc.);
-            // this Rust port reads the corresponding attribute.
-            // TODO: live prop — JS reads el.checked / el.selected (set by React).
+            // Form-state. Mirrors selectors.mjs: read the live IDL property first (what a
+            // consumer / React sets via set_form_property, the analogue of `el.checked`),
+            // falling back to the HTML attribute when no live override is set.
             Pseudo::Checked => {
-                let ln = self.local_name(h);
-                if ln == Some("option") {
-                    self.has_attribute(h, "selected")
+                if self.local_name(h) == Some("option") {
+                    self.form_state(h, FormProp::Selected, "selected")
                 } else {
-                    self.has_attribute(h, "checked")
+                    self.form_state(h, FormProp::Checked, "checked")
                 }
             }
-            // TODO: live prop — JS reads el.disabled.
-            Pseudo::Disabled => self.has_attribute(h, "disabled"),
-            // TODO: live prop — JS reads el.disabled.
+            Pseudo::Disabled => self.form_state(h, FormProp::Disabled, "disabled"),
             Pseudo::Enabled => {
                 matches!(
                     self.local_name(h),
                     Some("input" | "button" | "select" | "textarea" | "optgroup" | "option" |
 "fieldset")
-                ) && !self.has_attribute(h, "disabled")
+                ) && !self.form_state(h, FormProp::Disabled, "disabled")
             }
-            // TODO: live prop — JS reads el.required.
-            Pseudo::Required => self.has_attribute(h, "required"),
-            // TODO: live prop — JS reads el.required.
+            Pseudo::Required => self.form_state(h, FormProp::Required, "required"),
             Pseudo::Optional => {
                 matches!(
                     self.local_name(h),
                     Some("input" | "select" | "textarea")
-                ) && !self.has_attribute(h, "required")
+                ) && !self.form_state(h, FormProp::Required, "required")
             }
-            // TODO: live prop — JS reads el.readOnly.
-            Pseudo::ReadOnly => self.has_attribute(h, "readonly"),
-            // TODO: live prop — JS reads el.readOnly.
-            Pseudo::ReadWrite => !self.has_attribute(h, "readonly"),
-            // TODO: live prop — JS reads el.selected.
-            Pseudo::Selected => self.has_attribute(h, "selected"),
+            Pseudo::ReadOnly => self.form_state(h, FormProp::ReadOnly, "readonly"),
+            Pseudo::ReadWrite => !self.form_state(h, FormProp::ReadOnly, "readonly"),
+            Pseudo::Selected => self.form_state(h, FormProp::Selected, "selected"),
             // selector-list pseudos: each Complex is anchored at `h` (matches_complex
             // tests the rightmost compound against `h` and walks left).
             Pseudo::Is(list) | Pseudo::Where(list) => {
@@ -825,6 +817,14 @@ impl Tree {
     /// ancestor, not just the nearest, so a mixed chain such as `.a > .b .c` — where
     /// the `.b` that is a direct child of `.a` is *farther* from `.c` than another
     /// `.b` — is matched correctly. A greedy nearest-ancestor walk would miss it.
+    /// A boolean form-state property: the live IDL override if a consumer set one, else
+    /// the presence of the HTML attribute. Mirrors the JS `__x !== undefined ? __x :
+    /// hasAttribute(x)` pattern shared by the form-state pseudo-classes.
+    fn form_state(&self, h: Handle, prop: FormProp, attr: &str) -> bool {
+        self.form_property(h, prop)
+            .unwrap_or_else(|| self.has_attribute(h, attr))
+    }
+
     fn matches_complex(&self, h: Handle, cx: &Complex) -> bool {
         self.matches_chain(h, cx, cx.rest.len(), None)
     }
@@ -1808,6 +1808,43 @@ mod tests {
         // #p's IMMEDIATE next sibling is <em>, not the div → `+` fails, `~` succeeds
         assert_eq!(tree.query_selector_all("#p:has(+ div .x)").len(), 0);
         assert_eq!(tree.query_selector_all("#p:has(~ div .x)").len(), 1);
+    }
+
+    #[test]
+    fn form_state_pseudos_read_live_property_over_attribute() {
+        use super::super::tree::FormProp;
+        let mut tree = Tree::parse(
+            "<input id=a><input id=b checked><select id=s><option id=o>x</option></select>",
+        );
+        let a = tree.query_selector("#a").unwrap();
+        let b = tree.query_selector("#b").unwrap();
+        let o = tree.query_selector("#o").unwrap();
+        // baseline: attribute-driven (parity with the pre-existing behavior)
+        assert_eq!(tree.query_selector_all(":checked").len(), 1); // only #b (attr)
+        // set the live property on #a WITHOUT the attribute → now matches (like React)
+        tree.set_form_property(a, FormProp::Checked, true);
+        assert!(tree.matches(a, ":checked"));
+        assert_eq!(tree.query_selector_all("input:checked").len(), 2); // #a (prop) + #b (attr)
+        // live property overrides an attribute the other way: #b unchecked despite attr
+        tree.set_form_property(b, FormProp::Checked, false);
+        assert!(!tree.matches(b, ":checked"));
+        // clearing reverts to the attribute
+        tree.clear_form_property(b, FormProp::Checked);
+        assert!(tree.matches(b, ":checked"));
+        // clearing an unset property is a no-op (doesn't bump / panic)
+        let v = tree.version;
+        tree.clear_form_property(b, FormProp::ReadOnly);
+        assert_eq!(tree.version, v);
+        // option :selected / :checked via the live selected property
+        assert!(!tree.matches(o, ":checked"));
+        tree.set_form_property(o, FormProp::Selected, true);
+        assert!(tree.matches(o, ":checked")); // option → reads Selected
+        assert!(tree.matches(o, ":selected"));
+        // disabled / required / read-only likewise honor the live property
+        assert!(!tree.matches(a, ":disabled"));
+        tree.set_form_property(a, FormProp::Disabled, true);
+        assert!(tree.matches(a, ":disabled"));
+        assert!(!tree.matches(a, ":enabled"));
     }
 
     #[test]

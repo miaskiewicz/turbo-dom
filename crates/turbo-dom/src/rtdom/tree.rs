@@ -253,6 +253,25 @@ pub struct Tree {
     /// Mutation-record buffer. `None` until an observer calls `start_recording`
     /// (the no-observer hot path stays zero-alloc, mirroring JS notifyMutation gating).
     mutation_log: Option<Vec<crate::rtdom::mutations::MutationRecord>>,
+    /// Live IDL boolean form-state properties (checked/selected/disabled/required/
+    /// read-only), settable independently of the HTML attribute — the Rust analogue of
+    /// the JS runtime's `__checked`/`__selected` overlays that React/interaction set
+    /// without touching the attribute. Absent ⇒ fall back to the attribute (see the
+    /// form-state pseudo-classes in query.rs). Empty on the parse/no-interaction path.
+    form_props: FxHashMap<(Handle, FormProp), bool>,
+}
+
+/// The boolean IDL form-state properties whose selector semantics can diverge from the
+/// HTML attribute once a consumer sets the live property (mirrors the JS getters:
+/// `checked`/`selected` read a live overlay first, the rest read the attribute but the
+/// `:disabled`/`:required`/`:read-only` matchers also honor the live property).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum FormProp {
+    Checked,
+    Selected,
+    Disabled,
+    Required,
+    ReadOnly,
 }
 
 #[derive(Default)]
@@ -282,6 +301,7 @@ impl Tree {
             parse_cache: RefCell::new(FxHashMap::default()),
             css_cache: RefCell::new(crate::rtdom::cascade::CssCache::default()),
             mutation_log: None,
+            form_props: FxHashMap::default(),
         }
     }
 
@@ -723,6 +743,31 @@ impl Tree {
         ov.retain(|(n, _)| n != name);
         self.bump();
         self.record_attributes(h, name, old);
+    }
+
+    /// Set a live IDL boolean form-state property (e.g. `FormProp::Checked`) on `h`,
+    /// independently of the HTML attribute — the Rust analogue of assigning `el.checked`
+    /// in the JS runtime. Form-state pseudo-classes (`:checked`/`:selected`/`:disabled`/
+    /// `:required`/`:read-only`) read this first and fall back to the attribute when
+    /// unset. Bumps the version so cached queries re-evaluate.
+    pub fn set_form_property(&mut self, h: Handle, prop: FormProp, value: bool) {
+        self.form_props.insert((h, prop), value);
+        self.bump();
+    }
+
+    /// Clear a live form-state property override, reverting the pseudo-class to reading
+    /// the HTML attribute. Bumps the version.
+    pub fn clear_form_property(&mut self, h: Handle, prop: FormProp) {
+        if self.form_props.remove(&(h, prop)).is_some() {
+            self.bump();
+        }
+    }
+
+    /// The live override for a form-state property, or `None` when unset (⇒ the matcher
+    /// reads the HTML attribute).
+    #[must_use]
+    pub(crate) fn form_property(&self, h: Handle, prop: FormProp) -> Option<bool> {
+        self.form_props.get(&(h, prop)).copied()
     }
 
     /// Ensure a node's child overlay exists (copy buffer children in on first mutate).
