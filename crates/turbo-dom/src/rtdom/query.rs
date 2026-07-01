@@ -181,6 +181,151 @@ fn is_special(ch: char) -> bool {
     ch.is_whitespace() || matches!(ch, '>' | '+' | '~' | '#' | '.' | ':' | '[' | ']' | '(' | ')')
 }
 
+/// A type-selector / pseudo-name may START with an ASCII letter (mirrors the JS
+/// `isTypeStart`).
+#[inline]
+fn is_type_start(ch: char) -> bool {
+    ch.is_ascii_alphabetic()
+}
+
+/// A name character inside a type/id/class run (mirrors the JS `NAME_CHAR` `[\w-]`).
+#[inline]
+fn is_name_char(ch: char) -> bool {
+    ch.is_ascii_alphanumeric() || ch == '_' || ch == '-'
+}
+
+/// Why a selector string is invalid. The infallible `query_selector*`/`matches` path is
+/// deliberately lenient (drops the bad bits and does its best); the `_checked` variants
+/// return this instead, matching the `SyntaxError` the JS runtime — and real browsers —
+/// throw for the same inputs. Kept in lockstep with `selectors.mjs` `tokenize`/
+/// `parseCompound`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SelectorError {
+    /// An unterminated `[...]` attribute selector, e.g. `div[href` (JS: "unterminated
+    /// attribute selector").
+    UnterminatedAttribute,
+    /// A character that cannot start any selector token, e.g. the `!` in `div!p`
+    /// (JS: "unexpected '{c}' in selector").
+    UnexpectedChar(char),
+    /// A combinator with no compound on its left — a leading (`>`), doubled (`a > > b`),
+    /// or mixed (`a + > b`) combinator (JS: "empty compound"). A *trailing* combinator
+    /// (`a >`) is tolerated, matching the JS parser, which drops it.
+    EmptyCompound,
+}
+
+impl std::fmt::Display for SelectorError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            SelectorError::UnterminatedAttribute => f.write_str("unterminated attribute selector"),
+            SelectorError::UnexpectedChar(c) => write!(f, "unexpected '{c}' in selector"),
+            SelectorError::EmptyCompound => f.write_str("empty compound (stray combinator)"),
+        }
+    }
+}
+
+impl std::error::Error for SelectorError {}
+
+/// One coarse token for STRICT validation only (not the matching lexer above): we care
+/// only about a token's structural role — a compound `Part`, a `Comb`inator, the `Ws`
+/// separator, or a `Comma` segment break — plus the two lexical errors a browser rejects
+/// (unterminated `[...]`, an unexpected char). Reuses `scan_balanced` for `[...]`/`(...)`.
+enum StrictTok {
+    Part,
+    Comb,
+    Ws,
+    Comma,
+}
+
+/// Strict lex mirroring `selectors.mjs` `tokenize`: same accept set, same two throw
+/// points (unterminated attribute, unexpected char). Unterminated `(...)` is tolerated
+/// (JS tolerates it too — only `[...]` throws).
+fn lex_strict(src: &str) -> Result<Vec<StrictTok>, SelectorError> {
+    let chars: Vec<char> = src.chars().collect();
+    let n = chars.len();
+    let mut out = Vec::new();
+    let mut i = 0;
+    while i < n {
+        let c = chars[i];
+        if c.is_whitespace() {
+            while i < n && chars[i].is_whitespace() {
+                i += 1;
+            }
+            out.push(StrictTok::Ws);
+        } else if c == ',' {
+            out.push(StrictTok::Comma);
+            i += 1;
+        } else if matches!(c, '>' | '+' | '~') {
+            out.push(StrictTok::Comb);
+            i += 1;
+        } else if c == '*' {
+            out.push(StrictTok::Part);
+            i += 1;
+        } else if c == '#' || c == '.' {
+            i += 1;
+            while i < n && is_name_char(chars[i]) {
+                i += 1;
+            }
+            out.push(StrictTok::Part);
+        } else if c == '[' {
+            i += 1; // past '['
+            let _ = scan_balanced(&chars, &mut i, '[', ']');
+            if i >= n {
+                return Err(SelectorError::UnterminatedAttribute); // no closing ']'
+            }
+            i += 1; // past ']'
+            out.push(StrictTok::Part);
+        } else if c == ':' {
+            i += 1; // past ':'
+            while i < n && (is_type_start(chars[i]) || chars[i] == '-') {
+                i += 1;
+            }
+            if i < n && chars[i] == '(' {
+                i += 1; // past '('
+                let _ = scan_balanced(&chars, &mut i, '(', ')');
+                if i < n {
+                    i += 1; // past ')' (unterminated paren tolerated, matching JS)
+                }
+            }
+            out.push(StrictTok::Part);
+        } else if is_type_start(c) {
+            i += 1;
+            while i < n && is_name_char(chars[i]) {
+                i += 1;
+            }
+            out.push(StrictTok::Part);
+        } else {
+            return Err(SelectorError::UnexpectedChar(c));
+        }
+    }
+    Ok(out)
+}
+
+/// Validate a selector list the way the JS runtime does: a combinator must have a
+/// non-empty compound on its LEFT (else "empty compound"), across every top-level
+/// comma segment. Empty segments (`''`, `,`, `a,,b`'s middle) are fine — they're
+/// dropped, not rejected — and a trailing combinator is tolerated. `Ok(())` means the
+/// infallible matcher will interpret the selector exactly as a browser would.
+fn validate_selector_list(src: &str) -> Result<(), SelectorError> {
+    let toks = lex_strict(src)?;
+    // `matched` = the compound currently being built has at least one part. A comma
+    // starts a fresh segment (reset); whitespace is a transparent separator.
+    let mut matched = false;
+    for t in &toks {
+        match t {
+            StrictTok::Comma => matched = false,
+            StrictTok::Ws => {}
+            StrictTok::Comb => {
+                if !matched {
+                    return Err(SelectorError::EmptyCompound);
+                }
+                matched = false; // a compound must follow (trailing combinator: tolerated)
+            }
+            StrictTok::Part => matched = true,
+        }
+    }
+    Ok(())
+}
+
 /// Scan from just past an opening `open` to its matching `close`, honoring quotes
 /// and nesting. Returns the inner text and leaves `*i` on the closing delimiter
 /// (or at end if unterminated). Centralizing this is the whole point: `[...]` and
@@ -1033,6 +1178,43 @@ impl Tree {
         self.query_selector_all(selector).first().copied()
     }
 
+    /// Strict (`_checked`) variants: validate the selector first and return
+    /// `Err(SelectorError)` for input a browser would reject (a `SyntaxError` in the JS
+    /// runtime), instead of the lenient "do my best / return nothing" of the infallible
+    /// methods above. This is the opt-in parity path for consumers that want a typo'd or
+    /// user-supplied selector to fail loudly rather than silently match nothing. On a
+    /// valid selector they delegate to the (cached) lenient method — no extra matching
+    /// cost beyond the one validation pass.
+    ///
+    /// # Errors
+    /// Returns [`SelectorError`] when `selector` is malformed (unterminated `[...]`,
+    /// an unexpected character, or a combinator with no compound on its left).
+    pub fn query_selector_all_checked(
+        &self,
+        selector: &str,
+    ) -> Result<std::rc::Rc<[Handle]>, SelectorError> {
+        validate_selector_list(selector)?;
+        Ok(self.query_selector_all(selector))
+    }
+
+    /// Strict `query_selector` — see [`Tree::query_selector_all_checked`].
+    ///
+    /// # Errors
+    /// Returns [`SelectorError`] when `selector` is malformed.
+    pub fn query_selector_checked(&self, selector: &str) -> Result<Option<Handle>, SelectorError> {
+        validate_selector_list(selector)?;
+        Ok(self.query_selector(selector))
+    }
+
+    /// Strict `matches` — see [`Tree::query_selector_all_checked`].
+    ///
+    /// # Errors
+    /// Returns [`SelectorError`] when `selector` is malformed.
+    pub fn matches_checked(&self, h: Handle, selector: &str) -> Result<bool, SelectorError> {
+        validate_selector_list(selector)?;
+        Ok(self.matches(h, selector))
+    }
+
     /// getElementById, version-cached. Shares `qcache` with querySelectorAll under a
     /// `\u{1}`-prefixed key (never a valid selector char, so no collision). Result is
     /// stored as a 0- or 1-element Vec. Mirrors the JS `__idCache`.
@@ -1845,6 +2027,57 @@ mod tests {
         tree.set_form_property(a, FormProp::Disabled, true);
         assert!(tree.matches(a, ":disabled"));
         assert!(!tree.matches(a, ":enabled"));
+    }
+
+    #[test]
+    fn checked_query_rejects_malformed_selectors_like_the_js_runtime() {
+        use super::super::query::SelectorError;
+        let tree = Tree::parse("<div class=a><span id=s>x</span></div>");
+        // valid selectors go through unchanged and return the same as the lenient path
+        assert_eq!(tree.query_selector_all_checked(".a span").unwrap().len(), 1);
+        assert_eq!(tree.query_selector_checked("#s").unwrap(), tree.query_selector("#s"));
+        let s = tree.query_selector("#s").unwrap();
+        assert!(tree.matches_checked(s, "span#s").unwrap());
+        // malformed selectors are rejected with the same taxonomy the JS side throws on
+        assert_eq!(
+            tree.query_selector_all_checked(">"),
+            Err(SelectorError::EmptyCompound) // leading combinator
+        );
+        assert_eq!(
+            tree.query_selector_all_checked("a > > b"),
+            Err(SelectorError::EmptyCompound) // doubled combinator
+        );
+        assert_eq!(
+            tree.query_selector_all_checked("a + > b"),
+            Err(SelectorError::EmptyCompound) // mixed combinator
+        );
+        assert_eq!(
+            tree.query_selector_all_checked("div!p"),
+            Err(SelectorError::UnexpectedChar('!'))
+        );
+        assert_eq!(
+            tree.query_selector_all_checked("[href"),
+            Err(SelectorError::UnterminatedAttribute)
+        );
+        assert!(tree.query_selector_checked("[href").is_err());
+        assert!(tree.matches_checked(s, ">").is_err());
+        // empties / commas are NOT errors (dropped, exactly like the JS parser)
+        assert!(tree.query_selector_all_checked("").is_ok());
+        assert!(tree.query_selector_all_checked(",").is_ok());
+        // empty middle segment dropped; `span` still matches the one span
+        assert_eq!(tree.query_selector_all_checked("a,,span").unwrap().len(), 1);
+        // a TRAILING combinator is tolerated (matches JS, which drops it)
+        assert!(tree.query_selector_all_checked("span >").is_ok());
+        // Display renders a human message
+        assert_eq!(
+            SelectorError::UnexpectedChar('!').to_string(),
+            "unexpected '!' in selector"
+        );
+        assert_eq!(SelectorError::EmptyCompound.to_string(), "empty compound (stray combinator)");
+        assert_eq!(
+            SelectorError::UnterminatedAttribute.to_string(),
+            "unterminated attribute selector"
+        );
     }
 
     #[test]
