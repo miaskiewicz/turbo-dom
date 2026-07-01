@@ -5,15 +5,6 @@ environment for vitest/jest. Format based on [Keep a Changelog](https://keepacha
 Early versions were released as lightweight tags / version-stamped commits (no per-release notes
 at the time); this file reconstructs them from history.
 
-## [0.3.5]
-
-### Fixed
-- `rtdom::serialize` no longer escapes regular spaces to `&nbsp;` (a quirk carried over
-  from the old JS serializer). It corrupted serialized text into U+00A0 non-breaking
-  spaces, so a re-parse / accessible-name / text query saw `"a b"` instead of
-  `"a b"` and whitespace-normalized matching (getByRole/getByText/toHaveText on a
-  serialized DOM) failed. Spaces now serialize verbatim; only `&`/`<`/`>`/`"` are escaped.
-
 ## [0.4.0] — selector engine rewrite + Rust-native DOM runtime consolidation
 
 Touches BOTH runtimes at parity. The napi/wasm parser API is unchanged; `src/runtime/*.mjs`
@@ -67,6 +58,15 @@ gains the new selector engine and a few correctness fixes (below).
 - Architecture + the per-commit JS-perf-win → Rust mapping: `RUST_PORT_PLAN.md`,
   `RUST_PORT_PERF_HISTORY.md`. (A Phase-1 spike confirmed the spec's thesis: a Rust DOM exposed
   to JS via WASM is ~0.55× the JS runtime — the boundary loses — so rtdom is Rust-only.)
+
+## [0.3.5]
+
+### Fixed
+- `rtdom::serialize` no longer escapes regular spaces to `&nbsp;` (a quirk carried over
+  from the old JS serializer). It corrupted serialized text into U+00A0 non-breaking
+  spaces, so a re-parse / accessible-name / text query saw `"a b"` instead of
+  `"a b"` and whitespace-normalized matching (getByRole/getByText/toHaveText on a
+  serialized DOM) failed. Spaces now serialize verbatim; only `&`/`<`/`>`/`"` are escaped.
 
 ## [0.3.4] — rtdom ChildNode/ParentNode + insertAdjacent + toggleAttribute + getAttributeNS
 
