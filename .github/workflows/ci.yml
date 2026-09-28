@@ -44,7 +44,7 @@ jobs:
         with:
           key: ${{ matrix.target }}
 
-      - run: npm install --ignore-scripts
+      - run: npm install --ignore-scripts --legacy-peer-deps
 
       - name: Build native addon
         # Strip symbols from the shipped addon (~13% / ~169 KiB smaller). Scoped to
@@ -82,7 +82,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - uses: jetli/wasm-pack-action@v0.4.0
 
-      - run: npm install
+      - run: npm install --legacy-peer-deps
 
       - name: Build native addon
         run: npx napi build --platform --release
@@ -159,7 +159,7 @@ jobs:
         with:
           targets: wasm32-unknown-unknown
       - uses: jetli/wasm-pack-action@v0.4.0
-      - run: npm install --ignore-scripts
+      - run: npm install --ignore-scripts --legacy-peer-deps
 
       - name: Download all prebuilt binaries
         uses: actions/download-artifact@v4
