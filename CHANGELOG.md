@@ -5,6 +5,19 @@ environment for vitest/jest. Format based on [Keep a Changelog](https://keepacha
 Early versions were released as lightweight tags / version-stamped commits (no per-release notes
 at the time); this file reconstructs them from history.
 
+## [0.5.1] — cascade: keep the parsed rule index across DOM mutations
+
+### Performance
+- `getComputedStyle` no longer re-parses every `<style>` sheet on each DOM mutation. The parsed
+  rule index was keyed on the DOM `version`, which bumps on *any* mutation — so a React re-render
+  (which restructures nodes but leaves the injected CSS untouched) threw the index away and
+  re-parsed all stylesheets on the next `getComputedStyle`. The index is now keyed on a hash of
+  the `<style>` **sources**: it survives version bumps whose CSS is unchanged and is re-parsed
+  only on a real stylesheet edit. Per-element resolved maps are still invalidated on every bump
+  (selector matching depends on tree shape). Profiling a component suite showed `parse_stylesheet`
+  / `parse_decls` recurring under `computed_style` on the re-render path; this removes that repeat
+  work. No behavior change — verified by the full cascade suite plus a new reuse/invalidation test.
+
 ## [0.5.0] — rtdom internal consistency (stale parent pointers, unset event target)
 
 Fixes the two correctness issues filed in

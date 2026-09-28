@@ -330,8 +330,31 @@ pub(crate) struct Rule {
 #[derive(Default)]
 pub(crate) struct CssCache {
     pub version: u64,
+    /// Hash of the `<style>` sources that produced `rules`. The DOM `version` bumps on ANY
+    /// mutation (structure, attributes, text) — but the authored stylesheets usually don't
+    /// change across those bumps (a React re-render restructures nodes, not the injected CSS).
+    /// Keying the parsed rule index on the style SOURCE (not the DOM version) lets it survive
+    /// version bumps, so `getComputedStyle` after a re-render skips re-parsing every `<style>`.
+    /// `None` = no rules parsed yet.
+    pub rules_key: Option<u64>,
     pub rules: Option<std::rc::Rc<Vec<Rule>>>,
     pub computed: HashMap<Handle, std::rc::Rc<HashMap<String, String>>>,
+}
+
+/// Hash every `<style>` element's text in document order — the cache key for the parsed rule
+/// index. Reading + hashing the source is far cheaper than re-parsing it (strip-comments,
+/// brace scan, per-rule decl maps, specificity, clones), so paying this on each version bump
+/// to skip an unchanged re-parse is a net win. Also folds in the style count so adding an
+/// empty `<style>` (or reordering) still invalidates.
+fn style_source_hash(tree: &Tree) -> u64 {
+    use std::hash::{Hash, Hasher};
+    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    let styles = tree.get_elements_by_tag_name("style");
+    styles.len().hash(&mut hasher);
+    for h in styles {
+        tree.text_content(h).hash(&mut hasher);
+    }
+    hasher.finish()
 }
 
 /// Brace-depth scan: emit only depth-1 rules whose selector isn't an at-rule;
@@ -567,15 +590,34 @@ pub fn computed_style(tree: &Tree, h: Handle) -> HashMap<String, String> {
         let mut c = tree.css_cache.borrow_mut();
         if c.version != version {
             c.version = version;
-            c.rules = None;
+            // Per-element resolved maps depend on the tree shape (selector matching), so they
+            // always die on a version bump. The parsed rule index only depends on the `<style>`
+            // sources, so keep it across bumps whose CSS is unchanged — re-parse only on a real
+            // stylesheet edit (rules_key mismatch). A stylesheet edit bumps the version too, so
+            // re-hashing on each version change is enough to catch it (and within a version the
+            // CSS can't change, so the steady state never re-hashes).
             c.computed.clear();
+            let key = style_source_hash(tree);
+            if c.rules_key != Some(key) {
+                c.rules = None;
+                c.rules_key = Some(key);
+            }
         }
         if let Some(cached) = c.computed.get(&h) {
             return (**cached).clone();
         }
-        c.rules
-            .get_or_insert_with(|| std::rc::Rc::new(build_index(tree)))
-            .clone()
+        if c.rules.is_none() {
+            // First build (or a just-invalidated index). Set the source key even when the
+            // version-change guard above didn't run — `Tree::parse` leaves version at 0, so the
+            // very first getComputedStyle skips that guard and must still record the key, or the
+            // next version bump would needlessly re-parse. `rules_key` is already set on the
+            // invalidation path, so this re-hashes only on the genuine first build.
+            if c.rules_key.is_none() {
+                c.rules_key = Some(style_source_hash(tree));
+            }
+            c.rules = Some(std::rc::Rc::new(build_index(tree)));
+        }
+        c.rules.clone().unwrap()
     };
 
     let mut matched = Vec::new();
@@ -676,6 +718,36 @@ mod tests {
             "color",
         );
         assert_eq!(got, "rgb(255, 0, 0)");
+    }
+
+    #[test]
+    fn parsed_rules_survive_version_bumps_until_css_changes() {
+        // The parsed rule index must be reused across DOM version bumps whose <style> source is
+        // unchanged (the hot React-re-render path), and re-parsed only when the CSS actually
+        // changes. Rc::ptr_eq proves reuse vs. rebuild without a parse counter.
+        let mut tree = Tree::parse("<style>#x{color:green}</style><div id=x>hi</div>");
+        let x = tree.query_selector("#x").unwrap();
+        assert_eq!(get_property_value(&computed_style(&tree, x), "color"), "rgb(0, 128, 0)");
+        let rules_before = tree.css_cache.borrow().rules.clone().unwrap();
+
+        // Mutate the DOM (bumps version) WITHOUT touching the stylesheet.
+        tree.set_attribute(x, "data-n", "1");
+        assert_eq!(get_property_value(&computed_style(&tree, x), "color"), "rgb(0, 128, 0)");
+        let rules_after = tree.css_cache.borrow().rules.clone().unwrap();
+        assert!(
+            std::rc::Rc::ptr_eq(&rules_before, &rules_after),
+            "rule index re-parsed even though the <style> source was unchanged"
+        );
+
+        // Now edit the stylesheet itself — the index MUST be re-parsed and the result change.
+        let style_h = tree.query_selector("style").unwrap();
+        tree.set_text_content(style_h, "#x{color:red}");
+        assert_eq!(get_property_value(&computed_style(&tree, x), "color"), "rgb(255, 0, 0)");
+        let rules_edited = tree.css_cache.borrow().rules.clone().unwrap();
+        assert!(
+            !std::rc::Rc::ptr_eq(&rules_before, &rules_edited),
+            "stylesheet edit did not invalidate the parsed rule index"
+        );
     }
 
     #[test]
