@@ -9,9 +9,9 @@
 //! Reads come straight off the buffer (zero alloc) unless an overlay exists.
 
 use crate::core::{self, Soa};
-use smol_str::SmolStr;
 use rustc_hash::FxHashMap;
 use smallvec::SmallVec;
+use smol_str::SmolStr;
 use std::cell::RefCell;
 
 /// A DOM node type. `#[repr(u8)]` with the standard `nodeType` numeric values, so
@@ -192,7 +192,11 @@ struct Overlay<T> {
 
 impl<T> Overlay<T> {
     fn new(buf_len: u32) -> Overlay<T> {
-        Overlay { dense: Vec::new(), map: FxHashMap::default(), buf_len }
+        Overlay {
+            dense: Vec::new(),
+            map: FxHashMap::default(),
+            buf_len,
+        }
     }
 
     /// `Some(handle.idx() - buf_len)` for a created node, `None` for a buffer node.
@@ -527,7 +531,10 @@ impl Tree {
     /// All (name, value) pairs for a node (owned copy).
     pub fn attributes(&self, h: Handle) -> Vec<(String, String)> {
         if let Some(ov) = self.attrs_ov.get(h) {
-            return ov.iter().map(|(n, v)| (n.to_string(), v.to_string())).collect();
+            return ov
+                .iter()
+                .map(|(n, v)| (n.to_string(), v.to_string()))
+                .collect();
         }
         if self.is_new(h) {
             return Vec::new();
@@ -543,7 +550,10 @@ impl Tree {
         for j in start..start + count {
             let nid = self.buf.attr_name_id[j] as usize;
             let vid = self.buf.attr_value_id[j] as usize;
-            out.push((self.buf.attr_names[nid].clone(), self.buf.attr_values[vid].clone()));
+            out.push((
+                self.buf.attr_names[nid].clone(),
+                self.buf.attr_values[vid].clone(),
+            ));
         }
         out
     }
@@ -599,7 +609,11 @@ impl Tree {
             let prefix = &self.buf.attr_prefixes[self.buf.attr_prefix_id[j] as usize];
             let nid = self.buf.attr_name_id[j] as usize;
             let vid = self.buf.attr_value_id[j] as usize;
-            f(prefix, &self.buf.attr_names[nid], &self.buf.attr_values[vid]);
+            f(
+                prefix,
+                &self.buf.attr_names[nid],
+                &self.buf.attr_values[vid],
+            );
         }
     }
 
@@ -612,7 +626,11 @@ impl Tree {
             return None;
         }
         if self.is_new(h) {
-            return if nt == NodeType::Element { self.new_ref(h).element_name() } else { None };
+            return if nt == NodeType::Element {
+                self.new_ref(h).element_name()
+            } else {
+                None
+            };
         }
         Some(&self.buf.tag_names[self.buf.tag_id[h.idx()] as usize])
     }
@@ -646,12 +664,21 @@ impl Tree {
             return Some(t.to_string());
         }
         if self.is_new(h) {
-            return self.new_ref(h).char_data().map(std::string::ToString::to_string);
+            return self
+                .new_ref(h)
+                .char_data()
+                .map(std::string::ToString::to_string);
         }
         // buffer text/comment nodes always have text_id >= 0 (core pools every
         // string); .get + default keeps this total and coverable.
         let tid = self.buf.text_id[h.idx()];
-        Some(self.buf.strings.get(tid as usize).cloned().unwrap_or_default())
+        Some(
+            self.buf
+                .strings
+                .get(tid as usize)
+                .cloned()
+                .unwrap_or_default(),
+        )
     }
 
     /// textContent: concatenated descendant text.
@@ -694,7 +721,12 @@ impl Tree {
     /// `[added]`/`[removed]` arrays only after the no-observer early-return. The
     /// version bump is the CALLER's job and is always done unconditionally, so the
     /// no-observer path stays zero-alloc while caches still invalidate.
-    fn record_child_list(&mut self, parent: Handle, added: Option<Handle>, removed: Option<Handle>) {
+    fn record_child_list(
+        &mut self,
+        parent: Handle,
+        added: Option<Handle>,
+        removed: Option<Handle>,
+    ) {
         if !self.is_recording() {
             return;
         }
@@ -709,7 +741,12 @@ impl Tree {
     /// Like `record_child_list` but for the batch case (`textContent` replacing a
     /// whole child list): only takes ownership of the already-built `Vec`s — which
     /// the caller produced for the actual mutation anyway — when recording.
-    fn record_child_list_batch(&mut self, parent: Handle, added: Vec<Handle>, removed: Vec<Handle>) {
+    fn record_child_list_batch(
+        &mut self,
+        parent: Handle,
+        added: Vec<Handle>,
+        removed: Vec<Handle>,
+    ) {
         if !self.is_recording() {
             return;
         }
@@ -751,14 +788,20 @@ impl Tree {
     }
     /// Drain the buffered records (keeps recording on). Empty if not recording.
     pub fn take_mutation_records(&mut self) -> Vec<crate::rtdom::mutations::MutationRecord> {
-        self.mutation_log.as_mut().map(std::mem::take).unwrap_or_default()
+        self.mutation_log
+            .as_mut()
+            .map(std::mem::take)
+            .unwrap_or_default()
     }
 
     /// Ensure a node's attr overlay exists (copy buffer attrs in on first write).
     fn ensure_attrs(&mut self, h: Handle) -> &mut AttrList {
         if !self.attrs_ov.contains(h) {
-            let init: AttrList =
-                self.attributes(h).into_iter().map(|(n, v)| (n.into(), v.into())).collect();
+            let init: AttrList = self
+                .attributes(h)
+                .into_iter()
+                .map(|(n, v)| (n.into(), v.into()))
+                .collect();
             self.attrs_ov.insert(h, init);
         }
         self.attrs_ov.get_mut(h).unwrap()
@@ -766,7 +809,8 @@ impl Tree {
 
     pub fn set_attribute(&mut self, h: Handle, name: &str, value: &str) {
         let old = if self.is_recording() {
-            self.get_attribute(h, name).map(std::string::ToString::to_string)
+            self.get_attribute(h, name)
+                .map(std::string::ToString::to_string)
         } else {
             None
         };
@@ -782,7 +826,8 @@ impl Tree {
 
     pub fn remove_attribute(&mut self, h: Handle, name: &str) {
         let old = if self.is_recording() {
-            self.get_attribute(h, name).map(std::string::ToString::to_string)
+            self.get_attribute(h, name)
+                .map(std::string::ToString::to_string)
         } else {
             None
         };
@@ -864,7 +909,28 @@ impl Tree {
         }
     }
 
+    fn fragment_insertion_would_cycle(&self, parent: Handle, fragment: Handle) -> bool {
+        let children = self.children(fragment);
+        let mut ancestor = Some(parent);
+        while let Some(node) = ancestor {
+            if children.contains(&node) {
+                return true;
+            }
+            ancestor = self.parent(node);
+        }
+        false
+    }
+
     pub fn append_child(&mut self, parent: Handle, child: Handle) {
+        if self.node_type(child) == NodeType::Fragment {
+            if parent == child || self.fragment_insertion_would_cycle(parent, child) {
+                return;
+            }
+            for node in self.children(child) {
+                self.append_child(parent, node);
+            }
+            return;
+        }
         self.detach(child);
         self.ensure_children(parent).push(child);
         self.parent_ov.insert(child, Some(parent));
@@ -873,6 +939,15 @@ impl Tree {
     }
 
     pub fn insert_before(&mut self, parent: Handle, child: Handle, reference: Option<Handle>) {
+        if self.node_type(child) == NodeType::Fragment {
+            if parent == child || self.fragment_insertion_would_cycle(parent, child) {
+                return;
+            }
+            for node in self.children(child) {
+                self.insert_before(parent, node, reference);
+            }
+            return;
+        }
         self.detach(child);
         let list = self.ensure_children(parent);
         match reference.and_then(|r| list.iter().position(|&x| x == r)) {
@@ -897,7 +972,11 @@ impl Tree {
     pub fn set_text_content(&mut self, h: Handle, text: &str) {
         let nt = self.node_type(h);
         if nt == NodeType::Text || nt == NodeType::Comment {
-            let old = if self.is_recording() { self.node_value(h) } else { None };
+            let old = if self.is_recording() {
+                self.node_value(h)
+            } else {
+                None
+            };
             self.text_ov.insert(h, text.into());
             self.bump();
             self.record_character_data(h, old);
@@ -906,7 +985,11 @@ impl Tree {
             // the overlay overwrite below ignores it. So snapshot it solely when
             // recording, and avoid cloning `added` on the no-observer path. Snapshot
             // BEFORE orphaning — `orphan_children` moves the child list out.
-            let removed = if self.is_recording() { self.children(h) } else { Vec::new() };
+            let removed = if self.is_recording() {
+                self.children(h)
+            } else {
+                Vec::new()
+            };
             // The prior children leave the tree: clear their parent pointers so none of
             // them keeps reporting `parent() == h` after the overwrite below.
             self.orphan_children(h);
@@ -941,7 +1024,11 @@ impl Tree {
         if nt != NodeType::Text && nt != NodeType::Comment {
             return;
         }
-        let old = if self.is_recording() { self.node_value(h) } else { None };
+        let old = if self.is_recording() {
+            self.node_value(h)
+        } else {
+            None
+        };
         self.text_ov.insert(h, text.into());
         self.bump();
         self.record_character_data(h, old);
@@ -1006,7 +1093,10 @@ impl Tree {
     }
 
     pub fn create_element(&mut self, tag: &str) -> Handle {
-        let h = self.push_node(NewNode::Element { name: tag.to_ascii_lowercase().into(), ns: Namespace::Html });
+        let h = self.push_node(NewNode::Element {
+            name: tag.to_ascii_lowercase().into(),
+            ns: Namespace::Html,
+        });
         self.children_ov.insert(h, ChildList::new());
         self.attrs_ov.insert(h, AttrList::new());
         self.bump();
@@ -1014,7 +1104,10 @@ impl Tree {
     }
 
     pub fn create_element_ns(&mut self, tag: &str, ns: Namespace) -> Handle {
-        let h = self.push_node(NewNode::Element { name: tag.into(), ns });
+        let h = self.push_node(NewNode::Element {
+            name: tag.into(),
+            ns,
+        });
         self.children_ov.insert(h, ChildList::new());
         self.attrs_ov.insert(h, AttrList::new());
         self.bump();
@@ -1023,6 +1116,14 @@ impl Tree {
 
     pub fn create_text_node(&mut self, data: &str) -> Handle {
         let h = self.push_node(NewNode::Text(data.into()));
+        self.bump();
+        h
+    }
+
+    /// Create a detached document fragment, without associating it with a shadow host.
+    pub fn create_document_fragment(&mut self) -> Handle {
+        let h = self.push_node(NewNode::Fragment);
+        self.children_ov.insert(h, ChildList::new());
         self.bump();
         h
     }
@@ -1105,10 +1206,31 @@ impl Tree {
     /// | afterend (case-insensitive). Returns true if inserted.
     pub fn insert_adjacent_element(&mut self, h: Handle, position: &str, el: Handle) -> bool {
         match position.to_ascii_lowercase().as_str() {
-            "beforebegin" => { if self.parent(h).is_some() { self.before(h, &[el]); true } else { false } }
-            "afterend" => { if self.parent(h).is_some() { self.after(h, &[el]); true } else { false } }
-            "afterbegin" => { let first = self.first_child(h); self.insert_before(h, el, first); true }
-            "beforeend" => { self.append_child(h, el); true }
+            "beforebegin" => {
+                if self.parent(h).is_some() {
+                    self.before(h, &[el]);
+                    true
+                } else {
+                    false
+                }
+            }
+            "afterend" => {
+                if self.parent(h).is_some() {
+                    self.after(h, &[el]);
+                    true
+                } else {
+                    false
+                }
+            }
+            "afterbegin" => {
+                let first = self.first_child(h);
+                self.insert_before(h, el, first);
+                true
+            }
+            "beforeend" => {
+                self.append_child(h, el);
+                true
+            }
             _ => false,
         }
     }
@@ -1126,8 +1248,17 @@ impl Tree {
         match pos.as_str() {
             "beforebegin" => self.before(h, &kids),
             "afterend" => self.after(h, &kids),
-            "afterbegin" => { let first = self.first_child(h); for &k in &kids { self.insert_before(h, k, first); } }
-            _ => for &k in &kids { self.append_child(h, k); }, // beforeend (default)
+            "afterbegin" => {
+                let first = self.first_child(h);
+                for &k in &kids {
+                    self.insert_before(h, k, first);
+                }
+            }
+            _ => {
+                for &k in &kids {
+                    self.append_child(h, k);
+                }
+            } // beforeend (default)
         }
     }
     /// `toggleAttribute(name, force?)` — add when absent (or force=Some(true)), remove when present
@@ -1136,20 +1267,28 @@ impl Tree {
         let present = self.has_attribute(h, name);
         let want = force.unwrap_or(!present);
         if want {
-            if !present { self.set_attribute(h, name, ""); }
+            if !present {
+                self.set_attribute(h, name, "");
+            }
             true
         } else {
-            if present { self.remove_attribute(h, name); }
+            if present {
+                self.remove_attribute(h, name);
+            }
             false
         }
     }
     /// `getAttributeNS(namespace, localName)` — our attrs are keyed by qualified name; match the
     /// local name directly, then any `prefix:localName` form (covers SVG `xlink:href` etc.).
     pub fn get_attribute_ns(&self, h: Handle, _ns: Option<&str>, local: &str) -> Option<String> {
-        if let Some(v) = self.get_attribute(h, local) { return Some(v.to_string()); }
+        if let Some(v) = self.get_attribute(h, local) {
+            return Some(v.to_string());
+        }
         let suffix = format!(":{local}");
         for (n, v) in self.attributes(h) {
-            if n == local || n.ends_with(&suffix) { return Some(v); }
+            if n == local || n.ends_with(&suffix) {
+                return Some(v);
+            }
         }
         None
     }
@@ -1171,6 +1310,15 @@ impl Tree {
                     self.parent_ov.insert(k, Some(h));
                 }
                 self.children_ov.insert(h, kids.into());
+                h
+            }
+            NodeType::Fragment => {
+                let h = self.create_document_fragment();
+                let kids: ChildList = n.children.iter().map(|c| self.import_node(c)).collect();
+                for &child in &kids {
+                    self.parent_ov.insert(child, Some(h));
+                }
+                self.children_ov.insert(h, kids);
                 h
             }
             NodeType::Comment => self.create_comment(&n.value),
@@ -1258,7 +1406,11 @@ impl Tree {
         self.some_descendant(root, pred)
     }
 
-    pub(crate) fn some_descendant(&self, root: Handle, mut pred: impl FnMut(Handle) -> bool) -> bool {
+    pub(crate) fn some_descendant(
+        &self,
+        root: Handle,
+        mut pred: impl FnMut(Handle) -> bool,
+    ) -> bool {
         let mut stack: Vec<Handle> = Vec::new();
         let base = stack.len();
         self.for_each_child(root, |c| stack.push(c));
@@ -1280,7 +1432,12 @@ impl Tree {
     pub fn assigned_nodes(&self, slot: Handle) -> Vec<Handle> {
         // shadow_root_of yields a real shadow root (is_shadow_root ⇒ host exists),
         // so the only reachable miss is "slot not in any shadow tree".
-        let Some(host) = self.shadow_root_of(slot).and_then(|sr| self.shadow_host(sr)) else { return Vec::new() };
+        let Some(host) = self
+            .shadow_root_of(slot)
+            .and_then(|sr| self.shadow_host(sr))
+        else {
+            return Vec::new();
+        };
         let slot_name = self.get_attribute(slot, "name").unwrap_or("");
         self.children(host)
             .into_iter()
@@ -1329,7 +1486,10 @@ mod tests {
     #[test]
     fn set_attribute_is_cow_and_bumps_version() {
         let mut tree = t("<div id=a></div>");
-        let div = tree.handles().find(|&h| tree.local_name(h) == Some("div")).unwrap();
+        let div = tree
+            .handles()
+            .find(|&h| tree.local_name(h) == Some("div"))
+            .unwrap();
         let v0 = tree.version;
         tree.set_attribute(div, "class", "card");
         assert!(tree.version > v0);
@@ -1341,7 +1501,10 @@ mod tests {
     #[test]
     fn append_and_remove_child() {
         let mut tree = t("<div></div>");
-        let div = tree.handles().find(|&h| tree.local_name(h) == Some("div")).unwrap();
+        let div = tree
+            .handles()
+            .find(|&h| tree.local_name(h) == Some("div"))
+            .unwrap();
         let span = tree.create_element("span");
         tree.append_child(div, span);
         assert_eq!(tree.children(div), vec![span]);
@@ -1355,22 +1518,89 @@ mod tests {
     #[test]
     fn create_text_and_set_text_content() {
         let mut tree = t("<p>old</p>");
-        let p = tree.handles().find(|&h| tree.local_name(h) == Some("p")).unwrap();
+        let p = tree
+            .handles()
+            .find(|&h| tree.local_name(h) == Some("p"))
+            .unwrap();
         tree.set_text_content(p, "new");
         assert_eq!(tree.text_content(p), "new");
+    }
+
+    #[test]
+    fn document_fragments_move_children_without_inserting_the_fragment() {
+        let mut tree = t("<main><i></i></main>");
+        let parent = tree.query_selector("main").unwrap();
+        let reference = tree.query_selector("i").unwrap();
+        let fragment = tree.create_document_fragment();
+        assert_eq!(tree.node_type(fragment), NodeType::Fragment);
+        assert!(!tree.is_shadow_root(fragment));
+        assert_eq!(tree.parent(fragment), None);
+        let first = tree.create_element("b");
+        let second = tree.create_text_node("text");
+        tree.append_child(fragment, first);
+        tree.append_child(fragment, second);
+        tree.insert_before(parent, fragment, Some(reference));
+        assert_eq!(tree.children(parent), vec![first, second, reference]);
+        assert!(tree.children(fragment).is_empty());
+        assert_eq!(tree.parent(fragment), None);
+        assert_eq!(tree.parent(first), Some(parent));
+        tree.append_child(fragment, reference);
+        tree.append_child(parent, fragment);
+        assert_eq!(tree.children(parent), vec![first, second, reference]);
+        assert!(tree.children(fragment).is_empty());
+    }
+
+    #[test]
+    fn fragment_self_and_ancestor_insertions_leave_the_tree_unchanged() {
+        let mut tree = t("<main></main>");
+        let fragment = tree.create_document_fragment();
+        let parent = tree.create_element("div");
+        let child = tree.create_element("b");
+        tree.append_child(fragment, parent);
+        tree.append_child(parent, child);
+        tree.append_child(fragment, fragment);
+        tree.insert_before(fragment, fragment, None);
+        tree.append_child(child, fragment);
+        tree.insert_before(parent, fragment, Some(child));
+        assert_eq!(tree.children(fragment), vec![parent]);
+        assert_eq!(tree.children(parent), vec![child]);
+        assert!(tree.children(child).is_empty());
+        assert_eq!(tree.parent(fragment), None);
+    }
+
+    #[test]
+    fn importing_template_html_preserves_its_content_fragment() {
+        let mut tree = t("<main></main>");
+        let main = tree.query_selector("main").unwrap();
+        tree.set_inner_html(main, "<template><b>content</b></template>");
+        let template = tree.children(main)[0];
+        let fragment = tree.children(template)[0];
+        assert_eq!(tree.node_type(fragment), NodeType::Fragment);
+        assert!(!tree.is_shadow_root(fragment));
+        assert_eq!(tree.text_content(fragment), "content");
+        let content = tree.children(fragment)[0];
+        tree.append_child(main, fragment);
+        assert_eq!(tree.children(main), vec![template, content]);
+        assert!(tree.children(fragment).is_empty());
     }
 
     #[test]
     fn dump_accessors_doctype_prefix_label() {
         // doctype name + public/system ids
         let dt = t("<!DOCTYPE html PUBLIC \"-//W3C//DTD\" \"sys.dtd\"><html></html>");
-        let doctype = dt.handles().find(|&h| dt.node_type(h) == NodeType::Doctype).unwrap();
+        let doctype = dt
+            .handles()
+            .find(|&h| dt.node_type(h) == NodeType::Doctype)
+            .unwrap();
         assert_eq!(dt.doctype_name(doctype), Some("html"));
         assert_eq!(dt.doctype_public_id(doctype), Some("-//W3C//DTD"));
         assert_eq!(dt.doctype_system_id(doctype), Some("sys.dtd"));
         // plain doctype: empty ids
         let dt2 = t("<!DOCTYPE html><html></html>");
-        let d2 = dt2.handles().find(|&h| dt2.node_type(h) == NodeType::Doctype).unwrap();
+        let d2 = dt2
+            .handles()
+            .find(|&h| dt2.node_type(h) == NodeType::Doctype)
+            .unwrap();
         assert_eq!(dt2.doctype_public_id(d2), Some(""));
         // doctype accessors return None for non-doctype + new nodes
         let html = dt2.get_elements_by_tag_name("html")[0];
@@ -1381,9 +1611,15 @@ mod tests {
 
         // node_label: element, template-content fragment, and None for text
         let tpl = t("<template><i></i></template>");
-        let frag = tpl.handles().find(|&h| tpl.node_type(h) == NodeType::Fragment).unwrap();
+        let frag = tpl
+            .handles()
+            .find(|&h| tpl.node_type(h) == NodeType::Fragment)
+            .unwrap();
         assert_eq!(tpl.node_label(frag), Some("content"));
-        let i = tpl.handles().find(|&h| tpl.local_name(h) == Some("i")).unwrap();
+        let i = tpl
+            .handles()
+            .find(|&h| tpl.local_name(h) == Some("i"))
+            .unwrap();
         assert_eq!(tpl.node_label(i), Some("i"));
         let txt2 = tpl.handles().find(|&h| tpl.node_type(h) == NodeType::Text);
         if let Some(tx) = txt2 {
@@ -1396,7 +1632,10 @@ mod tests {
 
         // for_each_attr_full yields foreign-content prefix from the buffer
         let svg = t("<svg><a xlink:href=\"u\" id=\"k\"></a></svg>");
-        let a = svg.handles().find(|&h| svg.local_name(h) == Some("a")).unwrap();
+        let a = svg
+            .handles()
+            .find(|&h| svg.local_name(h) == Some("a"))
+            .unwrap();
         let mut got = Vec::new();
         svg.for_each_attr_full(a, |p, n, v| got.push(format!("{p}|{n}={v}")));
         assert!(got.contains(&"xlink|href=u".to_string()));
@@ -1415,20 +1654,29 @@ mod tests {
     #[test]
     fn for_each_attr_borrows_both_sources() {
         let tree = t("<a href=/x data-k=v>hi</a>");
-        let a = tree.handles().find(|&h| tree.local_name(h) == Some("a")).unwrap();
+        let a = tree
+            .handles()
+            .find(|&h| tree.local_name(h) == Some("a"))
+            .unwrap();
         let mut buf = Vec::new();
         tree.for_each_attr(a, |n, v| buf.push(format!("{n}={v}")));
         assert_eq!(buf, vec!["href=/x".to_string(), "data-k=v".to_string()]);
         // overlay source after a mutation
         let mut t2 = t("<b>x</b>");
-        let b = t2.handles().find(|&h| t2.local_name(h) == Some("b")).unwrap();
+        let b = t2
+            .handles()
+            .find(|&h| t2.local_name(h) == Some("b"))
+            .unwrap();
         t2.set_attribute(b, "class", "y");
         let mut ov = Vec::new();
         t2.for_each_attr(b, |n, v| ov.push(format!("{n}={v}")));
         assert_eq!(ov, vec!["class=y".to_string()]);
         // buffer element with NO attributes (start < 0) → no calls
         let t3 = t("<i>x</i>");
-        let i = t3.handles().find(|&h| t3.local_name(h) == Some("i")).unwrap();
+        let i = t3
+            .handles()
+            .find(|&h| t3.local_name(h) == Some("i"))
+            .unwrap();
         let mut count = 0;
         t3.for_each_attr(i, |_, _| count += 1);
         assert_eq!(count, 0);
@@ -1442,7 +1690,10 @@ mod tests {
     #[test]
     fn some_descendant_short_circuits_over_elements() {
         let tree = t("<div id=root><section><span class=hit>x</span><b>y</b></section></div>");
-        let root = tree.handles().find(|&h| tree.local_name(h) == Some("div")).unwrap();
+        let root = tree
+            .handles()
+            .find(|&h| tree.local_name(h) == Some("div"))
+            .unwrap();
         // finds a descendant element matching the predicate
         assert!(tree.some_descendant(root, |d| tree.get_attribute(d, "class") == Some("hit")));
         // no matching descendant → false
@@ -1463,11 +1714,20 @@ mod tests {
             tree.local_name(d) == Some("section")
         });
         assert!(found);
-        assert_eq!(calls, 1, "section is the first descendant element → exactly one call");
+        assert_eq!(
+            calls, 1,
+            "section is the first descendant element → exactly one call"
+        );
         // a node with no descendants → false, no calls
-        let empty = tree.handles().find(|&h| tree.local_name(h) == Some("b")).unwrap();
+        let empty = tree
+            .handles()
+            .find(|&h| tree.local_name(h) == Some("b"))
+            .unwrap();
         let mut ec = 0;
-        assert!(!tree.some_descendant(empty, |_| { ec += 1; true }));
+        assert!(!tree.some_descendant(empty, |_| {
+            ec += 1;
+            true
+        }));
         assert_eq!(ec, 0);
     }
 
@@ -1475,13 +1735,19 @@ mod tests {
     fn for_each_child_walks_buffer_overlay_and_new() {
         // buffer chain (first_child/next_sib): matches children() exactly
         let tree = t("<ul><li>1</li><li>2</li><li>3</li></ul>");
-        let ul = tree.handles().find(|&h| tree.local_name(h) == Some("ul")).unwrap();
+        let ul = tree
+            .handles()
+            .find(|&h| tree.local_name(h) == Some("ul"))
+            .unwrap();
         let mut walked = Vec::new();
         tree.for_each_child(ul, |c| walked.push(c));
         assert_eq!(walked, tree.children(ul));
         // overlay source after a structural mutation
         let mut t2 = t("<div><a></a></div>");
-        let div = t2.handles().find(|&h| t2.local_name(h) == Some("div")).unwrap();
+        let div = t2
+            .handles()
+            .find(|&h| t2.local_name(h) == Some("div"))
+            .unwrap();
         let b = t2.create_element("b");
         t2.append_child(div, b);
         let mut ov = Vec::new();
@@ -1497,7 +1763,10 @@ mod tests {
     #[test]
     fn set_inner_html_imports_fragment() {
         let mut tree = t("<div></div>");
-        let div = tree.handles().find(|&h| tree.local_name(h) == Some("div")).unwrap();
+        let div = tree
+            .handles()
+            .find(|&h| tree.local_name(h) == Some("div"))
+            .unwrap();
         tree.set_inner_html(div, "<span class=a>hi</span><b>x</b>");
         let kids = tree.children(div);
         assert_eq!(kids.len(), 2);
@@ -1511,20 +1780,38 @@ mod tests {
     #[test]
     fn shadow_root_encapsulation_and_slots() {
         let mut tree = t("<my-card><span slot=title>Hi</span><p>light</p></my-card>");
-        let host = tree.handles().find(|&h| tree.local_name(h) == Some("my-card")).unwrap();
+        let host = tree
+            .handles()
+            .find(|&h| tree.local_name(h) == Some("my-card"))
+            .unwrap();
         let sr = tree.attach_shadow(host);
-        tree.set_inner_html(sr, "<style>:host{color:red}</style><slot name=title></slot><slot></slot>");
+        tree.set_inner_html(
+            sr,
+            "<style>:host{color:red}</style><slot name=title></slot><slot></slot>",
+        );
         // encapsulation: shadow content is NOT in the light tree
         assert!(tree.shadow_root_of_host.contains_key(&host));
         assert_eq!(tree.query_selector_all("slot").len(), 0); // light query skips shadow
-        // shadow_root_of resolves for shadow-internal nodes
-        let slots = tree.descendants(sr).into_iter().filter(|&h| tree.local_name(h) == Some("slot")).collect::<Vec<_>>();
+                                                              // shadow_root_of resolves for shadow-internal nodes
+        let slots = tree
+            .descendants(sr)
+            .into_iter()
+            .filter(|&h| tree.local_name(h) == Some("slot"))
+            .collect::<Vec<_>>();
         assert_eq!(slots.len(), 2);
         assert_eq!(tree.shadow_root_of(slots[0]), Some(sr));
         assert_eq!(tree.shadow_host(sr), Some(host));
         // assignedNodes: the named slot gets the span[slot=title]; default slot gets <p>
-        let named = slots.iter().find(|&&s| tree.get_attribute(s, "name") == Some("title")).copied().unwrap();
-        let default = slots.iter().find(|&&s| tree.get_attribute(s, "name").is_none()).copied().unwrap();
+        let named = slots
+            .iter()
+            .find(|&&s| tree.get_attribute(s, "name") == Some("title"))
+            .copied()
+            .unwrap();
+        let default = slots
+            .iter()
+            .find(|&&s| tree.get_attribute(s, "name").is_none())
+            .copied()
+            .unwrap();
         let an = tree.assigned_nodes(named);
         assert_eq!(an.len(), 1);
         assert_eq!(tree.local_name(an[0]), Some("span"));
@@ -1534,7 +1821,10 @@ mod tests {
     #[test]
     fn siblings() {
         let tree = t("<ul><li>1</li><li>2</li><li>3</li></ul>");
-        let lis: Vec<_> = tree.handles().filter(|&h| tree.local_name(h) == Some("li")).collect();
+        let lis: Vec<_> = tree
+            .handles()
+            .filter(|&h| tree.local_name(h) == Some("li"))
+            .collect();
         assert_eq!(tree.next_sibling(lis[0]), Some(lis[1]));
         assert_eq!(tree.previous_sibling(lis[2]), Some(lis[1]));
         assert_eq!(tree.next_sibling(lis[2]), None);
@@ -1543,7 +1833,10 @@ mod tests {
     #[test]
     fn first_and_last_child() {
         let mut tree = t("<ul><li>1</li><li>2</li><li>3</li></ul>");
-        let ul = tree.handles().find(|&h| tree.local_name(h) == Some("ul")).unwrap();
+        let ul = tree
+            .handles()
+            .find(|&h| tree.local_name(h) == Some("ul"))
+            .unwrap();
         let kids = tree.children(ul);
         assert_eq!(tree.first_child(ul), Some(kids[0]));
         assert_eq!(tree.last_child(ul), Some(kids[2]));
@@ -1592,13 +1885,19 @@ mod tests {
     fn node_value_text_comment_and_none() {
         let mut tree = t("<p>hi</p><!--c-->");
         // node_value on an element → None (not text/comment)
-        let p = tree.handles().find(|&h| tree.local_name(h) == Some("p")).unwrap();
+        let p = tree
+            .handles()
+            .find(|&h| tree.local_name(h) == Some("p"))
+            .unwrap();
         assert_eq!(tree.node_value(p), None);
         // freshly created text node reads its data via is_new branch
         let txt = tree.create_text_node("hello");
         assert_eq!(tree.node_value(txt).as_deref(), Some("hello"));
         // a comment node from the buffer
-        let comment = tree.handles().find(|&h| tree.node_type(h) == NodeType::Comment).unwrap();
+        let comment = tree
+            .handles()
+            .find(|&h| tree.node_type(h) == NodeType::Comment)
+            .unwrap();
         assert_eq!(tree.node_value(comment).as_deref(), Some("c"));
         // text_content of a comment goes through the text/comment branch
         assert_eq!(tree.text_content(comment), "c");
@@ -1612,7 +1911,10 @@ mod tests {
         // An empty text node (text_id < 0) → node_value is empty string.
         let tree = t("<p></p>");
         // collect_text skips comments: a comment inside an element is ignored.
-        let p = tree.handles().find(|&h| tree.local_name(h) == Some("p")).unwrap();
+        let p = tree
+            .handles()
+            .find(|&h| tree.local_name(h) == Some("p"))
+            .unwrap();
         assert_eq!(tree.text_content(p), "");
     }
 
@@ -1621,14 +1923,20 @@ mod tests {
         // The NodeType::Comment arm of collect_text is exercised: comment text is NOT
         // concatenated into an element's text_content.
         let tree = t("<div>a<!--ignored-->b</div>");
-        let div = tree.handles().find(|&h| tree.local_name(h) == Some("div")).unwrap();
+        let div = tree
+            .handles()
+            .find(|&h| tree.local_name(h) == Some("div"))
+            .unwrap();
         assert_eq!(tree.text_content(div), "ab");
     }
 
     #[test]
     fn set_attribute_updates_existing_slot() {
         let mut tree = t("<div id=a></div>");
-        let div = tree.handles().find(|&h| tree.local_name(h) == Some("div")).unwrap();
+        let div = tree
+            .handles()
+            .find(|&h| tree.local_name(h) == Some("div"))
+            .unwrap();
         // overwrite an existing attribute (the find-and-update slot branch)
         tree.set_attribute(div, "id", "b");
         assert_eq!(tree.get_attribute(div, "id"), Some("b"));
@@ -1638,7 +1946,10 @@ mod tests {
     #[test]
     fn remove_attribute_works() {
         let mut tree = t("<div id=a class=x></div>");
-        let div = tree.handles().find(|&h| tree.local_name(h) == Some("div")).unwrap();
+        let div = tree
+            .handles()
+            .find(|&h| tree.local_name(h) == Some("div"))
+            .unwrap();
         let v0 = tree.version;
         tree.remove_attribute(div, "id");
         assert!(tree.version > v0);
@@ -1649,7 +1960,10 @@ mod tests {
     #[test]
     fn insert_before_with_reference_and_append() {
         let mut tree = t("<ul><li>1</li><li>2</li></ul>");
-        let ul = tree.handles().find(|&h| tree.local_name(h) == Some("ul")).unwrap();
+        let ul = tree
+            .handles()
+            .find(|&h| tree.local_name(h) == Some("ul"))
+            .unwrap();
         let kids = tree.children(ul);
         let (a, b) = (kids[0], kids[1]);
         // insert before a reference node (the Some(idx) branch)
@@ -1673,7 +1987,10 @@ mod tests {
     #[test]
     fn set_text_content_on_element_replaces_children() {
         let mut tree = t("<div><span>old</span></div>");
-        let div = tree.handles().find(|&h| tree.local_name(h) == Some("div")).unwrap();
+        let div = tree
+            .handles()
+            .find(|&h| tree.local_name(h) == Some("div"))
+            .unwrap();
         // element branch: replaced with a single text node
         tree.set_text_content(div, "new");
         assert_eq!(tree.text_content(div), "new");
@@ -1689,8 +2006,14 @@ mod tests {
     #[test]
     fn set_text_content_orphans_the_replaced_children() {
         let mut tree = t("<div><span>old</span></div>");
-        let div = tree.handles().find(|&h| tree.local_name(h) == Some("div")).unwrap();
-        let span = tree.handles().find(|&h| tree.local_name(h) == Some("span")).unwrap();
+        let div = tree
+            .handles()
+            .find(|&h| tree.local_name(h) == Some("div"))
+            .unwrap();
+        let span = tree
+            .handles()
+            .find(|&h| tree.local_name(h) == Some("span"))
+            .unwrap();
         let inner = tree.children(span)[0];
         assert_eq!(tree.parent(span), Some(div));
         // buffer-backed node with no child overlay yet -> the `SoA` sibling-chain walk
@@ -1701,8 +2024,14 @@ mod tests {
         assert_eq!(tree.parent(inner), Some(span));
         // and the empty-string (React container clear) path orphans too
         let mut tree = t("<div><span>old</span></div>");
-        let div = tree.handles().find(|&h| tree.local_name(h) == Some("div")).unwrap();
-        let span = tree.handles().find(|&h| tree.local_name(h) == Some("span")).unwrap();
+        let div = tree
+            .handles()
+            .find(|&h| tree.local_name(h) == Some("div"))
+            .unwrap();
+        let span = tree
+            .handles()
+            .find(|&h| tree.local_name(h) == Some("span"))
+            .unwrap();
         tree.set_text_content(div, "");
         assert!(tree.children(div).is_empty());
         assert_eq!(tree.parent(span), None);
@@ -1711,7 +2040,10 @@ mod tests {
     #[test]
     fn set_inner_html_orphans_the_replaced_children() {
         let mut tree = t("<div></div>");
-        let div = tree.handles().find(|&h| tree.local_name(h) == Some("div")).unwrap();
+        let div = tree
+            .handles()
+            .find(|&h| tree.local_name(h) == Some("div"))
+            .unwrap();
         // append first so `div` has a child OVERLAY — the other `orphan_children` branch
         let kid = tree.create_element("p");
         tree.append_child(div, kid);
@@ -1746,24 +2078,42 @@ mod tests {
     #[test]
     fn set_inner_html_imports_comment_and_svg() {
         let mut tree = t("<div></div>");
-        let div = tree.handles().find(|&h| tree.local_name(h) == Some("div")).unwrap();
+        let div = tree
+            .handles()
+            .find(|&h| tree.local_name(h) == Some("div"))
+            .unwrap();
         // imports an element, a comment (NodeType::Comment arm), and an svg element (ns).
         tree.set_inner_html(div, "<p>hi</p><!--c--><svg><circle r=5></circle></svg>");
         let kids = tree.children(div);
         // p, comment, svg
-        let comment = kids.iter().copied().find(|&k| tree.node_type(k) == NodeType::Comment).unwrap();
+        let comment = kids
+            .iter()
+            .copied()
+            .find(|&k| tree.node_type(k) == NodeType::Comment)
+            .unwrap();
         assert_eq!(tree.node_value(comment).as_deref(), Some("c"));
-        let svg = kids.iter().copied().find(|&k| tree.local_name(k) == Some("svg")).unwrap();
+        let svg = kids
+            .iter()
+            .copied()
+            .find(|&k| tree.local_name(k) == Some("svg"))
+            .unwrap();
         assert_eq!(tree.namespace(svg), Namespace::Svg);
         // svg child carries the svg namespace too
-        let circle = tree.children(svg).into_iter().find(|&k| tree.local_name(k) == Some("circle")).unwrap();
+        let circle = tree
+            .children(svg)
+            .into_iter()
+            .find(|&k| tree.local_name(k) == Some("circle"))
+            .unwrap();
         assert_eq!(tree.namespace(circle), Namespace::Svg);
     }
 
     #[test]
     fn force_inflate_all_preserves_reads() {
         let mut tree = t("<div id=a><span class=x>hi</span></div>");
-        let div = tree.handles().find(|&h| tree.local_name(h) == Some("div")).unwrap();
+        let div = tree
+            .handles()
+            .find(|&h| tree.local_name(h) == Some("div"))
+            .unwrap();
         tree.force_inflate_all();
         // after inflation reads go through overlays but stay correct
         assert_eq!(tree.get_attribute(div, "id"), Some("a"));
@@ -1781,9 +2131,15 @@ mod tests {
         // runtime mirrors this by excluding the synthetic content fragment from its
         // child iteration.)
         let tree = t("<div>before<template><p>hidden</p></template>after</div>");
-        let div = tree.handles().find(|&h| tree.local_name(h) == Some("div")).unwrap();
+        let div = tree
+            .handles()
+            .find(|&h| tree.local_name(h) == Some("div"))
+            .unwrap();
         assert_eq!(tree.text_content(div), "beforeafter");
-        let tpl = tree.handles().find(|&h| tree.local_name(h) == Some("template")).unwrap();
+        let tpl = tree
+            .handles()
+            .find(|&h| tree.local_name(h) == Some("template"))
+            .unwrap();
         assert_eq!(tree.text_content(tpl), "");
     }
 
@@ -1795,30 +2151,67 @@ mod tests {
         //
         // <a><b><c> ; a.after(b, x) → a, b, x, c
         let mut tree = t("<div><a></a><b></b><c></c></div>");
-        let a = tree.handles().find(|&h| tree.local_name(h) == Some("a")).unwrap();
-        let b = tree.handles().find(|&h| tree.local_name(h) == Some("b")).unwrap();
+        let a = tree
+            .handles()
+            .find(|&h| tree.local_name(h) == Some("a"))
+            .unwrap();
+        let b = tree
+            .handles()
+            .find(|&h| tree.local_name(h) == Some("b"))
+            .unwrap();
         let x = tree.create_element("x");
         tree.after(a, &[b, x]);
-        let div = tree.handles().find(|&h| tree.local_name(h) == Some("div")).unwrap();
-        let names: Vec<_> = tree.children(div).iter().map(|&h| tree.local_name(h).unwrap().to_string()).collect();
-        assert_eq!(names, vec!["a", "b", "x", "c"], "after() must skip a next sibling that is itself being inserted");
+        let div = tree
+            .handles()
+            .find(|&h| tree.local_name(h) == Some("div"))
+            .unwrap();
+        let names: Vec<_> = tree
+            .children(div)
+            .iter()
+            .map(|&h| tree.local_name(h).unwrap().to_string())
+            .collect();
+        assert_eq!(
+            names,
+            vec!["a", "b", "x", "c"],
+            "after() must skip a next sibling that is itself being inserted"
+        );
 
         // <a><b><c> ; a.replaceWith(b, x) → b, x, c
         let mut tree2 = t("<div><a></a><b></b><c></c></div>");
-        let a2 = tree2.handles().find(|&h| tree2.local_name(h) == Some("a")).unwrap();
-        let b2 = tree2.handles().find(|&h| tree2.local_name(h) == Some("b")).unwrap();
+        let a2 = tree2
+            .handles()
+            .find(|&h| tree2.local_name(h) == Some("a"))
+            .unwrap();
+        let b2 = tree2
+            .handles()
+            .find(|&h| tree2.local_name(h) == Some("b"))
+            .unwrap();
         let x2 = tree2.create_element("x");
         tree2.replace_with(a2, &[b2, x2]);
-        let div2 = tree2.handles().find(|&h| tree2.local_name(h) == Some("div")).unwrap();
-        let names2: Vec<_> = tree2.children(div2).iter().map(|&h| tree2.local_name(h).unwrap().to_string()).collect();
-        assert_eq!(names2, vec!["b", "x", "c"], "replaceWith() must skip a next sibling that is itself being inserted");
+        let div2 = tree2
+            .handles()
+            .find(|&h| tree2.local_name(h) == Some("div"))
+            .unwrap();
+        let names2: Vec<_> = tree2
+            .children(div2)
+            .iter()
+            .map(|&h| tree2.local_name(h).unwrap().to_string())
+            .collect();
+        assert_eq!(
+            names2,
+            vec!["b", "x", "c"],
+            "replaceWith() must skip a next sibling that is itself being inserted"
+        );
     }
 
     #[test]
     fn assigned_nodes_without_shadow_is_empty() {
         let tree = t("<div><span>x</span></div>");
         // a node not inside any shadow tree → shadow_root_of None → empty
-        let span = tree.handles().find(|&h| tree.local_name(h) == Some("span")).unwrap();
+        let span = tree
+            .handles()
+            .find(|&h| tree.local_name(h) == Some("span"))
+            .unwrap();
         assert!(tree.assigned_nodes(span).is_empty());
     }
 }
