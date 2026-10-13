@@ -14,7 +14,29 @@
 
 use crate::rtdom::color;
 use crate::rtdom::tree::{Handle, NodeType, Tree};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
+
+/// Host policy exclusions affect style application without mutating the authored DOM.
+#[derive(Default, Clone)]
+pub struct StylePolicy {
+    pub blocked_stylesheets: HashSet<Handle>,
+    pub blocked_inline: HashSet<Handle>,
+}
+impl StylePolicy {
+    fn cache_key(&self) -> u64 {
+        use std::hash::{Hash, Hasher};
+        if self.blocked_stylesheets.is_empty() && self.blocked_inline.is_empty() {
+            return 0;
+        }
+        let mut hasher = std::collections::hash_map::DefaultHasher::new();
+        for nodes in [&self.blocked_stylesheets, &self.blocked_inline] {
+            let mut ordered = nodes.iter().copied().collect::<Vec<_>>();
+            ordered.sort_unstable();
+            ordered.hash(&mut hasher);
+        }
+        hasher.finish()
+    }
+}
 
 /// camelCase → kebab-case property name (only ever fed kebab from CSS, but kept
 /// for parity with the JS `kebab` used at the proxy boundary).
@@ -264,7 +286,10 @@ fn specificity(sel: &str) -> u32 {
     i = 0;
     while i < n {
         let at_boundary = i == 0
-            || matches!(bytes[i - 1], b' ' | b'\t' | b'\n' | b'\r' | b'>' | b'+' | b'~');
+            || matches!(
+                bytes[i - 1],
+                b' ' | b'\t' | b'\n' | b'\r' | b'>' | b'+' | b'~'
+            );
         if at_boundary && bytes[i].is_ascii_alphabetic() {
             let mut j = i + 1;
             while j < n && is_ident(bytes[j]) {
@@ -330,6 +355,7 @@ pub(crate) struct Rule {
 #[derive(Default)]
 pub(crate) struct CssCache {
     pub version: u64,
+    pub policy_key: u64,
     /// Hash of the `<style>` sources that produced `rules`. The DOM `version` bumps on ANY
     /// mutation (structure, attributes, text) — but the authored stylesheets usually don't
     /// change across those bumps (a React re-render restructures nodes, not the injected CSS).
@@ -346,12 +372,16 @@ pub(crate) struct CssCache {
 /// brace scan, per-rule decl maps, specificity, clones), so paying this on each version bump
 /// to skip an unchanged re-parse is a net win. Also folds in the style count so adding an
 /// empty `<style>` (or reordering) still invalidates.
-fn style_source_hash(tree: &Tree) -> u64 {
+fn style_source_hash(tree: &Tree, policy: &StylePolicy) -> u64 {
     use std::hash::{Hash, Hasher};
     let mut hasher = std::collections::hash_map::DefaultHasher::new();
     let styles = tree.get_elements_by_tag_name("style");
     styles.len().hash(&mut hasher);
     for h in styles {
+        if policy.blocked_stylesheets.contains(&h) {
+            continue;
+        }
+        h.hash(&mut hasher);
         tree.text_content(h).hash(&mut hasher);
     }
     hasher.finish()
@@ -425,11 +455,14 @@ fn parse_stylesheet(css: &str, start_order: u32, rules: &mut Vec<Rule>) -> u32 {
 }
 
 /// Build the rule index from every `<style>` element's text content in the doc.
-fn build_index(tree: &Tree) -> Vec<Rule> {
+fn build_index(tree: &Tree, policy: &StylePolicy) -> Vec<Rule> {
     let styles = tree.get_elements_by_tag_name("style");
     let mut rules = Vec::new();
     let mut order = 0u32;
     for h in styles {
+        if policy.blocked_stylesheets.contains(&h) {
+            continue;
+        }
         let text = tree.text_content(h);
         order = parse_stylesheet(&text, order, &mut rules);
         // NOTE: the JS also reads emotion `__sheet.cssRules` (speedy-mode injected
@@ -487,11 +520,11 @@ fn flattened_parent(tree: &Tree, h: Handle) -> Option<Handle> {
 }
 
 /// Parse every `<style>` inside a shadow root into scoped rules.
-fn shadow_rules(tree: &Tree, shadow_root: Handle) -> Vec<Rule> {
+fn shadow_rules(tree: &Tree, shadow_root: Handle, policy: &StylePolicy) -> Vec<Rule> {
     let mut rules = Vec::new();
     let mut order = 0u32;
     for h in tree.descendants(shadow_root) {
-        if tree.local_name(h) == Some("style") {
+        if tree.local_name(h) == Some("style") && !policy.blocked_stylesheets.contains(&h) {
             let text = tree.text_content(h);
             order = parse_stylesheet(&text, order, &mut rules);
         }
@@ -578,6 +611,15 @@ fn normalize_font_family(v: &str) -> String {
 /// curated `INHERITED` set from the flattened parent (only values a REAL
 /// rule/inline set, never an initial value).
 pub fn computed_style(tree: &Tree, h: Handle) -> HashMap<String, String> {
+    computed_style_with_policy(tree, h, &StylePolicy::default())
+}
+
+/// Apply host-authorized stylesheet and inline-style exclusions to the same native cascade.
+pub fn computed_style_with_policy(
+    tree: &Tree,
+    h: Handle,
+    policy: &StylePolicy,
+) -> HashMap<String, String> {
     let mut map: HashMap<String, String> = HashMap::new();
     if tree.node_type(h) != NodeType::Element {
         return map;
@@ -586,10 +628,12 @@ pub fn computed_style(tree: &Tree, h: Handle) -> HashMap<String, String> {
     // --- version-keyed memo: return a cached result, and build the rule index
     // at most once per version (not per call / per inheritance-recursion hop). ---
     let version = tree.version;
+    let policy_key = policy.cache_key();
     let light_rules: std::rc::Rc<Vec<Rule>> = {
         let mut c = tree.css_cache.borrow_mut();
-        if c.version != version {
+        if c.version != version || c.policy_key != policy_key {
             c.version = version;
+            c.policy_key = policy_key;
             // Per-element resolved maps depend on the tree shape (selector matching), so they
             // always die on a version bump. The parsed rule index only depends on the `<style>`
             // sources, so keep it across bumps whose CSS is unchanged — re-parse only on a real
@@ -597,7 +641,7 @@ pub fn computed_style(tree: &Tree, h: Handle) -> HashMap<String, String> {
             // re-hashing on each version change is enough to catch it (and within a version the
             // CSS can't change, so the steady state never re-hashes).
             c.computed.clear();
-            let key = style_source_hash(tree);
+            let key = style_source_hash(tree, policy);
             if c.rules_key != Some(key) {
                 c.rules = None;
                 c.rules_key = Some(key);
@@ -613,9 +657,9 @@ pub fn computed_style(tree: &Tree, h: Handle) -> HashMap<String, String> {
             // next version bump would needlessly re-parse. `rules_key` is already set on the
             // invalidation path, so this re-hashes only on the genuine first build.
             if c.rules_key.is_none() {
-                c.rules_key = Some(style_source_hash(tree));
+                c.rules_key = Some(style_source_hash(tree, policy));
             }
-            c.rules = Some(std::rc::Rc::new(build_index(tree)));
+            c.rules = Some(std::rc::Rc::new(build_index(tree, policy)));
         }
         c.rules.clone().unwrap()
     };
@@ -628,7 +672,7 @@ pub fn computed_style(tree: &Tree, h: Handle) -> HashMap<String, String> {
         collect_matched(tree, h, &light_rules, &mut matched);
     } else if let Some(sr) = in_shadow {
         // shadow-internal element: normal selectors from the shadow's own <style>.
-        for r in shadow_rules(tree, sr) {
+        for r in shadow_rules(tree, sr, policy) {
             if !is_shadow_only_selector(&r.selector) && tree.matches(h, &r.selector) {
                 matched.push(r);
             }
@@ -637,7 +681,7 @@ pub fn computed_style(tree: &Tree, h: Handle) -> HashMap<String, String> {
 
     // :host — if `h` hosts a shadow root, its shadow's :host rules style the host.
     if let Some(sr) = tree.shadow_root(h) {
-        for r in shadow_rules(tree, sr) {
+        for r in shadow_rules(tree, sr, policy) {
             if let Some(sel) = host_selector(&r.selector) {
                 if sel.is_empty() || tree.matches(h, sel) {
                     matched.push(r);
@@ -650,7 +694,7 @@ pub fn computed_style(tree: &Tree, h: Handle) -> HashMap<String, String> {
     // shadow's ::slotted rules style the distributed node.
     if let Some(parent) = tree.parent(h) {
         if let Some(sr) = tree.shadow_root(parent) {
-            for r in shadow_rules(tree, sr) {
+            for r in shadow_rules(tree, sr, policy) {
                 if let Some(inner) = slotted_selector(&r.selector) {
                     if inner.is_empty() || tree.matches(h, inner) {
                         matched.push(r);
@@ -664,7 +708,7 @@ pub fn computed_style(tree: &Tree, h: Handle) -> HashMap<String, String> {
 
     // inline style wins over stylesheet rules
     if let Some(inline) = tree.get_attribute(h, "style") {
-        if !inline.is_empty() {
+        if !policy.blocked_inline.contains(&h) && !inline.is_empty() {
             let inline = inline.to_string();
             parse_decls(&inline, &mut map);
         }
@@ -673,7 +717,7 @@ pub fn computed_style(tree: &Tree, h: Handle) -> HashMap<String, String> {
     // Inheritance: inherit unset INHERITED props from the flattened parent, using
     // the parent's already-resolved value (only when a REAL rule/inline set it).
     if let Some(parent) = flattened_parent(tree, h) {
-        let ps = computed_style(tree, parent);
+        let ps = computed_style_with_policy(tree, parent, policy);
         for prop in INHERITED {
             if !map.contains_key(*prop) {
                 let pv = lookup(&ps, prop);
@@ -687,7 +731,10 @@ pub fn computed_style(tree: &Tree, h: Handle) -> HashMap<String, String> {
 
     // memoize for this (handle, version) — inheritance recursion + repeat calls hit this.
     let result = std::rc::Rc::new(map);
-    tree.css_cache.borrow_mut().computed.insert(h, result.clone());
+    tree.css_cache
+        .borrow_mut()
+        .computed
+        .insert(h, result.clone());
     (*result).clone()
 }
 
@@ -712,11 +759,7 @@ mod tests {
     #[test]
     fn inline_color_canonicalized() {
         // (a) inline style="color:red" → rgb(255, 0, 0)
-        let got = gcs_prop(
-            "<div id=x style=\"color:red\">hi</div>",
-            "#x",
-            "color",
-        );
+        let got = gcs_prop("<div id=x style=\"color:red\">hi</div>", "#x", "color");
         assert_eq!(got, "rgb(255, 0, 0)");
     }
 
@@ -727,12 +770,18 @@ mod tests {
         // changes. Rc::ptr_eq proves reuse vs. rebuild without a parse counter.
         let mut tree = Tree::parse("<style>#x{color:green}</style><div id=x>hi</div>");
         let x = tree.query_selector("#x").unwrap();
-        assert_eq!(get_property_value(&computed_style(&tree, x), "color"), "rgb(0, 128, 0)");
+        assert_eq!(
+            get_property_value(&computed_style(&tree, x), "color"),
+            "rgb(0, 128, 0)"
+        );
         let rules_before = tree.css_cache.borrow().rules.clone().unwrap();
 
         // Mutate the DOM (bumps version) WITHOUT touching the stylesheet.
         tree.set_attribute(x, "data-n", "1");
-        assert_eq!(get_property_value(&computed_style(&tree, x), "color"), "rgb(0, 128, 0)");
+        assert_eq!(
+            get_property_value(&computed_style(&tree, x), "color"),
+            "rgb(0, 128, 0)"
+        );
         let rules_after = tree.css_cache.borrow().rules.clone().unwrap();
         assert!(
             std::rc::Rc::ptr_eq(&rules_before, &rules_after),
@@ -742,7 +791,10 @@ mod tests {
         // Now edit the stylesheet itself — the index MUST be re-parsed and the result change.
         let style_h = tree.query_selector("style").unwrap();
         tree.set_text_content(style_h, "#x{color:red}");
-        assert_eq!(get_property_value(&computed_style(&tree, x), "color"), "rgb(255, 0, 0)");
+        assert_eq!(
+            get_property_value(&computed_style(&tree, x), "color"),
+            "rgb(255, 0, 0)"
+        );
         let rules_edited = tree.css_cache.borrow().rules.clone().unwrap();
         assert!(
             !std::rc::Rc::ptr_eq(&rules_before, &rules_edited),
@@ -768,14 +820,22 @@ mod tests {
         assert_eq!(get_property_value(&host_cs, "padding"), "4px");
 
         // shadow-internal <p> matches the shadow's `p{color:blue}`
-        let p = tree.descendants(sr).into_iter().find(|&h| tree.local_name(h) == Some("p")).unwrap();
+        let p = tree
+            .descendants(sr)
+            .into_iter()
+            .find(|&h| tree.local_name(h) == Some("p"))
+            .unwrap();
         let p_cs = computed_style(&tree, p);
         assert_eq!(get_property_value(&p_cs, "color"), "rgb(0, 0, 255)");
         // ...and inherits color from the host across the boundary (host has color:green inline)
         let p_color_inherited = {
             // <p> sets its own color (blue), so test inheritance on a node that does NOT:
             // the slot itself inherits host green via flattened parent
-            let slot = tree.descendants(sr).into_iter().find(|&h| tree.local_name(h) == Some("slot")).unwrap();
+            let slot = tree
+                .descendants(sr)
+                .into_iter()
+                .find(|&h| tree.local_name(h) == Some("slot"))
+                .unwrap();
             get_property_value(&computed_style(&tree, slot), "color")
         };
         assert_eq!(p_color_inherited, "rgb(0, 128, 0)"); // green from host, crossed boundary
@@ -833,11 +893,7 @@ mod tests {
     #[test]
     fn bare_zero_length_to_px() {
         // (f) bare-0 length → 0px
-        let got = gcs_prop(
-            "<div id=x style=\"margin:0\">hi</div>",
-            "#x",
-            "margin-top",
-        );
+        let got = gcs_prop("<div id=x style=\"margin:0\">hi</div>", "#x", "margin-top");
         assert_eq!(got, "0px");
     }
 
@@ -946,7 +1002,7 @@ mod tests {
             "color",
         );
         assert_eq!(got, "rgb(0, 128, 0)"); // green from the depth-1 rule, not the @media one
-        // a stray leading `}` (depth underflow) is skipped, real rule still parses
+                                           // a stray leading `}` (depth underflow) is skipped, real rule still parses
         let got2 = gcs_prop(
             "<style>} #x{color:blue}</style><div id=x>hi</div>",
             "#x",
@@ -1084,7 +1140,7 @@ mod tests {
         assert_eq!(utf8_len(0xC3), 2); // é lead
         assert_eq!(utf8_len(0xE4), 3); // 中 lead
         assert_eq!(utf8_len(0xF0), 4); // 😀 lead
-        // and through strip_comments: a 4-byte emoji outside a comment survives
+                                       // and through strip_comments: a 4-byte emoji outside a comment survives
         let got = gcs_prop(
             "<style>/* c */ #x{content:\"\u{1F600}\"; color:red}</style><div id=x>hi</div>",
             "#x",
@@ -1121,10 +1177,50 @@ mod tests {
         // computed_style on a non-element (text node) returns an empty map
         let tree = Tree::parse("<div id=x>hello</div>");
         let div = tree.query_selector_all("#x")[0];
-        let text = tree.descendants(div).into_iter().find(|&h| tree.node_type(h) != NodeType::Element);
+        let text = tree
+            .descendants(div)
+            .into_iter()
+            .find(|&h| tree.node_type(h) != NodeType::Element);
         if let Some(t) = text {
             let map = computed_style(&tree, t);
             assert!(map.is_empty());
         }
     }
+}
+#[test]
+fn host_style_policy_filters_cascade_and_inheritance_without_mutating_dom() {
+    let tree=Tree::parse("<style>.child { color: red; }</style><div style='visibility:hidden;color:blue'><span class='child'></span></div>");
+    let style = tree.get_elements_by_tag_name("style")[0];
+    let parent = tree.get_elements_by_tag_name("div")[0];
+    let child = tree.get_elements_by_tag_name("span")[0];
+    let mut policy = StylePolicy::default();
+    assert_eq!(
+        get_property_value(
+            &computed_style_with_policy(&tree, child, &policy),
+            "visibility"
+        ),
+        "hidden"
+    );
+    assert_eq!(
+        get_property_value(&computed_style_with_policy(&tree, child, &policy), "color"),
+        "rgb(255, 0, 0)"
+    );
+    policy.blocked_stylesheets.insert(style);
+    assert_eq!(
+        get_property_value(&computed_style_with_policy(&tree, child, &policy), "color"),
+        "rgb(0, 0, 255)"
+    );
+    policy.blocked_inline.insert(parent);
+    let filtered = computed_style_with_policy(&tree, child, &policy);
+    assert_eq!(get_property_value(&filtered, "color"), "");
+    assert_eq!(get_property_value(&filtered, "visibility"), "");
+    assert_eq!(
+        tree.get_attribute(parent, "style"),
+        Some("visibility:hidden;color:blue")
+    );
+    assert_eq!(tree.text_content(style), ".child { color: red; }");
+    assert_eq!(
+        get_property_value(&computed_style(&tree, child), "color"),
+        "rgb(255, 0, 0)"
+    );
 }
