@@ -97,10 +97,20 @@ fn serialize_node(tree: &Tree, h: Handle, parent_tag: Option<&str>, out: &mut St
                 out.push('"');
             });
             out.push('>');
-            if is_void(tag) {
+            let is_html = tree.namespace_uri(h) == Some("http://www.w3.org/1999/xhtml");
+            if is_html && is_void(tree.local_name(h).unwrap_or("")) {
                 return;
             }
-            serialize_children(tree, h, tag, out);
+            serialize_children(
+                tree,
+                h,
+                if is_html {
+                    tree.local_name(h).unwrap_or("")
+                } else {
+                    ""
+                },
+                out,
+            );
             out.push_str("</");
             out.push_str(tag);
             out.push('>');
@@ -272,4 +282,19 @@ mod tests {
         let p = tree2.get_elements_by_tag_name("p")[0];
         assert_eq!(serialize_outer(&tree2, p), "<p>x&nbsp;y</p>");
     }
+}
+#[test]
+fn namespace_controls_void_elements_and_raw_text() {
+    let mut tree = Tree::parse("");
+    let null_input = tree.create_element_namespace(None, "input");
+    assert_eq!(serialize_outer(&tree, null_input), "<input></input>");
+    let prefixed_input =
+        tree.create_element_namespace(Some("http://www.w3.org/1999/xhtml"), "p:input");
+    assert_eq!(serialize_outer(&tree, prefixed_input), "<p:input>");
+    let foreign_script = tree.create_element_namespace(Some("urn:custom"), "script");
+    tree.set_text_content(foreign_script, "a < b");
+    assert_eq!(
+        serialize_outer(&tree, foreign_script),
+        "<script>a &lt; b</script>"
+    );
 }
