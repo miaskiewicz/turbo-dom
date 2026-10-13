@@ -128,6 +128,13 @@ fn serialize_node(tree: &Tree, h: Handle, parent_tag: Option<&str>, out: &mut St
             out.push_str(&tree.node_value(h).unwrap_or_default());
             out.push_str("-->");
         }
+        NodeType::ProcessingInstruction => {
+            out.push_str("<?");
+            out.push_str(tree.processing_instruction_target(h).unwrap_or_default());
+            out.push(' ');
+            out.push_str(&tree.node_value(h).unwrap_or_default());
+            out.push_str("?>");
+        }
         NodeType::Doctype => {
             // Serialize `<!DOCTYPE ` + the node's name + `>` (the JS serializer emits
             // `<!DOCTYPE ${node.name}>`; public/system ids are not part of the HTML

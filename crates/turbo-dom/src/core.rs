@@ -187,8 +187,8 @@ impl SoaBuilder {
             }
             NodeData::ProcessingInstruction { target, contents } => {
                 self.soa.node_type[idx] = PROCESSING_INSTRUCTION_NODE;
-                let combined = format!("{target} {contents}");
-                self.soa.text_id[idx] = self.push_string(&combined);
+                self.soa.tag_id[idx] = self.intern_tag(target);
+                self.soa.text_id[idx] = self.push_string(contents);
             }
             NodeData::Element { name, attrs, template_contents, .. } => {
                 self.soa.node_type[idx] = ELEMENT_NODE;

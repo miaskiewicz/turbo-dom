@@ -136,6 +136,10 @@ enum NewNode {
     },
     Text(SmolStr),
     Comment(SmolStr),
+    ProcessingInstruction {
+        target: SmolStr,
+        data: SmolStr,
+    },
     Doctype {
         name: SmolStr,
         public_id: SmolStr,
@@ -151,6 +155,7 @@ impl NewNode {
             NewNode::Attribute { .. } => NodeType::Attribute,
             NewNode::Text(_) => NodeType::Text,
             NewNode::Comment(_) => NodeType::Comment,
+            NewNode::ProcessingInstruction { .. } => NodeType::ProcessingInstruction,
             NewNode::Doctype { .. } => NodeType::Doctype,
             NewNode::Fragment => NodeType::Fragment,
         }
@@ -172,6 +177,7 @@ impl NewNode {
     fn char_data(&self) -> Option<&str> {
         match self {
             NewNode::Text(s) | NewNode::Comment(s) => Some(s),
+            NewNode::ProcessingInstruction { data, .. } => Some(data),
             _ => None,
         }
     }
@@ -928,12 +934,32 @@ impl Tree {
     }
 
     // ----------------------------------------------------------------- text
+    /// The immutable target of a processing instruction.
+    pub fn processing_instruction_target(&self, h: Handle) -> Option<&str> {
+        if self.node_type(h) != NodeType::ProcessingInstruction {
+            return None;
+        }
+        if self.is_new(h) {
+            return match self.new_ref(h) {
+                NewNode::ProcessingInstruction { target, .. } => Some(target),
+                _ => None,
+            };
+        }
+        self.buf
+            .tag_names
+            .get(self.buf.tag_id[h.idx()] as usize)
+            .map(String::as_str)
+    }
+
     pub fn node_value(&self, h: Handle) -> Option<String> {
         let nt = self.node_type(h);
         if nt == NodeType::Attribute {
             return self.attribute_data(h).map(|data| data.value.to_string());
         }
-        if nt != NodeType::Text && nt != NodeType::Comment {
+        if !matches!(
+            nt,
+            NodeType::Text | NodeType::Comment | NodeType::ProcessingInstruction
+        ) {
             return None;
         }
         if let Some(t) = self.text_ov.get(h) {
@@ -960,7 +986,13 @@ impl Tree {
     /// textContent: concatenated descendant text.
     pub fn text_content(&self, h: Handle) -> String {
         let nt = self.node_type(h);
-        if nt == NodeType::Attribute || nt == NodeType::Text || nt == NodeType::Comment {
+        if matches!(
+            nt,
+            NodeType::Attribute
+                | NodeType::Text
+                | NodeType::Comment
+                | NodeType::ProcessingInstruction
+        ) {
             return self.node_value(h).unwrap_or_default();
         }
         let mut out = String::new();
@@ -1270,7 +1302,10 @@ impl Tree {
             self.set_attribute_value(h, text);
             return;
         }
-        if nt == NodeType::Text || nt == NodeType::Comment {
+        if matches!(
+            nt,
+            NodeType::Text | NodeType::Comment | NodeType::ProcessingInstruction
+        ) {
             let old = if self.is_recording() {
                 self.node_value(h)
             } else {
@@ -1466,6 +1501,17 @@ impl Tree {
 
     pub fn create_comment(&mut self, data: &str) -> Handle {
         let h = self.push_node(NewNode::Comment(data.into()));
+        self.bump();
+        h
+    }
+
+    /// Create an owned detached processing instruction. DOM bindings validate
+    /// XML names and the forbidden data terminator before calling this primitive.
+    pub fn create_processing_instruction(&mut self, target: &str, data: &str) -> Handle {
+        let h = self.push_node(NewNode::ProcessingInstruction {
+            target: target.into(),
+            data: data.into(),
+        });
         self.bump();
         h
     }
@@ -1700,6 +1746,9 @@ impl Tree {
                 h
             }
             NodeType::Comment => self.create_comment(&n.value),
+            NodeType::ProcessingInstruction => {
+                self.create_processing_instruction(&n.name, &n.value)
+            }
             _ => self.create_text_node(&n.value),
         }
     }
@@ -2607,6 +2656,22 @@ mod tests {
         assert!(tree.version > v0);
         assert_eq!(tree.node_type(c), NodeType::Comment);
         assert_eq!(tree.node_value(c).as_deref(), Some("note"));
+    }
+
+    #[test]
+    fn processing_instruction_keeps_target_and_mutable_character_data() {
+        let mut tree = Tree::parse("<body><p>text</p>");
+        let pi = tree.create_processing_instruction("test", "a😀b");
+        assert_eq!(tree.node_type(pi), NodeType::ProcessingInstruction);
+        assert_eq!(tree.processing_instruction_target(pi), Some("test"));
+        assert_eq!(tree.text_content(pi), "a😀b");
+        tree.set_text_content(pi, "changed");
+        assert_eq!(tree.node_value(pi).as_deref(), Some("changed"));
+        assert_eq!(tree.processing_instruction_target(pi), Some("test"));
+        let body = tree.query_selector("body").unwrap();
+        tree.append_child(body, pi);
+        assert_eq!(tree.text_content(body), "text");
+        assert!(super::super::serialize::serialize_outer(&tree, body).contains("<?test changed?>"));
     }
 
     #[test]
