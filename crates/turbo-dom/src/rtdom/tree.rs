@@ -136,6 +136,11 @@ enum NewNode {
     },
     Text(SmolStr),
     Comment(SmolStr),
+    Doctype {
+        name: SmolStr,
+        public_id: SmolStr,
+        system_id: SmolStr,
+    },
     Fragment,
 }
 
@@ -146,6 +151,7 @@ impl NewNode {
             NewNode::Attribute { .. } => NodeType::Attribute,
             NewNode::Text(_) => NodeType::Text,
             NewNode::Comment(_) => NodeType::Comment,
+            NewNode::Doctype { .. } => NodeType::Doctype,
             NewNode::Fragment => NodeType::Fragment,
         }
     }
@@ -887,12 +893,30 @@ impl Tree {
     /// DOCTYPE name / public id / system id (buffer-backed doctype nodes). The
     /// `SoA` stores all three as pooled strings (public/system "" when absent).
     pub fn doctype_name(&self, h: Handle) -> Option<&str> {
+        if self.is_new(h) {
+            return match self.new_ref(h) {
+                NewNode::Doctype { name, .. } => Some(name),
+                _ => None,
+            };
+        }
         self.doctype_field(h, &self.buf.text_id)
     }
     pub fn doctype_public_id(&self, h: Handle) -> Option<&str> {
+        if self.is_new(h) {
+            return match self.new_ref(h) {
+                NewNode::Doctype { public_id, .. } => Some(public_id),
+                _ => None,
+            };
+        }
         self.doctype_field(h, &self.buf.pub_id)
     }
     pub fn doctype_system_id(&self, h: Handle) -> Option<&str> {
+        if self.is_new(h) {
+            return match self.new_ref(h) {
+                NewNode::Doctype { system_id, .. } => Some(system_id),
+                _ => None,
+            };
+        }
         self.doctype_field(h, &self.buf.sys_id)
     }
     fn doctype_field<'a>(&'a self, h: Handle, col: &[i32]) -> Option<&'a str> {
@@ -1431,6 +1455,15 @@ impl Tree {
         h
     }
 
+    /// Create an owned detached `DocumentType` node with its complete parser metadata.
+    pub fn create_document_type(&mut self, name: &str, public_id: &str, system_id: &str) -> Handle {
+        self.push_node(NewNode::Doctype {
+            name: name.into(),
+            public_id: public_id.into(),
+            system_id: system_id.into(),
+        })
+    }
+
     pub fn create_comment(&mut self, data: &str) -> Handle {
         let h = self.push_node(NewNode::Comment(data.into()));
         self.bump();
@@ -1806,6 +1839,23 @@ mod tests {
 
     fn t(html: &str) -> Tree {
         Tree::parse(html)
+    }
+
+    #[test]
+    fn created_document_types_keep_fields_and_order() {
+        let mut tree = Tree::parse("<body></body>");
+        let doc = tree.root();
+        let html = tree.query_selector("html").unwrap();
+        let doctype = tree.create_document_type("html", "public", "system");
+        assert_eq!(tree.node_type(doctype), NodeType::Doctype);
+        assert_eq!(tree.doctype_name(doctype), Some("html"));
+        assert_eq!(tree.doctype_public_id(doctype), Some("public"));
+        assert_eq!(tree.doctype_system_id(doctype), Some("system"));
+        tree.insert_before(doc, doctype, Some(html));
+        assert_eq!(tree.children(doc)[0], doctype);
+        tree.remove_child(doc, doctype);
+        assert_eq!(tree.doctype_name(doctype), Some("html"));
+        assert_eq!(tree.compat_mode(), "BackCompat");
     }
 
     #[test]
