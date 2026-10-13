@@ -21,11 +21,16 @@ use std::collections::{HashMap, HashSet};
 pub struct StylePolicy {
     pub blocked_stylesheets: HashSet<Handle>,
     pub blocked_inline: HashSet<Handle>,
+    /// Applied CSSOM declarations can differ from a policy-blocked authored attribute.
+    pub inline_overrides: HashMap<Handle, String>,
 }
 impl StylePolicy {
     fn cache_key(&self) -> u64 {
         use std::hash::{Hash, Hasher};
-        if self.blocked_stylesheets.is_empty() && self.blocked_inline.is_empty() {
+        if self.blocked_stylesheets.is_empty()
+            && self.blocked_inline.is_empty()
+            && self.inline_overrides.is_empty()
+        {
             return 0;
         }
         let mut hasher = std::collections::hash_map::DefaultHasher::new();
@@ -34,6 +39,9 @@ impl StylePolicy {
             ordered.sort_unstable();
             ordered.hash(&mut hasher);
         }
+        let mut overrides = self.inline_overrides.iter().collect::<Vec<_>>();
+        overrides.sort_unstable_by_key(|(node, _)| **node);
+        overrides.hash(&mut hasher);
         hasher.finish()
     }
 }
@@ -707,7 +715,12 @@ pub fn computed_style_with_policy(
     apply_matched(&mut matched, &mut map);
 
     // inline style wins over stylesheet rules
-    if let Some(inline) = tree.get_attribute(h, "style") {
+    if let Some(inline) = policy
+        .inline_overrides
+        .get(&h)
+        .map(String::as_str)
+        .or_else(|| tree.get_attribute(h, "style"))
+    {
         if !policy.blocked_inline.contains(&h) && !inline.is_empty() {
             let inline = inline.to_string();
             parse_decls(&inline, &mut map);
@@ -1219,6 +1232,14 @@ fn host_style_policy_filters_cascade_and_inheritance_without_mutating_dom() {
         Some("visibility:hidden;color:blue")
     );
     assert_eq!(tree.text_content(style), ".child { color: red; }");
+    policy.blocked_inline.remove(&parent);
+    policy
+        .inline_overrides
+        .insert(parent, "color:green;visibility:visible".into());
+    let applied = computed_style_with_policy(&tree, child, &policy);
+    assert_eq!(get_property_value(&applied, "color"), "rgb(0, 128, 0)");
+    assert_eq!(get_property_value(&applied, "visibility"), "visible");
+
     assert_eq!(
         get_property_value(&computed_style(&tree, child), "color"),
         "rgb(255, 0, 0)"
