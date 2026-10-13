@@ -15,7 +15,13 @@ const VOID: &[&str] = &[
 
 /// Elements whose text content is raw (NOT escaped) on serialization.
 const RAW_TEXT: &[&str] = &[
-    "style", "script", "xmp", "iframe", "noembed", "noframes", "plaintext",
+    "style",
+    "script",
+    "xmp",
+    "iframe",
+    "noembed",
+    "noframes",
+    "plaintext",
 ];
 
 fn is_void(tag: &str) -> bool {
@@ -72,7 +78,7 @@ fn serialize_node(tree: &Tree, h: Handle, parent_tag: Option<&str>, out: &mut St
     match tree.node_type(h) {
         NodeType::Element => {
             // local_name borrows &Tree; serialize is all-immutable, so no String alloc.
-            let tag = tree.local_name(h).unwrap_or("");
+            let tag = tree.qualified_name(h).unwrap_or("");
             out.push('<');
             out.push_str(tag);
             // Foreign-content attributes carry a namespace prefix (xlink/xml/xmlns) that
@@ -145,7 +151,9 @@ pub fn serialize_inner(tree: &Tree, h: Handle) -> String {
 /// outerHTML: serialize `h` itself + its subtree.
 pub fn serialize_outer(tree: &Tree, h: Handle) -> String {
     let mut out = String::new();
-    let parent_tag = tree.parent(h).and_then(|p| tree.local_name(p).map(std::string::ToString::to_string));
+    let parent_tag = tree
+        .parent(h)
+        .and_then(|p| tree.local_name(p).map(std::string::ToString::to_string));
     serialize_node(tree, h, parent_tag.as_deref(), &mut out);
     out
 }
@@ -167,10 +175,7 @@ mod tests {
             serialize_outer(&tree, div),
             "<div id=\"a\" class=\"b\"><span>hi</span><p>yo</p></div>"
         );
-        assert_eq!(
-            serialize_inner(&tree, div),
-            "<span>hi</span><p>yo</p>"
-        );
+        assert_eq!(serialize_inner(&tree, div), "<span>hi</span><p>yo</p>");
     }
 
     #[test]
@@ -218,7 +223,11 @@ mod tests {
         let mut tree = Tree::parse("<!doctype html><html><body><p>x</p></body></html>");
         let root = tree.root();
         // DOCTYPE branch
-        let dt = tree.children(root).into_iter().find(|&h| tree.node_type(h) == NodeType::Doctype).unwrap();
+        let dt = tree
+            .children(root)
+            .into_iter()
+            .find(|&h| tree.node_type(h) == NodeType::Doctype)
+            .unwrap();
         assert_eq!(serialize_outer(&tree, dt), "<!DOCTYPE html>");
         // DOCUMENT node → the `_ => {}` arm (empty output)
         assert_eq!(serialize_outer(&tree, root), "");

@@ -257,6 +257,12 @@ impl SoaBuilder {
 /// Parse a full document into the `SoA` flat buffer.
 #[must_use]
 pub fn parse_html_soa(html: &str) -> Soa {
+    parse_html_soa_with_compat_mode(html).0
+}
+
+/// Parse once and retain html5ever's document compatibility mode.
+#[must_use]
+pub fn parse_html_soa_with_compat_mode(html: &str) -> (Soa, &'static str) {
     let dom = parse_document(RcDom::default(), opts())
         .from_utf8()
         .read_from(&mut html.as_bytes())
@@ -271,7 +277,12 @@ pub fn parse_html_soa(html: &str) -> Soa {
         attr_value_map: rustc_hash::FxHashMap::with_capacity_and_hasher(128, rustc_hash::FxBuildHasher),
     };
     b.alloc(&dom.document, -1);
-    b.soa
+    let mode = if dom.quirks_mode.get() == html5ever::tree_builder::QuirksMode::Quirks {
+        "BackCompat"
+    } else {
+        "CSS1Compat"
+    };
+    (b.soa, mode)
 }
 
 /// Parse a document and return only the node count — no `core::Node` tree, no

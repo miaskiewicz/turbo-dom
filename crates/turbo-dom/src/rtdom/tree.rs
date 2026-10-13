@@ -55,6 +55,8 @@ pub enum Namespace {
     Html = 0,
     Svg = 1,
     MathMl = 2,
+    /// A null or application-defined namespace, created through the namespace-aware DOM API.
+    Other = 3,
 }
 
 impl Namespace {
@@ -62,6 +64,7 @@ impl Namespace {
         match v {
             1 => Namespace::Svg,
             2 => Namespace::MathMl,
+            3 => Namespace::Other,
             _ => Namespace::Html,
         }
     }
@@ -76,6 +79,7 @@ impl Namespace {
         match id {
             1 => Namespace::Svg,
             2 => Namespace::MathMl,
+            3 => Namespace::Other,
             _ => Namespace::Html,
         }
     }
@@ -163,7 +167,49 @@ impl NewNode {
 type ChildList = SmallVec<[Handle; 8]>;
 /// Per-node overlay attribute list. Inlines up to 2 `(name, value)` pairs
 /// (covers the common id/class case) before spilling to the heap.
-type AttrList = SmallVec<[(SmolStr, SmolStr); 2]>;
+/// Namespace-preserving attribute data used by the native DOM mutation surface.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AttributeData {
+    pub namespace: Option<SmolStr>,
+    pub prefix: Option<SmolStr>,
+    pub local_name: SmolStr,
+    pub qualified_name: SmolStr,
+    pub value: SmolStr,
+}
+impl AttributeData {
+    fn new(namespace: Option<&str>, qualified: &str, value: &str) -> Self {
+        let namespace = namespace.filter(|value| !value.is_empty());
+        let (prefix, local) = if namespace.is_some() {
+            qualified
+                .split_once(':')
+                .map_or((None, qualified), |(prefix, local)| (Some(prefix), local))
+        } else {
+            (None, qualified)
+        };
+        Self {
+            namespace: namespace.map(Into::into),
+            prefix: prefix.map(Into::into),
+            local_name: local.into(),
+            qualified_name: qualified.into(),
+            value: value.into(),
+        }
+    }
+}
+struct ElementNamespace {
+    uri: Option<SmolStr>,
+    prefix: Option<SmolStr>,
+    qualified_name: SmolStr,
+}
+type AttrList = SmallVec<[AttributeData; 2]>;
+fn parsed_attribute_namespace(prefix: &str, local: &str) -> Option<&'static str> {
+    match prefix {
+        "xlink" => Some("http://www.w3.org/1999/xlink"),
+        "xml" => Some("http://www.w3.org/XML/1998/namespace"),
+        "xmlns" => Some("http://www.w3.org/2000/xmlns/"),
+        "" if local == "xmlns" => Some("http://www.w3.org/2000/xmlns/"),
+        _ => None,
+    }
+}
 
 /// A COW mutation overlay keyed by [`Handle`], split by the structural fact that
 /// created-node handles are **dense**: `push_node` assigns them `buf_len + i`
@@ -257,8 +303,10 @@ impl<T> Overlay<T> {
 
 pub struct Tree {
     buf: Soa,
+    compat_mode: &'static str,
     buf_len: u32,
     new_nodes: Vec<NewNode>,
+    element_namespaces: FxHashMap<Handle, ElementNamespace>,
     // --- COW overlays (present only for mutated/created nodes) ---
     // Hybrid `Overlay<T>`: created nodes (dense handles) live in a `Vec`, sparse
     // buffer-node overrides in a map — see `Overlay`. `Some(parent)` = re-parented;
@@ -315,12 +363,14 @@ pub(crate) struct QueryCache {
 impl Tree {
     #[must_use]
     pub fn parse(html: &str) -> Tree {
-        let buf = core::parse_html_soa(html);
+        let (buf, compat_mode) = core::parse_html_soa_with_compat_mode(html);
         let buf_len = buf.node_type.len() as u32;
         Tree {
             buf,
+            compat_mode,
             buf_len,
             new_nodes: Vec::new(),
+            element_namespaces: FxHashMap::default(),
             parent_ov: Overlay::new(buf_len),
             children_ov: Overlay::new(buf_len),
             attrs_ov: Overlay::new(buf_len),
@@ -389,6 +439,12 @@ impl Tree {
         self.node_type(h) as u8
     }
 
+    /// The document mode established by the HTML parser, unaffected by later doctype mutations.
+    #[must_use]
+    pub fn compat_mode(&self) -> &'static str {
+        self.compat_mode
+    }
+
     /// The namespace as a NUMBER (HTML = 0, SVG = 1, `MathML` = 2). PUBLIC, stable FFI
     /// accessor mirroring [`Tree::node_type_id`]: consumers branch on `namespace_id(h)
     /// == 0` (is-HTML) at the JS/napi boundary. Locked by `tests/consumer_contract.rs`.
@@ -412,7 +468,7 @@ impl Tree {
 
     /// tagName: uppercased for HTML-namespace elements (DOM contract), as-is otherwise.
     pub fn tag_name(&self, h: Handle) -> Option<String> {
-        let ln = self.local_name(h)?;
+        let ln = self.qualified_name(h)?;
         if self.namespace(h) == Namespace::Html {
             Some(ln.to_ascii_uppercase())
         } else {
@@ -499,122 +555,153 @@ impl Tree {
     }
 
     // ----------------------------------------------------------------- attrs
-    /// getAttribute. Reads overlay if attrs were mutated, else the buffer slice
-    /// (lazy — no owned Vec built for unmutated nodes).
+    /// The element namespace URI, including null/custom namespaces created at runtime.
+    pub fn namespace_uri(&self, h: Handle) -> Option<&str> {
+        if self.node_type(h) != NodeType::Element {
+            return None;
+        }
+        if let Some(metadata) = self.element_namespaces.get(&h) {
+            return metadata.uri.as_deref();
+        }
+        match self.namespace(h) {
+            Namespace::Html => Some("http://www.w3.org/1999/xhtml"),
+            Namespace::Svg => Some("http://www.w3.org/2000/svg"),
+            Namespace::MathMl => Some("http://www.w3.org/1998/Math/MathML"),
+            Namespace::Other => None,
+        }
+    }
+    pub fn prefix(&self, h: Handle) -> Option<&str> {
+        self.element_namespaces
+            .get(&h)
+            .and_then(|metadata| metadata.prefix.as_deref())
+    }
+    pub fn qualified_name(&self, h: Handle) -> Option<&str> {
+        self.element_namespaces
+            .get(&h)
+            .map(|metadata| metadata.qualified_name.as_str())
+            .or_else(|| self.local_name(h))
+    }
     pub fn get_attribute(&self, h: Handle, name: &str) -> Option<&str> {
         if let Some(ov) = self.attrs_ov.get(h) {
-            return ov.iter().find(|(n, _)| n == name).map(|(_, v)| v.as_str());
+            return ov
+                .iter()
+                .find(|attribute| attribute.qualified_name == name)
+                .map(|attribute| attribute.value.as_str());
         }
         if self.is_new(h) {
             return None;
         }
-        let i = h.idx();
-        let start = self.buf.attr_start[i];
+        let start = self.buf.attr_start[h.idx()];
         if start < 0 {
             return None;
         }
-        let start = start as usize;
-        let count = self.buf.attr_count[i] as usize;
-        for j in start..start + count {
-            let nid = self.buf.attr_name_id[j] as usize;
-            if self.buf.attr_names[nid] == name {
-                return Some(&self.buf.attr_values[self.buf.attr_value_id[j] as usize]);
+        for index in start as usize..start as usize + self.buf.attr_count[h.idx()] as usize {
+            let local = &self.buf.attr_names[self.buf.attr_name_id[index] as usize];
+            let prefix = &self.buf.attr_prefixes[self.buf.attr_prefix_id[index] as usize];
+            let matches = if prefix.is_empty() {
+                local == name
+            } else {
+                name.strip_prefix(prefix)
+                    .and_then(|name| name.strip_prefix(':'))
+                    == Some(local.as_str())
+            };
+            if matches {
+                return Some(&self.buf.attr_values[self.buf.attr_value_id[index] as usize]);
             }
         }
         None
     }
-
     pub fn has_attribute(&self, h: Handle, name: &str) -> bool {
         self.get_attribute(h, name).is_some()
     }
-
-    /// All (name, value) pairs for a node (owned copy).
     pub fn attributes(&self, h: Handle) -> Vec<(String, String)> {
-        if let Some(ov) = self.attrs_ov.get(h) {
-            return ov
-                .iter()
-                .map(|(n, v)| (n.to_string(), v.to_string()))
-                .collect();
-        }
-        if self.is_new(h) {
-            return Vec::new();
-        }
-        let i = h.idx();
-        let start = self.buf.attr_start[i];
-        if start < 0 {
-            return Vec::new();
-        }
-        let start = start as usize;
-        let count = self.buf.attr_count[i] as usize;
-        let mut out = Vec::with_capacity(count);
-        for j in start..start + count {
-            let nid = self.buf.attr_name_id[j] as usize;
-            let vid = self.buf.attr_value_id[j] as usize;
-            out.push((
-                self.buf.attr_names[nid].clone(),
-                self.buf.attr_values[vid].clone(),
-            ));
-        }
-        out
+        let mut result = Vec::new();
+        self.for_each_attr(h, |name, value| {
+            result.push((name.to_owned(), value.to_owned()));
+        });
+        result
     }
-
-    /// Visit each (name, value) pair WITHOUT allocating — yields borrowed `&str`
-    /// straight from the overlay or the `SoA` tables. Hot-path alternative to
-    /// `attributes()` (which clones a `Vec<(String, String)>`).
-    pub fn for_each_attr(&self, h: Handle, mut f: impl FnMut(&str, &str)) {
-        if let Some(ov) = self.attrs_ov.get(h) {
-            for (n, v) in ov {
-                f(n, v);
+    /// Visit qualified names and values without allocating for ordinary HTML attributes.
+    pub fn for_each_attr(&self, h: Handle, mut callback: impl FnMut(&str, &str)) {
+        self.for_each_attr_namespace(h, |_, prefix, local, qualified, value| {
+            if let Some(qualified) = qualified {
+                callback(qualified, value);
+            } else if prefix.is_empty() {
+                callback(local, value);
+            } else {
+                callback(&format!("{prefix}:{local}"), value);
+            }
+        });
+    }
+    pub fn for_each_attr_full(&self, h: Handle, mut callback: impl FnMut(&str, &str, &str)) {
+        self.for_each_attr_namespace(h, |_, prefix, local, _, value| {
+            callback(prefix, local, value);
+        });
+    }
+    fn for_each_attr_namespace(
+        &self,
+        h: Handle,
+        mut callback: impl FnMut(Option<&str>, &str, &str, Option<&str>, &str),
+    ) {
+        if let Some(overlay) = self.attrs_ov.get(h) {
+            for attribute in overlay {
+                callback(
+                    attribute.namespace.as_deref(),
+                    attribute.prefix.as_deref().unwrap_or(""),
+                    &attribute.local_name,
+                    Some(&attribute.qualified_name),
+                    &attribute.value,
+                );
             }
             return;
         }
         if self.is_new(h) {
             return;
         }
-        let i = h.idx();
-        let start = self.buf.attr_start[i];
+        let start = self.buf.attr_start[h.idx()];
         if start < 0 {
             return;
         }
-        let start = start as usize;
-        let count = self.buf.attr_count[i] as usize;
-        for j in start..start + count {
-            let nid = self.buf.attr_name_id[j] as usize;
-            let vid = self.buf.attr_value_id[j] as usize;
-            f(&self.buf.attr_names[nid], &self.buf.attr_values[vid]);
+        for index in start as usize..start as usize + self.buf.attr_count[h.idx()] as usize {
+            let prefix = &self.buf.attr_prefixes[self.buf.attr_prefix_id[index] as usize];
+            let local = &self.buf.attr_names[self.buf.attr_name_id[index] as usize];
+            let value = &self.buf.attr_values[self.buf.attr_value_id[index] as usize];
+            let namespace = if self.namespace(h) == Namespace::Html {
+                None
+            } else {
+                parsed_attribute_namespace(prefix, local)
+            };
+            callback(namespace, prefix, local, None, value);
         }
     }
-
-    /// Like `for_each_attr` but also yields the foreign-content attr `prefix`
-    /// ("xlink"/"xml"/"xmlns", else ""). Needed by the html5lib dump. Overlay
-    /// (created/mutated) attrs have no stored prefix → "".
-    pub fn for_each_attr_full(&self, h: Handle, mut f: impl FnMut(&str, &str, &str)) {
-        if let Some(ov) = self.attrs_ov.get(h) {
-            for (n, v) in ov {
-                f("", n, v);
-            }
-            return;
-        }
-        if self.is_new(h) {
-            return;
-        }
-        let i = h.idx();
-        let start = self.buf.attr_start[i];
-        if start < 0 {
-            return;
-        }
-        let start = start as usize;
-        let count = self.buf.attr_count[i] as usize;
-        for j in start..start + count {
-            let prefix = &self.buf.attr_prefixes[self.buf.attr_prefix_id[j] as usize];
-            let nid = self.buf.attr_name_id[j] as usize;
-            let vid = self.buf.attr_value_id[j] as usize;
-            f(
-                prefix,
-                &self.buf.attr_names[nid],
-                &self.buf.attr_values[vid],
+    /// Owned namespace records suitable for cloning/import and native Attr wrappers.
+    pub fn attributes_namespaced(&self, h: Handle) -> Vec<AttributeData> {
+        let mut result = Vec::new();
+        self.for_each_attr_namespace(h, |namespace, prefix, local, qualified, value| {
+            let name = qualified.map_or_else(
+                || {
+                    if prefix.is_empty() {
+                        local.to_owned()
+                    } else {
+                        format!("{prefix}:{local}")
+                    }
+                },
+                str::to_owned,
             );
-        }
+            result.push(AttributeData::new(namespace, &name, value));
+        });
+        result
+    }
+    pub fn attribute_namespaced(
+        &self,
+        h: Handle,
+        namespace: Option<&str>,
+        local: &str,
+    ) -> Option<AttributeData> {
+        let namespace = namespace.filter(|value| !value.is_empty());
+        self.attributes_namespaced(h).into_iter().find(|attribute| {
+            attribute.namespace.as_deref() == namespace && attribute.local_name == local
+        })
     }
 
     /// The interned tag/label name for an element OR document-fragment node (the
@@ -797,11 +884,7 @@ impl Tree {
     /// Ensure a node's attr overlay exists (copy buffer attrs in on first write).
     fn ensure_attrs(&mut self, h: Handle) -> &mut AttrList {
         if !self.attrs_ov.contains(h) {
-            let init: AttrList = self
-                .attributes(h)
-                .into_iter()
-                .map(|(n, v)| (n.into(), v.into()))
-                .collect();
+            let init: AttrList = self.attributes_namespaced(h).into_iter().collect();
             self.attrs_ov.insert(h, init);
         }
         self.attrs_ov.get_mut(h).unwrap()
@@ -815,10 +898,13 @@ impl Tree {
             None
         };
         let ov = self.ensure_attrs(h);
-        if let Some(slot) = ov.iter_mut().find(|(n, _)| n == name) {
-            slot.1 = value.into();
+        if let Some(slot) = ov
+            .iter_mut()
+            .find(|attribute| attribute.qualified_name == name)
+        {
+            slot.value = value.into();
         } else {
-            ov.push((name.into(), value.into()));
+            ov.push(AttributeData::new(None, name, value));
         }
         self.bump();
         self.record_attributes(h, name, old);
@@ -832,7 +918,12 @@ impl Tree {
             None
         };
         let ov = self.ensure_attrs(h);
-        ov.retain(|(n, _)| n != name);
+        if let Some(index) = ov
+            .iter()
+            .position(|attribute| attribute.qualified_name == name)
+        {
+            ov.remove(index);
+        }
         self.bump();
         self.record_attributes(h, name, old);
     }
@@ -1114,6 +1205,30 @@ impl Tree {
         h
     }
 
+    /// Create a namespace-aware element after the caller validates the qualified name.
+    pub fn create_element_namespace(&mut self, namespace: Option<&str>, qualified: &str) -> Handle {
+        let namespace = namespace.filter(|value| !value.is_empty());
+        let (prefix, local) = qualified
+            .split_once(':')
+            .map_or((None, qualified), |(prefix, local)| (Some(prefix), local));
+        let kind = match namespace {
+            Some("http://www.w3.org/1999/xhtml") => Namespace::Html,
+            Some("http://www.w3.org/2000/svg") => Namespace::Svg,
+            Some("http://www.w3.org/1998/Math/MathML") => Namespace::MathMl,
+            _ => Namespace::Other,
+        };
+        let node = self.create_element_ns(local, kind);
+        self.element_namespaces.insert(
+            node,
+            ElementNamespace {
+                uri: namespace.map(Into::into),
+                prefix: prefix.map(Into::into),
+                qualified_name: qualified.into(),
+            },
+        );
+        node
+    }
+
     pub fn create_text_node(&mut self, data: &str) -> Handle {
         let h = self.push_node(NewNode::Text(data.into()));
         self.bump();
@@ -1278,19 +1393,47 @@ impl Tree {
             false
         }
     }
-    /// `getAttributeNS(namespace, localName)` — our attrs are keyed by qualified name; match the
-    /// local name directly, then any `prefix:localName` form (covers SVG `xlink:href` etc.).
-    pub fn get_attribute_ns(&self, h: Handle, _ns: Option<&str>, local: &str) -> Option<String> {
-        if let Some(v) = self.get_attribute(h, local) {
-            return Some(v.to_string());
+    /// Namespace lookup compares the exact namespace URI and local name.
+    pub fn get_attribute_ns(
+        &self,
+        h: Handle,
+        namespace: Option<&str>,
+        local: &str,
+    ) -> Option<String> {
+        self.attribute_namespaced(h, namespace, local)
+            .map(|attribute| attribute.value.to_string())
+    }
+    pub fn set_attribute_ns(
+        &mut self,
+        h: Handle,
+        namespace: Option<&str>,
+        qualified: &str,
+        value: &str,
+    ) {
+        let attribute = AttributeData::new(namespace, qualified, value);
+        let old = self.get_attribute_ns(h, namespace, &attribute.local_name);
+        let overlay = self.ensure_attrs(h);
+        if let Some(existing) = overlay.iter_mut().find(|existing| {
+            existing.namespace == attribute.namespace && existing.local_name == attribute.local_name
+        }) {
+            *existing = attribute.clone();
+        } else {
+            overlay.push(attribute.clone());
         }
-        let suffix = format!(":{local}");
-        for (n, v) in self.attributes(h) {
-            if n == local || n.ends_with(&suffix) {
-                return Some(v);
-            }
+        self.bump();
+        self.record_attributes(h, &attribute.local_name, old);
+    }
+    pub fn remove_attribute_ns(&mut self, h: Handle, namespace: Option<&str>, local: &str) {
+        let namespace = namespace.filter(|value| !value.is_empty());
+        let old = self.get_attribute_ns(h, namespace, local);
+        let overlay = self.ensure_attrs(h);
+        overlay.retain(|attribute| {
+            !(attribute.namespace.as_deref() == namespace && attribute.local_name == local)
+        });
+        if old.is_some() {
+            self.bump();
+            self.record_attributes(h, local, old);
         }
-        None
     }
 
     /// Recursively import a parsed `core::Node` as owned nodes. Returns its handle.
@@ -1300,7 +1443,17 @@ impl Tree {
                 let ns = ns_id(&n.namespace);
                 let h = self.create_element_ns(&n.name, ns);
                 for a in &n.attrs {
-                    self.set_attribute(h, &a.name, &a.value);
+                    let namespace = if ns == Namespace::Html {
+                        None
+                    } else {
+                        parsed_attribute_namespace(&a.prefix, &a.name)
+                    };
+                    let qualified = if a.prefix.is_empty() {
+                        a.name.clone()
+                    } else {
+                        format!("{}:{}", a.prefix, a.name)
+                    };
+                    self.set_attribute_ns(h, namespace, &qualified, &a.value);
                 }
                 let mut kids = Vec::with_capacity(n.children.len());
                 for c in &n.children {
@@ -1461,6 +1614,26 @@ mod tests {
 
     fn t(html: &str) -> Tree {
         Tree::parse(html)
+    }
+
+    #[test]
+    fn compatibility_mode_uses_parser_state() {
+        let mut standards = Tree::parse("<!doctype html><body></body>");
+        assert_eq!(standards.compat_mode(), "CSS1Compat");
+        let root = standards.root();
+        let doctype = standards
+            .children(root)
+            .into_iter()
+            .find(|node| standards.node_type(*node) == NodeType::Doctype)
+            .unwrap();
+        standards.remove_child(root, doctype);
+        assert_eq!(standards.compat_mode(), "CSS1Compat");
+        assert_eq!(Tree::parse("<body></body>").compat_mode(), "BackCompat");
+        assert_eq!(
+            Tree::parse("<!doctype not-html><body></body>").compat_mode(),
+            "BackCompat"
+        );
+        assert_eq!(Tree::parse("<!doctype html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\" \"x\"><body></body>").compat_mode(), "CSS1Compat");
     }
 
     #[test]
@@ -1846,6 +2019,80 @@ mod tests {
         let empty = tree.create_element("div");
         assert_eq!(tree.first_child(empty), None);
         assert_eq!(tree.last_child(empty), None);
+    }
+
+    #[test]
+    fn namespace_attributes_keep_distinct_identity_and_parsed_metadata_after_mutation() {
+        let mut tree =
+            Tree::parse("<svg><a xlink:href='linked' href='plain' xml:lang='en'></a></svg>");
+        let element = tree.get_elements_by_tag_name("a")[0];
+        let xlink = "http://www.w3.org/1999/xlink";
+        assert_eq!(
+            tree.get_attribute_ns(element, Some(xlink), "href")
+                .as_deref(),
+            Some("linked")
+        );
+        assert_eq!(
+            tree.get_attribute_ns(element, None, "href").as_deref(),
+            Some("plain")
+        );
+        assert_eq!(
+            tree.get_attribute_ns(element, Some("urn:wrong"), "href"),
+            None
+        );
+        tree.set_attribute(element, "id", "mutated");
+        assert_eq!(tree.get_attribute(element, "xlink:href"), Some("linked"));
+        assert_eq!(
+            tree.get_attribute_ns(element, Some(xlink), "href")
+                .as_deref(),
+            Some("linked")
+        );
+        tree.set_attribute_ns(element, Some("urn:first"), "same:name", "one");
+        tree.set_attribute_ns(element, Some("urn:second"), "same:name", "two");
+        assert_eq!(
+            tree.get_attribute_ns(element, Some("urn:first"), "name")
+                .as_deref(),
+            Some("one")
+        );
+        assert_eq!(
+            tree.get_attribute_ns(element, Some("urn:second"), "name")
+                .as_deref(),
+            Some("two")
+        );
+        tree.set_attribute_ns(element, Some("urn:first"), "new:name", "updated");
+        let first = tree
+            .attribute_namespaced(element, Some("urn:first"), "name")
+            .unwrap();
+        assert_eq!(first.prefix.as_deref(), Some("new"));
+        assert_eq!(first.qualified_name, "new:name");
+        tree.remove_attribute_ns(element, Some(xlink), "href");
+        assert_eq!(
+            tree.get_attribute_ns(element, None, "href").as_deref(),
+            Some("plain")
+        );
+        assert!(
+            crate::rtdom::serialize::serialize_outer(&tree, element).contains("xml:lang=\"en\"")
+        );
+    }
+
+    #[test]
+    fn custom_and_null_element_namespaces_preserve_qualified_names() {
+        let mut tree = Tree::parse("");
+        let element = tree.create_element_namespace(Some("urn:custom"), "prefix:MixedCase");
+        assert_eq!(tree.namespace(element), Namespace::Other);
+        assert_eq!(tree.namespace_uri(element), Some("urn:custom"));
+        assert_eq!(tree.prefix(element), Some("prefix"));
+        assert_eq!(tree.local_name(element), Some("MixedCase"));
+        assert_eq!(tree.tag_name(element).as_deref(), Some("prefix:MixedCase"));
+        assert_eq!(
+            crate::rtdom::serialize::serialize_outer(&tree, element),
+            "<prefix:MixedCase></prefix:MixedCase>"
+        );
+        let no_namespace = tree.create_element_namespace(None, "MixedCase");
+        assert_eq!(tree.namespace_uri(no_namespace), None);
+        assert_eq!(tree.local_name(no_namespace), Some("MixedCase"));
+        let html = tree.create_element_namespace(Some("http://www.w3.org/1999/xhtml"), "MixedCase");
+        assert_eq!(tree.tag_name(html).as_deref(), Some("MIXEDCASE"));
     }
 
     #[test]
