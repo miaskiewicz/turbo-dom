@@ -22,6 +22,7 @@ use std::cell::RefCell;
 #[repr(u8)]
 pub enum NodeType {
     Element = 1,
+    Attribute = 2,
     Text = 3,
     ProcessingInstruction = 7,
     Comment = 8,
@@ -36,6 +37,7 @@ impl NodeType {
     fn from_u8(v: u8) -> NodeType {
         match v {
             1 => NodeType::Element,
+            2 => NodeType::Attribute,
             3 => NodeType::Text,
             7 => NodeType::ProcessingInstruction,
             8 => NodeType::Comment,
@@ -124,7 +126,14 @@ impl Handle {
 /// element always has one — so the old `(node_type, name, ns)` triple's invalid
 /// combinations (a `Text` with an `ns`, an element with no name) are unrepresentable.
 enum NewNode {
-    Element { name: SmolStr, ns: Namespace },
+    Element {
+        name: SmolStr,
+        ns: Namespace,
+    },
+    Attribute {
+        data: AttributeData,
+        owner: Option<Handle>,
+    },
     Text(SmolStr),
     Comment(SmolStr),
     Fragment,
@@ -134,6 +143,7 @@ impl NewNode {
     fn node_type(&self) -> NodeType {
         match self {
             NewNode::Element { .. } => NodeType::Element,
+            NewNode::Attribute { .. } => NodeType::Attribute,
             NewNode::Text(_) => NodeType::Text,
             NewNode::Comment(_) => NodeType::Comment,
             NewNode::Fragment => NodeType::Fragment,
@@ -307,6 +317,7 @@ pub struct Tree {
     buf_len: u32,
     new_nodes: Vec<NewNode>,
     element_namespaces: FxHashMap<Handle, ElementNamespace>,
+    attribute_nodes: FxHashMap<(Handle, Option<SmolStr>, SmolStr), Handle>,
     // --- COW overlays (present only for mutated/created nodes) ---
     // Hybrid `Overlay<T>`: created nodes (dense handles) live in a `Vec`, sparse
     // buffer-node overrides in a map — see `Overlay`. `Some(parent)` = re-parented;
@@ -371,6 +382,7 @@ impl Tree {
             buf_len,
             new_nodes: Vec::new(),
             element_namespaces: FxHashMap::default(),
+            attribute_nodes: FxHashMap::default(),
             parent_ov: Overlay::new(buf_len),
             children_ov: Overlay::new(buf_len),
             attrs_ov: Overlay::new(buf_len),
@@ -456,6 +468,9 @@ impl Tree {
 
     /// localName (lowercase as parsed). None for non-elements.
     pub fn local_name(&self, h: Handle) -> Option<&str> {
+        if let Some(data) = self.attribute_data(h) {
+            return Some(&data.local_name);
+        }
         if self.node_type(h) != NodeType::Element {
             return None;
         }
@@ -557,6 +572,9 @@ impl Tree {
     // ----------------------------------------------------------------- attrs
     /// The element namespace URI, including null/custom namespaces created at runtime.
     pub fn namespace_uri(&self, h: Handle) -> Option<&str> {
+        if let Some(data) = self.attribute_data(h) {
+            return data.namespace.as_deref();
+        }
         if self.node_type(h) != NodeType::Element {
             return None;
         }
@@ -571,11 +589,17 @@ impl Tree {
         }
     }
     pub fn prefix(&self, h: Handle) -> Option<&str> {
+        if let Some(data) = self.attribute_data(h) {
+            return data.prefix.as_deref();
+        }
         self.element_namespaces
             .get(&h)
             .and_then(|metadata| metadata.prefix.as_deref())
     }
     pub fn qualified_name(&self, h: Handle) -> Option<&str> {
+        if let Some(data) = self.attribute_data(h) {
+            return Some(&data.qualified_name);
+        }
         self.element_namespaces
             .get(&h)
             .map(|metadata| metadata.qualified_name.as_str())
@@ -704,6 +728,144 @@ impl Tree {
         })
     }
 
+    /// A genuine Attr node, with stable identity independent of whether it is attached.
+    pub fn create_attribute(
+        &mut self,
+        namespace: Option<&str>,
+        qualified: &str,
+        value: &str,
+    ) -> Handle {
+        self.push_node(NewNode::Attribute {
+            data: AttributeData::new(namespace, qualified, value),
+            owner: None,
+        })
+    }
+    pub fn attribute_data(&self, node: Handle) -> Option<&AttributeData> {
+        if !self.is_new(node) {
+            return None;
+        }
+        match self.new_ref(node) {
+            NewNode::Attribute { data, .. } => Some(data),
+            _ => None,
+        }
+    }
+    pub fn attribute_owner(&self, node: Handle) -> Option<Handle> {
+        if !self.is_new(node) {
+            return None;
+        }
+        match self.new_ref(node) {
+            NewNode::Attribute { owner, .. } => *owner,
+            _ => None,
+        }
+    }
+    pub fn attribute_node(
+        &mut self,
+        owner: Handle,
+        namespace: Option<&str>,
+        local: &str,
+    ) -> Option<Handle> {
+        let data = self.attribute_namespaced(owner, namespace, local)?;
+        let key = (owner, data.namespace.clone(), data.local_name.clone());
+        if let Some(node) = self.attribute_nodes.get(&key) {
+            return Some(*node);
+        }
+        let node = self.push_node(NewNode::Attribute {
+            data,
+            owner: Some(owner),
+        });
+        self.attribute_nodes.insert(key, node);
+        Some(node)
+    }
+    fn sync_attribute_node(&mut self, owner: Handle, data: &AttributeData) {
+        let key = (owner, data.namespace.clone(), data.local_name.clone());
+        if let Some(node) = self.attribute_nodes.get(&key).copied() {
+            if let NewNode::Attribute { data: current, .. } =
+                &mut self.new_nodes[(node.raw() - self.buf_len) as usize]
+            {
+                *current = data.clone();
+            }
+        }
+    }
+    fn detach_attribute_node(&mut self, owner: Handle, data: &AttributeData) {
+        let key = (owner, data.namespace.clone(), data.local_name.clone());
+        if let Some(node) = self.attribute_nodes.remove(&key) {
+            if let NewNode::Attribute { owner, .. } =
+                &mut self.new_nodes[(node.raw() - self.buf_len) as usize]
+            {
+                *owner = None;
+            }
+        }
+    }
+    pub fn set_attribute_node(
+        &mut self,
+        owner: Handle,
+        node: Handle,
+    ) -> Result<Option<Handle>, &'static str> {
+        if self.node_type(owner) != NodeType::Element {
+            return Err("TypeError");
+        }
+        let data = self.attribute_data(node).cloned().ok_or("TypeError")?;
+        if self
+            .attribute_owner(node)
+            .is_some_and(|current| current != owner)
+        {
+            return Err("InUseAttributeError");
+        }
+        let replaced = self.attribute_node(owner, data.namespace.as_deref(), &data.local_name);
+        if replaced == Some(node) {
+            return Ok(replaced);
+        }
+        if let Some(old) = replaced {
+            let old_data = self.attribute_data(old).unwrap().clone();
+            self.detach_attribute_node(owner, &old_data);
+        }
+        self.set_attribute_ns(
+            owner,
+            data.namespace.as_deref(),
+            &data.qualified_name,
+            &data.value,
+        );
+        if let NewNode::Attribute { owner: current, .. } =
+            &mut self.new_nodes[(node.raw() - self.buf_len) as usize]
+        {
+            *current = Some(owner);
+        }
+        self.attribute_nodes.insert(
+            (owner, data.namespace.clone(), data.local_name.clone()),
+            node,
+        );
+        Ok(replaced)
+    }
+    pub fn remove_attribute_node(
+        &mut self,
+        owner: Handle,
+        node: Handle,
+    ) -> Result<Handle, &'static str> {
+        if self.attribute_owner(node) != Some(owner) {
+            return Err("NotFoundError");
+        }
+        let data = self.attribute_data(node).cloned().ok_or("TypeError")?;
+        self.remove_attribute_ns(owner, data.namespace.as_deref(), &data.local_name);
+        Ok(node)
+    }
+    pub fn set_attribute_value(&mut self, node: Handle, value: &str) {
+        let Some(data) = self.attribute_data(node).cloned() else {
+            return;
+        };
+        if let Some(owner) = self.attribute_owner(node) {
+            self.set_attribute_ns(
+                owner,
+                data.namespace.as_deref(),
+                &data.qualified_name,
+                value,
+            );
+        } else if let NewNode::Attribute { data, .. } =
+            &mut self.new_nodes[(node.raw() - self.buf_len) as usize]
+        {
+            data.value = value.into();
+        }
+    }
+
     /// The interned tag/label name for an element OR document-fragment node (the
     /// `<template>` synthetic `content` fragment carries the label "content").
     /// None for nodes without a tag id (text/comment/doctype/document).
@@ -744,6 +906,9 @@ impl Tree {
     // ----------------------------------------------------------------- text
     pub fn node_value(&self, h: Handle) -> Option<String> {
         let nt = self.node_type(h);
+        if nt == NodeType::Attribute {
+            return self.attribute_data(h).map(|data| data.value.to_string());
+        }
         if nt != NodeType::Text && nt != NodeType::Comment {
             return None;
         }
@@ -771,7 +936,7 @@ impl Tree {
     /// textContent: concatenated descendant text.
     pub fn text_content(&self, h: Handle) -> String {
         let nt = self.node_type(h);
-        if nt == NodeType::Text || nt == NodeType::Comment {
+        if nt == NodeType::Attribute || nt == NodeType::Text || nt == NodeType::Comment {
             return self.node_value(h).unwrap_or_default();
         }
         let mut out = String::new();
@@ -898,14 +1063,18 @@ impl Tree {
             None
         };
         let ov = self.ensure_attrs(h);
-        if let Some(slot) = ov
+        let changed = if let Some(slot) = ov
             .iter_mut()
             .find(|attribute| attribute.qualified_name == name)
         {
             slot.value = value.into();
+            slot.clone()
         } else {
-            ov.push(AttributeData::new(None, name, value));
-        }
+            let data = AttributeData::new(None, name, value);
+            ov.push(data.clone());
+            data
+        };
+        self.sync_attribute_node(h, &changed);
         self.bump();
         self.record_attributes(h, name, old);
     }
@@ -922,7 +1091,8 @@ impl Tree {
             .iter()
             .position(|attribute| attribute.qualified_name == name)
         {
-            ov.remove(index);
+            let removed = ov.remove(index);
+            self.detach_attribute_node(h, &removed);
         }
         self.bump();
         self.record_attributes(h, name, old);
@@ -1013,6 +1183,11 @@ impl Tree {
     }
 
     pub fn append_child(&mut self, parent: Handle, child: Handle) {
+        if self.node_type(child) == NodeType::Attribute
+            || self.node_type(parent) == NodeType::Attribute
+        {
+            return;
+        }
         if self.node_type(child) == NodeType::Fragment {
             if parent == child || self.fragment_insertion_would_cycle(parent, child) {
                 return;
@@ -1030,6 +1205,11 @@ impl Tree {
     }
 
     pub fn insert_before(&mut self, parent: Handle, child: Handle, reference: Option<Handle>) {
+        if self.node_type(child) == NodeType::Attribute
+            || self.node_type(parent) == NodeType::Attribute
+        {
+            return;
+        }
         if self.node_type(child) == NodeType::Fragment {
             if parent == child || self.fragment_insertion_would_cycle(parent, child) {
                 return;
@@ -1062,6 +1242,10 @@ impl Tree {
 
     pub fn set_text_content(&mut self, h: Handle, text: &str) {
         let nt = self.node_type(h);
+        if nt == NodeType::Attribute {
+            self.set_attribute_value(h, text);
+            return;
+        }
         if nt == NodeType::Text || nt == NodeType::Comment {
             let old = if self.is_recording() {
                 self.node_value(h)
@@ -1112,6 +1296,10 @@ impl Tree {
     /// Set the text of a text/comment node directly (`CharacterData.data` / `nodeValue` setter).
     pub fn set_node_value(&mut self, h: Handle, text: &str) {
         let nt = self.node_type(h);
+        if nt == NodeType::Attribute {
+            self.set_attribute_value(h, text);
+            return;
+        }
         if nt != NodeType::Text && nt != NodeType::Comment {
             return;
         }
@@ -1420,12 +1608,16 @@ impl Tree {
         } else {
             overlay.push(attribute.clone());
         }
+        self.sync_attribute_node(h, &attribute);
         self.bump();
         self.record_attributes(h, &attribute.local_name, old);
     }
     pub fn remove_attribute_ns(&mut self, h: Handle, namespace: Option<&str>, local: &str) {
         let namespace = namespace.filter(|value| !value.is_empty());
         let old = self.get_attribute_ns(h, namespace, local);
+        if let Some(data) = self.attribute_namespaced(h, namespace, local) {
+            self.detach_attribute_node(h, &data);
+        }
         let overlay = self.ensure_attrs(h);
         overlay.retain(|attribute| {
             !(attribute.namespace.as_deref() == namespace && attribute.local_name == local)
@@ -2019,6 +2211,51 @@ mod tests {
         let empty = tree.create_element("div");
         assert_eq!(tree.first_child(empty), None);
         assert_eq!(tree.last_child(empty), None);
+    }
+
+    #[test]
+    fn native_attribute_nodes_keep_identity_live_values_and_single_owner() {
+        let mut tree = Tree::parse("<div id='first'></div><p></p>");
+        let owner = tree.get_elements_by_tag_name("div")[0];
+        let other = tree.get_elements_by_tag_name("p")[0];
+        let id = tree.attribute_node(owner, None, "id").unwrap();
+        assert_eq!(tree.node_type_id(id), 2);
+        assert_eq!(tree.attribute_node(owner, None, "id"), Some(id));
+        tree.set_attribute(owner, "id", "changed");
+        assert_eq!(tree.node_value(id).as_deref(), Some("changed"));
+        tree.set_text_content(id, "live");
+        assert_eq!(tree.get_attribute(owner, "id"), Some("live"));
+        let replacement = tree.create_attribute(None, "id", "replacement");
+        assert_eq!(tree.set_attribute_node(owner, replacement), Ok(Some(id)));
+        assert_eq!(tree.attribute_owner(id), None);
+        assert_eq!(tree.attribute_owner(replacement), Some(owner));
+        assert_eq!(
+            tree.set_attribute_node(other, replacement),
+            Err("InUseAttributeError")
+        );
+        assert_eq!(
+            tree.remove_attribute_node(owner, replacement),
+            Ok(replacement)
+        );
+        assert_eq!(tree.node_value(replacement).as_deref(), Some("replacement"));
+        assert_eq!(tree.get_attribute(owner, "id"), None);
+        assert_eq!(tree.set_attribute_node(other, replacement), Ok(None));
+        tree.set_node_value(replacement, "other");
+        assert_eq!(tree.get_attribute(other, "id"), Some("other"));
+        let namespaced = tree.create_attribute(Some("urn:test"), "one:name", "value");
+        tree.set_attribute_node(other, namespaced).unwrap();
+        tree.set_attribute_ns(other, Some("urn:test"), "two:name", "updated");
+        assert_eq!(
+            tree.attribute_node(other, Some("urn:test"), "name"),
+            Some(namespaced)
+        );
+        assert_eq!(
+            tree.attribute_data(namespaced).unwrap().prefix.as_deref(),
+            Some("two")
+        );
+        tree.remove_attribute_ns(other, Some("urn:test"), "name");
+        assert_eq!(tree.attribute_owner(namespaced), None);
+        assert_eq!(tree.node_value(namespaced).as_deref(), Some("updated"));
     }
 
     #[test]
