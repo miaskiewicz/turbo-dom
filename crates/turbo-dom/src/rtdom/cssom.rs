@@ -293,7 +293,7 @@ mod tests {
         // rule with no '{' at all → whole string is the selector, no decls
         let r2 = CssStyleRule::parse(".x");
         assert_eq!(r2.selector_text, ".x");
-        assert!(r2.declarations.is_empty());
+        assert_eq!(r2.declarations, [] as [(String, String); 0]);
         // empty-declaration css_text → "sel { }"
         assert_eq!(CssStyleRule::parse(".x {}").css_text(), ".x { }");
     }

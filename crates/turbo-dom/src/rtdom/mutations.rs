@@ -204,7 +204,7 @@ mod tests {
         assert_eq!(recs[0].added(), &[li]);
         assert_eq!(recs[1].removed(), &[li]);
         // drained
-        assert!(obs.take_records(&mut tree).is_empty());
+        assert_eq!(obs.take_records(&mut tree), [] as [MutationRecord; 0]);
     }
 
     #[test]
@@ -257,13 +257,13 @@ mod tests {
         let mut obs2 = MutationObserver::new();
         obs2.observe(&mut tree, section, ObserverInit { attributes: true, ..Default::default() });
         tree.set_attribute(span, "class", "z");
-        assert!(obs2.take_records(&mut tree).is_empty());
+        assert_eq!(obs2.take_records(&mut tree), [] as [MutationRecord; 0]);
         // type filtering: childList off → an append on the observed node is ignored
         let mut obs3 = MutationObserver::new();
         obs3.observe(&mut tree, section, ObserverInit { attributes: true, ..Default::default() });
         let d = tree.create_element("div");
         tree.append_child(section, d);
-        assert!(obs3.take_records(&mut tree).is_empty());
+        assert_eq!(obs3.take_records(&mut tree), [] as [MutationRecord; 0]);
     }
 
     #[test]
@@ -272,12 +272,12 @@ mod tests {
         let div = el(&tree, "div");
         let mut obs = MutationObserver::new();
         // take_records before observe → nothing (no target)
-        assert!(obs.take_records(&mut tree).is_empty());
+        assert_eq!(obs.take_records(&mut tree), [] as [MutationRecord; 0]);
         obs.observe(&mut tree, div, ObserverInit { attributes: true, ..Default::default() });
         obs.disconnect(&mut tree);
         assert!(!tree.is_recording());
         tree.set_attribute(div, "class", "a"); // not recorded (disconnected)
-        assert!(obs.take_records(&mut tree).is_empty());
+        assert_eq!(obs.take_records(&mut tree), [] as [MutationRecord; 0]);
     }
 
     #[test]
@@ -300,7 +300,7 @@ mod tests {
         let mut obs2 = MutationObserver::new();
         obs2.observe(&mut t2, section, ObserverInit { attributes: true, subtree: true, ..Default::default() });
         t2.set_attribute(b, "class", "z"); // b is under <aside>, not <section>
-        assert!(obs2.take_records(&mut t2).is_empty());
+        assert_eq!(obs2.take_records(&mut t2), [] as [MutationRecord; 0]);
     }
 
     #[test]

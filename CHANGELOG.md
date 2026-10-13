@@ -5,6 +5,32 @@ environment for vitest/jest. Format based on [Keep a Changelog](https://keepacha
 Early versions were released as lightweight tags / version-stamped commits (no per-release notes
 at the time); this file reconstructs them from history.
 
+## [0.5.2] — 2026-10-13
+
+### Added
+- Native detached document fragments, including imported template content and
+  ordered insertion of fragment children without inserting the fragment itself.
+- Namespace-aware element/attribute creation, native Attr identity and ownership,
+  document type and processing instruction nodes, and document compatibility mode.
+- Host CSS policy filtering and separate effective inline-style state so security
+  policy enforcement preserves authored attributes while affecting the cascade.
+
+### Fixed
+- Detached element/fragment selectors traverse their own subtree in document order.
+- HTML serialization respects element namespaces and retains processing
+  instructions, doctypes and namespaced attributes.
+- Rust test assertions provide the failed collection value and pass the updated
+  stable Clippy gate.
+
+### Performance
+- Box rare Attr/doctype/processing-instruction payloads and promote attribute
+  lists to namespace records only when needed. Ordinary mutation churn retains
+  363 allocations and 81,510 bytes per operation, within the existing gate.
+
+### Release
+- Align the npm package, native parser, Rust DOM crate and generated WASM package
+  metadata at 0.5.2.
+
 ## [0.5.1] — cascade: keep the parsed rule index across DOM mutations
 
 ### Performance
