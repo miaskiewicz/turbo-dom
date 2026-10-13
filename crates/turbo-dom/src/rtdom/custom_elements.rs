@@ -120,7 +120,7 @@ mod tests {
         let d = CustomElementDefinition::new("my-el");
         assert_eq!(d.name, "my-el");
         assert_eq!(d.extends, None);
-        assert!(d.observed_attributes.is_empty());
+        assert_eq!(d.observed_attributes, [] as [String; 0]);
         // Default impl path.
         let def: CustomElementDefinition = CustomElementDefinition::default();
         assert_eq!(def.name, "");

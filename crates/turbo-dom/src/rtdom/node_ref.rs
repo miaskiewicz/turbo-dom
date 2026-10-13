@@ -132,7 +132,9 @@ impl<'a> NodeRef<'a> {
     /// Previous sibling node (any type), if any.
     #[must_use]
     pub fn previous_sibling(&self) -> Option<NodeRef<'a>> {
-        self.tree.previous_sibling(self.handle).map(|h| self.wrap(h))
+        self.tree
+            .previous_sibling(self.handle)
+            .map(|h| self.wrap(h))
     }
 
     /// First child that is an element.
@@ -161,13 +163,17 @@ impl<'a> NodeRef<'a> {
     /// Next sibling that is an element.
     #[must_use]
     pub fn next_element_sibling(&self) -> Option<NodeRef<'a>> {
-        self.tree.next_element_sibling(self.handle).map(|h| self.wrap(h))
+        self.tree
+            .next_element_sibling(self.handle)
+            .map(|h| self.wrap(h))
     }
 
     /// Previous sibling that is an element.
     #[must_use]
     pub fn previous_element_sibling(&self) -> Option<NodeRef<'a>> {
-        self.tree.previous_element_sibling(self.handle).map(|h| self.wrap(h))
+        self.tree
+            .previous_element_sibling(self.handle)
+            .map(|h| self.wrap(h))
     }
 
     // ---------------------------------------------------------------- queries
@@ -181,6 +187,14 @@ impl<'a> NodeRef<'a> {
     /// First DESCENDANT matching `selector` (the context node itself is excluded).
     #[must_use]
     pub fn query_selector(&self, selector: &str) -> Option<NodeRef<'a>> {
+        if !self.in_document() {
+            return self
+                .tree
+                .descendants(self.handle)
+                .into_iter()
+                .find(|&h| self.tree.matches(h, selector))
+                .map(|h| self.wrap(h));
+        }
         self.tree
             .query_selector_all(selector)
             .iter()
@@ -192,6 +206,15 @@ impl<'a> NodeRef<'a> {
     /// All DESCENDANTS matching `selector` (the context node itself is excluded).
     #[must_use]
     pub fn query_selector_all(&self, selector: &str) -> Vec<NodeRef<'a>> {
+        if !self.in_document() {
+            return self
+                .tree
+                .descendants(self.handle)
+                .into_iter()
+                .filter(|&h| self.tree.matches(h, selector))
+                .map(|h| self.wrap(h))
+                .collect();
+        }
         self.tree
             .query_selector_all(selector)
             .iter()
@@ -206,6 +229,16 @@ impl<'a> NodeRef<'a> {
     #[inline]
     fn wrap(&self, h: Handle) -> NodeRef<'a> {
         NodeRef::new(self.tree, h)
+    }
+
+    // Document query caches contain only the connected light tree. Detached
+    // elements/fragments/shadow roots need their own subtree traversal.
+    fn in_document(&self) -> bool {
+        let mut top = self.handle;
+        while let Some(parent) = self.tree.parent(top) {
+            top = parent;
+        }
+        top == self.tree.root()
     }
 
     /// Is `h` a strict descendant of `self.handle` (walking parents to the root)?
@@ -288,6 +321,34 @@ mod tests {
 
         // The context node itself is excluded from its own query results.
         assert!(cards[0].query_selector("div.card").is_none());
+    }
+
+    #[test]
+    fn detached_fragment_and_element_queries_preserve_subtree_order() {
+        let mut tree = Tree::parse("<main><span id=connected></span></main>");
+        let fragment = tree.create_document_fragment();
+        let div = tree.create_element("div");
+        let first = tree.create_element("span");
+        let second = tree.create_element("span");
+        tree.append_child(fragment, div);
+        tree.append_child(div, first);
+        tree.append_child(fragment, second);
+        let node = NodeRef::new(&tree, fragment);
+        assert_eq!(node.query_selector("span").map(|n| n.handle()), Some(first));
+        assert_eq!(
+            node.query_selector_all("span")
+                .iter()
+                .map(NodeRef::handle)
+                .collect::<Vec<_>>(),
+            vec![first, second]
+        );
+        let element = NodeRef::new(&tree, div);
+        assert!(element.query_selector("div").is_none());
+        assert_eq!(
+            element.query_selector("span").map(|n| n.handle()),
+            Some(first)
+        );
+        assert_eq!(tree.query_selector_all("span").len(), 1);
     }
 
     #[test]

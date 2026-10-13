@@ -10,7 +10,7 @@
 use super::tree::{Handle, NodeType, Tree};
 use std::fmt::Write;
 
-const NS_LABEL: [&str; 3] = ["", "svg ", "math "];
+const NS_LABEL: [&str; 4] = ["", "svg ", "math ", ""];
 
 fn indent(depth: usize, out: &mut String) {
     out.push_str("| ");
@@ -139,7 +139,10 @@ mod tests {
         let dump = dump_tree(&tree);
         // depth = leading "  " count after the "| " line prefix
         let depth = |needle: &str| -> usize {
-            let line = dump.lines().find(|l| l.trim_end().ends_with(needle)).expect(needle);
+            let line = dump
+                .lines()
+                .find(|l| l.trim_end().ends_with(needle))
+                .expect(needle);
             let body = line.strip_prefix("| ").unwrap_or(line);
             (body.len() - body.trim_start().len()) / 2
         };

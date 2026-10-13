@@ -9,9 +9,9 @@
 //! Reads come straight off the buffer (zero alloc) unless an overlay exists.
 
 use crate::core::{self, Soa};
-use smol_str::SmolStr;
 use rustc_hash::FxHashMap;
 use smallvec::SmallVec;
+use smol_str::SmolStr;
 use std::cell::RefCell;
 
 /// A DOM node type. `#[repr(u8)]` with the standard `nodeType` numeric values, so
@@ -22,6 +22,7 @@ use std::cell::RefCell;
 #[repr(u8)]
 pub enum NodeType {
     Element = 1,
+    Attribute = 2,
     Text = 3,
     ProcessingInstruction = 7,
     Comment = 8,
@@ -36,6 +37,7 @@ impl NodeType {
     fn from_u8(v: u8) -> NodeType {
         match v {
             1 => NodeType::Element,
+            2 => NodeType::Attribute,
             3 => NodeType::Text,
             7 => NodeType::ProcessingInstruction,
             8 => NodeType::Comment,
@@ -55,6 +57,8 @@ pub enum Namespace {
     Html = 0,
     Svg = 1,
     MathMl = 2,
+    /// A null or application-defined namespace, created through the namespace-aware DOM API.
+    Other = 3,
 }
 
 impl Namespace {
@@ -62,6 +66,7 @@ impl Namespace {
         match v {
             1 => Namespace::Svg,
             2 => Namespace::MathMl,
+            3 => Namespace::Other,
             _ => Namespace::Html,
         }
     }
@@ -76,6 +81,7 @@ impl Namespace {
         match id {
             1 => Namespace::Svg,
             2 => Namespace::MathMl,
+            3 => Namespace::Other,
             _ => Namespace::Html,
         }
     }
@@ -120,18 +126,41 @@ impl Handle {
 /// element always has one — so the old `(node_type, name, ns)` triple's invalid
 /// combinations (a `Text` with an `ns`, an element with no name) are unrepresentable.
 enum NewNode {
-    Element { name: SmolStr, ns: Namespace },
+    Element {
+        name: SmolStr,
+        ns: Namespace,
+    },
+    Attribute {
+        data: Box<AttributeData>,
+        owner: Option<Handle>,
+    },
     Text(SmolStr),
     Comment(SmolStr),
+    ProcessingInstruction(Box<ProcessingInstructionData>),
+    Doctype(Box<DoctypeData>),
     Fragment,
+}
+
+// Rare node payloads stay out of the element/text slots in the mutation arena.
+struct ProcessingInstructionData {
+    target: SmolStr,
+    data: SmolStr,
+}
+struct DoctypeData {
+    name: SmolStr,
+    public_id: SmolStr,
+    system_id: SmolStr,
 }
 
 impl NewNode {
     fn node_type(&self) -> NodeType {
         match self {
             NewNode::Element { .. } => NodeType::Element,
+            NewNode::Attribute { .. } => NodeType::Attribute,
             NewNode::Text(_) => NodeType::Text,
             NewNode::Comment(_) => NodeType::Comment,
+            NewNode::ProcessingInstruction(_) => NodeType::ProcessingInstruction,
+            NewNode::Doctype(_) => NodeType::Doctype,
             NewNode::Fragment => NodeType::Fragment,
         }
     }
@@ -152,6 +181,7 @@ impl NewNode {
     fn char_data(&self) -> Option<&str> {
         match self {
             NewNode::Text(s) | NewNode::Comment(s) => Some(s),
+            NewNode::ProcessingInstruction(value) => Some(&value.data),
             _ => None,
         }
     }
@@ -163,7 +193,180 @@ impl NewNode {
 type ChildList = SmallVec<[Handle; 8]>;
 /// Per-node overlay attribute list. Inlines up to 2 `(name, value)` pairs
 /// (covers the common id/class case) before spilling to the heap.
-type AttrList = SmallVec<[(SmolStr, SmolStr); 2]>;
+/// Namespace-preserving attribute data used by the native DOM mutation surface.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AttributeData {
+    pub namespace: Option<SmolStr>,
+    pub prefix: Option<SmolStr>,
+    pub local_name: SmolStr,
+    pub qualified_name: SmolStr,
+    pub value: SmolStr,
+}
+impl AttributeData {
+    fn new(namespace: Option<&str>, qualified: &str, value: &str) -> Self {
+        let namespace = namespace.filter(|value| !value.is_empty());
+        let (prefix, local) = if namespace.is_some() {
+            qualified
+                .split_once(':')
+                .map_or((None, qualified), |(prefix, local)| (Some(prefix), local))
+        } else {
+            (None, qualified)
+        };
+        Self {
+            namespace: namespace.map(Into::into),
+            prefix: prefix.map(Into::into),
+            local_name: local.into(),
+            qualified_name: qualified.into(),
+            value: value.into(),
+        }
+    }
+}
+struct ElementNamespace {
+    uri: Option<SmolStr>,
+    prefix: Option<SmolStr>,
+    qualified_name: SmolStr,
+}
+// Ordinary HTML attributes retain the compact name/value layout. A namespace
+// mutation promotes only that element's list to the complete record format.
+enum AttrList {
+    Plain(SmallVec<[(SmolStr, SmolStr); 2]>),
+    Namespaced(Box<SmallVec<[AttributeData; 2]>>),
+}
+impl AttrList {
+    fn new() -> Self {
+        Self::Plain(SmallVec::new())
+    }
+    fn from_records(records: Vec<AttributeData>) -> Self {
+        if records.iter().all(|record| record.namespace.is_none()) {
+            Self::Plain(
+                records
+                    .into_iter()
+                    .map(|record| (record.qualified_name, record.value))
+                    .collect(),
+            )
+        } else {
+            Self::Namespaced(Box::new(records.into_iter().collect()))
+        }
+    }
+    fn get(&self, name: &str) -> Option<&str> {
+        match self {
+            Self::Plain(rows) => rows
+                .iter()
+                .find(|(key, _)| key == name)
+                .map(|(_, value)| value.as_str()),
+            Self::Namespaced(rows) => rows
+                .iter()
+                .find(|record| record.qualified_name == name)
+                .map(|record| record.value.as_str()),
+        }
+    }
+    fn for_each(&self, mut callback: impl FnMut(Option<&str>, &str, &str, Option<&str>, &str)) {
+        match self {
+            Self::Plain(rows) => {
+                for (name, value) in rows {
+                    callback(None, "", name, Some(name), value);
+                }
+            }
+            Self::Namespaced(rows) => {
+                for record in rows.iter() {
+                    callback(
+                        record.namespace.as_deref(),
+                        record.prefix.as_deref().unwrap_or(""),
+                        &record.local_name,
+                        Some(&record.qualified_name),
+                        &record.value,
+                    );
+                }
+            }
+        }
+    }
+    fn records_mut(&mut self) -> &mut SmallVec<[AttributeData; 2]> {
+        if let Self::Plain(rows) = self {
+            let records = std::mem::take(rows)
+                .into_iter()
+                .map(|(name, value)| AttributeData::new(None, &name, &value))
+                .collect();
+            *self = Self::Namespaced(Box::new(records));
+        }
+        match self {
+            Self::Namespaced(rows) => rows,
+            Self::Plain(_) => unreachable!(),
+        }
+    }
+    fn set(&mut self, name: &str, value: &str) -> AttributeData {
+        match self {
+            Self::Plain(rows) => {
+                if let Some((_, slot)) = rows.iter_mut().find(|(key, _)| key == name) {
+                    *slot = value.into();
+                } else {
+                    rows.push((name.into(), value.into()));
+                }
+                AttributeData::new(None, name, value)
+            }
+            Self::Namespaced(rows) => {
+                if let Some(record) = rows.iter_mut().find(|record| record.qualified_name == name) {
+                    record.value = value.into();
+                    record.clone()
+                } else {
+                    let record = AttributeData::new(None, name, value);
+                    rows.push(record.clone());
+                    record
+                }
+            }
+        }
+    }
+    fn set_namespace(&mut self, attribute: AttributeData) {
+        if attribute.namespace.is_none() && matches!(self, Self::Plain(_)) {
+            self.set(&attribute.qualified_name, &attribute.value);
+            return;
+        }
+        let rows = self.records_mut();
+        if let Some(record) = rows.iter_mut().find(|record| {
+            record.namespace == attribute.namespace && record.local_name == attribute.local_name
+        }) {
+            *record = attribute;
+        } else {
+            rows.push(attribute);
+        }
+    }
+    fn remove(&mut self, name: &str) -> Option<AttributeData> {
+        match self {
+            Self::Plain(rows) => {
+                let index = rows.iter().position(|(key, _)| key == name)?;
+                let (name, value) = rows.remove(index);
+                Some(AttributeData::new(None, &name, &value))
+            }
+            Self::Namespaced(rows) => {
+                let index = rows
+                    .iter()
+                    .position(|record| record.qualified_name == name)?;
+                Some(rows.remove(index))
+            }
+        }
+    }
+    fn remove_namespace(&mut self, namespace: Option<&str>, local: &str) {
+        match self {
+            Self::Plain(rows) => {
+                if namespace.is_none() {
+                    rows.retain(|(name, _)| name != local);
+                }
+            }
+            Self::Namespaced(rows) => rows.retain(|record| {
+                !(record.namespace.as_deref() == namespace && record.local_name == local)
+            }),
+        }
+    }
+}
+
+fn parsed_attribute_namespace(prefix: &str, local: &str) -> Option<&'static str> {
+    match prefix {
+        "xlink" => Some("http://www.w3.org/1999/xlink"),
+        "xml" => Some("http://www.w3.org/XML/1998/namespace"),
+        "xmlns" => Some("http://www.w3.org/2000/xmlns/"),
+        "" if local == "xmlns" => Some("http://www.w3.org/2000/xmlns/"),
+        _ => None,
+    }
+}
 
 /// A COW mutation overlay keyed by [`Handle`], split by the structural fact that
 /// created-node handles are **dense**: `push_node` assigns them `buf_len + i`
@@ -192,7 +395,11 @@ struct Overlay<T> {
 
 impl<T> Overlay<T> {
     fn new(buf_len: u32) -> Overlay<T> {
-        Overlay { dense: Vec::new(), map: FxHashMap::default(), buf_len }
+        Overlay {
+            dense: Vec::new(),
+            map: FxHashMap::default(),
+            buf_len,
+        }
     }
 
     /// `Some(handle.idx() - buf_len)` for a created node, `None` for a buffer node.
@@ -253,8 +460,11 @@ impl<T> Overlay<T> {
 
 pub struct Tree {
     buf: Soa,
+    compat_mode: &'static str,
     buf_len: u32,
     new_nodes: Vec<NewNode>,
+    element_namespaces: FxHashMap<Handle, ElementNamespace>,
+    attribute_nodes: FxHashMap<(Handle, Option<SmolStr>, SmolStr), Handle>,
     // --- COW overlays (present only for mutated/created nodes) ---
     // Hybrid `Overlay<T>`: created nodes (dense handles) live in a `Vec`, sparse
     // buffer-node overrides in a map — see `Overlay`. `Some(parent)` = re-parented;
@@ -311,12 +521,15 @@ pub(crate) struct QueryCache {
 impl Tree {
     #[must_use]
     pub fn parse(html: &str) -> Tree {
-        let buf = core::parse_html_soa(html);
+        let (buf, compat_mode) = core::parse_html_soa_with_compat_mode(html);
         let buf_len = buf.node_type.len() as u32;
         Tree {
             buf,
+            compat_mode,
             buf_len,
             new_nodes: Vec::new(),
+            element_namespaces: FxHashMap::default(),
+            attribute_nodes: FxHashMap::default(),
             parent_ov: Overlay::new(buf_len),
             children_ov: Overlay::new(buf_len),
             attrs_ov: Overlay::new(buf_len),
@@ -385,6 +598,12 @@ impl Tree {
         self.node_type(h) as u8
     }
 
+    /// The document mode established by the HTML parser, unaffected by later doctype mutations.
+    #[must_use]
+    pub fn compat_mode(&self) -> &'static str {
+        self.compat_mode
+    }
+
     /// The namespace as a NUMBER (HTML = 0, SVG = 1, `MathML` = 2). PUBLIC, stable FFI
     /// accessor mirroring [`Tree::node_type_id`]: consumers branch on `namespace_id(h)
     /// == 0` (is-HTML) at the JS/napi boundary. Locked by `tests/consumer_contract.rs`.
@@ -396,6 +615,9 @@ impl Tree {
 
     /// localName (lowercase as parsed). None for non-elements.
     pub fn local_name(&self, h: Handle) -> Option<&str> {
+        if let Some(data) = self.attribute_data(h) {
+            return Some(&data.local_name);
+        }
         if self.node_type(h) != NodeType::Element {
             return None;
         }
@@ -408,7 +630,7 @@ impl Tree {
 
     /// tagName: uppercased for HTML-namespace elements (DOM contract), as-is otherwise.
     pub fn tag_name(&self, h: Handle) -> Option<String> {
-        let ln = self.local_name(h)?;
+        let ln = self.qualified_name(h)?;
         if self.namespace(h) == Namespace::Html {
             Some(ln.to_ascii_uppercase())
         } else {
@@ -495,111 +717,288 @@ impl Tree {
     }
 
     // ----------------------------------------------------------------- attrs
-    /// getAttribute. Reads overlay if attrs were mutated, else the buffer slice
-    /// (lazy — no owned Vec built for unmutated nodes).
+    /// The element namespace URI, including null/custom namespaces created at runtime.
+    pub fn namespace_uri(&self, h: Handle) -> Option<&str> {
+        if let Some(data) = self.attribute_data(h) {
+            return data.namespace.as_deref();
+        }
+        if self.node_type(h) != NodeType::Element {
+            return None;
+        }
+        if let Some(metadata) = self.element_namespaces.get(&h) {
+            return metadata.uri.as_deref();
+        }
+        match self.namespace(h) {
+            Namespace::Html => Some("http://www.w3.org/1999/xhtml"),
+            Namespace::Svg => Some("http://www.w3.org/2000/svg"),
+            Namespace::MathMl => Some("http://www.w3.org/1998/Math/MathML"),
+            Namespace::Other => None,
+        }
+    }
+    pub fn prefix(&self, h: Handle) -> Option<&str> {
+        if let Some(data) = self.attribute_data(h) {
+            return data.prefix.as_deref();
+        }
+        self.element_namespaces
+            .get(&h)
+            .and_then(|metadata| metadata.prefix.as_deref())
+    }
+    pub fn qualified_name(&self, h: Handle) -> Option<&str> {
+        if let Some(data) = self.attribute_data(h) {
+            return Some(&data.qualified_name);
+        }
+        self.element_namespaces
+            .get(&h)
+            .map(|metadata| metadata.qualified_name.as_str())
+            .or_else(|| self.local_name(h))
+    }
     pub fn get_attribute(&self, h: Handle, name: &str) -> Option<&str> {
         if let Some(ov) = self.attrs_ov.get(h) {
-            return ov.iter().find(|(n, _)| n == name).map(|(_, v)| v.as_str());
+            return ov.get(name);
         }
         if self.is_new(h) {
             return None;
         }
-        let i = h.idx();
-        let start = self.buf.attr_start[i];
+        let start = self.buf.attr_start[h.idx()];
         if start < 0 {
             return None;
         }
-        let start = start as usize;
-        let count = self.buf.attr_count[i] as usize;
-        for j in start..start + count {
-            let nid = self.buf.attr_name_id[j] as usize;
-            if self.buf.attr_names[nid] == name {
-                return Some(&self.buf.attr_values[self.buf.attr_value_id[j] as usize]);
+        for index in start as usize..start as usize + self.buf.attr_count[h.idx()] as usize {
+            let local = &self.buf.attr_names[self.buf.attr_name_id[index] as usize];
+            let prefix = &self.buf.attr_prefixes[self.buf.attr_prefix_id[index] as usize];
+            let matches = if prefix.is_empty() {
+                local == name
+            } else {
+                name.strip_prefix(prefix)
+                    .and_then(|name| name.strip_prefix(':'))
+                    == Some(local.as_str())
+            };
+            if matches {
+                return Some(&self.buf.attr_values[self.buf.attr_value_id[index] as usize]);
             }
         }
         None
     }
-
     pub fn has_attribute(&self, h: Handle, name: &str) -> bool {
         self.get_attribute(h, name).is_some()
     }
-
-    /// All (name, value) pairs for a node (owned copy).
     pub fn attributes(&self, h: Handle) -> Vec<(String, String)> {
-        if let Some(ov) = self.attrs_ov.get(h) {
-            return ov.iter().map(|(n, v)| (n.to_string(), v.to_string())).collect();
+        let mut result = Vec::new();
+        self.for_each_attr(h, |name, value| {
+            result.push((name.to_owned(), value.to_owned()));
+        });
+        result
+    }
+    /// Visit qualified names and values without allocating for ordinary HTML attributes.
+    pub fn for_each_attr(&self, h: Handle, mut callback: impl FnMut(&str, &str)) {
+        self.for_each_attr_namespace(h, |_, prefix, local, qualified, value| {
+            if let Some(qualified) = qualified {
+                callback(qualified, value);
+            } else if prefix.is_empty() {
+                callback(local, value);
+            } else {
+                callback(&format!("{prefix}:{local}"), value);
+            }
+        });
+    }
+    pub fn for_each_attr_full(&self, h: Handle, mut callback: impl FnMut(&str, &str, &str)) {
+        self.for_each_attr_namespace(h, |_, prefix, local, _, value| {
+            callback(prefix, local, value);
+        });
+    }
+    fn for_each_attr_namespace(
+        &self,
+        h: Handle,
+        mut callback: impl FnMut(Option<&str>, &str, &str, Option<&str>, &str),
+    ) {
+        if let Some(overlay) = self.attrs_ov.get(h) {
+            overlay.for_each(callback);
+            return;
         }
         if self.is_new(h) {
-            return Vec::new();
+            return;
         }
-        let i = h.idx();
-        let start = self.buf.attr_start[i];
+        let start = self.buf.attr_start[h.idx()];
         if start < 0 {
-            return Vec::new();
+            return;
         }
-        let start = start as usize;
-        let count = self.buf.attr_count[i] as usize;
-        let mut out = Vec::with_capacity(count);
-        for j in start..start + count {
-            let nid = self.buf.attr_name_id[j] as usize;
-            let vid = self.buf.attr_value_id[j] as usize;
-            out.push((self.buf.attr_names[nid].clone(), self.buf.attr_values[vid].clone()));
+        for index in start as usize..start as usize + self.buf.attr_count[h.idx()] as usize {
+            let prefix = &self.buf.attr_prefixes[self.buf.attr_prefix_id[index] as usize];
+            let local = &self.buf.attr_names[self.buf.attr_name_id[index] as usize];
+            let value = &self.buf.attr_values[self.buf.attr_value_id[index] as usize];
+            let namespace = if self.namespace(h) == Namespace::Html {
+                None
+            } else {
+                parsed_attribute_namespace(prefix, local)
+            };
+            callback(namespace, prefix, local, None, value);
         }
-        out
+    }
+    /// Owned namespace records suitable for cloning/import and native Attr wrappers.
+    pub fn attributes_namespaced(&self, h: Handle) -> Vec<AttributeData> {
+        let mut result = Vec::new();
+        self.for_each_attr_namespace(h, |namespace, prefix, local, qualified, value| {
+            let name = qualified.map_or_else(
+                || {
+                    if prefix.is_empty() {
+                        local.to_owned()
+                    } else {
+                        format!("{prefix}:{local}")
+                    }
+                },
+                str::to_owned,
+            );
+            result.push(AttributeData::new(namespace, &name, value));
+        });
+        result
+    }
+    pub fn attribute_namespaced(
+        &self,
+        h: Handle,
+        namespace: Option<&str>,
+        local: &str,
+    ) -> Option<AttributeData> {
+        let namespace = namespace.filter(|value| !value.is_empty());
+        self.attributes_namespaced(h).into_iter().find(|attribute| {
+            attribute.namespace.as_deref() == namespace && attribute.local_name == local
+        })
     }
 
-    /// Visit each (name, value) pair WITHOUT allocating — yields borrowed `&str`
-    /// straight from the overlay or the `SoA` tables. Hot-path alternative to
-    /// `attributes()` (which clones a `Vec<(String, String)>`).
-    pub fn for_each_attr(&self, h: Handle, mut f: impl FnMut(&str, &str)) {
-        if let Some(ov) = self.attrs_ov.get(h) {
-            for (n, v) in ov {
-                f(n, v);
-            }
-            return;
+    /// A genuine Attr node, with stable identity independent of whether it is attached.
+    pub fn create_attribute(
+        &mut self,
+        namespace: Option<&str>,
+        qualified: &str,
+        value: &str,
+    ) -> Handle {
+        self.push_node(NewNode::Attribute {
+            data: Box::new(AttributeData::new(namespace, qualified, value)),
+            owner: None,
+        })
+    }
+    pub fn attribute_data(&self, node: Handle) -> Option<&AttributeData> {
+        if !self.is_new(node) {
+            return None;
         }
-        if self.is_new(h) {
-            return;
-        }
-        let i = h.idx();
-        let start = self.buf.attr_start[i];
-        if start < 0 {
-            return;
-        }
-        let start = start as usize;
-        let count = self.buf.attr_count[i] as usize;
-        for j in start..start + count {
-            let nid = self.buf.attr_name_id[j] as usize;
-            let vid = self.buf.attr_value_id[j] as usize;
-            f(&self.buf.attr_names[nid], &self.buf.attr_values[vid]);
+        match self.new_ref(node) {
+            NewNode::Attribute { data, .. } => Some(data),
+            _ => None,
         }
     }
-
-    /// Like `for_each_attr` but also yields the foreign-content attr `prefix`
-    /// ("xlink"/"xml"/"xmlns", else ""). Needed by the html5lib dump. Overlay
-    /// (created/mutated) attrs have no stored prefix → "".
-    pub fn for_each_attr_full(&self, h: Handle, mut f: impl FnMut(&str, &str, &str)) {
-        if let Some(ov) = self.attrs_ov.get(h) {
-            for (n, v) in ov {
-                f("", n, v);
+    pub fn attribute_owner(&self, node: Handle) -> Option<Handle> {
+        if !self.is_new(node) {
+            return None;
+        }
+        match self.new_ref(node) {
+            NewNode::Attribute { owner, .. } => *owner,
+            _ => None,
+        }
+    }
+    pub fn attribute_node(
+        &mut self,
+        owner: Handle,
+        namespace: Option<&str>,
+        local: &str,
+    ) -> Option<Handle> {
+        let data = self.attribute_namespaced(owner, namespace, local)?;
+        let key = (owner, data.namespace.clone(), data.local_name.clone());
+        if let Some(node) = self.attribute_nodes.get(&key) {
+            return Some(*node);
+        }
+        let node = self.push_node(NewNode::Attribute {
+            data: Box::new(data),
+            owner: Some(owner),
+        });
+        self.attribute_nodes.insert(key, node);
+        Some(node)
+    }
+    fn sync_attribute_node(&mut self, owner: Handle, data: &AttributeData) {
+        let key = (owner, data.namespace.clone(), data.local_name.clone());
+        if let Some(node) = self.attribute_nodes.get(&key).copied() {
+            if let NewNode::Attribute { data: current, .. } =
+                &mut self.new_nodes[(node.raw() - self.buf_len) as usize]
+            {
+                **current = data.clone();
             }
-            return;
         }
-        if self.is_new(h) {
-            return;
+    }
+    fn detach_attribute_node(&mut self, owner: Handle, data: &AttributeData) {
+        let key = (owner, data.namespace.clone(), data.local_name.clone());
+        if let Some(node) = self.attribute_nodes.remove(&key) {
+            if let NewNode::Attribute { owner, .. } =
+                &mut self.new_nodes[(node.raw() - self.buf_len) as usize]
+            {
+                *owner = None;
+            }
         }
-        let i = h.idx();
-        let start = self.buf.attr_start[i];
-        if start < 0 {
-            return;
+    }
+    pub fn set_attribute_node(
+        &mut self,
+        owner: Handle,
+        node: Handle,
+    ) -> Result<Option<Handle>, &'static str> {
+        if self.node_type(owner) != NodeType::Element {
+            return Err("TypeError");
         }
-        let start = start as usize;
-        let count = self.buf.attr_count[i] as usize;
-        for j in start..start + count {
-            let prefix = &self.buf.attr_prefixes[self.buf.attr_prefix_id[j] as usize];
-            let nid = self.buf.attr_name_id[j] as usize;
-            let vid = self.buf.attr_value_id[j] as usize;
-            f(prefix, &self.buf.attr_names[nid], &self.buf.attr_values[vid]);
+        let data = self.attribute_data(node).cloned().ok_or("TypeError")?;
+        if self
+            .attribute_owner(node)
+            .is_some_and(|current| current != owner)
+        {
+            return Err("InUseAttributeError");
+        }
+        let replaced = self.attribute_node(owner, data.namespace.as_deref(), &data.local_name);
+        if replaced == Some(node) {
+            return Ok(replaced);
+        }
+        if let Some(old) = replaced {
+            let old_data = self.attribute_data(old).unwrap().clone();
+            self.detach_attribute_node(owner, &old_data);
+        }
+        self.set_attribute_ns(
+            owner,
+            data.namespace.as_deref(),
+            &data.qualified_name,
+            &data.value,
+        );
+        if let NewNode::Attribute { owner: current, .. } =
+            &mut self.new_nodes[(node.raw() - self.buf_len) as usize]
+        {
+            *current = Some(owner);
+        }
+        self.attribute_nodes.insert(
+            (owner, data.namespace.clone(), data.local_name.clone()),
+            node,
+        );
+        Ok(replaced)
+    }
+    pub fn remove_attribute_node(
+        &mut self,
+        owner: Handle,
+        node: Handle,
+    ) -> Result<Handle, &'static str> {
+        if self.attribute_owner(node) != Some(owner) {
+            return Err("NotFoundError");
+        }
+        let data = self.attribute_data(node).cloned().ok_or("TypeError")?;
+        self.remove_attribute_ns(owner, data.namespace.as_deref(), &data.local_name);
+        Ok(node)
+    }
+    pub fn set_attribute_value(&mut self, node: Handle, value: &str) {
+        let Some(data) = self.attribute_data(node).cloned() else {
+            return;
+        };
+        if let Some(owner) = self.attribute_owner(node) {
+            self.set_attribute_ns(
+                owner,
+                data.namespace.as_deref(),
+                &data.qualified_name,
+                value,
+            );
+        } else if let NewNode::Attribute { data, .. } =
+            &mut self.new_nodes[(node.raw() - self.buf_len) as usize]
+        {
+            data.value = value.into();
         }
     }
 
@@ -612,7 +1011,11 @@ impl Tree {
             return None;
         }
         if self.is_new(h) {
-            return if nt == NodeType::Element { self.new_ref(h).element_name() } else { None };
+            return if nt == NodeType::Element {
+                self.new_ref(h).element_name()
+            } else {
+                None
+            };
         }
         Some(&self.buf.tag_names[self.buf.tag_id[h.idx()] as usize])
     }
@@ -620,12 +1023,30 @@ impl Tree {
     /// DOCTYPE name / public id / system id (buffer-backed doctype nodes). The
     /// `SoA` stores all three as pooled strings (public/system "" when absent).
     pub fn doctype_name(&self, h: Handle) -> Option<&str> {
+        if self.is_new(h) {
+            return match self.new_ref(h) {
+                NewNode::Doctype(value) => Some(&value.name),
+                _ => None,
+            };
+        }
         self.doctype_field(h, &self.buf.text_id)
     }
     pub fn doctype_public_id(&self, h: Handle) -> Option<&str> {
+        if self.is_new(h) {
+            return match self.new_ref(h) {
+                NewNode::Doctype(value) => Some(&value.public_id),
+                _ => None,
+            };
+        }
         self.doctype_field(h, &self.buf.pub_id)
     }
     pub fn doctype_system_id(&self, h: Handle) -> Option<&str> {
+        if self.is_new(h) {
+            return match self.new_ref(h) {
+                NewNode::Doctype(value) => Some(&value.system_id),
+                _ => None,
+            };
+        }
         self.doctype_field(h, &self.buf.sys_id)
     }
     fn doctype_field<'a>(&'a self, h: Handle, col: &[i32]) -> Option<&'a str> {
@@ -637,27 +1058,65 @@ impl Tree {
     }
 
     // ----------------------------------------------------------------- text
+    /// The immutable target of a processing instruction.
+    pub fn processing_instruction_target(&self, h: Handle) -> Option<&str> {
+        if self.node_type(h) != NodeType::ProcessingInstruction {
+            return None;
+        }
+        if self.is_new(h) {
+            return match self.new_ref(h) {
+                NewNode::ProcessingInstruction(value) => Some(&value.target),
+                _ => None,
+            };
+        }
+        self.buf
+            .tag_names
+            .get(self.buf.tag_id[h.idx()] as usize)
+            .map(String::as_str)
+    }
+
     pub fn node_value(&self, h: Handle) -> Option<String> {
         let nt = self.node_type(h);
-        if nt != NodeType::Text && nt != NodeType::Comment {
+        if nt == NodeType::Attribute {
+            return self.attribute_data(h).map(|data| data.value.to_string());
+        }
+        if !matches!(
+            nt,
+            NodeType::Text | NodeType::Comment | NodeType::ProcessingInstruction
+        ) {
             return None;
         }
         if let Some(t) = self.text_ov.get(h) {
             return Some(t.to_string());
         }
         if self.is_new(h) {
-            return self.new_ref(h).char_data().map(std::string::ToString::to_string);
+            return self
+                .new_ref(h)
+                .char_data()
+                .map(std::string::ToString::to_string);
         }
         // buffer text/comment nodes always have text_id >= 0 (core pools every
         // string); .get + default keeps this total and coverable.
         let tid = self.buf.text_id[h.idx()];
-        Some(self.buf.strings.get(tid as usize).cloned().unwrap_or_default())
+        Some(
+            self.buf
+                .strings
+                .get(tid as usize)
+                .cloned()
+                .unwrap_or_default(),
+        )
     }
 
     /// textContent: concatenated descendant text.
     pub fn text_content(&self, h: Handle) -> String {
         let nt = self.node_type(h);
-        if nt == NodeType::Text || nt == NodeType::Comment {
+        if matches!(
+            nt,
+            NodeType::Attribute
+                | NodeType::Text
+                | NodeType::Comment
+                | NodeType::ProcessingInstruction
+        ) {
             return self.node_value(h).unwrap_or_default();
         }
         let mut out = String::new();
@@ -694,7 +1153,12 @@ impl Tree {
     /// `[added]`/`[removed]` arrays only after the no-observer early-return. The
     /// version bump is the CALLER's job and is always done unconditionally, so the
     /// no-observer path stays zero-alloc while caches still invalidate.
-    fn record_child_list(&mut self, parent: Handle, added: Option<Handle>, removed: Option<Handle>) {
+    fn record_child_list(
+        &mut self,
+        parent: Handle,
+        added: Option<Handle>,
+        removed: Option<Handle>,
+    ) {
         if !self.is_recording() {
             return;
         }
@@ -709,7 +1173,12 @@ impl Tree {
     /// Like `record_child_list` but for the batch case (`textContent` replacing a
     /// whole child list): only takes ownership of the already-built `Vec`s — which
     /// the caller produced for the actual mutation anyway — when recording.
-    fn record_child_list_batch(&mut self, parent: Handle, added: Vec<Handle>, removed: Vec<Handle>) {
+    fn record_child_list_batch(
+        &mut self,
+        parent: Handle,
+        added: Vec<Handle>,
+        removed: Vec<Handle>,
+    ) {
         if !self.is_recording() {
             return;
         }
@@ -751,14 +1220,16 @@ impl Tree {
     }
     /// Drain the buffered records (keeps recording on). Empty if not recording.
     pub fn take_mutation_records(&mut self) -> Vec<crate::rtdom::mutations::MutationRecord> {
-        self.mutation_log.as_mut().map(std::mem::take).unwrap_or_default()
+        self.mutation_log
+            .as_mut()
+            .map(std::mem::take)
+            .unwrap_or_default()
     }
 
     /// Ensure a node's attr overlay exists (copy buffer attrs in on first write).
     fn ensure_attrs(&mut self, h: Handle) -> &mut AttrList {
         if !self.attrs_ov.contains(h) {
-            let init: AttrList =
-                self.attributes(h).into_iter().map(|(n, v)| (n.into(), v.into())).collect();
+            let init = AttrList::from_records(self.attributes_namespaced(h));
             self.attrs_ov.insert(h, init);
         }
         self.attrs_ov.get_mut(h).unwrap()
@@ -766,28 +1237,29 @@ impl Tree {
 
     pub fn set_attribute(&mut self, h: Handle, name: &str, value: &str) {
         let old = if self.is_recording() {
-            self.get_attribute(h, name).map(std::string::ToString::to_string)
+            self.get_attribute(h, name)
+                .map(std::string::ToString::to_string)
         } else {
             None
         };
         let ov = self.ensure_attrs(h);
-        if let Some(slot) = ov.iter_mut().find(|(n, _)| n == name) {
-            slot.1 = value.into();
-        } else {
-            ov.push((name.into(), value.into()));
-        }
+        let changed = ov.set(name, value);
+        self.sync_attribute_node(h, &changed);
         self.bump();
         self.record_attributes(h, name, old);
     }
 
     pub fn remove_attribute(&mut self, h: Handle, name: &str) {
         let old = if self.is_recording() {
-            self.get_attribute(h, name).map(std::string::ToString::to_string)
+            self.get_attribute(h, name)
+                .map(std::string::ToString::to_string)
         } else {
             None
         };
         let ov = self.ensure_attrs(h);
-        ov.retain(|(n, _)| n != name);
+        if let Some(removed) = ov.remove(name) {
+            self.detach_attribute_node(h, &removed);
+        }
         self.bump();
         self.record_attributes(h, name, old);
     }
@@ -864,7 +1336,33 @@ impl Tree {
         }
     }
 
+    fn fragment_insertion_would_cycle(&self, parent: Handle, fragment: Handle) -> bool {
+        let children = self.children(fragment);
+        let mut ancestor = Some(parent);
+        while let Some(node) = ancestor {
+            if children.contains(&node) {
+                return true;
+            }
+            ancestor = self.parent(node);
+        }
+        false
+    }
+
     pub fn append_child(&mut self, parent: Handle, child: Handle) {
+        if self.node_type(child) == NodeType::Attribute
+            || self.node_type(parent) == NodeType::Attribute
+        {
+            return;
+        }
+        if self.node_type(child) == NodeType::Fragment {
+            if parent == child || self.fragment_insertion_would_cycle(parent, child) {
+                return;
+            }
+            for node in self.children(child) {
+                self.append_child(parent, node);
+            }
+            return;
+        }
         self.detach(child);
         self.ensure_children(parent).push(child);
         self.parent_ov.insert(child, Some(parent));
@@ -873,6 +1371,20 @@ impl Tree {
     }
 
     pub fn insert_before(&mut self, parent: Handle, child: Handle, reference: Option<Handle>) {
+        if self.node_type(child) == NodeType::Attribute
+            || self.node_type(parent) == NodeType::Attribute
+        {
+            return;
+        }
+        if self.node_type(child) == NodeType::Fragment {
+            if parent == child || self.fragment_insertion_would_cycle(parent, child) {
+                return;
+            }
+            for node in self.children(child) {
+                self.insert_before(parent, node, reference);
+            }
+            return;
+        }
         self.detach(child);
         let list = self.ensure_children(parent);
         match reference.and_then(|r| list.iter().position(|&x| x == r)) {
@@ -896,8 +1408,19 @@ impl Tree {
 
     pub fn set_text_content(&mut self, h: Handle, text: &str) {
         let nt = self.node_type(h);
-        if nt == NodeType::Text || nt == NodeType::Comment {
-            let old = if self.is_recording() { self.node_value(h) } else { None };
+        if nt == NodeType::Attribute {
+            self.set_attribute_value(h, text);
+            return;
+        }
+        if matches!(
+            nt,
+            NodeType::Text | NodeType::Comment | NodeType::ProcessingInstruction
+        ) {
+            let old = if self.is_recording() {
+                self.node_value(h)
+            } else {
+                None
+            };
             self.text_ov.insert(h, text.into());
             self.bump();
             self.record_character_data(h, old);
@@ -906,7 +1429,11 @@ impl Tree {
             // the overlay overwrite below ignores it. So snapshot it solely when
             // recording, and avoid cloning `added` on the no-observer path. Snapshot
             // BEFORE orphaning — `orphan_children` moves the child list out.
-            let removed = if self.is_recording() { self.children(h) } else { Vec::new() };
+            let removed = if self.is_recording() {
+                self.children(h)
+            } else {
+                Vec::new()
+            };
             // The prior children leave the tree: clear their parent pointers so none of
             // them keeps reporting `parent() == h` after the overwrite below.
             self.orphan_children(h);
@@ -938,10 +1465,18 @@ impl Tree {
     /// Set the text of a text/comment node directly (`CharacterData.data` / `nodeValue` setter).
     pub fn set_node_value(&mut self, h: Handle, text: &str) {
         let nt = self.node_type(h);
+        if nt == NodeType::Attribute {
+            self.set_attribute_value(h, text);
+            return;
+        }
         if nt != NodeType::Text && nt != NodeType::Comment {
             return;
         }
-        let old = if self.is_recording() { self.node_value(h) } else { None };
+        let old = if self.is_recording() {
+            self.node_value(h)
+        } else {
+            None
+        };
         self.text_ov.insert(h, text.into());
         self.bump();
         self.record_character_data(h, old);
@@ -1006,7 +1541,10 @@ impl Tree {
     }
 
     pub fn create_element(&mut self, tag: &str) -> Handle {
-        let h = self.push_node(NewNode::Element { name: tag.to_ascii_lowercase().into(), ns: Namespace::Html });
+        let h = self.push_node(NewNode::Element {
+            name: tag.to_ascii_lowercase().into(),
+            ns: Namespace::Html,
+        });
         self.children_ov.insert(h, ChildList::new());
         self.attrs_ov.insert(h, AttrList::new());
         self.bump();
@@ -1014,11 +1552,38 @@ impl Tree {
     }
 
     pub fn create_element_ns(&mut self, tag: &str, ns: Namespace) -> Handle {
-        let h = self.push_node(NewNode::Element { name: tag.into(), ns });
+        let h = self.push_node(NewNode::Element {
+            name: tag.into(),
+            ns,
+        });
         self.children_ov.insert(h, ChildList::new());
         self.attrs_ov.insert(h, AttrList::new());
         self.bump();
         h
+    }
+
+    /// Create a namespace-aware element after the caller validates the qualified name.
+    pub fn create_element_namespace(&mut self, namespace: Option<&str>, qualified: &str) -> Handle {
+        let namespace = namespace.filter(|value| !value.is_empty());
+        let (prefix, local) = qualified
+            .split_once(':')
+            .map_or((None, qualified), |(prefix, local)| (Some(prefix), local));
+        let kind = match namespace {
+            Some("http://www.w3.org/1999/xhtml") => Namespace::Html,
+            Some("http://www.w3.org/2000/svg") => Namespace::Svg,
+            Some("http://www.w3.org/1998/Math/MathML") => Namespace::MathMl,
+            _ => Namespace::Other,
+        };
+        let node = self.create_element_ns(local, kind);
+        self.element_namespaces.insert(
+            node,
+            ElementNamespace {
+                uri: namespace.map(Into::into),
+                prefix: prefix.map(Into::into),
+                qualified_name: qualified.into(),
+            },
+        );
+        node
     }
 
     pub fn create_text_node(&mut self, data: &str) -> Handle {
@@ -1027,8 +1592,38 @@ impl Tree {
         h
     }
 
+    /// Create a detached document fragment, without associating it with a shadow host.
+    pub fn create_document_fragment(&mut self) -> Handle {
+        let h = self.push_node(NewNode::Fragment);
+        self.children_ov.insert(h, ChildList::new());
+        self.bump();
+        h
+    }
+
+    /// Create an owned detached `DocumentType` node with its complete parser metadata.
+    pub fn create_document_type(&mut self, name: &str, public_id: &str, system_id: &str) -> Handle {
+        self.push_node(NewNode::Doctype(Box::new(DoctypeData {
+            name: name.into(),
+            public_id: public_id.into(),
+            system_id: system_id.into(),
+        })))
+    }
+
     pub fn create_comment(&mut self, data: &str) -> Handle {
         let h = self.push_node(NewNode::Comment(data.into()));
+        self.bump();
+        h
+    }
+
+    /// Create an owned detached processing instruction. DOM bindings validate
+    /// XML names and the forbidden data terminator before calling this primitive.
+    pub fn create_processing_instruction(&mut self, target: &str, data: &str) -> Handle {
+        let h = self.push_node(NewNode::ProcessingInstruction(Box::new(
+            ProcessingInstructionData {
+                target: target.into(),
+                data: data.into(),
+            },
+        )));
         self.bump();
         h
     }
@@ -1105,10 +1700,31 @@ impl Tree {
     /// | afterend (case-insensitive). Returns true if inserted.
     pub fn insert_adjacent_element(&mut self, h: Handle, position: &str, el: Handle) -> bool {
         match position.to_ascii_lowercase().as_str() {
-            "beforebegin" => { if self.parent(h).is_some() { self.before(h, &[el]); true } else { false } }
-            "afterend" => { if self.parent(h).is_some() { self.after(h, &[el]); true } else { false } }
-            "afterbegin" => { let first = self.first_child(h); self.insert_before(h, el, first); true }
-            "beforeend" => { self.append_child(h, el); true }
+            "beforebegin" => {
+                if self.parent(h).is_some() {
+                    self.before(h, &[el]);
+                    true
+                } else {
+                    false
+                }
+            }
+            "afterend" => {
+                if self.parent(h).is_some() {
+                    self.after(h, &[el]);
+                    true
+                } else {
+                    false
+                }
+            }
+            "afterbegin" => {
+                let first = self.first_child(h);
+                self.insert_before(h, el, first);
+                true
+            }
+            "beforeend" => {
+                self.append_child(h, el);
+                true
+            }
             _ => false,
         }
     }
@@ -1126,8 +1742,17 @@ impl Tree {
         match pos.as_str() {
             "beforebegin" => self.before(h, &kids),
             "afterend" => self.after(h, &kids),
-            "afterbegin" => { let first = self.first_child(h); for &k in &kids { self.insert_before(h, k, first); } }
-            _ => for &k in &kids { self.append_child(h, k); }, // beforeend (default)
+            "afterbegin" => {
+                let first = self.first_child(h);
+                for &k in &kids {
+                    self.insert_before(h, k, first);
+                }
+            }
+            _ => {
+                for &k in &kids {
+                    self.append_child(h, k);
+                }
+            } // beforeend (default)
         }
     }
     /// `toggleAttribute(name, force?)` — add when absent (or force=Some(true)), remove when present
@@ -1136,22 +1761,54 @@ impl Tree {
         let present = self.has_attribute(h, name);
         let want = force.unwrap_or(!present);
         if want {
-            if !present { self.set_attribute(h, name, ""); }
+            if !present {
+                self.set_attribute(h, name, "");
+            }
             true
         } else {
-            if present { self.remove_attribute(h, name); }
+            if present {
+                self.remove_attribute(h, name);
+            }
             false
         }
     }
-    /// `getAttributeNS(namespace, localName)` — our attrs are keyed by qualified name; match the
-    /// local name directly, then any `prefix:localName` form (covers SVG `xlink:href` etc.).
-    pub fn get_attribute_ns(&self, h: Handle, _ns: Option<&str>, local: &str) -> Option<String> {
-        if let Some(v) = self.get_attribute(h, local) { return Some(v.to_string()); }
-        let suffix = format!(":{local}");
-        for (n, v) in self.attributes(h) {
-            if n == local || n.ends_with(&suffix) { return Some(v); }
+    /// Namespace lookup compares the exact namespace URI and local name.
+    pub fn get_attribute_ns(
+        &self,
+        h: Handle,
+        namespace: Option<&str>,
+        local: &str,
+    ) -> Option<String> {
+        self.attribute_namespaced(h, namespace, local)
+            .map(|attribute| attribute.value.to_string())
+    }
+    pub fn set_attribute_ns(
+        &mut self,
+        h: Handle,
+        namespace: Option<&str>,
+        qualified: &str,
+        value: &str,
+    ) {
+        let attribute = AttributeData::new(namespace, qualified, value);
+        let old = self.get_attribute_ns(h, namespace, &attribute.local_name);
+        let overlay = self.ensure_attrs(h);
+        overlay.set_namespace(attribute.clone());
+        self.sync_attribute_node(h, &attribute);
+        self.bump();
+        self.record_attributes(h, &attribute.local_name, old);
+    }
+    pub fn remove_attribute_ns(&mut self, h: Handle, namespace: Option<&str>, local: &str) {
+        let namespace = namespace.filter(|value| !value.is_empty());
+        let old = self.get_attribute_ns(h, namespace, local);
+        if let Some(data) = self.attribute_namespaced(h, namespace, local) {
+            self.detach_attribute_node(h, &data);
         }
-        None
+        let overlay = self.ensure_attrs(h);
+        overlay.remove_namespace(namespace, local);
+        if old.is_some() {
+            self.bump();
+            self.record_attributes(h, local, old);
+        }
     }
 
     /// Recursively import a parsed `core::Node` as owned nodes. Returns its handle.
@@ -1161,7 +1818,17 @@ impl Tree {
                 let ns = ns_id(&n.namespace);
                 let h = self.create_element_ns(&n.name, ns);
                 for a in &n.attrs {
-                    self.set_attribute(h, &a.name, &a.value);
+                    let namespace = if ns == Namespace::Html {
+                        None
+                    } else {
+                        parsed_attribute_namespace(&a.prefix, &a.name)
+                    };
+                    let qualified = if a.prefix.is_empty() {
+                        a.name.clone()
+                    } else {
+                        format!("{}:{}", a.prefix, a.name)
+                    };
+                    self.set_attribute_ns(h, namespace, &qualified, &a.value);
                 }
                 let mut kids = Vec::with_capacity(n.children.len());
                 for c in &n.children {
@@ -1173,7 +1840,19 @@ impl Tree {
                 self.children_ov.insert(h, kids.into());
                 h
             }
+            NodeType::Fragment => {
+                let h = self.create_document_fragment();
+                let kids: ChildList = n.children.iter().map(|c| self.import_node(c)).collect();
+                for &child in &kids {
+                    self.parent_ov.insert(child, Some(h));
+                }
+                self.children_ov.insert(h, kids);
+                h
+            }
             NodeType::Comment => self.create_comment(&n.value),
+            NodeType::ProcessingInstruction => {
+                self.create_processing_instruction(&n.name, &n.value)
+            }
             _ => self.create_text_node(&n.value),
         }
     }
@@ -1258,7 +1937,11 @@ impl Tree {
         self.some_descendant(root, pred)
     }
 
-    pub(crate) fn some_descendant(&self, root: Handle, mut pred: impl FnMut(Handle) -> bool) -> bool {
+    pub(crate) fn some_descendant(
+        &self,
+        root: Handle,
+        mut pred: impl FnMut(Handle) -> bool,
+    ) -> bool {
         let mut stack: Vec<Handle> = Vec::new();
         let base = stack.len();
         self.for_each_child(root, |c| stack.push(c));
@@ -1280,7 +1963,12 @@ impl Tree {
     pub fn assigned_nodes(&self, slot: Handle) -> Vec<Handle> {
         // shadow_root_of yields a real shadow root (is_shadow_root ⇒ host exists),
         // so the only reachable miss is "slot not in any shadow tree".
-        let Some(host) = self.shadow_root_of(slot).and_then(|sr| self.shadow_host(sr)) else { return Vec::new() };
+        let Some(host) = self
+            .shadow_root_of(slot)
+            .and_then(|sr| self.shadow_host(sr))
+        else {
+            return Vec::new();
+        };
         let slot_name = self.get_attribute(slot, "name").unwrap_or("");
         self.children(host)
             .into_iter()
@@ -1307,6 +1995,43 @@ mod tests {
     }
 
     #[test]
+    fn created_document_types_keep_fields_and_order() {
+        let mut tree = Tree::parse("<body></body>");
+        let doc = tree.root();
+        let html = tree.query_selector("html").unwrap();
+        let doctype = tree.create_document_type("html", "public", "system");
+        assert_eq!(tree.node_type(doctype), NodeType::Doctype);
+        assert_eq!(tree.doctype_name(doctype), Some("html"));
+        assert_eq!(tree.doctype_public_id(doctype), Some("public"));
+        assert_eq!(tree.doctype_system_id(doctype), Some("system"));
+        tree.insert_before(doc, doctype, Some(html));
+        assert_eq!(tree.children(doc)[0], doctype);
+        tree.remove_child(doc, doctype);
+        assert_eq!(tree.doctype_name(doctype), Some("html"));
+        assert_eq!(tree.compat_mode(), "BackCompat");
+    }
+
+    #[test]
+    fn compatibility_mode_uses_parser_state() {
+        let mut standards = Tree::parse("<!doctype html><body></body>");
+        assert_eq!(standards.compat_mode(), "CSS1Compat");
+        let root = standards.root();
+        let doctype = standards
+            .children(root)
+            .into_iter()
+            .find(|node| standards.node_type(*node) == NodeType::Doctype)
+            .unwrap();
+        standards.remove_child(root, doctype);
+        assert_eq!(standards.compat_mode(), "CSS1Compat");
+        assert_eq!(Tree::parse("<body></body>").compat_mode(), "BackCompat");
+        assert_eq!(
+            Tree::parse("<!doctype not-html><body></body>").compat_mode(),
+            "BackCompat"
+        );
+        assert_eq!(Tree::parse("<!doctype html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\" \"x\"><body></body>").compat_mode(), "CSS1Compat");
+    }
+
+    #[test]
     fn reads_structure_from_buffer() {
         let tree = t("<div id=a><span class=x>hi</span><p>yo</p></div>");
         // find the div
@@ -1327,9 +2052,45 @@ mod tests {
     }
 
     #[test]
+    fn namespace_promotion_preserves_plain_attributes_and_same_named_attr_identity() {
+        let mut tree = t("<div data-one='original'></div>");
+        let div = tree.query_selector("div").unwrap();
+        let plain = tree.attribute_node(div, None, "data-one").unwrap();
+        tree.set_attribute_ns(div, Some("urn:first"), "p:shared", "first");
+        let first = tree
+            .attribute_node(div, Some("urn:first"), "shared")
+            .unwrap();
+        tree.set_attribute_ns(div, Some("urn:second"), "p:shared", "second");
+        let second = tree
+            .attribute_node(div, Some("urn:second"), "shared")
+            .unwrap();
+        assert_ne!(first, second);
+        assert_eq!(tree.attributes_namespaced(div).len(), 3);
+        assert_eq!(tree.attribute_owner(plain), Some(div));
+        tree.set_attribute(div, "data-one", "updated");
+        assert_eq!(tree.attribute_data(plain).unwrap().value, "updated");
+        tree.set_attribute(div, "p:shared", "changed");
+        assert_eq!(tree.attribute_data(first).unwrap().value, "changed");
+        assert_eq!(tree.attribute_data(second).unwrap().value, "second");
+        tree.remove_attribute(div, "p:shared");
+        assert_eq!(tree.attribute_owner(first), None);
+        assert_eq!(tree.attribute_owner(second), Some(div));
+        assert_eq!(tree.get_attribute(div, "p:shared"), Some("second"));
+        tree.remove_attribute_ns(div, Some("urn:second"), "shared");
+        assert_eq!(tree.attribute_owner(second), None);
+        assert_eq!(
+            tree.attributes(div),
+            vec![("data-one".into(), "updated".into())]
+        );
+    }
+
+    #[test]
     fn set_attribute_is_cow_and_bumps_version() {
         let mut tree = t("<div id=a></div>");
-        let div = tree.handles().find(|&h| tree.local_name(h) == Some("div")).unwrap();
+        let div = tree
+            .handles()
+            .find(|&h| tree.local_name(h) == Some("div"))
+            .unwrap();
         let v0 = tree.version;
         tree.set_attribute(div, "class", "card");
         assert!(tree.version > v0);
@@ -1341,36 +2102,106 @@ mod tests {
     #[test]
     fn append_and_remove_child() {
         let mut tree = t("<div></div>");
-        let div = tree.handles().find(|&h| tree.local_name(h) == Some("div")).unwrap();
+        let div = tree
+            .handles()
+            .find(|&h| tree.local_name(h) == Some("div"))
+            .unwrap();
         let span = tree.create_element("span");
         tree.append_child(div, span);
         assert_eq!(tree.children(div), vec![span]);
         assert_eq!(tree.parent(span), Some(div));
         assert_eq!(tree.tag_name(span).as_deref(), Some("SPAN"));
         tree.remove_child(div, span);
-        assert!(tree.children(div).is_empty());
+        assert_eq!(tree.children(div), [] as [Handle; 0]);
         assert_eq!(tree.parent(span), None);
     }
 
     #[test]
     fn create_text_and_set_text_content() {
         let mut tree = t("<p>old</p>");
-        let p = tree.handles().find(|&h| tree.local_name(h) == Some("p")).unwrap();
+        let p = tree
+            .handles()
+            .find(|&h| tree.local_name(h) == Some("p"))
+            .unwrap();
         tree.set_text_content(p, "new");
         assert_eq!(tree.text_content(p), "new");
+    }
+
+    #[test]
+    fn document_fragments_move_children_without_inserting_the_fragment() {
+        let mut tree = t("<main><i></i></main>");
+        let parent = tree.query_selector("main").unwrap();
+        let reference = tree.query_selector("i").unwrap();
+        let fragment = tree.create_document_fragment();
+        assert_eq!(tree.node_type(fragment), NodeType::Fragment);
+        assert!(!tree.is_shadow_root(fragment));
+        assert_eq!(tree.parent(fragment), None);
+        let first = tree.create_element("b");
+        let second = tree.create_text_node("text");
+        tree.append_child(fragment, first);
+        tree.append_child(fragment, second);
+        tree.insert_before(parent, fragment, Some(reference));
+        assert_eq!(tree.children(parent), vec![first, second, reference]);
+        assert_eq!(tree.children(fragment), [] as [Handle; 0]);
+        assert_eq!(tree.parent(fragment), None);
+        assert_eq!(tree.parent(first), Some(parent));
+        tree.append_child(fragment, reference);
+        tree.append_child(parent, fragment);
+        assert_eq!(tree.children(parent), vec![first, second, reference]);
+        assert_eq!(tree.children(fragment), [] as [Handle; 0]);
+    }
+
+    #[test]
+    fn fragment_self_and_ancestor_insertions_leave_the_tree_unchanged() {
+        let mut tree = t("<main></main>");
+        let fragment = tree.create_document_fragment();
+        let parent = tree.create_element("div");
+        let child = tree.create_element("b");
+        tree.append_child(fragment, parent);
+        tree.append_child(parent, child);
+        tree.append_child(fragment, fragment);
+        tree.insert_before(fragment, fragment, None);
+        tree.append_child(child, fragment);
+        tree.insert_before(parent, fragment, Some(child));
+        assert_eq!(tree.children(fragment), vec![parent]);
+        assert_eq!(tree.children(parent), vec![child]);
+        assert_eq!(tree.children(child), [] as [Handle; 0]);
+        assert_eq!(tree.parent(fragment), None);
+    }
+
+    #[test]
+    fn importing_template_html_preserves_its_content_fragment() {
+        let mut tree = t("<main></main>");
+        let main = tree.query_selector("main").unwrap();
+        tree.set_inner_html(main, "<template><b>content</b></template>");
+        let template = tree.children(main)[0];
+        let fragment = tree.children(template)[0];
+        assert_eq!(tree.node_type(fragment), NodeType::Fragment);
+        assert!(!tree.is_shadow_root(fragment));
+        assert_eq!(tree.text_content(fragment), "content");
+        let content = tree.children(fragment)[0];
+        tree.append_child(main, fragment);
+        assert_eq!(tree.children(main), vec![template, content]);
+        assert_eq!(tree.children(fragment), [] as [Handle; 0]);
     }
 
     #[test]
     fn dump_accessors_doctype_prefix_label() {
         // doctype name + public/system ids
         let dt = t("<!DOCTYPE html PUBLIC \"-//W3C//DTD\" \"sys.dtd\"><html></html>");
-        let doctype = dt.handles().find(|&h| dt.node_type(h) == NodeType::Doctype).unwrap();
+        let doctype = dt
+            .handles()
+            .find(|&h| dt.node_type(h) == NodeType::Doctype)
+            .unwrap();
         assert_eq!(dt.doctype_name(doctype), Some("html"));
         assert_eq!(dt.doctype_public_id(doctype), Some("-//W3C//DTD"));
         assert_eq!(dt.doctype_system_id(doctype), Some("sys.dtd"));
         // plain doctype: empty ids
         let dt2 = t("<!DOCTYPE html><html></html>");
-        let d2 = dt2.handles().find(|&h| dt2.node_type(h) == NodeType::Doctype).unwrap();
+        let d2 = dt2
+            .handles()
+            .find(|&h| dt2.node_type(h) == NodeType::Doctype)
+            .unwrap();
         assert_eq!(dt2.doctype_public_id(d2), Some(""));
         // doctype accessors return None for non-doctype + new nodes
         let html = dt2.get_elements_by_tag_name("html")[0];
@@ -1381,9 +2212,15 @@ mod tests {
 
         // node_label: element, template-content fragment, and None for text
         let tpl = t("<template><i></i></template>");
-        let frag = tpl.handles().find(|&h| tpl.node_type(h) == NodeType::Fragment).unwrap();
+        let frag = tpl
+            .handles()
+            .find(|&h| tpl.node_type(h) == NodeType::Fragment)
+            .unwrap();
         assert_eq!(tpl.node_label(frag), Some("content"));
-        let i = tpl.handles().find(|&h| tpl.local_name(h) == Some("i")).unwrap();
+        let i = tpl
+            .handles()
+            .find(|&h| tpl.local_name(h) == Some("i"))
+            .unwrap();
         assert_eq!(tpl.node_label(i), Some("i"));
         let txt2 = tpl.handles().find(|&h| tpl.node_type(h) == NodeType::Text);
         if let Some(tx) = txt2 {
@@ -1396,7 +2233,10 @@ mod tests {
 
         // for_each_attr_full yields foreign-content prefix from the buffer
         let svg = t("<svg><a xlink:href=\"u\" id=\"k\"></a></svg>");
-        let a = svg.handles().find(|&h| svg.local_name(h) == Some("a")).unwrap();
+        let a = svg
+            .handles()
+            .find(|&h| svg.local_name(h) == Some("a"))
+            .unwrap();
         let mut got = Vec::new();
         svg.for_each_attr_full(a, |p, n, v| got.push(format!("{p}|{n}={v}")));
         assert!(got.contains(&"xlink|href=u".to_string()));
@@ -1415,20 +2255,29 @@ mod tests {
     #[test]
     fn for_each_attr_borrows_both_sources() {
         let tree = t("<a href=/x data-k=v>hi</a>");
-        let a = tree.handles().find(|&h| tree.local_name(h) == Some("a")).unwrap();
+        let a = tree
+            .handles()
+            .find(|&h| tree.local_name(h) == Some("a"))
+            .unwrap();
         let mut buf = Vec::new();
         tree.for_each_attr(a, |n, v| buf.push(format!("{n}={v}")));
         assert_eq!(buf, vec!["href=/x".to_string(), "data-k=v".to_string()]);
         // overlay source after a mutation
         let mut t2 = t("<b>x</b>");
-        let b = t2.handles().find(|&h| t2.local_name(h) == Some("b")).unwrap();
+        let b = t2
+            .handles()
+            .find(|&h| t2.local_name(h) == Some("b"))
+            .unwrap();
         t2.set_attribute(b, "class", "y");
         let mut ov = Vec::new();
         t2.for_each_attr(b, |n, v| ov.push(format!("{n}={v}")));
         assert_eq!(ov, vec!["class=y".to_string()]);
         // buffer element with NO attributes (start < 0) → no calls
         let t3 = t("<i>x</i>");
-        let i = t3.handles().find(|&h| t3.local_name(h) == Some("i")).unwrap();
+        let i = t3
+            .handles()
+            .find(|&h| t3.local_name(h) == Some("i"))
+            .unwrap();
         let mut count = 0;
         t3.for_each_attr(i, |_, _| count += 1);
         assert_eq!(count, 0);
@@ -1442,7 +2291,10 @@ mod tests {
     #[test]
     fn some_descendant_short_circuits_over_elements() {
         let tree = t("<div id=root><section><span class=hit>x</span><b>y</b></section></div>");
-        let root = tree.handles().find(|&h| tree.local_name(h) == Some("div")).unwrap();
+        let root = tree
+            .handles()
+            .find(|&h| tree.local_name(h) == Some("div"))
+            .unwrap();
         // finds a descendant element matching the predicate
         assert!(tree.some_descendant(root, |d| tree.get_attribute(d, "class") == Some("hit")));
         // no matching descendant → false
@@ -1463,11 +2315,20 @@ mod tests {
             tree.local_name(d) == Some("section")
         });
         assert!(found);
-        assert_eq!(calls, 1, "section is the first descendant element → exactly one call");
+        assert_eq!(
+            calls, 1,
+            "section is the first descendant element → exactly one call"
+        );
         // a node with no descendants → false, no calls
-        let empty = tree.handles().find(|&h| tree.local_name(h) == Some("b")).unwrap();
+        let empty = tree
+            .handles()
+            .find(|&h| tree.local_name(h) == Some("b"))
+            .unwrap();
         let mut ec = 0;
-        assert!(!tree.some_descendant(empty, |_| { ec += 1; true }));
+        assert!(!tree.some_descendant(empty, |_| {
+            ec += 1;
+            true
+        }));
         assert_eq!(ec, 0);
     }
 
@@ -1475,13 +2336,19 @@ mod tests {
     fn for_each_child_walks_buffer_overlay_and_new() {
         // buffer chain (first_child/next_sib): matches children() exactly
         let tree = t("<ul><li>1</li><li>2</li><li>3</li></ul>");
-        let ul = tree.handles().find(|&h| tree.local_name(h) == Some("ul")).unwrap();
+        let ul = tree
+            .handles()
+            .find(|&h| tree.local_name(h) == Some("ul"))
+            .unwrap();
         let mut walked = Vec::new();
         tree.for_each_child(ul, |c| walked.push(c));
         assert_eq!(walked, tree.children(ul));
         // overlay source after a structural mutation
         let mut t2 = t("<div><a></a></div>");
-        let div = t2.handles().find(|&h| t2.local_name(h) == Some("div")).unwrap();
+        let div = t2
+            .handles()
+            .find(|&h| t2.local_name(h) == Some("div"))
+            .unwrap();
         let b = t2.create_element("b");
         t2.append_child(div, b);
         let mut ov = Vec::new();
@@ -1497,7 +2364,10 @@ mod tests {
     #[test]
     fn set_inner_html_imports_fragment() {
         let mut tree = t("<div></div>");
-        let div = tree.handles().find(|&h| tree.local_name(h) == Some("div")).unwrap();
+        let div = tree
+            .handles()
+            .find(|&h| tree.local_name(h) == Some("div"))
+            .unwrap();
         tree.set_inner_html(div, "<span class=a>hi</span><b>x</b>");
         let kids = tree.children(div);
         assert_eq!(kids.len(), 2);
@@ -1511,20 +2381,38 @@ mod tests {
     #[test]
     fn shadow_root_encapsulation_and_slots() {
         let mut tree = t("<my-card><span slot=title>Hi</span><p>light</p></my-card>");
-        let host = tree.handles().find(|&h| tree.local_name(h) == Some("my-card")).unwrap();
+        let host = tree
+            .handles()
+            .find(|&h| tree.local_name(h) == Some("my-card"))
+            .unwrap();
         let sr = tree.attach_shadow(host);
-        tree.set_inner_html(sr, "<style>:host{color:red}</style><slot name=title></slot><slot></slot>");
+        tree.set_inner_html(
+            sr,
+            "<style>:host{color:red}</style><slot name=title></slot><slot></slot>",
+        );
         // encapsulation: shadow content is NOT in the light tree
         assert!(tree.shadow_root_of_host.contains_key(&host));
         assert_eq!(tree.query_selector_all("slot").len(), 0); // light query skips shadow
-        // shadow_root_of resolves for shadow-internal nodes
-        let slots = tree.descendants(sr).into_iter().filter(|&h| tree.local_name(h) == Some("slot")).collect::<Vec<_>>();
+                                                              // shadow_root_of resolves for shadow-internal nodes
+        let slots = tree
+            .descendants(sr)
+            .into_iter()
+            .filter(|&h| tree.local_name(h) == Some("slot"))
+            .collect::<Vec<_>>();
         assert_eq!(slots.len(), 2);
         assert_eq!(tree.shadow_root_of(slots[0]), Some(sr));
         assert_eq!(tree.shadow_host(sr), Some(host));
         // assignedNodes: the named slot gets the span[slot=title]; default slot gets <p>
-        let named = slots.iter().find(|&&s| tree.get_attribute(s, "name") == Some("title")).copied().unwrap();
-        let default = slots.iter().find(|&&s| tree.get_attribute(s, "name").is_none()).copied().unwrap();
+        let named = slots
+            .iter()
+            .find(|&&s| tree.get_attribute(s, "name") == Some("title"))
+            .copied()
+            .unwrap();
+        let default = slots
+            .iter()
+            .find(|&&s| tree.get_attribute(s, "name").is_none())
+            .copied()
+            .unwrap();
         let an = tree.assigned_nodes(named);
         assert_eq!(an.len(), 1);
         assert_eq!(tree.local_name(an[0]), Some("span"));
@@ -1534,7 +2422,10 @@ mod tests {
     #[test]
     fn siblings() {
         let tree = t("<ul><li>1</li><li>2</li><li>3</li></ul>");
-        let lis: Vec<_> = tree.handles().filter(|&h| tree.local_name(h) == Some("li")).collect();
+        let lis: Vec<_> = tree
+            .handles()
+            .filter(|&h| tree.local_name(h) == Some("li"))
+            .collect();
         assert_eq!(tree.next_sibling(lis[0]), Some(lis[1]));
         assert_eq!(tree.previous_sibling(lis[2]), Some(lis[1]));
         assert_eq!(tree.next_sibling(lis[2]), None);
@@ -1543,7 +2434,10 @@ mod tests {
     #[test]
     fn first_and_last_child() {
         let mut tree = t("<ul><li>1</li><li>2</li><li>3</li></ul>");
-        let ul = tree.handles().find(|&h| tree.local_name(h) == Some("ul")).unwrap();
+        let ul = tree
+            .handles()
+            .find(|&h| tree.local_name(h) == Some("ul"))
+            .unwrap();
         let kids = tree.children(ul);
         assert_eq!(tree.first_child(ul), Some(kids[0]));
         assert_eq!(tree.last_child(ul), Some(kids[2]));
@@ -1553,6 +2447,125 @@ mod tests {
         let empty = tree.create_element("div");
         assert_eq!(tree.first_child(empty), None);
         assert_eq!(tree.last_child(empty), None);
+    }
+
+    #[test]
+    fn native_attribute_nodes_keep_identity_live_values_and_single_owner() {
+        let mut tree = Tree::parse("<div id='first'></div><p></p>");
+        let owner = tree.get_elements_by_tag_name("div")[0];
+        let other = tree.get_elements_by_tag_name("p")[0];
+        let id = tree.attribute_node(owner, None, "id").unwrap();
+        assert_eq!(tree.node_type_id(id), 2);
+        assert_eq!(tree.attribute_node(owner, None, "id"), Some(id));
+        tree.set_attribute(owner, "id", "changed");
+        assert_eq!(tree.node_value(id).as_deref(), Some("changed"));
+        tree.set_text_content(id, "live");
+        assert_eq!(tree.get_attribute(owner, "id"), Some("live"));
+        let replacement = tree.create_attribute(None, "id", "replacement");
+        assert_eq!(tree.set_attribute_node(owner, replacement), Ok(Some(id)));
+        assert_eq!(tree.attribute_owner(id), None);
+        assert_eq!(tree.attribute_owner(replacement), Some(owner));
+        assert_eq!(
+            tree.set_attribute_node(other, replacement),
+            Err("InUseAttributeError")
+        );
+        assert_eq!(
+            tree.remove_attribute_node(owner, replacement),
+            Ok(replacement)
+        );
+        assert_eq!(tree.node_value(replacement).as_deref(), Some("replacement"));
+        assert_eq!(tree.get_attribute(owner, "id"), None);
+        assert_eq!(tree.set_attribute_node(other, replacement), Ok(None));
+        tree.set_node_value(replacement, "other");
+        assert_eq!(tree.get_attribute(other, "id"), Some("other"));
+        let namespaced = tree.create_attribute(Some("urn:test"), "one:name", "value");
+        tree.set_attribute_node(other, namespaced).unwrap();
+        tree.set_attribute_ns(other, Some("urn:test"), "two:name", "updated");
+        assert_eq!(
+            tree.attribute_node(other, Some("urn:test"), "name"),
+            Some(namespaced)
+        );
+        assert_eq!(
+            tree.attribute_data(namespaced).unwrap().prefix.as_deref(),
+            Some("two")
+        );
+        tree.remove_attribute_ns(other, Some("urn:test"), "name");
+        assert_eq!(tree.attribute_owner(namespaced), None);
+        assert_eq!(tree.node_value(namespaced).as_deref(), Some("updated"));
+    }
+
+    #[test]
+    fn namespace_attributes_keep_distinct_identity_and_parsed_metadata_after_mutation() {
+        let mut tree =
+            Tree::parse("<svg><a xlink:href='linked' href='plain' xml:lang='en'></a></svg>");
+        let element = tree.get_elements_by_tag_name("a")[0];
+        let xlink = "http://www.w3.org/1999/xlink";
+        assert_eq!(
+            tree.get_attribute_ns(element, Some(xlink), "href")
+                .as_deref(),
+            Some("linked")
+        );
+        assert_eq!(
+            tree.get_attribute_ns(element, None, "href").as_deref(),
+            Some("plain")
+        );
+        assert_eq!(
+            tree.get_attribute_ns(element, Some("urn:wrong"), "href"),
+            None
+        );
+        tree.set_attribute(element, "id", "mutated");
+        assert_eq!(tree.get_attribute(element, "xlink:href"), Some("linked"));
+        assert_eq!(
+            tree.get_attribute_ns(element, Some(xlink), "href")
+                .as_deref(),
+            Some("linked")
+        );
+        tree.set_attribute_ns(element, Some("urn:first"), "same:name", "one");
+        tree.set_attribute_ns(element, Some("urn:second"), "same:name", "two");
+        assert_eq!(
+            tree.get_attribute_ns(element, Some("urn:first"), "name")
+                .as_deref(),
+            Some("one")
+        );
+        assert_eq!(
+            tree.get_attribute_ns(element, Some("urn:second"), "name")
+                .as_deref(),
+            Some("two")
+        );
+        tree.set_attribute_ns(element, Some("urn:first"), "new:name", "updated");
+        let first = tree
+            .attribute_namespaced(element, Some("urn:first"), "name")
+            .unwrap();
+        assert_eq!(first.prefix.as_deref(), Some("new"));
+        assert_eq!(first.qualified_name, "new:name");
+        tree.remove_attribute_ns(element, Some(xlink), "href");
+        assert_eq!(
+            tree.get_attribute_ns(element, None, "href").as_deref(),
+            Some("plain")
+        );
+        assert!(
+            crate::rtdom::serialize::serialize_outer(&tree, element).contains("xml:lang=\"en\"")
+        );
+    }
+
+    #[test]
+    fn custom_and_null_element_namespaces_preserve_qualified_names() {
+        let mut tree = Tree::parse("");
+        let element = tree.create_element_namespace(Some("urn:custom"), "prefix:MixedCase");
+        assert_eq!(tree.namespace(element), Namespace::Other);
+        assert_eq!(tree.namespace_uri(element), Some("urn:custom"));
+        assert_eq!(tree.prefix(element), Some("prefix"));
+        assert_eq!(tree.local_name(element), Some("MixedCase"));
+        assert_eq!(tree.tag_name(element).as_deref(), Some("prefix:MixedCase"));
+        assert_eq!(
+            crate::rtdom::serialize::serialize_outer(&tree, element),
+            "<prefix:MixedCase></prefix:MixedCase>"
+        );
+        let no_namespace = tree.create_element_namespace(None, "MixedCase");
+        assert_eq!(tree.namespace_uri(no_namespace), None);
+        assert_eq!(tree.local_name(no_namespace), Some("MixedCase"));
+        let html = tree.create_element_namespace(Some("http://www.w3.org/1999/xhtml"), "MixedCase");
+        assert_eq!(tree.tag_name(html).as_deref(), Some("MIXEDCASE"));
     }
 
     #[test]
@@ -1583,7 +2596,7 @@ mod tests {
         assert!(tree.has_attribute(span, "id"));
         // attributes() on a brand-new text node (is_new, no attrs_ov) → empty
         let txt = tree.create_text_node("hi");
-        assert!(tree.attributes(txt).is_empty());
+        assert_eq!(tree.attributes(txt), [] as [(String, String); 0]);
         // get_attribute on a new node lacking an attr overlay (text node) → None
         assert_eq!(tree.get_attribute(txt, "foo"), None);
     }
@@ -1592,13 +2605,19 @@ mod tests {
     fn node_value_text_comment_and_none() {
         let mut tree = t("<p>hi</p><!--c-->");
         // node_value on an element → None (not text/comment)
-        let p = tree.handles().find(|&h| tree.local_name(h) == Some("p")).unwrap();
+        let p = tree
+            .handles()
+            .find(|&h| tree.local_name(h) == Some("p"))
+            .unwrap();
         assert_eq!(tree.node_value(p), None);
         // freshly created text node reads its data via is_new branch
         let txt = tree.create_text_node("hello");
         assert_eq!(tree.node_value(txt).as_deref(), Some("hello"));
         // a comment node from the buffer
-        let comment = tree.handles().find(|&h| tree.node_type(h) == NodeType::Comment).unwrap();
+        let comment = tree
+            .handles()
+            .find(|&h| tree.node_type(h) == NodeType::Comment)
+            .unwrap();
         assert_eq!(tree.node_value(comment).as_deref(), Some("c"));
         // text_content of a comment goes through the text/comment branch
         assert_eq!(tree.text_content(comment), "c");
@@ -1612,7 +2631,10 @@ mod tests {
         // An empty text node (text_id < 0) → node_value is empty string.
         let tree = t("<p></p>");
         // collect_text skips comments: a comment inside an element is ignored.
-        let p = tree.handles().find(|&h| tree.local_name(h) == Some("p")).unwrap();
+        let p = tree
+            .handles()
+            .find(|&h| tree.local_name(h) == Some("p"))
+            .unwrap();
         assert_eq!(tree.text_content(p), "");
     }
 
@@ -1621,14 +2643,20 @@ mod tests {
         // The NodeType::Comment arm of collect_text is exercised: comment text is NOT
         // concatenated into an element's text_content.
         let tree = t("<div>a<!--ignored-->b</div>");
-        let div = tree.handles().find(|&h| tree.local_name(h) == Some("div")).unwrap();
+        let div = tree
+            .handles()
+            .find(|&h| tree.local_name(h) == Some("div"))
+            .unwrap();
         assert_eq!(tree.text_content(div), "ab");
     }
 
     #[test]
     fn set_attribute_updates_existing_slot() {
         let mut tree = t("<div id=a></div>");
-        let div = tree.handles().find(|&h| tree.local_name(h) == Some("div")).unwrap();
+        let div = tree
+            .handles()
+            .find(|&h| tree.local_name(h) == Some("div"))
+            .unwrap();
         // overwrite an existing attribute (the find-and-update slot branch)
         tree.set_attribute(div, "id", "b");
         assert_eq!(tree.get_attribute(div, "id"), Some("b"));
@@ -1638,7 +2666,10 @@ mod tests {
     #[test]
     fn remove_attribute_works() {
         let mut tree = t("<div id=a class=x></div>");
-        let div = tree.handles().find(|&h| tree.local_name(h) == Some("div")).unwrap();
+        let div = tree
+            .handles()
+            .find(|&h| tree.local_name(h) == Some("div"))
+            .unwrap();
         let v0 = tree.version;
         tree.remove_attribute(div, "id");
         assert!(tree.version > v0);
@@ -1649,7 +2680,10 @@ mod tests {
     #[test]
     fn insert_before_with_reference_and_append() {
         let mut tree = t("<ul><li>1</li><li>2</li></ul>");
-        let ul = tree.handles().find(|&h| tree.local_name(h) == Some("ul")).unwrap();
+        let ul = tree
+            .handles()
+            .find(|&h| tree.local_name(h) == Some("ul"))
+            .unwrap();
         let kids = tree.children(ul);
         let (a, b) = (kids[0], kids[1]);
         // insert before a reference node (the Some(idx) branch)
@@ -1673,7 +2707,10 @@ mod tests {
     #[test]
     fn set_text_content_on_element_replaces_children() {
         let mut tree = t("<div><span>old</span></div>");
-        let div = tree.handles().find(|&h| tree.local_name(h) == Some("div")).unwrap();
+        let div = tree
+            .handles()
+            .find(|&h| tree.local_name(h) == Some("div"))
+            .unwrap();
         // element branch: replaced with a single text node
         tree.set_text_content(div, "new");
         assert_eq!(tree.text_content(div), "new");
@@ -1689,8 +2726,14 @@ mod tests {
     #[test]
     fn set_text_content_orphans_the_replaced_children() {
         let mut tree = t("<div><span>old</span></div>");
-        let div = tree.handles().find(|&h| tree.local_name(h) == Some("div")).unwrap();
-        let span = tree.handles().find(|&h| tree.local_name(h) == Some("span")).unwrap();
+        let div = tree
+            .handles()
+            .find(|&h| tree.local_name(h) == Some("div"))
+            .unwrap();
+        let span = tree
+            .handles()
+            .find(|&h| tree.local_name(h) == Some("span"))
+            .unwrap();
         let inner = tree.children(span)[0];
         assert_eq!(tree.parent(span), Some(div));
         // buffer-backed node with no child overlay yet -> the `SoA` sibling-chain walk
@@ -1701,17 +2744,26 @@ mod tests {
         assert_eq!(tree.parent(inner), Some(span));
         // and the empty-string (React container clear) path orphans too
         let mut tree = t("<div><span>old</span></div>");
-        let div = tree.handles().find(|&h| tree.local_name(h) == Some("div")).unwrap();
-        let span = tree.handles().find(|&h| tree.local_name(h) == Some("span")).unwrap();
+        let div = tree
+            .handles()
+            .find(|&h| tree.local_name(h) == Some("div"))
+            .unwrap();
+        let span = tree
+            .handles()
+            .find(|&h| tree.local_name(h) == Some("span"))
+            .unwrap();
         tree.set_text_content(div, "");
-        assert!(tree.children(div).is_empty());
+        assert_eq!(tree.children(div), [] as [Handle; 0]);
         assert_eq!(tree.parent(span), None);
     }
 
     #[test]
     fn set_inner_html_orphans_the_replaced_children() {
         let mut tree = t("<div></div>");
-        let div = tree.handles().find(|&h| tree.local_name(h) == Some("div")).unwrap();
+        let div = tree
+            .handles()
+            .find(|&h| tree.local_name(h) == Some("div"))
+            .unwrap();
         // append first so `div` has a child OVERLAY — the other `orphan_children` branch
         let kid = tree.create_element("p");
         tree.append_child(div, kid);
@@ -1744,26 +2796,60 @@ mod tests {
     }
 
     #[test]
+    fn processing_instruction_keeps_target_and_mutable_character_data() {
+        let mut tree = Tree::parse("<body><p>text</p>");
+        let pi = tree.create_processing_instruction("test", "a😀b");
+        assert_eq!(tree.node_type(pi), NodeType::ProcessingInstruction);
+        assert_eq!(tree.processing_instruction_target(pi), Some("test"));
+        assert_eq!(tree.text_content(pi), "a😀b");
+        tree.set_text_content(pi, "changed");
+        assert_eq!(tree.node_value(pi).as_deref(), Some("changed"));
+        assert_eq!(tree.processing_instruction_target(pi), Some("test"));
+        let body = tree.query_selector("body").unwrap();
+        tree.append_child(body, pi);
+        assert_eq!(tree.text_content(body), "text");
+        assert!(super::super::serialize::serialize_outer(&tree, body).contains("<?test changed?>"));
+    }
+
+    #[test]
     fn set_inner_html_imports_comment_and_svg() {
         let mut tree = t("<div></div>");
-        let div = tree.handles().find(|&h| tree.local_name(h) == Some("div")).unwrap();
+        let div = tree
+            .handles()
+            .find(|&h| tree.local_name(h) == Some("div"))
+            .unwrap();
         // imports an element, a comment (NodeType::Comment arm), and an svg element (ns).
         tree.set_inner_html(div, "<p>hi</p><!--c--><svg><circle r=5></circle></svg>");
         let kids = tree.children(div);
         // p, comment, svg
-        let comment = kids.iter().copied().find(|&k| tree.node_type(k) == NodeType::Comment).unwrap();
+        let comment = kids
+            .iter()
+            .copied()
+            .find(|&k| tree.node_type(k) == NodeType::Comment)
+            .unwrap();
         assert_eq!(tree.node_value(comment).as_deref(), Some("c"));
-        let svg = kids.iter().copied().find(|&k| tree.local_name(k) == Some("svg")).unwrap();
+        let svg = kids
+            .iter()
+            .copied()
+            .find(|&k| tree.local_name(k) == Some("svg"))
+            .unwrap();
         assert_eq!(tree.namespace(svg), Namespace::Svg);
         // svg child carries the svg namespace too
-        let circle = tree.children(svg).into_iter().find(|&k| tree.local_name(k) == Some("circle")).unwrap();
+        let circle = tree
+            .children(svg)
+            .into_iter()
+            .find(|&k| tree.local_name(k) == Some("circle"))
+            .unwrap();
         assert_eq!(tree.namespace(circle), Namespace::Svg);
     }
 
     #[test]
     fn force_inflate_all_preserves_reads() {
         let mut tree = t("<div id=a><span class=x>hi</span></div>");
-        let div = tree.handles().find(|&h| tree.local_name(h) == Some("div")).unwrap();
+        let div = tree
+            .handles()
+            .find(|&h| tree.local_name(h) == Some("div"))
+            .unwrap();
         tree.force_inflate_all();
         // after inflation reads go through overlays but stay correct
         assert_eq!(tree.get_attribute(div, "id"), Some("a"));
@@ -1781,9 +2867,15 @@ mod tests {
         // runtime mirrors this by excluding the synthetic content fragment from its
         // child iteration.)
         let tree = t("<div>before<template><p>hidden</p></template>after</div>");
-        let div = tree.handles().find(|&h| tree.local_name(h) == Some("div")).unwrap();
+        let div = tree
+            .handles()
+            .find(|&h| tree.local_name(h) == Some("div"))
+            .unwrap();
         assert_eq!(tree.text_content(div), "beforeafter");
-        let tpl = tree.handles().find(|&h| tree.local_name(h) == Some("template")).unwrap();
+        let tpl = tree
+            .handles()
+            .find(|&h| tree.local_name(h) == Some("template"))
+            .unwrap();
         assert_eq!(tree.text_content(tpl), "");
     }
 
@@ -1795,30 +2887,67 @@ mod tests {
         //
         // <a><b><c> ; a.after(b, x) → a, b, x, c
         let mut tree = t("<div><a></a><b></b><c></c></div>");
-        let a = tree.handles().find(|&h| tree.local_name(h) == Some("a")).unwrap();
-        let b = tree.handles().find(|&h| tree.local_name(h) == Some("b")).unwrap();
+        let a = tree
+            .handles()
+            .find(|&h| tree.local_name(h) == Some("a"))
+            .unwrap();
+        let b = tree
+            .handles()
+            .find(|&h| tree.local_name(h) == Some("b"))
+            .unwrap();
         let x = tree.create_element("x");
         tree.after(a, &[b, x]);
-        let div = tree.handles().find(|&h| tree.local_name(h) == Some("div")).unwrap();
-        let names: Vec<_> = tree.children(div).iter().map(|&h| tree.local_name(h).unwrap().to_string()).collect();
-        assert_eq!(names, vec!["a", "b", "x", "c"], "after() must skip a next sibling that is itself being inserted");
+        let div = tree
+            .handles()
+            .find(|&h| tree.local_name(h) == Some("div"))
+            .unwrap();
+        let names: Vec<_> = tree
+            .children(div)
+            .iter()
+            .map(|&h| tree.local_name(h).unwrap().to_string())
+            .collect();
+        assert_eq!(
+            names,
+            vec!["a", "b", "x", "c"],
+            "after() must skip a next sibling that is itself being inserted"
+        );
 
         // <a><b><c> ; a.replaceWith(b, x) → b, x, c
         let mut tree2 = t("<div><a></a><b></b><c></c></div>");
-        let a2 = tree2.handles().find(|&h| tree2.local_name(h) == Some("a")).unwrap();
-        let b2 = tree2.handles().find(|&h| tree2.local_name(h) == Some("b")).unwrap();
+        let a2 = tree2
+            .handles()
+            .find(|&h| tree2.local_name(h) == Some("a"))
+            .unwrap();
+        let b2 = tree2
+            .handles()
+            .find(|&h| tree2.local_name(h) == Some("b"))
+            .unwrap();
         let x2 = tree2.create_element("x");
         tree2.replace_with(a2, &[b2, x2]);
-        let div2 = tree2.handles().find(|&h| tree2.local_name(h) == Some("div")).unwrap();
-        let names2: Vec<_> = tree2.children(div2).iter().map(|&h| tree2.local_name(h).unwrap().to_string()).collect();
-        assert_eq!(names2, vec!["b", "x", "c"], "replaceWith() must skip a next sibling that is itself being inserted");
+        let div2 = tree2
+            .handles()
+            .find(|&h| tree2.local_name(h) == Some("div"))
+            .unwrap();
+        let names2: Vec<_> = tree2
+            .children(div2)
+            .iter()
+            .map(|&h| tree2.local_name(h).unwrap().to_string())
+            .collect();
+        assert_eq!(
+            names2,
+            vec!["b", "x", "c"],
+            "replaceWith() must skip a next sibling that is itself being inserted"
+        );
     }
 
     #[test]
     fn assigned_nodes_without_shadow_is_empty() {
         let tree = t("<div><span>x</span></div>");
         // a node not inside any shadow tree → shadow_root_of None → empty
-        let span = tree.handles().find(|&h| tree.local_name(h) == Some("span")).unwrap();
-        assert!(tree.assigned_nodes(span).is_empty());
+        let span = tree
+            .handles()
+            .find(|&h| tree.local_name(h) == Some("span"))
+            .unwrap();
+        assert_eq!(tree.assigned_nodes(span), [] as [Handle; 0]);
     }
 }

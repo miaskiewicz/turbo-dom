@@ -81,7 +81,7 @@ fn core_read_surface_is_present() {
     let first = tree.query_selector("li.item").unwrap();
     assert!(tree.matches(first, "li.item"));
     assert_eq!(tree.children(list).len(), 2);
-    assert!(!tree.text_content(list).is_empty());
+    assert_ne!(tree.text_content(list), "");
     // attributes() -> owned (name, value) pairs (consumers enumerate them across the boundary)
     let _attrs: Vec<(String, String)> = tree.attributes(list);
     assert!(tree.node_type_id(root) == 9 || tree.node_type_id(root) == 11);
