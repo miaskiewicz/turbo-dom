@@ -233,6 +233,9 @@ fn ident(source: &[u16], index: &mut usize) -> String {
             }
             if hex != 0 {
                 if *index < source.len() && whitespace(source[*index]) {
+                    if source[*index] == 13 && source.get(*index + 1) == Some(&10) {
+                        *index += 1;
+                    }
                     *index += 1;
                 }
             } else if *index < source.len() {
@@ -400,7 +403,7 @@ impl Tree {
         let mut stack = vec![self.root()];
         while let Some(node) = stack.pop() {
             if self.node_type(node) == NodeType::Element
-                && self.get_attribute_utf16(node, "id").as_deref() == Some(id)
+                && self.get_attribute_ns_utf16(node, None, "id").as_deref() == Some(id)
             {
                 return Some(node);
             }

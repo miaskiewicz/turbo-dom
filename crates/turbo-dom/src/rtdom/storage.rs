@@ -394,13 +394,31 @@ impl Tree {
                 .map_or(0, native_attribute_bytes),
             NodeType::Text | NodeType::Comment => self.character_payload_bytes(node),
             NodeType::ProcessingInstruction => {
-                self.processing_instruction_target(node).map_or(0, str::len)
-                    + self.character_payload_bytes(node)
+                let target_bytes = if self.is_new(node) {
+                    match self.new_ref(node) {
+                        NewNode::ProcessingInstruction(data) => data.target.payload_bytes(),
+                        _ => 0,
+                    }
+                } else {
+                    self.processing_instruction_target(node).map_or(0, str::len)
+                };
+                target_bytes + self.character_payload_bytes(node)
             }
             NodeType::Doctype => {
-                self.doctype_name(node).map_or(0, str::len)
-                    + self.doctype_public_id(node).map_or(0, str::len)
-                    + self.doctype_system_id(node).map_or(0, str::len)
+                if self.is_new(node) {
+                    match self.new_ref(node) {
+                        NewNode::Doctype(data) => {
+                            data.name.payload_bytes()
+                                + data.public_id.payload_bytes()
+                                + data.system_id.payload_bytes()
+                        }
+                        _ => 0,
+                    }
+                } else {
+                    self.doctype_name(node).map_or(0, str::len)
+                        + self.doctype_public_id(node).map_or(0, str::len)
+                        + self.doctype_system_id(node).map_or(0, str::len)
+                }
             }
             NodeType::Fragment => self.node_label(node).map_or(0, str::len),
         };

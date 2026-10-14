@@ -16,6 +16,14 @@ at the time); this file reconstructs them from history.
   decodes its collision-free internal transport into original unit storage.
 
 ### Fixed
+- Resolve ID, class and unqualified CSS attribute selectors through exact
+  null-namespace attributes; namespaced lone-unit values cannot hide ordinary
+  IDs or alias literal replacement characters.
+- Charge original-unit doctype fields and processing-instruction targets before
+  collection commits; insufficient payload budgets reject atomically.
+- Preserve SVG/MathML fragment contexts and integration-point attributes in both
+  scalar and unit parsing, including adjacent insertion and BOMs.
+- Consume CRLF as one CSS hexadecimal-escape whitespace terminator.
 - Preserve template content and interior BOMs in original-unit DOM parsing.
 - Use iterative native parser, import, text and serialization walks; regressions
   cover8192 nested levels on a512KiB host stack.
@@ -23,8 +31,10 @@ at the time); this file reconstructs them from history.
   measures367 allocations and81,606 bytes per operation (ceilings380/85,000).
 
 ### Tests
-- The isolated backend passes301 contracts and all three strict Clippy variants.
-  Full rebuilt parser/npm/WASM release checks are run on the final PR head.
+- The backend passes 305 contracts and the parser passes seven. All three strict
+  Clippy variants, rebuilt native/Node WASM/Web WASM, 548 JS tests, 29 vitest tests
+  and two Jest tests pass. The html5lib report retains five known failures
+  (1778/1783 evaluated; eight skipped).
 
 ## [0.5.4] — 2026-10-14
 

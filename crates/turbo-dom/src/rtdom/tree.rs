@@ -894,6 +894,59 @@ impl Tree {
         }
         None
     }
+    /// Borrow a scalar compatibility value from an exact namespace/local identity.
+    /// Queries use this seam without allocating owned attribute records per element.
+    pub fn get_attribute_ns_borrowed(
+        &self,
+        h: Handle,
+        namespace: Option<&str>,
+        local: &str,
+    ) -> Option<&str> {
+        let namespace = namespace.filter(|value| !value.is_empty());
+        if let Some(overlay) = self.attrs_ov.get(h) {
+            return match overlay {
+                AttrList::Plain(rows) => namespace
+                    .is_none()
+                    .then(|| {
+                        rows.iter()
+                            .find(|(name, _)| name == local)
+                            .map(|(_, value)| value.as_str())
+                    })
+                    .flatten(),
+                AttrList::Namespaced(rows) => rows
+                    .iter()
+                    .find(|data| {
+                        let namespace_matches = match (&data.ns, namespace) {
+                            (None, None) => true,
+                            (Some(actual), Some(expected)) => actual == expected,
+                            _ => false,
+                        };
+                        namespace_matches && data.local == local
+                    })
+                    .map(|data| data.legacy.value.as_str()),
+            };
+        }
+        if self.is_new(h) {
+            return None;
+        }
+        let start = self.buf.attr_start[h.idx()];
+        if start < 0 {
+            return None;
+        }
+        for index in start as usize..start as usize + self.buf.attr_count[h.idx()] as usize {
+            let name = &self.buf.attr_names[self.buf.attr_name_id[index] as usize];
+            let prefix = &self.buf.attr_prefixes[self.buf.attr_prefix_id[index] as usize];
+            let actual_namespace = if self.namespace(h) == Namespace::Html {
+                None
+            } else {
+                parsed_attribute_namespace(prefix, name)
+            };
+            if actual_namespace == namespace && name == local {
+                return Some(&self.buf.attr_values[self.buf.attr_value_id[index] as usize]);
+            }
+        }
+        None
+    }
     pub fn has_attribute(&self, h: Handle, name: &str) -> bool {
         self.get_attribute(h, name).is_some()
     }
@@ -1920,8 +1973,7 @@ impl Tree {
     /// Parse `html` as a fragment in the context of element `h` and replace its
     /// children (innerHTML setter). Imported nodes become owned (new) nodes.
     pub fn set_inner_html(&mut self, h: Handle, html: &str) {
-        let ctx = self.local_name(h).unwrap_or("body").to_string();
-        let frag = core::parse_html_fragment_context(html, &ctx);
+        let frag = self.parse_scalar_fragment(h, html);
         let removed = if self.is_recording() {
             self.children(h)
         } else {
@@ -2039,8 +2091,7 @@ impl Tree {
             "beforebegin" | "afterend" => self.parent(h).unwrap_or(h),
             _ => h,
         };
-        let ctx = self.local_name(ctx_h).unwrap_or("body").to_string();
-        let frag = core::parse_html_fragment_context(html, &ctx);
+        let frag = self.parse_scalar_fragment(ctx_h, html);
         let kids: Vec<Handle> = frag.children.iter().map(|c| self.import_node(c)).collect();
         match pos.as_str() {
             "beforebegin" => self.before(h, &kids),
@@ -2083,8 +2134,8 @@ impl Tree {
         namespace: Option<&str>,
         local: &str,
     ) -> Option<String> {
-        self.attribute_namespaced(h, namespace, local)
-            .map(|attribute| attribute.value.to_string())
+        self.get_attribute_ns_borrowed(h, namespace, local)
+            .map(str::to_owned)
     }
     pub fn set_attribute_ns(
         &mut self,

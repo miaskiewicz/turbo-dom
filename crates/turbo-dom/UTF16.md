@@ -21,6 +21,9 @@ public tree builder. A temporary scalar escape transport doubles literal markers
 and decoded numeric marker references; lone-unit encodings are injective and
 cannot alias source markers or numeric entities. Native nodes immediately decode
 this transport into native unit-backed payloads. It is never exposed to guest JS.
+Fragment contexts carry actual SVG/MathML namespaces and integration-point
+attributes through the public tree builder, including adjacent insertion. Both
+scalar and original-unit fragment paths preserve DOM-string BOMs.
 The parser retains grammar, rawtext/RCDATA, foreign-content and foster-parenting
 behavior, preserves template-content fragments, and retains U+FEFF wherever
 it appears in a DOM string. The adaptation preserves upstream tokenizer tests
@@ -31,7 +34,9 @@ Original-unit selector entry points parse into native records without caching
 under lossy strings. CSS identifiers and hexadecimal surrogate escapes use
 replacement-character behavior; raw quoted attribute strings keep original units.
 Scalar selectors retain the existing bounded caches. Structural type comparisons
-and ID lookup also distinguish original names and values.
+and ID lookup also distinguish original names and values. ID/class and
+unqualified CSS attribute selectors read null-namespace attributes; ordinary
+`getAttribute` retains its first-qualified-name behavior.
 
 Chrome controls cover these DOM seams. They do not establish complete browser
 API parity, XML parsing, resource lifecycles or JavaScript engine/source behavior.

@@ -373,10 +373,19 @@ pub fn parse_html_fragment_in(html: &str, context_ns: &str, context_local: &str)
         _ => ns!(html),
     };
     let ctx = QualName::new(None, ns, LocalName::from(context_local));
-    let dom = parse_fragment(RcDom::default(), opts(), ctx, vec![], false)
-        .from_utf8()
-        .read_from(&mut html.as_bytes())
-        .expect("RcDom read_from is infallible over a byte slice");
+    parse_html_fragment_with_context(html, ctx, Vec::new())
+}
+
+/// Fragment contexts retain their namespace and integration-point attributes.
+#[must_use]
+pub fn parse_html_fragment_with_context(
+    html: &str,
+    context: QualName,
+    attributes: Vec<html5ever::Attribute>,
+) -> Node {
+    let mut options = opts();
+    options.tokenizer.discard_bom = false;
+    let dom = parse_fragment(RcDom::default(), options, context, attributes, false).one(html);
     // parse_fragment wraps results under a synthetic <html> element; unwrap it.
     let root = walk(&dom.document);
     let mut frag = Node {

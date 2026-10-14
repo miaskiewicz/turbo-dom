@@ -32,7 +32,7 @@ impl Tree {
         !self
             .attribute_units
             .keys()
-            .any(|(owner, _, local)| *owner == node && local == name)
+            .any(|(owner, namespace, local)| *owner == node && namespace.is_none() && local == name)
     }
 
     pub fn create_element_units(&mut self, tag: &[u16]) -> Handle {

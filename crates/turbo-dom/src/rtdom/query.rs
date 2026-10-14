@@ -794,22 +794,27 @@ impl Tree {
             }
         }
         if let Some(id) = &c.id {
-            if self.get_attribute(h, "id") != Some(id.as_str())
+            if self.get_attribute_ns_borrowed(h, None, "id") != Some(id.as_str())
                 || !self.attribute_is_scalar(h, "id")
             {
                 return false;
             }
         }
         if !c.classes.is_empty() {
-            let Some(cv) = self.get_attribute(h, "class") else {
+            let Some(cv) = self.get_attribute_ns_borrowed(h, None, "class") else {
                 return false;
             };
             for cls in &c.classes {
                 if !has_class(cv, cls)
                     || (!self.attribute_is_scalar(h, "class")
-                        && !self.get_attribute_utf16(h, "class").is_some_and(|units| {
-                            units::has_class_units(&units, &cls.encode_utf16().collect::<Vec<_>>())
-                        }))
+                        && !self
+                            .get_attribute_ns_utf16(h, None, "class")
+                            .is_some_and(|units| {
+                                units::has_class_units(
+                                    &units,
+                                    &cls.encode_utf16().collect::<Vec<_>>(),
+                                )
+                            }))
                 {
                     return false;
                 }
@@ -819,16 +824,16 @@ impl Tree {
             match &a.m {
                 AttrMatch::Units(m)
                     if self
-                        .get_attribute_utf16(h, &a.name)
+                        .get_attribute_ns_utf16(h, None, &a.name)
                         .is_some_and(|got| m.matches(&got)) => {}
                 AttrMatch::Units(_) => return false,
-                _ => match self.get_attribute(h, &a.name) {
+                _ => match self.get_attribute_ns_borrowed(h, None, &a.name) {
                     Some(got)
                         if a.m.matches(got)
                             && (self.attribute_is_scalar(h, &a.name)
-                                || self.get_attribute_utf16(h, &a.name).is_some_and(|got| {
-                                    UnitAttrMatch::scalar(&a.m).matches(&got)
-                                })) => {}
+                                || self.get_attribute_ns_utf16(h, None, &a.name).is_some_and(
+                                    |got| UnitAttrMatch::scalar(&a.m).matches(&got),
+                                )) => {}
                     _ => return false,
                 },
             }
@@ -1301,7 +1306,7 @@ impl Tree {
         let mut stack = vec![self.root()];
         while let Some(h) = stack.pop() {
             if self.node_type(h) == NodeType::Element
-                && self.get_attribute(h, "id") == Some(id)
+                && self.get_attribute_ns_borrowed(h, None, "id") == Some(id)
                 && self.attribute_is_scalar(h, "id")
             {
                 found = Some(h);

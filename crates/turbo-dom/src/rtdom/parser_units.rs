@@ -6,7 +6,7 @@ use super::{
     Tree,
 };
 use html5ever::tree_builder::{QuirksMode, TreeBuilder, TreeBuilderOpts};
-use html5ever::{ns, LocalName, QualName};
+use html5ever::{LocalName, QualName};
 use markup5ever_rcdom::RcDom;
 pub(super) const ESCAPE: char = '\u{f0000}';
 const UNIT_BASE: u32 = 0xf0800;
@@ -54,23 +54,20 @@ fn decode(source: &str) -> Vec<u16> {
     }
     units
 }
-fn parsed(units: &[u16], context: Option<&[u16]>) -> RcDom {
+fn parsed(units: &[u16], context: Option<(QualName, Vec<html5ever::Attribute>)>) -> RcDom {
     let sink = RcDom::default();
     let options = TreeBuilderOpts {
         scripting_enabled: false,
         ..Default::default()
     };
-    let builder = if let Some(context) = context {
-        let element = html5ever::tree_builder::create_element(
-            &sink,
-            QualName::new(None, ns!(html), LocalName::from(encode(context))),
-            Vec::new(),
-        );
+    let fragment = context.is_some();
+    let builder = if let Some((name, attributes)) = context {
+        let element = html5ever::tree_builder::create_element(&sink, name, attributes);
         TreeBuilder::new_for_fragment(sink, element, None, options)
     } else {
         TreeBuilder::new(sink, options)
     };
-    let initial_state = context.map(|_| builder.tokenizer_state_for_context_elem(false));
+    let initial_state = fragment.then(|| builder.tokenizer_state_for_context_elem(false));
     let tokenizer = Tokenizer::new(
         builder,
         TokenizerOpts {
@@ -87,6 +84,51 @@ fn parsed(units: &[u16], context: Option<&[u16]>) -> RcDom {
     tokenizer.sink.sink
 }
 impl Tree {
+    fn fragment_context(
+        &self,
+        node: Handle,
+        transport: bool,
+    ) -> (QualName, Vec<html5ever::Attribute>) {
+        let scalar = |units: &[u16]| {
+            if transport {
+                encode(units)
+            } else {
+                String::from_utf16_lossy(units)
+            }
+        };
+        let local = self
+            .local_name_utf16(node)
+            .unwrap_or_else(|| "body".encode_utf16().collect());
+        let namespace = self
+            .namespace_uri_utf16(node)
+            .unwrap_or_else(|| "http://www.w3.org/1999/xhtml".encode_utf16().collect());
+        let name = QualName::new(
+            None,
+            html5ever::Namespace::from(scalar(&namespace)),
+            LocalName::from(scalar(&local)),
+        );
+        let attributes = self
+            .attributes_units(node)
+            .into_iter()
+            .map(|data| html5ever::Attribute {
+                name: QualName::new(
+                    data.prefix
+                        .as_deref()
+                        .map(|units| html5ever::Prefix::from(scalar(units))),
+                    html5ever::Namespace::from(
+                        data.namespace.as_deref().map_or_else(String::new, scalar),
+                    ),
+                    LocalName::from(scalar(&data.local_name)),
+                ),
+                value: scalar(&data.value).into(),
+            })
+            .collect();
+        (name, attributes)
+    }
+    pub(super) fn parse_scalar_fragment(&self, node: Handle, html: &str) -> core::Node {
+        let (name, attributes) = self.fragment_context(node, false);
+        core::parse_html_fragment_with_context(html, name, attributes)
+    }
     /// Parse a DOM string without repairing its original code units. UTF-8
     /// inputs retain the existing lazy buffer path.
     #[must_use]
@@ -181,10 +223,7 @@ impl Tree {
             self.set_inner_html(node, &source);
             return;
         }
-        let context = self
-            .local_name_utf16(node)
-            .unwrap_or_else(|| "body".encode_utf16().collect());
-        let dom = parsed(units, Some(&context));
+        let dom = parsed(units, Some(self.fragment_context(node, true)));
         let document = core::walk(&dom.document);
         // html5ever fragment parsing creates an artificial HTML root.
         let fragment = document.children.first().unwrap_or(&document);
@@ -223,10 +262,7 @@ impl Tree {
         } else {
             node
         };
-        let context = self
-            .local_name_utf16(context)
-            .unwrap_or_else(|| "body".encode_utf16().collect());
-        let dom = parsed(units, Some(&context));
+        let dom = parsed(units, Some(self.fragment_context(context, true)));
         let document = core::walk(&dom.document);
         let fragment = document.children.first().unwrap_or(&document);
         let children = fragment
