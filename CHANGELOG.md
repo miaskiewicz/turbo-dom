@@ -5,6 +5,21 @@ environment for vitest/jest. Format based on [Keep a Changelog](https://keepacha
 Early versions were released as lightweight tags / version-stamped commits (no per-release notes
 at the time); this file reconstructs them from history.
 
+## [Unreleased]
+
+### Added
+- Additive native `MutationEvent` and `Tree::take_mutation_events` surface records
+  with mutation-time light-tree ancestry, sibling positions and attribute namespaces
+  for embedder observer queues. The existing `MutationRecord` API remains available;
+  both APIs drain one opt-in buffer, with no event allocation while recording is off.
+
+### Fixed
+- Native moves emit removal and insertion events with their actual sibling positions;
+  invalid-parent removals leave nodes intact and emit no event.
+- Legacy native observer filtering uses captured ancestry after later moves/removals.
+- Native `innerHTML` reports the complete child replacement; absent attribute removal
+  and empty-to-empty child replacement do not emit spurious mutation records.
+
 ## [0.5.2] — 2026-10-13
 
 ### Added

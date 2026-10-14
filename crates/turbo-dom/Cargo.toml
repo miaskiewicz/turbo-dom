@@ -55,3 +55,6 @@ struct_excessive_bools = "allow"
 too_many_lines = "allow"
 # We intentionally pin the concrete FxHashMap hasher rather than generalize over hashers.
 implicit_hasher = "allow"
+
+[dev-dependencies]
+serde_json = "1"
