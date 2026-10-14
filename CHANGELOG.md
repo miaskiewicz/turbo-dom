@@ -5,7 +5,7 @@ environment for vitest/jest. Format based on [Keep a Changelog](https://keepacha
 Early versions were released as lightweight tags / version-stamped commits (no per-release notes
 at the time); this file reconstructs them from history.
 
-## [Unreleased]
+## [0.5.3] — 2026-10-14
 
 ### Added
 - Additive native `MutationEvent` and `Tree::take_mutation_events` surface records
@@ -14,6 +14,8 @@ at the time); this file reconstructs them from history.
   both APIs drain one opt-in buffer, with no event allocation while recording is off.
 
 ### Fixed
+- Include generated WASM package metadata in the npm bundle so both parser targets
+  retain their release version and module format.
 - Native moves emit removal and insertion events with their actual sibling positions;
   invalid-parent removals leave nodes intact and emit no event.
 - Legacy native observer filtering uses captured ancestry after later moves/removals.

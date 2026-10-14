@@ -1,4 +1,4 @@
-use turbo_dom::rtdom::mutations::{MutationObserver, MutationRecord, ObserverInit};
+use turbo_dom::rtdom::mutations::{MutationEvent, MutationObserver, MutationRecord, ObserverInit};
 use turbo_dom::rtdom::Tree;
 
 #[test]
@@ -108,10 +108,10 @@ fn legacy_observer_filters_using_mutation_time_ancestry_and_shares_the_drain() {
     let records = observer.take_records(&mut tree);
     assert_eq!(records.len(), 1, "{records:?}");
     assert_eq!(records[0].old_value(), Some("first"));
-    assert!(tree.take_mutation_events().is_empty());
+    assert_eq!(tree.take_mutation_events(), [] as [MutationEvent; 0]);
     tree.set_attribute(node, "class", "third");
     assert_eq!(tree.take_mutation_records().len(), 1);
-    assert!(tree.take_mutation_events().is_empty());
+    assert_eq!(tree.take_mutation_events(), [] as [MutationEvent; 0]);
 }
 
 #[test]
@@ -121,16 +121,16 @@ fn non_mutations_do_not_emit_events_and_recording_remains_opt_in() {
     let aside = tree.query_selector("aside").unwrap();
     let node = tree.query_selector("b").unwrap();
     tree.set_attribute(node, "id", "before-recording");
-    assert!(tree.take_mutation_events().is_empty());
+    assert_eq!(tree.take_mutation_events(), [] as [MutationEvent; 0]);
     tree.start_recording();
     tree.remove_child(aside, node);
     tree.remove_attribute(node, "absent");
     tree.remove_attribute_ns(node, Some("urn:absent"), "value");
     tree.set_text_content(aside, "");
     tree.set_inner_html(aside, "");
-    assert!(tree.take_mutation_events().is_empty());
+    assert_eq!(tree.take_mutation_events(), [] as [MutationEvent; 0]);
     assert_eq!(tree.parent(node), Some(section));
     tree.stop_recording();
     tree.remove_child(section, node);
-    assert!(tree.take_mutation_events().is_empty());
+    assert_eq!(tree.take_mutation_events(), [] as [MutationEvent; 0]);
 }

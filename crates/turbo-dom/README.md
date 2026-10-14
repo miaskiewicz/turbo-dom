@@ -88,7 +88,7 @@ Run the worked example: `cargo run --release --example crawl`.
 
 MIT.
 
-### Native observer event seam (unreleased)
+### Native observer event seam (0.5.3)
 
 Call `Tree::start_recording()` and drain `Tree::take_mutation_events()` to fan out
 events into an embedder's private observer queues. Each event includes the existing
