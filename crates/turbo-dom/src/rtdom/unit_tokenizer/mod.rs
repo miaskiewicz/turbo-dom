@@ -2056,7 +2056,7 @@ impl<Sink: TokenSink> Tokenizer<Sink> {
             let bitmask = _mm_movemask_epi8(test_result);
             let newline_mask = _mm_movemask_epi8(newlines);
 
-            if (bitmask != 0) {
+            if bitmask != 0 {
                 // We have reached one of the characters that cause the state machine to transition
                 let position = if cfg!(target_endian = "little") {
                     bitmask.trailing_zeros() as usize

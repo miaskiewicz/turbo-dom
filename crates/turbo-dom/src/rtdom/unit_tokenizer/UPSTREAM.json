@@ -9,6 +9,7 @@
   "changes": [
     "Bind public upstream Token, TokenSink and State types, replace private ASCII helper locally.",
     "Double the reserved transport escape only for decoded character-reference output.",
-    "Preserve upstream tokenizer tests and licenses."
+    "Preserve upstream tokenizer tests and licenses.",
+    "Remove redundant condition parentheses so compiler warnings remain clean under CI RUSTFLAGS=-D warnings."
   ]
 }
