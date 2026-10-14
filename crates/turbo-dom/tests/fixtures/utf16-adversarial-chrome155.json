@@ -1,0 +1,7607 @@
+{
+  "browser": "Chrome/155.0.8059.79",
+  "v8": "15.5.35.23",
+  "probeSha256": "e240e682dc843cdf3e3c37b944793c8f3641b809dc09b78fa29beb62c1bb7650",
+  "collectorSha256": "b13d2f18eba0accfb1bf4391b5970509bc95225c2dd6e5941e34596bbd3a7695",
+  "flags": [
+    "--remote-debugging-port=0",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "about:blank"
+  ],
+  "errors": [],
+  "result": {
+    "namespacedIdfalse": {
+      "byId": true,
+      "css": true,
+      "getAttribute": [
+        116
+      ],
+      "attributes": [
+        {
+          "namespace": null,
+          "name": "id",
+          "value": [
+            116
+          ]
+        },
+        {
+          "namespace": "urn:adversarial",
+          "name": "id",
+          "value": [
+            55296
+          ]
+        }
+      ]
+    },
+    "namespacedIdtrue": {
+      "byId": true,
+      "css": true,
+      "getAttribute": [
+        55296
+      ],
+      "attributes": [
+        {
+          "namespace": "urn:adversarial",
+          "name": "id",
+          "value": [
+            55296
+          ]
+        },
+        {
+          "namespace": null,
+          "name": "id",
+          "value": [
+            116
+          ]
+        }
+      ]
+    },
+    "prefixed": {
+      "actual": false,
+      "replacement": false,
+      "getAttribute": [
+        55296
+      ]
+    },
+    "hexCRLF": true,
+    "attributeFlag": true,
+    "svgFragment": {
+      "namespace": "http://www.w3.org/2000/svg",
+      "localName": "circle",
+      "units": [
+        55296
+      ]
+    },
+    "fragments": [
+      {
+        "namespace": "http://www.w3.org/2000/svg",
+        "name": "svg",
+        "encoding": null,
+        "position": "inner",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          65,
+          39,
+          62,
+          65,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/2000/svg",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              65
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  65
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/2000/svg",
+        "name": "svg",
+        "encoding": null,
+        "position": "afterbegin",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          65,
+          39,
+          62,
+          65,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/2000/svg",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              65
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  65
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/2000/svg",
+        "name": "svg",
+        "encoding": null,
+        "position": "beforeend",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          65,
+          39,
+          62,
+          65,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/2000/svg",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              65
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  65
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/2000/svg",
+        "name": "svg",
+        "encoding": null,
+        "position": "beforebegin",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          65,
+          39,
+          62,
+          65,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/2000/svg",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              65
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  65
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/2000/svg",
+        "name": "svg",
+        "encoding": null,
+        "position": "afterend",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          65,
+          39,
+          62,
+          65,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/2000/svg",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              65
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  65
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/2000/svg",
+        "name": "svg",
+        "encoding": null,
+        "position": "inner",
+        "source": [
+          65279,
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          65279,
+          65,
+          39,
+          62,
+          65279,
+          65,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 3,
+            "namespace": null,
+            "name": null,
+            "value": [
+              65279
+            ],
+            "attribute": null,
+            "children": []
+          },
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/2000/svg",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              65279,
+              65
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  65279,
+                  65
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/2000/svg",
+        "name": "svg",
+        "encoding": null,
+        "position": "afterbegin",
+        "source": [
+          65279,
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          65279,
+          65,
+          39,
+          62,
+          65279,
+          65,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 3,
+            "namespace": null,
+            "name": null,
+            "value": [
+              65279
+            ],
+            "attribute": null,
+            "children": []
+          },
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/2000/svg",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              65279,
+              65
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  65279,
+                  65
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/2000/svg",
+        "name": "svg",
+        "encoding": null,
+        "position": "beforeend",
+        "source": [
+          65279,
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          65279,
+          65,
+          39,
+          62,
+          65279,
+          65,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 3,
+            "namespace": null,
+            "name": null,
+            "value": [
+              65279
+            ],
+            "attribute": null,
+            "children": []
+          },
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/2000/svg",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              65279,
+              65
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  65279,
+                  65
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/2000/svg",
+        "name": "svg",
+        "encoding": null,
+        "position": "beforebegin",
+        "source": [
+          65279,
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          65279,
+          65,
+          39,
+          62,
+          65279,
+          65,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 3,
+            "namespace": null,
+            "name": null,
+            "value": [
+              65279
+            ],
+            "attribute": null,
+            "children": []
+          },
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/2000/svg",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              65279,
+              65
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  65279,
+                  65
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/2000/svg",
+        "name": "svg",
+        "encoding": null,
+        "position": "afterend",
+        "source": [
+          65279,
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          65279,
+          65,
+          39,
+          62,
+          65279,
+          65,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 3,
+            "namespace": null,
+            "name": null,
+            "value": [
+              65279
+            ],
+            "attribute": null,
+            "children": []
+          },
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/2000/svg",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              65279,
+              65
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  65279,
+                  65
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/2000/svg",
+        "name": "svg",
+        "encoding": null,
+        "position": "inner",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          55296,
+          39,
+          62,
+          55296,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/2000/svg",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              55296
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  55296
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/2000/svg",
+        "name": "svg",
+        "encoding": null,
+        "position": "afterbegin",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          55296,
+          39,
+          62,
+          55296,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/2000/svg",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              55296
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  55296
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/2000/svg",
+        "name": "svg",
+        "encoding": null,
+        "position": "beforeend",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          55296,
+          39,
+          62,
+          55296,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/2000/svg",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              55296
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  55296
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/2000/svg",
+        "name": "svg",
+        "encoding": null,
+        "position": "beforebegin",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          55296,
+          39,
+          62,
+          55296,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/2000/svg",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              55296
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  55296
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/2000/svg",
+        "name": "svg",
+        "encoding": null,
+        "position": "afterend",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          55296,
+          39,
+          62,
+          55296,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/2000/svg",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              55296
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  55296
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/2000/svg",
+        "name": "svg",
+        "encoding": null,
+        "position": "inner",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          56320,
+          39,
+          62,
+          56320,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/2000/svg",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              56320
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  56320
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/2000/svg",
+        "name": "svg",
+        "encoding": null,
+        "position": "afterbegin",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          56320,
+          39,
+          62,
+          56320,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/2000/svg",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              56320
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  56320
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/2000/svg",
+        "name": "svg",
+        "encoding": null,
+        "position": "beforeend",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          56320,
+          39,
+          62,
+          56320,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/2000/svg",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              56320
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  56320
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/2000/svg",
+        "name": "svg",
+        "encoding": null,
+        "position": "beforebegin",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          56320,
+          39,
+          62,
+          56320,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/2000/svg",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              56320
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  56320
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/2000/svg",
+        "name": "svg",
+        "encoding": null,
+        "position": "afterend",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          56320,
+          39,
+          62,
+          56320,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/2000/svg",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              56320
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  56320
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/2000/svg",
+        "name": "foreignObject",
+        "encoding": null,
+        "position": "inner",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          65,
+          39,
+          62,
+          65,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1999/xhtml",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              65
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  65
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/2000/svg",
+        "name": "foreignObject",
+        "encoding": null,
+        "position": "afterbegin",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          65,
+          39,
+          62,
+          65,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1999/xhtml",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              65
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  65
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/2000/svg",
+        "name": "foreignObject",
+        "encoding": null,
+        "position": "beforeend",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          65,
+          39,
+          62,
+          65,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1999/xhtml",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              65
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  65
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/2000/svg",
+        "name": "foreignObject",
+        "encoding": null,
+        "position": "beforebegin",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          65,
+          39,
+          62,
+          65,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1999/xhtml",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              65
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  65
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/2000/svg",
+        "name": "foreignObject",
+        "encoding": null,
+        "position": "afterend",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          65,
+          39,
+          62,
+          65,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1999/xhtml",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              65
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  65
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/2000/svg",
+        "name": "foreignObject",
+        "encoding": null,
+        "position": "inner",
+        "source": [
+          65279,
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          65279,
+          65,
+          39,
+          62,
+          65279,
+          65,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 3,
+            "namespace": null,
+            "name": null,
+            "value": [
+              65279
+            ],
+            "attribute": null,
+            "children": []
+          },
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1999/xhtml",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              65279,
+              65
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  65279,
+                  65
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/2000/svg",
+        "name": "foreignObject",
+        "encoding": null,
+        "position": "afterbegin",
+        "source": [
+          65279,
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          65279,
+          65,
+          39,
+          62,
+          65279,
+          65,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 3,
+            "namespace": null,
+            "name": null,
+            "value": [
+              65279
+            ],
+            "attribute": null,
+            "children": []
+          },
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1999/xhtml",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              65279,
+              65
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  65279,
+                  65
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/2000/svg",
+        "name": "foreignObject",
+        "encoding": null,
+        "position": "beforeend",
+        "source": [
+          65279,
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          65279,
+          65,
+          39,
+          62,
+          65279,
+          65,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 3,
+            "namespace": null,
+            "name": null,
+            "value": [
+              65279
+            ],
+            "attribute": null,
+            "children": []
+          },
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1999/xhtml",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              65279,
+              65
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  65279,
+                  65
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/2000/svg",
+        "name": "foreignObject",
+        "encoding": null,
+        "position": "beforebegin",
+        "source": [
+          65279,
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          65279,
+          65,
+          39,
+          62,
+          65279,
+          65,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 3,
+            "namespace": null,
+            "name": null,
+            "value": [
+              65279
+            ],
+            "attribute": null,
+            "children": []
+          },
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1999/xhtml",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              65279,
+              65
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  65279,
+                  65
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/2000/svg",
+        "name": "foreignObject",
+        "encoding": null,
+        "position": "afterend",
+        "source": [
+          65279,
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          65279,
+          65,
+          39,
+          62,
+          65279,
+          65,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 3,
+            "namespace": null,
+            "name": null,
+            "value": [
+              65279
+            ],
+            "attribute": null,
+            "children": []
+          },
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1999/xhtml",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              65279,
+              65
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  65279,
+                  65
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/2000/svg",
+        "name": "foreignObject",
+        "encoding": null,
+        "position": "inner",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          55296,
+          39,
+          62,
+          55296,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1999/xhtml",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              55296
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  55296
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/2000/svg",
+        "name": "foreignObject",
+        "encoding": null,
+        "position": "afterbegin",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          55296,
+          39,
+          62,
+          55296,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1999/xhtml",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              55296
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  55296
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/2000/svg",
+        "name": "foreignObject",
+        "encoding": null,
+        "position": "beforeend",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          55296,
+          39,
+          62,
+          55296,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1999/xhtml",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              55296
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  55296
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/2000/svg",
+        "name": "foreignObject",
+        "encoding": null,
+        "position": "beforebegin",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          55296,
+          39,
+          62,
+          55296,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1999/xhtml",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              55296
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  55296
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/2000/svg",
+        "name": "foreignObject",
+        "encoding": null,
+        "position": "afterend",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          55296,
+          39,
+          62,
+          55296,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1999/xhtml",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              55296
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  55296
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/2000/svg",
+        "name": "foreignObject",
+        "encoding": null,
+        "position": "inner",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          56320,
+          39,
+          62,
+          56320,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1999/xhtml",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              56320
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  56320
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/2000/svg",
+        "name": "foreignObject",
+        "encoding": null,
+        "position": "afterbegin",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          56320,
+          39,
+          62,
+          56320,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1999/xhtml",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              56320
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  56320
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/2000/svg",
+        "name": "foreignObject",
+        "encoding": null,
+        "position": "beforeend",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          56320,
+          39,
+          62,
+          56320,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1999/xhtml",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              56320
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  56320
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/2000/svg",
+        "name": "foreignObject",
+        "encoding": null,
+        "position": "beforebegin",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          56320,
+          39,
+          62,
+          56320,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1999/xhtml",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              56320
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  56320
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/2000/svg",
+        "name": "foreignObject",
+        "encoding": null,
+        "position": "afterend",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          56320,
+          39,
+          62,
+          56320,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1999/xhtml",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              56320
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  56320
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "math",
+        "encoding": null,
+        "position": "inner",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          65,
+          39,
+          62,
+          65,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1998/Math/MathML",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              65
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  65
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "math",
+        "encoding": null,
+        "position": "afterbegin",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          65,
+          39,
+          62,
+          65,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1998/Math/MathML",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              65
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  65
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "math",
+        "encoding": null,
+        "position": "beforeend",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          65,
+          39,
+          62,
+          65,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1998/Math/MathML",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              65
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  65
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "math",
+        "encoding": null,
+        "position": "beforebegin",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          65,
+          39,
+          62,
+          65,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1998/Math/MathML",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              65
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  65
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "math",
+        "encoding": null,
+        "position": "afterend",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          65,
+          39,
+          62,
+          65,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1998/Math/MathML",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              65
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  65
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "math",
+        "encoding": null,
+        "position": "inner",
+        "source": [
+          65279,
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          65279,
+          65,
+          39,
+          62,
+          65279,
+          65,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 3,
+            "namespace": null,
+            "name": null,
+            "value": [
+              65279
+            ],
+            "attribute": null,
+            "children": []
+          },
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1998/Math/MathML",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              65279,
+              65
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  65279,
+                  65
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "math",
+        "encoding": null,
+        "position": "afterbegin",
+        "source": [
+          65279,
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          65279,
+          65,
+          39,
+          62,
+          65279,
+          65,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 3,
+            "namespace": null,
+            "name": null,
+            "value": [
+              65279
+            ],
+            "attribute": null,
+            "children": []
+          },
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1998/Math/MathML",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              65279,
+              65
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  65279,
+                  65
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "math",
+        "encoding": null,
+        "position": "beforeend",
+        "source": [
+          65279,
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          65279,
+          65,
+          39,
+          62,
+          65279,
+          65,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 3,
+            "namespace": null,
+            "name": null,
+            "value": [
+              65279
+            ],
+            "attribute": null,
+            "children": []
+          },
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1998/Math/MathML",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              65279,
+              65
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  65279,
+                  65
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "math",
+        "encoding": null,
+        "position": "beforebegin",
+        "source": [
+          65279,
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          65279,
+          65,
+          39,
+          62,
+          65279,
+          65,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 3,
+            "namespace": null,
+            "name": null,
+            "value": [
+              65279
+            ],
+            "attribute": null,
+            "children": []
+          },
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1998/Math/MathML",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              65279,
+              65
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  65279,
+                  65
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "math",
+        "encoding": null,
+        "position": "afterend",
+        "source": [
+          65279,
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          65279,
+          65,
+          39,
+          62,
+          65279,
+          65,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 3,
+            "namespace": null,
+            "name": null,
+            "value": [
+              65279
+            ],
+            "attribute": null,
+            "children": []
+          },
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1998/Math/MathML",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              65279,
+              65
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  65279,
+                  65
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "math",
+        "encoding": null,
+        "position": "inner",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          55296,
+          39,
+          62,
+          55296,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1998/Math/MathML",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              55296
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  55296
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "math",
+        "encoding": null,
+        "position": "afterbegin",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          55296,
+          39,
+          62,
+          55296,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1998/Math/MathML",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              55296
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  55296
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "math",
+        "encoding": null,
+        "position": "beforeend",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          55296,
+          39,
+          62,
+          55296,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1998/Math/MathML",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              55296
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  55296
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "math",
+        "encoding": null,
+        "position": "beforebegin",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          55296,
+          39,
+          62,
+          55296,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1998/Math/MathML",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              55296
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  55296
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "math",
+        "encoding": null,
+        "position": "afterend",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          55296,
+          39,
+          62,
+          55296,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1998/Math/MathML",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              55296
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  55296
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "math",
+        "encoding": null,
+        "position": "inner",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          56320,
+          39,
+          62,
+          56320,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1998/Math/MathML",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              56320
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  56320
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "math",
+        "encoding": null,
+        "position": "afterbegin",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          56320,
+          39,
+          62,
+          56320,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1998/Math/MathML",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              56320
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  56320
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "math",
+        "encoding": null,
+        "position": "beforeend",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          56320,
+          39,
+          62,
+          56320,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1998/Math/MathML",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              56320
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  56320
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "math",
+        "encoding": null,
+        "position": "beforebegin",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          56320,
+          39,
+          62,
+          56320,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1998/Math/MathML",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              56320
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  56320
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "math",
+        "encoding": null,
+        "position": "afterend",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          56320,
+          39,
+          62,
+          56320,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1998/Math/MathML",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              56320
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  56320
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "mi",
+        "encoding": null,
+        "position": "inner",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          65,
+          39,
+          62,
+          65,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1999/xhtml",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              65
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  65
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "mi",
+        "encoding": null,
+        "position": "afterbegin",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          65,
+          39,
+          62,
+          65,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1999/xhtml",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              65
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  65
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "mi",
+        "encoding": null,
+        "position": "beforeend",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          65,
+          39,
+          62,
+          65,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1999/xhtml",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              65
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  65
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "mi",
+        "encoding": null,
+        "position": "beforebegin",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          65,
+          39,
+          62,
+          65,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1999/xhtml",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              65
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  65
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "mi",
+        "encoding": null,
+        "position": "afterend",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          65,
+          39,
+          62,
+          65,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1999/xhtml",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              65
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  65
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "mi",
+        "encoding": null,
+        "position": "inner",
+        "source": [
+          65279,
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          65279,
+          65,
+          39,
+          62,
+          65279,
+          65,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 3,
+            "namespace": null,
+            "name": null,
+            "value": [
+              65279
+            ],
+            "attribute": null,
+            "children": []
+          },
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1999/xhtml",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              65279,
+              65
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  65279,
+                  65
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "mi",
+        "encoding": null,
+        "position": "afterbegin",
+        "source": [
+          65279,
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          65279,
+          65,
+          39,
+          62,
+          65279,
+          65,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 3,
+            "namespace": null,
+            "name": null,
+            "value": [
+              65279
+            ],
+            "attribute": null,
+            "children": []
+          },
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1999/xhtml",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              65279,
+              65
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  65279,
+                  65
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "mi",
+        "encoding": null,
+        "position": "beforeend",
+        "source": [
+          65279,
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          65279,
+          65,
+          39,
+          62,
+          65279,
+          65,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 3,
+            "namespace": null,
+            "name": null,
+            "value": [
+              65279
+            ],
+            "attribute": null,
+            "children": []
+          },
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1999/xhtml",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              65279,
+              65
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  65279,
+                  65
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "mi",
+        "encoding": null,
+        "position": "beforebegin",
+        "source": [
+          65279,
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          65279,
+          65,
+          39,
+          62,
+          65279,
+          65,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 3,
+            "namespace": null,
+            "name": null,
+            "value": [
+              65279
+            ],
+            "attribute": null,
+            "children": []
+          },
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1999/xhtml",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              65279,
+              65
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  65279,
+                  65
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "mi",
+        "encoding": null,
+        "position": "afterend",
+        "source": [
+          65279,
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          65279,
+          65,
+          39,
+          62,
+          65279,
+          65,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 3,
+            "namespace": null,
+            "name": null,
+            "value": [
+              65279
+            ],
+            "attribute": null,
+            "children": []
+          },
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1999/xhtml",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              65279,
+              65
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  65279,
+                  65
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "mi",
+        "encoding": null,
+        "position": "inner",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          55296,
+          39,
+          62,
+          55296,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1999/xhtml",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              55296
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  55296
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "mi",
+        "encoding": null,
+        "position": "afterbegin",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          55296,
+          39,
+          62,
+          55296,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1999/xhtml",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              55296
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  55296
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "mi",
+        "encoding": null,
+        "position": "beforeend",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          55296,
+          39,
+          62,
+          55296,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1999/xhtml",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              55296
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  55296
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "mi",
+        "encoding": null,
+        "position": "beforebegin",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          55296,
+          39,
+          62,
+          55296,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1999/xhtml",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              55296
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  55296
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "mi",
+        "encoding": null,
+        "position": "afterend",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          55296,
+          39,
+          62,
+          55296,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1999/xhtml",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              55296
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  55296
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "mi",
+        "encoding": null,
+        "position": "inner",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          56320,
+          39,
+          62,
+          56320,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1999/xhtml",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              56320
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  56320
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "mi",
+        "encoding": null,
+        "position": "afterbegin",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          56320,
+          39,
+          62,
+          56320,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1999/xhtml",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              56320
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  56320
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "mi",
+        "encoding": null,
+        "position": "beforeend",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          56320,
+          39,
+          62,
+          56320,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1999/xhtml",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              56320
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  56320
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "mi",
+        "encoding": null,
+        "position": "beforebegin",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          56320,
+          39,
+          62,
+          56320,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1999/xhtml",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              56320
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  56320
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "mi",
+        "encoding": null,
+        "position": "afterend",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          56320,
+          39,
+          62,
+          56320,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1999/xhtml",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              56320
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  56320
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "annotation-xml",
+        "encoding": "text/html",
+        "position": "inner",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          65,
+          39,
+          62,
+          65,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1999/xhtml",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              65
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  65
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "annotation-xml",
+        "encoding": "text/html",
+        "position": "afterbegin",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          65,
+          39,
+          62,
+          65,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1999/xhtml",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              65
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  65
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "annotation-xml",
+        "encoding": "text/html",
+        "position": "beforeend",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          65,
+          39,
+          62,
+          65,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1999/xhtml",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              65
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  65
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "annotation-xml",
+        "encoding": "text/html",
+        "position": "beforebegin",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          65,
+          39,
+          62,
+          65,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1999/xhtml",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              65
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  65
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "annotation-xml",
+        "encoding": "text/html",
+        "position": "afterend",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          65,
+          39,
+          62,
+          65,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1999/xhtml",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              65
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  65
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "annotation-xml",
+        "encoding": "text/html",
+        "position": "inner",
+        "source": [
+          65279,
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          65279,
+          65,
+          39,
+          62,
+          65279,
+          65,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 3,
+            "namespace": null,
+            "name": null,
+            "value": [
+              65279
+            ],
+            "attribute": null,
+            "children": []
+          },
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1999/xhtml",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              65279,
+              65
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  65279,
+                  65
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "annotation-xml",
+        "encoding": "text/html",
+        "position": "afterbegin",
+        "source": [
+          65279,
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          65279,
+          65,
+          39,
+          62,
+          65279,
+          65,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 3,
+            "namespace": null,
+            "name": null,
+            "value": [
+              65279
+            ],
+            "attribute": null,
+            "children": []
+          },
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1999/xhtml",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              65279,
+              65
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  65279,
+                  65
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "annotation-xml",
+        "encoding": "text/html",
+        "position": "beforeend",
+        "source": [
+          65279,
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          65279,
+          65,
+          39,
+          62,
+          65279,
+          65,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 3,
+            "namespace": null,
+            "name": null,
+            "value": [
+              65279
+            ],
+            "attribute": null,
+            "children": []
+          },
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1999/xhtml",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              65279,
+              65
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  65279,
+                  65
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "annotation-xml",
+        "encoding": "text/html",
+        "position": "beforebegin",
+        "source": [
+          65279,
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          65279,
+          65,
+          39,
+          62,
+          65279,
+          65,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 3,
+            "namespace": null,
+            "name": null,
+            "value": [
+              65279
+            ],
+            "attribute": null,
+            "children": []
+          },
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1999/xhtml",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              65279,
+              65
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  65279,
+                  65
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "annotation-xml",
+        "encoding": "text/html",
+        "position": "afterend",
+        "source": [
+          65279,
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          65279,
+          65,
+          39,
+          62,
+          65279,
+          65,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 3,
+            "namespace": null,
+            "name": null,
+            "value": [
+              65279
+            ],
+            "attribute": null,
+            "children": []
+          },
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1999/xhtml",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              65279,
+              65
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  65279,
+                  65
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "annotation-xml",
+        "encoding": "text/html",
+        "position": "inner",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          55296,
+          39,
+          62,
+          55296,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1999/xhtml",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              55296
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  55296
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "annotation-xml",
+        "encoding": "text/html",
+        "position": "afterbegin",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          55296,
+          39,
+          62,
+          55296,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1999/xhtml",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              55296
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  55296
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "annotation-xml",
+        "encoding": "text/html",
+        "position": "beforeend",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          55296,
+          39,
+          62,
+          55296,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1999/xhtml",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              55296
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  55296
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "annotation-xml",
+        "encoding": "text/html",
+        "position": "beforebegin",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          55296,
+          39,
+          62,
+          55296,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1999/xhtml",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              55296
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  55296
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "annotation-xml",
+        "encoding": "text/html",
+        "position": "afterend",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          55296,
+          39,
+          62,
+          55296,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1999/xhtml",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              55296
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  55296
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "annotation-xml",
+        "encoding": "text/html",
+        "position": "inner",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          56320,
+          39,
+          62,
+          56320,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1999/xhtml",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              56320
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  56320
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "annotation-xml",
+        "encoding": "text/html",
+        "position": "afterbegin",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          56320,
+          39,
+          62,
+          56320,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1999/xhtml",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              56320
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  56320
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "annotation-xml",
+        "encoding": "text/html",
+        "position": "beforeend",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          56320,
+          39,
+          62,
+          56320,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1999/xhtml",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              56320
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  56320
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "annotation-xml",
+        "encoding": "text/html",
+        "position": "beforebegin",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          56320,
+          39,
+          62,
+          56320,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1999/xhtml",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              56320
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  56320
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "annotation-xml",
+        "encoding": "text/html",
+        "position": "afterend",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          56320,
+          39,
+          62,
+          56320,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1999/xhtml",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              56320
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  56320
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "annotation-xml",
+        "encoding": "application/xhtml+xml",
+        "position": "inner",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          65,
+          39,
+          62,
+          65,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1999/xhtml",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              65
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  65
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "annotation-xml",
+        "encoding": "application/xhtml+xml",
+        "position": "afterbegin",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          65,
+          39,
+          62,
+          65,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1999/xhtml",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              65
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  65
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "annotation-xml",
+        "encoding": "application/xhtml+xml",
+        "position": "beforeend",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          65,
+          39,
+          62,
+          65,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1999/xhtml",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              65
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  65
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "annotation-xml",
+        "encoding": "application/xhtml+xml",
+        "position": "beforebegin",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          65,
+          39,
+          62,
+          65,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1999/xhtml",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              65
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  65
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "annotation-xml",
+        "encoding": "application/xhtml+xml",
+        "position": "afterend",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          65,
+          39,
+          62,
+          65,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1999/xhtml",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              65
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  65
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "annotation-xml",
+        "encoding": "application/xhtml+xml",
+        "position": "inner",
+        "source": [
+          65279,
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          65279,
+          65,
+          39,
+          62,
+          65279,
+          65,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 3,
+            "namespace": null,
+            "name": null,
+            "value": [
+              65279
+            ],
+            "attribute": null,
+            "children": []
+          },
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1999/xhtml",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              65279,
+              65
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  65279,
+                  65
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "annotation-xml",
+        "encoding": "application/xhtml+xml",
+        "position": "afterbegin",
+        "source": [
+          65279,
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          65279,
+          65,
+          39,
+          62,
+          65279,
+          65,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 3,
+            "namespace": null,
+            "name": null,
+            "value": [
+              65279
+            ],
+            "attribute": null,
+            "children": []
+          },
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1999/xhtml",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              65279,
+              65
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  65279,
+                  65
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "annotation-xml",
+        "encoding": "application/xhtml+xml",
+        "position": "beforeend",
+        "source": [
+          65279,
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          65279,
+          65,
+          39,
+          62,
+          65279,
+          65,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 3,
+            "namespace": null,
+            "name": null,
+            "value": [
+              65279
+            ],
+            "attribute": null,
+            "children": []
+          },
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1999/xhtml",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              65279,
+              65
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  65279,
+                  65
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "annotation-xml",
+        "encoding": "application/xhtml+xml",
+        "position": "beforebegin",
+        "source": [
+          65279,
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          65279,
+          65,
+          39,
+          62,
+          65279,
+          65,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 3,
+            "namespace": null,
+            "name": null,
+            "value": [
+              65279
+            ],
+            "attribute": null,
+            "children": []
+          },
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1999/xhtml",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              65279,
+              65
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  65279,
+                  65
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "annotation-xml",
+        "encoding": "application/xhtml+xml",
+        "position": "afterend",
+        "source": [
+          65279,
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          65279,
+          65,
+          39,
+          62,
+          65279,
+          65,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 3,
+            "namespace": null,
+            "name": null,
+            "value": [
+              65279
+            ],
+            "attribute": null,
+            "children": []
+          },
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1999/xhtml",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              65279,
+              65
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  65279,
+                  65
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "annotation-xml",
+        "encoding": "application/xhtml+xml",
+        "position": "inner",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          55296,
+          39,
+          62,
+          55296,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1999/xhtml",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              55296
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  55296
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "annotation-xml",
+        "encoding": "application/xhtml+xml",
+        "position": "afterbegin",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          55296,
+          39,
+          62,
+          55296,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1999/xhtml",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              55296
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  55296
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "annotation-xml",
+        "encoding": "application/xhtml+xml",
+        "position": "beforeend",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          55296,
+          39,
+          62,
+          55296,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1999/xhtml",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              55296
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  55296
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "annotation-xml",
+        "encoding": "application/xhtml+xml",
+        "position": "beforebegin",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          55296,
+          39,
+          62,
+          55296,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1999/xhtml",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              55296
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  55296
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "annotation-xml",
+        "encoding": "application/xhtml+xml",
+        "position": "afterend",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          55296,
+          39,
+          62,
+          55296,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1999/xhtml",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              55296
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  55296
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "annotation-xml",
+        "encoding": "application/xhtml+xml",
+        "position": "inner",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          56320,
+          39,
+          62,
+          56320,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1999/xhtml",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              56320
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  56320
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "annotation-xml",
+        "encoding": "application/xhtml+xml",
+        "position": "afterbegin",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          56320,
+          39,
+          62,
+          56320,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1999/xhtml",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              56320
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  56320
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "annotation-xml",
+        "encoding": "application/xhtml+xml",
+        "position": "beforeend",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          56320,
+          39,
+          62,
+          56320,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1999/xhtml",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              56320
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  56320
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "annotation-xml",
+        "encoding": "application/xhtml+xml",
+        "position": "beforebegin",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          56320,
+          39,
+          62,
+          56320,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1999/xhtml",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              56320
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  56320
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "annotation-xml",
+        "encoding": "application/xhtml+xml",
+        "position": "afterend",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          56320,
+          39,
+          62,
+          56320,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1999/xhtml",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              56320
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  56320
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "annotation-xml",
+        "encoding": "other",
+        "position": "inner",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          65,
+          39,
+          62,
+          65,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1998/Math/MathML",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              65
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  65
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "annotation-xml",
+        "encoding": "other",
+        "position": "afterbegin",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          65,
+          39,
+          62,
+          65,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1998/Math/MathML",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              65
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  65
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "annotation-xml",
+        "encoding": "other",
+        "position": "beforeend",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          65,
+          39,
+          62,
+          65,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1998/Math/MathML",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              65
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  65
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "annotation-xml",
+        "encoding": "other",
+        "position": "beforebegin",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          65,
+          39,
+          62,
+          65,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1998/Math/MathML",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              65
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  65
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "annotation-xml",
+        "encoding": "other",
+        "position": "afterend",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          65,
+          39,
+          62,
+          65,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1998/Math/MathML",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              65
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  65
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "annotation-xml",
+        "encoding": "other",
+        "position": "inner",
+        "source": [
+          65279,
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          65279,
+          65,
+          39,
+          62,
+          65279,
+          65,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 3,
+            "namespace": null,
+            "name": null,
+            "value": [
+              65279
+            ],
+            "attribute": null,
+            "children": []
+          },
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1998/Math/MathML",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              65279,
+              65
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  65279,
+                  65
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "annotation-xml",
+        "encoding": "other",
+        "position": "afterbegin",
+        "source": [
+          65279,
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          65279,
+          65,
+          39,
+          62,
+          65279,
+          65,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 3,
+            "namespace": null,
+            "name": null,
+            "value": [
+              65279
+            ],
+            "attribute": null,
+            "children": []
+          },
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1998/Math/MathML",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              65279,
+              65
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  65279,
+                  65
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "annotation-xml",
+        "encoding": "other",
+        "position": "beforeend",
+        "source": [
+          65279,
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          65279,
+          65,
+          39,
+          62,
+          65279,
+          65,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 3,
+            "namespace": null,
+            "name": null,
+            "value": [
+              65279
+            ],
+            "attribute": null,
+            "children": []
+          },
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1998/Math/MathML",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              65279,
+              65
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  65279,
+                  65
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "annotation-xml",
+        "encoding": "other",
+        "position": "beforebegin",
+        "source": [
+          65279,
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          65279,
+          65,
+          39,
+          62,
+          65279,
+          65,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 3,
+            "namespace": null,
+            "name": null,
+            "value": [
+              65279
+            ],
+            "attribute": null,
+            "children": []
+          },
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1998/Math/MathML",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              65279,
+              65
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  65279,
+                  65
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "annotation-xml",
+        "encoding": "other",
+        "position": "afterend",
+        "source": [
+          65279,
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          65279,
+          65,
+          39,
+          62,
+          65279,
+          65,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 3,
+            "namespace": null,
+            "name": null,
+            "value": [
+              65279
+            ],
+            "attribute": null,
+            "children": []
+          },
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1998/Math/MathML",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              65279,
+              65
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  65279,
+                  65
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "annotation-xml",
+        "encoding": "other",
+        "position": "inner",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          55296,
+          39,
+          62,
+          55296,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1998/Math/MathML",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              55296
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  55296
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "annotation-xml",
+        "encoding": "other",
+        "position": "afterbegin",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          55296,
+          39,
+          62,
+          55296,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1998/Math/MathML",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              55296
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  55296
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "annotation-xml",
+        "encoding": "other",
+        "position": "beforeend",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          55296,
+          39,
+          62,
+          55296,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1998/Math/MathML",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              55296
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  55296
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "annotation-xml",
+        "encoding": "other",
+        "position": "beforebegin",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          55296,
+          39,
+          62,
+          55296,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1998/Math/MathML",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              55296
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  55296
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "annotation-xml",
+        "encoding": "other",
+        "position": "afterend",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          55296,
+          39,
+          62,
+          55296,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1998/Math/MathML",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              55296
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  55296
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "annotation-xml",
+        "encoding": "other",
+        "position": "inner",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          56320,
+          39,
+          62,
+          56320,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1998/Math/MathML",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              56320
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  56320
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "annotation-xml",
+        "encoding": "other",
+        "position": "afterbegin",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          56320,
+          39,
+          62,
+          56320,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1998/Math/MathML",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              56320
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  56320
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "annotation-xml",
+        "encoding": "other",
+        "position": "beforeend",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          56320,
+          39,
+          62,
+          56320,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1998/Math/MathML",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              56320
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  56320
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "annotation-xml",
+        "encoding": "other",
+        "position": "beforebegin",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          56320,
+          39,
+          62,
+          56320,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1998/Math/MathML",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              56320
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  56320
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "namespace": "http://www.w3.org/1998/Math/MathML",
+        "name": "annotation-xml",
+        "encoding": "other",
+        "position": "afterend",
+        "source": [
+          60,
+          97,
+          32,
+          100,
+          97,
+          116,
+          97,
+          45,
+          117,
+          61,
+          39,
+          56320,
+          39,
+          62,
+          56320,
+          60,
+          47,
+          97,
+          62
+        ],
+        "output": [
+          {
+            "type": 1,
+            "namespace": "http://www.w3.org/1998/Math/MathML",
+            "name": "a",
+            "value": null,
+            "attribute": [
+              56320
+            ],
+            "children": [
+              {
+                "type": 3,
+                "namespace": null,
+                "name": null,
+                "value": [
+                  56320
+                ],
+                "attribute": null,
+                "children": []
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

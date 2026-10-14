@@ -5,6 +5,37 @@ environment for vitest/jest. Format based on [Keep a Changelog](https://keepacha
 Early versions were released as lightweight tags / version-stamped commits (no per-release notes
 at the time); this file reconstructs them from history.
 
+## [0.5.5] — lossless native DOM strings
+
+### Added
+- Native UTF-16 payload, name, namespace, doctype and processing-instruction APIs
+  preserve lone surrogates through editing, cloning, serialization, selectors and
+  mutation records. Existing scalar getters remain compatibility views.
+- Original-unit HTML document and fragment parsing uses a source-pinned,
+  license-preserved html5ever tokenizer adaptation. Native code immediately
+  decodes its collision-free internal transport into original unit storage.
+
+### Fixed
+- Resolve ID, class and unqualified CSS attribute selectors through exact
+  null-namespace attributes; namespaced lone-unit values cannot hide ordinary
+  IDs or alias literal replacement characters.
+- Charge original-unit doctype fields and processing-instruction targets before
+  collection commits; insufficient payload budgets reject atomically.
+- Preserve SVG/MathML fragment contexts and integration-point attributes in both
+  scalar and unit parsing, including adjacent insertion and BOMs.
+- Consume CRLF as one CSS hexadecimal-escape whitespace terminator.
+- Preserve template content and interior BOMs in original-unit DOM parsing.
+- Use iterative native parser, import, text and serialization walks; regressions
+  cover8192 nested levels on a512KiB host stack.
+- Keep ordinary scalar DOM payloads compact. The unchanged mutation-churn gate
+  measures367 allocations and81,606 bytes per operation (ceilings380/85,000).
+
+### Tests
+- The backend passes 305 contracts and the parser passes seven. All three strict
+  Clippy variants, rebuilt native/Node WASM/Web WASM, 548 JS tests, 29 vitest tests
+  and two Jest tests pass. The html5lib report retains five known failures
+  (1778/1783 evaluated; eight skipped).
+
 ## [0.5.4] — 2026-10-14
 
 ### Added

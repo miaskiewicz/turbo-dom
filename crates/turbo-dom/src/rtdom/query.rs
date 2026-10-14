@@ -37,7 +37,8 @@ fn bounded_insert<K: std::hash::Hash + Eq, V>(
 /// old `Attr { op, value }` could express both.
 #[derive(Debug, Clone)]
 enum AttrMatch {
-    Present,          // [attr]
+    Present, // [attr]
+    Units(UnitAttrMatch),
     Equals(String),   // [attr=v]
     Includes(String), // [attr~=v]  whitespace-separated word
     Dash(String),     // [attr|=v]  v or v-...
@@ -46,6 +47,10 @@ enum AttrMatch {
     Substr(String),   // [attr*=v]
 }
 
+#[path = "query_utf16.rs"]
+mod units;
+use units::UnitAttrMatch;
+
 impl AttrMatch {
     /// Does `got` (the element's attribute value) satisfy this test? SAME
     /// semantics as the old `attr_op_matches`: the `!want.is_empty()` guards on
@@ -53,6 +58,7 @@ impl AttrMatch {
     fn matches(&self, got: &str) -> bool {
         match self {
             AttrMatch::Present => true,
+            AttrMatch::Units(m) => m.matches(&got.encode_utf16().collect::<Vec<_>>()),
             AttrMatch::Equals(want) => got == want,
             AttrMatch::Prefix(want) => !want.is_empty() && got.starts_with(want.as_str()),
             AttrMatch::Suffix(want) => !want.is_empty() && got.ends_with(want.as_str()),
@@ -92,7 +98,7 @@ enum Pseudo {
     FirstOfType,
     LastOfType,
     OnlyOfType,
-    NthChild(i64, i64),       // (a, b) from `an+b`
+    NthChild(i64, i64), // (a, b) from `an+b`
     NthLastChild(i64, i64),
     NthOfType(i64, i64),
     NthLastOfType(i64, i64),
@@ -178,7 +184,11 @@ enum Token {
 /// is `ch` a token boundary (the lexer can never put it inside an `Ident`)?
 #[inline]
 fn is_special(ch: char) -> bool {
-    ch.is_whitespace() || matches!(ch, '>' | '+' | '~' | '#' | '.' | ':' | '[' | ']' | '(' | ')')
+    ch.is_whitespace()
+        || matches!(
+            ch,
+            '>' | '+' | '~' | '#' | '.' | ':' | '[' | ']' | '(' | ')'
+        )
 }
 
 /// A type-selector / pseudo-name may START with an ASCII letter (mirrors the JS
@@ -522,7 +532,10 @@ fn split_top_level_commas(src: &str) -> Vec<&str> {
 /// `Complex` (reusing `parse_complex`); empty segments are dropped. A single-item
 /// list is the degenerate `:not(.x)` case, so existing behavior is preserved.
 fn parse_selector_list_str(src: &str) -> Vec<Complex> {
-    split_top_level_commas(src).into_iter().filter_map(|s| parse_complex(s.trim())).collect()
+    split_top_level_commas(src)
+        .into_iter()
+        .filter_map(|s| parse_complex(s.trim()))
+        .collect()
 }
 
 /// Parse a `:has()` argument into a list of relative selectors. Each top-level
@@ -557,7 +570,10 @@ fn parse_relative_selector_list(src: &str) -> Vec<RelativeSelector> {
                 }
                 _ => Combinator::Descendant,
             };
-            parse_complex_tokens(&toks[lo..]).map(|complex| RelativeSelector { combinator, complex })
+            parse_complex_tokens(&toks[lo..]).map(|complex| RelativeSelector {
+                combinator,
+                complex,
+            })
         })
         .collect()
 }
@@ -611,7 +627,12 @@ fn parse_pseudo(name: &str, arg: Option<&str>) -> Pseudo {
 /// keyword handling. A pure integer `k` → `(0, k)`; `odd` → `(2, 1)`; `even` → `(2, 0)`.
 /// Unparseable → `(0, 0)` which matches index 0 (never, since indices are 1-based).
 fn parse_nth(arg: &str) -> (i64, i64) {
-    let a0: String = arg.trim().to_ascii_lowercase().chars().filter(|c| !c.is_whitespace()).collect();
+    let a0: String = arg
+        .trim()
+        .to_ascii_lowercase()
+        .chars()
+        .filter(|c| !c.is_whitespace())
+        .collect();
     if a0 == "odd" {
         return (2, 1);
     }
@@ -676,9 +697,15 @@ fn parse_attr(inner: &str) -> Attr {
                 Some(b'*') => (AttrMatch::Substr(val), &raw_name[..raw_name.len() - 1]),
                 _ => (AttrMatch::Equals(val), raw_name),
             };
-            Attr { name: name.trim().to_string(), m }
+            Attr {
+                name: name.trim().to_string(),
+                m,
+            }
         }
-        None => Attr { name: inner.trim().to_string(), m: AttrMatch::Present },
+        None => Attr {
+            name: inner.trim().to_string(),
+            m: AttrMatch::Present,
+        },
     }
 }
 
@@ -759,28 +786,56 @@ impl Tree {
             return false;
         }
         if let Some(tag) = &c.tag {
-            match self.local_name(h) {
-                Some(ln) if ln.eq_ignore_ascii_case(tag) => {}
-                _ => return false,
+            if !self
+                .local_name_scalar(h)
+                .is_some_and(|name| name.eq_ignore_ascii_case(tag))
+            {
+                return false;
             }
         }
         if let Some(id) = &c.id {
-            if self.get_attribute(h, "id") != Some(id.as_str()) {
+            if self.get_attribute_ns_borrowed(h, None, "id") != Some(id.as_str())
+                || !self.attribute_is_scalar(h, "id")
+            {
                 return false;
             }
         }
         if !c.classes.is_empty() {
-            let Some(cv) = self.get_attribute(h, "class") else { return false };
+            let Some(cv) = self.get_attribute_ns_borrowed(h, None, "class") else {
+                return false;
+            };
             for cls in &c.classes {
-                if !has_class(cv, cls) {
+                if !has_class(cv, cls)
+                    || (!self.attribute_is_scalar(h, "class")
+                        && !self
+                            .get_attribute_ns_utf16(h, None, "class")
+                            .is_some_and(|units| {
+                                units::has_class_units(
+                                    &units,
+                                    &cls.encode_utf16().collect::<Vec<_>>(),
+                                )
+                            }))
+                {
                     return false;
                 }
             }
         }
         for a in &c.attrs {
-            match self.get_attribute(h, &a.name) {
-                Some(got) if a.m.matches(got) => {}
-                _ => return false,
+            match &a.m {
+                AttrMatch::Units(m)
+                    if self
+                        .get_attribute_ns_utf16(h, None, &a.name)
+                        .is_some_and(|got| m.matches(&got)) => {}
+                AttrMatch::Units(_) => return false,
+                _ => match self.get_attribute_ns_borrowed(h, None, &a.name) {
+                    Some(got)
+                        if a.m.matches(got)
+                            && (self.attribute_is_scalar(h, &a.name)
+                                || self.get_attribute_ns_utf16(h, None, &a.name).is_some_and(
+                                    |got| UnitAttrMatch::scalar(&a.m).matches(&got),
+                                )) => {}
+                    _ => return false,
+                },
             }
         }
         for p in &c.pseudos {
@@ -848,25 +903,22 @@ impl Tree {
             }
             Pseudo::OnlyChild => self.element_siblings(h).len() == 1,
             Pseudo::FirstOfType => {
-                let ln = self.local_name(h);
                 self.element_siblings(h)
                     .into_iter()
-                    .find(|&c| self.local_name(c) == ln)
+                    .find(|&c| self.same_element_type(c, h))
                     == Some(h)
             }
             Pseudo::LastOfType => {
-                let ln = self.local_name(h);
                 self.element_siblings(h)
                     .into_iter()
                     .rev()
-                    .find(|&c| self.local_name(c) == ln)
+                    .find(|&c| self.same_element_type(c, h))
                     == Some(h)
             }
             Pseudo::OnlyOfType => {
-                let ln = self.local_name(h);
                 self.element_siblings(h)
                     .into_iter()
-                    .filter(|&c| self.local_name(c) == ln)
+                    .filter(|&c| self.same_element_type(c, h))
                     .count()
                     == 1
             }
@@ -874,7 +926,9 @@ impl Tree {
             // is_some_and false branch is unreachable but keeps each arm a single covered line.
             Pseudo::NthChild(a, b) => {
                 let sibs = self.element_siblings(h);
-                sibs.iter().position(|&c| c == h).is_some_and(|idx| nth_match(*a, *b, idx as i64 + 1))
+                sibs.iter()
+                    .position(|&c| c == h)
+                    .is_some_and(|idx| nth_match(*a, *b, idx as i64 + 1))
             }
             Pseudo::NthLastChild(a, b) => {
                 let sibs = self.element_siblings(h);
@@ -883,15 +937,21 @@ impl Tree {
                     .is_some_and(|idx| nth_match(*a, *b, sibs.len() as i64 - idx as i64))
             }
             Pseudo::NthOfType(a, b) => {
-                let ln = self.local_name(h);
-                let same: Vec<Handle> =
-                    self.element_siblings(h).into_iter().filter(|&c| self.local_name(c) == ln).collect();
-                same.iter().position(|&c| c == h).is_some_and(|idx| nth_match(*a, *b, idx as i64 + 1))
+                let same: Vec<Handle> = self
+                    .element_siblings(h)
+                    .into_iter()
+                    .filter(|&c| self.same_element_type(c, h))
+                    .collect();
+                same.iter()
+                    .position(|&c| c == h)
+                    .is_some_and(|idx| nth_match(*a, *b, idx as i64 + 1))
             }
             Pseudo::NthLastOfType(a, b) => {
-                let ln = self.local_name(h);
-                let same: Vec<Handle> =
-                    self.element_siblings(h).into_iter().filter(|&c| self.local_name(c) == ln).collect();
+                let same: Vec<Handle> = self
+                    .element_siblings(h)
+                    .into_iter()
+                    .filter(|&c| self.same_element_type(c, h))
+                    .collect();
                 same.iter()
                     .position(|&c| c == h)
                     .is_some_and(|idx| nth_match(*a, *b, same.len() as i64 - idx as i64))
@@ -919,16 +979,21 @@ impl Tree {
             Pseudo::Enabled => {
                 matches!(
                     self.local_name(h),
-                    Some("input" | "button" | "select" | "textarea" | "optgroup" | "option" |
-"fieldset")
+                    Some(
+                        "input"
+                            | "button"
+                            | "select"
+                            | "textarea"
+                            | "optgroup"
+                            | "option"
+                            | "fieldset"
+                    )
                 ) && !self.form_state(h, FormProp::Disabled, "disabled")
             }
             Pseudo::Required => self.form_state(h, FormProp::Required, "required"),
             Pseudo::Optional => {
-                matches!(
-                    self.local_name(h),
-                    Some("input" | "select" | "textarea")
-                ) && !self.form_state(h, FormProp::Required, "required")
+                matches!(self.local_name(h), Some("input" | "select" | "textarea"))
+                    && !self.form_state(h, FormProp::Required, "required")
             }
             Pseudo::ReadOnly => self.form_state(h, FormProp::ReadOnly, "readonly"),
             Pseudo::ReadWrite => !self.form_state(h, FormProp::ReadOnly, "readonly"),
@@ -1083,15 +1148,17 @@ impl Tree {
         let k = rel.complex.rest.len();
         match rel.combinator {
             Combinator::Adjacent => match self.next_element_sibling(h) {
-                Some(sib) => {
-                    self.some_self_or_descendant(sib, |x| self.matches_chain(x, &rel.complex, k, scope))
-                }
+                Some(sib) => self.some_self_or_descendant(sib, |x| {
+                    self.matches_chain(x, &rel.complex, k, scope)
+                }),
                 None => false,
             },
             Combinator::GeneralSibling => {
                 let mut sib = self.next_element_sibling(h);
                 while let Some(s) = sib {
-                    if self.some_self_or_descendant(s, |x| self.matches_chain(x, &rel.complex, k, scope)) {
+                    if self.some_self_or_descendant(s, |x| {
+                        self.matches_chain(x, &rel.complex, k, scope)
+                    }) {
                         return true;
                     }
                     sib = self.next_element_sibling(s);
@@ -1238,7 +1305,10 @@ impl Tree {
         let mut found = None;
         let mut stack = vec![self.root()];
         while let Some(h) = stack.pop() {
-            if self.node_type(h) == NodeType::Element && self.get_attribute(h, "id") == Some(id) {
+            if self.node_type(h) == NodeType::Element
+                && self.get_attribute_ns_borrowed(h, None, "id") == Some(id)
+                && self.attribute_is_scalar(h, "id")
+            {
                 found = Some(h);
                 break;
             }
@@ -1266,7 +1336,10 @@ impl Tree {
         }
         for h in order {
             if self.node_type(h) == NodeType::Element
-                && (any || self.local_name(h).is_some_and(|ln| ln.eq_ignore_ascii_case(tag)))
+                && (any
+                    || self
+                        .local_name_scalar(h)
+                        .is_some_and(|ln| ln.eq_ignore_ascii_case(tag)))
             {
                 out.push(h);
             }
@@ -1321,7 +1394,7 @@ mod tests {
         assert_eq!(tree.get_element_by_id("a"), Some(a)); // hit path
         assert_eq!(tree.get_element_by_id("missing"), None); // negative cached
         assert_eq!(tree.get_element_by_id("missing"), None); // hit of negative
-        // mutation bumps version → cache cleared, new id visible
+                                                             // mutation bumps version → cache cleared, new id visible
         let root = tree.root();
         let c = tree.create_element("div");
         tree.set_attribute(c, "id", "c");
@@ -1344,13 +1417,15 @@ mod tests {
     fn matches_parse_cache_repeated_selector() {
         // Repeated matches() with the SAME selector over an element loop must hit the
         // parse cache and still return the correct per-element verdict.
-        let tree = Tree::parse(
-            "<ul><li class=x>1</li><li>2</li><li class=x>3</li></ul>",
-        );
+        let tree = Tree::parse("<ul><li class=x>1</li><li>2</li><li class=x>3</li></ul>");
         let lis = tree.get_elements_by_tag_name("li");
         // first pass populates the parse cache; second pass hits it — both agree.
         for _ in 0..2 {
-            let hits: Vec<_> = lis.iter().copied().filter(|&h| tree.matches(h, "li.x")).collect();
+            let hits: Vec<_> = lis
+                .iter()
+                .copied()
+                .filter(|&h| tree.matches(h, "li.x"))
+                .collect();
             assert_eq!(hits.len(), 2);
             assert_eq!(tree.text_content(hits[0]), "1");
             assert_eq!(tree.text_content(hits[1]), "3");
@@ -1413,7 +1488,10 @@ mod tests {
     fn attr_value_with_spaces() {
         // quoted attribute value containing spaces must not be split by the complex tokenizer
         let tree = Tree::parse("<svg viewBox=\"0 0 10 10\"></svg>");
-        assert_eq!(tree.query_selector_all("svg[viewBox=\"0 0 10 10\"]").len(), 1);
+        assert_eq!(
+            tree.query_selector_all("svg[viewBox=\"0 0 10 10\"]").len(),
+            1
+        );
         assert_eq!(tree.query_selector_all("[viewBox=\"0 0 10 10\"]").len(), 1);
         assert_eq!(tree.query_selector_all("svg[viewBox=\"9 9 9 9\"]").len(), 0);
     }
@@ -1465,9 +1543,7 @@ mod tests {
 
     #[test]
     fn pseudo_combined_with_combinator() {
-        let tree = Tree::parse(
-            "<ul><li class=a>1</li><li class=a>2</li></ul><ol><li>x</li></ol>",
-        );
+        let tree = Tree::parse("<ul><li class=a>1</li><li class=a>2</li></ul><ol><li>x</li></ol>");
         // descendant + pseudo
         assert_eq!(tree.query_selector_all("ul li:first-child").len(), 1);
         assert_eq!(tree.query_selector_all("ul > li:last-child.a").len(), 1);
@@ -1476,9 +1552,7 @@ mod tests {
     #[test]
     fn pseudo_nth_of_type_and_last() {
         // 2 spans then a b then a span — nth-of-type counts only same-tag siblings
-        let tree = Tree::parse(
-            "<div><span>1</span><span>2</span><b>x</b><span>3</span></div>",
-        );
+        let tree = Tree::parse("<div><span>1</span><span>2</span><b>x</b><span>3</span></div>");
         // nth-of-type(2) → the 2nd span
         let nt = tree.query_selector_all("span:nth-of-type(2)");
         assert_eq!(nt.len(), 1);
@@ -1493,8 +1567,11 @@ mod tests {
         assert_eq!(tree.text_content(nlc[0]), "3");
         // nth-of-type with An+B coefficient form covering nth-of-type arm
         assert_eq!(tree.query_selector_all("span:nth-of-type(2n)").len(), 1); // the 2nd span
-        // nth-last-of-type An+B form
-        assert_eq!(tree.query_selector_all("span:nth-last-of-type(2n+1)").len(), 2);
+                                                                              // nth-last-of-type An+B form
+        assert_eq!(
+            tree.query_selector_all("span:nth-last-of-type(2n+1)").len(),
+            2
+        );
     }
 
     #[test]
@@ -1667,7 +1744,10 @@ mod tests {
         // Each selector is exercised against a fixture chosen to make it match exactly once.
         let cases: &[(&str, &str)] = &[
             ("div.card", "<div class='card'>x</div>"),
-            (".grid .t", "<div class='grid'><span class='t'>x</span></div>"),
+            (
+                ".grid .t",
+                "<div class='grid'><span class='t'>x</span></div>",
+            ),
             ("main > div", "<main><div>x</div></main>"),
             ("a[href]", "<a href='/x'>x</a>"),
             ("a[data-k=v]", "<a data-k='v'>x</a>"),
@@ -1676,9 +1756,15 @@ mod tests {
             ("a[data-x*='oba']", "<a data-x='foobar'>x</a>"),
             ("a[class~='primary']", "<a class='btn primary'>x</a>"),
             ("a[lang|='en']", "<a lang='en-US'>x</a>"),
-            ("svg[viewBox=\"0 0 10 10\"]", "<svg viewBox=\"0 0 10 10\"></svg>"),
+            (
+                "svg[viewBox=\"0 0 10 10\"]",
+                "<svg viewBox=\"0 0 10 10\"></svg>",
+            ),
             ("li:nth-child(2n + 1)", "<ul><li>1</li></ul>"),
-            (".a > .b .c", "<div class='a'><div class='b'><div class='c'>c</div></div></div>"),
+            (
+                ".a > .b .c",
+                "<div class='a'><div class='b'><div class='c'>c</div></div></div>",
+            ),
             ("div[id=x]y", "<div id='x'>hit</div>"), // lenient: trailing `y` ignored → matches
         ];
         for (sel, html) in cases {
@@ -1709,9 +1795,9 @@ mod tests {
         let all = tree.query_selector_all("*");
         assert!(all.len() >= 4); // html, head, body, div, p
         assert_eq!(tree.query_selector_all("*.nope").len(), 0); // `*` + a class that matches nothing
-        // a stray top-level closer is not part of any token — it is dropped, so the
-        // selector degrades to the rest (exercises the `']' | ')'` arm of tokenize;
-        // without that arm the ident scanner would stall on the special char).
+                                                                // a stray top-level closer is not part of any token — it is dropped, so the
+                                                                // selector degrades to the rest (exercises the `']' | ')'` arm of tokenize;
+                                                                // without that arm the ident scanner would stall on the special char).
         assert_eq!(tree.query_selector_all("div]").len(), 1);
         assert_eq!(tree.query_selector_all("p)").len(), 1);
     }
@@ -1743,14 +1829,12 @@ mod tests {
         // lands in `Complex.rest`, so the selector is exactly `a`. This preserves
         // the old behavior BY RESULT now that "leading/trailing combinator" is
         // unrepresentable in the AST (head+tail).
-        let tree = Tree::parse(
-            "<section><div><a>1</a></div><a>2</a></section>",
-        );
+        let tree = Tree::parse("<section><div><a>1</a></div><a>2</a></section>");
         let plain = tree.query_selector_all("a");
         let dangling = tree.query_selector_all("a >");
         assert_eq!(dangling.len(), plain.len());
         assert_eq!(*dangling, *plain); // same handles, same document order
-        // and `matches` agrees element-by-element
+                                       // and `matches` agrees element-by-element
         for &h in plain.iter() {
             assert!(tree.matches(h, "a >"));
         }
@@ -1762,9 +1846,8 @@ mod tests {
     fn adjacent_sibling_combinator() {
         // `a + b`: b must be the element IMMEDIATELY after an `a` sibling. A non-
         // element node (text) between them is skipped (previous_element_sibling).
-        let tree = Tree::parse(
-            "<div><h2>t</h2> <p>after</p><span>x</span><p>not-after-h2</p></div>",
-        );
+        let tree =
+            Tree::parse("<div><h2>t</h2> <p>after</p><span>x</span><p>not-after-h2</p></div>");
         // the first <p> is the immediate element sibling after <h2> → matches once
         let r = tree.query_selector_all("h2 + p");
         assert_eq!(r.len(), 1);
@@ -1780,9 +1863,7 @@ mod tests {
     #[test]
     fn general_sibling_combinator() {
         // `a ~ b`: b is ANY element preceded (at any distance) by a matching `a`.
-        let tree = Tree::parse(
-            "<div><span class=mark>m</span><p>1</p><b>x</b><p>2</p></div>",
-        );
+        let tree = Tree::parse("<div><span class=mark>m</span><p>1</p><b>x</b><p>2</p></div>");
         // both <p> follow the .mark span → 2 matches
         assert_eq!(tree.query_selector_all(".mark ~ p").len(), 2);
         // a sibling with no preceding .mark → exhausts to false
@@ -1810,9 +1891,7 @@ mod tests {
 
     #[test]
     fn pseudo_is_selector_list() {
-        let tree = Tree::parse(
-            "<div class=a>1</div><div class=b>2</div><div class=c>3</div>",
-        );
+        let tree = Tree::parse("<div class=a>1</div><div class=b>2</div><div class=c>3</div>");
         // :is(.a, .b) → the .a and .b divs (2), not .c
         assert_eq!(tree.query_selector_all(":is(.a, .b)").len(), 2);
         // single-item list is the degenerate case
@@ -1832,9 +1911,7 @@ mod tests {
         assert_eq!(r.len(), 1);
         assert_eq!(tree.text_content(r[0]), "hit");
         // :is() argument may itself be a complex selector (descendant)
-        let t2 = Tree::parse(
-            "<section><p class=t>a</p></section><p class=t>b</p>",
-        );
+        let t2 = Tree::parse("<section><p class=t>a</p></section><p class=t>b</p>");
         // :is(section .t, .nope) → only the .t inside the section
         let r2 = t2.query_selector_all(":is(section .t, .nope)");
         assert_eq!(r2.len(), 1);
@@ -1851,9 +1928,7 @@ mod tests {
 
     #[test]
     fn pseudo_not_selector_list() {
-        let tree = Tree::parse(
-            "<ul><li class=a>1</li><li class=b>2</li><li class=c>3</li></ul>",
-        );
+        let tree = Tree::parse("<ul><li class=a>1</li><li class=b>2</li><li class=c>3</li></ul>");
         // :not(.a, .b) → only the .c li survives
         let r = tree.query_selector_all("li:not(.a, .b)");
         assert_eq!(r.len(), 1);
@@ -2003,11 +2078,11 @@ mod tests {
         let o = tree.query_selector("#o").unwrap();
         // baseline: attribute-driven (parity with the pre-existing behavior)
         assert_eq!(tree.query_selector_all(":checked").len(), 1); // only #b (attr)
-        // set the live property on #a WITHOUT the attribute → now matches (like React)
+                                                                  // set the live property on #a WITHOUT the attribute → now matches (like React)
         tree.set_form_property(a, FormProp::Checked, true);
         assert!(tree.matches(a, ":checked"));
         assert_eq!(tree.query_selector_all("input:checked").len(), 2); // #a (prop) + #b (attr)
-        // live property overrides an attribute the other way: #b unchecked despite attr
+                                                                       // live property overrides an attribute the other way: #b unchecked despite attr
         tree.set_form_property(b, FormProp::Checked, false);
         assert!(!tree.matches(b, ":checked"));
         // clearing reverts to the attribute
@@ -2035,7 +2110,10 @@ mod tests {
         let tree = Tree::parse("<div class=a><span id=s>x</span></div>");
         // valid selectors go through unchanged and return the same as the lenient path
         assert_eq!(tree.query_selector_all_checked(".a span").unwrap().len(), 1);
-        assert_eq!(tree.query_selector_checked("#s").unwrap(), tree.query_selector("#s"));
+        assert_eq!(
+            tree.query_selector_checked("#s").unwrap(),
+            tree.query_selector("#s")
+        );
         let s = tree.query_selector("#s").unwrap();
         assert!(tree.matches_checked(s, "span#s").unwrap());
         // malformed selectors are rejected with the same taxonomy the JS side throws on
@@ -2073,7 +2151,10 @@ mod tests {
             SelectorError::UnexpectedChar('!').to_string(),
             "unexpected '!' in selector"
         );
-        assert_eq!(SelectorError::EmptyCompound.to_string(), "empty compound (stray combinator)");
+        assert_eq!(
+            SelectorError::EmptyCompound.to_string(),
+            "empty compound (stray combinator)"
+        );
         assert_eq!(
             SelectorError::UnterminatedAttribute.to_string(),
             "unterminated attribute selector"

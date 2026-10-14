@@ -2,13 +2,13 @@
 //! Both front-ends (napi-rs native, wasm-bindgen fallback) wrap this unchanged.
 //!
 //! Plan note: this is the "full marshaling" version — a *complete* tree.
-//! The SoA flat-buffer (architecture Layer 1) is a later optimization, gated on
+//! The `SoA` flat-buffer (architecture Layer 1) is a later optimization, gated on
 //! marshaling proving to be the actual cost. Do not SoA-ify here yet.
 
 use html5ever::driver::ParseOpts;
 use html5ever::tendril::TendrilSink;
 use html5ever::tree_builder::TreeBuilderOpts;
-use html5ever::{parse_document, parse_fragment, ns, LocalName, QualName};
+use html5ever::{ns, parse_document, parse_fragment, LocalName, QualName};
 use markup5ever_rcdom::{Handle, NodeData, RcDom};
 
 /// DOM nodeType constants (subset html5ever can emit).
@@ -20,7 +20,11 @@ pub const DOCUMENT_NODE: u8 = 9;
 pub const DOCUMENT_TYPE_NODE: u8 = 10;
 pub const DOCUMENT_FRAGMENT_NODE: u8 = 11;
 
-#[cfg_attr(feature = "wasm-bind", derive(serde::Serialize), serde(rename_all = "camelCase"))]
+#[cfg_attr(
+    feature = "wasm-bind",
+    derive(serde::Serialize),
+    serde(rename_all = "camelCase")
+)]
 #[derive(Debug, Clone)]
 pub struct Attr {
     pub name: String,
@@ -30,7 +34,11 @@ pub struct Attr {
 }
 
 /// One marshaled DOM node. Nested children = complete tree, no lazy indices.
-#[cfg_attr(feature = "wasm-bind", derive(serde::Serialize), serde(rename_all = "camelCase"))]
+#[cfg_attr(
+    feature = "wasm-bind",
+    derive(serde::Serialize),
+    serde(rename_all = "camelCase")
+)]
 #[derive(Debug, Clone)]
 pub struct Node {
     /// DOM nodeType.
@@ -53,7 +61,10 @@ pub struct Node {
 /// `<noscript>` content is parsed as markup rather than rawtext).
 fn opts() -> ParseOpts {
     ParseOpts {
-        tree_builder: TreeBuilderOpts { scripting_enabled: false, ..Default::default() },
+        tree_builder: TreeBuilderOpts {
+            scripting_enabled: false,
+            ..Default::default()
+        },
         ..Default::default()
     }
 }
@@ -74,7 +85,11 @@ pub fn parse_html_document(html: &str) -> Node {
 // the arrays and inflates node objects only on access (no eager full-tree alloc).
 
 /// Index-addressed flat tree. Node index IS its id; node 0 is the document.
-#[cfg_attr(feature = "wasm-bind", derive(serde::Serialize), serde(rename_all = "camelCase"))]
+#[cfg_attr(
+    feature = "wasm-bind",
+    derive(serde::Serialize),
+    serde(rename_all = "camelCase")
+)]
 #[derive(Default)]
 pub struct Soa {
     pub node_type: Vec<u8>,    // DOM nodeType
@@ -89,15 +104,15 @@ pub struct Soa {
     pub attr_start: Vec<i32>,  // offset into attr_* tables; -1 if none
     pub attr_count: Vec<u16>,  // attrs for this node
     // flat attr tables — names/prefixes interned (highly repetitive), values pooled
-    pub attr_name_id: Vec<u32>, // index into attr_names
-    pub attr_value_id: Vec<u32>, // index into attr_values (interned, deduped)
+    pub attr_name_id: Vec<u32>,   // index into attr_names
+    pub attr_value_id: Vec<u32>,  // index into attr_values (interned, deduped)
     pub attr_prefix_id: Vec<u32>, // index into attr_prefixes
     // string tables (interned, deduped)
     pub tag_names: Vec<String>,
     pub attr_names: Vec<String>,
     pub attr_prefixes: Vec<String>,
     pub attr_values: Vec<String>, // interned attr value dictionary
-    pub strings: Vec<String>,   // text/comment/doctype data, pooled
+    pub strings: Vec<String>,     // text/comment/doctype data, pooled
 }
 
 struct SoaBuilder {
@@ -152,7 +167,7 @@ impl SoaBuilder {
     }
 
     // Allocate this node + descendants; return its index.
-    fn alloc(&mut self, handle: &Handle, parent: i32) -> i32 {
+    fn alloc_node(&mut self, handle: &Handle, parent: i32) -> (i32, Option<Handle>) {
         let idx = self.soa.node_type.len();
         // push placeholders; fill scalars below
         self.soa.node_type.push(0);
@@ -171,7 +186,11 @@ impl SoaBuilder {
 
         match &handle.data {
             NodeData::Document => self.soa.node_type[idx] = DOCUMENT_NODE,
-            NodeData::Doctype { name, public_id, system_id } => {
+            NodeData::Doctype {
+                name,
+                public_id,
+                system_id,
+            } => {
                 self.soa.node_type[idx] = DOCUMENT_TYPE_NODE;
                 self.soa.text_id[idx] = self.push_string(name);
                 self.soa.pub_id[idx] = self.push_string(public_id);
@@ -190,9 +209,20 @@ impl SoaBuilder {
                 self.soa.tag_id[idx] = self.intern_tag(target);
                 self.soa.text_id[idx] = self.push_string(contents);
             }
-            NodeData::Element { name, attrs, template_contents, .. } => {
+            NodeData::Element {
+                name,
+                attrs,
+                template_contents,
+                ..
+            } => {
                 self.soa.node_type[idx] = ELEMENT_NODE;
-                self.soa.ns[idx] = if name.ns == ns!(svg) { 1 } else if name.ns == ns!(mathml) { 2 } else { 0 };
+                self.soa.ns[idx] = if name.ns == ns!(svg) {
+                    1
+                } else if name.ns == ns!(mathml) {
+                    2
+                } else {
+                    0
+                };
                 self.soa.tag_id[idx] = self.intern_tag(&name.local);
                 let borrowed = attrs.borrow();
                 if !borrowed.is_empty() {
@@ -203,7 +233,12 @@ impl SoaBuilder {
                         self.soa.attr_name_id.push(nid);
                         let vid = self.intern_attr_value(&attr.value);
                         self.soa.attr_value_id.push(vid);
-                        let pfx = attr.name.prefix.as_ref().map(std::string::ToString::to_string).unwrap_or_default();
+                        let pfx = attr
+                            .name
+                            .prefix
+                            .as_ref()
+                            .map(std::string::ToString::to_string)
+                            .unwrap_or_default();
                         let pid = self.intern_attr_prefix(&pfx);
                         self.soa.attr_prefix_id.push(pid);
                     }
@@ -216,41 +251,37 @@ impl SoaBuilder {
             }
         }
 
-        // children, linking first_child / next_sib (inline; no closure to avoid borrow churn)
-        let mut prev = -1i32;
-        for child in handle.children.borrow().iter() {
-            let cidx = self.alloc(child, idx as i32);
-            if prev == -1 { self.soa.first_child[idx] = cidx; } else { self.soa.next_sib[prev as usize] = cidx; }
-            prev = cidx;
-        }
-        // <template> content as a synthetic document-fragment child named "content"
-        if let Some(content) = template_content {
-            let cidx = self.soa.node_type.len() as i32;
-            self.soa.node_type.push(DOCUMENT_FRAGMENT_NODE);
-            self.soa.ns.push(0);
-            let content_tag = self.intern_tag("content");
-            self.soa.tag_id.push(content_tag);
-            self.soa.parent.push(idx as i32);
-            self.soa.first_child.push(-1);
-            self.soa.next_sib.push(-1);
-            self.soa.text_id.push(-1);
-            self.soa.pub_id.push(-1);
-            self.soa.sys_id.push(-1);
-            self.soa.attr_start.push(-1);
-            self.soa.attr_count.push(0);
-            let mut cprev = -1i32;
-            for gc in content.children.borrow().iter() {
-                let gcidx = self.alloc(gc, cidx);
-                if cprev == -1 { self.soa.first_child[cidx as usize] = gcidx; } else { self.soa.next_sib[cprev as usize] = gcidx; }
-                cprev = gcidx;
-            }
-            // link the content fragment as a child of the template
-            if prev == -1 { self.soa.first_child[idx] = cidx; } else { self.soa.next_sib[prev as usize] = cidx; }
-            prev = cidx;
-        }
-        let _ = prev;
+        (idx as i32, template_content)
+    }
 
-        idx as i32
+    fn alloc(&mut self, root: &Handle, parent: i32) -> i32 {
+        let mut pending = vec![(root.clone(), parent, false)];
+        let mut last_child = Vec::new();
+        let first = self.soa.node_type.len() as i32;
+        while let Some((handle, parent, content)) = pending.pop() {
+            let (index, template) = self.alloc_node(&handle, parent);
+            last_child.push(-1);
+            if content {
+                self.soa.node_type[index as usize] = DOCUMENT_FRAGMENT_NODE;
+                self.soa.tag_id[index as usize] = self.intern_tag("content");
+            }
+            if parent >= 0 {
+                let previous = last_child[parent as usize];
+                if previous < 0 {
+                    self.soa.first_child[parent as usize] = index;
+                } else {
+                    self.soa.next_sib[previous as usize] = index;
+                }
+                last_child[parent as usize] = index;
+            }
+            if let Some(template) = template {
+                pending.push((template, index, true));
+            }
+            for child in handle.children.borrow().iter().rev() {
+                pending.push((child.clone(), index, false));
+            }
+        }
+        first
     }
 }
 
@@ -272,9 +303,18 @@ pub fn parse_html_soa_with_compat_mode(html: &str) -> (Soa, &'static str) {
         // pre-reserve typical intern-table sizes so the build loop doesn't rehash:
         // tag/attr-name sets are small + bounded; values vary more.
         tag_map: rustc_hash::FxHashMap::with_capacity_and_hasher(32, rustc_hash::FxBuildHasher),
-        attr_name_map: rustc_hash::FxHashMap::with_capacity_and_hasher(64, rustc_hash::FxBuildHasher),
-        attr_prefix_map: rustc_hash::FxHashMap::with_capacity_and_hasher(8, rustc_hash::FxBuildHasher),
-        attr_value_map: rustc_hash::FxHashMap::with_capacity_and_hasher(128, rustc_hash::FxBuildHasher),
+        attr_name_map: rustc_hash::FxHashMap::with_capacity_and_hasher(
+            64,
+            rustc_hash::FxBuildHasher,
+        ),
+        attr_prefix_map: rustc_hash::FxHashMap::with_capacity_and_hasher(
+            8,
+            rustc_hash::FxBuildHasher,
+        ),
+        attr_value_map: rustc_hash::FxHashMap::with_capacity_and_hasher(
+            128,
+            rustc_hash::FxBuildHasher,
+        ),
     };
     b.alloc(&dom.document, -1);
     let mode = if dom.quirks_mode.get() == html5ever::tree_builder::QuirksMode::Quirks {
@@ -333,10 +373,19 @@ pub fn parse_html_fragment_in(html: &str, context_ns: &str, context_local: &str)
         _ => ns!(html),
     };
     let ctx = QualName::new(None, ns, LocalName::from(context_local));
-    let dom = parse_fragment(RcDom::default(), opts(), ctx, vec![], false)
-        .from_utf8()
-        .read_from(&mut html.as_bytes())
-        .expect("RcDom read_from is infallible over a byte slice");
+    parse_html_fragment_with_context(html, ctx, Vec::new())
+}
+
+/// Fragment contexts retain their namespace and integration-point attributes.
+#[must_use]
+pub fn parse_html_fragment_with_context(
+    html: &str,
+    context: QualName,
+    attributes: Vec<html5ever::Attribute>,
+) -> Node {
+    let mut options = opts();
+    options.tokenizer.discard_bom = false;
+    let dom = parse_fragment(RcDom::default(), options, context, attributes, false).one(html);
     // parse_fragment wraps results under a synthetic <html> element; unwrap it.
     let root = walk(&dom.document);
     let mut frag = Node {
@@ -359,18 +408,32 @@ pub fn parse_html_fragment_in(html: &str, context_ns: &str, context_local: &str)
     frag
 }
 
-fn walk(handle: &Handle) -> Node {
+fn shallow_node(handle: &Handle) -> Node {
     let node = handle;
     let mut public_id = String::new();
     let mut system_id = String::new();
     let (node_type, name, value, namespace, attrs) = match &node.data {
-        NodeData::Document => {
-            (DOCUMENT_NODE, "#document".to_string(), String::new(), String::new(), Vec::new())
-        }
-        NodeData::Doctype { name, public_id: pub_id, system_id: sys_id } => {
+        NodeData::Document => (
+            DOCUMENT_NODE,
+            "#document".to_string(),
+            String::new(),
+            String::new(),
+            Vec::new(),
+        ),
+        NodeData::Doctype {
+            name,
+            public_id: pub_id,
+            system_id: sys_id,
+        } => {
             public_id = pub_id.to_string();
             system_id = sys_id.to_string();
-            (DOCUMENT_TYPE_NODE, name.to_string(), String::new(), String::new(), Vec::new())
+            (
+                DOCUMENT_TYPE_NODE,
+                name.to_string(),
+                String::new(),
+                String::new(),
+                Vec::new(),
+            )
         }
         NodeData::Text { contents } => (
             TEXT_NODE,
@@ -400,7 +463,12 @@ fn walk(handle: &Handle) -> Node {
                 .map(|attr| Attr {
                     name: attr.name.local.to_string(),
                     value: attr.value.to_string(),
-                    prefix: attr.name.prefix.as_ref().map(std::string::ToString::to_string).unwrap_or_default(),
+                    prefix: attr
+                        .name
+                        .prefix
+                        .as_ref()
+                        .map(std::string::ToString::to_string)
+                        .unwrap_or_default(),
                 })
                 .collect();
             // html5lib short namespace form: "" (html), "svg", "math".
@@ -415,27 +483,67 @@ fn walk(handle: &Handle) -> Node {
         }
     };
 
-    let mut children: Vec<Node> = node.children.borrow().iter().map(walk).collect();
+    Node {
+        node_type,
+        name,
+        value,
+        namespace,
+        public_id,
+        system_id,
+        attrs,
+        children: Vec::new(),
+    }
+}
 
-    // <template> content lives in a separate document fragment, not in children.
-    // html5lib prints it as a synthetic `content` fragment node holding the parsed tree.
-    if let NodeData::Element { template_contents, .. } = &node.data {
-        if let Some(contents) = &*template_contents.borrow() {
-            let inner = contents.children.borrow().iter().map(walk).collect();
-            children.push(Node {
-                node_type: DOCUMENT_FRAGMENT_NODE,
-                name: "content".to_string(),
-                value: String::new(),
-                namespace: String::new(),
-                public_id: String::new(),
-                system_id: String::new(),
-                attrs: Vec::new(),
-                children: inner,
-            });
+pub(crate) fn walk(handle: &Handle) -> Node {
+    enum Task {
+        Enter(Handle, bool),
+        Finish(Node, usize),
+    }
+    let mut tasks = vec![Task::Enter(handle.clone(), false)];
+    let mut complete = Vec::new();
+    while let Some(task) = tasks.pop() {
+        match task {
+            Task::Enter(handle, content) => {
+                let mut node = shallow_node(&handle);
+                if content {
+                    node.node_type = DOCUMENT_FRAGMENT_NODE;
+                    node.name = "content".into();
+                }
+                let children = handle.children.borrow();
+                let template = match &handle.data {
+                    NodeData::Element {
+                        template_contents, ..
+                    } => template_contents.borrow().clone(),
+                    _ => None,
+                };
+                tasks.push(Task::Finish(
+                    node,
+                    children.len() + usize::from(template.is_some()),
+                ));
+                if let Some(template) = template {
+                    tasks.push(Task::Enter(template, true));
+                }
+                for child in children.iter().rev() {
+                    tasks.push(Task::Enter(child.clone(), false));
+                }
+            }
+            Task::Finish(mut node, count) => {
+                node.children = complete.split_off(complete.len() - count);
+                complete.push(node);
+            }
         }
     }
+    complete.pop().expect("one parsed root")
+}
 
-    Node { node_type, name, value, namespace, public_id, system_id, attrs, children }
+/// Drain nested parser intermediates without recursive destructor calls.
+/// This leaves the public marshaled Node representation unchanged.
+pub fn discard_node(mut root: Node) {
+    let mut pending = std::mem::take(&mut root.children);
+    while let Some(mut node) = pending.pop() {
+        pending.append(&mut node.children);
+    }
 }
 
 #[cfg(test)]
