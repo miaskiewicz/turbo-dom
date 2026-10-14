@@ -101,3 +101,23 @@ The embedder still implements observer registrations/options, transient removed-
 registrations, private callback ownership and microtask delivery according to the
 [DOM observer algorithms](https://dom.spec.whatwg.org/#mutation-observers). This
 additive seam does not establish complete browser MutationObserver parity.
+
+## Native storage collection
+
+Long-lived embedders can call `Tree::collect_unreachable(&pins, budget)` at a
+quiescent boundary. Pass every independently retained native handle, including
+ranges, iterators, XPath results, queued work and live wrapper components. The
+connected document and undrained native mutation events are implicit roots.
+A pinned detached descendant retains its ancestors, siblings, shadow trees and
+attached Attr nodes. Collection rejects invalid pins or exhausted node/edge/string
+budgets before replacing storage. It preserves the DOM version and emits no
+mutation record.
+
+`Tree::storage_stats()` reports live nodes, parsed/runtime slots and logical
+string payload bytes. Successful collection drops unreachable parsed payloads and
+uses sparse native storage for retained identities. New handles are monotonically
+minted and never reused. After collection, `node_count()` counts live nodes and
+identities can have holes: iterate `handles()` instead of constructing
+`0..node_count()` handles. Use `is_live()` before passing an externally retained
+handle to a DOM read; omitted pins can be reclaimed. `NodeRef` borrowing protects
+concurrent safe Rust mutation but cannot discover external copied handles.

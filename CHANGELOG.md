@@ -5,6 +5,24 @@ environment for vitest/jest. Format based on [Keep a Changelog](https://keepacha
 Early versions were released as lightweight tags / version-stamped commits (no per-release notes
 at the time); this file reconstructs them from history.
 
+## [0.5.4] — 2026-10-14
+
+### Added
+- Opt-in native `Tree::collect_unreachable` with explicit external handle pins,
+  node/edge/payload budgets, atomic rejection, and retained-storage diagnostics.
+  Connected documents, composed detached components and undrained mutation
+  events remain live. Embedders must pin all independent native references.
+- `Tree::is_live` distinguishes reclaimed identities. Handles are never reused;
+  `handles()` enumerates live identities after collection creates gaps.
+
+### Fixed
+- Successful collection frees unreachable parsed SoA/string pools, runtime
+  node slots and mutation overlays while retaining stable node identities,
+  attributes/namespaces, shadows, templates, character data and pending records.
+  The dense parse/mutation path remains available until collection is requested.
+- Collection does not emit DOM mutations or increment the visible tree version.
+  Internal selector/style caches are refreshed after physical storage changes.
+
 ## [0.5.3] — 2026-10-14
 
 ### Added

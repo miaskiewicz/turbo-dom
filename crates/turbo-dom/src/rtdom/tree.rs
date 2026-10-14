@@ -88,7 +88,7 @@ impl Namespace {
 }
 
 /// A stable node identity within one [`Tree`]. Opaque: internally it indexes the
-/// parse buffer (or, at/after `buf_len`, the created-node list), but callers treat
+/// parse buffer or native node arena, but callers treat
 /// it as a token — obtain one from the tree, hand it back. Newtyped rather than a
 /// bare `u32` so an arbitrary integer, or a handle belonging to a *different* tree,
 /// can't be silently passed where a node of *this* tree is expected.
@@ -125,6 +125,7 @@ impl Handle {
 /// exactly the data its node type needs — a text node cannot hold a namespace, an
 /// element always has one — so the old `(node_type, name, ns)` triple's invalid
 /// combinations (a `Text` with an `ns`, an element with no name) are unrepresentable.
+#[derive(Clone)]
 enum NewNode {
     Element {
         name: SmolStr,
@@ -138,14 +139,16 @@ enum NewNode {
     Comment(SmolStr),
     ProcessingInstruction(Box<ProcessingInstructionData>),
     Doctype(Box<DoctypeData>),
-    Fragment,
+    Fragment(Option<SmolStr>),
 }
 
 // Rare node payloads stay out of the element/text slots in the mutation arena.
+#[derive(Clone)]
 struct ProcessingInstructionData {
     target: SmolStr,
     data: SmolStr,
 }
+#[derive(Clone)]
 struct DoctypeData {
     name: SmolStr,
     public_id: SmolStr,
@@ -161,7 +164,7 @@ impl NewNode {
             NewNode::Comment(_) => NodeType::Comment,
             NewNode::ProcessingInstruction(_) => NodeType::ProcessingInstruction,
             NewNode::Doctype(_) => NodeType::Doctype,
-            NewNode::Fragment => NodeType::Fragment,
+            NewNode::Fragment(_) => NodeType::Fragment,
         }
     }
     fn namespace(&self) -> Namespace {
@@ -391,6 +394,7 @@ struct Overlay<T> {
     /// The created-node boundary: handles `< buf_len` are buffer nodes (→ `map`),
     /// `>= buf_len` are created nodes (→ `dense[idx - buf_len]`).
     buf_len: u32,
+    sparse: bool,
 }
 
 impl<T> Overlay<T> {
@@ -399,13 +403,14 @@ impl<T> Overlay<T> {
             dense: Vec::new(),
             map: FxHashMap::default(),
             buf_len,
+            sparse: false,
         }
     }
 
     /// `Some(handle.idx() - buf_len)` for a created node, `None` for a buffer node.
     #[inline]
     fn dense_idx(&self, h: Handle) -> Option<usize> {
-        if h.raw() >= self.buf_len {
+        if !self.sparse && h.raw() >= self.buf_len {
             Some((h.raw() - self.buf_len) as usize)
         } else {
             None
@@ -458,11 +463,62 @@ impl<T> Overlay<T> {
     }
 }
 
+enum ArenaHandles {
+    Dense(std::iter::Map<std::ops::Range<u32>, fn(u32) -> Handle>),
+    Sparse(std::vec::IntoIter<Handle>),
+}
+impl Iterator for ArenaHandles {
+    type Item = Handle;
+    fn next(&mut self) -> Option<Handle> {
+        match self {
+            Self::Dense(handles) => handles.next(),
+            Self::Sparse(handles) => handles.next(),
+        }
+    }
+}
+enum NodeArena {
+    Dense(Vec<NewNode>),
+    Sparse(FxHashMap<Handle, NewNode>),
+}
+impl NodeArena {
+    fn len(&self) -> usize {
+        match self {
+            Self::Dense(nodes) => nodes.len(),
+            Self::Sparse(nodes) => nodes.len(),
+        }
+    }
+    fn get(&self, h: Handle, boundary: u32) -> &NewNode {
+        match self {
+            Self::Dense(nodes) => &nodes[(h.raw() - boundary) as usize],
+            Self::Sparse(nodes) => &nodes[&h],
+        }
+    }
+    fn get_mut(&mut self, h: Handle, boundary: u32) -> &mut NewNode {
+        match self {
+            Self::Dense(nodes) => &mut nodes[(h.raw() - boundary) as usize],
+            Self::Sparse(nodes) => nodes.get_mut(&h).expect("collected DOM handle"),
+        }
+    }
+    fn insert(&mut self, h: Handle, node: NewNode) {
+        match self {
+            Self::Dense(nodes) => nodes.push(node),
+            Self::Sparse(nodes) => {
+                nodes.insert(h, node);
+            }
+        }
+    }
+}
+
+#[path = "storage.rs"]
+mod storage;
+pub use storage::{CollectionBudget, CollectionError, CollectionReport, StorageStats};
+
 pub struct Tree {
     buf: Soa,
     compat_mode: &'static str,
     buf_len: u32,
-    new_nodes: Vec<NewNode>,
+    new_nodes: NodeArena,
+    next_handle: u32,
     element_namespaces: FxHashMap<Handle, ElementNamespace>,
     attribute_nodes: FxHashMap<(Handle, Option<SmolStr>, SmolStr), Handle>,
     // --- COW overlays (present only for mutated/created nodes) ---
@@ -527,7 +583,8 @@ impl Tree {
             buf,
             compat_mode,
             buf_len,
-            new_nodes: Vec::new(),
+            new_nodes: NodeArena::Dense(Vec::new()),
+            next_handle: buf_len,
             element_namespaces: FxHashMap::default(),
             attribute_nodes: FxHashMap::default(),
             parent_ov: Overlay::new(buf_len),
@@ -551,9 +608,10 @@ impl Tree {
     }
     #[inline]
     fn new_ref(&self, h: Handle) -> &NewNode {
-        &self.new_nodes[(h.raw() - self.buf_len) as usize]
+        self.new_nodes.get(h, self.buf_len)
     }
 
+    /// Count live nodes; this is not the handle allocation high-water mark.
     pub fn node_count(&self) -> u32 {
         self.buf_len + self.new_nodes.len() as u32
     }
@@ -563,11 +621,20 @@ impl Tree {
         Handle(0)
     }
 
-    /// Iterate every node handle in the tree, in index order (buffer nodes first,
-    /// then runtime-created nodes). The safe substitute for a raw `0..node_count()`
-    /// scan now that a `Handle` is opaque.
+    /// Iterate all live handles in increasing identity order. Collection creates
+    /// gaps, so a raw `0..node_count()` scan is not valid after collection.
     pub fn handles(&self) -> impl Iterator<Item = Handle> {
-        (0..self.node_count()).map(Handle)
+        let extra = match &self.new_nodes {
+            NodeArena::Dense(nodes) => {
+                ArenaHandles::Dense((self.buf_len..self.buf_len + nodes.len() as u32).map(Handle))
+            }
+            NodeArena::Sparse(nodes) => {
+                let mut handles: Vec<_> = nodes.keys().copied().collect();
+                handles.sort_unstable();
+                ArenaHandles::Sparse(handles.into_iter())
+            }
+        };
+        (0..self.buf_len).map(Handle).chain(extra)
     }
 
     // ----------------------------------------------------------------- reads
@@ -916,7 +983,7 @@ impl Tree {
         let key = (owner, data.namespace.clone(), data.local_name.clone());
         if let Some(node) = self.attribute_nodes.get(&key).copied() {
             if let NewNode::Attribute { data: current, .. } =
-                &mut self.new_nodes[(node.raw() - self.buf_len) as usize]
+                self.new_nodes.get_mut(node, self.buf_len)
             {
                 **current = data.clone();
             }
@@ -925,9 +992,7 @@ impl Tree {
     fn detach_attribute_node(&mut self, owner: Handle, data: &AttributeData) {
         let key = (owner, data.namespace.clone(), data.local_name.clone());
         if let Some(node) = self.attribute_nodes.remove(&key) {
-            if let NewNode::Attribute { owner, .. } =
-                &mut self.new_nodes[(node.raw() - self.buf_len) as usize]
-            {
+            if let NewNode::Attribute { owner, .. } = self.new_nodes.get_mut(node, self.buf_len) {
                 *owner = None;
             }
         }
@@ -962,7 +1027,7 @@ impl Tree {
             &data.value,
         );
         if let NewNode::Attribute { owner: current, .. } =
-            &mut self.new_nodes[(node.raw() - self.buf_len) as usize]
+            self.new_nodes.get_mut(node, self.buf_len)
         {
             *current = Some(owner);
         }
@@ -995,9 +1060,7 @@ impl Tree {
                 &data.qualified_name,
                 value,
             );
-        } else if let NewNode::Attribute { data, .. } =
-            &mut self.new_nodes[(node.raw() - self.buf_len) as usize]
-        {
+        } else if let NewNode::Attribute { data, .. } = self.new_nodes.get_mut(node, self.buf_len) {
             data.value = value.into();
         }
     }
@@ -1013,6 +1076,8 @@ impl Tree {
         if self.is_new(h) {
             return if nt == NodeType::Element {
                 self.new_ref(h).element_name()
+            } else if let NewNode::Fragment(label) = self.new_ref(h) {
+                label.as_deref()
             } else {
                 None
             };
@@ -1605,8 +1670,12 @@ impl Tree {
 
     // ------------------------------------------------------------- creation
     fn push_node(&mut self, node: NewNode) -> Handle {
-        let h = Handle(self.node_count());
-        self.new_nodes.push(node);
+        let h = Handle(self.next_handle);
+        self.next_handle = self
+            .next_handle
+            .checked_add(1)
+            .expect("DOM handle space exhausted");
+        self.new_nodes.insert(h, node);
         h
     }
 
@@ -1664,7 +1733,7 @@ impl Tree {
 
     /// Create a detached document fragment, without associating it with a shadow host.
     pub fn create_document_fragment(&mut self) -> Handle {
-        let h = self.push_node(NewNode::Fragment);
+        let h = self.push_node(NewNode::Fragment(None));
         self.children_ov.insert(h, ChildList::new());
         self.bump();
         h
@@ -1963,7 +2032,7 @@ impl Tree {
     /// includes it (encapsulation is free: queries over the light tree skip it).
     /// Populate it via `set_inner_html(shadow_root, ...)` or `append_child`.
     pub fn attach_shadow(&mut self, host: Handle) -> Handle {
-        let sr = self.push_node(NewNode::Fragment);
+        let sr = self.push_node(NewNode::Fragment(None));
         self.children_ov.insert(sr, ChildList::new());
         self.shadow_root_of_host.insert(host, sr);
         self.host_of_shadow_root.insert(sr, host);
