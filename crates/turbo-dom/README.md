@@ -76,7 +76,7 @@ Run the worked example: `cargo run --release --example crawl`.
 | `custom_elements` | name→definition registry |
 | `location` | Location (URL parse) + History stack |
 | `stubs` | Storage, media-query eval, observer entries |
-| `mutations` | `MutationObserver` — gated record buffer, sync `take_records`, type/target/subtree/old-value filtering |
+| `mutations` | `MutationObserver` — gated record buffer, sync `take_records`, type/target/subtree/old-value filtering; additive `MutationEvent` includes mutation-time ancestry/siblings/namespace for embedder queues |
 
 ## Status
 
@@ -87,3 +87,17 @@ Run the worked example: `cargo run --release --example crawl`.
   inherited declaration set (no invented initial values, no layout/`@media`/state).
 
 MIT.
+
+### Native observer event seam (0.5.3)
+
+Call `Tree::start_recording()` and drain `Tree::take_mutation_events()` to fan out
+events into an embedder's private observer queues. Each event includes the existing
+record plus inclusive light-tree ancestry at mutation time, child-list sibling
+positions and the actual attribute namespace. Ancestry stops at shadow roots.
+`take_mutation_records()` remains supported and consumes the same buffer. Recording
+is opt-in; the ordinary mutation path does not allocate event metadata.
+
+The embedder still implements observer registrations/options, transient removed-tree
+registrations, private callback ownership and microtask delivery according to the
+[DOM observer algorithms](https://dom.spec.whatwg.org/#mutation-observers). This
+additive seam does not establish complete browser MutationObserver parity.

@@ -1,6 +1,6 @@
 # turbo-dom
 
-Current release: **0.5.2** (npm package, native parser and Rust DOM crate).
+Current release: **0.5.3** (npm package, native parser and Rust DOM crate).
 
 A faster, more spec-correct DOM for test runners — a drop-in-style alternative to
 **jsdom** and **happy-dom** for **vitest** and **jest**.
@@ -288,3 +288,5 @@ Contributions welcome — issues and PRs at
 ## License
 
 [MIT](./LICENSE).
+
+Release preparation, merge-commit tagging and registry verification are documented in [PUBLISHING.md](./PUBLISHING.md).

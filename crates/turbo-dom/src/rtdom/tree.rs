@@ -489,7 +489,7 @@ pub struct Tree {
     pub(crate) css_cache: RefCell<crate::rtdom::cascade::CssCache>,
     /// Mutation-record buffer. `None` until an observer calls `start_recording`
     /// (the no-observer hot path stays zero-alloc, mirroring JS notifyMutation gating).
-    mutation_log: Option<Vec<crate::rtdom::mutations::MutationRecord>>,
+    mutation_log: Option<Vec<crate::rtdom::mutations::MutationEvent>>,
     /// Live IDL boolean form-state properties (checked/selected/disabled/required/
     /// read-only), settable independently of the HTML attribute — the Rust analogue of
     /// the JS runtime's `__checked`/`__selected` overlays that React/interaction set
@@ -1147,6 +1147,34 @@ impl Tree {
         self.version += 1;
     }
 
+    fn record_event(
+        &mut self,
+        record: crate::rtdom::mutations::MutationRecord,
+        previous_sibling: Option<Handle>,
+        next_sibling: Option<Handle>,
+        attribute_namespace: Option<&str>,
+    ) {
+        let mut inclusive_ancestors = Vec::new();
+        let mut current = Some(record.target());
+        while let Some(node) = current {
+            inclusive_ancestors.push(node);
+            // Mutation observation does not cross a shadow root into its host.
+            current = self.parent(node);
+        }
+        self.mutation_log
+            .as_mut()
+            .unwrap()
+            .push(crate::rtdom::mutations::MutationEvent {
+                record,
+                inclusive_ancestors,
+                previous_sibling,
+                next_sibling,
+                attribute_namespace: attribute_namespace
+                    .filter(|uri| !uri.is_empty())
+                    .map(str::to_owned),
+            });
+    }
+
     /// Record a `childList` mutation IF recording is on (an observer is attached).
     /// Takes PRIMITIVES and early-returns BEFORE allocating the added/removed `Vec`s
     /// or the record — mirroring JS `notifyMutation` (dom.mjs:1501), which builds the
@@ -1158,6 +1186,8 @@ impl Tree {
         parent: Handle,
         added: Option<Handle>,
         removed: Option<Handle>,
+        previous_sibling: Option<Handle>,
+        next_sibling: Option<Handle>,
     ) {
         if !self.is_recording() {
             return;
@@ -1167,7 +1197,7 @@ impl Tree {
             added.into_iter().collect(),
             removed.into_iter().collect(),
         );
-        self.mutation_log.as_mut().unwrap().push(rec);
+        self.record_event(rec, previous_sibling, next_sibling, None);
     }
 
     /// Like `record_child_list` but for the batch case (`textContent` replacing a
@@ -1179,23 +1209,29 @@ impl Tree {
         added: Vec<Handle>,
         removed: Vec<Handle>,
     ) {
-        if !self.is_recording() {
+        if !self.is_recording() || added.is_empty() && removed.is_empty() {
             return;
         }
         let rec = crate::rtdom::mutations::MutationRecord::child_list(parent, added, removed);
-        self.mutation_log.as_mut().unwrap().push(rec);
+        self.record_event(rec, None, None, None);
     }
 
     /// Record an `attributes` mutation IF recording is on. Takes the name as `&str`
     /// and only allocates the owned `String` (via `MutationRecord::attributes`) after
     /// the early-return — so a no-observer `set_attribute`/`remove_attribute` never
     /// builds the record's name string.
-    fn record_attributes(&mut self, target: Handle, name: &str, old_value: Option<String>) {
+    fn record_attributes(
+        &mut self,
+        target: Handle,
+        name: &str,
+        old_value: Option<String>,
+        namespace: Option<&str>,
+    ) {
         if !self.is_recording() {
             return;
         }
         let rec = crate::rtdom::mutations::MutationRecord::attributes(target, name, old_value);
-        self.mutation_log.as_mut().unwrap().push(rec);
+        self.record_event(rec, None, None, namespace);
     }
 
     /// Record a `characterData` mutation IF recording is on.
@@ -1204,7 +1240,7 @@ impl Tree {
             return;
         }
         let rec = crate::rtdom::mutations::MutationRecord::character_data(target, old_value);
-        self.mutation_log.as_mut().unwrap().push(rec);
+        self.record_event(rec, None, None, None);
     }
 
     /// Begin buffering mutation records (called by `MutationObserver::observe`).
@@ -1220,6 +1256,16 @@ impl Tree {
     }
     /// Drain the buffered records (keeps recording on). Empty if not recording.
     pub fn take_mutation_records(&mut self) -> Vec<crate::rtdom::mutations::MutationRecord> {
+        self.take_mutation_events()
+            .into_iter()
+            .map(|event| event.record)
+            .collect()
+    }
+
+    /// Drain records with their mutation-time ancestry, siblings and namespace.
+    /// Shares the recording buffer with `take_mutation_records`; either drain
+    /// consumes it. Embedders can fan out each event to multiple observer queues.
+    pub fn take_mutation_events(&mut self) -> Vec<crate::rtdom::mutations::MutationEvent> {
         self.mutation_log
             .as_mut()
             .map(std::mem::take)
@@ -1246,7 +1292,7 @@ impl Tree {
         let changed = ov.set(name, value);
         self.sync_attribute_node(h, &changed);
         self.bump();
-        self.record_attributes(h, name, old);
+        self.record_attributes(h, &changed.local_name, old, changed.namespace.as_deref());
     }
 
     pub fn remove_attribute(&mut self, h: Handle, name: &str) {
@@ -1257,11 +1303,14 @@ impl Tree {
             None
         };
         let ov = self.ensure_attrs(h);
-        if let Some(removed) = ov.remove(name) {
-            self.detach_attribute_node(h, &removed);
+        let removed = ov.remove(name);
+        if let Some(removed) = &removed {
+            self.detach_attribute_node(h, removed);
         }
         self.bump();
-        self.record_attributes(h, name, old);
+        if let Some(removed) = removed {
+            self.record_attributes(h, &removed.local_name, old, removed.namespace.as_deref());
+        }
     }
 
     /// Set a live IDL boolean form-state property (e.g. `FormProp::Checked`) on `h`,
@@ -1299,11 +1348,8 @@ impl Tree {
     }
 
     fn detach(&mut self, child: Handle) {
-        if let Some(p) = self.parent(child) {
-            let list = self.ensure_children(p);
-            if let Some(pos) = list.iter().position(|&x| x == child) {
-                list.remove(pos);
-            }
+        if let Some(parent) = self.parent(child) {
+            self.remove_child(parent, child);
         }
     }
 
@@ -1367,7 +1413,15 @@ impl Tree {
         self.ensure_children(parent).push(child);
         self.parent_ov.insert(child, Some(parent));
         self.bump();
-        self.record_child_list(parent, Some(child), None);
+        if self.is_recording() {
+            self.record_child_list(
+                parent,
+                Some(child),
+                None,
+                self.previous_sibling(child),
+                self.next_sibling(child),
+            );
+        }
     }
 
     pub fn insert_before(&mut self, parent: Handle, child: Handle, reference: Option<Handle>) {
@@ -1393,17 +1447,33 @@ impl Tree {
         }
         self.parent_ov.insert(child, Some(parent));
         self.bump();
-        self.record_child_list(parent, Some(child), None);
+        if self.is_recording() {
+            self.record_child_list(
+                parent,
+                Some(child),
+                None,
+                self.previous_sibling(child),
+                self.next_sibling(child),
+            );
+        }
     }
 
     pub fn remove_child(&mut self, parent: Handle, child: Handle) {
+        if self.parent(child) != Some(parent) {
+            return;
+        }
+        let siblings = self
+            .is_recording()
+            .then(|| (self.previous_sibling(child), self.next_sibling(child)));
         let list = self.ensure_children(parent);
         if let Some(pos) = list.iter().position(|&x| x == child) {
             list.remove(pos);
         }
         self.parent_ov.insert(child, None);
         self.bump();
-        self.record_child_list(parent, None, Some(child));
+        if let Some((previous, next)) = siblings {
+            self.record_child_list(parent, None, Some(child), previous, next);
+        }
     }
 
     pub fn set_text_content(&mut self, h: Handle, text: &str) {
@@ -1633,6 +1703,11 @@ impl Tree {
     pub fn set_inner_html(&mut self, h: Handle, html: &str) {
         let ctx = self.local_name(h).unwrap_or("body").to_string();
         let frag = core::parse_html_fragment_context(html, &ctx);
+        let removed = if self.is_recording() {
+            self.children(h)
+        } else {
+            Vec::new()
+        };
         // The prior children are replaced wholesale — detach them first so a retained
         // handle into the old subtree reports no parent rather than pointing back at `h`.
         self.orphan_children(h);
@@ -1643,8 +1718,16 @@ impl Tree {
         for &k in &kids {
             self.parent_ov.insert(k, Some(h));
         }
-        self.children_ov.insert(h, kids.into());
-        self.bump();
+        if self.is_recording() {
+            self.children_ov.insert(h, kids.clone().into());
+            self.bump();
+            if !kids.is_empty() || !removed.is_empty() {
+                self.record_child_list_batch(h, kids, removed);
+            }
+        } else {
+            self.children_ov.insert(h, kids.into());
+            self.bump();
+        }
     }
 
     // ---- ChildNode / ParentNode manipulation (spec methods) -----------------------------------
@@ -1795,7 +1878,12 @@ impl Tree {
         overlay.set_namespace(attribute.clone());
         self.sync_attribute_node(h, &attribute);
         self.bump();
-        self.record_attributes(h, &attribute.local_name, old);
+        self.record_attributes(
+            h,
+            &attribute.local_name,
+            old,
+            attribute.namespace.as_deref(),
+        );
     }
     pub fn remove_attribute_ns(&mut self, h: Handle, namespace: Option<&str>, local: &str) {
         let namespace = namespace.filter(|value| !value.is_empty());
@@ -1807,7 +1895,7 @@ impl Tree {
         overlay.remove_namespace(namespace, local);
         if old.is_some() {
             self.bump();
-            self.record_attributes(h, local, old);
+            self.record_attributes(h, local, old, namespace);
         }
     }
 

@@ -1,0 +1,121 @@
+{
+  "collectedAt": "2026-10-14T01:36:10.252Z",
+  "browserVersion": "Chrome/155.0.8059.79",
+  "browserV8Version": "15.5.35.23",
+  "effectiveExtensionFlags": [
+    "--disable-extensions"
+  ],
+  "collectorSha256": "eaf2dd72cca756512e0db5875b710ea27a78d5cf7dd4572b955d7604bfdbb4d9",
+  "result": {
+    "move": [
+      {
+        "type": "childList",
+        "target": "source",
+        "added": [],
+        "removed": [
+          "node"
+        ],
+        "previous": "first",
+        "next": "last",
+        "attribute": null,
+        "namespace": null,
+        "oldValue": null
+      },
+      {
+        "type": "childList",
+        "target": "target",
+        "added": [
+          "node"
+        ],
+        "removed": [],
+        "previous": null,
+        "next": "reference",
+        "attribute": null,
+        "namespace": null,
+        "oldValue": null
+      }
+    ],
+    "attributes": [
+      {
+        "type": "attributes",
+        "target": "node",
+        "added": [],
+        "removed": [],
+        "previous": null,
+        "next": null,
+        "attribute": "value",
+        "namespace": "urn:authored",
+        "oldValue": null
+      },
+      {
+        "type": "attributes",
+        "target": "node",
+        "added": [],
+        "removed": [],
+        "previous": null,
+        "next": null,
+        "attribute": "value",
+        "namespace": "urn:authored",
+        "oldValue": "first"
+      },
+      {
+        "type": "attributes",
+        "target": "node",
+        "added": [],
+        "removed": [],
+        "previous": null,
+        "next": null,
+        "attribute": "value",
+        "namespace": "urn:authored",
+        "oldValue": "second"
+      }
+    ],
+    "innerHTML": [
+      {
+        "type": "childList",
+        "target": "source",
+        "added": [
+          "replacement",
+          "#text"
+        ],
+        "removed": [
+          "first",
+          "last"
+        ],
+        "previous": null,
+        "next": null,
+        "attribute": null,
+        "namespace": null,
+        "oldValue": null
+      }
+    ],
+    "mutationTimeAncestry": [
+      {
+        "type": "attributes",
+        "target": "node",
+        "added": [],
+        "removed": [],
+        "previous": null,
+        "next": null,
+        "attribute": "class",
+        "namespace": null,
+        "oldValue": null
+      }
+    ],
+    "nonMutations": [],
+    "shadow": [
+      {
+        "type": "attributes",
+        "target": "inside",
+        "added": [],
+        "removed": [],
+        "previous": null,
+        "next": null,
+        "attribute": "class",
+        "namespace": null,
+        "oldValue": null
+      }
+    ],
+    "shadowHost": []
+  }
+}

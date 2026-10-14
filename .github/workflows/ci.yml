@@ -137,11 +137,10 @@ jobs:
       - run: cargo build --release --no-default-features --features wasm-bind --target wasm32-unknown-unknown
 
   # ---- Publish to npm on a version tag ----
-  # Single bundled package: all platform *.node binaries ship inside `turbo-dom`
+  # Single bundled package: all platform *.node binaries ship inside `@miaskiewicz/turbo-dom`
   # (index.js loads the matching local binary). One package to publish — no
   # per-platform sub-packages to create. Requires repository secret NPM_TOKEN
-  # (a token allowed to publish the `turbo-dom` package — a Classic Automation
-  # token is simplest).
+  # (a token allowed to publish the scoped `@miaskiewicz/turbo-dom` package).
   publish:
     name: publish
     needs: [build, test]
