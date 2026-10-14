@@ -1,6 +1,6 @@
 [package]
 name = "turbo-dom"
-version = "0.5.4"
+version = "0.5.5"
 edition = "2021"
 description = "Pure-Rust DOM runtime — lazy copy-on-write tree over an html5ever SoA, native Rust API, zero JS boundary. For in-process Rust consumers (crawlers, extractors, SSR)."
 license = "MIT"
@@ -30,6 +30,8 @@ smol_str = "0.3"
 # with Vec (push/remove/iter/Deref to slice). Already in the tree transitively (via
 # parking_lot), so it adds no new crate.
 smallvec = "1"
+# The license-preserved UTF-16 tokenizer adapter uses the upstream diagnostics.
+log = "0.4"
 
 # Adopt clippy's opt-in `pedantic` group as a warn-level gate (CI's `-D warnings`
 # escalates it to an error). The lints allowed below don't fit a DOM / layout / parse

@@ -1,0 +1,14 @@
+{
+  "crate": "html5ever",
+  "version": "0.39.0",
+  "files": {
+    "src/tokenizer/mod.rs": "815a67a13c70ac8935b8fa506cc16f44abe7730684c3fa6abababa9ed0aa3297",
+    "src/tokenizer/char_ref/mod.rs": "e753058cb7ab64c63bb13e2156c583bdc60a8468efe6b9c64b8768c6effadf8f",
+    "src/macros.rs": "9d964d34792195764fc7d53c7bfdec3ba468ee7708ab4dd0891a37c211f96977"
+  },
+  "changes": [
+    "Bind public upstream Token, TokenSink and State types, replace private ASCII helper locally.",
+    "Double the reserved transport escape only for decoded character-reference output.",
+    "Preserve upstream tokenizer tests and licenses."
+  ]
+}

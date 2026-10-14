@@ -128,15 +128,15 @@ impl Handle {
 #[derive(Clone)]
 enum NewNode {
     Element {
-        name: SmolStr,
+        name: DomString,
         ns: Namespace,
     },
     Attribute {
-        data: Box<AttributeData>,
+        data: Box<NativeAttribute>,
         owner: Option<Handle>,
     },
-    Text(SmolStr),
-    Comment(SmolStr),
+    Text(DomString),
+    Comment(DomString),
     ProcessingInstruction(Box<ProcessingInstructionData>),
     Doctype(Box<DoctypeData>),
     Fragment(Option<SmolStr>),
@@ -145,14 +145,14 @@ enum NewNode {
 // Rare node payloads stay out of the element/text slots in the mutation arena.
 #[derive(Clone)]
 struct ProcessingInstructionData {
-    target: SmolStr,
-    data: SmolStr,
+    target: DomString,
+    data: DomString,
 }
 #[derive(Clone)]
 struct DoctypeData {
-    name: SmolStr,
-    public_id: SmolStr,
-    system_id: SmolStr,
+    name: DomString,
+    public_id: DomString,
+    system_id: DomString,
 }
 
 impl NewNode {
@@ -225,26 +225,29 @@ impl AttributeData {
     }
 }
 struct ElementNamespace {
-    uri: Option<SmolStr>,
-    prefix: Option<SmolStr>,
-    qualified_name: SmolStr,
+    uri: Option<DomString>,
+    prefix: Option<DomString>,
+    qualified_name: DomString,
 }
 // Ordinary HTML attributes retain the compact name/value layout. A namespace
 // mutation promotes only that element's list to the complete record format.
 enum AttrList {
-    Plain(SmallVec<[(SmolStr, SmolStr); 2]>),
-    Namespaced(Box<SmallVec<[AttributeData; 2]>>),
+    Plain(SmallVec<[(DomString, SmolStr); 2]>),
+    Namespaced(Box<SmallVec<[NativeAttribute; 2]>>),
 }
 impl AttrList {
     fn new() -> Self {
         Self::Plain(SmallVec::new())
     }
-    fn from_records(records: Vec<AttributeData>) -> Self {
-        if records.iter().all(|record| record.namespace.is_none()) {
+    fn from_native_records(records: Vec<NativeAttribute>) -> Self {
+        if records
+            .iter()
+            .all(|record| record.ns.is_none() && record.prefix.is_none())
+        {
             Self::Plain(
                 records
                     .into_iter()
-                    .map(|record| (record.qualified_name, record.value))
+                    .map(|record| (record.qualified, record.legacy.value))
                     .collect(),
             )
         } else {
@@ -259,7 +262,7 @@ impl AttrList {
                 .map(|(_, value)| value.as_str()),
             Self::Namespaced(rows) => rows
                 .iter()
-                .find(|record| record.qualified_name == name)
+                .find(|record| record.qualified == name)
                 .map(|record| record.value.as_str()),
         }
     }
@@ -273,21 +276,36 @@ impl AttrList {
             Self::Namespaced(rows) => {
                 for record in rows.iter() {
                     callback(
-                        record.namespace.as_deref(),
+                        record.ns.as_deref(),
                         record.prefix.as_deref().unwrap_or(""),
-                        &record.local_name,
-                        Some(&record.qualified_name),
+                        &record.local,
+                        Some(&record.qualified),
                         &record.value,
                     );
                 }
             }
         }
     }
-    fn records_mut(&mut self) -> &mut SmallVec<[AttributeData; 2]> {
+    fn extra_bytes(&self) -> usize {
+        match self {
+            Self::Plain(rows) => rows.iter().map(|(name, _)| name.extra_bytes()).sum(),
+            Self::Namespaced(rows) => rows.iter().map(NativeAttribute::extra_bytes).sum(),
+        }
+    }
+    fn native_records(&self) -> Vec<NativeAttribute> {
+        match self {
+            Self::Plain(rows) => rows
+                .iter()
+                .map(|(name, value)| NativeAttribute::plain(name.clone(), value.clone()))
+                .collect(),
+            Self::Namespaced(rows) => rows.iter().cloned().collect(),
+        }
+    }
+    fn records_mut(&mut self) -> &mut SmallVec<[NativeAttribute; 2]> {
         if let Self::Plain(rows) = self {
             let records = std::mem::take(rows)
                 .into_iter()
-                .map(|(name, value)| AttributeData::new(None, &name, &value))
+                .map(|(name, value)| NativeAttribute::plain(name, value))
                 .collect();
             *self = Self::Namespaced(Box::new(records));
         }
@@ -296,67 +314,72 @@ impl AttrList {
             Self::Plain(_) => unreachable!(),
         }
     }
-    fn set(&mut self, name: &str, value: &str) -> AttributeData {
+    fn set(&mut self, name: &str, value: &str) -> NativeAttribute {
+        self.set_qualified(DomString::from(name), value)
+    }
+    fn set_qualified(&mut self, name: DomString, value: &str) -> NativeAttribute {
         match self {
             Self::Plain(rows) => {
-                if let Some((_, slot)) = rows.iter_mut().find(|(key, _)| key == name) {
+                if let Some((_, slot)) = rows.iter_mut().find(|(key, _)| *key == name) {
                     *slot = value.into();
                 } else {
-                    rows.push((name.into(), value.into()));
+                    rows.push((name.clone(), value.into()));
                 }
-                AttributeData::new(None, name, value)
+                NativeAttribute::plain(name, value.into())
             }
             Self::Namespaced(rows) => {
-                if let Some(record) = rows.iter_mut().find(|record| record.qualified_name == name) {
-                    record.value = value.into();
+                if let Some(record) = rows.iter_mut().find(|record| record.qualified == name) {
+                    record.legacy.value = value.into();
                     record.clone()
                 } else {
-                    let record = AttributeData::new(None, name, value);
+                    let record = NativeAttribute::plain(name, value.into());
                     rows.push(record.clone());
                     record
                 }
             }
         }
     }
-    fn set_namespace(&mut self, attribute: AttributeData) {
-        if attribute.namespace.is_none() && matches!(self, Self::Plain(_)) {
-            self.set(&attribute.qualified_name, &attribute.value);
+    fn set_namespace(&mut self, attribute: NativeAttribute) {
+        if attribute.ns.is_none() && attribute.prefix.is_none() && matches!(self, Self::Plain(_)) {
+            self.set_qualified(attribute.qualified, &attribute.legacy.value);
             return;
         }
         let rows = self.records_mut();
-        if let Some(record) = rows.iter_mut().find(|record| {
-            record.namespace == attribute.namespace && record.local_name == attribute.local_name
-        }) {
+        if let Some(record) = rows
+            .iter_mut()
+            .find(|record| record.ns == attribute.ns && record.local == attribute.local)
+        {
             *record = attribute;
         } else {
             rows.push(attribute);
         }
     }
-    fn remove(&mut self, name: &str) -> Option<AttributeData> {
+    fn remove(&mut self, name: &str) -> Option<NativeAttribute> {
+        self.remove_qualified(&DomString::from(name))
+    }
+    fn remove_qualified(&mut self, name: &DomString) -> Option<NativeAttribute> {
         match self {
             Self::Plain(rows) => {
                 let index = rows.iter().position(|(key, _)| key == name)?;
                 let (name, value) = rows.remove(index);
-                Some(AttributeData::new(None, &name, &value))
+                Some(NativeAttribute::plain(name, value))
             }
             Self::Namespaced(rows) => {
-                let index = rows
-                    .iter()
-                    .position(|record| record.qualified_name == name)?;
+                let index = rows.iter().position(|record| &record.qualified == name)?;
                 Some(rows.remove(index))
             }
         }
     }
-    fn remove_namespace(&mut self, namespace: Option<&str>, local: &str) {
+    fn remove_ns(&mut self, namespace: Option<&DomString>, local: &DomString) {
         match self {
             Self::Plain(rows) => {
                 if namespace.is_none() {
                     rows.retain(|(name, _)| name != local);
                 }
             }
-            Self::Namespaced(rows) => rows.retain(|record| {
-                !(record.namespace.as_deref() == namespace && record.local_name == local)
-            }),
+            Self::Namespaced(rows) => {
+                rows.retain(|record| !(record.ns.as_ref() == namespace && record.local == *local));
+            }
         }
     }
 }
@@ -509,6 +532,25 @@ impl NodeArena {
     }
 }
 
+#[path = "parser_units.rs"]
+mod parser_units;
+#[allow(clippy::pedantic)]
+#[path = "unit_tokenizer/mod.rs"]
+mod unit_tokenizer;
+
+#[path = "native_attributes.rs"]
+mod native_attributes;
+pub use native_attributes::AttributeDataUtf16;
+use native_attributes::{NativeAttribute, NativeMutationNames};
+
+#[path = "names_utf16.rs"]
+mod names_utf16;
+
+#[path = "utf16.rs"]
+mod utf16;
+use utf16::DomString;
+pub use utf16::Utf16MutationEvent;
+
 #[path = "storage.rs"]
 mod storage;
 pub use storage::{CollectionBudget, CollectionError, CollectionReport, StorageStats};
@@ -520,7 +562,8 @@ pub struct Tree {
     new_nodes: NodeArena,
     next_handle: u32,
     element_namespaces: FxHashMap<Handle, ElementNamespace>,
-    attribute_nodes: FxHashMap<(Handle, Option<SmolStr>, SmolStr), Handle>,
+    attribute_nodes: FxHashMap<(Handle, Option<DomString>, DomString), Handle>,
+    attribute_units: FxHashMap<(Handle, Option<DomString>, DomString), Box<[u16]>>,
     // --- COW overlays (present only for mutated/created nodes) ---
     // Hybrid `Overlay<T>`: created nodes (dense handles) live in a `Vec`, sparse
     // buffer-node overrides in a map — see `Overlay`. `Some(parent)` = re-parented;
@@ -529,7 +572,7 @@ pub struct Tree {
     parent_ov: Overlay<Option<Handle>>,
     children_ov: Overlay<ChildList>,
     attrs_ov: Overlay<AttrList>,
-    text_ov: Overlay<SmolStr>,
+    text_ov: Overlay<DomString>,
     /// host → shadow-root handle, and shadow-root → host (the two shadow maps).
     shadow_root_of_host: FxHashMap<Handle, Handle>,
     host_of_shadow_root: FxHashMap<Handle, Handle>,
@@ -546,6 +589,8 @@ pub struct Tree {
     /// Mutation-record buffer. `None` until an observer calls `start_recording`
     /// (the no-observer hot path stays zero-alloc, mirroring JS notifyMutation gating).
     mutation_log: Option<Vec<crate::rtdom::mutations::MutationEvent>>,
+    mutation_old_units: FxHashMap<usize, Box<[u16]>>,
+    mutation_name_units: FxHashMap<usize, NativeMutationNames>,
     /// Live IDL boolean form-state properties (checked/selected/disabled/required/
     /// read-only), settable independently of the HTML attribute — the Rust analogue of
     /// the JS runtime's `__checked`/`__selected` overlays that React/interaction set
@@ -587,6 +632,7 @@ impl Tree {
             next_handle: buf_len,
             element_namespaces: FxHashMap::default(),
             attribute_nodes: FxHashMap::default(),
+            attribute_units: FxHashMap::default(),
             parent_ov: Overlay::new(buf_len),
             children_ov: Overlay::new(buf_len),
             attrs_ov: Overlay::new(buf_len),
@@ -598,6 +644,8 @@ impl Tree {
             parse_cache: RefCell::new(FxHashMap::default()),
             css_cache: RefCell::new(crate::rtdom::cascade::CssCache::default()),
             mutation_log: None,
+            mutation_old_units: FxHashMap::default(),
+            mutation_name_units: FxHashMap::default(),
             form_props: FxHashMap::default(),
         }
     }
@@ -921,16 +969,37 @@ impl Tree {
     }
     pub fn attribute_namespaced(
         &self,
-        h: Handle,
+        node: Handle,
         namespace: Option<&str>,
         local: &str,
     ) -> Option<AttributeData> {
-        let namespace = namespace.filter(|value| !value.is_empty());
-        self.attributes_namespaced(h).into_iter().find(|attribute| {
-            attribute.namespace.as_deref() == namespace && attribute.local_name == local
-        })
+        self.native_attribute_namespaced(node, namespace, local)
+            .map(|data| data.legacy)
     }
-
+    fn native_attributes(&self, node: Handle) -> Vec<NativeAttribute> {
+        self.attrs_ov.get(node).map_or_else(
+            || {
+                self.attributes_namespaced(node)
+                    .into_iter()
+                    .map(NativeAttribute::from_legacy)
+                    .collect()
+            },
+            AttrList::native_records,
+        )
+    }
+    fn native_attribute_namespaced(
+        &self,
+        node: Handle,
+        namespace: Option<&str>,
+        local: &str,
+    ) -> Option<NativeAttribute> {
+        let namespace = namespace
+            .filter(|value| !value.is_empty())
+            .map(DomString::from);
+        self.native_attributes(node)
+            .into_iter()
+            .find(|record| record.ns == namespace && record.local == local)
+    }
     /// A genuine Attr node, with stable identity independent of whether it is attached.
     pub fn create_attribute(
         &mut self,
@@ -939,11 +1008,13 @@ impl Tree {
         value: &str,
     ) -> Handle {
         self.push_node(NewNode::Attribute {
-            data: Box::new(AttributeData::new(namespace, qualified, value)),
+            data: Box::new(NativeAttribute::from_legacy(AttributeData::new(
+                namespace, qualified, value,
+            ))),
             owner: None,
         })
     }
-    pub fn attribute_data(&self, node: Handle) -> Option<&AttributeData> {
+    fn native_attribute_data(&self, node: Handle) -> Option<&NativeAttribute> {
         if !self.is_new(node) {
             return None;
         }
@@ -951,6 +1022,9 @@ impl Tree {
             NewNode::Attribute { data, .. } => Some(data),
             _ => None,
         }
+    }
+    pub fn attribute_data(&self, node: Handle) -> Option<&AttributeData> {
+        self.native_attribute_data(node).map(|data| &data.legacy)
     }
     pub fn attribute_owner(&self, node: Handle) -> Option<Handle> {
         if !self.is_new(node) {
@@ -967,8 +1041,23 @@ impl Tree {
         namespace: Option<&str>,
         local: &str,
     ) -> Option<Handle> {
-        let data = self.attribute_namespaced(owner, namespace, local)?;
-        let key = (owner, data.namespace.clone(), data.local_name.clone());
+        self.attribute_node_key(
+            owner,
+            namespace.filter(|v| !v.is_empty()).map(DomString::from),
+            DomString::from(local),
+        )
+    }
+    fn attribute_node_key(
+        &mut self,
+        owner: Handle,
+        namespace: Option<DomString>,
+        local: DomString,
+    ) -> Option<Handle> {
+        let data = self
+            .native_attributes(owner)
+            .into_iter()
+            .find(|record| record.ns == namespace && record.local == local)?;
+        let key = (owner, namespace, local);
         if let Some(node) = self.attribute_nodes.get(&key) {
             return Some(*node);
         }
@@ -979,8 +1068,8 @@ impl Tree {
         self.attribute_nodes.insert(key, node);
         Some(node)
     }
-    fn sync_attribute_node(&mut self, owner: Handle, data: &AttributeData) {
-        let key = (owner, data.namespace.clone(), data.local_name.clone());
+    fn sync_attribute_node(&mut self, owner: Handle, data: &NativeAttribute) {
+        let key = (owner, data.ns.clone(), data.local.clone());
         if let Some(node) = self.attribute_nodes.get(&key).copied() {
             if let NewNode::Attribute { data: current, .. } =
                 self.new_nodes.get_mut(node, self.buf_len)
@@ -989,9 +1078,13 @@ impl Tree {
             }
         }
     }
-    fn detach_attribute_node(&mut self, owner: Handle, data: &AttributeData) {
-        let key = (owner, data.namespace.clone(), data.local_name.clone());
+    fn detach_attribute_node(&mut self, owner: Handle, data: &NativeAttribute) {
+        let key = (owner, data.ns.clone(), data.local.clone());
         if let Some(node) = self.attribute_nodes.remove(&key) {
+            if let Some(units) = self.attribute_units.get(&key).cloned() {
+                self.attribute_units
+                    .insert((node, data.ns.clone(), data.local.clone()), units);
+            }
             if let NewNode::Attribute { owner, .. } = self.new_nodes.get_mut(node, self.buf_len) {
                 *owner = None;
             }
@@ -1005,36 +1098,36 @@ impl Tree {
         if self.node_type(owner) != NodeType::Element {
             return Err("TypeError");
         }
-        let data = self.attribute_data(node).cloned().ok_or("TypeError")?;
+        let data = self
+            .native_attribute_data(node)
+            .cloned()
+            .ok_or("TypeError")?;
         if self
             .attribute_owner(node)
             .is_some_and(|current| current != owner)
         {
             return Err("InUseAttributeError");
         }
-        let replaced = self.attribute_node(owner, data.namespace.as_deref(), &data.local_name);
+        let replaced = self.attribute_node_key(owner, data.ns.clone(), data.local.clone());
         if replaced == Some(node) {
             return Ok(replaced);
         }
         if let Some(old) = replaced {
-            let old_data = self.attribute_data(old).unwrap().clone();
+            let old_data = self.native_attribute_data(old).unwrap().clone();
             self.detach_attribute_node(owner, &old_data);
         }
-        self.set_attribute_ns(
-            owner,
-            data.namespace.as_deref(),
-            &data.qualified_name,
-            &data.value,
-        );
+        let units = self.node_value_utf16(node).unwrap_or_default();
+        self.set_native_attribute_record(owner, &data);
+        self.retain_native_attribute_value(owner, &data, &units);
+        self.attribute_units
+            .remove(&(node, data.ns.clone(), data.local.clone()));
         if let NewNode::Attribute { owner: current, .. } =
             self.new_nodes.get_mut(node, self.buf_len)
         {
             *current = Some(owner);
         }
-        self.attribute_nodes.insert(
-            (owner, data.namespace.clone(), data.local_name.clone()),
-            node,
-        );
+        self.attribute_nodes
+            .insert((owner, data.ns.clone(), data.local.clone()), node);
         Ok(replaced)
     }
     pub fn remove_attribute_node(
@@ -1045,24 +1138,94 @@ impl Tree {
         if self.attribute_owner(node) != Some(owner) {
             return Err("NotFoundError");
         }
-        let data = self.attribute_data(node).cloned().ok_or("TypeError")?;
-        self.remove_attribute_ns(owner, data.namespace.as_deref(), &data.local_name);
+        let data = self
+            .native_attribute_data(node)
+            .cloned()
+            .ok_or("TypeError")?;
+        self.remove_native_attribute_ns(owner, data.ns.as_ref(), &data.local);
         Ok(node)
     }
     pub fn set_attribute_value(&mut self, node: Handle, value: &str) {
-        let Some(data) = self.attribute_data(node).cloned() else {
+        let Some(mut data) = self.native_attribute_data(node).cloned() else {
             return;
         };
+        data.legacy.value = value.into();
         if let Some(owner) = self.attribute_owner(node) {
-            self.set_attribute_ns(
-                owner,
-                data.namespace.as_deref(),
-                &data.qualified_name,
-                value,
-            );
-        } else if let NewNode::Attribute { data, .. } = self.new_nodes.get_mut(node, self.buf_len) {
-            data.value = value.into();
+            self.set_native_attribute_record(owner, &data);
+        } else {
+            self.attribute_units
+                .remove(&(node, data.ns.clone(), data.local.clone()));
+            if let NewNode::Attribute { data: current, .. } =
+                self.new_nodes.get_mut(node, self.buf_len)
+            {
+                **current = data;
+            }
         }
+    }
+    fn set_native_attribute_record(&mut self, owner: Handle, data: &NativeAttribute) {
+        let key = (owner, data.ns.clone(), data.local.clone());
+        let old = self
+            .native_attributes(owner)
+            .into_iter()
+            .find(|record| record.ns == data.ns && record.local == data.local)
+            .map(|record| record.legacy.value.to_string());
+        let old_units = if self.is_recording() {
+            self.attribute_units.get(&key).cloned()
+        } else {
+            None
+        };
+        self.attribute_units.remove(&key);
+        self.ensure_attrs(owner).set_namespace(data.clone());
+        self.sync_attribute_node(owner, data);
+        self.bump();
+        self.record_attributes(owner, &data.local_name, old, data.namespace.as_deref());
+        self.record_old_units(old_units);
+        self.record_native_attribute_names(data);
+    }
+    fn retain_native_attribute_value(
+        &mut self,
+        owner: Handle,
+        data: &NativeAttribute,
+        units: &[u16],
+    ) {
+        let key = (owner, data.ns.clone(), data.local.clone());
+        if String::from_utf16(units).is_err() {
+            self.attribute_units.insert(key, units.into());
+        } else {
+            self.attribute_units.remove(&key);
+        }
+    }
+    fn remove_native_attribute_ns(
+        &mut self,
+        owner: Handle,
+        namespace: Option<&DomString>,
+        local: &DomString,
+    ) {
+        let Some(data) = self
+            .native_attributes(owner)
+            .into_iter()
+            .find(|record| record.ns.as_ref() == namespace && record.local == *local)
+        else {
+            return;
+        };
+        let key = (owner, data.ns.clone(), data.local.clone());
+        let old_units = if self.is_recording() {
+            self.attribute_units.get(&key).cloned()
+        } else {
+            None
+        };
+        self.detach_attribute_node(owner, &data);
+        self.attribute_units.remove(&key);
+        self.ensure_attrs(owner).remove_ns(namespace, local);
+        self.bump();
+        self.record_attributes(
+            owner,
+            &data.local_name,
+            Some(data.value.to_string()),
+            data.namespace.as_deref(),
+        );
+        self.record_old_units(old_units);
+        self.record_native_attribute_names(&data);
     }
 
     /// The interned tag/label name for an element OR document-fragment node (the
@@ -1189,7 +1352,9 @@ impl Tree {
         out
     }
     fn collect_text(&self, h: Handle, out: &mut String) {
-        for c in self.children(h) {
+        let mut pending = self.children(h);
+        pending.reverse();
+        while let Some(c) = pending.pop() {
             // Comment and Fragment share an empty body but are skipped for distinct,
             // separately-documented reasons — keep them as separate, commented arms.
             #[allow(clippy::match_same_arms)]
@@ -1202,7 +1367,7 @@ impl Tree {
                 // (`template.textContent === ""`). It is the only fragment that ever
                 // appears in a child list here. Serialization still walks it directly.
                 NodeType::Fragment => {}
-                _ => self.collect_text(c, out),
+                _ => pending.extend(self.children(c).into_iter().rev()),
             }
         }
     }
@@ -1315,6 +1480,8 @@ impl Tree {
     /// Stop buffering and drop any pending records.
     pub fn stop_recording(&mut self) {
         self.mutation_log = None;
+        self.mutation_old_units.clear();
+        self.mutation_name_units.clear();
     }
     pub fn is_recording(&self) -> bool {
         self.mutation_log.is_some()
@@ -1331,6 +1498,8 @@ impl Tree {
     /// Shares the recording buffer with `take_mutation_records`; either drain
     /// consumes it. Embedders can fan out each event to multiple observer queues.
     pub fn take_mutation_events(&mut self) -> Vec<crate::rtdom::mutations::MutationEvent> {
+        self.mutation_old_units.clear();
+        self.mutation_name_units.clear();
         self.mutation_log
             .as_mut()
             .map(std::mem::take)
@@ -1340,7 +1509,7 @@ impl Tree {
     /// Ensure a node's attr overlay exists (copy buffer attrs in on first write).
     fn ensure_attrs(&mut self, h: Handle) -> &mut AttrList {
         if !self.attrs_ov.contains(h) {
-            let init = AttrList::from_records(self.attributes_namespaced(h));
+            let init = AttrList::from_native_records(self.native_attributes(h));
             self.attrs_ov.insert(h, init);
         }
         self.attrs_ov.get_mut(h).unwrap()
@@ -1353,11 +1522,16 @@ impl Tree {
         } else {
             None
         };
+        let old_units = self.recorded_attribute_units(h, name);
         let ov = self.ensure_attrs(h);
         let changed = ov.set(name, value);
+        self.attribute_units
+            .remove(&(h, changed.ns.clone(), changed.local.clone()));
         self.sync_attribute_node(h, &changed);
         self.bump();
         self.record_attributes(h, &changed.local_name, old, changed.namespace.as_deref());
+        self.record_old_units(old_units);
+        self.record_native_attribute_names(&changed);
     }
 
     pub fn remove_attribute(&mut self, h: Handle, name: &str) {
@@ -1367,14 +1541,19 @@ impl Tree {
         } else {
             None
         };
+        let old_units = self.recorded_attribute_units(h, name);
         let ov = self.ensure_attrs(h);
         let removed = ov.remove(name);
         if let Some(removed) = &removed {
             self.detach_attribute_node(h, removed);
+            self.attribute_units
+                .remove(&(h, removed.ns.clone(), removed.local.clone()));
         }
         self.bump();
         if let Some(removed) = removed {
             self.record_attributes(h, &removed.local_name, old, removed.namespace.as_deref());
+            self.record_old_units(old_units);
+            self.record_native_attribute_names(&removed);
         }
     }
 
@@ -1556,9 +1735,11 @@ impl Tree {
             } else {
                 None
             };
+            let old_units = self.recorded_character_units(h);
             self.text_ov.insert(h, text.into());
             self.bump();
             self.record_character_data(h, old);
+            self.record_old_units(old_units);
         } else {
             // `removed` (the prior child list) is needed ONLY for a mutation record;
             // the overlay overwrite below ignores it. So snapshot it solely when
@@ -1594,8 +1775,7 @@ impl Tree {
     }
 
     // ---- CharacterData mutation (text/comment nodes) -------------------------------------------
-    // The DOM's CharacterData methods, operating on the node's text. Offsets/counts are in chars
-    // (BMP-correct; matches JS string indexing for the ASCII/typed-text these drive). Records a
+    // The DOM's CharacterData methods use UTF-16 offsets/counts. Records a
     // characterData mutation so a MutationObserver (Lexical's editor model) sees the edit.
     /// Set the text of a text/comment node directly (`CharacterData.data` / `nodeValue` setter).
     pub fn set_node_value(&mut self, h: Handle, text: &str) {
@@ -1612,60 +1792,30 @@ impl Tree {
         } else {
             None
         };
+        let old_units = self.recorded_character_units(h);
         self.text_ov.insert(h, text.into());
         self.bump();
         self.record_character_data(h, old);
+        self.record_old_units(old_units);
     }
     pub fn insert_data(&mut self, h: Handle, offset: usize, data: &str) {
-        let chars: Vec<char> = self.node_value(h).unwrap_or_default().chars().collect();
-        let off = offset.min(chars.len());
-        let mut out: String = chars[..off].iter().collect();
-        out.push_str(data);
-        out.extend(chars[off..].iter());
-        self.set_node_value(h, &out);
+        self.replace_data_utf16(h, offset, 0, &data.encode_utf16().collect::<Vec<_>>());
     }
     pub fn delete_data(&mut self, h: Handle, offset: usize, count: usize) {
-        let chars: Vec<char> = self.node_value(h).unwrap_or_default().chars().collect();
-        let off = offset.min(chars.len());
-        let end = off.saturating_add(count).min(chars.len());
-        let mut out: String = chars[..off].iter().collect();
-        out.extend(chars[end..].iter());
-        self.set_node_value(h, &out);
+        self.replace_data_utf16(h, offset, count, &[]);
     }
     pub fn append_data(&mut self, h: Handle, data: &str) {
-        let mut s = self.node_value(h).unwrap_or_default();
-        s.push_str(data);
-        self.set_node_value(h, &s);
+        self.insert_data(h, usize::MAX, data);
     }
     pub fn replace_data(&mut self, h: Handle, offset: usize, count: usize, data: &str) {
-        let chars: Vec<char> = self.node_value(h).unwrap_or_default().chars().collect();
-        let off = offset.min(chars.len());
-        let end = off.saturating_add(count).min(chars.len());
-        let mut out: String = chars[..off].iter().collect();
-        out.push_str(data);
-        out.extend(chars[end..].iter());
-        self.set_node_value(h, &out);
+        self.replace_data_utf16(h, offset, count, &data.encode_utf16().collect::<Vec<_>>());
     }
     pub fn substring_data(&self, h: Handle, offset: usize, count: usize) -> String {
-        let chars: Vec<char> = self.node_value(h).unwrap_or_default().chars().collect();
-        let off = offset.min(chars.len());
-        let end = off.saturating_add(count).min(chars.len());
-        chars[off..end].iter().collect()
+        String::from_utf16_lossy(&self.substring_data_utf16(h, offset, count))
     }
-    /// Split a text node at `offset`: truncate this node to the head, create a sibling holding the
-    /// tail (inserted right after), and return the new node's handle.
+    /// Split at a UTF-16 offset, including between paired surrogate code units.
     pub fn split_text(&mut self, h: Handle, offset: usize) -> Handle {
-        let chars: Vec<char> = self.node_value(h).unwrap_or_default().chars().collect();
-        let off = offset.min(chars.len());
-        let head: String = chars[..off].iter().collect();
-        let tail: String = chars[off..].iter().collect();
-        self.set_node_value(h, &head);
-        let new = self.create_text_node(&tail);
-        if let Some(p) = self.parent(h) {
-            let next = self.next_sibling(h);
-            self.insert_before(p, new, next);
-        }
-        new
+        self.split_text_utf16(h, offset)
     }
 
     // ------------------------------------------------------------- creation
@@ -1797,6 +1947,7 @@ impl Tree {
             self.children_ov.insert(h, kids.into());
             self.bump();
         }
+        core::discard_node(frag);
     }
 
     // ---- ChildNode / ParentNode manipulation (spec methods) -----------------------------------
@@ -1906,6 +2057,7 @@ impl Tree {
                 }
             } // beforeend (default)
         }
+        core::discard_node(frag);
     }
     /// `toggleAttribute(name, force?)` — add when absent (or force=Some(true)), remove when present
     /// (or force=Some(false)). Returns whether the attribute is present afterward.
@@ -1941,35 +2093,42 @@ impl Tree {
         qualified: &str,
         value: &str,
     ) {
-        let attribute = AttributeData::new(namespace, qualified, value);
-        let old = self.get_attribute_ns(h, namespace, &attribute.local_name);
-        let overlay = self.ensure_attrs(h);
-        overlay.set_namespace(attribute.clone());
-        self.sync_attribute_node(h, &attribute);
-        self.bump();
-        self.record_attributes(
+        self.set_native_attribute_record(
             h,
-            &attribute.local_name,
-            old,
-            attribute.namespace.as_deref(),
+            &NativeAttribute::from_legacy(AttributeData::new(namespace, qualified, value)),
         );
     }
     pub fn remove_attribute_ns(&mut self, h: Handle, namespace: Option<&str>, local: &str) {
-        let namespace = namespace.filter(|value| !value.is_empty());
-        let old = self.get_attribute_ns(h, namespace, local);
-        if let Some(data) = self.attribute_namespaced(h, namespace, local) {
-            self.detach_attribute_node(h, &data);
-        }
-        let overlay = self.ensure_attrs(h);
-        overlay.remove_namespace(namespace, local);
-        if old.is_some() {
-            self.bump();
-            self.record_attributes(h, local, old, namespace);
-        }
+        self.remove_native_attribute_ns(
+            h,
+            namespace
+                .filter(|value| !value.is_empty())
+                .map(DomString::from)
+                .as_ref(),
+            &DomString::from(local),
+        );
     }
 
-    /// Recursively import a parsed `core::Node` as owned nodes. Returns its handle.
-    fn import_node(&mut self, n: &core::Node) -> Handle {
+    /// Import parser intermediates on a heap stack, retaining native parent links.
+    fn import_node(&mut self, node: &core::Node) -> Handle {
+        let root = self.import_scalar_shallow(node);
+        let mut pending = vec![(node, root)];
+        while let Some((source, target)) = pending.pop() {
+            let mut children = ChildList::new();
+            for child in &source.children {
+                let handle = self.import_scalar_shallow(child);
+                self.parent_ov.insert(handle, Some(target));
+                children.push(handle);
+                pending.push((child, handle));
+            }
+            if !children.is_empty() {
+                self.children_ov.insert(target, children);
+            }
+        }
+        root
+    }
+
+    fn import_scalar_shallow(&mut self, n: &core::Node) -> Handle {
         match NodeType::from_u8(n.node_type) {
             NodeType::Element => {
                 let ns = ns_id(&n.namespace);
@@ -1987,25 +2146,9 @@ impl Tree {
                     };
                     self.set_attribute_ns(h, namespace, &qualified, &a.value);
                 }
-                let mut kids = Vec::with_capacity(n.children.len());
-                for c in &n.children {
-                    kids.push(self.import_node(c));
-                }
-                for &k in &kids {
-                    self.parent_ov.insert(k, Some(h));
-                }
-                self.children_ov.insert(h, kids.into());
                 h
             }
-            NodeType::Fragment => {
-                let h = self.create_document_fragment();
-                let kids: ChildList = n.children.iter().map(|c| self.import_node(c)).collect();
-                for &child in &kids {
-                    self.parent_ov.insert(child, Some(h));
-                }
-                self.children_ov.insert(h, kids);
-                h
-            }
+            NodeType::Fragment => self.create_document_fragment(),
             NodeType::Comment => self.create_comment(&n.value),
             NodeType::ProcessingInstruction => {
                 self.create_processing_instruction(&n.name, &n.value)

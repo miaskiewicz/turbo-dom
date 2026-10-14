@@ -5,6 +5,27 @@ environment for vitest/jest. Format based on [Keep a Changelog](https://keepacha
 Early versions were released as lightweight tags / version-stamped commits (no per-release notes
 at the time); this file reconstructs them from history.
 
+## [0.5.5] — lossless native DOM strings
+
+### Added
+- Native UTF-16 payload, name, namespace, doctype and processing-instruction APIs
+  preserve lone surrogates through editing, cloning, serialization, selectors and
+  mutation records. Existing scalar getters remain compatibility views.
+- Original-unit HTML document and fragment parsing uses a source-pinned,
+  license-preserved html5ever tokenizer adaptation. Native code immediately
+  decodes its collision-free internal transport into original unit storage.
+
+### Fixed
+- Preserve template content and interior BOMs in original-unit DOM parsing.
+- Use iterative native parser, import, text and serialization walks; regressions
+  cover8192 nested levels on a512KiB host stack.
+- Keep ordinary scalar DOM payloads compact. The unchanged mutation-churn gate
+  measures367 allocations and81,606 bytes per operation (ceilings380/85,000).
+
+### Tests
+- The isolated backend passes301 contracts and all three strict Clippy variants.
+  Full rebuilt parser/npm/WASM release checks are run on the final PR head.
+
 ## [0.5.4] — 2026-10-14
 
 ### Added

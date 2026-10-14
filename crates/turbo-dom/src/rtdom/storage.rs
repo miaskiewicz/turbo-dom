@@ -74,6 +74,7 @@ impl Tree {
                 payload_bytes += node_bytes(self.new_ref(h));
             }
             if let Some(attrs) = self.attrs_ov.get(h) {
+                payload_bytes += attrs.extra_bytes();
                 attrs.for_each(|namespace, prefix, local, qualified, value| {
                     payload_bytes += namespace.map_or(0, str::len)
                         + prefix.len()
@@ -83,15 +84,22 @@ impl Tree {
                 });
             }
             if let Some(text) = self.text_ov.get(h) {
-                payload_bytes += text.len();
+                payload_bytes += text.payload_bytes();
             }
         }
         for metadata in self.element_namespaces.values() {
-            payload_bytes += metadata.uri.as_ref().map_or(0, smol_str::SmolStr::len)
-                + metadata.prefix.as_ref().map_or(0, smol_str::SmolStr::len)
-                + metadata.qualified_name.len();
+            payload_bytes += metadata
+                .uri
+                .as_ref()
+                .map_or(0, super::DomString::payload_bytes)
+                + metadata
+                    .prefix
+                    .as_ref()
+                    .map_or(0, super::DomString::payload_bytes)
+                + metadata.qualified_name.payload_bytes();
         }
         payload_bytes += self.mutation_payload_bytes();
+        payload_bytes += self.utf16_extra_bytes(None);
         StorageStats {
             live_nodes: self.node_count() as usize,
             parsed_nodes: self.buf_len as usize,
@@ -149,6 +157,13 @@ impl Tree {
         charge(
             &mut work,
             self.mutation_log.as_ref().map_or(0, Vec::len),
+            budget,
+        )?;
+        charge(
+            &mut work,
+            self.attribute_units.len()
+                + self.mutation_old_units.len()
+                + self.mutation_name_units.len(),
             budget,
         )?;
         let before = self.storage_stats();
@@ -239,7 +254,11 @@ impl Tree {
         }
         // Admit expanded retained strings before cloning parser payloads. Shared
         // interned values can expand dramatically when each element is materialized.
-        let mut projected_payload = self.mutation_payload_bytes();
+        let mut projected_payload =
+            self.mutation_payload_bytes() + self.utf16_extra_bytes(Some(&retained));
+        if projected_payload > budget.max_payload_bytes {
+            return Err(CollectionError::BudgetExceeded);
+        }
         for &h in &retained {
             projected_payload = projected_payload
                 .checked_add(self.projected_node_bytes(h))
@@ -259,7 +278,7 @@ impl Tree {
             parents.insert(h, self.parent(h));
             children.insert(h, self.children(h).into_iter().collect::<ChildList>());
             if self.node_type(h) == NodeType::Element {
-                attrs.insert(h, AttrList::from_records(self.attributes_namespaced(h)));
+                attrs.insert(h, AttrList::from_native_records(self.native_attributes(h)));
             }
         }
         self.buf = document_buffer();
@@ -269,6 +288,9 @@ impl Tree {
         self.children_ov = children;
         self.attrs_ov = attrs;
         self.text_ov = Overlay::collected();
+        self.attribute_units
+            .retain(|(owner, _, _), _| retained.contains(owner));
+        self.attribute_units.shrink_to_fit();
         self.element_namespaces.retain(|h, _| retained.contains(h));
         self.attribute_nodes
             .retain(|(owner, _, _), attr| retained.contains(owner) && retained.contains(attr));
@@ -292,6 +314,40 @@ impl Tree {
         })
     }
 
+    fn utf16_extra_bytes(&self, retained: Option<&FxHashSet<Handle>>) -> usize {
+        let key_extras = self
+            .attribute_nodes
+            .keys()
+            .filter(|(owner, _, _)| retained.is_none_or(|set| set.contains(owner)))
+            .map(|(_, namespace, local)| {
+                namespace.as_ref().map_or(0, super::DomString::extra_bytes) + local.extra_bytes()
+            })
+            .sum::<usize>();
+        let mutation_names = self
+            .mutation_name_units
+            .values()
+            .map(super::NativeMutationNames::bytes)
+            .sum::<usize>();
+        mutation_names
+            + key_extras
+            + self
+                .mutation_old_units
+                .values()
+                .map(|units| units.len() * 2)
+                .sum::<usize>()
+            + self
+                .attribute_units
+                .iter()
+                .filter(|((owner, _, _), _)| retained.is_none_or(|set| set.contains(owner)))
+                .map(|((_, namespace, local), units)| {
+                    namespace
+                        .as_ref()
+                        .map_or(0, super::DomString::payload_bytes)
+                        + local.payload_bytes()
+                        + units.len() * 2
+                })
+                .sum::<usize>()
+    }
     fn mutation_payload_bytes(&self) -> usize {
         self.mutation_log.as_ref().map_or(0, |events| {
             events
@@ -307,10 +363,12 @@ impl Tree {
 
     fn character_payload_bytes(&self, node: Handle) -> usize {
         if let Some(value) = self.text_ov.get(node) {
-            return value.len();
+            return value.payload_bytes();
         }
         if self.is_new(node) {
-            return self.new_ref(node).char_data().map_or(0, str::len);
+            return self
+                .character_string(node)
+                .map_or(0, super::DomString::payload_bytes);
         }
         self.buf
             .strings
@@ -321,8 +379,19 @@ impl Tree {
     fn projected_node_bytes(&self, node: Handle) -> usize {
         let mut bytes = match self.node_type(node) {
             NodeType::Document => 0,
-            NodeType::Element => self.local_name(node).map_or(0, str::len),
-            NodeType::Attribute => self.attribute_data(node).map_or(0, attribute_bytes),
+            NodeType::Element => {
+                if self.is_new(node) {
+                    match self.new_ref(node) {
+                        NewNode::Element { name, .. } => name.payload_bytes(),
+                        _ => 0,
+                    }
+                } else {
+                    self.local_name(node).map_or(0, str::len)
+                }
+            }
+            NodeType::Attribute => self
+                .native_attribute_data(node)
+                .map_or(0, native_attribute_bytes),
             NodeType::Text | NodeType::Comment => self.character_payload_bytes(node),
             NodeType::ProcessingInstruction => {
                 self.processing_instruction_target(node).map_or(0, str::len)
@@ -336,6 +405,9 @@ impl Tree {
             NodeType::Fragment => self.node_label(node).map_or(0, str::len),
         };
         if self.node_type(node) == NodeType::Element {
+            if let Some(attrs) = self.attrs_ov.get(node) {
+                bytes += attrs.extra_bytes();
+            }
             self.for_each_attr_namespace(node, |namespace, prefix, local, qualified, value| {
                 let qualified_len = qualified.map_or_else(
                     || local.len() + prefix.len() + usize::from(!prefix.is_empty()),
@@ -349,9 +421,15 @@ impl Tree {
             });
         }
         if let Some(metadata) = self.element_namespaces.get(&node) {
-            bytes += metadata.uri.as_ref().map_or(0, smol_str::SmolStr::len)
-                + metadata.prefix.as_ref().map_or(0, smol_str::SmolStr::len)
-                + metadata.qualified_name.len();
+            bytes += metadata
+                .uri
+                .as_ref()
+                .map_or(0, super::DomString::payload_bytes)
+                + metadata
+                    .prefix
+                    .as_ref()
+                    .map_or(0, super::DomString::payload_bytes)
+                + metadata.qualified_name.payload_bytes();
         }
         bytes
     }
@@ -373,15 +451,21 @@ impl Tree {
                 name: self.local_name(h).unwrap().into(),
                 ns: self.namespace(h),
             },
-            NodeType::Text => NewNode::Text(self.node_value(h).unwrap_or_default().into()),
-            NodeType::Comment => NewNode::Comment(self.node_value(h).unwrap_or_default().into()),
+            NodeType::Text => NewNode::Text(super::DomString::from_units(
+                &self.node_value_utf16(h).unwrap_or_default(),
+            )),
+            NodeType::Comment => NewNode::Comment(super::DomString::from_units(
+                &self.node_value_utf16(h).unwrap_or_default(),
+            )),
             NodeType::ProcessingInstruction => {
                 NewNode::ProcessingInstruction(Box::new(super::ProcessingInstructionData {
                     target: self
                         .processing_instruction_target(h)
                         .unwrap_or_default()
                         .into(),
-                    data: self.node_value(h).unwrap_or_default().into(),
+                    data: super::DomString::from_units(
+                        &self.node_value_utf16(h).unwrap_or_default(),
+                    ),
                 }))
             }
             NodeType::Doctype => NewNode::Doctype(Box::new(super::DoctypeData {
@@ -409,6 +493,9 @@ fn charge(
     }
     Ok(())
 }
+fn native_attribute_bytes(data: &super::NativeAttribute) -> usize {
+    attribute_bytes(&data.legacy) + data.extra_bytes()
+}
 fn attribute_bytes(attr: &super::AttributeData) -> usize {
     attr.namespace.as_ref().map_or(0, smol_str::SmolStr::len)
         + attr.prefix.as_ref().map_or(0, smol_str::SmolStr::len)
@@ -418,11 +505,13 @@ fn attribute_bytes(attr: &super::AttributeData) -> usize {
 }
 fn node_bytes(node: &NewNode) -> usize {
     match node {
-        NewNode::Element { name, .. } => name.len(),
-        NewNode::Attribute { data, .. } => attribute_bytes(data),
-        NewNode::Text(s) | NewNode::Comment(s) => s.len(),
-        NewNode::ProcessingInstruction(p) => p.target.len() + p.data.len(),
-        NewNode::Doctype(d) => d.name.len() + d.public_id.len() + d.system_id.len(),
+        NewNode::Element { name, .. } => name.payload_bytes(),
+        NewNode::Attribute { data, .. } => native_attribute_bytes(data),
+        NewNode::Text(s) | NewNode::Comment(s) => s.payload_bytes(),
+        NewNode::ProcessingInstruction(p) => p.target.payload_bytes() + p.data.payload_bytes(),
+        NewNode::Doctype(d) => {
+            d.name.payload_bytes() + d.public_id.payload_bytes() + d.system_id.payload_bytes()
+        }
         NewNode::Fragment(label) => label.as_ref().map_or(0, smol_str::SmolStr::len),
     }
 }
