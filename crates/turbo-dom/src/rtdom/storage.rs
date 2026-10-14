@@ -1,0 +1,451 @@
+//! Opt-in native storage collection. Handles are never reused after collection.
+use super::{AttrList, ChildList, Handle, NewNode, NodeArena, NodeType, Overlay, Tree};
+use crate::core::Soa;
+use rustc_hash::{FxHashMap, FxHashSet};
+
+/// Limits host work before any storage is changed. The embedder supplies every
+/// native handle whose lifetime is independent of the tree (ranges, iterators,
+/// `XPath` snapshots, queued records and live JavaScript wrapper components).
+#[derive(Debug, Clone, Copy)]
+pub struct CollectionBudget {
+    pub max_nodes: usize,
+    pub max_edges: usize,
+    /// Maximum logical retained payload, checked before node materialization.
+    pub max_payload_bytes: usize,
+}
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CollectionError {
+    BudgetExceeded,
+    InvalidPin,
+    InvalidGraph,
+}
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct StorageStats {
+    pub live_nodes: usize,
+    pub parsed_nodes: usize,
+    pub runtime_slots: usize,
+    /// Logical retained string payload, not allocator overhead.
+    pub payload_bytes: usize,
+}
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct CollectionReport {
+    pub before: StorageStats,
+    pub after: StorageStats,
+    pub reclaimed_nodes: usize,
+}
+
+impl<T> Overlay<T> {
+    fn collected() -> Self {
+        Self {
+            dense: Vec::new(),
+            map: FxHashMap::default(),
+            buf_len: 1,
+            sparse: true,
+        }
+    }
+}
+
+impl Tree {
+    /// Whether a stable handle is still present. Passing a reclaimed handle to
+    /// ordinary DOM reads is a caller error; use this check at external seams.
+    #[must_use]
+    pub fn is_live(&self, h: Handle) -> bool {
+        h.raw() < self.buf_len
+            || match &self.new_nodes {
+                NodeArena::Dense(nodes) => (h.raw() - self.buf_len) < nodes.len() as u32,
+                NodeArena::Sparse(nodes) => nodes.contains_key(&h),
+            }
+    }
+
+    #[must_use]
+    pub fn storage_stats(&self) -> StorageStats {
+        let mut payload_bytes = self
+            .buf
+            .tag_names
+            .iter()
+            .chain(&self.buf.attr_names)
+            .chain(&self.buf.attr_prefixes)
+            .chain(&self.buf.attr_values)
+            .chain(&self.buf.strings)
+            .map(String::len)
+            .sum();
+        for h in self.handles() {
+            if self.is_new(h) {
+                payload_bytes += node_bytes(self.new_ref(h));
+            }
+            if let Some(attrs) = self.attrs_ov.get(h) {
+                attrs.for_each(|namespace, prefix, local, qualified, value| {
+                    payload_bytes += namespace.map_or(0, str::len)
+                        + prefix.len()
+                        + local.len()
+                        + qualified.map_or(0, str::len)
+                        + value.len();
+                });
+            }
+            if let Some(text) = self.text_ov.get(h) {
+                payload_bytes += text.len();
+            }
+        }
+        for metadata in self.element_namespaces.values() {
+            payload_bytes += metadata.uri.as_ref().map_or(0, smol_str::SmolStr::len)
+                + metadata.prefix.as_ref().map_or(0, smol_str::SmolStr::len)
+                + metadata.qualified_name.len();
+        }
+        payload_bytes += self.mutation_payload_bytes();
+        StorageStats {
+            live_nodes: self.node_count() as usize,
+            parsed_nodes: self.buf_len as usize,
+            runtime_slots: self.new_nodes.len(),
+            payload_bytes,
+        }
+    }
+
+    /// Reclaim components unreachable from the document and supplied native
+    /// pins. A retained descendant pins its complete composed component,
+    /// including its ancestors, siblings, shadow trees and owned Attr nodes.
+    /// Pending native mutation events are implicit pins until drained.
+    ///
+    /// No visible DOM mutation, mutation record, version increment or handle
+    /// renumbering occurs. All checks precede the atomic storage replacement.
+    /// Callers must supply *all* independently retained native handles. Omitted
+    /// handles can be collected; this API cannot discover external Rust copies.
+    pub fn collect_unreachable(
+        &mut self,
+        pins: &[Handle],
+        budget: CollectionBudget,
+    ) -> Result<CollectionReport, CollectionError> {
+        if self.node_count() as usize > budget.max_nodes || pins.len() > budget.max_edges {
+            return Err(CollectionError::BudgetExceeded);
+        }
+        let mut work = 0;
+        // Preflight counts are O(nodes), with no traversal of arbitrarily wide
+        // attribute/string tables until their work has been admitted.
+        for pool in [
+            &self.buf.tag_names,
+            &self.buf.attr_names,
+            &self.buf.attr_prefixes,
+            &self.buf.attr_values,
+            &self.buf.strings,
+        ] {
+            charge(&mut work, pool.len(), budget)?;
+        }
+        for h in self.handles() {
+            charge(&mut work, 1, budget)?;
+            let count = self.attrs_ov.get(h).map_or_else(
+                || {
+                    if self.is_new(h) {
+                        0
+                    } else {
+                        usize::from(self.buf.attr_count[h.idx()])
+                    }
+                },
+                |attrs| match attrs {
+                    AttrList::Plain(rows) => rows.len(),
+                    AttrList::Namespaced(rows) => rows.len(),
+                },
+            );
+            charge(&mut work, count, budget)?;
+        }
+        charge(
+            &mut work,
+            self.mutation_log.as_ref().map_or(0, Vec::len),
+            budget,
+        )?;
+        let before = self.storage_stats();
+        let mut roots = vec![self.root()];
+        roots.extend_from_slice(pins);
+        if let Some(records) = &self.mutation_log {
+            for event in records {
+                charge(
+                    &mut work,
+                    1 + event.record.added().len()
+                        + event.record.removed().len()
+                        + event.inclusive_ancestors.len()
+                        + usize::from(event.previous_sibling.is_some())
+                        + usize::from(event.next_sibling.is_some()),
+                    budget,
+                )?;
+                roots.push(event.record.target());
+                roots.extend_from_slice(event.record.added());
+                roots.extend_from_slice(event.record.removed());
+                roots.extend_from_slice(&event.inclusive_ancestors);
+                roots.extend(event.previous_sibling);
+                roots.extend(event.next_sibling);
+                if roots.len() > budget.max_edges {
+                    return Err(CollectionError::BudgetExceeded);
+                }
+            }
+        }
+        let required = roots.clone();
+        let mut retained = FxHashSet::default();
+        let mut owned_attrs: FxHashMap<Handle, Vec<Handle>> = FxHashMap::default();
+        for ((owner, _, _), attr) in &self.attribute_nodes {
+            charge(&mut work, 1, budget)?;
+            owned_attrs.entry(*owner).or_default().push(*attr);
+        }
+        for mut h in roots {
+            if !self.is_live(h) {
+                return Err(CollectionError::InvalidPin);
+            }
+            let mut ancestors = FxHashSet::default();
+            while let Some(parent) = self
+                .parent(h)
+                .or_else(|| self.attribute_owner(h))
+                .or_else(|| self.shadow_host(h))
+            {
+                charge(&mut work, 1, budget)?;
+                if !ancestors.insert(h) || !self.is_live(parent) {
+                    return Err(CollectionError::InvalidGraph);
+                }
+                if self.parent(h).is_none()
+                    && self.attribute_owner(h).is_none()
+                    && self.shadow_root(parent) != Some(h)
+                {
+                    return Err(CollectionError::InvalidGraph);
+                }
+                h = parent;
+            }
+            let mut pending = vec![h];
+            while let Some(node) = pending.pop() {
+                charge(&mut work, 1, budget)?;
+                if !self.is_live(node) {
+                    return Err(CollectionError::InvalidGraph);
+                }
+                if !retained.insert(node) {
+                    continue;
+                }
+                let children = self.children(node);
+                charge(&mut work, children.len(), budget)?;
+                for child in children {
+                    if self.parent(child) != Some(node) {
+                        return Err(CollectionError::InvalidGraph);
+                    }
+                    pending.push(child);
+                }
+                if let Some(shadow) = self.shadow_root(node) {
+                    if self.shadow_host(shadow) != Some(node) {
+                        return Err(CollectionError::InvalidGraph);
+                    }
+                    pending.push(shadow);
+                }
+                // Attribute identity is independent of the element's attribute list.
+                if let Some(attrs) = owned_attrs.get(&node) {
+                    pending.extend_from_slice(attrs);
+                }
+            }
+        }
+        if required.iter().any(|node| !retained.contains(node)) {
+            return Err(CollectionError::InvalidGraph);
+        }
+        // Admit expanded retained strings before cloning parser payloads. Shared
+        // interned values can expand dramatically when each element is materialized.
+        let mut projected_payload = self.mutation_payload_bytes();
+        for &h in &retained {
+            projected_payload = projected_payload
+                .checked_add(self.projected_node_bytes(h))
+                .ok_or(CollectionError::BudgetExceeded)?;
+            if projected_payload > budget.max_payload_bytes {
+                return Err(CollectionError::BudgetExceeded);
+            }
+        }
+        let mut nodes = FxHashMap::default();
+        let mut parents = Overlay::collected();
+        let mut children = Overlay::collected();
+        let mut attrs = Overlay::collected();
+        for &h in &retained {
+            if h != self.root() {
+                nodes.insert(h, self.materialize_node(h));
+            }
+            parents.insert(h, self.parent(h));
+            children.insert(h, self.children(h).into_iter().collect::<ChildList>());
+            if self.node_type(h) == NodeType::Element {
+                attrs.insert(h, AttrList::from_records(self.attributes_namespaced(h)));
+            }
+        }
+        self.buf = document_buffer();
+        self.buf_len = 1;
+        self.new_nodes = NodeArena::Sparse(nodes);
+        self.parent_ov = parents;
+        self.children_ov = children;
+        self.attrs_ov = attrs;
+        self.text_ov = Overlay::collected();
+        self.element_namespaces.retain(|h, _| retained.contains(h));
+        self.attribute_nodes
+            .retain(|(owner, _, _), attr| retained.contains(owner) && retained.contains(attr));
+        self.shadow_root_of_host
+            .retain(|host, shadow| retained.contains(host) && retained.contains(shadow));
+        self.host_of_shadow_root
+            .retain(|shadow, host| retained.contains(host) && retained.contains(shadow));
+        self.form_props.retain(|(h, _), _| retained.contains(h));
+        self.element_namespaces.shrink_to_fit();
+        self.attribute_nodes.shrink_to_fit();
+        self.shadow_root_of_host.shrink_to_fit();
+        self.host_of_shadow_root.shrink_to_fit();
+        self.form_props.shrink_to_fit();
+        *self.qcache.borrow_mut() = super::QueryCache::default();
+        *self.css_cache.borrow_mut() = crate::rtdom::cascade::CssCache::default();
+        let after = self.storage_stats();
+        Ok(CollectionReport {
+            reclaimed_nodes: before.live_nodes - after.live_nodes,
+            before,
+            after,
+        })
+    }
+
+    fn mutation_payload_bytes(&self) -> usize {
+        self.mutation_log.as_ref().map_or(0, |events| {
+            events
+                .iter()
+                .map(|event| {
+                    event.record.attribute_name().map_or(0, str::len)
+                        + event.record.old_value().map_or(0, str::len)
+                        + event.attribute_namespace.as_ref().map_or(0, String::len)
+                })
+                .sum()
+        })
+    }
+
+    fn character_payload_bytes(&self, node: Handle) -> usize {
+        if let Some(value) = self.text_ov.get(node) {
+            return value.len();
+        }
+        if self.is_new(node) {
+            return self.new_ref(node).char_data().map_or(0, str::len);
+        }
+        self.buf
+            .strings
+            .get(self.buf.text_id[node.idx()] as usize)
+            .map_or(0, String::len)
+    }
+
+    fn projected_node_bytes(&self, node: Handle) -> usize {
+        let mut bytes = match self.node_type(node) {
+            NodeType::Document => 0,
+            NodeType::Element => self.local_name(node).map_or(0, str::len),
+            NodeType::Attribute => self.attribute_data(node).map_or(0, attribute_bytes),
+            NodeType::Text | NodeType::Comment => self.character_payload_bytes(node),
+            NodeType::ProcessingInstruction => {
+                self.processing_instruction_target(node).map_or(0, str::len)
+                    + self.character_payload_bytes(node)
+            }
+            NodeType::Doctype => {
+                self.doctype_name(node).map_or(0, str::len)
+                    + self.doctype_public_id(node).map_or(0, str::len)
+                    + self.doctype_system_id(node).map_or(0, str::len)
+            }
+            NodeType::Fragment => self.node_label(node).map_or(0, str::len),
+        };
+        if self.node_type(node) == NodeType::Element {
+            self.for_each_attr_namespace(node, |namespace, prefix, local, qualified, value| {
+                let qualified_len = qualified.map_or_else(
+                    || local.len() + prefix.len() + usize::from(!prefix.is_empty()),
+                    str::len,
+                );
+                bytes += namespace.map_or(0, str::len)
+                    + prefix.len()
+                    + local.len()
+                    + qualified_len
+                    + value.len();
+            });
+        }
+        if let Some(metadata) = self.element_namespaces.get(&node) {
+            bytes += metadata.uri.as_ref().map_or(0, smol_str::SmolStr::len)
+                + metadata.prefix.as_ref().map_or(0, smol_str::SmolStr::len)
+                + metadata.qualified_name.len();
+        }
+        bytes
+    }
+
+    fn materialize_node(&self, h: Handle) -> NewNode {
+        if self.is_new(h) {
+            let mut node = self.new_ref(h).clone();
+            if let Some(value) = self.text_ov.get(h) {
+                match &mut node {
+                    NewNode::Text(data) | NewNode::Comment(data) => *data = value.clone(),
+                    NewNode::ProcessingInstruction(data) => data.data = value.clone(),
+                    _ => {}
+                }
+            }
+            return node;
+        }
+        match self.node_type(h) {
+            NodeType::Element => NewNode::Element {
+                name: self.local_name(h).unwrap().into(),
+                ns: self.namespace(h),
+            },
+            NodeType::Text => NewNode::Text(self.node_value(h).unwrap_or_default().into()),
+            NodeType::Comment => NewNode::Comment(self.node_value(h).unwrap_or_default().into()),
+            NodeType::ProcessingInstruction => {
+                NewNode::ProcessingInstruction(Box::new(super::ProcessingInstructionData {
+                    target: self
+                        .processing_instruction_target(h)
+                        .unwrap_or_default()
+                        .into(),
+                    data: self.node_value(h).unwrap_or_default().into(),
+                }))
+            }
+            NodeType::Doctype => NewNode::Doctype(Box::new(super::DoctypeData {
+                name: self.doctype_name(h).unwrap_or_default().into(),
+                public_id: self.doctype_public_id(h).unwrap_or_default().into(),
+                system_id: self.doctype_system_id(h).unwrap_or_default().into(),
+            })),
+            NodeType::Fragment => NewNode::Fragment(self.node_label(h).map(Into::into)),
+            NodeType::Attribute | NodeType::Document => {
+                unreachable!("only parser nodes are materialized")
+            }
+        }
+    }
+}
+fn charge(
+    work: &mut usize,
+    amount: usize,
+    budget: CollectionBudget,
+) -> Result<(), CollectionError> {
+    *work = work
+        .checked_add(amount)
+        .ok_or(CollectionError::BudgetExceeded)?;
+    if *work > budget.max_edges {
+        return Err(CollectionError::BudgetExceeded);
+    }
+    Ok(())
+}
+fn attribute_bytes(attr: &super::AttributeData) -> usize {
+    attr.namespace.as_ref().map_or(0, smol_str::SmolStr::len)
+        + attr.prefix.as_ref().map_or(0, smol_str::SmolStr::len)
+        + attr.local_name.len()
+        + attr.qualified_name.len()
+        + attr.value.len()
+}
+fn node_bytes(node: &NewNode) -> usize {
+    match node {
+        NewNode::Element { name, .. } => name.len(),
+        NewNode::Attribute { data, .. } => attribute_bytes(data),
+        NewNode::Text(s) | NewNode::Comment(s) => s.len(),
+        NewNode::ProcessingInstruction(p) => p.target.len() + p.data.len(),
+        NewNode::Doctype(d) => d.name.len() + d.public_id.len() + d.system_id.len(),
+        NewNode::Fragment(label) => label.as_ref().map_or(0, smol_str::SmolStr::len),
+    }
+}
+fn document_buffer() -> Soa {
+    Soa {
+        node_type: vec![9],
+        ns: vec![0],
+        tag_id: vec![0],
+        parent: vec![-1],
+        first_child: vec![-1],
+        next_sib: vec![-1],
+        text_id: vec![-1],
+        pub_id: vec![-1],
+        sys_id: vec![-1],
+        attr_start: vec![-1],
+        attr_count: vec![0],
+        attr_name_id: vec![],
+        attr_value_id: vec![],
+        attr_prefix_id: vec![],
+        tag_names: vec![],
+        attr_names: vec![],
+        attr_prefixes: vec![],
+        attr_values: vec![],
+        strings: vec![],
+    }
+}
