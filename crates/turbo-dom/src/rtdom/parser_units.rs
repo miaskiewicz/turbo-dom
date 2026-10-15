@@ -10,7 +10,7 @@ use html5ever::{LocalName, QualName};
 use markup5ever_rcdom::RcDom;
 pub(super) const ESCAPE: char = '\u{f0000}';
 const UNIT_BASE: u32 = 0xf0800;
-fn encode(units: &[u16]) -> String {
+pub(super) fn encode(units: &[u16]) -> String {
     let mut source = String::new();
     for value in char::decode_utf16(units.iter().copied()) {
         match value {
@@ -31,7 +31,7 @@ fn encode(units: &[u16]) -> String {
     }
     source
 }
-fn decode(source: &str) -> Vec<u16> {
+pub(super) fn decode(source: &str) -> Vec<u16> {
     let mut chars = source.chars();
     let mut units = Vec::new();
     while let Some(c) = chars.next() {
@@ -140,6 +140,9 @@ impl Tree {
             return Self::parse(&source);
         }
         let dom = parsed(units, None);
+        Self::from_units_dom(&dom)
+    }
+    pub(super) fn from_units_dom(dom: &RcDom) -> Self {
         let node = core::walk(&dom.document);
         let mut tree = Self::parse("");
         tree.compat_mode = if dom.quirks_mode.get() == QuirksMode::Quirks {

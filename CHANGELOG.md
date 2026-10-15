@@ -5,6 +5,34 @@ environment for vitest/jest. Format based on [Keep a Changelog](https://keepacha
 Early versions were released as lightweight tags / version-stamped commits (no per-release notes
 at the time); this file reconstructs them from history.
 
+## [Unreleased]
+
+## [0.5.6] — 2026-10-15
+
+### Added
+- Public native `Tree::take_template_contents` extracts only genuine parsed HTML
+  template fragments while preserving ordinary light children, mutation records
+  and collection ownership. Retain extracted components with explicit collection
+  pins. Keep nine reviewed extraction controls, including imported UTF-16, cache
+  invalidation, shadow roots, failure behavior and eventual storage reclamation.
+- Optional original-input parser provenance through `Tree::parse_with_source_positions`
+  and `parse_utf16_with_source_positions`. Token-time lexical node positions and
+  attribute installation context preserve CRLF, non-BMP and lone UTF-16 units,
+  distinguish duplicate sources and later html/body attributes, and keep
+  reconstructed/synthetic node spans absent. Source metadata follows stable
+  handles and is reclaimed by bounded native storage collection.
+- Fresh normal Chrome155.79 / V8.23 controls cover13 mainframe parser source
+  cases; an independent inert-template control is retained for the browser
+  binding's owner-document reporting semantics.
+
+### Validation
+- Rust 1.99.0 passes 326 backend contracts and seven parser tests, all three
+  strict Clippy variants, changed-file formatting, rebuilt native and Node/Web
+  WASM packages, 548 JS tests, 29 vitest tests and two Jest tests.
+- The isolated allocation gate remains 367 allocations and 81,606 bytes per
+  operation (ceilings 380/85,000). html5lib retains its five known failures
+  (1778/1783 evaluated; eight skipped).
+
 ## [0.5.5] — lossless native DOM strings
 
 ### Added

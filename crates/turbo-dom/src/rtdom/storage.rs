@@ -161,7 +161,13 @@ impl Tree {
         )?;
         charge(
             &mut work,
-            self.attribute_units.len()
+            self.source_attribute_positions
+                .values()
+                .map(FxHashMap::len)
+                .sum::<usize>()
+                + self.source_attribute_positions.len()
+                + self.source_positions.len()
+                + self.attribute_units.len()
                 + self.mutation_old_units.len()
                 + self.mutation_name_units.len(),
             budget,
@@ -298,6 +304,11 @@ impl Tree {
             .retain(|host, shadow| retained.contains(host) && retained.contains(shadow));
         self.host_of_shadow_root
             .retain(|shadow, host| retained.contains(host) && retained.contains(shadow));
+        self.source_positions.retain(|h, _| retained.contains(h));
+        self.source_positions.shrink_to_fit();
+        self.source_attribute_positions
+            .retain(|h, _| retained.contains(h));
+        self.source_attribute_positions.shrink_to_fit();
         self.form_props.retain(|(h, _), _| retained.contains(h));
         self.element_namespaces.shrink_to_fit();
         self.attribute_nodes.shrink_to_fit();
@@ -328,7 +339,15 @@ impl Tree {
             .values()
             .map(super::NativeMutationNames::bytes)
             .sum::<usize>();
-        mutation_names
+        let position_names = self
+            .source_attribute_positions
+            .iter()
+            .filter(|(owner, _)| retained.is_none_or(|set| set.contains(owner)))
+            .flat_map(|(_, positions)| positions.keys())
+            .map(|name| name.len() * 2)
+            .sum::<usize>();
+        position_names
+            + mutation_names
             + key_extras
             + self
                 .mutation_old_units
