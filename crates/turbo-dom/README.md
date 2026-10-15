@@ -121,3 +121,34 @@ identities can have holes: iterate `handles()` instead of constructing
 `0..node_count()` handles. Use `is_live()` before passing an externally retained
 handle to a DOM read; omitted pins can be reclaimed. `NodeRef` borrowing protects
 concurrent safe Rust mutation but cannot discover external copied handles.
+
+## Parser provenance
+
+`Tree::parse_with_source_positions` and `parse_utf16_with_source_positions` opt
+into original-input positions without changing the normal parse path. The
+original UTF-16 offset and one-based line/column come from the actual tokenizer
+queue at token emission. CRLF counts as one line break and two original units.
+Sparse source checkpoints bound position lookup work; metadata does not retain
+the input after parsing.
+
+`source_position(node)` identifies the token that created an actual lexical
+node. Synthetic and reconstructed nodes return `None`.
+`source_attribute_position(node, name)` and its UTF-16 name variant identify the
+parser context where an attribute was installed, including later html/body tags
+and formatting reconstruction. This differs from the node's lexical provenance.
+Mutations do not fabricate new positions; native storage collection prunes
+metadata for reclaimed handles.
+
+The independent normal Chrome controls and their pinned probe/case/collector
+sources live in `tests/controls/parser_positions`. Recollect with:
+
+```sh
+node crates/turbo-dom/tests/controls/parser_positions/csp-document-chrome.mjs \
+  crates/turbo-dom/tests/controls/parser_positions/parser-source-position-cases.json \
+  crates/turbo-dom/tests/controls/parser_positions/parser-source-position-probe.js \
+  crates/turbo-dom/tests/controls/parser_positions/parser-source-position-chrome155.json
+```
+
+The backend test compares13 mainframe cases. Inert-template report metadata
+requires the browser binding's actual owner-document context; its full14th
+control is preserved rather than represented as a backend lexical-position rule.

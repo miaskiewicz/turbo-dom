@@ -1,0 +1,305 @@
+{
+  "browser": "Chrome/155.0.8059.79",
+  "v8": "15.5.35.23",
+  "casesSha256": "3f29f5a5e366e190e6e857e7110debcf1bb1a58b70c6511abedede311df5405e",
+  "probeSha256": "9b525d10d04e0c59eb787852138fa50969c9a753831ed8e1157abae2d05036a9",
+  "collectorSha256": "5de38e775337d1aa4e7c84f772f8d3e9e561d0bc76cf836e0e2f6bbbca6554dc",
+  "flags": [
+    "--remote-debugging-port=0",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "about:blank"
+  ],
+  "errors": [],
+  "result": [
+    {
+      "id": "0",
+      "result": [
+        {
+          "target": "style",
+          "sourceFile": "<origin>/",
+          "line": 3,
+          "column": 8,
+          "directive": "style-src-elem",
+          "original": "script-src 'unsafe-inline'; style-src 'none'",
+          "trusted": true
+        },
+        {
+          "target": "div",
+          "sourceFile": "<origin>/",
+          "line": 3,
+          "column": 61,
+          "directive": "style-src-attr",
+          "original": "script-src 'unsafe-inline'; style-src 'none'",
+          "trusted": true
+        }
+      ]
+    },
+    {
+      "id": "1",
+      "result": [
+        {
+          "target": "style",
+          "sourceFile": "<origin>/",
+          "line": 4,
+          "column": 8,
+          "directive": "style-src-elem",
+          "original": "script-src 'unsafe-inline'; style-src 'none'",
+          "trusted": true
+        },
+        {
+          "target": "div",
+          "sourceFile": "<origin>/",
+          "line": 4,
+          "column": 54,
+          "directive": "style-src-attr",
+          "original": "script-src 'unsafe-inline'; style-src 'none'",
+          "trusted": true
+        }
+      ]
+    },
+    {
+      "id": "2",
+      "result": [
+        {
+          "target": "style",
+          "sourceFile": "<origin>/",
+          "line": 3,
+          "column": 8,
+          "directive": "style-src-elem",
+          "original": "script-src 'unsafe-inline'; style-src 'none'",
+          "trusted": true
+        },
+        {
+          "target": "style",
+          "sourceFile": "<origin>/",
+          "line": 3,
+          "column": 26,
+          "directive": "style-src-elem",
+          "original": "script-src 'unsafe-inline'; style-src 'none'",
+          "trusted": true
+        },
+        {
+          "target": "div",
+          "sourceFile": "<origin>/",
+          "line": 3,
+          "column": 52,
+          "directive": "style-src-attr",
+          "original": "script-src 'unsafe-inline'; style-src 'none'",
+          "trusted": true
+        }
+      ]
+    },
+    {
+      "id": "3",
+      "result": [
+        {
+          "target": "div",
+          "sourceFile": "<origin>/",
+          "line": 4,
+          "column": 19,
+          "directive": "style-src-attr",
+          "original": "script-src 'unsafe-inline'; style-src 'none'",
+          "trusted": true
+        }
+      ]
+    },
+    {
+      "id": "4",
+      "result": [
+        {
+          "target": "td",
+          "sourceFile": "<origin>/",
+          "line": 3,
+          "column": 34,
+          "directive": "style-src-attr",
+          "original": "script-src 'unsafe-inline'; style-src 'none'",
+          "trusted": true
+        },
+        {
+          "target": "div",
+          "sourceFile": "<origin>/",
+          "line": 3,
+          "column": 69,
+          "directive": "style-src-attr",
+          "original": "script-src 'unsafe-inline'; style-src 'none'",
+          "trusted": true
+        }
+      ]
+    },
+    {
+      "id": "5",
+      "result": [
+        {
+          "target": "body",
+          "sourceFile": "<origin>/",
+          "line": 3,
+          "column": 51,
+          "directive": "style-src-attr",
+          "original": "script-src 'unsafe-inline'; style-src 'none'",
+          "trusted": true
+        }
+      ]
+    },
+    {
+      "id": "6",
+      "result": [
+        {
+          "target": "b",
+          "sourceFile": "<origin>/",
+          "line": 3,
+          "column": 25,
+          "directive": "style-src-attr",
+          "original": "script-src 'unsafe-inline'; style-src 'none'",
+          "trusted": true
+        },
+        {
+          "target": "b",
+          "sourceFile": "<origin>/",
+          "line": 3,
+          "column": 51,
+          "directive": "style-src-attr",
+          "original": "script-src 'unsafe-inline'; style-src 'none'",
+          "trusted": true
+        },
+        {
+          "target": "b",
+          "sourceFile": "<origin>/",
+          "line": 3,
+          "column": 51,
+          "directive": "style-src-attr",
+          "original": "script-src 'unsafe-inline'; style-src 'none'",
+          "trusted": true
+        }
+      ]
+    },
+    {
+      "id": "7",
+      "result": [
+        {
+          "target": "document",
+          "sourceFile": "",
+          "line": 0,
+          "column": 0,
+          "directive": "style-src-attr",
+          "original": "script-src 'unsafe-inline'; style-src 'none'",
+          "trusted": true
+        }
+      ]
+    },
+    {
+      "id": "8",
+      "result": [
+        {
+          "target": "style",
+          "sourceFile": "<origin>/",
+          "line": 3,
+          "column": 13,
+          "directive": "style-src-elem",
+          "original": "script-src 'unsafe-inline'; style-src 'none'",
+          "trusted": true
+        },
+        {
+          "target": "g",
+          "sourceFile": "<origin>/",
+          "line": 3,
+          "column": 45,
+          "directive": "style-src-attr",
+          "original": "script-src 'unsafe-inline'; style-src 'none'",
+          "trusted": true
+        }
+      ]
+    },
+    {
+      "id": "9",
+      "result": [
+        {
+          "target": "div",
+          "sourceFile": "<origin>/",
+          "line": 3,
+          "column": 43,
+          "directive": "style-src-attr",
+          "original": "script-src 'unsafe-inline'; style-src 'none'",
+          "trusted": true
+        }
+      ]
+    },
+    {
+      "id": "10",
+      "result": [
+        {
+          "target": "div",
+          "sourceFile": "<origin>/",
+          "line": 1027,
+          "column": 24,
+          "directive": "style-src-attr",
+          "original": "script-src 'unsafe-inline'; style-src 'none'",
+          "trusted": true
+        }
+      ]
+    },
+    {
+      "id": "11",
+      "result": [
+        {
+          "target": "div",
+          "sourceFile": "<origin>/",
+          "line": 4,
+          "column": 6,
+          "directive": "style-src-attr",
+          "original": "script-src 'unsafe-inline'; style-src 'none'",
+          "trusted": true
+        }
+      ]
+    },
+    {
+      "id": "12",
+      "result": [
+        {
+          "target": "b",
+          "sourceFile": "<origin>/",
+          "line": 3,
+          "column": 25,
+          "directive": "style-src-attr",
+          "original": "script-src 'unsafe-inline'; style-src 'none'",
+          "trusted": true
+        },
+        {
+          "target": "b",
+          "sourceFile": "<origin>/",
+          "line": 3,
+          "column": 31,
+          "directive": "style-src-attr",
+          "original": "script-src 'unsafe-inline'; style-src 'none'",
+          "trusted": true
+        }
+      ]
+    },
+    {
+      "id": "13",
+      "result": [
+        {
+          "target": "b",
+          "sourceFile": "<origin>/",
+          "line": 3,
+          "column": 22,
+          "directive": "style-src-attr",
+          "original": "script-src 'unsafe-inline'; style-src 'none'",
+          "trusted": true
+        },
+        {
+          "target": "b",
+          "sourceFile": "<origin>/",
+          "line": 3,
+          "column": 30,
+          "directive": "style-src-attr",
+          "original": "script-src 'unsafe-inline'; style-src 'none'",
+          "trusted": true
+        }
+      ]
+    }
+  ]
+}

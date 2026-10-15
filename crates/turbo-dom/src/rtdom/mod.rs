@@ -34,4 +34,4 @@ mod gauntlet;
 
 pub use events::{Dom, Event};
 pub use node_ref::{DocumentExt, NodeRef};
-pub use tree::{Handle, Tree};
+pub use tree::{Handle, SourcePosition, Tree};

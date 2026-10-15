@@ -1,0 +1,142 @@
+[
+  {
+    "id": "0",
+    "headers": [
+      [
+        "Content-Security-Policy",
+        "script-src 'unsafe-inline'; style-src 'none'"
+      ]
+    ],
+    "html": "<!doctype html>\n<script>globalThis.parserRows=[];document.addEventListener('securitypolicyviolation',event=>parserRows.push({target:event.target.localName||'document',sourceFile:event.sourceFile.replace(location.origin,'<origin>'),line:event.lineNumber,column:event.columnNumber,directive:event.effectiveDirective,original:event.originalPolicy,trusted:event.isTrusted}));</script>\n<style>div {color:red}</style><body><div style='color:blue'>x</div></body>"
+  },
+  {
+    "id": "1",
+    "headers": [
+      [
+        "Content-Security-Policy",
+        "script-src 'unsafe-inline'; style-src 'none'"
+      ]
+    ],
+    "html": "<!doctype html>\r\n<script>globalThis.parserRows=[];document.addEventListener('securitypolicyviolation',event=>parserRows.push({target:event.target.localName||'document',sourceFile:event.sourceFile.replace(location.origin,'<origin>'),line:event.lineNumber,column:event.columnNumber,directive:event.effectiveDirective,original:event.originalPolicy,trusted:event.isTrusted}));</script>\r\n\ud83d\ude00\r\n<style>div{color:red}</style><div style='color:blue'>x</div>"
+  },
+  {
+    "id": "2",
+    "headers": [
+      [
+        "Content-Security-Policy",
+        "script-src 'unsafe-inline'; style-src 'none'"
+      ]
+    ],
+    "html": "<!doctype html>\n<script>globalThis.parserRows=[];document.addEventListener('securitypolicyviolation',event=>parserRows.push({target:event.target.localName||'document',sourceFile:event.sourceFile.replace(location.origin,'<origin>'),line:event.lineNumber,column:event.columnNumber,directive:event.effectiveDirective,original:event.originalPolicy,trusted:event.isTrusted}));</script>\n<style>a{}</style><style>a{}</style><div style='x'></div>"
+  },
+  {
+    "id": "3",
+    "headers": [
+      [
+        "Content-Security-Policy",
+        "script-src 'unsafe-inline'; style-src 'none'"
+      ]
+    ],
+    "html": "<!doctype html>\n<script>globalThis.parserRows=[];document.addEventListener('securitypolicyviolation',event=>parserRows.push({target:event.target.localName||'document',sourceFile:event.sourceFile.replace(location.origin,'<origin>'),line:event.lineNumber,column:event.columnNumber,directive:event.effectiveDirective,original:event.originalPolicy,trusted:event.isTrusted}));</script>\n<div\nstyle='color:red'>x</div>"
+  },
+  {
+    "id": "4",
+    "headers": [
+      [
+        "Content-Security-Policy",
+        "script-src 'unsafe-inline'; style-src 'none'"
+      ]
+    ],
+    "html": "<!doctype html>\n<script>globalThis.parserRows=[];document.addEventListener('securitypolicyviolation',event=>parserRows.push({target:event.target.localName||'document',sourceFile:event.sourceFile.replace(location.origin,'<origin>'),line:event.lineNumber,column:event.columnNumber,directive:event.effectiveDirective,original:event.originalPolicy,trusted:event.isTrusted}));</script>\n<table><tr><td style='color:red'>x</td></tr><div style='color:blue'>y</div></table>"
+  },
+  {
+    "id": "5",
+    "headers": [
+      [
+        "Content-Security-Policy",
+        "script-src 'unsafe-inline'; style-src 'none'"
+      ]
+    ],
+    "html": "<!doctype html>\n<script>globalThis.parserRows=[];document.addEventListener('securitypolicyviolation',event=>parserRows.push({target:event.target.localName||'document',sourceFile:event.sourceFile.replace(location.origin,'<origin>'),line:event.lineNumber,column:event.columnNumber,directive:event.effectiveDirective,original:event.originalPolicy,trusted:event.isTrusted}));</script>\n<body id=first><body style='color:red' id=ignored><div>x</div>"
+  },
+  {
+    "id": "6",
+    "headers": [
+      [
+        "Content-Security-Policy",
+        "script-src 'unsafe-inline'; style-src 'none'"
+      ]
+    ],
+    "html": "<!doctype html>\n<script>globalThis.parserRows=[];document.addEventListener('securitypolicyviolation',event=>parserRows.push({target:event.target.localName||'document',sourceFile:event.sourceFile.replace(location.origin,'<origin>'),line:event.lineNumber,column:event.columnNumber,directive:event.effectiveDirective,original:event.originalPolicy,trusted:event.isTrusted}));</script>\n<p><b style='color:red'>1</p><b style='color:red'>2"
+  },
+  {
+    "id": "7",
+    "headers": [
+      [
+        "Content-Security-Policy",
+        "script-src 'unsafe-inline'; style-src 'none'"
+      ]
+    ],
+    "html": "<!doctype html>\n<script>globalThis.parserRows=[];document.addEventListener('securitypolicyviolation',event=>parserRows.push({target:event.target.localName||'document',sourceFile:event.sourceFile.replace(location.origin,'<origin>'),line:event.lineNumber,column:event.columnNumber,directive:event.effectiveDirective,original:event.originalPolicy,trusted:event.isTrusted}));</script>\n<template><div style='color:red'><style>div{}</style></div></template><div>x</div>"
+  },
+  {
+    "id": "8",
+    "headers": [
+      [
+        "Content-Security-Policy",
+        "script-src 'unsafe-inline'; style-src 'none'"
+      ]
+    ],
+    "html": "<!doctype html>\n<script>globalThis.parserRows=[];document.addEventListener('securitypolicyviolation',event=>parserRows.push({target:event.target.localName||'document',sourceFile:event.sourceFile.replace(location.origin,'<origin>'),line:event.lineNumber,column:event.columnNumber,directive:event.effectiveDirective,original:event.originalPolicy,trusted:event.isTrusted}));</script>\n<svg><style>g{}</style><g style='color:red'></g></svg>"
+  },
+  {
+    "id": "9",
+    "headers": [
+      [
+        "Content-Security-Policy",
+        "script-src 'unsafe-inline'; style-src 'none'"
+      ]
+    ],
+    "html": "<!doctype html>\n<script>globalThis.parserRows=[];document.addEventListener('securitypolicyviolation',event=>parserRows.push({target:event.target.localName||'document',sourceFile:event.sourceFile.replace(location.origin,'<origin>'),line:event.lineNumber,column:event.columnNumber,directive:event.effectiveDirective,original:event.originalPolicy,trusted:event.isTrusted}));</script>\n<div style='color:red' style='color:blue'>x</div>"
+  },
+  {
+    "id": "10",
+    "headers": [
+      [
+        "Content-Security-Policy",
+        "script-src 'unsafe-inline'; style-src 'none'"
+      ]
+    ],
+    "html": "<!doctype html>\n<script>globalThis.parserRows=[];document.addEventListener('securitypolicyviolation',event=>parserRows.push({target:event.target.localName||'document',sourceFile:event.sourceFile.replace(location.origin,'<origin>'),line:event.lineNumber,column:event.columnNumber,directive:event.effectiveDirective,original:event.originalPolicy,trusted:event.isTrusted}));</script>\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n\ud83d\ude00\r\n<div style='color:red'>x</div>"
+  },
+  {
+    "id": "11",
+    "headers": [
+      [
+        "Content-Security-Policy",
+        "script-src 'unsafe-inline'; style-src 'none'"
+      ]
+    ],
+    "html": "<!doctype html>\n<script>globalThis.parserRows=[];document.addEventListener('securitypolicyviolation',event=>parserRows.push({target:event.target.localName||'document',sourceFile:event.sourceFile.replace(location.origin,'<origin>'),line:event.lineNumber,column:event.columnNumber,directive:event.effectiveDirective,original:event.originalPolicy,trusted:event.isTrusted}));</script>\n<div style='color:\r\nred'>x</div>"
+  },
+  {
+    "id": "12",
+    "headers": [
+      [
+        "Content-Security-Policy",
+        "script-src 'unsafe-inline'; style-src 'none'"
+      ]
+    ],
+    "html": "<!doctype html>\n<script>globalThis.parserRows=[];document.addEventListener('securitypolicyviolation',event=>parserRows.push({target:event.target.localName||'document',sourceFile:event.sourceFile.replace(location.origin,'<origin>'),line:event.lineNumber,column:event.columnNumber,directive:event.effectiveDirective,original:event.originalPolicy,trusted:event.isTrusted}));</script>\n<p><b style='color:red'>1</p>2"
+  },
+  {
+    "id": "13",
+    "headers": [
+      [
+        "Content-Security-Policy",
+        "script-src 'unsafe-inline'; style-src 'none'"
+      ]
+    ],
+    "html": "<!doctype html>\n<script>globalThis.parserRows=[];document.addEventListener('securitypolicyviolation',event=>parserRows.push({target:event.target.localName||'document',sourceFile:event.sourceFile.replace(location.origin,'<origin>'),line:event.lineNumber,column:event.columnNumber,directive:event.effectiveDirective,original:event.originalPolicy,trusted:event.isTrusted}));</script>\n<b style='color:red'><p>1</b>2"
+  }
+]

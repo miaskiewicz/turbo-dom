@@ -532,8 +532,11 @@ impl NodeArena {
     }
 }
 
+#[path = "parser_positions.rs"]
+mod parser_positions;
 #[path = "parser_units.rs"]
 mod parser_units;
+pub use parser_positions::SourcePosition;
 #[allow(clippy::pedantic)]
 #[path = "unit_tokenizer/mod.rs"]
 mod unit_tokenizer;
@@ -557,6 +560,8 @@ pub use storage::{CollectionBudget, CollectionError, CollectionReport, StorageSt
 
 pub struct Tree {
     buf: Soa,
+    source_positions: FxHashMap<Handle, SourcePosition>,
+    source_attribute_positions: FxHashMap<Handle, FxHashMap<Box<[u16]>, SourcePosition>>,
     compat_mode: &'static str,
     buf_len: u32,
     new_nodes: NodeArena,
@@ -626,6 +631,8 @@ impl Tree {
         let buf_len = buf.node_type.len() as u32;
         Tree {
             buf,
+            source_positions: FxHashMap::default(),
+            source_attribute_positions: FxHashMap::default(),
             compat_mode,
             buf_len,
             new_nodes: NodeArena::Dense(Vec::new()),
@@ -1968,6 +1975,28 @@ impl Tree {
         )));
         self.bump();
         h
+    }
+
+    /// Extract the parser's template-content fragment from its representation.
+    /// Embedders install the fragment in the template's associated inert document.
+    /// This internal representation change is not a DOM child-list mutation;
+    /// ordinary light children are preserved, and the returned handle stays live.
+    /// Like other detached components, retain it with an explicit pin when using
+    /// `collect_unreachable`; extraction does not add a permanent storage root.
+    pub fn take_template_contents(&mut self, template: Handle) -> Option<Handle> {
+        if self.node_type(template) != NodeType::Element
+            || self.namespace(template) != Namespace::Html
+            || self.local_name(template) != Some("template")
+        {
+            return None;
+        }
+        let fragment = self.children(template).into_iter().find(|&child| {
+            self.node_type(child) == NodeType::Fragment && !self.is_shadow_root(child)
+        })?;
+        let recording = self.mutation_log.take();
+        self.remove_child(template, fragment);
+        self.mutation_log = recording;
+        Some(fragment)
     }
 
     /// Parse `html` as a fragment in the context of element `h` and replace its
