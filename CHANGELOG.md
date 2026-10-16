@@ -9,6 +9,11 @@ at the time); this file reconstructs them from history.
 
 ## [0.5.7] — unreleased
 
+- Expose live form-state override reads to native embeddings; reject invalid
+  setter handles and avoid cache invalidation for repeated identical writes.
+  Restrict `:checked` to checkbox/radio inputs and selected options rather than
+  treating arbitrary checked attributes as browser state.
+
 - Store custom element states as exact UTF-16 keys independently of attributes.
   Add public set, membership, clear and enumeration APIs for native embeddings;
   real membership changes invalidate selector and computed-style caches without

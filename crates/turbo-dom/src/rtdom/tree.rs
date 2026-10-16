@@ -1628,8 +1628,12 @@ impl Tree {
     /// `:required`/`:read-only`) read this first and fall back to the attribute when
     /// unset. Bumps the version so cached queries re-evaluate.
     pub fn set_form_property(&mut self, h: Handle, prop: FormProp, value: bool) {
-        self.form_props.insert((h, prop), value);
-        self.bump();
+        if self.is_live(h)
+            && self.node_type(h) == NodeType::Element
+            && self.form_props.insert((h, prop), value) != Some(value)
+        {
+            self.bump();
+        }
     }
 
     /// Clear a live form-state property override, reverting the pseudo-class to reading
@@ -1643,7 +1647,7 @@ impl Tree {
     /// The live override for a form-state property, or `None` when unset (⇒ the matcher
     /// reads the HTML attribute).
     #[must_use]
-    pub(crate) fn form_property(&self, h: Handle, prop: FormProp) -> Option<bool> {
+    pub fn form_property(&self, h: Handle, prop: FormProp) -> Option<bool> {
         self.form_props.get(&(h, prop)).copied()
     }
 
