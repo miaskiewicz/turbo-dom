@@ -600,9 +600,8 @@ pub struct Tree {
     mutation_old_units: FxHashMap<usize, Box<[u16]>>,
     mutation_name_units: FxHashMap<usize, NativeMutationNames>,
     /// Live IDL boolean form-state properties (checked/selected/disabled/required/
-    /// read-only), settable independently of the HTML attribute — the Rust analogue of
-    /// the JS runtime's `__checked`/`__selected` overlays that React/interaction set
-    /// without touching the attribute. Absent ⇒ fall back to the attribute (see the
+    /// read-only), settable independently of the HTML attribute by native embeddings.
+    /// Absent ⇒ fall back to the attribute (see the
     /// form-state pseudo-classes in query.rs). Empty on the parse/no-interaction path.
     form_props: FxHashMap<(Handle, FormProp), bool>,
     custom_states: FxHashMap<Handle, FxHashSet<Box<[u16]>>>,
@@ -1626,7 +1625,8 @@ impl Tree {
     /// independently of the HTML attribute — the Rust analogue of assigning `el.checked`
     /// in the JS runtime. Form-state pseudo-classes (`:checked`/`:selected`/`:disabled`/
     /// `:required`/`:read-only`) read this first and fall back to the attribute when
-    /// unset. Bumps the version so cached queries re-evaluate.
+    /// unset. Changed overrides bump the version so cached queries re-evaluate;
+    /// invalid, reclaimed and non-element handles are ignored.
     pub fn set_form_property(&mut self, h: Handle, prop: FormProp, value: bool) {
         if self.is_live(h)
             && self.node_type(h) == NodeType::Element
