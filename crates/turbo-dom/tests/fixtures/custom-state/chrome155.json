@@ -1,0 +1,1248 @@
+{
+  "browser": "Chrome/155.0.8059.80",
+  "v8": "15.5.35.23",
+  "fixtureSha256": "2d24a51cf1063826d522439deac916593e86b73a3c82995d54bd43819f7be614",
+  "tlsTrust": "Only the checked fixture certificate SPKI is trusted for this localhost control",
+  "probeSha256": "32b3edbf87f5ff9b926270c11cd2233d6adad20553b9a5839ee305820b09ff91",
+  "collectorSha256": "4c43f2f36e90a8de3869531684aa7d1783ba754285ed00eebcafa2278ae347b4",
+  "flags": [
+    "--remote-debugging-port=0",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--ignore-certificate-errors-spki-list=tgZhMuDR4ffcvwcdvk0UExoYIcSg3V4sRX6nubjtqQc=",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "about:blank"
+  ],
+  "errors": [],
+  "wire": [
+    {
+      "method": "GET",
+      "path": "/",
+      "id": "",
+      "protocol": "2.0",
+      "bytes": 0,
+      "bodyHex": ""
+    },
+    {
+      "method": "GET",
+      "path": "/favicon.ico",
+      "id": "",
+      "protocol": "2.0",
+      "bytes": 0,
+      "bodyHex": ""
+    }
+  ],
+  "result": {
+    "rows": [
+      {
+        "units": [],
+        "error": null,
+        "returnsSelf": false,
+        "size": 1,
+        "has": true,
+        "stored": [
+          []
+        ],
+        "selectorUnits": [
+          58,
+          115,
+          116,
+          97,
+          116,
+          101,
+          40,
+          41
+        ],
+        "match": {
+          "error": "SyntaxError"
+        },
+        "spaced": {
+          "error": "SyntaxError"
+        },
+        "upper": {
+          "error": "SyntaxError"
+        }
+      },
+      {
+        "units": [
+          102,
+          111,
+          111
+        ],
+        "error": null,
+        "returnsSelf": false,
+        "size": 1,
+        "has": true,
+        "stored": [
+          [
+            102,
+            111,
+            111
+          ]
+        ],
+        "selectorUnits": [
+          58,
+          115,
+          116,
+          97,
+          116,
+          101,
+          40,
+          102,
+          111,
+          111,
+          41
+        ],
+        "match": {
+          "value": true
+        },
+        "spaced": {
+          "value": true
+        },
+        "upper": {
+          "value": true
+        }
+      },
+      {
+        "units": [
+          70,
+          111,
+          111
+        ],
+        "error": null,
+        "returnsSelf": false,
+        "size": 1,
+        "has": true,
+        "stored": [
+          [
+            70,
+            111,
+            111
+          ]
+        ],
+        "selectorUnits": [
+          58,
+          115,
+          116,
+          97,
+          116,
+          101,
+          40,
+          70,
+          111,
+          111,
+          41
+        ],
+        "match": {
+          "value": true
+        },
+        "spaced": {
+          "value": true
+        },
+        "upper": {
+          "value": true
+        }
+      },
+      {
+        "units": [
+          45,
+          45,
+          114,
+          101,
+          97,
+          100,
+          121
+        ],
+        "error": null,
+        "returnsSelf": false,
+        "size": 1,
+        "has": true,
+        "stored": [
+          [
+            45,
+            45,
+            114,
+            101,
+            97,
+            100,
+            121
+          ]
+        ],
+        "selectorUnits": [
+          58,
+          115,
+          116,
+          97,
+          116,
+          101,
+          40,
+          45,
+          45,
+          114,
+          101,
+          97,
+          100,
+          121,
+          41
+        ],
+        "match": {
+          "value": true
+        },
+        "spaced": {
+          "value": true
+        },
+        "upper": {
+          "value": true
+        }
+      },
+      {
+        "units": [
+          45
+        ],
+        "error": null,
+        "returnsSelf": false,
+        "size": 1,
+        "has": true,
+        "stored": [
+          [
+            45
+          ]
+        ],
+        "selectorUnits": [
+          58,
+          115,
+          116,
+          97,
+          116,
+          101,
+          40,
+          92,
+          45,
+          41
+        ],
+        "match": {
+          "value": true
+        },
+        "spaced": {
+          "value": true
+        },
+        "upper": {
+          "value": true
+        }
+      },
+      {
+        "units": [
+          45,
+          45
+        ],
+        "error": null,
+        "returnsSelf": false,
+        "size": 1,
+        "has": true,
+        "stored": [
+          [
+            45,
+            45
+          ]
+        ],
+        "selectorUnits": [
+          58,
+          115,
+          116,
+          97,
+          116,
+          101,
+          40,
+          45,
+          45,
+          41
+        ],
+        "match": {
+          "value": true
+        },
+        "spaced": {
+          "value": true
+        },
+        "upper": {
+          "value": true
+        }
+      },
+      {
+        "units": [
+          48
+        ],
+        "error": null,
+        "returnsSelf": false,
+        "size": 1,
+        "has": true,
+        "stored": [
+          [
+            48
+          ]
+        ],
+        "selectorUnits": [
+          58,
+          115,
+          116,
+          97,
+          116,
+          101,
+          40,
+          92,
+          51,
+          48,
+          32,
+          41
+        ],
+        "match": {
+          "value": true
+        },
+        "spaced": {
+          "value": true
+        },
+        "upper": {
+          "value": true
+        }
+      },
+      {
+        "units": [
+          48,
+          102,
+          111,
+          111
+        ],
+        "error": null,
+        "returnsSelf": false,
+        "size": 1,
+        "has": true,
+        "stored": [
+          [
+            48,
+            102,
+            111,
+            111
+          ]
+        ],
+        "selectorUnits": [
+          58,
+          115,
+          116,
+          97,
+          116,
+          101,
+          40,
+          92,
+          51,
+          48,
+          32,
+          102,
+          111,
+          111,
+          41
+        ],
+        "match": {
+          "value": true
+        },
+        "spaced": {
+          "value": true
+        },
+        "upper": {
+          "value": true
+        }
+      },
+      {
+        "units": [
+          45,
+          48,
+          102,
+          111,
+          111
+        ],
+        "error": null,
+        "returnsSelf": false,
+        "size": 1,
+        "has": true,
+        "stored": [
+          [
+            45,
+            48,
+            102,
+            111,
+            111
+          ]
+        ],
+        "selectorUnits": [
+          58,
+          115,
+          116,
+          97,
+          116,
+          101,
+          40,
+          45,
+          92,
+          51,
+          48,
+          32,
+          102,
+          111,
+          111,
+          41
+        ],
+        "match": {
+          "value": true
+        },
+        "spaced": {
+          "value": true
+        },
+        "upper": {
+          "value": true
+        }
+      },
+      {
+        "units": [
+          97,
+          32,
+          98
+        ],
+        "error": null,
+        "returnsSelf": false,
+        "size": 1,
+        "has": true,
+        "stored": [
+          [
+            97,
+            32,
+            98
+          ]
+        ],
+        "selectorUnits": [
+          58,
+          115,
+          116,
+          97,
+          116,
+          101,
+          40,
+          97,
+          92,
+          32,
+          98,
+          41
+        ],
+        "match": {
+          "value": true
+        },
+        "spaced": {
+          "value": true
+        },
+        "upper": {
+          "value": true
+        }
+      },
+      {
+        "units": [
+          32
+        ],
+        "error": null,
+        "returnsSelf": false,
+        "size": 1,
+        "has": true,
+        "stored": [
+          [
+            32
+          ]
+        ],
+        "selectorUnits": [
+          58,
+          115,
+          116,
+          97,
+          116,
+          101,
+          40,
+          92,
+          32,
+          41
+        ],
+        "match": {
+          "value": true
+        },
+        "spaced": {
+          "value": true
+        },
+        "upper": {
+          "value": true
+        }
+      },
+      {
+        "units": [
+          105,
+          110,
+          105,
+          116,
+          105,
+          97,
+          108
+        ],
+        "error": null,
+        "returnsSelf": false,
+        "size": 1,
+        "has": true,
+        "stored": [
+          [
+            105,
+            110,
+            105,
+            116,
+            105,
+            97,
+            108
+          ]
+        ],
+        "selectorUnits": [
+          58,
+          115,
+          116,
+          97,
+          116,
+          101,
+          40,
+          105,
+          110,
+          105,
+          116,
+          105,
+          97,
+          108,
+          41
+        ],
+        "match": {
+          "value": true
+        },
+        "spaced": {
+          "value": true
+        },
+        "upper": {
+          "value": true
+        }
+      },
+      {
+        "units": [
+          105,
+          110,
+          104,
+          101,
+          114,
+          105,
+          116
+        ],
+        "error": null,
+        "returnsSelf": false,
+        "size": 1,
+        "has": true,
+        "stored": [
+          [
+            105,
+            110,
+            104,
+            101,
+            114,
+            105,
+            116
+          ]
+        ],
+        "selectorUnits": [
+          58,
+          115,
+          116,
+          97,
+          116,
+          101,
+          40,
+          105,
+          110,
+          104,
+          101,
+          114,
+          105,
+          116,
+          41
+        ],
+        "match": {
+          "value": true
+        },
+        "spaced": {
+          "value": true
+        },
+        "upper": {
+          "value": true
+        }
+      },
+      {
+        "units": [
+          117,
+          110,
+          115,
+          101,
+          116
+        ],
+        "error": null,
+        "returnsSelf": false,
+        "size": 1,
+        "has": true,
+        "stored": [
+          [
+            117,
+            110,
+            115,
+            101,
+            116
+          ]
+        ],
+        "selectorUnits": [
+          58,
+          115,
+          116,
+          97,
+          116,
+          101,
+          40,
+          117,
+          110,
+          115,
+          101,
+          116,
+          41
+        ],
+        "match": {
+          "value": true
+        },
+        "spaced": {
+          "value": true
+        },
+        "upper": {
+          "value": true
+        }
+      },
+      {
+        "units": [
+          114,
+          101,
+          118,
+          101,
+          114,
+          116
+        ],
+        "error": null,
+        "returnsSelf": false,
+        "size": 1,
+        "has": true,
+        "stored": [
+          [
+            114,
+            101,
+            118,
+            101,
+            114,
+            116
+          ]
+        ],
+        "selectorUnits": [
+          58,
+          115,
+          116,
+          97,
+          116,
+          101,
+          40,
+          114,
+          101,
+          118,
+          101,
+          114,
+          116,
+          41
+        ],
+        "match": {
+          "value": true
+        },
+        "spaced": {
+          "value": true
+        },
+        "upper": {
+          "value": true
+        }
+      },
+      {
+        "units": [
+          114,
+          101,
+          118,
+          101,
+          114,
+          116,
+          45,
+          108,
+          97,
+          121,
+          101,
+          114
+        ],
+        "error": null,
+        "returnsSelf": false,
+        "size": 1,
+        "has": true,
+        "stored": [
+          [
+            114,
+            101,
+            118,
+            101,
+            114,
+            116,
+            45,
+            108,
+            97,
+            121,
+            101,
+            114
+          ]
+        ],
+        "selectorUnits": [
+          58,
+          115,
+          116,
+          97,
+          116,
+          101,
+          40,
+          114,
+          101,
+          118,
+          101,
+          114,
+          116,
+          45,
+          108,
+          97,
+          121,
+          101,
+          114,
+          41
+        ],
+        "match": {
+          "value": true
+        },
+        "spaced": {
+          "value": true
+        },
+        "upper": {
+          "value": true
+        }
+      },
+      {
+        "units": [
+          100,
+          101,
+          102,
+          97,
+          117,
+          108,
+          116
+        ],
+        "error": null,
+        "returnsSelf": false,
+        "size": 1,
+        "has": true,
+        "stored": [
+          [
+            100,
+            101,
+            102,
+            97,
+            117,
+            108,
+            116
+          ]
+        ],
+        "selectorUnits": [
+          58,
+          115,
+          116,
+          97,
+          116,
+          101,
+          40,
+          100,
+          101,
+          102,
+          97,
+          117,
+          108,
+          116,
+          41
+        ],
+        "match": {
+          "value": true
+        },
+        "spaced": {
+          "value": true
+        },
+        "upper": {
+          "value": true
+        }
+      },
+      {
+        "units": [
+          110,
+          111,
+          110,
+          101
+        ],
+        "error": null,
+        "returnsSelf": false,
+        "size": 1,
+        "has": true,
+        "stored": [
+          [
+            110,
+            111,
+            110,
+            101
+          ]
+        ],
+        "selectorUnits": [
+          58,
+          115,
+          116,
+          97,
+          116,
+          101,
+          40,
+          110,
+          111,
+          110,
+          101,
+          41
+        ],
+        "match": {
+          "value": true
+        },
+        "spaced": {
+          "value": true
+        },
+        "upper": {
+          "value": true
+        }
+      },
+      {
+        "units": [
+          0
+        ],
+        "error": null,
+        "returnsSelf": false,
+        "size": 1,
+        "has": true,
+        "stored": [
+          [
+            0
+          ]
+        ],
+        "selectorUnits": [
+          58,
+          115,
+          116,
+          97,
+          116,
+          101,
+          40,
+          65533,
+          41
+        ],
+        "match": {
+          "value": false
+        },
+        "spaced": {
+          "value": false
+        },
+        "upper": {
+          "value": false
+        }
+      },
+      {
+        "units": [
+          55296
+        ],
+        "error": null,
+        "returnsSelf": false,
+        "size": 1,
+        "has": true,
+        "stored": [
+          [
+            55296
+          ]
+        ],
+        "selectorUnits": [
+          58,
+          115,
+          116,
+          97,
+          116,
+          101,
+          40,
+          55296,
+          41
+        ],
+        "match": {
+          "value": false
+        },
+        "spaced": {
+          "value": false
+        },
+        "upper": {
+          "value": false
+        }
+      },
+      {
+        "units": [
+          56320
+        ],
+        "error": null,
+        "returnsSelf": false,
+        "size": 1,
+        "has": true,
+        "stored": [
+          [
+            56320
+          ]
+        ],
+        "selectorUnits": [
+          58,
+          115,
+          116,
+          97,
+          116,
+          101,
+          40,
+          56320,
+          41
+        ],
+        "match": {
+          "value": false
+        },
+        "spaced": {
+          "value": false
+        },
+        "upper": {
+          "value": false
+        }
+      },
+      {
+        "units": [
+          65533
+        ],
+        "error": null,
+        "returnsSelf": false,
+        "size": 1,
+        "has": true,
+        "stored": [
+          [
+            65533
+          ]
+        ],
+        "selectorUnits": [
+          58,
+          115,
+          116,
+          97,
+          116,
+          101,
+          40,
+          65533,
+          41
+        ],
+        "match": {
+          "value": true
+        },
+        "spaced": {
+          "value": true
+        },
+        "upper": {
+          "value": true
+        }
+      },
+      {
+        "units": [
+          55357,
+          56613
+        ],
+        "error": null,
+        "returnsSelf": false,
+        "size": 1,
+        "has": true,
+        "stored": [
+          [
+            55357,
+            56613
+          ]
+        ],
+        "selectorUnits": [
+          58,
+          115,
+          116,
+          97,
+          116,
+          101,
+          40,
+          55357,
+          56613,
+          41
+        ],
+        "match": {
+          "value": true
+        },
+        "spaced": {
+          "value": true
+        },
+        "upper": {
+          "value": true
+        }
+      },
+      {
+        "units": [
+          233
+        ],
+        "error": null,
+        "returnsSelf": false,
+        "size": 1,
+        "has": true,
+        "stored": [
+          [
+            233
+          ]
+        ],
+        "selectorUnits": [
+          58,
+          115,
+          116,
+          97,
+          116,
+          101,
+          40,
+          233,
+          41
+        ],
+        "match": {
+          "value": true
+        },
+        "spaced": {
+          "value": true
+        },
+        "upper": {
+          "value": true
+        }
+      },
+      {
+        "units": [
+          92
+        ],
+        "error": null,
+        "returnsSelf": false,
+        "size": 1,
+        "has": true,
+        "stored": [
+          [
+            92
+          ]
+        ],
+        "selectorUnits": [
+          58,
+          115,
+          116,
+          97,
+          116,
+          101,
+          40,
+          92,
+          92,
+          41
+        ],
+        "match": {
+          "value": true
+        },
+        "spaced": {
+          "value": true
+        },
+        "upper": {
+          "value": true
+        }
+      },
+      {
+        "units": [
+          97,
+          92,
+          98
+        ],
+        "error": null,
+        "returnsSelf": false,
+        "size": 1,
+        "has": true,
+        "stored": [
+          [
+            97,
+            92,
+            98
+          ]
+        ],
+        "selectorUnits": [
+          58,
+          115,
+          116,
+          97,
+          116,
+          101,
+          40,
+          97,
+          92,
+          92,
+          98,
+          41
+        ],
+        "match": {
+          "value": true
+        },
+        "spaced": {
+          "value": true
+        },
+        "upper": {
+          "value": true
+        }
+      }
+    ],
+    "lifecycle": {
+      "clone": [
+        [
+          99,
+          111,
+          110,
+          115,
+          116,
+          114,
+          117,
+          99,
+          116,
+          101,
+          100
+        ]
+      ],
+      "imported": [
+        [
+          99,
+          111,
+          110,
+          115,
+          116,
+          114,
+          117,
+          99,
+          116,
+          101,
+          100
+        ]
+      ],
+      "adopted": [
+        [
+          112,
+          101,
+          114,
+          115,
+          105,
+          115,
+          116
+        ]
+      ],
+      "adoptIdentity": true,
+      "detachedMatch": true,
+      "reinserted": true,
+      "attributes": [],
+      "mutationRecords": []
+    },
+    "selectors": [
+      {
+        "selector": ":state(foo bar)",
+        "match": {
+          "error": "SyntaxError"
+        }
+      },
+      {
+        "selector": ":state()",
+        "match": {
+          "error": "SyntaxError"
+        }
+      },
+      {
+        "selector": ":state(\"foo\")",
+        "match": {
+          "error": "SyntaxError"
+        }
+      },
+      {
+        "selector": ":state(foo,bar)",
+        "match": {
+          "error": "SyntaxError"
+        }
+      },
+      {
+        "selector": ":state(foo/**/)",
+        "match": {
+          "value": false
+        }
+      },
+      {
+        "selector": ":state(/*x*/persist)",
+        "match": {
+          "value": true
+        }
+      },
+      {
+        "selector": ":state(persist/**/)",
+        "match": {
+          "value": true
+        }
+      },
+      {
+        "selector": ":state(per/**/sist)",
+        "match": {
+          "error": "SyntaxError"
+        }
+      },
+      {
+        "selector": ":state(\\70 ersist)",
+        "match": {
+          "value": true
+        }
+      },
+      {
+        "selector": ":state(persist)",
+        "match": {
+          "value": true
+        }
+      },
+      {
+        "selector": ":is(:state(persist))",
+        "match": {
+          "value": true
+        }
+      },
+      {
+        "selector": ":not(:state(missing))",
+        "match": {
+          "value": true
+        }
+      }
+    ]
+  }
+}

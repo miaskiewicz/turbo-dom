@@ -255,6 +255,9 @@ fn pseudo(name: &str, arg: Option<&[u16]>) -> Pseudo {
     let Some(arg) = arg else {
         return parse_pseudo(name, None);
     };
+    if name.eq_ignore_ascii_case("state") {
+        return state_argument(arg).map_or(Pseudo::Unknown, Pseudo::State);
+    }
     match name {
         "is" => Pseudo::Is(list(arg)),
         "where" => Pseudo::Where(list(arg)),
@@ -413,4 +416,84 @@ impl Tree {
         }
         None
     }
+}
+
+fn skip_state_trivia(source: &[u16], mut index: usize) -> Option<usize> {
+    loop {
+        while source.get(index).is_some_and(|&unit| whitespace(unit)) {
+            index += 1;
+        }
+        if source.get(index..index + 2) != Some(&[47, 42]) {
+            return Some(index);
+        }
+        index += 2;
+        while source.get(index..index + 2) != Some(&[42, 47]) {
+            if index >= source.len() {
+                return None;
+            }
+            index += 1;
+        }
+        index += 2;
+    }
+}
+fn state_name_start(unit: u16) -> bool {
+    unit >= 128 || unit == 95 || (65..=90).contains(&unit) || (97..=122).contains(&unit)
+}
+fn state_escape_end(source: &[u16], mut index: usize) -> Option<usize> {
+    index += 1;
+    let next = *source.get(index)?;
+    if matches!(next, 10 | 12 | 13) {
+        return None;
+    }
+    let start = index;
+    while index < start + 6
+        && source.get(index).is_some_and(|&unit| {
+            char::from_u32(u32::from(unit)).is_some_and(|c| c.is_ascii_hexdigit())
+        })
+    {
+        index += 1;
+    }
+    if index == start {
+        return Some(index + 1);
+    }
+    if source.get(index).is_some_and(|&unit| whitespace(unit)) {
+        if source.get(index..index + 2) == Some(&[13, 10]) {
+            index += 1;
+        }
+        index += 1;
+    }
+    Some(index)
+}
+/// `:state()` accepts one CSS ident, including CSS-wide words. CSS preprocessing
+/// replaces NUL/unpaired surrogates independently of exact DOM state membership.
+pub(super) fn state_argument(units: &[u16]) -> Option<Vec<u16>> {
+    let normalized = String::from_utf16_lossy(units).replace('\0', "\u{fffd}");
+    let source: Vec<u16> = normalized.encode_utf16().collect();
+    let start = skip_state_trivia(&source, 0)?;
+    let first = *source.get(start)?;
+    let valid_start = state_name_start(first)
+        || first == 92 && state_escape_end(&source, start).is_some()
+        || first == 45
+            && source.get(start + 1).is_some_and(|&next| {
+                next == 45
+                    || state_name_start(next)
+                    || next == 92 && state_escape_end(&source, start + 1).is_some()
+            });
+    if !valid_start {
+        return None;
+    }
+    let mut index = start;
+    while let Some(&unit) = source.get(index) {
+        if state_name_start(unit) || unit == 45 || (48..=57).contains(&unit) {
+            index += 1;
+        } else if unit == 92 {
+            index = state_escape_end(&source, index)?;
+        } else {
+            break;
+        }
+    }
+    if skip_state_trivia(&source, index)? != source.len() {
+        return None;
+    }
+    Some(decoded(&source[start..index], false))
 }

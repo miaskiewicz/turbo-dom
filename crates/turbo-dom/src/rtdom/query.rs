@@ -113,6 +113,7 @@ enum Pseudo {
     ReadOnly,
     ReadWrite,
     Selected,
+    State(Vec<u16>),
     // Matching pseudos whose argument is a SELECTOR LIST (comma-separated complex
     // selectors), each anchored at the element under test. `:where` matches
     // identically to `:is` (the specificity difference is a cascade concern, out of
@@ -286,15 +287,29 @@ fn lex_strict(src: &str) -> Result<Vec<StrictTok>, SelectorError> {
             out.push(StrictTok::Part);
         } else if c == ':' {
             i += 1; // past ':'
+            let name_start = i;
             while i < n && (is_type_start(chars[i]) || chars[i] == '-') {
                 i += 1;
             }
+            let state = chars[name_start..i]
+                .iter()
+                .map(char::to_ascii_lowercase)
+                .eq("state".chars());
             if i < n && chars[i] == '(' {
                 i += 1; // past '('
-                let _ = scan_balanced(&chars, &mut i, '(', ')');
-                if i < n {
-                    i += 1; // past ')' (unterminated paren tolerated, matching JS)
+                let argument = scan_balanced(&chars, &mut i, '(', ')');
+                if state
+                    && (i == n
+                        || units::state_argument(&argument.encode_utf16().collect::<Vec<_>>())
+                            .is_none())
+                {
+                    return Err(SelectorError::UnexpectedChar('('));
                 }
+                if i < n {
+                    i += 1; // past ')' (unterminated paren tolerated for older pseudos)
+                }
+            } else if state {
+                return Err(SelectorError::UnexpectedChar(':'));
             }
             out.push(StrictTok::Part);
         } else if is_type_start(c) {
@@ -581,6 +596,11 @@ fn parse_relative_selector_list(src: &str) -> Vec<RelativeSelector> {
 /// Map a pseudo `name` + optional `arg` to a `Pseudo`. Unrecognized → `Unknown`
 /// (never matches). Mirrors selectors.mjs `matchPseudo` switch.
 fn parse_pseudo(name: &str, arg: Option<&str>) -> Pseudo {
+    if name.eq_ignore_ascii_case("state") {
+        return arg
+            .and_then(|value| units::state_argument(&value.encode_utf16().collect::<Vec<_>>()))
+            .map_or(Pseudo::Unknown, Pseudo::State);
+    }
     match name {
         "first-child" => Pseudo::FirstChild,
         "last-child" => Pseudo::LastChild,
@@ -893,6 +913,7 @@ impl Tree {
 
     fn matches_pseudo(&self, h: Handle, p: &Pseudo) -> bool {
         match p {
+            Pseudo::State(value) => self.has_custom_state_utf16(h, value),
             Pseudo::FirstChild => {
                 let sibs = self.element_siblings(h);
                 sibs.first() == Some(&h)
