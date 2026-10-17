@@ -113,6 +113,7 @@ enum Pseudo {
     ReadOnly,
     ReadWrite,
     Selected,
+    State(Vec<u16>),
     // Matching pseudos whose argument is a SELECTOR LIST (comma-separated complex
     // selectors), each anchored at the element under test. `:where` matches
     // identically to `:is` (the specificity difference is a cascade concern, out of
@@ -286,15 +287,29 @@ fn lex_strict(src: &str) -> Result<Vec<StrictTok>, SelectorError> {
             out.push(StrictTok::Part);
         } else if c == ':' {
             i += 1; // past ':'
+            let name_start = i;
             while i < n && (is_type_start(chars[i]) || chars[i] == '-') {
                 i += 1;
             }
+            let state = chars[name_start..i]
+                .iter()
+                .map(char::to_ascii_lowercase)
+                .eq("state".chars());
             if i < n && chars[i] == '(' {
                 i += 1; // past '('
-                let _ = scan_balanced(&chars, &mut i, '(', ')');
-                if i < n {
-                    i += 1; // past ')' (unterminated paren tolerated, matching JS)
+                let argument = scan_balanced(&chars, &mut i, '(', ')');
+                if state
+                    && (i == n
+                        || units::state_argument(&argument.encode_utf16().collect::<Vec<_>>())
+                            .is_none())
+                {
+                    return Err(SelectorError::UnexpectedChar('('));
                 }
+                if i < n {
+                    i += 1; // past ')' (unterminated paren tolerated for older pseudos)
+                }
+            } else if state {
+                return Err(SelectorError::UnexpectedChar(':'));
             }
             out.push(StrictTok::Part);
         } else if is_type_start(c) {
@@ -581,6 +596,11 @@ fn parse_relative_selector_list(src: &str) -> Vec<RelativeSelector> {
 /// Map a pseudo `name` + optional `arg` to a `Pseudo`. Unrecognized → `Unknown`
 /// (never matches). Mirrors selectors.mjs `matchPseudo` switch.
 fn parse_pseudo(name: &str, arg: Option<&str>) -> Pseudo {
+    if name.eq_ignore_ascii_case("state") {
+        return arg
+            .and_then(|value| units::state_argument(&value.encode_utf16().collect::<Vec<_>>()))
+            .map_or(Pseudo::Unknown, Pseudo::State);
+    }
     match name {
         "first-child" => Pseudo::FirstChild,
         "last-child" => Pseudo::LastChild,
@@ -893,6 +913,7 @@ impl Tree {
 
     fn matches_pseudo(&self, h: Handle, p: &Pseudo) -> bool {
         match p {
+            Pseudo::State(value) => self.has_custom_state_utf16(h, value),
             Pseudo::FirstChild => {
                 let sibs = self.element_siblings(h);
                 sibs.first() == Some(&h)
@@ -972,7 +993,12 @@ impl Tree {
                 if self.local_name(h) == Some("option") {
                     self.form_state(h, FormProp::Selected, "selected")
                 } else {
-                    self.form_state(h, FormProp::Checked, "checked")
+                    self.local_name(h) == Some("input")
+                        && self.get_attribute(h, "type").is_some_and(|kind| {
+                            kind.eq_ignore_ascii_case("checkbox")
+                                || kind.eq_ignore_ascii_case("radio")
+                        })
+                        && self.form_state(h, FormProp::Checked, "checked")
                 }
             }
             Pseudo::Disabled => self.form_state(h, FormProp::Disabled, "disabled"),
@@ -1498,7 +1524,7 @@ mod tests {
 
     #[test]
     fn pseudo_checked() {
-        let tree = Tree::parse("<form><input checked><input></form>");
+        let tree = Tree::parse("<form><input type=checkbox checked><input type=checkbox></form>");
         let checked = tree.query_selector_all("input:checked");
         assert_eq!(checked.len(), 1);
         // option[selected] also counts as :checked
@@ -2071,7 +2097,7 @@ mod tests {
     fn form_state_pseudos_read_live_property_over_attribute() {
         use super::super::tree::FormProp;
         let mut tree = Tree::parse(
-            "<input id=a><input id=b checked><select id=s><option id=o>x</option></select>",
+            "<input id=a type=checkbox><input id=b type=checkbox checked><select id=s><option id=o>x</option></select>",
         );
         let a = tree.query_selector("#a").unwrap();
         let b = tree.query_selector("#b").unwrap();

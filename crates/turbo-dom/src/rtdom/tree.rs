@@ -9,7 +9,7 @@
 //! Reads come straight off the buffer (zero alloc) unless an overlay exists.
 
 use crate::core::{self, Soa};
-use rustc_hash::FxHashMap;
+use rustc_hash::{FxHashMap, FxHashSet};
 use smallvec::SmallVec;
 use smol_str::SmolStr;
 use std::cell::RefCell;
@@ -554,6 +554,9 @@ mod utf16;
 use utf16::DomString;
 pub use utf16::Utf16MutationEvent;
 
+#[path = "custom_states.rs"]
+mod custom_states;
+
 #[path = "storage.rs"]
 mod storage;
 pub use storage::{CollectionBudget, CollectionError, CollectionReport, StorageStats};
@@ -597,11 +600,11 @@ pub struct Tree {
     mutation_old_units: FxHashMap<usize, Box<[u16]>>,
     mutation_name_units: FxHashMap<usize, NativeMutationNames>,
     /// Live IDL boolean form-state properties (checked/selected/disabled/required/
-    /// read-only), settable independently of the HTML attribute — the Rust analogue of
-    /// the JS runtime's `__checked`/`__selected` overlays that React/interaction set
-    /// without touching the attribute. Absent ⇒ fall back to the attribute (see the
+    /// read-only), settable independently of the HTML attribute by native embeddings.
+    /// Absent ⇒ fall back to the attribute (see the
     /// form-state pseudo-classes in query.rs). Empty on the parse/no-interaction path.
     form_props: FxHashMap<(Handle, FormProp), bool>,
+    custom_states: FxHashMap<Handle, FxHashSet<Box<[u16]>>>,
 }
 
 /// The boolean IDL form-state properties whose selector semantics can diverge from the
@@ -654,6 +657,7 @@ impl Tree {
             mutation_old_units: FxHashMap::default(),
             mutation_name_units: FxHashMap::default(),
             form_props: FxHashMap::default(),
+            custom_states: FxHashMap::default(),
         }
     }
 
@@ -1621,10 +1625,15 @@ impl Tree {
     /// independently of the HTML attribute — the Rust analogue of assigning `el.checked`
     /// in the JS runtime. Form-state pseudo-classes (`:checked`/`:selected`/`:disabled`/
     /// `:required`/`:read-only`) read this first and fall back to the attribute when
-    /// unset. Bumps the version so cached queries re-evaluate.
+    /// unset. Changed overrides bump the version so cached queries re-evaluate;
+    /// invalid, reclaimed and non-element handles are ignored.
     pub fn set_form_property(&mut self, h: Handle, prop: FormProp, value: bool) {
-        self.form_props.insert((h, prop), value);
-        self.bump();
+        if self.is_live(h)
+            && self.node_type(h) == NodeType::Element
+            && self.form_props.insert((h, prop), value) != Some(value)
+        {
+            self.bump();
+        }
     }
 
     /// Clear a live form-state property override, reverting the pseudo-class to reading
@@ -1638,7 +1647,7 @@ impl Tree {
     /// The live override for a form-state property, or `None` when unset (⇒ the matcher
     /// reads the HTML attribute).
     #[must_use]
-    pub(crate) fn form_property(&self, h: Handle, prop: FormProp) -> Option<bool> {
+    pub fn form_property(&self, h: Handle, prop: FormProp) -> Option<bool> {
         self.form_props.get(&(h, prop)).copied()
     }
 

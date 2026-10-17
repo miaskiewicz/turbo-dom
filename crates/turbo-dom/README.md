@@ -152,3 +152,19 @@ node crates/turbo-dom/tests/controls/parser_positions/csp-document-chrome.mjs \
 The backend test compares13 mainframe cases. Inert-template report metadata
 requires the browser binding's actual owner-document context; its full14th
 control is preserved rather than represented as a backend lexical-position rule.
+
+## Contextual HTML fragments
+
+`Tree::create_contextual_fragment_utf16(context, units, scripting_enabled)`
+returns a detached fragment parsed against the actual context element. It uses
+its namespace, integration-point attributes, nearest ordinary-tree form ancestor
+and owner document quirks mode. Original UTF-16 units survive parsing. Existing
+context children and pending mutation events are preserved; no custom-element
+constructor or page script runs in the parser.
+
+The scripting flag controls HTML `noscript` tokenization. Embedders still choose
+the context element for a Range boundary, handle HTML-root/body fallback and
+XML parsing, establish the template-associated owner document, and deliver
+custom-element upgrades and script preparation at the correct lifecycle point.
+Retain the returned fragment as a native collection pin until it is adopted or
+its wrapper ownership is established.

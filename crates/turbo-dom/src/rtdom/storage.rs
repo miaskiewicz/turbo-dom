@@ -98,6 +98,7 @@ impl Tree {
                     .map_or(0, super::DomString::payload_bytes)
                 + metadata.qualified_name.payload_bytes();
         }
+        payload_bytes += self.custom_state_payload_bytes(None);
         payload_bytes += self.mutation_payload_bytes();
         payload_bytes += self.utf16_extra_bytes(None);
         StorageStats {
@@ -172,6 +173,9 @@ impl Tree {
                 + self.mutation_name_units.len(),
             budget,
         )?;
+        for states in self.custom_states.values() {
+            charge(&mut work, 1 + states.len(), budget)?;
+        }
         let before = self.storage_stats();
         let mut roots = vec![self.root()];
         roots.extend_from_slice(pins);
@@ -260,8 +264,9 @@ impl Tree {
         }
         // Admit expanded retained strings before cloning parser payloads. Shared
         // interned values can expand dramatically when each element is materialized.
-        let mut projected_payload =
-            self.mutation_payload_bytes() + self.utf16_extra_bytes(Some(&retained));
+        let mut projected_payload = self.mutation_payload_bytes()
+            + self.utf16_extra_bytes(Some(&retained))
+            + self.custom_state_payload_bytes(Some(&retained));
         if projected_payload > budget.max_payload_bytes {
             return Err(CollectionError::BudgetExceeded);
         }
@@ -310,6 +315,8 @@ impl Tree {
             .retain(|h, _| retained.contains(h));
         self.source_attribute_positions.shrink_to_fit();
         self.form_props.retain(|(h, _), _| retained.contains(h));
+        self.custom_states.retain(|node, _| retained.contains(node));
+        self.custom_states.shrink_to_fit();
         self.element_namespaces.shrink_to_fit();
         self.attribute_nodes.shrink_to_fit();
         self.shadow_root_of_host.shrink_to_fit();
