@@ -9,6 +9,13 @@ at the time); this file reconstructs them from history.
 
 ## [0.5.7] — unreleased
 
+- Add `Tree::create_contextual_fragment_utf16(context, units, scripting_enabled)`
+  for detached HTML parsing against a real element, including namespace,
+  integration-point attributes, nearest form ancestor and document quirks mode.
+  Preserve original UTF-16, existing context children and pending mutation
+  records. Script/noscript tokenization follows the explicit scripting flag;
+  the parser never executes scripts or invokes custom-element callbacks.
+
 - Expose live form-state override reads to native embeddings; reject invalid
   setter handles and avoid cache invalidation for repeated identical writes.
   Restrict `:checked` to checkbox/radio inputs and selected options rather than
