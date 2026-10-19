@@ -5,7 +5,22 @@ environment for vitest/jest. Format based on [Keep a Changelog](https://keepacha
 Early versions were released as lightweight tags / version-stamped commits (no per-release notes
 at the time); this file reconstructs them from history.
 
-## [Unreleased]
+### Added
+
+### Fixed
+- Parse CSS attribute case modifiers separately from quoted/unquoted values in
+  scalar and original-unit selectors. Apply ASCII-only `i/I` matching consistently
+  across all six comparison operators, preserving escapes, comments, literal
+  suffixes and lone UTF-16 units. Public Rust `s/S` remains a standards-defined
+  exact-match policy, separate from Chrome155 browser admission.
+- Normalize HTML attribute names during selector parsing and apply the measured
+  HTML `input`, `button` and `ol` type-value defaults, preserving foreign and
+  no-namespace attribute names and unrelated data values. Preserve explicit
+  sensitive overrides; XHTML-in-XML document-mode policy is outside these controls.
+- Keep invalid modifiers distinct from literal operands and retain forgiving
+  selector-list behavior. Add an independently captured, source-pinned Chrome155
+  oracle and public Rust regressions for the native hidden-search-field defect.
+
 
 ## [0.5.7] — unreleased
 
@@ -32,6 +47,18 @@ at the time); this file reconstructs them from history.
   and import do not copy private state.
 - Charge custom state payload to storage collection budgets and reclaim it with
   unreachable nodes while keeping externally pinned states intact.
+
+
+### Validation
+- Rust 1.99.0 passes 342 backend contracts and seven parser tests, all three
+  strict Clippy variants, changed-file formatting, rebuilt native and Node/Web
+  WASM packages, 548 JS tests, 29 vitest tests and two Jest tests.
+- Fresh Chrome155 controls cover 57 comparable attribute-selector cases and five
+  XML cases. Seven separate Rust `s/S` controls preserve the public standard
+  policy; Chrome155 browser admission of that modifier is deliberately distinct.
+- The isolated allocation gate remains 367 allocations and 81,606 bytes per
+  operation (ceilings 380/85,000). html5lib retains five known failures
+  (1778/1783 evaluated; eight skipped).
 
 ## [0.5.6] — 2026-10-15
 
