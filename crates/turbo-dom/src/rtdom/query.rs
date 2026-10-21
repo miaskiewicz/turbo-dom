@@ -74,7 +74,17 @@ impl AttrMatch {
 #[derive(Debug, Clone)]
 struct Attr {
     name: String,
+    html_name: Option<String>,
     m: AttrMatch,
+}
+impl Attr {
+    fn new(name: String, m: AttrMatch) -> Self {
+        let html_name = name
+            .bytes()
+            .any(|b| b.is_ascii_uppercase())
+            .then(|| name.to_ascii_lowercase());
+        Self { name, html_name, m }
+    }
 }
 
 #[derive(Debug, Clone, Default)]
@@ -279,9 +289,12 @@ fn lex_strict(src: &str) -> Result<Vec<StrictTok>, SelectorError> {
             out.push(StrictTok::Part);
         } else if c == '[' {
             i += 1; // past '['
-            let _ = scan_balanced(&chars, &mut i, '[', ']');
+            let attribute = scan_balanced(&chars, &mut i, '[', ']');
             if i >= n {
                 return Err(SelectorError::UnterminatedAttribute); // no closing ']'
+            }
+            if !units::valid_attribute(&attribute) {
+                return Err(SelectorError::UnexpectedChar('['));
             }
             i += 1; // past ']'
             out.push(StrictTok::Part);
@@ -291,6 +304,14 @@ fn lex_strict(src: &str) -> Result<Vec<StrictTok>, SelectorError> {
             while i < n && (is_type_start(chars[i]) || chars[i] == '-') {
                 i += 1;
             }
+            let selector_list = matches!(
+                chars[name_start..i]
+                    .iter()
+                    .collect::<String>()
+                    .to_ascii_lowercase()
+                    .as_str(),
+                "not" | "has"
+            );
             let state = chars[name_start..i]
                 .iter()
                 .map(char::to_ascii_lowercase)
@@ -298,6 +319,9 @@ fn lex_strict(src: &str) -> Result<Vec<StrictTok>, SelectorError> {
             if i < n && chars[i] == '(' {
                 i += 1; // past '('
                 let argument = scan_balanced(&chars, &mut i, '(', ')');
+                if selector_list {
+                    lex_strict(&argument)?;
+                }
                 if state
                     && (i == n
                         || units::state_argument(&argument.encode_utf16().collect::<Vec<_>>())
@@ -361,6 +385,10 @@ fn scan_balanced(chars: &[char], i: &mut usize, open: char, close: char) -> Stri
     let mut quote: Option<char> = None;
     while *i < chars.len() {
         let c = chars[*i];
+        if c == '\\' {
+            *i += if *i + 1 < chars.len() { 2 } else { 1 };
+            continue;
+        }
         if let Some(q) = quote {
             if c == q {
                 quote = None;
@@ -522,7 +550,16 @@ fn split_top_level_commas(src: &str) -> Vec<&str> {
     let mut depth = 0i32;
     let mut quote: Option<u8> = None;
     let mut last = 0usize;
+    let mut escaped = false;
     for (i, &b) in bytes.iter().enumerate() {
+        if escaped {
+            escaped = false;
+            continue;
+        }
+        if b == b'\\' {
+            escaped = true;
+            continue;
+        }
         if let Some(q) = quote {
             if b == q {
                 quote = None;
@@ -693,6 +730,9 @@ fn nth_match(a: i64, b: i64, index: i64) -> bool {
 }
 
 fn parse_attr(inner: &str) -> Attr {
+    if let Some(attribute) = units::specialized_attribute(inner) {
+        return attribute;
+    }
     match inner.find('=') {
         Some(eq) => {
             // operator char (if any) sits immediately before '='
@@ -717,15 +757,9 @@ fn parse_attr(inner: &str) -> Attr {
                 Some(b'*') => (AttrMatch::Substr(val), &raw_name[..raw_name.len() - 1]),
                 _ => (AttrMatch::Equals(val), raw_name),
             };
-            Attr {
-                name: name.trim().to_string(),
-                m,
-            }
+            Attr::new(name.trim().to_string(), m)
         }
-        None => Attr {
-            name: inner.trim().to_string(),
-            m: AttrMatch::Present,
-        },
+        None => Attr::new(inner.trim().to_string(), AttrMatch::Present),
     }
 }
 
@@ -841,17 +875,33 @@ impl Tree {
             }
         }
         for a in &c.attrs {
+            let html = self.namespace_uri(h) == Some("http://www.w3.org/1999/xhtml");
+            let name = if html {
+                a.html_name.as_deref().unwrap_or(&a.name)
+            } else {
+                &a.name
+            };
             match &a.m {
                 AttrMatch::Units(m)
                     if self
-                        .get_attribute_ns_utf16(h, None, &a.name)
-                        .is_some_and(|got| m.matches(&got)) => {}
+                        .get_attribute_ns_utf16(h, None, name)
+                        .is_some_and(|got| {
+                            m.matches_case(
+                                &got,
+                                name == "type"
+                                    && html
+                                    && matches!(
+                                        self.local_name(h),
+                                        Some("input" | "button" | "ol")
+                                    ),
+                            )
+                        }) => {}
                 AttrMatch::Units(_) => return false,
-                _ => match self.get_attribute_ns_borrowed(h, None, &a.name) {
+                _ => match self.get_attribute_ns_borrowed(h, None, name) {
                     Some(got)
                         if a.m.matches(got)
-                            && (self.attribute_is_scalar(h, &a.name)
-                                || self.get_attribute_ns_utf16(h, None, &a.name).is_some_and(
+                            && (self.attribute_is_scalar(h, name)
+                                || self.get_attribute_ns_utf16(h, None, name).is_some_and(
                                     |got| UnitAttrMatch::scalar(&a.m).matches(&got),
                                 )) => {}
                     _ => return false,

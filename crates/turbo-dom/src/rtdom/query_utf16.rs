@@ -8,6 +8,8 @@ use super::{
 pub(super) struct UnitAttrMatch {
     op: u16,
     value: Vec<u16>,
+    insensitive: bool,
+    sensitive: bool,
 }
 impl UnitAttrMatch {
     pub(super) fn scalar(source: &AttrMatch) -> Self {
@@ -24,27 +26,51 @@ impl UnitAttrMatch {
         Self {
             op,
             value: value.encode_utf16().collect(),
+            insensitive: false,
+            sensitive: false,
         }
     }
 
     pub(super) fn matches(&self, got: &[u16]) -> bool {
+        self.matches_case(got, false)
+    }
+    pub(super) fn matches_case(&self, got: &[u16], implicit: bool) -> bool {
         let value = &self.value;
+        let insensitive = !self.sensitive && (self.insensitive || implicit);
+        let equal = |a: &[u16], b: &[u16]| equal_units(a, b, insensitive);
         match self.op {
             0 => true,
-            61 => got == value,
-            94 => !value.is_empty() && got.starts_with(value),
-            36 => !value.is_empty() && got.ends_with(value),
-            42 => !value.is_empty() && got.windows(value.len()).any(|part| part == value),
-            126 => has_class_units(got, value),
+            61 => equal(got, value),
+            94 => !value.is_empty() && got.get(..value.len()).is_some_and(|a| equal(a, value)),
+            36 => {
+                !value.is_empty()
+                    && got
+                        .get(got.len().saturating_sub(value.len())..)
+                        .is_some_and(|a| equal(a, value))
+            }
+            42 => !value.is_empty() && got.windows(value.len()).any(|a| equal(a, value)),
+            126 => !value.is_empty() && got.split(|&u| whitespace(u)).any(|a| equal(a, value)),
             124 => {
-                got == value
-                    || got
-                        .strip_prefix(value.as_slice())
-                        .is_some_and(|tail| tail.first() == Some(&45))
+                equal(got, value)
+                    || (got.get(value.len()) == Some(&45)
+                        && got.get(..value.len()).is_some_and(|a| equal(a, value)))
             }
             _ => false,
         }
     }
+}
+fn equal_units(a: &[u16], b: &[u16], insensitive: bool) -> bool {
+    a.len() == b.len()
+        && a.iter().zip(b).all(|(&a, &b)| {
+            let fold = |u| {
+                if insensitive && (65..=90).contains(&u) {
+                    u + 32
+                } else {
+                    u
+                }
+            };
+            fold(a) == fold(b)
+        })
 }
 fn whitespace(unit: u16) -> bool {
     matches!(unit, 9 | 10 | 12 | 13 | 32)
@@ -123,15 +149,23 @@ fn decoded(units: &[u16], quoted: bool) -> Vec<u16> {
 fn identifier(units: &[u16]) -> String {
     String::from_utf16_lossy(&decoded(units, false))
 }
-fn attr(inner: &[u16]) -> Attr {
+pub(super) fn attr(inner: &[u16]) -> Attr {
+    let cleaned = attribute_comments(inner);
+    let inner = cleaned.as_deref().unwrap_or(inner);
     let Some(eq) = inner.iter().position(|&u| u == 61) else {
-        return Attr {
-            name: identifier(trim(inner)),
-            m: AttrMatch::Units(UnitAttrMatch {
-                op: 0,
+        return Attr::new(
+            identifier(trim(inner)),
+            AttrMatch::Units(UnitAttrMatch {
+                op: if unquoted_end(trim(inner)) == trim(inner).len() {
+                    0
+                } else {
+                    u16::MAX
+                },
                 value: Vec::new(),
+                insensitive: false,
+                sensitive: false,
             }),
-        };
+        );
     };
     let raw = trim(&inner[..eq]);
     let operator = raw
@@ -139,19 +173,135 @@ fn attr(inner: &[u16]) -> Attr {
         .copied()
         .filter(|u| matches!(u, 126 | 124 | 94 | 36 | 42));
     let name = operator.map_or(raw, |_| &raw[..raw.len() - 1]);
-    let value = trim(&inner[eq + 1..]);
-    let quoted = value.len() >= 2 && matches!(value[0], 34 | 39) && value.first() == value.last();
-    let value = if quoted {
-        &value[1..value.len() - 1]
-    } else {
-        value
-    };
-    Attr {
-        name: identifier(trim(name)),
-        m: AttrMatch::Units(UnitAttrMatch {
-            op: operator.unwrap_or(61),
+    let source = trim(&inner[eq + 1..]);
+    let (value, quoted, modifier) = attribute_value(source);
+    let valid = modifier
+        .as_deref()
+        .is_some_and(|m| m.is_empty() || m == [105] || m == [73] || m == [115] || m == [83]);
+    Attr::new(
+        identifier(trim(name)),
+        AttrMatch::Units(UnitAttrMatch {
+            op: if valid {
+                operator.unwrap_or(61)
+            } else {
+                u16::MAX
+            },
             value: decoded(value, quoted),
+            insensitive: modifier.as_deref().is_some_and(|m| m == [105] || m == [73]),
+            sensitive: modifier.as_deref().is_some_and(|m| m == [115] || m == [83]),
         }),
+    )
+}
+fn attribute_comments(source: &[u16]) -> Option<Vec<u16>> {
+    if !source.windows(2).any(|p| p == [47, 42]) {
+        return None;
+    }
+    let mut out = Vec::new();
+    let (mut index, mut quote) = (0, 0);
+    while index < source.len() {
+        let unit = source[index];
+        if unit == 92 {
+            let end = escaped_end(source, index);
+            out.extend_from_slice(&source[index..end]);
+            index = end;
+            continue;
+        }
+        if quote == 0 && source[index..].starts_with(&[47, 42]) {
+            let end = source[index + 2..].windows(2).position(|p| p == [42, 47]);
+            let Some(end) = end else {
+                return Some(vec![0]);
+            };
+            index += end + 4;
+            out.push(32);
+            continue;
+        }
+        if matches!(unit, 34 | 39) {
+            quote = if quote == unit {
+                0
+            } else if quote == 0 {
+                unit
+            } else {
+                quote
+            };
+        }
+        out.push(unit);
+        index += 1;
+    }
+    Some(out)
+}
+fn attribute_value(source: &[u16]) -> (&[u16], bool, Option<Vec<u16>>) {
+    if source.first().is_some_and(|u| matches!(u, 34 | 39)) {
+        let quote = source[0];
+        let mut end = 1;
+        while end < source.len() {
+            if source[end] == quote {
+                return (
+                    &source[1..end],
+                    true,
+                    Some(decoded(trim(&source[end + 1..]), false)),
+                );
+            }
+            end = escaped_end(source, end);
+        }
+        return (source, true, None);
+    }
+    let end = unquoted_end(source);
+    (
+        &source[..end],
+        false,
+        Some(decoded(trim(&source[end..]), false)),
+    )
+}
+fn unquoted_end(source: &[u16]) -> usize {
+    let mut end = 0;
+    while end < source.len() && !whitespace(source[end]) {
+        end = escaped_end(source, end);
+    }
+    end
+}
+fn escaped_end(source: &[u16], position: usize) -> usize {
+    if source[position] != 92 || position + 1 == source.len() {
+        return position + 1;
+    }
+    let mut end = position + 1;
+    while end < source.len()
+        && end < position + 7
+        && char::from_u32(u32::from(source[end])).is_some_and(|c| c.is_ascii_hexdigit())
+    {
+        end += 1;
+    }
+    if end == position + 1 {
+        return (position + 2).min(source.len());
+    }
+    if source.get(end).is_some_and(|&u| whitespace(u)) {
+        if source.get(end) == Some(&13) && source.get(end + 1) == Some(&10) {
+            end += 1;
+        }
+        end += 1;
+    }
+    end
+}
+pub(super) fn valid_attribute(inner: &str) -> bool {
+    let parsed = attr(&inner.encode_utf16().collect::<Vec<_>>());
+    !matches!(
+        parsed.m,
+        AttrMatch::Units(UnitAttrMatch { op: u16::MAX, .. })
+    )
+}
+pub(super) fn specialized_attribute(inner: &str) -> Option<Attr> {
+    let parsed = attr(&inner.encode_utf16().collect::<Vec<_>>());
+    match &parsed.m {
+        AttrMatch::Units(m)
+            if m.insensitive
+                || m.sensitive
+                || m.op == u16::MAX
+                || parsed.name.eq_ignore_ascii_case("type")
+                || inner.contains("/*")
+                || inner.contains('\\') =>
+        {
+            Some(parsed)
+        }
+        _ => None,
     }
 }
 fn split(units: &[u16], separator: u16) -> Vec<&[u16]> {
