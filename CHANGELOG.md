@@ -5,7 +5,7 @@ environment for vitest/jest. Format based on [Keep a Changelog](https://keepacha
 Early versions were released as lightweight tags / version-stamped commits (no per-release notes
 at the time); this file reconstructs them from history.
 
-### Added
+## [0.5.7] — 2026-10-21
 
 ### Fixed
 - Parse CSS attribute case modifiers separately from quoted/unquoted values in
@@ -22,7 +22,7 @@ at the time); this file reconstructs them from history.
   oracle and public Rust regressions for the native hidden-search-field defect.
 
 
-## [0.5.7] — unreleased
+### Added
 
 - Add `Tree::create_contextual_fragment_utf16(context, units, scripting_enabled)`
   for detached HTML parsing against a real element, including namespace,
