@@ -7,6 +7,20 @@ at the time); this file reconstructs them from history.
 
 ## [Unreleased]
 
+## [0.5.7] — unreleased
+
+- Store custom element states as exact UTF-16 keys independently of attributes.
+  Add public set, membership, clear and enumeration APIs for native embeddings;
+  real membership changes invalidate selector and computed-style caches without
+  emitting attribute mutation records.
+- Match `:state()` CSS identifiers with escaping, comments, case-insensitive
+  pseudo names and CSS input replacement, preserving exact DOM-string state
+  identity. Add fresh Chrome155 controls for arbitrary keys and clone/import/
+  adoption semantics. Native adoption can enumerate and reapply states; cloning
+  and import do not copy private state.
+- Charge custom state payload to storage collection budgets and reclaim it with
+  unreachable nodes while keeping externally pinned states intact.
+
 ## [0.5.6] — 2026-10-15
 
 ### Added

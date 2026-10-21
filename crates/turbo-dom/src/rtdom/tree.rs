@@ -9,7 +9,7 @@
 //! Reads come straight off the buffer (zero alloc) unless an overlay exists.
 
 use crate::core::{self, Soa};
-use rustc_hash::FxHashMap;
+use rustc_hash::{FxHashMap, FxHashSet};
 use smallvec::SmallVec;
 use smol_str::SmolStr;
 use std::cell::RefCell;
@@ -554,6 +554,9 @@ mod utf16;
 use utf16::DomString;
 pub use utf16::Utf16MutationEvent;
 
+#[path = "custom_states.rs"]
+mod custom_states;
+
 #[path = "storage.rs"]
 mod storage;
 pub use storage::{CollectionBudget, CollectionError, CollectionReport, StorageStats};
@@ -602,6 +605,7 @@ pub struct Tree {
     /// without touching the attribute. Absent ⇒ fall back to the attribute (see the
     /// form-state pseudo-classes in query.rs). Empty on the parse/no-interaction path.
     form_props: FxHashMap<(Handle, FormProp), bool>,
+    custom_states: FxHashMap<Handle, FxHashSet<Box<[u16]>>>,
 }
 
 /// The boolean IDL form-state properties whose selector semantics can diverge from the
@@ -654,6 +658,7 @@ impl Tree {
             mutation_old_units: FxHashMap::default(),
             mutation_name_units: FxHashMap::default(),
             form_props: FxHashMap::default(),
+            custom_states: FxHashMap::default(),
         }
     }
 
