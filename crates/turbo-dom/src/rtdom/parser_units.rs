@@ -55,15 +55,36 @@ pub(super) fn decode(source: &str) -> Vec<u16> {
     units
 }
 fn parsed(units: &[u16], context: Option<(QualName, Vec<html5ever::Attribute>)>) -> RcDom {
+    parsed_with_form(units, context, false, false, QuirksMode::NoQuirks)
+}
+fn parsed_with_form(
+    units: &[u16],
+    context: Option<(QualName, Vec<html5ever::Attribute>)>,
+    has_form_ancestor: bool,
+    scripting_enabled: bool,
+    quirks_mode: QuirksMode,
+) -> RcDom {
     let sink = RcDom::default();
     let options = TreeBuilderOpts {
-        scripting_enabled: false,
+        scripting_enabled,
+        quirks_mode,
         ..Default::default()
     };
     let fragment = context.is_some();
     let builder = if let Some((name, attributes)) = context {
         let element = html5ever::tree_builder::create_element(&sink, name, attributes);
-        TreeBuilder::new_for_fragment(sink, element, None, options)
+        let form = has_form_ancestor.then(|| {
+            html5ever::tree_builder::create_element(
+                &sink,
+                QualName::new(
+                    None,
+                    html5ever::Namespace::from("http://www.w3.org/1999/xhtml"),
+                    LocalName::from("form"),
+                ),
+                Vec::new(),
+            )
+        });
+        TreeBuilder::new_for_fragment(sink, element, form, options)
     } else {
         TreeBuilder::new(sink, options)
     };
@@ -78,7 +99,7 @@ fn parsed(units: &[u16], context: Option<(QualName, Vec<html5ever::Attribute>)>)
     );
     let queue = BufferQueue::default();
     queue.push_back(encode(units).into());
-    // Scripting is disabled, so script/encoding indicators need no host work.
+    // Parser indicators need no host work: this API never executes scripts.
     while !matches!(tokenizer.feed(&queue), html5ever::TokenizerResult::Done) {}
     tokenizer.end();
     tokenizer.sink.sink
@@ -129,6 +150,58 @@ impl Tree {
         let (name, attributes) = self.fragment_context(node, false);
         core::parse_html_fragment_with_context(html, name, attributes)
     }
+    /// Parse a detached HTML fragment using the actual context element's name,
+    /// namespace, attributes and nearest form ancestor. Existing context children
+    /// and pending mutation records are preserved. The returned fragment is an
+    /// ordinary collectable component: callers retain its handle until adoption.
+    /// `scripting_enabled` selects the HTML tokenizer's `noscript` behavior;
+    /// this method never executes scripts or invokes custom-element callbacks.
+    #[must_use]
+    pub fn create_contextual_fragment_utf16(
+        &mut self,
+        context: Handle,
+        units: &[u16],
+        scripting_enabled: bool,
+    ) -> Handle {
+        let mut ancestor = Some(context);
+        let mut has_form_ancestor = false;
+        while let Some(node) = ancestor {
+            if self.namespace(node) == Namespace::Html && self.local_name(node) == Some("form") {
+                has_form_ancestor = true;
+                break;
+            }
+            ancestor = self.parent(node);
+        }
+        let dom = parsed_with_form(
+            units,
+            Some(self.fragment_context(context, true)),
+            has_form_ancestor,
+            scripting_enabled,
+            if self.compat_mode == "BackCompat" {
+                QuirksMode::Quirks
+            } else {
+                QuirksMode::NoQuirks
+            },
+        );
+        let document = core::walk(&dom.document);
+        let parsed_root = document.children.first().unwrap_or(&document);
+        let fragment = self.create_document_fragment();
+        let recording = self.mutation_log.take();
+        let children = parsed_root
+            .children
+            .iter()
+            .map(|child| self.import_units_node(child))
+            .collect::<Vec<_>>();
+        for &child in &children {
+            self.parent_ov.insert(child, Some(fragment));
+        }
+        self.children_ov.insert(fragment, children.into());
+        self.mutation_log = recording;
+        self.bump();
+        core::discard_node(document);
+        fragment
+    }
+
     /// Parse a DOM string without repairing its original code units. UTF-8
     /// inputs retain the existing lazy buffer path.
     #[must_use]

@@ -993,7 +993,12 @@ impl Tree {
                 if self.local_name(h) == Some("option") {
                     self.form_state(h, FormProp::Selected, "selected")
                 } else {
-                    self.form_state(h, FormProp::Checked, "checked")
+                    self.local_name(h) == Some("input")
+                        && self.get_attribute(h, "type").is_some_and(|kind| {
+                            kind.eq_ignore_ascii_case("checkbox")
+                                || kind.eq_ignore_ascii_case("radio")
+                        })
+                        && self.form_state(h, FormProp::Checked, "checked")
                 }
             }
             Pseudo::Disabled => self.form_state(h, FormProp::Disabled, "disabled"),
@@ -1519,7 +1524,7 @@ mod tests {
 
     #[test]
     fn pseudo_checked() {
-        let tree = Tree::parse("<form><input checked><input></form>");
+        let tree = Tree::parse("<form><input type=checkbox checked><input type=checkbox></form>");
         let checked = tree.query_selector_all("input:checked");
         assert_eq!(checked.len(), 1);
         // option[selected] also counts as :checked
@@ -2092,7 +2097,7 @@ mod tests {
     fn form_state_pseudos_read_live_property_over_attribute() {
         use super::super::tree::FormProp;
         let mut tree = Tree::parse(
-            "<input id=a><input id=b checked><select id=s><option id=o>x</option></select>",
+            "<input id=a type=checkbox><input id=b type=checkbox checked><select id=s><option id=o>x</option></select>",
         );
         let a = tree.query_selector("#a").unwrap();
         let b = tree.query_selector("#b").unwrap();
