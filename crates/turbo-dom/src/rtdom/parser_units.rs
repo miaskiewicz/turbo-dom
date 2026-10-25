@@ -57,6 +57,14 @@ pub(super) fn decode(source: &str) -> Vec<u16> {
 fn parsed(units: &[u16], context: Option<(QualName, Vec<html5ever::Attribute>)>) -> RcDom {
     parsed_with_form(units, context, false, false, QuirksMode::NoQuirks)
 }
+// The iframe srcdoc document flag: a missing or legacy doctype never selects quirks.
+fn parsed_srcdoc(units: &[u16]) -> RcDom {
+    let options = TreeBuilderOpts {
+        iframe_srcdoc: true,
+        ..Default::default()
+    };
+    parsed_with_options(units, None, false, options)
+}
 fn parsed_with_form(
     units: &[u16],
     context: Option<(QualName, Vec<html5ever::Attribute>)>,
@@ -64,12 +72,20 @@ fn parsed_with_form(
     scripting_enabled: bool,
     quirks_mode: QuirksMode,
 ) -> RcDom {
-    let sink = RcDom::default();
     let options = TreeBuilderOpts {
         scripting_enabled,
         quirks_mode,
         ..Default::default()
     };
+    parsed_with_options(units, context, has_form_ancestor, options)
+}
+fn parsed_with_options(
+    units: &[u16],
+    context: Option<(QualName, Vec<html5ever::Attribute>)>,
+    has_form_ancestor: bool,
+    options: TreeBuilderOpts,
+) -> RcDom {
+    let sink = RcDom::default();
     let fragment = context.is_some();
     let builder = if let Some((name, attributes)) = context {
         let element = html5ever::tree_builder::create_element(&sink, name, attributes);
@@ -214,6 +230,12 @@ impl Tree {
         }
         let dom = parsed(units, None);
         Self::from_units_dom(&dom)
+    }
+    /// Parse an iframe srcdoc document: identical to [`Tree::parse_utf16`] except
+    /// that the document is never in quirks mode.
+    #[must_use]
+    pub fn parse_srcdoc_utf16(units: &[u16]) -> Self {
+        Self::from_units_dom(&parsed_srcdoc(units))
     }
     pub(super) fn from_units_dom(dom: &RcDom) -> Self {
         let node = core::walk(&dom.document);
