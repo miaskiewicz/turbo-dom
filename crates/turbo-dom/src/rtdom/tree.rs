@@ -2421,6 +2421,32 @@ mod tests {
     }
 
     #[test]
+    fn iframe_srcdoc_documents_are_never_quirks() {
+        let units = |html: &str| html.encode_utf16().collect::<Vec<_>>();
+        for html in [
+            "<body><p><table></table></p></body>",
+            "<!-- c --><body></body>",
+        ] {
+            assert_eq!(Tree::parse_utf16(&units(html)).compat_mode(), "BackCompat");
+            for tree in [
+                Tree::parse_srcdoc_utf16(&units(html)),
+                Tree::parse_srcdoc_utf16_with_source_positions(&units(html)),
+            ] {
+                assert_eq!(tree.compat_mode(), "CSS1Compat", "{html}");
+                assert!(tree.query_selector("body").is_some());
+            }
+        }
+        // No-quirks tree construction closes the paragraph before a table.
+        let quirks = Tree::parse_utf16(&units("<p><table></table>"));
+        let srcdoc = Tree::parse_srcdoc_utf16(&units("<p><table></table>"));
+        assert!(quirks.query_selector("p > table").is_some());
+        assert!(srcdoc.query_selector("p > table").is_none());
+        let positioned = Tree::parse_srcdoc_utf16_with_source_positions(&units("<div id=a></div>"));
+        let div = positioned.query_selector("#a").unwrap();
+        assert!(positioned.source_position(div).is_some());
+    }
+
+    #[test]
     fn reads_structure_from_buffer() {
         let tree = t("<div id=a><span class=x>hi</span><p>yo</p></div>");
         // find the div

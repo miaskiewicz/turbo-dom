@@ -5,6 +5,14 @@ environment for vitest/jest. Format based on [Keep a Changelog](https://keepacha
 Early versions were released as lightweight tags / version-stamped commits (no per-release notes
 at the time); this file reconstructs them from history.
 
+## [0.5.8] — 2026-10-25 — iframe srcdoc no-quirks parsing
+
+### Added
+- `Tree::parse_srcdoc_utf16` and `parse_srcdoc_utf16_with_source_positions`, which
+  parse with html5ever's `iframe_srcdoc` flag so a `srcdoc` document without a
+  doctype is no-quirks (`CSS1Compat`), matching Chrome. Consumed by turbo-surf's
+  Chrome-parity work (turbo-surf#28); verified there against a Chrome 156 control.
+
 ## [0.5.7] — 2026-10-21
 
 ### Fixed

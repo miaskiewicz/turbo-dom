@@ -363,6 +363,15 @@ impl Tree {
     /// Parse original DOM-string units and retain token-end source positions.
     #[must_use]
     pub fn parse_utf16_with_source_positions(units: &[u16]) -> Self {
+        Self::positioned_units(units, false)
+    }
+    /// [`Tree::parse_utf16_with_source_positions`] for an iframe srcdoc document,
+    /// which the HTML parser never puts in quirks mode.
+    #[must_use]
+    pub fn parse_srcdoc_utf16_with_source_positions(units: &[u16]) -> Self {
+        Self::positioned_units(units, true)
+    }
+    fn positioned_units(units: &[u16], iframe_srcdoc: bool) -> Self {
         let queue = Rc::new(BufferQueue::default());
         let input = SourceInput::new(units);
         queue.push_back(input.encoded.as_str().into());
@@ -378,6 +387,7 @@ impl Tree {
             sink,
             TreeBuilderOpts {
                 scripting_enabled: false,
+                iframe_srcdoc,
                 ..Default::default()
             },
         );
