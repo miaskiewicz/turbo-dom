@@ -600,7 +600,7 @@ dependencies = [
 
 [[package]]
 name = "turbo-dom"
-version = "0.5.7"
+version = "0.5.8"
 dependencies = [
  "html5ever",
  "log",
@@ -614,7 +614,7 @@ dependencies = [
 
 [[package]]
 name = "turbo-dom-parser"
-version = "0.5.7"
+version = "0.5.8"
 dependencies = [
  "html5ever",
  "markup5ever_rcdom",
