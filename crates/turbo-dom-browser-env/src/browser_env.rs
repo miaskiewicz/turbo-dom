@@ -9624,6 +9624,10 @@ mod css_live_tests;
 mod dom_projection_tests;
 
 #[cfg(test)]
+#[path = "dom_exception_realm_tests.rs"]
+mod dom_exception_realm_tests;
+
+#[cfg(test)]
 #[path = "css_adoption_tests.rs"]
 mod css_adoption_tests;
 
