@@ -129,6 +129,13 @@ macro_rules! dual {
 mod units;
 use units::UnitAttrMatch;
 
+#[path = "query_cascade.rs"]
+mod cascade;
+pub use cascade::{
+    match_for_cascade, parse_for_cascade, CascadeSelector, PositionCache, SelectorList,
+    SiblingGroup, Specificity,
+};
+
 impl AttrMatch {
     /// Does `got` (the element's attribute value) satisfy this test? SAME
     /// semantics as the old `attr_op_matches`: the `!want.is_empty()` guards on
@@ -259,8 +266,32 @@ enum Pseudo {
     // `el:has(S)` is true iff SOME element reachable from `el` per S's leading
     // combinator matches S, scoped to `el`. Empty list → never matches.
     Has(Vec<RelativeSelector>),
-    // Unrecognized / unparseable → never matches
-    Unknown,
+    // Cascade-only (produced by `parse_for_cascade`, never by the DOM-API parsers):
+    // `:defined`, `:lang()` and `:-webkit-any()` (matches like `:is()`, specificity of a
+    // pseudo-class).
+    Defined,
+    Lang(Vec<String>),
+    WebkitAny(Vec<Complex>),
+    // Unrecognized / unparseable → never matches. Keeps the name and argument text so the
+    // cascade parser (`parse_for_cascade`) can tell pseudo-elements and the pseudo-classes
+    // Chrome knows from invalid ones.
+    Unknown(UnknownPseudo),
+}
+
+/// The name and argument of a pseudo the engine does not implement (`Pseudo::Unknown`).
+#[derive(Debug, Clone, Default)]
+struct UnknownPseudo {
+    name: String,
+    arg: Option<String>,
+}
+
+impl Pseudo {
+    fn unknown(name: &str, arg: Option<&str>) -> Pseudo {
+        Pseudo::Unknown(UnknownPseudo {
+            name: name.to_string(),
+            arg: arg.map(str::to_string),
+        })
+    }
 }
 
 /// One relative selector inside `:has()`: an optional leading combinator (None =
@@ -355,6 +386,10 @@ pub enum SelectorError {
     /// or mixed (`a + > b`) combinator (JS: "empty compound"). A *trailing* combinator
     /// (`a >`) is tolerated, matching the JS parser, which drops it.
     EmptyCompound,
+    /// A selector a stylesheet rejects although the DOM APIs' lenient grammar reads it
+    /// (an unknown or misplaced pseudo, a dangling combinator, …): only
+    /// [`parse_for_cascade`] reports it.
+    Invalid(&'static str),
 }
 
 impl std::fmt::Display for SelectorError {
@@ -363,6 +398,7 @@ impl std::fmt::Display for SelectorError {
             SelectorError::UnterminatedAttribute => f.write_str("unterminated attribute selector"),
             SelectorError::UnexpectedChar(c) => write!(f, "unexpected '{c}' in selector"),
             SelectorError::EmptyCompound => f.write_str("empty compound (stray combinator)"),
+            SelectorError::Invalid(reason) => write!(f, "invalid selector: {reason}"),
         }
     }
 }
@@ -824,7 +860,7 @@ fn parse_pseudo(name: &str, arg: Option<&str>) -> Pseudo {
     if name.eq_ignore_ascii_case("state") {
         return arg
             .and_then(|value| units::state_argument(&value.encode_utf16().collect::<Vec<_>>()))
-            .map_or(Pseudo::Unknown, Pseudo::State);
+            .map_or_else(|| Pseudo::unknown(name, arg), Pseudo::State);
     }
     match name {
         "first-child" => Pseudo::FirstChild,
@@ -876,7 +912,7 @@ fn parse_pseudo(name: &str, arg: Option<&str>) -> Pseudo {
         "where" => Pseudo::Where(parse_selector_list_str(arg.unwrap_or(""))),
         "not" => Pseudo::Not(parse_selector_list_str(arg.unwrap_or(""))),
         "has" => Pseudo::Has(parse_relative_selector_list(arg.unwrap_or(""))),
-        _ => Pseudo::Unknown,
+        _ => Pseudo::unknown(name, arg),
     }
 }
 
@@ -1064,93 +1100,129 @@ fn has_class(class_attr: &str, cls: &str) -> bool {
     false
 }
 
-impl Tree {
-    fn matches_compound(&self, h: Handle, c: &Compound) -> bool {
-        if self.node_type(h) != NodeType::Element {
-            return false;
-        }
-        match c.namespace {
-            TypeNamespace::Default | TypeNamespace::Any => {}
-            TypeNamespace::Null if self.namespace_uri(h).is_none() => {}
-            TypeNamespace::Null | TypeNamespace::Invalid => return false,
-        }
-        if let Some(tag) = &c.tag {
-            if !self
-                .local_name_scalar(h)
-                .is_some_and(|name| name.eq_ignore_ascii_case(tag))
-            {
-                return false;
-            }
-        }
-        if let Some(id) = &c.id {
-            if self.get_attribute_ns_borrowed(h, None, "id") != Some(id.as_str())
-                || !self.attribute_is_scalar(h, "id")
-            {
-                return false;
-            }
-        }
-        if !c.classes.is_empty() {
-            let Some(cv) = self.get_attribute_ns_borrowed(h, None, "class") else {
-                return false;
-            };
-            for cls in &c.classes {
-                if !has_class(cv, cls)
-                    || (!self.attribute_is_scalar(h, "class")
-                        && !self
-                            .get_attribute_ns_utf16(h, None, "class")
-                            .is_some_and(|units| {
-                                units::has_class_units(
-                                    &units,
-                                    &cls.encode_utf16().collect::<Vec<_>>(),
-                                )
-                            }))
-                {
-                    return false;
-                }
-            }
-        }
-        for a in &c.attrs {
-            let html = self.namespace_uri(h) == Some("http://www.w3.org/1999/xhtml");
-            let name = if html {
-                a.html_name.as_deref().unwrap_or(&a.name)
-            } else {
-                &a.name
-            };
-            match &a.m {
-                AttrMatch::Units(m)
-                    if self
-                        .get_attribute_ns_utf16(h, None, name)
-                        .is_some_and(|got| {
-                            m.matches_case(
-                                &got,
-                                name == "type"
-                                    && html
-                                    && matches!(
-                                        self.local_name(h),
-                                        Some("input" | "button" | "ol")
-                                    ),
-                            )
-                        }) => {}
-                AttrMatch::Units(_) => return false,
-                _ => match self.get_attribute_ns_borrowed(h, None, name) {
-                    Some(got)
-                        if a.m.matches(got)
-                            && (self.attribute_is_scalar(h, name)
-                                || self.get_attribute_ns_utf16(h, None, name).is_some_and(
-                                    |got| UnitAttrMatch::scalar(&a.m).matches(&got),
-                                )) => {}
-                    _ => return false,
-                },
-            }
-        }
-        for p in &c.pseudos {
-            if !self.matches_pseudo(h, p) {
-                return false;
-            }
-        }
-        true
+/// The structure selector matching reads around an element: its scoped parent and element
+/// siblings, its structural position, its type name, `:root` and `:empty`, and the
+/// descendants `:has()` searches. Matching is generic over it so one engine serves every
+/// context:
+///
+/// - [`LiveNavigator`]: the live [`Tree`] with raw-node semantics (`matches`,
+///   `querySelector*`): a parent may be a fragment or the document, `template > p` is false
+///   while `template p` crosses into the content, a parentless element is its own only
+///   sibling.
+/// - a layout view (turbo-dom-layout's `TreeView` scope): kept nodes only, scope cut-offs,
+///   match-only shells, markers — used through [`match_for_cascade`].
+///
+/// Element-side state (names, namespaces, attributes, form state, custom states) is always
+/// read from [`Navigator::tree`].
+pub trait Navigator {
+    /// The tree the elements live in.
+    fn tree(&self) -> &Tree;
+    /// The node combinators and ancestor walks step to from `h` (any node type: matching
+    /// rejects non-elements), or `None` past the scope root.
+    fn parent(&self, h: Handle) -> Option<Handle>;
+    /// The element sibling right before `h` in the scope.
+    fn previous_element_sibling(&self, h: Handle) -> Option<Handle>;
+    /// The element sibling right after `h` in the scope.
+    fn next_element_sibling(&self, h: Handle) -> Option<Handle>;
+    /// `h`'s element siblings in order, `h` included.
+    fn element_siblings(&self, h: Handle) -> Vec<Handle>;
+    /// Whether `a` and `b` have the same element type (`*-of-type`).
+    fn same_type(&self, a: Handle, b: Handle) -> bool;
+    /// `(index, count)`: `h`'s 1-based index among its element siblings and their number.
+    fn child_position(&self, h: Handle) -> (usize, usize) {
+        let siblings = self.element_siblings(h);
+        let index = siblings.iter().position(|&s| s == h).map_or(0, |i| i + 1);
+        (index, siblings.len())
     }
+    /// `(index, count)` among the element siblings of `h`'s type.
+    fn type_position(&self, h: Handle) -> (usize, usize) {
+        let same: Vec<Handle> = self
+            .element_siblings(h)
+            .into_iter()
+            .filter(|&s| self.same_type(s, h))
+            .collect();
+        let index = same.iter().position(|&s| s == h).map_or(0, |i| i + 1);
+        (index, same.len())
+    }
+    /// The name type selectors compare against (ASCII case-insensitively); `None` means no
+    /// type selector matches `h`.
+    fn type_name(&self, h: Handle) -> Option<&str>;
+    /// `:root`.
+    fn is_root(&self, h: Handle) -> bool;
+    /// `:empty`.
+    fn is_empty(&self, h: Handle) -> bool;
+    /// Whether some descendant element of `root` (in the scope, `root` excluded) satisfies
+    /// `pred` — the `:has()` search.
+    fn some_descendant(&self, root: Handle, pred: &mut dyn FnMut(Handle) -> bool) -> bool;
+    /// `root` itself (when an element) or one of its scope descendants satisfies `pred`.
+    fn some_self_or_descendant(&self, root: Handle, pred: &mut dyn FnMut(Handle) -> bool) -> bool {
+        (self.tree().node_type(root) == NodeType::Element && pred(root))
+            || self.some_descendant(root, pred)
+    }
+    /// The slot `h` is assigned to, for `::slotted()` (`None`: not in a composed context).
+    fn assigned_slot(&self, _h: Handle) -> Option<Handle> {
+        None
+    }
+}
 
+/// The live-[`Tree`] [`Navigator`]: raw-node semantics, exactly what `matches` /
+/// `querySelector*` have always used.
+#[derive(Clone, Copy)]
+pub struct LiveNavigator<'t>(pub &'t Tree);
+
+impl Navigator for LiveNavigator<'_> {
+    fn tree(&self) -> &Tree {
+        self.0
+    }
+    fn parent(&self, h: Handle) -> Option<Handle> {
+        self.0.parent(h)
+    }
+    fn previous_element_sibling(&self, h: Handle) -> Option<Handle> {
+        self.0.previous_element_sibling(h)
+    }
+    fn next_element_sibling(&self, h: Handle) -> Option<Handle> {
+        self.0.next_element_sibling(h)
+    }
+    fn element_siblings(&self, h: Handle) -> Vec<Handle> {
+        self.0.element_siblings(h)
+    }
+    fn same_type(&self, a: Handle, b: Handle) -> bool {
+        self.0.same_element_type(a, b)
+    }
+    fn type_name(&self, h: Handle) -> Option<&str> {
+        self.0.local_name_scalar(h)
+    }
+    fn is_root(&self, h: Handle) -> bool {
+        match self.0.parent(h) {
+            None => true,
+            // parent is the document/root container, not an element
+            Some(p) => self.0.node_type(p) != NodeType::Element,
+        }
+    }
+    // :empty — no element child and no non-empty text child (Chrome). Comments,
+    // processing instructions, empty text nodes and a <template>'s content
+    // fragment don't count; whitespace-only text does.
+    fn is_empty(&self, h: Handle) -> bool {
+        let tree = self.0;
+        let mut empty = true;
+        tree.for_each_child(h, |c| {
+            empty &= match tree.node_type(c) {
+                NodeType::Element => false,
+                NodeType::Text => tree.node_value(c).is_none_or(|t| t.is_empty()),
+                _ => true,
+            };
+        });
+        empty
+    }
+    fn some_descendant(&self, root: Handle, pred: &mut dyn FnMut(Handle) -> bool) -> bool {
+        self.0.some_descendant(root, pred)
+    }
+    fn some_self_or_descendant(&self, root: Handle, pred: &mut dyn FnMut(Handle) -> bool) -> bool {
+        self.0.some_self_or_descendant(root, pred)
+    }
+}
+
+impl Tree {
     /// The immediately-preceding ELEMENT sibling of `h` (walking `previous_sibling`
     /// and skipping text/comment nodes). Mirrors selectors.mjs `previousElement`.
     /// The single source of the element-skipping sibling walk (`node_ref.rs` wraps it).
@@ -1196,180 +1268,6 @@ impl Tree {
         }
     }
 
-    fn matches_pseudo(&self, h: Handle, p: &Pseudo) -> bool {
-        match p {
-            Pseudo::State(value) => self.has_custom_state_utf16(h, value),
-            Pseudo::FirstChild => {
-                let sibs = self.element_siblings(h);
-                sibs.first() == Some(&h)
-            }
-            Pseudo::LastChild => {
-                let sibs = self.element_siblings(h);
-                sibs.last() == Some(&h)
-            }
-            Pseudo::OnlyChild => self.element_siblings(h).len() == 1,
-            Pseudo::FirstOfType => {
-                self.element_siblings(h)
-                    .into_iter()
-                    .find(|&c| self.same_element_type(c, h))
-                    == Some(h)
-            }
-            Pseudo::LastOfType => {
-                self.element_siblings(h)
-                    .into_iter()
-                    .rev()
-                    .find(|&c| self.same_element_type(c, h))
-                    == Some(h)
-            }
-            Pseudo::OnlyOfType => {
-                self.element_siblings(h)
-                    .into_iter()
-                    .filter(|&c| self.same_element_type(c, h))
-                    .count()
-                    == 1
-            }
-            // `position` is always Some (h is among its own element siblings); the
-            // is_some_and false branch is unreachable but keeps each arm a single covered line.
-            Pseudo::NthChild(a, b) => {
-                let sibs = self.element_siblings(h);
-                sibs.iter()
-                    .position(|&c| c == h)
-                    .is_some_and(|idx| nth_match(*a, *b, idx as i64 + 1))
-            }
-            Pseudo::NthLastChild(a, b) => {
-                let sibs = self.element_siblings(h);
-                sibs.iter()
-                    .position(|&c| c == h)
-                    .is_some_and(|idx| nth_match(*a, *b, sibs.len() as i64 - idx as i64))
-            }
-            Pseudo::NthChildOf(a, b, of) | Pseudo::NthLastChildOf(a, b, of) => {
-                let matches_of = |c: Handle| of.iter().any(|cx| self.matches_complex(c, cx));
-                if !matches_of(h) {
-                    return false;
-                }
-                let sibs: Vec<Handle> = self
-                    .element_siblings(h)
-                    .into_iter()
-                    .filter(|&c| c == h || matches_of(c))
-                    .collect();
-                let last = matches!(p, Pseudo::NthLastChildOf(..));
-                sibs.iter().position(|&c| c == h).is_some_and(|idx| {
-                    let index = if last {
-                        sibs.len() as i64 - idx as i64
-                    } else {
-                        idx as i64 + 1
-                    };
-                    nth_match(*a, *b, index)
-                })
-            }
-            Pseudo::NthOfType(a, b) => {
-                let same: Vec<Handle> = self
-                    .element_siblings(h)
-                    .into_iter()
-                    .filter(|&c| self.same_element_type(c, h))
-                    .collect();
-                same.iter()
-                    .position(|&c| c == h)
-                    .is_some_and(|idx| nth_match(*a, *b, idx as i64 + 1))
-            }
-            Pseudo::NthLastOfType(a, b) => {
-                let same: Vec<Handle> = self
-                    .element_siblings(h)
-                    .into_iter()
-                    .filter(|&c| self.same_element_type(c, h))
-                    .collect();
-                same.iter()
-                    .position(|&c| c == h)
-                    .is_some_and(|idx| nth_match(*a, *b, same.len() as i64 - idx as i64))
-            }
-            // :empty — no element child and no non-empty text child (Chrome). Comments,
-            // processing instructions, empty text nodes and a <template>'s content
-            // fragment don't count; whitespace-only text does.
-            Pseudo::Empty => {
-                let mut empty = true;
-                self.for_each_child(h, |c| {
-                    empty &= match self.node_type(c) {
-                        NodeType::Element => false,
-                        NodeType::Text => self.node_value(c).is_none_or(|t| t.is_empty()),
-                        _ => true,
-                    };
-                });
-                empty
-            }
-            Pseudo::Root => match self.parent(h) {
-                None => true,
-                // parent is the document/root container, not an element
-                Some(p) => self.node_type(p) != NodeType::Element,
-            },
-            // Form-state. Mirrors selectors.mjs: read the live IDL property first (what a
-            // consumer / React sets via set_form_property, the analogue of `el.checked`),
-            // falling back to the HTML attribute when no live override is set.
-            Pseudo::Checked => {
-                if self.local_name(h) == Some("option") {
-                    self.form_state(h, FormProp::Selected, "selected")
-                } else {
-                    self.local_name(h) == Some("input")
-                        && self.get_attribute(h, "type").is_some_and(|kind| {
-                            kind.eq_ignore_ascii_case("checkbox")
-                                || kind.eq_ignore_ascii_case("radio")
-                        })
-                        && self.form_state(h, FormProp::Checked, "checked")
-                }
-            }
-            Pseudo::Disabled => self.form_state(h, FormProp::Disabled, "disabled"),
-            Pseudo::Enabled => {
-                matches!(
-                    self.local_name(h),
-                    Some(
-                        "input"
-                            | "button"
-                            | "select"
-                            | "textarea"
-                            | "optgroup"
-                            | "option"
-                            | "fieldset"
-                    )
-                ) && !self.form_state(h, FormProp::Disabled, "disabled")
-            }
-            Pseudo::Required => self.form_state(h, FormProp::Required, "required"),
-            Pseudo::Optional => {
-                matches!(self.local_name(h), Some("input" | "select" | "textarea"))
-                    && !self.form_state(h, FormProp::Required, "required")
-            }
-            // HTML read-write rule; non-HTML elements match neither (Chrome).
-            Pseudo::ReadOnly => self.is_html(h) && !self.read_write(h),
-            Pseudo::ReadWrite => self.is_html(h) && self.read_write(h),
-            Pseudo::Selected => self.form_state(h, FormProp::Selected, "selected"),
-            Pseudo::Link => self.is_link(h),
-            // selector-list pseudos: each Complex is anchored at `h` (matches_complex
-            // tests the rightmost compound against `h` and walks left).
-            Pseudo::Is(list) | Pseudo::Where(list) => {
-                list.iter().any(|cx| self.matches_complex(h, cx))
-            }
-            Pseudo::Not(list) => !list.iter().any(|cx| self.matches_complex(h, cx)),
-            // relational: SOME relative selector finds a matching element reachable
-            // from `h` per its leading combinator, scoped to `h`'s subtree.
-            Pseudo::Has(list) => list.iter().any(|rel| self.has_match(h, rel)),
-            Pseudo::Unknown => false,
-        }
-    }
-
-    /// The compound at position `k` in the chain: `k==0` is the head (`first`),
-    /// `k>0` is `rest[k-1].1`. (`rest` entry `i` pairs the combinator on its left
-    /// with the compound at chain position `i+1`.)
-    fn compound_at(cx: &Complex, k: usize) -> &Compound {
-        if k == 0 {
-            &cx.first
-        } else {
-            &cx.rest[k - 1].1
-        }
-    }
-
-    /// Does `h` match the full complex selector, anchored at its rightmost compound?
-    /// Recursive with backtracking: a descendant combinator tries EVERY matching
-    /// ancestor, not just the nearest, so a mixed chain such as `.a > .b .c` — where
-    /// the `.b` that is a direct child of `.a` is *farther* from `.c` than another
-    /// `.b` — is matched correctly. A greedy nearest-ancestor walk would miss it.
     /// A boolean form-state property: the live IDL override if a consumer set one, else
     /// the presence of the HTML attribute. Mirrors the JS `__x !== undefined ? __x :
     /// hasAttribute(x)` pattern shared by the form-state pseudo-classes.
@@ -1478,144 +1376,339 @@ impl Tree {
         }
     }
 
-    fn matches_complex(&self, h: Handle, cx: &Complex) -> bool {
-        self.matches_chain(h, cx, cx.rest.len(), None)
+    /// Does `h` match the complex selector `cx` on the live tree?
+    pub(crate) fn matches_complex(&self, h: Handle, cx: &Complex) -> bool {
+        matches_complex(&LiveNavigator(self), h, cx)
     }
+}
 
-    /// Match the chain prefix ending at position `k` against element `h`. The
-    /// combinator in `rest[k-1]` connects position `k` to position `k-1`
-    /// (see `parse_complex`); position 0 (the head) has no combinator.
-    ///
-    /// `scope` supports `:has()`: when `Some((comb, el))`, the LEFTMOST compound must,
-    /// in addition to matching, relate to the scope element `el` by `comb` — so a
-    /// relative selector's head is anchored to the `:has()` subject. `None` (plain
-    /// matching) means the leftmost compound stands alone.
-    fn matches_chain(
-        &self,
-        h: Handle,
-        cx: &Complex,
-        k: usize,
-        scope: Option<(Combinator, Handle)>,
-    ) -> bool {
-        if !self.matches_compound(h, Self::compound_at(cx, k)) {
+fn matches_compound<N: Navigator + ?Sized>(nav: &N, h: Handle, c: &Compound) -> bool {
+    let tree = nav.tree();
+    if tree.node_type(h) != NodeType::Element {
+        return false;
+    }
+    match c.namespace {
+        TypeNamespace::Default | TypeNamespace::Any => {}
+        TypeNamespace::Null if tree.namespace_uri(h).is_none() => {}
+        TypeNamespace::Null | TypeNamespace::Invalid => return false,
+    }
+    if let Some(tag) = &c.tag {
+        if !nav
+            .type_name(h)
+            .is_some_and(|name| name.eq_ignore_ascii_case(tag))
+        {
             return false;
         }
-        if k == 0 {
-            // matched the leftmost compound — plain matching is done; `:has()` must also
-            // check the head relates to the scope element by the leading combinator.
-            return match scope {
-                None => true,
-                Some((comb, el)) => self.relates_to_scope(h, comb, el),
-            };
+    }
+    if let Some(id) = &c.id {
+        if tree.get_attribute_ns_borrowed(h, None, "id") != Some(id.as_str())
+            || !tree.attribute_is_scalar(h, "id")
+        {
+            return false;
         }
-        match cx.rest[k - 1].0 {
-            // the direct parent must match the remaining prefix
-            Combinator::Child => match self.parent(h) {
-                Some(p) => self.matches_chain(p, cx, k - 1, scope),
-                None => false,
-            },
-            // ANY ancestor may match the remaining prefix — try each, backtracking
-            Combinator::Descendant => {
-                let mut anc = self.parent(h);
-                while let Some(a) = anc {
-                    if self.matches_chain(a, cx, k - 1, scope) {
-                        return true;
-                    }
-                    anc = self.parent(a);
-                }
-                false
-            }
-            // the IMMEDIATELY-preceding element sibling must match the prefix
-            // (single step — mirrors the JS `'+'` arm).
-            Combinator::Adjacent => match self.previous_element_sibling(h) {
-                Some(prev) => self.matches_chain(prev, cx, k - 1, scope),
-                None => false,
-            },
-            // ANY preceding element sibling may match the prefix — try each,
-            // backtracking (like Descendant but over previous element siblings;
-            // mirrors the JS `'~'` arm).
-            Combinator::GeneralSibling => {
-                let mut prev = self.previous_element_sibling(h);
-                while let Some(p) = prev {
-                    if self.matches_chain(p, cx, k - 1, scope) {
-                        return true;
-                    }
-                    prev = self.previous_element_sibling(p);
-                }
-                false
+    }
+    if !c.classes.is_empty() {
+        let Some(cv) = tree.get_attribute_ns_borrowed(h, None, "class") else {
+            return false;
+        };
+        for cls in &c.classes {
+            if !has_class(cv, cls)
+                || (!tree.attribute_is_scalar(h, "class")
+                    && !tree
+                        .get_attribute_ns_utf16(h, None, "class")
+                        .is_some_and(|units| {
+                            units::has_class_units(&units, &cls.encode_utf16().collect::<Vec<_>>())
+                        }))
+            {
+                return false;
             }
         }
     }
-
-    /// Does `node` stand in relation `comb` to the `:has()` scope element `el`? This
-    /// anchors the HEAD (leftmost) compound of a relative selector to the subject:
-    /// `> .a` ⇒ the `.a` head is a direct child, `.a .b` ⇒ the `.a` head is a
-    /// descendant, etc. The leading combinator constrains the head — NOT the whole
-    /// complex (anchoring the entire complex at a child/sibling candidate was the bug).
-    fn relates_to_scope(&self, node: Handle, comb: Combinator, el: Handle) -> bool {
-        match comb {
-            Combinator::Child => self.parent(node) == Some(el),
-            Combinator::Adjacent => self.previous_element_sibling(node) == Some(el),
-            Combinator::GeneralSibling => {
-                let mut prev = self.previous_element_sibling(node);
-                while let Some(s) = prev {
-                    if s == el {
-                        return true;
-                    }
-                    prev = self.previous_element_sibling(s);
-                }
-                false
-            }
-            // Descendant: `el` is a proper ancestor of `node`.
-            Combinator::Descendant => {
-                let mut anc = self.parent(node);
-                while let Some(a) = anc {
-                    if a == el {
-                        return true;
-                    }
-                    anc = self.parent(a);
-                }
-                false
-            }
-        }
-    }
-
-    /// `:has()` existence search. The relative complex must match some target element
-    /// (its rightmost compound) reachable from the subject `h`, with its HEAD compound
-    /// related to `h` by the leading combinator (enforced at `k == 0` via
-    /// `relates_to_scope`). Candidate targets: descendants of `h` for `>`/descendant
-    /// heads (the head, and thus the whole match, lives in `h`'s subtree); a
-    /// following-sibling subtree for `+`/`~` heads. Mirrors the JS `hasMatch`.
-    fn has_match(&self, h: Handle, rel: &RelativeSelector) -> bool {
-        let scope = Some((rel.combinator, h));
-        let k = rel.complex.rest.len();
-        match rel.combinator {
-            Combinator::Adjacent => match self.next_element_sibling(h) {
-                Some(sib) => self.some_self_or_descendant(sib, |x| {
-                    self.matches_chain(x, &rel.complex, k, scope)
-                }),
-                None => false,
+    for a in &c.attrs {
+        let html = tree.namespace_uri(h) == Some("http://www.w3.org/1999/xhtml");
+        let name = if html {
+            a.html_name.as_deref().unwrap_or(&a.name)
+        } else {
+            &a.name
+        };
+        match &a.m {
+            AttrMatch::Units(m)
+                if tree
+                    .get_attribute_ns_utf16(h, None, name)
+                    .is_some_and(|got| {
+                        m.matches_case(
+                            &got,
+                            name == "type"
+                                && html
+                                && matches!(tree.local_name(h), Some("input" | "button" | "ol")),
+                        )
+                    }) => {}
+            AttrMatch::Units(_) => return false,
+            _ => match tree.get_attribute_ns_borrowed(h, None, name) {
+                Some(got)
+                    if a.m.matches(got)
+                        && (tree.attribute_is_scalar(h, name)
+                            || tree
+                                .get_attribute_ns_utf16(h, None, name)
+                                .is_some_and(|got| UnitAttrMatch::scalar(&a.m).matches(&got))) => {}
+                _ => return false,
             },
-            Combinator::GeneralSibling => {
-                let mut sib = self.next_element_sibling(h);
-                while let Some(s) = sib {
-                    if self.some_self_or_descendant(s, |x| {
-                        self.matches_chain(x, &rel.complex, k, scope)
-                    }) {
-                        return true;
-                    }
-                    sib = self.next_element_sibling(s);
-                }
-                false
-            }
-            // Child / Descendant leading combinator: the head (hence every match) is
-            // within `h`'s subtree, so any descendant can be the target endpoint.
-            Combinator::Child | Combinator::Descendant => {
-                self.some_descendant(h, |x| self.matches_chain(x, &rel.complex, k, scope))
-            }
         }
     }
+    c.pseudos.iter().all(|p| matches_pseudo(nav, h, p))
+}
 
+fn matches_pseudo<N: Navigator + ?Sized>(nav: &N, h: Handle, p: &Pseudo) -> bool {
+    let tree = nav.tree();
+    match p {
+        Pseudo::State(value) => tree.has_custom_state_utf16(h, value),
+        Pseudo::FirstChild => nav.child_position(h).0 == 1,
+        Pseudo::LastChild => {
+            let (index, count) = nav.child_position(h);
+            index == count
+        }
+        Pseudo::OnlyChild => nav.child_position(h).1 == 1,
+        Pseudo::FirstOfType => nav.type_position(h).0 == 1,
+        Pseudo::LastOfType => {
+            let (index, count) = nav.type_position(h);
+            index == count
+        }
+        Pseudo::OnlyOfType => nav.type_position(h).1 == 1,
+        Pseudo::NthChild(a, b) => nth_match(*a, *b, nav.child_position(h).0 as i64),
+        Pseudo::NthLastChild(a, b) => {
+            let (index, count) = nav.child_position(h);
+            nth_match(*a, *b, count as i64 - index as i64 + 1)
+        }
+        Pseudo::NthChildOf(a, b, of) | Pseudo::NthLastChildOf(a, b, of) => {
+            let matches_of = |c: Handle| of.iter().any(|cx| matches_complex(nav, c, cx));
+            if !matches_of(h) {
+                return false;
+            }
+            let sibs: Vec<Handle> = nav
+                .element_siblings(h)
+                .into_iter()
+                .filter(|&c| c == h || matches_of(c))
+                .collect();
+            let last = matches!(p, Pseudo::NthLastChildOf(..));
+            sibs.iter().position(|&c| c == h).is_some_and(|idx| {
+                let index = if last {
+                    sibs.len() as i64 - idx as i64
+                } else {
+                    idx as i64 + 1
+                };
+                nth_match(*a, *b, index)
+            })
+        }
+        Pseudo::NthOfType(a, b) => nth_match(*a, *b, nav.type_position(h).0 as i64),
+        Pseudo::NthLastOfType(a, b) => {
+            let (index, count) = nav.type_position(h);
+            nth_match(*a, *b, count as i64 - index as i64 + 1)
+        }
+        Pseudo::Empty => nav.is_empty(h),
+        Pseudo::Root => nav.is_root(h),
+        // Form-state. Mirrors selectors.mjs: read the live IDL property first (what a
+        // consumer / React sets via set_form_property, the analogue of `el.checked`),
+        // falling back to the HTML attribute when no live override is set.
+        Pseudo::Checked => {
+            if tree.local_name(h) == Some("option") {
+                tree.form_state(h, FormProp::Selected, "selected")
+            } else {
+                tree.local_name(h) == Some("input")
+                    && tree.get_attribute(h, "type").is_some_and(|kind| {
+                        kind.eq_ignore_ascii_case("checkbox") || kind.eq_ignore_ascii_case("radio")
+                    })
+                    && tree.form_state(h, FormProp::Checked, "checked")
+            }
+        }
+        Pseudo::Disabled => tree.form_state(h, FormProp::Disabled, "disabled"),
+        Pseudo::Enabled => {
+            matches!(
+                tree.local_name(h),
+                Some(
+                    "input" | "button" | "select" | "textarea" | "optgroup" | "option" | "fieldset"
+                )
+            ) && !tree.form_state(h, FormProp::Disabled, "disabled")
+        }
+        Pseudo::Required => tree.form_state(h, FormProp::Required, "required"),
+        Pseudo::Optional => {
+            matches!(tree.local_name(h), Some("input" | "select" | "textarea"))
+                && !tree.form_state(h, FormProp::Required, "required")
+        }
+        // HTML read-write rule; non-HTML elements match neither (Chrome).
+        Pseudo::ReadOnly => tree.is_html(h) && !tree.read_write(h),
+        Pseudo::ReadWrite => tree.is_html(h) && tree.read_write(h),
+        Pseudo::Selected => tree.form_state(h, FormProp::Selected, "selected"),
+        Pseudo::Link => tree.is_link(h),
+        // selector-list pseudos: each Complex is anchored at `h` (matches_complex
+        // tests the rightmost compound against `h` and walks left).
+        Pseudo::Is(list) | Pseudo::Where(list) | Pseudo::WebkitAny(list) => {
+            list.iter().any(|cx| matches_complex(nav, h, cx))
+        }
+        Pseudo::Not(list) => !list.iter().any(|cx| matches_complex(nav, h, cx)),
+        // relational: SOME relative selector finds a matching element reachable
+        // from `h` per its leading combinator, scoped to `h`'s subtree.
+        Pseudo::Has(list) => list.iter().any(|rel| has_match(nav, h, rel)),
+        Pseudo::Defined => cascade::is_defined(tree, h),
+        Pseudo::Lang(ranges) => cascade::lang_matches(tree, h, ranges),
+        Pseudo::Unknown(_) => false,
+    }
+}
+
+/// The compound at position `k` in the chain: `k==0` is the head (`first`),
+/// `k>0` is `rest[k-1].1`. (`rest` entry `i` pairs the combinator on its left
+/// with the compound at chain position `i+1`.)
+fn compound_at(cx: &Complex, k: usize) -> &Compound {
+    if k == 0 {
+        &cx.first
+    } else {
+        &cx.rest[k - 1].1
+    }
+}
+
+/// Does `h` match the full complex selector, anchored at its rightmost compound?
+/// Recursive with backtracking: a descendant combinator tries EVERY matching
+/// ancestor, not just the nearest, so a mixed chain such as `.a > .b .c` — where
+/// the `.b` that is a direct child of `.a` is *farther* from `.c` than another
+/// `.b` — is matched correctly. A greedy nearest-ancestor walk would miss it.
+fn matches_complex<N: Navigator + ?Sized>(nav: &N, h: Handle, cx: &Complex) -> bool {
+    matches_chain(nav, h, cx, cx.rest.len(), None)
+}
+
+/// Match the chain prefix ending at position `k` against element `h`. The
+/// combinator in `rest[k-1]` connects position `k` to position `k-1`
+/// (see `parse_complex`); position 0 (the head) has no combinator.
+///
+/// `scope` supports `:has()`: when `Some((comb, el))`, the LEFTMOST compound must,
+/// in addition to matching, relate to the scope element `el` by `comb` — so a
+/// relative selector's head is anchored to the `:has()` subject. `None` (plain
+/// matching) means the leftmost compound stands alone.
+fn matches_chain<N: Navigator + ?Sized>(
+    nav: &N,
+    h: Handle,
+    cx: &Complex,
+    k: usize,
+    scope: Option<(Combinator, Handle)>,
+) -> bool {
+    if !matches_compound(nav, h, compound_at(cx, k)) {
+        return false;
+    }
+    if k == 0 {
+        // matched the leftmost compound — plain matching is done; `:has()` must also
+        // check the head relates to the scope element by the leading combinator.
+        return match scope {
+            None => true,
+            Some((comb, el)) => relates_to_scope(nav, h, comb, el),
+        };
+    }
+    match cx.rest[k - 1].0 {
+        // the direct parent must match the remaining prefix
+        Combinator::Child => match nav.parent(h) {
+            Some(p) => matches_chain(nav, p, cx, k - 1, scope),
+            None => false,
+        },
+        // ANY ancestor may match the remaining prefix — try each, backtracking
+        Combinator::Descendant => {
+            let mut anc = nav.parent(h);
+            while let Some(a) = anc {
+                if matches_chain(nav, a, cx, k - 1, scope) {
+                    return true;
+                }
+                anc = nav.parent(a);
+            }
+            false
+        }
+        // the IMMEDIATELY-preceding element sibling must match the prefix
+        // (single step — mirrors the JS `'+'` arm).
+        Combinator::Adjacent => match nav.previous_element_sibling(h) {
+            Some(prev) => matches_chain(nav, prev, cx, k - 1, scope),
+            None => false,
+        },
+        // ANY preceding element sibling may match the prefix — try each,
+        // backtracking (like Descendant but over previous element siblings;
+        // mirrors the JS `'~'` arm).
+        Combinator::GeneralSibling => {
+            let mut prev = nav.previous_element_sibling(h);
+            while let Some(p) = prev {
+                if matches_chain(nav, p, cx, k - 1, scope) {
+                    return true;
+                }
+                prev = nav.previous_element_sibling(p);
+            }
+            false
+        }
+    }
+}
+
+/// Does `node` stand in relation `comb` to the `:has()` scope element `el`? This
+/// anchors the HEAD (leftmost) compound of a relative selector to the subject:
+/// `> .a` ⇒ the `.a` head is a direct child, `.a .b` ⇒ the `.a` head is a
+/// descendant, etc. The leading combinator constrains the head — NOT the whole
+/// complex (anchoring the entire complex at a child/sibling candidate was the bug).
+fn relates_to_scope<N: Navigator + ?Sized>(
+    nav: &N,
+    node: Handle,
+    comb: Combinator,
+    el: Handle,
+) -> bool {
+    match comb {
+        Combinator::Child => nav.parent(node) == Some(el),
+        Combinator::Adjacent => nav.previous_element_sibling(node) == Some(el),
+        Combinator::GeneralSibling => {
+            let mut prev = nav.previous_element_sibling(node);
+            while let Some(s) = prev {
+                if s == el {
+                    return true;
+                }
+                prev = nav.previous_element_sibling(s);
+            }
+            false
+        }
+        // Descendant: `el` is a proper ancestor of `node`.
+        Combinator::Descendant => {
+            let mut anc = nav.parent(node);
+            while let Some(a) = anc {
+                if a == el {
+                    return true;
+                }
+                anc = nav.parent(a);
+            }
+            false
+        }
+    }
+}
+
+/// `:has()` existence search. The relative complex must match some target element
+/// (its rightmost compound) reachable from the subject `h`, with its HEAD compound
+/// related to `h` by the leading combinator (enforced at `k == 0` via
+/// `relates_to_scope`). Candidate targets: descendants of `h` for `>`/descendant
+/// heads (the head, and thus the whole match, lives in `h`'s subtree); a
+/// following-sibling subtree for `+`/`~` heads. Mirrors the JS `hasMatch`.
+fn has_match<N: Navigator + ?Sized>(nav: &N, h: Handle, rel: &RelativeSelector) -> bool {
+    let scope = Some((rel.combinator, h));
+    let k = rel.complex.rest.len();
+    let mut target = |x: Handle| matches_chain(nav, x, &rel.complex, k, scope);
+    match rel.combinator {
+        Combinator::Adjacent => match nav.next_element_sibling(h) {
+            Some(sib) => nav.some_self_or_descendant(sib, &mut target),
+            None => false,
+        },
+        Combinator::GeneralSibling => {
+            let mut sib = nav.next_element_sibling(h);
+            while let Some(s) = sib {
+                if nav.some_self_or_descendant(s, &mut target) {
+                    return true;
+                }
+                sib = nav.next_element_sibling(s);
+            }
+            false
+        }
+        // Child / Descendant leading combinator: the head (hence every match) is
+        // within `h`'s subtree, so any descendant can be the target endpoint.
+        Combinator::Child | Combinator::Descendant => nav.some_descendant(h, &mut target),
+    }
+}
+
+impl Tree {
     /// Parse `selector` into its selector-list, memoized by string in `parse_cache`
     /// (shared `Rc`, so a repeated selector parses once). Empty/combinator-only
     /// segments are dropped at parse time, so every `Complex` returned is non-empty.

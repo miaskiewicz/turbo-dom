@@ -148,12 +148,6 @@ impl Log {
     }
 }
 
-/// This process's JSONL log (opens it, so a dual build must have the env set).
-#[cfg(test)]
-pub(crate) fn log_path() -> &'static std::path::Path {
-    &log().path
-}
-
 /// Which selector an output was asked for.
 #[derive(Clone, Copy)]
 pub(crate) enum Sel<'a> {
@@ -568,7 +562,10 @@ mod tests {
         assert!(compared() >= before + 2, "both calls were compared");
         let frozen = tree.frozen_caches();
         let cache = frozen.qcache.borrow();
-        let frozen_hit = cache.map.get(selector).expect("the frozen engine cached it");
+        let frozen_hit = cache
+            .map
+            .get(selector)
+            .expect("the frozen engine cached it");
         assert_eq!(&frozen_hit[..], &first[..]);
         assert!(!std::rc::Rc::ptr_eq(frozen_hit, &first), "no cache sharing");
     }

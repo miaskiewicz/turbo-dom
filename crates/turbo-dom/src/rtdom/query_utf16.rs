@@ -406,7 +406,10 @@ fn pseudo(name: &str, arg: Option<&[u16]>) -> Pseudo {
         return parse_pseudo(name, None);
     };
     if name.eq_ignore_ascii_case("state") {
-        return state_argument(arg).map_or(Pseudo::Unknown, Pseudo::State);
+        return state_argument(arg).map_or_else(
+            || Pseudo::unknown(name, Some(&String::from_utf16_lossy(arg))),
+            Pseudo::State,
+        );
     }
     match name {
         "is" => Pseudo::Is(list(arg)),
