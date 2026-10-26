@@ -743,7 +743,12 @@ Regenerate: run the four configurations with `scratchpad/scripts/baseline-cargo.
 | `turbo_html2pdf_core<src/lib.rs>::image::format_tests::probe_webp_unknown_chunk_is_none` | turbo-dom-layout | `turbo_dom_layout<src/lib.rs>::image::format_tests::probe_webp_unknown_chunk_is_none` | verbatim | ok | ok | ok | ok |
 | `turbo_html2pdf_core<src/lib.rs>::image::format_tests::sniff_recognizes_gif_and_webp` | turbo-dom-layout | `turbo_dom_layout<src/lib.rs>::image::format_tests::sniff_recognizes_gif_and_webp` | verbatim | ok | ok | ok | ok |
 | `turbo_html2pdf_core<src/lib.rs>::layout::block::tests::bottom_margin_collapse_requires_a_provably_zero_minimum_height` | turbo-dom-layout | `turbo_dom_layout<src/lib.rs>::layout::block::tests::bottom_margin_collapse_requires_a_provably_zero_minimum_height` | verbatim | ok | ok | ok | ok |
-| `turbo_html2pdf_core<src/lib.rs>::layout::block::tests::first_inflow_child_is_none_for_a_non_block_box` | turbo-dom-layout | `turbo_dom_layout<src/lib.rs>::layout::block::tests::first_inflow_child_is_none_for_a_non_block_box` | verbatim | ok | ok | ok | ok |
+| `turbo_html2pdf_core<src/lib.rs>::layout::block::tests::first_inflow_child_is_none_for_a_non_block_box` | turbo-dom-layout | `html_document_chrome<tests/html_document_chrome.rs>::flow_root_establishes_a_formatting_context_like_chrome_156` | new (turbo-dom#88, test-first) |
+| turbo-dom-layout | `html_document_chrome<tests/html_document_chrome.rs>::column_flex_items_size_on_their_axes_like_chrome_156` | new (turbo-dom#86, test-first) |
+| turbo-dom-layout | `html_document_chrome<tests/html_document_chrome.rs>::content_box_flex_items_add_their_frame_like_chrome_156` | new (turbo-dom#93, test-first) |
+| turbo-dom-layout | `html_document_chrome<tests/html_document_chrome.rs>::intrinsic_widths_count_child_margins_like_chrome_156` | new, `#[ignore]`d (turbo-dom#79 control; the fix is P5b-W7's) |
+| turbo-dom-layout | `turbo_dom_layout<src/lib.rs>::layout::flex::coverage_tests::item_basis_percent_and_width_fallback` | adapted@P5b-W6 (turbo-dom#86: `item_basis` takes the main-axis size; same expectations with the row's `width`) |
+| turbo-dom-layout | `turbo_dom_layout<src/lib.rs>::layout::block::tests::first_inflow_child_is_none_for_a_non_block_box` | verbatim | ok | ok | ok | ok |
 | `turbo_html2pdf_core<src/lib.rs>::layout::block::tests::line_strut_prefers_line_height_then_face_then_fallback` | turbo-dom-layout | `turbo_dom_layout<src/lib.rs>::layout::block::tests::line_strut_prefers_line_height_then_face_then_fallback` | verbatim | ok | ok | ok | ok |
 | `turbo_html2pdf_core<src/lib.rs>::layout::boxgen::tests::br_becomes_an_inline_line_break` | turbo-dom-layout | `turbo_dom_layout<src/lib.rs>::layout::boxgen::tests::br_becomes_an_inline_line_break` | verbatim | ok | ok | ok | ok |
 | `turbo_html2pdf_core<src/lib.rs>::layout::boxgen::tests::is_br_matches_only_the_br_tag` | turbo-dom-layout | `turbo_dom_layout<src/lib.rs>::layout::boxgen::tests::is_br_matches_only_the_br_tag` | verbatim | ok | ok | ok | ok |
@@ -1196,7 +1201,7 @@ Declared behaviour changes (Chrome 156 controls), not moves:
 | turbo-dom-layout | `html_document_chrome<tests/html_document_chrome.rs>::header_cells_are_bold_and_centred_like_chrome_156` | new (turbo-dom#70, test-first) |
 | turbo-dom-layout | `turbo_dom_layout<src/lib.rs>::layout::value::clip_tests::{clip_region_resolves_offsets_auto_edges_and_scale, clip_keeps_nothing_only_when_empty_at_every_size}` | new (turbo-dom#52) |
 
-## P5b-W6 (layout bug fixes, turbo-dom#75/#76/#77/#78): adapted and new tests
+## P5b-W6 (layout bug fixes, turbo-dom#75/#76/#77/#78/#86/#88/#93): adapted and new tests
 
 Declared behaviour changes (Chrome 156 controls), not moves:
 
@@ -1208,6 +1213,11 @@ Declared behaviour changes (Chrome 156 controls), not moves:
 | turbo-dom-layout | `html_document_chrome<tests/html_document_chrome.rs>::min_height_wins_over_max_height_like_chrome_156` | new (turbo-dom#77, test-first) |
 | turbo-dom-layout | `html_document_chrome<tests/html_document_chrome.rs>::percentage_heights_resolve_against_a_definite_parent_like_chrome_156` | new (turbo-dom#78, test-first) |
 | turbo-dom-layout | `html_document_chrome<tests/html_document_chrome.rs>::self_collapsing_first_child_margins_like_chrome_156` | new (turbo-dom#76, test-first) |
+| turbo-dom-layout | `html_document_chrome<tests/html_document_chrome.rs>::flow_root_establishes_a_formatting_context_like_chrome_156` | new (turbo-dom#88, test-first) |
+| turbo-dom-layout | `html_document_chrome<tests/html_document_chrome.rs>::column_flex_items_size_on_their_axes_like_chrome_156` | new (turbo-dom#86, test-first) |
+| turbo-dom-layout | `html_document_chrome<tests/html_document_chrome.rs>::content_box_flex_items_add_their_frame_like_chrome_156` | new (turbo-dom#93, test-first) |
+| turbo-dom-layout | `html_document_chrome<tests/html_document_chrome.rs>::intrinsic_widths_count_child_margins_like_chrome_156` | new, `#[ignore]`d (turbo-dom#79 control; the fix is P5b-W7's) |
+| turbo-dom-layout | `turbo_dom_layout<src/lib.rs>::layout::flex::coverage_tests::item_basis_percent_and_width_fallback` | adapted@P5b-W6 (turbo-dom#86: `item_basis` takes the main-axis size; same expectations with the row's `width`) |
 | turbo-dom-layout | `turbo_dom_layout<src/lib.rs>::layout::block::tests::first_inflow_child_is_none_for_a_non_block_box` | adapted@P5b-W6 (turbo-dom#76: `first_inflow_child` became `inflow_children`; the same assertion on its first item) |
 | turbo-dom-layout | `turbo_dom_layout<src/lib.rs>::layout::block::tests::bottom_margin_collapse_requires_a_provably_zero_minimum_height` | adapted@P5b-W6 (turbo-dom#75: a non-zero `min-height` no longer keeps a last child's margin inside, `zero_min_height` is gone; the same expectations now check `zero_or_auto`, the self-collapsing test of #76, plus `calc()` cases) |
 

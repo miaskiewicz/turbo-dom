@@ -51,7 +51,7 @@ impl Tree {
             return Some(Cow::Borrowed(text.as_str()));
         }
         if self.is_new(h) {
-            return self.new_ref(h).char_data().map(Cow::Borrowed);
+            return Some(Cow::Borrowed(self.new_ref(h).char_data()));
         }
         let id = self.buf.text_id[h.idx()];
         Some(Cow::Borrowed(

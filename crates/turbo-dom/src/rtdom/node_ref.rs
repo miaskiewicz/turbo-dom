@@ -187,12 +187,12 @@ impl<'a> NodeRef<'a> {
     /// First DESCENDANT matching `selector` (the context node itself is excluded).
     #[must_use]
     pub fn query_selector(&self, selector: &str) -> Option<NodeRef<'a>> {
-        if !self.in_document() {
+        if !self.in_document() || mentions_scope(selector) {
             return self
                 .tree
                 .descendants(self.handle)
                 .into_iter()
-                .find(|&h| self.tree.matches(h, selector))
+                .find(|&h| self.tree.matches_scoped(h, selector, self.handle))
                 .map(|h| self.wrap(h));
         }
         self.tree
@@ -206,12 +206,12 @@ impl<'a> NodeRef<'a> {
     /// All DESCENDANTS matching `selector` (the context node itself is excluded).
     #[must_use]
     pub fn query_selector_all(&self, selector: &str) -> Vec<NodeRef<'a>> {
-        if !self.in_document() {
+        if !self.in_document() || mentions_scope(selector) {
             return self
                 .tree
                 .descendants(self.handle)
                 .into_iter()
-                .filter(|&h| self.tree.matches(h, selector))
+                .filter(|&h| self.tree.matches_scoped(h, selector, self.handle))
                 .map(|h| self.wrap(h))
                 .collect();
         }
@@ -288,6 +288,16 @@ impl DocumentExt for Tree {
             .map(|&h| NodeRef::new(self, h))
             .collect()
     }
+}
+
+/// Whether `selector` may use `:scope` (then an element-rooted query matches with the
+/// element as the scope instead of reusing the document's cached results;
+/// miaskiewicz/turbo-dom#96). Over-approximates (`.scope`, escapes) harmlessly.
+fn mentions_scope(selector: &str) -> bool {
+    selector
+        .as_bytes()
+        .windows(5)
+        .any(|w| w.eq_ignore_ascii_case(b"scope"))
 }
 
 #[cfg(test)]
@@ -491,3 +501,4 @@ mod tests {
         assert_eq!(tree.query_all(".does-not-exist").len(), 0);
     }
 }
+

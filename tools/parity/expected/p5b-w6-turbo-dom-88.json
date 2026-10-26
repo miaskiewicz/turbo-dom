@@ -1,0 +1,24 @@
+{
+ "id": "miaskiewicz/turbo-dom#88",
+ "reason": "display: flow-root establishes a block formatting context (children's margins inside, floats contained, outer floats avoided), and a zero-height formatting-context root is not self-collapsing. No existing corpus output changes (Fresh-target parity builds (turbo-html2pdf refactor 923c89f, path-patched): d17e810 -> 2ae7d19 (#88) -> f9e5a60 (#86) -> b6b3d4a (#93) -> 1315ee4 (+ extra inputs, merged refactor 1b6c9fa): 0 changed at 2ae7d19); the new extra input flow-root.html pins it. P5b-W6.",
+ "control": "scripts/html-document-chrome-control.mjs flow-root-* / empty-formatting-root-* cases",
+ "e2e": "crates/turbo-dom-layout/tests/html_document_chrome.rs (flow_root_establishes_a_formatting_context_like_chrome_156)",
+ "changes": {
+  "html2pdf": [],
+  "html2pdf-svg": [],
+  "html2pdf-extra": [],
+  "surf": [],
+  "surf-extra": []
+ },
+ "added": {
+  "html2pdf-extra": [
+   "extra-flow-root.boxes.json",
+   "extra-flow-root.pdf",
+   "extra-flow-root.ua.pdf"
+  ],
+  "surf-extra": [
+   "static-extra-flow-root.png",
+   "static-extra-flow-root.svg"
+  ]
+ }
+}

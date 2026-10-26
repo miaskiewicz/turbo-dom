@@ -161,7 +161,6 @@ at the time); this file reconstructs them from history.
   `<option>` `normal`. Author rules (`font: inherit` too) win. Control: case
   `form-control-fonts` of `src/computed_defaults_chrome156.json`.
 
-
 ### Fixed — image size points, `srcset`/`<picture>`, binding DOMExceptions (P5b-X7, Chrome 156 controls)
 - The shared image probe follows Blink's load decision for cut-short bodies
   (miaskiewicz/turbo-dom#59). `image::probe` and `image::probe_natural` size a JPEG from
@@ -217,11 +216,12 @@ at the time); this file reconstructs them from history.
   (`collect_native_storage` after `install_html` and a GC, then the
   `custom_elements_defined_chrome156.json` probe).
 
-### Fixed — turbo-dom-layout margins, heights and zero-area clips (P5b-W6, miaskiewicz/turbo-dom#75/#76/#77/#78, Chrome 156 controls)
+### Fixed — turbo-dom-layout margins, heights, zero-area clips, flow-root and flex item sizes (P5b-W6, miaskiewicz/turbo-dom#75/#76/#77/#78/#86/#88/#93, Chrome 156 controls)
 Each fix is backed by Chrome for Testing 156 cases in `scripts/html-document-chrome-control.mjs`
 and lists the corpus outputs it changes in `tools/parity/expected/p5b-w6-turbo-dom-*.json`
 (new pinned corpus inputs: `tools/parity/inputs/extra/{min-height-margin,
-self-collapsing-margins,min-max-height,percent-height}.html`).
+self-collapsing-margins,min-max-height,percent-height,flow-root,column-flex,
+flex-item-box-sizing}.html`).
 - A last child's bottom margin and `min-height` / `max-height` (#75 item 1): a non-zero
   `min-height` kept the margin inside the parent (`max(min-height, content + margin)`).
   As in Chrome, an auto-height parent lays its content out without it; the margin
@@ -245,6 +245,49 @@ self-collapsing-margins,min-max-height,percent-height}.html`).
   `min-height` / `max-height` of an in-flow box resolves against its parent's definite
   height (positioned boxes: also `min-height` / `max-height`); against an indefinite height
   they still behave as `auto` / 0 / `none`. Control: `percent-*`.
+- `display: flow-root` (#88): laid out as a plain block, it now establishes a block
+  formatting context — its children's margins stay inside, it contains its floats and
+  avoids outer floats. A zero-height box that establishes a formatting context (flow-root,
+  `overflow`, flex / grid / table) is no longer self-collapsing: margins no longer run
+  through an empty one. Control: `flow-root-*` / `empty-formatting-root-*`.
+- Column flex items (#86): an item's flex basis came from its `width` and its `width` was
+  dropped, so it stretched to the container and its height became its width. In a column
+  the basis falls back to `height` and `width` is the cross size; taffy's main size wins
+  over a `px` `height` (basis, grow, shrink). Control: `column-flex-item-*`.
+- Content-box flex items (#93, found while fixing #86): an item's `width` / `height` /
+  `flex-basis` / `min-*` / `max-*` lengths reached taffy (border boxes) unchanged, so a
+  padded or bordered `box-sizing: content-box` item lost its frame. They are now
+  border-box lengths. Control: `flex-item-*`.
+
+### Fixed — selector syntax, :scope and RCDATA fragments (P5-cov, miaskiewicz/turbo-dom#91/#92/#96/#98, Chrome 156 controls)
+Found by the new `scripts/rtdom-core-chrome-control.mjs` control
+(`crates/turbo-dom/tests/fixtures/rtdom_core_chrome156.json`); both engines (rtdom and the
+npm `selectors.mjs` / parser crate) unless noted.
+- CSS comments in selectors were rejected (`p /* c */`): they are removed as CSS
+  tokenizes them, still separating two names (`div/**/p` throws, `[title=a/**/i]` is
+  `[title=a i]`); a DOM-API selector's unterminated string / `[` / `(` closes at its end
+  (`[title`, `:state(x`, `:is(p`), and an escape at its end is U+FFFD (`[id=x\`) (#91, #98).
+- rtdom: `:not()` / `:has()` / `of S` accepted empty items (`:not(p, )`) and items edged
+  by a combinator (`:not(p >)`, `:not(> p)`); `:is()` / `:where()` kept such items (#91, #98).
+- `:-webkit-any()` never matched in the rtdom DOM APIs and was forgiving in stylesheets: it
+  now matches like `:is()` with Chrome's grammar — compound selectors only, unforgiving,
+  no pseudo-elements or `:has()` (#91).
+- rtdom: `:scope` never matched in the DOM APIs; it is the element `matches()` /
+  `closest()` / element-rooted queries are called on (new `Tree::closest`,
+  `matches_scoped`, `closest_units`, `matches_units_scoped`), `:root` for document queries
+  and stylesheets. npm: `closest()` matched each ancestor as its own scope (#96).
+- An+B integers clamp to 32 bits (overflowing digits parsed as 0), an integer glued into
+  `n-123` must fit 32 bits, and an A or B outside 31 bits never matches (#98).
+- `textarea` / `title` (RCDATA) fragments drop a literal U+0000 like Chrome (they kept it
+  as U+FFFD); `&#0;` and every other context are unchanged (#92).
+
+### Changed — turbo-dom crate coverage 100% (P5-cov-core)
+- CI's turbo-dom coverage floor is 100 (was 88). New behaviour tests: the html5lib fixtures
+  through the UTF-16 tokenizer fork, the Chrome-156 core control (`tests/rtdom_core_chrome.rs`),
+  core / API edge and storage integrity tests.
+- The UTF-16 tokenizer fork no longer carries upstream code the crate never runs (the
+  `exact_errors` / `discard_bom` / `profile` options, the per-architecture SIMD data-state
+  scan — a portable byte scan produces the same chunks; `UPSTREAM.json` lists the changes).
 
 ### Fixed — turbo-dom-layout tables, clipping and box sizing (P5b-W5, miaskiewicz/turbo-dom#41/#51/#52/#55/#62/#63/#64/#65/#69/#70, Chrome 156 controls)
 Each fix is backed by a Chrome for Testing 156 control and lists the corpus outputs it
@@ -1072,7 +1115,6 @@ turbo-dom-v8 and -browser-env.
   selector-list behavior. Add an independently captured, source-pinned Chrome155
   oracle and public Rust regressions for the native hidden-search-field defect.
 
-
 ### Added
 
 - Add `Tree::create_contextual_fragment_utf16(context, units, scripting_enabled)`
@@ -1098,7 +1140,6 @@ turbo-dom-v8 and -browser-env.
   and import do not copy private state.
 - Charge custom state payload to storage collection budgets and reclaim it with
   unreachable nodes while keeping externally pinned states intact.
-
 
 ### Validation
 - Rust 1.99.0 passes 342 backend contracts and seven parser tests, all three
