@@ -257,7 +257,7 @@ PY
 fi
 
 # ------------------------------------------------------------------ 3. turbo-surf (in place, restored)
-if wants_prefix surf; then
+if wants surf-cargo || wants surf-shim || wants surf-e2e || wants surf-detection || wants surf-corpus; then
   [ -n "$surf" ] || { echo "TURBO_SURF_DIR is not set" >&2; exit 2; }
   id="$step-$mode-turbo-surf-$stamp"
   echo "$id" >>"$manifest_ids"
