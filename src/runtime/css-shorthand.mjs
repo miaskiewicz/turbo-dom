@@ -192,6 +192,19 @@ function calcSum(inner) {
     } else return null;
   }
   push(current, sign);
+  // Absolute lengths combine in px.
+  const ABSOLUTE = { in: 96, cm: 96 / 2.54, mm: 96 / 25.4, q: 96 / 101.6, pt: 96 / 72, pc: 16 };
+  if (terms.some(([unit]) => unit in ABSOLUTE)) {
+    let px = 0;
+    const rest = [];
+    for (const [unit, value] of terms) {
+      if (unit in ABSOLUTE) px += value * ABSOLUTE[unit];
+      else if (unit === 'px') px += value;
+      else rest.push([unit, value]);
+    }
+    rest.push(['px', px]);
+    return calcText(rest);
+  }
   return calcText(terms);
 }
 /**
@@ -1030,7 +1043,9 @@ function fontFamily(comps) {
     if (words.length === 1 && CSS_WIDE.has(words[0].toLowerCase())) return null;
     // Chrome quotes a family name of several identifiers.
     const name = words.join(' ');
-    families.push(words.length > 1 ? `"${name}"` : name);
+    const lower = name.toLowerCase();
+    // A generic family is a keyword: lowercase.
+    families.push(words.length > 1 ? `"${name}"` : GENERIC_FAMILIES.includes(lower) ? lower : name);
   }
   return families.join(', ');
 }
@@ -1135,7 +1150,11 @@ function trackList(comps) {
     else ok = false;
     if (!ok) return null;
   }
-  return join(comps.map((c) => (c.kind === 'number' ? { ...c, text: '0px' } : c)));
+  return join(comps.map((c) => (c.kind === 'number' ? { ...c, text: '0px' } : c.kind === 'ident' ? { ...c, text: c.value.toLowerCase() } : c)));
+}
+/** A `grid-template-areas` string: its cell tokens separated by single spaces. */
+function areaString(comp) {
+  return comp.kind === 'string' ? `"${comp.value.trim().split(/\s+/).filter(Boolean).join(' ')}"` : null;
 }
 function gridTemplate(comps) {
   if (comps.length === 1 && isIdent(comps[0], ['none'])) return ['none', 'none', 'none'];
@@ -1157,7 +1176,7 @@ function gridTemplate(comps) {
   const names = () => { if (rows[at] && isNames(rows[at])) { tracks.push(rows[at].text); at++; } };
   while (at < rows.length) {
     names();
-    const area = rows[at] ? string(rows[at]) : null;
+    const area = rows[at] ? areaString(rows[at]) : null;
     if (area === null) return null;
     areas.push(area);
     at++;
@@ -2082,4 +2101,245 @@ export function declarations(text) {
     out.push([name, value, !!important]);
   }
   return out;
+}
+
+// ---------------------------------------------------------------- longhands ----
+// Longhand specified values the way Chrome 156 spells them (miaskiewicz/turbo-dom#97; the port
+// of rtdom::css_shorthand::longhand_value): the longhands of the shorthands (and a few common
+// ones) go through their value grammar ({ valid, text } or { valid: false }); any other
+// longhand gets the context-free spelling ({ valid: null, text }).
+const listed = (comps, item) => { const items = commas(comps); if (!items) return null; const out = items.map(item); return out.some((v) => v === null) ? null : out.join(', '); };
+const keywords = (comps, names) => (comps.length === 1 ? keyword(comps[0], names) : null);
+const oneOf = (ty) => (comps) => single(comps, ty);
+function radiusPair(comps) {
+  if (comps.length === 1) return radius(comps[0]);
+  if (comps.length !== 2) return null;
+  const a = radius(comps[0]), b = radius(comps[1]);
+  return a === null || b === null ? null : a === b ? a : `${a} ${b}`;
+}
+const flexBasis = (comps) => single(comps, (c) => keyword(c, ['auto', 'content', 'min-content', 'max-content', 'fit-content']) ?? lengthPercentage(c, false));
+const fontSize = (comps) => single(comps, (c) => keyword(c, FONT_SIZES) ?? lengthPercentage(c, false));
+const fontWeight = (comps) => single(comps, (c) => keyword(c, ['normal', 'bold', 'bolder', 'lighter']) ?? (c.kind === 'number' && c.value >= 1 && c.value <= 1000 ? number(c, false) : null));
+function fontStyle(comps) {
+  if (comps.length === 1) return keyword(comps[0], ['normal', 'italic', 'oblique']);
+  if (comps.length === 2 && isIdent(comps[0], ['oblique'])) {
+    const a = angle(comps[1]);
+    return a === null ? null : a === '0deg' ? 'normal' : a === '14deg' ? 'oblique' : `oblique ${a}`;
+  }
+  return null;
+}
+const lineHeight = (comps) => single(comps, (c) => keyword(c, ['normal']) ?? number(c, false) ?? lengthPercentage(c, false));
+const fontStretch = (comps) => single(comps, (c) => keyword(c, ['normal', ...STRETCHES]) ?? percentage(c, false));
+function variantGroups(comps, groups, extra) {
+  if (comps.length === 1) { const value = keyword(comps[0], extra); if (value !== null) return value; }
+  const result = groupSet(comps, groups);
+  return result && result[0] === comps.length ? result[1] : null;
+}
+const zIndex = (comps) => single(comps, (c) => keyword(c, ['auto']) ?? integer(c, -Infinity));
+const SIZE_FUNCTIONS = ['anchor-size', 'calc-size'];
+const sizeV = (comps) => single(comps, (c) => keyword(c, ['auto', 'min-content', 'max-content', 'fit-content', 'stretch', '-webkit-fill-available']) ?? lengthPercentage(c, false) ?? functionNamed(c, SIZE_FUNCTIONS));
+const maxSizeV = (comps) => single(comps, (c) => keyword(c, ['none', 'min-content', 'max-content', 'fit-content', 'stretch', '-webkit-fill-available']) ?? lengthPercentage(c, false) ?? functionNamed(c, SIZE_FUNCTIONS));
+const imageList = (comps) => listed(comps, (item) => single(item, (c) => image(c) ?? keyword(c, ['none'])));
+const repeatList = (comps) => listed(comps, (item) => { const r = repeatStyle(item); return r && r[0] === item.length ? r[1] : null; });
+const sizeList = (comps) => listed(comps, (item) => { const r = bgSize(item); return r && r[0] === item.length ? r[1] : null; });
+function axisPosition(sides, center) {
+  return (comps) => listed(comps, (item) => {
+    if (item.length === 1) return keyword(item[0], [sides[0], center, sides[1]]) ?? lengthPercentage(item[0], true);
+    if (item.length === 2 && isIdent(item[0], sides)) { const offset = lengthPercentage(item[1], true); return offset === null ? null : `${ident(item[0])} ${offset}`; }
+    return null;
+  });
+}
+const timeList = (comps) => listed(comps, (item) => single(item, (c) => time(c, true)));
+const durationList = (comps) => listed(comps, (item) => single(item, (c) => time(c, false)));
+const easingList = (comps) => listed(comps, (item) => single(item, easing));
+const transitionPropertyV = (comps) => listed(comps, (item) => single(item, (c) => keyword(c, ['none', 'all']) ?? (() => { const v = customIdent(c, ['none', 'initial']); return v === null ? null : v.startsWith('--') ? v : v.toLowerCase(); })()));
+const rangeOf = (end) => (comps) => { const r = rangeValue(comps, 'normal', end); return r && r[0] === comps.length ? r[1] : null; };
+function textDecorationLine(comps) {
+  if (comps.length === 1 && isIdent(comps[0], ['none'])) return 'none';
+  const order = ['underline', 'overline', 'line-through', 'blink', 'spelling-error', 'grammar-error'];
+  const seen = [];
+  for (const comp of comps) { const name = keyword(comp, order); if (name === null || seen.includes(name)) return null; seen.push(name); }
+  return seen.length ? order.filter((n) => seen.includes(n)).join(' ') : null;
+}
+function gridAreas(comps) {
+  if (comps.length === 1 && isIdent(comps[0], ['none'])) return 'none';
+  const areas = comps.map(areaString);
+  return areas.some((a) => a === null) ? null : areas.join(' ');
+}
+function pathDataValid(text) {
+  const start = text.indexOf('"'), end = text.lastIndexOf('"');
+  return start >= 0 && end > start && /^[\sMmLlHhVvCcSsQqTtAaZz0-9.,+eE-]*$/.test(text.slice(start + 1, end));
+}
+const offsetPath = (comps) => single(comps, (c) => {
+  if (isIdent(c, ['none'])) return 'none';
+  const value = functionNamed(c, ['path', 'ray', 'circle', 'ellipse', 'inset', 'polygon', 'xywh', 'rect', 'shape']) ?? url(c);
+  if (value === null || (value.startsWith('path(') && !pathDataValid(value))) return null;
+  return value.startsWith('path(') ? pathText(value) : value;
+});
+const opacityV = (comps) => single(comps, (c) => number(c, true) ?? (c.kind === 'percentage' ? cssNumber(c.value / 100) : null));
+const DISPLAY_KEYWORDS = ['none', 'contents', 'block', 'inline', 'inline-block', 'flow-root', 'flex', 'inline-flex', 'grid', 'inline-grid', 'table', 'inline-table', 'table-row-group', 'table-header-group', 'table-footer-group', 'table-row', 'table-cell', 'table-column-group', 'table-column', 'table-caption', 'list-item', 'ruby', 'ruby-text', 'math', '-webkit-box', '-webkit-inline-box'];
+const DISPLAY_PAIRS = { 'block flow': 'block', 'inline flow': 'inline', 'inline flow-root': 'inline-block', 'block flow-root': 'flow-root', 'block flex': 'flex', 'inline flex': 'inline-flex', 'block grid': 'grid', 'inline grid': 'inline-grid', 'block table': 'table', 'inline table': 'inline-table', 'block ruby': 'block ruby', 'inline ruby': 'ruby' };
+function display(comps) {
+  if (comps.length === 1) return keyword(comps[0], DISPLAY_KEYWORDS);
+  if (comps.length !== 2) return null;
+  const a = ident(comps[0]), b = ident(comps[1]);
+  if (a === null || b === null) return null;
+  return DISPLAY_PAIRS[`${a} ${b}`] ?? DISPLAY_PAIRS[`${b} ${a}`] ?? null;
+}
+const animationNames = (comps) => listed(comps, (item) => single(item, (c) => {
+  if (isIdent(c, ['none'])) return 'none';
+  if (c.kind === 'string') return isIdentifier(c.value) && !reserved(c.value, ANIMATION_KEYWORDS) ? c.value : c.text;
+  return customIdent(c, ['none']);
+}));
+function boxShadow(comps) {
+  if (comps.length === 1 && isIdent(comps[0], ['none'])) return 'none';
+  return listed(comps, (item) => {
+    let shadowColor = null, inset = false;
+    const lengths = [];
+    for (const comp of item) {
+      if (isIdent(comp, ['inset']) && !inset) { inset = true; continue; }
+      const l = lengths.length < 4 ? length(comp, true) : null;
+      if (l !== null) { lengths.push(l); continue; }
+      const c = shadowColor === null ? color(comp) : null;
+      if (c === null) return null;
+      shadowColor = c;
+    }
+    if (lengths.length < 2) return null;
+    return [...(shadowColor === null ? [] : [shadowColor]), ...lengths, ...(inset ? ['inset'] : [])].join(' ');
+  });
+}
+const SIDES4 = ['top', 'right', 'bottom', 'left'];
+const LOGICAL = ['block-start', 'block-end', 'inline-start', 'inline-end'];
+const LONGHAND_GRAMMARS = new Map();
+const add = (names, parse, strict = true) => { for (const name of names) LONGHAND_GRAMMARS.set(name, [parse, strict]); };
+add([...SIDES4.map((s) => `margin-${s}`), ...LOGICAL.map((s) => `margin-${s}`), ...SIDES4, ...LOGICAL.map((s) => `inset-${s}`)], oneOf(marginV));
+add([...SIDES4, ...LOGICAL].map((s) => `padding-${s}`), oneOf(paddingV));
+add([...SIDES4, ...LOGICAL].map((s) => `scroll-margin-${s}`), oneOf(scrollMarginV));
+add([...SIDES4, ...LOGICAL].map((s) => `scroll-padding-${s}`), oneOf(scrollPaddingV));
+add([...[...SIDES4, ...LOGICAL].map((s) => `border-${s}-width`), 'outline-width', 'column-rule-width', 'row-rule-width', '-webkit-text-stroke-width'], oneOf(lineWidth));
+add([...[...SIDES4, ...LOGICAL].map((s) => `border-${s}-style`), 'column-rule-style', 'row-rule-style'], oneOf(lineStyle));
+add(['outline-style'], oneOf(outlineStyle));
+add([...[...SIDES4, ...LOGICAL].map((s) => `border-${s}-color`), 'outline-color', 'column-rule-color', 'row-rule-color', 'text-decoration-color', 'text-emphasis-color', '-webkit-text-stroke-color', 'background-color', 'color'], oneOf(color));
+add(['row-gap', 'column-gap'], oneOf(gapV));
+add(['overflow-x', 'overflow-y'], oneOf(overflowV));
+add(['overscroll-behavior-x', 'overscroll-behavior-y'], oneOf(overscrollV));
+add(['-webkit-border-horizontal-spacing', '-webkit-border-vertical-spacing'], oneOf(spacingV));
+add(['interest-delay-start', 'interest-delay-end'], oneOf(delayV));
+add(['column', 'row'].flatMap((k) => ['cap-start', 'cap-end', 'junction-start', 'junction-end'].map((p) => `${k}-rule-inset-${p}`)), oneOf(ruleInsetV));
+add(['column-rule-break', 'row-rule-break'], oneOf(ruleBreakV));
+add(['column-rule-visibility-items', 'row-rule-visibility-items'], oneOf(ruleVisibilityV));
+add(['marker-start', 'marker-mid', 'marker-end'], oneOf(markerV));
+add(['top-left', 'top-right', 'bottom-right', 'bottom-left', 'start-start', 'start-end', 'end-start', 'end-end'].map((c) => `corner-${c}-shape`), oneOf(cornerShape));
+add(['top-left', 'top-right', 'bottom-right', 'bottom-left'].map((c) => `border-${c}-radius`), radiusPair);
+add(['flex-grow', 'flex-shrink'], (c) => single(c, (x) => number(x, false)));
+add(['flex-basis'], flexBasis);
+add(['flex-direction'], (c) => keywords(c, ['row', 'row-reverse', 'column', 'column-reverse']));
+add(['flex-wrap'], (c) => keywords(c, ['nowrap', 'wrap', 'wrap-reverse']));
+add(['font-size'], fontSize);
+add(['font-weight'], fontWeight);
+add(['font-style'], fontStyle);
+add(['font-family'], fontFamily, false);
+add(['line-height'], lineHeight);
+add(['font-stretch'], fontStretch);
+add(['font-variant-caps'], (c) => keywords(c, ['normal', ...CAPS]));
+add(['font-variant-position'], (c) => keywords(c, ['normal', 'sub', 'super']));
+add(['font-variant-emoji'], (c) => keywords(c, ['normal', 'text', 'emoji', 'unicode']));
+add(['font-variant-ligatures'], (c) => variantGroups(c, LIGATURES, ['normal', 'none']));
+add(['font-variant-numeric'], (c) => variantGroups(c, NUMERIC, ['normal']));
+add(['font-variant-east-asian'], (c) => variantGroups(c, EAST_ASIAN, ['normal']));
+add(['font-kerning'], (c) => keywords(c, ['auto', 'normal', 'none']));
+add(['font-optical-sizing'], (c) => keywords(c, ['auto', 'none']));
+add(['font-synthesis-weight', 'font-synthesis-style', 'font-synthesis-small-caps'], (c) => keywords(c, ['auto', 'none']));
+add(['position-try-fallbacks'], (c) => (c.length === 1 && isIdent(c[0], ['none']) ? 'none' : tryFallbacks(c)));
+add(['position-try-order'], (c) => keywords(c, ['normal', 'most-width', 'most-height', 'most-block-size', 'most-inline-size']));
+add(['text-decoration-line'], textDecorationLine);
+add(['text-decoration-style'], (c) => keywords(c, ['solid', 'double', 'dotted', 'dashed', 'wavy']));
+add(['list-style-position'], (c) => keywords(c, ['inside', 'outside']));
+add(['list-style-image'], (c) => single(c, (x) => image(x) ?? keyword(x, ['none'])), false);
+add(['z-index'], zIndex);
+add(['width', 'height', 'min-width', 'min-height', 'block-size', 'inline-size', 'min-block-size', 'min-inline-size'], sizeV);
+add(['max-width', 'max-height', 'max-block-size', 'max-inline-size'], maxSizeV);
+add(['column-count'], (c) => single(c, (x) => keyword(x, ['auto']) ?? integer(x, 1)));
+add(['column-width', 'column-height'], (c) => single(c, (x) => keyword(x, ['auto']) ?? length(x, false)));
+add(['column-wrap'], (c) => keywords(c, ['auto', 'nowrap', 'wrap']));
+add(['grid-row-start', 'grid-row-end', 'grid-column-start', 'grid-column-end'], gridLine);
+add(['grid-template-columns', 'grid-template-rows'], trackList, false);
+add(['transition-duration'], durationList);
+add(['animation-duration'], (c) => listed(c, (item) => single(item, (x) => time(x, false) ?? keyword(x, ['auto']))));
+add(['font-variant-alternates'], (c) => (c.length === 1 ? keyword(c[0], ['normal', 'historical-forms']) ?? functionNamed(c[0], ['stylistic', 'styleset', 'character-variant', 'swash', 'ornaments', 'annotation']) : null));
+add(['text-align'], (c) => keywords(c, ['start', 'end', 'left', 'right', 'center', 'justify', 'match-parent', '-webkit-left', '-webkit-right', '-webkit-center', '-webkit-auto']));
+add(['transition-delay', 'animation-delay'], timeList);
+add(['transition-timing-function', 'animation-timing-function'], easingList, false);
+add(['transition-property'], transitionPropertyV);
+add(['background-image', 'mask-image'], imageList, false);
+add(['background-repeat', 'mask-repeat'], repeatList);
+add(['background-size', 'mask-size'], sizeList);
+add(['background-attachment'], (c) => listed(c, (item) => keywords(item, ['scroll', 'fixed', 'local'])));
+add(['background-origin'], (c) => listed(c, (item) => keywords(item, ['border-box', 'padding-box', 'content-box'])));
+add(['background-clip'], (c) => listed(c, (item) => keywords(item, ['border-box', 'padding-box', 'content-box', 'text', 'border-area'])));
+add(['background-position-x', '-webkit-mask-position-x'], axisPosition(['left', 'right'], 'center'));
+add(['background-position-y', '-webkit-mask-position-y'], axisPosition(['top', 'bottom'], 'center'));
+add(['animation-range-start'], rangeOf(false));
+add(['animation-range-end'], rangeOf(true));
+add(['offset-distance'], (c) => single(c, (x) => lengthPercentage(x, true)));
+add(['offset-anchor', 'offset-position'], (c) => { if (c.length === 1 && isIdent(c[0], ['auto', 'normal'])) return ident(c[0]); const p = position(c); return p ? `${p[0]} ${p[1]}` : null; }, false);
+add(['white-space-collapse'], (c) => keywords(c, ['collapse', 'preserve', 'preserve-breaks', 'preserve-spaces', 'break-spaces']));
+add(['text-wrap-mode'], (c) => keywords(c, ['wrap', 'nowrap']));
+add(['text-wrap-style'], (c) => keywords(c, ['auto', 'balance', 'stable', 'pretty', 'avoid-orphans']));
+add(['overflow-wrap'], (c) => keywords(c, ['normal', 'break-word', 'anywhere']));
+add(['grid-template-areas'], gridAreas);
+add(['offset-path'], offsetPath);
+add(['opacity'], opacityV);
+add(['display'], display, false);
+add(['animation-name'], animationNames);
+add(['box-shadow'], boxShadow, false);
+
+// Properties whose identifiers are names (kept as written) rather than keywords.
+const NAMED = ['animation-name', 'font-family', 'container-name', 'counter-reset', 'counter-increment', 'counter-set', 'grid-area', 'grid-row-start', 'grid-row-end', 'grid-column-start', 'grid-column-end', 'grid-template-areas', 'view-transition-name', 'view-transition-class', 'anchor-name', 'position-anchor', 'anchor-scope', 'timeline-scope', 'font-palette', 'will-change', 'page', 'quotes', 'content'];
+const NAME_KEYWORDS = ['none', 'auto', 'span', 'normal', 'all', 'match-element'];
+const ZERO_LENGTH_PARTS = ['margin', 'padding', 'inset', 'width', 'height', 'size', 'gap', 'radius', 'spacing', 'indent', 'offset', 'flex-basis', 'font-size', 'column-width', 'column-height', 'perspective', 'shape-margin', 'position-x', 'position-y', 'thickness'];
+const zeroIsLength = (name) => SIDES4.includes(name) || ZERO_LENGTH_PARTS.some((part) => name.includes(part));
+const NAMING_FUNCTIONS = ['stylistic', 'styleset', 'character-variant', 'swash', 'ornaments', 'annotation', 'local', 'format', 'attr', 'counter', 'counters', 'symbols', 'url', 'src', '['];
+const LENGTH_FUNCTIONS = ['translate', 'translatex', 'translatey', 'translatez', 'translate3d', 'perspective'];
+/** A function's spelling: keyword arguments lowercase (recursively), a length function's `0` as `0px`. */
+function functionText(fn, comp) {
+  if (NAMING_FUNCTIONS.includes(fn)) return comp.text;
+  const open = comp.text.search(/[([]/);
+  if (open < 0) return comp.text;
+  const inner = components(comp.text.slice(open + 1, -1));
+  if (!inner) return comp.text;
+  const lengths = LENGTH_FUNCTIONS.includes(fn);
+  const spelled = inner.map((part) => ({ ...part, text: part.kind === 'ident' && !part.value.startsWith('--') ? part.value.toLowerCase() : part.kind === 'number' && lengths && part.value === 0 ? '0px' : part.kind === 'function' ? functionText(part.name, part) : part.text }));
+  return `${comp.text.slice(0, open + 1)}${join(spelled)}${comp.text.slice(-1)}`;
+}
+/** The context-free spelling: identifiers lowercase unless they name something, a lone `0` as `0px` where a length is meant. */
+function genericSpelling(name, comps) {
+  const isNamed = NAMED.includes(name) || name.startsWith('--');
+  return join(comps.map((comp) => {
+    let text = comp.text;
+    if (comp.kind === 'ident' && !comp.value.startsWith('--')) { const lower = comp.value.toLowerCase(); text = isNamed && !NAME_KEYWORDS.includes(lower) ? comp.value : lower; }
+    else if (comp.kind === 'hash') text = color(comp) ?? comp.text;
+    else if (comp.kind === 'function' && !isNamed) text = functionText(comp.name, comp);
+    else if (comp.kind === 'number' && comp.value === 0 && comps.length === 1 && zeroIsLength(name)) text = '0px';
+    return { ...comp, text };
+  }));
+}
+/**
+ * The specified value of longhand `name` set to `value`, as Chrome 156 spells it:
+ * { valid: true, text } / { valid: false } from the longhand's grammar, or
+ * { valid: null, text } (the context-free spelling) for a longhand without one.
+ */
+export function longhandValue(name, value) {
+  const trimmed = String(value).trim();
+  if (!trimmed) return { valid: false };
+  const lower = trimmed.toLowerCase();
+  if (CSS_WIDE.has(lower)) return { valid: true, text: lower };
+  if (hasSubstitution(trimmed)) return { valid: null, text: substitutionText(trimmed) };
+  const comps = components(trimmed);
+  if (!comps || !comps.length) return { valid: false };
+  const grammar = LONGHAND_GRAMMARS.get(name);
+  if (!grammar) return { valid: null, text: genericSpelling(name, comps) };
+  const text = grammar[0](comps);
+  if (text !== null) return { valid: true, text };
+  return grammar[1] ? { valid: false } : { valid: null, text: genericSpelling(name, comps) };
 }

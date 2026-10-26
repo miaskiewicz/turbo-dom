@@ -16,9 +16,8 @@ const casesText = read('css-shorthand-cases.json');
 const control = JSON.parse(read('css_shorthand_chrome156.json'));
 const sha = (text) => createHash('sha256').update(text).digest('hex');
 
-// Scenarios whose npm result differs from Chrome for a documented reason, by id: a longhand
-// set directly keeps its authored spelling (turbo-dom#97: `top: 0` is `0px` in Chrome).
-const KNOWN_GAPS = new Set(['css-inset-longhands']);
+// Scenarios whose npm result differs from Chrome for a documented reason, by id.
+const KNOWN_GAPS = new Set([]);
 
 test('element.style shorthands expand and serialize like Chrome 156 (turbo-dom#90)', () => {
   assert.equal(control.browser, 'Chrome/156.0.8078.4');

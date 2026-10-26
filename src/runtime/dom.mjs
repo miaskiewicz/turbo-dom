@@ -16,7 +16,7 @@ import { matchesSelector, querySelector as qsel, querySelectorAll as qselAll } f
 import { serializeInner, serializeOuter } from './html-serialize.mjs';
 import { CSSStyleSheet, styleSheetList } from './cssom.mjs';
 import { COLOR_PROPS, canonicalizeColor } from './color.mjs';
-import { blockText, canonical, declarations, expand, longhandAlias, longhands, shorthandValue } from './css-shorthand.mjs';
+import { blockText, canonical, declarations, expand, longhandAlias, longhands, longhandValue, shorthandValue } from './css-shorthand.mjs';
 import { SVGAnimatedString, SVGAnimatedLength, SVGAnimatedRect, SVG_LENGTH_ATTRS } from './svg.mjs';
 
 // Per-node query-result cache keyed by (selector, document version). querySelectorAll
@@ -1695,13 +1695,17 @@ function propertyName(name) {
   const lower = text.toLowerCase();
   return longhandAlias(lower) ?? lower;
 }
-// The entries a declaration sets: a shorthand's longhands, or the longhand as authored (a
-// <color> canonicalized the way Chrome's inline CSSOM spells it: hex / rgb() / hsl() ->
-// rgb()/rgba(), named keywords as written); null for an invalid shorthand value.
+// The entries a declaration sets: a shorthand's longhands, or the longhand in Chrome's
+// spelling (turbo-dom#97: css-shorthand.mjs longhandValue; a value its grammar rejects is
+// dropped, one without a grammar kept — this runtime has no other property grammar); null
+// for an invalid value.
 function declarationEntries(prop, text) {
   const name = propertyName(prop);
   if (canonical(name)) return expand(name, text);
-  let v = String(text).trim();
+  if (name.startsWith('--')) return [{ name, value: String(text).trim(), pending: null }];
+  const spelled = longhandValue(name, text);
+  if (spelled.valid === false) return null;
+  let v = spelled.text;
   if (COLOR_PROPS.has(name)) { const c = canonicalizeColor(v, false); if (c) v = c; }
   return [{ name, value: v, pending: null }];
 }
