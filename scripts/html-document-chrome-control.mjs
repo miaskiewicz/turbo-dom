@@ -349,6 +349,16 @@ const CASES = [
   { id: "flow-root-keeps-child-margins", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="display:flow-root"><div data-cid="d" style="width:30px;height:15px;margin:3px 0 5px"></div></div><div data-cid="g" style="height:10px"></div>`) },
   { id: "flow-root-contains-floats", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="display:flow-root"><div data-cid="d" style="float:left;width:30px;height:40px"></div></div><div data-cid="g" style="height:10px"></div>`) },
   { id: "flow-root-beside-a-float", html: DOC(S("body{margin:0}"), `<div style="float:left;width:100px;height:50px"></div><div data-cid="c" style="display:flow-root;height:20px"></div>`) },
+  // P5b-W7, miaskiewicz/turbo-dom#83: a `width: auto` float is shrink-to-fit —
+  // min(max(min-content, available), max-content) — so it never gets narrower than its
+  // min-content.
+  { id: "float-shrink-min-content-floor", html: DOC(S("body{margin:0}"), `<div style="width:20px"><div data-cid="c" style="float:left"><div data-cid="d" style="width:30px;height:15px"></div></div></div>`) },
+  { id: "float-shrink-min-content-right", html: DOC(S("body{margin:0}"), `<div style="width:20px"><div data-cid="c" style="float:right"><div data-cid="d" style="width:30px;height:15px"></div></div></div>`) },
+  { id: "float-shrink-between-min-and-max", html: DOC(S("body{margin:0}"), `<div style="width:50px;font-size:0"><div data-cid="c" style="float:left"><span data-cid="a" style="display:inline-block;width:30px;height:15px"></span> <span data-cid="b" style="display:inline-block;width:40px;height:15px"></span></div></div>`) },
+  { id: "float-shrink-min-content-with-frame", html: DOC(S("body{margin:0}"), `<div style="width:20px"><div data-cid="c" style="float:left;padding:0 3px;border:2px solid"><div data-cid="d" style="width:30px;height:15px"></div></div></div>`) },
+  { id: "float-shrink-max-width", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="float:left;max-width:20px"><div data-cid="d" style="width:30px;height:15px"></div></div>`) },
+  { id: "float-shrink-min-width", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="float:left;min-width:50px"><div data-cid="d" style="width:30px;height:15px"></div></div>`) },
+  { id: "float-shrink-available-minus-margins", html: DOC(S("body{margin:0}"), `<div style="width:60px;font-size:0"><div data-cid="c" style="float:left;margin:0 10px"><span style="display:inline-block;width:30px;height:15px"></span> <span style="display:inline-block;width:20px;height:15px"></span></div></div>`) },
 ];
 
 /** The RGB of a 1x1 PNG screenshot (any filter: a single pixel's filter adds 0). */
