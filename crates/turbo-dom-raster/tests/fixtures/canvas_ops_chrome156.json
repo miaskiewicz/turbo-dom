@@ -3364,6 +3364,393 @@
    ]
   },
   {
+   "id": "closed-strokes",
+   "size": [
+    96,
+    96
+   ],
+   "ops": [
+    [
+     "beginPath",
+     [],
+     "#000000",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "moveTo",
+     [
+      10.5,
+      10.5
+     ],
+     "#000000",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "lineTo",
+     [
+      40.5,
+      10.5
+     ],
+     "#000000",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "lineTo",
+     [
+      40.5,
+      30.5
+     ],
+     "#000000",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "lineTo",
+     [
+      10.5,
+      30.5
+     ],
+     "#000000",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "closePath",
+     [],
+     "#000000",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "stroke",
+     [],
+     "#000000",
+     "#ff00ff",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "beginPath",
+     [],
+     "#000000",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "moveTo",
+     [
+      50.5,
+      10.5
+     ],
+     "#000000",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "lineTo",
+     [
+      80.5,
+      10.5
+     ],
+     "#000000",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "lineTo",
+     [
+      80.5,
+      30.5
+     ],
+     "#000000",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "lineTo",
+     [
+      60.5,
+      30.5
+     ],
+     "#000000",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "stroke",
+     [],
+     "#000000",
+     "#0000ff",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "beginPath",
+     [],
+     "#000000",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "moveTo",
+     [
+      10.5,
+      50.5
+     ],
+     "#000000",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "lineTo",
+     [
+      40.5,
+      50.5
+     ],
+     "#000000",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "lineTo",
+     [
+      40.5,
+      60.5
+     ],
+     "#000000",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "closePath",
+     [],
+     "#000000",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "lineTo",
+     [
+      10.5,
+      90.5
+     ],
+     "#000000",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "stroke",
+     [],
+     "#000000",
+     "#00ff00",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ]
+   ],
+   "probes": [
+    {
+     "x": 10,
+     "y": 20,
+     "rgba": [
+      255,
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 25,
+     "y": 10,
+     "rgba": [
+      255,
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 40,
+     "y": 20,
+     "rgba": [
+      255,
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 25,
+     "y": 30,
+     "rgba": [
+      255,
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 50,
+     "y": 20,
+     "rgba": [
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 65,
+     "y": 10,
+     "rgba": [
+      0,
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 80,
+     "y": 20,
+     "rgba": [
+      0,
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 70,
+     "y": 30,
+     "rgba": [
+      0,
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 55,
+     "y": 30,
+     "rgba": [
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 10,
+     "y": 75,
+     "rgba": [
+      0,
+      255,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 10,
+     "y": 85,
+     "rgba": [
+      0,
+      255,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 25,
+     "y": 50,
+     "rgba": [
+      0,
+      255,
+      0,
+      255
+     ]
+    }
+   ]
+  },
+  {
    "id": "arcs",
    "size": [
     96,

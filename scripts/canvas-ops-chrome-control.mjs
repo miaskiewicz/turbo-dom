@@ -158,6 +158,35 @@ const CASES = [
     probes: [[10, 10], [35, 30], [60, 9], [75, 50], [70, 38], [56, 50], [88, 50], [20, 60], [20, 62], [9, 75], [25, 75], [17, 75], [45, 60]],
   },
   {
+    // closePath: a stroked closed path strokes its closing edge (x = 10.5 here); after a
+    // closePath the next lineTo starts from the closed subpath's first point.
+    id: "closed-strokes",
+    size: [96, 96],
+    ops: [
+      op("beginPath"),
+      op("moveTo", [10.5, 10.5]),
+      op("lineTo", [40.5, 10.5]),
+      op("lineTo", [40.5, 30.5]),
+      op("lineTo", [10.5, 30.5]),
+      op("closePath"),
+      op("stroke", [], { stroke: "#ff00ff" }),
+      op("beginPath"),
+      op("moveTo", [50.5, 10.5]),
+      op("lineTo", [80.5, 10.5]),
+      op("lineTo", [80.5, 30.5]),
+      op("lineTo", [60.5, 30.5]),
+      op("stroke", [], { stroke: "#0000ff" }),
+      op("beginPath"),
+      op("moveTo", [10.5, 50.5]),
+      op("lineTo", [40.5, 50.5]),
+      op("lineTo", [40.5, 60.5]),
+      op("closePath"),
+      op("lineTo", [10.5, 90.5]),
+      op("stroke", [], { stroke: "#00ff00" }),
+    ],
+    probes: [[10, 20], [25, 10], [40, 20], [25, 30], [50, 20], [65, 10], [80, 20], [70, 30], [55, 30], [10, 75], [10, 85], [25, 50]],
+  },
+  {
     // Arc sweeps: clockwise and anticlockwise half discs, an end angle more than a full turn
     // past the start (one full turn is drawn), an anticlockwise sweep from 0 to a negative
     // end, and a zero radius (nothing).
