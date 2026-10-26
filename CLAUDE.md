@@ -25,9 +25,9 @@ npm run conformance:rtdom  # html5lib-tests gate run THROUGH the rtdom tree (dir
 npm run profile:churn      # build the CPU-profiling example + print the macOS `sample` hint
 # --- lint + perf gates (CI-enforced) ---
 cargo clippy --workspace --all-targets -- -D warnings   # parser + turbo-dom: clippy::pedantic-clean; layout/raster: default lints (pedantic adoption pending)
-cargo test -p turbo-dom-layout                           # layout engine (+ --features svg / perf / xref,pdf-ua,print-color)
+cargo test -p turbo-dom-layout                           # layout engine (+ --features svg / perf)
 cargo test -p turbo-dom-raster                           # screenshot painter
-scripts/verify-copied-layout.sh                          # S1 moved code == its source commits (+ allow-listed rewrites)
+scripts/verify-copied-layout.sh                          # S1 moved code (at VERIFY_REF) == its source commits (+ allow-listed rewrites)
 cargo test -p turbo-dom churn_alloc_gate -- --ignored    # perf gate: churn allocs/op ≤ 380 (≈363)
 ```
 
@@ -101,10 +101,13 @@ package or publish workflow.
 - `crates/turbo-dom-layout` — the native HTML/CSS layout engine (style cascade, block/inline/
   flex/grid/table layout → `Fragment` galley, fonts, image sizing, layout snapshots,
   `layout_html`). Relocated verbatim from turbo-html2pdf-core 0.3.9 (S1); turbo-html2pdf-core
-  depends on it and re-exports it at its old paths. Its `xref`/`pdf-ua`/`print-color` features
-  are TEMPORARY (forwarded from html2pdf until S2) — don't enable them elsewhere. Moved code is
-  checked by `scripts/verify-copied-layout.sh` (rules in `scripts/verify-copied-layout.rules`):
-  edit the moved files only together with a rule there, or as a reviewed post-S1 change.
+  depends on it and re-exports it at its old paths. Since S2 the cascade styles a turbo-dom
+  `Tree` directly (`style::TreeView` + `Roots::{Detached, Shell}`; the legacy `Node` input stays
+  for turbo-surf's copier until S4); html2pdf's `t:` directives are opaque `MarkerKind` markers
+  from a caller classifier, and its PDF switches are runtime `LayoutOptions`/`StyleOptions`
+  (no PDF features here). `tests/tree_input_equivalence.rs` is the Tree-vs-Node gate
+  (`TURBO_DOM_LAYOUT_EQUIV_DIRS` adds corpora). `scripts/verify-copied-layout.sh` checks the S1
+  tree (`VERIFY_REF`) against the source commits; later edits are reviewed changes on top.
 - `crates/turbo-dom-raster` — synthetic screenshots: paints the layout galley to PNG/SVG
   (tiny-skia / SVG), canvas op-log replay, `gpu-metal` WebGL. Relocated verbatim from
   turbo-surf-raster 0.5.5 (S1).
