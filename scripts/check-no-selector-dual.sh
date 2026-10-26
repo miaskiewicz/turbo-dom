@@ -10,7 +10,7 @@
 # Publish workflows (here and in consumers checking their own tree) run it before
 # publishing; exit 1 on any hit.
 set -eu
-dir=${1:-$(cd "$(dirname "$0")/.." && pwd)}
+dir=$(cd "${1:-$(dirname "$0")/..}" && pwd)
 self=$(cd "$(dirname "$0")" && pwd)/$(basename "$0")
 status=0
 files=$(find "$dir" -name query_frozen\*.rs -o -name selector_dual.rs \
