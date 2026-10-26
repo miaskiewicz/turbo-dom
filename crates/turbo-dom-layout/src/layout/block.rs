@@ -295,10 +295,17 @@ fn positioned_child_block(
 ) -> (f32, f32, f32, f32) {
     let border = bs.border.widths();
     if !ctx.live_geometry {
-        // The padding box (miaskiewicz/turbo-dom#100); 0 = an indefinite height.
-        let content_h = definite_content_height(bs, percentage_height_basis(bs, ctx));
-        let height = if content_h > 0.0 {
-            content_h + bs.padding.vertical()
+        // The padding box (miaskiewicz/turbo-dom#100); 0 = an indefinite height. A
+        // definite zero content height (`height: 0; padding-bottom: 56%`) still has its
+        // padding.
+        let basis = percentage_height_basis(bs, ctx);
+        let definite = match bs.height {
+            LengthPct::Px(_) => true,
+            LengthPct::Auto => false,
+            _ => basis > 0.0,
+        };
+        let height = if definite {
+            definite_content_height(bs, basis) + bs.padding.vertical()
         } else {
             0.0
         };
