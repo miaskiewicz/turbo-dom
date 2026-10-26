@@ -846,7 +846,7 @@ export class Element extends Node {
 
   // ---- queries ----
   matches(sel) { return matchesSelector(this, sel); }
-  closest(sel) { let n = this; while (n && n.nodeType === ELEMENT_NODE) { if (n.matches(sel)) return n; n = n.parentNode; } return null; }
+  closest(sel) { let n = this; while (n && n.nodeType === ELEMENT_NODE) { if (matchesSelector(n, sel, this)) return n; n = n.parentNode; } return null; }
   querySelector(sel) { return cachedQS(this, sel); }
   querySelectorAll(sel) { return cachedQSA(this, sel); }
   getElementsByTagName(tag) {

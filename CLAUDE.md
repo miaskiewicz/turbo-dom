@@ -46,10 +46,14 @@ tag and then publishes every package in dependency order. See `docs/CONSOLIDATIO
 and the Rust runtime (`crates/turbo-dom`, the workspace-member crate published to crates.io as
 `turbo-dom`) never touch each other. The Rust DOM engine lives in **one place** — that published
 crate — so there's no duplicated copy to keep in sync (the root parser crate has no rtdom module).
-rtdom's line coverage is gated in CI at its measured floor (88.33% at 0.6.0, gate 88:
-`cargo tarpaulin --engine llvm -p turbo-dom --include-files 'crates/turbo-dom/src/*'`); the
-consolidation's coverage phase raises it (and every other crate's floor) to >= 99, then 100. Its
-`bench`/`dump`/`conformance`/`gauntlet` modules are `#[cfg(test)]` gate harness, not shipped. The
+rtdom's line coverage is gated in CI at 100% (P5-cov-core; it was 88.33% at 0.6.0:
+`cargo tarpaulin --engine llvm -p turbo-dom --include-files 'crates/turbo-dom/src/*'`); every
+other crate's floor rises to >= 99, then 100, in the same phase. Every line is covered by a test
+that asserts behaviour (web-observable behaviour against a Chrome 156 control); a provably dead
+defensive line is removed or `unreachable!()` with its proof in a comment — never a no-op test
+or a coverage exclusion. Its
+`bench`/`dump`/`conformance`/`gauntlet` modules are `#[cfg(test)]` gate harness, not shipped
+(tarpaulin skips them). The
 crate publishes from `publish.yml` on a `v*` tag (after turbo-dom-v8, before turbo-dom-layout). See
 `RUST_PORT_PLAN.md`.
 
@@ -229,7 +233,11 @@ package or publish workflow.
 - **Rust selector engine = Chrome 156.** `rtdom/query.rs` (string API) and `query_utf16.rs` (UTF-16
   API; also parses any string selector containing `\`) are checked against
   `crates/turbo-dom/tests/fixtures/cascade_selectors_chrome156.json` (regenerate with
-  `scripts/cascade-selectors-chrome-control.mjs`). Behaviour changes there need a Chrome control.
+  `scripts/cascade-selectors-chrome-control.mjs`) and the selector rows of
+  `rtdom_core_chrome156.json` (`scripts/rtdom-core-chrome-control.mjs`: comments, EOF closing,
+  list items, `:-webkit-any()`, `:scope`, An+B limits; both engines). Selector source is
+  CSS-preprocessed once (`rtdom/selector_source.rs` / `normalizeSource` in selectors.mjs).
+  Behaviour changes there need a Chrome control.
   It is the ONE engine: `query_cascade.rs` (`parse_for_cascade` / `match_for_cascade`, matching
   generic over a `Navigator`; `LiveNavigator` = the DOM APIs' semantics: template content is
   a separate fragment, `:root` is the document element) also serves turbo-dom-layout's cascade

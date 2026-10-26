@@ -112,7 +112,7 @@ engine, macOS arm64, `--include-files 'crates/<crate>/src/*'`), rounded down:
 
 | crate | measured | gate |
 |---|---|---|
-| turbo-dom | 88.33% (6327/7163) | 88 |
+| turbo-dom | 100% (P5-cov-core; 88.33% (6327/7163) at 0.6.0) | 100 |
 | turbo-dom-layout | 90.63% (8450/9324) | 90 |
 | turbo-dom-raster | 77.23% (1184/1533) | 77 |
 | turbo-dom-browser-env (`host-internals,test-support`) | 88.59% (14538/16411) | 88 |
@@ -121,6 +121,16 @@ The coverage phase (P5-cov) adds behaviour-asserting tests and raises every gate
 >= 99, then 100 per crate as it gets there (turbo-dom-v8: 100% of the fork delta through
 a coverage filter). A gate is never lowered to pass a change. (turbo-dom#22's 47.5% was
 measured without the `--include-files` filter, i.e. counting other packages' files.)
+
+turbo-dom reached 100% in P5-cov-core: the html5lib fixtures run through the UTF-16
+tokenizer fork too; `scripts/rtdom-core-chrome-control.mjs` (fixture
+`rtdom_core_chrome156.json`) pins tokenizer states, fragment contexts, selector syntax and
+DOM API edge cases against Chrome 156 (asserted by `tests/rtdom_core_chrome.rs` and, for the
+npm engine, `test/selectors-core-chrome.test.mjs` / `test/fragments-core-chrome.test.mjs`);
+code the crate provably never runs (upstream tokenizer options it never sets, html5ever
+paths that never fire, impossible node variants) was removed or became `unreachable!()`
+with its proof in place. Gaps this surfaced were filed and fixed against the control:
+turbo-dom#91, #92, #96, #98.
 
 ## Parity harness
 

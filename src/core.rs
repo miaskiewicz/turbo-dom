@@ -372,6 +372,38 @@ pub fn parse_html_fragment_in(html: &str, context_ns: &str, context_local: &str)
         "math" => ns!(mathml),
         _ => ns!(html),
     };
+    // Chrome 156 drops a literal U+0000 in an RCDATA-context (textarea / title) fragment,
+    // where html5ever emits U+FFFD (miaskiewicz/turbo-dom#92). The whole input is text there
+    // and U+0000 only ends a character reference, so each NUL-free segment is parsed alone
+    // and the texts joined (the same rule as the rtdom crate's core).
+    if ns == ns!(html) && matches!(context_local, "textarea" | "title") && html.contains('\0') {
+        let value: String = html
+            .split('\0')
+            .flat_map(|segment| parse_html_fragment_in(segment, context_ns, context_local).children)
+            .map(|text| text.value)
+            .collect();
+        let text = Node {
+            node_type: TEXT_NODE,
+            name: "#text".to_string(),
+            value,
+            namespace: String::new(),
+            public_id: String::new(),
+            system_id: String::new(),
+            attrs: Vec::new(),
+            children: Vec::new(),
+        };
+        let mut frag = Node {
+            node_type: DOCUMENT_NODE,
+            name: "#document-fragment".to_string(),
+            value: String::new(),
+            children: Vec::new(),
+            ..text.clone()
+        };
+        if !text.value.is_empty() {
+            frag.children.push(text);
+        }
+        return frag;
+    }
     let ctx = QualName::new(None, ns, LocalName::from(context_local));
     let dom = parse_fragment(RcDom::default(), opts(), ctx, vec![], false)
         .from_utf8()
@@ -611,6 +643,24 @@ mod tests {
             .expect("template has a content fragment");
         assert_eq!(content.name, "content");
         assert_eq!(content.children[0].value, "Hello");
+    }
+
+    #[test]
+    fn rcdata_fragments_drop_nul_like_chrome() {
+        // miaskiewicz/turbo-dom#92 (Chrome 156): a literal U+0000 is dropped, &#0; is U+FFFD
+        let text = |html: &str, ctx: &str| {
+            let frag = parse_html_fragment_context(html, ctx);
+            assert_eq!(frag.name, "#document-fragment");
+            frag.children.iter().map(|c| (c.node_type, c.value.clone())).collect::<Vec<_>>()
+        };
+        assert_eq!(text("a\0b</textarea>c\0d", "textarea"), [(TEXT_NODE, "ab</textarea>cd".into())]);
+        assert_eq!(text("x&am\0p;&not\0in;", "title"), [(TEXT_NODE, "x&amp;\u{ac}in;".into())]);
+        assert_eq!(text("a&#0;b", "textarea"), [(TEXT_NODE, "a\u{fffd}b".into())]);
+        assert_eq!(text("\0", "title"), []);
+        // other contexts keep html5ever's answer (data state: dropped; RAWTEXT: U+FFFD)
+        assert_eq!(text("a\0b", "style"), [(TEXT_NODE, "a\u{fffd}b".into())]);
+        assert_eq!(text("a\0b", "div"), [(TEXT_NODE, "ab".into())]);
+        assert_eq!(text("a\0b", "svg title"), [(TEXT_NODE, "ab".into())]);
     }
 
     #[test]
