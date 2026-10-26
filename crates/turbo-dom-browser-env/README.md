@@ -61,6 +61,13 @@ bytes), named after the file (`KEY_ORDER_PROBE_JS`, `ANIMATIONS_FRAMES_CASES_JSO
 …), plus `FILES` (file name → bytes) and `frame_read_should_throw` (the
 frame-read interceptor source, for accessor agreement tests). The files ship in
 the package under `src/`; consumers reference the constants, never copy files.
+The 67 files are exactly what turbo-surf's Chrome-parity integration tests read,
+including the custom-element lifecycle contract (`tests/custom_elements.rs`:
+`CUSTOM_ELEMENTS{,_EXTENDED,_REACTIONS,_IDL,_MOVES,_CALLBACKS,_RETIRED}_*`,
+`DOM_PARSER_OBSERVER_LIFECYCLE_*`, `CSS_ADOPTION_LIFECYCLE_*` probe/control pairs).
+Add a constant (and its `FILES` entry) when another consumer needs a file.
+`tests/test_support_api.rs` checks every constant against its file and every
+probe/control pair's recorded `probeSha256`.
 
 ### Feature `native-sdk-frame-read` (off by default)
 
