@@ -211,10 +211,8 @@ impl SoaBuilder {
                 self.soa.node_type[idx] = COMMENT_NODE;
                 self.soa.text_id[idx] = self.push_string(contents);
             }
-            NodeData::ProcessingInstruction { target, contents } => {
-                self.soa.node_type[idx] = PROCESSING_INSTRUCTION_NODE;
-                self.soa.tag_id[idx] = self.intern_tag(target);
-                self.soa.text_id[idx] = self.push_string(contents);
+            NodeData::ProcessingInstruction { .. } => {
+                unreachable!("html5ever's HTML tree builder never creates processing instructions")
             }
             NodeData::Element {
                 name,
@@ -413,12 +411,12 @@ pub fn parse_html_fragment_with_context(
         attrs: Vec::new(),
         children: Vec::new(),
     };
+    // The document's only child is that <html> root: the fragment case never enters
+    // an insertion mode that appends to the Document (initial / before html, after
+    // after body, after after frameset).
     for child in root.children {
-        if child.node_type == ELEMENT_NODE && child.name == "html" {
-            frag.children.extend(child.children);
-        } else {
-            frag.children.push(child);
-        }
+        debug_assert!(child.node_type == ELEMENT_NODE && child.name == "html");
+        frag.children.extend(child.children);
     }
     frag
 }
@@ -464,13 +462,9 @@ fn shallow_node(handle: &Handle) -> Node {
             String::new(),
             Vec::new(),
         ),
-        NodeData::ProcessingInstruction { target, contents } => (
-            PROCESSING_INSTRUCTION_NODE,
-            target.to_string(),
-            contents.to_string(),
-            String::new(),
-            Vec::new(),
-        ),
+        NodeData::ProcessingInstruction { .. } => {
+            unreachable!("html5ever's HTML tree builder never creates processing instructions")
+        }
         NodeData::Element { name, attrs, .. } => {
             let a = attrs
                 .borrow()

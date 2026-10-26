@@ -296,7 +296,7 @@ impl Tree {
             NodeType::Text | NodeType::Comment | NodeType::ProcessingInstruction => {
                 self.text_ov.insert(node, value);
             }
-            NodeType::Attribute => {}
+            // (attributes returned above)
             _ => {
                 if let Some(text) = self.first_child(node) {
                     self.text_ov.insert(text, value);

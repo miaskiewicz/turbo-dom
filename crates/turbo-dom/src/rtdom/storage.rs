@@ -407,50 +407,38 @@ impl Tree {
     }
 
     fn projected_node_bytes(&self, node: Handle) -> usize {
-        let mut bytes = match self.node_type(node) {
-            NodeType::Document => 0,
-            NodeType::Element => {
-                if self.is_new(node) {
-                    match self.new_ref(node) {
-                        NewNode::Element { name, .. } => name.payload_bytes(),
-                        _ => 0,
-                    }
-                } else {
-                    self.local_name(node).map_or(0, str::len)
+        // A new node's type is its variant; the parse buffer holds only document,
+        // element, text, comment, doctype and template-content nodes.
+        let mut bytes = if self.is_new(node) {
+            match self.new_ref(node) {
+                NewNode::Element { name, .. } => name.payload_bytes(),
+                NewNode::Attribute { data, .. } => native_attribute_bytes(data),
+                NewNode::Text(_) | NewNode::Comment(_) => self.character_payload_bytes(node),
+                NewNode::ProcessingInstruction(data) => {
+                    data.target.payload_bytes() + self.character_payload_bytes(node)
                 }
+                NewNode::Doctype(data) => {
+                    data.name.payload_bytes()
+                        + data.public_id.payload_bytes()
+                        + data.system_id.payload_bytes()
+                }
+                NewNode::Fragment(label) => label.as_deref().map_or(0, str::len),
             }
-            NodeType::Attribute => self
-                .native_attribute_data(node)
-                .map_or(0, native_attribute_bytes),
-            NodeType::Text | NodeType::Comment => self.character_payload_bytes(node),
-            NodeType::ProcessingInstruction => {
-                let target_bytes = if self.is_new(node) {
-                    match self.new_ref(node) {
-                        NewNode::ProcessingInstruction(data) => data.target.payload_bytes(),
-                        _ => 0,
-                    }
-                } else {
-                    self.processing_instruction_target(node).map_or(0, str::len)
-                };
-                target_bytes + self.character_payload_bytes(node)
-            }
-            NodeType::Doctype => {
-                if self.is_new(node) {
-                    match self.new_ref(node) {
-                        NewNode::Doctype(data) => {
-                            data.name.payload_bytes()
-                                + data.public_id.payload_bytes()
-                                + data.system_id.payload_bytes()
-                        }
-                        _ => 0,
-                    }
-                } else {
+        } else {
+            match self.node_type(node) {
+                NodeType::Document => 0,
+                NodeType::Element => self.local_name(node).map_or(0, str::len),
+                NodeType::Text | NodeType::Comment => self.character_payload_bytes(node),
+                NodeType::Doctype => {
                     self.doctype_name(node).map_or(0, str::len)
                         + self.doctype_public_id(node).map_or(0, str::len)
                         + self.doctype_system_id(node).map_or(0, str::len)
                 }
+                NodeType::Fragment => self.node_label(node).map_or(0, str::len),
+                NodeType::Attribute | NodeType::ProcessingInstruction => {
+                    unreachable!("the parser buffer holds no attribute or processing instruction")
+                }
             }
-            NodeType::Fragment => self.node_label(node).map_or(0, str::len),
         };
         if self.node_type(node) == NodeType::Element {
             if let Some(attrs) = self.attrs_ov.get(node) {
@@ -485,11 +473,12 @@ impl Tree {
     fn materialize_node(&self, h: Handle) -> NewNode {
         if self.is_new(h) {
             let mut node = self.new_ref(h).clone();
+            // Only character nodes carry a text override.
             if let Some(value) = self.text_ov.get(h) {
-                match &mut node {
-                    NewNode::Text(data) | NewNode::Comment(data) => *data = value.clone(),
-                    NewNode::ProcessingInstruction(data) => data.data = value.clone(),
-                    _ => {}
+                if let NewNode::ProcessingInstruction(data) = &mut node {
+                    data.data = value.clone();
+                } else if let NewNode::Text(data) | NewNode::Comment(data) = &mut node {
+                    *data = value.clone();
                 }
             }
             return node;
@@ -505,24 +494,13 @@ impl Tree {
             NodeType::Comment => NewNode::Comment(super::DomString::from_units(
                 &self.node_value_utf16(h).unwrap_or_default(),
             )),
-            NodeType::ProcessingInstruction => {
-                NewNode::ProcessingInstruction(Box::new(super::ProcessingInstructionData {
-                    target: self
-                        .processing_instruction_target(h)
-                        .unwrap_or_default()
-                        .into(),
-                    data: super::DomString::from_units(
-                        &self.node_value_utf16(h).unwrap_or_default(),
-                    ),
-                }))
-            }
             NodeType::Doctype => NewNode::Doctype(Box::new(super::DoctypeData {
                 name: self.doctype_name(h).unwrap_or_default().into(),
                 public_id: self.doctype_public_id(h).unwrap_or_default().into(),
                 system_id: self.doctype_system_id(h).unwrap_or_default().into(),
             })),
             NodeType::Fragment => NewNode::Fragment(self.node_label(h).map(Into::into)),
-            NodeType::Attribute | NodeType::Document => {
+            NodeType::Attribute | NodeType::Document | NodeType::ProcessingInstruction => {
                 unreachable!("only parser nodes are materialized")
             }
         }

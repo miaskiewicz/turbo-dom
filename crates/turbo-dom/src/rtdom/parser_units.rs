@@ -313,9 +313,6 @@ impl Tree {
                 &decode(&node.system_id),
             ),
             NodeType::Comment => self.create_comment_utf16(&decode(&node.value)),
-            NodeType::ProcessingInstruction => {
-                self.create_processing_instruction_units(&decode(&node.name), &decode(&node.value))
-            }
             NodeType::Fragment => self.create_document_fragment(),
             _ => self.create_text_node_utf16(&decode(&node.value)),
         };

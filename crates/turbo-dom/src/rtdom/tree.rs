@@ -32,14 +32,13 @@ pub enum NodeType {
 }
 
 impl NodeType {
-    /// Read a node type back from the `SoA`'s untyped `u8` column. Total over every
-    /// value the parser core writes (see the node-type constants in `core`).
+    /// Read a node type back from the `SoA`'s untyped `u8` column (or a parsed
+    /// `core::Node`). Total over every value the parser core writes: the HTML parser
+    /// never produces attribute or processing-instruction nodes.
     fn from_u8(v: u8) -> NodeType {
         match v {
             1 => NodeType::Element,
-            2 => NodeType::Attribute,
             3 => NodeType::Text,
-            7 => NodeType::ProcessingInstruction,
             8 => NodeType::Comment,
             9 => NodeType::Document,
             10 => NodeType::Doctype,
@@ -63,12 +62,7 @@ pub enum Namespace {
 
 impl Namespace {
     fn from_u8(v: u8) -> Namespace {
-        match v {
-            1 => Namespace::Svg,
-            2 => Namespace::MathMl,
-            3 => Namespace::Other,
-            _ => Namespace::Html,
-        }
+        Namespace::from_id(v)
     }
 
     /// Build a `Namespace` from its NUMBER (0 HTML, 1 SVG, 2 `MathML`; anything else HTML) —
@@ -173,19 +167,21 @@ impl NewNode {
             _ => Namespace::Html,
         }
     }
-    /// The element's local name, if this is an element.
-    fn element_name(&self) -> Option<&str> {
-        match self {
-            NewNode::Element { name, .. } => Some(name),
-            _ => None,
-        }
+    /// The element's local name. Callers check the node is an element first (a new
+    /// node's [`NodeType`] is its variant).
+    fn element_name(&self) -> &str {
+        let NewNode::Element { name, .. } = self else {
+            unreachable!("element_name of a non-element")
+        };
+        name
     }
-    /// The character data, if this is a text or comment node.
-    fn char_data(&self) -> Option<&str> {
+    /// The character data. Callers check the node is a text, comment or processing
+    /// instruction node first.
+    fn char_data(&self) -> &str {
         match self {
-            NewNode::Text(s) | NewNode::Comment(s) => Some(s),
-            NewNode::ProcessingInstruction(value) => Some(&value.data),
-            _ => None,
+            NewNode::ProcessingInstruction(value) => &value.data,
+            NewNode::Text(s) | NewNode::Comment(s) => s,
+            _ => unreachable!("char_data of a non-character node"),
         }
     }
 }
@@ -767,7 +763,7 @@ impl Tree {
             return None;
         }
         if self.is_new(h) {
-            self.new_ref(h).element_name()
+            Some(self.new_ref(h).element_name())
         } else {
             Some(&self.buf.tag_names[self.buf.tag_id[h.idx()] as usize])
         }
@@ -1320,12 +1316,9 @@ impl Tree {
             return None;
         }
         if self.is_new(h) {
-            return if nt == NodeType::Element {
-                self.new_ref(h).element_name()
-            } else if let NewNode::Fragment(label) = self.new_ref(h) {
-                label.as_deref()
-            } else {
-                None
+            return match self.new_ref(h) {
+                NewNode::Fragment(label) => label.as_deref(),
+                element => Some(element.element_name()),
             };
         }
         Some(&self.buf.tag_names[self.buf.tag_id[h.idx()] as usize])
@@ -1370,20 +1363,16 @@ impl Tree {
 
     // ----------------------------------------------------------------- text
     /// The immutable target of a processing instruction.
+    /// None for every other node (the parser never produces processing instructions,
+    /// so only created ones have a target).
     pub fn processing_instruction_target(&self, h: Handle) -> Option<&str> {
-        if self.node_type(h) != NodeType::ProcessingInstruction {
+        if !self.is_new(h) {
             return None;
         }
-        if self.is_new(h) {
-            return match self.new_ref(h) {
-                NewNode::ProcessingInstruction(value) => Some(&value.target),
-                _ => None,
-            };
+        match self.new_ref(h) {
+            NewNode::ProcessingInstruction(value) => Some(&value.target),
+            _ => None,
         }
-        self.buf
-            .tag_names
-            .get(self.buf.tag_id[h.idx()] as usize)
-            .map(String::as_str)
     }
 
     pub fn node_value(&self, h: Handle) -> Option<String> {
@@ -1401,10 +1390,7 @@ impl Tree {
             return Some(t.to_string());
         }
         if self.is_new(h) {
-            return self
-                .new_ref(h)
-                .char_data()
-                .map(std::string::ToString::to_string);
+            return Some(self.new_ref(h).char_data().to_string());
         }
         // buffer text/comment nodes always have text_id >= 0 (core pools every
         // string); .get + default keeps this total and coverable.
@@ -1502,9 +1488,7 @@ impl Tree {
         previous_sibling: Option<Handle>,
         next_sibling: Option<Handle>,
     ) {
-        if !self.is_recording() {
-            return;
-        }
+        debug_assert!(self.is_recording(), "callers record only while recording");
         let rec = crate::rtdom::mutations::MutationRecord::child_list(
             parent,
             added.into_iter().collect(),
@@ -2267,9 +2251,6 @@ impl Tree {
             }
             NodeType::Fragment => self.create_document_fragment(),
             NodeType::Comment => self.create_comment(&n.value),
-            NodeType::ProcessingInstruction => {
-                self.create_processing_instruction(&n.name, &n.value)
-            }
             _ => self.create_text_node(&n.value),
         }
     }
