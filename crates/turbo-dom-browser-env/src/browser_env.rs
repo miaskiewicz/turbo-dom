@@ -9692,6 +9692,10 @@ mod custom_elements_collect_tests;
 mod html_image_srcset_tests;
 
 #[cfg(test)]
+#[path = "reflected_urls_tests.rs"]
+mod reflected_urls_tests;
+
+#[cfg(test)]
 #[path = "css_adoption_tests.rs"]
 mod css_adoption_tests;
 

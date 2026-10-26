@@ -1,0 +1,155 @@
+{
+  "browser": "Chrome/156.0.8078.4",
+  "v8": "15.6.75",
+  "casesSha256": "a36a15f522bf203ec2686c93dbf313545d2659632df92e819671445b092653fe",
+  "probeSha256": "0074d954033c89d98cfb6f5e31d25ac9d9b74be63d5df917a89472eebcefd933",
+  "collectorSha256": "7174415de76a891d657bbc3e66952c7b91356030e8fcd9d0ac4f52603d0c3952",
+  "flags": [
+    "--headless=new",
+    "--remote-debugging-pipe",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "about:blank"
+  ],
+  "errors": [],
+  "result": [
+    {
+      "id": "reflected-urls",
+      "result": {
+        "img": [
+          "",
+          "https://x.test/pic.png",
+          "https://x.test/dir/pic.png?a=b#c",
+          "https://x.test/root.png",
+          "https://other.test/b.png",
+          "https://cdn.test/x.png",
+          "data:image/png,AA",
+          "http://[bad",
+          "https://x.test/dir/spaced.png",
+          "https://x.test/dir/a%20b.png",
+          "https://x.test/dir/"
+        ],
+        "script": [
+          "",
+          "https://x.test/pic.png",
+          "https://x.test/dir/pic.png?a=b#c",
+          "https://x.test/root.png",
+          "https://other.test/b.png",
+          "https://cdn.test/x.png",
+          "data:image/png,AA",
+          "http://[bad",
+          "https://x.test/dir/spaced.png",
+          "https://x.test/dir/a%20b.png",
+          "https://x.test/dir/"
+        ],
+        "iframe": [
+          "",
+          "https://x.test/pic.png",
+          "https://x.test/dir/pic.png?a=b#c",
+          "https://x.test/root.png",
+          "https://other.test/b.png",
+          "https://cdn.test/x.png",
+          "data:image/png,AA",
+          "http://[bad",
+          "https://x.test/dir/spaced.png",
+          "https://x.test/dir/a%20b.png",
+          "https://x.test/dir/"
+        ],
+        "source": [
+          "",
+          "https://x.test/pic.png",
+          "https://x.test/dir/pic.png?a=b#c",
+          "https://x.test/root.png",
+          "https://other.test/b.png",
+          "https://cdn.test/x.png",
+          "data:image/png,AA",
+          "http://[bad",
+          "https://x.test/dir/spaced.png",
+          "https://x.test/dir/a%20b.png",
+          "https://x.test/dir/"
+        ],
+        "embed": [
+          "",
+          "https://x.test/pic.png",
+          "https://x.test/dir/pic.png?a=b#c",
+          "https://x.test/root.png",
+          "https://other.test/b.png",
+          "https://cdn.test/x.png",
+          "data:image/png,AA",
+          "http://[bad",
+          "https://x.test/dir/spaced.png",
+          "https://x.test/dir/a%20b.png",
+          "https://x.test/dir/"
+        ],
+        "track": [
+          "",
+          "https://x.test/pic.png",
+          "https://x.test/dir/pic.png?a=b#c",
+          "https://x.test/root.png",
+          "https://other.test/b.png",
+          "https://cdn.test/x.png",
+          "data:image/png,AA",
+          "http://[bad",
+          "https://x.test/dir/spaced.png",
+          "https://x.test/dir/a%20b.png",
+          "https://x.test/dir/"
+        ],
+        "input": [
+          "",
+          "https://x.test/pic.png",
+          "https://x.test/dir/pic.png?a=b#c",
+          "https://x.test/root.png",
+          "https://other.test/b.png",
+          "https://cdn.test/x.png",
+          "data:image/png,AA",
+          "http://[bad",
+          "https://x.test/dir/spaced.png",
+          "https://x.test/dir/a%20b.png",
+          "https://x.test/dir/"
+        ],
+        "video": [
+          "",
+          "https://x.test/pic.png",
+          "https://x.test/dir/pic.png?a=b#c",
+          "https://x.test/root.png",
+          "https://other.test/b.png",
+          "https://cdn.test/x.png",
+          "data:image/png,AA",
+          "http://[bad",
+          "https://x.test/dir/spaced.png",
+          "https://x.test/dir/a%20b.png",
+          "https://x.test/dir/"
+        ],
+        "audio": [
+          "",
+          "https://x.test/pic.png",
+          "https://x.test/dir/pic.png?a=b#c",
+          "https://x.test/root.png",
+          "https://other.test/b.png",
+          "https://cdn.test/x.png",
+          "data:image/png,AA",
+          "http://[bad",
+          "https://x.test/dir/spaced.png",
+          "https://x.test/dir/a%20b.png",
+          "https://x.test/dir/"
+        ],
+        "link": [
+          "",
+          "https://x.test/pic.png",
+          "https://x.test/dir/pic.png?a=b#c",
+          "https://x.test/root.png",
+          "https://other.test/b.png",
+          "https://cdn.test/x.png",
+          "data:image/png,AA",
+          "http://[bad",
+          "https://x.test/dir/spaced.png",
+          "https://x.test/dir/a%20b.png",
+          "https://x.test/dir/"
+        ]
+      }
+    }
+  ]
+}
