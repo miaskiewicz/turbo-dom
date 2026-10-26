@@ -19,6 +19,13 @@ const KNOWN_GAPS: &[&str] = &[
     "row-rule|1px solid red",
     "rule-color|red",
     "rule|1px solid red",
+    "margin|calc(1px * 2px)",
+    "margin|calc(1px / 0)",
+    "margin|calc(1px 2px)",
+    "background|hsl(1turn 50% 50%)",
+    "background|rgb(1, 2 3)",
+    "transition|opacity linear(0, 1 20% 40%)",
+    "transition|opacity linear(1)",
 ];
 
 fn fixture(name: &str) -> String {

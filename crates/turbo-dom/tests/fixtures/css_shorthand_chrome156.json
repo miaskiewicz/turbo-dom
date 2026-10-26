@@ -1,7 +1,7 @@
 {
   "browser": "Chrome/156.0.8078.4",
   "v8": "15.6.75",
-  "casesSha256": "1dcb519ea5da325a99a5a6e90ecdf1663206d86177690cf24d97526d835d9164",
+  "casesSha256": "a6b0ecbad6d121d360cfadb8b9b571fd237ac7e2a58b47649fbd70d15b674122",
   "probeSha256": "8bf0060c80218bdea8a039ee835919890a534722032811886968abbcdcbbfb64",
   "collectorSha256": "7bd6ffb7440d38e05cd2b8fbe0e84e91cf462043577ceada3e276728ad216172",
   "flags": [
@@ -2002,6 +2002,143 @@
             "shorthands": {
               "margin": "1px 2em 3rem 4vw"
             }
+          },
+          {
+            "id": "margin|calc(2 * 1px)",
+            "cssText": "margin: calc(2px);",
+            "items": [
+              [
+                "margin-top",
+                "calc(2px)"
+              ],
+              [
+                "margin-right",
+                "calc(2px)"
+              ],
+              [
+                "margin-bottom",
+                "calc(2px)"
+              ],
+              [
+                "margin-left",
+                "calc(2px)"
+              ]
+            ],
+            "shorthands": {
+              "margin": "calc(2px)"
+            }
+          },
+          {
+            "id": "margin|calc(10px / 2)",
+            "cssText": "margin: calc(5px);",
+            "items": [
+              [
+                "margin-top",
+                "calc(5px)"
+              ],
+              [
+                "margin-right",
+                "calc(5px)"
+              ],
+              [
+                "margin-bottom",
+                "calc(5px)"
+              ],
+              [
+                "margin-left",
+                "calc(5px)"
+              ]
+            ],
+            "shorthands": {
+              "margin": "calc(5px)"
+            }
+          },
+          {
+            "id": "margin|calc(1px * 2px)",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "margin|calc(1px / 0)",
+            "cssText": "margin: calc(infinity * 1px);",
+            "items": [
+              [
+                "margin-top",
+                "calc(infinity * 1px)"
+              ],
+              [
+                "margin-right",
+                "calc(infinity * 1px)"
+              ],
+              [
+                "margin-bottom",
+                "calc(infinity * 1px)"
+              ],
+              [
+                "margin-left",
+                "calc(infinity * 1px)"
+              ]
+            ],
+            "shorthands": {
+              "margin": "calc(infinity * 1px)"
+            }
+          },
+          {
+            "id": "margin|clamp(1px, 5px, 3px)",
+            "cssText": "margin: calc(3px);",
+            "items": [
+              [
+                "margin-top",
+                "calc(3px)"
+              ],
+              [
+                "margin-right",
+                "calc(3px)"
+              ],
+              [
+                "margin-bottom",
+                "calc(3px)"
+              ],
+              [
+                "margin-left",
+                "calc(3px)"
+              ]
+            ],
+            "shorthands": {
+              "margin": "calc(3px)"
+            }
+          },
+          {
+            "id": "margin|min(1px)",
+            "cssText": "margin: calc(1px);",
+            "items": [
+              [
+                "margin-top",
+                "calc(1px)"
+              ],
+              [
+                "margin-right",
+                "calc(1px)"
+              ],
+              [
+                "margin-bottom",
+                "calc(1px)"
+              ],
+              [
+                "margin-left",
+                "calc(1px)"
+              ]
+            ],
+            "shorthands": {
+              "margin": "calc(1px)"
+            }
+          },
+          {
+            "id": "margin|calc(1px 2px)",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
           },
           {
             "id": "margin|inherit",
@@ -62331,6 +62468,334 @@
             }
           },
           {
+            "id": "background|rgb(10%, 20%, 30%)",
+            "cssText": "background: rgb(26, 51, 77);",
+            "items": [
+              [
+                "background-image",
+                "initial"
+              ],
+              [
+                "background-position-x",
+                "initial"
+              ],
+              [
+                "background-position-y",
+                "initial"
+              ],
+              [
+                "background-size",
+                "initial"
+              ],
+              [
+                "background-repeat",
+                "initial"
+              ],
+              [
+                "background-attachment",
+                "initial"
+              ],
+              [
+                "background-origin",
+                "initial"
+              ],
+              [
+                "background-clip",
+                "initial"
+              ],
+              [
+                "background-color",
+                "rgb(26, 51, 77)"
+              ]
+            ],
+            "shorthands": {
+              "background": "rgb(26, 51, 77)",
+              "background-position": "initial"
+            }
+          },
+          {
+            "id": "background|rgba(1, 2, 3, 0.25)",
+            "cssText": "background: rgba(1, 2, 3, 0.25);",
+            "items": [
+              [
+                "background-image",
+                "initial"
+              ],
+              [
+                "background-position-x",
+                "initial"
+              ],
+              [
+                "background-position-y",
+                "initial"
+              ],
+              [
+                "background-size",
+                "initial"
+              ],
+              [
+                "background-repeat",
+                "initial"
+              ],
+              [
+                "background-attachment",
+                "initial"
+              ],
+              [
+                "background-origin",
+                "initial"
+              ],
+              [
+                "background-clip",
+                "initial"
+              ],
+              [
+                "background-color",
+                "rgba(1, 2, 3, 0.25)"
+              ]
+            ],
+            "shorthands": {
+              "background": "rgba(1, 2, 3, 0.25)",
+              "background-position": "initial"
+            }
+          },
+          {
+            "id": "background|hsl(120, 100%, 25%)",
+            "cssText": "background: rgb(0, 128, 0);",
+            "items": [
+              [
+                "background-image",
+                "initial"
+              ],
+              [
+                "background-position-x",
+                "initial"
+              ],
+              [
+                "background-position-y",
+                "initial"
+              ],
+              [
+                "background-size",
+                "initial"
+              ],
+              [
+                "background-repeat",
+                "initial"
+              ],
+              [
+                "background-attachment",
+                "initial"
+              ],
+              [
+                "background-origin",
+                "initial"
+              ],
+              [
+                "background-clip",
+                "initial"
+              ],
+              [
+                "background-color",
+                "rgb(0, 128, 0)"
+              ]
+            ],
+            "shorthands": {
+              "background": "rgb(0, 128, 0)",
+              "background-position": "initial"
+            }
+          },
+          {
+            "id": "background|hsla(0, 100%, 50%, .5)",
+            "cssText": "background: rgba(255, 0, 0, 0.5);",
+            "items": [
+              [
+                "background-image",
+                "initial"
+              ],
+              [
+                "background-position-x",
+                "initial"
+              ],
+              [
+                "background-position-y",
+                "initial"
+              ],
+              [
+                "background-size",
+                "initial"
+              ],
+              [
+                "background-repeat",
+                "initial"
+              ],
+              [
+                "background-attachment",
+                "initial"
+              ],
+              [
+                "background-origin",
+                "initial"
+              ],
+              [
+                "background-clip",
+                "initial"
+              ],
+              [
+                "background-color",
+                "rgba(255, 0, 0, 0.5)"
+              ]
+            ],
+            "shorthands": {
+              "background": "rgba(255, 0, 0, 0.5)",
+              "background-position": "initial"
+            }
+          },
+          {
+            "id": "background|hsl(1turn 50% 50%)",
+            "cssText": "background: rgb(191, 64, 64);",
+            "items": [
+              [
+                "background-image",
+                "initial"
+              ],
+              [
+                "background-position-x",
+                "initial"
+              ],
+              [
+                "background-position-y",
+                "initial"
+              ],
+              [
+                "background-size",
+                "initial"
+              ],
+              [
+                "background-repeat",
+                "initial"
+              ],
+              [
+                "background-attachment",
+                "initial"
+              ],
+              [
+                "background-origin",
+                "initial"
+              ],
+              [
+                "background-clip",
+                "initial"
+              ],
+              [
+                "background-color",
+                "rgb(191, 64, 64)"
+              ]
+            ],
+            "shorthands": {
+              "background": "rgb(191, 64, 64)",
+              "background-position": "initial"
+            }
+          },
+          {
+            "id": "background|rgb(1, 2 3)",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "background|oklab(40% 0.1 0.1)",
+            "cssText": "background: oklab(0.4 0.1 0.1);",
+            "items": [
+              [
+                "background-image",
+                "initial"
+              ],
+              [
+                "background-position-x",
+                "initial"
+              ],
+              [
+                "background-position-y",
+                "initial"
+              ],
+              [
+                "background-size",
+                "initial"
+              ],
+              [
+                "background-repeat",
+                "initial"
+              ],
+              [
+                "background-attachment",
+                "initial"
+              ],
+              [
+                "background-origin",
+                "initial"
+              ],
+              [
+                "background-clip",
+                "initial"
+              ],
+              [
+                "background-color",
+                "oklab(0.4 0.1 0.1)"
+              ]
+            ],
+            "shorthands": {
+              "background": "oklab(0.4 0.1 0.1)",
+              "background-position": "initial"
+            }
+          },
+          {
+            "id": "background|#ff0000ff",
+            "cssText": "background: rgb(255, 0, 0);",
+            "items": [
+              [
+                "background-image",
+                "initial"
+              ],
+              [
+                "background-position-x",
+                "initial"
+              ],
+              [
+                "background-position-y",
+                "initial"
+              ],
+              [
+                "background-size",
+                "initial"
+              ],
+              [
+                "background-repeat",
+                "initial"
+              ],
+              [
+                "background-attachment",
+                "initial"
+              ],
+              [
+                "background-origin",
+                "initial"
+              ],
+              [
+                "background-clip",
+                "initial"
+              ],
+              [
+                "background-color",
+                "rgb(255, 0, 0)"
+              ]
+            ],
+            "shorthands": {
+              "background": "rgb(255, 0, 0)",
+              "background-position": "initial"
+            }
+          },
+          {
             "id": "background|inherit",
             "cssText": "background: inherit;",
             "items": [
@@ -65660,6 +66125,132 @@
             "shorthands": {
               "-webkit-transition": "opacity calc(2s)",
               "transition": "opacity calc(2s)"
+            }
+          },
+          {
+            "id": "transition|opacity linear(0, 0.5, 1)",
+            "cssText": "transition: opacity linear(0 0%, 0.5 50%, 1 100%);",
+            "items": [
+              [
+                "transition-behavior",
+                "normal"
+              ],
+              [
+                "transition-duration",
+                "0s"
+              ],
+              [
+                "transition-timing-function",
+                "linear(0 0%, 0.5 50%, 1 100%)"
+              ],
+              [
+                "transition-delay",
+                "0s"
+              ],
+              [
+                "transition-property",
+                "opacity"
+              ]
+            ],
+            "shorthands": {
+              "-webkit-transition": "opacity linear(0 0%, 0.5 50%, 1 100%)",
+              "transition": "opacity linear(0 0%, 0.5 50%, 1 100%)"
+            }
+          },
+          {
+            "id": "transition|opacity linear(0, 0.25 50%, 0.75, 1)",
+            "cssText": "transition: opacity linear(0 0%, 0.25 50%, 0.75 75%, 1 100%);",
+            "items": [
+              [
+                "transition-behavior",
+                "normal"
+              ],
+              [
+                "transition-duration",
+                "0s"
+              ],
+              [
+                "transition-timing-function",
+                "linear(0 0%, 0.25 50%, 0.75 75%, 1 100%)"
+              ],
+              [
+                "transition-delay",
+                "0s"
+              ],
+              [
+                "transition-property",
+                "opacity"
+              ]
+            ],
+            "shorthands": {
+              "-webkit-transition": "opacity linear(0 0%, 0.25 50%, 0.75 75%, 1 100%)",
+              "transition": "opacity linear(0 0%, 0.25 50%, 0.75 75%, 1 100%)"
+            }
+          },
+          {
+            "id": "transition|opacity linear(0, 1 20% 40%)",
+            "cssText": "transition: opacity linear(0 0%, 1 20%, 1 40%);",
+            "items": [
+              [
+                "transition-behavior",
+                "normal"
+              ],
+              [
+                "transition-duration",
+                "0s"
+              ],
+              [
+                "transition-timing-function",
+                "linear(0 0%, 1 20%, 1 40%)"
+              ],
+              [
+                "transition-delay",
+                "0s"
+              ],
+              [
+                "transition-property",
+                "opacity"
+              ]
+            ],
+            "shorthands": {
+              "-webkit-transition": "opacity linear(0 0%, 1 20%, 1 40%)",
+              "transition": "opacity linear(0 0%, 1 20%, 1 40%)"
+            }
+          },
+          {
+            "id": "transition|opacity linear(1)",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "transition|opacity steps(1, start)",
+            "cssText": "transition: opacity steps(1, start);",
+            "items": [
+              [
+                "transition-behavior",
+                "normal"
+              ],
+              [
+                "transition-duration",
+                "0s"
+              ],
+              [
+                "transition-timing-function",
+                "steps(1, start)"
+              ],
+              [
+                "transition-delay",
+                "0s"
+              ],
+              [
+                "transition-property",
+                "opacity"
+              ]
+            ],
+            "shorthands": {
+              "-webkit-transition": "opacity steps(1, start)",
+              "transition": "opacity steps(1, start)"
             }
           },
           {

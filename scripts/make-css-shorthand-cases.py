@@ -210,6 +210,9 @@ edge = {
     "mask": ["url(a.png) add, url(b.png)", "url(a.png) border-box border-box", "url(a.png) fill-box", "url(a.png) no-clip", "url(a.png) / 10px", "url(a.png) center / 50%", "url(a.png) alpha luminance"],
     "-webkit-mask-box-image": ["url(a.png) 10 / 1px", "none 10 round"],
 }
+edge["margin"] += ["calc(2 * 1px)", "calc(10px / 2)", "calc(1px * 2px)", "calc(1px / 0)", "clamp(1px, 5px, 3px)", "min(1px, 2%)", "min(1px)", "calc(1px 2px)"]
+edge["transition"] += ["opacity linear(0, 0.5, 1)", "opacity linear(0, 0.25 50%, 0.75, 1)", "opacity linear(0, 1 20% 40%)", "opacity linear(1)", "opacity steps(1, start)"]
+edge["background"] += ["rgb(10%, 20%, 30%)", "rgba(1, 2, 3, 0.25)", "hsl(120, 100%, 25%)", "hsla(0, 100%, 50%, .5)", "hsl(1turn 50% 50%)", "rgb(1, 2 3)", "oklab(40% 0.1 0.1)", "#ff0000ff"]
 for name, vals in edge.items():
     values[name] = values[name] + [v for v in vals if v not in values[name]]
 
