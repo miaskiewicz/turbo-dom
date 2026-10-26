@@ -9,7 +9,7 @@ mod parser;
 mod quad_shorthand;
 mod token;
 
-pub(crate) use cascade::is_non_visual;
+pub(crate) use cascade::{is_non_visual, presentational_declarations_of};
 pub use cascade::{
     presentational_declarations, resolve_matched_style, style_input, style_tree,
     style_tree_with_options, style_tree_with_roots, style_tree_with_roots_options, Cascade,
@@ -351,6 +351,13 @@ pub fn build_cascade_with_width(
 /// 1280x800 desktop default.
 pub(crate) fn viewport_px() -> (f32, f32) {
     (VIEWPORT_WIDTH.get(), VIEWPORT_HEIGHT.get())
+}
+
+/// Set the viewport WIDTH (px) `@media` width conditions and `vw` units evaluate against
+/// for the next cascade build and layout on this thread, as [`build_cascade_with_width`]
+/// does — for embedders that resolve their own media rules (the live-DOM input).
+pub fn set_media_viewport_width(viewport_width: f32) {
+    VIEWPORT_WIDTH.set(viewport_width);
 }
 
 /// Set the viewport HEIGHT (px) `@media (min-height:…)`/`(max-height:…)` conditions

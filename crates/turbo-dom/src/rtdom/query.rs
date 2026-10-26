@@ -109,8 +109,8 @@ use units::UnitAttrMatch;
 #[path = "query_cascade.rs"]
 mod cascade;
 pub use cascade::{
-    match_for_cascade, parse_for_cascade, CascadeSelector, PositionCache, SelectorList,
-    SiblingGroup, Specificity,
+    match_for_cascade, parse_for_cascade, parse_for_supports, CascadeSelector, PositionCache,
+    SelectorList, SiblingGroup, Specificity,
 };
 
 impl AttrMatch {

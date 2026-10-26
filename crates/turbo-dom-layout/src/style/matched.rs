@@ -1,6 +1,9 @@
 //! Apply declarations selected by an embedder against its actual tree scopes.
-use super::{collect_presentational, expand_quad_candidates, inherit, pick_winners, Cand, Subject};
+use super::{
+    collect_presentational, expand_quad_candidates, inherit, pick_winners, Attrs, Cand, Subject,
+};
 use super::{ComputedStyle, Declaration};
+use crate::node::Attr;
 use crate::Element;
 
 /// CSS origin, before encapsulation, specificity and source-order resolution.
@@ -95,8 +98,37 @@ pub fn resolve_matched_style(
 /// can assign these the owning element's scope and an early author source order.
 #[must_use]
 pub fn presentational_declarations(element: &Element) -> Vec<Declaration> {
+    declarations_of(Subject::node(element))
+}
+
+/// The attributes [`presentational_declarations`] reads.
+const HINT_ATTRIBUTES: [&str; 4] = ["bgcolor", "width", "height", "color"];
+
+/// [`presentational_declarations`] of a live element `h` named `local`, reading its
+/// attributes by qualified name (the live-DOM input, [`crate::live`]).
+pub(crate) fn presentational_declarations_of(
+    tree: &turbo_dom::Tree,
+    h: turbo_dom::Handle,
+    local: &str,
+) -> Vec<Declaration> {
+    let attrs: Vec<Attr> = HINT_ATTRIBUTES
+        .iter()
+        .filter_map(|&name| {
+            tree.get_attribute(h, name).map(|value| Attr {
+                name: name.to_string(),
+                value: value.to_string(),
+            })
+        })
+        .collect();
+    declarations_of(Subject {
+        tag: Some(local),
+        attrs: Attrs::Node(&attrs),
+    })
+}
+
+fn declarations_of(subject: Subject) -> Vec<Declaration> {
     let mut candidates = Vec::new();
-    collect_presentational(Subject::node(element), &mut candidates);
+    collect_presentational(subject, &mut candidates);
     candidates
         .into_iter()
         .map(|candidate| Declaration {

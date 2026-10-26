@@ -2,8 +2,8 @@
 // Usage: node corpus-surf.mjs <addon.node> <out-dir>
 // static: screenshot / screenshot_svg (HTML snapshot -> layout -> paint).
 // live:   render(html, base, script) where the script dumps per-element geometry,
-//         computed style and hit-testing into the hydrated HTML, so the copier,
-//         styler and matcher of the live layout path are exercised.
+//         computed style and hit-testing into the hydrated HTML, so the capture,
+//         scoped matcher and live-DOM styling of the live layout path are exercised.
 // Inputs come from the released-main checkouts so every step renders identical
 // sources.
 import { createHash } from "node:crypto";

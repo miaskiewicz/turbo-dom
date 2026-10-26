@@ -749,7 +749,7 @@ fn resolve_style(
 }
 
 // --------------------------------------------------------------------------
-// the legacy Node input
+// the legacy Node input (reference + turbo-html2pdf-core's Node-literal tests)
 // --------------------------------------------------------------------------
 
 /// The element name a [`Tag::Marker`] gets in the turbo-dom copy of a legacy forest (no
@@ -839,6 +839,7 @@ mod matched;
 
 #[path = "tree_view.rs"]
 mod tree_view;
+pub(crate) use matched::presentational_declarations_of;
 pub use matched::{
     presentational_declarations, resolve_matched_style, CascadeOrigin, MatchedDeclaration,
 };

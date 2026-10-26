@@ -6,7 +6,9 @@
 //! generation, block/inline/flex/grid/table layout into one continuous galley of
 //! positioned [`Fragment`]s, a font registry with shaping + fallback (optionally
 //! with bundled OFL faces), image intrinsic sizing, and CSSOM-View style layout
-//! snapshots. [`layout_html`] drives raw HTML straight to a galley.
+//! snapshots. [`layout_html`] drives raw HTML straight to a galley. [`live`] styles a
+//! live, embedder-composed [`Tree`](turbo_dom::Tree) without copying it (turbo-surf's
+//! CSSOM-View layout), and [`cssom_view`] answers the geometry APIs over its snapshots.
 //!
 //! Relocated from `turbo-html2pdf-core` 0.3.9, which depends on this crate (its
 //! paged-media `t:` directives are [`MarkerKind`] markers classified by html2pdf,
@@ -16,11 +18,13 @@
 #![forbid(unsafe_code)]
 
 pub mod cmap;
+pub mod cssom_view;
 pub mod error;
 pub mod html_layout;
 pub mod image;
 pub mod layout;
 pub mod layout_snapshot;
+pub mod live;
 pub mod markup;
 pub mod node;
 pub mod perf;
@@ -47,9 +51,9 @@ pub use layout::{
 };
 pub use node::{tree_from_nodes, Attr, Element, MarkerClassifier, MarkerKind, Node, NodeTree, Tag};
 pub use style::{
-    build_cascade, build_cascade_with_width, set_media_viewport_height, style_input, style_tree,
-    Cascade, ComputedStyle, Roots, StyleInput, StyleOptions, StyledElement, StyledNode, StyledText,
-    TreeView,
+    build_cascade, build_cascade_with_width, set_media_viewport_height, set_media_viewport_width,
+    style_input, style_tree, Cascade, ComputedStyle, Roots, StyleInput, StyleOptions,
+    StyledElement, StyledNode, StyledText, TreeView,
 };
 pub use text::{layout_text, Align, FontFace, FontRegistry, LineBox, TextStyle, WhiteSpace};
 pub use turbo_dom;

@@ -1,8 +1,11 @@
 //! The legacy owned node tree: the input the cascade consumed before it could
 //! style a turbo-dom [`Tree`](turbo_dom::Tree) directly (see
-//! [`crate::style::TreeView`]). It stays as an input for embedders that still build
-//! their own copy (turbo-surf's live-layout copier) and as the reference the
-//! Tree path is checked against; html2pdf no longer uses it.
+//! [`crate::style::TreeView`] and the live-DOM input [`crate::live`]). No production
+//! path builds one any more (turbo-surf's live-layout copier is gone since
+//! consolidation S4); it stays as the reference the Tree path is checked against and
+//! for turbo-html2pdf-core's re-exports and Node-literal tests (`tree_from_nodes`).
+//!
+//! [`Tag`], [`Attr`] and [`MarkerKind`] are not legacy: the styled tree uses them.
 
 /// A name/value attribute on an element.
 #[derive(Debug, Clone, PartialEq, Eq)]

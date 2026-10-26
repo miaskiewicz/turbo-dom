@@ -1060,3 +1060,47 @@ feature; html2pdf workspace, core every feature / no-default / svg).
 The S3a dual-only tests (`query_frozen::frozen_tests::*`, the `selector_dual` unit test)
 and `scripts/test_selector_dual_check.py` were deleted with the gate in the last S3b
 commit; the Chrome controls stay.
+
+## S4 — turbo-surf's live layout on the live Tree (turbo-dom `consol/s4-surfmode`, turbo-surf `consol/s4-copylayer`)
+
+turbo-surf's live-tree copier and composed styler are replaced by turbo-dom-layout's
+live-DOM input (`live`), and surf's pure CSSOM-View modules move to turbo-dom-layout's
+`cssom_view`. Test ids are `binary<source>::test`; turbo-surf ids are in
+`turbo_surf_render<src/lib.rs>` unless stated. Every other turbo-surf test id keeps its
+step-2 result (`cargo test --workspace`, the step-2 run = the S3a-consumer run + the
+budget tests); every turbo-dom, turbo-dom-browser-env, turbo-dom-layout (default /
+`--all-features` / `--no-default-features` / `--features svg`) and turbo-dom-raster
+test id keeps its S3b result.
+
+Categories: **moved (adapted@S4)** — the in-file test moved with its module; the
+assertions are unchanged, the fixture is built with `live::testing` (light-DOM capture,
+rules pre-matched with turbo-dom's engine through `LiveNavigator`) instead of surf's
+copier; **adapted@S4** — same assertions through the copy-free capture (surf's test-only
+`capture_tree` is now the composed capture of the light tree); **changed@S4** — the
+`selector()` support change, backed by the Chrome 156 control
+`turbo-surf harness/detection/fixtures/css-supports-chrome156.json`.
+
+| old id (turbo-surf) | new id | category |
+|---|---|---|
+| `live_layout_metrics::tests::{transformed_border_rect_and_untransformed_client_offset_metrics_are_distinct, actual_exclusion_returns_no_rects_but_visible_empty_inline_is_explicitly_unsupported}` | turbo-dom-layout `turbo_dom_layout<src/lib.rs>::cssom_view::metrics::tests::(same)` | moved (adapted@S4) |
+| `live_layout_metrics::tests::{offset_extents_ignore_empty_continuation_points_but_keep_zero_width_lines, cssom_bounding_union_ignores_empty_fragments_unless_all_are_empty}` | turbo-dom-layout `::cssom_view::metrics::tests::(same)` | moved (verbatim) |
+| `live_layout_visibility::tests::opacity_and_visibility_filters_follow_resolved_flat_styles` | turbo-dom-layout `::cssom_view::visibility::tests::(same)` | moved (adapted@S4) |
+| `live_layout_visibility::tests::relevance_uses_the_half_viewport_proximity_margin` | turbo-dom-layout `::cssom_view::visibility::tests::(same)` | moved (verbatim) |
+| `live_layout_hit::tests::actual_inverse_transform_excludes_axis_bounds_and_degenerate_boxes` | turbo-dom-layout `::cssom_view::hit::tests::(same)` | moved (verbatim) |
+| `live_layout_range::tests::actual_child_comments_and_astral_units_keep_native_dom_boundaries` | turbo-dom-layout `::cssom_view::range::tests::(same)` | moved (verbatim) |
+| `live_layout_scroll::tests::scroll_extent_uses_actual_overflow_padding_margins_transforms_and_nested_clips` | turbo-surf `live_layout::tests::(same)` | stays in surf (its Chrome control is surf's `scroll-layout-chrome155.json`), adapted@S4 |
+| `live_layout::tests::actual_tree_ids_attributes_and_script_style_nodes_survive_the_native_copy` | `live_layout::tests::actual_tree_ids_attributes_and_script_style_nodes_survive_the_native_capture` | adapted@S4 (renamed; `<html>` checked through its identity path instead of the copied Node) |
+| `live_layout::tests::source_copy_refuses_unimplemented_namespace_and_excess_depth_or_text` | `live_layout::tests::source_capture_refuses_unimplemented_namespace_and_excess_depth_or_text` | adapted@S4 (renamed; the composed test capture reports the scope graph's depth budget first, as a browsing-context capture does — the walk's own depth error is pinned by `live_layout_budget_tests`) |
+| `live_layout::tests::{mutations_move_the_same_source_id_and_snapshot_version_changes, ua_origin_does_not_outrank_universal_author_css_and_scripts_are_not_stripped, ordered_live_css_rules_do_not_move_conditionals_after_following_rules}`, `live_layout_neutral::tests::captured_css_dependency_graph_can_be_replayed_offline` | (same) | adapted@S4 (layout through the composed live path) |
+| `live_layout_zoom::tests::factors_follow_the_computed_value_and_effective_zoom_multiplies` | (same) | adapted@S4 (`apply` also collects the source styles) |
+| `live_layout_supports::tests::native_declarations_validate_values_and_nested_boolean_grammar` | (same) | changed@S4 (adds `selector()` cases) |
+| `shadow_layout<tests/shadow_layout.rs>::genuine_css_supports_overloads_native_grammar_selectors_and_private_coercion_match_chrome` | (same) | changed@S4 (control `css-supports-chrome156.json`, 22 new `selector()` cases; replaces the Chrome 155 fixture) |
+
+New tests:
+
+| crate | test | what |
+|---|---|---|
+| turbo-surf | `live_layout_budget_tests::*` (10) | budget characterization, committed before S4 on the copier and passing unchanged after it |
+| turbo-surf | `live_layout_zoom::tests::the_hook_walk_collects_flat_parents_tags_and_effective_zoom` | the post-cascade walk's style collection |
+| turbo-dom-layout | `turbo_dom_layout<src/lib.rs>::live::tests::*` (13) | capture paths/budgets/errors, composed providers, quirks/body, SVG viewports, pre-matched cascade ranking, inline override, text sources, hook, error pass-through |
+| turbo-dom | `turbo_dom<src/lib.rs>::rtdom::query::cascade::tests::supports_selectors_follow_chrome` | `parse_for_supports` against the Chrome 156 `selector()` control |

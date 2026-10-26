@@ -1,8 +1,9 @@
 # turbo-dom-layout
 
 The native **HTML/CSS layout engine** of turbo-dom: a style cascade over a
-turbo-dom `Tree` (`style_input` over a `TreeView`; the legacy owned `Node` tree is
-still accepted by `style_tree` until turbo-surf's copier is gone), box generation, block / inline / flex / grid / table layout into one
+turbo-dom `Tree` (`style_input` over a `TreeView`, or the live-DOM input `live` for an
+embedder-composed document; the legacy owned `Node` tree is still accepted by
+`style_tree` as the reference input), box generation, block / inline / flex / grid / table layout into one
 continuous galley of positioned `Fragment`s, a font registry with shaping
 (rustybuzz) and per-character fallback, image intrinsic sizing (PNG / JPEG, plus
 SVG behind the `svg` feature), and CSSOM-View style layout snapshots
@@ -33,12 +34,28 @@ fn lay_out(html: &str) -> Result<Fragment, RenderError> {
   text node, table rows, id range) — html2pdf derives PDF/UA roles and links from it.
 - The string HTML entries (`layout_html`, `layout_boxes`) use no markers: `t:*` are
   ordinary unknown elements, as in a browser.
+- `live` — the live-DOM input ("surf mode"): an embedder that owns a live document
+  (turbo-surf) supplies its composed children (`Fn(Handle) -> &[Handle]`), pre-matched
+  rules per origin (`PreMatched`: declarations, targets with specificity, shadow-scope
+  depth), CSSOM inline-style overrides and an inline-declaration parser. `live::capture`
+  records the provenance under fixed budgets (50k nodes counted before node-type
+  filtering, depth 256, 2 MB lossy-UTF-8 text, 2 MB qualified attributes, namespace
+  rejection; exact error messages in `LiveError`); `live::snapshot` styles the composed
+  tree, runs the embedder's post-cascade hook and lays it out with native text
+  provenance. Qualified attribute names, no markers, sources on elements and text.
+- `cssom_view` — CSSOM-View geometry over a live snapshot (bounding/client rects,
+  offset/client/scroll metrics, hit testing, carets, Range boxes, visibility), moved
+  from turbo-surf; the embedder supplies scroll state and each element's effective
+  `zoom` (`cssom_view::scroll::SourceStyles`).
 
 Consumers:
 - [`turbo-html2pdf-core`](https://github.com/miaskiewicz/turbo-html2pdf) — templating,
   pagination and PDF emit on top of this crate; it re-exports this crate's modules
   at its own paths (`turbo_html2pdf_core::style::…`, `::layout::…`, `::Node`, …).
 - [`turbo-dom-raster`](../turbo-dom-raster) — paints the galley to PNG / SVG.
+- [`turbo-surf`](https://github.com/miaskiewicz/turbo-surf) — its CSSOM-View layout
+  (`getBoundingClientRect`, `elementFromPoint`, …) runs `live` + `cssom_view` over the
+  page's own document.
 
 ## Features
 
@@ -47,6 +64,7 @@ Consumers:
 | `bundled-fonts` | on | embeds Inter / Roboto, Liberation Serif / PT Serif, Fira Code / IBM Plex Mono (OFL, see `assets/fonts/NOTICE.md`) so documents lay out with zero caller fonts |
 | `svg` | off | rasterizes `image/svg+xml` with resvg `=0.45.1` (pinned: 0.46+ changes raster output) |
 | `perf` | off | hot-path counters (`perf` module, `hot!` macro) |
+| `serde` | off | `serde::Serialize` for the `cssom_view` metrics records (turbo-surf returns them to page script) |
 | `test-support` | off | fixtures for downstream tests (`FontFace::collection_fixture_faces`); never in production |
 
 ## Provenance
@@ -62,7 +80,21 @@ replaced html2pdf's own selector parser and matcher with turbo-dom's selector en
 (`parse_for_cascade` / `match_for_cascade` over the scope `style::Navigator`; Chrome 156
 control end to end in `tests/cascade_selectors_chrome.rs`, see turbo-dom's
 `docs/selector-engine.md`); those edits are ordinary reviewed changes on top of S1. The
-per-test move manifest is `docs/CONSOLIDATION-TESTS.md`.
+per-test move manifest is `docs/CONSOLIDATION-TESTS.md`. Step S4 added the live-DOM
+input (`live`, replacing turbo-surf's tree copier) and moved turbo-surf's pure
+CSSOM-View modules into `cssom_view` (turbo-surf @ 94c6150 `live_layout_*`, a move: surf
+deleted its copies).
+
+## Complexity
+
+`cargo run --manifest-path <turbo-html2pdf>/tools/cc-check/Cargo.toml -- --max 5
+crates/turbo-dom-layout/src` reports nothing outside `src/cssom_view/`. The surf-origin
+`cssom_view` modules are allow-listed (plan §7.3) with their functions above 5 as moved:
+`range::{visit 7, select 18}`, `scroll::{scroll_metrics 34, contained 9,
+scroll_translation 12, propagated_body 6, viewport_metrics 16, expose 11}`,
+`metrics::{element_geometry 16, offset_position 33}`, `hit::{contains 6,
+elements_at_point 30, clipped 12}`, `inline::{check_style 6, geometry 10}`,
+`composition::scopes 7`, `text::caret 16`, `visibility::check 18`.
 
 ## Tests
 

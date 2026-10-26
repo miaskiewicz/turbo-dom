@@ -32,6 +32,10 @@ perf = []
 # reproducible output; 0.46+ changes raster output) into the RGBA image pipeline.
 svg = ["dep:resvg"]
 
+# `serde::Serialize` for the CSSOM-View metrics records (`cssom_view::metrics`,
+# `cssom_view::scroll`), which turbo-surf returns to page script.
+serde = ["dep:serde"]
+
 # Test fixtures for downstream crates' tests (`FontFace::collection_fixture_faces`). Never
 # enable in a production build.
 test-support = []
@@ -53,6 +57,7 @@ encoding_rs = "0.8"
 # non-deterministic input) plus the `text`/raster-image decoders; resvg re-exports `usvg`
 # and `tiny-skia`. See src/svg.rs.
 resvg = { version = "=0.45.1", default-features = false, optional = true }
+serde = { version = "1", features = ["derive"], optional = true }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 core-text = "20.1"
