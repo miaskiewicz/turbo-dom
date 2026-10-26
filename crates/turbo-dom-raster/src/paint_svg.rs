@@ -207,7 +207,8 @@ fn paint_box_shadow(svg: &mut String, f: &Fragment, border_radius: f32, sh: &Box
         (f.x as i64) + 1_000_000,
         (f.y as i64) + 1_000_000
     );
-    let std = sh.blur as f32 / 2.0;
+    // Capped like Chrome's (miaskiewicz/turbo-dom#95).
+    let std = crate::paint_png::shadow_blur(sh) / 2.0;
     let _ = writeln!(
         svg,
         "<filter id=\"{id}\" x=\"-50%\" y=\"-50%\" width=\"200%\" height=\"200%\">\

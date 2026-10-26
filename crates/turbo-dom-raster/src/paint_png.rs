@@ -334,37 +334,170 @@ fn paint_box_shadow(
         return;
     }
     let radius = (border_radius + spread).max(0.0);
-    let blur = sh.blur as f32;
+    let blur = shadow_blur(sh);
     if blur < 0.5 {
         fill_round_rect(pm, sx, sy, sw, sh_h, radius, sh.color, xf);
         return;
     }
-    // Scratch pixmap padded by the blur radius so the feathered edge isn't clipped.
-    let margin = blur.ceil() as i32;
-    let tw = sw.ceil() as i32 + 2 * margin;
-    let th = sh_h.ceil() as i32 + 2 * margin;
-    if !(1..=8192).contains(&tw) || !(1..=8192).contains(&th) {
-        return;
-    }
-    // At most 8192 x 8192: within tiny-skia's pixmap limits.
-    let mut tmp = Pixmap::new(tw as u32, th as u32).expect("bounded shadow scratch");
-    fill_round_rect(
-        &mut tmp,
-        margin as f32,
-        margin as f32,
-        sw,
-        sh_h,
+    let silhouette = Silhouette {
+        x: sx,
+        y: sy,
+        width: sw,
+        height: sh_h,
         radius,
-        sh.color,
-        Transform::identity(),
+        color: sh.color,
+    };
+    blurred_shadow(pm, &silhouette, blur, xf, SHADOW_TILE, MAX_SHADOW_SCRATCH);
+}
+
+/// The blur radius Chrome paints a shadow with: every `blur` from 256px up paints the same
+/// pixels in Chrome 156 (measured; miaskiewicz/turbo-dom#95).
+pub(crate) const MAX_SHADOW_BLUR: u32 = 256;
+
+/// A shadow's blur radius in px, capped like Chrome's ([`MAX_SHADOW_BLUR`]).
+pub(crate) fn shadow_blur(sh: &BoxShadow) -> f32 {
+    sh.blur.min(MAX_SHADOW_BLUR) as f32
+}
+
+/// The largest side (px) of one blurred-shadow scratch tile, before the blur's reach is
+/// added on each side.
+const SHADOW_TILE: i32 = 2048;
+
+/// The largest side (px) of the one scratch a rotated or skewed shadow's visible part is
+/// blurred in before it is tiled too.
+const MAX_SHADOW_SCRATCH: i32 = 8192;
+
+/// A shadow's rounded-rect silhouette, in the box's (local) space.
+struct Silhouette {
+    x: f32,
+    y: f32,
+    width: f32,
+    height: f32,
+    radius: f32,
+    color: Rgba,
+}
+
+/// Stamp `s` onto scratch pixmaps padded by the blur radius (so the feathered edge isn't
+/// clipped), box-blur them by `blur`, and composite them under the box through `xf`. Only
+/// the part of the padded silhouette whose blurred pixels can land on the canvas is drawn
+/// (the canvas mapped back into the box's space; nothing under a singular transform), in
+/// tiles of at most `tile` px a side, each rendered with the blur's reach of neighbours
+/// (clamped to the padded silhouette) so every painted pixel is the one a single whole
+/// scratch would give. A box far wider or taller than the canvas casts its shadow with
+/// bounded memory (miaskiewicz/turbo-dom#95). Tiles meet exactly only along axis-aligned
+/// edges, so under a rotation or skew the visible part is blurred in one scratch while it
+/// is at most `max_scratch` px a side (beyond that it is tiled, the seams' pixels sampled
+/// and covered per tile).
+fn blurred_shadow(
+    pm: &mut Pixmap,
+    s: &Silhouette,
+    blur: f32,
+    xf: Transform,
+    tile: i32,
+    max_scratch: i32,
+) {
+    let Some(inv) = xf.invert() else {
+        return;
+    };
+    let margin = blur.ceil() as i32;
+    let (tw, th) = (
+        s.width.ceil() as i32 + 2 * margin,
+        s.height.ceil() as i32 + 2 * margin,
     );
-    // CSS blur radius ≈ 2σ; a 3-pass box blur of radius ≈ blur/2 approximates it.
-    box_blur(&mut tmp, (blur / 2.0).round().max(1.0) as usize);
-    let place = xf.pre_concat(Transform::from_translate(
-        (sx as i32 - margin) as f32,
-        (sy as i32 - margin) as f32,
-    ));
-    pm.draw_pixmap(0, 0, tmp.as_ref(), &PixmapPaint::default(), place, None);
+    // The padded silhouette's origin in the box's space.
+    let (ox, oy) = (s.x as i32 - margin, s.y as i32 - margin);
+    // CSS blur radius ≈ 2σ; a 3-pass box blur of radius ≈ blur/2 approximates it. Three
+    // passes reach `3 * r` pixels away.
+    let r = (blur / 2.0).round().max(1.0) as usize;
+    let reach = 3 * r as i32 + 1;
+    let (w, h) = (pm.width() as f32, pm.height() as f32);
+    let mut corners = [
+        Point::from_xy(0.0, 0.0),
+        Point::from_xy(w, 0.0),
+        Point::from_xy(0.0, h),
+        Point::from_xy(w, h),
+    ];
+    inv.map_points(&mut corners);
+    // The visible span along one axis, in padded-silhouette pixels, grown by the reach.
+    let span = |lo: f32, hi: f32, origin: i32, len: i32| {
+        let lo = (f64::from(lo).floor() - f64::from(reach) - f64::from(origin)).max(0.0);
+        let hi = (f64::from(hi).ceil() + f64::from(reach) - f64::from(origin)).min(f64::from(len));
+        (lo as i32, hi as i32)
+    };
+    let fold = |pick: fn(&Point) -> f32| {
+        corners
+            .iter()
+            .map(pick)
+            .fold((f32::INFINITY, f32::NEG_INFINITY), |(lo, hi), v| {
+                (lo.min(v), hi.max(v))
+            })
+    };
+    let ((lx0, lx1), (ly0, ly1)) = (fold(|p| p.x), fold(|p| p.y));
+    let (x0, x1) = span(lx0, lx1, ox, tw);
+    let (y0, y1) = span(ly0, ly1, oy, th);
+    let whole = !xf.is_scale_translate() && x1 - x0 <= max_scratch && y1 - y0 <= max_scratch;
+    let tile = if whole { max_scratch } else { tile };
+    let step = usize::try_from(tile).expect("a positive tile size");
+    for ty in (y0..y1).step_by(step) {
+        for tx in (x0..x1).step_by(step) {
+            let (cx1, cy1) = ((tx + tile).min(x1), (ty + tile).min(y1));
+            // The tile plus the blur's reach on every side, within the padded silhouette.
+            let (gx0, gy0) = ((tx - reach).max(0), (ty - reach).max(0));
+            let (gx1, gy1) = ((cx1 + reach).min(tw), (cy1 + reach).min(th));
+            // At most `tile + 2 * reach` (< 3000) px a side: within tiny-skia's limits.
+            let mut scratch =
+                Pixmap::new((gx1 - gx0) as u32, (gy1 - gy0) as u32).expect("bounded shadow tile");
+            fill_round_rect(
+                &mut scratch,
+                (margin - gx0) as f32,
+                (margin - gy0) as f32,
+                s.width,
+                s.height,
+                s.radius,
+                s.color,
+                Transform::identity(),
+            );
+            box_blur(&mut scratch, r);
+            // Draw the tile's core from a copy with one more pixel of real neighbours, so a
+            // device pixel sampled just past a core edge (under a rotation) reads the pixel a
+            // whole scratch has there, not a padded edge.
+            let (ax0, ay0) = ((tx - 1).max(0), (ty - 1).max(0));
+            let (ax1, ay1) = ((cx1 + 1).min(tw), (cy1 + 1).min(th));
+            let apron = tiny_skia::IntRect::from_xywh(
+                ax0 - gx0,
+                ay0 - gy0,
+                (ax1 - ax0) as u32,
+                (ay1 - ay0) as u32,
+            )
+            .and_then(|rect| scratch.clone_rect(rect))
+            .expect("the apron lies inside its scratch");
+            let paint = Paint {
+                shader: tiny_skia::Pattern::new(
+                    apron.as_ref(),
+                    SpreadMode::Pad,
+                    tiny_skia::FilterQuality::Nearest,
+                    1.0,
+                    Transform::identity(),
+                ),
+                anti_alias: false,
+                ..Paint::default()
+            };
+            let core = Rect::from_xywh(
+                (tx - ax0) as f32,
+                (ty - ay0) as f32,
+                (cx1 - tx) as f32,
+                (cy1 - ty) as f32,
+            )
+            .expect("a non-empty core");
+            // `PixmapMut::draw_pixmap` is this fill over the whole pixmap: one tile covering
+            // the whole padded silhouette paints exactly what drawing it in one piece did.
+            let place = xf.pre_concat(Transform::from_translate(
+                (ox + ax0) as f32,
+                (oy + ay0) as f32,
+            ));
+            pm.fill_rect(core, &paint, place, None);
+        }
+    }
 }
 
 /// Paint a `linear-gradient(...)` background into the box (clipped to its rounded
@@ -822,7 +955,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "turbo-dom#95: fails until the fix"]
     fn a_box_wider_than_8192px_casts_its_blurred_shadow() {
         let shadowed = |w: f32| {
             with_box(plain(10.0, 10.0, w, 20.0, Some(RED)), |_, sh, _, _| {
@@ -850,6 +982,155 @@ mod tests {
             rgb(&huge, 55, 40),
             [0, 0, 255],
             "the wide box's shadow continues"
+        );
+    }
+
+    fn silhouette(x: f32, y: f32) -> Silhouette {
+        Silhouette {
+            x,
+            y,
+            width: 70.0,
+            height: 40.0,
+            radius: 6.0,
+            color: Rgba::new(0, 0, 255, 200),
+        }
+    }
+
+    /// `s` blurred by 10px through `xf` onto a white `w x h` canvas in `tile`-px tiles (one
+    /// scratch up to `max_scratch` px a side under a rotation or skew).
+    fn shadow_in(
+        w: u32,
+        h: u32,
+        s: &Silhouette,
+        xf: Transform,
+        tile: i32,
+        max_scratch: i32,
+    ) -> Pixmap {
+        let mut pm = Pixmap::new(w, h).unwrap();
+        pm.fill(tiny_skia::Color::WHITE);
+        blurred_shadow(&mut pm, s, 10.0, xf, tile, max_scratch);
+        pm
+    }
+
+    /// [`shadow_in`] at the production tile sizes.
+    fn shadow_on(w: u32, h: u32, s: &Silhouette, xf: Transform) -> Pixmap {
+        shadow_in(w, h, s, xf, SHADOW_TILE, MAX_SHADOW_SCRATCH)
+    }
+
+    /// The pixels where `a` and `b` differ.
+    fn differing(a: &Pixmap, b: &Pixmap) -> Vec<(u32, u32)> {
+        (0..a.height())
+            .flat_map(|y| (0..a.width()).map(move |x| (x, y)))
+            .filter(|&(x, y)| a.pixel(x, y) != b.pixel(x, y))
+            .collect()
+    }
+
+    #[test]
+    fn axis_aligned_shadow_tiles_paint_the_pixels_of_one_whole_scratch() {
+        // Tiles of 7 or 16 px (each with the blur's reach of neighbours) give exactly the
+        // pixels one whole scratch does: in place, at a fractional offset, scaled.
+        for (s, xf) in [
+            (silhouette(15.0, 20.0), Transform::identity()),
+            (silhouette(15.3, 20.7), Transform::from_translate(0.4, 0.6)),
+            (silhouette(10.0, 10.0), Transform::from_scale(1.5, 0.75)),
+        ] {
+            let whole = shadow_in(120, 100, &s, xf, 10_000, 10_000);
+            assert!(whole
+                .pixels()
+                .iter()
+                .any(|p| p.blue() == 255 && p.red() < 255));
+            for tile in [7, 16] {
+                let tiled = shadow_in(120, 100, &s, xf, tile, 10_000);
+                assert_eq!(differing(&tiled, &whole), [], "tile {tile}, {xf:?}");
+            }
+        }
+    }
+
+    #[test]
+    fn rotated_shadows_blur_in_one_scratch_until_it_would_exceed_its_bound() {
+        let (s, xf) = (
+            silhouette(15.3, 20.7),
+            Transform::from_rotate_at(20.0, 60.0, 50.0),
+        );
+        let whole = shadow_in(120, 100, &s, xf, 10_000, 10_000);
+        // Under the bound the tile size does not matter: one scratch.
+        assert_eq!(
+            differing(&shadow_in(120, 100, &s, xf, 7, 10_000), &whole),
+            []
+        );
+        // Past it the visible part is tiled: only pixels along the rotated seams may be
+        // covered or sampled by the neighbouring tile.
+        let tiled = shadow_in(120, 100, &s, xf, 16, 16);
+        let seams = differing(&tiled, &whole);
+        assert!(!seams.is_empty() && seams.len() < 40, "{}", seams.len());
+    }
+
+    #[test]
+    fn a_shadow_cropped_to_the_canvas_keeps_its_visible_pixels() {
+        // Off the left/top edges and past the right/bottom ones: the canvas shows the same
+        // pixels as the corresponding region of a canvas large enough for all of it.
+        for (x, y, dx, dy) in [
+            (-50.0, -30.0, 0, 0),
+            (30.0, 25.0, 0, 0),
+            (-50.0, 25.0, 0, 0),
+        ] {
+            let big = shadow_on(
+                260,
+                220,
+                &silhouette(x + 100.0, y + 100.0),
+                Transform::identity(),
+            );
+            let small = shadow_on(60, 50, &silhouette(x, y), Transform::identity());
+            for py in 0..50 {
+                for px in 0..60 {
+                    assert_eq!(
+                        small.pixel(px, py),
+                        big.pixel(px + 100 + dx, py + 100 + dy),
+                        "({x},{y}) at ({px},{py})"
+                    );
+                }
+            }
+        }
+        // Entirely off the canvas, or under a singular transform: nothing.
+        let off = shadow_on(60, 50, &silhouette(500.0, 0.0), Transform::identity());
+        assert!(off
+            .pixels()
+            .iter()
+            .all(|p| p.red() == 255 && p.blue() == 255));
+        let flat = shadow_on(
+            60,
+            50,
+            &silhouette(5.0, 5.0),
+            Transform::from_scale(0.0, 1.0),
+        );
+        assert!(flat
+            .pixels()
+            .iter()
+            .all(|p| p.red() == 255 && p.green() == 255));
+    }
+
+    #[test]
+    fn shadow_blur_caps_at_256px() {
+        let blur = |b: u32| {
+            shadow_blur(&BoxShadow {
+                offset_x: 0,
+                offset_y: 0,
+                blur: b,
+                spread: 0,
+                color: RED,
+                inset: false,
+            })
+        };
+        assert_eq!(
+            [
+                blur(0),
+                blur(10),
+                blur(255),
+                blur(256),
+                blur(257),
+                blur(u32::MAX)
+            ],
+            [0.0, 10.0, 255.0, 256.0, 256.0, 256.0]
         );
     }
 

@@ -208,7 +208,6 @@ fn translucent_colours_composite_like_chrome_156() {
 /// A blurred shadow of a box far wider than the viewport (9000px) paints like Chrome's
 /// (miaskiewicz/turbo-dom#95: it was skipped past an 8192px scratch).
 #[test]
-#[ignore = "turbo-dom#95: fails until the fix"]
 fn wide_box_shadows_paint_like_chrome_156() {
     let failures = differences(|id| id == "shadow-wide");
     assert!(failures.is_empty(), "{}", failures.join("\n"));
@@ -217,7 +216,6 @@ fn wide_box_shadows_paint_like_chrome_156() {
 /// Chrome paints every shadow blur from 256px up identically (the control's 256px and 400px
 /// cases have equal pixels); so does the raster (miaskiewicz/turbo-dom#95).
 #[test]
-#[ignore = "turbo-dom#95: fails until the fix"]
 fn shadow_blur_is_capped_at_256px_like_chrome_156() {
     let (at256, at400) = (probe_rgb("shadow-blur-256"), probe_rgb("shadow-blur-400"));
     for ((png256, svg256, chrome256), (png400, svg400, chrome400)) in at256.into_iter().zip(at400) {
