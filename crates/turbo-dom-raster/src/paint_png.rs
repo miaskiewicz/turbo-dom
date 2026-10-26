@@ -1097,16 +1097,26 @@ mod tests {
             .pixels()
             .iter()
             .all(|p| p.red() == 255 && p.blue() == 255));
-        let flat = shadow_on(
-            60,
-            50,
-            &silhouette(5.0, 5.0),
+        // A zero scale and a singular skew (rows 1 2 / 2 4) have no inverse: nothing.
+        for flat in [
             Transform::from_scale(0.0, 1.0),
-        );
-        assert!(flat
-            .pixels()
-            .iter()
-            .all(|p| p.red() == 255 && p.green() == 255));
+            Transform::from_row(1.0, 2.0, 2.0, 4.0, 0.0, 0.0),
+        ] {
+            assert!(
+                flat.invert().is_none() || flat.is_scale_translate(),
+                "{flat:?}"
+            );
+            let pm = shadow_on(60, 50, &silhouette(5.0, 5.0), flat);
+            assert!(
+                pm.pixels()
+                    .iter()
+                    .all(|p| p.red() == 255 && p.green() == 255),
+                "{flat:?}"
+            );
+        }
+        assert!(Transform::from_row(1.0, 2.0, 2.0, 4.0, 0.0, 0.0)
+            .invert()
+            .is_none());
     }
 
     #[test]
@@ -1131,6 +1141,57 @@ mod tests {
                 blur(u32::MAX)
             ],
             [0.0, 10.0, 255.0, 256.0, 256.0, 256.0]
+        );
+    }
+
+    #[test]
+    fn inset_and_transparent_shadows_paint_nothing_around_the_box() {
+        // Inset shadows are not painted (a known gap: Chrome paints them inside the box), and
+        // a transparent one is nothing; an opaque outer one shows below the box.
+        let with_shadow = |inset: bool, a: u8| {
+            with_box(plain(10.0, 10.0, 20.0, 10.0, Some(RED)), |_, sh, _, _| {
+                *sh = Some(BoxShadow {
+                    offset_x: 0,
+                    offset_y: 10,
+                    blur: 0,
+                    spread: 0,
+                    color: Rgba::new(0, 0, 255, a),
+                    inset,
+                });
+            })
+        };
+        let images = HashMap::new();
+        assert_eq!(
+            rgb(&render(&with_shadow(false, 255), 40, 40, &images), 20, 25),
+            [0, 0, 255]
+        );
+        for (inset, a) in [(true, 255), (false, 0), (true, 0)] {
+            let pm = render(&with_shadow(inset, a), 40, 40, &images);
+            assert_eq!(
+                rgb(&pm, 20, 25),
+                [255, 255, 255],
+                "inset {inset}, alpha {a}"
+            );
+            assert_eq!(rgb(&pm, 20, 15), [255, 0, 0], "the box");
+        }
+    }
+
+    #[test]
+    fn a_radius_of_half_a_pixel_or_less_paints_square_corners() {
+        let corner = |radius: f32| {
+            let f = with_box(plain(0.0, 0.0, 10.0, 10.0, Some(RED)), |r, _, _, _| {
+                *r = radius;
+            });
+            render(&f, 10, 10, &HashMap::new()).pixel(0, 0).unwrap()
+        };
+        for square in [0.0, 0.5] {
+            let p = corner(square);
+            assert_eq!([p.red(), p.green(), p.blue()], [255, 0, 0], "{square}");
+        }
+        let round = corner(0.6);
+        assert!(
+            round.green() > 0 && round.green() < 255,
+            "a rounded corner is anti-aliased"
         );
     }
 
