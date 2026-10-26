@@ -5,7 +5,8 @@
 // miaskiewicz/turbo-dom#24 item 1 (`@media` / `@supports` rules in source order) and
 // miaskiewicz/turbo-dom#25 item 2 (elements the drive does not lay out still count for
 // selectors). P5b-W3 adds the layout cases of miaskiewicz/turbo-dom#28 (one group per item).
-// P5b-W5 adds the table caption cases of miaskiewicz/turbo-dom#51 (`caption-*`).
+// P5b-W5 adds the table caption cases of miaskiewicz/turbo-dom#51 (`caption-*`) and the
+// cases of the bugs found while fixing it (one group per issue, labelled).
 //
 // For every case below, Chrome for Testing 156 (viewport 1280x800) records:
 //   - `boxes`: getBoundingClientRect() of every `[data-cid]` element (document order), as
@@ -209,6 +210,18 @@ const CASES = [
   // A text caption wraps to its min-content (its widest word): font-dependent sizes, so only
   // the caption's box and the x edges are compared.
   { id: "caption-text", html: DOC(S("body{margin:0}"), `<table data-cid="t"><caption data-cid="c">A rather long caption text that is wider than the table</caption><tr><td data-cid="td"><div style="width:30px;height:10px"></div></td></tr></table>`), measure: "x" },
+  // P5b-W5, miaskiewicz/turbo-dom#65: a `px` width is the border box under
+  // `box-sizing: border-box` in intrinsic sizes (floats, inline-blocks, shrink-to-fit
+  // tables) and in table column widths.
+  { id: "border-box-float-child", html: DOC(S("body{margin:0}"), `<div data-cid="f" style="float:left"><div data-cid="c" style="box-sizing:border-box;width:100px;padding:10px;height:10px"></div></div>`) },
+  { id: "border-box-inline-block-child", html: DOC(S("body{margin:0}"), `<div data-cid="d" style="font-size:0"><div data-cid="i" style="display:inline-block"><div style="box-sizing:border-box;width:100px;padding:10px;height:10px"></div></div><i data-cid="j" style="display:inline-block;width:10px;height:10px"></i></div>`) },
+  { id: "border-box-table-content", html: DOC(S("body{margin:0}td{padding:0}"), `<table data-cid="t" style="border-spacing:0"><tr><td data-cid="td"><div data-cid="c" style="box-sizing:border-box;width:100px;padding:10px;height:10px"></div></td></tr></table>`) },
+  { id: "border-box-table-min-content", html: DOC(S("body{margin:0}td{padding:0}"), `<table data-cid="t" style="width:1px;border-spacing:0"><tr><td data-cid="td"><div data-cid="c" style="box-sizing:border-box;width:100px;padding:10px;height:10px"></div></td></tr></table>`) },
+  { id: "border-box-cell-width", html: DOC(S("body{margin:0}"), `<table data-cid="t"><tr><td data-cid="a" style="box-sizing:border-box;width:100px;padding:10px"></td><td data-cid="b"><div style="width:10px;height:10px"></div></td></tr></table>`) },
+  { id: "border-box-cell-width-collapsed", html: DOC(S("body{margin:0}"), `<table data-cid="t" style="border-collapse:collapse"><tr><td data-cid="a" style="box-sizing:border-box;width:100px;padding:10px;border:2px solid"></td><td data-cid="b"><div style="width:10px;height:10px"></div></td></tr></table>`) },
+  { id: "border-box-cell-width-fixed", html: DOC(S("body{margin:0}"), `<table data-cid="t" style="table-layout:fixed;width:300px"><tr><td data-cid="a" style="box-sizing:border-box;width:100px;padding:10px"></td><td data-cid="b"><div style="width:10px;height:10px"></div></td></tr></table>`) },
+  { id: "border-box-cell-width-fixed-collapsed", html: DOC(S("body{margin:0}"), `<table data-cid="t" style="table-layout:fixed;width:300px;border-collapse:collapse"><tr><td data-cid="a" style="box-sizing:border-box;width:100px;padding:10px;border:2px solid"></td><td data-cid="b"><div style="width:10px;height:10px"></div></td></tr></table>`) },
+  { id: "border-box-wider-than-frame", html: DOC(S("body{margin:0}"), `<div data-cid="f" style="float:left"><div data-cid="c" style="box-sizing:border-box;width:10px;padding:10px;height:10px"></div></div>`) },
 ];
 
 /** The RGB of a 1x1 PNG screenshot (any filter: a single pixel's filter adds 0). */
