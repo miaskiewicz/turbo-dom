@@ -64,6 +64,10 @@ fn lay_out(html: &str) -> Result<Fragment, RenderError> {
   margins once; the anonymous block around an inline run inherits only inherited
   properties; a line holding only out-of-flow places is zero-height. CSSOM-View hit
   testing (`cssom_view::hit`) honours `clip: rect()` of absolutely positioned boxes.
+  Also (turbo-dom#48/#49/#50/#53/#56): absolutely positioned `width: auto` boxes shrink to
+  fit; `inline-flex` / `inline-grid` are inline-level; auto-layout collapsed tables merge
+  borders; percentage columns take their share; spanning cells spread over their columns.
+  `<caption>` is not laid out yet (turbo-dom#51).
 - `layout_snapshot::snapshot_{,html_}live_tree*` capture a snapshot of a `StyleInput`
   (identity paths index the styled forest).
 - `image` — the ONE image layer shared by the PDF emitter and turbo-dom-raster:
