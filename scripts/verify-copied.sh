@@ -63,9 +63,34 @@ shadow_html.rs: P5b-X5 turbo-dom#43 setHTMLUnsafe queues the parsed elements' cu
 dom_implementation.js: P5b-X5 turbo-dom#57 createDocument validates and extracts its qualified name like createElementNS
 mutation_observers.rs: P5b-X5 turbo-dom#54 flush delivers an independently installed document's recorded mutations when the call returns
 dom_implementation_tests.rs: P5b the dom-implementation collector must label its control like the committed one
+browser_env.js: P5b-X7 turbo-surf#42/turbo-dom#72 ts.DOMException / ts.realmDOMException (the realm's registered DOMException, resolved when raised) for every site; turbo-dom#73 reflected src/href getters through ts.resolveDocumentURL
+browser_env.rs: P5b-X7 __nativeRealmDOMException (turbo-surf#42) and __nativeResolveDocumentURL (turbo-dom#71/#73) natives; test modules dom_exception_realm_tests, custom_elements_collect_tests, html_image_srcset_tests, reflected_urls_tests
+event_listeners.rs: P5b-X7 turbo-surf#42 capture_window_event_interfaces registers the host's installed DOMException
+custom_elements.js: P5b-X7 turbo-surf#42 exceptions from ts.DOMException
+dom_implementation.js: P5b-X7 turbo-surf#42 exceptions from ts.DOMException
+document_basics.js: P5b-X7 turbo-dom#72 exceptions from ts.DOMException
+event_listeners.js: P5b-X7 turbo-surf#42 exceptions from ts.DOMException (the capture hook no longer swaps it)
+range_contents.js: P5b-X7 turbo-surf#42 exceptions from ts.DOMException (the capture hook no longer swaps it)
+animations.js: P5b-X7 turbo-surf#42 exceptions from ts.DOMException instead of a constructor captured at install
+document_legacy.js: P5b-X7 turbo-surf#42 exceptions from ts.DOMException instead of a constructor captured at install
+document_xpath.js: P5b-X7 turbo-surf#42 exceptions from ts.DOMException instead of a constructor captured at install
+edit_context.js: P5b-X7 turbo-surf#42 exceptions from ts.DOMException instead of a constructor captured at install
+element_internals.js: P5b-X7 turbo-surf#42 exceptions from ts.DOMException instead of a constructor captured at install
+file_inputs.js: P5b-X7 turbo-surf#42 exceptions from ts.DOMException instead of a constructor captured at install
+form_controls.js: P5b-X7 turbo-surf#42 exceptions from ts.DOMException instead of a constructor captured at install
+html_dialog.js: P5b-X7 turbo-surf#42 exceptions from ts.DOMException instead of a constructor captured at install
+html_text.js: P5b-X7 turbo-surf#42 exceptions from ts.DOMException instead of a constructor captured at install
+input_members.js: P5b-X7 turbo-surf#42 exceptions from ts.DOMException instead of a constructor captured at install
+pointer_events.js: P5b-X7 turbo-surf#42 exceptions from ts.DOMException instead of a constructor captured at install
+selection.js: P5b-X7 turbo-surf#42 exceptions from ts.DOMException instead of a constructor captured at install
+typed_om.js: P5b-X7 turbo-surf#42 exceptions from ts.DOMException instead of a constructor captured at install
+user_activation_gates.js: P5b-X7 turbo-surf#42 exceptions from ts.DOMException instead of a constructor captured at install
+editing.js: P5b-X7 turbo-dom#72 exceptions from ts.DOMException
+element_tokens.js: P5b-X7 turbo-dom#72 exceptions from ts.DOMException
 "
 # Crate-owned files under src/ that were not part of the move.
 OWNED="lib.rs crate_surface.rs host_internals.rs test_support.rs css_snapshot.rs option_factory_probe.js option_factory_cases.json option_factory_chrome156.json html_image.js html_image_tests.rs html_image_probe.js html_image_cases.json html_image_chrome156.json custom_elements_defined_probe.js custom_elements_defined_cases.json custom_elements_defined_chrome156.json computed_defaults_probe.js computed_defaults_cases.json computed_defaults_chrome156.json computed_defaults_tests.rs dom_reactions_names_probe.js dom_reactions_names_cases.json dom_reactions_names_chrome156.json dom_reactions_tests.rs"
+OWNED="$OWNED dom_exception_realm_probe.js dom_exception_realm_cases.json dom_exception_realm_chrome156.json dom_exception_realm_tests.rs custom_elements_collect_tests.rs html_image_srcset_probe.js html_image_srcset_cases.json html_image_srcset_chrome156.json html_image_srcset_tests.rs reflected_urls_probe.js reflected_urls_cases.json reflected_urls_chrome156.json reflected_urls_tests.rs"
 
 repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 turbo_test=${TURBO_TEST_REPO:-$repo_root/../turbo-test}
