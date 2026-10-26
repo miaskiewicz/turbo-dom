@@ -20,7 +20,7 @@ const KNOWN_GAPS = new Set([]);
 // Values of the lenient grammars (image / easing lists, display) Chrome rejects, kept as spelled.
 const KEPT = ['list-style-image|bogus', 'background-image|url(a.png),', 'background-image|bogus', 'transition-timing-function|bogus', 'display|bogus'];
 
-test('element.style longhands spell values like Chrome 156 (turbo-dom#97)', { todo: 'turbo-dom#97: round-two Chrome cases fail until the fix' }, () => {
+test('element.style longhands spell values like Chrome 156 (turbo-dom#97)', () => {
   assert.equal(control.browser, 'Chrome/156.0.8078.4');
   assert.deepEqual(control.errors, []);
   assert.equal(control.probeSha256, sha(probe));

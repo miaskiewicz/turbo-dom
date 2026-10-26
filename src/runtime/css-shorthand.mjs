@@ -37,6 +37,11 @@ function tokenize(text) {
   const out = [];
   let i = 0;
   const n = text.length;
+  // CSS Syntax "consume an escaped code point": zero, a surrogate or past U+10FFFF is U+FFFD.
+  const escaped = (hex) => {
+    const code = parseInt(hex, 16);
+    return String.fromCodePoint(code === 0 || code > 0x10ffff || (code >= 0xd800 && code <= 0xdfff) ? 0xfffd : code);
+  };
   const startsNumber = (at) => {
     const c = text[at], d = text[at + 1], e = text[at + 2];
     if (c === '+' || c === '-') return /[0-9]/.test(d || '') || (d === '.' && /[0-9]/.test(e || ''));
@@ -54,10 +59,11 @@ function tokenize(text) {
     while (i < n) {
       const c = text[i];
       if (isName(c)) { name += c; i++; }
-      else if (c === '\\' && i + 1 < n && text[i + 1] !== '\n') {
+      else if (c === '\\' && i + 1 >= n) { name += '\ufffd'; i++; }
+      else if (c === '\\' && text[i + 1] !== '\n') {
         i++;
         const hex = /^[0-9a-fA-F]{1,6}/.exec(text.slice(i));
-        if (hex) { name += String.fromCodePoint(parseInt(hex[0], 16) || 0xfffd); i += hex[0].length; if (/\s/.test(text[i] || '')) i++; }
+        if (hex) { name += escaped(hex[0]); i += hex[0].length; if (/\s/.test(text[i] || '')) i++; }
         else { name += text[i]; i++; }
       } else break;
     }
@@ -80,7 +86,7 @@ function tokenize(text) {
           if (e === '\n') { i += 2; continue; }
           i++;
           const hex = /^[0-9a-fA-F]{1,6}/.exec(text.slice(i));
-          if (hex) { value += String.fromCodePoint(parseInt(hex[0], 16) || 0xfffd); i += hex[0].length; if (/\s/.test(text[i] || '')) i++; }
+          if (hex) { value += escaped(hex[0]); i += hex[0].length; if (/\s/.test(text[i] || '')) i++; }
           else { value += e; i++; }
           continue;
         }
@@ -113,13 +119,22 @@ function tokenize(text) {
             i = j;
             while (i < n && text[i] !== ')') {
               const d = text[i];
-              if (/\s/.test(d)) { while (i < n && /\s/.test(text[i])) i++; if (text[i] !== ')') return null; break; }
+              if (/\s/.test(d)) { while (i < n && /\s/.test(text[i])) i++; if (i < n && text[i] !== ')') return null; break; }
               if (d === '"' || d === "'" || d === '(') return null;
-              if (d === '\\') { value += text[i + 1] || ''; i += 2; continue; }
+              if (d === '\\') {
+                // An escaped newline makes a bad url.
+                if (text[i + 1] === '\n') return null;
+                i++;
+                const hex = /^[0-9a-fA-F]{1,6}/.exec(text.slice(i));
+                if (hex) { value += escaped(hex[0]); i += hex[0].length; if (/\s/.test(text[i] || '')) i++; }
+                else if (i < n) { value += text[i]; i++; }
+                else value += '\ufffd';
+                continue;
+              }
               value += d; i++;
             }
-            if (text[i] !== ')') return null;
-            i++;
+            // The end of the input closes the url.
+            if (i < n) i++;
             out.push({ type: 'url', value });
             continue;
           }
@@ -149,7 +164,7 @@ const COLOR_FUNCTIONS = new Set(['rgb', 'rgba', 'hsl', 'hsla', 'hwb', 'lab', 'lc
 const SYSTEM_COLORS = new Set(['currentcolor', 'transparent', 'accentcolor', 'accentcolortext', 'activetext', 'buttonborder', 'buttonface', 'buttontext', 'canvas', 'canvastext', 'field', 'fieldtext', 'graytext', 'highlight', 'highlighttext', 'linktext', 'mark', 'marktext', 'selecteditem', 'selecteditemtext', 'visitedtext', 'activeborder', 'activecaption', 'appworkspace', 'background', 'buttonhighlight', 'buttonshadow', 'captiontext', 'inactiveborder', 'inactivecaption', 'inactivecaptiontext', 'infobackground', 'infotext', 'menu', 'menutext', 'scrollbar', 'threeddarkshadow', 'threedface', 'threedhighlight', 'threedlightshadow', 'threedshadow', 'window', 'windowframe', 'windowtext', '-webkit-link', '-webkit-focus-ring-color', '-internal-quirk-inherit']);
 const CSS_WIDE = new Set(['initial', 'inherit', 'unset', 'revert', 'revert-layer']);
 
-const quoted = (text) => {
+export const quoted = (text) => {
   let out = '"';
   for (const c of text) out += c === '"' ? '\\"' : c === '\\' ? '\\\\' : c === '\n' ? '\\a ' : c;
   return `${out}"`;
@@ -166,12 +181,34 @@ function join(comps) {
   return out;
 }
 
-const operand = (comp) => (comp.kind === 'number' ? ['', comp.value] : comp.kind === 'percentage' ? ['%', comp.value] : comp.kind === 'dimension' ? [comp.unit, comp.value] : null);
-function calcSum(inner) {
+/**
+ * The like-unit terms of a sum of products (operands: literals, the constants, nested
+ * parentheses / `calc()`, one-unit `min()` / `max()` / `clamp()` already simplified to
+ * `calc(...)`), absolute lengths combined in px; `null` when Chrome keeps it unsimplified.
+ */
+function sumTerms(inner) {
   // Operands alternate with operators; products bind first.
   if (inner.length % 2 === 0) return null;
+  const CONSTANTS = { e: Math.E, pi: Math.PI, infinity: Infinity, '-infinity': -Infinity, nan: NaN };
+  const operand = (comp) => {
+    if (comp.kind === 'number') return [['', comp.value]];
+    if (comp.kind === 'percentage') return [['%', comp.value]];
+    if (comp.kind === 'dimension') return [[comp.unit, comp.value]];
+    if (comp.kind === 'ident') { const name = comp.value.toLowerCase(); return name in CONSTANTS ? [['', CONSTANTS[name]]] : null; }
+    if (comp.kind === 'function' && comp.name === '(') { const nested = components(comp.text.slice(1, -1)); return nested && sumTerms(nested); }
+    // A nested calc() / min() / max() / clamp() Chrome simplified already spells `calc(...)`.
+    if (comp.kind === 'function' && ['calc', 'min', 'max', 'clamp'].includes(comp.name) && comp.text.startsWith('calc(')) {
+      const nested = components(comp.text.slice(5, -1));
+      return nested && sumTerms(nested);
+    }
+    return null;
+  };
+  const scalar = (terms) => (terms.length === 1 && terms[0][0] === '' ? terms[0][1] : null);
+  const scale = (terms, factor) => terms.map(([unit, value]) => [unit, value * factor]);
   const terms = [];
-  const push = ([unit, value], sign) => { const existing = terms.find((t) => t[0] === unit); if (existing) existing[1] += sign * value; else terms.push([unit, sign * value]); };
+  const push = (product, sign) => {
+    for (const [unit, value] of product) { const existing = terms.find((t) => t[0] === unit); if (existing) existing[1] += sign * value; else terms.push([unit, sign * value]); }
+  };
   let sign = 1;
   let current = operand(inner[0]);
   if (!current) return null;
@@ -180,11 +217,14 @@ function calcSum(inner) {
     if (!next) return null;
     const op = inner[index];
     if (op.kind === 'delim' && op.value === '*') {
-      if (next[0] === '') current = [current[0], current[1] * next[1]];
-      else if (current[0] === '') current = [next[0], current[1] * next[1]];
+      const b = scalar(next), a = scalar(current);
+      if (b !== null) current = scale(current, b);
+      else if (a !== null) current = scale(next, a);
       else return null;
-    } else if ((op.kind === 'slash' || (op.kind === 'delim' && op.value === '/')) && next[0] === '') {
-      current = [current[0], current[1] / next[1]];
+    } else if (op.kind === 'slash' || (op.kind === 'delim' && op.value === '/')) {
+      const b = scalar(next);
+      if (b === null) return null;
+      current = scale(current, 1 / b);
     } else if (op.kind === 'delim' && (op.value === '+' || op.value === '-')) {
       push(current, sign);
       sign = op.value === '+' ? 1 : -1;
@@ -203,14 +243,66 @@ function calcSum(inner) {
       else rest.push([unit, value]);
     }
     rest.push(['px', px]);
-    return calcText(rest);
+    return rest;
   }
-  return calcText(terms);
+  return terms;
 }
+function calcSum(inner) {
+  const terms = sumTerms(inner);
+  return terms && calcText(terms);
+}
+const unitCategory = (unit) => (LENGTH_UNITS.has(unit) ? 0 : unit === 's' || unit === 'ms' ? 1 : ['deg', 'grad', 'rad', 'turn'].includes(unit) ? 2 : unit === 'hz' || unit === 'khz' ? 3 : ['dpi', 'dpcm', 'dppx', 'x'].includes(unit) ? 4 : null);
+/**
+ * The type of a `calc()` sum (`number`, `percent`, a unit category, `unknown` for a nested
+ * math function), `null` when Chrome rejects it: a sum mixes numbers and dimensions or two
+ * dimension categories, a product multiplies two dimensions, or a divisor has a unit.
+ */
+function calcType(inner) {
+  const operand = (comp) => {
+    if (comp.kind === 'number') return 'number';
+    if (comp.kind === 'percentage') return 'percent';
+    if (comp.kind === 'dimension') { const category = unitCategory(comp.unit); return category === null ? null : `unit${category}`; }
+    if (comp.kind === 'function' && comp.name === '(') { const nested = components(comp.text.slice(1, -1)); return nested && calcType(nested); }
+    if (comp.kind === 'function' && MATH_FUNCTIONS.has(comp.name)) return 'unknown';
+    if (comp.kind === 'ident' && ['e', 'pi', 'infinity', '-infinity', 'nan'].includes(comp.value.toLowerCase())) return 'number';
+    return null;
+  };
+  const unit = (type) => type === 'percent' || type.startsWith('unit');
+  const sum = (a, b) => {
+    if (a === 'unknown') return b;
+    if (b === 'unknown') return a;
+    if (a === 'number' && b === 'number') return 'number';
+    if (a === 'percent' && unit(b)) return b;
+    if (b === 'percent' && unit(a)) return a;
+    return a.startsWith('unit') && a === b ? a : null;
+  };
+  if (!inner.length) return null;
+  let total = null;
+  let product = operand(inner[0]);
+  if (product === null) return null;
+  for (let index = 1; index < inner.length; index += 2) {
+    const operator = inner[index], next = inner[index + 1] && operand(inner[index + 1]);
+    if (!next) return null;
+    if (operator.kind === 'delim' && operator.value === '*') {
+      if (unit(product) && unit(next)) return null;
+      if (product === 'number' || product === 'unknown') product = next;
+    } else if (operator.kind === 'slash' || (operator.kind === 'delim' && operator.value === '/')) {
+      if (unit(next)) return null;
+    } else if (operator.kind === 'delim' && (operator.value === '+' || operator.value === '-')) {
+      total = total === null ? product : sum(total, product);
+      if (total === null) return null;
+      product = next;
+    } else return null;
+  }
+  return total === null ? product : sum(total, product);
+}
+/** A function's comma-separated arguments. */
+const argumentsOf = (inner) => split(inner, isComma);
 /**
  * Structural checks Chrome makes before keeping a function: a `calc()` sum alternates operands
- * and operators (a literal product has at most one unit), `rgb()` / `hsl()` use commas
- * everywhere or nowhere, and `linear()` has at least two stops.
+ * and operators and type-checks, `min()` / `max()` / `clamp()` have their arguments, `rgb()` /
+ * `hsl()` have three channels (and an alpha) in one syntax, `linear()` stops have at most two
+ * positions, `steps()` counts and `cubic-bezier()` x coordinates are in range.
  */
 function functionValid(name, inner) {
   if (name === 'calc') {
@@ -223,12 +315,33 @@ function functionValid(name, inner) {
         return operator && !(product && unit(inner[index - 1]) && unit(inner[index + 1]));
       }
       return comp.kind !== 'comma' && comp.kind !== 'slash' && comp.kind !== 'delim';
-    });
+    }) && calcType(inner) !== null;
   }
+  if (name === 'min' || name === 'max') return argumentsOf(inner).every((argument) => argument.length);
+  if (name === 'clamp') { const args = argumentsOf(inner); return args.length === 3 && args.every((argument) => argument.length); }
   if (['rgb', 'rgba', 'hsl', 'hsla'].includes(name)) {
-    return !inner.some((c) => c.kind === 'comma') || inner.every((c, index) => (c.kind === 'comma') === (index % 2 === 1));
+    if (inner.length && isIdent(inner[0], ['from'])) return true; // relative color syntax
+    const commasCount = inner.filter((c) => c.kind === 'comma').length;
+    if (commasCount) return (commasCount === 2 || commasCount === 3) && inner.length === 2 * commasCount + 1 && inner.every((c, index) => (c.kind === 'comma') === (index % 2 === 1));
+    const slash = inner.findIndex((c) => c.kind === 'slash');
+    return slash < 0 ? inner.length === 3 : slash === 3 && inner.length === 5;
   }
-  if (name === 'linear') return inner.some((c) => c.kind === 'comma');
+  if (name === 'linear') return inner.some((c) => c.kind === 'comma') && argumentsOf(inner).every((stop) => stop.length >= 1 && stop.length <= 3);
+  if (name === 'steps') {
+    // The step count: an integer literal, or a math function Chrome checks later.
+    const count = (c, minimum) => (c.kind === 'number' ? c.integer && c.value >= minimum : c.kind === 'function' && MATH_FUNCTIONS.has(c.name));
+    if (inner.length === 1) return count(inner[0], 1);
+    if (inner.length === 3 && inner[1].kind === 'comma') {
+      const position = keyword(inner[2], ['start', 'end', 'jump-start', 'jump-end', 'jump-none', 'jump-both']);
+      return position !== null && count(inner[0], position === 'jump-none' ? 2 : 1);
+    }
+    return false;
+  }
+  if (name === 'cubic-bezier') {
+    // The x coordinates are in [0, 1].
+    const args = argumentsOf(inner);
+    return args.length === 4 && [0, 2].every((index) => args[index].length === 1 && (args[index][0].kind !== 'number' || (args[index][0].value >= 0 && args[index][0].value <= 1)));
+  }
   return true;
 }
 /** `calc()` of simplified terms: numbers, then percentages, then units in ASCII order. */
@@ -254,6 +367,7 @@ function calcText(terms) {
 function minMax(name, inner) {
   let unit = null;
   const values = [];
+  const operand = (comp) => (comp.kind === 'number' ? ['', comp.value] : comp.kind === 'percentage' ? ['%', comp.value] : comp.kind === 'dimension' ? [comp.unit, comp.value] : null);
   for (let index = 0; index < inner.length; index++) {
     const comp = inner[index];
     if (index % 2 === 1) { if (comp.kind !== 'comma') return null; continue; }
@@ -277,7 +391,8 @@ function alphaText(alpha) {
   return cssNumber(Math.round(two * 255) === byte ? two : Math.round(a * 1000) / 1000);
 }
 function rgbText(channels, alpha) {
-  const [r, g, b] = channels.map((c) => Math.min(255, Math.max(0, Math.round(c))));
+  // Channels computed from hsl() land a hair off a half: round at 1e-9 first.
+  const [r, g, b] = channels.map((c) => Math.min(255, Math.max(0, Math.round(Math.round(c * 1e9) / 1e9))));
   return alpha >= 1 ? `rgb(${r}, ${g}, ${b})` : `rgba(${r}, ${g}, ${b}, ${alphaText(alpha)})`;
 }
 /** `#rgb[a]` / `#rrggbb[aa]` as Chrome serializes them. */
@@ -305,8 +420,16 @@ function colorFunction(name, inner) {
   }
   if (commasUsed && parts.length === 4) alphaPart = parts.pop();
   if (parts.length !== 3 || (slash && alphaPart === null)) return null;
-  const num = (c) => (c.kind === 'number' ? c.value : null);
-  const pct = (c) => (c.kind === 'percentage' ? c.value : null);
+  // A channel: a literal, `none` (zero) or a calc() that computes to one.
+  const computed = (c, unit) => {
+    if (c.kind === 'function' && c.name === 'calc') {
+      const nested = components(c.text.slice(5, -1)), terms = nested && sumTerms(nested);
+      return terms && terms.length === 1 && terms[0][0] === unit ? terms[0][1] : null;
+    }
+    return isIdent(c, ['none']) ? 0 : null;
+  };
+  const num = (c) => (c.kind === 'number' ? c.value : computed(c, ''));
+  const pct = (c) => (c.kind === 'percentage' ? c.value : computed(c, '%'));
   let alpha = 1;
   if (alphaPart !== null) { const n = num(alphaPart); const p = pct(alphaPart); if (n !== null) alpha = n; else if (p !== null) alpha = p / 100; else return null; }
   let channels;
@@ -317,7 +440,7 @@ function colorFunction(name, inner) {
     const h = parts[0];
     let hue;
     const turns = { deg: 1, grad: 0.9, rad: 180 / Math.PI, turn: 360 };
-    if (h.kind === 'number') hue = h.value; else if (h.kind === 'dimension' && h.unit in turns) hue = h.value * turns[h.unit]; else return null;
+    if (h.kind === 'number') hue = h.value; else if (isIdent(h, ['none'])) hue = 0; else if (h.kind === 'dimension' && h.unit in turns) hue = h.value * turns[h.unit]; else return null;
     const sat = pct(parts[1]), light = pct(parts[2]);
     if (sat === null || light === null) return null;
     const S = sat / 100, L = light / 100, H = (((hue % 360) + 360) % 360) / 360;
@@ -331,9 +454,11 @@ function colorFunction(name, inner) {
 function labFunction(name, inner) {
   return `${name}(${inner.map((c, index) => (index === 0 && c.kind === 'percentage' ? cssNumber(c.value / (name.startsWith('ok') ? 100 : 1)) : c.text)).join(' ')})`;
 }
-/** `steps(n, end | jump-end)` is `steps(n)`. */
+/** `steps(n, end | jump-end)` is `steps(n)`; the position keyword lowercase. */
 function stepsText(inner) {
-  return inner.length === 3 && inner[1].kind === 'comma' && isIdent(inner[2], ['end', 'jump-end']) ? `steps(${inner[0].text})` : null;
+  if (inner.length !== 3 || inner[1].kind !== 'comma' || ident(inner[2]) === null) return null;
+  const position = ident(inner[2]);
+  return position === 'end' || position === 'jump-end' ? `steps(${inner[0].text})` : `steps(${inner[0].text}, ${position})`;
 }
 /** `linear()` with every stop's input position filled in. */
 function linearText(inner) {
@@ -350,6 +475,9 @@ function linearText(inner) {
   const flat = stops.flatMap(([, positions]) => positions);
   if (flat[0] === null) flat[0] = 0;
   if (flat[flat.length - 1] === null) flat[flat.length - 1] = 100;
+  // A position below the largest before it is that largest.
+  let largest = -Infinity;
+  for (let at = 0; at < flat.length; at++) if (flat[at] !== null) { largest = Math.max(largest, flat[at]); flat[at] = largest; }
   for (let at = 0; at < flat.length; at++) {
     if (flat[at] !== null) continue;
     let end = at;
@@ -664,17 +792,21 @@ function placeContent(comps) {
   return [['align-content', a[1]], ['justify-content', j]];
 }
 const selfAlignment = (comps, extra) => baseline(comps) ?? firstKeyword(comps, extra) ?? overflowPosition(comps, SELF_POSITIONS);
+/** A `justify-items` value from the front of `comps`: `[used, text]`. */
+function justifyItems(comps) {
+  let legacy = null;
+  if (comps.length === 1 && isIdent(comps[0], ['legacy'])) legacy = [1, 'legacy'];
+  else if (comps.length === 2 && isIdent(comps[0], ['legacy'])) { const v = keyword(comps[1], ['left', 'right', 'center']); legacy = v === null ? null : [2, `legacy ${v}`]; }
+  else if (comps.length === 2 && isIdent(comps[1], ['legacy'])) { const v = keyword(comps[0], ['left', 'right', 'center']); legacy = v === null ? null : [2, `legacy ${v}`]; }
+  return legacy ?? selfAlignment(comps, ['normal', 'stretch', 'left', 'right', 'anchor-center']) ?? overflowPosition(comps, ['left', 'right']);
+}
 function placeItems(comps) {
   const a = selfAlignment(comps, ['normal', 'stretch']);
   if (!a) return null;
   let justify = a[1];
   if (a[0] !== comps.length) {
     const rest = comps.slice(a[0]);
-    let legacy = null;
-    if (rest.length === 1 && isIdent(rest[0], ['legacy'])) legacy = [1, 'legacy'];
-    else if (rest.length === 2 && isIdent(rest[0], ['legacy'])) { const v = keyword(rest[1], ['left', 'right', 'center']); legacy = v === null ? null : [2, `legacy ${v}`]; }
-    else if (rest.length === 2 && isIdent(rest[1], ['legacy'])) { const v = keyword(rest[0], ['left', 'right', 'center']); legacy = v === null ? null : [2, `legacy ${v}`]; }
-    const result = legacy ?? selfAlignment(rest, ['normal', 'stretch', 'left', 'right', 'anchor-center']) ?? overflowPosition(rest, ['left', 'right']);
+    const result = justifyItems(rest);
     if (!result || a[0] + result[0] !== comps.length) return null;
     justify = result[1];
   }
@@ -714,26 +846,33 @@ function position(comps) {
     return ay !== null && bx !== null ? [bx, ay] : null;
   }
   if (comps.length === 3 || comps.length === 4) {
-    let at = 0, x = null, y = null;
+    // Keyword + offset pairs; a lone keyword takes no offset; `center` takes the axis the
+    // other keyword leaves.
+    let at = 0, x = null, y = null, middle = null;
     while (at < comps.length) {
       const kw = keyword(comps[at], ['left', 'right', 'top', 'bottom', 'center']);
       if (kw === null) return null;
       const offset = comps[at + 1] ? lp(comps[at + 1]) : null;
       const used = offset !== null && kw !== 'center' ? 2 : 1;
       const text = used === 2 ? `${kw} ${offset}` : kw;
-      const isX = kw === 'left' || kw === 'right' ? true : kw === 'top' || kw === 'bottom' ? false : x === null && (y !== null || at === 0);
-      if (isX) { if (x !== null) return null; x = text; } else { if (y !== null) return null; y = text; }
+      if (kw === 'left' || kw === 'right') { if (x !== null) return null; x = text; }
+      else if (kw === 'top' || kw === 'bottom') { if (y !== null) return null; y = text; }
+      else { if (middle !== null) return null; middle = text; }
       at += used;
     }
-    return x !== null && y !== null ? [x, y] : null;
+    if (x !== null && y !== null && middle === null) return [x, y];
+    if (x !== null && y === null && middle !== null) return [x, middle];
+    if (x === null && y !== null && middle !== null) return [middle, y];
+    return null;
   }
   return null;
 }
-function positions(comps) {
+/** A comma list of positions; `three`: three-value positions too (background only). */
+function positions(comps, three) {
   const layers = commas(comps);
   if (!layers) return null;
   const xs = [], ys = [];
-  for (const layer of layers) { const p = position(layer); if (!p) return null; xs.push(p[0]); ys.push(p[1]); }
+  for (const layer of layers) { if (!three && layer.length === 3) return null; const p = position(layer); if (!p) return null; xs.push(p[0]); ys.push(p[1]); }
   return [xs.join(', '), ys.join(', ')];
 }
 
@@ -870,7 +1009,7 @@ function whiteSpace(comps) {
     const mapped = { normal: ['collapse', 'wrap'], pre: ['preserve', 'nowrap'], nowrap: ['collapse', 'nowrap'], 'pre-wrap': ['preserve', 'wrap'], 'pre-line': ['preserve-breaks', 'wrap'], 'break-spaces': ['break-spaces', 'wrap'] }[ident(comps[0])];
     if (mapped) return [['white-space-collapse', mapped[0]], ['text-wrap-mode', mapped[1]]];
   }
-  const parsed = anyOrder(comps, [one((c) => keyword(c, ['collapse', 'preserve', 'preserve-breaks', 'preserve-spaces', 'break-spaces'])), one((c) => keyword(c, ['wrap', 'nowrap']))]);
+  const parsed = anyOrder(comps, [one((c) => keyword(c, ['collapse', 'preserve', 'preserve-breaks', 'break-spaces'])), one((c) => keyword(c, ['wrap', 'nowrap']))]);
   return parsed && namesOrInitial(['white-space-collapse', 'text-wrap-mode'], parsed);
 }
 
@@ -980,17 +1119,36 @@ function groupSet(comps, groups) {
   }
   return used ? [used, picked.filter((v) => v !== null).join(' ')] : null;
 }
+const ALTERNATES_ORDER = ['stylistic', 'historical-forms', 'styleset', 'character-variant', 'swash', 'ornaments', 'annotation'];
+const isAlternate = (c) => isIdent(c, ['historical-forms']) || (c.kind === 'function' && ALTERNATES_ORDER.includes(c.name) && c.name !== 'historical-forms');
+/**
+ * `font-variant-alternates` values: `historical-forms` and the feature functions, each at most
+ * once, in Chrome's order; `[used, text]` from the front of `comps`.
+ */
+function alternates(comps) {
+  const found = [];
+  for (const comp of comps) {
+    if (!isAlternate(comp)) break;
+    const rank = ALTERNATES_ORDER.indexOf(comp.kind === 'ident' ? 'historical-forms' : comp.name);
+    if (found.some(([seen]) => seen === rank)) return null;
+    found.push([rank, comp.kind === 'ident' ? 'historical-forms' : comp.text]);
+  }
+  if (!found.length) return null;
+  const used = found.length;
+  found.sort((a, b) => a[0] - b[0]);
+  return [used, found.map(([, text]) => text).join(' ')];
+}
 function fontVariant(comps) {
   const order = ['font-variant-ligatures', 'font-variant-caps', 'font-variant-numeric', 'font-variant-east-asian', 'font-variant-alternates', 'font-variant-position', 'font-variant-emoji'];
   if (comps.length === 1 && isIdent(comps[0], ['normal'])) return same(order, 'normal');
   if (comps.length === 1 && isIdent(comps[0], ['none'])) { const out = same(order, 'normal'); out[0][1] = 'none'; return out; }
-  const alternates = (comps) => {
-    if (!comps.length) return null;
-    const value = keyword(comps[0], ['historical-forms']) ?? functionNamed(comps[0], ['stylistic', 'styleset', 'character-variant', 'swash', 'ornaments', 'annotation']);
-    return value === null ? null : [1, value];
-  };
-  const parsed = anyOrder(comps, [(c) => groupSet(c, LIGATURES), (c) => groupSet(c, NUMERIC), (c) => groupSet(c, EAST_ASIAN), one((c) => keyword(c, CAPS)), alternates, one((c) => keyword(c, ['sub', 'super'])), one((c) => keyword(c, ['text', 'emoji', 'unicode']))]);
+  // The alternates values may sit anywhere among the others.
+  const alternateComps = comps.filter(isAlternate), others = comps.filter((c) => !isAlternate(c));
+  let alternatesValue = null;
+  if (alternateComps.length) { const a = alternates(alternateComps); if (!a || a[0] !== alternateComps.length) return null; alternatesValue = a[1]; }
+  const parsed = others.length ? anyOrder(others, [(c) => groupSet(c, LIGATURES), (c) => groupSet(c, NUMERIC), (c) => groupSet(c, EAST_ASIAN), one((c) => keyword(c, CAPS)), () => null, one((c) => keyword(c, ['sub', 'super'])), one((c) => keyword(c, ['text', 'emoji', 'unicode']))]) : order.map(() => null);
   if (!parsed) return null;
+  parsed[4] = alternatesValue;
   const names = ['font-variant-ligatures', 'font-variant-numeric', 'font-variant-east-asian', 'font-variant-caps', 'font-variant-alternates', 'font-variant-position', 'font-variant-emoji'];
   return names.map((name, index) => [name, parsed[index] ?? 'normal']);
 }
@@ -1027,11 +1185,30 @@ const SYSTEM_FONTS = ['caption', 'icon', 'menu', 'message-box', 'small-caption',
 const FONT_SIZES = ['xx-small', 'x-small', 'small', 'medium', 'large', 'x-large', 'xx-large', 'xxx-large', 'larger', 'smaller', '-webkit-xxx-large'];
 const STRETCHES = ['ultra-condensed', 'extra-condensed', 'condensed', 'semi-condensed', 'semi-expanded', 'expanded', 'extra-expanded', 'ultra-expanded'];
 const GENERIC_FAMILIES = ['serif', 'sans-serif', 'cursive', 'fantasy', 'monospace', 'system-ui', 'math', 'emoji', 'fangsong', 'ui-serif', 'ui-sans-serif', 'ui-monospace', 'ui-rounded', '-webkit-body', '-webkit-pictograph'];
-/** Whether `text` tokenizes as exactly one identifier (no escapes needed). */
-const isIdentifier = (text) => /^(-(-|[A-Za-z_\u0080-\uffff])|[A-Za-z_\u0080-\uffff])[A-Za-z0-9_\-\u0080-\uffff]*$/.test(text);
 const reserved = (name, extra) => { const lower = name.toLowerCase(); return CSS_WIDE.has(lower) || lower === 'default' || extra.includes(lower); };
-/** A quoted family name: unquoted when it is one valid identifier Chrome would not read as a keyword. */
-const familyString = (comp) => (isIdentifier(comp.value) && !reserved(comp.value, GENERIC_FAMILIES) ? comp.value : comp.text);
+/**
+ * A family name as Chrome serializes it: unquoted when it is one identifier (an optional `-`,
+ * a name-start character, name characters; no escapes) Chrome would not read as a keyword, a
+ * string otherwise.
+ */
+const familyText = (name) => (/^-?[A-Za-z_\u0080-\uffff][A-Za-z0-9_\-\u0080-\uffff]*$/.test(name) && !reserved(name, GENERIC_FAMILIES) ? name : quoted(name));
+const familyString = (comp) => familyText(comp.value);
+/** CSSOM "serialize an identifier". */
+function serializeIdentifier(text) {
+  const chars = [...text];
+  let out = '';
+  chars.forEach((c, index) => {
+    const code = c.codePointAt(0);
+    if (code === 0) out += '\ufffd';
+    else if ((code >= 1 && code <= 0x1f) || code === 0x7f || (index === 0 && /[0-9]/.test(c)) || (index === 1 && /[0-9]/.test(c) && chars[0] === '-')) out += `\\${code.toString(16)} `;
+    else if (index === 0 && c === '-' && chars.length === 1) out += '\\-';
+    else if (code >= 0x80 || /[-_0-9A-Za-z]/.test(c)) out += c;
+    else out += `\\${c}`;
+  });
+  return out;
+}
+/** A quoted animation name: an identifier unless it is empty (invalid) or reads as `none`, a CSS-wide keyword or `default` (kept quoted). */
+const animationNameString = (c) => (c.value === '' ? null : reserved(c.value, ['none']) ? c.text : serializeIdentifier(c.value));
 function fontFamily(comps) {
   const items = commas(comps);
   if (!items) return null;
@@ -1045,9 +1222,17 @@ function fontFamily(comps) {
     const name = words.join(' ');
     const lower = name.toLowerCase();
     // A generic family is a keyword: lowercase.
-    families.push(words.length > 1 ? `"${name}"` : GENERIC_FAMILIES.includes(lower) ? lower : name);
+    families.push(words.length > 1 ? quoted(name) : GENERIC_FAMILIES.includes(lower) ? lower : familyText(name));
   }
   return families.join(', ');
+}
+/** `oblique <angle>`: Chrome checks a literal angle's number, in its own unit, against [-90, 90]; a zero angle is `normal`. */
+function oblique(c) {
+  const text = angle(c);
+  if (text === null) return null;
+  if (c.kind === 'dimension' && (c.value < -90 || c.value > 90)) return null;
+  if ((c.kind === 'dimension' || c.kind === 'number') && c.value === 0) return 'normal';
+  return `oblique ${text}`;
 }
 function font(comps) {
   if (comps.length === 1) { const name = keyword(comps[0], SYSTEM_FONTS); if (name !== null) return { pending: name }; }
@@ -1059,9 +1244,8 @@ function font(comps) {
       const value = keyword(comp, ['italic', 'oblique']);
       if (value !== null) {
         if (value === 'oblique' && comps[at + 1] && comps[at + 1].kind === 'dimension' && angle(comps[at + 1]) !== null) {
-          // `oblique 0deg` is `normal`, the default 14deg angle plain `oblique`.
-          const a = angle(comps[at + 1]);
-          style = a === '0deg' ? 'normal' : a === '14deg' ? 'oblique' : `oblique ${a}`;
+          style = oblique(comps[at + 1]);
+          if (style === null) return null;
           at += 2;
           continue;
         }
@@ -1135,19 +1319,37 @@ function gridArea(comps) {
   const columnEnd = lines[3] ?? lineDefault(columnStart);
   return [['grid-row-start', rowStart], ['grid-column-start', columnStart], ['grid-row-end', rowEnd], ['grid-column-end', columnEnd]];
 }
+/** A track breadth: a non-negative `<length-percentage>`, a sizing keyword, or (where `flex`) a non-negative `fr`. */
+function trackBreadth(c, flex) {
+  if (c.kind === 'dimension' && c.unit === 'fr') return flex && c.value >= 0;
+  if (c.kind === 'ident') return isIdent(c, ['auto', 'min-content', 'max-content']);
+  if (c.kind === 'function' && c.name === '[') return false;
+  return lengthPercentage(c, false) !== null;
+}
+/** One track-list component: line names, a track size, or (at the top level) `repeat()`. */
+function trackOk(c, repeatAllowed) {
+  if (c.kind !== 'function') return trackBreadth(c, true);
+  if (c.name === '[') return true;
+  const inner = components(c.text.slice(c.name.length + 1, -1));
+  if (c.name === 'minmax') return !!inner && inner.length === 3 && isComma(inner[1]) && trackBreadth(inner[0], false) && trackBreadth(inner[2], true);
+  if (c.name === 'fit-content') return !!inner && inner.length === 1 && lengthPercentage(inner[0], false) !== null;
+  if (c.name === 'repeat') {
+    if (!repeatAllowed || !inner) return false;
+    const comma = inner.findIndex(isComma);
+    if (comma < 0) return false;
+    const head = inner.slice(0, comma), tracks = inner.slice(comma + 1);
+    const count = head.length === 1 && (head[0].kind === 'number' ? head[0].integer && head[0].value >= 1 : isIdent(head[0], ['auto-fill', 'auto-fit']));
+    return count && tracks.length > 0 && tracks.every((track) => trackOk(track, false));
+  }
+  return lengthPercentage(c, false) !== null;
+}
 function trackList(comps) {
   if (!comps.length) return null;
   if (comps.length === 1 && isIdent(comps[0], ['none'])) return 'none';
   const subgrid = isIdent(comps[0], ['subgrid']);
   for (let index = 0; index < comps.length; index++) {
     const comp = comps[index];
-    let ok;
-    if (comp.kind === 'function') ok = comp.name === '[' || ['repeat', 'minmax', 'fit-content'].includes(comp.name) || lengthPercentage(comp, false) !== null;
-    else if (comp.kind === 'dimension') ok = comp.unit === 'fr' || length(comp, false) !== null;
-    else if (comp.kind === 'percentage') ok = comp.value >= 0;
-    else if (comp.kind === 'number') ok = comp.value === 0;
-    else if (comp.kind === 'ident') ok = (index === 0 && subgrid) || isIdent(comp, ['auto', 'min-content', 'max-content', 'masonry']);
-    else ok = false;
+    const ok = comp.kind === 'ident' ? (index === 0 && subgrid) || isIdent(comp, ['auto', 'min-content', 'max-content', 'masonry']) : trackOk(comp, true);
     if (!ok) return null;
   }
   return join(comps.map((c) => (c.kind === 'number' ? { ...c, text: '0px' } : c.kind === 'ident' ? { ...c, text: c.value.toLowerCase() } : c)));
@@ -1308,6 +1510,8 @@ function offset(comps) {
   let anchor;
   if (anchorPart === null) anchor = 'auto';
   else if (anchorPart.length === 1 && isIdent(anchorPart[0], ['auto'])) anchor = 'auto';
+  // Three-value positions are background-only.
+  else if (anchorPart.length === 3) return null;
   else { const p = position(anchorPart); if (!p) return null; anchor = `${p[0]} ${p[1]}`; }
   let at = 0, positionValue = 'normal';
   if (main.length) {
@@ -1318,7 +1522,7 @@ function offset(comps) {
         const slice = main.slice(0, len);
         if (slice.every((c) => keyword(c, ['left', 'right', 'top', 'bottom', 'center']) !== null || lengthPercentage(c, true) !== null)) {
           const p = position(slice);
-          if (p) { positionValue = `${p[0]} ${p[1]}`; at = len; break; }
+          if (p) { if (len === 3) return null; positionValue = `${p[0]} ${p[1]}`; at = len; break; }
         }
       }
     }
@@ -1463,7 +1667,6 @@ function transition(comps) {
   const [behavior, duration, timing, delay, property] = columns.map((c) => c.join(', '));
   return [['transition-behavior', behavior], ['transition-duration', duration], ['transition-timing-function', timing], ['transition-delay', delay], ['transition-property', property]];
 }
-const ANIMATION_KEYWORDS = ['none', 'auto', 'infinite', 'normal', 'reverse', 'alternate', 'alternate-reverse', 'forwards', 'backwards', 'both', 'running', 'paused', 'linear', 'ease', 'ease-in', 'ease-out', 'ease-in-out', 'step-start', 'step-end'];
 function animation(comps) {
   const items = commas(comps);
   if (!items) return null;
@@ -1471,7 +1674,7 @@ function animation(comps) {
   const initials = ['auto', 'ease', '0s', '1', 'normal', 'none', 'running', 'none'];
   for (const item of items) {
     // A quoted name serializes as an identifier when it is one Chrome would not read as a keyword.
-    const name = (c) => (isIdent(c, ['none']) ? 'none' : c.kind === 'string' ? (isIdentifier(c.value) && !reserved(c.value, ANIMATION_KEYWORDS) ? c.value : c.text) : customIdent(c, ['none']));
+    const name = (c) => (isIdent(c, ['none']) ? 'none' : c.kind === 'string' ? animationNameString(c) : customIdent(c, ['none']));
     const parsed = anyOrder(item, [one((c) => time(c, false) ?? keyword(c, ['auto'])), one(easing), one((c) => time(c, true)), one((c) => keyword(c, ['infinite']) ?? number(c, false)), one((c) => keyword(c, ['normal', 'reverse', 'alternate', 'alternate-reverse'])), one((c) => keyword(c, ['none', 'forwards', 'backwards', 'both'])), one((c) => keyword(c, ['running', 'paused'])), one(name)]);
     if (!parsed) return null;
     initials.forEach((initial, index) => columns[index].push(parsed[index] ?? initial));
@@ -1482,18 +1685,36 @@ function animation(comps) {
 function timelineTrigger(comps) {
   const defaults = () => [['timeline-trigger-source', 'auto'], ['timeline-trigger-activation-range-start', 'normal'], ['timeline-trigger-activation-range-end', 'normal'], ['timeline-trigger-active-range-start', 'auto'], ['timeline-trigger-active-range-end', 'auto']];
   if (comps.length === 1 && isIdent(comps[0], ['none'])) return [['timeline-trigger-name', 'none'], ...defaults()];
-  if (comps.length < 2) return null;
-  const name = dashedIdent(comps[0]);
-  if (name === null) return null;
-  const source = functionNamed(comps[1], ['view', 'scroll']) ?? keyword(comps[1], ['auto', 'none']);
-  if (source === null) return null;
+  // A comma list of triggers: each longhand lists its value per trigger.
+  const items = commas(comps);
+  if (!items) return null;
+  if (items.length > 1) {
+    const columns = [];
+    for (const item of items) {
+      const parsed = timelineTriggerItem(item, defaults);
+      if (!parsed) return null;
+      parsed.forEach(([name, value], index) => { if (!columns[index]) columns[index] = [name, []]; columns[index][1].push(value); });
+    }
+    return columns.map(([name, values]) => [name, values.join(', ')]);
+  }
+  return timelineTriggerItem(comps, defaults);
+}
+function timelineTriggerItem(comps, defaults) {
+  // The name and the source may each be left out (`--t / entry`, `/ entry`).
+  let at = 0, name = 'none', source = 'auto';
+  if (comps[at] && dashedIdent(comps[at]) !== null) name = dashedIdent(comps[at++]);
+  const sourceOf = (c) => functionNamed(c, ['view', 'scroll']) ?? keyword(c, ['auto', 'none']);
+  if (comps[at] && sourceOf(comps[at]) !== null) source = sourceOf(comps[at++]);
   const more = defaults().slice(1);
-  const rest = comps.slice(2);
+  const rest = comps.slice(at);
   if (rest.length) {
     const parts = slashes(rest);
-    const activation = rangePair(parts[0], 'timeline-trigger-activation-range-start', 'timeline-trigger-activation-range-end', 'normal');
-    if (!activation) return null;
-    more[0][1] = activation[0][1]; more[1][1] = activation[1][1];
+    // An empty activation range before the slash keeps its default.
+    if (!(parts[0].length === 0 && parts.length === 2)) {
+      const activation = rangePair(parts[0], 'timeline-trigger-activation-range-start', 'timeline-trigger-activation-range-end', 'normal');
+      if (!activation) return null;
+      more[0][1] = activation[0][1]; more[1][1] = activation[1][1];
+    }
     if (parts[1]) {
       const active = rangePair(parts[1], 'timeline-trigger-active-range-start', 'timeline-trigger-active-range-end', 'auto');
       if (!active) return null;
@@ -1571,8 +1792,10 @@ const GRAMMARS = {
   'place-content': placeContent,
   'place-items': placeItems,
   'place-self': placeSelf,
-  'background-position': (c) => { const p = positions(c); return p && [['background-position-x', p[0]], ['background-position-y', p[1]]]; },
-  'mask-position': (c) => { const p = positions(c); return p && [['-webkit-mask-position-x', p[0]], ['-webkit-mask-position-y', p[1]]]; },
+  'background-position': (c) => { const p = positions(c, true); return p && [['background-position-x', p[0]], ['background-position-y', p[1]]]; },
+  'mask-position': (c) => { const p = positions(c, false); return p && [['-webkit-mask-position-x', p[0]], ['-webkit-mask-position-y', p[1]]]; },
+  // `-webkit-mask-position` keeps the background syntax's three-value form.
+  '-webkit-mask-position': (c) => { const p = positions(c, true); return p && [['-webkit-mask-position-x', p[0]], ['-webkit-mask-position-y', p[1]]]; },
   'animation-range': (c) => rangePair(c, 'animation-range-start', 'animation-range-end', 'normal'),
   'timeline-trigger-activation-range': (c) => rangePair(c, 'timeline-trigger-activation-range-start', 'timeline-trigger-activation-range-end', 'normal'),
   'timeline-trigger-active-range': (c) => rangePair(c, 'timeline-trigger-active-range-start', 'timeline-trigger-active-range-end', 'auto'),
@@ -1670,7 +1893,27 @@ function ruleInsetText(v, kind) {
 function rangeText(start, end, initial) {
   const name = start.split(' ')[0];
   const fallback = RANGE_NAMES.includes(name) ? name : initial === 'auto' && start === 'normal' ? 'auto' : initial;
-  return end === fallback ? start : `${start} ${end}`;
+  // An active range's `auto` end is left out too.
+  return end === fallback || (initial === 'auto' && end === 'auto') ? start : `${start} ${end}`;
+}
+/** `rangeText` per item of comma lists (a timeline trigger list). */
+function rangesText(start, end, initial) {
+  const starts = layers(start), ends = layers(end);
+  return starts.length === ends.length ? starts.map((s, index) => rangeText(s, ends[index], initial)).join(', ') : '';
+}
+/** A trigger range's parts that differ from `initial` (the end only when it is not its start's default). */
+function triggerParts(start, end, initial) {
+  const name = start.split(' ')[0], parts = [];
+  if (start !== initial) parts.push(start);
+  if (end !== initial && end !== name) parts.push(end);
+  return parts.join(' ');
+}
+/** One timeline trigger: each part that differs from its initial value; the active range follows a slash when its start is set, even after nothing. */
+function triggerText(name, source, activation, active) {
+  let text = joined([name === 'none' ? '' : name, source === 'auto' ? '' : source, triggerParts(activation[0], activation[1], 'normal')]);
+  if (active[0] && active[0] !== 'auto') text = `${text} / ${triggerParts(active[0], active[1], 'auto')}`;
+  else if (active[1] && active[1] !== 'auto') text = joined([text, active[1]]);
+  return text || 'none';
 }
 const STRETCH_KEYWORDS = { '50%': 'ultra-condensed', '62.5%': 'extra-condensed', '75%': 'condensed', '87.5%': 'semi-condensed', '100%': 'normal', '112.5%': 'semi-expanded', '125%': 'expanded', '150%': 'extra-expanded', '200%': 'ultra-expanded' };
 function fontText(v) {
@@ -1726,32 +1969,39 @@ function gridTemplateText(rows, cols, areas) {
 function backgroundText(v) {
   const names = ['background-image', 'background-position-x', 'background-position-y', 'background-size', 'background-repeat', 'background-attachment', 'background-origin', 'background-clip'];
   const columns = names.map((name) => layers(v(name)));
-  const count = columns[0].length;
-  if (columns.some((c) => c.length !== count)) return '';
+  // As many layers as the longest list; a shorter list leaves its value out of the later
+  // layers, and an empty layer past the images is dropped.
+  const count = Math.max(...columns.map((c) => c.length));
   const colorValue = v('background-color');
   const out = [];
   for (let index = 0; index < count; index++) {
-    const item = (column) => (columns[column][index] === INITIAL ? '' : columns[column][index]);
+    const item = (column) => { const value = columns[column][index]; return value === undefined || value === INITIAL ? '' : value; };
     const x = item(1), y = item(2), size = item(3);
-    let pos = '';
-    if (x || y || size) { pos = `${x || '0%'} ${y || '0%'}`; if (size) pos += ` / ${size}`; }
+    // Blink writes the position's parts it has; a size needs a position, and with neither
+    // part set that is `0% 0%` (` 0% 0%` when it starts the layer).
+    let pos = joined([x, y]);
+    if (size) { if (!pos) pos = item(0) ? '0% 0%' : ' 0% 0%'; pos += ` / ${size}`; }
     const last = index + 1 === count;
     const text = joined([item(0), pos, item(4), item(5), item(6), item(7), last && colorValue !== INITIAL ? colorValue : '']);
-    out.push(text || 'none');
+    if (text) out.push(text);
+    else if (index < columns[0].length) out.push('none');
   }
   return out.join(', ');
 }
 function maskText(v) {
   const names = [['mask-image', 'none'], ['-webkit-mask-position-x', '0%'], ['-webkit-mask-position-y', '0%'], ['mask-size', 'auto'], ['mask-repeat', 'repeat'], ['mask-origin', 'border-box'], ['mask-clip', 'border-box'], ['mask-composite', 'add'], ['mask-mode', 'match-source']];
   const columns = names.map(([name]) => layers(v(name)));
-  const count = columns[0].length;
-  if (columns.some((c) => c.length !== count)) return '';
+  // As many layers as the longest list; a shorter list leaves its value out of the later layers.
+  const count = Math.max(...columns.map((c) => c.length));
   const out = [];
   for (let index = 0; index < count; index++) {
-    const item = (column) => { const value = columns[column][index]; return value === names[column][1] || value === INITIAL ? '' : value; };
-    const size = item(3), x = columns[1][index], y = columns[2][index];
-    const pos = !item(1) && !item(2) && !size ? '' : size ? `${x} ${y} / ${size}` : `${x} ${y}`;
-    const origin = columns[5][index], clip = columns[6][index];
+    const raw = (column) => columns[column][index] ?? INITIAL;
+    const item = (column) => { const value = raw(column); return value === names[column][1] || value === INITIAL ? '' : value; };
+    const part = (column, initial) => (raw(column) === INITIAL ? initial : raw(column));
+    const size = item(3), x = part(1, '0%'), y = part(2, '0%');
+    // Blink's position before a size starts its layer with a space.
+    const pos = !item(1) && !item(2) && !size ? '' : !item(1) && !item(2) && !item(0) ? ` ${x} ${y} / ${size}` : size ? `${x} ${y} / ${size}` : `${x} ${y}`;
+    const origin = part(5, 'border-box'), clip = part(6, 'border-box');
     // `no-clip` is a clip-only keyword: it reads back without the default origin.
     const boxes = origin === 'border-box' && clip === 'border-box' ? '' : origin === clip ? origin : origin === 'border-box' && clip === 'no-clip' ? clip : `${origin} ${clip}`;
     out.push(joined([item(0), pos, item(4), boxes, item(7), item(8)]) || 'none');
@@ -1761,7 +2011,10 @@ function maskText(v) {
 function transitionText(v) {
   const properties = layers(v('transition-property')), durations = layers(v('transition-duration')), timings = layers(v('transition-timing-function')), delays = layers(v('transition-delay')), behaviors = layers(v('transition-behavior'));
   const zero = (t) => t === '0s' || t === '0ms';
-  return properties.map((property, index) => {
+  // As many layers as the longest list; a shorter list leaves its value out.
+  const count = Math.max(properties.length, durations.length, timings.length, delays.length, behaviors.length);
+  return Array.from({ length: count }, (_, index) => {
+    const property = properties[index] ?? 'all';
     const duration = durations[index] ?? '0s', timing = timings[index] ?? 'ease', delay = delays[index] ?? '0s', behavior = behaviors[index] ?? 'normal';
     const parts = [];
     if (property !== 'all') parts.push(property);
@@ -1776,10 +2029,10 @@ function animationText(v) {
   if (v('animation-timeline') !== 'auto' || v('animation-range-start') !== 'normal' || v('animation-range-end') !== 'normal') return '';
   const names = ['animation-duration', 'animation-timing-function', 'animation-delay', 'animation-iteration-count', 'animation-direction', 'animation-fill-mode', 'animation-play-state', 'animation-name'];
   const columns = names.map((name) => layers(v(name)));
-  const count = columns[7].length;
-  if (columns.some((c) => c.length !== count)) return '';
+  // As many layers as the longest list; a shorter list leaves its value out.
+  const count = Math.max(...columns.map((c) => c.length));
   const out = [];
-  for (let index = 0; index < count; index++) out.push(columns.map((c) => c[index]).join(' '));
+  for (let index = 0; index < count; index++) out.push(columns.map((c) => c[index]).filter((value) => value !== undefined).join(' '));
   return out.join(', ');
 }
 
@@ -1825,14 +2078,20 @@ function serializeValue(grammar, entry, texts) {
     case 'place-self': return pairText(v('align-self'), v('justify-self'));
     case 'place-content': return pairText(v('align-content'), v('justify-content'));
     case 'background-position':
-    case 'mask-position': {
+    case 'mask-position':
+    case '-webkit-mask-position': {
       const xs = layers(texts[0]), ys = layers(texts[1]);
-      if (xs.length !== ys.length || [...xs, ...ys].includes(INITIAL)) return '';
+      if (xs.length !== ys.length) {
+        // Uneven lists: each layer's set parts; layers with none drop out.
+        const part = (list, index) => (list[index] === undefined || list[index] === INITIAL ? '' : list[index]);
+        return Array.from({ length: Math.max(xs.length, ys.length) }, (_, index) => joined([part(xs, index), part(ys, index)])).filter((layer) => layer).join(', ');
+      }
+      if ([...xs, ...ys].includes(INITIAL)) return '';
       return xs.map((x, index) => `${x} ${ys[index]}`).join(', ');
     }
     case 'animation-range': return rangeText(v('animation-range-start'), v('animation-range-end'), 'normal');
-    case 'timeline-trigger-activation-range': return rangeText(v('timeline-trigger-activation-range-start'), v('timeline-trigger-activation-range-end'), 'normal');
-    case 'timeline-trigger-active-range': return rangeText(v('timeline-trigger-active-range-start'), v('timeline-trigger-active-range-end'), 'auto');
+    case 'timeline-trigger-activation-range': return rangesText(v('timeline-trigger-activation-range-start'), v('timeline-trigger-activation-range-end'), 'normal');
+    case 'timeline-trigger-active-range': return rangesText(v('timeline-trigger-active-range-start'), v('timeline-trigger-active-range-end'), 'auto');
     case 'border-top': case 'border-right': case 'border-bottom': case 'border-left': case 'column-rule': case 'row-rule':
       return lineText(v(`${grammar}-width`), v(`${grammar}-style`), v(`${grammar}-color`));
     // The logical sides leave omitted parts `initial` and keep every other value.
@@ -1952,12 +2211,12 @@ function serializeValue(grammar, entry, texts) {
     case 'transition': return transitionText(v);
     case 'animation': return animationText(v);
     case 'timeline-trigger': {
-      const [name, source, as, ae, bs, be] = ['timeline-trigger-name', 'timeline-trigger-source', 'timeline-trigger-activation-range-start', 'timeline-trigger-activation-range-end', 'timeline-trigger-active-range-start', 'timeline-trigger-active-range-end'].map(v);
-      const activation = rangeText(as, ae, 'normal'), active = rangeText(bs, be, 'auto');
-      if (name === 'none' && source === 'auto' && activation === 'normal' && active === 'auto') return 'none';
-      let text = joined([name, source === 'auto' ? '' : source, activation === 'normal' && active === 'auto' ? '' : activation]);
-      if (active !== 'auto') text = `${text} / ${active}`;
-      return text;
+      const columns = ['timeline-trigger-name', 'timeline-trigger-source', 'timeline-trigger-activation-range-start', 'timeline-trigger-activation-range-end', 'timeline-trigger-active-range-start', 'timeline-trigger-active-range-end'].map((name) => layers(v(name)));
+      const count = Math.max(...columns.map((column) => column.length));
+      return Array.from({ length: count }, (_, index) => {
+        const [name, source, as, ae, bs, be] = columns.map((column) => column[index] ?? '');
+        return triggerText(name, source, [as, ae], [bs, be]);
+      }).join(', ');
     }
     default: return '';
   }
@@ -2122,10 +2381,7 @@ const fontSize = (comps) => single(comps, (c) => keyword(c, FONT_SIZES) ?? lengt
 const fontWeight = (comps) => single(comps, (c) => keyword(c, ['normal', 'bold', 'bolder', 'lighter']) ?? (c.kind === 'number' && c.value >= 1 && c.value <= 1000 ? number(c, false) : null));
 function fontStyle(comps) {
   if (comps.length === 1) return keyword(comps[0], ['normal', 'italic', 'oblique']);
-  if (comps.length === 2 && isIdent(comps[0], ['oblique'])) {
-    const a = angle(comps[1]);
-    return a === null ? null : a === '0deg' ? 'normal' : a === '14deg' ? 'oblique' : `oblique ${a}`;
-  }
+  if (comps.length === 2 && isIdent(comps[0], ['oblique'])) return oblique(comps[1]);
   return null;
 }
 const lineHeight = (comps) => single(comps, (c) => keyword(c, ['normal']) ?? number(c, false) ?? lengthPercentage(c, false));
@@ -2152,7 +2408,9 @@ function axisPosition(sides, center) {
 const timeList = (comps) => listed(comps, (item) => single(item, (c) => time(c, true)));
 const durationList = (comps) => listed(comps, (item) => single(item, (c) => time(c, false)));
 const easingList = (comps) => listed(comps, (item) => single(item, easing));
-const transitionPropertyV = (comps) => listed(comps, (item) => single(item, (c) => keyword(c, ['none', 'all']) ?? (() => { const v = customIdent(c, ['none', 'initial']); return v === null ? null : v.startsWith('--') ? v : v.toLowerCase(); })()));
+// `none` only stands alone.
+const transitionPropertyV = (comps) => (comps.length > 1 && comps.some((c) => isIdent(c, ['none'])) ? null : transitionPropertyList(comps));
+const transitionPropertyList = (comps) => listed(comps, (item) => single(item, (c) => keyword(c, ['none', 'all']) ?? (() => { const v = customIdent(c, ['none', 'initial']); return v === null ? null : v.startsWith('--') ? v : v.toLowerCase(); })()));
 const rangeOf = (end) => (comps) => { const r = rangeValue(comps, 'normal', end); return r && r[0] === comps.length ? r[1] : null; };
 function textDecorationLine(comps) {
   if (comps.length === 1 && isIdent(comps[0], ['none'])) return 'none';
@@ -2188,7 +2446,7 @@ function display(comps) {
 }
 const animationNames = (comps) => listed(comps, (item) => single(item, (c) => {
   if (isIdent(c, ['none'])) return 'none';
-  if (c.kind === 'string') return isIdentifier(c.value) && !reserved(c.value, ANIMATION_KEYWORDS) ? c.value : c.text;
+  if (c.kind === 'string') return animationNameString(c);
   return customIdent(c, ['none']);
 }));
 function boxShadow(comps) {
@@ -2198,7 +2456,9 @@ function boxShadow(comps) {
     const lengths = [];
     for (const comp of item) {
       if (isIdent(comp, ['inset']) && !inset) { inset = true; continue; }
-      const l = lengths.length < 4 ? length(comp, true) : null;
+      // The blur radius (the third length) is not negative.
+      const negative = comp.kind === 'dimension' && comp.value < 0;
+      const l = lengths.length < 4 && !(lengths.length === 2 && negative) ? length(comp, true) : null;
       if (l !== null) { lengths.push(l); continue; }
       const c = shadowColor === null ? color(comp) : null;
       if (c === null) return null;
@@ -2211,6 +2471,30 @@ function boxShadow(comps) {
 const SIDES4 = ['top', 'right', 'bottom', 'left'];
 const LOGICAL = ['block-start', 'block-end', 'inline-start', 'inline-end'];
 const LONGHAND_GRAMMARS = new Map();
+/** A position longhand: one, two or (`four`) four values, and for `transform-origin` (`z`) an optional depth length after two. */
+function origin(comps, four, z) {
+  const pairOf = (list) => { const p = position(list); return p ? `${p[0]} ${p[1]}` : null; };
+  if (comps.length === 1 || comps.length === 2) return pairOf(comps);
+  if (comps.length === 3 && z) { const p = pairOf(comps.slice(0, 2)), depth = length(comps[2], true); return p === null || depth === null ? null : `${p} ${depth}`; }
+  if (comps.length === 4 && four) return pairOf(comps);
+  return null;
+}
+/** One to four values, collapsed the way Chrome writes a box. */
+function quad(comps, ty) {
+  if (!comps.length || comps.length > 4) return null;
+  const values = comps.map(ty);
+  return values.includes(null) ? null : collapse4(values);
+}
+/** `border-image-slice`: up to four numbers / percentages, `fill` (before or after) last. */
+function imageSlice(comps) {
+  let values = comps, filled = false;
+  if (comps.length && isIdent(comps[0], ['fill'])) { values = comps.slice(1); filled = true; }
+  else if (comps.length && isIdent(comps[comps.length - 1], ['fill'])) { values = comps.slice(0, -1); filled = true; }
+  if (!values.length || values.length > 4) return null;
+  const texts = values.map((c) => number(c, false) ?? percentage(c, false));
+  if (texts.includes(null)) return null;
+  return filled ? `${collapse4(texts)} fill` : collapse4(texts);
+}
 const add = (names, parse, strict = true) => { for (const name of names) LONGHAND_GRAMMARS.set(name, [parse, strict]); };
 add([...SIDES4.map((s) => `margin-${s}`), ...LOGICAL.map((s) => `margin-${s}`), ...SIDES4, ...LOGICAL.map((s) => `inset-${s}`)], oneOf(marginV));
 add([...SIDES4, ...LOGICAL].map((s) => `padding-${s}`), oneOf(paddingV));
@@ -2238,7 +2522,7 @@ add(['flex-wrap'], (c) => keywords(c, ['nowrap', 'wrap', 'wrap-reverse']));
 add(['font-size'], fontSize);
 add(['font-weight'], fontWeight);
 add(['font-style'], fontStyle);
-add(['font-family'], fontFamily, false);
+add(['font-family'], fontFamily);
 add(['line-height'], lineHeight);
 add(['font-stretch'], fontStretch);
 add(['font-variant-caps'], (c) => keywords(c, ['normal', ...CAPS]));
@@ -2263,10 +2547,10 @@ add(['column-count'], (c) => single(c, (x) => keyword(x, ['auto']) ?? integer(x,
 add(['column-width', 'column-height'], (c) => single(c, (x) => keyword(x, ['auto']) ?? length(x, false)));
 add(['column-wrap'], (c) => keywords(c, ['auto', 'nowrap', 'wrap']));
 add(['grid-row-start', 'grid-row-end', 'grid-column-start', 'grid-column-end'], gridLine);
-add(['grid-template-columns', 'grid-template-rows'], trackList, false);
+add(['grid-template-columns', 'grid-template-rows'], trackList);
 add(['transition-duration'], durationList);
 add(['animation-duration'], (c) => listed(c, (item) => single(item, (x) => time(x, false) ?? keyword(x, ['auto']))));
-add(['font-variant-alternates'], (c) => (c.length === 1 ? keyword(c[0], ['normal', 'historical-forms']) ?? functionNamed(c[0], ['stylistic', 'styleset', 'character-variant', 'swash', 'ornaments', 'annotation']) : null));
+add(['font-variant-alternates'], (c) => { if (c.length === 1 && isIdent(c[0], ['normal'])) return 'normal'; const a = alternates(c); return a && a[0] === c.length ? a[1] : null; });
 add(['text-align'], (c) => keywords(c, ['start', 'end', 'left', 'right', 'center', 'justify', 'match-parent', '-webkit-left', '-webkit-right', '-webkit-center', '-webkit-auto']));
 add(['transition-delay', 'animation-delay'], timeList);
 add(['transition-timing-function', 'animation-timing-function'], easingList, false);
@@ -2282,8 +2566,22 @@ add(['background-position-y', '-webkit-mask-position-y'], axisPosition(['top', '
 add(['animation-range-start'], rangeOf(false));
 add(['animation-range-end'], rangeOf(true));
 add(['offset-distance'], (c) => single(c, (x) => lengthPercentage(x, true)));
-add(['offset-anchor', 'offset-position'], (c) => { if (c.length === 1 && isIdent(c[0], ['auto', 'normal'])) return ident(c[0]); const p = position(c); return p ? `${p[0]} ${p[1]}` : null; }, false);
-add(['white-space-collapse'], (c) => keywords(c, ['collapse', 'preserve', 'preserve-breaks', 'preserve-spaces', 'break-spaces']));
+add(['offset-anchor'], (c) => (c.length === 1 && isIdent(c[0], ['auto']) ? 'auto' : origin(c, true, false)));
+add(['offset-position'], (c) => (c.length === 1 && isIdent(c[0], ['auto', 'normal']) ? ident(c[0]) : origin(c, true, false)));
+add(['object-position', 'perspective-origin'], (c) => origin(c, true, false));
+add(['transform-origin'], (c) => origin(c, false, true));
+add(['border-image-slice'], imageSlice);
+add(['border-image-width'], (c) => quad(c, (x) => number(x, false) ?? lengthPercentage(x, false) ?? keyword(x, ['auto'])));
+add(['border-image-outset'], (c) => quad(c, (x) => number(x, false) ?? length(x, false)));
+add(['justify-items'], (c) => { const j = justifyItems(c); return j && j[0] === c.length ? j[1] : null; });
+// `none`, or a trigger name and one or two actions per item.
+add(['animation-trigger'], (c) => (c.length === 1 && isIdent(c[0], ['none']) ? 'none' : listed(c, (item) => {
+  const ACTIONS = ['none', 'play', 'play-once', 'play-forwards', 'play-backwards', 'pause', 'reset', 'replay'];
+  if (item.length < 2 || item.length > 3 || dashedIdent(item[0]) === null) return null;
+  const actions = item.slice(1).map((x) => keyword(x, ACTIONS));
+  return actions.includes(null) ? null : [dashedIdent(item[0]), ...actions].join(' ');
+})));
+add(['white-space-collapse'], (c) => keywords(c, ['collapse', 'preserve', 'preserve-breaks', 'break-spaces']));
 add(['text-wrap-mode'], (c) => keywords(c, ['wrap', 'nowrap']));
 add(['text-wrap-style'], (c) => keywords(c, ['auto', 'balance', 'stable', 'pretty', 'avoid-orphans']));
 add(['overflow-wrap'], (c) => keywords(c, ['normal', 'break-word', 'anywhere']));
@@ -2292,7 +2590,7 @@ add(['offset-path'], offsetPath);
 add(['opacity'], opacityV);
 add(['display'], display, false);
 add(['animation-name'], animationNames);
-add(['box-shadow'], boxShadow, false);
+add(['box-shadow'], boxShadow);
 
 // Properties whose identifiers are names (kept as written) rather than keywords.
 const NAMED = ['animation-name', 'font-family', 'container-name', 'counter-reset', 'counter-increment', 'counter-set', 'grid-area', 'grid-row-start', 'grid-row-end', 'grid-column-start', 'grid-column-end', 'grid-template-areas', 'view-transition-name', 'view-transition-class', 'anchor-name', 'position-anchor', 'anchor-scope', 'timeline-scope', 'font-palette', 'will-change', 'page', 'quotes', 'content'];

@@ -15,7 +15,7 @@ export const SHORTHAND_TABLE = [
   ["-webkit-flex-flow", "flex-flow", "flex-flow", false, ["flex-direction", "flex-wrap"]],
   ["-webkit-mask", "mask", "mask", false, ["mask-image", "-webkit-mask-position-x", "-webkit-mask-position-y", "mask-size", "mask-repeat", "mask-origin", "mask-clip", "mask-composite", "mask-mode"]],
   ["-webkit-mask-box-image", "-webkit-mask-box-image", "-webkit-mask-box-image", true, ["-webkit-mask-box-image-source", "-webkit-mask-box-image-slice", "-webkit-mask-box-image-width", "-webkit-mask-box-image-outset", "-webkit-mask-box-image-repeat"]],
-  ["-webkit-mask-position", "mask-position", "mask-position", false, ["-webkit-mask-position-x", "-webkit-mask-position-y"]],
+  ["-webkit-mask-position", "mask-position", "-webkit-mask-position", false, ["-webkit-mask-position-x", "-webkit-mask-position-y"]],
   ["-webkit-text-emphasis", "text-emphasis", "text-emphasis", true, ["text-emphasis-style", "text-emphasis-color"]],
   ["-webkit-text-stroke", "-webkit-text-stroke", "-webkit-text-stroke", true, ["-webkit-text-stroke-width", "-webkit-text-stroke-color"]],
   ["-webkit-transition", "transition", "transition", false, ["transition-property", "transition-duration", "transition-timing-function", "transition-delay", "transition-behavior"]],
