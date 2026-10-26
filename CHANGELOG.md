@@ -55,6 +55,11 @@ changes in `tools/parity/expected/p5b-w1-*.json`.
   min-content) — so a one-cell table is `[8,8,13.109375,24]` as in Chrome, not the full
   1264px line, and `margin: 0 auto` centres it. The PDF / screenshot paths keep filling
   the containing block (unchanged output). Control: `live-geometry` `table-auto-*`.
+- `<template>` is `display: none` in the user-agent sheet (miaskiewicz/turbo-surf#36 item
+  4), as in Chrome: a live `<template>` (also one inside a table cell) has the all-zero
+  rect of a boxless element instead of an empty box at its flow position. Embedders that
+  match `user_agent_css()` (turbo-surf) get the rule too; the HTML drive already stripped
+  `<template>`. Control: `live-geometry` `template-in-*`.
 
 ### Fixed — selector engine and cascade order (P5b-X, Chrome 156 controls)
 Each fix is backed by `crates/turbo-dom/tests/fixtures/cascade_selectors_chrome156.json`

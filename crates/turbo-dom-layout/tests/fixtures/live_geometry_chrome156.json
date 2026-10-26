@@ -745,6 +745,56 @@
      "position": "static"
     }
    ]
+  },
+  {
+   "id": "template-in-cell",
+   "html": "<!doctype html><style></style><table><tr><td data-cid=\"td\"><template data-cid=\"t\"><b>x</b></template><div style=\"width:8px;height:8px\"></div></td></tr></table>",
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "td",
+     "x": 10,
+     "y": 10,
+     "width": 10,
+     "height": 10,
+     "display": "table-cell",
+     "position": "static"
+    },
+    {
+     "cid": "t",
+     "x": 0,
+     "y": 0,
+     "width": 0,
+     "height": 0,
+     "display": "none",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "template-in-body",
+   "html": "<!doctype html><style></style><div data-cid=\"d\" style=\"width:10px;height:10px\"></div><template data-cid=\"t\"><b>x</b></template>",
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "d",
+     "x": 8,
+     "y": 8,
+     "width": 10,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "t",
+     "x": 0,
+     "y": 0,
+     "width": 0,
+     "height": 0,
+     "display": "none",
+     "position": "static"
+    }
+   ]
   }
  ]
 }

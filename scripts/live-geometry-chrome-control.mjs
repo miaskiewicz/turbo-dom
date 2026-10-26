@@ -7,7 +7,8 @@
 //     failing the whole snapshot; a table row is a box spanning its cells (inside the
 //     border-spacing) with used box metrics, and a row group (`<tbody>`/`<thead>`/
 //     `<tfoot>`) is a box: the union of its rows;
-//   - miaskiewicz/turbo-surf#36 item 3: an auto-width table shrinks to fit its columns.
+//   - miaskiewicz/turbo-surf#36 items 3 and 4: an auto-width table shrinks to fit its
+//     columns, and a `<template>` (display:none) has an all-zero rect.
 //
 // For every case, Chrome for Testing 156 (viewport 1280x800) records the
 // getBoundingClientRect() of every `[data-cid]` element (document order) as
@@ -141,6 +142,13 @@ const CASES = [
       `<table id="t" data-cid="table"><tbody data-cid="tbody"><tr data-cid="r1"><td data-cid="a">A1</td><td data-cid="b">B1</td></tr><tr data-cid="r2"><td data-cid="c">A2</td><td data-cid="d">B2</td></tr></tbody></table>`,
     ),
   },
+  // turbo-surf#36 item 4: a <template> is display:none, so its rect is all zero — also in
+  // a table cell.
+  {
+    id: "template-in-cell",
+    html: DOC("", `<table><tr><td data-cid="td"><template data-cid="t"><b>x</b></template>${BOX(8, 8)}</td></tr></table>`),
+  },
+  { id: "template-in-body", html: DOC("", `${BOX(10, 10, "d")}<template data-cid="t"><b>x</b></template>`) },
 ];
 
 const browser = await chromium.launch({ executablePath: chromePath, headless: true });
