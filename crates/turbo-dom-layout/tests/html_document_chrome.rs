@@ -103,7 +103,7 @@ fn inline_flex_grid_case(id: &str) -> bool {
 /// The control cases of an open bug, each asserted by its own test (`#[ignore]`d until
 /// its fix lands) and held out of [`html_documents_lay_out_as_chrome_156`].
 fn held_out(id: &str) -> bool {
-    let groups: [fn(&str) -> bool; 16] = [
+    let groups: [fn(&str) -> bool; 17] = [
         auto_table_case,
         inline_flex_grid_case,
         abs_auto_width_case,
@@ -120,6 +120,7 @@ fn held_out(id: &str) -> bool {
         legacy_align_case,
         th_case,
         min_height_margin_case,
+        zero_area_clip_case,
     ];
     groups.iter().any(|group| group(id))
 }
@@ -265,6 +266,18 @@ fn min_height_margin_case(id: &str) -> bool {
 #[test]
 fn last_child_bottom_margin_with_min_height_like_chrome_156() {
     compare_cases(min_height_margin_case);
+}
+
+/// miaskiewicz/turbo-dom#75 item 2: a zero-area `clip: rect()` box (the sr-only pattern)
+/// paints nothing but keeps its border box (and its descendants theirs).
+fn zero_area_clip_case(id: &str) -> bool {
+    id.starts_with("clip-zero-area-") || id.starts_with("clip-sr-only")
+}
+
+#[test]
+#[ignore = "turbo-dom#75: fails until the fix"]
+fn zero_area_clip_boxes_keep_their_geometry_like_chrome_156() {
+    compare_cases(zero_area_clip_case);
 }
 
 /// miaskiewicz/turbo-dom#69: only legacy `-webkit-*` alignment moves block children.

@@ -7891,6 +7891,241 @@
     }
    },
    "canvas": "#ffffff"
+  },
+  {
+   "id": "clip-zero-area-box",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><div data-cid=\"c\" style=\"position:absolute;left:20px;top:20px;width:50px;height:50px;background:#f00;clip:rect(0,0,0,0)\"></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "c",
+     "x": 20,
+     "y": 20,
+     "width": 50,
+     "height": 50
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "clip-sr-only",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}.sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}</style></head><body><div data-cid=\"p\" style=\"height:30px\"><span class=\"sr\" data-cid=\"s\">Skip to content</span></div><div data-cid=\"g\" style=\"height:10px\"></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 30
+    },
+    {
+     "cid": "s",
+     "x": -1,
+     "y": -1,
+     "width": 1,
+     "height": 1
+    },
+    {
+     "cid": "g",
+     "x": 0,
+     "y": 30,
+     "width": 1280,
+     "height": 10
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "clip-sr-only-1px",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><div style=\"padding:10px\"><div data-cid=\"s\" style=\"position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(1px,1px,1px,1px)\"><div data-cid=\"d\" style=\"width:40px;height:40px;background:#f00\"></div></div></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "s",
+     "x": 10,
+     "y": 10,
+     "width": 1,
+     "height": 1
+    },
+    {
+     "cid": "d",
+     "x": 10,
+     "y": 10,
+     "width": 40,
+     "height": 40
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "clip-zero-area-auto-edge",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><div data-cid=\"c\" style=\"position:absolute;left:20px;top:20px;width:50px;height:50px;background:#f00;clip:rect(0,auto,auto,60px)\"><div data-cid=\"d\" style=\"width:10px;height:10px\"></div></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "c",
+     "x": 20,
+     "y": 20,
+     "width": 50,
+     "height": 50
+    },
+    {
+     "cid": "d",
+     "x": 20,
+     "y": 20,
+     "width": 10,
+     "height": 10
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "clip-zero-area-auto-height",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><div data-cid=\"c\" style=\"position:absolute;left:5px;top:7px;clip:rect(0 0 0 0)\"><div data-cid=\"d\" style=\"width:30px;height:15px;margin:3px 0\"></div></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "c",
+     "x": 5,
+     "y": 7,
+     "width": 30,
+     "height": 21
+    },
+    {
+     "cid": "d",
+     "x": 5,
+     "y": 10,
+     "width": 30,
+     "height": 15
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "clip-zero-area-fixed",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><div data-cid=\"c\" style=\"position:fixed;left:30px;top:40px;width:20px;height:20px;clip:rect(0,0,0,0)\"></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "c",
+     "x": 30,
+     "y": 40,
+     "width": 20,
+     "height": 20
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "clip-zero-area-in-relative",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><div style=\"position:relative;margin:30px\"><div data-cid=\"c\" style=\"position:absolute;right:0;top:4px;width:20px;height:20px;clip:rect(5px,5px,5px,5px)\"></div></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "c",
+     "x": 1230,
+     "y": 34,
+     "width": 20,
+     "height": 20
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "clip-zero-area-transformed",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><div data-cid=\"c\" style=\"position:absolute;left:20px;top:20px;width:50px;height:50px;transform:translate(100px,0);clip:rect(0,0,0,0)\"></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "c",
+     "x": 120,
+     "y": 20,
+     "width": 50,
+     "height": 50
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
   }
  ]
 }
