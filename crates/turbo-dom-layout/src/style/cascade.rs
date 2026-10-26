@@ -839,6 +839,7 @@ mod matched;
 
 #[path = "tree_view.rs"]
 mod tree_view;
+pub(crate) use matched::presentational_declarations_of;
 pub use matched::{
     presentational_declarations, resolve_matched_style, CascadeOrigin, MatchedDeclaration,
 };

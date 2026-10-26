@@ -1,12 +1,12 @@
 //! CSSOM View `checkVisibility()` over resolved flat-tree styles. Box presence is
 //! decided by the caller from the actual layout snapshot.
-use crate::live_layout_scroll::SourceStyles;
-use turbo_dom_layout::layout_snapshot::{Rect, SourceId};
-use turbo_dom_layout::ComputedStyle;
+use super::scroll::SourceStyles;
+use crate::layout_snapshot::{Rect, SourceId};
+use crate::ComputedStyle;
 
-pub(crate) const OPACITY: u32 = 1;
-pub(crate) const VISIBILITY: u32 = 2;
-pub(crate) const CONTENT_VISIBILITY_AUTO: u32 = 4;
+pub const OPACITY: u32 = 1;
+pub const VISIBILITY: u32 = 2;
+pub const CONTENT_VISIBILITY_AUTO: u32 = 4;
 
 fn keyword<'a>(style: &'a ComputedStyle, property: &str) -> Option<&'a str> {
     style.get(property).map(str::trim)
@@ -32,7 +32,7 @@ fn invisible(style: &ComputedStyle) -> bool {
 }
 
 /// Chromium decides content-visibility:auto relevance with a 50% viewport margin.
-pub(crate) fn near_viewport(bounds: Rect, translation: [f32; 2], viewport: [f32; 2]) -> bool {
+pub fn near_viewport(bounds: Rect, translation: [f32; 2], viewport: [f32; 2]) -> bool {
     let [width, height] = viewport;
     let x = bounds.x - translation[0];
     let y = bounds.y - translation[1];
@@ -44,7 +44,7 @@ pub(crate) fn near_viewport(bounds: Rect, translation: [f32; 2], viewport: [f32;
 
 /// Steps after the box check: skipped content, then the optional opacity,
 /// visibility and content-visibility:auto filters.
-pub(crate) fn check(
+pub fn check(
     styles: &SourceStyles,
     id: SourceId,
     flags: u32,
@@ -90,32 +90,12 @@ pub(crate) fn check(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::live_layout::{capture_tree, layout_rules_resolved, source_id};
-    use turbo_dom_layout::layout_snapshot::SnapshotInputs;
-    use turbo_dom_layout::{Diagnostics, FontRegistry, ImageCtx, NoImages};
-    use turbo_dom_parser::rtdom::Tree;
+    use crate::live::{source_id, testing};
+    use turbo_dom::rtdom::Tree;
 
+    // Adapted@S4: styled by the live-DOM input instead of turbo-surf's copier.
     fn styles(html: &str) -> (SourceStyles, Tree) {
-        let tree = Tree::parse(html);
-        let input = capture_tree(&tree, 1).unwrap();
-        let fonts = FontRegistry::new();
-        let images = ImageCtx {
-            resolver: &NoImages,
-            body_height: None,
-        };
-        let (_, styles) = layout_rules_resolved(
-            &input,
-            &[],
-            2.0,
-            &SnapshotInputs {
-                width: 800.0,
-                height: 600.0,
-                fonts: &fonts,
-                images: &images,
-            },
-            &mut Diagnostics::default(),
-        )
-        .unwrap();
+        let (tree, _, styles) = testing::layout(html, "", (800.0, 600.0), Some(2.0));
         (styles, tree)
     }
 

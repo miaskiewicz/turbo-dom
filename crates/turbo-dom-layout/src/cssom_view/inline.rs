@@ -1,9 +1,9 @@
 //! A bounded plain-inline seam over genuine source-owned native font/run boxes.
 //! Decorations and empty inline placement need actual inline-border production.
-use crate::live_layout_metrics::{ClientMetrics, ElementGeometry, OffsetSize};
-use crate::live_layout_scroll::SourceStyles;
+use super::metrics::{ClientMetrics, ElementGeometry, OffsetSize};
+use super::scroll::SourceStyles;
+use crate::layout_snapshot::{LayoutSnapshot, Rect, SourceId};
 use std::collections::BTreeMap;
-use turbo_dom_layout::layout_snapshot::{LayoutSnapshot, Rect, SourceId};
 
 fn check_style(styles: &SourceStyles, id: SourceId) -> Result<(), String> {
     let style = &styles
@@ -58,7 +58,7 @@ fn union(a: Rect, b: Rect) -> Rect {
         height: (a.y + a.height).max(b.y + b.height) - y,
     }
 }
-pub(crate) fn geometry(
+pub fn geometry(
     snapshot: &LayoutSnapshot,
     styles: &SourceStyles,
     id: SourceId,
@@ -96,7 +96,7 @@ pub(crate) fn geometry(
             return Err("native fallback-font inline border production is pending".into());
         }
         font = Some(run.font_box);
-        let Some(rect) = crate::live_layout_text::run_rect(snapshot, run) else {
+        let Some(rect) = super::text::run_rect(snapshot, run) else {
             continue;
         };
         let fragment = &snapshot.fragments()[run.fragment_index];
@@ -115,10 +115,10 @@ pub(crate) fn geometry(
     let raw: Vec<_> = lines.values().map(|(rect, _)| *rect).collect();
     let rects: Vec<_> = lines
         .values()
-        .map(|(rect, matrix)| crate::live_layout_text::world_rect(*rect, *matrix))
+        .map(|(rect, matrix)| super::text::world_rect(*rect, *matrix))
         .collect();
-    let bounds = crate::live_layout_metrics::bounding_box(&rects);
-    let local = crate::live_layout_metrics::bounding_box(&raw);
+    let bounds = super::metrics::bounding_box(&rects);
+    let local = super::metrics::bounding_box(&raw);
     Ok(ElementGeometry {
         bounds,
         rects,

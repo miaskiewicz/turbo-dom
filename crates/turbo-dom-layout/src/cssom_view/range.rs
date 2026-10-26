@@ -1,12 +1,12 @@
 //! Native DOM boundary ordering retains child offsets, including non-layout nodes.
-use crate::live_layout::source_id;
+use crate::layout_snapshot::SourceId;
+use crate::live::source_id;
 use std::collections::HashMap;
-use turbo_dom_layout::layout_snapshot::SourceId;
-use turbo_dom_parser::rtdom::tree::Handle;
-use turbo_dom_parser::rtdom::Tree;
+use turbo_dom::rtdom::tree::Handle;
+use turbo_dom::rtdom::Tree;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum Selection {
+pub enum Selection {
     Element(SourceId),
     Text {
         source: SourceId,
@@ -90,7 +90,7 @@ impl Order {
 fn fully_selected(span: &Span, start: u64, end: u64) -> bool {
     start <= span.before && end >= span.after
 }
-pub(crate) fn select(
+pub fn select(
     tree: &Tree,
     document: u32,
     start: (Handle, usize),

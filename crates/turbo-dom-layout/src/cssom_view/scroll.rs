@@ -1,68 +1,30 @@
 //! Scrollable overflow from real native border fragments and resolved styles.
 //! Clipping and scroll state remain separate from immutable layout provenance.
-use crate::live_layout::LiveTreeInput;
+use crate::layout_snapshot::{GeometryKind, LayoutSnapshot, SourceId};
+use crate::ComputedStyle;
 use std::collections::BTreeMap;
-use turbo_dom_layout::layout_snapshot::{GeometryKind, LayoutSnapshot, SourceId};
-use turbo_dom_layout::{ComputedStyle, StyledNode};
 
-pub(crate) struct SourceStyle {
-    pub(crate) style: ComputedStyle,
-    pub(crate) parent: Option<SourceId>,
-    pub(crate) tag: String,
+/// One element's used style as the embedder collected it after the cascade: its
+/// style, nearest source ancestor in the flat tree, local name and effective zoom.
+pub struct SourceStyle {
+    pub style: ComputedStyle,
+    pub parent: Option<SourceId>,
+    pub tag: String,
     /// Effective CSS zoom: the product of computed factors along the flat tree.
-    pub(crate) zoom: f32,
+    pub zoom: f32,
 }
-pub(crate) type SourceStyles = BTreeMap<SourceId, SourceStyle>;
+/// Every element's [`SourceStyle`] by source.
+pub type SourceStyles = BTreeMap<SourceId, SourceStyle>;
 
-pub(crate) fn collect_styles(input: &LiveTreeInput, styled: &[StyledNode]) -> SourceStyles {
-    let identities: BTreeMap<_, _> = input
-        .identities
-        .iter()
-        .map(|identity| (identity.path.as_slice(), identity.id))
-        .collect();
-    fn walk(
-        nodes: &[StyledNode],
-        path: &mut Vec<usize>,
-        parent: (Option<SourceId>, f32),
-        ids: &BTreeMap<&[usize], SourceId>,
-        out: &mut SourceStyles,
-    ) {
-        for (i, node) in nodes.iter().enumerate() {
-            path.push(i);
-            let id = ids.get(path.as_slice()).copied();
-            if let StyledNode::Element(element) = node {
-                let zoom = parent.1 * crate::live_layout_zoom::factor(&element.style);
-                if let Some(id) = id {
-                    out.insert(
-                        id,
-                        SourceStyle {
-                            style: element.style.clone(),
-                            parent: parent.0,
-                            zoom,
-                            tag: match &element.tag {
-                                turbo_dom_layout::Tag::Html(tag) => tag.clone(),
-                                _ => String::new(),
-                            },
-                        },
-                    );
-                }
-                walk(&element.children, path, (id.or(parent.0), zoom), ids, out);
-            }
-            path.pop();
-        }
-    }
-    let mut out = BTreeMap::new();
-    walk(styled, &mut Vec::new(), (None, 1.0), &identities, &mut out);
-    out
-}
-#[derive(Debug, Clone, Copy, PartialEq, serde::Serialize)]
-pub(crate) struct ScrollMetrics {
-    pub(crate) width: i32,
-    pub(crate) height: i32,
-    pub(crate) scroll_x: bool,
-    pub(crate) scroll_y: bool,
-    pub(crate) max_x: f64,
-    pub(crate) max_y: f64,
+#[derive(Debug, Clone, Copy, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
+pub struct ScrollMetrics {
+    pub width: i32,
+    pub height: i32,
+    pub scroll_x: bool,
+    pub scroll_y: bool,
+    pub max_x: f64,
+    pub max_y: f64,
 }
 fn overflow_value(value: &str) -> Option<&'static str> {
     ["visible", "clip", "hidden", "scroll", "auto"]
@@ -87,7 +49,7 @@ fn raw_overflow(style: &ComputedStyle, axis: &str) -> &'static str {
         first
     }
 }
-pub(crate) fn overflow(style: &ComputedStyle, axis: &str) -> &'static str {
+pub fn overflow(style: &ComputedStyle, axis: &str) -> &'static str {
     let value = raw_overflow(style, axis);
     let other = raw_overflow(
         style,
@@ -119,7 +81,7 @@ fn rounded(value: f32) -> Result<i32, String> {
     }
     Ok(value.round() as i32)
 }
-pub(crate) fn scroll_metrics(
+pub fn scroll_metrics(
     snapshot: &LayoutSnapshot,
     styles: &SourceStyles,
     id: SourceId,
@@ -172,7 +134,7 @@ pub(crate) fn scroll_metrics(
             "native scroll degenerate-container relative transform provenance pending".into(),
         );
     }
-    let projected = |fragment: &turbo_dom_layout::layout_snapshot::SnapshotFragment| {
+    let projected = |fragment: &crate::layout_snapshot::SnapshotFragment| {
         let points = fragment.quad.map(|point| {
             let x = f64::from(point.x) - matrix[4];
             let y = f64::from(point.y) - matrix[5];
@@ -241,8 +203,8 @@ pub(crate) fn scroll_metrics(
         // Flow content's ending padding/margin contributes to scroll containers,
         // while out-of-flow boxes and transforms contribute only their edges.
         if let Some(metrics) = fragment.used_box {
-            if metrics.position != turbo_dom_layout::layout::value::Position::Absolute
-                && metrics.position != turbo_dom_layout::layout::value::Position::Fixed
+            if metrics.position != crate::layout::value::Position::Absolute
+                && metrics.position != crate::layout::value::Position::Fixed
             {
                 if !blocked_x && permits_scroll(x) {
                     right =
@@ -271,7 +233,7 @@ pub(crate) fn scroll_metrics(
 /// viewport.
 fn contained(
     styles: &SourceStyles,
-    fragment: &turbo_dom_layout::layout_snapshot::SnapshotFragment,
+    fragment: &crate::layout_snapshot::SnapshotFragment,
     id: SourceId,
 ) -> bool {
     let Some(start) = fragment
@@ -311,7 +273,7 @@ fn contained(
     true
 }
 
-pub(crate) fn scroll_translation(
+pub fn scroll_translation(
     snapshot: &LayoutSnapshot,
     styles: &SourceStyles,
     id: SourceId,
@@ -337,8 +299,8 @@ pub(crate) fn scroll_translation(
     let position = fragment
         .used_box
         .map(|used| used.position)
-        .unwrap_or(turbo_dom_layout::layout::value::Position::Static);
-    use turbo_dom_layout::layout::value::Position;
+        .unwrap_or(crate::layout::value::Position::Static);
+    use crate::layout::value::Position;
     if position == Position::Fixed {
         return Ok([0.0; 2]);
     }
@@ -392,10 +354,10 @@ pub(crate) fn scroll_translation(
 
 /// Scroll state key for the document viewport; real sources use document-qualified
 /// handles and can never reach the all-ones identity.
-pub(crate) const VIEWPORT: SourceId = SourceId(u64::MAX);
+pub const VIEWPORT: SourceId = SourceId(u64::MAX);
 
 /// The root element has no flat-tree parent; its scrolling box is the viewport.
-pub(crate) fn is_root(styles: &SourceStyles, id: SourceId) -> bool {
+pub fn is_root(styles: &SourceStyles, id: SourceId) -> bool {
     styles.get(&id).is_some_and(|entry| entry.parent.is_none())
 }
 
@@ -417,7 +379,7 @@ fn fixed_ancestor(styles: &SourceStyles, ancestors: &[SourceId], own: SourceId) 
 }
 
 /// A body whose overflow propagated to the viewport is not its own scroll container.
-pub(crate) fn propagated_body(styles: &SourceStyles, id: SourceId) -> bool {
+pub fn propagated_body(styles: &SourceStyles, id: SourceId) -> bool {
     let Some(entry) = styles.get(&id) else {
         return false;
     };
@@ -433,7 +395,7 @@ pub(crate) fn propagated_body(styles: &SourceStyles, id: SourceId) -> bool {
 }
 
 /// Whether an element establishes an element scrolling box (not the viewport).
-pub(crate) fn element_scroller(styles: &SourceStyles, id: SourceId) -> bool {
+pub fn element_scroller(styles: &SourceStyles, id: SourceId) -> bool {
     let Some(entry) = styles.get(&id) else {
         return false;
     };
@@ -446,7 +408,7 @@ pub(crate) fn element_scroller(styles: &SourceStyles, id: SourceId) -> bool {
 
 /// Viewport scrollable overflow: the initial containing block plus every
 /// in-flow or absolute descendant edge not owned by a nested clipping box.
-pub(crate) fn viewport_metrics(
+pub fn viewport_metrics(
     snapshot: &LayoutSnapshot,
     styles: &SourceStyles,
     root: SourceId,
@@ -470,7 +432,7 @@ pub(crate) fn viewport_metrics(
             continue;
         }
         let own = fragment.source_id.unwrap_or(root);
-        use turbo_dom_layout::layout::value::Position;
+        use crate::layout::value::Position;
         let position = fragment.used_box.map(|used| used.position);
         if position == Some(Position::Fixed)
             || fixed_ancestor(styles, &fragment.source_ancestors, own)
@@ -523,7 +485,7 @@ pub(crate) fn viewport_metrics(
 /// Chromium ScrollAlignment behaviors for one axis: fully visible, hidden and
 /// partially visible exposure.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub(crate) enum Align {
+pub enum Align {
     None,
     Start,
     Center,
@@ -531,7 +493,7 @@ pub(crate) enum Align {
     Closest,
 }
 
-pub(crate) fn alignment(block: u32, mode: u32) -> Result<[Align; 3], String> {
+pub fn alignment(block: u32, mode: u32) -> Result<[Align; 3], String> {
     Ok(match (mode, block) {
         (0, 0) => [Align::Start; 3],
         (0, 1) => [Align::Center; 3],
@@ -549,13 +511,7 @@ fn layout_unit(value: f64) -> f64 {
 
 /// Scroll position exposing `[start, start + length)` in one scroller axis whose
 /// visible content range is `[current, current + visible)`.
-pub(crate) fn expose(
-    start: f64,
-    length: f64,
-    current: f64,
-    visible: f64,
-    behaviors: [Align; 3],
-) -> f64 {
+pub fn expose(start: f64, length: f64, current: f64, visible: f64, behaviors: [Align; 3]) -> f64 {
     let (start, length, current, visible) = (
         layout_unit(start),
         layout_unit(length),
@@ -590,111 +546,5 @@ pub(crate) fn expose(
         Align::Start => start,
         Align::Center => (start + end - visible) / 2.0,
         Align::End => end - visible,
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::live_layout::{capture_tree, layout_rules_resolved, source_id};
-    use turbo_dom_layout::layout_snapshot::SnapshotInputs;
-    use turbo_dom_layout::{Diagnostics, FontRegistry, ImageCtx, NoImages};
-    use turbo_dom_parser::rtdom::Tree;
-    #[test]
-    fn scroll_extent_uses_actual_overflow_padding_margins_transforms_and_nested_clips() {
-        let oracle: serde_json::Value = serde_json::from_str(include_str!(
-            "../../../../harness/detection/fixtures/scroll-layout-chrome155.json"
-        ))
-        .unwrap();
-        let cases = [
-            (
-                "padded",
-                "padding:5px;border:2px solid;overflow:auto",
-                "width:180px;height:140px",
-            ),
-            (
-                "visible",
-                "padding:5px;border:2px solid;overflow:visible",
-                "width:180px;height:140px",
-            ),
-            (
-                "hidden",
-                "padding:5px;border:2px solid;overflow:hidden",
-                "width:180px;height:140px",
-            ),
-            (
-                "negative",
-                "padding:5px;border:2px solid;position:relative;overflow:auto",
-                "position:absolute;left:-50px;top:-40px;width:20px;height:20px",
-            ),
-            (
-                "absolute",
-                "padding:5px;border:2px solid;position:relative;overflow:auto",
-                "position:absolute;left:120px;top:90px;width:30px;height:20px",
-            ),
-            (
-                "transform",
-                "padding:5px;border:2px solid;overflow:auto",
-                "width:50px;height:30px;transform:translate(120px,90px)",
-            ),
-            (
-                "margin",
-                "padding:5px;border:2px solid;overflow:auto",
-                "width:180px;height:140px;margin:10px",
-            ),
-            ("scaledContainer","padding:5px;border:2px solid;overflow:auto;transform:scale(2);transform-origin:0 0","width:180px;height:140px"),
-            ("transformedNegative","padding:5px;border:2px solid;overflow:auto","width:180px;height:140px;transform:translate(-100px,-80px)"),
-            (
-                "nestedclip",
-                "padding:5px;border:2px solid;overflow:auto",
-                "width:50px;height:30px;overflow:hidden",
-            ),
-        ];
-        let mut mismatches = Vec::new();
-        for (index, (name, outer, inner)) in cases.into_iter().enumerate() {
-            let nested = if name == "nestedclip" {
-                "<div style='width:250px;height:220px'></div>"
-            } else {
-                ""
-            };
-            let tree=Tree::parse(&format!("<html><body style='margin:0'><div id=box style='width:100px;height:80px;{outer}'><div style='{inner}'>{nested}</div></div></body></html>"));
-            let input = capture_tree(&tree, 1).unwrap();
-            let fonts = FontRegistry::new();
-            let images = ImageCtx {
-                resolver: &NoImages,
-                body_height: None,
-            };
-            let (snapshot, styles) = layout_rules_resolved(
-                &input,
-                &[],
-                2.0,
-                &SnapshotInputs {
-                    width: 800.0,
-                    height: 600.0,
-                    fonts: &fonts,
-                    images: &images,
-                },
-                &mut Diagnostics::default(),
-            )
-            .unwrap();
-            let actual = scroll_metrics(
-                &snapshot,
-                &styles,
-                source_id(1, tree.query_selector("#box").unwrap()),
-            )
-            .unwrap();
-            let expected = &oracle["result"][index]["before"];
-            let expected = (
-                expected["width"].as_i64().unwrap() as i32,
-                expected["height"].as_i64().unwrap() as i32,
-            );
-            if (actual.width, actual.height) != expected {
-                mismatches.push(format!(
-                    "{name}: native={:?} Chrome={expected:?}",
-                    (actual.width, actual.height)
-                ));
-            }
-        }
-        assert!(mismatches.is_empty(), "{}", mismatches.join("; "));
     }
 }

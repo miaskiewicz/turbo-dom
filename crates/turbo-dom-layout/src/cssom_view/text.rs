@@ -1,7 +1,7 @@
 //! Document caret candidates use actual native font/run boxes, then source queries.
-use crate::live_layout_scroll::{scroll_translation, SourceStyles};
+use super::scroll::{scroll_translation, SourceStyles};
+use crate::layout_snapshot::{LayoutSnapshot, Point, Rect, SourceId};
 use std::collections::BTreeMap;
-use turbo_dom_layout::layout_snapshot::{LayoutSnapshot, Point, Rect, SourceId};
 
 fn distance(point: [f64; 2], rect: Rect) -> [f64; 2] {
     let gap = |value: f64, start: f32, length: f32| {
@@ -14,7 +14,7 @@ fn distance(point: [f64; 2], rect: Rect) -> [f64; 2] {
         gap(point[0], rect.x, rect.width),
     ]
 }
-pub(crate) fn world_rect(rect: Rect, matrix: [f64; 6]) -> Rect {
+pub fn world_rect(rect: Rect, matrix: [f64; 6]) -> Rect {
     let [a, b, c, d, e, f] = matrix;
     let mut xs = [0.0; 4];
     let mut ys = [0.0; 4];
@@ -39,13 +39,13 @@ pub(crate) fn world_rect(rect: Rect, matrix: [f64; 6]) -> Rect {
         height: max(ys) - min(ys),
     }
 }
-pub(crate) fn caret(
+pub fn caret(
     snapshot: &LayoutSnapshot,
     styles: &SourceStyles,
     offsets: &BTreeMap<SourceId, [f64; 2]>,
     point: [f64; 2],
 ) -> Result<Option<(SourceId, usize, Rect)>, String> {
-    let elements = crate::live_layout_hit::elements_at_point(snapshot, styles, offsets, point)?;
+    let elements = super::hit::elements_at_point(snapshot, styles, offsets, point)?;
     let Some(&owner) = elements.first() else {
         return Ok(None);
     };
@@ -62,8 +62,7 @@ pub(crate) fn caret(
             continue;
         };
         if run.source_ancestors.last().is_some_and(|id| {
-            crate::live_layout_hit::property(styles, *id, "visibility")
-                .is_some_and(|value| value != "visible")
+            super::hit::property(styles, *id, "visibility").is_some_and(|value| value != "visible")
         }) {
             continue;
         }
@@ -78,8 +77,7 @@ pub(crate) fn caret(
             continue;
         };
         let translation = scroll_translation(snapshot, styles, source, offsets)?;
-        if crate::live_layout_hit::clipped(snapshot, styles, &run.source_ancestors, offsets, point)?
-        {
+        if super::hit::clipped(snapshot, styles, &run.source_ancestors, offsets, point)? {
             continue;
         }
         let mut rect = world_rect(
@@ -132,9 +130,9 @@ pub(crate) fn caret(
     )))
 }
 
-pub(crate) fn run_rect(
+pub fn run_rect(
     snapshot: &LayoutSnapshot,
-    run: &turbo_dom_layout::layout_snapshot::SnapshotTextRun,
+    run: &crate::layout_snapshot::SnapshotTextRun,
 ) -> Option<Rect> {
     let mut left = f32::INFINITY;
     let mut right = f32::NEG_INFINITY;

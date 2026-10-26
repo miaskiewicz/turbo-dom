@@ -1,14 +1,9 @@
 //! Hit testing native border fragments with actual transforms, clipping and
 //! per-owner scroll projection. Text hit regions need native cluster provenance.
-use crate::live_layout_scroll::{scroll_translation, SourceStyles};
+use super::scroll::{scroll_translation, SourceStyles};
+use crate::layout_snapshot::{GeometryKind, LayoutSnapshot, Rect, SourceId};
 use std::collections::{BTreeMap, BTreeSet};
-use turbo_dom_layout::layout_snapshot::{GeometryKind, LayoutSnapshot, Rect, SourceId};
-pub(crate) fn contains(
-    rect: Rect,
-    matrix: [f64; 6],
-    translation: [f32; 2],
-    point: [f64; 2],
-) -> bool {
+pub fn contains(rect: Rect, matrix: [f64; 6], translation: [f32; 2], point: [f64; 2]) -> bool {
     let [a, b, c, d, e, f] = matrix;
     let determinant = a * d - b * c;
     if determinant == 0.0 || !determinant.is_finite() {
@@ -25,11 +20,7 @@ pub(crate) fn contains(
         && y >= f64::from(rect.y)
         && y < f64::from(rect.y + rect.height)
 }
-pub(crate) fn property<'a>(
-    styles: &'a SourceStyles,
-    mut id: SourceId,
-    name: &str,
-) -> Option<&'a str> {
+pub fn property<'a>(styles: &'a SourceStyles, mut id: SourceId, name: &str) -> Option<&'a str> {
     loop {
         let source = styles.get(&id)?;
         if let Some(value) = source.style.get(name) {
@@ -38,10 +29,10 @@ pub(crate) fn property<'a>(
         id = source.parent?;
     }
 }
-fn clip_axis(style: &turbo_dom_layout::ComputedStyle, name: &str) -> bool {
-    crate::live_layout_scroll::overflow(style, name) != "visible"
+fn clip_axis(style: &crate::ComputedStyle, name: &str) -> bool {
+    super::scroll::overflow(style, name) != "visible"
 }
-pub(crate) fn elements_at_point(
+pub fn elements_at_point(
     snapshot: &LayoutSnapshot,
     styles: &SourceStyles,
     offsets: &BTreeMap<SourceId, [f64; 2]>,
@@ -68,7 +59,7 @@ pub(crate) fn elements_at_point(
             let Some(source) = run.source_id else {
                 continue;
             };
-            let Some(rect) = crate::live_layout_text::run_rect(snapshot, run) else {
+            let Some(rect) = super::text::run_rect(snapshot, run) else {
                 continue;
             };
             let translation = scroll_translation(snapshot, styles, source, offsets)?;
@@ -141,7 +132,7 @@ pub(crate) fn elements_at_point(
     }
     Ok(result)
 }
-pub(crate) fn clipped(
+pub fn clipped(
     snapshot: &LayoutSnapshot,
     styles: &SourceStyles,
     ancestors: &[SourceId],

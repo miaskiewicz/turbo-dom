@@ -1,28 +1,30 @@
 //! CSSOM measurements obtained from actual native source fragments. Missing
 //! inline/caret provenance is an explicit error, never a synthetic zero box.
-use turbo_dom_layout::layout_snapshot::{GeometryKind, LayoutSnapshot, Rect, SourceId, SourceKind};
+use crate::layout_snapshot::{GeometryKind, LayoutSnapshot, Rect, SourceId, SourceKind};
 
-#[derive(Debug, Clone, Copy, PartialEq, serde::Serialize)]
-pub(crate) struct ClientMetrics {
-    pub(crate) left: i32,
-    pub(crate) top: i32,
-    pub(crate) width: i32,
-    pub(crate) height: i32,
+#[derive(Debug, Clone, Copy, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
+pub struct ClientMetrics {
+    pub left: i32,
+    pub top: i32,
+    pub width: i32,
+    pub height: i32,
 }
-#[derive(Debug, Clone, Copy, PartialEq, serde::Serialize)]
-pub(crate) struct OffsetSize {
-    pub(crate) width: i32,
-    pub(crate) height: i32,
+#[derive(Debug, Clone, Copy, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
+pub struct OffsetSize {
+    pub width: i32,
+    pub height: i32,
 }
 #[derive(Debug, PartialEq)]
-pub(crate) struct ElementGeometry {
-    pub(crate) bounds: Rect,
-    pub(crate) rects: Vec<Rect>,
-    pub(crate) client: ClientMetrics,
-    pub(crate) offset: OffsetSize,
+pub struct ElementGeometry {
+    pub bounds: Rect,
+    pub rects: Vec<Rect>,
+    pub client: ClientMetrics,
+    pub offset: OffsetSize,
 }
 
-pub(crate) fn element_geometry(
+pub fn element_geometry(
     snapshot: &LayoutSnapshot,
     id: SourceId,
 ) -> Result<ElementGeometry, String> {
@@ -136,7 +138,7 @@ fn integer(value: f32) -> Result<i32, String> {
     }
     Ok(value.round() as i32)
 }
-pub(crate) fn empty_geometry() -> ElementGeometry {
+pub fn empty_geometry() -> ElementGeometry {
     ElementGeometry {
         bounds: Rect {
             x: 0.0,
@@ -157,7 +159,7 @@ pub(crate) fn empty_geometry() -> ElementGeometry {
         },
     }
 }
-pub(crate) fn bounding_box(rects: &[Rect]) -> Rect {
+pub fn bounding_box(rects: &[Rect]) -> Rect {
     let mut visible = rects
         .iter()
         .filter(|rect| rect.width != 0.0 && rect.height != 0.0);
@@ -186,10 +188,10 @@ pub(crate) fn bounding_box(rects: &[Rect]) -> Rect {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub(crate) struct OffsetPosition {
-    pub(crate) left: i32,
-    pub(crate) top: i32,
-    pub(crate) parent: Option<SourceId>,
+pub struct OffsetPosition {
+    pub left: i32,
+    pub top: i32,
+    pub parent: Option<SourceId>,
 }
 fn offset_integer(value: f32) -> Result<i32, String> {
     if !value.is_finite()
@@ -209,9 +211,9 @@ fn is_inline_fragment(snapshot: &LayoutSnapshot, id: SourceId) -> bool {
         })
     })
 }
-pub(crate) fn offset_position(
+pub fn offset_position(
     snapshot: &LayoutSnapshot,
-    styles: &crate::live_layout_scroll::SourceStyles,
+    styles: &super::scroll::SourceStyles,
     id: SourceId,
 ) -> Result<OffsetPosition, String> {
     let source = snapshot.source(id).ok_or("native offset source missing")?;
@@ -236,7 +238,7 @@ pub(crate) fn offset_position(
         .find(|fragment| fragment.kind == GeometryKind::BorderBox)
         .ok_or("native offset requires inline border provenance")?;
     let used = border.used_box.ok_or("native offset used box missing")?;
-    if used.position == turbo_dom_layout::layout::value::Position::Fixed {
+    if used.position == crate::layout::value::Position::Fixed {
         return Ok(OffsetPosition {
             left: offset_integer(border.rect.x)?,
             top: offset_integer(border.rect.y)?,
@@ -263,7 +265,7 @@ pub(crate) fn offset_position(
             .get("transform")
             .is_some_and(|value| value != "none")
             && !is_inline_fragment(snapshot, parent);
-        let table = used.position == turbo_dom_layout::layout::value::Position::Static
+        let table = used.position == crate::layout::value::Position::Static
             && matches!(parent_style.tag.as_str(), "table" | "td" | "th");
         // Blink's WebKit extension: offsetParent also stops at a zoom change.
         let zoomed = parent_style.zoom != style.zoom;
@@ -316,34 +318,16 @@ pub(crate) fn offset_position(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::live_layout::{capture_tree, layout};
-    use turbo_dom_layout::layout_snapshot::SnapshotInputs;
-    use turbo_dom_layout::{Diagnostics, FontRegistry, ImageCtx, NoImages};
-    use turbo_dom_parser::rtdom::Tree;
+    use crate::live::testing;
+    use turbo_dom::rtdom::Tree;
+    // Adapted@S4: the live tree is styled and laid out by the live-DOM input
+    // (rules pre-matched with turbo-dom's engine) instead of turbo-surf's copier.
     fn capture(html: &str) -> (Tree, LayoutSnapshot) {
-        let tree = Tree::parse(html);
-        let input = capture_tree(&tree, 1).unwrap();
-        let fonts = FontRegistry::new();
-        let images = ImageCtx {
-            resolver: &NoImages,
-            body_height: None,
-        };
-        let snapshot = layout(
-            &input,
-            "",
-            &SnapshotInputs {
-                width: 200.0,
-                height: 200.0,
-                fonts: &fonts,
-                images: &images,
-            },
-            &mut Diagnostics::default(),
-        )
-        .unwrap();
+        let (tree, snapshot, _) = testing::layout(html, "", (200.0, 200.0), None);
         (tree, snapshot)
     }
     fn id(tree: &Tree, selector: &str) -> SourceId {
-        crate::live_layout::source_id(1, tree.query_selector(selector).unwrap())
+        testing::id(tree, selector)
     }
     #[test]
     fn transformed_border_rect_and_untransformed_client_offset_metrics_are_distinct() {
