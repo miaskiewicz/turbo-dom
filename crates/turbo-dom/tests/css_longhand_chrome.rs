@@ -19,7 +19,6 @@ fn sha(text: &str) -> String {
 }
 
 #[test]
-#[ignore = "turbo-dom#97: round-three Chrome cases fail until the fix"]
 fn longhand_values_spell_like_chrome156() {
     let control: Value = serde_json::from_str(CONTROL).unwrap();
     assert_eq!(control["browser"], "Chrome/156.0.8078.4");
