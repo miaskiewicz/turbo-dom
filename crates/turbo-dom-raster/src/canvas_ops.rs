@@ -499,12 +499,20 @@ fn rect_subpath(m: &Matrix, x: f32, y: f32, w: f32, h: f32) -> SubPath {
     }
 }
 
-/// Append a device point to the open current subpath, starting one if the path is
-/// empty or its last subpath is closed (a bare `lineTo` acts as `moveTo`).
+/// Append a device point to the open current subpath. On an empty path a bare `lineTo`
+/// acts as `moveTo`; after a closed subpath (`closePath`, `rect`) the new subpath starts at
+/// the closed one's first point, as canvas's `closePath` leaves the current point there.
 fn append_point(path: &mut Vec<SubPath>, p: (f32, f32)) {
     match path.last_mut() {
         Some(last) if !last.closed => last.pts.push(p),
-        _ => path.push(SubPath {
+        Some(last) => {
+            let start = last.pts[0];
+            path.push(SubPath {
+                pts: vec![start, p],
+                closed: false,
+            });
+        }
+        None => path.push(SubPath {
             pts: vec![p],
             closed: false,
         }),

@@ -73,7 +73,6 @@ fn op_logs_replay_like_chrome_156() {
 /// A stroked closed path strokes its closing edge, and after `closePath` a `lineTo` starts
 /// from the closed subpath's first point (found by the P5-cov mutation pass).
 #[test]
-#[ignore = "closePath restart: fails until the fix"]
 fn closed_paths_restart_at_their_first_point_like_chrome_156() {
     let failures = differences(|id| id == "closed-strokes");
     assert!(failures.is_empty(), "{}", failures.join("\n"));
