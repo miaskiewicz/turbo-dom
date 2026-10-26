@@ -2,7 +2,7 @@
   'use strict';
   const g=globalThis,ns=g[Symbol.for('ts')],native=g.__windowListenerNative;delete g.__windowListenerNative;
   const make=ns.makeNativeFunction,apply=Reflect.apply,create=Object.create,StringValue=String,ErrorType=TypeError,define=Object.defineProperty,getPrototype=Object.getPrototypeOf,setPrototype=Object.setPrototypeOf;
-  let Exception=g.DOMException;
+  const Exception=g[Symbol.for('ts')].DOMException;
   const oldHost=g.__captureHostEventDispatch,BaseTarget=g.EventTarget,NodeConstructor=g.Node,EventType=g.Event,document=g.document;
   const ownIndex=(value,index,item)=>define(value,index,{__proto__:null,value:item,writable:true,configurable:true,enumerable:true});
   const push=(value,item)=>{ownIndex(value,value.length,item);return value.length;};
@@ -51,7 +51,7 @@
   const localAborted=signal=>apply(signalGetter,signal,[]);
   const aborted=signal=>{const value=native("aborted",signal);if(typeof value!=="boolean")throw new ErrorType("Signal must be an AbortSignal");return value;};
   let signalAdd=g.AbortSignal.prototype.addEventListener,signalRemove=g.AbortSignal.prototype.removeEventListener;
-  g.__captureWindowEventInterfaces=interfaces=>{if(typeof interfaces.DOMException==='function')Exception=interfaces.DOMException;const signal=interfaces.AbortSignal;if(signal&&typeof signal[0]==='function'){signalGetter=signal[0];signalAdd=signal[1];signalRemove=signal[2];}};
+  g.__captureWindowEventInterfaces=interfaces=>{const signal=interfaces.AbortSignal;if(signal&&typeof signal[0]==='function'){signalGetter=signal[0];signalAdd=signal[1];signalRemove=signal[2];}};
   function flatten(type,callback,options,remove=false,passiveDefault=false){
     type=string(type);
     if(callback!=null&&typeof callback!=='function'&&typeof callback!=='object')throw new ErrorType('Listener must be an object');

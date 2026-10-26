@@ -175,8 +175,24 @@ fn fullscreen_top() -> Option<Handle> {
     state(|state| state.fullscreen.last().map(|entry| entry.node)).flatten()
 }
 
+/// Report the fullscreen stack to the tree, where the selector engine matches
+/// `:fullscreen` and `:-webkit-full-screen-ancestor` (miaskiewicz/turbo-dom#58).
+fn sync_fullscreen_tree() {
+    DOM.with(|dom| {
+        if let Some(dom) = dom.borrow_mut().as_mut() {
+            let nodes: Vec<Handle> = dom
+                .activation
+                .fullscreen
+                .iter()
+                .map(|entry| entry.node)
+                .collect();
+            dom.tree.set_fullscreen_stack(&nodes);
+        }
+    });
+}
+
 fn push_fullscreen(node: Handle, prefixed: bool) -> bool {
-    state(|state| {
+    let pushed = state(|state| {
         if state
             .fullscreen
             .last()
@@ -188,18 +204,22 @@ fn push_fullscreen(node: Handle, prefixed: bool) -> bool {
         state.fullscreen.push(FullscreenEntry { node, prefixed });
         true
     })
-    .unwrap_or(false)
+    .unwrap_or(false);
+    sync_fullscreen_tree();
+    pushed
 }
 
 /// Unfullscreen the document's fullscreen element; it leaves the top layer.
 fn pop_fullscreen() -> Option<(Handle, bool)> {
-    state(|state| {
+    let popped = state(|state| {
         state
             .fullscreen
             .pop()
             .map(|entry| (entry.node, entry.prefixed))
     })
-    .flatten()
+    .flatten();
+    sync_fullscreen_tree();
+    popped
 }
 
 /// The fullscreen element removing steps: a removed element leaves the top layer at once;
@@ -229,6 +249,7 @@ fn disconnect_fullscreen(scope: &mut v8::PinScope, root: Handle, include_root: b
         stack.retain(|entry| !inside(entry.node));
         top
     });
+    sync_fullscreen_tree();
     if let (Some(prefixed), Some(document)) = (removed, document_object(scope)) {
         let prefixed = v8::Boolean::new(scope, prefixed);
         hook(
@@ -731,7 +752,7 @@ fn dispatch(
     }
 }
 
-/// `:fullscreen` matches every element in the document's fullscreen stack.
+/// The document's fullscreen stack, bottom first (the tree mirrors it for `:fullscreen`).
 pub(super) fn fullscreen_elements() -> Vec<Handle> {
     state(|state| state.fullscreen.iter().map(|entry| entry.node).collect()).unwrap_or_default()
 }

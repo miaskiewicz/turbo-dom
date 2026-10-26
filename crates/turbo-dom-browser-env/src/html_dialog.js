@@ -11,7 +11,7 @@
   const check = ns.domAccessor('nodeType', false, 'HTML:dialog'), connectedGetter = ns.domAccessor('isConnected', false, 'Node');
   const getAttribute = g.Element.prototype.getAttributeNS, setAttribute = g.Element.prototype.setAttributeNS, removeAttribute = g.Element.prototype.removeAttributeNS;
   const focus = g.HTMLElement.prototype.focus;
-  const ToggleEvent = g.ToggleEvent, EventType = g.Event, Exception = g.DOMException, ErrorType = TypeError;
+  const ToggleEvent = g.ToggleEvent, EventType = g.Event, Exception = g[Symbol.for('ts')].DOMException, ErrorType = TypeError;
   const records = new WeakMap(), weakGet = WeakMap.prototype.get, weakSet = WeakMap.prototype.set;
   const lower = Function.prototype.call.bind(String.prototype.toLowerCase);
   const string = (value, operation) => { if (typeof value === 'symbol') throw new ErrorType(operation + ': Cannot convert a Symbol value to a string'); return StringValue(value); };

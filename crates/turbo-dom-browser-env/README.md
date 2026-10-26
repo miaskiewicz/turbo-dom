@@ -86,14 +86,29 @@ Add a constant (and its `FILES` entry) when another consumer needs a file.
 `tests/test_support_api.rs` checks every constant against its file and every
 probe/control pair's recorded `probeSha256`.
 
+### DOMException interface
+
+Every DOMException the binding raises — natively (`throw_dom_error`) or from its JS
+modules — is built, when it is raised, from the realm's registered interface: the
+binding's own `DOMException`, recorded at install, unless the embedder installs its own
+and hands it over with `register_dom_exception(scope, constructor)` (turbo-surf's runtime)
+or by calling `capture_window_event_interfaces(scope)` after installing it. No module keeps
+a constructor captured at install, and page script reassigning `globalThis.DOMException`
+changes nothing, as in Chrome (miaskiewicz/turbo-surf#42, miaskiewicz/turbo-dom#72). Module
+code uses `new ts.DOMException(message, name)` / `instanceof ts.DOMException` (the
+`globalThis[Symbol.for('ts')]` namespace; `ts.realmDOMException()` returns the current
+interface). Control: `src/dom_exception_realm_chrome156.json` (27 operations across the
+modules, with the interface as installed and after page script replaced it).
+
 ### Image load state
 
 The binding never fetches or decodes images. `HTMLImageElement.prototype` carries
 `complete`, `naturalWidth`, `naturalHeight` and `currentSrc` as Chrome's read-only
 accessors (an `<img>` never has them as own properties); without host state an
 image is "not loading": `complete` is `true`, the natural size `0`×`0` and
-`currentSrc` the resolved `src` (`""` without one), which is Chrome's answer for an
-image without a source and for a broken image (`src/html_image_chrome156.json`). A
+`currentSrc` the selected source (below; `""` without one), which is Chrome's answer for an
+image without a source and for a broken image (`src/html_image_chrome156.json`,
+`src/html_image_srcset_chrome156.json` `none1`). A
 host that loads images (turbo-surf) publishes each image's state through the
 document's private interface record, which page JS cannot reach:
 
@@ -130,6 +145,35 @@ when it parses as a non-negative integer (up to 4294967295: `"12px"` → 12, `"-
 `x` / `y` are `0`. Control: `src/html_image_chrome156.json` `dimensions` (rendered,
 `display: none` and detached images, attribute parsing, setter conversions).
 
+`srcset` / `sizes` (HTMLImageElement and HTMLSourceElement), HTMLSourceElement `media` /
+`type` (DOMString reflections) and `width` / `height` (unsigned long) reflect their
+attributes. The binding selects an image's source like Chrome 156 (HTML "select an image
+source", miaskiewicz/turbo-dom#71): the first `<source>` before the image in its `<picture>`
+parent with a non-empty `srcset` whose `media` query list matches and whose `type` Chrome
+decodes (JPEG, PNG, APNG, GIF, BMP, ICO, XBM, WebP, AVIF, JPEG XL, SVG; MIME parameters
+ignored), else the image's own `srcset` plus `src` as `1x`; `w` descriptors divided by the
+`sizes` source size (media conditions with `and` / `or` / `not`, range syntax, `width` /
+`height` / `aspect-ratio` / `orientation` / `resolution` / `-webkit-device-pixel-ratio`;
+`px`, `em` (16 px), viewport units, `calc()` / `min()` / `max()` / `clamp()`; default
+`100vw`), then the first candidate whose density is at least the device pixel ratio, else
+the densest. URLs are parsed against the document base URL (the first `<base href>`, else
+the document URL) by the native resolver `ts.resolveDocumentURL`, which the reflected `src` /
+`href` getters use too (miaskiewicz/turbo-dom#73; no embedder `URL` global needed). A host that loads images asks
+for the choice and reports the natural size Chrome derives from it:
+
+```js
+const chosen = record.imageHost.selectSource(img, { devicePixelRatio: 2 }); // {url, density} | null
+// environment fields default to window.innerWidth / innerHeight / devicePixelRatio
+// (1024 x 768 at 1 where the window has none, as in turbo-test)
+const { naturalWidth, naturalHeight } = record.imageHost.naturalSize(w, h, chosen.density);
+record.imageHost.setState(img, { complete: true, naturalWidth, naturalHeight, currentSrc: chosen.url });
+```
+
+`naturalSize` floors the size times the float reciprocal of the density (a 301-px-wide
+`2x` image is 150 wide). Control: `src/html_image_srcset_chrome156.json`
+(`scripts/image-srcset-chrome-control.mjs` over `scripts/make-image-srcset-cases.py`'s 95
+images at DPR 1 and 2, and with nothing loading).
+
 `HTMLImageElement.prototype.decode()` resolves when the host's state is complete
 with a natural size and rejects with an `EncodingError` otherwise (no source,
 broken, not loading); called while the host reports `complete: false` it settles
@@ -143,7 +187,8 @@ events) are the host's. Control: `src/html_image_chrome156.json` (`factory`, `ow
 ### Computed style defaults
 
 `getComputedStyle` (the binding's cascade over document sheets, inline style and
-shadow-scoped rules) reports Chrome 156's computed values where no author rule
+shadow-scoped rules; document rules never select elements inside shadow trees,
+turbo-dom#68) reports Chrome 156's computed values where no author rule
 applies. `display` is the element's html.css display: block / inline / none /
 table-* / list-item / inline-block / contents / ruby, plus `[hidden]`,
 `dialog:not([open])`, closed popovers, `input[type=hidden]` and `audio` without
@@ -151,8 +196,13 @@ controls → `none`, and MathML `math` / `block math`. It is then blockified for
 floats, `position: absolute` / `fixed` and flex / grid items. `position` is
 `static` (`dialog` → `absolute`, `[popover]` → `fixed`), and `visibility` is
 inherited, `visible` at the root. `inherit` / `initial` / `unset` / `revert`
-resolve. Disconnected elements and children of `<video>` / `<audio>` report `""`, as
-in Chrome. Control: `src/computed_defaults_chrome156.json`, which also records that
+resolve. Form controls take html.css's `font: -webkit-small-control` (turbo-dom#61):
+`<input>` (every type), `<select>` and `<button>` compute `13.3333px Arial`,
+`<textarea>` and the date / time inputs `13.3333px monospace`, `<optgroup>` is
+`bolder` and `<option>` `normal` weight; author rules win (case `form-control-fonts`).
+Disconnected elements report `""` for every property, author and inline values
+included (turbo-dom#67; the declaration fills in once the element is connected), and
+children of `<video>` / `<audio>` report `""` for the defaults, as in Chrome. Control: `src/computed_defaults_chrome156.json`, which also records that
 a document has no `<title>` it did not parse (`document.title = …` creates one).
 
 The top layer is modelled as far as the binding has one (turbo-dom#30): a dialog
@@ -165,13 +215,79 @@ computes `absolute`. `getComputedStyle(el, '::backdrop')` computes the backdrop:
 inside it (`rgba(0, 0, 0, 0.1)` behind a modal dialog), author `::backdrop` rules,
 inheritance from the element. Control: case `dialog-top-layer` of the same file.
 
+Fullscreen (turbo-dom#58): `requestFullscreen()` with the embedder's user activation
+(`set_activation_host`; each request consumes it) puts the element in the document's
+fullscreen stack, which the binding reports to the tree (`Tree::set_fullscreen_stack`):
+the selector engine matches `:fullscreen` / `:-webkit-full-screen` (every stacked element)
+and `:-webkit-full-screen-ancestor` (the top's shadow-including ancestors) everywhere,
+stylesheets and the shadow-scoped native cascade included; `:modal` also matches the
+fullscreen element. A fullscreen element other than the root computes Chrome's
+`:not(:root):fullscreen` values — `position: fixed`, `inset: 0`, `margin: 0`,
+`box-sizing: border-box`, `min-*: 0`, `max-*: none`, `width` / `height: 100%` (computed
+as the viewport's `innerWidth` / `innerHeight` px), `transform: none`, all `!important`, and `object-fit: contain` — and its
+`::backdrop` is fixed at inset 0 with `rgb(0, 0, 0)`. `fullscreenchange` /
+`fullscreenerror` fire as before. Control: case `fullscreen` (async; the collector's
+`__cdpGesture()` is a trusted CDP click).
+
+### Text tracks
+
+`<track>` is an `HTMLTrackElement` (turbo-dom#74, control `src/html_track_chrome156.json`):
+`kind` (missing → `subtitles`, invalid → `metadata`), `srclang`, `label`, `default`, the
+shared `src` URL reflection, `readyState` `NONE` (no track is ever loaded) and the
+`NONE`..`ERROR` constants; `track` is the element's `TextTrack` (kind / label / language / id
+from the element, `mode` `disabled` / `hidden` / `showing`, empty `TextTrackCueList`s for
+`cues` / `activeCues` once enabled, `oncuechange`; `addCue` / `removeCue` reject non-cues).
+
+### Events across shadow trees
+
+`dispatchEvent` builds the DOM event path through shadow trees (turbo-dom#66): a composed
+event crosses each shadow root into its host (an uncomposed one stops at the root of the
+target's tree), a slotted node passes through its assigned slot, and every listener sees
+`event.target` and `relatedTarget` (MouseEvent / FocusEvent and subclasses) retargeted
+against its own tree; hosts receive the event AT_TARGET, `composedPath()` hides closed
+trees the listener is outside of, propagation stops where the retargeted `relatedTarget`
+is the host it would enter (nothing is dispatched when it equals the target), and after
+dispatch `target` / `relatedTarget` are cleared when they stayed inside a shadow tree.
+Events whose path crosses no shadow root dispatch as before. Control:
+`src/shadow_events_chrome156.json` (exported as `test_support::SHADOW_EVENTS_*`).
+
 `getComputedStyle(el, pseudoElt)` parses `pseudoElt` like Chrome (turbo-dom#47):
 `::before` / `::after` (and `:before` / `:after` / bare `before` / `after`) compute
 the pseudo-element (own rules, inheritance from the element, `display: inline`
 blockified in flex / grid containers, `content: none` unless set), an invalid
 pseudo-element returns an empty declaration, and a string without a leading colon
-reads the element. Other UA-styled pseudo-elements (`::marker`, `::placeholder`,
-`::first-line`, …) still read the element. Control: case `pseudo-elements`.
+reads the element. Control: case `pseudo-elements`.
+
+The UA-styled pseudo-elements compute too (cases `pseudo-ua-forms` / `pseudo-ua`):
+each takes Chrome's html.css values, the author rules that select it — only the
+properties it accepts — and inherits from the element:
+- `::marker`: `inline-block` (`inline` when `list-style-position` is `inside`, as for
+  `summary`), `white-space: pre` (inherited when inside), `tabular-nums`, `isolate`;
+  only font / color / content / text properties apply.
+- `::placeholder` (text inputs and textarea with a `placeholder`): `block`,
+  `rgb(117, 117, 117)`, `pointer-events: none !important`; inputs also `white-space: pre`,
+  `overflow: hidden`.
+- `::file-selector-button` (file inputs): the button box (`rgb(239, 239, 239)`,
+  `1px 6px` padding, `2px outset` border, `margin-inline-end: 4px`, …).
+- `::details-content` (details): `block`, `content-visibility: hidden` unless open.
+- `::picker(select)`: `none` / `fixed` / `overflow: auto`; `::picker-icon` on select is
+  `block`.
+- `::first-line` / `::first-letter`: font / color / text / opacity / visibility
+  properties (plus float, margins, padding and borders on `::first-letter`).
+- highlights (`::selection`, `::highlight()`, `::spelling-error`, `::grammar-error`,
+  `::target-text`, `::search-text`): `inline` and `visible`, color / background /
+  decoration properties only. A highlight with a rule of its type on the element or an
+  ancestor inherits from the parent's highlight; otherwise it takes the element's color.
+- `::checkmark` / `::picker-icon` (`content: none`), `::scroll-marker-group` (`block`),
+  `::column`, `::-webkit-scrollbar*`, `::scroll-button()`, and the view-transition tree
+  (`block`, `absolute`, its insets, inheriting along `::view-transition` > `-group()` >
+  `-image-pair()` > `-old()` / `-new()`).
+
+Element-backed pseudo-elements on other elements, and `::checkmark` and the like, are
+plain `inline` pseudo-elements; author rules for the element-backed ones do not reach
+them. `::scroll-marker` and invalid arguments (`::highlight(*)`, `::picker(foo)`, …)
+read an empty declaration. `::cue` and unknown `-webkit-` / `-internal-` names read the
+element.
 
 ### Custom element state (`:defined`)
 
@@ -197,9 +313,10 @@ children's `disconnectedCallback`s. Insertion upgrades connected elements only;
 `customElements.upgrade(root)` skips candidates another registry (or none, like
 template contents in their inert document) governs; an element is constructed at
 most once (turbo-dom#42). Independently installed documents deliver their reactions
-before the call returns too (turbo-dom#54). Controls: the npm runtime's
-`test/fixtures/dom_adoption_reactions_chrome156.json` (read in place by
-`src/dom_reactions_tests.rs`) and `src/dom_reactions_names_chrome156.json`.
+before the call returns too (turbo-dom#54). Controls:
+`src/dom_adoption_reactions_chrome156.json` (shared with the npm runtime's
+`test/dom-adoption-reactions-chrome.test.mjs`, which reads it from this crate) and
+`src/dom_reactions_names_chrome156.json`, both exported through `test_support`.
 
 ### Feature `native-sdk-frame-read` (off by default)
 
@@ -230,6 +347,7 @@ read probes and write controls):
 | `scripts/typed-om-registry.mjs` | `typed_om_registry_cases.json` and the production registry `typed_om_properties.json` (from Blink's json5 metadata + the registry control) |
 | `scripts/view-transitions-chrome-control.mjs`, `scripts/shadow-html-chrome-control.mjs` | `view_transitions_chrome156.json`; shadow-root / HTML serialization / sanitizer controls |
 | `scripts/invokers-chrome-control.mjs`, `scripts/editing-input-chrome-control.mjs`, `scripts/trusted-input-chrome-control.mjs` | invokers/popover, editing, pointer and other trusted-input controls |
+| `scripts/image-srcset-chrome-control.mjs` | `html_image_srcset_chrome156.json` (Playwright, DPR 1 / 2, local image server; cases from `scripts/make-image-srcset-cases.py`) |
 | `scripts/document-legacy-chrome-control.mjs` | `document_legacy_chrome156.json` (loopback HTTP/HTTPS cases) |
 | `scripts/trusted-types-control/` | Trusted Types controls (`trusted_types*_chrome155.json`); `cdp-connection.mjs` is shared with the document-legacy collector |
 

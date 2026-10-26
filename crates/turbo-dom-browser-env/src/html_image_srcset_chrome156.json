@@ -1,0 +1,3207 @@
+{
+ "browser": "Chrome/156.0.8078.4",
+ "generator": "scripts/image-srcset-chrome-control.mjs",
+ "casesSha256": "b89a1fddb60195bd279c572cc1cdaaad7d4fd53881ed6860d3b71c054e9a9252",
+ "probeSha256": "8e66fdeee9a5646fc7a20e7545b0dcdf32e9973d706c3c1ce7e948708b25b9bf",
+ "errors": [],
+ "result": {
+  "load1": {
+   "shape": {
+    "image": {
+     "srcset": {
+      "keys": [
+       "get",
+       "set",
+       "enumerable",
+       "configurable"
+      ],
+      "enumerable": true,
+      "configurable": true,
+      "get": [
+       "get srcset",
+       0
+      ],
+      "set": [
+       "set srcset",
+       1
+      ]
+     },
+     "sizes": {
+      "keys": [
+       "get",
+       "set",
+       "enumerable",
+       "configurable"
+      ],
+      "enumerable": true,
+      "configurable": true,
+      "get": [
+       "get sizes",
+       0
+      ],
+      "set": [
+       "set sizes",
+       1
+      ]
+     }
+    },
+    "source": {
+     "src": {
+      "keys": [
+       "get",
+       "set",
+       "enumerable",
+       "configurable"
+      ],
+      "enumerable": true,
+      "configurable": true,
+      "get": [
+       "get src",
+       0
+      ],
+      "set": [
+       "set src",
+       1
+      ]
+     },
+     "srcset": {
+      "keys": [
+       "get",
+       "set",
+       "enumerable",
+       "configurable"
+      ],
+      "enumerable": true,
+      "configurable": true,
+      "get": [
+       "get srcset",
+       0
+      ],
+      "set": [
+       "set srcset",
+       1
+      ]
+     },
+     "sizes": {
+      "keys": [
+       "get",
+       "set",
+       "enumerable",
+       "configurable"
+      ],
+      "enumerable": true,
+      "configurable": true,
+      "get": [
+       "get sizes",
+       0
+      ],
+      "set": [
+       "set sizes",
+       1
+      ]
+     },
+     "media": {
+      "keys": [
+       "get",
+       "set",
+       "enumerable",
+       "configurable"
+      ],
+      "enumerable": true,
+      "configurable": true,
+      "get": [
+       "get media",
+       0
+      ],
+      "set": [
+       "set media",
+       1
+      ]
+     },
+     "type": {
+      "keys": [
+       "get",
+       "set",
+       "enumerable",
+       "configurable"
+      ],
+      "enumerable": true,
+      "configurable": true,
+      "get": [
+       "get type",
+       0
+      ],
+      "set": [
+       "set type",
+       1
+      ]
+     },
+     "width": {
+      "keys": [
+       "get",
+       "set",
+       "enumerable",
+       "configurable"
+      ],
+      "enumerable": true,
+      "configurable": true,
+      "get": [
+       "get width",
+       0
+      ],
+      "set": [
+       "set width",
+       1
+      ]
+     },
+     "height": {
+      "keys": [
+       "get",
+       "set",
+       "enumerable",
+       "configurable"
+      ],
+      "enumerable": true,
+      "configurable": true,
+      "get": [
+       "get height",
+       0
+      ],
+      "set": [
+       "set height",
+       1
+      ]
+     }
+    },
+    "elsewhere": [
+     false,
+     false
+    ]
+   },
+   "reflect": {
+    "imageSrcset": [
+     "",
+     [
+      "x",
+      "x"
+     ],
+     [
+      "",
+      ""
+     ],
+     [
+      "null",
+      "null"
+     ],
+     [
+      "undefined",
+      "undefined"
+     ],
+     [
+      "12",
+      "12"
+     ],
+     [
+      " a b ",
+      " a b "
+     ],
+     "from-attribute",
+     ""
+    ],
+    "imageSizes": [
+     "",
+     [
+      "x",
+      "x"
+     ],
+     [
+      "",
+      ""
+     ],
+     [
+      "null",
+      "null"
+     ],
+     [
+      "undefined",
+      "undefined"
+     ],
+     [
+      "12",
+      "12"
+     ],
+     [
+      " a b ",
+      " a b "
+     ],
+     "from-attribute",
+     ""
+    ],
+    "sourceSrcset": [
+     "",
+     [
+      "x",
+      "x"
+     ],
+     [
+      "",
+      ""
+     ],
+     [
+      "null",
+      "null"
+     ],
+     [
+      "undefined",
+      "undefined"
+     ],
+     [
+      "12",
+      "12"
+     ],
+     [
+      " a b ",
+      " a b "
+     ],
+     "from-attribute",
+     ""
+    ],
+    "sourceSizes": [
+     "",
+     [
+      "x",
+      "x"
+     ],
+     [
+      "",
+      ""
+     ],
+     [
+      "null",
+      "null"
+     ],
+     [
+      "undefined",
+      "undefined"
+     ],
+     [
+      "12",
+      "12"
+     ],
+     [
+      " a b ",
+      " a b "
+     ],
+     "from-attribute",
+     ""
+    ],
+    "sourceMedia": [
+     "",
+     [
+      "x",
+      "x"
+     ],
+     [
+      "",
+      ""
+     ],
+     [
+      "null",
+      "null"
+     ],
+     [
+      "undefined",
+      "undefined"
+     ],
+     [
+      "12",
+      "12"
+     ],
+     [
+      " a b ",
+      " a b "
+     ],
+     "from-attribute",
+     ""
+    ],
+    "sourceType": [
+     "",
+     [
+      "x",
+      "x"
+     ],
+     [
+      "",
+      ""
+     ],
+     [
+      "null",
+      "null"
+     ],
+     [
+      "undefined",
+      "undefined"
+     ],
+     [
+      "12",
+      "12"
+     ],
+     [
+      " a b ",
+      " a b "
+     ],
+     "from-attribute",
+     ""
+    ]
+   },
+   "width": {
+    "initial": 0,
+    "attributes": [
+     12,
+     12,
+     7,
+     0,
+     0,
+     5,
+     2147483647,
+     0,
+     0,
+     0,
+     0
+    ],
+    "setters": [
+     [
+      "ok",
+      "5",
+      5
+     ],
+     [
+      "ok",
+      "0",
+      0
+     ],
+     [
+      "ok",
+      "2147483647",
+      2147483647
+     ],
+     [
+      "ok",
+      "0",
+      0
+     ],
+     [
+      "ok",
+      "0",
+      0
+     ],
+     [
+      "ok",
+      "1",
+      1
+     ],
+     [
+      "ok",
+      "7",
+      7
+     ],
+     [
+      "ok",
+      "0",
+      0
+     ],
+     [
+      "ok",
+      "0",
+      0
+     ]
+    ],
+    "symbol": [
+     "throw",
+     "TypeError"
+    ]
+   },
+   "height": {
+    "initial": 0,
+    "attributes": [
+     12,
+     12,
+     7,
+     0,
+     0,
+     5,
+     2147483647,
+     0,
+     0,
+     0,
+     0
+    ],
+    "setters": [
+     [
+      "ok",
+      "5",
+      5
+     ],
+     [
+      "ok",
+      "0",
+      0
+     ],
+     [
+      "ok",
+      "2147483647",
+      2147483647
+     ],
+     [
+      "ok",
+      "0",
+      0
+     ],
+     [
+      "ok",
+      "0",
+      0
+     ],
+     [
+      "ok",
+      "1",
+      1
+     ],
+     [
+      "ok",
+      "7",
+      7
+     ],
+     [
+      "ok",
+      "0",
+      0
+     ],
+     [
+      "ok",
+      "0",
+      0
+     ]
+    ],
+    "symbol": [
+     "throw",
+     "TypeError"
+    ]
+   },
+   "receivers": [
+    [
+     "throw",
+     "TypeError"
+    ],
+    [
+     "throw",
+     "TypeError"
+    ]
+   ],
+   "images": {
+    "x1": [
+     "/img/100x50/a.png",
+     true,
+     100,
+     50
+    ],
+    "x-src": [
+     "/img/100x50/s.png",
+     true,
+     100,
+     50
+    ],
+    "x-src-1x": [
+     "/img/100x50/a.png",
+     true,
+     100,
+     50
+    ],
+    "x-15": [
+     "/img/100x50/a.png",
+     true,
+     100,
+     50
+    ],
+    "x-geo": [
+     "/img/100x50/a.png",
+     true,
+     66,
+     33
+    ],
+    "x-geo2": [
+     "/img/100x50/a.png",
+     true,
+     58,
+     29
+    ],
+    "x-low": [
+     "/img/200x100/b.png",
+     true,
+     250,
+     125
+    ],
+    "x-dup": [
+     "/img/100x50/a.png",
+     true,
+     100,
+     50
+    ],
+    "x-default": [
+     "/img/100x50/a.png",
+     true,
+     100,
+     50
+    ],
+    "x-odd": [
+     "/img/301x201/odd.png",
+     true,
+     150,
+     100
+    ],
+    "x-third": [
+     "/img/300x150/c.png",
+     true,
+     100,
+     50
+    ],
+    "p-commas": [
+     "/img/100x50/a.png,/img/200x100/b.png",
+     true,
+     50,
+     25
+    ],
+    "p-trailing": [
+     "/img/100x50/a.png",
+     true,
+     100,
+     50
+    ],
+    "p-paren": [
+     "/img/200x100/b.png",
+     true,
+     100,
+     50
+    ],
+    "p-h-only": [
+     "/img/200x100/b.png",
+     true,
+     100,
+     50
+    ],
+    "p-wh": [
+     "/img/400x200/w400.png",
+     true,
+     300,
+     150
+    ],
+    "p-wx": [
+     "/img/200x100/b.png",
+     true,
+     200,
+     100
+    ],
+    "p-two-x": [
+     "/img/200x100/b.png",
+     true,
+     66,
+     33
+    ],
+    "p-zero": [
+     "/img/200x100/b.png",
+     true,
+     100,
+     50
+    ],
+    "p-neg": [
+     "/img/200x100/b.png",
+     true,
+     100,
+     50
+    ],
+    "p-0w": [
+     "/img/800x400/w800.png",
+     true,
+     1024,
+     512
+    ],
+    "p-float-w": [
+     "/img/800x400/w800.png",
+     true,
+     300,
+     150
+    ],
+    "p-exp": [
+     "/img/100x50/a.png",
+     true,
+     100,
+     50
+    ],
+    "p-junk": [
+     "/img/200x100/b.png",
+     true,
+     100,
+     50
+    ],
+    "p-empty": [
+     "/img/100x50/s.png",
+     true,
+     100,
+     50
+    ],
+    "p-blank": [
+     "/img/100x50/s.png",
+     true,
+     100,
+     50
+    ],
+    "p-data": [
+     "data:image/png;base64,iVBORw0KGgo=",
+     true,
+     0,
+     0
+    ],
+    "w-100vw": [
+     "/img/1600x800/w1600.png",
+     true,
+     1024,
+     512
+    ],
+    "w-px": [
+     "/img/400x200/w400.png",
+     true,
+     300,
+     150
+    ],
+    "w-media": [
+     "/img/800x400/w800.png",
+     true,
+     500,
+     250
+    ],
+    "w-media-miss": [
+     "/img/400x200/w400.png",
+     true,
+     200,
+     100
+    ],
+    "w-calc": [
+     "/img/800x400/w800.png",
+     true,
+     500,
+     250
+    ],
+    "w-em": [
+     "/img/400x200/w400.png",
+     true,
+     320,
+     160
+    ],
+    "w-vh": [
+     "/img/400x200/w400.png",
+     true,
+     384,
+     192
+    ],
+    "w-invalid": [
+     "/img/400x200/w400.png",
+     true,
+     300,
+     150
+    ],
+    "w-negative": [
+     "/img/400x200/w400.png",
+     true,
+     400,
+     200
+    ],
+    "w-percent": [
+     "/img/1600x800/w1600.png",
+     true,
+     1024,
+     512
+    ],
+    "w-zero": [
+     "/img/400x200/w400.png",
+     true,
+     0,
+     0
+    ],
+    "w-auto": [
+     "/img/1600x800/w1600.png",
+     true,
+     1024,
+     512
+    ],
+    "w-not": [
+     "/img/400x200/w400.png",
+     true,
+     300,
+     150
+    ],
+    "w-or": [
+     "/img/400x200/w400.png",
+     true,
+     200,
+     100
+    ],
+    "w-and": [
+     "/img/800x400/w800.png",
+     true,
+     699,
+     349
+    ],
+    "w-range": [
+     "/img/400x200/w400.png",
+     true,
+     250,
+     125
+    ],
+    "w-range-gt": [
+     "/img/800x400/w800.png",
+     true,
+     600,
+     300
+    ],
+    "w-resolution": [
+     "/img/400x200/w400.png",
+     true,
+     400,
+     200
+    ],
+    "w-webkit-dpr": [
+     "/img/400x200/w400.png",
+     true,
+     400,
+     200
+    ],
+    "w-media-type": [
+     "/img/400x200/w400.png",
+     true,
+     300,
+     150
+    ],
+    "w-unknown-feature": [
+     "/img/400x200/w400.png",
+     true,
+     300,
+     150
+    ],
+    "w-src-ignored": [
+     "/img/400x200/w400.png",
+     true,
+     300,
+     150
+    ],
+    "w-mixed": [
+     "/img/400x200/w400.png",
+     true,
+     300,
+     150
+    ],
+    "pic-type": [
+     "/img/20x10/w.png",
+     true,
+     20,
+     10
+    ],
+    "pic-t-avif": [
+     "/img/30x10/t-avif.png",
+     true,
+     30,
+     10
+    ],
+    "pic-t-jxl": [
+     "/img/30x10/t-jxl.png",
+     true,
+     30,
+     10
+    ],
+    "pic-t-svg": [
+     "/img/30x10/t-svg.png",
+     true,
+     30,
+     10
+    ],
+    "pic-t-tiff": [
+     "/img/100x50/s.png",
+     true,
+     100,
+     50
+    ],
+    "pic-t-bmp": [
+     "/img/30x10/t-bmp.png",
+     true,
+     30,
+     10
+    ],
+    "pic-t-ico": [
+     "/img/30x10/t-ico.png",
+     true,
+     30,
+     10
+    ],
+    "pic-t-vnd-ico": [
+     "/img/30x10/t-vnd-ico.png",
+     true,
+     30,
+     10
+    ],
+    "pic-t-gif": [
+     "/img/30x10/t-gif.png",
+     true,
+     30,
+     10
+    ],
+    "pic-t-apng": [
+     "/img/30x10/t-apng.png",
+     true,
+     30,
+     10
+    ],
+    "pic-t-upper": [
+     "/img/30x10/t-upper.png",
+     true,
+     30,
+     10
+    ],
+    "pic-t-params": [
+     "/img/30x10/t-params.png",
+     true,
+     30,
+     10
+    ],
+    "pic-t-spaces": [
+     "/img/30x10/t-spaces.png",
+     true,
+     30,
+     10
+    ],
+    "pic-t-empty": [
+     "/img/30x10/t-empty.png",
+     true,
+     30,
+     10
+    ],
+    "pic-t-bare": [
+     "/img/100x50/s.png",
+     true,
+     100,
+     50
+    ],
+    "pic-t-jpg": [
+     "/img/30x10/t-jpg.png",
+     true,
+     30,
+     10
+    ],
+    "pic-t-pjpeg": [
+     "/img/30x10/t-pjpeg.png",
+     true,
+     30,
+     10
+    ],
+    "pic-t-heic": [
+     "/img/100x50/s.png",
+     true,
+     100,
+     50
+    ],
+    "pic-t-jpeg": [
+     "/img/30x10/t-jpeg.png",
+     true,
+     30,
+     10
+    ],
+    "pic-t-xpng": [
+     "/img/30x10/t-xpng.png",
+     true,
+     30,
+     10
+    ],
+    "pic-t-text": [
+     "/img/100x50/s.png",
+     true,
+     100,
+     50
+    ],
+    "pic-media": [
+     "/img/20x10/m500.png",
+     true,
+     20,
+     10
+    ],
+    "pic-m-list": [
+     "/img/40x10/m-list.png",
+     true,
+     40,
+     10
+    ],
+    "pic-m-print": [
+     "/img/100x50/s.png",
+     true,
+     100,
+     50
+    ],
+    "pic-m-not-screen": [
+     "/img/100x50/s.png",
+     true,
+     100,
+     50
+    ],
+    "pic-m-portrait": [
+     "/img/100x50/s.png",
+     true,
+     100,
+     50
+    ],
+    "pic-m-empty": [
+     "/img/40x10/m-empty.png",
+     true,
+     40,
+     10
+    ],
+    "pic-m-invalid": [
+     "/img/100x50/s.png",
+     true,
+     100,
+     50
+    ],
+    "pic-m-only": [
+     "/img/40x10/m-only.png",
+     true,
+     40,
+     10
+    ],
+    "pic-m-all": [
+     "/img/40x10/m-all.png",
+     true,
+     40,
+     10
+    ],
+    "pic-m-dpr": [
+     "/img/100x50/s.png",
+     true,
+     100,
+     50
+    ],
+    "pic-m-max-height": [
+     "/img/100x50/s.png",
+     true,
+     100,
+     50
+    ],
+    "pic-sizes": [
+     "/img/400x200/w400.png",
+     true,
+     300,
+     150
+    ],
+    "pic-img-sizes": [
+     "/img/400x200/w400.png",
+     true,
+     300,
+     150
+    ],
+    "pic-src-attr": [
+     "/img/100x50/s.png",
+     true,
+     100,
+     50
+    ],
+    "pic-empty-srcset": [
+     "/img/10x10/second.png",
+     true,
+     10,
+     10
+    ],
+    "pic-dpr": [
+     "/img/100x50/a.png",
+     true,
+     100,
+     50
+    ],
+    "pic-blank-srcset": [
+     "/img/10x10/blank2.png",
+     true,
+     10,
+     10
+    ],
+    "pic-after": [
+     "/img/100x50/s.png",
+     true,
+     100,
+     50
+    ],
+    "pic-nested": [
+     "/img/100x50/s.png",
+     true,
+     100,
+     50
+    ],
+    "pic-comment": [
+     "/img/10x10/comment.png",
+     true,
+     10,
+     10
+    ],
+    "img-src": [
+     "/img/100x50/s.png",
+     true,
+     100,
+     50
+    ],
+    "img-none": [
+     "",
+     true,
+     0,
+     0
+    ],
+    "img-empty-src": [
+     "",
+     true,
+     0,
+     0
+    ],
+    "img-relative": [
+     "/up.png",
+     true,
+     0,
+     0
+    ]
+   }
+  },
+  "load2": {
+   "shape": {
+    "image": {
+     "srcset": {
+      "keys": [
+       "get",
+       "set",
+       "enumerable",
+       "configurable"
+      ],
+      "enumerable": true,
+      "configurable": true,
+      "get": [
+       "get srcset",
+       0
+      ],
+      "set": [
+       "set srcset",
+       1
+      ]
+     },
+     "sizes": {
+      "keys": [
+       "get",
+       "set",
+       "enumerable",
+       "configurable"
+      ],
+      "enumerable": true,
+      "configurable": true,
+      "get": [
+       "get sizes",
+       0
+      ],
+      "set": [
+       "set sizes",
+       1
+      ]
+     }
+    },
+    "source": {
+     "src": {
+      "keys": [
+       "get",
+       "set",
+       "enumerable",
+       "configurable"
+      ],
+      "enumerable": true,
+      "configurable": true,
+      "get": [
+       "get src",
+       0
+      ],
+      "set": [
+       "set src",
+       1
+      ]
+     },
+     "srcset": {
+      "keys": [
+       "get",
+       "set",
+       "enumerable",
+       "configurable"
+      ],
+      "enumerable": true,
+      "configurable": true,
+      "get": [
+       "get srcset",
+       0
+      ],
+      "set": [
+       "set srcset",
+       1
+      ]
+     },
+     "sizes": {
+      "keys": [
+       "get",
+       "set",
+       "enumerable",
+       "configurable"
+      ],
+      "enumerable": true,
+      "configurable": true,
+      "get": [
+       "get sizes",
+       0
+      ],
+      "set": [
+       "set sizes",
+       1
+      ]
+     },
+     "media": {
+      "keys": [
+       "get",
+       "set",
+       "enumerable",
+       "configurable"
+      ],
+      "enumerable": true,
+      "configurable": true,
+      "get": [
+       "get media",
+       0
+      ],
+      "set": [
+       "set media",
+       1
+      ]
+     },
+     "type": {
+      "keys": [
+       "get",
+       "set",
+       "enumerable",
+       "configurable"
+      ],
+      "enumerable": true,
+      "configurable": true,
+      "get": [
+       "get type",
+       0
+      ],
+      "set": [
+       "set type",
+       1
+      ]
+     },
+     "width": {
+      "keys": [
+       "get",
+       "set",
+       "enumerable",
+       "configurable"
+      ],
+      "enumerable": true,
+      "configurable": true,
+      "get": [
+       "get width",
+       0
+      ],
+      "set": [
+       "set width",
+       1
+      ]
+     },
+     "height": {
+      "keys": [
+       "get",
+       "set",
+       "enumerable",
+       "configurable"
+      ],
+      "enumerable": true,
+      "configurable": true,
+      "get": [
+       "get height",
+       0
+      ],
+      "set": [
+       "set height",
+       1
+      ]
+     }
+    },
+    "elsewhere": [
+     false,
+     false
+    ]
+   },
+   "reflect": {
+    "imageSrcset": [
+     "",
+     [
+      "x",
+      "x"
+     ],
+     [
+      "",
+      ""
+     ],
+     [
+      "null",
+      "null"
+     ],
+     [
+      "undefined",
+      "undefined"
+     ],
+     [
+      "12",
+      "12"
+     ],
+     [
+      " a b ",
+      " a b "
+     ],
+     "from-attribute",
+     ""
+    ],
+    "imageSizes": [
+     "",
+     [
+      "x",
+      "x"
+     ],
+     [
+      "",
+      ""
+     ],
+     [
+      "null",
+      "null"
+     ],
+     [
+      "undefined",
+      "undefined"
+     ],
+     [
+      "12",
+      "12"
+     ],
+     [
+      " a b ",
+      " a b "
+     ],
+     "from-attribute",
+     ""
+    ],
+    "sourceSrcset": [
+     "",
+     [
+      "x",
+      "x"
+     ],
+     [
+      "",
+      ""
+     ],
+     [
+      "null",
+      "null"
+     ],
+     [
+      "undefined",
+      "undefined"
+     ],
+     [
+      "12",
+      "12"
+     ],
+     [
+      " a b ",
+      " a b "
+     ],
+     "from-attribute",
+     ""
+    ],
+    "sourceSizes": [
+     "",
+     [
+      "x",
+      "x"
+     ],
+     [
+      "",
+      ""
+     ],
+     [
+      "null",
+      "null"
+     ],
+     [
+      "undefined",
+      "undefined"
+     ],
+     [
+      "12",
+      "12"
+     ],
+     [
+      " a b ",
+      " a b "
+     ],
+     "from-attribute",
+     ""
+    ],
+    "sourceMedia": [
+     "",
+     [
+      "x",
+      "x"
+     ],
+     [
+      "",
+      ""
+     ],
+     [
+      "null",
+      "null"
+     ],
+     [
+      "undefined",
+      "undefined"
+     ],
+     [
+      "12",
+      "12"
+     ],
+     [
+      " a b ",
+      " a b "
+     ],
+     "from-attribute",
+     ""
+    ],
+    "sourceType": [
+     "",
+     [
+      "x",
+      "x"
+     ],
+     [
+      "",
+      ""
+     ],
+     [
+      "null",
+      "null"
+     ],
+     [
+      "undefined",
+      "undefined"
+     ],
+     [
+      "12",
+      "12"
+     ],
+     [
+      " a b ",
+      " a b "
+     ],
+     "from-attribute",
+     ""
+    ]
+   },
+   "width": {
+    "initial": 0,
+    "attributes": [
+     12,
+     12,
+     7,
+     0,
+     0,
+     5,
+     2147483647,
+     0,
+     0,
+     0,
+     0
+    ],
+    "setters": [
+     [
+      "ok",
+      "5",
+      5
+     ],
+     [
+      "ok",
+      "0",
+      0
+     ],
+     [
+      "ok",
+      "2147483647",
+      2147483647
+     ],
+     [
+      "ok",
+      "0",
+      0
+     ],
+     [
+      "ok",
+      "0",
+      0
+     ],
+     [
+      "ok",
+      "1",
+      1
+     ],
+     [
+      "ok",
+      "7",
+      7
+     ],
+     [
+      "ok",
+      "0",
+      0
+     ],
+     [
+      "ok",
+      "0",
+      0
+     ]
+    ],
+    "symbol": [
+     "throw",
+     "TypeError"
+    ]
+   },
+   "height": {
+    "initial": 0,
+    "attributes": [
+     12,
+     12,
+     7,
+     0,
+     0,
+     5,
+     2147483647,
+     0,
+     0,
+     0,
+     0
+    ],
+    "setters": [
+     [
+      "ok",
+      "5",
+      5
+     ],
+     [
+      "ok",
+      "0",
+      0
+     ],
+     [
+      "ok",
+      "2147483647",
+      2147483647
+     ],
+     [
+      "ok",
+      "0",
+      0
+     ],
+     [
+      "ok",
+      "0",
+      0
+     ],
+     [
+      "ok",
+      "1",
+      1
+     ],
+     [
+      "ok",
+      "7",
+      7
+     ],
+     [
+      "ok",
+      "0",
+      0
+     ],
+     [
+      "ok",
+      "0",
+      0
+     ]
+    ],
+    "symbol": [
+     "throw",
+     "TypeError"
+    ]
+   },
+   "receivers": [
+    [
+     "throw",
+     "TypeError"
+    ],
+    [
+     "throw",
+     "TypeError"
+    ]
+   ],
+   "images": {
+    "x1": [
+     "/img/200x100/b.png",
+     true,
+     100,
+     50
+    ],
+    "x-src": [
+     "/img/200x100/b.png",
+     true,
+     100,
+     50
+    ],
+    "x-src-1x": [
+     "/img/200x100/b.png",
+     true,
+     100,
+     50
+    ],
+    "x-15": [
+     "/img/300x150/c.png",
+     true,
+     100,
+     50
+    ],
+    "x-geo": [
+     "/img/200x100/b.png",
+     true,
+     80,
+     40
+    ],
+    "x-geo2": [
+     "/img/200x100/b.png",
+     true,
+     80,
+     40
+    ],
+    "x-low": [
+     "/img/200x100/b.png",
+     true,
+     250,
+     125
+    ],
+    "x-dup": [
+     "/img/300x150/c.png",
+     true,
+     150,
+     75
+    ],
+    "x-default": [
+     "/img/200x100/b.png",
+     true,
+     100,
+     50
+    ],
+    "x-odd": [
+     "/img/301x201/odd.png",
+     true,
+     150,
+     100
+    ],
+    "x-third": [
+     "/img/300x150/c.png",
+     true,
+     100,
+     50
+    ],
+    "p-commas": [
+     "/img/100x50/a.png,/img/200x100/b.png",
+     true,
+     50,
+     25
+    ],
+    "p-trailing": [
+     "/img/200x100/b.png",
+     true,
+     100,
+     50
+    ],
+    "p-paren": [
+     "/img/200x100/b.png",
+     true,
+     100,
+     50
+    ],
+    "p-h-only": [
+     "/img/200x100/b.png",
+     true,
+     100,
+     50
+    ],
+    "p-wh": [
+     "/img/800x400/w800.png",
+     true,
+     300,
+     150
+    ],
+    "p-wx": [
+     "/img/200x100/b.png",
+     true,
+     200,
+     100
+    ],
+    "p-two-x": [
+     "/img/200x100/b.png",
+     true,
+     66,
+     33
+    ],
+    "p-zero": [
+     "/img/200x100/b.png",
+     true,
+     100,
+     50
+    ],
+    "p-neg": [
+     "/img/200x100/b.png",
+     true,
+     100,
+     50
+    ],
+    "p-0w": [
+     "/img/800x400/w800.png",
+     true,
+     1024,
+     512
+    ],
+    "p-float-w": [
+     "/img/800x400/w800.png",
+     true,
+     300,
+     150
+    ],
+    "p-exp": [
+     "/img/200x100/b.png",
+     true,
+     100,
+     50
+    ],
+    "p-junk": [
+     "/img/200x100/b.png",
+     true,
+     100,
+     50
+    ],
+    "p-empty": [
+     "/img/100x50/s.png",
+     true,
+     100,
+     50
+    ],
+    "p-blank": [
+     "/img/100x50/s.png",
+     true,
+     100,
+     50
+    ],
+    "p-data": [
+     "/img/200x100/b.png",
+     true,
+     100,
+     50
+    ],
+    "w-100vw": [
+     "/img/1600x800/w1600.png",
+     true,
+     1024,
+     512
+    ],
+    "w-px": [
+     "/img/800x400/w800.png",
+     true,
+     300,
+     150
+    ],
+    "w-media": [
+     "/img/1600x800/w1600.png",
+     true,
+     500,
+     250
+    ],
+    "w-media-miss": [
+     "/img/400x200/w400.png",
+     true,
+     200,
+     100
+    ],
+    "w-calc": [
+     "/img/1600x800/w1600.png",
+     true,
+     500,
+     250
+    ],
+    "w-em": [
+     "/img/800x400/w800.png",
+     true,
+     320,
+     160
+    ],
+    "w-vh": [
+     "/img/800x400/w800.png",
+     true,
+     384,
+     192
+    ],
+    "w-invalid": [
+     "/img/800x400/w800.png",
+     true,
+     300,
+     150
+    ],
+    "w-negative": [
+     "/img/800x400/w800.png",
+     true,
+     400,
+     200
+    ],
+    "w-percent": [
+     "/img/1600x800/w1600.png",
+     true,
+     1024,
+     512
+    ],
+    "w-zero": [
+     "/img/400x200/w400.png",
+     true,
+     0,
+     0
+    ],
+    "w-auto": [
+     "/img/1600x800/w1600.png",
+     true,
+     1024,
+     512
+    ],
+    "w-not": [
+     "/img/800x400/w800.png",
+     true,
+     300,
+     150
+    ],
+    "w-or": [
+     "/img/400x200/w400.png",
+     true,
+     200,
+     100
+    ],
+    "w-and": [
+     "/img/1600x800/w1600.png",
+     true,
+     699,
+     349
+    ],
+    "w-range": [
+     "/img/800x400/w800.png",
+     true,
+     250,
+     125
+    ],
+    "w-range-gt": [
+     "/img/1600x800/w1600.png",
+     true,
+     600,
+     300
+    ],
+    "w-resolution": [
+     "/img/400x200/w400.png",
+     true,
+     100,
+     50
+    ],
+    "w-webkit-dpr": [
+     "/img/400x200/w400.png",
+     true,
+     100,
+     50
+    ],
+    "w-media-type": [
+     "/img/800x400/w800.png",
+     true,
+     300,
+     150
+    ],
+    "w-unknown-feature": [
+     "/img/800x400/w800.png",
+     true,
+     300,
+     150
+    ],
+    "w-src-ignored": [
+     "/img/800x400/w800.png",
+     true,
+     300,
+     150
+    ],
+    "w-mixed": [
+     "/img/200x100/b.png",
+     true,
+     100,
+     50
+    ],
+    "pic-type": [
+     "/img/20x10/w.png",
+     true,
+     20,
+     10
+    ],
+    "pic-t-avif": [
+     "/img/30x10/t-avif.png",
+     true,
+     30,
+     10
+    ],
+    "pic-t-jxl": [
+     "/img/30x10/t-jxl.png",
+     true,
+     30,
+     10
+    ],
+    "pic-t-svg": [
+     "/img/30x10/t-svg.png",
+     true,
+     30,
+     10
+    ],
+    "pic-t-tiff": [
+     "/img/100x50/s.png",
+     true,
+     100,
+     50
+    ],
+    "pic-t-bmp": [
+     "/img/30x10/t-bmp.png",
+     true,
+     30,
+     10
+    ],
+    "pic-t-ico": [
+     "/img/30x10/t-ico.png",
+     true,
+     30,
+     10
+    ],
+    "pic-t-vnd-ico": [
+     "/img/30x10/t-vnd-ico.png",
+     true,
+     30,
+     10
+    ],
+    "pic-t-gif": [
+     "/img/30x10/t-gif.png",
+     true,
+     30,
+     10
+    ],
+    "pic-t-apng": [
+     "/img/30x10/t-apng.png",
+     true,
+     30,
+     10
+    ],
+    "pic-t-upper": [
+     "/img/30x10/t-upper.png",
+     true,
+     30,
+     10
+    ],
+    "pic-t-params": [
+     "/img/30x10/t-params.png",
+     true,
+     30,
+     10
+    ],
+    "pic-t-spaces": [
+     "/img/30x10/t-spaces.png",
+     true,
+     30,
+     10
+    ],
+    "pic-t-empty": [
+     "/img/30x10/t-empty.png",
+     true,
+     30,
+     10
+    ],
+    "pic-t-bare": [
+     "/img/100x50/s.png",
+     true,
+     100,
+     50
+    ],
+    "pic-t-jpg": [
+     "/img/30x10/t-jpg.png",
+     true,
+     30,
+     10
+    ],
+    "pic-t-pjpeg": [
+     "/img/30x10/t-pjpeg.png",
+     true,
+     30,
+     10
+    ],
+    "pic-t-heic": [
+     "/img/100x50/s.png",
+     true,
+     100,
+     50
+    ],
+    "pic-t-jpeg": [
+     "/img/30x10/t-jpeg.png",
+     true,
+     30,
+     10
+    ],
+    "pic-t-xpng": [
+     "/img/30x10/t-xpng.png",
+     true,
+     30,
+     10
+    ],
+    "pic-t-text": [
+     "/img/100x50/s.png",
+     true,
+     100,
+     50
+    ],
+    "pic-media": [
+     "/img/20x10/m500.png",
+     true,
+     20,
+     10
+    ],
+    "pic-m-list": [
+     "/img/40x10/m-list.png",
+     true,
+     40,
+     10
+    ],
+    "pic-m-print": [
+     "/img/100x50/s.png",
+     true,
+     100,
+     50
+    ],
+    "pic-m-not-screen": [
+     "/img/100x50/s.png",
+     true,
+     100,
+     50
+    ],
+    "pic-m-portrait": [
+     "/img/100x50/s.png",
+     true,
+     100,
+     50
+    ],
+    "pic-m-empty": [
+     "/img/40x10/m-empty.png",
+     true,
+     40,
+     10
+    ],
+    "pic-m-invalid": [
+     "/img/100x50/s.png",
+     true,
+     100,
+     50
+    ],
+    "pic-m-only": [
+     "/img/40x10/m-only.png",
+     true,
+     40,
+     10
+    ],
+    "pic-m-all": [
+     "/img/40x10/m-all.png",
+     true,
+     40,
+     10
+    ],
+    "pic-m-dpr": [
+     "/img/40x10/m-dpr.png",
+     true,
+     40,
+     10
+    ],
+    "pic-m-max-height": [
+     "/img/100x50/s.png",
+     true,
+     100,
+     50
+    ],
+    "pic-sizes": [
+     "/img/800x400/w800.png",
+     true,
+     300,
+     150
+    ],
+    "pic-img-sizes": [
+     "/img/800x400/w800.png",
+     true,
+     300,
+     150
+    ],
+    "pic-src-attr": [
+     "/img/100x50/s.png",
+     true,
+     100,
+     50
+    ],
+    "pic-empty-srcset": [
+     "/img/10x10/second.png",
+     true,
+     10,
+     10
+    ],
+    "pic-dpr": [
+     "/img/200x100/b.png",
+     true,
+     100,
+     50
+    ],
+    "pic-blank-srcset": [
+     "/img/10x10/blank2.png",
+     true,
+     10,
+     10
+    ],
+    "pic-after": [
+     "/img/100x50/s.png",
+     true,
+     100,
+     50
+    ],
+    "pic-nested": [
+     "/img/100x50/s.png",
+     true,
+     100,
+     50
+    ],
+    "pic-comment": [
+     "/img/10x10/comment.png",
+     true,
+     10,
+     10
+    ],
+    "img-src": [
+     "/img/100x50/s.png",
+     true,
+     100,
+     50
+    ],
+    "img-none": [
+     "",
+     true,
+     0,
+     0
+    ],
+    "img-empty-src": [
+     "",
+     true,
+     0,
+     0
+    ],
+    "img-relative": [
+     "/page/rel.png",
+     true,
+     0,
+     0
+    ]
+   }
+  },
+  "none1": {
+   "shape": {
+    "image": {
+     "srcset": {
+      "keys": [
+       "get",
+       "set",
+       "enumerable",
+       "configurable"
+      ],
+      "enumerable": true,
+      "configurable": true,
+      "get": [
+       "get srcset",
+       0
+      ],
+      "set": [
+       "set srcset",
+       1
+      ]
+     },
+     "sizes": {
+      "keys": [
+       "get",
+       "set",
+       "enumerable",
+       "configurable"
+      ],
+      "enumerable": true,
+      "configurable": true,
+      "get": [
+       "get sizes",
+       0
+      ],
+      "set": [
+       "set sizes",
+       1
+      ]
+     }
+    },
+    "source": {
+     "src": {
+      "keys": [
+       "get",
+       "set",
+       "enumerable",
+       "configurable"
+      ],
+      "enumerable": true,
+      "configurable": true,
+      "get": [
+       "get src",
+       0
+      ],
+      "set": [
+       "set src",
+       1
+      ]
+     },
+     "srcset": {
+      "keys": [
+       "get",
+       "set",
+       "enumerable",
+       "configurable"
+      ],
+      "enumerable": true,
+      "configurable": true,
+      "get": [
+       "get srcset",
+       0
+      ],
+      "set": [
+       "set srcset",
+       1
+      ]
+     },
+     "sizes": {
+      "keys": [
+       "get",
+       "set",
+       "enumerable",
+       "configurable"
+      ],
+      "enumerable": true,
+      "configurable": true,
+      "get": [
+       "get sizes",
+       0
+      ],
+      "set": [
+       "set sizes",
+       1
+      ]
+     },
+     "media": {
+      "keys": [
+       "get",
+       "set",
+       "enumerable",
+       "configurable"
+      ],
+      "enumerable": true,
+      "configurable": true,
+      "get": [
+       "get media",
+       0
+      ],
+      "set": [
+       "set media",
+       1
+      ]
+     },
+     "type": {
+      "keys": [
+       "get",
+       "set",
+       "enumerable",
+       "configurable"
+      ],
+      "enumerable": true,
+      "configurable": true,
+      "get": [
+       "get type",
+       0
+      ],
+      "set": [
+       "set type",
+       1
+      ]
+     },
+     "width": {
+      "keys": [
+       "get",
+       "set",
+       "enumerable",
+       "configurable"
+      ],
+      "enumerable": true,
+      "configurable": true,
+      "get": [
+       "get width",
+       0
+      ],
+      "set": [
+       "set width",
+       1
+      ]
+     },
+     "height": {
+      "keys": [
+       "get",
+       "set",
+       "enumerable",
+       "configurable"
+      ],
+      "enumerable": true,
+      "configurable": true,
+      "get": [
+       "get height",
+       0
+      ],
+      "set": [
+       "set height",
+       1
+      ]
+     }
+    },
+    "elsewhere": [
+     false,
+     false
+    ]
+   },
+   "reflect": {
+    "imageSrcset": [
+     "",
+     [
+      "x",
+      "x"
+     ],
+     [
+      "",
+      ""
+     ],
+     [
+      "null",
+      "null"
+     ],
+     [
+      "undefined",
+      "undefined"
+     ],
+     [
+      "12",
+      "12"
+     ],
+     [
+      " a b ",
+      " a b "
+     ],
+     "from-attribute",
+     ""
+    ],
+    "imageSizes": [
+     "",
+     [
+      "x",
+      "x"
+     ],
+     [
+      "",
+      ""
+     ],
+     [
+      "null",
+      "null"
+     ],
+     [
+      "undefined",
+      "undefined"
+     ],
+     [
+      "12",
+      "12"
+     ],
+     [
+      " a b ",
+      " a b "
+     ],
+     "from-attribute",
+     ""
+    ],
+    "sourceSrcset": [
+     "",
+     [
+      "x",
+      "x"
+     ],
+     [
+      "",
+      ""
+     ],
+     [
+      "null",
+      "null"
+     ],
+     [
+      "undefined",
+      "undefined"
+     ],
+     [
+      "12",
+      "12"
+     ],
+     [
+      " a b ",
+      " a b "
+     ],
+     "from-attribute",
+     ""
+    ],
+    "sourceSizes": [
+     "",
+     [
+      "x",
+      "x"
+     ],
+     [
+      "",
+      ""
+     ],
+     [
+      "null",
+      "null"
+     ],
+     [
+      "undefined",
+      "undefined"
+     ],
+     [
+      "12",
+      "12"
+     ],
+     [
+      " a b ",
+      " a b "
+     ],
+     "from-attribute",
+     ""
+    ],
+    "sourceMedia": [
+     "",
+     [
+      "x",
+      "x"
+     ],
+     [
+      "",
+      ""
+     ],
+     [
+      "null",
+      "null"
+     ],
+     [
+      "undefined",
+      "undefined"
+     ],
+     [
+      "12",
+      "12"
+     ],
+     [
+      " a b ",
+      " a b "
+     ],
+     "from-attribute",
+     ""
+    ],
+    "sourceType": [
+     "",
+     [
+      "x",
+      "x"
+     ],
+     [
+      "",
+      ""
+     ],
+     [
+      "null",
+      "null"
+     ],
+     [
+      "undefined",
+      "undefined"
+     ],
+     [
+      "12",
+      "12"
+     ],
+     [
+      " a b ",
+      " a b "
+     ],
+     "from-attribute",
+     ""
+    ]
+   },
+   "width": {
+    "initial": 0,
+    "attributes": [
+     12,
+     12,
+     7,
+     0,
+     0,
+     5,
+     2147483647,
+     0,
+     0,
+     0,
+     0
+    ],
+    "setters": [
+     [
+      "ok",
+      "5",
+      5
+     ],
+     [
+      "ok",
+      "0",
+      0
+     ],
+     [
+      "ok",
+      "2147483647",
+      2147483647
+     ],
+     [
+      "ok",
+      "0",
+      0
+     ],
+     [
+      "ok",
+      "0",
+      0
+     ],
+     [
+      "ok",
+      "1",
+      1
+     ],
+     [
+      "ok",
+      "7",
+      7
+     ],
+     [
+      "ok",
+      "0",
+      0
+     ],
+     [
+      "ok",
+      "0",
+      0
+     ]
+    ],
+    "symbol": [
+     "throw",
+     "TypeError"
+    ]
+   },
+   "height": {
+    "initial": 0,
+    "attributes": [
+     12,
+     12,
+     7,
+     0,
+     0,
+     5,
+     2147483647,
+     0,
+     0,
+     0,
+     0
+    ],
+    "setters": [
+     [
+      "ok",
+      "5",
+      5
+     ],
+     [
+      "ok",
+      "0",
+      0
+     ],
+     [
+      "ok",
+      "2147483647",
+      2147483647
+     ],
+     [
+      "ok",
+      "0",
+      0
+     ],
+     [
+      "ok",
+      "0",
+      0
+     ],
+     [
+      "ok",
+      "1",
+      1
+     ],
+     [
+      "ok",
+      "7",
+      7
+     ],
+     [
+      "ok",
+      "0",
+      0
+     ],
+     [
+      "ok",
+      "0",
+      0
+     ]
+    ],
+    "symbol": [
+     "throw",
+     "TypeError"
+    ]
+   },
+   "receivers": [
+    [
+     "throw",
+     "TypeError"
+    ],
+    [
+     "throw",
+     "TypeError"
+    ]
+   ],
+   "images": {
+    "x1": [
+     "/img/100x50/a.png",
+     true,
+     0,
+     0
+    ],
+    "x-src": [
+     "/img/100x50/s.png",
+     true,
+     0,
+     0
+    ],
+    "x-src-1x": [
+     "/img/100x50/a.png",
+     true,
+     0,
+     0
+    ],
+    "x-15": [
+     "/img/100x50/a.png",
+     true,
+     0,
+     0
+    ],
+    "x-geo": [
+     "/img/100x50/a.png",
+     true,
+     0,
+     0
+    ],
+    "x-geo2": [
+     "/img/100x50/a.png",
+     true,
+     0,
+     0
+    ],
+    "x-low": [
+     "/img/200x100/b.png",
+     true,
+     0,
+     0
+    ],
+    "x-dup": [
+     "/img/100x50/a.png",
+     true,
+     0,
+     0
+    ],
+    "x-default": [
+     "/img/100x50/a.png",
+     true,
+     0,
+     0
+    ],
+    "x-odd": [
+     "/img/301x201/odd.png",
+     true,
+     0,
+     0
+    ],
+    "x-third": [
+     "/img/300x150/c.png",
+     true,
+     0,
+     0
+    ],
+    "p-commas": [
+     "/img/100x50/a.png,/img/200x100/b.png",
+     true,
+     0,
+     0
+    ],
+    "p-trailing": [
+     "/img/100x50/a.png",
+     true,
+     0,
+     0
+    ],
+    "p-paren": [
+     "/img/200x100/b.png",
+     true,
+     0,
+     0
+    ],
+    "p-h-only": [
+     "/img/200x100/b.png",
+     true,
+     0,
+     0
+    ],
+    "p-wh": [
+     "/img/400x200/w400.png",
+     true,
+     0,
+     0
+    ],
+    "p-wx": [
+     "/img/200x100/b.png",
+     true,
+     0,
+     0
+    ],
+    "p-two-x": [
+     "/img/200x100/b.png",
+     true,
+     0,
+     0
+    ],
+    "p-zero": [
+     "/img/200x100/b.png",
+     true,
+     0,
+     0
+    ],
+    "p-neg": [
+     "/img/200x100/b.png",
+     true,
+     0,
+     0
+    ],
+    "p-0w": [
+     "/img/800x400/w800.png",
+     true,
+     0,
+     0
+    ],
+    "p-float-w": [
+     "/img/800x400/w800.png",
+     true,
+     0,
+     0
+    ],
+    "p-exp": [
+     "/img/100x50/a.png",
+     true,
+     0,
+     0
+    ],
+    "p-junk": [
+     "/img/200x100/b.png",
+     true,
+     0,
+     0
+    ],
+    "p-empty": [
+     "/img/100x50/s.png",
+     true,
+     0,
+     0
+    ],
+    "p-blank": [
+     "/img/100x50/s.png",
+     true,
+     0,
+     0
+    ],
+    "p-data": [
+     "data:image/png;base64,iVBORw0KGgo=",
+     true,
+     0,
+     0
+    ],
+    "w-100vw": [
+     "/img/1600x800/w1600.png",
+     true,
+     0,
+     0
+    ],
+    "w-px": [
+     "/img/400x200/w400.png",
+     true,
+     0,
+     0
+    ],
+    "w-media": [
+     "/img/800x400/w800.png",
+     true,
+     0,
+     0
+    ],
+    "w-media-miss": [
+     "/img/400x200/w400.png",
+     true,
+     0,
+     0
+    ],
+    "w-calc": [
+     "/img/800x400/w800.png",
+     true,
+     0,
+     0
+    ],
+    "w-em": [
+     "/img/400x200/w400.png",
+     true,
+     0,
+     0
+    ],
+    "w-vh": [
+     "/img/400x200/w400.png",
+     true,
+     0,
+     0
+    ],
+    "w-invalid": [
+     "/img/400x200/w400.png",
+     true,
+     0,
+     0
+    ],
+    "w-negative": [
+     "/img/400x200/w400.png",
+     true,
+     0,
+     0
+    ],
+    "w-percent": [
+     "/img/1600x800/w1600.png",
+     true,
+     0,
+     0
+    ],
+    "w-zero": [
+     "/img/400x200/w400.png",
+     true,
+     0,
+     0
+    ],
+    "w-auto": [
+     "/img/1600x800/w1600.png",
+     true,
+     0,
+     0
+    ],
+    "w-not": [
+     "/img/400x200/w400.png",
+     true,
+     0,
+     0
+    ],
+    "w-or": [
+     "/img/400x200/w400.png",
+     true,
+     0,
+     0
+    ],
+    "w-and": [
+     "/img/800x400/w800.png",
+     true,
+     0,
+     0
+    ],
+    "w-range": [
+     "/img/400x200/w400.png",
+     true,
+     0,
+     0
+    ],
+    "w-range-gt": [
+     "/img/800x400/w800.png",
+     true,
+     0,
+     0
+    ],
+    "w-resolution": [
+     "/img/400x200/w400.png",
+     true,
+     0,
+     0
+    ],
+    "w-webkit-dpr": [
+     "/img/400x200/w400.png",
+     true,
+     0,
+     0
+    ],
+    "w-media-type": [
+     "/img/400x200/w400.png",
+     true,
+     0,
+     0
+    ],
+    "w-unknown-feature": [
+     "/img/400x200/w400.png",
+     true,
+     0,
+     0
+    ],
+    "w-src-ignored": [
+     "/img/400x200/w400.png",
+     true,
+     0,
+     0
+    ],
+    "w-mixed": [
+     "/img/400x200/w400.png",
+     true,
+     0,
+     0
+    ],
+    "pic-type": [
+     "/img/20x10/w.png",
+     true,
+     0,
+     0
+    ],
+    "pic-t-avif": [
+     "/img/30x10/t-avif.png",
+     true,
+     0,
+     0
+    ],
+    "pic-t-jxl": [
+     "/img/30x10/t-jxl.png",
+     true,
+     0,
+     0
+    ],
+    "pic-t-svg": [
+     "/img/30x10/t-svg.png",
+     true,
+     0,
+     0
+    ],
+    "pic-t-tiff": [
+     "/img/100x50/s.png",
+     true,
+     0,
+     0
+    ],
+    "pic-t-bmp": [
+     "/img/30x10/t-bmp.png",
+     true,
+     0,
+     0
+    ],
+    "pic-t-ico": [
+     "/img/30x10/t-ico.png",
+     true,
+     0,
+     0
+    ],
+    "pic-t-vnd-ico": [
+     "/img/30x10/t-vnd-ico.png",
+     true,
+     0,
+     0
+    ],
+    "pic-t-gif": [
+     "/img/30x10/t-gif.png",
+     true,
+     0,
+     0
+    ],
+    "pic-t-apng": [
+     "/img/30x10/t-apng.png",
+     true,
+     0,
+     0
+    ],
+    "pic-t-upper": [
+     "/img/30x10/t-upper.png",
+     true,
+     0,
+     0
+    ],
+    "pic-t-params": [
+     "/img/30x10/t-params.png",
+     true,
+     0,
+     0
+    ],
+    "pic-t-spaces": [
+     "/img/30x10/t-spaces.png",
+     true,
+     0,
+     0
+    ],
+    "pic-t-empty": [
+     "/img/30x10/t-empty.png",
+     true,
+     0,
+     0
+    ],
+    "pic-t-bare": [
+     "/img/100x50/s.png",
+     true,
+     0,
+     0
+    ],
+    "pic-t-jpg": [
+     "/img/30x10/t-jpg.png",
+     true,
+     0,
+     0
+    ],
+    "pic-t-pjpeg": [
+     "/img/30x10/t-pjpeg.png",
+     true,
+     0,
+     0
+    ],
+    "pic-t-heic": [
+     "/img/100x50/s.png",
+     true,
+     0,
+     0
+    ],
+    "pic-t-jpeg": [
+     "/img/30x10/t-jpeg.png",
+     true,
+     0,
+     0
+    ],
+    "pic-t-xpng": [
+     "/img/30x10/t-xpng.png",
+     true,
+     0,
+     0
+    ],
+    "pic-t-text": [
+     "/img/100x50/s.png",
+     true,
+     0,
+     0
+    ],
+    "pic-media": [
+     "/img/20x10/m500.png",
+     true,
+     0,
+     0
+    ],
+    "pic-m-list": [
+     "/img/40x10/m-list.png",
+     true,
+     0,
+     0
+    ],
+    "pic-m-print": [
+     "/img/100x50/s.png",
+     true,
+     0,
+     0
+    ],
+    "pic-m-not-screen": [
+     "/img/100x50/s.png",
+     true,
+     0,
+     0
+    ],
+    "pic-m-portrait": [
+     "/img/100x50/s.png",
+     true,
+     0,
+     0
+    ],
+    "pic-m-empty": [
+     "/img/40x10/m-empty.png",
+     true,
+     0,
+     0
+    ],
+    "pic-m-invalid": [
+     "/img/100x50/s.png",
+     true,
+     0,
+     0
+    ],
+    "pic-m-only": [
+     "/img/40x10/m-only.png",
+     true,
+     0,
+     0
+    ],
+    "pic-m-all": [
+     "/img/40x10/m-all.png",
+     true,
+     0,
+     0
+    ],
+    "pic-m-dpr": [
+     "/img/100x50/s.png",
+     true,
+     0,
+     0
+    ],
+    "pic-m-max-height": [
+     "/img/100x50/s.png",
+     true,
+     0,
+     0
+    ],
+    "pic-sizes": [
+     "/img/400x200/w400.png",
+     true,
+     0,
+     0
+    ],
+    "pic-img-sizes": [
+     "/img/400x200/w400.png",
+     true,
+     0,
+     0
+    ],
+    "pic-src-attr": [
+     "/img/100x50/s.png",
+     true,
+     0,
+     0
+    ],
+    "pic-empty-srcset": [
+     "/img/10x10/second.png",
+     true,
+     0,
+     0
+    ],
+    "pic-dpr": [
+     "/img/100x50/a.png",
+     true,
+     0,
+     0
+    ],
+    "pic-blank-srcset": [
+     "/img/10x10/blank2.png",
+     true,
+     0,
+     0
+    ],
+    "pic-after": [
+     "/img/100x50/s.png",
+     true,
+     0,
+     0
+    ],
+    "pic-nested": [
+     "/img/100x50/s.png",
+     true,
+     0,
+     0
+    ],
+    "pic-comment": [
+     "/img/10x10/comment.png",
+     true,
+     0,
+     0
+    ],
+    "img-src": [
+     "/img/100x50/s.png",
+     true,
+     0,
+     0
+    ],
+    "img-none": [
+     "",
+     true,
+     0,
+     0
+    ],
+    "img-empty-src": [
+     "",
+     true,
+     0,
+     0
+    ],
+    "img-relative": [
+     "/up.png",
+     true,
+     0,
+     0
+    ]
+   }
+  }
+ }
+}

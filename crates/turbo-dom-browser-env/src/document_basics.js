@@ -37,14 +37,14 @@
     check(this, [9]);
     if (arguments.length < 2) throw new TypeError('createProcessingInstruction requires 2 arguments');
     target = string(target); data = string(data);
-    if (!xmlName.test(target) || /[\ud800-\udfff\ufffd]/u.test(target) || data.includes('?>')) throw new g.DOMException('Invalid processing instruction', 'InvalidCharacterError');
+    if (!xmlName.test(target) || /[\ud800-\udfff\ufffd]/u.test(target) || data.includes('?>')) throw new ns.DOMException('Invalid processing instruction', 'InvalidCharacterError');
     return native('createPI', this, target, data);
   }, 2);
   method(g.Document.prototype, 'createCDATASection', function (data) {
     check(this, [9]);
     if (!arguments.length) throw new TypeError('createCDATASection requires 1 argument');
     string(data);
-    throw new g.DOMException('CDATA sections are unsupported in HTML documents', 'NotSupportedError');
+    throw new ns.DOMException('CDATA sections are unsupported in HTML documents', 'NotSupportedError');
   }, 1);
   property(g.ProcessingInstruction.prototype, 'target', function () { check(this, [7]); return native('piTarget', this); });
   const data = Object.getOwnPropertyDescriptor(g.CharacterData.prototype, 'data');
@@ -74,7 +74,7 @@
       if(operation==='delete'){apply(nativeRemoveAttribute,owner,[attribute]);return true;}
       if(operation==='set'||operation==='define'){
         if(operation==='define'){if('get'in value||'set'in value)return false;value=value.value;}
-        if(apply(datasetTest,/-[a-z]/,[key]))throw new g.DOMException('Invalid dataset property name','SyntaxError');
+        if(apply(datasetTest,/-[a-z]/,[key]))throw new ns.DOMException('Invalid dataset property name','SyntaxError');
         apply(setAttribute,owner,[attribute,string(value)]);return true;
       }return undefined;
     },true,true);
@@ -83,7 +83,7 @@
   for(const name of ['HTMLElement','SVGElement'])if(g[name])property(g[name].prototype,'dataset',dataset);
   const uint = value => (+value) >>> 0;
   const character = receiver => { check(receiver, [3, 4, 7, 8]); return apply(data.get, receiver, []); };
-  const range = (value, offset) => { if (offset > value.length) throw new g.DOMException('Character-data offset is out of range', 'IndexSizeError'); };
+  const range = (value, offset) => { if (offset > value.length) throw new ns.DOMException('Character-data offset is out of range', 'IndexSizeError'); };
   // Character-data offsets and native payloads both retain original UTF-16 units.
   method(g.CharacterData.prototype, 'substringData', function (offset, count) { const value = character(this); if (arguments.length < 2) throw new TypeError('substringData requires 2 arguments'); offset = uint(offset); count = uint(count); range(value, offset); return value.slice(offset, offset + count); }, 2);
   method(g.CharacterData.prototype, 'replaceData', function (offset, count, value) { const current = character(this); if (arguments.length < 3) throw new TypeError('replaceData requires 3 arguments'); offset = uint(offset); count = uint(count); value = string(value); range(current, offset); native('replaceCharacterData', this, offset, count, value); }, 3);
@@ -92,7 +92,7 @@
   method(g.CharacterData.prototype, 'appendData', function (value) { const current = character(this); if (!arguments.length) throw new TypeError('appendData requires 1 argument'); native('replaceCharacterData', this, current.length, 0, string(value)); }, 1);
   for (const name of ['xmlEncoding', 'rootElement']) property(g.Document.prototype, name, function () { check(this, [9]); return null; });
   property(g.Document.prototype, 'xmlStandalone', function () { check(this, [9]); return !!state(this).xmlStandalone; }, function (value) { check(this, [9]); state(this).xmlStandalone = !!value; });
-  property(g.Document.prototype, 'xmlVersion', function () { check(this, [9]); return state(this).xmlVersion || null; }, function (value) { check(this, [9]); value = string(value); if (value !== '1.0') throw new g.DOMException('Only XML version 1.0 is supported', 'NotSupportedError'); state(this).xmlVersion = value; });
+  property(g.Document.prototype, 'xmlVersion', function () { check(this, [9]); return state(this).xmlVersion || null; }, function (value) { check(this, [9]); value = string(value); if (value !== '1.0') throw new ns.DOMException('Only XML version 1.0 is supported', 'NotSupportedError'); state(this).xmlVersion = value; });
   const collectionDefine=Object.defineProperty, collectionApply=Reflect.apply;
   const collectionMapGet=Map.prototype.get, collectionMapHas=Map.prototype.has, collectionMapSet=Map.prototype.set;
   const collectionValues=Array.prototype.values, collectionEntries=Array.prototype.entries, collectionKeys=Array.prototype.keys, collectionForEach=Array.prototype.forEach;
@@ -263,7 +263,7 @@
   const createElement=g.Document.prototype.createElement;
   method(g.Document.prototype,'createElement',function(name){
     check(this,[9]);if(!arguments.length)throw new TypeError('createElement requires 1 argument');
-    name=string(name);if(!xmlName.test(name))throw new g.DOMException('Invalid element name','InvalidCharacterError');
+    name=string(name);if(!xmlName.test(name))throw new ns.DOMException('Invalid element name','InvalidCharacterError');
     return apply(createElement,this,[name,arguments[1]]);
   },1);
   method(g.Document.prototype,'createNSResolver',function(node){
@@ -277,8 +277,8 @@
   property(g.Document.prototype, 'documentElement', function () { check(this, [9]); return Array.from(rawChildren.call(this)).find(node => type.call(node) === 1) || null; });
   property(g.Document.prototype, 'head', function () { check(this, [9]); const root=this.documentElement; return root ? Array.from(rawChildren.call(root)).find(node => type.call(node) === 1 && node.localName === 'head' && namespace.call(node) === html) || null : null; });
   property(g.Document.prototype, 'body', function () { check(this, [9]); const root=this.documentElement; return root ? Array.from(rawChildren.call(root)).find(node => type.call(node) === 1 && ['body','frameset'].includes(node.localName) && namespace.call(node) === html) || null : null; }, function (value) {
-    check(this,[9]); if (!value || type.call(value)!==1 || !['body','frameset'].includes(value.localName) || namespace.call(value)!==html) throw new g.DOMException('The new body is not a body or frameset element','HierarchyRequestError');
-    const current=this.body;if(value===current)return;if(current)current.parentNode.replaceChild(value,current);else if(this.documentElement)this.documentElement.appendChild(value);else throw new g.DOMException('The document has no document element','HierarchyRequestError');
+    check(this,[9]); if (!value || type.call(value)!==1 || !['body','frameset'].includes(value.localName) || namespace.call(value)!==html) throw new ns.DOMException('The new body is not a body or frameset element','HierarchyRequestError');
+    const current=this.body;if(value===current)return;if(current)current.parentNode.replaceChild(value,current);else if(this.documentElement)this.documentElement.appendChild(value);else throw new ns.DOMException('The document has no document element','HierarchyRequestError');
   });
   for (const name of ['documentElement','head','body']) if(Object.hasOwn(g.document,name))delete g.document[name];
   property(g.Document.prototype, 'title', function () { check(this,[9]); const title=descendants(this,node=>namespace.call(node)===html&&node.localName==='title')[0];return title?(title.textContent||'').replace(/[\t\n\f\r ]+/g,' ').trim():''; },function(value){check(this,[9]);value=string(value);let title=descendants(this,node=>namespace.call(node)===html&&node.localName==='title')[0];if(!title){if(!this.head)return;title=this.createElement('title');this.head.append(title);}title.textContent=value;});
@@ -315,11 +315,11 @@
   method(g.Document.prototype, 'importNode', function(node, deep=false) {
     check(this,[9]); if(!arguments.length) throw new TypeError('importNode requires 1 argument');
     apply(type,node,[]); const result=native('import',this,node,!!deep);
-    if(typeof result==='string')throw new g.DOMException(result,'NotSupportedError'); return result;
+    if(typeof result==='string')throw new ns.DOMException(result,'NotSupportedError'); return result;
   },1);
   method(g.Document.prototype, 'adoptNode', function (node) {
     check(this, [9]); if (!arguments.length) throw new TypeError('adoptNode requires 1 argument');
-    const result = native('adopt', this, node); if (typeof result === 'string') throw new g.DOMException(result, 'NotSupportedError'); return result;
+    const result = native('adopt', this, node); if (typeof result === 'string') throw new ns.DOMException(result, 'NotSupportedError'); return result;
   }, 1);
   for (const owner of ['Document', 'Element', 'DocumentFragment']) {
     const allowed = owner === 'Document' ? [9] : owner === 'Element' ? [1] : [11];
@@ -327,7 +327,7 @@
       check(this, allowed);
       if (arguments.length < 2) throw new TypeError('moveBefore requires 2 arguments');
       const error = native('move', this, node, child);
-      if (typeof error === 'string') throw new g.DOMException('The node cannot be moved into this parent', error);
+      if (typeof error === 'string') throw new ns.DOMException('The node cannot be moved into this parent', error);
     }, 2);
   }
   const scoped = {

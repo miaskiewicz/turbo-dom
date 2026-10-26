@@ -1,0 +1,13 @@
+{
+ "id": "turbo-dom#68",
+ "reason": "turbo-dom-browser-env getComputedStyle no longer applies document stylesheet rules to elements inside shadow trees (their own shadow-scoped rules and inline style still apply), as in Chrome 156. No corpus output changes: the surf live dump reads document.querySelectorAll('*'), which never reaches shadow-tree elements; static screenshots and the html2pdf corpora do not run the binding. P5b-X6.",
+ "control": "crates/turbo-dom-browser-env/src/computed_defaults_chrome156.json (case fullscreen, section shadow)",
+ "e2e": "crates/turbo-dom-browser-env/src/computed_defaults_tests.rs",
+ "changes": {
+  "html2pdf": [],
+  "html2pdf-svg": [],
+  "html2pdf-extra": [],
+  "surf": [],
+  "surf-extra": []
+ }
+}

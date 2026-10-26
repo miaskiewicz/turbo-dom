@@ -14,7 +14,7 @@
   const accessor = (proto, name) => Object.getOwnPropertyDescriptor(proto, name).get;
   const nodeType = accessor(g.Node.prototype, 'nodeType'), connectedOf = accessor(g.Node.prototype, 'isConnected');
   const ownerDocument = accessor(g.Node.prototype, 'ownerDocument');
-  const Exception = g.DOMException, ErrorType = TypeError, PromiseType = Promise, EventType = g.Event;
+  const Exception = g[Symbol.for('ts')].DOMException, ErrorType = TypeError, PromiseType = Promise, EventType = g.Event;
   const MOUSE = 1;
   const isElement = value => { try { return apply(nodeType, value, []) === 1; } catch (_) { return false; } };
   const brand = receiver => { if (!isElement(receiver)) throw new ErrorType('Illegal invocation'); };

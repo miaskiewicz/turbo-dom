@@ -200,14 +200,16 @@ fn image_host_set_state_contract() {
         })()"#,
         false,
     );
-    // currentSrc without host state is the src getter's resolved URL (resolution needs the
-    // embedder's URL global; the bare binding test realm has none and keeps the attribute text).
-    let base = result["src"].as_str().unwrap().to_owned();
-    assert!(base.contains("pic.png"), "{base}");
+    // currentSrc without host state is the selected source (the src attribute) parsed against
+    // the document base URL, as in Chrome (turbo-dom#71); the src getter's own resolution needs
+    // the embedder's URL global, which the bare binding test realm lacks (it keeps the text).
+    let src = result["src"].as_str().unwrap().to_owned();
+    assert!(src.contains("pic.png"), "{src}");
+    let base = "https://x.test/pic.png";
     assert_eq!(
         result,
         serde_json::json!({
-            "src": base,
+            "src": src,
             "before": [true, 0, 0, base],
             "errors": [
                 "TypeError: Illegal invocation",

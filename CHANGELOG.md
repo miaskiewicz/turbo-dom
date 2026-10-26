@@ -50,6 +50,179 @@ flex-item-box-sizing}.html`).
   padded or bordered `box-sizing: content-box` item lost its frame. They are now
   border-box lengths. Control: `flex-item-*`.
 
+### Fixed — `HTMLTrackElement` and `TextTrack` (P5b-X6, miaskiewicz/turbo-dom#74, Chrome 156 control)
+- turbo-dom-browser-env: `<track>` had no interface, so `track.src`, `kind`, `srclang`,
+  `label`, `default`, `readyState`, `track` and `NONE` / `LOADING` / `LOADED` / `ERROR` were
+  `undefined`. `HTMLTrackElement` now exists with Chrome's members and key order:
+  - `kind` is the enumerated reflection (missing → `subtitles`, invalid → `metadata`);
+  - `srclang` / `label` / `default` reflect;
+  - `readyState` is `NONE` (the binding never loads tracks);
+  - `track` is one `TextTrack` per element (an `EventTarget`). Its `kind` / `label` /
+    `language` / `id` follow the element, `mode` is enumerated (`disabled` by default, invalid
+    values ignored), `cues` / `activeCues` are empty `TextTrackCueList`s once enabled,
+    `oncuechange` works, and `addCue` / `removeCue` reject non-cues.
+- Every HTML element constructor now throws Chrome's `Failed to construct 'X': Illegal
+  constructor` and keeps its interface constants.
+- `track.src` uses the shared reflected-URL getter, so `<base href>` resolution comes with
+  turbo-dom#73 (P5b-X7). Its four control rows are listed as pending on #73.
+- Control: `src/html_track_{probe.js,cases.json,chrome156.json}`.
+
+### Fixed — events across shadow trees (P5b-X6, miaskiewicz/turbo-dom#66, Chrome 156 control)
+- turbo-dom-browser-env: `dispatchEvent` used to build its path from DOM parents only, so an
+  event never left a shadow tree, even with `composed: true`, and its target was never
+  retargeted. It now follows the DOM dispatch algorithm:
+  - a composed event crosses each shadow root into the host; an uncomposed one stops at the
+    root of the target's tree;
+  - a slotted node passes through its assigned slot;
+  - every listener sees `target` / `relatedTarget` retargeted against its own tree, and
+    hosts are AT_TARGET;
+  - `composedPath()` hides closed trees the listener is outside of;
+  - propagation stops where the retargeted `relatedTarget` is the host, and nothing is
+    dispatched when it equals the target;
+  - after dispatch `target` / `relatedTarget` are cleared when they stayed inside a shadow
+    tree.
+- Paths that cross no shadow root are unchanged. `MouseEvent` / `FocusEvent` `relatedTarget`
+  reads the dispatch's retargeted value.
+- Control: `src/shadow_events_{probe.js,cases.json,chrome156.json}`. The fullscreen control's
+  shadow `fullscreenchange` row and `reference_target_tests.rs`' invoker known gap now match
+  Chrome.
+
+### Changed — self-contained binding tests (P5b-X6)
+- The DOM adoption / custom element reactions control moved from the npm tree
+  (`test/fixtures/dom_adoption_reactions_{probe.js,cases.json,chrome156.json}`) into
+  `crates/turbo-dom-browser-env/src/`. `src/dom_reactions_tests.rs` used to `include_str!` it
+  from outside the crate, so the test could not build from the published package. The npm
+  test `test/dom-adoption-reactions-chrome.test.mjs` now reads it from the crate.
+- `test_support` exports it, the `dom_reactions_names_*` control and the `shadow_events_*`
+  control (`DOM_ADOPTION_REACTIONS_*`, `DOM_REACTIONS_NAMES_*`, `SHADOW_EVENTS_*`,
+  `HTML_TRACK_*`; `FILES` has 88 entries).
+- A test now asserts that no `include_str!` / `include_bytes!` in the crate's `src/` or
+  `tests/` leaves the crate.
+
+### Fixed — document rules no longer style shadow trees (P5b-X6, miaskiewicz/turbo-dom#68, Chrome 156 control)
+- turbo-dom-browser-env: `getComputedStyle`'s JS cascade read the owner document's sheets
+  for every element, so document rules selected elements inside shadow trees. A shadow tree
+  is its own style scope, as in Chrome; its elements now see only inline style and their
+  tree's own (native, shadow-scoped) rules. Control: case `fullscreen`, section `shadow`, of
+  `src/computed_defaults_chrome156.json` (a document `:fullscreen { opacity: 0.5 }` does not
+  reach a fullscreen element in a shadow root).
+
+### Fixed — `getComputedStyle` of a disconnected element (P5b-X6, miaskiewicz/turbo-dom#67, Chrome 156 control)
+- turbo-dom-browser-env: a disconnected element blanked only the defaults the binding
+  models. Author-rule and inline values (`position: relative`, `transform: scale(2)`, …)
+  still came through. Chrome computes no style for it, so every property now reads `""` until
+  the element is connected again; the declaration stays live. Typed OM's cascade read is
+  unchanged. Control: case `fullscreen`, section `removed`, of
+  `src/computed_defaults_chrome156.json`.
+
+### Fixed — fullscreen top layer (P5b-X6, miaskiewicz/turbo-dom#58, Chrome 156 controls)
+- turbo-dom: `Tree::set_fullscreen_stack` / `fullscreen_stack` / `fullscreen_element` /
+  `is_fullscreen` / `is_fullscreen_ancestor`. The selector engine (DOM APIs, cascade,
+  `rtdom::cascade`) now evaluates `:fullscreen` / `:-webkit-full-screen` (the elements in
+  the stack) and `:-webkit-full-screen-ancestor` (shadow-including ancestors of the top). They
+  used to be never-matching, and `:-webkit-full-screen-ancestor` was rejected although Chrome
+  accepts it. A tree without a reported stack matches nothing, so static documents, html2pdf
+  and raster are unchanged. npm `selectors.mjs` accepts `:-webkit-full-screen-ancestor` (never
+  matching). Control: selector case `fullscreen` of
+  `crates/turbo-dom/tests/fixtures/cascade_selectors_chrome156.json`.
+- turbo-dom-browser-env:
+  - The fullscreen stack is reported to the tree, and `:modal` also matches the
+    fullscreen element.
+  - A fullscreen element (not the root) computes Chrome's `:not(:root):fullscreen` UA
+    values: `position: fixed`, `inset: 0`, `margin: 0`, `box-sizing: border-box`, min / max
+    sizes, `width` / `height: 100%` (reported as the viewport's `innerWidth` /
+    `innerHeight` px, as Chrome does) and `transform: none`, all `!important`, plus
+    `object-fit: contain`.
+  - Its `::backdrop` is fixed at inset 0 and black.
+- Control: async case `fullscreen` of `src/computed_defaults_chrome156.json` (user
+  activation through the collector's trusted CDP click `__cdpGesture()`).
+
+### Fixed — UA-styled pseudo-elements in `getComputedStyle` (P5b-X6, miaskiewicz/turbo-dom#47, Chrome 156 control)
+- turbo-dom-browser-env: `getComputedStyle(el, pseudoElt)` computed only `::before`,
+  `::after` and `::backdrop`; the other pseudo-elements read the element's style. Every
+  pseudo-element Chrome 156 computes now gets its html.css values, the author rules that
+  select it, and inheritance from the element:
+  - `::marker` (`inline-block`, or `inline` when inside; `white-space: pre`; marker
+    properties only);
+  - `::placeholder`, `::file-selector-button`, `::details-content`, `::picker(select)` on
+    the elements that have them;
+  - `::first-line` / `::first-letter` (only the properties they accept);
+  - the highlights (`::selection`, `::highlight()`, `::spelling-error`, …), with highlight
+    inheritance once a rule of their type applies;
+  - `::checkmark`, `::picker-icon`, `::scroll-marker-group`, `::column`,
+    `::-webkit-scrollbar*`, `::scroll-button()`, and the view-transition pseudo-elements
+    (inheriting along their tree).
+- `::scroll-marker` and invalid arguments read an empty declaration. `::cue` and unknown
+  `-webkit-` / `-internal-` names read the element. Author `::-webkit-input-placeholder` /
+  `::-webkit-file-upload-button` rules apply as their standard names. Strings in `content`
+  serialize double-quoted on every pseudo-element.
+- Control: cases `pseudo-ua-forms` / `pseudo-ua` of `src/computed_defaults_chrome156.json`.
+  Chrome reuses the first unstyled highlight read's color for later elements, so those
+  colors are not compared.
+
+### Fixed — form control fonts in `getComputedStyle` (P5b-X6, miaskiewicz/turbo-dom#61, Chrome 156 control)
+- turbo-dom-browser-env: only `<button>` had Chrome's form-control UA font; `<input>`,
+  `<select>` and `<textarea>` reported the inherited font (`16px Times`, or the parent's).
+  They now compute html.css's `font: -webkit-small-control`: `13.3333px Arial` for every
+  input type and `<select>`, `13.3333px monospace` for `<textarea>` and the date / time /
+  datetime-local / month / week inputs. `<optgroup>` is `font-weight: bolder` and
+  `<option>` `normal`. Author rules (`font: inherit` too) win. Control: case
+  `form-control-fonts` of `src/computed_defaults_chrome156.json`.
+
+### Fixed — image size points, `srcset`/`<picture>`, binding DOMExceptions (P5b-X7, Chrome 156 controls)
+- The shared image probe follows Blink's load decision for cut-short bodies
+  (miaskiewicz/turbo-dom#59). `image::probe` and `image::probe_natural` size a JPEG from
+  the end of its first `SOS` header, a GIF from its first image descriptor's position and
+  size, a WebP only with its whole declared RIFF payload (a PNG, from its first `IDAT`
+  header, already did); before that the image is broken, so layout (and the PDF) does not
+  size it and a live `<img>` load errors. `svg::parse`, so every SVG path, rejects a root
+  that is not an SVG-namespace `<svg>` (no namespace, another namespace, an unbound
+  prefix, `<SVG>`, an `<html>` root) and gzip (`svgz`) streams, and the sniffs accept a
+  prefixed `<s:svg>` root, which Chrome renders. turbo-dom-raster decodes a PNG/JPEG/GIF/WebP
+  only when the probe sizes it and lays one whose pixels do not decode out at its size (the
+  placeholder): Chrome 156 loads the parity inputs `extra/images/png-truncated.png` and
+  `jpeg-corrupt.jpg` at 64x40, which the screenshot used to drop. Control:
+  `scripts/image-truncation-chrome-control.mjs` (every byte prefix of the
+  `scripts/make_truncation_fixtures.py` images).
+- turbo-dom-browser-env: DOMExceptions raised by the binding's JS modules are instances of
+  the realm's interface (miaskiewicz/turbo-surf#42). Twenty modules captured
+  `globalThis.DOMException` when they installed, so after turbo-surf installed its own
+  interface `img.decode()`'s `EncodingError` and others were not `instanceof DOMException`.
+  Every site now builds its exception when it is raised from the registered interface
+  (`register_dom_exception`, which `capture_window_event_interfaces` now also calls with
+  the host's installed `DOMException`; else the binding's own), through
+  `ts.DOMException` / `ts.realmDOMException()`. The same change stops the throw-time
+  `new g.DOMException(…)` sites from following a page script's reassignment of
+  `globalThis.DOMException` (miaskiewicz/turbo-dom#72, filed here). Control:
+  `src/dom_exception_realm_chrome156.json`.
+- turbo-dom-browser-env: `srcset` / `sizes` and `<picture>` source selection
+  (miaskiewicz/turbo-dom#71). HTMLImageElement `srcset` / `sizes` and HTMLSourceElement
+  `srcset` / `sizes` / `width` / `height` were missing, and source `media` / `type` turned
+  `null` into `""`. They now reflect like Chrome. The binding implements Chrome 156's source
+  selection: `<picture>` sources by `media` and `type`, `x` and `w` descriptors with the HTML
+  srcset parser, and `sizes` with media conditions and `calc()`. It is exposed to hosts as
+  `imageHost.selectSource(img, environment)` → `{url, density}` and
+  `imageHost.naturalSize(w, h, density)`. Without host state `currentSrc` is the selected
+  URL, which is Chrome's answer when nothing loads (before: the `src` attribute). The
+  `src`-only `currentSrc` is now parsed against the document base URL by a native resolver
+  even without an embedder URL global. Control: `src/html_image_srcset_chrome156.json`.
+- turbo-dom-browser-env: the reflected `src` / `href` getters parse the attribute against the
+  document base URL (miaskiewicz/turbo-dom#73, filed here). This covers img, script, iframe,
+  source, embed, input, video, audio, link, a and area. They used to resolve with the
+  embedder's `URL` global against the document URL, so a `<base href>` was ignored, the bare
+  binding returned the raw text, and an empty attribute gave `""` (Chrome gives the base URL).
+  They now go through the native resolver `ts.resolveDocumentURL` (WHATWG `url` crate).
+  `<base>.href` keeps resolving against the document URL. Control:
+  `src/reflected_urls_chrome156.json`. Filed, not fixed: turbo-dom#74 (no
+  `HTMLTrackElement` interface).
+- turbo-dom: a parser-created `is=` element stayed "undefined" (`:not(:defined)`) only
+  until native storage collection (miaskiewicz/turbo-surf#41). `Tree::collect_unreachable`
+  re-materializes the retained parsed nodes as new ones, and their creation-time state was
+  derived from the parse buffer's `is` attribute. turbo-surf collects at the first host
+  boundary after a V8 GC, so the first `eval` after `PageSession::open` read `:defined`. The
+  collection now records the state first. Reproduced through the binding
+  (`collect_native_storage` after `install_html` and a GC, then the
+  `custom_elements_defined_chrome156.json` probe).
 ### Fixed — turbo-dom-layout tables, clipping and box sizing (P5b-W5, miaskiewicz/turbo-dom#41/#51/#52/#55/#62/#63/#64/#65/#69/#70, Chrome 156 controls)
 Each fix is backed by a Chrome for Testing 156 control and lists the corpus outputs it
 changes in `tools/parity/expected/p5b-w5-turbo-dom-*.json`.
@@ -183,7 +356,7 @@ changes in `tools/parity/expected/p5b-w5-turbo-dom-*.json`.
   The prefix is the first part and the local name the second: `a:b:c` / `a:b:c:d` /
   `a:b:` create prefix `a`, local name `b`, qualified name `a:b`. An empty second part
   (`a::b`) throws `InvalidCharacterError`. The binding used to keep `b:c` as the local name.
-- Controls: `nsTwoColons` in `test/fixtures/dom_adoption_reactions_chrome156.json` and
+- Controls: `nsTwoColons` in `src/dom_adoption_reactions_chrome156.json` and
   section `names` of `src/dom_reactions_names_chrome156.json`.
 
 ### Fixed — custom element upgrades and reaction order (P5b-X5, miaskiewicz/turbo-dom#42, #43, Chrome 156 controls)
@@ -201,8 +374,7 @@ changes in `tools/parity/expected/p5b-w5-turbo-dom-*.json`.
   `insertAdjacentHTML`, `setHTMLUnsafe`, `createContextualFragment`) queues its elements'
   upgrades before the setter's removals queue `disconnectedCallback`s
   (`ctor r4, conn r4, disc r1, …`).
-- Controls: the npm runtime's `test/fixtures/dom_adoption_reactions_chrome156.json` (read
-  in place by `src/dom_reactions_tests.rs`) and the new
+- Controls: `src/dom_adoption_reactions_chrome156.json` (shared with the npm runtime) and the new
   `src/dom_reactions_names_{probe.js,cases.json,chrome156.json}` (fragment-parser setters).
 
 ### Fixed — custom element reactions in independent documents (P5b-X5, miaskiewicz/turbo-dom#54, Chrome 156 control)
@@ -325,8 +497,8 @@ changes in `tools/parity/expected/p5b-w5-turbo-dom-*.json`.
   constructed; SVG context lost; positions are case-insensitive; `NoModificationAllowedError`
   / `SyntaxError` like Chrome; turbo-dom#39). `replaceWith(…)` listing the node itself keeps
   it, and the node is removed before its replacements go in (turbo-dom#40).
-  Control: `test/fixtures/dom_adoption_reactions_chrome156.json` (probe + cases beside it,
-  recorded with `crates/turbo-dom-browser-env/scripts/select-element-chrome-control.mjs`),
+  Control: `crates/turbo-dom-browser-env/src/dom_adoption_reactions_chrome156.json` (probe +
+  cases beside it; under `test/fixtures/` until P5b-X6), recorded with `crates/turbo-dom-browser-env/scripts/select-element-chrome-control.mjs`),
   asserted by `test/dom-adoption-reactions-chrome.test.mjs` (the one deviation: the runtime's
   `HTMLElement` is `Element`, so `instanceof HTMLElement` is true for every element).
 
@@ -877,7 +1049,6 @@ turbo-dom-v8 and -browser-env.
   selector-list behavior. Add an independently captured, source-pinned Chrome155
   oracle and public Rust regressions for the native hidden-search-field defect.
 
-
 ### Added
 
 - Add `Tree::create_contextual_fragment_utf16(context, units, scripting_enabled)`
@@ -903,7 +1074,6 @@ turbo-dom-v8 and -browser-env.
   and import do not copy private state.
 - Charge custom state payload to storage collection budgets and reclaim it with
   unreachable nodes while keeping externally pinned states intact.
-
 
 ### Validation
 - Rust 1.99.0 passes 342 backend contracts and seven parser tests, all three

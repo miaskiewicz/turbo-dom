@@ -1,0 +1,200 @@
+{
+ "generator": "scripts/image-truncation-chrome-control.mjs",
+ "chrome": "156.0.8078.4",
+ "playwright_core": "1.61.0",
+ "images": [
+  {
+   "file": "alpha.webp",
+   "length": 160,
+   "natural": [
+    7,
+    6
+   ],
+   "loads": "EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEL"
+  },
+  {
+   "file": "animated.gif",
+   "length": 94,
+   "natural": [
+    6,
+    5
+   ],
+   "loads": "EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEELLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL"
+  },
+  {
+   "file": "animated.webp",
+   "length": 222,
+   "natural": [
+    7,
+    6
+   ],
+   "loads": "EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEL"
+  },
+  {
+   "file": "baseline.jpg",
+   "length": 309,
+   "natural": [
+    5,
+    4
+   ],
+   "loads": "EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEELLLLLLLLLLLLLLLLLLLL"
+  },
+  {
+   "file": "lossless.webp",
+   "length": 62,
+   "natural": [
+    7,
+    6
+   ],
+   "loads": "EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEL"
+  },
+  {
+   "file": "lossy.webp",
+   "length": 92,
+   "natural": [
+    7,
+    6
+   ],
+   "loads": "EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEL"
+  },
+  {
+   "file": "progressive.jpg",
+   "length": 546,
+   "natural": [
+    5,
+    4
+   ],
+   "loads": "EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEELLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL"
+  },
+  {
+   "file": "still.gif",
+   "length": 69,
+   "natural": [
+    6,
+    5
+   ],
+   "loads": "EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEELLLLLLLLLLLLLLLL"
+  },
+  {
+   "file": "still.png",
+   "length": 76,
+   "natural": [
+    3,
+    2
+   ],
+   "loads": "EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEELLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL"
+  }
+ ],
+ "svgs": [
+  {
+   "id": "svg-namespace",
+   "document": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"40\" height=\"30\"></svg>",
+   "event": "load",
+   "natural": [
+    40,
+    30
+   ],
+   "complete": true
+  },
+  {
+   "id": "svg-no-namespace",
+   "document": "<svg width=\"40\" height=\"30\"></svg>",
+   "event": "error",
+   "natural": [
+    0,
+    0
+   ],
+   "complete": true
+  },
+  {
+   "id": "svg-wrong-namespace",
+   "document": "<svg xmlns=\"http://example.com/svg\" width=\"40\" height=\"30\"></svg>",
+   "event": "error",
+   "natural": [
+    0,
+    0
+   ],
+   "complete": true
+  },
+  {
+   "id": "svg-prefixed",
+   "document": "<s:svg xmlns:s=\"http://www.w3.org/2000/svg\" width=\"40\" height=\"30\"></s:svg>",
+   "event": "load",
+   "natural": [
+    40,
+    30
+   ],
+   "complete": true
+  },
+  {
+   "id": "svg-prefix-unbound",
+   "document": "<s:svg width=\"40\" height=\"30\"></s:svg>",
+   "event": "error",
+   "natural": [
+    0,
+    0
+   ],
+   "complete": true
+  },
+  {
+   "id": "svg-prolog",
+   "document": "<?xml version=\"1.0\"?><!DOCTYPE svg><!-- c --><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"40\" height=\"30\"></svg>",
+   "event": "load",
+   "natural": [
+    40,
+    30
+   ],
+   "complete": true
+  },
+  {
+   "id": "svg-html-root",
+   "document": "<html xmlns=\"http://www.w3.org/1999/xhtml\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"40\" height=\"30\"></svg></html>",
+   "event": "error",
+   "natural": [
+    0,
+    0
+   ],
+   "complete": true
+  },
+  {
+   "id": "svg-namespaced-child-only",
+   "document": "<svg width=\"40\" height=\"30\"><g xmlns=\"http://www.w3.org/2000/svg\"></g></svg>",
+   "event": "error",
+   "natural": [
+    0,
+    0
+   ],
+   "complete": true
+  },
+  {
+   "id": "svg-malformed",
+   "document": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"40\" height=\"30\"><g></svg>",
+   "event": "error",
+   "natural": [
+    0,
+    0
+   ],
+   "complete": true
+  },
+  {
+   "id": "svg-uppercase",
+   "document": "<SVG xmlns=\"http://www.w3.org/2000/svg\" width=\"40\" height=\"30\"></SVG>",
+   "event": "error",
+   "natural": [
+    0,
+    0
+   ],
+   "complete": true
+  },
+  {
+   "id": "svgz",
+   "document": "gzip(<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"40\" height=\"30\"></svg>)",
+   "event": "error",
+   "natural": [
+    0,
+    0
+   ],
+   "complete": true
+  }
+ ]
+}
