@@ -24,6 +24,7 @@ mod avif;
 mod canvas_ops;
 mod glyph;
 mod image_paint;
+mod jxl;
 mod paint_canvas;
 #[cfg(all(target_os = "macos", feature = "coretext"))]
 mod paint_canvas_coretext;
