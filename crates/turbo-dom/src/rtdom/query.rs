@@ -1342,12 +1342,12 @@ impl Navigator for LiveNavigator<'_> {
     fn type_name(&self, h: Handle) -> Option<&str> {
         self.0.local_name_scalar(h)
     }
+    // `:root` is the document element only: never the top of a fragment, a shadow tree,
+    // template content or a detached subtree (Chrome; P5b, miaskiewicz/turbo-dom#18)
     fn is_root(&self, h: Handle) -> bool {
-        match self.0.parent(h) {
-            None => true,
-            // parent is the document/root container, not an element
-            Some(p) => self.0.node_type(p) != NodeType::Element,
-        }
+        self.0
+            .parent(h)
+            .is_some_and(|p| self.0.node_type(p) == NodeType::Document)
     }
     // :empty — no element child and no non-empty text child (Chrome). Comments,
     // processing instructions, empty text nodes and a <template>'s content
@@ -2486,8 +2486,8 @@ mod tests {
         assert!(tree.matches(orphan, "p:first-child"));
         assert!(tree.matches(orphan, "p:last-child"));
         assert!(tree.matches(orphan, "p:only-child"));
-        // :root true via parent()==None
-        assert!(tree.matches(orphan, ":root"));
+        // :root is the document element only (P5b, Chrome): never a detached element
+        assert!(!tree.matches(orphan, ":root"));
         // child combinator whose left side needs a parent that doesn't exist → false
         assert!(!tree.matches(orphan, "div > p"));
     }

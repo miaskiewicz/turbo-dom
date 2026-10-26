@@ -30,7 +30,7 @@ const FIXTURE: &str = include_str!("fixtures/cascade_selectors_chrome156.json");
 
 /// P5b items (the fixture's `bug` / `class` / probe ids) not fixed yet: recorded in the
 /// fixture, skipped by the assertions until the fixing commit removes them here.
-const OPEN: &[&str] = &["template", "root", "cascade-comma"];
+const OPEN: &[&str] = &["cascade-comma"];
 
 fn open(item: &str) -> bool {
     OPEN.contains(&item)

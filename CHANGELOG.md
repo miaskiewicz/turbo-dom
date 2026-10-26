@@ -60,6 +60,9 @@ outputs it changes in `tools/parity/expected/p5b-*.json`.
   across it (`template p` is false for a `<p>` in the content), as in Chrome. Querying from
   the content fragment itself still finds its nodes. Consequence: a `<style>` inside
   template content no longer styles the document in `rtdom::cascade`.
+- `:root` (miaskiewicz/turbo-dom#18) matches the document element only — no longer the
+  top element of a document fragment, a shadow tree, template content or a detached
+  subtree (Chrome).
 
 ## [0.6.0] — turbo-dom consolidation
 
