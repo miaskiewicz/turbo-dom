@@ -69,3 +69,4 @@ function check(item) {
 }
 
 test('turbo-dom#29 item 1: createElementNS in any namespace matches Chrome 156', () => check(1));
+test('turbo-dom#29 item 2: insertion across documents adopts like Chrome 156', () => check(2));

@@ -19,6 +19,14 @@ at the time); this file reconstructs them from history.
   `getElementsByTagName` matches non-HTML elements by their exact qualified name
   (`getElementsByTagName('foreignObject')` found nothing), and the serializer writes other
   namespaces' qualified names and treats only HTML elements as void / `<template>`.
+- Inserting a node from another document (`insertBefore` / `appendChild` / `append` /
+  `replaceChild`, fragments' children too) adopts it, as `adoptNode` does: its subtree reads
+  its own attributes and children instead of the new document's buffer (an un-inflated
+  subtree used to read garbage — wrong attributes, other documents' nodes), the old document
+  stops reporting it (its version is bumped), and `adoptedCallback` runs. DOM versions now
+  come from one process-wide counter, so an adopted node can never hit a cache entry keyed
+  on its old document's version. A custom element moved into a document without a registry
+  keeps its connected / disconnected callbacks there.
   Control: `test/fixtures/dom_adoption_reactions_chrome156.json` (probe + cases beside it,
   recorded with `crates/turbo-dom-browser-env/scripts/select-element-chrome-control.mjs`),
   asserted by `test/dom-adoption-reactions-chrome.test.mjs` (the one deviation: the runtime's

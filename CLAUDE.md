@@ -310,8 +310,12 @@ Latest (darwin-arm64, Node 24, `npm run bench:all`), vs jsdom / happy-dom:
 - **Cache invalidation = Document.__version.** EVERY mutation must bump it: notifyMutation
   bumps it unconditionally (insert/remove/setAttribute), and __touch() covers direct __kids
   rewrites (innerHTML/textContent/replaceChildren). If you add a new mutation path that
-  bypasses these, bump __version or queries go stale. Covered by
-  test/liveness.test.mjs "query/getElementById caches invalidate on mutation".
+  bypasses these, bump __version (call `__touch()`; never `+ 1` by hand) or queries go stale.
+  Version values come from ONE process-wide counter (`VERSION` in dom.mjs), so a node adopted
+  into another document can never match a cache entry keyed on its old document's version;
+  cross-document insertion adopts (`adopt()`: re-home, bump the old document). Covered by
+  test/liveness.test.mjs "query/getElementById caches invalidate on mutation" and
+  test/adoption.test.mjs.
 - `getByLabelText` was O(n²) (element.labels → getElementsByTagName('label') per element);
   the caches took it 1342→~270µs.
 Numbers in README.md — refresh both (bench against jsdom AND happy-dom) if you touch hot paths.

@@ -228,6 +228,26 @@
     mark('other-createElement');
     out.otherCreate = other.createElement('x-r').matches(':defined');
   });
+  // ---- pre-existing bugs found on the way (each filed as its own turbo-dom issue) --------
+  section('extra', () => {
+    // insertBefore(node, node): the reference child becomes node's next sibling (no throw)
+    const list = document.createElement('ol');
+    list.append(document.createElement('li'), document.createElement('li'), document.createElement('li'));
+    const middle = list.children[1];
+    middle.id = 'middle';
+    out.insertSelf = [errName(() => list.insertBefore(middle, middle)), list.children[1] === middle,
+      errName(() => list.replaceChild(middle, middle)), list.children.length, list.children[1] === middle];
+    // a doctype clone keeps its name and ids
+    const doctype = document.implementation.createDocumentType('svg', '-//W3C//DTD SVG 1.1//EN', 'urn:dtd');
+    const copy = doctype.cloneNode();
+    out.doctypeClone = [copy.name, copy.publicId, copy.systemId, document.doctype.cloneNode().name];
+    // only HTML elements serialize as void
+    const foreign = document.createElementNS('urn:x', 'br');
+    foreign.append('x');
+    const wrap = document.createElement('div');
+    wrap.append(foreign);
+    out.foreignVoid = wrap.innerHTML;
+  });
   mark('end');
   host.textContent = '';
   out.log = log;

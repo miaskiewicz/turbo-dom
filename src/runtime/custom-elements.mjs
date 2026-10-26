@@ -91,7 +91,7 @@ export function setCustomElementState(el, state) {
   el.__ce = state;
   if (before === state) return false;
   const doc = el.ownerDocument;
-  if (doc) doc.__version = (doc.__version || 0) + 1;
+  if (doc) doc.__touch();
   return true;
 }
 
@@ -137,7 +137,8 @@ function definitionOf(el) {
 function callback(el, def, name, args) {
   const fn = def[name];
   if (fn === undefined) return;
-  try { fn.apply(el, args); } catch (error) { report(el.ownerDocument, error); }
+  // reported in the definition's window (the element may have moved to another document)
+  try { fn.apply(el, args); } catch (error) { report(def.registry.document, error); }
 }
 
 // HTML "upgrade an element": run the definition's constructor on the existing element.
@@ -244,12 +245,14 @@ export function clonedElement(source, copy) {
   if (active(copy.ownerDocument)) tryUpgrade(copy);
 }
 
-// `node` was inserted: connectedCallback for custom elements, try to upgrade the others.
+// `node` was inserted: connectedCallback for custom elements (in any document — one adopted
+// into a document without a registry stays custom), try to upgrade the others.
 export function insertedNode(node) {
-  if (!active(node.ownerDocument) || !node.isConnected) return;
+  if (!node.isConnected) return;
+  const upgrades = active(node.ownerDocument) !== null;
   eachElement(node, (el) => {
     if (el.__ce === CUSTOM) { if (el.__ceDef) callback(el, el.__ceDef, 'connectedCallback', []); }
-    else tryUpgrade(el);
+    else if (upgrades) tryUpgrade(el);
   });
 }
 
@@ -262,7 +265,6 @@ export function parsedFragment(nodes) {
 
 // `node` was removed from a connected tree: disconnectedCallback for custom elements.
 export function removedNode(node) {
-  if (!active(node.ownerDocument)) return;
   eachElement(node, (el) => { if (el.__ce === CUSTOM && el.__ceDef) callback(el, el.__ceDef, 'disconnectedCallback', []); });
 }
 

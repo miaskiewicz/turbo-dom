@@ -63,6 +63,11 @@ import {
   attributeChanged, adoptedNode, freezeParsedIs, parsedIsAttribute,
 } from './custom-elements.mjs';
 
+// DOM versions come from ONE process-wide counter, so a version value is never reused by
+// another document: a node adopted into another document cannot hit a cache entry (keyed on
+// its old document's version) by coincidence (miaskiewicz/turbo-dom#29 item 2).
+let VERSION = 0;
+
 export const ELEMENT_NODE = 1;
 export const TEXT_NODE = 3;
 export const COMMENT_NODE = 8;
@@ -200,9 +205,10 @@ export class Node extends EventTarget {
     const kids = this.__children();
     const i = ref ? kids.indexOf(ref) : -1;
     if (ref && i === -1) throw new Error('NotFoundError: ref is not a child');
+    // a node from another document is adopted first (DOM "insert" step 7.1)
+    if (node.ownerDocument !== this.ownerDocument) adopt(node, this.ownerDocument);
     if (ref) kids.splice(i, 0, node); else kids.push(node);
     node.parentNode = this;
-    node.ownerDocument = this.ownerDocument;
     notifyMutation(this, 'childList', node, null, ref || null);
     // custom elements (custom-elements.mjs): upgrades + connectedCallback, only once a
     // registry exists — one predicted-false read otherwise
@@ -335,7 +341,7 @@ export class Node extends EventTarget {
   // bump the document version so getElementsBy* caches invalidate after direct
   // __kids reassignments (innerHTML/textContent/replaceChildren) that bypass
   // insertBefore/removeChild.
-  __touch() { const d = this.ownerDocument; if (d) d.__version = (d.__version || 0) + 1; }
+  __touch() { const d = this.ownerDocument; if (d) d.__version = ++VERSION; }
 
   // Clear the outgoing children's parentNode before a wholesale `__kids = []` rewrite
   // (innerHTML/textContent/replaceChildren) — removeChild does this one at a time, these
@@ -1597,6 +1603,8 @@ function makeDataset(el) {
 // own (old) buffer before being re-homed.
 function adoptInto(node, doc) {
   if (node.ownerDocument === doc) return;
+  const old = node.ownerDocument;
+  if (node.__idx >= 0) old.__cache[node.__idx] = undefined; // the old document no longer holds it
   if (node.nodeType === ELEMENT_NODE) {
     if (node.__attrs === undefined && node.__attrIdx >= 0) node.__attrs = node.__buildAttrs();
     if (node.__attrIdx >= 0 && node.__ns === '') freezeParsedIs(node); // the parser's `is` outlives the buffer link
@@ -1606,6 +1614,21 @@ function adoptInto(node, doc) {
   node.__idx = -1;
   node.ownerDocument = doc;
   for (const c of kids) adoptInto(c, doc);
+}
+
+// DOM "adopt" (after the node left its old parent): re-home the subtree, bump the old
+// document's version (its caches must not keep reporting the node), and run the custom
+// element adoption hooks when either document has them armed. A custom element adopted
+// into a document without a registry arms that document's hooks (`__ceRegistry = null`:
+// no definitions, but its custom elements still get connected / disconnected callbacks).
+function adopt(node, doc) {
+  const old = node.ownerDocument;
+  adoptInto(node, doc);
+  old.__version = ++VERSION;
+  if (old.__ceRegistry !== undefined || doc.__ceRegistry !== undefined) {
+    if (doc.__ceRegistry === undefined) doc.__ceRegistry = null;
+    adoptedNode(node, old, doc);
+  }
 }
 
 // --- MutationObserver, wired to the mutation methods above via notifyMutation ---
@@ -1625,7 +1648,7 @@ function notifyMutation(target, type, added, removed, nextSibling, attributeName
   if (!doc) return;
   // bump the DOM version on every structural/attribute mutation — invalidates
   // the document's getElementsBy* caches. Unconditional (independent of observers).
-  doc.__version = (doc.__version || 0) + 1;
+  doc.__version = ++VERSION;
   if (type === 'attributes' && doc.__ceRegistry !== undefined) attributeChanged(target, attributeName, oldValue);
   const mo = doc.__mo;
   if (!mo || mo.length === 0) return;
@@ -1791,7 +1814,7 @@ export class Document extends Node {
     this.__active = null;
     this.__mo = [];          // drop observers
     this.__moPending = null;
-    this.__version = (this.__version || 0) + 1; // invalidate getElementsBy* caches
+    this.__version = ++VERSION; // invalidate getElementsBy* caches
     this.__tagCache = null;
     this.__classCache = null;
     this.__ceRegistry = undefined; // the window's globals (customElements) reset with the document
@@ -1868,9 +1891,7 @@ export class Document extends Node {
   importNode(node, deep) { return node.cloneNode(deep); }
   adoptNode(node) {
     if (node.parentNode) node.parentNode.removeChild(node);
-    const old = node.ownerDocument;
-    adoptInto(node, this);
-    if (old !== this && (this.__ceRegistry !== undefined || (old && old.__ceRegistry !== undefined))) adoptedNode(node, old, this);
+    if (node.ownerDocument !== this) adopt(node, this);
     return node;
   }
 

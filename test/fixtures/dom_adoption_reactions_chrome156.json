@@ -2,7 +2,7 @@
   "browser": "Chrome/156.0.8078.4",
   "v8": "15.6.75",
   "casesSha256": "6390d35780d5d7b9012578c76f9409a521ab1d3837b428e045089c5611fc3f07",
-  "probeSha256": "d9e1e678b0ed16926938478ffc08327d1e40d8ebc8409e0656068cb087ae6cee",
+  "probeSha256": "31d70dd541687e9f73f8444d2fd32cd737b691fb4244055fa2e730db7a462893",
   "collectorSha256": "7174415de76a891d657bbc3e66952c7b91356030e8fcd9d0ac4f52603d0c3952",
   "flags": [
     "--headless=new",
@@ -305,6 +305,20 @@
           false
         ],
         "otherCreate": false,
+        "insertSelf": [
+          "ok",
+          true,
+          "ok",
+          3,
+          true
+        ],
+        "doctypeClone": [
+          "svg",
+          "-//W3C//DTD SVG 1.1//EN",
+          "urn:dtd",
+          "html"
+        ],
+        "foreignVoid": "<br>x</br>",
         "log": [
           [
             "--",
