@@ -68,3 +68,4 @@ verbatim h2p:LICENSE crates/turbo-dom-layout/LICENSE
 verbatim surf:rust/crates/turbo-surf-raster/src crates/turbo-dom-raster/src
 verbatim surf:rust/crates/turbo-surf-raster/tests crates/turbo-dom-raster/tests
 verbatim surf:rust/crates/turbo-surf-raster/LICENSE crates/turbo-dom-raster/LICENSE
+verbatim h2p:crates/turbo-html2pdf-core/examples/font_startup.rs crates/turbo-dom-layout/examples/font_startup.rs
