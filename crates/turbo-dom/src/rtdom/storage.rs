@@ -279,6 +279,8 @@ impl Tree {
                 return Err(CollectionError::BudgetExceeded);
             }
         }
+        // The parse buffer goes away: keep the creation-time custom element state it implies.
+        self.record_parsed_states(retained.iter().copied());
         let mut nodes = FxHashMap::default();
         let mut parents = Overlay::collected();
         let mut children = Overlay::collected();

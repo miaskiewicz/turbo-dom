@@ -33,6 +33,14 @@ at the time); this file reconstructs them from history.
   `new g.DOMException(…)` sites from following a page script's reassignment of
   `globalThis.DOMException` (miaskiewicz/turbo-dom#72, filed here). Control:
   `src/dom_exception_realm_chrome156.json`.
+- turbo-dom: a parser-created `is=` element stayed "undefined" (`:not(:defined)`) only
+  until native storage collection (miaskiewicz/turbo-surf#41). `Tree::collect_unreachable`
+  re-materializes the retained parsed nodes as new ones, and their creation-time state was
+  derived from the parse buffer's `is` attribute. turbo-surf collects at the first host
+  boundary after a V8 GC, so the first `eval` after `PageSession::open` read `:defined`. The
+  collection now records the state first. Reproduced through the binding
+  (`collect_native_storage` after `install_html` and a GC, then the
+  `custom_elements_defined_chrome156.json` probe).
 
 ### Fixed — raster `<img>` handling, AVIF orientation (P5b-W4, Chrome 156 controls)
 - `turbo-dom-raster` paints an `<img src="data:…">` from its own URL

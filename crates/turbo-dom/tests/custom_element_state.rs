@@ -161,7 +161,6 @@ fn embedder_reports_override_and_invalidate_caches() {
 /// `custom_elements_defined_chrome156.json`, the binding's `before` snapshot), an `is`
 /// attribute set later still changes nothing.
 #[test]
-#[ignore = "turbo-surf#41: fails until the fix"]
 fn parsed_is_state_survives_storage_collection() {
     let mut tree = Tree::parse(
         "<body><button id=b is=x-b></button><div id=d is=x-d></div><p id=e is></p>\

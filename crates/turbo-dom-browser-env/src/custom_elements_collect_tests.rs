@@ -21,7 +21,6 @@ fn eval(scope: &mut v8::PinScope, source: &str) -> String {
 }
 
 #[test]
-#[ignore = "turbo-surf#41: fails until the fix"]
 fn defined_matches_chrome156_after_native_storage_collection() {
     let control: serde_json::Value = serde_json::from_str(CONTROL).unwrap();
     let cases: serde_json::Value = serde_json::from_slice(CASES).unwrap();
