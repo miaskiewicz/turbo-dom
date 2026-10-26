@@ -1378,6 +1378,50 @@ fn new_dom_exception<'s>(
         .and_then(|value| v8::Local::<v8::Function>::try_from(value).ok())?;
     constructor.new_instance(scope, &[text.into(), name.into()])
 }
+/// The native half of the binding's `ts.realmDOMException()`: the current realm's registered
+/// DOMException interface (an embedder's [`register_dom_exception`], else the binding's own,
+/// recorded at install), or `undefined` before the bootstrap recorded it. The binding's JS
+/// modules resolve every exception they raise through it when they raise it
+/// (miaskiewicz/turbo-surf#42, miaskiewicz/turbo-dom#72).
+fn native_realm_dom_exception(
+    scope: &mut v8::PinScope,
+    _args: v8::FunctionCallbackArguments,
+    mut rv: v8::ReturnValue,
+) {
+    let global = scope.get_current_context().global(scope);
+    let key = dom_exception_key(scope);
+    if let Some(constructor) = global.get_private(scope, key) {
+        rv.set(constructor);
+    }
+}
+/// The binding's document-base URL resolver, `ts.resolveDocumentURL` (miaskiewicz/turbo-dom#71
+/// srcset candidates and `currentSrc`, #73 the reflected `src` / `href` getters): `url` (argument 1) parsed against the base URL of the document of `node`
+/// (argument 0) — its first connected `<base href>` resolved against the document URL, else
+/// the document URL — or `url` unchanged when it does not parse.
+fn native_resolve_document_url(
+    scope: &mut v8::PinScope,
+    args: v8::FunctionCallbackArguments,
+    mut rv: v8::ReturnValue,
+) {
+    let Ok(node) = v8::Local::<v8::Object>::try_from(args.get(0)) else {
+        return;
+    };
+    let raw = args.get(1).to_rust_string_lossy(scope);
+    let base_href = form_submission_base_href(scope, node);
+    let _dom = DomScope::for_object(scope, node);
+    let value = url::Url::parse(&event_handlers::document_url())
+        .ok()
+        .map(|document| {
+            base_href
+                .and_then(|base| document.join(&base).ok())
+                .unwrap_or(document)
+        })
+        .and_then(|base| base.join(&raw).ok())
+        .map_or(raw, |url| url.to_string());
+    if let Some(value) = v8::String::new(scope, &value) {
+        rv.set(value.into());
+    }
+}
 fn dom_exception_key<'s>(scope: &mut v8::PinScope<'s, '_>) -> v8::Local<'s, v8::Private> {
     let name = v8::String::new(scope, "turbo.native.DOMException").unwrap();
     v8::Private::for_api(scope, Some(name))
@@ -7424,6 +7468,18 @@ fn install_with_tree(scope: &mut v8::PinScope, mut tree: Tree) {
     css_policy::register(scope);
     event_handlers::register(scope);
     bind_method(scope, global, "__checkedNative", form_checked_native);
+    bind_method(
+        scope,
+        global,
+        "__nativeRealmDOMException",
+        native_realm_dom_exception,
+    );
+    bind_method(
+        scope,
+        global,
+        "__nativeResolveDocumentURL",
+        native_resolve_document_url,
+    );
     run_js(scope, BOOTSTRAP);
     trusted_types::install(scope);
     script_state::install_text(scope);
@@ -9850,6 +9906,22 @@ mod css_live_tests;
 #[cfg(test)]
 #[path = "dom_projection_tests.rs"]
 mod dom_projection_tests;
+
+#[cfg(test)]
+#[path = "dom_exception_realm_tests.rs"]
+mod dom_exception_realm_tests;
+
+#[cfg(test)]
+#[path = "custom_elements_collect_tests.rs"]
+mod custom_elements_collect_tests;
+
+#[cfg(test)]
+#[path = "html_image_srcset_tests.rs"]
+mod html_image_srcset_tests;
+
+#[cfg(test)]
+#[path = "reflected_urls_tests.rs"]
+mod reflected_urls_tests;
 
 #[cfg(test)]
 #[path = "css_adoption_tests.rs"]

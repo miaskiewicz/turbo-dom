@@ -126,6 +126,61 @@ at the time); this file reconstructs them from history.
   `<option>` `normal`. Author rules (`font: inherit` too) win. Control: case
   `form-control-fonts` of `src/computed_defaults_chrome156.json`.
 
+
+### Fixed — image size points, `srcset`/`<picture>`, binding DOMExceptions (P5b-X7, Chrome 156 controls)
+- The shared image probe follows Blink's load decision for cut-short bodies
+  (miaskiewicz/turbo-dom#59). `image::probe` and `image::probe_natural` size a JPEG from
+  the end of its first `SOS` header, a GIF from its first image descriptor's position and
+  size, a WebP only with its whole declared RIFF payload (a PNG, from its first `IDAT`
+  header, already did); before that the image is broken, so layout (and the PDF) does not
+  size it and a live `<img>` load errors. `svg::parse`, so every SVG path, rejects a root
+  that is not an SVG-namespace `<svg>` (no namespace, another namespace, an unbound
+  prefix, `<SVG>`, an `<html>` root) and gzip (`svgz`) streams, and the sniffs accept a
+  prefixed `<s:svg>` root, which Chrome renders. turbo-dom-raster decodes a PNG/JPEG/GIF/WebP
+  only when the probe sizes it and lays one whose pixels do not decode out at its size (the
+  placeholder): Chrome 156 loads the parity inputs `extra/images/png-truncated.png` and
+  `jpeg-corrupt.jpg` at 64x40, which the screenshot used to drop. Control:
+  `scripts/image-truncation-chrome-control.mjs` (every byte prefix of the
+  `scripts/make_truncation_fixtures.py` images).
+- turbo-dom-browser-env: DOMExceptions raised by the binding's JS modules are instances of
+  the realm's interface (miaskiewicz/turbo-surf#42). Twenty modules captured
+  `globalThis.DOMException` when they installed, so after turbo-surf installed its own
+  interface `img.decode()`'s `EncodingError` and others were not `instanceof DOMException`.
+  Every site now builds its exception when it is raised from the registered interface
+  (`register_dom_exception`, which `capture_window_event_interfaces` now also calls with
+  the host's installed `DOMException`; else the binding's own), through
+  `ts.DOMException` / `ts.realmDOMException()`. The same change stops the throw-time
+  `new g.DOMException(…)` sites from following a page script's reassignment of
+  `globalThis.DOMException` (miaskiewicz/turbo-dom#72, filed here). Control:
+  `src/dom_exception_realm_chrome156.json`.
+- turbo-dom-browser-env: `srcset` / `sizes` and `<picture>` source selection
+  (miaskiewicz/turbo-dom#71). HTMLImageElement `srcset` / `sizes` and HTMLSourceElement
+  `srcset` / `sizes` / `width` / `height` were missing, and source `media` / `type` turned
+  `null` into `""`. They now reflect like Chrome. The binding implements Chrome 156's source
+  selection: `<picture>` sources by `media` and `type`, `x` and `w` descriptors with the HTML
+  srcset parser, and `sizes` with media conditions and `calc()`. It is exposed to hosts as
+  `imageHost.selectSource(img, environment)` → `{url, density}` and
+  `imageHost.naturalSize(w, h, density)`. Without host state `currentSrc` is the selected
+  URL, which is Chrome's answer when nothing loads (before: the `src` attribute). The
+  `src`-only `currentSrc` is now parsed against the document base URL by a native resolver
+  even without an embedder URL global. Control: `src/html_image_srcset_chrome156.json`.
+- turbo-dom-browser-env: the reflected `src` / `href` getters parse the attribute against the
+  document base URL (miaskiewicz/turbo-dom#73, filed here). This covers img, script, iframe,
+  source, embed, input, video, audio, link, a and area. They used to resolve with the
+  embedder's `URL` global against the document URL, so a `<base href>` was ignored, the bare
+  binding returned the raw text, and an empty attribute gave `""` (Chrome gives the base URL).
+  They now go through the native resolver `ts.resolveDocumentURL` (WHATWG `url` crate).
+  `<base>.href` keeps resolving against the document URL. Control:
+  `src/reflected_urls_chrome156.json`. Filed, not fixed: turbo-dom#74 (no
+  `HTMLTrackElement` interface).
+- turbo-dom: a parser-created `is=` element stayed "undefined" (`:not(:defined)`) only
+  until native storage collection (miaskiewicz/turbo-surf#41). `Tree::collect_unreachable`
+  re-materializes the retained parsed nodes as new ones, and their creation-time state was
+  derived from the parse buffer's `is` attribute. turbo-surf collects at the first host
+  boundary after a V8 GC, so the first `eval` after `PageSession::open` read `:defined`. The
+  collection now records the state first. Reproduced through the binding
+  (`collect_native_storage` after `install_html` and a GC, then the
+  `custom_elements_defined_chrome156.json` probe).
 ### Fixed — turbo-dom-layout tables, clipping and box sizing (P5b-W5, miaskiewicz/turbo-dom#41/#51/#52/#55/#62/#63/#64/#65/#69/#70, Chrome 156 controls)
 Each fix is backed by a Chrome for Testing 156 control and lists the corpus outputs it
 changes in `tools/parity/expected/p5b-w5-turbo-dom-*.json`.

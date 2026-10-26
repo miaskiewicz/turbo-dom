@@ -116,7 +116,17 @@ fn lay_out(html: &str) -> Result<Fragment, RenderError> {
   300x150 default-object rules) and `decode_data_url` the Fetch-standard `data:` decoder
   (base64 and percent-encoded) — the API a live `<img>` load uses
   (miaskiewicz/turbo-surf#30); Chrome-controlled by `tests/image_formats_chrome.rs`
-  (`scripts/image-formats-chrome-control.mjs`, `scripts/make_format_fixtures.py`).
+  (`scripts/image-formats-chrome-control.mjs`, `scripts/make_format_fixtures.py`). Both
+  probes follow Blink's load decision for a cut-short body (miaskiewicz/turbo-dom#59): a
+  JPEG is sized from the end of its first `SOS` header, a GIF from its first image
+  descriptor's position and size, a WebP only with its whole declared RIFF payload, a PNG
+  from its first `IDAT` header — before that the image is broken (no box size, no natural
+  size). An SVG image (`svg::parse`, so every SVG path) needs an SVG-namespace `<svg>` root
+  (any prefix; XML, so case-sensitive) and is never gzip-inflated. Chrome-controlled at every
+  byte prefix by `tests/image_truncation_chrome.rs` (`scripts/image-truncation-chrome-control.mjs`,
+  fixtures from `scripts/make_truncation_fixtures.py`). Chrome decides SVG by MIME type
+  (`image/svg+xml` only, never sniffed); the probes take bytes only, so a host with the
+  response type (turbo-surf) applies that rule itself.
 - `FontRegistry::system(SystemFontPolicy)` — the process-wide installed-font registry, loaded
   once per policy (`Default` = `load_system_fonts`, `Html` = `load_system_fonts_for_html`);
   `system_cell` exposes the `OnceLock` for embedders that warm it themselves.

@@ -9,7 +9,7 @@
   'use strict';
   const Native = globalThis.__activationNative; delete globalThis.__activationNative;
   const g = globalThis, ns = g[Symbol.for('ts')], make = ns.makeNativeFunction;
-  const apply = Reflect.apply, define = Object.defineProperty, ErrorType = TypeError, Exception = g.DOMException;
+  const apply = Reflect.apply, define = Object.defineProperty, ErrorType = TypeError, Exception = g[Symbol.for('ts')].DOMException;
   const PromiseType = Promise, reject = Promise.reject.bind(Promise), StringValue = String;
   const TRANSIENT = 0, CONSUME = 1, CROSS_ORIGIN = 4, FULLSCREEN = 5;
   const HTML = 'http://www.w3.org/1999/xhtml', SVG = 'http://www.w3.org/2000/svg';

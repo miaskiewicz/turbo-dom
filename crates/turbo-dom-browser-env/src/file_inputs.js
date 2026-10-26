@@ -9,7 +9,7 @@
   const native = g.__fileInputNative; delete g.__fileInputNative;
   const apply = Reflect.apply, construct = Reflect.construct, define = Object.defineProperty, create = Object.create;
   const freeze = Object.freeze, describe = Object.getOwnPropertyDescriptor, hasOwn = Object.prototype.hasOwnProperty;
-  const StringValue = String, NumberValue = Number, TypeErrorValue = TypeError, Exception = g.DOMException;
+  const StringValue = String, NumberValue = Number, TypeErrorValue = TypeError, Exception = g[Symbol.for('ts')].DOMException;
   const PromiseValue = Promise, resolve = Promise.resolve, values = Array.prototype.values;
   const replaceText = String.prototype.replace, charCode = String.prototype.charCodeAt, split = String.prototype.split;
   const startsWith = String.prototype.startsWith, getAttribute = Element.prototype.getAttribute;

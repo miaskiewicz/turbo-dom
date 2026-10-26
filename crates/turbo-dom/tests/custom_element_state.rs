@@ -154,3 +154,40 @@ fn embedder_reports_override_and_invalidate_caches() {
     assert_eq!(tree.custom_element_state(a), CustomElementState::Custom);
     assert_eq!(tree.custom_element_state(f), CustomElementState::Failed);
 }
+
+/// miaskiewicz/turbo-surf#41: storage collection re-materializes the retained parsed nodes,
+/// so a parser-created element's creation-time state must not depend on the parse buffer it
+/// came from: an `is` element the parser created stays "undefined" (Chrome 156:
+/// `custom_elements_defined_chrome156.json`, the binding's `before` snapshot), an `is`
+/// attribute set later still changes nothing.
+#[test]
+fn parsed_is_state_survives_storage_collection() {
+    let mut tree = Tree::parse(
+        "<body><button id=b is=x-b></button><div id=d is=x-d></div><p id=e is></p>\
+         <x-a id=a></x-a><div id=plain></div><div id=later></div></body>",
+    );
+    let later = id(&tree, "later");
+    tree.set_attribute(later, "is", "x-later");
+    let before: Vec<_> = ["b", "d", "e", "a", "plain", "later"]
+        .iter()
+        .map(|name| tree.custom_element_state(id(&tree, name)))
+        .collect();
+    tree.collect_unreachable(
+        &[],
+        CollectionBudget {
+            max_nodes: 1000,
+            max_edges: 1000,
+            max_payload_bytes: 100_000,
+        },
+    )
+    .unwrap();
+    let after: Vec<_> = ["b", "d", "e", "a", "plain", "later"]
+        .iter()
+        .map(|name| tree.custom_element_state(id(&tree, name)))
+        .collect();
+    assert_eq!(after, before);
+    for name in ["b", "d", "e", "a"] {
+        assert!(!defined(&tree, id(&tree, name)), "{name}");
+    }
+    assert!(defined(&tree, id(&tree, "later")));
+}
