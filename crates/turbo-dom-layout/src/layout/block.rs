@@ -1180,12 +1180,13 @@ fn leading_margin(lb: &LayoutBox, bs: &BoxStyle, cw: f32, fs: f32) -> f32 {
     m
 }
 
+/// Whether a block's last in-flow child's bottom margin collapses through its bottom
+/// edge (CSS 2.2 §8.3.1): a collapsing block container (no own formatting context)
+/// with no bottom border or padding and an automatic height — on every layout policy
+/// (miaskiewicz/turbo-dom#41; the generic / PDF one used to drop the margin).
 fn bottom_margins_collapse_through(lb: &LayoutBox, bs: &BoxStyle) -> bool {
     let open_edge = bs.border.widths().bottom == 0.0 && bs.padding.bottom == 0.0;
-    lb.uses_html_font_metrics()
-        && collapsing_block_container(lb, bs)
-        && open_edge
-        && automatic_min_height(bs)
+    collapsing_block_container(lb, bs) && open_edge && automatic_min_height(bs)
 }
 fn automatic_min_height(bs: &BoxStyle) -> bool {
     bs.height == LengthPct::Auto && zero_min_height(bs.min_height)
@@ -1764,30 +1765,21 @@ fn reanchor_right_float(f: &mut Fragment, kbs: &BoxStyle, rx: f32, rw: f32, w: f
 fn layout_content(
     lb: &LayoutBox,
     bs: &BoxStyle,
-    cx: f32,
-    cy: f32,
-    cw: f32,
+    (cx, cy, cw): (f32, f32, f32),
+    bfc: bool,
     ctx: &mut Ctx,
 ) -> (Vec<Fragment>, f32) {
     match &lb.kind {
         BoxKind::Block(kids) => {
             // When this box lets its first child's top margin collapse through, that
             // leading margin is applied by THIS box's own caller (via `leading_margin`)
-            // — so suppress it inside to avoid double-counting.
-            let suppress_first = top_margins_collapse_through(lb, bs);
-            layout_block_flow(
-                kids,
-                cx,
-                cy,
-                cw,
-                bs,
-                ctx,
-                (
-                    suppress_first,
-                    lb.document_root()
-                        || ctx.html_font_metrics && !bottom_margins_collapse_through(lb, bs),
-                ),
-            )
+            // — so suppress it inside to avoid double-counting. A box that establishes a
+            // formatting context (`bfc`, also a flex item or table cell) keeps its
+            // children's margins inside, as does one whose last child's bottom margin
+            // cannot collapse through it (miaskiewicz/turbo-dom#41).
+            let suppress_first = !bfc && top_margins_collapse_through(lb, bs);
+            let keep_last = lb.document_root() || bfc || !bottom_margins_collapse_through(lb, bs);
+            layout_block_flow(kids, cx, cy, cw, bs, ctx, (suppress_first, keep_last))
         }
         BoxKind::Flex(kids) => super::flex::layout_flex(lb, kids, cx, cy, cw, bs.font_size, ctx),
         BoxKind::Grid(kids) => super::flex::layout_grid(lb, kids, cx, cy, cw, bs.font_size, ctx),
@@ -1979,7 +1971,7 @@ fn layout_box_sized_impl(
     let bfc = force_bfc || establishes_bfc(lb, bs);
     let saved_floats = bfc.then(|| std::mem::take(&mut ctx.floats));
     let (mut children, mut content_h) =
-        layout_content(lb, bs, content_x, content_y, content_w, ctx);
+        layout_content(lb, bs, (content_x, content_y, content_w), bfc, ctx);
     if let Some(outer) = saved_floats {
         let inner_bottom = ctx
             .floats

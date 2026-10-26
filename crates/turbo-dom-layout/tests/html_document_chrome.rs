@@ -248,7 +248,6 @@ fn last_margin_case(id: &str) -> bool {
 }
 
 #[test]
-#[ignore = "miaskiewicz/turbo-dom#41: fails until the fix"]
 fn last_child_bottom_margins_like_chrome_156() {
     compare_cases(last_margin_case);
 }

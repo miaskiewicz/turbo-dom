@@ -7,7 +7,7 @@ at the time); this file reconstructs them from history.
 
 ## [Unreleased]
 
-### Fixed — turbo-dom-layout tables, clipping and box sizing (P5b-W5, miaskiewicz/turbo-dom#51/#52/#55/#62/#63/#64/#65, Chrome 156 controls)
+### Fixed — turbo-dom-layout tables, clipping and box sizing (P5b-W5, miaskiewicz/turbo-dom#41/#51/#52/#55/#62/#63/#64/#65, Chrome 156 controls)
 Each fix is backed by a Chrome for Testing 156 control and lists the corpus outputs it
 changes in `tools/parity/expected/p5b-w5-turbo-dom-*.json`.
 - Table captions (#51): a `<caption>` (UA `caption { display: table-caption; text-align:
@@ -72,6 +72,15 @@ changes in `tools/parity/expected/p5b-w5-turbo-dom-*.json`.
   `width:100%` table used to get 0px (no backgrounds or heights painted), and a
   `width:100px` cell beside content grew with it (307px instead of 100px). Control:
   `table-columns-*` in `html-document`.
+- Last-child bottom margins (#41): under the generic / PDF layout policy a block dropped
+  its last in-flow child's bottom margin — it was neither kept inside a parent with a
+  bottom border or padding, a definite height or its own formatting context, nor
+  collapsed through an auto-height parent into the parent's margin. It now follows CSS
+  2.2 §8.3.1 on every policy (the live / HTML-metrics policy already did), and a box
+  laid out as its own formatting context by its parent (a table cell, a flex or grid
+  item) keeps its children's top and bottom margins inside. Changes the galley of every
+  PDF whose blocks end with a margined child (and paginated breaks: turbo-html2pdf#32's
+  `exact-fill-child-margin`). Control: `last-margin-*` in `html-document`.
 
 ### Fixed — `getComputedStyle` defaults and no injected `<title>` (P5b-X3, miaskiewicz/turbo-surf#36 items 1–2, Chrome 156 control)
 - turbo-dom-browser-env: `getComputedStyle` used to return `""` for `display`, `position`

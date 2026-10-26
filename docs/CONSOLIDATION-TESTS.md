@@ -1190,6 +1190,7 @@ Declared behaviour changes (Chrome 156 controls), not moves:
 | turbo-dom-layout | `html_document_chrome<tests/html_document_chrome.rs>::table_height_is_distributed_over_the_rows_like_chrome_156` | new (turbo-dom#64, test-first) |
 | turbo-dom-layout | `html_document_chrome<tests/html_document_chrome.rs>::extra_table_width_goes_to_auto_columns_like_chrome_156`, `turbo_dom_layout<src/lib.rs>::layout::table::percent_tests::grow_columns_prefers_auto_columns_like_chrome` | new (turbo-dom#55, test-first) |
 | turbo-dom-layout | `turbo_dom_layout<src/lib.rs>::layout::table::percent_tests::fit_columns_gives_percentage_columns_their_share` | adapted@P5b-W5 (turbo-dom#55: `fit_columns` takes the column `Limits`; same expectations) |
+| turbo-dom-layout | `html_document_chrome<tests/html_document_chrome.rs>::last_child_bottom_margins_like_chrome_156` | new (turbo-dom#41, test-first) |
 | turbo-dom-layout | `turbo_dom_layout<src/lib.rs>::layout::value::clip_tests::{clip_region_resolves_offsets_auto_edges_and_scale, clip_keeps_nothing_only_when_empty_at_every_size}` | new (turbo-dom#52) |
 
 ## P5b-W2 — raster inline SVG on the tree (turbo-dom `consol/p5b-w2`)
