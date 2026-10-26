@@ -9903,6 +9903,9 @@ mod shadow_events_tests;
 #[cfg(test)]
 #[path = "svg_mathml_element_tests.rs"]
 mod svg_mathml_element_tests;
+#[cfg(test)]
+#[path = "css_shorthand_tests.rs"]
+mod css_shorthand_tests;
 
 #[cfg(test)]
 #[path = "css_live_tests.rs"]
