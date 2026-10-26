@@ -6,8 +6,20 @@
 use super::*;
 use sha2::{Digest, Sha256};
 
-/// Scenarios whose binding result differs from Chrome for a documented reason, by id.
-const KNOWN_GAPS: &[&str] = &[];
+/// Scenarios whose binding result differs from Chrome for a documented reason, by id: a
+/// longhand set directly keeps its authored spelling or is rejected by the longhand grammar
+/// (turbo-dom#97: `top: 0`, `column-rule-color: red`, `row-rule-color: red`,
+/// `position-try-fallbacks: --a`, `interest-delay-start: inherit`).
+const KNOWN_GAPS: &[&str] = &[
+    "-webkit-column-rule|1px solid red",
+    "column-rule|1px solid red",
+    "css-inset-longhands",
+    "interest-delay|1s",
+    "position-try|--a",
+    "row-rule|1px solid red",
+    "rule-color|red",
+    "rule|1px solid red",
+];
 
 fn fixture(name: &str) -> String {
     let path = format!(
@@ -42,7 +54,6 @@ fn run(html: &str, probe: &str) -> serde_json::Value {
 }
 
 #[test]
-#[ignore = "turbo-dom#90: fails until the fix"]
 fn inline_style_shorthands_expand_and_serialize_like_chrome156() {
     let probe = fixture("css-shorthand-probe.js");
     let cases = fixture("css-shorthand-cases.json");

@@ -156,6 +156,8 @@ mod html_popover;
 mod pointer_events;
 #[path = "typed_om.rs"]
 mod typed_om;
+#[path = "css_shorthand.rs"]
+mod css_shorthand;
 pub use pointer_events::{host_pointer, PointerLockPolicy};
 #[path = "form_pseudo.rs"]
 mod form_pseudo;
@@ -7333,6 +7335,7 @@ fn computed_font_context<'s>(
 pub fn register_css_parser(scope: &mut v8::PinScope) {
     let global = scope.get_current_context().global(scope);
     bind_method(scope, global, "__parseCssNative", parse_css_native);
+    css_shorthand::register(scope, global);
     bind_method(
         scope,
         global,
