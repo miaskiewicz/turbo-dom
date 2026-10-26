@@ -441,6 +441,38 @@ const SELECTORS = [
     ],
   },
   {
+    // P5-cov: leading combinators in selector-list arguments and :has() nesting through
+    // every list-taking pseudo
+    id: "nested_lists",
+    html: "<div><p></p><span></span><p></p></div>",
+    selectors: [
+      ":not(> p)",
+      ":not(>p)",
+      ":not(+ p)",
+      ":nth-child(1 of > p)",
+      ":nth-last-child(1 of ~ p)",
+      ":is(> p, p)",
+      ":where(+ p)",
+      ":is(> \\70, p)",
+      ":not(\\3e p)",
+      ":-webkit-any(:nth-child(1 of :not(div p)))",
+      ":-webkit-any(:nth-child(1 of div p))",
+      ":has(:is(:has(p)))",
+      ":has(:not(:has(p)))",
+      ":has(:nth-child(1 of :has(p)))",
+      ":has(:nth-last-child(1 of :has(p)))",
+      ":has(:where(:has(p)))",
+      ":has(:-webkit-any(:has(p)))",
+      ":has(:is(:not(:has(p))))",
+      ":has(:is(:where(:has(p))))",
+      ":has(:is(:nth-child(1 of :has(p))))",
+      ":has(:is(:nth-last-child(1 of :has(p))))",
+      ":has(:is(:-webkit-any(p)))",
+      ":has(:is(:not(p)))",
+      ":has(:is(:nth-child(1 of p)))",
+    ],
+  },
+  {
     id: "pseudo_edge_cases",
     html: "<div><p id=x></p><p></p></div>",
     selectors: [

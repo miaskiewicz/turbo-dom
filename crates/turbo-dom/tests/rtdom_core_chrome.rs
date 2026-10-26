@@ -24,8 +24,16 @@ const FIXTURE: &str = include_str!("fixtures/rtdom_core_chrome156.json");
 /// assertions until the fixing commit removes them here. (turbo-dom#92, RCDATA-context
 /// fragments dropping U+0000, is fixed.)
 const OPEN_DOCUMENTS: &[&str] = &[];
-/// (turbo-dom#91, #96 and #98 are fixed.)
-const OPEN_SELECTORS: &[&str] = &[];
+/// - miaskiewicz/turbo-dom#98 (follow-up): a leading combinator in a non-relative
+///   selector-list argument. (turbo-dom#91 and #96 are fixed.)
+const OPEN_SELECTORS: &[&str] = &[
+    ":not(+ p)",
+    ":not(> p)",
+    ":not(>p)",
+    ":nth-child(1 of > p)",
+    ":nth-last-child(1 of ~ p)",
+    ":where(+ p)",
+];
 
 fn fixture() -> Value {
     let fixture: Value = serde_json::from_str(FIXTURE).unwrap();
