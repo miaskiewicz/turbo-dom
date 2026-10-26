@@ -116,17 +116,17 @@ impl Walk<'_, '_> {
     }
 
     fn element(&mut self, node: Handle, path: &[usize], in_svg: bool) -> Result<(), LiveError> {
-        let tree = self.live.tree;
-        let namespace = tree.namespace_uri(node);
-        let svg = namespace == Some(SVG);
-        if namespace != Some(HTML) && !svg {
-            return Err(LiveError::Namespace);
-        }
-        if svg && !in_svg && tree.local_name(node) == Some("svg") {
-            self.svg_viewports.push(self.id(node));
-        }
+        let svg = svg_namespace(self.live.tree, node)?;
+        self.note_viewport(node, svg, in_svg);
         self.attributes(node)?;
         self.children(node, path, in_svg || svg)
+    }
+
+    /// The outermost `<svg>` element of an SVG subtree is an SVG viewport.
+    fn note_viewport(&mut self, node: Handle, svg: bool, in_svg: bool) {
+        if svg && !in_svg && self.live.tree.local_name(node) == Some("svg") {
+            self.svg_viewports.push(self.id(node));
+        }
     }
 
     /// Charge every attribute's qualified name and DOM value.
@@ -150,6 +150,15 @@ impl Walk<'_, '_> {
             .checked_sub(bytes)
             .ok_or(LiveError::TextBudget)?;
         Ok(())
+    }
+}
+
+/// Whether an element is in the SVG namespace; anything but HTML and SVG is rejected.
+fn svg_namespace(tree: &Tree, node: Handle) -> Result<bool, LiveError> {
+    match tree.namespace_uri(node) {
+        Some(HTML) => Ok(false),
+        Some(SVG) => Ok(true),
+        _ => Err(LiveError::Namespace),
     }
 }
 

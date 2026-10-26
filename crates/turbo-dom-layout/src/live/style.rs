@@ -5,7 +5,10 @@ use std::collections::HashMap;
 use turbo_dom::rtdom::tree::NodeType;
 use turbo_dom::Handle;
 
-use super::{source_id, LiveCapture, LiveError, LiveStyle, OriginRules, MAX_DECLARATIONS};
+use super::{
+    source_id, LiveCapture, LiveError, LiveStyle, MatchedTarget, OriginRules, PreMatched,
+    MAX_DECLARATIONS,
+};
 use crate::layout_snapshot::SourceId;
 use crate::node::{Attr, Tag};
 use crate::style::{
@@ -32,30 +35,49 @@ pub(super) fn style(
 /// Every pre-matched declaration by target, in origin then rule order.
 fn matched(origins: &[OriginRules]) -> Result<Matched, LiveError> {
     let mut matched = Matched::new();
-    let mut count = 0usize;
+    let mut left = MAX_DECLARATIONS;
     for origin in origins {
         for (order, rule) in origin.rules.iter().enumerate() {
             let rule = rule.ok_or(LiveError::MissingScope)?;
-            for target in &rule.targets {
-                let entry = matched.entry(target.source).or_default();
-                for declaration in &rule.declarations {
-                    count += 1;
-                    if count > MAX_DECLARATIONS {
-                        return Err(LiveError::DeclarationBudget);
-                    }
-                    entry.push(MatchedDeclaration {
-                        declaration: declaration.clone(),
-                        origin: origin.origin,
-                        scope_depth: rule.depth,
-                        inline: false,
-                        specificity: target.specificity,
-                        order,
-                    });
-                }
-            }
+            push_targets(&mut matched, &mut left, (origin.origin, order), rule)?;
         }
     }
     Ok(matched)
+}
+
+fn push_targets(
+    matched: &mut Matched,
+    left: &mut usize,
+    rank: (CascadeOrigin, usize),
+    rule: &PreMatched,
+) -> Result<(), LiveError> {
+    for target in &rule.targets {
+        let entry = matched.entry(target.source).or_default();
+        push_rule(entry, left, rank, rule, target)?;
+    }
+    Ok(())
+}
+
+/// One rule's declarations for one target, charged against the budget.
+fn push_rule(
+    entry: &mut Vec<MatchedDeclaration>,
+    left: &mut usize,
+    (origin, order): (CascadeOrigin, usize),
+    rule: &PreMatched,
+    target: &MatchedTarget,
+) -> Result<(), LiveError> {
+    for declaration in &rule.declarations {
+        *left = left.checked_sub(1).ok_or(LiveError::DeclarationBudget)?;
+        entry.push(MatchedDeclaration {
+            declaration: declaration.clone(),
+            origin,
+            scope_depth: rule.depth,
+            inline: false,
+            specificity: target.specificity,
+            order,
+        });
+    }
+    Ok(())
 }
 
 struct Styler<'s, 'a> {
