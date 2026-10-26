@@ -24,9 +24,8 @@ const FIXTURE: &str = include_str!("fixtures/rtdom_core_chrome156.json");
 /// assertions until the fixing commit removes them here. (turbo-dom#92, RCDATA-context
 /// fragments dropping U+0000, is fixed.)
 const OPEN_DOCUMENTS: &[&str] = &[];
-/// - miaskiewicz/turbo-dom#96: `:scope` never matches in the DOM selector APIs (needs the
-///   scoping element in the matcher). (turbo-dom#91 is fixed.)
-const OPEN_SELECTORS: &[&str] = &[":-webkit-any(:scope)"];
+/// (turbo-dom#91 and #96 are fixed.)
+const OPEN_SELECTORS: &[&str] = &[];
 
 fn fixture() -> Value {
     let fixture: Value = serde_json::from_str(FIXTURE).unwrap();
@@ -510,7 +509,6 @@ fn contextual_fragment_reads_is_at_creation_like_chrome() {
 /// miaskiewicz/turbo-dom#96: `:scope` is the element `matches()` / element-rooted queries
 /// are called on, and the document element for document queries.
 #[test]
-#[ignore = "turbo-dom#96: fails until the fix"]
 fn scope_is_the_scoping_element_like_chrome() {
     use turbo_dom::NodeRef;
     let mut tree = Tree::parse("");
@@ -520,7 +518,7 @@ fn scope_is_the_scoping_element_like_chrome() {
         "<div id=d><p id=p><span id=s></span></p><p id=q></p></div>",
     );
     let by_id = |tree: &Tree, id: &str| tree.query_selector(&format!("#{id}")).unwrap();
-    let (d, p) = (by_id(&tree, "d"), by_id(&tree, "p"));
+    let (d, p, s) = (by_id(&tree, "d"), by_id(&tree, "p"), by_id(&tree, "s"));
     let ids = |tree: &Tree, list: &[Handle]| -> Vec<String> {
         list.iter()
             .map(|&h| {
@@ -547,6 +545,25 @@ fn scope_is_the_scoping_element_like_chrome() {
     let first = NodeRef::new(&tree, d)
         .query_selector(":scope > p ~ p")
         .map(|n| ids(&tree, &[n.handle()]).remove(0));
+    let closest: Vec<Option<String>> = [
+        ":scope",
+        "div:scope",
+        ":scope span",
+        "div :scope",
+        ":not(:scope)",
+    ]
+    .iter()
+    .map(|selector| {
+        let found = tree.closest(s, selector);
+        let units: Vec<u16> = selector.encode_utf16().collect();
+        assert_eq!(
+            tree.closest_units(s, &units),
+            found,
+            "{selector}: units API"
+        );
+        found.map(|h| ids(&tree, &[h]).remove(0))
+    })
+    .collect();
     let got = json!({
         "documentScope": ids(&tree, &tree.query_selector_all(":scope")),
         "documentChild": ids(&tree, &tree.query_selector_all(":scope > body")),
@@ -564,7 +581,7 @@ fn scope_is_the_scoping_element_like_chrome() {
             tree.matches(d, ":has(:scope)"),
             tree.matches(d, ":has(> p:not(:scope))"),
         ],
-        "closest": want["closest"].clone(),
+        "closest": closest,
     });
     assert_eq!(got, want);
 }

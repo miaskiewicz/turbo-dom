@@ -617,15 +617,18 @@ impl Tree {
         source: &[u16],
     ) -> std::rc::Rc<[Handle]> {
         let selectors = dom_list(source);
+        // `:scope` is the element the query is called on (the document element otherwise)
+        let scope = (self.node_type(root) == NodeType::Element).then_some(root);
         let mut result = Vec::new();
         let mut stack = Vec::new();
         self.for_each_light_child(root, |child| stack.push(child));
         stack.reverse();
         while let Some(node) = stack.pop() {
             if self.node_type(node) == NodeType::Element
-                && selectors
-                    .iter()
-                    .any(|selector| self.matches_complex(node, selector))
+                && selectors.iter().any(|selector| match scope {
+                    Some(scope) => self.matches_complex_in(node, selector, scope),
+                    None => self.matches_complex(node, selector),
+                })
             {
                 result.push(node);
             }
@@ -638,10 +641,31 @@ impl Tree {
     pub fn query_selector_units(&self, source: &[u16]) -> Option<Handle> {
         self.query_selector_all_units(source).first().copied()
     }
+    /// `element.matches()` for original units: `:scope` is `node`.
     pub fn matches_units(&self, node: Handle, source: &[u16]) -> bool {
+        self.matches_units_scoped(node, source, node)
+    }
+    /// [`Tree::matches_units`] with `scope` as the `:scope` element.
+    pub fn matches_units_scoped(&self, node: Handle, source: &[u16], scope: Handle) -> bool {
         dom_list(source)
             .iter()
-            .any(|selector| self.matches_complex(node, selector))
+            .any(|selector| self.matches_complex_in(node, selector, scope))
+    }
+    /// [`Tree::closest`] for original units.
+    #[must_use]
+    pub fn closest_units(&self, node: Handle, source: &[u16]) -> Option<Handle> {
+        let selectors = dom_list(source);
+        let mut current = Some(node);
+        while let Some(element) = current.filter(|&n| self.node_type(n) == NodeType::Element) {
+            if selectors
+                .iter()
+                .any(|selector| self.matches_complex_in(element, selector, node))
+            {
+                return Some(element);
+            }
+            current = self.parent(element);
+        }
+        None
     }
     pub fn get_element_by_id_units(&self, id: &[u16]) -> Option<Handle> {
         let mut stack = vec![self.root()];

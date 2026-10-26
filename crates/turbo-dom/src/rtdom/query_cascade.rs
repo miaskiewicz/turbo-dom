@@ -618,7 +618,6 @@ fn cascade_pseudo(unknown: &UnknownPseudo) -> Result<Pseudo, SelectorError> {
         }
     }
     match (lower.as_str(), arg) {
-        ("scope", None) => Ok(Pseudo::Root),
         (name, None) if NEVER_PSEUDO_CLASSES.contains(&name) => Ok(Pseudo::unknown(name, None)),
         (name, Some(_)) if NEVER_FUNCTIONAL_PSEUDO_CLASSES.contains(&name) => {
             Ok(Pseudo::unknown(name, arg))

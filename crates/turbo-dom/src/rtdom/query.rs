@@ -236,6 +236,10 @@ enum Pseudo {
     NthLastOfType(i64, i64),
     Empty,
     Root,
+    // `:scope`: the scoping element of a DOM-API match (`matches` / `closest`: the element
+    // called on; element-rooted queries: that element; document queries and stylesheets:
+    // `:root`; miaskiewicz/turbo-dom#96).
+    Scope,
     // Form-state
     Checked,
     Disabled,
@@ -986,6 +990,7 @@ fn parse_pseudo(name: &str, arg: Option<&str>) -> Pseudo {
         "only-of-type" => Pseudo::OnlyOfType,
         "empty" => Pseudo::Empty,
         "root" => Pseudo::Root,
+        "scope" => Pseudo::Scope,
         "checked" => Pseudo::Checked,
         "disabled" => Pseudo::Disabled,
         "enabled" => Pseudo::Enabled,
@@ -1345,6 +1350,10 @@ pub trait Navigator {
     fn type_name(&self, h: Handle) -> Option<&str>;
     /// `:root`.
     fn is_root(&self, h: Handle) -> bool;
+    /// `:scope`: without a scoping element (document queries, stylesheets) it is `:root`.
+    fn is_scope(&self, h: Handle) -> bool {
+        self.is_root(h)
+    }
     /// `:empty`.
     fn is_empty(&self, h: Handle) -> bool;
     /// Whether some descendant element of `root` (in the scope, `root` excluded) satisfies
@@ -1358,6 +1367,51 @@ pub trait Navigator {
     /// The slot `h` is assigned to, for `::slotted()` (`None`: not in a composed context).
     fn assigned_slot(&self, _h: Handle) -> Option<Handle> {
         None
+    }
+}
+
+/// [`LiveNavigator`] with a scoping element: `:scope` is `scope` (the DOM APIs).
+struct ScopedNavigator<'t> {
+    live: LiveNavigator<'t>,
+    scope: Handle,
+}
+
+impl Navigator for ScopedNavigator<'_> {
+    fn tree(&self) -> &Tree {
+        self.live.tree()
+    }
+    fn parent(&self, h: Handle) -> Option<Handle> {
+        self.live.parent(h)
+    }
+    fn previous_element_sibling(&self, h: Handle) -> Option<Handle> {
+        self.live.previous_element_sibling(h)
+    }
+    fn next_element_sibling(&self, h: Handle) -> Option<Handle> {
+        self.live.next_element_sibling(h)
+    }
+    fn element_siblings(&self, h: Handle) -> Vec<Handle> {
+        self.live.element_siblings(h)
+    }
+    fn same_type(&self, a: Handle, b: Handle) -> bool {
+        self.live.same_type(a, b)
+    }
+    fn type_name(&self, h: Handle) -> Option<&str> {
+        self.live.type_name(h)
+    }
+    fn is_root(&self, h: Handle) -> bool {
+        self.live.is_root(h)
+    }
+    fn is_scope(&self, h: Handle) -> bool {
+        h == self.scope
+    }
+    fn is_empty(&self, h: Handle) -> bool {
+        self.live.is_empty(h)
+    }
+    fn some_descendant(&self, root: Handle, pred: &mut dyn FnMut(Handle) -> bool) -> bool {
+        self.live.some_descendant(root, pred)
+    }
+    fn some_self_or_descendant(&self, root: Handle, pred: &mut dyn FnMut(Handle) -> bool) -> bool {
+        self.live.some_self_or_descendant(root, pred)
     }
 }
 
@@ -1631,6 +1685,18 @@ impl Tree {
     pub(crate) fn matches_complex(&self, h: Handle, cx: &Complex) -> bool {
         matches_complex(&LiveNavigator(self), h, cx)
     }
+
+    /// [`Tree::matches_complex`] with `scope` as the `:scope` element.
+    pub(crate) fn matches_complex_in(&self, h: Handle, cx: &Complex, scope: Handle) -> bool {
+        matches_complex(
+            &ScopedNavigator {
+                live: LiveNavigator(self),
+                scope,
+            },
+            h,
+            cx,
+        )
+    }
 }
 
 fn matches_compound<N: Navigator + ?Sized>(nav: &N, h: Handle, c: &Compound) -> bool {
@@ -1770,6 +1836,7 @@ fn matches_pseudo<N: Navigator + ?Sized>(nav: &N, h: Handle, p: &Pseudo) -> bool
         }
         Pseudo::Empty => nav.is_empty(h),
         Pseudo::Root => nav.is_root(h),
+        Pseudo::Scope => nav.is_scope(h),
         // Form-state. Mirrors selectors.mjs: read the live IDL property first (what a
         // consumer / React sets via set_form_property, the analogue of `el.checked`),
         // falling back to the HTML attribute when no live override is set.
@@ -1989,13 +2056,34 @@ impl Tree {
         list
     }
 
+    /// `element.matches(selector)`: `:scope` is `h` itself.
     pub fn matches(&self, h: Handle, selector: &str) -> bool {
+        self.matches_scoped(h, selector, h)
+    }
+
+    /// Does `h` match `selector` with `scope` as the `:scope` element (an element-rooted
+    /// query or `closest()` tests each candidate against the element it was called on)?
+    pub fn matches_scoped(&self, h: Handle, selector: &str, scope: Handle) -> bool {
         // every `cx` reaching the matcher is a non-empty `Complex` (parse_selector_cached
         // drops empty/combinator-only segments). Re-parsing is avoided across an
         // element-loop `matches()` via the parse cache.
         self.parse_selector_cached(selector)
             .iter()
-            .any(|cx| self.matches_complex(h, cx))
+            .any(|cx| self.matches_complex_in(h, cx, scope))
+    }
+
+    /// `element.closest(selector)`: the nearest inclusive element ancestor of `h` matching
+    /// `selector`, with `h` as the `:scope` element.
+    #[must_use]
+    pub fn closest(&self, h: Handle, selector: &str) -> Option<Handle> {
+        let mut node = Some(h);
+        while let Some(current) = node.filter(|&n| self.node_type(n) == NodeType::Element) {
+            if self.matches_scoped(current, selector, h) {
+                return Some(current);
+            }
+            node = self.parent(current);
+        }
+        None
     }
 
     /// querySelectorAll, document-order, version-cached by selector string. Returns a

@@ -54,7 +54,7 @@ test('selector engine matches the P5-cov Chrome 156 selector rows (validity, mat
 });
 
 // miaskiewicz/turbo-dom#96: the `scope` probe replayed through the JS runtime's DOM.
-test(':scope is the scoping element like Chrome 156', { todo: 'turbo-dom#96' }, () => {
+test(':scope is the scoping element like Chrome 156', () => {
   const want = fixture.probes.find((p) => p.id === 'scope').values;
   const { document: doc } = createEnvironment('<!DOCTYPE html><html><head></head><body></body></html>');
   doc.body.innerHTML = '<div id=d><p id=p><span id=s></span></p><p id=q></p></div>';
