@@ -775,10 +775,14 @@ fn contain_intrinsic_size(comps: &[Comp]) -> Option<Out> {
         }
     };
     let (used, width) = axis(comps)?;
-    let height = if used == comps.len() {
+    let rest = &comps[used..];
+    let height = if rest.is_empty()
+        || (rest.len() == 1 && rest[0].is_ident(&["auto"]) && width.starts_with("auto "))
+    {
+        // A trailing lone `auto` after `auto <length>` repeats the width (Chrome).
         width.clone()
     } else {
-        let (more, height) = axis(&comps[used..])?;
+        let (more, height) = axis(rest)?;
         if used + more != comps.len() {
             return None;
         }
@@ -1172,10 +1176,8 @@ fn list_style(comps: &[Comp]) -> Option<Out> {
     let position = |c: &Comp| kw(c, &["inside", "outside"]);
     let image = |c: &Comp| c.image();
     let kind = |c: &Comp| {
-        c.string().or_else(|| {
-            c.custom_ident(&["none", "inside", "outside"])
-                .map(|v| v.to_ascii_lowercase())
-        })
+        c.string()
+            .or_else(|| c.custom_ident(&["none"]).map(|v| v.to_ascii_lowercase()))
     };
     let mut nones = 0;
     let rest: Vec<Comp> = comps
@@ -1269,11 +1271,23 @@ fn container(comps: &[Comp]) -> Option<Out> {
             only,
             &["normal", "size", "inline-size", "scroll-state", "anchored"],
         )?,
-        Some(list) => list
-            .iter()
-            .map(|c| kw(c, &["size", "inline-size", "scroll-state", "anchored"]))
-            .collect::<Option<Vec<_>>>()?
-            .join(" "),
+        Some(list) => {
+            let kinds: Vec<String> = list
+                .iter()
+                .map(|c| kw(c, &["size", "inline-size", "scroll-state", "anchored"]))
+                .collect::<Option<_>>()?;
+            // Each keyword once, and at most one of size / inline-size.
+            let sizes = kinds.iter().filter(|kind| kind.ends_with("size")).count();
+            if sizes > 1
+                || kinds
+                    .iter()
+                    .enumerate()
+                    .any(|(index, kind)| kinds[..index].contains(kind))
+            {
+                return None;
+            }
+            kinds.join(" ")
+        }
     };
     Some(vec![("container-name", name), ("container-type", kind)])
 }
@@ -1723,12 +1737,67 @@ const STRETCHES: &[&str] = &[
     "ultra-expanded",
 ];
 
+const GENERIC_FAMILIES: &[&str] = &[
+    "serif",
+    "sans-serif",
+    "cursive",
+    "fantasy",
+    "monospace",
+    "system-ui",
+    "math",
+    "emoji",
+    "fangsong",
+    "ui-serif",
+    "ui-sans-serif",
+    "ui-monospace",
+    "ui-rounded",
+    "-webkit-body",
+    "-webkit-pictograph",
+];
+/// A quoted family name: unquoted when it is one valid identifier Chrome would not read as a
+/// keyword (a generic family, a CSS-wide keyword, `default`).
+fn family_string(comp: &Comp) -> String {
+    let Kind::Str(name) = &comp.kind else {
+        return comp.text.clone();
+    };
+    if is_identifier(name) && !reserved(name, GENERIC_FAMILIES) {
+        name.clone()
+    } else {
+        comp.text.clone()
+    }
+}
+/// Whether `text` tokenizes as exactly one identifier (no escapes needed).
+pub(super) fn is_identifier(text: &str) -> bool {
+    let mut chars = text.chars();
+    let valid_start = |c: char| c.is_ascii_alphabetic() || c == '_' || !c.is_ascii();
+    match chars.next() {
+        Some('-') => {
+            let rest: Vec<char> = chars.collect();
+            !rest.is_empty()
+                && (rest[0] == '-' || valid_start(rest[0]))
+                && rest[1..]
+                    .iter()
+                    .all(|c| c.is_ascii_alphanumeric() || *c == '-' || *c == '_' || !c.is_ascii())
+        }
+        Some(first) if valid_start(first) => {
+            chars.all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_' || !c.is_ascii())
+        }
+        _ => false,
+    }
+}
+pub(super) fn reserved(name: &str, extra: &[&str]) -> bool {
+    let lower = name.to_ascii_lowercase();
+    super::components::CSS_WIDE.contains(&lower.as_str())
+        || lower == "default"
+        || extra.contains(&lower.as_str())
+}
+
 /// `font-family`: a comma list of strings and identifier sequences.
 pub(super) fn font_family(comps: &[Comp]) -> Option<String> {
     let mut families = Vec::new();
     for family in commas(comps)? {
         match family {
-            [only] if only.string().is_some() => families.push(only.text.clone()),
+            [only] if only.string().is_some() => families.push(family_string(only)),
             idents => {
                 let words: Option<Vec<String>> = idents
                     .iter()
@@ -1781,7 +1850,12 @@ fn font(comps: &[Comp]) -> Option<Parsed> {
                             .get(at + 1)
                             .is_some_and(|c| matches!(c.kind, Kind::Dimension { .. }))
                     }) {
-                        style = Some(format!("oblique {angle}"));
+                        // `oblique 0deg` is `normal`, the default 14deg angle plain `oblique`.
+                        style = Some(match angle.as_str() {
+                            "0deg" => "normal".to_string(),
+                            "14deg" => "oblique".to_string(),
+                            _ => format!("oblique {angle}"),
+                        });
                         at += 2;
                         continue;
                     }
@@ -1987,7 +2061,17 @@ fn track_list(comps: &[Comp]) -> Option<String> {
             return None;
         }
     }
-    Some(join(comps).replace("0 ", "0px ").trim().to_string())
+    let spelled: Vec<Comp> = comps
+        .iter()
+        .map(|comp| match comp.kind {
+            Kind::Number { .. } => Comp {
+                kind: comp.kind.clone(),
+                text: "0px".into(),
+            },
+            _ => comp.clone(),
+        })
+        .collect();
+    Some(join(&spelled))
 }
 
 /// `grid-template`: rows, columns, areas.
@@ -2007,7 +2091,14 @@ fn grid_template(comps: &[Comp]) -> Option<(String, String, String)> {
     }
     let (rows, columns) = match parts.as_slice() {
         [rows] => (*rows, None),
-        [rows, columns] => (*rows, Some(track_list(columns)?)),
+        // The explicit columns of the areas form take no `repeat()`.
+        [rows, columns]
+            if !columns
+                .iter()
+                .any(|c| c.function_named(&["repeat"]).is_some()) =>
+        {
+            (*rows, Some(track_list(columns)?))
+        }
         _ => return None,
     };
     let mut areas = Vec::new();
@@ -2182,6 +2273,9 @@ fn border_image(comps: &[Comp], webkit: bool) -> Option<[Option<String>; 5]> {
             while let Some(comp) = comps.get(at) {
                 if comp.is_ident(&["fill"]) && !fill {
                     fill = true;
+                } else if fill && !values.is_empty() {
+                    // `fill` goes before or after the numbers, not between them.
+                    break;
                 } else if let Some(value) = comp
                     .number(false)
                     .or_else(|| comp.percentage(false))
@@ -2319,15 +2413,16 @@ fn offset(comps: &[Comp]) -> Option<Out> {
     let mut distance = "0px".to_string();
     let mut rotate = "auto".to_string();
     if let Some(comp) = main.get(at) {
-        if comp.is_ident(&["none"]) {
-            at += 1;
-        } else if let Some(value) = comp
-            .function_named(&[
+        let found = if comp.is_ident(&["none"]) {
+            Some("none".to_string())
+        } else {
+            comp.function_named(&[
                 "path", "ray", "url", "circle", "ellipse", "inset", "polygon", "xywh", "rect",
                 "shape",
             ])
             .or_else(|| comp.url())
-        {
+        };
+        if let Some(value) = found {
             path = if value.starts_with("path(") {
                 path_text(&value)
             } else {
@@ -2502,12 +2597,15 @@ fn layer(comps: &[Comp], mask: bool, last: bool) -> Option<Layer> {
                 continue;
             }
         }
-        if out.clip.is_none() {
+        if out.clip.is_none() || out.origin.is_none() {
             if let Some(value) = kw(comp, boxes) {
-                if out.origin.is_none() && value != "text" && value != "no-clip" {
+                let clip_only = value == "text" || value == "no-clip";
+                if out.origin.is_none() && !clip_only {
                     out.origin = Some(value);
-                } else {
+                } else if out.clip.is_none() {
                     out.clip = Some(value);
+                } else {
+                    return None;
                 }
                 at += 1;
                 continue;
@@ -2686,6 +2784,27 @@ fn transition(comps: &[Comp]) -> Option<Out> {
     ])
 }
 
+const ANIMATION_KEYWORDS: &[&str] = &[
+    "none",
+    "auto",
+    "infinite",
+    "normal",
+    "reverse",
+    "alternate",
+    "alternate-reverse",
+    "forwards",
+    "backwards",
+    "both",
+    "running",
+    "paused",
+    "linear",
+    "ease",
+    "ease-in",
+    "ease-out",
+    "ease-in-out",
+    "step-start",
+    "step-end",
+];
 fn animation(comps: &[Comp]) -> Option<Out> {
     let items = commas(comps)?;
     let mut columns: [Vec<String>; 8] = Default::default();
@@ -2694,7 +2813,18 @@ fn animation(comps: &[Comp]) -> Option<Out> {
             if c.is_ident(&["none"]) {
                 return Some("none".to_string());
             }
-            c.string().or_else(|| c.custom_ident(&["none"]))
+            // A quoted name serializes as an identifier when it is one Chrome would not
+            // read as a keyword.
+            if let Kind::Str(text) = &c.kind {
+                return Some(
+                    if is_identifier(text) && !reserved(text, ANIMATION_KEYWORDS) {
+                        text.clone()
+                    } else {
+                        c.text.clone()
+                    },
+                );
+            }
+            c.custom_ident(&["none"])
         };
         let duration = |c: &Comp| c.time(false).or_else(|| kw(c, &["auto"]));
         let parsed = any_order(

@@ -265,7 +265,15 @@ fn read(input: &mut Parser<'_, '_>, out: &mut Vec<Comp>) -> Option<()> {
                         kind: Kind::Url(url.clone()),
                     }
                 } else {
-                    let text = (name == "calc").then(|| calc_sum(&inner)).flatten();
+                    let text = match name.as_str() {
+                        "calc" => calc_sum(&inner),
+                        "min" | "max" | "clamp" => min_max(&name, &inner),
+                        "rgb" | "rgba" | "hsl" | "hsla" => color_function(&name, &inner),
+                        "lab" | "lch" | "oklab" | "oklch" => Some(lab_function(&name, &inner)),
+                        "steps" => steps_text(&inner),
+                        "linear" => linear_text(&inner),
+                        _ => None,
+                    };
                     Comp {
                         text: text.unwrap_or_else(|| format!("{name}({})", join(&inner))),
                         kind: Kind::Function(name),
@@ -310,31 +318,57 @@ fn read(input: &mut Parser<'_, '_>, out: &mut Vec<Comp>) -> Option<()> {
 /// simplifies it: like units combined, numbers first, then percentages, then units in ASCII
 /// order. `None` for anything else.
 fn calc_sum(inner: &[Comp]) -> Option<String> {
-    let mut terms: Vec<(String, f64)> = Vec::new();
-    let mut sign = 1.0;
-    for (index, comp) in inner.iter().enumerate() {
-        if index % 2 == 1 {
-            sign = match comp.kind {
-                Kind::Delim('+') => 1.0,
-                Kind::Delim('-') => -1.0,
-                _ => return None,
-            };
-            continue;
-        }
-        let (unit, value) = match &comp.kind {
-            Kind::Number { value, .. } => (String::new(), f64::from(*value)),
-            Kind::Percentage(value) => ("%".to_string(), f64::from(*value)),
-            Kind::Dimension { value, unit } => (unit.clone(), f64::from(*value)),
-            _ => return None,
-        };
-        match terms.iter_mut().find(|(existing, _)| *existing == unit) {
-            Some(term) => term.1 += sign * value,
-            None => terms.push((unit, sign * value)),
-        }
-    }
+    // Operands alternate with operators; products bind first.
     if inner.len().is_multiple_of(2) {
         return None;
     }
+    let operand = |comp: &Comp| -> Option<(String, f64)> {
+        match &comp.kind {
+            Kind::Number { value, .. } => Some((String::new(), f64::from(*value))),
+            Kind::Percentage(value) => Some(("%".to_string(), f64::from(*value))),
+            Kind::Dimension { value, unit } => Some((unit.clone(), f64::from(*value))),
+            _ => None,
+        }
+    };
+    let mut terms: Vec<(String, f64)> = Vec::new();
+    let mut sign = 1.0;
+    let mut current = operand(&inner[0])?;
+    let mut index = 1;
+    let push = |terms: &mut Vec<(String, f64)>, (unit, value): (String, f64), sign: f64| match terms
+        .iter_mut()
+        .find(|(existing, _)| *existing == unit)
+    {
+        Some(term) => term.1 += sign * value,
+        None => terms.push((unit, sign * value)),
+    };
+    while index < inner.len() {
+        let next = operand(&inner[index + 1])?;
+        match inner[index].kind {
+            Kind::Delim('*') => {
+                current = match (current.0.is_empty(), next.0.is_empty()) {
+                    (_, true) => (current.0, current.1 * next.1),
+                    (true, false) => (next.0, current.1 * next.1),
+                    _ => return None,
+                };
+            }
+            Kind::Slash | Kind::Delim('/') if next.0.is_empty() && next.1 != 0.0 => {
+                current = (current.0, current.1 / next.1);
+            }
+            Kind::Delim(operator @ ('+' | '-')) => {
+                push(&mut terms, current, sign);
+                sign = if operator == '+' { 1.0 } else { -1.0 };
+                current = next;
+            }
+            _ => return None,
+        }
+        index += 2;
+    }
+    push(&mut terms, current, sign);
+    Some(calc_text(terms))
+}
+
+/// `calc()` of simplified terms: numbers, then percentages, then units in ASCII order.
+fn calc_text(mut terms: Vec<(String, f64)>) -> String {
     let rank = |unit: &str| match unit {
         "" => 0,
         "%" => 1,
@@ -356,7 +390,246 @@ fn calc_sum(inner: &[Comp]) -> Option<String> {
         out.push_str(unit);
     }
     out.push(')');
-    Some(out)
+    out
+}
+
+/// `min()` / `max()` / `clamp()` of literals in one unit: their `calc()` value.
+fn min_max(name: &str, inner: &[Comp]) -> Option<String> {
+    let mut unit = None;
+    let mut values = Vec::new();
+    for (index, comp) in inner.iter().enumerate() {
+        if index % 2 == 1 {
+            if comp.kind != Kind::Comma {
+                return None;
+            }
+            continue;
+        }
+        let (this, value) = match &comp.kind {
+            Kind::Number { value, .. } => (String::new(), f64::from(*value)),
+            Kind::Percentage(value) => ("%".to_string(), f64::from(*value)),
+            Kind::Dimension { value, unit } => (unit.clone(), f64::from(*value)),
+            _ => return None,
+        };
+        if unit.get_or_insert_with(|| this.clone()) != &this {
+            return None;
+        }
+        values.push(value);
+    }
+    let value = match (name, values.as_slice()) {
+        ("min", [_, ..]) => values.iter().copied().fold(f64::INFINITY, f64::min),
+        ("max", [_, ..]) => values.iter().copied().fold(f64::NEG_INFINITY, f64::max),
+        ("clamp", [low, value, high]) => value.min(*high).max(*low),
+        _ => return None,
+    };
+    Some(calc_text(vec![(unit?, value)]))
+}
+
+/// Blink's alpha spelling: the shortest of two or three decimals naming the same 8-bit alpha.
+fn alpha_text(alpha: f64) -> String {
+    let alpha = alpha.clamp(0.0, 1.0);
+    let byte = (alpha * 255.0).round();
+    let two = (alpha * 100.0).round() / 100.0;
+    let value = if (two * 255.0).round() == byte {
+        two
+    } else {
+        (alpha * 1000.0).round() / 1000.0
+    };
+    css_number(value as f32)
+}
+
+fn rgb_text(channels: [f64; 3], alpha: f64) -> String {
+    let [r, g, b] = channels.map(|channel| channel.round().clamp(0.0, 255.0) as i64);
+    if alpha >= 1.0 {
+        format!("rgb({r}, {g}, {b})")
+    } else {
+        format!("rgba({r}, {g}, {b}, {})", alpha_text(alpha))
+    }
+}
+
+/// `#rgb[a]` / `#rrggbb[aa]` as Chrome serializes them.
+fn hex_color(hex: &str) -> Option<String> {
+    let digits: Vec<f64> = hex
+        .chars()
+        .map(|c| c.to_digit(16).map(f64::from))
+        .collect::<Option<_>>()?;
+    let pairs: Vec<f64> = match digits.len() {
+        3 | 4 => digits.iter().map(|d| d * 17.0).collect(),
+        6 | 8 => digits
+            .chunks(2)
+            .map(|pair| pair[0] * 16.0 + pair[1])
+            .collect(),
+        _ => return None,
+    };
+    let alpha = pairs.get(3).map_or(1.0, |a| a / 255.0);
+    Some(rgb_text([pairs[0], pairs[1], pairs[2]], alpha))
+}
+
+/// `rgb()` / `hsl()` in the legacy (commas) or modern (spaces, `/ alpha`) syntax.
+fn color_function(name: &str, inner: &[Comp]) -> Option<String> {
+    let mut parts: Vec<&Comp> = Vec::new();
+    let mut alpha_part = None;
+    let commas = inner.iter().any(|comp| comp.kind == Kind::Comma);
+    let mut slash = false;
+    for (index, comp) in inner.iter().enumerate() {
+        match comp.kind {
+            Kind::Comma if commas && index % 2 == 1 => {}
+            Kind::Slash if !commas && !slash => slash = true,
+            _ if commas && index % 2 == 1 => return None,
+            _ if slash => {
+                if alpha_part.replace(comp).is_some() {
+                    return None;
+                }
+            }
+            _ => parts.push(comp),
+        }
+    }
+    if commas && parts.len() == 4 {
+        alpha_part = parts.pop();
+    }
+    if parts.len() != 3 || (slash && alpha_part.is_none()) {
+        return None;
+    }
+    let number = |comp: &Comp| match comp.kind {
+        Kind::Number { value, .. } => Some(f64::from(value)),
+        _ => None,
+    };
+    let percent = |comp: &Comp| match comp.kind {
+        Kind::Percentage(value) => Some(f64::from(value)),
+        _ => None,
+    };
+    let alpha = match alpha_part {
+        None => 1.0,
+        Some(comp) => number(comp).or_else(|| percent(comp).map(|p| p / 100.0))?,
+    };
+    let channels = if name.starts_with("rgb") {
+        let channel = |comp: &Comp| number(comp).or_else(|| percent(comp).map(|p| p * 2.55));
+        [channel(parts[0])?, channel(parts[1])?, channel(parts[2])?]
+    } else {
+        let hue = match &parts[0].kind {
+            Kind::Number { value, .. } => f64::from(*value),
+            Kind::Dimension { value, unit } if unit == "deg" => f64::from(*value),
+            _ => return None,
+        };
+        let (saturation, lightness) = (percent(parts[1])? / 100.0, percent(parts[2])? / 100.0);
+        let hue = hue.rem_euclid(360.0) / 360.0;
+        let q = if lightness < 0.5 {
+            lightness * (1.0 + saturation)
+        } else {
+            lightness + saturation - lightness * saturation
+        };
+        let p = 2.0 * lightness - q;
+        let channel = |t: f64| {
+            let t = t.rem_euclid(1.0);
+            255.0
+                * if t < 1.0 / 6.0 {
+                    p + (q - p) * 6.0 * t
+                } else if t < 0.5 {
+                    q
+                } else if t < 2.0 / 3.0 {
+                    p + (q - p) * (2.0 / 3.0 - t) * 6.0
+                } else {
+                    p
+                }
+        };
+        [
+            channel(hue + 1.0 / 3.0),
+            channel(hue),
+            channel(hue - 1.0 / 3.0),
+        ]
+    };
+    Some(rgb_text(channels, alpha))
+}
+
+/// `lab()` / `lch()` / `oklab()` / `oklch()`: a percentage lightness spelled as a number.
+fn lab_function(name: &str, inner: &[Comp]) -> String {
+    let mut parts: Vec<String> = Vec::new();
+    for (index, comp) in inner.iter().enumerate() {
+        let text = match (index, &comp.kind) {
+            (0, Kind::Percentage(value)) => {
+                let scale = if name.starts_with("ok") { 100.0 } else { 1.0 };
+                css_number((f64::from(*value) / scale) as f32)
+            }
+            _ => comp.text.clone(),
+        };
+        parts.push(text);
+    }
+    format!("{name}({})", parts.join(" "))
+}
+
+/// `steps(n, end | jump-end)` is `steps(n)`.
+fn steps_text(inner: &[Comp]) -> Option<String> {
+    match inner {
+        [count, comma, position]
+            if comma.kind == Kind::Comma && position.is_ident(&["end", "jump-end"]) =>
+        {
+            Some(format!("steps({})", count.text))
+        }
+        _ => None,
+    }
+}
+
+/// `linear()` with every stop's input position filled in (first 0%, last 100%, the rest
+/// spread evenly between their known neighbours).
+fn linear_text(inner: &[Comp]) -> Option<String> {
+    let mut stops: Vec<(String, Vec<Option<f64>>)> = Vec::new();
+    for item in inner.split(|comp| comp.kind == Kind::Comma) {
+        let (output, positions) = item.split_first()?;
+        if !matches!(output.kind, Kind::Number { .. }) || positions.len() > 2 {
+            return None;
+        }
+        let positions = positions
+            .iter()
+            .map(|comp| match comp.kind {
+                Kind::Percentage(value) => Some(Some(f64::from(value))),
+                _ => None,
+            })
+            .collect::<Option<Vec<_>>>()?;
+        stops.push((
+            output.text.clone(),
+            if positions.is_empty() {
+                vec![None]
+            } else {
+                positions
+            },
+        ));
+    }
+    if stops.len() < 2 {
+        return None;
+    }
+    let mut flat: Vec<Option<f64>> = stops
+        .iter()
+        .flat_map(|(_, positions)| positions.iter().copied())
+        .collect();
+    let last = flat.len() - 1;
+    flat[0].get_or_insert(0.0);
+    flat[last].get_or_insert(100.0);
+    let mut at = 0;
+    while at < flat.len() {
+        if flat[at].is_none() {
+            let end = (at..flat.len()).find(|&index| flat[index].is_some())?;
+            let (low, high) = (flat[at - 1]?, flat[end]?);
+            let gaps = (end - at + 1) as f64;
+            for (offset, index) in (at..end).enumerate() {
+                flat[index] = Some(low + (high - low) * (offset as f64 + 1.0) / gaps);
+            }
+            at = end;
+        }
+        at += 1;
+    }
+    let mut out = Vec::new();
+    let mut index = 0;
+    for (output, positions) in &stops {
+        let texts: Vec<String> = positions
+            .iter()
+            .map(|_| {
+                let value = flat[index].unwrap_or(0.0);
+                index += 1;
+                format!("{}%", css_number(value as f32))
+            })
+            .collect();
+        out.push(format!("{output} {}", texts.join(" ")));
+    }
+    Some(format!("linear({})", out.join(", ")))
 }
 
 /// Join components with single spaces, commas as `, `.
@@ -522,10 +795,7 @@ impl Comp {
     /// `<color>`: hex and `rgb()` / `hsl()` serialize as `rgb()` / `rgba()`, keywords lowercase.
     pub(super) fn color(&self) -> Option<String> {
         match &self.kind {
-            Kind::Hash(value) => (matches!(value.len(), 3 | 4 | 6 | 8)
-                && value.bytes().all(|b| b.is_ascii_hexdigit()))
-            .then(|| canonicalize_color(&self.text, false))
-            .flatten(),
+            Kind::Hash(value) => hex_color(value),
             Kind::Ident(_) => {
                 let name = self.ident()?;
                 (SYSTEM_COLORS.contains(&name.as_str())
@@ -533,7 +803,7 @@ impl Comp {
                 .then_some(name)
             }
             Kind::Function(name) if COLOR_FUNCTIONS.contains(&name.as_str()) => {
-                Some(canonicalize_color(&self.text, false).unwrap_or_else(|| self.text.clone()))
+                Some(self.text.clone())
             }
             _ => None,
         }

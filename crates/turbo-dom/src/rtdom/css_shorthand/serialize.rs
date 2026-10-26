@@ -672,19 +672,12 @@ pub(super) fn value(grammar: &str, texts: &[&str]) -> String {
                 "offset-rotate",
                 "offset-anchor",
             ]);
+            let moved = distance != "0px" || rotate != "auto";
             let main = joined(&[
                 if position == "normal" { "" } else { position },
-                if path == "none" { "" } else { path },
-                if distance == "0px" || path == "none" {
-                    ""
-                } else {
-                    distance
-                },
-                if rotate == "auto" || path == "none" {
-                    ""
-                } else {
-                    rotate
-                },
+                if path == "none" && !moved { "" } else { path },
+                if distance == "0px" { "" } else { distance },
+                if rotate == "auto" { "" } else { rotate },
             ]);
             let main = if main.is_empty() {
                 "normal".to_string()
@@ -717,7 +710,7 @@ pub(super) fn value(grammar: &str, texts: &[&str]) -> String {
             }
             let mut text = joined(&[
                 name,
-                source,
+                if source == "auto" { "" } else { source },
                 if activation == "normal" && active == "auto" {
                     ""
                 } else {
@@ -753,11 +746,7 @@ fn rule_inset(v: &Values<'_>, kind: &str) -> String {
     {
         return cap_start.to_string();
     }
-    format!(
-        "{} / {}",
-        pair_text(cap_start, cap_end),
-        pair_text(junction_start, junction_end)
-    )
+    format!("{cap_start} {cap_end} / {junction_start} {junction_end}")
 }
 
 const RANGE_NAMES: &[&str] = &[
@@ -1045,6 +1034,9 @@ fn mask(v: &Values<'_>) -> String {
             String::new()
         } else if origin == clip {
             origin.to_string()
+        } else if origin == "border-box" && clip == "no-clip" {
+            // `no-clip` is a clip-only keyword: it reads back without the default origin.
+            clip.to_string()
         } else {
             format!("{origin} {clip}")
         };
@@ -1075,8 +1067,7 @@ fn transition(v: &Values<'_>) -> String {
         if *property != "all" {
             parts.push(*property);
         }
-        // A zero duration shows only to keep a following non-negative delay a delay.
-        if !zero(duration) || (!zero(delay) && !delay.starts_with('-')) {
+        if !zero(duration) {
             parts.push(duration);
         }
         if timing != "ease" {
