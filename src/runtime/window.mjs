@@ -7,10 +7,11 @@
 import {
   Storage, makeMatchMedia,
   IntersectionObserver, ResizeObserver,
-  FileReader, makeCanvasStub, makeCustomElements,
+  FileReader, makeCanvasStub,
   makeLocation, makeHistory,
 } from './stubs.mjs';
 import { makeGetComputedStyle } from './cascade.mjs';
+import { makeCustomElements, constructCustomElement } from './custom-elements.mjs';
 import { CSSStyleSheet } from './cssom.mjs';
 import {
   Node, Element, SVGElement, Text, Comment, Document, DocumentFragment, DocumentType, Event, CustomEvent,
@@ -65,7 +66,13 @@ class TurboFormData {
 // Element (which made `instanceof HTMLAnchorElement` true for ALL elements).
 function tagClass(matcher) {
   const test = typeof matcher === 'string' ? (n) => n === matcher : (n) => matcher.test(n);
-  const C = function () { throw new TypeError('Illegal constructor'); };
+  // a customized built-in's super() (custom-elements.mjs) returns the element being
+  // constructed or upgraded; anything else is Chrome's TypeError
+  const C = function () {
+    const custom = new.target ? constructCustomElement(new.target) : null;
+    if (custom !== null) return custom;
+    throw new TypeError('Illegal constructor');
+  };
   // share Element.prototype so prototype-level spies/reads resolve (e.g.
   // vi.spyOn(HTMLAnchorElement.prototype, 'click')); instanceof is decided by
   // the tag matcher below, not the prototype chain.
@@ -118,7 +125,6 @@ class MessageChannel {
 // self-replaces onto the per-env base, so each env gets its own instance; only
 // the factory objects/closures are shared, saving ~28 allocations per test file.
 const SHARED_LAZY = {
-  customElements: () => makeCustomElements(), // fresh registry per env, built on first access
   localStorage: () => new Storage(),
   sessionStorage: () => new Storage(),
   getComputedStyle: () => makeGetComputedStyle(),
@@ -172,8 +178,8 @@ export function createWindow(document, { url = 'http://localhost/' } = {}) {
     closed: false,
     // origin is lazy (per-env, captures url) — window.origin is rarely read, so the
     // eager `new URL(url)` parse per createWindow was usually wasted.
-    // customElements is lazy (SHARED_LAZY) — env-independent + rarely used; building
-    // its two Maps eagerly per createWindow was wasted for the typical test.
+    // customElements is lazy (per-env `lazy` below: the registry upgrades this document's
+    // elements) — rarely used, so building it eagerly per createWindow would be wasted.
     Image: function Image(w, h) { const img = document.createElement('img'); if (w != null) img.setAttribute('width', w); if (h != null) img.setAttribute('height', h); return img; },
     Audio: function Audio(src) { const a = document.createElement('audio'); if (src) a.setAttribute('src', src); return a; },
     getSelection: () => document.getSelection(),
@@ -192,6 +198,8 @@ export function createWindow(document, { url = 'http://localhost/' } = {}) {
     history: () => makeHistory(windowProxy.location),
     // per-env so matchMedia can evaluate queries against THIS window's viewport
     matchMedia: () => makeMatchMedia(windowProxy),
+    // the document's custom element registry (custom-elements.mjs), built on first access
+    customElements: () => makeCustomElements(document),
   };
 
   windowProxy = new Proxy(base, {

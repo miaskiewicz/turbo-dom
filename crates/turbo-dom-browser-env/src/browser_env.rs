@@ -2290,11 +2290,13 @@ fn el_insert_adjacent_html<'s>(
     })
     .flatten();
     // These nodes are freshly parsed, so they cannot contain an existing ancestor.
+    let mark = custom_elements::event_mark(scope);
     with_tree_mut(|tree| tree.insert_adjacent_html_utf16(target, &position, &html));
     if let Some((parent, _, _)) = location {
         let object = wrap(scope, parent);
         template_contents::realize(scope, object);
     }
+    let mut parsed = Vec::new();
     if let Some((parent, index, previous_count)) = location {
         let count = with_tree(|tree| tree.children(parent).len()).unwrap_or(previous_count);
         let added = count.saturating_sub(previous_count);
@@ -2309,9 +2311,11 @@ fn el_insert_adjacent_html<'s>(
         {
             let object = wrap(scope, child);
             template_contents::mark_parsed(scope, object, true);
+            parsed.push(object);
         }
         range_live::inserting(scope, parent, index, added);
     }
+    custom_elements::parser_inserted(scope, args.this(), &parsed, mark);
 }
 fn el_toggle_attribute<'s>(
     scope: &mut v8::PinScope<'s, '_>,
@@ -2398,14 +2402,26 @@ fn require_arguments(
     scope.throw_exception(error);
     false
 }
+/// https://dom.spec.whatwg.org/#validate-and-extract: the qualified name is strictly split on
+/// ':' — the prefix is the first part and the local name the second, so Chrome 156 creates
+/// `a:b:c` as prefix `a`, local name `b` (turbo-dom#44). Returns the effective qualified
+/// name (`prefix:local`) when it differs from `qualified`.
 fn validate_namespace_name(
     namespace: Option<&str>,
     qualified: &str,
     attribute: bool,
-) -> Result<(), &'static str> {
-    let (prefix, local) = qualified
-        .split_once(':')
-        .map_or((None, qualified), |(prefix, local)| (Some(prefix), local));
+) -> Result<Option<String>, &'static str> {
+    let mut parts = qualified.split(':');
+    let first = parts.next().unwrap_or_default();
+    let (prefix, local) = match parts.next() {
+        Some(local) => (Some(first), local),
+        None => (None, qualified),
+    };
+    let effective = parts
+        .next()
+        .is_some()
+        .then(|| format!("{}:{local}", prefix.unwrap_or_default()));
+    let qualified = effective.as_deref().unwrap_or(qualified);
     let forbidden = |value: &str, attribute: bool| {
         value.chars().any(|c| {
             matches!(c, '\0' | '\t' | '\n' | '\x0C' | '\r' | ' ' | '/' | '>')
@@ -2441,7 +2457,7 @@ fn validate_namespace_name(
     {
         return Err("NamespaceError");
     }
-    Ok(())
+    Ok(effective)
 }
 fn el_get_attribute_ns<'s, 'i>(
     scope: &mut v8::PinScope<'s, 'i>,
@@ -2526,7 +2542,7 @@ fn el_set_attribute_ns<'s, 'i>(
         return;
     };
     let value = String::from_utf16_lossy(&units);
-    if let Err(error) = validate_namespace_name(
+    let qualified = match validate_namespace_name(
         namespace
             .as_deref()
             .map(String::from_utf16_lossy)
@@ -2534,9 +2550,12 @@ fn el_set_attribute_ns<'s, 'i>(
         &String::from_utf16_lossy(&qualified),
         true,
     ) {
-        throw_dom_error(scope, error, "Invalid namespace or qualified name");
-        return;
-    }
+        Ok(effective) => effective.map_or(qualified, |name| name.encode_utf16().collect()),
+        Err(error) => {
+            throw_dom_error(scope, error, "Invalid namespace or qualified name");
+            return;
+        }
+    };
     if namespace.is_none() && qualified == "popover".encode_utf16().collect::<Vec<_>>() {
         html_popover::attribute_change(scope, node, Some(&value));
     }
@@ -2995,7 +3014,7 @@ fn doc_create_attribute_ns<'s, 'i>(
     let Some(name) = dom_units(scope, args.get(1)) else {
         return;
     };
-    if let Err(error) = validate_namespace_name(
+    let name = match validate_namespace_name(
         namespace
             .as_deref()
             .map(String::from_utf16_lossy)
@@ -3003,9 +3022,12 @@ fn doc_create_attribute_ns<'s, 'i>(
         &String::from_utf16_lossy(&name),
         true,
     ) {
-        throw_dom_error(scope, error, "Invalid namespace or qualified name");
-        return;
-    }
+        Ok(effective) => effective.map_or(name, |name| name.encode_utf16().collect()),
+        Err(error) => {
+            throw_dom_error(scope, error, "Invalid namespace or qualified name");
+            return;
+        }
+    };
     if let Some(node) =
         with_tree_mut(|tree| tree.create_attribute_units(namespace.as_deref(), &name, &[]))
     {
@@ -3266,14 +3288,18 @@ fn set_inner_html<'s>(
     }
     html_popover::disconnect(scope, h, false);
     range_live::replacing_children(scope, h);
+    let mark = custom_elements::event_mark(scope);
     with_tree_mut(|t| t.set_inner_html_utf16(h, &html));
     form_checked_state::parsed(h);
     template_contents::realize(scope, node);
+    let mut parsed = Vec::new();
     for child in with_tree(|tree| tree.children(h)).unwrap_or_default() {
         let object = wrap(scope, child);
         template_contents::mark_parsed(scope, object, true);
+        parsed.push(object);
     }
     css_policy::invalidate_sheet(h);
+    custom_elements::parser_inserted(scope, node, &parsed, mark);
 }
 fn get_outer_html(
     scope: &mut v8::PinScope,
@@ -3339,12 +3365,14 @@ fn set_outer_html<'s>(
     })
     .flatten();
     range_live::removing(scope, node);
+    let mark = custom_elements::event_mark(scope);
     with_tree_mut(|tree| {
         tree.insert_adjacent_html_utf16(node, "beforebegin", &html);
         tree.remove_child(parent, node);
     });
     let object = wrap(scope, parent);
     template_contents::realize(scope, object);
+    let mut parsed = Vec::new();
     if let Some((index, previous_count)) = position {
         let count = with_tree(|tree| tree.children(parent).len()).unwrap_or(previous_count - 1);
         let added = count.saturating_add(1).saturating_sub(previous_count);
@@ -3357,11 +3385,13 @@ fn set_outer_html<'s>(
         })
         .unwrap_or_default()
         {
-            let object = wrap(scope, child);
-            template_contents::mark_parsed(scope, object, true);
+            let child = wrap(scope, child);
+            template_contents::mark_parsed(scope, child, true);
+            parsed.push(child);
         }
         range_live::inserting(scope, parent, index, added);
     }
+    custom_elements::parser_inserted(scope, object, &parsed, mark);
 }
 
 /// `children` = element-only child nodes (HTMLCollection-ish array).
@@ -3690,7 +3720,7 @@ fn doc_create_element_ns<'s, 'i>(
     let Some(qualified) = dom_units(scope, args.get(1)) else {
         return;
     };
-    if let Err(error) = validate_namespace_name(
+    let qualified = match validate_namespace_name(
         namespace
             .as_deref()
             .map(String::from_utf16_lossy)
@@ -3698,9 +3728,12 @@ fn doc_create_element_ns<'s, 'i>(
         &String::from_utf16_lossy(&qualified),
         false,
     ) {
-        throw_dom_error(scope, error, "Invalid namespace or qualified name");
-        return;
-    }
+        Ok(effective) => effective.map_or(qualified, |name| name.encode_utf16().collect()),
+        Err(error) => {
+            throw_dom_error(scope, error, "Invalid namespace or qualified name");
+            return;
+        }
+    };
     let made =
         with_tree_mut(|tree| tree.create_element_namespace_units(namespace.as_deref(), &qualified));
     if let Some(h) = made {
@@ -6089,6 +6122,9 @@ fn ownership_setter<'s, 'i, S>(
     if scope.is_execution_terminating() {
         return;
     }
+    // Setters are [CEReactions] too (innerHTML, outerHTML, reflected attributes): their
+    // custom element reactions run when the setter returns, element by element (turbo-dom#43).
+    let reactions = custom_elements::reactions(scope);
     S::get()(scope, name, value, args, rv);
     if scope.has_terminated() {
         scope.rethrow();
@@ -6102,6 +6138,7 @@ fn ownership_setter<'s, 'i, S>(
         scope.reset();
     }
     mutation_observers::flush(scope);
+    reactions.flush(scope);
     if scope.has_terminated() || scope.is_execution_terminating() {
         scope.rethrow();
         return;
@@ -9568,6 +9605,12 @@ mod frame_tokens_tests;
 #[path = "html_meta_tests.rs"]
 mod html_meta_tests;
 
+#[cfg(test)]
+#[path = "computed_defaults_tests.rs"]
+mod computed_defaults_tests;
+#[cfg(test)]
+#[path = "dom_reactions_tests.rs"]
+mod dom_reactions_tests;
 #[cfg(test)]
 #[path = "html_image_tests.rs"]
 mod html_image_tests;

@@ -35,6 +35,208 @@ at the time); this file reconstructs them from history.
   three cases. The PDF does not embed JPEG XL.
   Corpus changes: `tools/parity/expected/p5b-w4-turbo-dom-27-*.json`,
   `-turbo-dom-45-1.json`.
+### Fixed — `createDocument` qualified names (P5b-X5, miaskiewicz/turbo-dom#57, Chrome 156 control)
+- turbo-dom-browser-env: `document.implementation.createDocument` checked the qualified
+  name against the XML `Name` production and rejected every name with two colons. It now
+  validates and extracts it like `createElementNS`, as Chrome does: `a:b:c` gives a
+  document element with prefix `a` and local name `b`. `a::b`, `:a:b` and `a:1b:c` throw
+  `InvalidCharacterError`. Control: section `documentNames` of
+  `src/dom_reactions_names_chrome156.json`.
+
+### Fixed — qualified names with several colons (P5b-X5, miaskiewicz/turbo-dom#44, Chrome 156 controls)
+- turbo-dom-browser-env: `createElementNS`, `setAttributeNS` and `createAttributeNS` now
+  split the qualified name strictly on `:` (DOM "validate and extract"), as Chrome 156 does.
+  The prefix is the first part and the local name the second: `a:b:c` / `a:b:c:d` /
+  `a:b:` create prefix `a`, local name `b`, qualified name `a:b`. An empty second part
+  (`a::b`) throws `InvalidCharacterError`. The binding used to keep `b:c` as the local name.
+- Controls: `nsTwoColons` in `test/fixtures/dom_adoption_reactions_chrome156.json` and
+  section `names` of `src/dom_reactions_names_chrome156.json`.
+
+### Fixed — custom element upgrades and reaction order (P5b-X5, miaskiewicz/turbo-dom#42, #43, Chrome 156 controls)
+- turbo-dom-browser-env, #42: `customElements.upgrade(root)` used to upgrade template
+  contents, whose inert document has no registry. It now skips every candidate the
+  registry does not govern. Inserting into a disconnected tree no longer upgrades either:
+  only connected elements upgrade on insertion. So template contents appended to a
+  detached element adopt without constructing, and upgrade once when connected. An element
+  is never constructed twice.
+- #43: an element's upgrade is now queued in its own reaction queue inside a `[CEReactions]`
+  call. Its constructor and the `attributeChangedCallback` / `connectedCallback` it queues
+  run before the next element's reactions (`importNode`: `ctor u1, attr u1, ctor u2`).
+- #43: setters (`innerHTML`, `outerHTML`, reflected attributes, …) are `[CEReactions]`
+  scopes like methods. The HTML fragment parser (`innerHTML`, `outerHTML`,
+  `insertAdjacentHTML`, `setHTMLUnsafe`, `createContextualFragment`) queues its elements'
+  upgrades before the setter's removals queue `disconnectedCallback`s
+  (`ctor r4, conn r4, disc r1, …`).
+- Controls: the npm runtime's `test/fixtures/dom_adoption_reactions_chrome156.json` (read
+  in place by `src/dom_reactions_tests.rs`) and the new
+  `src/dom_reactions_names_{probe.js,cases.json,chrome156.json}` (fragment-parser setters).
+
+### Fixed — custom element reactions in independent documents (P5b-X5, miaskiewicz/turbo-dom#54, Chrome 156 control)
+- turbo-dom-browser-env: in a document installed with `install_independent_html`,
+  `removeChild()` / `remove()` (and every other call that mutates the tree directly)
+  used to run the `disconnectedCallback`s they queued during the *next* DOM call, or never
+  when the removal was the last call. The mutation flush checked only the current document;
+  it now also delivers another (independent) document's recorded mutations before the call
+  returns, as in Chrome. Control: section `removal` of
+  `src/dom_reactions_names_chrome156.json`.
+
+### Fixed — `getComputedStyle(el, pseudoElt)` (P5b-X5, miaskiewicz/turbo-dom#47, Chrome 156 control)
+- turbo-dom-browser-env: `pseudoElt` used to be ignored, so every read returned the element's
+  style. `::before` / `::after` (also `:before` / `:after` and a bare `before` / `after`,
+  ASCII case-insensitive, escapes and comments allowed) now compute the pseudo-element:
+  - its own rules apply, and `color`, `visibility` and fonts inherit from the element;
+  - `display` is `inline`, blockified for floats, absolute positioning and when the
+    element is a flex / grid container;
+  - `content` is `none` unless set, and strings serialize double-quoted.
+- An invalid pseudo-element returns an empty declaration (`::foo`, `:backdrop`,
+  `:marker`, `::before:hover`, `x:before`, a trailing space, `::part(x)`). A string
+  without a leading colon reads the element, as do `null` / `undefined`.
+- An element's `content` computes to `normal`.
+- Still the element's style (open in #47): `::marker`, `::placeholder`, `::first-line` /
+  `::first-letter`, `::selection`, `::file-selector-button`, `::view-transition*` and
+  the other UA-styled pseudo-elements.
+- Control: case `pseudo-elements` in `src/computed_defaults_chrome156.json`; no corpus
+  output changes (`tools/parity/expected/p5b-x5-47.json`).
+
+### Fixed — `getComputedStyle` for modal dialogs, the top layer and `::backdrop` (P5b-X5, miaskiewicz/turbo-dom#30, Chrome 156 control)
+- turbo-dom-browser-env: a `<dialog>` opened with `showModal()` (it matches `:modal`) now
+  computes Chrome's `dialog:modal` values: `position: fixed`, `top` / `bottom: 0px`,
+  `max-width` / `max-height: calc(100% - 6px - 2em)` at the dialog's font size (16px →
+  `calc(100% - 38px)`), `overflow: auto` and `visibility: visible`. Author and inline
+  declarations still win. A dialog opened with `show()` stays `position: absolute`;
+  `close()` and removal from the document leave the top layer.
+- A top-layer element (modal dialog, open popover) whose `position` is `static`,
+  `relative` or `sticky` computes to `absolute` (CSS Position 4).
+- `getComputedStyle(el, '::backdrop')` reads the backdrop instead of the element. It is
+  `display: block`. Outside the top layer it is `position: absolute` with `auto` insets.
+  In the top layer it is `position: fixed` at inset `0px`, with `rgba(0, 0, 0, 0.1)`
+  behind a modal dialog (popovers: transparent). Author `::backdrop` rules apply, and
+  `visibility`, `color` and fonts inherit from the element. A disconnected element's
+  backdrop reports `""`. The returned declaration stays live like the element's.
+- Control: new case `dialog-top-layer` in `src/computed_defaults_{probe.js,cases.json,chrome156.json}`
+  (show / showModal / close, open attribute removed while modal, removal, stacked modals,
+  hidden ancestor, author overrides, popovers, `::backdrop`); the earlier sections are
+  unchanged. No corpus output changes (`tools/parity/expected/p5b-x5-30.json`).
+
+### Fixed — `getComputedStyle` defaults and no injected `<title>` (P5b-X3, miaskiewicz/turbo-surf#36 items 1–2, Chrome 156 control)
+- turbo-dom-browser-env: `getComputedStyle` used to return `""` for `display`, `position`
+  and `visibility` when no author rule applied; only `<button>` had UA values. It now
+  reports Chrome 156's computed values:
+  - `display` is the element's html.css display: block / inline / none / table-* /
+    list-item / inline-block / contents / ruby. `[hidden]`, a closed `dialog` or popover,
+    `input[type=hidden]` and `audio` without controls are `none`. MathML gives `math` /
+    `block math`.
+  - `display` is then blockified for floats, absolutely positioned elements and flex /
+    grid items, as in Chrome.
+  - `position` is `static`, except `dialog` (`absolute`) and `[popover]` (`fixed`).
+  - `visibility` is inherited and `visible` at the root.
+  - The CSS-wide keywords and shadow-scoped (`:host`) declarations resolve.
+  - Disconnected elements and children of `<video>` / `<audio>` report `""`, like Chrome.
+- turbo-dom-browser-env: the document no longer gets an empty `<title>` injected into
+  `<head>` at setup (`<!doctype html><body>` has an empty head, as in Chrome). Setting
+  `document.title` still creates the `<title>`.
+- Control: `src/computed_defaults_{probe.js,cases.json,chrome156.json}`, also exported as
+  `test_support::COMPUTED_DEFAULTS_*` (76 files) so turbo-surf can run it through
+  `PageSession`. Corpus: every surf `live-*` dump changes
+  (`tools/parity/expected/p5b-x3-surf-36.json`).
+
+### Fixed — npm runtime namespaces, adoption, template contents, reaction order (P5b-X4, miaskiewicz/turbo-dom#29, Chrome 156 control)
+- `createElementNS` creates the element in the namespace it is given: any namespace other
+  than HTML / SVG / MathML (and the null namespace — `null`, `undefined` or `''`) gives a
+  plain, case-preserving `Element` (`namespaceURI`, `localName`, attribute names and
+  `tagName` keep their case; it is never a custom element). It used to create an HTML
+  element. Prefixes are kept (`prefix`, `tagName` = the qualified name, e.g. `svg:rect`;
+  they were dropped) and the qualified name is validated like Chrome 156
+  (`InvalidCharacterError` / `NamespaceError`; Chrome keeps the local name up to a second
+  colon). `createElement` validates its name too (`createElement('a b')` threw nothing;
+  turbo-dom#31). `getElementsByTagName` matches non-HTML elements by their exact qualified
+  name (`getElementsByTagName('foreignObject')` found nothing; turbo-dom#32), and the
+  serializer writes other namespaces' qualified names and treats only HTML elements as
+  void / `<template>` (turbo-dom#33).
+- Inserting a node from another document (`insertBefore` / `appendChild` / `append` /
+  `replaceChild`, fragments' children too) adopts it, as `adoptNode` does: its subtree reads
+  its own attributes and children instead of the new document's buffer (an un-inflated
+  subtree used to read garbage — wrong attributes, other documents' nodes), the old document
+  stops reporting it (its version is bumped), and `adoptedCallback` runs. DOM versions now
+  come from one process-wide counter, so an adopted node can never hit a cache entry keyed
+  on its old document's version. A custom element moved into a document without a registry
+  keeps its connected / disconnected callbacks there.
+- `insertBefore(node, node)` and `replaceChild(node, node)` no longer throw `NotFoundError`
+  after detaching the node (it was lost): the reference child is checked before the tree
+  changes and becomes the node's next sibling, as in Chrome; `replaceChild` removes the old
+  child before inserting the new one (MutationObserver records in that order;
+  turbo-dom#34). `DocumentType.cloneNode()` keeps `name` / `publicId` / `systemId`
+  (turbo-dom#35).
+- `<template>` contents live in the document's inert template contents owner document
+  (`content.ownerDocument !== document`, no `defaultView`, no custom element registry),
+  so `template.content.cloneNode(true)` no longer upgrades custom elements right away:
+  they upgrade once inserted into the document (`document.importNode(content, true)`
+  clones into the document and upgrades there). Every template now has its contents
+  (`document.createElement('template').content` was `null`), `template.innerHTML` parses
+  into them (it replaced the template's children), and `cloneNode(true)` clones them
+  (turbo-dom#36). Moving parsed contents in and out of the document stays lazy (the
+  inert document shares the buffer). `element.content` is an accessor: `<meta>` reflects
+  its attribute (it was `null`; turbo-dom#37), other elements have no such property.
+  Adoption reaches shadow roots (a shadow host's root stayed in the old document;
+  turbo-dom#38), and `document.cloneNode(true)` clones the children into the new document.
+- Custom element reactions are queued on each element and run when the DOM call returns,
+  element by element, like Chrome's `[CEReactions]`: callbacks see the finished operation
+  (`append(a, b)`: `a`'s `connectedCallback` sees `b` inserted; `innerHTML` /
+  `replaceChildren` / `textContent`: `disconnectedCallback` sees the new children; clone /
+  `importNode` constructors see the cloned children; `innerHTML` queues the new elements'
+  upgrades before the old children's disconnections), and DOM calls made inside a callback
+  run their own reactions first. `attributeChangedCallback` runs after the mutation record
+  is queued. `insertAdjacentHTML` parses with the element or its parent as the context
+  instead of a `createElement(localName)` scratch element (a custom element of that name was
+  constructed; SVG context lost; positions are case-insensitive; `NoModificationAllowedError`
+  / `SyntaxError` like Chrome; turbo-dom#39). `replaceWith(…)` listing the node itself keeps
+  it, and the node is removed before its replacements go in (turbo-dom#40).
+  Control: `test/fixtures/dom_adoption_reactions_chrome156.json` (probe + cases beside it,
+  recorded with `crates/turbo-dom-browser-env/scripts/select-element-chrome-control.mjs`),
+  asserted by `test/dom-adoption-reactions-chrome.test.mjs` (the one deviation: the runtime's
+  `HTMLElement` is `Element`, so `instanceof HTMLElement` is true for every element).
+
+### Changed — npm `:defined` and custom elements (P5b-X3, miaskiewicz/turbo-dom#26 item 2, Chrome 156 control)
+- The JS runtime keeps each element's HTML custom element state in lockstep with the Rust
+  tree (`src/runtime/custom-elements.mjs`): the creation-time rule (a valid custom element
+  name, or an `is` value from the parser, the fragment parser or `createElement(…, {is})`,
+  is "undefined"; later `is` edits never change it) and upgrades / constructions on top.
+  `:defined` in `matches` / `querySelector*` / `getComputedStyle` reads it instead of
+  looking the current name up in `window.customElements`, so a later `is` edit no longer
+  flips it and a detached element created before `define()` stays undefined (Chrome).
+- `window.customElements` is a working registry instead of a stub: `define()` upgrades the
+  document's candidates in shadow-including tree order (constructors run on the existing
+  element, `this` is the element, prototypes become the class's), insertion into the
+  document, `customElements.upgrade()`, `cloneNode` / `importNode` and `innerHTML` upgrade
+  too, `createElement` / `createElementNS` / `new C()` construct (customized built-ins
+  via `{ extends }` and `HTMLButtonElement` & co.), a throwing constructor leaves a failed
+  element (reported through `window.reportError`, not thrown), and `connectedCallback` /
+  `disconnectedCallback` / `attributeChangedCallback` (`observedAttributes`) /
+  `adoptedCallback` run. BREAKING for tests that relied on the stub: defined custom elements
+  now run their constructors and callbacks; an autonomous definition no longer makes a
+  `<button is=…>` of the same name match `:defined`. Documents without a touched
+  registry run every DOM path unchanged. New exports: `customElementState`,
+  `setCustomElementState`. Also `DocumentFragment` gains `firstElementChild` /
+  `lastElementChild` / `childElementCount` (template content traversal, used by the
+  control). Control: `crates/turbo-dom-browser-env/src/custom_elements_defined_chrome156.json`,
+  asserted by `test/custom-elements-chrome.test.mjs` (every section; the failed element is a
+  plain element, not an `HTMLUnknownElement`).
+
+### Added — `HTMLImageElement` `width` / `height` / `x` / `y` (P5b-X3, miaskiewicz/turbo-dom#26 item 1, Chrome 156 control)
+- turbo-dom-browser-env: `HTMLImageElement.prototype` gains the `width` / `height`
+  reflecting IDL attributes (HTML §4.8.4.3; `img.width` was `undefined`) and the CSSOM
+  View `x` / `y`, as Chrome's prototype accessors ("Illegal invocation" for other
+  receivers). The getters return the rendered box while the image is being rendered, which
+  the host answers through the new private hook `record.imageHost.setLayoutQuery(query)`
+  (`query(img)` → `{width, height, x, y}` or `null`); otherwise, as Blink, the attribute
+  when it parses as a non-negative integer (≤ 4294967295), else the natural size from
+  `imageHost.setState` (`0` without one), and `x` / `y` are `0`. The setters write the
+  attribute as unsigned long (ToUint32, above 2147483647 → `0`; Symbol / BigInt rejected
+  with Blink's "Failed to set the 'width' property …" TypeError). Without a query (turbo-test)
+  no image is being rendered. Control: `src/html_image_probe.js` gains a `dimensions` section
+  and `src/html_image_cases.json` rendered / `display: none` images with their layout
+  boxes (`layout`), recaptured on Chrome for Testing 156.0.8078.4 (earlier sections
+  unchanged).
 
 ### Fixed — turbo-dom-layout bug fixes (P5b-W1, Chrome 156 controls)
 Each fix is backed by a Chrome for Testing 156 control and lists the corpus outputs it
@@ -82,13 +284,113 @@ changes in `tools/parity/expected/p5b-w1-*.json`.
   table is shrink-to-fit — no wider than its columns' max-content plus border-spacing,
   padding and borders (`min-width`/`max-width` still apply, and it never drops below its
   min-content) — so a one-cell table is `[8,8,13.109375,24]` as in Chrome, not the full
-  1264px line, and `margin: 0 auto` centres it. The PDF / screenshot paths keep filling
-  the containing block (unchanged output). Control: `live-geometry` `table-auto-*`.
+  1264px line, and `margin: 0 auto` centres it. The PDF / screenshot paths
+  follow in P5b-W3 (miaskiewicz/turbo-dom#28 item 7, below). Control: `live-geometry` `table-auto-*`.
 - `<template>` is `display: none` in the user-agent sheet (miaskiewicz/turbo-surf#36 item
   4), as in Chrome: a live `<template>` (also one inside a table cell) has the all-zero
   rect of a boxless element instead of an empty box at its flow position. Embedders that
   match `user_agent_css()` (turbo-surf) get the rule too; the HTML drive already stripped
   `<template>`. Control: `live-geometry` `template-in-*`.
+
+### Fixed — turbo-dom-layout bug fixes (P5b-W3, miaskiewicz/turbo-dom#28, Chrome 156 controls)
+Each fix is backed by a Chrome for Testing 156 control and lists the corpus outputs it
+changes in `tools/parity/expected/p5b-w3-turbo-dom-28-*.json`.
+- `clip: rect()` in hit testing (item 1): `cssom_view::hit::elements_at_point` (surf's
+  `elementFromPoint` / `elementsFromPoint`) and the caret query skip the parts of an
+  absolutely positioned box — and of its descendants and text — that its
+  `clip: rect(top, right, bottom, left)` cuts away (offsets from the border-box corner,
+  `auto` = the border-box edge), as Chrome does: a point over a `.sr-only` span hits
+  the element underneath instead of the span. `clip` on a box that is not absolutely
+  positioned is ignored. Control: `live-geometry` `clip-rect-*` cases (`hits`).
+- Out-of-flow margins (item 2): an absolutely positioned box's own margins are added
+  once. Its static position is the margin edge of its hypothetical box — the flow's
+  content edge and the margins collapsed before it — so `margin-left` is no longer
+  doubled (in `place_special_kid` and the deferred pass) and its `margin-top` no longer
+  also joins the preceding margin run; a `right`-anchored box keeps its `margin-right`
+  inside the inset instead of being shifted by `margin-left`. Every layout path.
+  Control: `abs-static-position-*` / `abs-inset-margins` in `live-geometry` and
+  `html-document`.
+- Anonymous block style (item 3): the anonymous block box wrapping an inline run next to
+  block-level siblings takes only its parent's inherited properties (CSS 2.1 §9.2.1.1) on
+  every path. The PDF / screenshot path copied the parent's whole style, so the run was
+  padded, bordered, sized (`height`, `width`) and offset by the parent's margins a second
+  time — `<div style="padding:10px">x<p>…</p></div>` pushed the `<p>` down by 20px. Control:
+  `anonymous-block-*` in `html-document` and `live-geometry`.
+- Floats and `inline-table` (item 4): `display_of` blockifies a float like an absolutely
+  positioned box (CSS 2.1 §9.7) — a floated `<span>` is a shrink-to-fit block float
+  instead of an inline laid out in the line — and `inline-table` is its own
+  `Display::InlineTable`, an atomic inline-level table (`table` once blockified) instead of
+  a block. A float met inside line content (after inline content, or inside an inline
+  element) no longer splits the line or its inline ancestor: it takes a place in the run
+  and is placed at the top of the line it lands on, the lines beside it narrowed (the
+  paragraph is re-laid until the floats settle), as in Chrome; in live snapshots such a
+  float is supported instead of failing as a "positioned/floating block-in-inline
+  split". A table's intrinsic widths (`flex::natural_width` / `min_content_width`:
+  inline tables, floats, flex items, inline-blocks around tables) are its columns plus
+  border-spacing (`table::max_content_width` / `min_content_width`), not its widest
+  row. Control: `float-*` / `inline-table-*` in `live-geometry` and `html-document`.
+- Empty row groups in live geometry (item 5): a `<tbody></tbody>` (`<thead>`, `<tfoot>`)
+  gets a zero-height box as wide as the table's rows, at the bottom of the rows before it
+  (the first row edge when none precede it; zero-size at the content-box origin of a
+  table without columns), as in Chrome, instead of no box (its reads failed with "native
+  empty inline placement is pending"). Control: `live-geometry` `empty-row-group-*`.
+- Zero-height lines (item 6): a line box holding no text, preserved white space, framed
+  inline (horizontal margin/border/padding), in-flow atom or `<br>` — only the places of
+  absolutely positioned or floated boxes, collapsible spaces and empty inlines — is
+  zero-height (CSS 2.1 §9.4.2), on every path, instead of one strut tall:
+  `<div><span><span style="position:absolute"></span></span></div>` is 0px high as in
+  Chrome (was 18px live / 19.36px PDF). `layout::inline::InlineAtom` gains `placeholder`
+  (set for those places). Control: `abs-only-line-*` / `float-only-line-in-inline` in
+  `live-geometry` and `html-document`.
+- Auto-width tables on every path (item 7): a `width: auto` table is shrink-to-fit in
+  PDFs and screenshots too (turbo-surf#36 item 3 did it for live geometry only) — its
+  columns' max-content plus border-spacing, padding and borders, `min-width` /
+  `max-width` applied, never below its min-content — so the table box (background,
+  borders, `layoutBoxes`) hugs its columns as in Chrome instead of spanning the
+  containing block, and `margin: 0 auto` centres it. `table-layout: fixed` applies only
+  to a table with a definite width (a `width: auto` one uses the automatic algorithm, as
+  in Chrome), and the columns of an auto table fill its box (a `min-width` or stretched
+  table no longer leaves them at their natural widths). Changes many html2pdf PDFs: the
+  exact list is `tools/parity/expected/p5b-w3-turbo-dom-28-item7.json`. Control:
+  `table-auto-*` in `html-document` and `live-geometry`.
+- `inline-flex` / `inline-grid` (miaskiewicz/turbo-dom#53, found while fixing #28 item 4):
+  `Display::InlineFlex` / `InlineGrid` are atomic inline-level flex / grid containers that
+  sit in the line and shrink to fit (`flex` / `grid` once blockified), instead of
+  block-level boxes filling the line; a grid's intrinsic width is its `px` column tracks
+  plus gaps (else its widest item). Control: `inline-flex-*` / `inline-grid-*` in
+  `live-geometry` and `html-document`.
+- Absolutely positioned `width: auto` boxes (miaskiewicz/turbo-dom#48, found while fixing
+  #28 item 2): a non-replaced one is shrink-to-fit (CSS 2.1 §10.3.7) — `min(max(min-content,
+  available), max-content)`, available from its set inset or static position to the far
+  edge of the containing block, then `min-width` / `max-width` — on every path, and one
+  with both `left` and `right` set stretches between them on the PDF / screenshot path
+  too (live already did); a `right`-anchored box is placed by that width. It used to take
+  the whole containing block (`<div style="position:absolute;right:0">` of a 30px child
+  was 1280px wide at x=0). Control: `abs-auto-width-*` / `fixed-auto-width-shrinks` in
+  `live-geometry` and `html-document`.
+- Percentage columns (miaskiewicz/turbo-dom#50, found while fixing #28 item 7): in the
+  automatic table layout a column whose cell has `width: N%` (or `width="N%"`) takes that
+  share of the table (never below its min-content; the other columns share the rest), and
+  an auto table's max-content grows so it can — the largest of the plain sum, each
+  percentage column's max-content over its share and the other columns' over theirs;
+  unbounded (the table fills the line) at 100% or more beside other content — as in
+  Chrome. Control: `table-percent-*` in `live-geometry` and `html-document`.
+- Auto-layout collapsed tables (miaskiewicz/turbo-dom#49, found while fixing #28 item 5):
+  a `border-collapse: collapse` table with the automatic layout (and a `width: auto`
+  `table-layout: fixed` one) now merges shared borders like a fixed-layout one — one
+  border per grid line at the widest abutting width, half on each side, the table's own
+  border as the outer line — with content+padding column tracks from the automatic
+  algorithm (percentages honoured; a spanning cell widens its columns in proportion).
+  Cells, rows and row groups sit at the grid-line centres as in Chrome instead of each
+  cell keeping its full borders (`68x20` for two 2px-bordered cells, was `70x20`), and a
+  collapsed table with its own border no longer counts it twice (also fixed layout).
+  Control: `table-collapse-auto-*` in `live-geometry` and `html-document`.
+- Spanning cells in separated tables (miaskiewicz/turbo-dom#56, found while fixing #49):
+  a `colspan` cell wider than its columns spreads the excess over them in proportion to
+  their widths (evenly when empty) instead of widening only the last one, the
+  border-spacing between them counting towards the span — for the max-content and the
+  min-content — and the cell is laid out over that spacing too, as in Chrome.
+  Control: `table-colspan-*` in `live-geometry` and `html-document`.
 
 ### Changed — selector follow-ups (P5b-X2, miaskiewicz/turbo-dom#24, Chrome 156 controls)
 - `rtdom::cascade` (`getComputedStyle`) and the npm `cascade.mjs` rank rules by the

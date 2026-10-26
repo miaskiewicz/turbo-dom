@@ -18,7 +18,10 @@ function escapeAttr(s) {
 function serializeNode(node, out) {
   switch (node.nodeType) {
     case 1: { // element
-      const tag = node.localName;
+      // HTML / SVG / MathML elements serialize their local name, other namespaces the
+      // qualified name; only HTML elements can be void or <template>
+      const ns = node.__ns, html = ns === '';
+      const tag = html || ns === 'svg' || ns === 'math' ? node.localName : node.tagName;
       out.push('<' + tag);
       // __attrs is lazy: buffer-backed elements leave it undefined (store __attrIdx).
       // Build from the SoA on first touch, matching every other __attrs read site.
@@ -28,8 +31,8 @@ function serializeNode(node, out) {
         out.push(` ${name}="${escapeAttr(a.value)}"`);
       }
       out.push('>');
-      if (VOID.has(tag)) break;
-      if (tag === 'template' && node.content) {
+      if (html && VOID.has(tag)) break;
+      if (html && tag === 'template' && node.content) {
         serializeChildren(node.content, out);
       } else {
         serializeChildren(node, out);

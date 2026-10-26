@@ -78,7 +78,13 @@ pub fn caret(
             continue;
         };
         let translation = scroll_translation(snapshot, styles, source, offsets)?;
-        if super::hit::clipped(snapshot, styles, &run.source_ancestors, offsets, point)? {
+        if super::hit::hidden_by_clip(
+            snapshot,
+            styles,
+            (&run.source_ancestors, None),
+            offsets,
+            point,
+        )? {
             continue;
         }
         let mut rect = world_rect(

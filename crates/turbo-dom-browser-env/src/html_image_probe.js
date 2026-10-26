@@ -148,5 +148,69 @@
   d.receiver = await decoded((async () => P.decode.call(document.createElement('div')))());
   d.returnsPromise = document.createElement('img').decode() instanceof Promise;
   out.decode = d;
+  // turbo-dom#26: width / height (HTML 4.8.4.3) are unsigned long accessors reflecting the
+  // `width` / `height` content attributes. The getters return the rendered size while the image
+  // is being rendered (the #dims images with a box), else the attribute when it parses as a
+  // non-negative integer, else the natural size (0 without an image); the setters write the
+  // attribute (above 2147483647 -> 0). x / y (CSSOM View) are the box position, 0 without a box.
+  const dims = ['width', 'height', 'x', 'y'];
+  const dshape = (key) => {
+    const d = Object.getOwnPropertyDescriptor(P, key);
+    if (!d) return null;
+    return {
+      keys: Object.keys(d), enumerable: d.enumerable, configurable: d.configurable,
+      get: d.get && [d.get.name, d.get.length, Function.prototype.toString.call(d.get), Object.hasOwn(d.get, 'prototype')],
+      set: d.set === undefined ? 'undefined' : [d.set.name, d.set.length, Function.prototype.toString.call(d.set)],
+    };
+  };
+  const w = {};
+  w.shape = Object.fromEntries(dims.map((name) => [name, dshape(name)]));
+  w.inElement = dims.map((name) => name in HTMLElement.prototype);
+  w.prototypeRead = dims.map((name) => error(() => P[name]));
+  w.receivers = Object.fromEntries(Object.entries(receivers).map(([label, receiver]) =>
+    [label, dims.map((name) => error(() => Object.getOwnPropertyDescriptor(P, name).get.call(receiver)))]));
+  w.setReceivers = Object.fromEntries(Object.entries(receivers).map(([label, receiver]) =>
+    [label, ['width', 'height'].map((name) => error(() => Object.getOwnPropertyDescriptor(P, name).set.call(receiver, 5)))]));
+  const placed = ['sized', 'styled', 'intrinsic', 'hidden', 'hiddenIntrinsic', 'hiddenEmpty', 'hiddenNone'].map((id) => document.getElementById(id));
+  await Promise.all(placed.map(settle));
+  const box = (img) => [img.width, img.height, img.x, img.y];
+  w.placed = Object.fromEntries(placed.map((img) => [img.id, [...box(img), img.naturalWidth, img.naturalHeight]]));
+  const detached = (width, height) => {
+    const img = document.createElement('img');
+    if (width !== null) img.setAttribute('width', width);
+    if (height !== null) img.setAttribute('height', height);
+    return img;
+  };
+  w.detached = box(document.createElement('img'));
+  const attributeValues = [null, '', '5', ' 7', '+3', '-1', '-0', '0', '05', '5 ', '\t9', '\n9', '\f9', '\r9', '　9', '1e2',
+    '12abc', '12.5', '12px', '50%', '0x10', '+', '-', '2147483647', '2147483648', '4294967295', '4294967296', '99999999999'];
+  w.attributeRead = attributeValues.map((value) => [String(value), ...box(detached(value, value))]);
+  const idlValues = [0, 5, -1, -0, 1.9, -1.9, NaN, Infinity, -Infinity, 2147483647, 2147483648, 4294967295, 4294967296, 4294967301,
+    -4294967291, '7', ' 8 ', 'x', '', null, undefined, true, false, [], [4], { valueOf() { return 6; } }];
+  w.write = idlValues.map((value) => {
+    const img = document.createElement('img');
+    const result = error(() => { img.width = value; img.height = value; });
+    return [String(value), result[0], img.getAttribute('width'), img.width, img.getAttribute('height'), img.height];
+  });
+  w.writeErrors = [Symbol('s'), 1n, { valueOf() { throw new RangeError('w'); } }].map((value) => {
+    const img = document.createElement('img');
+    return [error(() => { img.width = value; }), error(() => { img.height = value; }), img.attributes.length];
+  });
+  w.writeOwn = (() => {
+    const img = document.createElement('img');
+    img.width = 9;
+    return [Object.getOwnPropertyNames(img), Object.keys(img), img.outerHTML];
+  })();
+  w.readonlyStrict = error(() => { const img = document.createElement('img'); img.x = 5; return img.x; });
+  w.readonlySloppy = Function('const img = document.createElement("img"); img.x = 5; img.y = 6; return [img.x, img.y, Object.getOwnPropertyNames(img)];')();
+  w.removed = (() => {
+    const img = detached('11', '12');
+    const before = box(img);
+    img.removeAttribute('width');
+    return [before, box(img)];
+  })();
+  w.factory = [box(new Image()), box(new Image(5, 7)), box(new Image(2147483648, 3))];
+  w.cloned = box(document.getElementById('hidden').cloneNode());
+  out.dimensions = w;
   return out;
 })();

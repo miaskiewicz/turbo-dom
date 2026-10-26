@@ -480,9 +480,24 @@ fn payload<'s>(
     object
 }
 
+/// Is another (not current) document recording mutations? After a DOM call returns, the
+/// current document is the caller's; an independently installed document's events must still
+/// be delivered before the call returns (turbo-dom#54).
+fn other_document_recording() -> bool {
+    OTHER_DOMS.with(|doms| {
+        doms.borrow().values().any(|saved| {
+            saved.dom.as_ref().is_some_and(|dom| {
+                dom.custom_elements_active
+                    || !dom.scripts.is_empty()
+                    || !dom.shadow_modes.is_empty()
+            })
+        })
+    })
+}
+
 pub(super) fn flush(scope: &mut v8::PinScope) {
     form_checked_state::owner_changes();
-    if !recording() || scope.is_execution_terminating() {
+    if !recording() && !other_document_recording() || scope.is_execution_terminating() {
         return;
     }
     let observers = scope

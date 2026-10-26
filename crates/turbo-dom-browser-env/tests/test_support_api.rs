@@ -6,7 +6,7 @@ use turbo_dom_browser_env::test_support::{self, FILES};
 
 #[test]
 fn test_support_constants_are_the_shipped_files() {
-    assert_eq!(FILES.len(), 73);
+    assert_eq!(FILES.len(), 76);
     let src = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
     for (name, bytes) in FILES {
         assert_eq!(*bytes, std::fs::read(src.join(name)).unwrap(), "{name}");

@@ -15,7 +15,8 @@
   // The state is copied when it is set (complete -> boolean, sizes -> unsigned long, currentSrc
   // -> string) and kept per element until the host replaces or clears it, e.g. when a new load
   // starts ({complete: false}) and when it finishes; decode() promises settle with it. Also here:
-  // the Image() legacy factory and HTMLImageElement.prototype.decode (turbo-dom#23). See the
+  // the Image() legacy factory and HTMLImageElement.prototype.decode (turbo-dom#23), and the
+  // width / height / x / y accessors with the host's layout query (turbo-dom#26). See the
   // crate README "Image load state".
   const g = globalThis,
     ns = g[Symbol.for("ts")],
@@ -30,7 +31,8 @@
     StringValue = String,
     NumberValue = Number;
   const imageBrand = accessor("nodeType", false, "HTML:img");
-  const getAttribute = g.Element.prototype.getAttribute;
+  const getAttribute = g.Element.prototype.getAttribute,
+    setAttribute = g.Element.prototype.setAttribute;
   const sourceGetter = Object.getOwnPropertyDescriptor(P, "src").get;
   const states = new WeakMap(),
     stateOf = WeakMap.prototype.get,
@@ -109,8 +111,85 @@
     configurable: true,
   });
   const unsigned = (value) => NumberValue(value) >>> 0;
+  // width / height (HTML 4.8.4.3) and x / y (CSSOM View; turbo-dom#26), measured in
+  // html_image_chrome156.json `dimensions`. width / height are unsigned long accessors reflecting
+  // the content attributes: while the image is being rendered they return its rendered size
+  // (content box, CSS px), else — as Blink — the attribute when it parses as a non-negative
+  // integer (up to 4294967295), else the natural size (the host state above; 0 without one).
+  // The setters write the attribute (ToUint32; above 2147483647 -> 0). x / y are read-only longs:
+  // the box position relative to the initial containing block, 0 without a box. The binding has
+  // no layout: the host answers through record.imageHost.setLayoutQuery(query), where
+  // query(img) returns {width, height, x, y} for an image that is being rendered and null (or
+  // undefined) for one that is not; without a query no image is being rendered.
+  let layoutQuery = null;
+  const exec = RegExp.prototype.exec,
+    integerPattern = /^[\t\n\f\r ]*([-+]?)([0-9]+)/;
+  const nonNegative = (text) => {
+    if (text === null) return null;
+    const match = apply(exec, integerPattern, [text]);
+    if (!match) return null;
+    const value = NumberValue(match[2]);
+    if (match[1] === "-") return value === 0 ? 0 : null;
+    return value <= 4294967295 ? value : null;
+  };
+  const layoutBox = (image) => {
+    if (layoutQuery === null) return null;
+    const box = apply(layoutQuery, undefined, [image]);
+    return box === null || box === undefined ? null : box;
+  };
+  const reflectedSize = (name, natural) =>
+    function () {
+      check(this);
+      const box = layoutBox(this);
+      if (box !== null) return unsigned(box[name]);
+      const value = nonNegative(apply(getAttribute, this, [name]));
+      if (value !== null) return value;
+      const state = current(this);
+      return state ? state[natural] : 0;
+    };
+  const setterError = (name, kind) =>
+    new ErrorType("Failed to set the '" + name + "' property on 'HTMLImageElement': Cannot convert a " + kind + " value to a number");
+  for (const [name, natural] of [["width", "naturalWidth"], ["height", "naturalHeight"]]) {
+    define(P, name, {
+      get: make(reflectedSize(name, natural), "get " + name, 0),
+      set: make(
+        function (value) {
+          check(this);
+          if (typeof value === "symbol") throw setterError(name, "Symbol");
+          if (typeof value === "bigint") throw setterError(name, "BigInt");
+          const number = unsigned(value);
+          apply(setAttribute, this, [name, StringValue(number > 2147483647 ? 0 : number)]);
+        },
+        "set " + name,
+        1,
+      ),
+      enumerable: true,
+      configurable: true,
+    });
+  }
+  for (const name of ["x", "y"]) {
+    define(P, name, {
+      get: make(
+        function () {
+          check(this);
+          const box = layoutBox(this);
+          return box === null ? 0 : NumberValue(box[name]) | 0;
+        },
+        "get " + name,
+        0,
+      ),
+      set: undefined,
+      enumerable: true,
+      configurable: true,
+    });
+  }
   const imageHost = {
     __proto__: null,
+    setLayoutQuery(query) {
+      if (query !== null && query !== undefined && typeof query !== "function")
+        throw new ErrorType("Layout query must be a function or null");
+      layoutQuery = query === undefined ? null : query;
+    },
     setState(image, state) {
       check(image);
       if (state === null || state === undefined) {
@@ -143,7 +222,6 @@
   const realmDocument = g.document,
     // the native createElement at install time (page script cannot redirect the factory)
     createElement = g.document.createElement,
-    setAttribute = g.Element.prototype.setAttribute,
     getProperty = Reflect.get,
     setPrototypeOf = Object.setPrototypeOf,
     objectPrototype = Object.prototype;

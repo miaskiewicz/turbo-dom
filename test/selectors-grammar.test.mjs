@@ -120,14 +120,18 @@ test(':scope is the queried element, the document element for a document, nothin
   assert.ok(!matchesSelector(d, ':scope', null));
 });
 
-test(':defined consults the window registry; is= and autonomous names are undefined until defined', () => {
+test(':defined follows upgrades; is= and autonomous names are undefined until defined', () => {
   const { window, document } = env('<x-def id="x"></x-def><x-undef id="u"></x-undef><button is="x-btn" id="b"></button><font-face id="f"></font-face>');
   const el = (id) => document.getElementById(id);
   assert.ok(!el('x').matches(':defined') && !el('b').matches(':defined'));
   assert.ok(el('f').matches(':defined'));
   window.customElements.define('x-def', class extends window.HTMLElement {});
+  // an autonomous definition never upgrades a customized built-in (<button is=x-btn>)
   window.customElements.define('x-btn', class extends window.HTMLElement {});
-  assert.ok(el('x').matches(':defined') && el('b').matches(':defined'));
+  assert.ok(el('x').matches(':defined') && !el('b').matches(':defined'));
+  window.customElements.define('y-btn', class extends window.HTMLButtonElement {}, { extends: 'button' });
+  const b = document.createElement('button', { is: 'y-btn' });
+  assert.ok(b.matches(':defined'));
   assert.ok(el('u').matches(':not(:defined)'));
 });
 

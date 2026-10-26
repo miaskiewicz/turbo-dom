@@ -128,6 +128,7 @@ mod tests {
             margin_bottom: 0.0,
             margin_left: 0.0,
             margin_right: 0.0,
+            placeholder: false,
         };
         let placed = place_line(
             vec![gap, atom_word(next, 0.0)],

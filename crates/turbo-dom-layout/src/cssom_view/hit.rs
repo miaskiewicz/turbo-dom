@@ -1,6 +1,9 @@
 //! Hit testing native border fragments with actual transforms, clipping and
 //! per-owner scroll projection. Text hit regions need native cluster provenance.
-use super::scroll::{scroll_translation, SourceStyles};
+//! Clipping is an ancestor's `overflow` (its padding box) and the `clip: rect()` of
+//! an absolutely positioned box or ancestor (miaskiewicz/turbo-dom#28 item 1).
+use super::scroll::{scroll_translation, SourceStyle, SourceStyles};
+use crate::layout::value::{parse_length_pct, LengthPct};
 use crate::layout_snapshot::{GeometryKind, LayoutSnapshot, Rect, SourceId};
 use std::collections::{BTreeMap, BTreeSet};
 #[must_use]
@@ -88,7 +91,13 @@ pub fn elements_at_point(
                     {
                         continue;
                     }
-                    if !clipped(snapshot, styles, &run.source_ancestors, offsets, point)? {
+                    if !hidden_by_clip(
+                        snapshot,
+                        styles,
+                        (&run.source_ancestors, None),
+                        offsets,
+                        point,
+                    )? {
                         seen.insert(*id);
                         result.push(*id);
                     }
@@ -118,7 +127,13 @@ pub fn elements_at_point(
         ) {
             continue;
         }
-        let clipped = clipped(snapshot, styles, &fragment.source_ancestors, offsets, point)?;
+        let clipped = hidden_by_clip(
+            snapshot,
+            styles,
+            (&fragment.source_ancestors, Some(id)),
+            offsets,
+            point,
+        )?;
         if !clipped {
             seen.insert(id);
             result.push(id);
@@ -134,6 +149,25 @@ pub fn elements_at_point(
     }
     Ok(result)
 }
+/// Whether `point` is clipped away for a box with `ancestors` (and `own` box): by an
+/// ancestor's `overflow` ([`clipped`]) or the `clip: rect()` of an absolutely
+/// positioned ancestor or of the box itself (miaskiewicz/turbo-dom#28 item 1).
+pub fn hidden_by_clip(
+    snapshot: &LayoutSnapshot,
+    styles: &SourceStyles,
+    (ancestors, own): (&[SourceId], Option<SourceId>),
+    offsets: &BTreeMap<SourceId, [f64; 2]>,
+    point: [f64; 2],
+) -> Result<bool, String> {
+    for &id in ancestors.iter().chain(own.as_ref()) {
+        if clip_rect_excludes(snapshot, styles, id, offsets, point)? {
+            return Ok(true);
+        }
+    }
+    clipped(snapshot, styles, ancestors, offsets, point)
+}
+
+/// Whether an ancestor's `overflow` clips `point` away.
 pub fn clipped(
     snapshot: &LayoutSnapshot,
     styles: &SourceStyles,
@@ -182,6 +216,102 @@ pub fn clipped(
     }
     Ok(clipped)
 }
+/// Whether `id`'s `clip: rect()` (it and its descendants) leaves `point` out.
+fn clip_rect_excludes(
+    snapshot: &LayoutSnapshot,
+    styles: &SourceStyles,
+    id: SourceId,
+    offsets: &BTreeMap<SourceId, [f64; 2]>,
+    point: [f64; 2],
+) -> Result<bool, String> {
+    let Some(style) = styles.get(&id) else {
+        return Ok(false);
+    };
+    let Some(border) = snapshot.source(id).and_then(|source| {
+        source
+            .fragment_indices
+            .iter()
+            .map(|&index| &snapshot.fragments()[index])
+            .find(|fragment| fragment.kind == GeometryKind::BorderBox)
+    }) else {
+        return Ok(false);
+    };
+    let Some(clip) = clip_rect(style, border.rect) else {
+        return Ok(false);
+    };
+    let translation = scroll_translation(snapshot, styles, id, offsets)?;
+    Ok(!contains(
+        clip,
+        snapshot
+            .native_hit_transform(border.index)
+            .ok_or("native clip transform unavailable")?,
+        translation,
+        point,
+    ))
+}
+
+/// The region an absolutely positioned box's `clip: rect(top, right, bottom, left)`
+/// keeps (CSS 2.1 §11.1.2): offsets from its border box's top-left corner, `auto` the
+/// border-box edge, commas optional. `None` when it does not clip: `clip: auto`, an
+/// invalid value, or a box that is not absolutely positioned (`clip` does not apply).
+fn clip_rect(style: &SourceStyle, border: Rect) -> Option<Rect> {
+    if !matches!(style.style.get("position"), Some("absolute" | "fixed")) {
+        return None;
+    }
+    let [top, right, bottom, left] = rect_offsets(style.style.get("clip")?, font_px(style))?;
+    let at = |offset: LengthPct, auto: f32| match offset {
+        LengthPct::Px(px) => px * style.zoom,
+        _ => auto,
+    };
+    let (top, right) = (at(top, 0.0), at(right, border.width));
+    let (bottom, left) = (at(bottom, border.height), at(left, 0.0));
+    Some(Rect {
+        x: border.x + left,
+        y: border.y + top,
+        width: (right - left).max(0.0),
+        height: (bottom - top).max(0.0),
+    })
+}
+
+/// The four offsets of a `rect(…)` value (each `Px` or `Auto`), or `None` when the
+/// value is not a valid `rect()`.
+fn rect_offsets(value: &str, font: f32) -> Option<[LengthPct; 4]> {
+    let inner = value.trim().strip_prefix("rect(")?.strip_suffix(')')?;
+    let edges: Vec<&str> = inner
+        .split(|c: char| c == ',' || c.is_whitespace())
+        .filter(|edge| !edge.is_empty())
+        .collect();
+    let [top, right, bottom, left] = edges[..] else {
+        return None;
+    };
+    let offset = |edge| clip_offset(edge, font);
+    let [Some(top), Some(right), Some(bottom), Some(left)] =
+        [offset(top), offset(right), offset(bottom), offset(left)]
+    else {
+        return None;
+    };
+    Some([top, right, bottom, left])
+}
+
+/// One `rect()` offset: `auto` or a length (a `<shape>` offset is a length: a
+/// percentage is invalid).
+fn clip_offset(edge: &str, font: f32) -> Option<LengthPct> {
+    parse_length_pct(edge, font)
+        .filter(|offset| matches!(offset, LengthPct::Auto | LengthPct::Px(_)))
+}
+
+/// The box's font size in px (`em` offsets), the 16px initial value when unknown.
+fn font_px(style: &SourceStyle) -> f32 {
+    style
+        .style
+        .get("font-size")
+        .and_then(|value| match parse_length_pct(value, 16.0) {
+            Some(LengthPct::Px(px)) => Some(px),
+            _ => None,
+        })
+        .unwrap_or(16.0)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -218,5 +348,101 @@ mod tests {
             [10.0, 5.0]
         ));
         assert!(!contains(rect, [0.0; 6], [0.0; 2], [0.0, 0.0]));
+    }
+
+    fn styled(pairs: &[(&str, &str)], zoom: f32) -> SourceStyle {
+        SourceStyle {
+            style: crate::ComputedStyle::from_pairs(pairs.iter().copied()),
+            parent: None,
+            tag: "span".into(),
+            zoom,
+        }
+    }
+
+    #[test]
+    fn clip_rect_resolves_offsets_auto_edges_units_and_zoom() {
+        let border = Rect {
+            x: 10.0,
+            y: 20.0,
+            width: 50.0,
+            height: 40.0,
+        };
+        let clip = |pairs: &[(&str, &str)], zoom| clip_rect(&styled(pairs, zoom), border);
+        let rect = |x, y, width, height| Rect {
+            x,
+            y,
+            width,
+            height,
+        };
+        let abs = ("position", "absolute");
+        assert_eq!(
+            clip(&[abs, ("clip", "rect(1px, 30px, 20px, 5px)")], 1.0),
+            Some(rect(15.0, 21.0, 25.0, 19.0))
+        );
+        // `auto` is the border-box edge; commas are optional; `em` uses the font size.
+        assert_eq!(
+            clip(
+                &[("position", "fixed"), ("clip", "rect(auto auto auto auto)")],
+                1.0
+            ),
+            Some(border)
+        );
+        assert_eq!(
+            clip(
+                &[abs, ("font-size", "10px"), ("clip", "rect(1em,2em,3em,0)")],
+                1.0
+            ),
+            Some(rect(10.0, 30.0, 20.0, 20.0))
+        );
+        // A right/bottom edge before the left/top one keeps nothing.
+        assert_eq!(
+            clip(&[abs, ("clip", "rect(0,0,0,0)")], 1.0),
+            Some(rect(10.0, 20.0, 0.0, 0.0))
+        );
+        assert_eq!(
+            clip(&[abs, ("clip", "rect(10px,5px,5px,10px)")], 1.0),
+            Some(rect(20.0, 30.0, 0.0, 0.0))
+        );
+        // Lengths scale with the effective zoom (the layout is in zoomed pixels).
+        assert_eq!(
+            clip(&[abs, ("clip", "rect(1px,2px,3px,0)")], 2.0),
+            Some(rect(10.0, 22.0, 4.0, 4.0))
+        );
+    }
+
+    #[test]
+    fn clip_rect_does_not_clip_when_it_does_not_apply_or_is_invalid() {
+        let border = Rect {
+            x: 0.0,
+            y: 0.0,
+            width: 10.0,
+            height: 10.0,
+        };
+        let clip = |pairs: &[(&str, &str)]| clip_rect(&styled(pairs, 1.0), border);
+        let abs = ("position", "absolute");
+        for pairs in [
+            &[("clip", "rect(0,0,0,0)")][..],
+            &[("position", "relative"), ("clip", "rect(0,0,0,0)")],
+            &[abs],
+            &[abs, ("clip", "auto")],
+            &[abs, ("clip", "rect(0,0,0)")],
+            &[abs, ("clip", "rect(0,0,0,0,0)")],
+            &[abs, ("clip", "rect(0,0,0,0")],
+            &[abs, ("clip", "rect(10%,0,0,0)")],
+            &[abs, ("clip", "rect(calc(10% + 1px),0,0,0)")],
+            &[abs, ("clip", "rect(x,0,0,0)")],
+        ] {
+            assert_eq!(clip(pairs), None, "{pairs:?}");
+        }
+        // An unparsable font size falls back to the 16px initial value.
+        assert_eq!(
+            clip(&[abs, ("font-size", "big"), ("clip", "rect(0,1em,1em,0)")]),
+            Some(Rect {
+                x: 0.0,
+                y: 0.0,
+                width: 16.0,
+                height: 16.0
+            })
+        );
     }
 }

@@ -58,6 +58,22 @@ function cachedQS(node, sel) {
 }
 import { Buffer } from './buffer.mjs';
 import { makeCanvasStub } from './stubs.mjs';
+import {
+  constructCustomElement, createCustomElement, clonedElement, insertedNode, parsedFragment, removedNode,
+  attributeChanged, adoptedNode, freezeParsedIs, parsedIsAttribute, reactionDepth, withReactions,
+} from './custom-elements.mjs';
+
+// Custom element reactions ([CEReactions], custom-elements.mjs): a DOM call that can queue
+// reactions re-enters itself inside one reaction scope when `doc` has the hooks armed and no
+// scope is open yet, so its reactions run when it returns. One predicted-false read
+// otherwise. `METHOD` holds the original implementations (spy-proof re-entry).
+const ceScope = (doc) => doc.__ceRegistry !== undefined && reactionDepth === 0;
+const METHOD = {};
+
+// DOM versions come from ONE process-wide counter, so a version value is never reused by
+// another document: a node adopted into another document cannot hit a cache entry (keyed on
+// its old document's version) by coincidence (miaskiewicz/turbo-dom#29 item 2).
+let VERSION = 0;
 
 export const ELEMENT_NODE = 1;
 export const TEXT_NODE = 3;
@@ -69,7 +85,55 @@ export const DOCUMENT_FRAGMENT_NODE = 11;
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const MATHML_NS = 'http://www.w3.org/1998/Math/MathML';
 const HTML_NS = 'http://www.w3.org/1999/xhtml';
-const nsUri = (short) => (short === 'svg' ? SVG_NS : short === 'math' ? MATHML_NS : HTML_NS);
+const XML_NS = 'http://www.w3.org/XML/1998/namespace';
+const XMLNS_NS = 'http://www.w3.org/2000/xmlns/';
+// An element's `__ns` is '' (HTML), 'svg' or 'math' — what the parser produces — or, for
+// createElementNS in any other namespace, 'ns:' + the namespace URI ('ns:' alone is the
+// null namespace). Every '' / truthy test ("HTML or not") stays a single string check.
+const nsUri = (short) => (short === '' ? HTML_NS : short === 'svg' ? SVG_NS : short === 'math' ? MATHML_NS
+  : short.length > 3 ? short.slice(3) : null);
+const nsShort = (uri) => (uri === HTML_NS ? '' : uri === SVG_NS ? 'svg' : uri === MATHML_NS ? 'math' : 'ns:' + (uri ?? ''));
+
+// A DOMException (a plain Error with its name where the host has none, e.g. a bare V8).
+function domError(name, message) {
+  if (typeof DOMException === 'function') return new DOMException(message, name);
+  const error = new Error(message);
+  error.name = name;
+  return error;
+}
+// DOM "valid element local name" (createElement / createElementNS, Chrome 156): an ASCII
+// letter followed by anything but ASCII whitespace, NULL, '/' and '>'; or ':', '_' or a
+// non-ASCII code point followed by ASCII alphanumerics, '-', '.', ':', '_' and non-ASCII.
+function validLocalName(name) {
+  const n = name.length;
+  if (n === 0) return false;
+  const c0 = name.charCodeAt(0) | 0x20;
+  if (c0 >= 97 && c0 <= 122) {
+    for (let i = 1; i < n; i++) {
+      const c = name.charCodeAt(i);
+      if (c <= 32 ? c === 32 || c === 9 || c === 10 || c === 12 || c === 13 || c === 0 : c === 47 || c === 62) return false;
+    }
+    return true;
+  }
+  const first = name.charCodeAt(0);
+  if (first !== 58 && first !== 95 && first < 0x80) return false;
+  for (let i = 1; i < n; i++) {
+    const c = name.charCodeAt(i);
+    if (c >= 0x80 || c === 45 || c === 46 || c === 58 || c === 95 || (c >= 48 && c <= 57) || ((c | 0x20) >= 97 && (c | 0x20) <= 122)) continue;
+    return false;
+  }
+  return true;
+}
+// DOM "valid namespace prefix": non-empty, no ASCII whitespace, NULL, '/' or '>'.
+function validPrefix(prefix) {
+  if (prefix.length === 0) return false;
+  for (let i = 0; i < prefix.length; i++) {
+    const c = prefix.charCodeAt(i);
+    if (c === 32 || c === 9 || c === 10 || c === 12 || c === 13 || c === 0 || c === 47 || c === 62) return false;
+  }
+  return true;
+}
+const invalidName = (name) => domError('InvalidCharacterError', `The qualified name provided ('${name}') contains the invalid name-start character or invalid character.`);
 
 // ------------------------------------------------------------------ Node ----
 export class Node extends EventTarget {
@@ -140,6 +204,11 @@ export class Node extends EventTarget {
   appendChild(node) { return this.insertBefore(node, null); }
 
   insertBefore(node, ref) {
+    if ((this.ownerDocument.__ceRegistry !== undefined || node.ownerDocument.__ceRegistry !== undefined) && reactionDepth === 0) return withReactions(METHOD.insertBefore, this, [node, ref]);
+    // DOM "pre-insert": check the reference child before touching the tree, and a node
+    // inserted before itself goes before its next sibling (miaskiewicz/turbo-dom#34)
+    if (ref && ref.parentNode !== this) throw new Error('NotFoundError: ref is not a child');
+    if (ref === node) ref = node.nextSibling;
     if (node.nodeType === DOCUMENT_FRAGMENT_NODE) {
       for (const c of node.__children().slice()) this.insertBefore(c, ref);
       return node;
@@ -147,28 +216,42 @@ export class Node extends EventTarget {
     if (node.parentNode) node.parentNode.removeChild(node);
     const kids = this.__children();
     const i = ref ? kids.indexOf(ref) : -1;
-    if (ref && i === -1) throw new Error('NotFoundError: ref is not a child');
+    // a node from another document is adopted first (DOM "insert" step 7.1)
+    if (node.ownerDocument !== this.ownerDocument) adopt(node, this.ownerDocument);
     if (ref) kids.splice(i, 0, node); else kids.push(node);
     node.parentNode = this;
-    node.ownerDocument = this.ownerDocument;
     notifyMutation(this, 'childList', node, null, ref || null);
+    // custom elements (custom-elements.mjs): upgrades + connectedCallback, only once a
+    // registry exists — one predicted-false read otherwise
+    const doc = this.ownerDocument;
+    if (doc !== null && doc.__ceRegistry !== undefined) insertedNode(node);
     return node;
   }
 
   removeChild(node) {
+    if (this.ownerDocument.__ceRegistry !== undefined && reactionDepth === 0) return withReactions(METHOD.removeChild, this, [node]);
     const kids = this.__children();
     const i = kids.indexOf(node);
     if (i === -1) throw new Error('NotFoundError: node is not a child');
     const next = kids[i + 1] || null;
+    const doc = this.ownerDocument, ce = doc !== null && doc.__ceRegistry !== undefined && this.isConnected;
     kids.splice(i, 1);
     node.parentNode = null;
     notifyMutation(this, 'childList', null, node, next);
+    if (ce) removedNode(node);
     return node;
   }
 
+  // DOM "replace": remove the old child, then insert the new one before the old child's
+  // next sibling (or the new node's own next sibling when that is it) — so replacing a
+  // node with itself leaves it in place (miaskiewicz/turbo-dom#34)
   replaceChild(newNode, oldNode) {
-    this.insertBefore(newNode, oldNode);
+    if ((this.ownerDocument.__ceRegistry !== undefined || newNode.ownerDocument.__ceRegistry !== undefined) && reactionDepth === 0) return withReactions(METHOD.replaceChild, this, [newNode, oldNode]);
+    if (oldNode.parentNode !== this) throw new Error('NotFoundError: node is not a child');
+    let ref = oldNode.nextSibling;
+    if (ref === newNode) ref = newNode.nextSibling;
     this.removeChild(oldNode);
+    this.insertBefore(newNode, ref);
     return oldNode;
   }
 
@@ -219,7 +302,10 @@ export class Node extends EventTarget {
     // and feed MutationObservers, like every other childList mutation path.
     if (changed) notifyMutation(this, 'childList', null, null, null);
   }
-  replaceChildren(...nodes) { this.__detachKids(); this.__kids = []; this.__touch(); for (const n of nodes) this.appendChild(typeof n === 'string' ? this.ownerDocument.createTextNode(n) : n); }
+  replaceChildren(...nodes) {
+    if (ceScope(this.ownerDocument)) return withReactions(METHOD.replaceChildren, this, nodes);
+    this.__detachKids(); this.__kids = []; this.__touch(); for (const n of nodes) this.appendChild(toNode(this.ownerDocument, n));
+  }
   // bitmask: 1 DISCONNECTED, 2 PRECEDING, 4 FOLLOWING, 8 CONTAINS, 16 CONTAINED_BY
   compareDocumentPosition(other) {
     if (other === this) return 0;
@@ -233,11 +319,11 @@ export class Node extends EventTarget {
     if (a === -1 || b === -1) return 1;
     return a < b ? 4 : 2;
   }
+  // cloneNode = DOM "clone a node" into the node's own document; importNode clones into
+  // another one. Every node type implements `__clone(document, deep)`.
   cloneNode(deep = false) {
-    // base fallback; Element/Text/Comment override
-    const n = new this.constructor(this.ownerDocument);
-    if (deep) for (const c of this.__children()) n.appendChild(c.cloneNode(true));
-    return n;
+    if (ceScope(this.ownerDocument)) return withReactions(METHOD.cloneNode, this, [deep]);
+    return this.__clone(this.ownerDocument, !!deep);
   }
 
   get textContent() {
@@ -268,6 +354,7 @@ export class Node extends EventTarget {
     return s;
   }
   set textContent(value) {
+    if (ceScope(this.ownerDocument)) { withReactions(METHOD.setTextContent, this, [value]); return; }
     this.__detachKids();
     this.__kids = [];
     this.__touch();
@@ -277,7 +364,7 @@ export class Node extends EventTarget {
   // bump the document version so getElementsBy* caches invalidate after direct
   // __kids reassignments (innerHTML/textContent/replaceChildren) that bypass
   // insertBefore/removeChild.
-  __touch() { const d = this.ownerDocument; if (d) d.__version = (d.__version || 0) + 1; }
+  __touch() { const d = this.ownerDocument; if (d) d.__version = ++VERSION; }
 
   // Clear the outgoing children's parentNode before a wholesale `__kids = []` rewrite
   // (innerHTML/textContent/replaceChildren) — removeChild does this one at a time, these
@@ -288,7 +375,10 @@ export class Node extends EventTarget {
   // null out parent pointers would put an allocation on the React container-clear path.
   __detachKids() {
     const kids = this.__kids;
-    if (kids) for (let i = 0; i < kids.length; i++) kids[i].parentNode = null;
+    if (!kids) return;
+    const doc = this.ownerDocument, ce = doc !== null && doc.__ceRegistry !== undefined && kids.length !== 0 && this.isConnected;
+    for (let i = 0; i < kids.length; i++) kids[i].parentNode = null;
+    if (ce) for (let i = 0; i < kids.length; i++) removedNode(kids[i]);
   }
 
   // Element/Document/Fragment nodeValue is null per spec (CharacterData overrides).
@@ -337,9 +427,9 @@ class CharacterData extends Node {
   insertData(offset, s) { this.data = this._data.slice(0, offset) + s + this._data.slice(offset); }
   deleteData(offset, count) { this.data = this._data.slice(0, offset) + this._data.slice(offset + count); }
   replaceData(offset, count, s) { this.data = this._data.slice(0, offset) + s + this._data.slice(offset + count); }
-  before(...nodes) { const p = this.parentNode; if (p) for (const n of nodes) p.insertBefore(typeof n === 'string' ? this.ownerDocument.createTextNode(n) : n, this); }
-  after(...nodes) { const p = this.parentNode; if (!p) return; const ref = viableNextSibling(this, nodes); for (const n of nodes) p.insertBefore(typeof n === 'string' ? this.ownerDocument.createTextNode(n) : n, ref); }
-  replaceWith(...nodes) { const p = this.parentNode; if (!p) return; const ref = viableNextSibling(this, nodes); for (const n of nodes) if (n !== this) p.insertBefore(typeof n === 'string' ? this.ownerDocument.createTextNode(n) : n, ref); this.remove(); }
+  before(...nodes) { childBefore(this, nodes); }
+  after(...nodes) { childAfter(this, nodes); }
+  replaceWith(...nodes) { childReplaceWith(this, nodes); }
 }
 
 export class Text extends CharacterData {
@@ -359,13 +449,13 @@ export class Text extends CharacterData {
     if (this.parentNode) this.parentNode.insertBefore(node, this.nextSibling);
     return node;
   }
-  cloneNode() { return new Text(this.ownerDocument, this._data); }
+  __clone(doc) { return new Text(doc, this._data); }
 }
 
 export class Comment extends CharacterData {
   get nodeType() { return COMMENT_NODE; }
   get nodeName() { return '#comment'; }
-  cloneNode() { return new Comment(this.ownerDocument, this._data); }
+  __clone(doc) { return new Comment(doc, this._data); }
 }
 
 export class DocumentType extends Node {
@@ -375,6 +465,7 @@ export class DocumentType extends Node {
   }
   get nodeType() { return DOCUMENT_TYPE_NODE; }
   get nodeName() { return this.name; }
+  __clone(doc) { return new DocumentType(doc, this.name, this.publicId, this.systemId); } // turbo-dom#35
 }
 
 // ------------------------------------------------------------ Element ----
@@ -400,12 +491,19 @@ class ClassList {
 
 export class Element extends Node {
   constructor(ownerDocument, localName, namespace = '') {
+    // HTMLElement (=== Element here) as a custom element constructor: `new C()` / an
+    // upgrade's super() for a defined C (custom-elements.mjs); internal construction never
+    // takes this branch.
+    if (new.target !== Element && new.target !== SVGElement) {
+      const custom = constructCustomElement(new.target);
+      if (custom !== null) return custom;
+    }
     super(ownerDocument);
     this.localName = localName;
     this.__ns = namespace;            // '', 'svg', 'math'
     this.__attrs = undefined;         // lazily built (buffer or []) on first attr touch
     this.__attrIdx = -1;              // buffer index for lazy attr inflation
-    this.content = null;              // <template> content fragment
+    this.__content = undefined;       // <template> contents (a fragment in the inert document), lazy
     this.shadowRoot = null;           // open shadow root, if attached
     // Predeclare the hot lazy fields (left at their "absent" sentinel) so every
     // Element shares ONE hidden class. Without this, fields added on demand in
@@ -421,9 +519,32 @@ export class Element extends Node {
   }
 
   get nodeType() { return ELEMENT_NODE; }
-  get tagName() { return this.__ns ? this.localName : this.localName.toUpperCase(); }
+  // HTML <template> contents: a fragment owned by the document's inert "template contents
+  // owner document" (no browsing context, no custom element registry), created on first
+  // read. <meta>'s `content` reflects its attribute; no other element has the property.
+  get content() {
+    if (this.__ns === '') {
+      if (this.localName === 'template') return this.__content ?? (this.__content = new DocumentFragment(this.ownerDocument.__templateDocument()));
+      if (this.localName === 'meta') return this.getAttribute('content') ?? '';
+    }
+    return undefined;
+  }
+  set content(value) {
+    if (this.__ns === '') {
+      if (this.localName === 'meta') { this.setAttribute('content', value); return; }
+      if (this.localName === 'template') return; // read-only
+    }
+    Object.defineProperty(this, 'content', { value, writable: true, enumerable: true, configurable: true });
+  }
+  // the qualified name, uppercased for HTML elements (an HTML document)
+  get tagName() {
+    const p = this.__prefix, q = p === undefined ? this.localName : `${p}:${this.localName}`;
+    return this.__ns ? q : q.toUpperCase();
+  }
   get nodeName() { return this.tagName; }
   get namespaceURI() { return nsUri(this.__ns); }
+  // createElementNS's prefix (`__prefix`, set only on the elements that have one)
+  get prefix() { return this.__prefix ?? null; }
 
   // ---- attributes ----
   // attrs inflate lazily: a buffer-backed element leaves __attrs undefined and
@@ -714,12 +835,14 @@ export class Element extends Node {
   }
 
   // ---- modern insertion ----
-  append(...nodes) { for (const n of nodes) this.appendChild(toNode(this.ownerDocument, n)); }
-  prepend(...nodes) { const first = this.firstChild; for (const n of nodes) this.insertBefore(toNode(this.ownerDocument, n), first); }
-  before(...nodes) { const p = this.parentNode; if (!p) return; for (const n of nodes) p.insertBefore(toNode(this.ownerDocument, n), this); }
-  after(...nodes) { const p = this.parentNode; if (!p) return; const ref = viableNextSibling(this, nodes); for (const n of nodes) p.insertBefore(toNode(this.ownerDocument, n), ref); }
-  replaceWith(...nodes) { const p = this.parentNode; if (!p) return; const ref = viableNextSibling(this, nodes); for (const n of nodes) if (n !== this) p.insertBefore(toNode(this.ownerDocument, n), ref); this.remove(); }
-  replaceChildren(...nodes) { this.__detachKids(); this.__kids = []; this.__touch(); for (const n of nodes) this.appendChild(toNode(this.ownerDocument, n)); }
+  append(...nodes) { parentAppend(this, nodes); }
+  prepend(...nodes) {
+    if (ceScope(this.ownerDocument)) { withReactions(METHOD.prepend, this, nodes); return; }
+    const first = this.firstChild; for (const n of nodes) this.insertBefore(toNode(this.ownerDocument, n), first);
+  }
+  before(...nodes) { childBefore(this, nodes); }
+  after(...nodes) { childAfter(this, nodes); }
+  replaceWith(...nodes) { childReplaceWith(this, nodes); }
 
   // ---- queries ----
   matches(sel) { return matchesSelector(this, sel); }
@@ -727,9 +850,9 @@ export class Element extends Node {
   querySelector(sel) { return cachedQS(this, sel); }
   querySelectorAll(sel) { return cachedQSA(this, sel); }
   getElementsByTagName(tag) {
-    const self = this, t = tag.toLowerCase();
+    const self = this, raw = String(tag), t = raw.toLowerCase();
     let cv = -1, ca; // version-cache the subtree walk within this collection (live; re-walk on mutation)
-    return liveHTMLCollection(() => { const d = self.ownerDocument, v = d ? (d.__version || 0) : 0; if (v === cv) return ca; cv = v; return (ca = collectByTag(self, t)); });
+    return liveHTMLCollection(() => { const d = self.ownerDocument, v = d ? (d.__version || 0) : 0; if (v === cv) return ca; cv = v; return (ca = collectByTag(self, raw, t)); });
   }
   getElementsByClassName(cls) {
     const self = this, classes = splitClasses(cls);
@@ -740,43 +863,52 @@ export class Element extends Node {
   // ---- innerHTML / outerHTML ----
   get innerHTML() { return serializeInner(this); }
   set innerHTML(html) {
-    const frag = getParser().parseFragment(String(html), this.__ns ? `${this.__ns} ${this.localName}` : this.localName);
-    this.__detachKids();
-    this.__kids = [];
-    this.__touch();
-    for (const rawChild of frag.children) {
-      if (rawChild.nodeType === DOCUMENT_FRAGMENT_NODE && rawChild.name === 'content') continue;
-      const child = this.ownerDocument.__inflateNested(rawChild);
-      child.parentNode = this;
-      this.__kids.push(child);
-    }
+    if (ceScope(this.ownerDocument)) { withReactions(METHOD.setInnerHTML, this, [html]); return; }
+    // a <template>'s markup replaces its contents (in the inert document), not its children
+    const target = this.__ns === '' && this.localName === 'template' ? this.content : this;
+    replaceAllWithMarkup(target, this, html);
   }
   get outerHTML() { return serializeOuter(this); }
   get innerText() { return this.textContent; }
   set innerText(v) { this.textContent = v; }
 
+  // The markup is parsed with this element (afterbegin / beforeend) or its parent as the
+  // context, straight into nodes of this document (turbo-dom#39: it used to parse through a
+  // createElement(this.localName) scratch element — a constructed custom element, the
+  // namespace lost).
   insertAdjacentHTML(position, html) {
-    const tmp = this.ownerDocument.createElement(this.localName);
-    tmp.innerHTML = html;
-    const nodes = tmp.__children().slice();
-    const p = this.parentNode;
-    switch (position) {
-      case 'beforebegin': for (const n of nodes) p.insertBefore(n, this); break;
-      case 'afterbegin': { const first = this.firstChild; for (const n of nodes) this.insertBefore(n, first); break; }
-      case 'beforeend': for (const n of nodes) this.appendChild(n); break;
-      case 'afterend': { const ref = this.nextSibling; for (const n of nodes) p.insertBefore(n, ref); break; }
-      default: throw new Error(`bad insertAdjacentHTML position: ${position}`);
+    if (ceScope(this.ownerDocument)) { withReactions(METHOD.insertAdjacentHTML, this, [position, html]); return; }
+    const where = String(position).toLowerCase();
+    let parent = this, ref = null;
+    switch (where) {
+      case 'beforebegin': parent = this.parentNode; ref = this; break;
+      case 'afterbegin': ref = this.firstChild; break;
+      case 'beforeend': break;
+      case 'afterend': parent = this.parentNode; ref = this.nextSibling; break;
+      default: throw domError('SyntaxError', `The value provided ('${position}') is not one of 'beforeBegin', 'afterBegin', 'beforeEnd', or 'afterEnd'.`);
     }
+    if (parent === null || parent.nodeType === DOCUMENT_NODE) throw domError('NoModificationAllowedError', 'The element has no parent.');
+    const nodes = parseMarkup(parent.nodeType === ELEMENT_NODE ? parent : null, html, this.ownerDocument);
+    for (const n of nodes) parent.insertBefore(n, ref);
   }
 
-  cloneNode(deep = false) {
-    const el = newElement(this.ownerDocument, this.localName, this.__ns);
+  __clone(doc, deep) {
+    const el = newElement(doc, this.localName, this.__ns);
+    if (this.__prefix !== undefined) el.__prefix = this.__prefix;
     el.__attrs = (this.__attrs ?? (this.__attrs = this.__buildAttrs())).map((a) => ({ ...a }));
+    // custom element state travels (an `is` value / custom name -> "undefined", upgraded
+    // when the clone's document has its definition — never in a template's inert
+    // document); plain HTML elements and foreign ones skip the call
+    if (this.__ns === '' && (this.__ce !== undefined || this.__ceIs !== undefined || this.__attrIdx >= 0 || this.localName.indexOf('-') !== -1)) clonedElement(this, el);
     if (deep) {
       // build the cloned child array directly — the clone is detached, so per-child
       // appendChild's notifyMutation (version bump) + reparent check are pure waste.
-      const src = this.__children(), od = el.ownerDocument, kids = el.__kids = new Array(src.length);
-      for (let i = 0; i < src.length; i++) { const cl = src[i].cloneNode(true); cl.parentNode = el; cl.ownerDocument = od; kids[i] = cl; }
+      el.__kids = cloneKids(this, el, doc);
+      // HTML template "cloning steps": the contents are cloned into the copy's contents
+      if (this.__ns === '' && this.localName === 'template') {
+        const content = el.content;
+        content.__kids = cloneKids(this.content, content, content.ownerDocument);
+      }
     }
     return el;
   }
@@ -1022,6 +1154,9 @@ for (const attr of SVG_LENGTH_ATTRS) {
   });
 }
 
+// createElement's ElementCreationOptions `is` (a string options argument is ignored, as Chrome).
+const isOption = (options) => (options !== null && typeof options === 'object' && options.is !== undefined ? String(options.is) : null);
+
 // Element factory: SVG namespace → SVGElement, everything else → Element. One place so
 // every construction site (buffer inflation, innerHTML, cloneNode, createElementNS) agrees.
 function newElement(doc, tag, ns) {
@@ -1036,13 +1171,14 @@ export class DocumentFragment extends Node {
   querySelector(sel) { return cachedQS(this, sel); }
   querySelectorAll(sel) { return cachedQSA(this, sel); }
   get children() { if (this.__childrenList) return this.__childrenList; const self = this; return (this.__childrenList = liveHTMLCollection(() => self.__children().filter((n) => n.nodeType === ELEMENT_NODE))); }
-  append(...nodes) { for (const n of nodes) this.appendChild(toNode(this.ownerDocument, n)); }
-  cloneNode(deep = false) {
-    const f = new DocumentFragment(this.ownerDocument);
-    if (deep) { // direct __kids build — detached clone, per-child appendChild bookkeeping is waste (see Element.cloneNode)
-      const src = this.__children(), od = f.ownerDocument, kids = f.__kids = new Array(src.length);
-      for (let i = 0; i < src.length; i++) { const cl = src[i].cloneNode(true); cl.parentNode = f; cl.ownerDocument = od; kids[i] = cl; }
-    }
+  // ParentNode element traversal (template content, fragments)
+  get firstElementChild() { return this.__children().find((n) => n.nodeType === ELEMENT_NODE) ?? null; }
+  get lastElementChild() { return this.__children().findLast((n) => n.nodeType === ELEMENT_NODE) ?? null; }
+  get childElementCount() { return this.__children().filter((n) => n.nodeType === ELEMENT_NODE).length; }
+  append(...nodes) { parentAppend(this, nodes); }
+  __clone(doc, deep) {
+    const f = new DocumentFragment(doc);
+    if (deep) f.__kids = cloneKids(this, f, doc); // direct __kids build (see Element.__clone)
     return f;
   }
 }
@@ -1063,16 +1199,8 @@ export class ShadowRoot extends DocumentFragment {
   get nodeName() { return '#document-fragment'; }
   get innerHTML() { return serializeInner(this); }
   set innerHTML(html) {
-    const frag = getParser().parseFragment(String(html), ''); // empty context → body
-    this.__detachKids();
-    this.__kids = [];
-    this.__touch();
-    for (const rawChild of frag.children) {
-      if (rawChild.nodeType === DOCUMENT_FRAGMENT_NODE && rawChild.name === 'content') continue;
-      const child = this.ownerDocument.__inflateNested(rawChild);
-      child.parentNode = this;
-      this.__kids.push(child);
-    }
+    if (ceScope(this.ownerDocument)) { withReactions(METHOD.setShadowInnerHTML, this, [html]); return; }
+    replaceAllWithMarkup(this, null, html); // no context element → body
   }
   getElementById(id) {
     let found = null;
@@ -1090,9 +1218,9 @@ export class ShadowRoot extends DocumentFragment {
     return found;
   }
   getElementsByTagName(tag) {
-    const self = this, t = tag.toLowerCase();
+    const self = this, raw = String(tag), t = raw.toLowerCase();
     let cv = -1, ca; // version-cache the subtree walk within this collection (live; re-walk on mutation)
-    return liveHTMLCollection(() => { const d = self.ownerDocument, v = d ? (d.__version || 0) : 0; if (v === cv) return ca; cv = v; return (ca = collectByTag(self, t)); });
+    return liveHTMLCollection(() => { const d = self.ownerDocument, v = d ? (d.__version || 0) : 0; if (v === cv) return ca; cv = v; return (ca = collectByTag(self, raw, t)); });
   }
   getElementsByClassName(cls) {
     const self = this, classes = splitClasses(cls);
@@ -1105,6 +1233,67 @@ export class ShadowRoot extends DocumentFragment {
 
 // ------------------------------------------------------------ helpers ----
 function toNode(doc, n) { return typeof n === 'string' ? doc.createTextNode(n) : n; }
+
+// Fragment-parse `html` with `context` (an element; null = <body>) into owned nodes of
+// `doc`. Elements in other namespaces parse like <body> too.
+function parseMarkup(context, html, doc) {
+  const ns = context === null ? '' : context.__ns;
+  const name = context === null ? '' : ns === '' ? context.localName : ns === 'svg' || ns === 'math' ? `${ns} ${context.localName}` : '';
+  const frag = getParser().parseFragment(String(html), name);
+  const nodes = [];
+  // (template contents never sit at the top level: they hang off their <template>)
+  for (const rawChild of frag.children) nodes.push(doc.__inflateNested(rawChild));
+  // custom elements: upgrades queued at creation (custom-elements.mjs parsedFragment)
+  if (nodes.length !== 0 && doc.__ceRegistry !== undefined) parsedFragment(nodes);
+  return nodes;
+}
+
+// innerHTML: the parsed nodes replace all of `target`'s children (created first, so their
+// upgrades queue before the old children's disconnectedCallbacks, as in Chrome).
+function replaceAllWithMarkup(target, context, html) {
+  const kids = parseMarkup(context, html, target.ownerDocument);
+  target.__detachKids();
+  for (let i = 0; i < kids.length; i++) kids[i].parentNode = target;
+  target.__kids = kids;
+  target.__touch();
+}
+
+// ParentNode append / ChildNode before / after / replaceWith, shared by elements, text,
+// comments and fragments; one reaction scope for the whole call.
+function parentAppend(parent, nodes) {
+  if (ceScope(parent.ownerDocument)) { withReactions(parentAppend, null, [parent, nodes]); return; }
+  for (const n of nodes) parent.appendChild(toNode(parent.ownerDocument, n));
+}
+function childBefore(child, nodes) {
+  const p = child.parentNode;
+  if (!p) return;
+  if (ceScope(child.ownerDocument)) { withReactions(childBefore, null, [child, nodes]); return; }
+  for (const n of nodes) p.insertBefore(toNode(child.ownerDocument, n), child);
+}
+function childAfter(child, nodes) {
+  const p = child.parentNode;
+  if (!p) return;
+  if (ceScope(child.ownerDocument)) { withReactions(childAfter, null, [child, nodes]); return; }
+  const ref = viableNextSibling(child, nodes);
+  for (const n of nodes) p.insertBefore(toNode(child.ownerDocument, n), ref);
+}
+// DOM "replaceWith": the node is removed before the replacements go in (a node passed among
+// its own replacements just moves; turbo-dom#40)
+function childReplaceWith(child, nodes) {
+  const p = child.parentNode;
+  if (!p) return;
+  if (ceScope(child.ownerDocument)) { withReactions(childReplaceWith, null, [child, nodes]); return; }
+  const ref = viableNextSibling(child, nodes);
+  if (!nodes.includes(child)) p.removeChild(child);
+  for (const n of nodes) p.insertBefore(toNode(child.ownerDocument, n), ref);
+}
+
+// Deep clones of `source`'s children, created in `doc` and parented to `parent`.
+function cloneKids(source, parent, doc) {
+  const src = source.__children(), kids = new Array(src.length);
+  for (let i = 0; i < src.length; i++) { const cl = src[i].__clone(doc, true); cl.parentNode = parent; kids[i] = cl; }
+  return kids;
+}
 
 // First <slot> within a shadow tree whose name matches (default slot: name '').
 function findSlot(shadowRoot, name) {
@@ -1123,15 +1312,21 @@ function findSlot(shadowRoot, name) {
   return found;
 }
 
-function collectByTag(root, tag) {
+// The elements with qualified name `raw` (DOM "list of elements with qualified name"): HTML
+// elements compare against the lowercased `tag`, others (SVG camelCase, other namespaces)
+// against `raw` exactly. Only a name with a colon can match a prefixed element.
+function collectByTag(root, raw, tag = raw) {
   const out = [];
-  const all = tag === '*';
+  const all = raw === '*';
+  const colon = raw.indexOf(':') !== -1;
   const visit = (node) => {
     const kids = node.__children();
     for (let i = 0; i < kids.length; i++) {
       const c = kids[i];
       if (c.nodeType !== ELEMENT_NODE) continue;
-      if (all || c.localName === tag) out.push(c);
+      if (all) out.push(c);
+      else if (c.__ns === '') { if (c.localName === tag ? c.__prefix === undefined : colon && c.__prefix !== undefined && `${c.__prefix}:${c.localName}` === tag) out.push(c); }
+      else if (c.localName === raw ? c.__prefix === undefined : colon && c.__prefix !== undefined && `${c.__prefix}:${c.localName}` === raw) out.push(c);
       visit(c);
     }
   };
@@ -1269,6 +1464,7 @@ class Range {
     return frag;
   }
   extractContents() {
+    if (ceScope(this.__doc)) return withReactions(METHOD.extractContents, this, []);
     const frag = this.__doc.createDocumentFragment();
     const c = this.startContainer;
     if (this.__sameContainerKids() && c && c.nodeType !== TEXT_NODE && c.nodeType !== COMMENT_NODE && c.__children) {
@@ -1279,6 +1475,7 @@ class Range {
     return frag;
   }
   deleteContents() {
+    if (ceScope(this.__doc)) { withReactions(METHOD.deleteContents, this, []); return; }
     const c = this.startContainer;
     if (this.__sameContainerKids() && c && c.nodeType !== TEXT_NODE && c.nodeType !== COMMENT_NODE && c.__children) {
       const kids = c.__children().slice(this.startOffset, this.endOffset);
@@ -1288,6 +1485,7 @@ class Range {
   }
   insertNode(node) { if (this.startContainer && this.startContainer.insertBefore) this.startContainer.insertBefore(node, this.startContainer.__children ? (this.startContainer.__children()[this.startOffset] ?? null) : null); }
   surroundContents(node) {
+    if (ceScope(this.__doc)) { withReactions(METHOD.surroundContents, this, [node]); return; }
     const frag = this.extractContents();
     this.insertNode(node);
     node.appendChild(frag);
@@ -1502,14 +1700,43 @@ function makeDataset(el) {
 // own (old) buffer before being re-homed.
 function adoptInto(node, doc) {
   if (node.ownerDocument === doc) return;
+  const old = node.ownerDocument;
+  // a document and its inert template document share one buffer: keep the lazy links
+  if (old.__buf !== null && old.__buf === doc.__buf) { rehome(node, doc); return; }
+  if (node.__idx >= 0) old.__cache[node.__idx] = undefined; // the old document no longer holds it
   if (node.nodeType === ELEMENT_NODE) {
     if (node.__attrs === undefined && node.__attrIdx >= 0) node.__attrs = node.__buildAttrs();
+    if (node.__attrIdx >= 0 && node.__ns === '') freezeParsedIs(node); // the parser's `is` outlives the buffer link
     node.__attrIdx = -1;
   }
   const kids = node.__children ? node.__children() : []; // inflate off the OLD buffer
   node.__idx = -1;
   node.ownerDocument = doc;
   for (const c of kids) adoptInto(c, doc);
+  if (node.__shadow) adoptInto(node.__shadow, doc); // shadow-including descendants
+}
+// Same buffer: switch the owner of the inflated nodes; the rest inflate in `doc` later
+// (a node's children only exist once its __kids is built, so none is left behind).
+function rehome(node, doc) {
+  node.ownerDocument = doc;
+  const kids = node.__kids;
+  if (kids) for (let i = 0; i < kids.length; i++) rehome(kids[i], doc);
+  if (node.__shadow) rehome(node.__shadow, doc);
+}
+
+// DOM "adopt" (after the node left its old parent): re-home the subtree, bump the old
+// document's version (its caches must not keep reporting the node), and run the custom
+// element adoption hooks when either document has them armed. A custom element adopted
+// into a document without a registry arms that document's hooks (`__ceRegistry = null`:
+// no definitions, but its custom elements still get connected / disconnected callbacks).
+function adopt(node, doc) {
+  const old = node.ownerDocument;
+  adoptInto(node, doc);
+  old.__version = ++VERSION;
+  if (old.__ceRegistry !== undefined || doc.__ceRegistry !== undefined) {
+    if (doc.__ceRegistry === undefined) doc.__ceRegistry = null;
+    adoptedNode(node, old, doc);
+  }
 }
 
 // --- MutationObserver, wired to the mutation methods above via notifyMutation ---
@@ -1529,9 +1756,13 @@ function notifyMutation(target, type, added, removed, nextSibling, attributeName
   if (!doc) return;
   // bump the DOM version on every structural/attribute mutation — invalidates
   // the document's getElementsBy* caches. Unconditional (independent of observers).
-  doc.__version = (doc.__version || 0) + 1;
+  doc.__version = ++VERSION;
   const mo = doc.__mo;
-  if (!mo || mo.length === 0) return;
+  if (mo && mo.length !== 0) queueRecords(mo, doc, target, type, added, removed, nextSibling, attributeName, oldValue);
+  // attributeChangedCallback: queued after the mutation record, like Chrome
+  if (type === 'attributes' && doc.__ceRegistry !== undefined) attributeChanged(target, attributeName, oldValue);
+}
+function queueRecords(mo, doc, target, type, added, removed, nextSibling, attributeName, oldValue) {
   const addedNodes = added ? [added] : EMPTY_NODES;
   const removedNodes = removed ? [removed] : EMPTY_NODES;
   for (const reg of mo) {
@@ -1588,9 +1819,31 @@ export class Document extends Node {
     this.defaultView = null;      // set by environment (window)
     this.__mo = null;             // registered MutationObservers (lazy — most files never observe())
     this.__moPending = null;      // observers with queued records awaiting microtask
+    this.__ceRegistry = undefined; // the window's custom element registry, once touched (custom-elements.mjs)
+    this.__inert = undefined;     // the template contents owner document (lazy), or true on that document
+  }
+  // HTML "appropriate template contents owner document": one inert document per document
+  // (itself for an inert one) — no browsing context and no registry, so template contents
+  // and their clones never upgrade; it shares the buffer, so buffer-backed contents inflate
+  // lazily from it and move to and from the document without being materialized.
+  __templateDocument() {
+    const inert = this.__inert;
+    if (inert === true) return this;
+    if (inert !== undefined) return inert;
+    const doc = new Document();
+    doc.__buf = this.__buf;
+    doc.__inert = true;
+    doc.__version = ++VERSION;
+    return (this.__inert = doc);
   }
   get nodeType() { return DOCUMENT_NODE; }
   get nodeName() { return '#document'; }
+  // a document clone is a new document; its children are cloned into it
+  __clone(_doc, deep) {
+    const copy = new Document();
+    if (deep) copy.__kids = cloneKids(this, copy, copy);
+    return copy;
+  }
 
   // ---- MutationObserver registry ----
   __moRegister(obs, target, options) {
@@ -1631,7 +1884,7 @@ export class Document extends Node {
         if (tag === 'template') {
           for (let c = buf.firstChild(idx); c !== -1; c = buf.nextSib(c)) {
             if (buf.nodeType(c) === DOCUMENT_FRAGMENT_NODE && buf.tagName(c) === 'content') {
-              node.content = this.__nodeAt(c);
+              node.__content = this.__templateDocument().__nodeAt(c); // owned by the inert document
               break;
             }
           }
@@ -1658,9 +1911,11 @@ export class Document extends Node {
       case ELEMENT_NODE:
         node = newElement(this, raw.name, raw.namespace || '');
         node.__attrs = raw.attrs.map((a) => ({ name: a.name, value: a.value, prefix: a.prefix || '' }));
+        // the fragment parser reads `is` at creation, like the initial parse (custom-elements.mjs)
+        if (node.__ns === '' && raw.attrs.length !== 0) parsedIsAttribute(node);
         if (raw.name === 'template') {
           const contentRaw = raw.children.find((c) => c.nodeType === DOCUMENT_FRAGMENT_NODE && c.name === 'content');
-          if (contentRaw) { node.content = this.__inflateNested(contentRaw); }
+          if (contentRaw) node.__content = this.__templateDocument().__inflateNested(contentRaw);
         }
         break;
       case TEXT_NODE: node = new Text(this, raw.value); break;
@@ -1691,9 +1946,11 @@ export class Document extends Node {
     this.__active = null;
     this.__mo = [];          // drop observers
     this.__moPending = null;
-    this.__version = (this.__version || 0) + 1; // invalidate getElementsBy* caches
+    this.__version = ++VERSION; // invalidate getElementsBy* caches
     this.__tagCache = null;
     this.__classCache = null;
+    this.__ceRegistry = undefined; // the window's globals (customElements) reset with the document
+    this.__inert = undefined;      // a new buffer gets a new template contents owner document
   }
 
   get documentElement() { return this.__children().find((n) => n.nodeType === ELEMENT_NODE && n.localName === 'html') ?? null; }
@@ -1714,12 +1971,40 @@ export class Document extends Node {
   }
 
   // ---- factories (owned nodes, no buffer) ----
-  createElement(tag) { return new Element(this, String(tag).toLowerCase(), ''); }
-  createElementNS(ns, qualified) {
-    const short = ns === SVG_NS ? 'svg' : ns === MATHML_NS ? 'math' : '';
-    const local = qualified.includes(':') ? qualified.split(':')[1] : qualified;
-    return newElement(this, local, short);
+  createElement(tag, options) {
+    const raw = String(tag);
+    if (!validLocalName(raw)) throw invalidName(raw);
+    const name = raw.toLowerCase();
+    if (this.__ceRegistry === undefined && options === undefined) return new Element(this, name, '');
+    return createCustomElement(this, name, isOption(options), true);
   }
+  // DOM "create an element NS": validate and extract the qualified name (Chrome 156 keeps
+  // the local name up to a second colon: 'a:b:c' -> prefix 'a', local name 'b'), then an
+  // element in that namespace — HTML (custom elements), SVG, MathML, or any other / null
+  // namespace (a plain, case-preserving Element).
+  createElementNS(namespace, qualifiedName, options) {
+    const ns = namespace === null || namespace === undefined || namespace === '' ? null : String(namespace);
+    const qualified = String(qualifiedName);
+    let prefix = null, local = qualified;
+    const colon = qualified.indexOf(':');
+    if (colon !== -1) {
+      prefix = qualified.slice(0, colon);
+      const end = qualified.indexOf(':', colon + 1);
+      local = end === -1 ? qualified.slice(colon + 1) : qualified.slice(colon + 1, end);
+      if (!validPrefix(prefix)) throw invalidName(qualified);
+    }
+    if (!validLocalName(local)) throw invalidName(qualified);
+    if ((prefix !== null && ns === null) || (prefix === 'xml' && ns !== XML_NS)
+      || ((qualified === 'xmlns' || prefix === 'xmlns') !== (ns === XMLNS_NS))) {
+      throw domError('NamespaceError', `The namespace and qualified name ('${qualified}') do not match.`);
+    }
+    const el = ns === HTML_NS && (this.__ceRegistry !== undefined || options !== undefined)
+      ? createCustomElement(this, local, isOption(options), true)
+      : newElement(this, local, nsShort(ns));
+    if (prefix !== null) el.__prefix = prefix;
+    return el;
+  }
+  __newHtmlElement(localName) { return new Element(this, localName, ''); }
   createTextNode(data) { return new Text(this, String(data)); }
   createComment(data) { return new Comment(this, String(data)); }
   createDocumentFragment() { return new DocumentFragment(this); }
@@ -1736,8 +2021,17 @@ export class Document extends Node {
   createRange() { return new Range(this); }
   createAttribute(name) { return { name, value: '', ownerElement: null }; }
   getSelection() { if (!this.__selection) this.__selection = makeSelection(this); return this.__selection; }
-  importNode(node, deep) { return node.cloneNode(deep); }
-  adoptNode(node) { if (node.parentNode) node.parentNode.removeChild(node); adoptInto(node, this); return node; }
+  // a clone created in THIS document (custom elements upgrade here, not in the source's)
+  importNode(node, deep) {
+    if (ceScope(this)) return withReactions(METHOD.importNode, this, [node, deep]);
+    return node.__clone(this, !!deep);
+  }
+  adoptNode(node) {
+    if ((this.__ceRegistry !== undefined || node.ownerDocument.__ceRegistry !== undefined) && reactionDepth === 0) return withReactions(METHOD.adoptNode, this, [node]);
+    if (node.parentNode) node.parentNode.removeChild(node);
+    if (node.ownerDocument !== this) adopt(node, this);
+    return node;
+  }
 
   // TreeWalker / NodeIterator (whatToShow: 1 elements, 4 text, 0xFFFFFFFF all)
   createTreeWalker(root, whatToShow = 0xffffffff, filter = null) { return new TreeWalker(root, whatToShow, filter); }
@@ -1797,12 +2091,12 @@ export class Document extends Node {
   // query (e.g. RTL getByLabelText calls element.labels per element, each doing
   // document.getElementsByTagName('label')). Without caching that's O(n²) tree
   // walks. The cache invalidates whenever the DOM version bumps (any mutation).
-  __byTag(t) {
+  __byTag(raw, t) {
     const v = this.__version || 0;
-    const c = this.__tagCache && this.__tagCache.get(t);
+    const c = this.__tagCache && this.__tagCache.get(raw);
     if (c && c.v === v) return c.arr;
-    const arr = collectByTag(this, t);
-    (this.__tagCache || (this.__tagCache = new Map())).set(t, { v, arr });
+    const arr = collectByTag(this, raw, t);
+    (this.__tagCache || (this.__tagCache = new Map())).set(raw, { v, arr });
     return arr;
   }
   __byClass(key, classes) {
@@ -1817,10 +2111,10 @@ export class Document extends Node {
   // the version-cached __byTag/__byClass on every access, so a memoized Proxy still
   // reflects mutations — only the per-call Proxy allocation is saved.
   getElementsByTagName(tag) {
-    const t = tag.toLowerCase();
+    const raw = String(tag);
     const m = this.__tagColl || (this.__tagColl = new Map());
-    let coll = m.get(t);
-    if (!coll) { const self = this; coll = liveHTMLCollection(() => self.__byTag(t)); m.set(t, coll); }
+    let coll = m.get(raw);
+    if (!coll) { const self = this, t = raw.toLowerCase(); coll = liveHTMLCollection(() => self.__byTag(raw, t)); m.set(raw, coll); }
     return coll;
   }
   getElementsByClassName(cls) {
@@ -1866,6 +2160,26 @@ export class Document extends Node {
 }
 
 export { Event, CustomEvent };
+
+// The reaction scopes' re-entry targets (see `ceScope`).
+const setterOf = (proto, name) => Object.getOwnPropertyDescriptor(proto, name).set;
+Object.assign(METHOD, {
+  insertBefore: Node.prototype.insertBefore,
+  removeChild: Node.prototype.removeChild,
+  replaceChild: Node.prototype.replaceChild,
+  replaceChildren: Node.prototype.replaceChildren,
+  cloneNode: Node.prototype.cloneNode,
+  setTextContent: setterOf(Node.prototype, 'textContent'),
+  prepend: Element.prototype.prepend,
+  setInnerHTML: setterOf(Element.prototype, 'innerHTML'),
+  insertAdjacentHTML: Element.prototype.insertAdjacentHTML,
+  setShadowInnerHTML: setterOf(ShadowRoot.prototype, 'innerHTML'),
+  extractContents: Range.prototype.extractContents,
+  deleteContents: Range.prototype.deleteContents,
+  surroundContents: Range.prototype.surroundContents,
+  importNode: Document.prototype.importNode,
+  adoptNode: Document.prototype.adoptNode,
+});
 
 // Parse an HTML string into a fresh Document over the immutable SoA buffer.
 export function parseDocument(html) {

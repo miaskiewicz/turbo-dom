@@ -607,8 +607,68 @@ pub(super) fn parsed_fragment(
     let removed = v8::Array::new(scope, 0);
     set_prop(scope, event, "removedNodes", removed.into());
     let reactions = reactions(scope);
+    // The parser created these elements: their upgrades do not wait for a connection.
+    let nodes = (0..added.length())
+        .filter_map(|index| added.get_index(scope, index))
+        .filter_map(|node| node.to_object(scope))
+        .collect::<Vec<_>>();
+    parser_inserted(scope, fragment, &nodes, None);
     mutation(scope, event);
     reactions.flush(scope);
+}
+/// The current [CEReactions] frame's event count: where a fragment-parser setter's own
+/// mutations start (see `parser_inserted`).
+pub(super) fn event_mark(scope: &mut v8::PinScope) -> Option<u32> {
+    let frames = scope.get_slot::<Rc<ReactionFrames>>()?.clone();
+    let entry = frames.0.borrow().last().cloned()?;
+    entry.events.to_local(scope).map(|queue| queue.length())
+}
+/// The HTML fragment parser created `nodes` (innerHTML / outerHTML / insertAdjacentHTML /
+/// setHTMLUnsafe): their upgrades are queued before the setter's removals queue
+/// disconnectedCallbacks, as in Chrome (turbo-dom#43). `mark` is the `event_mark` taken
+/// before the setter mutated the tree; the event is delivered ahead of those mutations.
+pub(super) fn parser_inserted(
+    scope: &mut v8::PinScope,
+    target: v8::Local<v8::Object>,
+    nodes: &[v8::Local<v8::Object>],
+    mark: Option<u32>,
+) {
+    if nodes.is_empty() || scope.get_slot::<DefinitionsActive>().is_none() {
+        return;
+    }
+    let event = v8::Object::new(scope);
+    let null = v8::null(scope);
+    event.set_prototype(scope, null.into());
+    let kind = v8::String::new(scope, "parsed").unwrap();
+    set_prop(scope, event, "type", kind.into());
+    set_prop(scope, event, "target", target.into());
+    let values = nodes.iter().map(|node| (*node).into()).collect::<Vec<_>>();
+    let values = v8::Array::new_with_elements(scope, &values);
+    set_prop(scope, event, "nodes", values.into());
+    let queue = scope.get_slot::<Rc<ReactionFrames>>().and_then(|frames| {
+        frames
+            .0
+            .borrow()
+            .last()
+            .and_then(|entry| entry.events.to_local(scope))
+    });
+    match (queue, mark) {
+        (Some(queue), Some(mark)) if mark < queue.length() && queue.length() < 4096 => {
+            // Shift the setter's own mutations up one slot and deliver this event first.
+            let mut index = queue.length();
+            while index > mark {
+                let Some(value) = queue.get_index(scope, index - 1) else {
+                    return;
+                };
+                let key = v8::String::new(scope, &index.to_string()).unwrap();
+                queue.create_data_property(scope, key.into(), value);
+                index -= 1;
+            }
+            let key = v8::String::new(scope, &mark.to_string()).unwrap();
+            queue.create_data_property(scope, key.into(), event.into());
+        }
+        _ => mutation(scope, event),
+    }
 }
 pub(super) fn parsed(scope: &mut v8::PinScope, node: v8::Local<v8::Object>) {
     association_hook(scope, node, false, None);

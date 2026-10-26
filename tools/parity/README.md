@@ -43,10 +43,11 @@ covers `compare`/`record`/`run` and checks the committed checkpoints and expecte
 ```
 
 Listed outputs that did not change fail as stale expectations, so every expectation
-matches a real change. The self-test also requires every listed output to be recorded in a checkpoint,
-so a NEW corpus input cannot be declared as an expected addition: its outputs enter the
-manifests with the next recorded checkpoint (P5b-Y kept its new fixtures as crate-level
-Chrome-controlled tests instead). After a reviewed set of intended changes lands, record a new
+matches a real change. `changes` may only name outputs a checkpoint records (the
+self-test checks it). Outputs of a NEW corpus input go in an `added` list instead,
+e.g. `"added": {"html2pdf-extra": ["new-page.pdf"]}`: compare accepts them only as
+additions (`NOT NEW` if the checkpoint already has the key, stale if it isn't produced),
+and `record` keeps them in the next checkpoint. After a reviewed set of intended changes lands, record a new
 checkpoint with `parity.py record OUT <name>`; later work (e.g. code-review fixes)
 must then be zero-diff against it.
 

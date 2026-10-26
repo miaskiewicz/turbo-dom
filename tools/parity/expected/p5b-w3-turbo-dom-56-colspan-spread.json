@@ -1,0 +1,23 @@
+{
+ "id": "miaskiewicz/turbo-dom#56",
+ "reason": "A spanning cell's excess width spreads over its columns in proportion, counting the inner border-spacing (b4a9fb2, test 2d1f762). Changes the four invoice template PDFs (plain/svg): a colspan row's columns. parity 9b8a196 -> b4a9fb2; layoutBoxes vs Chrome 156: 172 -> 172, none worse. Found while fixing turbo-dom#49. P5b-W3.",
+ "control": "crates/turbo-dom-layout/tests/fixtures/html_document_chrome156.json + crates/turbo-dom-layout/tests/fixtures/live_geometry_chrome156.json table-colspan-* cases",
+ "e2e": "crates/turbo-dom-layout/tests/html_document_chrome.rs, crates/turbo-dom-layout/src/live/chrome_tests.rs (spanning_cells_spread_over_their_columns_like_chrome_156)",
+ "changes": {
+  "html2pdf": [
+   "template-invoice-cmyk.pdf",
+   "template-invoice-pdfa.pdf",
+   "template-invoice-plain.pdf",
+   "template-invoice-ua.pdf"
+  ],
+  "html2pdf-svg": [
+   "template-invoice-cmyk.pdf",
+   "template-invoice-pdfa.pdf",
+   "template-invoice-plain.pdf",
+   "template-invoice-ua.pdf"
+  ],
+  "html2pdf-extra": [],
+  "surf": [],
+  "surf-extra": []
+ }
+}
