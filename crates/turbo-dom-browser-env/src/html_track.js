@@ -242,6 +242,7 @@
     return track;
   });
   ["NONE", "LOADING", "LOADED", "ERROR"].forEach((name, value) => {
-    for (const owner of [g.HTMLTrackElement, P]) define(owner, name, { value, writable: false, enumerable: true, configurable: false });
+    // Configurable until key_order.js moves them into Chrome's order and freezes them (turbo-dom#99).
+    for (const owner of [g.HTMLTrackElement, P]) define(owner, name, { value, writable: false, enumerable: true, configurable: true });
   });
 })();

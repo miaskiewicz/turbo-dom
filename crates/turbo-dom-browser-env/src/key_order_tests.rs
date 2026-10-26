@@ -182,7 +182,6 @@ fn termination_during_key_order_is_not_lost() {
 /// configurable, so a realm whose attributes land after them (turbo-surf's child frames) is
 /// arranged like Chrome 156 and the constants end frozen.
 #[test]
-#[ignore = "turbo-dom#99: fails until the fix"]
 fn deferred_key_order_moves_track_constants_like_chrome156() {
     super::tests::init_v8();
     let isolate = &mut v8::Isolate::new(Default::default());
