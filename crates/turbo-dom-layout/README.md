@@ -92,7 +92,11 @@ fn lay_out(html: &str) -> Result<Fragment, RenderError> {
   content height, else it is dropped (turbo-dom#75); an empty first child's margins
   collapse through its parent's top with the next child's (#76); `min-height` wins over
   `max-height` and `height` (#77); a percentage `height` / `min-height` / `max-height`
-  resolves against a definite parent height on the static path too (#78).
+  resolves against a definite parent height on the static path too (#78); `display:
+  flow-root` establishes a block formatting context and an empty formatting-context root is
+  not self-collapsing (#88); column flex items take their basis from `height` and keep
+  their `width` (#86); content-box flex item sizes include their padding and border when
+  they reach taffy (#93).
 - `layout_snapshot::snapshot_{,html_}live_tree*` capture a snapshot of a `StyleInput`
   (identity paths index the styled forest).
 - `image` — the ONE image layer shared by the PDF emitter and turbo-dom-raster:

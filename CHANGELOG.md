@@ -7,11 +7,12 @@ at the time); this file reconstructs them from history.
 
 ## [Unreleased]
 
-### Fixed — turbo-dom-layout margins, heights and zero-area clips (P5b-W6, miaskiewicz/turbo-dom#75/#76/#77/#78, Chrome 156 controls)
+### Fixed — turbo-dom-layout margins, heights, zero-area clips, flow-root and flex item sizes (P5b-W6, miaskiewicz/turbo-dom#75/#76/#77/#78/#86/#88/#93, Chrome 156 controls)
 Each fix is backed by Chrome for Testing 156 cases in `scripts/html-document-chrome-control.mjs`
 and lists the corpus outputs it changes in `tools/parity/expected/p5b-w6-turbo-dom-*.json`
 (new pinned corpus inputs: `tools/parity/inputs/extra/{min-height-margin,
-self-collapsing-margins,min-max-height,percent-height}.html`).
+self-collapsing-margins,min-max-height,percent-height,flow-root,column-flex,
+flex-item-box-sizing}.html`).
 - A last child's bottom margin and `min-height` / `max-height` (#75 item 1): a non-zero
   `min-height` kept the margin inside the parent (`max(min-height, content + margin)`).
   As in Chrome, an auto-height parent lays its content out without it; the margin
@@ -35,6 +36,19 @@ self-collapsing-margins,min-max-height,percent-height}.html`).
   `min-height` / `max-height` of an in-flow box resolves against its parent's definite
   height (positioned boxes: also `min-height` / `max-height`); against an indefinite height
   they still behave as `auto` / 0 / `none`. Control: `percent-*`.
+- `display: flow-root` (#88): laid out as a plain block, it now establishes a block
+  formatting context — its children's margins stay inside, it contains its floats and
+  avoids outer floats. A zero-height box that establishes a formatting context (flow-root,
+  `overflow`, flex / grid / table) is no longer self-collapsing: margins no longer run
+  through an empty one. Control: `flow-root-*` / `empty-formatting-root-*`.
+- Column flex items (#86): an item's flex basis came from its `width` and its `width` was
+  dropped, so it stretched to the container and its height became its width. In a column
+  the basis falls back to `height` and `width` is the cross size; taffy's main size wins
+  over a `px` `height` (basis, grow, shrink). Control: `column-flex-item-*`.
+- Content-box flex items (#93, found while fixing #86): an item's `width` / `height` /
+  `flex-basis` / `min-*` / `max-*` lengths reached taffy (border boxes) unchanged, so a
+  padded or bordered `box-sizing: content-box` item lost its frame. They are now
+  border-box lengths. Control: `flex-item-*`.
 
 ### Fixed — turbo-dom-layout tables, clipping and box sizing (P5b-W5, miaskiewicz/turbo-dom#41/#51/#52/#55/#62/#63/#64/#65/#69/#70, Chrome 156 controls)
 Each fix is backed by a Chrome for Testing 156 control and lists the corpus outputs it
