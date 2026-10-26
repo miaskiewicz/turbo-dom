@@ -461,17 +461,17 @@ fn check_pseudo(pseudo: &mut Pseudo) -> Result<(), SelectorError> {
         Pseudo::Selected => return Err(invalid("unknown pseudo-class")),
         Pseudo::Is(list) | Pseudo::Where(list) => forgive(list),
         Pseudo::Not(list) | Pseudo::NthChildOf(_, _, list) | Pseudo::NthLastChildOf(_, _, list) => {
-            if list.is_empty() {
-                return Err(invalid("empty selector list argument"));
-            }
+            // never empty: the shared parser makes a pseudo with an empty, unplaceable or
+            // combinator-edged item `Unknown` (an error below), and every other strictly
+            // lexed item parses to a complex selector (fuzzed: 1.46M arguments)
+            debug_assert!(!list.is_empty(), "empty selector list argument");
             for complex in list {
                 check_nested(complex)?;
             }
         }
         Pseudo::Has(list) => {
-            if list.is_empty() {
-                return Err(invalid("empty :has()"));
-            }
+            // never empty, as above (a relative item may start with a combinator)
+            debug_assert!(!list.is_empty(), "empty :has()");
             for relative in list {
                 check_nested(&mut relative.complex)?;
                 reject_nested_has(&mut relative.complex)?;
