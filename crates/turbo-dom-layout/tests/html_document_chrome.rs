@@ -298,7 +298,6 @@ fn percent_height_case(id: &str) -> bool {
 }
 
 #[test]
-#[ignore = "turbo-dom#78: fails until the fix"]
 fn percentage_heights_resolve_against_a_definite_parent_like_chrome_156() {
     compare_cases(percent_height_case);
 }

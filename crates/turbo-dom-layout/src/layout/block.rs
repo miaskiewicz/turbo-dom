@@ -236,28 +236,14 @@ fn definite_content_height(bs: &BoxStyle, outer_cb_h: f32) -> f32 {
     (h - inset).max(0.0)
 }
 
-/// The content-box height a `%` `height` yields for a POSITIONED box, resolved
-/// against its containing block's definite height (`pos_cb_h`) — or `None` when it
-/// doesn't apply (in-flow box, non-`%` height, or an indefinite CB). Lets a
-/// `bottom:0; height:33%` overlay fill its band on a card sized by its content,
-/// instead of collapsing to its own text.
-fn positioned_pct_height(bs: &BoxStyle, inset: f32, pos_cb_h: f32) -> Option<f32> {
-    if bs.position == Position::Static || pos_cb_h <= 0.0 {
-        return None;
-    }
-    match bs.height {
-        LengthPct::Pct(_) | LengthPct::Calc { .. } => {
-            bs.height.resolve(pos_cb_h).map(|h| (h - inset).max(0.0))
-        }
-        _ => None,
-    }
-}
-
-/// The CB height a positioned box resolves its `%` height against (`abs_cb_h`),
-/// or 0 for an in-flow box (whose `%` height stays deferred to measured content).
-fn positioned_cb_height(bs: &BoxStyle, ctx: &Ctx) -> f32 {
+/// The containing-block height a box resolves its `%` `height` / `min-height` /
+/// `max-height` against on the static path: a positioned box's `abs_cb_h` (so a
+/// `bottom:0; height:33%` overlay fills its band on a card sized by its content), an
+/// in-flow box's parent's definite content height `cb_h` (miaskiewicz/turbo-dom#78).
+/// 0 = indefinite: the percentages then behave as `auto` / 0 / `none`.
+fn percentage_height_basis(bs: &BoxStyle, ctx: &Ctx) -> f32 {
     if bs.position == Position::Static {
-        0.0
+        ctx.cb_h
     } else {
         ctx.abs_cb_h
     }
@@ -274,7 +260,7 @@ fn live_child_height(lb: &LayoutBox, bs: &BoxStyle, outer_height: f32, live: boo
 
 fn resolved_content_height(bs: &BoxStyle, auto_height: f32, ctx: &Ctx) -> f32 {
     if !ctx.live_geometry {
-        return content_box_height(bs, auto_height, positioned_cb_height(bs, ctx));
+        return content_box_height(bs, auto_height, percentage_height_basis(bs, ctx));
     }
     let basis = native_height_basis(bs, ctx);
     let frame = bs.padding.vertical() + bs.border.widths().vertical();
@@ -463,7 +449,7 @@ fn resolved_live_height(value: LengthPct, basis: Option<f32>, inset: f32) -> Opt
     }
 }
 
-fn content_box_height(bs: &BoxStyle, content_h: f32, pos_cb_h: f32) -> f32 {
+fn content_box_height(bs: &BoxStyle, content_h: f32, pct_basis: f32) -> f32 {
     // A `px` `height`/`min-height`/`max-height` is a BORDER-box length under
     // `box-sizing:border-box`, so recover the content height by subtracting the
     // padding+border. Google's header "Sign in" pill is `min-height:40px;padding:10px
@@ -473,13 +459,16 @@ fn content_box_height(bs: &BoxStyle, content_h: f32, pos_cb_h: f32) -> f32 {
         BoxSizing::BorderBox => bs.padding.vertical() + bs.border.widths().vertical(),
         BoxSizing::ContentBox => 0.0,
     };
+    // A `%` / `calc(% ± px)` length resolves against a definite basis
+    // ([`percentage_height_basis`]); against an indefinite one it does not apply.
     let to_content = |lp: LengthPct| match lp {
         LengthPct::Px(v) => Some((v - inset).max(0.0)),
+        LengthPct::Pct(_) | LengthPct::Calc { .. } if pct_basis > 0.0 => {
+            lp.resolve(pct_basis).map(|v| (v - inset).max(0.0))
+        }
         _ => None,
     };
-    let mut h = to_content(bs.height)
-        .or_else(|| positioned_pct_height(bs, inset, pos_cb_h))
-        .unwrap_or(content_h);
+    let mut h = to_content(bs.height).unwrap_or(content_h);
     // CSS 2.2 §10.7: `max-height` clamps first, then `min-height` wins over both it and
     // `height` (miaskiewicz/turbo-dom#77).
     if let Some(max) = to_content(bs.max_height) {
