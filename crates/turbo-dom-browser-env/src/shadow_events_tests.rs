@@ -30,9 +30,10 @@ fn rows(prefix: &str, value: &serde_json::Value, out: &mut Vec<(String, String)>
     }
 }
 
-#[test]
-fn shadow_event_paths_match_chrome156_control() {
-    let control: serde_json::Value = serde_json::from_str(CONTROL).unwrap();
+/// Run a sync committed probe over its single case (an installed document) and list every
+/// control row the binding reports differently, as `path: binding …, chrome …`.
+pub(super) fn control_mismatches(probe: &str, cases: &str, control: &str) -> Vec<String> {
+    let control: serde_json::Value = serde_json::from_str(control).unwrap();
     assert!(control["browser"]
         .as_str()
         .unwrap()
@@ -40,20 +41,20 @@ fn shadow_event_paths_match_chrome156_control() {
     assert_eq!(control["errors"], serde_json::json!([]));
     assert_eq!(
         control["probeSha256"],
-        format!("{:x}", Sha256::digest(PROBE.as_bytes()))
+        format!("{:x}", Sha256::digest(probe.as_bytes()))
     );
     assert_eq!(
         control["casesSha256"],
-        format!("{:x}", Sha256::digest(CASES.as_bytes()))
+        format!("{:x}", Sha256::digest(cases.as_bytes()))
     );
-    let cases: serde_json::Value = serde_json::from_str(CASES).unwrap();
+    let cases: serde_json::Value = serde_json::from_str(cases).unwrap();
     super::tests::init_v8();
     let isolate = &mut v8::Isolate::new(Default::default());
     v8::scope!(let scope, isolate);
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);
     install_with_html(scope, cases[0]["html"].as_str().unwrap());
-    let code = format!("JSON.stringify({})", PROBE.trim().trim_end_matches(';'));
+    let code = format!("JSON.stringify({})", probe.trim().trim_end_matches(';'));
     let code = v8::String::new(scope, &code).unwrap();
     v8::tc_scope!(let scope, scope);
     let value = v8::Script::compile(scope, code, None)
@@ -66,8 +67,7 @@ fn shadow_event_paths_match_chrome156_control() {
     rows("", &control["result"][0]["result"], &mut want);
     rows("", &actual, &mut got);
     let got: std::collections::BTreeMap<_, _> = got.into_iter().collect();
-    let found: Vec<String> = want
-        .into_iter()
+    want.into_iter()
         .filter(|(path, value)| got.get(path) != Some(value))
         .map(|(path, value)| {
             let binding = got
@@ -76,7 +76,12 @@ fn shadow_event_paths_match_chrome156_control() {
                 .unwrap_or_else(|| "<missing>".into());
             format!("{path}: binding {binding}, chrome {value}")
         })
-        .collect();
+        .collect()
+}
+
+#[test]
+fn shadow_event_paths_match_chrome156_control() {
+    let found = control_mismatches(PROBE, CASES, CONTROL);
     assert!(
         found.is_empty(),
         "{} mismatches:\n{}",
