@@ -56,6 +56,17 @@ inside an attribute value (a raw-UTF-8 SVG `data:` URL), a `<script>` string or 
 text stays as it is. `tests/inline_svg_chrome.rs` checks the pixels against Chrome 156
 (`scripts/inline-svg-chrome-control.mjs`).
 
+`<img>` elements (miaskiewicz/turbo-dom#27): an `<img src="data:…">` paints from its own
+URL. The screenshot decodes it through turbo-dom-layout's `image::decode_data_url` (base64
+or percent-encoded), so no caller bytes are needed; `image_urls` still leaves `data:` URLs
+off the fetch list. `image_urls` and the lazy-image fill work on the parsed document's
+HTML `<img>` elements, never on source text. `<img` text in an attribute value, a
+`<script>` string, a comment or `<template>` content is not an image. `delazy_tree` fills
+the parsed tree in place, which is what the screenshot does. `delazy_images` keeps its
+string API: it returns the HTML unchanged when no image changes, else the filled document
+re-serialized. `tests/raster_img_chrome.rs` checks this against Chrome 156
+(`scripts/raster-img-chrome-control.mjs`).
+
 ## Provenance
 
 Relocated **verbatim** from `turbo-surf-raster` 0.5.5 (miaskiewicz/turbo-surf @
@@ -64,7 +75,7 @@ code change is the dependency `turbo-html2pdf-core` -> `turbo-dom-layout` (same 
 same names). `scripts/verify-copied-layout.sh` checks the copy.
 
 ```bash
-cargo test -p turbo-dom-raster        # 40 unit tests, tests/screenshot.rs (24) + the Chrome 156 controls
+cargo test -p turbo-dom-raster        # 42 unit tests, tests/screenshot.rs (24) + the Chrome 156 controls
 cargo check -p turbo-dom-raster --features gpu-metal,coretext
 cargo test -p turbo-dom-raster --features avif  # AVIF pixels vs the Chrome 156 control (CI raster job)
 ```
