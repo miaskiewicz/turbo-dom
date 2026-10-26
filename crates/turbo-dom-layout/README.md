@@ -67,8 +67,10 @@ fn lay_out(html: &str) -> Result<Fragment, RenderError> {
   testing (`cssom_view::hit`) honours `clip: rect()` of absolutely positioned boxes, and
   so does the galley (turbo-dom#52): such a box keeps its box and records the region in
   `Fragment::clip` (`ClipRect`, from its border-box corner) for the painters; one whose
-  clip keeps nothing at any size (the sr-only pattern) is left out of static layouts
-  (no box, text or tag); `clip` on any other box is ignored.
+  clip keeps nothing at any size (the sr-only pattern) is left out of static renders
+  (no paint, text or tag) — `layout_boxes` still lays it out and reports its border box
+  and its descendants' like `getBoundingClientRect()` (turbo-dom#75); `clip` on any other
+  box is ignored.
   Also (turbo-dom#48/#49/#50/#53/#56): absolutely positioned `width: auto` boxes shrink to
   fit; `inline-flex` / `inline-grid` are inline-level; auto-layout collapsed tables merge
   borders; percentage columns take their share; spanning cells spread over their columns.
@@ -85,6 +87,12 @@ fn lay_out(html: &str) -> Result<Fragment, RenderError> {
   `border-box` widths count once in intrinsic and column widths (#65); only legacy
   `-webkit-*` alignment (UA `center`, `align` attributes) moves block children (#69); UA
   `th` is bold and centred (#70).
+  Also P5b-W6 (same control): a last child's bottom margin collapses through an
+  auto-height parent only when `min-height` / `max-height` leave its used height at its
+  content height, else it is dropped (turbo-dom#75); an empty first child's margins
+  collapse through its parent's top with the next child's (#76); `min-height` wins over
+  `max-height` and `height` (#77); a percentage `height` / `min-height` / `max-height`
+  resolves against a definite parent height on the static path too (#78).
 - `layout_snapshot::snapshot_{,html_}live_tree*` capture a snapshot of a `StyleInput`
   (identity paths index the styled forest).
 - `image` — the ONE image layer shared by the PDF emitter and turbo-dom-raster:

@@ -3,7 +3,8 @@
 //     wrapper box, above (`caption-side: top`) or below (`bottom`) the table grid box; the
 //     table's background and border paint the grid box only, never the caption;
 //   - miaskiewicz/turbo-dom#52 (`clip-*`): an absolutely positioned box's `clip: rect()`
-//     clips the box and its descendants; a zero-area clip paints nothing; `clip` does not
+//     clips the box and its descendants; a zero-area clip paints nothing (the box keeps its
+//     border box, miaskiewicz/turbo-dom#75); `clip` does not
 //     apply to a box that is not absolutely positioned.
 //
 // Every case is one page (viewport 1280x800, `body{margin:0;background:#00ffff}`). Chrome for
