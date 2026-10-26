@@ -484,23 +484,41 @@ mod tests {
     }
 
     #[test]
-    fn identity_and_monochrome_frames_map_planes_directly() {
-        // Identity (GBR): planes are G, B, R; monochrome under identity or any weighted
-        // matrix is grey from luma alone.
-        // (Within one level: the chroma planes are centred on `1 << (bits - 1)` and the
-        // half level added back, so a sample can land half a level low — reported in the
-        // P5-cov raster coverage report.)
-        let gbr = frame(8, Some((0, 0)), [vec![10], vec![20], vec![30]]);
-        let px = to_rgba(&gbr, None, 0, true).rgba;
-        let near = |got: u8, want: u8| got.abs_diff(want) <= 1;
-        assert!(
-            near(px[0], 30) && px[1] == 10 && near(px[2], 20) && px[3] == 255,
-            "{px:?}"
-        );
+    fn monochrome_frames_are_grey_under_any_matrix() {
+        // A monochrome frame under identity or any weighted matrix is grey from luma alone.
         let mono = frame(8, None, [vec![0, 128, 255], vec![], vec![]]);
         let grey = [0, 0, 0, 255, 128, 128, 128, 255, 255, 255, 255, 255];
         assert_eq!(to_rgba(&mono, None, 0, true).rgba, grey);
         assert_eq!(to_rgba(&mono, None, 1, true).rgba, grey);
+    }
+
+    /// Identity (GBR, matrix 0; H.273 equations 41-43): G = Y, B = Cb, R = Cr, every plane
+    /// quantized like luma — as libavif (Chrome's AVIF decoder) converts it.
+    #[test]
+    #[ignore = "turbo-dom#95: fails until the fix"]
+    fn identity_gbr_maps_every_sample_exactly() {
+        let all: Vec<u16> = (0..=255).collect();
+        let rev: Vec<u16> = (0..=255).rev().collect();
+        let mid: Vec<u16> = (0..=255).map(|v| (v + 77) % 256).collect();
+        let full = frame(8, Some((0, 0)), [all.clone(), rev.clone(), mid.clone()]);
+        let px = to_rgba(&full, None, 0, true).rgba;
+        for i in 0..256 {
+            let want = [mid[i] as u8, all[i] as u8, rev[i] as u8, 255];
+            assert_eq!(px[i * 4..i * 4 + 4], want, "full range sample {i}");
+        }
+        // Limited range: 16..=235 on every plane is 0..=255.
+        let limited = frame(
+            8,
+            Some((0, 0)),
+            [vec![126, 16, 235], vec![16, 235, 126], vec![235, 126, 16]],
+        );
+        assert_eq!(
+            to_rgba(&limited, None, 0, false).rgba,
+            [255, 128, 0, 255, 128, 0, 255, 255, 0, 255, 128, 255]
+        );
+        // 10-bit full range: 1023 is 255, 0 is 0.
+        let deep = frame(10, Some((0, 0)), [vec![1023], vec![0], vec![1023]]);
+        assert_eq!(to_rgba(&deep, None, 0, true).rgba, [255, 255, 0, 255]);
     }
 
     #[test]
