@@ -9,7 +9,7 @@
 //! `svg-rasterize`), and the HTML drive lays every raster-format `<img>` out at Chrome's
 //! rectangle.
 use serde_json::Value;
-use turbo_dom_layout::image::{decode_data_url, probe, probe_natural, sniff, Format};
+use turbo_dom_layout::image::{decode_data_url, probe, probe_natural, sniff, Format, Orientation};
 use turbo_dom_layout::{layout_boxes, Diagnostics, FontRegistry};
 
 fn fixture() -> Value {
@@ -19,16 +19,6 @@ fn fixture() -> Value {
     );
     serde_json::from_str(&std::fs::read_to_string(path).expect("fixture")).unwrap()
 }
-
-/// AVIF `irot`/`imir` cases whose size does not match Chrome yet (turbo-dom#45; each
-/// must still differ, so a fixed one is removed).
-const PROBE_PENDING: &[&str] = &[
-    "avif-irot90",
-    "avif-irot270",
-    "avif-irot90-imir0",
-    "avif-irot90-orientation-none",
-];
-const BOX_PENDING: &[&str] = &["avif-irot90", "avif-irot270", "avif-irot90-imir0"];
 
 fn is_svg(id: &str) -> bool {
     id.starts_with("svg")
@@ -95,13 +85,6 @@ fn probe_natural_answers_chromes_load_and_natural_size() {
             let n = case["natural"].as_array().unwrap();
             (n[0].as_u64().unwrap(), n[1].as_u64().unwrap())
         });
-        if PROBE_PENDING.contains(&id) {
-            assert_ne!(
-                natural, want,
-                "{id}: matches Chrome, remove it from PROBE_PENDING"
-            );
-            continue;
-        }
         assert_eq!(natural, want, "{id}");
         checked += 1;
     }
@@ -157,6 +140,42 @@ fn the_new_formats_sniff_and_probe() {
 }
 
 #[test]
+fn avif_transform_properties_orient_the_image() {
+    // miaskiewicz/turbo-dom#45: irot / imir compose, in association order, into the EXIF
+    // orientation the image is displayed with (as Chrome 156 displays them).
+    let read = |f: &str| {
+        std::fs::read(format!(
+            "{}/tests/fixtures/images/formats/{f}",
+            env!("CARGO_MANIFEST_DIR")
+        ))
+        .unwrap()
+    };
+    for (file, exif) in [
+        ("q.avif", 1),
+        ("q-irot90.avif", 8),
+        ("q-irot180.avif", 3),
+        ("q-irot270.avif", 6),
+        ("q-imir0.avif", 4),
+        ("q-imir1.avif", 2),
+        ("q-irot90-imir0.avif", 5),
+    ] {
+        let i = probe(&read(file)).expect(file);
+        assert_eq!(
+            (i.width, i.height, i.orientation.exif()),
+            (64, 40, exif),
+            "{file}"
+        );
+    }
+    let o = Orientation::from_exif;
+    assert_eq!(o(1).then(o(6)), o(6));
+    assert_eq!(o(6).then(o(8)), o(1), "a quarter turn and back");
+    assert_eq!(o(8).then(o(8)), o(3));
+    assert_eq!(o(2).then(o(2)), o(1), "a mirror twice");
+    assert_eq!(o(8).then(o(4)), o(5));
+    assert_eq!(o(4).then(o(8)), o(7), "the order matters");
+}
+
+#[test]
 fn raster_format_img_boxes_match_chrome_156() {
     let fixture = fixture();
     let html = fixture["html"].as_str().unwrap();
@@ -180,12 +199,8 @@ fn raster_format_img_boxes_match_chrome_156() {
             .iter()
             .find(|b| b.cid == id)
             .map(|b| [b.x, b.y, b.width, b.height]);
-        let differs = got.is_none_or(|g| g.iter().zip(&want).any(|(g, w)| (g - w).abs() > 0.01));
-        if differs != BOX_PENDING.contains(&id) {
-            failures.push(format!(
-                "{id}: {got:?}, Chrome {want:?} (pending: {})",
-                !differs
-            ));
+        if got.is_none_or(|g| g.iter().zip(&want).any(|(g, w)| (g - w).abs() > 0.01)) {
+            failures.push(format!("{id}: {got:?}, Chrome {want:?}"));
         }
     }
     assert!(failures.is_empty(), "{}", failures.join("\n"));

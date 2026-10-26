@@ -40,16 +40,6 @@ fn class([r, g, b]: [u8; 3]) -> char {
 /// the inline-`<svg>` conversion works on parsed elements: miaskiewicz/turbo-dom#25.)
 const OTHER_SIZING: &[&str] = &["svg-viewbox-only", "svg-no-size", "svg-fractional", "tiff"];
 
-/// AVIF `irot`/`imir` cases that do not paint like Chrome yet (turbo-dom#45): the quarter
-/// turns lay out unturned; with the `avif` decoder every transform paints unturned. Each
-/// must still differ, so a fixed one is removed.
-const PENDING: &[&str] = &["avif-irot90", "avif-irot270", "avif-irot90-imir0"];
-const PENDING_DECODED: &[&str] = &["avif-irot180", "avif-imir0", "avif-imir1"];
-
-fn pending(id: &str) -> bool {
-    PENDING.contains(&id) || (cfg!(feature = "avif") && PENDING_DECODED.contains(&id))
-}
-
 #[test]
 fn decoded_pixels_match_chrome_156() {
     let path = concat!(
@@ -100,7 +90,7 @@ fn decoded_pixels_match_chrome_156() {
             })
             .collect();
         compared += 1;
-        if (got != want) != pending(id) {
+        if got != want {
             failures.push(format!(
                 "{id}: {got}, want {want} (Chrome {})",
                 case["samples"]
