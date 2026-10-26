@@ -1,7 +1,7 @@
 {
   "browser": "Chrome/156.0.8078.4",
   "v8": "15.6.75",
-  "casesSha256": "ed046abcb876834e42e5c9e5652b10ac71ad35db03d03c93a7643ce249543e91",
+  "casesSha256": "baea269d4736f6cdadba7211af3c48cc1bbf1d7390193aa488e462550eafc861",
   "probeSha256": "8bf0060c80218bdea8a039ee835919890a534722032811886968abbcdcbbfb64",
   "collectorSha256": "7bd6ffb7440d38e05cd2b8fbe0e84e91cf462043577ceada3e276728ad216172",
   "flags": [
@@ -2973,6 +2973,118 @@
             "cssText": "",
             "items": [],
             "shorthands": {}
+          },
+          {
+            "id": "margin|calc(1hz + 1px)",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "margin|calc(1px * (2 - 1))",
+            "cssText": "margin: calc(1px);",
+            "items": [
+              [
+                "margin-top",
+                "calc(1px)"
+              ],
+              [
+                "margin-right",
+                "calc(1px)"
+              ],
+              [
+                "margin-bottom",
+                "calc(1px)"
+              ],
+              [
+                "margin-left",
+                "calc(1px)"
+              ]
+            ],
+            "shorthands": {
+              "margin": "calc(1px)"
+            }
+          },
+          {
+            "id": "margin|calc(min(1px, 2px) * 2)",
+            "cssText": "margin: calc(2px);",
+            "items": [
+              [
+                "margin-top",
+                "calc(2px)"
+              ],
+              [
+                "margin-right",
+                "calc(2px)"
+              ],
+              [
+                "margin-bottom",
+                "calc(2px)"
+              ],
+              [
+                "margin-left",
+                "calc(2px)"
+              ]
+            ],
+            "shorthands": {
+              "margin": "calc(2px)"
+            }
+          },
+          {
+            "id": "margin|calc(1px + calc(1%))",
+            "cssText": "margin: calc(1% + 1px);",
+            "items": [
+              [
+                "margin-top",
+                "calc(1% + 1px)"
+              ],
+              [
+                "margin-right",
+                "calc(1% + 1px)"
+              ],
+              [
+                "margin-bottom",
+                "calc(1% + 1px)"
+              ],
+              [
+                "margin-left",
+                "calc(1% + 1px)"
+              ]
+            ],
+            "shorthands": {
+              "margin": "calc(1% + 1px)"
+            }
+          },
+          {
+            "id": "margin|calc(pi)",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "margin|calc(1px * 2 / 4)",
+            "cssText": "margin: calc(0.5px);",
+            "items": [
+              [
+                "margin-top",
+                "calc(0.5px)"
+              ],
+              [
+                "margin-right",
+                "calc(0.5px)"
+              ],
+              [
+                "margin-bottom",
+                "calc(0.5px)"
+              ],
+              [
+                "margin-left",
+                "calc(0.5px)"
+              ]
+            ],
+            "shorthands": {
+              "margin": "calc(0.5px)"
+            }
           },
           {
             "id": "margin|inherit",
@@ -18466,6 +18578,72 @@
             "shorthands": {
               "background": "",
               "background-position": "center top"
+            }
+          },
+          {
+            "id": "background-position|left 10px right",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "background-position|top 10px center",
+            "cssText": "background-position: center top 10px;",
+            "items": [
+              [
+                "background-position-x",
+                "center"
+              ],
+              [
+                "background-position-y",
+                "top 10px"
+              ]
+            ],
+            "shorthands": {
+              "background": "",
+              "background-position": "center top 10px"
+            }
+          },
+          {
+            "id": "background-position|center center 10px",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "background-position|left top 10px",
+            "cssText": "background-position: left top 10px;",
+            "items": [
+              [
+                "background-position-x",
+                "left"
+              ],
+              [
+                "background-position-y",
+                "top 10px"
+              ]
+            ],
+            "shorthands": {
+              "background": "",
+              "background-position": "left top 10px"
+            }
+          },
+          {
+            "id": "background-position|bottom 10px left 5px",
+            "cssText": "background-position: left 5px bottom 10px;",
+            "items": [
+              [
+                "background-position-x",
+                "left 5px"
+              ],
+              [
+                "background-position-y",
+                "bottom 10px"
+              ]
+            ],
+            "shorthands": {
+              "background": "",
+              "background-position": "left 5px bottom 10px"
             }
           },
           {
@@ -58560,6 +58738,178 @@
             }
           },
           {
+            "id": "font|12px \\d800 a",
+            "cssText": "font: 12px �a;",
+            "items": [
+              [
+                "font-style",
+                "normal"
+              ],
+              [
+                "font-variant-caps",
+                "normal"
+              ],
+              [
+                "font-variant-ligatures",
+                "normal"
+              ],
+              [
+                "font-variant-numeric",
+                "normal"
+              ],
+              [
+                "font-variant-east-asian",
+                "normal"
+              ],
+              [
+                "font-variant-alternates",
+                "normal"
+              ],
+              [
+                "font-size-adjust",
+                "none"
+              ],
+              [
+                "font-language-override",
+                "normal"
+              ],
+              [
+                "font-kerning",
+                "auto"
+              ],
+              [
+                "font-optical-sizing",
+                "auto"
+              ],
+              [
+                "font-feature-settings",
+                "normal"
+              ],
+              [
+                "font-variation-settings",
+                "normal"
+              ],
+              [
+                "font-variant-position",
+                "normal"
+              ],
+              [
+                "font-variant-emoji",
+                "normal"
+              ],
+              [
+                "font-weight",
+                "normal"
+              ],
+              [
+                "font-stretch",
+                "normal"
+              ],
+              [
+                "font-size",
+                "12px"
+              ],
+              [
+                "line-height",
+                "normal"
+              ],
+              [
+                "font-family",
+                "�a"
+              ]
+            ],
+            "shorthands": {
+              "font": "12px �a",
+              "font-variant": "normal"
+            }
+          },
+          {
+            "id": "font|12px \\10ffff a",
+            "cssText": "font: 12px 􏿿a;",
+            "items": [
+              [
+                "font-style",
+                "normal"
+              ],
+              [
+                "font-variant-caps",
+                "normal"
+              ],
+              [
+                "font-variant-ligatures",
+                "normal"
+              ],
+              [
+                "font-variant-numeric",
+                "normal"
+              ],
+              [
+                "font-variant-east-asian",
+                "normal"
+              ],
+              [
+                "font-variant-alternates",
+                "normal"
+              ],
+              [
+                "font-size-adjust",
+                "none"
+              ],
+              [
+                "font-language-override",
+                "normal"
+              ],
+              [
+                "font-kerning",
+                "auto"
+              ],
+              [
+                "font-optical-sizing",
+                "auto"
+              ],
+              [
+                "font-feature-settings",
+                "normal"
+              ],
+              [
+                "font-variation-settings",
+                "normal"
+              ],
+              [
+                "font-variant-position",
+                "normal"
+              ],
+              [
+                "font-variant-emoji",
+                "normal"
+              ],
+              [
+                "font-weight",
+                "normal"
+              ],
+              [
+                "font-stretch",
+                "normal"
+              ],
+              [
+                "font-size",
+                "12px"
+              ],
+              [
+                "line-height",
+                "normal"
+              ],
+              [
+                "font-family",
+                "􏿿a"
+              ]
+            ],
+            "shorthands": {
+              "font": "12px 􏿿a",
+              "font-variant": "normal"
+            }
+          },
+          {
             "id": "font|inherit",
             "cssText": "font: inherit;",
             "items": [
@@ -70582,6 +70932,196 @@
             }
           },
           {
+            "id": "background|url(a\\62 .png)",
+            "cssText": "background: url(\"ab.png\");",
+            "items": [
+              [
+                "background-image",
+                "url(\"ab.png\")"
+              ],
+              [
+                "background-position-x",
+                "initial"
+              ],
+              [
+                "background-position-y",
+                "initial"
+              ],
+              [
+                "background-size",
+                "initial"
+              ],
+              [
+                "background-repeat",
+                "initial"
+              ],
+              [
+                "background-attachment",
+                "initial"
+              ],
+              [
+                "background-origin",
+                "initial"
+              ],
+              [
+                "background-clip",
+                "initial"
+              ],
+              [
+                "background-color",
+                "initial"
+              ]
+            ],
+            "shorthands": {
+              "background": "url(\"ab.png\")",
+              "background-position": "initial"
+            }
+          },
+          {
+            "id": "background|url(a.png )x",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "background|#\\31 23",
+            "cssText": "background: rgb(17, 34, 51);",
+            "items": [
+              [
+                "background-image",
+                "initial"
+              ],
+              [
+                "background-position-x",
+                "initial"
+              ],
+              [
+                "background-position-y",
+                "initial"
+              ],
+              [
+                "background-size",
+                "initial"
+              ],
+              [
+                "background-repeat",
+                "initial"
+              ],
+              [
+                "background-attachment",
+                "initial"
+              ],
+              [
+                "background-origin",
+                "initial"
+              ],
+              [
+                "background-clip",
+                "initial"
+              ],
+              [
+                "background-color",
+                "rgb(17, 34, 51)"
+              ]
+            ],
+            "shorthands": {
+              "background": "rgb(17, 34, 51)",
+              "background-position": "initial"
+            }
+          },
+          {
+            "id": "background|url(a.png) center / 10px 20px, url(b.png) 0 0",
+            "cssText": "background: url(\"a.png\") center center / 10px 20px, url(\"b.png\") 0px 0px;",
+            "items": [
+              [
+                "background-image",
+                "url(\"a.png\"), url(\"b.png\")"
+              ],
+              [
+                "background-position-x",
+                "center, 0px"
+              ],
+              [
+                "background-position-y",
+                "center, 0px"
+              ],
+              [
+                "background-size",
+                "10px 20px, initial"
+              ],
+              [
+                "background-repeat",
+                "initial, initial"
+              ],
+              [
+                "background-attachment",
+                "initial, initial"
+              ],
+              [
+                "background-origin",
+                "initial, initial"
+              ],
+              [
+                "background-clip",
+                "initial, initial"
+              ],
+              [
+                "background-color",
+                "initial"
+              ]
+            ],
+            "shorthands": {
+              "background": "url(\"a.png\") center center / 10px 20px, url(\"b.png\") 0px 0px",
+              "background-position": "center center, 0px 0px"
+            }
+          },
+          {
+            "id": "background|url(a.png) 1px 2px / 3px",
+            "cssText": "background: url(\"a.png\") 1px 2px / 3px auto;",
+            "items": [
+              [
+                "background-image",
+                "url(\"a.png\")"
+              ],
+              [
+                "background-position-x",
+                "1px"
+              ],
+              [
+                "background-position-y",
+                "2px"
+              ],
+              [
+                "background-size",
+                "3px auto"
+              ],
+              [
+                "background-repeat",
+                "initial"
+              ],
+              [
+                "background-attachment",
+                "initial"
+              ],
+              [
+                "background-origin",
+                "initial"
+              ],
+              [
+                "background-clip",
+                "initial"
+              ],
+              [
+                "background-color",
+                "initial"
+              ]
+            ],
+            "shorthands": {
+              "background": "url(\"a.png\") 1px 2px / 3px auto",
+              "background-position": "1px 2px"
+            }
+          },
+          {
             "id": "background|inherit",
             "cssText": "background: inherit;",
             "items": [
@@ -74739,6 +75279,78 @@
             "shorthands": {
               "-webkit-transition": "opacity, color 1s",
               "transition": "opacity, color 1s"
+            }
+          },
+          {
+            "id": "transition|opacity cubic-bezier(0, 0, 1, 1)",
+            "cssText": "transition: opacity cubic-bezier(0, 0, 1, 1);",
+            "items": [
+              [
+                "transition-behavior",
+                "normal"
+              ],
+              [
+                "transition-duration",
+                "0s"
+              ],
+              [
+                "transition-timing-function",
+                "cubic-bezier(0, 0, 1, 1)"
+              ],
+              [
+                "transition-delay",
+                "0s"
+              ],
+              [
+                "transition-property",
+                "opacity"
+              ]
+            ],
+            "shorthands": {
+              "-webkit-transition": "opacity cubic-bezier(0, 0, 1, 1)",
+              "transition": "opacity cubic-bezier(0, 0, 1, 1)"
+            }
+          },
+          {
+            "id": "transition|opacity cubic-bezier(-0.1, 0, 1, 1)",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "transition|opacity steps(0, start)",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "transition|opacity linear(0, 0.5 20% 10%, 1)",
+            "cssText": "transition: opacity linear(0 0%, 0.5 20%, 0.5 20%, 1 100%);",
+            "items": [
+              [
+                "transition-behavior",
+                "normal"
+              ],
+              [
+                "transition-duration",
+                "0s"
+              ],
+              [
+                "transition-timing-function",
+                "linear(0 0%, 0.5 20%, 0.5 20%, 1 100%)"
+              ],
+              [
+                "transition-delay",
+                "0s"
+              ],
+              [
+                "transition-property",
+                "opacity"
+              ]
+            ],
+            "shorthands": {
+              "-webkit-transition": "opacity linear(0 0%, 0.5 20%, 0.5 20%, 1 100%)",
+              "transition": "opacity linear(0 0%, 0.5 20%, 0.5 20%, 1 100%)"
             }
           },
           {

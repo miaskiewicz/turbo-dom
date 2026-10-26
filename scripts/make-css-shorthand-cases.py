@@ -293,7 +293,14 @@ mutation = {
              "url(a.png) match-source", "url(a.png) intersect"],
     "position-try": ["most-inline-size --a", "most-block-size --a, --b"],
 }
+# Round six (second mutation run): positions, url escapes, layer boundaries.
+mutation["background-position"] += ["left 10px right", "top 10px center", "center center 10px", "left top 10px", "bottom 10px left 5px"]
+mutation["background"] += ["url(a\\62 .png)", "url(a.png )x", "#\\31 23", "url(a.png) center / 10px 20px, url(b.png) 0 0", "url(a.png) 1px 2px / 3px"]
+mutation["margin"] += ["calc(1hz + 1px)", "calc(1px * (2 - 1))", "calc(min(1px, 2px) * 2)", "calc(1px + calc(1%))", "calc(pi)", "calc(1px * 2 / 4)"]
+mutation["transition"] += ["opacity cubic-bezier(0, 0, 1, 1)", "opacity cubic-bezier(-0.1, 0, 1, 1)", "opacity steps(1, start)", "opacity steps(0, start)", "opacity linear(0, 0.5 20% 10%, 1)"]
+mutation["font"] += ["oblique 90deg 12px a", "oblique -90deg 12px a", "oblique 0deg 12px a", "12px \\d800 a", "12px \\10ffff a"]
 for name, vals in mutation.items():
+    vals = list(dict.fromkeys(vals))
     values[name] = values[name] + [v for v in vals if v not in values[name]]
 
 # The names the probe measures with `initial`: Chrome 156's shorthands and property aliases

@@ -106,6 +106,24 @@ MUTATION = {
     "width": ["calc(1mm + 1px)", "calc(1pt + 1px)", "calc(1pc + 1px)", "calc(2px * 3)", "calc(1px / 2px)", "calc(1px * 2px)", "min(1px, 2%)"],
     "color": ["hsl(60, 100%, 50%)", "hsl(180 50% 25%)", "hsl(270deg 100% 50% / 0.5)", "rgb(1 2 3 / 0.5)", "#\\31 23", "#abcd", "#aabbccdd", "rgb(300, -1, 2)"],
 }
+# Round three (second mutation run): boundaries of escapes, calc() units, easing functions,
+# color syntaxes, linear() positions, track sizes and identifier serialization.
+MUTATION.update({
+    "font-family": MUTATION["font-family"] + ["\\d800 a", "\\dfff a", "\\d7ff a", "\\e000 a", "\\10ffff a", "a\\\nb", "\\0"],
+    "width": MUTATION["width"] + ["calc(1hz + 1px)", "calc(1px / (2))", "calc(1px * (2 - 1))", "calc(min(1px, 2px) * 2)", "calc(1px + calc(1%))", "calc(pi)", "calc(infinity)", "calc(1px + 1khz)", "calc(1px * 2 / 4)", "calc(2 * 1px * 3)", "calc((2) * 1px)"],
+    "transition-duration": MUTATION["transition-duration"] + ["calc(1s + 1ms)", "calc(1px)", "calc(1s)", "calc(1s + 1)"],
+    "line-height": MUTATION["line-height"] + ["calc(2 * 3)", "calc(e)", "calc(1 + 1px)"],
+    "z-index": MUTATION["z-index"] + ["calc(1 + 1)"],
+    "opacity": MUTATION["opacity"] + ["calc(1 / 2)", "calc(50%)"],
+    "font-style": MUTATION["font-style"] + ["oblique 0", "oblique calc(0deg)", "oblique 90deg", "oblique -90deg", "oblique 1grad", "oblique calc(1deg + 1grad)"],
+    "transition-timing-function": MUTATION["transition-timing-function"] + ["cubic-bezier(0, 0, 1, 1)", "cubic-bezier(-0.1, 0, 1, 1)", "cubic-bezier(0, 0, 1.01, 1)", "cubic-bezier(0, 0, 1)", "cubic-bezier(calc(0.5), 0, 1, 1)", "steps(1)", "steps(0, start)", "steps(1, start)", "steps(2, jump-none)", "steps(1, end)", "steps(2, bogus)", "steps(calc(0))",
+                                   "linear(0, 0.5 20% 10%, 1)", "linear(0 10% 20%, 1)", "linear(0, 1 120%)", "linear(0 a, 1)", "linear(0, 0.25, 0.5, 1)", "linear(0 0% 50%, 1 50% 100%)"],
+    "color": MUTATION["color"] + ["rgb(1 2 3 / 4 / 5)", "rgb(1, 2, 3,)", "rgb(1,2 3)", "hsl(120deg, 100%, 50%, 50%)", "rgb(calc(1%) 2 3)", "rgb(none none none / none)", "hsl(120 none 50%)", "rgb(10% 20% 30%)", "hsl(1turn 100% 50%)", "hsl(120 100% 50% / 0)", "rgb(1 2 3 / 1.5)", "rgb(1 2 3 / -1)", "hsl(30 100% 0%)", "hsl(30 100% 100%)", "hsl(90 100% 50%)", "hsl(150 100% 50%)", "hsl(210 100% 50%)", "hsl(330 100% 50%)"],
+    "grid-template-columns": MUTATION["grid-template-columns"] + ["repeat(1, 1fr)", "repeat(2, minmax(0, 1fr))", "repeat(2, repeat(2, 1fr))", "minmax(0fr, 1fr)", "minmax(auto, 0fr)", "fit-content(0)", "minmax(1px [a], 1fr)", "0fr", "repeat(auto-fill, 100px)", "repeat(auto-fit, [a] 1fr)", "repeat(2)", "repeat(2,)", "minmax(1px)", "fit-content(1px, 2px)", "repeat(1.5, 1fr)", "[a] [b]", "minmax(min-content, max-content)"],
+    "animation-name": MUTATION["animation-name"] + ["'\\1 a'", "'\\7f'", "'a\\0 b'", "'-'", "'_a'", "'a-b'", "'1'", "'--'", "'a\\9 b'"],
+    "background-position-x": ["left 10px right", "center 10px", "right -10%"],
+    "border-image-slice": ["fill", "10% 20% fill 30%", "1 2 3 4", "1 2 3 4 fill", "fill 1 2 3 4"],
+})
 for name, values in MUTATION.items():
     for value in values:
         if [name, value] not in pairs:

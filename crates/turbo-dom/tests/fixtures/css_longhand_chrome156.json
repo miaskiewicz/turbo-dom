@@ -1,7 +1,7 @@
 {
   "browser": "Chrome/156.0.8078.4",
   "v8": "15.6.75",
-  "casesSha256": "44e741f5ae8e8a7814f91ca990876c89df66b4fad4abb1ff93613afb230afb94",
+  "casesSha256": "0f5002fe466ca2b8eb721d5cd45a285c8b33609ad992d72ef0b95507d3ddbce0",
   "probeSha256": "a458463e8721c083a75be76315f0bdaf5cee10e5d0a6fc8d470a0b926d6ee37e",
   "collectorSha256": "7bd6ffb7440d38e05cd2b8fbe0e84e91cf462043577ceada3e276728ad216172",
   "flags": [
@@ -1148,6 +1148,24 @@
           "animation-timeline: auto;"
         ],
         [
+          "animation-timeline",
+          "scroll()",
+          "scroll()",
+          "animation-timeline: scroll();"
+        ],
+        [
+          "animation-timeline",
+          "SCROLL()",
+          "scroll()",
+          "animation-timeline: scroll();"
+        ],
+        [
+          "animation-timeline",
+          " scroll() ",
+          "scroll()",
+          "animation-timeline: scroll();"
+        ],
+        [
           "animation-timing-function",
           "ease",
           "ease",
@@ -1206,6 +1224,72 @@
           " ease, ease ",
           "ease, ease",
           "animation-timing-function: ease, ease;"
+        ],
+        [
+          "animation-trigger",
+          "--t play",
+          "--t play",
+          "animation-trigger: --t play;"
+        ],
+        [
+          "animation-trigger",
+          "--T PLAY",
+          "--T play",
+          "animation-trigger: --T play;"
+        ],
+        [
+          "animation-trigger",
+          "--t  play",
+          "--t play",
+          "animation-trigger: --t play;"
+        ],
+        [
+          "animation-trigger",
+          " --t play ",
+          "--t play",
+          "animation-trigger: --t play;"
+        ],
+        [
+          "animation-trigger",
+          "--t play-forwards play-backwards",
+          "--t play-forwards play-backwards",
+          "animation-trigger: --t play-forwards play-backwards;"
+        ],
+        [
+          "animation-trigger",
+          "--T PLAY-FORWARDS PLAY-BACKWARDS",
+          "--T play-forwards play-backwards",
+          "animation-trigger: --T play-forwards play-backwards;"
+        ],
+        [
+          "animation-trigger",
+          "--t  play-forwards  play-backwards",
+          "--t play-forwards play-backwards",
+          "animation-trigger: --t play-forwards play-backwards;"
+        ],
+        [
+          "animation-trigger",
+          " --t play-forwards play-backwards ",
+          "--t play-forwards play-backwards",
+          "animation-trigger: --t play-forwards play-backwards;"
+        ],
+        [
+          "animation-trigger",
+          "none",
+          "none",
+          "animation-trigger: none;"
+        ],
+        [
+          "animation-trigger",
+          "NONE",
+          "none",
+          "animation-trigger: none;"
+        ],
+        [
+          "animation-trigger",
+          " none ",
+          "none",
+          "animation-trigger: none;"
         ],
         [
           "background-attachment",
@@ -3524,6 +3608,96 @@
           "bottom: 0px;"
         ],
         [
+          "box-shadow",
+          "red 0px 0px 1px -1px",
+          "red 0px 0px 1px -1px",
+          "box-shadow: red 0px 0px 1px -1px;"
+        ],
+        [
+          "box-shadow",
+          "RED 0PX 0PX 1PX -1PX",
+          "red 0px 0px 1px -1px",
+          "box-shadow: red 0px 0px 1px -1px;"
+        ],
+        [
+          "box-shadow",
+          "red 0 0 1px -1px",
+          "red 0px 0px 1px -1px",
+          "box-shadow: red 0px 0px 1px -1px;"
+        ],
+        [
+          "box-shadow",
+          "red  0px  0px  1px  -1px",
+          "red 0px 0px 1px -1px",
+          "box-shadow: red 0px 0px 1px -1px;"
+        ],
+        [
+          "box-shadow",
+          " red 0px 0px 1px -1px ",
+          "red 0px 0px 1px -1px",
+          "box-shadow: red 0px 0px 1px -1px;"
+        ],
+        [
+          "box-shadow",
+          "red 0px 0px 0px",
+          "red 0px 0px 0px",
+          "box-shadow: red 0px 0px 0px;"
+        ],
+        [
+          "box-shadow",
+          "RED 0PX 0PX 0PX",
+          "red 0px 0px 0px",
+          "box-shadow: red 0px 0px 0px;"
+        ],
+        [
+          "box-shadow",
+          "red 0 0 0",
+          "red 0px 0px 0px",
+          "box-shadow: red 0px 0px 0px;"
+        ],
+        [
+          "box-shadow",
+          "red  0px  0px  0px",
+          "red 0px 0px 0px",
+          "box-shadow: red 0px 0px 0px;"
+        ],
+        [
+          "box-shadow",
+          " red 0px 0px 0px ",
+          "red 0px 0px 0px",
+          "box-shadow: red 0px 0px 0px;"
+        ],
+        [
+          "box-shadow",
+          "red 0px 0px calc(-1px)",
+          "red 0px 0px calc(-1px)",
+          "box-shadow: red 0px 0px calc(-1px);"
+        ],
+        [
+          "box-shadow",
+          "RED 0PX 0PX CALC(-1PX)",
+          "red 0px 0px calc(-1px)",
+          "box-shadow: red 0px 0px calc(-1px);"
+        ],
+        [
+          "box-shadow",
+          "red 0 0 calc(-1px)",
+          "red 0px 0px calc(-1px)",
+          "box-shadow: red 0px 0px calc(-1px);"
+        ],
+        [
+          "box-shadow",
+          "red  0px  0px  calc(-1px)",
+          "red 0px 0px calc(-1px)",
+          "box-shadow: red 0px 0px calc(-1px);"
+        ],
+        [
+          "box-shadow",
+          " red 0px 0px calc(-1px) ",
+          "red 0px 0px calc(-1px)",
+          "box-shadow: red 0px 0px calc(-1px);"
+        ],
+        [
           "color",
           "red",
           "red",
@@ -3558,6 +3732,30 @@
           " blue ",
           "blue",
           "color: blue;"
+        ],
+        [
+          "color",
+          "rgb(from red r g b)",
+          "rgb(from red r g b)",
+          "color: rgb(from red r g b);"
+        ],
+        [
+          "color",
+          "RGB(FROM RED R G B)",
+          "rgb(from red r g b)",
+          "color: rgb(from red r g b);"
+        ],
+        [
+          "color",
+          "rgb(from  red  r  g  b)",
+          "rgb(from red r g b)",
+          "color: rgb(from red r g b);"
+        ],
+        [
+          "color",
+          " rgb(from red r g b) ",
+          "rgb(from red r g b)",
+          "color: rgb(from red r g b);"
         ],
         [
           "column-count",
@@ -3870,6 +4068,24 @@
           " overlap-join ",
           "overlap-join",
           "column-rule-inset-cap-start: overlap-join;"
+        ],
+        [
+          "column-rule-inset-cap-start",
+          "-1px",
+          "-1px",
+          "column-rule-inset-cap-start: -1px;"
+        ],
+        [
+          "column-rule-inset-cap-start",
+          "-1PX",
+          "-1px",
+          "column-rule-inset-cap-start: -1px;"
+        ],
+        [
+          "column-rule-inset-cap-start",
+          " -1px ",
+          "-1px",
+          "column-rule-inset-cap-start: -1px;"
         ],
         [
           "column-rule-inset-junction-end",
@@ -6494,6 +6710,24 @@
           "grid-template-rows: 100px 1fr;"
         ],
         [
+          "height",
+          "2px",
+          "2px",
+          "height: 2px;"
+        ],
+        [
+          "height",
+          "2PX",
+          "2px",
+          "height: 2px;"
+        ],
+        [
+          "height",
+          " 2px ",
+          "2px",
+          "height: 2px;"
+        ],
+        [
           "inset-block-end",
           "1px",
           "1px",
@@ -7128,6 +7362,30 @@
           " url(\"a.png\") ",
           "url(\"a.png\")",
           "list-style-image: url(\"a.png\");"
+        ],
+        [
+          "list-style-image",
+          "linear-gradient(red, blue)",
+          "linear-gradient(red, blue)",
+          "list-style-image: linear-gradient(red, blue);"
+        ],
+        [
+          "list-style-image",
+          "LINEAR-GRADIENT(RED, BLUE)",
+          "linear-gradient(red, blue)",
+          "list-style-image: linear-gradient(red, blue);"
+        ],
+        [
+          "list-style-image",
+          "linear-gradient(red,  blue)",
+          "linear-gradient(red, blue)",
+          "list-style-image: linear-gradient(red, blue);"
+        ],
+        [
+          "list-style-image",
+          " linear-gradient(red, blue) ",
+          "linear-gradient(red, blue)",
+          "list-style-image: linear-gradient(red, blue);"
         ],
         [
           "list-style-position",
@@ -8372,6 +8630,78 @@
           "mask-size: auto, auto;"
         ],
         [
+          "object-position",
+          "left center",
+          "left center",
+          "object-position: left center;"
+        ],
+        [
+          "object-position",
+          "LEFT CENTER",
+          "left center",
+          "object-position: left center;"
+        ],
+        [
+          "object-position",
+          "left  center",
+          "left center",
+          "object-position: left center;"
+        ],
+        [
+          "object-position",
+          " left center ",
+          "left center",
+          "object-position: left center;"
+        ],
+        [
+          "object-position",
+          "center top",
+          "center top",
+          "object-position: center top;"
+        ],
+        [
+          "object-position",
+          "CENTER TOP",
+          "center top",
+          "object-position: center top;"
+        ],
+        [
+          "object-position",
+          "center  top",
+          "center top",
+          "object-position: center top;"
+        ],
+        [
+          "object-position",
+          " center top ",
+          "center top",
+          "object-position: center top;"
+        ],
+        [
+          "object-position",
+          "right 10px bottom 5px",
+          "right 10px bottom 5px",
+          "object-position: right 10px bottom 5px;"
+        ],
+        [
+          "object-position",
+          "RIGHT 10PX BOTTOM 5PX",
+          "right 10px bottom 5px",
+          "object-position: right 10px bottom 5px;"
+        ],
+        [
+          "object-position",
+          "right  10px  bottom  5px",
+          "right 10px bottom 5px",
+          "object-position: right 10px bottom 5px;"
+        ],
+        [
+          "object-position",
+          " right 10px bottom 5px ",
+          "right 10px bottom 5px",
+          "object-position: right 10px bottom 5px;"
+        ],
+        [
           "offset-anchor",
           "auto",
           "auto",
@@ -9558,6 +9888,78 @@
           " calc(2% + 1px) ",
           "calc(2% + 1px)",
           "padding-top: calc(2% + 1px);"
+        ],
+        [
+          "perspective-origin",
+          "left center",
+          "left center",
+          "perspective-origin: left center;"
+        ],
+        [
+          "perspective-origin",
+          "LEFT CENTER",
+          "left center",
+          "perspective-origin: left center;"
+        ],
+        [
+          "perspective-origin",
+          "left  center",
+          "left center",
+          "perspective-origin: left center;"
+        ],
+        [
+          "perspective-origin",
+          " left center ",
+          "left center",
+          "perspective-origin: left center;"
+        ],
+        [
+          "perspective-origin",
+          "center top",
+          "center top",
+          "perspective-origin: center top;"
+        ],
+        [
+          "perspective-origin",
+          "CENTER TOP",
+          "center top",
+          "perspective-origin: center top;"
+        ],
+        [
+          "perspective-origin",
+          "center  top",
+          "center top",
+          "perspective-origin: center top;"
+        ],
+        [
+          "perspective-origin",
+          " center top ",
+          "center top",
+          "perspective-origin: center top;"
+        ],
+        [
+          "perspective-origin",
+          "10px center",
+          "10px center",
+          "perspective-origin: 10px center;"
+        ],
+        [
+          "perspective-origin",
+          "10PX CENTER",
+          "10px center",
+          "perspective-origin: 10px center;"
+        ],
+        [
+          "perspective-origin",
+          "10px  center",
+          "10px center",
+          "perspective-origin: 10px center;"
+        ],
+        [
+          "perspective-origin",
+          " 10px center ",
+          "10px center",
+          "perspective-origin: 10px center;"
         ],
         [
           "position-try-fallbacks",
@@ -11834,6 +12236,30 @@
           "timeline-trigger-name: --t;"
         ],
         [
+          "timeline-trigger-name",
+          "--t, --u",
+          "--t, --u",
+          "timeline-trigger-name: --t, --u;"
+        ],
+        [
+          "timeline-trigger-name",
+          "--T, --U",
+          "--T, --U",
+          "timeline-trigger-name: --T, --U;"
+        ],
+        [
+          "timeline-trigger-name",
+          "--t,  --u",
+          "--t, --u",
+          "timeline-trigger-name: --t, --u;"
+        ],
+        [
+          "timeline-trigger-name",
+          " --t, --u ",
+          "--t, --u",
+          "timeline-trigger-name: --t, --u;"
+        ],
+        [
           "timeline-trigger-source",
           "auto",
           "auto",
@@ -11868,6 +12294,24 @@
           " view() ",
           "view()",
           "timeline-trigger-source: view();"
+        ],
+        [
+          "timeline-trigger-source",
+          "scroll()",
+          "scroll()",
+          "timeline-trigger-source: scroll();"
+        ],
+        [
+          "timeline-trigger-source",
+          "SCROLL()",
+          "scroll()",
+          "timeline-trigger-source: scroll();"
+        ],
+        [
+          "timeline-trigger-source",
+          " scroll() ",
+          "scroll()",
+          "timeline-trigger-source: scroll();"
         ],
         [
           "top",
@@ -11928,6 +12372,78 @@
           " -1px ",
           "-1px",
           "top: -1px;"
+        ],
+        [
+          "transform-origin",
+          "left center",
+          "left center",
+          "transform-origin: left center;"
+        ],
+        [
+          "transform-origin",
+          "LEFT CENTER",
+          "left center",
+          "transform-origin: left center;"
+        ],
+        [
+          "transform-origin",
+          "left  center",
+          "left center",
+          "transform-origin: left center;"
+        ],
+        [
+          "transform-origin",
+          " left center ",
+          "left center",
+          "transform-origin: left center;"
+        ],
+        [
+          "transform-origin",
+          "center top",
+          "center top",
+          "transform-origin: center top;"
+        ],
+        [
+          "transform-origin",
+          "CENTER TOP",
+          "center top",
+          "transform-origin: center top;"
+        ],
+        [
+          "transform-origin",
+          "center  top",
+          "center top",
+          "transform-origin: center top;"
+        ],
+        [
+          "transform-origin",
+          " center top ",
+          "center top",
+          "transform-origin: center top;"
+        ],
+        [
+          "transform-origin",
+          "10px center",
+          "10px center",
+          "transform-origin: 10px center;"
+        ],
+        [
+          "transform-origin",
+          "10PX CENTER",
+          "10px center",
+          "transform-origin: 10px center;"
+        ],
+        [
+          "transform-origin",
+          "10px  center",
+          "10px center",
+          "transform-origin: 10px center;"
+        ],
+        [
+          "transform-origin",
+          " 10px center ",
+          "10px center",
+          "transform-origin: 10px center;"
         ],
         [
           "transition-behavior",
@@ -12476,6 +12992,42 @@
           "width: 1px;"
         ],
         [
+          "width",
+          "calc(3.14159px)",
+          "calc(3.14159px)",
+          "width: calc(3.14159px);"
+        ],
+        [
+          "width",
+          "CALC(3.14159PX)",
+          "calc(3.14159px)",
+          "width: calc(3.14159px);"
+        ],
+        [
+          "width",
+          " calc(3.14159px) ",
+          "calc(3.14159px)",
+          "width: calc(3.14159px);"
+        ],
+        [
+          "width",
+          "calc(2.71828px)",
+          "calc(2.71828px)",
+          "width: calc(2.71828px);"
+        ],
+        [
+          "width",
+          "CALC(2.71828PX)",
+          "calc(2.71828px)",
+          "width: calc(2.71828px);"
+        ],
+        [
+          "width",
+          " calc(2.71828px) ",
+          "calc(2.71828px)",
+          "width: calc(2.71828px);"
+        ],
+        [
           "flex-grow",
           "-1",
           "",
@@ -12582,6 +13134,24 @@
           "0.5",
           "0.5",
           "line-height: 0.5;"
+        ],
+        [
+          "line-height",
+          "calc(2 * 3)",
+          "calc(6)",
+          "line-height: calc(6);"
+        ],
+        [
+          "line-height",
+          "calc(e)",
+          "calc(2.71828)",
+          "line-height: calc(2.71828);"
+        ],
+        [
+          "line-height",
+          "calc(1 + 1px)",
+          "",
+          ""
         ],
         [
           "font-weight",
@@ -12698,10 +13268,34 @@
           ""
         ],
         [
-          "list-style-image",
-          "linear-gradient(red, blue)",
-          "linear-gradient(red, blue)",
-          "list-style-image: linear-gradient(red, blue);"
+          "font-style",
+          "oblique 0",
+          "",
+          ""
+        ],
+        [
+          "font-style",
+          "oblique calc(0deg)",
+          "oblique calc(0deg)",
+          "font-style: oblique calc(0deg);"
+        ],
+        [
+          "font-style",
+          "oblique 90deg",
+          "oblique 90deg",
+          "font-style: oblique 90deg;"
+        ],
+        [
+          "font-style",
+          "oblique 1grad",
+          "oblique 1grad",
+          "font-style: oblique 1grad;"
+        ],
+        [
+          "font-style",
+          "oblique calc(1deg + 1grad)",
+          "oblique calc(1.9deg)",
+          "font-style: oblique calc(1.9deg);"
         ],
         [
           "list-style-image",
@@ -12758,6 +13352,114 @@
           "transition-timing-function: linear(0 0%, 1 100%);"
         ],
         [
+          "transition-timing-function",
+          "cubic-bezier(0, 0, 1, 1)",
+          "cubic-bezier(0, 0, 1, 1)",
+          "transition-timing-function: cubic-bezier(0, 0, 1, 1);"
+        ],
+        [
+          "transition-timing-function",
+          "cubic-bezier(-0.1, 0, 1, 1)",
+          "",
+          ""
+        ],
+        [
+          "transition-timing-function",
+          "cubic-bezier(0, 0, 1.01, 1)",
+          "",
+          ""
+        ],
+        [
+          "transition-timing-function",
+          "cubic-bezier(0, 0, 1)",
+          "",
+          ""
+        ],
+        [
+          "transition-timing-function",
+          "cubic-bezier(calc(0.5), 0, 1, 1)",
+          "cubic-bezier(0.5, 0, 1, 1)",
+          "transition-timing-function: cubic-bezier(0.5, 0, 1, 1);"
+        ],
+        [
+          "transition-timing-function",
+          "steps(1)",
+          "steps(1)",
+          "transition-timing-function: steps(1);"
+        ],
+        [
+          "transition-timing-function",
+          "steps(0, start)",
+          "",
+          ""
+        ],
+        [
+          "transition-timing-function",
+          "steps(1, start)",
+          "steps(1, start)",
+          "transition-timing-function: steps(1, start);"
+        ],
+        [
+          "transition-timing-function",
+          "steps(2, jump-none)",
+          "steps(2, jump-none)",
+          "transition-timing-function: steps(2, jump-none);"
+        ],
+        [
+          "transition-timing-function",
+          "steps(1, end)",
+          "steps(1)",
+          "transition-timing-function: steps(1);"
+        ],
+        [
+          "transition-timing-function",
+          "steps(2, bogus)",
+          "",
+          ""
+        ],
+        [
+          "transition-timing-function",
+          "steps(calc(0))",
+          "steps(calc(0))",
+          "transition-timing-function: steps(calc(0));"
+        ],
+        [
+          "transition-timing-function",
+          "linear(0, 0.5 20% 10%, 1)",
+          "linear(0 0%, 0.5 20%, 0.5 20%, 1 100%)",
+          "transition-timing-function: linear(0 0%, 0.5 20%, 0.5 20%, 1 100%);"
+        ],
+        [
+          "transition-timing-function",
+          "linear(0 10% 20%, 1)",
+          "linear(0 10%, 0 20%, 1 100%)",
+          "transition-timing-function: linear(0 10%, 0 20%, 1 100%);"
+        ],
+        [
+          "transition-timing-function",
+          "linear(0, 1 120%)",
+          "linear(0 0%, 1 120%)",
+          "transition-timing-function: linear(0 0%, 1 120%);"
+        ],
+        [
+          "transition-timing-function",
+          "linear(0 a, 1)",
+          "",
+          ""
+        ],
+        [
+          "transition-timing-function",
+          "linear(0, 0.25, 0.5, 1)",
+          "linear(0 0%, 0.25 33.3333%, 0.5 66.6667%, 1 100%)",
+          "transition-timing-function: linear(0 0%, 0.25 33.3333%, 0.5 66.6667%, 1 100%);"
+        ],
+        [
+          "transition-timing-function",
+          "linear(0 0% 50%, 1 50% 100%)",
+          "linear(0 0%, 0 50%, 1 50%, 1 100%)",
+          "transition-timing-function: linear(0 0%, 0 50%, 1 50%, 1 100%);"
+        ],
+        [
           "animation-timing-function",
           "ease-in-out, steps(1, start)",
           "ease-in-out, steps(1, start)",
@@ -12812,6 +13514,108 @@
           "grid-template-columns: subgrid;"
         ],
         [
+          "grid-template-columns",
+          "repeat(1, 1fr)",
+          "repeat(1, 1fr)",
+          "grid-template-columns: repeat(1, 1fr);"
+        ],
+        [
+          "grid-template-columns",
+          "repeat(2, minmax(0, 1fr))",
+          "repeat(2, minmax(0px, 1fr))",
+          "grid-template-columns: repeat(2, minmax(0px, 1fr));"
+        ],
+        [
+          "grid-template-columns",
+          "repeat(2, repeat(2, 1fr))",
+          "",
+          ""
+        ],
+        [
+          "grid-template-columns",
+          "minmax(0fr, 1fr)",
+          "",
+          ""
+        ],
+        [
+          "grid-template-columns",
+          "minmax(auto, 0fr)",
+          "minmax(auto, 0fr)",
+          "grid-template-columns: minmax(auto, 0fr);"
+        ],
+        [
+          "grid-template-columns",
+          "fit-content(0)",
+          "fit-content(0px)",
+          "grid-template-columns: fit-content(0px);"
+        ],
+        [
+          "grid-template-columns",
+          "minmax(1px [a], 1fr)",
+          "",
+          ""
+        ],
+        [
+          "grid-template-columns",
+          "0fr",
+          "0fr",
+          "grid-template-columns: 0fr;"
+        ],
+        [
+          "grid-template-columns",
+          "repeat(auto-fill, 100px)",
+          "repeat(auto-fill, 100px)",
+          "grid-template-columns: repeat(auto-fill, 100px);"
+        ],
+        [
+          "grid-template-columns",
+          "repeat(auto-fit, [a] 1fr)",
+          "",
+          ""
+        ],
+        [
+          "grid-template-columns",
+          "repeat(2)",
+          "",
+          ""
+        ],
+        [
+          "grid-template-columns",
+          "repeat(2,)",
+          "",
+          ""
+        ],
+        [
+          "grid-template-columns",
+          "minmax(1px)",
+          "",
+          ""
+        ],
+        [
+          "grid-template-columns",
+          "fit-content(1px, 2px)",
+          "",
+          ""
+        ],
+        [
+          "grid-template-columns",
+          "repeat(1.5, 1fr)",
+          "",
+          ""
+        ],
+        [
+          "grid-template-columns",
+          "[a] [b]",
+          "",
+          ""
+        ],
+        [
+          "grid-template-columns",
+          "minmax(min-content, max-content)",
+          "minmax(min-content, max-content)",
+          "grid-template-columns: minmax(min-content, max-content);"
+        ],
+        [
           "grid-template-rows",
           "1fr -1fr",
           "",
@@ -12840,6 +13644,12 @@
           "+1",
           "1",
           "z-index: 1;"
+        ],
+        [
+          "z-index",
+          "calc(1 + 1)",
+          "calc(2)",
+          "z-index: calc(2);"
         ],
         [
           "offset-distance",
@@ -12938,6 +13748,30 @@
           ""
         ],
         [
+          "transition-duration",
+          "calc(1s + 1ms)",
+          "calc(1.001s)",
+          "transition-duration: calc(1.001s);"
+        ],
+        [
+          "transition-duration",
+          "calc(1px)",
+          "",
+          ""
+        ],
+        [
+          "transition-duration",
+          "calc(1s)",
+          "calc(1s)",
+          "transition-duration: calc(1s);"
+        ],
+        [
+          "transition-duration",
+          "calc(1s + 1)",
+          "",
+          ""
+        ],
+        [
           "transition-delay",
           "-1s",
           "-1s",
@@ -12993,27 +13827,33 @@
         ],
         [
           "border-image-slice",
-          "-1",
+          "fill",
           "",
           ""
         ],
         [
           "border-image-slice",
-          "10% fill",
-          "10% fill",
-          "border-image-slice: 10% fill;"
-        ],
-        [
-          "border-image-slice",
-          "fill 10",
-          "10 fill",
-          "border-image-slice: 10 fill;"
-        ],
-        [
-          "border-image-slice",
-          "1 2 3 4 5",
+          "10% 20% fill 30%",
           "",
           ""
+        ],
+        [
+          "border-image-slice",
+          "1 2 3 4",
+          "1 2 3 4",
+          "border-image-slice: 1 2 3 4;"
+        ],
+        [
+          "border-image-slice",
+          "1 2 3 4 fill",
+          "1 2 3 4 fill",
+          "border-image-slice: 1 2 3 4 fill;"
+        ],
+        [
+          "border-image-slice",
+          "fill 1 2 3 4",
+          "1 2 3 4 fill",
+          "border-image-slice: 1 2 3 4 fill;"
         ],
         [
           "text-decoration-thickness",
@@ -13131,27 +13971,21 @@
         ],
         [
           "background-position-x",
-          "-10px",
-          "-10px",
-          "background-position-x: -10px;"
+          "left 10px right",
+          "",
+          ""
         ],
         [
           "background-position-x",
-          "left -10px",
-          "left -10px",
-          "background-position-x: left -10px;"
+          "center 10px",
+          "",
+          ""
         ],
         [
           "background-position-x",
-          "right 10px",
-          "right 10px",
-          "background-position-x: right 10px;"
-        ],
-        [
-          "background-position-x",
-          "left, right 10%",
-          "left, right 10%",
-          "background-position-x: left, right 10%;"
+          "right -10%",
+          "right -10%",
+          "background-position-x: right -10%;"
         ],
         [
           "background-position-y",
@@ -13212,6 +14046,18 @@
           "-10%",
           "-0.1",
           "opacity: -0.1;"
+        ],
+        [
+          "opacity",
+          "calc(1 / 2)",
+          "calc(0.5)",
+          "opacity: calc(0.5);"
+        ],
+        [
+          "opacity",
+          "calc(50%)",
+          "calc(50%)",
+          "opacity: calc(50%);"
         ],
         [
           "flex-basis",
@@ -13338,6 +14184,48 @@
           "-1a",
           "",
           ""
+        ],
+        [
+          "font-family",
+          "\\d800 a",
+          "�a",
+          "font-family: �a;"
+        ],
+        [
+          "font-family",
+          "\\dfff a",
+          "�a",
+          "font-family: �a;"
+        ],
+        [
+          "font-family",
+          "\\d7ff a",
+          "퟿a",
+          "font-family: ퟿a;"
+        ],
+        [
+          "font-family",
+          "\\e000 a",
+          "a",
+          "font-family: a;"
+        ],
+        [
+          "font-family",
+          "\\10ffff a",
+          "􏿿a",
+          "font-family: 􏿿a;"
+        ],
+        [
+          "font-family",
+          "a\\\nb",
+          "",
+          ""
+        ],
+        [
+          "font-family",
+          "\\0",
+          "�",
+          "font-family: �;"
         ],
         [
           "content",
@@ -13502,6 +14390,60 @@
           "animation-name: \"none\";"
         ],
         [
+          "animation-name",
+          "'\\1 a'",
+          "\\1 a",
+          "animation-name: \\1 a;"
+        ],
+        [
+          "animation-name",
+          "'\\7f'",
+          "\\7f ",
+          "animation-name: \\7f ;"
+        ],
+        [
+          "animation-name",
+          "'a\\0 b'",
+          "a�b",
+          "animation-name: a�b;"
+        ],
+        [
+          "animation-name",
+          "'-'",
+          "\\-",
+          "animation-name: \\-;"
+        ],
+        [
+          "animation-name",
+          "'_a'",
+          "_a",
+          "animation-name: _a;"
+        ],
+        [
+          "animation-name",
+          "'a-b'",
+          "a-b",
+          "animation-name: a-b;"
+        ],
+        [
+          "animation-name",
+          "'1'",
+          "\\31 ",
+          "animation-name: \\31 ;"
+        ],
+        [
+          "animation-name",
+          "'--'",
+          "--",
+          "animation-name: --;"
+        ],
+        [
+          "animation-name",
+          "'a\\9 b'",
+          "a\\9 b",
+          "animation-name: a\\9 b;"
+        ],
+        [
           "transform-origin",
           "left top",
           "left top",
@@ -13568,6 +14510,72 @@
           "width: min(1px, 2%);"
         ],
         [
+          "width",
+          "calc(1hz + 1px)",
+          "",
+          ""
+        ],
+        [
+          "width",
+          "calc(1px / (2))",
+          "calc(0.5px)",
+          "width: calc(0.5px);"
+        ],
+        [
+          "width",
+          "calc(1px * (2 - 1))",
+          "calc(1px)",
+          "width: calc(1px);"
+        ],
+        [
+          "width",
+          "calc(min(1px, 2px) * 2)",
+          "calc(2px)",
+          "width: calc(2px);"
+        ],
+        [
+          "width",
+          "calc(1px + calc(1%))",
+          "calc(1% + 1px)",
+          "width: calc(1% + 1px);"
+        ],
+        [
+          "width",
+          "calc(pi)",
+          "",
+          ""
+        ],
+        [
+          "width",
+          "calc(infinity)",
+          "",
+          ""
+        ],
+        [
+          "width",
+          "calc(1px + 1khz)",
+          "",
+          ""
+        ],
+        [
+          "width",
+          "calc(1px * 2 / 4)",
+          "calc(0.5px)",
+          "width: calc(0.5px);"
+        ],
+        [
+          "width",
+          "calc(2 * 1px * 3)",
+          "calc(6px)",
+          "width: calc(6px);"
+        ],
+        [
+          "width",
+          "calc((2) * 1px)",
+          "calc(2px)",
+          "width: calc(2px);"
+        ],
+        [
           "color",
           "hsl(60, 100%, 50%)",
           "rgb(255, 255, 0)",
@@ -13614,6 +14622,114 @@
           "rgb(300, -1, 2)",
           "rgb(255, 0, 2)",
           "color: rgb(255, 0, 2);"
+        ],
+        [
+          "color",
+          "rgb(1 2 3 / 4 / 5)",
+          "",
+          ""
+        ],
+        [
+          "color",
+          "rgb(1, 2, 3,)",
+          "",
+          ""
+        ],
+        [
+          "color",
+          "rgb(1,2 3)",
+          "",
+          ""
+        ],
+        [
+          "color",
+          "hsl(120deg, 100%, 50%, 50%)",
+          "rgba(0, 255, 0, 0.5)",
+          "color: rgba(0, 255, 0, 0.5);"
+        ],
+        [
+          "color",
+          "rgb(calc(1%) 2 3)",
+          "rgb(3, 2, 3)",
+          "color: rgb(3, 2, 3);"
+        ],
+        [
+          "color",
+          "rgb(none none none / none)",
+          "rgba(0, 0, 0, 0)",
+          "color: rgba(0, 0, 0, 0);"
+        ],
+        [
+          "color",
+          "hsl(120 none 50%)",
+          "rgb(128, 128, 128)",
+          "color: rgb(128, 128, 128);"
+        ],
+        [
+          "color",
+          "rgb(10% 20% 30%)",
+          "rgb(26, 51, 77)",
+          "color: rgb(26, 51, 77);"
+        ],
+        [
+          "color",
+          "hsl(1turn 100% 50%)",
+          "rgb(255, 0, 0)",
+          "color: rgb(255, 0, 0);"
+        ],
+        [
+          "color",
+          "hsl(120 100% 50% / 0)",
+          "rgba(0, 255, 0, 0)",
+          "color: rgba(0, 255, 0, 0);"
+        ],
+        [
+          "color",
+          "rgb(1 2 3 / 1.5)",
+          "rgb(1, 2, 3)",
+          "color: rgb(1, 2, 3);"
+        ],
+        [
+          "color",
+          "rgb(1 2 3 / -1)",
+          "rgba(1, 2, 3, 0)",
+          "color: rgba(1, 2, 3, 0);"
+        ],
+        [
+          "color",
+          "hsl(30 100% 0%)",
+          "rgb(0, 0, 0)",
+          "color: rgb(0, 0, 0);"
+        ],
+        [
+          "color",
+          "hsl(30 100% 100%)",
+          "rgb(255, 255, 255)",
+          "color: rgb(255, 255, 255);"
+        ],
+        [
+          "color",
+          "hsl(90 100% 50%)",
+          "rgb(128, 255, 0)",
+          "color: rgb(128, 255, 0);"
+        ],
+        [
+          "color",
+          "hsl(150 100% 50%)",
+          "rgb(0, 255, 128)",
+          "color: rgb(0, 255, 128);"
+        ],
+        [
+          "color",
+          "hsl(210 100% 50%)",
+          "rgb(0, 128, 255)",
+          "color: rgb(0, 128, 255);"
+        ],
+        [
+          "color",
+          "hsl(330 100% 50%)",
+          "rgb(255, 0, 128)",
+          "color: rgb(255, 0, 128);"
         ],
         [
           "width",
