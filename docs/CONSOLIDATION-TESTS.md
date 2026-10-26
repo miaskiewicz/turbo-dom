@@ -1196,6 +1196,14 @@ Declared behaviour changes (Chrome 156 controls), not moves:
 | turbo-dom-layout | `html_document_chrome<tests/html_document_chrome.rs>::header_cells_are_bold_and_centred_like_chrome_156` | new (turbo-dom#70, test-first) |
 | turbo-dom-layout | `turbo_dom_layout<src/lib.rs>::layout::value::clip_tests::{clip_region_resolves_offsets_auto_edges_and_scale, clip_keeps_nothing_only_when_empty_at_every_size}` | new (turbo-dom#52) |
 
+## P5b-W7 (layout bug fixes, turbo-dom#79/#80/#81): new tests
+
+Declared behaviour changes (Chrome 156 controls), not moves:
+
+| crate | test (binary::name) | category |
+|---|---|---|
+| turbo-dom-layout | `html_document_chrome<tests/html_document_chrome.rs>::intrinsic_widths_count_child_margins_like_chrome_156` | new (turbo-dom#79, test-first) |
+
 ## P5b-W2 — raster inline SVG on the tree (turbo-dom `consol/p5b-w2`)
 
 Every test id not listed keeps its result (turbo-dom-raster default and `--features avif`).

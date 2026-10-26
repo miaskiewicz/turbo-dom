@@ -421,7 +421,9 @@ fn atomics_natural(items: &[InlineItem], fonts: &FontRegistry) -> f32 {
     items
         .iter()
         .filter_map(|it| match it {
-            InlineItem::Atomic(b) if !b.out_of_flow() => Some(natural_width(b, fonts)),
+            InlineItem::Atomic(b) if !b.out_of_flow() => {
+                Some(margin_box(b, natural_width(b, fonts)))
+            }
             _ => None,
         })
         .sum()
@@ -454,10 +456,24 @@ fn lines_natural(
     text + atomics_natural(items, fonts)
 }
 
+/// The widest child's max-content contribution: its margin box (miaskiewicz/turbo-dom#79).
 fn kids_natural(kids: &[LayoutBox], fonts: &FontRegistry) -> f32 {
     kids.iter()
-        .map(|k| natural_width(k, fonts))
+        .map(|k| margin_box(k, natural_width(k, fonts)))
         .fold(0.0_f32, f32::max)
+}
+
+/// A child's intrinsic size contribution: its border-box width `w` plus its horizontal
+/// margins — signed (a negative margin shrinks it), `%` and `auto` margins counting 0
+/// (resolved against no width), as Chrome 156 sizes floats, `width: auto` positioned and
+/// inline-block boxes and table cells (miaskiewicz/turbo-dom#79). The caller's fold
+/// floors the result at 0.
+fn margin_box(k: &LayoutBox, w: f32) -> f32 {
+    let bs = k.resolved(ResolveCtx {
+        parent_font_size: DEFAULT_FONT_SIZE,
+        cb_width: 0.0,
+    });
+    w + bs.margin.left + bs.margin.right
 }
 
 /// Max-content width of a flex container. A **row** flex lays its items side by
@@ -585,7 +601,9 @@ fn lines_min(
     let atom = items
         .iter()
         .filter_map(|it| match it {
-            InlineItem::Atomic(b) if !b.out_of_flow() => Some(min_content_width(b, fonts)),
+            InlineItem::Atomic(b) if !b.out_of_flow() => {
+                Some(margin_box(b, min_content_width(b, fonts)))
+            }
             _ => None,
         })
         .fold(0.0_f32, f32::max);
@@ -620,7 +638,7 @@ pub(crate) fn min_content_width(lb: &LayoutBox, fonts: &FontRegistry) -> f32 {
             BoxKind::Table(k) => super::table::min_content_width(k, &lb.style, fonts),
             BoxKind::Flex(k) | BoxKind::Block(k) | BoxKind::Grid(k) => k
                 .iter()
-                .map(|c| min_content_width(c, fonts))
+                .map(|c| margin_box(c, min_content_width(c, fonts)))
                 .fold(0.0_f32, f32::max),
             BoxKind::Marker(_) => 0.0,
         };

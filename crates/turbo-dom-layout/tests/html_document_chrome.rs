@@ -292,7 +292,6 @@ fn intrinsic_margin_case(id: &str) -> bool {
 }
 
 #[test]
-#[ignore = "turbo-dom#79: fails until the fix"]
 fn intrinsic_widths_count_child_margins_like_chrome_156() {
     compare_cases(intrinsic_margin_case);
 }

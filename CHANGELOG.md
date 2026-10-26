@@ -7,6 +7,17 @@ at the time); this file reconstructs them from history.
 
 ## [Unreleased]
 
+### Fixed — turbo-dom-layout intrinsic widths, inline-blocks and the initial containing block (P5b-W7, Chrome 156 controls)
+Each fix is backed by a Chrome for Testing 156 control and lists the corpus outputs it
+changes in `tools/parity/expected/p5b-w7-turbo-dom-*.json`.
+- Intrinsic widths count margins (miaskiewicz/turbo-dom#79): a box's min-/max-content
+  width left out its children's horizontal margins, so a float, a `width: auto`
+  absolutely positioned or inline-block box and an auto table cell were narrower than
+  Chrome's by the child's `margin-left + margin-right` (the child overflowed). Each in-flow
+  child (and each atomic inline) now contributes its margin box: signed (a negative
+  margin shrinks it, the box never below 0), `%` and `auto` margins counting 0. Every
+  layout path. Control: `intrinsic-margins-*` in `scripts/html-document-chrome-control.mjs`.
+
 ### Fixed — turbo-dom-layout tables, clipping and box sizing (P5b-W5, miaskiewicz/turbo-dom#41/#51/#52/#55/#62/#63/#64/#65/#69/#70, Chrome 156 controls)
 Each fix is backed by a Chrome for Testing 156 control and lists the corpus outputs it
 changes in `tools/parity/expected/p5b-w5-turbo-dom-*.json`.
