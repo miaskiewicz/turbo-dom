@@ -243,16 +243,12 @@ fn svg_differences(select: impl Fn(&str) -> bool) -> Vec<String> {
 }
 
 /// Cases the vector comparison leaves out: `clip-image-sprite` embeds its image as a PNG
-/// `data:` URI, which this resvg build (no `raster-images` feature) does not draw; and the
-/// SVG painter strokes a rounded box's border as four square edge bands, so
-/// `paint-round-border`'s corners differ from Chrome (and from the PNG painter's rounded
-/// stroke) — a pre-existing gap, reported in the P5-cov raster coverage report.
-const SVG_LEFT_OUT: &[&str] = &["clip-image-sprite", "paint-round-border"];
+/// `data:` URI, which this resvg build (no `raster-images` feature) does not draw.
+const SVG_LEFT_OUT: &[&str] = &["clip-image-sprite"];
 
 /// A rounded box's border follows its radius in the vector screenshot too: the corners
 /// outside the radius stay the backdrop (miaskiewicz/turbo-dom#95).
 #[test]
-#[ignore = "turbo-dom#95: fails until the fix"]
 fn svg_rounded_borders_follow_the_radius_like_chrome_156() {
     let failures = svg_differences(|id| id == "paint-round-border");
     assert!(failures.is_empty(), "{}", failures.join("\n"));

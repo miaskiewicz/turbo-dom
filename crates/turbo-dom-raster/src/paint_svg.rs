@@ -115,7 +115,11 @@ fn paint_subtree(svg: &mut String, f: &Fragment, images: &DecodedAssets) {
             if let Some(g) = gradient {
                 paint_gradient(svg, f, *border_radius, g);
             }
-            paint_border(svg, f, border);
+            if *border_radius > 0.5 {
+                paint_round_border(svg, f, border, *border_radius);
+            } else {
+                paint_border(svg, f, border);
+            }
         }
         FragmentContent::TextLine {
             glyphs,
@@ -301,6 +305,40 @@ fn paint_border(svg: &mut String, f: &Fragment, b: &BorderEdges) {
     if let Some((w, c)) = side(&b.right) {
         rect(svg, f.x + f.width - w, f.y, w, f.height, c);
     }
+}
+
+/// Stroke a rounded box's border as one rounded outline, as the raster painter does: the
+/// widest side's width and colour, inset by half the stroke so the outline stays inside the
+/// border box, its radius the box's less that half (miaskiewicz/turbo-dom#95).
+fn paint_round_border(svg: &mut String, f: &Fragment, b: &BorderEdges, r: f32) {
+    let widest = [&b.top, &b.right, &b.bottom, &b.left]
+        .into_iter()
+        .filter(|s| s.width > 0)
+        .max_by_key(|s| s.width);
+    let Some((w, c)) = widest.and_then(|s| s.color.map(|c| (f32::from(s.width), c))) else {
+        return;
+    };
+    if c.a == 0 {
+        return;
+    }
+    let hw = w / 2.0;
+    let (iw, ih) = ((f.width - w).max(0.0), (f.height - w).max(0.0));
+    let ir = (r - hw).min(iw / 2.0).min(ih / 2.0).max(0.0);
+    let opacity = if c.a == 255 {
+        String::new()
+    } else {
+        format!(" stroke-opacity=\"{:.3}\"", f32::from(c.a) / 255.0)
+    };
+    let _ = writeln!(
+        svg,
+        "<rect x=\"{:.2}\" y=\"{:.2}\" width=\"{iw:.2}\" height=\"{ih:.2}\" rx=\"{ir:.2}\" ry=\"{ir:.2}\" \
+         fill=\"none\" stroke=\"#{:02x}{:02x}{:02x}\"{opacity} stroke-width=\"{w:.2}\"/>",
+        f.x + hw,
+        f.y + hw,
+        c.r,
+        c.g,
+        c.b,
+    );
 }
 
 /// An SVG path-data sink for [`glyph::trace_glyph`].
@@ -544,6 +582,78 @@ mod tests {
             });
         }
         assert_eq!(body(&one, &HashMap::new()), "");
+    }
+
+    /// A rounded box with `border` sides on a 20x10 box at (1, 2) and the given radius.
+    fn bordered(sides: [BorderSide; 4], radius: f32) -> Fragment {
+        let mut f = plain(1.0, 2.0, 20.0, 10.0, None);
+        if let FragmentContent::Box {
+            border,
+            border_radius,
+            ..
+        } = &mut f.content
+        {
+            let [top, right, bottom, left] = sides;
+            *border = BorderEdges {
+                top,
+                right,
+                bottom,
+                left,
+            };
+            *border_radius = radius;
+        }
+        f
+    }
+
+    #[test]
+    fn rounded_borders_stroke_one_inset_outline_of_the_widest_side() {
+        let side = |width: u16, color: Option<Rgba>| BorderSide { width, color };
+        let blue = Some(Rgba::new(0, 0, 255, 255));
+        let thin = side(1, Some(RED));
+        // The widest side (4px blue) strokes the whole outline, inset by 2px; the radius
+        // shrinks by the same half width.
+        assert_eq!(
+            body(
+                &bordered([thin, side(4, blue), thin, side(0, blue)], 6.0),
+                &HashMap::new()
+            ),
+            "<rect x=\"3.00\" y=\"4.00\" width=\"16.00\" height=\"6.00\" rx=\"3.00\" ry=\"3.00\" \
+             fill=\"none\" stroke=\"#0000ff\" stroke-width=\"4.00\"/>\n"
+        );
+        // A radius larger than the inset box is clamped to half its shorter side; a
+        // translucent colour carries a stroke opacity.
+        let half = Some(Rgba::new(255, 0, 0, 128));
+        assert_eq!(
+            body(&bordered([side(2, half); 4], 40.0), &HashMap::new()),
+            "<rect x=\"2.00\" y=\"3.00\" width=\"18.00\" height=\"8.00\" rx=\"4.00\" ry=\"4.00\" \
+             fill=\"none\" stroke=\"#ff0000\" stroke-opacity=\"0.502\" stroke-width=\"2.00\"/>\n"
+        );
+        // A border wider than the box strokes a zero-size inset rect.
+        assert!(
+            body(&bordered([side(30, blue); 4], 6.0), &HashMap::new()).starts_with(
+                "<rect x=\"16.00\" y=\"17.00\" width=\"0.00\" height=\"0.00\" rx=\"0.00\""
+            ),
+        );
+        // No visible side, a colourless widest side, or a transparent one: nothing.
+        let none = side(0, blue);
+        assert_eq!(body(&bordered([none; 4], 6.0), &HashMap::new()), "");
+        assert_eq!(
+            body(
+                &bordered([side(3, None), thin, thin, thin], 6.0),
+                &HashMap::new()
+            ),
+            ""
+        );
+        let clear = side(3, Some(Rgba::new(0, 0, 255, 0)));
+        assert_eq!(body(&bordered([clear; 4], 6.0), &HashMap::new()), "");
+        // At a radius of 0.5 or less the four square edge bands paint instead.
+        assert_eq!(
+            body(
+                &bordered([side(2, blue), none, none, none], 0.5),
+                &HashMap::new()
+            ),
+            "<rect x=\"1.00\" y=\"2.00\" width=\"20.00\" height=\"2.00\" fill=\"#0000ff\"/>\n"
+        );
     }
 
     #[test]
