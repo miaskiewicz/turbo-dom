@@ -51,8 +51,8 @@ at the time); this file reconstructs them from history.
   from outside the crate, so the test could not build from the published package. The npm
   test `test/dom-adoption-reactions-chrome.test.mjs` now reads it from the crate.
 - `test_support` exports it, the `dom_reactions_names_*` control and the `shadow_events_*`
-  control (`DOM_ADOPTION_REACTIONS_*`, `DOM_REACTIONS_NAMES_*`, `SHADOW_EVENTS_*`; `FILES`
-  has 85 entries).
+  control (`DOM_ADOPTION_REACTIONS_*`, `DOM_REACTIONS_NAMES_*`, `SHADOW_EVENTS_*`,
+  `HTML_TRACK_*`; `FILES` has 88 entries).
 - A test now asserts that no `include_str!` / `include_bytes!` in the crate's `src/` or
   `tests/` leaves the crate.
 
