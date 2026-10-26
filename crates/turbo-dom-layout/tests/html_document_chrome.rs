@@ -275,7 +275,6 @@ fn zero_area_clip_case(id: &str) -> bool {
 }
 
 #[test]
-#[ignore = "turbo-dom#75: fails until the fix"]
 fn zero_area_clip_boxes_keep_their_geometry_like_chrome_156() {
     compare_cases(zero_area_clip_case);
 }
