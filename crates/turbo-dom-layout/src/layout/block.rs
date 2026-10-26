@@ -1839,9 +1839,29 @@ fn layout_box(
     // the box must be 267, not clip the images and squeeze the label column.
     if let BoxKind::Table(items) = &lb.kind {
         let frame = bs.padding.horizontal() + bs.border.widths().horizontal();
+        bbw = shrink_auto_table(items, lb, &bs, (bbw, cb_width), ctx);
         bbw = bbw.max(super::table::min_content_width(items, &lb.style, ctx.fonts) + frame);
     }
     layout_box_sized(lb, &bs, bx, by, bbw, ctx)
+}
+
+/// A live `width: auto` table is shrink-to-fit: no wider than its columns'
+/// max-content (+ spacing and frame), as Chrome lays it out (miaskiewicz/turbo-surf#36
+/// item 3; the caller still floors it at min-content). The PDF path keeps filling
+/// the containing block.
+fn shrink_auto_table(
+    items: &[LayoutBox],
+    lb: &LayoutBox,
+    bs: &BoxStyle,
+    (bbw, cb_width): (f32, f32),
+    ctx: &Ctx,
+) -> f32 {
+    if !ctx.live_geometry || bs.width != LengthPct::Auto {
+        return bbw;
+    }
+    let extra = bs.padding.horizontal() + bs.border.widths().horizontal();
+    let fit = super::table::max_content_width(items, &lb.style, ctx.fonts) + extra;
+    clamp_width(bbw.min(fit), bs, cb_width, extra)
 }
 
 /// The height an `aspect-ratio` box derives from its content width when its own

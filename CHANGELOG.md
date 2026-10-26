@@ -42,6 +42,12 @@ changes in `tools/parity/expected/p5b-w1-*.json`.
   width, and in live geometry it records used box metrics, so `getBoundingClientRect()`
   on a `<tr>` answers (`[10,10,9.109375,20]` for a one-cell table in Chrome) instead of
   failing with "used box metrics are missing". Control: `live-geometry` `table-width-*`.
+- Auto-width tables in live geometry (miaskiewicz/turbo-surf#36 item 3): a `width: auto`
+  table is shrink-to-fit — no wider than its columns' max-content plus border-spacing,
+  padding and borders (`min-width`/`max-width` still apply, and it never drops below its
+  min-content) — so a one-cell table is `[8,8,13.109375,24]` as in Chrome, not the full
+  1264px line, and `margin: 0 auto` centres it. The PDF / screenshot paths keep filling
+  the containing block (unchanged output). Control: `live-geometry` `table-auto-*`.
 
 ### Fixed — selector engine and cascade order (P5b-X, Chrome 156 controls)
 Each fix is backed by `crates/turbo-dom/tests/fixtures/cascade_selectors_chrome156.json`

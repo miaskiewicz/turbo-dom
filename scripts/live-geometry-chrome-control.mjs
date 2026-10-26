@@ -5,7 +5,8 @@
 //     (CSS 2.1 §9.7) and laid out at its static position without splitting its inline
 //     ancestor, and an unsupported inline construct fails that element only, instead of
 //     failing the whole snapshot; a table row is a box spanning its cells (inside the
-//     border-spacing) with used box metrics.
+//     border-spacing) with used box metrics;
+//   - miaskiewicz/turbo-surf#36 item 3: an auto-width table shrinks to fit its columns.
 //
 // For every case, Chrome for Testing 156 (viewport 1280x800) records the
 // getBoundingClientRect() of every `[data-cid]` element (document order) as
@@ -82,6 +83,34 @@ const CASES = [
   // with used box metrics.
   { id: "table-width-percent", html: DOC("table{width:50%}", `<table data-cid="table"><tr data-cid="tr">${CELL(30, 10, "td")}</tr></table>`) },
   { id: "table-width-px", html: DOC("table{width:300px}", `<table data-cid="table"><tr data-cid="tr">${CELL(30, 10, "td")}</tr></table>`) },
+  // turbo-surf#36 item 3: an auto-width table shrinks to fit its columns (and is centred
+  // by auto margins), but never below its content.
+  {
+    id: "table-auto-width",
+    html: DOC("", `<table data-cid="table"><tr data-cid="tr">${CELL(30, 10, "td")}</tr></table>`),
+  },
+  {
+    id: "table-auto-two-columns",
+    html: DOC(
+      "",
+      `<table data-cid="table"><tr data-cid="tr">${CELL(30, 10, "a")}${CELL(50, 20, "b")}</tr><tr data-cid="tr2">${CELL(10, 5, "c")}${CELL(10, 5, "d")}</tr></table>`,
+    ),
+  },
+  {
+    id: "table-auto-spacing-padding-border",
+    html: DOC(
+      "table{border-spacing:6px 4px;border:3px solid #000;padding:5px}td{padding:2px;border:1px solid #000}",
+      `<table data-cid="table"><tr data-cid="tr">${CELL(20, 10, "a")}${CELL(20, 10, "b")}</tr></table>`,
+    ),
+  },
+  {
+    id: "table-auto-margin-centered",
+    html: DOC("table{margin:0 auto}", `<table data-cid="table"><tr data-cid="tr">${CELL(40, 10, "td")}</tr></table>`),
+  },
+  {
+    id: "table-auto-wide-content-fills",
+    html: DOC("", `<table data-cid="table"><tr data-cid="tr">${CELL(2000, 10, "td")}</tr></table>`),
+  },
 ];
 
 const browser = await chromium.launch({ executablePath: chromePath, headless: true });

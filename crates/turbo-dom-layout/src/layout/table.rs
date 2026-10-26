@@ -851,6 +851,23 @@ pub(crate) fn min_content_width(
     separated_min_content(&placed, ncols, hs, fonts)
 }
 
+/// The table's max-content width: its columns' natural widths (colspans
+/// distributed) plus the border-spacing around and between them; a fixed-layout
+/// collapsed table's is its min-content (first-row columns + grid-line borders).
+pub(crate) fn max_content_width(
+    items: &[LayoutBox],
+    style: &ComputedStyle,
+    fonts: &FontRegistry,
+) -> f32 {
+    let rows = collect_rows(items);
+    let (placed, ncols) = build_grid(&rows);
+    if ncols == 0 || is_fixed(style) && collapsed(style) {
+        return min_content_width(items, style, fonts);
+    }
+    let (hs, _) = border_spacing(style);
+    auto_columns(&placed, ncols, fonts).iter().sum::<f32>() + hs * (ncols as f32 + 1.0)
+}
+
 /// Separated-border table min-content. Each column's min-content is the widest
 /// single-column cell (text wraps to its longest word; a fixed-width cell keeps its
 /// size). The table is at least the sum of those, and at least any spanning cell's
