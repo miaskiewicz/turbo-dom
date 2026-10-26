@@ -158,7 +158,6 @@ fn box_decorations_paint_like_chrome_156() {
 
 /// The PNG and (resvg-rasterized) SVG screenshot's raw colour at each probe of `id`.
 fn probe_rgb(id: &str) -> Vec<([u8; 3], [u8; 3], [u8; 3])> {
-    use resvg::{tiny_skia as rsk, usvg};
     let fixture = fixture();
     let case = fixture["cases"]
         .as_array()
@@ -170,9 +169,7 @@ fn probe_rgb(id: &str) -> Vec<([u8; 3], [u8; 3], [u8; 3])> {
     let png = screenshot_png_with_opts(html, "", VIEWPORT, &assets(case), false, false).unwrap();
     let png = tiny_skia::Pixmap::decode_png(&png).unwrap();
     let svg = screenshot_svg_with_opts(html, "", VIEWPORT, &assets(case), false, false).unwrap();
-    let tree = usvg::Tree::from_str(&svg, &usvg::Options::default()).unwrap();
-    let mut raster = rsk::Pixmap::new(VIEWPORT.width, VIEWPORT.height).unwrap();
-    resvg::render(&tree, rsk::Transform::identity(), &mut raster.as_mut());
+    let raster = rasterize_svg(&svg);
     case["probes"]
         .as_array()
         .unwrap()
@@ -226,11 +223,56 @@ fn shadow_blur_is_capped_at_256px_like_chrome_156() {
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
 
+/// The SVG screenshot rasterized by resvg. This resvg build has no `raster-images` decoders
+/// (turning them on in the dev-dependency would also change turbo-dom-layout's rasterizer
+/// under test), so each embedded PNG `data:` image is first re-embedded as an SVG of its
+/// pixels (one rect per run of equal pixels, crisp edges) — the same image, drawn the same
+/// way into its `<image>` box.
+fn rasterize_svg(svg: &str) -> resvg::tiny_skia::Pixmap {
+    use resvg::{tiny_skia as rsk, usvg};
+    const PNG: &str = "href=\"data:image/png;base64,";
+    let mut svg = svg.to_string();
+    while let Some(at) = svg.find(PNG) {
+        let start = at + "href=\"".len();
+        let end = start + svg[start..].find('"').unwrap();
+        let png = decode_data_url(&svg[start..end]).unwrap().bytes;
+        let img = image::load_from_memory(&png).unwrap().to_rgba8();
+        let mut pixels = format!(
+            "<svg xmlns='http://www.w3.org/2000/svg' width='{0}' height='{1}' viewBox='0 0 {0} {1}' preserveAspectRatio='none' shape-rendering='crispEdges'>",
+            img.width(),
+            img.height()
+        );
+        for y in 0..img.height() {
+            let mut x = 0;
+            while x < img.width() {
+                let p = img.get_pixel(x, y).0;
+                let run = (x..img.width())
+                    .take_while(|&e| img.get_pixel(e, y).0 == p)
+                    .count() as u32;
+                pixels.push_str(&format!(
+                    "<rect x='{x}' y='{y}' width='{run}' height='1' fill='rgb({},{},{})' fill-opacity='{}'/>",
+                    p[0],
+                    p[1],
+                    p[2],
+                    f32::from(p[3]) / 255.0
+                ));
+                x += run;
+            }
+        }
+        pixels.push_str("</svg>");
+        let escaped = pixels.replace('<', "&lt;").replace('>', "&gt;");
+        svg.replace_range(start..end, &format!("data:image/svg+xml;utf8,{escaped}"));
+    }
+    let tree = usvg::Tree::from_str(&svg, &usvg::Options::default()).expect("valid svg");
+    let mut pm = rsk::Pixmap::new(VIEWPORT.width, VIEWPORT.height).unwrap();
+    resvg::render(&tree, rsk::Transform::identity(), &mut pm.as_mut());
+    pm
+}
+
 /// Every probe difference from Chrome of the vector screenshot of the cases `select` picks,
 /// rasterized by resvg (the SVG painter emits the same boxes, borders, shadows, gradients,
 /// transforms and clips as the raster one, as SVG).
 fn svg_differences(select: impl Fn(&str) -> bool) -> Vec<String> {
-    use resvg::{tiny_skia as rsk, usvg};
     let fixture = fixture();
     let mut failures = Vec::new();
     let mut compared = 0;
@@ -243,9 +285,7 @@ fn svg_differences(select: impl Fn(&str) -> bool) -> Vec<String> {
         let html = case["html"].as_str().unwrap();
         let svg =
             screenshot_svg_with_opts(html, "", VIEWPORT, &assets(case), false, false).expect("svg");
-        let tree = usvg::Tree::from_str(&svg, &usvg::Options::default()).expect("valid svg");
-        let mut pm = rsk::Pixmap::new(VIEWPORT.width, VIEWPORT.height).unwrap();
-        resvg::render(&tree, rsk::Transform::identity(), &mut pm.as_mut());
+        let pm = rasterize_svg(&svg);
         for probe in case["probes"].as_array().unwrap() {
             let (x, y) = (
                 probe["x"].as_u64().unwrap() as u32,
@@ -263,10 +303,6 @@ fn svg_differences(select: impl Fn(&str) -> bool) -> Vec<String> {
     failures
 }
 
-/// Cases the vector comparison leaves out: `clip-image-sprite` embeds its image as a PNG
-/// `data:` URI, which this resvg build (no `raster-images` feature) does not draw.
-const SVG_LEFT_OUT: &[&str] = &["clip-image-sprite"];
-
 /// A rounded box's border follows its radius in the vector screenshot too: the corners
 /// outside the radius stay the backdrop (miaskiewicz/turbo-dom#95).
 #[test]
@@ -275,10 +311,10 @@ fn svg_rounded_borders_follow_the_radius_like_chrome_156() {
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
 
-/// The vector screenshot of every other case, rasterized, against the same Chrome probes.
+/// The vector screenshot of every case, rasterized, against the same Chrome probes.
 #[test]
 fn svg_screenshots_paint_like_chrome_156() {
-    let failures = svg_differences(|id| !pending_case(id) && !SVG_LEFT_OUT.contains(&id));
+    let failures = svg_differences(|id| !pending_case(id));
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
 
