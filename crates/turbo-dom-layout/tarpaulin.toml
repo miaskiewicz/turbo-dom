@@ -4,9 +4,9 @@
 #   cargo tarpaulin --config crates/turbo-dom-layout/tarpaulin.toml
 # (The coverage + cc gate thresholds for this crate are decided from the P0
 # partition data; this file only keeps the feature-gated-module excludes. At S1
-# the crate's own tests cover 97.05% (7889/8129 lines); the rest — the `t:`
-# markup error path, TKind, cascade tokens, parts of the selector matcher — is
-# covered by turbo-html2pdf-core's templating / directive tests.)
+# the crate's own tests covered 97.05% (7889/8129 lines); the rest — cascade
+# tokens, parts of the selector matcher — is covered by turbo-html2pdf-core's
+# templating / directive tests. Since S2 the `t:` directives are html2pdf's.)
 [default]
 packages = ["turbo-dom-layout"]
 # Pin the LLVM source-based engine on every platform (tarpaulin's `Auto` picks
@@ -25,15 +25,4 @@ exclude-files = [
     # `--features svg` tests in tests/svg.rs. Listed defensively so a stray
     # tarpaulin cfg quirk cannot flag the gated-out module.
     "crates/turbo-dom-layout/src/svg.rs",
-    # TEMPORARY `xref` feature: box-generation helpers (anchor names + internal
-    # link hrefs) in this gated-only sibling of boxgen.rs (declared
-    # `#[cfg(feature = "xref")] #[path = "boxgen_xref.rs"] mod xref;`), so the
-    # default build does not compile it. Exercised by turbo-html2pdf-core's
-    # `--features xref` tests (tests/xref.rs).
-    "crates/turbo-dom-layout/src/layout/boxgen_xref.rs",
-    # TEMPORARY `pdf-ua` feature: role derivation from the semantic HTML tag in
-    # this gated-only sibling of boxgen.rs (declared `#[cfg(feature = "pdf-ua")]
-    # #[path = "boxgen_ua.rs"] mod ua;`). Exercised by turbo-html2pdf-core's
-    # `--features pdf-ua` tests (tests/pdf_ua.rs).
-    "crates/turbo-dom-layout/src/layout/boxgen_ua.rs",
 ]

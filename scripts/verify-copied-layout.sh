@@ -20,27 +20,35 @@
 #             declarations may only import names the source's `use`s import
 # Every other file under the two crates is printed as NEW (hand-written; review it).
 # Exit status is non-zero on any mismatch.
+#
+# The check runs against the S1 relocation's tree (env VERIFY_REF, default the S1
+# merge commit): later consolidation steps (S2+) edit the moved files on purpose,
+# and their diffs are reviewed as ordinary changes on top of that commit.
 set -euo pipefail
 
 H2P_SHA=e2d7c4dc6719dbd87fcf56d75c719fecf5bf50ba
 SURF_SHA=b1de4ebf74e87d73ed128ee3b36e13a40000c3fc
 
-root=$(cd "$(dirname "$0")/.." && pwd)
-h2p_repo=${HTML2PDF_REPO:-$root/../turbo-html2pdf}
-surf_repo=${SURF_REPO:-$root/../turbo-surf}
-map=$root/scripts/verify-copied-layout.map
-rules=$root/scripts/verify-copied-layout.rules
+repo=$(cd "$(dirname "$0")/.." && pwd)
+verify_ref=${VERIFY_REF:-2c3bcef50210c889b00139dba6c354c8539aadb2}
+h2p_repo=${HTML2PDF_REPO:-$repo/../turbo-html2pdf}
+surf_repo=${SURF_REPO:-$repo/../turbo-surf}
+map=$repo/scripts/verify-copied-layout.map
+rules=$repo/scripts/verify-copied-layout.rules
 
 tmp=$(mktemp -d "${TMPDIR:-/tmp}/verify-copied-layout.XXXXXX")
 trap 'rm -rf "$tmp"' EXIT
 mkdir -p "$tmp/h2p" "$tmp/surf"
 git -C "$h2p_repo" archive "$H2P_SHA" LICENSE crates/turbo-html2pdf-core | tar -x -C "$tmp/h2p"
 git -C "$surf_repo" archive "$SURF_SHA" rust/crates/turbo-surf-raster | tar -x -C "$tmp/surf"
+root=$tmp/dom
+mkdir -p "$root"
+git -C "$repo" archive "$verify_ref" crates/turbo-dom-layout crates/turbo-dom-raster | tar -x -C "$root"
 
-python3 - "$root" "$tmp" "$map" "$rules" "${1:-}" <<'PY'
+python3 - "$root" "$tmp" "$map" "$rules" "${1:-}" "$repo" "$verify_ref" <<'PY'
 import fnmatch, os, re, subprocess, sys
 
-root, tmp, map_path, rules_path, flag = sys.argv[1:6]
+root, tmp, map_path, rules_path, flag, dom_repo, verify_ref = sys.argv[1:8]
 RUSTFMT = ["rustfmt", "--edition", "2021", "--emit", "stdout",
            "--config", "max_width=100,newline_style=Unix"]
 
@@ -132,7 +140,8 @@ for mode, src, dst in entries:
             sys.stdout.write(p.stdout.decode(errors="replace")[:4000])
 
 tracked = subprocess.run(
-    ["git", "-C", root, "ls-files", "crates/turbo-dom-layout", "crates/turbo-dom-raster"],
+    ["git", "-C", dom_repo, "ls-tree", "-r", "--name-only", verify_ref,
+     "crates/turbo-dom-layout", "crates/turbo-dom-raster"],
     capture_output=True, check=True, text=True).stdout.split()
 new = [f for f in tracked if f not in covered]
 if flag == "--list-new":

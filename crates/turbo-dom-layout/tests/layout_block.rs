@@ -25,11 +25,12 @@ fn el(tag: &str, pairs: &[(&str, &str)], children: Vec<StyledNode>) -> StyledNod
         attrs: vec![],
         style: cs(pairs),
         children,
+        source: None,
     })
 }
 
 fn txt(s: &str) -> StyledNode {
-    StyledNode::Text(s.to_string())
+    StyledNode::Text(s.into())
 }
 
 fn lay(nodes: &[StyledNode], cb_width: f32) -> Fragment {

@@ -118,7 +118,12 @@ The script's header documents its suites and knobs. It runs these steps:
 3. Run each suite directly with its own log dir:
    - cargo tests;
    - turbo-test `node --test 'test/*.mjs'` and `fixtures/compat` (JSON reporter);
-   - surf `test:shim`, `test:e2e` and `test:detection`.
+   - surf `test:shim`, `test:e2e` and `test:detection`;
+   - surf corpora (`surf-corpus`): `tools/parity/parity.py run --surf <dual addon>` (live
+     `render` dumps + static screenshots; run `tools/parity/fetch-inputs.sh` first), then
+     `compare` against `SURF_CORPUS_CHECKPOINT` (default `b2-surf`, with optional
+     `SURF_CORPUS_EXPECT` expected-diff files). Gate A wants it byte-equal to the checkpoint;
+     Gate B wants it equal to the plain (no-feature) build's outputs.
 4. Run `scripts/selector-dual-check.py`. It checks that every header's build id is in the
    manifest, applies the per-suite vacuity guard (at least one header and one compared
    call), and classifies every divergence. One suite is waived from the vacuity guard and

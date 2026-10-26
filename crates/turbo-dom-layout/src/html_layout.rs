@@ -1,61 +1,100 @@
 //! Drive a raw HTML string straight into a positioned [`Fragment`] galley,
-//! **without** the Jinja templating pass (§1 Stage 1 on its own).
+//! **without** any templating pass.
 //!
-//! The normal entry (`compile` → `Program::render_nodes`) runs the minijinja
-//! layer first, which interprets `{{ … }}` / `{% … %}`. That is correct for
-//! templates, but wrong for callers that already hold *final* HTML — e.g. a
-//! hydrated DOM snapshot from a crawler — where such sequences are page content
-//! (inline scripts, JSON, CSS) and must not be evaluated. These helpers skip
-//! Jinja and go html5ever-parse → cascade → layout directly.
+//! Template engines (html2pdf's `compile` → render) interpret `{{ … }}` /
+//! `{% … %}` first. That is wrong for callers that already hold *final* HTML —
+//! e.g. a hydrated DOM snapshot from a crawler — where such sequences are page
+//! content (inline scripts, JSON, CSS) and must not be evaluated. These helpers go
+//! parse → cascade → layout directly.
 //!
-//! `layout_html` is fully self-contained: it collects the page's own `<style>`
-//! blocks as author CSS (the base pipeline applies only inline `style=` +
-//! UA defaults), then cascades and lays out at the caller's content width.
+//! The document is parsed into a turbo-dom [`Tree`] (scripting on, as a browser
+//! with JavaScript enabled: `<noscript>` content is raw text) and styled through
+//! a [`TreeView`] with the `<html>`/`<body>` shells ([`Roots::Shell`]): the page's
+//! own `<style>` blocks inside `<body>` are collected as author CSS (the base
+//! pipeline applies only inline `style=` + UA defaults), non-visual subtrees are
+//! stripped, and the body content is cascaded and laid out at the caller's
+//! content width. The `*_tree` entries take an already-parsed [`Tree`] plus
+//! [`HtmlOptions`] (marker classifier, internal links, print colour) — html2pdf's
+//! HTML path; the string entries use the defaults: no markers, so e.g. `t:*`
+//! elements are ordinary unknown (inline) elements, as in a browser.
 
 use std::collections::HashMap;
 
+use turbo_dom::rtdom::tree::NodeType;
+use turbo_dom::{Handle, ParseOptions, Tree};
+
 use crate::image::ImageResolver;
-use crate::layout::boxgen::{build_box_tree, BoxKind, InlineItem, LayoutBox};
+use crate::layout::boxgen::{BoxKind, InlineItem, LayoutBox};
 use crate::layout::fragment::{Fragment, FragmentContent, Transform2D};
-use crate::layout::ImageCtx;
-use crate::node::{Element, Node, Tag};
+use crate::layout::{ImageCtx, LayoutOptions};
+use crate::node::{Element, MarkerClassifier, Node, Tag};
 use crate::style::{
-    build_cascade_with_width, set_media_viewport_height, style_tree_with_roots, TokenSet,
+    build_cascade_with_width, set_media_viewport_height, style_input, Roots, StyleInput,
+    StyleOptions, StyledNode, TokenSet, TreeView,
 };
 use crate::text::FontRegistry;
 use crate::{Diagnostics, RenderError};
 
-/// Parse an HTML document/fragment string into the resolved node tree, skipping
-/// the Jinja pass. This is the Stage-1 html5ever parse exposed on its own for
-/// callers that already have final HTML (see the module docs).
+/// Parse an HTML document/fragment string into the LEGACY owned node tree (the
+/// `<body>` children; no marker classification). Layout itself now works on a
+/// turbo-dom [`Tree`] ([`parse_html_tree`]); this stays for [`Node`] consumers.
 pub fn parse_html(html: &str) -> Result<Vec<Node>, RenderError> {
     crate::markup::parse(html)
 }
 
-/// Parse `html`, returning the body flow nodes plus the `<html>`/`<body>` ancestor
-/// shells the cascade seeds for selector matching (see [`parse_with_roots`]).
+/// [`parse_html`] plus the `<html>`/`<body>` ancestor shells the legacy cascade
+/// seeds for selector matching (see [`crate::markup::parse_with_roots`]).
 pub fn parse_html_with_roots(html: &str) -> Result<(Vec<Node>, Vec<Element>), RenderError> {
     crate::markup::parse_with_roots(html)
 }
 
-/// Elements whose text content is *not* visible page content and must not be laid
-/// out as text (their bodies are CSS/JS/metadata, collected separately or dropped).
-fn is_non_visual(name: &str) -> bool {
-    matches!(
-        name.to_ascii_lowercase().as_str(),
-        "style" | "script" | "head" | "title" | "meta" | "link" | "noscript" | "template"
-    )
+/// Parse `html` into a turbo-dom [`Tree`] the way the HTML drive does (html5ever
+/// defaults: scripting on).
+#[must_use]
+pub fn parse_html_tree(html: &str) -> Tree {
+    Tree::parse_with(html, ParseOptions { scripting: true })
 }
 
-/// Drop non-visual element subtrees (`<style>`/`<script>`/…) so their bodies don't
-/// render as visible text. Author CSS is collected *before* this, so styles still
-/// apply; only their raw text is removed from the flow.
-fn strip_non_visual(nodes: Vec<Node>) -> Vec<Node> {
+/// Options for the `*_tree` HTML drive entries.
+#[derive(Clone, Copy, Default)]
+pub struct HtmlOptions<'a> {
+    /// Classify elements into markers (html2pdf's `t:` directives); `None` = none.
+    pub markers: Option<MarkerClassifier<'a>>,
+    /// See [`LayoutOptions::atomic_internal_links`].
+    pub atomic_internal_links: bool,
+    /// Accept `cmyk(...)` colours (style and layout).
+    pub accept_cmyk: bool,
+}
+
+impl HtmlOptions<'_> {
+    fn view<'t>(&self, tree: &'t Tree) -> TreeView<'t>
+    where
+        Self: 't,
+    {
+        let view = TreeView::new(tree);
+        match self.markers {
+            Some(classify) => view.markers(classify),
+            None => view,
+        }
+    }
+
+    fn layout(&self) -> LayoutOptions {
+        LayoutOptions {
+            atomic_internal_links: self.atomic_internal_links,
+            accept_cmyk: self.accept_cmyk,
+            first_node_id: 0,
+        }
+    }
+}
+
+/// LEGACY: drop non-visual element subtrees (`<style>`/`<script>`/…) from a
+/// [`Node`] forest — what [`TreeView::strip_non_visual`] does on a [`Tree`].
+pub fn strip_non_visual(nodes: Vec<Node>) -> Vec<Node> {
     nodes
         .into_iter()
         .filter_map(|node| match node {
             Node::Element(mut el) => {
-                if matches!(&el.tag, Tag::Html(name) if is_non_visual(name)) {
+                if matches!(&el.tag, Tag::Html(name) if crate::style::is_non_visual(name)) {
                     return None;
                 }
                 el.children = strip_non_visual(el.children);
@@ -92,12 +131,85 @@ fn collect_style_into(nodes: &[Node], css: &mut String) {
     }
 }
 
+/// [`collect_style_css`] over a [`Tree`]: the `<style>` text in the kept content
+/// under `roots` (nothing stripped), in document order.
+#[must_use]
+pub fn collect_style_css_tree(view: &TreeView, roots: &[Handle]) -> String {
+    let mut css = String::new();
+    collect_style_tree_into(view, roots, &mut css);
+    css
+}
+
+fn collect_style_tree_into(view: &TreeView, nodes: &[Handle], css: &mut String) {
+    for &h in nodes.iter().filter(|&&h| is_element(view, h)) {
+        let children = view.children(h);
+        if is_plain(view, h, "style") {
+            push_text_children(view, &children, css);
+        }
+        collect_style_tree_into(view, &children, css);
+    }
+}
+
+/// Append each text node among `children` plus a newline (a `<style>` body).
+fn push_text_children(view: &TreeView, children: &[Handle], css: &mut String) {
+    for &child in children {
+        if view.tree().node_type(child) == NodeType::Text {
+            css.push_str(&view.text(child));
+            css.push('\n');
+        }
+    }
+}
+
+/// A kept element node.
+fn is_element(view: &TreeView, h: Handle) -> bool {
+    view.tree().node_type(h) == NodeType::Element && view.is_kept(h)
+}
+
+/// A plain (non-marker) element with local name `name`.
+fn is_plain(view: &TreeView, h: Handle, name: &str) -> bool {
+    view.marker(h).is_none() && view.tree().local_name(h) == Some(name)
+}
+
+/// The `<body>` element of a parsed document (the shell lookup; always present for
+/// a parsed document).
+fn body_of(view: &TreeView) -> Handle {
+    view.find_element("body")
+        .expect("the HTML parser always produces a <body>")
+}
+
+/// Collect the body's author CSS, build the cascade at `cb_width` and style the
+/// body content under the html/body shells.
+fn style_document(
+    tree: &Tree,
+    extra_css: &str,
+    cb_width: f32,
+    options: &HtmlOptions,
+) -> Vec<StyledNode> {
+    let view = options.view(tree);
+    let body = body_of(&view);
+    let mut author_css = collect_style_css_tree(&view, &view.children(body));
+    author_css.push_str(extra_css);
+    let cascade = build_cascade_with_width(&author_css, "", TokenSet::default(), cb_width);
+    let input = StyleInput {
+        view: view.strip_non_visual(true),
+        roots: Roots::Shell,
+    };
+    style_input(
+        &input,
+        &cascade,
+        &StyleOptions {
+            accept_cmyk: options.accept_cmyk,
+        },
+    )
+}
+
 /// Lay a raw HTML string out into a [`Fragment`] galley at content width
-/// `cb_width` px, Jinja-free. The page's own `<style>` blocks are collected as
+/// `cb_width` px, template-free. The page's own `<style>` blocks are collected as
 /// author CSS and `extra_css` (UA overrides, a caller reset, etc.) is appended
 /// after them so it wins ties. Inline `style=` and the built-in UA defaults
 /// apply as in the normal pipeline. `fonts` supplies the faces (use
-/// [`FontRegistry::new`] for the bundled set).
+/// [`FontRegistry::new`] for the bundled set). Never fails (the `Result` is kept
+/// for API stability).
 pub fn layout_html(
     html: &str,
     extra_css: &str,
@@ -105,12 +217,15 @@ pub fn layout_html(
     fonts: &FontRegistry,
     diags: &mut Diagnostics,
 ) -> Result<Fragment, RenderError> {
-    let (nodes, roots) = parse_html_with_roots(html)?;
-    let mut author_css = collect_style_css(&nodes);
-    author_css.push_str(extra_css);
-    let cascade = build_cascade_with_width(&author_css, "", TokenSet::default(), cb_width);
-    let styled = style_tree_with_roots(&strip_non_visual(nodes), &cascade, &roots);
-    Ok(crate::layout(&styled, cb_width, fonts, diags))
+    Ok(layout_html_tree(
+        &parse_html_tree(html),
+        extra_css,
+        cb_width,
+        fonts,
+        &ImageCtx::none(),
+        &HtmlOptions::default(),
+        diags,
+    ))
 }
 
 /// Like [`layout_html`] but sizes `<img>`/`background-image` boxes against the
@@ -127,14 +242,30 @@ pub fn layout_html_with_images(
     images: &ImageCtx,
     diags: &mut Diagnostics,
 ) -> Result<Fragment, RenderError> {
-    let (nodes, roots) = parse_html_with_roots(html)?;
-    let mut author_css = collect_style_css(&nodes);
-    author_css.push_str(extra_css);
-    let cascade = build_cascade_with_width(&author_css, "", TokenSet::default(), cb_width);
-    let styled = style_tree_with_roots(&strip_non_visual(nodes), &cascade, &roots);
-    Ok(crate::layout_with_images(
-        &styled, cb_width, fonts, images, diags,
+    Ok(layout_html_tree(
+        &parse_html_tree(html),
+        extra_css,
+        cb_width,
+        fonts,
+        images,
+        &HtmlOptions::default(),
+        diags,
     ))
+}
+
+/// The HTML drive over an already-parsed [`Tree`] with explicit [`HtmlOptions`]
+/// (see the module docs); [`layout_html_with_images`] is this with the defaults.
+pub fn layout_html_tree(
+    tree: &Tree,
+    extra_css: &str,
+    cb_width: f32,
+    fonts: &FontRegistry,
+    images: &ImageCtx,
+    options: &HtmlOptions,
+    diags: &mut Diagnostics,
+) -> Fragment {
+    let styled = style_document(tree, extra_css, cb_width, options);
+    crate::layout::layout_with_options(&styled, cb_width, fonts, images, &options.layout(), diags)
 }
 
 /// One laid-out box paired with the `data-cid` its source element carried
@@ -181,39 +312,65 @@ pub fn layout_boxes(
     fonts: &FontRegistry,
     diags: &mut Diagnostics,
 ) -> Result<Vec<CidBox>, RenderError> {
-    let (nodes, roots) = parse_html_with_roots(html)?;
-    let mut author_css = collect_style_css(&nodes);
-    author_css.push_str(extra_css);
+    Ok(layout_boxes_tree(
+        &parse_html_tree(html),
+        extra_css,
+        cb_width,
+        cb_height,
+        fonts,
+        &HtmlOptions::default(),
+        diags,
+    ))
+}
+
+/// [`layout_boxes`] over an already-parsed [`Tree`] with explicit [`HtmlOptions`].
+pub fn layout_boxes_tree(
+    tree: &Tree,
+    extra_css: &str,
+    cb_width: f32,
+    cb_height: f32,
+    fonts: &FontRegistry,
+    options: &HtmlOptions,
+    diags: &mut Diagnostics,
+) -> Vec<CidBox> {
     // Decode any `data:` image URIs the fixtures embed so replaced `<img>` boxes
     // reach their intrinsic size (the default render path takes a host resolver; the
     // conformance seam is self-contained, so it decodes the inline data itself).
-    // Scanned here while `nodes` is still owned — `style_tree_with_roots` consumes it.
+    let view = options.view(tree);
     let mut data_images: HashMap<String, Vec<u8>> = HashMap::new();
-    collect_data_uri_images(&nodes, &mut data_images);
+    collect_data_uri_images(&view, &view.children(body_of(&view)), &mut data_images);
     // Thread the layout viewport HEIGHT so `@media (min/max-height)` conditions and
     // `vh`/`vmin`/`vmax` units resolve against it — without this both fell back to the
     // 800px default (a `20vh` box measured against 800, height-gated `@media` rules
     // matched everywhere). `build_cascade_with_width` sets the matching width.
     set_media_viewport_height(cb_height);
-    let cascade = build_cascade_with_width(&author_css, "", TokenSet::default(), cb_width);
-    let styled = style_tree_with_roots(&strip_non_visual(nodes), &cascade, &roots);
+    let styled = style_document(tree, extra_css, cb_width, options);
+    let layout_options = options.layout();
 
-    // `build_box_tree` is deterministic (monotonic pre-order ids), so the ids in
-    // this tree match the ones `crate::layout` stamps on the fragments below.
+    // Box generation is deterministic (monotonic pre-order ids), so the ids in this
+    // tree match the ones the layout below stamps on the fragments.
     let mut cids: HashMap<u32, String> = HashMap::new();
-    collect_cids(&build_box_tree(&styled), &mut cids);
+    let (boxes, _, _) = crate::layout::boxgen::build_box_tree_with(
+        &styled,
+        crate::layout::boxgen::BuildOptions {
+            atomic_internal_links: layout_options.atomic_internal_links,
+            record_sources: false,
+        },
+    );
+    collect_cids(&boxes, &mut cids);
 
     let resolver = DataUriImages(data_images);
     let ctx = ImageCtx {
         resolver: &resolver,
         body_height: Some(cb_height),
     };
-    let root = crate::layout_with_images(&styled, cb_width, fonts, &ctx, diags);
+    let root =
+        crate::layout::layout_with_options(&styled, cb_width, fonts, &ctx, &layout_options, diags);
 
     let mut out = Vec::new();
     let mut seen: std::collections::HashSet<u32> = std::collections::HashSet::new();
     collect_boxes(&root, &cids, &mut seen, &mut out);
-    Ok(out)
+    out
 }
 
 /// Walk the box tree, recording `node_id → data-cid` for every box that carries
@@ -234,7 +391,7 @@ fn collect_cids(bx: &LayoutBox, out: &mut HashMap<u32, String>) {
 }
 
 /// The block-level children of a box (`Block`/`Flex`/`Grid`/`Table`); empty for a
-/// `Lines`/`Directive` box.
+/// `Lines`/`Marker` box.
 fn block_children(kind: &BoxKind) -> &[LayoutBox] {
     match kind {
         BoxKind::Block(k) | BoxKind::Flex(k) | BoxKind::Grid(k) | BoxKind::Table(k) => k,
@@ -290,24 +447,22 @@ impl ImageResolver for DataUriImages {
     }
 }
 
-/// Walk the node tree and decode every `<img src="data:...;base64,...">` into
+/// Walk the kept content and decode every `<img src="data:...;base64,...">` into
 /// `out`, keyed by the full `src` (the name the layout resolves against).
-fn collect_data_uri_images(nodes: &[Node], out: &mut HashMap<String, Vec<u8>>) {
-    for node in nodes {
-        let Node::Element(el) = node else { continue };
-        record_img_data_uri(el, out);
-        collect_data_uri_images(&el.children, out);
+fn collect_data_uri_images(view: &TreeView, nodes: &[Handle], out: &mut HashMap<String, Vec<u8>>) {
+    for &h in nodes.iter().filter(|&&h| is_element(view, h)) {
+        record_img_data_uri(view, h, out);
+        collect_data_uri_images(view, &view.children(h), out);
     }
 }
 
 /// Decode this element's `<img src="data:...;base64,...">` into `out` (keyed by
 /// `src`), if it is an `img` with an as-yet-unseen, decodable base64 data URI.
-fn record_img_data_uri(el: &Element, out: &mut HashMap<String, Vec<u8>>) {
-    let Tag::Html(name) = &el.tag else { return };
-    if name != "img" {
+fn record_img_data_uri(view: &TreeView, h: Handle, out: &mut HashMap<String, Vec<u8>>) {
+    if !is_plain(view, h, "img") {
         return;
     }
-    let Some(src) = el.attr("src").filter(|s| s.starts_with("data:")) else {
+    let Some(src) = view.attr(h, "src").filter(|s| s.starts_with("data:")) else {
         return;
     };
     if !out.contains_key(src) {
@@ -624,6 +779,53 @@ mod tests {
     }
 
     #[test]
+    fn t_elements_are_unknown_inline_elements_on_the_html_path() {
+        // No marker classifier on the plain HTML drive: `t:*` is an ordinary unknown
+        // element (inline, its text laid out), never a directive and never an error,
+        // and a self-closing `<t:x/>` is not rewritten (the parser ignores `/>`).
+        let mut diags = Diagnostics::default();
+        let html = "<body><p>a<t:footnote>b</t:footnote>c<t:bogus/>d</p></body>";
+        let mut fonts = FontRegistry::new();
+        fonts.add(
+            crate::FontFace::from_bytes(
+                include_bytes!("../assets/fonts/Go-Regular.ttf").to_vec(),
+                "Go",
+                400,
+                false,
+            )
+            .unwrap(),
+        );
+        let galley = super::layout_html(html, "body{font-family:Go}", 400.0, &fonts, &mut diags)
+            .expect("no unknown-element error");
+        let mut lines = 0;
+        let mut stack = vec![&galley];
+        while let Some(f) = stack.pop() {
+            assert!(!matches!(
+                f.content,
+                crate::layout::fragment::FragmentContent::Marker(_)
+            ));
+            if matches!(
+                f.content,
+                crate::layout::fragment::FragmentContent::TextLine { .. }
+            ) {
+                lines += 1;
+            }
+            stack.extend(f.children.iter());
+        }
+        assert!(lines >= 1, "the t: content is laid out as text");
+        let tree = super::parse_html_tree(html);
+        let view = crate::TreeView::new(&tree);
+        let p = view.find_element("p").unwrap();
+        assert_eq!(
+            view.to_nodes(&view.children(p))
+                .iter()
+                .filter(|n| n.as_element().is_some())
+                .count(),
+            2
+        );
+    }
+
+    #[test]
     fn base64_decode_handles_plus_slash_and_rejects_invalid() {
         // `+`/`/` are the standard-alphabet's 62/63 sextets; "Tnk+" -> "Ny>".
         assert_eq!(super::base64_decode("Tnk+").unwrap(), b"Ny>");
@@ -633,11 +835,15 @@ mod tests {
     }
 
     #[test]
-    fn block_children_of_a_directive_box_is_empty() {
-        // A `Directive` box is not a block/flex/grid/table container, so it exposes
+    fn block_children_of_a_marker_box_is_empty() {
+        // A `Marker` box is not a block/flex/grid/table container, so it exposes
         // no block-level children (the `_ => &[]` arm).
         use crate::layout::boxgen::BoxKind;
-        use crate::node::TKind;
-        assert!(super::block_children(&BoxKind::Directive(TKind::Footnote)).is_empty());
+        use crate::node::MarkerKind;
+        let kind = MarkerKind {
+            id: 0,
+            inline: false,
+        };
+        assert!(super::block_children(&BoxKind::Marker(kind)).is_empty());
     }
 }

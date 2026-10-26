@@ -9,6 +9,7 @@ use super::parser::{parse_declarations, Declaration, Rule};
 use super::selector::{AttrOp, AttrSel, Combinator, Compound, Pseudo, Selector, Specificity};
 use super::token::{resolve_tokens, TokenSet};
 use crate::node::{Attr, Element, Node, Tag};
+use turbo_dom::Handle;
 
 /// Computed property values for one element.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -92,13 +93,47 @@ pub struct StyledElement {
     pub attrs: Vec<Attr>,
     pub style: ComputedStyle,
     pub children: Vec<StyledNode>,
+    /// The turbo-dom node this element was styled from (`None` for the legacy
+    /// [`Node`] input and synthetic elements). Layout's source-recording mode
+    /// maps box ids back to it.
+    pub source: Option<Handle>,
+}
+
+/// A styled text node: its text plus the turbo-dom text node it came from.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StyledText {
+    pub text: String,
+    /// The source text node (`None` for the legacy [`Node`] input and synthetic text).
+    pub source: Option<Handle>,
+}
+
+impl std::ops::Deref for StyledText {
+    type Target = str;
+    fn deref(&self) -> &str {
+        &self.text
+    }
+}
+
+impl From<String> for StyledText {
+    fn from(text: String) -> Self {
+        StyledText { text, source: None }
+    }
+}
+
+impl From<&str> for StyledText {
+    fn from(text: &str) -> Self {
+        StyledText {
+            text: text.to_string(),
+            source: None,
+        }
+    }
 }
 
 /// A node in the styled tree.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StyledNode {
     Element(StyledElement),
-    Text(String),
+    Text(StyledText),
 }
 
 impl StyledNode {
@@ -107,6 +142,23 @@ impl StyledNode {
         match self {
             StyledNode::Element(e) => Some(e),
             StyledNode::Text(_) => None,
+        }
+    }
+
+    /// This subtree with every `source` cleared — the comparison key between the
+    /// legacy [`Node`] input and the turbo-dom [`TreeView`](super::TreeView) input,
+    /// which differ only in that provenance.
+    #[must_use]
+    pub fn without_sources(&self) -> StyledNode {
+        match self {
+            StyledNode::Element(e) => StyledNode::Element(StyledElement {
+                tag: e.tag.clone(),
+                attrs: e.attrs.clone(),
+                style: e.style.clone(),
+                children: e.children.iter().map(StyledNode::without_sources).collect(),
+                source: None,
+            }),
+            StyledNode::Text(t) => StyledNode::Text(t.text.as_str().into()),
         }
     }
 }
@@ -158,12 +210,45 @@ struct ElemPos {
     siblings: usize,
 }
 
+/// Where a match context reads its element's attributes: the legacy owned node's
+/// list, or a turbo-dom element (by local attribute name, in attribute order —
+/// the same identities html5ever's `name.local` gave the legacy conversion).
+#[derive(Clone, Copy)]
+enum Attrs<'a> {
+    Node(&'a [Attr]),
+    Tree(&'a turbo_dom::Tree, Handle),
+}
+
+impl<'a> Attrs<'a> {
+    /// The first attribute named exactly `name`.
+    fn get(self, name: &str) -> Option<&'a str> {
+        match self {
+            Attrs::Node(attrs) => find_attr(attrs, name),
+            Attrs::Tree(tree, h) => tree.get_attribute_local(h, name),
+        }
+    }
+
+    /// The first attribute whose name equals `name` ignoring ASCII case.
+    fn get_ignore_case(self, name: &str) -> Option<&'a str> {
+        match self {
+            Attrs::Node(attrs) => attrs
+                .iter()
+                .find(|a| a.name.eq_ignore_ascii_case(name))
+                .map(|a| a.value.as_str()),
+            Attrs::Tree(tree, h) => tree
+                .local_attributes(h)
+                .find(|(local, _)| local.eq_ignore_ascii_case(name))
+                .map(|(_, value)| value),
+        }
+    }
+}
+
 #[derive(Clone)]
 struct Ctx<'a> {
     tag: Option<&'a str>,
     id: Option<&'a str>,
     classes: Vec<&'a str>,
-    attrs: &'a [Attr],
+    attrs: Attrs<'a>,
     pos: ElemPos,
     /// Whether the element has no element/text children (`:empty`).
     empty: bool,
@@ -176,50 +261,83 @@ struct Ctx<'a> {
 fn html_name(element: &Element) -> Option<&str> {
     match &element.tag {
         Tag::Html(name) => Some(name),
-        Tag::Directive(_) => None,
+        Tag::Marker(_) => None,
     }
 }
 
-fn tag_key(element: &Element) -> String {
-    match &element.tag {
+/// The `nth-of-type` grouping key: the element's local name, or a per-kind key for
+/// markers that no element name can equal.
+fn tag_key(tag: &Tag) -> String {
+    match tag {
         Tag::Html(name) => name.clone(),
-        Tag::Directive(kind) => format!("{kind:?}"),
+        Tag::Marker(kind) => marker_key(*kind),
     }
 }
 
-fn ctx_of<'a>(element: &'a Element, pos: ElemPos, prev: Vec<Ctx<'a>>) -> Ctx<'a> {
+fn marker_key(kind: crate::node::MarkerKind) -> String {
+    format!("\u{1}marker:{}", kind.id)
+}
+
+/// A match context over an element's name and attributes (shared by both inputs).
+fn ctx_from<'a>(
+    tag: Option<&'a str>,
+    attrs: Attrs<'a>,
+    pos: ElemPos,
+    empty: bool,
+    prev: Vec<Ctx<'a>>,
+) -> Ctx<'a> {
     Ctx {
-        tag: html_name(element),
-        id: element.attr("id"),
-        classes: element
-            .attr("class")
+        tag,
+        id: attrs.get("id"),
+        classes: attrs
+            .get("class")
             .map(str::split_whitespace)
             .map(Iterator::collect)
             .unwrap_or_default(),
-        attrs: &element.attrs,
+        attrs,
         pos,
-        empty: element.children.is_empty(),
+        empty,
         prev,
     }
 }
 
+fn ctx_of<'a>(element: &'a Element, pos: ElemPos, prev: Vec<Ctx<'a>>) -> Ctx<'a> {
+    ctx_from(
+        html_name(element),
+        Attrs::Node(&element.attrs),
+        pos,
+        element.children.is_empty(),
+        prev,
+    )
+}
+
 fn element_positions(nodes: &[Node]) -> Vec<Option<ElemPos>> {
-    let elems: Vec<(usize, String)> = nodes
+    let keys: Vec<Option<String>> = nodes
+        .iter()
+        .map(|n| n.as_element().map(|e| tag_key(&e.tag)))
+        .collect();
+    positions_from_keys(&keys)
+}
+
+/// Structural positions of the element siblings in `keys` (`None` = a text node):
+/// 1-based index among element siblings, index/total among same-key siblings.
+fn positions_from_keys(keys: &[Option<String>]) -> Vec<Option<ElemPos>> {
+    let elems: Vec<(usize, &str)> = keys
         .iter()
         .enumerate()
-        .filter_map(|(i, n)| n.as_element().map(|e| (i, tag_key(e))))
+        .filter_map(|(i, key)| key.as_deref().map(|key| (i, key)))
         .collect();
     let siblings = elems.len();
-    let mut positions = vec![None; nodes.len()];
+    let mut positions = vec![None; keys.len()];
     for (order, (i, key)) in elems.iter().enumerate() {
         positions[*i] = Some(position_for(order, key, &elems, siblings));
     }
     positions
 }
 
-fn position_for(order: usize, key: &str, elems: &[(usize, String)], siblings: usize) -> ElemPos {
-    let of_type_index = elems[..=order].iter().filter(|(_, k)| k == key).count();
-    let of_type_total = elems.iter().filter(|(_, k)| k == key).count();
+fn position_for(order: usize, key: &str, elems: &[(usize, &str)], siblings: usize) -> ElemPos {
+    let of_type_index = elems[..=order].iter().filter(|(_, k)| *k == key).count();
+    let of_type_total = elems.iter().filter(|(_, k)| *k == key).count();
     ElemPos {
         index: order + 1,
         of_type_index,
@@ -255,8 +373,8 @@ fn op_matches(op: &AttrOp, actual: &str, expected: &str) -> bool {
     }
 }
 
-fn attr_matches(sel: &AttrSel, attrs: &[Attr]) -> bool {
-    match find_attr(attrs, &sel.name) {
+fn attr_matches(sel: &AttrSel, attrs: Attrs) -> bool {
+    match attrs.get(&sel.name) {
         Some(actual) => op_matches(&sel.op, actual, &sel.value),
         None => false,
     }
@@ -296,8 +414,8 @@ fn pseudo_matches(pseudo: &Pseudo, ctx: &Ctx) -> bool {
     }
 }
 
-fn has_attr(attrs: &[Attr], name: &str) -> bool {
-    attrs.iter().any(|a| a.name.eq_ignore_ascii_case(name))
+fn has_attr(attrs: Attrs, name: &str) -> bool {
+    attrs.get_ignore_case(name).is_some()
 }
 
 fn is_form_control(tag: Option<&str>) -> bool {
@@ -438,15 +556,15 @@ fn collect_rules(cascade: &Cascade, path: &[Ctx], out: &mut Vec<Cand>) {
     }
 }
 
-fn collect_tokens(element: &Element, cascade: &Cascade, out: &mut Vec<Cand>) {
-    if let Some(t_style) = element.attr("t:style") {
+fn collect_tokens(element: &Ctx, cascade: &Cascade, out: &mut Vec<Cand>) {
+    if let Some(t_style) = element.attrs.get("t:style") {
         let decls = resolve_tokens(t_style, &cascade.tokens);
         push_decls(&decls, 2, (0, 0, 0), 0, out);
     }
 }
 
-fn collect_inline(element: &Element, out: &mut Vec<Cand>) {
-    if let Some(style) = element.attr("style") {
+fn collect_inline(element: &Ctx, out: &mut Vec<Cand>) {
+    if let Some(style) = element.attrs.get("style") {
         let decls = parse_declarations(style);
         push_decls(&decls, 4, (0, 0, 0), 0, out);
     }
@@ -457,14 +575,19 @@ fn collect_inline(element: &Element, out: &mut Vec<Cand>) {
 /// just above the UA sheet and below any real author rule (level 1, specificity
 /// 0), so an author stylesheet always overrides them. Old table-layout sites
 /// (Hacker News' orange header `<td bgcolor>`, sized `<img>`) depend on them.
-fn collect_presentational(element: &Element, out: &mut Vec<Cand>) {
+fn collect_presentational(element: &Ctx, out: &mut Vec<Cand>) {
     // Order matters (bgcolor, width, height, then `<font color>`); each entry is
     // present only when its attribute is set and usable.
     let decls: Vec<Declaration> = [
         bgcolor_decl(element),
-        element.attr("width").and_then(attr_length).map(width_decl),
         element
-            .attr("height")
+            .attrs
+            .get("width")
+            .and_then(attr_length)
+            .map(width_decl),
+        element
+            .attrs
+            .get("height")
             .and_then(attr_length)
             .map(height_decl),
         font_color_decl(element),
@@ -495,21 +618,23 @@ fn height_decl(value: String) -> Declaration {
 }
 
 /// `bgcolor="..."` → `background-color`, when non-empty.
-fn bgcolor_decl(element: &Element) -> Option<Declaration> {
+fn bgcolor_decl(element: &Ctx) -> Option<Declaration> {
     let bg = element
-        .attr("bgcolor")
+        .attrs
+        .get("bgcolor")
         .map(str::trim)
         .filter(|v| !v.is_empty())?;
     Some(pres_decl("background-color", bg.to_string()))
 }
 
 /// `<font color="...">` → `color`, when non-empty (only on the `<font>` tag).
-fn font_color_decl(element: &Element) -> Option<Declaration> {
+fn font_color_decl(element: &Ctx) -> Option<Declaration> {
     if !is_tag(element, "font") {
         return None;
     }
     let c = element
-        .attr("color")
+        .attrs
+        .get("color")
         .map(str::trim)
         .filter(|v| !v.is_empty())?;
     Some(pres_decl("color", c.to_string()))
@@ -533,8 +658,8 @@ fn valid_attr_length(value: &str) -> Option<f32> {
         .filter(|value| value.is_finite() && *value >= 0.0)
 }
 
-fn is_tag(element: &Element, name: &str) -> bool {
-    matches!(&element.tag, Tag::Html(t) if t.eq_ignore_ascii_case(name))
+fn is_tag(element: &Ctx, name: &str) -> bool {
+    element.tag.is_some_and(|t| t.eq_ignore_ascii_case(name))
 }
 
 /// The `cellpadding` (px) of the nearest ancestor `<table>` — a legacy table
@@ -542,15 +667,12 @@ fn is_tag(element: &Element, name: &str) -> bool {
 /// empty coloured `<td>` that must reserve its padding to show as a line).
 fn ancestor_cellpadding(path: &[Ctx]) -> Option<f32> {
     let table = path.iter().rev().skip(1).find(|c| c.tag == Some("table"))?;
-    let attr = table
-        .attrs
-        .iter()
-        .find(|a| a.name.eq_ignore_ascii_case("cellpadding"))?;
-    attr.value.trim().parse::<f32>().ok()
+    let value = table.attrs.get_ignore_case("cellpadding")?;
+    value.trim().parse::<f32>().ok()
 }
 
 /// Apply a table's `cellpadding` to its cells as a presentational padding hint.
-fn collect_cellpadding(element: &Element, path: &[Ctx], out: &mut Vec<Cand>) {
+fn collect_cellpadding(element: &Ctx, path: &[Ctx], out: &mut Vec<Cand>) {
     if !(is_tag(element, "td") || is_tag(element, "th")) {
         return;
     }
@@ -848,12 +970,10 @@ fn resolved_quad<'a>(
     })
 }
 
-fn resolve_style(
-    element: &Element,
-    path: &[Ctx],
-    parent: &ComputedStyle,
-    cascade: &Cascade,
-) -> ComputedStyle {
+/// Resolve the computed style of the subject element `path.last()` (its ancestors
+/// and preceding siblings are the rest of the match path).
+fn resolve_style(path: &[Ctx], parent: &ComputedStyle, cascade: &Cascade) -> ComputedStyle {
+    let element = path.last().expect("a match path ends at its subject");
     let mut cands = Vec::new();
     collect_presentational(element, &mut cands);
     collect_cellpadding(element, path, &mut cands);
@@ -877,13 +997,14 @@ fn style_element<'a>(
 ) -> StyledNode {
     let mut path = ancestors.to_vec();
     path.push(ctx_of(element, pos, prev));
-    let style = resolve_style(element, &path, parent, cascade);
+    let style = resolve_style(&path, parent, cascade);
     let children = style_siblings(&element.children, &path, &style, cascade);
     StyledNode::Element(StyledElement {
         tag: element.tag.clone(),
         attrs: element.attrs.clone(),
         style,
         children,
+        source: None,
     })
 }
 
@@ -900,7 +1021,7 @@ fn style_siblings<'a>(
     let mut out = Vec::with_capacity(nodes.len());
     for (i, node) in nodes.iter().enumerate() {
         match node {
-            Node::Text(t) => out.push(StyledNode::Text(t.clone())),
+            Node::Text(t) => out.push(StyledNode::Text(t.as_str().into())),
             Node::Element(e) => {
                 let pos = positions[i].expect("element has a position");
                 out.push(style_element(
@@ -923,6 +1044,17 @@ pub fn style_tree(nodes: &[Node], cascade: &Cascade) -> Vec<StyledNode> {
     style_siblings(nodes, &[], &ComputedStyle::default(), cascade)
 }
 
+/// [`style_tree`] with explicit [`StyleOptions`] (the legacy-input twin of
+/// [`style_input`]'s options).
+pub fn style_tree_with_options(
+    nodes: &[Node],
+    cascade: &Cascade,
+    options: &StyleOptions,
+) -> Vec<StyledNode> {
+    let _cmyk = crate::layout::value::cmyk_scope(options.accept_cmyk);
+    style_tree(nodes, cascade)
+}
+
 /// [`style_tree`] with `<html>`/`<body>` ancestor shells seeded as match-only
 /// contexts, so descendant selectors gated on their classes resolve. The shells
 /// are not laid out; they only participate in selector matching.
@@ -941,10 +1073,21 @@ pub fn style_tree_with_roots(
     // reached the page: `*{box-sizing:inherit}` resolved to nothing, so `width:50%`
     // cards were content-box + padding, overflowed their row, and stacked half-width.
     let mut parent = ComputedStyle::default();
-    for (i, e) in roots.iter().enumerate() {
-        parent = resolve_style(e, &ancestors[..=i], &parent, cascade);
+    for i in 0..roots.len() {
+        parent = resolve_style(&ancestors[..=i], &parent, cascade);
     }
     style_siblings(nodes, &ancestors, &parent, cascade)
+}
+
+/// [`style_tree_with_roots`] with explicit [`StyleOptions`].
+pub fn style_tree_with_roots_options(
+    nodes: &[Node],
+    cascade: &Cascade,
+    roots: &[Element],
+    options: &StyleOptions,
+) -> Vec<StyledNode> {
+    let _cmyk = crate::layout::value::cmyk_scope(options.accept_cmyk);
+    style_tree_with_roots(nodes, cascade, roots)
 }
 
 /// The position for a match-only root shell (a lone only-child); the structural
@@ -960,8 +1103,15 @@ fn root_pos() -> ElemPos {
 
 #[path = "matched.rs"]
 mod matched;
+
+#[path = "tree_view.rs"]
+mod tree_view;
 pub use matched::{
     presentational_declarations, resolve_matched_style, CascadeOrigin, MatchedDeclaration,
+};
+pub(crate) use tree_view::is_non_visual;
+pub use tree_view::{
+    style_input, Navigator, Roots, SiblingPosition, StyleInput, StyleOptions, TreeView,
 };
 
 #[cfg(test)]

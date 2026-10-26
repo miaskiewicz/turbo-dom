@@ -614,7 +614,7 @@ fn whitespace_only_source_bytes_have_a_bound_before_native_layout_capture() {
         snapshot_styled_tree_with_text, SnapshotInputs, TextSnapshotError,
     };
     use turbo_dom_layout::{ImageCtx, NoImages, StyledNode};
-    let nodes = [StyledNode::Text(" ".repeat(16 * 1024 * 1024 + 1))];
+    let nodes = [StyledNode::Text(" ".repeat(16 * 1024 * 1024 + 1).into())];
     let fonts = FontRegistry::new();
     let images = ImageCtx {
         resolver: &NoImages,
@@ -660,7 +660,7 @@ fn source_character_work_has_a_bound_even_below_the_byte_budget() {
         snapshot_styled_tree_with_text, SnapshotInputs, TextSnapshotError,
     };
     use turbo_dom_layout::{ImageCtx, NoImages, StyledNode};
-    let nodes = [StyledNode::Text("é".repeat(1_000_001))];
+    let nodes = [StyledNode::Text("é".repeat(1_000_001).into())];
     let fonts = FontRegistry::new();
     let images = ImageCtx {
         resolver: &NoImages,

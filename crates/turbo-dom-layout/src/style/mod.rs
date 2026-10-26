@@ -1,5 +1,7 @@
 //! The style system (§4): CSS parsing, the selector engine, named style tokens,
-//! render-time node styles, and cascade + inheritance into a styled tree.
+//! render-time node styles, and cascade + inheritance into a styled tree — from a
+//! turbo-dom [`Tree`](turbo_dom::Tree) ([`style_input`] over a [`TreeView`]) or
+//! from the legacy owned [`Node`](crate::Node) tree ([`style_tree`]).
 
 mod cascade;
 mod parser;
@@ -7,9 +9,12 @@ mod quad_shorthand;
 mod selector;
 mod token;
 
+pub(crate) use cascade::is_non_visual;
 pub use cascade::{
-    presentational_declarations, resolve_matched_style, style_tree, style_tree_with_roots, Cascade,
-    CascadeOrigin, ComputedStyle, LeveledRule, MatchedDeclaration, StyledElement, StyledNode,
+    presentational_declarations, resolve_matched_style, style_input, style_tree,
+    style_tree_with_options, style_tree_with_roots, style_tree_with_roots_options, Cascade,
+    CascadeOrigin, ComputedStyle, LeveledRule, MatchedDeclaration, Navigator, Roots,
+    SiblingPosition, StyleInput, StyleOptions, StyledElement, StyledNode, StyledText, TreeView,
 };
 pub use parser::{parse_declarations, parse_stylesheet, AtRule, Declaration, Rule, Stylesheet};
 pub use token::{StyleToken, TokenSet};

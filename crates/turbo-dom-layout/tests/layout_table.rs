@@ -30,6 +30,7 @@ fn ela(
             .collect(),
         style: cs(pairs),
         children,
+        source: None,
     })
 }
 
@@ -38,7 +39,7 @@ fn td(attrs: &[(&str, &str)], text: &str) -> StyledNode {
         "td",
         attrs,
         &[("display", "table-cell")],
-        vec![StyledNode::Text(text.to_string())],
+        vec![StyledNode::Text(text.into())],
     )
 }
 
@@ -418,14 +419,14 @@ fn border_spacing_separates_cells_by_default() {
 fn tds(pairs: &[(&str, &str)], text: &str) -> StyledNode {
     let mut p = vec![("display", "table-cell")];
     p.extend_from_slice(pairs);
-    ela("td", &[], &p, vec![StyledNode::Text(text.to_string())])
+    ela("td", &[], &p, vec![StyledNode::Text(text.into())])
 }
 
 /// A `<td>` with both HTML attrs (e.g. `rowspan`) and extra style pairs.
 fn tdas(attrs: &[(&str, &str)], pairs: &[(&str, &str)], text: &str) -> StyledNode {
     let mut p = vec![("display", "table-cell")];
     p.extend_from_slice(pairs);
-    ela("td", attrs, &p, vec![StyledNode::Text(text.to_string())])
+    ela("td", attrs, &p, vec![StyledNode::Text(text.into())])
 }
 
 #[test]

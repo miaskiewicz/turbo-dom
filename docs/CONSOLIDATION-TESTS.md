@@ -1001,3 +1001,38 @@ S0 in plain, legacy and new builds.
 | `turbo_dom<src/lib.rs>::rtdom::query::tests::s3a_selector_fixes_edge_cases` | added (edges of the fixes the control does not reach) | ok | FAILED |
 | `turbo_dom<src/lib.rs>::rtdom::query_frozen::frozen_tests::*` (59) | dual builds only: B-main's query.rs tests run against the frozen engine | ok | ok |
 | `turbo_dom<src/lib.rs>::rtdom::selector_dual::tests::star_bar_p_divergence_is_logged_again_on_the_second_identical_qsa_call` | dual builds only (gate unit test) | ok | ok |
+
+## S2 (DOM swap): new, adapted and renamed tests
+
+S2 moves no test. Every S1 test id keeps its result in every configuration (per-test
+TSVs compared against the S1 tips: html2pdf `--workspace`, core `--all-features` /
+`--no-default-features` / `--features svg`; turbo-dom-layout default / `--all-features` /
+`--no-default-features` / `--features svg`; turbo-dom-raster; turbo-dom +
+turbo-dom-browser-env), except the one rename below. The temporary layout features are
+gone, so turbo-dom-layout's `tests/print_color.rs` (formerly compiled only with
+`print-color`) now runs in every configuration.
+
+Categories: **new** — added in S2; **adapted** — same assertions on the new API;
+**adapted (dual-input)** — the test's Node literals / rendered flow are styled through
+BOTH inputs (legacy `style_tree` and the Tree input) with an equality assertion, then
+continue on the Tree result (`tests/common/mod.rs` `style_nodes` / `style_flow`) — kept
+until S4 removes the legacy input; **adapted (mechanical)** — compile-only follow-up of a
+type change (`StyledElement.source`, `StyledText`, `Tag::Marker`, `Page.semantics`).
+
+| crate | test (binary::name) | category |
+|---|---|---|
+| turbo-dom | `turbo_dom<src/lib.rs>::rtdom::tree::tree_access::tests::{parse_with_default_is_parse_and_scripting_makes_noscript_raw_text, character_data_reads_buffer_overlay_created_and_lone_surrogate_text, local_attributes_ignore_prefixes_and_cover_every_storage}` | new |
+| turbo-dom-layout | `tree_input_equivalence<tests/tree_input_equivalence.rs>::{tree_input_matches_the_legacy_node_input, shell_styling_records_sources_and_skips_non_content, markers_classify_by_local_name_and_never_strip}` | new (the S2 gate) |
+| turbo-dom-layout | `layout_options<tests/layout_options.rs>::{internal_links_get_their_own_box_only_when_asked, recorded_sources_cover_elements_texts_rows_and_the_id_range, markers_are_opaque_kept_and_unmatched_by_type_selectors}` | new |
+| turbo-dom-layout | `print_color<tests/print_color.rs>::{cmyk_is_rejected_unless_accepted, style_and_layout_entries_accept_cmyk_only_when_asked}` | new |
+| turbo-dom-layout | `print_color<tests/print_color.rs>::{cmyk_function_parses_percentages_and_fractions, cmyk_function_rejects_malformed_input, cmyk_components_clamp_out_of_range}` | adapted (runtime `accept_cmyk`; all configurations) |
+| turbo-dom-layout | `turbo_dom_layout<src/lib.rs>::markup::tests::classifier_marks_rejects_and_shells_stay_plain`, `::html_layout::tests::t_elements_are_unknown_inline_elements_on_the_html_path` | new |
+| turbo-dom-layout | `turbo_dom_layout<src/lib.rs>::html_layout::tests::block_children_of_a_directive_box_is_empty` -> `::block_children_of_a_marker_box_is_empty` | adapted (renamed) |
+| turbo-dom-layout | `image<tests/image.rs>` (8 tests via `styled_img` / Node literals), `style<tests/style.rs>::root_pseudo_matches_html_element`, `layout_snapshot<tests/layout_snapshot.rs>` (6 tests) | adapted (dual-input) |
+| turbo-dom-layout | `layout_block`, `layout_boxgen`, `layout_flex`, `layout_grid`, `layout_table`, `text_source_clusters`, in-source `boxgen`/`flex`/`block` tests | adapted (mechanical) |
+| turbo-html2pdf-core | `turbo_html2pdf_core<src/lib.rs>::equivalence_tests::tree_input_matches_the_legacy_node_input` | new (the S2 gate) |
+| turbo-html2pdf-core | `turbo_html2pdf_core<src/lib.rs>::markers::tests::markers_round_trip_every_directive`, `endnotes<tests/endnotes.rs>::slots_met_after_the_list_are_dropped_only_at_walked_levels` | new |
+| turbo-html2pdf-core | `fixtures`, `pdf_a`, `emit`, `layout`, `style`, `conformance_flags` (render_nodes users) | adapted (dual-input `style_flow`) |
+| turbo-html2pdf-core | `image`, `svg`, `layout_snapshot` (Node literals) | adapted (dual-input `style_nodes`) |
+| turbo-html2pdf-core | `nodes` (`Flow::to_nodes`), `endnotes` (rewrite on a `Flow`), `xref` + `conformance_flags` (pages from `render_pages`, links/anchors from `Page::semantics`) | adapted |
+| turbo-html2pdf-core | `layout_block`, `layout_boxgen`, `layout_flex`, `layout_fragment`, `layout_snapshot`, `svg_viewport_snapshot`, `native_inline_coverage`, `emit` (`Tag::Marker`), `append`, `print_color`, `stamp`, `image`, `encrypt`, `encryption_roundtrip`, `watermark` (`Page.semantics`) | adapted (mechanical) |

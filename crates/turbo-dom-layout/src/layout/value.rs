@@ -163,9 +163,7 @@ pub struct BorderEdges {
 
 impl BorderEdges {
     /// Whether any side has a non-zero width, i.e. the border paints something
-    /// (used by the `pdf-ua` emitter to decide if a box is decoration). Gated so
-    /// it adds nothing to the default build's coverage surface (AC-11.1).
-    #[cfg(feature = "pdf-ua")]
+    /// (html2pdf's tagged-PDF emitter uses it to decide if a box is decoration).
     pub fn any_visible(&self) -> bool {
         self.top.width > 0 || self.right.width > 0 || self.bottom.width > 0 || self.left.width > 0
     }
@@ -492,8 +490,16 @@ fn rgb_inner(t: &str) -> Option<&str> {
 }
 
 /// Parse a CSS color (`#rgb`/`#rrggbb`/`#rrggbbaa`, `rgb()`/`rgba()`, or a small
-/// named set). Returns `None` for an unrecognized value.
+/// named set). Returns `None` for an unrecognized value. `cmyk(...)` is accepted
+/// only inside a style/layout entry run with `accept_cmyk` (see
+/// [`parse_color_with`]).
 pub fn parse_color(s: &str) -> Option<Rgba> {
+    parse_color_with(s, accept_cmyk())
+}
+
+/// [`parse_color`] with explicit `cmyk(...)` acceptance (print colour): a
+/// `cmyk(c, m, y, k)` value maps to its device-equivalent RGB.
+pub fn parse_color_with(s: &str, accept_cmyk: bool) -> Option<Rgba> {
     let t = s.trim();
     if let Some(hex) = t.strip_prefix('#') {
         return parse_hex(hex);
@@ -501,11 +507,38 @@ pub fn parse_color(s: &str) -> Option<Rgba> {
     if let Some(inner) = rgb_inner(t) {
         return parse_rgb_fn(inner);
     }
-    #[cfg(feature = "print-color")]
-    if let Some(cmyk) = parse_cmyk(t) {
-        return Some(cmyk);
+    if accept_cmyk {
+        if let Some(cmyk) = parse_cmyk(t) {
+            return Some(cmyk);
+        }
     }
     named_color(&t.to_ascii_lowercase())
+}
+
+// `cmyk(...)` acceptance (print colour) is a per-call option of the style and
+// layout entries (`StyleOptions::accept_cmyk` / `LayoutOptions::accept_cmyk`).
+// Colours are parsed deep inside cascade validation and box-style resolution, so
+// the entry installs the flag for its own duration as a scoped thread-local (the
+// same mechanism the media viewport uses) instead of threading it through every
+// resolver; it is off everywhere else.
+thread_local!(static ACCEPT_CMYK: std::cell::Cell<bool> = const { std::cell::Cell::new(false) });
+
+fn accept_cmyk() -> bool {
+    ACCEPT_CMYK.with(std::cell::Cell::get)
+}
+
+/// Restores the previous `cmyk(...)` acceptance when dropped.
+pub(crate) struct CmykScope(bool);
+
+impl Drop for CmykScope {
+    fn drop(&mut self) {
+        ACCEPT_CMYK.with(|flag| flag.set(self.0));
+    }
+}
+
+/// Accept (`true`) or reject `cmyk(...)` colours until the returned guard drops.
+pub(crate) fn cmyk_scope(accept: bool) -> CmykScope {
+    CmykScope(ACCEPT_CMYK.with(|flag| flag.replace(accept)))
 }
 
 /// Parse a `cmyk(c, m, y, k)` functional colour into the nearest [`Rgba`]
@@ -514,7 +547,6 @@ pub fn parse_color(s: &str) -> Option<Rgba> {
 /// emitter (`emit::color::set_fill`) converts it back to DeviceCMYK so the page
 /// stream carries CMYK ink. Round-trips exactly for the achromatic and primary
 /// inks print stylesheets use.
-#[cfg(feature = "print-color")]
 fn parse_cmyk(s: &str) -> Option<Rgba> {
     let inner = paren_inner(s.strip_prefix("cmyk")?)?;
     let [c, m, y, k] = cmyk_components(inner)?;
@@ -524,7 +556,6 @@ fn parse_cmyk(s: &str) -> Option<Rgba> {
 
 /// Parse the four CMYK components from the `(...)` inner text, or `None` unless
 /// exactly four valid components are present.
-#[cfg(feature = "print-color")]
 fn cmyk_components(inner: &str) -> Option<[f32; 4]> {
     let mut out = [0.0_f32; 4];
     let mut seen = 0;
@@ -537,7 +568,6 @@ fn cmyk_components(inner: &str) -> Option<[f32; 4]> {
 }
 
 /// One CMYK component: a `NN%` percentage or a bare `0..=1` fraction, clamped.
-#[cfg(feature = "print-color")]
 fn cmyk_component(token: &str) -> Option<f32> {
     let value = match token.strip_suffix('%') {
         Some(pct) => pct.trim().parse::<f32>().ok()? / 100.0,

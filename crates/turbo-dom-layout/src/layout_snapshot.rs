@@ -116,7 +116,8 @@ pub enum GeometryKind {
     BorderBox,
     ImagePaint,
     TextLineContainer,
-    Directive,
+    /// A classified marker element's zero-size fragment.
+    Marker,
 }
 
 /// One native fragment. Indices follow native subtree paint order; the parent

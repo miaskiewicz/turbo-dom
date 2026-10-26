@@ -15,6 +15,8 @@
 #   surf-shim          turbo-surf `npm run test:shim`           } files are restored on exit
 #   surf-e2e           turbo-surf `npm run test:e2e`            }
 #   surf-detection     turbo-surf `npm run test:detection`      }
+#   surf-corpus        tools/parity `surf` + `surf-extra` corpora through the dual napi addon,
+#                      compared with SURF_CORPUS_CHECKPOINT (needs tools/parity/fetch-inputs.sh)
 #
 # environment:
 #   TURBO_TEST_DIR   turbo-test checkout (read only; copied)   default ../turbo-test-consolidation
@@ -26,7 +28,10 @@
 #   SURF_FEATURES    turbo-surf cargo features   default selector-dual (surf crates forward it)
 #   SURF_NAPI_PACKAGE / SURF_NAPI_NODE  surf napi crate + the absolute .node path the
 #                    playwright suites load (TURBO_SURF_NAPI_PATH)
+#   SURF_DETECTION_PACKAGE  surf crate owning examples/detection_trace   default turbo-surf-mcp
 #   TURBO_SURF_CHROME_PATH  passed through to surf-detection
+#   SURF_CORPUS_CHECKPOINT  parity checkpoint for surf-corpus   default b2-surf
+#   SURF_CORPUS_EXPECT      optional expected-diff file(s) for surf-corpus (space separated)
 #   CARGO_TARGET_DIR (turbo-dom), TT_TARGET_DIR, SURF_TARGET_DIR  target dirs (share them
 #                    across the two modes to avoid cold rebuilds; the build id differs anyway)
 #
@@ -64,7 +69,7 @@ stamp=$(date +%s)
 if [ "$#" -eq 0 ]; then
   set -- turbo-dom
   [ -d "$tt_src" ] && set -- "$@" turbo-test-cargo turbo-test-npm turbo-test-compat
-  [ -n "$surf" ] && set -- "$@" surf-cargo surf-shim surf-e2e surf-detection
+  [ -n "$surf" ] && set -- "$@" surf-cargo surf-shim surf-e2e surf-detection surf-corpus
 fi
 suites=("$@")
 wants() { local s; for s in "${suites[@]}"; do [ "$s" = "$1" ] && return 0; done; return 1; }
@@ -251,7 +256,7 @@ if wants_prefix surf; then
   (cd "$surf/rust" && env "${surf_env[@]}" "${cargo[@]}" build --release --message-format=json -p "$napi_package" --features "$surf_features") \
     >"$out/build-surf-napi.json" 2>"$out/build-surf-napi.err"
   record_artifacts turbo-surf "$out/build-surf-napi.json"
-  (cd "$surf/rust" && env "${surf_env[@]}" "${cargo[@]}" build --release --message-format=json -p turbo-surf-render --example detection_trace --features "$surf_features") \
+  (cd "$surf/rust" && env "${surf_env[@]}" "${cargo[@]}" build --release --message-format=json -p "${SURF_DETECTION_PACKAGE:-turbo-surf-mcp}" --example detection_trace --features "$surf_features") \
     >"$out/build-surf-detection.json" 2>"$out/build-surf-detection.err"
   record_artifacts turbo-surf "$out/build-surf-detection.json"
   napi_lib=$(ls "$surf_target"/release/lib*napi*.dylib 2>/dev/null | head -1)
@@ -271,6 +276,19 @@ if wants_prefix surf; then
     (cd "$surf" && env $(suite_env "surf-$s") npm run "test:$s") >"$out/surf-$s.log" 2>&1 || true
     tail -3 "$out/surf-$s.log"
   done
+  if wants surf-corpus; then
+    # the live corpus renders every fixture through the installed dual addon; Gate A wants
+    # it byte-equal to the checkpoint, Gate B to the plain-build (new engine) outputs
+    echo "== surf-corpus"
+    rm -rf "$out/logs/surf-corpus" "$out/surf-corpus"
+    expect=()
+    for f in ${SURF_CORPUS_EXPECT:-}; do expect+=(--expect "$f"); done
+    env $(suite_env surf-corpus) python3 "$root/tools/parity/parity.py" run "$out/surf-corpus" --surf "$napi_node" \
+      >"$out/surf-corpus.log" 2>&1 || true
+    python3 "$root/tools/parity/parity.py" compare "$out/surf-corpus" "${SURF_CORPUS_CHECKPOINT:-b2-surf}" \
+      "${expect[@]+"${expect[@]}"}" >"$out/surf-corpus-compare.log" 2>&1 || true
+    tail -3 "$out/surf-corpus-compare.log"
+  fi
 fi
 
 # ------------------------------------------------------------------ 4. manifest + checks

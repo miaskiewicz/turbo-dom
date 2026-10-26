@@ -4,8 +4,10 @@
 //! Split at the S1 relocation: the cases that need TKind directives, templating or the
 //! PDF emitter stay in turbo-html2pdf-core's `tests/style.rs`.
 
+mod common;
+
 use turbo_dom_layout::style::{
-    build_cascade, parse_stylesheet, style_tree, StyledElement, StyledNode, TokenSet,
+    build_cascade, parse_stylesheet, StyledElement, StyledNode, TokenSet,
 };
 
 fn find<'a>(
@@ -97,6 +99,6 @@ fn root_pseudo_matches_html_element() {
         children: vec![Node::Text("x".to_string())],
     });
     let cascade = build_cascade(":root { color: teal }", "", TokenSet::new());
-    let styled = style_tree(&[html], &cascade);
+    let styled = common::style_nodes(&[html], &cascade);
     assert_eq!(prop(&styled, "r", "color").as_deref(), Some("teal"));
 }

@@ -746,6 +746,7 @@ mod defensive_contract_tests {
             original_units: None,
             native_transforms: Some(HashMap::new()),
             floats: Vec::new(),
+            table_rows: None,
         };
         let edge = super::super::inline::PlacedInlineEdge {
             edge: InlineEdge {

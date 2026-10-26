@@ -19,11 +19,12 @@ fn el(tag: &str, pairs: &[(&str, &str)], children: Vec<StyledNode>) -> StyledNod
         attrs: vec![],
         style: cs(pairs),
         children,
+        source: None,
     })
 }
 
 fn txt(s: &str) -> StyledNode {
-    StyledNode::Text(s.to_string())
+    StyledNode::Text(s.into())
 }
 
 fn as_block(kind: &BoxKind) -> Vec<LayoutBox> {
@@ -228,6 +229,7 @@ fn img_lazy_data_url_and_srcset_become_replaced_source() {
                 .collect(),
             style: cs(&[("display", "block")]),
             children: vec![],
+            source: None,
         })
     };
     let src_of = |node: StyledNode| {
@@ -274,6 +276,7 @@ fn input_button_value_renders_as_text() {
             ],
             style: cs(&[]),
             children: vec![],
+            source: None,
         })
     };
     // submit/button/reset → the value becomes the box's text.

@@ -1,7 +1,8 @@
 # turbo-dom-layout
 
-The native **HTML/CSS layout engine** of turbo-dom: a style cascade over an owned
-node tree, box generation, block / inline / flex / grid / table layout into one
+The native **HTML/CSS layout engine** of turbo-dom: a style cascade over a
+turbo-dom `Tree` (`style_input` over a `TreeView`; the legacy owned `Node` tree is
+still accepted by `style_tree` until turbo-surf's copier is gone), box generation, block / inline / flex / grid / table layout into one
 continuous galley of positioned `Fragment`s, a font registry with shaping
 (rustybuzz) and per-character fallback, image intrinsic sizing (PNG / JPEG, plus
 SVG behind the `svg` feature), and CSSOM-View style layout snapshots
@@ -17,6 +18,22 @@ fn lay_out(html: &str) -> Result<Fragment, RenderError> {
 }
 ```
 
+## Inputs and options
+
+- `TreeView` — the html2pdf-mode view of a `Tree`: elements and text only (comments,
+  PIs, doctypes and `<template>` content skipped), local attribute names, an optional
+  marker classifier (`MarkerKind`: opaque inline/block markers such as html2pdf's `t:`
+  directives) and optional stripping of non-visual subtrees.
+- `Roots::Detached(&[Handle])` styles nodes as their own flow (no ancestors, default
+  parent); `Roots::Shell` styles `<body>` content under match-only `<html>`/`<body>`
+  shells (the HTML drive).
+- `StyleOptions` / `LayoutOptions` / `HtmlOptions`: `accept_cmyk` (print colour),
+  `atomic_internal_links` (`<a href="#x">` as its own box), `first_node_id`.
+- `layout_recorded` returns the galley plus `NodeSources` (box id → source element /
+  text node, table rows, id range) — html2pdf derives PDF/UA roles and links from it.
+- The string HTML entries (`layout_html`, `layout_boxes`) use no markers: `t:*` are
+  ordinary unknown elements, as in a browser.
+
 Consumers:
 - [`turbo-html2pdf-core`](https://github.com/miaskiewicz/turbo-html2pdf) — templating,
   pagination and PDF emit on top of this crate; it re-exports this crate's modules
@@ -30,7 +47,6 @@ Consumers:
 | `bundled-fonts` | on | embeds Inter / Roboto, Liberation Serif / PT Serif, Fira Code / IBM Plex Mono (OFL, see `assets/fonts/NOTICE.md`) so documents lay out with zero caller fonts |
 | `svg` | off | rasterizes `image/svg+xml` with resvg `=0.45.1` (pinned: 0.46+ changes raster output) |
 | `perf` | off | hot-path counters (`perf` module, `hot!` macro) |
-| `xref`, `pdf-ua`, `print-color` | off | TEMPORARY PDF-side gates whose cfg'd fields live in the layout code; forwarded by turbo-html2pdf-core's features of the same name. Replaced by runtime layout options in the consolidation's S2 step — do not enable them from other crates |
 | `test-support` | off | fixtures for downstream tests (`FontFace::collection_fixture_faces`); never in production |
 
 ## Provenance
@@ -38,8 +54,11 @@ Consumers:
 Relocated **verbatim** from `turbo-html2pdf-core` 0.3.9
 (miaskiewicz/turbo-html2pdf @ e2d7c4d) in the turbo-dom consolidation (step S1).
 `scripts/verify-copied-layout.sh` re-derives the moved files from that commit with
-`git archive` and diffs them, allowing only the rewrites listed in
-`scripts/verify-copied-layout.rules`. The per-test move manifest is
+`git archive` and diffs them against the S1 tree (`VERIFY_REF`, default the S1 merge
+commit), allowing only the rewrites listed in `scripts/verify-copied-layout.rules`.
+Step S2 then switched the cascade onto the turbo-dom `Tree` and replaced the
+temporary `xref`/`pdf-ua`/`print-color` features with runtime options; those edits
+are ordinary reviewed changes on top of S1. The per-test move manifest is
 `docs/CONSOLIDATION-TESTS.md`.
 
 ## Tests
@@ -48,7 +67,7 @@ Relocated **verbatim** from `turbo-html2pdf-core` 0.3.9
 cargo test -p turbo-dom-layout                         # default (bundled-fonts)
 cargo test -p turbo-dom-layout --features svg
 cargo test -p turbo-dom-layout --features perf
-cargo test -p turbo-dom-layout --features xref,pdf-ua,print-color
+TURBO_DOM_LAYOUT_EQUIV_DIRS=dir1:dir2 cargo test -p turbo-dom-layout --test tree_input_equivalence  # + corpora
 cargo test -p turbo-dom-layout --no-default-features   # 44 known failures: tests that assume bundled fonts (turbo-html2pdf#28)
 cargo tarpaulin --config crates/turbo-dom-layout/tarpaulin.toml
 ```
