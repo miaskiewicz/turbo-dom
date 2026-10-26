@@ -1,6 +1,6 @@
 (function(){
   var g = globalThis;
-  var compatibilityElementPrototype,computedStyleNativeMatches,computedStyleNativeOwner,computedStyleNativeTag,computedStyleNativeNamespace,computedStyleNativeConnected,computedStyleNativeRoot;
+  var compatibilityElementPrototype,computedStyleNativeMatches,computedStyleNativeGetAttribute,computedStyleNativeOwner,computedStyleNativeTag,computedStyleNativeNamespace,computedStyleNativeConnected,computedStyleNativeRoot;
   var normalizeComputedColor=g.__normalizeComputedColor;delete g.__normalizeComputedColor;
   var computedFontContext=g.__computedFontContext;delete g.__computedFontContext;
   var cssFontNumber=Number,cssFontString=String,cssFontFinite=Number.isFinite,cssFontPrecision=Number.prototype.toPrecision,cssFontLower=String.prototype.toLowerCase;
@@ -98,12 +98,12 @@
   function computedSnapshotValue(style,name){var record=declarationRecords.get(style),value=record&&cssMapGet(record.values,name);return value?value.text:'';}
   // Keep inherited unitless line-height as a factor: its public computed px value
   // alone cannot describe inheritance after a descendant changes font-size.
-  function computedFonts(decl,element,parentStyle,connected,pseudo){
+  function computedFonts(decl,element,parentStyle,connected,pseudo,parentSnapshot){
     var context=computedFontContext(element),parent=context&&context[2],root=context&&context[3];
-    // A pseudo-element's parent is its originating element.
+    // A pseudo-element's parent is its originating element (or its parent pseudo-element).
     if(pseudo&&context){parent=element;root=null;}
     var initialFamily=context?context[0]:'',initialSize=context?context[1]:16;
-    var inherited=parent?declarationRecords.get(parentStyle(parent)).fontState:null;
+    var inherited=parent?declarationRecords.get(parentSnapshot||parentStyle(parent)).fontState:null;
     var initial={__proto__:null,rootSize:initialSize,family:initialFamily,size:initialSize,style:'normal',weight:'400',stretch:'100%',caps:'normal',line:{__proto__:null,kind:'normal',value:0}};
     inherited=inherited||initial;
     function raw(name,inheritedValue,initialValue){var value=decl[name],key=typeof value==='string'?fontLower(value):value;return !value||/^(inherit|unset|revert|revert-layer)$/.test(key)?inheritedValue:key==='initial'?initialValue:value;}
@@ -163,10 +163,15 @@
     if(pseudo===null)return __ns.makeComputedStyleDeclaration({},null,null);
     return computeStyleSnapshot(el,new computedSnapshotMap(),undefined,pseudo||undefined);
   };
-  // Chrome 156 pseudo-elements without arguments, and the functional ones getComputedStyle accepts.
-  var computedPseudoNames={__proto__:null},computedPseudoFunctions={__proto__:null};
-  'after backdrop before checkmark column cue details-content file-selector-button first-letter first-line grammar-error marker picker-icon placeholder scroll-marker scroll-marker-group search-text selection spelling-error target-text view-transition'.split(' ').forEach(function(name){computedPseudoNames[name]=true;});
-  'cue highlight picker scroll-button view-transition-group view-transition-image-pair view-transition-new view-transition-old'.split(' ').forEach(function(name){computedPseudoFunctions[name]=true;});
+  // Chrome 156 pseudo-elements getComputedStyle computes, without arguments (turbo-dom#47).
+  // ::cue and the unknown -webkit- / -internal- names read the element; ::scroll-marker (no
+  // box without a scroll-marker-group) and the rest read an empty declaration.
+  var computedPseudoNames={__proto__:null};
+  'after backdrop before checkmark column details-content file-selector-button first-letter first-line grammar-error marker picker-icon placeholder scroll-marker-group search-text selection spelling-error target-text view-transition -webkit-scrollbar -webkit-scrollbar-thumb -webkit-scrollbar-track -webkit-scrollbar-button -webkit-scrollbar-corner -webkit-scrollbar-track-piece -webkit-resizer'.split(' ').forEach(function(name){computedPseudoNames[name]=true;});
+  // Functional pseudo-elements and the argument each accepts: a name (not `*`), `select`, or
+  // a scroll direction / `*`.
+  var computedPseudoFunctions={__proto__:null,'highlight':'name','view-transition-group':'name','view-transition-image-pair':'name','view-transition-new':'name','view-transition-old':'name','picker':'select','scroll-button':'direction'};
+  var scrollButtonDirections={__proto__:null,'*':1,'up':1,'down':1,'left':1,'right':1,'block-start':1,'block-end':1,'inline-start':1,'inline-end':1};
   // The CSS identifier at the start of `text` (escapes decoded, ASCII-lowercased) and its length.
   function cssIdentifierPrefix(text){
     var at=0,name='',start=true;
@@ -187,25 +192,31 @@
     return {name:name.replace(/[A-Z]/g,function(c){return c.toLowerCase();}),length:at};
   }
   // The pseudo-element a getComputedStyle(element, pseudoElt) read targets (turbo-dom#30, #47),
-  // per Chrome 156: '' reads the element (no argument, or a string without a leading colon that
-  // is not a bare before / after), null is an invalid pseudo-element (an empty declaration),
-  // else the pseudo-element the binding computes. A valid pseudo-element the binding does not
-  // model yet (::marker, ::placeholder, ...) also reads the element.
+  // per Chrome 156: '' reads the element (no argument, a string without a leading colon that
+  // is not a bare before / after, ::cue, unknown -webkit- / -internal- names), null is an
+  // empty declaration (invalid, or a form Chrome computes no style for), else the
+  // pseudo-element: its lowercase name, functional ones with their argument (`highlight(x)`,
+  // `picker(select)`).
   function computedPseudoTarget(value){
     if(value===undefined||value===null)return '';
     var text=(''+value).replace(/\/\*[\s\S]*?(?:\*\/|$)/g,'');
     var colons=0;while(text[colons]===':')colons++;
     var rest=text.slice(colons),ident=cssIdentifierPrefix(rest),name=ident&&ident.name;
-    var modelled=name==='before'||name==='after';
-    if(colons===0){if(!ident)return '';if(ident.length<rest.length)return null;return modelled?name:'';}
+    var bare=name==='before'||name==='after';
+    if(colons===0){if(!ident)return '';if(ident.length<rest.length)return null;return bare?name:'';}
     if(colons>2||!ident)return null;
     if(ident.length<rest.length){
-      if(colons!==2||rest[ident.length]!=='('||rest[rest.length-1]!==')'||!computedPseudoFunctions[name])return null;
-      return '';
+      var kind=computedPseudoFunctions[name];
+      if(colons!==2||rest[ident.length]!=='('||rest[rest.length-1]!==')'||!kind)return null;
+      var argument=rest.slice(ident.length+1,-1).replace(/^[ \t\n\r\f]+|[ \t\n\r\f]+$/g,''),word=cssIdentifierPrefix(argument);
+      if(kind==='direction'){var direction=argument==='*'?'*':word&&word.length===argument.length?word.name:'';return scrollButtonDirections[direction]?name+'('+direction+')':null;}
+      if(!word||word.length!==argument.length)return null;
+      if(kind==='select')return word.name==='select'?name+'(select)':null;
+      return name+'('+argument+')';
     }
-    if(colons===1)return modelled?name:name==='first-line'||name==='first-letter'?'':null;
-    if(modelled||name==='backdrop')return name;
-    return computedPseudoNames[name]||name.slice(0,8)==='-webkit-'?'':null;
+    if(colons===1)return bare||name==='first-line'||name==='first-letter'?name:null;
+    if(computedPseudoNames[name])return name;
+    return name==='cue'||name.slice(0,8)==='-webkit-'||name.slice(0,10)==='-internal-'?'':null;
   }
   // Page-replaceable numeric and string intrinsics never participate in this read.
   var cssZoomFround=Math.fround,cssZoomExec=RegExp.prototype.exec,cssZoomTrim=String.prototype.trim;
@@ -256,11 +267,13 @@
     var position = computedNativeMatches(el, '[popover]') || layer === 'modal' ? 'fixed' : name === 'dialog' ? 'absolute' : 'static';
     return { display: display, position: position, topLayer: layer !== '' };
   }
-  // turbo-dom#30: why `el` is in the top layer — 'modal' (a dialog shown with showModal(), which
-  // matches :modal), 'popover' (an open popover) — or '' when it is not.
+  // turbo-dom#30, #58: why `el` is in the top layer — 'modal' (a dialog shown with showModal(),
+  // which matches :modal), 'fullscreen' (in the fullscreen stack; the root element takes no
+  // fullscreen UA values in Chrome 156), 'popover' (an open popover) — or '' when it is not.
   function computedTopLayer(el){
     var namespace = '', tag = '';
     try { namespace = cssApply(computedStyleNativeNamespace, el, []); tag = cssApply(computedStyleNativeTag, el, []); } catch(e){}
+    if (computedNativeMatches(el, ':fullscreen:not(:root)')) return 'fullscreen';
     if (namespace !== 'http://www.w3.org/1999/xhtml') return '';
     if (tag === 'DIALOG' && computedNativeMatches(el, ':modal')) return 'modal';
     return computedNativeMatches(el, '[popover]') && computedNativeMatches(el, ':popover-open') ? 'popover' : '';
@@ -272,6 +285,20 @@
     if (display === 'contents') return computedFlexOrGridItem(el, parentStyle);
     return /^(inline-)?(flex|grid)$/.test(display);
   }
+  // html.css form controls (turbo-dom#61): `font: -webkit-small-control` (13.3333px Arial;
+  // monospace for textarea and the date / time inputs), optgroup bolder, option normal; the measured button
+  // box values. `tag` is the HTML element's tagName.
+  var monospaceInputTypes = { __proto__: null, 'date': 1, 'time': 1, 'datetime-local': 1, 'month': 1, 'week': 1 };
+  function formControlUserAgent(el, tag){
+    if (tag === 'BUTTON') return { 'display': 'inline-block', 'font': '13.3333px Arial', 'margin': '0px', 'padding': '1px 6px', 'border-width': '2px', 'vertical-align': 'baseline' };
+    if (tag === 'TEXTAREA') return { 'font': '13.3333px monospace' };
+    if (tag === 'SELECT') return { 'font': '13.3333px Arial' };
+    if (tag === 'OPTGROUP') return { 'font-weight': 'bolder' };
+    if (tag === 'OPTION') return { 'font-weight': 'normal' };
+    if (tag !== 'INPUT') return null;
+    var type = ''; try { type = cssApply(cssFontLower, String(cssApply(computedStyleNativeGetAttribute, el, ['type']) || ''), []); } catch(e){}
+    return { 'font': '13.3333px ' + (monospaceInputTypes[type] ? 'monospace' : 'Arial') };
+  }
   // CSS Position 4: a top-layer box whose position is static / relative / sticky is absolute.
   function topLayerPosition(position){ return /^(static|relative|sticky)$/.test(position) ? 'absolute' : position; }
   // Chrome 156 html.css values for a modal dialog (`dialog:modal`) and for ::backdrop; the
@@ -279,8 +306,12 @@
   var modalDialogUserAgent = { 'overflow': 'auto', 'top': '0px', 'bottom': '0px', 'visibility': 'visible' };
   function backdropUserAgent(layer){
     var inset = layer ? '0px' : 'auto';
-    return { 'top': inset, 'right': inset, 'bottom': inset, 'left': inset, 'background-color': layer === 'modal' ? 'rgba(0, 0, 0, 0.1)' : 'rgba(0, 0, 0, 0)' };
+    return { 'top': inset, 'right': inset, 'bottom': inset, 'left': inset, 'background-color': layer === 'modal' ? 'rgba(0, 0, 0, 0.1)' : layer === 'fullscreen' ? 'rgb(0, 0, 0)' : 'rgba(0, 0, 0, 0)' };
   }
+  // Chrome 156 fullscreen.css `:not(:root):fullscreen` (turbo-dom#58): object-fit is an
+  // ordinary UA declaration, the rest are !important and beat every author declaration.
+  var fullscreenUserAgent = { 'object-fit': 'contain' };
+  var fullscreenImportant = { 'position': 'fixed', 'inset': '0px', 'margin': '0px', 'box-sizing': 'border-box', 'min-width': '0px', 'max-width': 'none', 'min-height': '0px', 'max-height': 'none', 'width': '100%', 'height': '100%', 'transform': 'none' };
   // Split a selector list at its top-level commas (outside (), [] and strings).
   function selectorListItems(text){
     var items = [], depth = 0, quote = '', start = 0;
@@ -296,18 +327,150 @@
     items.push(text.slice(start));
     return items;
   }
+  // Selector aliases of pseudo-elements (`::-webkit-input-placeholder` is `::placeholder`).
+  var pseudoSelectorAliases = { __proto__: null, '-webkit-input-placeholder': 'placeholder', '-webkit-file-upload-button': 'file-selector-button' };
   // Does a style rule's selector list select `pseudo` of `el`: some complex selector ends with
-  // ::pseudo (or the legacy single-colon form for before / after) and its originating part
-  // matches `el`.
+  // ::pseudo (the legacy single-colon form for before / after / first-line / first-letter; a
+  // functional pseudo-element's argument must match, `*` matching every one) and its
+  // originating part matches `el`. `pseudo` is a computedPseudoTarget name, or a predicate
+  // over the selector's pseudo-element name.
   function pseudoRuleMatches(el, selectorText, pseudo){
     var items = selectorListItems(String(selectorText));
+    var wanted = typeof pseudo === 'string' ? /^([a-z-]+)(?:\((.*)\))?$/.exec(pseudo) : null;
     for (var i = 0; i < items.length; i++) {
-      var item = items[i].trim(), match = /(::?)([A-Za-z-]+)$/.exec(item);
-      if (!match || match[2].toLowerCase() !== pseudo || (match[1] === ':' && pseudo === 'backdrop')) continue;
-      if (match.index > 0 && item[match.index - 1] === '\\') continue;
+      var item = items[i].trim(), match = /(::?)([A-Za-z-]+)(?:\(\s*([^()]*?)\s*\))?$/.exec(item);
+      if (!match || match.index > 0 && item[match.index - 1] === '\\') continue;
+      var name = match[2].toLowerCase(), argument = match[3];
+      name = pseudoSelectorAliases[name] || name;
+      if (match[1] === ':' && !/^(before|after|first-line|first-letter)$/.test(name)) continue;
+      if (wanted) {
+        if (name !== wanted[1] || (argument === undefined) !== (wanted[2] === undefined)) continue;
+        if (argument !== undefined && argument !== '*' && wanted[2] !== '*') {
+          var same = wanted[1] === 'picker' || wanted[1] === 'scroll-button' ? argument.toLowerCase() === wanted[2] : argument === wanted[2];
+          if (!same) continue;
+        }
+      } else if (!pseudo(name)) continue;
       var origin = item.slice(0, match.index);
       if (origin === '' || /[\s>+~]$/.test(origin)) origin += '*';
       if (computedNativeMatches(el, origin)) return true;
+    }
+    return false;
+  }
+  // turbo-dom#47: how a UA-styled pseudo-element computes in Chrome 156. Each kind lists the
+  // author properties it accepts (null: all), its html.css declarations (`ua`, and
+  // `important` ones authors cannot override), its display / position, whether a flex / grid
+  // container blockifies it, and whether author rules reach it at all (element-backed
+  // pseudo-elements exist only on their elements: ::placeholder on text inputs / textarea with a
+  // placeholder, ::file-selector-button on file inputs, ::details-content on details,
+  // ::picker(select) on select).
+  function cssPropertySet(text){ var set = { __proto__: null }; text.split(' ').forEach(function(name){ set[name] = true; }); return set; }
+  var pseudoFontProperties = 'font font-family font-size font-style font-variant font-variant-caps font-variant-numeric font-variant-ligatures font-variant-east-asian font-variant-alternates font-variant-position font-weight font-stretch font-feature-settings font-kerning font-optical-sizing font-size-adjust font-synthesis font-variation-settings font-palette line-height letter-spacing word-spacing';
+  var pseudoAnimationProperties = 'animation animation-name animation-duration animation-timing-function animation-delay animation-iteration-count animation-direction animation-fill-mode animation-play-state transition transition-property transition-duration transition-timing-function transition-delay transition-behavior';
+  var pseudoTextProperties = 'background background-color background-image background-position background-repeat background-size background-attachment background-clip background-origin text-decoration text-decoration-line text-decoration-style text-decoration-color text-decoration-thickness text-underline-offset text-underline-position text-emphasis text-emphasis-color text-emphasis-style text-emphasis-position text-shadow text-transform vertical-align -webkit-text-fill-color -webkit-text-stroke -webkit-text-stroke-color -webkit-text-stroke-width';
+  var markerProperties = cssPropertySet(pseudoFontProperties + ' ' + pseudoAnimationProperties + ' color content direction unicode-bidi text-transform tab-size text-combine-upright text-emphasis text-emphasis-color text-emphasis-position text-emphasis-style text-shadow');
+  var firstLineProperties = cssPropertySet(pseudoFontProperties + ' ' + pseudoTextProperties + ' color opacity visibility');
+  var highlightProperties = cssPropertySet('color background-color text-decoration text-decoration-line text-decoration-style text-decoration-color text-decoration-thickness text-underline-offset text-shadow text-emphasis-color -webkit-text-fill-color -webkit-text-stroke -webkit-text-stroke-color -webkit-text-stroke-width stroke-color fill-color stroke-width');
+  var highlightPseudoNames = cssPropertySet('selection highlight spelling-error grammar-error target-text search-text');
+  function pseudoAccepts(kind){
+    if (kind === 'marker') return function(name){ return markerProperties[name] === true; };
+    if (kind === 'first-line') return function(name){ return firstLineProperties[name] === true; };
+    if (kind === 'first-letter') return function(name){ return firstLineProperties[name] === true || name === 'float' || /^(margin|padding|border)(-|$)/.test(name) || name === 'box-shadow'; };
+    if (kind === 'highlight') return function(name){ return highlightProperties[name] === true; };
+    return null;
+  }
+  var placeholderInputTypes = { __proto__: null, '': 1, 'text': 1, 'search': 1, 'url': 1, 'tel': 1, 'email': 1, 'password': 1, 'number': 1 };
+  var knownInputTypes = cssPropertySet('hidden text search tel url email password date month week time datetime-local number range color checkbox radio file submit image reset button');
+  function computedHtmlTag(el){
+    try { if (cssApply(computedStyleNativeNamespace, el, []) === 'http://www.w3.org/1999/xhtml') return cssApply(computedStyleNativeTag, el, []); } catch(e){}
+    return '';
+  }
+  function computedInputType(el){
+    var type = ''; try { type = cssApply(cssFontLower, String(cssApply(computedStyleNativeGetAttribute, el, ['type']) || ''), []); } catch(e){}
+    return knownInputTypes[type] ? type : '';
+  }
+  function computedHasAttribute(el, name){ try { return cssApply(computedStyleNativeGetAttribute, el, [name]) !== null; } catch(e){ return false; } }
+  // An inherited property's value at `el`: the nearest authored value on it or a composed
+  // ancestor (`fallback` at the root); `own(node)` may supply a UA value for a node.
+  function computedInheritedAuthored(el, name, parentStyle, fallback, own){
+    var node = el;
+    for (var depth = 0; node && depth < 256; depth++) {
+      var value = '';
+      try { value = computedSnapshotValue(parentStyle(node), name); } catch(e){}
+      if (!value && own) value = own(node);
+      if (value && !/^(inherit|unset)$/i.test(value)) return /^initial$/i.test(value) ? fallback : value;
+      var context = null; try { context = computedFontContext(node); } catch(e){}
+      node = context ? context[2] : null;
+    }
+    return fallback;
+  }
+  function markerInside(el, parentStyle){
+    var position = computedInheritedAuthored(el, 'list-style-position', parentStyle, 'outside', function(node){
+      var shorthand = ''; try { shorthand = computedSnapshotValue(parentStyle(node), 'list-style'); } catch(e){}
+      var word = /(?:^|\s)(inside|outside)(?:\s|$)/i.exec(shorthand || '');
+      if (word) return word[1];
+      return computedHtmlTag(node) === 'SUMMARY' && computedNativeMatches(node, 'details > summary:first-of-type') ? 'inside' : '';
+    });
+    return /^inside$/i.test(position);
+  }
+  function computedPseudoInfo(el, pseudo, parentStyle){
+    var kind = pseudo.replace(/\(.*$/, ''), tag = computedHtmlTag(el);
+    var info = { kind: kind, authored: true, accepts: null, ua: {}, important: null, display: 'inline', position: 'static', container: true, generated: false, highlight: false };
+    if (kind === 'marker') {
+      var inside = markerInside(el, parentStyle);
+      info.display = inside ? 'inline' : 'inline-block';
+      info.ua = { 'white-space': inside ? computedInheritedAuthored(el, 'white-space', parentStyle, 'normal') : 'pre', 'font-variant-numeric': 'tabular-nums', 'unicode-bidi': 'isolate', 'text-transform': 'none' };
+    } else if (kind === 'first-line' || kind === 'first-letter') {
+      info.container = kind === 'first-line';
+    } else if (highlightPseudoNames[kind]) {
+      info.highlight = true; info.container = false; kind = 'highlight';
+      if (info.kind === 'spelling-error' || info.kind === 'grammar-error') info.ua = { 'text-decoration-line': info.kind };
+    } else if (kind === 'placeholder') {
+      var input = tag === 'INPUT' && placeholderInputTypes[computedInputType(el)];
+      info.authored = (input || tag === 'TEXTAREA') && computedHasAttribute(el, 'placeholder');
+      if (info.authored) {
+        info.display = 'block';
+        info.ua = { 'color': 'rgb(117, 117, 117)', 'unicode-bidi': 'isolate' };
+        if (input) { info.ua['white-space'] = 'pre'; info.ua.overflow = 'hidden'; }
+        info.important = { 'pointer-events': 'none' };
+      }
+    } else if (kind === 'file-selector-button') {
+      info.authored = tag === 'INPUT' && computedInputType(el) === 'file';
+      if (info.authored) {
+        info.display = 'inline-block';
+        info.ua = { 'background-color': 'rgb(239, 239, 239)', 'white-space': 'nowrap', 'padding': '1px 6px', 'margin': '0px 4px 0px 0px', 'border-width': '2px', 'border-style': 'outset', 'text-align': 'center', 'box-sizing': 'border-box', 'user-select': 'none' };
+      }
+    } else if (kind === 'details-content') {
+      info.authored = tag === 'DETAILS';
+      if (info.authored) { info.display = 'block'; info.ua = { 'content-visibility': computedHasAttribute(el, 'open') ? 'visible' : 'hidden' }; }
+    } else if (kind === 'picker') {
+      info.authored = tag === 'SELECT';
+      if (info.authored) { info.display = 'none'; info.position = 'fixed'; info.ua = { 'overflow': 'auto', 'white-space': 'normal', 'unicode-bidi': 'isolate' }; }
+    } else if (kind === 'checkmark' || kind === 'picker-icon') {
+      info.generated = true;
+      if (kind === 'picker-icon' && tag === 'SELECT') info.display = 'block';
+    } else if (kind === 'scroll-marker-group') {
+      info.display = 'block';
+    } else if (kind.slice(0, 15) === 'view-transition' && tag) {
+      info.display = 'block'; info.position = 'absolute';
+      info.ua = kind === 'view-transition' || kind === 'view-transition-image-pair' ? { 'top': '0px', 'right': '0px', 'bottom': '0px', 'left': '0px' } : kind === 'view-transition-group' ? { 'top': '0px', 'right': 'auto', 'bottom': 'auto', 'left': '0px' } : { 'top': '0px', 'right': 'auto', 'bottom': 'auto', 'left': 'auto' };
+    }
+    // ::view-transition > -group() > -image-pair() > -old() / -new().
+    if (kind.slice(0, 16) === 'view-transition-') {
+      var argument = pseudo.slice(kind.length);
+      info.parentPseudo = kind === 'view-transition-group' ? 'view-transition' : kind === 'view-transition-image-pair' ? 'view-transition-group' + argument : 'view-transition-image-pair' + argument;
+    }
+    info.accepts = pseudoAccepts(kind);
+    return info;
+  }
+  // Highlight inheritance (CSS Pseudo 4): once a rule of a highlight pseudo-element (say
+  // ::selection) selects an element or an ancestor, that highlight inherits from the parent's
+  // (the initial values at the top); otherwise Chrome computes it from the element.
+  function computedHighlightMode(el, pseudo){
+    for (var node = el, depth = 0; node && depth < 256; depth++) {
+      var rules = computedStyleRules(node);
+      for (var i = 0; i < rules.length; i++) { try { if (pseudoRuleMatches(node, rules[i], pseudo)) return true; } catch(e){} }
+      var context = null; try { context = computedFontContext(node); } catch(e){}
+      node = context ? context[2] : null;
     }
     return false;
   }
@@ -343,13 +506,53 @@
     }
     return false;
   }
-  // `pseudo` (turbo-dom#30): compute that pseudo-element of `el` instead — its own rules
-  // (`sel::pseudo`), its UA values, inheritance from `el`; never cached with `el`'s snapshot.
+  // The style sheets whose rules can select `el`: its owner's sheets, plus the document's
+  // adopted sheets, for elements of the document tree. A shadow tree is its own style scope:
+  // document rules never select its elements (turbo-dom#68; its own rules come from the
+  // native shadow-scoped cascade).
+  function computedSheets(el){
+    var owner=el?cssApply(computedStyleNativeOwner,el,[]):null;
+    if(owner&&cssApply(computedStyleNativeRoot,el,[])!==owner&&cssApply(computedStyleNativeConnected,el,[]))return [];
+    // A live list refreshes on every indexed/length read. Refresh its private
+    // backing array once per computation; retained declarations still recompute.
+    var ownerRecord=owner&&collectionGet(owner),host=ownerRecord&&ownerRecord.cssHost;
+    var sheets = host ? host.readSheets() : [];
+    // Document adoption follows ordinary sheets, but is not a shadow-tree scope.
+    var adopted=adoptionStates&&adoptionStates.get(owner);
+    if(adopted&&cssApply(computedStyleNativeRoot,el,[])===owner){var active=[];cssSetPrototype(active,null);for(var index=0;index<sheets.length;index++)active[active.length]=sheets[index];for(var index=0;index<adopted.target.length;index++)active[active.length]=adopted.target[index];sheets=active;}
+    return sheets;
+  }
+  // The selector text of every enabled style rule that can select `el`.
+  function computedStyleRules(el){
+    var out=[],sheets=[];try{sheets=computedSheets(el);}catch(e){}
+    for (var si=0; si<sheets.length; si++) {
+      if(sheetRecord(sheets[si]).disabled)continue;
+      var rules = appliedSheetRuleRecords(sheets[si]);
+      for (var ri=0; ri<rules.length; ri++) {
+        var rule=rules[ri];
+        if(rule.type===1){out.push(rule.selectorText);continue;}
+        var txt = String(cssRuleText(rule) || ''), br = txt.indexOf('{');
+        if (br >= 0) out.push(txt.slice(0, br).trim());
+      }
+    }
+    return out;
+  }
+  // `pseudo` (turbo-dom#30, #47): compute that pseudo-element of `el` instead — its own rules
+  // (`sel::pseudo`, the properties it accepts), its UA values, inheritance from `el`
+  // (highlights: from the parent's highlight); never cached with `el`'s snapshot.
   function computeStyleSnapshot(el,snapshots,sink,pseudo){
     var cached=!pseudo&&el&&computedSnapshotGet(snapshots,el);if(cached)return cached;
     // Percentage lookup may visit several ancestors before font inheritance asks
     // for the immediate parent again. Reuse each resolved ancestor only in this read.
     function parentStyle(node){return computeStyleSnapshot(node,snapshots);}
+    // A disconnected element has no style (turbo-dom#67): every value reads "" until it is
+    // connected again (the declaration stays live). Typed OM's cascade read (`sink`) still
+    // reports the cascaded values.
+    if (!pseudo && !sink && el) {
+      var attached = true;
+      try { attached = __ns.domAccessor('isConnected',false,'Node').call(el); } catch(e) {}
+      if (!attached) { var empty = __ns.makeComputedStyleDeclaration({},el,null); computedSnapshotSet(snapshots,el,empty); return empty; }
+    }
     // A pseudo-element of a disconnected (or <video>/<audio> child) element has no style.
     if (pseudo) {
       var live = false;
@@ -382,22 +585,18 @@
     var setProp = function(name, val, important){ name = String(name).trim(); if (!name) return; if(important!==undefined){if(priorities[name]&&!important)return;priorities[name]=important;} if(uaValues&&typeof val==='string'&&/^revert$/i.test(val.trim())&&uaValues[name]!==undefined)val=uaValues[name]; if (typeof val === 'string' && name.slice(0, 2) !== '--'){ var t = val.trim(); if (t.charAt(0) === '#') val = normColor(t); else if (t === '0' && LEN_PROP.test(name)) val = '0px'; else if (val.indexOf(',') >= 0) val = cssPrelude(val,true); } decl[name] = val; decl[camel(name)] = val; if (sink) sink.order[name] = ++sink.count;
       if (typeof val === 'string') expandShorthand(name, val, function(property,value){setProp(property,value,important);});
     };
-    function applyDeclarations(record){for(var index=0;index<record.names.length;index++){var name=record.names[index],value=cssMapGet(record.values,name);setProp(name,value.text,value.priority==='important');}}
+    function applyDeclarations(record,accepts){for(var index=0;index<record.names.length;index++){var name=record.names[index],value=cssMapGet(record.values,name);if(accepts&&name.slice(0,2)!=='--'&&!accepts(name))continue;setProp(name,value.text,value.priority==='important');}}
+    var info=pseudo&&pseudo!=='backdrop'&&pseudo!=='before'&&pseudo!=='after'?computedPseudoInfo(el,pseudo,parentStyle):null;
     // Measured Chrome button defaults are UA declarations: every matching author
     // rule (including a universal selector) and inline value takes precedence.
     var ua = null, layer = '';
     try { if(pseudo||cssApply(computedStyleNativeConnected,el,[]))layer=computedTopLayer(el); } catch(e){}
-    try { if(pseudo==='backdrop')ua=backdropUserAgent(layer);else if(!pseudo&&layer==='modal')ua=modalDialogUserAgent;else if(!pseudo&&cssApply(computedStyleNativeTag,el,[])==='BUTTON'&&cssApply(computedStyleNativeNamespace,el,[])==='http://www.w3.org/1999/xhtml'&&cssApply(computedStyleNativeConnected,el,[])){var fontContext=computedFontContext(el);if(fontContext&&fontContext[4])ua={'display':'inline-block','font':'13.3333px Arial','margin':'0px','padding':'1px 6px','border-width':'2px','vertical-align':'baseline'};} } catch(e){}
+    try { if(pseudo==='backdrop')ua=backdropUserAgent(layer);else if(info)ua=info.ua;else if(!pseudo&&layer==='modal')ua=modalDialogUserAgent;else if(!pseudo&&cssApply(computedStyleNativeNamespace,el,[])==='http://www.w3.org/1999/xhtml'&&cssApply(computedStyleNativeConnected,el,[])){var fontContext=computedFontContext(el);if(fontContext&&fontContext[4])ua=formControlUserAgent(el,cssApply(computedStyleNativeTag,el,[]));}
+      if(!pseudo&&layer==='fullscreen')ua=Object.assign({},ua||{},fullscreenUserAgent); } catch(e){}
     if(ua){Object.keys(ua).forEach(function(name){setProp(name,ua[name]);});uaValues=Object.create(null);Object.keys(decl).forEach(function(name){if(typeof decl[name]==='string')uaValues[name]=decl[name];});}
     try {
-      var owner=el?cssApply(computedStyleNativeOwner,el,[]):null;
-      // A live list refreshes on every indexed/length read. Refresh its private
-      // backing array once per computation; retained declarations still recompute.
-      var ownerRecord=owner&&collectionGet(owner),host=ownerRecord&&ownerRecord.cssHost;
-      var sheets = host ? host.readSheets() : [];
-      // Document adoption follows ordinary sheets, but is not a shadow-tree scope.
-      var adopted=adoptionStates&&adoptionStates.get(owner);
-      if(adopted&&cssApply(computedStyleNativeRoot,el,[])===owner){var active=[];cssSetPrototype(active,null);for(var index=0;index<sheets.length;index++)active[active.length]=sheets[index];for(var index=0;index<adopted.target.length;index++)active[active.length]=adopted.target[index];sheets=active;}
+      // Element-backed pseudo-elements the element does not have see no author rules.
+      var sheets = info && !info.authored ? [] : computedSheets(el);
       for (var si=0; si<sheets.length; si++) {
         if(sheetRecord(sheets[si]).disabled)continue;
         var rules = appliedSheetRuleRecords(sheets[si]);
@@ -416,13 +615,17 @@
             for (var pi=0; pi<parts.length; pi++){ var s = parts[pi].trim(); if (!s) continue; try { if (cssApply(computedStyleNativeMatches,el,[s])) { matched = true; break; } } catch(e){} }
           }
           if (!matched) continue;
-          applyDeclarations(declarationRecord(rule.style));
+          applyDeclarations(declarationRecord(rule.style),info&&info.accepts);
         }
       }
     } catch(e){}
     // overlay inline style (own props React/components set: background, height, display, ...)
     var st = !pseudo && el && __ns.makeInlineStyleDeclaration(el);
     if (st) applyDeclarations(declarationRecord(st));
+    // !important UA declarations (::placeholder pointer-events, the fullscreen element's box)
+    // beat every author one.
+    var important = info ? info.important : !pseudo && layer === 'fullscreen' ? fullscreenImportant : null;
+    if (important) Object.keys(important).forEach(function(name){ setProp(name, important[name], true); });
     if (sink) { var cascaded = { __proto__: null }; Object.keys(decl).forEach(function(name){ if (typeof decl[name] === 'string' && (name.slice(0, 2) === '--' || name === name.toLowerCase())) cascaded[name] = decl[name]; }); sink.values = cascaded; return null; }
     // Inherited values come from the composed parent's snapshot in this read, so
     // CSSOM edits to document sheets reach descendants. Native cascade only adds
@@ -431,12 +634,28 @@
     try { var inheritContext = computedFontContext(el); inheritParent = pseudo ? el : inheritContext ? inheritContext[2] : null; } catch(e) {}
     // A fresh internal result is already resolved. Reading its public live getter
     // would compute the same ancestors again and double recursion at every level.
-    function inheritedValue(name){ return inheritParent ? computedSnapshotValue(parentStyle(inheritParent),name) : ''; }
+    // A view-transition pseudo-element inherits from its parent in the pseudo-element tree.
+    var inheritSnapshot = info && info.parentPseudo ? computeStyleSnapshot(el, snapshots, undefined, info.parentPseudo) : null;
+    function inheritedValue(name){ return inheritSnapshot ? computedSnapshotValue(inheritSnapshot,name) : inheritParent ? computedSnapshotValue(parentStyle(inheritParent),name) : ''; }
     // Web Animations compose over cascaded and inline values; !important declarations win.
     var animated=!pseudo&&el&&__ns.animatedStyle?__ns.animatedStyle(el,function(name){var value=decl[name];return value==null?'':String(value);},inheritedValue):null;
     if(animated)for(var ai=0;ai<animated.length;ai++)if(!priorities[animated[ai][0]])setProp(animated[ai][0],animated[ai][1]);
     var color = decl.color || '';
     if (!color && !pseudo) { try { color = __ns.cascadeProp.call(el, 'color'); } catch(e) {} }
+    // A highlight in highlight-inheritance mode inherits color / background-color from the
+    // parent's highlight, or takes the initial values (turbo-dom#47).
+    var highlightParent = undefined;
+    if (info && info.highlight) {
+      var highlightMode = false; try { highlightMode = computedHighlightMode(el, pseudo); } catch(e){}
+      if (highlightMode) {
+        var highlightContext = null; try { highlightContext = computedFontContext(el); } catch(e){}
+        var parentElement = highlightContext ? highlightContext[2] : null;
+        highlightParent = parentElement && computedHighlightMode(parentElement, pseudo) ? computeStyleSnapshot(parentElement, snapshots, undefined, pseudo) : null;
+        var inheritsKey = function(value){ return !value || /^(inherit|unset)$/i.test(String(value).trim()); };
+        if (inheritsKey(color)) color = highlightParent ? computedSnapshotValue(highlightParent, 'color') : 'rgb(0, 0, 0)';
+        if (inheritsKey(decl['background-color'])) setProp('background-color', highlightParent ? computedSnapshotValue(highlightParent, 'background-color') : 'rgba(0, 0, 0, 0)');
+      } else if (decl['background-color'] == null) setProp('background-color', 'rgba(0, 0, 0, 0)');
+    }
     var colorKeyword = String(color || '').toLowerCase();
     if (colorKeyword === 'initial' || colorKeyword === 'canvastext') color = 'rgb(0, 0, 0)';
     else if (!color || colorKeyword === 'inherit' || colorKeyword === 'unset' || colorKeyword === 'currentcolor') {
@@ -460,7 +679,7 @@
     };
     var keyword = function(value){ var key = value.toLowerCase(); return /^(inherit|initial|unset|revert|revert-layer)$/.test(key) ? key : ''; };
     if (connected) {
-      var ua = pseudo === 'backdrop' ? { display: 'block', position: layer ? 'fixed' : 'absolute', topLayer: layer !== '' } : pseudo ? { display: 'inline', position: 'static', topLayer: false } : computedUserAgentBox(el, layer);
+      var ua = pseudo === 'backdrop' ? { display: 'block', position: layer ? 'fixed' : 'absolute', topLayer: layer !== '' } : pseudo ? { display: info ? info.display : 'inline', position: info ? info.position : 'static', topLayer: false } : computedUserAgentBox(el, layer);
       var displayValue = cascadedValue('display'), displayKey = keyword(displayValue);
       if (!displayValue || displayKey === 'revert' || displayKey === 'revert-layer') displayValue = ua.display;
       else if (displayKey === 'inherit') displayValue = inheritedValue('display') || 'inline';
@@ -473,7 +692,7 @@
       if (ua.topLayer) positionValue = topLayerPosition(positionValue);
       var floatValue = String(decl['float'] == null ? '' : decl['float']).trim().toLowerCase();
       var floated = floatValue !== '' && floatValue !== 'none' && !keyword(floatValue);
-      if (positionValue === 'absolute' || positionValue === 'fixed' || floated || (pseudo ? pseudo !== 'backdrop' && computedPseudoInContainer(el, parentStyle) : computedFlexOrGridItem(el, parentStyle)))
+      if (positionValue === 'absolute' || positionValue === 'fixed' || floated || (pseudo ? pseudo !== 'backdrop' && (!info || info.container) && computedPseudoInContainer(el, parentStyle) : computedFlexOrGridItem(el, parentStyle)))
         displayValue = blockifiedDisplay(displayValue);
       decl.display = displayValue;
       decl.position = positionValue;
@@ -489,13 +708,16 @@
     if (visibilityKey === 'initial') visibilityValue = 'visible';
     else if (connected && (visibilityValue === '' || visibilityKey)) { try { visibilityValue = inheritedValue('visibility'); } catch(e){ visibilityValue = ''; } }
     if (!visibilityValue && connected) visibilityValue = 'visible';
+    // Highlights never take the element's visibility (turbo-dom#47).
+    if (connected && info && info.highlight) visibilityValue = 'visible';
     decl.visibility = visibilityValue || '';
-    // `content` computes to normal, and to none on ::before / ::after; strings serialize
-    // double-quoted (turbo-dom#47).
-    if (pseudo === 'before' || pseudo === 'after') {
-      var contentValue = decl.content == null ? '' : String(decl.content).trim();
-      decl.content = contentValue === '' || /^normal$/i.test(contentValue) ? 'none' : contentValue.replace(/'((?:[^'\\\n]|\\[\s\S])*)'/g, function(_, inner){ return '"' + inner.replace(/\\'/g, "'").replace(/"/g, '\\"') + '"'; });
-    } else if (decl.content == null) decl.content = connected ? 'normal' : '';
+    // `content` computes to normal, and to none on ::before / ::after / ::checkmark /
+    // ::picker-icon; strings serialize double-quoted (turbo-dom#47).
+    var contentValue = decl.content == null ? '' : String(decl.content).trim();
+    if (pseudo && contentValue) contentValue = contentValue.replace(/'((?:[^'\\\n]|\\[\s\S])*)'/g, function(_, inner){ return '"' + inner.replace(/\\'/g, "'").replace(/"/g, '\\"') + '"'; });
+    if (pseudo === 'before' || pseudo === 'after' || info && info.generated) decl.content = contentValue === '' || /^normal$/i.test(contentValue) ? 'none' : contentValue;
+    else if (pseudo && contentValue) decl.content = contentValue;
+    else if (decl.content == null) decl.content = connected ? 'normal' : '';
     // Initial computed values of properties Web Animations commonly animate.
     if (decl.opacity == null) decl.opacity = connected ? '1' : '';
     if (decl.transform == null) { decl.transform = connected ? 'none' : ''; }
@@ -509,7 +731,7 @@
     // A modal dialog's overflow longhands recompose the shorthand.
     if (connected && !pseudo && layer === 'modal' && typeof decl['overflow-x'] === 'string' && typeof decl['overflow-y'] === 'string')
       decl.overflow = decl['overflow-x'] === decl['overflow-y'] ? decl['overflow-x'] : decl['overflow-x'] + ' ' + decl['overflow-y'];
-    if (pseudo === 'backdrop' && typeof decl['background-color'] === 'string') decl['background-color'] = decl.backgroundColor = normalizeComputedColor(decl['background-color']);
+    if (pseudo && typeof decl['background-color'] === 'string') decl['background-color'] = decl.backgroundColor = normalizeComputedColor(decl['background-color']);
     var usedPx = function(node, axis, depth){
       if (!node || depth > 32) return null;
       var raw;try{raw=node===el?decl[axis]:computedSnapshotValue(parentStyle(node),axis);}catch(e){return null;}
@@ -522,7 +744,16 @@
       if ((raw === '' || raw === 'auto') && axis === 'width') return usedPx(parent, axis, depth + 1);
       return null;
     };
-    if (!pseudo) try {
+    // The fullscreen element's width / height (100% !important of the viewport, its
+    // containing block as a fixed box) are the viewport's innerWidth / innerHeight in px
+    // (turbo-dom#58); without a viewport they stay 100%.
+    if (!pseudo && layer === 'fullscreen') {
+      [['width', g.innerWidth], ['height', g.innerHeight]].forEach(function(pair){
+        var size = +pair[1];
+        if (size > 0 && cssFontFinite(size)) setProp(pair[0], (Math.round(size * 1000) / 1000) + 'px', true);
+      });
+    }
+    if (!pseudo && layer !== 'fullscreen') try {
       ['width', 'height'].forEach(function(axis){
         var raw = decl[axis];
         if (typeof raw === 'string' && /^-?\d+(?:\.\d+)?%$/.test(raw.trim())) {
@@ -531,7 +762,7 @@
         }
       });
     } catch(e){}
-    var fontState=computedFonts(decl,el,parentStyle,connected,pseudo);
+    var fontState=computedFonts(decl,el,parentStyle,connected,pseudo,inheritSnapshot);
     // dialog:modal max-width / max-height: calc(100% - 6px - 2em) at the dialog's font size.
     if (connected && !pseudo && layer === 'modal' && fontState && typeof fontState.size === 'number') {
       var inset = 'calc(100% - ' + cssFontString(cssFontNumber(cssApply(cssFontPrecision, 2 * fontState.size + 6, [6]))) + 'px)';
@@ -637,6 +868,10 @@
     var modifierNames={Alt:'altKey',Control:'ctrlKey',Meta:'metaKey',Shift:'shiftKey',AltGraph:'modifierAltGraph',CapsLock:'modifierCapsLock',Fn:'modifierFn',FnLock:'modifierFnLock',Hyper:'modifierHyper',NumLock:'modifierNumLock',ScrollLock:'modifierScrollLock',Super:'modifierSuper',Symbol:'modifierSymbol',SymbolLock:'modifierSymbolLock'};
     function modifiers(init){var state={};Object.keys(modifierNames).forEach(function(name){state[modifierNames[name]]=!!init[modifierNames[name]];});return state;}
     function member(prototype,name,descriptor){descriptor.configurable=true;descriptor.enumerable=true;if(descriptor.value){descriptor.writable=true;if(__ns.makeNativeFunction)descriptor.value=__ns.makeNativeFunction(descriptor.value,name,descriptor.value.length);}if(descriptor.get&&__ns.makeNativeFunction)descriptor.get=__ns.makeNativeFunction(descriptor.get,'get '+name,0);Object.defineProperty(prototype,name,descriptor);}
+    // relatedTarget: the dispatch retargets it per listener (turbo-dom#66) through the private
+    // record; outside a dispatch it is the last retargeted value, or the initialized one.
+    function relatedRecord(event,related){var record=eventRecord(event);record.relatedTarget=related;record.relatedAdjusted=false;record.adjustedRelatedTarget=null;}
+    function relatedGetter(prototype,states){member(prototype,'relatedTarget',{get:Object.getOwnPropertyDescriptor({get relatedTarget(){var state=stateOf(states,this),record=eventRecord(this);return record.relatedAdjusted?record.adjustedRelatedTarget:state.relatedTarget;}},'relatedTarget').get});}
     function readonly(prototype,states,names){names.forEach(function(name){member(prototype,name,{get:Object.getOwnPropertyDescriptor({get [name](){return stateOf(states,this)[name];}},name).get});});}
     function tagEvent(Constructor,name){Object.defineProperty(Constructor.prototype,Symbol.toStringTag,{value:name,configurable:true});}
     function initializeUI(event,init){var view=init.view===undefined?null:init.view;if(view!==null&&view!==g&&!((g.Window&&view instanceof g.Window)))throw new TypeError('view must be a Window');uiStates.set(event,{view:view,detail:intValue(init.detail),sourceCapabilities:null,pseudoTarget:null});}
@@ -649,14 +884,14 @@
     tagEvent(UIEvent,'UIEvent');g.UIEvent=UIEvent;
     function mouseState(init){var state=modifiers(init);['screenX','screenY','clientX','clientY','movementX','movementY'].forEach(function(name){state[name]=numberValue(init[name]);});state.button=shortValue(init.button);state.buttons=intValue(init.buttons)&65535;state.relatedTarget=init.relatedTarget||null;if(state.relatedTarget!==null&&!(state.relatedTarget instanceof g.EventTarget))throw new TypeError('relatedTarget must be an EventTarget');return state;}
     class MouseEvent extends UIEvent {
-      constructor(type,init={}){if(!arguments.length)throw new TypeError('A type is required');super(type,init);mouseStates.set(this,mouseState(init||{}));}
+      constructor(type,init={}){if(!arguments.length)throw new TypeError('A type is required');super(type,init);mouseStates.set(this,mouseState(init||{}));relatedRecord(this,mouseStates.get(this).relatedTarget);}
     }
-    readonly(MouseEvent.prototype,mouseStates,['screenX','screenY','clientX','clientY','ctrlKey','shiftKey','altKey','metaKey','button','buttons','relatedTarget','movementX','movementY']);
+    readonly(MouseEvent.prototype,mouseStates,['screenX','screenY','clientX','clientY','ctrlKey','shiftKey','altKey','metaKey','button','buttons','movementX','movementY']);relatedGetter(MouseEvent.prototype,mouseStates);
     ['pageX','pageY','x','y','offsetX','offsetY','layerX','layerY'].forEach(function(name){var axis=name.endsWith('X')||name==='x'?'clientX':'clientY';member(MouseEvent.prototype,name,{get:Object.getOwnPropertyDescriptor({get [name](){var value=stateOf(mouseStates,this)[axis];return name.startsWith('page')?value+(axis==='clientX'?(g.scrollX||0):(g.scrollY||0)):value;}},name).get});});
     ['fromElement','toElement'].forEach(function(name){member(MouseEvent.prototype,name,{get:Object.getOwnPropertyDescriptor({get [name](){var state=stateOf(mouseStates,this),event=eventRecord(this);return (name==='fromElement')===(event.type==='mouseover'||event.type==='mouseenter')?state.relatedTarget:event.target;}},name).get});});
     function modifier(states,receiver,key){var state=stateOf(states,receiver);return !!state[modifierNames[eventString(key)]];}
     member(MouseEvent.prototype,'getModifierState',{value:function getModifierState(key){if(!arguments.length)throw new TypeError('A modifier is required');return modifier(mouseStates,this,key);}});
-    member(MouseEvent.prototype,'initMouseEvent',{value:function initMouseEvent(type,bubbles=false,cancelable=false,view=null,detail=0,screenX=0,screenY=0,clientX=0,clientY=0,ctrlKey=false,altKey=false,shiftKey=false,metaKey=false,button=0,relatedTarget=null){stateOf(mouseStates,this);if(!arguments.length)throw new TypeError('A type is required');if(eventRecord(this).dispatching)return;UIEvent.prototype.initUIEvent.call(this,type,bubbles,cancelable,view,detail);mouseStates.set(this,mouseState({screenX,screenY,clientX,clientY,ctrlKey,altKey,shiftKey,metaKey,button,relatedTarget}));}});
+    member(MouseEvent.prototype,'initMouseEvent',{value:function initMouseEvent(type,bubbles=false,cancelable=false,view=null,detail=0,screenX=0,screenY=0,clientX=0,clientY=0,ctrlKey=false,altKey=false,shiftKey=false,metaKey=false,button=0,relatedTarget=null){stateOf(mouseStates,this);if(!arguments.length)throw new TypeError('A type is required');if(eventRecord(this).dispatching)return;UIEvent.prototype.initUIEvent.call(this,type,bubbles,cancelable,view,detail);mouseStates.set(this,mouseState({screenX,screenY,clientX,clientY,ctrlKey,altKey,shiftKey,metaKey,button,relatedTarget}));relatedRecord(this,mouseStates.get(this).relatedTarget);}});
     tagEvent(MouseEvent,'MouseEvent');g.MouseEvent=MouseEvent;
     class KeyboardEvent extends UIEvent {
       constructor(type,init={}){if(!arguments.length)throw new TypeError('A type is required');super(type,init);init=init||{};var state=modifiers(init);state.key=stringValue(init.key);state.code=stringValue(init.code);state.location=intValue(init.location)>>>0;state.repeat=!!init.repeat;state.isComposing=!!init.isComposing;state.charCode=intValue(init.charCode)>>>0;state.keyCode=intValue(init.keyCode)>>>0;keyStates.set(this,state);}
@@ -673,9 +908,9 @@
     member(InputEvent.prototype,'getTargetRanges',{value:function getTargetRanges(){stateOf(inputStates,this);return [];}});
     tagEvent(InputEvent,'InputEvent');g.InputEvent=InputEvent;
     class FocusEvent extends UIEvent {
-      constructor(type,init={}){if(!arguments.length)throw new TypeError('A type is required');super(type,init);var related=(init||{}).relatedTarget||null;if(related!==null&&!(related instanceof g.EventTarget))throw new TypeError('relatedTarget must be an EventTarget');focusStates.set(this,{relatedTarget:related});}
+      constructor(type,init={}){if(!arguments.length)throw new TypeError('A type is required');super(type,init);var related=(init||{}).relatedTarget||null;if(related!==null&&!(related instanceof g.EventTarget))throw new TypeError('relatedTarget must be an EventTarget');focusStates.set(this,{relatedTarget:related});relatedRecord(this,related);}
     }
-    readonly(FocusEvent.prototype,focusStates,['relatedTarget']);tagEvent(FocusEvent,'FocusEvent');g.FocusEvent=FocusEvent;
+    relatedGetter(FocusEvent.prototype,focusStates);tagEvent(FocusEvent,'FocusEvent');g.FocusEvent=FocusEvent;
     class PointerEvent extends MouseEvent {
       constructor(type,init={}){if(!arguments.length)throw new TypeError('A type is required');super(type,init);init=init||{};var state={pointerId:intValue(init.pointerId),width:numberValue(init.width,1),height:numberValue(init.height,1),pressure:numberValue(init.pressure),tangentialPressure:numberValue(init.tangentialPressure),tiltX:intValue(init.tiltX),tiltY:intValue(init.tiltY),twist:intValue(init.twist)>>>0,pointerType:stringValue(init.pointerType),isPrimary:!!init.isPrimary,altitudeAngle:numberValue(init.altitudeAngle,Math.PI/2),azimuthAngle:numberValue(init.azimuthAngle),persistentDeviceId:intValue(init.persistentDeviceId)};pointerStates.set(this,state);}
     }
@@ -785,9 +1020,20 @@ if(typeof __ns.makeNativeFunction==='function'){
   ['name','message','code'].forEach(function(key){var descriptor=Object.getOwnPropertyDescriptor(exceptionConstructor.prototype,key);descriptor.get=__ns.makeNativeFunction(descriptor.get,'get '+key,0);Object.defineProperty(exceptionConstructor.prototype,key,descriptor);});
   g.DOMException=exceptionConstructor;
 }
+// The realm's DOMException interface (turbo-surf#42, turbo-dom#72): the one an embedder registered
+// (register_dom_exception: turbo-surf installs its own after the binding), else the binding's.
+// Resolved whenever an exception is raised, so no module captures a constructor at install and a
+// page reassigning globalThis.DOMException changes nothing. `new ts.DOMException(message, name)`
+// constructs one; `instanceof ts.DOMException` tests against the current interface.
+var __realmExceptionNative=g.__nativeRealmDOMException,__bindingException=g.DOMException,__exceptionConstruct=Reflect.construct;delete g.__nativeRealmDOMException;
+// URL-reflecting getters and currentSrc parse against the node document's base URL (turbo-dom#73).
+__ns.resolveDocumentURL=g.__nativeResolveDocumentURL;delete g.__nativeResolveDocumentURL;
+__ns.realmDOMException=function(){var constructor=typeof __realmExceptionNative==='function'?__realmExceptionNative():undefined;return typeof constructor==='function'?constructor:__bindingException;};
+__ns.DOMException=function DOMException(){return __exceptionConstruct(__ns.realmDOMException(),arguments);};
+Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value){return value instanceof __ns.realmDOMException();}});
   function beginEventDispatch(event,target,path,host=false){
     var state=eventRecord(event);
-    if(state.dispatching||!state.type)throw new g.DOMException('The event is already being dispatched or uninitialized.','InvalidStateError');
+    if(state.dispatching||!state.type)throw new __ns.DOMException('The event is already being dispatched or uninitialized.','InvalidStateError');
     state.dispatching=true;state.trusted=host;
     state.target=target;state.currentTarget=target;state.eventPhase=2;state.path=path;
     return state;
@@ -899,7 +1145,7 @@ if(typeof __ns.makeNativeFunction==='function'){
     LEGEND:'HTMLLegendElement', OL:'HTMLOListElement', DL:'HTMLDListElement', PRE:'HTMLPreElement',
     TR:'HTMLTableRowElement', COL:'HTMLTableColElement', CAPTION:'HTMLTableCaptionElement',
     PROGRESS:'HTMLProgressElement', METER:'HTMLMeterElement', DETAILS:'HTMLDetailsElement',
-    PICTURE:'HTMLPictureElement', SOURCE:'HTMLSourceElement', VIDEO:'HTMLVideoElement',
+    PICTURE:'HTMLPictureElement', SOURCE:'HTMLSourceElement', TRACK:'HTMLTrackElement', VIDEO:'HTMLVideoElement',
     AUDIO:'HTMLAudioElement', TEMPLATE:'HTMLTemplateElement', SLOT:'HTMLSlotElement',
     BODY:'HTMLBodyElement', HTML:'HTMLHtmlElement', HEAD:'HTMLHeadElement', META:'HTMLMetaElement',
     LINK:'HTMLLinkElement', TITLE:'HTMLTitleElement', BASE:'HTMLBaseElement', BR:'HTMLBRElement',
@@ -1018,7 +1264,7 @@ if(typeof __ns.makeNativeFunction==='function'){
   function colorText(name,text){if(!/(?:^color$|color$)/.test(name))return text;var match=/^#([\da-f]{3}|[\da-f]{6})$/i.exec(text);if(!match)return text;var hex=match[1];if(hex.length===3)hex=hex.replace(/./g,function(c){return c+c;});return 'rgb('+parseInt(hex.slice(0,2),16)+', '+parseInt(hex.slice(2,4),16)+', '+parseInt(hex.slice(4,6),16)+')';}
   function storeDeclaration(record,name,text,priority){if(!record.values.has(name))record.names.push(name);record.values.set(name,{text:colorText(name,text),priority:priority||''});}
   function parseDeclaration(record,text){record.names=[];record.values=new Map();var selector=record.fontFace?'@font-face':'x',parsed=typeof cssNativeParse==='function'?cssNativeParse(selector+' { '+text+' }'):selector+' { '+text+' }';var body=parsed.slice(parsed.indexOf('{')+1,parsed.lastIndexOf('}'));cssParts(body,';').forEach(function(part){var index=part.indexOf(':');if(index<1)return;var name=part.slice(0,index).trim();if(!record.fontFace&&!name.startsWith('--')&&!knownProperty(name))return;var value=part.slice(index+1).trim(),important=/\s*!important\s*$/i.test(value);if(important)value=value.replace(/\s*!important\s*$/i,'').trim();if(!record.fontFace&&!name.startsWith('--')&&__ns.typedOmValid&&!__ns.typedOmValid(name,value))return;var previous=record.values.get(name);if(previous&&previous.priority&&!important)return;storeDeclaration(record,name,value,important?'important':'');});}
-  function writableDeclaration(record){if(record.readOnly)throw new g.DOMException('The declaration is read-only','NoModificationAllowedError');}
+  function writableDeclaration(record){if(record.readOnly)throw new __ns.DOMException('The declaration is read-only','NoModificationAllowedError');}
   function commitDeclaration(record){if(record.owner){record.source=declarationText(record);appliedInlineWrite.call(record.owner,record.source);}}
   function removeDeclaration(record,name){var previous=record.values.get(name);if(!previous)return '';record.values.delete(name);record.names.splice(record.names.indexOf(name),1);commitDeclaration(record);return previous.text;}
   function setDeclaration(record,name,value,priority){writableDeclaration(record);name=cssString(name);value=value===null?'':cssString(value);priority=priority==null?'':cssString(priority).toLowerCase();if(!value){removeDeclaration(record,name);return;}if(priority&&priority!=='important'||!record.fontFace&&!name.startsWith('--')&&!knownProperty(name))return;var parsed={names:[],values:new Map(),fontFace:record.fontFace};parseDeclaration(parsed,name+': '+value+(priority?' !important':'')+';');var accepted=parsed.values.get(name);if(!accepted&&record.fontFace&&knownProperty(name)){parsed.fontFace=false;parseDeclaration(parsed,name+': '+value+(priority?' !important':'')+';');accepted=parsed.values.get(name);}if(!accepted)return;storeDeclaration(record,name,accepted.text,accepted.priority);commitDeclaration(record);}
@@ -1092,7 +1338,7 @@ if(typeof __ns.makeNativeFunction==='function'){
   cssMember(mediaConstructor.prototype,'mediaText',function(){return mediaRecord(this).items.join(', ');},function(text){mediaRecord(this).items=mediaQueries(text);});
   cssMethod(mediaConstructor.prototype,'item',1,function(index){if(!arguments.length)throw new TypeError('item requires 1 argument');return mediaRecord(this).items[Number(index)>>>0]||null;});
   cssMethod(mediaConstructor.prototype,'appendMedium',1,function(text){var record=mediaRecord(this);if(!arguments.length)throw new TypeError('appendMedium requires 1 argument');var queries=mediaQueries(text);if(queries.length!==1)return;if(record.items.indexOf(queries[0])<0)record.items.push(queries[0]);});
-  cssMethod(mediaConstructor.prototype,'deleteMedium',1,function(text){var record=mediaRecord(this);if(!arguments.length)throw new TypeError('deleteMedium requires 1 argument');var query=mediaQueries(text).join(', '),index=record.items.indexOf(query);if(index<0)throw new g.DOMException('The medium was not found','NotFoundError');record.items.splice(index,1);});
+  cssMethod(mediaConstructor.prototype,'deleteMedium',1,function(text){var record=mediaRecord(this);if(!arguments.length)throw new TypeError('deleteMedium requires 1 argument');var query=mediaQueries(text).join(', '),index=record.items.indexOf(query);if(index<0)throw new __ns.DOMException('The medium was not found','NotFoundError');record.items.splice(index,1);});
   cssMethod(mediaConstructor.prototype,'toString',0,function(){return mediaRecord(this).items.join(', ');});
   Object.defineProperty(mediaConstructor.prototype,Symbol.iterator,{value:Array.prototype.values,writable:true,configurable:true});
   function makeMedia(text,owner){var target=Object.create(mediaConstructor.prototype),record={items:mediaQueries(text||''),source:text||'',owner:owner||null},proxy;proxy=new Proxy(target,{get:function(obj,key,receiver){var index=cssIndex(key);return index>=0?mediaRecord(proxy).items[index]:Reflect.get(obj,key,receiver);},has:function(obj,key){var index=cssIndex(key);return index>=0?index<mediaRecord(proxy).items.length:Reflect.has(obj,key);},ownKeys:function(){return mediaRecord(proxy).items.map(function(_,i){return String(i);}).concat(Reflect.ownKeys(target));},getOwnPropertyDescriptor:function(obj,key){var index=cssIndex(key),items=mediaRecord(proxy).items;return index>=0&&index<items.length?{value:items[index],writable:false,enumerable:true,configurable:true}:Reflect.getOwnPropertyDescriptor(obj,key);},set:function(obj,key,value,receiver){return cssIndex(key)<0&&Reflect.set(obj,key,value,receiver);},deleteProperty:function(obj,key){return cssIndex(key)<0&&Reflect.deleteProperty(obj,key);}});mediaRecords.set(proxy,record);return proxy;}
@@ -1106,21 +1352,21 @@ if(typeof __ns.makeNativeFunction==='function'){
   cssMember(styleSheetConstructor.prototype,'disabled',function(){return sheetRecord(this).disabled;},function(value){sheetRecord(this).disabled=!!value;});
   cssMember(sheetConstructor.prototype,'ownerRule',function(){return sheetRecord(this).ownerRule;});
   function appliedSheetRuleRecords(sheet,seen){seen=seen||new Set();if(seen.has(sheet))return [];seen.add(sheet);var out=[];for(var rule of cssItems(sheetRecord(sheet).rules)){var record=cssRuleRecord(rule);if(record.type===3){if(record.styleSheet&&(!record.media.mediaText||g.matchMedia(record.media.mediaText).matches))out.push.apply(out,appliedSheetRuleRecords(record.styleSheet,seen));}else out.push(record);}return out;}
-  function readableSheet(sheet){var record=sheetRecord(sheet);if(!record.originClean)throw new g.DOMException('Cannot access rules of a cross-origin stylesheet','SecurityError');return record;}
+  function readableSheet(sheet){var record=sheetRecord(sheet);if(!record.originClean)throw new __ns.DOMException('Cannot access rules of a cross-origin stylesheet','SecurityError');return record;}
   var cssStyleSheetRulesGetter=__ns.makeNativeFunction(function(){return readableSheet(this).rules;},'get cssRules',0);
   Object.defineProperty(sheetConstructor.prototype,'cssRules',{get:cssStyleSheetRulesGetter,enumerable:true,configurable:true});
   cssMember(sheetConstructor.prototype,'rules',function(){return readableSheet(this).rules;});
 
   function detachCssRule(rule,parent){var record=cssRuleRecord(rule);record.parentStyleSheet=null;record.parentRule=parent||null;if(rule.cssRules)for(var child of cssItems(rule.cssRules))detachCssRule(child,rule);}
   function replaceSheetRules(sheet,record,text,keepImports){var parsed=cssItems(parseCssRules(cssString(text),sheet,null));if(!keepImports)parsed=parsed.filter(function(rule){return cssRuleRecord(rule).type!==3;});var list=cssItems(record.rules);for(var rule of list)detachCssRule(rule);list.splice.apply(list,[0,list.length].concat(parsed));}
-  function insertSheetRule(sheet,text,index){var record=readableSheet(sheet),list=cssItems(record.rules),i=index===undefined?0:Number(index)>>>0;if(record.replacing)throw new g.DOMException('The sheet is being replaced','NotAllowedError');if(i>list.length)throw new g.DOMException('The rule index is out of range','IndexSizeError');var source=cssNativeParse(cssString(text),false,true),parsed=source===null?cssList():parseCssRules(source,sheet,null,true);if(parsed.length!==1)throw new g.DOMException('Expected one CSS rule','SyntaxError');var rule=cssItems(parsed)[0],type=cssRuleRecord(rule).type;if(type===3&&record.constructed)throw new g.DOMException('Cannot insert an import into a constructed sheet','SyntaxError');if(type===3&&list.slice(0,i).some(function(prior){return cssRuleRecord(prior).type!==3;}))throw new g.DOMException('Imports must precede style rules','HierarchyRequestError');if(type!==3&&list.slice(i).some(function(next){return cssRuleRecord(next).type===3;}))throw new g.DOMException('Style rules must follow imports','HierarchyRequestError');list.splice(i,0,rule);return i;}
-  function deleteSheetRule(sheet,index){var record=readableSheet(sheet),list=cssItems(record.rules),i=Number(index)>>>0;if(record.replacing)throw new g.DOMException('The sheet is being replaced','NotAllowedError');if(i>=list.length)throw new g.DOMException('The rule index is out of range','IndexSizeError');detachCssRule(list[i]);list.splice(i,1);}
+  function insertSheetRule(sheet,text,index){var record=readableSheet(sheet),list=cssItems(record.rules),i=index===undefined?0:Number(index)>>>0;if(record.replacing)throw new __ns.DOMException('The sheet is being replaced','NotAllowedError');if(i>list.length)throw new __ns.DOMException('The rule index is out of range','IndexSizeError');var source=cssNativeParse(cssString(text),false,true),parsed=source===null?cssList():parseCssRules(source,sheet,null,true);if(parsed.length!==1)throw new __ns.DOMException('Expected one CSS rule','SyntaxError');var rule=cssItems(parsed)[0],type=cssRuleRecord(rule).type;if(type===3&&record.constructed)throw new __ns.DOMException('Cannot insert an import into a constructed sheet','SyntaxError');if(type===3&&list.slice(0,i).some(function(prior){return cssRuleRecord(prior).type!==3;}))throw new __ns.DOMException('Imports must precede style rules','HierarchyRequestError');if(type!==3&&list.slice(i).some(function(next){return cssRuleRecord(next).type===3;}))throw new __ns.DOMException('Style rules must follow imports','HierarchyRequestError');list.splice(i,0,rule);return i;}
+  function deleteSheetRule(sheet,index){var record=readableSheet(sheet),list=cssItems(record.rules),i=Number(index)>>>0;if(record.replacing)throw new __ns.DOMException('The sheet is being replaced','NotAllowedError');if(i>=list.length)throw new __ns.DOMException('The rule index is out of range','IndexSizeError');detachCssRule(list[i]);list.splice(i,1);}
   cssMethod(sheetConstructor.prototype,'insertRule',1,function(text,index){sheetRecord(this);if(!arguments.length)throw new TypeError('insertRule requires 1 argument');return insertSheetRule(this,text,index);});
   cssMethod(sheetConstructor.prototype,'deleteRule',1,function(index){sheetRecord(this);if(!arguments.length)throw new TypeError('deleteRule requires 1 argument');deleteSheetRule(this,index);});
   cssMethod(sheetConstructor.prototype,'addRule',0,function(selector,style,index){var record=sheetRecord(this);insertSheetRule(this,(selector===undefined?'undefined':cssString(selector))+' {'+(style===undefined?'undefined':cssString(style))+'}',index===undefined?cssItems(record.rules).length:index);return -1;});
   cssMethod(sheetConstructor.prototype,'removeRule',0,function(index){deleteSheetRule(this,index===undefined?0:index);});
-  cssMethod(sheetConstructor.prototype,'replaceSync',1,function(text){var record=sheetRecord(this);if(!arguments.length)throw new TypeError('replaceSync requires 1 argument');if(!record.constructed||record.replacing)throw new g.DOMException('The sheet cannot be replaced','NotAllowedError');replaceSheetRules(this,record,text,false);});
-  cssMethod(sheetConstructor.prototype,'replace',1,function(text){var record;try{record=sheetRecord(this);if(!arguments.length)throw new TypeError('replace requires 1 argument');if(!record.constructed||record.replacing)throw new g.DOMException('The sheet cannot be replaced','NotAllowedError');replaceSheetRules(this,record,text,false);return Promise.resolve(this);}catch(error){return Promise.reject(error);}});
+  cssMethod(sheetConstructor.prototype,'replaceSync',1,function(text){var record=sheetRecord(this);if(!arguments.length)throw new TypeError('replaceSync requires 1 argument');if(!record.constructed||record.replacing)throw new __ns.DOMException('The sheet cannot be replaced','NotAllowedError');replaceSheetRules(this,record,text,false);});
+  cssMethod(sheetConstructor.prototype,'replace',1,function(text){var record;try{record=sheetRecord(this);if(!arguments.length)throw new TypeError('replace requires 1 argument');if(!record.constructed||record.replacing)throw new __ns.DOMException('The sheet cannot be replaced','NotAllowedError');replaceSheetRules(this,record,text,false);return Promise.resolve(this);}catch(error){return Promise.reject(error);}});
   function linkedSheet(el,text,url){var sheet=Object.create(sheetConstructor.prototype),record=newSheetRecord();record.constructed=false;record.ownerNode=el;record.href=url||null;record.title=sheetNativeAttribute(el,'title')||null;record.media=makeMedia(sheetNativeAttribute(el,'media')||'',el);sheetRecords.set(sheet,record);replaceSheetRules(sheet,record,text,true);return sheet;}
   function detachSheet(sheet){if(sheet){var record=sheetRecord(sheet);if(record.ownerNode)record.title=sheetNativeAttribute(record.ownerNode,'title')||null;mediaRecord(record.media).owner=null;record.ownerNode=null;}}
   function attachLinkedStyleSheet(el,text,url,originClean){var sheet=linkedSheet(el,text,url),old=elementSheets.get(el);sheetRecord(sheet).originClean=originClean!==false;if(old)detachSheet(old.sheet);elementSheets.set(el,{sheet:sheet,text:null});return sheet;};
@@ -1150,7 +1396,7 @@ if(typeof __ns.makeNativeFunction==='function'){
   var documentCSSRecord=collectionGet(d)||{kind:'Document'};documentCSSRecord.cssHost={exportSheet:exportLiveSheet,looksLikeCSS:function(text){return !String(text).trim()||!!cssNativeParse(String(text)).trim();},sheet:function(element){return cssApply(currentSheetGetter,element,[]);},readRules:function(sheet){var source=cssItems(sheetRecord(sheet).rules),snapshot=[];cssSetPrototype(snapshot,null);for(var index=0;index<source.length;index++)snapshot[index]=source[index];return snapshot;},readRule:function(rule){var record=cssRuleRecord(rule);return {type:record.type,href:record.href||null};},attachLinked:attachLinkedStyleSheet,attachImport:attachImportStyleSheet};collectionSet(d,documentCSSRecord);
   // ObservableArray adoption has a stable identity and authoritative backing
   // state. Renderer exports never consult a page-defined document getter.
-  var adoptionStates=cssMap('adoption'),adoptionDocumentCheck=__ns.domAccessor('nodeType',false,'Document'),adoptionNodeCheck=__ns.domAccessor('nodeType',false,'Node'),adoptionShadowCheck=__ns.domAccessor('__isShadowRoot',false,'Node'),adoptionOwner=__ns.domAccessor('ownerDocument',false,'Node'),adoptionDOMException=g.DOMException,adoptionDefine=Reflect.defineProperty,adoptionSet=Reflect.set,adoptionDelete=Reflect.deleteProperty,adoptionOwn=Object.hasOwn,adoptionProxy=Proxy,adoptionFloor=Math.floor;
+  var adoptionStates=cssMap('adoption'),adoptionDocumentCheck=__ns.domAccessor('nodeType',false,'Document'),adoptionNodeCheck=__ns.domAccessor('nodeType',false,'Node'),adoptionShadowCheck=__ns.domAccessor('__isShadowRoot',false,'Node'),adoptionOwner=__ns.domAccessor('ownerDocument',false,'Node'),adoptionDOMException=__ns.DOMException,adoptionDefine=Reflect.defineProperty,adoptionSet=Reflect.set,adoptionDelete=Reflect.deleteProperty,adoptionOwn=Object.hasOwn,adoptionProxy=Proxy,adoptionFloor=Math.floor;
   function adoptionRecord(value){var record=sheetRecords.get(value);if(!record)throw new TypeError('The value is not a CSSStyleSheet');return record;}
   function adoptionDocument(owner){var type=cssApply(adoptionNodeCheck,owner,[]);if(type===9)return owner;if(type===11&&cssApply(adoptionShadowCheck,owner,[]))return cssApply(adoptionOwner,owner,[]);throw new TypeError('Illegal invocation');}
   function adoptionAllowed(owner,value){var record=adoptionRecord(value);if(!record.constructed||record.constructorDocument!==adoptionDocument(owner))throw new adoptionDOMException('The stylesheet cannot be adopted','NotAllowedError');}
@@ -1295,7 +1541,7 @@ if(typeof __ns.makeNativeFunction==='function'){
     // `form` → the nearest ancestor <form> (userEvent fires submit on a submit-button's form).
     var formDesc = { configurable: true, get: function(){ return this.closest ? this.closest('form') : null; } };
     var controlSelections=new WeakMap(),selectionApply=Reflect.apply,selectionGet=WeakMap.prototype.get,selectionSet=WeakMap.prototype.set;
-    var selectionString=String,selectionTypeError=TypeError,selectionException=g.DOMException;
+    var selectionString=String,selectionTypeError=TypeError,selectionException=__ns.DOMException;
     function selectionText(value){if(typeof value==='symbol')throw new selectionTypeError('Cannot convert a Symbol value to a string');return selectionString(value);}
     function selectionAvailable(element){var tag=selectionApply(sheetTagName,element,[]);if(tag==='TEXTAREA')return true;var type=sheetNativeAttribute(element,'type')||'text';return /^(text|search|url|tel|password)$/.test(type.toLowerCase());}
     function selectionValue(element){return selectionApply(valDesc.get,element,[]);}
@@ -2359,8 +2605,8 @@ if(typeof __ns.makeNativeFunction==='function'){
       getNamedItemNS(namespace,local){return mapOwner(this).getAttributeNodeNS(namespace,local);},
       setNamedItem(attribute){return mapOwner(this).setAttributeNode(attribute);},
       setNamedItemNS(attribute){return mapOwner(this).setAttributeNodeNS(attribute);},
-      removeNamedItem(name){var owner=mapOwner(this),attribute=owner.getAttributeNode(attributeString(name));if(!attribute)throw new g.DOMException('The attribute is absent','NotFoundError');return owner.removeAttributeNode(attribute);},
-      removeNamedItemNS(namespace,local){var owner=mapOwner(this),attribute=owner.getAttributeNodeNS(namespace,local);if(!attribute)throw new g.DOMException('The attribute is absent','NotFoundError');return owner.removeAttributeNode(attribute);}
+      removeNamedItem(name){var owner=mapOwner(this),attribute=owner.getAttributeNode(attributeString(name));if(!attribute)throw new __ns.DOMException('The attribute is absent','NotFoundError');return owner.removeAttributeNode(attribute);},
+      removeNamedItemNS(namespace,local){var owner=mapOwner(this),attribute=owner.getAttributeNodeNS(namespace,local);if(!attribute)throw new __ns.DOMException('The attribute is absent','NotFoundError');return owner.removeAttributeNode(attribute);}
     };
     Object.keys(mapMethods).forEach(function(name){var delegate=mapMethods[name];Object.defineProperty(namedMapProto,name,{value:__ns.makeNativeFunction(function(){mapOwner(this);if(arguments.length<delegate.length)throw new TypeError('Not enough arguments');return delegate.apply(this,arguments);},name,delegate.length),writable:true,enumerable:true,configurable:true});});
     Object.defineProperty(namedMapProto,'length',{get:__ns.makeNativeFunction(function(){return mapEntries(this).length;},'get length',0),enumerable:true,configurable:true});
@@ -2414,6 +2660,7 @@ if(typeof __ns.makeNativeFunction==='function'){
       });
     });
     computedStyleNativeMatches=Object.getOwnPropertyDescriptor(prototypes.Element,'matches').value;
+    computedStyleNativeGetAttribute=Object.getOwnPropertyDescriptor(prototypes.Element,'getAttribute').value;
     computedStyleNativeRoot=Object.getOwnPropertyDescriptor(prototypes.Node,'getRootNode').value;
     ['querySelector','querySelectorAll','append','prepend','replaceChildren'].forEach(function(name){
       var descriptor=Object.getOwnPropertyDescriptor(d,name)||Object.getOwnPropertyDescriptor(elementProto,name);
@@ -2493,7 +2740,7 @@ if(typeof __ns.makeNativeFunction==='function'){
     reflectedMember('draggable',function(){var value=(this.getAttribute('draggable')||'').toLowerCase();if(value==='true'||value==='false')return value==='true';var tag=String(getTag.call(this)).toUpperCase();return tag==='IMG'||tag==='A'&&this.hasAttribute('href');},function(value){this.setAttribute('draggable',value?'true':'false');});
     reflectedMember('autocapitalize',function(){var value=this.getAttribute('autocapitalize');if(value===null&&this.form)value=this.form.getAttribute('autocapitalize');value=(value||'').toLowerCase();return value===''?'':value==='off'?'none':value==='on'?'sentences':['none','sentences','words','characters'].indexOf(value)>=0?value:'sentences';},function(value){this.setAttribute('autocapitalize',attributeString(value));});
     reflectedMember('autocorrect',function(){var value=this.getAttribute('autocorrect');if(value===null&&this.form)value=this.form.getAttribute('autocorrect');return (value||'').toLowerCase()!=='off';},function(value){this.setAttribute('autocorrect',value?'on':'off');});
-    var reflectedApply=Reflect.apply,reflectedSetHas=Set.prototype.has;
+    var reflectedApply=Reflect.apply,reflectedSetHas=Set.prototype.has,reflectedGetAttribute=g.Element.prototype.getAttribute;
     // Compatibility control delegates still require genuine interface receivers.
     var controlInterfaces={HTMLInputElement:'input',HTMLTextAreaElement:'textarea',HTMLSelectElement:'select',HTMLOptionElement:'option',HTMLButtonElement:'button',HTMLLabelElement:'label',HTMLCanvasElement:'canvas'};
     Object.keys(controlInterfaces).forEach(function(owner){
@@ -2518,12 +2765,12 @@ if(typeof __ns.makeNativeFunction==='function'){
         var extraTags={HTMLInputElement:['INPUT'],HTMLButtonElement:['BUTTON'],HTMLAnchorElement:['A'],HTMLImageElement:['IMG'],HTMLIFrameElement:['IFRAME'],HTMLScriptElement:['SCRIPT'],HTMLStyleElement:['STYLE'],HTMLMediaElement:['AUDIO','VIDEO']};
         if(extraTags[owner])ownerTags=ownerTags.concat(extraTags[owner]);
         var ownerLocals=new Set(ownerTags.map(function(tag){return tag.toLowerCase();}));
-        ['get','set'].forEach(function(kind){var delegate=descriptor[kind];if(!delegate)return;copy[kind]=__ns.makeNativeFunction(function(){reflectedApply(check,this,[]);if(!reflectedApply(reflectedSetHas,ownerLocals,[reflectedApply(getLocalTag,this,[])]))throw new TypeError('Illegal invocation');var value=reflectedApply(delegate,this,arguments);if(kind==='get'&&(name==='src'||name==='href')&&value&&typeof g.URL==='function'){try{return new g.URL(value,this.ownerDocument.URL||g.location.href).href;}catch(e){}}return value;},kind+' '+name,kind==='get'?0:1);});
+        ['get','set'].forEach(function(kind){var delegate=descriptor[kind];if(!delegate)return;copy[kind]=__ns.makeNativeFunction(function(){reflectedApply(check,this,[]);if(!reflectedApply(reflectedSetHas,ownerLocals,[reflectedApply(getLocalTag,this,[])]))throw new TypeError('Illegal invocation');var value=reflectedApply(delegate,this,arguments);if(kind==='get'&&(name==='src'||name==='href')){if(owner==='HTMLBaseElement'){if(value&&typeof g.URL==='function'){try{return new g.URL(value,this.ownerDocument.URL||g.location.href).href;}catch(e){}}return value;}var raw=reflectedApply(reflectedGetAttribute,this,[name]);return raw===null?'':__ns.resolveDocumentURL(this,raw);}return value;},kind+' '+name,kind==='get'?0:1);});
         Object.defineProperty(proto,name,copy);
       });
       delete htmlProto[name];
     });
-    var elementOperations={getAttributeNames(){return Array.from(this.attributes,function(attribute){return attribute.name;});},hasAttributes(){return this.attributes.length>0;},insertAdjacentText(position,text){if(typeof position==='symbol'||typeof text==='symbol')throw new TypeError('Cannot convert a Symbol to a string');position=String(position).toLowerCase();var node=this.ownerDocument.createTextNode(String(text));if(position==='beforebegin'){if(this.parentNode)this.parentNode.insertBefore(node,this);}else if(position==='afterend'){if(this.parentNode)this.parentNode.insertBefore(node,this.nextSibling);}else if(position==='afterbegin')this.insertBefore(node,this.firstChild);else if(position==='beforeend')this.appendChild(node);else throw new g.DOMException('Invalid adjacent position','SyntaxError');}};
+    var elementOperations={getAttributeNames(){return Array.from(this.attributes,function(attribute){return attribute.name;});},hasAttributes(){return this.attributes.length>0;},insertAdjacentText(position,text){if(typeof position==='symbol'||typeof text==='symbol')throw new TypeError('Cannot convert a Symbol to a string');position=String(position).toLowerCase();var node=this.ownerDocument.createTextNode(String(text));if(position==='beforebegin'){if(this.parentNode)this.parentNode.insertBefore(node,this);}else if(position==='afterend'){if(this.parentNode)this.parentNode.insertBefore(node,this.nextSibling);}else if(position==='afterbegin')this.insertBefore(node,this.firstChild);else if(position==='beforeend')this.appendChild(node);else throw new __ns.DOMException('Invalid adjacent position','SyntaxError');}};
     Object.keys(elementOperations).forEach(function(name){var delegate=elementOperations[name],check=__ns.domAccessor('nodeType',false,'Element');Object.defineProperty(elementProto,name,{value:__ns.makeNativeFunction(function(){check.call(this);if(arguments.length<delegate.length)throw new TypeError(name+' requires '+delegate.length+' arguments');return delegate.apply(this,arguments);},name,delegate.length),writable:true,enumerable:true,configurable:true});});
     var eventHandlers=new WeakMap(),checkHandlerReceiver=__ns.domAccessor('nodeType',false,'HTMLElement');
     var handlerNames='abort animationcancel animationend animationiteration animationstart auxclick beforeinput beforematch beforetoggle beforexrselect blur cancel canplay canplaythrough change click close command contentvisibilityautostatechange contextlost contextmenu contextrestored copy cuechange cut dblclick drag dragend dragenter dragleave dragover dragstart drop durationchange emptied ended error focus formdata gotpointercapture input invalid keydown keypress keyup load loadeddata loadedmetadata loadstart lostpointercapture mousedown mouseenter mouseleave mousemove mouseout mouseover mouseup mousewheel paste pause play playing pointercancel pointerdown pointerenter pointerleave pointermove pointerout pointerover pointerrawupdate pointerup progress ratechange reset resize scroll scrollend scrollsnapchange scrollsnapchanging securitypolicyviolation seeked seeking select selectionchange selectstart slotchange stalled submit suspend timeupdate toggle transitioncancel transitionend transitionrun transitionstart volumechange waiting webkitanimationend webkitanimationiteration webkitanimationstart webkittransitionend wheel'.split(' ');

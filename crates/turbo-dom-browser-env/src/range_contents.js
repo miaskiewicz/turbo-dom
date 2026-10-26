@@ -1,6 +1,6 @@
 (function (record, make, convertTrustedType, staticRecord, parseContextualFragment) {
   "use strict";
-  let Exception = DOMException;
+  const Exception = globalThis[Symbol.for("ts")].DOMException;
   const LocalRange = Range,
     TypeErrorClass = TypeError,
     StringClass = String,
@@ -423,7 +423,8 @@
       if (!Object.hasOwn(target, name)) define(target, name, {value, enumerable: true, configurable: true});
   }
   return function (constructor, hook) {
-    if (constructor !== undefined) Exception = constructor;
+    // `constructor` (the host's DOMException) is the realm's registered interface by now,
+    // which `Exception` resolves at throw time (turbo-surf#42).
     if (typeof hook === "function") selectionSync = hook;
   };
 });

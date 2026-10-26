@@ -215,6 +215,91 @@ fn jpeg_segment(bytes: &[u8], at: usize) -> Option<(u8, &[u8], usize)> {
 }
 
 // --------------------------------------------------------------------------
+// Size availability (miaskiewicz/turbo-dom#59)
+// --------------------------------------------------------------------------
+//
+// Blink reports an image's size — and so lets an `<img>` load (painting what it can
+// decode of a truncated body) — only once its decoder has read a format's size point;
+// before that the image is broken. Chrome 156 control:
+// `scripts/image-truncation-chrome-control.mjs` (every byte prefix of
+// `tests/fixtures/images/truncation`). PNG's point is its first `IDAT` chunk header,
+// which the png crate's `read_info` already requires.
+
+/// A JPEG's size point: the end of the first start-of-scan (`SOS`) header after a frame
+/// header (libjpeg's `jpeg_read_header`). Every marker segment before it must be whole.
+pub(super) fn jpeg_size_available(bytes: &[u8]) -> bool {
+    let mut at = 2; // past SOI
+    let mut frame = false;
+    loop {
+        // Fill bytes (`FF FF …`) may precede a marker.
+        while bytes.get(at) == Some(&0xFF) && bytes.get(at + 1) == Some(&0xFF) {
+            at += 1;
+        }
+        let Some(&marker) = bytes.get(at + 1).filter(|_| bytes.get(at) == Some(&0xFF)) else {
+            return false;
+        };
+        // Standalone markers carry no length.
+        if marker == 0x01 || (0xD0..=0xD7).contains(&marker) {
+            at += 2;
+            continue;
+        }
+        if marker == 0xD8 || marker == 0xD9 {
+            return false;
+        }
+        let Some(len) = be_usize(bytes, at + 2, 2).filter(|&len| len >= 2) else {
+            return false;
+        };
+        let end = at + 2 + len;
+        if end > bytes.len() {
+            return false;
+        }
+        match marker {
+            0xC0..=0xC3 | 0xC5..=0xC7 | 0xC9..=0xCB | 0xCD..=0xCF => frame = true,
+            0xDA => return frame,
+            _ => {}
+        }
+        at = end;
+    }
+}
+
+/// A GIF's size point: the first image descriptor's position and size fields (separator
+/// plus 8 bytes), reached past the global colour table and every whole extension block.
+pub(super) fn gif_size_available(bytes: &[u8]) -> bool {
+    let Some(&flags) = bytes.get(10) else {
+        return false;
+    };
+    let mut at = 13;
+    if flags & 0x80 != 0 {
+        at += 3 << ((flags & 7) + 1);
+    }
+    loop {
+        match bytes.get(at) {
+            Some(0x2C) => return at + 9 <= bytes.len(),
+            Some(0x21) => {
+                // Label, then data sub-blocks up to the zero-length terminator.
+                at += 2;
+                loop {
+                    match bytes.get(at) {
+                        Some(0) => break,
+                        Some(&n) => at += 1 + usize::from(n),
+                        None => return false,
+                    }
+                }
+                at += 1;
+            }
+            _ => return false,
+        }
+    }
+}
+
+/// A WebP's size point: once all data has arrived Blink demuxes the whole RIFF payload
+/// (`WebPDemux`), so the file must hold the `RIFF` size it declares (trailing bytes
+/// past it are ignored).
+pub(super) fn webp_complete(bytes: &[u8]) -> bool {
+    le_uint(bytes, 4, 4).is_some_and(|riff| bytes.len() as u64 >= riff + 8)
+}
+
+// --------------------------------------------------------------------------
 // BMP, ICO/CUR
 // --------------------------------------------------------------------------
 

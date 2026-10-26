@@ -67,8 +67,10 @@ fn lay_out(html: &str) -> Result<Fragment, RenderError> {
   testing (`cssom_view::hit`) honours `clip: rect()` of absolutely positioned boxes, and
   so does the galley (turbo-dom#52): such a box keeps its box and records the region in
   `Fragment::clip` (`ClipRect`, from its border-box corner) for the painters; one whose
-  clip keeps nothing at any size (the sr-only pattern) is left out of static layouts
-  (no box, text or tag); `clip` on any other box is ignored.
+  clip keeps nothing at any size (the sr-only pattern) is left out of static renders
+  (no paint, text or tag) — `layout_boxes` still lays it out and reports its border box
+  and its descendants' like `getBoundingClientRect()` (turbo-dom#75); `clip` on any other
+  box is ignored.
   Also (turbo-dom#48/#49/#50/#53/#56): absolutely positioned `width: auto` boxes shrink to
   fit; `inline-flex` / `inline-grid` are inline-level; auto-layout collapsed tables merge
   borders; percentage columns take their share; spanning cells spread over their columns.
@@ -85,6 +87,12 @@ fn lay_out(html: &str) -> Result<Fragment, RenderError> {
   `border-box` widths count once in intrinsic and column widths (#65); only legacy
   `-webkit-*` alignment (UA `center`, `align` attributes) moves block children (#69); UA
   `th` is bold and centred (#70).
+  Also P5b-W6 (same control): a last child's bottom margin collapses through an
+  auto-height parent only when `min-height` / `max-height` leave its used height at its
+  content height, else it is dropped (turbo-dom#75); an empty first child's margins
+  collapse through its parent's top with the next child's (#76); `min-height` wins over
+  `max-height` and `height` (#77); a percentage `height` / `min-height` / `max-height`
+  resolves against a definite parent height on the static path too (#78).
 - `layout_snapshot::snapshot_{,html_}live_tree*` capture a snapshot of a `StyleInput`
   (identity paths index the styled forest).
 - `image` — the ONE image layer shared by the PDF emitter and turbo-dom-raster:
@@ -116,7 +124,17 @@ fn lay_out(html: &str) -> Result<Fragment, RenderError> {
   300x150 default-object rules) and `decode_data_url` the Fetch-standard `data:` decoder
   (base64 and percent-encoded) — the API a live `<img>` load uses
   (miaskiewicz/turbo-surf#30); Chrome-controlled by `tests/image_formats_chrome.rs`
-  (`scripts/image-formats-chrome-control.mjs`, `scripts/make_format_fixtures.py`).
+  (`scripts/image-formats-chrome-control.mjs`, `scripts/make_format_fixtures.py`). Both
+  probes follow Blink's load decision for a cut-short body (miaskiewicz/turbo-dom#59): a
+  JPEG is sized from the end of its first `SOS` header, a GIF from its first image
+  descriptor's position and size, a WebP only with its whole declared RIFF payload, a PNG
+  from its first `IDAT` header — before that the image is broken (no box size, no natural
+  size). An SVG image (`svg::parse`, so every SVG path) needs an SVG-namespace `<svg>` root
+  (any prefix; XML, so case-sensitive) and is never gzip-inflated. Chrome-controlled at every
+  byte prefix by `tests/image_truncation_chrome.rs` (`scripts/image-truncation-chrome-control.mjs`,
+  fixtures from `scripts/make_truncation_fixtures.py`). Chrome decides SVG by MIME type
+  (`image/svg+xml` only, never sniffed); the probes take bytes only, so a host with the
+  response type (turbo-surf) applies that rule itself.
 - `FontRegistry::system(SystemFontPolicy)` — the process-wide installed-font registry, loaded
   once per policy (`Default` = `load_system_fonts`, `Html` = `load_system_fonts_for_html`);
   `system_cell` exposes the `OnceLock` for embedders that warm it themselves.

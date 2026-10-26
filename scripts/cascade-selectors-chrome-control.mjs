@@ -263,6 +263,14 @@ const CASES = [
     selectors: [":defined", ":not(:defined)", "x-foo:defined", "button:defined", "div:defined", "*:defined", ":DEFINED", ":defined()"],
   },
   {
+    // P5b-X6 (miaskiewicz/turbo-dom#58): the fullscreen pseudo-classes; a static document has
+    // no fullscreen element, so they are valid and match nothing.
+    id: "fullscreen",
+    bug: "fullscreen",
+    html: DOC(`<div id="a"><p id="p">p</p></div>`),
+    selectors: [":fullscreen", ":-webkit-full-screen", ":-webkit-full-screen-ancestor", ":-webkit-full-screen-document", ":FULLSCREEN", ":-WEBKIT-FULL-SCREEN-ANCESTOR", ":fullscreen()", "div:not(:fullscreen)", ":-webkit-full-screen-ancestor p", ":is(:fullscreen, p)", "p:not(:-webkit-full-screen-ancestor)"],
+  },
+  {
     id: "template",
     bug: "template",
     html: DOC(

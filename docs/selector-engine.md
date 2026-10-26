@@ -76,7 +76,9 @@ of `style/cascade.rs`). Since S3b it uses this engine:
   stylesheet when Chrome knows them (`:hover`, `:focus`, `:visited`, `:default`,
   `:placeholder-shown`, `:valid`, …; `:dir()` until P5b). `:scope` (= `:root`), `:defined`,
   `:lang()` and `:-webkit-any()` were evaluated in stylesheets only at S3b (P5b moved
-  `:defined` and `:lang()` into the DOM APIs too). `::slotted()` matches only through a navigator that reports slot assignment
+  `:defined` and `:lang()` into the DOM APIs too; P5b-X6 added `:fullscreen` /
+  `:-webkit-full-screen` / `:-webkit-full-screen-ancestor`, which read the embedder-reported
+  `Tree::fullscreen_stack`, miaskiewicz/turbo-dom#58). `::slotted()` matches only through a navigator that reports slot assignment
   (a scaffold: turbo-surf's composed cascade still walks `:host()`/`::slotted()` with its
   own matcher, plan §1.4 follow-up).
 
@@ -172,7 +174,7 @@ Chrome 156 control and a parity expected-diff file `tools/parity/expected/p5b-x2
 
 | item | before | now (Chrome 156) | control |
 |---|---|---|---|
-| npm `:defined` | `selectors.mjs` looked the name up in `window.customElements` and read the current `is` attribute: a later `is` edit changed `:defined`, a defined name matched before any upgrade (detached elements too), and the stub registry never upgraded or constructed anything | `src/runtime/custom-elements.mjs` keeps each element's custom element state with the Rust tree's creation-time rule (custom names and the parser's / `createElement(…, {is})` / fragment parser's `is` value are undefined; later edits never change it); the registry upgrades connected candidates on `define()`, on insertion, `customElements.upgrade()`, clones and `innerHTML`, constructs on `createElement` / `new C()`, leaves a throwing constructor's element failed, and runs the lifecycle callbacks; `customElementState` / `setCustomElementState` are exported. Since turbo-dom#29 the reactions run when the DOM call returns (element by element, Chrome's [CEReactions]) and template contents, owned by an inert document, upgrade only once inserted into the document (`test/fixtures/dom_adoption_reactions_chrome156.json`) | `turbo-dom-browser-env/src/custom_elements_defined_chrome156.json` (`test/custom-elements-chrome.test.mjs`; every section but the failed element's interface name), `test/custom-elements.test.mjs` |
+| npm `:defined` | `selectors.mjs` looked the name up in `window.customElements` and read the current `is` attribute: a later `is` edit changed `:defined`, a defined name matched before any upgrade (detached elements too), and the stub registry never upgraded or constructed anything | `src/runtime/custom-elements.mjs` keeps each element's custom element state with the Rust tree's creation-time rule (custom names and the parser's / `createElement(…, {is})` / fragment parser's `is` value are undefined; later edits never change it); the registry upgrades connected candidates on `define()`, on insertion, `customElements.upgrade()`, clones and `innerHTML`, constructs on `createElement` / `new C()`, leaves a throwing constructor's element failed, and runs the lifecycle callbacks; `customElementState` / `setCustomElementState` are exported. Since turbo-dom#29 the reactions run when the DOM call returns (element by element, Chrome's [CEReactions]) and template contents, owned by an inert document, upgrade only once inserted into the document (`crates/turbo-dom-browser-env/src/dom_adoption_reactions_chrome156.json`) | `turbo-dom-browser-env/src/custom_elements_defined_chrome156.json` (`test/custom-elements-chrome.test.mjs`; every section but the failed element's interface name), `test/custom-elements.test.mjs` |
 
 ## Regenerating the Chrome control
 

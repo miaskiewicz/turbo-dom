@@ -145,7 +145,9 @@ package or publish workflow.
   one SVG rasterizer (`svg::rasterize(bytes, scale, Oversize)`: PDF 2x clamp, raster 1x
   reject); since P5b it also reads EXIF orientation —
   `Intrinsic::orientation`, laid out displayed unless `image-orientation: none`, painted via
-  `ImagePlacement::orientation`; turbo-html2pdf#30). `FontRegistry::system(policy)` is the process-wide system-font load. The
+  `ImagePlacement::orientation`; turbo-html2pdf#30); both probes follow Blink's size points for
+  cut-short bodies and SVG images need an SVG-namespace root (turbo-dom#59,
+  `scripts/image-truncation-chrome-control.mjs`). `FontRegistry::system(policy)` is the process-wide system-font load. The
   `test-support` feature (`test_support`) carries the font fixtures, `ComputedStyle` pairs
   and test-only tree literals for this crate's and turbo-html2pdf-core's tests (the crate's
   own integration tests enable it through a self dev-dependency).
@@ -239,7 +241,9 @@ package or publish workflow.
   invalid selector throws `SyntaxError`). `:defined` reads `Tree::custom_element_state` (creation-time
   state unless an embedder — the V8 binding — reports an upgrade); the npm engine reads the same state
   from `src/runtime/custom-elements.mjs` (its registry upgrades / constructs like Chrome; both checked
-  against `custom_elements_defined_chrome156.json`); `rtdom::cascade` / `cascade.mjs` rank
+  against `custom_elements_defined_chrome156.json`); `:fullscreen` / `:-webkit-full-screen` /
+  `:-webkit-full-screen-ancestor` read `Tree::fullscreen_stack` (empty unless the binding reports
+  one; the npm engine never matches them, turbo-dom#58); `rtdom::cascade` / `cascade.mjs` rank
   rules by each item's Selectors 4 `specificity()`. See `docs/selector-engine.md`.
 - **Selector parse cache** (`__selectorCache` in selectors.mjs) memoizes selector STRING → AST.
   Pure (DOM-independent) → no mutation invalidation. Never cache *results* without it.

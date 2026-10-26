@@ -438,6 +438,16 @@ pub fn decode(bytes: &[u8]) -> Option<DecodedImage> {
         return decode_svg(bytes);
     }
     let format = layout_image::sniff(bytes);
+    // Blink's load decision for a cut-short body (turbo-dom#59): a PNG/JPEG/GIF/WebP the
+    // shared probe cannot size yet is broken, one it sizes loads even when the pixels do
+    // not decode (laid out at its size, painted as the placeholder).
+    let size_point = matches!(
+        format,
+        Some(Format::Png | Format::Jpeg | Format::Gif | Format::WebP)
+    );
+    if size_point && layout_image::probe(bytes).is_none() {
+        return None;
+    }
     let pixels = match format {
         Some(Format::Png) => layout_image::decode_png_rgba(bytes),
         Some(Format::Avif) => crate::avif::decode(bytes),
@@ -456,13 +466,14 @@ pub fn decode(bytes: &[u8]) -> Option<DecodedImage> {
         _ => image_rgba(image::load_from_memory(bytes)),
     };
     let Some(rgba) = pixels else {
-        // An AVIF without the `avif` feature or a JPEG XL without `jxl` (or either on a
-        // bitstream / codestream error) still lays out at the image's real size (the
-        // shared header probe) and paints as the placeholder; any other undecodable image
-        // is dropped.
-        return match format {
-            Some(Format::Avif | Format::Jxl) => size_only(bytes),
-            _ => None,
+        // A sized PNG/JPEG/GIF/WebP whose pixels do not decode, an AVIF without the `avif`
+        // feature or a JPEG XL without `jxl` (or either on a bitstream / codestream error)
+        // still lays out at the image's real size (the shared header probe) and paints as
+        // the placeholder; any other undecodable image is dropped.
+        return if size_point || matches!(format, Some(Format::Avif | Format::Jxl)) {
+            size_only(bytes)
+        } else {
+            None
         };
     };
     let probed = layout_image::probe(bytes);
@@ -525,8 +536,10 @@ fn is_svg(bytes: &[u8]) -> bool {
     let head = &bytes[..bytes.len().min(1024)];
     let lower = head.to_ascii_lowercase();
     let contains = |needle: &[u8]| lower.windows(needle.len()).any(|w| w == needle);
-    contains(b"<svg")
-        && (lower.starts_with(b"<svg") || contains(b"<?xml") || contains(b"<!doctype"))
+    (contains(b"<svg")
+        && (lower.starts_with(b"<svg") || contains(b"<?xml") || contains(b"<!doctype")))
+        // A prefixed SVG-namespace root (`<s:svg xmlns:s="…/svg">`; turbo-dom#59).
+        || (contains(b":svg") && contains(b"http://www.w3.org/2000/svg"))
 }
 
 /// Rasterize SVG bytes at their intrinsic CSS-pixel size (1x, an axis above 8192 px
@@ -1130,6 +1143,17 @@ mod shared_layer_tests {
             {
                 false
             }
+            // A cut-short / corrupt PNG or JPEG whose size point Chrome reads loads there
+            // (turbo-dom#59: Chrome 156 loads both tools/parity extra images at 64x40): laid
+            // out at its probed size, painted as the placeholder.
+            (None, Some(new)) if new.rgba.is_empty() => {
+                assert_eq!(
+                    probe(bytes).map(|i| (i.width, i.height)),
+                    Some((new.intrinsic.width, new.intrinsic.height)),
+                    "{label}: size-only entry at the probed size"
+                );
+                false
+            }
             (old, new) => panic!(
                 "{label}: decodes differ (old {}, new {})",
                 old.is_some(),
@@ -1166,7 +1190,8 @@ mod shared_layer_tests {
                 decoded += usize::from(assert_same(&path.display().to_string(), &bytes));
             }
         }
-        // 19 matrix images + 4 extra (AVIF and the corrupt JPEG do not decode).
+        // 19 matrix images + 4 extra (AVIF, the corrupt JPEG and the truncated PNG do not
+        // decode pixels; the latter two lay out at their size since turbo-dom#59).
         assert_eq!((files, decoded), (23, 20));
     }
 
@@ -1239,3 +1264,7 @@ mod shared_layer_tests {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "image_truncation_tests.rs"]
+mod truncation_tests;

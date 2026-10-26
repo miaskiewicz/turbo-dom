@@ -1,0 +1,13 @@
+{
+ "id": "turbo-dom#58",
+ "reason": "turbo-dom evaluates :fullscreen / :-webkit-full-screen / :-webkit-full-screen-ancestor from the embedder-reported Tree::fullscreen_stack (before: never-matching, and :-webkit-full-screen-ancestor rejected); turbo-dom-browser-env reports its fullscreen stack, matches :modal for the fullscreen element and computes the :not(:root):fullscreen UA values and the black fixed ::backdrop. No corpus output changes: only the binding's requestFullscreen() (user activation) fills the stack, no pinned surf page requests fullscreen without a gesture, and no pinned html2pdf / surf / image-matrix input uses a fullscreen pseudo-class in CSS (checked: 'full-screen' / 'fullscreen' appear only in scripts' event-name tables), so the newly valid :-webkit-full-screen-ancestor changes no stylesheet. P5b-X6.",
+ "control": "crates/turbo-dom-browser-env/src/computed_defaults_chrome156.json (case fullscreen; scripts/select-element-chrome-control.mjs with __cdpGesture, Chrome for Testing 156.0.8078.4); crates/turbo-dom/tests/fixtures/cascade_selectors_chrome156.json (case fullscreen)",
+ "e2e": "crates/turbo-dom-browser-env/src/computed_defaults_tests.rs; crates/turbo-dom/tests/cascade_selectors_chrome.rs; crates/turbo-dom-layout/tests/cascade_selectors_chrome.rs; test/selectors-chrome.test.mjs",
+ "changes": {
+  "html2pdf": [],
+  "html2pdf-svg": [],
+  "html2pdf-extra": [],
+  "surf": [],
+  "surf-extra": []
+ }
+}

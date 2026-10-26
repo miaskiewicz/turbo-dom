@@ -124,6 +124,23 @@ pub const CUSTOM_ELEMENTS_RETIRED_CHROME155_JSON: &str =
     include_str!("custom_elements_retired_chrome155.json");
 /// `src/custom_elements_retired_probe.js`.
 pub const CUSTOM_ELEMENTS_RETIRED_PROBE_JS: &str = include_str!("custom_elements_retired_probe.js");
+/// `src/dom_adoption_reactions_cases.json` (turbo-dom#29 / #42-#44: namespaces, cross-document
+/// adoption, template contents, custom element reaction order; shared with the npm runtime's
+/// `test/dom-adoption-reactions-chrome.test.mjs`).
+pub const DOM_ADOPTION_REACTIONS_CASES_JSON: &str =
+    include_str!("dom_adoption_reactions_cases.json");
+/// `src/dom_adoption_reactions_chrome156.json`.
+pub const DOM_ADOPTION_REACTIONS_CHROME156_JSON: &str =
+    include_str!("dom_adoption_reactions_chrome156.json");
+/// `src/dom_adoption_reactions_probe.js` (sync; one `new DOMParser().parseFromString(…)`).
+pub const DOM_ADOPTION_REACTIONS_PROBE_JS: &str = include_str!("dom_adoption_reactions_probe.js");
+/// `src/dom_exception_realm_cases.json` (turbo-surf#42: the page the realm-DOMException probe runs on).
+pub const DOM_EXCEPTION_REALM_CASES_JSON: &[u8] = include_bytes!("dom_exception_realm_cases.json");
+/// `src/dom_exception_realm_chrome156.json`.
+pub const DOM_EXCEPTION_REALM_CHROME156_JSON: &str =
+    include_str!("dom_exception_realm_chrome156.json");
+/// `src/dom_exception_realm_probe.js` (binding-raised DOMExceptions are the realm's interface; async).
+pub const DOM_EXCEPTION_REALM_PROBE_JS: &str = include_str!("dom_exception_realm_probe.js");
 /// `src/dom_implementation_chrome155.json`.
 pub const DOM_IMPLEMENTATION_CHROME155_JSON: &str =
     include_str!("dom_implementation_chrome155.json");
@@ -135,6 +152,14 @@ pub const DOM_PARSER_OBSERVER_LIFECYCLE_CHROME155_JSON: &str =
 /// `src/dom_parser_observer_lifecycle_probe.js`.
 pub const DOM_PARSER_OBSERVER_LIFECYCLE_PROBE_JS: &str =
     include_str!("dom_parser_observer_lifecycle_probe.js");
+/// `src/dom_reactions_names_cases.json` (turbo-dom#43 / #44 / #54 / #57: fragment-parser
+/// reaction order, qualified names, independent-document removals, createDocument names).
+pub const DOM_REACTIONS_NAMES_CASES_JSON: &str = include_str!("dom_reactions_names_cases.json");
+/// `src/dom_reactions_names_chrome156.json`.
+pub const DOM_REACTIONS_NAMES_CHROME156_JSON: &str =
+    include_str!("dom_reactions_names_chrome156.json");
+/// `src/dom_reactions_names_probe.js`.
+pub const DOM_REACTIONS_NAMES_PROBE_JS: &str = include_str!("dom_reactions_names_probe.js");
 /// `src/file_inputs_cases.json`.
 pub const FILE_INPUTS_CASES_JSON: &str = include_str!("file_inputs_cases.json");
 /// `src/file_inputs_chrome156.json`.
@@ -169,6 +194,20 @@ pub const HTML_IMAGE_CASES_JSON: &[u8] = include_bytes!("html_image_cases.json")
 pub const HTML_IMAGE_CHROME156_JSON: &str = include_str!("html_image_chrome156.json");
 /// `src/html_image_probe.js` (HTMLImageElement image-state and width / height / x / y accessors; async).
 pub const HTML_IMAGE_PROBE_JS: &str = include_str!("html_image_probe.js");
+/// `src/html_image_srcset_cases.json` (turbo-dom#71: the srcset / sizes / `<picture>` page,
+/// viewport 1024x768; image URLs `/img/<W>x<H>/<name>.png`).
+pub const HTML_IMAGE_SRCSET_CASES_JSON: &[u8] = include_bytes!("html_image_srcset_cases.json");
+/// `src/html_image_srcset_chrome156.json` (`load1` / `load2`: DPR 1 / 2, every image loads;
+/// `none1`: nothing loads).
+pub const HTML_IMAGE_SRCSET_CHROME156_JSON: &str = include_str!("html_image_srcset_chrome156.json");
+/// `src/html_image_srcset_probe.js` (run after the load event).
+pub const HTML_IMAGE_SRCSET_PROBE_JS: &str = include_str!("html_image_srcset_probe.js");
+/// `src/html_track_cases.json` (turbo-dom#74: HTMLTrackElement / TextTrack).
+pub const HTML_TRACK_CASES_JSON: &str = include_str!("html_track_cases.json");
+/// `src/html_track_chrome156.json`.
+pub const HTML_TRACK_CHROME156_JSON: &str = include_str!("html_track_chrome156.json");
+/// `src/html_track_probe.js` (sync).
+pub const HTML_TRACK_PROBE_JS: &str = include_str!("html_track_probe.js");
 /// `src/key_order_chrome156.json`.
 pub const KEY_ORDER_CHROME156_JSON: &str = include_str!("key_order_chrome156.json");
 /// `src/key_order_probe.js`.
@@ -184,6 +223,12 @@ pub const RADIO_DIRTY_CASES_JSON: &str = include_str!("radio_dirty_cases.json");
 pub const RADIO_DIRTY_GC_CHROME155_JSON: &str = include_str!("radio_dirty_gc_chrome155.json");
 /// `src/radio_dirty_gc_probe.js`.
 pub const RADIO_DIRTY_GC_PROBE_JS: &str = include_str!("radio_dirty_gc_probe.js");
+/// `src/shadow_events_cases.json` (turbo-dom#66: event paths across shadow trees).
+pub const SHADOW_EVENTS_CASES_JSON: &str = include_str!("shadow_events_cases.json");
+/// `src/shadow_events_chrome156.json`.
+pub const SHADOW_EVENTS_CHROME156_JSON: &str = include_str!("shadow_events_chrome156.json");
+/// `src/shadow_events_probe.js` (sync).
+pub const SHADOW_EVENTS_PROBE_JS: &str = include_str!("shadow_events_probe.js");
 /// `src/template_lifecycle_chrome155.json`.
 pub const TEMPLATE_LIFECYCLE_CHROME155_JSON: &str =
     include_str!("template_lifecycle_chrome155.json");
@@ -364,6 +409,30 @@ pub const FILES: &[(&str, &[u8])] = &[
         CUSTOM_ELEMENTS_RETIRED_PROBE_JS.as_bytes(),
     ),
     (
+        "dom_adoption_reactions_cases.json",
+        DOM_ADOPTION_REACTIONS_CASES_JSON.as_bytes(),
+    ),
+    (
+        "dom_adoption_reactions_chrome156.json",
+        DOM_ADOPTION_REACTIONS_CHROME156_JSON.as_bytes(),
+    ),
+    (
+        "dom_adoption_reactions_probe.js",
+        DOM_ADOPTION_REACTIONS_PROBE_JS.as_bytes(),
+    ),
+    (
+        "dom_exception_realm_cases.json",
+        DOM_EXCEPTION_REALM_CASES_JSON,
+    ),
+    (
+        "dom_exception_realm_chrome156.json",
+        DOM_EXCEPTION_REALM_CHROME156_JSON.as_bytes(),
+    ),
+    (
+        "dom_exception_realm_probe.js",
+        DOM_EXCEPTION_REALM_PROBE_JS.as_bytes(),
+    ),
+    (
         "dom_implementation_chrome155.json",
         DOM_IMPLEMENTATION_CHROME155_JSON.as_bytes(),
     ),
@@ -378,6 +447,18 @@ pub const FILES: &[(&str, &[u8])] = &[
     (
         "dom_parser_observer_lifecycle_probe.js",
         DOM_PARSER_OBSERVER_LIFECYCLE_PROBE_JS.as_bytes(),
+    ),
+    (
+        "dom_reactions_names_cases.json",
+        DOM_REACTIONS_NAMES_CASES_JSON.as_bytes(),
+    ),
+    (
+        "dom_reactions_names_chrome156.json",
+        DOM_REACTIONS_NAMES_CHROME156_JSON.as_bytes(),
+    ),
+    (
+        "dom_reactions_names_probe.js",
+        DOM_REACTIONS_NAMES_PROBE_JS.as_bytes(),
     ),
     ("file_inputs_cases.json", FILE_INPUTS_CASES_JSON.as_bytes()),
     (
@@ -427,6 +508,21 @@ pub const FILES: &[(&str, &[u8])] = &[
         HTML_IMAGE_CHROME156_JSON.as_bytes(),
     ),
     ("html_image_probe.js", HTML_IMAGE_PROBE_JS.as_bytes()),
+    ("html_image_srcset_cases.json", HTML_IMAGE_SRCSET_CASES_JSON),
+    (
+        "html_image_srcset_chrome156.json",
+        HTML_IMAGE_SRCSET_CHROME156_JSON.as_bytes(),
+    ),
+    (
+        "html_image_srcset_probe.js",
+        HTML_IMAGE_SRCSET_PROBE_JS.as_bytes(),
+    ),
+    ("html_track_cases.json", HTML_TRACK_CASES_JSON.as_bytes()),
+    (
+        "html_track_chrome156.json",
+        HTML_TRACK_CHROME156_JSON.as_bytes(),
+    ),
+    ("html_track_probe.js", HTML_TRACK_PROBE_JS.as_bytes()),
     (
         "key_order_chrome156.json",
         KEY_ORDER_CHROME156_JSON.as_bytes(),
@@ -449,6 +545,15 @@ pub const FILES: &[(&str, &[u8])] = &[
         "radio_dirty_gc_probe.js",
         RADIO_DIRTY_GC_PROBE_JS.as_bytes(),
     ),
+    (
+        "shadow_events_cases.json",
+        SHADOW_EVENTS_CASES_JSON.as_bytes(),
+    ),
+    (
+        "shadow_events_chrome156.json",
+        SHADOW_EVENTS_CHROME156_JSON.as_bytes(),
+    ),
+    ("shadow_events_probe.js", SHADOW_EVENTS_PROBE_JS.as_bytes()),
     (
         "template_lifecycle_chrome155.json",
         TEMPLATE_LIFECYCLE_CHROME155_JSON.as_bytes(),

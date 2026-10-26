@@ -1,0 +1,21 @@
+{
+ "id": "turbo-dom#59",
+ "reason": "The shared image probe follows Blink's size points: a JPEG's first SOS header, a GIF's first image descriptor, a WebP's whole RIFF payload. svg::parse needs an SVG-namespace <svg> root and rejects svgz. turbo-dom-raster decodes PNG/JPEG/GIF/WebP only when the probe sizes them, and lays one whose pixels do not decode out at its size, painting nothing. Commit ea92286. Measured with fresh target dirs. The html2pdf corpora are unchanged: html2pdf/html2pdf-svg/html2pdf-extra manifests are byte-identical to p5b-int10 at 3901df8. The parity extra PNG/JPEG images were already sized by the PDF path. Static harness (surf static screenshot_png/screenshot_svg at 1280x800, 123 inputs, plain + caller-assets passes) 3901df8 vs bac0074: 6 plain outputs change and the same 3 inputs change in the assets pass. Conformance 57-img-intrinsic-in-flex and 58-object-fit-cover use a 120x60 GIF with an empty LZW stream, and extra img-png-truncated uses a PNG cut inside its IDAT. Chrome 156 loads both (120x60, 64x40) and paints nothing for the undecoded pixels. The screenshot used to drop them and now lays them out at their natural size, as Chrome does. The surf live corpus is not rebuilt in this slice: its live loads use probe_natural through surf, so this is a prediction for surf integration, unmeasured. P5b-X7.",
+ "control": "crates/turbo-dom-layout/tests/fixtures/image_truncation_chrome156.json (scripts/image-truncation-chrome-control.mjs, Chrome for Testing 156.0.8078.4)",
+ "e2e": "crates/turbo-dom-layout/tests/image_truncation_chrome.rs, crates/turbo-dom-raster/src/image_truncation_tests.rs",
+ "changes": {
+  "html2pdf": [],
+  "html2pdf-svg": [],
+  "html2pdf-extra": [],
+  "surf": [
+   "static-turbo-html2pdf__benches__conformance__fixtures__57-img-intrinsic-in-flex.png",
+   "static-turbo-html2pdf__benches__conformance__fixtures__57-img-intrinsic-in-flex.svg",
+   "static-turbo-html2pdf__benches__conformance__fixtures__58-object-fit-cover.png",
+   "static-turbo-html2pdf__benches__conformance__fixtures__58-object-fit-cover.svg"
+  ],
+  "surf-extra": [
+   "static-extra-img-png-truncated.png",
+   "static-extra-img-png-truncated.svg"
+  ]
+ }
+}
