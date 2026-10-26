@@ -365,7 +365,6 @@ fn padding_box_case(id: &str) -> bool {
 }
 
 #[test]
-#[ignore = "turbo-dom#102: fails until the fix"]
 fn positioned_boxes_use_the_padding_box_like_chrome_156() {
     compare_cases(padding_box_case);
 }
