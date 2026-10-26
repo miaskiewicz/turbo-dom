@@ -89,6 +89,7 @@ const DOCUMENTS = [
   { id: "comment_less_than_bang_dash_other", html: "<!--a<!-b-->" },
   { id: "comment_nested_open", html: "<!--a<!--b-->" },
   { id: "comment_nested_open_close", html: "<!--a<!---->" },
+  { id: "comment_nested_open_gt", html: "<!--a<!-->b" },
   { id: "comment_end_bang_dash", html: "<!--a--!-b-->" },
   { id: "comment_end_bang_gt", html: "<!--a--!>b" },
   { id: "eof_comment_less_than_bang", html: "<!--a<!" },

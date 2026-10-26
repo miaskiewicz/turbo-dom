@@ -10,9 +10,9 @@
 //!   state, CDATA in foreign content, and the tree-builder hooks the UTF-16 path delegates;
 //! - `selectors`: validity (`query_selector_all_checked`) and `matches` through the string
 //!   and UTF-16 (`matches_units`) selector APIs for every element;
-//! - `probes`: scripted DOM API results (CharacterData, Attr nodes, insertAdjacentElement,
-//!   toggleAttribute, names and namespaces, `:*-of-type` across namespaces, serialization,
-//!   removeAttribute, contextual-fragment `is`) rebuilt through the Tree API.
+//! - `probes`: scripted DOM API results (`CharacterData`, Attr nodes, `insertAdjacentElement`,
+//!   `toggleAttribute`, names and namespaces, `:*-of-type` across namespaces, serialization,
+//!   `removeAttribute`, contextual-fragment `is`) rebuilt through the Tree API.
 use serde_json::{json, Value};
 use turbo_dom::rtdom::serialize::serialize_inner;
 use turbo_dom::rtdom::tree::{Namespace, NodeType};

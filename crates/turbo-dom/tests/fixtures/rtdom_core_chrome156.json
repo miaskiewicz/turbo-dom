@@ -194,6 +194,11 @@
    "dump": "| <!-- a<!-- -->\n| <html>\n|   <head>\n|   <body>"
   },
   {
+   "id": "comment_nested_open_gt",
+   "html": "<!--a<!-->b",
+   "dump": "| <!-- a<! -->\n| <html>\n|   <head>\n|   <body>\n|     \"b\""
+  },
+  {
    "id": "comment_end_bang_dash",
    "html": "<!--a--!-b-->",
    "dump": "| <!-- a--!-b -->\n| <html>\n|   <head>\n|   <body>"

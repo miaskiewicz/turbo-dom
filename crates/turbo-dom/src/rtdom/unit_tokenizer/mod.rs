@@ -194,10 +194,8 @@ impl<Sink: TokenSink> Tokenizer<Sink> {
     }
 
     fn process_token_and_continue(&self, token: Token) {
-        assert!(matches!(
-            self.process_token(token),
-            TokenSinkResult::Continue
-        ));
+        let result = self.process_token(token);
+        assert!(matches!(result, TokenSinkResult::Continue));
     }
 
     //§ preprocessing-the-input-stream
@@ -474,19 +472,14 @@ impl<Sink: TokenSink> Tokenizer<Sink> {
         }
     }
 
+    // Each identifier of a DOCTYPE token is started once (the token is fresh per
+    // DOCTYPE), so this sets the empty identifier upstream also "clears" into.
     fn clear_doctype_id(&self, kind: DoctypeIdKind) {
-        let mut id = self.doctype_id(kind);
-        match *id {
-            Some(ref mut s) => s.clear(),
-            None => *id = Some(StrTendril::new()),
-        }
+        *self.doctype_id(kind) = Some(StrTendril::new());
     }
 
     fn start_consuming_character_reference(&self) {
-        debug_assert!(
-            self.char_ref_tokenizer.borrow().is_none(),
-            "Nested character references are impossible"
-        );
+        debug_assert!(self.char_ref_tokenizer.borrow().is_none(), "nested character reference");
 
         let is_in_attribute = matches!(self.state.get(), states::AttributeValue(_));
         *self.char_ref_tokenizer.borrow_mut() = Some(CharRefTokenizer::new(is_in_attribute));
@@ -496,12 +489,14 @@ impl<Sink: TokenSink> Tokenizer<Sink> {
         self.process_token_and_continue(EOFToken);
     }
 
+    // The peek-based states (before-attribute-value, the character-reference
+    // sub-tokenizer, and `eat`'s keyword matching in markup-declaration-open /
+    // after-DOCTYPE-name) are never entered by `reconsume` (its targets all read with
+    // `get_char`), so upstream's reconsume branches here are not carried: a pending
+    // reconsume has always been taken by `get_char` before any peek.
     fn peek(&self, input: &BufferQueue) -> Option<char> {
-        if self.reconsume.get() {
-            Some(self.current_char.get())
-        } else {
-            input.peek()
-        }
+        debug_assert!(!self.reconsume.get(), "peek with a pending reconsume");
+        input.peek()
     }
 
     fn discard_char(&self, input: &BufferQueue) {
@@ -510,11 +505,8 @@ impl<Sink: TokenSink> Tokenizer<Sink> {
         //
         // since discard_char is supposed to be used in combination with peek(), discard_char must
         // discard a single raw input character, not a normalized newline.
-        if self.reconsume.get() {
-            self.reconsume.set(false);
-        } else {
-            input.next();
-        }
+        debug_assert!(!self.reconsume.get(), "discard with a pending reconsume");
+        input.next();
     }
 
     fn emit_error(&self, error: Cow<'static, str>) {
@@ -1157,12 +1149,12 @@ impl<Sink: TokenSink> Tokenizer<Sink> {
                         self.bad_char_error();
                         go!(self: push_value '\u{fffd}')
                     }
-                    FromSet(c) => {
-                        if matches!(c, '"' | '\'' | '<' | '=' | '`') {
-                            self.bad_char_error();
-                        }
-                        go!(self: push_value c);
-                    }
+                    // Every set member is matched above ('\r' arrives normalized to
+                    // '\n'), and the slow path that yields other characters as FromSet
+                    // never runs here: this state is entered only from the peek-based
+                    // before-attribute-value state (no reconsume, no pending '\r') and
+                    // left on the first '\r'. Upstream's FromSet(c) arm is not carried.
+                    FromSet(_) => unreachable!("unquoted attribute value slow path"),
                     NotFromSet(ref b) => go!(self: append_value b),
                 }
             },
@@ -1337,8 +1329,7 @@ impl<Sink: TokenSink> Tokenizer<Sink> {
                         self.bad_char_error();
                         go!(self: create_doctype; force_quirks; emit_doctype; to Data)
                     }
-                    c => go!(self: create_doctype; push_doctype_name (c.to_ascii_lowercase());
-                                  to DoctypeName),
+                    c => go!(self: create_doctype; push_doctype_name (c.to_ascii_lowercase()); to DoctypeName),
                 }
             },
 
@@ -1589,10 +1580,7 @@ impl<Sink: TokenSink> Tokenizer<Sink> {
     }
 
     fn process_char_ref(&self, char_ref: CharRef) {
-        let CharRef {
-            mut chars,
-            mut num_chars,
-        } = char_ref;
+        let (mut chars, mut num_chars) = (char_ref.chars, char_ref.num_chars);
 
         if num_chars == 0 {
             chars[0] = '&';
@@ -1613,10 +1601,8 @@ impl<Sink: TokenSink> Tokenizer<Sink> {
 
                 states::AttributeValue(_) => go!(self: push_value c),
 
-                _ => panic!(
-                    "state {:?} should not be reachable in process_char_ref",
-                    self.state.get()
-                ),
+                // A character reference is only started from these states.
+                _ => unreachable!("character reference emission state"),
             }
         }
     }
@@ -1657,7 +1643,9 @@ impl<Sink: TokenSink> Tokenizer<Sink> {
             | states::RawData(Rcdata)
             | states::RawData(Rawtext)
             | states::RawData(ScriptData)
-            | states::Plaintext => go!(self: eof),
+            | states::Plaintext => {
+                go!(self: eof)
+            }
 
             states::TagName
             | states::RawData(ScriptDataEscaped(_))
@@ -1757,10 +1745,9 @@ impl<Sink: TokenSink> Tokenizer<Sink> {
 
             states::BogusComment => go!(self: emit_comment; to Data),
 
-            states::MarkupDeclarationOpen => {
-                self.bad_char_error();
-                go!(self: to BogusComment)
-            }
+            // At EOF `eat` never asks for more input, so markup-declaration-open always
+            // resolves in `run` before the EOF steps.
+            states::MarkupDeclarationOpen => unreachable!("EOF in markup declaration open"),
 
             states::CdataSection => {
                 self.emit_temp_buf();

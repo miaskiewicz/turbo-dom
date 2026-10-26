@@ -13,6 +13,7 @@
     "Remove redundant condition parentheses so compiler warnings remain clean under CI RUSTFLAGS=-D warnings.",
     "Drop the exact_errors, discard_bom and profile options (and the profiling timers): the native adapter never enables them, so only the inexact error messages, BOM-preserving input and unprofiled run loop remain.",
     "Drop the unused set_plaintext_state.",
-    "Replace the per-architecture SSE2/NEON data-state fast path (and its scalar fallback compiled on neither) with one portable byte scan producing the same chunks and line counts."
+    "Replace the per-architecture SSE2/NEON data-state fast path (and its scalar fallback compiled on neither) with one portable byte scan producing the same chunks and line counts.",
+    "Carry no code the native adapter provably never runs: peek/discard_char reconsume branches (no peek-based state is a reconsume target), the unquoted-attribute-value slow-path FromSet arm, the EOF arm of markup-declaration-open (eat never suspends at EOF), the char-ref EOF retry loop and the NumericSemicolon Stuck arm; impossible states are unreachable!()."
   ]
 }

@@ -192,13 +192,15 @@ impl CharRefTokenizer {
         tokenizer: &Tokenizer<Sink>,
         input: &BufferQueue,
     ) -> Status {
-        match tokenizer.peek(input) {
-            Some(';') => tokenizer.discard_char(input),
-            Some(_) => tokenizer.emit_error(Borrowed(
+        // Entered from `do_numeric` after peeking the non-digit that ended the digits,
+        // which is still unread: the peek always has a character here.
+        if tokenizer.peek(input) == Some(';') {
+            tokenizer.discard_char(input);
+        } else {
+            tokenizer.emit_error(Borrowed(
                 "Semicolon missing after numeric character reference",
-            )),
-            None => return Status::Stuck,
-        };
+            ));
+        }
         self.finish_numeric(tokenizer)
     }
 
@@ -356,10 +358,9 @@ impl CharRefTokenizer {
                 } else {
                     input.push_front(StrTendril::from_slice(&self.name_buf()[name_len..]));
                     tokenizer.ignore_lf.set(false);
-                    Status::Done(CharRef {
-                        chars: [from_u32(c1).unwrap(), from_u32(c2).unwrap()],
-                        num_chars: if c2 == 0 { 1 } else { 2 },
-                    })
+                    let chars = [from_u32(c1).unwrap(), from_u32(c2).unwrap()];
+                    let num_chars = if c2 == 0 { 1 } else { 2 };
+                    Status::Done(CharRef { chars, num_chars })
                 }
             }
         }
@@ -386,40 +387,35 @@ impl CharRefTokenizer {
         Status::Done(CharRef::EMPTY)
     }
 
+    // Every EOF arm finishes the reference: `finish_named` without an end character
+    // never continues into the bogus-name state, so upstream's retry loop (and its
+    // Stuck / Progress arms) is not carried.
     pub(super) fn end_of_file<Sink: TokenSink>(
         &mut self,
         tokenizer: &Tokenizer<Sink>,
         input: &BufferQueue,
     ) -> CharRef {
-        loop {
-            let status = match self.state {
-                State::Begin => Status::Done(CharRef::EMPTY),
-                State::Numeric(_) if !self.seen_digit => self.unconsume_numeric(tokenizer, input),
-                State::Numeric(_) | State::NumericSemicolon => {
-                    tokenizer.emit_error(Borrowed("EOF in numeric character reference"));
-                    self.finish_numeric(tokenizer)
-                }
-                State::Named => self.finish_named(tokenizer, input, None),
-                State::BogusName => {
-                    self.unconsume_name(input);
-                    Status::Done(CharRef::EMPTY)
-                }
-                State::Octothorpe => {
-                    input.push_front(StrTendril::from_slice("#"));
-                    tokenizer.emit_error(Borrowed("EOF after '#' in character reference"));
-                    Status::Done(CharRef::EMPTY)
-                }
-            };
-
-            match status {
-                Status::Done(char_ref) => {
-                    return char_ref;
-                }
-                Status::Stuck => {
-                    return CharRef::EMPTY;
-                }
-                Status::Progress => {}
+        let status = match self.state {
+            State::Begin => Status::Done(CharRef::EMPTY),
+            State::Numeric(_) if !self.seen_digit => self.unconsume_numeric(tokenizer, input),
+            State::Numeric(_) | State::NumericSemicolon => {
+                tokenizer.emit_error(Borrowed("EOF in numeric character reference"));
+                self.finish_numeric(tokenizer)
             }
-        }
+            State::Named => self.finish_named(tokenizer, input, None),
+            State::BogusName => {
+                self.unconsume_name(input);
+                Status::Done(CharRef::EMPTY)
+            }
+            State::Octothorpe => {
+                input.push_front(StrTendril::from_slice("#"));
+                tokenizer.emit_error(Borrowed("EOF after '#' in character reference"));
+                Status::Done(CharRef::EMPTY)
+            }
+        };
+        let Status::Done(char_ref) = status else {
+            unreachable!("a character reference at EOF always finishes")
+        };
+        char_ref
     }
 }
