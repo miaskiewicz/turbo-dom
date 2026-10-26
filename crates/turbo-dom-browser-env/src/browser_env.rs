@@ -9604,3 +9604,8 @@ mod view_transitions_tests;
 #[cfg(test)]
 #[path = "editing_tests.rs"]
 mod editing_tests;
+
+// turbo-dom-browser-env crate surface (scripts/browser-env-rewrite.sh).
+#[path = "crate_surface.rs"]
+mod crate_surface;
+pub use crate_surface::*;
