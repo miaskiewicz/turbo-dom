@@ -28,7 +28,6 @@ fn fullscreen_cases() -> Vec<Value> {
 }
 
 #[test]
-#[ignore = "turbo-dom#82: fails until the fix"]
 fn the_fullscreen_element_fills_the_viewport_on_the_static_path_like_chrome_156() {
     let fonts = FontRegistry::new();
     let cases = fullscreen_cases();
@@ -75,4 +74,89 @@ fn the_fullscreen_element_fills_the_viewport_on_the_static_path_like_chrome_156(
         failures.len(),
         failures.join("\n")
     );
+}
+
+/// Without a fullscreen stack the fullscreen UA rules do not apply: the same element
+/// stays in flow at its own size.
+#[test]
+fn without_a_fullscreen_stack_the_element_stays_in_flow() {
+    let fonts = FontRegistry::new();
+    let case = &fullscreen_cases()[0];
+    let tree = parse_html_tree(case["html"].as_str().unwrap());
+    let mut diags = Diagnostics::default();
+    let got = layout_boxes_tree(
+        &tree,
+        "",
+        1280.0,
+        800.0,
+        &fonts,
+        &HtmlOptions::default(),
+        &mut diags,
+    );
+    let f = got.iter().find(|b| b.cid == "f").unwrap();
+    assert_eq!((f.x, f.y, f.width, f.height), (10.0, 60.0, 116.0, 56.0));
+}
+
+/// The galley's top layer: the fullscreen element's box is the initial containing
+/// block's last child, above every other box, after its `::backdrop` — a sourceless
+/// black box over the whole viewport (Chrome 156: `::backdrop` of the fullscreen element
+/// is `position: fixed; inset: 0; background-color: rgb(0, 0, 0)`, the browser-env
+/// computed-style control of turbo-dom#58).
+#[test]
+fn the_fullscreen_element_is_in_the_top_layer_above_its_backdrop() {
+    use turbo_dom_layout::{
+        layout_html_tree_in_viewport, FragmentContent, ImageCtx, NoImages, Rgba,
+    };
+    let fonts = FontRegistry::new();
+    let html = "<!doctype html><style>body{margin:0}</style><div style=\"position:relative;z-index:9\"><div id=\"t\" style=\"width:10px;height:10px\"></div></div><div style=\"height:5px\"></div>";
+    let mut tree = parse_html_tree(html);
+    let element = tree.query_selector("#t").unwrap();
+    assert!(tree.set_fullscreen_stack(&[element]));
+    let images = ImageCtx {
+        resolver: &NoImages,
+        body_height: None,
+    };
+    let mut diags = Diagnostics::default();
+    let galley = layout_html_tree_in_viewport(
+        &tree,
+        "",
+        (1280.0, 800.0),
+        &fonts,
+        &images,
+        &HtmlOptions::default(),
+        &mut diags,
+    );
+    let n = galley.children.len();
+    assert_eq!(n, 3, "html, the backdrop, the fullscreen element");
+    let (backdrop, element) = (&galley.children[1], &galley.children[2]);
+    for frag in [backdrop, element] {
+        assert_eq!(
+            (frag.x, frag.y, frag.width, frag.height),
+            (0.0, 0.0, 1280.0, 800.0)
+        );
+        assert_eq!(frag.z_index, Some(i32::MAX));
+        assert!(frag.is_positioned);
+    }
+    assert!(
+        element.node_id.0 < backdrop.node_id.0,
+        "the backdrop's id is allocated last"
+    );
+    match &backdrop.content {
+        FragmentContent::Box { background, .. } => {
+            assert_eq!(
+                *background,
+                Some(Rgba {
+                    r: 0,
+                    g: 0,
+                    b: 0,
+                    a: 255
+                })
+            );
+        }
+        other => panic!("backdrop {other:?}"),
+    }
+    assert!(backdrop.children.is_empty());
+    // The fullscreen element left its place: the in-flow block follows its empty parent.
+    let html_box = &galley.children[0];
+    assert_eq!(html_box.height, 5.0);
 }

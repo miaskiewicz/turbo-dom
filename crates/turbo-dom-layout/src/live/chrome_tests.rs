@@ -369,7 +369,6 @@ fn fullscreen_case(id: &str) -> bool {
 }
 
 #[test]
-#[ignore = "turbo-dom#82: fails until the fix"]
 fn the_fullscreen_element_fills_the_viewport_like_chrome_156() {
     assert_matches_chrome(compare_cases(fullscreen_case));
 }

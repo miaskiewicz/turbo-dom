@@ -143,6 +143,12 @@ fn style_document(
     document_css.push_str(&collect_style_css_tree(&view, &document_roots(&view)));
     let cascade = build_cascade_with_width(extra_css, "", TokenSet::default(), cb_width)
         .for_document(&document_css);
+    // The fullscreen element's UA box, only while there is one (miaskiewicz/turbo-dom#82).
+    let cascade = if tree.fullscreen_stack().is_empty() {
+        cascade
+    } else {
+        cascade.with_fullscreen()
+    };
     let input = StyleInput {
         view: view.strip_non_visual(true),
         roots: Roots::Document,

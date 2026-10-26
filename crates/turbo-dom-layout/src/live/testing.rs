@@ -48,7 +48,13 @@ pub(crate) fn prematch(
 ) -> [(CascadeOrigin, Vec<PreMatched>); 2] {
     let mut cascade =
         crate::build_cascade_with_width(css, "", crate::style::TokenSet::default(), width);
-    let ua = crate::style::parse_stylesheet(LIVE_UA);
+    let mut ua = crate::style::parse_stylesheet(LIVE_UA);
+    // As the embedder does: the fullscreen UA rules join while the binding reports a
+    // fullscreen element (miaskiewicz/turbo-dom#82).
+    if !tree.fullscreen_stack().is_empty() {
+        let fullscreen = crate::style::parse_stylesheet(crate::style::fullscreen_user_agent_css());
+        ua.rules.extend(fullscreen.rules);
+    }
     let start = cascade.rules.len();
     cascade
         .rules

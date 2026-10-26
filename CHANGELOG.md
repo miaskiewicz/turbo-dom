@@ -7,7 +7,7 @@ at the time); this file reconstructs them from history.
 
 ## [Unreleased]
 
-### Fixed — turbo-dom-layout intrinsic widths, inline-blocks and the initial containing block (P5b-W7, Chrome 156 controls)
+### Fixed — turbo-dom-layout intrinsic widths, floats, inline-blocks, column flex, the initial containing block and the fullscreen element (P5b-W7, Chrome 156 controls)
 Each fix is backed by a Chrome for Testing 156 control and lists the corpus outputs it
 changes in `tools/parity/expected/p5b-w7-turbo-dom-*.json`.
 - Intrinsic widths count margins (miaskiewicz/turbo-dom#79): a box's min-/max-content
@@ -69,6 +69,20 @@ changes in `tools/parity/expected/p5b-w7-turbo-dom-*.json`.
   a `clear` closing that side's run); an in-flow block ends the run, and one that avoids
   floats (a formatting-context root, a replaced box) counts beside it. Control:
   `float-sum-*` in `html-document`.
+- The fullscreen element (miaskiewicz/turbo-dom#82): since #58 the binding reports the
+  fullscreen stack to the tree, but layout applied none of Chrome's UA rules for the
+  fullscreen element, so its rect and `elementFromPoint` over it differed. While a tree's
+  fullscreen stack is non-empty the cascade adds Chrome 156's `:not(:root):fullscreen`
+  rules (`position: fixed; inset: 0; width / height: 100%; margin: 0; box-sizing:
+  border-box; min / max sizes reset; transform: none`, all `!important`, and `object-fit:
+  contain`): the HTML drive adds them itself (`Cascade::with_fullscreen`); a live-DOM
+  embedder appends `style::fullscreen_user_agent_css()` to `user_agent_css()`. The
+  element's box is in the top layer: it moves to the end of the initial containing
+  block's content after its `::backdrop` (a black viewport-filling fixed box), above
+  every other box, out of reach of its ancestors' offsets, transforms, clips and
+  scrolling (its old place collapses). A document without fullscreen pays nothing.
+  Control: `fullscreen-*` in `live-geometry` (a trusted click runs `requestFullscreen()`),
+  asserted on the live and the static path.
 
 ### Fixed — turbo-dom-layout tables, clipping and box sizing (P5b-W5, miaskiewicz/turbo-dom#41/#51/#52/#55/#62/#63/#64/#65/#69/#70, Chrome 156 controls)
 Each fix is backed by a Chrome for Testing 156 control and lists the corpus outputs it
