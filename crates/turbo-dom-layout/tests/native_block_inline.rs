@@ -217,7 +217,12 @@ fn unsupported_displaced_splits_reject_but_boxless_text_does_not() {
         "<a><div style='float:left'>block</div></a>",
     ] {
         match capture_result(markup) {
-            Err(error) => assert_eq!(error, turbo_dom_layout::layout_snapshot::SvgSnapshotError::from(turbo_dom_layout::layout_snapshot::SnapshotError::UnsupportedInlineBlockSplit)),
+            Err(error) => assert_eq!(
+                error,
+                turbo_dom_layout::layout_snapshot::SvgSnapshotError::from(
+                    turbo_dom_layout::layout_snapshot::SnapshotError::UnsupportedInlineBlockSplit
+                )
+            ),
             Ok(_) => panic!("unsupported displaced split accepted: {markup}"),
         }
     }

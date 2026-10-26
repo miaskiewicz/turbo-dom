@@ -2,9 +2,7 @@ use turbo_dom_layout::layout_snapshot::{
     snapshot_html_live_tree_with_native_text, NativeTextOptions, SnapshotInputs, SourceId,
     SourceIdentity,
 };
-use turbo_dom_layout::{
-    Attr, Diagnostics, Element, FontFace, FontRegistry, ImageCtx, Node, Tag,
-};
+use turbo_dom_layout::{Attr, Diagnostics, Element, FontFace, FontRegistry, ImageCtx, Node, Tag};
 
 fn nodes(text: &str, family: &str) -> Vec<Node> {
     vec![Node::Element(Element {
