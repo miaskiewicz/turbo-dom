@@ -103,7 +103,7 @@ fn inline_flex_grid_case(id: &str) -> bool {
 /// The control cases of an open bug, each asserted by its own test (`#[ignore]`d until
 /// its fix lands) and held out of [`html_documents_lay_out_as_chrome_156`].
 fn held_out(id: &str) -> bool {
-    let groups: [fn(&str) -> bool; 17] = [
+    let groups: [fn(&str) -> bool; 18] = [
         auto_table_case,
         inline_flex_grid_case,
         abs_auto_width_case,
@@ -121,6 +121,7 @@ fn held_out(id: &str) -> bool {
         th_case,
         min_height_margin_case,
         zero_area_clip_case,
+        min_max_height_case,
     ];
     groups.iter().any(|group| group(id))
 }
@@ -277,6 +278,17 @@ fn zero_area_clip_case(id: &str) -> bool {
 #[test]
 fn zero_area_clip_boxes_keep_their_geometry_like_chrome_156() {
     compare_cases(zero_area_clip_case);
+}
+
+/// miaskiewicz/turbo-dom#77: `min-height` wins over `max-height` and `height`.
+fn min_max_height_case(id: &str) -> bool {
+    id.starts_with("min-max-height-")
+}
+
+#[test]
+#[ignore = "turbo-dom#77: fails until the fix"]
+fn min_height_wins_over_max_height_like_chrome_156() {
+    compare_cases(min_max_height_case);
 }
 
 /// miaskiewicz/turbo-dom#69: only legacy `-webkit-*` alignment moves block children.

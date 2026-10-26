@@ -7,8 +7,9 @@
 // selectors). P5b-W3 adds the layout cases of miaskiewicz/turbo-dom#28 (one group per item).
 // P5b-W5 adds the table caption cases of miaskiewicz/turbo-dom#51 (`caption-*`) and the
 // cases of the bugs found while fixing it (one group per issue, labelled). P5b-W6 adds the
-// `min-height` / `max-height` cases of miaskiewicz/turbo-dom#75 item 1 (`min-height-margin-*`)
-// and zero-area `clip: rect()` boxes of item 2 (`clip-zero-area-*`, `clip-sr-only*`).
+// `min-height` / `max-height` cases of miaskiewicz/turbo-dom#75 item 1
+// (`min-height-margin-*`), zero-area `clip: rect()` boxes of item 2 (`clip-zero-area-*`,
+// `clip-sr-only*`) and cases of the bugs found while fixing them (#77).
 //
 // For every case below, Chrome for Testing 156 (viewport 1280x800) records:
 //   - `boxes`: getBoundingClientRect() of every `[data-cid]` element (document order), as
@@ -341,6 +342,12 @@ const CASES = [
   { id: "clip-zero-area-fixed", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="position:fixed;left:30px;top:40px;width:20px;height:20px;clip:rect(0,0,0,0)"></div>`) },
   { id: "clip-zero-area-in-relative", html: DOC(S("body{margin:0}"), `<div style="position:relative;margin:30px"><div data-cid="c" style="position:absolute;right:0;top:4px;width:20px;height:20px;clip:rect(5px,5px,5px,5px)"></div></div>`) },
   { id: "clip-zero-area-transformed", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="position:absolute;left:20px;top:20px;width:50px;height:50px;transform:translate(100px,0);clip:rect(0,0,0,0)"></div>`) },
+  // P5b-W6, miaskiewicz/turbo-dom#77: `min-height` wins over `max-height` and `height`
+  // (CSS 2.2 §10.7).
+  { id: "min-max-height-min-wins-over-max", html: DOC(S("body{margin:0}"), `<div data-cid="w" style="min-height:400px;max-height:100px"><div data-cid="k" style="height:200px"></div></div><div data-cid="g" style="height:60px"></div>`) },
+  { id: "min-max-height-min-wins-over-height", html: DOC(S("body{margin:0}"), `<div data-cid="w" style="height:50px;min-height:100px"><div data-cid="k" style="height:200px"></div></div><div data-cid="g" style="height:60px"></div>`) },
+  { id: "min-max-height-all-three", html: DOC(S("body{margin:0}"), `<div data-cid="w" style="height:300px;max-height:100px;min-height:200px"><div data-cid="k" style="height:200px"></div></div><div data-cid="g" style="height:60px"></div>`) },
+  { id: "min-max-height-border-box", html: DOC(S("body{margin:0}"), `<div data-cid="w" style="box-sizing:border-box;padding:10px;min-height:150px;max-height:100px"><div data-cid="k" style="height:200px"></div></div><div data-cid="g" style="height:60px"></div>`) },
 ];
 
 /** The RGB of a 1x1 PNG screenshot (any filter: a single pixel's filter adds 0). */
