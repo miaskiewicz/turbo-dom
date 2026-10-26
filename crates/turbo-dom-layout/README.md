@@ -2,12 +2,12 @@
 
 The native **HTML/CSS layout engine** of turbo-dom: a style cascade over a
 turbo-dom `Tree` (`style_input` over a `TreeView`, or the live-DOM input `live` for an
-embedder-composed document; the legacy owned `Node` tree is still accepted by
-`style_tree` as the reference input), box generation, block / inline / flex / grid / table layout into one
-continuous galley of positioned `Fragment`s, a font registry with shaping
-(rustybuzz) and per-character fallback, image intrinsic sizing (PNG / JPEG, plus
-SVG behind the `svg` feature), and CSSOM-View style layout snapshots
-(`layout_snapshot`). `layout_html` drives a raw HTML string straight to a galley.
+embedder-composed document), box generation, block / inline / flex / grid / table layout
+into one continuous galley of positioned `Fragment`s, a font registry with shaping
+(rustybuzz) and per-character fallback, the shared image layer (`image`: intrinsic sizing
+of PNG / JPEG / GIF / WebP, plus SVG behind the `svg` feature; one PNG decode; one SVG
+rasterizer), and CSSOM-View style layout snapshots (`layout_snapshot`). `layout_html`
+drives a raw HTML string straight to a galley.
 
 ```rust
 use turbo_dom_layout::{layout_html, Diagnostics, FontRegistry, Fragment, RenderError};
@@ -43,6 +43,21 @@ fn lay_out(html: &str) -> Result<Fragment, RenderError> {
   rejection; exact error messages in `LiveError`); `live::snapshot` styles the composed
   tree, runs the embedder's post-cascade hook and lays it out with native text
   provenance. Qualified attribute names, no markers, sources on elements and text.
+- `layout_snapshot::snapshot_{,html_}live_tree*` capture a snapshot of a `StyleInput`
+  (identity paths index the styled forest).
+- `image` — the ONE image layer shared by the PDF emitter and turbo-dom-raster:
+  `ImageResolver::intrinsic` (default: `probe`, the header size probe for every format)
+  sizes every image box; `PngFrame::decode(bytes, PngBudget)` is the one PNG decode (palette
+  / low-bit / `tRNS` expanded, 16-bit kept), giving the PDF its native samples
+  (`to_raster_image`: gray stays `DeviceGray`, 16-bit high byte) and the screenshot painter
+  straight RGBA (`to_rgba8`, byte-identical to `image::to_rgba8`); under `svg-rasterize`,
+  `svg::rasterize(bytes, scale, Oversize)` is the one SVG rasterizer with the intrinsic CSS
+  size (`css_size`) separate from the oversampled pixel size (`pixel_size`): the PDF lays out
+  and rasterizes at 2x clamping an axis to 8192 px, turbo-dom-raster at 1x rejecting above
+  8192. JPEG stays a header read + `DCTDecode` passthrough for the PDF.
+- `FontRegistry::system(SystemFontPolicy)` — the process-wide installed-font registry, loaded
+  once per policy (`Default` = `load_system_fonts`, `Html` = `load_system_fonts_for_html`);
+  `system_cell` exposes the `OnceLock` for embedders that warm it themselves.
 - `cssom_view` — CSSOM-View geometry over a live snapshot (bounding/client rects,
   offset/client/scroll metrics, hit testing, carets, Range boxes, visibility), moved
   from turbo-surf; the embedder supplies scroll state and each element's effective
@@ -51,7 +66,8 @@ fn lay_out(html: &str) -> Result<Fragment, RenderError> {
 Consumers:
 - [`turbo-html2pdf-core`](https://github.com/miaskiewicz/turbo-html2pdf) — templating,
   pagination and PDF emit on top of this crate; it re-exports this crate's modules
-  at its own paths (`turbo_html2pdf_core::style::…`, `::layout::…`, `::Node`, …).
+  at its own paths (`turbo_html2pdf_core::style::…`, `::layout::…`, `::Tag`, …), and its
+  tests use this crate's `test-support` fixtures (no copy of `assets/fonts`).
 - [`turbo-dom-raster`](../turbo-dom-raster) — paints the galley to PNG / SVG.
 - [`turbo-surf`](https://github.com/miaskiewicz/turbo-surf) — its CSSOM-View layout
   (`getBoundingClientRect`, `elementFromPoint`, …) runs `live` + `cssom_view` over the
@@ -62,10 +78,11 @@ Consumers:
 | feature | default | what it does |
 |---|---|---|
 | `bundled-fonts` | on | embeds Inter / Roboto, Liberation Serif / PT Serif, Fira Code / IBM Plex Mono (OFL, see `assets/fonts/NOTICE.md`) so documents lay out with zero caller fonts |
-| `svg` | off | rasterizes `image/svg+xml` with resvg `=0.45.1` (pinned: 0.46+ changes raster output) |
+| `svg` | off | the PDF SVG pipeline: `image::probe` / `image::decode` route `image/svg+xml` through the shared rasterizer at 2x (implies `svg-rasterize`) |
+| `svg-rasterize` | off | the shared SVG rasterizer alone (`svg::rasterize`, resvg `=0.45.1`, pinned: 0.46+ changes raster output) without routing `probe`/`decode` through it — what turbo-dom-raster enables |
 | `perf` | off | hot-path counters (`perf` module, `hot!` macro) |
 | `serde` | off | `serde::Serialize` for the `cssom_view` metrics records (turbo-surf returns them to page script) |
-| `test-support` | off | fixtures for downstream tests (`FontFace::collection_fixture_faces`); never in production |
+| `test-support` | off | `test_support`: font fixtures read from `assets/fonts` (`FIXTURE_FONTS_DIR`, `font_bytes`, `registry`, …), `style` pairs, test-only tree literals that build a `Tree` (`literal`), `FontFace::collection_fixture_faces`; for this crate's and downstream tests (the integration tests enable it via a self dev-dependency), never in production |
 
 ## Provenance
 
@@ -83,7 +100,20 @@ control end to end in `tests/cascade_selectors_chrome.rs`, see turbo-dom's
 per-test move manifest is `docs/CONSOLIDATION-TESTS.md`. Step S4 added the live-DOM
 input (`live`, replacing turbo-surf's tree copier) and moved turbo-surf's pure
 CSSOM-View modules into `cssom_view` (turbo-surf @ 94c6150 `live_layout_*`, a move: surf
-deleted its copies).
+deleted its copies). Step S5 deleted the legacy owned-`Node` input (`node.rs`, `markup.rs`,
+`style_tree*`; `Tag` / `Attr` / `MarkerKind` moved to `tag`), made `image` the one image
+layer shared with turbo-dom-raster (size probe, PNG decode, SVG rasterizer — gated byte for
+byte against the old decoders by `tests/image_layer.rs` and turbo-dom-raster's
+`shared_layer_tests`), added the process-wide `FontRegistry::system` and the
+`test-support` fixtures turbo-html2pdf-core's tests now use instead of a copy of
+`assets/fonts`.
+
+## Lints
+
+`clippy::pedantic` through the workspace's `[workspace.lints.clippy]` (the turbo-dom
+allow-list, plus `manual_midpoint`: `f32::midpoint` rounds through f64 and would move
+geometry bits); item-level `#[allow]`s carry their reason inline. `cargo clippy -p
+turbo-dom-layout --all-targets [--all-features | --no-default-features] -- -D warnings` is clean.
 
 ## Complexity
 
@@ -102,7 +132,7 @@ elements_at_point 30, clipped 12}`, `inline::{check_style 6, geometry 10}`,
 cargo test -p turbo-dom-layout                         # default (bundled-fonts)
 cargo test -p turbo-dom-layout --features svg
 cargo test -p turbo-dom-layout --features perf
-TURBO_DOM_LAYOUT_EQUIV_DIRS=dir1:dir2 cargo test -p turbo-dom-layout --test tree_input_equivalence  # + corpora
+cargo test -p turbo-dom-layout --features svg --test image_layer   # the shared image layer == the pre-S5 PDF decode
 cargo test -p turbo-dom-layout --no-default-features   # 44 known failures: tests that assume bundled fonts (turbo-html2pdf#28)
 cargo tarpaulin --config crates/turbo-dom-layout/tarpaulin.toml
 ```

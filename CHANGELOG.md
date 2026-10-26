@@ -50,8 +50,33 @@ at the time); this file reconstructs them from history.
   unknown/case-folded pseudo-classes, pseudo-elements, specificity), each covered by the
   Chrome control; no release-corpus output changed.
 
+- turbo-dom-layout's shared image layer (consolidation S5): `ImageResolver::intrinsic`
+  (layout sizes every image through it; default = the header `probe`), `PngFrame` /
+  `PngBudget` / `decode_png_rgba` (one PNG decode: PDF native samples and
+  `image::to_rgba8`-identical RGBA), `Rgba8Image`, and under the new `svg-rasterize`
+  feature `svg::rasterize(bytes, scale, Oversize)` / `css_size` / `pixel_size` (one SVG
+  rasterizer: PDF 2x + clamp, raster 1x + reject). turbo-dom-raster decodes PNG and SVG
+  through it and no longer re-encodes images to PNG for layout sizing. No output changes
+  (differential tests over the parity image inputs).
+- `FontRegistry::system(SystemFontPolicy)` / `system_cell` / `load_system`: one
+  process-wide installed-font load per policy; turbo-dom-raster's `system_fonts` renders
+  use it.
+- turbo-dom-layout `test_support` (`test-support` feature): font fixtures from
+  `assets/fonts`, `ComputedStyle` pairs and test-only tree literals, shared with
+  turbo-html2pdf-core's tests (which no longer keep a copy of the fonts).
+
 ### Changed
 - The root `turbo-dom-parser` crate is marked `publish = false` (it ships to npm only).
+- turbo-dom-layout: the legacy owned-`Node` input is removed (`node` / `markup` modules,
+  `Node`, `Element`, `NodeTree`, `tree_from_nodes`, `TreeView::to_nodes`, `style_tree*`,
+  `html_layout::{parse_html, parse_html_with_roots, strip_non_visual, collect_style_css}`);
+  `Tag` / `Attr` / `MarkerKind` / `MarkerClassifier` move to `tag` (root re-exports
+  unchanged); `layout_snapshot::snapshot_{,html_}live_tree*` take a `StyleInput`;
+  `style::presentational_declarations(local, attrs)`. html5ever / markup5ever_rcdom are no
+  longer dependencies of turbo-dom-layout.
+- `[workspace.lints]`: turbo-dom, turbo-dom-layout and turbo-dom-raster share the
+  pedantic clippy gate (layout and raster newly pedantic-clean; `#[must_use]` added to
+  their pure functions).
 
 ### Fixed
 - Selector engine (Rust `rtdom::query`, both the string and the UTF-16 API) now matches
