@@ -50,8 +50,10 @@ function tokenize(text) {
   };
   const startsIdent = (at) => {
     const c = text[at], d = text[at + 1];
-    if (c === '-') return isNameStart(d || '') || d === '-' || (d === '\\');
-    if (c === '\\') return true;
+    // A backslash starts an escape unless a newline follows it.
+    const escape = (index) => text[index] === '\\' && text[index + 1] !== '\n';
+    if (c === '-') return isNameStart(d || '') || d === '-' || escape(at + 1);
+    if (c === '\\') return escape(at);
     return isNameStart(c || '');
   };
   const readName = () => {
@@ -243,7 +245,15 @@ function sumTerms(inner) {
       else rest.push([unit, value]);
     }
     rest.push(['px', px]);
-    return rest;
+    terms.length = 0;
+    terms.push(...rest);
+  }
+  // Times, angles and frequencies in two units combine in their canonical unit.
+  for (const [canonical, factors] of [['s', { s: 1, ms: 0.001 }], ['deg', { deg: 1, grad: 0.9, rad: 180 / Math.PI, turn: 360 }], ['hz', { hz: 1, khz: 1000 }]]) {
+    if (terms.filter(([unit]) => unit in factors).length < 2) continue;
+    let total = 0;
+    for (let index = terms.length - 1; index >= 0; index--) if (terms[index][0] in factors) { total += terms[index][1] * factors[terms[index][0]]; terms.splice(index, 1); }
+    terms.push([canonical, total]);
   }
   return terms;
 }
@@ -326,7 +336,11 @@ function functionValid(name, inner) {
     const slash = inner.findIndex((c) => c.kind === 'slash');
     return slash < 0 ? inner.length === 3 : slash === 3 && inner.length === 5;
   }
-  if (name === 'linear') return inner.some((c) => c.kind === 'comma') && argumentsOf(inner).every((stop) => stop.length >= 1 && stop.length <= 3);
+  if (name === 'linear') {
+    // Each stop: a number output and at most two percentage positions.
+    const math = (c) => c.kind === 'function' && MATH_FUNCTIONS.has(c.name);
+    return inner.some((c) => c.kind === 'comma') && argumentsOf(inner).every((stop) => stop.length >= 1 && stop.length <= 3 && (stop[0].kind === 'number' || math(stop[0])) && stop.slice(1).every((c) => c.kind === 'percentage' || math(c)));
+  }
   if (name === 'steps') {
     // The step count: an integer literal, or a math function Chrome checks later.
     const count = (c, minimum) => (c.kind === 'number' ? c.integer && c.value >= minimum : c.kind === 'function' && MATH_FUNCTIONS.has(c.name));
@@ -490,6 +504,14 @@ function linearText(inner) {
   return `linear(${stops.map(([output, positions]) => `${output} ${positions.map(() => `${cssNumber(flat[index++])}%`).join(' ')}`).join(', ')})`;
 }
 
+/** Functions whose identifier arguments are names (kept as written). */
+const NAMING_ARGUMENTS = new Set(['stylistic', 'styleset', 'character-variant', 'swash', 'ornaments', 'annotation', 'local', 'format', 'attr', 'counter', 'counters', 'symbols', 'src', 'var', 'env']);
+/** A calc() component that computes to a plain number, else null. */
+function calcNumber(comp) {
+  if (comp.kind !== 'function' || comp.name !== 'calc' || !comp.text.startsWith('calc(')) return null;
+  const nested = components(comp.text.slice(5, -1)), terms = nested && sumTerms(nested);
+  return terms && terms.length === 1 && terms[0][0] === '' ? terms[0][1] : null;
+}
 /** Tokens -> components (a function / block is one component); `null` on bad input. */
 function read(tokens, state, close) {
   const out = [];
@@ -521,6 +543,10 @@ function read(tokens, state, close) {
           if (inner.length !== 1 || inner[0].kind !== 'string') return null;
           out.push({ kind: 'url', value: inner[0].value, text: `url(${quoted(inner[0].value)})` });
         } else {
+          // Keyword arguments are case-insensitive: Chrome writes them lowercase.
+          if (!NAMING_ARGUMENTS.has(name)) for (const comp of inner) if (comp.kind === 'ident' && !comp.value.startsWith('--')) comp.text = comp.value.toLowerCase();
+          // A calc() argument of cubic-bezier() that computes to a number is that number.
+          if (name === 'cubic-bezier') inner.forEach((comp, index) => { const value = calcNumber(comp); if (value !== null) inner[index] = { kind: 'number', value: f32(value), integer: false, text: cssNumber(value) }; });
           if (!functionValid(name, inner)) return null;
           const special = name === 'calc' ? calcSum(inner) : name === 'min' || name === 'max' || name === 'clamp' ? minMax(name, inner) : name === 'rgb' || name === 'rgba' || name === 'hsl' || name === 'hsla' ? colorFunction(name, inner) : name === 'lab' || name === 'lch' || name === 'oklab' || name === 'oklch' ? labFunction(name, inner) : name === 'steps' ? stepsText(inner) : name === 'linear' ? linearText(inner) : null;
           const text = special ?? `${name}(${join(inner)})`;
@@ -591,7 +617,7 @@ function number(c, negative) {
   if (c.kind === 'number') return negative || c.value >= 0 ? c.text : null;
   return mathOf(c, () => false, false, true) ? c.text : null;
 }
-const integer = (c, minimum) => (c.kind === 'number' && c.integer && c.value >= minimum ? c.text : null);
+const integer = (c, minimum) => (c.kind === 'number' ? (c.integer && c.value >= minimum ? c.text : null) : mathOf(c, () => false, false, true) ? c.text : null);
 function time(c, negative) {
   if (c.kind === 'dimension' && (c.unit === 's' || c.unit === 'ms')) return negative || c.value >= 0 ? c.text : null;
   return mathOf(c, (unit) => unit === 's' || unit === 'ms', false, false) ? c.text : null;
@@ -1228,6 +1254,8 @@ function fontFamily(comps) {
 }
 /** `oblique <angle>`: Chrome checks a literal angle's number, in its own unit, against [-90, 90]; a zero angle is `normal`. */
 function oblique(c) {
+  // A unitless zero is not an angle here.
+  if (c.kind === 'number') return null;
   const text = angle(c);
   if (text === null) return null;
   if (c.kind === 'dimension' && (c.value < -90 || c.value > 90)) return null;
@@ -1326,6 +1354,32 @@ function trackBreadth(c, flex) {
   if (c.kind === 'function' && c.name === '[') return false;
   return lengthPercentage(c, false) !== null;
 }
+/** At least one track, and no two line-name blocks side by side. */
+function tracksValid(comps) {
+  const names = (c) => c.kind === 'function' && c.name === '[';
+  return comps.some((c) => !names(c)) && !comps.some((c, index) => index > 0 && names(c) && names(comps[index - 1]));
+}
+/** An auto-repeated track: line names or a fixed size (a `<length-percentage>`, or a `minmax()` with a fixed bound). */
+function trackFixed(c) {
+  const fixed = (x) => x.kind !== 'ident' && lengthPercentage(x, false) !== null;
+  if (c.kind === 'function' && c.name === '[') return true;
+  if (c.kind === 'function' && c.name === 'minmax') { const inner = components(c.text.slice(7, -1)); return !!inner && inner.length === 3 && (fixed(inner[0]) || fixed(inner[2])); }
+  if (c.kind === 'function' && c.name === 'fit-content') return false;
+  return fixed(c);
+}
+/** A track component spelled like Chrome: a unitless zero track size as `0px`, keywords lowercase, inside minmax() / fit-content() / repeat() too. */
+function trackText(c, repeatCount) {
+  if (c.kind === 'number' && !repeatCount) return '0px';
+  if (c.kind === 'ident') return c.value.toLowerCase();
+  if (c.kind === 'function' && ['minmax', 'fit-content', 'repeat'].includes(c.name)) {
+    const inner = components(c.text.slice(c.name.length + 1, -1));
+    if (!inner) return c.text;
+    let seenComma = false;
+    const spelled = inner.map((part) => { const count = c.name === 'repeat' && !seenComma; if (isComma(part)) seenComma = true; return { ...part, text: trackText(part, count) }; });
+    return `${c.name}(${join(spelled)})`;
+  }
+  return c.text;
+}
 /** One track-list component: line names, a track size, or (at the top level) `repeat()`. */
 function trackOk(c, repeatAllowed) {
   if (c.kind !== 'function') return trackBreadth(c, true);
@@ -1338,8 +1392,9 @@ function trackOk(c, repeatAllowed) {
     const comma = inner.findIndex(isComma);
     if (comma < 0) return false;
     const head = inner.slice(0, comma), tracks = inner.slice(comma + 1);
-    const count = head.length === 1 && (head[0].kind === 'number' ? head[0].integer && head[0].value >= 1 : isIdent(head[0], ['auto-fill', 'auto-fit']));
-    return count && tracks.length > 0 && tracks.every((track) => trackOk(track, false));
+    const auto = head.length === 1 && isIdent(head[0], ['auto-fill', 'auto-fit']);
+    const count = head.length === 1 && (head[0].kind === 'number' ? head[0].integer && head[0].value >= 1 : auto);
+    return count && tracksValid(tracks) && tracks.every((track) => trackOk(track, false) && (!auto || trackFixed(track)));
   }
   return lengthPercentage(c, false) !== null;
 }
@@ -1352,7 +1407,8 @@ function trackList(comps) {
     const ok = comp.kind === 'ident' ? (index === 0 && subgrid) || isIdent(comp, ['auto', 'min-content', 'max-content', 'masonry']) : trackOk(comp, true);
     if (!ok) return null;
   }
-  return join(comps.map((c) => (c.kind === 'number' ? { ...c, text: '0px' } : c.kind === 'ident' ? { ...c, text: c.value.toLowerCase() } : c)));
+  if (!subgrid && !tracksValid(comps)) return null;
+  return join(comps.map((c) => ({ ...c, text: trackText(c, false) })));
 }
 /** A `grid-template-areas` string: its cell tokens separated by single spaces. */
 function areaString(comp) {
@@ -2434,7 +2490,8 @@ const offsetPath = (comps) => single(comps, (c) => {
   if (value === null || (value.startsWith('path(') && !pathDataValid(value))) return null;
   return value.startsWith('path(') ? pathText(value) : value;
 });
-const opacityV = (comps) => single(comps, (c) => number(c, true) ?? (c.kind === 'percentage' ? cssNumber(c.value / 100) : null));
+// A percentage calc() stays as written.
+const opacityV = (comps) => single(comps, (c) => number(c, true) ?? (c.kind === 'percentage' ? cssNumber(c.value / 100) : mathOf(c, isLengthUnit, true, false) && c.text.includes('%') ? c.text : null));
 const DISPLAY_KEYWORDS = ['none', 'contents', 'block', 'inline', 'inline-block', 'flow-root', 'flex', 'inline-flex', 'grid', 'inline-grid', 'table', 'inline-table', 'table-row-group', 'table-header-group', 'table-footer-group', 'table-row', 'table-cell', 'table-column-group', 'table-column', 'table-caption', 'list-item', 'ruby', 'ruby-text', 'math', '-webkit-box', '-webkit-inline-box'];
 const DISPLAY_PAIRS = { 'block flow': 'block', 'inline flow': 'inline', 'inline flow-root': 'inline-block', 'block flow-root': 'flow-root', 'block flex': 'flex', 'inline flex': 'inline-flex', 'block grid': 'grid', 'inline grid': 'inline-grid', 'block table': 'table', 'inline table': 'inline-table', 'block ruby': 'block ruby', 'inline ruby': 'ruby' };
 function display(comps) {

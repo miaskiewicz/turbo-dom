@@ -19,7 +19,7 @@ const sha = (text) => createHash('sha256').update(text).digest('hex');
 // Scenarios whose npm result differs from Chrome for a documented reason, by id.
 const KNOWN_GAPS = new Set([]);
 
-test('element.style shorthands expand and serialize like Chrome 156 (turbo-dom#90)', { todo: 'turbo-dom#90: round-six Chrome cases fail until the fix' }, () => {
+test('element.style shorthands expand and serialize like Chrome 156 (turbo-dom#90)', () => {
   assert.equal(control.browser, 'Chrome/156.0.8078.4');
   assert.deepEqual(control.errors, []);
   assert.equal(control.probeSha256, sha(probe));
