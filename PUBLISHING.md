@@ -3,6 +3,10 @@
 The release version is shared by the scoped npm package `@miaskiewicz/turbo-dom`,
 its native/WASM parser (`turbo-dom-parser`) and the Rust runtime crate `turbo-dom`.
 The source of truth is [`.github/workflows/ci.yml`](./.github/workflows/ci.yml).
+The workspace crates `turbo-dom-layout` and `turbo-dom-raster` (0.6.0, relocated from
+turbo-html2pdf / turbo-surf in the consolidation) are not in the publish workflow yet; the
+consolidation's release step adds them to the publish chain
+(turbo-dom-v8 -> turbo-dom -> turbo-dom-layout -> turbo-dom-raster -> turbo-dom-browser-env).
 The repository has no Python package or PyPI publish workflow.
 
 ## Prepare and verify the release PR
