@@ -67,6 +67,62 @@ at the time); this file reconstructs them from history.
   `PageSession`. Corpus: every surf `live-*` dump changes
   (`tools/parity/expected/p5b-x3-surf-36.json`).
 
+### Fixed — npm runtime namespaces, adoption, template contents, reaction order (P5b-X4, miaskiewicz/turbo-dom#29, Chrome 156 control)
+- `createElementNS` creates the element in the namespace it is given: any namespace other
+  than HTML / SVG / MathML (and the null namespace — `null`, `undefined` or `''`) gives a
+  plain, case-preserving `Element` (`namespaceURI`, `localName`, attribute names and
+  `tagName` keep their case; it is never a custom element). It used to create an HTML
+  element. Prefixes are kept (`prefix`, `tagName` = the qualified name, e.g. `svg:rect`;
+  they were dropped) and the qualified name is validated like Chrome 156
+  (`InvalidCharacterError` / `NamespaceError`; Chrome keeps the local name up to a second
+  colon). `createElement` validates its name too (`createElement('a b')` threw nothing;
+  turbo-dom#31). `getElementsByTagName` matches non-HTML elements by their exact qualified
+  name (`getElementsByTagName('foreignObject')` found nothing; turbo-dom#32), and the
+  serializer writes other namespaces' qualified names and treats only HTML elements as
+  void / `<template>` (turbo-dom#33).
+- Inserting a node from another document (`insertBefore` / `appendChild` / `append` /
+  `replaceChild`, fragments' children too) adopts it, as `adoptNode` does: its subtree reads
+  its own attributes and children instead of the new document's buffer (an un-inflated
+  subtree used to read garbage — wrong attributes, other documents' nodes), the old document
+  stops reporting it (its version is bumped), and `adoptedCallback` runs. DOM versions now
+  come from one process-wide counter, so an adopted node can never hit a cache entry keyed
+  on its old document's version. A custom element moved into a document without a registry
+  keeps its connected / disconnected callbacks there.
+- `insertBefore(node, node)` and `replaceChild(node, node)` no longer throw `NotFoundError`
+  after detaching the node (it was lost): the reference child is checked before the tree
+  changes and becomes the node's next sibling, as in Chrome; `replaceChild` removes the old
+  child before inserting the new one (MutationObserver records in that order;
+  turbo-dom#34). `DocumentType.cloneNode()` keeps `name` / `publicId` / `systemId`
+  (turbo-dom#35).
+- `<template>` contents live in the document's inert template contents owner document
+  (`content.ownerDocument !== document`, no `defaultView`, no custom element registry),
+  so `template.content.cloneNode(true)` no longer upgrades custom elements right away:
+  they upgrade once inserted into the document (`document.importNode(content, true)`
+  clones into the document and upgrades there). Every template now has its contents
+  (`document.createElement('template').content` was `null`), `template.innerHTML` parses
+  into them (it replaced the template's children), and `cloneNode(true)` clones them
+  (turbo-dom#36). Moving parsed contents in and out of the document stays lazy (the
+  inert document shares the buffer). `element.content` is an accessor: `<meta>` reflects
+  its attribute (it was `null`; turbo-dom#37), other elements have no such property.
+  Adoption reaches shadow roots (a shadow host's root stayed in the old document;
+  turbo-dom#38), and `document.cloneNode(true)` clones the children into the new document.
+- Custom element reactions are queued on each element and run when the DOM call returns,
+  element by element, like Chrome's `[CEReactions]`: callbacks see the finished operation
+  (`append(a, b)`: `a`'s `connectedCallback` sees `b` inserted; `innerHTML` /
+  `replaceChildren` / `textContent`: `disconnectedCallback` sees the new children; clone /
+  `importNode` constructors see the cloned children; `innerHTML` queues the new elements'
+  upgrades before the old children's disconnections), and DOM calls made inside a callback
+  run their own reactions first. `attributeChangedCallback` runs after the mutation record
+  is queued. `insertAdjacentHTML` parses with the element or its parent as the context
+  instead of a `createElement(localName)` scratch element (a custom element of that name was
+  constructed; SVG context lost; positions are case-insensitive; `NoModificationAllowedError`
+  / `SyntaxError` like Chrome; turbo-dom#39). `replaceWith(…)` listing the node itself keeps
+  it, and the node is removed before its replacements go in (turbo-dom#40).
+  Control: `test/fixtures/dom_adoption_reactions_chrome156.json` (probe + cases beside it,
+  recorded with `crates/turbo-dom-browser-env/scripts/select-element-chrome-control.mjs`),
+  asserted by `test/dom-adoption-reactions-chrome.test.mjs` (the one deviation: the runtime's
+  `HTMLElement` is `Element`, so `instanceof HTMLElement` is true for every element).
+
 ### Changed — npm `:defined` and custom elements (P5b-X3, miaskiewicz/turbo-dom#26 item 2, Chrome 156 control)
 - The JS runtime keeps each element's HTML custom element state in lockstep with the Rust
   tree (`src/runtime/custom-elements.mjs`): the creation-time rule (a valid custom element

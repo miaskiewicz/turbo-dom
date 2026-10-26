@@ -330,6 +330,7 @@ test('edge paths: nested upgrades, registries without definitions, fragments, ra
   // a document that never loaded a buffer (no version yet) still records a state
   const raw = new Document();
   const el = raw.createElement('x-a');
+  assert.equal(raw.__version, undefined);
   assert.equal(setCustomElementState(el, 'custom'), true);
-  assert.equal(raw.__version, 1);
+  assert.ok(raw.__version > 0); // a fresh value of the process-wide version counter
 });

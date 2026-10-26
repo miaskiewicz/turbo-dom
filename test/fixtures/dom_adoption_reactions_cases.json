@@ -1,0 +1,1 @@
+[{"id": "dom-adoption-reactions", "headers": [], "html": "<!doctype html><html><head></head><body><template id=\"t2\"><x-r id=\"u1\" a=\"1\"><x-r id=\"u2\"></x-r></x-r></template><template id=\"t4\"><x-r id=\"v1\"></x-r></template><div id=\"host\"></div></body></html>", "documentBase": "http://localhost/"}]

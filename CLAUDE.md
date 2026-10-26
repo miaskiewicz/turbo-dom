@@ -163,7 +163,12 @@ package or publish workflow.
   Proxy (`window.mjs`) self-replaces lazy globals and traces touched ones. Selectors read the
   internal `node.__children()` array, NOT the live `childNodes` Proxy. Honest stubs in
   `stubs.mjs`; custom elements (state, registry, upgrades, lifecycle callbacks) in
-  `custom-elements.mjs`, hooked into `dom.mjs` only once a registry exists (`Document.__ceRegistry`). Two deliberate non-honest areas (both test-time only, see notes below):
+  `custom-elements.mjs`, hooked into `dom.mjs` only once a registry exists (`Document.__ceRegistry`;
+  `null` = hooks armed without a registry, for a document a custom element was adopted into).
+  Reactions are queued per element and run when the outermost DOM call returns ([CEReactions]):
+  each DOM call that can queue them re-enters itself through `withReactions(METHOD.x, …)` when
+  `ceScope(doc)` — one predicted-false read otherwise; a new such DOM path needs the same gate
+  (turbo-dom#29 item 4). Two deliberate non-honest areas (both test-time only, see notes below):
   the partial style cascade in `cascade.mjs`, and the **synthetic geometry** in `dom.mjs`
   (`getBoundingClientRect`/offset/client/scroll **size** are non-zero — positions stay 0 —
   because honest-zero deadlocks React's measure→setState→re-measure loop). Validated by `test/differential.test.mjs`
@@ -183,6 +188,9 @@ package or publish workflow.
   Wrappers are built lazily on access (live over the attribute, no snapshot). `newElement()`
   picks the subclass by ns at every construction site (inflate/innerHTML/cloneNode/createElementNS)
   — HTML elements stay plain `Element` (no SVG getters, no regression, no hot-path cost).
+  An element's `__ns` is `''` (HTML), `'svg'`, `'math'`, or — only from `createElementNS` in any
+  other namespace — `'ns:' + URI` (`'ns:'` = the null namespace), so "HTML or not" stays one
+  string test; `__prefix` exists only on prefixed elements (turbo-dom#29 item 1).
 - **CSSOM is minimal + test-time only** (`cssom.mjs`): `<style>.sheet` (lazy `__sheet`, only
   emotion-touched styles allocate one) + live `document.styleSheets` + `insertRule`/`deleteRule`.
   `insertRule` bumps `Document.__version` (via owner `__touch()`), and `cascade.mjs` reads
@@ -197,7 +205,13 @@ package or publish workflow.
   default, so `<noscript>` content is parsed as markup, not rawtext. Don't flip it.
 - **`<template>` content** is NOT in `children` — html5ever puts it in `template_contents`.
   `walk()` appends it as a synthetic `nodeType 11` `content` fragment node. html5lib prints it
-  as the literal word `content`.
+  as the literal word `content`. In the JS runtime that fragment (and every template's
+  contents — created lazily by the `content` accessor) belongs to the document's inert
+  "template contents owner document" (`Document.__templateDocument()`: no window, no custom
+  element registry, so contents and their clones never upgrade). It shares the document's
+  buffer, so contents move to and from the document by switching owners (`rehome`), still
+  lazy; `template.innerHTML` parses into the contents, `cloneNode(true)` clones them, and
+  `importNode` clones into the importing document (`__clone(doc, deep)`; turbo-dom#29 item 3).
 - **Foreign content:** elements carry `namespace` ("svg"/"math", else ""); foreign attrs carry
   `prefix` ("xlink" etc). The serializer renders `<svg svg>` and `xlink href="…"`.
 - **Fragment context:** `parseFragment(html, context)` where context is `"td"` or namespaced
@@ -312,8 +326,12 @@ Latest (darwin-arm64, Node 24, `npm run bench:all`), vs jsdom / happy-dom:
 - **Cache invalidation = Document.__version.** EVERY mutation must bump it: notifyMutation
   bumps it unconditionally (insert/remove/setAttribute), and __touch() covers direct __kids
   rewrites (innerHTML/textContent/replaceChildren). If you add a new mutation path that
-  bypasses these, bump __version or queries go stale. Covered by
-  test/liveness.test.mjs "query/getElementById caches invalidate on mutation".
+  bypasses these, bump __version (call `__touch()`; never `+ 1` by hand) or queries go stale.
+  Version values come from ONE process-wide counter (`VERSION` in dom.mjs), so a node adopted
+  into another document can never match a cache entry keyed on its old document's version;
+  cross-document insertion adopts (`adopt()`: re-home, bump the old document). Covered by
+  test/liveness.test.mjs "query/getElementById caches invalidate on mutation" and
+  test/adoption.test.mjs.
 - `getByLabelText` was O(n²) (element.labels → getElementsByTagName('label') per element);
   the caches took it 1342→~270µs.
 Numbers in README.md — refresh both (bench against jsdom AND happy-dom) if you touch hot paths.

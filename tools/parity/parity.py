@@ -11,9 +11,12 @@ manifests with a recorded checkpoint, and records new checkpoints.
 `compare` fails on any output that differs from CHECKPOINT unless an expected-diff
 file lists it. An expected-diff file is JSON:
   {"id": "turbo-html2pdf#29", "reason": "...", "control": "path/to/chrome-control",
-   "changes": {"html2pdf": ["template-invoice-plain.pdf", ...], "surf": [...]}}
-Entries listed but unchanged are reported as stale expectations (also a failure),
-so expectations never outlive the change they describe.
+   "changes": {"html2pdf": ["template-invoice-plain.pdf", ...], "surf": [...]},
+   "added": {"html2pdf-extra": ["new-input.pdf"]}}
+`changes` lists outputs the checkpoint has; `added` lists outputs of new corpus
+inputs, which must be absent from the checkpoint. Entries listed but not produced
+as described are reported as stale expectations (also a failure), so expectations
+never outlive the change they describe.
 """
 import argparse
 import json
@@ -62,12 +65,17 @@ def compare(args):
     out, checkpoint = Path(args.out), MANIFESTS / args.checkpoint
     if not checkpoint.is_dir():
         sys.exit(f"compare: unknown checkpoint {args.checkpoint}")
-    expected = {}
+    expected, added = {}, {}
     for file in args.expect or []:
         spec = load(file)
         for corpus, keys in spec.get("changes", {}).items():
             for key in keys:
                 expected.setdefault((corpus, key), []).append(spec["id"])
+        # `added` declares outputs of new corpus inputs: they must be new, not changed.
+        for corpus, keys in spec.get("added", {}).items():
+            for key in keys:
+                expected.setdefault((corpus, key), []).append(spec["id"])
+                added[(corpus, key)] = True
     failures, compared = [], 0
     seen = set()
     for reference in sorted(checkpoint.glob("*.json")):
@@ -83,7 +91,9 @@ def compare(args):
             seen.add((corpus, key))
             status = "changed" if key in old and key in new else ("added" if key in new else "removed")
             owners = expected.get((corpus, key))
-            if owners:
+            if added.get((corpus, key)) and status != "added":
+                failures.append(f"NOT NEW {corpus}/{key} ({status}; declared added by {', '.join(owners)})")
+            elif owners:
                 print(f"expected  {corpus}/{key} ({status}; {', '.join(owners)})")
             else:
                 failures.append(f"UNEXPECTED {corpus}/{key} ({status})")

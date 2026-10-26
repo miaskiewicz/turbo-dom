@@ -40,9 +40,12 @@ class Workspace:
             (self.out / corpus).mkdir(parents=True, exist_ok=True)
             (self.out / corpus / "MANIFEST.json").write_text(json.dumps(manifest))
 
-    def expectation(self, name, changes):
+    def expectation(self, name, changes, added=None):
         path = self.tmp / f"{name}.json"
-        path.write_text(json.dumps({"id": name, "reason": "test", "changes": changes}))
+        spec = {"id": name, "reason": "test", "changes": changes}
+        if added is not None:
+            spec["added"] = added
+        path.write_text(json.dumps(spec))
         return str(path)
 
     def compare(self, checkpoint, expect=None):
@@ -107,6 +110,27 @@ class CompareTest(unittest.TestCase):
         expect = self.ws.expectation("fix-1", {"surf": ["s.png"]})
         self.assertEqual(self.ws.compare("cp", [expect])[0], 0)
 
+    def test_a_declared_added_output_passes(self):
+        self.ws.produce({"html2pdf": {"a.pdf": "1", "b.pdf": "2", "c.pdf": "4"}})
+        expect = self.ws.expectation("new-input", {}, {"html2pdf": ["c.pdf"]})
+        code, out = self.ws.compare("cp", [expect])
+        self.assertEqual(code, 0)
+        self.assertIn("expected  html2pdf/c.pdf (added; new-input)", out)
+
+    def test_a_declared_added_output_that_is_not_produced_is_stale(self):
+        self.ws.produce({"html2pdf": {"a.pdf": "1", "b.pdf": "2"}})
+        expect = self.ws.expectation("new-input", {}, {"html2pdf": ["c.pdf"]})
+        code, out = self.ws.compare("cp", [expect])
+        self.assertEqual(code, 1)
+        self.assertIn("STALE expectation html2pdf/c.pdf (new-input) did not change", out)
+
+    def test_an_added_declaration_for_an_existing_output_fails(self):
+        self.ws.produce({"html2pdf": {"a.pdf": "X", "b.pdf": "2"}})
+        expect = self.ws.expectation("new-input", {}, {"html2pdf": ["a.pdf"]})
+        code, out = self.ws.compare("cp", [expect])
+        self.assertEqual(code, 1)
+        self.assertIn("NOT NEW html2pdf/a.pdf (changed; declared added by new-input)", out)
+
     def test_unknown_checkpoint_and_no_overlap_exit_with_a_message(self):
         self.ws.produce({"html2pdf": {"a.pdf": "1"}})
         self.assertEqual(self.ws.compare("nope")[0], "compare: unknown checkpoint nope")
@@ -115,6 +139,13 @@ class CompareTest(unittest.TestCase):
 
 
 class RecordAndRunTest(unittest.TestCase):
+    def test_record_keeps_added_outputs(self):
+        ws = Workspace(self)
+        ws.produce({"html2pdf": {"a.pdf": "1", "c.pdf": "4"}})
+        with contextlib.redirect_stdout(io.StringIO()):
+            parity.record(SimpleNamespace(out=str(ws.out), checkpoint="next"))
+        self.assertEqual(json.loads((ws.manifests / "next/html2pdf.json").read_text()), {"a.pdf": "1", "c.pdf": "4"})
+
     def test_record_copies_every_produced_corpus_manifest(self):
         ws = Workspace(self)
         ws.produce({"surf": {"s.png": "3"}, "not-a-corpus": {"x": "1"}})
@@ -167,6 +198,12 @@ class CommittedDataTest(unittest.TestCase):
                 self.assertIn(corpus, parity.CORPORA, path)
                 for key in keys:
                     self.assertIn(key, recorded.get(corpus, ()), f"{path}: {corpus}/{key}")
+            # Added outputs belong to new inputs, so no recorded checkpoint needs them;
+            # compare itself rejects one that the compared checkpoint already has.
+            for corpus, keys in spec.get("added", {}).items():
+                self.assertIn(corpus, parity.CORPORA, path)
+                for key in keys:
+                    self.assertRegex(key, r"\S", f"{path}: {corpus}/{key!r}")
 
 
 if __name__ == "__main__":
