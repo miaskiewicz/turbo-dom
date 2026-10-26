@@ -113,7 +113,7 @@ outputs it changes in `tools/parity/expected/p5b-*.json`.
   `parse_for_cascade`: lists split at top-level commas only (`:is(.a, .b)`, `:not(.x, .y)`,
   `:nth-child(2 of .a, .b)` and `[title="a,b"]` stay whole), an invalid list drops the whole
   rule (`.c, :bogus {}`), and items match with stylesheet semantics (`:scope` is `:root`).
-  Specificity keeps the rough per-item count.
+  Specificity kept the rough per-item count here (P5b-X2 above switches to Selectors 4).
 - npm `@miaskiewicz/turbo-dom` JS engine (`src/runtime/selectors.mjs`, miaskiewicz/turbo-dom#18):
   rewritten in lockstep with the Rust engine and asserted against the same Chrome 156
   control (`test/selectors-chrome.test.mjs`: every row's validity, `matches`,
