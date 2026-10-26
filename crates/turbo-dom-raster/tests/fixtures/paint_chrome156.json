@@ -222,6 +222,315 @@
      "class": "B"
     }
    ]
+  },
+  {
+   "id": "clip-partial",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div style=\"position:relative;height:100px\"><div data-cid=\"c\" style=\"position:absolute;left:0px;top:0px;width:50px;height:50px;background:#ff0000;clip:rect(10px,40px,40px,10px)\"></div></div></body></html>",
+   "assets": [],
+   "boxes": [
+    {
+     "cid": "c",
+     "x": 0,
+     "y": 0,
+     "width": 50,
+     "height": 50
+    }
+   ],
+   "probes": [
+    {
+     "x": 25,
+     "y": 25,
+     "class": "R"
+    },
+    {
+     "x": 11,
+     "y": 11,
+     "class": "R"
+    },
+    {
+     "x": 38,
+     "y": 38,
+     "class": "R"
+    },
+    {
+     "x": 5,
+     "y": 5,
+     "class": "T"
+    },
+    {
+     "x": 45,
+     "y": 45,
+     "class": "T"
+    },
+    {
+     "x": 25,
+     "y": 5,
+     "class": "T"
+    },
+    {
+     "x": 25,
+     "y": 45,
+     "class": "T"
+    },
+    {
+     "x": 5,
+     "y": 25,
+     "class": "T"
+    },
+    {
+     "x": 45,
+     "y": 25,
+     "class": "T"
+    }
+   ]
+  },
+  {
+   "id": "clip-auto-edges",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div data-cid=\"c\" style=\"position:absolute;left:20px;top:20px;width:60px;height:40px;background:#ff0000;clip:rect(auto 30px auto auto)\"></div></body></html>",
+   "assets": [],
+   "boxes": [
+    {
+     "cid": "c",
+     "x": 20,
+     "y": 20,
+     "width": 60,
+     "height": 40
+    }
+   ],
+   "probes": [
+    {
+     "x": 25,
+     "y": 30,
+     "class": "R"
+    },
+    {
+     "x": 48,
+     "y": 58,
+     "class": "R"
+    },
+    {
+     "x": 55,
+     "y": 30,
+     "class": "T"
+    },
+    {
+     "x": 75,
+     "y": 50,
+     "class": "T"
+    }
+   ]
+  },
+  {
+   "id": "clip-descendants",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div data-cid=\"c\" style=\"position:absolute;left:20px;top:20px;width:50px;height:50px;clip:rect(0,60px,60px,0)\"><div data-cid=\"k\" style=\"width:100px;height:100px;background:#00ff00\"></div></div></body></html>",
+   "assets": [],
+   "boxes": [
+    {
+     "cid": "c",
+     "x": 20,
+     "y": 20,
+     "width": 50,
+     "height": 50
+    },
+    {
+     "cid": "k",
+     "x": 20,
+     "y": 20,
+     "width": 100,
+     "height": 100
+    }
+   ],
+   "probes": [
+    {
+     "x": 50,
+     "y": 50,
+     "class": "G"
+    },
+    {
+     "x": 75,
+     "y": 75,
+     "class": "G"
+    },
+    {
+     "x": 100,
+     "y": 50,
+     "class": "T"
+    },
+    {
+     "x": 50,
+     "y": 100,
+     "class": "T"
+    },
+    {
+     "x": 110,
+     "y": 110,
+     "class": "T"
+    }
+   ]
+  },
+  {
+   "id": "clip-transformed",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div data-cid=\"c\" style=\"position:absolute;left:20px;top:20px;width:50px;height:50px;background:#ff0000;transform:translate(100px,0);clip:rect(0,25px,50px,0)\"></div></body></html>",
+   "assets": [],
+   "boxes": [
+    {
+     "cid": "c",
+     "x": 120,
+     "y": 20,
+     "width": 50,
+     "height": 50
+    }
+   ],
+   "probes": [
+    {
+     "x": 130,
+     "y": 45,
+     "class": "R"
+    },
+    {
+     "x": 160,
+     "y": 45,
+     "class": "T"
+    },
+    {
+     "x": 40,
+     "y": 45,
+     "class": "T"
+    }
+   ]
+  },
+  {
+   "id": "clip-zero-area",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div data-cid=\"c\" style=\"position:absolute;left:20px;top:20px;width:50px;height:50px;background:#ff0000;clip:rect(0,0,0,0)\"></div><div style=\"position:absolute;left:100px;top:20px;width:1px;height:1px;overflow:hidden;clip:rect(1px,1px,1px,1px)\"><div style=\"width:40px;height:40px;background:#ff0000\"></div></div></body></html>",
+   "assets": [],
+   "boxes": [
+    {
+     "cid": "c",
+     "x": 20,
+     "y": 20,
+     "width": 50,
+     "height": 50
+    }
+   ],
+   "probes": [
+    {
+     "x": 45,
+     "y": 45,
+     "class": "T"
+    },
+    {
+     "x": 110,
+     "y": 30,
+     "class": "T"
+    },
+    {
+     "x": 101,
+     "y": 21,
+     "class": "T"
+    }
+   ]
+  },
+  {
+   "id": "clip-zero-area-auto",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div data-cid=\"c\" style=\"position:absolute;left:20px;top:20px;width:50px;height:50px;background:#ff0000;clip:rect(0,auto,auto,60px)\"></div></body></html>",
+   "assets": [],
+   "boxes": [
+    {
+     "cid": "c",
+     "x": 20,
+     "y": 20,
+     "width": 50,
+     "height": 50
+    }
+   ],
+   "probes": [
+    {
+     "x": 45,
+     "y": 45,
+     "class": "T"
+    },
+    {
+     "x": 25,
+     "y": 25,
+     "class": "T"
+    }
+   ]
+  },
+  {
+   "id": "clip-not-positioned",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div data-cid=\"s\" style=\"width:50px;height:50px;background:#ff0000;clip:rect(0,0,0,0)\"></div><div data-cid=\"r\" style=\"position:relative;width:50px;height:50px;background:#0000ff;clip:rect(0,10px,10px,0)\"></div></body></html>",
+   "assets": [],
+   "boxes": [
+    {
+     "cid": "s",
+     "x": 0,
+     "y": 0,
+     "width": 50,
+     "height": 50
+    },
+    {
+     "cid": "r",
+     "x": 0,
+     "y": 50,
+     "width": 50,
+     "height": 50
+    }
+   ],
+   "probes": [
+    {
+     "x": 25,
+     "y": 25,
+     "class": "R"
+    },
+    {
+     "x": 25,
+     "y": 75,
+     "class": "B"
+    },
+    {
+     "x": 40,
+     "y": 90,
+     "class": "B"
+    }
+   ]
+  },
+  {
+   "id": "clip-image-sprite",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><img data-cid=\"i\" src=\"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGQAAAAoCAIAAACHGsgUAAAAU0lEQVR42u3QMQ0AAAzDsPIn3cFYD0sBEDlNBpucamDBggULFixYsGDBggULFixYsGDBggULFixYsGDBggULFixYsGDBggULFixYsGDBggUL1ncHs7SRQvFoC8gAAAAASUVORK5CYII=\" style=\"position:absolute;left:20px;top:20px;clip:rect(0,50px,40px,0)\"></body></html>",
+   "assets": [
+    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGQAAAAoCAIAAACHGsgUAAAAU0lEQVR42u3QMQ0AAAzDsPIn3cFYD0sBEDlNBpucamDBggULFixYsGDBggULFixYsGDBggULFixYsGDBggULFixYsGDBggULFixYsGDBggUL1ncHs7SRQvFoC8gAAAAASUVORK5CYII="
+   ],
+   "boxes": [
+    {
+     "cid": "i",
+     "x": 20,
+     "y": 20,
+     "width": 100,
+     "height": 40
+    }
+   ],
+   "probes": [
+    {
+     "x": 45,
+     "y": 40,
+     "class": "R"
+    },
+    {
+     "x": 95,
+     "y": 40,
+     "class": "T"
+    },
+    {
+     "x": 21,
+     "y": 21,
+     "class": "R"
+    },
+    {
+     "x": 69,
+     "y": 59,
+     "class": "R"
+    }
+   ]
   }
  ]
 }

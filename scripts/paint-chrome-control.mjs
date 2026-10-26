@@ -1,7 +1,10 @@
 // Chrome-156 pixel control for turbo-dom-raster's screenshots (P5b-W5):
 //   - miaskiewicz/turbo-dom#51 (`caption-*`): a table caption is laid out in the table
 //     wrapper box, above (`caption-side: top`) or below (`bottom`) the table grid box; the
-//     table's background and border paint the grid box only, never the caption.
+//     table's background and border paint the grid box only, never the caption;
+//   - miaskiewicz/turbo-dom#52 (`clip-*`): an absolutely positioned box's `clip: rect()`
+//     clips the box and its descendants; a zero-area clip paints nothing; `clip` does not
+//     apply to a box that is not absolutely positioned.
 //
 // Every case is one page (viewport 1280x800, `body{margin:0;background:#00ffff}`). Chrome for
 // Testing 156 records, per case, the getBoundingClientRect() of every `[data-cid]` element
@@ -49,6 +52,9 @@ const BLOCK = (w, h, bg, cid = "") =>
 // A red table with a 4px blue border, no spacing, one 40x20 cell (no background).
 const TABLE = (style, caption, cellStyle = "") =>
   `<table data-cid="t" style="${style};background:#ff0000;border:4px solid #0000ff;border-spacing:0">${caption}<tr><td data-cid="td" style="padding:0${cellStyle}">${BLOCK(40, 20, "")}</td></tr></table>`;
+// A 100x40 PNG sprite: left half red, right half blue.
+const SPRITE =
+  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGQAAAAoCAIAAACHGsgUAAAAU0lEQVR42u3QMQ0AAAzDsPIn3cFYD0sBEDlNBpucamDBggULFixYsGDBggULFixYsGDBggULFixYsGDBggULFixYsGDBggULFixYsGDBggUL1ncHs7SRQvFoC8gAAAAASUVORK5CYII=";
 
 const CASES = [
   // miaskiewicz/turbo-dom#51.
@@ -70,6 +76,57 @@ const CASES = [
     id: "caption-narrow",
     html: DOC(TABLE(`${at(20, 10)};width:120px`, `<caption data-cid="c">${BLOCK(30, 10, "#00ff00", "cd")}</caption>`)),
     probes: [[30, 15], [100, 15], [100, 30], [130, 30], [139, 30]],
+  },
+  // miaskiewicz/turbo-dom#52.
+  {
+    // The issue's repro: a 30x30 red square at (10,10); the border box stays 50x50.
+    id: "clip-partial",
+    html: DOC(`<div style="position:relative;height:100px"><div data-cid="c" style="${at(0, 0)};width:50px;height:50px;background:#ff0000;clip:rect(10px,40px,40px,10px)"></div></div>`),
+    probes: [[25, 25], [11, 11], [38, 38], [5, 5], [45, 45], [25, 5], [25, 45], [5, 25], [45, 25]],
+  },
+  {
+    // `auto` is the border-box edge; commas are optional.
+    id: "clip-auto-edges",
+    html: DOC(`<div data-cid="c" style="${at(20, 20)};width:60px;height:40px;background:#ff0000;clip:rect(auto 30px auto auto)"></div>`),
+    probes: [[25, 30], [48, 58], [55, 30], [75, 50]],
+  },
+  {
+    // The clip applies to the descendants: an overflowing child is cut at the clip edge.
+    id: "clip-descendants",
+    html: DOC(`<div data-cid="c" style="${at(20, 20)};width:50px;height:50px;clip:rect(0,60px,60px,0)">${BLOCK(100, 100, "#00ff00", "k")}</div>`),
+    probes: [[50, 50], [75, 75], [100, 50], [50, 100], [110, 110]],
+  },
+  {
+    // A transformed box clips in its own (transformed) coordinate space.
+    id: "clip-transformed",
+    html: DOC(`<div data-cid="c" style="${at(20, 20)};width:50px;height:50px;background:#ff0000;transform:translate(100px,0);clip:rect(0,25px,50px,0)"></div>`),
+    probes: [[130, 45], [160, 45], [40, 45]],
+  },
+  {
+    // The sr-only pattern paints nothing.
+    id: "clip-zero-area",
+    html: DOC(`<div data-cid="c" style="${at(20, 20)};width:50px;height:50px;background:#ff0000;clip:rect(0,0,0,0)"></div><div style="${at(100, 20)};width:1px;height:1px;overflow:hidden;clip:rect(1px,1px,1px,1px)">${BLOCK(40, 40, "#ff0000")}</div>`),
+    probes: [[45, 45], [110, 30], [101, 21]],
+  },
+  {
+    // A zero-width clip whose left edge is past the box's right edge (`auto` right).
+    id: "clip-zero-area-auto",
+    html: DOC(`<div data-cid="c" style="${at(20, 20)};width:50px;height:50px;background:#ff0000;clip:rect(0,auto,auto,60px)"></div>`),
+    probes: [[45, 45], [25, 25]],
+  },
+  {
+    // `clip` applies only to absolutely positioned boxes: the static and relative boxes paint
+    // whole.
+    id: "clip-not-positioned",
+    html: DOC(`<div data-cid="s" style="width:50px;height:50px;background:#ff0000;clip:rect(0,0,0,0)"></div><div data-cid="r" style="position:relative;width:50px;height:50px;background:#0000ff;clip:rect(0,10px,10px,0)"></div>`),
+    probes: [[25, 25], [25, 75], [40, 90]],
+  },
+  {
+    // The CSS-sprite pattern: a clipped `<img>` shows only its left half.
+    id: "clip-image-sprite",
+    html: DOC(`<img data-cid="i" src="${SPRITE}" style="${at(20, 20)};clip:rect(0,50px,40px,0)">`),
+    assets: [SPRITE],
+    probes: [[45, 40], [95, 40], [21, 21], [69, 59]],
   },
 ];
 

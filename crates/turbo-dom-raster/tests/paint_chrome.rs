@@ -9,6 +9,9 @@
 //! screenshot paints).
 //! - `caption-*`: miaskiewicz/turbo-dom#51, table captions in the table wrapper box; the
 //!   table's background and border paint the grid box only.
+//! - `clip-*`: miaskiewicz/turbo-dom#52, an absolutely positioned box's `clip: rect()`
+//!   clips it and its descendants (it keeps its border box); a zero-area clip paints
+//!   nothing; `clip` does not apply to other boxes.
 use std::collections::HashMap;
 
 use turbo_dom_layout::image::decode_data_url;
@@ -57,6 +60,12 @@ const VIEWPORT: Viewport = Viewport {
     height: 800,
 };
 
+/// Elements laid out with no box by design: an absolutely positioned box whose
+/// `clip: rect()` keeps nothing whatever its size (the sr-only pattern) is left out of the
+/// static layout, so its text stays out of PDF text and tagging (miaskiewicz/turbo-dom#52).
+/// Chrome still reports its border box.
+const NO_BOX: &[(&str, &str)] = &[("clip-zero-area", "c")];
+
 /// Every difference from Chrome of the cases `select` picks: probe colour classes of the
 /// screenshot and the `layout_boxes` geometry.
 fn differences(select: impl Fn(&str) -> bool) -> Vec<String> {
@@ -90,6 +99,10 @@ fn differences(select: impl Fn(&str) -> bool) -> Vec<String> {
         let boxes = layout_boxes(html, "", 1280.0, 800.0, &fonts, &mut diags).unwrap();
         for want in case["boxes"].as_array().unwrap() {
             let cid = want["cid"].as_str().unwrap();
+            if NO_BOX.contains(&(id, cid)) {
+                assert!(boxes.iter().all(|b| b.cid != cid), "{id}: {cid} has a box");
+                continue;
+            }
             let Some(b) = boxes.iter().find(|b| b.cid == cid) else {
                 failures.push(format!("{id}: no box for data-cid={cid}"));
                 continue;
@@ -120,5 +133,12 @@ fn pending_case(id: &str) -> bool {
 #[test]
 fn table_captions_paint_outside_the_grid_like_chrome_156() {
     let failures = differences(|id| id.starts_with("caption-") && !pending_case(id));
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+}
+
+#[test]
+#[ignore = "miaskiewicz/turbo-dom#52: fails until the fix"]
+fn clip_rect_clips_the_box_and_its_descendants_like_chrome_156() {
+    let failures = differences(|id| id.starts_with("clip-"));
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
