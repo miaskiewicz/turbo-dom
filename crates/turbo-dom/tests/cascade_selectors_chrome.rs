@@ -29,8 +29,9 @@ use turbo_dom::{Handle, Tree};
 const FIXTURE: &str = include_str!("fixtures/cascade_selectors_chrome156.json");
 
 /// P5b items (the fixture's `bug` / `class` / probe ids) not fixed yet: recorded in the
-/// fixture, skipped by the assertions until the fixing commit removes them here.
-const OPEN: &[&str] = &["cascade-comma"];
+/// fixture, skipped by the assertions until the fixing commit removes them here. All P5b-X
+/// items have landed.
+const OPEN: &[&str] = &[];
 
 fn open(item: &str) -> bool {
     OPEN.contains(&item)
@@ -65,18 +66,6 @@ fn indices(tree_elements: &[Handle], found: &[Handle]) -> Vec<i64> {
                 .map_or(-1, |i| i as i64)
         })
         .collect()
-}
-
-/// The lenient (non-`_checked`) APIs are compared on valid selectors, plus every row while
-/// the malformed item is open (the rows before P5b all agreed there too).
-fn lenient_comparable(valid: bool) -> bool {
-    valid || open("malformed")
-}
-
-/// `rtdom::cascade` split rules on every comma and kept invalid rules until the
-/// cascade-comma item: such rows are not comparable while it is open.
-fn cascade_comparable(selector: &str, sheet_valid: bool) -> bool {
-    !open("cascade-comma") || (!selector.contains(',') && sheet_valid)
 }
 
 /// `querySelectorAll` / `querySelector` through both APIs against Chrome's `qsa`.
@@ -209,14 +198,14 @@ fn selectors_match_chrome156() {
                 }
                 // the lenient APIs are Chrome-defined for valid selectors only (Chrome
                 // throws on the rest; lenient callers get a best-effort reading)
-                if lenient_comparable(valid) && tree.matches(h, sel) != w {
+                if valid && tree.matches(h, sel) != w {
                     fail(format!("matches el#{i} <{}>, Chrome {w}", tags[i]));
                 }
-                if lenient_comparable(valid) && tree.matches_units(h, &units) != w {
+                if valid && tree.matches_units(h, &units) != w {
                     fail(format!("matches_units el#{i} <{}>, Chrome {w}", tags[i]));
                 }
             }
-            if lenient_comparable(valid) {
+            if valid {
                 check_queries(&tree, &els, sel, row, &mut fail);
             }
             // the stylesheet engine: validity and matching (on the case document; the
@@ -242,9 +231,7 @@ fn selectors_match_chrome156() {
                 Err(_) => {}
             }
             // cascade: the sentinel rule as the last <head> child
-            if cascade_comparable(sel, sheet_valid) {
-                check_rtdom_cascade(html, sel, row, &tags, &mut fail);
-            }
+            check_rtdom_cascade(html, sel, row, &tags, &mut fail);
         }
     }
     let cascade_cases = fixture["cascade_cases"].as_array().unwrap();

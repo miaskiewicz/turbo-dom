@@ -13,6 +13,7 @@
 //! matching what a browser serializes.
 
 use crate::rtdom::color;
+use crate::rtdom::query::{match_for_cascade, parse_for_cascade, CascadeSelector, LiveNavigator};
 use crate::rtdom::tree::{Handle, NodeType, Tree};
 use std::collections::{HashMap, HashSet};
 
@@ -350,10 +351,21 @@ fn utf8_len(b: u8) -> usize {
 
 #[derive(Clone)]
 pub(crate) struct Rule {
+    /// One complex selector of the rule's list (its source text, for the `:host` /
+    /// `::slotted` scoping below) and its parse.
     selector: String,
+    parsed: CascadeSelector,
     decls: HashMap<String, String>,
     spec: u32,
     order: u32,
+}
+
+impl Rule {
+    /// Does the rule's selector match `h` (stylesheet semantics: `:scope` is `:root`,
+    /// pseudo-elements never match)?
+    fn matches(&self, tree: &Tree, h: Handle) -> bool {
+        match_for_cascade(&LiveNavigator(tree), h, &self.parsed)
+    }
 }
 
 /// Version-keyed cascade cache held on the `Tree` (mirrors the JS `__computedStyle`
@@ -440,18 +452,19 @@ fn parse_stylesheet(css: &str, start_order: u32, rules: &mut Vec<Rule>) -> u32 {
             let body = &css[j + 1..k.saturating_sub(1)];
             let mut decls = HashMap::new();
             parse_decls(body, &mut decls);
-            if !decls.is_empty() {
-                for part in sel.split(',') {
-                    let t = part.trim();
-                    if !t.is_empty() {
-                        rules.push(Rule {
-                            selector: t.to_string(),
-                            decls: decls.clone(),
-                            spec: specificity(t),
-                            order,
-                        });
-                        order += 1;
-                    }
+            // The prelude is a selector LIST split at top-level commas only (`:is(a, b)`,
+            // `:not(.x, .y)`, `of S` keep theirs); an invalid list drops the whole rule, as
+            // in a browser (P5b, miaskiewicz/turbo-dom#18).
+            if let (false, Ok(list)) = (decls.is_empty(), parse_for_cascade(&sel)) {
+                for item in list.selectors() {
+                    rules.push(Rule {
+                        selector: item.text().to_string(),
+                        parsed: item.clone(),
+                        decls: decls.clone(),
+                        spec: specificity(item.text()),
+                        order,
+                    });
+                    order += 1;
                 }
             }
         } else {
@@ -497,7 +510,7 @@ fn collect_matched(tree: &Tree, h: Handle, rules: &[Rule], into: &mut Vec<Rule>)
         if is_shadow_only_selector(&r.selector) {
             continue;
         }
-        if tree.matches(h, &r.selector) {
+        if r.matches(tree, h) {
             into.push(r.clone());
         }
     }
@@ -681,7 +694,7 @@ pub fn computed_style_with_policy(
     } else if let Some(sr) = in_shadow {
         // shadow-internal element: normal selectors from the shadow's own <style>.
         for r in shadow_rules(tree, sr, policy) {
-            if !is_shadow_only_selector(&r.selector) && tree.matches(h, &r.selector) {
+            if !is_shadow_only_selector(&r.selector) && r.matches(tree, h) {
                 matched.push(r);
             }
         }
@@ -1061,6 +1074,26 @@ mod tests {
             "color",
         );
         assert_eq!(got, "rgb(255, 0, 0)");
+    }
+
+    /// turbo-dom#18 (P5b): a rule's selector list splits at top-level commas only, an
+    /// invalid list drops the whole rule, and items match with stylesheet semantics.
+    #[test]
+    fn selector_lists_split_at_top_level_commas_and_invalid_rules_drop() {
+        let html = "<style>:is(.a, .b) { color: red } :not(.a, .c) { order: 2 } \
+                    .c, :bogus { color: blue } [title=\"x,y\"], #n { width: 1px } \
+                    :scope > body { margin: 3px }</style>\
+                    <p class=b id=p title=\"x,y\">x</p><p class=c id=c>c</p>";
+        assert_eq!(gcs_prop(html, "#p", "color"), "rgb(255, 0, 0)");
+        assert_eq!(gcs_prop(html, "#p", "order"), "2");
+        assert_eq!(
+            gcs_prop(html, "#c", "color"),
+            "",
+            "the invalid list drops .c too"
+        );
+        assert_eq!(gcs_prop(html, "#c", "order"), "");
+        assert_eq!(gcs_prop(html, "#p", "width"), "1px");
+        assert_eq!(gcs_prop(html, "body", "margin"), "3px", ":scope is :root");
     }
 
     #[test]

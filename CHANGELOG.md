@@ -63,6 +63,11 @@ outputs it changes in `tools/parity/expected/p5b-*.json`.
 - `:root` (miaskiewicz/turbo-dom#18) matches the document element only — no longer the
   top element of a document fragment, a shadow tree, template content or a detached
   subtree (Chrome).
+- `rtdom::cascade` (`getComputedStyle`; miaskiewicz/turbo-dom#18) parses rule preludes with
+  `parse_for_cascade`: lists split at top-level commas only (`:is(.a, .b)`, `:not(.x, .y)`,
+  `:nth-child(2 of .a, .b)` and `[title="a,b"]` stay whole), an invalid list drops the whole
+  rule (`.c, :bogus {}`), and items match with stylesheet semantics (`:scope` is `:root`).
+  Specificity keeps the rough per-item count.
 
 ## [0.6.0] — turbo-dom consolidation
 
