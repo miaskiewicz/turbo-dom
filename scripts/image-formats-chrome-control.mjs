@@ -2,7 +2,9 @@
 // AVIF, BMP, ICO, CUR and SVG `<img>` sources (base64 and percent-encoded / utf8 `data:`
 // URIs), with TIFF as the unsupported control, and AVIFs whose primary item carries HEIF
 // `irot` / `imir` transform properties (miaskiewicz/turbo-dom#45; also under
-// `image-orientation: none`). The images are
+// `image-orientation: none`), and JPEG XL — which Chrome 156 decodes (jxl-rs) — from
+// crates/turbo-dom-layout/tests/fixtures/images/jxl (jxl-rs test files, see its README;
+// solid black, so their cases also record the raw `rgb` at the sample points). The images are
 // crates/turbo-dom-layout/tests/fixtures/images/formats (scripts/make_format_fixtures.py:
 // a 64x40 image in four colour quadrants — top-left red, top-right green, bottom-left
 // blue, bottom-right yellow).
@@ -44,6 +46,8 @@ const playwrightVersion = require(join(playwrightCore, "package.json")).version;
 
 const DIR = join(repo, "crates/turbo-dom-layout/tests/fixtures/images/formats");
 const read = (f) => readFileSync(join(DIR, f));
+const JXL_DIR = join(repo, "crates/turbo-dom-layout/tests/fixtures/images/jxl");
+const b64jxl = (f) => `data:image/jxl;base64,${readFileSync(join(JXL_DIR, f)).toString("base64")}`;
 const b64 = (mime, f) => `data:${mime};base64,${read(f).toString("base64")}`;
 const svg = read("q.svg").toString("utf8").trim();
 const viewBoxOnly = svg.replace('width="64" height="40"', 'viewBox="0 0 64 40"');
@@ -78,6 +82,10 @@ const SOURCES = [
   ["avif-imir1", b64("image/avif", "q-imir1.avif")],
   ["avif-irot90-imir0", b64("image/avif", "q-irot90-imir0.avif")],
   ["avif-irot90-orientation-none", b64("image/avif", "q-irot90.avif"), "image-orientation:none"],
+  // JPEG XL: two in the ISOBMFF container, one bare codestream.
+  ["jxl-exif", b64jxl("exif.jxl")],
+  ["jxl-multiple-aux", b64jxl("multiple_aux.jxl")],
+  ["jxl-modular-rle", b64jxl("modular_rle_fast_path.jxl")],
 ];
 
 const ROW = 70;
@@ -181,7 +189,8 @@ const cases = boxes.map((box) => {
     [x + (3 * w) / 4, y + (3 * h) / 4],
   ].map(([a, b]) => [Math.floor(a), Math.floor(b)]);
   const samples = w > 0 && h > 0 ? points.map(([a, b]) => classOf(px(a, b))).join("") : "";
-  return { ...box, ...m, points, samples };
+  const rgb = box.id.startsWith("jxl") ? { rgb: points.map(([a, b]) => px(a, b)) } : {};
+  return { ...box, ...m, points, samples, ...rgb };
 });
 
 const fixture = {

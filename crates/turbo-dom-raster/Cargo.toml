@@ -71,6 +71,13 @@ rav1d = { version = "1.1.0", default-features = false, features = [
 ], optional = true }
 libc = { version = "0.2", optional = true }
 
+# --- `jxl` (off by default) --------------------------------------------------
+# JPEG XL screenshot pixels (miaskiewicz/turbo-dom#45: Chrome 156 decodes JPEG XL):
+# jxl-oxide, the MIT OR Apache-2.0 pure-Rust decoder, without its `rayon` thread pool (one
+# thread, deterministic). See src/jxl.rs. Without the feature a JPEG XL still lays out at
+# its real size (turbo-dom-layout's header probe) and paints as the placeholder.
+jxl-oxide = { version = "0.12.6", default-features = false, optional = true }
+
 # --- `coretext` (off by default; macOS only) ---------------------------------
 # Rasterize canvas 2D TEXT via the system CoreText/CoreGraphics stack (the same one Chrome's Skia
 # uses for glyphs on macOS), so `getImageData` over rendered text matches a real Mac Chrome instead
@@ -95,6 +102,8 @@ coretext = ["dep:core-graphics", "dep:core-text", "dep:core-foundation"]
 gpu-metal = ["dep:wgpu", "dep:pollster", "dep:lyon_tessellation", "dep:naga", "dep:base64"]
 # AVIF pixel decode for screenshots (pure Rust: rav1d without assembly). See src/avif.rs.
 avif = ["dep:rav1d", "dep:libc"]
+# JPEG XL pixel decode for screenshots (pure Rust: jxl-oxide, no thread pool). See src/jxl.rs.
+jxl = ["dep:jxl-oxide"]
 
 [dev-dependencies]
 # Screenshot tests build a fixture PNG and decode the rendered output to sample

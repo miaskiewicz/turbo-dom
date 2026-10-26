@@ -3,7 +3,7 @@ name: CI
 # One job family per published unit (docs/CONSOLIDATION.md, "CI"):
 #   base         turbo-dom + turbo-dom-parser (npm addon: napi matrix, WASM, JS suites)
 #   layout       turbo-dom-layout (linux + macOS; feature configs, wasm32/musl checks)
-#   raster       turbo-dom-raster (linux + macOS; avif tests; coretext / gpu-metal checks)
+#   raster       turbo-dom-raster (linux + macOS; avif / jxl tests; coretext / gpu-metal checks)
 #   v8           turbo-dom-v8 (generated) + turbo-dom-browser-env, 4 platforms x default/simdutf
 #   msrv         Rust 1.89 for turbo-dom, -layout, -raster
 #   guards       version agreement, retired-gate guard, verify-copied reviews, script self-tests
@@ -234,6 +234,10 @@ jobs:
         run: |
           cargo clippy -p turbo-dom-raster --all-targets --features avif -- -D warnings
           cargo test -p turbo-dom-raster --features avif
+      - name: Clippy + test --features jxl (JPEG XL pixels via jxl-oxide; off by default, turbo-dom#45)
+        run: |
+          cargo clippy -p turbo-dom-raster --all-targets --features jxl -- -D warnings
+          cargo test -p turbo-dom-raster --features jxl
       - name: Clippy + check coretext / gpu-metal (macOS; the CoreText deps are macOS-only)
         if: runner.os == 'macOS'
         run: |
