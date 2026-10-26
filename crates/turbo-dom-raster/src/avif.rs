@@ -9,9 +9,10 @@
 //! encodes only; `zenavif` / `rav1d-safe` are AGPL; `rav1d` (1.1, BSD-2-Clause, the ISRG
 //! Prossimo Rust port of dav1d) is pure Rust with its assembly off
 //! (`default-features = false`), at the cost of its C-ABI (`unsafe extern "C"`) entry
-//! points and a large dependency tree. This module uses `rav1d` (no assembly, one
-//! thread) and converts the decoded YUV planes to RGBA itself; without the feature an
-//! AVIF paints as the placeholder of any undecodable image.
+//! points and a large dependency tree. This module uses `rav1d` (no assembly, two frame
+//! contexts — see [`av1::decode`] for why not one) and converts the decoded YUV planes to
+//! RGBA itself; without the feature, or for a corrupt AVIF, an AVIF paints as the
+//! placeholder of any undecodable image.
 
 use turbo_dom_layout::image::Rgba8Image;
 
@@ -58,7 +59,7 @@ pub(crate) struct Frame {
 
 #[cfg(feature = "avif")]
 mod av1 {
-    //! The `rav1d` C-ABI calls: open a one-thread decoder, feed one temporal unit,
+    //! The `rav1d` C-ABI calls: open a two-frame-context decoder, feed one temporal unit,
     //! take the picture, copy its planes out, release everything.
     use std::ptr::NonNull;
 
@@ -87,8 +88,14 @@ mod av1 {
         unsafe { dav1d_default_settings(NonNull::new(settings.as_mut_ptr())?) };
         // SAFETY: `dav1d_default_settings` initialized every field.
         let mut settings = unsafe { settings.assume_init() };
-        settings.n_threads = 1;
-        settings.max_frame_delay = 1;
+        // Two frame contexts (frame delay 2, two worker threads): with exactly one, rav1d
+        // 1.1.0 tears a frame down twice on a decode error and panics inside its
+        // `extern "C"` API, which aborts the process (miaskiewicz/turbo-dom#94, upstream
+        // memorysafety/rav1d#1496, fixed after 1.1.0; 1.1.1 is unpublished). With two, a
+        // decode error comes back as an error result. AV1 decoding is bit-exact, so the
+        // pixels do not depend on the thread count.
+        settings.n_threads = 2;
+        settings.max_frame_delay = 2;
         let mut ctx: Option<Dav1dContext> = None;
         // SAFETY: `ctx` is valid to write to and `settings` to read from.
         let opened =
@@ -354,7 +361,6 @@ mod tests {
     /// aborts the process (miaskiewicz/turbo-dom#94: rav1d 1.1.0 panicked inside its
     /// `extern "C"` API on a decode error with one frame context, aborting).
     #[test]
-    #[ignore = "turbo-dom#94: fails until the fix"]
     fn corrupt_avifs_are_broken_images_never_a_process_abort() {
         let out = std::process::Command::new(std::env::current_exe().unwrap())
             .args([
