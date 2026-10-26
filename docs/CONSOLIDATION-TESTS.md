@@ -1150,3 +1150,13 @@ from turbo-dom-layout's `assets/fonts` through `test_support`; **new**.
 | turbo-html2pdf-core | `turbo_html2pdf_core<src/lib.rs>::equivalence_tests::tree_input_matches_the_legacy_node_input` | retired@S5 (the S2 gate) |
 | turbo-html2pdf-core | `html_drive<tests/html_drive.rs>::parse_html_returns_the_legacy_node_copy` -> `::parse_html_returns_the_flow_with_directives_as_markers`, `::flow_debug_shows_the_node_copy` -> `::flow_debug_shows_the_markup` | adapted@S5 (renamed: `parse_html` returns the `Flow`; `Flow`'s Debug shows the serialized markup) |
 | turbo-html2pdf-core | `nodes`, `endnotes` (flows read back via `literal::from_tree`), `image`, `svg`, `svg_viewport_snapshot`, `layout_snapshot`, `layout_block`, `layout_boxgen`, `layout_flex`, `native_inline_coverage` (tree literals), `fixtures`, `pdf_a`, `emit`, `layout`, `style`, `conformance_flags` (`style_flow` without the legacy comparison), every `tests/common` font user, `turbo_html2pdf_core<src/lib.rs>::emit::tounicode::tests::reverse_mapping_uses_original_font_and_handles_stripped_cmap` (Go font via `test_support::font_bytes`) | adapted@S5 |
+
+## P5b-W1 (layout bug fixes): adapted and new tests
+
+Declared behaviour changes (Chrome 156 controls), not moves:
+
+| crate | test (binary::name) | category |
+|---|---|---|
+| turbo-dom-layout | `native_inline_borders<tests/native_inline_borders.rs>::unsupported_ordinary_inline_contexts_reject_without_inventing_partial_boxes` -> `::unsupported_ordinary_inline_contexts_fail_only_their_own_reads` | adapted@P5b-W1 (renamed; turbo-surf#31: the construct fails its own subtree's reads, not the snapshot; `position:absolute` blockifies and is supported, `sticky` takes its place) |
+| turbo-dom-layout | `native_block_inline<tests/native_block_inline.rs>::unsupported_displaced_splits_reject_but_boxless_text_does_not` -> `::unsupported_displaced_splits_fail_their_own_reads_but_boxless_text_does_not` | adapted@P5b-W1 (renamed; turbo-surf#31: per-element failure; an absolutely positioned block no longer splits its inline) |
+| turbo-dom-layout | `turbo_dom_layout<src/lib.rs>::live::chrome_tests::{live_geometry_matches_chrome_156, css_of_reads_the_first_style_element}`, `layout_table<tests/layout_table.rs>::row_box_spans_its_cells_inside_the_border_spacing`, `style<tests/style.rs>::{at_rules_remember_their_source_position, conditional_rules_cascade_at_their_source_position}`, `tree_view<tests/tree_view.rs>::stripped_elements_still_count_for_selectors` | new |
