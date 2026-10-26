@@ -497,10 +497,11 @@ fn percent_aware_total(cols: &[f32], pcts: &[Option<f32>]) -> (f32, bool) {
 /// other columns share the rest as [`scale_to`] does, taking back from the percentage
 /// columns what their minima need (miaskiewicz/turbo-dom#50). Without percentages this
 /// is [`scale_to`].
-fn fit_columns(cols: &mut [f32], mins: &[f32], pcts: &[Option<f32>], target: f32) {
+fn fit_columns(cols: &mut [f32], limits: &Limits, pcts: &[Option<f32>], target: f32) {
     if pcts.iter().all(Option::is_none) {
-        return scale_to(cols, target, mins);
+        return scale_to(cols, target, limits);
     }
+    let mins = &limits.mins[..];
     let total: f32 = pcts.iter().flatten().sum();
     let scale = 100.0_f32.min(total) / total / 100.0;
     let (pct_cols, auto_cols): (Vec<usize>, Vec<usize>) =
@@ -521,9 +522,39 @@ fn fit_columns(cols: &mut [f32], mins: &[f32], pcts: &[Option<f32>], target: f32
         (&auto_cols, rest.max(auto_min))
     };
     let mut subset: Vec<f32> = idx.iter().map(|&i| cols[i]).collect();
-    let subset_mins: Vec<f32> = idx.iter().map(|&i| mins[i]).collect();
-    scale_to(&mut subset, target, &subset_mins);
+    scale_to(&mut subset, target, &limits.subset(idx));
     scatter(cols, idx, &subset);
+}
+
+/// What column fitting honours per column: its min-content width, and whether a cell
+/// gives it a `px` width (such a column grows only when no auto column can;
+/// miaskiewicz/turbo-dom#55).
+struct Limits {
+    mins: Vec<f32>,
+    fixed: Vec<bool>,
+}
+
+impl Limits {
+    /// The limits of the columns `idx`.
+    fn subset(&self, idx: &[usize]) -> Limits {
+        Limits {
+            mins: idx.iter().map(|&i| self.mins[i]).collect(),
+            fixed: idx.iter().map(|&i| self.fixed[i]).collect(),
+        }
+    }
+}
+
+/// Which of `ncols` columns a single-column cell gives a `px` width (`width_of`).
+fn px_columns(
+    placed: &[Placed],
+    ncols: usize,
+    width_of: fn(&LayoutBox) -> Option<f32>,
+) -> Vec<bool> {
+    let mut fixed = vec![false; ncols];
+    for p in placed.iter().filter(|p| p.colspan == 1) {
+        fixed[p.col] |= width_of(p.lb).is_some();
+    }
+    fixed
 }
 
 /// [`shrink_columns`] over the columns `idx` of `cols`.
@@ -540,27 +571,49 @@ fn scatter(cols: &mut [f32], idx: &[usize], values: &[f32]) {
     }
 }
 
-/// Fit `cols` to `target`. Growing scales up proportionally; shrinking takes only
-/// from each column's slack above its min-content, so a column never clips its
-/// content (the infobox label column kept clipping "Infraclass:" when the whole
-/// row was scaled down uniformly). If even the minima don't fit, columns sit at
-/// their min-content and the table overflows.
-fn scale_to(cols: &mut [f32], target: f32, mins: &[f32]) {
+/// Fit `cols` to `target`. Growing goes to the auto columns ([`grow_columns`]);
+/// shrinking takes only from each column's slack above its min-content, so a column
+/// never clips its content (the infobox label column kept clipping "Infraclass:" when
+/// the whole row was scaled down uniformly). If even the minima don't fit, columns sit
+/// at their min-content and the table overflows.
+fn scale_to(cols: &mut [f32], target: f32, limits: &Limits) {
     let sum: f32 = cols.iter().sum();
-    if sum <= 0.0 || (sum - target).abs() <= f32::EPSILON {
+    if cols.is_empty() || (sum - target).abs() <= f32::EPSILON {
         return;
     }
     if target >= sum {
-        grow_columns(cols, target / sum);
+        grow_columns(cols, &limits.fixed, target, sum);
     } else {
-        shrink_columns(cols, mins, sum - target);
+        shrink_columns(cols, &limits.mins, sum - target);
     }
 }
 
-/// Scale every column up by factor `k` (grow-to-fit distributes slack evenly).
-fn grow_columns(cols: &mut [f32], k: f32) {
-    for c in cols.iter_mut() {
-        *c *= k;
+/// Grow `cols` (summing `sum`) to `target`, as Chrome 156 distributes a table's extra
+/// width: over the auto columns (no `px` width) in proportion to their widths, equally
+/// when they are all empty; only without auto columns over the `px` ones
+/// (miaskiewicz/turbo-dom#55). Growing every column in proportion scales them by
+/// `target / sum`.
+fn grow_columns(cols: &mut [f32], fixed: &[bool], target: f32, sum: f32) {
+    let idx = growing_columns(fixed);
+    if idx.len() == cols.len() && sum > 0.0 {
+        let k = target / sum;
+        for c in cols.iter_mut() {
+            *c *= k;
+        }
+        return;
+    }
+    let mut subset: Vec<f32> = idx.iter().map(|&i| cols[i]).collect();
+    spread(&mut subset, target - sum);
+    scatter(cols, &idx, &subset);
+}
+
+/// The columns a table's extra width goes to: the auto ones, else all.
+fn growing_columns(fixed: &[bool]) -> Vec<usize> {
+    let auto: Vec<usize> = (0..fixed.len()).filter(|&i| !fixed[i]).collect();
+    if auto.is_empty() {
+        (0..fixed.len()).collect()
+    } else {
+        auto
     }
 }
 
@@ -601,14 +654,17 @@ fn column_widths(
     // `table-layout: fixed` applies to a table with a definite width; a `width: auto`
     // one uses the automatic algorithm (Chrome 156; miaskiewicz/turbo-dom#28 item 7).
     if is_fixed(style) && explicit_table_width(style, cw).is_some() {
-        return fixed_columns(placed, ncols, cw);
+        return fixed_columns(placed, ncols, cw.max(1.0));
     }
     // The columns fill the table box: an auto table is already shrink-to-fit (its
     // columns' max-content, wider under `min-width` or when stretched), an explicit
     // width is `cw` itself.
     let mut cols = auto_columns(placed, ncols, border_spacing(style).0, fonts);
-    let mins = min_columns(placed, ncols, fonts);
-    fit_columns(&mut cols, &mins, &column_percents(placed, ncols), cw);
+    let limits = Limits {
+        mins: min_columns(placed, ncols, fonts),
+        fixed: px_columns(placed, ncols, explicit_width),
+    };
+    fit_columns(&mut cols, &limits, &column_percents(placed, ncols), cw);
     cols
 }
 
@@ -940,10 +996,13 @@ fn layout_table_collapsed(
         fixed_collapse_columns(placed, ncols, avail.max(1.0))
     } else {
         let mut cols = collapse_columns(placed, &vert, ctx.fonts, natural_width);
-        let mins = collapse_columns(placed, &vert, ctx.fonts, super::flex::min_content_width);
+        let limits = Limits {
+            mins: collapse_columns(placed, &vert, ctx.fonts, super::flex::min_content_width),
+            fixed: px_columns(placed, ncols, explicit_cp),
+        };
         fit_columns(
             &mut cols,
-            &mins,
+            &limits,
             &column_percents(placed, ncols),
             avail.max(0.0),
         );
@@ -1586,7 +1645,7 @@ pub(crate) fn layout_table(
     let (hs, vs) = border_spacing(&table.style);
     // Reserve the horizontal spacing (gaps + edges) out of the content width so the
     // columns + gaps still fit the table box.
-    let inner = (cw - hs * (ncols as f32 + 1.0)).max(1.0);
+    let inner = (cw - hs * (ncols as f32 + 1.0)).max(0.0);
     let cols = column_widths(&table.style, &placed, ncols, inner, ctx.fonts);
     let laid = layout_cells(&placed, &cols, hs, fs, ctx);
     let mut row_h = row_heights(&laid, &rows);
@@ -1615,7 +1674,7 @@ pub(crate) fn layout_table(
 
 #[cfg(test)]
 mod percent_tests {
-    use super::{fit_columns, percent_aware_total};
+    use super::{fit_columns, grow_columns, percent_aware_total, Limits};
 
     #[test]
     fn percent_aware_total_matches_chromes_auto_table_max_content() {
@@ -1641,7 +1700,11 @@ mod percent_tests {
     fn fit_columns_gives_percentage_columns_their_share() {
         let fit = |cols: &[f32], mins: &[f32], pcts: &[Option<f32>], target| {
             let mut cols = cols.to_vec();
-            fit_columns(&mut cols, mins, pcts, target);
+            let limits = Limits {
+                mins: mins.to_vec(),
+                fixed: vec![false; mins.len()],
+            };
+            fit_columns(&mut cols, &limits, pcts, target);
             cols
         };
         // No percentages: plain proportional growth.
@@ -1686,5 +1749,26 @@ mod percent_tests {
             fit(&[50.0, 10.0], &[50.0, 10.0], &[Some(10.0), None], 100.0),
             [50.0, 50.0]
         );
+    }
+
+    #[test]
+    fn grow_columns_prefers_auto_columns_like_chrome() {
+        let grow = |cols: &[f32], fixed: &[bool], target| {
+            let mut cols = cols.to_vec();
+            let sum = cols.iter().sum();
+            grow_columns(&mut cols, fixed, target, sum);
+            cols
+        };
+        // Every column auto (or every one fixed): scaled in proportion.
+        assert_eq!(grow(&[10.0, 30.0], &[false, false], 80.0), [20.0, 60.0]);
+        assert_eq!(grow(&[10.0, 30.0], &[true, true], 80.0), [20.0, 60.0]);
+        // Empty auto columns share equally; a px column keeps its width.
+        assert_eq!(grow(&[0.0, 0.0], &[false, false], 100.0), [50.0, 50.0]);
+        assert_eq!(grow(&[100.0, 0.0], &[true, false], 400.0), [100.0, 300.0]);
+        assert_eq!(
+            grow(&[100.0, 30.0, 0.0], &[true, false, false], 400.0),
+            [100.0, 300.0, 0.0]
+        );
+        assert_eq!(grow(&[0.0, 0.0], &[true, true], 10.0), [5.0, 5.0]);
     }
 }

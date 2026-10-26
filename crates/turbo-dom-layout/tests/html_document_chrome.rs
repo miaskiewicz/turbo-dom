@@ -237,7 +237,6 @@ fn column_growth_case(id: &str) -> bool {
 }
 
 #[test]
-#[ignore = "miaskiewicz/turbo-dom#55: fails until the fix"]
 fn extra_table_width_goes_to_auto_columns_like_chrome_156() {
     compare_cases(column_growth_case);
 }

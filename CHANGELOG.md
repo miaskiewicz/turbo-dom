@@ -7,7 +7,7 @@ at the time); this file reconstructs them from history.
 
 ## [Unreleased]
 
-### Fixed — turbo-dom-layout tables, clipping and box sizing (P5b-W5, miaskiewicz/turbo-dom#51/#52/#62/#63/#64/#65, Chrome 156 controls)
+### Fixed — turbo-dom-layout tables, clipping and box sizing (P5b-W5, miaskiewicz/turbo-dom#51/#52/#55/#62/#63/#64/#65, Chrome 156 controls)
 Each fix is backed by a Chrome for Testing 156 control and lists the corpus outputs it
 changes in `tools/parity/expected/p5b-w5-turbo-dom-*.json`.
 - Table captions (#51): a `<caption>` (UA `caption { display: table-caption; text-align:
@@ -65,6 +65,13 @@ changes in `tools/parity/expected/p5b-w5-turbo-dom-*.json`.
   backgrounds, borders and `vertical-align` follow. The table box was tall but its rows
   kept their content height. Separated and collapsed tables, every path. Control:
   `table-height-*` in `html-document`.
+- Table column growth (#55): a table wider than its columns' max-content (a definite
+  `width`, `min-width`, or stretched) gives the extra width to its auto columns (no `px`
+  cell width) in proportion to their max-content, equally when they are all empty, and
+  only without auto columns to the `px` ones — as Chrome 156 does. Empty cells of a
+  `width:100%` table used to get 0px (no backgrounds or heights painted), and a
+  `width:100px` cell beside content grew with it (307px instead of 100px). Control:
+  `table-columns-*` in `html-document`.
 
 ### Fixed — `getComputedStyle` defaults and no injected `<title>` (P5b-X3, miaskiewicz/turbo-surf#36 items 1–2, Chrome 156 control)
 - turbo-dom-browser-env: `getComputedStyle` used to return `""` for `display`, `position`
