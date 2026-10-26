@@ -2434,7 +2434,7 @@ test(':first-child/:last-child skip leading/trailing text + comment siblings', (
 
 test('nth-of-type pseudos on a detached element (no parent → [el])', () => {
   const { document } = fresh();
-  const el = document.createElement('div'); // no parent → elementSiblings returns [el]
+  const el = document.createElement('div'); // no parent → it is its own only sibling (selectors.mjs position)
   assert.equal(el.matches(':first-of-type'), true);
   assert.equal(el.matches(':last-of-type'), true);
   assert.equal(el.matches(':only-of-type'), true);

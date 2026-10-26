@@ -1447,7 +1447,8 @@ impl Tree {
     }
 
     /// Element-only siblings of `h` (children of its parent that are elements).
-    /// Returns `[h]` if `h` has no parent — mirrors selectors.mjs `elementSiblings`.
+    /// Returns `[h]` if `h` has no parent — as selectors.mjs `position` (a parentless element
+    /// is its own only sibling).
     fn element_siblings(&self, h: Handle) -> Vec<Handle> {
         match self.parent(h) {
             Some(p) => {
