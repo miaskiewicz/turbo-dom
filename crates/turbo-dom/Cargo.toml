@@ -37,6 +37,9 @@ log = "0.4"
 # CSS Syntax tokenizer for the Chrome-compatible value grammars in rtdom::css_values
 # (`zoom`), shared by turbo-dom-browser-env and native layout consumers.
 cssparser = "0.37"
+# Bidi character classes for `:dir()` auto directionality (the first strong character of
+# an element's text, HTML "auto directionality"). The hardcoded Unicode tables only.
+unicode-bidi = { version = "0.3.18", default-features = false, features = ["hardcoded-data"] }
 
 # clippy's opt-in `pedantic` group as a warn-level gate (CI's `-D warnings` escalates
 # it to an error), with the documented allow-list in the workspace root's

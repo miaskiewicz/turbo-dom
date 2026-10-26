@@ -136,7 +136,7 @@ const NEVER_PSEUDO_CLASSES: &[&str] = &[
     "volume-locked",
     "xr-overlay",
 ];
-const NEVER_FUNCTIONAL_PSEUDO_CLASSES: &[&str] = &["dir", "host", "host-context"];
+const NEVER_FUNCTIONAL_PSEUDO_CLASSES: &[&str] = &["host", "host-context"];
 
 /// Pseudo-elements Chrome 156 accepts without an argument (any `::-webkit-*` name is
 /// accepted too).
@@ -605,6 +605,134 @@ pub(super) fn lang_matches(tree: &Tree, h: Handle, range: &str) -> bool {
         node = tree.parent(n);
     }
     false
+}
+
+/// `:dir()`: is `h`'s HTML directionality `rtl`? Per HTML (as Chrome 156 evaluates it): an
+/// HTML element's valid `dir` (`ltr` / `rtl` / `auto`, ASCII case-insensitive) decides —
+/// `auto` by its auto directionality (`ltr` without a strong character); with no valid
+/// `dir`, a `bdi` is `auto`, an `input type=tel` is `ltr`, and anything else (every
+/// non-HTML element too) takes its parent's directionality (a shadow root's host; `ltr` at
+/// the top of a tree).
+pub(super) fn is_rtl(tree: &Tree, h: Handle) -> bool {
+    let mut node = h;
+    loop {
+        if tree.is_html(node) {
+            match dir_state(tree, node) {
+                Some(Dir::Ltr) => return false,
+                Some(Dir::Rtl) => return true,
+                Some(Dir::Auto) => return auto_rtl(tree, node).unwrap_or(false),
+                None if tree.local_name(node) == Some("bdi") => {
+                    return auto_rtl(tree, node).unwrap_or(false)
+                }
+                None if tree.local_name(node) == Some("input")
+                    && tree
+                        .get_attribute(node, "type")
+                        .is_some_and(|t| t.eq_ignore_ascii_case("tel")) =>
+                {
+                    return false
+                }
+                None => {}
+            }
+        }
+        let parent = match tree.parent(node) {
+            Some(p) if tree.is_shadow_root(p) => tree.shadow_host(p),
+            Some(p) if tree.node_type(p) == super::NodeType::Element => Some(p),
+            _ => None,
+        };
+        match parent {
+            Some(p) => node = p,
+            None => return false,
+        }
+    }
+}
+
+#[derive(Clone, Copy)]
+enum Dir {
+    Ltr,
+    Rtl,
+    Auto,
+}
+
+/// An HTML element's `dir` attribute state (`None`: missing or invalid — "undefined").
+fn dir_state(tree: &Tree, h: Handle) -> Option<Dir> {
+    let value = tree.get_attribute_ns_borrowed(h, None, "dir")?;
+    [("ltr", Dir::Ltr), ("rtl", Dir::Rtl), ("auto", Dir::Auto)]
+        .into_iter()
+        .find_map(|(name, dir)| value.eq_ignore_ascii_case(name).then_some(dir))
+}
+
+/// `<input type>` states whose value decides auto directionality (HTML "auto-directionality
+/// form-associated elements"; a missing or unknown type is Text).
+const AUTO_DIR_INPUT_TYPES: &[&str] = &[
+    "hidden", "text", "search", "tel", "url", "email", "password", "submit", "reset", "button",
+];
+
+/// HTML "auto directionality": `Some(rtl)` from the first strong character, `None` when
+/// there is none. A text `input` / `textarea` reads its value (any non-empty value without
+/// a leading strong RTL character is `ltr`); other elements read their descendant text,
+/// skipping `bdi`, `script`, `style`, `textarea`, template content and any HTML element
+/// with a valid `dir`.
+fn auto_rtl(tree: &Tree, h: Handle) -> Option<bool> {
+    let value = match tree.local_name(h) {
+        Some("textarea") => Some(tree.text_content(h)),
+        Some("input")
+            if tree.get_attribute(h, "type").is_none_or(|t| {
+                AUTO_DIR_INPUT_TYPES
+                    .iter()
+                    .any(|k| t.eq_ignore_ascii_case(k))
+                    || !super::KNOWN_INPUT_TYPES
+                        .iter()
+                        .any(|k| t.eq_ignore_ascii_case(k))
+            }) =>
+        {
+            Some(
+                tree.get_attribute(h, "value")
+                    .unwrap_or_default()
+                    .to_string(),
+            )
+        }
+        _ => None,
+    };
+    if let Some(value) = value {
+        return strong_rtl(&value).or((!value.is_empty()).then_some(false));
+    }
+    let mut stack = Vec::new();
+    tree.for_each_child(h, |c| stack.push(c));
+    stack.reverse();
+    while let Some(n) = stack.pop() {
+        match tree.node_type(n) {
+            super::NodeType::Text => {
+                if let Some(rtl) = tree.node_value(n).and_then(|t| strong_rtl(&t)) {
+                    return Some(rtl);
+                }
+            }
+            super::NodeType::Element => {
+                let skipped = tree.is_html(n)
+                    && (matches!(
+                        tree.local_name(n),
+                        Some("bdi" | "script" | "style" | "textarea")
+                    ) || dir_state(tree, n).is_some());
+                if !skipped {
+                    let base = stack.len();
+                    tree.for_each_child(n, |c| stack.push(c));
+                    stack[base..].reverse();
+                }
+            }
+            _ => {}
+        }
+    }
+    None
+}
+
+/// The direction of the first strong character of `text` (bidi class L, R or AL).
+fn strong_rtl(text: &str) -> Option<bool> {
+    use unicode_bidi::BidiClass;
+    text.chars()
+        .find_map(|c| match unicode_bidi::bidi_class(c) {
+            BidiClass::L => Some(false),
+            BidiClass::R | BidiClass::AL => Some(true),
+            _ => None,
+        })
 }
 
 // ------------------------------------------------------------------------- specificity
@@ -1110,11 +1238,53 @@ mod tests {
         assert_eq!(m(":SCOPE", "a"), m(":root", "a"));
         assert!(m("P:FIRST-CHILD", "a"));
         assert!(!m("p:hover", "a"));
-        assert!(!m(":dir(ltr)", "a"));
+        assert!(m(":dir(ltr)", "a"), "P5b: :dir() is evaluated");
+        assert!(!m(":dir(rtl)", "a"));
         assert!(is_custom_element_name("x-foo"));
         for not in ["xfoo", "X-foo", "x-Foo", "-x", "annotation-xml"] {
             assert!(!is_custom_element_name(not), "{not}");
         }
+    }
+
+    /// turbo-dom#18 (P5b): `:dir()` edges the Chrome control does not reach — shadow
+    /// trees inherit from the host, template content and detached nodes are `ltr`, a
+    /// non-text `input` reads its descendants (none), and live trees.
+    #[test]
+    fn dir_follows_html_directionality() {
+        let mut tree = Tree::parse(
+            "<div dir=rtl id=host></div><template id=t><p>x</p></template>\
+             <input type=checkbox dir=auto id=cb value=\u{5e9}><input type=bogus dir=auto id=bg value=\u{5e9}>\
+             <div dir=auto id=em><style>\u{5e9}</style><!--\u{5e9}-->1</div>",
+        );
+        let el = |tree: &Tree, id: &str| tree.get_element_by_id(id).unwrap();
+        let host = el(&tree, "host");
+        let shadow = tree.attach_shadow(host);
+        tree.set_inner_html(shadow, "<span>s</span>");
+        let in_shadow = tree.children(shadow)[0];
+        let detached = tree.create_element("p");
+        let rtl = |tree: &Tree, h: Handle| tree.matches(h, ":dir(rtl)");
+        assert!(
+            rtl(&tree, in_shadow),
+            "shadow content inherits the host's direction"
+        );
+        assert!(!rtl(&tree, detached) && tree.matches(detached, ":dir(ltr)"));
+        let template = el(&tree, "t");
+        let content = tree
+            .children(template)
+            .into_iter()
+            .find(|&c| tree.node_type(c) == super::super::NodeType::Fragment)
+            .unwrap();
+        let p = tree.children(content)[0];
+        assert!(tree.matches(p, ":dir(ltr)"));
+        assert!(!rtl(&tree, el(&tree, "cb")), "a checkbox value is not text");
+        assert!(rtl(&tree, el(&tree, "bg")), "an unknown type is Text");
+        assert!(
+            !rtl(&tree, el(&tree, "em")),
+            "style and comments are skipped"
+        );
+        assert!(!tree.matches(host, ":dir(auto)") && !tree.matches(host, ":dir(foo)"));
+        assert_eq!(strong_rtl("123 \u{627}"), Some(true));
+        assert_eq!(strong_rtl("1 2"), None);
     }
 
     #[test]

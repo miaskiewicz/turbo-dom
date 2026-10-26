@@ -47,6 +47,13 @@ outputs it changes in `tools/parity/expected/p5b-*.json`.
   "undefined" in a document without definitions. The stylesheet side gains the `is` rule.
   (Elements upgraded by a script-defined custom element are still `:not(:defined)` here:
   the tree does not know the binding's registry.)
+- `:dir(ltr|rtl)` (miaskiewicz/turbo-dom#18) is evaluated — DOM APIs and stylesheets; it
+  never matched. HTML directionality as Chrome 156 computes it: a valid `dir` attribute
+  (ASCII case-insensitive), `dir=auto` / `<bdi>` by the first strong character of the text
+  (bidi classes from the new `unicode-bidi` dependency; text inputs and textareas by their
+  value; `bdi`, `script`, `style`, `textarea` and elements with a valid `dir` skipped),
+  `input type=tel` `ltr`, otherwise the parent's (shadow content: the host's). One
+  identifier argument; `:dir(auto)` / `:dir(foo)` are valid and never match.
 
 ## [0.6.0] — turbo-dom consolidation
 

@@ -245,6 +245,9 @@ enum Pseudo {
     Has(Vec<RelativeSelector>),
     // `:lang(range)`: one identifier, lowercased (Chrome 156 rejects strings and lists).
     Lang(String),
+    // `:dir(ltr|rtl)`: the element's HTML directionality; any other identifier is valid and
+    // never matches (`Some(true)` = rtl, `None` = neither).
+    Dir(Option<bool>),
     // `:defined`: not an (undefined) custom element — see `query_cascade::is_defined`.
     Defined,
     // Cascade-only (produced by `parse_for_cascade`, never by the DOM-API parsers):
@@ -925,6 +928,7 @@ fn parse_pseudo(name: &str, arg: Option<&str>) -> Pseudo {
             | "not"
             | "has"
             | "lang"
+            | "dir"
     );
     if functional != arg.is_some() {
         return Pseudo::unknown(name, arg);
@@ -993,6 +997,19 @@ fn parse_pseudo(name: &str, arg: Option<&str>) -> Pseudo {
         "lang" => arg
             .and_then(|arg| units::lang_range(&arg.encode_utf16().collect::<Vec<_>>()))
             .map_or_else(|| Pseudo::unknown(name, arg), Pseudo::Lang),
+        // one identifier, like `:lang()` (`:dir("ltr")`, `:dir(ltr, rtl)` are invalid)
+        "dir" => arg
+            .and_then(|arg| units::lang_range(&arg.encode_utf16().collect::<Vec<_>>()))
+            .map_or_else(
+                || Pseudo::unknown(name, arg),
+                |value| {
+                    Pseudo::Dir(match value.as_str() {
+                        "ltr" => Some(false),
+                        "rtl" => Some(true),
+                        _ => None,
+                    })
+                },
+            ),
         _ => Pseudo::unknown(name, arg),
     }
 }
@@ -1708,6 +1725,7 @@ fn matches_pseudo<N: Navigator + ?Sized>(nav: &N, h: Handle, p: &Pseudo) -> bool
         Pseudo::Has(list) => list.iter().any(|rel| has_match(nav, h, rel)),
         Pseudo::Defined => cascade::is_defined(tree, h),
         Pseudo::Lang(range) => cascade::lang_matches(tree, h, range),
+        Pseudo::Dir(rtl) => rtl.is_some_and(|rtl| cascade::is_rtl(tree, h) == rtl),
         Pseudo::Unknown(_) => false,
     }
 }
