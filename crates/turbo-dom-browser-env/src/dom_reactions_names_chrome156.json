@@ -2,7 +2,7 @@
   "browser": "Chrome/156.0.8078.4",
   "v8": "15.6.75",
   "casesSha256": "75652313126034145215b17006244ce344b90e21cc5cf859905c880c9a5ee38c",
-  "probeSha256": "427fcee2136e34ff4346e9dea4ec799adb02ede47ca2b3c025099553b16946bd",
+  "probeSha256": "0fb6f6ff60d9fab046d879c70734d930761f75dda248c1a86b23c413cb0a2b5e",
   "collectorSha256": "7174415de76a891d657bbc3e66952c7b91356030e8fcd9d0ac4f52603d0c3952",
   "flags": [
     "--headless=new",
@@ -160,6 +160,28 @@
             "e1",
             0
           ]
+        ],
+        "removal": [
+          "conn",
+          "remove:in",
+          "disc",
+          "remove:out",
+          "conn",
+          "removeChild:in",
+          "disc",
+          "removeChild:out",
+          "conn",
+          "replaceChild:in",
+          "disc",
+          "replaceChild:out",
+          "conn",
+          "textContent:in",
+          "disc",
+          "textContent:out",
+          "conn",
+          "replaceChildren:in",
+          "disc",
+          "replaceChildren:out"
         ],
         "names": {
           "a:b:c": {

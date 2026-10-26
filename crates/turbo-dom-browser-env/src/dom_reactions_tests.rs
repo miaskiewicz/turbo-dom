@@ -11,7 +11,8 @@
 //! turbo-dom#42: `customElements.upgrade()` skips inert template contents and an element is
 //! never constructed twice; #43: each element's reactions run before the next element's, and
 //! the fragment parser queues upgrades before a setter's removals; #44: `a:b:c` is prefix `a`,
-//! local name `b`.
+//! local name `b`; #54: an independently installed document's removals run their reactions
+//! before the call returns.
 use super::*;
 use sha2::{Digest, Sha256};
 
@@ -185,6 +186,22 @@ fn dom_adoption_reactions_match_chrome156_control() {
         if binding[key] != *want {
             found.push(format!("{key}: binding {}, chrome {want}", binding[key]));
         }
+    }
+    assert_none(&found);
+}
+
+/// turbo-dom#54: in an independently installed document (this harness), removeChild() /
+/// remove() / replaceChild() run their disconnectedCallbacks before they return.
+#[test]
+#[ignore = "turbo-dom#54: fails until the fix"]
+fn independent_document_reactions_run_before_the_call_returns() {
+    let (binding, chrome) = run(NAMES_PROBE, NAMES_CASES, NAMES_CONTROL);
+    let mut found = Vec::new();
+    if binding["removal"] != chrome["removal"] {
+        found.push(format!(
+            "removal: binding {}, chrome {}",
+            binding["removal"], chrome["removal"]
+        ));
     }
     assert_none(&found);
 }

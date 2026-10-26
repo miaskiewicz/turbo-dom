@@ -28,6 +28,29 @@
   });
   step('end', () => { host.textContent = ''; });
   out.order = log;
+  // turbo-dom#54: every DOM call runs the reactions it queued before it returns, also for
+  // removeChild / remove() (which mutate the tree directly).
+  const removal = [];
+  class Removed extends HTMLElement {
+    connectedCallback() { removal.push('conn'); }
+    disconnectedCallback() { removal.push('disc'); }
+  }
+  customElements.define('x-removed', Removed);
+  for (const [name, run] of [
+    ['remove', (box) => box.remove()],
+    ['removeChild', (box) => document.body.removeChild(box)],
+    ['replaceChild', (box) => document.body.replaceChild(document.createElement('p'), box)],
+    ['textContent', () => { document.body.textContent = ''; }],
+    ['replaceChildren', () => document.body.replaceChildren()],
+  ]) {
+    const box = document.createElement('div');
+    box.append(document.createElement('x-removed'));
+    document.body.append(box);
+    removal.push(name + ':in');
+    run(box);
+    removal.push(name + ':out');
+  }
+  out.removal = removal;
   const attempt = (run) => { try { return run(); } catch (e) { return e.name; } };
   const attr = (a) => [a.prefix, a.localName, a.name, a.namespaceURI];
   out.names = {};
