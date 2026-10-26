@@ -77,6 +77,14 @@ fn lay_out(html: &str) -> Result<Fragment, RenderError> {
   (`caption-side: top` above, `bottom` below, in source order) and an anonymous grid
   box (`NodeSources::table_grids`) stretched to the widest of the grid and the captions'
   min-content, which carries the table's frame, background, `height` and rows.
+  Also P5b-W5 (Chrome 156 controls in `scripts/html-document-chrome-control.mjs`): a last
+  child's bottom margin is kept inside / collapsed through its parent on every policy
+  (turbo-dom#41); a table's extra width goes to its auto columns, equally when empty
+  (#55), and its extra height to its rows (#64); UA `table { box-sizing: border-box;
+  border-spacing: 2px }` with `border-spacing` inherited and initially 0 (#62, #63);
+  `border-box` widths count once in intrinsic and column widths (#65); only legacy
+  `-webkit-*` alignment (UA `center`, `align` attributes) moves block children (#69); UA
+  `th` is bold and centred (#70).
 - `layout_snapshot::snapshot_{,html_}live_tree*` capture a snapshot of a `StyleInput`
   (identity paths index the styled forest).
 - `image` — the ONE image layer shared by the PDF emitter and turbo-dom-raster:
