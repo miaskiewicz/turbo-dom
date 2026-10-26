@@ -9534,6 +9534,10 @@ mod frame_tokens_tests;
 mod html_meta_tests;
 
 #[cfg(test)]
+#[path = "svg_inline_style_tests.rs"]
+mod svg_inline_style_tests;
+
+#[cfg(test)]
 #[path = "css_live_tests.rs"]
 mod css_live_tests;
 

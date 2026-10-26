@@ -1,0 +1,243 @@
+{
+  "browser": "Chrome/156.0.8078.4",
+  "v8": "15.6.75",
+  "probeSha256": "bf42476d8697d2789f07a98a277e535d771e9576fd8a2a0f44abedc725ff6958",
+  "collectorSha256": "440965c5c029143c92058c21f6e125a83d3d91f55331a2e4df225019fdf7a55f",
+  "errors": [],
+  "result": {
+    "repro": {
+      "flexGrow": "1",
+      "attribute": "flex-grow: 1;"
+    },
+    "descriptors": [
+      {
+        "owner": "Element",
+        "key": "style",
+        "missing": true
+      },
+      {
+        "owner": "Element",
+        "key": "dataset",
+        "missing": true
+      },
+      {
+        "owner": "HTMLElement",
+        "key": "style",
+        "enumerable": true,
+        "configurable": true,
+        "getter": "get style",
+        "setter": "set style",
+        "getLength": 0,
+        "setLength": 1
+      },
+      {
+        "owner": "HTMLElement",
+        "key": "dataset",
+        "enumerable": true,
+        "configurable": true,
+        "getter": "get dataset",
+        "setter": null,
+        "getLength": 0,
+        "setLength": null
+      },
+      {
+        "owner": "SVGElement",
+        "key": "style",
+        "enumerable": true,
+        "configurable": true,
+        "getter": "get style",
+        "setter": "set style",
+        "getLength": 0,
+        "setLength": 1
+      },
+      {
+        "owner": "SVGElement",
+        "key": "dataset",
+        "enumerable": true,
+        "configurable": true,
+        "getter": "get dataset",
+        "setter": null,
+        "getLength": 0,
+        "setLength": null
+      },
+      {
+        "owner": "MathMLElement",
+        "key": "style",
+        "enumerable": true,
+        "configurable": true,
+        "getter": "get style",
+        "setter": "set style",
+        "getLength": 0,
+        "setLength": 1
+      },
+      {
+        "owner": "MathMLElement",
+        "key": "dataset",
+        "enumerable": true,
+        "configurable": true,
+        "getter": "get dataset",
+        "setter": null,
+        "getLength": 0,
+        "setLength": null
+      }
+    ],
+    "elements": {
+      "svg": {
+        "hasStyle": true,
+        "hasDataset": true,
+        "styleTag": "[object CSSStyleDeclaration]",
+        "isDeclaration": true,
+        "same": true,
+        "emptyText": "",
+        "afterSet": "color: red; --x: 1;",
+        "fromAttribute": [
+          "2px",
+          "blue",
+          2
+        ],
+        "putForwards": [
+          "stroke: green;",
+          "green",
+          true
+        ],
+        "afterRemove": [
+          "",
+          0
+        ],
+        "afterRemoveAttribute": [
+          "",
+          0,
+          false
+        ],
+        "dataset": [
+          "x",
+          "1",
+          "fooBar,a"
+        ]
+      },
+      "rect": {
+        "hasStyle": true,
+        "hasDataset": true,
+        "styleTag": "[object CSSStyleDeclaration]",
+        "isDeclaration": true,
+        "same": true,
+        "emptyText": "",
+        "afterSet": "color: red; --x: 1;",
+        "fromAttribute": [
+          "2px",
+          "blue",
+          2
+        ],
+        "putForwards": [
+          "stroke: green;",
+          "green",
+          true
+        ],
+        "afterRemove": [
+          "",
+          0
+        ],
+        "afterRemoveAttribute": [
+          "",
+          0,
+          false
+        ],
+        "dataset": [
+          "x",
+          "1",
+          "fooBar,a"
+        ]
+      },
+      "math": {
+        "hasStyle": true,
+        "hasDataset": true,
+        "styleTag": "[object CSSStyleDeclaration]",
+        "isDeclaration": true,
+        "same": true,
+        "emptyText": "",
+        "afterSet": "color: red; --x: 1;",
+        "fromAttribute": [
+          "2px",
+          "blue",
+          2
+        ],
+        "putForwards": [
+          "stroke: green;",
+          "green",
+          true
+        ],
+        "afterRemove": [
+          "",
+          0
+        ],
+        "afterRemoveAttribute": [
+          "",
+          0,
+          false
+        ],
+        "dataset": [
+          "x",
+          "1",
+          "fooBar,a"
+        ]
+      },
+      "mi": {
+        "hasStyle": true,
+        "hasDataset": true,
+        "styleTag": "[object CSSStyleDeclaration]",
+        "isDeclaration": true,
+        "same": true,
+        "emptyText": "",
+        "afterSet": "color: red; --x: 1;",
+        "fromAttribute": [
+          "2px",
+          "blue",
+          2
+        ],
+        "putForwards": [
+          "stroke: green;",
+          "green",
+          true
+        ],
+        "afterRemove": [
+          "",
+          0
+        ],
+        "afterRemoveAttribute": [
+          "",
+          0,
+          false
+        ],
+        "dataset": [
+          "x",
+          "1",
+          "fooBar,a"
+        ]
+      },
+      "unknownNs": {
+        "hasStyle": false,
+        "hasDataset": false
+      }
+    },
+    "parsed": [
+      "red",
+      "blue",
+      "2px",
+      2
+    ],
+    "brand": [
+      [
+        "SVGElement",
+        "TypeError"
+      ],
+      [
+        "HTMLElement",
+        "TypeError"
+      ],
+      [
+        "MathMLElement",
+        "TypeError"
+      ]
+    ]
+  }
+}
