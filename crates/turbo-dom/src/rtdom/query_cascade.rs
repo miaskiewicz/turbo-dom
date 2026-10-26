@@ -17,9 +17,9 @@
 //!   parsed unforgivingly (`@supports selector(…)` / `CSS.supports("selector(…)")`).
 //! - pseudo-classes Chrome knows but the DOM engine does not evaluate parse as valid and
 //!   never match (the static resting state: `:hover`, `:focus`, `:visited`, …). Names are
-//!   ASCII case-insensitive. `:scope` is `:root`, and `:-webkit-any()` is evaluated
-//!   (cascade-only: the DOM APIs keep their behaviour); `:defined` and `:lang()` are shared
-//!   with the DOM APIs.
+//!   ASCII case-insensitive. `:scope` is `:root` in a stylesheet (the DOM APIs match the
+//!   scoping element: `Navigator::is_scope`); `:-webkit-any()`, `:defined` and `:lang()`
+//!   are shared with the DOM APIs (turbo-dom#91, #96).
 //! - **specificity** per Selectors 4: `:where()` is 0; `:is()`, `:not()` and `:has()` take
 //!   their most specific argument; `:nth-child(An+B of S)` is a pseudo-class plus S;
 //!   pseudo-elements count as types.
@@ -28,7 +28,7 @@
 //! [`Navigator`]; [`PositionCache`] memoizes sibling positions for navigators that style a
 //! whole tree (each sibling list is scanned once instead of once per structural pseudo).
 use super::{
-    matches_complex, parse_complex, parse_pseudo, split_top_level_commas, units,
+    matches_complex, parse_complex, split_top_level_commas, units,
     validate_selector_list, Complex, Compound, Handle, Navigator, Pseudo, SelectorError, Tree,
     UnknownPseudo,
 };
@@ -256,7 +256,8 @@ fn invalid(reason: &'static str) -> SelectorError {
 /// Returns [`SelectorError`] when Chrome would drop the rule: a malformed selector, an
 /// empty list item, a dangling combinator, or an unknown / misplaced pseudo.
 pub fn parse_for_cascade(src: &str) -> Result<SelectorList, SelectorError> {
-    let selectors = split_top_level_commas(src)
+    let src = super::source::normalize_str(src, super::source::Mode::Sheet);
+    let selectors = split_top_level_commas(&src)
         .into_iter()
         .map(|item| parse_item(item.trim()))
         .collect::<Result<Vec<_>, _>>()?;
@@ -288,6 +289,7 @@ fn parse_item(item: &str) -> Result<CascadeSelector, SelectorError> {
 /// Returns [`SelectorError`] when Chrome reports the selector unsupported: a list, a
 /// malformed or unknown selector, or an invalid item in a forgiving list.
 pub fn parse_for_supports(src: &str) -> Result<CascadeSelector, SelectorError> {
+    let src = super::source::normalize_str(src, super::source::Mode::Sheet);
     let item = src.trim();
     if split_top_level_commas(item).len() != 1 {
         return Err(invalid("selector() takes one complex selector"));
@@ -348,11 +350,8 @@ fn parse_raw(item: &str) -> Result<Complex, SelectorError> {
     }
     if item.contains('\\') {
         let units: Vec<u16> = item.encode_utf16().collect();
-        let mut list = units::list(&units);
-        if list.len() != 1 {
-            return Err(SelectorError::EmptyCompound);
-        }
-        Ok(list.remove(0))
+        // one validated item is one complex selector
+        units::list(&units).into_iter().next().ok_or(SelectorError::EmptyCompound)
     } else {
         parse_complex(item).ok_or(SelectorError::EmptyCompound)
     }
@@ -461,17 +460,17 @@ fn check_pseudo(pseudo: &mut Pseudo) -> Result<(), SelectorError> {
         Pseudo::Selected => return Err(invalid("unknown pseudo-class")),
         Pseudo::Is(list) | Pseudo::Where(list) => forgive(list),
         Pseudo::Not(list) | Pseudo::NthChildOf(_, _, list) | Pseudo::NthLastChildOf(_, _, list) => {
-            if list.is_empty() {
-                return Err(invalid("empty selector list argument"));
-            }
+            // never empty: the shared parser makes a pseudo with an empty, unplaceable or
+            // combinator-edged item `Unknown` (an error below), and every other strictly
+            // lexed item parses to a complex selector (fuzzed: 1.46M arguments)
+            debug_assert!(!list.is_empty(), "empty selector list argument");
             for complex in list {
                 check_nested(complex)?;
             }
         }
         Pseudo::Has(list) => {
-            if list.is_empty() {
-                return Err(invalid("empty :has()"));
-            }
+            // never empty, as above (a relative item may start with a combinator)
+            debug_assert!(!list.is_empty(), "empty :has()");
             for relative in list {
                 check_nested(&mut relative.complex)?;
                 reject_nested_has(&mut relative.complex)?;
@@ -495,12 +494,14 @@ fn reject_nested_has(complex: &mut Complex) -> Result<(), SelectorError> {
                 Pseudo::Is(list) | Pseudo::Where(list) | Pseudo::WebkitAny(list) => {
                     list.retain(|c| !contains_has(c));
                 }
-                Pseudo::Not(list)
-                | Pseudo::NthChildOf(_, _, list)
-                | Pseudo::NthLastChildOf(_, _, list)
-                    if list.iter().any(contains_has) =>
-                {
-                    return Err(invalid(":has() inside :has()"));
+                Pseudo::Not(list) if list.iter().any(contains_has) => {
+                    return Err(invalid(":has() inside :not() inside :has()"));
+                }
+                Pseudo::NthChildOf(_, _, list) if list.iter().any(contains_has) => {
+                    return Err(invalid(":has() inside :nth-child() inside :has()"));
+                }
+                Pseudo::NthLastChildOf(_, _, list) if list.iter().any(contains_has) => {
+                    return Err(invalid(":has() inside :nth-last-child() inside :has()"));
                 }
                 _ => {}
             }
@@ -514,16 +515,23 @@ pub(super) fn contains_has(complex: &Complex) -> bool {
     std::iter::once(&complex.first)
         .chain(complex.rest.iter().map(|(_, c)| c))
         .flat_map(|c| &c.pseudos)
-        .any(|p| match p {
-            Pseudo::Has(_) => true,
-            Pseudo::Is(list)
-            | Pseudo::Where(list)
-            | Pseudo::Not(list)
-            | Pseudo::WebkitAny(list)
-            | Pseudo::NthChildOf(_, _, list)
-            | Pseudo::NthLastChildOf(_, _, list) => list.iter().any(contains_has),
-            _ => false,
-        })
+        .any(|p| matches!(p, Pseudo::Has(_)) || selector_list(p).iter().any(contains_has))
+}
+
+/// The selector-list argument of `:is()`, `:where()`, `:not()`, `:-webkit-any()` and
+/// `of S` (empty for every other pseudo). One arm per variant: LLVM attributes a
+/// multi-line or-pattern's continuation lines to never-counted gap regions.
+#[allow(clippy::match_same_arms)]
+fn selector_list(p: &Pseudo) -> &[Complex] {
+    match p {
+        Pseudo::Is(list) => list,
+        Pseudo::Where(list) => list,
+        Pseudo::Not(list) => list,
+        Pseudo::WebkitAny(list) => list,
+        Pseudo::NthChildOf(_, _, list) => list,
+        Pseudo::NthLastChildOf(_, _, list) => list,
+        _ => &[],
+    }
 }
 
 fn check_nested(complex: &mut Complex) -> Result<(), SelectorError> {
@@ -537,6 +545,57 @@ fn check_nested(complex: &mut Complex) -> Result<(), SelectorError> {
 /// Forgiving list (`:is()`, `:where()`): drop the items Chrome would reject.
 fn forgive(list: &mut Vec<Complex>) {
     list.retain_mut(|complex| check_nested(complex).is_ok());
+}
+
+/// `:-webkit-any()` as Chrome 156 parses it (both the DOM APIs and stylesheets): a
+/// non-empty, unforgiving list of COMPOUND selectors without pseudo-elements or `:has()`,
+/// where a nested `:not()` also takes compounds only and a nested `:is()` / `:where()`
+/// drops its complex items (`:-webkit-any(:is(p, div p))` is `:-webkit-any(:is(p))`).
+/// `None`: a `SyntaxError` (the shared parser leaves the pseudo `Unknown`).
+pub(super) fn webkit_any(arg: &str) -> Option<Vec<Complex>> {
+    split_top_level_commas(arg)
+        .into_iter()
+        .map(|item| {
+            let mut complex = parse_raw(item.trim()).ok()?;
+            // no `:has()`: directly or through `:not()` / `of S` an error, while a nested
+            // `:is()` / `:where()` drops the items with one (as inside `:has()`)
+            reject_nested_has(&mut complex).ok()?;
+            check_nested(&mut complex).ok()?;
+            compound_only(&mut complex, false).then_some(complex)
+        })
+        .collect()
+}
+
+/// Restrict a `:-webkit-any()` item: no combinators unless `combinators` (an `of S`
+/// item), compounds only in nested `:not()`, complex items dropped from nested `:is()` /
+/// `:where()`. `false` when the item is invalid.
+fn compound_only(complex: &mut Complex, combinators: bool) -> bool {
+    if !combinators && !complex.rest.is_empty() {
+        return false;
+    }
+    let compounds =
+        std::iter::once(&mut complex.first).chain(complex.rest.iter_mut().map(|(_, c)| c));
+    for compound in compounds {
+        for pseudo in &mut compound.pseudos {
+            match pseudo {
+                Pseudo::Is(list) | Pseudo::Where(list) => {
+                    list.retain_mut(|item| compound_only(item, false));
+                }
+                Pseudo::Not(list) => {
+                    if !list.iter_mut().all(|item| compound_only(item, false)) {
+                        return false;
+                    }
+                }
+                Pseudo::NthChildOf(_, _, list) | Pseudo::NthLastChildOf(_, _, list) => {
+                    if !list.iter_mut().all(|item| compound_only(item, true)) {
+                        return false;
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+    true
 }
 
 /// An unforgiving selector-list argument parsed from its text.
@@ -554,22 +613,11 @@ fn unforgiving_list(arg: &str) -> Result<Vec<Complex>, SelectorError> {
 /// A pseudo the shared parser left `Unknown`: an implemented one written in another case,
 /// a cascade-only one, a valid never-matching one, or an error.
 fn cascade_pseudo(unknown: &UnknownPseudo) -> Result<Pseudo, SelectorError> {
+    // (`parse_pseudo` already tried the ASCII-lowercased name: an implemented pseudo in
+    // another case never reaches here)
     let lower = unknown.name.to_ascii_lowercase();
     let arg = unknown.arg.as_deref();
-    if lower != unknown.name {
-        let mut parsed = parse_pseudo(&lower, arg);
-        if !matches!(parsed, Pseudo::Unknown(_)) {
-            check_pseudo(&mut parsed)?;
-            return Ok(parsed);
-        }
-    }
     match (lower.as_str(), arg) {
-        ("scope", None) => Ok(Pseudo::Root),
-        ("-webkit-any", Some(arg)) => {
-            let mut list = super::parse_selector_list_str(arg);
-            forgive(&mut list);
-            Ok(Pseudo::WebkitAny(list))
-        }
         (name, None) if NEVER_PSEUDO_CLASSES.contains(&name) => Ok(Pseudo::unknown(name, None)),
         (name, Some(_)) if NEVER_FUNCTIONAL_PSEUDO_CLASSES.contains(&name) => {
             Ok(Pseudo::unknown(name, arg))
