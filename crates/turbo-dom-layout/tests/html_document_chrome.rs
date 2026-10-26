@@ -346,7 +346,6 @@ fn column_flex_item_case(id: &str) -> bool {
 }
 
 #[test]
-#[ignore = "turbo-dom#86: fails until the fix"]
 fn column_flex_items_size_on_their_axes_like_chrome_156() {
     compare_cases(column_flex_item_case);
 }
