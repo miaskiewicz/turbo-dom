@@ -52,3 +52,23 @@ test('selector engine matches the P5-cov Chrome 156 selector rows (validity, mat
   assert.ok(rows >= 120, `fixture shrank: ${rows} rows`);
   assert.deepEqual(failures, []);
 });
+
+// miaskiewicz/turbo-dom#96: the `scope` probe replayed through the JS runtime's DOM.
+test(':scope is the scoping element like Chrome 156', { todo: 'turbo-dom#96' }, () => {
+  const want = fixture.probes.find((p) => p.id === 'scope').values;
+  const { document: doc } = createEnvironment('<!DOCTYPE html><html><head></head><body></body></html>');
+  doc.body.innerHTML = '<div id=d><p id=p><span id=s></span></p><p id=q></p></div>';
+  const d = doc.getElementById('d'), p = doc.getElementById('p'), s = doc.getElementById('s');
+  const ids = (list) => [...list].map((e) => e.id || e.localName);
+  const id = (e) => (e ? e.id || e.localName : null);
+  assert.deepEqual({
+    documentScope: ids(doc.querySelectorAll(':scope')),
+    documentChild: ids(doc.querySelectorAll(':scope > body')),
+    elementChild: ids(d.querySelectorAll(':scope > p')),
+    elementSelf: ids(d.querySelectorAll(':scope')),
+    elementNested: ids(d.querySelectorAll(':scope p span, :is(:scope) > p')),
+    elementFirst: id(d.querySelector(':scope > p ~ p')),
+    matches: [p.matches(':scope'), p.matches('div > :scope'), p.matches(':scope > span'), p.matches(':is(:scope)'), p.matches(':not(:scope)'), p.matches(':has(> :scope)'), d.matches(':has(:scope)'), d.matches(':has(> p:not(:scope))')],
+    closest: [id(s.closest(':scope')), id(s.closest('div:scope')), id(s.closest(':scope span')), id(s.closest('div :scope')), id(s.closest(':not(:scope)'))],
+  }, want);
+});

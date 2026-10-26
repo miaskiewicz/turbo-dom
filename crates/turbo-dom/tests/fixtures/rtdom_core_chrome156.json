@@ -1739,6 +1739,45 @@
    }
   },
   {
+   "id": "scope",
+   "values": {
+    "documentScope": [
+     "html"
+    ],
+    "documentChild": [
+     "body"
+    ],
+    "elementChild": [
+     "p",
+     "q"
+    ],
+    "elementSelf": [],
+    "elementNested": [
+     "p",
+     "s",
+     "q"
+    ],
+    "elementFirst": "q",
+    "matches": [
+     true,
+     true,
+     false,
+     true,
+     false,
+     false,
+     false,
+     true
+    ],
+    "closest": [
+     "s",
+     null,
+     null,
+     "s",
+     "p"
+    ]
+   }
+  },
+  {
    "id": "contextual_fragment_is",
    "values": {
     "isDefined": false,

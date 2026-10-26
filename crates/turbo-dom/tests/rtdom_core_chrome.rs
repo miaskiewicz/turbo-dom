@@ -506,3 +506,65 @@ fn contextual_fragment_reads_is_at_creation_like_chrome() {
     });
     assert_eq!(got, probe(&fixture(), "contextual_fragment_is"));
 }
+
+/// miaskiewicz/turbo-dom#96: `:scope` is the element `matches()` / element-rooted queries
+/// are called on, and the document element for document queries.
+#[test]
+#[ignore = "turbo-dom#96: fails until the fix"]
+fn scope_is_the_scoping_element_like_chrome() {
+    use turbo_dom::NodeRef;
+    let mut tree = Tree::parse("");
+    let body = tree.query_selector("body").unwrap();
+    tree.set_inner_html(
+        body,
+        "<div id=d><p id=p><span id=s></span></p><p id=q></p></div>",
+    );
+    let by_id = |tree: &Tree, id: &str| tree.query_selector(&format!("#{id}")).unwrap();
+    let (d, p) = (by_id(&tree, "d"), by_id(&tree, "p"));
+    let ids = |tree: &Tree, list: &[Handle]| -> Vec<String> {
+        list.iter()
+            .map(|&h| {
+                tree.get_attribute(h, "id")
+                    .map_or_else(|| tree.local_name(h).unwrap().to_string(), str::to_owned)
+            })
+            .collect()
+    };
+    let element = |selector: &str| -> Vec<String> {
+        let found: Vec<Handle> = NodeRef::new(&tree, d)
+            .query_selector_all(selector)
+            .iter()
+            .map(NodeRef::handle)
+            .collect();
+        let units: Vec<u16> = selector.encode_utf16().collect();
+        assert_eq!(
+            tree.query_selector_all_from_units(d, &units).to_vec(),
+            found,
+            "{selector}: units API"
+        );
+        ids(&tree, &found)
+    };
+    let want = probe(&fixture(), "scope");
+    let first = NodeRef::new(&tree, d)
+        .query_selector(":scope > p ~ p")
+        .map(|n| ids(&tree, &[n.handle()]).remove(0));
+    let got = json!({
+        "documentScope": ids(&tree, &tree.query_selector_all(":scope")),
+        "documentChild": ids(&tree, &tree.query_selector_all(":scope > body")),
+        "elementChild": element(":scope > p"),
+        "elementSelf": element(":scope"),
+        "elementNested": element(":scope p span, :is(:scope) > p"),
+        "elementFirst": first,
+        "matches": [
+            tree.matches(p, ":scope"),
+            tree.matches(p, "div > :scope"),
+            tree.matches(p, ":scope > span"),
+            tree.matches(p, ":is(:scope)"),
+            tree.matches(p, ":not(:scope)"),
+            tree.matches(p, ":has(> :scope)"),
+            tree.matches(d, ":has(:scope)"),
+            tree.matches(d, ":has(> p:not(:scope))"),
+        ],
+        "closest": want["closest"].clone(),
+    });
+    assert_eq!(got, want);
+}

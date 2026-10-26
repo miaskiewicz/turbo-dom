@@ -587,6 +587,44 @@ const PROBES = [
     },
   },
   {
+    // miaskiewicz/turbo-dom#96: `:scope` is the element matches()/closest()/
+    // element.querySelectorAll() are called on, and the document element for document queries
+    id: "scope",
+    script: (doc) => {
+      doc.body.innerHTML = "<div id=d><p id=p><span id=s></span></p><p id=q></p></div>";
+      const d = doc.getElementById("d"),
+        p = doc.getElementById("p"),
+        s = doc.getElementById("s");
+      const ids = (list) => [...list].map((e) => e.id || e.localName);
+      const id = (e) => (e ? e.id || e.localName : null);
+      return {
+        documentScope: ids(doc.querySelectorAll(":scope")),
+        documentChild: ids(doc.querySelectorAll(":scope > body")),
+        elementChild: ids(d.querySelectorAll(":scope > p")),
+        elementSelf: ids(d.querySelectorAll(":scope")),
+        elementNested: ids(d.querySelectorAll(":scope p span, :is(:scope) > p")),
+        elementFirst: id(d.querySelector(":scope > p ~ p")),
+        matches: [
+          p.matches(":scope"),
+          p.matches("div > :scope"),
+          p.matches(":scope > span"),
+          p.matches(":is(:scope)"),
+          p.matches(":not(:scope)"),
+          p.matches(":has(> :scope)"),
+          d.matches(":has(:scope)"),
+          d.matches(":has(> p:not(:scope))"),
+        ],
+        closest: [
+          id(s.closest(":scope")),
+          id(s.closest("div:scope")),
+          id(s.closest(":scope span")),
+          id(s.closest("div :scope")),
+          id(s.closest(":not(:scope)")),
+        ],
+      };
+    },
+  },
+  {
     id: "contextual_fragment_is",
     script: (doc) => {
       const range = doc.createRange();
