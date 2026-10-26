@@ -147,7 +147,10 @@ fn image_state_without_host_reports_not_loading_defaults() {
     assert_eq!(placed["sized"], serde_json::json!([40, 30, 20, 10, 3, 2]));
     assert_eq!(placed["styled"], serde_json::json!([10, 5, 23, 40, 3, 2]));
     assert_eq!(placed["intrinsic"], serde_json::json!([3, 2, 20, 45, 3, 2]));
-    assert_eq!(placed["hiddenIntrinsic"], serde_json::json!([3, 2, 0, 0, 3, 2]));
+    assert_eq!(
+        placed["hiddenIntrinsic"],
+        serde_json::json!([3, 2, 0, 0, 3, 2])
+    );
     for (id, row) in [
         ("sized", serde_json::json!([40, 30, 0, 0, 0, 0])),
         ("styled", serde_json::json!([40, 30, 0, 0, 0, 0])),
