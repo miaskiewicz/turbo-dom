@@ -230,14 +230,40 @@ fn flex_grow_shrink(s: &ComputedStyle) -> (f32, f32) {
 /// Wikipedia's `.mw-header`, a `width:100%` grid that is itself a flex child)
 /// shrink-wrapped to its content instead of filling the row.
 fn item_basis(s: &ComputedStyle, bs: &BoxStyle, fs: f32) -> Dimension {
+    main_basis(s, bs.width, fs)
+}
+
+/// An item's flex basis, `main` (its main-axis size: `width` in a row, `height` in a
+/// column, miaskiewicz/turbo-dom#86) standing in for `auto`.
+fn main_basis(s: &ComputedStyle, main: LengthPct, fs: f32) -> Dimension {
     match s.get("flex-basis").map(str::trim) {
         // No `flex-basis` longhand: the basis may still live in the `flex`
         // shorthand's third component (`flex: 0 0 60px`), which the grow/shrink
-        // parse skips. Fall back to it before defaulting to `width`.
-        None | Some("auto") => flex_shorthand_basis(s, fs).unwrap_or_else(|| dim(bs.width)),
+        // parse skips. Fall back to it before defaulting to the main size.
+        None | Some("auto") => flex_shorthand_basis(s, fs).unwrap_or_else(|| dim(main)),
         Some("content") => Dimension::auto(),
-        Some(b) => parse_basis(b, fs).unwrap_or_else(|| dim(bs.width)),
+        Some(b) => parse_basis(b, fs).unwrap_or_else(|| dim(main)),
     }
+}
+
+/// [`item_style`] for an item of a flex container whose main axis is vertical when
+/// `column`: the basis then defaults to the item's `height` and its `width` is its cross
+/// size constraint (miaskiewicz/turbo-dom#86); a row item is [`item_style`]'s.
+fn flex_item_style(item: &LayoutBox, fs: f32, column: bool) -> Style {
+    let mut style = item_style(item, fs);
+    if !column || item.out_of_flow() {
+        return style;
+    }
+    let bs = item.resolved(ResolveCtx {
+        parent_font_size: fs,
+        cb_width: 0.0,
+    });
+    style.flex_basis = main_basis(&item.style, bs.height, fs);
+    style.size = Size {
+        width: dim(bs.width),
+        height: Dimension::auto(),
+    };
+    style
 }
 
 /// The `<basis>` component of the `flex` shorthand (`flex: <grow> <shrink>?
@@ -776,12 +802,17 @@ fn measure_item(
 // solve + placement
 // --------------------------------------------------------------------------
 
-fn build_leaves(tree: &mut TaffyTree<usize>, items: &[LayoutBox], fs: f32) -> Vec<TaffyId> {
+fn build_leaves(
+    tree: &mut TaffyTree<usize>,
+    items: &[LayoutBox],
+    fs: f32,
+    column: bool,
+) -> Vec<TaffyId> {
     items
         .iter()
         .enumerate()
         .map(|(i, it)| {
-            tree.new_leaf_with_context(item_style(it, fs), i)
+            tree.new_leaf_with_context(flex_item_style(it, fs, column), i)
                 .expect("flex leaf")
         })
         .collect()
@@ -827,8 +858,7 @@ fn solve(
 fn place_one(
     item: &LayoutBox,
     layout: &Layout,
-    cx: f32,
-    cy: f32,
+    (cx, cy, column): (f32, f32, bool),
     fs: f32,
     ctx: &mut Ctx,
 ) -> Fragment {
@@ -842,8 +872,10 @@ fn place_one(
     // fragment height AND is exposed to the item's own content (nested flex,
     // `%` heights) — otherwise the item collapses back to its content height and a
     // `flex:1` / stretched item, and anything it centres, is placed wrong. An item
-    // whose height taffy left at auto keeps its content height (basis == content).
-    if !matches!(bs.height, LengthPct::Px(_)) {
+    // whose height taffy left at auto keeps its content height (basis == content). In
+    // a column the height is the main size taffy flexed, whatever the item's own
+    // `height` (miaskiewicz/turbo-dom#86).
+    if (column && !item.out_of_flow()) || !matches!(bs.height, LengthPct::Px(_)) {
         let inset_v = bs.padding.vertical() + bs.border.widths().vertical();
         bs.height = LengthPct::Px((layout.size.height - inset_v).max(0.0));
         bs.box_sizing = BoxSizing::ContentBox;
@@ -857,15 +889,14 @@ fn place_items(
     tree: &TaffyTree<usize>,
     leaves: &[TaffyId],
     items: &[LayoutBox],
-    cx: f32,
-    cy: f32,
+    (cx, cy, column): (f32, f32, bool),
     fs: f32,
     ctx: &mut Ctx,
 ) -> Vec<Fragment> {
     let mut frags = Vec::new();
     for (i, leaf) in leaves.iter().enumerate() {
         let layout = tree.layout(*leaf).expect("item layout");
-        frags.push(place_one(&items[i], layout, cx, cy, fs, ctx));
+        frags.push(place_one(&items[i], layout, (cx, cy, column), fs, ctx));
     }
     frags
 }
@@ -1285,7 +1316,7 @@ pub(crate) fn layout_grid(
         .new_with_children(grid_container_style(container, cw, &areas), &leaves)
         .expect("grid root");
     solve(&mut tree, root, items, fs, cw, ctx);
-    let frags = place_items(&tree, &leaves, items, cx, cy, fs, ctx);
+    let frags = place_items(&tree, &leaves, items, (cx, cy, false), fs, ctx);
     let height = tree.layout(root).expect("root layout").size.height;
     (frags, height)
 }
@@ -1305,12 +1336,16 @@ pub(crate) fn layout_flex(
         return (Vec::new(), 0.0);
     }
     let mut tree: TaffyTree<usize> = TaffyTree::new();
-    let leaves = build_leaves(&mut tree, items, fs);
+    let column = matches!(
+        flex_direction(&container.style),
+        FlexDirection::Column | FlexDirection::ColumnReverse
+    );
+    let leaves = build_leaves(&mut tree, items, fs, column);
     let root = tree
         .new_with_children(container_style(container, cw, fs, ctx.cb_h), &leaves)
         .expect("flex root");
     solve(&mut tree, root, items, fs, cw, ctx);
-    let frags = place_items(&tree, &leaves, items, cx, cy, fs, ctx);
+    let frags = place_items(&tree, &leaves, items, (cx, cy, column), fs, ctx);
     let height = tree.layout(root).expect("root layout").size.height;
     (frags, height)
 }

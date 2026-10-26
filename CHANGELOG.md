@@ -55,6 +55,13 @@ changes in `tools/parity/expected/p5b-w7-turbo-dom-*.json`.
   block's height less the insets, its margins and (content-box) its padding and border,
   then `min-height` / `max-height` (CSS 2.2 §10.6.4), as on the live path. Control:
   `abs-stretch-*` in `html-document`.
+- Column flex items (miaskiewicz/turbo-dom#86, found while fixing #79): in a
+  `flex-direction: column` container an item's flex basis came from its `width` and its
+  `width` was dropped, so it was stretched to the container despite an explicit width
+  and its main size (height) was its width. The basis now defaults to the item's
+  `height`, its `width` (`%`, `min-width` / `max-width`) is the cross size, and the
+  flexed main size is its used height (`flex-basis`, `flex-grow`). Control:
+  `column-flex-*` in `html-document`.
 
 ### Fixed — turbo-dom-layout tables, clipping and box sizing (P5b-W5, miaskiewicz/turbo-dom#41/#51/#52/#55/#62/#63/#64/#65/#69/#70, Chrome 156 controls)
 Each fix is backed by a Chrome for Testing 156 control and lists the corpus outputs it
