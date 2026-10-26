@@ -58,6 +58,10 @@ function cachedQS(node, sel) {
 }
 import { Buffer } from './buffer.mjs';
 import { makeCanvasStub } from './stubs.mjs';
+import {
+  constructCustomElement, createCustomElement, clonedElement, insertedNode, parsedFragment, removedNode,
+  attributeChanged, adoptedNode, freezeParsedIs, parsedIsAttribute,
+} from './custom-elements.mjs';
 
 export const ELEMENT_NODE = 1;
 export const TEXT_NODE = 3;
@@ -152,6 +156,10 @@ export class Node extends EventTarget {
     node.parentNode = this;
     node.ownerDocument = this.ownerDocument;
     notifyMutation(this, 'childList', node, null, ref || null);
+    // custom elements (custom-elements.mjs): upgrades + connectedCallback, only once a
+    // registry exists — one predicted-false read otherwise
+    const doc = this.ownerDocument;
+    if (doc !== null && doc.__ceRegistry !== undefined) insertedNode(node);
     return node;
   }
 
@@ -160,9 +168,11 @@ export class Node extends EventTarget {
     const i = kids.indexOf(node);
     if (i === -1) throw new Error('NotFoundError: node is not a child');
     const next = kids[i + 1] || null;
+    const doc = this.ownerDocument, ce = doc !== null && doc.__ceRegistry !== undefined && this.isConnected;
     kids.splice(i, 1);
     node.parentNode = null;
     notifyMutation(this, 'childList', null, node, next);
+    if (ce) removedNode(node);
     return node;
   }
 
@@ -288,7 +298,10 @@ export class Node extends EventTarget {
   // null out parent pointers would put an allocation on the React container-clear path.
   __detachKids() {
     const kids = this.__kids;
-    if (kids) for (let i = 0; i < kids.length; i++) kids[i].parentNode = null;
+    if (!kids) return;
+    const doc = this.ownerDocument, ce = doc !== null && doc.__ceRegistry !== undefined && kids.length !== 0 && this.isConnected;
+    for (let i = 0; i < kids.length; i++) kids[i].parentNode = null;
+    if (ce) for (let i = 0; i < kids.length; i++) removedNode(kids[i]);
   }
 
   // Element/Document/Fragment nodeValue is null per spec (CharacterData overrides).
@@ -400,6 +413,13 @@ class ClassList {
 
 export class Element extends Node {
   constructor(ownerDocument, localName, namespace = '') {
+    // HTMLElement (=== Element here) as a custom element constructor: `new C()` / an
+    // upgrade's super() for a defined C (custom-elements.mjs); internal construction never
+    // takes this branch.
+    if (new.target !== Element && new.target !== SVGElement) {
+      const custom = constructCustomElement(new.target);
+      if (custom !== null) return custom;
+    }
     super(ownerDocument);
     this.localName = localName;
     this.__ns = namespace;            // '', 'svg', 'math'
@@ -750,6 +770,7 @@ export class Element extends Node {
       child.parentNode = this;
       this.__kids.push(child);
     }
+    if (this.ownerDocument.__ceRegistry !== undefined) parsedFragment(this.__kids);
   }
   get outerHTML() { return serializeOuter(this); }
   get innerText() { return this.textContent; }
@@ -772,6 +793,9 @@ export class Element extends Node {
   cloneNode(deep = false) {
     const el = newElement(this.ownerDocument, this.localName, this.__ns);
     el.__attrs = (this.__attrs ?? (this.__attrs = this.__buildAttrs())).map((a) => ({ ...a }));
+    // custom element state travels (an `is` value / custom name -> "undefined", upgraded
+    // when its definition exists); plain HTML elements and foreign ones skip the call
+    if (this.__ns === '' && (this.__ce !== undefined || this.__ceIs !== undefined || this.__attrIdx >= 0 || this.localName.indexOf('-') !== -1)) clonedElement(this, el);
     if (deep) {
       // build the cloned child array directly — the clone is detached, so per-child
       // appendChild's notifyMutation (version bump) + reparent check are pure waste.
@@ -1022,6 +1046,9 @@ for (const attr of SVG_LENGTH_ATTRS) {
   });
 }
 
+// createElement's ElementCreationOptions `is` (a string options argument is ignored, as Chrome).
+const isOption = (options) => (options !== null && typeof options === 'object' && options.is !== undefined ? String(options.is) : null);
+
 // Element factory: SVG namespace → SVGElement, everything else → Element. One place so
 // every construction site (buffer inflation, innerHTML, cloneNode, createElementNS) agrees.
 function newElement(doc, tag, ns) {
@@ -1036,6 +1063,10 @@ export class DocumentFragment extends Node {
   querySelector(sel) { return cachedQS(this, sel); }
   querySelectorAll(sel) { return cachedQSA(this, sel); }
   get children() { if (this.__childrenList) return this.__childrenList; const self = this; return (this.__childrenList = liveHTMLCollection(() => self.__children().filter((n) => n.nodeType === ELEMENT_NODE))); }
+  // ParentNode element traversal (template content, fragments)
+  get firstElementChild() { return this.__children().find((n) => n.nodeType === ELEMENT_NODE) ?? null; }
+  get lastElementChild() { return this.__children().findLast((n) => n.nodeType === ELEMENT_NODE) ?? null; }
+  get childElementCount() { return this.__children().filter((n) => n.nodeType === ELEMENT_NODE).length; }
   append(...nodes) { for (const n of nodes) this.appendChild(toNode(this.ownerDocument, n)); }
   cloneNode(deep = false) {
     const f = new DocumentFragment(this.ownerDocument);
@@ -1073,6 +1104,7 @@ export class ShadowRoot extends DocumentFragment {
       child.parentNode = this;
       this.__kids.push(child);
     }
+    if (this.ownerDocument.__ceRegistry !== undefined) parsedFragment(this.__kids);
   }
   getElementById(id) {
     let found = null;
@@ -1504,6 +1536,7 @@ function adoptInto(node, doc) {
   if (node.ownerDocument === doc) return;
   if (node.nodeType === ELEMENT_NODE) {
     if (node.__attrs === undefined && node.__attrIdx >= 0) node.__attrs = node.__buildAttrs();
+    if (node.__attrIdx >= 0 && node.__ns === '') freezeParsedIs(node); // the parser's `is` outlives the buffer link
     node.__attrIdx = -1;
   }
   const kids = node.__children ? node.__children() : []; // inflate off the OLD buffer
@@ -1530,6 +1563,7 @@ function notifyMutation(target, type, added, removed, nextSibling, attributeName
   // bump the DOM version on every structural/attribute mutation — invalidates
   // the document's getElementsBy* caches. Unconditional (independent of observers).
   doc.__version = (doc.__version || 0) + 1;
+  if (type === 'attributes' && doc.__ceRegistry !== undefined) attributeChanged(target, attributeName, oldValue);
   const mo = doc.__mo;
   if (!mo || mo.length === 0) return;
   const addedNodes = added ? [added] : EMPTY_NODES;
@@ -1588,6 +1622,7 @@ export class Document extends Node {
     this.defaultView = null;      // set by environment (window)
     this.__mo = null;             // registered MutationObservers (lazy — most files never observe())
     this.__moPending = null;      // observers with queued records awaiting microtask
+    this.__ceRegistry = undefined; // the window's custom element registry, once touched (custom-elements.mjs)
   }
   get nodeType() { return DOCUMENT_NODE; }
   get nodeName() { return '#document'; }
@@ -1658,6 +1693,8 @@ export class Document extends Node {
       case ELEMENT_NODE:
         node = newElement(this, raw.name, raw.namespace || '');
         node.__attrs = raw.attrs.map((a) => ({ name: a.name, value: a.value, prefix: a.prefix || '' }));
+        // the fragment parser reads `is` at creation, like the initial parse (custom-elements.mjs)
+        if (node.__ns === '' && raw.attrs.length !== 0) parsedIsAttribute(node);
         if (raw.name === 'template') {
           const contentRaw = raw.children.find((c) => c.nodeType === DOCUMENT_FRAGMENT_NODE && c.name === 'content');
           if (contentRaw) { node.content = this.__inflateNested(contentRaw); }
@@ -1694,6 +1731,7 @@ export class Document extends Node {
     this.__version = (this.__version || 0) + 1; // invalidate getElementsBy* caches
     this.__tagCache = null;
     this.__classCache = null;
+    this.__ceRegistry = undefined; // the window's globals (customElements) reset with the document
   }
 
   get documentElement() { return this.__children().find((n) => n.nodeType === ELEMENT_NODE && n.localName === 'html') ?? null; }
@@ -1714,12 +1752,18 @@ export class Document extends Node {
   }
 
   // ---- factories (owned nodes, no buffer) ----
-  createElement(tag) { return new Element(this, String(tag).toLowerCase(), ''); }
-  createElementNS(ns, qualified) {
+  createElement(tag, options) {
+    const name = String(tag).toLowerCase();
+    if (this.__ceRegistry === undefined && options === undefined) return new Element(this, name, '');
+    return createCustomElement(this, name, isOption(options), true);
+  }
+  createElementNS(ns, qualified, options) {
     const short = ns === SVG_NS ? 'svg' : ns === MATHML_NS ? 'math' : '';
     const local = qualified.includes(':') ? qualified.split(':')[1] : qualified;
+    if (ns === HTML_NS && (this.__ceRegistry !== undefined || options !== undefined)) return createCustomElement(this, local, isOption(options), true);
     return newElement(this, local, short);
   }
+  __newHtmlElement(localName) { return new Element(this, localName, ''); }
   createTextNode(data) { return new Text(this, String(data)); }
   createComment(data) { return new Comment(this, String(data)); }
   createDocumentFragment() { return new DocumentFragment(this); }
@@ -1737,7 +1781,13 @@ export class Document extends Node {
   createAttribute(name) { return { name, value: '', ownerElement: null }; }
   getSelection() { if (!this.__selection) this.__selection = makeSelection(this); return this.__selection; }
   importNode(node, deep) { return node.cloneNode(deep); }
-  adoptNode(node) { if (node.parentNode) node.parentNode.removeChild(node); adoptInto(node, this); return node; }
+  adoptNode(node) {
+    if (node.parentNode) node.parentNode.removeChild(node);
+    const old = node.ownerDocument;
+    adoptInto(node, this);
+    if (old !== this && (this.__ceRegistry !== undefined || (old && old.__ceRegistry !== undefined))) adoptedNode(node, old, this);
+    return node;
+  }
 
   // TreeWalker / NodeIterator (whatToShow: 1 elements, 4 text, 0xFFFFFFFF all)
   createTreeWalker(root, whatToShow = 0xffffffff, filter = null) { return new TreeWalker(root, whatToShow, filter); }

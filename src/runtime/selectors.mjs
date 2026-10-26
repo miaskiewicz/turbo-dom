@@ -18,6 +18,8 @@
 // Hot paths stay allocation-free: the parse is cached by selector string, compounds are
 // matched with index loops over node.__children(), classes with a whole-word scan.
 
+import { isDefinedElement } from './custom-elements.mjs';
+
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
 // ── character classes ───────────────────────────────────────────────────────
@@ -755,22 +757,8 @@ function isLink(el) {
   if (isHtml(el)) return (el.localName === 'a' || el.localName === 'area') && el.hasAttribute('href');
   return el.namespaceURI === SVG_NS && el.localName === 'a' && el.getAttribute('href') !== null;
 }
-function isCustomName(name) {
-  return /^[a-z][^A-Z]*-[^A-Z]*$/.test(name) && !RESERVED_CUSTOM.has(name);
-}
-const RESERVED_CUSTOM = NAMES('annotation-xml color-profile font-face font-face-src font-face-uri font-face-format font-face-name missing-glyph');
-// :defined — every element except an HTML element whose custom element state is
-// "undefined": an autonomous custom element or one created with an `is` value, unless the
-// window's registry defines that name.
-function isDefined(el) {
-  if (!isHtml(el)) return true;
-  const is = el.getAttribute('is');
-  const name = is !== null ? is : el.localName;
-  if (is === null && !isCustomName(name)) return true;
-  const win = el.ownerDocument && el.ownerDocument.defaultView;
-  const registry = win && win.customElements;
-  return !!(registry && name && registry.get(name));
-}
+// :defined — the element's custom element state (custom-elements.mjs: the creation-time
+// state, upgrades and constructions), as the Rust engine's Tree::custom_element_state.
 // :lang(range): the nearest `lang` / `xml:lang` (basic prefix match, case-insensitive).
 function langMatches(el, range) {
   for (let n = el; n && n.nodeType === 1; n = n.parentNode) {
@@ -909,7 +897,7 @@ function matchPseudo(el, p) {
     case 'read-only': return isHtml(el) && !readWrite(el);
     case 'read-write': return isHtml(el) && readWrite(el);
     case 'link': case 'any-link': return isLink(el);
-    case 'defined': return isDefined(el);
+    case 'defined': return isDefinedElement(el);
     case 'lang': return langMatches(el, parsed.v);
     case 'dir': return (parsed.v === 'rtl' || parsed.v === 'ltr') && isRtl(el) === (parsed.v === 'rtl');
     // `:state()` parses; this runtime has no ElementInternals custom states, so it never

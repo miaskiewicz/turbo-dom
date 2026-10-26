@@ -7,6 +7,32 @@ at the time); this file reconstructs them from history.
 
 ## [Unreleased]
 
+### Changed — npm `:defined` and custom elements (P5b-X3, miaskiewicz/turbo-dom#26 item 2, Chrome 156 control)
+- The JS runtime keeps each element's HTML custom element state in lockstep with the Rust
+  tree (`src/runtime/custom-elements.mjs`): the creation-time rule (a valid custom element
+  name, or an `is` value from the parser, the fragment parser or `createElement(…, {is})`,
+  is "undefined"; later `is` edits never change it) and upgrades / constructions on top.
+  `:defined` in `matches` / `querySelector*` / `getComputedStyle` reads it instead of
+  looking the current name up in `window.customElements`, so a later `is` edit no longer
+  flips it and a detached element created before `define()` stays undefined (Chrome).
+- `window.customElements` is a working registry instead of a stub: `define()` upgrades the
+  document's candidates in shadow-including tree order (constructors run on the existing
+  element, `this` is the element, prototypes become the class's), insertion into the
+  document, `customElements.upgrade()`, `cloneNode` / `importNode` and `innerHTML` upgrade
+  too, `createElement` / `createElementNS` / `new C()` construct (customized built-ins
+  via `{ extends }` and `HTMLButtonElement` & co.), a throwing constructor leaves a failed
+  element (reported through `window.reportError`, not thrown), and `connectedCallback` /
+  `disconnectedCallback` / `attributeChangedCallback` (`observedAttributes`) /
+  `adoptedCallback` run. BREAKING for tests that relied on the stub: defined custom elements
+  now run their constructors and callbacks; an autonomous definition no longer makes a
+  `<button is=…>` of the same name match `:defined`. Documents without a touched
+  registry run every DOM path unchanged. New exports: `customElementState`,
+  `setCustomElementState`. Also `DocumentFragment` gains `firstElementChild` /
+  `lastElementChild` / `childElementCount` (template content traversal, used by the
+  control). Control: `crates/turbo-dom-browser-env/src/custom_elements_defined_chrome156.json`,
+  asserted by `test/custom-elements-chrome.test.mjs` (every section; the failed element is a
+  plain element, not an `HTMLUnknownElement`).
+
 ### Added — `HTMLImageElement` `width` / `height` / `x` / `y` (P5b-X3, miaskiewicz/turbo-dom#26 item 1, Chrome 156 control)
 - turbo-dom-browser-env: `HTMLImageElement.prototype` gains the `width` / `height`
   reflecting IDL attributes (HTML §4.8.4.3; `img.width` was `undefined`) and the CSSOM
