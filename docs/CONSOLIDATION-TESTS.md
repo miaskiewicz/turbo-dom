@@ -1161,6 +1161,17 @@ Declared behaviour changes (Chrome 156 controls), not moves:
 | turbo-dom-layout | `native_block_inline<tests/native_block_inline.rs>::unsupported_displaced_splits_reject_but_boxless_text_does_not` -> `::unsupported_displaced_splits_fail_their_own_reads_but_boxless_text_does_not` | adapted@P5b-W1 (renamed; turbo-surf#31: per-element failure; an absolutely positioned block no longer splits its inline) |
 | turbo-dom-layout | `turbo_dom_layout<src/lib.rs>::live::chrome_tests::{live_geometry_matches_chrome_156, css_of_reads_the_first_style_element}`, `layout_table<tests/layout_table.rs>::row_box_spans_its_cells_inside_the_border_spacing`, `style<tests/style.rs>::{at_rules_remember_their_source_position, conditional_rules_cascade_at_their_source_position}`, `tree_view<tests/tree_view.rs>::stripped_elements_still_count_for_selectors` | new |
 
+## P5b-W3 (layout bug fixes, turbo-dom#28): adapted and new tests
+
+Declared behaviour changes (Chrome 156 controls), not moves:
+
+| crate | test (binary::name) | category |
+|---|---|---|
+| turbo-dom-layout | `native_block_inline<tests/native_block_inline.rs>::unsupported_displaced_splits_fail_their_own_reads_but_boxless_text_does_not` | adapted@P5b-W3 (turbo-dom#28 item 4: the floated-link and float-in-link cases now answer — a float is blockified and stays in its inline's run) |
+| turbo-dom-layout | `turbo_dom_layout<src/lib.rs>::live::chrome_tests::live_geometry_matches_chrome_156`, `html_document_chrome<tests/html_document_chrome.rs>::html_documents_lay_out_as_chrome_156` | changed (more control cases: turbo-dom#28 items 1-6; the `elementFromPoint` `hits` of a case are compared too) |
+| turbo-dom-layout | `turbo_dom_layout<src/lib.rs>::live::chrome_tests::auto_width_tables_shrink_to_fit_like_chrome_156`, `html_document_chrome<tests/html_document_chrome.rs>::auto_width_tables_shrink_to_fit_like_chrome_156` | new (turbo-dom#28 item 7, test-first) |
+| turbo-dom-layout | `turbo_dom_layout<src/lib.rs>::cssom_view::hit::tests::{clip_rect_resolves_offsets_auto_edges_units_and_zoom, clip_rect_does_not_clip_when_it_does_not_apply_or_is_invalid}`, `::layout::value::display_tests::{inline_table_is_inline_level_until_blockified, floats_blockify_like_absolutely_positioned_boxes}`, `::layout::inline::tests::placeholder_only_lines_are_zero_height` | new |
+
 ## P5b-W2 — raster inline SVG on the tree (turbo-dom `consol/p5b-w2`)
 
 Every test id not listed keeps its result (turbo-dom-raster default and `--features avif`).

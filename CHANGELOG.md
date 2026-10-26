@@ -53,8 +53,8 @@ changes in `tools/parity/expected/p5b-w1-*.json`.
   table is shrink-to-fit — no wider than its columns' max-content plus border-spacing,
   padding and borders (`min-width`/`max-width` still apply, and it never drops below its
   min-content) — so a one-cell table is `[8,8,13.109375,24]` as in Chrome, not the full
-  1264px line, and `margin: 0 auto` centres it. The PDF / screenshot paths keep filling
-  the containing block (unchanged output). Control: `live-geometry` `table-auto-*`.
+  1264px line, and `margin: 0 auto` centres it. The PDF / screenshot paths
+  follow in P5b-W3 (miaskiewicz/turbo-dom#28 item 7, below). Control: `live-geometry` `table-auto-*`.
 - `<template>` is `display: none` in the user-agent sheet (miaskiewicz/turbo-surf#36 item
   4), as in Chrome: a live `<template>` (also one inside a table cell) has the all-zero
   rect of a boxless element instead of an empty box at its flow position. Embedders that
