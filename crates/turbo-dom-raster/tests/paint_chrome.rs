@@ -195,13 +195,12 @@ fn probe_rgb(id: &str) -> Vec<([u8; 3], [u8; 3], [u8; 3])> {
 }
 
 /// A half-transparent background and shadow composite over the backdrop like Chrome's in
-/// both painters (the SVG one as `fill-opacity`), within rounding.
+/// both painters (the SVG one as `fill-opacity`), exactly.
 #[test]
 fn translucent_colours_composite_like_chrome_156() {
-    let near = |a: [u8; 3], b: [u8; 3]| a.iter().zip(&b).all(|(x, y)| x.abs_diff(*y) <= 3);
     for (png, svg, chrome) in probe_rgb("paint-alpha") {
-        assert!(near(png, chrome), "png {png:?}, Chrome {chrome:?}");
-        assert!(near(svg, chrome), "svg {svg:?}, Chrome {chrome:?}");
+        assert_eq!(png, chrome, "png");
+        assert_eq!(svg, chrome, "svg");
     }
 }
 
