@@ -16,6 +16,9 @@ rust-version = "1.89"
 # snapshots, the HTML drive). turbo-html2pdf-core depends on this crate and re-exports it at
 # the old paths; turbo-dom-raster paints its Fragment galley.
 
+[lints]
+workspace = true
+
 [features]
 # `bundled-fonts` is ON by default: the crate embeds a small set of OFL-licensed faces
 # (Inter/Roboto, Liberation Serif/PT Serif, Fira Code/IBM Plex Mono) so a document lays out

@@ -46,7 +46,8 @@ pub(crate) fn prematch(
     css: &str,
     width: f32,
 ) -> [(CascadeOrigin, Vec<PreMatched>); 2] {
-    let mut cascade = crate::build_cascade_with_width(css, "", Default::default(), width);
+    let mut cascade =
+        crate::build_cascade_with_width(css, "", crate::style::TokenSet::default(), width);
     let ua = crate::style::parse_stylesheet(LIVE_UA);
     let start = cascade.rules.len();
     cascade
@@ -81,7 +82,7 @@ pub(crate) fn prematch(
                     .selectors()
                     .iter()
                     .filter(|selector| match_for_cascade(&nav, h, selector))
-                    .map(|selector| selector.specificity())
+                    .map(turbo_dom::rtdom::query::CascadeSelector::specificity)
                     .max()?;
                 Some(MatchedTarget {
                     source: source_id(DOCUMENT, h),
@@ -154,8 +155,8 @@ pub(crate) fn layout(
         images: &images,
     };
     let mut diagnostics = Diagnostics::default();
-    let (snapshot, styles) = match layout_scale {
-        Some(layout_scale) => snapshot(
+    let (snapshot, styles) = if let Some(layout_scale) = layout_scale {
+        snapshot(
             &style,
             &captured,
             &LiveOptions { layout_scale },
@@ -163,18 +164,17 @@ pub(crate) fn layout(
             &inputs,
             &mut diagnostics,
         )
-        .unwrap(),
-        None => {
-            let styled = super::style::style(&style, &captured).unwrap();
-            let snapshot = crate::layout_snapshot::snapshot_styled_tree(
-                &styled,
-                &captured.identities,
-                &inputs,
-                &mut diagnostics,
-            )
-            .unwrap();
-            (snapshot, collect(&styled))
-        }
+        .unwrap()
+    } else {
+        let styled = super::style::style(&style, &captured).unwrap();
+        let snapshot = crate::layout_snapshot::snapshot_styled_tree(
+            &styled,
+            &captured.identities,
+            &inputs,
+            &mut diagnostics,
+        )
+        .unwrap();
+        (snapshot, collect(&styled))
     };
     (tree, snapshot, styles)
 }

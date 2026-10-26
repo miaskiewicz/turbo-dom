@@ -99,7 +99,7 @@ fn capture_with_partial_identities(
         body_height: None,
     };
     let snapshot = snapshot_html_live_tree_with_native_text(&literal::tree(&nodes).input(), &ids,
-        &build_cascade("body{margin:8px;font-family:serif}head,style,script,title,meta,link,base,noscript{display:none}button{font-family:Arial;font-size:13.3333px;line-height:normal;padding:1px 6px;border:2px solid;box-sizing:border-box}", "", Default::default()),
+        &build_cascade("body{margin:8px;font-family:serif}head,style,script,title,meta,link,base,noscript{display:none}button{font-family:Arial;font-size:13.3333px;line-height:normal;padding:1px 6px;border:2px solid;box-sizing:border-box}", "", turbo_dom_layout::style::TokenSet::default()),
         &NativeTextOptions { original_text: &[], svg_viewports: &[], layout_scale: 2.0 },
         &SnapshotInputs { width:1280.0, height:800.0, fonts:fonts(), images:&images },
         &mut Diagnostics::default())?;
@@ -115,7 +115,12 @@ fn rects(snapshot: &LayoutSnapshot, source: SourceId) -> Vec<[f64; 4]> {
         .filter(|fragment| fragment.kind == GeometryKind::BorderBox)
         .map(|fragment| {
             let r = fragment.rect;
-            [r.x as f64, r.y as f64, r.width as f64, r.height as f64]
+            [
+                f64::from(r.x),
+                f64::from(r.y),
+                f64::from(r.width),
+                f64::from(r.height),
+            ]
         })
         .collect()
 }
@@ -181,9 +186,9 @@ fn fragment_ownership_preserves_ids_and_internal_href_does_not_atomize_native_bl
 fn real_empty_blocks_keep_their_height_borders_and_flow_advance() {
     let (plain, names) = capture("<a><h3>Old result</h3></a>");
     let (spaced, spaced_names) = capture("<div id=spacer style='height:100px;border:1px solid;margin:0'> </div><a><h3>Old result</h3></a>");
-    let spacer = rects(&spaced, spaced_names["spacer"])[0];
-    assert_eq!(spacer[3], 102.0);
-    assert!(rects(&spaced, spaced_names["h3"])[0][1] >= spacer[1] + spacer[3]);
+    let spacer_rect = rects(&spaced, spaced_names["spacer"])[0];
+    assert_eq!(spacer_rect[3], 102.0);
+    assert!(rects(&spaced, spaced_names["h3"])[0][1] >= spacer_rect[1] + spacer_rect[3]);
     assert!(
         rects(&spaced, spaced_names["dismiss"])[0][1]
             > rects(&plain, names["dismiss"])[0][1] + 100.0
@@ -202,7 +207,7 @@ fn all_static_split_variants_preserve_original_source_ownership() {
         assert!(link.fragment_indices.contains(&block.index), "{name}");
         assert!(
             rects(&snapshot, names["dismiss"])[0][1]
-                >= block.rect.y as f64 + block.rect.height as f64,
+                >= f64::from(block.rect.y) + f64::from(block.rect.height),
             "{name}"
         );
     }

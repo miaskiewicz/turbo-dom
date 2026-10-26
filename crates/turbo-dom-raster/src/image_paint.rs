@@ -188,7 +188,7 @@ fn svg_attr(open_tag: &str, name: &str) -> Option<String> {
         while open_tag
             .as_bytes()
             .get(k)
-            .is_some_and(|b| b.is_ascii_whitespace())
+            .is_some_and(u8::is_ascii_whitespace)
         {
             k += 1;
         }
@@ -197,7 +197,7 @@ fn svg_attr(open_tag: &str, name: &str) -> Option<String> {
             while open_tag
                 .as_bytes()
                 .get(k)
-                .is_some_and(|b| b.is_ascii_whitespace())
+                .is_some_and(u8::is_ascii_whitespace)
             {
                 k += 1;
             }
@@ -328,9 +328,9 @@ fn hex_nibble(c: u8) -> Option<u8> {
 fn base64_decode(s: &str) -> Option<Vec<u8>> {
     fn sextet(c: u8) -> Option<u32> {
         match c {
-            b'A'..=b'Z' => Some((c - b'A') as u32),
-            b'a'..=b'z' => Some((c - b'a' + 26) as u32),
-            b'0'..=b'9' => Some((c - b'0' + 52) as u32),
+            b'A'..=b'Z' => Some(u32::from(c - b'A')),
+            b'a'..=b'z' => Some(u32::from(c - b'a' + 26)),
+            b'0'..=b'9' => Some(u32::from(c - b'0' + 52)),
             b'+' => Some(62),
             b'/' => Some(63),
             _ => None,
@@ -445,7 +445,7 @@ impl DecodedImage {
 
 /// `round(c * a / 255)` — a straight channel scaled into premultiplied space.
 fn premul(c: u8, a: u8) -> u8 {
-    ((c as u16 * a as u16 + 127) / 255) as u8
+    ((u16::from(c) * u16::from(a) + 127) / 255) as u8
 }
 
 /// A base64 PNG `data:` URI for embedding a decoded image in an SVG `<image href>`.
@@ -462,9 +462,9 @@ fn base64(data: &[u8]) -> String {
     const T: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     let mut out = String::with_capacity(data.len().div_ceil(3) * 4);
     for chunk in data.chunks(3) {
-        let n = (chunk[0] as u32) << 16
-            | (*chunk.get(1).unwrap_or(&0) as u32) << 8
-            | *chunk.get(2).unwrap_or(&0) as u32;
+        let n = u32::from(chunk[0]) << 16
+            | u32::from(*chunk.get(1).unwrap_or(&0)) << 8
+            | u32::from(*chunk.get(2).unwrap_or(&0));
         out.push(T[(n >> 18 & 63) as usize] as char);
         out.push(T[(n >> 12 & 63) as usize] as char);
         out.push(if chunk.len() > 1 {

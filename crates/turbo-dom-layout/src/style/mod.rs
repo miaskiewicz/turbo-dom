@@ -205,6 +205,7 @@ mod viewport {
     thread_local!(static WIDTH: Cell<f32> = const { Cell::new(1280.0) });
     thread_local!(static HEIGHT: Cell<f32> = const { Cell::new(800.0) });
     pub(super) struct ViewportWidth;
+    #[allow(clippy::unused_self)] // zero-sized handle: the method form mirrors the thread-local it wraps
     impl ViewportWidth {
         pub(super) fn get(&self) -> f32 {
             WIDTH.with(Cell::get)
@@ -214,6 +215,7 @@ mod viewport {
         }
     }
     pub(super) struct ViewportHeight;
+    #[allow(clippy::unused_self)] // zero-sized handle: the method form mirrors the thread-local it wraps
     impl ViewportHeight {
         pub(super) fn get(&self) -> f32 {
             HEIGHT.with(Cell::get)
@@ -331,6 +333,7 @@ pub fn build_cascade(author_css: &str, node_style_css: &str, tokens: TokenSet) -
 /// Like [`build_cascade`] but evaluates `@media` width conditions against
 /// `viewport_width` px (instead of the 1280px desktop default). The screenshot
 /// tier passes its viewport so responsive stylesheets pick the right breakpoint.
+#[must_use]
 pub fn build_cascade_with_width(
     author_css: &str,
     node_style_css: &str,

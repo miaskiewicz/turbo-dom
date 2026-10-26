@@ -90,7 +90,7 @@ fn capture_html(html: &str, native: bool) -> (LayoutSnapshot, Ids) {
     let nodes = parse_html(html).unwrap();
     let mut ids = Ids::default();
     identities(&nodes, &mut Vec::new(), None, &mut ids);
-    let cascade = build_cascade("", "", Default::default());
+    let cascade = build_cascade("", "", turbo_dom_layout::style::TokenSet::default());
     let images = ImageCtx {
         resolver: &NoImages,
         body_height: None,
@@ -173,6 +173,7 @@ fn actual(rect: Rect) -> [f64; 4] {
 fn expected(value: &Value) -> [f64; 4] {
     ["x", "y", "width", "height"].map(|key| value[key].as_f64().unwrap())
 }
+#[allow(clippy::needless_pass_by_value)] // test helper: owned arguments keep the call sites literal
 fn compare<T: std::fmt::Debug + PartialEq>(
     actual: T,
     expected: T,

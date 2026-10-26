@@ -46,16 +46,15 @@ pub(crate) fn render_text(
     if w == 0 || h == 0 {
         return false;
     }
-    let dx = (x + m[4]) as f64;
-    let dy = (y + m[5]) as f64;
+    let dx = f64::from(x + m[4]);
+    let dy = f64::from(y + m[5]);
 
     // Transparent bitmap context, premultiplied RGBA (matches tiny-skia's byte layout).
     let cs = CGColorSpace::create_device_rgb();
-    let mut ctx = match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+    let Ok(mut ctx) = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
         CGContext::create_bitmap_context(None, w, h, 8, w * 4, &cs, kCGImageAlphaPremultipliedLast)
-    })) {
-        Ok(c) => c,
-        Err(_) => return false,
+    })) else {
+        return false;
     };
     ctx.set_should_antialias(true);
     ctx.set_should_smooth_fonts(true);
@@ -63,14 +62,12 @@ pub(crate) fn render_text(
     let family = st
         .font_families
         .first()
-        .map(String::as_str)
-        .unwrap_or("sans-serif");
-    let size = if st.font_px > 0.0 { st.font_px } else { 10.0 } as f64;
-    let font = match core_text::font::new_from_name(family, size)
-        .or_else(|_| core_text::font::new_from_name("Helvetica", size))
-    {
-        Ok(f) => f,
-        Err(_) => return false,
+        .map_or("sans-serif", String::as_str);
+    let size = f64::from(if st.font_px > 0.0 { st.font_px } else { 10.0 });
+    let Ok(font) = core_text::font::new_from_name(family, size)
+        .or_else(|()| core_text::font::new_from_name("Helvetica", size))
+    else {
+        return false;
     };
 
     // Attributed string: font + explicit foreground color (straight-alpha RGBA → 0..1).
@@ -89,10 +86,10 @@ pub(crate) fn render_text(
             &font,
         );
         let cg = core_graphics::color::CGColor::rgb(
-            color.r as f64 / 255.0,
-            color.g as f64 / 255.0,
-            color.b as f64 / 255.0,
-            color.a as f64 / 255.0,
+            f64::from(color.r) / 255.0,
+            f64::from(color.g) / 255.0,
+            f64::from(color.b) / 255.0,
+            f64::from(color.a) / 255.0,
         );
         att.set_attribute(
             full,
@@ -112,14 +109,14 @@ pub(crate) fn render_text(
         return false;
     }
     for i in (0..dst.len()).step_by(4) {
-        let sa = src[i + 3] as u32;
+        let sa = u32::from(src[i + 3]);
         if sa == 0 {
             continue;
         }
         let inv = 255 - sa;
         for c in 0..4 {
-            let s = src[i + c] as u32;
-            let d = dst[i + c] as u32;
+            let s = u32::from(src[i + c]);
+            let d = u32::from(dst[i + c]);
             dst[i + c] = (s + (d * inv + 127) / 255).min(255) as u8;
         }
     }

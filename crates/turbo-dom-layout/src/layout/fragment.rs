@@ -69,7 +69,7 @@ pub enum FragmentContent {
     /// the variant carries only what the emitter needs beyond geometry: the
     /// resolver `name` to fetch the bytes again at emit time, the source's
     /// intrinsic pixel size (diagnostic / round-trip), and whether it carries an
-    /// alpha channel (so an SMask is emitted).
+    /// alpha channel (so an `SMask` is emitted).
     Image(ImagePlacement),
 }
 
@@ -129,7 +129,7 @@ pub struct ImagePlacement {
     pub intrinsic_w: u32,
     /// Intrinsic height in source pixels.
     pub intrinsic_h: u32,
-    /// Whether the source had transparency (drives SMask emission).
+    /// Whether the source had transparency (drives `SMask` emission).
     pub has_alpha: bool,
     /// When set, the image is a CSS `mask-image`: paint this solid colour everywhere
     /// the source is opaque (using the source's alpha as a stencil) rather than
@@ -190,6 +190,7 @@ pub struct Fragment {
 
 impl Fragment {
     /// A fragment with default break metadata and no children.
+    #[must_use]
     pub fn new(
         node_id: NodeId,
         x: f32,
@@ -213,6 +214,7 @@ impl Fragment {
     }
 
     /// The bottom edge of this fragment (`y + height`).
+    #[must_use]
     pub fn bottom(&self) -> f32 {
         self.y + self.height
     }
@@ -220,6 +222,7 @@ impl Fragment {
     /// The effective stacking level used to order this fragment against its
     /// siblings when painting: the used `z-index` for a positioned box, else `0`
     /// (an in-flow box stacks at level 0, ignoring any stray `z-index`).
+    #[must_use]
     pub fn paint_z(&self) -> i32 {
         if self.is_positioned {
             self.z_index.unwrap_or(0)
@@ -235,6 +238,7 @@ impl Fragment {
     /// — with source (DOM) order breaking ties. The children `Vec` itself keeps
     /// its layout (top-down galley) order so the paginator's flow walk is
     /// unaffected; only painters reorder via this view.
+    #[must_use]
     pub fn paint_order(&self) -> Vec<usize> {
         let mut order: Vec<usize> = (0..self.children.len()).collect();
         order.sort_by_key(|&i| {

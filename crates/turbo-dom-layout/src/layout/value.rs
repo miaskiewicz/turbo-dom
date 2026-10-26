@@ -28,6 +28,7 @@ pub struct Edges {
 
 impl Edges {
     /// A uniform edge set.
+    #[must_use]
     pub fn all(v: f32) -> Edges {
         Edges {
             top: v,
@@ -38,11 +39,13 @@ impl Edges {
     }
 
     /// Total horizontal extent (left + right).
+    #[must_use]
     pub fn horizontal(&self) -> f32 {
         self.left + self.right
     }
 
     /// Total vertical extent (top + bottom).
+    #[must_use]
     pub fn vertical(&self) -> f32 {
         self.top + self.bottom
     }
@@ -67,6 +70,7 @@ pub enum LengthPct {
 
 impl LengthPct {
     /// Resolve to px against a percentage basis, or `None` for `auto`.
+    #[must_use]
     pub fn resolve(&self, basis: f32) -> Option<f32> {
         match self {
             LengthPct::Auto => None,
@@ -140,6 +144,7 @@ impl Rgba {
         a: 255,
     };
 
+    #[must_use]
     pub fn new(r: u8, g: u8, b: u8, a: u8) -> Rgba {
         Rgba { r, g, b, a }
     }
@@ -164,11 +169,13 @@ pub struct BorderEdges {
 impl BorderEdges {
     /// Whether any side has a non-zero width, i.e. the border paints something
     /// (html2pdf's tagged-PDF emitter uses it to decide if a box is decoration).
+    #[must_use]
     pub fn any_visible(&self) -> bool {
         self.top.width > 0 || self.right.width > 0 || self.bottom.width > 0 || self.left.width > 0
     }
 
     /// Border widths as plain px [`Edges`].
+    #[must_use]
     pub fn widths(&self) -> Edges {
         Edges {
             top: f32::from(self.top.width),
@@ -209,8 +216,7 @@ fn split_unit(s: &str) -> (&str, &str) {
     let end = s
         .char_indices()
         .find(|(_, c)| c.is_ascii_alphabetic() || *c == '%')
-        .map(|(i, _)| i)
-        .unwrap_or(s.len());
+        .map_or(s.len(), |(i, _)| i);
     (&s[..end], &s[end..])
 }
 
@@ -299,6 +305,7 @@ fn sum_calc_terms(toks: &[&str], font_size: f32) -> Option<f32> {
 
 /// Parse an absolute/`em` length (or `calc()` thereof) to px (no `%`); used for
 /// font-relative values.
+#[must_use]
 pub fn parse_px(s: &str, font_size: f32) -> Option<f32> {
     if let Some(px) = eval_calc_px(s, font_size) {
         return Some(px);
@@ -375,6 +382,7 @@ fn ratio_terms(t: &str) -> Option<(f32, f32)> {
 }
 
 /// Parse a `<length-percentage>`/`auto` into a [`LengthPct`].
+#[must_use]
 pub fn parse_length_pct(s: &str, font_size: f32) -> Option<LengthPct> {
     let t = s.trim();
     if t.eq_ignore_ascii_case("auto") {
@@ -493,12 +501,14 @@ fn rgb_inner(t: &str) -> Option<&str> {
 /// named set). Returns `None` for an unrecognized value. `cmyk(...)` is accepted
 /// only inside a style/layout entry run with `accept_cmyk` (see
 /// [`parse_color_with`]).
+#[must_use]
 pub fn parse_color(s: &str) -> Option<Rgba> {
     parse_color_with(s, accept_cmyk())
 }
 
 /// [`parse_color`] with explicit `cmyk(...)` acceptance (print colour): a
 /// `cmyk(c, m, y, k)` value maps to its device-equivalent RGB.
+#[must_use]
 pub fn parse_color_with(s: &str, accept_cmyk: bool) -> Option<Rgba> {
     let t = s.trim();
     if let Some(hex) = t.strip_prefix('#') {
@@ -544,7 +554,7 @@ pub(crate) fn cmyk_scope(accept: bool) -> CmykScope {
 /// Parse a `cmyk(c, m, y, k)` functional colour into the nearest [`Rgba`]
 /// (`print-color`, AC-7.x). The four components are percentages or 0..=1
 /// fractions. Layout is RGB-internal, so we store the device-equivalent RGB; the
-/// emitter (`emit::color::set_fill`) converts it back to DeviceCMYK so the page
+/// emitter (`emit::color::set_fill`) converts it back to `DeviceCMYK` so the page
 /// stream carries CMYK ink. Round-trips exactly for the achromatic and primary
 /// inks print stylesheets use.
 fn parse_cmyk(s: &str) -> Option<Rgba> {
@@ -596,6 +606,7 @@ pub enum Position {
 
 impl Position {
     /// Whether the box is taken out of normal flow (`absolute`/`fixed`).
+    #[must_use]
     pub fn is_out_of_flow(self) -> bool {
         matches!(self, Position::Absolute | Position::Fixed)
     }
@@ -693,9 +704,8 @@ pub struct ResolveCtx {
 }
 
 fn resolve_font_size(s: &ComputedStyle, parent: f32) -> f32 {
-    let raw = match s.get("font-size") {
-        Some(v) => v,
-        None => return parent,
+    let Some(raw) = s.get("font-size") else {
+        return parent;
     };
     match parse_raw(raw) {
         Some(r) => raw_to_px(r, parent, parent),
@@ -705,6 +715,7 @@ fn resolve_font_size(s: &ComputedStyle, parent: f32) -> f32 {
 
 /// The resolved `display` keyword (needed at box-generation time, before widths
 /// are known).
+#[must_use]
 pub fn display_of(s: &ComputedStyle) -> Display {
     match s.get("display").unwrap_or("block").trim() {
         "inline" => Display::Inline,
@@ -997,7 +1008,7 @@ fn resolve_box_metrics(s: &ComputedStyle, fs: f32, ctx: ResolveCtx) -> BoxStyle 
         font_weight: font_weight(s),
         italic: matches!(
             s.get("font-style").map(str::trim),
-            Some("italic") | Some("oblique")
+            Some("italic" | "oblique")
         ),
         color: s.get("color").and_then(parse_color).unwrap_or(Rgba::BLACK),
         line_height: line_height(s, fs),
@@ -1373,7 +1384,7 @@ fn fill_position_gaps(positions: &mut [Option<f32>]) {
         }
         let prev = positions[..i]
             .iter()
-            .rposition(|p| p.is_some())
+            .rposition(std::option::Option::is_some)
             .unwrap_or(0);
         let next = (i..n).find(|&k| positions[k].is_some()).unwrap_or(n - 1);
         let (p0, p1) = (
@@ -1537,6 +1548,7 @@ fn box_sizing_of(s: &ComputedStyle) -> BoxSizing {
 }
 
 /// Resolve a [`ComputedStyle`] into a typed [`BoxStyle`] for layout.
+#[must_use]
 pub fn resolve_box_style(s: &ComputedStyle, ctx: ResolveCtx) -> BoxStyle {
     crate::hot!("layout.resolve_box_style");
     let fs = resolve_font_size(s, ctx.parent_font_size);

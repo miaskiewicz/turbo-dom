@@ -42,6 +42,7 @@ pub struct SizeCtx<'a> {
 
 /// Size a replaced `<img>` box from its intrinsic pixel dimensions and the
 /// overflow caps, returning the painted box plus the placement to emit.
+#[must_use]
 pub fn size_replaced(name: String, intrinsic: Intrinsic, ctx: &SizeCtx) -> SizedImage {
     let (iw, ih) = (intrinsic.width as f32, intrinsic.height as f32);
     let (base_w, base_h) = base_size(iw, ih, ctx);
@@ -195,6 +196,7 @@ fn live_limits(ctx: &SizeCtx, frame: (f32, f32)) -> Limits {
     }
 }
 
+#[allow(clippy::needless_pass_by_value)] // signature kept as relocated; borrowing instead changes nothing observable
 fn constrain_live(w: f32, h: f32, auto_w: bool, auto_h: bool, limits: Limits) -> (f32, f32) {
     if auto_w && auto_h {
         return constrain_ratio(w, h, &limits);
@@ -234,6 +236,7 @@ fn constrain_ratio(w: f32, h: f32, limits: &Limits) -> (f32, f32) {
 
 /// The placement an intrinsic-sized image emits (the resolver name plus its
 /// source size and alpha flag).
+#[must_use]
 pub fn placement_of(name: String, intrinsic: Intrinsic) -> ImagePlacement {
     ImagePlacement {
         name,

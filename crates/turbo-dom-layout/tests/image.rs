@@ -2,13 +2,13 @@
 //! (`image::{sniff, probe, decode}` for PNG RGB/RGBA/gray + JPEG, plus the
 //! malformed-input paths), the layout-time size caps (100% width, 60% body
 //! height, aspect-ratio preservation), and the full layout → emit path (image
-//! XObject, alpha → SMask, JPEG → DCTDecode, the no-image default, determinism,
+//! `XObject`, alpha → `SMask`, JPEG → `DCTDecode`, the no-image default, determinism,
 //! and a `qpdf --check` when available).
 //!
 //! All test images are generated in-process (PNG via the `png` encoder; one tiny
 //! committed baseline-JPEG byte array) so no external/system files are touched.
 //!
-//! Split at the S1 relocation: the cases that need TKind directives, templating or the
+//! Split at the S1 relocation: the cases that need `TKind` directives, templating or the
 //! PDF emitter stay in turbo-html2pdf-core's `tests/image.rs`.
 
 mod common;
@@ -52,7 +52,7 @@ fn png_rgb_2x2() -> Vec<u8> {
     make_png(2, 2, png::ColorType::Rgb, &samples)
 }
 
-/// A 2x2 RGBA PNG with a varying alpha channel (so it needs an SMask).
+/// A 2x2 RGBA PNG with a varying alpha channel (so it needs an `SMask`).
 fn png_rgba_2x2() -> Vec<u8> {
     let samples = [
         10, 20, 30, 0, // top-left, fully transparent

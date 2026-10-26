@@ -183,18 +183,19 @@ impl FontRegistry {
     /// A registry with no caller faces. Carries the bundled fallback faces when
     /// the `bundled-fonts` feature is on, so it can render without any caller
     /// font; identical to [`FontRegistry::default`] otherwise.
+    #[must_use]
     pub fn new() -> Self {
         Self {
             faces: Vec::new(),
             bundled: bundled_faces(),
             platform_faces: Vec::new(),
-            platform_cascades: Default::default(),
-            native_glyphs: Default::default(),
+            platform_cascades: std::sync::Arc::default(),
+            native_glyphs: std::sync::Arc::default(),
         }
     }
 
     pub fn add(&mut self, face: FontFace) {
-        self.native_glyphs = Default::default();
+        self.native_glyphs = std::sync::Arc::default();
         self.faces.push(face);
     }
 
@@ -235,6 +236,7 @@ impl FontRegistry {
     /// load for every embedder in the process (turbo-dom-raster's `system_fonts`
     /// screenshots use [`SystemFontPolicy::Default`]; turbo-surf's live layout
     /// [`SystemFontPolicy::Html`]).
+    #[must_use]
     pub fn system(policy: SystemFontPolicy) -> &'static FontRegistry {
         Self::system_cell(policy).get_or_init(|| Self::load_system(policy))
     }
@@ -243,6 +245,7 @@ impl FontRegistry {
     /// worker thread, or with an instrumented initializer in a test) or asks whether
     /// it is warm (`get().is_some()`). Initialize it only with
     /// [`Self::load_system`]`(policy)`.
+    #[must_use]
     pub fn system_cell(policy: SystemFontPolicy) -> &'static std::sync::OnceLock<FontRegistry> {
         static DEFAULT: std::sync::OnceLock<FontRegistry> = std::sync::OnceLock::new();
         static HTML: std::sync::OnceLock<FontRegistry> = std::sync::OnceLock::new();
@@ -253,8 +256,8 @@ impl FontRegistry {
     }
 
     fn load_system_fonts_with_primary_policy(&mut self, platform_primary: bool) {
-        self.native_glyphs = Default::default();
-        self.platform_cascades = Default::default();
+        self.native_glyphs = std::sync::Arc::default();
+        self.platform_cascades = std::sync::Arc::default();
         for dir in system_font_dirs() {
             let Ok(entries) = std::fs::read_dir(&dir) else {
                 continue;
@@ -334,12 +337,14 @@ impl FontRegistry {
     /// True when the registry has no usable face at all (neither caller nor
     /// bundled). With `bundled-fonts` on this is only true if the bundled set
     /// failed to load, which never happens for the shipped assets.
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.faces.is_empty() && self.bundled.is_empty()
     }
 
     /// The number of caller-supplied faces. Bundled fallbacks are not counted,
     /// so a caller can tell whether *it* registered anything.
+    #[must_use]
     pub fn len(&self) -> usize {
         self.faces.len()
     }
@@ -357,6 +362,7 @@ impl FontRegistry {
 
     /// Select the best face for a family list + weight/style, falling back to the
     /// first available face (caller, else bundled) if no family matches.
+    #[must_use]
     pub fn select(&self, families: &[&str], weight: u16, italic: bool) -> Option<&FontFace> {
         families
             .iter()
@@ -440,6 +446,7 @@ impl FontRegistry {
 
     /// Resolve the face that should render `ch`, walking the (expanded) family
     /// list then any available face. Returns `None` if no face covers it.
+    #[must_use]
     pub fn resolve_glyph(
         &self,
         families: &[&str],

@@ -1,8 +1,8 @@
-//! Text selection maps a local FloatQuad through each flat transform boundary.
+//! Text selection maps a local `FloatQuad` through each flat transform boundary.
 //! Unlike element geometry, ordinary ancestor offsets after a transform are
 //! added to that float quad rather than fused into its double matrix. Chromium
-//! 155.0.8059.80 TransformState::{ApplyTransform,FlattenWithTransform} defines
-//! these boundaries. LayoutBox Element quads share this path; LayoutInline
+//! 155.0.8059.80 `TransformState::{ApplyTransform,FlattenWithTransform`} defines
+//! these boundaries. `LayoutBox` Element quads share this path; `LayoutInline`
 //! Element quads instead force one accumulated transform and are kept separate.
 use super::{geometry, GeometryKind, LayoutSnapshot, Point, Rect, SnapshotFragment};
 use crate::layout::value::{NativeTransform, Position};

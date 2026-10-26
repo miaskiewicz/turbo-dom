@@ -1,6 +1,6 @@
 //! CSS Grid layout (taffy-backed): `grid-template-columns`/`-rows`, `fr`/`px`/`%`
 //! tracks, `repeat()`, gaps, and auto-placement. Driven through boxgen ->
-//! layout_tree, mirroring the flex harness.
+//! `layout_tree`, mirroring the flex harness.
 
 mod common;
 

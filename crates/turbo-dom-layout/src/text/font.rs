@@ -144,6 +144,7 @@ pub struct FontFace {
     shape_cache: Arc<Mutex<ShapeCache>>,
 }
 
+#[allow(clippy::missing_fields_in_debug)] // font bytes and shaping caches are deliberately left out of Debug
 impl std::fmt::Debug for FontFace {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("FontFace")
@@ -215,10 +216,11 @@ impl FontFace {
     }
 
     /// Resolve actual font-table metrics using continuous HTML's integer ascent/
-    /// descent policy. Blink155 FontMetrics::AscentDescentWithHacks rounds each
+    /// descent policy. Blink155 `FontMetrics::AscentDescentWithHacks` rounds each
     /// independently; macOS's three named legacy families also adjust ascent.
     /// Attribution/source pins are in html-font-metrics-provenance.json and
     /// Blink-font-metrics.LICENSE. Existing PDF/tiny-font canvas metrics stay intact.
+    #[must_use]
     pub fn html_metrics(&self, size: f32) -> HtmlFontMetrics {
         let ascent = self.ascent_px(size).round();
         let descent = self.descent_px(size).round();
@@ -252,6 +254,7 @@ impl FontFace {
                 }
             })
     }
+    #[must_use]
     pub fn family(&self) -> &str {
         &self.family
     }
@@ -259,6 +262,7 @@ impl FontFace {
     /// This face re-tagged with a different family name (cheap — the parsed font
     /// and shape cache are shared via `Arc`). Used to register a system font under
     /// a CSS generic (`sans-serif` → Helvetica).
+    #[must_use]
     pub fn with_family(&self, family: impl Into<String>) -> FontFace {
         FontFace {
             family: family.into(),
@@ -268,49 +272,57 @@ impl FontFace {
 
     /// The raw font program bytes (the OpenType/TrueType file). The PDF emitter
     /// (Phase 9, §7) needs these to subset and embed the font program.
+    #[must_use]
     pub fn data(&self) -> &[u8] {
         self.faces.borrow_owner()
     }
 
     /// The face index within [`data()`](Self::data) — pass to `ttf-parser`/`rustybuzz`
     /// when re-parsing the program, so a `.ttc` collection face traces its own glyphs.
+    #[must_use]
     pub fn index(&self) -> u32 {
         self.index
     }
 
     /// Design units per em, for scaling glyph metrics into PDF text space.
+    #[must_use]
     pub fn units_per_em(&self) -> u16 {
         self.units_per_em
     }
 
     /// Signed font bounding-box and metrics in design units, for the embedded
     /// `FontDescriptor` (§7). Returns `(x_min, y_min, x_max, y_max)`.
+    #[must_use]
     pub fn bbox(&self) -> (i16, i16, i16, i16) {
         let r = self.ttf().global_bounding_box();
         (r.x_min, r.y_min, r.x_max, r.y_max)
     }
 
     /// The font ascender in design units (for the `FontDescriptor`).
+    #[must_use]
     pub fn ascent_units(&self) -> i16 {
         self.ascent
     }
 
     /// The font descender in design units (negative; for the `FontDescriptor`).
+    #[must_use]
     pub fn descent_units(&self) -> i16 {
         self.descent
     }
 
-    /// The horizontal advance of a glyph in design units (for the CIDFont `/W`
+    /// The horizontal advance of a glyph in design units (for the `CIDFont` `/W`
     /// array). Falls back to 0 for a glyph the face has no advance for.
+    #[must_use]
     pub fn glyph_advance(&self, glyph_id: u16) -> u16 {
         use rustybuzz::ttf_parser::GlyphId;
         self.ttf().glyph_hor_advance(GlyphId(glyph_id)).unwrap_or(0)
     }
 
     /// Reverse the font's Unicode `cmap` into a glyph-id → codepoint map for the
-    /// given used glyphs, for the `/ToUnicode` CMap needed for text extraction.
+    /// given used glyphs, for the `/ToUnicode` `CMap` needed for text extraction.
     /// The first codepoint mapping to a glyph wins (deterministic: subtables and codepoints
     /// are iterated in table order). Glyphs with no Unicode mapping are omitted.
+    #[must_use]
     pub fn glyph_to_unicode(&self, glyphs: &[u16]) -> Vec<(u16, u32)> {
         let map = crate::cmap::reverse_cmap(self.ttf());
         glyphs
@@ -322,15 +334,18 @@ impl FontFace {
     /// Whether the font program carries a CFF/CFF2 outline table (an OpenType/CFF
     /// font), as opposed to TrueType `glyf` outlines. The emitter embeds CFF as a
     /// `FontFile3` and TrueType as a `FontFile2` (§7).
+    #[must_use]
     pub fn is_cff(&self) -> bool {
         let face = self.ttf();
         face.tables().cff.is_some()
     }
 
+    #[must_use]
     pub fn weight(&self) -> u16 {
         self.weight
     }
 
+    #[must_use]
     pub fn is_italic(&self) -> bool {
         self.italic
     }
@@ -340,32 +355,38 @@ impl FontFace {
     }
 
     /// Scale factor converting design units to pixels at `font_size`.
+    #[must_use]
     pub fn scale(&self, font_size: f32) -> f32 {
         font_size / f32::from(self.units_per_em)
     }
 
     /// Distance from baseline to the top of the line box, in pixels.
+    #[must_use]
     pub fn ascent_px(&self, font_size: f32) -> f32 {
         f32::from(self.ascent) * self.scale(font_size)
     }
 
     /// Distance from baseline to the bottom (positive), in pixels.
+    #[must_use]
     pub fn descent_px(&self, font_size: f32) -> f32 {
         -f32::from(self.descent) * self.scale(font_size)
     }
 
     /// Default line height (ascent + |descent| + line gap), in pixels.
+    #[must_use]
     pub fn line_height_px(&self, font_size: f32) -> f32 {
         f32::from(self.ascent - self.descent + self.line_gap) * self.scale(font_size)
     }
 
     /// The glyph id for a character, if the face covers it. A direct cmap lookup
     /// on the parsed (cached) face — no per-call font parse, no lock.
+    #[must_use]
     pub fn glyph_index(&self, ch: char) -> Option<u16> {
         self.ttf().glyph_index(ch).map(|g| g.0)
     }
 
     /// Whether the face has a glyph for `ch`.
+    #[must_use]
     pub fn has_glyph(&self, ch: char) -> bool {
         self.glyph_index(ch).is_some()
     }
@@ -374,6 +395,7 @@ impl FontFace {
     /// text: shaping re-parses the face, and the same run is shaped repeatedly
     /// (width measurement, then emission, plus duplicate strings). The lock is
     /// held only around the cache get/put, never across shaping itself.
+    #[must_use]
     pub fn shape(&self, text: &str) -> Vec<ShapedGlyph> {
         if let Some(hit) = self.cached_shape(text) {
             return hit;
@@ -409,6 +431,7 @@ impl FontFace {
 
     /// Measure the advance width of `text` in pixels at `font_size`, adding
     /// `letter_spacing` pixels after each glyph.
+    #[must_use]
     pub fn measure(&self, text: &str, font_size: f32, letter_spacing: f32) -> f32 {
         let glyphs = self.shape(text);
         let advance: i64 = glyphs.iter().map(|g| i64::from(g.x_advance)).sum();
@@ -511,6 +534,7 @@ impl FontFace {
         bytes
     }
 
+    #[must_use]
     pub fn collection_fixture_faces() -> [Self; 2] {
         let bytes = Arc::new(Self::collection_fixture_bytes());
         [0, 1].map(|index| {
@@ -707,7 +731,7 @@ mod tests {
         let alias = face.with_family("sans-serif");
         let expected = face.shape("retained glyph output");
         for index in 0..512 {
-            alias.shape(&format!("unique actual run {index}"));
+            let _ = alias.shape(&format!("unique actual run {index}"));
             let cache = face.shape_cache.lock().unwrap();
             assert!(cache.entries.len() <= SHAPE_CACHE_ENTRIES);
             assert!(cache.bytes <= SHAPE_CACHE_BYTES);

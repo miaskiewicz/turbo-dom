@@ -62,7 +62,7 @@ fn group_repeat(d: Display) -> Option<RepeatKind> {
     }
 }
 
-fn row_ref<'a>(row: &'a LayoutBox, repeat: Option<RepeatKind>) -> RowRef<'a> {
+fn row_ref(row: &LayoutBox, repeat: Option<RepeatKind>) -> RowRef<'_> {
     RowRef {
         node_id: row.node_id,
         cells: cells_of(row),
@@ -81,7 +81,7 @@ fn row_min_height(row: &LayoutBox) -> f32 {
         .max(0.0)
 }
 
-fn collect_rows<'a>(items: &'a [LayoutBox]) -> Vec<RowRef<'a>> {
+fn collect_rows(items: &[LayoutBox]) -> Vec<RowRef<'_>> {
     let mut out = Vec::new();
     for child in items {
         if matches!(child.display, Display::TableRow) {
@@ -762,7 +762,7 @@ fn finalize(rows: &[RowRef], laid: Vec<LaidCell>, geom: &Geom, cx: f32, cy: f32)
 /// `(horizontal, vertical)` `border-spacing` in px — the gap around/between cells
 /// in the default `separate` model (`2px` per CSS UA); `border-collapse:collapse`
 /// removes it. Without it a table's cells butt together (the infobox label ran
-/// straight into its value: "SpeciesF. catus").
+/// straight into its value: "`SpeciesF`. catus").
 fn border_spacing(style: &ComputedStyle) -> (f32, f32) {
     if collapsed(style) {
         return (0.0, 0.0);

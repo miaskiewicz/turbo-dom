@@ -66,6 +66,9 @@ core-graphics = { version = "0.23", optional = true }
 core-text = { version = "20", optional = true }
 core-foundation = { version = "0.9", optional = true }
 
+[lints]
+workspace = true
+
 [features]
 # CoreText/CoreGraphics canvas-text raster (macOS only — the deps are macOS-gated, so on other
 # platforms this feature is inert). See the deps note above.

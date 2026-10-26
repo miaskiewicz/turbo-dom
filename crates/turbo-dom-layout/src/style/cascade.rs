@@ -64,6 +64,7 @@ impl ComputedStyle {
     /// is still required to be absolute — see `is_ctx_independent`). Conservative:
     /// any `%`/`em` substring (even inside a value like `lemonchiffon`) just
     /// disables the cache, which is always safe.
+    #[must_use]
     pub fn has_no_relative_units(&self) -> bool {
         self.map
             .values()
@@ -138,6 +139,7 @@ pub enum StyledNode {
 
 impl StyledNode {
     /// Borrow the styled element if this node is one.
+    #[must_use]
     pub fn as_element(&self) -> Option<&StyledElement> {
         match self {
             StyledNode::Element(e) => Some(e),
@@ -495,8 +497,7 @@ fn font_size_px(value: &str, parent_px: f32) -> f32 {
     let split = t
         .char_indices()
         .find(|(_, c)| c.is_ascii_alphabetic() || *c == '%')
-        .map(|(i, _)| i)
-        .unwrap_or(t.len());
+        .map_or(t.len(), |(i, _)| i);
     let Ok(n) = t[..split].parse::<f32>() else {
         return parent_px;
     };

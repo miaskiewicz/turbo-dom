@@ -138,6 +138,7 @@ fn integer(value: f32) -> Result<i32, String> {
     }
     Ok(value.round() as i32)
 }
+#[must_use]
 pub fn empty_geometry() -> ElementGeometry {
     ElementGeometry {
         bounds: Rect {
@@ -159,6 +160,7 @@ pub fn empty_geometry() -> ElementGeometry {
         },
     }
 }
+#[must_use]
 pub fn bounding_box(rects: &[Rect]) -> Rect {
     let mut visible = rects
         .iter()

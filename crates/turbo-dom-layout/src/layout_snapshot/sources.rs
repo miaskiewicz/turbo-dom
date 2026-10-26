@@ -200,10 +200,13 @@ impl Walker<'_> {
 fn node_key(node: &StyledNode) -> (usize, SourceKind) {
     match node {
         StyledNode::Element(element) => (
-            element as *const crate::StyledElement as usize,
+            std::ptr::from_ref::<crate::StyledElement>(element) as usize,
             SourceKind::Element,
         ),
-        StyledNode::Text(_) => (node as *const StyledNode as usize, SourceKind::Text),
+        StyledNode::Text(_) => (
+            std::ptr::from_ref::<StyledNode>(node) as usize,
+            SourceKind::Text,
+        ),
     }
 }
 

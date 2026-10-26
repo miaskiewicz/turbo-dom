@@ -88,20 +88,15 @@ pub(crate) fn parse_ops(ops_json: &str) -> Result<Vec<Op>, String> {
 /// Translate one recorded tuple into zero or more [`Op`]s (the carried state snapshot, then the
 /// geometry op). Skips a tuple with no op name or missing required args.
 fn push_tuple(v: &serde_json::Value, out: &mut Vec<Op>) {
-    let t = match v.as_array() {
-        Some(a) => a,
-        None => return,
-    };
-    let name = match t.first().and_then(serde_json::Value::as_str) {
-        Some(s) => s,
-        None => return,
+    let Some(t) = v.as_array() else { return };
+    let Some(name) = t.first().and_then(serde_json::Value::as_str) else {
+        return;
     };
     let args = t.get(1).and_then(serde_json::Value::as_array);
     let num = |i: usize| {
         args.and_then(|a| a.get(i))
             .and_then(serde_json::Value::as_f64)
-            .map(|f| f as f32)
-            .unwrap_or(0.0)
+            .map_or(0.0, |f| f as f32)
     };
     let arg_str = |i: usize| {
         args.and_then(|a| a.get(i))
@@ -492,7 +487,7 @@ pub(crate) fn run(ops: &[Op], backend: &mut dyn CanvasBackend) {
             Op::GlobalAlpha(a) => st.alpha = *a,
             Op::Font { size_px, families } => {
                 st.font_px = *size_px;
-                st.font_families = families.clone();
+                st.font_families.clone_from(families);
             }
             Op::FillRect(x, y, w, h) => {
                 backend.fill(
@@ -555,7 +550,7 @@ fn alpha_mul(c: Rgba, alpha: f32) -> Rgba {
         c.r,
         c.g,
         c.b,
-        (c.a as f32 * alpha.clamp(0.0, 1.0)).round() as u8,
+        (f32::from(c.a) * alpha.clamp(0.0, 1.0)).round() as u8,
     )
 }
 
@@ -618,13 +613,13 @@ fn arc_into(
     let a0 = start;
     let mut a1 = end;
     let tau = std::f32::consts::TAU;
-    if !ccw {
-        while a1 < a0 {
-            a1 += tau;
-        }
-    } else {
+    if ccw {
         while a1 > a0 {
             a1 -= tau;
+        }
+    } else {
+        while a1 < a0 {
+            a1 += tau;
         }
     }
     // Canvas clamps the drawn sweep to a single full turn — an end angle > 2π from start does not
@@ -656,7 +651,7 @@ pub(crate) fn glyph_subpaths(st: &State, text: &str, x: f32, y: f32) -> Vec<SubP
     let Some(ttf) = crate::glyph::parse_face(face.data(), face.index()) else {
         return Vec::new();
     };
-    let scale = st.font_px / upem as f32;
+    let scale = st.font_px / f32::from(upem);
     let mut sink = FlattenSink {
         ctm: st.ctm,
         subs: Vec::new(),

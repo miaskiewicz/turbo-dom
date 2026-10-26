@@ -1,7 +1,7 @@
 //! Style-system tests (§4): CSS parsing, selector matching + specificity,
 //! tokens, node-style injection, the 6-level cascade, and inheritance.
 //!
-//! Split at the S1 relocation: the cases that need TKind directives, templating or the
+//! Split at the S1 relocation: the cases that need `TKind` directives, templating or the
 //! PDF emitter stay in turbo-html2pdf-core's `tests/style.rs`.
 
 mod common;

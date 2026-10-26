@@ -155,7 +155,7 @@ fn double_br_creates_vertical_gap() {
     let top = rect(&f, (255, 0, 0)).expect("top");
     let bottom = rect(&f, (0, 0, 255)).expect("bottom");
     let gap = bottom[1] - (top[1] + top[3]);
-    assert!(gap > 15.0, "two <br> create a multi-line gap, got {}", gap);
+    assert!(gap > 15.0, "two <br> create a multi-line gap, got {gap}");
 }
 
 // --------------------------------------------------------------------------

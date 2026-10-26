@@ -297,6 +297,7 @@ fn find(nodes: &[StyledNode], node: Handle) -> Option<&StyledElement> {
 }
 
 #[test]
+#[allow(clippy::similar_names)] // `snapshot` / `styles` name the two results of one call
 fn pre_matched_rules_rank_by_origin_specificity_and_order_under_inline_and_hints() {
     let styled = Styled::new(
         "<body style='margin:0'><div id=a width=20 style='height:5px'></div><div id=b bgcolor=red width=30></div></body>",
@@ -402,6 +403,7 @@ fn declaration_budget_missing_scope_and_embedder_errors_are_reported() {
         targets: rule("", &[a, b], (0, 0, 0)).targets,
     };
     let one = rule("height:2px", &[b], (0, 0, 0));
+    #[allow(clippy::items_after_statements)] // local helper declared next to its only use
     fn author(rules: Vec<Option<&PreMatched>>) -> [OriginRules<'_>; 1] {
         [OriginRules {
             origin: CascadeOrigin::Author,
@@ -462,6 +464,7 @@ fn the_hook_sees_the_whole_styled_forest_before_layout() {
         .run(&[], &[], &|_| Ok(0), |nodes| {
             let element = find(nodes, a).cloned();
             // A hook may rewrite used styles (an embedder's zoom).
+            #[allow(clippy::items_after_statements)] // local helper declared next to its only use
             fn widen(nodes: &mut [StyledNode], a: Handle) {
                 for node in nodes {
                     if let StyledNode::Element(element) = node {

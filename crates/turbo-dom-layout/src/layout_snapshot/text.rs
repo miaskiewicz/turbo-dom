@@ -16,7 +16,7 @@ pub struct SnapshotTextGlyph {
 }
 
 /// Text from one actual native fragment. Transform and fragment origin are in
-/// LayoutSnapshot::fragments()[fragment_index]; this is not a guessed Range box.
+/// `LayoutSnapshot::fragments()`[`fragment_index`]; this is not a guessed Range box.
 #[derive(Debug, Clone, PartialEq)]
 pub struct SnapshotTextRun {
     pub fragment_index: usize,
@@ -41,7 +41,7 @@ pub(crate) struct TextCapture {
 impl TextCapture {
     pub(crate) fn new(next: u32) -> Self {
         Self {
-            collapsed_sources: Default::default(),
+            collapsed_sources: std::collections::HashSet::default(),
             next,
             count: 0,
             exceeded: false,

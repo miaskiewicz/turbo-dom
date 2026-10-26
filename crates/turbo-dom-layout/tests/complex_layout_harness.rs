@@ -14,6 +14,7 @@ fn lay(html: &str, w: f32) -> Fragment {
 
 fn text_line_count(f: &Fragment) -> usize {
     let mut n = 0;
+    #[allow(clippy::items_after_statements)] // local helper declared next to its only use
     fn go(f: &Fragment, n: &mut usize) {
         if matches!(f.content, FragmentContent::TextLine { .. }) {
             *n += 1;

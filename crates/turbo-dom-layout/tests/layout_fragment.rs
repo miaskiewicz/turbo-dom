@@ -1,7 +1,7 @@
 //! Galley fragment types (§5.5): construction, `bottom`, recursive `translate`,
 //! break metadata, and node-id round-trip (AC-5.11).
 //!
-//! Split at the S1 relocation: the cases that need TKind directives, templating or the
+//! Split at the S1 relocation: the cases that need `TKind` directives, templating or the
 //! PDF emitter stay in turbo-html2pdf-core's `tests/layout_fragment.rs`.
 
 mod common;

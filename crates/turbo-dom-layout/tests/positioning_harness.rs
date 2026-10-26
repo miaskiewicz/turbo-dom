@@ -48,9 +48,7 @@ fn assert_anchored(html: &str, parent: (u8, u8, u8)) {
     let c = rect(&f, RED).expect("absolute child");
     assert!(
         (c[0] - p[0]).abs() < 40.0 && (c[1] - p[1]).abs() < 40.0,
-        "absolute child anchors to its relative ancestor (parent {:?}, child {:?})",
-        p,
-        c
+        "absolute child anchors to its relative ancestor (parent {p:?}, child {c:?})"
     );
 }
 

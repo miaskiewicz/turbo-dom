@@ -40,7 +40,8 @@ pub(crate) fn replay_rgba(width: u32, height: u32, ops: &[Op]) -> Result<Vec<u8>
             out.extend_from_slice(&[0, 0, 0, 0]);
         } else {
             // straight = round(premul * 255 / a)
-            let un = |c: u8| (((c as u32) * 255 + (a as u32) / 2) / a as u32).min(255) as u8;
+            let un =
+                |c: u8| ((u32::from(c) * 255 + u32::from(a) / 2) / u32::from(a)).min(255) as u8;
             out.push(un(px[0]));
             out.push(un(px[1]));
             out.push(un(px[2]));

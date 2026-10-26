@@ -54,19 +54,15 @@ fn strip_tag_blocks(html: &str, tag: &str) -> String {
         }
         out.push_str(&html[cursor..tag_start]);
         // Drop through the matching close tag's `>` (or to EOF if unclosed).
-        match lower[tag_start..].find(&close) {
-            Some(crel) => {
-                let close_start = tag_start + crel;
-                let end = lower[close_start..]
-                    .find('>')
-                    .map(|g| close_start + g + 1)
-                    .unwrap_or(html.len());
-                cursor = end;
-            }
-            None => {
-                cursor = html.len();
-                break;
-            }
+        if let Some(crel) = lower[tag_start..].find(&close) {
+            let close_start = tag_start + crel;
+            let end = lower[close_start..]
+                .find('>')
+                .map_or(html.len(), |g| close_start + g + 1);
+            cursor = end;
+        } else {
+            cursor = html.len();
+            break;
         }
     }
     out.push_str(&html[cursor..]);
@@ -78,6 +74,7 @@ fn strip_tag_blocks(html: &str, tag: &str) -> String {
 /// against the page URL and fetches them (the raster itself does no I/O). `rel`
 /// is matched case-insensitively and may carry other tokens (`stylesheet
 /// preload`). Alternate stylesheets (`rel="alternate stylesheet"`) are skipped.
+#[must_use]
 pub fn stylesheet_hrefs(html: &str) -> Vec<String> {
     let lower = html.to_ascii_lowercase();
     let mut hrefs = Vec::new();
@@ -86,8 +83,7 @@ pub fn stylesheet_hrefs(html: &str) -> Vec<String> {
         let tag_start = cursor + rel;
         let end = lower[tag_start..]
             .find('>')
-            .map(|g| tag_start + g)
-            .unwrap_or(html.len());
+            .map_or(html.len(), |g| tag_start + g);
         let tag = &html[tag_start..end];
         let tag_lower = &lower[tag_start..end];
         let rel_val = attr_value(tag, tag_lower, "rel")
@@ -127,15 +123,12 @@ fn html_unescape(s: &str) -> String {
             i += 1;
             continue;
         }
-        match s[i..].find(';').map(|semi| &s[i + 1..i + semi]) {
-            Some(entity) => {
-                push_entity(entity, &mut out);
-                i += entity.len() + 2; // '&' + entity + ';'
-            }
-            None => {
-                out.push('&');
-                i += 1;
-            }
+        if let Some(entity) = s[i..].find(';').map(|semi| &s[i + 1..i + semi]) {
+            push_entity(entity, &mut out);
+            i += entity.len() + 2; // '&' + entity + ';'
+        } else {
+            out.push('&');
+            i += 1;
         }
     }
     out
@@ -152,13 +145,12 @@ fn push_entity(entity: &str, out: &mut String) {
         "apos" | "#39" => Some('\''),
         _ => numeric_entity(entity),
     };
-    match decoded {
-        Some(c) => out.push(c),
-        None => {
-            out.push('&');
-            out.push_str(entity);
-            out.push(';');
-        }
+    if let Some(c) = decoded {
+        out.push(c);
+    } else {
+        out.push('&');
+        out.push_str(entity);
+        out.push(';');
     }
 }
 
@@ -178,6 +170,7 @@ fn numeric_entity(entity: &str) -> Option<char> {
 /// raw `src`, or the unquoted `url(...)` inner) — so the caller resolves each
 /// against the page URL, fetches the bytes, and stores them under the same key.
 /// `data:` URIs are skipped (self-contained, nothing to fetch).
+#[must_use]
 pub fn image_urls(html: &str) -> Vec<String> {
     let mut urls = Vec::new();
     img_srcs(html, &mut urls);
@@ -192,6 +185,7 @@ pub fn image_urls(html: &str) -> Vec<String> {
 /// misses (the layout engine paints them, but the caller never fetches their bytes).
 /// Returned verbatim (the resolver key), `data:` URIs skipped. Callers should scan
 /// both `image_urls(html)` and `image_urls_in_css(external_css)`.
+#[must_use]
 pub fn image_urls_in_css(css: &str) -> Vec<String> {
     let mut urls = Vec::new();
     background_image_urls(css, &mut urls);
@@ -335,10 +329,9 @@ fn tag_end(bytes: &[u8], start: usize) -> Option<usize> {
     for (i, &b) in bytes.iter().enumerate().skip(start) {
         match quote {
             Some(q) if b == q => quote = None,
-            Some(_) => {}
             None if b == b'"' || b == b'\'' => quote = Some(b),
             None if b == b'>' => return Some(i),
-            None => {}
+            Some(_) | None => {}
         }
     }
     None
@@ -382,6 +375,7 @@ fn attr_value_span(tag: &str, tag_lower: &str, name: &str) -> Option<(usize, usi
 /// from `src`) renders lazy-loaded images whose JS `src`-swap didn't run headless.
 /// `<img>`s with a real `src` are left as-is. The resulting URL matches what
 /// [`image_urls`] returns, so the caller's fetched bytes resolve.
+#[must_use]
 pub fn delazy_images(html: &str) -> String {
     // Collect edits `[start, end) -> text` (an insert is a zero-width span), then
     // splice once, back-to-front so earlier offsets stay valid.
@@ -451,8 +445,7 @@ fn background_image_urls(html: &str, out: &mut Vec<String>) {
         // (`url("x.png")`).
         let end = lower[decl..]
             .find([';', '}', '<', '\n'])
-            .map(|e| decl + e)
-            .unwrap_or(html.len());
+            .map_or(html.len(), |e| decl + e);
         let Some(urel) = lower[decl..end].find("url(") else {
             continue;
         };
@@ -685,11 +678,11 @@ mod tests {
     #[test]
     fn strip_non_visual_removes_script_and_style_source() {
         use super::strip_non_visual;
-        let html = r#"<div>hi</div>
+        let html = r"<div>hi</div>
             <script>var x = new Granim({a:1});</script>
             <style>.a{color:red}</style>
             <noscript>enable js</noscript>
-            <p>bye</p>"#;
+            <p>bye</p>";
         let out = strip_non_visual(html);
         assert!(out.contains("<div>hi</div>"));
         assert!(out.contains("<p>bye</p>"));

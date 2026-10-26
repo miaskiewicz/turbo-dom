@@ -1,4 +1,4 @@
-//! Split at the S1 relocation: the cases that need TKind directives, templating or the
+//! Split at the S1 relocation: the cases that need `TKind` directives, templating or the
 //! PDF emitter stay in turbo-html2pdf-core's `tests/layout_snapshot.rs`.
 
 mod common;
@@ -47,7 +47,7 @@ fn capture(nodes: &[Node], ids: &[SourceIdentity]) -> LayoutSnapshot {
     snapshot_live_tree(
         &literal::tree(nodes).input(),
         ids,
-        &build_cascade("", "", Default::default()),
+        &build_cascade("", "", turbo_dom_layout::style::TokenSet::default()),
         &inputs,
         &mut Diagnostics::default(),
     )
@@ -120,7 +120,10 @@ fn hidden_and_clipped_boxes_keep_geometry_but_display_none_has_no_fragments() {
         resolver: &NoImages,
         body_height: None,
     };
-    let styled = common::style_nodes(&nodes, &build_cascade("", "", Default::default()));
+    let styled = common::style_nodes(
+        &nodes,
+        &build_cascade("", "", turbo_dom_layout::style::TokenSet::default()),
+    );
     let legacy = layout_with_images(&styled, 200.0, &fonts, &images, &mut Diagnostics::default());
     assert_eq!(legacy.height, 7.0);
 }
@@ -182,6 +185,7 @@ fn all_text_lines_keep_source_and_flattened_inline_ancestry_without_fake_range_r
         assert_eq!(fragment.source_ancestors, vec![SourceId(1), SourceId(2)]);
         assert!(fragment.rect.height > 0.0);
     }
+    #[allow(clippy::items_after_statements)] // local helper declared next to its only use
     fn count(fragment: &turbo_dom_layout::Fragment) -> usize {
         1 + fragment.children.iter().map(count).sum::<usize>()
     }
@@ -290,7 +294,10 @@ fn viewport_and_definite_ancestor_heights_resolve_real_percentage_boxes() {
 #[test]
 fn source_validation_rejects_duplicates_outside_paths_and_bad_viewports() {
     let nodes = vec![element("div", "", Vec::new())];
-    let styled = common::style_nodes(&nodes, &build_cascade("", "", Default::default()));
+    let styled = common::style_nodes(
+        &nodes,
+        &build_cascade("", "", turbo_dom_layout::style::TokenSet::default()),
+    );
     let fonts = FontRegistry::new();
     let images = ImageCtx {
         resolver: &NoImages,
@@ -379,7 +386,7 @@ fn image_snapshot(css: &str) -> LayoutSnapshot {
     snapshot_live_tree(
         &literal::tree(&nodes).input(),
         &[identity(9, &[0])],
-        &build_cascade("", "", Default::default()),
+        &build_cascade("", "", turbo_dom_layout::style::TokenSet::default()),
         &inputs,
         &mut Diagnostics::default(),
     )
@@ -413,7 +420,7 @@ fn replaced_boxes_keep_overflow_css_frames_transforms_and_all_image_fragments() 
     // The existing PDF API still caps this image to the page.
     let styled = common::style_nodes(
         &[image_node("width:400px;height:240px")],
-        &build_cascade("", "", Default::default()),
+        &build_cascade("", "", turbo_dom_layout::style::TokenSet::default()),
     );
     let resolver = Images(image_bytes());
     let images = ImageCtx {
@@ -609,7 +616,7 @@ fn compare_authored_cases(fixture: &serde_json::Value, oracle: &serde_json::Valu
                     &identities,
                     &[],
                     2.0,
-                    &build_cascade("", "", Default::default()),
+                    &build_cascade("", "", turbo_dom_layout::style::TokenSet::default()),
                     &inputs,
                     &mut Diagnostics::default(),
                 )
@@ -620,7 +627,7 @@ fn compare_authored_cases(fixture: &serde_json::Value, oracle: &serde_json::Valu
         let result = snapshot_live_tree(
             &literal::tree(&nodes).input(),
             &identities,
-            &build_cascade("", "", Default::default()),
+            &build_cascade("", "", turbo_dom_layout::style::TokenSet::default()),
             &inputs,
             &mut Diagnostics::default(),
         );
@@ -840,7 +847,7 @@ fn transformed_fixed_admission_is_identity_independent_and_shared_by_both_entry_
         fonts: &fonts,
         images: &images,
     };
-    let cascade = build_cascade("", "", Default::default());
+    let cascade = build_cascade("", "", turbo_dom_layout::style::TokenSet::default());
     let result = snapshot_live_tree(
         &literal::tree(&nodes).input(),
         &[],
@@ -927,7 +934,10 @@ fn invalid_quad_declarations_preserve_prior_valid_sides_and_inherited_variables_
         "border-left-width:7px;border-width:3px red",
         Vec::new(),
     )];
-    let styled = common::style_nodes(&nodes, &build_cascade("", "", Default::default()));
+    let styled = common::style_nodes(
+        &nodes,
+        &build_cascade("", "", turbo_dom_layout::style::TokenSet::default()),
+    );
     let turbo_dom_layout::StyledNode::Element(element) = &styled[0] else {
         panic!("element");
     };
@@ -964,7 +974,10 @@ fn live_document_root_contains_body_margins_and_preserves_legacy_pdf_policy() {
             height: 16.0
         }
     );
-    let styled = common::style_nodes(&nodes, &build_cascade("", "", Default::default()));
+    let styled = common::style_nodes(
+        &nodes,
+        &build_cascade("", "", turbo_dom_layout::style::TokenSet::default()),
+    );
     let legacy = layout_with_images(
         &styled,
         200.0,

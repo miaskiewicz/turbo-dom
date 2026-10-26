@@ -58,8 +58,7 @@ fn source_text(
         .ok_or(TextGeometryError::MissingSource(id))?;
     let text = snapshot
         .text_original_units(id)
-        .map(<[u16]>::to_vec)
-        .unwrap_or_else(|| source.text.encode_utf16().collect());
+        .map_or_else(|| source.text.encode_utf16().collect(), <[u16]>::to_vec);
     if start > end || end > text.len() {
         return Err(TextGeometryError::InvalidOffsets);
     }
@@ -319,6 +318,7 @@ fn boundary_edges<'a>(
     }
 }
 
+#[allow(clippy::unnecessary_wraps)] // keeps the Option/Result shape its call sites (and sibling helpers) share
 fn gap_edges<'a>(
     before: &'a SourceClusterBox,
     after: &'a SourceClusterBox,
@@ -442,7 +442,7 @@ mod native_capture_loss_contracts {
                 id: SourceId(100),
                 path: vec![0],
             }],
-            &build_cascade("", "", Default::default()),
+            &build_cascade("", "", crate::style::TokenSet::default()),
             &SnapshotInputs {
                 width: 200.0,
                 height: 80.0,

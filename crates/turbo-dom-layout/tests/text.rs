@@ -161,7 +161,7 @@ fn wraps_into_multiple_lines() {
     let lines = layout_text("aa bb cc dd ee ff gg hh", &f, &s, 60.0);
     assert!(lines.len() > 1);
     for line in &lines {
-        assert!(line.width <= 60.5, "line {:?} too wide", line);
+        assert!(line.width <= 60.5, "line {line:?} too wide");
         assert_eq!(line.x_offset, 0.0);
     }
 }

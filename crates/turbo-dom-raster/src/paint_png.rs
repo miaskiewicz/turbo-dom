@@ -165,7 +165,7 @@ fn paint_image(
 /// nothing paints; where opaque the full tint shows.
 fn tint_pixmap(src: &Pixmap, tint: Rgba) -> Pixmap {
     let mut out = Pixmap::new(src.width(), src.height()).expect("mask pixmap");
-    let scale = |c: u8, a: u8| ((c as u32 * a as u32) / 255) as u8;
+    let scale = |c: u8, a: u8| ((u32::from(c) * u32::from(a)) / 255) as u8;
     for (o, s) in out.pixels_mut().iter_mut().zip(src.pixels()) {
         let a = scale(s.alpha(), tint.a);
         *o = tiny_skia::PremultipliedColorU8::from_rgba(
@@ -211,7 +211,11 @@ fn fill_rect(pm: &mut Pixmap, x: f32, y: f32, w: f32, h: f32, c: Rgba, xf: Trans
 /// Paint each border side as a filled edge band (approximation: no corner
 /// mitring, no line styles — width + color only).
 fn paint_border(pm: &mut Pixmap, f: &Fragment, b: &BorderEdges, xf: Transform) {
-    let side = |s: &BorderSide| s.color.filter(|_| s.width > 0).map(|c| (s.width as f32, c));
+    let side = |s: &BorderSide| {
+        s.color
+            .filter(|_| s.width > 0)
+            .map(|c| (f32::from(s.width), c))
+    };
     if let Some((w, c)) = side(&b.top) {
         fill_rect(pm, f.x, f.y, f.width, w, c, xf);
     }
@@ -228,8 +232,8 @@ fn paint_border(pm: &mut Pixmap, f: &Fragment, b: &BorderEdges, xf: Transform) {
 
 /// A rounded-rectangle path (four cubic corner arcs, `kappa` control points).
 fn round_rect_path(x: f32, y: f32, w: f32, h: f32, r: f32) -> Option<Path> {
+    const K: f32 = 0.552_284_7; // circle-arc cubic-Bézier control ratio
     let r = r.min(w / 2.0).min(h / 2.0).max(0.0);
-    const K: f32 = 0.5522847; // circle-arc cubic-Bézier control ratio
     let c = r * K;
     let (r0, b0) = (x + w, y + h); // right, bottom edges
     let mut p = PathBuilder::new();
@@ -397,7 +401,7 @@ fn box_blur_horizontal(data: &mut [u8], w: usize, h: usize, r: usize) {
     for y in 0..h {
         let row = &mut data[y * w * 4..(y + 1) * w * 4];
         src.copy_from_slice(row);
-        let get = |x: isize, c: usize| src[x.clamp(0, w as isize - 1) as usize * 4 + c] as u32;
+        let get = |x: isize, c: usize| u32::from(src[x.clamp(0, w as isize - 1) as usize * 4 + c]);
         for c in 0..4 {
             let mut sum: u32 = (0..=r as isize).map(|x| get(x, c)).sum::<u32>()
                 + (1..=r as isize).map(|_| get(0, c)).sum::<u32>();
@@ -421,7 +425,7 @@ fn box_blur_vertical(data: &mut [u8], w: usize, h: usize, r: usize) {
             let s = (y * w + x) * 4;
             src[y * 4..y * 4 + 4].copy_from_slice(&data[s..s + 4]);
         }
-        let get = |y: isize, c: usize| src[y.clamp(0, h as isize - 1) as usize * 4 + c] as u32;
+        let get = |y: isize, c: usize| u32::from(src[y.clamp(0, h as isize - 1) as usize * 4 + c]);
         for c in 0..4 {
             let mut sum: u32 = (0..=r as isize).map(|y| get(y, c)).sum::<u32>()
                 + (1..=r as isize).map(|_| get(0, c)).sum::<u32>();
@@ -500,7 +504,7 @@ fn paint_text(
     let Some(face) = glyph::parse_face(font_bytes, font_index) else {
         return;
     };
-    let scale = font_size / units_per_em as f32;
+    let scale = font_size / f32::from(units_per_em);
     let paint = solid(color);
     for g in glyphs {
         let pen = Pen {

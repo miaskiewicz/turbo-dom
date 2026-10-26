@@ -35,7 +35,7 @@ fn snapshot(
             id: SourceId(7),
             path: vec![0, 0],
         }],
-        &turbo_dom_layout::build_cascade("", "", Default::default()),
+        &turbo_dom_layout::build_cascade("", "", turbo_dom_layout::style::TokenSet::default()),
         &NativeTextOptions {
             original_text: &originals,
             svg_viewports: &[],
@@ -100,7 +100,7 @@ fn public_original_units_retain_native_source_identity_and_validation() {
             id: SourceId(7),
             path: vec![0, 0]
         }],
-        &turbo_dom_layout::build_cascade("", "", Default::default()),
+        &turbo_dom_layout::build_cascade("", "", turbo_dom_layout::style::TokenSet::default()),
         &options,
         &SnapshotInputs {
             width: 800.0,

@@ -1,7 +1,7 @@
 //! Flex layout (§5.3, AC-5.6): taffy-backed grow/shrink/basis, direction, wrap,
-//! gap, justify/align, and content sizing. Driven through boxgen -> layout_tree.
+//! gap, justify/align, and content sizing. Driven through boxgen -> `layout_tree`.
 //!
-//! Split at the S1 relocation: the cases that need TKind directives, templating or the
+//! Split at the S1 relocation: the cases that need `TKind` directives, templating or the
 //! PDF emitter stay in turbo-html2pdf-core's `tests/layout_flex.rs`.
 
 mod common;

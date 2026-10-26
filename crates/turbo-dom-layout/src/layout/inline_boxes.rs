@@ -4,7 +4,7 @@ use super::block::Ctx;
 use super::boxgen::InlineItem;
 use super::fragment::{Fragment, FragmentContent, NodeId};
 use super::inline::{InlineEdge, ParagraphLayout};
-use super::value::{resolve_box_style, BoxStyle, Display, ResolveCtx};
+use super::value::{resolve_box_style, BorderEdges, BoxStyle, Display, Edges, ResolveCtx};
 use crate::layout_snapshot::UsedBoxMetrics;
 use crate::ComputedStyle;
 use std::collections::HashMap;
@@ -255,7 +255,7 @@ impl SourceOffsets {
                 start,
             } => self.boundary(*node_id, style, *start, font, width, ctx),
             InlineItem::Text { node_id, .. } | InlineItem::SourceBreak { node_id, .. } => {
-                self.record(*node_id)
+                self.record(*node_id);
             }
             InlineItem::Atomic(child) => {
                 self.record(child.node_id);
@@ -435,9 +435,9 @@ fn empty_fragment(
             id,
             UsedBoxMetrics {
                 inline_fragment: true,
-                border: Default::default(),
-                padding: Default::default(),
-                margin: Default::default(),
+                border: Edges::default(),
+                padding: Edges::default(),
+                margin: Edges::default(),
                 content_width: 0.0,
                 content_height: 0.0,
                 position: super::value::Position::Static,
@@ -454,7 +454,7 @@ fn empty_fragment(
         0.0,
         FragmentContent::Box {
             background: None,
-            border: Default::default(),
+            border: BorderEdges::default(),
             border_radius: 0.0,
             shadow: None,
             gradient: None,
@@ -625,7 +625,7 @@ fn append_part(
         inherited.node_id = parent.edge.node_id;
         inherited.content = FragmentContent::Box {
             background: None,
-            border: Default::default(),
+            border: BorderEdges::default(),
             border_radius: 0.0,
             shadow: None,
             gradient: None,
@@ -634,8 +634,8 @@ fn append_part(
         if let Some(metrics) = &mut ctx.used_metrics {
             metrics.entry(inherited.node_id).or_insert(UsedBoxMetrics {
                 inline_fragment: true,
-                border: Default::default(),
-                padding: Default::default(),
+                border: Edges::default(),
+                padding: Edges::default(),
                 margin: styles[&inherited.node_id].margin,
                 content_width: part.width,
                 content_height: part.height,

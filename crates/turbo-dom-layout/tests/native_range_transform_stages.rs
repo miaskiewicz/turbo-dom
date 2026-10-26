@@ -151,7 +151,7 @@ fn capture(
     let nodes = scene(family, case, transformed);
     let mut ids = Ids::default();
     identities(&nodes, &mut Vec::new(), None, &mut ids);
-    let cascade = build_cascade("", "", Default::default());
+    let cascade = build_cascade("", "", turbo_dom_layout::style::TokenSet::default());
     let images = ImageCtx {
         resolver: &NoImages,
         body_height: None,
@@ -399,6 +399,7 @@ fn compare_box(
         mismatches,
     );
 }
+#[allow(clippy::needless_pass_by_value)] // test helper: owned arguments keep the call sites literal
 fn compare_value<T: std::fmt::Debug + PartialEq>(
     actual: T,
     expected: T,

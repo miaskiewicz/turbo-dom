@@ -48,6 +48,7 @@ fn capture_nodes(
 ) -> (LayoutSnapshot, HashMap<String, SourceId>) {
     capture_nodes_with_policy(nodes, viewport, true)
 }
+#[allow(clippy::needless_pass_by_value)] // test helper: owned arguments keep the call sites literal
 fn capture_nodes_with_policy(
     nodes: Vec<Node>,
     viewport: [f32; 2],
@@ -57,7 +58,7 @@ fn capture_nodes_with_policy(
     let mut names = HashMap::new();
     identities(&nodes, &mut Vec::new(), &mut ids, &mut names);
     // The embedder supplies its UA rules; ordinary PDF's stylesheet is unchanged.
-    let cascade=build_cascade("body{margin:0;font-family:serif}#host{width:400px;height:200px;font-family:monospace;font-size:16px;line-height:24px}iframe{display:inline;border:2px inset}","",Default::default());
+    let cascade=build_cascade("body{margin:0;font-family:serif}#host{width:400px;height:200px;font-family:monospace;font-size:16px;line-height:24px}iframe{display:inline;border:2px inset}","",turbo_dom_layout::style::TokenSet::default());
     let snapshot = if native {
         snapshot_html_live_tree_with_native_text(
             &literal::tree(&nodes).input(),
@@ -102,10 +103,10 @@ fn capture_nodes_with_policy(
 }
 fn rect(value: turbo_dom_layout::layout_snapshot::Rect) -> [f64; 4] {
     [
-        value.x as f64,
-        value.y as f64,
-        value.width as f64,
-        value.height as f64,
+        f64::from(value.x),
+        f64::from(value.y),
+        f64::from(value.width),
+        f64::from(value.height),
     ]
 }
 fn control() -> serde_json::Value {
@@ -167,7 +168,10 @@ fn compare_case(case: &serde_json::Value) {
     assert_eq!(client, expected, "{} client", case["name"]);
     let expected: [f64; 2] = serde_json::from_value(case["viewport"].clone()).unwrap();
     assert_eq!(
-        [used.content_width as f64, used.content_height as f64],
+        [
+            f64::from(used.content_width),
+            f64::from(used.content_height)
+        ],
         expected,
         "{} content",
         case["name"]

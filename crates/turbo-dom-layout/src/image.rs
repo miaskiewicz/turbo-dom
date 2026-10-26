@@ -14,7 +14,7 @@
 //! same resolver answers both: [`ImageResolver::intrinsic`] (by default [`probe`] of
 //! the resolved bytes) reads the header for `(w, h)` cheaply, [`decode`] produces
 //! the embeddable [`RasterImage`]. PNG is decoded to 8-bit RGB(A) (alpha split off
-//! as an SMask); JPEG is passed through verbatim as `DCTDecode` (§7.4: "JPEG passed
+//! as an `SMask`); JPEG is passed through verbatim as `DCTDecode` (§7.4: "JPEG passed
 //! through where possible"). turbo-dom-raster decodes its images itself (the
 //! `image` crate for JPEG/GIF/WebP, [`PngFrame::to_rgba8`] for PNG, the shared SVG
 //! rasterizer) and answers [`ImageResolver::intrinsic`] from that decode, so it no
@@ -23,7 +23,7 @@
 //! SVG support rides behind the off-by-default `svg` feature (Phase 15b). When
 //! enabled, the gated arms in [`probe`]/[`decode`] (and the [`is_svg`] sniff)
 //! rasterize `image/svg+xml` via `resvg`/`usvg` into a straight-alpha RGBA buffer
-//! and slot a [`RasterImage`] in alongside the raster ones — the XObject path
+//! and slot a [`RasterImage`] in alongside the raster ones — the `XObject` path
 //! already embeds RGBA via the alpha `SMask`, so no new emit code is needed (see
 //! [`crate::svg`]). With the feature off these arms are not compiled, so the
 //! default decode path is byte-for-byte unchanged. (`svg-rasterize` alone compiles
@@ -85,12 +85,13 @@ fn is_gif(bytes: &[u8]) -> bool {
     bytes.starts_with(b"GIF87a") || bytes.starts_with(b"GIF89a")
 }
 
-/// RIFF/WebP magic: `RIFF` … `WEBP` with the FourCC at bytes 8..12.
+/// RIFF/WebP magic: `RIFF` … `WEBP` with the `FourCC` at bytes 8..12.
 fn is_webp(bytes: &[u8]) -> bool {
     bytes.len() >= 12 && bytes.starts_with(b"RIFF") && &bytes[8..12] == b"WEBP"
 }
 
 /// Sniff the encoded format from the leading magic bytes, or `None` if neither.
+#[must_use]
 pub fn sniff(bytes: &[u8]) -> Option<Format> {
     if bytes.starts_with(PNG_MAGIC) {
         return Some(Format::Png);
@@ -119,6 +120,7 @@ pub struct Intrinsic {
 /// Read just the intrinsic size + alpha flag from encoded bytes, without
 /// decoding pixels. Used at layout time to size the image box and apply the
 /// overflow caps.
+#[must_use]
 pub fn probe(bytes: &[u8]) -> Option<Intrinsic> {
     // SVG has no fixed magic, so it is sniffed structurally (gated): an SVG box is
     // sized from its rasterized intrinsic dimensions before the raster sniff runs.
@@ -164,7 +166,7 @@ fn probe_webp(bytes: &[u8]) -> Option<Intrinsic> {
     })
 }
 
-/// Dispatch to the per-chunk size reader for a WebP FourCC; unknown chunks yield
+/// Dispatch to the per-chunk size reader for a WebP `FourCC`; unknown chunks yield
 /// `None`.
 fn webp_size(fourcc: &[u8], bytes: &[u8]) -> Option<(u32, u32)> {
     match fourcc {
@@ -249,6 +251,7 @@ pub enum ColorSpace {
 
 impl ColorSpace {
     /// Samples per pixel in this color space.
+    #[must_use]
     pub fn components(self) -> usize {
         match self {
             ColorSpace::Gray => 1,
@@ -269,7 +272,7 @@ pub enum Payload {
 }
 
 /// A decoded image ready to embed: its pixel size, the color payload, and the
-/// optional 8-bit alpha plane that becomes the XObject's `SMask` (§7.4 AC-7.4).
+/// optional 8-bit alpha plane that becomes the `XObject`'s `SMask` (§7.4 AC-7.4).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RasterImage {
     pub width: u32,
@@ -281,6 +284,7 @@ pub struct RasterImage {
 
 impl RasterImage {
     /// The image's color space (RGB or gray), regardless of payload encoding.
+    #[must_use]
     pub fn color(&self) -> ColorSpace {
         match &self.payload {
             Payload::Raw { color, .. } | Payload::Jpeg { color, .. } => *color,
@@ -290,6 +294,7 @@ impl RasterImage {
 
 /// Decode encoded bytes into an embeddable [`RasterImage`], or `None` if the
 /// format is unrecognized or the data is malformed.
+#[must_use]
 pub fn decode(bytes: &[u8]) -> Option<RasterImage> {
     // SVG (gated): rasterize to RGBA before the raster sniff. The resulting
     // [`RasterImage`] feeds the same XObject/SMask path as a decoded RGBA PNG.
@@ -322,6 +327,7 @@ pub enum PngColor {
 
 impl PngColor {
     /// Samples per pixel.
+    #[must_use]
     pub fn channels(self) -> usize {
         match self {
             PngColor::Gray => 1,
@@ -405,6 +411,7 @@ pub struct PngFrame {
 impl PngFrame {
     /// Decode the first frame of a PNG under `budget`, or `None` if it is malformed
     /// or over budget.
+    #[must_use]
     pub fn decode(bytes: &[u8], budget: PngBudget) -> Option<PngFrame> {
         let mut decoder = png::Decoder::new_with_limits(Cursor::new(bytes), budget.limits());
         decoder.set_transformations(png::Transformations::EXPAND);
@@ -436,6 +443,7 @@ impl PngFrame {
 
     /// The PDF form: an RGB/gray payload (gray stays `DeviceGray`) plus the alpha
     /// plane split off for the `SMask`.
+    #[must_use]
     pub fn to_raster_image(&self) -> RasterImage {
         let (color, alpha_idx) = self.color.pdf_layout();
         let samples8 = self.samples8();
@@ -461,6 +469,7 @@ impl PngFrame {
     /// (image 0.25) produces from the same file: RGB(A) channels convert numerically
     /// (8-bit as is, 16-bit `(c + 128) / 257`, missing alpha opaque), gray(+alpha)
     /// through image's f32 path (`round(c / MAX * 255)`, gray replicated).
+    #[must_use]
     pub fn to_rgba8(&self) -> Vec<u8> {
         let mut rgba = Vec::with_capacity((self.width * self.height) as usize * 4);
         let width = if self.sixteen_bit { 2 } else { 1 };
@@ -531,6 +540,7 @@ pub struct Rgba8Image {
 
 /// Decode a PNG to straight RGBA under the `image` crate's limits (what
 /// turbo-dom-raster's `image::load_from_memory(..).to_rgba8()` did), or `None`.
+#[must_use]
 pub fn decode_png_rgba(bytes: &[u8]) -> Option<Rgba8Image> {
     let frame = PngFrame::decode(bytes, PngBudget::ImageCrate)?;
     Some(Rgba8Image {

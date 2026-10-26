@@ -1,5 +1,5 @@
 //! Native source items retain unsnapped glyph positions but admit their aggregate
-//! advance to the physical LayoutUnit grid before wrapping and placement.
+//! advance to the physical `LayoutUnit` grid before wrapping and placement.
 use super::{native_text_advance, NodeId, Seg, Word};
 
 #[derive(Clone)]

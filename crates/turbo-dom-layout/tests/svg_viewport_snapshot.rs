@@ -1,4 +1,4 @@
-//! Split at the S1 relocation: the cases that need TKind directives, templating or the
+//! Split at the S1 relocation: the cases that need `TKind` directives, templating or the
 //! PDF emitter stay in turbo-html2pdf-core's `tests/svg_viewport_snapshot.rs`.
 
 use turbo_dom_layout::layout_snapshot::{
@@ -99,7 +99,7 @@ fn capture_at_scale(
         identities,
         viewports,
         scale,
-        &build_cascade("", "", Default::default()),
+        &build_cascade("", "", turbo_dom_layout::style::TokenSet::default()),
         &SnapshotInputs {
             width: 400.0,
             height: 300.0,

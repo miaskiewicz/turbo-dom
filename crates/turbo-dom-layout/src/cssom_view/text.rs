@@ -14,6 +14,7 @@ fn distance(point: [f64; 2], rect: Rect) -> [f64; 2] {
         gap(point[0], rect.x, rect.width),
     ]
 }
+#[must_use]
 pub fn world_rect(rect: Rect, matrix: [f64; 6]) -> Rect {
     let [a, b, c, d, e, f] = matrix;
     let mut xs = [0.0; 4];
@@ -130,6 +131,7 @@ pub fn caret(
     )))
 }
 
+#[must_use]
 pub fn run_rect(
     snapshot: &LayoutSnapshot,
     run: &crate::layout_snapshot::SnapshotTextRun,

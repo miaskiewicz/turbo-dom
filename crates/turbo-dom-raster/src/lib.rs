@@ -279,6 +279,7 @@ fn font_registry(system_fonts: bool) -> FontRegistry {
 /// fonts are loaded so distinct named families (Arial vs Georgia vs Courier) resolve to
 /// distinct faces and yield distinct widths — what a font-detection probe reads. Returns
 /// `(width_px, height_px)`; `(0.0, 0.0)` if no face resolves.
+#[must_use]
 pub fn measure_text(text: &str, family_css: &str, size_px: f32, system_fonts: bool) -> (f32, f32) {
     let families: Vec<String> = family_css
         .split(',')
@@ -290,7 +291,7 @@ pub fn measure_text(text: &str, family_css: &str, size_px: f32, system_fonts: bo
         })
         .filter(|s| !s.is_empty())
         .collect();
-    let refs: Vec<&str> = families.iter().map(|s| s.as_str()).collect();
+    let refs: Vec<&str> = families.iter().map(std::string::String::as_str).collect();
     let reg = font_registry(system_fonts);
     match reg.select(&refs, 400, false) {
         Some(face) => (face.measure(text, size_px, 0.0), size_px * 1.2),

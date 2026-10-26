@@ -13,7 +13,7 @@ use turbo_dom_layout::image::{
 };
 
 /// The pre-S5 PDF PNG decode (turbo-html2pdf-core 0.3.9 `image::decode_png`),
-/// verbatim: `normalize_to_color8` (EXPAND | STRIP_16), then split off alpha.
+/// verbatim: `normalize_to_color8` (EXPAND | `STRIP_16`), then split off alpha.
 fn old_decode_png(bytes: &[u8]) -> Option<RasterImage> {
     let mut decoder = png::Decoder::new(Cursor::new(bytes));
     decoder.set_transformations(png::Transformations::normalize_to_color8());
@@ -208,11 +208,11 @@ fn shared_png_decode_matches_the_old_pdf_decode() {
     if matrix.is_empty() {
         eprintln!("SKIP matrix part: no tools/parity inputs (packaged crate)");
     }
-    cases.extend(
-        matrix
-            .into_iter()
-            .filter(|(name, _)| name.ends_with(".png")),
-    );
+    cases.extend(matrix.into_iter().filter(|(name, _)| {
+        std::path::Path::new(name)
+            .extension()
+            .is_some_and(|ext| ext.eq_ignore_ascii_case("png"))
+    }));
     let mut decoded = 0;
     for (label, bytes) in &cases {
         let old = old_decode_png(bytes);
@@ -356,7 +356,11 @@ mod svg_oracle {
     fn shared_svg_rasterizer_matches_the_old_pdf_svg_path() {
         let mut svgs: Vec<(String, Vec<u8>)> = parity_images()
             .into_iter()
-            .filter(|(name, _)| name.ends_with(".svg"))
+            .filter(|(name, _)| {
+                std::path::Path::new(name)
+                    .extension()
+                    .is_some_and(|ext| ext.eq_ignore_ascii_case("svg"))
+            })
             .collect();
         svgs.push((
             "inline".into(),

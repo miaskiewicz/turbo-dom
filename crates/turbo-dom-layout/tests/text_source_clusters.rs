@@ -193,7 +193,7 @@ fn capture_snapshot_style(
         fonts: &fonts,
         images: &images,
     };
-    let css = build_cascade("", "", Default::default());
+    let css = build_cascade("", "", turbo_dom_layout::style::TokenSet::default());
     if enabled {
         snapshot_live_tree_with_text(
             &literal::tree(&nodes).input(),
@@ -311,7 +311,7 @@ fn atom_cloning_and_positioning_preserve_real_nested_text_source_clusters() {
     let native = snapshot_live_tree_with_text(
         &literal::tree(&nodes).input(),
         &ids,
-        &build_cascade("", "", Default::default()),
+        &build_cascade("", "", turbo_dom_layout::style::TokenSet::default()),
         &SnapshotInputs {
             width: 200.0,
             height: 100.0,
@@ -432,7 +432,7 @@ fn controlled_font_snapshot(
         &ids,
         &[],
         2.0,
-        &build_cascade("", "", Default::default()),
+        &build_cascade("", "", turbo_dom_layout::style::TokenSet::default()),
         &SnapshotInputs {
             width: 400.0,
             height: 300.0,
@@ -548,7 +548,7 @@ fn text_snapshot_errors_keep_the_original_source_and_viewport_validation() {
             path: vec![0],
         },
     ];
-    let css = build_cascade("", "", Default::default());
+    let css = build_cascade("", "", turbo_dom_layout::style::TokenSet::default());
     assert!(matches!(
         snapshot_live_tree_with_text(
             &literal::tree(&nodes).input(),
@@ -999,7 +999,7 @@ fn physical_font_overflow_fails_before_any_source_geometry_can_be_published() {
         &[],
         &[],
         16.0,
-        &build_cascade("", "", Default::default()),
+        &build_cascade("", "", turbo_dom_layout::style::TokenSet::default()),
         &SnapshotInputs {
             width: 400.0,
             height: 300.0,

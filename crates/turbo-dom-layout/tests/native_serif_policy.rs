@@ -49,17 +49,17 @@ fn compare_font_case(fonts: &FontRegistry, case: &serde_json::Value) {
     let face = fonts.select(&[family], 400, false).unwrap();
     let metrics = face.html_metrics(size * 2.0);
     assert_eq!(
-        metrics.ascent as f64,
+        f64::from(metrics.ascent),
         case["fontBoundingBoxAscent"].as_f64().unwrap(),
         "{family} {size}"
     );
     assert_eq!(
-        metrics.descent as f64,
+        f64::from(metrics.descent),
         case["fontBoundingBoxDescent"].as_f64().unwrap(),
         "{family} {size}"
     );
     assert_eq!(
-        face.measure("light", size * 2.0, 0.0) as f64,
+        f64::from(face.measure("light", size * 2.0, 0.0)),
         case["width"].as_f64().unwrap(),
         "{family} {size}"
     );
@@ -78,10 +78,10 @@ fn compare_font_case(fonts: &FontRegistry, case: &serde_json::Value) {
 }
 fn rect(value: turbo_dom_layout::layout_snapshot::Rect) -> [f64; 4] {
     [
-        value.x as f64,
-        value.y as f64,
-        value.width as f64,
-        value.height as f64,
+        f64::from(value.x),
+        f64::from(value.y),
+        f64::from(value.width),
+        f64::from(value.height),
     ]
 }
 fn snapshot(fonts: &FontRegistry, family: &str, size: f32) -> LayoutSnapshot {
@@ -105,7 +105,7 @@ fn snapshot(fonts: &FontRegistry, family: &str, size: f32) -> LayoutSnapshot {
                 path: vec![0, 0],
             },
         ],
-        &build_cascade("", "", Default::default()),
+        &build_cascade("", "", turbo_dom_layout::style::TokenSet::default()),
         &NativeTextOptions {
             original_text: &[],
             svg_viewports: &[],

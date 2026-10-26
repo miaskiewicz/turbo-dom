@@ -130,25 +130,23 @@ impl LayoutBox {
 
     /// The memoized max-content width, computing it once via `f` on a miss.
     pub(crate) fn natural_cached(&self, f: impl FnOnce() -> f32) -> f32 {
-        match self.natural_cache.get() {
-            Some(w) => w,
-            None => {
-                let w = f();
-                self.natural_cache.set(Some(w));
-                w
-            }
+        if let Some(w) = self.natural_cache.get() {
+            w
+        } else {
+            let w = f();
+            self.natural_cache.set(Some(w));
+            w
         }
     }
 
     /// The memoized min-content width, computing it once via `f` on a miss.
     pub(crate) fn min_content_cached(&self, f: impl FnOnce() -> f32) -> f32 {
-        match self.min_content_cache.get() {
-            Some(w) => w,
-            None => {
-                let w = f();
-                self.min_content_cache.set(Some(w));
-                w
-            }
+        if let Some(w) = self.min_content_cache.get() {
+            w
+        } else {
+            let w = f();
+            self.min_content_cache.set(Some(w));
+            w
         }
     }
 
@@ -428,7 +426,7 @@ impl Ids {
         Ids {
             next: 0,
             sources,
-            document_roots: Default::default(),
+            document_roots: std::collections::HashSet::default(),
             recorded: options.record_sources.then(Recorded::default),
             atomic_internal_links: options.atomic_internal_links,
         }
@@ -449,7 +447,7 @@ impl Ids {
     }
 
     fn element(&mut self, element: &StyledElement) -> NodeId {
-        let id = self.sourced(element as *const StyledElement as usize);
+        let id = self.sourced(std::ptr::from_ref::<StyledElement>(element) as usize);
         if let (Some(recorded), Some(source)) = (&mut self.recorded, element.source) {
             recorded.elements.insert(id, source);
         }
@@ -457,7 +455,7 @@ impl Ids {
     }
 
     fn text(&mut self, node: &StyledNode, text: &StyledText) -> NodeId {
-        let id = self.sourced(node as *const StyledNode as usize);
+        let id = self.sourced(std::ptr::from_ref::<StyledNode>(node) as usize);
         if let (Some(recorded), Some(source)) = (&mut self.recorded, text.source) {
             recorded.texts.insert(id, source);
         }
@@ -468,7 +466,7 @@ impl Ids {
         self.sources.as_ref().is_some_and(|sources| {
             sources
                 .svg_viewports
-                .contains(&(element as *const _ as usize))
+                .contains(&(std::ptr::from_ref(element) as usize))
         })
     }
 
@@ -562,12 +560,7 @@ fn clip_path_hides(style: &ComputedStyle) -> bool {
 
 /// A 0/1px box with clipped overflow — the modern visually-hidden pattern.
 fn tiny_clipped(style: &ComputedStyle) -> bool {
-    let tiny = |p: &str| {
-        matches!(
-            style.get(p).map(str::trim),
-            Some("0") | Some("0px") | Some("1px")
-        )
-    };
+    let tiny = |p: &str| matches!(style.get(p).map(str::trim), Some("0" | "0px" | "1px"));
     let overflow_hidden = ["overflow", "overflow-x", "overflow-y"]
         .iter()
         .any(|p| style.get(p).map(str::trim) == Some("hidden"));
@@ -630,6 +623,7 @@ fn is_internal_link(el: &StyledElement) -> bool {
             .is_some_and(|target| !target.is_empty())
 }
 
+#[allow(clippy::unnecessary_wraps)] // keeps the Option/Result shape its call sites (and sibling helpers) share
 fn classify_display(el: &StyledElement, ids: &mut Ids) -> Option<Level> {
     if native_out_of_flow(el, ids) {
         return Some(Level::Block(build_block_box(el, ids)));
@@ -819,7 +813,7 @@ fn source_role(element: &StyledElement, ids: &Ids) -> SourceRole {
         SourceRole::NativeIframe
     } else if ids
         .document_roots
-        .contains(&(element as *const StyledElement as usize))
+        .contains(&(std::ptr::from_ref::<StyledElement>(element) as usize))
     {
         SourceRole::DocumentRoot
     } else {
@@ -1006,7 +1000,7 @@ fn flex_grid_children(el: &StyledElement, ids: &mut Ids) -> Vec<LayoutBox> {
     let mut text = Vec::new();
     super::contents::visit(&el.children, &el.style, &mut |node, style| match node {
         StyledNode::Text(value) => text.push(text_item(node, value, style, ids)),
-        _ => {
+        StyledNode::Element(_) => {
             if let Some(child) = block_child(node, ids) {
                 flush_flex_text(&mut text, &el.style, ids, &mut boxes);
                 boxes.push(child);
@@ -1142,6 +1136,7 @@ fn build_flow(children: &[StyledNode], parent_style: &ComputedStyle, ids: &mut I
 
 /// Build the box tree for a document flow. The root is an anonymous block box
 /// (id 0) whose `kind` is the top-level formatting context.
+#[must_use]
 pub fn build_box_tree(styled: &[StyledNode]) -> LayoutBox {
     build_box_tree_with(styled, BuildOptions::default()).0
 }
@@ -1179,7 +1174,7 @@ pub(crate) fn build_sourced_tree(
 fn html_document_roots(styled: &[StyledNode]) -> std::collections::HashSet<usize> {
     styled.iter().filter_map(|node| match node {
         StyledNode::Element(element) if matches!(&element.tag, Tag::Html(name) if name.eq_ignore_ascii_case("html")) =>
-            Some(element as *const StyledElement as usize),
+            Some(std::ptr::from_ref::<StyledElement>(element) as usize),
         _ => None,
     }).collect()
 }
@@ -1240,7 +1235,7 @@ mod tests {
         })];
         build_box_tree(&style_nodes(
             &nodes,
-            &crate::style::build_cascade("", "", Default::default()),
+            &crate::style::build_cascade("", "", crate::style::TokenSet::default()),
         ))
     }
 

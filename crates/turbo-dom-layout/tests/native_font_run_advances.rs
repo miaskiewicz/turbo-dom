@@ -4,6 +4,7 @@
 use serde_json::Value;
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
+use std::fmt::Write as _;
 use std::sync::OnceLock;
 use turbo_dom_layout::layout::inline::{layout_paragraph, InlineRun, Piece};
 use turbo_dom_layout::layout::value::{Rgba, VAlign};
@@ -130,7 +131,7 @@ fn scene(row: &Value, decorated: bool) -> String {
         family,
         "<span id=split-a>a</span><span id=split-bc>bc</span>",
     ));
-    html.push_str(&format!("<div id=rotated style='width:1000px;font-family:\"{family}\";font-size:16px;line-height:24px;transform:rotate(15deg);transform-origin:0 0'><span id=rotated-text>abc</span></div>"));
+    let _ = write!(html, "<div id=rotated style='width:1000px;font-family:\"{family}\";font-size:16px;line-height:24px;transform:rotate(15deg);transform-origin:0 0'><span id=rotated-text>abc</span></div>");
     html
 }
 fn capture(row: &Value, decorated: bool, native: bool) -> (LayoutSnapshot, Ids) {
@@ -147,7 +148,7 @@ fn capture(row: &Value, decorated: bool, native: bool) -> (LayoutSnapshot, Ids) 
     })];
     let mut ids = Ids::default();
     identities(&nodes, &mut Vec::new(), None, &mut ids);
-    let cascade = build_cascade("", "", Default::default());
+    let cascade = build_cascade("", "", turbo_dom_layout::style::TokenSet::default());
     let images = ImageCtx {
         resolver: &NoImages,
         body_height: None,

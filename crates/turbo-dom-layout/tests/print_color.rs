@@ -76,7 +76,7 @@ fn laid_out_colors(accept: bool) -> (Option<Rgba>, u16) {
         view: TreeView::new(&tree),
         roots: Roots::Detached(&roots),
     };
-    let cascade = build_cascade("", "", Default::default());
+    let cascade = build_cascade("", "", turbo_dom_layout::style::TokenSet::default());
     let styled = style_input(
         &input,
         &cascade,
@@ -97,7 +97,7 @@ fn laid_out_colors(accept: bool) -> (Option<Rgba>, u16) {
             body_height: None,
         },
         &options,
-        &mut Default::default(),
+        &mut turbo_dom_layout::Diagnostics::default(),
     );
     let div = &galley.children[0];
     match &div.content {

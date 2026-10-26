@@ -141,7 +141,7 @@ fn fill_attrs(c: Rgba) -> String {
             c.r,
             c.g,
             c.b,
-            c.a as f32 / 255.0
+            f32::from(c.a) / 255.0
         )
     }
 }
@@ -221,7 +221,7 @@ fn paint_gradient(svg: &mut String, f: &Fragment, border_radius: f32, g: &CssGra
             s.color.r,
             s.color.g,
             s.color.b,
-            s.color.a as f32 / 255.0
+            f32::from(s.color.a) / 255.0
         );
     }
     let rr = if border_radius > 0.5 {
@@ -255,7 +255,11 @@ fn rect_r(svg: &mut String, x: f32, y: f32, w: f32, h: f32, c: Rgba, r: f32) {
 }
 
 fn paint_border(svg: &mut String, f: &Fragment, b: &BorderEdges) {
-    let side = |s: &BorderSide| s.color.filter(|_| s.width > 0).map(|c| (s.width as f32, c));
+    let side = |s: &BorderSide| {
+        s.color
+            .filter(|_| s.width > 0)
+            .map(|c| (f32::from(s.width), c))
+    };
     if let Some((w, c)) = side(&b.top) {
         rect(svg, f.x, f.y, f.width, w, c);
     }
@@ -312,7 +316,7 @@ fn paint_text(
     let Some(face) = glyph::parse_face(font_bytes, font_index) else {
         return;
     };
-    let scale = font_size / units_per_em as f32;
+    let scale = font_size / f32::from(units_per_em);
     let mut sink = PathSink::default();
     for g in glyphs {
         let pen = Pen {

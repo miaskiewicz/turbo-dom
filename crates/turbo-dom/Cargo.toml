@@ -36,30 +36,11 @@ log = "0.4"
 # (`zoom`), shared by turbo-dom-browser-env and native layout consumers.
 cssparser = "0.37"
 
-# Adopt clippy's opt-in `pedantic` group as a warn-level gate (CI's `-D warnings`
-# escalates it to an error). The lints allowed below don't fit a DOM / layout / parse
-# engine — "fixing" them would mangle correct, intentional code, so each is a
-# documented opt-out rather than a silent suppression.
-[lints.clippy]
-pedantic = { level = "warn", priority = -1 }
-# We bridge f64 layout math and integer indices/lengths with bounded, intentional casts.
-cast_possible_truncation = "allow"
-cast_precision_loss = "allow"
-cast_sign_loss = "allow"
-cast_possible_wrap = "allow"
-# Exact float comparisons here test canonical/sentinel values (e.g. `0.0`), not approximations.
-float_cmp = "allow"
-# Single-char names are idiomatic for the tokenizer / loop indices (`i`, `j`, `n`, `c`).
-many_single_char_names = "allow"
-# Test-time DOM oracle: it deliberately doesn't document every panic/error path.
-missing_panics_doc = "allow"
-missing_errors_doc = "allow"
-# A few config-ish structs legitimately carry several independent bool flags.
-struct_excessive_bools = "allow"
-# One large dispatch fn reads better intact than artificially split.
-too_many_lines = "allow"
-# We intentionally pin the concrete FxHashMap hasher rather than generalize over hashers.
-implicit_hasher = "allow"
+# clippy's opt-in `pedantic` group as a warn-level gate (CI's `-D warnings` escalates
+# it to an error), with the documented allow-list in the workspace root's
+# `[workspace.lints.clippy]` — shared with turbo-dom-layout and turbo-dom-raster.
+[lints]
+workspace = true
 
 [dev-dependencies]
 sha2 = "0.10"

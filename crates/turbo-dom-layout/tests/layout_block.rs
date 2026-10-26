@@ -2,7 +2,7 @@
 //! empty-block collapse-through), Lines/atomic/directive content, and the
 //! Flex/Table block-flow fallback. Driven through the real boxgen -> layout pipe.
 //!
-//! Split at the S1 relocation: the cases that need TKind directives, templating or the
+//! Split at the S1 relocation: the cases that need `TKind` directives, templating or the
 //! PDF emitter stay in turbo-html2pdf-core's `tests/layout_block.rs`.
 
 mod common;
@@ -973,7 +973,7 @@ fn percent_border_radius_resolves_against_box() {
         200.0,
     );
     let r = box_radius(&root.children[0]).expect("box");
-    assert!((r - 20.0).abs() < 0.5, "50% of 40 → 20, got {}", r);
+    assert!((r - 20.0).abs() < 0.5, "50% of 40 → 20, got {r}");
 }
 
 #[test]
