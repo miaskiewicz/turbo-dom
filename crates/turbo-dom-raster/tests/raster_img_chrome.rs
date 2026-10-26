@@ -116,18 +116,17 @@ fn data_url_images_paint_like_chrome_156() {
 
 /// An `<img>` with exactly `attrs` (Chrome's attributes of one image element).
 fn img(attrs: &serde_json::Map<String, serde_json::Value>) -> String {
-    let attrs: String = attrs
-        .iter()
-        .map(|(k, v)| {
-            let v = v
-                .as_str()
-                .unwrap()
-                .replace('&', "&amp;")
-                .replace('"', "&quot;");
-            format!(" {k}=\"{v}\"")
-        })
-        .collect();
-    format!("<img{attrs}>")
+    use std::fmt::Write as _;
+    let mut out = String::from("<img");
+    for (k, v) in attrs {
+        let v = v
+            .as_str()
+            .unwrap()
+            .replace('&', "&amp;")
+            .replace('"', "&quot;");
+        write!(out, " {k}=\"{v}\"").unwrap();
+    }
+    out + ">"
 }
 
 /// Every node of `tree` in document order (template content included) as text: an
@@ -170,7 +169,6 @@ fn img_srcs(tree: &Tree) -> Vec<Option<String>> {
 }
 
 #[test]
-#[ignore = "turbo-dom#27: fails until the fix"]
 fn img_text_is_not_an_image_like_chrome_156() {
     let mut failures = Vec::new();
     for case in cases("img-text-") {
