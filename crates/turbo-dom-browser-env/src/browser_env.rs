@@ -9898,6 +9898,9 @@ mod html_track_tests;
 #[cfg(test)]
 #[path = "shadow_events_tests.rs"]
 mod shadow_events_tests;
+#[cfg(test)]
+#[path = "svg_mathml_element_tests.rs"]
+mod svg_mathml_element_tests;
 
 #[cfg(test)]
 #[path = "css_live_tests.rs"]
