@@ -7,6 +7,70 @@ at the time); this file reconstructs them from history.
 
 ## [Unreleased]
 
+### Fixed — `getComputedStyle` defaults and no injected `<title>` (P5b-X3, miaskiewicz/turbo-surf#36 items 1–2, Chrome 156 control)
+- turbo-dom-browser-env: `getComputedStyle` used to return `""` for `display`, `position`
+  and `visibility` when no author rule applied; only `<button>` had UA values. It now
+  reports Chrome 156's computed values:
+  - `display` is the element's html.css display: block / inline / none / table-* /
+    list-item / inline-block / contents / ruby. `[hidden]`, a closed `dialog` or popover,
+    `input[type=hidden]` and `audio` without controls are `none`. MathML gives `math` /
+    `block math`.
+  - `display` is then blockified for floats, absolutely positioned elements and flex /
+    grid items, as in Chrome.
+  - `position` is `static`, except `dialog` (`absolute`) and `[popover]` (`fixed`).
+  - `visibility` is inherited and `visible` at the root.
+  - The CSS-wide keywords and shadow-scoped (`:host`) declarations resolve.
+  - Disconnected elements and children of `<video>` / `<audio>` report `""`, like Chrome.
+- turbo-dom-browser-env: the document no longer gets an empty `<title>` injected into
+  `<head>` at setup (`<!doctype html><body>` has an empty head, as in Chrome). Setting
+  `document.title` still creates the `<title>`.
+- Control: `src/computed_defaults_{probe.js,cases.json,chrome156.json}`, also exported as
+  `test_support::COMPUTED_DEFAULTS_*` (76 files) so turbo-surf can run it through
+  `PageSession`. Corpus: every surf `live-*` dump changes
+  (`tools/parity/expected/p5b-x3-surf-36.json`).
+
+### Changed — npm `:defined` and custom elements (P5b-X3, miaskiewicz/turbo-dom#26 item 2, Chrome 156 control)
+- The JS runtime keeps each element's HTML custom element state in lockstep with the Rust
+  tree (`src/runtime/custom-elements.mjs`): the creation-time rule (a valid custom element
+  name, or an `is` value from the parser, the fragment parser or `createElement(…, {is})`,
+  is "undefined"; later `is` edits never change it) and upgrades / constructions on top.
+  `:defined` in `matches` / `querySelector*` / `getComputedStyle` reads it instead of
+  looking the current name up in `window.customElements`, so a later `is` edit no longer
+  flips it and a detached element created before `define()` stays undefined (Chrome).
+- `window.customElements` is a working registry instead of a stub: `define()` upgrades the
+  document's candidates in shadow-including tree order (constructors run on the existing
+  element, `this` is the element, prototypes become the class's), insertion into the
+  document, `customElements.upgrade()`, `cloneNode` / `importNode` and `innerHTML` upgrade
+  too, `createElement` / `createElementNS` / `new C()` construct (customized built-ins
+  via `{ extends }` and `HTMLButtonElement` & co.), a throwing constructor leaves a failed
+  element (reported through `window.reportError`, not thrown), and `connectedCallback` /
+  `disconnectedCallback` / `attributeChangedCallback` (`observedAttributes`) /
+  `adoptedCallback` run. BREAKING for tests that relied on the stub: defined custom elements
+  now run their constructors and callbacks; an autonomous definition no longer makes a
+  `<button is=…>` of the same name match `:defined`. Documents without a touched
+  registry run every DOM path unchanged. New exports: `customElementState`,
+  `setCustomElementState`. Also `DocumentFragment` gains `firstElementChild` /
+  `lastElementChild` / `childElementCount` (template content traversal, used by the
+  control). Control: `crates/turbo-dom-browser-env/src/custom_elements_defined_chrome156.json`,
+  asserted by `test/custom-elements-chrome.test.mjs` (every section; the failed element is a
+  plain element, not an `HTMLUnknownElement`).
+
+### Added — `HTMLImageElement` `width` / `height` / `x` / `y` (P5b-X3, miaskiewicz/turbo-dom#26 item 1, Chrome 156 control)
+- turbo-dom-browser-env: `HTMLImageElement.prototype` gains the `width` / `height`
+  reflecting IDL attributes (HTML §4.8.4.3; `img.width` was `undefined`) and the CSSOM
+  View `x` / `y`, as Chrome's prototype accessors ("Illegal invocation" for other
+  receivers). The getters return the rendered box while the image is being rendered, which
+  the host answers through the new private hook `record.imageHost.setLayoutQuery(query)`
+  (`query(img)` → `{width, height, x, y}` or `null`); otherwise, as Blink, the attribute
+  when it parses as a non-negative integer (≤ 4294967295), else the natural size from
+  `imageHost.setState` (`0` without one), and `x` / `y` are `0`. The setters write the
+  attribute as unsigned long (ToUint32, above 2147483647 → `0`; Symbol / BigInt rejected
+  with Blink's "Failed to set the 'width' property …" TypeError). Without a query (turbo-test)
+  no image is being rendered. Control: `src/html_image_probe.js` gains a `dimensions` section
+  and `src/html_image_cases.json` rendered / `display: none` images with their layout
+  boxes (`layout`), recaptured on Chrome for Testing 156.0.8078.4 (earlier sections
+  unchanged).
+
 ### Fixed — turbo-dom-layout bug fixes (P5b-W1, Chrome 156 controls)
 Each fix is backed by a Chrome for Testing 156 control and lists the corpus outputs it
 changes in `tools/parity/expected/p5b-w1-*.json`.

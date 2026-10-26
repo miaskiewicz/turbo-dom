@@ -2491,7 +2491,8 @@ test('matchMedia removeEventListener no-op + customElements getName miss', async
   const mq = stubs.makeMatchMedia()('(max-width: 50px)');
   assert.equal(mq.removeEventListener('change', () => {}), undefined);
   assert.equal(mq.addListener(() => {}), undefined);
-  const ce = stubs.makeCustomElements();
+  const { makeCustomElements } = await import('../src/runtime/custom-elements.mjs');
+  const ce = makeCustomElements(null); // a registry without a document
   assert.equal(ce.getName(function Foo() {}), null); // not defined → null
   assert.equal(ce.upgrade(), undefined);
 });

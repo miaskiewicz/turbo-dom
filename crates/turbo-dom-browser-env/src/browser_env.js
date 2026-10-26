@@ -169,6 +169,76 @@
   }
   // Typed OM computes from the same cascade, read before used-value resolution.
   __ns.typedOmCascade={cascade:function(el){var sink={__proto__:null,values:null,order:{__proto__:null},count:0};computeStyleSnapshot(el,new computedSnapshotMap(),sink);return sink.values?{values:sink.values,order:sink.order}:null;},color:function(text){return normalizeComputedColor(text);},parent:function(el){var context=computedFontContext(el);return context?context[2]:null;}};
+  // Chrome 156 html.css display / position for an element no author rule styles (turbo-surf#36;
+  // computed_defaults_chrome156.json). The attribute-dependent rules are matched natively.
+  var uaDisplayByTag = (function(){
+    var table = { __proto__: null }, add = function(display, names){ names.split(' ').forEach(function(name){ table[name] = display; }); };
+    add('none', 'area base basefont datalist head link meta noembed noframes param rp script style template title');
+    add('block', 'html address blockquote body center dialog div figure figcaption footer form header hr legend listing main p plaintext pre search xmp article aside h1 h2 h3 h4 h5 h6 hgroup nav section dir dd dl dt menu ol ul fieldset details summary optgroup option frameset frame');
+    add('list-item', 'li');
+    add('inline-block', 'input select button textarea marquee meter progress');
+    add('table', 'table'); add('table-caption', 'caption'); add('table-column-group', 'colgroup'); add('table-column', 'col');
+    add('table-header-group', 'thead'); add('table-row-group', 'tbody'); add('table-footer-group', 'tfoot'); add('table-row', 'tr'); add('table-cell', 'td th');
+    add('ruby', 'ruby'); add('ruby-text', 'rt'); add('contents', 'slot');
+    return table;
+  })();
+  var uaDisplayRules = [
+    ['[hidden]:not([hidden=until-found i]):not(embed)', 'none'],
+    ['dialog:not([open])', 'none'],
+    ['[popover]:not(:popover-open):not(dialog[open])', 'none'],
+    ['input[type=hidden i]', 'none'],
+    ['audio:not([controls])', 'none'],
+    ['details > summary:first-of-type', 'list-item'],
+  ];
+  function computedNativeMatches(el, selector){ try { return !!cssApply(computedStyleNativeMatches, el, [selector]); } catch(e){ return false; } }
+  function computedUserAgentBox(el){
+    var namespace = '', tag = '';
+    try { namespace = cssApply(computedStyleNativeNamespace, el, []); tag = cssApply(computedStyleNativeTag, el, []); } catch(e){}
+    if (namespace === 'http://www.w3.org/1998/Math/MathML') {
+      var parent = null; try { var context = computedFontContext(el); parent = context ? context[2] : null; } catch(e){}
+      var parentNamespace = ''; try { if (parent) parentNamespace = cssApply(computedStyleNativeNamespace, parent, []); } catch(e){}
+      var inMath = parentNamespace === namespace;
+      return { display: inMath || computedNativeMatches(el, '[display=block i]') ? 'block math' : 'math', position: 'static' };
+    }
+    if (namespace !== 'http://www.w3.org/1999/xhtml') return { display: 'inline', position: 'static' };
+    var name = cssApply(cssFontLower, String(tag), []), display = null;
+    for (var i = 0; i < uaDisplayRules.length && display === null; i++) if (computedNativeMatches(el, uaDisplayRules[i][0])) display = uaDisplayRules[i][1];
+    if (display === null) display = uaDisplayByTag[name] || 'inline';
+    var position = computedNativeMatches(el, '[popover]') ? 'fixed' : name === 'dialog' ? 'absolute' : 'static';
+    return { display: display, position: position };
+  }
+  // CSS Display 3 blockification (floats, absolute / fixed positioning, flex / grid items).
+  var blockified = { __proto__: null, 'inline': 'block', 'inline-block': 'block', 'inline-table': 'table', 'inline-flex': 'flex', 'inline-grid': 'grid',
+    'table-row-group': 'block', 'table-header-group': 'block', 'table-footer-group': 'block', 'table-row': 'block', 'table-cell': 'block',
+    'table-column-group': 'block', 'table-column': 'block', 'table-caption': 'block', 'ruby': 'block', 'ruby-text': 'block', 'math': 'block math', 'inline math': 'block math' };
+  function blockifiedDisplay(display){ var key = cssApply(cssFontLower, display, []); return blockified[key] || display; }
+  // Is `el` a flex / grid item: its nearest composed ancestor that is not display: contents is a
+  // flex or grid container.
+  function computedFlexOrGridItem(el, parentStyle){
+    var node = el;
+    for (var depth = 0; depth < 64; depth++) {
+      var context = null; try { context = computedFontContext(node); } catch(e){}
+      var parent = context ? context[2] : null;
+      if (!parent) return false;
+      var display = computedSnapshotValue(parentStyle(parent), 'display');
+      if (display === 'contents') { node = parent; continue; }
+      return /^(inline-)?(flex|grid)$/.test(display);
+    }
+    return false;
+  }
+  function computedMediaChild(el){
+    var node = el;
+    for (var depth = 0; depth < 256; depth++) {
+      var context = null; try { context = computedFontContext(node); } catch(e){}
+      var parent = context ? context[2] : null;
+      if (!parent) return false;
+      var namespace = '', tag = '';
+      try { namespace = cssApply(computedStyleNativeNamespace, parent, []); tag = cssApply(computedStyleNativeTag, parent, []); } catch(e){}
+      if (namespace === 'http://www.w3.org/1999/xhtml' && (tag === 'VIDEO' || tag === 'AUDIO')) return true;
+      node = parent;
+    }
+    return false;
+  }
   function computeStyleSnapshot(el,snapshots,sink){
     var cached=el&&computedSnapshotGet(snapshots,el);if(cached)return cached;
     // Percentage lookup may visit several ancestors before font inheritance asks
@@ -258,21 +328,51 @@
     }
     var connected = false;
     try { connected = __ns.domAccessor('isConnected',false,'Node').call(el); } catch(e) {}
+    // Children of <video> / <audio> are outside the flat tree: Chrome computes no style for them.
+    if (connected && computedMediaChild(el)) connected = false;
     setProp('color', connected ? normalizeComputedColor(color) : '');
-    if (decl.display == null) decl.display = '';
+    // UA and initial values for display / position / visibility (turbo-surf#36), measured in
+    // computed_defaults_chrome156.json: an author / inline / shadow-scoped declaration wins, the
+    // CSS-wide keywords resolve (inherit -> the composed parent's value, initial / unset -> the
+    // initial value, revert -> the UA value), otherwise Chrome's html.css value; display is then
+    // blockified for floats, absolutely positioned elements and flex / grid items. Disconnected
+    // elements keep "" like every other default above.
+    var cascadedValue = function(name){
+      var value = decl[name];
+      if ((value == null || value === '') && el && typeof __ns.cascadeProp === 'function') { try { value = __ns.cascadeProp.call(el, name) || ''; } catch(e){ value = ''; } }
+      return value == null ? '' : String(value).trim();
+    };
+    var keyword = function(value){ var key = value.toLowerCase(); return /^(inherit|initial|unset|revert|revert-layer)$/.test(key) ? key : ''; };
+    if (connected) {
+      var ua = computedUserAgentBox(el);
+      var displayValue = cascadedValue('display'), displayKey = keyword(displayValue);
+      if (!displayValue || displayKey === 'revert' || displayKey === 'revert-layer') displayValue = ua.display;
+      else if (displayKey === 'inherit') displayValue = inheritedValue('display') || 'inline';
+      else if (displayKey) displayValue = 'inline';
+      var positionValue = cascadedValue('position'), positionKey = keyword(positionValue);
+      if (!positionValue || positionKey === 'revert' || positionKey === 'revert-layer') positionValue = ua.position;
+      else if (positionKey === 'inherit') positionValue = inheritedValue('position') || 'static';
+      else if (positionKey) positionValue = 'static';
+      positionValue = positionValue.toLowerCase();
+      var floatValue = String(decl['float'] == null ? '' : decl['float']).trim().toLowerCase();
+      var floated = floatValue !== '' && floatValue !== 'none' && !keyword(floatValue);
+      if (positionValue === 'absolute' || positionValue === 'fixed' || floated || computedFlexOrGridItem(el, parentStyle))
+        displayValue = blockifiedDisplay(displayValue);
+      decl.display = displayValue;
+      decl.position = positionValue;
+    } else if (decl.display == null) decl.display = '';
     // `visibility` is INHERITED: a child with no explicit visibility takes the parent's computed
     // value. testing-library / dom-accessibility-api rely on this — they treat an element as
     // inaccessible when getComputedStyle(el).visibility === 'hidden', expecting a hidden ancestor to
     // have propagated down. The JS cascade above only sees this element's own rules, so we defer to
-    // rtdom's native cascade (cascade::computed_style) which resolves inheritance. display is NOT
-    // inherited, so it is left as the element's own value.
-    if ((decl.visibility == null || decl.visibility === '') && el && typeof __ns.cascadeProp === 'function') {
-      try { decl.visibility = __ns.cascadeProp.call(el,'visibility') || ''; } catch(e){}
-    }
-    if (decl.visibility == null || decl.visibility === '' || /^(inherit|unset)$/i.test(String(decl.visibility))) {
-      try { decl.visibility = inheritedValue('visibility'); } catch(e){}
-    }
-    if (decl.visibility == null) decl.visibility = '';
+    // rtdom's native cascade (cascade::computed_style) for shadow-scoped rules; the composed
+    // parent's snapshot supplies inheritance and the root's value is the initial `visible`.
+    var visibilityValue = connected ? cascadedValue('visibility') : String(decl.visibility == null ? '' : decl.visibility);
+    var visibilityKey = keyword(visibilityValue);
+    if (visibilityKey === 'initial') visibilityValue = 'visible';
+    else if (connected && (visibilityValue === '' || visibilityKey)) { try { visibilityValue = inheritedValue('visibility'); } catch(e){ visibilityValue = ''; } }
+    if (!visibilityValue && connected) visibilityValue = 'visible';
+    decl.visibility = visibilityValue || '';
     // Initial computed values of properties Web Animations commonly animate.
     if (decl.opacity == null) decl.opacity = connected ? '1' : '';
     if (decl.transform == null) { decl.transform = connected ? 'none' : ''; }
@@ -942,16 +1042,16 @@ if(typeof __ns.makeNativeFunction==='function'){
   var shadowAdoptionDescriptor={configurable:true,enumerable:true,get:__ns.makeNativeFunction(readShadowAdoption,'get adoptedStyleSheets',0),set:__ns.makeNativeFunction(function(input){cssApply(readShadowAdoption,this,[]);return cssApply(replaceAdoption,this,[input]);},'set adoptedStyleSheets',1)};
   Object.defineProperty(d,'adoptedStyleSheets',adoptionDescriptor);adoptionState(d);
   documentCSSRecord.cssHost.readAdopted=function(owner){var target=adoptionState(owner||d).target,snapshot=cssHostArray();for(var i=0;i<target.length;i++)snapshot[i]=target[i];return snapshot;};
-  // document.title reflects the <title> element's text (jsdom semantics). Ensure a <title> exists in
-  // <head> so code that does querySelector('title').textContent = … (usePageMetadata) has a target,
-  // and reading document.title returns it.
+  // document.title reflects the <title> element's text (jsdom semantics). The setter creates a
+  // <title> in <head> on demand; the document never gets one it did not parse (Chrome:
+  // `<!doctype html><body>` has an empty <head>; turbo-surf#36, computed_defaults_chrome156.json).
+  // document_basics.js replaces this accessor with the spec-shaped Document.prototype.title.
   {
     var ensureTitle = function(){
       var el = d.querySelector && d.querySelector('title');
       if (!el) { el = d.createElement('title'); var head = (d.head) || (d.querySelector && d.querySelector('head')) || d.documentElement || d.body; if (head && head.appendChild) head.appendChild(el); }
       return el;
     };
-    try { ensureTitle(); } catch(e){}
     try { Object.defineProperty(d, 'title', { configurable: true,
       get: function(){ var el = d.querySelector && d.querySelector('title'); return el ? (el.textContent || '') : ''; },
       set: function(v){ var el = ensureTitle(); if (el) el.textContent = String(v == null ? '' : v); } }); } catch(e){}

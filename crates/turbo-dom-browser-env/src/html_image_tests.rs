@@ -100,16 +100,20 @@ fn mismatches(actual: &serde_json::Value, expected: &serde_json::Value) -> Vec<S
         .collect()
 }
 
-/// With the host's load state for the decodable image, every section matches Chrome.
+/// With the host's load state for the decodable images and its layout of the rendered ones,
+/// every section matches Chrome.
 #[test]
 fn image_state_with_host_load_state_matches_chrome156_control() {
     let expected = control();
     let loaded = &cases()[0]["loaded"];
+    // A loader decodes every image of the decodable URL; the host's layout answers the
+    // rendered boxes (`layout`: id -> [width, height, x, y]) and null for the others.
     let setup = format!(
-        "(()=>{{const img=document.getElementById('{}');imageHostForTest.setState(img,{{complete:true,naturalWidth:{},naturalHeight:{},currentSrc:img.getAttribute('src')}});return true;}})()",
+        "(()=>{{const src=document.getElementById('{}').getAttribute('src');for(const img of document.querySelectorAll('img'))if(img.getAttribute('src')===src)imageHostForTest.setState(img,{{complete:true,naturalWidth:{},naturalHeight:{},currentSrc:src}});const layout={};imageHostForTest.setLayoutQuery(img=>{{const box=layout[img.id];return box?{{width:box[0],height:box[1],x:box[2],y:box[3]}}:null;}});return true;}})()",
         loaded["id"].as_str().unwrap(),
         loaded["naturalWidth"],
-        loaded["naturalHeight"]
+        loaded["naturalHeight"],
+        cases()[0]["layout"]
     );
     let actual = probe_with(&setup);
     let found = mismatches(&actual, &expected);
@@ -117,9 +121,10 @@ fn image_state_with_host_load_state_matches_chrome156_control() {
     assert_eq!(actual, expected);
 }
 
-/// Without host state (turbo-test: nothing loads) images report Chrome's not-loading answer:
-/// everything matches except the decodable image's natural size and its `decode()` (resolved
-/// in Chrome, rejected as undecodable here), which only a loader knows.
+/// Without host state (turbo-test: nothing loads, nothing is laid out) images report Chrome's
+/// not-loading, not-rendered answer: everything matches except the decodable images' natural
+/// size, the loaded image's `decode()` (resolved in Chrome, rejected as undecodable here) and the
+/// rendered boxes (`width` / `height` / `x` / `y`), which only a loader and a layout know.
 #[test]
 fn image_state_without_host_reports_not_loading_defaults() {
     let mut expected = control();
@@ -135,6 +140,26 @@ fn image_state_without_host_reports_not_loading_defaults() {
     let decoded = &mut expected["decode"]["parsed"]["loaded"];
     assert_eq!(decoded, &serde_json::json!("resolved"));
     *decoded = undecodable;
+    // turbo-dom#26: without a layout no image is being rendered and nothing has a natural size,
+    // so width / height are the attribute (else 0) and x / y are 0 — Chrome's answer for the
+    // hidden images without a natural size ([width, height, x, y, naturalWidth, naturalHeight]).
+    let placed = &mut expected["dimensions"]["placed"];
+    assert_eq!(placed["sized"], serde_json::json!([40, 30, 20, 10, 3, 2]));
+    assert_eq!(placed["styled"], serde_json::json!([10, 5, 23, 40, 3, 2]));
+    assert_eq!(placed["intrinsic"], serde_json::json!([3, 2, 20, 45, 3, 2]));
+    assert_eq!(
+        placed["hiddenIntrinsic"],
+        serde_json::json!([3, 2, 0, 0, 3, 2])
+    );
+    for (id, row) in [
+        ("sized", serde_json::json!([40, 30, 0, 0, 0, 0])),
+        ("styled", serde_json::json!([40, 30, 0, 0, 0, 0])),
+        ("intrinsic", serde_json::json!([0, 0, 0, 0, 0, 0])),
+        ("hidden", serde_json::json!([40, 30, 0, 0, 0, 0])),
+        ("hiddenIntrinsic", serde_json::json!([0, 0, 0, 0, 0, 0])),
+    ] {
+        placed[id] = row;
+    }
     let found = mismatches(&actual, &expected);
     assert!(found.is_empty(), "{}", found.join("\n"));
     assert_eq!(actual, expected);
@@ -245,6 +270,69 @@ fn decode_settles_with_host_load_state() {
             "waiting": 0,
             "stillWaiting": 0,
             "log": ["a:resolved", "after:resolved", "b:resolved", "cleared:EncodingError", "failed:EncodingError"]
+        })
+    );
+}
+
+/// turbo-dom#26: the host's layout query — validation, clearing, coercions of its answer
+/// (width / height unsigned long, x / y long), "not rendered" for null / undefined, the
+/// attribute / natural-size fallbacks, and the query's call shape.
+#[test]
+fn image_host_layout_query_contract() {
+    let (result, _) = session(
+        r#"(()=>{
+          const img=document.createElement('img'),errors=[],calls=[];
+          img.setAttribute('width','12');
+          const view=i=>[i.width,i.height,i.x,i.y];
+          for(const query of [5,'f',{},true]){
+            try{imageHostForTest.setLayoutQuery(query);errors.push('accepted');}catch(e){errors.push(e.name+': '+e.message);}
+          }
+          const unset=view(img);
+          let answer={width:-1,height:'7.9',x:1.9,y:2147483648};
+          imageHostForTest.setLayoutQuery(function(image){'use strict';calls.push([image===img,this===undefined,arguments.length]);return answer;});
+          const coerced=view(img);
+          answer={width:4294967297,height:NaN};
+          const partial=view(img);
+          answer=null;
+          const notRendered=view(img);
+          answer=undefined;
+          imageHostForTest.setState(img,{complete:true,naturalWidth:5,naturalHeight:6});
+          const natural=view(img);
+          answer={width:20,height:10,x:3,y:4};
+          img.width=2147483648;
+          const written=[img.getAttribute('width'),...view(img)];
+          imageHostForTest.setLayoutQuery(()=>{throw new RangeError('layout');});
+          let thrown;
+          try{img.width;}catch(e){thrown=e.name+': '+e.message;}
+          imageHostForTest.setLayoutQuery(null);
+          const cleared=view(img);
+          imageHostForTest.setLayoutQuery(()=>({width:1,height:1,x:1,y:1}));
+          imageHostForTest.setLayoutQuery(undefined);
+          const undefinedCleared=view(img);
+          return {errors,unset,coerced,partial,notRendered,natural,written,thrown,cleared,undefinedCleared,calls:calls.length,shape:calls[0]};
+        })()"#,
+        false,
+    );
+    assert_eq!(
+        result,
+        serde_json::json!({
+            "errors": [
+                "TypeError: Layout query must be a function or null",
+                "TypeError: Layout query must be a function or null",
+                "TypeError: Layout query must be a function or null",
+                "TypeError: Layout query must be a function or null"
+            ],
+            "unset": [12, 0, 0, 0],
+            "coerced": [4294967295u32, 7, 1, -2147483648],
+            "partial": [1, 0, 0, 0],
+            "notRendered": [12, 0, 0, 0],
+            "natural": [12, 6, 0, 0],
+            "written": ["0", 20, 10, 3, 4],
+            "thrown": "RangeError: layout",
+            "cleared": [0, 6, 0, 0],
+            "undefinedCleared": [0, 6, 0, 0],
+            "calls": 20,
+            "shape": [true, true, 1]
         })
     );
 }

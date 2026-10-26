@@ -11,7 +11,8 @@
 //! Skipped (inherently JS-host / DOM-bound, no clean pure-Rust value API):
 //!   * `FileReader` — async `Promise`/event-driven Blob reading.
 //!   * `makeCanvasStub` — a JS `Proxy` no-op 2D context.
-//!   * `makeCustomElements` — registry returning JS constructors + Promises.
+//!   * `makeCustomElements` (now `custom-elements.mjs`) — registry returning JS constructors +
+//!     Promises (the name map is `rtdom::custom_elements`).
 //!   * `MutationObserver` — queue keyed to live DOM mutations.
 //!   * `makeLocation` / `makeHistory` — `URL`-backed navigation models.
 //!

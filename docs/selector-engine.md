@@ -168,6 +168,12 @@ Chrome 156 control and a parity expected-diff file `tools/parity/expected/p5b-x2
 | `:defined` after `define()` (#24 item 3) | the tree could not see the binding's registry: an upgraded custom element still matched `:not(:defined)`; the `is` rule read the current attribute | `Tree::custom_element_state` (`rtdom/custom_element_state.rs`): the binding reports upgrade / construction / failure (and carries the state through clones and adoption); otherwise the creation-time state (custom element names and the parser's `is` attribute are undefined; later `is` edits never change it; `createElement(…, {is})` is undefined) | `turbo-dom-browser-env/src/custom_elements_defined_chrome156.json` (binding test `defined_follows_upgrades_matching_chrome156`), `tests/custom_element_state.rs` |
 | `s` attribute modifier (#24 item 4) | a documented Rust extension of the lenient / `_checked` / stylesheet parsers (`[a=b s]` compared case-sensitively); the Chrome rows were skipped (`RUST_CONTRACT_ROWS`) | a SyntaxError in the checked APIs, never a match in the lenient ones, an invalid stylesheet rule — like Chrome and the npm engine | `cases/malformed` (`[a=b s]`, `[a=b S]`, `[a="1" s]`), `tests/fixtures/attribute-case` (7 `s` cases) |
 
+## What P5b-X3 changed (turbo-dom#26 item 2)
+
+| item | before | now (Chrome 156) | control |
+|---|---|---|---|
+| npm `:defined` | `selectors.mjs` looked the name up in `window.customElements` and read the current `is` attribute: a later `is` edit changed `:defined`, a defined name matched before any upgrade (detached elements too), and the stub registry never upgraded or constructed anything | `src/runtime/custom-elements.mjs` keeps each element's custom element state with the Rust tree's creation-time rule (custom names and the parser's / `createElement(…, {is})` / fragment parser's `is` value are undefined; later edits never change it); the registry upgrades connected candidates on `define()`, on insertion, `customElements.upgrade()`, clones and `innerHTML`, constructs on `createElement` / `new C()`, leaves a throwing constructor's element failed, and runs the lifecycle callbacks; `customElementState` / `setCustomElementState` are exported | `turbo-dom-browser-env/src/custom_elements_defined_chrome156.json` (`test/custom-elements-chrome.test.mjs`; every section but the failed element's interface name), `test/custom-elements.test.mjs` |
+
 ## Regenerating the Chrome control
 
 ```bash

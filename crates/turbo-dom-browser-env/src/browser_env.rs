@@ -9569,6 +9569,9 @@ mod frame_tokens_tests;
 mod html_meta_tests;
 
 #[cfg(test)]
+#[path = "computed_defaults_tests.rs"]
+mod computed_defaults_tests;
+#[cfg(test)]
 #[path = "html_image_tests.rs"]
 mod html_image_tests;
 

@@ -40,6 +40,13 @@ pub const ANIMATIONS_FRAMES_CASES_JSON: &[u8] = include_bytes!("animations_frame
 pub const ANIMATIONS_FRAMES_CHROME156_JSON: &str = include_str!("animations_frames_chrome156.json");
 /// `src/animations_frames_probe.js`.
 pub const ANIMATIONS_FRAMES_PROBE_JS: &str = include_str!("animations_frames_probe.js");
+/// `src/computed_defaults_cases.json` (turbo-surf#36: UA display / position / visibility
+/// defaults, and documents without a parsed `<title>`).
+pub const COMPUTED_DEFAULTS_CASES_JSON: &[u8] = include_bytes!("computed_defaults_cases.json");
+/// `src/computed_defaults_chrome156.json`.
+pub const COMPUTED_DEFAULTS_CHROME156_JSON: &str = include_str!("computed_defaults_chrome156.json");
+/// `src/computed_defaults_probe.js` (getComputedStyle defaults + `<head>` contents; sync).
+pub const COMPUTED_DEFAULTS_PROBE_JS: &str = include_str!("computed_defaults_probe.js");
 /// `src/control_labels_chrome155.json`.
 pub const CONTROL_LABELS_CHROME155_JSON: &str = include_str!("control_labels_chrome155.json");
 /// `src/control_labels_gc_chrome155.json`.
@@ -155,11 +162,12 @@ pub const FORMDATA_EVENT_PROBE_JS: &str = include_str!("formdata_event_probe.js"
 pub const FORMDATA_GUARDS_CHROME155_JSON: &str = include_str!("formdata_guards_chrome155.json");
 /// `src/formdata_guards_probe.js`.
 pub const FORMDATA_GUARDS_PROBE_JS: &str = include_str!("formdata_guards_probe.js");
-/// `src/html_image_cases.json` (turbo-surf#32: the parsed images and the decodable one's size).
+/// `src/html_image_cases.json` (turbo-surf#32 / turbo-dom#26: the parsed images, the decodable
+/// one's natural size and the rendered images' layout boxes, `layout`: id -> [width, height, x, y]).
 pub const HTML_IMAGE_CASES_JSON: &[u8] = include_bytes!("html_image_cases.json");
 /// `src/html_image_chrome156.json`.
 pub const HTML_IMAGE_CHROME156_JSON: &str = include_str!("html_image_chrome156.json");
-/// `src/html_image_probe.js` (HTMLImageElement image-state accessors; async).
+/// `src/html_image_probe.js` (HTMLImageElement image-state and width / height / x / y accessors; async).
 pub const HTML_IMAGE_PROBE_JS: &str = include_str!("html_image_probe.js");
 /// `src/key_order_chrome156.json`.
 pub const KEY_ORDER_CHROME156_JSON: &str = include_str!("key_order_chrome156.json");
@@ -224,6 +232,15 @@ pub const FILES: &[(&str, &[u8])] = &[
     (
         "animations_frames_probe.js",
         ANIMATIONS_FRAMES_PROBE_JS.as_bytes(),
+    ),
+    ("computed_defaults_cases.json", COMPUTED_DEFAULTS_CASES_JSON),
+    (
+        "computed_defaults_chrome156.json",
+        COMPUTED_DEFAULTS_CHROME156_JSON.as_bytes(),
+    ),
+    (
+        "computed_defaults_probe.js",
+        COMPUTED_DEFAULTS_PROBE_JS.as_bytes(),
     ),
     (
         "control_labels_chrome155.json",

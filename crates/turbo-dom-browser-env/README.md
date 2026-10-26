@@ -74,13 +74,14 @@ bytes), named after the file (`KEY_ORDER_PROBE_JS`, `ANIMATIONS_FRAMES_CASES_JSO
 …), plus `FILES` (file name → bytes) and `frame_read_should_throw` (the
 frame-read interceptor source, for accessor agreement tests). The files ship in
 the package under `src/`; consumers reference the constants, never copy files.
-The 73 files are what turbo-surf's Chrome-parity integration tests read,
+The 76 files are what turbo-surf's Chrome-parity integration tests read,
 including the custom-element lifecycle contract (`tests/custom_elements.rs`:
 `CUSTOM_ELEMENTS{,_EXTENDED,_REACTIONS,_IDL,_MOVES,_CALLBACKS,_RETIRED}_*`,
 `DOM_PARSER_OBSERVER_LIFECYCLE_*`, `CSS_ADOPTION_LIFECYCLE_*` probe/control pairs)
 the image-state control (`HTML_IMAGE_{PROBE_JS,CASES_JSON,CHROME156_JSON}`) an
-image-loading host runs through its own loader, and the `:defined` control
-(`CUSTOM_ELEMENTS_DEFINED_{PROBE_JS,CASES_JSON,CHROME156_JSON}`).
+image-loading host runs through its own loader and layout, the `:defined` control
+(`CUSTOM_ELEMENTS_DEFINED_{PROBE_JS,CASES_JSON,CHROME156_JSON}`), and the computed-style
+defaults / `<head>` control (`COMPUTED_DEFAULTS_{PROBE_JS,CASES_JSON,CHROME156_JSON}`).
 Add a constant (and its `FILES` entry) when another consumer needs a file.
 `tests/test_support_api.rs` checks every constant against its file and every
 probe/control pair's recorded `probeSha256`.
@@ -108,6 +109,27 @@ the state when called (`complete` → boolean, sizes → unsigned long, `current
 string, missing → `""`) and keeps it until the host replaces or clears it, so the
 host updates it whenever a load starts or ends (including `src` changes).
 
+`width` / `height` are Chrome's unsigned long accessors reflecting the content
+attributes (HTML §4.8.4.3; setters write the attribute, above 2147483647 → `0`), and
+`x` / `y` the read-only CSSOM View box position. While an image is being rendered the
+getters return its layout box; the binding has no layout, so the host answers through
+the same record:
+
+```js
+record.imageHost.setLayoutQuery((img) =>
+  rendered(img) ? { width, height, x, y } : null);       // content-box size, ICB position (CSS px)
+record.imageHost.setLayoutQuery(null);                   // no layout: nothing is rendered
+```
+
+The query runs on every read (page JS may have changed the DOM since the last one)
+with the image as its only argument; `width` / `height` are converted as unsigned long
+and `x` / `y` as long. For an image it answers `null` / `undefined` for (or without a
+query, as in turbo-test) the getters follow Blink's not-rendered path: the attribute
+when it parses as a non-negative integer (up to 4294967295: `"12px"` → 12, `"-1"` and
+`"4294967296"` fall through), else the natural size from `setState` (`0` without one);
+`x` / `y` are `0`. Control: `src/html_image_chrome156.json` `dimensions` (rendered,
+`display: none` and detached images, attribute parsing, setter conversions).
+
 `HTMLImageElement.prototype.decode()` resolves when the host's state is complete
 with a natural size and rejects with an `EncodingError` otherwise (no source,
 broken, not loading); called while the host reports `complete: false` it settles
@@ -117,6 +139,21 @@ prototype honoured) creates an ordinary `<img>` with the `width` / `height`
 attributes — no own `src`, no fake `onload`: loads (and their `load` / `error`
 events) are the host's. Control: `src/html_image_chrome156.json` (`factory`, `own`,
 `decode` sections).
+
+### Computed style defaults
+
+`getComputedStyle` (the binding's cascade over document sheets, inline style and
+shadow-scoped rules) reports Chrome 156's computed values where no author rule
+applies. `display` is the element's html.css display: block / inline / none /
+table-* / list-item / inline-block / contents / ruby, plus `[hidden]`,
+`dialog:not([open])`, closed popovers, `input[type=hidden]` and `audio` without
+controls → `none`, and MathML `math` / `block math`. It is then blockified for
+floats, `position: absolute` / `fixed` and flex / grid items. `position` is
+`static` (`dialog` → `absolute`, `[popover]` → `fixed`), and `visibility` is
+inherited, `visible` at the root. `inherit` / `initial` / `unset` / `revert`
+resolve. Disconnected elements and children of `<video>` / `<audio>` report `""`, as
+in Chrome. Control: `src/computed_defaults_chrome156.json`, which also records that
+a document has no `<title>` it did not parse (`document.title = …` creates one).
 
 ### Custom element state (`:defined`)
 

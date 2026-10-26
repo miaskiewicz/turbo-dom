@@ -162,7 +162,8 @@ package or publish workflow.
   from the parser tree and memoize for identity (`dom.mjs` `Document.__inflate`); the window
   Proxy (`window.mjs`) self-replaces lazy globals and traces touched ones. Selectors read the
   internal `node.__children()` array, NOT the live `childNodes` Proxy. Honest stubs in
-  `stubs.mjs`. Two deliberate non-honest areas (both test-time only, see notes below):
+  `stubs.mjs`; custom elements (state, registry, upgrades, lifecycle callbacks) in
+  `custom-elements.mjs`, hooked into `dom.mjs` only once a registry exists (`Document.__ceRegistry`). Two deliberate non-honest areas (both test-time only, see notes below):
   the partial style cascade in `cascade.mjs`, and the **synthetic geometry** in `dom.mjs`
   (`getBoundingClientRect`/offset/client/scroll **size** are non-zero — positions stay 0 —
   because honest-zero deadlocks React's measure→setState→re-measure loop). Validated by `test/differential.test.mjs`
@@ -219,7 +220,9 @@ package or publish workflow.
   `querySelector` (the `parse_for_cascade` grammar). The npm JS engine `src/runtime/selectors.mjs`
   is kept in lockstep: `test/selectors-chrome.test.mjs` asserts the same fixture (every
   invalid selector throws `SyntaxError`). `:defined` reads `Tree::custom_element_state` (creation-time
-  state unless an embedder — the V8 binding — reports an upgrade); `rtdom::cascade` / `cascade.mjs` rank
+  state unless an embedder — the V8 binding — reports an upgrade); the npm engine reads the same state
+  from `src/runtime/custom-elements.mjs` (its registry upgrades / constructs like Chrome; both checked
+  against `custom_elements_defined_chrome156.json`); `rtdom::cascade` / `cascade.mjs` rank
   rules by each item's Selectors 4 `specificity()`. See `docs/selector-engine.md`.
 - **Selector parse cache** (`__selectorCache` in selectors.mjs) memoizes selector STRING → AST.
   Pure (DOM-independent) → no mutation invalidation. Never cache *results* without it.
