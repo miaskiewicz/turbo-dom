@@ -119,6 +119,15 @@ pub mod literal {
                 Node::Text(_) => None,
             }
         }
+
+        /// Borrow the text if this literal is a text node.
+        #[must_use]
+        pub fn as_text(&self) -> Option<&str> {
+            match self {
+                Node::Text(t) => Some(t),
+                Node::Element(_) => None,
+            }
+        }
     }
 
     /// The element name a [`Tag::Marker`] literal gets in its [`Tree`]
