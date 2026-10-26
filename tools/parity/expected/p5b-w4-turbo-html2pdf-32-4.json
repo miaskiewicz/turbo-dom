@@ -1,0 +1,13 @@
+{
+ "id": "turbo-html2pdf#32 item 4",
+ "reason": "A split block whose first content starts a page after an unforced break keeps its top border and padding (and the margins inside them) above that content; only its own margin is truncated (187cfc2). No corpus input exercises it: Attribution: napi builds (plain + svg, fresh target dirs, git-archived commits) of turbo-html2pdf consol/p5b-w4 against turbo-dom 79a94d3, each step vs the previous: 187cfc2 vs its parent = 0 outputs in every corpus. P5b-W4.",
+ "control": "turbo-html2pdf crates/turbo-html2pdf-core/tests/fixtures/pagination_chrome156.json (scripts/pagination-chrome-control.mjs: Chrome for Testing 156.0.8078.4 page.pdf() of 600x400px @page boxes, pdftoppm -r 96) cases split-block-page-start, split-block-page-start-nested",
+ "e2e": "turbo-html2pdf crates/turbo-html2pdf-core/tests/pagination_chrome.rs (+ tests/paginate.rs); every control case also matches through the emitted PDF (pdftoppm) except exact-fill-child-margin (turbo-dom#41)",
+ "changes": {
+  "html2pdf": [],
+  "html2pdf-svg": [],
+  "html2pdf-extra": [],
+  "surf": [],
+  "surf-extra": []
+ }
+}

@@ -1,0 +1,13 @@
+{
+ "id": "turbo-html2pdf#32 item 2",
+ "reason": "The root (or propagated <body>) background paints the page area only: already true of the emitter since #29 (emit/page.rs paint_canvas fills the area inside the @page margins); the pagination test now paints the canvas and Chrome's canvas cases match. No code change, no corpus output changes. P5b-W4.",
+ "control": "turbo-html2pdf crates/turbo-html2pdf-core/tests/fixtures/pagination_chrome156.json (scripts/pagination-chrome-control.mjs: Chrome for Testing 156.0.8078.4 page.pdf() of 600x400px @page boxes, pdftoppm -r 96) cases canvas-root-background, canvas-body-background, body-background-not-propagated",
+ "e2e": "turbo-html2pdf crates/turbo-html2pdf-core/tests/pagination_chrome.rs (+ tests/paginate.rs); every control case also matches through the emitted PDF (pdftoppm) except exact-fill-child-margin (turbo-dom#41)",
+ "changes": {
+  "html2pdf": [],
+  "html2pdf-svg": [],
+  "html2pdf-extra": [],
+  "surf": [],
+  "surf-extra": []
+ }
+}
