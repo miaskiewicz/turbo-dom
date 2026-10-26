@@ -269,6 +269,20 @@ const CASES = [
   { id: "table-columns-empty-auto-table", html: DOC(S("body{margin:0}td{padding:0}"), `<table data-cid="t"><tr><td data-cid="a"></td><td data-cid="b"></td></tr></table>`) },
   { id: "table-columns-fixed-beside-content", html: DOC(S("body{margin:0}table{width:400px;border-spacing:0}td{padding:0}"), `<table data-cid="t"><tr><td data-cid="a" style="width:100px"></td><td data-cid="b"><div style="width:30px;height:10px"></div></td></tr></table>`) },
   { id: "table-columns-fixed-content-and-empty", html: DOC(S("body{margin:0}table{width:400px;border-spacing:0}td{padding:0}"), `<table data-cid="t"><tr><td data-cid="a" style="width:100px"><div style="width:30px;height:10px"></div></td><td data-cid="b"><div style="width:30px;height:10px"></div></td><td data-cid="c"></td></tr></table>`) },
+  // P5b-W5, miaskiewicz/turbo-dom#41: a last child's bottom margin is kept inside a parent
+  // with a bottom border/padding, a definite or minimum height, or its own formatting
+  // context, and otherwise collapses through it (CSS 2.2 §8.3.1) — on every layout policy.
+  { id: "last-margin-inside-padding", html: DOC(S("body{margin:0}"), `<div data-cid="w" style="padding-bottom:20px"><div style="height:100px"></div><div data-cid="k" style="height:200px;margin-bottom:20px"></div></div><div data-cid="g" style="height:60px"></div>`) },
+  { id: "last-margin-collapses-through", html: DOC(S("body{margin:0}"), `<div data-cid="w"><div style="height:100px"></div><div data-cid="k" style="height:200px;margin-bottom:20px"></div></div><div data-cid="g" style="height:60px"></div>`) },
+  { id: "last-margin-inside-border", html: DOC(S("body{margin:0}"), `<div data-cid="w" style="border-bottom:3px solid"><div style="height:100px"></div><div data-cid="k" style="height:200px;margin-bottom:20px"></div></div><div data-cid="g" style="height:60px"></div>`) },
+  { id: "last-margin-inside-bfc", html: DOC(S("body{margin:0}"), `<div data-cid="w" style="overflow:hidden"><div style="height:100px"></div><div data-cid="k" style="height:200px;margin-bottom:20px"></div></div><div data-cid="g" style="height:60px"></div>`) },
+  { id: "last-margin-height-auto-nested", html: DOC(S("body{margin:0}"), `<div data-cid="w"><div data-cid="v"><div style="height:100px"></div><div data-cid="k" style="height:200px;margin-bottom:20px"></div></div></div><div data-cid="g" style="height:60px"></div>`) },
+  { id: "last-margin-collapses-with-parent-margin", html: DOC(S("body{margin:0}"), `<div data-cid="w" style="margin-bottom:30px"><div style="height:100px"></div><div data-cid="k" style="height:200px;margin-bottom:20px"></div></div><div data-cid="g" style="height:60px"></div>`) },
+  { id: "last-margin-collapses-with-next-margin", html: DOC(S("body{margin:0}"), `<div data-cid="w"><div style="height:100px"></div><div data-cid="k" style="height:200px;margin-bottom:20px"></div></div><div data-cid="g" style="height:60px;margin-top:35px"></div>`) },
+  { id: "last-margin-negative", html: DOC(S("body{margin:0}"), `<div data-cid="w" style="padding-bottom:5px"><div data-cid="k" style="height:20px;margin-bottom:-10px"></div></div><div data-cid="g" style="height:60px"></div>`) },
+  { id: "last-margin-in-table-cell", html: DOC(S("body{margin:0}"), `<table data-cid="t" style="border-spacing:0"><tr><td data-cid="td" style="padding:0"><p data-cid="p" style="margin:10px 0 15px;height:20px"></p></td></tr></table><div data-cid="g" style="height:60px"></div>`) },
+  { id: "last-margin-in-flex-item", html: DOC(S("body{margin:0}"), `<div data-cid="f" style="display:flex"><div data-cid="w"><div style="height:100px"></div><div data-cid="k" style="height:200px;margin-bottom:20px"></div></div></div><div data-cid="g" style="height:60px"></div>`) },
+  { id: "last-margin-in-float", html: DOC(S("body{margin:0}"), `<div data-cid="w" style="float:left;width:50px"><div style="height:100px"></div><div data-cid="k" style="height:200px;margin-bottom:20px"></div></div><div data-cid="g" style="height:60px;clear:both"></div>`) },
 ];
 
 /** The RGB of a 1x1 PNG screenshot (any filter: a single pixel's filter adds 0). */

@@ -103,7 +103,7 @@ fn inline_flex_grid_case(id: &str) -> bool {
 /// The control cases of an open bug, each asserted by its own test (`#[ignore]`d until
 /// its fix lands) and held out of [`html_documents_lay_out_as_chrome_156`].
 fn held_out(id: &str) -> bool {
-    let groups: [fn(&str) -> bool; 12] = [
+    let groups: [fn(&str) -> bool; 13] = [
         auto_table_case,
         inline_flex_grid_case,
         abs_auto_width_case,
@@ -116,6 +116,7 @@ fn held_out(id: &str) -> bool {
         spacing_case,
         table_height_case,
         column_growth_case,
+        last_margin_case,
     ];
     groups.iter().any(|group| group(id))
 }
@@ -239,4 +240,15 @@ fn column_growth_case(id: &str) -> bool {
 #[test]
 fn extra_table_width_goes_to_auto_columns_like_chrome_156() {
     compare_cases(column_growth_case);
+}
+
+/// miaskiewicz/turbo-dom#41: a last child's bottom margin under every layout policy.
+fn last_margin_case(id: &str) -> bool {
+    id.starts_with("last-margin-")
+}
+
+#[test]
+#[ignore = "miaskiewicz/turbo-dom#41: fails until the fix"]
+fn last_child_bottom_margins_like_chrome_156() {
+    compare_cases(last_margin_case);
 }
