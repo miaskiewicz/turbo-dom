@@ -70,6 +70,7 @@ at the time); this file reconstructs them from history.
   and `src/html_image_cases.json` rendered / `display: none` images with their layout
   boxes (`layout`), recaptured on Chrome for Testing 156.0.8078.4 (earlier sections
   unchanged).
+
 ### Fixed — turbo-dom-layout bug fixes (P5b-W1, Chrome 156 controls)
 Each fix is backed by a Chrome for Testing 156 control and lists the corpus outputs it
 changes in `tools/parity/expected/p5b-w1-*.json`.
