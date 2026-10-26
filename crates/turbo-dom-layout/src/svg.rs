@@ -149,6 +149,85 @@ pub fn rasterize(bytes: &[u8], scale: f32, oversize: Oversize) -> Option<Rgba8Im
     })
 }
 
+/// The natural size a browser reports for an SVG `<img>` (`naturalWidth`/`naturalHeight`
+/// before rounding — Chrome 156 rounds to the nearest integer), from the root element's
+/// `width`/`height` (absolute lengths: plain numbers or `px`) and `viewBox` ratio:
+/// both lengths as given; one length, the other from the ratio (else the 300x150
+/// default object size's axis); neither, the largest box of the ratio inside 300x150
+/// (else 300x150). `None` if the bytes are not a parseable SVG. turbo-surf's live image
+/// loads size SVGs with this (see [`crate::image::probe_natural`]); the screenshot
+/// painter keeps laying SVGs out at [`css_size`].
+#[must_use]
+pub fn natural_size(bytes: &[u8]) -> Option<(f32, f32)> {
+    parse(bytes)?;
+    let text = std::str::from_utf8(bytes).ok()?;
+    let start = text.find("<svg")?;
+    let tag = &text[start..start + text[start..].find('>')?];
+    let (width, height) = (svg_length(tag, "width"), svg_length(tag, "height"));
+    let ratio = view_box_ratio(tag).or_else(|| width.zip(height).map(|(w, h)| w / h));
+    Some(natural_from(width, height, ratio))
+}
+
+/// The natural size from the root's lengths and ratio (the 300x150 default object size
+/// fills what is missing — "contain" when only the ratio is known).
+fn natural_from(width: Option<f32>, height: Option<f32>, ratio: Option<f32>) -> (f32, f32) {
+    match (width, height, ratio) {
+        (Some(w), Some(h), _) => (w, h),
+        (Some(w), None, r) => (w, r.map_or(150.0, |r| w / r)),
+        (None, Some(h), r) => (r.map_or(300.0, |r| h * r), h),
+        (None, None, Some(r)) => contain_default(r),
+        (None, None, None) => (300.0, 150.0),
+    }
+}
+
+/// The largest box of aspect ratio `r` inside the 300x150 default object size.
+fn contain_default(r: f32) -> (f32, f32) {
+    if 300.0 / r <= 150.0 {
+        (300.0, 300.0 / r)
+    } else {
+        (150.0 * r, 150.0)
+    }
+}
+
+/// An absolute length attribute of the root tag (a plain number or `px`), if positive.
+fn svg_length(tag: &str, name: &str) -> Option<f32> {
+    let v = svg_attr(tag, name)?.trim();
+    let v = v.strip_suffix("px").unwrap_or(v).trim();
+    v.parse::<f32>().ok().filter(|n| n.is_finite() && *n > 0.0)
+}
+
+/// The width/height ratio of the root's `viewBox`, if it is four numbers with a
+/// positive size.
+fn view_box_ratio(tag: &str) -> Option<f32> {
+    let n: Vec<f32> = svg_attr(tag, "viewBox")?
+        .split(|c: char| c.is_whitespace() || c == ',')
+        .filter(|t| !t.is_empty())
+        .filter_map(|t| t.parse().ok())
+        .collect();
+    (n.len() == 4 && n[2] > 0.0 && n[3] > 0.0).then(|| n[2] / n[3])
+}
+
+/// The quoted value of attribute `name` in an opening tag (a whole attribute name:
+/// preceded by whitespace).
+fn svg_attr<'t>(tag: &'t str, name: &str) -> Option<&'t str> {
+    let mut rest = tag;
+    loop {
+        let at = rest.find(name)?;
+        let preceded = rest[..at].ends_with(char::is_whitespace);
+        rest = &rest[at + name.len()..];
+        if preceded {
+            return quoted_value(rest);
+        }
+    }
+}
+
+/// The value of `= "…"` / `= '…'` at the start of `rest`.
+fn quoted_value(rest: &str) -> Option<&str> {
+    let value = rest.trim_start().strip_prefix('=')?.trim_start();
+    let quote = value.chars().next().filter(|&q| q == '"' || q == '\'')?;
+    value[1..].split(quote).next()
+}
+
 /// The PDF pipeline's intrinsic size of an SVG: its [`PDF_SVG_SCALE`] pixel size
 /// (the box is laid out at it). Reports `has_alpha = true`: a rasterized SVG always
 /// carries an alpha plane (its background is transparent), so the emitter writes an
@@ -157,11 +236,7 @@ pub fn rasterize(bytes: &[u8], scale: f32, oversize: Oversize) -> Option<Rgba8Im
 pub fn probe_svg(bytes: &[u8]) -> Option<Intrinsic> {
     let tree = parse(bytes)?;
     let (width, height) = pixel_size(css_size(&tree), PDF_SVG_SCALE, Oversize::Clamp)?;
-    Some(Intrinsic {
-        width,
-        height,
-        has_alpha: true,
-    })
+    Some(Intrinsic::new(width, height, true))
 }
 
 /// Rasterize SVG bytes into an embeddable [`RasterImage`] (PDF pipeline, 2x): RGB

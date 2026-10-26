@@ -320,11 +320,11 @@ mod svg_oracle {
     fn old_probe(bytes: &[u8]) -> Option<Intrinsic> {
         let tree = usvg::Tree::from_data(bytes, &usvg::Options::default()).ok()?;
         let size = tree.size();
-        Some(Intrinsic {
-            width: old_axis(size.width())?,
-            height: old_axis(size.height())?,
-            has_alpha: true,
-        })
+        Some(Intrinsic::new(
+            old_axis(size.width())?,
+            old_axis(size.height())?,
+            true,
+        ))
     }
 
     fn old_decode(bytes: &[u8]) -> Option<RasterImage> {

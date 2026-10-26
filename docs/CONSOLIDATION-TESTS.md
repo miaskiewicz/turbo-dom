@@ -1118,7 +1118,9 @@ No behaviour change: every cargo result equals 9cac873's except the tests below.
 
 The `turbo-dom-layout --no-default-features` baseline-red set (44 tests, turbo-html2pdf#28)
 is now a committed list, `scripts/baseline-red/turbo-dom-layout-no-default-features.tsv`,
-checked exactly by `scripts/check-baseline-red.py` in CI.
+checked exactly by `scripts/check-baseline-red.py` in CI. (P5b: 43 —
+`layout_flex::deeply_nested_flex_is_not_exponential` passes since turbo-html2pdf#29: the
+body's 8px UA margin gives the font-less galley a height.)
 
 ## S5a — image layer, legacy Node input removal, fonts dedupe, lints (turbo-dom `consol/s5a-image`, turbo-html2pdf `consol/s5a-image`)
 

@@ -10,7 +10,8 @@
 //! only the width cap applies — the height clamp is then a no-op hook the caller
 //! fills by threading `body_height` (see `ImageCtx`).
 
-use crate::image::Intrinsic;
+use crate::image::{ImageResolver, Intrinsic};
+use crate::style::ComputedStyle;
 
 use super::fragment::ImagePlacement;
 use super::value::{BoxStyle, LengthPct};
@@ -234,8 +235,22 @@ fn constrain_ratio(w: f32, h: f32, limits: &Limits) -> (f32, f32) {
     )
 }
 
+/// The intrinsic size an image box lays out with: the resolver's probe of `name`, as
+/// displayed under the box's `image-orientation` (`from-image`, the default, applies the
+/// image's EXIF orientation — width/height swap for orientations 5–8; `none` keeps the
+/// stored pixels). Chrome 156-controlled (turbo-dom
+/// `scripts/image-orientation-chrome-control.mjs`).
+pub(crate) fn box_intrinsic(
+    resolver: &dyn ImageResolver,
+    name: &str,
+    style: &ComputedStyle,
+) -> Option<Intrinsic> {
+    let from_image = style.get("image-orientation").map(str::trim) != Some("none");
+    Some(resolver.intrinsic(name)?.displayed(from_image))
+}
+
 /// The placement an intrinsic-sized image emits (the resolver name plus its
-/// source size and alpha flag).
+/// displayed size, alpha flag and the orientation to paint with).
 #[must_use]
 pub fn placement_of(name: String, intrinsic: Intrinsic) -> ImagePlacement {
     ImagePlacement {
@@ -244,6 +259,7 @@ pub fn placement_of(name: String, intrinsic: Intrinsic) -> ImagePlacement {
         intrinsic_h: intrinsic.height,
         has_alpha: intrinsic.has_alpha,
         tint: None,
+        orientation: intrinsic.orientation,
     }
 }
 
@@ -343,11 +359,7 @@ mod coverage_tests {
         ] {
             let sized = size_replaced_live(
                 "degenerate".into(),
-                Intrinsic {
-                    width,
-                    height,
-                    has_alpha: false,
-                },
+                Intrinsic::new(width, height, false),
                 &ctx,
             );
             assert_eq!((sized.width, sized.height), expected);

@@ -49,9 +49,10 @@ pub use layout::{
     LayoutOptions, NodeSources,
 };
 pub use style::{
-    build_cascade, build_cascade_with_width, set_media_viewport_height, set_media_viewport_width,
-    style_input, Cascade, ComputedStyle, Roots, StyleInput, StyleOptions, StyledElement,
-    StyledNode, StyledText, TreeView,
+    build_cascade, build_cascade_with_width, document_root_font_px, root_font_px, root_font_scope,
+    set_media_viewport_height, set_media_viewport_width, style_input, Cascade, ComputedStyle,
+    RootFontScope, Roots, StyleInput, StyleOptions, StyledElement, StyledNode, StyledText,
+    TreeView,
 };
 pub use tag::{Attr, MarkerClassifier, MarkerKind, Tag};
 pub use text::{layout_text, Align, FontFace, FontRegistry, LineBox, TextStyle, WhiteSpace};

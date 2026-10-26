@@ -70,6 +70,49 @@ textarea { display: inline-block; width: 200px; height: 3em; border: 1px solid #
 select, button { display: inline-block; border: 1px solid #a9a9a9; background-color: #efefef }
 ";
 
+/// The user-agent rules a whole HTML document adds to [`UA_CSS`] when it is styled
+/// from its root element ([`Roots::Document`], the HTML drive): Chrome's `<head>` is
+/// not rendered and `<body>` has an 8px margin. The flows html2pdf styles detached
+/// (template bodies, notes, regions) never contain these elements, and the live-DOM
+/// input brings its own supplement, so these rules stay out of [`UA_CSS`].
+const DOCUMENT_UA_CSS: &str = "
+head { display: none }
+body { margin: 8px }
+";
+
+static DOCUMENT_UA_SHEET: std::sync::LazyLock<Stylesheet> =
+    std::sync::LazyLock::new(|| parse_stylesheet(DOCUMENT_UA_CSS));
+
+impl Cascade {
+    /// This cascade for a whole HTML document styled from its root element: the
+    /// document UA rules (`head { display: none }`, `body { margin: 8px }`) join the UA
+    /// level, and `document_css` — the document's own `<style>` sheets in document order,
+    /// plus any linked sheets the caller fetched — is author CSS ordered BEFORE this
+    /// cascade's own author rules (a caller's extra CSS keeps winning ties). `@media` /
+    /// `@supports` blocks in `document_css` are evaluated against the current viewport
+    /// (see [`build_cascade_with_width`]).
+    #[must_use]
+    pub fn for_document(&self, document_css: &str) -> Cascade {
+        let mut rules = Vec::with_capacity(self.rules.len());
+        let mut order = 0;
+        let (ua, rest): (Vec<_>, Vec<_>) = self.rules.iter().partition(|r| r.level == 0);
+        for r in ua {
+            rules.push(LeveledRule { order, ..r.clone() });
+            order += 1;
+        }
+        add_leveled(&mut rules, &mut order, 0, DOCUMENT_UA_SHEET.clone());
+        add_leveled(&mut rules, &mut order, 1, parse_stylesheet(document_css));
+        for r in rest {
+            rules.push(LeveledRule { order, ..r.clone() });
+            order += 1;
+        }
+        Cascade {
+            rules,
+            tokens: self.tokens.clone(),
+        }
+    }
+}
+
 /// The same UA declarations used by the ordinary cascade. A DOM embedder can
 /// match these against each original tree scope before resolving matched styles.
 #[must_use]
@@ -226,6 +269,46 @@ mod viewport {
     }
 }
 static VIEWPORT_WIDTH: viewport::ViewportWidth = viewport::ViewportWidth;
+
+thread_local!(static ROOT_FONT: std::cell::Cell<f32> = const { std::cell::Cell::new(16.0) });
+
+/// The root element's computed font size (px) that `rem` lengths resolve against on
+/// this thread: the initial 16px unless a [`root_font_scope`] is active.
+#[must_use]
+pub fn root_font_px() -> f32 {
+    ROOT_FONT.with(std::cell::Cell::get)
+}
+
+/// Restores the previous root font size when dropped (see [`root_font_scope`]).
+#[must_use = "the root font size is restored when the scope is dropped"]
+pub struct RootFontScope(f32);
+
+impl Drop for RootFontScope {
+    fn drop(&mut self) {
+        ROOT_FONT.with(|c| c.set(self.0));
+    }
+}
+
+/// Make `rem` resolve against `px` on this thread until the returned guard drops —
+/// the root element's computed font size while its document is styled and laid out.
+/// Styling a [`Roots::Document`] scope sets it for the root element's descendants;
+/// the HTML drive (and html2pdf's document render) holds one around layout, where
+/// `rem` lengths resolve ([`document_root_font_px`]).
+pub fn root_font_scope(px: f32) -> RootFontScope {
+    RootFontScope(ROOT_FONT.with(|c| c.replace(px)))
+}
+
+/// The computed font size (px) of a styled document's root element — the top-level
+/// `<html>` element of a [`Roots::Document`] styling — or the initial 16px when the
+/// styled tree has none (a detached flow).
+#[must_use]
+pub fn document_root_font_px(styled: &[StyledNode]) -> f32 {
+    styled
+        .iter()
+        .filter_map(StyledNode::as_element)
+        .find(|e| matches!(&e.tag, crate::tag::Tag::Html(name) if name == "html"))
+        .map_or(16.0, |e| cascade::computed_font_px(&e.style))
+}
 static VIEWPORT_HEIGHT: viewport::ViewportHeight = viewport::ViewportHeight;
 
 /// Whether a `@media` query's condition matches `width` (px). Supports a comma

@@ -945,7 +945,7 @@ fn invalid_quad_declarations_preserve_prior_valid_sides_and_inherited_variables_
 }
 
 #[test]
-fn live_document_root_contains_body_margins_and_preserves_legacy_pdf_policy() {
+fn document_root_contains_body_margins_in_live_and_plain_layout() {
     let nodes = vec![element(
         "html",
         "margin:0;padding:0",
@@ -988,8 +988,17 @@ fn live_document_root_contains_body_margins_and_preserves_legacy_pdf_policy() {
         },
         &mut Diagnostics::default(),
     );
-    assert_eq!(legacy.children[0].y, 12.0);
-    assert_eq!(legacy.children[0].height, 16.0);
+    // The plain layout treats a top-level `<html>` as the document root too (P5b,
+    // turbo-html2pdf#29: the HTML drive lays the whole document out): its margins never
+    // collapse with the body's, so the body's 12px margin stays inside it, as in Chrome.
+    let html = &legacy.children[0];
+    assert_eq!((html.y, html.height), (0.0, 40.0));
+    let body = html
+        .children
+        .iter()
+        .find(|f| f.width == 176.0)
+        .expect("body border box");
+    assert_eq!((body.x, body.y, body.height), (12.0, 12.0, 16.0));
 }
 
 #[test]

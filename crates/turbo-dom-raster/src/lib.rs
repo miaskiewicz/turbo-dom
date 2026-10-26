@@ -12,13 +12,15 @@
 //! `position`/`z-index` are honored for block flow (out-of-flow boxes are placed
 //! against their containing block and painted back-to-front per CSS 2.2 §9.9),
 //! and `<img>`/`background-image` bytes the caller supplies are decoded + painted
-//! (PNG/JPEG/GIF/WebP + SVG; unknown formats fall back to a placeholder) — but
+//! (PNG/JPEG/GIF/WebP/BMP/ICO/CUR + SVG, AVIF under `avif`; unknown formats fall back to a
+//! placeholder) — but
 //! there is no JS-driven visual state beyond whatever produced the snapshot. It
 //! runs only when asked — never on the fetch/extract hot path.
 //!
 //! Because the input is just an HTML string, any snapshot works: the initial
 //! fetch, or any entry in a hydration trail.
 
+mod avif;
 mod canvas_ops;
 mod glyph;
 mod image_paint;
@@ -73,7 +75,8 @@ use std::collections::HashMap;
 
 use turbo_dom_layout::text::{FontRegistry, SystemFontPolicy};
 use turbo_dom_layout::{
-    layout_html_with_images, Diagnostics, Fragment, FragmentContent, ImageCtx, Rgba,
+    layout_html_tree, parse_html_tree, Diagnostics, Fragment, FragmentContent, HtmlOptions,
+    ImageCtx, Rgba,
 };
 
 /// Fetched image bytes keyed by their reference — the raw `<img src>` /
@@ -222,8 +225,8 @@ pub fn screenshot_png_with_opts(
         viewport.height,
         &decoded,
         system_fonts,
-    )?;
-    let bg = canvas_background(&galley, viewport.width);
+    );
+    let bg = canvas_background(&galley);
     let height = paint_height(&galley, viewport, full_page);
     paint_png::paint(&galley, viewport.width, height, bg, &decoded)
 }
@@ -250,8 +253,8 @@ pub fn screenshot_svg_with_opts(
         viewport.height,
         &decoded,
         system_fonts,
-    )?;
-    let bg = canvas_background(&galley, viewport.width);
+    );
+    let bg = canvas_background(&galley);
     let height = paint_height(&galley, viewport, full_page);
     Ok(paint_svg::paint(
         &galley,
@@ -299,32 +302,36 @@ pub fn measure_text(text: &str, family_css: &str, size_px: f32, system_fonts: bo
     }
 }
 
-/// The colour to fill the whole image with before painting. Browsers propagate
-/// the root element's (or `<body>`'s) background to the viewport canvas, so a
-/// page with a dark `body` background paints dark everywhere — not just under
-/// its content box. We approximate that: the first opaque full-width box at the
-/// top-left is the root/body, and its background becomes the canvas fill.
-/// Defaults to white (the CSS initial canvas colour).
-fn canvas_background(galley: &Fragment, width: u32) -> Rgba {
-    fn find(f: &Fragment, w: f32) -> Option<Rgba> {
-        if let FragmentContent::Box {
-            background: Some(bg),
-            ..
-        } = &f.content
-        {
-            // A top-left, near-full-width, opaque box = the root/body backdrop.
-            if bg.a == 255 && f.x <= 1.0 && f.y <= 1.0 && f.width >= 0.98 * w {
-                return Some(*bg);
-            }
-        }
-        f.children.iter().find_map(|c| find(c, w))
-    }
-    find(galley, width as f32).unwrap_or(Rgba {
+/// The colour to fill the whole image with before painting: the canvas background
+/// turbo-dom-layout's HTML drive propagated from the root element (or `<body>`) onto
+/// the galley root, composited over the white initial canvas; white when the page
+/// sets none.
+fn canvas_background(galley: &Fragment) -> Rgba {
+    let white = Rgba {
         r: 255,
         g: 255,
         b: 255,
         a: 255,
-    })
+    };
+    match &galley.content {
+        FragmentContent::Box {
+            background: Some(bg),
+            ..
+        } => over_white(*bg),
+        _ => white,
+    }
+}
+
+/// `c` composited over opaque white (source-over, straight alpha).
+fn over_white(c: Rgba) -> Rgba {
+    let a = u32::from(c.a);
+    let mix = |v: u8| ((u32::from(v) * a + 255 * (255 - a) + 127) / 255) as u8;
+    Rgba {
+        r: mix(c.r),
+        g: mix(c.g),
+        b: mix(c.b),
+        a: 255,
+    }
 }
 
 /// Dispatch by [`Format`]; SVG bytes are UTF-8 of the document.
@@ -335,10 +342,11 @@ pub fn screenshot(html: &str, viewport: Viewport, format: Format) -> Result<Vec<
     }
 }
 
-/// Drive the borrowed layout engine: recover the page's own `<style>` sheets
-/// (html5ever drops `<head>`, so we scrape them from the raw source), strip the
-/// elements whose source must not paint (`<script>`/`<style>`/…), and lay the
-/// body out at content width `width` over the bundled font set.
+/// Drive the borrowed layout engine: de-lazy images and lay the whole document out at
+/// viewport width `width` over the bundled font set. The page's own `<style>` sheets
+/// (head and body) are collected by the layout's HTML drive (which never lays out
+/// `<style>`/`<script>`/`<noscript>`/`<template>`); the caller's fetched `<link>` sheets
+/// precede them.
 fn lay_out(
     html: &str,
     external_css: &str,
@@ -346,29 +354,17 @@ fn lay_out(
     height: u32,
     images: &image_paint::DecodedAssets,
     system_fonts: bool,
-) -> Result<Fragment, String> {
+) -> Fragment {
     // Tell the cascade the viewport HEIGHT so `@media (min-height/max-height:…)`
     // conditions evaluate correctly (else every height feature is ignored and its
     // rules always apply — Google's tall search box is `display:none` below
     // `max-height:575px`, so it always vanished → blank render).
     turbo_dom_layout::set_media_viewport_height(height as f32);
-    // Drop `<noscript>` first: turbo-surf rasters the hydrated (JS-enabled) DOM, so
-    // noscript content is inert — its `<style>` must not cascade (Google hides every
-    // display-less div via a noscript `table,div,span,p{display:none}`) and its `<img>`
-    // fallbacks must not be de-lazied.
-    let html = style_extract::strip_noscript(html);
-    let html = html.as_str();
-    // Author CSS order (lowest→highest): external `<link>` sheets the caller
-    // fetched, then the page's own `<style>` blocks. Then strip script/style/etc.
-    // so their text isn't flowed as visible content.
-    let mut author_css = String::from(external_css);
-    author_css.push('\n');
-    author_css.push_str(&style_extract::collect_style_blocks(html));
     // Fill in `src`-less lazy images (data-src/srcset/data-*-url) so their boxes
-    // render, then strip non-visual elements. `image_urls` returns the same URLs,
-    // so the caller's fetched bytes resolve against these boxes.
+    // render. `image_urls` returns the same URLs, so the caller's fetched bytes resolve
+    // against these boxes. (turbo-surf rasters the hydrated, JS-enabled DOM: the layout
+    // parses with scripting on, so `<noscript>` fallbacks stay inert raw text.)
     let delazied = style_extract::delazy_images(html);
-    let visible_html = style_extract::strip_non_visual(&delazied);
     let mut diags = Diagnostics::default();
     let resolver = image_paint::AssetResolver(images);
     // No page-height basis in a viewport render — only the 100%-width cap applies
@@ -377,13 +373,17 @@ fn lay_out(
         resolver: &resolver,
         body_height: None,
     };
-    layout_html_with_images(
-        &visible_html,
-        &author_css,
+    let options = HtmlOptions {
+        linked_css: external_css,
+        ..HtmlOptions::default()
+    };
+    layout_html_tree(
+        &parse_html_tree(&delazied),
+        "",
         width as f32,
         &font_registry(system_fonts),
         &image_ctx,
+        &options,
         &mut diags,
     )
-    .map_err(|e| format!("layout failed: {e}"))
 }

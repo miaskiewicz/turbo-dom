@@ -125,9 +125,9 @@ pub struct ImagePlacement {
     /// The image name passed to the caller's `ImageResolver` (the `<img>` `src`
     /// or the `background-image` `url(...)`).
     pub name: String,
-    /// Intrinsic width in source pixels.
+    /// Intrinsic width in px as displayed (after the EXIF `orientation` below).
     pub intrinsic_w: u32,
-    /// Intrinsic height in source pixels.
+    /// Intrinsic height in px as displayed.
     pub intrinsic_h: u32,
     /// Whether the source had transparency (drives `SMask` emission).
     pub has_alpha: bool,
@@ -135,6 +135,10 @@ pub struct ImagePlacement {
     /// the source is opaque (using the source's alpha as a stencil) rather than
     /// blitting the source pixels. Tints Wikipedia's monochrome SVG UI glyphs.
     pub tint: Option<Rgba>,
+    /// The EXIF orientation the painters apply to the stored pixels to fill the box
+    /// (`image-orientation: from-image`; identity under `image-orientation: none` or
+    /// when the image carries none) — miaskiewicz/turbo-html2pdf#30.
+    pub orientation: crate::image::Orientation,
 }
 
 /// Break hints attached to a fragment, consumed by the fragmenter.

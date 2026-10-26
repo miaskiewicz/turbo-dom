@@ -1288,7 +1288,7 @@ fn has_class(class_attr: &str, cls: &str) -> bool {
 ///   while `template p` crosses into the content, a parentless element is its own only
 ///   sibling.
 /// - a layout view (turbo-dom-layout's `TreeView` scope): kept nodes only, scope cut-offs,
-///   match-only shells, markers — used through [`match_for_cascade`].
+///   the document scope, markers — used through [`match_for_cascade`].
 ///
 /// Element-side state (names, namespaces, attributes, form state, custom states) is always
 /// read from [`Navigator::tree`].

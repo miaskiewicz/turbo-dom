@@ -99,7 +99,7 @@ fn paint_fragment(svg: &mut String, f: &Fragment, images: &DecodedAssets) {
             *font_size,
             *color,
         ),
-        FragmentContent::Image(placement) => paint_image(svg, f, &placement.name, images),
+        FragmentContent::Image(placement) => paint_image(svg, f, placement, images),
         FragmentContent::Marker(_) => {}
     }
     // Paint children back-to-front in CSS stacking order (§9.9), not raw DOM
@@ -116,8 +116,16 @@ fn paint_fragment(svg: &mut String, f: &Fragment, images: &DecodedAssets) {
 /// back to a neutral placeholder rect when the bytes are absent or unrecognized.
 /// `preserveAspectRatio="none"` because layout already sized the box to the
 /// image's aspect ratio.
-fn paint_image(svg: &mut String, f: &Fragment, name: &str, images: &DecodedAssets) {
-    match images.get(name).and_then(image_paint::data_uri) {
+fn paint_image(
+    svg: &mut String,
+    f: &Fragment,
+    placement: &turbo_dom_layout::ImagePlacement,
+    images: &DecodedAssets,
+) {
+    let uri = images
+        .get(&placement.name)
+        .and_then(|img| image_paint::data_uri(&img.oriented(placement.orientation)));
+    match uri {
         Some(uri) => {
             let _ = writeln!(
                 svg,

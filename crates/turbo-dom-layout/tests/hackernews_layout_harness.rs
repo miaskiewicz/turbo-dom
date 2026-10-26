@@ -173,8 +173,9 @@ fn sized_img_lays_out_at_top_left_at_its_size() {
         </tr></tbody></table></body>"#;
     let f = lay(html, 1280.0);
     let logo = rect(&f, (255, 0, 0)).expect("logo box");
+    // Top-left of the body content: body's 8px UA margin + border-spacing + padding.
     assert!(
-        logo[0] < 5.0 && logo[1] < 5.0,
+        logo[0] < 13.0 && logo[1] < 13.0,
         "logo at top-left, got x={} y={}",
         logo[0],
         logo[1]

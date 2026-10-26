@@ -119,11 +119,13 @@ package or publish workflow.
   flex/grid/table layout → `Fragment` galley, fonts, image sizing, layout snapshots,
   `layout_html`). Relocated verbatim from turbo-html2pdf-core 0.3.9 (S1); turbo-html2pdf-core
   depends on it and re-exports it at its old paths. Since S2 the cascade styles a turbo-dom
-  `Tree` directly (`style::TreeView` + `Roots::{Detached, Shell}`); html2pdf's `t:` directives are opaque `MarkerKind` markers
+  `Tree` directly (`style::TreeView` + `Roots::{Detached, Document}`; since P5b the HTML
+  drive styles the whole document like Chrome — head `<style>`s, real `<html>`/`<body>` boxes
+  with `body { margin: 8px }`, root-relative `rem`, canvas background; turbo-html2pdf#29); html2pdf's `t:` directives are opaque `MarkerKind` markers
   from a caller classifier, and its PDF switches are runtime `LayoutOptions`/`StyleOptions`
   (no PDF features here). Since S3b selectors parse and match with turbo-dom's engine
   (`style::RuleSelectors` = `parse_for_cascade`; the scope `style::Navigator` implements
-  turbo-dom's `Navigator`: kept nodes, Detached cutoff, Shell positions, marker type keys);
+  turbo-dom's `Navigator`: kept nodes, Detached cutoff, the document scope, marker type keys);
   html2pdf's old `style/selector.rs` is gone. `scripts/verify-copied-layout.sh` checks the S1
   tree (`VERIFY_REF`) against the source commits; later edits are reviewed changes on top.
   Since S4 `live` is the live-DOM input ("surf mode"): turbo-surf's CSSOM-View layout styles
@@ -136,15 +138,18 @@ package or publish workflow.
   header size probe (`ImageResolver::intrinsic`), the shared PNG decode (`PngFrame`: PDF
   native samples / raster RGBA = `image::to_rgba8` exactly) and, under `svg-rasterize`, the
   one SVG rasterizer (`svg::rasterize(bytes, scale, Oversize)`: PDF 2x clamp, raster 1x
-  reject). `FontRegistry::system(policy)` is the process-wide system-font load. The
+  reject); since P5b it also reads EXIF orientation —
+  `Intrinsic::orientation`, laid out displayed unless `image-orientation: none`, painted via
+  `ImagePlacement::orientation`; turbo-html2pdf#30). `FontRegistry::system(policy)` is the process-wide system-font load. The
   `test-support` feature (`test_support`) carries the font fixtures, `ComputedStyle` pairs
   and test-only tree literals for this crate's and turbo-html2pdf-core's tests (the crate's
   own integration tests enable it through a self dev-dependency).
 - `crates/turbo-dom-raster` — synthetic screenshots: paints the layout galley to PNG/SVG
   (tiny-skia / SVG), canvas op-log replay, `gpu-metal` WebGL. Relocated verbatim from
   turbo-surf-raster 0.5.5 (S1). Decodes images through turbo-dom-layout's image layer (PNG,
-  SVG at 1x) and the `image` crate (JPEG/GIF/WebP, resize, PNG re-encode for SVG
-  `data:` URIs); `image_paint::shared_layer_tests` gates it byte for byte against the old
+  SVG at 1x) and the `image` crate (JPEG/GIF/WebP/BMP/ICO/CUR, resize, PNG re-encode for
+  SVG `data:` URIs), AVIF via `rav1d` under the off-by-default `avif` feature (P5b
+  turbo-surf#30); `image_paint::shared_layer_tests` gates it byte for byte against the old
   decode over `tools/parity` image inputs.
 - `harness/` — JS conformance tooling (dat parser, serializer, runner). All unit-tested.
 - `src/runtime/` — the lazy COW DOM + window (Layers 2–5). `index.mjs` exports

@@ -162,13 +162,14 @@ fn absolute_siblings_no_offset_share_cb_origin() {
     );
     let a = rect(&f, (255, 0, 0)).expect("bar a");
     let b = rect(&f, (0, 255, 0)).expect("bar b");
+    // The parent sits at body's 8px UA margin + its own 300px margin.
     assert!(
-        (a[0] - 300.0).abs() < 2.0,
+        (a[0] - 308.0).abs() < 2.0,
         "bar a at parent origin, got x={}",
         a[0]
     );
     assert!(
-        (b[0] - 340.0).abs() < 2.0,
+        (b[0] - 348.0).abs() < 2.0,
         "bar b offset within parent, got x={}",
         b[0]
     );

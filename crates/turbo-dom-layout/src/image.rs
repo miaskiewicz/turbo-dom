@@ -34,6 +34,13 @@
 
 use std::io::Cursor;
 
+#[path = "image_formats.rs"]
+mod formats;
+pub use formats::{
+    avif_payload, decode_data_url, ico_entry, probe_natural, AvifPayload, DataUrl, IcoEntry, Nclx,
+    Orientation,
+};
+
 /// Caller-supplied image source (§0.2): maps a template image name (an `<img>`
 /// `src` or a `background-image` `url(...)`) to its encoded bytes. The engine
 /// never fetches; everything the document shows comes from here.
@@ -76,6 +83,17 @@ pub enum Format {
     /// RIFF/WebP (lossy `VP8 `, lossless `VP8L`, extended `VP8X`). Intrinsic-size
     /// only (header probe); not decoded for paint.
     WebP,
+    /// Windows bitmap (`BM`). Intrinsic-size only here (header probe); turbo-dom-raster
+    /// decodes it for paint.
+    Bmp,
+    /// Windows icon (`ICO`, resource type 1) or cursor (`CUR`, type 2): a directory of
+    /// BMP- or PNG-encoded entries, sized by the entry a browser shows (the largest).
+    /// Intrinsic-size only here; turbo-dom-raster decodes it for paint.
+    Ico,
+    /// AVIF (an ISOBMFF `ftyp` with the `avif`/`avis` brand), sized from the primary
+    /// item's `ispe`. Intrinsic-size only here; turbo-dom-raster decodes it for paint
+    /// under its `avif` feature.
+    Avif,
 }
 
 const PNG_MAGIC: &[u8] = &[0x89, b'P', b'N', b'G', 0x0D, 0x0A, 0x1A, 0x0A];
@@ -90,31 +108,75 @@ fn is_webp(bytes: &[u8]) -> bool {
     bytes.len() >= 12 && bytes.starts_with(b"RIFF") && &bytes[8..12] == b"WEBP"
 }
 
-/// Sniff the encoded format from the leading magic bytes, or `None` if neither.
+/// PNG magic.
+fn is_png(bytes: &[u8]) -> bool {
+    bytes.starts_with(PNG_MAGIC)
+}
+
+/// JPEG magic: SOI followed by a marker.
+fn is_jpeg(bytes: &[u8]) -> bool {
+    bytes.starts_with(&[0xFF, 0xD8, 0xFF])
+}
+
+/// Sniff the encoded format from the leading magic bytes, or `None` if none matches.
 #[must_use]
 pub fn sniff(bytes: &[u8]) -> Option<Format> {
-    if bytes.starts_with(PNG_MAGIC) {
-        return Some(Format::Png);
-    }
-    if bytes.starts_with(&[0xFF, 0xD8, 0xFF]) {
-        return Some(Format::Jpeg);
-    }
-    if is_gif(bytes) {
-        return Some(Format::Gif);
-    }
-    if is_webp(bytes) {
-        return Some(Format::WebP);
-    }
-    None
+    [
+        (is_png as fn(&[u8]) -> bool, Format::Png),
+        (is_jpeg, Format::Jpeg),
+        (is_gif, Format::Gif),
+        (is_webp, Format::WebP),
+    ]
+    .into_iter()
+    .find(|(is, _)| is(bytes))
+    .map(|(_, format)| format)
+    .or_else(|| formats::sniff_extra(bytes))
 }
 
 /// The intrinsic pixel size of an encoded image plus whether it has an alpha
-/// channel, all read from the header without decoding pixels.
+/// channel and its EXIF [`Orientation`], all read from the header without decoding
+/// pixels. `width`/`height` are the STORED pixel size; [`Intrinsic::displayed`] turns
+/// it into the size layout uses.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Intrinsic {
     pub width: u32,
     pub height: u32,
     pub has_alpha: bool,
+    /// How the stored pixels are displayed (`image-orientation: from-image`).
+    pub orientation: Orientation,
+}
+
+impl Intrinsic {
+    /// A stored size with no EXIF orientation.
+    #[must_use]
+    pub fn new(width: u32, height: u32, has_alpha: bool) -> Intrinsic {
+        Intrinsic {
+            width,
+            height,
+            has_alpha,
+            orientation: Orientation::IDENTITY,
+        }
+    }
+
+    /// The intrinsic an image box lays out and paints with: under
+    /// `image-orientation: from-image` (`from_image`, the CSS default) the displayed size
+    /// (width and height swapped for orientations 5–8) keeping the orientation to apply
+    /// at paint; under `image-orientation: none` the stored size, painted as stored.
+    #[must_use]
+    pub fn displayed(self, from_image: bool) -> Intrinsic {
+        if !from_image {
+            return Intrinsic {
+                orientation: Orientation::IDENTITY,
+                ..self
+            };
+        }
+        let (width, height) = self.orientation.displayed_size(self.width, self.height);
+        Intrinsic {
+            width,
+            height,
+            ..self
+        }
+    }
 }
 
 /// Read just the intrinsic size + alpha flag from encoded bytes, without
@@ -133,6 +195,9 @@ pub fn probe(bytes: &[u8]) -> Option<Intrinsic> {
         Format::Jpeg => probe_jpeg(bytes),
         Format::Gif => probe_gif(bytes),
         Format::WebP => probe_webp(bytes),
+        Format::Bmp => formats::probe_bmp(bytes),
+        Format::Ico => formats::probe_ico(bytes),
+        Format::Avif => formats::probe_avif(bytes),
     }
 }
 
@@ -146,11 +211,7 @@ fn probe_gif(bytes: &[u8]) -> Option<Intrinsic> {
     }
     let w = u16::from_le_bytes([bytes[6], bytes[7]]);
     let h = u16::from_le_bytes([bytes[8], bytes[9]]);
-    (w > 0 && h > 0).then_some(Intrinsic {
-        width: u32::from(w),
-        height: u32::from(h),
-        has_alpha: false,
-    })
+    (w > 0 && h > 0).then_some(Intrinsic::new(u32::from(w), u32::from(h), false))
 }
 
 /// WebP intrinsic size across the three chunk layouts (lossy `VP8 `, lossless
@@ -159,11 +220,9 @@ fn probe_webp(bytes: &[u8]) -> Option<Intrinsic> {
     // The chunk FourCC follows the 12-byte RIFF/WEBP header.
     let fourcc = bytes.get(12..16)?;
     let (w, h) = webp_size(fourcc, bytes)?;
-    (w > 0 && h > 0).then_some(Intrinsic {
-        width: w,
-        height: h,
-        has_alpha: fourcc != b"VP8 ", // lossless/extended may carry alpha
-    })
+    // lossless/extended may carry alpha; an `EXIF` chunk's orientation is not applied
+    // (Chrome 156 ignores it).
+    (w > 0 && h > 0).then_some(Intrinsic::new(w, h, fourcc != b"VP8 "))
 }
 
 /// Dispatch to the per-chunk size reader for a WebP `FourCC`; unknown chunks yield
@@ -220,6 +279,11 @@ fn probe_png(bytes: &[u8]) -> Option<Intrinsic> {
         width: info.width,
         height: info.height,
         has_alpha: png_has_alpha(info.color_type, info.trns.is_some()),
+        // The `eXIf` chunk (read before the first IDAT) is a bare TIFF block.
+        orientation: info
+            .exif_metadata
+            .as_deref()
+            .map_or(Orientation::IDENTITY, formats::tiff_orientation),
     })
 }
 
@@ -237,6 +301,7 @@ fn probe_jpeg(bytes: &[u8]) -> Option<Intrinsic> {
         width: u32::from(info.width),
         height: u32::from(info.height),
         has_alpha: false,
+        orientation: formats::jpeg_orientation(bytes),
     })
 }
 
@@ -305,9 +370,10 @@ pub fn decode(bytes: &[u8]) -> Option<RasterImage> {
     match sniff(bytes)? {
         Format::Png => decode_png(bytes),
         Format::Jpeg => decode_jpeg(bytes),
-        // GIF/WebP are probed for intrinsic size (layout) but not yet pixel-decoded
-        // for paint — an unsupported decode emits nothing rather than a wrong image.
-        Format::Gif | Format::WebP => None,
+        // GIF/WebP/BMP/ICO/AVIF are probed for intrinsic size (layout) but not
+        // pixel-decoded for the PDF — an unsupported decode emits nothing rather than a
+        // wrong image (turbo-dom-raster decodes them for screenshots).
+        Format::Gif | Format::WebP | Format::Bmp | Format::Ico | Format::Avif => None,
     }
 }
 

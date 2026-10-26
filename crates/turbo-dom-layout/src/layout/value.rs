@@ -254,9 +254,9 @@ fn raw_to_px(raw: RawLength, font_size: f32, basis: f32) -> f32 {
     match raw {
         RawLength::Abs(v) => v,
         RawLength::Em(v) => v * font_size,
-        // `rem` is root-relative; the root font size is the initial 16px (turbo does
-        // not track a document-level `html { font-size }` override).
-        RawLength::Rem(v) => v * DEFAULT_FONT_SIZE,
+        // `rem` is root-relative: the root element's computed font size (the initial
+        // 16px outside a document; see `style::root_font_scope`).
+        RawLength::Rem(v) => v * crate::style::root_font_px(),
         RawLength::Pct(p) => p / 100.0 * basis,
     }
 }
@@ -395,7 +395,7 @@ pub fn parse_length_pct(s: &str, font_size: f32) -> Option<LengthPct> {
         RawLength::Pct(p) => Some(LengthPct::Pct(p)),
         RawLength::Abs(v) => Some(LengthPct::Px(v)),
         RawLength::Em(v) => Some(LengthPct::Px(v * font_size)),
-        RawLength::Rem(v) => Some(LengthPct::Px(v * DEFAULT_FONT_SIZE)),
+        RawLength::Rem(v) => Some(LengthPct::Px(v * crate::style::root_font_px())),
     }
 }
 
@@ -1493,6 +1493,36 @@ fn background_of(s: &ComputedStyle) -> Option<Rgba> {
         return Some(c);
     }
     s.get("background").and_then(background_shorthand_color)
+}
+
+/// Whether a box paints any background: a visible colour, a `background-image`, or a
+/// `url(...)`/gradient in the `background` shorthand — the test for which element's
+/// background propagates to the canvas (CSS Backgrounds 3 §2.11.2).
+pub(crate) fn has_background(s: &ComputedStyle) -> bool {
+    let image = |v: &str| v.contains("url(") || v.contains("gradient(");
+    background_of(s).is_some_and(|c| c.a > 0)
+        || s.get("background-image").is_some_and(image)
+        || s.get("background").is_some_and(image)
+}
+
+/// Move a box's background colour to the canvas: return it (`None` when transparent
+/// or absent) and drop it from the style — the `background-color` longhand and any
+/// colour token of the `background` shorthand (its images stay on the box).
+pub(crate) fn take_background_color(s: &mut ComputedStyle) -> Option<Rgba> {
+    let color = background_of(s).filter(|c| c.a > 0);
+    s.remove("background-color");
+    if let Some(shorthand) = s.remove("background") {
+        let rest: Vec<&str> = css_value_tokens(&shorthand)
+            .into_iter()
+            .filter(|t| {
+                t.starts_with("url(") || t.contains("gradient(") || parse_color(t).is_none()
+            })
+            .collect();
+        if !rest.is_empty() {
+            s.set("background", rest.join(" "));
+        }
+    }
+    color
 }
 
 /// The colour token of a `background` shorthand (`url(...)` / gradients skipped),

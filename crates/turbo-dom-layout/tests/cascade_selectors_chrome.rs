@@ -14,8 +14,10 @@
 //! P5b: [`OPEN`] lists the fixture items (selector-case `bug`s, cascade-case `class`es)
 //! whose fix has not landed yet; their rows are recorded but not asserted.
 //!
-//! Only body content is styled on the HTML path (the `<html>`/`<body>` shells and the
-//! `<head>` are match-only or stripped), so the comparison covers the styled elements.
+//! The HTML path styles the whole document (`<html>`, `<body>` and their content are
+//! compared). `<head>` is skipped: Chrome's control appends its sentinel `<style>` to
+//! `<head>` (so Chrome's head is never `:empty`), while here the rule is caller CSS and
+//! a never-rendered `<head>` has no layout-visible style.
 use serde_json::Value;
 use turbo_dom::rtdom::tree::NodeType;
 use turbo_dom::{Handle, Tree};
@@ -73,6 +75,9 @@ fn check(html: &str, css: &str, want: &[String], what: &str, failures: &mut Vec<
     let mut got = Vec::new();
     orders(&styled, &mut got);
     for (h, order) in &got {
+        if tree.local_name(*h) == Some("head") {
+            continue;
+        }
         let i = els
             .iter()
             .position(|e| e == h)

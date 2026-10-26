@@ -537,11 +537,7 @@ fn degenerate_zero_dimension_falls_back_to_given() {
         cb_height: None,
         body_height: None,
     };
-    let intrinsic = Intrinsic {
-        width: 10,
-        height: 0,
-        has_alpha: false,
-    };
+    let intrinsic = Intrinsic::new(10, 0, false);
     let sized = size_replaced("x".into(), intrinsic, &ctx);
     assert_eq!(sized.height, 50.0);
     assert_eq!(sized.width, 50.0, "zero base => width falls back to given");

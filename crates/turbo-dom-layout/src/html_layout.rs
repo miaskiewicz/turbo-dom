@@ -8,15 +8,18 @@
 //! parse → cascade → layout directly.
 //!
 //! The document is parsed into a turbo-dom [`Tree`] (scripting on, as a browser
-//! with JavaScript enabled: `<noscript>` content is raw text) and styled through
-//! a [`TreeView`] with the `<html>`/`<body>` shells ([`Roots::Shell`]): the page's
-//! own `<style>` blocks inside `<body>` are collected as author CSS (the base
-//! pipeline applies only inline `style=` + UA defaults), non-visual subtrees are
-//! stripped, and the body content is cascaded and laid out at the caller's
-//! content width. The `*_tree` entries take an already-parsed [`Tree`] plus
-//! [`HtmlOptions`] (marker classifier, internal links, print colour) — html2pdf's
-//! HTML path; the string entries use the defaults: no markers, so e.g. `t:*`
-//! elements are ordinary unknown (inline) elements, as in a browser.
+//! with JavaScript enabled: `<noscript>` content is raw text) and styled as a whole
+//! document ([`Roots::Document`]), as Chrome does: every `<style>` element — in
+//! `<head>` or `<body>`, in document order — is author CSS, `<html>` and `<body>` are
+//! real boxes with Chrome's UA rules (`body { margin: 8px }`, `<head>` not rendered,
+//! root margins never collapse), `rem` resolves against the root element's font size,
+//! and the root's (else `<body>`'s) background colour is propagated to the canvas —
+//! the galley root's background. Non-visual subtrees (`<style>`, `<script>`, …) are
+//! stripped, and the document is laid out at the caller's viewport width. The
+//! `*_tree` entries take an already-parsed [`Tree`] plus [`HtmlOptions`] (marker
+//! classifier, internal links, print colour, linked sheets) — html2pdf's HTML path;
+//! the string entries use the defaults: no markers, so e.g. `t:*` elements are
+//! ordinary unknown (inline) elements, as in a browser.
 
 use std::collections::HashMap;
 
@@ -26,12 +29,13 @@ use turbo_dom::{Handle, ParseOptions, Tree};
 use crate::image::ImageResolver;
 use crate::layout::boxgen::{BoxKind, InlineItem, LayoutBox};
 use crate::layout::fragment::{Fragment, FragmentContent, Transform2D};
+use crate::layout::value::{has_background, take_background_color, Rgba};
 use crate::layout::{ImageCtx, LayoutOptions};
 use crate::style::{
-    build_cascade_with_width, set_media_viewport_height, style_input, Roots, StyleInput,
-    StyleOptions, StyledNode, TokenSet, TreeView,
+    build_cascade_with_width, document_root_font_px, root_font_scope, set_media_viewport_height,
+    style_input, Roots, StyleInput, StyleOptions, StyledNode, TokenSet, TreeView,
 };
-use crate::tag::MarkerClassifier;
+use crate::tag::{MarkerClassifier, Tag};
 use crate::text::FontRegistry;
 use crate::{Diagnostics, RenderError};
 
@@ -51,6 +55,10 @@ pub struct HtmlOptions<'a> {
     pub atomic_internal_links: bool,
     /// Accept `cmyk(...)` colours (style and layout).
     pub accept_cmyk: bool,
+    /// Author CSS that precedes the document's own `<style>` sheets — e.g. the bodies
+    /// of its `<link rel="stylesheet">` sheets, fetched by the caller (the engine does
+    /// no I/O). The `extra_css` argument of the drive entries comes after them.
+    pub linked_css: &'a str,
 }
 
 impl HtmlOptions<'_> {
@@ -115,15 +123,14 @@ fn is_plain(view: &TreeView, h: Handle, name: &str) -> bool {
     view.marker(h).is_none() && view.tree().local_name(h) == Some(name)
 }
 
-/// The `<body>` element of a parsed document (the shell lookup; always present for
-/// a parsed document).
-fn body_of(view: &TreeView) -> Handle {
-    view.find_element("body")
-        .expect("the HTML parser always produces a <body>")
+/// The document's top-level kept nodes (its root element; the doctype and comments
+/// are not content).
+fn document_roots(view: &TreeView) -> Vec<Handle> {
+    view.children(view.tree().root())
 }
 
-/// Collect the body's author CSS, build the cascade at `cb_width` and style the
-/// body content under the html/body shells.
+/// Collect the document's author CSS (linked sheets, its `<style>` sheets, then
+/// `extra_css`), build the cascade at `cb_width` and style the whole document.
 fn style_document(
     tree: &Tree,
     extra_css: &str,
@@ -131,13 +138,14 @@ fn style_document(
     options: &HtmlOptions,
 ) -> Vec<StyledNode> {
     let view = options.view(tree);
-    let body = body_of(&view);
-    let mut author_css = collect_style_css_tree(&view, &view.children(body));
-    author_css.push_str(extra_css);
-    let cascade = build_cascade_with_width(&author_css, "", TokenSet::default(), cb_width);
+    let mut document_css = String::from(options.linked_css);
+    document_css.push('\n');
+    document_css.push_str(&collect_style_css_tree(&view, &document_roots(&view)));
+    let cascade = build_cascade_with_width(extra_css, "", TokenSet::default(), cb_width)
+        .for_document(&document_css);
     let input = StyleInput {
         view: view.strip_non_visual(true),
-        roots: Roots::Shell,
+        roots: Roots::Document,
     };
     style_input(
         &input,
@@ -148,10 +156,51 @@ fn style_document(
     )
 }
 
+/// Propagate the canvas background (CSS Backgrounds 3 §2.11.2): the root element's
+/// background, or — when the root paints none — the `<body>`'s. Its colour moves off
+/// that element (which then paints no colour of its own) and is returned for the
+/// canvas; background images stay on the element's box (only the colour propagates
+/// here). `None` = the default white canvas.
+#[must_use]
+pub fn propagate_canvas_background(styled: &mut [StyledNode]) -> Option<Rgba> {
+    let html = styled.iter_mut().find_map(|n| match n {
+        StyledNode::Element(e) if e.tag == Tag::Html("html".into()) => Some(e),
+        _ => None,
+    })?;
+    if has_background(&html.style) {
+        return take_background_color(&mut html.style);
+    }
+    let body = html.children.iter_mut().find_map(|n| match n {
+        StyledNode::Element(e) if e.tag == Tag::Html("body".into()) => Some(e),
+        _ => None,
+    })?;
+    take_background_color(&mut body.style)
+}
+
+/// Lay a styled document out at `cb_width` (`rem` against its root font size) and
+/// paint its propagated canvas colour as the galley root's background.
+fn lay_out_document(
+    mut styled: Vec<StyledNode>,
+    cb_width: f32,
+    fonts: &FontRegistry,
+    images: &ImageCtx,
+    options: LayoutOptions,
+    diags: &mut Diagnostics,
+) -> Fragment {
+    let canvas = propagate_canvas_background(&mut styled);
+    let _root_font = root_font_scope(document_root_font_px(&styled));
+    let mut galley =
+        crate::layout::layout_with_options(&styled, cb_width, fonts, images, &options, diags);
+    if let FragmentContent::Box { background, .. } = &mut galley.content {
+        *background = canvas;
+    }
+    galley
+}
+
 /// Style a parsed HTML document exactly as [`layout_html_tree`] does before laying it
-/// out: the body's `<style>` text then `extra_css` as author CSS (cascade built at
-/// `cb_width`), the body content under the `<html>`/`<body>` shells. Returns the styled
-/// body content.
+/// out: the linked sheets, the document's `<style>` text, then `extra_css` as author
+/// CSS (cascade built at `cb_width`), styled from the root element down. Returns the
+/// styled document (its root element; the canvas background not yet propagated).
 #[must_use]
 pub fn style_html_tree(
     tree: &Tree,
@@ -162,10 +211,10 @@ pub fn style_html_tree(
     style_document(tree, extra_css, cb_width, options)
 }
 
-/// Lay a raw HTML string out into a [`Fragment`] galley at content width
-/// `cb_width` px, template-free. The page's own `<style>` blocks are collected as
-/// author CSS and `extra_css` (UA overrides, a caller reset, etc.) is appended
-/// after them so it wins ties. Inline `style=` and the built-in UA defaults
+/// Lay a raw HTML string out into a [`Fragment`] galley at viewport width
+/// `cb_width` px, template-free. The page's own `<style>` blocks (head and body) are
+/// collected as author CSS and `extra_css` (UA overrides, a caller reset, etc.) is
+/// appended after them so it wins ties. Inline `style=` and the built-in UA defaults
 /// apply as in the normal pipeline. `fonts` supplies the faces (use
 /// [`FontRegistry::new`] for the bundled set). Never fails (the `Result` is kept
 /// for API stability).
@@ -224,7 +273,7 @@ pub fn layout_html_tree(
     diags: &mut Diagnostics,
 ) -> Fragment {
     let styled = style_document(tree, extra_css, cb_width, options);
-    crate::layout::layout_with_options(&styled, cb_width, fonts, images, &options.layout(), diags)
+    lay_out_document(styled, cb_width, fonts, images, options.layout(), diags)
 }
 
 /// One laid-out box paired with the `data-cid` its source element carried
@@ -297,14 +346,18 @@ pub fn layout_boxes_tree(
     // conformance seam is self-contained, so it decodes the inline data itself).
     let view = options.view(tree);
     let mut data_images: HashMap<String, Vec<u8>> = HashMap::new();
-    collect_data_uri_images(&view, &view.children(body_of(&view)), &mut data_images);
+    collect_data_uri_images(&view, &document_roots(&view), &mut data_images);
     // Thread the layout viewport HEIGHT so `@media (min/max-height)` conditions and
     // `vh`/`vmin`/`vmax` units resolve against it — without this both fell back to the
     // 800px default (a `20vh` box measured against 800, height-gated `@media` rules
     // matched everywhere). `build_cascade_with_width` sets the matching width.
     set_media_viewport_height(cb_height);
-    let styled = style_document(tree, extra_css, cb_width, options);
+    let mut styled = style_document(tree, extra_css, cb_width, options);
     let layout_options = options.layout();
+    // The canvas colour moves off html/body exactly as the render does (no geometry
+    // effect, but the box tree below must match the laid-out one).
+    let _ = propagate_canvas_background(&mut styled);
+    let _root_font = root_font_scope(document_root_font_px(&styled));
 
     // Box generation is deterministic (monotonic pre-order ids), so the ids in this
     // tree match the ones the layout below stamps on the fragments.
@@ -406,7 +459,8 @@ impl ImageResolver for DataUriImages {
     }
 }
 
-/// Walk the kept content and decode every `<img src="data:...;base64,...">` into
+/// Walk the kept content and decode every `<img src="data:...">` (base64 or
+/// percent-encoded; `image::decode_data_url`) into
 /// `out`, keyed by the full `src` (the name the layout resolves against).
 fn collect_data_uri_images(view: &TreeView, nodes: &[Handle], out: &mut HashMap<String, Vec<u8>>) {
     for &h in nodes.iter().filter(|&&h| is_element(view, h)) {
@@ -415,8 +469,8 @@ fn collect_data_uri_images(view: &TreeView, nodes: &[Handle], out: &mut HashMap<
     }
 }
 
-/// Decode this element's `<img src="data:...;base64,...">` into `out` (keyed by
-/// `src`), if it is an `img` with an as-yet-unseen, decodable base64 data URI.
+/// Decode this element's `<img src="data:...">` into `out` (keyed by `src`), if it is
+/// an `img` with an as-yet-unseen, decodable data URI.
 fn record_img_data_uri(view: &TreeView, h: Handle, out: &mut HashMap<String, Vec<u8>>) {
     if !is_plain(view, h, "img") {
         return;
@@ -425,59 +479,10 @@ fn record_img_data_uri(view: &TreeView, h: Handle, out: &mut HashMap<String, Vec
         return;
     };
     if !out.contains_key(src) {
-        if let Some(bytes) = decode_data_uri(src) {
+        if let Some(bytes) = crate::image::decode_data_url(src).map(|d| d.bytes) {
             out.insert(src.to_string(), bytes);
         }
     }
-}
-
-/// Decode a `data:[<mediatype>];base64,<payload>` URI to bytes. Only base64 data
-/// URIs are handled (the raster fixtures embed encoded images that way); a
-/// percent-encoded/text data URI yields `None`.
-fn decode_data_uri(src: &str) -> Option<Vec<u8>> {
-    let rest = src.strip_prefix("data:")?;
-    let comma = rest.find(',')?;
-    if !rest[..comma].contains(";base64") {
-        return None;
-    }
-    base64_decode(&rest[comma + 1..])
-}
-
-/// Minimal standard-alphabet base64 decoder (no dependency): skips padding and
-/// whitespace, packs 6-bit groups into bytes. `None` on an invalid character.
-fn base64_decode(s: &str) -> Option<Vec<u8>> {
-    let mut out = Vec::with_capacity(s.len() / 4 * 3);
-    let (mut acc, mut bits) = (0u32, 0u32);
-    for &c in s.as_bytes() {
-        base64_feed(c, &mut acc, &mut bits, &mut out)?;
-    }
-    Some(out)
-}
-
-/// Fold one base64 character into the rolling accumulator, emitting a decoded byte
-/// once at least 8 bits are buffered. Padding and whitespace are skipped; an
-/// invalid character yields `None`.
-fn base64_feed(c: u8, acc: &mut u32, bits: &mut u32, out: &mut Vec<u8>) -> Option<()> {
-    fn sextet(c: u8) -> Option<u32> {
-        match c {
-            b'A'..=b'Z' => Some(u32::from(c - b'A')),
-            b'a'..=b'z' => Some(u32::from(c - b'a') + 26),
-            b'0'..=b'9' => Some(u32::from(c - b'0') + 52),
-            b'+' => Some(62),
-            b'/' => Some(63),
-            _ => None,
-        }
-    }
-    if c == b'=' || c.is_ascii_whitespace() {
-        return Some(());
-    }
-    *acc = (*acc << 6) | sextet(c)?;
-    *bits += 6;
-    if *bits >= 8 {
-        *bits -= 8;
-        out.push((*acc >> *bits) as u8);
-    }
-    Some(())
 }
 
 /// A fragment's border-box rect after its CSS 2D `transform`, as the axis-aligned
@@ -544,7 +549,7 @@ mod tests {
         let view = TreeView::new(&tree);
         let p = view.find_element("p").expect("p");
         assert_eq!(view.text(view.children(p)[0]), "a {{ x }} b");
-        // `collect_style_css_tree` finds a body `<style>` (head is dropped by html5ever).
+        // `collect_style_css_tree` finds a body `<style>`.
         assert!(body_css("<body><style>.a{color:red}</style></body>").contains(".a{color:red}"));
     }
 
@@ -556,8 +561,8 @@ mod tests {
     #[test]
     fn box_sizing_inherit_chains_from_the_html_root() {
         // The classic reset `html{box-sizing:border-box}` + `*{box-sizing:inherit}`.
-        // The `<html>`/`<body>` shells are match-only, so their computed style must be
-        // threaded as the inheritance parent — else `box-sizing:inherit` resolves to
+        // `<html>` and `<body>` are real elements, so their computed style is the
+        // inheritance parent of the content — else `box-sizing:inherit` resolves to
         // nothing and each `width:50%` card becomes content-box + padding (320px), so
         // two no longer fit their 600px row and the second wraps (nike's half-width
         // hero stacking). With the border-box chain each card is 300px and both fit.
@@ -633,11 +638,18 @@ mod tests {
         // Round-trips the base64 decoder and the data-URI split on a real 8x6 PNG.
         let uri = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAG\
                    CAIAAABxZ0isAAAAEUlEQVR4nGMI6DmBFTEMpAQA/aBOwe19mXAAAAAASUVORK5CYII=";
-        let bytes = super::decode_data_uri(uri).expect("data uri decodes");
+        let bytes = crate::image::decode_data_url(uri)
+            .expect("data uri decodes")
+            .bytes;
         let intrinsic = crate::image::probe(&bytes).expect("png intrinsic");
         assert_eq!((intrinsic.width, intrinsic.height), (8, 6));
-        // A non-base64 data URI is not handled (returns None, no panic).
-        assert!(super::decode_data_uri("data:text/plain,hello").is_none());
+        // A percent-encoded (non-base64) data URI decodes too (the shared decoder).
+        assert_eq!(
+            crate::image::decode_data_url("data:text/plain,hello%20x")
+                .unwrap()
+                .bytes,
+            b"hello x"
+        );
     }
 
     #[test]
@@ -790,15 +802,6 @@ mod tests {
                 .count(),
             2
         );
-    }
-
-    #[test]
-    fn base64_decode_handles_plus_slash_and_rejects_invalid() {
-        // `+`/`/` are the standard-alphabet's 62/63 sextets; "Tnk+" -> "Ny>".
-        assert_eq!(super::base64_decode("Tnk+").unwrap(), b"Ny>");
-        // whitespace and `=` padding are skipped; an out-of-alphabet char fails.
-        assert_eq!(super::base64_decode("Tm8=").unwrap(), b"No");
-        assert!(super::base64_decode("!!!!").is_none());
     }
 
     #[test]

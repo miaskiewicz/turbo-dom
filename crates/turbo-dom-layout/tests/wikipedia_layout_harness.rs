@@ -544,9 +544,9 @@ fn infobox_survives_is_list_collapse_rule() {
 #[test]
 fn html_class_gates_descendant_rule() {
     // Real skins gate huge amounts of CSS on `<html>`/`<body>` classes (Wikipedia's
-    // `vector-feature-*`, `client-js`, theme classes). Those elements aren't laid
-    // out, but the cascade seeds them as match-only ancestors, so a descendant rule
-    // keyed on the html class must still apply.
+    // `vector-feature-*`, `client-js`, theme classes). `<html>`/`<body>` are real
+    // ancestors in the document scope, so a descendant rule keyed on the html class
+    // must apply.
     let html = r#"<html class="feat"><body><style>
         .box{display:none}
         .feat .box{display:block;background-color:#ff0000;height:20px}

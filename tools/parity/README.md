@@ -38,12 +38,15 @@ covers `compare`/`record`/`run` and checks the committed checkpoints and expecte
 (a bug fix) is declared in an expected-diff file passed with `--expect`:
 
 ```json
-{"id": "turbo-html2pdf#29", "reason": "apply <head> styles", "control": "crates/turbo-dom-layout/tests/fixtures/head_style_chrome156.json",
+{"id": "turbo-html2pdf#29", "reason": "style whole documents like Chrome", "control": "crates/turbo-dom-layout/tests/fixtures/html_document_chrome156.json",
  "changes": {"html2pdf": ["conformance-01-block-flow.pdf"], "surf": ["static-…png"]}}
 ```
 
 Listed outputs that did not change fail as stale expectations, so every expectation
-matches a real change. After a reviewed set of intended changes lands, record a new
+matches a real change. The self-test also requires every listed output to be recorded in a checkpoint,
+so a NEW corpus input cannot be declared as an expected addition: its outputs enter the
+manifests with the next recorded checkpoint (P5b-Y kept its new fixtures as crate-level
+Chrome-controlled tests instead). After a reviewed set of intended changes lands, record a new
 checkpoint with `parity.py record OUT <name>`; later work (e.g. code-review fixes)
 must then be zero-diff against it.
 

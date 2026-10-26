@@ -134,7 +134,7 @@ fn paint_image(
     let (w, h) = (f.width.round() as u32, f.height.round() as u32);
     let img = images
         .get(&placement.name)
-        .and_then(|d| d.scaled_pixmap(w, h));
+        .and_then(|d| d.oriented(placement.orientation).scaled_pixmap(w, h));
     // Fold the box's top-left into the transform so a transformed image (a rotated
     // thumbnail, a translated slide) maps correctly; draw the pixmap at (0,0).
     let place = xf.pre_concat(Transform::from_translate(f.x.round(), f.y.round()));

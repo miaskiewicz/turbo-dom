@@ -26,8 +26,14 @@ fn lay_out(html: &str) -> Result<Fragment, RenderError> {
   marker classifier (`MarkerKind`: opaque inline/block markers such as html2pdf's `t:`
   directives) and optional stripping of non-visual subtrees.
 - `Roots::Detached(&[Handle])` styles nodes as their own flow (no ancestors, default
-  parent); `Roots::Shell` styles `<body>` content under match-only `<html>`/`<body>`
-  shells (the HTML drive).
+  parent); `Roots::Document` styles the whole document from its root element, as a
+  browser does (the HTML drive): `<html>`/`<head>`/`<body>` are real elements, `rem`
+  resolves against the root font size (`root_font_scope`), and `Cascade::for_document`
+  adds the document UA rules (`head { display: none }`, `body { margin: 8px }`) and the
+  document's own `<style>` sheets. The HTML drive also propagates the root/body
+  background colour to the canvas (the galley root's background;
+  `html_layout::propagate_canvas_background`) — Chrome-controlled by
+  `tests/html_document_chrome.rs` (`scripts/html-document-chrome-control.mjs`).
 - `StyleOptions` / `LayoutOptions` / `HtmlOptions`: `accept_cmyk` (print colour),
   `atomic_internal_links` (`<a href="#x">` as its own box), `first_node_id`.
 - `layout_recorded` returns the galley plus `NodeSources` (box id → source element /
@@ -54,7 +60,23 @@ fn lay_out(html: &str) -> Result<Fragment, RenderError> {
   `svg::rasterize(bytes, scale, Oversize)` is the one SVG rasterizer with the intrinsic CSS
   size (`css_size`) separate from the oversampled pixel size (`pixel_size`): the PDF lays out
   and rasterizes at 2x clamping an axis to 8192 px, turbo-dom-raster at 1x rejecting above
-  8192. JPEG stays a header read + `DCTDecode` passthrough for the PDF.
+  8192. JPEG stays a header read + `DCTDecode` passthrough for the PDF. The probe also
+  reads the EXIF orientation (`Intrinsic::orientation`, an `Orientation`: JPEG `APP1`
+  Exif, PNG `eXIf`; not WebP `EXIF`, which Chrome 156 ignores): image boxes lay out at the
+  displayed size (`Intrinsic::displayed`, width/height swapped for orientations 5-8)
+  unless `image-orientation: none`, and `ImagePlacement::orientation` tells the painters
+  how to turn the stored pixels (`Orientation::apply_rgba` for raster; a rotated `cm` in
+  the PDF). Chrome-controlled by `tests/image_orientation_chrome.rs`
+  (`scripts/image-orientation-chrome-control.mjs`; fixtures from
+  `scripts/make_orientation_fixtures.py`). Beyond PNG/JPEG/GIF/WebP the probe sizes BMP,
+  ICO/CUR (`ico_entry`: the largest entry, as browsers show) and AVIF (the primary item's
+  `ispe`; `avif_payload` demuxes its AV1 streams for a decoder); the PDF does not embed
+  them (decode emits nothing). `probe_natural` is the browser's `naturalWidth`/`Height`
+  (displayed orientation; SVG under `svg-rasterize` via `svg::natural_size`, Chrome's
+  300x150 default-object rules) and `decode_data_url` the Fetch-standard `data:` decoder
+  (base64 and percent-encoded) — the API a live `<img>` load uses
+  (miaskiewicz/turbo-surf#30); Chrome-controlled by `tests/image_formats_chrome.rs`
+  (`scripts/image-formats-chrome-control.mjs`, `scripts/make_format_fixtures.py`).
 - `FontRegistry::system(SystemFontPolicy)` — the process-wide installed-font registry, loaded
   once per policy (`Default` = `load_system_fonts`, `Html` = `load_system_fonts_for_html`);
   `system_cell` exposes the `OnceLock` for embedders that warm it themselves.
@@ -133,7 +155,7 @@ cargo test -p turbo-dom-layout                         # default (bundled-fonts)
 cargo test -p turbo-dom-layout --features svg
 cargo test -p turbo-dom-layout --features perf
 cargo test -p turbo-dom-layout --features svg --test image_layer   # the shared image layer == the pre-S5 PDF decode
-cargo test -p turbo-dom-layout --no-default-features   # 44 known failures: tests that assume bundled fonts (turbo-html2pdf#28)
+cargo test -p turbo-dom-layout --no-default-features   # 43 known failures: tests that assume bundled fonts (turbo-html2pdf#28)
 cargo tarpaulin --config crates/turbo-dom-layout/tarpaulin.toml
 ```
 
