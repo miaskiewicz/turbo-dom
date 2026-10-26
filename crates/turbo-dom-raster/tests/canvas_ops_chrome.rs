@@ -94,7 +94,6 @@ fn css_colour_syntaxes_fill_like_chrome_156() {
 /// 16 x 16 grid of colour / alpha pairs and the translucent `global-alpha` cases (found by
 /// the P5-cov mutation pass).
 #[test]
-#[ignore = "unpremultiply rounding: fails until the fix"]
 fn straight_alpha_readback_rounds_like_chrome_156() {
     let failures = differences(|id| id == "unpremultiply" || id == "global-alpha");
     assert!(failures.is_empty(), "{}", failures.join("\n"));

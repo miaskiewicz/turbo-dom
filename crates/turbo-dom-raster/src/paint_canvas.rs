@@ -16,41 +16,45 @@ use crate::canvas_ops::{self, CanvasBackend, Op, SubPath};
 /// Rasterize the parsed op stream at `width × height` (both already clamped ≥ 1 by
 /// the caller) into a PNG. `Err` only on pixmap allocation or PNG encoding.
 pub(crate) fn replay(width: u32, height: u32, ops: &[Op]) -> Result<Vec<u8>, String> {
-    let pm = Pixmap::new(width, height).ok_or_else(|| format!("bad canvas {width}x{height}"))?;
-    let mut backend = SkiaCanvas { pm };
-    canvas_ops::run(ops, &mut backend);
-    backend
-        .pm
-        .encode_png()
-        .map_err(|e| format!("png encode: {e}"))
+    // The PNG carries the straight-alpha pixels `getImageData` reads (Chrome's `toDataURL`
+    // encodes the same unpremultiplied values).
+    let rgba = replay_rgba(width, height, ops)?;
+    let img = image::RgbaImage::from_raw(width, height, rgba).expect("width * height * 4 bytes");
+    let mut png = std::io::Cursor::new(Vec::new());
+    img.write_to(&mut png, image::ImageFormat::Png)
+        .map_err(|e| format!("png encode: {e}"))?;
+    Ok(png.into_inner())
 }
 
 /// Rasterize the op stream into RAW, straight-alpha RGBA8 (top-left origin, tightly packed) —
 /// the byte layout `getImageData` returns. tiny-skia stores premultiplied alpha, so unpremultiply
 /// back to straight alpha (else a browser reading `getImageData` after a translucent draw would
-/// see premultiplied values a real canvas never returns).
+/// see premultiplied values a real canvas never returns), rounding as Chrome does.
 pub(crate) fn replay_rgba(width: u32, height: u32, ops: &[Op]) -> Result<Vec<u8>, String> {
     let pm = Pixmap::new(width, height).ok_or_else(|| format!("bad canvas {width}x{height}"))?;
     let mut backend = SkiaCanvas { pm };
     canvas_ops::run(ops, &mut backend);
-    let src = backend.pm.data(); // premultiplied RGBA8
-    let mut out = Vec::with_capacity(src.len());
-    let (pixels, _rem) = src.as_chunks::<4>();
-    for px in pixels {
-        let a = px[3];
-        if a == 0 {
-            out.extend_from_slice(&[0, 0, 0, 0]);
-        } else {
-            // straight = round(premul * 255 / a)
-            let un =
-                |c: u8| ((u32::from(c) * 255 + u32::from(a) / 2) / u32::from(a)).min(255) as u8;
-            out.push(un(px[0]));
-            out.push(un(px[1]));
-            out.push(un(px[2]));
-            out.push(a);
-        }
+    let (pixels, _rem) = backend.pm.data().as_chunks::<4>(); // premultiplied RGBA8
+    Ok(pixels.iter().flat_map(|&px| unpremultiply(px)).collect())
+}
+
+/// One premultiplied RGBA8 pixel as straight alpha, the way Chrome's `getImageData` (Skia's
+/// raster pipeline) computes it: in single precision, each channel scaled to 0..1, divided
+/// by the alpha (multiplied by its reciprocal) and rounded to the nearest byte, ties to even.
+/// A transparent pixel is transparent black. Checked over a 16 x 16 colour/alpha grid
+/// against Chrome 156 (`unpremultiply` in `scripts/canvas-ops-chrome-control.mjs`).
+fn unpremultiply([r, g, b, a]: [u8; 4]) -> [u8; 4] {
+    if a == 0 {
+        return [0, 0, 0, 0];
     }
-    Ok(out)
+    let unit = 1.0_f32 / 255.0;
+    let scale = 1.0 / (f32::from(a) * unit);
+    let channel = |c: u8| {
+        (f32::from(c) * unit * scale * 255.0)
+            .round_ties_even()
+            .min(255.0) as u8
+    };
+    [channel(r), channel(g), channel(b), a]
 }
 
 /// A tiny-skia pixmap wearing the [`CanvasBackend`] primitives.
@@ -285,6 +289,29 @@ mod tests {
         let rgba = replay_rgba(2, 2, &canvas_ops::parse_ops(log).unwrap()).unwrap();
         assert_eq!(&rgba[..4], &[0, 255, 0, 102]);
         assert_eq!(rgba.len(), 16);
+    }
+
+    #[test]
+    fn unpremultiply_divides_in_single_precision_rounding_ties_to_even() {
+        assert_eq!(unpremultiply([0, 0, 0, 0]), [0, 0, 0, 0]);
+        assert_eq!(
+            unpremultiply([10, 20, 30, 0]),
+            [0, 0, 0, 0],
+            "no alpha, no colour"
+        );
+        for c in 0..=255 {
+            assert_eq!(
+                unpremultiply([c, c / 2, 255 - c, 255]),
+                [c, c / 2, 255 - c, 255]
+            );
+        }
+        // The exact-half quotients Chrome 156 resolves (single precision decides them):
+        // 18/68 -> 67.5 -> 67, 51/102 -> 127.5 -> 128, 13/102 -> 32.5 -> 32, 5/34 -> 37.
+        assert_eq!(unpremultiply([18, 51, 13, 68]), [67, 191, 49, 68]);
+        assert_eq!(unpremultiply([51, 13, 41, 102]), [128, 32, 102, 102]);
+        assert_eq!(unpremultiply([5, 2, 11, 34]), [37, 15, 82, 34]);
+        // A premultiplied channel above its alpha (not producible by painting) saturates.
+        assert_eq!(unpremultiply([200, 0, 0, 100]), [255, 0, 0, 100]);
     }
 
     #[test]
