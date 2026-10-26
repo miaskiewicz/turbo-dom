@@ -1203,6 +1203,7 @@ Declared behaviour changes (Chrome 156 controls), not moves:
 | crate | test (binary::name) | category |
 |---|---|---|
 | turbo-dom-layout | `html_document_chrome<tests/html_document_chrome.rs>::intrinsic_widths_count_child_margins_like_chrome_156` | new (turbo-dom#79, test-first) |
+| turbo-dom-layout | `html_document_chrome<tests/html_document_chrome.rs>::inline_blocks_keep_child_margins_like_chrome_156`, `turbo_dom_layout<src/lib.rs>::live::chrome_tests::inline_blocks_keep_child_margins_like_chrome_156` | new (turbo-dom#80, test-first) |
 
 ## P5b-W2 — raster inline SVG on the tree (turbo-dom `consol/p5b-w2`)
 

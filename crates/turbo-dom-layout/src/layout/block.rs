@@ -594,10 +594,13 @@ fn marker_frag(node_id: NodeId, kind: MarkerKind, x: f32, y: f32) -> Fragment {
 /// Lay out an atomic inline (`inline-block` / replaced `<img>`) at the origin so
 /// its size is known; the caller translates it to its placed line position. An
 /// auto-width, non-replaced `inline-block` shrinks to its content (else it would
-/// fill the line); replaced/explicit-width boxes size themselves normally.
+/// fill the line); replaced/explicit-width boxes size themselves normally. An
+/// `inline-block` is a block formatting context root, so its first / last child's
+/// vertical margins stay inside it (miaskiewicz/turbo-dom#80).
 fn lay_atomic(b: &LayoutBox, cw: f32, fs: f32, ctx: &mut Ctx) -> Fragment {
     let bs = resolve(b, cw, fs);
     let replaced = b.is_replaced();
+    let root = inline_block(b);
     if !replaced && bs.width.resolve(cw).is_none() {
         // Shrink-to-fit, then honor `min-width`/`max-width` — google's header "Sign in"
         // pill has `min-width:85px`; unclamped it shrank to its ~68px text and, nearly
@@ -611,10 +614,20 @@ fn lay_atomic(b: &LayoutBox, cw: f32, fs: f32, ctx: &mut Ctx) -> Fragment {
         let mc = super::flex::min_content_width(b, ctx.fonts);
         let w = clamp_width(nat.min(cw.max(mc)), &bs, cw, extra);
         let w = super::value::html_used_value(w, ctx.html_font_scale);
-        layout_box_sized(b, &bs, 0.0, 0.0, w, ctx)
+        layout_box_sized_impl(b, &bs, 0.0, 0.0, w, ctx, root)
+    } else if root {
+        let bbw = border_box_width(&bs, cw);
+        layout_box_sized_isolated(b, &bs, 0.0, 0.0, bbw, ctx)
     } else {
         layout_box(b, 0.0, 0.0, cw, fs, ctx)
     }
+}
+
+/// Whether an atomic inline is an `inline-block` (as specified: it lays out as a block
+/// container that establishes a block formatting context). A nested block the generic
+/// policy keeps atomic inside an inline is not.
+fn inline_block(b: &LayoutBox) -> bool {
+    b.style.get("display").map(str::trim) == Some("inline-block")
 }
 
 /// Lay out an inline formatting context: text runs and atomic inline boxes flow

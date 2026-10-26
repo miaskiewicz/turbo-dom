@@ -17,6 +17,12 @@ changes in `tools/parity/expected/p5b-w7-turbo-dom-*.json`.
   child (and each atomic inline) now contributes its margin box: signed (a negative
   margin shrinks it, the box never below 0), `%` and `auto` margins counting 0. Every
   layout path. Control: `intrinsic-margins-*` in `scripts/html-document-chrome-control.mjs`.
+- Inline-blocks are formatting-context roots (miaskiewicz/turbo-dom#80): an
+  `inline-block` dropped its first / last child's vertical margins (it was as tall as the
+  child's border box, the child at its top). It now lays its content out as a block
+  formatting context (CSS 2.2 §8.3.1), so those margins stay inside it, as for a float.
+  Every layout path. Control: `inline-block-margins-*` in `html-document` and
+  `live-geometry`.
 
 ### Fixed — turbo-dom-layout tables, clipping and box sizing (P5b-W5, miaskiewicz/turbo-dom#41/#51/#52/#55/#62/#63/#64/#65/#69/#70, Chrome 156 controls)
 Each fix is backed by a Chrome for Testing 156 control and lists the corpus outputs it

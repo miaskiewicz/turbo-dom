@@ -347,7 +347,6 @@ fn inline_block_margin_case(id: &str) -> bool {
 }
 
 #[test]
-#[ignore = "turbo-dom#80: fails until the fix"]
 fn inline_blocks_keep_child_margins_like_chrome_156() {
     assert_matches_chrome(compare_cases(inline_block_margin_case));
 }
