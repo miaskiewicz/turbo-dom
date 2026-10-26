@@ -672,6 +672,10 @@ pub struct BoxStyle {
     pub color: Rgba,
     pub line_height: Option<f32>,
     pub text_align: crate::text::Align,
+    /// Whether `text_align` is a legacy `-webkit-center` / `-webkit-right` /
+    /// `-webkit-left` value (UA `center`, `align` attributes): only those also align the
+    /// box's block-level children (miaskiewicz/turbo-dom#69).
+    pub legacy_align: bool,
     pub white_space: crate::text::WhiteSpace,
     pub letter_spacing: f32,
     pub vertical_align: VAlign,
@@ -1074,12 +1078,19 @@ fn line_height(s: &ComputedStyle, fs: f32) -> Option<f32> {
 
 fn align_of(s: &ComputedStyle) -> crate::text::Align {
     use crate::text::Align;
-    match s.get("text-align").unwrap_or("left").trim() {
+    let value = s.get("text-align").unwrap_or("left").trim();
+    match value.strip_prefix("-webkit-").unwrap_or(value) {
         "right" => Align::Right,
         "center" => Align::Center,
         "justify" => Align::Justify,
         _ => Align::Left,
     }
+}
+
+/// Whether `text-align` is a legacy `-webkit-*` value (see [`BoxStyle::legacy_align`]).
+fn legacy_align_of(s: &ComputedStyle) -> bool {
+    s.get("text-align")
+        .is_some_and(|value| value.trim().starts_with("-webkit-"))
 }
 
 fn white_space_of(s: &ComputedStyle) -> crate::text::WhiteSpace {
@@ -1148,6 +1159,7 @@ fn resolve_box_metrics(s: &ComputedStyle, fs: f32, ctx: ResolveCtx) -> BoxStyle 
         color: s.get("color").and_then(parse_color).unwrap_or(Rgba::BLACK),
         line_height: line_height(s, fs),
         text_align: align_of(s),
+        legacy_align: legacy_align_of(s),
         white_space: white_space_of(s),
         letter_spacing: s
             .get("letter-spacing")

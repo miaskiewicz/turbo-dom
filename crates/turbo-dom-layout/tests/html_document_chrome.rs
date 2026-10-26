@@ -259,7 +259,6 @@ fn legacy_align_case(id: &str) -> bool {
 }
 
 #[test]
-#[ignore = "miaskiewicz/turbo-dom#69: fails until the fix"]
 fn legacy_alignment_moves_blocks_like_chrome_156() {
     compare_cases(legacy_align_case);
 }

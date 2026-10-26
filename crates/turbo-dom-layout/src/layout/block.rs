@@ -1118,6 +1118,17 @@ struct FlowRun {
     align: Align,
 }
 
+/// How a block container aligns its block-level children: by its `text-align` only
+/// when that is a legacy `-webkit-*` value (Chrome 156; plain `center` / `right` align
+/// inline content only; miaskiewicz/turbo-dom#69).
+fn block_align(bs: &BoxStyle) -> Align {
+    if bs.legacy_align {
+        bs.text_align
+    } else {
+        Align::Left
+    }
+}
+
 /// Collapse two adjacent vertical margins (CSS 2.1 §8.3.1): the used margin is the
 /// largest positive margin plus the most-negative negative margin, so an all-
 /// positive pair takes the max (the common case) while a negative margin pulls the
@@ -1271,7 +1282,7 @@ fn layout_block_flow(
     let mut flow = FlowRun {
         cursor: cy,
         pending: 0.0,
-        align: bs.text_align,
+        align: block_align(bs),
     };
     let mut deferred: Vec<(&LayoutBox, (f32, f32))> = Vec::new();
     let mut first_inflow = true;

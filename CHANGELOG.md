@@ -7,7 +7,7 @@ at the time); this file reconstructs them from history.
 
 ## [Unreleased]
 
-### Fixed — turbo-dom-layout tables, clipping and box sizing (P5b-W5, miaskiewicz/turbo-dom#41/#51/#52/#55/#62/#63/#64/#65, Chrome 156 controls)
+### Fixed — turbo-dom-layout tables, clipping and box sizing (P5b-W5, miaskiewicz/turbo-dom#41/#51/#52/#55/#62/#63/#64/#65/#69, Chrome 156 controls)
 Each fix is backed by a Chrome for Testing 156 control and lists the corpus outputs it
 changes in `tools/parity/expected/p5b-w5-turbo-dom-*.json`.
 - Table captions (#51): a `<caption>` (UA `caption { display: table-caption; text-align:
@@ -81,6 +81,17 @@ changes in `tools/parity/expected/p5b-w5-turbo-dom-*.json`.
   item) keeps its children's top and bottom margins inside. Changes the galley of every
   PDF whose blocks end with a margined child (and paginated breaks: turbo-html2pdf#32's
   `exact-fill-child-margin`). Control: `last-margin-*` in `html-document`.
+
+- Legacy alignment (#69, found while fixing #51): a `text-align: center` / `right`
+  container centred / right-aligned its block-level children; in Chrome only the legacy
+  `-webkit-center` / `-webkit-right` / `-webkit-left` values do (plain values align inline
+  content only). Those values are now parsed (inline content aligns as `center` /
+  `right` / `left`; `BoxStyle::legacy_align` moves the blocks), the UA `center` and
+  `caption` rules use `-webkit-center`, and the `align` attribute of `div`, `p`, `h1`-`h6`,
+  `td`, `th` and `tr` is a presentational hint (`center`/`middle` → `-webkit-center`,
+  `left`/`right` → `-webkit-left`/`-webkit-right`, `justify`; also in
+  `presentational_declarations` for live layouts). Control: `legacy-align-*` in
+  `html-document`.
 
 ### Fixed — `getComputedStyle` defaults and no injected `<title>` (P5b-X3, miaskiewicz/turbo-surf#36 items 1–2, Chrome 156 control)
 - turbo-dom-browser-env: `getComputedStyle` used to return `""` for `display`, `position`
