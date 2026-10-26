@@ -3,6 +3,17 @@ use turbo_dom::rtdom::{
     tree::{CollectionBudget, Namespace, NodeType},
     Tree,
 };
+use turbo_dom::Handle;
+
+/// The `n`th element named `name` in node order, template content included: selectors do
+/// not reach template content (it is a separate fragment, as in Chrome — P5b,
+/// miaskiewicz/turbo-dom#18), so these tests find its nodes structurally.
+fn nth(tree: &Tree, name: &str, n: usize) -> Handle {
+    tree.handles()
+        .filter(|&h| tree.node_type(h) == NodeType::Element && tree.local_name(h) == Some(name))
+        .nth(n)
+        .unwrap_or_else(|| panic!("<{name}> #{n}"))
+}
 
 #[test]
 fn extracting_template_fragment_preserves_light_children_original_units_and_pending_records() {
@@ -17,8 +28,8 @@ fn extracting_template_fragment_preserves_light_children_original_units_and_pend
     let mut tree = Tree::parse_utf16(&source);
     let template = tree.query_selector("template").unwrap();
     let fragment = tree.first_child(template).unwrap();
-    let b = tree.query_selector("b").unwrap();
-    let nested = tree.query_selector("template template").unwrap();
+    let b = nth(&tree, "b", 0);
+    let nested = nth(&tree, "template", 1);
     let light = tree.create_element("p");
     tree.append_child(template, light);
     tree.start_recording();
@@ -104,8 +115,8 @@ fn imported_scalar_and_unit_parser_fragments_both_survive_collection_and_extract
             tree.set_inner_html(main, source);
         }
         let host = tree.query_selector("template").unwrap();
-        let nested = tree.query_selector("template template").unwrap();
-        let b = tree.query_selector("b").unwrap();
+        let nested = nth(&tree, "template", 1);
+        let b = nth(&tree, "b", 0);
         tree.collect_unreachable(&[], collection_budget()).unwrap();
         let inner = tree.take_template_contents(nested).unwrap();
         let outer = tree.take_template_contents(host).unwrap();
@@ -133,7 +144,7 @@ fn imported_scalar_and_unit_parser_fragments_both_survive_collection_and_extract
 fn pending_exact_unit_metadata_indices_and_ancestry_are_not_changed() {
     let mut tree = Tree::parse("<template><b></b></template>");
     let host = tree.query_selector("template").unwrap();
-    let b = tree.query_selector("b").unwrap();
+    let b = nth(&tree, "b", 0);
     let fragment = tree.parent(b).unwrap();
     let text = tree.create_text_node_utf16(&[0xdc00]);
     tree.append_child(b, text);
@@ -167,11 +178,10 @@ fn extraction_invalidates_query_and_style_caches_and_no_op_does_not() {
     let mut tree = Tree::parse("<template><style>p{color:red}</style><b></b></template><p>x</p>");
     let host = tree.query_selector("template").unwrap();
     let p = tree.query_selector("p").unwrap();
-    assert_eq!(tree.query_selector_all("b").len(), 1);
-    assert_eq!(
-        computed_style(&tree, p).get("color").map(String::as_str),
-        Some("red")
-    );
+    // template content is never in the document's queries or cascade (Chrome), before
+    // or after extraction; the caches are still rebuilt on the version bump
+    assert_eq!(tree.query_selector_all("b").len(), 0);
+    assert_eq!(computed_style(&tree, p).get("color"), None);
     let before = tree.version;
     tree.take_template_contents(host).unwrap();
     assert_eq!(tree.version, before + 1);
@@ -236,8 +246,8 @@ fn wrong_node_types_and_namespaces_are_non_mutating() {
 fn extracted_descendant_pins_its_component_then_unpinned_component_is_reclaimed() {
     let mut tree = Tree::parse("<template><b>one</b><i>two</i></template>");
     let host = tree.query_selector("template").unwrap();
-    let b = tree.query_selector("b").unwrap();
-    let i = tree.query_selector("i").unwrap();
+    let b = nth(&tree, "b", 0);
+    let i = nth(&tree, "i", 0);
     let fragment = tree.take_template_contents(host).unwrap();
     tree.collect_unreachable(&[b], collection_budget()).unwrap();
     assert!(tree.is_live(fragment));

@@ -25,7 +25,8 @@
      "qsa": [
       3
      ],
-     "winner": "0001000"
+     "winner": "0001000",
+     "sheet_valid": true
     },
     {
      "selector": "div.md\\:flex",
@@ -34,7 +35,8 @@
      "qsa": [
       3
      ],
-     "winner": "0001000"
+     "winner": "0001000",
+     "sheet_valid": true
     },
     {
      "selector": "#\\61",
@@ -43,7 +45,8 @@
      "qsa": [
       3
      ],
-     "winner": "0001000"
+     "winner": "0001000",
+     "sheet_valid": true
     },
     {
      "selector": "\\70",
@@ -52,7 +55,8 @@
      "qsa": [
       4
      ],
-     "winner": "0000100"
+     "winner": "0000100",
+     "sheet_valid": true
     },
     {
      "selector": "\\64 iv",
@@ -62,7 +66,8 @@
       3,
       5
      ],
-     "winner": "0001010"
+     "winner": "0001010",
+     "sheet_valid": true
     },
     {
      "selector": ".a\\.b",
@@ -71,7 +76,8 @@
      "qsa": [
       4
      ],
-     "winner": "0000100"
+     "winner": "0000100",
+     "sheet_valid": true
     },
     {
      "selector": "#\\31 23",
@@ -80,7 +86,8 @@
      "qsa": [
       5
      ],
-     "winner": "0000010"
+     "winner": "0000010",
+     "sheet_valid": true
     },
     {
      "selector": ".\\31 0",
@@ -89,7 +96,8 @@
      "qsa": [
       5
      ],
-     "winner": "0000010"
+     "winner": "0000010",
+     "sheet_valid": true
     },
     {
      "selector": ".\\@sm",
@@ -98,7 +106,8 @@
      "qsa": [
       5
      ],
-     "winner": "0000010"
+     "winner": "0000010",
+     "sheet_valid": true
     },
     {
      "selector": ".md\\:flex > \\70",
@@ -107,7 +116,8 @@
      "qsa": [
       4
      ],
-     "winner": "0000100"
+     "winner": "0000100",
+     "sheet_valid": true
     },
     {
      "selector": ":is(.md\\:flex) p",
@@ -116,7 +126,8 @@
      "qsa": [
       4
      ],
-     "winner": "0000100"
+     "winner": "0000100",
+     "sheet_valid": true
     },
     {
      "selector": ":not(.md\\:flex)",
@@ -130,7 +141,8 @@
       5,
       6
      ],
-     "winner": "1110111"
+     "winner": "1110111",
+     "sheet_valid": true
     },
     {
      "selector": "[class=\"md:flex\"]",
@@ -139,7 +151,8 @@
      "qsa": [
       3
      ],
-     "winner": "0001000"
+     "winner": "0001000",
+     "sheet_valid": true
     },
     {
      "selector": "[class=md\\:flex]",
@@ -148,7 +161,8 @@
      "qsa": [
       3
      ],
-     "winner": "0001000"
+     "winner": "0001000",
+     "sheet_valid": true
     },
     {
      "selector": ".md",
@@ -157,7 +171,8 @@
      "qsa": [
       6
      ],
-     "winner": "0000001"
+     "winner": "0000001",
+     "sheet_valid": true
     },
     {
      "selector": "#a",
@@ -166,7 +181,8 @@
      "qsa": [
       3
      ],
-     "winner": "0001000"
+     "winner": "0001000",
+     "sheet_valid": true
     },
     {
      "selector": "p",
@@ -175,7 +191,8 @@
      "qsa": [
       4
      ],
-     "winner": "0000100"
+     "winner": "0000100",
+     "sheet_valid": true
     },
     {
      "selector": "div > p",
@@ -184,7 +201,8 @@
      "qsa": [
       4
      ],
-     "winner": "0000100"
+     "winner": "0000100",
+     "sheet_valid": true
     }
    ]
   },
@@ -208,7 +226,8 @@
      "qsa": [
       3
      ],
-     "winner": "000100"
+     "winner": "000100",
+     "sheet_valid": true
     },
     {
      "selector": ".日本",
@@ -217,7 +236,8 @@
      "qsa": [
       4
      ],
-     "winner": "000010"
+     "winner": "000010",
+     "sheet_valid": true
     },
     {
      "selector": "#ñ",
@@ -226,14 +246,16 @@
      "qsa": [
       5
      ],
-     "winner": "000001"
+     "winner": "000001",
+     "sheet_valid": true
     },
     {
      "selector": "日本",
      "valid": true,
      "matches": "000000",
      "qsa": [],
-     "winner": "000000"
+     "winner": "000000",
+     "sheet_valid": true
     },
     {
      "selector": "div.café > span.日本",
@@ -242,7 +264,8 @@
      "qsa": [
       4
      ],
-     "winner": "000010"
+     "winner": "000010",
+     "sheet_valid": true
     },
     {
      "selector": ".日本.x",
@@ -251,7 +274,8 @@
      "qsa": [
       4
      ],
-     "winner": "000010"
+     "winner": "000010",
+     "sheet_valid": true
     },
     {
      "selector": ":not(.café)",
@@ -264,7 +288,8 @@
       4,
       5
      ],
-     "winner": "111011"
+     "winner": "111011",
+     "sheet_valid": true
     },
     {
      "selector": ".caf",
@@ -273,7 +298,8 @@
      "qsa": [
       5
      ],
-     "winner": "000001"
+     "winner": "000001",
+     "sheet_valid": true
     },
     {
      "selector": "[class=café]",
@@ -282,7 +308,8 @@
      "qsa": [
       3
      ],
-     "winner": "000100"
+     "winner": "000100",
+     "sheet_valid": true
     }
    ]
   },
@@ -309,7 +336,8 @@
       3,
       7
      ],
-     "winner": "00010001"
+     "winner": "00010001",
+     "sheet_valid": true
     },
     {
      "selector": "*|*",
@@ -325,7 +353,8 @@
       6,
       7
      ],
-     "winner": "11111111"
+     "winner": "11111111",
+     "sheet_valid": true
     },
     {
      "selector": "*|p.x",
@@ -334,7 +363,8 @@
      "qsa": [
       3
      ],
-     "winner": "00010000"
+     "winner": "00010000",
+     "sheet_valid": true
     },
     {
      "selector": "div > *|p",
@@ -343,7 +373,8 @@
      "qsa": [
       7
      ],
-     "winner": "00000001"
+     "winner": "00000001",
+     "sheet_valid": true
     },
     {
      "selector": "*|rect",
@@ -352,21 +383,24 @@
      "qsa": [
       5
      ],
-     "winner": "00000100"
+     "winner": "00000100",
+     "sheet_valid": true
     },
     {
      "selector": "|p",
      "valid": true,
      "matches": "00000000",
      "qsa": [],
-     "winner": "00000000"
+     "winner": "00000000",
+     "sheet_valid": true
     },
     {
      "selector": "svg|rect",
      "valid": false,
      "matches": "00000000",
      "qsa": [],
-     "winner": "00000000"
+     "winner": "00000000",
+     "sheet_valid": false
     },
     {
      "selector": ":is(*|p)",
@@ -376,7 +410,8 @@
       3,
       7
      ],
-     "winner": "00010001"
+     "winner": "00010001",
+     "sheet_valid": true
     },
     {
      "selector": "p",
@@ -386,7 +421,8 @@
       3,
       7
      ],
-     "winner": "00010001"
+     "winner": "00010001",
+     "sheet_valid": true
     },
     {
      "selector": "*",
@@ -402,7 +438,8 @@
       6,
       7
      ],
-     "winner": "11111111"
+     "winner": "11111111",
+     "sheet_valid": true
     }
    ]
   },
@@ -439,7 +476,8 @@
       11,
       12
      ],
-     "winner": "0001000101111"
+     "winner": "0001000101111",
+     "sheet_valid": true
     },
     {
      "selector": "div:empty",
@@ -450,7 +488,8 @@
       7,
       12
      ],
-     "winner": "0001000100001"
+     "winner": "0001000100001",
+     "sheet_valid": true
     },
     {
      "selector": "template:empty",
@@ -460,7 +499,8 @@
       10,
       11
      ],
-     "winner": "0000000000110"
+     "winner": "0000000000110",
+     "sheet_valid": true
     },
     {
      "selector": "#c:empty",
@@ -469,14 +509,16 @@
      "qsa": [
       3
      ],
-     "winner": "0001000000000"
+     "winner": "0001000000000",
+     "sheet_valid": true
     },
     {
      "selector": "#s:empty",
      "valid": true,
      "matches": "0000000000000",
      "qsa": [],
-     "winner": "0000000000000"
+     "winner": "0000000000000",
+     "sheet_valid": true
     },
     {
      "selector": "#tq:empty",
@@ -485,7 +527,8 @@
      "qsa": [
       11
      ],
-     "winner": "0000000000010"
+     "winner": "0000000000010",
+     "sheet_valid": true
     },
     {
      "selector": ":not(:empty)",
@@ -499,7 +542,8 @@
       6,
       8
      ],
-     "winner": "1110111010000"
+     "winner": "1110111010000",
+     "sheet_valid": true
     },
     {
      "selector": "span:empty",
@@ -508,7 +552,8 @@
      "qsa": [
       9
      ],
-     "winner": "0000000001000"
+     "winner": "0000000001000",
+     "sheet_valid": true
     }
    ]
   },
@@ -607,7 +652,8 @@
       40,
       42
      ],
-     "winner": "1111101110000001111111101111111101101001101000000000"
+     "winner": "1111101110000001111111101111111101101001101000000000",
+     "sheet_valid": true
     },
     {
      "selector": ":read-write",
@@ -631,7 +677,8 @@
       44,
       47
      ],
-     "winner": "0000010001111110000000010000000010010110010110010000"
+     "winner": "0000010001111110000000010000000010010110010110010000",
+     "sheet_valid": true
     },
     {
      "selector": "div:read-only",
@@ -641,14 +688,16 @@
       3,
       40
      ],
-     "winner": "0001000000000000000000000000000000000000100000000000"
+     "winner": "0001000000000000000000000000000000000000100000000000",
+     "sheet_valid": true
     },
     {
      "selector": "p:read-write",
      "valid": true,
      "matches": "0000000000000000000000000000000000000000000000000000",
      "qsa": [],
-     "winner": "0000000000000000000000000000000000000000000000000000"
+     "winner": "0000000000000000000000000000000000000000000000000000",
+     "sheet_valid": true
     },
     {
      "selector": "input:read-write",
@@ -665,7 +714,8 @@
       32,
       35
      ],
-     "winner": "0000010001111110000000000000000010010000000000000000"
+     "winner": "0000010001111110000000000000000010010000000000000000",
+     "sheet_valid": true
     },
     {
      "selector": "input:read-only",
@@ -687,7 +737,8 @@
       36,
       39
      ],
-     "winner": "0000001110000001111111100000001000001001000000000000"
+     "winner": "0000001110000001111111100000001000001001000000000000",
+     "sheet_valid": true
     },
     {
      "selector": "textarea:read-write",
@@ -696,7 +747,8 @@
      "qsa": [
       23
      ],
-     "winner": "0000000000000000000000010000000000000000000000000000"
+     "winner": "0000000000000000000000010000000000000000000000000000",
+     "sheet_valid": true
     },
     {
      "selector": "select:read-only",
@@ -705,7 +757,8 @@
      "qsa": [
       26
      ],
-     "winner": "0000000000000000000000000010000000000000000000000000"
+     "winner": "0000000000000000000000000010000000000000000000000000",
+     "sheet_valid": true
     },
     {
      "selector": "button:read-only",
@@ -714,7 +767,8 @@
      "qsa": [
       28
      ],
-     "winner": "0000000000000000000000000000100000000000000000000000"
+     "winner": "0000000000000000000000000000100000000000000000000000",
+     "sheet_valid": true
     },
     {
      "selector": "span:read-write",
@@ -723,7 +777,8 @@
      "qsa": [
       38
      ],
-     "winner": "0000000000000000000000000000000000000010000000000000"
+     "winner": "0000000000000000000000000000000000000010000000000000",
+     "sheet_valid": true
     },
     {
      "selector": ":not(:read-write)",
@@ -767,7 +822,8 @@
       50,
       51
      ],
-     "winner": "1111101110000001111111101111111101101001101001101111"
+     "winner": "1111101110000001111111101111111101101001101001101111",
+     "sheet_valid": true
     }
    ]
   },
@@ -794,7 +850,8 @@
      "qsa": [
       6
      ],
-     "winner": "000000100"
+     "winner": "000000100",
+     "sheet_valid": true
     },
     {
      "selector": "li:nth-child(odd of .x)",
@@ -804,7 +861,8 @@
       4,
       7
      ],
-     "winner": "000010010"
+     "winner": "000010010",
+     "sheet_valid": true
     },
     {
      "selector": ":nth-child(1 of li.y)",
@@ -813,7 +871,8 @@
      "qsa": [
       7
      ],
-     "winner": "000000010"
+     "winner": "000000010",
+     "sheet_valid": true
     },
     {
      "selector": ":nth-last-child(1 of .x)",
@@ -822,7 +881,8 @@
      "qsa": [
       8
      ],
-     "winner": "000000001"
+     "winner": "000000001",
+     "sheet_valid": true
     },
     {
      "selector": ":nth-last-child(2 of li)",
@@ -831,7 +891,8 @@
      "qsa": [
       6
      ],
-     "winner": "000000100"
+     "winner": "000000100",
+     "sheet_valid": true
     },
     {
      "selector": ":nth-child(1 of p, .y)",
@@ -840,7 +901,8 @@
      "qsa": [
       7
      ],
-     "winner": "000000010"
+     "winner": "000000010",
+     "sheet_valid": true
     },
     {
      "selector": ":nth-child(2n+1 of li)",
@@ -850,7 +912,8 @@
       4,
       6
      ],
-     "winner": "000010100"
+     "winner": "000010100",
+     "sheet_valid": true
     },
     {
      "selector": ":nth-child(-n+2 of .x)",
@@ -860,7 +923,8 @@
       4,
       6
      ],
-     "winner": "000010100"
+     "winner": "000010100",
+     "sheet_valid": true
     },
     {
      "selector": ":nth-child(2 of.x)",
@@ -869,7 +933,8 @@
      "qsa": [
       6
      ],
-     "winner": "000000100"
+     "winner": "000000100",
+     "sheet_valid": true
     },
     {
      "selector": "li:not(:nth-child(1 of .x))",
@@ -880,7 +945,8 @@
       6,
       7
      ],
-     "winner": "000001110"
+     "winner": "000001110",
+     "sheet_valid": true
     },
     {
      "selector": ":nth-child(2)",
@@ -890,7 +956,8 @@
       2,
       5
      ],
-     "winner": "001001000"
+     "winner": "001001000",
+     "sheet_valid": true
     },
     {
      "selector": "li:nth-child(2n+1)",
@@ -900,7 +967,8 @@
       4,
       6
      ],
-     "winner": "000010100"
+     "winner": "000010100",
+     "sheet_valid": true
     },
     {
      "selector": ":nth-last-child(2)",
@@ -910,7 +978,8 @@
       1,
       7
      ],
-     "winner": "010000010"
+     "winner": "010000010",
+     "sheet_valid": true
     },
     {
      "selector": "li:nth-of-type(odd)",
@@ -920,7 +989,8 @@
       4,
       6
      ],
-     "winner": "000010100"
+     "winner": "000010100",
+     "sheet_valid": true
     }
    ]
   },
@@ -958,7 +1028,8 @@
       12,
       14
      ],
-     "winner": "0000101010001010"
+     "winner": "0000101010001010",
+     "sheet_valid": true
     },
     {
      "selector": ":any-link",
@@ -971,7 +1042,8 @@
       12,
       14
      ],
-     "winner": "0000101010001010"
+     "winner": "0000101010001010",
+     "sheet_valid": true
     },
     {
      "selector": "a:link",
@@ -983,7 +1055,8 @@
       12,
       14
      ],
-     "winner": "0000101000001010"
+     "winner": "0000101000001010",
+     "sheet_valid": true
     },
     {
      "selector": "area:any-link",
@@ -992,14 +1065,16 @@
      "qsa": [
       8
      ],
-     "winner": "0000000010000000"
+     "winner": "0000000010000000",
+     "sheet_valid": true
     },
     {
      "selector": "link:link",
      "valid": true,
      "matches": "0000000000000000",
      "qsa": [],
-     "winner": "0000000000000000"
+     "winner": "0000000000000000",
+     "sheet_valid": true
     },
     {
      "selector": ":link:not(a)",
@@ -1008,14 +1083,16 @@
      "qsa": [
       8
      ],
-     "winner": "0000000010000000"
+     "winner": "0000000010000000",
+     "sheet_valid": true
     },
     {
      "selector": ":visited",
      "valid": true,
      "matches": "0000000000000000",
      "qsa": [],
-     "winner": "0000000000000000"
+     "winner": "0000000000000000",
+     "sheet_valid": true
     },
     {
      "selector": "a:not(:link)",
@@ -1025,14 +1102,16 @@
       5,
       15
      ],
-     "winner": "0000010000000001"
+     "winner": "0000010000000001",
+     "sheet_valid": true
     },
     {
      "selector": "span:link",
      "valid": true,
      "matches": "0000000000000000",
      "qsa": [],
-     "winner": "0000000000000000"
+     "winner": "0000000000000000",
+     "sheet_valid": true
     },
     {
      "selector": "a[href]",
@@ -1043,7 +1122,8 @@
       6,
       12
      ],
-     "winner": "0000101000001000"
+     "winner": "0000101000001000",
+     "sheet_valid": true
     }
    ]
   },
@@ -1073,7 +1153,8 @@
      "qsa": [
       3
      ],
-     "winner": "000100000000"
+     "winner": "000100000000",
+     "sheet_valid": true
     },
     {
      "selector": "#g > p",
@@ -1083,7 +1164,8 @@
       4,
       5
      ],
-     "winner": "000011000000"
+     "winner": "000011000000",
+     "sheet_valid": true
     },
     {
      "selector": "p:first-child",
@@ -1092,7 +1174,8 @@
      "qsa": [
       4
      ],
-     "winner": "000010000000"
+     "winner": "000010000000",
+     "sheet_valid": true
     },
     {
      "selector": "p:not(.x)",
@@ -1102,7 +1185,8 @@
       5,
       11
      ],
-     "winner": "000001000001"
+     "winner": "000001000001",
+     "sheet_valid": true
     },
     {
      "selector": ":is(.x, h2)",
@@ -1112,7 +1196,8 @@
       4,
       10
      ],
-     "winner": "000010000010"
+     "winner": "000010000010",
+     "sheet_valid": true
     },
     {
      "selector": "[type=\"checkbox\"]",
@@ -1121,7 +1206,8 @@
      "qsa": [
       6
      ],
-     "winner": "000000100000"
+     "winner": "000000100000",
+     "sheet_valid": true
     },
     {
      "selector": ":checked",
@@ -1130,7 +1216,8 @@
      "qsa": [
       6
      ],
-     "winner": "000000100000"
+     "winner": "000000100000",
+     "sheet_valid": true
     },
     {
      "selector": ":disabled",
@@ -1139,7 +1226,8 @@
      "qsa": [
       8
      ],
-     "winner": "000000001000"
+     "winner": "000000001000",
+     "sheet_valid": true
     },
     {
      "selector": "input:enabled",
@@ -1149,7 +1237,8 @@
       6,
       7
      ],
-     "winner": "000000110000"
+     "winner": "000000110000",
+     "sheet_valid": true
     },
     {
      "selector": ":required",
@@ -1158,7 +1247,8 @@
      "qsa": [
       7
      ],
-     "winner": "000000010000"
+     "winner": "000000010000",
+     "sheet_valid": true
     },
     {
      "selector": "input:optional",
@@ -1168,7 +1258,8 @@
       6,
       8
      ],
-     "winner": "000000101000"
+     "winner": "000000101000",
+     "sheet_valid": true
     },
     {
      "selector": "div:has(> p.x)",
@@ -1177,7 +1268,8 @@
      "qsa": [
       3
      ],
-     "winner": "000100000000"
+     "winner": "000100000000",
+     "sheet_valid": true
     },
     {
      "selector": "h2 + p",
@@ -1186,7 +1278,8 @@
      "qsa": [
       11
      ],
-     "winner": "000000000001"
+     "winner": "000000000001",
+     "sheet_valid": true
     },
     {
      "selector": "h2 ~ p",
@@ -1195,7 +1288,8 @@
      "qsa": [
       11
      ],
-     "winner": "000000000001"
+     "winner": "000000000001",
+     "sheet_valid": true
     },
     {
      "selector": ":root",
@@ -1204,21 +1298,24 @@
      "qsa": [
       0
      ],
-     "winner": "100000000000"
+     "winner": "100000000000",
+     "sheet_valid": true
     },
     {
      "selector": "p:hover",
      "valid": true,
      "matches": "000000000000",
      "qsa": [],
-     "winner": "000000000000"
+     "winner": "000000000000",
+     "sheet_valid": true
     },
     {
      "selector": "p:empty",
      "valid": true,
      "matches": "000000000000",
      "qsa": [],
-     "winner": "000000000000"
+     "winner": "000000000000",
+     "sheet_valid": true
     },
     {
      "selector": "*",
@@ -1238,7 +1335,2030 @@
       10,
       11
      ],
-     "winner": "111111111111"
+     "winner": "111111111111",
+     "sheet_valid": true
+    }
+   ]
+  },
+  {
+   "id": "lang",
+   "bug": "lang",
+   "html": "<!DOCTYPE html><html><head></head><body><div lang=\"en-US\"><p id=\"a\">x</p><span lang=\"\" id=\"e\">e</span></div><p lang=\"de-CH-1996\" id=\"b\">y</p><p lang=\"EN\" id=\"c\">z</p><p id=\"n\">n</p><p lang=\"zh-Hant-TW\" id=\"z\">z</p><p xml:lang=\"ja\" id=\"x\">j</p><svg><g xml:lang=\"fr-CA\" id=\"s\"></g><g lang=\"fr\" id=\"sl\"></g></svg></body></html>",
+   "elements": [
+    "html",
+    "head",
+    "body",
+    "div",
+    "p",
+    "span",
+    "p",
+    "p",
+    "p",
+    "p",
+    "p",
+    "svg",
+    "g",
+    "g"
+   ],
+   "selectors": [
+    {
+     "selector": ":lang(en)",
+     "valid": true,
+     "matches": "00011001000000",
+     "qsa": [
+      3,
+      4,
+      7
+     ],
+     "winner": "00011001000000",
+     "sheet_valid": true
+    },
+    {
+     "selector": ":lang(EN-us)",
+     "valid": true,
+     "matches": "00011000000000",
+     "qsa": [
+      3,
+      4
+     ],
+     "winner": "00011000000000",
+     "sheet_valid": true
+    },
+    {
+     "selector": ":lang(en-GB)",
+     "valid": true,
+     "matches": "00000000000000",
+     "qsa": [],
+     "winner": "00000000000000",
+     "sheet_valid": true
+    },
+    {
+     "selector": ":lang(e)",
+     "valid": true,
+     "matches": "00000000000000",
+     "qsa": [],
+     "winner": "00000000000000",
+     "sheet_valid": true
+    },
+    {
+     "selector": ":lang(de)",
+     "valid": true,
+     "matches": "00000010000000",
+     "qsa": [
+      6
+     ],
+     "winner": "00000010000000",
+     "sheet_valid": true
+    },
+    {
+     "selector": ":lang(de-CH)",
+     "valid": true,
+     "matches": "00000010000000",
+     "qsa": [
+      6
+     ],
+     "winner": "00000010000000",
+     "sheet_valid": true
+    },
+    {
+     "selector": ":lang(\"de\")",
+     "valid": false,
+     "matches": "00000000000000",
+     "qsa": [],
+     "winner": "00000000000000",
+     "sheet_valid": false
+    },
+    {
+     "selector": ":lang(en, de)",
+     "valid": false,
+     "matches": "00000000000000",
+     "qsa": [],
+     "winner": "00000000000000",
+     "sheet_valid": false
+    },
+    {
+     "selector": ":lang(zh-TW)",
+     "valid": true,
+     "matches": "00000000000000",
+     "qsa": [],
+     "winner": "00000000000000",
+     "sheet_valid": true
+    },
+    {
+     "selector": ":lang(\"*-CH\")",
+     "valid": false,
+     "matches": "00000000000000",
+     "qsa": [],
+     "winner": "00000000000000",
+     "sheet_valid": false
+    },
+    {
+     "selector": ":lang(\\*-CH)",
+     "valid": true,
+     "matches": "00000000000000",
+     "qsa": [],
+     "winner": "00000000000000",
+     "sheet_valid": true
+    },
+    {
+     "selector": ":lang(fr)",
+     "valid": true,
+     "matches": "00000000000011",
+     "qsa": [
+      12,
+      13
+     ],
+     "winner": "00000000000011",
+     "sheet_valid": true
+    },
+    {
+     "selector": ":lang(ja)",
+     "valid": true,
+     "matches": "00000000000000",
+     "qsa": [],
+     "winner": "00000000000000",
+     "sheet_valid": true
+    },
+    {
+     "selector": ":lang(\"\")",
+     "valid": false,
+     "matches": "00000000000000",
+     "qsa": [],
+     "winner": "00000000000000",
+     "sheet_valid": false
+    },
+    {
+     "selector": ":lang()",
+     "valid": false,
+     "matches": "00000000000000",
+     "qsa": [],
+     "winner": "00000000000000",
+     "sheet_valid": false
+    },
+    {
+     "selector": ":lang(1)",
+     "valid": false,
+     "matches": "00000000000000",
+     "qsa": [],
+     "winner": "00000000000000",
+     "sheet_valid": false
+    },
+    {
+     "selector": ":lang(en,)",
+     "valid": false,
+     "matches": "00000000000000",
+     "qsa": [],
+     "winner": "00000000000000",
+     "sheet_valid": false
+    },
+    {
+     "selector": "p:not(:lang(en))",
+     "valid": true,
+     "matches": "00000010111000",
+     "qsa": [
+      6,
+      8,
+      9,
+      10
+     ],
+     "winner": "00000010111000",
+     "sheet_valid": true
+    },
+    {
+     "selector": ":lang(en) > p",
+     "valid": true,
+     "matches": "00001000000000",
+     "qsa": [
+      4
+     ],
+     "winner": "00001000000000",
+     "sheet_valid": true
+    },
+    {
+     "selector": "span:lang(en)",
+     "valid": true,
+     "matches": "00000000000000",
+     "qsa": [],
+     "winner": "00000000000000",
+     "sheet_valid": true
+    },
+    {
+     "selector": ":LANG(en)",
+     "valid": true,
+     "matches": "00011001000000",
+     "qsa": [
+      3,
+      4,
+      7
+     ],
+     "winner": "00011001000000",
+     "sheet_valid": true
+    }
+   ]
+  },
+  {
+   "id": "dir",
+   "bug": "dir",
+   "html": "<!DOCTYPE html><html><head></head><body><div id=\"l\"><p id=\"p1\">a</p></div><div dir=\"rtl\" id=\"r\"><p id=\"p2\">b</p><span dir=\"ltr\" id=\"s1\">c</span><span dir=\"bogus\" id=\"s2\">d</span></div><div dir=\"auto\" id=\"a1\">שלום abc</div><div dir=\"auto\" id=\"a2\">abc שלום</div><div dir=\"auto\" id=\"a3\">123</div><div dir=\"auto\" id=\"a4\"><span> </span><b>مرحبا</b></div><div dir=\"auto\" id=\"a5\"><bdi>שלום</bdi>abc</div><bdi id=\"b1\">שלום</bdi><bdi id=\"b2\">abc</bdi><div dir=\"AUTO\" id=\"a6\">ש</div><div dir=\"RTL\" id=\"r2\"><svg><g id=\"g\"></g></svg></div><input dir=\"auto\" id=\"i1\" value=\"שלום\"><input dir=\"auto\" id=\"i2\"><textarea dir=\"auto\" id=\"t1\">שלום</textarea><div dir=\"auto\" id=\"a7\"><script>ש</script>x</div><div dir=\"auto\" id=\"a8\"><span dir=\"ltr\">ש</span>abc</div><div dir=\"rtl\"><div dir=\"auto\" id=\"a9\">123</div><input type=\"tel\" id=\"tel\"><input dir=\"bogus\" id=\"ib\"></div><div dir=\"auto\" id=\"a10\"><span dir=\"bogus\">ש</span>a</div><div dir=\"auto\" id=\"a11\"><textarea>ש</textarea>a</div></body></html>",
+   "elements": [
+    "html",
+    "head",
+    "body",
+    "div",
+    "p",
+    "div",
+    "p",
+    "span",
+    "span",
+    "div",
+    "div",
+    "div",
+    "div",
+    "span",
+    "b",
+    "div",
+    "bdi",
+    "bdi",
+    "bdi",
+    "div",
+    "div",
+    "svg",
+    "g",
+    "input",
+    "input",
+    "textarea",
+    "div",
+    "script",
+    "div",
+    "span",
+    "div",
+    "div",
+    "input",
+    "input",
+    "div",
+    "span",
+    "div",
+    "textarea"
+   ],
+   "selectors": [
+    {
+     "selector": ":dir(ltr)",
+     "valid": true,
+     "matches": "11111001001100010010000010111101100011",
+     "qsa": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      7,
+      10,
+      11,
+      15,
+      18,
+      24,
+      26,
+      27,
+      28,
+      29,
+      31,
+      32,
+      36,
+      37
+     ],
+     "winner": "11111001001100010010000010111101100011",
+     "sheet_valid": true
+    },
+    {
+     "selector": ":dir(rtl)",
+     "valid": true,
+     "matches": "00000110110011101101111101000010011100",
+     "qsa": [
+      5,
+      6,
+      8,
+      9,
+      12,
+      13,
+      14,
+      16,
+      17,
+      19,
+      20,
+      21,
+      22,
+      23,
+      25,
+      30,
+      33,
+      34,
+      35
+     ],
+     "winner": "00000110110011101101111101000010011100",
+     "sheet_valid": true
+    },
+    {
+     "selector": ":dir(LTR)",
+     "valid": true,
+     "matches": "11111001001100010010000010111101100011",
+     "qsa": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      7,
+      10,
+      11,
+      15,
+      18,
+      24,
+      26,
+      27,
+      28,
+      29,
+      31,
+      32,
+      36,
+      37
+     ],
+     "winner": "11111001001100010010000010111101100011",
+     "sheet_valid": true
+    },
+    {
+     "selector": ":dir(auto)",
+     "valid": true,
+     "matches": "00000000000000000000000000000000000000",
+     "qsa": [],
+     "winner": "00000000000000000000000000000000000000",
+     "sheet_valid": true
+    },
+    {
+     "selector": ":dir(foo)",
+     "valid": true,
+     "matches": "00000000000000000000000000000000000000",
+     "qsa": [],
+     "winner": "00000000000000000000000000000000000000",
+     "sheet_valid": true
+    },
+    {
+     "selector": ":dir()",
+     "valid": false,
+     "matches": "00000000000000000000000000000000000000",
+     "qsa": [],
+     "winner": "00000000000000000000000000000000000000",
+     "sheet_valid": false
+    },
+    {
+     "selector": ":dir(ltr, rtl)",
+     "valid": false,
+     "matches": "00000000000000000000000000000000000000",
+     "qsa": [],
+     "winner": "00000000000000000000000000000000000000",
+     "sheet_valid": false
+    },
+    {
+     "selector": ":dir(\"ltr\")",
+     "valid": false,
+     "matches": "00000000000000000000000000000000000000",
+     "qsa": [],
+     "winner": "00000000000000000000000000000000000000",
+     "sheet_valid": false
+    },
+    {
+     "selector": "p:dir(rtl)",
+     "valid": true,
+     "matches": "00000010000000000000000000000000000000",
+     "qsa": [
+      6
+     ],
+     "winner": "00000010000000000000000000000000000000",
+     "sheet_valid": true
+    },
+    {
+     "selector": ":not(:dir(ltr))",
+     "valid": true,
+     "matches": "00000110110011101101111101000010011100",
+     "qsa": [
+      5,
+      6,
+      8,
+      9,
+      12,
+      13,
+      14,
+      16,
+      17,
+      19,
+      20,
+      21,
+      22,
+      23,
+      25,
+      30,
+      33,
+      34,
+      35
+     ],
+     "winner": "00000110110011101101111101000010011100",
+     "sheet_valid": true
+    },
+    {
+     "selector": "div:dir(rtl) > span",
+     "valid": true,
+     "matches": "00000001100001000000000000000000000100",
+     "qsa": [
+      7,
+      8,
+      13,
+      35
+     ],
+     "winner": "00000001100001000000000000000000000100",
+     "sheet_valid": true
+    }
+   ]
+  },
+  {
+   "id": "defined",
+   "bug": "defined",
+   "html": "<!DOCTYPE html><html><head></head><body><x-foo id=\"x\"></x-foo><div id=\"d\"></div><button is=\"x-b\" id=\"bi\">b</button><font-face id=\"ff\"></font-face><svg><x-bar id=\"sx\"></x-bar></svg><X-UP id=\"u\"></X-UP><annotation-xml id=\"ax\"></annotation-xml><p is=\"\" id=\"pe\">p</p></body></html>",
+   "elements": [
+    "html",
+    "head",
+    "body",
+    "x-foo",
+    "div",
+    "button",
+    "font-face",
+    "svg",
+    "x-bar",
+    "x-up",
+    "annotation-xml",
+    "p"
+   ],
+   "selectors": [
+    {
+     "selector": ":defined",
+     "valid": true,
+     "matches": "111010111010",
+     "qsa": [
+      0,
+      1,
+      2,
+      4,
+      6,
+      7,
+      8,
+      10
+     ],
+     "winner": "111010111010",
+     "sheet_valid": true
+    },
+    {
+     "selector": ":not(:defined)",
+     "valid": true,
+     "matches": "000101000101",
+     "qsa": [
+      3,
+      5,
+      9,
+      11
+     ],
+     "winner": "000101000101",
+     "sheet_valid": true
+    },
+    {
+     "selector": "x-foo:defined",
+     "valid": true,
+     "matches": "000000000000",
+     "qsa": [],
+     "winner": "000000000000",
+     "sheet_valid": true
+    },
+    {
+     "selector": "button:defined",
+     "valid": true,
+     "matches": "000000000000",
+     "qsa": [],
+     "winner": "000000000000",
+     "sheet_valid": true
+    },
+    {
+     "selector": "div:defined",
+     "valid": true,
+     "matches": "000010000000",
+     "qsa": [
+      4
+     ],
+     "winner": "000010000000",
+     "sheet_valid": true
+    },
+    {
+     "selector": "*:defined",
+     "valid": true,
+     "matches": "111010111010",
+     "qsa": [
+      0,
+      1,
+      2,
+      4,
+      6,
+      7,
+      8,
+      10
+     ],
+     "winner": "111010111010",
+     "sheet_valid": true
+    },
+    {
+     "selector": ":DEFINED",
+     "valid": true,
+     "matches": "111010111010",
+     "qsa": [
+      0,
+      1,
+      2,
+      4,
+      6,
+      7,
+      8,
+      10
+     ],
+     "winner": "111010111010",
+     "sheet_valid": true
+    },
+    {
+     "selector": ":defined()",
+     "valid": false,
+     "matches": "000000000000",
+     "qsa": [],
+     "winner": "000000000000",
+     "sheet_valid": false
+    }
+   ]
+  },
+  {
+   "id": "template",
+   "bug": "template",
+   "html": "<!DOCTYPE html><html><head></head><body><template id=\"t\"><p class=\"t\" id=\"in\">x</p><div><span>s</span></div></template><p class=\"t\" id=\"out\">y</p><div id=\"w\"><template><b id=\"deep\">d</b></template></div></body></html>",
+   "elements": [
+    "html",
+    "head",
+    "body",
+    "template",
+    "p",
+    "div",
+    "template"
+   ],
+   "selectors": [
+    {
+     "selector": ".t",
+     "valid": true,
+     "matches": "0000100",
+     "qsa": [
+      4
+     ],
+     "winner": "0000100",
+     "sheet_valid": true
+    },
+    {
+     "selector": "p",
+     "valid": true,
+     "matches": "0000100",
+     "qsa": [
+      4
+     ],
+     "winner": "0000100",
+     "sheet_valid": true
+    },
+    {
+     "selector": "#in",
+     "valid": true,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": true
+    },
+    {
+     "selector": "#deep",
+     "valid": true,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": true
+    },
+    {
+     "selector": "b",
+     "valid": true,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": true
+    },
+    {
+     "selector": "template p",
+     "valid": true,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": true
+    },
+    {
+     "selector": "template > p",
+     "valid": true,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": true
+    },
+    {
+     "selector": "span",
+     "valid": true,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": true
+    },
+    {
+     "selector": "template:has(p)",
+     "valid": true,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": true
+    },
+    {
+     "selector": ":has(> .t)",
+     "valid": true,
+     "matches": "0010000",
+     "qsa": [
+      2
+     ],
+     "winner": "0010000",
+     "sheet_valid": true
+    },
+    {
+     "selector": "div span",
+     "valid": true,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": true
+    },
+    {
+     "selector": "div b",
+     "valid": true,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": true
+    },
+    {
+     "selector": "template *",
+     "valid": true,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": true
+    }
+   ]
+  },
+  {
+   "id": "malformed",
+   "bug": "malformed",
+   "html": "<!DOCTYPE html><html><head></head><body><div id=\"a\" class=\"x\" a=\"1\"><p class=\"x\">p</p></div><select><option selected>o</option></select></body></html>",
+   "elements": [
+    "html",
+    "head",
+    "body",
+    "div",
+    "p",
+    "select",
+    "option"
+   ],
+   "selectors": [
+    {
+     "selector": "p:nth-child(foo)",
+     "valid": false,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": false
+    },
+    {
+     "selector": "[a]div",
+     "valid": false,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": false
+    },
+    {
+     "selector": "::before.x",
+     "valid": false,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": false
+    },
+    {
+     "selector": ".x*",
+     "valid": false,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": false
+    },
+    {
+     "selector": ":not(p)x",
+     "valid": false,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": false
+    },
+    {
+     "selector": "p:nth-child(2n+)",
+     "valid": false,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": false
+    },
+    {
+     "selector": "p:nth-child(n-)",
+     "valid": false,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": false
+    },
+    {
+     "selector": ":nth-child(+ 2n)",
+     "valid": false,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": false
+    },
+    {
+     "selector": ":nth-child(- n+1)",
+     "valid": false,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": false
+    },
+    {
+     "selector": ":nth-child(2 n)",
+     "valid": false,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": false
+    },
+    {
+     "selector": ":nth-child(2.5n)",
+     "valid": false,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": false
+    },
+    {
+     "selector": ":nth-child(1 of)",
+     "valid": false,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": false
+    },
+    {
+     "selector": ":nth-child(of p)",
+     "valid": false,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": false
+    },
+    {
+     "selector": ":nth-of-type(1 of p)",
+     "valid": false,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": false
+    },
+    {
+     "selector": ":first-child(1)",
+     "valid": false,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": false
+    },
+    {
+     "selector": ":bogus",
+     "valid": false,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": false
+    },
+    {
+     "selector": "::bogus",
+     "valid": false,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": false
+    },
+    {
+     "selector": "p..x",
+     "valid": false,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": false
+    },
+    {
+     "selector": ".",
+     "valid": false,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": false
+    },
+    {
+     "selector": "#",
+     "valid": false,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": false
+    },
+    {
+     "selector": "p:",
+     "valid": false,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": false
+    },
+    {
+     "selector": "p >",
+     "valid": false,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": false
+    },
+    {
+     "selector": "",
+     "valid": false,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": false
+    },
+    {
+     "selector": "::before:first-child",
+     "valid": false,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": false
+    },
+    {
+     "selector": "::before span",
+     "valid": false,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": false
+    },
+    {
+     "selector": ":not(::before)",
+     "valid": false,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": false
+    },
+    {
+     "selector": ":nth-child(2n + 1)",
+     "valid": true,
+     "matches": "1101101",
+     "qsa": [
+      0,
+      1,
+      3,
+      4,
+      6
+     ],
+     "winner": "1101101",
+     "sheet_valid": true
+    },
+    {
+     "selector": ":nth-child( -n+3 )",
+     "valid": true,
+     "matches": "1111111",
+     "qsa": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+     ],
+     "winner": "1111111",
+     "sheet_valid": true
+    },
+    {
+     "selector": ":nth-child(2n- 1)",
+     "valid": true,
+     "matches": "1101101",
+     "qsa": [
+      0,
+      1,
+      3,
+      4,
+      6
+     ],
+     "winner": "1101101",
+     "sheet_valid": true
+    },
+    {
+     "selector": ":nth-child(2n -1)",
+     "valid": true,
+     "matches": "1101101",
+     "qsa": [
+      0,
+      1,
+      3,
+      4,
+      6
+     ],
+     "winner": "1101101",
+     "sheet_valid": true
+    },
+    {
+     "selector": ":nth-child(2N+1)",
+     "valid": true,
+     "matches": "1101101",
+     "qsa": [
+      0,
+      1,
+      3,
+      4,
+      6
+     ],
+     "winner": "1101101",
+     "sheet_valid": true
+    },
+    {
+     "selector": ":nth-child(+n)",
+     "valid": true,
+     "matches": "1111111",
+     "qsa": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+     ],
+     "winner": "1111111",
+     "sheet_valid": true
+    },
+    {
+     "selector": ":nth-child(-n)",
+     "valid": true,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": true
+    },
+    {
+     "selector": ":nth-child(+5)",
+     "valid": true,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": true
+    },
+    {
+     "selector": ":nth-child(ODD)",
+     "valid": true,
+     "matches": "1101101",
+     "qsa": [
+      0,
+      1,
+      3,
+      4,
+      6
+     ],
+     "winner": "1101101",
+     "sheet_valid": true
+    },
+    {
+     "selector": ":nth-last-of-type(n)",
+     "valid": true,
+     "matches": "1111111",
+     "qsa": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+     ],
+     "winner": "1111111",
+     "sheet_valid": true
+    },
+    {
+     "selector": "::before",
+     "valid": true,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": true
+    },
+    {
+     "selector": "p::after",
+     "valid": true,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": true
+    },
+    {
+     "selector": "::before:hover",
+     "valid": false,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": false
+    },
+    {
+     "selector": "::before:enabled",
+     "valid": false,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": false
+    },
+    {
+     "selector": "p::marker:hover",
+     "valid": false,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": false
+    },
+    {
+     "selector": "::placeholder:hover",
+     "valid": false,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": false
+    },
+    {
+     "selector": "::file-selector-button:hover",
+     "valid": true,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": true
+    },
+    {
+     "selector": "::selection:window-inactive",
+     "valid": true,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": true
+    },
+    {
+     "selector": "::selection:hover",
+     "valid": false,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": false
+    },
+    {
+     "selector": "::part(x):hover",
+     "valid": true,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": true
+    },
+    {
+     "selector": "::part(x):first-child",
+     "valid": false,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": false
+    },
+    {
+     "selector": "::slotted(p):hover",
+     "valid": false,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": false
+    },
+    {
+     "selector": "::-webkit-scrollbar:hover",
+     "valid": true,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": true
+    },
+    {
+     "selector": "::-webkit-scrollbar-thumb:horizontal",
+     "valid": true,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": true
+    },
+    {
+     "selector": "::-webkit-scrollbar:disabled",
+     "valid": true,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": true
+    },
+    {
+     "selector": "::-webkit-scrollbar:first-child",
+     "valid": false,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": false
+    },
+    {
+     "selector": "::-webkit-scrollbar.x",
+     "valid": false,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": false
+    },
+    {
+     "selector": "::-webkit-scrollbar:window-inactive",
+     "valid": true,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": true
+    },
+    {
+     "selector": "::details-content:hover",
+     "valid": true,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": true
+    },
+    {
+     "selector": "::picker(select):hover",
+     "valid": true,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": true
+    },
+    {
+     "selector": "::backdrop:hover",
+     "valid": false,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": false
+    },
+    {
+     "selector": "::scroll-marker:hover",
+     "valid": true,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": true
+    },
+    {
+     "selector": "::part(x):focus-visible",
+     "valid": true,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": true
+    },
+    {
+     "selector": "::part(x):active",
+     "valid": true,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": true
+    },
+    {
+     "selector": "::part(x):enabled",
+     "valid": true,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": true
+    },
+    {
+     "selector": "::file-selector-button:active",
+     "valid": true,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": true
+    },
+    {
+     "selector": "::file-selector-button:focus",
+     "valid": true,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": true
+    },
+    {
+     "selector": "p::-webkit-scrollbar",
+     "valid": true,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": true
+    },
+    {
+     "selector": "::slotted(p)",
+     "valid": true,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": true
+    },
+    {
+     "selector": "::part(x)",
+     "valid": true,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": true
+    },
+    {
+     "selector": ":host",
+     "valid": true,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": true
+    },
+    {
+     "selector": ":is(::before)",
+     "valid": true,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": true
+    },
+    {
+     "selector": "option:selected",
+     "valid": false,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": false
+    },
+    {
+     "selector": "#a#a",
+     "valid": true,
+     "matches": "0001000",
+     "qsa": [
+      3
+     ],
+     "winner": "0001000",
+     "sheet_valid": true
+    },
+    {
+     "selector": "*|*",
+     "valid": true,
+     "matches": "1111111",
+     "qsa": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+     ],
+     "winner": "1111111",
+     "sheet_valid": true
+    },
+    {
+     "selector": "P:FIRST-CHILD",
+     "valid": true,
+     "matches": "0000100",
+     "qsa": [
+      4
+     ],
+     "winner": "0000100",
+     "sheet_valid": true
+    },
+    {
+     "selector": "DIV:NOT(.y)",
+     "valid": true,
+     "matches": "0001000",
+     "qsa": [
+      3
+     ],
+     "winner": "0001000",
+     "sheet_valid": true
+    },
+    {
+     "selector": ":Nth-Child(ODD)",
+     "valid": true,
+     "matches": "1101101",
+     "qsa": [
+      0,
+      1,
+      3,
+      4,
+      6
+     ],
+     "winner": "1101101",
+     "sheet_valid": true
+    },
+    {
+     "selector": ":NTH-CHILD(2N OF .X)",
+     "valid": false,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": false
+    },
+    {
+     "selector": ":Is(p)",
+     "valid": true,
+     "matches": "0000100",
+     "qsa": [
+      4
+     ],
+     "winner": "0000100",
+     "sheet_valid": true
+    },
+    {
+     "selector": "OPTION:CHECKED",
+     "valid": true,
+     "matches": "0000001",
+     "qsa": [
+      6
+     ],
+     "winner": "0000001",
+     "sheet_valid": true
+    },
+    {
+     "selector": ":EMPTY",
+     "valid": true,
+     "matches": "0100000",
+     "qsa": [
+      1
+     ],
+     "winner": "0000000",
+     "sheet_valid": true
+    },
+    {
+     "selector": "[href=index.html]",
+     "valid": false,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": false
+    },
+    {
+     "selector": "[a=]",
+     "valid": false,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": false
+    },
+    {
+     "selector": "[x=\"a\"b]",
+     "valid": false,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": false
+    },
+    {
+     "selector": "[a=1]",
+     "valid": false,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": false
+    },
+    {
+     "selector": "[a=\"1\"]",
+     "valid": true,
+     "matches": "0001000",
+     "qsa": [
+      3
+     ],
+     "winner": "0001000",
+     "sheet_valid": true
+    },
+    {
+     "selector": "[a=-x]",
+     "valid": true,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": true
+    },
+    {
+     "selector": "[a=\"1\" i]",
+     "valid": true,
+     "matches": "0001000",
+     "qsa": [
+      3
+     ],
+     "winner": "0001000",
+     "sheet_valid": true
+    },
+    {
+     "selector": "[a=b S]",
+     "valid": false,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": false
+    },
+    {
+     "selector": "[a=\"b\" x]",
+     "valid": false,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": false
+    },
+    {
+     "selector": "[*|a]",
+     "valid": true,
+     "matches": "0001000",
+     "qsa": [
+      3
+     ],
+     "winner": "0001000",
+     "sheet_valid": true
+    },
+    {
+     "selector": "[|a]",
+     "valid": true,
+     "matches": "0001000",
+     "qsa": [
+      3
+     ],
+     "winner": "0001000",
+     "sheet_valid": true
+    },
+    {
+     "selector": "[ns|a]",
+     "valid": false,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": false
+    },
+    {
+     "selector": "[a|=b]",
+     "valid": true,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": true
+    },
+    {
+     "selector": "[ a ]",
+     "valid": true,
+     "matches": "0001000",
+     "qsa": [
+      3
+     ],
+     "winner": "0001000",
+     "sheet_valid": true
+    },
+    {
+     "selector": "[a =\"1\"]",
+     "valid": true,
+     "matches": "0001000",
+     "qsa": [
+      3
+     ],
+     "winner": "0001000",
+     "sheet_valid": true
+    },
+    {
+     "selector": "[1a]",
+     "valid": false,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": false
+    },
+    {
+     "selector": "[a='1'][class]",
+     "valid": true,
+     "matches": "0001000",
+     "qsa": [
+      3
+     ],
+     "winner": "0001000",
+     "sheet_valid": true
+    },
+    {
+     "selector": "[a=b c]",
+     "valid": false,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": false
+    },
+    {
+     "selector": "[a=b s]",
+     "valid": false,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": false
+    },
+    {
+     "selector": "[a=b I]",
+     "valid": true,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": true
+    },
+    {
+     "selector": "[a=\"1\" s]",
+     "valid": false,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": false
+    },
+    {
+     "selector": "[class=X i]",
+     "valid": true,
+     "matches": "0001100",
+     "qsa": [
+      3,
+      4
+     ],
+     "winner": "0001100",
+     "sheet_valid": true
+    },
+    {
+     "selector": "[A]",
+     "valid": true,
+     "matches": "0001000",
+     "qsa": [
+      3
+     ],
+     "winner": "0001000",
+     "sheet_valid": true
+    },
+    {
+     "selector": "[a=\\31]",
+     "valid": true,
+     "matches": "0001000",
+     "qsa": [
+      3
+     ],
+     "winner": "0001000",
+     "sheet_valid": true
+    },
+    {
+     "selector": ":has(:has(p))",
+     "valid": false,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": false
+    },
+    {
+     "selector": "div:has(> p:has(x))",
+     "valid": false,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": false
+    },
+    {
+     "selector": ":not(:has(p))",
+     "valid": true,
+     "matches": "0100111",
+     "qsa": [
+      1,
+      4,
+      5,
+      6
+     ],
+     "winner": "0100111",
+     "sheet_valid": true
+    },
+    {
+     "selector": ":has(::before)",
+     "valid": false,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": false
+    },
+    {
+     "selector": ":is(:has(p))",
+     "valid": true,
+     "matches": "1011000",
+     "qsa": [
+      0,
+      2,
+      3
+     ],
+     "winner": "1011000",
+     "sheet_valid": true
+    },
+    {
+     "selector": ":has(:is(:has(p)))",
+     "valid": true,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": true
+    },
+    {
+     "selector": ":has(:is(p, :has(p)))",
+     "valid": true,
+     "matches": "1011000",
+     "qsa": [
+      0,
+      2,
+      3
+     ],
+     "winner": "1011000",
+     "sheet_valid": true
+    },
+    {
+     "selector": "div:has(:not(:has(p)))",
+     "valid": false,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": false
+    }
+   ]
+  },
+  {
+   "id": "cascade-comma",
+   "bug": "cascade-comma",
+   "html": "<!DOCTYPE html><html><head></head><body><p class=\"a\" id=\"pa\">a</p><p class=\"b\" id=\"pb\">b</p><p class=\"c\" title=\"a,b\" id=\"pc\">c</p><ul><li class=\"a\">1</li><li class=\"b\">2</li><li class=\"a\">3</li></ul><div class=\"a\"><span>s</span></div></body></html>",
+   "elements": [
+    "html",
+    "head",
+    "body",
+    "p",
+    "p",
+    "p",
+    "ul",
+    "li",
+    "li",
+    "li",
+    "div",
+    "span"
+   ],
+   "selectors": [
+    {
+     "selector": ":is(.a, .b)",
+     "valid": true,
+     "matches": "000110011110",
+     "qsa": [
+      3,
+      4,
+      7,
+      8,
+      9,
+      10
+     ],
+     "winner": "000110011110",
+     "sheet_valid": true
+    },
+    {
+     "selector": ":not(.a, .b)",
+     "valid": true,
+     "matches": "111001100001",
+     "qsa": [
+      0,
+      1,
+      2,
+      5,
+      6,
+      11
+     ],
+     "winner": "111001100001",
+     "sheet_valid": true
+    },
+    {
+     "selector": ":nth-child(2 of .a, .b)",
+     "valid": true,
+     "matches": "000010001000",
+     "qsa": [
+      4,
+      8
+     ],
+     "winner": "000010001000",
+     "sheet_valid": true
+    },
+    {
+     "selector": "p, .x",
+     "valid": true,
+     "matches": "000111000000",
+     "qsa": [
+      3,
+      4,
+      5
+     ],
+     "winner": "000111000000",
+     "sheet_valid": true
+    },
+    {
+     "selector": ":where(.a, .b) span",
+     "valid": true,
+     "matches": "000000000001",
+     "qsa": [
+      11
+     ],
+     "winner": "000000000001",
+     "sheet_valid": true
+    },
+    {
+     "selector": "[title=\"a,b\"]",
+     "valid": true,
+     "matches": "000001000000",
+     "qsa": [
+      5
+     ],
+     "winner": "000001000000",
+     "sheet_valid": true
+    },
+    {
+     "selector": "li:is(.b, .c), p.c",
+     "valid": true,
+     "matches": "000001001000",
+     "qsa": [
+      5,
+      8
+     ],
+     "winner": "000001001000",
+     "sheet_valid": true
+    },
+    {
+     "selector": ":has(> span, > em)",
+     "valid": true,
+     "matches": "000000000010",
+     "qsa": [
+      10
+     ],
+     "winner": "000000000010",
+     "sheet_valid": true
+    },
+    {
+     "selector": "p:not(.a, .c), li.b",
+     "valid": true,
+     "matches": "000010001000",
+     "qsa": [
+      4,
+      8
+     ],
+     "winner": "000010001000",
+     "sheet_valid": true
+    },
+    {
+     "selector": ".a, :bogus",
+     "valid": false,
+     "matches": "000000000000",
+     "qsa": [],
+     "winner": "000000000000",
+     "sheet_valid": false
+    }
+   ]
+  },
+  {
+   "id": "disabled-fieldset",
+   "bug": "disabled-fieldset",
+   "html": "<!DOCTYPE html><html><head></head><body><fieldset disabled id=\"f1\"><legend id=\"lg1\"><input id=\"i1\"></legend><input id=\"i2\"><fieldset id=\"f2\"><input id=\"i3\"></fieldset><legend><input id=\"i4\"></legend><button id=\"b1\">b</button><select id=\"s1\"><option id=\"o1\">o</option></select><textarea id=\"t1\"></textarea><div id=\"d1\" disabled></div><output id=\"out1\">o</output></fieldset><fieldset><legend disabled><input id=\"i5\"></legend></fieldset><select><optgroup disabled id=\"og\"><option id=\"o2\">x</option></optgroup><option disabled id=\"o3\">y</option></select><div disabled id=\"d2\"></div><a disabled id=\"a1\">a</a><input disabled id=\"i6\"><fieldset disabled><div><legend><input id=\"i7\"></legend></div></fieldset><fieldset disabled><p>t</p><legend><input id=\"i8\"></legend></fieldset><link disabled id=\"l1\"><svg><g disabled id=\"sg\"></g></svg></body></html>",
+   "elements": [
+    "html",
+    "head",
+    "body",
+    "fieldset",
+    "legend",
+    "input",
+    "input",
+    "fieldset",
+    "input",
+    "legend",
+    "input",
+    "button",
+    "select",
+    "option",
+    "textarea",
+    "div",
+    "output",
+    "fieldset",
+    "legend",
+    "input",
+    "select",
+    "optgroup",
+    "option",
+    "option",
+    "div",
+    "a",
+    "input",
+    "fieldset",
+    "div",
+    "legend",
+    "input",
+    "fieldset",
+    "p",
+    "legend",
+    "input",
+    "link",
+    "svg",
+    "g"
+   ],
+   "selectors": [
+    {
+     "selector": ":disabled",
+     "valid": true,
+     "matches": "00010011101111100000011100110011000000",
+     "qsa": [
+      3,
+      6,
+      7,
+      8,
+      10,
+      11,
+      12,
+      13,
+      14,
+      21,
+      22,
+      23,
+      26,
+      27,
+      30,
+      31
+     ],
+     "winner": "00010011101111100000011100110011000000",
+     "sheet_valid": true
+    },
+    {
+     "selector": ":enabled",
+     "valid": true,
+     "matches": "00000100000000000101100000000000001000",
+     "qsa": [
+      5,
+      17,
+      19,
+      20,
+      34
+     ],
+     "winner": "00000100000000000101100000000000001000",
+     "sheet_valid": true
+    },
+    {
+     "selector": "input:disabled",
+     "valid": true,
+     "matches": "00000010101000000000000000100010000000",
+     "qsa": [
+      6,
+      8,
+      10,
+      26,
+      30
+     ],
+     "winner": "00000010101000000000000000100010000000",
+     "sheet_valid": true
+    },
+    {
+     "selector": "fieldset:disabled",
+     "valid": true,
+     "matches": "00010001000000000000000000010001000000",
+     "qsa": [
+      3,
+      7,
+      27,
+      31
+     ],
+     "winner": "00010001000000000000000000010001000000",
+     "sheet_valid": true
+    },
+    {
+     "selector": ":not(:disabled)",
+     "valid": true,
+     "matches": "11101100010000011111100011001100111111",
+     "qsa": [
+      0,
+      1,
+      2,
+      4,
+      5,
+      9,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      24,
+      25,
+      28,
+      29,
+      32,
+      33,
+      34,
+      35,
+      36,
+      37
+     ],
+     "winner": "11101100010000011111100011001100111111",
+     "sheet_valid": true
+    },
+    {
+     "selector": "option:disabled",
+     "valid": true,
+     "matches": "00000000000001000000001100000000000000",
+     "qsa": [
+      13,
+      22,
+      23
+     ],
+     "winner": "00000000000001000000001100000000000000",
+     "sheet_valid": true
+    },
+    {
+     "selector": "legend :disabled",
+     "valid": true,
+     "matches": "00000000001000000000000000000010000000",
+     "qsa": [
+      10,
+      30
+     ],
+     "winner": "00000000001000000000000000000010000000",
+     "sheet_valid": true
+    },
+    {
+     "selector": "input:enabled",
+     "valid": true,
+     "matches": "00000100000000000001000000000000001000",
+     "qsa": [
+      5,
+      19,
+      34
+     ],
+     "winner": "00000100000000000001000000000000001000",
+     "sheet_valid": true
+    },
+    {
+     "selector": "div:disabled",
+     "valid": true,
+     "matches": "00000000000000000000000000000000000000",
+     "qsa": [],
+     "winner": "00000000000000000000000000000000000000",
+     "sheet_valid": true
+    },
+    {
+     "selector": "button:enabled",
+     "valid": true,
+     "matches": "00000000000000000000000000000000000000",
+     "qsa": [],
+     "winner": "00000000000000000000000000000000000000",
+     "sheet_valid": true
     }
    ]
   }
@@ -1423,6 +3543,112 @@
     "2",
     "7"
    ]
+  },
+  {
+   "id": "declaration-order",
+   "class": "cascade-order",
+   "html": "<!DOCTYPE html><html><head></head><body><p id=\"a\">a</p><p id=\"b\" class=\"k\">b</p><div id=\"d\">d</div><span id=\"s\">s</span></body></html>",
+   "css": "p { margin-top: 1px; margin-bottom: 1px; order: 1 } p { order: 2 } .k { color: red; margin: 0; padding: 0; order: 3 } p.k { order: 4 } div { color: red; margin: 0; padding: 0; border: 0; order: 5 } div { order: 6 } div { color: blue } span { order: 7; order: 8 } span { margin: 0 }",
+   "elements": [
+    "html",
+    "head",
+    "body",
+    "p",
+    "p",
+    "div",
+    "span"
+   ],
+   "winners": [
+    "0",
+    "0",
+    "0",
+    "2",
+    "4",
+    "6",
+    "8"
+   ]
+  },
+  {
+   "id": "importance",
+   "class": "cascade-order",
+   "html": "<!DOCTYPE html><html><head></head><body><p id=\"a\">a</p><p id=\"b\" class=\"k\">b</p><div id=\"d\">d</div></body></html>",
+   "css": "p { order: 6 !important; color: red } p { order: 7 } #b { order: 8 } p.k { margin: 0; padding: 0; order: 9 !important } p { color: blue; margin: 0; order: 10 !important } div { margin: 0; padding: 0; order: 11 !important } div { order: 12 }",
+   "elements": [
+    "html",
+    "head",
+    "body",
+    "p",
+    "p",
+    "div"
+   ],
+   "winners": [
+    "0",
+    "0",
+    "0",
+    "10",
+    "9",
+    "11"
+   ]
+  },
+  {
+   "id": "inline-importance",
+   "class": "cascade-order",
+   "layout_only": true,
+   "html": "<!DOCTYPE html><html><head></head><body><p id=\"i\" style=\"order: 13\">a</p><p id=\"j\" style=\"color: red; order: 14 !important\">b</p><p id=\"k\" style=\"order: 15\">c</p></body></html>",
+   "css": "#i { order: 16 } p { order: 17 !important; color: blue } #j { order: 18 !important } #k { margin: 0; padding: 0; order: 19 }",
+   "elements": [
+    "html",
+    "head",
+    "body",
+    "p",
+    "p",
+    "p"
+   ],
+   "winners": [
+    "0",
+    "0",
+    "0",
+    "17",
+    "14",
+    "17"
+   ]
+  }
+ ],
+ "probes": [
+  {
+   "id": "template-traversal",
+   "bug": "template",
+   "html": "<!DOCTYPE html><html><head></head><body><template id=\"t\"><p class=\"t\" id=\"in\">x</p><div><span>s</span></div></template><p class=\"t\" id=\"out\">y</p></body></html>",
+   "values": {
+    "by_id_in_content": "null",
+    "by_tag_span": 0,
+    "by_tag_p": 1,
+    "qsa_from_template": 0,
+    "qsa_from_content": 1,
+    "content_p_matches_template_p": false,
+    "content_p_matches_root": false,
+    "content_p_matches_first_child": true,
+    "content_span_matches_div_span": true,
+    "template_matches_has_p": false,
+    "template_matches_empty": true
+   }
+  },
+  {
+   "id": "root",
+   "bug": "root",
+   "html": "<!DOCTYPE html><html><head></head><body><div id=\"host\"></div><p id=\"p\">p</p></body></html>",
+   "values": {
+    "document_element": true,
+    "body": false,
+    "qsa_root": 1,
+    "detached": false,
+    "detached_child": false,
+    "fragment_child": false,
+    "shadow_child": false,
+    "template_content_child": false,
+    "fragment_qsa_root": 0,
+    "root_child_combinator": true
+   }
   }
  ]
 }

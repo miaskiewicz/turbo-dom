@@ -136,10 +136,11 @@
   function live(list, namedProperties, options) {
     const proto = options ? options.prototype : namedProperties ? collection.proto : nodeList.proto;
     const namedLookup = options && options.named || named;
-    const object = ns.makeNamedObject(proto, function (operation, key, value) {
+    const object = ns.makeNamedObject(proto, function (operation, key, value, throws) {
       const indexed = /^(0|[1-9][0-9]*)$/.test(key) && Number(key) < 4294967295;
-      // An indexed setter (HTMLOptionsCollection) owns every index, supported or not.
-      if(indexed&&options&&options.setIndex&&(operation==='set'||operation==='define'))return options.setIndex(Number(key),value,operation==='define');
+      // An indexed setter (HTMLOptionsCollection) owns every index, supported or not. A define
+      // also carries V8's should-throw mode (Object.defineProperty vs Reflect.defineProperty).
+      if(indexed&&options&&options.setIndex&&(operation==='set'||operation==='define'))return options.setIndex(Number(key),value,operation==='define',throws===true);
       const rows = list();
       if(indexed&&options&&options.readonlyIndices&&(operation==='set'||operation==='define'))return true;
       const hiddenNames=!!(options&&options.hiddenNames);

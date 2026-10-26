@@ -82,7 +82,7 @@ pub fn resolve_matched_style(
         .into_iter()
         .enumerate()
         .map(|(order, matched)| Cand {
-            key: (matched.declaration.important, 0, (0, 0, 0), order),
+            key: (matched.declaration.important, 0, (0, 0, 0), order, 0),
             property: matched.declaration.property.clone(),
             value: matched.declaration.value.clone(),
         })

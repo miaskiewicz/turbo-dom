@@ -1,9 +1,10 @@
 // Capture the authored independent-document factory fixture using the independently installed Chrome.
 import { spawn } from "node:child_process";
+import { createHash } from "node:crypto";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { createServer } from "node:http";
 import { tmpdir } from "node:os";
-import { dirname, join, resolve } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 
@@ -21,6 +22,8 @@ const { values } = parseArgs({
 values.out ??= join(root, "src/dom_implementation_chrome155.json");
 if (!values.runner)
   throw Error("Pass --runner /absolute/chrome-cdp-trace.mjs [--out /absolute/oracle.json, default src/dom_implementation_chrome155.json]");
+// The control names its probe by file name and pins it by hash (dom_implementation_tests.rs).
+const probe = join(envSrc, "dom_implementation_probe.js");
 const directory = mkdtempSync(join(tmpdir(), "turbo-dom-implementation-oracle-"));
 const server = createServer((_request, response) => {
   response.setHeader("Content-Type", "text/html");
@@ -37,7 +40,7 @@ try {
       waitMs: 25,
       disableExtensions: true,
       steps: [],
-      probes: [join(envSrc, "dom_implementation_probe.js")],
+      probes: [probe],
       ...(values.chrome ? { chromePath: resolve(values.chrome) } : {}),
     }),
   );
@@ -54,7 +57,8 @@ try {
     browser: trace.browserVersion,
     v8: trace.browserV8Version,
     recordedAt: new Date().toISOString(),
-    fixture: "dom-implementation-probe.js",
+    fixture: basename(probe),
+    probeSha256: createHash("sha256").update(readFileSync(probe)).digest("hex"),
     effectiveExtensionFlags: trace.effectiveExtensionFlags,
     result: trace.probes[0].result,
   };

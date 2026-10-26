@@ -166,6 +166,29 @@ fn host_internals_cover_native_layout_capture_and_link_discovery() {
         0
     );
 
+    // The private image host: a loader publishes an <img>'s load state to the
+    // HTMLImageElement accessors (turbo-surf#32).
+    let image_host = v8::Local::<v8::Object>::try_from(own(scope, record, "imageHost")).unwrap();
+    let img = object(
+        scope,
+        "(()=>{const img=document.createElement('img');img.src='data:,x';return img;})()",
+    );
+    let loaded = object(
+        scope,
+        "({complete:true,naturalWidth:64,naturalHeight:40,currentSrc:'https://x.test/a.png'})",
+    );
+    call(scope, image_host, "setState", &[img.into(), loaded.into()]);
+    let key = v8::String::new(scope, "hostImage").unwrap();
+    context.global(scope).set(scope, key.into(), img.into());
+    let state = eval(
+        scope,
+        "[hostImage.complete,hostImage.naturalWidth,hostImage.naturalHeight,hostImage.currentSrc,Object.getOwnPropertyNames(hostImage).length].join()",
+    );
+    assert_eq!(
+        state.to_rust_string_lossy(scope),
+        "true,64,40,https://x.test/a.png,0"
+    );
+
     // The host CSS policy and the shared zoom grammar.
     let policy: StylePolicy = cascade_policy(scope);
     assert!(policy.inline_overrides.is_empty());

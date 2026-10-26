@@ -6441,7 +6441,15 @@ fn native_dom_function_dispatch(
         .get_index(scope, 1)
         .is_some_and(|value| value.boolean_value(scope));
     if require_new && !args.is_construct_call() {
-        let message = v8::String::new(scope, "Constructor requires 'new'").unwrap();
+        // An interface may name its own call-without-new message (Blink's legacy
+        // factory functions say "Failed to construct 'Option': Please use the 'new' …").
+        let message = match data
+            .get_index(scope, 4)
+            .and_then(|value| v8::Local::<v8::String>::try_from(value).ok())
+        {
+            Some(message) => message,
+            None => v8::String::new(scope, "Constructor requires 'new'").unwrap(),
+        };
         let error = v8::Exception::type_error(scope, message);
         scope.throw_exception(error);
         return;
@@ -6544,6 +6552,11 @@ fn make_native_dom_function(
     };
     let require_new = v8::Boolean::new(scope, require_new);
     let class_construct = v8::Boolean::new(scope, class_construct);
+    let call_message = if args.get(6).is_string() {
+        args.get(6)
+    } else {
+        v8::undefined(scope).into()
+    };
     let data = v8::Array::new_with_elements(
         scope,
         &[
@@ -6551,6 +6564,7 @@ fn make_native_dom_function(
             require_new.into(),
             class_construct.into(),
             args.data(),
+            call_message,
         ],
     );
     let template = v8::FunctionTemplate::builder(native_dom_function_dispatch)
@@ -6760,7 +6774,20 @@ where
             object.set(scope, key.into(), value.unwrap());
         }
     }
-    if let Some(result) = named_dispatch(scope, &args, "define", Some(name), Some(object.into())) {
+    // The dispatcher also receives V8's should-throw mode: an interface whose definer rejects a
+    // descriptor throws only where the definition must (Object.defineProperty) and reports the
+    // Reflect form quietly, as Blink's interceptors do (HTMLOptionsCollection accessors).
+    let Ok(callback) = v8::Local::<v8::Function>::try_from(args.data()) else {
+        return v8::Intercepted::kYes;
+    };
+    let operation = v8::String::new(scope, "define").unwrap();
+    let throws = interceptor_mode::should_throw(scope, &args);
+    let throws = v8::Boolean::new(scope, throws);
+    if let Some(result) = callback.call(
+        scope,
+        args.holder().into(),
+        &[operation.into(), name.into(), object.into(), throws.into()],
+    ) {
         if result.is_undefined() {
             return v8::Intercepted::kNo;
         }
@@ -7169,6 +7196,9 @@ fn install_with_tree(scope: &mut v8::PinScope, mut tree: Tree) {
     );
     run_js(scope, include_str!("element_tokens.js"));
     run_js(scope, include_str!("element_relations.js"));
+    // HTMLImageElement image-state accessors + the document record's `imageHost` (needs the
+    // collection-record helpers, which document_basics.js retires).
+    run_js(scope, include_str!("html_image.js"));
     run_js(scope, include_str!("document_basics.js"));
     document_legacy::install(scope);
     capture_node_projector(scope);
@@ -9532,6 +9562,10 @@ mod frame_tokens_tests;
 #[cfg(test)]
 #[path = "html_meta_tests.rs"]
 mod html_meta_tests;
+
+#[cfg(test)]
+#[path = "html_image_tests.rs"]
+mod html_image_tests;
 
 #[cfg(test)]
 #[path = "css_live_tests.rs"]

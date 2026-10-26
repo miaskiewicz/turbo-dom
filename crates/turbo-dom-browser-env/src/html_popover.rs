@@ -649,6 +649,10 @@ pub(super) fn selector_root(tree: &Tree, mut node: Handle) -> Handle {
     }
     node
 }
+/// A selector matching exactly `node` within its tree: an `:nth-child()` chain anchored at
+/// the tree's top element. The anchor is `:not(* > *)` (an element without an element
+/// parent) rather than `:root`, which matches only the document element (turbo-dom#18):
+/// the chain must also anchor in fragments, shadow trees and detached subtrees.
 pub(super) fn selector_path(tree: &Tree, mut node: Handle) -> String {
     let mut path = Vec::new();
     loop {
@@ -670,7 +674,7 @@ pub(super) fn selector_path(tree: &Tree, mut node: Handle) -> String {
         node = parent;
     }
     path.reverse();
-    format!(":root{}", path.join(" > "))
+    format!(":not(* > *){}", path.join(" > "))
 }
 fn pseudo_ranges<'i, 't>(
     input: &mut cssparser::Parser<'i, 't>,

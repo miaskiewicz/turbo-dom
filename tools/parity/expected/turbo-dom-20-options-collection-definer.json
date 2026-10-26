@@ -1,0 +1,13 @@
+{
+ "id": "turbo-dom#20/options-collection-definer",
+ "class": "HTMLOptionsCollection indexed definer",
+ "reason": "Reflect.defineProperty(select.options, index, accessor) returns true and is ignored (was a TypeError); Object.defineProperty keeps throwing, with Blink's message. No corpus input defines properties on an options collection (grep of the pinned inputs), so no output is expected to change.",
+ "control": "crates/turbo-dom-browser-env/src/option_factory_chrome156.json (collection)",
+ "e2e": "crates/turbo-dom-browser-env/src/select_element_tests.rs (options_collection_definer_matches_chrome156_control)",
+ "changes": {
+  "html2pdf": [],
+  "html2pdf-svg": [],
+  "html2pdf-extra": [],
+  "surf": []
+ }
+}

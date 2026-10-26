@@ -276,7 +276,26 @@ fn marker_key(kind: crate::tag::MarkerKind) -> String {
 // candidate collection + winner selection
 // --------------------------------------------------------------------------
 
-type Key = (bool, u8, Specificity, usize);
+/// A candidate declaration's cascade rank, compared lexicographically (the higher wins):
+/// importance, then origin ([`origin_rank`]), then specificity, then the source order of
+/// its RULE, then its index inside that rule. Ordering by rule order first is what makes a
+/// later rule of equal specificity win however many declarations an earlier rule has
+/// (miaskiewicz/turbo-dom#21: `p{margin:0;color:red} p{color:green}` is green).
+type Key = (bool, u8, Specificity, usize, usize);
+
+/// The cascade level of the user-agent sheet ([`super::build_cascade`]).
+const UA_LEVEL: u8 = 0;
+
+/// The origin part of a [`Key`]: the cascade level (UA < author sheets and hints < tokens <
+/// node styles < inline), except that an `!important` UA declaration beats every
+/// `!important` author one (CSS Cascade 4 origin order).
+fn origin_rank(important: bool, level: u8) -> u8 {
+    if important && level == UA_LEVEL {
+        u8::MAX
+    } else {
+        level
+    }
+}
 
 struct Cand {
     key: Key,
@@ -284,15 +303,17 @@ struct Cand {
     value: String,
 }
 
+/// Push `decls` (one rule's declarations, or one inline/hint/token group) at source order
+/// `order` of their level.
 fn push_decls(
     decls: &[Declaration],
     level: u8,
     spec: Specificity,
-    base: usize,
+    order: usize,
     out: &mut Vec<Cand>,
 ) {
     for (i, d) in decls.iter().enumerate() {
-        let key = (d.important, level, spec, base + i);
+        let key = (d.important, origin_rank(d.important, level), spec, order, i);
         out.push(Cand {
             key,
             property: d.property.clone(),
@@ -803,5 +824,81 @@ mod iteration_tests {
         assert_eq!(pairs, [("--x", "1"), ("color", "red"), ("width", "10px")]);
         assert_eq!(ComputedStyle::from_pairs(style.iter()), style);
         assert_eq!(ComputedStyle::default().iter().count(), 0);
+    }
+}
+
+#[cfg(test)]
+mod order_tests {
+    use super::{pick_winners, push_decls, Cand, Declaration, UA_LEVEL};
+
+    fn decl(property: &str, value: &str, important: bool) -> Declaration {
+        Declaration {
+            property: property.to_string(),
+            value: value.to_string(),
+            important,
+        }
+    }
+
+    /// One declaration group: its declarations, level, specificity and source order.
+    type Group<'d> = (&'d [Declaration], u8, (u32, u32, u32), usize);
+
+    fn winner(groups: &[Group]) -> String {
+        let mut cands: Vec<Cand> = Vec::new();
+        for &(decls, level, spec, order) in groups {
+            push_decls(decls, level, spec, order, &mut cands);
+        }
+        pick_winners(cands)["color"].clone()
+    }
+
+    /// miaskiewicz/turbo-dom#21: the rule's source order decides between equal
+    /// specificities, never a declaration's index inside its rule.
+    #[test]
+    fn a_later_rule_beats_a_longer_earlier_rule_of_equal_specificity() {
+        let early = [
+            decl("margin-top", "1px", false),
+            decl("margin-bottom", "1px", false),
+            decl("color", "red", false),
+        ];
+        let late = [decl("color", "green", false)];
+        assert_eq!(
+            winner(&[(&early, 1, (0, 0, 1), 7), (&late, 1, (0, 0, 1), 8)]),
+            "green"
+        );
+        // within one rule the last declaration wins
+        let twice = [decl("color", "red", false), decl("color", "blue", false)];
+        assert_eq!(winner(&[(&twice, 1, (0, 0, 1), 0)]), "blue");
+        // specificity still beats order, importance beats specificity
+        assert_eq!(
+            winner(&[(&early, 1, (0, 1, 0), 1), (&late, 1, (0, 0, 1), 2)]),
+            "red"
+        );
+        let important = [decl("color", "orange", true)];
+        assert_eq!(
+            winner(&[(&important, 1, (0, 0, 0), 0), (&late, 4, (1, 0, 0), 9)]),
+            "orange"
+        );
+    }
+
+    /// CSS Cascade 4: `!important` user-agent declarations beat `!important` author ones
+    /// (normal ones still lose to every author level).
+    #[test]
+    fn important_user_agent_declarations_beat_important_author_ones() {
+        let ua = [decl("color", "ua", true)];
+        let author = [decl("color", "author", true)];
+        let inline = [decl("color", "inline", true)];
+        assert_eq!(
+            winner(&[
+                (&ua, UA_LEVEL, (0, 0, 1), 0),
+                (&author, 1, (1, 0, 0), 5),
+                (&inline, 4, (0, 0, 0), 0)
+            ]),
+            "ua"
+        );
+        let ua = [decl("color", "ua", false)];
+        let author = [decl("color", "author", false)];
+        assert_eq!(
+            winner(&[(&ua, UA_LEVEL, (1, 0, 0), 0), (&author, 1, (0, 0, 0), 5)]),
+            "author"
+        );
     }
 }
