@@ -28,6 +28,15 @@ psl = "2"
 serde = { version = "1", features = ["derive"] }
 
 [features]
+# Today the crate links the published turbo-surf-v8, whose interceptor
+# ShouldThrowOnError accessor is broken, so the frame read is the default.
+# Integration with turbo-dom-v8 removes it from `default` (the fork accessor
+# becomes the path, guarded by `assert!(v8::FORK_SHOULD_THROW_FIX)`); native
+# SDKs without the fix (turbo-surf's engine overlay) then enable it explicitly.
+default = ["native-sdk-frame-read"]
+# Read the interceptor's should-throw mode from the V8 frame instead of the
+# fork's PropertyCallbackArguments::should_throw_on_error accessor.
+native-sdk-frame-read = []
 # Doc-hidden host-only access to native documents for embedders (turbo-surf's
 # native layout and resource discovery). Never reachable from page JS.
 host-internals = []

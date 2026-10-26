@@ -10,6 +10,20 @@
 //!
 //! The set is what turbo-surf's integration tests use today; add a constant here
 //! (next to its file) when another consumer needs one.
+//!
+//! [`frame_read_should_throw`] is the binding's frame-read source of an
+//! interceptor's should-throw mode, for embedders' accessor-vs-frame-read
+//! agreement tests.
+
+/// The interceptor's should-throw mode read from the V8 frame (the
+/// `native-sdk-frame-read` source). Only valid inside a setter, definer or
+/// deleter interceptor callback.
+pub fn frame_read_should_throw(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: &v8::PropertyCallbackArguments<'_>,
+) -> bool {
+    crate::browser_env::interceptor_mode::frame_read_should_throw(scope, args)
+}
 
 /// `src/abstract_ranges_chrome155.json`.
 pub const ABSTRACT_RANGES_CHROME155_JSON: &str = include_str!("abstract_ranges_chrome155.json");

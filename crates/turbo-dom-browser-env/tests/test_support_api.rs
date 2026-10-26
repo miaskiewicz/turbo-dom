@@ -16,4 +16,7 @@ fn test_support_constants_are_the_shipped_files() {
     }
     assert!(test_support::ANIMATIONS_FRAMES_CASES_JSON.starts_with(b"["));
     assert!(test_support::KEY_ORDER_PROBE_JS.contains("Object"));
+    // The frame-read source is exported for embedders' agreement tests.
+    let _: fn(&mut v8::PinScope<'_, '_>, &v8::PropertyCallbackArguments<'_>) -> bool =
+        test_support::frame_read_should_throw;
 }
