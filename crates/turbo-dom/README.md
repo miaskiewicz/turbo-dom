@@ -23,8 +23,12 @@ exactly why this is Rust-only.)
 ## Install
 
 ```bash
-cargo add turbo-dom
+cargo add turbo-dom        # turbo-dom = "0.6"; MSRV 1.89
 ```
+
+turbo-dom is the base of the turbo-dom crate family (see the repository's
+`docs/CONSOLIDATION.md`): `turbo-dom-layout` lays a `Tree` out, `turbo-dom-raster` paints
+it, `turbo-dom-browser-env` binds it to V8 (`turbo-dom-v8`).
 
 ## Use
 
@@ -81,7 +85,8 @@ Run the worked example: `cargo run --release --example crawl`.
 
 ## Status
 
-- **100% line coverage** on every runtime module; **192 unit tests** (`cargo test`).
+- Line coverage is gated in CI at its measured floor (88.33% at 0.6.0, gate 88; tarpaulin
+  LLVM over `src/`); the consolidation's coverage phase raises it to >= 99, then 100.
 - The parser core (`turbo_dom::core`) is byte-identical to the parser crate's and
   passes html5lib-tests tree-construction conformance at **99.72%** there.
 - Honest by design: `getComputedStyle` only returns values a real rule/inline/

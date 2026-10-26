@@ -42,7 +42,7 @@ test-support = []
 
 [dependencies]
 # The DOM the cascade styles and lays out directly (`style::TreeView`).
-turbo-dom = { path = "../turbo-dom", version = "0.5.8" }
+turbo-dom = { path = "../turbo-dom", version = "0.6.0" }
 thiserror = "2"
 html5ever = "0.39.0"
 markup5ever_rcdom = "0.39.0"

@@ -55,6 +55,11 @@ pub const CONTROL_LABELS_REALM_CHROME155_JSON: &str =
 pub const CONTROL_LABELS_REALM_PROBE_JS: &str = include_str!("control_labels_realm_probe.js");
 /// `src/css_adoption_chrome155.json`.
 pub const CSS_ADOPTION_CHROME155_JSON: &str = include_str!("css_adoption_chrome155.json");
+/// `src/css_adoption_lifecycle_chrome155.json`.
+pub const CSS_ADOPTION_LIFECYCLE_CHROME155_JSON: &str =
+    include_str!("css_adoption_lifecycle_chrome155.json");
+/// `src/css_adoption_lifecycle_probe.js`.
+pub const CSS_ADOPTION_LIFECYCLE_PROBE_JS: &str = include_str!("css_adoption_lifecycle_probe.js");
 /// `src/css_adoption_ownership_chrome155.json`.
 pub const CSS_ADOPTION_OWNERSHIP_CHROME155_JSON: &str =
     include_str!("css_adoption_ownership_chrome155.json");
@@ -62,16 +67,59 @@ pub const CSS_ADOPTION_OWNERSHIP_CHROME155_JSON: &str =
 pub const CSS_ADOPTION_OWNERSHIP_PROBE_JS: &str = include_str!("css_adoption_ownership_probe.js");
 /// `src/css_adoption_probe.js`.
 pub const CSS_ADOPTION_PROBE_JS: &str = include_str!("css_adoption_probe.js");
+/// `src/custom_elements_callbacks_chrome155.json`.
+pub const CUSTOM_ELEMENTS_CALLBACKS_CHROME155_JSON: &str =
+    include_str!("custom_elements_callbacks_chrome155.json");
+/// `src/custom_elements_callbacks_probe.js`.
+pub const CUSTOM_ELEMENTS_CALLBACKS_PROBE_JS: &str =
+    include_str!("custom_elements_callbacks_probe.js");
+/// `src/custom_elements_chrome155.json`.
+pub const CUSTOM_ELEMENTS_CHROME155_JSON: &str = include_str!("custom_elements_chrome155.json");
+/// `src/custom_elements_extended_chrome155.json`.
+pub const CUSTOM_ELEMENTS_EXTENDED_CHROME155_JSON: &str =
+    include_str!("custom_elements_extended_chrome155.json");
+/// `src/custom_elements_extended_probe.js`.
+pub const CUSTOM_ELEMENTS_EXTENDED_PROBE_JS: &str =
+    include_str!("custom_elements_extended_probe.js");
+/// `src/custom_elements_idl_chrome155.json`.
+pub const CUSTOM_ELEMENTS_IDL_CHROME155_JSON: &str =
+    include_str!("custom_elements_idl_chrome155.json");
+/// `src/custom_elements_idl_probe.js`.
+pub const CUSTOM_ELEMENTS_IDL_PROBE_JS: &str = include_str!("custom_elements_idl_probe.js");
+/// `src/custom_elements_moves_chrome155.json`.
+pub const CUSTOM_ELEMENTS_MOVES_CHROME155_JSON: &str =
+    include_str!("custom_elements_moves_chrome155.json");
+/// `src/custom_elements_moves_probe.js`.
+pub const CUSTOM_ELEMENTS_MOVES_PROBE_JS: &str = include_str!("custom_elements_moves_probe.js");
+/// `src/custom_elements_probe.js`.
+pub const CUSTOM_ELEMENTS_PROBE_JS: &str = include_str!("custom_elements_probe.js");
+/// `src/custom_elements_reactions_chrome155.json`.
+pub const CUSTOM_ELEMENTS_REACTIONS_CHROME155_JSON: &str =
+    include_str!("custom_elements_reactions_chrome155.json");
+/// `src/custom_elements_reactions_probe.js`.
+pub const CUSTOM_ELEMENTS_REACTIONS_PROBE_JS: &str =
+    include_str!("custom_elements_reactions_probe.js");
 /// `src/custom_elements_realms_chrome155.json`.
 pub const CUSTOM_ELEMENTS_REALMS_CHROME155_JSON: &str =
     include_str!("custom_elements_realms_chrome155.json");
 /// `src/custom_elements_realms_probe.js`.
 pub const CUSTOM_ELEMENTS_REALMS_PROBE_JS: &str = include_str!("custom_elements_realms_probe.js");
+/// `src/custom_elements_retired_chrome155.json`.
+pub const CUSTOM_ELEMENTS_RETIRED_CHROME155_JSON: &str =
+    include_str!("custom_elements_retired_chrome155.json");
+/// `src/custom_elements_retired_probe.js`.
+pub const CUSTOM_ELEMENTS_RETIRED_PROBE_JS: &str = include_str!("custom_elements_retired_probe.js");
 /// `src/dom_implementation_chrome155.json`.
 pub const DOM_IMPLEMENTATION_CHROME155_JSON: &str =
     include_str!("dom_implementation_chrome155.json");
 /// `src/dom_implementation_probe.js`.
 pub const DOM_IMPLEMENTATION_PROBE_JS: &str = include_str!("dom_implementation_probe.js");
+/// `src/dom_parser_observer_lifecycle_chrome155.json`.
+pub const DOM_PARSER_OBSERVER_LIFECYCLE_CHROME155_JSON: &str =
+    include_str!("dom_parser_observer_lifecycle_chrome155.json");
+/// `src/dom_parser_observer_lifecycle_probe.js`.
+pub const DOM_PARSER_OBSERVER_LIFECYCLE_PROBE_JS: &str =
+    include_str!("dom_parser_observer_lifecycle_probe.js");
 /// `src/file_inputs_cases.json`.
 pub const FILE_INPUTS_CASES_JSON: &str = include_str!("file_inputs_cases.json");
 /// `src/file_inputs_chrome156.json`.
@@ -192,6 +240,14 @@ pub const FILES: &[(&str, &[u8])] = &[
         CSS_ADOPTION_CHROME155_JSON.as_bytes(),
     ),
     (
+        "css_adoption_lifecycle_chrome155.json",
+        CSS_ADOPTION_LIFECYCLE_CHROME155_JSON.as_bytes(),
+    ),
+    (
+        "css_adoption_lifecycle_probe.js",
+        CSS_ADOPTION_LIFECYCLE_PROBE_JS.as_bytes(),
+    ),
+    (
         "css_adoption_ownership_chrome155.json",
         CSS_ADOPTION_OWNERSHIP_CHROME155_JSON.as_bytes(),
     ),
@@ -201,6 +257,54 @@ pub const FILES: &[(&str, &[u8])] = &[
     ),
     ("css_adoption_probe.js", CSS_ADOPTION_PROBE_JS.as_bytes()),
     (
+        "custom_elements_callbacks_chrome155.json",
+        CUSTOM_ELEMENTS_CALLBACKS_CHROME155_JSON.as_bytes(),
+    ),
+    (
+        "custom_elements_callbacks_probe.js",
+        CUSTOM_ELEMENTS_CALLBACKS_PROBE_JS.as_bytes(),
+    ),
+    (
+        "custom_elements_chrome155.json",
+        CUSTOM_ELEMENTS_CHROME155_JSON.as_bytes(),
+    ),
+    (
+        "custom_elements_extended_chrome155.json",
+        CUSTOM_ELEMENTS_EXTENDED_CHROME155_JSON.as_bytes(),
+    ),
+    (
+        "custom_elements_extended_probe.js",
+        CUSTOM_ELEMENTS_EXTENDED_PROBE_JS.as_bytes(),
+    ),
+    (
+        "custom_elements_idl_chrome155.json",
+        CUSTOM_ELEMENTS_IDL_CHROME155_JSON.as_bytes(),
+    ),
+    (
+        "custom_elements_idl_probe.js",
+        CUSTOM_ELEMENTS_IDL_PROBE_JS.as_bytes(),
+    ),
+    (
+        "custom_elements_moves_chrome155.json",
+        CUSTOM_ELEMENTS_MOVES_CHROME155_JSON.as_bytes(),
+    ),
+    (
+        "custom_elements_moves_probe.js",
+        CUSTOM_ELEMENTS_MOVES_PROBE_JS.as_bytes(),
+    ),
+    (
+        "custom_elements_probe.js",
+        CUSTOM_ELEMENTS_PROBE_JS.as_bytes(),
+    ),
+    (
+        "custom_elements_reactions_chrome155.json",
+        CUSTOM_ELEMENTS_REACTIONS_CHROME155_JSON.as_bytes(),
+    ),
+    (
+        "custom_elements_reactions_probe.js",
+        CUSTOM_ELEMENTS_REACTIONS_PROBE_JS.as_bytes(),
+    ),
+    (
         "custom_elements_realms_chrome155.json",
         CUSTOM_ELEMENTS_REALMS_CHROME155_JSON.as_bytes(),
     ),
@@ -209,12 +313,28 @@ pub const FILES: &[(&str, &[u8])] = &[
         CUSTOM_ELEMENTS_REALMS_PROBE_JS.as_bytes(),
     ),
     (
+        "custom_elements_retired_chrome155.json",
+        CUSTOM_ELEMENTS_RETIRED_CHROME155_JSON.as_bytes(),
+    ),
+    (
+        "custom_elements_retired_probe.js",
+        CUSTOM_ELEMENTS_RETIRED_PROBE_JS.as_bytes(),
+    ),
+    (
         "dom_implementation_chrome155.json",
         DOM_IMPLEMENTATION_CHROME155_JSON.as_bytes(),
     ),
     (
         "dom_implementation_probe.js",
         DOM_IMPLEMENTATION_PROBE_JS.as_bytes(),
+    ),
+    (
+        "dom_parser_observer_lifecycle_chrome155.json",
+        DOM_PARSER_OBSERVER_LIFECYCLE_CHROME155_JSON.as_bytes(),
+    ),
+    (
+        "dom_parser_observer_lifecycle_probe.js",
+        DOM_PARSER_OBSERVER_LIFECYCLE_PROBE_JS.as_bytes(),
     ),
     ("file_inputs_cases.json", FILE_INPUTS_CASES_JSON.as_bytes()),
     (

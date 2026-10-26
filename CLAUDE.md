@@ -17,14 +17,15 @@ npm run build         # native addon → turbo-dom-parser.<platform>.node + inde
 npm run build:wasm    # wasm32 fallback
 npm test              # JS: node --test  (MUST glob: 'test/*.mjs' — `node --test test/` is misparsed on Node 24)
 npm run test:cov      # same suite + coverage gate (runtime lines≥99 / funcs≥95 / branches≥95)
-npm run test:rust     # cargo test -p turbo-dom  (rtdom crate: 227 tests + conformance)
+npm run test:rust     # cargo test -p turbo-dom  (rtdom crate tests + conformance)
 npm run conformance   # html5lib-tests gate (parser, JS serializer)
 # --- Rust-native DOM runtime (rtdom) ---
 npm run build:rtdom        # cargo build -p turbo-dom --release
 npm run conformance:rtdom  # html5lib-tests gate run THROUGH the rtdom tree (direct, 99.75%)
 npm run profile:churn      # build the CPU-profiling example + print the macOS `sample` hint
 # --- lint + perf gates (CI-enforced) ---
-cargo clippy --workspace --all-targets -- -D warnings   # parser + turbo-dom: clippy::pedantic-clean; layout/raster: default lints (pedantic adoption pending)
+cargo clippy -p turbo-dom -p turbo-dom-parser --all-targets -- -D warnings   # pedantic-clean (CI base job; --workspace would build V8)
+cargo clippy -p turbo-dom-layout --all-targets -- -D warnings  # layout/raster: default lints (pedantic adoption pending); CI also runs feature variants
 cargo test -p turbo-dom-layout                           # layout engine (+ --features svg / perf)
 cargo test -p turbo-dom-raster                           # screenshot painter
 scripts/verify-copied-layout.sh                          # S1 moved code (at VERIFY_REF) == its source commits (+ allow-listed rewrites)
@@ -32,15 +33,25 @@ cargo test -p turbo-dom churn_alloc_gate -- --ignored    # perf gate: churn allo
 cargo test -p turbo-dom --test cascade_selectors_chrome  # selector engine vs the Chrome 156 control
 cargo test -p turbo-dom-layout --test cascade_selectors_chrome  # the same control end to end (HTML-path cascade)
 scripts/check-no-selector-dual.sh                        # the retired selector-dual gate must not come back
+python3 scripts/check-baseline-red.py scripts/baseline-red/turbo-dom-layout-no-default-features.tsv -- -p turbo-dom-layout --no-default-features
+python3 scripts/check-versions.py                        # one release version in every manifest (CI guard; --tag in publish)
+python3 -m unittest discover -s scripts -p 'test_*.py'   # release helper (publish-crates.py) self-tests
+python3 -m unittest discover -s tools/parity -p 'test_*.py'  # parity harness self-test
 ```
+
+CI (`.github/workflows/ci.yml`) has one job family per crate (base / layout / raster / v8 +
+browser-env matrix / msrv 1.89 / guards / coverage floors); `publish.yml` runs it on a `v*`
+tag and then publishes every package in dependency order. See `docs/CONSOLIDATION.md`.
 
 **Two independent runtimes, one repo.** The JS runtime (`src/runtime/*.mjs`, the npm/vitest path)
 and the Rust runtime (`crates/turbo-dom`, the workspace-member crate published to crates.io as
 `turbo-dom`) never touch each other. The Rust DOM engine lives in **one place** — that published
 crate — so there's no duplicated copy to keep in sync (the root parser crate has no rtdom module).
-rtdom is held to **100% line coverage** (`cargo tarpaulin -p turbo-dom --skip-clean`); its
+rtdom's line coverage is gated in CI at its measured floor (88.33% at 0.6.0, gate 88:
+`cargo tarpaulin --engine llvm -p turbo-dom --include-files 'crates/turbo-dom/src/*'`); the
+consolidation's coverage phase raises it (and every other crate's floor) to >= 99, then 100. Its
 `bench`/`dump`/`conformance`/`gauntlet` modules are `#[cfg(test)]` gate harness, not shipped. The
-crate (clean deps, vendorable) publishes via the `publish-crate` CI job on a `v*` tag. See
+crate publishes from `publish.yml` on a `v*` tag (after turbo-dom-v8, before turbo-dom-layout). See
 `RUST_PORT_PLAN.md`.
 
 **`crates/turbo-dom-v8` is generated, not vendored.** turbo-dom's rusty_v8 150.4 fork (interceptor
@@ -50,7 +61,8 @@ and built standalone (the root workspace excludes it, so the base gates never ne
 [crates/turbo-dom-v8/README.md](crates/turbo-dom-v8/README.md) for generate/check/test/release.
 Generator tests: `python3 -m unittest discover -s crates/turbo-dom-v8/scripts -p 'test_*.py'`.
 
-Toolchain: Node ≥ 24, Rust stable via rustup (`source $HOME/.cargo/env` if cargo isn't on PATH).
+Toolchain: Node ≥ 24, Rust 1.98.0 via rustup (CI's pin; MSRV 1.89 for turbo-dom/-layout/-raster, 1.91
+for -v8/-browser-env; `source $HOME/.cargo/env` if cargo isn't on PATH).
 
 **Pre-commit hook** (`.githooks/pre-commit`, zero-dep — wired via the `prepare` script setting
 `core.hooksPath=.githooks` on `npm install`): runs `npm run test:cov` when `src/`/`test/` is
@@ -58,12 +70,12 @@ staged, so every commit gates tests + coverage + conformance (conformance.test.m
 suite). Bypass with `git commit --no-verify`. Coverage-ignore a truly-unreachable defensive line
 with `/* node:coverage ignore next */` (sparingly) — prefer restructuring or a test.
 
-**Lint + perf gates (CI-enforced, not pre-commit).** Both crates enable `clippy::pedantic` via
+**Lint + perf gates (CI-enforced, not pre-commit).** turbo-dom and turbo-dom-parser enable `clippy::pedantic` via
 `[lints.clippy]` in their `Cargo.toml`, with a documented allow-list for the lints that don't fit a
 DOM/parse/layout engine (the f64↔int cast family, `float_cmp` on canonical values, single-char
-tokenizer vars, missing-panics/errors-doc, …). CI runs `cargo clippy --workspace --all-targets --
--D warnings` plus the root crate's `wasm-bind`/`wasm-runtime` variants, so any pedantic warning
-fails. A deterministic perf gate, `rtdom::bench::churn_alloc_gate`, asserts the mutation-churn path
+tokenizer vars, missing-panics/errors-doc, …). CI runs `cargo clippy -p turbo-dom -p turbo-dom-parser
+--all-targets -- -D warnings` plus the root crate's `wasm-bind`/`wasm-runtime` variants, so any pedantic
+warning fails (the layout, raster and browser-env jobs lint their crates the same way, at default lints). A deterministic perf gate, `rtdom::bench::churn_alloc_gate`, asserts the mutation-churn path
 stays ≤ 380 allocs/op (measured 363 — the count is load- and opt-level-independent, so it's stable
 on CI where wall-clock would flake). It's `#[ignore]`'d and run ALONE in its own CI step
 (`cargo test -p turbo-dom churn_alloc_gate -- --ignored`) because `CountingAlloc` is a process-
@@ -74,7 +86,8 @@ global allocator that a parallel test would pollute. Don't loosen either thresho
 Follow [PUBLISHING.md](./PUBLISHING.md). Versions must agree across npm, Cargo,
 lockfiles, generated WASM packages and the README. Run the full documented gates,
 merge the green release PR with a merge commit, and create an annotated tag on
-that actual merge commit. Pushing the tag publishes npm and the Rust DOM crate;
+that actual merge commit. Pushing the tag runs `publish.yml`: turbo-dom-v8, turbo-dom,
+turbo-dom-layout, turbo-dom-raster, turbo-dom-browser-env (crates.io, in that order) and npm;
 only do this with explicit release authorization. This repository has no PyPI
 package or publish workflow.
 
@@ -93,10 +106,11 @@ package or publish workflow.
   (`cascade.rs`), event dispatch with the listener-less fast-skip (`events.rs`), serialize, shadow DOM,
   plus `color`/`css_values`/`cssom`/`svg`/`file`/`canvas`/`custom_elements`/`location`/`mutations`/`node_ref`.
   Test-only harness: `dump.rs` (html5lib tree-dump) + `conformance.rs` (direct gate, 99.75%) +
-  `bench.rs`/`gauntlet.rs`. **100% line coverage.** Don't expose rtdom to JS (the boundary loses);
+  `bench.rs`/`gauntlet.rs`. Coverage-gated in CI (floor raised by the coverage phase). Don't expose rtdom to JS (the boundary loses);
   the JS path stays `src/runtime/`. Per-commit perf-win → Rust mapping in `RUST_PORT_PERF_HISTORY.md`.
 - `crates/turbo-dom-browser-env` — the rtdom <-> V8 browser binding (moved from turbo-test
-  @cb5c64e; `scripts/verify-copied.sh` re-derives that one-time move for review). Shared by
+  @cb5c64e; `scripts/verify-copied.sh` re-derives that one-time move for review; its Chrome-control
+  collectors moved into the crate's `scripts/` in S5, `scripts/verify-copied-collectors.sh`). Shared by
   turbo-test and turbo-surf; features `host-internals` (doc-hidden host access),
   `test-support` (probe/control consts), `native-sdk-frame-read` (interceptor mode source).
   Needs a V8 archive (`RUSTY_V8_ARCHIVE`). Lint-exempt by design (`#![allow(unused, clippy::all)]`);

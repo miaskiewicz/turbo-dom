@@ -15,7 +15,7 @@ categories = ["web-programming", "development-tools::testing"]
 # interceptor ShouldThrowOnError fix. `~150.4` admits fork patch releases only.
 v8 = { package = "turbo-dom-v8", version = "~150.4" }
 # The DOM itself. The alias keeps the `turbo_dom_parser::` paths the binding uses.
-turbo-dom-parser = { package = "turbo-dom", path = "../turbo-dom" }
+turbo-dom-parser = { package = "turbo-dom", path = "../turbo-dom", version = "0.6.0" }
 # CSS Syntax, selector and declaration validation for the CSSOM facade.
 lightningcss = { version = "1.0.0-alpha.71", default-features = false }
 cssparser = "0.37"

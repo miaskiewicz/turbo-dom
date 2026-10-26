@@ -2372,7 +2372,7 @@ dependencies = [
 
 [[package]]
 name = "turbo-dom"
-version = "0.5.8"
+version = "0.6.0"
 dependencies = [
  "cssparser",
  "html5ever",
@@ -2425,7 +2425,7 @@ dependencies = [
 
 [[package]]
 name = "turbo-dom-parser"
-version = "0.5.8"
+version = "0.6.0"
 dependencies = [
  "html5ever",
  "markup5ever_rcdom",

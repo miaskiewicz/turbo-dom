@@ -31,6 +31,9 @@ python3 tools/parity/parity.py run OUT --html2pdf h2p.node --html2pdf-svg h2p-sv
 python3 tools/parity/parity.py compare OUT b-main  # exit 0 = byte-identical
 ```
 
+Self-test (no addons; run by CI): `python3 -m unittest discover -s tools/parity -p 'test_*.py'`
+covers `compare`/`record`/`run` and checks the committed checkpoints and expected-diff files.
+
 `compare` fails on any changed, added or removed output. A change that is intended
 (a bug fix) is declared in an expected-diff file passed with `--expect`:
 

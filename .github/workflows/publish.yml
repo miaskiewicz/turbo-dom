@@ -1,0 +1,125 @@
+name: Publish
+
+# Release of every turbo-dom package from one `v<version>` tag (PUBLISHING.md):
+#   1. ci        the full CI workflow (ci.yml via workflow_call) on the tagged commit
+#   2. preflight tag == the version in every manifest; the retired dual selector-engine gate is gone
+#   3. crates    turbo-dom-v8 -> turbo-dom -> turbo-dom-layout -> turbo-dom-raster ->
+#                turbo-dom-browser-env, sequential; every step skips a version that is
+#                already on crates.io and waits until it is in the crates.io index
+#   4. npm       @miaskiewicz/turbo-dom (all napi binaries bundled), skipped if published
+# Secrets: CARGO_REGISTRY_TOKEN (crates.io), NPM_TOKEN (npm). Never run by hand: only a
+# pushed tag publishes, and re-running a partially failed run resumes where it stopped.
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  RUST_TOOLCHAIN: 1.98.0
+  RUSTY_V8_VERSION: 150.4.0
+  CARGO_TERM_COLOR: always
+  TZ: UTC
+
+jobs:
+  ci:
+    uses: ./.github/workflows/ci.yml
+
+  preflight:
+    name: preflight (versions + guards)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Tag matches every manifest version
+        run: python scripts/check-versions.py --tag "${{ github.ref_name }}"
+      - name: The retired dual selector-engine gate is not in the tagged tree
+        run: sh scripts/check-no-selector-dual.sh
+
+  crates:
+    name: crates.io (turbo-dom-v8 -> turbo-dom -> -layout -> -raster -> -browser-env)
+    needs: [ci, preflight]
+    runs-on: ubuntu-latest
+    env:
+      CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+      - name: Guard — the retired dual selector-engine gate is not in the published tree
+        run: sh scripts/check-no-selector-dual.sh
+      - name: Prebuilt rusty_v8 archive (packaged-consumer verification builds link V8)
+        run: |
+          mkdir -p "$RUNNER_TEMP/rusty_v8"
+          curl -fsSL --retry 3 -o "$RUNNER_TEMP/rusty_v8/v8.a.gz" \
+            "https://github.com/denoland/rusty_v8/releases/download/v${RUSTY_V8_VERSION}/librusty_v8_release_x86_64-unknown-linux-gnu.a.gz"
+          gunzip -f "$RUNNER_TEMP/rusty_v8/v8.a.gz"
+          echo "RUSTY_V8_ARCHIVE=$RUNNER_TEMP/rusty_v8/v8.a" >> "$GITHUB_ENV"
+      - name: Generate turbo-dom-v8 from the pinned inputs
+        run: python crates/turbo-dom-v8/scripts/generate.py --download --write
+      - name: Publish turbo-dom-v8 (release.py; verifies an already-published 150.4.0 instead)
+        run: python crates/turbo-dom-v8/scripts/release.py --out "$RUNNER_TEMP/turbo-dom-v8-release" --publish
+      - name: Wait for turbo-dom-v8 in the crates.io index
+        run: python scripts/publish-crates.py wait-index turbo-dom-v8 "$(python -c 'import json; print(json.load(open("crates/turbo-dom-v8/pins.json"))["version"])')"
+      - name: Resolve turbo-dom-v8 from crates.io (drop the pre-publish candidate [patch])
+        run: python scripts/publish-crates.py drop-v8-patch
+      - name: Publish turbo-dom -> turbo-dom-layout -> turbo-dom-raster -> turbo-dom-browser-env
+        run: python scripts/publish-crates.py publish
+
+  npm:
+    name: npm (@miaskiewicz/turbo-dom)
+    needs: [ci, preflight, crates]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+      # prepublishOnly rebuilds the native addon AND both WASM targets (pkg/ + pkg-web/),
+      # which ship in the package — so the publish runner needs the Rust + wasm toolchain.
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+          targets: wasm32-unknown-unknown
+      - uses: jetli/wasm-pack-action@v0.4.0
+      - name: Already published?
+        id: published
+        run: |
+          version=$(node -p "require('./package.json').version")
+          if npm view "@miaskiewicz/turbo-dom@$version" version >/dev/null 2>&1; then
+            echo "@miaskiewicz/turbo-dom@$version is already on npm; skipping"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          fi
+      - run: npm install --ignore-scripts --legacy-peer-deps
+        if: steps.published.outputs.skip != 'true'
+      # Single bundled package: all platform *.node binaries ship inside it (index.js
+      # loads the matching local binary); the ci job's napi matrix uploaded them.
+      - name: Download the prebuilt binaries
+        if: steps.published.outputs.skip != 'true'
+        uses: actions/download-artifact@v4
+        with:
+          pattern: bindings-*
+          path: artifacts
+      - name: Bundle binaries into the package root
+        if: steps.published.outputs.skip != 'true'
+        run: |
+          find artifacts -name '*.node' -exec cp {} . \;
+          ls -1 *.node
+      - name: Publish @miaskiewicz/turbo-dom
+        if: steps.published.outputs.skip != 'true'
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

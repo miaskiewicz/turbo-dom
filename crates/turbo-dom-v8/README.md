@@ -110,4 +110,7 @@ and reviewed sources. With `--publish` (only on `refs/tags/v<crates/turbo-dom ve
 miaskiewicz/turbo-dom, using the generated `crate/`) it publishes `turbo-dom-v8 150.4.0`
 once: if that version already exists, the published archive must match the fresh package
 (only Cargo's `Cargo.lock`/`.cargo_vcs_info.json` may differ) and nothing is uploaded.
-turbo-dom-v8 publishes first in the turbo-dom release chain.
+turbo-dom-v8 publishes first in the turbo-dom release chain (`.github/workflows/publish.yml`,
+see PUBLISHING.md); its CI job (`ci.yml` `v8`) generates the crate, tests it on linux x64/arm64,
+macOS arm64 and windows x64 with the default and simdutf archives, and builds
+turbo-dom-browser-env against it.

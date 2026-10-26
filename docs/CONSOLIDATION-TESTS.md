@@ -1104,3 +1104,18 @@ New tests:
 | turbo-surf | `live_layout_zoom::tests::the_hook_walk_collects_flat_parents_tags_and_effective_zoom` | the post-cascade walk's style collection |
 | turbo-dom-layout | `turbo_dom_layout<src/lib.rs>::live::tests::*` (13) | capture paths/budgets/errors, composed providers, quirks/body, SVG viewports, pre-matched cascade ranking, inline override, text sources, hook, error pass-through |
 | turbo-dom | `turbo_dom<src/lib.rs>::rtdom::query::cascade::tests::supports_selectors_follow_chrome` | `parse_for_supports` against the Chrome 156 `selector()` control |
+
+## S5b — release readiness (turbo-dom `consol/s5b-release`)
+
+No behaviour change: every cargo result equals 9cac873's except the tests below.
+
+| crate | test | category |
+|---|---|---|
+| turbo-dom-browser-env | `test_support_api<tests/test_support_api.rs>::test_support_constants_are_the_shipped_files` | changed@S5b (67 files instead of 49; `FILES` sorted; JSON controls with lone UTF-16 surrogates must fail `serde_json` only for that reason) |
+| turbo-dom-browser-env | `test_support_api<tests/test_support_api.rs>::custom_element_lifecycle_pairs_are_exported` | new: the 9 probe/control pairs of turbo-surf's `tests/custom_elements.rs`, each control recorded by Chrome 155 for that probe's sha256 |
+| scripts (python) | `scripts/test_publish_crates.py` (10) | new: release helper (sparse-index paths, already-published guard, index polling, `[patch]` stripping, publish order vs the dependency graph) |
+| tools/parity (python) | `tools/parity/test_parity.py` (13) | new: `compare`/`record`/`run` + committed checkpoints and expected-diff files |
+
+The `turbo-dom-layout --no-default-features` baseline-red set (44 tests, turbo-html2pdf#28)
+is now a committed list, `scripts/baseline-red/turbo-dom-layout-no-default-features.tsv`,
+checked exactly by `scripts/check-baseline-red.py` in CI.
