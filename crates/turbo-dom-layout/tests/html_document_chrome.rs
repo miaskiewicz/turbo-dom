@@ -103,7 +103,7 @@ fn inline_flex_grid_case(id: &str) -> bool {
 /// The control cases of an open bug, each asserted by its own test (`#[ignore]`d until
 /// its fix lands) and held out of [`html_documents_lay_out_as_chrome_156`].
 fn held_out(id: &str) -> bool {
-    let groups: [fn(&str) -> bool; 31] = [
+    let groups: [fn(&str) -> bool; 32] = [
         auto_table_case,
         inline_flex_grid_case,
         abs_auto_width_case,
@@ -135,6 +135,7 @@ fn held_out(id: &str) -> bool {
         float_sum_case,
         flex_item_box_sizing_case,
         positioned_percent_case,
+        block_in_inline_case,
     ];
     groups.iter().any(|group| group(id))
 }
@@ -344,6 +345,17 @@ fn positioned_percent_case(id: &str) -> bool {
 #[test]
 fn positioned_percentages_resolve_against_the_containing_block_like_chrome_156() {
     compare_cases(positioned_percent_case);
+}
+
+/// miaskiewicz/turbo-dom#101: a block inside an inline splits the inline around it.
+fn block_in_inline_case(id: &str) -> bool {
+    id.starts_with("block-in-inline-")
+}
+
+#[test]
+#[ignore = "turbo-dom#101: fails until the fix"]
+fn blocks_in_inlines_split_them_like_chrome_156() {
+    compare_cases(block_in_inline_case);
 }
 
 /// miaskiewicz/turbo-dom#69: only legacy `-webkit-*` alignment moves block children.

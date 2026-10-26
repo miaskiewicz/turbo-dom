@@ -14,7 +14,7 @@
 // `empty-formatting-root-*`, #93 `flex-item-*`). P5b-W7 adds miaskiewicz/turbo-dom#79
 // (`intrinsic-margins-*`), #80 (`inline-block-margins-*`) and #81 (`icb-*`), and the bugs
 // found while fixing them (one group per issue, labelled). P5b-W6 also adds
-// miaskiewicz/turbo-dom#100 (`positioned-percent-*`).
+// miaskiewicz/turbo-dom#100 (`positioned-percent-*`) and #101 (`block-in-inline-*`).
 //
 // For every case below, Chrome for Testing 156 (viewport 1280x800) records:
 //   - `boxes`: getBoundingClientRect() of every `[data-cid]` element (document order), as
@@ -523,6 +523,15 @@ const CASES = [
   { id: "positioned-percent-min-max-width", html: DOC(S("body{margin:0}"), `<div style="position:relative;width:400px;height:50px"><div style="width:100px"><div data-cid="c" style="position:absolute;width:10px;min-width:50%;height:5px"></div><div data-cid="d" style="position:absolute;top:10px;width:300px;max-width:25%;height:5px"></div></div></div>`) },
   { id: "positioned-percent-padding-margin", html: DOC(S("body{margin:0}"), `<div style="position:relative;width:400px;height:50px"><div style="width:100px"><div data-cid="c" style="position:absolute;width:10px;padding-left:10%;margin-left:5%;height:5px"></div></div></div>`) },
   { id: "positioned-percent-width-child-percent", html: DOC(S("body{margin:0}"), `<div style="position:relative;width:400px;height:50px"><div style="width:100px"><div data-cid="c" style="position:absolute;width:50%;height:5px"><div data-cid="d" style="width:50%;height:2px"></div></div></div></div>`) },
+  // P5b-W6, miaskiewicz/turbo-dom#101: a block inside an inline element splits the inline
+  // around it (CSS 2.2 §9.2.1.1): it fills the line width and margins collapse through it.
+  { id: "block-in-inline-child-margin", html: DOC(S("body{margin:0}i{display:inline-block;width:10px;height:10px}"), `<div style="font-size:0"><span>x<div data-cid="d" style="height:5px"><div data-cid="k" style="margin-top:7px;height:3px"></div></div></span></div>`) },
+  { id: "block-in-inline-fills-line", html: DOC(S("body{margin:0}i{display:inline-block;width:10px;height:10px}"), `<div data-cid="p" style="font-size:0"><span><i data-cid="a"></i><div data-cid="d" style="height:5px"></div><i data-cid="b"></i></span></div>`) },
+  { id: "block-in-inline-empty", html: DOC(S("body{margin:0}i{display:inline-block;width:10px;height:10px}"), `<div data-cid="p" style="font-size:0"><span><i data-cid="a"></i><div data-cid="d"></div><i data-cid="b"></i></span></div>`) },
+  { id: "block-in-inline-explicit-width", html: DOC(S("body{margin:0}i{display:inline-block;width:10px;height:10px}"), `<div style="font-size:0"><span><i></i><div data-cid="d" style="width:50px;height:5px"></div></span></div>`) },
+  { id: "block-in-inline-nested-spans", html: DOC(S("body{margin:0}i{display:inline-block;width:10px;height:10px}"), `<div style="font-size:0"><b><span><i data-cid="a"></i><div data-cid="d" style="height:5px"></div></span></b><i data-cid="c"></i></div>`) },
+  { id: "block-in-inline-margins", html: DOC(S("body{margin:0}i{display:inline-block;width:10px;height:10px}"), `<div style="font-size:0"><span><i data-cid="a"></i><div data-cid="d" style="height:5px;margin:4px 6px"></div><i data-cid="b"></i></span></div><div data-cid="g" style="height:5px"></div>`) },
+  { id: "block-in-inline-two-blocks", html: DOC(S("body{margin:0}i{display:inline-block;width:10px;height:10px}"), `<div style="font-size:0"><span><div data-cid="d" style="height:5px"></div><div data-cid="e" style="height:6px;margin-top:3px"></div></span></div>`) },
 ];
 
 /** The RGB of a 1x1 PNG screenshot (any filter: a single pixel's filter adds 0). */
