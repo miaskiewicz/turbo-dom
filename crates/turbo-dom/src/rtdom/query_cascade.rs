@@ -17,8 +17,9 @@
 //!   parsed unforgivingly (`@supports selector(…)` / `CSS.supports("selector(…)")`).
 //! - pseudo-classes Chrome knows but the DOM engine does not evaluate parse as valid and
 //!   never match (the static resting state: `:hover`, `:focus`, `:visited`, …). Names are
-//!   ASCII case-insensitive. `:scope` is `:root`, and `:defined`, `:lang()` and
-//!   `:-webkit-any()` are evaluated (cascade-only: the DOM APIs keep their behaviour).
+//!   ASCII case-insensitive. `:scope` is `:root`, and `:defined` and `:-webkit-any()` are
+//!   evaluated (cascade-only: the DOM APIs keep their behaviour); `:lang()` is shared with
+//!   the DOM APIs.
 //! - **specificity** per Selectors 4: `:where()` is 0; `:is()`, `:not()` and `:has()` take
 //!   their most specific argument; `:nth-child(An+B of S)` is a pseudo-class plus S;
 //!   pseudo-elements count as types.
@@ -521,7 +522,6 @@ fn cascade_pseudo(unknown: &UnknownPseudo) -> Result<Pseudo, SelectorError> {
     match (lower.as_str(), arg) {
         ("scope", None) => Ok(Pseudo::Root),
         ("defined", None) => Ok(Pseudo::Defined),
-        ("lang", Some(arg)) => lang_ranges(arg).map(Pseudo::Lang),
         ("-webkit-any", Some(arg)) => {
             let mut list = super::parse_selector_list_str(arg);
             forgive(&mut list);
@@ -533,18 +533,6 @@ fn cascade_pseudo(unknown: &UnknownPseudo) -> Result<Pseudo, SelectorError> {
         }
         _ => Err(invalid("unknown pseudo-class")),
     }
-}
-
-/// `:lang()` ranges: comma-separated identifiers or strings, lowercased.
-fn lang_ranges(arg: &str) -> Result<Vec<String>, SelectorError> {
-    let ranges: Vec<String> = arg
-        .split(',')
-        .map(|r| r.trim().trim_matches(['"', '\'']).to_ascii_lowercase())
-        .collect();
-    if ranges.iter().any(String::is_empty) {
-        return Err(invalid("empty :lang() range"));
-    }
-    Ok(ranges)
 }
 
 /// Does `h` match `sel` through `nav` (a pseudo-element selector never matches an element,
@@ -585,26 +573,30 @@ fn is_custom_element_name(name: &str) -> bool {
         && !RESERVED.contains(&name)
 }
 
-/// `:lang(ranges)`: the element's language (the nearest ancestor-or-self `xml:lang` or
-/// `lang` attribute) equals a range or starts with it plus `-`, ASCII case-insensitively.
-pub(super) fn lang_matches(tree: &Tree, h: Handle, ranges: &[String]) -> bool {
+/// `:lang(range)`: the element's language — the nearest ancestor-or-self `xml:lang` (XML
+/// namespace) or `lang` attribute (any element: SVG's `lang` counts; an HTML element's
+/// no-namespace `xml:lang` does not) — equals `range` or starts with it plus `-`, ASCII
+/// case-insensitively (Chrome 156: no wildcard ranges, `:lang(zh-TW)` does not match
+/// `zh-Hant-TW`). An empty `lang=""` is an unknown language and matches nothing.
+pub(super) fn lang_matches(tree: &Tree, h: Handle, range: &str) -> bool {
     let mut node = Some(h);
     while let Some(n) = node {
-        let lang = tree
-            .get_attribute_ns_borrowed(n, Some("http://www.w3.org/XML/1998/namespace"), "lang")
-            .or_else(|| {
-                tree.is_html(n)
-                    .then(|| tree.get_attribute_ns_borrowed(n, None, "lang"))
-                    .flatten()
-            });
+        let lang = (tree.node_type(n) == super::NodeType::Element)
+            .then(|| {
+                tree.get_attribute_ns_borrowed(
+                    n,
+                    Some("http://www.w3.org/XML/1998/namespace"),
+                    "lang",
+                )
+                .or_else(|| tree.get_attribute_ns_borrowed(n, None, "lang"))
+            })
+            .flatten();
         if let Some(lang) = lang {
             let lang = lang.to_ascii_lowercase();
-            return ranges.iter().any(|range| {
-                lang == *range
-                    || (lang.len() > range.len()
-                        && lang.starts_with(range.as_str())
-                        && lang.as_bytes()[range.len()] == b'-')
-            });
+            return lang == range
+                || (lang.len() > range.len()
+                    && lang.starts_with(range)
+                    && lang.as_bytes()[range.len()] == b'-');
         }
         node = tree.parent(n);
     }
@@ -861,7 +853,8 @@ mod tests {
             ":Is(.a, :bogus)",
             ":scope",
             ":defined",
-            ":lang(en, \"de\")",
+            ":lang(en)",
+            ":lang(\\*-CH)",
             ":-webkit-any(p, .x)",
             "li:nth-child(2 of .x)",
             ":not(div p)",
@@ -902,6 +895,9 @@ mod tests {
             ":nth-child(1 of ::before)",
             ":lang()",
             ":lang(en,)",
+            ":lang(en, de)",
+            ":lang(\"de\")",
+            ":lang(1)",
             ":state(--x y)",
             ":Nth-Child(1 of :bogus)",
             "option:selected",

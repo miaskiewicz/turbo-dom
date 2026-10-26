@@ -33,6 +33,12 @@ outputs it changes in `tools/parity/expected/p5b-*.json`.
   allowed only where Chrome allows it (`::-webkit-scrollbar:hover`, `::part(x):hover`,
   `::selection:window-inactive`; not `::before:hover`). The lenient APIs never match an
   invalid nth argument or wrong-arity pseudo.
+- `:lang()` (miaskiewicz/turbo-dom#18) is evaluated by the DOM APIs too (it was
+  stylesheet-only and never matched in `matches` / `querySelector*`). As in Chrome 156 it
+  takes exactly one identifier (`:lang("de")` and `:lang(en, de)` are invalid, also in
+  stylesheets), matches the range or a `-` subtag extension, and reads the nearest
+  `xml:lang` or `lang` attribute on any element (SVG `lang` counts; `lang=""` matches
+  nothing).
 
 ## [0.6.0] — turbo-dom consolidation
 

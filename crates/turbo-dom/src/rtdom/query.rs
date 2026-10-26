@@ -243,11 +243,11 @@ enum Pseudo {
     // `el:has(S)` is true iff SOME element reachable from `el` per S's leading
     // combinator matches S, scoped to `el`. Empty list → never matches.
     Has(Vec<RelativeSelector>),
+    // `:lang(range)`: one identifier, lowercased (Chrome 156 rejects strings and lists).
+    Lang(String),
     // Cascade-only (produced by `parse_for_cascade`, never by the DOM-API parsers):
-    // `:defined`, `:lang()` and `:-webkit-any()` (matches like `:is()`, specificity of a
-    // pseudo-class).
+    // `:defined` and `:-webkit-any()` (matches like `:is()`, specificity of a pseudo-class).
     Defined,
-    Lang(Vec<String>),
     WebkitAny(Vec<Complex>),
     // Unrecognized / unparseable → never matches. Keeps the name and argument text so the
     // cascade parser (`parse_for_cascade`) can tell pseudo-elements and the pseudo-classes
@@ -915,6 +915,7 @@ fn parse_pseudo(name: &str, arg: Option<&str>) -> Pseudo {
             | "where"
             | "not"
             | "has"
+            | "lang"
     );
     if functional != arg.is_some() {
         return Pseudo::unknown(name, arg);
@@ -979,6 +980,9 @@ fn parse_pseudo(name: &str, arg: Option<&str>) -> Pseudo {
         "where" => Pseudo::Where(parse_selector_list_str(arg.unwrap_or(""))),
         "not" => Pseudo::Not(parse_selector_list_str(arg.unwrap_or(""))),
         "has" => Pseudo::Has(parse_relative_selector_list(arg.unwrap_or(""))),
+        "lang" => arg
+            .and_then(|arg| units::lang_range(&arg.encode_utf16().collect::<Vec<_>>()))
+            .map_or_else(|| Pseudo::unknown(name, arg), Pseudo::Lang),
         _ => Pseudo::unknown(name, arg),
     }
 }
@@ -1693,7 +1697,7 @@ fn matches_pseudo<N: Navigator + ?Sized>(nav: &N, h: Handle, p: &Pseudo) -> bool
         // from `h` per its leading combinator, scoped to `h`'s subtree.
         Pseudo::Has(list) => list.iter().any(|rel| has_match(nav, h, rel)),
         Pseudo::Defined => cascade::is_defined(tree, h),
-        Pseudo::Lang(ranges) => cascade::lang_matches(tree, h, ranges),
+        Pseudo::Lang(range) => cascade::lang_matches(tree, h, range),
         Pseudo::Unknown(_) => false,
     }
 }
@@ -2940,6 +2944,35 @@ mod tests {
             SelectorError::UnterminatedAttribute.to_string(),
             "unterminated attribute selector"
         );
+    }
+
+    /// turbo-dom#18 (P5b): `:lang()` in the DOM APIs — one identifier (escapes decoded),
+    /// inherited, an SVG `lang` counts, `lang=""` is unknown; anything else never matches.
+    #[test]
+    fn pseudo_lang_in_the_dom_apis() {
+        let tree = Tree::parse(
+            "<div lang=EN-us><p id=a>x</p><i lang='' id=e>e</i></div>\
+             <svg lang=fr><g id=g></g></svg><p lang='*-CH' id=w>w</p>",
+        );
+        let el = |id: &str| tree.get_element_by_id(id).unwrap();
+        let units = |s: &str| s.encode_utf16().collect::<Vec<u16>>();
+        assert!(tree.matches(el("a"), ":lang(en)"));
+        assert!(tree.matches(el("a"), ":lang( en-US )"));
+        assert!(!tree.matches(el("e"), ":lang(en)"));
+        assert!(tree.matches(el("g"), ":lang(fr)"));
+        assert!(tree.matches_units(el("w"), &units(":lang(\\*-ch)")));
+        assert!(tree.matches(el("w"), ":lang(\\2a-CH)"));
+        for bad in [
+            ":lang(en, de)",
+            ":lang('en')",
+            ":lang()",
+            ":lang",
+            ":lang(1)",
+            ":lang(en x)",
+        ] {
+            assert!(!tree.matches(el("a"), bad), "{bad}");
+            assert!(tree.matches_checked(el("a"), bad).is_err(), "{bad}");
+        }
     }
 
     /// `<an+b>` grammar edges (CSS Syntax 3 §6; Chrome 156 cases in the malformed control).

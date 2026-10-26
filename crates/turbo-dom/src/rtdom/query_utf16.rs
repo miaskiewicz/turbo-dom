@@ -149,6 +149,19 @@ fn decoded(units: &[u16], quoted: bool) -> Vec<u16> {
 fn identifier(units: &[u16]) -> String {
     String::from_utf16_lossy(&decoded(units, false))
 }
+/// A `:lang()` argument: exactly one CSS identifier (escapes decoded, ASCII-lowercased),
+/// surrounded by optional whitespace. Chrome 156 rejects strings (`:lang("de")`), lists
+/// (`:lang(en, de)`), numbers and the empty argument.
+pub(super) fn lang_range(arg: &[u16]) -> Option<String> {
+    let arg = trim(arg);
+    let chars: Vec<char> = String::from_utf16_lossy(arg).chars().collect();
+    let mut end = 0;
+    if !super::starts_ident(&chars, 0) {
+        return None;
+    }
+    super::scan_name(&chars, &mut end, super::is_name_char);
+    (end == chars.len()).then(|| identifier(arg).to_ascii_lowercase())
+}
 pub(super) fn attr(inner: &[u16]) -> Attr {
     let cleaned = attribute_comments(inner);
     let inner = cleaned.as_deref().unwrap_or(inner);
