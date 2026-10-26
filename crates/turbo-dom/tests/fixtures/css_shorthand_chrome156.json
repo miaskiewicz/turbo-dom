@@ -1,7 +1,7 @@
 {
   "browser": "Chrome/156.0.8078.4",
   "v8": "15.6.75",
-  "casesSha256": "2327b1dff2022279766244b375d6e6c02cda495fdab5ff60c0bff6ef5126a08f",
+  "casesSha256": "1dcb519ea5da325a99a5a6e90ecdf1663206d86177690cf24d97526d835d9164",
   "probeSha256": "8bf0060c80218bdea8a039ee835919890a534722032811886968abbcdcbbfb64",
   "collectorSha256": "7bd6ffb7440d38e05cd2b8fbe0e84e91cf462043577ceada3e276728ad216172",
   "flags": [
@@ -1596,6 +1596,411 @@
             ],
             "shorthands": {
               "margin": "0px"
+            }
+          },
+          {
+            "id": "margin|1px/**/2px",
+            "cssText": "margin: 1px 2px;",
+            "items": [
+              [
+                "margin-top",
+                "1px"
+              ],
+              [
+                "margin-right",
+                "2px"
+              ],
+              [
+                "margin-bottom",
+                "1px"
+              ],
+              [
+                "margin-left",
+                "2px"
+              ]
+            ],
+            "shorthands": {
+              "margin": "1px 2px"
+            }
+          },
+          {
+            "id": "margin|1e3px",
+            "cssText": "margin: 1000px;",
+            "items": [
+              [
+                "margin-top",
+                "1000px"
+              ],
+              [
+                "margin-right",
+                "1000px"
+              ],
+              [
+                "margin-bottom",
+                "1000px"
+              ],
+              [
+                "margin-left",
+                "1000px"
+              ]
+            ],
+            "shorthands": {
+              "margin": "1000px"
+            }
+          },
+          {
+            "id": "margin|1e-7px",
+            "cssText": "margin: 1e-07px;",
+            "items": [
+              [
+                "margin-top",
+                "1e-07px"
+              ],
+              [
+                "margin-right",
+                "1e-07px"
+              ],
+              [
+                "margin-bottom",
+                "1e-07px"
+              ],
+              [
+                "margin-left",
+                "1e-07px"
+              ]
+            ],
+            "shorthands": {
+              "margin": "1e-07px"
+            }
+          },
+          {
+            "id": "margin|1.5e6px",
+            "cssText": "margin: 1.5e+06px;",
+            "items": [
+              [
+                "margin-top",
+                "1.5e+06px"
+              ],
+              [
+                "margin-right",
+                "1.5e+06px"
+              ],
+              [
+                "margin-bottom",
+                "1.5e+06px"
+              ],
+              [
+                "margin-left",
+                "1.5e+06px"
+              ]
+            ],
+            "shorthands": {
+              "margin": "1.5e+06px"
+            }
+          },
+          {
+            "id": "margin|12345678px",
+            "cssText": "margin: 1.23457e+07px;",
+            "items": [
+              [
+                "margin-top",
+                "1.23457e+07px"
+              ],
+              [
+                "margin-right",
+                "1.23457e+07px"
+              ],
+              [
+                "margin-bottom",
+                "1.23457e+07px"
+              ],
+              [
+                "margin-left",
+                "1.23457e+07px"
+              ]
+            ],
+            "shorthands": {
+              "margin": "1.23457e+07px"
+            }
+          },
+          {
+            "id": "margin|0.000001px",
+            "cssText": "margin: 1e-06px;",
+            "items": [
+              [
+                "margin-top",
+                "1e-06px"
+              ],
+              [
+                "margin-right",
+                "1e-06px"
+              ],
+              [
+                "margin-bottom",
+                "1e-06px"
+              ],
+              [
+                "margin-left",
+                "1e-06px"
+              ]
+            ],
+            "shorthands": {
+              "margin": "1e-06px"
+            }
+          },
+          {
+            "id": "margin|-.5px",
+            "cssText": "margin: -0.5px;",
+            "items": [
+              [
+                "margin-top",
+                "-0.5px"
+              ],
+              [
+                "margin-right",
+                "-0.5px"
+              ],
+              [
+                "margin-bottom",
+                "-0.5px"
+              ],
+              [
+                "margin-left",
+                "-0.5px"
+              ]
+            ],
+            "shorthands": {
+              "margin": "-0.5px"
+            }
+          },
+          {
+            "id": "margin|1px\\9",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "margin|1px 2px;",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "margin|1px)",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "margin|(1px)",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "margin|calc(1px - 2px)",
+            "cssText": "margin: calc(-1px);",
+            "items": [
+              [
+                "margin-top",
+                "calc(-1px)"
+              ],
+              [
+                "margin-right",
+                "calc(-1px)"
+              ],
+              [
+                "margin-bottom",
+                "calc(-1px)"
+              ],
+              [
+                "margin-left",
+                "calc(-1px)"
+              ]
+            ],
+            "shorthands": {
+              "margin": "calc(-1px)"
+            }
+          },
+          {
+            "id": "margin|calc(1px + 2px + 3%)",
+            "cssText": "margin: calc(3% + 3px);",
+            "items": [
+              [
+                "margin-top",
+                "calc(3% + 3px)"
+              ],
+              [
+                "margin-right",
+                "calc(3% + 3px)"
+              ],
+              [
+                "margin-bottom",
+                "calc(3% + 3px)"
+              ],
+              [
+                "margin-left",
+                "calc(3% + 3px)"
+              ]
+            ],
+            "shorthands": {
+              "margin": "calc(3% + 3px)"
+            }
+          },
+          {
+            "id": "margin|calc(1px * 2)",
+            "cssText": "margin: calc(2px);",
+            "items": [
+              [
+                "margin-top",
+                "calc(2px)"
+              ],
+              [
+                "margin-right",
+                "calc(2px)"
+              ],
+              [
+                "margin-bottom",
+                "calc(2px)"
+              ],
+              [
+                "margin-left",
+                "calc(2px)"
+              ]
+            ],
+            "shorthands": {
+              "margin": "calc(2px)"
+            }
+          },
+          {
+            "id": "margin|calc(2% - 1%)",
+            "cssText": "margin: calc(1%);",
+            "items": [
+              [
+                "margin-top",
+                "calc(1%)"
+              ],
+              [
+                "margin-right",
+                "calc(1%)"
+              ],
+              [
+                "margin-bottom",
+                "calc(1%)"
+              ],
+              [
+                "margin-left",
+                "calc(1%)"
+              ]
+            ],
+            "shorthands": {
+              "margin": "calc(1%)"
+            }
+          },
+          {
+            "id": "margin|max(1px, 2px)",
+            "cssText": "margin: calc(2px);",
+            "items": [
+              [
+                "margin-top",
+                "calc(2px)"
+              ],
+              [
+                "margin-right",
+                "calc(2px)"
+              ],
+              [
+                "margin-bottom",
+                "calc(2px)"
+              ],
+              [
+                "margin-left",
+                "calc(2px)"
+              ]
+            ],
+            "shorthands": {
+              "margin": "calc(2px)"
+            }
+          },
+          {
+            "id": "margin|calc(1s)",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "margin|+0",
+            "cssText": "margin: 0px;",
+            "items": [
+              [
+                "margin-top",
+                "0px"
+              ],
+              [
+                "margin-right",
+                "0px"
+              ],
+              [
+                "margin-bottom",
+                "0px"
+              ],
+              [
+                "margin-left",
+                "0px"
+              ]
+            ],
+            "shorthands": {
+              "margin": "0px"
+            }
+          },
+          {
+            "id": "margin|0.0",
+            "cssText": "margin: 0px;",
+            "items": [
+              [
+                "margin-top",
+                "0px"
+              ],
+              [
+                "margin-right",
+                "0px"
+              ],
+              [
+                "margin-bottom",
+                "0px"
+              ],
+              [
+                "margin-left",
+                "0px"
+              ]
+            ],
+            "shorthands": {
+              "margin": "0px"
+            }
+          },
+          {
+            "id": "margin|1PX 2Em 3REM 4vw",
+            "cssText": "margin: 1px 2em 3rem 4vw;",
+            "items": [
+              [
+                "margin-top",
+                "1px"
+              ],
+              [
+                "margin-right",
+                "2em"
+              ],
+              [
+                "margin-bottom",
+                "3rem"
+              ],
+              [
+                "margin-left",
+                "4vw"
+              ]
+            ],
+            "shorthands": {
+              "margin": "1px 2em 3rem 4vw"
             }
           },
           {
@@ -6616,6 +7021,24 @@
             }
           },
           {
+            "id": "border-radius|1px / 2px / 3px",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "border-radius|1px 2px 3px 4px 5px",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "border-radius|-1px",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
             "id": "border-radius|inherit",
             "cssText": "border-radius: inherit;",
             "items": [
@@ -7040,6 +7463,32 @@
             "shorthands": {
               "-webkit-border-radius": "1px 2px 3px 4px",
               "border-radius": "1px 2px 3px 4px"
+            }
+          },
+          {
+            "id": "-webkit-border-radius|1px 2px 3px",
+            "cssText": "border-radius: 1px 2px 3px;",
+            "items": [
+              [
+                "border-top-left-radius",
+                "1px"
+              ],
+              [
+                "border-top-right-radius",
+                "2px"
+              ],
+              [
+                "border-bottom-right-radius",
+                "3px"
+              ],
+              [
+                "border-bottom-left-radius",
+                "2px"
+              ]
+            ],
+            "shorthands": {
+              "-webkit-border-radius": "1px 2px 3px",
+              "border-radius": "1px 2px 3px"
             }
           },
           {
@@ -14251,6 +14700,41 @@
             }
           },
           {
+            "id": "contain-intrinsic-size|auto",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "contain-intrinsic-size|auto auto",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "contain-intrinsic-size|1px 2px 3px",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "contain-intrinsic-size|auto 1px auto",
+            "cssText": "contain-intrinsic-size: auto 1px;",
+            "items": [
+              [
+                "contain-intrinsic-width",
+                "auto 1px"
+              ],
+              [
+                "contain-intrinsic-height",
+                "auto 1px"
+              ]
+            ],
+            "shorthands": {
+              "contain-intrinsic-size": "auto 1px"
+            }
+          },
+          {
             "id": "contain-intrinsic-size|inherit",
             "cssText": "contain-intrinsic-size: inherit;",
             "items": [
@@ -14714,6 +15198,47 @@
             }
           },
           {
+            "id": "place-content|safe",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "place-content|unsafe end",
+            "cssText": "place-content: unsafe end;",
+            "items": [
+              [
+                "align-content",
+                "unsafe end"
+              ],
+              [
+                "justify-content",
+                "unsafe end"
+              ]
+            ],
+            "shorthands": {
+              "place-content": "unsafe end"
+            }
+          },
+          {
+            "id": "place-content|baseline baseline",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "place-content|normal bogus",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "place-content|safe left",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
             "id": "place-content|inherit",
             "cssText": "place-content: inherit;",
             "items": [
@@ -15160,6 +15685,58 @@
             }
           },
           {
+            "id": "place-items|legacy",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "place-items|center legacy center",
+            "cssText": "place-items: center legacy center;",
+            "items": [
+              [
+                "align-items",
+                "center"
+              ],
+              [
+                "justify-items",
+                "legacy center"
+              ]
+            ],
+            "shorthands": {
+              "place-items": "center legacy center"
+            }
+          },
+          {
+            "id": "place-items|legacy right",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "place-items|center legacy bogus",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "place-items|unsafe end safe left",
+            "cssText": "place-items: unsafe end safe left;",
+            "items": [
+              [
+                "align-items",
+                "unsafe end"
+              ],
+              [
+                "justify-items",
+                "safe left"
+              ]
+            ],
+            "shorthands": {
+              "place-items": "unsafe end safe left"
+            }
+          },
+          {
             "id": "place-items|inherit",
             "cssText": "place-items: inherit;",
             "items": [
@@ -15558,6 +16135,46 @@
             "shorthands": {
               "place-self": "self-end self-start"
             }
+          },
+          {
+            "id": "place-self|safe end safe start",
+            "cssText": "place-self: safe end safe start;",
+            "items": [
+              [
+                "align-self",
+                "safe end"
+              ],
+              [
+                "justify-self",
+                "safe start"
+              ]
+            ],
+            "shorthands": {
+              "place-self": "safe end safe start"
+            }
+          },
+          {
+            "id": "place-self|center safe left",
+            "cssText": "place-self: center safe left;",
+            "items": [
+              [
+                "align-self",
+                "center"
+              ],
+              [
+                "justify-self",
+                "safe left"
+              ]
+            ],
+            "shorthands": {
+              "place-self": "center safe left"
+            }
+          },
+          {
+            "id": "place-self|auto bogus",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
           },
           {
             "id": "place-self|inherit",
@@ -17342,6 +17959,88 @@
             }
           },
           {
+            "id": "animation-range|entry 10% exit",
+            "cssText": "animation-range: entry 10% exit;",
+            "items": [
+              [
+                "animation-range-start",
+                "entry 10%"
+              ],
+              [
+                "animation-range-end",
+                "exit"
+              ]
+            ],
+            "shorthands": {
+              "-webkit-animation": "",
+              "animation": "",
+              "animation-range": "entry 10% exit"
+            }
+          },
+          {
+            "id": "animation-range|normal 10%",
+            "cssText": "animation-range: normal 10%;",
+            "items": [
+              [
+                "animation-range-start",
+                "normal"
+              ],
+              [
+                "animation-range-end",
+                "10%"
+              ]
+            ],
+            "shorthands": {
+              "-webkit-animation": "",
+              "animation": "",
+              "animation-range": "normal 10%"
+            }
+          },
+          {
+            "id": "animation-range|10% bogus",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "animation-range|cover 0%",
+            "cssText": "animation-range: cover;",
+            "items": [
+              [
+                "animation-range-start",
+                "cover"
+              ],
+              [
+                "animation-range-end",
+                "cover"
+              ]
+            ],
+            "shorthands": {
+              "-webkit-animation": "",
+              "animation": "",
+              "animation-range": "cover"
+            }
+          },
+          {
+            "id": "animation-range|cover 100%",
+            "cssText": "animation-range: cover 100%;",
+            "items": [
+              [
+                "animation-range-start",
+                "cover 100%"
+              ],
+              [
+                "animation-range-end",
+                "cover"
+              ]
+            ],
+            "shorthands": {
+              "-webkit-animation": "",
+              "animation": "",
+              "animation-range": "cover 100%"
+            }
+          },
+          {
             "id": "animation-range|inherit",
             "cssText": "animation-range: inherit;",
             "items": [
@@ -18601,6 +19300,114 @@
             "cssText": "",
             "items": [],
             "shorthands": {}
+          },
+          {
+            "id": "column-rule-inset|1px / 2px",
+            "cssText": "column-rule-inset: 1px 1px / 2px 2px;",
+            "items": [
+              [
+                "column-rule-inset-cap-start",
+                "1px"
+              ],
+              [
+                "column-rule-inset-cap-end",
+                "1px"
+              ],
+              [
+                "column-rule-inset-junction-start",
+                "2px"
+              ],
+              [
+                "column-rule-inset-junction-end",
+                "2px"
+              ]
+            ],
+            "shorthands": {
+              "column-rule-inset": "1px 1px / 2px 2px",
+              "column-rule-inset-cap": "1px",
+              "column-rule-inset-start": "",
+              "rule-inset": "",
+              "rule-inset-cap": "",
+              "rule-inset-start": "",
+              "column-rule-inset-end": "",
+              "rule-inset-end": "",
+              "column-rule-inset-junction": "2px",
+              "rule-inset-junction": ""
+            }
+          },
+          {
+            "id": "column-rule-inset|1px 2px / 3px 4px",
+            "cssText": "column-rule-inset: 1px 2px / 3px 4px;",
+            "items": [
+              [
+                "column-rule-inset-cap-start",
+                "1px"
+              ],
+              [
+                "column-rule-inset-cap-end",
+                "2px"
+              ],
+              [
+                "column-rule-inset-junction-start",
+                "3px"
+              ],
+              [
+                "column-rule-inset-junction-end",
+                "4px"
+              ]
+            ],
+            "shorthands": {
+              "column-rule-inset": "1px 2px / 3px 4px",
+              "column-rule-inset-cap": "1px 2px",
+              "column-rule-inset-start": "",
+              "rule-inset": "",
+              "rule-inset-cap": "",
+              "rule-inset-start": "",
+              "column-rule-inset-end": "",
+              "rule-inset-end": "",
+              "column-rule-inset-junction": "3px 4px",
+              "rule-inset-junction": ""
+            }
+          },
+          {
+            "id": "column-rule-inset|1px / 2px / 3px",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "column-rule-inset|overlap-join / 1px",
+            "cssText": "column-rule-inset: overlap-join overlap-join / 1px 1px;",
+            "items": [
+              [
+                "column-rule-inset-cap-start",
+                "overlap-join"
+              ],
+              [
+                "column-rule-inset-cap-end",
+                "overlap-join"
+              ],
+              [
+                "column-rule-inset-junction-start",
+                "1px"
+              ],
+              [
+                "column-rule-inset-junction-end",
+                "1px"
+              ]
+            ],
+            "shorthands": {
+              "column-rule-inset": "overlap-join overlap-join / 1px 1px",
+              "column-rule-inset-cap": "overlap-join",
+              "column-rule-inset-start": "",
+              "rule-inset": "",
+              "rule-inset-cap": "",
+              "rule-inset-start": "",
+              "column-rule-inset-end": "",
+              "rule-inset-end": "",
+              "column-rule-inset-junction": "1px",
+              "rule-inset-junction": ""
+            }
           },
           {
             "id": "column-rule-inset|inherit",
@@ -20426,6 +21233,40 @@
             }
           },
           {
+            "id": "row-rule-inset|1px / 2px 3px",
+            "cssText": "row-rule-inset: 1px 1px / 2px 3px;",
+            "items": [
+              [
+                "row-rule-inset-cap-start",
+                "1px"
+              ],
+              [
+                "row-rule-inset-cap-end",
+                "1px"
+              ],
+              [
+                "row-rule-inset-junction-start",
+                "2px"
+              ],
+              [
+                "row-rule-inset-junction-end",
+                "3px"
+              ]
+            ],
+            "shorthands": {
+              "row-rule-inset": "1px 1px / 2px 3px",
+              "row-rule-inset-cap": "1px",
+              "row-rule-inset-start": "",
+              "rule-inset": "",
+              "rule-inset-cap": "",
+              "rule-inset-start": "",
+              "row-rule-inset-end": "",
+              "rule-inset-end": "",
+              "row-rule-inset-junction": "2px 3px",
+              "rule-inset-junction": ""
+            }
+          },
+          {
             "id": "row-rule-inset|inherit",
             "cssText": "row-rule-inset: inherit;",
             "items": [
@@ -22185,6 +23026,61 @@
               "row-rule-inset-start": "1px",
               "row-rule-inset-end": "2px",
               "row-rule-inset-junction": "1px 2px"
+            }
+          },
+          {
+            "id": "rule-inset|1px / 2px",
+            "cssText": "rule-inset: 1px 1px / 2px 2px;",
+            "items": [
+              [
+                "column-rule-inset-cap-start",
+                "1px"
+              ],
+              [
+                "column-rule-inset-cap-end",
+                "1px"
+              ],
+              [
+                "column-rule-inset-junction-start",
+                "2px"
+              ],
+              [
+                "column-rule-inset-junction-end",
+                "2px"
+              ],
+              [
+                "row-rule-inset-cap-start",
+                "1px"
+              ],
+              [
+                "row-rule-inset-cap-end",
+                "1px"
+              ],
+              [
+                "row-rule-inset-junction-start",
+                "2px"
+              ],
+              [
+                "row-rule-inset-junction-end",
+                "2px"
+              ]
+            ],
+            "shorthands": {
+              "column-rule-inset": "1px 1px / 2px 2px",
+              "column-rule-inset-cap": "1px",
+              "column-rule-inset-start": "",
+              "rule-inset": "1px 1px / 2px 2px",
+              "rule-inset-cap": "1px",
+              "rule-inset-start": "",
+              "column-rule-inset-end": "",
+              "rule-inset-end": "",
+              "column-rule-inset-junction": "2px",
+              "rule-inset-junction": "2px",
+              "row-rule-inset": "1px 1px / 2px 2px",
+              "row-rule-inset-cap": "1px",
+              "row-rule-inset-start": "",
+              "row-rule-inset-end": "",
+              "row-rule-inset-junction": "2px"
             }
           },
           {
@@ -39722,6 +40618,24 @@
             }
           },
           {
+            "id": "text-decoration|underline underline",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "text-decoration|underline overline underline",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "text-decoration|none underline",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
             "id": "text-decoration|inherit",
             "cssText": "text-decoration: inherit;",
             "items": [
@@ -40183,6 +41097,42 @@
               "-webkit-text-emphasis": "open dot red",
               "text-emphasis": "open dot red"
             }
+          },
+          {
+            "id": "text-emphasis|filled open",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "text-emphasis|dot circle",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "text-emphasis|filled dot red",
+            "cssText": "text-emphasis: filled dot red;",
+            "items": [
+              [
+                "text-emphasis-style",
+                "filled dot"
+              ],
+              [
+                "text-emphasis-color",
+                "red"
+              ]
+            ],
+            "shorthands": {
+              "-webkit-text-emphasis": "filled dot red",
+              "text-emphasis": "filled dot red"
+            }
+          },
+          {
+            "id": "text-emphasis|'a' 'b'",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
           },
           {
             "id": "text-emphasis|inherit",
@@ -41942,6 +42892,45 @@
             }
           },
           {
+            "id": "list-style|none none none",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "list-style|inside inside",
+            "cssText": "list-style: inside inside;",
+            "items": [
+              [
+                "list-style-position",
+                "inside"
+              ],
+              [
+                "list-style-image",
+                "initial"
+              ],
+              [
+                "list-style-type",
+                "inside"
+              ]
+            ],
+            "shorthands": {
+              "list-style": "inside inside"
+            }
+          },
+          {
+            "id": "list-style|url(a.png) url(b.png)",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "list-style|'x' 'y'",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
             "id": "list-style|inherit",
             "cssText": "list-style: inherit;",
             "items": [
@@ -42507,6 +43496,82 @@
             "shorthands": {
               "-webkit-columns": "100px",
               "columns": "100px"
+            }
+          },
+          {
+            "id": "columns|2 / 10px / 1px",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "columns|2 / bogus",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "columns|1px 2px",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "columns|2 3",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "columns|0",
+            "cssText": "columns: 0px;",
+            "items": [
+              [
+                "column-width",
+                "0px"
+              ],
+              [
+                "column-count",
+                "auto"
+              ],
+              [
+                "column-height",
+                "auto"
+              ],
+              [
+                "column-wrap",
+                "auto"
+              ]
+            ],
+            "shorthands": {
+              "-webkit-columns": "0px",
+              "columns": "0px"
+            }
+          },
+          {
+            "id": "columns|auto / auto",
+            "cssText": "columns: auto;",
+            "items": [
+              [
+                "column-width",
+                "auto"
+              ],
+              [
+                "column-count",
+                "auto"
+              ],
+              [
+                "column-height",
+                "auto"
+              ],
+              [
+                "column-wrap",
+                "auto"
+              ]
+            ],
+            "shorthands": {
+              "-webkit-columns": "auto",
+              "columns": "auto"
             }
           },
           {
@@ -43263,6 +44328,70 @@
             "shorthands": {
               "container": "sidebar / inline-size"
             }
+          },
+          {
+            "id": "container|a / size scroll-state",
+            "cssText": "container: a / size scroll-state;",
+            "items": [
+              [
+                "container-name",
+                "a"
+              ],
+              [
+                "container-type",
+                "size scroll-state"
+              ]
+            ],
+            "shorthands": {
+              "container": "a / size scroll-state"
+            }
+          },
+          {
+            "id": "container|a / size size",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "container|a / bogus",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "container|a and",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "container|a b c",
+            "cssText": "container: a b c;",
+            "items": [
+              [
+                "container-name",
+                "a b c"
+              ],
+              [
+                "container-type",
+                "normal"
+              ]
+            ],
+            "shorthands": {
+              "container": "a b c"
+            }
+          },
+          {
+            "id": "container|none none",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "container|/ size",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
           },
           {
             "id": "container|inherit",
@@ -44036,6 +45165,24 @@
             "shorthands": {}
           },
           {
+            "id": "white-space|preserve preserve",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "white-space|nowrap wrap",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "white-space|pre nowrap",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
             "id": "white-space|inherit",
             "cssText": "white-space: inherit;",
             "items": [
@@ -44420,6 +45567,18 @@
             }
           },
           {
+            "id": "font-synthesis|weight weight",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "font-synthesis|bogus",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
             "id": "font-synthesis|inherit",
             "cssText": "font-synthesis: inherit;",
             "items": [
@@ -44757,6 +45916,58 @@
             }
           },
           {
+            "id": "text-box|trim-start trim-end",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "text-box|cap",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "text-box|text text",
+            "cssText": "text-box: text;",
+            "items": [
+              [
+                "text-box-trim",
+                "trim-both"
+              ],
+              [
+                "text-box-edge",
+                "text"
+              ]
+            ],
+            "shorthands": {
+              "text-box": "text"
+            }
+          },
+          {
+            "id": "text-box|trim-end ex alphabetic",
+            "cssText": "text-box: trim-end ex alphabetic;",
+            "items": [
+              [
+                "text-box-trim",
+                "trim-end"
+              ],
+              [
+                "text-box-edge",
+                "ex alphabetic"
+              ]
+            ],
+            "shorthands": {
+              "text-box": "trim-end ex alphabetic"
+            }
+          },
+          {
+            "id": "text-box|auto auto",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
             "id": "text-box|inherit",
             "cssText": "text-box: inherit;",
             "items": [
@@ -45072,6 +46283,64 @@
             }
           },
           {
+            "id": "position-try|most-width",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "position-try|--a, flip-block flip-inline",
+            "cssText": "position-try: --a, flip-block flip-inline;",
+            "items": [
+              [
+                "position-try-order",
+                "normal"
+              ],
+              [
+                "position-try-fallbacks",
+                "--a, flip-block flip-inline"
+              ]
+            ],
+            "shorthands": {
+              "position-try": "--a, flip-block flip-inline"
+            }
+          },
+          {
+            "id": "position-try|--a --b",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "position-try|flip-block flip-block",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "position-try|--a,",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "position-try|most-height none",
+            "cssText": "position-try: most-height none;",
+            "items": [
+              [
+                "position-try-order",
+                "most-height"
+              ],
+              [
+                "position-try-fallbacks",
+                "none"
+              ]
+            ],
+            "shorthands": {
+              "position-try": "most-height none"
+            }
+          },
+          {
             "id": "position-try|inherit",
             "cssText": "position-try: inherit;",
             "items": [
@@ -45368,6 +46637,24 @@
             "shorthands": {
               "scroll-timeline": "--a, --b y"
             }
+          },
+          {
+            "id": "scroll-timeline|--a x y",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "scroll-timeline|--a bogus",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "scroll-timeline|bogus",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
           },
           {
             "id": "scroll-timeline|inherit",
@@ -45702,6 +46989,87 @@
             "shorthands": {
               "view-timeline": "none"
             }
+          },
+          {
+            "id": "view-timeline|--a, --b x",
+            "cssText": "view-timeline: --a, --b x;",
+            "items": [
+              [
+                "view-timeline-name",
+                "--a, --b"
+              ],
+              [
+                "view-timeline-axis",
+                "block, x"
+              ],
+              [
+                "view-timeline-inset",
+                "auto, auto"
+              ]
+            ],
+            "shorthands": {
+              "view-timeline": "--a, --b x"
+            }
+          },
+          {
+            "id": "view-timeline|--a 10px 20px",
+            "cssText": "view-timeline: --a 10px 20px;",
+            "items": [
+              [
+                "view-timeline-name",
+                "--a"
+              ],
+              [
+                "view-timeline-axis",
+                "block"
+              ],
+              [
+                "view-timeline-inset",
+                "10px 20px"
+              ]
+            ],
+            "shorthands": {
+              "view-timeline": "--a 10px 20px"
+            }
+          },
+          {
+            "id": "view-timeline|--a auto auto",
+            "cssText": "view-timeline: --a;",
+            "items": [
+              [
+                "view-timeline-name",
+                "--a"
+              ],
+              [
+                "view-timeline-axis",
+                "block"
+              ],
+              [
+                "view-timeline-inset",
+                "auto"
+              ]
+            ],
+            "shorthands": {
+              "view-timeline": "--a"
+            }
+          },
+          {
+            "id": "view-timeline|--a x x",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "view-timeline|--a bogus",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "view-timeline|bogus",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
           },
           {
             "id": "view-timeline|inherit",
@@ -46815,6 +48183,94 @@
             }
           },
           {
+            "id": "font-variant|common-ligatures common-ligatures",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "font-variant|stylistic(a) small-caps",
+            "cssText": "font-variant: small-caps stylistic(a);",
+            "items": [
+              [
+                "font-variant-ligatures",
+                "normal"
+              ],
+              [
+                "font-variant-numeric",
+                "normal"
+              ],
+              [
+                "font-variant-east-asian",
+                "normal"
+              ],
+              [
+                "font-variant-caps",
+                "small-caps"
+              ],
+              [
+                "font-variant-alternates",
+                "stylistic(a)"
+              ],
+              [
+                "font-variant-position",
+                "normal"
+              ],
+              [
+                "font-variant-emoji",
+                "normal"
+              ]
+            ],
+            "shorthands": {
+              "font": "",
+              "font-variant": "small-caps stylistic(a)"
+            }
+          },
+          {
+            "id": "font-variant|jis78 full-width ruby",
+            "cssText": "font-variant: jis78 full-width ruby;",
+            "items": [
+              [
+                "font-variant-ligatures",
+                "normal"
+              ],
+              [
+                "font-variant-numeric",
+                "normal"
+              ],
+              [
+                "font-variant-east-asian",
+                "jis78 full-width ruby"
+              ],
+              [
+                "font-variant-caps",
+                "normal"
+              ],
+              [
+                "font-variant-alternates",
+                "normal"
+              ],
+              [
+                "font-variant-position",
+                "normal"
+              ],
+              [
+                "font-variant-emoji",
+                "normal"
+              ]
+            ],
+            "shorthands": {
+              "font": "",
+              "font-variant": "jis78 full-width ruby"
+            }
+          },
+          {
+            "id": "font-variant|lining-nums oldstyle-nums",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
             "id": "font-variant|inherit",
             "cssText": "font-variant: inherit;",
             "items": [
@@ -47827,6 +49283,84 @@
             "cssText": "",
             "items": [],
             "shorthands": {}
+          },
+          {
+            "id": "flex|1 1",
+            "cssText": "flex: 1 1 0%;",
+            "items": [
+              [
+                "flex-grow",
+                "1"
+              ],
+              [
+                "flex-shrink",
+                "1"
+              ],
+              [
+                "flex-basis",
+                "0%"
+              ]
+            ],
+            "shorthands": {
+              "-webkit-flex": "1 1 0%",
+              "flex": "1 1 0%"
+            }
+          },
+          {
+            "id": "flex|1 auto 1",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "flex|calc(1)",
+            "cssText": "flex: calc(1) 1 0%;",
+            "items": [
+              [
+                "flex-grow",
+                "calc(1)"
+              ],
+              [
+                "flex-shrink",
+                "1"
+              ],
+              [
+                "flex-basis",
+                "0%"
+              ]
+            ],
+            "shorthands": {
+              "-webkit-flex": "calc(1) 1 0%",
+              "flex": "calc(1) 1 0%"
+            }
+          },
+          {
+            "id": "flex|1 1 1px 1",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "flex|content 1 1",
+            "cssText": "flex: 1 1 content;",
+            "items": [
+              [
+                "flex-grow",
+                "1"
+              ],
+              [
+                "flex-shrink",
+                "1"
+              ],
+              [
+                "flex-basis",
+                "content"
+              ]
+            ],
+            "shorthands": {
+              "-webkit-flex": "1 1 content",
+              "flex": "1 1 content"
+            }
           },
           {
             "id": "flex|inherit",
@@ -51395,6 +52929,662 @@
             }
           },
           {
+            "id": "font|12px \\41 rial",
+            "cssText": "font: 12px Arial;",
+            "items": [
+              [
+                "font-style",
+                "normal"
+              ],
+              [
+                "font-variant-caps",
+                "normal"
+              ],
+              [
+                "font-variant-ligatures",
+                "normal"
+              ],
+              [
+                "font-variant-numeric",
+                "normal"
+              ],
+              [
+                "font-variant-east-asian",
+                "normal"
+              ],
+              [
+                "font-variant-alternates",
+                "normal"
+              ],
+              [
+                "font-size-adjust",
+                "none"
+              ],
+              [
+                "font-language-override",
+                "normal"
+              ],
+              [
+                "font-kerning",
+                "auto"
+              ],
+              [
+                "font-optical-sizing",
+                "auto"
+              ],
+              [
+                "font-feature-settings",
+                "normal"
+              ],
+              [
+                "font-variation-settings",
+                "normal"
+              ],
+              [
+                "font-variant-position",
+                "normal"
+              ],
+              [
+                "font-variant-emoji",
+                "normal"
+              ],
+              [
+                "font-weight",
+                "normal"
+              ],
+              [
+                "font-stretch",
+                "normal"
+              ],
+              [
+                "font-size",
+                "12px"
+              ],
+              [
+                "line-height",
+                "normal"
+              ],
+              [
+                "font-family",
+                "Arial"
+              ]
+            ],
+            "shorthands": {
+              "font": "12px Arial",
+              "font-variant": "normal"
+            }
+          },
+          {
+            "id": "font|12px 'a\\\"b'",
+            "cssText": "font: 12px \"a\\\"b\";",
+            "items": [
+              [
+                "font-style",
+                "normal"
+              ],
+              [
+                "font-variant-caps",
+                "normal"
+              ],
+              [
+                "font-variant-ligatures",
+                "normal"
+              ],
+              [
+                "font-variant-numeric",
+                "normal"
+              ],
+              [
+                "font-variant-east-asian",
+                "normal"
+              ],
+              [
+                "font-variant-alternates",
+                "normal"
+              ],
+              [
+                "font-size-adjust",
+                "none"
+              ],
+              [
+                "font-language-override",
+                "normal"
+              ],
+              [
+                "font-kerning",
+                "auto"
+              ],
+              [
+                "font-optical-sizing",
+                "auto"
+              ],
+              [
+                "font-feature-settings",
+                "normal"
+              ],
+              [
+                "font-variation-settings",
+                "normal"
+              ],
+              [
+                "font-variant-position",
+                "normal"
+              ],
+              [
+                "font-variant-emoji",
+                "normal"
+              ],
+              [
+                "font-weight",
+                "normal"
+              ],
+              [
+                "font-stretch",
+                "normal"
+              ],
+              [
+                "font-size",
+                "12px"
+              ],
+              [
+                "line-height",
+                "normal"
+              ],
+              [
+                "font-family",
+                "\"a\\\"b\""
+              ]
+            ],
+            "shorthands": {
+              "font": "12px \"a\\\"b\"",
+              "font-variant": "normal"
+            }
+          },
+          {
+            "id": "font|12px \"a\\\nb\"",
+            "cssText": "font: 12px ab;",
+            "items": [
+              [
+                "font-style",
+                "normal"
+              ],
+              [
+                "font-variant-caps",
+                "normal"
+              ],
+              [
+                "font-variant-ligatures",
+                "normal"
+              ],
+              [
+                "font-variant-numeric",
+                "normal"
+              ],
+              [
+                "font-variant-east-asian",
+                "normal"
+              ],
+              [
+                "font-variant-alternates",
+                "normal"
+              ],
+              [
+                "font-size-adjust",
+                "none"
+              ],
+              [
+                "font-language-override",
+                "normal"
+              ],
+              [
+                "font-kerning",
+                "auto"
+              ],
+              [
+                "font-optical-sizing",
+                "auto"
+              ],
+              [
+                "font-feature-settings",
+                "normal"
+              ],
+              [
+                "font-variation-settings",
+                "normal"
+              ],
+              [
+                "font-variant-position",
+                "normal"
+              ],
+              [
+                "font-variant-emoji",
+                "normal"
+              ],
+              [
+                "font-weight",
+                "normal"
+              ],
+              [
+                "font-stretch",
+                "normal"
+              ],
+              [
+                "font-size",
+                "12px"
+              ],
+              [
+                "line-height",
+                "normal"
+              ],
+              [
+                "font-family",
+                "ab"
+              ]
+            ],
+            "shorthands": {
+              "font": "12px ab",
+              "font-variant": "normal"
+            }
+          },
+          {
+            "id": "font|12px a, 'b', c d",
+            "cssText": "font: 12px a, b, \"c d\";",
+            "items": [
+              [
+                "font-style",
+                "normal"
+              ],
+              [
+                "font-variant-caps",
+                "normal"
+              ],
+              [
+                "font-variant-ligatures",
+                "normal"
+              ],
+              [
+                "font-variant-numeric",
+                "normal"
+              ],
+              [
+                "font-variant-east-asian",
+                "normal"
+              ],
+              [
+                "font-variant-alternates",
+                "normal"
+              ],
+              [
+                "font-size-adjust",
+                "none"
+              ],
+              [
+                "font-language-override",
+                "normal"
+              ],
+              [
+                "font-kerning",
+                "auto"
+              ],
+              [
+                "font-optical-sizing",
+                "auto"
+              ],
+              [
+                "font-feature-settings",
+                "normal"
+              ],
+              [
+                "font-variation-settings",
+                "normal"
+              ],
+              [
+                "font-variant-position",
+                "normal"
+              ],
+              [
+                "font-variant-emoji",
+                "normal"
+              ],
+              [
+                "font-weight",
+                "normal"
+              ],
+              [
+                "font-stretch",
+                "normal"
+              ],
+              [
+                "font-size",
+                "12px"
+              ],
+              [
+                "line-height",
+                "normal"
+              ],
+              [
+                "font-family",
+                "a, b, \"c d\""
+              ]
+            ],
+            "shorthands": {
+              "font": "12px a, b, \"c d\"",
+              "font-variant": "normal"
+            }
+          },
+          {
+            "id": "font|12px a,",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "font|12px , a",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "font|12px inherit",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "font|12px a / 2",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "font|bold 900 12px a",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "font|italic italic 12px a",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "font|1001 12px a",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "font|0 12px a",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "font|12px/",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "font|oblique 0deg 12px a",
+            "cssText": "font: 12px a;",
+            "items": [
+              [
+                "font-style",
+                "normal"
+              ],
+              [
+                "font-variant-caps",
+                "normal"
+              ],
+              [
+                "font-variant-ligatures",
+                "normal"
+              ],
+              [
+                "font-variant-numeric",
+                "normal"
+              ],
+              [
+                "font-variant-east-asian",
+                "normal"
+              ],
+              [
+                "font-variant-alternates",
+                "normal"
+              ],
+              [
+                "font-size-adjust",
+                "none"
+              ],
+              [
+                "font-language-override",
+                "normal"
+              ],
+              [
+                "font-kerning",
+                "auto"
+              ],
+              [
+                "font-optical-sizing",
+                "auto"
+              ],
+              [
+                "font-feature-settings",
+                "normal"
+              ],
+              [
+                "font-variation-settings",
+                "normal"
+              ],
+              [
+                "font-variant-position",
+                "normal"
+              ],
+              [
+                "font-variant-emoji",
+                "normal"
+              ],
+              [
+                "font-weight",
+                "normal"
+              ],
+              [
+                "font-stretch",
+                "normal"
+              ],
+              [
+                "font-size",
+                "12px"
+              ],
+              [
+                "line-height",
+                "normal"
+              ],
+              [
+                "font-family",
+                "a"
+              ]
+            ],
+            "shorthands": {
+              "font": "12px a",
+              "font-variant": "normal"
+            }
+          },
+          {
+            "id": "font|oblique 1turn 12px a",
+            "cssText": "font: oblique 1turn 12px a;",
+            "items": [
+              [
+                "font-style",
+                "oblique 1turn"
+              ],
+              [
+                "font-variant-caps",
+                "normal"
+              ],
+              [
+                "font-variant-ligatures",
+                "normal"
+              ],
+              [
+                "font-variant-numeric",
+                "normal"
+              ],
+              [
+                "font-variant-east-asian",
+                "normal"
+              ],
+              [
+                "font-variant-alternates",
+                "normal"
+              ],
+              [
+                "font-size-adjust",
+                "none"
+              ],
+              [
+                "font-language-override",
+                "normal"
+              ],
+              [
+                "font-kerning",
+                "auto"
+              ],
+              [
+                "font-optical-sizing",
+                "auto"
+              ],
+              [
+                "font-feature-settings",
+                "normal"
+              ],
+              [
+                "font-variation-settings",
+                "normal"
+              ],
+              [
+                "font-variant-position",
+                "normal"
+              ],
+              [
+                "font-variant-emoji",
+                "normal"
+              ],
+              [
+                "font-weight",
+                "normal"
+              ],
+              [
+                "font-stretch",
+                "normal"
+              ],
+              [
+                "font-size",
+                "12px"
+              ],
+              [
+                "line-height",
+                "normal"
+              ],
+              [
+                "font-family",
+                "a"
+              ]
+            ],
+            "shorthands": {
+              "font": "oblique 1turn 12px a",
+              "font-variant": "normal"
+            }
+          },
+          {
+            "id": "font|condensed 50% a",
+            "cssText": "font: condensed 50% a;",
+            "items": [
+              [
+                "font-style",
+                "normal"
+              ],
+              [
+                "font-variant-caps",
+                "normal"
+              ],
+              [
+                "font-variant-ligatures",
+                "normal"
+              ],
+              [
+                "font-variant-numeric",
+                "normal"
+              ],
+              [
+                "font-variant-east-asian",
+                "normal"
+              ],
+              [
+                "font-variant-alternates",
+                "normal"
+              ],
+              [
+                "font-size-adjust",
+                "none"
+              ],
+              [
+                "font-language-override",
+                "normal"
+              ],
+              [
+                "font-kerning",
+                "auto"
+              ],
+              [
+                "font-optical-sizing",
+                "auto"
+              ],
+              [
+                "font-feature-settings",
+                "normal"
+              ],
+              [
+                "font-variation-settings",
+                "normal"
+              ],
+              [
+                "font-variant-position",
+                "normal"
+              ],
+              [
+                "font-variant-emoji",
+                "normal"
+              ],
+              [
+                "font-weight",
+                "normal"
+              ],
+              [
+                "font-stretch",
+                "condensed"
+              ],
+              [
+                "font-size",
+                "50%"
+              ],
+              [
+                "line-height",
+                "normal"
+              ],
+              [
+                "font-family",
+                "a"
+              ]
+            ],
+            "shorthands": {
+              "font": "condensed 50% a",
+              "font-variant": "normal"
+            }
+          },
+          {
             "id": "font|inherit",
             "cssText": "font: inherit;",
             "items": [
@@ -52728,6 +54918,54 @@
               "grid-row": "1",
               "grid-column": "-1"
             }
+          },
+          {
+            "id": "grid-area|span",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "grid-area|span span",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "grid-area|0",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "grid-area|a b",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "grid-area|1 2",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "grid-area|span -1",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "grid-area|a / b / c / d / e",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "grid-area|auto a",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
           },
           {
             "id": "grid-area|inherit",
@@ -54097,6 +56335,168 @@
             }
           },
           {
+            "id": "grid-template|\"a\" [x] [y] 10px",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "grid-template|[a] \"a\" [b] [c] \"b\"",
+            "cssText": "grid-template: [a] \"a\" [b c] \"b\";",
+            "items": [
+              [
+                "grid-template-rows",
+                "[a] auto [b c] auto"
+              ],
+              [
+                "grid-template-columns",
+                "none"
+              ],
+              [
+                "grid-template-areas",
+                "\"a\" \"b\""
+              ]
+            ],
+            "shorthands": {
+              "grid": "",
+              "grid-template": "[a] \"a\" [b c] \"b\""
+            }
+          },
+          {
+            "id": "grid-template|\"a\" minmax(10px, 1fr)",
+            "cssText": "grid-template: \"a\" minmax(10px, 1fr);",
+            "items": [
+              [
+                "grid-template-rows",
+                "minmax(10px, 1fr)"
+              ],
+              [
+                "grid-template-columns",
+                "none"
+              ],
+              [
+                "grid-template-areas",
+                "\"a\""
+              ]
+            ],
+            "shorthands": {
+              "grid": "",
+              "grid-template": "\"a\" minmax(10px, 1fr)"
+            }
+          },
+          {
+            "id": "grid-template|\"a\" fit-content(10px)",
+            "cssText": "grid-template: \"a\" fit-content(10px);",
+            "items": [
+              [
+                "grid-template-rows",
+                "fit-content(10px)"
+              ],
+              [
+                "grid-template-columns",
+                "none"
+              ],
+              [
+                "grid-template-areas",
+                "\"a\""
+              ]
+            ],
+            "shorthands": {
+              "grid": "",
+              "grid-template": "\"a\" fit-content(10px)"
+            }
+          },
+          {
+            "id": "grid-template|\"a\" 1fr \"b\"",
+            "cssText": "grid-template: \"a\" 1fr \"b\";",
+            "items": [
+              [
+                "grid-template-rows",
+                "1fr auto"
+              ],
+              [
+                "grid-template-columns",
+                "none"
+              ],
+              [
+                "grid-template-areas",
+                "\"a\" \"b\""
+              ]
+            ],
+            "shorthands": {
+              "grid": "",
+              "grid-template": "\"a\" 1fr \"b\""
+            }
+          },
+          {
+            "id": "grid-template|\"a\" auto / repeat(2, 1fr)",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "grid-template|\"a\" / bogus",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "grid-template|10px",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "grid-template|auto / auto / auto",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "grid-template|subgrid [a] / auto",
+            "cssText": "grid-template: subgrid [a] / auto;",
+            "items": [
+              [
+                "grid-template-rows",
+                "subgrid [a]"
+              ],
+              [
+                "grid-template-columns",
+                "auto"
+              ],
+              [
+                "grid-template-areas",
+                "none"
+              ]
+            ],
+            "shorthands": {
+              "grid": "",
+              "grid-template": "subgrid [a] / auto"
+            }
+          },
+          {
+            "id": "grid-template|0 / 0",
+            "cssText": "grid-template: 0px / 0px;",
+            "items": [
+              [
+                "grid-template-rows",
+                "0px"
+              ],
+              [
+                "grid-template-columns",
+                "0px"
+              ],
+              [
+                "grid-template-areas",
+                "none"
+              ]
+            ],
+            "shorthands": {
+              "grid": "",
+              "grid-template": "0px / 0px"
+            }
+          },
+          {
             "id": "grid-template|inherit",
             "cssText": "grid-template: inherit;",
             "items": [
@@ -54797,6 +57197,132 @@
               "grid": "\"a\" 1fr / 1fr",
               "grid-template": "\"a\" 1fr / 1fr"
             }
+          },
+          {
+            "id": "grid|auto-flow / auto-flow",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "grid|dense auto-flow 10px / 1fr",
+            "cssText": "grid: auto-flow dense 10px / 1fr;",
+            "items": [
+              [
+                "grid-template-columns",
+                "1fr"
+              ],
+              [
+                "grid-template-rows",
+                "none"
+              ],
+              [
+                "grid-template-areas",
+                "none"
+              ],
+              [
+                "grid-auto-flow",
+                "dense"
+              ],
+              [
+                "grid-auto-columns",
+                "auto"
+              ],
+              [
+                "grid-auto-rows",
+                "10px"
+              ]
+            ],
+            "shorthands": {
+              "grid": "auto-flow dense 10px / 1fr",
+              "grid-template": "none / 1fr"
+            }
+          },
+          {
+            "id": "grid|1fr / dense auto-flow",
+            "cssText": "grid: 1fr / auto-flow dense;",
+            "items": [
+              [
+                "grid-template-columns",
+                "none"
+              ],
+              [
+                "grid-template-rows",
+                "1fr"
+              ],
+              [
+                "grid-template-areas",
+                "none"
+              ],
+              [
+                "grid-auto-flow",
+                "column dense"
+              ],
+              [
+                "grid-auto-columns",
+                "auto"
+              ],
+              [
+                "grid-auto-rows",
+                "auto"
+              ]
+            ],
+            "shorthands": {
+              "grid": "1fr / auto-flow dense",
+              "grid-template": "1fr / none"
+            }
+          },
+          {
+            "id": "grid|auto-flow 10px 20px / 1fr",
+            "cssText": "grid: auto-flow 10px 20px / 1fr;",
+            "items": [
+              [
+                "grid-template-columns",
+                "1fr"
+              ],
+              [
+                "grid-template-rows",
+                "none"
+              ],
+              [
+                "grid-template-areas",
+                "none"
+              ],
+              [
+                "grid-auto-flow",
+                "row"
+              ],
+              [
+                "grid-auto-columns",
+                "auto"
+              ],
+              [
+                "grid-auto-rows",
+                "10px 20px"
+              ]
+            ],
+            "shorthands": {
+              "grid": "auto-flow 10px 20px / 1fr",
+              "grid-template": "none / 1fr"
+            }
+          },
+          {
+            "id": "grid|auto-flow bogus / 1fr",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "grid|1fr / auto-flow bogus",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "grid|dense / 1fr",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
           },
           {
             "id": "grid|inherit",
@@ -55564,6 +58090,138 @@
             }
           },
           {
+            "id": "border-image|url(a.png) 10 fill 20",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "border-image|url(a.png) fill 10",
+            "cssText": "border-image: url(\"a.png\") 10 fill / 1 / 0 stretch;",
+            "items": [
+              [
+                "border-image-source",
+                "url(\"a.png\")"
+              ],
+              [
+                "border-image-slice",
+                "10 fill"
+              ],
+              [
+                "border-image-width",
+                "1"
+              ],
+              [
+                "border-image-outset",
+                "0"
+              ],
+              [
+                "border-image-repeat",
+                "stretch"
+              ]
+            ],
+            "shorthands": {
+              "border": "",
+              "border-image": "url(\"a.png\") 10 fill / 1 / 0 stretch"
+            }
+          },
+          {
+            "id": "border-image|url(a.png) 10 / auto / 1px",
+            "cssText": "border-image: url(\"a.png\") 10 / auto / 1px stretch;",
+            "items": [
+              [
+                "border-image-source",
+                "url(\"a.png\")"
+              ],
+              [
+                "border-image-slice",
+                "10"
+              ],
+              [
+                "border-image-width",
+                "auto"
+              ],
+              [
+                "border-image-outset",
+                "1px"
+              ],
+              [
+                "border-image-repeat",
+                "stretch"
+              ]
+            ],
+            "shorthands": {
+              "border": "",
+              "border-image": "url(\"a.png\") 10 / auto / 1px stretch"
+            }
+          },
+          {
+            "id": "border-image|url(a.png) 10 / / ",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "border-image|url(a.png) 10 / 1 2 3 4 5",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "border-image|url(a.png) repeat repeat",
+            "cssText": "border-image: url(\"a.png\") 100% / 1 / 0 repeat;",
+            "items": [
+              [
+                "border-image-source",
+                "url(\"a.png\")"
+              ],
+              [
+                "border-image-slice",
+                "100%"
+              ],
+              [
+                "border-image-width",
+                "1"
+              ],
+              [
+                "border-image-outset",
+                "0"
+              ],
+              [
+                "border-image-repeat",
+                "repeat"
+              ]
+            ],
+            "shorthands": {
+              "border": "",
+              "border-image": "url(\"a.png\") 100% / 1 / 0 repeat"
+            }
+          },
+          {
+            "id": "border-image|url(a.png) round space round",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "border-image|url(a.png) 1 2 3 4 5",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "border-image|none none",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "border-image|10 / 1 / -1",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
             "id": "border-image|inherit",
             "cssText": "border-image: inherit;",
             "items": [
@@ -56012,6 +58670,64 @@
               [
                 "-webkit-mask-box-image-repeat",
                 "initial"
+              ]
+            ],
+            "shorthands": {
+              "-webkit-mask-box-image": ""
+            }
+          },
+          {
+            "id": "-webkit-mask-box-image|url(a.png) 10 / 1px",
+            "cssText": "-webkit-mask-box-image-source: url(\"a.png\"); -webkit-mask-box-image-slice: 10 fill; -webkit-mask-box-image-width: 1px; -webkit-mask-box-image-outset: initial; -webkit-mask-box-image-repeat: initial;",
+            "items": [
+              [
+                "-webkit-mask-box-image-source",
+                "url(\"a.png\")"
+              ],
+              [
+                "-webkit-mask-box-image-slice",
+                "10 fill"
+              ],
+              [
+                "-webkit-mask-box-image-width",
+                "1px"
+              ],
+              [
+                "-webkit-mask-box-image-outset",
+                "initial"
+              ],
+              [
+                "-webkit-mask-box-image-repeat",
+                "initial"
+              ]
+            ],
+            "shorthands": {
+              "-webkit-mask-box-image": ""
+            }
+          },
+          {
+            "id": "-webkit-mask-box-image|none 10 round",
+            "cssText": "-webkit-mask-box-image-source: none; -webkit-mask-box-image-slice: 10 fill; -webkit-mask-box-image-width: initial; -webkit-mask-box-image-outset: initial; -webkit-mask-box-image-repeat: round;",
+            "items": [
+              [
+                "-webkit-mask-box-image-source",
+                "none"
+              ],
+              [
+                "-webkit-mask-box-image-slice",
+                "10 fill"
+              ],
+              [
+                "-webkit-mask-box-image-width",
+                "initial"
+              ],
+              [
+                "-webkit-mask-box-image-outset",
+                "initial"
+              ],
+              [
+                "-webkit-mask-box-image-repeat",
+                "round"
               ]
             ],
             "shorthands": {
@@ -56666,6 +59382,198 @@
             ],
             "shorthands": {
               "offset": "normal"
+            }
+          },
+          {
+            "id": "offset|path('M 0 0') 45deg",
+            "cssText": "offset: path(\"M 0 0\") 45deg;",
+            "items": [
+              [
+                "offset-position",
+                "normal"
+              ],
+              [
+                "offset-path",
+                "path(\"M 0 0\")"
+              ],
+              [
+                "offset-distance",
+                "0px"
+              ],
+              [
+                "offset-rotate",
+                "45deg"
+              ],
+              [
+                "offset-anchor",
+                "auto"
+              ]
+            ],
+            "shorthands": {
+              "offset": "path(\"M 0 0\") 45deg"
+            }
+          },
+          {
+            "id": "offset|path('M 0 0') 45deg auto",
+            "cssText": "offset: path(\"M 0 0\") auto 45deg;",
+            "items": [
+              [
+                "offset-position",
+                "normal"
+              ],
+              [
+                "offset-path",
+                "path(\"M 0 0\")"
+              ],
+              [
+                "offset-distance",
+                "0px"
+              ],
+              [
+                "offset-rotate",
+                "auto 45deg"
+              ],
+              [
+                "offset-anchor",
+                "auto"
+              ]
+            ],
+            "shorthands": {
+              "offset": "path(\"M 0 0\") auto 45deg"
+            }
+          },
+          {
+            "id": "offset|path('M 0 0') reverse 10deg",
+            "cssText": "offset: path(\"M 0 0\") reverse 10deg;",
+            "items": [
+              [
+                "offset-position",
+                "normal"
+              ],
+              [
+                "offset-path",
+                "path(\"M 0 0\")"
+              ],
+              [
+                "offset-distance",
+                "0px"
+              ],
+              [
+                "offset-rotate",
+                "reverse 10deg"
+              ],
+              [
+                "offset-anchor",
+                "auto"
+              ]
+            ],
+            "shorthands": {
+              "offset": "path(\"M 0 0\") reverse 10deg"
+            }
+          },
+          {
+            "id": "offset|path('M0,0L10-10') 10px",
+            "cssText": "offset: path(\"M 0 0 L 10 -10\") 10px;",
+            "items": [
+              [
+                "offset-position",
+                "normal"
+              ],
+              [
+                "offset-path",
+                "path(\"M 0 0 L 10 -10\")"
+              ],
+              [
+                "offset-distance",
+                "10px"
+              ],
+              [
+                "offset-rotate",
+                "auto"
+              ],
+              [
+                "offset-anchor",
+                "auto"
+              ]
+            ],
+            "shorthands": {
+              "offset": "path(\"M 0 0 L 10 -10\") 10px"
+            }
+          },
+          {
+            "id": "offset|left top path('M 0 0')",
+            "cssText": "offset: left top path(\"M 0 0\");",
+            "items": [
+              [
+                "offset-position",
+                "left top"
+              ],
+              [
+                "offset-path",
+                "path(\"M 0 0\")"
+              ],
+              [
+                "offset-distance",
+                "0px"
+              ],
+              [
+                "offset-rotate",
+                "auto"
+              ],
+              [
+                "offset-anchor",
+                "auto"
+              ]
+            ],
+            "shorthands": {
+              "offset": "left top path(\"M 0 0\")"
+            }
+          },
+          {
+            "id": "offset|10px 20px 30px",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "offset|bogus",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "offset|path('M 0 0') 10px 20px",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "offset|none 10px",
+            "cssText": "offset: none 10px;",
+            "items": [
+              [
+                "offset-position",
+                "normal"
+              ],
+              [
+                "offset-path",
+                "none"
+              ],
+              [
+                "offset-distance",
+                "10px"
+              ],
+              [
+                "offset-rotate",
+                "auto"
+              ],
+              [
+                "offset-anchor",
+                "auto"
+              ]
+            ],
+            "shorthands": {
+              "offset": "none 10px"
             }
           },
           {
@@ -58673,6 +61581,756 @@
             "shorthands": {}
           },
           {
+            "id": "background|url( a.png )",
+            "cssText": "background: url(\"a.png\");",
+            "items": [
+              [
+                "background-image",
+                "url(\"a.png\")"
+              ],
+              [
+                "background-position-x",
+                "initial"
+              ],
+              [
+                "background-position-y",
+                "initial"
+              ],
+              [
+                "background-size",
+                "initial"
+              ],
+              [
+                "background-repeat",
+                "initial"
+              ],
+              [
+                "background-attachment",
+                "initial"
+              ],
+              [
+                "background-origin",
+                "initial"
+              ],
+              [
+                "background-clip",
+                "initial"
+              ],
+              [
+                "background-color",
+                "initial"
+              ]
+            ],
+            "shorthands": {
+              "background": "url(\"a.png\")",
+              "background-position": "initial"
+            }
+          },
+          {
+            "id": "background|url('a b.png')",
+            "cssText": "background: url(\"a b.png\");",
+            "items": [
+              [
+                "background-image",
+                "url(\"a b.png\")"
+              ],
+              [
+                "background-position-x",
+                "initial"
+              ],
+              [
+                "background-position-y",
+                "initial"
+              ],
+              [
+                "background-size",
+                "initial"
+              ],
+              [
+                "background-repeat",
+                "initial"
+              ],
+              [
+                "background-attachment",
+                "initial"
+              ],
+              [
+                "background-origin",
+                "initial"
+              ],
+              [
+                "background-clip",
+                "initial"
+              ],
+              [
+                "background-color",
+                "initial"
+              ]
+            ],
+            "shorthands": {
+              "background": "url(\"a b.png\")",
+              "background-position": "initial"
+            }
+          },
+          {
+            "id": "background|url(a b.png)",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "background|url(\"a.png\" x)",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "background|url()",
+            "cssText": "background: url(\"\");",
+            "items": [
+              [
+                "background-image",
+                "url(\"\")"
+              ],
+              [
+                "background-position-x",
+                "initial"
+              ],
+              [
+                "background-position-y",
+                "initial"
+              ],
+              [
+                "background-size",
+                "initial"
+              ],
+              [
+                "background-repeat",
+                "initial"
+              ],
+              [
+                "background-attachment",
+                "initial"
+              ],
+              [
+                "background-origin",
+                "initial"
+              ],
+              [
+                "background-clip",
+                "initial"
+              ],
+              [
+                "background-color",
+                "initial"
+              ]
+            ],
+            "shorthands": {
+              "background": "url(\"\")",
+              "background-position": "initial"
+            }
+          },
+          {
+            "id": "background|image-set(url(a.png) 1x)",
+            "cssText": "background: image-set(url(\"a.png\") 1x);",
+            "items": [
+              [
+                "background-image",
+                "image-set(url(\"a.png\") 1x)"
+              ],
+              [
+                "background-position-x",
+                "initial"
+              ],
+              [
+                "background-position-y",
+                "initial"
+              ],
+              [
+                "background-size",
+                "initial"
+              ],
+              [
+                "background-repeat",
+                "initial"
+              ],
+              [
+                "background-attachment",
+                "initial"
+              ],
+              [
+                "background-origin",
+                "initial"
+              ],
+              [
+                "background-clip",
+                "initial"
+              ],
+              [
+                "background-color",
+                "initial"
+              ]
+            ],
+            "shorthands": {
+              "background": "image-set(url(\"a.png\") 1x)",
+              "background-position": "initial"
+            }
+          },
+          {
+            "id": "background|red red",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "background|url(a.png) url(b.png)",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "background|center / auto",
+            "cssText": "background: center center / auto;",
+            "items": [
+              [
+                "background-image",
+                "initial"
+              ],
+              [
+                "background-position-x",
+                "center"
+              ],
+              [
+                "background-position-y",
+                "center"
+              ],
+              [
+                "background-size",
+                "auto"
+              ],
+              [
+                "background-repeat",
+                "initial"
+              ],
+              [
+                "background-attachment",
+                "initial"
+              ],
+              [
+                "background-origin",
+                "initial"
+              ],
+              [
+                "background-clip",
+                "initial"
+              ],
+              [
+                "background-color",
+                "initial"
+              ]
+            ],
+            "shorthands": {
+              "background": "center center / auto",
+              "background-position": "center center"
+            }
+          },
+          {
+            "id": "background|center / 10px 20px",
+            "cssText": "background: center center / 10px 20px;",
+            "items": [
+              [
+                "background-image",
+                "initial"
+              ],
+              [
+                "background-position-x",
+                "center"
+              ],
+              [
+                "background-position-y",
+                "center"
+              ],
+              [
+                "background-size",
+                "10px 20px"
+              ],
+              [
+                "background-repeat",
+                "initial"
+              ],
+              [
+                "background-attachment",
+                "initial"
+              ],
+              [
+                "background-origin",
+                "initial"
+              ],
+              [
+                "background-clip",
+                "initial"
+              ],
+              [
+                "background-color",
+                "initial"
+              ]
+            ],
+            "shorthands": {
+              "background": "center center / 10px 20px",
+              "background-position": "center center"
+            }
+          },
+          {
+            "id": "background|/ 10px",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "background|url(a.png) center /",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "background|repeat-x repeat-y",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "background|padding-box text",
+            "cssText": "background: padding-box text;",
+            "items": [
+              [
+                "background-image",
+                "initial"
+              ],
+              [
+                "background-position-x",
+                "initial"
+              ],
+              [
+                "background-position-y",
+                "initial"
+              ],
+              [
+                "background-size",
+                "initial"
+              ],
+              [
+                "background-repeat",
+                "initial"
+              ],
+              [
+                "background-attachment",
+                "initial"
+              ],
+              [
+                "background-origin",
+                "padding-box"
+              ],
+              [
+                "background-clip",
+                "text"
+              ],
+              [
+                "background-color",
+                "initial"
+              ]
+            ],
+            "shorthands": {
+              "background": "padding-box text",
+              "background-position": "initial"
+            }
+          },
+          {
+            "id": "background|text padding-box",
+            "cssText": "background: padding-box text;",
+            "items": [
+              [
+                "background-image",
+                "initial"
+              ],
+              [
+                "background-position-x",
+                "initial"
+              ],
+              [
+                "background-position-y",
+                "initial"
+              ],
+              [
+                "background-size",
+                "initial"
+              ],
+              [
+                "background-repeat",
+                "initial"
+              ],
+              [
+                "background-attachment",
+                "initial"
+              ],
+              [
+                "background-origin",
+                "padding-box"
+              ],
+              [
+                "background-clip",
+                "text"
+              ],
+              [
+                "background-color",
+                "initial"
+              ]
+            ],
+            "shorthands": {
+              "background": "padding-box text",
+              "background-position": "initial"
+            }
+          },
+          {
+            "id": "background|fixed scroll",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "background|#ff000080",
+            "cssText": "background: rgba(255, 0, 0, 0.5);",
+            "items": [
+              [
+                "background-image",
+                "initial"
+              ],
+              [
+                "background-position-x",
+                "initial"
+              ],
+              [
+                "background-position-y",
+                "initial"
+              ],
+              [
+                "background-size",
+                "initial"
+              ],
+              [
+                "background-repeat",
+                "initial"
+              ],
+              [
+                "background-attachment",
+                "initial"
+              ],
+              [
+                "background-origin",
+                "initial"
+              ],
+              [
+                "background-clip",
+                "initial"
+              ],
+              [
+                "background-color",
+                "rgba(255, 0, 0, 0.5)"
+              ]
+            ],
+            "shorthands": {
+              "background": "rgba(255, 0, 0, 0.5)",
+              "background-position": "initial"
+            }
+          },
+          {
+            "id": "background|#f008",
+            "cssText": "background: rgba(255, 0, 0, 0.533);",
+            "items": [
+              [
+                "background-image",
+                "initial"
+              ],
+              [
+                "background-position-x",
+                "initial"
+              ],
+              [
+                "background-position-y",
+                "initial"
+              ],
+              [
+                "background-size",
+                "initial"
+              ],
+              [
+                "background-repeat",
+                "initial"
+              ],
+              [
+                "background-attachment",
+                "initial"
+              ],
+              [
+                "background-origin",
+                "initial"
+              ],
+              [
+                "background-clip",
+                "initial"
+              ],
+              [
+                "background-color",
+                "rgba(255, 0, 0, 0.533)"
+              ]
+            ],
+            "shorthands": {
+              "background": "rgba(255, 0, 0, 0.533)",
+              "background-position": "initial"
+            }
+          },
+          {
+            "id": "background|#ggg",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "background|#12345",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "background|hsl(120 100% 50%)",
+            "cssText": "background: rgb(0, 255, 0);",
+            "items": [
+              [
+                "background-image",
+                "initial"
+              ],
+              [
+                "background-position-x",
+                "initial"
+              ],
+              [
+                "background-position-y",
+                "initial"
+              ],
+              [
+                "background-size",
+                "initial"
+              ],
+              [
+                "background-repeat",
+                "initial"
+              ],
+              [
+                "background-attachment",
+                "initial"
+              ],
+              [
+                "background-origin",
+                "initial"
+              ],
+              [
+                "background-clip",
+                "initial"
+              ],
+              [
+                "background-color",
+                "rgb(0, 255, 0)"
+              ]
+            ],
+            "shorthands": {
+              "background": "rgb(0, 255, 0)",
+              "background-position": "initial"
+            }
+          },
+          {
+            "id": "background|rgb(1 2 3 / 50%)",
+            "cssText": "background: rgba(1, 2, 3, 0.5);",
+            "items": [
+              [
+                "background-image",
+                "initial"
+              ],
+              [
+                "background-position-x",
+                "initial"
+              ],
+              [
+                "background-position-y",
+                "initial"
+              ],
+              [
+                "background-size",
+                "initial"
+              ],
+              [
+                "background-repeat",
+                "initial"
+              ],
+              [
+                "background-attachment",
+                "initial"
+              ],
+              [
+                "background-origin",
+                "initial"
+              ],
+              [
+                "background-clip",
+                "initial"
+              ],
+              [
+                "background-color",
+                "rgba(1, 2, 3, 0.5)"
+              ]
+            ],
+            "shorthands": {
+              "background": "rgba(1, 2, 3, 0.5)",
+              "background-position": "initial"
+            }
+          },
+          {
+            "id": "background|lab(50% 10 10)",
+            "cssText": "background: lab(50 10 10);",
+            "items": [
+              [
+                "background-image",
+                "initial"
+              ],
+              [
+                "background-position-x",
+                "initial"
+              ],
+              [
+                "background-position-y",
+                "initial"
+              ],
+              [
+                "background-size",
+                "initial"
+              ],
+              [
+                "background-repeat",
+                "initial"
+              ],
+              [
+                "background-attachment",
+                "initial"
+              ],
+              [
+                "background-origin",
+                "initial"
+              ],
+              [
+                "background-clip",
+                "initial"
+              ],
+              [
+                "background-color",
+                "lab(50 10 10)"
+              ]
+            ],
+            "shorthands": {
+              "background": "lab(50 10 10)",
+              "background-position": "initial"
+            }
+          },
+          {
+            "id": "background|currentColor",
+            "cssText": "background: currentcolor;",
+            "items": [
+              [
+                "background-image",
+                "initial"
+              ],
+              [
+                "background-position-x",
+                "initial"
+              ],
+              [
+                "background-position-y",
+                "initial"
+              ],
+              [
+                "background-size",
+                "initial"
+              ],
+              [
+                "background-repeat",
+                "initial"
+              ],
+              [
+                "background-attachment",
+                "initial"
+              ],
+              [
+                "background-origin",
+                "initial"
+              ],
+              [
+                "background-clip",
+                "initial"
+              ],
+              [
+                "background-color",
+                "currentcolor"
+              ]
+            ],
+            "shorthands": {
+              "background": "currentcolor",
+              "background-position": "initial"
+            }
+          },
+          {
+            "id": "background|Canvas",
+            "cssText": "background: canvas;",
+            "items": [
+              [
+                "background-image",
+                "initial"
+              ],
+              [
+                "background-position-x",
+                "initial"
+              ],
+              [
+                "background-position-y",
+                "initial"
+              ],
+              [
+                "background-size",
+                "initial"
+              ],
+              [
+                "background-repeat",
+                "initial"
+              ],
+              [
+                "background-attachment",
+                "initial"
+              ],
+              [
+                "background-origin",
+                "initial"
+              ],
+              [
+                "background-clip",
+                "initial"
+              ],
+              [
+                "background-color",
+                "canvas"
+              ]
+            ],
+            "shorthands": {
+              "background": "canvas",
+              "background-position": "initial"
+            }
+          },
+          {
             "id": "background|inherit",
             "cssText": "background: inherit;",
             "items": [
@@ -59583,6 +63241,258 @@
               "-webkit-mask-position": "0% 0%",
               "mask-position": "0% 0%"
             }
+          },
+          {
+            "id": "mask|url(a.png) add, url(b.png)",
+            "cssText": "mask: url(\"a.png\"), url(\"b.png\");",
+            "items": [
+              [
+                "mask-image",
+                "url(\"a.png\"), url(\"b.png\")"
+              ],
+              [
+                "-webkit-mask-position-x",
+                "0%, 0%"
+              ],
+              [
+                "-webkit-mask-position-y",
+                "0%, 0%"
+              ],
+              [
+                "mask-size",
+                "auto, auto"
+              ],
+              [
+                "mask-repeat",
+                "repeat, repeat"
+              ],
+              [
+                "mask-origin",
+                "border-box, border-box"
+              ],
+              [
+                "mask-clip",
+                "border-box, border-box"
+              ],
+              [
+                "mask-composite",
+                "add, add"
+              ],
+              [
+                "mask-mode",
+                "match-source, match-source"
+              ]
+            ],
+            "shorthands": {
+              "-webkit-mask": "url(\"a.png\"), url(\"b.png\")",
+              "mask": "url(\"a.png\"), url(\"b.png\")",
+              "-webkit-mask-position": "0% 0%, 0% 0%",
+              "mask-position": "0% 0%, 0% 0%"
+            }
+          },
+          {
+            "id": "mask|url(a.png) border-box border-box",
+            "cssText": "mask: url(\"a.png\");",
+            "items": [
+              [
+                "mask-image",
+                "url(\"a.png\")"
+              ],
+              [
+                "-webkit-mask-position-x",
+                "0%"
+              ],
+              [
+                "-webkit-mask-position-y",
+                "0%"
+              ],
+              [
+                "mask-size",
+                "auto"
+              ],
+              [
+                "mask-repeat",
+                "repeat"
+              ],
+              [
+                "mask-origin",
+                "border-box"
+              ],
+              [
+                "mask-clip",
+                "border-box"
+              ],
+              [
+                "mask-composite",
+                "add"
+              ],
+              [
+                "mask-mode",
+                "match-source"
+              ]
+            ],
+            "shorthands": {
+              "-webkit-mask": "url(\"a.png\")",
+              "mask": "url(\"a.png\")",
+              "-webkit-mask-position": "0% 0%",
+              "mask-position": "0% 0%"
+            }
+          },
+          {
+            "id": "mask|url(a.png) fill-box",
+            "cssText": "mask: url(\"a.png\") fill-box;",
+            "items": [
+              [
+                "mask-image",
+                "url(\"a.png\")"
+              ],
+              [
+                "-webkit-mask-position-x",
+                "0%"
+              ],
+              [
+                "-webkit-mask-position-y",
+                "0%"
+              ],
+              [
+                "mask-size",
+                "auto"
+              ],
+              [
+                "mask-repeat",
+                "repeat"
+              ],
+              [
+                "mask-origin",
+                "fill-box"
+              ],
+              [
+                "mask-clip",
+                "fill-box"
+              ],
+              [
+                "mask-composite",
+                "add"
+              ],
+              [
+                "mask-mode",
+                "match-source"
+              ]
+            ],
+            "shorthands": {
+              "-webkit-mask": "url(\"a.png\") fill-box",
+              "mask": "url(\"a.png\") fill-box",
+              "-webkit-mask-position": "0% 0%",
+              "mask-position": "0% 0%"
+            }
+          },
+          {
+            "id": "mask|url(a.png) no-clip",
+            "cssText": "mask: url(\"a.png\") no-clip;",
+            "items": [
+              [
+                "mask-image",
+                "url(\"a.png\")"
+              ],
+              [
+                "-webkit-mask-position-x",
+                "0%"
+              ],
+              [
+                "-webkit-mask-position-y",
+                "0%"
+              ],
+              [
+                "mask-size",
+                "auto"
+              ],
+              [
+                "mask-repeat",
+                "repeat"
+              ],
+              [
+                "mask-origin",
+                "border-box"
+              ],
+              [
+                "mask-clip",
+                "no-clip"
+              ],
+              [
+                "mask-composite",
+                "add"
+              ],
+              [
+                "mask-mode",
+                "match-source"
+              ]
+            ],
+            "shorthands": {
+              "-webkit-mask": "url(\"a.png\") no-clip",
+              "mask": "url(\"a.png\") no-clip",
+              "-webkit-mask-position": "0% 0%",
+              "mask-position": "0% 0%"
+            }
+          },
+          {
+            "id": "mask|url(a.png) / 10px",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "mask|url(a.png) center / 50%",
+            "cssText": "mask: url(\"a.png\") center center / 50% auto;",
+            "items": [
+              [
+                "mask-image",
+                "url(\"a.png\")"
+              ],
+              [
+                "-webkit-mask-position-x",
+                "center"
+              ],
+              [
+                "-webkit-mask-position-y",
+                "center"
+              ],
+              [
+                "mask-size",
+                "50% auto"
+              ],
+              [
+                "mask-repeat",
+                "repeat"
+              ],
+              [
+                "mask-origin",
+                "border-box"
+              ],
+              [
+                "mask-clip",
+                "border-box"
+              ],
+              [
+                "mask-composite",
+                "add"
+              ],
+              [
+                "mask-mode",
+                "match-source"
+              ]
+            ],
+            "shorthands": {
+              "-webkit-mask": "url(\"a.png\") center center / 50% auto",
+              "mask": "url(\"a.png\") center center / 50% auto",
+              "-webkit-mask-position": "center center",
+              "mask-position": "center center"
+            }
+          },
+          {
+            "id": "mask|url(a.png) alpha luminance",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
           },
           {
             "id": "mask|inherit",
@@ -61528,6 +65438,228 @@
             "shorthands": {
               "-webkit-transition": "opacity 1s -1s",
               "transition": "opacity 1s -1s"
+            }
+          },
+          {
+            "id": "transition|opacity 1s, transform",
+            "cssText": "transition: opacity 1s, transform;",
+            "items": [
+              [
+                "transition-behavior",
+                "normal, normal"
+              ],
+              [
+                "transition-duration",
+                "1s, 0s"
+              ],
+              [
+                "transition-timing-function",
+                "ease, ease"
+              ],
+              [
+                "transition-delay",
+                "0s, 0s"
+              ],
+              [
+                "transition-property",
+                "opacity, transform"
+              ]
+            ],
+            "shorthands": {
+              "-webkit-transition": "opacity 1s, transform",
+              "transition": "opacity 1s, transform"
+            }
+          },
+          {
+            "id": "transition|opacity 1ms",
+            "cssText": "transition: opacity 1ms;",
+            "items": [
+              [
+                "transition-behavior",
+                "normal"
+              ],
+              [
+                "transition-duration",
+                "1ms"
+              ],
+              [
+                "transition-timing-function",
+                "ease"
+              ],
+              [
+                "transition-delay",
+                "0s"
+              ],
+              [
+                "transition-property",
+                "opacity"
+              ]
+            ],
+            "shorthands": {
+              "-webkit-transition": "opacity 1ms",
+              "transition": "opacity 1ms"
+            }
+          },
+          {
+            "id": "transition|opacity 0ms 1s",
+            "cssText": "transition: opacity 1s;",
+            "items": [
+              [
+                "transition-behavior",
+                "normal"
+              ],
+              [
+                "transition-duration",
+                "0ms"
+              ],
+              [
+                "transition-timing-function",
+                "ease"
+              ],
+              [
+                "transition-delay",
+                "1s"
+              ],
+              [
+                "transition-property",
+                "opacity"
+              ]
+            ],
+            "shorthands": {
+              "-webkit-transition": "opacity 1s",
+              "transition": "opacity 1s"
+            }
+          },
+          {
+            "id": "transition|opacity 1s steps(4, jump-end)",
+            "cssText": "transition: opacity 1s steps(4);",
+            "items": [
+              [
+                "transition-behavior",
+                "normal"
+              ],
+              [
+                "transition-duration",
+                "1s"
+              ],
+              [
+                "transition-timing-function",
+                "steps(4)"
+              ],
+              [
+                "transition-delay",
+                "0s"
+              ],
+              [
+                "transition-property",
+                "opacity"
+              ]
+            ],
+            "shorthands": {
+              "-webkit-transition": "opacity 1s steps(4)",
+              "transition": "opacity 1s steps(4)"
+            }
+          },
+          {
+            "id": "transition|opacity linear(0, 1)",
+            "cssText": "transition: opacity linear(0 0%, 1 100%);",
+            "items": [
+              [
+                "transition-behavior",
+                "normal"
+              ],
+              [
+                "transition-duration",
+                "0s"
+              ],
+              [
+                "transition-timing-function",
+                "linear(0 0%, 1 100%)"
+              ],
+              [
+                "transition-delay",
+                "0s"
+              ],
+              [
+                "transition-property",
+                "opacity"
+              ]
+            ],
+            "shorthands": {
+              "-webkit-transition": "opacity linear(0 0%, 1 100%)",
+              "transition": "opacity linear(0 0%, 1 100%)"
+            }
+          },
+          {
+            "id": "transition|opacity 1s ease 2s normal",
+            "cssText": "transition: opacity 1s 2s;",
+            "items": [
+              [
+                "transition-behavior",
+                "normal"
+              ],
+              [
+                "transition-duration",
+                "1s"
+              ],
+              [
+                "transition-timing-function",
+                "ease"
+              ],
+              [
+                "transition-delay",
+                "2s"
+              ],
+              [
+                "transition-property",
+                "opacity"
+              ]
+            ],
+            "shorthands": {
+              "-webkit-transition": "opacity 1s 2s",
+              "transition": "opacity 1s 2s"
+            }
+          },
+          {
+            "id": "transition|all none",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "transition|1s 2s 3s",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "transition|opacity calc(1s + 1s)",
+            "cssText": "transition: opacity calc(2s);",
+            "items": [
+              [
+                "transition-behavior",
+                "normal"
+              ],
+              [
+                "transition-duration",
+                "calc(2s)"
+              ],
+              [
+                "transition-timing-function",
+                "ease"
+              ],
+              [
+                "transition-delay",
+                "0s"
+              ],
+              [
+                "transition-property",
+                "opacity"
+              ]
+            ],
+            "shorthands": {
+              "-webkit-transition": "opacity calc(2s)",
+              "transition": "opacity calc(2s)"
             }
           },
           {
@@ -63517,6 +67649,238 @@
             }
           },
           {
+            "id": "animation|'spin' 1s",
+            "cssText": "animation: 1s ease 0s 1 normal none running spin;",
+            "items": [
+              [
+                "animation-duration",
+                "1s"
+              ],
+              [
+                "animation-timing-function",
+                "ease"
+              ],
+              [
+                "animation-delay",
+                "0s"
+              ],
+              [
+                "animation-iteration-count",
+                "1"
+              ],
+              [
+                "animation-direction",
+                "normal"
+              ],
+              [
+                "animation-fill-mode",
+                "none"
+              ],
+              [
+                "animation-play-state",
+                "running"
+              ],
+              [
+                "animation-name",
+                "spin"
+              ],
+              [
+                "animation-timeline",
+                "auto"
+              ],
+              [
+                "animation-range-start",
+                "normal"
+              ],
+              [
+                "animation-range-end",
+                "normal"
+              ]
+            ],
+            "shorthands": {
+              "-webkit-animation": "1s ease 0s 1 normal none running spin",
+              "animation": "1s ease 0s 1 normal none running spin",
+              "animation-range": "normal"
+            }
+          },
+          {
+            "id": "animation|spin 1s 2.5",
+            "cssText": "animation: 1s ease 0s 2.5 normal none running spin;",
+            "items": [
+              [
+                "animation-duration",
+                "1s"
+              ],
+              [
+                "animation-timing-function",
+                "ease"
+              ],
+              [
+                "animation-delay",
+                "0s"
+              ],
+              [
+                "animation-iteration-count",
+                "2.5"
+              ],
+              [
+                "animation-direction",
+                "normal"
+              ],
+              [
+                "animation-fill-mode",
+                "none"
+              ],
+              [
+                "animation-play-state",
+                "running"
+              ],
+              [
+                "animation-name",
+                "spin"
+              ],
+              [
+                "animation-timeline",
+                "auto"
+              ],
+              [
+                "animation-range-start",
+                "normal"
+              ],
+              [
+                "animation-range-end",
+                "normal"
+              ]
+            ],
+            "shorthands": {
+              "-webkit-animation": "1s ease 0s 2.5 normal none running spin",
+              "animation": "1s ease 0s 2.5 normal none running spin",
+              "animation-range": "normal"
+            }
+          },
+          {
+            "id": "animation|spin -1",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "animation|spin 1s infinite infinite",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "animation|spin alternate-reverse backwards",
+            "cssText": "animation: auto ease 0s 1 alternate-reverse backwards running spin;",
+            "items": [
+              [
+                "animation-duration",
+                "auto"
+              ],
+              [
+                "animation-timing-function",
+                "ease"
+              ],
+              [
+                "animation-delay",
+                "0s"
+              ],
+              [
+                "animation-iteration-count",
+                "1"
+              ],
+              [
+                "animation-direction",
+                "alternate-reverse"
+              ],
+              [
+                "animation-fill-mode",
+                "backwards"
+              ],
+              [
+                "animation-play-state",
+                "running"
+              ],
+              [
+                "animation-name",
+                "spin"
+              ],
+              [
+                "animation-timeline",
+                "auto"
+              ],
+              [
+                "animation-range-start",
+                "normal"
+              ],
+              [
+                "animation-range-end",
+                "normal"
+              ]
+            ],
+            "shorthands": {
+              "-webkit-animation": "auto ease 0s 1 alternate-reverse backwards running spin",
+              "animation": "auto ease 0s 1 alternate-reverse backwards running spin",
+              "animation-range": "normal"
+            }
+          },
+          {
+            "id": "animation|1s auto",
+            "cssText": "animation: 1s ease 0s 1 normal none running auto;",
+            "items": [
+              [
+                "animation-duration",
+                "1s"
+              ],
+              [
+                "animation-timing-function",
+                "ease"
+              ],
+              [
+                "animation-delay",
+                "0s"
+              ],
+              [
+                "animation-iteration-count",
+                "1"
+              ],
+              [
+                "animation-direction",
+                "normal"
+              ],
+              [
+                "animation-fill-mode",
+                "none"
+              ],
+              [
+                "animation-play-state",
+                "running"
+              ],
+              [
+                "animation-name",
+                "auto"
+              ],
+              [
+                "animation-timeline",
+                "auto"
+              ],
+              [
+                "animation-range-start",
+                "normal"
+              ],
+              [
+                "animation-range-end",
+                "normal"
+              ]
+            ],
+            "shorthands": {
+              "-webkit-animation": "1s ease 0s 1 normal none running auto",
+              "animation": "1s ease 0s 1 normal none running auto",
+              "animation-range": "normal"
+            }
+          },
+          {
             "id": "animation|inherit",
             "cssText": "animation: inherit;",
             "items": [
@@ -64951,6 +69315,129 @@
               "timeline-trigger-activation-range": "entry 10% exit 90%",
               "timeline-trigger-active-range": "auto"
             }
+          },
+          {
+            "id": "timeline-trigger|--t view() entry 10% exit 90% / cover",
+            "cssText": "timeline-trigger: --t view() entry 10% exit 90% / cover;",
+            "items": [
+              [
+                "timeline-trigger-name",
+                "--t"
+              ],
+              [
+                "timeline-trigger-source",
+                "view()"
+              ],
+              [
+                "timeline-trigger-activation-range-start",
+                "entry 10%"
+              ],
+              [
+                "timeline-trigger-activation-range-end",
+                "exit 90%"
+              ],
+              [
+                "timeline-trigger-active-range-start",
+                "cover"
+              ],
+              [
+                "timeline-trigger-active-range-end",
+                "cover"
+              ]
+            ],
+            "shorthands": {
+              "timeline-trigger": "--t view() entry 10% exit 90% / cover",
+              "timeline-trigger-activation-range": "entry 10% exit 90%",
+              "timeline-trigger-active-range": "cover"
+            }
+          },
+          {
+            "id": "timeline-trigger|--t view() cover / normal contain",
+            "cssText": "timeline-trigger: --t view() cover / normal contain;",
+            "items": [
+              [
+                "timeline-trigger-name",
+                "--t"
+              ],
+              [
+                "timeline-trigger-source",
+                "view()"
+              ],
+              [
+                "timeline-trigger-activation-range-start",
+                "cover"
+              ],
+              [
+                "timeline-trigger-activation-range-end",
+                "cover"
+              ],
+              [
+                "timeline-trigger-active-range-start",
+                "normal"
+              ],
+              [
+                "timeline-trigger-active-range-end",
+                "contain"
+              ]
+            ],
+            "shorthands": {
+              "timeline-trigger": "--t view() cover / normal contain",
+              "timeline-trigger-activation-range": "cover",
+              "timeline-trigger-active-range": "normal contain"
+            }
+          },
+          {
+            "id": "timeline-trigger|--t auto",
+            "cssText": "timeline-trigger: --t;",
+            "items": [
+              [
+                "timeline-trigger-name",
+                "--t"
+              ],
+              [
+                "timeline-trigger-source",
+                "auto"
+              ],
+              [
+                "timeline-trigger-activation-range-start",
+                "normal"
+              ],
+              [
+                "timeline-trigger-activation-range-end",
+                "normal"
+              ],
+              [
+                "timeline-trigger-active-range-start",
+                "auto"
+              ],
+              [
+                "timeline-trigger-active-range-end",
+                "auto"
+              ]
+            ],
+            "shorthands": {
+              "timeline-trigger": "--t",
+              "timeline-trigger-activation-range": "normal",
+              "timeline-trigger-active-range": "auto"
+            }
+          },
+          {
+            "id": "timeline-trigger|--t scroll() cover / cover / cover",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "timeline-trigger|t view()",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "timeline-trigger|--t bogus",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
           },
           {
             "id": "timeline-trigger|inherit",
