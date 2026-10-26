@@ -9,7 +9,7 @@
 // cases of the bugs found while fixing it (one group per issue, labelled). P5b-W6 adds the
 // `min-height` / `max-height` cases of miaskiewicz/turbo-dom#75 item 1
 // (`min-height-margin-*`), zero-area `clip: rect()` boxes of item 2 (`clip-zero-area-*`,
-// `clip-sr-only*`) and cases of the bugs found while fixing them (#76, #77, #78).
+// `clip-sr-only*`) and cases of the bugs found while fixing them (#76, #77, #78, #79).
 //
 // For every case below, Chrome for Testing 156 (viewport 1280x800) records:
 //   - `boxes`: getBoundingClientRect() of every `[data-cid]` element (document order), as
@@ -369,6 +369,16 @@ const CASES = [
   { id: "percent-height-border-box-definite", html: DOC(S("body{margin:0}"), `<div style="height:600px"><div data-cid="w" style="box-sizing:border-box;padding:10px;height:50%"><div data-cid="k" style="height:200px"></div></div><div data-cid="g" style="height:60px"></div></div>`) },
   { id: "percent-height-auto-parent-indefinite", html: DOC(S("body{margin:0}"), `<div><div data-cid="w" style="height:50%"><div data-cid="k" style="height:200px"></div></div><div data-cid="g" style="height:60px"></div></div>`) },
   { id: "percent-min-height-auto-parent-indefinite", html: DOC(S("body{margin:0}"), `<div><div data-cid="w" style="min-height:50%;max-height:10%"><div data-cid="k" style="height:200px"></div></div><div data-cid="g" style="height:60px"></div></div>`) },
+  // P5b-W6, miaskiewicz/turbo-dom#79: a box's intrinsic widths count its in-flow
+  // children's horizontal margins (their margin boxes).
+  { id: "intrinsic-margin-float", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="float:left"><div data-cid="d" style="width:30px;height:15px;margin:0 4px 0 6px"></div></div>`) },
+  { id: "intrinsic-margin-abs", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="position:absolute;left:5px;top:7px"><div data-cid="d" style="width:30px;height:15px;margin:0 4px 0 6px"></div></div>`) },
+  { id: "intrinsic-margin-inline-block", html: DOC(S("body{margin:0}"), `<div style="font-size:0"><div data-cid="c" style="display:inline-block"><div data-cid="d" style="width:30px;height:15px;margin:0 4px 0 6px"></div></div></div>`) },
+  { id: "intrinsic-margin-table-cell", html: DOC(S("body{margin:0}"), `<table style="border-spacing:0"><tr><td data-cid="c" style="padding:0"><div data-cid="d" style="width:30px;height:15px;margin:0 4px 0 6px"></div></td></tr></table>`) },
+  { id: "intrinsic-margin-widest-margin-box", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="float:left"><div data-cid="d" style="width:30px;height:5px;margin-left:20px"></div><div data-cid="e" style="width:45px;height:5px"></div></div>`) },
+  { id: "intrinsic-margin-negative", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="float:left"><div data-cid="d" style="width:30px;height:5px;margin-right:-10px"></div></div>`) },
+  { id: "intrinsic-margin-min-content", html: DOC(S("body{margin:0}"), `<table data-cid="t" style="width:1px;border-spacing:0"><tr><td data-cid="c" style="padding:0"><div data-cid="d" style="width:30px;height:15px;margin:0 5px"></div></td></tr></table>`) },
+  { id: "intrinsic-margin-column-flex", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="display:flex;flex-direction:column;float:left"><div data-cid="d" style="width:30px;height:15px;margin:0 4px 0 6px"></div></div>`) },
 ];
 
 /** The RGB of a 1x1 PNG screenshot (any filter: a single pixel's filter adds 0). */

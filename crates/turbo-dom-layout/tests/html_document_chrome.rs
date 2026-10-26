@@ -103,7 +103,7 @@ fn inline_flex_grid_case(id: &str) -> bool {
 /// The control cases of an open bug, each asserted by its own test (`#[ignore]`d until
 /// its fix lands) and held out of [`html_documents_lay_out_as_chrome_156`].
 fn held_out(id: &str) -> bool {
-    let groups: [fn(&str) -> bool; 20] = [
+    let groups: [fn(&str) -> bool; 21] = [
         auto_table_case,
         inline_flex_grid_case,
         abs_auto_width_case,
@@ -124,6 +124,7 @@ fn held_out(id: &str) -> bool {
         min_max_height_case,
         percent_height_case,
         self_collapsing_first_child_case,
+        intrinsic_margin_case,
     ];
     groups.iter().any(|group| group(id))
 }
@@ -312,6 +313,17 @@ fn self_collapsing_first_child_case(id: &str) -> bool {
 #[test]
 fn self_collapsing_first_child_margins_like_chrome_156() {
     compare_cases(self_collapsing_first_child_case);
+}
+
+/// miaskiewicz/turbo-dom#79: intrinsic widths count the children's horizontal margins.
+fn intrinsic_margin_case(id: &str) -> bool {
+    id.starts_with("intrinsic-margin-")
+}
+
+#[test]
+#[ignore = "turbo-dom#79: fails until the fix"]
+fn intrinsic_widths_count_child_margins_like_chrome_156() {
+    compare_cases(intrinsic_margin_case);
 }
 
 /// miaskiewicz/turbo-dom#69: only legacy `-webkit-*` alignment moves block children.
