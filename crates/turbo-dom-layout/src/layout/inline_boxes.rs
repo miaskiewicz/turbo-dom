@@ -12,42 +12,64 @@ use std::collections::HashMap;
 pub(crate) fn atomic_element(element: &crate::StyledElement) -> bool {
     matches!(&element.tag,crate::Tag::Html(name) if matches!(name.as_str(),"img"|"canvas"|"iframe"|"object"|"embed"|"input"|"select"|"textarea"|"button"|"video"|"audio"|"svg"))
 }
-pub(crate) fn validate(
+/// The elements whose ordinary inline layout the native inline producer does not
+/// support (top/bottom/middle alignment, vertical/RTL writing, `sticky`, a displaced
+/// inline split around a block, a displaced block split out of an inline), each
+/// with its reason. The rest of the document lays out as usual: the snapshot fails
+/// these elements' geometry reads only (miaskiewicz/turbo-surf#31), not the whole
+/// snapshot.
+pub(crate) fn unsupported(
     nodes: &[crate::StyledNode],
+) -> Vec<(&crate::StyledElement, crate::layout_snapshot::SnapshotError)> {
+    let mut out = Vec::new();
+    collect_unsupported(nodes, false, &mut out);
+    out
+}
+type Unsupported<'a> = Vec<(
+    &'a crate::StyledElement,
+    crate::layout_snapshot::SnapshotError,
+)>;
+fn collect_unsupported<'a>(
+    nodes: &'a [crate::StyledNode],
     inside: bool,
-) -> Result<(), crate::layout_snapshot::SnapshotError> {
+    out: &mut Unsupported<'a>,
+) {
     for node in nodes {
         if let crate::StyledNode::Element(element) = node {
-            validate_element(element, inside)?;
+            element_unsupported(element, inside, out);
         }
     }
-    Ok(())
 }
-fn validate_element(
-    element: &crate::StyledElement,
+fn element_unsupported<'a>(
+    element: &'a crate::StyledElement,
     inside: bool,
-) -> Result<(), crate::layout_snapshot::SnapshotError> {
+    out: &mut Unsupported<'a>,
+) {
     let display = super::value::display_of(&element.style);
-    if display == Display::None {
-        return Ok(());
-    }
-    if matches!(&element.tag,crate::Tag::Html(name) if name=="br") {
-        return Ok(());
+    if display == Display::None || matches!(&element.tag,crate::Tag::Html(name) if name=="br") {
+        return;
     }
     if element.style.get("display") == Some("contents") {
-        return validate(&element.children, inside);
+        return collect_unsupported(&element.children, inside, out);
     }
-    validate_rendered_element(element, display, inside)
+    let ordinary = ordinary_inline(element, display);
+    match validate_rendered_element(element, display, inside, ordinary) {
+        Err(error) => out.push((element, error)),
+        Ok(()) => collect_unsupported(
+            &element.children,
+            inline_context(display, inside, ordinary),
+            out,
+        ),
+    }
 }
 fn validate_rendered_element(
     element: &crate::StyledElement,
     display: Display,
     inside: bool,
+    ordinary: bool,
 ) -> Result<(), crate::layout_snapshot::SnapshotError> {
-    let ordinary = ordinary_inline(element, display);
     validate_context(display, inside, ordinary, &element.style)?;
-    validate_displaced_split(element, ordinary)?;
-    validate(&element.children, inline_context(display, inside, ordinary))
+    validate_displaced_split(element, ordinary)
 }
 fn validate_displaced_split(
     element: &crate::StyledElement,
@@ -70,13 +92,18 @@ fn block_in_inline_node(node: &crate::StyledNode) -> bool {
         return false;
     };
     let display = super::value::display_of(&element.style);
-    if display == Display::None {
+    if splits_nothing(display, &element.style) {
         return false;
     }
     if is_block_split(display) {
         return true;
     }
     display == Display::Inline && !atomic_element(element) && contains_block(&element.children)
+}
+/// A box that never splits an inline: one not rendered, or an absolutely positioned
+/// one (it stays in its inline run).
+fn splits_nothing(display: Display, style: &ComputedStyle) -> bool {
+    display == Display::None || super::value::position_of(style).is_out_of_flow()
 }
 fn displaced_inline(style: &ComputedStyle) -> bool {
     style.get("position") == Some("relative")
@@ -106,13 +133,17 @@ fn validate_context(
 fn unsupported_block_split(display: Display, inside: bool, style: &ComputedStyle) -> bool {
     inside && is_block_split(display) && displaced_block(style)
 }
+/// A block split out of an inline that the producer cannot place: a `sticky` or
+/// floated one (an absolutely positioned box is not split out; it stays in the run).
 fn displaced_block(style: &ComputedStyle) -> bool {
-    matches!(style.get("position"), Some("absolute" | "fixed" | "sticky"))
+    style.get("position") == Some("sticky")
         || style.get("float").is_some_and(|value| value != "none")
 }
 fn is_block_split(display: Display) -> bool {
     !matches!(display, Display::Inline | Display::InlineBlock)
 }
+/// An ordinary inline's own unsupported style. `absolute` / `fixed` never reach here:
+/// they blockify ([`super::value::display_of`]).
 fn validate_inline_style(
     style: &ComputedStyle,
 ) -> Result<(), crate::layout_snapshot::SnapshotError> {
@@ -126,7 +157,7 @@ fn validate_inline_style(
     if unsupported_writing(style) {
         return Err(SnapshotError::UnsupportedInlineWriting);
     }
-    if matches!(style.get("position"), Some("absolute" | "fixed" | "sticky")) {
+    if style.get("position") == Some("sticky") {
         return Err(SnapshotError::UnsupportedInlinePosition);
     }
     Ok(())

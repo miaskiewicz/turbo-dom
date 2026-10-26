@@ -65,7 +65,9 @@ of `style/cascade.rs`). Since S3b it uses this engine:
   live-Tree `LiveNavigator` keeps the raw-node semantics exactly, so `matches` /
   `querySelector*` did not change (the live-Tree dual differential against the frozen S3a
   engine: zero divergences). turbo-dom-layout's `style::Navigator` (a `TreeView` scope)
-  implements it: kept nodes only, the `Roots::Detached` cutoff, the `Roots::Document`
+  implements it: element and text nodes (a non-visual element the HTML drive strips is
+  not laid out but still counts as a child and sibling, as in Chrome; turbo-dom#25), the
+  `Roots::Detached` cutoff, the `Roots::Document`
   scope (real `<html>`/`<head>`/`<body>`; the S3b-era `Roots::Shell` match-only shells
   were replaced in P5b, turbo-html2pdf#29),
   `:root` = an element named `html`, marker type keys; `PositionCache` builds each sibling

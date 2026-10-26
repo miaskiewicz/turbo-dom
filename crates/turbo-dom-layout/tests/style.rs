@@ -79,6 +79,53 @@ fn nested_braces_in_at_rule_stay_intact() {
 }
 
 #[test]
+fn at_rules_remember_their_source_position() {
+    let mut sheet = parse_stylesheet(
+        "@media screen { .a { color: red } } .b { color: blue } @page { size: A4 } .c { x: y }",
+    );
+    assert_eq!(sheet.rules.len(), 2);
+    assert_eq!(sheet.at_rule_position(0), 0);
+    assert_eq!(sheet.at_rule_position(1), 1);
+    // An at-rule pushed by hand has no recorded position: it follows every rule.
+    sheet.at_rules.push(sheet.at_rules[1].clone());
+    assert_eq!(sheet.at_rule_position(2), 2);
+    // A recorded position never points past the rules a caller kept.
+    sheet.rules.clear();
+    assert_eq!(sheet.at_rule_position(1), 0);
+}
+
+#[test]
+fn conditional_rules_cascade_at_their_source_position() {
+    // miaskiewicz/turbo-dom#24 item 1 (Chrome 156: crates/turbo-dom-layout/tests/
+    // fixtures/html_document_chrome156.json `media-*` / `supports-*` cases).
+    let order = |css: &str| -> Vec<String> {
+        build_cascade(css, "", TokenSet::default())
+            .rules
+            .iter()
+            .filter(|r| r.level == 1)
+            .map(|r| r.rule.selectors.prelude().to_string())
+            .collect()
+    };
+    assert_eq!(
+        order(
+            "@media screen { .m { a: b } } .p { a: b } @supports (display: grid) { .s { a: b } }"
+        ),
+        [".m", ".p", ".s"]
+    );
+    assert_eq!(
+        order(
+            "@supports (display: block) { @media screen { .n { a: b } } .s { a: b } } .p { a: b }"
+        ),
+        [".n", ".s", ".p"]
+    );
+    // A block whose condition fails keeps nothing, and leaves the order of the rest.
+    assert_eq!(
+        order(".p { a: b } @media print { .x { a: b } } .q { a: b } @font-face { a: b }"),
+        [".p", ".q"]
+    );
+}
+
+#[test]
 fn empty_selector_list_produces_no_rule() {
     let sheet = parse_stylesheet(", { color: red }");
     assert!(sheet.rules.is_empty());

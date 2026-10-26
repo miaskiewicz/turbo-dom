@@ -177,6 +177,7 @@ pub struct LayoutSnapshot {
     collapsed_text_sources: std::collections::BTreeSet<SourceId>,
     html_layout_scale: Option<f32>,
     unsupported_svg_sources: std::collections::BTreeSet<SourceId>,
+    unsupported_inline_sources: BTreeMap<SourceId, SnapshotError>,
 }
 
 impl LayoutSnapshot {
@@ -201,6 +202,16 @@ impl LayoutSnapshot {
     #[must_use]
     pub fn unsupported_svg_source_geometry(&self, source: SourceId) -> bool {
         self.unsupported_svg_sources.contains(&source)
+    }
+
+    /// Why the native HTML inline producer cannot supply this source's geometry: it is
+    /// (inside) an ordinary inline construct it does not support (top/bottom/middle
+    /// alignment, vertical/RTL writing, `sticky`, a displaced block-in-inline split).
+    /// The failure is per element: every other source of the snapshot answers
+    /// (miaskiewicz/turbo-surf#31). `None` for a supported source.
+    #[must_use]
+    pub fn unsupported_inline_geometry(&self, source: SourceId) -> Option<&SnapshotError> {
+        self.unsupported_inline_sources.get(&source)
     }
 
     /// Resolve a candidate text source to a real placed cluster edge. The caller
@@ -499,15 +510,23 @@ fn capture_styled(
     )
 }
 
-fn validate_native_context(
+/// The sources inside each element the native HTML inline producer does not support
+/// (with the element's reason), for its per-element geometry failure.
+fn unsupported_inline_sources(
     styled: &[StyledNode],
+    sources: &sources::BuildSources,
     html_text_metrics: Option<bool>,
-) -> Result<(), SnapshotError> {
-    fixed_containing::validate(styled, false)?;
-    if html_text_metrics == Some(true) {
-        crate::layout::inline_boxes::validate(styled, false)?;
+) -> BTreeMap<SourceId, SnapshotError> {
+    let mut out = BTreeMap::new();
+    if html_text_metrics != Some(true) {
+        return out;
     }
-    Ok(())
+    for (element, error) in crate::layout::inline_boxes::unsupported(styled) {
+        for id in sources.subtree_sources(element) {
+            out.entry(id).or_insert_with(|| error.clone());
+        }
+    }
+    out
 }
 fn validate_capture_viewport(
     inputs: &SnapshotInputs,
@@ -531,7 +550,7 @@ fn capture_styled_with_plan(
 ) -> Result<(LayoutSnapshot, bool), SnapshotError> {
     validate_capture_viewport(inputs, html_text_metrics)?;
     crate::style::set_layout_viewport(inputs.width, inputs.height);
-    validate_native_context(styled, html_text_metrics)?;
+    fixed_containing::validate(styled, false)?;
     let (mut build_sources, mut sources) = sources::prepare(
         styled,
         identities,
@@ -539,6 +558,8 @@ fn capture_styled_with_plan(
         html_text_metrics == Some(true),
     )?;
     build_sources.inline_borders = html_text_metrics == Some(true);
+    let unsupported_inline_sources =
+        unsupported_inline_sources(styled, &build_sources, html_text_metrics);
     let (font_layout_scale, unsupported_svg_sources) = apply_native_plan(&mut build_sources, plan);
     let text_sources = std::mem::take(&mut build_sources.text_sources);
     let original_text_units = text_units::prepare(&text_sources, original_text)?;
@@ -586,6 +607,7 @@ fn capture_styled_with_plan(
         collapsed_text_sources,
         html_layout_scale: font_layout_scale,
         unsupported_svg_sources,
+        unsupported_inline_sources,
     };
     range_projection::place_boxes(&mut snapshot);
     Ok((snapshot, exceeded))

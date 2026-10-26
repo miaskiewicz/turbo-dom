@@ -232,6 +232,8 @@ pub fn snapshot<T>(
 }
 
 #[cfg(test)]
+mod chrome_tests;
+#[cfg(test)]
 pub(crate) mod testing;
 #[cfg(test)]
 mod tests;

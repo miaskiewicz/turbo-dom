@@ -142,3 +142,63 @@ fn navigator_scopes_detached_and_document_matching() {
         "body follows head"
     );
 }
+
+#[test]
+fn stripped_elements_still_count_for_selectors() {
+    // miaskiewicz/turbo-dom#25 item 2 (Chrome 156: tests/fixtures/
+    // html_document_chrome156.json `*-empty` / `*-sibling*` / `has-style-child` cases):
+    // a stripped non-visual element has no styled node, but it is a child, a sibling
+    // and a `:has()` descendant like any other.
+    use turbo_dom_layout::style::{Navigator, SiblingPosition};
+    let tree = parse_html_tree(
+        "<body><div id=s><style></style></div><div id=e><!--c--></div><script></script><p id=p></p><template></template></body>",
+    );
+    let view = TreeView::new(&tree).strip_non_visual(true);
+    let nav = Navigator::new(&view, Roots::Document);
+    let by_id = |id| tree.get_element_by_id(id).unwrap();
+    let body = view.find_element("body").unwrap();
+    assert!(!nav.is_empty(by_id("s")), "a stripped <style> child");
+    assert!(nav.is_empty(by_id("e")), "a comment is not a child");
+    assert!(nav.children(by_id("s")).is_empty(), "nothing to lay out");
+    assert_eq!(nav.children(body).len(), 3, "div, div, p are laid out");
+    assert_eq!(
+        nav.siblings(by_id("p")).len(),
+        5,
+        "script and template count"
+    );
+    assert_eq!(
+        nav.position(by_id("p")),
+        Some(SiblingPosition {
+            index: 4,
+            of_type_index: 1,
+            of_type_total: 1,
+            siblings: 5
+        })
+    );
+    let styled = style_input(
+        &StyleInput {
+            view,
+            roots: Roots::Document,
+        },
+        &turbo_dom_layout::build_cascade(
+            "#s:empty{color:red} div:has(style){width:1px} script + p{height:2px} p:last-child{color:blue}",
+            "",
+            TokenSet::default(),
+        ),
+        &StyleOptions::default(),
+    );
+    let StyledNode::Element(html) = &styled[0] else {
+        panic!("html")
+    };
+    let StyledNode::Element(body) = &html.children[1] else {
+        panic!("body")
+    };
+    let get = |i: usize, property: &str| match &body.children[i] {
+        StyledNode::Element(element) => element.style.get(property).map(str::to_string),
+        StyledNode::Text(_) => None,
+    };
+    assert_eq!(get(0, "color"), None, "#s is not :empty");
+    assert_eq!(get(0, "width").as_deref(), Some("1px"));
+    assert_eq!(get(2, "height").as_deref(), Some("2px"));
+    assert_eq!(get(2, "color"), None, "a template follows the p");
+}

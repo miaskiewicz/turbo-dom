@@ -92,11 +92,28 @@ fn takes_rule_slot(prelude: &str) -> bool {
 }
 
 /// A parsed stylesheet plus any at-rule preludes/bodies kept verbatim for later
-/// phases (e.g. `@page`).
+/// phases (e.g. `@page`). Each at-rule remembers where it sat among the qualified
+/// rules ([`Stylesheet::at_rule_position`]), so the cascade can place a conditional
+/// group rule's contents at its source position.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Stylesheet {
     pub rules: Vec<Rule>,
     pub at_rules: Vec<AtRule>,
+    /// Per at-rule: how many of `rules` precede it in the source.
+    at_rule_positions: Vec<usize>,
+}
+
+impl Stylesheet {
+    /// How many of [`Stylesheet::rules`] precede at-rule `index` in the source. An
+    /// at-rule pushed by hand (no recorded position) counts as following every rule.
+    #[must_use]
+    pub fn at_rule_position(&self, index: usize) -> usize {
+        self.at_rule_positions
+            .get(index)
+            .copied()
+            .unwrap_or(self.rules.len())
+            .min(self.rules.len())
+    }
 }
 
 /// An at-rule kept for a later phase, e.g. `@page { ... }`.
@@ -296,6 +313,7 @@ fn rule_from(chunk: &Chunk) -> Option<Rule> {
 fn absorb(sheet: &mut Stylesheet, chunk: &Chunk) {
     if chunk.is_at_rule {
         sheet.at_rules.push(at_rule_from(chunk));
+        sheet.at_rule_positions.push(sheet.rules.len());
     } else if let Some(rule) = rule_from(chunk) {
         sheet.rules.push(rule);
     }

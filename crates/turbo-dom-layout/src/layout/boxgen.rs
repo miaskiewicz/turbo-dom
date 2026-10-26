@@ -122,6 +122,12 @@ impl LayoutBox {
         self.source_role == SourceRole::NativeIframe
     }
 
+    /// Whether the box is absolutely positioned (`absolute` / `fixed`): out of flow,
+    /// so inline content around it is neither split nor moved by it.
+    pub(crate) fn out_of_flow(&self) -> bool {
+        super::value::position_of(&self.style).is_out_of_flow()
+    }
+
     pub(crate) fn is_replaced(&self) -> bool {
         self.native_iframe()
             || self.svg_viewport.is_some()
@@ -705,6 +711,9 @@ fn native_inline_flow(el: &StyledElement, ids: &mut Ids) -> Level {
     for child in children {
         match child {
             FlowLevel::Inline(items) => run.extend(items),
+            // An absolutely positioned box does not split its inline ancestor: it
+            // stays in the run as a placeholder at its static position.
+            FlowLevel::Block(block) if block.out_of_flow() => run.push(InlineItem::Atomic(block)),
             FlowLevel::Block(block) => {
                 out.push(FlowLevel::Inline(native_inline_run(
                     std::mem::take(&mut run),
@@ -1096,6 +1105,11 @@ fn wrap_runs(
     for level in levels {
         match level {
             FlowLevel::Inline(items) => run.extend(items),
+            // An absolutely positioned box inside inline content stays in that line
+            // run (it neither ends nor splits it); one between blocks stays a block.
+            FlowLevel::Block(b) if b.out_of_flow() && !run_is_blank(&run) => {
+                run.push(InlineItem::Atomic(b));
+            }
             FlowLevel::Block(b) => {
                 flush_run(&mut run, parent_style, ids, &mut out);
                 out.push(b);
@@ -1104,6 +1118,21 @@ fn wrap_runs(
     }
     flush_run(&mut run, parent_style, ids, &mut out);
     out
+}
+
+/// Whether a flow needs a block formatting context: it has an in-flow block-level
+/// child, or absolutely positioned boxes with no inline content to sit in.
+fn needs_block_context(levels: &[FlowLevel]) -> bool {
+    let mut blocks = false;
+    let mut content = false;
+    for level in levels {
+        match level {
+            FlowLevel::Block(b) if !b.out_of_flow() => return true,
+            FlowLevel::Block(_) => blocks = true,
+            FlowLevel::Inline(items) => content |= !run_is_blank(items),
+        }
+    }
+    blocks && !content
 }
 
 fn inline_items_of(levels: Vec<FlowLevel>) -> Vec<InlineItem> {
@@ -1127,7 +1156,7 @@ fn build_flow(children: &[StyledNode], parent_style: &ComputedStyle, ids: &mut I
             append_level(&mut levels, level);
         }
     });
-    if levels.iter().any(|l| matches!(l, FlowLevel::Block(_))) {
+    if needs_block_context(&levels) {
         BoxKind::Block(wrap_runs(levels, parent_style, ids))
     } else {
         BoxKind::Lines(inline_items_of(levels))
