@@ -8,7 +8,7 @@ const { parseSelectorList, parseComplex } = _internal;
 // Parse a single complex selector (no top-level comma) and return its AST.
 const one = (sel) => parseSelectorList(sel)[0];
 // Build a fresh compound AST literal with only the fields a test cares about.
-const cmp = (o = {}) => ({ tag: null, id: null, classes: [], attrs: [], pseudos: [], ...o });
+const cmp = (o = {}) => ({ tag: null, ns: null, id: null, classes: [], attrs: [], pseudos: [], pe: null, ...o });
 // Build a Complex AST literal: a leftmost compound + (combinator, compound) tail
 // pairs. Mirrors the "parse, don't validate" shape `{ first, rest }` the matcher
 // consumes — no parallel compounds[]/combinators[] arrays that can desync.

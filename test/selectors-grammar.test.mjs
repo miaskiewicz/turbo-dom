@@ -46,7 +46,7 @@ test('quoted attribute values: escapes and line continuations', () => {
 });
 
 test('type selectors, namespace prefixes and stray characters', () => {
-  assert.deepEqual(one('*|*'), { tag: '*', ns: 'any', id: null, classes: [], attrs: [], pseudos: [] });
+  assert.deepEqual(one('*|*'), { tag: '*', ns: 'any', id: null, classes: [], attrs: [], pseudos: [], pe: null });
   assert.deepEqual(one('|p').ns, 'none');
   assert.deepEqual(one('_p').tag, '_p');
   assert.deepEqual(one('-p').tag, '-p');

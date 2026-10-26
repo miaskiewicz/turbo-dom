@@ -388,8 +388,8 @@ function tokenize(src) {
 
 // ── parser ──────────────────────────────────────────────────────────────────
 // A Complex is `{ first, rest: [{ combinator, compound }] }`; a compound is
-// `{ tag, id, classes, attrs, pseudos }` (+ `ns` / `pe` when present): `tag` null = no type
-// selector, '*' = universal, else the lowercase name; pseudos are `{ name, arg }` with the
+// `{ tag, ns, id, classes, attrs, pseudos, pe }`: `tag` null = no type selector, '*' =
+// universal, else the lowercase name; `ns` the type's namespace prefix; `pe` the pseudo-element; pseudos are `{ name, arg }` with the
 // parsed argument kept in a non-enumerable `parsed`.
 
 // Parse one pseudo-class (throws on what Chrome rejects). `nested`: inside a pseudo
@@ -472,7 +472,9 @@ function parseComplexTokens(tokens, lo, hi, src, opts) {
     }
     if (sawPe) throw syntax(src, 'combinator after a pseudo-element');
     // a compound
-    const compound = { tag: null, id: null, classes: [], attrs: [], pseudos: [] };
+    // one object shape for every compound (monomorphic matching): `ns` is null / 'any' /
+    // 'none', `pe` the pseudo-element or null
+    const compound = { tag: null, ns: null, id: null, classes: [], attrs: [], pseudos: [], pe: null };
     let parts = 0;
     let pe = null;
     for (; pos < end; pos++) {
@@ -482,7 +484,7 @@ function parseComplexTokens(tokens, lo, hi, src, opts) {
       if (p.k === 'type') {
         if (parts) throw syntax(src, 'type selector after another simple selector');
         compound.tag = p.name === null ? '*' : p.name;
-        if (p.ns) compound.ns = p.ns;
+        compound.ns = p.ns;
       } else if (p.k === 'id') compound.id = p.v;
       else if (p.k === 'class') compound.classes.push(p.v);
       else if (p.k === 'attr') compound.attrs.push(p.attr);
@@ -1015,14 +1017,25 @@ function scopeOf(root) {
 }
 
 function queryWalk(root, selector, first) {
-  const simple = simpleMatcher(selector);
   const out = [];
-  let test = simple;
-  if (!simple) {
-    const list = parseSelectorList(selector);
-    const single = list.length === 1 ? list[0] : null;
-    test = single ? (c) => matchComplex(c, single) : (c) => list.some((cx) => matchComplex(c, cx));
+  const simple = simpleMatcher(selector);
+  if (simple) {
+    // no pseudo-classes in a simple selector, so no :scope to set
+    const visit = (node) => {
+      const kids = rawChildren(node);
+      for (let i = 0; i < kids.length; i++) {
+        const c = kids[i];
+        if (c.nodeType !== 1) continue;
+        if (simple(c)) { out.push(c); if (first) return true; }
+        if (visit(c)) return true;
+      }
+      return false;
+    };
+    visit(root);
+    return out;
   }
+  const list = parseSelectorList(selector);
+  const single = list.length === 1 ? list[0] : null;
   const saved = currentScope;
   currentScope = scopeOf(root);
   try {
@@ -1031,7 +1044,7 @@ function queryWalk(root, selector, first) {
       for (let i = 0; i < kids.length; i++) {
         const c = kids[i];
         if (c.nodeType !== 1) continue;
-        if (test(c)) { out.push(c); if (first) return true; }
+        if (single ? matchComplex(c, single) : list.some((cx) => matchComplex(c, cx))) { out.push(c); if (first) return true; }
         if (visit(c)) return true;
       }
       return false;
