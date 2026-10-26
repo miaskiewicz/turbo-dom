@@ -7,6 +7,15 @@ at the time); this file reconstructs them from history.
 
 ## [Unreleased]
 
+### Fixed — custom element reactions in independent documents (P5b-X5, miaskiewicz/turbo-dom#54, Chrome 156 control)
+- turbo-dom-browser-env: in a document installed with `install_independent_html`,
+  `removeChild()` / `remove()` (and every other call that mutates the tree directly)
+  used to run the `disconnectedCallback`s they queued during the *next* DOM call, or never
+  when the removal was the last call. The mutation flush checked only the current document;
+  it now also delivers another (independent) document's recorded mutations before the call
+  returns, as in Chrome. Control: section `removal` of
+  `src/dom_reactions_names_chrome156.json`.
+
 ### Fixed — `getComputedStyle(el, pseudoElt)` (P5b-X5, miaskiewicz/turbo-dom#47, Chrome 156 control)
 - turbo-dom-browser-env: `pseudoElt` used to be ignored, so every read returned the element's
   style. `::before` / `::after` (also `:before` / `:after` and a bare `before` / `after`,

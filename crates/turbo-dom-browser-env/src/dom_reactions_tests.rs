@@ -193,7 +193,6 @@ fn dom_adoption_reactions_match_chrome156_control() {
 /// turbo-dom#54: in an independently installed document (this harness), removeChild() /
 /// remove() / replaceChild() run their disconnectedCallbacks before they return.
 #[test]
-#[ignore = "turbo-dom#54: fails until the fix"]
 fn independent_document_reactions_run_before_the_call_returns() {
     let (binding, chrome) = run(NAMES_PROBE, NAMES_CASES, NAMES_CONTROL);
     let mut found = Vec::new();

@@ -59,6 +59,7 @@ select_element_tests.rs: P5b turbo-dom#20 Option() factory + options-collection 
 browser_env.js: P5b-X2 turbo-dom#23 drops the JS Image() fallback (own src + fake onload); Image() is native in html_image.js; P5b-X3 turbo-surf#36 getComputedStyle UA display / position / visibility defaults, no eager <title>
 document_basics.js: P5b turbo-dom#20 live collections pass the definer's should-throw mode to setIndex
 html_popover.rs: P5b turbo-dom#18 internal selector paths anchor with :not(* > *) instead of :root (6a23551)
+mutation_observers.rs: P5b-X5 turbo-dom#54 flush delivers an independently installed document's recorded mutations when the call returns
 dom_implementation_tests.rs: P5b the dom-implementation collector must label its control like the committed one
 "
 # Crate-owned files under src/ that were not part of the move.
