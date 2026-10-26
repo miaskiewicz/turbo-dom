@@ -1317,6 +1317,1193 @@
    ]
   },
   {
+   "id": "fill-style-css-colours",
+   "size": [
+    64,
+    64
+   ],
+   "ops": [
+    [
+     "fillRect",
+     [
+      0,
+      0,
+      8,
+      8
+     ],
+     "#808080",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      0,
+      0,
+      8,
+      8
+     ],
+     "hsl(0, 100%, 50%)",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      8,
+      0,
+      8,
+      8
+     ],
+     "#808080",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      8,
+      0,
+      8,
+      8
+     ],
+     "hsl(120deg 100% 25%)",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      16,
+      0,
+      8,
+      8
+     ],
+     "#808080",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      16,
+      0,
+      8,
+      8
+     ],
+     "hsla(240, 100%, 50%, 0.5)",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      24,
+      0,
+      8,
+      8
+     ],
+     "#808080",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      24,
+      0,
+      8,
+      8
+     ],
+     "hsl(60 100% 50% / 25%)",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      32,
+      0,
+      8,
+      8
+     ],
+     "#808080",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      32,
+      0,
+      8,
+      8
+     ],
+     "hsl(-120, 100%, 50%)",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      40,
+      0,
+      8,
+      8
+     ],
+     "#808080",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      40,
+      0,
+      8,
+      8
+     ],
+     "hsl(480, 100%, 50%)",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      48,
+      0,
+      8,
+      8
+     ],
+     "#808080",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      48,
+      0,
+      8,
+      8
+     ],
+     "hsl(0, 0%, 75%)",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      56,
+      0,
+      8,
+      8
+     ],
+     "#808080",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      56,
+      0,
+      8,
+      8
+     ],
+     "hsl(200, 60%, 70%)",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      0,
+      8,
+      8,
+      8
+     ],
+     "#808080",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      0,
+      8,
+      8,
+      8
+     ],
+     "rgb(50%, 0%, 100%)",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      8,
+      8,
+      8,
+      8
+     ],
+     "#808080",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      8,
+      8,
+      8,
+      8
+     ],
+     "rgb(10% 20% 30% / 50%)",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      16,
+      8,
+      8,
+      8
+     ],
+     "#808080",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      16,
+      8,
+      8,
+      8
+     ],
+     "rgba(100%, 50%, 0%, 0.25)",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      24,
+      8,
+      8,
+      8
+     ],
+     "#808080",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      24,
+      8,
+      8,
+      8
+     ],
+     "rgb(12.9, 100.5, 200.4)",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      32,
+      8,
+      8,
+      8
+     ],
+     "#808080",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      32,
+      8,
+      8,
+      8
+     ],
+     "rebeccapurple",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      40,
+      8,
+      8,
+      8
+     ],
+     "#808080",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      40,
+      8,
+      8,
+      8
+     ],
+     "CornflowerBlue",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      48,
+      8,
+      8,
+      8
+     ],
+     "#808080",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      48,
+      8,
+      8,
+      8
+     ],
+     "darkslategray",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      56,
+      8,
+      8,
+      8
+     ],
+     "#808080",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      56,
+      8,
+      8,
+      8
+     ],
+     "LightGoldenRodYellow",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      0,
+      16,
+      8,
+      8
+     ],
+     "#808080",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      0,
+      16,
+      8,
+      8
+     ],
+     "navy",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      8,
+      16,
+      8,
+      8
+     ],
+     "#808080",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      8,
+      16,
+      8,
+      8
+     ],
+     "teal",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      16,
+      16,
+      8,
+      8
+     ],
+     "#808080",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      16,
+      16,
+      8,
+      8
+     ],
+     "olive",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      24,
+      16,
+      8,
+      8
+     ],
+     "#808080",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      24,
+      16,
+      8,
+      8
+     ],
+     "maroon",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      32,
+      16,
+      8,
+      8
+     ],
+     "#808080",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      32,
+      16,
+      8,
+      8
+     ],
+     "silver",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      40,
+      16,
+      8,
+      8
+     ],
+     "#808080",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      40,
+      16,
+      8,
+      8
+     ],
+     "purple",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      48,
+      16,
+      8,
+      8
+     ],
+     "#808080",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      48,
+      16,
+      8,
+      8
+     ],
+     "indigo",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      56,
+      16,
+      8,
+      8
+     ],
+     "#808080",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      56,
+      16,
+      8,
+      8
+     ],
+     "tomato",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      0,
+      24,
+      8,
+      8
+     ],
+     "#808080",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      0,
+      24,
+      8,
+      8
+     ],
+     "hsl(0, 100%)",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      8,
+      24,
+      8,
+      8
+     ],
+     "#808080",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      8,
+      24,
+      8,
+      8
+     ],
+     "hsl(x, 100%, 50%)",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      16,
+      24,
+      8,
+      8
+     ],
+     "#808080",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      16,
+      24,
+      8,
+      8
+     ],
+     "rgb(1, 2, 3, 4, 5)",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      24,
+      24,
+      8,
+      8
+     ],
+     "#808080",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      24,
+      24,
+      8,
+      8
+     ],
+     "notacolour",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ]
+   ],
+   "probes": [
+    {
+     "x": 4,
+     "y": 4,
+     "rgba": [
+      255,
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 12,
+     "y": 4,
+     "rgba": [
+      0,
+      128,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 20,
+     "y": 4,
+     "rgba": [
+      64,
+      64,
+      192,
+      255
+     ]
+    },
+    {
+     "x": 28,
+     "y": 4,
+     "rgba": [
+      160,
+      160,
+      96,
+      255
+     ]
+    },
+    {
+     "x": 36,
+     "y": 4,
+     "rgba": [
+      0,
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 44,
+     "y": 4,
+     "rgba": [
+      0,
+      255,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 52,
+     "y": 4,
+     "rgba": [
+      191,
+      191,
+      191,
+      255
+     ]
+    },
+    {
+     "x": 60,
+     "y": 4,
+     "rgba": [
+      133,
+      194,
+      224,
+      255
+     ]
+    },
+    {
+     "x": 4,
+     "y": 12,
+     "rgba": [
+      128,
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 12,
+     "y": 12,
+     "rgba": [
+      77,
+      90,
+      103,
+      255
+     ]
+    },
+    {
+     "x": 20,
+     "y": 12,
+     "rgba": [
+      160,
+      128,
+      96,
+      255
+     ]
+    },
+    {
+     "x": 28,
+     "y": 12,
+     "rgba": [
+      13,
+      101,
+      200,
+      255
+     ]
+    },
+    {
+     "x": 36,
+     "y": 12,
+     "rgba": [
+      102,
+      51,
+      153,
+      255
+     ]
+    },
+    {
+     "x": 44,
+     "y": 12,
+     "rgba": [
+      100,
+      149,
+      237,
+      255
+     ]
+    },
+    {
+     "x": 52,
+     "y": 12,
+     "rgba": [
+      47,
+      79,
+      79,
+      255
+     ]
+    },
+    {
+     "x": 60,
+     "y": 12,
+     "rgba": [
+      250,
+      250,
+      210,
+      255
+     ]
+    },
+    {
+     "x": 4,
+     "y": 20,
+     "rgba": [
+      0,
+      0,
+      128,
+      255
+     ]
+    },
+    {
+     "x": 12,
+     "y": 20,
+     "rgba": [
+      0,
+      128,
+      128,
+      255
+     ]
+    },
+    {
+     "x": 20,
+     "y": 20,
+     "rgba": [
+      128,
+      128,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 28,
+     "y": 20,
+     "rgba": [
+      128,
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 36,
+     "y": 20,
+     "rgba": [
+      192,
+      192,
+      192,
+      255
+     ]
+    },
+    {
+     "x": 44,
+     "y": 20,
+     "rgba": [
+      128,
+      0,
+      128,
+      255
+     ]
+    },
+    {
+     "x": 52,
+     "y": 20,
+     "rgba": [
+      75,
+      0,
+      130,
+      255
+     ]
+    },
+    {
+     "x": 60,
+     "y": 20,
+     "rgba": [
+      255,
+      99,
+      71,
+      255
+     ]
+    },
+    {
+     "x": 4,
+     "y": 28,
+     "rgba": [
+      128,
+      128,
+      128,
+      255
+     ]
+    },
+    {
+     "x": 12,
+     "y": 28,
+     "rgba": [
+      128,
+      128,
+      128,
+      255
+     ]
+    },
+    {
+     "x": 20,
+     "y": 28,
+     "rgba": [
+      128,
+      128,
+      128,
+      255
+     ]
+    },
+    {
+     "x": 28,
+     "y": 28,
+     "rgba": [
+      128,
+      128,
+      128,
+      255
+     ]
+    }
+   ]
+  },
+  {
    "id": "transforms",
    "size": [
     96,

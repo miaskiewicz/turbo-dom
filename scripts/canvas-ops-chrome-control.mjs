@@ -64,10 +64,23 @@ const COLOURS = [
   "orange", "  RED  ", "#ABCDEF", "#12345", "rgb(1,2)", "#ggg",
   "rgb(300, -5, 128)", "rgba(0,0,255,2)", "rgb(10 20 30 / 0.25)",
 ];
-const colourOps = COLOURS.flatMap((c, i) => {
-  const [x, y] = cell(i).map((v) => v - 4);
-  return [op("fillRect", [x, y, 8, 8], { fill: "#808080" }), op("fillRect", [x, y, 8, 8], { fill: c })];
-});
+const cellOps = (colours) =>
+  colours.flatMap((c, i) => {
+    const [x, y] = cell(i).map((v) => v - 4);
+    return [op("fillRect", [x, y, 8, 8], { fill: "#808080" }), op("fillRect", [x, y, 8, 8], { fill: c })];
+  });
+const colourOps = cellOps(COLOURS);
+// CSS colour syntaxes beyond those (miaskiewicz/turbo-dom#95): hsl()/hsla() (comma, space and
+// slash forms, `deg` hues, hue wrap), percentage rgb() channels and alpha, fractional channels
+// (rounded), the full named-colour set in any case, and syntaxes Chrome rejects.
+const CSS_COLOURS = [
+  "hsl(0, 100%, 50%)", "hsl(120deg 100% 25%)", "hsla(240, 100%, 50%, 0.5)", "hsl(60 100% 50% / 25%)",
+  "hsl(-120, 100%, 50%)", "hsl(480, 100%, 50%)", "hsl(0, 0%, 75%)", "hsl(200, 60%, 70%)",
+  "rgb(50%, 0%, 100%)", "rgb(10% 20% 30% / 50%)", "rgba(100%, 50%, 0%, 0.25)", "rgb(12.9, 100.5, 200.4)",
+  "rebeccapurple", "CornflowerBlue", "darkslategray", "LightGoldenRodYellow", "navy", "teal",
+  "olive", "maroon", "silver", "purple", "indigo", "tomato",
+  "hsl(0, 100%)", "hsl(x, 100%, 50%)", "rgb(1, 2, 3, 4, 5)", "notacolour",
+];
 
 const CASES = [
   {
@@ -75,6 +88,12 @@ const CASES = [
     size: [64, 64],
     ops: colourOps,
     probes: COLOURS.map((_, i) => cell(i)),
+  },
+  {
+    id: "fill-style-css-colours",
+    size: [64, 64],
+    ops: cellOps(CSS_COLOURS),
+    probes: CSS_COLOURS.map((_, i) => cell(i)),
   },
   {
     // save/restore around a translate; scale; rotate; transform; setTransform; resetTransform.
