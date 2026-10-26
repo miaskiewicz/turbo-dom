@@ -7,6 +7,29 @@ at the time); this file reconstructs them from history.
 
 ## [Unreleased]
 
+### Fixed — UA-styled pseudo-elements in `getComputedStyle` (P5b-X6, miaskiewicz/turbo-dom#47, Chrome 156 control)
+- turbo-dom-browser-env: `getComputedStyle(el, pseudoElt)` computed only `::before`,
+  `::after` and `::backdrop`; the other pseudo-elements read the element's style. Every
+  pseudo-element Chrome 156 computes now gets its html.css values, the author rules that
+  select it, and inheritance from the element:
+  - `::marker` (`inline-block`, or `inline` when inside; `white-space: pre`; marker
+    properties only);
+  - `::placeholder`, `::file-selector-button`, `::details-content`, `::picker(select)` on
+    the elements that have them;
+  - `::first-line` / `::first-letter` (only the properties they accept);
+  - the highlights (`::selection`, `::highlight()`, `::spelling-error`, …), with highlight
+    inheritance once a rule of their type applies;
+  - `::checkmark`, `::picker-icon`, `::scroll-marker-group`, `::column`,
+    `::-webkit-scrollbar*`, `::scroll-button()`, and the view-transition pseudo-elements
+    (inheriting along their tree).
+- `::scroll-marker` and invalid arguments read an empty declaration. `::cue` and unknown
+  `-webkit-` / `-internal-` names read the element. Author `::-webkit-input-placeholder` /
+  `::-webkit-file-upload-button` rules apply as their standard names. Strings in `content`
+  serialize double-quoted on every pseudo-element.
+- Control: cases `pseudo-ua-forms` / `pseudo-ua` of `src/computed_defaults_chrome156.json`.
+  Chrome reuses the first unstyled highlight read's color for later elements, so those
+  colors are not compared.
+
 ### Fixed — form control fonts in `getComputedStyle` (P5b-X6, miaskiewicz/turbo-dom#61, Chrome 156 control)
 - turbo-dom-browser-env: only `<button>` had Chrome's form-control UA font; `<input>`,
   `<select>` and `<textarea>` reported the inherited font (`16px Times`, or the parent's).

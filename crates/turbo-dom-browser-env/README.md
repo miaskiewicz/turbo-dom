@@ -174,8 +174,38 @@ inheritance from the element. Control: case `dialog-top-layer` of the same file.
 the pseudo-element (own rules, inheritance from the element, `display: inline`
 blockified in flex / grid containers, `content: none` unless set), an invalid
 pseudo-element returns an empty declaration, and a string without a leading colon
-reads the element. Other UA-styled pseudo-elements (`::marker`, `::placeholder`,
-`::first-line`, …) still read the element. Control: case `pseudo-elements`.
+reads the element. Control: case `pseudo-elements`.
+
+The UA-styled pseudo-elements compute too (cases `pseudo-ua-forms` / `pseudo-ua`):
+each takes Chrome's html.css values, the author rules that select it — only the
+properties it accepts — and inherits from the element:
+- `::marker`: `inline-block` (`inline` when `list-style-position` is `inside`, as for
+  `summary`), `white-space: pre` (inherited when inside), `tabular-nums`, `isolate`;
+  only font / color / content / text properties apply.
+- `::placeholder` (text inputs and textarea with a `placeholder`): `block`,
+  `rgb(117, 117, 117)`, `pointer-events: none !important`; inputs also `white-space: pre`,
+  `overflow: hidden`.
+- `::file-selector-button` (file inputs): the button box (`rgb(239, 239, 239)`,
+  `1px 6px` padding, `2px outset` border, `margin-inline-end: 4px`, …).
+- `::details-content` (details): `block`, `content-visibility: hidden` unless open.
+- `::picker(select)`: `none` / `fixed` / `overflow: auto`; `::picker-icon` on select is
+  `block`.
+- `::first-line` / `::first-letter`: font / color / text / opacity / visibility
+  properties (plus float, margins, padding and borders on `::first-letter`).
+- highlights (`::selection`, `::highlight()`, `::spelling-error`, `::grammar-error`,
+  `::target-text`, `::search-text`): `inline` and `visible`, color / background /
+  decoration properties only. A highlight with a rule of its type on the element or an
+  ancestor inherits from the parent's highlight; otherwise it takes the element's color.
+- `::checkmark` / `::picker-icon` (`content: none`), `::scroll-marker-group` (`block`),
+  `::column`, `::-webkit-scrollbar*`, `::scroll-button()`, and the view-transition tree
+  (`block`, `absolute`, its insets, inheriting along `::view-transition` > `-group()` >
+  `-image-pair()` > `-old()` / `-new()`).
+
+Element-backed pseudo-elements on other elements, and `::checkmark` and the like, are
+plain `inline` pseudo-elements; author rules for the element-backed ones do not reach
+them. `::scroll-marker` and invalid arguments (`::highlight(*)`, `::picker(foo)`, …)
+read an empty declaration. `::cue` and unknown `-webkit-` / `-internal-` names read the
+element.
 
 ### Custom element state (`:defined`)
 

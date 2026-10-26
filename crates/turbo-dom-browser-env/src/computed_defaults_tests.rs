@@ -141,7 +141,6 @@ fn pseudo_elements_match_chrome156_control() {
 /// (highlights from the parent's highlight), and the forms that read blank or the element
 /// (case `pseudo-ua`).
 #[test]
-#[ignore = "turbo-dom#47: fails until the fix"]
 fn pseudo_element_ua_styles_match_chrome156_control() {
     let found = mismatches(|id| id == "pseudo-ua");
     assert!(
@@ -157,7 +156,6 @@ fn pseudo_element_ua_styles_match_chrome156_control() {
 /// (`::cue`, unknown `-webkit-` / `-internal-` names) — on a div, a list item and an input
 /// (case `pseudo-ua-forms`).
 #[test]
-#[ignore = "turbo-dom#47: fails until the fix"]
 fn pseudo_element_forms_match_chrome156_control() {
     let found = mismatches(|id| id == "pseudo-ua-forms");
     assert!(

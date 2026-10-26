@@ -98,12 +98,12 @@
   function computedSnapshotValue(style,name){var record=declarationRecords.get(style),value=record&&cssMapGet(record.values,name);return value?value.text:'';}
   // Keep inherited unitless line-height as a factor: its public computed px value
   // alone cannot describe inheritance after a descendant changes font-size.
-  function computedFonts(decl,element,parentStyle,connected,pseudo){
+  function computedFonts(decl,element,parentStyle,connected,pseudo,parentSnapshot){
     var context=computedFontContext(element),parent=context&&context[2],root=context&&context[3];
-    // A pseudo-element's parent is its originating element.
+    // A pseudo-element's parent is its originating element (or its parent pseudo-element).
     if(pseudo&&context){parent=element;root=null;}
     var initialFamily=context?context[0]:'',initialSize=context?context[1]:16;
-    var inherited=parent?declarationRecords.get(parentStyle(parent)).fontState:null;
+    var inherited=parent?declarationRecords.get(parentSnapshot||parentStyle(parent)).fontState:null;
     var initial={__proto__:null,rootSize:initialSize,family:initialFamily,size:initialSize,style:'normal',weight:'400',stretch:'100%',caps:'normal',line:{__proto__:null,kind:'normal',value:0}};
     inherited=inherited||initial;
     function raw(name,inheritedValue,initialValue){var value=decl[name],key=typeof value==='string'?fontLower(value):value;return !value||/^(inherit|unset|revert|revert-layer)$/.test(key)?inheritedValue:key==='initial'?initialValue:value;}
@@ -163,10 +163,15 @@
     if(pseudo===null)return __ns.makeComputedStyleDeclaration({},null,null);
     return computeStyleSnapshot(el,new computedSnapshotMap(),undefined,pseudo||undefined);
   };
-  // Chrome 156 pseudo-elements without arguments, and the functional ones getComputedStyle accepts.
-  var computedPseudoNames={__proto__:null},computedPseudoFunctions={__proto__:null};
-  'after backdrop before checkmark column cue details-content file-selector-button first-letter first-line grammar-error marker picker-icon placeholder scroll-marker scroll-marker-group search-text selection spelling-error target-text view-transition'.split(' ').forEach(function(name){computedPseudoNames[name]=true;});
-  'cue highlight picker scroll-button view-transition-group view-transition-image-pair view-transition-new view-transition-old'.split(' ').forEach(function(name){computedPseudoFunctions[name]=true;});
+  // Chrome 156 pseudo-elements getComputedStyle computes, without arguments (turbo-dom#47).
+  // ::cue and the unknown -webkit- / -internal- names read the element; ::scroll-marker (no
+  // box without a scroll-marker-group) and the rest read an empty declaration.
+  var computedPseudoNames={__proto__:null};
+  'after backdrop before checkmark column details-content file-selector-button first-letter first-line grammar-error marker picker-icon placeholder scroll-marker-group search-text selection spelling-error target-text view-transition -webkit-scrollbar -webkit-scrollbar-thumb -webkit-scrollbar-track -webkit-scrollbar-button -webkit-scrollbar-corner -webkit-scrollbar-track-piece -webkit-resizer'.split(' ').forEach(function(name){computedPseudoNames[name]=true;});
+  // Functional pseudo-elements and the argument each accepts: a name (not `*`), `select`, or
+  // a scroll direction / `*`.
+  var computedPseudoFunctions={__proto__:null,'highlight':'name','view-transition-group':'name','view-transition-image-pair':'name','view-transition-new':'name','view-transition-old':'name','picker':'select','scroll-button':'direction'};
+  var scrollButtonDirections={__proto__:null,'*':1,'up':1,'down':1,'left':1,'right':1,'block-start':1,'block-end':1,'inline-start':1,'inline-end':1};
   // The CSS identifier at the start of `text` (escapes decoded, ASCII-lowercased) and its length.
   function cssIdentifierPrefix(text){
     var at=0,name='',start=true;
@@ -187,25 +192,31 @@
     return {name:name.replace(/[A-Z]/g,function(c){return c.toLowerCase();}),length:at};
   }
   // The pseudo-element a getComputedStyle(element, pseudoElt) read targets (turbo-dom#30, #47),
-  // per Chrome 156: '' reads the element (no argument, or a string without a leading colon that
-  // is not a bare before / after), null is an invalid pseudo-element (an empty declaration),
-  // else the pseudo-element the binding computes. A valid pseudo-element the binding does not
-  // model yet (::marker, ::placeholder, ...) also reads the element.
+  // per Chrome 156: '' reads the element (no argument, a string without a leading colon that
+  // is not a bare before / after, ::cue, unknown -webkit- / -internal- names), null is an
+  // empty declaration (invalid, or a form Chrome computes no style for), else the
+  // pseudo-element: its lowercase name, functional ones with their argument (`highlight(x)`,
+  // `picker(select)`).
   function computedPseudoTarget(value){
     if(value===undefined||value===null)return '';
     var text=(''+value).replace(/\/\*[\s\S]*?(?:\*\/|$)/g,'');
     var colons=0;while(text[colons]===':')colons++;
     var rest=text.slice(colons),ident=cssIdentifierPrefix(rest),name=ident&&ident.name;
-    var modelled=name==='before'||name==='after';
-    if(colons===0){if(!ident)return '';if(ident.length<rest.length)return null;return modelled?name:'';}
+    var bare=name==='before'||name==='after';
+    if(colons===0){if(!ident)return '';if(ident.length<rest.length)return null;return bare?name:'';}
     if(colons>2||!ident)return null;
     if(ident.length<rest.length){
-      if(colons!==2||rest[ident.length]!=='('||rest[rest.length-1]!==')'||!computedPseudoFunctions[name])return null;
-      return '';
+      var kind=computedPseudoFunctions[name];
+      if(colons!==2||rest[ident.length]!=='('||rest[rest.length-1]!==')'||!kind)return null;
+      var argument=rest.slice(ident.length+1,-1).replace(/^[ \t\n\r\f]+|[ \t\n\r\f]+$/g,''),word=cssIdentifierPrefix(argument);
+      if(kind==='direction'){var direction=argument==='*'?'*':word&&word.length===argument.length?word.name:'';return scrollButtonDirections[direction]?name+'('+direction+')':null;}
+      if(!word||word.length!==argument.length)return null;
+      if(kind==='select')return word.name==='select'?name+'(select)':null;
+      return name+'('+argument+')';
     }
-    if(colons===1)return modelled?name:name==='first-line'||name==='first-letter'?'':null;
-    if(modelled||name==='backdrop')return name;
-    return computedPseudoNames[name]||name.slice(0,8)==='-webkit-'?'':null;
+    if(colons===1)return bare||name==='first-line'||name==='first-letter'?name:null;
+    if(computedPseudoNames[name])return name;
+    return name==='cue'||name.slice(0,8)==='-webkit-'||name.slice(0,10)==='-internal-'?'':null;
   }
   // Page-replaceable numeric and string intrinsics never participate in this read.
   var cssZoomFround=Math.fround,cssZoomExec=RegExp.prototype.exec,cssZoomTrim=String.prototype.trim;
@@ -310,18 +321,150 @@
     items.push(text.slice(start));
     return items;
   }
+  // Selector aliases of pseudo-elements (`::-webkit-input-placeholder` is `::placeholder`).
+  var pseudoSelectorAliases = { __proto__: null, '-webkit-input-placeholder': 'placeholder', '-webkit-file-upload-button': 'file-selector-button' };
   // Does a style rule's selector list select `pseudo` of `el`: some complex selector ends with
-  // ::pseudo (or the legacy single-colon form for before / after) and its originating part
-  // matches `el`.
+  // ::pseudo (the legacy single-colon form for before / after / first-line / first-letter; a
+  // functional pseudo-element's argument must match, `*` matching every one) and its
+  // originating part matches `el`. `pseudo` is a computedPseudoTarget name, or a predicate
+  // over the selector's pseudo-element name.
   function pseudoRuleMatches(el, selectorText, pseudo){
     var items = selectorListItems(String(selectorText));
+    var wanted = typeof pseudo === 'string' ? /^([a-z-]+)(?:\((.*)\))?$/.exec(pseudo) : null;
     for (var i = 0; i < items.length; i++) {
-      var item = items[i].trim(), match = /(::?)([A-Za-z-]+)$/.exec(item);
-      if (!match || match[2].toLowerCase() !== pseudo || (match[1] === ':' && pseudo === 'backdrop')) continue;
-      if (match.index > 0 && item[match.index - 1] === '\\') continue;
+      var item = items[i].trim(), match = /(::?)([A-Za-z-]+)(?:\(\s*([^()]*?)\s*\))?$/.exec(item);
+      if (!match || match.index > 0 && item[match.index - 1] === '\\') continue;
+      var name = match[2].toLowerCase(), argument = match[3];
+      name = pseudoSelectorAliases[name] || name;
+      if (match[1] === ':' && !/^(before|after|first-line|first-letter)$/.test(name)) continue;
+      if (wanted) {
+        if (name !== wanted[1] || (argument === undefined) !== (wanted[2] === undefined)) continue;
+        if (argument !== undefined && argument !== '*' && wanted[2] !== '*') {
+          var same = wanted[1] === 'picker' || wanted[1] === 'scroll-button' ? argument.toLowerCase() === wanted[2] : argument === wanted[2];
+          if (!same) continue;
+        }
+      } else if (!pseudo(name)) continue;
       var origin = item.slice(0, match.index);
       if (origin === '' || /[\s>+~]$/.test(origin)) origin += '*';
       if (computedNativeMatches(el, origin)) return true;
+    }
+    return false;
+  }
+  // turbo-dom#47: how a UA-styled pseudo-element computes in Chrome 156. Each kind lists the
+  // author properties it accepts (null: all), its html.css declarations (`ua`, and
+  // `important` ones authors cannot override), its display / position, whether a flex / grid
+  // container blockifies it, and whether author rules reach it at all (element-backed
+  // pseudo-elements exist only on their elements: ::placeholder on text inputs / textarea with a
+  // placeholder, ::file-selector-button on file inputs, ::details-content on details,
+  // ::picker(select) on select).
+  function cssPropertySet(text){ var set = { __proto__: null }; text.split(' ').forEach(function(name){ set[name] = true; }); return set; }
+  var pseudoFontProperties = 'font font-family font-size font-style font-variant font-variant-caps font-variant-numeric font-variant-ligatures font-variant-east-asian font-variant-alternates font-variant-position font-weight font-stretch font-feature-settings font-kerning font-optical-sizing font-size-adjust font-synthesis font-variation-settings font-palette line-height letter-spacing word-spacing';
+  var pseudoAnimationProperties = 'animation animation-name animation-duration animation-timing-function animation-delay animation-iteration-count animation-direction animation-fill-mode animation-play-state transition transition-property transition-duration transition-timing-function transition-delay transition-behavior';
+  var pseudoTextProperties = 'background background-color background-image background-position background-repeat background-size background-attachment background-clip background-origin text-decoration text-decoration-line text-decoration-style text-decoration-color text-decoration-thickness text-underline-offset text-underline-position text-emphasis text-emphasis-color text-emphasis-style text-emphasis-position text-shadow text-transform vertical-align -webkit-text-fill-color -webkit-text-stroke -webkit-text-stroke-color -webkit-text-stroke-width';
+  var markerProperties = cssPropertySet(pseudoFontProperties + ' ' + pseudoAnimationProperties + ' color content direction unicode-bidi text-transform tab-size text-combine-upright text-emphasis text-emphasis-color text-emphasis-position text-emphasis-style text-shadow');
+  var firstLineProperties = cssPropertySet(pseudoFontProperties + ' ' + pseudoTextProperties + ' color opacity visibility');
+  var highlightProperties = cssPropertySet('color background-color text-decoration text-decoration-line text-decoration-style text-decoration-color text-decoration-thickness text-underline-offset text-shadow text-emphasis-color -webkit-text-fill-color -webkit-text-stroke -webkit-text-stroke-color -webkit-text-stroke-width stroke-color fill-color stroke-width');
+  var highlightPseudoNames = cssPropertySet('selection highlight spelling-error grammar-error target-text search-text');
+  function pseudoAccepts(kind){
+    if (kind === 'marker') return function(name){ return markerProperties[name] === true; };
+    if (kind === 'first-line') return function(name){ return firstLineProperties[name] === true; };
+    if (kind === 'first-letter') return function(name){ return firstLineProperties[name] === true || name === 'float' || /^(margin|padding|border)(-|$)/.test(name) || name === 'box-shadow'; };
+    if (kind === 'highlight') return function(name){ return highlightProperties[name] === true; };
+    return null;
+  }
+  var placeholderInputTypes = { __proto__: null, '': 1, 'text': 1, 'search': 1, 'url': 1, 'tel': 1, 'email': 1, 'password': 1, 'number': 1 };
+  var knownInputTypes = cssPropertySet('hidden text search tel url email password date month week time datetime-local number range color checkbox radio file submit image reset button');
+  function computedHtmlTag(el){
+    try { if (cssApply(computedStyleNativeNamespace, el, []) === 'http://www.w3.org/1999/xhtml') return cssApply(computedStyleNativeTag, el, []); } catch(e){}
+    return '';
+  }
+  function computedInputType(el){
+    var type = ''; try { type = cssApply(cssFontLower, String(cssApply(computedStyleNativeGetAttribute, el, ['type']) || ''), []); } catch(e){}
+    return knownInputTypes[type] ? type : '';
+  }
+  function computedHasAttribute(el, name){ try { return cssApply(computedStyleNativeGetAttribute, el, [name]) !== null; } catch(e){ return false; } }
+  // An inherited property's value at `el`: the nearest authored value on it or a composed
+  // ancestor (`fallback` at the root); `own(node)` may supply a UA value for a node.
+  function computedInheritedAuthored(el, name, parentStyle, fallback, own){
+    var node = el;
+    for (var depth = 0; node && depth < 256; depth++) {
+      var value = '';
+      try { value = computedSnapshotValue(parentStyle(node), name); } catch(e){}
+      if (!value && own) value = own(node);
+      if (value && !/^(inherit|unset)$/i.test(value)) return /^initial$/i.test(value) ? fallback : value;
+      var context = null; try { context = computedFontContext(node); } catch(e){}
+      node = context ? context[2] : null;
+    }
+    return fallback;
+  }
+  function markerInside(el, parentStyle){
+    var position = computedInheritedAuthored(el, 'list-style-position', parentStyle, 'outside', function(node){
+      var shorthand = ''; try { shorthand = computedSnapshotValue(parentStyle(node), 'list-style'); } catch(e){}
+      var word = /(?:^|\s)(inside|outside)(?:\s|$)/i.exec(shorthand || '');
+      if (word) return word[1];
+      return computedHtmlTag(node) === 'SUMMARY' && computedNativeMatches(node, 'details > summary:first-of-type') ? 'inside' : '';
+    });
+    return /^inside$/i.test(position);
+  }
+  function computedPseudoInfo(el, pseudo, parentStyle){
+    var kind = pseudo.replace(/\(.*$/, ''), tag = computedHtmlTag(el);
+    var info = { kind: kind, authored: true, accepts: null, ua: {}, important: null, display: 'inline', position: 'static', container: true, generated: false, highlight: false };
+    if (kind === 'marker') {
+      var inside = markerInside(el, parentStyle);
+      info.display = inside ? 'inline' : 'inline-block';
+      info.ua = { 'white-space': inside ? computedInheritedAuthored(el, 'white-space', parentStyle, 'normal') : 'pre', 'font-variant-numeric': 'tabular-nums', 'unicode-bidi': 'isolate', 'text-transform': 'none' };
+    } else if (kind === 'first-line' || kind === 'first-letter') {
+      info.container = kind === 'first-line';
+    } else if (highlightPseudoNames[kind]) {
+      info.highlight = true; info.container = false; kind = 'highlight';
+      if (info.kind === 'spelling-error' || info.kind === 'grammar-error') info.ua = { 'text-decoration-line': info.kind };
+    } else if (kind === 'placeholder') {
+      var input = tag === 'INPUT' && placeholderInputTypes[computedInputType(el)];
+      info.authored = (input || tag === 'TEXTAREA') && computedHasAttribute(el, 'placeholder');
+      if (info.authored) {
+        info.display = 'block';
+        info.ua = { 'color': 'rgb(117, 117, 117)', 'unicode-bidi': 'isolate' };
+        if (input) { info.ua['white-space'] = 'pre'; info.ua.overflow = 'hidden'; }
+        info.important = { 'pointer-events': 'none' };
+      }
+    } else if (kind === 'file-selector-button') {
+      info.authored = tag === 'INPUT' && computedInputType(el) === 'file';
+      if (info.authored) {
+        info.display = 'inline-block';
+        info.ua = { 'background-color': 'rgb(239, 239, 239)', 'white-space': 'nowrap', 'padding': '1px 6px', 'margin': '0px 4px 0px 0px', 'border-width': '2px', 'border-style': 'outset', 'text-align': 'center', 'box-sizing': 'border-box', 'user-select': 'none' };
+      }
+    } else if (kind === 'details-content') {
+      info.authored = tag === 'DETAILS';
+      if (info.authored) { info.display = 'block'; info.ua = { 'content-visibility': computedHasAttribute(el, 'open') ? 'visible' : 'hidden' }; }
+    } else if (kind === 'picker') {
+      info.authored = tag === 'SELECT';
+      if (info.authored) { info.display = 'none'; info.position = 'fixed'; info.ua = { 'overflow': 'auto', 'white-space': 'normal', 'unicode-bidi': 'isolate' }; }
+    } else if (kind === 'checkmark' || kind === 'picker-icon') {
+      info.generated = true;
+      if (kind === 'picker-icon' && tag === 'SELECT') info.display = 'block';
+    } else if (kind === 'scroll-marker-group') {
+      info.display = 'block';
+    } else if (kind.slice(0, 15) === 'view-transition' && tag) {
+      info.display = 'block'; info.position = 'absolute';
+      info.ua = kind === 'view-transition' || kind === 'view-transition-image-pair' ? { 'top': '0px', 'right': '0px', 'bottom': '0px', 'left': '0px' } : kind === 'view-transition-group' ? { 'top': '0px', 'right': 'auto', 'bottom': 'auto', 'left': '0px' } : { 'top': '0px', 'right': 'auto', 'bottom': 'auto', 'left': 'auto' };
+    }
+    // ::view-transition > -group() > -image-pair() > -old() / -new().
+    if (kind.slice(0, 16) === 'view-transition-') {
+      var argument = pseudo.slice(kind.length);
+      info.parentPseudo = kind === 'view-transition-group' ? 'view-transition' : kind === 'view-transition-image-pair' ? 'view-transition-group' + argument : 'view-transition-image-pair' + argument;
+    }
+    info.accepts = pseudoAccepts(kind);
+    return info;
+  }
+  // Highlight inheritance (CSS Pseudo 4): once a rule of a highlight pseudo-element (say
+  // ::selection) selects an element or an ancestor, that highlight inherits from the parent's
+  // (the initial values at the top); otherwise Chrome computes it from the element.
+  function computedHighlightMode(el, pseudo){
+    for (var node = el, depth = 0; node && depth < 256; depth++) {
+      var rules = computedStyleRules(node);
+      for (var i = 0; i < rules.length; i++) { try { if (pseudoRuleMatches(node, rules[i], pseudo)) return true; } catch(e){} }
+      var context = null; try { context = computedFontContext(node); } catch(e){}
+      node = context ? context[2] : null;
     }
     return false;
   }
@@ -357,8 +500,37 @@
     }
     return false;
   }
-  // `pseudo` (turbo-dom#30): compute that pseudo-element of `el` instead — its own rules
-  // (`sel::pseudo`), its UA values, inheritance from `el`; never cached with `el`'s snapshot.
+  // The style sheets whose rules can select `el`: its owner's sheets, plus the document's
+  // adopted sheets for elements of the document tree.
+  function computedSheets(el){
+    var owner=el?cssApply(computedStyleNativeOwner,el,[]):null;
+    // A live list refreshes on every indexed/length read. Refresh its private
+    // backing array once per computation; retained declarations still recompute.
+    var ownerRecord=owner&&collectionGet(owner),host=ownerRecord&&ownerRecord.cssHost;
+    var sheets = host ? host.readSheets() : [];
+    // Document adoption follows ordinary sheets, but is not a shadow-tree scope.
+    var adopted=adoptionStates&&adoptionStates.get(owner);
+    if(adopted&&cssApply(computedStyleNativeRoot,el,[])===owner){var active=[];cssSetPrototype(active,null);for(var index=0;index<sheets.length;index++)active[active.length]=sheets[index];for(var index=0;index<adopted.target.length;index++)active[active.length]=adopted.target[index];sheets=active;}
+    return sheets;
+  }
+  // The selector text of every enabled style rule that can select `el`.
+  function computedStyleRules(el){
+    var out=[],sheets=[];try{sheets=computedSheets(el);}catch(e){}
+    for (var si=0; si<sheets.length; si++) {
+      if(sheetRecord(sheets[si]).disabled)continue;
+      var rules = appliedSheetRuleRecords(sheets[si]);
+      for (var ri=0; ri<rules.length; ri++) {
+        var rule=rules[ri];
+        if(rule.type===1){out.push(rule.selectorText);continue;}
+        var txt = String(cssRuleText(rule) || ''), br = txt.indexOf('{');
+        if (br >= 0) out.push(txt.slice(0, br).trim());
+      }
+    }
+    return out;
+  }
+  // `pseudo` (turbo-dom#30, #47): compute that pseudo-element of `el` instead — its own rules
+  // (`sel::pseudo`, the properties it accepts), its UA values, inheritance from `el`
+  // (highlights: from the parent's highlight); never cached with `el`'s snapshot.
   function computeStyleSnapshot(el,snapshots,sink,pseudo){
     var cached=!pseudo&&el&&computedSnapshotGet(snapshots,el);if(cached)return cached;
     // Percentage lookup may visit several ancestors before font inheritance asks
@@ -396,22 +568,17 @@
     var setProp = function(name, val, important){ name = String(name).trim(); if (!name) return; if(important!==undefined){if(priorities[name]&&!important)return;priorities[name]=important;} if(uaValues&&typeof val==='string'&&/^revert$/i.test(val.trim())&&uaValues[name]!==undefined)val=uaValues[name]; if (typeof val === 'string' && name.slice(0, 2) !== '--'){ var t = val.trim(); if (t.charAt(0) === '#') val = normColor(t); else if (t === '0' && LEN_PROP.test(name)) val = '0px'; else if (val.indexOf(',') >= 0) val = cssPrelude(val,true); } decl[name] = val; decl[camel(name)] = val; if (sink) sink.order[name] = ++sink.count;
       if (typeof val === 'string') expandShorthand(name, val, function(property,value){setProp(property,value,important);});
     };
-    function applyDeclarations(record){for(var index=0;index<record.names.length;index++){var name=record.names[index],value=cssMapGet(record.values,name);setProp(name,value.text,value.priority==='important');}}
+    function applyDeclarations(record,accepts){for(var index=0;index<record.names.length;index++){var name=record.names[index],value=cssMapGet(record.values,name);if(accepts&&name.slice(0,2)!=='--'&&!accepts(name))continue;setProp(name,value.text,value.priority==='important');}}
+    var info=pseudo&&pseudo!=='backdrop'&&pseudo!=='before'&&pseudo!=='after'?computedPseudoInfo(el,pseudo,parentStyle):null;
     // Measured Chrome button defaults are UA declarations: every matching author
     // rule (including a universal selector) and inline value takes precedence.
     var ua = null, layer = '';
     try { if(pseudo||cssApply(computedStyleNativeConnected,el,[]))layer=computedTopLayer(el); } catch(e){}
-    try { if(pseudo==='backdrop')ua=backdropUserAgent(layer);else if(!pseudo&&layer==='modal')ua=modalDialogUserAgent;else if(!pseudo&&cssApply(computedStyleNativeNamespace,el,[])==='http://www.w3.org/1999/xhtml'&&cssApply(computedStyleNativeConnected,el,[])){var fontContext=computedFontContext(el);if(fontContext&&fontContext[4])ua=formControlUserAgent(el,cssApply(computedStyleNativeTag,el,[]));} } catch(e){}
+    try { if(pseudo==='backdrop')ua=backdropUserAgent(layer);else if(info)ua=info.ua;else if(!pseudo&&layer==='modal')ua=modalDialogUserAgent;else if(!pseudo&&cssApply(computedStyleNativeNamespace,el,[])==='http://www.w3.org/1999/xhtml'&&cssApply(computedStyleNativeConnected,el,[])){var fontContext=computedFontContext(el);if(fontContext&&fontContext[4])ua=formControlUserAgent(el,cssApply(computedStyleNativeTag,el,[]));} } catch(e){}
     if(ua){Object.keys(ua).forEach(function(name){setProp(name,ua[name]);});uaValues=Object.create(null);Object.keys(decl).forEach(function(name){if(typeof decl[name]==='string')uaValues[name]=decl[name];});}
     try {
-      var owner=el?cssApply(computedStyleNativeOwner,el,[]):null;
-      // A live list refreshes on every indexed/length read. Refresh its private
-      // backing array once per computation; retained declarations still recompute.
-      var ownerRecord=owner&&collectionGet(owner),host=ownerRecord&&ownerRecord.cssHost;
-      var sheets = host ? host.readSheets() : [];
-      // Document adoption follows ordinary sheets, but is not a shadow-tree scope.
-      var adopted=adoptionStates&&adoptionStates.get(owner);
-      if(adopted&&cssApply(computedStyleNativeRoot,el,[])===owner){var active=[];cssSetPrototype(active,null);for(var index=0;index<sheets.length;index++)active[active.length]=sheets[index];for(var index=0;index<adopted.target.length;index++)active[active.length]=adopted.target[index];sheets=active;}
+      // Element-backed pseudo-elements the element does not have see no author rules.
+      var sheets = info && !info.authored ? [] : computedSheets(el);
       for (var si=0; si<sheets.length; si++) {
         if(sheetRecord(sheets[si]).disabled)continue;
         var rules = appliedSheetRuleRecords(sheets[si]);
@@ -430,13 +597,15 @@
             for (var pi=0; pi<parts.length; pi++){ var s = parts[pi].trim(); if (!s) continue; try { if (cssApply(computedStyleNativeMatches,el,[s])) { matched = true; break; } } catch(e){} }
           }
           if (!matched) continue;
-          applyDeclarations(declarationRecord(rule.style));
+          applyDeclarations(declarationRecord(rule.style),info&&info.accepts);
         }
       }
     } catch(e){}
     // overlay inline style (own props React/components set: background, height, display, ...)
     var st = !pseudo && el && __ns.makeInlineStyleDeclaration(el);
     if (st) applyDeclarations(declarationRecord(st));
+    // !important UA declarations (::placeholder pointer-events) beat every author one.
+    if (info && info.important) Object.keys(info.important).forEach(function(name){ delete priorities[name]; setProp(name, info.important[name], true); });
     if (sink) { var cascaded = { __proto__: null }; Object.keys(decl).forEach(function(name){ if (typeof decl[name] === 'string' && (name.slice(0, 2) === '--' || name === name.toLowerCase())) cascaded[name] = decl[name]; }); sink.values = cascaded; return null; }
     // Inherited values come from the composed parent's snapshot in this read, so
     // CSSOM edits to document sheets reach descendants. Native cascade only adds
@@ -445,12 +614,28 @@
     try { var inheritContext = computedFontContext(el); inheritParent = pseudo ? el : inheritContext ? inheritContext[2] : null; } catch(e) {}
     // A fresh internal result is already resolved. Reading its public live getter
     // would compute the same ancestors again and double recursion at every level.
-    function inheritedValue(name){ return inheritParent ? computedSnapshotValue(parentStyle(inheritParent),name) : ''; }
+    // A view-transition pseudo-element inherits from its parent in the pseudo-element tree.
+    var inheritSnapshot = info && info.parentPseudo ? computeStyleSnapshot(el, snapshots, undefined, info.parentPseudo) : null;
+    function inheritedValue(name){ return inheritSnapshot ? computedSnapshotValue(inheritSnapshot,name) : inheritParent ? computedSnapshotValue(parentStyle(inheritParent),name) : ''; }
     // Web Animations compose over cascaded and inline values; !important declarations win.
     var animated=!pseudo&&el&&__ns.animatedStyle?__ns.animatedStyle(el,function(name){var value=decl[name];return value==null?'':String(value);},inheritedValue):null;
     if(animated)for(var ai=0;ai<animated.length;ai++)if(!priorities[animated[ai][0]])setProp(animated[ai][0],animated[ai][1]);
     var color = decl.color || '';
     if (!color && !pseudo) { try { color = __ns.cascadeProp.call(el, 'color'); } catch(e) {} }
+    // A highlight in highlight-inheritance mode inherits color / background-color from the
+    // parent's highlight, or takes the initial values (turbo-dom#47).
+    var highlightParent = undefined;
+    if (info && info.highlight) {
+      var highlightMode = false; try { highlightMode = computedHighlightMode(el, pseudo); } catch(e){}
+      if (highlightMode) {
+        var highlightContext = null; try { highlightContext = computedFontContext(el); } catch(e){}
+        var parentElement = highlightContext ? highlightContext[2] : null;
+        highlightParent = parentElement && computedHighlightMode(parentElement, pseudo) ? computeStyleSnapshot(parentElement, snapshots, undefined, pseudo) : null;
+        var inheritsKey = function(value){ return !value || /^(inherit|unset)$/i.test(String(value).trim()); };
+        if (inheritsKey(color)) color = highlightParent ? computedSnapshotValue(highlightParent, 'color') : 'rgb(0, 0, 0)';
+        if (inheritsKey(decl['background-color'])) setProp('background-color', highlightParent ? computedSnapshotValue(highlightParent, 'background-color') : 'rgba(0, 0, 0, 0)');
+      } else if (decl['background-color'] == null) setProp('background-color', 'rgba(0, 0, 0, 0)');
+    }
     var colorKeyword = String(color || '').toLowerCase();
     if (colorKeyword === 'initial' || colorKeyword === 'canvastext') color = 'rgb(0, 0, 0)';
     else if (!color || colorKeyword === 'inherit' || colorKeyword === 'unset' || colorKeyword === 'currentcolor') {
@@ -474,7 +659,7 @@
     };
     var keyword = function(value){ var key = value.toLowerCase(); return /^(inherit|initial|unset|revert|revert-layer)$/.test(key) ? key : ''; };
     if (connected) {
-      var ua = pseudo === 'backdrop' ? { display: 'block', position: layer ? 'fixed' : 'absolute', topLayer: layer !== '' } : pseudo ? { display: 'inline', position: 'static', topLayer: false } : computedUserAgentBox(el, layer);
+      var ua = pseudo === 'backdrop' ? { display: 'block', position: layer ? 'fixed' : 'absolute', topLayer: layer !== '' } : pseudo ? { display: info ? info.display : 'inline', position: info ? info.position : 'static', topLayer: false } : computedUserAgentBox(el, layer);
       var displayValue = cascadedValue('display'), displayKey = keyword(displayValue);
       if (!displayValue || displayKey === 'revert' || displayKey === 'revert-layer') displayValue = ua.display;
       else if (displayKey === 'inherit') displayValue = inheritedValue('display') || 'inline';
@@ -487,7 +672,7 @@
       if (ua.topLayer) positionValue = topLayerPosition(positionValue);
       var floatValue = String(decl['float'] == null ? '' : decl['float']).trim().toLowerCase();
       var floated = floatValue !== '' && floatValue !== 'none' && !keyword(floatValue);
-      if (positionValue === 'absolute' || positionValue === 'fixed' || floated || (pseudo ? pseudo !== 'backdrop' && computedPseudoInContainer(el, parentStyle) : computedFlexOrGridItem(el, parentStyle)))
+      if (positionValue === 'absolute' || positionValue === 'fixed' || floated || (pseudo ? pseudo !== 'backdrop' && (!info || info.container) && computedPseudoInContainer(el, parentStyle) : computedFlexOrGridItem(el, parentStyle)))
         displayValue = blockifiedDisplay(displayValue);
       decl.display = displayValue;
       decl.position = positionValue;
@@ -503,13 +688,16 @@
     if (visibilityKey === 'initial') visibilityValue = 'visible';
     else if (connected && (visibilityValue === '' || visibilityKey)) { try { visibilityValue = inheritedValue('visibility'); } catch(e){ visibilityValue = ''; } }
     if (!visibilityValue && connected) visibilityValue = 'visible';
+    // Highlights never take the element's visibility (turbo-dom#47).
+    if (connected && info && info.highlight) visibilityValue = 'visible';
     decl.visibility = visibilityValue || '';
-    // `content` computes to normal, and to none on ::before / ::after; strings serialize
-    // double-quoted (turbo-dom#47).
-    if (pseudo === 'before' || pseudo === 'after') {
-      var contentValue = decl.content == null ? '' : String(decl.content).trim();
-      decl.content = contentValue === '' || /^normal$/i.test(contentValue) ? 'none' : contentValue.replace(/'((?:[^'\\\n]|\\[\s\S])*)'/g, function(_, inner){ return '"' + inner.replace(/\\'/g, "'").replace(/"/g, '\\"') + '"'; });
-    } else if (decl.content == null) decl.content = connected ? 'normal' : '';
+    // `content` computes to normal, and to none on ::before / ::after / ::checkmark /
+    // ::picker-icon; strings serialize double-quoted (turbo-dom#47).
+    var contentValue = decl.content == null ? '' : String(decl.content).trim();
+    if (pseudo && contentValue) contentValue = contentValue.replace(/'((?:[^'\\\n]|\\[\s\S])*)'/g, function(_, inner){ return '"' + inner.replace(/\\'/g, "'").replace(/"/g, '\\"') + '"'; });
+    if (pseudo === 'before' || pseudo === 'after' || info && info.generated) decl.content = contentValue === '' || /^normal$/i.test(contentValue) ? 'none' : contentValue;
+    else if (pseudo && contentValue) decl.content = contentValue;
+    else if (decl.content == null) decl.content = connected ? 'normal' : '';
     // Initial computed values of properties Web Animations commonly animate.
     if (decl.opacity == null) decl.opacity = connected ? '1' : '';
     if (decl.transform == null) { decl.transform = connected ? 'none' : ''; }
@@ -523,7 +711,7 @@
     // A modal dialog's overflow longhands recompose the shorthand.
     if (connected && !pseudo && layer === 'modal' && typeof decl['overflow-x'] === 'string' && typeof decl['overflow-y'] === 'string')
       decl.overflow = decl['overflow-x'] === decl['overflow-y'] ? decl['overflow-x'] : decl['overflow-x'] + ' ' + decl['overflow-y'];
-    if (pseudo === 'backdrop' && typeof decl['background-color'] === 'string') decl['background-color'] = decl.backgroundColor = normalizeComputedColor(decl['background-color']);
+    if (pseudo && typeof decl['background-color'] === 'string') decl['background-color'] = decl.backgroundColor = normalizeComputedColor(decl['background-color']);
     var usedPx = function(node, axis, depth){
       if (!node || depth > 32) return null;
       var raw;try{raw=node===el?decl[axis]:computedSnapshotValue(parentStyle(node),axis);}catch(e){return null;}
@@ -545,7 +733,7 @@
         }
       });
     } catch(e){}
-    var fontState=computedFonts(decl,el,parentStyle,connected,pseudo);
+    var fontState=computedFonts(decl,el,parentStyle,connected,pseudo,inheritSnapshot);
     // dialog:modal max-width / max-height: calc(100% - 6px - 2em) at the dialog's font size.
     if (connected && !pseudo && layer === 'modal' && fontState && typeof fontState.size === 'number') {
       var inset = 'calc(100% - ' + cssFontString(cssFontNumber(cssApply(cssFontPrecision, 2 * fontState.size + 6, [6]))) + 'px)';
