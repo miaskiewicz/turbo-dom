@@ -42,7 +42,7 @@
     promiseResolve = Promise.resolve,
     promiseReject = Promise.reject,
     TypeErrorValue = TypeError,
-    Exception = DOMException,
+    Exception = g[Symbol.for("ts")].DOMException,
     StringValue = String;
   const weakGet = WeakMap.prototype.get,
     weakSet = WeakMap.prototype.set,

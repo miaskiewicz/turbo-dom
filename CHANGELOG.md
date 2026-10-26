@@ -22,6 +22,17 @@ at the time); this file reconstructs them from history.
   `jpeg-corrupt.jpg` at 64x40, which the screenshot used to drop. Control:
   `scripts/image-truncation-chrome-control.mjs` (every byte prefix of the
   `scripts/make_truncation_fixtures.py` images).
+- turbo-dom-browser-env: DOMExceptions raised by the binding's JS modules are instances of
+  the realm's interface (miaskiewicz/turbo-surf#42). Twenty modules captured
+  `globalThis.DOMException` when they installed, so after turbo-surf installed its own
+  interface `img.decode()`'s `EncodingError` and others were not `instanceof DOMException`.
+  Every site now builds its exception when it is raised from the registered interface
+  (`register_dom_exception`, which `capture_window_event_interfaces` now also calls with
+  the host's installed `DOMException`; else the binding's own), through
+  `ts.DOMException` / `ts.realmDOMException()`. The same change stops the throw-time
+  `new g.DOMException(…)` sites from following a page script's reassignment of
+  `globalThis.DOMException` (miaskiewicz/turbo-dom#72, filed here). Control:
+  `src/dom_exception_realm_chrome156.json`.
 
 ### Fixed — raster `<img>` handling, AVIF orientation (P5b-W4, Chrome 156 controls)
 - `turbo-dom-raster` paints an `<img src="data:…">` from its own URL

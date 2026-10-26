@@ -17,7 +17,7 @@
   const raw = list => { const state = record(list); return getAttribute.call(state.owner, state.attribute) || ''; };
   const tokens = list => split(raw(list));
   const update = (list, values) => { const state = record(list); if (values.length || getAttribute.call(state.owner, state.attribute) !== null) setAttribute.call(state.owner, state.attribute, values.join(' ')); };
-  const token = value => { value = string(value); if (!value) throw new g.DOMException('The token is empty', 'SyntaxError'); if (/[\t\n\f\r ]/.test(value)) throw new g.DOMException('The token contains ASCII whitespace', 'InvalidCharacterError'); return value; };
+  const token = value => { value = string(value); if (!value) throw new ns.DOMException('The token is empty', 'SyntaxError'); if (/[\t\n\f\r ]/.test(value)) throw new ns.DOMException('The token contains ASCII whitespace', 'InvalidCharacterError'); return value; };
   const ctor = make(function () { throw new TypeError('Illegal constructor'); }, 'DOMTokenList', 0, true);
   const proto = ctor.prototype;
   Object.defineProperty(proto, Symbol.toStringTag, {value:'DOMTokenList', configurable:true});

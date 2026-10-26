@@ -2284,7 +2284,7 @@
   function requireHTML(receiver, operation) {
     let type = '';
     try { type = contentTypeOf(receiver); } catch (error) { type = ''; }
-    if (type !== 'text/html' && type !== 'application/xhtml+xml') throw new g.DOMException("Failed to execute '" + operation + "' on 'Document': " + operation + ' is only supported on HTML documents.', 'InvalidStateError');
+    if (type !== 'text/html' && type !== 'application/xhtml+xml') throw new ns.DOMException("Failed to execute '" + operation + "' on 'Document': " + operation + ' is only supported on HTML documents.', 'InvalidStateError');
   }
   function entryFor(doc, name) {
     if (doc !== document) return null;
@@ -2402,7 +2402,7 @@
       const text = StringValue(value), v = lowerAscii(text);
       if (v === 'true' || v === 'false' || v === 'plaintext-only') apply(setAttrF, this, ['contenteditable', v]);
       else if (v === 'inherit') apply(removeAttrF, this, ['contenteditable']);
-      else throw new g.DOMException("Failed to set the 'contentEditable' property on 'HTMLElement': The value provided ('" + text + "') is not one of 'true', 'false', 'plaintext-only', or 'inherit'.", 'SyntaxError');
+      else throw new ns.DOMException("Failed to set the 'contentEditable' property on 'HTMLElement': The value provided ('" + text + "') is not one of 'true', 'false', 'plaintext-only', or 'inherit'.", 'SyntaxError');
     }, 'set contentEditable', 1),
   });
   define(HP, 'isContentEditable', {

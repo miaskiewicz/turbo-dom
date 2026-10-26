@@ -1378,6 +1378,22 @@ fn new_dom_exception<'s>(
         .and_then(|value| v8::Local::<v8::Function>::try_from(value).ok())?;
     constructor.new_instance(scope, &[text.into(), name.into()])
 }
+/// The native half of the binding's `ts.realmDOMException()`: the current realm's registered
+/// DOMException interface (an embedder's [`register_dom_exception`], else the binding's own,
+/// recorded at install), or `undefined` before the bootstrap recorded it. The binding's JS
+/// modules resolve every exception they raise through it when they raise it
+/// (miaskiewicz/turbo-surf#42, miaskiewicz/turbo-dom#72).
+fn native_realm_dom_exception(
+    scope: &mut v8::PinScope,
+    _args: v8::FunctionCallbackArguments,
+    mut rv: v8::ReturnValue,
+) {
+    let global = scope.get_current_context().global(scope);
+    let key = dom_exception_key(scope);
+    if let Some(constructor) = global.get_private(scope, key) {
+        rv.set(constructor);
+    }
+}
 fn dom_exception_key<'s>(scope: &mut v8::PinScope<'s, '_>) -> v8::Local<'s, v8::Private> {
     let name = v8::String::new(scope, "turbo.native.DOMException").unwrap();
     v8::Private::for_api(scope, Some(name))
@@ -7204,6 +7220,7 @@ fn install_with_tree(scope: &mut v8::PinScope, mut tree: Tree) {
     css_policy::register(scope);
     event_handlers::register(scope);
     bind_method(scope, global, "__checkedNative", form_checked_native);
+    bind_method(scope, global, "__nativeRealmDOMException", native_realm_dom_exception);
     run_js(scope, BOOTSTRAP);
     trusted_types::install(scope);
     script_state::install_text(scope);

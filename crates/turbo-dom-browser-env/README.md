@@ -86,6 +86,20 @@ Add a constant (and its `FILES` entry) when another consumer needs a file.
 `tests/test_support_api.rs` checks every constant against its file and every
 probe/control pair's recorded `probeSha256`.
 
+### DOMException interface
+
+Every DOMException the binding raises — natively (`throw_dom_error`) or from its JS
+modules — is built, when it is raised, from the realm's registered interface: the
+binding's own `DOMException`, recorded at install, unless the embedder installs its own
+and hands it over with `register_dom_exception(scope, constructor)` (turbo-surf's runtime)
+or by calling `capture_window_event_interfaces(scope)` after installing it. No module keeps
+a constructor captured at install, and page script reassigning `globalThis.DOMException`
+changes nothing, as in Chrome (miaskiewicz/turbo-surf#42, miaskiewicz/turbo-dom#72). Module
+code uses `new ts.DOMException(message, name)` / `instanceof ts.DOMException` (the
+`globalThis[Symbol.for('ts')]` namespace; `ts.realmDOMException()` returns the current
+interface). Control: `src/dom_exception_realm_chrome156.json` (27 operations across the
+modules, with the interface as installed and after page script replaced it).
+
 ### Image load state
 
 The binding never fetches or decodes images. `HTMLImageElement.prototype` carries

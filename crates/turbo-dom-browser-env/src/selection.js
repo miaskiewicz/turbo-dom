@@ -10,7 +10,7 @@
   const g = globalThis, ns = g[Symbol.for('ts')], make = ns.makeNativeFunction;
   const apply = Reflect.apply, define = Object.defineProperty, describe = Object.getOwnPropertyDescriptor;
   const create = Object.create, getPrototype = Object.getPrototypeOf, setPrototype = Object.setPrototypeOf;
-  const TypeErrorClass = TypeError, StringClass = String, NumberClass = Number, Exception = g.DOMException;
+  const TypeErrorClass = TypeError, StringClass = String, NumberClass = Number, Exception = g[Symbol.for('ts')].DOMException;
   const EventClass = g.Event, RangeClass = g.Range, StaticRangeClass = g.StaticRange;
   const WeakMapClass = WeakMap, weakGet = WeakMap.prototype.get, weakSet = WeakMap.prototype.set, weakHas = WeakMap.prototype.has;
   const min = Math.min, max = Math.max, floor = Math.floor;

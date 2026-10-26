@@ -17,7 +17,7 @@
   const weakGet = Function.prototype.call.bind(WeakMap.prototype.get), weakSet = Function.prototype.call.bind(WeakMap.prototype.set);
   const mapGet = Function.prototype.call.bind(Map.prototype.get), mapSet = Function.prototype.call.bind(Map.prototype.set);
   const arrayIterator = Array.prototype[Symbol.iterator], symbolIterator = Symbol.iterator, symbolTag = Symbol.toStringTag;
-  const Exception = g.DOMException;
+  const Exception = g[Symbol.for('ts')].DOMException;
   const elementCheck = ns.domAccessor('nodeType', false, 'Element'), htmlCheck = ns.domAccessor('nodeType', false, 'HTMLElement');
   const namespaceOf = ns.domAccessor('namespaceURI', false, 'Element'), connectedOf = ns.domAccessor('isConnected', false, 'Node'), tagOf = ns.domAccessor('localName', false, 'Element');
   const getAttributeNS = g.Element.prototype.getAttributeNS, attributeOf = (element, name) => apply(getAttributeNS, element, [null, name]);

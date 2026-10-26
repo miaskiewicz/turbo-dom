@@ -100,7 +100,6 @@ fn mismatches(
 /// turbo-surf#42: with an embedder's DOMException installed and registered after the binding,
 /// every exception the binding raises is an instance of it.
 #[test]
-#[ignore = "turbo-surf#42: fails until the fix"]
 fn binding_exceptions_are_the_hosts_dom_exception() {
     let found = mismatches(&probe(true), &control(), "installed");
     assert!(found.is_empty(), "{}", found.join("\n"));
@@ -116,7 +115,6 @@ fn binding_exceptions_are_the_bindings_dom_exception_without_a_host() {
 /// turbo-dom#72: page script reassigning `globalThis.DOMException` changes nothing: the
 /// exceptions stay instances of the realm's interface (the host's, else the binding's).
 #[test]
-#[ignore = "turbo-dom#72: fails until the fix"]
 fn binding_exceptions_ignore_a_page_reassigned_dom_exception() {
     let control = control();
     let mut found = mismatches(&probe(true), &control, "replaced");

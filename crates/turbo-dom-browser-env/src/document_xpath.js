@@ -5,7 +5,7 @@
   const g=globalThis.__xpathTarget, provider=globalThis.__xpathProvider, native=globalThis.__xpathNative;
   delete globalThis.__xpathTarget;
   delete globalThis.__xpathProvider;delete globalThis.__xpathNative;
-  const make=g[Symbol.for('ts')].makeNativeFunction, NativeException=g.DOMException, NativeTypeError=g.TypeError;
+  const make=g[Symbol.for('ts')].makeNativeFunction, NativeException=g[Symbol.for('ts')].DOMException, NativeTypeError=g.TypeError;
   const getType=Object.getOwnPropertyDescriptor(g.Node.prototype,'nodeType').get;
   const StringValue=String, ProxyValue=Proxy, create=Object.create, define=Object.defineProperty;
   const html='http://www.w3.org/1999/xhtml', apply=Reflect.apply;

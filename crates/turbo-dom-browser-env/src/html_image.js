@@ -71,7 +71,7 @@
   const PromiseValue = Promise,
     rejected = (error) => apply(Promise.reject, PromiseValue, [error]),
     pendingDecodes = new WeakMap();
-  const DOMExceptionValue = g.DOMException;
+  const DOMExceptionValue = g[Symbol.for("ts")].DOMException;
   const decodeError = () => new DOMExceptionValue("The source image cannot be decoded.", "EncodingError");
   const settleDecode = (state, resolve, reject) => {
     if (state && state.naturalWidth > 0 && state.naturalHeight > 0) resolve(undefined);
