@@ -260,7 +260,13 @@ pub(crate) mod yuv {
                 let yn = (luma - luma_off) / luma_range;
                 let (u, v) = ((cb - mid) / chroma_range, (cr - mid) / chroma_range);
                 let (r, g, b) = match weights {
-                    None if color.chroma.is_some() => (v + 0.5, yn, u + 0.5),
+                    // Identity (H.273 equations 41-43): every plane is quantized like
+                    // luma, as libavif converts it.
+                    None if color.chroma.is_some() => (
+                        (cr - luma_off) / luma_range,
+                        yn,
+                        (cb - luma_off) / luma_range,
+                    ),
                     None => (yn, yn, yn),
                     Some(_) if color.chroma.is_none() => (yn, yn, yn),
                     Some((kr, kb)) => {
@@ -495,7 +501,6 @@ mod tests {
     /// Identity (GBR, matrix 0; H.273 equations 41-43): G = Y, B = Cb, R = Cr, every plane
     /// quantized like luma — as libavif (Chrome's AVIF decoder) converts it.
     #[test]
-    #[ignore = "turbo-dom#95: fails until the fix"]
     fn identity_gbr_maps_every_sample_exactly() {
         let all: Vec<u16> = (0..=255).collect();
         let rev: Vec<u16> = (0..=255).rev().collect();

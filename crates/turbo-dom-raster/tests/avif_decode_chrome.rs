@@ -6,16 +6,12 @@
 //! red / green / blue / yellow quadrant image as 4:4:4 identity (lossless), 4:4:4 BT.709
 //! limited range, 4:2:2 BT.601, 4:2:0 FCC, SMPTE 240M and BT.2020 (limited), and without an
 //! `nclx` box (the AV1 sequence header's colour description applies). Chrome's raw colour
-//! at the four quadrant centres is compared with the screenshot's. Without the `avif`
+//! at the four quadrant centres equals the screenshot's exactly. Without the `avif`
 //! feature each image still lays out at its size and paints as the light-grey placeholder.
 use std::collections::HashMap;
 
 use turbo_dom_layout::image::decode_data_url;
 use turbo_dom_raster::{screenshot_png_with_opts, ImageAssets, Viewport};
-
-/// Channel tolerance: the converters differ in chroma upsampling and rounding, never in
-/// the colour a flat quadrant decodes to.
-const TOLERANCE: u8 = 8;
 
 #[test]
 fn avif_yuv_paths_match_chrome_156() {
@@ -55,11 +51,7 @@ fn avif_yuv_paths_match_chrome_156() {
             } else {
                 [220, 220, 220]
             };
-            if !got
-                .iter()
-                .zip(&want)
-                .all(|(g, w)| g.abs_diff(*w) <= TOLERANCE)
-            {
+            if got != want {
                 failures.push(format!("{id} ({x},{y}): {got:?}, want {want:?}"));
             }
         }
