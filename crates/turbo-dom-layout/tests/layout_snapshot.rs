@@ -1,13 +1,15 @@
 //! Split at the S1 relocation: the cases that need TKind directives, templating or the
 //! PDF emitter stay in turbo-html2pdf-core's `tests/layout_snapshot.rs`.
 
+mod common;
+
 use turbo_dom_layout::layout_snapshot::{
     snapshot_live_tree, snapshot_styled_tree, GeometryKind, LayoutSnapshot, Rect, SnapshotError,
     SnapshotInputs, SourceId, SourceIdentity, SourceKind,
 };
 use turbo_dom_layout::{
-    build_cascade, layout_with_images, style_tree, Attr, Diagnostics, Element, FontRegistry,
-    ImageCtx, ImageResolver, NoImages, Node, Tag,
+    build_cascade, layout_with_images, Attr, Diagnostics, Element, FontRegistry, ImageCtx,
+    ImageResolver, NoImages, Node, Tag,
 };
 
 fn element(tag: &str, css: &str, children: Vec<Node>) -> Node {
@@ -116,7 +118,7 @@ fn hidden_and_clipped_boxes_keep_geometry_but_display_none_has_no_fragments() {
         resolver: &NoImages,
         body_height: None,
     };
-    let styled = style_tree(&nodes, &build_cascade("", "", Default::default()));
+    let styled = common::style_nodes(&nodes, &build_cascade("", "", Default::default()));
     let legacy = layout_with_images(&styled, 200.0, &fonts, &images, &mut Diagnostics::default());
     assert_eq!(legacy.height, 7.0);
 }
@@ -286,7 +288,7 @@ fn viewport_and_definite_ancestor_heights_resolve_real_percentage_boxes() {
 #[test]
 fn source_validation_rejects_duplicates_outside_paths_and_bad_viewports() {
     let nodes = vec![element("div", "", Vec::new())];
-    let styled = style_tree(&nodes, &build_cascade("", "", Default::default()));
+    let styled = common::style_nodes(&nodes, &build_cascade("", "", Default::default()));
     let fonts = FontRegistry::new();
     let images = ImageCtx {
         resolver: &NoImages,
@@ -407,7 +409,7 @@ fn replaced_boxes_keep_overflow_css_frames_transforms_and_all_image_fragments() 
     assert_eq!(image.source_id, outer.source_id);
     assert_eq!(image.parent, Some(outer.index));
     // The existing PDF API still caps this image to the page.
-    let styled = style_tree(
+    let styled = common::style_nodes(
         &[image_node("width:400px;height:240px")],
         &build_cascade("", "", Default::default()),
     );
@@ -842,7 +844,7 @@ fn transformed_fixed_admission_is_identity_independent_and_shared_by_both_entry_
         result,
         Err(SnapshotError::UnsupportedFixedContainingBlock)
     ));
-    let styled = style_tree(&nodes, &cascade);
+    let styled = common::style_nodes(&nodes, &cascade);
     let result = snapshot_styled_tree(&styled, &[], &inputs, &mut Diagnostics::default());
     assert!(matches!(
         result,
@@ -917,7 +919,7 @@ fn invalid_quad_declarations_preserve_prior_valid_sides_and_inherited_variables_
         "border-left-width:7px;border-width:3px red",
         Vec::new(),
     )];
-    let styled = style_tree(&nodes, &build_cascade("", "", Default::default()));
+    let styled = common::style_nodes(&nodes, &build_cascade("", "", Default::default()));
     let turbo_dom_layout::StyledNode::Element(element) = &styled[0] else {
         panic!("element");
     };
@@ -954,7 +956,7 @@ fn live_document_root_contains_body_margins_and_preserves_legacy_pdf_policy() {
             height: 16.0
         }
     );
-    let styled = style_tree(&nodes, &build_cascade("", "", Default::default()));
+    let styled = common::style_nodes(&nodes, &build_cascade("", "", Default::default()));
     let legacy = layout_with_images(
         &styled,
         200.0,

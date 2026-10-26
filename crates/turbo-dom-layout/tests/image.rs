@@ -22,7 +22,7 @@ use turbo_dom_layout::layout::imgsize::{size_replaced, SizeCtx};
 use turbo_dom_layout::layout::value::{resolve_box_style, ResolveCtx};
 use turbo_dom_layout::style::TokenSet;
 use turbo_dom_layout::{
-    build_cascade, layout_with_images, style_tree, ComputedStyle, Diagnostics, ImageResolver, Node,
+    build_cascade, layout_with_images, ComputedStyle, Diagnostics, ImageResolver, Node,
     StyledElement, StyledNode, Tag,
 };
 use turbo_dom_layout::{Attr, FragmentContent, ImageCtx, NoImages};
@@ -579,7 +579,7 @@ fn img_node(src: &str) -> Vec<Node> {
 
 fn styled_img(src: &str) -> Vec<StyledNode> {
     let cascade = build_cascade("", "", TokenSet::default());
-    style_tree(&img_node(src), &cascade)
+    common::style_nodes(&img_node(src), &cascade)
 }
 
 #[test]
@@ -743,7 +743,7 @@ fn flex_row_img_item_sizes_to_intrinsic_not_zero() {
         "",
         TokenSet::default(),
     );
-    let styled = style_tree(&nodes, &cascade);
+    let styled = common::style_nodes(&nodes, &cascade);
     let resolver = MapResolver::new(vec![("logo", png_rgb_2x2())]);
     let ctx = ImageCtx {
         resolver: &resolver,
@@ -768,7 +768,7 @@ fn flex_img_item_with_explicit_width_uses_it() {
         children: img_node("logo"),
     })];
     let cascade = build_cascade("div{display:flex} img{width:8px}", "", TokenSet::default());
-    let styled = style_tree(&nodes, &cascade);
+    let styled = common::style_nodes(&nodes, &cascade);
     let resolver = MapResolver::new(vec![("logo", png_rgb_2x2())]);
     let ctx = ImageCtx {
         resolver: &resolver,
@@ -795,7 +795,7 @@ fn percent_height_img_resolves_against_definite_parent() {
         "",
         TokenSet::default(),
     );
-    let styled = style_tree(&nodes, &cascade);
+    let styled = common::style_nodes(&nodes, &cascade);
     let resolver = MapResolver::new(vec![("logo", png_rgb_2x2())]);
     let ctx = ImageCtx {
         resolver: &resolver,
@@ -824,7 +824,7 @@ fn percent_height_absolute_img_resolves_against_positioned_ancestor() {
         "",
         TokenSet::default(),
     );
-    let styled = style_tree(&nodes, &cascade);
+    let styled = common::style_nodes(&nodes, &cascade);
     let resolver = MapResolver::new(vec![("logo", png_rgb_2x2())]);
     let ctx = ImageCtx {
         resolver: &resolver,
@@ -868,7 +868,7 @@ fn flex_item_wrapping_img_sizes_to_img_intrinsic() {
         "",
         TokenSet::default(),
     );
-    let styled = style_tree(&nodes, &cascade);
+    let styled = common::style_nodes(&nodes, &cascade);
     let resolver = MapResolver::new(vec![("logo", png_rgb_2x2())]);
     let ctx = ImageCtx {
         resolver: &resolver,
@@ -911,7 +911,7 @@ fn flex_row_item_wrapping_img_natural_width_uses_intrinsic() {
         "",
         TokenSet::default(),
     );
-    let styled = style_tree(&nodes, &cascade);
+    let styled = common::style_nodes(&nodes, &cascade);
     let resolver = MapResolver::new(vec![("logo", png_rgb_2x2())]);
     let ctx = ImageCtx {
         resolver: &resolver,
