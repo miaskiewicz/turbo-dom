@@ -91,7 +91,13 @@ pub fn elements_at_point(
                     {
                         continue;
                     }
-                    if !clipped(snapshot, styles, &run.source_ancestors, offsets, point)? {
+                    if !hidden_by_clip(
+                        snapshot,
+                        styles,
+                        (&run.source_ancestors, None),
+                        offsets,
+                        point,
+                    )? {
                         seen.insert(*id);
                         result.push(*id);
                     }
@@ -121,8 +127,13 @@ pub fn elements_at_point(
         ) {
             continue;
         }
-        let clipped = clipped(snapshot, styles, &fragment.source_ancestors, offsets, point)?
-            || clip_rect_excludes(snapshot, styles, id, offsets, point)?;
+        let clipped = hidden_by_clip(
+            snapshot,
+            styles,
+            (&fragment.source_ancestors, Some(id)),
+            offsets,
+            point,
+        )?;
         if !clipped {
             seen.insert(id);
             result.push(id);
@@ -138,6 +149,25 @@ pub fn elements_at_point(
     }
     Ok(result)
 }
+/// Whether `point` is clipped away for a box with `ancestors` (and `own` box): by an
+/// ancestor's `overflow` ([`clipped`]) or the `clip: rect()` of an absolutely
+/// positioned ancestor or of the box itself (miaskiewicz/turbo-dom#28 item 1).
+pub fn hidden_by_clip(
+    snapshot: &LayoutSnapshot,
+    styles: &SourceStyles,
+    (ancestors, own): (&[SourceId], Option<SourceId>),
+    offsets: &BTreeMap<SourceId, [f64; 2]>,
+    point: [f64; 2],
+) -> Result<bool, String> {
+    for &id in ancestors.iter().chain(own.as_ref()) {
+        if clip_rect_excludes(snapshot, styles, id, offsets, point)? {
+            return Ok(true);
+        }
+    }
+    clipped(snapshot, styles, ancestors, offsets, point)
+}
+
+/// Whether an ancestor's `overflow` clips `point` away.
 pub fn clipped(
     snapshot: &LayoutSnapshot,
     styles: &SourceStyles,
@@ -152,10 +182,6 @@ pub fn clipped(
         };
         if style.style.get("display") == Some("contents") {
             continue;
-        }
-        if clip_rect_excludes(snapshot, styles, *ancestor, offsets, point)? {
-            clipped = true;
-            break;
         }
         let clip_x = clip_axis(&style.style, "overflow-x");
         let clip_y = clip_axis(&style.style, "overflow-y");
@@ -232,12 +258,25 @@ fn clip_rect(style: &SourceStyle, border: Rect) -> Option<Rect> {
     if !matches!(style.style.get("position"), Some("absolute" | "fixed")) {
         return None;
     }
-    let inner = style
-        .style
-        .get("clip")?
-        .trim()
-        .strip_prefix("rect(")?
-        .strip_suffix(')')?;
+    let [top, right, bottom, left] = rect_offsets(style.style.get("clip")?, font_px(style))?;
+    let at = |offset: LengthPct, auto: f32| match offset {
+        LengthPct::Px(px) => px * style.zoom,
+        _ => auto,
+    };
+    let (top, right) = (at(top, 0.0), at(right, border.width));
+    let (bottom, left) = (at(bottom, border.height), at(left, 0.0));
+    Some(Rect {
+        x: border.x + left,
+        y: border.y + top,
+        width: (right - left).max(0.0),
+        height: (bottom - top).max(0.0),
+    })
+}
+
+/// The four offsets of a `rect(…)` value (each `Px` or `Auto`), or `None` when the
+/// value is not a valid `rect()`.
+fn rect_offsets(value: &str, font: f32) -> Option<[LengthPct; 4]> {
+    let inner = value.trim().strip_prefix("rect(")?.strip_suffix(')')?;
     let edges: Vec<&str> = inner
         .split(|c: char| c == ',' || c.is_whitespace())
         .filter(|edge| !edge.is_empty())
@@ -245,28 +284,32 @@ fn clip_rect(style: &SourceStyle, border: Rect) -> Option<Rect> {
     let [top, right, bottom, left] = edges[..] else {
         return None;
     };
-    let font = style
+    let offset = |edge| clip_offset(edge, font);
+    let [Some(top), Some(right), Some(bottom), Some(left)] =
+        [offset(top), offset(right), offset(bottom), offset(left)]
+    else {
+        return None;
+    };
+    Some([top, right, bottom, left])
+}
+
+/// One `rect()` offset: `auto` or a length (a `<shape>` offset is a length: a
+/// percentage is invalid).
+fn clip_offset(edge: &str, font: f32) -> Option<LengthPct> {
+    parse_length_pct(edge, font)
+        .filter(|offset| matches!(offset, LengthPct::Auto | LengthPct::Px(_)))
+}
+
+/// The box's font size in px (`em` offsets), the 16px initial value when unknown.
+fn font_px(style: &SourceStyle) -> f32 {
+    style
         .style
         .get("font-size")
         .and_then(|value| match parse_length_pct(value, 16.0) {
             Some(LengthPct::Px(px)) => Some(px),
             _ => None,
         })
-        .unwrap_or(16.0);
-    let edge = |value: &str, auto: f32| match parse_length_pct(value, font)? {
-        LengthPct::Auto => Some(auto),
-        LengthPct::Px(px) => Some(px * style.zoom),
-        // `<shape>` offsets are lengths: a percentage is invalid there.
-        LengthPct::Pct(_) | LengthPct::Calc { .. } => None,
-    };
-    let (top, right) = (edge(top, 0.0)?, edge(right, border.width)?);
-    let (bottom, left) = (edge(bottom, border.height)?, edge(left, 0.0)?);
-    Some(Rect {
-        x: border.x + left,
-        y: border.y + top,
-        width: (right - left).max(0.0),
-        height: (bottom - top).max(0.0),
-    })
+        .unwrap_or(16.0)
 }
 
 #[cfg(test)]

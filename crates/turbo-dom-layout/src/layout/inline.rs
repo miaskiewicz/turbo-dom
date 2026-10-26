@@ -1765,6 +1765,28 @@ fn phantom_word(word: &Word) -> bool {
         && word.edges.iter().all(|(_, edge)| edge.advance == 0.0)
 }
 
+/// A line box's ascent, descent and height. A line of no text, preserved white space,
+/// framed inline, in-flow atom or `<br>` is a zero-height line box (CSS 2.1 §9.4.2),
+/// e.g. one holding only an absolutely positioned box's static position.
+fn line_box_metrics(
+    words: &[Word],
+    open_edges: &[InlineEdge],
+    (strut, strut_metrics): (f32, Option<(f32, f32)>),
+    policy: (bool, bool, Option<f32>),
+) -> Metrics {
+    if words.iter().all(phantom_word) {
+        return Metrics {
+            ascent: 0.0,
+            descent: 0.0,
+            height: 0.0,
+        };
+    }
+    match strut_metrics {
+        Some(strut) => native_line_metrics(words, open_edges, strut, policy.2),
+        None => line_metrics(words, strut, policy.1, policy.2, open_edges),
+    }
+}
+
 #[allow(clippy::needless_pass_by_value)] // signature kept as relocated; borrowing instead changes nothing observable
 fn place_line(
     words: Vec<Word>,
@@ -1775,21 +1797,7 @@ fn place_line(
     strut_metrics: Option<(f32, f32)>,
     policy: (bool, bool, Option<f32>),
 ) -> SourceLine {
-    let m = if words.iter().all(phantom_word) {
-        // No text, preserved white space, framed inline, in-flow atom or `<br>`: a
-        // zero-height line box (CSS 2.1 §9.4.2), e.g. one holding only an
-        // absolutely positioned box's static position.
-        Metrics {
-            ascent: 0.0,
-            descent: 0.0,
-            height: 0.0,
-        }
-    } else {
-        match strut_metrics {
-            Some(strut) => native_line_metrics(&words, open_edges, strut, policy.2),
-            None => line_metrics(&words, strut, policy.1, policy.2, open_edges),
-        }
-    };
+    let m = line_box_metrics(&words, open_edges, (strut, strut_metrics), policy);
     let half_leading = (m.height - m.ascent - m.descent) / 2.0;
     let leading = policy
         .2

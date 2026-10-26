@@ -637,20 +637,12 @@ fn layout_nonempty_lines(
     // it: re-lay the lines until the floats' places settle (scratch diagnostics),
     // then lay them out for real.
     let base = ctx.floats.clone();
-    let mut line_floats = Vec::new();
-    if items.iter().any(|item| floated_kid(item).is_some()) {
-        let mut scratch = Diagnostics::default();
-        for _ in 0..IN_LINE_FLOAT_PASSES {
-            let floats = [base.as_slice(), &rects(&line_floats)].concat();
-            let para = paragraph(&pieces, &floats, &inputs, ctx, &mut scratch);
-            let next = place_line_floats(&para.layout, items, &atom_frags, &base, &inputs, ctx);
-            let settled = rects(&next) == rects(&line_floats);
-            line_floats = next;
-            if settled {
-                break;
-            }
-        }
-    }
+    let line = LineContent {
+        pieces: &pieces,
+        items,
+        atoms: &atom_frags,
+    };
+    let line_floats = settle_line_floats(&line, &base, &inputs, ctx);
     let floats = [base.as_slice(), &rects(&line_floats)].concat();
     let mut diags = std::mem::take(ctx.diags);
     let para = paragraph(&pieces, &floats, &inputs, ctx, &mut diags);
@@ -741,6 +733,41 @@ fn floated_kid(item: &InlineItem) -> Option<&LayoutBox> {
         InlineItem::Atomic(b) if !b.out_of_flow() && b.floated() => Some(b),
         _ => None,
     }
+}
+
+/// A paragraph's line content: its pieces, items and pre-laid atoms.
+struct LineContent<'a> {
+    pieces: &'a [inline::Piece],
+    items: &'a [InlineItem],
+    atoms: &'a [Fragment],
+}
+
+/// The places of the floats met in the paragraph's line content, settled: lay the lines
+/// out (scratch diagnostics), place the floats at the tops of the lines they land on,
+/// and repeat with those floats until their places stop moving (at most
+/// [`IN_LINE_FLOAT_PASSES`] times). Empty when the content has no float.
+fn settle_line_floats(
+    line: &LineContent,
+    base: &[FloatRect],
+    inputs: &ParagraphInputs,
+    ctx: &Ctx,
+) -> Vec<LineFloat> {
+    let mut line_floats = Vec::new();
+    if !line.items.iter().any(|item| floated_kid(item).is_some()) {
+        return line_floats;
+    }
+    let mut scratch = Diagnostics::default();
+    for _ in 0..IN_LINE_FLOAT_PASSES {
+        let floats = [base, &rects(&line_floats)].concat();
+        let para = paragraph(line.pieces, &floats, inputs, ctx, &mut scratch);
+        let next = place_line_floats(&para.layout, line.items, line.atoms, base, inputs, ctx);
+        let settled = rects(&next) == rects(&line_floats);
+        line_floats = next;
+        if settled {
+            break;
+        }
+    }
+    line_floats
 }
 
 /// Lay out the paragraph's lines in the inline region `floats` leave free.

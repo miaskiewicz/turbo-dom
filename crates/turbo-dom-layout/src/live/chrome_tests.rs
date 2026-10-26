@@ -206,9 +206,12 @@ fn compare_cases(select: impl Fn(&str) -> bool) -> (usize, Vec<String>) {
     let cases = fixture["cases"].as_array().unwrap();
     let mut failures = Vec::new();
     let mut compared = 0;
-    for case in cases {
+    for case in cases
+        .iter()
+        .filter(|case| select(case["id"].as_str().unwrap()))
+    {
         let id = case["id"].as_str().unwrap();
-        if !select(id) || !cfg!(feature = "bundled-fonts") && TEXT_CASES.contains(&id) {
+        if !cfg!(feature = "bundled-fonts") && TEXT_CASES.contains(&id) {
             continue;
         }
         let html = case["html"].as_str().unwrap();
