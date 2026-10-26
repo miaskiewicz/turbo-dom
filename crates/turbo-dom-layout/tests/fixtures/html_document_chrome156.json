@@ -8128,6 +8128,431 @@
    "canvas": "#ffffff"
   },
   {
+   "id": "self-collapsing-first-child-padded-parent",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><div data-cid=\"w\" style=\"padding-bottom:1px\"><div data-cid=\"k\" style=\"margin-bottom:20px\"></div></div><div data-cid=\"g\" style=\"height:60px\"></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "w",
+     "x": 0,
+     "y": 20,
+     "width": 1280,
+     "height": 1
+    },
+    {
+     "cid": "k",
+     "x": 0,
+     "y": 20,
+     "width": 1280,
+     "height": 0
+    },
+    {
+     "cid": "g",
+     "x": 0,
+     "y": 21,
+     "width": 1280,
+     "height": 60
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "self-collapsing-first-child-then-block",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><div data-cid=\"w\" style=\"padding-bottom:1px\"><div data-cid=\"k\" style=\"margin-bottom:20px\"></div><div data-cid=\"b\" style=\"height:10px;margin-top:5px\"></div></div><div data-cid=\"g\" style=\"height:60px\"></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "w",
+     "x": 0,
+     "y": 20,
+     "width": 1280,
+     "height": 11
+    },
+    {
+     "cid": "k",
+     "x": 0,
+     "y": 20,
+     "width": 1280,
+     "height": 0
+    },
+    {
+     "cid": "b",
+     "x": 0,
+     "y": 20,
+     "width": 1280,
+     "height": 10
+    },
+    {
+     "cid": "g",
+     "x": 0,
+     "y": 31,
+     "width": 1280,
+     "height": 60
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "self-collapsing-first-child-fixed-height",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><div data-cid=\"w\" style=\"height:50px\"><div data-cid=\"k\" style=\"margin-bottom:20px\"></div></div><div data-cid=\"g\" style=\"height:60px\"></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "w",
+     "x": 0,
+     "y": 20,
+     "width": 1280,
+     "height": 50
+    },
+    {
+     "cid": "k",
+     "x": 0,
+     "y": 20,
+     "width": 1280,
+     "height": 0
+    },
+    {
+     "cid": "g",
+     "x": 0,
+     "y": 70,
+     "width": 1280,
+     "height": 60
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "self-collapsing-first-child-min-height",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><div data-cid=\"w\" style=\"min-height:10px\"><div data-cid=\"k\" style=\"margin-bottom:20px\"></div></div><div data-cid=\"g\" style=\"height:60px\"></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "w",
+     "x": 0,
+     "y": 20,
+     "width": 1280,
+     "height": 10
+    },
+    {
+     "cid": "k",
+     "x": 0,
+     "y": 20,
+     "width": 1280,
+     "height": 0
+    },
+    {
+     "cid": "g",
+     "x": 0,
+     "y": 30,
+     "width": 1280,
+     "height": 60
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "self-collapsing-first-child-two-empty-children",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><div data-cid=\"a\" style=\"height:10px\"></div><div data-cid=\"w\" style=\"padding-bottom:1px;margin-top:5px\"><div data-cid=\"k\" style=\"margin:8px 0 3px\"></div><div data-cid=\"l\" style=\"margin-bottom:12px\"></div><div data-cid=\"b\" style=\"height:10px;margin-top:15px\"></div></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "a",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 10
+    },
+    {
+     "cid": "w",
+     "x": 0,
+     "y": 25,
+     "width": 1280,
+     "height": 11
+    },
+    {
+     "cid": "k",
+     "x": 0,
+     "y": 25,
+     "width": 1280,
+     "height": 0
+    },
+    {
+     "cid": "l",
+     "x": 0,
+     "y": 25,
+     "width": 1280,
+     "height": 0
+    },
+    {
+     "cid": "b",
+     "x": 0,
+     "y": 25,
+     "width": 1280,
+     "height": 10
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "self-collapsing-first-child-nested-empty",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><div data-cid=\"w\" style=\"padding-bottom:1px\"><div data-cid=\"k\"><div data-cid=\"j\" style=\"margin-bottom:25px\"></div></div><div data-cid=\"b\" style=\"height:10px\"></div></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "w",
+     "x": 0,
+     "y": 25,
+     "width": 1280,
+     "height": 11
+    },
+    {
+     "cid": "k",
+     "x": 0,
+     "y": 25,
+     "width": 1280,
+     "height": 0
+    },
+    {
+     "cid": "j",
+     "x": 0,
+     "y": 25,
+     "width": 1280,
+     "height": 0
+    },
+    {
+     "cid": "b",
+     "x": 0,
+     "y": 25,
+     "width": 1280,
+     "height": 10
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "self-collapsing-first-child-negative-margin",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><div data-cid=\"a\" style=\"height:30px\"></div><div data-cid=\"w\" style=\"padding-bottom:1px;margin-top:10px\"><div data-cid=\"k\" style=\"margin-bottom:-4px\"></div><div data-cid=\"b\" style=\"height:10px;margin-top:6px\"></div></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "a",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 30
+    },
+    {
+     "cid": "w",
+     "x": 0,
+     "y": 36,
+     "width": 1280,
+     "height": 11
+    },
+    {
+     "cid": "k",
+     "x": 0,
+     "y": 36,
+     "width": 1280,
+     "height": 0
+    },
+    {
+     "cid": "b",
+     "x": 0,
+     "y": 36,
+     "width": 1280,
+     "height": 10
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "self-collapsing-first-child-padded-child-is-not-empty",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><div data-cid=\"w\" style=\"padding-bottom:1px\"><div data-cid=\"k\" style=\"padding-top:1px;margin-bottom:20px\"></div><div data-cid=\"b\" style=\"height:10px\"></div></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "w",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 32
+    },
+    {
+     "cid": "k",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 1
+    },
+    {
+     "cid": "b",
+     "x": 0,
+     "y": 21,
+     "width": 1280,
+     "height": 10
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "self-collapsing-first-child-height-zero",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><div data-cid=\"w\" style=\"padding-bottom:1px\"><div data-cid=\"k\" style=\"height:0;margin-bottom:20px\"></div><div data-cid=\"b\" style=\"height:10px\"></div></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "w",
+     "x": 0,
+     "y": 20,
+     "width": 1280,
+     "height": 11
+    },
+    {
+     "cid": "k",
+     "x": 0,
+     "y": 20,
+     "width": 1280,
+     "height": 0
+    },
+    {
+     "cid": "b",
+     "x": 0,
+     "y": 20,
+     "width": 1280,
+     "height": 10
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "self-collapsing-first-child-bfc-child-is-not-empty",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><div data-cid=\"w\" style=\"padding-bottom:1px\"><div data-cid=\"k\" style=\"overflow:hidden;margin-bottom:20px\"></div><div data-cid=\"b\" style=\"height:10px\"></div></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "w",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 31
+    },
+    {
+     "cid": "k",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 0
+    },
+    {
+     "cid": "b",
+     "x": 0,
+     "y": 20,
+     "width": 1280,
+     "height": 10
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
    "id": "min-max-height-min-wins-over-max",
    "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><div data-cid=\"w\" style=\"min-height:400px;max-height:100px\"><div data-cid=\"k\" style=\"height:200px\"></div></div><div data-cid=\"g\" style=\"height:60px\"></div></body></html>",
    "measure": "xywh",

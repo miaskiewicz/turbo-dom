@@ -9,7 +9,7 @@
 // cases of the bugs found while fixing it (one group per issue, labelled). P5b-W6 adds the
 // `min-height` / `max-height` cases of miaskiewicz/turbo-dom#75 item 1
 // (`min-height-margin-*`), zero-area `clip: rect()` boxes of item 2 (`clip-zero-area-*`,
-// `clip-sr-only*`) and cases of the bugs found while fixing them (#77, #78).
+// `clip-sr-only*`) and cases of the bugs found while fixing them (#76, #77, #78).
 //
 // For every case below, Chrome for Testing 156 (viewport 1280x800) records:
 //   - `boxes`: getBoundingClientRect() of every `[data-cid]` element (document order), as
@@ -342,6 +342,18 @@ const CASES = [
   { id: "clip-zero-area-fixed", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="position:fixed;left:30px;top:40px;width:20px;height:20px;clip:rect(0,0,0,0)"></div>`) },
   { id: "clip-zero-area-in-relative", html: DOC(S("body{margin:0}"), `<div style="position:relative;margin:30px"><div data-cid="c" style="position:absolute;right:0;top:4px;width:20px;height:20px;clip:rect(5px,5px,5px,5px)"></div></div>`) },
   { id: "clip-zero-area-transformed", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="position:absolute;left:20px;top:20px;width:50px;height:50px;transform:translate(100px,0);clip:rect(0,0,0,0)"></div>`) },
+  // P5b-W6, miaskiewicz/turbo-dom#76: an empty (self-collapsing) first child's margins
+  // collapse through it and out of its parent's top edge (CSS 2.2 §8.3.1).
+  { id: "self-collapsing-first-child-padded-parent", html: DOC(S("body{margin:0}"), `<div data-cid="w" style="padding-bottom:1px"><div data-cid="k" style="margin-bottom:20px"></div></div><div data-cid="g" style="height:60px"></div>`) },
+  { id: "self-collapsing-first-child-then-block", html: DOC(S("body{margin:0}"), `<div data-cid="w" style="padding-bottom:1px"><div data-cid="k" style="margin-bottom:20px"></div><div data-cid="b" style="height:10px;margin-top:5px"></div></div><div data-cid="g" style="height:60px"></div>`) },
+  { id: "self-collapsing-first-child-fixed-height", html: DOC(S("body{margin:0}"), `<div data-cid="w" style="height:50px"><div data-cid="k" style="margin-bottom:20px"></div></div><div data-cid="g" style="height:60px"></div>`) },
+  { id: "self-collapsing-first-child-min-height", html: DOC(S("body{margin:0}"), `<div data-cid="w" style="min-height:10px"><div data-cid="k" style="margin-bottom:20px"></div></div><div data-cid="g" style="height:60px"></div>`) },
+  { id: "self-collapsing-first-child-two-empty-children", html: DOC(S("body{margin:0}"), `<div data-cid="a" style="height:10px"></div><div data-cid="w" style="padding-bottom:1px;margin-top:5px"><div data-cid="k" style="margin:8px 0 3px"></div><div data-cid="l" style="margin-bottom:12px"></div><div data-cid="b" style="height:10px;margin-top:15px"></div></div>`) },
+  { id: "self-collapsing-first-child-nested-empty", html: DOC(S("body{margin:0}"), `<div data-cid="w" style="padding-bottom:1px"><div data-cid="k"><div data-cid="j" style="margin-bottom:25px"></div></div><div data-cid="b" style="height:10px"></div></div>`) },
+  { id: "self-collapsing-first-child-negative-margin", html: DOC(S("body{margin:0}"), `<div data-cid="a" style="height:30px"></div><div data-cid="w" style="padding-bottom:1px;margin-top:10px"><div data-cid="k" style="margin-bottom:-4px"></div><div data-cid="b" style="height:10px;margin-top:6px"></div></div>`) },
+  { id: "self-collapsing-first-child-padded-child-is-not-empty", html: DOC(S("body{margin:0}"), `<div data-cid="w" style="padding-bottom:1px"><div data-cid="k" style="padding-top:1px;margin-bottom:20px"></div><div data-cid="b" style="height:10px"></div></div>`) },
+  { id: "self-collapsing-first-child-height-zero", html: DOC(S("body{margin:0}"), `<div data-cid="w" style="padding-bottom:1px"><div data-cid="k" style="height:0;margin-bottom:20px"></div><div data-cid="b" style="height:10px"></div></div>`) },
+  { id: "self-collapsing-first-child-bfc-child-is-not-empty", html: DOC(S("body{margin:0}"), `<div data-cid="w" style="padding-bottom:1px"><div data-cid="k" style="overflow:hidden;margin-bottom:20px"></div><div data-cid="b" style="height:10px"></div></div>`) },
   // P5b-W6, miaskiewicz/turbo-dom#77: `min-height` wins over `max-height` and `height`
   // (CSS 2.2 §10.7).
   { id: "min-max-height-min-wins-over-max", html: DOC(S("body{margin:0}"), `<div data-cid="w" style="min-height:400px;max-height:100px"><div data-cid="k" style="height:200px"></div></div><div data-cid="g" style="height:60px"></div>`) },
