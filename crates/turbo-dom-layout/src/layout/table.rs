@@ -96,7 +96,7 @@ struct GroupRef {
 }
 
 /// The row groups among a table's children (every child that is not itself a row,
-/// as [`collect_rows`] flattens them) with at least one row, in order, indexed into
+/// as [`collect_rows`] flattens them), empty ones included, in order, indexed into
 /// [`collect_rows`]' rows.
 fn row_groups(items: &[LayoutBox]) -> Vec<GroupRef> {
     let mut out = Vec::new();
@@ -104,7 +104,7 @@ fn row_groups(items: &[LayoutBox]) -> Vec<GroupRef> {
     for child in items {
         let row = matches!(child.display, Display::TableRow);
         let count = if row { 1 } else { rows_of(child).len() };
-        if count > 0 && !row {
+        if !row {
             out.push(GroupRef {
                 node_id: child.node_id,
                 position: position_of(&child.style),
@@ -654,7 +654,8 @@ fn layout_table_collapsed(
     record_rows(rows, ctx);
     let frags = finalize(rows, laid, &geom, cx, cy);
     record_row_metrics(rows, &frags, ctx);
-    (wrap_row_groups(frags, grid.groups, ctx), height)
+    let frame = GroupFrame::of(&geom, cx, cy + geom.row_y[0]);
+    (wrap_row_groups(frags, grid.groups, frame, ctx), height)
 }
 
 // --------------------------------------------------------------------------
@@ -817,22 +818,64 @@ fn empty_box_metrics(frag: &Fragment, position: Position, display: Display) -> U
     }
 }
 
+/// Where the rows of a table sit (galley-absolute): their left edge and width, and the
+/// block offset an empty row group takes when no row precedes it.
+#[derive(Clone, Copy)]
+struct GroupFrame {
+    x: f32,
+    width: f32,
+    top: f32,
+}
+
+impl GroupFrame {
+    fn of(geom: &Geom, cx: f32, top: f32) -> Self {
+        Self {
+            x: cx + geom.row_x,
+            width: geom.row_w,
+            top,
+        }
+    }
+}
+
 /// In live geometry, nest each row group's rows under a transparent box for the group:
 /// the union of its rows, with frameless used metrics (miaskiewicz/turbo-surf#31), so
-/// a `<tbody>` answers its CSSOM reads. Other layouts keep the rows flat (the PDF
-/// fragmenter repeats `<thead>`/`<tfoot>` rows from the table's own children).
-fn wrap_row_groups(frags: Vec<Fragment>, groups: &[GroupRef], ctx: &mut Ctx) -> Vec<Fragment> {
+/// a `<tbody>` answers its CSSOM reads. An empty row group is a zero-height box as
+/// wide as the rows, at the bottom of the rows before it — the table's first row edge
+/// when there are none (miaskiewicz/turbo-dom#28 item 5, Chrome 156). Other layouts keep
+/// the rows flat (the PDF fragmenter repeats `<thead>`/`<tfoot>` rows from the table's
+/// own children).
+fn wrap_row_groups(
+    frags: Vec<Fragment>,
+    groups: &[GroupRef],
+    frame: GroupFrame,
+    ctx: &mut Ctx,
+) -> Vec<Fragment> {
     let Some(metrics) = &mut ctx.used_metrics else {
         return frags;
     };
+    let mut bottom = frame.top;
     let mut rows: Vec<Option<Fragment>> = frags.into_iter().map(Some).collect();
     let mut out = Vec::new();
     let mut next = 0;
     for group in groups {
         out.extend(rows[next..group.start].iter_mut().filter_map(Option::take));
+        if let Some(row) = out.last() {
+            bottom = row.y + row.height;
+        }
         next = group.start + group.count;
-        let children = rows[group.start..next].iter_mut().filter_map(Option::take);
-        let frag = group_fragment(group.node_id, children.collect());
+        let children: Vec<Fragment> = rows[group.start..next]
+            .iter_mut()
+            .filter_map(Option::take)
+            .collect();
+        let frag = if children.is_empty() {
+            let mut frag = group_fragment(group.node_id, Vec::new());
+            (frag.x, frag.y, frag.width) = (frame.x, bottom, frame.width);
+            frag
+        } else {
+            let frag = group_fragment(group.node_id, children);
+            bottom = frag.y + frag.height;
+            frag
+        };
         metrics.insert(
             group.node_id,
             empty_box_metrics(&frag, group.position, group.display),
@@ -843,14 +886,19 @@ fn wrap_row_groups(frags: Vec<Fragment>, groups: &[GroupRef], ctx: &mut Ctx) -> 
     out
 }
 
-/// A transparent box over `rows` (their union).
+/// A transparent box over `rows` (their union; zero-size at the origin for none).
 fn group_fragment(node_id: NodeId, rows: Vec<Fragment>) -> Fragment {
-    let (first, last) = (&rows[0], &rows[rows.len() - 1]);
-    let x = rows.iter().map(|r| r.x).fold(f32::INFINITY, f32::min);
-    let right = rows
-        .iter()
-        .map(|r| r.x + r.width)
-        .fold(f32::NEG_INFINITY, f32::max);
+    let (x, y, width, height) = match (rows.first(), rows.last()) {
+        (Some(first), Some(last)) => {
+            let x = rows.iter().map(|r| r.x).fold(f32::INFINITY, f32::min);
+            let right = rows
+                .iter()
+                .map(|r| r.x + r.width)
+                .fold(f32::NEG_INFINITY, f32::max);
+            (x, first.y, right - x, last.y + last.height - first.y)
+        }
+        _ => (0.0, 0.0, 0.0, 0.0),
+    };
     let content = FragmentContent::Box {
         background: None,
         border: BorderEdges::default(),
@@ -859,14 +907,7 @@ fn group_fragment(node_id: NodeId, rows: Vec<Fragment>) -> Fragment {
         gradient: None,
         transform: None,
     };
-    let mut frag = Fragment::new(
-        node_id,
-        x,
-        first.y,
-        right - x,
-        last.y + last.height - first.y,
-        content,
-    );
+    let mut frag = Fragment::new(node_id, x, y, width, height, content);
     frag.children = rows;
     frag
 }
@@ -989,7 +1030,16 @@ pub(crate) fn layout_table(
     let rows = collect_rows(items);
     let (placed, ncols) = build_grid(&rows);
     if ncols == 0 {
-        return (Vec::new(), 0.0);
+        // No columns: (empty) row groups sit at the content-box origin, zero-size.
+        let frame = GroupFrame {
+            x: cx,
+            width: 0.0,
+            top: cy,
+        };
+        return (
+            wrap_row_groups(Vec::new(), &row_groups(items), frame, ctx),
+            0.0,
+        );
     }
     // Fixed-layout collapsed borders need the merged-grid geometry (shared edges
     // counted once). Auto/separate tables keep the track+spacing model below.
@@ -1021,5 +1071,9 @@ pub(crate) fn layout_table(
     record_rows(&rows, ctx);
     let frags = finalize(&rows, laid, &geom, cx, cy);
     record_row_metrics(&rows, &frags, ctx);
-    (wrap_row_groups(frags, &row_groups(items), ctx), height)
+    let frame = GroupFrame::of(&geom, cx, cy);
+    (
+        wrap_row_groups(frags, &row_groups(items), frame, ctx),
+        height,
+    )
 }

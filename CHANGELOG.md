@@ -98,6 +98,11 @@ changes in `tools/parity/expected/p5b-w3-turbo-dom-28-*.json`.
   inline tables, floats, flex items, inline-blocks around tables) are its columns plus
   border-spacing (`table::max_content_width` / `min_content_width`), not its widest
   row. Control: `float-*` / `inline-table-*` in `live-geometry` and `html-document`.
+- Empty row groups in live geometry (item 5): a `<tbody></tbody>` (`<thead>`, `<tfoot>`)
+  gets a zero-height box as wide as the table's rows, at the bottom of the rows before it
+  (the first row edge when none precede it; zero-size at the content-box origin of a
+  table without columns), as in Chrome, instead of no box (its reads failed with "native
+  empty inline placement is pending"). Control: `live-geometry` `empty-row-group-*`.
 
 ### Changed — selector follow-ups (P5b-X2, miaskiewicz/turbo-dom#24, Chrome 156 controls)
 - `rtdom::cascade` (`getComputedStyle`) and the npm `cascade.mjs` rank rules by the

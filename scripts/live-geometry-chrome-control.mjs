@@ -198,6 +198,14 @@ const CASES = [
   { id: "inline-table-is-inline-level", html: DOC("body{margin:0}", `<div data-cid="d" style="font-size:0"><div data-cid="t" style="display:inline-table;width:40px;height:20px"></div><div data-cid="t2" style="display:inline-table;width:40px;height:20px"></div></div>`) },
   { id: "inline-table-cells", html: DOC("body{margin:0}", `<div data-cid="d" style="font-size:0"><i style="display:inline-block;width:15px;height:10px"></i><table data-cid="t" style="display:inline-table;border-spacing:2px"><tr><td data-cid="td" style="padding:1px"><div style="width:30px;height:10px"></div></td></tr></table></div>`) },
   { id: "inline-table-blockified", html: DOC("body{margin:0}", `<div data-cid="t" style="display:inline-table;float:left;width:40px;height:20px"></div><div data-cid="u" style="display:inline-table;position:absolute;left:100px;top:50px;width:40px;height:20px"></div><span data-cid="v" style="display:inline-block;float:right;width:10px;height:10px"></span>`) },
+  // turbo-dom#28 item 5: an empty row group (`<tbody></tbody>`) is a zero-height box as wide
+  // as the rows, at the bottom of the rows before it (the first row edge when none).
+  { id: "empty-row-group-only", html: DOC("body{margin:0}", `<table data-cid="t"><tbody data-cid="b"></tbody></table>`) },
+  { id: "empty-row-group-only-framed", html: DOC("body{margin:0}table{border-spacing:5px 7px;padding:3px;border:2px solid}", `<table data-cid="t"><tbody data-cid="b"></tbody></table>`) },
+  { id: "empty-row-group-before-rows", html: DOC("body{margin:0}table{border-spacing:5px 7px}", `<table data-cid="t"><thead data-cid="h"></thead><tbody data-cid="b"><tr data-cid="r"><td data-cid="c"><div style="width:30px;height:10px"></div></td></tr></tbody></table>`) },
+  { id: "empty-row-group-between", html: DOC("body{margin:0}table{border-spacing:5px 7px}", `<table data-cid="t"><tbody data-cid="b1"><tr><td><div style="width:30px;height:10px"></div></td></tr></tbody><tbody data-cid="e"></tbody><tbody data-cid="b2"><tr><td><div style="width:30px;height:10px"></div></td></tr></tbody></table>`) },
+  { id: "empty-row-group-after-rows", html: DOC("body{margin:0}table{border-spacing:5px 7px}", `<table data-cid="t"><tbody data-cid="b"><tr><td><div style="width:30px;height:10px"></div></td></tr></tbody><tfoot data-cid="f"></tfoot></table>`) },
+  { id: "empty-row-group-collapsed-fixed", html: DOC("body{margin:0}table{border-collapse:collapse;table-layout:fixed;width:200px}td{border:2px solid}", `<table data-cid="t"><tbody data-cid="b"><tr><td><div style="width:30px;height:10px"></div></td></tr></tbody><tbody data-cid="e"></tbody></table>`) },
 ];
 
 const browser = await chromium.launch({ executablePath: chromePath, headless: true });
