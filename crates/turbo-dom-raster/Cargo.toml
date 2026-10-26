@@ -1,0 +1,78 @@
+[package]
+name = "turbo-surf-raster"
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "turbo-surf synthetic screenshot tier: HTML snapshot → layout → PNG/SVG, no browser"
+
+[dependencies]
+# The layout + style + font engine (from turbo-html2pdf, on crates.io). We
+# consume only its public HTML→Fragment drive (`layout_html`) + the `Fragment`
+# display list and paint it ourselves; no PDF code is pulled onto the hot path.
+# CSS `transform` (0.2.11) for carousels/rotate; image `%`-sizing + flex
+# `min-height` (0.2.10); `linear-gradient` (0.2.9); box-shadow (0.2.8);
+# border-radius (0.2.7).
+# Published0.3.8 includes the composed-layout and shared-font producer fixes.
+turbo-html2pdf-core = { version = "0.3.9" }
+# Raster canvas + PNG encode (Pixmap::encode_png, default `png-format` feature).
+tiny-skia = "0.11"
+# Glyph outlines: we parse `FontFace::data()` bytes independently to trace each
+# glyph into a fill path (both the PNG and SVG painters share the trace).
+ttf-parser = "0.25"
+# Decode + scale fetched raster image bytes (PNG/JPEG/GIF/WebP) for painting. The
+# raster normalizes every decoded image to RGBA, so turbo-html2pdf only ever sizes
+# a re-encoded PNG — format support lives here, not in the layout engine.
+image = { version = "0.25", default-features = false, features = [
+    "png",
+    "jpeg",
+    "gif",
+    "webp",
+] }
+# Rasterize SVG `<img>`/`background-image` sources (logos/icons are ubiquitous).
+# Pinned to match turbo-html2pdf's svg tier (0.45.1; 0.46+ changes raster output).
+# resvg re-exports `usvg` + `tiny-skia`, used only inside the SVG decode path.
+resvg = { version = "=0.45.1", default-features = false }
+# Parse the 2D-canvas op-log JSON (`canvas_ops_png`). Value-tree parse only — the op set is
+# small + forgiving (unknown ops are skipped), so no derive is needed.
+serde_json = "1"
+
+# --- `gpu-metal` (off by default) --------------------------------------------
+# Real-GPU (wgpu → Metal) rasterizer for the canvas op-log. All three are `optional` and only
+# pulled in by the `gpu-metal` feature; the default build links ZERO GPU crates and keeps the
+# tiny-skia replay.
+wgpu = { version = "22", optional = true }
+# Block on wgpu's async adapter/device/readback futures (offscreen, no async runtime).
+pollster = { version = "0.3", optional = true }
+# Tessellate canvas paths + glyph outlines into GPU triangles (fill + stroke).
+lyon_tessellation = { version = "1", optional = true }
+# Translate a page's GLSL-ES WebGL shaders for wgpu: `naga::front::glsl` → IR → validate →
+# `naga::back::wgsl`. Pinned to wgpu 22's naga so the WGSL it emits is accepted.
+naga = { version = "22", optional = true, features = ["glsl-in", "wgsl-out"] }
+# Decode the recorded WebGL `bufferData` bytes (the recorder base64s them for a lossless capture).
+base64 = { version = "0.22", optional = true }
+
+# --- `coretext` (off by default; macOS only) ---------------------------------
+# Rasterize canvas 2D TEXT via the system CoreText/CoreGraphics stack (the same one Chrome's Skia
+# uses for glyphs on macOS), so `getImageData` over rendered text matches a real Mac Chrome instead
+# of our ttf-parser+tiny-skia glyph raster. macOS-only system frameworks (no download, unlike Skia);
+# gated so non-macOS + the default build never reference them. Shapes stay on tiny-skia (already
+# pixel-matching), so this only swaps the glyph raster — no shape regression.
+[target.'cfg(target_os = "macos")'.dependencies]
+core-graphics = { version = "0.23", optional = true }
+core-text = { version = "20", optional = true }
+core-foundation = { version = "0.9", optional = true }
+
+[features]
+# CoreText/CoreGraphics canvas-text raster (macOS only — the deps are macOS-gated, so on other
+# platforms this feature is inert). See the deps note above.
+coretext = ["dep:core-graphics", "dep:core-text", "dep:core-foundation"]
+# Real-GPU (wgpu → Metal) rasterization: `canvas_ops_png` (canvas 2D) + `webgl_readback` (a live
+# WebGL draw batch). On any GPU failure both transparently fall back, so enabling it never
+# regresses correctness — only the pixel backend changes.
+gpu-metal = ["dep:wgpu", "dep:pollster", "dep:lyon_tessellation", "dep:naga", "dep:base64"]
+
+[dev-dependencies]
+# Screenshot tests build a fixture PNG and decode the rendered output to sample
+# pixels (verifying an image was painted, not a placeholder).
+tiny-skia = "0.11"
