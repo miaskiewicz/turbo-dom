@@ -2318,7 +2318,8 @@ impl Tree {
         out
     }
 
-    /// Short-circuiting DFS over `root`'s descendant ELEMENTS (excluding `root`):
+    /// Short-circuiting DFS over `root`'s descendant ELEMENTS (excluding `root`; template
+    /// content is not a descendant — `for_each_light_child`):
     /// returns true as soon as `pred` does, WITHOUT materializing a descendant
     /// `Vec`. Children are pushed alloc-free (push then reverse the just-added
     /// segment) so traversal stays document-order. Mirrors the JS `someDescendant`;
@@ -2342,14 +2343,14 @@ impl Tree {
     ) -> bool {
         let mut stack: Vec<Handle> = Vec::new();
         let base = stack.len();
-        self.for_each_child(root, |c| stack.push(c));
+        self.for_each_light_child(root, |c| stack.push(c));
         stack[base..].reverse();
         while let Some(h) = stack.pop() {
             if self.node_type(h) == NodeType::Element && pred(h) {
                 return true;
             }
             let base = stack.len();
-            self.for_each_child(h, |c| stack.push(c));
+            self.for_each_light_child(h, |c| stack.push(c));
             stack[base..].reverse();
         }
         false

@@ -17,8 +17,9 @@
 //!   parsed unforgivingly (`@supports selector(…)` / `CSS.supports("selector(…)")`).
 //! - pseudo-classes Chrome knows but the DOM engine does not evaluate parse as valid and
 //!   never match (the static resting state: `:hover`, `:focus`, `:visited`, …). Names are
-//!   ASCII case-insensitive. `:scope` is `:root`, and `:defined`, `:lang()` and
-//!   `:-webkit-any()` are evaluated (cascade-only: the DOM APIs keep their behaviour).
+//!   ASCII case-insensitive. `:scope` is `:root`, and `:-webkit-any()` is evaluated
+//!   (cascade-only: the DOM APIs keep their behaviour); `:defined` and `:lang()` are shared
+//!   with the DOM APIs.
 //! - **specificity** per Selectors 4: `:where()` is 0; `:is()`, `:not()` and `:has()` take
 //!   their most specific argument; `:nth-child(An+B of S)` is a pseudo-class plus S;
 //!   pseudo-elements count as types.
@@ -135,7 +136,7 @@ const NEVER_PSEUDO_CLASSES: &[&str] = &[
     "volume-locked",
     "xr-overlay",
 ];
-const NEVER_FUNCTIONAL_PSEUDO_CLASSES: &[&str] = &["dir", "host", "host-context"];
+const NEVER_FUNCTIONAL_PSEUDO_CLASSES: &[&str] = &["host", "host-context"];
 
 /// Pseudo-elements Chrome 156 accepts without an argument (any `::-webkit-*` name is
 /// accepted too).
@@ -174,8 +175,8 @@ const FUNCTIONAL_PSEUDO_ELEMENTS: &[&str] = &[
     "view-transition-new",
     "view-transition-old",
 ];
-/// Pseudo-classes Chrome allows after a pseudo-element (user action, and the scrollbar
-/// pseudo-element states). Such a selector never matches an element anyway.
+/// Pseudo-classes Chrome allows after a `::-webkit-*` (scrollbar) pseudo-element: user
+/// action and the scrollbar states. Such a selector never matches an element anyway.
 const AFTER_PSEUDO_ELEMENT: &[&str] = &[
     "active",
     "corner-present",
@@ -197,12 +198,46 @@ const AFTER_PSEUDO_ELEMENT: &[&str] = &[
     "window-inactive",
 ];
 
-fn allowed_after_pseudo_element(p: &Pseudo) -> bool {
-    match p {
-        Pseudo::Unknown(u) => {
-            u.arg.is_none() && AFTER_PSEUDO_ELEMENT.contains(&u.name.to_ascii_lowercase().as_str())
+/// User-action pseudo-classes: what Chrome 156 allows after an element-backed
+/// pseudo-element (`::file-selector-button:hover`, `::details-content:focus`).
+const USER_ACTION: &[&str] = &["active", "focus", "focus-visible", "focus-within", "hover"];
+/// Pseudo-elements backed by a real element (user-action pseudo-classes may follow).
+const ELEMENT_BACKED: &[&str] = &[
+    "details-content",
+    "file-selector-button",
+    "picker",
+    "scroll-button",
+    "scroll-marker",
+    "scroll-marker-group",
+];
+
+/// May pseudo-class `p` follow pseudo-element `element` (lowercase name)? Chrome 156: the
+/// scrollbar pseudo-elements take their states, `::selection` only `:window-inactive`,
+/// `::part()` any non-structural pseudo-class, element-backed ones user action, and the
+/// rest (`::before`, `::marker`, `::placeholder`, `::slotted()`, …) nothing.
+fn allowed_after_pseudo_element(element: &str, p: &Pseudo) -> bool {
+    let plain = |list: &[&str]| matches!(p, Pseudo::Unknown(u) if u.arg.is_none() && list.contains(&u.name.to_ascii_lowercase().as_str()));
+    if element.starts_with("-webkit-") {
+        return plain(AFTER_PSEUDO_ELEMENT) || matches!(p, Pseudo::Disabled | Pseudo::Enabled);
+    }
+    match element {
+        "selection" => plain(&["window-inactive"]),
+        "part" => {
+            plain(NEVER_PSEUDO_CLASSES)
+                || matches!(
+                    p,
+                    Pseudo::Checked
+                        | Pseudo::Disabled
+                        | Pseudo::Enabled
+                        | Pseudo::Required
+                        | Pseudo::Optional
+                        | Pseudo::ReadOnly
+                        | Pseudo::ReadWrite
+                        | Pseudo::Link
+                        | Pseudo::State(_)
+                )
         }
-        Pseudo::Disabled | Pseudo::Enabled => true,
+        _ if ELEMENT_BACKED.contains(&element) => plain(USER_ACTION),
         _ => false,
     }
 }
@@ -357,20 +392,23 @@ fn take_pseudo_element(compound: &mut Compound) -> Result<Option<PseudoElement>,
     let Pseudo::Unknown(UnknownPseudo { name, arg }) = marker else {
         unreachable!("is_pseudo_element_marker only accepts Unknown");
     };
-    let element = if name.is_empty() {
+    let (element, element_name) = if name.is_empty() {
         // `::name`: the name is the next pseudo the tokenizer produced
         match (at < compound.pseudos.len()).then(|| compound.pseudos.remove(at)) {
-            Some(Pseudo::Unknown(UnknownPseudo { name, arg })) => pseudo_element(&name, arg)?,
+            Some(Pseudo::Unknown(UnknownPseudo { name, arg })) => {
+                (pseudo_element(&name, arg)?, name.to_ascii_lowercase())
+            }
             _ => return Err(invalid("unknown pseudo-element")),
         }
     } else if arg.is_some() {
         return Err(invalid("legacy pseudo-element with an argument"));
     } else {
-        PseudoElement::Inert(name.to_ascii_lowercase())
+        let lower = name.to_ascii_lowercase();
+        (PseudoElement::Inert(lower.clone()), lower)
     };
     if !compound.pseudos[at..]
         .iter()
-        .all(allowed_after_pseudo_element)
+        .all(|p| allowed_after_pseudo_element(&element_name, p))
     {
         return Err(invalid("pseudo-class after a pseudo-element"));
     }
@@ -437,11 +475,56 @@ fn check_pseudo(pseudo: &mut Pseudo) -> Result<(), SelectorError> {
             }
             for relative in list {
                 check_nested(&mut relative.complex)?;
+                reject_nested_has(&mut relative.complex)?;
             }
         }
         _ => {}
     }
     Ok(())
+}
+
+/// Inside `:has()`, a nested `:has()` is invalid (Chrome 156): an error directly or through
+/// the unforgiving `:not()` / `of S`, while the forgiving `:is()` / `:where()` /
+/// `:-webkit-any()` drop the items that contain one (`:has(:is(p, :has(q)))` is `:has(p)`).
+fn reject_nested_has(complex: &mut Complex) -> Result<(), SelectorError> {
+    let compounds =
+        std::iter::once(&mut complex.first).chain(complex.rest.iter_mut().map(|(_, c)| c));
+    for compound in compounds {
+        for pseudo in &mut compound.pseudos {
+            match pseudo {
+                Pseudo::Has(_) => return Err(invalid(":has() inside :has()")),
+                Pseudo::Is(list) | Pseudo::Where(list) | Pseudo::WebkitAny(list) => {
+                    list.retain(|c| !contains_has(c));
+                }
+                Pseudo::Not(list)
+                | Pseudo::NthChildOf(_, _, list)
+                | Pseudo::NthLastChildOf(_, _, list)
+                    if list.iter().any(contains_has) =>
+                {
+                    return Err(invalid(":has() inside :has()"));
+                }
+                _ => {}
+            }
+        }
+    }
+    Ok(())
+}
+
+/// Does `complex` use `:has()` anywhere (through any selector-list argument)?
+pub(super) fn contains_has(complex: &Complex) -> bool {
+    std::iter::once(&complex.first)
+        .chain(complex.rest.iter().map(|(_, c)| c))
+        .flat_map(|c| &c.pseudos)
+        .any(|p| match p {
+            Pseudo::Has(_) => true,
+            Pseudo::Is(list)
+            | Pseudo::Where(list)
+            | Pseudo::Not(list)
+            | Pseudo::WebkitAny(list)
+            | Pseudo::NthChildOf(_, _, list)
+            | Pseudo::NthLastChildOf(_, _, list) => list.iter().any(contains_has),
+            _ => false,
+        })
 }
 
 fn check_nested(complex: &mut Complex) -> Result<(), SelectorError> {
@@ -483,8 +566,6 @@ fn cascade_pseudo(unknown: &UnknownPseudo) -> Result<Pseudo, SelectorError> {
     }
     match (lower.as_str(), arg) {
         ("scope", None) => Ok(Pseudo::Root),
-        ("defined", None) => Ok(Pseudo::Defined),
-        ("lang", Some(arg)) => lang_ranges(arg).map(Pseudo::Lang),
         ("-webkit-any", Some(arg)) => {
             let mut list = super::parse_selector_list_str(arg);
             forgive(&mut list);
@@ -496,18 +577,6 @@ fn cascade_pseudo(unknown: &UnknownPseudo) -> Result<Pseudo, SelectorError> {
         }
         _ => Err(invalid("unknown pseudo-class")),
     }
-}
-
-/// `:lang()` ranges: comma-separated identifiers or strings, lowercased.
-fn lang_ranges(arg: &str) -> Result<Vec<String>, SelectorError> {
-    let ranges: Vec<String> = arg
-        .split(',')
-        .map(|r| r.trim().trim_matches(['"', '\'']).to_ascii_lowercase())
-        .collect();
-    if ranges.iter().any(String::is_empty) {
-        return Err(invalid("empty :lang() range"));
-    }
-    Ok(ranges)
 }
 
 /// Does `h` match `sel` through `nav` (a pseudo-element selector never matches an element,
@@ -525,10 +594,15 @@ pub fn match_for_cascade<N: Navigator + ?Sized>(nav: &N, h: Handle, sel: &Cascad
 
 // ------------------------------------------------------------------ cascade-only pseudos
 
-/// `:defined`: every element except an HTML autonomous custom element (no script runs, so
-/// none is ever defined).
+/// `:defined`: every element except an HTML element whose custom element state is
+/// "undefined" — an autonomous custom element (no script runs here, so none is ever
+/// defined) or one created with an `is` value (`<button is="x-b">`, even `is=""`: no
+/// definition matches), as Chrome 156 reports for a parsed document. An embedder that runs
+/// custom element definitions (the V8 binding) knows more than the tree does.
 pub(super) fn is_defined(tree: &Tree, h: Handle) -> bool {
-    !(tree.is_html(h) && tree.local_name(h).is_some_and(is_custom_element_name))
+    !(tree.is_html(h)
+        && (tree.local_name(h).is_some_and(is_custom_element_name)
+            || tree.get_attribute_ns_borrowed(h, None, "is").is_some()))
 }
 
 fn is_custom_element_name(name: &str) -> bool {
@@ -548,30 +622,162 @@ fn is_custom_element_name(name: &str) -> bool {
         && !RESERVED.contains(&name)
 }
 
-/// `:lang(ranges)`: the element's language (the nearest ancestor-or-self `xml:lang` or
-/// `lang` attribute) equals a range or starts with it plus `-`, ASCII case-insensitively.
-pub(super) fn lang_matches(tree: &Tree, h: Handle, ranges: &[String]) -> bool {
+/// `:lang(range)`: the element's language — the nearest ancestor-or-self `xml:lang` (XML
+/// namespace) or `lang` attribute (any element: SVG's `lang` counts; an HTML element's
+/// no-namespace `xml:lang` does not) — equals `range` or starts with it plus `-`, ASCII
+/// case-insensitively (Chrome 156: no wildcard ranges, `:lang(zh-TW)` does not match
+/// `zh-Hant-TW`). An empty `lang=""` is an unknown language and matches nothing.
+pub(super) fn lang_matches(tree: &Tree, h: Handle, range: &str) -> bool {
     let mut node = Some(h);
     while let Some(n) = node {
-        let lang = tree
-            .get_attribute_ns_borrowed(n, Some("http://www.w3.org/XML/1998/namespace"), "lang")
-            .or_else(|| {
-                tree.is_html(n)
-                    .then(|| tree.get_attribute_ns_borrowed(n, None, "lang"))
-                    .flatten()
-            });
+        let lang = (tree.node_type(n) == super::NodeType::Element)
+            .then(|| {
+                tree.get_attribute_ns_borrowed(
+                    n,
+                    Some("http://www.w3.org/XML/1998/namespace"),
+                    "lang",
+                )
+                .or_else(|| tree.get_attribute_ns_borrowed(n, None, "lang"))
+            })
+            .flatten();
         if let Some(lang) = lang {
             let lang = lang.to_ascii_lowercase();
-            return ranges.iter().any(|range| {
-                lang == *range
-                    || (lang.len() > range.len()
-                        && lang.starts_with(range.as_str())
-                        && lang.as_bytes()[range.len()] == b'-')
-            });
+            return lang == range
+                || (lang.len() > range.len()
+                    && lang.starts_with(range)
+                    && lang.as_bytes()[range.len()] == b'-');
         }
         node = tree.parent(n);
     }
     false
+}
+
+/// `:dir()`: is `h`'s HTML directionality `rtl`? Per HTML (as Chrome 156 evaluates it): an
+/// HTML element's valid `dir` (`ltr` / `rtl` / `auto`, ASCII case-insensitive) decides —
+/// `auto` by its auto directionality (`ltr` without a strong character); with no valid
+/// `dir`, a `bdi` is `auto`, an `input type=tel` is `ltr`, and anything else (every
+/// non-HTML element too) takes its parent's directionality (a shadow root's host; `ltr` at
+/// the top of a tree).
+pub(super) fn is_rtl(tree: &Tree, h: Handle) -> bool {
+    let mut node = h;
+    loop {
+        if tree.is_html(node) {
+            match dir_state(tree, node) {
+                Some(Dir::Ltr) => return false,
+                Some(Dir::Rtl) => return true,
+                Some(Dir::Auto) => return auto_rtl(tree, node).unwrap_or(false),
+                None if tree.local_name(node) == Some("bdi") => {
+                    return auto_rtl(tree, node).unwrap_or(false)
+                }
+                None if tree.local_name(node) == Some("input")
+                    && tree
+                        .get_attribute(node, "type")
+                        .is_some_and(|t| t.eq_ignore_ascii_case("tel")) =>
+                {
+                    return false
+                }
+                None => {}
+            }
+        }
+        let parent = match tree.parent(node) {
+            Some(p) if tree.is_shadow_root(p) => tree.shadow_host(p),
+            Some(p) if tree.node_type(p) == super::NodeType::Element => Some(p),
+            _ => None,
+        };
+        match parent {
+            Some(p) => node = p,
+            None => return false,
+        }
+    }
+}
+
+#[derive(Clone, Copy)]
+enum Dir {
+    Ltr,
+    Rtl,
+    Auto,
+}
+
+/// An HTML element's `dir` attribute state (`None`: missing or invalid — "undefined").
+fn dir_state(tree: &Tree, h: Handle) -> Option<Dir> {
+    let value = tree.get_attribute_ns_borrowed(h, None, "dir")?;
+    [("ltr", Dir::Ltr), ("rtl", Dir::Rtl), ("auto", Dir::Auto)]
+        .into_iter()
+        .find_map(|(name, dir)| value.eq_ignore_ascii_case(name).then_some(dir))
+}
+
+/// `<input type>` states whose value decides auto directionality (HTML "auto-directionality
+/// form-associated elements"; a missing or unknown type is Text).
+const AUTO_DIR_INPUT_TYPES: &[&str] = &[
+    "hidden", "text", "search", "tel", "url", "email", "password", "submit", "reset", "button",
+];
+
+/// HTML "auto directionality": `Some(rtl)` from the first strong character, `None` when
+/// there is none. A text `input` / `textarea` reads its value (any non-empty value without
+/// a leading strong RTL character is `ltr`); other elements read their descendant text,
+/// skipping `bdi`, `script`, `style`, `textarea`, template content and any HTML element
+/// with a valid `dir`.
+fn auto_rtl(tree: &Tree, h: Handle) -> Option<bool> {
+    let value = match tree.local_name(h) {
+        Some("textarea") => Some(tree.text_content(h)),
+        Some("input")
+            if tree.get_attribute(h, "type").is_none_or(|t| {
+                AUTO_DIR_INPUT_TYPES
+                    .iter()
+                    .any(|k| t.eq_ignore_ascii_case(k))
+                    || !super::KNOWN_INPUT_TYPES
+                        .iter()
+                        .any(|k| t.eq_ignore_ascii_case(k))
+            }) =>
+        {
+            Some(
+                tree.get_attribute(h, "value")
+                    .unwrap_or_default()
+                    .to_string(),
+            )
+        }
+        _ => None,
+    };
+    if let Some(value) = value {
+        return strong_rtl(&value).or((!value.is_empty()).then_some(false));
+    }
+    let mut stack = Vec::new();
+    tree.for_each_child(h, |c| stack.push(c));
+    stack.reverse();
+    while let Some(n) = stack.pop() {
+        match tree.node_type(n) {
+            super::NodeType::Text => {
+                if let Some(rtl) = tree.node_value(n).and_then(|t| strong_rtl(&t)) {
+                    return Some(rtl);
+                }
+            }
+            super::NodeType::Element => {
+                let skipped = tree.is_html(n)
+                    && (matches!(
+                        tree.local_name(n),
+                        Some("bdi" | "script" | "style" | "textarea")
+                    ) || dir_state(tree, n).is_some());
+                if !skipped {
+                    let base = stack.len();
+                    tree.for_each_child(n, |c| stack.push(c));
+                    stack[base..].reverse();
+                }
+            }
+            _ => {}
+        }
+    }
+    None
+}
+
+/// The direction of the first strong character of `text` (bidi class L, R or AL).
+fn strong_rtl(text: &str) -> Option<bool> {
+    use unicode_bidi::BidiClass;
+    text.chars()
+        .find_map(|c| match unicode_bidi::bidi_class(c) {
+            BidiClass::L => Some(false),
+            BidiClass::R | BidiClass::AL => Some(true),
+            _ => None,
+        })
 }
 
 // ------------------------------------------------------------------------- specificity
@@ -824,7 +1030,8 @@ mod tests {
             ":Is(.a, :bogus)",
             ":scope",
             ":defined",
-            ":lang(en, \"de\")",
+            ":lang(en)",
+            ":lang(\\*-CH)",
             ":-webkit-any(p, .x)",
             "li:nth-child(2 of .x)",
             ":not(div p)",
@@ -865,6 +1072,9 @@ mod tests {
             ":nth-child(1 of ::before)",
             ":lang()",
             ":lang(en,)",
+            ":lang(en, de)",
+            ":lang(\"de\")",
+            ":lang(1)",
             ":state(--x y)",
             ":Nth-Child(1 of :bogus)",
             "option:selected",
@@ -1073,11 +1283,53 @@ mod tests {
         assert_eq!(m(":SCOPE", "a"), m(":root", "a"));
         assert!(m("P:FIRST-CHILD", "a"));
         assert!(!m("p:hover", "a"));
-        assert!(!m(":dir(ltr)", "a"));
+        assert!(m(":dir(ltr)", "a"), "P5b: :dir() is evaluated");
+        assert!(!m(":dir(rtl)", "a"));
         assert!(is_custom_element_name("x-foo"));
         for not in ["xfoo", "X-foo", "x-Foo", "-x", "annotation-xml"] {
             assert!(!is_custom_element_name(not), "{not}");
         }
+    }
+
+    /// turbo-dom#18 (P5b): `:dir()` edges the Chrome control does not reach — shadow
+    /// trees inherit from the host, template content and detached nodes are `ltr`, a
+    /// non-text `input` reads its descendants (none), and live trees.
+    #[test]
+    fn dir_follows_html_directionality() {
+        let mut tree = Tree::parse(
+            "<div dir=rtl id=host></div><template id=t><p>x</p></template>\
+             <input type=checkbox dir=auto id=cb value=\u{5e9}><input type=bogus dir=auto id=bg value=\u{5e9}>\
+             <div dir=auto id=em><style>\u{5e9}</style><!--\u{5e9}-->1</div>",
+        );
+        let el = |tree: &Tree, id: &str| tree.get_element_by_id(id).unwrap();
+        let host = el(&tree, "host");
+        let shadow = tree.attach_shadow(host);
+        tree.set_inner_html(shadow, "<span>s</span>");
+        let in_shadow = tree.children(shadow)[0];
+        let detached = tree.create_element("p");
+        let rtl = |tree: &Tree, h: Handle| tree.matches(h, ":dir(rtl)");
+        assert!(
+            rtl(&tree, in_shadow),
+            "shadow content inherits the host's direction"
+        );
+        assert!(!rtl(&tree, detached) && tree.matches(detached, ":dir(ltr)"));
+        let template = el(&tree, "t");
+        let content = tree
+            .children(template)
+            .into_iter()
+            .find(|&c| tree.node_type(c) == super::super::NodeType::Fragment)
+            .unwrap();
+        let p = tree.children(content)[0];
+        assert!(tree.matches(p, ":dir(ltr)"));
+        assert!(!rtl(&tree, el(&tree, "cb")), "a checkbox value is not text");
+        assert!(rtl(&tree, el(&tree, "bg")), "an unknown type is Text");
+        assert!(
+            !rtl(&tree, el(&tree, "em")),
+            "style and comments are skipped"
+        );
+        assert!(!tree.matches(host, ":dir(auto)") && !tree.matches(host, ":dir(foo)"));
+        assert_eq!(strong_rtl("123 \u{627}"), Some(true));
+        assert_eq!(strong_rtl("1 2"), None);
     }
 
     #[test]

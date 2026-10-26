@@ -14,7 +14,12 @@
 //!   valid selectors and `match_for_cascade` (live navigator) matches exactly where the
 //!   selector matches; and for every cascade case (one per S3b quirk class) a
 //!   minimal cascade over `parse_for_cascade` + `match_for_cascade` + `specificity()`
-//!   (highest specificity, then source order) picks Chrome's winning `order`.
+//!   (highest specificity, then source order) picks Chrome's winning `order`;
+//! - the scripted `probes` (P5b): template content traversal and `:root` outside the
+//!   document element, rebuilt through the Tree API.
+//!
+//! P5b (miaskiewicz/turbo-dom#18 remainder) added one case per open item; [`OPEN`] lists
+//! the items whose fix has not landed yet (their cases are recorded but not asserted).
 use serde_json::Value;
 use turbo_dom::rtdom::cascade::computed_style;
 use turbo_dom::rtdom::query::{match_for_cascade, parse_for_cascade, LiveNavigator};
@@ -22,6 +27,20 @@ use turbo_dom::rtdom::tree::NodeType;
 use turbo_dom::{Handle, Tree};
 
 const FIXTURE: &str = include_str!("fixtures/cascade_selectors_chrome156.json");
+
+/// P5b items (the fixture's `bug` / `class` / probe ids) not fixed yet: recorded in the
+/// fixture, skipped by the assertions until the fixing commit removes them here. All P5b-X
+/// items have landed.
+const OPEN: &[&str] = &[];
+
+fn open(item: &str) -> bool {
+    OPEN.contains(&item)
+}
+
+/// Rows where turbo-dom deliberately differs from Chrome 156: the CSS-standard `s`
+/// (case-sensitive) attribute modifier is a Rust contract (`tests/attribute_case.rs`) that
+/// Chrome 156 rejects. Recorded, not asserted.
+const RUST_CONTRACT_ROWS: &[&str] = &["[a=b s]", "[a=b S]", "[a=\"1\" s]"];
 
 /// Elements in document order, template content excluded (Chrome walks `children`).
 fn elements(tree: &Tree) -> Vec<Handle> {
@@ -42,24 +61,9 @@ fn bits(s: &Value) -> Vec<bool> {
     s.as_str().unwrap().chars().map(|c| c == '1').collect()
 }
 
-/// Known gap (left open in miaskiewicz/turbo-dom#18): `querySelectorAll` descends into
-/// `<template>` content, which Chrome keeps in a separate fragment. Such hits are dropped
-/// here so the control asserts everything else.
-fn in_template_content(tree: &Tree, h: Handle) -> bool {
-    let mut node = tree.parent(h);
-    while let Some(n) = node {
-        if tree.node_type(n) == NodeType::Fragment {
-            return true;
-        }
-        node = tree.parent(n);
-    }
-    false
-}
-
-fn indices(tree: &Tree, tree_elements: &[Handle], found: &[Handle]) -> Vec<i64> {
+fn indices(tree_elements: &[Handle], found: &[Handle]) -> Vec<i64> {
     found
         .iter()
-        .filter(|&&h| !in_template_content(tree, h))
         .map(|h| {
             tree_elements
                 .iter()
@@ -69,11 +73,77 @@ fn indices(tree: &Tree, tree_elements: &[Handle], found: &[Handle]) -> Vec<i64> 
         .collect()
 }
 
-/// The cascade check splits rules on every comma (`rtdom::cascade`'s own rule splitter, out
-/// of S3a scope), so a selector with a comma inside a functional pseudo is not a single
-/// rule there.
-fn cascade_comparable(selector: &str) -> bool {
-    !selector.contains(',')
+/// `querySelectorAll` / `querySelector` through both APIs against Chrome's `qsa`.
+fn check_queries(
+    tree: &Tree,
+    els: &[Handle],
+    sel: &str,
+    row: &Value,
+    fail: &mut impl FnMut(String),
+) {
+    let units: Vec<u16> = sel.encode_utf16().collect();
+    let want_qsa: Vec<i64> = row["qsa"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|v| v.as_i64().unwrap())
+        .collect();
+    let qsa = indices(els, &tree.query_selector_all(sel));
+    if qsa != want_qsa {
+        fail(format!("query_selector_all {qsa:?}, Chrome {want_qsa:?}"));
+    }
+    let qsa_units = indices(els, &tree.query_selector_all_units(&units));
+    if qsa_units != want_qsa {
+        fail(format!(
+            "query_selector_all_units {qsa_units:?}, Chrome {want_qsa:?}"
+        ));
+    }
+    let first = tree.query_selector(sel).map(|h| indices(els, &[h])[0]);
+    if first != want_qsa.first().copied() {
+        fail(format!("query_selector {first:?}"));
+    }
+    let first_units = tree
+        .query_selector_units(&units)
+        .map(|h| indices(els, &[h])[0]);
+    if first_units != want_qsa.first().copied() {
+        fail(format!("query_selector_units {first_units:?}"));
+    }
+}
+
+/// `rtdom::cascade::computed_style` on the case document with the sentinel rule
+/// `SEL { order: 1 }` as the last `<head>` child resolves `order: 1` exactly where Chrome's
+/// `winner` does.
+fn check_rtdom_cascade(
+    html: &str,
+    sel: &str,
+    row: &Value,
+    tags: &[String],
+    fail: &mut impl FnMut(String),
+) {
+    let doc = html.replacen(
+        "</head>",
+        &format!("<style>{sel} {{ order: 1 }}</style></head>"),
+        1,
+    );
+    let styled = Tree::parse(&doc);
+    let head = styled.query_selector("head").unwrap();
+    let sentinel = *styled.children(head).last().unwrap();
+    let styled_els: Vec<Handle> = elements(&styled)
+        .into_iter()
+        .filter(|&h| h != sentinel)
+        .collect();
+    let winners = bits(&row["winner"]);
+    for (i, &h) in styled_els.iter().enumerate() {
+        let got = computed_style(&styled, h)
+            .get("order")
+            .is_some_and(|v| v == "1");
+        if got != winners[i] {
+            fail(format!(
+                "cascade order el#{i} <{}> = {got}, Chrome {}",
+                tags[i], winners[i]
+            ));
+        }
+    }
 }
 
 #[test]
@@ -84,6 +154,9 @@ fn selectors_match_chrome156() {
     let mut checked = 0;
     for case in fixture["cases"].as_array().unwrap() {
         let id = case["id"].as_str().unwrap();
+        if open(case["bug"].as_str().unwrap()) {
+            continue;
+        }
         let html = case["html"].as_str().unwrap();
         let tree = Tree::parse(html);
         let els = elements(&tree);
@@ -103,8 +176,12 @@ fn selectors_match_chrome156() {
         );
         for row in case["selectors"].as_array().unwrap() {
             let sel = row["selector"].as_str().unwrap();
+            if RUST_CONTRACT_ROWS.contains(&sel) {
+                continue;
+            }
             let units: Vec<u16> = sel.encode_utf16().collect();
             let valid = row["valid"].as_bool().unwrap();
+            let sheet_valid = row["sheet_valid"].as_bool().unwrap();
             let want = bits(&row["matches"]);
             let mut fail = |what: String| failures.push(format!("{id} `{sel}`: {what}"));
             checked += 1;
@@ -127,45 +204,22 @@ fn selectors_match_chrome156() {
                     Err(e) if valid => fail(format!("matches_checked rejected it: {e}")),
                     _ => {}
                 }
-                if tree.matches(h, sel) != w {
+                // the lenient APIs are Chrome-defined for valid selectors only (Chrome
+                // throws on the rest; lenient callers get a best-effort reading)
+                if valid && tree.matches(h, sel) != w {
                     fail(format!("matches el#{i} <{}>, Chrome {w}", tags[i]));
                 }
-                if tree.matches_units(h, &units) != w {
+                if valid && tree.matches_units(h, &units) != w {
                     fail(format!("matches_units el#{i} <{}>, Chrome {w}", tags[i]));
                 }
             }
-            let want_qsa: Vec<i64> = row["qsa"]
-                .as_array()
-                .unwrap()
-                .iter()
-                .map(|v| v.as_i64().unwrap())
-                .collect();
-            let qsa = indices(&tree, &els, &tree.query_selector_all(sel));
-            if qsa != want_qsa {
-                fail(format!("query_selector_all {qsa:?}, Chrome {want_qsa:?}"));
-            }
-            let qsa_units = indices(&tree, &els, &tree.query_selector_all_units(&units));
-            if qsa_units != want_qsa {
-                fail(format!(
-                    "query_selector_all_units {qsa_units:?}, Chrome {want_qsa:?}"
-                ));
-            }
-            let first = tree
-                .query_selector(sel)
-                .map(|h| indices(&tree, &els, &[h])[0]);
-            if first != want_qsa.first().copied() {
-                fail(format!("query_selector {first:?}"));
-            }
-            let first_units = tree
-                .query_selector_units(&units)
-                .map(|h| indices(&tree, &els, &[h])[0]);
-            if first_units != want_qsa.first().copied() {
-                fail(format!("query_selector_units {first_units:?}"));
+            if valid {
+                check_queries(&tree, &els, sel, row, &mut fail);
             }
             // the stylesheet engine: validity and matching (on the case document; the
             // sentinel-sheet document is checked through `winner` below)
             match parse_for_cascade(sel) {
-                Ok(list) if valid => {
+                Ok(list) if sheet_valid => {
                     let nav = LiveNavigator(&tree);
                     for (i, &h) in els.iter().enumerate() {
                         let got = list
@@ -181,44 +235,28 @@ fn selectors_match_chrome156() {
                     }
                 }
                 Ok(_) => fail("parse_for_cascade accepted an invalid selector".into()),
-                Err(e) if valid => fail(format!("parse_for_cascade rejected it: {e}")),
+                Err(e) if sheet_valid => fail(format!("parse_for_cascade rejected it: {e}")),
                 Err(_) => {}
             }
             // cascade: the sentinel rule as the last <head> child
-            if cascade_comparable(sel) {
-                let doc = html.replacen(
-                    "</head>",
-                    &format!("<style>{sel} {{ order: 1 }}</style></head>"),
-                    1,
-                );
-                let styled = Tree::parse(&doc);
-                let head = styled.query_selector("head").unwrap();
-                let sentinel = *styled.children(head).last().unwrap();
-                let styled_els: Vec<Handle> = elements(&styled)
-                    .into_iter()
-                    .filter(|&h| h != sentinel)
-                    .collect();
-                let winners = bits(&row["winner"]);
-                for (i, &h) in styled_els.iter().enumerate() {
-                    let got = computed_style(&styled, h)
-                        .get("order")
-                        .is_some_and(|v| v == "1");
-                    if got != winners[i] {
-                        fail(format!(
-                            "cascade order el#{i} <{}> = {got}, Chrome {}",
-                            tags[i], winners[i]
-                        ));
-                    }
-                }
-            }
+            check_rtdom_cascade(html, sel, row, &tags, &mut fail);
         }
     }
     let cascade_cases = fixture["cascade_cases"].as_array().unwrap();
     for case in cascade_cases {
-        check_cascade_case(case, &mut failures);
+        if case["layout_only"].as_bool() != Some(true) {
+            check_cascade_case(case, &mut failures);
+        }
+    }
+    let probes = fixture["probes"].as_array().unwrap();
+    for probe in probes {
+        if !open(probe["bug"].as_str().unwrap()) {
+            check_probe(probe, &mut failures);
+        }
     }
     assert!(checked > 90, "fixture shrank: {checked} selectors");
-    assert!(cascade_cases.len() >= 7, "cascade cases shrank");
+    assert!(cascade_cases.len() >= 10, "cascade cases shrank");
+    assert_eq!(probes.len(), 2, "probes");
     assert!(
         failures.is_empty(),
         "{} disagreements with Chrome 156:\n{}",
@@ -234,22 +272,33 @@ fn check_cascade_case(case: &Value, failures: &mut Vec<String>) {
     let id = case["id"].as_str().unwrap();
     let tree = Tree::parse(case["html"].as_str().unwrap());
     let els = elements(&tree);
-    let rules: Vec<(String, String)> = case["css"]
+    // (prelude, the rule's last `order` declaration and whether it is `!important`)
+    let rules: Vec<(String, String, bool)> = case["css"]
         .as_str()
         .unwrap()
         .split('}')
         .filter_map(|rule| {
             let (prelude, body) = rule.split_once('{')?;
-            let value = body.trim().strip_prefix("order:")?.trim().to_string();
-            Some((prelude.trim().to_string(), value))
+            let declaration = body
+                .split(';')
+                .filter_map(|d| d.trim().strip_prefix("order:"))
+                .next_back()?
+                .trim();
+            let (value, important) = match declaration.strip_suffix("!important") {
+                Some(value) => (value.trim(), true),
+                None => (declaration, false),
+            };
+            Some((prelude.trim().to_string(), value.to_string(), important))
         })
         .collect();
     let nav = LiveNavigator(&tree);
     let want = case["winners"].as_array().unwrap();
     assert_eq!(want.len(), els.len(), "{id}: element list");
     for (i, &h) in els.iter().enumerate() {
-        let mut best: Option<((u32, u32, u32), usize, &str)> = None;
-        for (order, (prelude, value)) in rules.iter().enumerate() {
+        // (important, specificity, source order, value)
+        type Winner<'v> = (bool, (u32, u32, u32), usize, &'v str);
+        let mut best: Option<Winner> = None;
+        for (order, (prelude, value, important)) in rules.iter().enumerate() {
             let Ok(list) = parse_for_cascade(prelude) else {
                 continue;
             };
@@ -260,12 +309,13 @@ fn check_cascade_case(case: &Value, failures: &mut Vec<String>) {
                 .map(turbo_dom::rtdom::query::CascadeSelector::specificity)
                 .max();
             if let Some(spec) = spec {
-                if best.is_none_or(|(b, o, _)| (spec, order) > (b, o)) {
-                    best = Some((spec, order, value));
+                let key = (*important, spec, order);
+                if best.is_none_or(|(i, b, o, _)| key > (i, b, o)) {
+                    best = Some((*important, spec, order, value));
                 }
             }
         }
-        let got = best.map_or("0", |(_, _, v)| v);
+        let got = best.map_or("0", |(_, _, _, v)| v);
         let w = want[i].as_str().unwrap();
         if got != w {
             failures.push(format!(
@@ -273,5 +323,154 @@ fn check_cascade_case(case: &Value, failures: &mut Vec<String>) {
                 tree.local_name(h).unwrap_or("")
             ));
         }
+    }
+}
+
+/// The DOM node a probe reads, found by walking the whole tree (template content
+/// included) for the element with `id`.
+fn find_by_id(tree: &Tree, id: &str) -> Handle {
+    tree.handles()
+        .find(|&h| {
+            tree.node_type(h) == NodeType::Element && tree.get_attribute(h, "id") == Some(id)
+        })
+        .unwrap_or_else(|| panic!("#{id}"))
+}
+
+/// The first element `name` under `root` (any depth, template content included).
+fn find_tag(tree: &Tree, root: Handle, name: &str) -> Handle {
+    let mut stack = vec![root];
+    while let Some(h) = stack.pop() {
+        if tree.node_type(h) == NodeType::Element && h != root && tree.local_name(h) == Some(name) {
+            return h;
+        }
+        let mut kids = tree.children(h);
+        kids.reverse();
+        stack.extend(kids);
+    }
+    panic!("<{name}>")
+}
+
+/// The template element's content fragment (a fragment child in the parsed tree).
+fn content_of(tree: &Tree, template: Handle) -> Handle {
+    tree.children(template)
+        .into_iter()
+        .find(|&c| tree.node_type(c) == NodeType::Fragment)
+        .expect("template content")
+}
+
+/// Rebuild one scripted probe through the Tree API and compare every named value.
+fn check_probe(probe: &Value, failures: &mut Vec<String>) {
+    let id = probe["id"].as_str().unwrap();
+    let want = &probe["values"];
+    let units = |s: &str| s.encode_utf16().collect::<Vec<u16>>();
+    let mut got = serde_json::Map::new();
+    let mut put = |key: &str, value: Value| {
+        got.insert(key.to_string(), value);
+    };
+    match id {
+        "template-traversal" => {
+            let tree = Tree::parse(probe["html"].as_str().unwrap());
+            let template = find_by_id(&tree, "t");
+            let content = content_of(&tree, template);
+            let inner = find_tag(&tree, content, "p");
+            let span = find_tag(&tree, content, "span");
+            let by_id = tree.get_element_by_id("in");
+            assert_eq!(by_id, tree.get_element_by_id_units(&units("in")), "{id}");
+            put(
+                "by_id_in_content",
+                Value::from(if by_id.is_none() { "null" } else { "found" }),
+            );
+            put(
+                "by_tag_span",
+                tree.get_elements_by_tag_name("span").len().into(),
+            );
+            put("by_tag_p", tree.get_elements_by_tag_name("p").len().into());
+            put(
+                "qsa_from_template",
+                tree.query_selector_all_from_units(template, &units("p"))
+                    .len()
+                    .into(),
+            );
+            put(
+                "qsa_from_content",
+                tree.query_selector_all_from_units(content, &units("p"))
+                    .len()
+                    .into(),
+            );
+            put(
+                "content_p_matches_template_p",
+                tree.matches(inner, "template p").into(),
+            );
+            put(
+                "content_p_matches_root",
+                tree.matches(inner, ":root").into(),
+            );
+            put(
+                "content_p_matches_first_child",
+                tree.matches(inner, ":first-child").into(),
+            );
+            put(
+                "content_span_matches_div_span",
+                tree.matches(span, "div span").into(),
+            );
+            put(
+                "template_matches_has_p",
+                tree.matches(template, ":has(p)").into(),
+            );
+            put(
+                "template_matches_empty",
+                tree.matches(template, ":empty").into(),
+            );
+        }
+        "root" => {
+            let mut tree = Tree::parse(probe["html"].as_str().unwrap());
+            let detached = tree.create_element("div");
+            let detached_child = tree.create_element("span");
+            tree.append_child(detached, detached_child);
+            let fragment = tree.create_document_fragment();
+            let fragment_child = tree.create_element("p");
+            tree.append_child(fragment, fragment_child);
+            let host = find_by_id(&tree, "host");
+            let shadow = tree.attach_shadow(host);
+            tree.set_inner_html(shadow, "<p>s</p>");
+            let shadow_child = tree.children(shadow)[0];
+            let template = tree.create_element("template");
+            tree.set_inner_html(template, "<p>t</p>");
+            let template_child = find_tag(&tree, template, "p");
+            let html = tree.query_selector("html").unwrap();
+            let body = tree.query_selector("body").unwrap();
+            put("document_element", tree.matches(html, ":root").into());
+            put("body", tree.matches(body, ":root").into());
+            put("qsa_root", tree.query_selector_all(":root").len().into());
+            put("detached", tree.matches(detached, ":root").into());
+            put(
+                "detached_child",
+                tree.matches(detached_child, ":root").into(),
+            );
+            put(
+                "fragment_child",
+                tree.matches(fragment_child, ":root").into(),
+            );
+            put("shadow_child", tree.matches(shadow_child, ":root").into());
+            put(
+                "template_content_child",
+                tree.matches(template_child, ":root").into(),
+            );
+            put(
+                "fragment_qsa_root",
+                tree.query_selector_all_from_units(fragment, &units(":root"))
+                    .len()
+                    .into(),
+            );
+            put(
+                "root_child_combinator",
+                tree.matches(body, ":root > body").into(),
+            );
+        }
+        other => panic!("unknown probe {other}"),
+    }
+    let got = Value::Object(got);
+    if &got != want {
+        failures.push(format!("probe {id}: turbo-dom {got}, Chrome {want}"));
     }
 }

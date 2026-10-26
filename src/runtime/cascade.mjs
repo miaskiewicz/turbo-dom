@@ -14,7 +14,7 @@
 // CSS custom-property resolution. Colors ARE canonicalized to rgb()/rgba() (color.mjs)
 // and bare-0 lengths to `0px`, matching what a browser serializes.
 
-import { matchesSelector } from './selectors.mjs';
+import { matchesSelector, ruleSelectors } from './selectors.mjs';
 import { COLOR_PROPS, canonicalizeColor } from './color.mjs';
 
 const kebab = (s) => s.replace(/[A-Z]/g, (m) => '-' + m.toLowerCase());
@@ -105,9 +105,11 @@ function parseStylesheet(css, startOrder, rules) {
     while (k < n && depth > 0) { const ch = css[k]; if (ch === '{') depth++; else if (ch === '}') depth--; k++; }
     if (sel && sel[0] !== '@') {
       const decls = parseDecls(css.slice(j + 1, k - 1));
-      if (decls.size) for (const part of sel.split(',')) {
-        const t = part.trim();
-        if (t) rules.push({ selector: t, decls, spec: specificity(t), order: order++ });
+      // the prelude is a selector LIST split at top-level commas only (`:is(a, b)` stays
+      // whole); an invalid list drops the whole rule, as in a browser (mirrors
+      // rtdom::cascade::parse_stylesheet)
+      if (decls.size) for (const t of ruleSelectors(sel)) {
+        rules.push({ selector: t, decls, spec: specificity(t), order: order++ });
       }
     } else { order++; }
     i = k;
@@ -157,16 +159,16 @@ function collectMatched(el, rules, kind, into) {
     const slotM = SLOTTED_RE.exec(sel);
     if (kind === 'normal') {
       if (hostM || slotM) continue; // shadow-only selectors never match plain elements
-      try { if (matchesSelector(el, sel)) into.push(r); } catch { /* unsupported → skip */ }
+      try { if (matchesSelector(el, sel, null)) into.push(r); } catch { /* unsupported → skip */ }
     } else if (kind === 'host') {
       if (!hostM) continue;
       const inner = hostM[1];
       if (inner === undefined) into.push(r);
-      else try { if (matchesSelector(el, inner.trim())) into.push(r); } catch { /* skip */ }
+      else try { if (matchesSelector(el, inner.trim(), null)) into.push(r); } catch { /* skip */ }
     } else { // slotted
       if (!slotM) continue;
       const inner = (slotM[1] || '*').trim() || '*';
-      try { if (matchesSelector(el, inner)) into.push(r); } catch { /* skip */ }
+      try { if (matchesSelector(el, inner, null)) into.push(r); } catch { /* skip */ }
     }
   }
 }

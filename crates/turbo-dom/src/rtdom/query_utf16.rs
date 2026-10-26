@@ -1,8 +1,8 @@
 //! Parse original DOM string units into native selector records. Identifiers use
 //! CSS replacement rules; raw quoted attribute strings preserve their units.
 use super::{
-    nth_of_position, parse_nth, parse_pseudo, Attr, AttrMatch, Combinator, Complex, Compound,
-    Handle, NodeType, Pseudo, RelativeSelector, Tree, TypeNamespace,
+    nth_of_position, parse_nth, parse_pseudo, valid_anb, Attr, AttrMatch, Combinator, Complex,
+    Compound, Handle, NodeType, Pseudo, RelativeSelector, Tree, TypeNamespace,
 };
 #[derive(Debug, Clone)]
 pub(super) struct UnitAttrMatch {
@@ -149,18 +149,76 @@ fn decoded(units: &[u16], quoted: bool) -> Vec<u16> {
 fn identifier(units: &[u16]) -> String {
     String::from_utf16_lossy(&decoded(units, false))
 }
+/// A `:lang()` (or `:dir()`) argument: exactly one CSS identifier (escapes decoded, ASCII-lowercased),
+/// surrounded by optional whitespace. Chrome 156 rejects strings (`:lang("de")`), lists
+/// (`:lang(en, de)`), numbers and the empty argument.
+pub(super) fn lang_range(arg: &[u16]) -> Option<String> {
+    let arg = trim(arg);
+    let chars: Vec<char> = String::from_utf16_lossy(arg).chars().collect();
+    let mut end = 0;
+    if !super::starts_ident(&chars, 0) {
+        return None;
+    }
+    super::scan_name(&chars, &mut end, super::is_name_char);
+    (end == chars.len()).then(|| identifier(arg).to_ascii_lowercase())
+}
+/// Is `units` exactly one CSS identifier (escapes allowed)?
+fn is_ident(units: &[u16]) -> bool {
+    let chars: Vec<char> = String::from_utf16_lossy(units).chars().collect();
+    let mut end = 0;
+    super::starts_ident(&chars, 0) && {
+        super::scan_name(&chars, &mut end, super::is_name_char);
+        end == chars.len()
+    }
+}
+/// An attribute selector's (trimmed) name split at its unescaped namespace bar: `*|a` (any
+/// namespace: `Some((true, a))`), `|a` and `a` (no namespace). `None` — invalid, as in
+/// Chrome 156 — for an undeclared prefix (`ns|a`) or a name that is not an identifier
+/// (`[1a]`).
+fn attribute_name(raw: &[u16]) -> Option<(bool, String)> {
+    let mut i = 0;
+    let bar = loop {
+        match raw.get(i) {
+            None => break None,
+            Some(92) => i = escaped_end(raw, i),
+            Some(124) => break Some(i),
+            Some(_) => i += 1,
+        }
+    };
+    let (any, local) = match bar {
+        None => (false, raw),
+        Some(bar) => match &raw[..bar] {
+            [42] => (true, &raw[bar + 1..]),
+            [] => (false, &raw[bar + 1..]),
+            _ => return None,
+        },
+    };
+    is_ident(local).then(|| (any, identifier(local)))
+}
+/// The units record of an attribute that cannot match (an invalid selector).
+fn invalid_attr(name: String) -> Attr {
+    Attr::new(
+        name,
+        AttrMatch::Units(UnitAttrMatch {
+            op: u16::MAX,
+            value: Vec::new(),
+            insensitive: false,
+            sensitive: false,
+        }),
+    )
+}
 pub(super) fn attr(inner: &[u16]) -> Attr {
     let cleaned = attribute_comments(inner);
     let inner = cleaned.as_deref().unwrap_or(inner);
     let Some(eq) = inner.iter().position(|&u| u == 61) else {
-        return Attr::new(
-            identifier(trim(inner)),
+        let Some((any, name)) = attribute_name(trim(inner)) else {
+            return invalid_attr(identifier(trim(inner)));
+        };
+        return Attr::namespaced(
+            any,
+            name,
             AttrMatch::Units(UnitAttrMatch {
-                op: if unquoted_end(trim(inner)) == trim(inner).len() {
-                    0
-                } else {
-                    u16::MAX
-                },
+                op: 0,
                 value: Vec::new(),
                 insensitive: false,
                 sensitive: false,
@@ -175,11 +233,18 @@ pub(super) fn attr(inner: &[u16]) -> Attr {
     let name = operator.map_or(raw, |_| &raw[..raw.len() - 1]);
     let source = trim(&inner[eq + 1..]);
     let (value, quoted, modifier) = attribute_value(source);
-    let valid = modifier
-        .as_deref()
-        .is_some_and(|m| m.is_empty() || m == [105] || m == [73] || m == [115] || m == [83]);
-    Attr::new(
-        identifier(trim(name)),
+    // an unquoted value is an identifier (Chrome: `[a=1]`, `[a=]`, `[href=a.html]` throw);
+    // the `s` modifier is a Rust contract (tests/attribute_case.rs) Chrome 156 rejects
+    let valid = (quoted || is_ident(value))
+        && modifier
+            .as_deref()
+            .is_some_and(|m| m.is_empty() || m == [105] || m == [73] || m == [115] || m == [83]);
+    let Some((any, name)) = attribute_name(trim(name)) else {
+        return invalid_attr(identifier(trim(name)));
+    };
+    Attr::namespaced(
+        any,
+        name,
         AttrMatch::Units(UnitAttrMatch {
             op: if valid {
                 operator.unwrap_or(61)
@@ -297,7 +362,8 @@ pub(super) fn specialized_attribute(inner: &str) -> Option<Attr> {
                 || m.op == u16::MAX
                 || parsed.name.eq_ignore_ascii_case("type")
                 || inner.contains("/*")
-                || inner.contains('\\') =>
+                || inner.contains('\\')
+                || inner.contains('|') =>
         {
             Some(parsed)
         }
@@ -405,6 +471,8 @@ fn pseudo(name: &str, arg: Option<&[u16]>) -> Pseudo {
     let Some(arg) = arg else {
         return parse_pseudo(name, None);
     };
+    let lower = name.to_ascii_lowercase();
+    let name = lower.as_str();
     if name.eq_ignore_ascii_case("state") {
         return state_argument(arg).map_or_else(
             || Pseudo::unknown(name, Some(&String::from_utf16_lossy(arg))),
@@ -418,7 +486,11 @@ fn pseudo(name: &str, arg: Option<&[u16]>) -> Pseudo {
         // `An+B of S`: S keeps its original units (escapes decoded by `list`).
         "nth-child" | "nth-last-child" if nth_of_position(arg).is_some() => {
             let at = nth_of_position(arg).unwrap_or_default();
-            let (a, b) = parse_nth(&String::from_utf16_lossy(&arg[..at]));
+            let anb = String::from_utf16_lossy(&arg[..at]);
+            if !valid_anb(&anb) {
+                return Pseudo::unknown(name, Some(&String::from_utf16_lossy(arg)));
+            }
+            let (a, b) = parse_nth(&anb);
             let of = list(&arg[at + 2..]);
             if name == "nth-child" {
                 Pseudo::NthChildOf(a, b, of)
@@ -437,9 +509,12 @@ fn pseudo(name: &str, arg: Option<&[u16]>) -> Pseudo {
                         Some(126) => (Combinator::GeneralSibling, &part[1..]),
                         _ => (Combinator::Descendant, part),
                     };
-                    complex(rest).map(|complex| RelativeSelector {
-                        combinator: leading,
-                        complex,
+                    complex(rest).map(|mut complex| {
+                        super::forgive_nested_has(&mut complex);
+                        RelativeSelector {
+                            combinator: leading,
+                            complex,
+                        }
                     })
                 })
                 .collect(),
@@ -569,7 +644,8 @@ impl Tree {
     ) -> std::rc::Rc<[Handle]> {
         let selectors = list(source);
         let mut result = Vec::new();
-        let mut stack = self.children(root);
+        let mut stack = Vec::new();
+        self.for_each_light_child(root, |child| stack.push(child));
         stack.reverse();
         while let Some(node) = stack.pop() {
             if self.node_type(node) == NodeType::Element
@@ -580,7 +656,7 @@ impl Tree {
                 result.push(node);
             }
             let begin = stack.len();
-            self.for_each_child(node, |child| stack.push(child));
+            self.for_each_light_child(node, |child| stack.push(child));
             stack[begin..].reverse();
         }
         result.into()
@@ -602,7 +678,7 @@ impl Tree {
                 return Some(node);
             }
             let begin = stack.len();
-            self.for_each_child(node, |child| stack.push(child));
+            self.for_each_light_child(node, |child| stack.push(child));
             stack[begin..].reverse();
         }
         None

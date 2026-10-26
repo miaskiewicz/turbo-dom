@@ -11,12 +11,23 @@
 //! - every cascade case (one per S3b quirk class): its sheet's winning `order` per
 //!   element.
 //!
+//! P5b: [`OPEN`] lists the fixture items (selector-case `bug`s, cascade-case `class`es)
+//! whose fix has not landed yet; their rows are recorded but not asserted.
+//!
 //! Only body content is styled on the HTML path (the `<html>`/`<body>` shells and the
 //! `<head>` are match-only or stripped), so the comparison covers the styled elements.
 use serde_json::Value;
 use turbo_dom::rtdom::tree::NodeType;
 use turbo_dom::{Handle, Tree};
 use turbo_dom_layout::{parse_html_tree, style_html_tree, HtmlOptions, StyledNode};
+
+/// P5b items not fixed yet (miaskiewicz/turbo-dom#18, #21): skipped until their fixing
+/// commit removes them here. All P5b-X items have landed.
+const OPEN: &[&str] = &[];
+
+/// Rows turbo-dom deliberately answers differently (the `s` attribute modifier; see
+/// turbo-dom's `tests/cascade_selectors_chrome.rs`).
+const RUST_CONTRACT_ROWS: &[&str] = &["[a=b s]", "[a=b S]", "[a=\"1\" s]"];
 
 fn fixture() -> Value {
     let path = concat!(
@@ -85,9 +96,15 @@ fn html_path_cascade_matches_chrome156() {
     let mut compared = 0;
     for case in fixture["cases"].as_array().unwrap() {
         let id = case["id"].as_str().unwrap();
+        if OPEN.contains(&case["bug"].as_str().unwrap()) {
+            continue;
+        }
         let html = case["html"].as_str().unwrap();
         for row in case["selectors"].as_array().unwrap() {
             let sel = row["selector"].as_str().unwrap();
+            if RUST_CONTRACT_ROWS.contains(&sel) {
+                continue;
+            }
             let want: Vec<String> = row["winner"]
                 .as_str()
                 .unwrap()
@@ -101,6 +118,9 @@ fn html_path_cascade_matches_chrome156() {
     let cascade = fixture["cascade_cases"].as_array().unwrap();
     for case in cascade {
         let id = case["id"].as_str().unwrap();
+        if OPEN.contains(&case["class"].as_str().unwrap()) {
+            continue;
+        }
         let want: Vec<String> = case["winners"]
             .as_array()
             .unwrap()
