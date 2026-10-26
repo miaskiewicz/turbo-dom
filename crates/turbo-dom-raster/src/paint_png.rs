@@ -8,6 +8,7 @@ use tiny_skia::{
     Point, Rect, SpreadMode, Stroke, Transform,
 };
 use turbo_dom_layout::layout::value::{BorderEdges, BorderSide};
+use turbo_dom_layout::text::FontFace;
 use turbo_dom_layout::{
     BoxShadow, ClipRect, Fragment, FragmentContent, LinearGradient as CssGradient, PositionedGlyph,
     Rgba, Transform2D as BoxTransform,
@@ -93,10 +94,11 @@ fn paint_clipped(
     if x1 <= x0 || y1 <= y0 {
         return;
     }
+    // The layer is a non-empty sub-rectangle of `pm` (`x0 < x1 <= pm.width()`, same for
+    // y), and tiny-skia allocates any size an existing pixmap already has.
     let (w, h) = ((x1 - x0) as u32, (y1 - y0) as u32);
-    let (Some(mut layer), Some(mut mask)) = (Pixmap::new(w, h), Mask::new(w, h)) else {
-        return;
-    };
+    let mut layer = Pixmap::new(w, h).expect("clip layer within the canvas");
+    let mut mask = Mask::new(w, h).expect("clip mask within the canvas");
     let local = Transform::from_translate(-x0 as f32, -y0 as f32).pre_concat(xf);
     paint_subtree(&mut layer, f, images, local);
     mask.fill_path(&path, FillRule::Winding, true, local);
@@ -150,17 +152,7 @@ fn paint_subtree(pm: &mut Pixmap, f: &Fragment, images: &DecodedAssets, xf: Tran
             face,
             font_size,
             color,
-        } => paint_text(
-            pm,
-            f,
-            glyphs,
-            face.data(),
-            face.index(),
-            face.units_per_em(),
-            *font_size,
-            *color,
-            xf,
-        ),
+        } => paint_text(pm, f, glyphs, face, *font_size, *color, xf),
         FragmentContent::Image(placement) => paint_image(pm, f, placement, images, xf),
         FragmentContent::Marker(_) => {}
     }
@@ -354,9 +346,8 @@ fn paint_box_shadow(
     if !(1..=8192).contains(&tw) || !(1..=8192).contains(&th) {
         return;
     }
-    let Some(mut tmp) = Pixmap::new(tw as u32, th as u32) else {
-        return;
-    };
+    // At most 8192 x 8192: within tiny-skia's pixmap limits.
+    let mut tmp = Pixmap::new(tw as u32, th as u32).expect("bounded shadow scratch");
     fill_round_rect(
         &mut tmp,
         margin as f32,
@@ -430,10 +421,9 @@ fn paint_gradient(
 /// Approximate a Gaussian blur with three passes of a separable box blur over the
 /// pixmap's premultiplied RGBA (edges clamp-extended). Only shadow scratch buffers
 /// pass through here, so the O(passes·w·h) cost is bounded by the shadow's size.
+/// `radius` is at least 1 (a radius of 0 would be the identity) and a `Pixmap` is never
+/// empty, so both passes see a non-empty row and column.
 fn box_blur(pm: &mut Pixmap, radius: usize) {
-    if radius == 0 {
-        return;
-    }
     let (w, h) = (pm.width() as usize, pm.height() as usize);
     let data = pm.data_mut();
     for _ in 0..3 {
@@ -444,9 +434,6 @@ fn box_blur(pm: &mut Pixmap, radius: usize) {
 
 /// One horizontal box-blur pass with a running window sum (clamp-extended edges).
 fn box_blur_horizontal(data: &mut [u8], w: usize, h: usize, r: usize) {
-    if w == 0 {
-        return;
-    }
     let win = (2 * r + 1) as u32;
     let mut src = vec![0u8; w * 4];
     for y in 0..h {
@@ -466,9 +453,6 @@ fn box_blur_horizontal(data: &mut [u8], w: usize, h: usize, r: usize) {
 
 /// One vertical box-blur pass, mirror of [`box_blur_horizontal`] over columns.
 fn box_blur_vertical(data: &mut [u8], w: usize, h: usize, r: usize) {
-    if h == 0 {
-        return;
-    }
     let win = (2 * r + 1) as u32;
     let mut src = vec![0u8; h * 4];
     for x in 0..w {
@@ -537,25 +521,22 @@ impl Tracer for PathSink {
     }
 }
 
-#[allow(clippy::too_many_arguments)] // glyph run + face metrics + colour + transform
+/// Fill a line's glyph outlines in `color` (a transparent colour paints nothing). The
+/// face's `units_per_em` is non-zero: `ttf-parser` rejects a `head` outside 16..=16384.
 fn paint_text(
     pm: &mut Pixmap,
     f: &Fragment,
     glyphs: &[PositionedGlyph],
-    font_bytes: &[u8],
-    font_index: u32,
-    units_per_em: u16,
+    face: &FontFace,
     font_size: f32,
     color: Rgba,
     xf: Transform,
 ) {
-    if color.a == 0 || units_per_em == 0 {
+    if color.a == 0 {
         return;
     }
-    let Some(face) = glyph::parse_face(font_bytes, font_index) else {
-        return;
-    };
-    let scale = font_size / f32::from(units_per_em);
+    let scale = font_size / f32::from(face.units_per_em());
+    let face = glyph::outline_face(face);
     let paint = solid(color);
     for g in glyphs {
         let pen = Pen {
@@ -637,5 +618,268 @@ mod tests {
             assert!((120..=135).contains(&right), "right coverage {right}");
             assert_eq!(pixmap.pixel(2, y).unwrap().alpha(), 0);
         }
+    }
+
+    use std::collections::HashMap;
+    use turbo_dom_layout::image::Orientation;
+    use turbo_dom_layout::{
+        GradientStop, ImagePlacement, LinearGradient, MarkerKind, NodeId, Transform2D,
+    };
+
+    const RED: Rgba = Rgba {
+        r: 255,
+        g: 0,
+        b: 0,
+        a: 255,
+    };
+
+    /// A plain box fragment (no border, radius, shadow, gradient or transform).
+    fn plain(x: f32, y: f32, w: f32, h: f32, background: Option<Rgba>) -> Fragment {
+        Fragment::new(
+            NodeId(0),
+            x,
+            y,
+            w,
+            h,
+            FragmentContent::Box {
+                background,
+                border: BorderEdges::default(),
+                border_radius: 0.0,
+                shadow: None,
+                gradient: None,
+                transform: None,
+            },
+        )
+    }
+
+    /// `f` with its box content's fields changed by `edit`.
+    fn with_box(
+        mut f: Fragment,
+        edit: impl FnOnce(
+            &mut f32,
+            &mut Option<BoxShadow>,
+            &mut Option<CssGradient>,
+            &mut Option<BoxTransform>,
+        ),
+    ) -> Fragment {
+        if let FragmentContent::Box {
+            border_radius,
+            shadow,
+            gradient,
+            transform,
+            ..
+        } = &mut f.content
+        {
+            edit(border_radius, shadow, gradient, transform);
+        }
+        f
+    }
+
+    /// Paint `galley` over white at `w x h` and decode the PNG.
+    fn render(galley: &Fragment, w: u32, h: u32, images: &DecodedAssets) -> Pixmap {
+        let png = paint(galley, w, h, Rgba::new(255, 255, 255, 255), images).unwrap();
+        Pixmap::decode_png(&png).unwrap()
+    }
+
+    fn rgb(pm: &Pixmap, x: u32, y: u32) -> [u8; 3] {
+        let p = pm.pixel(x, y).unwrap();
+        [p.red(), p.green(), p.blue()]
+    }
+
+    fn all_white(pm: &Pixmap) -> bool {
+        pm.pixels()
+            .iter()
+            .all(|p| [p.red(), p.green(), p.blue()] == [255, 255, 255])
+    }
+
+    fn image(name: &str, tint: Option<Rgba>) -> Fragment {
+        Fragment::new(
+            NodeId(0),
+            2.0,
+            2.0,
+            6.0,
+            6.0,
+            FragmentContent::Image(ImagePlacement {
+                name: name.to_string(),
+                intrinsic_w: 6,
+                intrinsic_h: 6,
+                has_alpha: true,
+                tint,
+                orientation: Orientation::IDENTITY,
+            }),
+        )
+    }
+
+    #[test]
+    fn a_zero_or_oversized_canvas_is_an_error() {
+        let root = plain(0.0, 0.0, 1.0, 1.0, None);
+        let images = HashMap::new();
+        let bg = Rgba::new(255, 255, 255, 255);
+        assert_eq!(
+            paint(&root, 0, 10, bg, &images),
+            Err("bad canvas 0x10".into())
+        );
+        assert!(paint(&root, u32::MAX, u32::MAX, bg, &images).is_err());
+    }
+
+    #[test]
+    fn a_marker_paints_nothing_but_its_children_do() {
+        let mut marker = Fragment::new(
+            NodeId(0),
+            0.0,
+            0.0,
+            10.0,
+            10.0,
+            FragmentContent::Marker(MarkerKind {
+                id: 1,
+                inline: false,
+            }),
+        );
+        marker.children.push(plain(5.0, 0.0, 5.0, 10.0, Some(RED)));
+        let pm = render(&marker, 10, 10, &HashMap::new());
+        assert_eq!(rgb(&pm, 2, 5), [255, 255, 255], "the marker itself");
+        assert_eq!(rgb(&pm, 7, 5), [255, 0, 0], "its child");
+    }
+
+    #[test]
+    fn a_missing_mask_paints_nothing_and_a_missing_image_the_placeholder() {
+        let images = HashMap::new();
+        let mask = render(&image("absent.svg", Some(RED)), 10, 10, &images);
+        assert!(all_white(&mask), "a missing mask-image is not a box");
+        let img = render(&image("absent.png", None), 10, 10, &images);
+        assert_eq!(rgb(&img, 5, 5), [220, 220, 220], "placeholder");
+        assert_eq!(rgb(&img, 0, 0), [255, 255, 255]);
+    }
+
+    #[test]
+    fn clips_with_no_paintable_region_paint_nothing() {
+        // A negative-width region (no rect) and one whose transformed bounds overflow f32.
+        let mut negative = plain(0.0, 0.0, 10.0, 10.0, Some(RED));
+        negative.clip = Some(ClipRect {
+            x: 0.0,
+            y: 0.0,
+            width: -5.0,
+            height: 10.0,
+        });
+        assert!(all_white(&render(&negative, 10, 10, &HashMap::new())));
+        let mut overflow = with_box(plain(0.0, 0.0, 10.0, 10.0, Some(RED)), |_, _, _, t| {
+            *t = Some(Transform2D {
+                matrix: [f32::MAX, 0.0, 0.0, f32::MAX, 0.0, 0.0],
+                origin_x: 0.0,
+                origin_y: 0.0,
+            });
+        });
+        overflow.clip = Some(ClipRect {
+            x: 1.0,
+            y: 1.0,
+            width: 5.0,
+            height: 5.0,
+        });
+        assert!(all_white(&render(&overflow, 10, 10, &HashMap::new())));
+    }
+
+    #[test]
+    fn round_rects_skip_empty_and_transparent_boxes() {
+        let mut pm = Pixmap::new(10, 10).unwrap();
+        let id = Transform::identity();
+        fill_round_rect(&mut pm, 0.0, 0.0, 0.0, 10.0, 3.0, RED, id);
+        fill_round_rect(&mut pm, 0.0, 0.0, 10.0, -1.0, 3.0, RED, id);
+        fill_round_rect(
+            &mut pm,
+            0.0,
+            0.0,
+            10.0,
+            10.0,
+            3.0,
+            Rgba::new(255, 0, 0, 0),
+            id,
+        );
+        assert!(pm.pixels().iter().all(|p| p.alpha() == 0));
+        fill_round_rect(&mut pm, 0.0, 0.0, 10.0, 10.0, 5.0, RED, id);
+        assert_eq!(pm.pixel(5, 5).unwrap().red(), 255);
+        assert!(pm.pixel(0, 0).unwrap().alpha() < 32, "rounded corner");
+    }
+
+    #[test]
+    fn a_rounded_box_with_a_non_finite_size_paints_nothing() {
+        let blue = Rgba::new(0, 0, 255, 255);
+        let side = BorderSide {
+            width: 2,
+            color: Some(blue),
+        };
+        let mut f = with_box(plain(1.0, 1.0, f32::NAN, 8.0, Some(RED)), |r, _, _, _| {
+            *r = 3.0;
+        });
+        if let FragmentContent::Box { border, .. } = &mut f.content {
+            *border = BorderEdges {
+                top: side,
+                right: side,
+                bottom: side,
+                left: side,
+            };
+        }
+        assert!(all_white(&render(&f, 10, 10, &HashMap::new())));
+    }
+
+    #[test]
+    fn a_shadow_beyond_the_scratch_bound_is_not_painted() {
+        // A blurred shadow's scratch buffer is capped at 8192 px a side (the shadow is
+        // skipped, the box still paints) — Chrome paints such a shadow; see the P5-cov
+        // report.
+        let shadowed = |w: f32| {
+            with_box(plain(10.0, 10.0, w, 20.0, Some(RED)), |_, sh, _, _| {
+                *sh = Some(BoxShadow {
+                    offset_x: 0,
+                    offset_y: 20,
+                    blur: 4,
+                    spread: 0,
+                    color: Rgba::new(0, 0, 255, 255),
+                    inset: false,
+                });
+            })
+        };
+        let small = render(&shadowed(30.0), 60, 60, &HashMap::new());
+        assert_eq!(rgb(&small, 25, 40), [0, 0, 255], "shadow core");
+        let huge = render(&shadowed(9000.0), 60, 60, &HashMap::new());
+        assert_eq!(rgb(&huge, 20, 20), [255, 0, 0], "the box");
+        assert_eq!(rgb(&huge, 25, 40), [255, 255, 255], "no shadow");
+    }
+
+    #[test]
+    fn gradients_without_a_paintable_line_paint_nothing() {
+        let stops = |n: usize| {
+            [RED, Rgba::new(0, 0, 255, 255)]
+                .into_iter()
+                .take(n)
+                .enumerate()
+                .map(|(i, color)| GradientStop {
+                    color,
+                    pos: i as f32,
+                })
+                .collect()
+        };
+        let boxed = |w: f32, angle_deg: f32, n: usize| {
+            with_box(plain(0.0, 0.0, w, 10.0, None), |_, _, g, _| {
+                *g = Some(LinearGradient {
+                    angle_deg,
+                    stops: stops(n),
+                });
+            })
+        };
+        let images = HashMap::new();
+        assert!(
+            all_white(&render(&boxed(0.4, 90.0, 2), 10, 10, &images)),
+            "too narrow"
+        );
+        assert!(
+            all_white(&render(&boxed(10.0, 90.0, 1), 10, 10, &images)),
+            "one stop"
+        );
+        assert!(
+            all_white(&render(&boxed(10.0, f32::NAN, 2), 10, 10, &images)),
+            "no angle"
+        );
+        let painted = render(&boxed(10.0, 90.0, 2), 10, 10, &images);
+        assert!(rgb(&painted, 0, 5)[0] > 200 && rgb(&painted, 9, 5)[2] > 200);
     }
 }

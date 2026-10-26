@@ -7,6 +7,7 @@
 use std::fmt::Write;
 
 use turbo_dom_layout::layout::value::{BorderEdges, BorderSide};
+use turbo_dom_layout::text::FontFace;
 use turbo_dom_layout::{
     BoxShadow, ClipRect, Fragment, FragmentContent, LinearGradient as CssGradient, PositionedGlyph,
     Rgba,
@@ -121,16 +122,7 @@ fn paint_subtree(svg: &mut String, f: &Fragment, images: &DecodedAssets) {
             face,
             font_size,
             color,
-        } => paint_text(
-            svg,
-            f,
-            glyphs,
-            face.data(),
-            face.index(),
-            face.units_per_em(),
-            *font_size,
-            *color,
-        ),
+        } => paint_text(svg, f, glyphs, face, *font_size, *color),
         FragmentContent::Image(placement) => paint_image(svg, f, placement, images),
         FragmentContent::Marker(_) => {}
     }
@@ -336,24 +328,22 @@ impl Tracer for PathSink {
     }
 }
 
-#[allow(clippy::too_many_arguments)] // glyph run + face bytes/index/metrics + colour
+/// Emit a line's glyph outlines as one filled `<path>` (a transparent colour, or a run
+/// with no outlined glyph, emits nothing). The face's `units_per_em` is non-zero:
+/// `ttf-parser` rejects a `head` outside 16..=16384.
 fn paint_text(
     svg: &mut String,
     f: &Fragment,
     glyphs: &[PositionedGlyph],
-    font_bytes: &[u8],
-    font_index: u32,
-    units_per_em: u16,
+    face: &FontFace,
     font_size: f32,
     color: Rgba,
 ) {
-    if color.a == 0 || units_per_em == 0 {
+    if color.a == 0 {
         return;
     }
-    let Some(face) = glyph::parse_face(font_bytes, font_index) else {
-        return;
-    };
-    let scale = font_size / f32::from(units_per_em);
+    let scale = font_size / f32::from(face.units_per_em());
+    let face = glyph::outline_face(face);
     let mut sink = PathSink::default();
     for g in glyphs {
         let pen = Pen {
@@ -369,6 +359,243 @@ fn paint_text(
             "<path d=\"{}\" {}/>",
             sink.0.trim_end(),
             fill_attrs(color)
+        );
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::HashMap;
+    use turbo_dom_layout::image::{Intrinsic, Orientation};
+    use turbo_dom_layout::{
+        FontRegistry, GradientStop, ImagePlacement, MarkerKind, NodeId, PositionedGlyph,
+    };
+
+    use crate::image_paint::DecodedImage;
+
+    const RED: Rgba = Rgba {
+        r: 255,
+        g: 0,
+        b: 0,
+        a: 255,
+    };
+    const WHITE: Rgba = Rgba {
+        r: 255,
+        g: 255,
+        b: 255,
+        a: 255,
+    };
+
+    fn plain(x: f32, y: f32, w: f32, h: f32, background: Option<Rgba>) -> Fragment {
+        Fragment::new(
+            NodeId(0),
+            x,
+            y,
+            w,
+            h,
+            FragmentContent::Box {
+                background,
+                border: BorderEdges::default(),
+                border_radius: 0.0,
+                shadow: None,
+                gradient: None,
+                transform: None,
+            },
+        )
+    }
+
+    /// The document body between the canvas background rect and `</svg>`.
+    fn body(galley: &Fragment, images: &DecodedAssets) -> String {
+        let svg = paint(galley, 10, 10, WHITE, images);
+        let start = svg.find("/>\n").unwrap() + 3;
+        svg[start..svg.len() - "</svg>\n".len()].to_string()
+    }
+
+    #[test]
+    fn the_document_is_sized_and_filled_with_the_canvas_background() {
+        let svg = paint(
+            &plain(0.0, 0.0, 1.0, 1.0, None),
+            30,
+            20,
+            Rgba::new(0, 0, 255, 128),
+            &HashMap::new(),
+        );
+        assert!(svg.starts_with(
+            r##"<svg xmlns="http://www.w3.org/2000/svg" width="30" height="20" viewBox="0 0 30 20">
+<rect width="30" height="20" fill="#0000ff" fill-opacity="0.502"/>"##
+        ));
+        assert!(svg.ends_with("</svg>\n"));
+    }
+
+    #[test]
+    fn a_marker_emits_nothing_but_its_children_do() {
+        let mut marker = Fragment::new(
+            NodeId(0),
+            0.0,
+            0.0,
+            10.0,
+            10.0,
+            FragmentContent::Marker(MarkerKind {
+                id: 1,
+                inline: true,
+            }),
+        );
+        marker.children.push(plain(5.0, 0.0, 5.0, 10.0, Some(RED)));
+        assert_eq!(
+            body(&marker, &HashMap::new()),
+            "<rect x=\"5.00\" y=\"0.00\" width=\"5.00\" height=\"10.00\" fill=\"#ff0000\"/>\n"
+        );
+    }
+
+    fn image(name: &str) -> Fragment {
+        Fragment::new(
+            NodeId(0),
+            1.0,
+            2.0,
+            4.0,
+            3.0,
+            FragmentContent::Image(ImagePlacement {
+                name: name.to_string(),
+                intrinsic_w: 2,
+                intrinsic_h: 1,
+                has_alpha: true,
+                tint: None,
+                orientation: Orientation::IDENTITY,
+            }),
+        )
+    }
+
+    #[test]
+    fn images_embed_as_png_data_uris_else_a_placeholder_rect() {
+        let mut images = HashMap::new();
+        images.insert(
+            "red.png".to_string(),
+            DecodedImage {
+                width: 2,
+                height: 1,
+                rgba: vec![255, 0, 0, 255, 255, 0, 0, 255],
+                intrinsic: Intrinsic::new(2, 1, true),
+            },
+        );
+        let embedded = body(&image("red.png"), &images);
+        assert!(
+            embedded.starts_with(
+                r#"<image x="1.00" y="2.00" width="4.00" height="3.00" preserveAspectRatio="none" href="data:image/png;base64,iVBORw0KGgo"#
+            ),
+            "{embedded}"
+        );
+        // Absent bytes, or pixels that cannot form an image (a size-only entry), are the
+        // placeholder.
+        images.insert(
+            "size-only".to_string(),
+            DecodedImage {
+                width: 0,
+                height: 0,
+                rgba: Vec::new(),
+                intrinsic: Intrinsic::new(2, 1, true),
+            },
+        );
+        let placeholder =
+            "<rect x=\"1.00\" y=\"2.00\" width=\"4.00\" height=\"3.00\" fill=\"#dcdcdc\"/>\n";
+        assert_eq!(body(&image("absent.png"), &images), placeholder);
+        assert_eq!(body(&image("size-only"), &images), placeholder);
+    }
+
+    #[test]
+    fn empty_boxes_shadows_and_gradients_emit_nothing() {
+        let mut f = plain(0.0, 0.0, 0.0, 10.0, Some(RED));
+        if let FragmentContent::Box {
+            shadow, gradient, ..
+        } = &mut f.content
+        {
+            *shadow = Some(BoxShadow {
+                offset_x: 2,
+                offset_y: 2,
+                blur: 0,
+                spread: -1,
+                color: RED,
+                inset: false,
+            });
+            *gradient = Some(CssGradient {
+                angle_deg: 90.0,
+                stops: vec![
+                    GradientStop {
+                        color: RED,
+                        pos: 0.0,
+                    },
+                    GradientStop {
+                        color: WHITE,
+                        pos: 1.0,
+                    },
+                ],
+            });
+        }
+        assert_eq!(body(&f, &HashMap::new()), "");
+        // One stop is no gradient line either.
+        let mut one = plain(0.0, 0.0, 10.0, 10.0, None);
+        if let FragmentContent::Box { gradient, .. } = &mut one.content {
+            *gradient = Some(CssGradient {
+                angle_deg: 0.0,
+                stops: vec![GradientStop {
+                    color: RED,
+                    pos: 0.0,
+                }],
+            });
+        }
+        assert_eq!(body(&one, &HashMap::new()), "");
+    }
+
+    #[test]
+    fn text_emits_one_outline_path_unless_nothing_has_an_outline() {
+        let face = FontRegistry::new()
+            .select(&["serif"], 400, false)
+            .unwrap()
+            .clone();
+        let line = |text: &str, color: Rgba| {
+            let glyphs = face
+                .shape(text)
+                .iter()
+                .scan(0.0, |pen, g| {
+                    let x = *pen;
+                    *pen += g.x_advance as f32 * 20.0 / f32::from(face.units_per_em());
+                    Some(PositionedGlyph {
+                        glyph_id: g.glyph_id,
+                        x,
+                        y: 15.0,
+                    })
+                })
+                .collect();
+            Fragment::new(
+                NodeId(0),
+                0.0,
+                0.0,
+                10.0,
+                20.0,
+                FragmentContent::TextLine {
+                    glyphs,
+                    face: face.clone(),
+                    font_size: 20.0,
+                    color,
+                },
+            )
+        };
+        let ink = body(&line("Ag", RED), &HashMap::new());
+        assert!(ink.starts_with("<path d=\"M"), "{ink}");
+        // A TrueType (quadratic) face traces `Q` segments.
+        assert!(
+            ink.contains(" Q") || ink.starts_with("<path d=\"Q"),
+            "{ink}"
+        );
+        assert!(ink.ends_with(" fill=\"#ff0000\"/>\n"), "{ink}");
+        assert_eq!(
+            body(&line(" ", RED), &HashMap::new()),
+            "",
+            "a space has no outline"
+        );
+        assert_eq!(
+            body(&line("Ag", Rgba::new(255, 0, 0, 0)), &HashMap::new()),
+            ""
         );
     }
 }

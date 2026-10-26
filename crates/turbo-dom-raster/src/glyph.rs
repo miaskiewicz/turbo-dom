@@ -8,6 +8,7 @@
 //! feed a tiny-skia path (raster) and an SVG `d` string (vector).
 
 use ttf_parser::{Face, GlyphId, OutlineBuilder};
+use turbo_dom_layout::text::FontFace;
 
 /// A pen-space transform: multiply design units by `scale`, then place relative
 /// to `(origin_x, baseline_y)` with Y flipped (font y-up → image y-down).
@@ -66,13 +67,15 @@ impl<T: Tracer> OutlineBuilder for Adapter<'_, T> {
     }
 }
 
-/// Parse face `index` of a font program. Returns `None` if the bytes don't parse (a
-/// malformed face paints nothing rather than panicking). `index` selects the face in
-/// a `.ttc` collection — it MUST match the index the glyph ids were shaped against
-/// (macOS Arial/Helvetica are collections; parsing index 0 for a non-0 face draws a
-/// different sub-font's glyphs, shifting the whole run).
-pub fn parse_face(data: &[u8], index: u32) -> Option<Face<'_>> {
-    Face::parse(data, index).ok()
+/// The `ttf-parser` face of a laid-out [`FontFace`], parsed at the face's own index: it
+/// MUST match the index the glyph ids were shaped against (macOS Arial/Helvetica are
+/// collections; parsing index 0 for a non-0 face draws a different sub-font's glyphs,
+/// shifting the whole run). Infallible: turbo-dom-layout only builds a `FontFace` from
+/// bytes that `ttf_parser::Face::parse` accepted at that index (`FontFace::from_bytes*`),
+/// and cargo unifies its `ttf-parser` 0.25 (through rustybuzz) with this crate's, so the
+/// same parser re-reads the same bytes.
+pub fn outline_face(face: &FontFace) -> Face<'_> {
+    Face::parse(face.data(), face.index()).expect("a FontFace's bytes parse at its index")
 }
 
 /// Trace one glyph into `sink`. No-op for a glyph the face has no outline for

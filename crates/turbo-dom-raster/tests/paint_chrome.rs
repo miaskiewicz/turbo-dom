@@ -148,6 +148,114 @@ fn clip_rect_clips_the_box_and_its_descendants_like_chrome_156() {
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
 
+/// The painter's box decoration paths (P5-cov): a rounded border, a gradient in a rounded
+/// box, unblurred / collapsed / spread shadows, transparent text.
+#[test]
+fn box_decorations_paint_like_chrome_156() {
+    let failures = differences(|id| id.starts_with("paint-"));
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+}
+
+/// The PNG and (resvg-rasterized) SVG screenshot's raw colour at each probe of `id`.
+fn probe_rgb(id: &str) -> Vec<([u8; 3], [u8; 3], [u8; 3])> {
+    use resvg::{tiny_skia as rsk, usvg};
+    let fixture = fixture();
+    let case = fixture["cases"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|case| case["id"] == id)
+        .unwrap();
+    let html = case["html"].as_str().unwrap();
+    let png = screenshot_png_with_opts(html, "", VIEWPORT, &assets(case), false, false).unwrap();
+    let png = tiny_skia::Pixmap::decode_png(&png).unwrap();
+    let svg = screenshot_svg_with_opts(html, "", VIEWPORT, &assets(case), false, false).unwrap();
+    let tree = usvg::Tree::from_str(&svg, &usvg::Options::default()).unwrap();
+    let mut raster = rsk::Pixmap::new(VIEWPORT.width, VIEWPORT.height).unwrap();
+    resvg::render(&tree, rsk::Transform::identity(), &mut raster.as_mut());
+    case["probes"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|probe| {
+            let (x, y) = (
+                probe["x"].as_u64().unwrap() as u32,
+                probe["y"].as_u64().unwrap() as u32,
+            );
+            let p = png.pixel(x, y).unwrap();
+            let s = raster.pixel(x, y).unwrap().demultiply();
+            let chrome: [u8; 3] = serde_json::from_value(probe["rgb"].clone()).unwrap();
+            (
+                [p.red(), p.green(), p.blue()],
+                [s.red(), s.green(), s.blue()],
+                chrome,
+            )
+        })
+        .collect()
+}
+
+/// A half-transparent background and shadow composite over the backdrop like Chrome's in
+/// both painters (the SVG one as `fill-opacity`), within rounding.
+#[test]
+fn translucent_colours_composite_like_chrome_156() {
+    let near = |a: [u8; 3], b: [u8; 3]| a.iter().zip(&b).all(|(x, y)| x.abs_diff(*y) <= 3);
+    for (png, svg, chrome) in probe_rgb("paint-alpha") {
+        assert!(near(png, chrome), "png {png:?}, Chrome {chrome:?}");
+        assert!(near(svg, chrome), "svg {svg:?}, Chrome {chrome:?}");
+    }
+}
+
+/// Every probe difference from Chrome of the vector screenshot of the cases `select` picks,
+/// rasterized by resvg (the SVG painter emits the same boxes, borders, shadows, gradients,
+/// transforms and clips as the raster one, as SVG).
+fn svg_differences(select: impl Fn(&str) -> bool) -> Vec<String> {
+    use resvg::{tiny_skia as rsk, usvg};
+    let fixture = fixture();
+    let mut failures = Vec::new();
+    let mut compared = 0;
+    for case in fixture["cases"].as_array().unwrap() {
+        let id = case["id"].as_str().unwrap();
+        if !select(id) {
+            continue;
+        }
+        compared += 1;
+        let html = case["html"].as_str().unwrap();
+        let svg =
+            screenshot_svg_with_opts(html, "", VIEWPORT, &assets(case), false, false).expect("svg");
+        let tree = usvg::Tree::from_str(&svg, &usvg::Options::default()).expect("valid svg");
+        let mut pm = rsk::Pixmap::new(VIEWPORT.width, VIEWPORT.height).unwrap();
+        resvg::render(&tree, rsk::Transform::identity(), &mut pm.as_mut());
+        for probe in case["probes"].as_array().unwrap() {
+            let (x, y) = (
+                probe["x"].as_u64().unwrap() as u32,
+                probe["y"].as_u64().unwrap() as u32,
+            );
+            let c = pm.pixel(x, y).expect("in bounds").demultiply();
+            let got = class([c.red(), c.green(), c.blue()]);
+            let want = probe["class"].as_str().unwrap();
+            if got.to_string() != want {
+                failures.push(format!("{id} ({x},{y}): svg {got}, Chrome {want}"));
+            }
+        }
+    }
+    assert!(compared > 0, "no case selected");
+    failures
+}
+
+/// Cases the vector comparison leaves out: `clip-image-sprite` embeds its image as a PNG
+/// `data:` URI, which this resvg build (no `raster-images` feature) does not draw; and the
+/// SVG painter strokes a rounded box's border as four square edge bands, so
+/// `paint-round-border`'s corners differ from Chrome (and from the PNG painter's rounded
+/// stroke) — a pre-existing gap, reported in the P5-cov raster coverage report.
+const SVG_LEFT_OUT: &[&str] = &["clip-image-sprite", "paint-round-border"];
+
+/// The vector screenshot of every other case, rasterized, against the same Chrome probes.
+#[test]
+fn svg_screenshots_paint_like_chrome_156() {
+    let failures = svg_differences(|id| !pending_case(id) && !SVG_LEFT_OUT.contains(&id));
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+}
+
 /// The vector screenshot clips a `clip: rect()` box with a `<clipPath>` of its region and
 /// leaves out a box whose region is empty (miaskiewicz/turbo-dom#52).
 #[test]

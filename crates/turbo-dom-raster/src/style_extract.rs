@@ -599,6 +599,40 @@ mod tests {
     }
 
     #[test]
+    fn hrefs_decode_named_and_numeric_references_and_keep_the_rest() {
+        use super::stylesheet_hrefs;
+        let html = concat!(
+            r#"<link rel="stylesheet" href="/a?l=&lt;&gt;&quot;&apos;&#39;&#38;&#x26;&#X26;"#,
+            r#"&bogus;&#xZZ;&#99999999;&#;&#65&end">"#,
+        );
+        // Unknown names, bad hex, code points past U+10FFFF and an empty `&#;` stay
+        // verbatim; no `;` follows `&#65&end`, so its `&`s stay literal.
+        assert_eq!(
+            stylesheet_hrefs(html),
+            [r#"/a?l=<>"''&&&&bogus;&#xZZ;&#99999999;&#;&#65&end"#]
+        );
+    }
+
+    #[test]
+    fn rel_is_matched_as_a_whole_attribute_name() {
+        use super::stylesheet_hrefs;
+        // `data-rel` is not `rel`; the real `rel` later in the tag is found.
+        let html = r#"<link data-rel="icon" rel="stylesheet" href="a.css"><link href="b.css" data-rel="stylesheet">"#;
+        assert_eq!(stylesheet_hrefs(html), ["a.css"]);
+    }
+
+    #[test]
+    fn srcset_candidates_without_a_usable_descriptor_score_one() {
+        use super::delazy_images;
+        // A bare URL and a descriptor that is neither `w` nor `x` both score 1, so the
+        // first such candidate stands unless a larger one follows; empty candidates skip.
+        let first = delazy_images(r#"<img srcset="a.jpg, b.jpg 1q, ,">"#);
+        assert!(first.contains(r#"src="a.jpg""#), "{first}");
+        let larger = delazy_images(r#"<img srcset="a.jpg 3q, b.jpg 2x">"#);
+        assert!(larger.contains(r#"src="b.jpg""#), "{larger}");
+    }
+
+    #[test]
     fn image_urls_decode_html_entities() {
         use super::image_urls;
         let html = r#"<img src="/img?w=100&amp;h=50&amp;fmt=webp">"#;

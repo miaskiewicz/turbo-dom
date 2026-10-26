@@ -388,10 +388,15 @@ impl Matrix {
 /// Resolve the bundled font face for a canvas `font` family list. Cached: the
 /// bundled registry is parsed once and cloned (faces are `Arc`-shared, so the
 /// clone is cheap) — canvas text never uses system fonts (deterministic/offline).
-pub(crate) fn resolve_face(families: &[String]) -> Option<FontFace> {
+/// Always a face: this crate enables turbo-dom-layout's `bundled-fonts`, and
+/// `FontRegistry::select` falls back to the first bundled face when no family matches.
+pub(crate) fn resolve_face(families: &[String]) -> FontFace {
     static BUNDLED: std::sync::LazyLock<FontRegistry> = std::sync::LazyLock::new(FontRegistry::new);
     let refs: Vec<&str> = families.iter().map(String::as_str).collect();
-    BUNDLED.select(&refs, 400, false).cloned()
+    BUNDLED
+        .select(&refs, 400, false)
+        .cloned()
+        .expect("the bundled faces are registered")
 }
 
 // ---------------------------------------------------------------------------
@@ -637,21 +642,14 @@ fn arc_into(
     }
 }
 
-/// Shape `text` with the state's font and trace each glyph's outline into
-/// device-space subpaths (flattened) at baseline `(x, y)`. Empty if no bundled
-/// face resolves for the family list.
+/// Shape `text` with the state's font (a bundled face; see [`resolve_face`]) and trace
+/// each glyph's outline into device-space subpaths (flattened) at baseline `(x, y)`.
+/// Empty when no glyph has an outline (spaces, an empty string).
 pub(crate) fn glyph_subpaths(st: &State, text: &str, x: f32, y: f32) -> Vec<SubPath> {
-    let Some(face) = resolve_face(&st.font_families) else {
-        return Vec::new();
-    };
-    let upem = face.units_per_em();
-    if upem == 0 {
-        return Vec::new();
-    }
-    let Some(ttf) = crate::glyph::parse_face(face.data(), face.index()) else {
-        return Vec::new();
-    };
-    let scale = st.font_px / f32::from(upem);
+    let face = resolve_face(&st.font_families);
+    // Non-zero: `ttf-parser` rejects a `head` whose units-per-em is outside 16..=16384.
+    let scale = st.font_px / f32::from(face.units_per_em());
+    let ttf = crate::glyph::outline_face(&face);
     let mut sink = FlattenSink {
         ctm: st.ctm,
         subs: Vec::new(),
@@ -775,6 +773,147 @@ mod tests {
         assert_eq!((s.r, s.g, s.b, s.a), (10, 20, 30, 128));
         let s2 = parse_css_color("rgb(10 20 30 / 0.25)").unwrap();
         assert_eq!(s2.a, 64);
+    }
+
+    /// One tuple with no carried state (only the name and args).
+    fn bare(name: &str, args: &str) -> String {
+        format!(r#"["{name}",{args}]"#)
+    }
+
+    #[test]
+    fn tuples_without_a_name_or_a_text_argument_are_skipped() {
+        let log = format!(
+            "[[1,[2]],[],{},{},{},{},{}]",
+            bare("fillText", "[3,1,2]"),
+            bare("strokeText", "[]"),
+            bare("fillText", r#"["hi",1,2]"#),
+            bare("strokeText", r#"["yo",3]"#),
+            bare("arc", "[1,2,3,0,1,true]"),
+        );
+        assert_eq!(
+            parse_ops(&log).unwrap(),
+            [
+                Op::FillText {
+                    text: "hi".into(),
+                    x: 1.0,
+                    y: 2.0
+                },
+                Op::StrokeText {
+                    text: "yo".into(),
+                    x: 3.0,
+                    y: 0.0
+                },
+                Op::Arc {
+                    x: 1.0,
+                    y: 2.0,
+                    r: 3.0,
+                    start: 0.0,
+                    end: 1.0,
+                    ccw: true
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn carried_state_becomes_state_ops_before_the_op() {
+        let ops = parse_ops(r##"[["save",[],"#00f","bogus","bold 12px Arial",null,null,0.25]]"##)
+            .unwrap();
+        assert_eq!(
+            ops,
+            [
+                Op::FillStyle(Rgba::new(0, 0, 255, 255)),
+                Op::Font {
+                    size_px: 12.0,
+                    families: vec!["Arial".into()]
+                },
+                Op::GlobalAlpha(0.25),
+                Op::Save,
+            ],
+            "an unparseable strokeStyle carries no state"
+        );
+        let clamped = parse_ops(r#"[["restore",[],null,null,null,null,null,7]]"#).unwrap();
+        assert_eq!(clamped, [Op::GlobalAlpha(1.0), Op::Restore]);
+    }
+
+    #[test]
+    fn font_shorthand_defaults_without_a_size_or_family() {
+        let sans = vec!["sans-serif".to_string()];
+        assert_eq!(
+            parse_font("bold Arial"),
+            (10.0, sans.clone()),
+            "no size token"
+        );
+        assert_eq!(parse_font("14px"), (14.0, sans.clone()), "no family");
+        assert_eq!(parse_font("xpx 9px , ''"), (9.0, sans.clone()));
+        assert_eq!(parse_font(""), (10.0, sans));
+    }
+
+    #[test]
+    fn curves_with_no_current_point_start_at_their_end_point() {
+        // A glyph contour always opens with `move_to`; a curve without one starts at its
+        // own end point, so the flattened segment begins (t = 1/8) between it and the
+        // control point.
+        let mut sink = FlattenSink {
+            ctm: Matrix::identity(),
+            subs: Vec::new(),
+            cur: Vec::new(),
+        };
+        crate::glyph::Tracer::quad_to(&mut sink, 8.0, 0.0, 0.0, 0.0);
+        let t = 1.0 / CURVE_STEPS as f32;
+        assert_eq!(sink.cur[0], (2.0 * (1.0 - t) * t * 8.0, 0.0));
+        assert_eq!(sink.cur.last(), Some(&(0.0, 0.0)));
+        crate::glyph::Tracer::close(&mut sink);
+        crate::glyph::Tracer::cubic_to(&mut sink, 0.0, 8.0, 0.0, 8.0, 0.0, 0.0);
+        assert_eq!(sink.cur.len(), CURVE_STEPS);
+        assert_eq!(sink.cur.last(), Some(&(0.0, 0.0)));
+        assert_eq!(sink.subs.len(), 1, "the closed quad");
+    }
+
+    /// Glyph subpaths of `text` at 20px `family` under `ctm`.
+    fn glyphs(text: &str, family: &str, ctm: Matrix) -> Vec<SubPath> {
+        let st = State {
+            ctm,
+            font_px: 20.0,
+            font_families: vec![family.to_string()],
+            ..State::default()
+        };
+        glyph_subpaths(&st, text, 2.0, 20.0)
+    }
+
+    #[test]
+    fn glyph_subpaths_trace_quadratic_and_cubic_faces_into_the_canvas() {
+        for family in ["serif", "sans-serif", "no such family"] {
+            let subs = glyphs("Ag", family, Matrix::identity());
+            assert!(subs.len() >= 2, "{family}: a contour per glyph at least");
+            let pts = subs.iter().flat_map(|s| &s.pts);
+            assert!(
+                pts.clone()
+                    .all(|&(x, y)| (0.0..40.0).contains(&x) && (0.0..=26.0).contains(&y)),
+                "{family}: inside the 20px run at baseline 20"
+            );
+            assert!(subs.iter().all(|s| s.closed), "{family}");
+        }
+        // Under a translation the same outlines move; spaces trace nothing.
+        let at = glyphs("A", "serif", Matrix::identity());
+        let moved = glyphs("A", "serif", Matrix::identity().translate(10.0, 0.0));
+        assert_eq!(moved[0].pts[0], (at[0].pts[0].0 + 10.0, at[0].pts[0].1));
+        assert!(glyphs("  ", "serif", Matrix::identity()).is_empty());
+        assert!(glyphs("", "serif", Matrix::identity()).is_empty());
+    }
+
+    #[test]
+    fn a_singular_transform_collapses_text_onto_a_line() {
+        // `scale(0, 1)`: every outline point lands on x = 0 (a curve's start, unrecoverable
+        // through the singular matrix, falls back to its end point).
+        for family in ["serif", "sans-serif"] {
+            let subs = glyphs("Ag", family, Matrix::identity().scale(0.0, 1.0));
+            assert!(!subs.is_empty(), "{family}");
+            assert!(
+                subs.iter().flat_map(|s| &s.pts).all(|&(x, _)| x == 0.0),
+                "{family}"
+            );
+        }
     }
 
     #[test]

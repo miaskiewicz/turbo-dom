@@ -278,7 +278,9 @@ fn font_registry(system_fonts: bool) -> FontRegistry {
 /// `font-family` list at `size_px`, using real font metrics. With `system_fonts`, the OS
 /// fonts are loaded so distinct named families (Arial vs Georgia vs Courier) resolve to
 /// distinct faces and yield distinct widths — what a font-detection probe reads. Returns
-/// `(width_px, height_px)`; `(0.0, 0.0)` if no face resolves.
+/// `(width_px, height_px)`. A face always resolves: the registry carries the bundled faces
+/// (this crate enables turbo-dom-layout's `bundled-fonts`) and `FontRegistry::select`
+/// falls back to the first one when no family matches.
 #[must_use]
 pub fn measure_text(text: &str, family_css: &str, size_px: f32, system_fonts: bool) -> (f32, f32) {
     let families: Vec<String> = family_css
@@ -293,10 +295,10 @@ pub fn measure_text(text: &str, family_css: &str, size_px: f32, system_fonts: bo
         .collect();
     let refs: Vec<&str> = families.iter().map(std::string::String::as_str).collect();
     let reg = font_registry(system_fonts);
-    match reg.select(&refs, 400, false) {
-        Some(face) => (face.measure(text, size_px, 0.0), size_px * 1.2),
-        None => (0.0, 0.0),
-    }
+    let face = reg
+        .select(&refs, 400, false)
+        .expect("the bundled faces are registered");
+    (face.measure(text, size_px, 0.0), size_px * 1.2)
 }
 
 /// The colour to fill the whole image with before painting: the canvas background

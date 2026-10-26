@@ -93,24 +93,23 @@ mod av1 {
         // SAFETY: `ctx` is valid to write to and `settings` to read from.
         let opened =
             unsafe { dav1d_open(NonNull::new(&raw mut ctx), NonNull::new(&raw mut settings)) };
-        if opened.0 != 0 {
-            return None;
-        }
-        let frame = decode_with(ctx, stream);
-        // SAFETY: `ctx` came from `dav1d_open` and is closed exactly once.
+        // Opening fails only when rav1d cannot allocate the context (these settings pass its
+        // validation); nothing decodes then, and closing the unopened (`None`) context is a
+        // no-op.
+        let frame = (opened.0 == 0).then(|| decode_with(ctx, stream)).flatten();
+        // SAFETY: `ctx` came from `dav1d_open` (or stayed `None`) and is closed exactly once.
         unsafe { dav1d_close(NonNull::new(&raw mut ctx)) };
         frame
     }
 
     fn decode_with(ctx: Option<Dav1dContext>, stream: &[u8]) -> Option<Frame> {
         let mut data = Dav1dData::default();
-        // SAFETY: `data` is valid to write the new buffer into.
-        let buffer = unsafe { dav1d_data_create(NonNull::new(&raw mut data), stream.len()) };
-        if buffer.is_null() {
-            return None;
-        }
+        // SAFETY: `data` is valid to write the new buffer into. Null only when rav1d cannot
+        // allocate it (a slice's length is always within its `usize::MAX / 2` bound).
+        let buffer =
+            NonNull::new(unsafe { dav1d_data_create(NonNull::new(&raw mut data), stream.len()) })?;
         // SAFETY: `dav1d_data_create` returned a writable buffer of `stream.len()` bytes.
-        unsafe { std::ptr::copy_nonoverlapping(stream.as_ptr(), buffer, stream.len()) };
+        unsafe { std::ptr::copy_nonoverlapping(stream.as_ptr(), buffer.as_ptr(), stream.len()) };
         let mut picture = Dav1dPicture::default();
         let mut got = false;
         for _ in 0..16 {
@@ -123,11 +122,9 @@ mod av1 {
             }
             // SAFETY: `ctx` is open; `picture` is valid to write to.
             let res = unsafe { dav1d_get_picture(ctx, NonNull::new(&raw mut picture)) };
-            if res.0 == 0 {
-                got = true;
-                break;
-            }
+            // A picture (0) or a decode error ends the loop; `EAGAIN` asks for more input.
             if res.0 != AGAIN {
+                got = res.0 == 0;
                 break;
             }
         }
@@ -278,5 +275,158 @@ pub(crate) mod yuv {
             height: color.height as u32,
             rgba,
         }
+    }
+}
+
+#[cfg(all(test, feature = "avif"))]
+mod tests {
+    use super::yuv::{to_rgba, weights};
+    use super::{av1, Frame};
+
+    /// The colour stream of a turbo-dom-layout format fixture (`q.avif`: 64x40, 8-bit).
+    fn stream() -> Vec<u8> {
+        let path = concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../turbo-dom-layout/tests/fixtures/images/formats/q.avif"
+        );
+        let avif = std::fs::read(path).unwrap();
+        turbo_dom_layout::image::avif_payload(&avif).unwrap().color
+    }
+
+    #[test]
+    fn a_colour_stream_decodes_to_its_frame() {
+        let frame = av1::decode(&stream()).expect("decodes");
+        assert_eq!((frame.width, frame.height, frame.bits), (64, 40, 8));
+        assert_eq!(frame.planes[0].len(), 64 * 40);
+    }
+
+    #[test]
+    fn malformed_and_incomplete_streams_decode_to_nothing() {
+        let good = stream();
+        assert!(av1::decode(&[]).is_none(), "empty");
+        // OBUs rav1d cannot parse: all-ones bytes (a header whose size overruns the data),
+        // zeros (an unknown OBU type), the stream cut in half, and its middle third
+        // scrambled.
+        let n = good.len();
+        let mut scrambled = good.clone();
+        scrambled[n / 3..n / 2].iter_mut().for_each(|b| *b ^= 0x5a);
+        for (label, bad) in [
+            ("ones", vec![0xff; 32]),
+            ("zeros", vec![0; 32]),
+            ("half", good[..n / 2].to_vec()),
+            ("scrambled", scrambled),
+        ] {
+            assert!(av1::decode(&bad).is_none(), "{label}");
+        }
+        // Only the temporal delimiter and sequence header (no frame): no picture comes.
+        assert!(av1::decode(&good[..n / 8]).is_none(), "header only");
+    }
+
+    /// A one-row frame of `bits` depth with the given planes.
+    fn frame(bits: u32, chroma: Option<(usize, usize)>, planes: [Vec<u16>; 3]) -> Frame {
+        Frame {
+            width: planes[0].len(),
+            height: 1,
+            bits,
+            chroma,
+            planes,
+            matrix: 2,
+            full_range: true,
+        }
+    }
+
+    /// `rgb` (0..1) through the H.273 forward transform of `(kr, kb)` to full-range
+    /// 8-bit `Y'CbCr`, then back through [`to_rgba`] for `matrix`.
+    fn round_trip(matrix: u32, (kr, kb): (f32, f32), rgb: [f32; 3]) -> [u8; 4] {
+        let [r, g, b] = rgb;
+        let y = kr * r + (1.0 - kr - kb) * g + kb * b;
+        let cb = (b - y) / (2.0 * (1.0 - kb));
+        let cr = (r - y) / (2.0 * (1.0 - kr));
+        let q = |v: f32| (v * 255.0).round() as u16;
+        let f = frame(
+            8,
+            Some((0, 0)),
+            [
+                vec![q(y)],
+                vec![q(cb + 128.0 / 255.0)],
+                vec![q(cr + 128.0 / 255.0)],
+            ],
+        );
+        let out = to_rgba(&f, None, matrix, true).rgba;
+        [out[0], out[1], out[2], out[3]]
+    }
+
+    #[test]
+    fn each_matrix_inverts_its_own_forward_transform() {
+        // BT.709, FCC, SMPTE 240M, BT.2020 (NCL and CL weights), BT.601 (5, 6) and the
+        // BT.601 default for unspecified (2) and any other code point.
+        let cases = [
+            (1, (0.2126, 0.0722)),
+            (4, (0.30, 0.11)),
+            (7, (0.212, 0.087)),
+            (9, (0.2627, 0.0593)),
+            (10, (0.2627, 0.0593)),
+            (5, (0.299, 0.114)),
+            (6, (0.299, 0.114)),
+            (2, (0.299, 0.114)),
+            (99, (0.299, 0.114)),
+        ];
+        for (matrix, k) in cases {
+            assert_eq!(weights(matrix), Some(k), "{matrix}");
+            for rgb in [
+                [1.0, 0.0, 0.0],
+                [0.0, 1.0, 0.0],
+                [0.0, 0.0, 1.0],
+                [1.0, 1.0, 0.0],
+                [0.5, 0.5, 0.5],
+            ] {
+                let got = round_trip(matrix, k, rgb);
+                let want = rgb.map(|v| (v * 255.0).round() as u8);
+                assert!(
+                    got[..3].iter().zip(&want).all(|(g, w)| g.abs_diff(*w) <= 2) && got[3] == 255,
+                    "matrix {matrix} {rgb:?}: {got:?}"
+                );
+            }
+        }
+        assert_eq!(weights(0), None, "identity");
+    }
+
+    #[test]
+    fn identity_and_monochrome_frames_map_planes_directly() {
+        // Identity (GBR): planes are G, B, R; monochrome under identity or any weighted
+        // matrix is grey from luma alone.
+        // (Within one level: the chroma planes are centred on `1 << (bits - 1)` and the
+        // half level added back, so a sample can land half a level low — reported in the
+        // P5-cov raster coverage report.)
+        let gbr = frame(8, Some((0, 0)), [vec![10], vec![20], vec![30]]);
+        let px = to_rgba(&gbr, None, 0, true).rgba;
+        let near = |got: u8, want: u8| got.abs_diff(want) <= 1;
+        assert!(
+            near(px[0], 30) && px[1] == 10 && near(px[2], 20) && px[3] == 255,
+            "{px:?}"
+        );
+        let mono = frame(8, None, [vec![0, 128, 255], vec![], vec![]]);
+        let grey = [0, 0, 0, 255, 128, 128, 128, 255, 255, 255, 255, 255];
+        assert_eq!(to_rgba(&mono, None, 0, true).rgba, grey);
+        assert_eq!(to_rgba(&mono, None, 1, true).rgba, grey);
+    }
+
+    #[test]
+    fn limited_range_and_deep_samples_scale_to_eight_bits() {
+        // Limited 8-bit: luma 16..235 is black..white; 10-bit full range: 1023 is white.
+        let limited = frame(8, None, [vec![16, 235], vec![], vec![]]);
+        assert_eq!(
+            to_rgba(&limited, None, 1, false).rgba,
+            [0, 0, 0, 255, 255, 255, 255, 255]
+        );
+        let deep = frame(10, None, [vec![1023, 512], vec![], vec![]]);
+        assert_eq!(
+            to_rgba(&deep, None, 1, true).rgba,
+            [255, 255, 255, 255, 128, 128, 128, 255]
+        );
+        // A 10-bit alpha frame scales by its own depth.
+        let alpha = frame(10, None, [vec![1023, 0], vec![], vec![]]);
+        let out = to_rgba(&limited, Some(&alpha), 1, false).rgba;
+        assert_eq!((out[3], out[7]), (255, 0));
     }
 }

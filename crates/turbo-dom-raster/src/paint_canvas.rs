@@ -9,7 +9,9 @@
 use tiny_skia::{BlendMode, FillRule, Paint, PathBuilder, Pixmap, Stroke, Transform};
 use turbo_dom_layout::Rgba;
 
-use crate::canvas_ops::{self, CanvasBackend, Op, State, SubPath};
+#[cfg(all(target_os = "macos", feature = "coretext"))]
+use crate::canvas_ops::State;
+use crate::canvas_ops::{self, CanvasBackend, Op, SubPath};
 
 /// Rasterize the parsed op stream at `width × height` (both already clamped ≥ 1 by
 /// the caller) into a PNG. `Err` only on pixmap allocation or PNG encoding.
@@ -88,14 +90,13 @@ fn solid(c: Rgba) -> Paint<'static> {
 impl CanvasBackend for SkiaCanvas {
     // Text: on macOS with `coretext`, rasterize glyphs through CoreText/CoreGraphics (Chrome's
     // glyph stack) and composite onto the pixmap — so getImageData over text matches a real Mac
-    // Chrome. Falls back to the vector glyph trace (the trait default) off-macOS, without the
-    // feature, or for a scaled/rotated CTM the CoreText path doesn't handle.
+    // Chrome. Falls back to the vector glyph trace for a scaled/rotated CTM the CoreText path
+    // doesn't handle; off-macOS or without the feature the trait default (that same trace)
+    // fills text.
+    #[cfg(all(target_os = "macos", feature = "coretext"))]
     fn fill_text(&mut self, st: &State, text: &str, x: f32, y: f32, color: Rgba) {
-        #[cfg(all(target_os = "macos", feature = "coretext"))]
-        {
-            if crate::paint_canvas_coretext::render_text(&mut self.pm, st, text, x, y, color) {
-                return;
-            }
+        if crate::paint_canvas_coretext::render_text(&mut self.pm, st, text, x, y, color) {
+            return;
         }
         self.fill(&canvas_ops::glyph_subpaths(st, text, x, y), color);
     }
@@ -244,6 +245,46 @@ mod tests {
         let img = image::load_from_memory(&png).unwrap().to_rgba8();
         let inked = img.pixels().filter(|p| p.0[3] > 0).count();
         assert!(inked > 0, "text painted some opaque pixels");
+    }
+
+    /// The opaque-pixel count of a replayed op log.
+    fn inked(w: u32, h: u32, log: &str) -> usize {
+        let rgba = replay_rgba(w, h, &canvas_ops::parse_ops(log).unwrap()).unwrap();
+        rgba.as_chunks::<4>().0.iter().filter(|p| p[3] > 0).count()
+    }
+
+    #[test]
+    fn stroke_text_outlines_the_glyphs_fill_text_fills() {
+        let text = |op: &str| {
+            format!(
+                r##"[["{op}",["O",4,40],"#000000","#000000","40px serif","alphabetic","start",1,"source-over"]]"##
+            )
+        };
+        let (filled, stroked) = (
+            inked(64, 48, &text("fillText")),
+            inked(64, 48, &text("strokeText")),
+        );
+        assert!(filled > 0 && stroked > 0, "{filled} {stroked}");
+        assert_ne!(filled, stroked, "an outline is not the filled glyph");
+        // A transparent stroke style inks nothing.
+        let clear = text("strokeText").replace(r##""#000000","40px"##, r#""transparent","40px"#);
+        assert_eq!(inked(64, 48, &clear), 0);
+    }
+
+    #[test]
+    fn text_under_a_singular_transform_inks_nothing() {
+        let log = r##"[["scale",[0,1]],["fillText",["Ag",4,30],"#000000","#000000","30px sans-serif","alphabetic","start",1,"source-over"]]"##;
+        assert_eq!(inked(64, 40, log), 0);
+    }
+
+    #[test]
+    fn straight_alpha_readback_unpremultiplies_with_rounding() {
+        // 40% green over transparent: tiny-skia stores the premultiplied value; the
+        // readback rounds `premul * 255 / a` back to the straight channel.
+        let log = r##"[["fillRect",[0,0,2,2],"rgba(0,255,0,0.4)","#000","10px x","alphabetic","start",1,"source-over"]]"##;
+        let rgba = replay_rgba(2, 2, &canvas_ops::parse_ops(log).unwrap()).unwrap();
+        assert_eq!(&rgba[..4], &[0, 255, 0, 102]);
+        assert_eq!(rgba.len(), 16);
     }
 
     #[test]
