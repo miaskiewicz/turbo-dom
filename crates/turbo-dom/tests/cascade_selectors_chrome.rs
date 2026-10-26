@@ -63,7 +63,7 @@ fn indices(tree: &Tree, tree_elements: &[Handle], found: &[Handle]) -> Vec<i64> 
         .collect()
 }
 
-/// The cascade check splits rules on every comma (rtdom::cascade's own rule splitter, out
+/// The cascade check splits rules on every comma (`rtdom::cascade`'s own rule splitter, out
 /// of S3a scope), so a selector with a comma inside a functional pseudo is not a single
 /// rule there.
 fn cascade_comparable(selector: &str) -> bool {
@@ -91,7 +91,10 @@ fn selectors_match_chrome156() {
             .iter()
             .map(|v| v.as_str().unwrap().to_string())
             .collect();
-        assert_eq!(tags, want_tags, "{id}: parsed element list differs from Chrome's");
+        assert_eq!(
+            tags, want_tags,
+            "{id}: parsed element list differs from Chrome's"
+        );
         for row in case["selectors"].as_array().unwrap() {
             let sel = row["selector"].as_str().unwrap();
             let units: Vec<u16> = sel.encode_utf16().collect();
@@ -101,13 +104,18 @@ fn selectors_match_chrome156() {
             checked += 1;
             // validity
             if tree.query_selector_all_checked(sel).is_ok() != valid {
-                fail(format!("query_selector_all_checked validity, Chrome valid={valid}"));
+                fail(format!(
+                    "query_selector_all_checked validity, Chrome valid={valid}"
+                ));
             }
             for (i, &h) in els.iter().enumerate() {
                 let w = want[i];
                 match tree.matches_checked(h, sel) {
                     Ok(got) if valid && got != w => {
-                        fail(format!("matches_checked el#{i} <{}> = {got}, Chrome {w}", tags[i]));
+                        fail(format!(
+                            "matches_checked el#{i} <{}> = {got}, Chrome {w}",
+                            tags[i]
+                        ));
                     }
                     Ok(_) if !valid => fail("matches_checked accepted an invalid selector".into()),
                     Err(e) if valid => fail(format!("matches_checked rejected it: {e}")),
@@ -132,9 +140,13 @@ fn selectors_match_chrome156() {
             }
             let qsa_units = indices(&tree, &els, &tree.query_selector_all_units(&units));
             if qsa_units != want_qsa {
-                fail(format!("query_selector_all_units {qsa_units:?}, Chrome {want_qsa:?}"));
+                fail(format!(
+                    "query_selector_all_units {qsa_units:?}, Chrome {want_qsa:?}"
+                ));
             }
-            let first = tree.query_selector(sel).map(|h| indices(&tree, &els, &[h])[0]);
+            let first = tree
+                .query_selector(sel)
+                .map(|h| indices(&tree, &els, &[h])[0]);
             if first != want_qsa.first().copied() {
                 fail(format!("query_selector {first:?}"));
             }
@@ -146,24 +158,38 @@ fn selectors_match_chrome156() {
             }
             // cascade: the sentinel rule as the last <head> child
             if cascade_comparable(sel) {
-                let doc = html.replacen("</head>", &format!("<style>{sel} {{ order: 1 }}</style></head>"), 1);
+                let doc = html.replacen(
+                    "</head>",
+                    &format!("<style>{sel} {{ order: 1 }}</style></head>"),
+                    1,
+                );
                 let styled = Tree::parse(&doc);
                 let head = styled.query_selector("head").unwrap();
                 let sentinel = *styled.children(head).last().unwrap();
-                let styled_els: Vec<Handle> =
-                    elements(&styled).into_iter().filter(|&h| h != sentinel).collect();
+                let styled_els: Vec<Handle> = elements(&styled)
+                    .into_iter()
+                    .filter(|&h| h != sentinel)
+                    .collect();
                 let winners = bits(&row["winner"]);
                 for (i, &h) in styled_els.iter().enumerate() {
                     let got = computed_style(&styled, h)
                         .get("order")
                         .is_some_and(|v| v == "1");
                     if got != winners[i] {
-                        fail(format!("cascade order el#{i} <{}> = {got}, Chrome {}", tags[i], winners[i]));
+                        fail(format!(
+                            "cascade order el#{i} <{}> = {got}, Chrome {}",
+                            tags[i], winners[i]
+                        ));
                     }
                 }
             }
         }
     }
     assert!(checked > 90, "fixture shrank: {checked} selectors");
-    assert!(failures.is_empty(), "{} disagreements with Chrome 156:\n{}", failures.len(), failures.join("\n"));
+    assert!(
+        failures.is_empty(),
+        "{} disagreements with Chrome 156:\n{}",
+        failures.len(),
+        failures.join("\n")
+    );
 }

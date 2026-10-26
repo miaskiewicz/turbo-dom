@@ -3,10 +3,20 @@
 //! and version-keyed result caching (`Document.__version` → `Tree.version`).
 //!
 //! Selector support: comma lists, descendant (` `), child (`>`), adjacent (`+`)
-//! and general-sibling (`~`) combinators, compounds of `tag` / `.class` / `#id` /
-//! `[attr]` / `[attr=val]`, the `:is()` / `:where()` / `:not()` selector-list
-//! pseudo-classes, and the relational `:has()`. Enough for RTL-style queries;
-//! extend as the gauntlet demands.
+//! and general-sibling (`~`) combinators, compounds of `tag` (optionally `*|` / `|`
+//! namespace-prefixed) / `.class` / `#id` / `[attr]` / `[attr=val]`, the `:is()` /
+//! `:where()` / `:not()` selector-list pseudo-classes, the relational `:has()`, and the
+//! structural / form-state / link pseudo-classes listed on `Pseudo`. Enough for
+//! RTL-style queries; extend as the gauntlet demands.
+//!
+//! Chrome 156 is the reference (consolidation S3a, miaskiewicz/turbo-dom#18, control
+//! `tests/fixtures/cascade_selectors_chrome156.json`): CSS escapes and non-ASCII
+//! identifiers (a selector containing `\` is parsed by the UTF-16 parser in
+//! `query_utf16.rs`, which decodes escapes), `:empty` ignoring comments / processing
+//! instructions / template content, the HTML `:read-only` / `:read-write` rule,
+//! `:nth-child(An+B of S)` and `:link` / `:any-link`. With the `selector-dual` feature
+//! every public output here also runs the frozen B-main engine (`dual!`, see
+//! `docs/selector-dual-gate.md`).
 
 use super::tree::{FormProp, Handle, NodeType, Tree};
 
@@ -95,15 +105,20 @@ enum AttrMatch {
 /// `selector-dual` builds: answer an engine output through `rtdom::selector_dual`, which
 /// runs this engine AND the frozen B-main one, logs any disagreement and returns the
 /// answer `TURBO_DOM_SELECTOR_ENGINE` selects. Expands to nothing in normal builds.
+/// `$kind` is `Str` or `Units` (the selector's form); the frozen engine's errors convert
+/// with `dual_thaw`.
 #[cfg(feature = "selector-dual")]
 macro_rules! dual {
-    ($tree:expr, $api:literal, $sel:expr, $el:expr, $new:expr, $legacy:expr) => {
+    ($tree:expr, $api:literal, $kind:ident($sel:expr), $el:expr, $new:expr, $legacy:expr) => {{
+        #[allow(unused_imports)]
+        use $crate::rtdom::selector_dual::thaw as dual_thaw;
+        let selector = $crate::rtdom::selector_dual::Sel::$kind($sel);
         if let Some(answer) =
-            $crate::rtdom::selector_dual::dual($tree, $api, $sel, $el, || $new, || $legacy)
+            $crate::rtdom::selector_dual::dual($tree, $api, selector, $el, || $new, || $legacy)
         {
             return answer;
         }
-    };
+    }};
 }
 #[cfg(not(feature = "selector-dual"))]
 macro_rules! dual {
@@ -172,7 +187,10 @@ enum TypeNamespace {
 /// the UTF-16 parser, which splits on the raw units itself).
 fn split_type_selector(raw: &str) -> (TypeNamespace, Option<String>) {
     let Some(bar) = raw.find('|') else {
-        return (TypeNamespace::Default, (raw != "*").then(|| raw.to_string()));
+        return (
+            TypeNamespace::Default,
+            (raw != "*").then(|| raw.to_string()),
+        );
     };
     let (prefix, name) = (&raw[..bar], &raw[bar + 1..]);
     let namespace = match prefix {
@@ -829,23 +847,20 @@ fn parse_pseudo(name: &str, arg: Option<&str>) -> Pseudo {
         "nth-child" | "nth-last-child" => {
             let arg = arg.unwrap_or("");
             let last = name == "nth-last-child";
-            match split_nth_of(arg) {
-                Some((anb, of)) => {
-                    let (a, b) = parse_nth(anb);
-                    let of = parse_selector_list_str(of);
-                    if last {
-                        Pseudo::NthLastChildOf(a, b, of)
-                    } else {
-                        Pseudo::NthChildOf(a, b, of)
-                    }
+            if let Some((anb, of)) = split_nth_of(arg) {
+                let (a, b) = parse_nth(anb);
+                let of = parse_selector_list_str(of);
+                if last {
+                    Pseudo::NthLastChildOf(a, b, of)
+                } else {
+                    Pseudo::NthChildOf(a, b, of)
                 }
-                None => {
-                    let (a, b) = parse_nth(arg);
-                    if last {
-                        Pseudo::NthLastChild(a, b)
-                    } else {
-                        Pseudo::NthChild(a, b)
-                    }
+            } else {
+                let (a, b) = parse_nth(arg);
+                if last {
+                    Pseudo::NthLastChild(a, b)
+                } else {
+                    Pseudo::NthChild(a, b)
                 }
             }
         }
@@ -1448,7 +1463,9 @@ impl Tree {
                     READONLY_INPUT_TYPES
                         .iter()
                         .any(|t| kind.eq_ignore_ascii_case(t))
-                        || !KNOWN_INPUT_TYPES.iter().any(|t| kind.eq_ignore_ascii_case(t))
+                        || !KNOWN_INPUT_TYPES
+                            .iter()
+                            .any(|t| kind.eq_ignore_ascii_case(t))
                 });
                 readonly_applies
                     && !self.form_state(h, FormProp::ReadOnly, "readonly")
@@ -1621,8 +1638,14 @@ impl Tree {
     }
 
     pub fn matches(&self, h: Handle, selector: &str) -> bool {
-        dual!(self, "matches", super::selector_dual::Sel::Str(selector), Some(h),
-            self.matches(h, selector), self.frozen_matches(h, selector));
+        dual!(
+            self,
+            "matches",
+            Str(selector),
+            Some(h),
+            self.matches(h, selector),
+            self.frozen_matches(h, selector)
+        );
         // every `cx` reaching the matcher is a non-empty `Complex` (parse_selector_cached
         // drops empty/combinator-only segments). Re-parsing is avoided across an
         // element-loop `matches()` via the parse cache.
@@ -1635,8 +1658,14 @@ impl Tree {
     /// shared `Rc<[Handle]>` so a cache hit (the common RTL repeated-query case) is a
     /// pointer bump — no Vec copy. Deref to `&[Handle]` for `.len()`/`[i]`/`.iter()`.
     pub fn query_selector_all(&self, selector: &str) -> std::rc::Rc<[Handle]> {
-        dual!(self, "query_selector_all", super::selector_dual::Sel::Str(selector), None,
-            self.query_selector_all(selector), self.frozen_query_selector_all(selector));
+        dual!(
+            self,
+            "query_selector_all",
+            Str(selector),
+            None,
+            self.query_selector_all(selector),
+            self.frozen_query_selector_all(selector)
+        );
         {
             let mut cache = self.qcache.borrow_mut();
             if cache.version != self.version {
@@ -1679,8 +1708,14 @@ impl Tree {
     }
 
     pub fn query_selector(&self, selector: &str) -> Option<Handle> {
-        dual!(self, "query_selector", super::selector_dual::Sel::Str(selector), None,
-            self.query_selector(selector), self.frozen_query_selector(selector));
+        dual!(
+            self,
+            "query_selector",
+            Str(selector),
+            None,
+            self.query_selector(selector),
+            self.frozen_query_selector(selector)
+        );
         self.query_selector_all(selector).first().copied()
     }
 
@@ -1699,9 +1734,15 @@ impl Tree {
         &self,
         selector: &str,
     ) -> Result<std::rc::Rc<[Handle]>, SelectorError> {
-        dual!(self, "query_selector_all_checked", super::selector_dual::Sel::Str(selector), None,
+        dual!(
+            self,
+            "query_selector_all_checked",
+            Str(selector),
+            None,
             self.query_selector_all_checked(selector),
-            self.frozen_query_selector_all_checked(selector).map_err(super::selector_dual::thaw));
+            self.frozen_query_selector_all_checked(selector)
+                .map_err(dual_thaw)
+        );
         validate_selector_list(selector)?;
         Ok(self.query_selector_all(selector))
     }
@@ -1711,9 +1752,15 @@ impl Tree {
     /// # Errors
     /// Returns [`SelectorError`] when `selector` is malformed.
     pub fn query_selector_checked(&self, selector: &str) -> Result<Option<Handle>, SelectorError> {
-        dual!(self, "query_selector_checked", super::selector_dual::Sel::Str(selector), None,
+        dual!(
+            self,
+            "query_selector_checked",
+            Str(selector),
+            None,
             self.query_selector_checked(selector),
-            self.frozen_query_selector_checked(selector).map_err(super::selector_dual::thaw));
+            self.frozen_query_selector_checked(selector)
+                .map_err(dual_thaw)
+        );
         validate_selector_list(selector)?;
         Ok(self.query_selector(selector))
     }
@@ -1723,9 +1770,14 @@ impl Tree {
     /// # Errors
     /// Returns [`SelectorError`] when `selector` is malformed.
     pub fn matches_checked(&self, h: Handle, selector: &str) -> Result<bool, SelectorError> {
-        dual!(self, "matches_checked", super::selector_dual::Sel::Str(selector), Some(h),
+        dual!(
+            self,
+            "matches_checked",
+            Str(selector),
+            Some(h),
             self.matches_checked(h, selector),
-            self.frozen_matches_checked(h, selector).map_err(super::selector_dual::thaw));
+            self.frozen_matches_checked(h, selector).map_err(dual_thaw)
+        );
         validate_selector_list(selector)?;
         Ok(self.matches(h, selector))
     }
@@ -1734,8 +1786,14 @@ impl Tree {
     /// `\u{1}`-prefixed key (never a valid selector char, so no collision). Result is
     /// stored as a 0- or 1-element Vec. Mirrors the JS `__idCache`.
     pub fn get_element_by_id(&self, id: &str) -> Option<Handle> {
-        dual!(self, "get_element_by_id", super::selector_dual::Sel::Str(id), None,
-            self.get_element_by_id(id), self.frozen_get_element_by_id(id));
+        dual!(
+            self,
+            "get_element_by_id",
+            Str(id),
+            None,
+            self.get_element_by_id(id),
+            self.frozen_get_element_by_id(id)
+        );
         let key = {
             let mut k = String::with_capacity(id.len() + 1);
             k.push('\u{1}');
@@ -1774,8 +1832,14 @@ impl Tree {
     }
 
     pub fn get_elements_by_tag_name(&self, tag: &str) -> Vec<Handle> {
-        dual!(self, "get_elements_by_tag_name", super::selector_dual::Sel::Str(tag), None,
-            self.get_elements_by_tag_name(tag), self.frozen_get_elements_by_tag_name(tag));
+        dual!(
+            self,
+            "get_elements_by_tag_name",
+            Str(tag),
+            None,
+            self.get_elements_by_tag_name(tag),
+            self.frozen_get_elements_by_tag_name(tag)
+        );
         let any = tag == "*";
         let mut out = Vec::new();
         let mut stack = vec![self.root()];
@@ -2616,6 +2680,90 @@ mod tests {
             SelectorError::UnterminatedAttribute.to_string(),
             "unterminated attribute selector"
         );
+    }
+
+    #[test]
+    fn s3a_selector_fixes_edge_cases() {
+        // Edges of the S3a Chrome fixes not reached by the Chrome control
+        // (tests/cascade_selectors_chrome.rs covers the main cases).
+        use super::super::query::SelectorError;
+        let mut tree = Tree::parse(
+            "<div class='md:flex'><p>x</p></div>\
+             <div contenteditable=bogus><span id=inherit>x</span></div>\
+             <div contenteditable><div contenteditable=bogus><i id=deep>x</i></div></div>",
+        );
+        let root = tree.root();
+        // strict lexer: escapes (CRLF after a hex escape, `\` at the very end), a `\` +
+        // newline is not an escape, namespace prefixes
+        assert!(tree.query_selector_all_checked(".md\\3a\r\nflex").is_ok());
+        assert!(tree.query_selector_all_checked(".a\\").is_ok());
+        assert_eq!(
+            tree.query_selector_all_checked(".a\\\nb"),
+            Err(SelectorError::UnexpectedChar('\\'))
+        );
+        for ok in ["*|*", "*|p", "|p", "a |p", "\\70", "\\@x"] {
+            assert!(tree.query_selector_all_checked(ok).is_ok(), "{ok}");
+        }
+        for bad in ["*|", "*|.x", "a|p", ".x|p", "[a]|p", "|"] {
+            assert_eq!(
+                tree.query_selector_all_checked(bad),
+                Err(SelectorError::UnexpectedChar('|')),
+                "{bad}"
+            );
+        }
+        // lenient namespace forms: `p|` and undeclared prefixes never match, `*|*` is `*`
+        assert_eq!(tree.query_selector_all("p|").len(), 0);
+        assert_eq!(tree.query_selector_all("x|p").len(), 0);
+        assert_eq!(
+            *tree.query_selector_all("*|*"),
+            *tree.query_selector_all("*")
+        );
+        assert_eq!(
+            tree.query_selector_all_units(&"p|".encode_utf16().collect::<Vec<_>>())
+                .len(),
+            0
+        );
+        assert_eq!(
+            tree.query_selector_all_units(&"x|p".encode_utf16().collect::<Vec<_>>())
+                .len(),
+            0
+        );
+        // an escaped bar is part of the type name, not a namespace separator
+        let escaped_bar: Vec<u16> = "p\\|x".encode_utf16().collect();
+        assert_eq!(tree.query_selector_all_units(&escaped_bar).len(), 0);
+        assert_eq!(tree.query_selector_all("p\\|x").len(), 0);
+        // `|p`: only elements with no namespace
+        let bare = tree.create_element_namespace(None, "p");
+        tree.append_child(root, bare);
+        assert!(tree.matches(bare, "|p") && tree.matches(bare, "*|p"));
+        let html_p = tree.query_selector("div > p").unwrap();
+        assert!(!tree.matches(html_p, "|p") && tree.matches(html_p, "*|p"));
+        // neither read-only nor read-write outside the HTML namespace
+        assert!(!tree.matches(bare, ":read-only") && !tree.matches(bare, ":read-write"));
+        // :empty: an empty text node and a processing instruction don't count
+        let host = tree.create_element("div");
+        tree.append_child(root, host);
+        let empty_text = tree.create_text_node("");
+        tree.append_child(host, empty_text);
+        let pi = tree.create_processing_instruction_utf16("x", &[]);
+        tree.append_child(host, pi);
+        assert!(tree.matches(host, ":empty"));
+        let text = tree.create_text_node(" ");
+        tree.append_child(host, text);
+        assert!(!tree.matches(host, ":empty"));
+        // contenteditable: an invalid value inherits (no editable ancestor / an editable one)
+        let inherit = tree.get_element_by_id("inherit").unwrap();
+        assert!(tree.matches(inherit, ":read-only"));
+        let deep = tree.get_element_by_id("deep").unwrap();
+        assert!(tree.matches(deep, ":read-write"));
+        // `of` needs whitespace before it and no name code point after it
+        let list = Tree::parse("<ul><li class=x>1</li><li class=x>2</li></ul>");
+        assert_eq!(list.query_selector_all(":nth-child(2 of .x)").len(), 1);
+        assert_eq!(list.query_selector_all(":nth-child(2of .x)").len(), 0);
+        assert_eq!(list.query_selector_all(":nth-child(2 ofx)").len(), 0);
+        assert_eq!(list.query_selector_all(":nth-child(2 of)").len(), 0);
+        let units: Vec<u16> = ":nth-last-child(1 of .x)".encode_utf16().collect();
+        assert_eq!(list.query_selector_all_units(&units).len(), 1);
     }
 
     #[test]

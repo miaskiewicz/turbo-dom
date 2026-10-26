@@ -54,6 +54,7 @@ impl Tree {
 }
 
 /// The frozen engine's error, as the current type (same variants).
+#[allow(clippy::needless_pass_by_value)] // used as `map_err(thaw)`
 pub(crate) fn thaw(error: query_frozen::SelectorError) -> SelectorError {
     match error {
         query_frozen::SelectorError::UnterminatedAttribute => SelectorError::UnterminatedAttribute,
@@ -310,7 +311,11 @@ pub(crate) fn dual<T: Answer>(
         log.write(&record);
     }
     drop(guard);
-    Some(if log.mode == Mode::Legacy { legacy } else { new })
+    Some(if log.mode == Mode::Legacy {
+        legacy
+    } else {
+        new
+    })
 }
 
 /// Elements recorded per divergence (the answers' symmetric difference is capped).

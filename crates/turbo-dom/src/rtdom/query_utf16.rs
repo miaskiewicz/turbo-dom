@@ -557,8 +557,14 @@ impl Tree {
     /// Original-unit selector path; its parsed records are not cached under a
     /// lossy scalar key. Ordinary valid UTF-8 calls retain the existing fast API.
     pub fn query_selector_all_units(&self, source: &[u16]) -> std::rc::Rc<[Handle]> {
-        dual!(self, "query_selector_all_units", super::super::selector_dual::Sel::Units(source), None,
-            self.query_selector_all_units(source), self.frozen_query_selector_all_units(source));
+        dual!(
+            self,
+            "query_selector_all_units",
+            Units(source),
+            None,
+            self.query_selector_all_units(source),
+            self.frozen_query_selector_all_units(source)
+        );
         self.query_selector_all_from_units(self.root(), source)
     }
     pub fn query_selector_all_from_units(
@@ -566,9 +572,14 @@ impl Tree {
         root: Handle,
         source: &[u16],
     ) -> std::rc::Rc<[Handle]> {
-        dual!(self, "query_selector_all_from_units", super::super::selector_dual::Sel::Units(source), Some(root),
+        dual!(
+            self,
+            "query_selector_all_from_units",
+            Units(source),
+            Some(root),
             self.query_selector_all_from_units(root, source),
-            self.frozen_query_selector_all_from_units(root, source));
+            self.frozen_query_selector_all_from_units(root, source)
+        );
         let selectors = list(source);
         let mut result = Vec::new();
         let mut stack = self.children(root);
@@ -588,20 +599,38 @@ impl Tree {
         result.into()
     }
     pub fn query_selector_units(&self, source: &[u16]) -> Option<Handle> {
-        dual!(self, "query_selector_units", super::super::selector_dual::Sel::Units(source), None,
-            self.query_selector_units(source), self.frozen_query_selector_units(source));
+        dual!(
+            self,
+            "query_selector_units",
+            Units(source),
+            None,
+            self.query_selector_units(source),
+            self.frozen_query_selector_units(source)
+        );
         self.query_selector_all_units(source).first().copied()
     }
     pub fn matches_units(&self, node: Handle, source: &[u16]) -> bool {
-        dual!(self, "matches_units", super::super::selector_dual::Sel::Units(source), Some(node),
-            self.matches_units(node, source), self.frozen_matches_units(node, source));
+        dual!(
+            self,
+            "matches_units",
+            Units(source),
+            Some(node),
+            self.matches_units(node, source),
+            self.frozen_matches_units(node, source)
+        );
         list(source)
             .iter()
             .any(|selector| self.matches_complex(node, selector))
     }
     pub fn get_element_by_id_units(&self, id: &[u16]) -> Option<Handle> {
-        dual!(self, "get_element_by_id_units", super::super::selector_dual::Sel::Units(id), None,
-            self.get_element_by_id_units(id), self.frozen_get_element_by_id_units(id));
+        dual!(
+            self,
+            "get_element_by_id_units",
+            Units(id),
+            None,
+            self.get_element_by_id_units(id),
+            self.frozen_get_element_by_id_units(id)
+        );
         let mut stack = vec![self.root()];
         while let Some(node) = stack.pop() {
             if self.node_type(node) == NodeType::Element

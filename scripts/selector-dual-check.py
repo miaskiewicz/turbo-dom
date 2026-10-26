@@ -2,7 +2,8 @@
 """Check `selector-dual` JSONL logs (turbo-dom consolidation S3a/S3b, docs/selector-dual-gate.md).
 
 usage: selector-dual-check.py --mode legacy|new --manifest MANIFEST.json [--classify]
-                              [--report OUT.json] SUITE=LOGDIR [SUITE=LOGDIR ...]
+                              [--allow-vacuous SUITE]... [--report OUT.json]
+                              SUITE=LOGDIR [SUITE=LOGDIR ...]
 
 Per suite (every `*.jsonl` under LOGDIR, one file per process):
   * headers: every header's mode is --mode, its frozen_sha is the expected one and its
@@ -201,6 +202,8 @@ def main():
     ap.add_argument("--manifest", required=True)
     ap.add_argument("--classify", action="store_true")
     ap.add_argument("--report")
+    ap.add_argument("--allow-vacuous", action="append", default=[],
+                    help="suite whose tests make no selector call (results-only; documented)")
     ap.add_argument("suites", nargs="+")
     args = ap.parse_args()
     manifest = json.load(open(args.manifest))
@@ -242,9 +245,10 @@ def main():
                         else:
                             unclassified.append(rec)
         total = sum(compared.values())
-        if headers == 0:
+        vacuous_ok = suite in args.allow_vacuous
+        if headers == 0 and not vacuous_ok:
             problems.append("vacuous: no header records")
-        if total == 0:
+        if total == 0 and not vacuous_ok:
             problems.append("vacuous: no compared calls")
         if unclassified:
             problems.append(f"{len(unclassified)} unclassified divergences")
@@ -259,8 +263,9 @@ def main():
             "unclassified": unclassified[:50],
             "problems": problems[:50],
             "ok": ok,
+            "vacuity_waived": vacuous_ok,
         }
-        status = "ok" if ok else "FAIL"
+        status = ("ok" if headers else "ok, results only") if ok else "FAIL"
         cls = ", ".join(f"{k}={v}" for k, v in sorted(classes.items()))
         print(
             f"[{status}] {suite}: {len(files)} logs, {headers} headers, >= {total} compared, "

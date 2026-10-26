@@ -121,7 +121,10 @@ The script's header documents its suites and knobs. It runs these steps:
    - surf `test:shim`, `test:e2e` and `test:detection`.
 4. Run `scripts/selector-dual-check.py`. It checks that every header's build id is in the
    manifest, applies the per-suite vacuity guard (at least one header and one compared
-   call), and classifies every divergence.
+   call), and classifies every divergence. One suite is waived from the vacuity guard and
+   is compared for Gate A only: `turbo-test-cargo`. Its 29 tests cover the runner, the
+   interceptor and V8 teardown, and none of them has called a selector since the binding
+   moved to turbo-dom-browser-env.
 
 Gate A (legacy mode) compares every suite's results with the previous step's reference
 (the S2 tip for S3a). Results must be equal, except the tests added or changed in the step,
