@@ -8,7 +8,8 @@
 // P5b-W5 adds the table caption cases of miaskiewicz/turbo-dom#51 (`caption-*`) and the
 // cases of the bugs found while fixing it (one group per issue, labelled).
 // P5b-W7 adds miaskiewicz/turbo-dom#79 (`intrinsic-margins-*`), #80
-// (`inline-block-margins-*`) and #81.
+// (`inline-block-margins-*`) and #81 (`icb-*`), and the bugs found while fixing them (one
+// group per issue, labelled).
 //
 // For every case below, Chrome for Testing 156 (viewport 1280x800) records:
 //   - `boxes`: getBoundingClientRect() of every `[data-cid]` element (document order), as
@@ -343,6 +344,11 @@ const CASES = [
   { id: "icb-absolute-taller-document", html: DOC(S("body{margin:0}"), `<div style="height:2000px"></div><div data-cid="c" style="position:absolute;bottom:0;width:20px;height:20px"></div>`) },
   { id: "icb-absolute-in-inline-run", html: DOC(S("body{margin:0}"), `<div style="font-size:0"><span>x<span data-cid="c" style="position:absolute;bottom:4px;width:20px;height:20px"></span></span></div>`) },
   { id: "icb-positioned-parent-bottom-unchanged", html: DOC(S("body{margin:0}"), `<div style="position:relative;height:100px"><div data-cid="c" style="position:absolute;bottom:10px;width:20px;height:20px"></div></div>`) },
+  // P5b-W7, miaskiewicz/turbo-dom#88: `display: flow-root` establishes a block formatting
+  // context: its children's vertical margins stay inside it and it contains its floats.
+  { id: "flow-root-keeps-child-margins", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="display:flow-root"><div data-cid="d" style="width:30px;height:15px;margin:3px 0 5px"></div></div><div data-cid="g" style="height:10px"></div>`) },
+  { id: "flow-root-contains-floats", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="display:flow-root"><div data-cid="d" style="float:left;width:30px;height:40px"></div></div><div data-cid="g" style="height:10px"></div>`) },
+  { id: "flow-root-beside-a-float", html: DOC(S("body{margin:0}"), `<div style="float:left;width:100px;height:50px"></div><div data-cid="c" style="display:flow-root;height:20px"></div>`) },
 ];
 
 /** The RGB of a 1x1 PNG screenshot (any filter: a single pixel's filter adds 0). */

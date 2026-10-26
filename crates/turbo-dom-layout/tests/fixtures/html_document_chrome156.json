@@ -7930,6 +7930,109 @@
     }
    },
    "canvas": "#ffffff"
+  },
+  {
+   "id": "flow-root-keeps-child-margins",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><div data-cid=\"c\" style=\"display:flow-root\"><div data-cid=\"d\" style=\"width:30px;height:15px;margin:3px 0 5px\"></div></div><div data-cid=\"g\" style=\"height:10px\"></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "c",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 23
+    },
+    {
+     "cid": "d",
+     "x": 0,
+     "y": 3,
+     "width": 30,
+     "height": 15
+    },
+    {
+     "cid": "g",
+     "x": 0,
+     "y": 23,
+     "width": 1280,
+     "height": 10
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "flow-root-contains-floats",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><div data-cid=\"c\" style=\"display:flow-root\"><div data-cid=\"d\" style=\"float:left;width:30px;height:40px\"></div></div><div data-cid=\"g\" style=\"height:10px\"></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "c",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 40
+    },
+    {
+     "cid": "d",
+     "x": 0,
+     "y": 0,
+     "width": 30,
+     "height": 40
+    },
+    {
+     "cid": "g",
+     "x": 0,
+     "y": 40,
+     "width": 1280,
+     "height": 10
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "flow-root-beside-a-float",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><div style=\"float:left;width:100px;height:50px\"></div><div data-cid=\"c\" style=\"display:flow-root;height:20px\"></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "c",
+     "x": 100,
+     "y": 0,
+     "width": 1180,
+     "height": 20
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
   }
  ]
 }
