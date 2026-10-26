@@ -36,9 +36,10 @@ pub fn stylesheet_hrefs(html: &str) -> Vec<String> {
     let mut cursor = 0;
     while let Some(rel) = lower[cursor..].find("<link") {
         let tag_start = cursor + rel;
-        let end = lower[tag_start..]
-            .find('>')
-            .map_or(html.len(), |g| tag_start + g);
+        // A tag cut off by the end of the document is dropped, as the HTML tokenizer drops it.
+        let Some(end) = lower[tag_start..].find('>').map(|g| tag_start + g) else {
+            break;
+        };
         let tag = &html[tag_start..end];
         let tag_lower = &lower[tag_start..end];
         let rel_val = attr_value(tag, tag_lower, "rel")
@@ -616,7 +617,6 @@ mod tests {
     /// An unterminated `<link` at the end of the document is dropped (the HTML tokenizer
     /// discards a tag cut off by EOF, so Chrome loads nothing) — the scan must not panic.
     #[test]
-    #[ignore = "unterminated <link panic: fails until the fix"]
     fn an_unterminated_link_at_the_end_is_not_a_stylesheet() {
         use super::stylesheet_hrefs;
         assert_eq!(
