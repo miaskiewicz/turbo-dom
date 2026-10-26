@@ -1,0 +1,940 @@
+{
+ "generator": "scripts/rtdom-core-chrome-control.mjs",
+ "chrome": "156.0.8078.4",
+ "playwright_core": "1.61.0",
+ "documents": [
+  {
+   "id": "rcdata_nul",
+   "html": "<title>a\u0000b</title>",
+   "dump": "| <html>\n|   <head>\n|     <title>\n|       \"a�b\"\n|   <body>"
+  },
+  {
+   "id": "rawtext_nul",
+   "html": "<style>a\u0000b</style>",
+   "dump": "| <html>\n|   <head>\n|     <style>\n|       \"a�b\"\n|   <body>"
+  },
+  {
+   "id": "script_data_nul",
+   "html": "<script>a\u0000b</script>",
+   "dump": "| <html>\n|   <head>\n|     <script>\n|       \"a�b\"\n|   <body>"
+  },
+  {
+   "id": "plaintext_newlines_nul",
+   "html": "<plaintext>a<b>&amp;\r\nc\rd\u0000e",
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     <plaintext>\n|       \"a<b>&amp;\nc\nd�e\""
+  },
+  {
+   "id": "tag_name_nul",
+   "html": "<a\u0000b>x</a\u0000b>",
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     <a�b>\n|       \"x\""
+  },
+  {
+   "id": "before_attribute_name_nul",
+   "html": "<a \u0000=x>",
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     <a>\n|       �=\"x\""
+  },
+  {
+   "id": "attribute_name_nul",
+   "html": "<a b\u0000c=x>",
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     <a>\n|       b�c=\"x\""
+  },
+  {
+   "id": "after_attribute_name_nul",
+   "html": "<a b \u0000>",
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     <a>\n|       b=\"\"\n|       �=\"\""
+  },
+  {
+   "id": "attribute_value_double_quoted_nul",
+   "html": "<a b=\"x\u0000y\">",
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     <a>\n|       b=\"x�y\""
+  },
+  {
+   "id": "attribute_value_single_quoted_nul",
+   "html": "<a b='x\u0000y'>",
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     <a>\n|       b=\"x�y\""
+  },
+  {
+   "id": "attribute_value_unquoted_nul",
+   "html": "<a b=x\u0000y>",
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     <a>\n|       b=\"x�y\""
+  },
+  {
+   "id": "comment_start_nul",
+   "html": "<!--\u0000-->",
+   "dump": "| <!-- � -->\n| <html>\n|   <head>\n|   <body>"
+  },
+  {
+   "id": "comment_start_dash_nul",
+   "html": "<!---\u0000-->",
+   "dump": "| <!-- -� -->\n| <html>\n|   <head>\n|   <body>"
+  },
+  {
+   "id": "comment_nul",
+   "html": "<!--a\u0000b-->",
+   "dump": "| <!-- a�b -->\n| <html>\n|   <head>\n|   <body>"
+  },
+  {
+   "id": "comment_end_dash_nul",
+   "html": "<!--a-\u0000-->",
+   "dump": "| <!-- a-� -->\n| <html>\n|   <head>\n|   <body>"
+  },
+  {
+   "id": "comment_end_bang_nul",
+   "html": "<!--a--!\u0000-->",
+   "dump": "| <!-- a--!� -->\n| <html>\n|   <head>\n|   <body>"
+  },
+  {
+   "id": "doctype_before_name_nul",
+   "html": "<!DOCTYPE \u0000>",
+   "dump": "| <!DOCTYPE �>\n| <html>\n|   <head>\n|   <body>"
+  },
+  {
+   "id": "doctype_name_nul",
+   "html": "<!DOCTYPE h\u0000x>",
+   "dump": "| <!DOCTYPE h�x>\n| <html>\n|   <head>\n|   <body>"
+  },
+  {
+   "id": "doctype_public_double_nul",
+   "html": "<!DOCTYPE html PUBLIC \"a\u0000b\">",
+   "dump": "| <!DOCTYPE html \"a�b\" \"\">\n| <html>\n|   <head>\n|   <body>"
+  },
+  {
+   "id": "doctype_public_single_nul",
+   "html": "<!DOCTYPE html PUBLIC 'a\u0000b'>",
+   "dump": "| <!DOCTYPE html \"a�b\" \"\">\n| <html>\n|   <head>\n|   <body>"
+  },
+  {
+   "id": "bogus_doctype_nul",
+   "html": "<!DOCTYPE html x\u0000y>",
+   "dump": "| <!DOCTYPE html>\n| <html>\n|   <head>\n|   <body>"
+  },
+  {
+   "id": "after_attribute_name_whitespace",
+   "html": "<a b  c>",
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     <a>\n|       b=\"\"\n|       c=\"\""
+  },
+  {
+   "id": "after_attribute_name_solidus",
+   "html": "<a b />",
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     <a>\n|       b=\"\""
+  },
+  {
+   "id": "after_attribute_name_equals",
+   "html": "<a b =x>",
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     <a>\n|       b=\"x\""
+  },
+  {
+   "id": "after_attribute_name_quote",
+   "html": "<a b \"c>",
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     <a>\n|       \"c=\"\"\n|       b=\"\""
+  },
+  {
+   "id": "before_attribute_value_whitespace",
+   "html": "<a b= \n\t\"c\">",
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     <a>\n|       b=\"c\""
+  },
+  {
+   "id": "before_attribute_value_gt",
+   "html": "<a b=>x",
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     <a>\n|       b=\"\"\n|       \"x\""
+  },
+  {
+   "id": "attribute_value_newlines",
+   "html": "<a b=\"x\ny\r\nz\" c='p\rq'>",
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     <a>\n|       b=\"x\ny\nz\"\n|       c=\"p\nq\""
+  },
+  {
+   "id": "attribute_value_unquoted_specials",
+   "html": "<a b=x\"y'z<w=v`u>",
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     <a>\n|       b=\"x\"y'z<w=v`u\""
+  },
+  {
+   "id": "after_attribute_value_quoted_missing_space",
+   "html": "<a b=\"x\"c=d>",
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     <a>\n|       b=\"x\"\n|       c=\"d\""
+  },
+  {
+   "id": "attribute_value_char_refs",
+   "html": "<a b='&amp;x' c=&lt;y d=&notit;>",
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     <a>\n|       b=\"&x\"\n|       c=\"<y\"\n|       d=\"&notit;\""
+  },
+  {
+   "id": "eof_before_attribute_value",
+   "html": "<a b=",
+   "dump": "| <html>\n|   <head>\n|   <body>"
+  },
+  {
+   "id": "eof_in_attribute_name",
+   "html": "<a b",
+   "dump": "| <html>\n|   <head>\n|   <body>"
+  },
+  {
+   "id": "comment_less_than_bang",
+   "html": "<!--a<!b-->",
+   "dump": "| <!-- a<!b -->\n| <html>\n|   <head>\n|   <body>"
+  },
+  {
+   "id": "comment_less_than_less_than",
+   "html": "<!--a<<b-->",
+   "dump": "| <!-- a<<b -->\n| <html>\n|   <head>\n|   <body>"
+  },
+  {
+   "id": "comment_less_than_bang_dash_other",
+   "html": "<!--a<!-b-->",
+   "dump": "| <!-- a<!-b -->\n| <html>\n|   <head>\n|   <body>"
+  },
+  {
+   "id": "comment_nested_open",
+   "html": "<!--a<!--b-->",
+   "dump": "| <!-- a<!--b -->\n| <html>\n|   <head>\n|   <body>"
+  },
+  {
+   "id": "comment_nested_open_close",
+   "html": "<!--a<!---->",
+   "dump": "| <!-- a<!-- -->\n| <html>\n|   <head>\n|   <body>"
+  },
+  {
+   "id": "comment_end_bang_dash",
+   "html": "<!--a--!-b-->",
+   "dump": "| <!-- a--!-b -->\n| <html>\n|   <head>\n|   <body>"
+  },
+  {
+   "id": "comment_end_bang_gt",
+   "html": "<!--a--!>b",
+   "dump": "| <!-- a -->\n| <html>\n|   <head>\n|   <body>\n|     \"b\""
+  },
+  {
+   "id": "eof_comment_less_than_bang",
+   "html": "<!--a<!",
+   "dump": "| <!-- a<! -->\n| <html>\n|   <head>\n|   <body>"
+  },
+  {
+   "id": "eof_comment_less_than_bang_dash",
+   "html": "<!--a<!-",
+   "dump": "| <!-- a<! -->\n| <html>\n|   <head>\n|   <body>"
+  },
+  {
+   "id": "eof_comment_less_than_bang_dash_dash",
+   "html": "<!--a<!--",
+   "dump": "| <!-- a<! -->\n| <html>\n|   <head>\n|   <body>"
+  },
+  {
+   "id": "markup_declaration_bogus",
+   "html": "<!x>y<![CDATA[z]]>",
+   "dump": "| <!-- x -->\n| <html>\n|   <head>\n|   <body>\n|     \"y\"\n|     <!-- [CDATA[z]] -->"
+  },
+  {
+   "id": "markup_declaration_eof_dash",
+   "html": "<!-",
+   "dump": "| <!-- - -->\n| <html>\n|   <head>\n|   <body>"
+  },
+  {
+   "id": "doctype_uppercase_name",
+   "html": "<!DOCTYPE HTML>",
+   "dump": "| <!DOCTYPE html>\n| <html>\n|   <head>\n|   <body>"
+  },
+  {
+   "id": "doctype_crlf_before_keyword",
+   "html": "<!DOCTYPE html\r\nPUBLIC \"p\" \"s\">",
+   "dump": "| <!DOCTYPE html \"p\" \"s\">\n| <html>\n|   <head>\n|   <body>"
+  },
+  {
+   "id": "doctype_eof_in_keyword",
+   "html": "<!DOCTYPE html PUBL",
+   "dump": "| <!DOCTYPE html>\n| <html>\n|   <head>\n|   <body>"
+  },
+  {
+   "id": "doctype_public_double_gt",
+   "html": "<!DOCTYPE html PUBLIC \"a>b",
+   "dump": "| <!DOCTYPE html \"a\" \"\">\n| <html>\n|   <head>\n|   <body>\n|     \"b\""
+  },
+  {
+   "id": "doctype_public_single_gt",
+   "html": "<!DOCTYPE html PUBLIC 'a>b",
+   "dump": "| <!DOCTYPE html \"a\" \"\">\n| <html>\n|   <head>\n|   <body>\n|     \"b\""
+  },
+  {
+   "id": "doctype_after_public_whitespace",
+   "html": "<!DOCTYPE html PUBLIC \"a\"  >",
+   "dump": "| <!DOCTYPE html \"a\" \"\">\n| <html>\n|   <head>\n|   <body>"
+  },
+  {
+   "id": "doctype_after_system_bogus",
+   "html": "<!DOCTYPE html SYSTEM \"a\" x>",
+   "dump": "| <!DOCTYPE html \"\" \"a\">\n| <html>\n|   <head>\n|   <body>"
+  },
+  {
+   "id": "doctype_after_system_whitespace",
+   "html": "<!DOCTYPE html SYSTEM \"a\"  >",
+   "dump": "| <!DOCTYPE html \"\" \"a\">\n| <html>\n|   <head>\n|   <body>"
+  },
+  {
+   "id": "doctype_between_single_system",
+   "html": "<!DOCTYPE html PUBLIC \"a\" 'b'>",
+   "dump": "| <!DOCTYPE html \"a\" \"b\">\n| <html>\n|   <head>\n|   <body>"
+  },
+  {
+   "id": "doctype_between_whitespace_gt",
+   "html": "<!DOCTYPE html PUBLIC \"a\" \n>",
+   "dump": "| <!DOCTYPE html \"a\" \"\">\n| <html>\n|   <head>\n|   <body>"
+  },
+  {
+   "id": "eof_before_doctype_name",
+   "html": "<!DOCTYPE ",
+   "dump": "| <!DOCTYPE >\n| <html>\n|   <head>\n|   <body>"
+  },
+  {
+   "id": "eof_between_doctype_identifiers",
+   "html": "<!DOCTYPE html PUBLIC \"a\" ",
+   "dump": "| <!DOCTYPE html \"a\" \"\">\n| <html>\n|   <head>\n|   <body>"
+  },
+  {
+   "id": "eof_bogus_doctype",
+   "html": "<!DOCTYPE html x",
+   "dump": "| <!DOCTYPE html>\n| <html>\n|   <head>\n|   <body>"
+  },
+  {
+   "id": "eof_doctype_system_single",
+   "html": "<!DOCTYPE html SYSTEM 'a",
+   "dump": "| <!DOCTYPE html \"\" \"a\">\n| <html>\n|   <head>\n|   <body>"
+  },
+  {
+   "id": "end_tag_open_gt",
+   "html": "a</>b",
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     \"ab\""
+  },
+  {
+   "id": "eof_end_tag_open",
+   "html": "a</",
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     \"a</\""
+  },
+  {
+   "id": "eof_tag_open",
+   "html": "a<",
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     \"a<\""
+  },
+  {
+   "id": "char_ref_named_prefix_semicolon",
+   "html": "x&a;y",
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     \"x&a;y\""
+  },
+  {
+   "id": "char_ref_bogus_name_space",
+   "html": "x&zz y",
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     \"x&zz y\""
+  },
+  {
+   "id": "char_ref_bogus_name_semicolon",
+   "html": "x&zzq;y",
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     \"x&zzq;y\""
+  },
+  {
+   "id": "eof_char_ref_bogus_name",
+   "html": "x&zzzz",
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     \"x&zzzz\""
+  },
+  {
+   "id": "eof_char_ref_named_prefix",
+   "html": "x&noti",
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     \"x¬i\""
+  },
+  {
+   "id": "eof_char_ref_numeric",
+   "html": "x&#x41",
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     \"xA\""
+  },
+  {
+   "id": "eof_char_ref_octothorpe",
+   "html": "x&#",
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     \"x&#\""
+  },
+  {
+   "id": "char_ref_numeric_no_semicolon",
+   "html": "x&#65y&#x42 z",
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     \"xAyB z\""
+  },
+  {
+   "id": "char_ref_numeric_invalid",
+   "html": "&#0;&#xD800;&#x110000;&#x80;&#x81;&#1;&#xFFFE;&#99999999999;",
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     \"���€\u0001￾�\""
+  },
+  {
+   "id": "char_ref_hex_no_digits",
+   "html": "&#xg;&#g;&#X41;",
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     \"&#xg;&#g;A\""
+  },
+  {
+   "id": "declarative_shadow_root_not_attached",
+   "html": "<div><template shadowrootmode=\"open\"><b>x</b></template></div>",
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     <div>\n|       <template>\n|         shadowrootmode=\"open\"\n|         content\n|           <b>\n|             \"x\""
+  },
+  {
+   "id": "annotation_xml_integration_point",
+   "html": "<math><annotation-xml encoding=\"text/html\"><div>x</div></annotation-xml></math>",
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     <math math>\n|       <math annotation-xml>\n|         encoding=\"text/html\"\n|         <div>\n|           \"x\""
+  },
+  {
+   "id": "form_association",
+   "html": "<form id=f><table><input name=a></table></form>",
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     <form>\n|       id=\"f\"\n|       <input>\n|         name=\"a\"\n|       <table>"
+  },
+  {
+   "id": "foreign_attributes_prefixed",
+   "html": "<svg xlink:href=\"u\" xml:lang=\"en\"><a xlink:title=\"t\"/></svg>",
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     <svg svg>\n|       xlink href=\"u\"\n|       xml lang=\"en\"\n|       <svg a>\n|         xlink title=\"t\""
+  },
+  {
+   "id": "meta_charset",
+   "html": "<meta charset=\"utf-8\"><p>x</p>",
+   "dump": "| <html>\n|   <head>\n|     <meta>\n|       charset=\"utf-8\"\n|   <body>\n|     <p>\n|       \"x\""
+  },
+  {
+   "id": "script_end_tags",
+   "html": "<script>a</script><script>b</script>c",
+   "dump": "| <html>\n|   <head>\n|     <script>\n|       \"a\"\n|     <script>\n|       \"b\"\n|   <body>\n|     \"c\""
+  },
+  {
+   "id": "fragment_textarea_rcdata",
+   "context": "textarea",
+   "html": "a\u0000b</textarea>c",
+   "dump": "| \"ab</textarea>c\""
+  },
+  {
+   "id": "fragment_style_rawtext",
+   "context": "style",
+   "html": "a\u0000b</style>c",
+   "dump": "| \"a�b</style>c\""
+  },
+  {
+   "id": "fragment_svg_cdata",
+   "context": "svg svg",
+   "html": "<![CDATA[x]]y]]z]]]>w",
+   "dump": "| \"x]]y]]z]w\""
+  },
+  {
+   "id": "fragment_svg_cdata_eof",
+   "context": "svg svg",
+   "html": "<![CDATA[x]",
+   "dump": "| \"x]\""
+  },
+  {
+   "id": "fragment_svg_cdata_eof_bracket",
+   "context": "svg svg",
+   "html": "<![CDATA[x]]",
+   "dump": "| \"x]]\""
+  },
+  {
+   "id": "fragment_svg_cdata_nul",
+   "context": "svg svg",
+   "html": "<![CDATA[a\u0000b]]>",
+   "dump": "| \"a�b\""
+  },
+  {
+   "id": "fragment_html_frameset_comment",
+   "context": "html",
+   "html": "<frameset></frameset></html><!--x-->",
+   "dump": "| <head>\n| <frameset>\n| <!-- x -->"
+  }
+ ],
+ "selectors": [
+  {
+   "id": "attribute_operators",
+   "html": "<div id=a class=\"x y\" lang=\"en-US\" title=\"abc\"></div><p id=b lang=en title=\"\"></p><span data-v=\"a b\"></span>",
+   "elements": [
+    "html",
+    "head",
+    "body",
+    "div",
+    "p",
+    "span"
+   ],
+   "selectors": [
+    {
+     "selector": "[class~=y]",
+     "valid": true,
+     "matches": "000100"
+    },
+    {
+     "selector": "[class~=\"x\"]",
+     "valid": true,
+     "matches": "000100"
+    },
+    {
+     "selector": "[lang|=en]",
+     "valid": true,
+     "matches": "000110"
+    },
+    {
+     "selector": "[lang|=\"en\"]",
+     "valid": true,
+     "matches": "000110"
+    },
+    {
+     "selector": "[title*=b]",
+     "valid": true,
+     "matches": "000100"
+    },
+    {
+     "selector": "[title*=\"\"]",
+     "valid": true,
+     "matches": "000000"
+    },
+    {
+     "selector": "[title^=a]",
+     "valid": true,
+     "matches": "000100"
+    },
+    {
+     "selector": "[title$=c]",
+     "valid": true,
+     "matches": "000100"
+    },
+    {
+     "selector": "[data-v~=\"a b\"]",
+     "valid": true,
+     "matches": "000000"
+    },
+    {
+     "selector": "[class~=Y i]",
+     "valid": true,
+     "matches": "000100"
+    },
+    {
+     "selector": "[lang|=EN i]",
+     "valid": true,
+     "matches": "000110"
+    },
+    {
+     "selector": "[title*=B i]",
+     "valid": true,
+     "matches": "000100"
+    }
+   ]
+  },
+  {
+   "id": "attribute_comments_and_escapes",
+   "html": "<div id=a title=\"a b\"></div><p id=b title=\"x\\y\"></p>",
+   "elements": [
+    "html",
+    "head",
+    "body",
+    "div",
+    "p"
+   ],
+   "selectors": [
+    {
+     "selector": "[title/* c */=\"a b\"]",
+     "valid": true,
+     "matches": "00010"
+    },
+    {
+     "selector": "[/* c */title]",
+     "valid": true,
+     "matches": "00011"
+    },
+    {
+     "selector": "[title=\"a b\"/* c */]",
+     "valid": true,
+     "matches": "00010"
+    },
+    {
+     "selector": "[title/* unterminated",
+     "valid": true,
+     "matches": "00011"
+    },
+    {
+     "selector": "[title=\"x\\\\y\"]",
+     "valid": true,
+     "matches": "00001"
+    },
+    {
+     "selector": "[title=x\\\\y]",
+     "valid": true,
+     "matches": "00001"
+    },
+    {
+     "selector": "[title=\"a\\\nb\"]",
+     "valid": true,
+     "matches": "00000"
+    },
+    {
+     "selector": "[title=\"a\\\r\nb\"]",
+     "valid": true,
+     "matches": "00000"
+    },
+    {
+     "selector": "[id=\\61]",
+     "valid": true,
+     "matches": "00010"
+    },
+    {
+     "selector": "[title='a\\\fb']",
+     "valid": true,
+     "matches": "00000"
+    }
+   ]
+  },
+  {
+   "id": "combinators_and_classes",
+   "html": "<div class=a></div><p class='b c'></p><span class=b></span><i class=d></i>",
+   "elements": [
+    "html",
+    "head",
+    "body",
+    "div",
+    "p",
+    "span",
+    "i"
+   ],
+   "selectors": [
+    {
+     "selector": "div + p",
+     "valid": true,
+     "matches": "0000100"
+    },
+    {
+     "selector": "div ~ span",
+     "valid": true,
+     "matches": "0000010"
+    },
+    {
+     "selector": "p+span",
+     "valid": true,
+     "matches": "0000010"
+    },
+    {
+     "selector": "p~i",
+     "valid": true,
+     "matches": "0000001"
+    },
+    {
+     "selector": ".a+.b",
+     "valid": true,
+     "matches": "0000100"
+    },
+    {
+     "selector": ".a~.d",
+     "valid": true,
+     "matches": "0000001"
+    },
+    {
+     "selector": "div,p",
+     "valid": true,
+     "matches": "0001100"
+    },
+    {
+     "selector": "div, ,p",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": ".b.c",
+     "valid": true,
+     "matches": "0000100"
+    },
+    {
+     "selector": "+ p",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "p >",
+     "valid": false,
+     "matches": ""
+    }
+   ]
+  },
+  {
+   "id": "comments_eof_and_webkit_any",
+   "html": "<p title=a class=a>x</p>",
+   "elements": [
+    "html",
+    "head",
+    "body",
+    "p"
+   ],
+   "selectors": [
+    {
+     "selector": "p /* c",
+     "valid": true,
+     "matches": "0001"
+    },
+    {
+     "selector": "p/* c */",
+     "valid": true,
+     "matches": "0001"
+    },
+    {
+     "selector": "[title",
+     "valid": true,
+     "matches": "0001"
+    },
+    {
+     "selector": "[title=a",
+     "valid": true,
+     "matches": "0001"
+    },
+    {
+     "selector": "[title=\"a\"/* c",
+     "valid": true,
+     "matches": "0001"
+    },
+    {
+     "selector": ":state(x)",
+     "valid": true,
+     "matches": "0000"
+    },
+    {
+     "selector": ":-webkit-any(p)",
+     "valid": true,
+     "matches": "0001"
+    },
+    {
+     "selector": ":-webkit-any(:is(p))",
+     "valid": true,
+     "matches": "0001"
+    },
+    {
+     "selector": ":-webkit-any(:not(p))",
+     "valid": true,
+     "matches": "1110"
+    },
+    {
+     "selector": ":-webkit-any(p, :has(x))",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": ":-webkit-any(::before)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": ":not(:-webkit-any(:hover))",
+     "valid": true,
+     "matches": "1111"
+    },
+    {
+     "selector": ":is(:-webkit-any(:has(p)))",
+     "valid": true,
+     "matches": "0000"
+    }
+   ]
+  },
+  {
+   "id": "pseudo_edge_cases",
+   "html": "<div><p id=x></p><p></p></div>",
+   "elements": [
+    "html",
+    "head",
+    "body",
+    "div",
+    "p",
+    "p"
+   ],
+   "selectors": [
+    {
+     "selector": ":not(:has(p))",
+     "valid": true,
+     "matches": "010011"
+    },
+    {
+     "selector": ":is(:has(p))",
+     "valid": true,
+     "matches": "101100"
+    },
+    {
+     "selector": ":where(:has(p))",
+     "valid": true,
+     "matches": "101100"
+    },
+    {
+     "selector": ":nth-child(1 of :has(p))",
+     "valid": true,
+     "matches": "101100"
+    },
+    {
+     "selector": ":nth-last-child(1 of :has(p))",
+     "valid": true,
+     "matches": "101100"
+    },
+    {
+     "selector": ":-webkit-any(:has(p))",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": ":has(:has(p))",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "p:nth-child(2n+1 of #x)",
+     "valid": true,
+     "matches": "000010"
+    },
+    {
+     "selector": "p:unknown-pseudo",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "p:hover(x)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "p::before",
+     "valid": true,
+     "matches": "000000"
+    },
+    {
+     "selector": ":state(x",
+     "valid": true,
+     "matches": "000000"
+    },
+    {
+     "selector": "p:nth-child(foo)",
+     "valid": false,
+     "matches": ""
+    }
+   ]
+  }
+ ],
+ "probes": [
+  {
+   "id": "character_data",
+   "values": {
+    "afterInsert": "hXYello",
+    "afterDelete": "Yello",
+    "afterAppend": "Yello!",
+    "afterReplace": "Y-o!",
+    "sub": "-o",
+    "head": "Y-",
+    "tail": "o!",
+    "tailIsNextSibling": true,
+    "parentChildren": 2,
+    "comment": "bcd"
+   }
+  },
+  {
+   "id": "attr_nodes",
+   "values": {
+    "againIsSame": true,
+    "removeForeign": "NotFoundError",
+    "afterTextContent": "via-textContent",
+    "afterNodeValue": "via-nodeValue",
+    "localName": "local",
+    "name": "p:local",
+    "prefix": "p",
+    "namespaceURI": "urn:x",
+    "htmlAttrNamespace": null,
+    "htmlAttrPrefix": null,
+    "detachedValue": "dv",
+    "detachedOwner": null
+   }
+  },
+  {
+   "id": "node_value_on_elements",
+   "values": {
+    "text": "x",
+    "nodeValue": null
+   }
+  },
+  {
+   "id": "insert_adjacent_element",
+   "values": {
+    "inserted": [
+     true,
+     true,
+     true,
+     true,
+     true
+    ],
+    "wrapper": "<b id=\"beforebegin\"></b><div><b id=\"AfterBegin\"></b><b id=\"afterbegin\"></b><i></i><b id=\"beforeend\"></b></div><b id=\"afterend\"></b>",
+    "detachedBefore": null,
+    "detachedAfter": null,
+    "invalid": "SyntaxError"
+   }
+  },
+  {
+   "id": "toggle_attribute",
+   "values": {
+    "sequence": [
+     true,
+     true,
+     false,
+     false,
+     true,
+     true,
+     true,
+     "",
+     false,
+     false,
+     false,
+     false
+    ]
+   }
+  },
+  {
+   "id": "names_and_namespaces",
+   "values": {
+    "upperLocalName": "div",
+    "upperTagName": "DIV",
+    "nullNamespaceURI": null,
+    "nullTagName": "thing",
+    "customTagName": "p:thing",
+    "customPrefix": "p",
+    "parsedAttributeNames": [
+     "xlink:href"
+    ],
+    "parsedAttributePrefix": "xlink",
+    "parsedAttributeNamespace": "http://www.w3.org/1999/xlink",
+    "getAttributeNSMissing": null
+   }
+  },
+  {
+   "id": "serialization",
+   "values": {
+    "nbsp": "<a title=\"a&nbsp;b\">c&nbsp;d</a>",
+    "commentAndPi": "<!--c--><?t d?>"
+   }
+  },
+  {
+   "id": "remove_attribute",
+   "values": {
+    "names": [
+     "a"
+    ]
+   }
+  },
+  {
+   "id": "of_type_namespaces",
+   "values": {
+    "firstOfType": [
+     true,
+     true,
+     true,
+     true,
+     false,
+     true
+    ],
+    "lastOfType": [
+     true,
+     true,
+     false,
+     true,
+     true,
+     true
+    ]
+   }
+  },
+  {
+   "id": "contextual_fragment_is",
+   "values": {
+    "isDefined": false,
+    "plainDefined": true
+   }
+  }
+ ]
+}
