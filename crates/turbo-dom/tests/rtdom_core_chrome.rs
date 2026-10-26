@@ -26,7 +26,18 @@ const FIXTURE: &str = include_str!("fixtures/rtdom_core_chrome156.json");
 /// (turbo-dom#103, an empty DOCTYPE system identifier counting as missing, is fixed.)
 /// - miaskiewicz/turbo-dom#104: `<selectedcontent>` is not filled (html5ever 0.39's
 ///   `<select>` gap, the conformance gates' accepted misses).
-const OPEN_DOCUMENTS: &[&str] = &["selectedcontent_clone"];
+const OPEN_DOCUMENTS: &[&str] = &[
+    "selectedcontent_after_option",
+    "selectedcontent_clone",
+    "selectedcontent_first_option",
+    "selectedcontent_implied_end",
+    "selectedcontent_last_selected",
+    "selectedcontent_nested",
+    "selectedcontent_optgroup",
+    "selectedcontent_replaces_markup",
+    "selectedcontent_twice",
+    "selectedcontent_uppercase",
+];
 /// (turbo-dom#91, #96 and #98 are fixed.)
 const OPEN_SELECTORS: &[&str] = &[];
 

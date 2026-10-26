@@ -71,7 +71,18 @@ test('innerHTML fragments match the Chrome 156 control (U+0000 matrix, CDATA, fr
 const NAVIGATION_ONLY = new Set(['declarative_shadow_root_not_attached']);
 // Recorded Chrome answers the runtime does not give yet (turbo-dom#103 is fixed):
 // miaskiewicz/turbo-dom#104, <selectedcontent> is not filled (html5ever 0.39's <select> gap).
-const OPEN_DOCUMENTS = new Set(['selectedcontent_clone']);
+const OPEN_DOCUMENTS = new Set([
+  'selectedcontent_after_option',
+  'selectedcontent_clone',
+  'selectedcontent_first_option',
+  'selectedcontent_implied_end',
+  'selectedcontent_last_selected',
+  'selectedcontent_nested',
+  'selectedcontent_optgroup',
+  'selectedcontent_replaces_markup',
+  'selectedcontent_twice',
+  'selectedcontent_uppercase',
+]);
 
 test('documents match the Chrome 156 control (tree dumps)', () => {
   const failures = [];

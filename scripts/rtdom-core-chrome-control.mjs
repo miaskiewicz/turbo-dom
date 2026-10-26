@@ -148,7 +148,21 @@ const DOCUMENTS = [
   { id: "form_association", html: "<form id=f><table><input name=a></table></form>" },
   { id: "foreign_attributes_prefixed", html: '<svg xlink:href="u" xml:lang="en"><a xlink:title="t"/></svg>' },
   { id: "meta_charset", html: '<meta charset="utf-8"><p>x</p>' },
+  // miaskiewicz/turbo-dom#104: the selected option's content is cloned into every
+  // selectedcontent of a non-multiple select
   { id: "selectedcontent_clone", html: "<select><button><selectedcontent></selectedcontent></button><option>A</option><option selected>B</option></select>" },
+  { id: "selectedcontent_first_option", html: "<select><button><selectedcontent></selectedcontent></button><option>A</option><option>B</option></select>" },
+  { id: "selectedcontent_last_selected", html: "<select><button><selectedcontent></selectedcontent></button><option selected>A</option><option selected>B</option></select>" },
+  { id: "selectedcontent_replaces_markup", html: "<select><button><selectedcontent>old<i>x</i></selectedcontent></button><option><b class=k>A</b> x<!--c--></option></select>" },
+  { id: "selectedcontent_after_option", html: "<select><option selected>A</option><button><selectedcontent></selectedcontent></button></select>" },
+  { id: "selectedcontent_multiple", html: "<select multiple><button><selectedcontent></selectedcontent></button><option selected>A</option></select>" },
+  { id: "selectedcontent_twice", html: "<select><button><selectedcontent></selectedcontent><selectedcontent></selectedcontent></button><option selected>A</option></select>" },
+  { id: "selectedcontent_optgroup", html: "<select><button><selectedcontent></selectedcontent></button><optgroup><option selected>G</option></optgroup></select>" },
+  { id: "selectedcontent_implied_end", html: "<select><button><selectedcontent></selectedcontent></button><option>A</option><option selected>B<option>C</select>" },
+  { id: "selectedcontent_outside_select", html: "<div><selectedcontent></selectedcontent><option selected>A</option></div>" },
+  { id: "selectedcontent_nested", html: "<select><button><span><selectedcontent></selectedcontent></span></button><option selected id=o>A</option></select>" },
+  { id: "selectedcontent_no_option", html: "<select><button><selectedcontent>keep</selectedcontent></button></select>" },
+  { id: "selectedcontent_uppercase", html: "<SELECT><BUTTON><SELECTEDCONTENT></SELECTEDCONTENT></BUTTON><OPTION SELECTED>A</OPTION></SELECT>" },
   { id: "script_end_tags", html: "<script>a</script><script>b</script>c" },
   // fragments (innerHTML in a scripting-disabled document)
   // miaskiewicz/turbo-dom#92: Chrome drops a literal U+0000 in an RCDATA-context
