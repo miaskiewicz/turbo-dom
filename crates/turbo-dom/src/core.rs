@@ -60,9 +60,16 @@ pub struct Node {
 /// Parse options matching html5lib-tests defaults (scripting flag off, so
 /// `<noscript>` content is parsed as markup rather than rawtext).
 fn opts() -> ParseOpts {
+    opts_with_scripting(false)
+}
+
+/// html5ever's default options with an explicit scripting flag. With scripting
+/// on (html5ever's own default) `<noscript>` content is raw text, as in a
+/// browser with JavaScript enabled.
+fn opts_with_scripting(scripting_enabled: bool) -> ParseOpts {
     ParseOpts {
         tree_builder: TreeBuilderOpts {
-            scripting_enabled: false,
+            scripting_enabled,
             ..Default::default()
         },
         ..Default::default()
@@ -294,7 +301,15 @@ pub fn parse_html_soa(html: &str) -> Soa {
 /// Parse once and retain html5ever's document compatibility mode.
 #[must_use]
 pub fn parse_html_soa_with_compat_mode(html: &str) -> (Soa, &'static str) {
-    let dom = parse_document(RcDom::default(), opts())
+    parse_html_soa_with_scripting(html, false)
+}
+
+/// [`parse_html_soa_with_compat_mode`] with an explicit tree-builder scripting
+/// flag (`false` everywhere else in this crate; `true` is html5ever's default and
+/// what native layout consumers that render `<noscript>` as raw text use).
+#[must_use]
+pub fn parse_html_soa_with_scripting(html: &str, scripting: bool) -> (Soa, &'static str) {
+    let dom = parse_document(RcDom::default(), opts_with_scripting(scripting))
         .from_utf8()
         .read_from(&mut html.as_bytes())
         .expect("RcDom read_from is infallible over a byte slice");

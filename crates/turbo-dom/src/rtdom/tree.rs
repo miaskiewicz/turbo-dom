@@ -559,6 +559,10 @@ mod custom_states;
 
 #[path = "storage.rs"]
 mod storage;
+
+#[path = "tree_access.rs"]
+mod tree_access;
+pub use tree_access::{LocalAttributes, ParseOptions};
 pub use storage::{CollectionBudget, CollectionError, CollectionReport, StorageStats};
 
 pub struct Tree {
@@ -631,6 +635,11 @@ impl Tree {
     #[must_use]
     pub fn parse(html: &str) -> Tree {
         let (buf, compat_mode) = core::parse_html_soa_with_compat_mode(html);
+        Self::from_soa(buf, compat_mode)
+    }
+
+    /// A fresh tree viewing a parsed `SoA` buffer (no overlays yet).
+    fn from_soa(buf: Soa, compat_mode: &'static str) -> Tree {
         let buf_len = buf.node_type.len() as u32;
         Tree {
             buf,
