@@ -7,6 +7,15 @@ at the time); this file reconstructs them from history.
 
 ## [Unreleased]
 
+### Fixed — qualified names with several colons (P5b-X5, miaskiewicz/turbo-dom#44, Chrome 156 controls)
+- turbo-dom-browser-env: `createElementNS`, `setAttributeNS` and `createAttributeNS` now
+  split the qualified name strictly on `:` (DOM "validate and extract"), as Chrome 156 does.
+  The prefix is the first part and the local name the second: `a:b:c` / `a:b:c:d` /
+  `a:b:` create prefix `a`, local name `b`, qualified name `a:b`. An empty second part
+  (`a::b`) throws `InvalidCharacterError`. The binding used to keep `b:c` as the local name.
+- Controls: `nsTwoColons` in `test/fixtures/dom_adoption_reactions_chrome156.json` and
+  section `names` of `src/dom_reactions_names_chrome156.json`.
+
 ### Fixed — custom element upgrades and reaction order (P5b-X5, miaskiewicz/turbo-dom#42, #43, Chrome 156 controls)
 - turbo-dom-browser-env, #42: `customElements.upgrade(root)` used to upgrade template
   contents, whose inert document has no registry. It now skips every candidate the

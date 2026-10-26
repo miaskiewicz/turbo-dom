@@ -2402,14 +2402,26 @@ fn require_arguments(
     scope.throw_exception(error);
     false
 }
+/// https://dom.spec.whatwg.org/#validate-and-extract: the qualified name is strictly split on
+/// ':' — the prefix is the first part and the local name the second, so Chrome 156 creates
+/// `a:b:c` as prefix `a`, local name `b` (turbo-dom#44). Returns the effective qualified
+/// name (`prefix:local`) when it differs from `qualified`.
 fn validate_namespace_name(
     namespace: Option<&str>,
     qualified: &str,
     attribute: bool,
-) -> Result<(), &'static str> {
-    let (prefix, local) = qualified
-        .split_once(':')
-        .map_or((None, qualified), |(prefix, local)| (Some(prefix), local));
+) -> Result<Option<String>, &'static str> {
+    let mut parts = qualified.split(':');
+    let first = parts.next().unwrap_or_default();
+    let (prefix, local) = match parts.next() {
+        Some(local) => (Some(first), local),
+        None => (None, qualified),
+    };
+    let effective = parts
+        .next()
+        .is_some()
+        .then(|| format!("{}:{local}", prefix.unwrap_or_default()));
+    let qualified = effective.as_deref().unwrap_or(qualified);
     let forbidden = |value: &str, attribute: bool| {
         value.chars().any(|c| {
             matches!(c, '\0' | '\t' | '\n' | '\x0C' | '\r' | ' ' | '/' | '>')
@@ -2445,7 +2457,7 @@ fn validate_namespace_name(
     {
         return Err("NamespaceError");
     }
-    Ok(())
+    Ok(effective)
 }
 fn el_get_attribute_ns<'s, 'i>(
     scope: &mut v8::PinScope<'s, 'i>,
@@ -2530,7 +2542,7 @@ fn el_set_attribute_ns<'s, 'i>(
         return;
     };
     let value = String::from_utf16_lossy(&units);
-    if let Err(error) = validate_namespace_name(
+    let qualified = match validate_namespace_name(
         namespace
             .as_deref()
             .map(String::from_utf16_lossy)
@@ -2538,9 +2550,12 @@ fn el_set_attribute_ns<'s, 'i>(
         &String::from_utf16_lossy(&qualified),
         true,
     ) {
-        throw_dom_error(scope, error, "Invalid namespace or qualified name");
-        return;
-    }
+        Ok(effective) => effective.map_or(qualified, |name| name.encode_utf16().collect()),
+        Err(error) => {
+            throw_dom_error(scope, error, "Invalid namespace or qualified name");
+            return;
+        }
+    };
     if namespace.is_none() && qualified == "popover".encode_utf16().collect::<Vec<_>>() {
         html_popover::attribute_change(scope, node, Some(&value));
     }
@@ -2999,7 +3014,7 @@ fn doc_create_attribute_ns<'s, 'i>(
     let Some(name) = dom_units(scope, args.get(1)) else {
         return;
     };
-    if let Err(error) = validate_namespace_name(
+    let name = match validate_namespace_name(
         namespace
             .as_deref()
             .map(String::from_utf16_lossy)
@@ -3007,9 +3022,12 @@ fn doc_create_attribute_ns<'s, 'i>(
         &String::from_utf16_lossy(&name),
         true,
     ) {
-        throw_dom_error(scope, error, "Invalid namespace or qualified name");
-        return;
-    }
+        Ok(effective) => effective.map_or(name, |name| name.encode_utf16().collect()),
+        Err(error) => {
+            throw_dom_error(scope, error, "Invalid namespace or qualified name");
+            return;
+        }
+    };
     if let Some(node) =
         with_tree_mut(|tree| tree.create_attribute_units(namespace.as_deref(), &name, &[]))
     {
@@ -3702,7 +3720,7 @@ fn doc_create_element_ns<'s, 'i>(
     let Some(qualified) = dom_units(scope, args.get(1)) else {
         return;
     };
-    if let Err(error) = validate_namespace_name(
+    let qualified = match validate_namespace_name(
         namespace
             .as_deref()
             .map(String::from_utf16_lossy)
@@ -3710,9 +3728,12 @@ fn doc_create_element_ns<'s, 'i>(
         &String::from_utf16_lossy(&qualified),
         false,
     ) {
-        throw_dom_error(scope, error, "Invalid namespace or qualified name");
-        return;
-    }
+        Ok(effective) => effective.map_or(qualified, |name| name.encode_utf16().collect()),
+        Err(error) => {
+            throw_dom_error(scope, error, "Invalid namespace or qualified name");
+            return;
+        }
+    };
     let made =
         with_tree_mut(|tree| tree.create_element_namespace_units(namespace.as_deref(), &qualified));
     if let Some(h) = made {

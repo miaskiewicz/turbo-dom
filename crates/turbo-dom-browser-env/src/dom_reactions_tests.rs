@@ -158,7 +158,6 @@ fn reactions_run_element_by_element_matching_chrome156() {
 /// turbo-dom#44: a qualified name with more than one colon keeps the second part as its
 /// local name (elements, attributes, attribute nodes).
 #[test]
-#[ignore = "turbo-dom#44: fails until the fix"]
 fn qualified_names_split_strictly_matching_chrome156() {
     let (binding, chrome) = run(ADOPTION_PROBE, ADOPTION_CASES, ADOPTION_CONTROL);
     let mut found = mismatches(&binding, &chrome, &["nsTwoColons"], &[]);
@@ -176,7 +175,6 @@ fn qualified_names_split_strictly_matching_chrome156() {
 
 /// The whole turbo-dom#29 control through the binding: every section and the full reaction log.
 #[test]
-#[ignore = "turbo-dom#42, #43, #44: fails until the fixes"]
 fn dom_adoption_reactions_match_chrome156_control() {
     let (binding, chrome) = run(ADOPTION_PROBE, ADOPTION_CASES, ADOPTION_CONTROL);
     let mut found = Vec::new();
