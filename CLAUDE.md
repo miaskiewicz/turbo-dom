@@ -24,7 +24,10 @@ npm run build:rtdom        # cargo build -p turbo-dom --release
 npm run conformance:rtdom  # html5lib-tests gate run THROUGH the rtdom tree (direct, 99.75%)
 npm run profile:churn      # build the CPU-profiling example + print the macOS `sample` hint
 # --- lint + perf gates (CI-enforced) ---
-cargo clippy --workspace --all-targets -- -D warnings   # both crates: clippy::pedantic-clean
+cargo clippy --workspace --all-targets -- -D warnings   # parser + turbo-dom: clippy::pedantic-clean; layout/raster: default lints (pedantic adoption pending)
+cargo test -p turbo-dom-layout                           # layout engine (+ --features svg / perf / xref,pdf-ua,print-color)
+cargo test -p turbo-dom-raster                           # screenshot painter
+scripts/verify-copied-layout.sh                          # S1 moved code == its source commits (+ allow-listed rewrites)
 cargo test -p turbo-dom churn_alloc_gate -- --ignored    # perf gate: churn allocs/op ≤ 380 (≈363)
 ```
 
@@ -82,6 +85,16 @@ package or publish workflow.
   Test-only harness: `dump.rs` (html5lib tree-dump) + `conformance.rs` (direct gate, 99.75%) +
   `bench.rs`/`gauntlet.rs`. **100% line coverage.** Don't expose rtdom to JS (the boundary loses);
   the JS path stays `src/runtime/`. Per-commit perf-win → Rust mapping in `RUST_PORT_PERF_HISTORY.md`.
+- `crates/turbo-dom-layout` — the native HTML/CSS layout engine (style cascade, block/inline/
+  flex/grid/table layout → `Fragment` galley, fonts, image sizing, layout snapshots,
+  `layout_html`). Relocated verbatim from turbo-html2pdf-core 0.3.9 (S1); turbo-html2pdf-core
+  depends on it and re-exports it at its old paths. Its `xref`/`pdf-ua`/`print-color` features
+  are TEMPORARY (forwarded from html2pdf until S2) — don't enable them elsewhere. Moved code is
+  checked by `scripts/verify-copied-layout.sh` (rules in `scripts/verify-copied-layout.rules`):
+  edit the moved files only together with a rule there, or as a reviewed post-S1 change.
+- `crates/turbo-dom-raster` — synthetic screenshots: paints the layout galley to PNG/SVG
+  (tiny-skia / SVG), canvas op-log replay, `gpu-metal` WebGL. Relocated verbatim from
+  turbo-surf-raster 0.5.5 (S1).
 - `harness/` — JS conformance tooling (dat parser, serializer, runner). All unit-tested.
 - `src/runtime/` — the lazy COW DOM + window (Layers 2–5). `index.mjs` exports
   `createEnvironment(html)` → `{ window, document, reset, touched }`. Nodes inflate lazily

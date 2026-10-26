@@ -1,7 +1,7 @@
 //! Synthetic screenshots for turbo-surf: turn an HTML **snapshot** into a PNG or
 //! SVG image with no browser and no rendering surface of our own.
 //!
-//! The engine borrows turbo-html2pdf's native HTML/CSS **layout** (block/inline/
+//! The engine borrows turbo-dom-layout's native HTML/CSS **layout** (block/inline/
 //! flex/table + real font shaping over bundled faces) to turn a raw HTML string
 //! into a positioned [`Fragment`] display list, then paints that list two ways:
 //! a raster [`paint_png`] (tiny-skia) and a vector [`paint_svg`]. Both walk the

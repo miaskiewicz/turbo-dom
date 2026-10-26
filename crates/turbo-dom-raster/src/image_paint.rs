@@ -1,7 +1,7 @@
 //! Decode fetched image bytes (PNG/JPEG/GIF/WebP + SVG) into a single canonical
 //! form — straight-alpha RGBA8 — that both painters and the layout engine consume:
 //!
-//! - **Layout sizing**: turbo-html2pdf's `probe` only reads PNG/JPEG/SVG, so we
+//! - **Layout sizing**: turbo-dom-layout's `probe` only reads PNG/JPEG/SVG, so we
 //!   normalize *every* decoded image to a PNG ([`DecodedImage::to_png`]) and hand
 //!   that to the resolver. The layout engine never sees WebP/GIF — it just sizes a
 //!   PNG of the right intrinsic dimensions.
@@ -37,7 +37,7 @@ pub fn decode_all(raw: &HashMap<String, Vec<u8>>) -> DecodedAssets {
         .collect()
 }
 
-/// The `ref -> PNG bytes` map handed to turbo-html2pdf's image resolver: every
+/// The `ref -> PNG bytes` map handed to turbo-dom-layout's image resolver: every
 /// decoded image re-encoded as PNG so the layout engine can size it regardless of
 /// the original format. Images that fail to re-encode are omitted (they lay out
 /// without a box, as an unresolved image would).
@@ -50,7 +50,7 @@ pub fn png_map(decoded: &DecodedAssets) -> HashMap<String, Vec<u8>> {
 
 /// Decode every `data:` image URI referenced by a `url(...)` (a CSS `mask-image`,
 /// `background-image`, …) in `css`/`html` and add it to `decoded`, keyed by the
-/// exact string turbo-html2pdf resolves against (the `url(...)` inner, surrounding
+/// exact string turbo-dom-layout resolves against (the `url(...)` inner, surrounding
 /// quotes stripped, inner `\"` retained). Caller-fetched assets skip `data:` URIs
 /// (self-contained, nothing to fetch); this recovers them so an inline SVG mask or
 /// background paints — Wikipedia ships its TOC-toggle chevron as an inline
@@ -212,7 +212,7 @@ pub fn add_inline_svg_assets(decoded: &mut DecodedAssets, assets: &[(String, Str
 }
 
 /// Every `data:` URI inside a `url(...)` in `s`, extracted the way
-/// turbo-html2pdf's `url_token` does (strip `url(` … `)`, strip surrounding
+/// turbo-dom-layout's `url_token` does (strip `url(` … `)`, strip surrounding
 /// quotes, trim) so the key matches its resolver lookup. Quote-aware: a `;`/`,`/
 /// `)` inside the payload (an inline `<svg>` data URI has all three) doesn't end
 /// the token — only the matching unescaped closing quote does.
@@ -368,7 +368,7 @@ fn is_svg(bytes: &[u8]) -> bool {
 fn decode_svg(bytes: &[u8]) -> Option<DecodedImage> {
     use resvg::{tiny_skia as rsk, usvg};
     // Default options ship an empty fontdb (deterministic; shapes/paths/gradients
-    // render, text is skipped) — matching turbo-html2pdf's svg tier.
+    // render, text is skipped) — matching turbo-dom-layout's svg tier.
     let tree = usvg::Tree::from_data(bytes, &usvg::Options::default()).ok()?;
     let size = tree.size();
     let (w, h) = (size.width().ceil() as u32, size.height().ceil() as u32);

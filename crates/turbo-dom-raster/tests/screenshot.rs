@@ -428,7 +428,7 @@ fn full_page_grows_height_to_content() {
 fn svg_source_image_is_rasterized_and_painted() {
     // An `<img>` whose bytes are an SVG must be rasterized (resvg) and painted —
     // proving the normalize-any-format-to-RGBA path sizes + paints non-PNG/JPEG
-    // sources end-to-end (turbo-html2pdf only ever sees the re-encoded PNG).
+    // sources end-to-end (turbo-dom-layout only ever sees the re-encoded PNG).
     let svg = br##"<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"><rect width="20" height="20" fill="#0000ff"/></svg>"##;
     let mut assets: ImageAssets = HashMap::new();
     assets.insert("logo.svg".to_string(), svg.to_vec());

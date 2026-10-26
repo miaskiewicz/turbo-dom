@@ -229,6 +229,22 @@ let style = cascade::computed_style(&dom.tree, cards[0]);   // partial honest ca
   **99.75%**. From the repo: `npm run build:rtdom` (= `cargo build -p turbo-dom --release`),
   `npm run test:rust` (= `cargo test -p turbo-dom`), `npm run conformance:rtdom`.
 
+### Layout + raster crates (`turbo-dom-layout`, `turbo-dom-raster`)
+
+The workspace also holds the native **HTML/CSS layout engine** and the synthetic
+**screenshot painter**, relocated verbatim from `turbo-html2pdf-core` 0.3.9 and
+`turbo-surf-raster` 0.5.5 (turbo-dom consolidation, step S1):
+
+- [`crates/turbo-dom-layout`](./crates/turbo-dom-layout) — style cascade, block / inline /
+  flex / grid / table layout into a positioned `Fragment` galley, fonts (bundled OFL faces by
+  default), image sizing, layout snapshots; `layout_html` drives raw HTML. turbo-html2pdf builds
+  its templating, pagination and PDF emit on top of it.
+- [`crates/turbo-dom-raster`](./crates/turbo-dom-raster) — paints that galley to PNG / SVG
+  (plus canvas op-log replay and, under `gpu-metal`, WebGL readback).
+
+`scripts/verify-copied-layout.sh` re-derives the moved code from its source commits and diffs
+it; `docs/CONSOLIDATION-TESTS.md` maps every moved test to its new id.
+
 ## Limitations (by design)
 
 - **No layout.** `getBoundingClientRect()` returns zeros; `getClientRects()` is empty.

@@ -7,7 +7,7 @@
 //! fires once per *distinct* run rather than once per occurrence (proving the
 //! `FontFace` shape cache holds). Use [`reset`] between measured sections.
 //!
-//! Run the perf tests with `cargo test -p turbo-html2pdf-core --features perf`.
+//! Run the perf tests with `cargo test -p turbo-dom-layout --features perf`.
 
 /// Increment the named hot-path counter. A no-op (zero machine code) unless the
 /// `perf` feature is enabled.

@@ -174,7 +174,7 @@ fn numeric_entity(entity: &str) -> Option<char> {
 
 /// Every image reference the layout engine can paint, in source order and
 /// de-duplicated: `<img src>` values and `background-image: url(...)` urls. Values
-/// are returned **verbatim** — exactly the resolver key turbo-html2pdf uses (the
+/// are returned **verbatim** — exactly the resolver key turbo-dom-layout uses (the
 /// raw `src`, or the unquoted `url(...)` inner) — so the caller resolves each
 /// against the page URL, fetches the bytes, and stores them under the same key.
 /// `data:` URIs are skipped (self-contained, nothing to fetch).

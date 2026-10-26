@@ -1,5 +1,5 @@
 //! Hot-path instrumentation tests (Phase 13). Compiled only with the `perf`
-//! feature; run with `cargo test -p turbo-html2pdf-core --features perf`. They assert
+//! feature; run with `cargo test -p turbo-dom-layout --features perf`. They assert
 //! the `FontFace` caches actually collapse the hot paths (one parse per distinct
 //! char, one shape per distinct run) rather than per occurrence.
 //!
