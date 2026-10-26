@@ -154,7 +154,6 @@ fn collapsed_auto_case(id: &str) -> bool {
 }
 
 #[test]
-#[ignore = "turbo-dom#49: fails until the fix"]
 fn auto_layout_collapsed_tables_merge_borders_like_chrome_156() {
     compare_cases(collapsed_auto_case);
 }

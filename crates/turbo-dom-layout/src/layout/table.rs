@@ -5,13 +5,12 @@
 //! repeatable (`BreakMeta.repeatable`) so the fragmenter can re-emit them on each
 //! page a table spans (§6.3, AC-5.8).
 //!
-//! A fixed-layout `border-collapse: collapse` table merges shared cell edges onto a
-//! collapsed grid (each shared border counted once, half on each side, CSS 2.1
-//! §17.6.2) so table/row/cell boxes size correctly across a `colspan`; see the
-//! collapsed-border section below. Deferred in v1 (documented): `<caption>`,
-//! `border-spacing`, and collapsed-border merging for AUTO-layout tables (those
-//! still lay out with each cell's full borders); a cell taller than its row span
-//! expands the last spanned row.
+//! A `border-collapse: collapse` table (fixed or automatic layout) merges shared cell
+//! edges onto a collapsed grid (each shared border counted once, half on each side,
+//! CSS 2.1 §17.6.2; the table's own border is the outer grid line) so table/row/cell
+//! boxes size correctly across a `colspan`; see the collapsed-border section below.
+//! Deferred (documented): `<caption>` (miaskiewicz/turbo-dom#51); a cell taller than
+//! its row span expands the last spanned row.
 
 use crate::style::ComputedStyle;
 use crate::tag::Attr;
@@ -221,6 +220,30 @@ fn build_grid<'a>(rows: &[RowRef<'a>]) -> (Vec<Placed<'a>>, usize) {
 
 fn is_fixed(style: &ComputedStyle) -> bool {
     style.get("table-layout").map(str::trim) == Some("fixed")
+}
+
+/// Whether the fixed table layout governs: `table-layout: fixed` with a definite
+/// (non-`auto`) width; a `width: auto` fixed table uses the automatic layout (Chrome
+/// 156).
+fn fixed_layout(style: &ComputedStyle) -> bool {
+    is_fixed(style)
+        && style
+            .get("width")
+            .is_some_and(|width| !width.trim().eq_ignore_ascii_case("auto"))
+}
+
+/// The table's own left + right border widths. In the collapsed model they are the
+/// outer grid lines, part of the grid (miaskiewicz/turbo-dom#49).
+fn table_border(style: &ComputedStyle) -> Edges {
+    resolve_box_style(
+        style,
+        ResolveCtx {
+            parent_font_size: DEFAULT_FONT_SIZE,
+            cb_width: 0.0,
+        },
+    )
+    .border
+    .widths()
 }
 
 fn collapsed(style: &ComputedStyle) -> bool {
@@ -647,6 +670,51 @@ fn assign_fixed_col(w: &mut [f32], fixed: &mut [bool], j: usize, per: f32, expli
     }
 }
 
+/// Content+padding widths per column of an auto-layout collapsed table, each cell
+/// measured by `measure` (its natural or min-content border-box width) less its own
+/// borders, which live on the grid lines; a spanning cell wider than its columns
+/// (and the lines between them) widens them in proportion (evenly when empty).
+fn collapse_columns(
+    placed: &[Placed],
+    vert: &[f32],
+    fonts: &FontRegistry,
+    measure: fn(&LayoutBox, &FontRegistry) -> f32,
+) -> Vec<f32> {
+    let cp = |p: &Placed| (measure(p.lb, fonts) - cell_border(p.lb).horizontal()).max(0.0);
+    let mut w = vec![0.0_f32; vert.len() - 1];
+    for p in placed.iter().filter(|p| p.colspan == 1) {
+        w[p.col] = w[p.col].max(cp(p));
+    }
+    for p in placed.iter().filter(|p| p.colspan > 1) {
+        let span = p.col..p.col + p.colspan;
+        let lines: f32 = vert[p.col + 1..p.col + p.colspan].iter().sum();
+        let need = cp(p) - lines - w[span.clone()].iter().sum::<f32>();
+        if need > 0.0 {
+            spread(&mut w[span], need);
+        }
+    }
+    w
+}
+
+/// Add `extra` to `cols` in proportion to their widths (evenly when all are zero).
+fn spread(cols: &mut [f32], extra: f32) {
+    let sum: f32 = cols.iter().sum();
+    let n = cols.len() as f32;
+    for c in cols.iter_mut() {
+        *c += if sum > 0.0 {
+            extra * *c / sum
+        } else {
+            extra / n
+        };
+    }
+}
+
+/// A collapsed table's content width from its column tracks and grid lines: their sum
+/// less the table's own left/right border (the box frame adds it back).
+fn collapsed_width(tracks: &[f32], vert: &[f32], style: &ComputedStyle) -> f32 {
+    tracks.iter().sum::<f32>() + vert.iter().sum::<f32>() - table_border(style).horizontal()
+}
+
 /// Lay out the cells of a collapsed-border table into the grid defined by the
 /// vertical grid-line centres `line_x` and their border widths `vert`. Each cell's
 /// content is laid at the width its content region truly gets — the collapsed
@@ -733,9 +801,24 @@ fn layout_table_collapsed(
         ..
     } = grid;
     let nrows = rows.len();
+    // The grid spans the table's border box: its own borders are the outer lines.
+    let own = table_border(&table.style);
+    let (cx, cy) = (cx - own.left, cy - own.top);
     let vert = vborders(placed, ncols, &table.style);
-    let vert_total: f32 = vert.iter().sum();
-    let col_cp = fixed_collapse_columns(placed, ncols, (cw - vert_total).max(1.0));
+    let avail = cw + own.horizontal() - vert.iter().sum::<f32>();
+    let col_cp = if fixed_layout(&table.style) {
+        fixed_collapse_columns(placed, ncols, avail.max(1.0))
+    } else {
+        let mut cols = collapse_columns(placed, &vert, ctx.fonts, natural_width);
+        let mins = collapse_columns(placed, &vert, ctx.fonts, super::flex::min_content_width);
+        fit_columns(
+            &mut cols,
+            &mins,
+            &column_percents(placed, ncols),
+            avail.max(0.0),
+        );
+        cols
+    };
     let line_x = line_centers(&col_cp, &vert);
     let laid = layout_cells_collapsed(placed, &line_x, &vert, fs, ctx);
     let horiz = hborders(placed, nrows, &table.style);
@@ -748,7 +831,7 @@ fn layout_table_collapsed(
         row_x: line_x[0],
         row_w: line_x[ncols] - line_x[0],
     };
-    let height = row_cp.iter().sum::<f32>() + horiz.iter().sum::<f32>();
+    let height = row_cp.iter().sum::<f32>() + horiz.iter().sum::<f32>() - own.vertical();
     record_rows(rows, ctx);
     let frags = finalize(rows, laid, &geom, cx, cy);
     record_row_metrics(rows, &frags, ctx);
@@ -1069,11 +1152,17 @@ pub(crate) fn min_content_width(
     if ncols == 0 {
         return 0.0;
     }
-    // Fixed collapsed table: floor = first-row columns (colspan-distributed) plus one
-    // border per grid line — the used-width basis, not each cell's full borders.
-    if is_fixed(style) && collapsed(style) {
-        let vert: f32 = vborders(&placed, ncols, style).iter().sum();
-        return fixed_min_cp(&placed, ncols, fonts).iter().sum::<f32>() + vert;
+    // Collapsed table: floor = its columns' content+padding minima (a fixed one's
+    // first row) plus one border per grid line — the used-width basis, not each cell's
+    // full borders — less the table's own border, which its box frame adds back.
+    if collapsed(style) {
+        let vert = vborders(&placed, ncols, style);
+        let cp = if fixed_layout(style) {
+            fixed_min_cp(&placed, ncols, fonts)
+        } else {
+            collapse_columns(&placed, &vert, fonts, super::flex::min_content_width)
+        };
+        return collapsed_width(&cp, &vert, style);
     }
     let (hs, _) = border_spacing(style);
     separated_min_content(&placed, ncols, hs, fonts)
@@ -1100,12 +1189,19 @@ pub(crate) fn max_content(
 ) -> (f32, bool) {
     let rows = collect_rows(items);
     let (placed, ncols) = build_grid(&rows);
-    if ncols == 0 || is_fixed(style) && collapsed(style) {
+    if ncols == 0 || fixed_layout(style) && collapsed(style) {
         return (min_content_width(items, style, fonts), false);
+    }
+    let pcts = column_percents(&placed, ncols);
+    if collapsed(style) {
+        let vert = vborders(&placed, ncols, style);
+        let cp = collapse_columns(&placed, &vert, fonts, natural_width);
+        let (total, unbounded) = percent_aware_total(&cp, &pcts);
+        return (collapsed_width(&[total], &vert, style), unbounded);
     }
     let (hs, _) = border_spacing(style);
     let cols = auto_columns(&placed, ncols, fonts);
-    let (total, unbounded) = percent_aware_total(&cols, &column_percents(&placed, ncols));
+    let (total, unbounded) = percent_aware_total(&cols, &pcts);
     (total + hs * (ncols as f32 + 1.0), unbounded)
 }
 
@@ -1152,9 +1248,10 @@ pub(crate) fn layout_table(
             0.0,
         );
     }
-    // Fixed-layout collapsed borders need the merged-grid geometry (shared edges
-    // counted once). Auto/separate tables keep the track+spacing model below.
-    if is_fixed(&table.style) && collapsed(&table.style) {
+    // Collapsed borders need the merged-grid geometry (shared edges counted once;
+    // miaskiewicz/turbo-dom#49 for auto layout). Separated tables keep the
+    // track+spacing model below.
+    if collapsed(&table.style) {
         let grid = Grid {
             rows: &rows,
             placed: &placed,

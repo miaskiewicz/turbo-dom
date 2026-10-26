@@ -144,6 +144,16 @@ changes in `tools/parity/expected/p5b-w3-turbo-dom-28-*.json`.
   percentage column's max-content over its share and the other columns' over theirs;
   unbounded (the table fills the line) at 100% or more beside other content — as in
   Chrome. Control: `table-percent-*` in `live-geometry` and `html-document`.
+- Auto-layout collapsed tables (miaskiewicz/turbo-dom#49, found while fixing #28 item 5):
+  a `border-collapse: collapse` table with the automatic layout (and a `width: auto`
+  `table-layout: fixed` one) now merges shared borders like a fixed-layout one — one
+  border per grid line at the widest abutting width, half on each side, the table's own
+  border as the outer line — with content+padding column tracks from the automatic
+  algorithm (percentages honoured; a spanning cell widens its columns in proportion).
+  Cells, rows and row groups sit at the grid-line centres as in Chrome instead of each
+  cell keeping its full borders (`68x20` for two 2px-bordered cells, was `70x20`), and a
+  collapsed table with its own border no longer counts it twice (also fixed layout).
+  Control: `table-collapse-auto-*` in `live-geometry` and `html-document`.
 
 ### Changed — selector follow-ups (P5b-X2, miaskiewicz/turbo-dom#24, Chrome 156 controls)
 - `rtdom::cascade` (`getComputedStyle`) and the npm `cascade.mjs` rank rules by the
