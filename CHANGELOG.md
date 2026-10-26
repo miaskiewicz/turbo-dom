@@ -11,7 +11,7 @@ at the time); this file reconstructs them from history.
 Each fix is backed by a Chrome for Testing 156 control and lists the corpus outputs it
 changes in `tools/parity/expected/p5b-w5-turbo-dom-*.json`.
 - Table captions (#51): a `<caption>` (UA `caption { display: table-caption; text-align:
-  center }`; `caption-side` is inherited) was laid out as a row group — its block content
+  -webkit-center }`; `caption-side` is inherited) was laid out as a row group — its block content
   became grid rows, its text was dropped and it had no box. A table with captions is now
   a table wrapper box (CSS Tables 3 §3.1, as Chrome lays it out): the `<table>`'s box (its
   `getBoundingClientRect()` / `layoutBoxes`) holds the `caption-side: top` captions in
@@ -97,6 +97,117 @@ changes in `tools/parity/expected/p5b-w5-turbo-dom-*.json`.
   `th { font-weight: bold; text-align: center }` (`center` aligns the cell's inline
   content, not its blocks, as Chrome's `-internal-center`); `<th>` text was regular weight
   and left-aligned in PDFs and screenshots. Control: `th-*` in `html-document`.
+
+### Fixed — raster `<img>` handling, AVIF orientation (P5b-W4, Chrome 156 controls)
+- `turbo-dom-raster` paints an `<img src="data:…">` from its own URL
+  (miaskiewicz/turbo-dom#27 item 1). The screenshot decodes every `data:` image of the
+  parsed document through `image::decode_data_url` (base64 or percent-encoded, any case of
+  the scheme); before, it painted only caller-supplied bytes.
+- `image_urls` and the lazy-image fill walk the parsed document's HTML `<img>` elements,
+  skipping template content (miaskiewicz/turbo-dom#27 item 2). `<img` text in an
+  attribute value, a `<script>` string or a comment is no longer fetched or rewritten:
+  the old text rewrite could end a quoted attribute early and replace the element's own
+  style. New `delazy_tree(&mut Tree)` is what the screenshot uses. `delazy_images` returns
+  the filled document re-serialized (doctype identifiers kept) when an image changes,
+  else the input. Control: `scripts/raster-img-chrome-control.mjs` (shared PNG sampling in
+  `scripts/lib/png-samples.mjs`).
+- AVIF `irot` / `imir` transform properties orient the image
+  (miaskiewicz/turbo-dom#45 item 1). The probe composes them, in association order, into
+  `Intrinsic::orientation` (new `Orientation::then`), so the natural size, the box
+  (stored under `image-orientation: none`), the raster pixels and the PDF placement match
+  Chrome. The fixtures are derived from `q.avif` by `scripts/make_format_fixtures.py`, and
+  the control `scripts/image-formats-chrome-control.mjs` gains seven cases.
+- JPEG XL images (miaskiewicz/turbo-dom#45 item 2). Chrome 156 decodes them (jxl-rs). The
+  shared probe now reads a JPEG XL's `SizeHeader` and orientation in every build: bare
+  codestream or container, new `Format::Jxl`. turbo-dom-raster decodes it under the new
+  off-by-default `jxl` feature with `jxl-oxide` (MIT OR Apache-2.0, pure Rust, no thread
+  pool; CI raster job). The fixtures are three jxl-rs test files with their BSD-3-Clause
+  license (`crates/turbo-dom-layout/tests/fixtures/images/jxl/`), and the control gains
+  three cases. The PDF does not embed JPEG XL.
+  Corpus changes: `tools/parity/expected/p5b-w4-turbo-dom-27-*.json`,
+  `-turbo-dom-45-1.json`.
+### Fixed — `createDocument` qualified names (P5b-X5, miaskiewicz/turbo-dom#57, Chrome 156 control)
+- turbo-dom-browser-env: `document.implementation.createDocument` checked the qualified
+  name against the XML `Name` production and rejected every name with two colons. It now
+  validates and extracts it like `createElementNS`, as Chrome does: `a:b:c` gives a
+  document element with prefix `a` and local name `b`. `a::b`, `:a:b` and `a:1b:c` throw
+  `InvalidCharacterError`. Control: section `documentNames` of
+  `src/dom_reactions_names_chrome156.json`.
+
+### Fixed — qualified names with several colons (P5b-X5, miaskiewicz/turbo-dom#44, Chrome 156 controls)
+- turbo-dom-browser-env: `createElementNS`, `setAttributeNS` and `createAttributeNS` now
+  split the qualified name strictly on `:` (DOM "validate and extract"), as Chrome 156 does.
+  The prefix is the first part and the local name the second: `a:b:c` / `a:b:c:d` /
+  `a:b:` create prefix `a`, local name `b`, qualified name `a:b`. An empty second part
+  (`a::b`) throws `InvalidCharacterError`. The binding used to keep `b:c` as the local name.
+- Controls: `nsTwoColons` in `test/fixtures/dom_adoption_reactions_chrome156.json` and
+  section `names` of `src/dom_reactions_names_chrome156.json`.
+
+### Fixed — custom element upgrades and reaction order (P5b-X5, miaskiewicz/turbo-dom#42, #43, Chrome 156 controls)
+- turbo-dom-browser-env, #42: `customElements.upgrade(root)` used to upgrade template
+  contents, whose inert document has no registry. It now skips every candidate the
+  registry does not govern. Inserting into a disconnected tree no longer upgrades either:
+  only connected elements upgrade on insertion. So template contents appended to a
+  detached element adopt without constructing, and upgrade once when connected. An element
+  is never constructed twice.
+- #43: an element's upgrade is now queued in its own reaction queue inside a `[CEReactions]`
+  call. Its constructor and the `attributeChangedCallback` / `connectedCallback` it queues
+  run before the next element's reactions (`importNode`: `ctor u1, attr u1, ctor u2`).
+- #43: setters (`innerHTML`, `outerHTML`, reflected attributes, …) are `[CEReactions]`
+  scopes like methods. The HTML fragment parser (`innerHTML`, `outerHTML`,
+  `insertAdjacentHTML`, `setHTMLUnsafe`, `createContextualFragment`) queues its elements'
+  upgrades before the setter's removals queue `disconnectedCallback`s
+  (`ctor r4, conn r4, disc r1, …`).
+- Controls: the npm runtime's `test/fixtures/dom_adoption_reactions_chrome156.json` (read
+  in place by `src/dom_reactions_tests.rs`) and the new
+  `src/dom_reactions_names_{probe.js,cases.json,chrome156.json}` (fragment-parser setters).
+
+### Fixed — custom element reactions in independent documents (P5b-X5, miaskiewicz/turbo-dom#54, Chrome 156 control)
+- turbo-dom-browser-env: in a document installed with `install_independent_html`,
+  `removeChild()` / `remove()` (and every other call that mutates the tree directly)
+  used to run the `disconnectedCallback`s they queued during the *next* DOM call, or never
+  when the removal was the last call. The mutation flush checked only the current document;
+  it now also delivers another (independent) document's recorded mutations before the call
+  returns, as in Chrome. Control: section `removal` of
+  `src/dom_reactions_names_chrome156.json`.
+
+### Fixed — `getComputedStyle(el, pseudoElt)` (P5b-X5, miaskiewicz/turbo-dom#47, Chrome 156 control)
+- turbo-dom-browser-env: `pseudoElt` used to be ignored, so every read returned the element's
+  style. `::before` / `::after` (also `:before` / `:after` and a bare `before` / `after`,
+  ASCII case-insensitive, escapes and comments allowed) now compute the pseudo-element:
+  - its own rules apply, and `color`, `visibility` and fonts inherit from the element;
+  - `display` is `inline`, blockified for floats, absolute positioning and when the
+    element is a flex / grid container;
+  - `content` is `none` unless set, and strings serialize double-quoted.
+- An invalid pseudo-element returns an empty declaration (`::foo`, `:backdrop`,
+  `:marker`, `::before:hover`, `x:before`, a trailing space, `::part(x)`). A string
+  without a leading colon reads the element, as do `null` / `undefined`.
+- An element's `content` computes to `normal`.
+- Still the element's style (open in #47): `::marker`, `::placeholder`, `::first-line` /
+  `::first-letter`, `::selection`, `::file-selector-button`, `::view-transition*` and
+  the other UA-styled pseudo-elements.
+- Control: case `pseudo-elements` in `src/computed_defaults_chrome156.json`; no corpus
+  output changes (`tools/parity/expected/p5b-x5-47.json`).
+
+### Fixed — `getComputedStyle` for modal dialogs, the top layer and `::backdrop` (P5b-X5, miaskiewicz/turbo-dom#30, Chrome 156 control)
+- turbo-dom-browser-env: a `<dialog>` opened with `showModal()` (it matches `:modal`) now
+  computes Chrome's `dialog:modal` values: `position: fixed`, `top` / `bottom: 0px`,
+  `max-width` / `max-height: calc(100% - 6px - 2em)` at the dialog's font size (16px →
+  `calc(100% - 38px)`), `overflow: auto` and `visibility: visible`. Author and inline
+  declarations still win. A dialog opened with `show()` stays `position: absolute`;
+  `close()` and removal from the document leave the top layer.
+- A top-layer element (modal dialog, open popover) whose `position` is `static`,
+  `relative` or `sticky` computes to `absolute` (CSS Position 4).
+- `getComputedStyle(el, '::backdrop')` reads the backdrop instead of the element. It is
+  `display: block`. Outside the top layer it is `position: absolute` with `auto` insets.
+  In the top layer it is `position: fixed` at inset `0px`, with `rgba(0, 0, 0, 0.1)`
+  behind a modal dialog (popovers: transparent). Author `::backdrop` rules apply, and
+  `visibility`, `color` and fonts inherit from the element. A disconnected element's
+  backdrop reports `""`. The returned declaration stays live like the element's.
+- Control: new case `dialog-top-layer` in `src/computed_defaults_{probe.js,cases.json,chrome156.json}`
+  (show / showModal / close, open attribute removed while modal, removal, stacked modals,
+  hidden ancestor, author overrides, popovers, `::backdrop`); the earlier sections are
+  unchanged. No corpus output changes (`tools/parity/expected/p5b-x5-30.json`).
 
 ### Fixed — `getComputedStyle` defaults and no injected `<title>` (P5b-X3, miaskiewicz/turbo-surf#36 items 1–2, Chrome 156 control)
 - turbo-dom-browser-env: `getComputedStyle` used to return `""` for `display`, `position`

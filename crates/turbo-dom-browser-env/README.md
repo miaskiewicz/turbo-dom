@@ -155,6 +155,24 @@ resolve. Disconnected elements and children of `<video>` / `<audio>` report `""`
 in Chrome. Control: `src/computed_defaults_chrome156.json`, which also records that
 a document has no `<title>` it did not parse (`document.title = …` creates one).
 
+The top layer is modelled as far as the binding has one (turbo-dom#30): a dialog
+shown with `showModal()` matches `:modal` and computes `position: fixed`,
+`top` / `bottom: 0px`, `max-width` / `max-height: calc(100% - 6px - 2em)`,
+`overflow: auto` and `visibility: visible` (author rules win); a top-layer element
+(modal dialog, open popover) with `position: static` / `relative` / `sticky`
+computes `absolute`. `getComputedStyle(el, '::backdrop')` computes the backdrop:
+`block`, `absolute` with `auto` insets outside the top layer, `fixed` at inset 0
+inside it (`rgba(0, 0, 0, 0.1)` behind a modal dialog), author `::backdrop` rules,
+inheritance from the element. Control: case `dialog-top-layer` of the same file.
+
+`getComputedStyle(el, pseudoElt)` parses `pseudoElt` like Chrome (turbo-dom#47):
+`::before` / `::after` (and `:before` / `:after` / bare `before` / `after`) compute
+the pseudo-element (own rules, inheritance from the element, `display: inline`
+blockified in flex / grid containers, `content: none` unless set), an invalid
+pseudo-element returns an empty declaration, and a string without a leading colon
+reads the element. Other UA-styled pseudo-elements (`::marker`, `::placeholder`,
+`::first-line`, …) still read the element. Control: case `pseudo-elements`.
+
 ### Custom element state (`:defined`)
 
 `customElements` upgrades, constructions and failed constructors report each
@@ -166,6 +184,22 @@ insertion, `customElements.upgrade()`, clones, `innerHTML`, template content, `i
 values from the parser vs `createElement(…, {is})`, a throwing constructor). Clones
 and adopted nodes carry the state with them. Without a report the tree derives the
 creation-time state (custom element names and parsed `is` attributes are undefined).
+
+### Custom element reactions
+
+DOM methods and setters are `[CEReactions]` scopes: the reactions a call queues run
+when it returns, element by element — an element's upgrade (constructor, then the
+`attributeChangedCallback` / `connectedCallback` it queues) completes before the
+next element's reactions (turbo-dom#43). The HTML fragment parser (`innerHTML`,
+`outerHTML`, `insertAdjacentHTML`, `setHTMLUnsafe`, `createContextualFragment`)
+queues its elements' upgrades when it creates them, so they run before the old
+children's `disconnectedCallback`s. Insertion upgrades connected elements only;
+`customElements.upgrade(root)` skips candidates another registry (or none, like
+template contents in their inert document) governs; an element is constructed at
+most once (turbo-dom#42). Independently installed documents deliver their reactions
+before the call returns too (turbo-dom#54). Controls: the npm runtime's
+`test/fixtures/dom_adoption_reactions_chrome156.json` (read in place by
+`src/dom_reactions_tests.rs`) and `src/dom_reactions_names_chrome156.json`.
 
 ### Feature `native-sdk-frame-read` (off by default)
 

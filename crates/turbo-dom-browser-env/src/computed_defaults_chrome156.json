@@ -1,8 +1,8 @@
 {
   "browser": "Chrome/156.0.8078.4",
   "v8": "15.6.75",
-  "casesSha256": "b0a6cd4f7baf70fde221b578951e73bba58408da7c7b142b1c0d5100b9b35de0",
-  "probeSha256": "a6d2399320a0a96079dc9ccb227e34d497cf6a5787867d388e4fb37d366aac91",
+  "casesSha256": "75af163d9a0b57b12c9cba3b0521fcd72735c744e8504a986d48b6330276cbe3",
+  "probeSha256": "2ca83f0754544e1ba95404b02afcd69a4f1d2bfd6440622e1c8955377c778991",
   "collectorSha256": "7174415de76a891d657bbc3e66952c7b91356030e8fcd9d0ac4f52603d0c3952",
   "flags": [
     "--headless=new",
@@ -1361,6 +1361,890 @@
           ],
           "title": "set",
           "text": "set"
+        }
+      }
+    },
+    {
+      "id": "dialog-top-layer",
+      "result": {
+        "head": {
+          "children": [
+            "style"
+          ],
+          "title": "",
+          "titles": 0
+        },
+        "dialog": {
+          "closed": [
+            [
+              "none",
+              "absolute",
+              "visible"
+            ],
+            [
+              false,
+              false,
+              false,
+              true,
+              0
+            ],
+            [
+              "block",
+              "absolute",
+              "visible",
+              "auto",
+              "auto",
+              "auto",
+              "auto",
+              "rgba(0, 0, 0, 0)",
+              "rgb(0, 0, 0)",
+              "1",
+              "none"
+            ]
+          ],
+          "shown": [
+            [
+              "block",
+              "absolute",
+              "visible"
+            ],
+            [
+              true,
+              false,
+              true,
+              true,
+              0
+            ],
+            [
+              "block",
+              "absolute",
+              "visible",
+              "auto",
+              "auto",
+              "auto",
+              "auto",
+              "rgba(0, 0, 0, 0)",
+              "rgb(0, 0, 0)",
+              "1",
+              "none"
+            ]
+          ],
+          "shownClosed": [
+            [
+              "none",
+              "absolute",
+              "visible"
+            ],
+            [
+              false,
+              false,
+              false,
+              true,
+              0
+            ],
+            [
+              "block",
+              "absolute",
+              "visible",
+              "auto",
+              "auto",
+              "auto",
+              "auto",
+              "rgba(0, 0, 0, 0)",
+              "rgb(0, 0, 0)",
+              "1",
+              "none"
+            ]
+          ],
+          "modal": [
+            [
+              "block",
+              "fixed",
+              "visible",
+              "auto",
+              "auto",
+              "auto",
+              "0px",
+              "0px",
+              "calc(100% - 38px)",
+              "calc(100% - 38px)"
+            ],
+            [
+              true,
+              true,
+              true,
+              false,
+              1
+            ],
+            [
+              "block",
+              "fixed",
+              "visible",
+              "0px",
+              "0px",
+              "0px",
+              "0px",
+              "rgba(0, 0, 0, 0.1)",
+              "rgb(0, 0, 0)",
+              "1",
+              "none"
+            ],
+            [
+              "block",
+              "fixed",
+              "visible"
+            ],
+            true
+          ],
+          "modalOpenRemoved": [
+            [
+              "none",
+              "fixed",
+              "visible",
+              "auto",
+              "auto",
+              "auto",
+              "0px",
+              "0px",
+              "calc(100% - 38px)",
+              "calc(100% - 38px)"
+            ],
+            [
+              false,
+              true,
+              false,
+              false,
+              1
+            ],
+            [
+              "block",
+              "fixed",
+              "visible",
+              "0px",
+              "0px",
+              "0px",
+              "0px",
+              "rgba(0, 0, 0, 0.1)",
+              "rgb(0, 0, 0)",
+              "1",
+              "none"
+            ]
+          ],
+          "modalClosed": [
+            [
+              "none",
+              "absolute",
+              "visible"
+            ],
+            [
+              false,
+              false,
+              false,
+              true,
+              0
+            ],
+            [
+              "block",
+              "absolute",
+              "visible",
+              "auto",
+              "auto",
+              "auto",
+              "auto",
+              "rgba(0, 0, 0, 0)",
+              "rgb(0, 0, 0)",
+              "1",
+              "none"
+            ]
+          ],
+          "modalRemoved": [
+            [
+              "",
+              "",
+              ""
+            ],
+            [
+              true,
+              false,
+              true,
+              true,
+              0
+            ],
+            [
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              ""
+            ]
+          ],
+          "modalReinserted": [
+            [
+              "block",
+              "absolute",
+              "visible"
+            ],
+            [
+              true,
+              false,
+              true,
+              true,
+              0
+            ],
+            [
+              "block",
+              "absolute",
+              "visible",
+              "auto",
+              "auto",
+              "auto",
+              "auto",
+              "rgba(0, 0, 0, 0)",
+              "rgb(0, 0, 0)",
+              "1",
+              "none"
+            ]
+          ],
+          "hiddenModal": [
+            [
+              "block",
+              "fixed",
+              "visible",
+              "auto",
+              "auto",
+              "auto",
+              "0px",
+              "0px",
+              "calc(100% - 38px)",
+              "calc(100% - 38px)"
+            ],
+            [
+              "block",
+              "fixed",
+              "visible",
+              "0px",
+              "0px",
+              "0px",
+              "0px",
+              "rgba(0, 0, 0, 0.1)",
+              "rgb(0, 0, 0)",
+              "1",
+              "none"
+            ]
+          ],
+          "hiddenShown": [
+            [
+              "block",
+              "absolute",
+              "hidden"
+            ],
+            [
+              "block",
+              "absolute",
+              "hidden",
+              "auto",
+              "auto",
+              "auto",
+              "auto",
+              "rgba(0, 0, 0, 0)",
+              "rgb(0, 0, 0)",
+              "1",
+              "none"
+            ]
+          ],
+          "authored": [
+            [
+              "block",
+              "absolute",
+              "visible",
+              "hidden",
+              "hidden",
+              "hidden",
+              "5px",
+              "0px",
+              "none",
+              "calc(100% - 38px)"
+            ],
+            [
+              "block",
+              "absolute",
+              "hidden",
+              "0px",
+              "0px",
+              "0px",
+              "0px",
+              "rgb(255, 0, 0)",
+              "rgb(0, 0, 0)",
+              "1",
+              "none"
+            ],
+            [
+              "inline",
+              "static",
+              "visible"
+            ]
+          ],
+          "big": [
+            [
+              "block",
+              "fixed",
+              "visible",
+              "auto",
+              "auto",
+              "auto",
+              "0px",
+              "0px",
+              "calc(100% - 46px)",
+              "calc(100% - 46px)"
+            ],
+            [
+              "block",
+              "fixed",
+              "visible",
+              "0px",
+              "0px",
+              "0px",
+              "0px",
+              "rgba(0, 0, 0, 0.1)",
+              "rgb(0, 0, 0)",
+              "1",
+              "none"
+            ],
+            [
+              "none",
+              "absolute",
+              "visible"
+            ]
+          ],
+          "relative": [
+            [
+              "block",
+              "absolute",
+              "visible",
+              "auto",
+              "auto",
+              "auto",
+              "0px",
+              "0px",
+              "calc(100% - 38px)",
+              "calc(100% - 38px)"
+            ],
+            [
+              "block",
+              "fixed",
+              "visible",
+              "0px",
+              "0px",
+              "0px",
+              "0px",
+              "rgba(0, 0, 0, 0.1)",
+              "rgb(0, 0, 0)",
+              "1",
+              "none"
+            ],
+            [
+              "none",
+              "relative",
+              "visible"
+            ]
+          ],
+          "sticky": [
+            [
+              "block",
+              "absolute",
+              "visible",
+              "auto",
+              "auto",
+              "auto",
+              "0px",
+              "0px",
+              "calc(100% - 38px)",
+              "calc(100% - 38px)"
+            ],
+            [
+              "block",
+              "fixed",
+              "visible",
+              "0px",
+              "0px",
+              "0px",
+              "0px",
+              "rgba(0, 0, 0, 0.1)",
+              "rgb(0, 0, 0)",
+              "1",
+              "none"
+            ],
+            [
+              "none",
+              "sticky",
+              "visible"
+            ]
+          ],
+          "absolute": [
+            [
+              "block",
+              "absolute",
+              "visible",
+              "auto",
+              "auto",
+              "auto",
+              "0px",
+              "0px",
+              "calc(100% - 38px)",
+              "calc(100% - 38px)"
+            ],
+            [
+              "block",
+              "fixed",
+              "visible",
+              "0px",
+              "0px",
+              "0px",
+              "0px",
+              "rgba(0, 0, 0, 0.1)",
+              "rgb(0, 0, 0)",
+              "1",
+              "none"
+            ],
+            [
+              "none",
+              "absolute",
+              "visible"
+            ]
+          ],
+          "overflowX": [
+            [
+              "block",
+              "fixed",
+              "visible",
+              "hidden auto",
+              "hidden",
+              "auto",
+              "0px",
+              "0px",
+              "calc(100% - 38px)",
+              "calc(100% - 38px)"
+            ],
+            [
+              "block",
+              "fixed",
+              "visible",
+              "0px",
+              "0px",
+              "0px",
+              "0px",
+              "rgba(0, 0, 0, 0.1)",
+              "rgb(0, 0, 0)",
+              "1",
+              "none"
+            ],
+            [
+              "none",
+              "absolute",
+              "visible"
+            ]
+          ],
+          "stacked": [
+            [
+              true,
+              true,
+              true,
+              false,
+              2
+            ],
+            [
+              true,
+              true,
+              true,
+              false,
+              2
+            ],
+            [
+              "block",
+              "fixed",
+              "visible"
+            ],
+            [
+              "block",
+              "fixed",
+              "visible"
+            ],
+            [
+              "block",
+              "fixed",
+              "visible",
+              "0px",
+              "0px",
+              "0px",
+              "0px",
+              "rgba(0, 0, 0, 0.1)",
+              "rgb(0, 0, 0)",
+              "1",
+              "none"
+            ],
+            [
+              "block",
+              "fixed",
+              "visible",
+              "0px",
+              "0px",
+              "0px",
+              "0px",
+              "rgba(0, 0, 0, 0.1)",
+              "rgb(0, 0, 0)",
+              "1",
+              "none"
+            ]
+          ]
+        },
+        "popover": {
+          "pop": [
+            [
+              "block",
+              "fixed",
+              "visible"
+            ],
+            [
+              "block",
+              "fixed",
+              "visible",
+              "0px",
+              "0px",
+              "0px",
+              "0px",
+              "rgba(0, 0, 0, 0)",
+              "rgb(0, 0, 0)",
+              "1",
+              "none"
+            ],
+            [
+              "none",
+              "fixed",
+              "visible"
+            ],
+            [
+              "block",
+              "absolute",
+              "visible",
+              "auto",
+              "auto",
+              "auto",
+              "auto",
+              "rgba(0, 0, 0, 0)",
+              "rgb(0, 0, 0)",
+              "1",
+              "none"
+            ]
+          ],
+          "popStatic": [
+            [
+              "block",
+              "absolute",
+              "visible"
+            ],
+            [
+              "block",
+              "fixed",
+              "visible",
+              "0px",
+              "0px",
+              "0px",
+              "0px",
+              "rgba(0, 0, 0, 0)",
+              "rgb(0, 0, 0)",
+              "1",
+              "none"
+            ],
+            [
+              "none",
+              "static",
+              "visible"
+            ],
+            [
+              "block",
+              "absolute",
+              "visible",
+              "auto",
+              "auto",
+              "auto",
+              "auto",
+              "rgba(0, 0, 0, 0)",
+              "rgb(0, 0, 0)",
+              "1",
+              "none"
+            ]
+          ]
+        },
+        "otherBackdrop": {
+          "div": [
+            "block",
+            "absolute",
+            "visible",
+            "auto",
+            "auto",
+            "auto",
+            "auto",
+            "rgba(0, 0, 0, 0)",
+            "rgb(0, 0, 0)",
+            "1",
+            "none"
+          ],
+          "detached": [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ]
+        }
+      }
+    },
+    {
+      "id": "pseudo-elements",
+      "result": {
+        "head": {
+          "children": [
+            "style"
+          ],
+          "title": "",
+          "titles": 0
+        },
+        "pseudo": {
+          "pseudoHost": {
+            "5": "block|static|visible|rgb(1, 2, 3)|normal|20px|1|none|1",
+            "::before": "block|static|visible|rgb(255, 0, 0)|\"x\"|20px|1|none|1",
+            ":before": "block|static|visible|rgb(255, 0, 0)|\"x\"|20px|1|none|1",
+            "::after": "block|absolute|visible|rgb(1, 2, 3)|\"y\"|20px|0.5|none|1",
+            ":after": "block|absolute|visible|rgb(1, 2, 3)|\"y\"|20px|0.5|none|1",
+            "::BEFORE": "block|static|visible|rgb(255, 0, 0)|\"x\"|20px|1|none|1",
+            ":AFTER": "block|absolute|visible|rgb(1, 2, 3)|\"y\"|20px|0.5|none|1",
+            "before": "block|static|visible|rgb(255, 0, 0)|\"x\"|20px|1|none|1",
+            "AFTER": "block|absolute|visible|rgb(1, 2, 3)|\"y\"|20px|0.5|none|1",
+            "::\\62 efore": "block|static|visible|rgb(255, 0, 0)|\"x\"|20px|1|none|1",
+            "befor\\65": "block|static|visible|rgb(255, 0, 0)|\"x\"|20px|1|none|1",
+            "::before/**/": "block|static|visible|rgb(255, 0, 0)|\"x\"|20px|1|none|1",
+            "::backdrop": "block|absolute|visible|rgb(1, 2, 3)|normal|20px|1|none|1",
+            ":backdrop": "||||||||",
+            "::foo": "||||||||",
+            "::part(x)": "||||||||",
+            "::slotted(x)": "||||||||",
+            "::before::marker": "||||||||",
+            "::before:hover": "||||||||",
+            "x:before": "||||||||",
+            "::before ": "||||||||",
+            "::": "||||||||",
+            ":": "||||||||",
+            ":::before": "||||||||",
+            "::before()": "||||||||",
+            " ::before": "block|static|visible|rgb(1, 2, 3)|normal|20px|1|none|1",
+            "\t::before": "block|static|visible|rgb(1, 2, 3)|normal|20px|1|none|1",
+            "": "block|static|visible|rgb(1, 2, 3)|normal|20px|1|none|1",
+            "backdrop": "block|static|visible|rgb(1, 2, 3)|normal|20px|1|none|1",
+            "beforex": "block|static|visible|rgb(1, 2, 3)|normal|20px|1|none|1",
+            ":marker": "||||||||",
+            ":placeholder": "||||||||",
+            "null": "block|static|visible|rgb(1, 2, 3)|normal|20px|1|none|1",
+            "undefined": "block|static|visible|rgb(1, 2, 3)|normal|20px|1|none|1"
+          },
+          "item": {
+            "5": "list-item|static|visible|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "::before": "block|static|visible|rgb(0, 0, 0)|\"i\"|16px|1|none|1",
+            ":before": "block|static|visible|rgb(0, 0, 0)|\"i\"|16px|1|none|1",
+            "::after": "inline|static|visible|rgb(0, 0, 0)|none|16px|1|none|1",
+            ":after": "inline|static|visible|rgb(0, 0, 0)|none|16px|1|none|1",
+            "::BEFORE": "block|static|visible|rgb(0, 0, 0)|\"i\"|16px|1|none|1",
+            ":AFTER": "inline|static|visible|rgb(0, 0, 0)|none|16px|1|none|1",
+            "before": "block|static|visible|rgb(0, 0, 0)|\"i\"|16px|1|none|1",
+            "AFTER": "inline|static|visible|rgb(0, 0, 0)|none|16px|1|none|1",
+            "::\\62 efore": "block|static|visible|rgb(0, 0, 0)|\"i\"|16px|1|none|1",
+            "befor\\65": "block|static|visible|rgb(0, 0, 0)|\"i\"|16px|1|none|1",
+            "::before/**/": "block|static|visible|rgb(0, 0, 0)|\"i\"|16px|1|none|1",
+            "::backdrop": "block|absolute|visible|rgb(0, 0, 0)|normal|16px|1|none|1",
+            ":backdrop": "||||||||",
+            "::foo": "||||||||",
+            "::part(x)": "||||||||",
+            "::slotted(x)": "||||||||",
+            "::before::marker": "||||||||",
+            "::before:hover": "||||||||",
+            "x:before": "||||||||",
+            "::before ": "||||||||",
+            "::": "||||||||",
+            ":": "||||||||",
+            ":::before": "||||||||",
+            "::before()": "||||||||",
+            " ::before": "list-item|static|visible|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "\t::before": "list-item|static|visible|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "": "list-item|static|visible|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "backdrop": "list-item|static|visible|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "beforex": "list-item|static|visible|rgb(0, 0, 0)|normal|16px|1|none|1",
+            ":marker": "||||||||",
+            ":placeholder": "||||||||",
+            "null": "list-item|static|visible|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "undefined": "list-item|static|visible|rgb(0, 0, 0)|normal|16px|1|none|1"
+          },
+          "grid": {
+            "5": "grid|static|visible|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "::before": "block|static|visible|rgb(0, 0, 0)|none|16px|1|none|1",
+            ":before": "block|static|visible|rgb(0, 0, 0)|none|16px|1|none|1",
+            "::after": "block|static|visible|rgb(0, 0, 0)|none|16px|1|none|1",
+            ":after": "block|static|visible|rgb(0, 0, 0)|none|16px|1|none|1",
+            "::BEFORE": "block|static|visible|rgb(0, 0, 0)|none|16px|1|none|1",
+            ":AFTER": "block|static|visible|rgb(0, 0, 0)|none|16px|1|none|1",
+            "before": "block|static|visible|rgb(0, 0, 0)|none|16px|1|none|1",
+            "AFTER": "block|static|visible|rgb(0, 0, 0)|none|16px|1|none|1",
+            "::\\62 efore": "block|static|visible|rgb(0, 0, 0)|none|16px|1|none|1",
+            "befor\\65": "block|static|visible|rgb(0, 0, 0)|none|16px|1|none|1",
+            "::before/**/": "block|static|visible|rgb(0, 0, 0)|none|16px|1|none|1",
+            "::backdrop": "block|absolute|visible|rgb(0, 0, 0)|normal|16px|1|none|1",
+            ":backdrop": "||||||||",
+            "::foo": "||||||||",
+            "::part(x)": "||||||||",
+            "::slotted(x)": "||||||||",
+            "::before::marker": "||||||||",
+            "::before:hover": "||||||||",
+            "x:before": "||||||||",
+            "::before ": "||||||||",
+            "::": "||||||||",
+            ":": "||||||||",
+            ":::before": "||||||||",
+            "::before()": "||||||||",
+            " ::before": "grid|static|visible|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "\t::before": "grid|static|visible|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "": "grid|static|visible|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "backdrop": "grid|static|visible|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "beforex": "grid|static|visible|rgb(0, 0, 0)|normal|16px|1|none|1",
+            ":marker": "||||||||",
+            ":placeholder": "||||||||",
+            "null": "grid|static|visible|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "undefined": "grid|static|visible|rgb(0, 0, 0)|normal|16px|1|none|1"
+          },
+          "flex": {
+            "5": "flex|static|visible|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "::before": "table|static|visible|rgb(0, 0, 0)|\"\"|16px|1|none|1",
+            ":before": "table|static|visible|rgb(0, 0, 0)|\"\"|16px|1|none|1",
+            "::after": "block|static|visible|rgb(0, 0, 0)|none|16px|1|none|1",
+            ":after": "block|static|visible|rgb(0, 0, 0)|none|16px|1|none|1",
+            "::BEFORE": "table|static|visible|rgb(0, 0, 0)|\"\"|16px|1|none|1",
+            ":AFTER": "block|static|visible|rgb(0, 0, 0)|none|16px|1|none|1",
+            "before": "table|static|visible|rgb(0, 0, 0)|\"\"|16px|1|none|1",
+            "AFTER": "block|static|visible|rgb(0, 0, 0)|none|16px|1|none|1",
+            "::\\62 efore": "table|static|visible|rgb(0, 0, 0)|\"\"|16px|1|none|1",
+            "befor\\65": "table|static|visible|rgb(0, 0, 0)|\"\"|16px|1|none|1",
+            "::before/**/": "table|static|visible|rgb(0, 0, 0)|\"\"|16px|1|none|1",
+            "::backdrop": "block|absolute|visible|rgb(0, 0, 0)|normal|16px|1|none|1",
+            ":backdrop": "||||||||",
+            "::foo": "||||||||",
+            "::part(x)": "||||||||",
+            "::slotted(x)": "||||||||",
+            "::before::marker": "||||||||",
+            "::before:hover": "||||||||",
+            "x:before": "||||||||",
+            "::before ": "||||||||",
+            "::": "||||||||",
+            ":": "||||||||",
+            ":::before": "||||||||",
+            "::before()": "||||||||",
+            " ::before": "flex|static|visible|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "\t::before": "flex|static|visible|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "": "flex|static|visible|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "backdrop": "flex|static|visible|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "beforex": "flex|static|visible|rgb(0, 0, 0)|normal|16px|1|none|1",
+            ":marker": "||||||||",
+            ":placeholder": "||||||||",
+            "null": "flex|static|visible|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "undefined": "flex|static|visible|rgb(0, 0, 0)|normal|16px|1|none|1"
+          },
+          "hiddenHost": {
+            "5": "block|static|hidden|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "::before": "inline|static|hidden|rgb(0, 0, 0)|none|16px|1|none|1",
+            ":before": "inline|static|hidden|rgb(0, 0, 0)|none|16px|1|none|1",
+            "::after": "inline|static|hidden|rgb(0, 0, 0)|none|16px|1|none|1",
+            ":after": "inline|static|hidden|rgb(0, 0, 0)|none|16px|1|none|1",
+            "::BEFORE": "inline|static|hidden|rgb(0, 0, 0)|none|16px|1|none|1",
+            ":AFTER": "inline|static|hidden|rgb(0, 0, 0)|none|16px|1|none|1",
+            "before": "inline|static|hidden|rgb(0, 0, 0)|none|16px|1|none|1",
+            "AFTER": "inline|static|hidden|rgb(0, 0, 0)|none|16px|1|none|1",
+            "::\\62 efore": "inline|static|hidden|rgb(0, 0, 0)|none|16px|1|none|1",
+            "befor\\65": "inline|static|hidden|rgb(0, 0, 0)|none|16px|1|none|1",
+            "::before/**/": "inline|static|hidden|rgb(0, 0, 0)|none|16px|1|none|1",
+            "::backdrop": "block|absolute|hidden|rgb(0, 0, 0)|normal|16px|1|none|1",
+            ":backdrop": "||||||||",
+            "::foo": "||||||||",
+            "::part(x)": "||||||||",
+            "::slotted(x)": "||||||||",
+            "::before::marker": "||||||||",
+            "::before:hover": "||||||||",
+            "x:before": "||||||||",
+            "::before ": "||||||||",
+            "::": "||||||||",
+            ":": "||||||||",
+            ":::before": "||||||||",
+            "::before()": "||||||||",
+            " ::before": "block|static|hidden|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "\t::before": "block|static|hidden|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "": "block|static|hidden|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "backdrop": "block|static|hidden|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "beforex": "block|static|hidden|rgb(0, 0, 0)|normal|16px|1|none|1",
+            ":marker": "||||||||",
+            ":placeholder": "||||||||",
+            "null": "block|static|hidden|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "undefined": "block|static|hidden|rgb(0, 0, 0)|normal|16px|1|none|1"
+          },
+          "quoted": {
+            "5": "inline|static|visible|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "::before": "inline|static|hidden|rgb(0, 0, 0)|none|10px|1|none|1",
+            ":before": "inline|static|hidden|rgb(0, 0, 0)|none|10px|1|none|1",
+            "::after": "inline|static|visible|rgb(0, 0, 0)|\"q\"|16px|1|none|1",
+            ":after": "inline|static|visible|rgb(0, 0, 0)|\"q\"|16px|1|none|1",
+            "::BEFORE": "inline|static|hidden|rgb(0, 0, 0)|none|10px|1|none|1",
+            ":AFTER": "inline|static|visible|rgb(0, 0, 0)|\"q\"|16px|1|none|1",
+            "before": "inline|static|hidden|rgb(0, 0, 0)|none|10px|1|none|1",
+            "AFTER": "inline|static|visible|rgb(0, 0, 0)|\"q\"|16px|1|none|1",
+            "::\\62 efore": "inline|static|hidden|rgb(0, 0, 0)|none|10px|1|none|1",
+            "befor\\65": "inline|static|hidden|rgb(0, 0, 0)|none|10px|1|none|1",
+            "::before/**/": "inline|static|hidden|rgb(0, 0, 0)|none|10px|1|none|1",
+            "::backdrop": "block|absolute|visible|rgb(255, 0, 0)|normal|16px|1|none|1",
+            ":backdrop": "||||||||",
+            "::foo": "||||||||",
+            "::part(x)": "||||||||",
+            "::slotted(x)": "||||||||",
+            "::before::marker": "||||||||",
+            "::before:hover": "||||||||",
+            "x:before": "||||||||",
+            "::before ": "||||||||",
+            "::": "||||||||",
+            ":": "||||||||",
+            ":::before": "||||||||",
+            "::before()": "||||||||",
+            " ::before": "inline|static|visible|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "\t::before": "inline|static|visible|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "": "inline|static|visible|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "backdrop": "inline|static|visible|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "beforex": "inline|static|visible|rgb(0, 0, 0)|normal|16px|1|none|1",
+            ":marker": "||||||||",
+            ":placeholder": "||||||||",
+            "null": "inline|static|visible|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "undefined": "inline|static|visible|rgb(0, 0, 0)|normal|16px|1|none|1"
+          },
+          "detached": "||||||||",
+          "symbol": "TypeError",
+          "live": [
+            "rgb(255, 0, 0)",
+            "rgb(0, 255, 0)",
+            false
+          ]
         }
       }
     }

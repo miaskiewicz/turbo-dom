@@ -1,0 +1,13 @@
+{
+ "id": "turbo-dom#54",
+ "reason": "mutation_observers::flush also runs when another (independently installed) document records mutations, so that document's custom element reactions / observer records / script-candidate bookkeeping are delivered before the DOM call returns instead of during the next one. It only differs from before when the current document records nothing while another one does (custom elements, scripts or shadow modes; any MutationObserver already made every flush run); no pinned input defines a custom element, and pages whose child documents run scripts also run scripts in the page document, so no corpus output is predicted to change. Static screenshots and the html2pdf corpora do not run the binding; the surf live corpus is not rebuildable in this slice (prediction, unmeasured). P5b-X5.",
+ "control": "crates/turbo-dom-browser-env/src/dom_reactions_names_chrome156.json section removal",
+ "e2e": "crates/turbo-dom-browser-env/src/dom_reactions_tests.rs",
+ "changes": {
+  "html2pdf": [],
+  "html2pdf-svg": [],
+  "html2pdf-extra": [],
+  "surf": [],
+  "surf-extra": []
+ }
+}

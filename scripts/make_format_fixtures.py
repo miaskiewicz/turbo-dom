@@ -13,13 +13,22 @@ PNG/JPEG/GIF/WebP, plus a transparent-quadrant variant for the alpha paths:
   entries of the image, BMP-encoded), `q-png.ico` (one PNG-encoded 64x40 entry);
 - `q.cur` — `q.ico` as a cursor (header type 2, hotspot 0,0);
 - `q.svg` — the quadrants as an SVG document (width/height 64x40);
-- `q.tiff` — an uncompressed TIFF, which Chrome does NOT decode (the error control).
+- `q.tiff` — an uncompressed TIFF, which Chrome does NOT decode (the error control);
+- `q-irot90.avif`, `q-irot180.avif`, `q-irot270.avif`, `q-imir0.avif`, `q-imir1.avif`,
+  `q-irot90-imir0.avif` — `q.avif` with HEIF transform properties added to its primary
+  item (miaskiewicz/turbo-dom#45): `irot` (angle x 90 degrees anti-clockwise) and/or
+  `imir` (axis 0: top and bottom exchanged, 1: left and right — libavif's and Chrome's
+  reading), in that order. No installed
+  encoder writes them, so they are spliced into the container: appended to `ipco`,
+  associated (essential) in `ipma`, the box sizes and `iloc` offsets moved accordingly.
 
 The binaries are committed; re-run this (needs `magick`) only to regenerate.
 `IMAGES.sha256` pins them. Usage: python3 scripts/make_format_fixtures.py
+(`--avif-orientation`: only re-derive the transformed AVIFs from the committed `q.avif`).
 """
 import hashlib
 import struct
+import sys
 import subprocess
 import tempfile
 from pathlib import Path
@@ -59,7 +68,97 @@ def png_icon(png: bytes, width: int, height: int) -> bytes:
     return header + entry + png
 
 
+def box(kind: bytes, body: bytes) -> bytes:
+    return struct.pack(">I", 8 + len(body)) + kind + body
+
+
+def children(data: bytes, start: int, end: int) -> list[tuple[bytes, int, int]]:
+    """The `(type, offset, size)` of the boxes in `data[start:end]` (32-bit sizes)."""
+    out = []
+    while start < end:
+        size, kind = struct.unpack(">I4s", data[start : start + 8])
+        out.append((kind, start, size))
+        start += size
+    return out
+
+
+def find(boxes: list[tuple[bytes, int, int]], kind: bytes) -> tuple[bytes, int, int]:
+    return next(b for b in boxes if b[0] == kind)
+
+
+def with_transforms(avif: bytes, props: list[bytes]) -> bytes:
+    """`avif` (single-item, version-0 `ipma`/`iloc`, `mdat` after `meta`, as ImageMagick
+    writes it) with the property boxes `props` appended to `ipco` and associated, as
+    essential properties in that order, with the primary item."""
+    top = children(avif, 0, len(avif))
+    _, meta_at, meta_size = find(top, b"meta")
+    meta = children(avif, meta_at + 12, meta_at + meta_size)
+    _, iprp_at, iprp_size = find(meta, b"iprp")
+    iprp = children(avif, iprp_at + 8, iprp_at + iprp_size)
+    _, ipco_at, ipco_size = find(iprp, b"ipco")
+    _, ipma_at, ipma_size = find(iprp, b"ipma")
+    _, iloc_at, iloc_size = find(meta, b"iloc")
+    first = len(children(avif, ipco_at + 8, ipco_at + ipco_size)) + 1
+    ipco = avif[ipco_at : ipco_at + ipco_size] + b"".join(props)
+    ipco = struct.pack(">I", len(ipco)) + ipco[4:]
+    # ipma v0, flags 0: entry_count u32, then item_ID u16, association_count u8, u8 each.
+    body = bytearray(avif[ipma_at + 8 : ipma_at + ipma_size])
+    assert body[0] == 0 and body[3] & 1 == 0 and struct.unpack(">I", body[4:8])[0] == 1
+    count = body[10]
+    body[10] = count + len(props)
+    body[11 + count : 11 + count] = bytes(0x80 | (first + i) for i in range(len(props)))
+    ipma = box(b"ipma", bytes(body))
+    delta = len(ipco) - ipco_size + len(ipma) - ipma_size
+    # iloc v0, 4-byte offsets/lengths/base offsets, one item: shift its base offset (the
+    # `mdat` data after `meta`) by the bytes added.
+    iloc = bytearray(avif[iloc_at : iloc_at + iloc_size])
+    assert iloc[8] == 0 and iloc[12] == 0x44 and iloc[13] == 0x40
+    base = 20  # box header 8, version/flags 4, sizes 2, item_count 2, item_ID 2, dri 2
+    old = struct.unpack(">I", iloc[base : base + 4])[0]
+    iloc[base : base + 4] = struct.pack(">I", old + delta)
+    out = bytearray(avif)
+    # Replace back to front so the earlier offsets stay valid (iloc < iprp/ipco < ipma).
+    out[ipma_at : ipma_at + ipma_size] = ipma
+    out[ipco_at : ipco_at + ipco_size] = ipco
+    out[iloc_at : iloc_at + iloc_size] = iloc
+    for at in (iprp_at, meta_at):
+        out[at : at + 4] = struct.pack(">I", struct.unpack(">I", out[at : at + 4])[0] + delta)
+    return bytes(out)
+
+
+def irot(angle: int) -> bytes:
+    return box(b"irot", bytes([angle]))
+
+
+def imir(axis: int) -> bytes:
+    return box(b"imir", bytes([axis]))
+
+
+def oriented_avifs(avif: bytes) -> dict[str, bytes]:
+    return {
+        "q-irot90.avif": with_transforms(avif, [irot(1)]),
+        "q-irot180.avif": with_transforms(avif, [irot(2)]),
+        "q-irot270.avif": with_transforms(avif, [irot(3)]),
+        "q-imir0.avif": with_transforms(avif, [imir(0)]),
+        "q-imir1.avif": with_transforms(avif, [imir(1)]),
+        "q-irot90-imir0.avif": with_transforms(avif, [irot(1), imir(0)]),
+    }
+
+
+def write(files: dict[str, bytes]) -> None:
+    OUT.mkdir(parents=True, exist_ok=True)
+    for name in sorted(files):
+        (OUT / name).write_bytes(files[name])
+    names = sorted(p.name for p in OUT.iterdir() if p.name != "IMAGES.sha256")
+    lines = [f"{hashlib.sha256((OUT / n).read_bytes()).hexdigest()}  {n}" for n in names]
+    (OUT / "IMAGES.sha256").write_text("\n".join(lines) + "\n")
+    print(f"{len(files)} images -> {OUT}")
+
+
 def main() -> None:
+    if "--avif-orientation" in sys.argv[1:]:
+        write(oriented_avifs((OUT / "q.avif").read_bytes()))
+        return
     OUT.mkdir(parents=True, exist_ok=True)
     files: dict[str, bytes] = {}
     with tempfile.TemporaryDirectory() as tmp:
@@ -90,12 +189,8 @@ def main() -> None:
     files["q.cur"] = as_cursor(files["q.ico"])
     files["q-png.ico"] = png_icon(ORIENTATION.read_bytes(), 64, 40)
     files["q.svg"] = SVG.encode()
-    lines = []
-    for name in sorted(files):
-        (OUT / name).write_bytes(files[name])
-        lines.append(f"{hashlib.sha256(files[name]).hexdigest()}  {name}")
-    (OUT / "IMAGES.sha256").write_text("\n".join(lines) + "\n")
-    print(f"{len(files)} images -> {OUT}")
+    files.update(oriented_avifs(files["q.avif"]))
+    write(files)
 
 
 if __name__ == "__main__":

@@ -222,16 +222,26 @@
     const definition = mget(record.definitions, valid(tag) ? tag : is);
     return definition && definition.local === tag && nativeActive(definition.constructor) ? definition : undefined;
   }
+  // https://html.spec.whatwg.org/#enqueue-a-custom-element-upgrade-reaction: inside a
+  // [CEReactions] delivery the upgrade joins the element's reaction queue, so each element's
+  // upgrade and the callbacks it queues run before the next element's (turbo-dom#43);
+  // elsewhere it runs at once. A pending upgrade is never queued twice.
   function upgraded(node, definition) {
     let record = wget(elementStates, node);
     if (record && record.status !== "undefined") return;
-    record = {
-      definition,
-      status: "constructing",
-      owner: documentOf(node),
-      connected: read(connected, node),
-    };
+    record = { definition, status: "pending", owner: documentOf(node), connected: false };
     wset(elementStates, node, record);
+    const run = () => {
+      if (wget(elementStates, node) === record && record.status === "pending") upgrade(node, record);
+    };
+    if (nativeReact(node, run, [], definition.registry, definition.constructor)) return;
+    upgrade(node, record);
+  }
+  function upgrade(node, record) {
+    const definition = record.definition;
+    record.status = "constructing";
+    record.owner = documentOf(node);
+    record.connected = read(connected, node);
     nativeState(node, record.status);
     if (initializeInternals) initializeInternals(node, definition);
     const initial = [],
@@ -259,7 +269,8 @@
   function visit(node, selected, connect) {
     if (kind(node) !== 1) return;
     let record = wget(elementStates, node);
-    if (!record) {
+    // Insertion tries to upgrade connected elements only (turbo-dom#42).
+    if (!record && !(connect && !read(connected, node))) {
       const definition = definitionFor(node, selected);
       if (definition) {
         upgraded(node, definition);
@@ -297,6 +308,17 @@
     }
     if (event.type === "adoption") {
       walk(event.target, (node) => visit(node, null, false));
+      return;
+    }
+    if (event.type === "parsed") {
+      // The fragment parser creates its elements (queueing their upgrades) before
+      // innerHTML / outerHTML / setHTMLUnsafe remove the old children (turbo-dom#43).
+      for (let i = 0; i < event.nodes.length; i++)
+        walk(event.nodes[i], (node) => {
+          if (kind(node) !== 1 || wget(elementStates, node)) return;
+          const definition = definitionFor(node, registryFor(node));
+          if (definition) upgraded(node, definition);
+        });
       return;
     }
     if (event.type === "attributes") {
@@ -501,7 +523,11 @@
     state(this);
     if (!arguments.length) throw new TypeErrorValue("One argument required");
     kind(root);
-    walk(root, (node) => visit(node, this, false));
+    // Candidates whose registry is not this one (e.g. template contents in their inert
+    // document, which has none) are not upgraded (turbo-dom#42).
+    walk(root, (node) => {
+      if (kind(node) !== 1 || registryFor(node) === this) visit(node, this, false);
+    });
   });
   method("whenDefined", 1, function (name) {
     try {

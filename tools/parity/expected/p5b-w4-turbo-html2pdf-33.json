@@ -1,0 +1,23 @@
+{
+ "id": "turbo-html2pdf#33",
+ "reason": "A split block taller than its content keeps its remaining height + bottom padding/border at the top of the next page(s) before the next block (40a1c47). Attribution: napi builds (plain + svg, fresh target dirs, git-archived commits) of turbo-html2pdf consol/p5b-w4 against turbo-dom 79a94d3, each step vs the previous: 40a1c47 changes the four template-report variants (plain/svg): the regional table's bottom border-spacing below its last row runs past the page end there, moving the Notes section 16.5pt down on the then 4th page (with the pre-existing turbo-html2pdf#36 row placement). After #36 (d445050) the report prints on 2 pages like Chrome's and the table ends mid-page; the four outputs stay changed vs b-main (also listed by #36).",
+ "control": "turbo-html2pdf crates/turbo-html2pdf-core/tests/fixtures/pagination_chrome156.json (scripts/pagination-chrome-control.mjs: Chrome for Testing 156.0.8078.4 page.pdf() of 600x400px @page boxes, pdftoppm -r 96) case split-block-explicit-height",
+ "e2e": "turbo-html2pdf crates/turbo-html2pdf-core/tests/pagination_chrome.rs (+ tests/paginate.rs); every control case also matches through the emitted PDF (pdftoppm) except exact-fill-child-margin (turbo-dom#41); tests/paginate.rs split_block_remaining_height_runs_onto_the_next_pages",
+ "changes": {
+  "html2pdf": [
+   "template-report-cmyk.pdf",
+   "template-report-pdfa.pdf",
+   "template-report-plain.pdf",
+   "template-report-ua.pdf"
+  ],
+  "html2pdf-svg": [
+   "template-report-cmyk.pdf",
+   "template-report-pdfa.pdf",
+   "template-report-plain.pdf",
+   "template-report-ua.pdf"
+  ],
+  "html2pdf-extra": [],
+  "surf": [],
+  "surf-extra": []
+ }
+}

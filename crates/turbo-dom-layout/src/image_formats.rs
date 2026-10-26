@@ -111,6 +111,28 @@ impl Orientation {
         }
     }
 
+    /// This orientation followed by `next` (applied to the image this one displays): the
+    /// one orientation with the same effect (the eight form a group).
+    #[must_use]
+    pub fn then(self, next: Orientation) -> Orientation {
+        // A 3x2 image tells the eight apart: compare where every displayed pixel comes from.
+        let (w, h) = (3, 2);
+        let (mw, mh) = self.displayed_size(w, h);
+        let composed = |x, y| {
+            let (u, v) = next.source_pixel(x, y, mw, mh);
+            self.source_pixel(u, v, w, h)
+        };
+        let (dw, dh) = next.displayed_size(mw, mh);
+        (1..=8)
+            .map(Orientation)
+            .find(|o| {
+                o.displayed_size(w, h) == (dw, dh)
+                    && (0..dh)
+                        .all(|y| (0..dw).all(|x| o.source_pixel(x, y, w, h) == composed(x, y)))
+            })
+            .unwrap_or(Orientation::IDENTITY)
+    }
+
     /// Re-lay a `width × height` straight RGBA8 image (4 bytes/px, row-major) as
     /// displayed: `(displayed width, displayed height, pixels)`.
     #[must_use]
@@ -331,7 +353,11 @@ fn bmff_extent(bytes: &[u8], at: usize, size: u64) -> Option<(usize, usize)> {
 
 /// The child boxes of `range` (a box body, or the whole file), skipping `skip` leading
 /// bytes (a full box's version/flags).
-fn bmff_children(bytes: &[u8], range: &std::ops::Range<usize>, skip: usize) -> Vec<BmffBox> {
+pub(super) fn bmff_children(
+    bytes: &[u8],
+    range: &std::ops::Range<usize>,
+    skip: usize,
+) -> Vec<BmffBox> {
     let scope = bytes.get(..range.end).unwrap_or_default();
     let mut out = Vec::new();
     let mut at = range.start + skip;
@@ -471,8 +497,8 @@ fn ipma_entry(r: &mut Reader, id_width: usize, wide: bool) -> Option<(u32, Vec<u
 }
 
 /// AVIF intrinsic size: the primary item's `ispe` (image spatial extents); `has_alpha`
-/// when the file carries an alpha auxiliary image. Rotation / mirroring properties
-/// (`irot`/`imir`) are not applied.
+/// when the file carries an alpha auxiliary image; the orientation of its HEIF transform
+/// properties ([`avif_orientation`], miaskiewicz/turbo-dom#45).
 pub(super) fn probe_avif(bytes: &[u8]) -> Option<Intrinsic> {
     let meta = AvifMeta::parse(bytes)?;
     let ispe = meta
@@ -480,7 +506,30 @@ pub(super) fn probe_avif(bytes: &[u8]) -> Option<Intrinsic> {
         .find(|b| b.kind == *b"ispe")?;
     let (w, h) = ispe_size(bytes, ispe)?;
     let alpha = meta.properties.iter().any(|b| is_alpha_aux(bytes, b));
-    Some(Intrinsic::new(w, h, alpha))
+    Some(Intrinsic {
+        orientation: avif_orientation(bytes, &meta),
+        ..Intrinsic::new(w, h, alpha)
+    })
+}
+
+/// The orientation the primary item's `irot` (rotation, angle x 90 degrees
+/// anti-clockwise) and `imir` (mirror: axis 0 exchanges top and bottom, 1 left and right)
+/// properties display it with, applied in association order (HEIF, ISO/IEC 23008-12
+/// §6.5.10–6.5.12) — as Chrome 156 displays them under `image-orientation: from-image`.
+fn avif_orientation(bytes: &[u8], meta: &AvifMeta) -> Orientation {
+    meta.properties_of(meta.primary)
+        .filter_map(|b| transform_orientation(b.kind, *bytes.get(b.body.start)?))
+        .fold(Orientation::IDENTITY, Orientation::then)
+}
+
+/// The orientation of one transform property box (`irot` / `imir`, its first body byte).
+fn transform_orientation(kind: [u8; 4], value: u8) -> Option<Orientation> {
+    match &kind {
+        b"irot" => Some(Orientation([1, 8, 3, 6][usize::from(value & 3)])),
+        b"imir" if value & 1 == 0 => Some(Orientation(4)),
+        b"imir" => Some(Orientation(2)),
+        _ => None,
+    }
 }
 
 /// An `ispe` property's (non-zero) width and height.
@@ -835,6 +884,7 @@ pub(super) fn sniff_extra(bytes: &[u8]) -> Option<Format> {
         (is_bmp as fn(&[u8]) -> bool, Format::Bmp),
         (is_ico, Format::Ico),
         (is_avif, Format::Avif),
+        (super::jxl::is_jxl, Format::Jxl),
     ]
     .into_iter()
     .find(|(is, _)| is(bytes))

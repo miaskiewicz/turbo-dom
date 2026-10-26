@@ -86,6 +86,43 @@ pub fn add_data_uri_images(decoded: &mut DecodedAssets, css: &str, html: &str) {
     }
 }
 
+/// Decode every `<img src="data:…">` ELEMENT of the parsed document (template content
+/// excluded) into `decoded`, keyed by its `src` — the name layout sizes the image box with —
+/// through turbo-dom-layout's [`decode_data_url`](layout_image::decode_data_url) (base64 or
+/// percent-encoded; the scheme is case-insensitive). A `data:` image needs no fetch: the
+/// screenshot paints it from its own URL, as Chrome does (miaskiewicz/turbo-dom#27).
+/// Caller-supplied bytes under the same key win.
+pub fn add_img_data_urls(decoded: &mut DecodedAssets, tree: &Tree) {
+    for img in html_elements(tree, "img") {
+        let Some(src) = tree.get_attribute(img, "src") else {
+            continue;
+        };
+        if decoded.contains_key(src) {
+            continue;
+        }
+        if let Some(image) = layout_image::decode_data_url(src).and_then(|d| decode(&d.bytes)) {
+            decoded.insert(src.to_string(), image);
+        }
+    }
+}
+
+/// The document's HTML elements named `name`, in document order. Template content is a
+/// separate document fragment, not the page, so it is not walked.
+pub(crate) fn html_elements(tree: &Tree, name: &str) -> Vec<Handle> {
+    let mut found = Vec::new();
+    let mut stack = vec![tree.root()];
+    while let Some(h) = stack.pop() {
+        let element =
+            tree.node_type(h) == NodeType::Element && tree.namespace(h) == Namespace::Html;
+        if element && tree.local_name(h) == Some(name) {
+            found.push(h);
+        }
+        let children = tree.children(h).into_iter().rev();
+        stack.extend(children.filter(|&c| tree.node_type(c) != NodeType::Fragment));
+    }
+    found
+}
+
 /// Replace each inline `<svg>` ELEMENT of the parsed document (the outermost one of a
 /// nested set) with an `<img>` carrying the SVG's `class`/`style`/`width`/`height` (so CSS
 /// sizing still applies) and a synthetic `src` key, returning the `(key, svg-source)` pairs
@@ -406,6 +443,13 @@ pub fn decode(bytes: &[u8]) -> Option<DecodedImage> {
             Some(rgba) => rgba,
             // Without the `avif` feature (or on a bitstream error) the box still lays out
             // at the image's real size and paints as the placeholder.
+            None => return size_only(bytes),
+        },
+        Some(Format::Jxl) => match crate::jxl::decode(bytes) {
+            Some(rgba) => rgba,
+            // Without the `jxl` feature (or on a codestream error) the box still lays out
+            // at the image's real size (the shared header probe) and paints as the
+            // placeholder.
             None => return size_only(bytes),
         },
         // The entry a browser shows: a PNG entry through the shared PNG decoder (the

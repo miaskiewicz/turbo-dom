@@ -36,6 +36,8 @@ use std::io::Cursor;
 
 #[path = "image_formats.rs"]
 mod formats;
+#[path = "image_jxl.rs"]
+mod jxl;
 pub use formats::{
     avif_payload, decode_data_url, ico_entry, probe_natural, AvifPayload, DataUrl, IcoEntry, Nclx,
     Orientation,
@@ -94,6 +96,11 @@ pub enum Format {
     /// item's `ispe`. Intrinsic-size only here; turbo-dom-raster decodes it for paint
     /// under its `avif` feature.
     Avif,
+    /// JPEG XL (a bare `FF 0A` codestream or the `JXL ` ISOBMFF container), sized from
+    /// its `SizeHeader` (orientation from its `ImageMetadata`). Intrinsic-size only here;
+    /// turbo-dom-raster decodes it for paint under its `jxl` feature
+    /// (miaskiewicz/turbo-dom#45: Chrome 156 decodes JPEG XL).
+    Jxl,
 }
 
 const PNG_MAGIC: &[u8] = &[0x89, b'P', b'N', b'G', 0x0D, 0x0A, 0x1A, 0x0A];
@@ -198,6 +205,7 @@ pub fn probe(bytes: &[u8]) -> Option<Intrinsic> {
         Format::Bmp => formats::probe_bmp(bytes),
         Format::Ico => formats::probe_ico(bytes),
         Format::Avif => formats::probe_avif(bytes),
+        Format::Jxl => jxl::probe_jxl(bytes),
     }
 }
 
@@ -370,10 +378,10 @@ pub fn decode(bytes: &[u8]) -> Option<RasterImage> {
     match sniff(bytes)? {
         Format::Png => decode_png(bytes),
         Format::Jpeg => decode_jpeg(bytes),
-        // GIF/WebP/BMP/ICO/AVIF are probed for intrinsic size (layout) but not
+        // GIF/WebP/BMP/ICO/AVIF/JPEG XL are probed for intrinsic size (layout) but not
         // pixel-decoded for the PDF — an unsupported decode emits nothing rather than a
         // wrong image (turbo-dom-raster decodes them for screenshots).
-        Format::Gif | Format::WebP | Format::Bmp | Format::Ico | Format::Avif => None,
+        Format::Gif | Format::WebP | Format::Bmp | Format::Ico | Format::Avif | Format::Jxl => None,
     }
 }
 

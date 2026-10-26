@@ -24,6 +24,7 @@ mod avif;
 mod canvas_ops;
 mod glyph;
 mod image_paint;
+mod jxl;
 mod paint_canvas;
 #[cfg(all(target_os = "macos", feature = "coretext"))]
 mod paint_canvas_coretext;
@@ -69,7 +70,9 @@ pub fn canvas_ops_rgba(width: u32, height: u32, ops_json: &str) -> Result<Vec<u8
     let ops = canvas_ops::parse_ops(ops_json)?;
     paint_canvas::replay_rgba(w, h, &ops)
 }
-pub use style_extract::{delazy_images, image_urls, image_urls_in_css, stylesheet_hrefs};
+pub use style_extract::{
+    delazy_images, delazy_tree, image_urls, image_urls_in_css, stylesheet_hrefs,
+};
 
 use std::collections::HashMap;
 
@@ -336,15 +339,19 @@ pub fn screenshot(html: &str, viewport: Viewport, format: Format) -> Result<Vec<
     }
 }
 
-/// Parse the snapshot for layout: de-lazy images (fill in `src`-less lazy images —
-/// data-src/srcset/data-*-url — so their boxes render; [`image_urls`] returns the same
-/// URLs, so the caller's fetched bytes resolve against these boxes), parse it into a
-/// turbo-dom tree (scripting on: turbo-surf rasters the hydrated, JS-enabled DOM, so
-/// `<noscript>` fallbacks stay inert raw text), then replace the parsed inline `<svg>`
+/// Parse the snapshot for layout into a turbo-dom tree (scripting on: turbo-surf rasters
+/// the hydrated, JS-enabled DOM, so `<noscript>` fallbacks stay inert raw text), de-lazy its
+/// `<img>` elements (fill in `src`-less lazy images — data-src/srcset/data-*-url — so their
+/// boxes render; [`image_urls`] returns the same URLs, so the caller's fetched bytes resolve
+/// against these boxes; miaskiewicz/turbo-dom#27: elements, never `<img` text), then replace the parsed inline `<svg>`
 /// elements with `<img>`s whose rasterized SVGs join `decoded` — the engine has no
 /// inline-SVG painter (miaskiewicz/turbo-dom#25: elements of the tree, never `<svg` text).
+/// The document's `<img src="data:…">` images are decoded from their URLs into `decoded`
+/// (miaskiewicz/turbo-dom#27: no caller bytes needed).
 fn parse_document(html: &str, decoded: &mut image_paint::DecodedAssets) -> Tree {
-    let mut tree = parse_html_tree(&style_extract::delazy_images(html));
+    let mut tree = parse_html_tree(html);
+    style_extract::delazy_tree(&mut tree);
+    image_paint::add_img_data_urls(decoded, &tree);
     let inline_svgs = image_paint::inline_svg_to_img(&mut tree);
     image_paint::add_inline_svg_assets(decoded, &inline_svgs);
     tree

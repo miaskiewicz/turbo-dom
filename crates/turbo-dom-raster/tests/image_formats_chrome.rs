@@ -57,9 +57,11 @@ fn decoded_pixels_match_chrome_156() {
             decode_data_url(src).unwrap().bytes,
         );
     }
+    // Taller than the control's 800px viewport: its screenshot is the full page, whose
+    // last rows run past 800px, to 978px (the page has no media/viewport units).
     let viewport = Viewport {
         width: 1280,
-        height: 800,
+        height: 1000,
     };
     let png = screenshot_png_with_opts(html, "", viewport, &assets, false, false).expect("png");
     let pm = tiny_skia::Pixmap::decode_png(&png).expect("decode");
@@ -70,13 +72,40 @@ fn decoded_pixels_match_chrome_156() {
         if OTHER_SIZING.contains(&id) {
             continue;
         }
-        // Without the `avif` feature an AVIF is laid out at its size but not decoded:
-        // the box paints as the light-grey placeholder (class W; the backdrop is T).
-        let want = if id.starts_with("avif") && !cfg!(feature = "avif") {
+        // Without the `avif` feature an AVIF is laid out at its size but not decoded: the
+        // box paints as the light-grey placeholder (class W; the backdrop is T); so is a
+        // JPEG XL without a decoder.
+        let want = if (id.starts_with("avif") && !cfg!(feature = "avif"))
+            || (id.starts_with("jxl") && !cfg!(feature = "jxl"))
+        {
             "WWWW"
         } else {
             case["samples"].as_str().unwrap()
         };
+        // With the `jxl` decoder the (solid black) JPEG XL test images compare their
+        // pixels with Chrome's within a small tolerance.
+        if id.starts_with("jxl") && cfg!(feature = "jxl") {
+            compared += 1;
+            let got: Vec<[u8; 3]> = case["points"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|p| {
+                    let (x, y) = (p[0].as_u64().unwrap() as u32, p[1].as_u64().unwrap() as u32);
+                    let c = pm.pixel(x, y).expect("in bounds");
+                    [c.red(), c.green(), c.blue()]
+                })
+                .collect();
+            let want: Vec<[u8; 3]> = serde_json::from_value(case["rgb"].clone()).unwrap();
+            let near = got
+                .iter()
+                .zip(&want)
+                .all(|(g, w)| g.iter().zip(w).all(|(a, b)| a.abs_diff(*b) <= 8));
+            if !near {
+                failures.push(format!("{id}: {got:?}, Chrome {want:?}"));
+            }
+            continue;
+        }
         let got: String = case["points"]
             .as_array()
             .unwrap()
