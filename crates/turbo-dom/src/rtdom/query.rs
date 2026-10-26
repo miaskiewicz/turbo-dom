@@ -359,13 +359,13 @@ pub enum SelectorError {
     /// A character that cannot start any selector token, e.g. the `!` in `div!p`
     /// (JS: "unexpected '{c}' in selector").
     UnexpectedChar(char),
-    /// A combinator with no compound on its left — a leading (`>`), doubled (`a > > b`),
-    /// or mixed (`a + > b`) combinator (JS: "empty compound"). A *trailing* combinator
-    /// (`a >`) is tolerated, matching the JS parser, which drops it.
+    /// A combinator with no compound on one side — a leading (`>`), doubled (`a > > b`),
+    /// mixed (`a + > b`) or trailing (`a >`) combinator — or an empty list item (`""`,
+    /// `a,,b`) (JS: "empty compound").
     EmptyCompound,
-    /// A selector a stylesheet rejects although the DOM APIs' lenient grammar reads it
-    /// (an unknown or misplaced pseudo, a dangling combinator, …): only
-    /// [`parse_for_cascade`] reports it.
+    /// A selector the lenient grammar reads but Chrome rejects: an unknown or misplaced
+    /// pseudo, a type selector after another simple selector (`[a]div`), a simple selector
+    /// after a pseudo-element (`::before.x`), an invalid `An+B` (`:nth-child(foo)`), …
     Invalid(&'static str),
 }
 
@@ -387,6 +387,9 @@ impl std::error::Error for SelectorError {}
 /// separator, or a `Comma` segment break — plus the two lexical errors a browser rejects
 /// (unterminated `[...]`, an unexpected char). Reuses `scan_balanced` for `[...]`/`(...)`.
 enum StrictTok {
+    /// A type or universal selector (with its namespace prefix): only valid as the first
+    /// simple selector of a compound (`[a]div`, `.x*` are invalid).
+    Type,
     Part,
     Comb,
     Ws,
@@ -435,27 +438,36 @@ fn scan_name(chars: &[char], i: &mut usize, keep: fn(char) -> bool) {
     }
 }
 
-/// Can a type selector (or the name after a namespace bar) start at `chars[i]`?
-fn starts_type(chars: &[char], i: usize) -> bool {
-    chars.get(i).is_some_and(|&c| {
-        is_type_start(c) || !c.is_ascii() || (c == '\\' && valid_escape(chars, i))
-    })
+/// Does a CSS identifier start at `chars[i]` (CSS Syntax "would start an ident")? A letter,
+/// `_`, a non-ASCII code point or a valid escape, or `-` followed by one of those or by a
+/// second `-`. Type, class, id and pseudo names are identifiers (`.1a`, `#-1` are invalid).
+fn starts_ident(chars: &[char], i: usize) -> bool {
+    let name_start = |j: usize| {
+        chars.get(j).is_some_and(|&c| {
+            is_type_start(c) || c == '_' || !c.is_ascii() || (c == '\\' && valid_escape(chars, j))
+        })
+    };
+    name_start(i)
+        || (chars.get(i) == Some(&'-') && (chars.get(i + 1) == Some(&'-') || name_start(i + 1)))
 }
 
-fn is_pseudo_name_char(ch: char) -> bool {
-    is_type_start(ch) || ch == '-'
-}
+/// The CSS2 pseudo-elements that also parse with a single colon (`:before`).
+const LEGACY_PSEUDO_ELEMENT_NAMES: &[&str] = &["after", "before", "first-letter", "first-line"];
 
-/// Strict lex mirroring `selectors.mjs` `tokenize`: same accept set, same two throw
-/// points (unterminated attribute, unexpected char). Unterminated `(...)` is tolerated
-/// (JS tolerates it too — only `[...]` throws). Names follow CSS ident rules (non-ASCII
-/// code points and escapes included), and a type/universal selector may carry the `*|` or
-/// `|` namespace prefix (no other prefix is declared for DOM selector APIs).
+/// Strict lex (the structural half of [`validate_checked`] / [`parse_for_cascade`];
+/// `selectors.mjs` `tokenize` mirrors it): throws on an unterminated attribute, an
+/// unexpected character, a type/class/id/pseudo name that is not a CSS identifier
+/// (`.1a`, `p:`), and a non-pseudo simple selector after a pseudo-element (`::before.x`).
+/// Unterminated `(...)` is tolerated (CSS closes blocks at the end of input). Names follow
+/// CSS ident rules (non-ASCII code points and escapes included), and a type/universal
+/// selector may carry the `*|` or `|` namespace prefix (no other prefix is declared for DOM
+/// selector APIs).
 fn lex_strict(src: &str) -> Result<Vec<StrictTok>, SelectorError> {
     let chars: Vec<char> = src.chars().collect();
     let n = chars.len();
     let mut out = Vec::new();
     let mut i = 0;
+    let mut after_pseudo_element = false;
     while i < n {
         let c = chars[i];
         if c.is_whitespace() {
@@ -469,7 +481,9 @@ fn lex_strict(src: &str) -> Result<Vec<StrictTok>, SelectorError> {
         } else if matches!(c, '>' | '+' | '~') {
             out.push(StrictTok::Comb);
             i += 1;
-        } else if c == '*' || (c == '|' && !matches!(out.last(), Some(StrictTok::Part))) {
+        } else if c == '*'
+            || (c == '|' && !matches!(out.last(), Some(StrictTok::Part | StrictTok::Type)))
+        {
             // universal selector, or a namespace prefix (`*|`, `|`) before a type
             if c == '*' {
                 i += 1;
@@ -477,18 +491,22 @@ fn lex_strict(src: &str) -> Result<Vec<StrictTok>, SelectorError> {
             if chars.get(i) == Some(&'|') {
                 if chars.get(i + 1) == Some(&'*') {
                     i += 2;
-                } else if starts_type(&chars, i + 1) {
+                } else if starts_ident(&chars, i + 1) {
                     i += 1;
                     scan_name(&chars, &mut i, is_name_char);
                 } else {
                     return Err(SelectorError::UnexpectedChar('|'));
                 }
             }
-            out.push(StrictTok::Part);
+            push_part(&mut out, StrictTok::Type, after_pseudo_element)?;
         } else if c == '#' || c == '.' {
+            // an id or class name is an identifier (`#1a`, `.`, `p..x` are invalid)
             i += 1;
+            if !starts_ident(&chars, i) {
+                return Err(SelectorError::UnexpectedChar(c));
+            }
             scan_name(&chars, &mut i, is_name_char);
-            out.push(StrictTok::Part);
+            push_part(&mut out, StrictTok::Part, after_pseudo_element)?;
         } else if c == '[' {
             i += 1; // past '['
             let attribute = scan_balanced(&chars, &mut i, '[', ']');
@@ -499,19 +517,30 @@ fn lex_strict(src: &str) -> Result<Vec<StrictTok>, SelectorError> {
                 return Err(SelectorError::UnexpectedChar('['));
             }
             i += 1; // past ']'
-            out.push(StrictTok::Part);
+            push_part(&mut out, StrictTok::Part, after_pseudo_element)?;
         } else if c == ':' {
             i += 1; // past ':'
+            let double = chars.get(i) == Some(&':');
+            if double {
+                i += 1;
+            }
+            // a pseudo-class or pseudo-element name is an identifier (`p:`, `::` invalid)
+            if !starts_ident(&chars, i) {
+                return Err(SelectorError::UnexpectedChar(':'));
+            }
             let name_start = i;
-            scan_name(&chars, &mut i, is_pseudo_name_char);
-            let selector_list = matches!(
-                chars[name_start..i]
-                    .iter()
-                    .collect::<String>()
-                    .to_ascii_lowercase()
-                    .as_str(),
-                "not" | "has"
-            );
+            scan_name(&chars, &mut i, is_name_char);
+            let lower = chars[name_start..i]
+                .iter()
+                .collect::<String>()
+                .to_ascii_lowercase();
+            // only pseudo-classes may follow a pseudo-element (which ones: parse_for_cascade)
+            if double
+                || (!after_pseudo_element && LEGACY_PSEUDO_ELEMENT_NAMES.contains(&lower.as_str()))
+            {
+                after_pseudo_element = true;
+            }
+            let selector_list = matches!(lower.as_str(), "not" | "has");
             let state = chars[name_start..i]
                 .iter()
                 .map(char::to_ascii_lowercase)
@@ -536,46 +565,81 @@ fn lex_strict(src: &str) -> Result<Vec<StrictTok>, SelectorError> {
                 return Err(SelectorError::UnexpectedChar(':'));
             }
             out.push(StrictTok::Part);
-        } else if starts_type(&chars, i) {
-            if c == '\\' {
-                i = escape_end(&chars, i);
-            } else {
-                i += 1;
-            }
+        } else if starts_ident(&chars, i) {
             scan_name(&chars, &mut i, is_name_char);
             // `svg|rect`: an undeclared namespace prefix (Chrome: SyntaxError)
-            out.push(StrictTok::Part);
+            push_part(&mut out, StrictTok::Type, after_pseudo_element)?;
         } else {
             return Err(SelectorError::UnexpectedChar(c));
+        }
+        if matches!(
+            out.last(),
+            Some(StrictTok::Ws | StrictTok::Comb | StrictTok::Comma)
+        ) {
+            after_pseudo_element = false;
         }
     }
     Ok(out)
 }
 
-/// Validate a selector list the way the JS runtime does: a combinator must have a
-/// non-empty compound on its LEFT (else "empty compound"), across every top-level
-/// comma segment. Empty segments (`''`, `,`, `a,,b`'s middle) are fine — they're
-/// dropped, not rejected — and a trailing combinator is tolerated. `Ok(())` means the
-/// infallible matcher will interpret the selector exactly as a browser would.
+/// Push a non-pseudo simple selector, rejecting one that follows a pseudo-element in the
+/// same compound (`::before.x`, `::-webkit-scrollbar[a]`).
+fn push_part(
+    out: &mut Vec<StrictTok>,
+    tok: StrictTok,
+    after_pseudo_element: bool,
+) -> Result<(), SelectorError> {
+    if after_pseudo_element {
+        return Err(SelectorError::Invalid(
+            "simple selector after a pseudo-element",
+        ));
+    }
+    out.push(tok);
+    Ok(())
+}
+
+/// Structural validation of a selector list: a combinator must have a non-empty compound
+/// on its LEFT (else "empty compound"), across every top-level comma segment, and a type
+/// selector must be the first simple selector of its compound (`[a]div`). Empty segments
+/// and a trailing combinator pass here; [`parse_for_cascade`] (which calls this per item)
+/// rejects them, as Chrome does.
 fn validate_selector_list(src: &str) -> Result<(), SelectorError> {
     let toks = lex_strict(src)?;
     // `matched` = the compound currently being built has at least one part. A comma
     // starts a fresh segment (reset); whitespace is a transparent separator.
     let mut matched = false;
+    // `compound` = the current compound has a part not separated from the next by
+    // whitespace (a type selector must come first).
+    let mut compound = false;
     for t in &toks {
         match t {
-            StrictTok::Comma => matched = false,
-            StrictTok::Ws => {}
+            StrictTok::Comma => (matched, compound) = (false, false),
+            StrictTok::Ws => compound = false,
             StrictTok::Comb => {
                 if !matched {
                     return Err(SelectorError::EmptyCompound);
                 }
-                matched = false; // a compound must follow (trailing combinator: tolerated)
+                // a compound must follow (a trailing combinator is the stylesheet layer's
+                // concern: `parse_for_cascade` rejects it)
+                (matched, compound) = (false, false);
             }
-            StrictTok::Part => matched = true,
+            StrictTok::Type if compound => {
+                return Err(SelectorError::Invalid(
+                    "type selector after another simple selector",
+                ));
+            }
+            StrictTok::Type | StrictTok::Part => (matched, compound) = (true, true),
         }
     }
     Ok(())
+}
+
+/// The `_checked` validity: exactly the selector lists Chrome's `querySelector` accepts,
+/// which is the stylesheet grammar of [`parse_for_cascade`] (pseudo-elements parse and
+/// match nothing; empty items, a trailing combinator and unknown pseudos are
+/// `SyntaxError`s).
+fn validate_checked(src: &str) -> Result<(), SelectorError> {
+    parse_for_cascade(src).map(|_| ())
 }
 
 /// Scan from just past an opening `open` to its matching `close`, honoring quotes
@@ -839,6 +903,22 @@ fn parse_pseudo(name: &str, arg: Option<&str>) -> Pseudo {
             .and_then(|value| units::state_argument(&value.encode_utf16().collect::<Vec<_>>()))
             .map_or_else(|| Pseudo::unknown(name, arg), Pseudo::State);
     }
+    // arity: a functional pseudo needs its argument, a plain one must not have one (both
+    // are SyntaxErrors in Chrome; the lenient path never matches them)
+    let functional = matches!(
+        name,
+        "nth-child"
+            | "nth-last-child"
+            | "nth-of-type"
+            | "nth-last-of-type"
+            | "is"
+            | "where"
+            | "not"
+            | "has"
+    );
+    if functional != arg.is_some() {
+        return Pseudo::unknown(name, arg);
+    }
     match name {
         "first-child" => Pseudo::FirstChild,
         "last-child" => Pseudo::LastChild,
@@ -861,6 +941,9 @@ fn parse_pseudo(name: &str, arg: Option<&str>) -> Pseudo {
             let arg = arg.unwrap_or("");
             let last = name == "nth-last-child";
             if let Some((anb, of)) = split_nth_of(arg) {
+                if !valid_anb(anb) {
+                    return Pseudo::unknown(name, Some(arg));
+                }
                 let (a, b) = parse_nth(anb);
                 let of = parse_selector_list_str(of);
                 if last {
@@ -869,6 +952,9 @@ fn parse_pseudo(name: &str, arg: Option<&str>) -> Pseudo {
                     Pseudo::NthChildOf(a, b, of)
                 }
             } else {
+                if !valid_anb(arg) {
+                    return Pseudo::unknown(name, Some(arg));
+                }
                 let (a, b) = parse_nth(arg);
                 if last {
                     Pseudo::NthLastChild(a, b)
@@ -877,13 +963,17 @@ fn parse_pseudo(name: &str, arg: Option<&str>) -> Pseudo {
                 }
             }
         }
-        "nth-of-type" => {
-            let (a, b) = parse_nth(arg.unwrap_or(""));
-            Pseudo::NthOfType(a, b)
-        }
-        "nth-last-of-type" => {
-            let (a, b) = parse_nth(arg.unwrap_or(""));
-            Pseudo::NthLastOfType(a, b)
+        "nth-of-type" | "nth-last-of-type" => {
+            let arg = arg.unwrap_or("");
+            if !valid_anb(arg) {
+                return Pseudo::unknown(name, Some(arg));
+            }
+            let (a, b) = parse_nth(arg);
+            if name == "nth-of-type" {
+                Pseudo::NthOfType(a, b)
+            } else {
+                Pseudo::NthLastOfType(a, b)
+            }
         }
         "is" => Pseudo::Is(parse_selector_list_str(arg.unwrap_or(""))),
         "where" => Pseudo::Where(parse_selector_list_str(arg.unwrap_or(""))),
@@ -920,6 +1010,53 @@ fn nth_of_position<T: Copy + Into<u32>>(units: &[T]) -> Option<usize> {
 fn split_nth_of(arg: &str) -> Option<(&str, &str)> {
     let bytes = arg.as_bytes();
     nth_of_position(bytes).map(|at| (&arg[..at], &arg[at + 2..]))
+}
+
+/// Is `arg` a valid `<an+b>` (CSS Syntax 3 §6): `odd`, `even`, an integer, or `An+B` with
+/// the sign glued to its number or `n` (`2n + 1`, `2n- 1`, `-n+3`, `+5`), ASCII
+/// case-insensitive, surrounded by optional whitespace. `foo`, `2n+`, `+ 2n`, `2 n` and
+/// `2.5n` are not (Chrome: `SyntaxError`).
+fn valid_anb(arg: &str) -> bool {
+    let space = |b: u8| matches!(b, b' ' | b'\t' | b'\n' | b'\r' | 0x0c);
+    let s = arg
+        .trim_matches(|c: char| c.is_ascii() && space(c as u8))
+        .to_ascii_lowercase();
+    if s == "odd" || s == "even" {
+        return true;
+    }
+    let b = s.as_bytes();
+    let mut i = usize::from(matches!(b.first(), Some(b'+' | b'-')));
+    let digits = |i: &mut usize| {
+        let start = *i;
+        while b.get(*i).is_some_and(u8::is_ascii_digit) {
+            *i += 1;
+        }
+        *i > start
+    };
+    let coefficient = digits(&mut i);
+    if b.get(i) != Some(&b'n') {
+        return coefficient && i == b.len();
+    }
+    i += 1;
+    let skip = |i: &mut usize| {
+        while b.get(*i).copied().is_some_and(space) {
+            *i += 1;
+        }
+    };
+    skip(&mut i);
+    if i == b.len() {
+        return true;
+    }
+    if !matches!(b[i], b'+' | b'-') {
+        return false;
+    }
+    i += 1;
+    skip(&mut i);
+    if !digits(&mut i) {
+        return false;
+    }
+    skip(&mut i);
+    i == b.len()
 }
 
 /// Parse an `An+B` / `odd` / `even` / integer argument into `(a, b)` coefficients
@@ -1796,21 +1933,23 @@ impl Tree {
     }
 
     /// Strict (`_checked`) variants: validate the selector first and return
-    /// `Err(SelectorError)` for input a browser would reject (a `SyntaxError` in the JS
-    /// runtime), instead of the lenient "do my best / return nothing" of the infallible
-    /// methods above. This is the opt-in parity path for consumers that want a typo'd or
+    /// `Err(SelectorError)` for exactly the input Chrome 156's `querySelector` rejects with a
+    /// `SyntaxError` (the stylesheet grammar of [`parse_for_cascade`]; P5b,
+    /// miaskiewicz/turbo-dom#18), instead of the lenient "do my best / return nothing" of the
+    /// infallible methods above. This is the opt-in parity path for consumers that want a typo'd or
     /// user-supplied selector to fail loudly rather than silently match nothing. On a
     /// valid selector they delegate to the (cached) lenient method — no extra matching
     /// cost beyond the one validation pass.
     ///
     /// # Errors
-    /// Returns [`SelectorError`] when `selector` is malformed (unterminated `[...]`,
-    /// an unexpected character, or a combinator with no compound on its left).
+    /// Returns [`SelectorError`] when `selector` is malformed (unterminated `[...]`, an
+    /// unexpected character, a dangling combinator or empty item, or a selector Chrome
+    /// rejects: [`SelectorError::Invalid`]).
     pub fn query_selector_all_checked(
         &self,
         selector: &str,
     ) -> Result<std::rc::Rc<[Handle]>, SelectorError> {
-        validate_selector_list(selector)?;
+        validate_checked(selector)?;
         Ok(self.query_selector_all(selector))
     }
 
@@ -1819,7 +1958,7 @@ impl Tree {
     /// # Errors
     /// Returns [`SelectorError`] when `selector` is malformed.
     pub fn query_selector_checked(&self, selector: &str) -> Result<Option<Handle>, SelectorError> {
-        validate_selector_list(selector)?;
+        validate_checked(selector)?;
         Ok(self.query_selector(selector))
     }
 
@@ -1828,7 +1967,7 @@ impl Tree {
     /// # Errors
     /// Returns [`SelectorError`] when `selector` is malformed.
     pub fn matches_checked(&self, h: Handle, selector: &str) -> Result<bool, SelectorError> {
-        validate_selector_list(selector)?;
+        validate_checked(selector)?;
         Ok(self.matches(h, selector))
     }
 
@@ -2080,13 +2219,22 @@ mod tests {
         let f = el(&tree, "f");
         tree.set_form_property(f, FormProp::Disabled, true);
         assert!(tree.matches(el(&tree, "b"), ":disabled"));
-        assert!(tree.matches(el(&tree, "a"), ":enabled"), "inside the first legend");
+        assert!(
+            tree.matches(el(&tree, "a"), ":enabled"),
+            "inside the first legend"
+        );
         assert!(tree.matches(f, ":disabled"));
         let (s, o) = (el(&tree, "s"), el(&tree, "o"));
         assert!(tree.matches(o, ":enabled"));
         tree.set_form_property(s, FormProp::Disabled, true);
-        assert!(tree.matches(o, ":disabled"), "owner select through an optgroup");
-        assert!(!tree.matches(el(&tree, "g"), ":disabled"), "optgroup: own state only");
+        assert!(
+            tree.matches(o, ":disabled"),
+            "owner select through an optgroup"
+        );
+        assert!(
+            !tree.matches(el(&tree, "g"), ":disabled"),
+            "optgroup: own state only"
+        );
         let d = el(&tree, "d");
         assert!(!tree.matches(d, ":disabled") && !tree.matches(d, ":enabled"));
     }
@@ -2720,13 +2868,65 @@ mod tests {
         );
         assert!(tree.query_selector_checked("[href").is_err());
         assert!(tree.matches_checked(s, ">").is_err());
-        // empties / commas are NOT errors (dropped, exactly like the JS parser)
-        assert!(tree.query_selector_all_checked("").is_ok());
-        assert!(tree.query_selector_all_checked(",").is_ok());
-        // empty middle segment dropped; `span` still matches the one span
-        assert_eq!(tree.query_selector_all_checked("a,,span").unwrap().len(), 1);
-        // a TRAILING combinator is tolerated (matches JS, which drops it)
-        assert!(tree.query_selector_all_checked("span >").is_ok());
+        // P5b (turbo-dom#18): Chrome 156 throws on empty lists and items and on a trailing
+        // combinator (the lenient path still drops them)
+        for bad in ["", " ", ",", "a,,span", "span >", "p,"] {
+            assert!(tree.query_selector_all_checked(bad).is_err(), "{bad:?}");
+        }
+        assert_eq!(tree.query_selector_all("a,,span").len(), 1);
+        assert_eq!(tree.query_selector_all("span >").len(), 1);
+        // ... a type selector after another simple selector, a non-identifier name, a
+        // simple selector after a pseudo-element, a bad An+B, a wrong pseudo arity
+        assert_eq!(
+            tree.query_selector_all_checked("[a]div"),
+            Err(SelectorError::Invalid(
+                "type selector after another simple selector"
+            ))
+        );
+        assert_eq!(
+            tree.query_selector_all_checked("::before.x"),
+            Err(SelectorError::Invalid(
+                "simple selector after a pseudo-element"
+            ))
+        );
+        for (bad, c) in [
+            ("#1a", '#'),
+            (".1a", '.'),
+            (".-1", '.'),
+            ("p..x", '.'),
+            ("p:", ':'),
+            ("::", ':'),
+        ] {
+            assert_eq!(
+                tree.query_selector_all_checked(bad),
+                Err(SelectorError::UnexpectedChar(c)),
+                "{bad}"
+            );
+        }
+        for bad in [
+            "p:nth-child(foo)",
+            ":nth-child",
+            ":nth-of-type(1 of p)",
+            ":first-child(1)",
+            ":is",
+            ":bogus",
+            "option:selected",
+            "a\\:b:hover:x",
+        ] {
+            assert!(tree.query_selector_all_checked(bad).is_err(), "{bad}");
+        }
+        for ok in [
+            ".--a",
+            "#-a",
+            "_p",
+            "-p",
+            "\\31 23",
+            ":nth-child(2n - 1)",
+            "::before",
+            "P:FIRST-CHILD",
+        ] {
+            assert!(tree.query_selector_all_checked(ok).is_ok(), "{ok}");
+        }
         // Display renders a human message
         assert_eq!(
             SelectorError::UnexpectedChar('!').to_string(),
@@ -2740,6 +2940,31 @@ mod tests {
             SelectorError::UnterminatedAttribute.to_string(),
             "unterminated attribute selector"
         );
+    }
+
+    /// `<an+b>` grammar edges (CSS Syntax 3 §6; Chrome 156 cases in the malformed control).
+    #[test]
+    fn an_plus_b_validity() {
+        for ok in [
+            "odd", " EVEN ", "5", "+5", "-5", "n", "+n", "-n", "2n", "2N+1", "2n + 1", "2n- 1",
+            "2n -1", " -n+3 ", "-2n+ 0", "\t3n\n",
+        ] {
+            assert!(super::valid_anb(ok), "{ok:?}");
+        }
+        for bad in [
+            "", " ", "foo", "+", "-", "n-", "2n+", "+ 2n", "- n+1", "2 n", "2.5n", "1 of", "2n+-1",
+            "2n + +1", "n1", "2n 1", "--n", "1e1",
+        ] {
+            assert!(!super::valid_anb(bad), "{bad:?}");
+        }
+        // the lenient path never matches an invalid argument (it used to read `(0, 0)`)
+        let tree = Tree::parse("<p>a</p><p>b</p>");
+        assert_eq!(tree.query_selector_all("p:nth-child(foo)").len(), 0);
+        assert_eq!(tree.query_selector_all("p:nth-of-type(1 of p)").len(), 0);
+        assert_eq!(tree.query_selector_all("p:first-child(1)").len(), 0);
+        assert_eq!(tree.query_selector_all("p:nth-last-child(n)").len(), 2);
+        let units: Vec<u16> = ":nth-child(2n+ of p)".encode_utf16().collect();
+        assert_eq!(tree.query_selector_all_units(&units).len(), 0);
     }
 
     #[test]

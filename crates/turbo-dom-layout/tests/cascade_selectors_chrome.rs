@@ -23,14 +23,7 @@ use turbo_dom_layout::{parse_html_tree, style_html_tree, HtmlOptions, StyledNode
 
 /// P5b items not fixed yet (miaskiewicz/turbo-dom#18, #21): skipped until their fixing
 /// commit removes them here.
-const OPEN: &[&str] = &[
-    "lang",
-    "dir",
-    "defined",
-    "template",
-    "malformed",
-    "cascade-comma",
-];
+const OPEN: &[&str] = &["lang", "dir", "defined", "template", "cascade-comma"];
 
 fn fixture() -> Value {
     let path = concat!(

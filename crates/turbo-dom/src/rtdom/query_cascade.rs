@@ -174,8 +174,8 @@ const FUNCTIONAL_PSEUDO_ELEMENTS: &[&str] = &[
     "view-transition-new",
     "view-transition-old",
 ];
-/// Pseudo-classes Chrome allows after a pseudo-element (user action, and the scrollbar
-/// pseudo-element states). Such a selector never matches an element anyway.
+/// Pseudo-classes Chrome allows after a `::-webkit-*` (scrollbar) pseudo-element: user
+/// action and the scrollbar states. Such a selector never matches an element anyway.
 const AFTER_PSEUDO_ELEMENT: &[&str] = &[
     "active",
     "corner-present",
@@ -197,12 +197,46 @@ const AFTER_PSEUDO_ELEMENT: &[&str] = &[
     "window-inactive",
 ];
 
-fn allowed_after_pseudo_element(p: &Pseudo) -> bool {
-    match p {
-        Pseudo::Unknown(u) => {
-            u.arg.is_none() && AFTER_PSEUDO_ELEMENT.contains(&u.name.to_ascii_lowercase().as_str())
+/// User-action pseudo-classes: what Chrome 156 allows after an element-backed
+/// pseudo-element (`::file-selector-button:hover`, `::details-content:focus`).
+const USER_ACTION: &[&str] = &["active", "focus", "focus-visible", "focus-within", "hover"];
+/// Pseudo-elements backed by a real element (user-action pseudo-classes may follow).
+const ELEMENT_BACKED: &[&str] = &[
+    "details-content",
+    "file-selector-button",
+    "picker",
+    "scroll-button",
+    "scroll-marker",
+    "scroll-marker-group",
+];
+
+/// May pseudo-class `p` follow pseudo-element `element` (lowercase name)? Chrome 156: the
+/// scrollbar pseudo-elements take their states, `::selection` only `:window-inactive`,
+/// `::part()` any non-structural pseudo-class, element-backed ones user action, and the
+/// rest (`::before`, `::marker`, `::placeholder`, `::slotted()`, …) nothing.
+fn allowed_after_pseudo_element(element: &str, p: &Pseudo) -> bool {
+    let plain = |list: &[&str]| matches!(p, Pseudo::Unknown(u) if u.arg.is_none() && list.contains(&u.name.to_ascii_lowercase().as_str()));
+    if element.starts_with("-webkit-") {
+        return plain(AFTER_PSEUDO_ELEMENT) || matches!(p, Pseudo::Disabled | Pseudo::Enabled);
+    }
+    match element {
+        "selection" => plain(&["window-inactive"]),
+        "part" => {
+            plain(NEVER_PSEUDO_CLASSES)
+                || matches!(
+                    p,
+                    Pseudo::Checked
+                        | Pseudo::Disabled
+                        | Pseudo::Enabled
+                        | Pseudo::Required
+                        | Pseudo::Optional
+                        | Pseudo::ReadOnly
+                        | Pseudo::ReadWrite
+                        | Pseudo::Link
+                        | Pseudo::State(_)
+                )
         }
-        Pseudo::Disabled | Pseudo::Enabled => true,
+        _ if ELEMENT_BACKED.contains(&element) => plain(USER_ACTION),
         _ => false,
     }
 }
@@ -357,20 +391,23 @@ fn take_pseudo_element(compound: &mut Compound) -> Result<Option<PseudoElement>,
     let Pseudo::Unknown(UnknownPseudo { name, arg }) = marker else {
         unreachable!("is_pseudo_element_marker only accepts Unknown");
     };
-    let element = if name.is_empty() {
+    let (element, element_name) = if name.is_empty() {
         // `::name`: the name is the next pseudo the tokenizer produced
         match (at < compound.pseudos.len()).then(|| compound.pseudos.remove(at)) {
-            Some(Pseudo::Unknown(UnknownPseudo { name, arg })) => pseudo_element(&name, arg)?,
+            Some(Pseudo::Unknown(UnknownPseudo { name, arg })) => {
+                (pseudo_element(&name, arg)?, name.to_ascii_lowercase())
+            }
             _ => return Err(invalid("unknown pseudo-element")),
         }
     } else if arg.is_some() {
         return Err(invalid("legacy pseudo-element with an argument"));
     } else {
-        PseudoElement::Inert(name.to_ascii_lowercase())
+        let lower = name.to_ascii_lowercase();
+        (PseudoElement::Inert(lower.clone()), lower)
     };
     if !compound.pseudos[at..]
         .iter()
-        .all(allowed_after_pseudo_element)
+        .all(|p| allowed_after_pseudo_element(&element_name, p))
     {
         return Err(invalid("pseudo-class after a pseudo-element"));
     }

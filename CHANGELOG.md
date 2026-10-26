@@ -21,6 +21,18 @@ outputs it changes in `tools/parity/expected/p5b-*.json`.
   `option` follows its `optgroup` and owner `select`, and only `button`, `input`,
   `select`, `textarea`, `fieldset`, `optgroup` and `option` match either (`div[disabled]`
   is neither).
+- Malformed selectors (miaskiewicz/turbo-dom#18): `query_selector_all_checked` /
+  `query_selector_checked` / `matches_checked` accept exactly what Chrome's
+  `querySelector` accepts (the `parse_for_cascade` grammar). Newly rejected, as in Chrome:
+  a type selector after another simple selector (`[a]div`, `.x*`), a non-identifier name
+  (`#1a`, `.1a`, `p:`), a simple selector after a pseudo-element (`::before.x`), an invalid
+  `An+B` (`p:nth-child(foo)`, `:nth-of-type(1 of p)`), a plain pseudo-class with an
+  argument (`:first-child(1)`) or a functional one without, unknown pseudos, `:selected`,
+  empty lists/items and a trailing combinator (`""`, `a,,b`, `p >`). Stylesheets
+  (`parse_for_cascade`) drop the same rules, and a pseudo-class after a pseudo-element is
+  allowed only where Chrome allows it (`::-webkit-scrollbar:hover`, `::part(x):hover`,
+  `::selection:window-inactive`; not `::before:hover`). The lenient APIs never match an
+  invalid nth argument or wrong-arity pseudo.
 
 ## [0.6.0] — turbo-dom consolidation
 

@@ -1,8 +1,8 @@
 //! Parse original DOM string units into native selector records. Identifiers use
 //! CSS replacement rules; raw quoted attribute strings preserve their units.
 use super::{
-    nth_of_position, parse_nth, parse_pseudo, Attr, AttrMatch, Combinator, Complex, Compound,
-    Handle, NodeType, Pseudo, RelativeSelector, Tree, TypeNamespace,
+    nth_of_position, parse_nth, parse_pseudo, valid_anb, Attr, AttrMatch, Combinator, Complex,
+    Compound, Handle, NodeType, Pseudo, RelativeSelector, Tree, TypeNamespace,
 };
 #[derive(Debug, Clone)]
 pub(super) struct UnitAttrMatch {
@@ -418,7 +418,11 @@ fn pseudo(name: &str, arg: Option<&[u16]>) -> Pseudo {
         // `An+B of S`: S keeps its original units (escapes decoded by `list`).
         "nth-child" | "nth-last-child" if nth_of_position(arg).is_some() => {
             let at = nth_of_position(arg).unwrap_or_default();
-            let (a, b) = parse_nth(&String::from_utf16_lossy(&arg[..at]));
+            let anb = String::from_utf16_lossy(&arg[..at]);
+            if !valid_anb(&anb) {
+                return Pseudo::unknown(name, Some(&String::from_utf16_lossy(arg)));
+            }
+            let (a, b) = parse_nth(&anb);
             let of = list(&arg[at + 2..]);
             if name == "nth-child" {
                 Pseudo::NthChildOf(a, b, of)
