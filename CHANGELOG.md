@@ -54,6 +54,12 @@ outputs it changes in `tools/parity/expected/p5b-*.json`.
   value; `bdi`, `script`, `style`, `textarea` and elements with a valid `dir` skipped),
   `input type=tel` `ltr`, otherwise the parent's (shadow content: the host's). One
   identifier argument; `:dir(auto)` / `:dir(foo)` are valid and never match.
+- `<template>` content (miaskiewicz/turbo-dom#18): `query_selector_all` / `query_selector`
+  (string and UTF-16), `get_element_by_id(_units)`, `get_elements_by_tag_name` and `:has()`
+  no longer descend into a template's content fragment, and content nodes no longer match
+  across it (`template p` is false for a `<p>` in the content), as in Chrome. Querying from
+  the content fragment itself still finds its nodes. Consequence: a `<style>` inside
+  template content no longer styles the document in `rtdom::cascade`.
 
 ## [0.6.0] — turbo-dom consolidation
 

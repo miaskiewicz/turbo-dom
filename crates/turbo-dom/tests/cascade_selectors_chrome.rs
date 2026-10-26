@@ -55,24 +55,9 @@ fn bits(s: &Value) -> Vec<bool> {
     s.as_str().unwrap().chars().map(|c| c == '1').collect()
 }
 
-/// Known gap (left open in miaskiewicz/turbo-dom#18): `querySelectorAll` descends into
-/// `<template>` content, which Chrome keeps in a separate fragment. Such hits are dropped
-/// here so the control asserts everything else.
-fn in_template_content(tree: &Tree, h: Handle) -> bool {
-    let mut node = tree.parent(h);
-    while let Some(n) = node {
-        if tree.node_type(n) == NodeType::Fragment {
-            return true;
-        }
-        node = tree.parent(n);
-    }
-    false
-}
-
-fn indices(tree: &Tree, tree_elements: &[Handle], found: &[Handle]) -> Vec<i64> {
+fn indices(tree_elements: &[Handle], found: &[Handle]) -> Vec<i64> {
     found
         .iter()
-        .filter(|&&h| !in_template_content(tree, h))
         .map(|h| {
             tree_elements
                 .iter()
@@ -109,25 +94,23 @@ fn check_queries(
         .iter()
         .map(|v| v.as_i64().unwrap())
         .collect();
-    let qsa = indices(tree, els, &tree.query_selector_all(sel));
+    let qsa = indices(els, &tree.query_selector_all(sel));
     if qsa != want_qsa {
         fail(format!("query_selector_all {qsa:?}, Chrome {want_qsa:?}"));
     }
-    let qsa_units = indices(tree, els, &tree.query_selector_all_units(&units));
+    let qsa_units = indices(els, &tree.query_selector_all_units(&units));
     if qsa_units != want_qsa {
         fail(format!(
             "query_selector_all_units {qsa_units:?}, Chrome {want_qsa:?}"
         ));
     }
-    let first = tree
-        .query_selector(sel)
-        .map(|h| indices(tree, els, &[h])[0]);
+    let first = tree.query_selector(sel).map(|h| indices(els, &[h])[0]);
     if first != want_qsa.first().copied() {
         fail(format!("query_selector {first:?}"));
     }
     let first_units = tree
         .query_selector_units(&units)
-        .map(|h| indices(tree, els, &[h])[0]);
+        .map(|h| indices(els, &[h])[0]);
     if first_units != want_qsa.first().copied() {
         fail(format!("query_selector_units {first_units:?}"));
     }

@@ -588,7 +588,8 @@ impl Tree {
     ) -> std::rc::Rc<[Handle]> {
         let selectors = list(source);
         let mut result = Vec::new();
-        let mut stack = self.children(root);
+        let mut stack = Vec::new();
+        self.for_each_light_child(root, |child| stack.push(child));
         stack.reverse();
         while let Some(node) = stack.pop() {
             if self.node_type(node) == NodeType::Element
@@ -599,7 +600,7 @@ impl Tree {
                 result.push(node);
             }
             let begin = stack.len();
-            self.for_each_child(node, |child| stack.push(child));
+            self.for_each_light_child(node, |child| stack.push(child));
             stack[begin..].reverse();
         }
         result.into()
@@ -621,7 +622,7 @@ impl Tree {
                 return Some(node);
             }
             let begin = stack.len();
-            self.for_each_child(node, |child| stack.push(child));
+            self.for_each_light_child(node, |child| stack.push(child));
             stack[begin..].reverse();
         }
         None

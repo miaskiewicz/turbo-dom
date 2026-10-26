@@ -1319,7 +1319,12 @@ impl Navigator for LiveNavigator<'_> {
     fn tree(&self) -> &Tree {
         self.0
     }
+    // a template content fragment has no parent in the DOM (its nodes never match
+    // `template p`)
     fn parent(&self, h: Handle) -> Option<Handle> {
+        if self.0.node_type(h) == NodeType::Fragment {
+            return None;
+        }
         self.0.parent(h)
     }
     fn previous_element_sibling(&self, h: Handle) -> Option<Handle> {
@@ -1368,6 +1373,18 @@ impl Navigator for LiveNavigator<'_> {
 }
 
 impl Tree {
+    /// Visit `h`'s children as selectors see them: a `<template>`'s content fragment (a
+    /// fragment child in this tree) is a separate document fragment in the DOM — never a
+    /// child, so `querySelectorAll`, `getElementById`, `getElementsByTagName` and `:has()`
+    /// do not descend into it (Chrome; P5b, miaskiewicz/turbo-dom#18).
+    pub(crate) fn for_each_light_child(&self, h: Handle, mut f: impl FnMut(Handle)) {
+        self.for_each_child(h, |c| {
+            if self.node_type(c) != NodeType::Fragment {
+                f(c);
+            }
+        });
+    }
+
     /// The immediately-preceding ELEMENT sibling of `h` (walking `previous_sibling`
     /// and skipping text/comment nodes). Mirrors selectors.mjs `previousElement`.
     /// The single source of the element-skipping sibling walk (`node_ref.rs` wraps it).
@@ -1939,7 +1956,7 @@ impl Tree {
             // push children alloc-free, then reverse the just-added segment so they
             // pop in document order (a `Vec`-free equivalent of `children().rev()`).
             let base = stack.len();
-            self.for_each_child(h, |c| stack.push(c));
+            self.for_each_light_child(h, |c| stack.push(c));
             stack[base..].reverse();
         }
         for h in order {
@@ -2034,7 +2051,7 @@ impl Tree {
                 break;
             }
             let base = stack.len();
-            self.for_each_child(h, |c| stack.push(c));
+            self.for_each_light_child(h, |c| stack.push(c));
             stack[base..].reverse();
         }
         {
@@ -2052,7 +2069,7 @@ impl Tree {
         while let Some(h) = stack.pop() {
             order.push(h);
             let base = stack.len();
-            self.for_each_child(h, |c| stack.push(c));
+            self.for_each_light_child(h, |c| stack.push(c));
             stack[base..].reverse();
         }
         for h in order {
