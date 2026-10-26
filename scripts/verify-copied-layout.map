@@ -1,0 +1,70 @@
+# scripts/verify-copied-layout.sh mapping: <mode> <repo>:<source> <destination>
+# --- turbo-html2pdf @ e2d7c4d: the layout half of turbo-html2pdf-core
+verbatim h2p:crates/turbo-html2pdf-core/src/node.rs crates/turbo-dom-layout/src/node.rs
+verbatim h2p:crates/turbo-html2pdf-core/src/error.rs crates/turbo-dom-layout/src/error.rs
+verbatim h2p:crates/turbo-html2pdf-core/src/html_layout.rs crates/turbo-dom-layout/src/html_layout.rs
+verbatim h2p:crates/turbo-html2pdf-core/src/image.rs crates/turbo-dom-layout/src/image.rs
+verbatim h2p:crates/turbo-html2pdf-core/src/svg.rs crates/turbo-dom-layout/src/svg.rs
+verbatim h2p:crates/turbo-html2pdf-core/src/perf.rs crates/turbo-dom-layout/src/perf.rs
+verbatim h2p:crates/turbo-html2pdf-core/src/layout_snapshot.rs crates/turbo-dom-layout/src/layout_snapshot.rs
+verbatim h2p:crates/turbo-html2pdf-core/src/style crates/turbo-dom-layout/src/style
+verbatim h2p:crates/turbo-html2pdf-core/src/layout crates/turbo-dom-layout/src/layout
+verbatim h2p:crates/turbo-html2pdf-core/src/text crates/turbo-dom-layout/src/text
+verbatim h2p:crates/turbo-html2pdf-core/src/layout_snapshot crates/turbo-dom-layout/src/layout_snapshot
+verbatim h2p:crates/turbo-html2pdf-core/src/template/markup.rs crates/turbo-dom-layout/src/markup.rs
+subseq   h2p:crates/turbo-html2pdf-core/src/emit/tounicode.rs crates/turbo-dom-layout/src/cmap.rs   # reverse_cmap split out
+verbatim h2p:crates/turbo-html2pdf-core/assets/fonts crates/turbo-dom-layout/assets/fonts
+verbatim h2p:crates/turbo-html2pdf-core/tests/common crates/turbo-dom-layout/tests/common
+verbatim h2p:crates/turbo-html2pdf-core/tests/complex_layout_harness.rs crates/turbo-dom-layout/tests/complex_layout_harness.rs
+verbatim h2p:crates/turbo-html2pdf-core/tests/hackernews_layout_harness.rs crates/turbo-dom-layout/tests/hackernews_layout_harness.rs
+verbatim h2p:crates/turbo-html2pdf-core/tests/layout_grid.rs crates/turbo-dom-layout/tests/layout_grid.rs
+verbatim h2p:crates/turbo-html2pdf-core/tests/layout_inline.rs crates/turbo-dom-layout/tests/layout_inline.rs
+verbatim h2p:crates/turbo-html2pdf-core/tests/layout_position.rs crates/turbo-dom-layout/tests/layout_position.rs
+verbatim h2p:crates/turbo-html2pdf-core/tests/layout_table.rs crates/turbo-dom-layout/tests/layout_table.rs
+verbatim h2p:crates/turbo-html2pdf-core/tests/layout_value.rs crates/turbo-dom-layout/tests/layout_value.rs
+verbatim h2p:crates/turbo-html2pdf-core/tests/native_block_inline.rs crates/turbo-dom-layout/tests/native_block_inline.rs
+verbatim h2p:crates/turbo-html2pdf-core/tests/native_font_run_advances.rs crates/turbo-dom-layout/tests/native_font_run_advances.rs
+verbatim h2p:crates/turbo-html2pdf-core/tests/native_iframe_sizing.rs crates/turbo-dom-layout/tests/native_iframe_sizing.rs
+verbatim h2p:crates/turbo-html2pdf-core/tests/native_inline_borders.rs crates/turbo-dom-layout/tests/native_inline_borders.rs
+verbatim h2p:crates/turbo-html2pdf-core/tests/native_inline_spacing_coverage.rs crates/turbo-dom-layout/tests/native_inline_spacing_coverage.rs
+verbatim h2p:crates/turbo-html2pdf-core/tests/native_range_transform_stages.rs crates/turbo-dom-layout/tests/native_range_transform_stages.rs
+verbatim h2p:crates/turbo-html2pdf-core/tests/native_serif_policy.rs crates/turbo-dom-layout/tests/native_serif_policy.rs
+verbatim h2p:crates/turbo-html2pdf-core/tests/original_text_units.rs crates/turbo-dom-layout/tests/original_text_units.rs
+verbatim h2p:crates/turbo-html2pdf-core/tests/positioning_harness.rs crates/turbo-dom-layout/tests/positioning_harness.rs
+verbatim h2p:crates/turbo-html2pdf-core/tests/smoke_html_fragment.rs crates/turbo-dom-layout/tests/smoke_html_fragment.rs
+verbatim h2p:crates/turbo-html2pdf-core/tests/style_matched.rs crates/turbo-dom-layout/tests/style_matched.rs
+verbatim h2p:crates/turbo-html2pdf-core/tests/text.rs crates/turbo-dom-layout/tests/text.rs
+verbatim h2p:crates/turbo-html2pdf-core/tests/text_source_clusters.rs crates/turbo-dom-layout/tests/text_source_clusters.rs
+verbatim h2p:crates/turbo-html2pdf-core/tests/wikipedia_layout_harness.rs crates/turbo-dom-layout/tests/wikipedia_layout_harness.rs
+subseq   h2p:crates/turbo-html2pdf-core/tests/bundled_fonts.rs crates/turbo-dom-layout/tests/bundled_fonts.rs   # split: TKind/compile/PDF tests stay in core
+subseq   h2p:crates/turbo-html2pdf-core/tests/image.rs crates/turbo-dom-layout/tests/image.rs   # split: TKind/compile/PDF tests stay in core
+subseq   h2p:crates/turbo-html2pdf-core/tests/layout_block.rs crates/turbo-dom-layout/tests/layout_block.rs   # split: TKind/compile/PDF tests stay in core
+subseq   h2p:crates/turbo-html2pdf-core/tests/layout_boxgen.rs crates/turbo-dom-layout/tests/layout_boxgen.rs   # split: TKind/compile/PDF tests stay in core
+subseq   h2p:crates/turbo-html2pdf-core/tests/layout_flex.rs crates/turbo-dom-layout/tests/layout_flex.rs   # split: TKind/compile/PDF tests stay in core
+subseq   h2p:crates/turbo-html2pdf-core/tests/layout_fragment.rs crates/turbo-dom-layout/tests/layout_fragment.rs   # split: TKind/compile/PDF tests stay in core
+subseq   h2p:crates/turbo-html2pdf-core/tests/layout_snapshot.rs crates/turbo-dom-layout/tests/layout_snapshot.rs   # split: TKind/compile/PDF tests stay in core
+subseq   h2p:crates/turbo-html2pdf-core/tests/native_inline_coverage.rs crates/turbo-dom-layout/tests/native_inline_coverage.rs   # split: TKind/compile/PDF tests stay in core
+subseq   h2p:crates/turbo-html2pdf-core/tests/perf.rs crates/turbo-dom-layout/tests/perf.rs   # split: TKind/compile/PDF tests stay in core
+subseq   h2p:crates/turbo-html2pdf-core/tests/print_color.rs crates/turbo-dom-layout/tests/print_color.rs   # split: TKind/compile/PDF tests stay in core
+subseq   h2p:crates/turbo-html2pdf-core/tests/style.rs crates/turbo-dom-layout/tests/style.rs   # split: TKind/compile/PDF tests stay in core
+subseq   h2p:crates/turbo-html2pdf-core/tests/svg.rs crates/turbo-dom-layout/tests/svg.rs   # split: TKind/compile/PDF tests stay in core
+subseq   h2p:crates/turbo-html2pdf-core/tests/svg_viewport_snapshot.rs crates/turbo-dom-layout/tests/svg_viewport_snapshot.rs   # split: TKind/compile/PDF tests stay in core
+subseq   h2p:crates/turbo-html2pdf-core/tests/types.rs crates/turbo-dom-layout/tests/types.rs   # split: TKind/compile/PDF tests stay in core
+verbatim h2p:crates/turbo-html2pdf-core/tests/fixtures/layout-snapshot crates/turbo-dom-layout/tests/fixtures/layout-snapshot
+verbatim h2p:crates/turbo-html2pdf-core/tests/fixtures/block-inline-chrome155.json crates/turbo-dom-layout/tests/fixtures/block-inline-chrome155.json
+verbatim h2p:crates/turbo-html2pdf-core/tests/fixtures/block-inline-probe.js crates/turbo-dom-layout/tests/fixtures/block-inline-probe.js
+verbatim h2p:crates/turbo-html2pdf-core/tests/fixtures/native-font-runs crates/turbo-dom-layout/tests/fixtures/native-font-runs
+verbatim h2p:crates/turbo-html2pdf-core/tests/fixtures/native-iframe crates/turbo-dom-layout/tests/fixtures/native-iframe
+verbatim h2p:crates/turbo-html2pdf-core/tests/fixtures/native-leading-spaces crates/turbo-dom-layout/tests/fixtures/native-leading-spaces
+verbatim h2p:crates/turbo-html2pdf-core/tests/fixtures/native-range-transforms crates/turbo-dom-layout/tests/fixtures/native-range-transforms
+verbatim h2p:crates/turbo-html2pdf-core/tests/fixtures/native-serif crates/turbo-dom-layout/tests/fixtures/native-serif
+verbatim h2p:crates/turbo-html2pdf-core/tests/fixtures/inline-borders crates/turbo-dom-layout/tests/fixtures/inline-borders
+verbatim h2p:crates/turbo-html2pdf-core/tests/fixtures/utf16-text-geometry-chrome155.json crates/turbo-dom-layout/tests/fixtures/utf16-text-geometry-chrome155.json
+verbatim h2p:crates/turbo-html2pdf-core/tests/fixtures/svg-viewport-chrome155.json crates/turbo-dom-layout/tests/fixtures/svg-viewport-chrome155.json
+verbatim h2p:crates/turbo-html2pdf-core/tests/fixtures/text-review-chrome155.json crates/turbo-dom-layout/tests/fixtures/text-review-chrome155.json
+verbatim h2p:crates/turbo-html2pdf-core/tests/fixtures/text-source-chrome155.json crates/turbo-dom-layout/tests/fixtures/text-source-chrome155.json
+verbatim h2p:LICENSE crates/turbo-dom-layout/LICENSE
+# --- turbo-surf @ b1de4eb: turbo-surf-raster
+verbatim surf:rust/crates/turbo-surf-raster/src crates/turbo-dom-raster/src
+verbatim surf:rust/crates/turbo-surf-raster/tests crates/turbo-dom-raster/tests
+verbatim surf:rust/crates/turbo-surf-raster/LICENSE crates/turbo-dom-raster/LICENSE

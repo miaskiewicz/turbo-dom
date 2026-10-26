@@ -1,0 +1,2 @@
+# scripts/verify-copied-layout.sh allow-listed scripted rewrites.
+# <destination glob><TAB><perl -pe expression>, applied to the source before comparing.
