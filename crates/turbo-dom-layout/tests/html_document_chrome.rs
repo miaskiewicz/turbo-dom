@@ -103,7 +103,7 @@ fn inline_flex_grid_case(id: &str) -> bool {
 /// The control cases of an open bug, each asserted by its own test (`#[ignore]`d until
 /// its fix lands) and held out of [`html_documents_lay_out_as_chrome_156`].
 fn held_out(id: &str) -> bool {
-    let groups: [fn(&str) -> bool; 13] = [
+    let groups: [fn(&str) -> bool; 14] = [
         auto_table_case,
         inline_flex_grid_case,
         abs_auto_width_case,
@@ -117,6 +117,7 @@ fn held_out(id: &str) -> bool {
         table_height_case,
         column_growth_case,
         last_margin_case,
+        legacy_align_case,
     ];
     groups.iter().any(|group| group(id))
 }
@@ -250,4 +251,15 @@ fn last_margin_case(id: &str) -> bool {
 #[test]
 fn last_child_bottom_margins_like_chrome_156() {
     compare_cases(last_margin_case);
+}
+
+/// miaskiewicz/turbo-dom#69: only legacy `-webkit-*` alignment moves block children.
+fn legacy_align_case(id: &str) -> bool {
+    id.starts_with("legacy-align-")
+}
+
+#[test]
+#[ignore = "miaskiewicz/turbo-dom#69: fails until the fix"]
+fn legacy_alignment_moves_blocks_like_chrome_156() {
+    compare_cases(legacy_align_case);
 }

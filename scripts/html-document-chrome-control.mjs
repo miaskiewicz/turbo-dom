@@ -283,6 +283,19 @@ const CASES = [
   { id: "last-margin-in-table-cell", html: DOC(S("body{margin:0}"), `<table data-cid="t" style="border-spacing:0"><tr><td data-cid="td" style="padding:0"><p data-cid="p" style="margin:10px 0 15px;height:20px"></p></td></tr></table><div data-cid="g" style="height:60px"></div>`) },
   { id: "last-margin-in-flex-item", html: DOC(S("body{margin:0}"), `<div data-cid="f" style="display:flex"><div data-cid="w"><div style="height:100px"></div><div data-cid="k" style="height:200px;margin-bottom:20px"></div></div></div><div data-cid="g" style="height:60px"></div>`) },
   { id: "last-margin-in-float", html: DOC(S("body{margin:0}"), `<div data-cid="w" style="float:left;width:50px"><div style="height:100px"></div><div data-cid="k" style="height:200px;margin-bottom:20px"></div></div><div data-cid="g" style="height:60px;clear:both"></div>`) },
+  // P5b-W5, miaskiewicz/turbo-dom#69: only the legacy `-webkit-center` / `-webkit-right`
+  // (UA `center`, `align` attributes) align block children; `text-align: center` / `right`
+  // align inline content only.
+  { id: "legacy-align-text-center-inline-only", html: DOC(S("body{margin:0}"), `<div data-cid="p" style="text-align:center;width:200px"><div data-cid="d" style="width:10px;height:10px"></div><i data-cid="i" style="display:inline-block;width:10px;height:10px"></i></div>`), measure: "xw" },
+  { id: "legacy-align-text-right-inline-only", html: DOC(S("body{margin:0}"), `<div data-cid="p" style="text-align:right;width:200px"><div data-cid="d" style="width:10px;height:10px"></div></div>`) },
+  { id: "legacy-align-webkit-center", html: DOC(S("body{margin:0}"), `<div data-cid="p" style="text-align:-webkit-center;width:200px"><div data-cid="d" style="width:10px;height:10px"></div></div>`) },
+  { id: "legacy-align-webkit-right", html: DOC(S("body{margin:0}"), `<div data-cid="p" style="text-align:-webkit-right;width:200px"><div data-cid="d" style="width:10px;height:10px"></div></div>`) },
+  { id: "legacy-align-webkit-center-inherited", html: DOC(S("body{margin:0}"), `<div style="text-align:-webkit-center;width:200px"><div data-cid="p" style="width:100px"><div data-cid="d" style="width:10px;height:10px"></div></div></div>`) },
+  { id: "legacy-align-center-element", html: DOC(S("body{margin:0}"), `<center data-cid="p" style="width:200px"><div data-cid="d" style="width:10px;height:10px"></div></center>`) },
+  { id: "legacy-align-div-attribute", html: DOC(S("body{margin:0}"), `<div data-cid="p" align="center" style="width:200px"><div data-cid="d" style="width:10px;height:10px"></div></div>`) },
+  { id: "legacy-align-p-attribute-right", html: DOC(S("body{margin:0}"), `<p data-cid="p" align="right" style="width:200px;margin:0"><div data-cid="d" style="width:10px;height:10px"></div></p>`) },
+  { id: "legacy-align-td-attribute", html: DOC(S("body{margin:0}"), `<table style="border-spacing:0"><tr><td data-cid="p" align="center" style="width:200px;padding:0"><div data-cid="d" style="width:10px;height:10px"></div></td></tr></table>`) },
+  { id: "legacy-align-author-overrides-attribute", html: DOC(S("body{margin:0}"), `<div data-cid="p" align="center" style="width:200px;text-align:left"><div data-cid="d" style="width:10px;height:10px"></div></div>`) },
 ];
 
 /** The RGB of a 1x1 PNG screenshot (any filter: a single pixel's filter adds 0). */
