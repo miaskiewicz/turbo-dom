@@ -248,6 +248,21 @@ mod tests {
     }
 
     #[test]
+    fn comment_text_may_hold_stars_and_slashes() {
+        assert_eq!(dom("p/* a*b/c **/.x"), "p.x");
+        assert_eq!(dom("p/***/.x"), "p.x");
+        assert_eq!(dom("p/*/ */.x"), "p.x");
+    }
+
+    #[test]
+    fn units_close_an_escape_at_the_end_with_a_replacement() {
+        let p = u16::from(b'p');
+        let backslash = u16::from(b'\\');
+        assert_eq!(normalize(&[p, backslash], Mode::Dom), Some(vec![p, 0xfffd]));
+        assert_eq!(normalize(&[p, backslash], Mode::Sheet), None);
+    }
+
+    #[test]
     fn units_keep_lone_surrogates() {
         let units: Vec<u16> = vec![0x5b, 0xd800, 0x2f, 0x2a, 0x2a, 0x2f, 0xdc00];
         // a lone surrogate is a non-ASCII name code point on both sides

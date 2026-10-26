@@ -23,7 +23,12 @@ fn namespace_ids_round_trip_and_default_to_html() {
     assert_eq!(Namespace::from_id(3), Namespace::Other);
     assert_eq!(Namespace::from_id(4), Namespace::Html);
     assert_eq!(Namespace::from_id(255), Namespace::Html);
-    for ns in [Namespace::Html, Namespace::Svg, Namespace::MathMl, Namespace::Other] {
+    for ns in [
+        Namespace::Html,
+        Namespace::Svg,
+        Namespace::MathMl,
+        Namespace::Other,
+    ] {
         assert_eq!(Namespace::from_id(ns as u8), ns);
     }
 }
@@ -60,7 +65,11 @@ fn doctype_and_processing_instruction_fields_belong_to_their_nodes() {
     let pi = tree.create_processing_instruction("target", "data");
     // parsed and created doctypes, scalar and UTF-16
     assert_eq!(
-        (tree.doctype_name(parsed), tree.doctype_public_id(parsed), tree.doctype_system_id(parsed)),
+        (
+            tree.doctype_name(parsed),
+            tree.doctype_public_id(parsed),
+            tree.doctype_system_id(parsed)
+        ),
         (Some("html"), Some("p"), Some("s"))
     );
     assert_eq!(
@@ -90,14 +99,20 @@ fn doctype_and_processing_instruction_fields_belong_to_their_nodes() {
     }
     // only created processing instructions have a target
     assert_eq!(tree.processing_instruction_target(pi), Some("target"));
-    assert_eq!(tree.processing_instruction_target_utf16(pi), Some(u("target")));
+    assert_eq!(
+        tree.processing_instruction_target_utf16(pi),
+        Some(u("target"))
+    );
     assert_eq!(tree.node_value(pi).as_deref(), Some("data"));
     for node in [parsed, element, created_element, doctype] {
         assert_eq!(tree.processing_instruction_target(node), None);
         assert_eq!(tree.processing_instruction_target_utf16(node), None);
     }
     let lone = tree.create_processing_instruction_units(&[0xd800], &[0xdc00]);
-    assert_eq!(tree.processing_instruction_target_utf16(lone), Some(vec![0xd800]));
+    assert_eq!(
+        tree.processing_instruction_target_utf16(lone),
+        Some(vec![0xd800])
+    );
     assert_eq!(tree.node_value_utf16(lone), Some(vec![0xdc00]));
 }
 
@@ -116,7 +131,10 @@ fn attribute_and_child_mutations_ignore_the_wrong_node_types() {
     assert_eq!(tree.children(p), [text]);
     assert_eq!(tree.parent(attr), None);
     assert_eq!(tree.children(attr), []);
-    assert_eq!(tree.version, version, "rejected mutations do not bump the version");
+    assert_eq!(
+        tree.version, version,
+        "rejected mutations do not bump the version"
+    );
     // setAttributeNode on a non-element, a non-attribute, or setting an element's value
     assert_eq!(tree.set_attribute_node(text, attr), Err("TypeError"));
     assert_eq!(tree.set_attribute_node(p, text), Err("TypeError"));
@@ -135,7 +153,10 @@ fn node_value_setter_records_the_old_value_while_recording() {
     tree.set_node_value(text, "new");
     let events = tree.take_mutation_events();
     assert_eq!(events.len(), 1);
-    assert!(matches!(events[0].record, MutationRecord::CharacterData { .. }));
+    assert!(matches!(
+        events[0].record,
+        MutationRecord::CharacterData { .. }
+    ));
     assert_eq!(events[0].record.target(), text);
     assert_eq!(events[0].record.old_value(), Some("old"));
     assert_eq!(tree.node_value(text).as_deref(), Some("new"));
@@ -160,7 +181,10 @@ fn foreign_fragment_attributes_keep_their_prefix_and_namespace() {
             ("xml".into(), "lang".into(), "en".into())
         ]
     );
-    assert_eq!(tree.get_attribute_ns(svg, Some(XLINK), "href").as_deref(), Some("u"));
+    assert_eq!(
+        tree.get_attribute_ns(svg, Some(XLINK), "href").as_deref(),
+        Some("u")
+    );
     assert_eq!(tree.get_attribute(svg, "xlink:href"), Some("u"));
 }
 
@@ -209,7 +233,10 @@ fn utf16_attribute_values_survive_on_owned_and_detached_attributes() {
     // attaching it, then setting through textContent, reaches the owner
     tree.set_attribute_node(el, detached).unwrap();
     tree.set_text_content_utf16(detached, &[0x62, 0xd801]);
-    assert_eq!(tree.get_attribute_units(el, &u("data-x")), Some(vec![0x62, 0xd801]));
+    assert_eq!(
+        tree.get_attribute_units(el, &u("data-x")),
+        Some(vec![0x62, 0xd801])
+    );
     assert_eq!(tree.get_attribute(el, "data-x"), Some("b\u{fffd}"));
     // removing by units: a missing name is a no-op, the qualified name removes it
     tree.remove_attribute_units(el, &u("data-y"));
@@ -233,21 +260,33 @@ fn utf16_serializer_matches_the_scalar_serializer_for_every_node_type() {
     assert_eq!(inner, "<!--c-d--><?t d?><!DOCTYPE q>a&lt;b");
     assert_eq!(serialize_inner_utf16(&tree, holder), u(&inner));
     for node in [comment, pi, doctype, text, holder] {
-        assert_eq!(serialize_outer_utf16(&tree, node), u(&serialize_outer(&tree, node)));
+        assert_eq!(
+            serialize_outer_utf16(&tree, node),
+            u(&serialize_outer(&tree, node))
+        );
     }
     // the parsed doctype and the document itself
     let parsed_doctype = tree.first_child(tree.root()).unwrap();
-    assert_eq!(serialize_outer_utf16(&tree, parsed_doctype), u("<!DOCTYPE html>"));
+    assert_eq!(
+        serialize_outer_utf16(&tree, parsed_doctype),
+        u("<!DOCTYPE html>")
+    );
     assert_eq!(serialize_outer(&tree, tree.root()), "");
     assert_eq!(serialize_outer_utf16(&tree, tree.root()), []);
     let document_inner = serialize_inner(&tree, tree.root());
     assert!(document_inner.starts_with("<!DOCTYPE html><html><head></head><body><p>x</p>"));
-    assert_eq!(serialize_inner_utf16(&tree, tree.root()), u(&document_inner));
+    assert_eq!(
+        serialize_inner_utf16(&tree, tree.root()),
+        u(&document_inner)
+    );
     // lone units are kept (the scalar serializer repairs them)
     let lone = tree.create_comment_utf16(&[0xd800]);
     let box_ = tree.create_element("i");
     tree.append_child(box_, lone);
-    assert_eq!(serialize_inner_utf16(&tree, box_), [0x3c, 0x21, 0x2d, 0x2d, 0xd800, 0x2d, 0x2d, 0x3e]);
+    assert_eq!(
+        serialize_inner_utf16(&tree, box_),
+        [0x3c, 0x21, 0x2d, 0x2d, 0xd800, 0x2d, 0x2d, 0x3e]
+    );
     assert_eq!(serialize_inner(&tree, box_), "<!--\u{fffd}-->");
 }
 
@@ -274,10 +313,10 @@ fn pending_records_account_their_lone_unit_names_until_drained() {
     // (namespace, name): the drained bytes are the record's lossy strings plus 2 bytes per
     // retained lone code unit
     let cases: [(Option<Vec<u16>>, Vec<u16>, usize); 5] = [
-        (None, u("a"), 1),                       // "a"
-        (None, vec![0xd800], 3 + 2),             // "\u{fffd}" + one lone unit
+        (None, u("a"), 1),                                     // "a"
+        (None, vec![0xd800], 3 + 2),                           // "\u{fffd}" + one lone unit
         (None, vec![0x61, 0xdc01, 0xd800], 1 + 3 + 3 + 2 * 3), // every unit kept once one is lone
-        (None, vec![0x61, 0xd800, 0xdc01], 1 + 4),               // a valid pair: no units kept
+        (None, vec![0x61, 0xd800, 0xdc01], 1 + 4),             // a valid pair: no units kept
         (Some(vec![0xdc00]), u("b"), 1 + 3 + 2), // name "b", namespace "\u{fffd}" + one unit
     ];
     for (namespace, name, drained) in cases {
@@ -324,13 +363,20 @@ fn stylesheet_selectors_keep_an_escape_at_the_end_as_a_replacement_character() {
     // a prelude is not EOF-closed: `p\` is the name `p\u{FFFD}` (CSS Syntax)
     let list = parse_for_cascade("p\\").unwrap();
     let nav = LiveNavigator(&tree);
-    let matches = |h| list.selectors().iter().any(|s| match_for_cascade(&nav, h, s));
+    let matches = |h| {
+        list.selectors()
+            .iter()
+            .any(|s| match_for_cascade(&nav, h, s))
+    };
     assert!(!matches(p));
     assert!(matches(replaced));
     // and an unterminated block or string in a prelude stays an error
     assert!(parse_for_cascade("[a=\"x").is_err());
     assert!(parse_for_cascade("[a").is_err());
-    assert!(parse_for_cascade(":is(p").is_ok(), "an open function argument is tolerated");
+    assert!(
+        parse_for_cascade(":is(p").is_ok(),
+        "an open function argument is tolerated"
+    );
 }
 
 #[test]
@@ -340,7 +386,57 @@ fn the_lenient_utf16_query_skips_a_character_it_cannot_place() {
     // `)` cannot start a compound: the lenient API skips it (the `_checked` / binding
     // validation rejects such a selector before any query)
     assert_eq!(tree.query_selector_all_units(&u("\\70)")).to_vec(), [p]);
-    assert_eq!(tree.query_selector_all_checked("\\70)").map(|l| l.len()).ok(), None);
+    assert_eq!(
+        tree.query_selector_all_checked("\\70)")
+            .map(|l| l.len())
+            .ok(),
+        None
+    );
     // garbage the parser can place nowhere matches nothing
     assert_eq!(tree.query_selector_all_units(&u("!\\70")).len(), 0);
+}
+
+#[test]
+fn namespaced_attributes_account_lossy_strings_plus_two_bytes_per_kept_unit() {
+    // payload = namespace + prefix + local + qualified (lossy UTF-8) + value, plus 2 bytes
+    // per code unit of every name part that holds a lone surrogate
+    let cases: [(Vec<u16>, Vec<u16>, usize); 4] = [
+        (u("urn"), u("p:a"), 3 + 1 + 1 + 3),
+        (vec![0xd800], u("a"), 3 + 1 + 1 + 2), // lone namespace: 1 unit
+        (u("urn"), vec![0xdc00, 0x3a, 0x61], 3 + 3 + 1 + 5 + 2 + 6), // lone prefix, qualified
+        (u("urn"), vec![0x70, 0x3a, 0xd800], 3 + 1 + 3 + 5 + 2 + 6), // lone local, qualified
+    ];
+    for (namespace, qualified, bytes) in cases {
+        let mut tree = Tree::parse("");
+        let el = tree.create_element("div");
+        let before = tree.storage_stats().payload_bytes;
+        tree.set_attribute_ns_units(el, Some(&namespace), &qualified, &[]);
+        assert_eq!(
+            tree.storage_stats().payload_bytes - before,
+            bytes,
+            "{namespace:?} {qualified:?}"
+        );
+    }
+}
+
+#[test]
+fn utf16_attribute_updates_record_the_replaced_value() {
+    let mut tree = Tree::parse("");
+    let el = tree.create_element("div");
+    tree.set_attribute(el, "b", "x");
+    tree.set_attribute_units(el, &u("a"), &u("1"));
+    tree.start_recording();
+    tree.set_attribute_units(el, &u("a"), &[0x32, 0xd800]);
+    tree.set_attribute_units(el, &u("c"), &u("new"));
+    let events = tree.take_mutation_events();
+    let olds: Vec<_> = events
+        .iter()
+        .map(|e| (e.record.attribute_name(), e.record.old_value()))
+        .collect();
+    assert_eq!(olds, [(Some("a"), Some("1")), (Some("c"), None)]);
+    assert_eq!(
+        tree.get_attribute_units(el, &u("a")),
+        Some(vec![0x32, 0xd800])
+    );
+    assert_eq!(tree.get_attribute(el, "b"), Some("x"));
 }
