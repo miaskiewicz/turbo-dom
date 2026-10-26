@@ -72,7 +72,8 @@ of `style/cascade.rs`). Since S3b it uses this engine:
   `:placeholder-shown`, `:valid`, `:dir()`, …). `:scope` (= `:root`), `:defined`, `:lang()`
   and `:-webkit-any()` are evaluated in stylesheets only (the DOM APIs keep their
   behaviour). `::slotted()` matches only through a navigator that reports slot assignment
-  (scaffold for turbo-surf's composed context, S4).
+  (a scaffold: turbo-surf's composed cascade still walks `:host()`/`::slotted()` with its
+  own matcher, plan §1.4 follow-up).
 
 Output changes only where the old html2pdf engine disagreed with Chrome. Each quirk class
 has a Chrome-156 control in `cascade_selectors_chrome156.json` (the S3a `cases` and the
@@ -108,6 +109,22 @@ after a pseudo-element (`::before.x`) and the malformed forms the DOM engine acc
 pre-existing cascade ordering bug is unchanged and filed separately: candidate declarations
 are ordered by `rule order + declaration index`, so a later rule can lose to an earlier
 rule's later declaration of equal specificity.
+
+## S4: `selector()` support conditions on the engine
+
+`rtdom::query::parse_for_supports(&str) -> Result<CascadeSelector, SelectorError>` is the
+`selector(…)` condition of `@supports` and `CSS.supports`: one complex selector (a list is
+unsupported), valid like a stylesheet item (pseudo-elements and Chrome's valid
+never-matching pseudo-classes included), parsed **unforgivingly** — an invalid item of
+`:is()` / `:where()` at any depth makes it unsupported instead of being dropped.
+turbo-surf's native `@supports selector(…)` and `CSS.supports("selector(…)")`
+(`live_layout_supports.rs`) use it; before S4 they parsed with lightningcss and admitted
+only a fixed component allow-list (so `selector(*|p)`, `:hover`, `::before`, `|p`,
+`[*|title]`, `:link`, `:empty`, `:host`, `::slotted()` and `:nth-child(… of S)` were
+unsupported, unlike Chrome). Control: turbo-surf
+`harness/detection/fixtures/css-supports-chrome156.json` (`css-supports-probe.js`, 22
+new `selector()` cases incl. escapes), asserted by turbo-surf's
+`tests/shadow_layout.rs` and by `rtdom::query::cascade::tests::supports_selectors_follow_chrome`.
 
 ## Regenerating the Chrome control
 

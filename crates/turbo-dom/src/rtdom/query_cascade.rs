@@ -11,7 +11,10 @@
 //!   `:where()` are forgiving: invalid items are dropped.
 //! - **pseudo-elements** (`::before`, `::marker`, legacy `:before`, `::-webkit-*`, …) parse
 //!   and never match an element; `::slotted(S)` matches only through a [`Navigator`] that
-//!   reports slot assignment (turbo-surf's composed context; scaffold until S4).
+//!   reports slot assignment (a scaffold: turbo-surf's composed cascade still matches
+//!   `:host()` / `::slotted()` with its own scope walk, a follow-up of plan §1.4).
+//! - [`parse_for_supports`] is the `selector()` support condition: one complex selector,
+//!   parsed unforgivingly (`@supports selector(…)` / `CSS.supports("selector(…)")`).
 //! - pseudo-classes Chrome knows but the DOM engine does not evaluate parse as valid and
 //!   never match (the static resting state: `:hover`, `:focus`, `:visited`, …). Names are
 //!   ASCII case-insensitive. `:scope` is `:root`, and `:defined`, `:lang()` and
@@ -241,9 +244,66 @@ fn parse_item(item: &str) -> Result<CascadeSelector, SelectorError> {
     })
 }
 
+/// Parse the argument of a CSS `selector()` support condition (`@supports selector(…)`,
+/// `CSS.supports("selector(…)")`): exactly one complex selector, valid like a stylesheet
+/// item, and parsed **unforgivingly** — an invalid item of `:is()` / `:where()` makes it
+/// unsupported instead of being dropped (CSS Conditional 4 `<supports-selector-fn>`, as
+/// Chrome 156 evaluates it: turbo-surf's `css-supports` Chrome control).
+///
+/// # Errors
+/// Returns [`SelectorError`] when Chrome reports the selector unsupported: a list, a
+/// malformed or unknown selector, or an invalid item in a forgiving list.
+pub fn parse_for_supports(src: &str) -> Result<CascadeSelector, SelectorError> {
+    let item = src.trim();
+    if split_top_level_commas(item).len() != 1 {
+        return Err(invalid("selector() takes one complex selector"));
+    }
+    unforgiving_items(&parse_raw(item)?)?;
+    parse_item(item)
+}
+
+/// Every `:is()` / `:where()` item at any depth is valid on its own.
+fn unforgiving_items(complex: &Complex) -> Result<(), SelectorError> {
+    std::iter::once(&complex.first)
+        .chain(complex.rest.iter().map(|(_, compound)| compound))
+        .flat_map(|compound| &compound.pseudos)
+        .try_for_each(unforgiving_pseudo)
+}
+
+fn unforgiving_pseudo(pseudo: &Pseudo) -> Result<(), SelectorError> {
+    match pseudo {
+        Pseudo::Is(list) | Pseudo::Where(list) => {
+            if list.is_empty() {
+                return Err(invalid("empty selector list argument"));
+            }
+            list.iter().try_for_each(|complex| {
+                check_nested(&mut complex.clone())?;
+                unforgiving_items(complex)
+            })
+        }
+        Pseudo::Not(list) | Pseudo::NthChildOf(_, _, list) | Pseudo::NthLastChildOf(_, _, list) => {
+            list.iter().try_for_each(unforgiving_items)
+        }
+        Pseudo::Has(list) => list
+            .iter()
+            .try_for_each(|relative| unforgiving_items(&relative.complex)),
+        _ => Ok(()),
+    }
+}
+
 /// One complex selector (no top-level comma), checked like a stylesheet item and with every
 /// nested pseudo checked: `Err` when Chrome rejects it.
 fn parse_complex_strict(item: &str) -> Result<Complex, SelectorError> {
+    let mut complex = parse_raw(item)?;
+    check_compound(&mut complex.first, false)?;
+    for (_, compound) in &mut complex.rest {
+        check_compound(compound, false)?;
+    }
+    Ok(complex)
+}
+
+/// One complex selector as the shared parser reads it, before the stylesheet checks.
+fn parse_raw(item: &str) -> Result<Complex, SelectorError> {
     if item.is_empty() {
         return Err(SelectorError::EmptyCompound);
     }
@@ -252,21 +312,16 @@ fn parse_complex_strict(item: &str) -> Result<Complex, SelectorError> {
     if matches!(tail.next(), Some('>' | '+' | '~')) && tail.next() != Some('\\') {
         return Err(SelectorError::EmptyCompound);
     }
-    let mut complex = if item.contains('\\') {
+    if item.contains('\\') {
         let units: Vec<u16> = item.encode_utf16().collect();
         let mut list = units::list(&units);
         if list.len() != 1 {
             return Err(SelectorError::EmptyCompound);
         }
-        list.remove(0)
+        Ok(list.remove(0))
     } else {
-        parse_complex(item).ok_or(SelectorError::EmptyCompound)?
-    };
-    check_compound(&mut complex.first, false)?;
-    for (_, compound) in &mut complex.rest {
-        check_compound(compound, false)?;
+        parse_complex(item).ok_or(SelectorError::EmptyCompound)
     }
-    Ok(complex)
 }
 
 /// Pull the pseudo-element off the subject compound (the last one). Pseudo-elements were
@@ -689,6 +744,56 @@ mod tests {
         let list = parse_for_cascade(sel).unwrap_or_else(|e| panic!("{sel}: {e}"));
         assert_eq!(list.selectors().len(), 1, "{sel}");
         list.selectors()[0].specificity()
+    }
+
+    /// `CSS.supports("selector(…)")` in Chrome 156 (turbo-surf
+    /// `harness/detection/fixtures/css-supports-chrome156.json`, the `selector(…)` cases).
+    #[test]
+    fn supports_selectors_follow_chrome() {
+        let cases = [
+            ("div > .x", true),
+            (":has(> span)", true),
+            (":is(div,span)", true),
+            (":bogus", false),
+            ("div,span", false),
+            ("div >", false),
+            ("*|p", true),
+            ("*|*", true),
+            ("|p", true),
+            ("ns|p", false),
+            ("[*|title]", true),
+            (r".\31 23", true),
+            (r"#\66oo", true),
+            (r".a\.b", true),
+            (r"\64iv > .x", true),
+            (".é", true),
+            (":hover", true),
+            ("::before", true),
+            ("div::after", true),
+            (":is(:bogus)", false),
+            (":where(:bogus, p)", false),
+            (":not(:bogus)", false),
+            (":host", true),
+            ("::slotted(p)", true),
+            (":nth-child(2n of .x)", true),
+            (":empty", true),
+            (":link", true),
+            (":read-write", true),
+        ];
+        for (selector, chrome) in cases {
+            assert_eq!(parse_for_supports(selector).is_ok(), chrome, "{selector}");
+        }
+        // Unforgiving at every depth, and an empty forgiving list is unsupported.
+        for selector in [
+            ":not(:is(:bogus))",
+            ":has(:where(p, :bogus))",
+            ":is()",
+            "a, b",
+        ] {
+            assert!(parse_for_supports(selector).is_err(), "{selector}");
+        }
+        let parsed = parse_for_supports(" :is(p, .x) ").unwrap();
+        assert_eq!(parsed.specificity(), (0, 1, 0));
     }
 
     #[test]
