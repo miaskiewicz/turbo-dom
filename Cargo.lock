@@ -2407,9 +2407,7 @@ dependencies = [
  "core-foundation",
  "core-text",
  "encoding_rs",
- "html5ever",
  "jpeg-decoder",
- "markup5ever_rcdom",
  "png 0.18.1",
  "resvg",
  "rustybuzz",
@@ -2420,6 +2418,7 @@ dependencies = [
  "taffy",
  "thiserror 2.0.18",
  "turbo-dom",
+ "turbo-dom-layout",
  "unicode-linebreak",
 ]
 
