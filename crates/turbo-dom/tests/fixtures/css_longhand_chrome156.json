@@ -1,7 +1,7 @@
 {
   "browser": "Chrome/156.0.8078.4",
   "v8": "15.6.75",
-  "casesSha256": "882e32f701d19023713e7e938042d7123b37ec52b296bc4d69c4c09d3ee14087",
+  "casesSha256": "44e741f5ae8e8a7814f91ca990876c89df66b4fad4abb1ff93613afb230afb94",
   "probeSha256": "a458463e8721c083a75be76315f0bdaf5cee10e5d0a6fc8d470a0b926d6ee37e",
   "collectorSha256": "7bd6ffb7440d38e05cd2b8fbe0e84e91cf462043577ceada3e276728ad216172",
   "flags": [
@@ -12474,6 +12474,1146 @@
           " 1px ",
           "1px",
           "width: 1px;"
+        ],
+        [
+          "flex-grow",
+          "-1",
+          "",
+          ""
+        ],
+        [
+          "flex-shrink",
+          "-1",
+          "",
+          ""
+        ],
+        [
+          "flex-shrink",
+          "0.5",
+          "0.5",
+          "flex-shrink: 0.5;"
+        ],
+        [
+          "column-count",
+          "0",
+          "",
+          ""
+        ],
+        [
+          "column-count",
+          "1",
+          "1",
+          "column-count: 1;"
+        ],
+        [
+          "column-count",
+          "-1",
+          "",
+          ""
+        ],
+        [
+          "column-count",
+          "1.5",
+          "",
+          ""
+        ],
+        [
+          "column-width",
+          "-1px",
+          "",
+          ""
+        ],
+        [
+          "column-width",
+          "0",
+          "0px",
+          "column-width: 0px;"
+        ],
+        [
+          "column-width",
+          "10%",
+          "",
+          ""
+        ],
+        [
+          "column-height",
+          "-1px",
+          "",
+          ""
+        ],
+        [
+          "font-size",
+          "-1px",
+          "",
+          ""
+        ],
+        [
+          "font-size",
+          "-10%",
+          "",
+          ""
+        ],
+        [
+          "font-size",
+          "10%",
+          "10%",
+          "font-size: 10%;"
+        ],
+        [
+          "line-height",
+          "-1",
+          "",
+          ""
+        ],
+        [
+          "line-height",
+          "-1px",
+          "",
+          ""
+        ],
+        [
+          "line-height",
+          "-10%",
+          "",
+          ""
+        ],
+        [
+          "line-height",
+          "0.5",
+          "0.5",
+          "line-height: 0.5;"
+        ],
+        [
+          "font-weight",
+          "0",
+          "",
+          ""
+        ],
+        [
+          "font-weight",
+          "1",
+          "1",
+          "font-weight: 1;"
+        ],
+        [
+          "font-weight",
+          "1000",
+          "1000",
+          "font-weight: 1000;"
+        ],
+        [
+          "font-weight",
+          "0.5",
+          "",
+          ""
+        ],
+        [
+          "font-weight",
+          "999.5",
+          "999.5",
+          "font-weight: 999.5;"
+        ],
+        [
+          "font-weight",
+          "1000.5",
+          "",
+          ""
+        ],
+        [
+          "font-weight",
+          "BOLDER",
+          "bolder",
+          "font-weight: bolder;"
+        ],
+        [
+          "font-weight",
+          "-1",
+          "",
+          ""
+        ],
+        [
+          "font-stretch",
+          "-10%",
+          "",
+          ""
+        ],
+        [
+          "font-stretch",
+          "0%",
+          "0%",
+          "font-stretch: 0%;"
+        ],
+        [
+          "font-stretch",
+          "50%",
+          "50%",
+          "font-stretch: 50%;"
+        ],
+        [
+          "font-stretch",
+          "87.5%",
+          "87.5%",
+          "font-stretch: 87.5%;"
+        ],
+        [
+          "font-style",
+          "oblique -90deg",
+          "oblique -90deg",
+          "font-style: oblique -90deg;"
+        ],
+        [
+          "font-style",
+          "oblique 91deg",
+          "",
+          ""
+        ],
+        [
+          "font-style",
+          "oblique 0deg",
+          "normal",
+          "font-style: normal;"
+        ],
+        [
+          "font-style",
+          "oblique 14deg",
+          "oblique 14deg",
+          "font-style: oblique 14deg;"
+        ],
+        [
+          "font-style",
+          "oblique 10deg",
+          "oblique 10deg",
+          "font-style: oblique 10deg;"
+        ],
+        [
+          "font-style",
+          "OBLIQUE 1turn",
+          "oblique 1turn",
+          "font-style: oblique 1turn;"
+        ],
+        [
+          "font-style",
+          "italic 10deg",
+          "",
+          ""
+        ],
+        [
+          "list-style-image",
+          "linear-gradient(red, blue)",
+          "linear-gradient(red, blue)",
+          "list-style-image: linear-gradient(red, blue);"
+        ],
+        [
+          "list-style-image",
+          "bogus",
+          "",
+          ""
+        ],
+        [
+          "background-image",
+          "image-set(url(a.png) 1x)",
+          "image-set(url(\"a.png\") 1x)",
+          "background-image: image-set(url(\"a.png\") 1x);"
+        ],
+        [
+          "background-image",
+          "url(a.png), none",
+          "url(\"a.png\"), none",
+          "background-image: url(\"a.png\"), none;"
+        ],
+        [
+          "background-image",
+          "url(a.png),",
+          "",
+          ""
+        ],
+        [
+          "background-image",
+          "bogus",
+          "",
+          ""
+        ],
+        [
+          "mask-image",
+          "none, url(b.png)",
+          "none, url(\"b.png\")",
+          "mask-image: none, url(\"b.png\");"
+        ],
+        [
+          "transition-timing-function",
+          "steps(2)",
+          "steps(2)",
+          "transition-timing-function: steps(2);"
+        ],
+        [
+          "transition-timing-function",
+          "bogus",
+          "",
+          ""
+        ],
+        [
+          "transition-timing-function",
+          "linear(0, 1)",
+          "linear(0 0%, 1 100%)",
+          "transition-timing-function: linear(0 0%, 1 100%);"
+        ],
+        [
+          "animation-timing-function",
+          "ease-in-out, steps(1, start)",
+          "ease-in-out, steps(1, start)",
+          "animation-timing-function: ease-in-out, steps(1, start);"
+        ],
+        [
+          "grid-template-columns",
+          "-1px",
+          "",
+          ""
+        ],
+        [
+          "grid-template-columns",
+          "10% 1fr",
+          "10% 1fr",
+          "grid-template-columns: 10% 1fr;"
+        ],
+        [
+          "grid-template-columns",
+          "-10%",
+          "",
+          ""
+        ],
+        [
+          "grid-template-columns",
+          "repeat(2, 1fr)",
+          "repeat(2, 1fr)",
+          "grid-template-columns: repeat(2, 1fr);"
+        ],
+        [
+          "grid-template-columns",
+          "minmax(10px, 1fr) auto",
+          "minmax(10px, 1fr) auto",
+          "grid-template-columns: minmax(10px, 1fr) auto;"
+        ],
+        [
+          "grid-template-columns",
+          "[a] 1fr [b]",
+          "[a] 1fr [b]",
+          "grid-template-columns: [a] 1fr [b];"
+        ],
+        [
+          "grid-template-columns",
+          "bogus",
+          "",
+          ""
+        ],
+        [
+          "grid-template-columns",
+          "subgrid",
+          "subgrid",
+          "grid-template-columns: subgrid;"
+        ],
+        [
+          "grid-template-rows",
+          "1fr -1fr",
+          "",
+          ""
+        ],
+        [
+          "grid-template-rows",
+          "fit-content(10px)",
+          "fit-content(10px)",
+          "grid-template-rows: fit-content(10px);"
+        ],
+        [
+          "grid-template-rows",
+          "auto 0",
+          "auto 0px",
+          "grid-template-rows: auto 0px;"
+        ],
+        [
+          "z-index",
+          "1e1",
+          "",
+          ""
+        ],
+        [
+          "z-index",
+          "+1",
+          "1",
+          "z-index: 1;"
+        ],
+        [
+          "offset-distance",
+          "-10px",
+          "-10px",
+          "offset-distance: -10px;"
+        ],
+        [
+          "offset-distance",
+          "-10%",
+          "-10%",
+          "offset-distance: -10%;"
+        ],
+        [
+          "offset-anchor",
+          "normal",
+          "",
+          ""
+        ],
+        [
+          "offset-anchor",
+          "left top",
+          "left top",
+          "offset-anchor: left top;"
+        ],
+        [
+          "offset-anchor",
+          "bogus",
+          "",
+          ""
+        ],
+        [
+          "offset-position",
+          "left 10px top",
+          "",
+          ""
+        ],
+        [
+          "offset-position",
+          "center",
+          "center center",
+          "offset-position: center center;"
+        ],
+        [
+          "animation-range-start",
+          "-10%",
+          "-10%",
+          "animation-range-start: -10%;"
+        ],
+        [
+          "animation-range-start",
+          "cover -10%",
+          "cover -10%",
+          "animation-range-start: cover -10%;"
+        ],
+        [
+          "animation-range-start",
+          "contain 10px",
+          "contain 10px",
+          "animation-range-start: contain 10px;"
+        ],
+        [
+          "animation-range-start",
+          "bogus",
+          "",
+          ""
+        ],
+        [
+          "animation-range-end",
+          "-10%",
+          "-10%",
+          "animation-range-end: -10%;"
+        ],
+        [
+          "animation-range-end",
+          "contain 110%",
+          "contain 110%",
+          "animation-range-end: contain 110%;"
+        ],
+        [
+          "animation-range-end",
+          "exit",
+          "exit",
+          "animation-range-end: exit;"
+        ],
+        [
+          "transition-duration",
+          "-1s",
+          "",
+          ""
+        ],
+        [
+          "transition-duration",
+          "1s, -1s",
+          "",
+          ""
+        ],
+        [
+          "transition-delay",
+          "-1s",
+          "-1s",
+          "transition-delay: -1s;"
+        ],
+        [
+          "transition-delay",
+          "-1s, 1s",
+          "-1s, 1s",
+          "transition-delay: -1s, 1s;"
+        ],
+        [
+          "animation-delay",
+          "-1s",
+          "-1s",
+          "animation-delay: -1s;"
+        ],
+        [
+          "border-image-width",
+          "-1",
+          "",
+          ""
+        ],
+        [
+          "border-image-width",
+          "-1px",
+          "",
+          ""
+        ],
+        [
+          "border-image-width",
+          "1 2px auto 10%",
+          "1 2px auto 10%",
+          "border-image-width: 1 2px auto 10%;"
+        ],
+        [
+          "border-image-outset",
+          "-1",
+          "",
+          ""
+        ],
+        [
+          "border-image-outset",
+          "-1px",
+          "",
+          ""
+        ],
+        [
+          "border-image-outset",
+          "1 2px",
+          "1 2px",
+          "border-image-outset: 1 2px;"
+        ],
+        [
+          "border-image-slice",
+          "-1",
+          "",
+          ""
+        ],
+        [
+          "border-image-slice",
+          "10% fill",
+          "10% fill",
+          "border-image-slice: 10% fill;"
+        ],
+        [
+          "border-image-slice",
+          "fill 10",
+          "10 fill",
+          "border-image-slice: 10 fill;"
+        ],
+        [
+          "border-image-slice",
+          "1 2 3 4 5",
+          "",
+          ""
+        ],
+        [
+          "text-decoration-thickness",
+          "-1px",
+          "-1px",
+          "text-decoration-thickness: -1px;"
+        ],
+        [
+          "text-decoration-thickness",
+          "-10%",
+          "-10%",
+          "text-decoration-thickness: -10%;"
+        ],
+        [
+          "text-decoration-thickness",
+          "from-font",
+          "from-font",
+          "text-decoration-thickness: from-font;"
+        ],
+        [
+          "text-underline-offset",
+          "-1px",
+          "-1px",
+          "text-underline-offset: -1px;"
+        ],
+        [
+          "text-underline-offset",
+          "auto",
+          "auto",
+          "text-underline-offset: auto;"
+        ],
+        [
+          "outline-width",
+          "-1px",
+          "",
+          ""
+        ],
+        [
+          "outline-width",
+          "thin",
+          "thin",
+          "outline-width: thin;"
+        ],
+        [
+          "outline-offset",
+          "-1px",
+          "-1px",
+          "outline-offset: -1px;"
+        ],
+        [
+          "scroll-padding-top",
+          "-1px",
+          "",
+          ""
+        ],
+        [
+          "scroll-margin-top",
+          "-1px",
+          "-1px",
+          "scroll-margin-top: -1px;"
+        ],
+        [
+          "scroll-margin-top",
+          "auto",
+          "",
+          ""
+        ],
+        [
+          "padding-top",
+          "-1px",
+          "",
+          ""
+        ],
+        [
+          "padding-top",
+          "-5%",
+          "",
+          ""
+        ],
+        [
+          "border-top-width",
+          "-1px",
+          "",
+          ""
+        ],
+        [
+          "row-gap",
+          "-1px",
+          "",
+          ""
+        ],
+        [
+          "background-size",
+          "-1px",
+          "",
+          ""
+        ],
+        [
+          "background-size",
+          "10px -1px",
+          "",
+          ""
+        ],
+        [
+          "background-size",
+          "auto 10%",
+          "auto 10%",
+          "background-size: auto 10%;"
+        ],
+        [
+          "background-size",
+          "10px, contain",
+          "10px auto, contain",
+          "background-size: 10px auto, contain;"
+        ],
+        [
+          "background-position-x",
+          "-10px",
+          "-10px",
+          "background-position-x: -10px;"
+        ],
+        [
+          "background-position-x",
+          "left -10px",
+          "left -10px",
+          "background-position-x: left -10px;"
+        ],
+        [
+          "background-position-x",
+          "right 10px",
+          "right 10px",
+          "background-position-x: right 10px;"
+        ],
+        [
+          "background-position-x",
+          "left, right 10%",
+          "left, right 10%",
+          "background-position-x: left, right 10%;"
+        ],
+        [
+          "background-position-y",
+          "bottom -10%",
+          "bottom -10%",
+          "background-position-y: bottom -10%;"
+        ],
+        [
+          "background-position-y",
+          "top 10px",
+          "top 10px",
+          "background-position-y: top 10px;"
+        ],
+        [
+          "background-position-y",
+          "10px, bottom",
+          "10px, bottom",
+          "background-position-y: 10px, bottom;"
+        ],
+        [
+          "background-repeat",
+          "repeat no-repeat",
+          "repeat-x",
+          "background-repeat: repeat-x;"
+        ],
+        [
+          "background-repeat",
+          "repeat-x, space",
+          "repeat-x, space",
+          "background-repeat: repeat-x, space;"
+        ],
+        [
+          "opacity",
+          "-1",
+          "-1",
+          "opacity: -1;"
+        ],
+        [
+          "opacity",
+          "1e-6",
+          "1e-06",
+          "opacity: 1e-06;"
+        ],
+        [
+          "opacity",
+          "0.000001",
+          "1e-06",
+          "opacity: 1e-06;"
+        ],
+        [
+          "opacity",
+          "1e6",
+          "1e+06",
+          "opacity: 1e+06;"
+        ],
+        [
+          "opacity",
+          "-10%",
+          "-0.1",
+          "opacity: -0.1;"
+        ],
+        [
+          "flex-basis",
+          "-1px",
+          "",
+          ""
+        ],
+        [
+          "flex-basis",
+          "-10%",
+          "",
+          ""
+        ],
+        [
+          "flex-basis",
+          "max-content",
+          "max-content",
+          "flex-basis: max-content;"
+        ],
+        [
+          "max-width",
+          "-1px",
+          "",
+          ""
+        ],
+        [
+          "min-height",
+          "-1px",
+          "",
+          ""
+        ],
+        [
+          "grid-row-start",
+          "0",
+          "",
+          ""
+        ],
+        [
+          "grid-row-start",
+          "span 0",
+          "",
+          ""
+        ],
+        [
+          "grid-row-start",
+          "-1",
+          "-1",
+          "grid-row-start: -1;"
+        ],
+        [
+          "grid-row-start",
+          "span a 2",
+          "span 2 a",
+          "grid-row-start: span 2 a;"
+        ],
+        [
+          "grid-row-start",
+          "a 2",
+          "2 a",
+          "grid-row-start: 2 a;"
+        ],
+        [
+          "column-gap",
+          "-1px",
+          "",
+          ""
+        ],
+        [
+          "letter-spacing",
+          "-1px",
+          "-1px",
+          "letter-spacing: -1px;"
+        ],
+        [
+          "text-indent",
+          "-1px",
+          "-1px",
+          "text-indent: -1px;"
+        ],
+        [
+          "font-family",
+          "a\\ b",
+          "\"a b\"",
+          "font-family: \"a b\";"
+        ],
+        [
+          "font-family",
+          "\"a\\\\b\"",
+          "\"a\\\\b\"",
+          "font-family: \"a\\\\b\";"
+        ],
+        [
+          "font-family",
+          "'a\"b'",
+          "\"a\\\"b\"",
+          "font-family: \"a\\\"b\";"
+        ],
+        [
+          "font-family",
+          "a,",
+          "",
+          ""
+        ],
+        [
+          "font-family",
+          "inherit a",
+          "\"inherit a\"",
+          "font-family: \"inherit a\";"
+        ],
+        [
+          "font-family",
+          "\\61",
+          "a",
+          "font-family: a;"
+        ],
+        [
+          "font-family",
+          "--a",
+          "\"--a\"",
+          "font-family: \"--a\";"
+        ],
+        [
+          "font-family",
+          "-1a",
+          "",
+          ""
+        ],
+        [
+          "content",
+          "\"a\\\\b\"",
+          "\"a\\\\b\"",
+          "content: \"a\\\\b\";"
+        ],
+        [
+          "content",
+          "\"a\\a b\"",
+          "\"a\\a b\"",
+          "content: \"a\\a b\";"
+        ],
+        [
+          "content",
+          "'a'",
+          "\"a\"",
+          "content: \"a\";"
+        ],
+        [
+          "content",
+          "\"a\\\"b\"",
+          "\"a\\\"b\"",
+          "content: \"a\\\"b\";"
+        ],
+        [
+          "content",
+          "\"a",
+          "\"a\"",
+          "content: \"a\";"
+        ],
+        [
+          "quotes",
+          "'a' 'b'",
+          "\"a\" \"b\"",
+          "quotes: \"a\" \"b\";"
+        ],
+        [
+          "quotes",
+          "\"a\\\\\" \"b\"",
+          "\"a\\\\\" \"b\"",
+          "quotes: \"a\\\\\" \"b\";"
+        ],
+        [
+          "box-shadow",
+          "inset 0 0 1px red",
+          "red 0px 0px 1px inset",
+          "box-shadow: red 0px 0px 1px inset;"
+        ],
+        [
+          "box-shadow",
+          "0 0 1px red inset",
+          "red 0px 0px 1px inset",
+          "box-shadow: red 0px 0px 1px inset;"
+        ],
+        [
+          "box-shadow",
+          "inset inset 0 0",
+          "",
+          ""
+        ],
+        [
+          "box-shadow",
+          "0 0 -1px red",
+          "",
+          ""
+        ],
+        [
+          "box-shadow",
+          "0 0 1px -1px red",
+          "red 0px 0px 1px -1px",
+          "box-shadow: red 0px 0px 1px -1px;"
+        ],
+        [
+          "box-shadow",
+          "0 0 1px 1px 1px red",
+          "",
+          ""
+        ],
+        [
+          "box-shadow",
+          "0 0",
+          "0px 0px",
+          "box-shadow: 0px 0px;"
+        ],
+        [
+          "box-shadow",
+          "0",
+          "",
+          ""
+        ],
+        [
+          "box-shadow",
+          "red",
+          "",
+          ""
+        ],
+        [
+          "box-shadow",
+          "0 0 1px red, inset 1px 1px blue",
+          "red 0px 0px 1px, blue 1px 1px inset",
+          "box-shadow: red 0px 0px 1px, blue 1px 1px inset;"
+        ],
+        [
+          "box-shadow",
+          "red 0 0 red",
+          "",
+          ""
+        ],
+        [
+          "transition-property",
+          "opacity, all",
+          "opacity, all",
+          "transition-property: opacity, all;"
+        ],
+        [
+          "transition-property",
+          "none, opacity",
+          "",
+          ""
+        ],
+        [
+          "transition-property",
+          "--a",
+          "--a",
+          "transition-property: --a;"
+        ],
+        [
+          "transition-property",
+          "initial",
+          "initial",
+          "transition-property: initial;"
+        ],
+        [
+          "animation-name",
+          "a, b",
+          "a, b",
+          "animation-name: a, b;"
+        ],
+        [
+          "animation-name",
+          "none, a",
+          "none, a",
+          "animation-name: none, a;"
+        ],
+        [
+          "animation-name",
+          "'a b'",
+          "a\\ b",
+          "animation-name: a\\ b;"
+        ],
+        [
+          "animation-name",
+          "\"inherit\"",
+          "\"inherit\"",
+          "animation-name: \"inherit\";"
+        ],
+        [
+          "animation-name",
+          "'none'",
+          "\"none\"",
+          "animation-name: \"none\";"
+        ],
+        [
+          "transform-origin",
+          "left top",
+          "left top",
+          "transform-origin: left top;"
+        ],
+        [
+          "transform-origin",
+          "10px 20px 30px",
+          "10px 20px 30px",
+          "transform-origin: 10px 20px 30px;"
+        ],
+        [
+          "perspective-origin",
+          "left",
+          "left center",
+          "perspective-origin: left center;"
+        ],
+        [
+          "object-position",
+          "right 10px bottom",
+          "",
+          ""
+        ],
+        [
+          "width",
+          "calc(1mm + 1px)",
+          "calc(4.77953px)",
+          "width: calc(4.77953px);"
+        ],
+        [
+          "width",
+          "calc(1pt + 1px)",
+          "calc(2.33333px)",
+          "width: calc(2.33333px);"
+        ],
+        [
+          "width",
+          "calc(1pc + 1px)",
+          "calc(17px)",
+          "width: calc(17px);"
+        ],
+        [
+          "width",
+          "calc(2px * 3)",
+          "calc(6px)",
+          "width: calc(6px);"
+        ],
+        [
+          "width",
+          "calc(1px / 2px)",
+          "",
+          ""
+        ],
+        [
+          "width",
+          "calc(1px * 2px)",
+          "",
+          ""
+        ],
+        [
+          "width",
+          "min(1px, 2%)",
+          "min(1px, 2%)",
+          "width: min(1px, 2%);"
+        ],
+        [
+          "color",
+          "hsl(60, 100%, 50%)",
+          "rgb(255, 255, 0)",
+          "color: rgb(255, 255, 0);"
+        ],
+        [
+          "color",
+          "hsl(180 50% 25%)",
+          "rgb(32, 96, 96)",
+          "color: rgb(32, 96, 96);"
+        ],
+        [
+          "color",
+          "hsl(270deg 100% 50% / 0.5)",
+          "rgba(128, 0, 255, 0.5)",
+          "color: rgba(128, 0, 255, 0.5);"
+        ],
+        [
+          "color",
+          "rgb(1 2 3 / 0.5)",
+          "rgba(1, 2, 3, 0.5)",
+          "color: rgba(1, 2, 3, 0.5);"
+        ],
+        [
+          "color",
+          "#\\31 23",
+          "rgb(17, 34, 51)",
+          "color: rgb(17, 34, 51);"
+        ],
+        [
+          "color",
+          "#abcd",
+          "rgba(170, 187, 204, 0.867)",
+          "color: rgba(170, 187, 204, 0.867);"
+        ],
+        [
+          "color",
+          "#aabbccdd",
+          "rgba(170, 187, 204, 0.867)",
+          "color: rgba(170, 187, 204, 0.867);"
+        ],
+        [
+          "color",
+          "rgb(300, -1, 2)",
+          "rgb(255, 0, 2)",
+          "color: rgb(255, 0, 2);"
         ],
         [
           "width",

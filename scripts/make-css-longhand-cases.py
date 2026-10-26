@@ -76,6 +76,40 @@ EXTRA = {
     "border-top-color": ["#abc", "RED"], "outline-color": ["Red"], "flex-basis": ["0", "10PX", "AUTO", "Content"],
     "flex-grow": ["1.50", "+2", "0"],
 }
+# Round two (mutation run): sign and range checks, list forms, escapes.
+MUTATION = {
+    "flex-grow": ["-1"], "flex-shrink": ["-1", "0.5"], "column-count": ["0", "1", "-1", "1.5", "AUTO"],
+    "column-width": ["-1px", "0", "10%"], "column-height": ["-1px"], "font-size": ["-1px", "-10%", "10%"],
+    "line-height": ["-1", "-1px", "-10%", "0.5"], "font-weight": ["0", "1", "1000", "0.5", "999.5", "1000.5", "BOLDER", "-1"],
+    "font-stretch": ["-10%", "0%", "50%", "87.5%", "CONDENSED"], "font-style": ["oblique -90deg", "oblique 91deg", "oblique 0deg", "oblique 14deg", "oblique 10deg", "oblique", "OBLIQUE 1turn", "italic 10deg"],
+    "list-style-image": ["url(a.png)", "none", "linear-gradient(red, blue)", "bogus"],
+    "background-image": ["image-set(url(a.png) 1x)", "url(a.png), none", "url(a.png),", "bogus"], "mask-image": ["url(a.png)", "none, url(b.png)"],
+    "transition-timing-function": ["ease, linear", "steps(2)", "bogus", "linear(0, 1)"], "animation-timing-function": ["ease-in-out, steps(1, start)"],
+    "grid-template-columns": ["-1px", "10% 1fr", "-10%", "repeat(2, 1fr)", "minmax(10px, 1fr) auto", "[a] 1fr [b]", "bogus", "subgrid", "none"],
+    "grid-template-rows": ["1fr -1fr", "fit-content(10px)", "auto 0"],
+    "z-index": ["1e1", "+1"], "offset-distance": ["-10px", "-10%", "10px"], "offset-anchor": ["auto", "normal", "left top", "10px 20px", "bogus"],
+    "offset-position": ["normal", "left 10px top", "auto", "center"], "animation-range-start": ["-10%", "cover -10%", "normal", "contain 10px", "bogus"],
+    "animation-range-end": ["-10%", "contain 110%", "normal", "exit"], "transition-duration": ["-1s", "1s, -1s"], "transition-delay": ["-1s", "-1s, 1s"],
+    "animation-delay": ["-1s"], "border-image-width": ["-1", "-1px", "1 2px auto 10%"], "border-image-outset": ["-1", "-1px", "1 2px"],
+    "border-image-slice": ["-1", "10% fill", "fill 10", "1 2 3 4 5"], "text-decoration-thickness": ["-1px", "-10%", "auto", "from-font"],
+    "text-underline-offset": ["-1px", "auto"], "outline-width": ["-1px", "thin"], "outline-offset": ["-1px"], "scroll-padding-top": ["-1px", "auto"],
+    "scroll-margin-top": ["-1px", "auto"], "padding-top": ["-1px", "-5%"], "border-top-width": ["-1px", "THICK"], "row-gap": ["-1px", "normal"],
+    "background-size": ["-1px", "10px -1px", "cover", "auto 10%", "10px, contain"], "background-position-x": ["-10px", "left -10px", "right 10px", "center", "left, right 10%"],
+    "background-position-y": ["bottom -10%", "center", "top 10px", "10px, bottom"], "background-repeat": ["repeat no-repeat", "repeat-x, space"],
+    "opacity": ["-1", "1e-6", "0.000001", "1e6", "-10%"], "flex-basis": ["-1px", "-10%", "max-content"], "max-width": ["-1px"], "min-height": ["-1px"],
+    "grid-row-start": ["0", "span 0", "-1", "span a 2", "a 2"], "column-gap": ["-1px"], "letter-spacing": ["-1px"], "text-indent": ["-1px"],
+    "font-family": ["a\\ b", "\"a\\\\b\"", "'a\"b'", "a,", "inherit a", "\\61", "--a", "-1a"], "content": ["\"a\\\\b\"", "\"a\\a b\"", "'a'", "\"a\\\"b\"", "\"a"],
+    "quotes": ["'a' 'b'", "\"a\\\\\" \"b\""], "box-shadow": ["inset 0 0 1px red", "0 0 1px red inset", "inset inset 0 0", "0 0 -1px red", "0 0 1px -1px red",
+    "0 0 1px 1px 1px red", "0 0", "0", "red", "0 0 1px red, inset 1px 1px blue", "red 0 0 red"],
+    "transition-property": ["opacity, all", "none", "none, opacity", "--a", "initial"], "animation-name": ["a, b", "none, a", "'a b'", "\"inherit\"", "'none'"],
+    "transform-origin": ["left top", "10px 20px 30px"], "perspective-origin": ["left"], "object-position": ["right 10px bottom"],
+    "width": ["calc(1mm + 1px)", "calc(1pt + 1px)", "calc(1pc + 1px)", "calc(2px * 3)", "calc(1px / 2px)", "calc(1px * 2px)", "min(1px, 2%)"],
+    "color": ["hsl(60, 100%, 50%)", "hsl(180 50% 25%)", "hsl(270deg 100% 50% / 0.5)", "rgb(1 2 3 / 0.5)", "#\\31 23", "#abcd", "#aabbccdd", "rgb(300, -1, 2)"],
+}
+for name, values in MUTATION.items():
+    for value in values:
+        if [name, value] not in pairs:
+            pairs.append([name, value])
 for name, values in EXTRA.items():
     for value in values:
         if [name, value] not in pairs:
