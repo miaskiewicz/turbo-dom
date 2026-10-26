@@ -24,33 +24,8 @@ const FIXTURE: &str = include_str!("fixtures/rtdom_core_chrome156.json");
 /// assertions until the fixing commit removes them here. (turbo-dom#92, RCDATA-context
 /// fragments dropping U+0000, is fixed.)
 const OPEN_DOCUMENTS: &[&str] = &[];
-/// - miaskiewicz/turbo-dom#98: An+B limits, trailing combinators in nested lists, an
-///   escape at the end. (turbo-dom#91 and #96 are fixed.)
-const OPEN_SELECTORS: &[&str] = &[
-    ":is(p >, span)",
-    ":not(p >)",
-    ":nth-child(-1073741825n+1)",
-    ":nth-child(-2147483647n+1)",
-    ":nth-child(-2147483648n+1)",
-    ":nth-child(-2147483649n+1)",
-    ":nth-child(-99999999999999999999n+1)",
-    ":nth-child(-99999999999999999999n+3)",
-    ":nth-child(-n-2147483649)",
-    ":nth-child(-n-99999999999999999999)",
-    ":nth-child(1 of !)",
-    ":nth-child(1073741824n+1 of i)",
-    ":nth-child(1073741824n+1)",
-    ":nth-child(2147483647n+1)",
-    ":nth-child(99999999999999999999n+1)",
-    ":nth-child(99999999999999999999n-99999999999999999998)",
-    ":nth-child(n -2147483649)",
-    ":nth-child(n+99999999999999999999)",
-    ":nth-child(n- 2147483649)",
-    ":nth-child(n-2147483648)",
-    ":nth-child(n-2147483649)",
-    ":nth-of-type(1073741824n+1)",
-    "[id=x\\",
-];
+/// (turbo-dom#91, #96 and #98 are fixed.)
+const OPEN_SELECTORS: &[&str] = &[];
 
 fn fixture() -> Value {
     let fixture: Value = serde_json::from_str(FIXTURE).unwrap();

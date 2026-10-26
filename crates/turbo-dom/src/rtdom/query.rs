@@ -573,6 +573,11 @@ fn lex_strict(src: &str) -> Result<Vec<StrictTok>, SelectorError> {
                 let argument = scan_balanced(&chars, &mut i, '(', ')');
                 if selector_list {
                     lex_strict(&argument)?;
+                } else if matches!(lower.as_str(), "nth-child" | "nth-last-child") {
+                    // the `of S` part is a selector list too (`:nth-child(1 of !)`)
+                    if let Some(at) = nth_of_position(argument.as_bytes()) {
+                        lex_strict(&argument[at + 2..])?;
+                    }
                 }
                 if state
                     && (i == n
@@ -937,11 +942,27 @@ fn forgive_nested_has(complex: &mut Complex) {
     }
 }
 
-/// Does a selector-list argument have an empty item (`p, `, `,p`, `p,,a`, or nothing)?
+/// Does a selector-list argument have an empty item (`p, `, `,p`, `p,,a`, or nothing)
+/// or one ending in a combinator (`p >`)? The unforgiving lists reject it.
 fn has_empty_item(arg: &str) -> bool {
     split_top_level_commas(arg)
         .iter()
-        .any(|item| item.trim().is_empty())
+        .any(|item| item.trim().is_empty() || trailing_combinator(item))
+}
+
+/// Does a selector-list item end in a combinator (`p >`; an escaped `\>` is a name)?
+fn trailing_combinator(item: &str) -> bool {
+    let mut tail = item.trim_end().chars().rev();
+    matches!(tail.next(), Some('>' | '+' | '~')) && tail.next() != Some('\\')
+}
+
+/// A forgiving list (`:is()` / `:where()`): items ending in a combinator are dropped.
+fn parse_forgiving_list(src: &str) -> Vec<Complex> {
+    split_top_level_commas(src)
+        .into_iter()
+        .filter(|item| !trailing_combinator(item))
+        .filter_map(|item| parse_complex(item.trim()))
+        .collect()
 }
 
 /// Map a pseudo `name` + optional `arg` to a `Pseudo`. Unrecognized → `Unknown`
@@ -1040,8 +1061,8 @@ fn parse_pseudo(name: &str, arg: Option<&str>) -> Pseudo {
                 Pseudo::NthLastOfType(a, b)
             }
         }
-        "is" => Pseudo::Is(parse_selector_list_str(arg.unwrap_or(""))),
-        "where" => Pseudo::Where(parse_selector_list_str(arg.unwrap_or(""))),
+        "is" => Pseudo::Is(parse_forgiving_list(arg.unwrap_or(""))),
+        "where" => Pseudo::Where(parse_forgiving_list(arg.unwrap_or(""))),
         // the unforgiving lists reject an empty item (`:not(p, )`; Chrome: SyntaxError)
         "not" | "has" if has_empty_item(arg.unwrap_or("")) => Pseudo::unknown(name, arg),
         "not" => Pseudo::Not(parse_selector_list_str(arg.unwrap_or(""))),
@@ -1123,6 +1144,12 @@ fn valid_anb(arg: &str) -> bool {
         return coefficient && i == b.len();
     }
     i += 1;
+    // `n-123` is one ident (or dimension unit): Chrome converts its integer exactly, so
+    // it must fit 32 bits (a separate number token is clamped instead)
+    let glued = b.get(i) == Some(&b'-') && b.get(i + 1).is_some_and(u8::is_ascii_digit);
+    if glued && clamped_int(true, &s[i + 1..]) == i64::from(i32::MIN) - 1 {
+        return false;
+    }
     let skip = |i: &mut usize| {
         while b.get(*i).copied().is_some_and(space) {
             *i += 1;
@@ -1167,26 +1194,46 @@ fn parse_nth(arg: &str) -> (i64, i64) {
         let a = match acoef {
             "" | "+" => 1,
             "-" => -1,
-            s => s.parse::<i64>().unwrap_or(0),
+            s => signed_int(s),
         };
         let brest = &a0[npos + 1..];
-        let b = if brest.is_empty() {
-            0
-        } else {
-            brest.parse::<i64>().unwrap_or(0)
-        };
+        let b = if brest.is_empty() { 0 } else { signed_int(brest) };
         return (a, b);
     }
     // bare integer
-    match a0.parse::<i64>() {
-        Ok(n) => (0, n),
-        Err(_) => (0, 0),
+    (0, signed_int(&a0))
+}
+
+/// A validated `[+-]digits` integer as Chrome stores it: clamped to 32 bits.
+fn signed_int(s: &str) -> i64 {
+    let negative = s.starts_with('-');
+    let digits = s.trim_start_matches(['+', '-']);
+    clamped_int(negative, digits).clamp(i64::from(i32::MIN), i64::from(i32::MAX))
+}
+
+/// The value of `digits` (ASCII digits, leading ones only) with that sign, saturating
+/// one past the 32-bit range (so `i32::MIN - 1` / `i32::MAX + 1` mean "does not fit").
+fn clamped_int(negative: bool, digits: &str) -> i64 {
+    let limit = i64::from(i32::MAX) + 2;
+    let magnitude = digits
+        .bytes()
+        .take_while(u8::is_ascii_digit)
+        .fold(0i64, |v, d| (v * 10 + i64::from(d - b'0')).min(limit));
+    if negative {
+        (-magnitude).max(i64::from(i32::MIN) - 1)
+    } else {
+        magnitude.min(i64::from(i32::MAX) + 1)
     }
 }
 
 /// Does 1-based `index` satisfy `an+b`? Mirrors selectors.mjs `nthMatch`:
 /// for a==0, exact match; otherwise `(index-b) % a == 0 && (index-b)/a >= 0`.
+/// Chrome 156 matches nothing when A or B is outside 31 bits (`1073741824n+1`).
 fn nth_match(a: i64, b: i64, index: i64) -> bool {
+    const LIMIT: i64 = 1 << 30;
+    if !(-LIMIT..LIMIT).contains(&a) || !(-LIMIT..LIMIT).contains(&b) {
+        return false;
+    }
     if a == 0 {
         return index == b;
     }

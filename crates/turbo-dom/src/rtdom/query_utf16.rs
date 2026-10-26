@@ -436,11 +436,19 @@ fn pseudo(name: &str, arg: Option<&[u16]>) -> Pseudo {
             Pseudo::State,
         );
     }
-    // the unforgiving lists reject an empty item (`:not(p, )`; Chrome: SyntaxError)
-    let empty_item = || split(arg, 44).into_iter().any(|item| trim(item).is_empty());
+    // the unforgiving lists reject an empty item or one ending in a combinator
+    // (`:not(p, )`, `:not(p >)`; Chrome: SyntaxError), the forgiving ones drop it
+    let empty_item = || split(arg, 44).into_iter().any(invalid_item);
+    let forgiving = || {
+        split(arg, 44)
+            .into_iter()
+            .filter(|item| !invalid_item(item))
+            .filter_map(complex)
+            .collect()
+    };
     match name {
-        "is" => Pseudo::Is(list(arg)),
-        "where" => Pseudo::Where(list(arg)),
+        "is" => Pseudo::Is(forgiving()),
+        "where" => Pseudo::Where(forgiving()),
         "not" | "has" if empty_item() => {
             Pseudo::unknown(name, Some(&String::from_utf16_lossy(arg)))
         }
@@ -453,7 +461,7 @@ fn pseudo(name: &str, arg: Option<&[u16]>) -> Pseudo {
                 return Pseudo::unknown(name, Some(&String::from_utf16_lossy(arg)));
             }
             let of = &arg[at + 2..];
-            if split(of, 44).into_iter().any(|item| trim(item).is_empty()) {
+            if split(of, 44).into_iter().any(invalid_item) {
                 return Pseudo::unknown(name, Some(&String::from_utf16_lossy(arg)));
             }
             let (a, b) = parse_nth(&anb);
@@ -487,6 +495,13 @@ fn pseudo(name: &str, arg: Option<&[u16]>) -> Pseudo {
         ),
         _ => parse_pseudo(name, Some(&String::from_utf16_lossy(arg))),
     }
+}
+/// A list item that is empty or ends in an unescaped combinator (`p >`).
+fn invalid_item(item: &[u16]) -> bool {
+    let item = trim(item);
+    item.is_empty()
+        || (matches!(item.last(), Some(62 | 43 | 126))
+            && item.len().checked_sub(2).and_then(|at| item.get(at)) != Some(&92))
 }
 fn complex(source: &[u16]) -> Option<Complex> {
     let mut index = 0;

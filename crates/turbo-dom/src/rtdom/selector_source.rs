@@ -26,6 +26,8 @@ pub(super) enum Mode {
 pub(super) trait Unit: Copy {
     fn code(self) -> u32;
     fn ascii(byte: u8) -> Self;
+    /// U+FFFD.
+    fn replacement() -> Self;
 }
 impl Unit for char {
     fn code(self) -> u32 {
@@ -34,6 +36,9 @@ impl Unit for char {
     fn ascii(byte: u8) -> Self {
         char::from(byte)
     }
+    fn replacement() -> Self {
+        '\u{fffd}'
+    }
 }
 impl Unit for u16 {
     fn code(self) -> u32 {
@@ -41,6 +46,9 @@ impl Unit for u16 {
     }
     fn ascii(byte: u8) -> Self {
         u16::from(byte)
+    }
+    fn replacement() -> Self {
+        0xfffd
     }
 }
 
@@ -67,6 +75,15 @@ pub(super) fn normalize<T: Unit>(source: &[T], mode: Mode) -> Option<Vec<T>> {
     while i < source.len() {
         let code = source[i].code();
         if code == u32::from(b'\\') {
+            if i + 1 == source.len() && mode == Mode::Dom {
+                // an escape at the end: U+FFFD in a name, nothing in a string (so the
+                // closers appended below are not escaped)
+                if quote.is_none() {
+                    out.push(T::replacement());
+                }
+                changed = true;
+                break;
+            }
             // an escape takes the next code point verbatim (none at the end)
             let end = (i + 2).min(source.len());
             out.extend_from_slice(&source[i..end]);
@@ -121,7 +138,9 @@ pub(super) fn normalize<T: Unit>(source: &[T], mode: Mode) -> Option<Vec<T>> {
 
 /// [`normalize`] for the string API, borrowing when nothing changes.
 pub(super) fn normalize_str(source: &str, mode: Mode) -> std::borrow::Cow<'_, str> {
-    if !source.contains("/*") && (mode == Mode::Sheet || !source.contains(['[', '(', '"', '\''])) {
+    if !source.contains("/*")
+        && (mode == Mode::Sheet || !source.contains(['[', '(', '"', '\'', '\\']))
+    {
         return std::borrow::Cow::Borrowed(source);
     }
     let chars: Vec<char> = source.chars().collect();
@@ -188,7 +207,10 @@ mod tests {
         assert_eq!(dom("[title=\"it's\"]"), "[title=\"it's\"]");
         assert_eq!(dom("p\\/**/"), "p\\/**/");
         assert_eq!(dom("[title=\"a\\\"/**/\"]"), "[title=\"a\\\"/**/\"]");
-        assert_eq!(dom("p\\"), "p\\");
+        assert_eq!(dom("p\\"), "p\u{fffd}");
+        assert_eq!(dom("[id=x\\"), "[id=x\u{fffd}]");
+        assert_eq!(dom("[id=\"x\\"), "[id=\"x\"]");
+        assert_eq!(sheet("p\\"), "p\\");
     }
 
     #[test]

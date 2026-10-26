@@ -146,12 +146,16 @@ const ATTR_OP = { '~': 'includes', '|': 'dash', '^': 'prefix', $: 'suffix', '*':
 // unterminated string and every open `[` / `(` are closed, as CSS does at EOF.
 const nameLike = (c) => c !== undefined && (c >= '\x80' || c === '-' || c === '_' || c === '\\' || isLetter(c) || isDigit(c));
 function normalizeSource(src, closeAtEof) {
-  if (src.indexOf('/*') === -1 && (!closeAtEof || !/[[("']/.test(src))) return src;
+  if (src.indexOf('/*') === -1 && (!closeAtEof || !/[[("'\\]/.test(src))) return src;
   let out = '', quote = null;
   const open = [];
   for (let i = 0; i < src.length; i++) {
     const c = src[i];
-    if (c === '\\') { out += src.slice(i, i + 2); i++; continue; }
+    if (c === '\\') {
+      // an escape at the end: U+FFFD in a name, nothing in a string (closers stay unescaped)
+      if (i + 1 === src.length && closeAtEof) { if (!quote) out += '\uFFFD'; break; }
+      out += src.slice(i, i + 2); i++; continue;
+    }
     if (quote) { if (c === quote) quote = null; out += c; continue; }
     if (c === '"' || c === "'") quote = c;
     else if (c === '/' && src[i + 1] === '*') {
@@ -295,6 +299,16 @@ function allowedAfter(pe, p) {
 
 // ── An+B ────────────────────────────────────────────────────────────────────
 // `<an+b>` (CSS Syntax 3 §6) → { a, b } or null. Mirrors the Rust valid_anb + parse_nth.
+// Chrome 156's An+B integers (miaskiewicz/turbo-dom#98): a number token clamps to 32 bits;
+// an integer glued into an ident / dimension unit (`n-123`) must fit exactly; an A or B
+// outside 31 bits never matches (nthMatch).
+const INT_MIN = -2147483648, INT_MAX = 2147483647;
+const clampInt = (sign, digits) => {
+  let v = 0;
+  for (const d of digits) v = Math.min(v * 10 + (d.charCodeAt(0) - 48), INT_MAX + 2);
+  return sign < 0 ? Math.max(-v, INT_MIN - 1) : Math.min(v, INT_MAX + 1);
+};
+const clamp32 = (v) => Math.min(Math.max(v, INT_MIN), INT_MAX);
 function parseAnB(arg) {
   const s = trimWs(arg).toLowerCase();
   if (s === 'odd') return { a: 2, b: 1 };
@@ -307,10 +321,16 @@ function parseAnB(arg) {
   const digits = s.slice(ds, i);
   if (s[i] !== 'n') {
     if (!digits || i !== s.length) return null;
-    return { a: 0, b: sign * parseInt(digits, 10) };
+    return { a: 0, b: clamp32(clampInt(sign, digits)) };
   }
-  const a = sign * (digits ? parseInt(digits, 10) : 1);
+  const a = digits ? clamp32(clampInt(sign, digits)) : sign;
   i++;
+  // `n-123` is one ident / dimension unit: its integer is converted exactly
+  if (s[i] === '-' && i + 1 < s.length && isDigit(s[i + 1])) {
+    let j = i + 1;
+    while (j < s.length && isDigit(s[j])) j++;
+    if (clampInt(-1, s.slice(i + 1, j)) < INT_MIN) return null;
+  }
   while (i < s.length && isWs(s[i])) i++;
   if (i === s.length) return { a, b: 0 };
   if (s[i] !== '+' && s[i] !== '-') return null;
@@ -320,7 +340,7 @@ function parseAnB(arg) {
   const bd = i;
   while (i < s.length && isDigit(s[i])) i++;
   if (i === bd) return null;
-  const b = bs * parseInt(s.slice(bd, i), 10);
+  const b = clamp32(clampInt(bs, s.slice(bd, i)));
   while (i < s.length && isWs(s[i])) i++;
   return i === s.length ? { a, b } : null;
 }
@@ -336,6 +356,7 @@ function nthOfPosition(arg) {
   return -1;
 }
 function nthMatch(a, b, index) {
+  if (a < -1073741824 || a >= 1073741824 || b < -1073741824 || b >= 1073741824) return false;
   if (a === 0) return index === b;
   const d = index - b;
   return d % a === 0 && d / a >= 0;
