@@ -1326,6 +1326,130 @@
     }
    },
    "canvas": "#ffffff"
+  },
+  {
+   "id": "anonymous-block-frame",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}#w{width:200px;padding:10px;border:2px solid #000;margin-left:30px;font-size:0}p{margin:0;height:10px}i{display:inline-block;width:8px;height:10px}</style></head><body><div id=\"w\" data-cid=\"w\"><i data-cid=\"s\"></i><p data-cid=\"p\"></p></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "w",
+     "x": 30,
+     "y": 0,
+     "width": 224,
+     "height": 44
+    },
+    {
+     "cid": "s",
+     "x": 42,
+     "y": 12,
+     "width": 8,
+     "height": 10
+    },
+    {
+     "cid": "p",
+     "x": 42,
+     "y": 22,
+     "width": 200,
+     "height": 10
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "anonymous-block-height",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}#w{height:50px;min-height:50px;font-size:0}p{margin:0;height:10px}i{display:inline-block;width:8px;height:10px}</style></head><body><div id=\"w\" data-cid=\"w\"><i data-cid=\"s\"></i><p data-cid=\"p\"></p></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "w",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 50
+    },
+    {
+     "cid": "s",
+     "x": 0,
+     "y": 0,
+     "width": 8,
+     "height": 10
+    },
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 10,
+     "width": 1280,
+     "height": 10
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "anonymous-block-margins",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}#w{margin:20px 0;overflow:hidden;font-size:0}p{margin:0;height:10px}i{display:inline-block;width:8px;height:10px}</style></head><body><div id=\"w\" data-cid=\"w\"><i data-cid=\"s\"></i><p data-cid=\"p\"></p><i data-cid=\"t\"></i></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "w",
+     "x": 0,
+     "y": 20,
+     "width": 1280,
+     "height": 30
+    },
+    {
+     "cid": "s",
+     "x": 0,
+     "y": 20,
+     "width": 8,
+     "height": 10
+    },
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 30,
+     "width": 1280,
+     "height": 10
+    },
+    {
+     "cid": "t",
+     "x": 0,
+     "y": 40,
+     "width": 8,
+     "height": 10
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
   }
  ]
 }

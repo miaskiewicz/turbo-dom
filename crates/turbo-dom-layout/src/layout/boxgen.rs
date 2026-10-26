@@ -1030,10 +1030,8 @@ fn flush_flex_text(
         text.clear();
         return;
     }
-    let mut anonymous = anon_lines_box(std::mem::take(text), style, ids);
     // The item inherits text properties, never the container's width or frame.
-    anonymous.style = style.inherited_only();
-    boxes.push(anonymous);
+    boxes.push(anon_lines_box(std::mem::take(text), style, ids));
 }
 
 fn block_child(node: &StyledNode, ids: &mut Ids) -> Option<LayoutBox> {
@@ -1052,20 +1050,20 @@ fn is_blank_text(item: &InlineItem) -> bool {
     matches!(item, InlineItem::Text { text, .. } if text.chars().all(|ch| matches!(ch, ' ' | '\t' | '\n' | '\r' | '\x0c')))
 }
 
+/// The anonymous block box wrapping an inline run next to block-level siblings. Its
+/// style is anonymous-box style (CSS 2.1 §9.2.1.1): only what it inherits from its
+/// parent, never the parent's frame, size, margins, background or `position` — on
+/// every layout path (miaskiewicz/turbo-dom#28 item 3; the PDF path used to copy the
+/// parent's whole style, so the run was padded, sized and offset a second time).
 fn anon_lines_box(
     items: Vec<InlineItem>,
     parent_style: &ComputedStyle,
     ids: &mut Ids,
 ) -> LayoutBox {
-    let style = if ids.sources.is_some() {
-        parent_style.inherited_only()
-    } else {
-        parent_style.clone()
-    };
     LayoutBox {
         node_id: ids.alloc(),
         source_role: SourceRole::AnonymousInlineFlow,
-        style,
+        style: parent_style.inherited_only(),
         attrs: Vec::new(),
         display: Display::Block,
         kind: BoxKind::Lines(items),

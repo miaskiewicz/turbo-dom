@@ -1676,11 +1676,9 @@ pub(crate) fn layout_box_sized_isolated(
 }
 
 /// Whether a box is the containing block of its `absolute` descendants: a positioned
-/// box, but never an anonymous inline-flow box (on the PDF path it copies its parent's
-/// whole style, `position` included) — an absolutely positioned box in its line
-/// resolves against the real positioned ancestor.
-fn contains_positioned(lb: &LayoutBox, bs: &BoxStyle) -> bool {
-    bs.position != Position::Static && !lb.anonymous_inline_flow()
+/// box (an anonymous inline-flow box never is: it does not inherit `position`).
+fn contains_positioned(bs: &BoxStyle) -> bool {
+    bs.position != Position::Static
 }
 
 fn child_height_known(lb: &LayoutBox, height: Option<f32>, inherited: bool) -> bool {
@@ -1712,7 +1710,7 @@ fn layout_box_sized_impl(
     let saved_cb = (ctx.abs_cb_x, ctx.abs_cb_y, ctx.abs_cb_w, ctx.abs_cb_h);
     let saved_abs_known = ctx.abs_cb_h_known;
     let own_height = resolved_live_height(bs.height, native_height_basis(bs, ctx), 0.0);
-    if contains_positioned(lb, bs) {
+    if contains_positioned(bs) {
         (ctx.abs_cb_x, ctx.abs_cb_y, ctx.abs_cb_w, ctx.abs_cb_h) =
             positioned_child_block(bs, (bx, by, bbw), (content_x, content_y, content_w), ctx);
         ctx.abs_cb_h_known = own_height.is_some();

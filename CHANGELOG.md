@@ -79,6 +79,12 @@ changes in `tools/parity/expected/p5b-w3-turbo-dom-28-*.json`.
   inside the inset instead of being shifted by `margin-left`. Every layout path.
   Control: `abs-static-position-*` / `abs-inset-margins` in `live-geometry` and
   `html-document`.
+- Anonymous block style (item 3): the anonymous block box wrapping an inline run next to
+  block-level siblings takes only its parent's inherited properties (CSS 2.1 §9.2.1.1) on
+  every path. The PDF / screenshot path copied the parent's whole style, so the run was
+  padded, bordered, sized (`height`, `width`) and offset by the parent's margins a second
+  time — `<div style="padding:10px">x<p>…</p></div>` pushed the `<p>` down by 20px. Control:
+  `anonymous-block-*` in `html-document` and `live-geometry`.
 
 ### Changed — selector follow-ups (P5b-X2, miaskiewicz/turbo-dom#24, Chrome 156 controls)
 - `rtdom::cascade` (`getComputedStyle`) and the npm `cascade.mjs` rank rules by the

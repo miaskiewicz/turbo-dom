@@ -181,6 +181,11 @@ const CASES = [
   { id: "abs-static-position-negative-margins", html: DOC("body{margin:0}", `<div data-cid="p" style="padding:20px"><div data-cid="a" style="position:absolute;margin:-1px;width:1px;height:1px"></div><div data-cid="b" style="height:10px;margin-top:6px"></div><div data-cid="c" style="position:absolute;margin:-1px 0 0 -2px;width:1px;height:1px"></div></div>`) },
   { id: "abs-inset-margins", html: DOC("body{margin:0}", `<div data-cid="a" style="position:absolute;right:10px;top:0;margin:0 3px 0 7px;width:10px;height:10px"></div><div data-cid="b" style="position:absolute;left:10px;top:20px;margin:2px 3px 0 7px;width:10px;height:10px"></div><div data-cid="r" style="position:relative;height:100px"><div data-cid="d" style="position:absolute;bottom:10px;margin-bottom:5px;margin-left:4px;width:10px;height:10px"></div></div>`) },
   { id: "abs-static-position-in-line", html: DOC("body{margin:0}", `<div data-cid="p"><span style="display:inline-block;width:16px;height:10px"></span><span data-cid="a" style="position:absolute;margin-left:7px;margin-top:5px;width:10px;height:10px"></span></div>`), measure: { p: "xyw" } },
+  // turbo-dom#28 item 3: the anonymous block around inline content next to a block takes only
+  // the inherited properties of its parent (CSS 2.1 §9.2.1.1), not its frame, size or margins.
+  { id: "anonymous-block-frame", html: DOC("body{margin:0}#w{width:200px;padding:10px;border:2px solid #000;margin-left:30px;font-size:0}p{margin:0;height:10px}i{display:inline-block;width:8px;height:10px}", `<div id="w" data-cid="w"><i data-cid="s"></i><p data-cid="p"></p></div>`) },
+  { id: "anonymous-block-height", html: DOC("body{margin:0}#w{height:50px;min-height:50px;font-size:0}p{margin:0;height:10px}i{display:inline-block;width:8px;height:10px}", `<div id="w" data-cid="w"><i data-cid="s"></i><p data-cid="p"></p></div>`) },
+  { id: "anonymous-block-margins", html: DOC("body{margin:0}#w{margin:20px 0;overflow:hidden;font-size:0}p{margin:0;height:10px}i{display:inline-block;width:8px;height:10px}", `<div id="w" data-cid="w"><i data-cid="s"></i><p data-cid="p"></p><i data-cid="t"></i></div>`) },
 ];
 
 const browser = await chromium.launch({ executablePath: chromePath, headless: true });
