@@ -155,7 +155,7 @@ cargo test -p turbo-dom-layout                         # default (bundled-fonts)
 cargo test -p turbo-dom-layout --features svg
 cargo test -p turbo-dom-layout --features perf
 cargo test -p turbo-dom-layout --features svg --test image_layer   # the shared image layer == the pre-S5 PDF decode
-cargo test -p turbo-dom-layout --no-default-features   # 44 known failures: tests that assume bundled fonts (turbo-html2pdf#28)
+cargo test -p turbo-dom-layout --no-default-features   # 43 known failures: tests that assume bundled fonts (turbo-html2pdf#28)
 cargo tarpaulin --config crates/turbo-dom-layout/tarpaulin.toml
 ```
 
