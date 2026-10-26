@@ -1196,6 +1196,82 @@ mod tests {
     }
 
     #[test]
+    fn rects_two_pixels_wide_or_more_keep_exact_edge_coverage() {
+        // From 2px wide (an interior pixel exists) the optimized AA rect scan runs: its edge
+        // coverage is the exact area (0.7 and 0.3 of a pixel here), where the general path
+        // scan would quantize it to quarters (192 / 64).
+        let row = |x: f32, w: f32| {
+            let mut pm = Pixmap::new(10, 3).unwrap();
+            fill_rect(&mut pm, x, 0.0, w, 3.0, Rgba::BLACK, Transform::identity());
+            (0..5)
+                .map(|i| pm.pixel(i, 1).unwrap().alpha())
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(row(0.3, 2.0), [179, 255, 77, 0, 0]);
+        assert_eq!(row(1.25, 3.5), [0, 192, 255, 255, 192]);
+        assert_eq!(row(0.0, 2.0), [255, 255, 0, 0, 0]);
+    }
+
+    #[test]
+    fn rounded_rects_follow_their_corner_circles() {
+        // A 60 x 40 box with 15px corners: on each corner's 45-degree diagonal a point 2px
+        // inside the arc is filled and one 2px outside is not; the straight edges are full.
+        let mut pm = Pixmap::new(60, 40).unwrap();
+        fill_round_rect(
+            &mut pm,
+            0.0,
+            0.0,
+            60.0,
+            40.0,
+            15.0,
+            RED,
+            Transform::identity(),
+        );
+        let alpha = |x: f32, y: f32| pm.pixel(x as u32, y as u32).unwrap().alpha();
+        let d = std::f32::consts::FRAC_1_SQRT_2;
+        for (cx, cy, sx, sy) in [
+            (15.0, 15.0, -1.0, -1.0),
+            (45.0, 15.0, 1.0, -1.0),
+            (45.0, 25.0, 1.0, 1.0),
+            (15.0, 25.0, -1.0, 1.0),
+        ] {
+            let at = |r: f32| (cx + sx * r * d, cy + sy * r * d);
+            let (ix, iy) = at(13.0);
+            let (ox, oy) = at(17.0);
+            assert_eq!(alpha(ix, iy), 255, "inside the ({cx},{cy}) corner");
+            assert_eq!(alpha(ox, oy), 0, "outside the ({cx},{cy}) corner");
+        }
+        for (x, y) in [
+            (30.0, 0.0),
+            (30.0, 39.0),
+            (0.0, 20.0),
+            (59.0, 20.0),
+            (30.0, 20.0),
+        ] {
+            assert_eq!(alpha(x, y), 255, "edge ({x},{y})");
+        }
+        // A radius past half the shorter side is clamped to it: a 20px-high pill.
+        let mut pill = Pixmap::new(40, 20).unwrap();
+        fill_round_rect(
+            &mut pill,
+            0.0,
+            0.0,
+            40.0,
+            20.0,
+            100.0,
+            RED,
+            Transform::identity(),
+        );
+        let a = |x: u32, y: u32| pill.pixel(x, y).unwrap().alpha();
+        assert_eq!(
+            (a(20, 0), a(20, 19), a(0, 10), a(39, 10)),
+            (255, 255, 255, 255)
+        );
+        assert_eq!((a(0, 0), a(39, 0), a(0, 19), a(39, 19)), (0, 0, 0, 0));
+        assert_eq!((a(1, 2), a(38, 17)), (0, 0), "outside the end caps");
+    }
+
+    #[test]
     fn gradients_without_a_paintable_line_paint_nothing() {
         let stops = |n: usize| {
             [RED, Rgba::new(0, 0, 255, 255)]
