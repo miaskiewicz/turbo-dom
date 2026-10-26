@@ -1,8 +1,8 @@
 {
   "browser": "Chrome/156.0.8078.4",
   "v8": "15.6.75",
-  "casesSha256": "f9583a6ec2c47c401fda06bc42a75dada077ef8a90a159e6aebe9a25bdf014fb",
-  "probeSha256": "4cca71b0ab98304d3594a07ad0b6e37be30ac89ad1f87e669d19fb7baf14555f",
+  "casesSha256": "ae1c84aa0b1eb9ffc61f402d0a23313135bfd2a2ca0bd3cd3fe23e4cf540955c",
+  "probeSha256": "441b36c0e256ca577139117321b58ef0056be9d600529860fa7d44f4e49fc3a3",
   "collectorSha256": "33f11d2968b932a48a3341d0da10f967be05c33c71cfe9cd783b017c7d2f12f2",
   "flags": [
     "--headless=new",
@@ -2842,6 +2842,73 @@
             "rgb(0, 255, 0)",
             false
           ]
+        }
+      }
+    },
+    {
+      "id": "form-control-fonts",
+      "result": {
+        "head": {
+          "children": [
+            "style"
+          ],
+          "title": "",
+          "titles": 0
+        },
+        "fonts": {
+          "controlFonts": "30px|fantasy|400|normal|normal|30px fantasy",
+          "t-text": "13.3333px|Arial|400|normal|normal|13.3333px Arial",
+          "t-checkbox": "13.3333px|Arial|400|normal|normal|13.3333px Arial",
+          "t-radio": "13.3333px|Arial|400|normal|normal|13.3333px Arial",
+          "t-range": "13.3333px|Arial|400|normal|normal|13.3333px Arial",
+          "t-color": "13.3333px|Arial|400|normal|normal|13.3333px Arial",
+          "t-file": "13.3333px|Arial|400|normal|normal|13.3333px Arial",
+          "t-submit": "13.3333px|Arial|400|normal|normal|13.3333px Arial",
+          "t-button": "13.3333px|Arial|400|normal|normal|13.3333px Arial",
+          "t-reset": "13.3333px|Arial|400|normal|normal|13.3333px Arial",
+          "t-image": "13.3333px|Arial|400|normal|normal|13.3333px Arial",
+          "t-hidden": "13.3333px|Arial|400|normal|normal|13.3333px Arial",
+          "t-date": "13.3333px|monospace|400|normal|normal|13.3333px monospace",
+          "t-time": "13.3333px|monospace|400|normal|normal|13.3333px monospace",
+          "t-datetime-local": "13.3333px|monospace|400|normal|normal|13.3333px monospace",
+          "t-month": "13.3333px|monospace|400|normal|normal|13.3333px monospace",
+          "t-week": "13.3333px|monospace|400|normal|normal|13.3333px monospace",
+          "t-number": "13.3333px|Arial|400|normal|normal|13.3333px Arial",
+          "t-password": "13.3333px|Arial|400|normal|normal|13.3333px Arial",
+          "t-search": "13.3333px|Arial|400|normal|normal|13.3333px Arial",
+          "t-email": "13.3333px|Arial|400|normal|normal|13.3333px Arial",
+          "t-tel": "13.3333px|Arial|400|normal|normal|13.3333px Arial",
+          "t-url": "13.3333px|Arial|400|normal|normal|13.3333px Arial",
+          "t-bogus": "13.3333px|Arial|400|normal|normal|13.3333px Arial",
+          "upper": "13.3333px|monospace|400|normal|normal|13.3333px monospace",
+          "ta": "13.3333px|monospace|400|normal|normal|13.3333px monospace",
+          "sel": "13.3333px|Arial|400|normal|normal|13.3333px Arial",
+          "opt": "13.3333px|Arial|400|normal|normal|13.3333px Arial",
+          "og": "13.3333px|Arial|700|normal|normal|700 13.3333px Arial",
+          "ogOpt": "13.3333px|Arial|400|normal|normal|13.3333px Arial",
+          "multi": "13.3333px|Arial|400|normal|normal|13.3333px Arial",
+          "btn": "13.3333px|Arial|400|normal|normal|13.3333px Arial",
+          "big": "20px|Arial|400|normal|normal|20px Arial",
+          "inh": "30px|fantasy|400|normal|normal|30px fantasy",
+          "taFam": "13.3333px|serif|400|normal|normal|13.3333px serif",
+          "selInh": "30px|fantasy|400|normal|normal|30px fantasy",
+          "ogWeight": "13.3333px|Arial|300|normal|normal|300 13.3333px Arial",
+          "fs": "30px|fantasy|400|normal|normal|30px fantasy",
+          "lg": "30px|fantasy|400|normal|normal|30px fantasy",
+          "lab": "30px|fantasy|400|normal|normal|30px fantasy",
+          "out": "30px|fantasy|400|normal|normal|30px fantasy",
+          "meter": "30px|fantasy|400|normal|normal|30px fantasy",
+          "prog": "30px|fantasy|400|normal|normal|30px fantasy",
+          "span": "30px|fantasy|400|normal|normal|30px fantasy",
+          "boldOpt": "13.3333px|Arial|400|normal|normal|13.3333px Arial",
+          "boldOg": "13.3333px|Arial|900|normal|normal|900 13.3333px Arial",
+          "boldOgOpt": "13.3333px|Arial|400|normal|normal|13.3333px Arial",
+          "looseOpt": "30px|fantasy|400|normal|normal|30px fantasy",
+          "looseOg": "30px|fantasy|900|normal|normal|900 30px fantasy",
+          "looseOgOpt": "30px|fantasy|400|normal|normal|30px fantasy",
+          "plain": "13.3333px|Arial|400|normal|normal|13.3333px Arial",
+          "inSvg": "13.3333px|Arial|400|normal|normal|13.3333px Arial",
+          "detached": "|||||"
         }
       }
     }

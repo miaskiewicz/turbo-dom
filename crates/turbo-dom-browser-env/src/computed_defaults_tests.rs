@@ -91,7 +91,11 @@ fn computed_defaults_and_head_match_chrome156_control() {
     let found = mismatches(|id| {
         !matches!(
             id,
-            "dialog-top-layer" | "pseudo-elements" | "pseudo-ua-forms" | "pseudo-ua"
+            "dialog-top-layer"
+                | "pseudo-elements"
+                | "pseudo-ua-forms"
+                | "pseudo-ua"
+                | "form-control-fonts"
         )
     });
     assert!(
@@ -156,6 +160,21 @@ fn pseudo_element_ua_styles_match_chrome156_control() {
 #[ignore = "turbo-dom#47: fails until the fix"]
 fn pseudo_element_forms_match_chrome156_control() {
     let found = mismatches(|id| id == "pseudo-ua-forms");
+    assert!(
+        found.is_empty(),
+        "{} mismatches:\n{}",
+        found.len(),
+        found.join("\n")
+    );
+}
+
+/// turbo-dom#61: input (every type), select, textarea and button compute html.css's
+/// `font: -webkit-small-control` (13.3333px Arial; monospace for textarea and the date / time
+/// inputs), optgroup is bolder, author rules win (case `form-control-fonts`).
+#[test]
+#[ignore = "turbo-dom#61: fails until the fix"]
+fn form_control_fonts_match_chrome156_control() {
+    let found = mismatches(|id| id == "form-control-fonts");
     assert!(
         found.is_empty(),
         "{} mismatches:\n{}",

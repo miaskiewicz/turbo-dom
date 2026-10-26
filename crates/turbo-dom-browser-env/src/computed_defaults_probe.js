@@ -112,6 +112,13 @@
       return [before, style.color, style === getComputedStyle(host, '::before')];
     })();
     out.pseudo = pseudo;
+  } else if (document.getElementById('controlFonts')) {
+    // turbo-dom#61: form controls take html.css `font: -webkit-small-control` (13.3333px Arial;
+    // monospace for textarea and the date / time inputs), optgroup is bolder; author rules
+    // (including `font: inherit`) win; other elements inherit.
+    const props = ['font-size', 'font-family', 'font-weight', 'font-style', 'line-height', 'font'];
+    out.fonts = Object.fromEntries(Array.from(document.querySelectorAll('body [id]'), (el) => [el.id, props.map((p) => getComputedStyle(el).getPropertyValue(p)).join('|')]));
+    out.fonts.detached = props.map((p) => getComputedStyle(document.createElement('input')).getPropertyValue(p)).join('|');
   } else if (document.getElementById('pseudoUa')) {
     // turbo-dom#47: the UA-styled pseudo-elements. Each computes Chrome's html.css values for
     // it, the author rules that select it (only the properties it accepts; ::placeholder,
