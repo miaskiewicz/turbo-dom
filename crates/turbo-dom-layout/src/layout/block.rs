@@ -2018,10 +2018,10 @@ fn layout_box(
     layout_box_sized(lb, &bs, bx, by, bbw, ctx)
 }
 
-/// A live `width: auto` table is shrink-to-fit: no wider than its columns'
-/// max-content (+ spacing and frame), as Chrome lays it out (miaskiewicz/turbo-surf#36
-/// item 3; the caller still floors it at min-content). The PDF path keeps filling
-/// the containing block.
+/// A `width: auto` table is shrink-to-fit: no wider than its columns' max-content
+/// (+ spacing and frame), as Chrome lays it out — live (miaskiewicz/turbo-surf#36 item
+/// 3) and on the PDF / screenshot path (miaskiewicz/turbo-dom#28 item 7); the caller
+/// still floors it at min-content.
 fn shrink_auto_table(
     items: &[LayoutBox],
     lb: &LayoutBox,
@@ -2029,7 +2029,7 @@ fn shrink_auto_table(
     (bbw, cb_width): (f32, f32),
     ctx: &Ctx,
 ) -> f32 {
-    if !ctx.live_geometry || bs.width != LengthPct::Auto {
+    if bs.width != LengthPct::Auto {
         return bbw;
     }
     let extra = bs.padding.horizontal() + bs.border.widths().horizontal();

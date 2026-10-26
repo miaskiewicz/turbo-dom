@@ -111,6 +111,17 @@ changes in `tools/parity/expected/p5b-w3-turbo-dom-28-*.json`.
   Chrome (was 18px live / 19.36px PDF). `layout::inline::InlineAtom` gains `placeholder`
   (set for those places). Control: `abs-only-line-*` / `float-only-line-in-inline` in
   `live-geometry` and `html-document`.
+- Auto-width tables on every path (item 7): a `width: auto` table is shrink-to-fit in
+  PDFs and screenshots too (turbo-surf#36 item 3 did it for live geometry only) — its
+  columns' max-content plus border-spacing, padding and borders, `min-width` /
+  `max-width` applied, never below its min-content — so the table box (background,
+  borders, `layoutBoxes`) hugs its columns as in Chrome instead of spanning the
+  containing block, and `margin: 0 auto` centres it. `table-layout: fixed` applies only
+  to a table with a definite width (a `width: auto` one uses the automatic algorithm, as
+  in Chrome), and the columns of an auto table fill its box (a `min-width` or stretched
+  table no longer leaves them at their natural widths). Changes many html2pdf PDFs: the
+  exact list is `tools/parity/expected/p5b-w3-turbo-dom-28-item7.json`. Control:
+  `table-auto-*` in `html-document` and `live-geometry`.
 
 ### Changed — selector follow-ups (P5b-X2, miaskiewicz/turbo-dom#24, Chrome 156 controls)
 - `rtdom::cascade` (`getComputedStyle`) and the npm `cascade.mjs` rank rules by the

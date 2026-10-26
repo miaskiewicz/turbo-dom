@@ -360,18 +360,17 @@ fn column_widths(
     // the `width` declaration upstream), so a table with an explicit width fills
     // `cw`. Re-resolving the `width` value here would apply a percentage twice
     // (e.g. an 85%-wide table's columns collapsing to 85% of 85%).
-    let has_width = explicit_table_width(style, cw).is_some();
-    if is_fixed(style) {
+    // `table-layout: fixed` applies to a table with a definite width; a `width: auto`
+    // one uses the automatic algorithm (Chrome 156; miaskiewicz/turbo-dom#28 item 7).
+    if is_fixed(style) && explicit_table_width(style, cw).is_some() {
         return fixed_columns(placed, ncols, cw);
     }
+    // The columns fill the table box: an auto table is already shrink-to-fit (its
+    // columns' max-content, wider under `min-width` or when stretched), an explicit
+    // width is `cw` itself.
     let mut cols = auto_columns(placed, ncols, fonts);
-    let target = if has_width {
-        cw
-    } else {
-        cols.iter().sum::<f32>().min(cw)
-    };
     let mins = min_columns(placed, ncols, fonts);
-    scale_to(&mut cols, target, &mins);
+    scale_to(&mut cols, cw, &mins);
     cols
 }
 

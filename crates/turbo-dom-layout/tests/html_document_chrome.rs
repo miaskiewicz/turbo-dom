@@ -101,7 +101,6 @@ fn html_documents_lay_out_as_chrome_156() {
 }
 
 #[test]
-#[ignore = "turbo-dom#28: fails until the fix"]
 fn auto_width_tables_shrink_to_fit_like_chrome_156() {
     compare_cases(auto_table_case);
 }

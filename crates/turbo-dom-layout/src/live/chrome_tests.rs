@@ -250,7 +250,6 @@ fn live_geometry_matches_chrome_156() {
 }
 
 #[test]
-#[ignore = "turbo-dom#28: fails until the fix"]
 fn auto_width_tables_shrink_to_fit_like_chrome_156() {
     assert_matches_chrome(compare_cases(|id| AUTO_TABLE_CASES.contains(&id)));
 }
