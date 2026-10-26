@@ -194,7 +194,6 @@ fn border_box_case(id: &str) -> bool {
 }
 
 #[test]
-#[ignore = "miaskiewicz/turbo-dom#65: fails until the fix"]
 fn border_box_widths_size_intrinsically_like_chrome_156() {
     compare_cases(border_box_case);
 }

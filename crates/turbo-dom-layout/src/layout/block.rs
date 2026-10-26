@@ -179,9 +179,12 @@ fn resolve(lb: &LayoutBox, cb_width: f32, parent_fs: f32) -> BoxStyle {
 // width resolution
 // --------------------------------------------------------------------------
 
-fn to_border(value: f32, sizing: BoxSizing, extra: f32) -> f32 {
+/// A `width`-like length `value` as a border-box width, given the box's horizontal
+/// padding + border `extra`: under `box-sizing: border-box` the length is the border box,
+/// never narrower than its padding and border (miaskiewicz/turbo-dom#65).
+pub(crate) fn to_border(value: f32, sizing: BoxSizing, extra: f32) -> f32 {
     match sizing {
-        BoxSizing::BorderBox => value,
+        BoxSizing::BorderBox => value.max(extra),
         BoxSizing::ContentBox => value + extra,
     }
 }

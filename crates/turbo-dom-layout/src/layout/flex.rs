@@ -539,7 +539,7 @@ pub(crate) fn natural_width(lb: &LayoutBox, fonts: &FontRegistry) -> f32 {
         });
         let frame = bs.padding.horizontal() + bs.border.widths().horizontal();
         if let LengthPct::Px(w) = bs.width {
-            return caption_floored(lb, w + frame, fonts);
+            return caption_floored(lb, block::to_border(w, bs.box_sizing, frame), fonts);
         }
         // A replaced `<img>`: its intrinsic width (stamped from the resolver before
         // layout) â so a `<div>` wrapping a logo measures the image, not 0.
@@ -604,7 +604,7 @@ pub(crate) fn min_content_width(lb: &LayoutBox, fonts: &FontRegistry) -> f32 {
         });
         let frame = bs.padding.horizontal() + bs.border.widths().horizontal();
         if let LengthPct::Px(w) = bs.width {
-            return caption_floored(lb, w + frame, fonts);
+            return caption_floored(lb, block::to_border(w, bs.box_sizing, frame), fonts);
         }
         if lb.is_replaced() {
             return natural_width(lb, fonts); // replaced image: intrinsic/declared size

@@ -23,8 +23,8 @@ use super::boxgen::{BoxKind, LayoutBox};
 use super::flex::natural_width;
 use super::fragment::{Fragment, FragmentContent, NodeId, RepeatKind};
 use super::value::{
-    parse_px, position_of, resolve_box_style, BorderEdges, BoxStyle, Display, Edges, LengthPct,
-    Position, ResolveCtx, VAlign, DEFAULT_FONT_SIZE,
+    parse_px, position_of, resolve_box_style, BorderEdges, BoxSizing, BoxStyle, Display, Edges,
+    LengthPct, Position, ResolveCtx, VAlign, DEFAULT_FONT_SIZE,
 };
 use crate::layout_snapshot::UsedBoxMetrics;
 
@@ -257,8 +257,9 @@ fn explicit_width(lb: &LayoutBox) -> Option<f32> {
         parent_font_size: DEFAULT_FONT_SIZE,
         cb_width: 0.0,
     });
+    let frame = bs.padding.horizontal() + bs.border.widths().horizontal();
     match bs.width {
-        LengthPct::Px(w) => Some(w + bs.padding.horizontal() + bs.border.widths().horizontal()),
+        LengthPct::Px(w) => Some(block::to_border(w, bs.box_sizing, frame)),
         _ => None,
     }
 }
@@ -535,7 +536,12 @@ fn explicit_cp(lb: &LayoutBox) -> Option<f32> {
         parent_font_size: DEFAULT_FONT_SIZE,
         cb_width: 0.0,
     });
+    // A border-box width includes the cell's collapsed half-borders (Chrome 156).
+    let half = bs.border.widths().horizontal() / 2.0;
     match bs.width {
+        LengthPct::Px(w) if bs.box_sizing == BoxSizing::BorderBox => {
+            Some((w - half).max(bs.padding.horizontal()))
+        }
         LengthPct::Px(w) => Some(w + bs.padding.horizontal()),
         _ => None,
     }
@@ -687,7 +693,12 @@ fn collapse_columns(
     fonts: &FontRegistry,
     measure: fn(&LayoutBox, &FontRegistry) -> f32,
 ) -> Vec<f32> {
-    let cp = |p: &Placed| (measure(p.lb, fonts) - cell_border(p.lb).horizontal()).max(0.0);
+    // A `px` width is the cell's content+padding (`explicit_cp`: a border-box one less
+    // its collapsed half-borders, miaskiewicz/turbo-dom#65).
+    let cp = |p: &Placed| {
+        explicit_cp(p.lb)
+            .unwrap_or_else(|| (measure(p.lb, fonts) - cell_border(p.lb).horizontal()).max(0.0))
+    };
     let mut w = vec![0.0_f32; vert.len() - 1];
     for p in placed.iter().filter(|p| p.colspan == 1) {
         w[p.col] = w[p.col].max(cp(p));

@@ -7,7 +7,7 @@ at the time); this file reconstructs them from history.
 
 ## [Unreleased]
 
-### Fixed — turbo-dom-layout tables and clipping (P5b-W5, miaskiewicz/turbo-dom#51/#52, Chrome 156 controls)
+### Fixed — turbo-dom-layout tables, clipping and box sizing (P5b-W5, miaskiewicz/turbo-dom#51/#52/#65, Chrome 156 controls)
 Each fix is backed by a Chrome for Testing 156 control and lists the corpus outputs it
 changes in `tools/parity/expected/p5b-w5-turbo-dom-*.json`.
 - Table captions (#51): a `<caption>` (UA `caption { display: table-caption; text-align:
@@ -38,6 +38,13 @@ changes in `tools/parity/expected/p5b-w5-turbo-dom-*.json`.
   descendants through it (PNG: a masked layer over the region, in the box's transformed
   space; SVG: a `<clipPath>`), as does turbo-html2pdf's PDF emitter. Control: `clip-*` in
   `scripts/paint-chrome-control.mjs` (pixels + boxes).
+- `box-sizing: border-box` widths (#65, found while fixing #51): a `px` width under
+  `border-box` is the border box — never narrower than the padding and border — in a
+  box's intrinsic widths too (`flex::natural_width` / `min_content_width`: floats,
+  inline-blocks, flex items and shrink-to-fit tables around it) and in table column
+  widths (a cell's `width`, auto and fixed layout; collapsed: less its half-borders).
+  They counted the padding and border twice (a float around a `border-box; width:100px;
+  padding:10px` box was 120px wide). Control: `border-box-*` in `html-document`.
 
 ### Fixed — `getComputedStyle` defaults and no injected `<title>` (P5b-X3, miaskiewicz/turbo-surf#36 items 1–2, Chrome 156 control)
 - turbo-dom-browser-env: `getComputedStyle` used to return `""` for `display`, `position`
