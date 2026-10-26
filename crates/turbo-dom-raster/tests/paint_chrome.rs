@@ -230,6 +230,7 @@ fn shadow_blur_is_capped_at_256px_like_chrome_156() {
 /// way into its `<image>` box.
 fn rasterize_svg(svg: &str) -> resvg::tiny_skia::Pixmap {
     use resvg::{tiny_skia as rsk, usvg};
+    use std::fmt::Write;
     const PNG: &str = "href=\"data:image/png;base64,";
     let mut svg = svg.to_string();
     while let Some(at) = svg.find(PNG) {
@@ -249,13 +250,14 @@ fn rasterize_svg(svg: &str) -> resvg::tiny_skia::Pixmap {
                 let run = (x..img.width())
                     .take_while(|&e| img.get_pixel(e, y).0 == p)
                     .count() as u32;
-                pixels.push_str(&format!(
+                let _ = write!(
+                    pixels,
                     "<rect x='{x}' y='{y}' width='{run}' height='1' fill='rgb({},{},{})' fill-opacity='{}'/>",
                     p[0],
                     p[1],
                     p[2],
                     f32::from(p[3]) / 255.0
-                ));
+                );
                 x += run;
             }
         }
