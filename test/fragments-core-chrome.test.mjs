@@ -13,18 +13,8 @@ const fixture = JSON.parse(
   readFileSync(new URL('../crates/turbo-dom/tests/fixtures/rtdom_core_chrome156.json', import.meta.url), 'utf8'),
 );
 
-// Recorded Chrome answers the JS runtime does not give yet (miaskiewicz/turbo-dom#92).
-const OPEN = new Set([
-  'fragment_textarea_nul',
-  'fragment_textarea_end_tag',
-  'fragment_textarea_char_ref_split',
-  'fragment_textarea_newlines',
-  'fragment_title_nul',
-  'fragment_title_end_tag',
-  'fragment_title_char_ref_split',
-  'fragment_title_newlines',
-  'fragment_textarea_rcdata',
-]);
+// Recorded Chrome answers the JS runtime does not give yet (none; turbo-dom#92 is fixed).
+const OPEN = new Set([]);
 
 const NS = { svg: 'http://www.w3.org/2000/svg', math: 'http://www.w3.org/1998/Math/MathML' };
 
