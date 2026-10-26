@@ -2,7 +2,7 @@
   "browser": "Chrome/156.0.8078.4",
   "v8": "15.6.75",
   "casesSha256": "e592cacafbf6f95e0fda2559ec0fa70092e940ed2eaba1f83eb10e3aa9d1e3b1",
-  "probeSha256": "f40a6dc60b0623b081ea346ca5717611210de9a63861aa16da6ebd0c7b4b093d",
+  "probeSha256": "74a5853a4693624e35c2cacdf31c5e4e0a5052706c11c54153056a69ac7faf61",
   "collectorSha256": "7174415de76a891d657bbc3e66952c7b91356030e8fcd9d0ac4f52603d0c3952",
   "flags": [
     "--headless=new",
@@ -397,7 +397,376 @@
         "defineOwn": [
           7,
           0
-        ]
+        ],
+        "factory": {
+          "type": "function",
+          "name": "Image",
+          "length": 0,
+          "ownKeys": [
+            "length",
+            "name",
+            "prototype"
+          ],
+          "nameShape": {
+            "enumerable": false,
+            "configurable": true,
+            "writable": false
+          },
+          "lengthShape": {
+            "enumerable": false,
+            "configurable": true,
+            "writable": false
+          },
+          "prototypeShape": {
+            "enumerable": false,
+            "configurable": false,
+            "writable": false
+          },
+          "globalShape": {
+            "enumerable": false,
+            "configurable": true,
+            "writable": true
+          },
+          "sameProto": true,
+          "protoConstructor": true,
+          "notInterface": true,
+          "functionProto": true,
+          "source": "function Image() { [native code] }",
+          "call": [
+            "throw",
+            "TypeError",
+            "Failed to construct 'Image': Please use the 'new' operator, this DOM object constructor cannot be called as a function."
+          ],
+          "callArgs": [
+            "throw",
+            "TypeError",
+            "Failed to construct 'Image': Please use the 'new' operator, this DOM object constructor cannot be called as a function."
+          ],
+          "instance": true,
+          "distinct": true,
+          "empty": {
+            "proto": true,
+            "tag": "img",
+            "ns": "http://www.w3.org/1999/xhtml",
+            "owner": true,
+            "parent": null,
+            "widthAttr": null,
+            "heightAttr": null,
+            "attrs": 0,
+            "src": "",
+            "complete": true,
+            "own": [],
+            "keys": [],
+            "symbols": 0,
+            "html": "<img>"
+          },
+          "width": {
+            "proto": true,
+            "tag": "img",
+            "ns": "http://www.w3.org/1999/xhtml",
+            "owner": true,
+            "parent": null,
+            "widthAttr": "5",
+            "heightAttr": null,
+            "attrs": 1,
+            "src": "",
+            "complete": true,
+            "own": [],
+            "keys": [],
+            "symbols": 0,
+            "html": "<img width=\"5\">"
+          },
+          "both": {
+            "proto": true,
+            "tag": "img",
+            "ns": "http://www.w3.org/1999/xhtml",
+            "owner": true,
+            "parent": null,
+            "widthAttr": "5",
+            "heightAttr": "7",
+            "attrs": 2,
+            "src": "",
+            "complete": true,
+            "own": [],
+            "keys": [],
+            "symbols": 0,
+            "html": "<img width=\"5\" height=\"7\">"
+          },
+          "undefinedWidth": {
+            "proto": true,
+            "tag": "img",
+            "ns": "http://www.w3.org/1999/xhtml",
+            "owner": true,
+            "parent": null,
+            "widthAttr": "0",
+            "heightAttr": "3",
+            "attrs": 2,
+            "src": "",
+            "complete": true,
+            "own": [],
+            "keys": [],
+            "symbols": 0,
+            "html": "<img width=\"0\" height=\"3\">"
+          },
+          "undefinedOnly": {
+            "proto": true,
+            "tag": "img",
+            "ns": "http://www.w3.org/1999/xhtml",
+            "owner": true,
+            "parent": null,
+            "widthAttr": null,
+            "heightAttr": null,
+            "attrs": 0,
+            "src": "",
+            "complete": true,
+            "own": [],
+            "keys": [],
+            "symbols": 0,
+            "html": "<img>"
+          },
+          "undefinedBoth": {
+            "proto": true,
+            "tag": "img",
+            "ns": "http://www.w3.org/1999/xhtml",
+            "owner": true,
+            "parent": null,
+            "widthAttr": null,
+            "heightAttr": null,
+            "attrs": 0,
+            "src": "",
+            "complete": true,
+            "own": [],
+            "keys": [],
+            "symbols": 0,
+            "html": "<img>"
+          },
+          "nulls": {
+            "proto": true,
+            "tag": "img",
+            "ns": "http://www.w3.org/1999/xhtml",
+            "owner": true,
+            "parent": null,
+            "widthAttr": "0",
+            "heightAttr": "0",
+            "attrs": 2,
+            "src": "",
+            "complete": true,
+            "own": [],
+            "keys": [],
+            "symbols": 0,
+            "html": "<img width=\"0\" height=\"0\">"
+          },
+          "range": {
+            "proto": true,
+            "tag": "img",
+            "ns": "http://www.w3.org/1999/xhtml",
+            "owner": true,
+            "parent": null,
+            "widthAttr": "0",
+            "heightAttr": "0",
+            "attrs": 2,
+            "src": "",
+            "complete": true,
+            "own": [],
+            "keys": [],
+            "symbols": 0,
+            "html": "<img width=\"0\" height=\"0\">"
+          },
+          "max": {
+            "proto": true,
+            "tag": "img",
+            "ns": "http://www.w3.org/1999/xhtml",
+            "owner": true,
+            "parent": null,
+            "widthAttr": "2147483647",
+            "heightAttr": "0",
+            "attrs": 2,
+            "src": "",
+            "complete": true,
+            "own": [],
+            "keys": [],
+            "symbols": 0,
+            "html": "<img width=\"2147483647\" height=\"0\">"
+          },
+          "fractions": {
+            "proto": true,
+            "tag": "img",
+            "ns": "http://www.w3.org/1999/xhtml",
+            "owner": true,
+            "parent": null,
+            "widthAttr": "1",
+            "heightAttr": "0",
+            "attrs": 2,
+            "src": "",
+            "complete": true,
+            "own": [],
+            "keys": [],
+            "symbols": 0,
+            "html": "<img width=\"1\" height=\"0\">"
+          },
+          "strings": {
+            "proto": true,
+            "tag": "img",
+            "ns": "http://www.w3.org/1999/xhtml",
+            "owner": true,
+            "parent": null,
+            "widthAttr": "12",
+            "heightAttr": "0",
+            "attrs": 2,
+            "src": "",
+            "complete": true,
+            "own": [],
+            "keys": [],
+            "symbols": 0,
+            "html": "<img width=\"12\" height=\"0\">"
+          },
+          "wrap": {
+            "proto": true,
+            "tag": "img",
+            "ns": "http://www.w3.org/1999/xhtml",
+            "owner": true,
+            "parent": null,
+            "widthAttr": "5",
+            "heightAttr": "0",
+            "attrs": 2,
+            "src": "",
+            "complete": true,
+            "own": [],
+            "keys": [],
+            "symbols": 0,
+            "html": "<img width=\"5\" height=\"0\">"
+          },
+          "extra": {
+            "proto": true,
+            "tag": "img",
+            "ns": "http://www.w3.org/1999/xhtml",
+            "owner": true,
+            "parent": null,
+            "widthAttr": "1",
+            "heightAttr": "2",
+            "attrs": 2,
+            "src": "",
+            "complete": true,
+            "own": [],
+            "keys": [],
+            "symbols": 0,
+            "html": "<img width=\"1\" height=\"2\">"
+          },
+          "symbol": [
+            "throw",
+            "TypeError",
+            "Failed to construct 'Image': Cannot convert a Symbol value to a number"
+          ],
+          "symbolHeight": [
+            "throw",
+            "TypeError",
+            "Failed to construct 'Image': Cannot convert a Symbol value to a number"
+          ],
+          "throwingValueOf": [
+            "throw",
+            "RangeError",
+            "w"
+          ],
+          "bigint": [
+            "throw",
+            "TypeError",
+            "Failed to construct 'Image': Cannot convert a BigInt value to a number"
+          ],
+          "subclass": [
+            true,
+            true,
+            "img",
+            "4"
+          ],
+          "reflect": true,
+          "reflectPrimitive": "Object"
+        },
+        "own": {
+          "factorySrc": [
+            "http://localhost/a.png",
+            "http://localhost/a.png",
+            [],
+            []
+          ],
+          "factoryOnload": [
+            "function",
+            [],
+            []
+          ],
+          "createdSrc": [
+            "http://localhost/b.png",
+            "http://localhost/b.png",
+            [],
+            []
+          ],
+          "parsed": [
+            [],
+            []
+          ],
+          "srcShape": {
+            "enumerable": true,
+            "configurable": true,
+            "get": "function",
+            "set": "function"
+          },
+          "decode": [
+            "function",
+            true,
+            false,
+            0
+          ],
+          "onload": [
+            false,
+            true,
+            false
+          ],
+          "patchedMarker": [
+            false,
+            false
+          ]
+        },
+        "decode": {
+          "shape": {
+            "enumerable": true,
+            "configurable": true,
+            "writable": true
+          },
+          "fn": [
+            "decode",
+            0,
+            "function decode() { [native code] }",
+            false
+          ],
+          "parsed": {
+            "nosrc": [
+              "rejected",
+              "EncodingError",
+              "The source image cannot be decoded."
+            ],
+            "empty": [
+              "rejected",
+              "EncodingError",
+              "The source image cannot be decoded."
+            ],
+            "loaded": "resolved",
+            "broken": [
+              "rejected",
+              "EncodingError",
+              "The source image cannot be decoded."
+            ]
+          },
+          "factory": [
+            "rejected",
+            "EncodingError",
+            "The source image cannot be decoded."
+          ],
+          "receiver": [
+            "rejected",
+            "TypeError",
+            "Failed to execute 'decode' on 'HTMLImageElement': Illegal invocation"
+          ],
+          "returnsPromise": true
+        }
       }
     }
   ]

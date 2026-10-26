@@ -1,5 +1,6 @@
 // Partial computed-style cascade — resolves getComputedStyle from injected <style>
-// sheets (emotion/MUI `.css-HASH { … }`), inline styles, and specificity ordering.
+// sheets (emotion/MUI `.css-HASH { … }`), inline styles, and specificity ordering (Selectors 4
+// specificity per rule item, selectors.mjs `specificity()`, then source order).
 //
 // PERF: every hot path (parse, querySelectorAll, getElementsBy*, matching, events)
 // NEVER calls getComputedStyle — only test assertions do. So all work here is lazy,
@@ -14,7 +15,7 @@
 // CSS custom-property resolution. Colors ARE canonicalized to rgb()/rgba() (color.mjs)
 // and bare-0 lengths to `0px`, matching what a browser serializes.
 
-import { matchesSelector, ruleSelectors } from './selectors.mjs';
+import { compareSpecificity, matchesSelector, ruleSelectors, specificity } from './selectors.mjs';
 import { COLOR_PROPS, canonicalizeColor } from './color.mjs';
 
 const kebab = (s) => s.replace(/[A-Z]/g, (m) => '-' + m.toLowerCase());
@@ -75,14 +76,6 @@ function parseDecls(text, into) {
   return map;
 }
 
-// rough WHATWG specificity: a*10000 + b*100 + c (ids, classes/attrs/pseudos, types)
-function specificity(sel) {
-  const a = (sel.match(/#[\w-]+/g) || []).length;
-  const b = (sel.match(/\.[\w-]+|\[[^\]]*\]|:[\w-]+/g) || []).length;
-  const c = (sel.match(/(^|[\s>+~])[a-zA-Z][\w-]*/g) || []).length;
-  return a * 10000 + b * 100 + c;
-}
-
 // Brace-depth scan: emit only depth-1 rules whose selector isn't an at-rule; the
 // bodies of @media/@keyframes (nested braces) are skipped wholesale.
 function parseStylesheet(css, startOrder, rules) {
@@ -106,8 +99,8 @@ function parseStylesheet(css, startOrder, rules) {
     if (sel && sel[0] !== '@') {
       const decls = parseDecls(css.slice(j + 1, k - 1));
       // the prelude is a selector LIST split at top-level commas only (`:is(a, b)` stays
-      // whole); an invalid list drops the whole rule, as in a browser (mirrors
-      // rtdom::cascade::parse_stylesheet)
+      // whole); an invalid list drops the whole rule, as in a browser; each item carries its
+      // Selectors 4 specificity (mirrors rtdom::cascade::parse_stylesheet)
       if (decls.size) for (const t of ruleSelectors(sel)) {
         rules.push({ selector: t, decls, spec: specificity(t), order: order++ });
       }
@@ -194,7 +187,7 @@ function flattenedParent(el) {
 }
 
 function applyMatched(matched, out) {
-  matched.sort((x, y) => x.spec - y.spec || x.order - y.order);
+  matched.sort((x, y) => compareSpecificity(x.spec, y.spec) || x.order - y.order);
   for (const r of matched) for (const [k, val] of r.decls) out.set(k, val);
 }
 

@@ -594,32 +594,13 @@ pub fn match_for_cascade<N: Navigator + ?Sized>(nav: &N, h: Handle, sel: &Cascad
 
 // ------------------------------------------------------------------ cascade-only pseudos
 
-/// `:defined`: every element except an HTML element whose custom element state is
-/// "undefined" — an autonomous custom element (no script runs here, so none is ever
-/// defined) or one created with an `is` value (`<button is="x-b">`, even `is=""`: no
-/// definition matches), as Chrome 156 reports for a parsed document. An embedder that runs
-/// custom element definitions (the V8 binding) knows more than the tree does.
+/// `:defined`: the element's custom element state is "uncustomized" or "custom"
+/// ([`Tree::custom_element_state`]): without an embedder's report an HTML autonomous custom
+/// element or an element parsed with an `is` value (`<button is="x-b">`, even `is=""`) is
+/// "undefined", as Chrome 156 reports for a document without definitions; the V8 binding
+/// reports upgrades (`customElements.define()`, miaskiewicz/turbo-dom#24).
 pub(super) fn is_defined(tree: &Tree, h: Handle) -> bool {
-    !(tree.is_html(h)
-        && (tree.local_name(h).is_some_and(is_custom_element_name)
-            || tree.get_attribute_ns_borrowed(h, None, "is").is_some()))
-}
-
-fn is_custom_element_name(name: &str) -> bool {
-    const RESERVED: &[&str] = &[
-        "annotation-xml",
-        "color-profile",
-        "font-face",
-        "font-face-src",
-        "font-face-uri",
-        "font-face-format",
-        "font-face-name",
-        "missing-glyph",
-    ];
-    name.starts_with(|c: char| c.is_ascii_lowercase())
-        && name.contains('-')
-        && !name.chars().any(|c| c.is_ascii_uppercase())
-        && !RESERVED.contains(&name)
+    tree.custom_element_state(h).is_defined()
 }
 
 /// `:lang(range)`: the element's language — the nearest ancestor-or-self `xml:lang` (XML
@@ -1285,9 +1266,9 @@ mod tests {
         assert!(!m("p:hover", "a"));
         assert!(m(":dir(ltr)", "a"), "P5b: :dir() is evaluated");
         assert!(!m(":dir(rtl)", "a"));
-        assert!(is_custom_element_name("x-foo"));
+        assert!(crate::rtdom::tree::is_custom_element_name("x-foo"));
         for not in ["xfoo", "X-foo", "x-Foo", "-x", "annotation-xml"] {
-            assert!(!is_custom_element_name(not), "{not}");
+            assert!(!crate::rtdom::tree::is_custom_element_name(not), "{not}");
         }
     }
 

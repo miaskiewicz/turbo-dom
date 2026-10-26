@@ -176,6 +176,7 @@ impl Tree {
         for states in self.custom_states.values() {
             charge(&mut work, 1 + states.len(), budget)?;
         }
+        charge(&mut work, self.custom_element_states.len(), budget)?;
         let before = self.storage_stats();
         let mut roots = vec![self.root()];
         roots.extend_from_slice(pins);
@@ -317,6 +318,9 @@ impl Tree {
         self.form_props.retain(|(h, _), _| retained.contains(h));
         self.custom_states.retain(|node, _| retained.contains(node));
         self.custom_states.shrink_to_fit();
+        self.custom_element_states
+            .retain(|node, _| retained.contains(node));
+        self.custom_element_states.shrink_to_fit();
         self.element_namespaces.shrink_to_fit();
         self.attribute_nodes.shrink_to_fit();
         self.shadow_root_of_host.shrink_to_fit();

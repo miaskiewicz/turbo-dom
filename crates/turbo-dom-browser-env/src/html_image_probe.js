@@ -56,5 +56,97 @@
     delete img.naturalWidth;
     return [shadowed, img.naturalWidth];
   })();
+  // turbo-dom#23: the legacy factory function Image(width, height) (HTML 4.8.4.1, Web IDL
+  // [LegacyFactoryFunction]): new-only, length 0, shares HTMLImageElement.prototype, honours
+  // NewTarget's prototype; width / height (unsigned long) set the content attributes.
+  const fshape = (object, key) => {
+    const d = Object.getOwnPropertyDescriptor(object, key);
+    if (!d) return null;
+    const row = { enumerable: d.enumerable, configurable: d.configurable };
+    if ('value' in d) row.writable = d.writable;
+    if ('get' in d) row.get = typeof d.get;
+    if ('set' in d) row.set = typeof d.set;
+    return row;
+  };
+  const made = (i) => ({
+    proto: Object.getPrototypeOf(i) === P, tag: i.localName, ns: i.namespaceURI, owner: i.ownerDocument === document,
+    parent: i.parentNode, widthAttr: i.getAttribute('width'),
+    heightAttr: i.getAttribute('height'), attrs: i.attributes.length, src: i.src, complete: i.complete,
+    own: Object.getOwnPropertyNames(i), keys: Object.keys(i), symbols: Object.getOwnPropertySymbols(i).length, html: i.outerHTML,
+  });
+  const f = {};
+  f.type = typeof Image;
+  f.name = Image.name;
+  f.length = Image.length;
+  f.ownKeys = Reflect.ownKeys(Image).map(String);
+  f.nameShape = fshape(Image, 'name');
+  f.lengthShape = fshape(Image, 'length');
+  f.prototypeShape = fshape(Image, 'prototype');
+  f.globalShape = fshape(globalThis, 'Image');
+  f.sameProto = Image.prototype === HTMLImageElement.prototype;
+  f.protoConstructor = Image.prototype.constructor === HTMLImageElement;
+  f.notInterface = Image !== HTMLImageElement;
+  f.functionProto = Object.getPrototypeOf(Image) === Function.prototype;
+  f.source = Function.prototype.toString.call(Image);
+  f.call = error(() => Image());
+  f.callArgs = error(() => Image(1, 2));
+  f.instance = new Image() instanceof HTMLImageElement;
+  f.distinct = new Image() !== new Image();
+  f.empty = made(new Image());
+  f.width = made(new Image(5));
+  f.both = made(new Image(5, 7));
+  f.undefinedWidth = made(new Image(undefined, 3));
+  f.undefinedOnly = made(new Image(undefined));
+  f.undefinedBoth = made(new Image(undefined, undefined));
+  f.nulls = made(new Image(null, null));
+  f.range = made(new Image(-1, 2147483648));
+  f.max = made(new Image(2147483647, 4294967295));
+  f.fractions = made(new Image(1.9, -1));
+  f.strings = made(new Image('12', 'x'));
+  f.wrap = made(new Image(2 ** 32 + 5, NaN));
+  f.extra = made(new Image(1, 2, 3));
+  f.symbol = error(() => new Image(Symbol('s')));
+  f.symbolHeight = error(() => new Image(1, Symbol('s')));
+  f.throwingValueOf = error(() => new Image({ valueOf() { throw new RangeError('w'); } }));
+  f.bigint = error(() => new Image(1n));
+  class Sub extends Image {}
+  const sub = new Sub(4);
+  f.subclass = [sub instanceof Sub, Object.getPrototypeOf(sub) === Sub.prototype, sub.localName, sub.getAttribute('width')];
+  const target = function () {};
+  target.prototype = { marker: true };
+  f.reflect = Object.getPrototypeOf(Reflect.construct(Image, [], target)) === target.prototype;
+  const primitive = function () {};
+  primitive.prototype = 5;
+  const proto = Object.getPrototypeOf(Reflect.construct(Image, [], primitive));
+  f.reflectPrimitive = proto === P ? 'HTMLImageElement' : proto === HTMLElement.prototype ? 'HTMLElement' : proto === Object.prototype ? 'Object' : proto === Function.prototype ? 'Function' : String(proto && proto.constructor && proto.constructor.name);
+  out.factory = f;
+  // turbo-dom#23: an image never carries own properties — src, decode and the event
+  // handlers live on the prototypes, for factory-made, created and parsed images alike.
+  const owned = (i) => [Object.getOwnPropertyNames(i), Object.keys(i)];
+  const o = {};
+  const factorySrc = new Image();
+  factorySrc.src = 'http://localhost/a.png';
+  o.factorySrc = [factorySrc.getAttribute('src'), factorySrc.src, ...owned(factorySrc)];
+  factorySrc.onload = () => {};
+  o.factoryOnload = [typeof factorySrc.onload, ...owned(factorySrc)];
+  const createdSrc = document.createElement('img');
+  createdSrc.src = 'http://localhost/b.png';
+  o.createdSrc = [createdSrc.getAttribute('src'), createdSrc.src, ...owned(createdSrc)];
+  o.parsed = owned(document.getElementById('loaded'));
+  o.srcShape = fshape(P, 'src');
+  o.decode = [typeof P.decode, Object.hasOwn(P, 'decode'), Object.hasOwn(factorySrc, 'decode'), P.decode && P.decode.length];
+  o.onload = [Object.hasOwn(P, 'onload'), 'onload' in factorySrc, Object.hasOwn(factorySrc, 'onload')];
+  o.patchedMarker = ['__tcImagePatched' in factorySrc, '__tcImagePatched' in createdSrc];
+  out.own = o;
+  // decode() is a prototype operation; its promise follows the image's load state.
+  const decoded = (promise) => promise.then(() => 'resolved', (e) => ['rejected', e.name, e.message]);
+  const d = {};
+  d.shape = fshape(P, 'decode');
+  d.fn = [P.decode.name, P.decode.length, Function.prototype.toString.call(P.decode), Object.hasOwn(P.decode, 'prototype')];
+  d.parsed = Object.fromEntries(await Promise.all(parsed.map(async (img) => [img.id, await decoded(img.decode())])));
+  d.factory = await decoded(new Image().decode());
+  d.receiver = await decoded((async () => P.decode.call(document.createElement('div')))());
+  d.returnsPromise = document.createElement('img').decode() instanceof Promise;
+  out.decode = d;
   return out;
 })();

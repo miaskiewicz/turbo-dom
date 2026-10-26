@@ -141,7 +141,7 @@ static screenshots of the surf static inputs to S5.
 |---|---|---|---|
 | cascade order (#21, turbo-dom-layout) | candidates ranked by (importance, level, specificity, rule order + declaration index): `p{margin:0;color:red} p{color:green}` was red | ranked by importance, origin (an `!important` UA declaration beats `!important` author ones), specificity, the rule's source order, then the declaration index | `cascade_cases/declaration-order`, `importance`, `inline-importance` |
 | `:disabled` / `:enabled` | the element's own `disabled`, on any element | HTML "actually disabled": disabled `<fieldset>` ancestors outside the first `<legend>`, `option` via `optgroup` / owner `select`; only form controls match either | `cases/disabled-fieldset` |
-| malformed selectors | `_checked` validated a lexical subset (`[a]div`, `p:nth-child(foo)`, `::before.x` accepted; `""`, `a,,b`, `p >` tolerated) | `_checked` = the `parse_for_cascade` grammar = Chrome's `querySelector` on every control row: type selector first, identifier names, nothing but allowed pseudo-classes after a pseudo-element (per pseudo-element, as Chrome), valid `An+B`, pseudo arity, attribute grammar (unquoted values are identifiers, undeclared prefixes invalid; `[*\|a]` any namespace), no nested `:has()` (a forgiving `:is()` drops such items). The `s` attribute modifier stays a Rust extension (`RUST_CONTRACT_ROWS`). | `cases/malformed` |
+| malformed selectors | `_checked` validated a lexical subset (`[a]div`, `p:nth-child(foo)`, `::before.x` accepted; `""`, `a,,b`, `p >` tolerated) | `_checked` = the `parse_for_cascade` grammar = Chrome's `querySelector` on every control row: type selector first, identifier names, nothing but allowed pseudo-classes after a pseudo-element (per pseudo-element, as Chrome), valid `An+B`, pseudo arity, attribute grammar (unquoted values are identifiers, undeclared prefixes invalid; `[*\|a]` any namespace), no nested `:has()` (a forgiving `:is()` drops such items). The `s` attribute modifier was a Rust extension until P5b-X2 (see below). | `cases/malformed` |
 | pseudo-class case | DOM APIs case-sensitive (`P:FIRST-CHILD` never matched) | ASCII case-insensitive | `cases/malformed`, `cases/lang` |
 | `:lang()` | stylesheet-only; strings and lists accepted | DOM APIs too; one identifier; `lang` on any element (SVG) | `cases/lang` |
 | `:defined` | stylesheet-only | DOM APIs too; `is=` elements are undefined | `cases/defined` |
@@ -151,9 +151,20 @@ static screenshots of the surf static inputs to S5.
 | `rtdom::cascade` lists | split on every `,`; invalid rules applied their valid half | `parse_for_cascade` items; an invalid list drops the rule; stylesheet matching (`:scope` = `:root`) | every row's sentinel `winner`, `cases/cascade-comma` |
 | npm `selectors.mjs` | pre-S3a engine, lenient | the same Chrome grammar and matching (`test/selectors-chrome.test.mjs` asserts the shared fixture: validity, `matches`, `querySelectorAll`, cascade sentinel, probes); `cascade.mjs` splits lists like `rtdom::cascade`; the `s` modifier throws | all `cases` + `probes` |
 
-Known limits: through the V8 binding a custom element upgraded by `customElements.define()`
-still matches `:not(:defined)` (the tree does not see the binding's registry);
-`rtdom::cascade` keeps its rough per-item specificity count.
+Known limits (both fixed by P5b-X2 below): through the V8 binding a custom element upgraded
+by `customElements.define()` still matched `:not(:defined)`; `rtdom::cascade` kept its rough
+per-item specificity count.
+
+## What P5b-X2 changed (turbo-dom#24)
+
+Follow-ups of P5b found while fixing turbo-dom#18 / #21. Each item has its own commit, a
+Chrome 156 control and a parity expected-diff file `tools/parity/expected/p5b-x2-24-*.json`.
+
+| item | before | now (Chrome 156) | control |
+|---|---|---|---|
+| `rtdom::cascade` specificity (#24 item 2) | a per-token count of each selector item's text (`a*10000 + b*100 + c` over `#…`, `.…` / `[…]` / `:…`, type names after a combinator): `:where(#a) p` outranked `p`, `:not(.x)` and `.md\:x` counted two classes, `[title="#t"]` an id, `div :is(i)` a class | the `parse_for_cascade` item's Selectors 4 `specificity()` — the layout cascade's: `:where()` 0, `:is()` / `:not()` / `:has()` their most specific argument, `:nth-child(… of S)` a pseudo-class plus S, pseudo-elements as types; npm `cascade.mjs` the same (`selectors.mjs` `specificity()` / `compareSpecificity()`) | `cascade_cases/specificity-*` (new `specificity-arguments`), `cascade-only-pseudos` — now also asserted through `rtdom::cascade::computed_style` and the npm `getComputedStyle` |
+| `:defined` after `define()` (#24 item 3) | the tree could not see the binding's registry: an upgraded custom element still matched `:not(:defined)`; the `is` rule read the current attribute | `Tree::custom_element_state` (`rtdom/custom_element_state.rs`): the binding reports upgrade / construction / failure (and carries the state through clones and adoption); otherwise the creation-time state (custom element names and the parser's `is` attribute are undefined; later `is` edits never change it; `createElement(…, {is})` is undefined) | `turbo-dom-browser-env/src/custom_elements_defined_chrome156.json` (binding test `defined_follows_upgrades_matching_chrome156`), `tests/custom_element_state.rs` |
+| `s` attribute modifier (#24 item 4) | a documented Rust extension of the lenient / `_checked` / stylesheet parsers (`[a=b s]` compared case-sensitively); the Chrome rows were skipped (`RUST_CONTRACT_ROWS`) | a SyntaxError in the checked APIs, never a match in the lenient ones, an invalid stylesheet rule — like Chrome and the npm engine | `cases/malformed` (`[a=b s]`, `[a=b S]`, `[a="1" s]`), `tests/fixtures/attribute-case` (7 `s` cases) |
 
 ## Regenerating the Chrome control
 
@@ -182,15 +193,18 @@ traversal, `:root` outside the document element) whose named values the Rust tes
 through the Tree API and `test/selectors-chrome.test.mjs` through the JS DOM.
 
 `cargo test -p turbo-dom --test cascade_selectors_chrome` lists the items whose fix has
-not landed in `OPEN` (empty since P5b) and the rows turbo-dom deliberately answers
-differently in `RUST_CONTRACT_ROWS` (the `s` attribute modifier). `node --test
+not landed in `OPEN` (empty since P5b) and asserts every row (P5b-X2 removed the
+`RUST_CONTRACT_ROWS` skip of the `s` attribute modifier). `node --test
 test/selectors-chrome.test.mjs` asserts the same fixture against the npm JS engine.
 
 turbo-dom's test asserts the S3a rows through `matches`, `matches_checked`,
 `matches_units`, `query_selector[_all]`, `query_selector[_all]_units`,
 `rtdom::cascade::computed_style`, `parse_for_cascade` and `match_for_cascade` (live
 navigator), and each cascade case through a minimal cascade over `parse_for_cascade`,
-`match_for_cascade` and `specificity()`. turbo-dom-layout's test styles every S3a selector
+`match_for_cascade` and `specificity()` and (all but the `cascade-order` class: importance and
+origins are the layout cascade's) through `rtdom::cascade::computed_style`;
+`test/selectors-chrome.test.mjs` checks the same cascade cases through the npm
+`getComputedStyle`. turbo-dom-layout's test styles every S3a selector
 and every cascade case through `style_html_tree` (the styling step of `layout_html`) and
 compares each styled element's `order` with Chrome.
 
