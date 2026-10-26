@@ -91,7 +91,8 @@ Run the worked example: `cargo run --release --example crawl`.
   tree-construction fixtures through both parsers (upstream html5ever and the UTF-16
   tokenizer fork).
 - The parser core (`turbo_dom::core`) shares the parser crate's html5ever options and
-  passes html5lib-tests tree-construction conformance at **99.72%** there.
+  passes html5lib-tests tree-construction conformance at **99.94%** there (the rtdom-direct
+  gate: 100%).
 - Honest by design: `getComputedStyle` only returns values a real rule/inline/
   inherited declaration set (no invented initial values, no layout/`@media`/state).
 

@@ -628,6 +628,48 @@
    "compatMode": "BackCompat"
   },
   {
+   "id": "selectedcontent_disabled_first",
+   "html": "<select><button><selectedcontent></selectedcontent></button><option disabled>A</option><option>B</option></select>",
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     <select>\n|       <button>\n|         <selectedcontent>\n|           \"B\"\n|       <option>\n|         disabled=\"\"\n|         \"A\"\n|       <option>\n|         \"B\"",
+   "compatMode": "BackCompat"
+  },
+  {
+   "id": "selectedcontent_all_disabled",
+   "html": "<select><button><selectedcontent>k</selectedcontent></button><option disabled>A</option></select>",
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     <select>\n|       <button>\n|         <selectedcontent>\n|           \"k\"\n|       <option>\n|         disabled=\"\"\n|         \"A\"",
+   "compatMode": "BackCompat"
+  },
+  {
+   "id": "selectedcontent_disabled_optgroup",
+   "html": "<select><button><selectedcontent></selectedcontent></button><optgroup disabled><option>A</option></optgroup><option>B</option></select>",
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     <select>\n|       <button>\n|         <selectedcontent>\n|           \"B\"\n|       <optgroup>\n|         disabled=\"\"\n|         <option>\n|           \"A\"\n|       <option>\n|         \"B\"",
+   "compatMode": "BackCompat"
+  },
+  {
+   "id": "selectedcontent_disabled_selected",
+   "html": "<select><button><selectedcontent></selectedcontent></button><option disabled selected>A</option><option>B</option></select>",
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     <select>\n|       <button>\n|         <selectedcontent>\n|           \"A\"\n|       <option>\n|         disabled=\"\"\n|         selected=\"\"\n|         \"A\"\n|       <option>\n|         \"B\"",
+   "compatMode": "BackCompat"
+  },
+  {
+   "id": "selectedcontent_datalist",
+   "html": "<select><button><selectedcontent></selectedcontent></button><datalist><option>D</option></datalist><option>B</option></select>",
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     <select>\n|       <button>\n|         <selectedcontent>\n|           \"B\"\n|       <datalist>\n|         <option>\n|           \"D\"\n|       <option>\n|         \"B\"",
+   "compatMode": "BackCompat"
+  },
+  {
+   "id": "selectedcontent_template_option",
+   "html": "<select><button><selectedcontent></selectedcontent></button><template><option selected>T</option></template><option>B</option></select>",
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     <select>\n|       <button>\n|         <selectedcontent>\n|           \"B\"\n|       <template>\n|         content\n|           <option>\n|             selected=\"\"\n|             \"T\"\n|       <option>\n|         \"B\"",
+   "compatMode": "BackCompat"
+  },
+  {
+   "id": "selectedcontent_wrapped_option",
+   "html": "<select><button><selectedcontent></selectedcontent></button><div><option selected>X</option></div></select>",
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     <select>\n|       <button>\n|         <selectedcontent>\n|           \"X\"\n|       <div>\n|         <option>\n|           selected=\"\"\n|           \"X\"",
+   "compatMode": "BackCompat"
+  },
+  {
    "id": "selectedcontent_uppercase",
    "html": "<SELECT><BUTTON><SELECTEDCONTENT></SELECTEDCONTENT></BUTTON><OPTION SELECTED>A</OPTION></SELECT>",
    "dump": "| <html>\n|   <head>\n|   <body>\n|     <select>\n|       <button>\n|         <selectedcontent>\n|           \"A\"\n|       <option>\n|         selected=\"\"\n|         \"A\"",

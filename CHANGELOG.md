@@ -224,7 +224,7 @@ flex-item-box-sizing}.html`).
   padded or bordered `box-sizing: content-box` item lost its frame. They are now
   border-box lengths. Control: `flex-item-*`.
 
-### Fixed — selector syntax, :scope and RCDATA fragments (P5-cov, miaskiewicz/turbo-dom#91/#92/#96/#98, Chrome 156 controls)
+### Fixed — selector syntax, :scope, RCDATA fragments, quirks and selectedcontent (P5-cov, miaskiewicz/turbo-dom#91/#92/#96/#98/#103/#104, Chrome 156 controls)
 Found by the new `scripts/rtdom-core-chrome-control.mjs` control
 (`crates/turbo-dom/tests/fixtures/rtdom_core_chrome156.json`); both engines (rtdom and the
 npm `selectors.mjs` / parser crate) unless noted.
@@ -245,6 +245,13 @@ npm `selectors.mjs` / parser crate) unless noted.
   `n-123` must fit 32 bits, and an A or B outside 31 bits never matches (#98).
 - `textarea` / `title` (RCDATA) fragments drop a literal U+0000 like Chrome (they kept it
   as U+FFFD); `&#0;` and every other context are unchanged (#92).
+- An empty DOCTYPE system identifier counts as missing for the quirks-mode decision, like
+  Chrome (`<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "">` is quirks:
+  `compatMode` BackCompat, a `<table>` stays in an open `<p>`) (#103).
+- `<selectedcontent>` is filled with a clone of the selected option's content (customizable
+  select; the last `selected` option, else the first enabled one) — markup5ever_rcdom 0.39's
+  clone step never fired. html5lib conformance: rtdom-direct 99.75% → 100%, npm 99.72% →
+  99.94% (#104).
 
 ### Changed — turbo-dom crate coverage 100% (P5-cov-core)
 - CI's turbo-dom coverage floor is 100 (was 88). New behaviour tests: the html5lib fixtures

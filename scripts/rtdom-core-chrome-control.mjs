@@ -162,6 +162,13 @@ const DOCUMENTS = [
   { id: "selectedcontent_outside_select", html: "<div><selectedcontent></selectedcontent><option selected>A</option></div>" },
   { id: "selectedcontent_nested", html: "<select><button><span><selectedcontent></selectedcontent></span></button><option selected id=o>A</option></select>" },
   { id: "selectedcontent_no_option", html: "<select><button><selectedcontent>keep</selectedcontent></button></select>" },
+  { id: "selectedcontent_disabled_first", html: "<select><button><selectedcontent></selectedcontent></button><option disabled>A</option><option>B</option></select>" },
+  { id: "selectedcontent_all_disabled", html: "<select><button><selectedcontent>k</selectedcontent></button><option disabled>A</option></select>" },
+  { id: "selectedcontent_disabled_optgroup", html: "<select><button><selectedcontent></selectedcontent></button><optgroup disabled><option>A</option></optgroup><option>B</option></select>" },
+  { id: "selectedcontent_disabled_selected", html: "<select><button><selectedcontent></selectedcontent></button><option disabled selected>A</option><option>B</option></select>" },
+  { id: "selectedcontent_datalist", html: "<select><button><selectedcontent></selectedcontent></button><datalist><option>D</option></datalist><option>B</option></select>" },
+  { id: "selectedcontent_template_option", html: "<select><button><selectedcontent></selectedcontent></button><template><option selected>T</option></template><option>B</option></select>" },
+  { id: "selectedcontent_wrapped_option", html: "<select><button><selectedcontent></selectedcontent></button><div><option selected>X</option></div></select>" },
   { id: "selectedcontent_uppercase", html: "<SELECT><BUTTON><SELECTEDCONTENT></SELECTEDCONTENT></BUTTON><OPTION SELECTED>A</OPTION></SELECT>" },
   { id: "script_end_tags", html: "<script>a</script><script>b</script>c" },
   // fragments (innerHTML in a scripting-disabled document)
