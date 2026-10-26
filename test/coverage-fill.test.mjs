@@ -1957,7 +1957,7 @@ test('insertAdjacentHTML all positions + bad position throws', () => {
   ref.insertAdjacentHTML('afterend', '<d></d>');
   assert.equal(ref.previousElementSibling.localName, 'a');
   assert.equal(ref.firstElementChild.localName, 'b');
-  assert.throws(() => ref.insertAdjacentHTML('bogus', '<x></x>'), /bad insertAdjacentHTML/);
+  assert.throws(() => ref.insertAdjacentHTML('bogus', '<x></x>'), { name: 'SyntaxError' });
 });
 
 // ====================================================================
