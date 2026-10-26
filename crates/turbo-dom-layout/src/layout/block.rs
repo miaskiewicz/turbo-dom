@@ -15,7 +15,7 @@ use crate::error::Diagnostics;
 use crate::layout_snapshot::UsedBoxMetrics;
 use crate::tag::MarkerKind;
 use crate::text::{Align, FontRegistry};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use super::boxgen::{BoxKind, ImageSource, InlineItem, LayoutBox};
 use super::fragment::{BreakMeta, Fragment, FragmentContent, ImagePlacement, NodeId, Transform2D};
@@ -83,6 +83,12 @@ pub(crate) struct Ctx<'a> {
     /// box establishes a new BFC (`float`, out-of-flow, `overflow`≠visible,
     /// flex/grid/table), and that box grows to contain the floats placed inside.
     pub(crate) floats: Vec<FloatRect>,
+    /// The boxes whose last child's bottom margin would collapse through their bottom
+    /// edge but whose used height is not their content height (`min-height` /
+    /// `max-height` / `aspect-ratio` changed it): Chrome drops that margin — it neither
+    /// collapses through nor counts inside (miaskiewicz/turbo-dom#75). Kept for the
+    /// latest layout of each box, read by [`trailing_margin`] right after it.
+    pub(crate) dropped_end_margins: HashSet<NodeId>,
 }
 
 /// A placed float's margin box in absolute galley coordinates, plus which edge
@@ -1191,29 +1197,28 @@ fn leading_margin(lb: &LayoutBox, bs: &BoxStyle, cw: f32, fs: f32) -> f32 {
     m
 }
 
-/// Whether a block's last in-flow child's bottom margin collapses through its bottom
+/// Whether a block's last in-flow child's bottom margin can collapse through its bottom
 /// edge (CSS 2.2 §8.3.1): a collapsing block container (no own formatting context)
-/// with no bottom border or padding and an automatic height — on every layout policy
-/// (miaskiewicz/turbo-dom#41; the generic / PDF one used to drop the margin).
+/// with no bottom border or padding and an automatic `height` — on every layout policy
+/// (miaskiewicz/turbo-dom#41; the generic / PDF one used to drop the margin). Like
+/// Chrome, a `min-height` / `max-height` does not keep the margin inside: the box lays
+/// its content out without it, and the margin collapses through only when the used
+/// height is the content height ([`Ctx::dropped_end_margins`], miaskiewicz/turbo-dom#75).
 fn bottom_margins_collapse_through(lb: &LayoutBox, bs: &BoxStyle) -> bool {
     let open_edge = bs.border.widths().bottom == 0.0 && bs.padding.bottom == 0.0;
-    collapsing_block_container(lb, bs) && open_edge && automatic_min_height(bs)
-}
-fn automatic_min_height(bs: &BoxStyle) -> bool {
-    bs.height == LengthPct::Auto && zero_min_height(bs.min_height)
+    collapsing_block_container(lb, bs) && open_edge && bs.height == LengthPct::Auto
 }
 
-fn zero_min_height(value: LengthPct) -> bool {
-    match value {
-        LengthPct::Auto => true,
-        LengthPct::Px(value) | LengthPct::Pct(value) => value == 0.0,
-        LengthPct::Calc { pct, px } => pct == 0.0 && px == 0.0,
-    }
-}
-
-fn trailing_margin(lb: &LayoutBox, bs: &BoxStyle, cw: f32) -> f32 {
+/// The bottom margin `lb` passes to its following sibling: its own `margin-bottom`
+/// collapsed with its last in-flow child's trailing margin when that collapses through
+/// it (and was not dropped by `min-height` / `max-height`: `dropped`), recursively.
+fn trailing_margin(lb: &LayoutBox, bs: &BoxStyle, cw: f32, dropped: &HashSet<NodeId>) -> f32 {
     let kids = match &lb.kind {
-        BoxKind::Block(kids) if bottom_margins_collapse_through(lb, bs) => kids,
+        BoxKind::Block(kids)
+            if bottom_margins_collapse_through(lb, bs) && !dropped.contains(&lb.node_id) =>
+        {
+            kids
+        }
         _ => return bs.margin.bottom,
     };
     let cw = (border_box_width(bs, cw) - bs.padding.horizontal() - bs.border.widths().horizontal())
@@ -1226,7 +1231,7 @@ fn trailing_margin(lb: &LayoutBox, bs: &BoxStyle, cw: f32) -> f32 {
     });
     last.map_or(bs.margin.bottom, |kid| {
         let used = resolve(kid, cw, bs.font_size);
-        collapse_margins(bs.margin.bottom, trailing_margin(kid, &used, cw))
+        collapse_margins(bs.margin.bottom, trailing_margin(kid, &used, cw, dropped))
     })
 }
 
@@ -1485,10 +1490,13 @@ fn layout_in_flow_kid(
     }
     // Advance the cursor by the box's height at its *unshifted* flow position.
     if frag.height == 0.0 {
-        flow.pending = collapse_margins(flow.pending, trailing_margin(kid, kbs, cw));
+        flow.pending = collapse_margins(
+            flow.pending,
+            trailing_margin(kid, kbs, cw, &ctx.dropped_end_margins),
+        );
     } else {
         flow.cursor += flow.pending + frag.height;
-        flow.pending = trailing_margin(kid, kbs, cw);
+        flow.pending = trailing_margin(kid, kbs, cw, &ctx.dropped_end_margins);
     }
     frag
 }
@@ -1892,6 +1900,23 @@ fn prepend_mask_image(
     children.insert(0, frag);
 }
 
+/// Record whether `lb`'s last child's bottom margin is dropped: it would collapse through
+/// `lb` (laid out without it, see `layout_content`) but `lb`'s used height is not its
+/// content height (`resized`), so it neither escapes nor counts (miaskiewicz/turbo-dom#75).
+fn record_dropped_end_margin(
+    lb: &LayoutBox,
+    bs: &BoxStyle,
+    bfc: bool,
+    resized: bool,
+    ctx: &mut Ctx,
+) {
+    if resized && !bfc && !lb.document_root() && bottom_margins_collapse_through(lb, bs) {
+        ctx.dropped_end_margins.insert(lb.node_id);
+    } else {
+        ctx.dropped_end_margins.remove(&lb.node_id);
+    }
+}
+
 /// Resolve `border-radius` to px against the border box, clamped to half the
 /// shorter side (so `50%` on a square is a circle, and no corner over-rounds).
 fn resolve_radius(r: LengthPct, bbw: f32, bbh: f32) -> f32 {
@@ -2008,6 +2033,7 @@ fn layout_box_sized_impl(
     // so a square media tile is sized by ratio, not by a `min-height` fallback.
     let auto_h = aspect_auto_height(bs, content_w).map_or(content_h, |a| a.max(content_h));
     let fill_h = resolved_content_height(bs, auto_h, ctx);
+    record_dropped_end_margin(lb, bs, bfc, fill_h != content_h, ctx);
     let bbh = fill_h + bs.padding.vertical() + bw.vertical();
     prepend_mask_image(
         lb,
@@ -2513,6 +2539,7 @@ fn layout_tree_policy(
             .map(|value| crate::layout_snapshot::text::TextCapture::new(value.0)),
         floats: Vec::new(),
         table_rows: record_rows.then(std::collections::HashSet::new),
+        dropped_end_margins: HashSet::new(),
     };
     root.set_html_layout_policy((ctx.html_font_metrics, ctx.html_font_scale));
     root.set_original_units(original_units.as_ref());
@@ -2536,9 +2563,8 @@ fn layout_tree_policy(
 
 #[cfg(test)]
 mod tests {
-    use super::{first_inflow_child, zero_min_height};
+    use super::first_inflow_child;
     use crate::layout::boxgen::{build_box_tree, BoxKind};
-    use crate::layout::value::LengthPct;
     use crate::tag::Tag;
     use crate::{ComputedStyle, StyledElement, StyledNode};
 
@@ -2590,18 +2616,5 @@ mod tests {
         };
         assert!(matches!(kids[0].kind, BoxKind::Flex(_)));
         assert!(first_inflow_child(&kids[0], 100.0, 16.0).is_none());
-    }
-    #[test]
-    fn bottom_margin_collapse_requires_a_provably_zero_minimum_height() {
-        for value in [LengthPct::Auto, LengthPct::Px(0.0), LengthPct::Pct(0.0)] {
-            assert!(zero_min_height(value));
-        }
-        for value in [
-            LengthPct::Px(1.0),
-            LengthPct::Pct(10.0),
-            LengthPct::Calc { pct: 10.0, px: 0.0 },
-        ] {
-            assert!(!zero_min_height(value));
-        }
     }
 }

@@ -263,7 +263,6 @@ fn min_height_margin_case(id: &str) -> bool {
 }
 
 #[test]
-#[ignore = "turbo-dom#75: fails until the fix"]
 fn last_child_bottom_margin_with_min_height_like_chrome_156() {
     compare_cases(min_height_margin_case);
 }
