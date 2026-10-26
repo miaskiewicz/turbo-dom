@@ -24,7 +24,14 @@ at the time); this file reconstructs them from history.
   `;`; multi-token shorthands set their longhands (the single-token read fallback is gone);
   an invalid shorthand value is ignored.
 - Control: `crates/turbo-dom/tests/fixtures/css-shorthand-{probe.js,cases.json}` →
-  `css_shorthand_chrome156.json` (2456 scenarios, `scripts/make-css-shorthand-cases.py`).
+  `css_shorthand_chrome156.json` (3088 scenarios, `scripts/make-css-shorthand-cases.py`; round
+  five — cases a mutation run showed unpinned — also fixed `calc()` type checks and nested /
+  distributed simplification (`calc(2 * (1px + 1em))` → `calc(2em + 2px)`, `pi`, `e`), `min()` /
+  `clamp()` arity, `rgb()` / `hsl()` arity, `none` and `calc()` channels, `linear()` stop
+  clamping, `steps()` / `cubic-bezier()` ranges, family names and quoted animation names spelled
+  like Chrome, `oblique` angle range, three-value positions with `center`, grid track sign checks,
+  `timeline-trigger` lists and omitted parts, layered shorthands with uneven longhand lists, and
+  `font-variant` alternates anywhere).
 
 ### Fixed — CSSStyleDeclaration longhand spelling (P5b-X8, miaskiewicz/turbo-dom#97, Chrome 156 control)
 - A longhand set directly kept its authored text (`width: 0` → `0`, Chrome `0px`; `1PX`,
@@ -35,7 +42,12 @@ at the time); this file reconstructs them from history.
   runtime store that spelling. The binding's computed cascade keeps reading the stylesheet
   grammar's text (full precision).
 - Control: `crates/turbo-dom/tests/fixtures/css-longhand-{probe.js,cases.json}` →
-  `css_longhand_chrome156.json` (2190 pairs, `scripts/make-css-longhand-cases.py`).
+  `css_longhand_chrome156.json` (2380 pairs, `scripts/make-css-longhand-cases.py`; round two
+  added grammars for `transform-origin`, `perspective-origin`, `object-position`, `offset-anchor`
+  / `-position`, `border-image-slice` / `-width` / `-outset`, `justify-items`, `animation-trigger`).
+- Typed OM (`StylePropertyMap.set` / `append`, the map's reads) keeps the value as parsed —
+  Chrome stores the `CSSStyleValue` — instead of setProperty's specified-value spelling
+  (`__ns.setDeclarationAuthored` / `__ns.declarationAuthoredValue`).
 
 ### Fixed — SVG and MathML elements: style, dataset and the HTMLOrSVGElement mixins (P5b-X8, miaskiewicz/turbo-dom#87, Chrome 156 control)
 - turbo-dom-browser-env: `svg.style` was `undefined` (React components with an inline-styled

@@ -252,9 +252,11 @@ win; `word-wrap` and the other 101 longhand aliases resolve. A longhand set dire
 spelled like Chrome (`0` → `0px`, units / keywords lowercase, `url("...")`, double quotes,
 `rgb()`); rtdom's grammar admits or rejects the longhands it knows, the stylesheet grammar the
 rest. The computed cascade expands UA / animation shorthands with the same engine and reads
-the stylesheet grammar's text of longhands set directly. Controls: turbo-dom's
-`crates/turbo-dom/tests/fixtures/css_shorthand_chrome156.json` (2456 scenarios) and
-`css_longhand_chrome156.json` (2190 pairs), run by `src/css_shorthand_tests.rs` and
+the stylesheet grammar's text of longhands set directly. Typed OM writes and reads
+(`StylePropertyMap`) keep the value as parsed, the way Chrome stores the `CSSStyleValue`
+(`calc(10px + 5%)` in its order, `calc(3 * 2px)`, `50%`). Controls: turbo-dom's
+`crates/turbo-dom/tests/fixtures/css_shorthand_chrome156.json` (3088 scenarios) and
+`css_longhand_chrome156.json` (2380 pairs), run by `src/css_shorthand_tests.rs` and
 `src/css_longhand_tests.rs`.
 
 ### SVG and MathML elements
