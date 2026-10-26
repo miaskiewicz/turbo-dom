@@ -37,6 +37,13 @@ rtdom is held to **100% line coverage** (`cargo tarpaulin -p turbo-dom --skip-cl
 crate (clean deps, vendorable) publishes via the `publish-crate` CI job on a `v*` tag. See
 `RUST_PORT_PLAN.md`.
 
+**`crates/turbo-dom-v8` is generated, not vendored.** turbo-dom's rusty_v8 150.4 fork (interceptor
+ShouldThrowOnError + isolate weak-teardown fixes, `v8::FORK_SHOULD_THROW_FIX`) is kept as pins +
+patches + `scripts/generate.py`; the crate is written to the gitignored `crates/turbo-dom-v8/crate/`
+and built standalone (the root workspace excludes it, so the base gates never need V8). See
+[crates/turbo-dom-v8/README.md](crates/turbo-dom-v8/README.md) for generate/check/test/release.
+Generator tests: `python3 -m unittest discover -s crates/turbo-dom-v8/scripts -p 'test_*.py'`.
+
 Toolchain: Node ≥ 24, Rust stable via rustup (`source $HOME/.cargo/env` if cargo isn't on PATH).
 
 **Pre-commit hook** (`.githooks/pre-commit`, zero-dep — wired via the `prepare` script setting
