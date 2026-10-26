@@ -333,7 +333,7 @@ fn paint_box_shadow(
     if sw < 0.5 || sh_h < 0.5 {
         return;
     }
-    let radius = (border_radius + spread).max(0.0);
+    let radius = shadow_radius(border_radius, spread);
     let blur = shadow_blur(sh);
     if blur < 0.5 {
         fill_round_rect(pm, sx, sy, sw, sh_h, radius, sh.color, xf);
@@ -348,6 +348,19 @@ fn paint_box_shadow(
         color: sh.color,
     };
     blurred_shadow(pm, &silhouette, blur, xf, SHADOW_TILE, MAX_SHADOW_SCRATCH);
+}
+
+/// An outer shadow's corner radius for a box radius `r` and a `spread` (CSS Backgrounds 3
+/// §7.1, as Chrome paints it): the radius plus the spread, floored at zero — except that
+/// below the spread the spread is first scaled by `1 + (r/spread - 1)^3`, so a square box
+/// keeps a square shadow and small radii grow continuously.
+pub(crate) fn shadow_radius(r: f32, spread: f32) -> f32 {
+    if spread > 0.0 && r < spread {
+        let t = r / spread - 1.0;
+        r + spread * (1.0 + t * t * t)
+    } else {
+        (r + spread).max(0.0)
+    }
 }
 
 /// The blur radius Chrome paints a shadow with: every `blur` from 256px up paints the same
@@ -1120,6 +1133,28 @@ mod tests {
     }
 
     #[test]
+    fn shadow_radii_grow_by_the_spread_scaled_below_it() {
+        let cases = [
+            ((0.0, 8.0), 0.0),
+            ((2.0, 8.0), 6.625),
+            ((4.0, 8.0), 11.0),
+            ((3.0, 3.0), 6.0),
+            ((10.0, 6.0), 16.0),
+            ((4.0, 3.0), 7.0),
+            ((5.0, -2.0), 3.0),
+            ((1.0, -3.0), 0.0),
+            ((0.0, 0.0), 0.0),
+            ((6.0, 0.0), 6.0),
+        ];
+        for ((r, spread), want) in cases {
+            assert!(
+                (shadow_radius(r, spread) - want).abs() < 1e-5,
+                "{r} + {spread}"
+            );
+        }
+    }
+
+    #[test]
     fn shadow_blur_caps_at_256px() {
         let blur = |b: u32| {
             shadow_blur(&BoxShadow {
@@ -1309,5 +1344,445 @@ mod tests {
         );
         let painted = render(&boxed(10.0, 90.0, 2), 10, 10, &images);
         assert!(rgb(&painted, 0, 5)[0] > 200 && rgb(&painted, 9, 5)[2] > 200);
+    }
+}
+
+/// Exact-output checks of the painters against independent references (P5-cov mutation
+/// pass): each reference draws the expected result with tiny-skia primitives directly.
+#[cfg(test)]
+mod exact_tests {
+    use super::*;
+    use std::collections::HashMap;
+    use turbo_dom_layout::{FontRegistry, GradientStop, NodeId};
+
+    const BLUE: Rgba = Rgba {
+        r: 0,
+        g: 0,
+        b: 255,
+        a: 255,
+    };
+    const RED: Rgba = Rgba {
+        r: 255,
+        g: 0,
+        b: 0,
+        a: 255,
+    };
+
+    fn white(w: u32, h: u32) -> Pixmap {
+        let mut pm = Pixmap::new(w, h).unwrap();
+        pm.fill(tiny_skia::Color::WHITE);
+        pm
+    }
+
+    fn boxed(x: f32, y: f32, w: f32, h: f32, radius: f32, shadow: Option<BoxShadow>) -> Fragment {
+        Fragment::new(
+            NodeId(0),
+            x,
+            y,
+            w,
+            h,
+            FragmentContent::Box {
+                background: Some(RED),
+                border: BorderEdges::default(),
+                border_radius: radius,
+                shadow,
+                gradient: None,
+                transform: None,
+            },
+        )
+    }
+
+    fn drawn(f: &Fragment, w: u32, h: u32) -> Pixmap {
+        let mut pm = white(w, h);
+        paint_fragment(&mut pm, f, &HashMap::new(), Transform::identity());
+        pm
+    }
+
+    fn hard(offset_x: i32, offset_y: i32, spread: i32) -> BoxShadow {
+        BoxShadow {
+            offset_x,
+            offset_y,
+            blur: 0,
+            spread,
+            color: BLUE,
+            inset: false,
+        }
+    }
+
+    #[test]
+    fn unblurred_shadows_are_the_offset_spread_silhouette() {
+        let id = Transform::identity();
+        // Offset (5, 7), spread 3: the shadow is (10+5-3, 10+7-3) sized (20+6) x (10+6).
+        let mut want = white(50, 40);
+        fill_round_rect(&mut want, 12.0, 14.0, 26.0, 16.0, 0.0, BLUE, id);
+        fill_rect(&mut want, 10.0, 10.0, 20.0, 10.0, RED, id);
+        let got = drawn(
+            &boxed(10.0, 10.0, 20.0, 10.0, 0.0, Some(hard(5, 7, 3))),
+            50,
+            40,
+        );
+        for y in 0..40 {
+            for x in 0..50 {
+                if got.pixel(x, y) != want.pixel(x, y) {
+                    eprintln!("ZZ {x} {y} {:?} {:?}", got.pixel(x, y), want.pixel(x, y));
+                }
+            }
+        }
+        assert_eq!(got.data(), want.data());
+        // A negative spread shrinks it; a rounded box's shadow radius grows by the spread.
+        let mut want = white(50, 40);
+        fill_round_rect(&mut want, 17.0, 19.0, 16.0, 6.0, 0.0, BLUE, id);
+        fill_rect(&mut want, 10.0, 10.0, 20.0, 10.0, RED, id);
+        assert_eq!(
+            drawn(
+                &boxed(10.0, 10.0, 20.0, 10.0, 0.0, Some(hard(5, 7, -2))),
+                50,
+                40
+            )
+            .data(),
+            want.data()
+        );
+        let mut want = white(50, 40);
+        fill_round_rect(&mut want, 7.0, 7.0, 26.0, 16.0, 7.0, BLUE, id);
+        fill_round_rect(&mut want, 10.0, 10.0, 20.0, 10.0, 4.0, RED, id);
+        assert_eq!(
+            drawn(
+                &boxed(10.0, 10.0, 20.0, 10.0, 4.0, Some(hard(0, 0, 3))),
+                50,
+                40
+            )
+            .data(),
+            want.data()
+        );
+    }
+
+    #[test]
+    fn a_half_pixel_wide_or_high_shadow_still_paints() {
+        let id = Transform::identity();
+        for (w, h) in [(0.5, 10.0), (10.0, 0.5)] {
+            let mut f = boxed(10.0, 10.0, w, h, 0.0, Some(hard(0, 15, 0)));
+            if let FragmentContent::Box { background, .. } = &mut f.content {
+                *background = None;
+            }
+            let mut want = white(40, 40);
+            fill_round_rect(&mut want, 10.0, 25.0, w, h, 0.0, BLUE, id);
+            let got = drawn(&f, 40, 40);
+            assert_eq!(got.data(), want.data(), "{w} x {h}");
+            assert!(got.pixels().iter().any(|p| p.red() < 255), "{w} x {h}");
+        }
+    }
+
+    /// The shadow algorithm before tiling: one scratch padded by the blur, filled, blurred
+    /// and drawn whole.
+    fn reference_shadow(pm: &mut Pixmap, s: &Silhouette, blur: f32, xf: Transform) {
+        let margin = blur.ceil() as i32;
+        let tw = s.width.ceil() as i32 + 2 * margin;
+        let th = s.height.ceil() as i32 + 2 * margin;
+        let mut tmp = Pixmap::new(tw as u32, th as u32).unwrap();
+        let m = margin as f32;
+        fill_round_rect(
+            &mut tmp,
+            m,
+            m,
+            s.width,
+            s.height,
+            s.radius,
+            s.color,
+            Transform::identity(),
+        );
+        box_blur(&mut tmp, (blur / 2.0).round().max(1.0) as usize);
+        let place = xf.pre_concat(Transform::from_translate(
+            (s.x as i32 - margin) as f32,
+            (s.y as i32 - margin) as f32,
+        ));
+        pm.draw_pixmap(0, 0, tmp.as_ref(), &PixmapPaint::default(), place, None);
+    }
+
+    #[test]
+    fn blurred_shadows_equal_one_whole_scratch_on_and_off_the_canvas() {
+        let shadow = |x: f32, y: f32, width: f32, height: f32| Silhouette {
+            x,
+            y,
+            width,
+            height,
+            radius: 5.0,
+            color: Rgba::new(0, 0, 255, 220),
+        };
+        for (s, xf, blur) in [
+            (shadow(20.0, 15.0, 40.0, 25.0), Transform::identity(), 8.0),
+            (shadow(20.6, 15.4, 40.0, 25.0), Transform::identity(), 9.0),
+            (shadow(-30.0, -20.0, 60.0, 50.0), Transform::identity(), 8.0),
+            (shadow(50.0, 40.0, 90.0, 70.0), Transform::identity(), 6.0),
+            (shadow(-80.0, 30.0, 300.0, 20.0), Transform::identity(), 4.0),
+            (
+                shadow(10.0, 5.0, 30.0, 20.0),
+                Transform::from_row(1.5, 0.0, 0.0, 0.75, 3.0, -2.0),
+                8.0,
+            ),
+            (
+                shadow(10.0, 5.0, 30.0, 20.0),
+                Transform::from_rotate_at(15.0, 40.0, 30.0),
+                8.0,
+            ),
+        ] {
+            let mut want = white(100, 80);
+            reference_shadow(&mut want, &s, blur, xf);
+            for (tile, max_scratch) in [(SHADOW_TILE, MAX_SHADOW_SCRATCH), (9, 10_000)] {
+                let mut got = white(100, 80);
+                blurred_shadow(&mut got, &s, blur, xf, tile, max_scratch);
+                let diff = (0..80u32)
+                    .flat_map(|y| (0..100u32).map(move |x| (x, y)))
+                    .filter(|&(x, y)| got.pixel(x, y) != want.pixel(x, y))
+                    .count();
+                assert_eq!(diff, 0, "({}, {}) {xf:?} blur {blur} tile {tile}", s.x, s.y);
+            }
+        }
+    }
+
+    fn gradient_box(x: f32, y: f32, w: f32, h: f32, angle_deg: f32, radius: f32) -> Fragment {
+        let mut f = boxed(x, y, w, h, radius, None);
+        if let FragmentContent::Box {
+            background,
+            gradient,
+            ..
+        } = &mut f.content
+        {
+            *background = None;
+            *gradient = Some(CssGradient {
+                angle_deg,
+                stops: vec![
+                    GradientStop {
+                        color: Rgba::new(0, 0, 0, 255),
+                        pos: 0.0,
+                    },
+                    GradientStop {
+                        color: Rgba::new(255, 255, 255, 255),
+                        pos: 1.0,
+                    },
+                ],
+            });
+        }
+        f
+    }
+
+    #[test]
+    fn gradients_follow_the_css_gradient_line() {
+        // CSS Images 3 §3.1: for angle θ the line runs through the box centre along
+        // (sin θ, -cos θ), half its length |w sin θ| + |h cos θ| over 2; a point's position is
+        // its projection. Black -> white, so the grey level is the position.
+        for (angle, x, y) in [
+            (30.0_f32, 8.0_f32, 6.0_f32),
+            (200.0, 3.0, 2.0),
+            (90.0, 5.0, 9.0),
+        ] {
+            let (w, h) = (60.0_f32, 30.0_f32);
+            let pm = drawn(&gradient_box(x, y, w, h, angle, 0.0), 80, 50);
+            let t = angle.to_radians();
+            let (dx, dy) = (t.sin(), -t.cos());
+            let half = (w * t.sin().abs() + h * t.cos().abs()) / 2.0;
+            let (cx, cy) = (x + w / 2.0, y + h / 2.0);
+            for (px, py) in [
+                (x + 2.0, y + 2.0),
+                (x + w - 3.0, y + h - 3.0),
+                (x + 17.0, y + 11.0),
+                (x + 45.0, y + 4.0),
+            ] {
+                let (sx, sy) = (px.floor() + 0.5, py.floor() + 0.5);
+                let pos = (((sx - cx) * dx + (sy - cy) * dy) / (2.0 * half) + 0.5).clamp(0.0, 1.0);
+                let want = (pos * 255.0).round();
+                let got = f32::from(pm.pixel(px as u32, py as u32).unwrap().red());
+                assert!(
+                    (got - want).abs() <= 2.0,
+                    "{angle} deg at ({px},{py}): {got} vs {want}"
+                );
+            }
+        }
+        // Half a pixel wide or high is still painted; rounded gradients clip to the radius.
+        // (The line runs along the long side, so the half-covered pixels are mid-grey.)
+        for (w, h, angle) in [(0.5, 10.0, 180.0), (10.0, 0.5, 90.0)] {
+            let pm = drawn(&gradient_box(2.0, 2.0, w, h, angle, 0.0), 20, 20);
+            assert!(pm.pixels().iter().any(|p| p.red() < 200), "{w} x {h}");
+        }
+        let round = drawn(&gradient_box(0.0, 0.0, 40.0, 40.0, 180.0, 20.0), 40, 40);
+        assert_eq!(
+            round.pixel(1, 1).unwrap().red(),
+            255,
+            "outside the circle: white"
+        );
+        assert!(round.pixel(20, 20).unwrap().red() < 200, "inside");
+        let corner = |radius: f32| {
+            drawn(&gradient_box(0.0, 0.0, 40.0, 40.0, 180.0, radius), 40, 40)
+                .pixel(0, 0)
+                .unwrap()
+                .red()
+        };
+        assert!(corner(0.5) < 30, "a 0.5 radius is a square gradient");
+        assert_eq!(corner(0.6), corner(0.6));
+    }
+
+    #[test]
+    fn rounded_borders_are_inset_strokes_of_the_widest_side() {
+        let side = |width: u16, color: Option<Rgba>| BorderSide { width, color };
+        let mut f = boxed(10.0, 10.0, 40.0, 30.0, 8.0, None);
+        if let FragmentContent::Box {
+            border, background, ..
+        } = &mut f.content
+        {
+            *background = Some(Rgba::new(0, 255, 0, 255));
+            *border = BorderEdges {
+                top: side(2, Some(RED)),
+                right: side(4, Some(BLUE)),
+                bottom: side(1, Some(RED)),
+                left: side(0, Some(RED)),
+            };
+        }
+        let pm = drawn(&f, 60, 50);
+        let rgb = |x: u32, y: u32| {
+            let p = pm.pixel(x, y).unwrap();
+            [p.red(), p.green(), p.blue()]
+        };
+        // The 4px blue band on every straight edge, the green fill inside, white outside.
+        for (x, y) in [
+            (10, 25),
+            (13, 25),
+            (49, 25),
+            (46, 25),
+            (30, 10),
+            (30, 13),
+            (30, 39),
+            (30, 36),
+        ] {
+            assert_eq!(rgb(x, y), [0, 0, 255], "band ({x},{y})");
+        }
+        for (x, y) in [(14, 25), (45, 25), (30, 14), (30, 35)] {
+            assert_eq!(rgb(x, y), [0, 255, 0], "fill ({x},{y})");
+        }
+        for (x, y) in [(9, 25), (50, 25), (30, 9), (30, 40), (10, 10), (49, 39)] {
+            assert_eq!(rgb(x, y), [255, 255, 255], "outside ({x},{y})");
+        }
+        // On the corner diagonals the band follows the 8px outer radius.
+        let d = std::f32::consts::FRAC_1_SQRT_2;
+        for (cx, cy, sx, sy) in [
+            (18.0, 18.0, -1.0, -1.0),
+            (42.0, 18.0, 1.0, -1.0),
+            (42.0, 32.0, 1.0, 1.0),
+            (18.0, 32.0, -1.0, 1.0),
+        ] {
+            let at = |r: f32| ((cx + sx * r * d) as u32, (cy + sy * r * d) as u32);
+            let (bx, by) = at(6.0);
+            assert_eq!(rgb(bx, by), [0, 0, 255], "band on ({cx},{cy})");
+            let (gx, gy) = at(2.0);
+            assert_eq!(rgb(gx, gy), [0, 255, 0], "fill on ({cx},{cy})");
+        }
+        // Zero-width sides draw no hairline.
+        let mut none = boxed(10.0, 10.0, 40.0, 30.0, 8.0, None);
+        if let FragmentContent::Box { border, .. } = &mut none.content {
+            *border = BorderEdges {
+                top: side(0, Some(BLUE)),
+                right: side(0, Some(BLUE)),
+                bottom: side(0, Some(BLUE)),
+                left: side(0, Some(BLUE)),
+            };
+        }
+        let mut want = white(60, 50);
+        fill_round_rect(
+            &mut want,
+            10.0,
+            10.0,
+            40.0,
+            30.0,
+            8.0,
+            RED,
+            Transform::identity(),
+        );
+        assert_eq!(drawn(&none, 60, 50).data(), want.data());
+    }
+
+    /// The glyph outlines filled straight from ttf-parser into a tiny-skia path.
+    struct Direct(PathBuilder, f32, f32, f32);
+
+    impl ttf_parser::OutlineBuilder for Direct {
+        fn move_to(&mut self, x: f32, y: f32) {
+            self.0.move_to(self.1 + x * self.3, self.2 - y * self.3);
+        }
+        fn line_to(&mut self, x: f32, y: f32) {
+            self.0.line_to(self.1 + x * self.3, self.2 - y * self.3);
+        }
+        fn quad_to(&mut self, cx: f32, cy: f32, x: f32, y: f32) {
+            let (o, b, s) = (self.1, self.2, self.3);
+            self.0.quad_to(o + cx * s, b - cy * s, o + x * s, b - y * s);
+        }
+        fn curve_to(&mut self, ax: f32, ay: f32, bx: f32, by: f32, x: f32, y: f32) {
+            let (o, b, s) = (self.1, self.2, self.3);
+            self.0.cubic_to(
+                o + ax * s,
+                b - ay * s,
+                o + bx * s,
+                b - by * s,
+                o + x * s,
+                b - y * s,
+            );
+        }
+        fn close(&mut self) {
+            self.0.close();
+        }
+    }
+
+    #[test]
+    fn text_lines_fill_each_glyph_outline_at_its_pen_position() {
+        let reg = FontRegistry::new();
+        for family in ["Inter", "Liberation Serif"] {
+            let face = reg.select(&[family], 400, false).unwrap().clone();
+            let ttf = glyph::outline_face(&face);
+            let size = 30.0;
+            let scale = size / f32::from(face.units_per_em());
+            let mut x = 0.0;
+            let glyphs: Vec<PositionedGlyph> = face
+                .shape("Ag%")
+                .iter()
+                .map(|g| {
+                    let pg = PositionedGlyph {
+                        glyph_id: g.glyph_id,
+                        x,
+                        y: 25.0,
+                    };
+                    x += g.x_advance as f32 * scale;
+                    pg
+                })
+                .collect();
+            let line = Fragment::new(
+                NodeId(0),
+                7.0,
+                4.0,
+                x,
+                30.0,
+                FragmentContent::TextLine {
+                    glyphs: glyphs.clone(),
+                    face: face.clone(),
+                    font_size: size,
+                    color: BLUE,
+                },
+            );
+            let got = drawn(&line, 90, 45);
+            let mut want = white(90, 45);
+            for g in &glyphs {
+                let mut d = Direct(PathBuilder::new(), 7.0 + g.x, 4.0 + g.y, scale);
+                ttf.outline_glyph(ttf_parser::GlyphId(g.glyph_id), &mut d);
+                if let Some(path) = d.0.finish() {
+                    want.fill_path(
+                        &path,
+                        &solid(BLUE),
+                        FillRule::Winding,
+                        Transform::identity(),
+                        None,
+                    );
+                }
+            }
+            assert!(
+                got.pixels().iter().filter(|p| p.red() < 128).count() > 100,
+                "{family}"
+            );
+            assert_eq!(got.data(), want.data(), "{family}");
+        }
     }
 }

@@ -196,7 +196,7 @@ fn paint_box_shadow(svg: &mut String, f: &Fragment, border_radius: f32, sh: &Box
     if w < 0.5 || h < 0.5 {
         return;
     }
-    let radius = (border_radius + spread).max(0.0);
+    let radius = crate::paint_png::shadow_radius(border_radius, spread);
     if sh.blur < 1 {
         rect_r(svg, x, y, w, h, sh.color, radius);
         return;

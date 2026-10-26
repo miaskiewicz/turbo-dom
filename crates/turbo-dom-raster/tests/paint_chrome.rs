@@ -204,7 +204,6 @@ fn wide_box_shadows_paint_like_chrome_156() {
 /// it (CSS Backgrounds 3 §7.1): a square box's shadow stays square, in both painters (found
 /// by the P5-cov mutation pass).
 #[test]
-#[ignore = "shadow spread radius: fails until the fix"]
 fn shadow_spread_radii_follow_css_like_chrome_156() {
     let mut failures = differences(|id| id == "shadow-spread-small-radius");
     failures.extend(svg_differences(|id| id == "shadow-spread-small-radius"));
@@ -318,7 +317,7 @@ fn svg_rounded_borders_follow_the_radius_like_chrome_156() {
 /// The vector screenshot of every case, rasterized, against the same Chrome probes.
 #[test]
 fn svg_screenshots_paint_like_chrome_156() {
-    let failures = svg_differences(|id| !pending_case(id) && id != "shadow-spread-small-radius");
+    let failures = svg_differences(|id| !pending_case(id));
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
 
