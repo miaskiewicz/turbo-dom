@@ -2910,6 +2910,144 @@
      "position": "static"
     }
    ]
+  },
+  {
+   "id": "table-colspan-spreads-in-proportion",
+   "html": "<!doctype html><style>body{margin:0}td{padding:0}</style><table data-cid=\"t\"><tr><td data-cid=\"s\" colspan=\"2\"><div style=\"width:102px;height:10px\"></div></td></tr><tr><td data-cid=\"a\"><div style=\"width:20px;height:10px\"></div></td><td data-cid=\"b\"><div style=\"width:60px;height:10px\"></div></td></tr></table>",
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "t",
+     "x": 0,
+     "y": 0,
+     "width": 106,
+     "height": 26,
+     "display": "table",
+     "position": "static"
+    },
+    {
+     "cid": "s",
+     "x": 2,
+     "y": 2,
+     "width": 102,
+     "height": 10,
+     "display": "table-cell",
+     "position": "static"
+    },
+    {
+     "cid": "a",
+     "x": 2,
+     "y": 14,
+     "width": 25,
+     "height": 10,
+     "display": "table-cell",
+     "position": "static"
+    },
+    {
+     "cid": "b",
+     "x": 29,
+     "y": 14,
+     "width": 75,
+     "height": 10,
+     "display": "table-cell",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "table-colspan-counts-inner-spacing",
+   "html": "<!doctype html><style>body{margin:0}td{padding:0}table{border-spacing:5px}</style><table data-cid=\"t\"><tr><td data-cid=\"s\" colspan=\"2\"><div style=\"width:125px;height:10px\"></div></td></tr><tr><td data-cid=\"a\"><div style=\"width:10px;height:10px\"></div></td><td data-cid=\"b\"><div style=\"width:30px;height:10px\"></div></td></tr></table>",
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "t",
+     "x": 0,
+     "y": 0,
+     "width": 135,
+     "height": 35,
+     "display": "table",
+     "position": "static"
+    },
+    {
+     "cid": "s",
+     "x": 5,
+     "y": 5,
+     "width": 125,
+     "height": 10,
+     "display": "table-cell",
+     "position": "static"
+    },
+    {
+     "cid": "a",
+     "x": 5,
+     "y": 20,
+     "width": 30,
+     "height": 10,
+     "display": "table-cell",
+     "position": "static"
+    },
+    {
+     "cid": "b",
+     "x": 40,
+     "y": 20,
+     "width": 90,
+     "height": 10,
+     "display": "table-cell",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "table-colspan-empty-columns-evenly",
+   "html": "<!doctype html><style>body{margin:0}td{padding:0}</style><table data-cid=\"t\"><tr><td data-cid=\"s\" colspan=\"2\"><div style=\"width:62px;height:10px\"></div></td><td data-cid=\"c\"></td></tr><tr><td data-cid=\"a\"></td><td data-cid=\"b\"></td><td><div style=\"width:10px;height:10px\"></div></td></tr></table>",
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "t",
+     "x": 0,
+     "y": 0,
+     "width": 78,
+     "height": 26,
+     "display": "table",
+     "position": "static"
+    },
+    {
+     "cid": "s",
+     "x": 2,
+     "y": 2,
+     "width": 62,
+     "height": 10,
+     "display": "table-cell",
+     "position": "static"
+    },
+    {
+     "cid": "c",
+     "x": 66,
+     "y": 2,
+     "width": 10,
+     "height": 10,
+     "display": "table-cell",
+     "position": "static"
+    },
+    {
+     "cid": "a",
+     "x": 2,
+     "y": 14,
+     "width": 30,
+     "height": 10,
+     "display": "table-cell",
+     "position": "static"
+    },
+    {
+     "cid": "b",
+     "x": 34,
+     "y": 14,
+     "width": 30,
+     "height": 10,
+     "display": "table-cell",
+     "position": "static"
+    }
+   ]
   }
  ]
 }
