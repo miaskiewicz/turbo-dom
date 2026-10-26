@@ -301,6 +301,24 @@ const CASES = [
   { id: "th-centers-inline-content", html: DOC(S("body{margin:0}"), `<table><tr><th data-cid="th" style="width:100px"><i data-cid="i" style="display:inline-block;width:10px;height:10px"></i></th></tr></table>`), measure: "xw" },
   { id: "th-author-text-align", html: DOC(S("body{margin:0}"), `<table><tr><th data-cid="th" style="width:100px;text-align:left"><i data-cid="i" style="display:inline-block;width:10px;height:10px"></i></th></tr></table>`), measure: "xw" },
   { id: "th-leaves-block-children", html: DOC(S("body{margin:0}"), `<table><tr><th data-cid="th" style="width:100px"><div data-cid="d" style="width:10px;height:10px"></div></th></tr></table>`) },
+  // P5b-W7, miaskiewicz/turbo-dom#79: a box's intrinsic (min-/max-content) width counts
+  // its in-flow children's horizontal margins (signed; `%` and `auto` margins count 0), so
+  // a float, an absolutely positioned or inline-block `width: auto` box and an auto table
+  // cell are as wide as their children's margin boxes.
+  { id: "intrinsic-margins-float", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="float:left"><div data-cid="d" style="width:30px;height:15px;margin:0 4px 0 6px"></div></div>`) },
+  { id: "intrinsic-margins-abs", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="position:absolute;left:5px"><div data-cid="d" style="width:30px;height:15px;margin:0 4px 0 6px"></div></div>`) },
+  { id: "intrinsic-margins-inline-block", html: DOC(S("body{margin:0}"), `<div style="font-size:0"><div data-cid="c" style="display:inline-block"><div data-cid="d" style="width:30px;height:15px;margin:0 4px 0 6px"></div></div></div>`) },
+  { id: "intrinsic-margins-table-cell", html: DOC(S("body{margin:0}"), `<table style="border-spacing:0"><tr><td data-cid="c" style="padding:0"><div data-cid="d" style="width:30px;height:15px;margin:0 4px 0 6px"></div></td></tr></table>`) },
+  { id: "intrinsic-margins-table-cell-min-content", html: DOC(S("body{margin:0}"), `<table style="border-spacing:0;width:1px"><tr><td data-cid="c" style="padding:0"><div data-cid="d" style="width:30px;height:15px;margin:0 4px 0 6px"></div></td></tr></table>`) },
+  { id: "intrinsic-margins-nested", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="float:left"><div data-cid="e" style="margin:0 5px"><div data-cid="d" style="width:30px;height:15px;margin:0 4px 0 6px"></div></div></div>`) },
+  { id: "intrinsic-margins-negative", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="float:left"><div data-cid="d" style="width:30px;height:15px;margin-left:-10px"></div></div>`) },
+  { id: "intrinsic-margins-negative-clamped", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="float:left"><div data-cid="d" style="width:30px;height:15px;margin-right:-40px"></div></div>`) },
+  { id: "intrinsic-margins-negative-beside-sibling", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="float:left"><div data-cid="d" style="width:30px;height:15px;margin-left:-10px"></div><div style="width:25px;height:5px"></div></div>`) },
+  { id: "intrinsic-margins-percent-and-auto", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="float:left"><div data-cid="d" style="width:30px;height:15px;margin:0 10% 0 0"></div><div data-cid="e" style="width:20px;height:5px;margin:0 auto"></div></div>`) },
+  { id: "intrinsic-margins-em", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="float:left;font-size:10px"><div data-cid="d" style="width:30px;height:15px;margin:0 1em"></div></div>`) },
+  { id: "intrinsic-margins-inline-block-in-float", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="float:left;font-size:0"><span data-cid="d" style="display:inline-block;width:30px;height:15px;margin:0 4px 0 6px"></span><span data-cid="e" style="display:inline-block;width:20px;height:15px;margin:0 3px"></span></div>`) },
+  { id: "intrinsic-margins-column-flex", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="float:left"><div style="display:flex;flex-direction:column"><div data-cid="d" style="width:30px;height:15px;margin:0 4px 0 6px"></div></div></div>`), measure: "xw" },
+  { id: "intrinsic-margins-grid", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="float:left"><div style="display:grid"><div data-cid="d" style="width:30px;height:15px;margin:0 4px 0 6px"></div></div></div>`) },
 ];
 
 /** The RGB of a 1x1 PNG screenshot (any filter: a single pixel's filter adds 0). */

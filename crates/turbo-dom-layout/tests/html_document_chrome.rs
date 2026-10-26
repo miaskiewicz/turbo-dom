@@ -103,7 +103,7 @@ fn inline_flex_grid_case(id: &str) -> bool {
 /// The control cases of an open bug, each asserted by its own test (`#[ignore]`d until
 /// its fix lands) and held out of [`html_documents_lay_out_as_chrome_156`].
 fn held_out(id: &str) -> bool {
-    let groups: [fn(&str) -> bool; 15] = [
+    let groups: [fn(&str) -> bool; 16] = [
         auto_table_case,
         inline_flex_grid_case,
         abs_auto_width_case,
@@ -119,6 +119,7 @@ fn held_out(id: &str) -> bool {
         last_margin_case,
         legacy_align_case,
         th_case,
+        intrinsic_margin_case,
     ];
     groups.iter().any(|group| group(id))
 }
@@ -283,6 +284,17 @@ fn header_cells_are_bold_and_centred_like_chrome_156() {
     let th = find_th(&styled).expect("a th");
     assert_eq!(th.style.get("font-weight"), Some("bold"));
     assert_eq!(th.style.get("text-align"), Some("center"));
+}
+
+/// miaskiewicz/turbo-dom#79: intrinsic widths count the children's horizontal margins.
+fn intrinsic_margin_case(id: &str) -> bool {
+    id.starts_with("intrinsic-margins-")
+}
+
+#[test]
+#[ignore = "turbo-dom#79: fails until the fix"]
+fn intrinsic_widths_count_child_margins_like_chrome_156() {
+    compare_cases(intrinsic_margin_case);
 }
 
 /// The first `<th>` of a styled forest.
