@@ -409,6 +409,7 @@ mod tests {
     use turbo_dom_layout::image::{Intrinsic, Orientation};
     use turbo_dom_layout::{
         FontRegistry, GradientStop, ImagePlacement, MarkerKind, NodeId, PositionedGlyph,
+        Transform2D,
     };
 
     use crate::image_paint::DecodedImage;
@@ -655,6 +656,190 @@ mod tests {
             ),
             "<rect x=\"1.00\" y=\"2.00\" width=\"20.00\" height=\"2.00\" fill=\"#0000ff\"/>\n"
         );
+    }
+
+    fn decorated(
+        x: f32,
+        y: f32,
+        w: f32,
+        h: f32,
+        radius: f32,
+        edit: impl FnOnce(&mut Option<BoxShadow>, &mut Option<CssGradient>, &mut Option<Transform2D>),
+    ) -> Fragment {
+        let mut f = plain(x, y, w, h, None);
+        if let FragmentContent::Box {
+            border_radius,
+            shadow,
+            gradient,
+            transform,
+            ..
+        } = &mut f.content
+        {
+            *border_radius = radius;
+            edit(shadow, gradient, transform);
+        }
+        f
+    }
+
+    fn shadow(
+        offset_x: i32,
+        offset_y: i32,
+        blur: u32,
+        spread: i32,
+        color: Rgba,
+        inset: bool,
+    ) -> BoxShadow {
+        BoxShadow {
+            offset_x,
+            offset_y,
+            blur,
+            spread,
+            color,
+            inset,
+        }
+    }
+
+    #[test]
+    fn transforms_wrap_the_box_about_its_absolute_origin() {
+        let f = decorated(10.0, 20.0, 40.0, 30.0, 0.0, |_, _, t| {
+            *t = Some(Transform2D {
+                matrix: [0.0, 1.0, -1.0, 0.5, 5.0, 6.0],
+                origin_x: 20.0,
+                origin_y: 15.0,
+            });
+        });
+        assert_eq!(
+            body(&f, &HashMap::new()),
+            "<g transform=\"translate(30.00 35.00) matrix(0 1 -1 0.5 5 6) translate(-30.00 -35.00)\"></g>"
+        );
+    }
+
+    #[test]
+    fn shadows_are_the_offset_spread_silhouette_blurred_by_a_filter() {
+        let blue = Rgba::new(0, 0, 255, 255);
+        let svg = |radius: f32, sh: Option<BoxShadow>| {
+            body(
+                &decorated(10.0, 10.0, 20.0, 10.0, radius, |s, _, _| *s = sh),
+                &HashMap::new(),
+            )
+        };
+        assert_eq!(
+            svg(0.0, Some(shadow(5, 7, 0, 3, blue, false))),
+            "<rect x=\"12.00\" y=\"14.00\" width=\"26.00\" height=\"16.00\" fill=\"#0000ff\"/>\n"
+        );
+        assert_eq!(
+            svg(4.0, Some(shadow(2, 3, 6, 0, blue, false))),
+            "<filter id=\"sh1000010_1000010\" x=\"-50%\" y=\"-50%\" width=\"200%\" height=\"200%\"><feGaussianBlur stdDeviation=\"3.00\"/></filter>\n\
+             <rect x=\"12.00\" y=\"13.00\" width=\"20.00\" height=\"10.00\" rx=\"4.00\" ry=\"4.00\" fill=\"#0000ff\" filter=\"url(#sh1000010_1000010)\"/>\n"
+        );
+        // A 0.5px radius is square; the spread scales below the radius (CSS); a 400px blur
+        // is capped at 256 (stdDeviation 128).
+        assert!(!svg(0.5, Some(shadow(0, 0, 4, 0, blue, false))).contains("rx="));
+        assert!(svg(2.0, Some(shadow(0, 0, 0, 8, blue, false))).contains("rx=\"6.62\""));
+        assert!(
+            svg(0.0, Some(shadow(0, 0, 400, 0, blue, false))).contains("stdDeviation=\"128.00\"")
+        );
+        // Inset and transparent shadows emit nothing; a half-pixel one still does.
+        assert_eq!(svg(0.0, Some(shadow(0, 5, 0, 0, blue, true))), "");
+        assert_eq!(
+            svg(
+                0.0,
+                Some(shadow(0, 5, 0, 0, Rgba::new(0, 0, 255, 0), false))
+            ),
+            ""
+        );
+        for (w, h) in [(0.5, 10.0), (10.0, 0.5)] {
+            let half = body(
+                &decorated(1.0, 2.0, w, h, 0.0, |s, _, _| {
+                    *s = Some(shadow(0, 0, 0, 0, blue, false));
+                }),
+                &HashMap::new(),
+            );
+            assert_eq!(half, format!("<rect x=\"1.00\" y=\"2.00\" width=\"{w:.2}\" height=\"{h:.2}\" fill=\"#0000ff\"/>\n"));
+        }
+    }
+
+    #[test]
+    fn gradient_lines_reach_the_box_corners_along_the_css_angle() {
+        let grad = |angle_deg: f32| {
+            Some(CssGradient {
+                angle_deg,
+                stops: vec![
+                    GradientStop {
+                        color: RED,
+                        pos: 0.0,
+                    },
+                    GradientStop {
+                        color: WHITE,
+                        pos: 1.0,
+                    },
+                ],
+            })
+        };
+        for angle in [30.0_f32, 135.0, 200.0, 290.0] {
+            let (x, y, w, h) = (10.0_f32, 20.0_f32, 60.0_f32, 30.0_f32);
+            let out = body(
+                &decorated(x, y, w, h, 0.0, |_, g, _| *g = grad(angle)),
+                &HashMap::new(),
+            );
+            let num = |k: &str| -> f32 {
+                let at = out.find(&format!(" {k}=\"")).unwrap() + k.len() + 3;
+                out[at..at + out[at..].find('"').unwrap()].parse().unwrap()
+            };
+            let (x1, y1, x2, y2) = (num("x1"), num("y1"), num("x2"), num("y2"));
+            // The line points along (sin, -cos) of the angle, through the box centre...
+            let len = (x2 - x1).hypot(y2 - y1);
+            let t = angle.to_radians();
+            assert!(
+                ((x2 - x1) / len - t.sin()).abs() < 1e-3
+                    && ((y2 - y1) / len + t.cos()).abs() < 1e-3,
+                "{angle}"
+            );
+            assert!(
+                ((x1 + x2) / 2.0 - (x + w / 2.0)).abs() < 0.01
+                    && ((y1 + y2) / 2.0 - (y + h / 2.0)).abs() < 0.01
+            );
+            // ...and spans the box exactly: its corners project onto 0 and 1.
+            let proj =
+                |px: f32, py: f32| ((px - x1) * (x2 - x1) + (py - y1) * (y2 - y1)) / (len * len);
+            let corners = [
+                proj(x, y),
+                proj(x + w, y),
+                proj(x, y + h),
+                proj(x + w, y + h),
+            ];
+            let (lo, hi) = corners
+                .iter()
+                .fold((f32::MAX, f32::MIN), |(a, b), &c| (a.min(c), b.max(c)));
+            assert!(
+                lo.abs() < 1e-3 && (hi - 1.0).abs() < 1e-3,
+                "{angle}: {lo} {hi}"
+            );
+            assert!(out.ends_with(
+                "<rect x=\"10.00\" y=\"20.00\" width=\"60.00\" height=\"30.00\" fill=\"url(#g1000010_1000020)\"/>\n"
+            ), "{out}");
+        }
+        // Half a pixel wide or high still emits the gradient; rounded boxes round it.
+        for (w, h) in [(0.5, 10.0), (10.0, 0.5)] {
+            assert!(body(
+                &decorated(1.0, 1.0, w, h, 0.0, |_, g, _| *g = grad(90.0)),
+                &HashMap::new()
+            )
+            .contains("<linearGradient"));
+        }
+        let round = body(
+            &decorated(0.0, 0.0, 40.0, 40.0, 6.0, |_, g, _| *g = grad(90.0)),
+            &HashMap::new(),
+        );
+        assert!(
+            round.contains("rx=\"6.00\" ry=\"6.00\" fill=\"url(#g"),
+            "{round}"
+        );
+        let square = body(
+            &decorated(0.0, 0.0, 40.0, 40.0, 0.5, |_, g, _| *g = grad(90.0)),
+            &HashMap::new(),
+        );
+        assert!(!square.contains("rx="), "{square}");
     }
 
     #[test]
