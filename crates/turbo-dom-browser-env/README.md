@@ -155,8 +155,9 @@ resolve. Form controls take html.css's `font: -webkit-small-control` (turbo-dom#
 `<input>` (every type), `<select>` and `<button>` compute `13.3333px Arial`,
 `<textarea>` and the date / time inputs `13.3333px monospace`, `<optgroup>` is
 `bolder` and `<option>` `normal` weight; author rules win (case `form-control-fonts`).
-Disconnected elements and children of `<video>` / `<audio>` report `""`, as
-in Chrome. Control: `src/computed_defaults_chrome156.json`, which also records that
+Disconnected elements report `""` for every property, author and inline values
+included (turbo-dom#67; the declaration fills in once the element is connected), and
+children of `<video>` / `<audio>` report `""` for the defaults, as in Chrome. Control: `src/computed_defaults_chrome156.json`, which also records that
 a document has no `<title>` it did not parse (`document.title = …` creates one).
 
 The top layer is modelled as far as the binding has one (turbo-dom#30): a dialog
@@ -182,8 +183,7 @@ unresolved), `transform: none`, all `!important`, and `object-fit: contain` — 
 `::backdrop` is fixed at inset 0 with `rgb(0, 0, 0)`. `fullscreenchange` /
 `fullscreenerror` fire as before. Control: case `fullscreen` (async; the collector's
 `__cdpGesture()` is a trusted CDP click). Known gaps, filed: composed events stop at the
-shadow root (turbo-dom#66), disconnected elements keep author values (turbo-dom#67),
-document rules reach shadow trees (turbo-dom#68).
+shadow root (turbo-dom#66), document rules reach shadow trees (turbo-dom#68).
 
 `getComputedStyle(el, pseudoElt)` parses `pseudoElt` like Chrome (turbo-dom#47):
 `::before` / `::after` (and `:before` / `:after` / bare `before` / `after`) compute

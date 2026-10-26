@@ -7,6 +7,14 @@ at the time); this file reconstructs them from history.
 
 ## [Unreleased]
 
+### Fixed — `getComputedStyle` of a disconnected element (P5b-X6, miaskiewicz/turbo-dom#67, Chrome 156 control)
+- turbo-dom-browser-env: a disconnected element blanked only the defaults the binding
+  models. Author-rule and inline values (`position: relative`, `transform: scale(2)`, …)
+  still came through. Chrome computes no style for it, so every property now reads `""` until
+  the element is connected again; the declaration stays live. Typed OM's cascade read is
+  unchanged. Control: case `fullscreen`, section `removed`, of
+  `src/computed_defaults_chrome156.json`.
+
 ### Fixed — fullscreen top layer (P5b-X6, miaskiewicz/turbo-dom#58, Chrome 156 controls)
 - turbo-dom: `Tree::set_fullscreen_stack` / `fullscreen_stack` / `fullscreen_element` /
   `is_fullscreen` / `is_fullscreen_ancestor`. The selector engine (DOM APIs, cascade,
@@ -27,8 +35,7 @@ at the time); this file reconstructs them from history.
   - Its `::backdrop` is fixed at inset 0 and black.
 - Control: async case `fullscreen` of `src/computed_defaults_chrome156.json` (user
   activation through the collector's trusted CDP click `__cdpGesture()`). Known gaps, filed:
-  #66 (composed events stop at the shadow root), #67 (disconnected elements keep author
-  values), #68 (document rules reach shadow trees).
+  #66 (composed events stop at the shadow root), #68 (document rules reach shadow trees).
 
 ### Fixed — UA-styled pseudo-elements in `getComputedStyle` (P5b-X6, miaskiewicz/turbo-dom#47, Chrome 156 control)
 - turbo-dom-browser-env: `getComputedStyle(el, pseudoElt)` computed only `::before`,

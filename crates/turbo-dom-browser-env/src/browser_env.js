@@ -542,6 +542,14 @@
     // Percentage lookup may visit several ancestors before font inheritance asks
     // for the immediate parent again. Reuse each resolved ancestor only in this read.
     function parentStyle(node){return computeStyleSnapshot(node,snapshots);}
+    // A disconnected element has no style (turbo-dom#67): every value reads "" until it is
+    // connected again (the declaration stays live). Typed OM's cascade read (`sink`) still
+    // reports the cascaded values.
+    if (!pseudo && !sink && el) {
+      var attached = true;
+      try { attached = __ns.domAccessor('isConnected',false,'Node').call(el); } catch(e) {}
+      if (!attached) { var empty = __ns.makeComputedStyleDeclaration({},el,null); computedSnapshotSet(snapshots,el,empty); return empty; }
+    }
     // A pseudo-element of a disconnected (or <video>/<audio> child) element has no style.
     if (pseudo) {
       var live = false;

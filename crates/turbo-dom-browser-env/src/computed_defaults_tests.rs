@@ -275,11 +275,9 @@ fn fullscreen_matches_chrome156_control() {
 /// Case `fullscreen` rows the binding does not reproduce yet, each a filed issue:
 /// - turbo-dom#66: composed events stop at the shadow root, so the fullscreenchange of an
 ///   element in a shadow tree never reaches the document (`shadow.1`, the event log);
-/// - turbo-dom#67: a disconnected element still reports its author values (`removed.2`);
 /// - turbo-dom#68: document rules reach elements in shadow trees (`shadow.4`: the document's
 ///   `:fullscreen { opacity: 0.5 }`).
 const FULLSCREEN_KNOWN_GAPS: &[&str] = &[
     "fullscreen.fullscreen.shadow.1.",
-    "fullscreen.fullscreen.removed.2:",
     "fullscreen.fullscreen.shadow.4:",
 ];
