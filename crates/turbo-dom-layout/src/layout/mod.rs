@@ -172,9 +172,26 @@ pub fn layout_recorded(
     options: &LayoutOptions,
     diags: &mut Diagnostics,
 ) -> LaidOut {
+    layout_recorded_in_viewport(styled, (cb_width, 0.0), fonts, images, options, diags)
+}
+
+/// [`layout_recorded`] with an initial containing block of `(width, height)` px (see
+/// [`layout_in_viewport`]; height 0 = unknown): a paged layout passes its page area, the
+/// print initial containing block, so `position: fixed` boxes and absolutely positioned
+/// boxes it contains resolve `%` / `bottom` insets and `%` heights against it
+/// (miaskiewicz/turbo-html2pdf#39).
+pub fn layout_recorded_in_viewport(
+    styled: &[StyledNode],
+    (cb_width, viewport_height): (f32, f32),
+    fonts: &FontRegistry,
+    images: &ImageCtx,
+    options: &LayoutOptions,
+    diags: &mut Diagnostics,
+) -> LaidOut {
     let _cmyk = value::cmyk_scope(options.accept_cmyk);
     let (tree, recorded, count) = boxgen::build_box_tree_with(styled, build_options(options, true));
-    let (mut galley, rows) = block::layout_tree_recorded(&tree, cb_width, fonts, images, diags);
+    let (mut galley, rows) =
+        block::layout_tree_recorded(&tree, (cb_width, viewport_height), fonts, images, diags);
     let first = options.first_node_id;
     shift_node_ids(&mut galley, first);
     let shift = |id: NodeId| NodeId(id.0 + first);

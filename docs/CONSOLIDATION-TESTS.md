@@ -1213,6 +1213,7 @@ Declared behaviour changes (Chrome 156 controls), not moves:
 | turbo-dom-layout | `html_document_chrome<tests/html_document_chrome.rs>::floats_sit_side_by_side_in_max_content_like_chrome_156` | new (turbo-dom#85, test-first) |
 | turbo-dom-layout | `turbo_dom_layout<src/lib.rs>::live::chrome_tests::the_fullscreen_element_fills_the_viewport_like_chrome_156`, `fullscreen_chrome<tests/fullscreen_chrome.rs>::the_fullscreen_element_fills_the_viewport_on_the_static_path_like_chrome_156` | new (turbo-dom#82, test-first) |
 | turbo-dom-layout | `fullscreen_chrome<tests/fullscreen_chrome.rs>::{the_fullscreen_element_is_in_the_top_layer_above_its_backdrop, without_a_fullscreen_stack_the_element_stays_in_flow}`, `turbo_dom_layout<src/lib.rs>::layout::boxgen::tests::{top_layer_boxes_move_to_the_root_after_their_backdrops, top_layer_boxes_in_line_content_move_to_the_end_of_the_run}` | new (turbo-dom#82) |
+| turbo-dom-layout | `layout_options<tests/layout_options.rs>::recorded_layout_in_a_viewport_resolves_fixed_insets_against_its_height` | new (turbo-html2pdf#39: `layout_recorded_in_viewport`) |
 
 ## P5b-W2 — raster inline SVG on the tree (turbo-dom `consol/p5b-w2`)
 

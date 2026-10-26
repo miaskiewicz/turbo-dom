@@ -2520,7 +2520,7 @@ pub(crate) fn layout_tree_in_viewport(
 /// (source-recording mode; the galley is identical).
 pub(crate) fn layout_tree_recorded(
     root: &LayoutBox,
-    cb_width: f32,
+    (cb_width, icb_height): (f32, f32),
     fonts: &FontRegistry,
     images: &ImageCtx,
     diags: &mut Diagnostics,
@@ -2528,7 +2528,7 @@ pub(crate) fn layout_tree_recorded(
     let laid = layout_tree_policy(
         root,
         cb_width,
-        (0.0, 0.0),
+        (0.0, icb_height),
         (false, TextLayoutPolicy::default(), true),
         fonts,
         images,

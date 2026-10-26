@@ -83,6 +83,11 @@ changes in `tools/parity/expected/p5b-w7-turbo-dom-*.json`.
   scrolling (its old place collapses). A document without fullscreen pays nothing.
   Control: `fullscreen-*` in `live-geometry` (a trusted click runs `requestFullscreen()`),
   asserted on the live and the static path.
+- `layout_recorded_in_viewport` (for miaskiewicz/turbo-html2pdf#39): `layout_recorded` with
+  an initial containing block of a given height — a paged layout passes its page area,
+  the print initial containing block, so fixed boxes and absolutely positioned boxes it
+  contains resolve `%` / `bottom` insets and `%` heights against it (as #81 does for
+  screenshots). `layout_recorded` keeps the height unknown.
 
 ### Fixed — turbo-dom-layout tables, clipping and box sizing (P5b-W5, miaskiewicz/turbo-dom#41/#51/#52/#55/#62/#63/#64/#65/#69/#70, Chrome 156 controls)
 Each fix is backed by a Chrome for Testing 156 control and lists the corpus outputs it

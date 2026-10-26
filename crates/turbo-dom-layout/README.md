@@ -46,7 +46,9 @@ fn lay_out(html: &str) -> Result<Fragment, RenderError> {
   `position: fixed` box and an absolutely positioned box with no positioned ancestor
   resolve `bottom` / `%` insets and a `%` height against it (turbo-dom#81).
   `layout_boxes` (its `cb_height`) and turbo-dom-raster's screenshots use it; the other
-  static entries leave that height unknown (paged output: the page box would be it).
+  static entries leave that height unknown; `layout_recorded_in_viewport` is the
+  recorded layout with that height (turbo-html2pdf's paged layout passes its page area,
+  turbo-html2pdf#39).
 - `live` — the live-DOM input ("surf mode"): an embedder that owns a live document
   (turbo-surf) supplies its composed children (`Fn(Handle) -> &[Handle]`), pre-matched
   rules per origin (`PreMatched`: declarations, targets with specificity, shadow-scope

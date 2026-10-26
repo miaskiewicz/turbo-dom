@@ -207,3 +207,70 @@ fn recorded_sources_mark_the_grid_box_of_a_captioned_table() {
     assert_eq!(background(table), None);
     assert!(background(grid_frag).is_some());
 }
+
+/// miaskiewicz/turbo-html2pdf#39: `layout_recorded_in_viewport` gives the recorded layout
+/// an initial containing block of the given height (a paged layout's page area): a fixed
+/// box resolves `%` insets, a `%` height and `bottom` against it; `layout_recorded` (and a
+/// height of 0) leaves it unknown, the box at its static position with no `%` height. The
+/// galley and sources are otherwise those of `layout_recorded`.
+#[test]
+fn recorded_layout_in_a_viewport_resolves_fixed_insets_against_its_height() {
+    let html = "<html><body><div style=\"height:7px\"></div><div id=\"a\" style=\"position:fixed;top:50%;left:0;width:10px;height:25%\"></div><div id=\"b\" style=\"position:fixed;bottom:20px;right:0;width:10px;height:30px\"></div></body></html>";
+    let tree = Tree::parse(html);
+    let laid = |height: Option<f32>| {
+        let styled = styled(&tree, "");
+        let images = ImageCtx {
+            resolver: &NoImages,
+            body_height: None,
+        };
+        let mut diags = turbo_dom_layout::Diagnostics::default();
+        let options = LayoutOptions::default();
+        match height {
+            Some(h) => turbo_dom_layout::layout_recorded_in_viewport(
+                &styled,
+                (400.0, h),
+                &common::registry(),
+                &images,
+                &options,
+                &mut diags,
+            ),
+            None => layout_recorded(
+                &styled,
+                400.0,
+                &common::registry(),
+                &images,
+                &options,
+                &mut diags,
+            ),
+        }
+    };
+    let rects = |laid: &LaidOut| -> Vec<(String, f32, f32, f32, f32)> {
+        fragments(&laid.galley)
+            .iter()
+            .filter_map(|f| {
+                let h = *laid.sources.elements.get(&f.node_id)?;
+                let id = tree.get_attribute(h, "id")?.to_string();
+                Some((id, f.x, f.y, f.width, f.height))
+            })
+            .collect()
+    };
+    let paged = laid(Some(320.0));
+    assert_eq!(
+        rects(&paged),
+        vec![
+            ("a".to_string(), 0.0, 160.0, 10.0, 80.0),
+            ("b".to_string(), 390.0, 270.0, 10.0, 30.0),
+        ]
+    );
+    for unknown in [laid(None), laid(Some(0.0))] {
+        assert_eq!(
+            rects(&unknown),
+            vec![
+                ("a".to_string(), 0.0, 0.0, 10.0, 0.0),
+                ("b".to_string(), 390.0, 7.0, 10.0, 30.0),
+            ]
+        );
+        assert_eq!(unknown.sources, laid(None).sources);
+    }
+    assert_eq!(paged.sources, laid(None).sources);
+}

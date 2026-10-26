@@ -46,8 +46,8 @@ pub use layout::fragment::{
 };
 pub use layout::value::{BreakRule, Rgba};
 pub use layout::{
-    layout, layout_in_viewport, layout_recorded, layout_with_images, layout_with_options, ImageCtx,
-    LaidOut, LayoutOptions, NodeSources,
+    layout, layout_in_viewport, layout_recorded, layout_recorded_in_viewport, layout_with_images,
+    layout_with_options, ImageCtx, LaidOut, LayoutOptions, NodeSources,
 };
 pub use style::{
     build_cascade, build_cascade_with_width, document_root_font_px, root_font_px, root_font_scope,
