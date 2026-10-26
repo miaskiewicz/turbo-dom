@@ -76,3 +76,9 @@ opt-level = 3
 [profile.profiling]
 inherits = "release"
 debug = true
+
+# Pre-publish only: resolve the generated turbo-dom-v8 fork from its candidate branch
+# (crates/turbo-dom-v8/scripts/push-candidate.sh). Remove once turbo-dom-v8 150.4.0 is
+# on crates.io (see PUBLISHING.md).
+[patch.crates-io]
+turbo-dom-v8 = { git = "https://github.com/miaskiewicz/turbo-dom", rev = "e9b36c8733ef1cf1073f7053a8c5931381c978c5" }

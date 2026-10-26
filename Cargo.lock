@@ -1452,7 +1452,7 @@ dependencies = [
  "serde_json",
  "sha2",
  "turbo-dom",
- "turbo-surf-v8",
+ "turbo-dom-v8",
  "url",
 ]
 
@@ -1472,10 +1472,9 @@ dependencies = [
 ]
 
 [[package]]
-name = "turbo-surf-v8"
+name = "turbo-dom-v8"
 version = "150.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8c120db93d7df8c391e904ae6cee92aff7fe780f20e4fc68c8d5d63a6c446fb0"
+source = "git+https://github.com/miaskiewicz/turbo-dom?rev=e9b36c8733ef1cf1073f7053a8c5931381c978c5#e9b36c8733ef1cf1073f7053a8c5931381c978c5"
 dependencies = [
  "bindgen",
  "bitflags",

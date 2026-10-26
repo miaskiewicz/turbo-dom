@@ -62,15 +62,16 @@ bytes), named after the file (`KEY_ORDER_PROBE_JS`, `ANIMATIONS_FRAMES_CASES_JSO
 frame-read interceptor source, for accessor agreement tests). The files ship in
 the package under `src/`; consumers reference the constants, never copy files.
 
-### Feature `native-sdk-frame-read` (default for now)
+### Feature `native-sdk-frame-read` (off by default)
 
 How setter/definer/deleter interceptors learn whether the caller must throw
 (strict `[[Set]]`/`[[Delete]]`, `Object.defineProperty`). With the feature the
 binding reads V8's frame; without it, it calls the `turbo-dom-v8` fork's
 `PropertyCallbackArguments::should_throw_on_error` and a compile-time
 `assert!(v8::FORK_SHOULD_THROW_FIX)` rejects a V8 without the fix. The crate
-still links the published `turbo-surf-v8` 150.4.0, whose accessor is broken, so
-the frame read is the default until the switch to `turbo-dom-v8`.
+links the `turbo-dom-v8` fork, so the accessor is the default; only native V8
+SDKs that lack the fork fix (turbo-surf's engine-154/155 overlay) enable the
+frame read.
 
 ## Building and testing
 

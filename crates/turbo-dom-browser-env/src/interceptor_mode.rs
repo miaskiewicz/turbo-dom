@@ -8,11 +8,12 @@
 //! `PropertyCallbackInfo<Value>` instantiation, which V8 folds to `false`.
 //!
 //! Two sources, selected by the `native-sdk-frame-read` cargo feature:
-//! - with it (today's default, required while the crate links the published
-//!   `turbo-surf-v8`, and later by native SDKs without the fix) the binding
-//!   reads the frame itself, exactly as V8's inline
+//! - with it (for native V8 SDKs without the fork fix, e.g. turbo-surf's
+//!   engine-154/155 overlay) the binding reads the frame itself, exactly as V8's
+//!   inline
 //!   `PropertyCallbackInfo<void>::ShouldThrowOnError` does;
-//! - without it the binding calls the accessor of the `turbo-dom-v8` fork, which
+//! - without it (the default) the binding calls the accessor of the
+//!   `turbo-dom-v8` fork, which
 //!   carries the fix; a compile-time assertion on `v8::FORK_SHOULD_THROW_FIX`
 //!   rejects a V8 without it instead of silently losing strict-mode TypeErrors.
 //!
