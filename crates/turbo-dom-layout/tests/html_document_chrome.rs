@@ -103,7 +103,7 @@ fn inline_flex_grid_case(id: &str) -> bool {
 /// The control cases of an open bug, each asserted by its own test (`#[ignore]`d until
 /// its fix lands) and held out of [`html_documents_lay_out_as_chrome_156`].
 fn held_out(id: &str) -> bool {
-    let groups: [fn(&str) -> bool; 11] = [
+    let groups: [fn(&str) -> bool; 12] = [
         auto_table_case,
         inline_flex_grid_case,
         abs_auto_width_case,
@@ -115,6 +115,7 @@ fn held_out(id: &str) -> bool {
         table_border_box_case,
         spacing_case,
         table_height_case,
+        column_growth_case,
     ];
     groups.iter().any(|group| group(id))
 }
@@ -228,4 +229,15 @@ fn table_height_case(id: &str) -> bool {
 #[test]
 fn table_height_is_distributed_over_the_rows_like_chrome_156() {
     compare_cases(table_height_case);
+}
+
+/// miaskiewicz/turbo-dom#55: a table's extra width goes to its auto columns.
+fn column_growth_case(id: &str) -> bool {
+    id.starts_with("table-columns-")
+}
+
+#[test]
+#[ignore = "miaskiewicz/turbo-dom#55: fails until the fix"]
+fn extra_table_width_goes_to_auto_columns_like_chrome_156() {
+    compare_cases(column_growth_case);
 }

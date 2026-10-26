@@ -256,6 +256,19 @@ const CASES = [
   { id: "table-height-css-rows", html: DOC(S("body{margin:0}"), `<div data-cid="t" style="display:table;height:100px"><div style="display:table-row"><div data-cid="a" style="display:table-cell"><div style="width:30px;height:10px"></div></div></div><div style="display:table-row"><div data-cid="b" style="display:table-cell"><div style="width:30px;height:30px"></div></div></div></div>`) },
   { id: "table-height-min-height", html: DOC(S("body{margin:0}td{padding:0}"), `<table data-cid="t" style="min-height:100px;border-spacing:0"><tr><td data-cid="a"><div style="width:30px;height:10px"></div></td></tr></table>`) },
   { id: "table-height-explicit-and-empty", html: DOC(S("body{margin:0}td{padding:0}"), `<table data-cid="t" style="height:100px;border-spacing:0"><tr style="height:20px"><td data-cid="a"></td></tr><tr><td data-cid="b"></td></tr><tr><td data-cid="c"></td></tr></table>`) },
+  // P5b-W5, miaskiewicz/turbo-dom#55: a table wider than its columns' max-content gives the
+  // extra width to its auto columns (no `px` width) in proportion to their max-content,
+  // equally when they are all empty; only without auto columns to the fixed ones.
+  { id: "table-columns-empty-share", html: DOC(S("body{margin:0}table{width:100%;border-spacing:0}td{padding:0}"), `<table data-cid="t"><tr><td data-cid="a" style="height:100px;background:#f00"></td><td data-cid="b" style="height:100px;background:#0f0"></td></tr></table>`) },
+  { id: "table-columns-one-empty", html: DOC(S("body{margin:0}table{width:100%;border-spacing:0}td{padding:0}"), `<table data-cid="t"><tr><td data-cid="a" style="height:100px"></td></tr></table>`) },
+  { id: "table-columns-empty-beside-content", html: DOC(S("body{margin:0}table{width:400px;border-spacing:0}td{padding:0}"), `<table data-cid="t"><tr><td data-cid="a"></td><td data-cid="b"><div style="width:30px;height:10px"></div></td></tr></table>`) },
+  { id: "table-columns-empty-beside-fixed", html: DOC(S("body{margin:0}table{width:400px;border-spacing:0}td{padding:0}"), `<table data-cid="t"><tr><td data-cid="a" style="width:100px"></td><td data-cid="b"></td></tr></table>`) },
+  { id: "table-columns-empty-collapsed", html: DOC(S("body{margin:0}table{width:400px;border-collapse:collapse}td{padding:0;border:2px solid}"), `<table data-cid="t"><tr><td data-cid="a"></td><td data-cid="b"></td></tr></table>`) },
+  { id: "table-columns-empty-spacing", html: DOC(S("body{margin:0}table{width:400px}td{padding:0}"), `<table data-cid="t"><tr><td data-cid="a"></td><td data-cid="b"></td></tr></table>`) },
+  { id: "table-columns-empty-beside-percent", html: DOC(S("body{margin:0}table{width:400px;border-spacing:0}td{padding:0}"), `<table data-cid="t"><tr><td data-cid="a" style="width:25%"></td><td data-cid="b"></td><td data-cid="c"></td></tr></table>`) },
+  { id: "table-columns-empty-auto-table", html: DOC(S("body{margin:0}td{padding:0}"), `<table data-cid="t"><tr><td data-cid="a"></td><td data-cid="b"></td></tr></table>`) },
+  { id: "table-columns-fixed-beside-content", html: DOC(S("body{margin:0}table{width:400px;border-spacing:0}td{padding:0}"), `<table data-cid="t"><tr><td data-cid="a" style="width:100px"></td><td data-cid="b"><div style="width:30px;height:10px"></div></td></tr></table>`) },
+  { id: "table-columns-fixed-content-and-empty", html: DOC(S("body{margin:0}table{width:400px;border-spacing:0}td{padding:0}"), `<table data-cid="t"><tr><td data-cid="a" style="width:100px"><div style="width:30px;height:10px"></div></td><td data-cid="b"><div style="width:30px;height:10px"></div></td><td data-cid="c"></td></tr></table>`) },
 ];
 
 /** The RGB of a 1x1 PNG screenshot (any filter: a single pixel's filter adds 0). */
