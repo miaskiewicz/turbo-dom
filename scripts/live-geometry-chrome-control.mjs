@@ -4,7 +4,8 @@
 //   - miaskiewicz/turbo-surf#31: an absolutely/fixed positioned inline is blockified
 //     (CSS 2.1 §9.7) and laid out at its static position without splitting its inline
 //     ancestor, and an unsupported inline construct fails that element only, instead of
-//     failing the whole snapshot.
+//     failing the whole snapshot; a table row is a box spanning its cells (inside the
+//     border-spacing) with used box metrics.
 //
 // For every case, Chrome for Testing 156 (viewport 1280x800) records the
 // getBoundingClientRect() of every `[data-cid]` element (document order) as
@@ -77,6 +78,10 @@ const CASES = [
     html: DOC("p{margin:0}", `${BOX(20, 10, "a")}<p data-cid="p">x<span data-cid="s" style="vertical-align:top">y</span></p>${BOX(20, 10, "b")}`),
     measure: { p: "xw", b: "xwh" },
   },
+  // turbo-surf#31 A: a table row is a box spanning its cells (inside the border-spacing)
+  // with used box metrics.
+  { id: "table-width-percent", html: DOC("table{width:50%}", `<table data-cid="table"><tr data-cid="tr">${CELL(30, 10, "td")}</tr></table>`) },
+  { id: "table-width-px", html: DOC("table{width:300px}", `<table data-cid="table"><tr data-cid="tr">${CELL(30, 10, "td")}</tr></table>`) },
 ];
 
 const browser = await chromium.launch({ executablePath: chromePath, headless: true });

@@ -36,6 +36,12 @@ changes in `tools/parity/expected/p5b-w1-*.json`.
   every other element answers (a visually-hidden `.sr-only` span made every read on the
   page throw). Control: `scripts/live-geometry-chrome-control.mjs`
   (`crates/turbo-dom-layout/src/live/chrome_tests.rs`).
+- Table rows (miaskiewicz/turbo-surf#31): a row box runs from its first cell's left edge
+  to its last cell's right edge — inside the border-spacing, or between the outer
+  grid-line centres of a collapsed table — instead of over the table's whole content
+  width, and in live geometry it records used box metrics, so `getBoundingClientRect()`
+  on a `<tr>` answers (`[10,10,9.109375,20]` for a one-cell table in Chrome) instead of
+  failing with "used box metrics are missing". Control: `live-geometry` `table-width-*`.
 
 ### Fixed — selector engine and cascade order (P5b-X, Chrome 156 controls)
 Each fix is backed by `crates/turbo-dom/tests/fixtures/cascade_selectors_chrome156.json`

@@ -22,9 +22,10 @@ use super::boxgen::{BoxKind, LayoutBox};
 use super::flex::natural_width;
 use super::fragment::{Fragment, FragmentContent, NodeId, RepeatKind};
 use super::value::{
-    parse_px, resolve_box_style, BorderEdges, Display, Edges, LengthPct, ResolveCtx, VAlign,
-    DEFAULT_FONT_SIZE,
+    parse_px, position_of, resolve_box_style, BorderEdges, Display, Edges, LengthPct, Position,
+    ResolveCtx, VAlign, DEFAULT_FONT_SIZE,
 };
+use crate::layout_snapshot::UsedBoxMetrics;
 
 // --------------------------------------------------------------------------
 // row collection
@@ -32,6 +33,8 @@ use super::value::{
 
 struct RowRef<'a> {
     node_id: NodeId,
+    /// The row's own `position` (its used box metrics report it).
+    position: Position,
     cells: Vec<&'a LayoutBox>,
     /// The row's explicit `height` in px (0 if none) — a floor on the row height,
     /// so an empty spacer row (`<tr style="height:5px">`, common in table layouts
@@ -65,6 +68,7 @@ fn group_repeat(d: Display) -> Option<RepeatKind> {
 fn row_ref(row: &LayoutBox, repeat: Option<RepeatKind>) -> RowRef<'_> {
     RowRef {
         node_id: row.node_id,
+        position: position_of(&row.style),
         cells: cells_of(row),
         min_height: row_min_height(row),
         repeat,
@@ -608,11 +612,14 @@ fn layout_table_collapsed(
         col_x: line_x[..ncols].to_vec(),
         row_y: line_y[..nrows].to_vec(),
         row_h: line_y.windows(2).map(|w| w[1] - w[0]).collect(),
-        table_w: col_cp.iter().sum::<f32>() + vert_total,
+        row_x: line_x[0],
+        row_w: line_x[ncols] - line_x[0],
     };
     let height = row_cp.iter().sum::<f32>() + horiz.iter().sum::<f32>();
     record_rows(rows, ctx);
-    (finalize(rows, laid, &geom, cx, cy), height)
+    let frags = finalize(rows, laid, &geom, cx, cy);
+    record_row_metrics(rows, &frags, ctx);
+    (frags, height)
 }
 
 // --------------------------------------------------------------------------
@@ -683,7 +690,12 @@ struct Geom {
     col_x: Vec<f32>,
     row_y: Vec<f32>,
     row_h: Vec<f32>,
-    table_w: f32,
+    /// A row box's left edge (from the table content box) and width: from the first
+    /// column's left edge to the last column's right edge — inside the border-spacing
+    /// (separated model) or between the outer grid-line centres (collapsed), as Chrome
+    /// lays a row out over its cells.
+    row_x: f32,
+    row_w: f32,
 }
 
 fn valign_offset(v: VAlign, cell_h: f32, content_h: f32) -> f32 {
@@ -722,9 +734,9 @@ fn make_row_frag(row: &RowRef, r: usize, geom: &Geom, cx: f32, cy: f32) -> Fragm
     };
     let mut f = Fragment::new(
         row.node_id,
-        cx,
+        cx + geom.row_x,
         cy + geom.row_y[r],
-        geom.table_w,
+        geom.row_w,
         geom.row_h[r],
         content,
     );
@@ -737,6 +749,36 @@ fn make_row_frag(row: &RowRef, r: usize, geom: &Geom, cx: f32, cy: f32) -> Fragm
 fn record_rows(rows: &[RowRef], ctx: &mut Ctx) {
     if let Some(recorded) = &mut ctx.table_rows {
         recorded.extend(rows.iter().map(|row| row.node_id));
+    }
+}
+
+/// In live geometry, each row box's used metrics: no border, padding or margin of
+/// its own (borders belong to the cells), the box itself as the content box
+/// (miaskiewicz/turbo-surf#31).
+fn record_row_metrics(rows: &[RowRef], frags: &[Fragment], ctx: &mut Ctx) {
+    let Some(metrics) = &mut ctx.used_metrics else {
+        return;
+    };
+    for (row, frag) in rows.iter().zip(frags) {
+        metrics.insert(
+            row.node_id,
+            empty_box_metrics(frag, row.position, Display::TableRow),
+        );
+    }
+}
+
+/// The used metrics of a frameless table-internal box (a row or a row group) laid
+/// out as `frag`.
+fn empty_box_metrics(frag: &Fragment, position: Position, display: Display) -> UsedBoxMetrics {
+    UsedBoxMetrics {
+        inline_fragment: false,
+        border: Edges::default(),
+        padding: Edges::default(),
+        margin: Edges::default(),
+        content_width: frag.width,
+        content_height: frag.height,
+        position,
+        display,
     }
 }
 
@@ -864,10 +906,13 @@ pub(crate) fn layout_table(
     let geom = Geom {
         col_x: spaced_offsets(&cols, hs),
         row_y: spaced_offsets(&row_h, vs),
-        table_w: cols.iter().sum::<f32>() + hs * (ncols as f32 + 1.0),
+        row_x: hs,
+        row_w: cols.iter().sum::<f32>() + hs * (ncols as f32 - 1.0),
         row_h,
     };
     let height = geom.row_h.iter().sum::<f32>() + vs * (nrows as f32 + 1.0);
     record_rows(&rows, ctx);
-    (finalize(&rows, laid, &geom, cx, cy), height)
+    let frags = finalize(&rows, laid, &geom, cx, cy);
+    record_row_metrics(&rows, &frags, ctx);
+    (frags, height)
 }
