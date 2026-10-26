@@ -795,6 +795,173 @@
      "position": "static"
     }
    ]
+  },
+  {
+   "id": "clip-rect-hit-testing",
+   "html": "<!doctype html><style>body{margin:0}.a{position:absolute;top:0;width:50px;height:50px}i{display:block;width:50px;height:50px}</style><div data-cid=\"under\" style=\"height:100px;padding-top:60px\"><span data-cid=\"none\" class=\"a\" style=\"left:0;clip:rect(0 0 0 0)\"></span><span data-cid=\"part\" class=\"a\" style=\"left:100px;clip:rect(10px,40px,40px,10px)\"><i data-cid=\"kid\"></i></span><span data-cid=\"auto\" class=\"a\" style=\"left:200px;clip:rect(auto, 20px, auto, auto)\"></span><div data-cid=\"fixed\" style=\"position:fixed;left:300px;top:0;width:50px;height:50px;clip:rect(0 0 0 0)\"></div><div data-cid=\"flow\" style=\"width:20px;height:20px;clip:rect(0 0 0 0)\"></div></div>",
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "under",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 160,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "none",
+     "x": 0,
+     "y": 0,
+     "width": 50,
+     "height": 50,
+     "display": "block",
+     "position": "absolute"
+    },
+    {
+     "cid": "part",
+     "x": 100,
+     "y": 0,
+     "width": 50,
+     "height": 50,
+     "display": "block",
+     "position": "absolute"
+    },
+    {
+     "cid": "kid",
+     "x": 100,
+     "y": 0,
+     "width": 50,
+     "height": 50,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "auto",
+     "x": 200,
+     "y": 0,
+     "width": 50,
+     "height": 50,
+     "display": "block",
+     "position": "absolute"
+    },
+    {
+     "cid": "fixed",
+     "x": 300,
+     "y": 0,
+     "width": 50,
+     "height": 50,
+     "display": "block",
+     "position": "fixed"
+    },
+    {
+     "cid": "flow",
+     "x": 0,
+     "y": 60,
+     "width": 20,
+     "height": 20,
+     "display": "block",
+     "position": "static"
+    }
+   ],
+   "hits": [
+    {
+     "x": 5,
+     "y": 5,
+     "hit": "under"
+    },
+    {
+     "x": 105,
+     "y": 5,
+     "hit": "under"
+    },
+    {
+     "x": 115,
+     "y": 15,
+     "hit": "kid"
+    },
+    {
+     "x": 139,
+     "y": 39,
+     "hit": "kid"
+    },
+    {
+     "x": 145,
+     "y": 15,
+     "hit": "under"
+    },
+    {
+     "x": 115,
+     "y": 45,
+     "hit": "under"
+    },
+    {
+     "x": 205,
+     "y": 5,
+     "hit": "auto"
+    },
+    {
+     "x": 205,
+     "y": 45,
+     "hit": "auto"
+    },
+    {
+     "x": 225,
+     "y": 5,
+     "hit": "under"
+    },
+    {
+     "x": 305,
+     "y": 5,
+     "hit": "under"
+    },
+    {
+     "x": 5,
+     "y": 65,
+     "hit": "flow"
+    }
+   ]
+  },
+  {
+   "id": "clip-rect-sr-only-text",
+   "html": "<!doctype html><style>body{margin:0}p{margin:0}.sr{position:absolute;width:1px;height:1px;padding:0;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}</style><p data-cid=\"p\"><span data-cid=\"s\" class=\"sr\">hidden text</span>visible</p>",
+   "measure": {
+    "p": "xyw",
+    "s": "xywh"
+   },
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 18,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "s",
+     "x": 0,
+     "y": 0,
+     "width": 1,
+     "height": 1,
+     "display": "block",
+     "position": "absolute"
+    }
+   ],
+   "hits": [
+    {
+     "x": 0.5,
+     "y": 0.5,
+     "hit": "p"
+    },
+    {
+     "x": 3,
+     "y": 3,
+     "hit": "p"
+    }
+   ]
   }
  ]
 }

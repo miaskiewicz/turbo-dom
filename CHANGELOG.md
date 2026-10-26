@@ -61,6 +61,17 @@ changes in `tools/parity/expected/p5b-w1-*.json`.
   match `user_agent_css()` (turbo-surf) get the rule too; the HTML drive already stripped
   `<template>`. Control: `live-geometry` `template-in-*`.
 
+### Fixed — turbo-dom-layout bug fixes (P5b-W3, miaskiewicz/turbo-dom#28, Chrome 156 controls)
+Each fix is backed by a Chrome for Testing 156 control and lists the corpus outputs it
+changes in `tools/parity/expected/p5b-w3-turbo-dom-28-*.json`.
+- `clip: rect()` in hit testing (item 1): `cssom_view::hit::elements_at_point` (surf's
+  `elementFromPoint` / `elementsFromPoint`) and the caret query skip the parts of an
+  absolutely positioned box — and of its descendants and text — that its
+  `clip: rect(top, right, bottom, left)` cuts away (offsets from the border-box corner,
+  `auto` = the border-box edge), as Chrome does: a point over a `.sr-only` span hits
+  the element underneath instead of the span. `clip` on a box that is not absolutely
+  positioned is ignored. Control: `live-geometry` `clip-rect-*` cases (`hits`).
+
 ### Changed — selector follow-ups (P5b-X2, miaskiewicz/turbo-dom#24, Chrome 156 controls)
 - `rtdom::cascade` (`getComputedStyle`) and the npm `cascade.mjs` rank rules by the
   Selectors 4 specificity of each `parse_for_cascade` item — the layout cascade's — instead

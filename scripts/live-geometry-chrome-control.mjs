@@ -9,10 +9,13 @@
 //     `<tfoot>`) is a box: the union of its rows;
 //   - miaskiewicz/turbo-surf#36 items 3 and 4: an auto-width table shrinks to fit its
 //     columns, and a `<template>` (display:none) has an all-zero rect.
+// P5b-W3 adds the cases of miaskiewicz/turbo-dom#28 (one group per item, labelled).
 //
 // For every case, Chrome for Testing 156 (viewport 1280x800) records the
 // getBoundingClientRect() of every `[data-cid]` element (document order) as
-// `{cid, x, y, width, height, display, position}` (the last two from getComputedStyle).
+// `{cid, x, y, width, height, display, position}` (the last two from getComputedStyle),
+// and, for a case with `hits` (viewport points), `document.elementFromPoint` of each as
+// `{x, y, hit}` (the element's `data-cid`, else its lower-case tag name, else null).
 // Boxes are compared exactly; a case's `measure` maps a cid to the fields compared for it
 // ("xywh" when absent) where text metrics (font-dependent) would move the rest.
 // Asserted by crates/turbo-dom-layout/src/live/chrome_tests.rs.
@@ -149,6 +152,27 @@ const CASES = [
     html: DOC("", `<table><tr><td data-cid="td"><template data-cid="t"><b>x</b></template>${BOX(8, 8)}</td></tr></table>`),
   },
   { id: "template-in-body", html: DOC("", `${BOX(10, 10, "d")}<template data-cid="t"><b>x</b></template>`) },
+  // turbo-dom#28 item 1: `clip: rect()` clips an absolutely positioned box and its
+  // descendants out of hit testing (`auto` = the border-box edge); `clip` on a box that
+  // is not absolutely positioned does nothing.
+  {
+    id: "clip-rect-hit-testing",
+    html: DOC(
+      "body{margin:0}.a{position:absolute;top:0;width:50px;height:50px}i{display:block;width:50px;height:50px}",
+      `<div data-cid="under" style="height:100px;padding-top:60px"><span data-cid="none" class="a" style="left:0;clip:rect(0 0 0 0)"></span><span data-cid="part" class="a" style="left:100px;clip:rect(10px,40px,40px,10px)"><i data-cid="kid"></i></span><span data-cid="auto" class="a" style="left:200px;clip:rect(auto, 20px, auto, auto)"></span><div data-cid="fixed" style="position:fixed;left:300px;top:0;width:50px;height:50px;clip:rect(0 0 0 0)"></div><div data-cid="flow" style="width:20px;height:20px;clip:rect(0 0 0 0)"></div></div>`,
+    ),
+    hits: [[5, 5], [105, 5], [115, 15], [139, 39], [145, 15], [115, 45], [205, 5], [205, 45], [225, 5], [305, 5], [5, 65]],
+  },
+  {
+    // The sr-only pattern: its text overflows the 1px box but is clipped away too.
+    id: "clip-rect-sr-only-text",
+    html: DOC(
+      "body{margin:0}p{margin:0}.sr{position:absolute;width:1px;height:1px;padding:0;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}",
+      `<p data-cid="p"><span data-cid="s" class="sr">hidden text</span>visible</p>`,
+    ),
+    measure: { p: "xyw", s: "xywh" },
+    hits: [[0.5, 0.5], [3, 3]],
+  },
 ];
 
 const browser = await chromium.launch({ executablePath: chromePath, headless: true });
@@ -157,14 +181,20 @@ const page = await browser.newPage({ viewport: { width: 1280, height: 800 }, dev
 const result = [];
 for (const testCase of CASES) {
   await page.setContent(testCase.html, { waitUntil: "load" });
-  const boxes = await page.evaluate(() =>
-    [...document.querySelectorAll("[data-cid]")].map((el) => {
+  const { boxes, hits } = await page.evaluate((points) => {
+    const boxes = [...document.querySelectorAll("[data-cid]")].map((el) => {
       const b = el.getBoundingClientRect();
       const s = getComputedStyle(el);
       return { cid: el.dataset.cid, x: b.x, y: b.y, width: b.width, height: b.height, display: s.display, position: s.position };
-    }),
-  );
-  result.push({ ...testCase, measure: testCase.measure || {}, boxes });
+    });
+    const hits = points.map(([x, y]) => {
+      const el = document.elementFromPoint(x, y);
+      return { x, y, hit: el ? el.dataset.cid || el.localName : null };
+    });
+    return { boxes, hits };
+  }, testCase.hits || []);
+  const { hits: _points, ...rest } = testCase;
+  result.push({ ...rest, measure: testCase.measure || {}, boxes, ...(hits.length ? { hits } : {}) });
 }
 await browser.close();
 

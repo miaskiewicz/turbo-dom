@@ -5,12 +5,16 @@
 //! CSSOM-View glue reads them (`metrics::element_geometry`, falling back to
 //! `inline::geometry` for a flattened inline), then compared with Chrome's
 //! `getBoundingClientRect()`. Covers turbo-surf#31 (blockified positioned inlines,
-//! per-element inline failures).
+//! per-element inline failures). A case's `hits` are hit tested the way surf answers
+//! `document.elementFromPoint` (`hit::elements_at_point`, no scroll offsets) and
+//! compared with Chrome's (turbo-dom#28 item 1: `clip: rect()`).
+use std::collections::BTreeMap;
+
 use serde_json::Value;
 
 use super::source_id;
 use super::testing::{layout, DOCUMENT};
-use crate::cssom_view::{inline, metrics};
+use crate::cssom_view::{hit, inline, metrics};
 use crate::layout::value::Display;
 use crate::layout_snapshot::{GeometryKind, Rect};
 
@@ -29,6 +33,7 @@ const GAPS: &[(&str, &str, &str)] = &[(
 
 /// Cases whose compared boxes are laid out with text (the bundled fonts must be there).
 const TEXT_CASES: &[&str] = &[
+    "clip-rect-sr-only-text",
     "table-decorated-collapsed",
     "absolute-span-static-position",
     "sr-only-in-link",
@@ -116,6 +121,40 @@ fn answered(
     None
 }
 
+/// The `data-cid` (else the local name) of the element whose source is `id`.
+fn cid_of(tree: &turbo_dom::Tree, id: crate::layout_snapshot::SourceId) -> Option<String> {
+    let handle = tree.handles().find(|&h| source_id(DOCUMENT, h) == id)?;
+    tree.get_attribute_local(handle, "data-cid")
+        .or_else(|| tree.local_name(handle))
+        .map(str::to_string)
+}
+
+/// Each of the case's hit points against Chrome's `elementFromPoint`.
+fn check_hits(
+    case: &Value,
+    tree: &turbo_dom::Tree,
+    snapshot: &crate::layout_snapshot::LayoutSnapshot,
+    styles: &crate::cssom_view::scroll::SourceStyles,
+    failures: &mut Vec<String>,
+) -> usize {
+    let Some(hits) = case["hits"].as_array() else {
+        return 0;
+    };
+    for want in hits {
+        let point = [want["x"].as_f64().unwrap(), want["y"].as_f64().unwrap()];
+        let got = hit::elements_at_point(snapshot, styles, &BTreeMap::new(), point)
+            .map(|ids| ids.first().and_then(|&id| cid_of(tree, id)));
+        if got.as_ref().ok().and_then(Option::as_deref) != want["hit"].as_str() {
+            failures.push(format!(
+                "{}: elementFromPoint{point:?} = {got:?}, Chrome {}",
+                case["id"].as_str().unwrap(),
+                want["hit"]
+            ));
+        }
+    }
+    hits.len()
+}
+
 fn compare_rect(case: &Value, want: &Value, rect: Rect, failures: &mut Vec<String>) {
     let measure = case["measure"][want["cid"].as_str().unwrap()]
         .as_str()
@@ -166,6 +205,7 @@ fn live_geometry_matches_chrome_156() {
             );
             compared += 1;
         }
+        compared += check_hits(case, &tree, &snapshot, &styles, &mut failures);
     }
     assert!(compared > 0);
     assert!(
