@@ -71,6 +71,14 @@ changes in `tools/parity/expected/p5b-w3-turbo-dom-28-*.json`.
   `auto` = the border-box edge), as Chrome does: a point over a `.sr-only` span hits
   the element underneath instead of the span. `clip` on a box that is not absolutely
   positioned is ignored. Control: `live-geometry` `clip-rect-*` cases (`hits`).
+- Out-of-flow margins (item 2): an absolutely positioned box's own margins are added
+  once. Its static position is the margin edge of its hypothetical box — the flow's
+  content edge and the margins collapsed before it — so `margin-left` is no longer
+  doubled (in `place_special_kid` and the deferred pass) and its `margin-top` no longer
+  also joins the preceding margin run; a `right`-anchored box keeps its `margin-right`
+  inside the inset instead of being shifted by `margin-left`. Every layout path.
+  Control: `abs-static-position-*` / `abs-inset-margins` in `live-geometry` and
+  `html-document`.
 
 ### Changed — selector follow-ups (P5b-X2, miaskiewicz/turbo-dom#24, Chrome 156 controls)
 - `rtdom::cascade` (`getComputedStyle`) and the npm `cascade.mjs` rank rules by the

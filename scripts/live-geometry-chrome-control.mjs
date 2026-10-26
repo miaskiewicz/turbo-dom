@@ -173,6 +173,14 @@ const CASES = [
     measure: { p: "xyw", s: "xywh" },
     hits: [[0.5, 0.5], [3, 3]],
   },
+  // turbo-dom#28 item 2: an out-of-flow box's own margins are added once — to its static
+  // position (the margin edge of its hypothetical box: the flow's content edge and the
+  // margins collapsed before it) or inside a `right` inset.
+  { id: "abs-static-position-margins", html: DOC("body{margin:0}", `<div data-cid="p" style="padding-left:3px"><div data-cid="d" style="height:10px;margin-bottom:20px"></div><div data-cid="a" style="position:absolute;margin:5px 0 0 7px;width:10px;height:10px"></div><div data-cid="e" style="height:10px;margin-top:4px"></div></div>`) },
+  { id: "abs-static-position-own-margin-top", html: DOC("body{margin:0}", `<div data-cid="d" style="height:10px"></div><div data-cid="a" style="position:absolute;margin-top:5px;width:10px;height:10px"></div>`) },
+  { id: "abs-static-position-negative-margins", html: DOC("body{margin:0}", `<div data-cid="p" style="padding:20px"><div data-cid="a" style="position:absolute;margin:-1px;width:1px;height:1px"></div><div data-cid="b" style="height:10px;margin-top:6px"></div><div data-cid="c" style="position:absolute;margin:-1px 0 0 -2px;width:1px;height:1px"></div></div>`) },
+  { id: "abs-inset-margins", html: DOC("body{margin:0}", `<div data-cid="a" style="position:absolute;right:10px;top:0;margin:0 3px 0 7px;width:10px;height:10px"></div><div data-cid="b" style="position:absolute;left:10px;top:20px;margin:2px 3px 0 7px;width:10px;height:10px"></div><div data-cid="r" style="position:relative;height:100px"><div data-cid="d" style="position:absolute;bottom:10px;margin-bottom:5px;margin-left:4px;width:10px;height:10px"></div></div>`) },
+  { id: "abs-static-position-in-line", html: DOC("body{margin:0}", `<div data-cid="p"><span style="display:inline-block;width:16px;height:10px"></span><span data-cid="a" style="position:absolute;margin-left:7px;margin-top:5px;width:10px;height:10px"></span></div>`), measure: { p: "xyw" } },
 ];
 
 const browser = await chromium.launch({ executablePath: chromePath, headless: true });

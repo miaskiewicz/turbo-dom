@@ -108,11 +108,14 @@ fn containing_block(bs: &BoxStyle, ctx: &Ctx) -> (f32, f32, f32) {
 }
 
 /// The border-box top-left of an out-of-flow box. `static_pos` is where the box
-/// would sit in normal flow (its content-box origin there): per CSS an `auto`
-/// inset resolves to that **static position**, NOT the containing-block origin —
-/// so a `position:absolute` decoration with no `top`/`left` stays where it is in
-/// the document (e.g. a navbox's rotated label at the bottom) instead of jumping
-/// to the top-left of the CB and piling up with every other no-offset absolute.
+/// would sit in normal flow — the top-left **margin** edge of its hypothetical box
+/// (CSS 2.1 §10.3.7 / §10.6.4): per CSS an `auto` inset resolves to that **static
+/// position**, NOT the containing-block origin — so a `position:absolute` decoration
+/// with no `top`/`left` stays where it is in the document (e.g. a navbox's rotated
+/// label at the bottom) instead of jumping to the top-left of the CB and piling up
+/// with every other no-offset absolute. Each axis adds the box's own start margin
+/// exactly once; a `right`-anchored box sits its `margin-right` inside the inset
+/// (miaskiewicz/turbo-dom#28 item 2).
 fn out_of_flow_origin(
     bs: &BoxStyle,
     cb_width: f32,
@@ -122,9 +125,9 @@ fn out_of_flow_origin(
     let (cbx, cby, cbw) = containing_block(bs, ctx);
     let bbw = border_box_width(bs, cbw.max(cb_width));
     let x = match (bs.inset_left.resolve(cbw), bs.inset_right.resolve(cbw)) {
-        (Some(l), _) => cbx + l,
-        (None, Some(r)) => cbx + cbw - bbw - r,
-        (None, None) => static_pos.0,
+        (Some(l), _) => cbx + l + bs.margin.left,
+        (None, Some(r)) => cbx + cbw - bbw - r - bs.margin.right,
+        (None, None) => static_pos.0 + bs.margin.left,
     };
     // `top`/`bottom` resolve against the CB *height* (`abs_cb_h`), not its width —
     // a `top:calc(66% - 48px)` overlay on a card must land at that fraction of the
@@ -137,7 +140,14 @@ fn out_of_flow_origin(
         // `anchor_bottom` corrects it once known. Until then keep its static y.
         (None, Some(_) | None) => static_pos.1,
     };
-    (x + bs.margin.left, y + bs.margin.top)
+    (x, y + bs.margin.top)
+}
+
+/// The static position of an out-of-flow box between blocks: the flow's left content
+/// edge and the cursor after the margins collapsed so far. The box's own margins do not
+/// join that run; [`out_of_flow_origin`] adds them (Chrome 156).
+fn block_static_position(cx: f32, flow: &FlowRun) -> (f32, f32) {
+    (cx, flow.cursor + flow.pending)
 }
 
 /// The `(dx, dy)` a `position:relative` box is visually shifted by (it still
@@ -1055,11 +1065,7 @@ fn layout_block_flow(
         // resolve it against the measured content height, so a `bottom:0; height:33%`
         // overlay lands inside its card instead of collapsing and dropping below it.
         if defer_this_kid(bs, &kbs, ctx) {
-            let static_pos = (
-                cx + kbs.margin.left,
-                flow.cursor + collapse_margins(flow.pending, kbs.margin.top),
-            );
-            deferred.push((kid, static_pos));
+            deferred.push((kid, block_static_position(cx, &flow)));
             continue;
         }
         // `absolute`/`fixed`/`float`: taken out of normal flow, placed on the side
@@ -1172,10 +1178,7 @@ fn place_special_kid(
     ctx: &mut Ctx,
 ) -> Option<Fragment> {
     if kbs.position.is_out_of_flow() {
-        let static_pos = (
-            cx + kbs.margin.left,
-            flow.cursor + collapse_margins(flow.pending, kbs.margin.top),
-        );
+        let static_pos = block_static_position(cx, flow);
         let (bx, by) = out_of_flow_origin(kbs, cw, ctx, static_pos);
         let mut frag = layout_positioned(kid, (bx, by), cw, fs, ctx);
         // A `bottom`-anchored (auto `top`) box left at its static y by
