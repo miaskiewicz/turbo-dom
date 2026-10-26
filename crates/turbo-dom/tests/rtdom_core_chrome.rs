@@ -24,68 +24,9 @@ const FIXTURE: &str = include_str!("fixtures/rtdom_core_chrome156.json");
 /// assertions until the fixing commit removes them here. (turbo-dom#92, RCDATA-context
 /// fragments dropping U+0000, is fixed.)
 const OPEN_DOCUMENTS: &[&str] = &[];
-/// - miaskiewicz/turbo-dom#91: comments, EOF-closed `[attr` / `:state(` and
-///   `:-webkit-any()` in the DOM selector APIs.
-const OPEN_SELECTORS: &[&str] = &[
-    "./**/a",
-    ".d/*x*/>p",
-    "/* c */p",
-    ":-WEBKIT-ANY(p)",
-    ":-webkit-any()",
-    ":-webkit-any(*)",
-    ":-webkit-any(*|p)",
-    ":-webkit-any(.a, span)",
-    ":-webkit-any(:-webkit-any(div p))",
-    ":-webkit-any(:-webkit-any(p))",
-    ":-webkit-any(::before)",
-    ":-webkit-any(:has(p))",
-    ":-webkit-any(:is(p))",
-    ":-webkit-any(:is(p, div p))",
-    ":-webkit-any(:not(:has(p)))",
-    ":-webkit-any(:not(:is(div p)))",
-    ":-webkit-any(:not(div p))",
-    ":-webkit-any(:not(div))",
-    ":-webkit-any(:not(p))",
-    ":-webkit-any(:nth-child(1 of div p))",
-    ":-webkit-any(:scope)",
-    ":-webkit-any([title])",
-    ":-webkit-any(div > p)",
-    ":-webkit-any(div p)",
-    ":-webkit-any(p",
-    ":-webkit-any(p)",
-    ":-webkit-any(p, )",
-    ":-webkit-any(p, :has(x))",
-    ":-webkit-any(p, :hover)",
-    ":-webkit-any(p,,a)",
-    ":-webkit-any(p.a#x)",
-    ":-webkit-any(p::before)",
-    ":-webkit-any(p:not(.b))",
-    ":has(,p)",
-    ":has(p,)",
-    ":not(,p)",
-    ":not(:-webkit-any(div p))",
-    ":not(p, )",
-    ":not(p,,a)",
-    ":nth-child(1 of p,)",
-    ":state(x",
-    "[title",
-    "[title/* unterminated",
-    "[title='a",
-    "[title=\"a",
-    "[title=\"a\" i",
-    "[title=\"a\"/* c",
-    "[title=a",
-    "div :-webkit-any(p)",
-    "p /* c",
-    "p /**/ .a",
-    "p,/*c*/span",
-    "p/* c */",
-    "p/*",
-    "p/**/.a",
-    "p:-webkit-any(.a)",
-    "p:/**/first-child",
-    "p\\",
-];
+/// - miaskiewicz/turbo-dom#96: `:scope` never matches in the DOM selector APIs (needs the
+///   scoping element in the matcher). (turbo-dom#91 is fixed.)
+const OPEN_SELECTORS: &[&str] = &[":-webkit-any(:scope)"];
 
 fn fixture() -> Value {
     let fixture: Value = serde_json::from_str(FIXTURE).unwrap();

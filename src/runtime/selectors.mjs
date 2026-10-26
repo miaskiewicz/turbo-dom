@@ -138,23 +138,37 @@ function splitTopLevel(src) {
 
 // ── attribute selectors ─────────────────────────────────────────────────────
 const ATTR_OP = { '~': 'includes', '|': 'dash', '^': 'prefix', $: 'suffix', '*': 'substr' };
-// Replace `/* … */` outside quotes with a space (comments are allowed inside `[…]`).
-function stripAttrComments(s) {
-  if (s.indexOf('/*') === -1) return s;
+// CSS Syntax preprocessing of selector source (miaskiewicz/turbo-dom#91; mirrors the Rust
+// rtdom `selector_source`): comments (outside strings / escapes) are removed — between two
+// name characters a comment still separates tokens, so it becomes a space inside `[…]` and
+// the never-valid `!` elsewhere (`div/**/p` throws, `[title=a/**/i]` is `[title=a i]`); an
+// unterminated comment runs to the end. `closeAtEof` (the DOM selector APIs): an
+// unterminated string and every open `[` / `(` are closed, as CSS does at EOF.
+const nameLike = (c) => c !== undefined && (c >= '\x80' || c === '-' || c === '_' || c === '\\' || isLetter(c) || isDigit(c));
+function normalizeSource(src, closeAtEof) {
+  if (src.indexOf('/*') === -1 && (!closeAtEof || !/[[("']/.test(src))) return src;
   let out = '', quote = null;
-  for (let i = 0; i < s.length; i++) {
-    const c = s[i];
-    if (c === '\\') { out += s.slice(i, i + 2); i++; continue; }
+  const open = [];
+  for (let i = 0; i < src.length; i++) {
+    const c = src[i];
+    if (c === '\\') { out += src.slice(i, i + 2); i++; continue; }
     if (quote) { if (c === quote) quote = null; out += c; continue; }
-    if (c === '"' || c === "'") { quote = c; out += c; continue; }
-    if (c === '/' && s[i + 1] === '*') {
-      const end = s.indexOf('*/', i + 2);
-      if (end === -1) throw new SyntaxError('unterminated comment in attribute selector');
-      out += ' ';
-      i = end + 1;
+    if (c === '"' || c === "'") quote = c;
+    else if (c === '/' && src[i + 1] === '*') {
+      let end = src.indexOf('*/', i + 2);
+      end = end === -1 ? src.length : end + 2;
+      const prev = out[out.length - 1];
+      if ((nameLike(prev) || prev === '#') && nameLike(src[end])) out += open[open.length - 1] === ']' ? ' ' : '!';
+      i = end - 1;
       continue;
-    }
+    } else if (c === '[') open.push(']');
+    else if (c === '(') open.push(')');
+    else if (c === open[open.length - 1]) open.pop();
     out += c;
+  }
+  if (closeAtEof) {
+    if (quote) out += quote;
+    while (open.length) out += open.pop();
   }
   return out;
 }
@@ -184,7 +198,7 @@ function scanString(src, i) {
 // Chrome 156 rejects, including the `s` modifier (so does the Rust engine since
 // turbo-dom#24).
 function parseAttr(raw, src) {
-  const s = stripAttrComments(raw);
+  const s = raw;
   let i = 0;
   const skip = () => { while (i < s.length && isWs(s[i])) i++; };
   skip();
@@ -394,9 +408,12 @@ function tokenize(src) {
 // universal, else the lowercase name; `ns` the type's namespace prefix; `pe` the pseudo-element; pseudos are `{ name, arg }` with the
 // parsed argument kept in a non-enumerable `parsed`.
 
-// Parse one pseudo-class (throws on what Chrome rejects). `nested`: inside a pseudo
-// argument; `inHas`: inside `:has()` (which cannot nest).
-function parsePseudo(tok, src, inHas) {
+// Parse one pseudo-class (throws on what Chrome rejects). `opts.inHas`: inside `:has()`
+// (which cannot nest); `opts.inCompound`: inside `:-webkit-any()`, whose arguments are
+// compound selectors — nested `:not()` takes compounds, nested `:is()` / `:where()` drop
+// complex items, `of S` items may be complex (their own nested lists may not).
+function parsePseudo(tok, src, opts) {
+  const { inHas, inCompound = false } = opts;
   const { name, arg } = tok;
   const p = { name, arg };
   let parsed = null;
@@ -410,9 +427,12 @@ function parsePseudo(tok, src, inHas) {
   } else if (!functional) {
     throw syntax(src, `unknown pseudo-class :${name}`);
   } else if (name === 'not') {
-    parsed = { list: parseList(arg, { nested: true, forgiving: false, inHas }) };
-  } else if (name === 'is' || name === 'where' || name === '-webkit-any') {
-    parsed = { list: parseList(arg, { nested: true, forgiving: true, inHas }) };
+    parsed = { list: parseList(arg, { nested: true, forgiving: false, inHas, compound: inCompound, inCompound }) };
+  } else if (name === 'is' || name === 'where') {
+    parsed = { list: parseList(arg, { nested: true, forgiving: true, inHas, compound: inCompound, inCompound }) };
+  } else if (name === '-webkit-any') {
+    // unforgiving compound selectors, no :has() (a nested :is() drops items with one)
+    parsed = { list: parseList(arg, { nested: true, forgiving: false, inHas: true, compound: true, inCompound: true }) };
   } else if (name === 'has') {
     if (inHas) throw syntax(src, ':has() inside :has()');
     parsed = { rel: parseRelative(arg, src) };
@@ -420,7 +440,7 @@ function parsePseudo(tok, src, inHas) {
     const at = name.endsWith('child') ? nthOfPosition(arg) : -1;
     const anb = parseAnB(at === -1 ? arg : arg.slice(0, at));
     if (anb === null) throw syntax(src, `:${name}() argument`);
-    parsed = { a: anb.a, b: anb.b, of: at === -1 ? null : parseList(arg.slice(at + 2), { nested: true, forgiving: false, inHas }) };
+    parsed = { a: anb.a, b: anb.b, of: at === -1 ? null : parseList(arg.slice(at + 2), { nested: true, forgiving: false, inHas, inCompound }) };
   } else if (name === 'lang' || name === 'dir') {
     const v = identValue(trimWs(arg));
     if (v === null) throw syntax(src, `:${name}() takes one identifier`);
@@ -502,7 +522,7 @@ function parseComplexTokens(tokens, lo, hi, src, opts) {
         if (!allowedAfter(pe.name, p)) throw syntax(src, `:${p.name} after ::${pe.name}`);
         compound.pseudos.push({ name: p.name, arg: p.arg });
       } else {
-        compound.pseudos.push(parsePseudo(p, src, opts.inHas));
+        compound.pseudos.push(parsePseudo(p, src, opts));
       }
       parts++;
     }
@@ -512,6 +532,7 @@ function parseComplexTokens(tokens, lo, hi, src, opts) {
     combinator = null;
   }
   if (combinator !== null && combinator !== ' ') throw syntax(src, 'dangling combinator');
+  if (opts.compound && rest.length) throw syntax(src, 'combinator inside :-webkit-any()');
   return { first, rest };
 }
 
@@ -557,18 +578,22 @@ const __selectorCache = new Map();
 export function parseSelectorList(selector) {
   const hit = __selectorCache.get(selector);
   if (hit !== undefined) return hit;
-  // CSS preprocessing: NUL becomes U+FFFD (a name code point)
-  const src = String(selector).replace(/\0/g, '\uFFFD');
-  const parsed = parseList(src, { nested: false, forgiving: false, inHas: false });
+  const parsed = parseSource(selector, true);
   if (__selectorCache.size > 10000) __selectorCache.clear();
   __selectorCache.set(selector, parsed);
   return parsed;
+}
+// `closeAtEof`: a DOM-API selector string (a stylesheet prelude never ends inside a block).
+function parseSource(selector, closeAtEof) {
+  // CSS preprocessing: NUL becomes U+FFFD (a name code point); comments go
+  const src = normalizeSource(String(selector).replace(/\0/g, '\uFFFD'), closeAtEof);
+  return parseList(src, { nested: false, forgiving: false, inHas: false });
 }
 
 // The items of a style rule's selector list (top-level comma split), or [] when the list is
 // invalid — a browser drops the whole rule (cascade.mjs; mirrors rtdom::cascade).
 export function ruleSelectors(prelude) {
-  try { parseSelectorList(prelude); } catch { return []; }
+  try { parseSource(prelude, false); } catch { return []; }
   return splitTopLevel(prelude).map(trimWs);
 }
 

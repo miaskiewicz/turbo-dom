@@ -16,45 +16,8 @@ const fixture = JSON.parse(
   readFileSync(new URL('../crates/turbo-dom/tests/fixtures/rtdom_core_chrome156.json', import.meta.url), 'utf8'),
 );
 
-// Recorded Chrome answers the JS engine does not give yet: miaskiewicz/turbo-dom#91.
-const OPEN = new Set([
-  "./**/a",
-  ".d/*x*/>p",
-  "/* c */p",
-  ":-webkit-any()",
-  ":-webkit-any(:-webkit-any(div p))",
-  ":-webkit-any(::before)",
-  ":-webkit-any(:has(p))",
-  ":-webkit-any(:is(:has(p)))",
-  ":-webkit-any(:is(div p))",
-  ":-webkit-any(:not(:has(p)))",
-  ":-webkit-any(:not(:is(div p)))",
-  ":-webkit-any(:not(div p))",
-  ":-webkit-any(:nth-child(1 of :is(div p)))",
-  ":-webkit-any(:where(div p))",
-  ":-webkit-any(div > p)",
-  ":-webkit-any(div p)",
-  ":-webkit-any(p, )",
-  ":-webkit-any(p, :has(x))",
-  ":-webkit-any(p,,a)",
-  ":-webkit-any(p::before)",
-  ":is(:-webkit-any(:has(p)))",
-  ":not(:-webkit-any(div p))",
-  "[title",
-  "[title/* unterminated",
-  "[title=\"a",
-  "[title=\"a\" i",
-  "[title=\"a\"/* c",
-  "[title='a",
-  "[title=a",
-  "p /* c",
-  "p /**/ .a",
-  "p,/*c*/span",
-  "p/*",
-  "p/* c */",
-  "p/**/.a",
-  "p:/**/first-child",
-]);
+// Recorded Chrome answers the JS engine does not give yet (each with its issue).
+const OPEN = new Set([]);
 
 function elements(document) {
   const out = [];

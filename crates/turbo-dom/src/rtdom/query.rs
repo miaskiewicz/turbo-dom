@@ -106,6 +106,9 @@ enum AttrMatch {
     Substr(String),   // [attr*=v]
 }
 
+#[path = "selector_source.rs"]
+mod source;
+
 #[path = "query_utf16.rs"]
 mod units;
 use units::UnitAttrMatch;
@@ -658,7 +661,7 @@ fn validate_selector_list(src: &str) -> Result<(), SelectorError> {
 /// match nothing; empty items, a trailing combinator and unknown pseudos are
 /// `SyntaxError`s).
 fn validate_checked(src: &str) -> Result<(), SelectorError> {
-    parse_for_cascade(src).map(|_| ())
+    parse_for_cascade(&source::normalize_str(src, source::Mode::Dom)).map(|_| ())
 }
 
 /// Scan from just past an opening `open` to its matching `close`, honoring quotes
@@ -932,6 +935,13 @@ fn forgive_nested_has(complex: &mut Complex) {
     }
 }
 
+/// Does a selector-list argument have an empty item (`p, `, `,p`, `p,,a`, or nothing)?
+fn has_empty_item(arg: &str) -> bool {
+    split_top_level_commas(arg)
+        .iter()
+        .any(|item| item.trim().is_empty())
+}
+
 /// Map a pseudo `name` + optional `arg` to a `Pseudo`. Unrecognized → `Unknown`
 /// (never matches). Mirrors selectors.mjs `matchPseudo` switch.
 fn parse_pseudo(name: &str, arg: Option<&str>) -> Pseudo {
@@ -962,6 +972,7 @@ fn parse_pseudo(name: &str, arg: Option<&str>) -> Pseudo {
             | "has"
             | "lang"
             | "dir"
+            | "-webkit-any"
     );
     if functional != arg.is_some() {
         return Pseudo::unknown(name, arg);
@@ -990,6 +1001,9 @@ fn parse_pseudo(name: &str, arg: Option<&str>) -> Pseudo {
             let last = name == "nth-last-child";
             if let Some((anb, of)) = split_nth_of(arg) {
                 if !valid_anb(anb) {
+                    return Pseudo::unknown(name, Some(arg));
+                }
+                if has_empty_item(of) {
                     return Pseudo::unknown(name, Some(arg));
                 }
                 let (a, b) = parse_nth(anb);
@@ -1025,8 +1039,12 @@ fn parse_pseudo(name: &str, arg: Option<&str>) -> Pseudo {
         }
         "is" => Pseudo::Is(parse_selector_list_str(arg.unwrap_or(""))),
         "where" => Pseudo::Where(parse_selector_list_str(arg.unwrap_or(""))),
+        // the unforgiving lists reject an empty item (`:not(p, )`; Chrome: SyntaxError)
+        "not" | "has" if has_empty_item(arg.unwrap_or("")) => Pseudo::unknown(name, arg),
         "not" => Pseudo::Not(parse_selector_list_str(arg.unwrap_or(""))),
         "has" => Pseudo::Has(parse_relative_selector_list(arg.unwrap_or(""))),
+        "-webkit-any" => cascade::webkit_any(arg.unwrap_or(""))
+            .map_or_else(|| Pseudo::unknown(name, arg), Pseudo::WebkitAny),
         "lang" => arg
             .and_then(|arg| units::lang_range(&arg.encode_utf16().collect::<Vec<_>>()))
             .map_or_else(|| Pseudo::unknown(name, arg), Pseudo::Lang),
@@ -1960,10 +1978,11 @@ impl Tree {
         // A selector with CSS escapes goes through the UTF-16 parser, which decodes them
         // (the scalar tokenizer would split `.md\:flex` at the `:`). The binding already
         // routes escaped JS selectors there, so both APIs read escapes the same way.
-        let list: std::rc::Rc<[Complex]> = if selector.contains('\\') {
-            units::list(&selector.encode_utf16().collect::<Vec<_>>()).into()
+        let source = source::normalize_str(selector, source::Mode::Dom);
+        let list: std::rc::Rc<[Complex]> = if source.contains('\\') {
+            units::list(&source.encode_utf16().collect::<Vec<_>>()).into()
         } else {
-            parse_selector_list_str(selector).into()
+            parse_selector_list_str(&source).into()
         };
         let mut cache = self.parse_cache.borrow_mut();
         bounded_insert(&mut cache, selector.to_string(), list.clone());
@@ -2958,11 +2977,14 @@ mod tests {
             tree.query_selector_all_checked("div!p"),
             Err(SelectorError::UnexpectedChar('!'))
         );
+        // the end of a DOM-API selector closes an open `[` (Chrome 156; turbo-dom#91) ...
+        assert_eq!(tree.query_selector_all_checked("[href").map(|l| l.len()), Ok(0));
+        assert_eq!(tree.query_selector_checked("[href"), Ok(None));
+        // ... while a stylesheet prelude never ends inside one
         assert_eq!(
-            tree.query_selector_all_checked("[href"),
+            super::parse_for_cascade("[href").map(|_| ()),
             Err(SelectorError::UnterminatedAttribute)
         );
-        assert!(tree.query_selector_checked("[href").is_err());
         assert!(tree.matches_checked(s, ">").is_err());
         // P5b (turbo-dom#18): Chrome 156 throws on empty lists and items and on a trailing
         // combinator (the lenient path still drops them)
