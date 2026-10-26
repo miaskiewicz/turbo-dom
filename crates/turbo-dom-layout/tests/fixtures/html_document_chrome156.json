@@ -8553,6 +8553,52 @@
    "canvas": "#ffffff"
   },
   {
+   "id": "self-collapsing-first-child-bordered-padded-child-is-not-empty",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><div data-cid=\"w\" style=\"padding-bottom:1px\"><div data-cid=\"k\" style=\"border-top:1px solid;padding-bottom:1px;margin-bottom:20px\"></div><div data-cid=\"b\" style=\"height:10px\"></div></div><div data-cid=\"g\" style=\"height:60px\"></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "w",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 33
+    },
+    {
+     "cid": "k",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 2
+    },
+    {
+     "cid": "b",
+     "x": 0,
+     "y": 22,
+     "width": 1280,
+     "height": 10
+    },
+    {
+     "cid": "g",
+     "x": 0,
+     "y": 33,
+     "width": 1280,
+     "height": 60
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
    "id": "min-max-height-min-wins-over-max",
    "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><div data-cid=\"w\" style=\"min-height:400px;max-height:100px\"><div data-cid=\"k\" style=\"height:200px\"></div></div><div data-cid=\"g\" style=\"height:60px\"></div></body></html>",
    "measure": "xywh",
@@ -9912,6 +9958,98 @@
      "cid": "g",
      "x": 0,
      "y": 10,
+     "width": 1280,
+     "height": 5
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "column-flex-item-shrink-zero",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><div data-cid=\"f\" style=\"display:flex;flex-direction:column;height:100px\"><div data-cid=\"d\" style=\"width:30px;height:80px;flex-shrink:0\"></div><div data-cid=\"e\" style=\"width:40px;height:80px;flex-shrink:0\"></div></div><div data-cid=\"g\" style=\"height:5px\"></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "f",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 100
+    },
+    {
+     "cid": "d",
+     "x": 0,
+     "y": 0,
+     "width": 30,
+     "height": 80
+    },
+    {
+     "cid": "e",
+     "x": 0,
+     "y": 80,
+     "width": 40,
+     "height": 80
+    },
+    {
+     "cid": "g",
+     "x": 0,
+     "y": 100,
+     "width": 1280,
+     "height": 5
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "column-flex-item-row-items-still-stretch",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><div data-cid=\"f\" style=\"display:flex\"><div data-cid=\"d\" style=\"width:30px;height:40px\"></div><div data-cid=\"e\" style=\"width:20px\"></div></div><div data-cid=\"g\" style=\"height:5px\"></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "f",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 40
+    },
+    {
+     "cid": "d",
+     "x": 0,
+     "y": 0,
+     "width": 30,
+     "height": 40
+    },
+    {
+     "cid": "e",
+     "x": 30,
+     "y": 0,
+     "width": 20,
+     "height": 40
+    },
+    {
+     "cid": "g",
+     "x": 0,
+     "y": 40,
      "width": 1280,
      "height": 5
     }
