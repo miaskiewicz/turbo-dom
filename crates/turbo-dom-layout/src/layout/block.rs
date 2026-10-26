@@ -1284,8 +1284,8 @@ fn empty_flow_container(lb: &LayoutBox, bs: &BoxStyle) -> bool {
 /// No vertical border or padding, a zero / `auto` `height` and `min-height`, no
 /// `aspect-ratio`: nothing gives the box a height of its own.
 fn collapsible_extent(bs: &BoxStyle) -> bool {
-    let border = bs.border.widths();
-    let frame = border.top + border.bottom + bs.padding.top + bs.padding.bottom;
+    // Widths and paddings are never negative, so a zero sum means no frame at all.
+    let frame = bs.border.widths().vertical() + bs.padding.vertical();
     frame == 0.0
         && zero_or_auto(bs.height)
         && zero_or_auto(bs.min_height)
@@ -1631,8 +1631,10 @@ fn layout_in_flow_kid(
     if hx != 0.0 {
         frag.translate(hx, 0.0);
     }
-    // Advance the cursor by the box's height at its *unshifted* flow position.
-    if frag.height == 0.0 {
+    // Advance the cursor by the box's height at its *unshifted* flow position. A
+    // zero-height box lets the margins run through it — unless it establishes a
+    // formatting context, which is never self-collapsing (miaskiewicz/turbo-dom#88).
+    if frag.height == 0.0 && !establishes_bfc(kid, kbs) {
         flow.pending = collapse_margins(
             flow.pending,
             trailing_margin(kid, kbs, cw, &ctx.dropped_end_margins),
@@ -1710,7 +1712,15 @@ fn auto_x_margins(s: &crate::style::ComputedStyle) -> bool {
 /// flow-root` (miaskiewicz/turbo-dom#88) and the independent formatting roots
 /// (flex/grid/table) all qualify.
 fn intrinsic_formatting_root(lb: &LayoutBox, bs: &BoxStyle) -> bool {
-    lb.document_root() || bs.float != Float::None || bs.position.is_out_of_flow()
+    lb.document_root() || bs.float != Float::None || bs.position.is_out_of_flow() || flow_root(lb)
+}
+
+/// `display: flow-root` (also the two-value `block flow-root`): a block box that
+/// establishes a block formatting context (CSS Display 3; miaskiewicz/turbo-dom#88).
+fn flow_root(lb: &LayoutBox) -> bool {
+    lb.style
+        .get("display")
+        .is_some_and(|display| display.split_whitespace().any(|token| token == "flow-root"))
 }
 
 /// Whether an in-flow block-level box avoids floats (a formatting-context root or a
@@ -1731,8 +1741,7 @@ fn establishes_bfc(lb: &LayoutBox, bs: &BoxStyle) -> bool {
     if matches!(
         lb.kind,
         BoxKind::Flex(_) | BoxKind::Grid(_) | BoxKind::Table(_)
-    ) || lb.style.get("display").map(str::trim) == Some("flow-root")
-    {
+    ) {
         return true;
     }
     ["overflow", "overflow-x", "overflow-y"].iter().any(|p| {

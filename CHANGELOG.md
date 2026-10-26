@@ -36,9 +36,6 @@ changes in `tools/parity/expected/p5b-w7-turbo-dom-*.json`.
   layout, whose initial containing block would be the page box) keep an unknown height
   and lay out as before. The live path already used the viewport. Control: `icb-*` in
   `html-document` and in the pixel control `scripts/paint-chrome-control.mjs`.
-- `display: flow-root` (miaskiewicz/turbo-dom#88, found while fixing #80) establishes a
-  block formatting context: its children's vertical margins stay inside it, it contains
-  its floats and its box avoids outer floats. Control: `flow-root-*` in `html-document`.
 - Floats are shrink-to-fit (miaskiewicz/turbo-dom#83, found while fixing #79): a
   `width: auto` float took `min(max-content, container)` — squeezed below its
   min-content in a narrow container, its `min-width` / `max-width` ignored and its own
@@ -55,13 +52,6 @@ changes in `tools/parity/expected/p5b-w7-turbo-dom-*.json`.
   block's height less the insets, its margins and (content-box) its padding and border,
   then `min-height` / `max-height` (CSS 2.2 §10.6.4), as on the live path. Control:
   `abs-stretch-*` in `html-document`.
-- Column flex items (miaskiewicz/turbo-dom#86, found while fixing #79): in a
-  `flex-direction: column` container an item's flex basis came from its `width` and its
-  `width` was dropped, so it was stretched to the container despite an explicit width
-  and its main size (height) was its width. The basis now defaults to the item's
-  `height`, its `width` (`%`, `min-width` / `max-width`) is the cross size, and the
-  flexed main size is its used height (`flex-basis`, `flex-grow`). Control:
-  `column-flex-*` in `html-document`.
 - Floats side by side in a max-content width (miaskiewicz/turbo-dom#85, found while
   fixing #79): a block container's max-content took its widest float, so a
   shrink-to-fit container (a float, an inline-block, an auto table cell) was too narrow
@@ -88,6 +78,16 @@ changes in `tools/parity/expected/p5b-w7-turbo-dom-*.json`.
   the print initial containing block, so fixed boxes and absolutely positioned boxes it
   contains resolve `%` / `bottom` insets and `%` heights against it (as #81 does for
   screenshots). `layout_recorded` keeps the height unknown.
+- Positioned boxes against their containing block on the static path
+  (miaskiewicz/turbo-dom#100, found while fixing #89): an absolutely positioned / fixed
+  box resolved a `%` width (and `%` padding / margins) against its parent's content width
+  and was placed against its positioned ancestor's content box; it now uses its
+  containing block, the ancestor's padding box (the viewport for `fixed`), as Chrome and
+  the live path do. Control: `abs-percent-*` in `html-document`.
+- Also found and fixed on this branch (P5b-W7): turbo-dom#86 (column flex items) and #88
+  (`display: flow-root`) — P5b-W6 fixed both too; the merge keeps W6's implementations
+  (see its section below) and both branches' Chrome 156 cases (`column-flex-*`,
+  `flow-root-*`).
 
 ### Fixed — `HTMLTrackElement` and `TextTrack` (P5b-X6, miaskiewicz/turbo-dom#74, Chrome 156 control)
 - turbo-dom-browser-env: `<track>` had no interface, so `track.src`, `kind`, `srclang`,
@@ -208,7 +208,6 @@ changes in `tools/parity/expected/p5b-w7-turbo-dom-*.json`.
   `<option>` `normal`. Author rules (`font: inherit` too) win. Control: case
   `form-control-fonts` of `src/computed_defaults_chrome156.json`.
 
-
 ### Fixed — image size points, `srcset`/`<picture>`, binding DOMExceptions (P5b-X7, Chrome 156 controls)
 - The shared image probe follows Blink's load decision for cut-short bodies
   (miaskiewicz/turbo-dom#59). `image::probe` and `image::probe_natural` size a JPEG from
@@ -264,11 +263,12 @@ changes in `tools/parity/expected/p5b-w7-turbo-dom-*.json`.
   (`collect_native_storage` after `install_html` and a GC, then the
   `custom_elements_defined_chrome156.json` probe).
 
-### Fixed — turbo-dom-layout margins, heights and zero-area clips (P5b-W6, miaskiewicz/turbo-dom#75/#76/#77/#78, Chrome 156 controls)
+### Fixed — turbo-dom-layout margins, heights, zero-area clips, flow-root and flex item sizes (P5b-W6, miaskiewicz/turbo-dom#75/#76/#77/#78/#86/#88/#93, Chrome 156 controls)
 Each fix is backed by Chrome for Testing 156 cases in `scripts/html-document-chrome-control.mjs`
 and lists the corpus outputs it changes in `tools/parity/expected/p5b-w6-turbo-dom-*.json`
 (new pinned corpus inputs: `tools/parity/inputs/extra/{min-height-margin,
-self-collapsing-margins,min-max-height,percent-height}.html`).
+self-collapsing-margins,min-max-height,percent-height,flow-root,column-flex,
+flex-item-box-sizing}.html`).
 - A last child's bottom margin and `min-height` / `max-height` (#75 item 1): a non-zero
   `min-height` kept the margin inside the parent (`max(min-height, content + margin)`).
   As in Chrome, an auto-height parent lays its content out without it; the margin
@@ -292,12 +292,19 @@ self-collapsing-margins,min-max-height,percent-height}.html`).
   `min-height` / `max-height` of an in-flow box resolves against its parent's definite
   height (positioned boxes: also `min-height` / `max-height`); against an indefinite height
   they still behave as `auto` / 0 / `none`. Control: `percent-*`.
-- Positioned boxes against their containing block on the static path
-  (miaskiewicz/turbo-dom#100, found while fixing #89): an absolutely positioned / fixed
-  box resolved a `%` width (and `%` padding / margins) against its parent's content width
-  and was placed against its positioned ancestor's content box; it now uses its
-  containing block, the ancestor's padding box (the viewport for `fixed`), as Chrome and
-  the live path do. Control: `abs-percent-*` in `html-document`.
+- `display: flow-root` (#88): laid out as a plain block, it now establishes a block
+  formatting context — its children's margins stay inside, it contains its floats and
+  avoids outer floats. A zero-height box that establishes a formatting context (flow-root,
+  `overflow`, flex / grid / table) is no longer self-collapsing: margins no longer run
+  through an empty one. Control: `flow-root-*` / `empty-formatting-root-*`.
+- Column flex items (#86): an item's flex basis came from its `width` and its `width` was
+  dropped, so it stretched to the container and its height became its width. In a column
+  the basis falls back to `height` and `width` is the cross size; taffy's main size wins
+  over a `px` `height` (basis, grow, shrink). Control: `column-flex-item-*`.
+- Content-box flex items (#93, found while fixing #86): an item's `width` / `height` /
+  `flex-basis` / `min-*` / `max-*` lengths reached taffy (border boxes) unchanged, so a
+  padded or bordered `box-sizing: content-box` item lost its frame. They are now
+  border-box lengths. Control: `flex-item-*`.
 
 ### Fixed — turbo-dom-layout tables, clipping and box sizing (P5b-W5, miaskiewicz/turbo-dom#41/#51/#52/#55/#62/#63/#64/#65/#69/#70, Chrome 156 controls)
 Each fix is backed by a Chrome for Testing 156 control and lists the corpus outputs it
@@ -1125,7 +1132,6 @@ turbo-dom-v8 and -browser-env.
   selector-list behavior. Add an independently captured, source-pinned Chrome155
   oracle and public Rust regressions for the native hidden-search-field defect.
 
-
 ### Added
 
 - Add `Tree::create_contextual_fragment_utf16(context, units, scripting_enabled)`
@@ -1151,7 +1157,6 @@ turbo-dom-v8 and -browser-env.
   and import do not copy private state.
 - Charge custom state payload to storage collection budgets and reclaim it with
   unreachable nodes while keeping externally pinned states intact.
-
 
 ### Validation
 - Rust 1.99.0 passes 342 backend contracts and seven parser tests, all three

@@ -10,9 +10,9 @@
 // `min-height` / `max-height` cases of miaskiewicz/turbo-dom#75 item 1
 // (`min-height-margin-*`), zero-area `clip: rect()` boxes of item 2 (`clip-zero-area-*`,
 // `clip-sr-only*`) and cases of the bugs found while fixing them (#76, #77, #78, #79
-// `intrinsic-margin-*`). P5b-W7 adds miaskiewicz/turbo-dom#79 (`intrinsic-margins-*`), #80
-// (`inline-block-margins-*`) and #81 (`icb-*`), and the bugs found while fixing them (one
-// group per issue, labelled).
+// `intrinsic-margin-*`, #86, #88, #93). P5b-W7 adds miaskiewicz/turbo-dom#79
+// (`intrinsic-margins-*`), #80 (`inline-block-margins-*`) and #81 (`icb-*`), and the bugs
+// found while fixing them (one group per issue, labelled).
 //
 // For every case below, Chrome for Testing 156 (viewport 1280x800) records:
 //   - `boxes`: getBoundingClientRect() of every `[data-cid]` element (document order), as
@@ -462,6 +462,7 @@ const CASES = [
   { id: "self-collapsing-first-child-padded-child-is-not-empty", html: DOC(S("body{margin:0}"), `<div data-cid="w" style="padding-bottom:1px"><div data-cid="k" style="padding-top:1px;margin-bottom:20px"></div><div data-cid="b" style="height:10px"></div></div>`) },
   { id: "self-collapsing-first-child-height-zero", html: DOC(S("body{margin:0}"), `<div data-cid="w" style="padding-bottom:1px"><div data-cid="k" style="height:0;margin-bottom:20px"></div><div data-cid="b" style="height:10px"></div></div>`) },
   { id: "self-collapsing-first-child-bfc-child-is-not-empty", html: DOC(S("body{margin:0}"), `<div data-cid="w" style="padding-bottom:1px"><div data-cid="k" style="overflow:hidden;margin-bottom:20px"></div><div data-cid="b" style="height:10px"></div></div>`) },
+  { id: "self-collapsing-first-child-bordered-padded-child-is-not-empty", html: DOC(S("body{margin:0}"), `<div data-cid="w" style="padding-bottom:1px"><div data-cid="k" style="border-top:1px solid;padding-bottom:1px;margin-bottom:20px"></div><div data-cid="b" style="height:10px"></div></div><div data-cid="g" style="height:60px"></div>`) },
   // P5b-W6, miaskiewicz/turbo-dom#77: `min-height` wins over `max-height` and `height`
   // (CSS 2.2 §10.7).
   { id: "min-max-height-min-wins-over-max", html: DOC(S("body{margin:0}"), `<div data-cid="w" style="min-height:400px;max-height:100px"><div data-cid="k" style="height:200px"></div></div><div data-cid="g" style="height:60px"></div>`) },
@@ -487,6 +488,38 @@ const CASES = [
   { id: "intrinsic-margin-negative", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="float:left"><div data-cid="d" style="width:30px;height:5px;margin-right:-10px"></div></div>`) },
   { id: "intrinsic-margin-min-content", html: DOC(S("body{margin:0}"), `<table data-cid="t" style="width:1px;border-spacing:0"><tr><td data-cid="c" style="padding:0"><div data-cid="d" style="width:30px;height:15px;margin:0 5px"></div></td></tr></table>`) },
   { id: "intrinsic-margin-column-flex", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="display:flex;flex-direction:column;float:left"><div data-cid="d" style="width:30px;height:15px;margin:0 4px 0 6px"></div></div>`) },
+  // P5b-W6, miaskiewicz/turbo-dom#88: `display: flow-root` establishes a block formatting
+  // context (its children's margins stay inside, it contains floats, avoids outer floats);
+  // an empty formatting-context root is not self-collapsing.
+  { id: "flow-root-child-margins", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="display:flow-root"><div data-cid="d" style="width:30px;height:15px;margin:3px 0 5px"></div></div><div data-cid="g" style="height:10px"></div>`) },
+  { id: "flow-root-own-margins", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="display:flow-root;margin:10px 0"><div data-cid="d" style="height:15px;margin:20px 0"></div></div><div data-cid="g" style="height:10px"></div>`) },
+  { id: "flow-root-contains-float", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="display:flow-root"><div data-cid="f" style="float:left;width:20px;height:50px"></div></div><div data-cid="g" style="height:10px"></div>`) },
+  { id: "flow-root-beside-float", html: DOC(S("body{margin:0}"), `<div data-cid="f" style="float:left;width:100px;height:50px"></div><div data-cid="c" style="display:flow-root;height:20px"></div>`) },
+  { id: "flow-root-nested-in-inline-context", html: DOC(S("body{margin:0}"), `<div data-cid="p"><div data-cid="c" style="display:flow-root;width:50px"><div data-cid="d" style="height:10px;margin-top:7px"></div></div></div>`) },
+  { id: "flow-root-empty", html: DOC(S("body{margin:0}"), `<div data-cid="a" style="height:10px;margin-bottom:10px"></div><div data-cid="c" style="display:flow-root;margin:15px 0"></div><div data-cid="g" style="height:10px;margin-top:5px"></div>`) },
+  { id: "empty-formatting-root-overflow", html: DOC(S("body{margin:0}"), `<div data-cid="a" style="height:10px;margin-bottom:10px"></div><div data-cid="c" style="overflow:hidden;margin:15px 0"></div><div data-cid="g" style="height:10px;margin-top:5px"></div>`) },
+  { id: "empty-formatting-root-flex", html: DOC(S("body{margin:0}"), `<div data-cid="a" style="height:10px;margin-bottom:10px"></div><div data-cid="c" style="display:flex;margin:15px 0"></div><div data-cid="g" style="height:10px;margin-top:5px"></div>`) },
+  // P5b-W6, miaskiewicz/turbo-dom#86: a column flex item's flex basis is its `height` (the
+  // main size) and its `width` is its cross size (no stretch over an explicit width).
+  { id: "column-flex-item-explicit-widths", html: DOC(S("body{margin:0}"), `<div data-cid="f" style="display:flex;flex-direction:column"><div data-cid="d" style="width:30px;height:15px"></div><div data-cid="e" style="width:40px;height:5px"></div></div><div data-cid="g" style="height:5px"></div>`) },
+  { id: "column-flex-item-border-box", html: DOC(S("body{margin:0}"), `<div data-cid="f" style="display:flex;flex-direction:column"><div data-cid="d" style="box-sizing:border-box;width:30px;height:15px;padding:5px"></div></div><div data-cid="g" style="height:5px"></div>`) },
+  { id: "column-flex-item-auto-width-stretches", html: DOC(S("body{margin:0}"), `<div data-cid="f" style="display:flex;flex-direction:column"><div data-cid="d" style="height:10px"></div></div><div data-cid="g" style="height:5px"></div>`) },
+  { id: "column-flex-item-flex-basis", html: DOC(S("body{margin:0}"), `<div data-cid="f" style="display:flex;flex-direction:column"><div data-cid="d" style="flex-basis:30px;width:10px;height:5px"></div></div><div data-cid="g" style="height:5px"></div>`) },
+  { id: "column-flex-item-reverse", html: DOC(S("body{margin:0}"), `<div data-cid="f" style="display:flex;flex-direction:column;flex-direction:column-reverse"><div data-cid="d" style="width:30px;height:15px"></div><div data-cid="e" style="width:40px;height:5px"></div></div><div data-cid="g" style="height:5px"></div>`) },
+  { id: "column-flex-item-align-center", html: DOC(S("body{margin:0}"), `<div data-cid="f" style="display:flex;flex-direction:column;align-items:center"><div data-cid="d" style="width:30px;height:15px"></div></div><div data-cid="g" style="height:5px"></div>`) },
+  { id: "column-flex-item-content-height", html: DOC(S("body{margin:0}"), `<div data-cid="f" style="display:flex;flex-direction:column"><div data-cid="d" style="width:30px"><div style="height:12px"></div></div></div><div data-cid="g" style="height:5px"></div>`) },
+  { id: "column-flex-item-grow", html: DOC(S("body{margin:0}"), `<div data-cid="f" style="display:flex;flex-direction:column;height:100px"><div data-cid="d" style="width:20px;height:20px"></div><div data-cid="e" style="width:20px;flex-grow:1"></div></div><div data-cid="g" style="height:5px"></div>`) },
+  { id: "column-flex-item-percent-width", html: DOC(S("body{margin:0}"), `<div data-cid="f" style="display:flex;flex-direction:column;width:200px"><div data-cid="d" style="width:50%;height:10px"></div></div><div data-cid="g" style="height:5px"></div>`) },
+  { id: "column-flex-item-shrink-zero", html: DOC(S("body{margin:0}"), `<div data-cid="f" style="display:flex;flex-direction:column;height:100px"><div data-cid="d" style="width:30px;height:80px;flex-shrink:0"></div><div data-cid="e" style="width:40px;height:80px;flex-shrink:0"></div></div><div data-cid="g" style="height:5px"></div>`) },
+  { id: "column-flex-item-row-items-still-stretch", html: DOC(S("body{margin:0}"), `<div data-cid="f" style="display:flex"><div data-cid="d" style="width:30px;height:40px"></div><div data-cid="e" style="width:20px"></div></div><div data-cid="g" style="height:5px"></div>`) },
+  // P5b-W6, miaskiewicz/turbo-dom#93: a content-box flex item's sizes exclude its padding
+  // and border (its border box is larger by them).
+  { id: "flex-item-content-box-row-padding", html: DOC(S("body{margin:0}"), `<div data-cid="f" style="display:flex"><div data-cid="d" style="width:30px;height:15px;padding:5px"></div><div data-cid="e" style="width:10px;height:5px"></div></div><div data-cid="g" style="height:5px"></div>`) },
+  { id: "flex-item-content-box-row-border", html: DOC(S("body{margin:0}"), `<div data-cid="f" style="display:flex"><div data-cid="d" style="width:30px;height:15px;border:3px solid"></div><div data-cid="e" style="width:10px;height:5px"></div></div><div data-cid="g" style="height:5px"></div>`) },
+  { id: "flex-item-content-box-row-basis", html: DOC(S("body{margin:0}"), `<div data-cid="f" style="display:flex"><div data-cid="d" style="flex-basis:30px;height:15px;padding:0 5px"></div><div data-cid="e" style="width:10px;height:5px"></div></div><div data-cid="g" style="height:5px"></div>`) },
+  { id: "flex-item-border-box-row", html: DOC(S("body{margin:0}"), `<div data-cid="f" style="display:flex"><div data-cid="d" style="box-sizing:border-box;width:30px;height:15px;padding:5px"></div><div data-cid="e" style="width:10px;height:5px"></div></div><div data-cid="g" style="height:5px"></div>`) },
+  { id: "flex-item-content-box-column-padding", html: DOC(S("body{margin:0}"), `<div data-cid="f" style="display:flex;flex-direction:column"><div data-cid="d" style="width:30px;height:15px;padding:5px"></div><div data-cid="e" style="width:10px;height:5px"></div></div><div data-cid="g" style="height:5px"></div>`) },
+  { id: "flex-item-content-box-min-max", html: DOC(S("body{margin:0}"), `<div data-cid="f" style="display:flex"><div data-cid="d" style="width:10px;min-width:30px;height:15px;max-height:10px;padding:5px"></div></div><div data-cid="g" style="height:5px"></div>`) },
 ];
 
 /** The RGB of a 1x1 PNG screenshot (any filter: a single pixel's filter adds 0). */

@@ -103,7 +103,7 @@ fn inline_flex_grid_case(id: &str) -> bool {
 /// The control cases of an open bug, each asserted by its own test (`#[ignore]`d until
 /// its fix lands) and held out of [`html_documents_lay_out_as_chrome_156`].
 fn held_out(id: &str) -> bool {
-    let groups: [fn(&str) -> bool; 30] = [
+    let groups: [fn(&str) -> bool; 32] = [
         auto_table_case,
         inline_flex_grid_case,
         abs_auto_width_case,
@@ -134,6 +134,8 @@ fn held_out(id: &str) -> bool {
         column_flex_case,
         float_sum_case,
         abs_percent_case,
+        column_flex_item_case,
+        flex_item_box_sizing_case,
     ];
     groups.iter().any(|group| group(id))
 }
@@ -324,6 +326,38 @@ fn self_collapsing_first_child_margins_like_chrome_156() {
     compare_cases(self_collapsing_first_child_case);
 }
 
+/// miaskiewicz/turbo-dom#88: `display: flow-root` establishes a block formatting context;
+/// an empty formatting-context root is not self-collapsing.
+fn flow_root_case(id: &str) -> bool {
+    id.starts_with("flow-root-") || id.starts_with("empty-formatting-root-")
+}
+
+#[test]
+fn flow_root_establishes_a_formatting_context_like_chrome_156() {
+    compare_cases(flow_root_case);
+}
+
+/// miaskiewicz/turbo-dom#86: a column flex item's basis is its `height`, its `width` its
+/// cross size.
+fn column_flex_item_case(id: &str) -> bool {
+    id.starts_with("column-flex-item-")
+}
+
+#[test]
+fn column_flex_items_size_on_their_axes_like_chrome_156() {
+    compare_cases(column_flex_item_case);
+}
+
+/// miaskiewicz/turbo-dom#93: a content-box flex item's sizes exclude its padding and border.
+fn flex_item_box_sizing_case(id: &str) -> bool {
+    id.starts_with("flex-item-")
+}
+
+#[test]
+fn content_box_flex_items_add_their_frame_like_chrome_156() {
+    compare_cases(flex_item_box_sizing_case);
+}
+
 /// miaskiewicz/turbo-dom#69: only legacy `-webkit-*` alignment moves block children.
 fn legacy_align_case(id: &str) -> bool {
     id.starts_with("legacy-align-")
@@ -384,16 +418,6 @@ fn icb_case(id: &str) -> bool {
 #[test]
 fn initial_containing_block_insets_like_chrome_156() {
     compare_cases(icb_case);
-}
-
-/// miaskiewicz/turbo-dom#88: `display: flow-root` establishes a block formatting context.
-fn flow_root_case(id: &str) -> bool {
-    id.starts_with("flow-root-")
-}
-
-#[test]
-fn flow_root_establishes_a_formatting_context_like_chrome_156() {
-    compare_cases(flow_root_case);
 }
 
 /// miaskiewicz/turbo-dom#83: a `width: auto` float is shrink-to-fit.

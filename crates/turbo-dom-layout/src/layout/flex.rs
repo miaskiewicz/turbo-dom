@@ -226,16 +226,11 @@ fn flex_grow_shrink(s: &ComputedStyle) -> (f32, f32) {
 }
 
 /// A flex item's main-size basis. `flex-basis:auto` (the initial value) defers to
-/// the item's `width` â without that fallback a `width:100%` flex item (e.g.
+/// the item's main size `main` — its `width` in a row, its `height` in a column
+/// (miaskiewicz/turbo-dom#86) — without that fallback a `width:100%` flex item (e.g.
 /// Wikipedia's `.mw-header`, a `width:100%` grid that is itself a flex child)
 /// shrink-wrapped to its content instead of filling the row.
-fn item_basis(s: &ComputedStyle, bs: &BoxStyle, fs: f32) -> Dimension {
-    main_basis(s, bs.width, fs)
-}
-
-/// An item's flex basis, `main` (its main-axis size: `width` in a row, `height` in a
-/// column, miaskiewicz/turbo-dom#86) standing in for `auto`.
-fn main_basis(s: &ComputedStyle, main: LengthPct, fs: f32) -> Dimension {
+fn item_basis(s: &ComputedStyle, main: LengthPct, fs: f32) -> Dimension {
     match s.get("flex-basis").map(str::trim) {
         // No `flex-basis` longhand: the basis may still live in the `flex`
         // shorthand's third component (`flex: 0 0 60px`), which the grow/shrink
@@ -244,26 +239,6 @@ fn main_basis(s: &ComputedStyle, main: LengthPct, fs: f32) -> Dimension {
         Some("content") => Dimension::auto(),
         Some(b) => parse_basis(b, fs).unwrap_or_else(|| dim(main)),
     }
-}
-
-/// [`item_style`] for an item of a flex container whose main axis is vertical when
-/// `column`: the basis then defaults to the item's `height` and its `width` is its cross
-/// size constraint (miaskiewicz/turbo-dom#86); a row item is [`item_style`]'s.
-fn flex_item_style(item: &LayoutBox, fs: f32, column: bool) -> Style {
-    let mut style = item_style(item, fs);
-    if !column || item.out_of_flow() {
-        return style;
-    }
-    let bs = item.resolved(ResolveCtx {
-        parent_font_size: fs,
-        cb_width: 0.0,
-    });
-    style.flex_basis = main_basis(&item.style, bs.height, fs);
-    style.size = Size {
-        width: dim(bs.width),
-        height: Dimension::auto(),
-    };
-    style
 }
 
 /// The `<basis>` component of the `flex` shorthand (`flex: <grow> <shrink>?
@@ -335,7 +310,9 @@ fn item_margins(bs: &BoxStyle) -> Rect<LengthPercentageAuto> {
     }
 }
 
-fn item_style(item: &LayoutBox, fs: f32) -> Style {
+/// A flex (or grid: `column` false) item's taffy style; `column`: the container's main
+/// axis is vertical.
+fn item_style(item: &LayoutBox, fs: f32, column: bool) -> Style {
     let s = &item.style;
     let bs = item.resolved(ResolveCtx {
         parent_font_size: fs,
@@ -356,19 +333,18 @@ fn item_style(item: &LayoutBox, fs: f32) -> Style {
         };
     }
     let (grow, shrink) = flex_grow_shrink(s);
+    let main = if column { bs.height } else { bs.width };
     Style {
         flex_grow: num(s, "flex-grow", grow),
         flex_shrink: num(s, "flex-shrink", shrink),
-        flex_basis: item_basis(s, &bs, fs),
+        flex_basis: item_basis(s, main, fs),
         align_self: align_self(s),
         margin: item_margins(&bs),
-        // A flex item's own `min/max-height` (and explicit cross-axis `height`) must
-        // reach taffy â else an item whose height is only a `min-height` collapses.
+        // A flex item's own `min/max` sizes and explicit cross-axis size (`height` in a
+        // row, `width` in a column) must reach taffy — else an item whose height is only
+        // a `min-height` collapses, and a column item stretches over its `width`.
         // The main axis stays driven by `flex_basis`.
-        size: Size {
-            width: Dimension::auto(),
-            height: dim(bs.height),
-        },
+        size: cross_size(&bs, column),
         min_size: Size {
             width: dim(bs.min_width),
             height: dim(bs.min_height),
@@ -378,6 +354,57 @@ fn item_style(item: &LayoutBox, fs: f32) -> Style {
             height: dim(bs.max_height),
         },
         ..Default::default()
+    }
+}
+
+/// A flex item's style with its `size`, `min_size`, `max_size` and `flex_basis` lengths
+/// as border-box lengths, which is what taffy lays out: under `box-sizing: content-box`
+/// each grows by the item's padding and border on that axis (`column`: the basis is
+/// vertical; miaskiewicz/turbo-dom#93).
+fn border_box_sizes(mut style: Style, item: &LayoutBox, fs: f32, column: bool) -> Style {
+    let bs = item.resolved(ResolveCtx {
+        parent_font_size: fs,
+        cb_width: 0.0,
+    });
+    let border = bs.border.widths();
+    let frame = Size {
+        width: bs.padding.horizontal() + border.horizontal(),
+        height: bs.padding.vertical() + border.vertical(),
+    };
+    let grow = |size: Size<Dimension>| Size {
+        width: border_box(size.width, bs.box_sizing, frame.width),
+        height: border_box(size.height, bs.box_sizing, frame.height),
+    };
+    style.size = grow(style.size);
+    style.min_size = grow(style.min_size);
+    style.max_size = grow(style.max_size);
+    let main = if column { frame.height } else { frame.width };
+    style.flex_basis = border_box(style.flex_basis, bs.box_sizing, main);
+    style
+}
+
+/// A taffy length `d` as a border-box length for a box of `sizing` with `frame` px of
+/// padding and border on that axis; percentages and `auto` are left as they are.
+fn border_box(d: Dimension, sizing: BoxSizing, frame: f32) -> Dimension {
+    if d.tag() == taffy::CompactLength::LENGTH_TAG {
+        Dimension::length(block::to_border(d.value(), sizing, frame))
+    } else {
+        d
+    }
+}
+
+/// A flex item's taffy `size`: only its cross-axis size (the main axis is the basis).
+fn cross_size(bs: &BoxStyle, column: bool) -> Size<Dimension> {
+    if column {
+        Size {
+            width: dim(bs.width),
+            height: Dimension::auto(),
+        }
+    } else {
+        Size {
+            width: Dimension::auto(),
+            height: dim(bs.height),
+        }
     }
 }
 
@@ -886,8 +913,11 @@ fn build_leaves(
         .iter()
         .enumerate()
         .map(|(i, it)| {
-            tree.new_leaf_with_context(flex_item_style(it, fs, column), i)
-                .expect("flex leaf")
+            tree.new_leaf_with_context(
+                border_box_sizes(item_style(it, fs, column), it, fs, column),
+                i,
+            )
+            .expect("flex leaf")
         })
         .collect()
 }
@@ -932,8 +962,8 @@ fn solve(
 fn place_one(
     item: &LayoutBox,
     layout: &Layout,
-    (cx, cy, column): (f32, f32, bool),
-    fs: f32,
+    (cx, cy, fs): (f32, f32, f32),
+    column: bool,
     ctx: &mut Ctx,
 ) -> Fragment {
     let mut bs = item.resolved(ResolveCtx {
@@ -946,10 +976,10 @@ fn place_one(
     // fragment height AND is exposed to the item's own content (nested flex,
     // `%` heights) — otherwise the item collapses back to its content height and a
     // `flex:1` / stretched item, and anything it centres, is placed wrong. An item
-    // whose height taffy left at auto keeps its content height (basis == content). In
-    // a column the height is the main size taffy flexed, whatever the item's own
-    // `height` (miaskiewicz/turbo-dom#86).
-    if (column && !item.out_of_flow()) || !matches!(bs.height, LengthPct::Px(_)) {
+    // whose height taffy left at auto keeps its content height (basis == content). In a
+    // column the height is the main size, so taffy's always wins over a `px` `height`
+    // (a `flex-basis`, grow or shrink; miaskiewicz/turbo-dom#86).
+    if column || !matches!(bs.height, LengthPct::Px(_)) {
         let inset_v = bs.padding.vertical() + bs.border.widths().vertical();
         bs.height = LengthPct::Px((layout.size.height - inset_v).max(0.0));
         bs.box_sizing = BoxSizing::ContentBox;
@@ -963,14 +993,14 @@ fn place_items(
     tree: &TaffyTree<usize>,
     leaves: &[TaffyId],
     items: &[LayoutBox],
-    (cx, cy, column): (f32, f32, bool),
-    fs: f32,
+    origin: (f32, f32, f32),
+    column: bool,
     ctx: &mut Ctx,
 ) -> Vec<Fragment> {
     let mut frags = Vec::new();
     for (i, leaf) in leaves.iter().enumerate() {
         let layout = tree.layout(*leaf).expect("item layout");
-        frags.push(place_one(&items[i], layout, (cx, cy, column), fs, ctx));
+        frags.push(place_one(&items[i], layout, origin, column, ctx));
     }
     frags
 }
@@ -1301,7 +1331,7 @@ fn build_grid_leaves(
         .iter()
         .enumerate()
         .map(|(i, it)| {
-            let mut style = item_style(it, fs);
+            let mut style = item_style(it, fs, false);
             // Grid has no flex-basis: an explicit width must reach its own size
             // constraint instead of becoming the track's stretch width.
             if it.uses_html_font_metrics() {
@@ -1390,7 +1420,7 @@ pub(crate) fn layout_grid(
         .new_with_children(grid_container_style(container, cw, &areas), &leaves)
         .expect("grid root");
     solve(&mut tree, root, items, fs, cw, ctx);
-    let frags = place_items(&tree, &leaves, items, (cx, cy, false), fs, ctx);
+    let frags = place_items(&tree, &leaves, items, (cx, cy, fs), false, ctx);
     let height = tree.layout(root).expect("root layout").size.height;
     (frags, height)
 }
@@ -1419,7 +1449,7 @@ pub(crate) fn layout_flex(
         .new_with_children(container_style(container, cw, fs, ctx.cb_h), &leaves)
         .expect("flex root");
     solve(&mut tree, root, items, fs, cw, ctx);
-    let frags = place_items(&tree, &leaves, items, (cx, cy, column), fs, ctx);
+    let frags = place_items(&tree, &leaves, items, (cx, cy, fs), column, ctx);
     let height = tree.layout(root).expect("root layout").size.height;
     (frags, height)
 }
@@ -1710,13 +1740,13 @@ mod coverage_tests {
         // `flex-basis: 50%` -> a percentage dimension (the `strip_suffix('%')` arm).
         let s = cs(&[("flex-basis", "50%")]);
         let bs = bs_of(&[("flex-basis", "50%")]);
-        assert_eq!(item_basis(&s, &bs, 16.0), Dimension::percent(0.5_f32));
+        assert_eq!(item_basis(&s, bs.width, 16.0), Dimension::percent(0.5_f32));
 
         // A basis that is neither a length nor a percentage (`min-content`) falls back
         // to the item's own `width`.
         let s = cs(&[("flex-basis", "min-content"), ("width", "77px")]);
         let bs = bs_of(&[("flex-basis", "min-content"), ("width", "77px")]);
-        assert_eq!(item_basis(&s, &bs, 16.0), Dimension::length(77.0_f32));
+        assert_eq!(item_basis(&s, bs.width, 16.0), Dimension::length(77.0_f32));
     }
 
     // --- item_inset: a percentage inset edge on an out-of-flow flex child ---
