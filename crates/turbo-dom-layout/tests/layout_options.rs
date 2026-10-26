@@ -274,3 +274,30 @@ fn recorded_layout_in_a_viewport_resolves_fixed_insets_against_its_height() {
     }
     assert_eq!(paged.sources, laid(None).sources);
 }
+
+/// With the initial containing block's height unknown (`layout_recorded`: html2pdf's
+/// region / footnote flows), boxes keep their previous bases: a fixed box inside a
+/// positioned ancestor anchors `bottom` to that ancestor (the paged layout re-anchors
+/// fixed boxes to the page area itself), and an absolutely positioned box of the initial
+/// containing block with `top` + `bottom` keeps its content height (no stretch against
+/// an unknown height; miaskiewicz/turbo-dom#81, #89).
+#[test]
+fn an_unknown_initial_containing_block_keeps_the_previous_bases() {
+    let html = "<html><body><div style=\"position:relative;height:100px\"><div id=\"f\" style=\"position:fixed;bottom:0;left:0;width:10px;height:20px\"></div></div><div id=\"s\" style=\"position:absolute;top:10px;bottom:20px;left:0;width:10px\"><div style=\"height:30px\"></div></div></body></html>";
+    let tree = Tree::parse(html);
+    let laid = lay(&tree, "", LayoutOptions::default());
+    let rect = |id: &str| {
+        fragments(&laid.galley)
+            .into_iter()
+            .find(|f| {
+                laid.sources
+                    .elements
+                    .get(&f.node_id)
+                    .is_some_and(|&h| tree.get_attribute(h, "id") == Some(id))
+            })
+            .map(|f| (f.x, f.y, f.width, f.height))
+            .unwrap()
+    };
+    assert_eq!(rect("f"), (0.0, 80.0, 10.0, 20.0));
+    assert_eq!(rect("s"), (0.0, 10.0, 10.0, 30.0));
+}

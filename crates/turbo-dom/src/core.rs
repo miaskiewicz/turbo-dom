@@ -211,10 +211,8 @@ impl SoaBuilder {
                 self.soa.node_type[idx] = COMMENT_NODE;
                 self.soa.text_id[idx] = self.push_string(contents);
             }
-            NodeData::ProcessingInstruction { target, contents } => {
-                self.soa.node_type[idx] = PROCESSING_INSTRUCTION_NODE;
-                self.soa.tag_id[idx] = self.intern_tag(target);
-                self.soa.text_id[idx] = self.push_string(contents);
+            NodeData::ProcessingInstruction { .. } => {
+                unreachable!("html5ever's HTML tree builder never creates processing instructions")
             }
             NodeData::Element {
                 name,
@@ -398,29 +396,76 @@ pub fn parse_html_fragment_with_context(
     context: QualName,
     attributes: Vec<html5ever::Attribute>,
 ) -> Node {
+    if is_rcdata_context(&context) && html.contains('\0') {
+        return rcdata_fragment(html.split('\0').map(|segment| {
+            parse_html_fragment_with_context(segment, context.clone(), attributes.clone())
+        }));
+    }
     let mut options = opts();
     options.tokenizer.discard_bom = false;
     let dom = parse_fragment(RcDom::default(), options, context, attributes, false).one(html);
-    // parse_fragment wraps results under a synthetic <html> element; unwrap it.
-    let root = walk(&dom.document);
-    let mut frag = Node {
-        node_type: DOCUMENT_NODE,
-        name: "#document-fragment".to_string(),
-        value: String::new(),
-        namespace: String::new(),
-        public_id: String::new(),
-        system_id: String::new(),
-        attrs: Vec::new(),
-        children: Vec::new(),
-    };
-    for child in root.children {
-        if child.node_type == ELEMENT_NODE && child.name == "html" {
-            frag.children.extend(child.children);
-        } else {
-            frag.children.push(child);
-        }
+    fragment_of(walk(&dom.document))
+}
+
+/// An HTML `textarea` / `title` fragment context: the tokenizer starts (and, a fragment
+/// having no appropriate end tag, stays) in RCDATA, so the whole input is text.
+pub(crate) fn is_rcdata_context(context: &QualName) -> bool {
+    context.ns == ns!(html) && matches!(&*context.local, "textarea" | "title")
+}
+
+/// Chrome 156 drops a literal U+0000 in an RCDATA-context fragment (Blink replaces it
+/// only in the "text" insertion mode, which the fragment case never enters;
+/// miaskiewicz/turbo-dom#92), while html5ever's RCDATA state emits U+FFFD. U+0000 can only
+/// end a character reference there, so each NUL-free segment is parsed alone and the
+/// segments' texts joined: one text node, or none.
+pub(crate) fn rcdata_fragment(segments: impl Iterator<Item = Node>) -> Node {
+    let mut frag = fragment_of(Node::default_document());
+    let value: String = segments
+        .flat_map(|segment| segment.children)
+        .map(|text| text.value)
+        .collect();
+    if !value.is_empty() {
+        frag.children.push(Node {
+            node_type: TEXT_NODE,
+            name: "#text".to_string(),
+            value,
+            ..Node::default_document()
+        });
     }
     frag
+}
+
+/// The fragment root (`#document-fragment`) of a walked fragment-parse document:
+/// `parse_fragment` wraps results under a synthetic `<html>` element; unwrap it.
+pub(crate) fn fragment_of(document: Node) -> Node {
+    let mut frag = Node {
+        name: "#document-fragment".to_string(),
+        ..Node::default_document()
+    };
+    // The document's only child is that <html> root: the fragment case never enters
+    // an insertion mode that appends to the Document (initial / before html, after
+    // after body, after after frameset).
+    for child in document.children {
+        debug_assert!(child.node_type == ELEMENT_NODE && child.name == "html");
+        frag.children.extend(child.children);
+    }
+    frag
+}
+
+impl Node {
+    /// An empty document node (`#document`, no data, no children).
+    fn default_document() -> Node {
+        Node {
+            node_type: DOCUMENT_NODE,
+            name: "#document".to_string(),
+            value: String::new(),
+            namespace: String::new(),
+            public_id: String::new(),
+            system_id: String::new(),
+            attrs: Vec::new(),
+            children: Vec::new(),
+        }
+    }
 }
 
 fn shallow_node(handle: &Handle) -> Node {
@@ -464,13 +509,9 @@ fn shallow_node(handle: &Handle) -> Node {
             String::new(),
             Vec::new(),
         ),
-        NodeData::ProcessingInstruction { target, contents } => (
-            PROCESSING_INSTRUCTION_NODE,
-            target.to_string(),
-            contents.to_string(),
-            String::new(),
-            Vec::new(),
-        ),
+        NodeData::ProcessingInstruction { .. } => {
+            unreachable!("html5ever's HTML tree builder never creates processing instructions")
+        }
         NodeData::Element { name, attrs, .. } => {
             let a = attrs
                 .borrow()

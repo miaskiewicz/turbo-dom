@@ -70,11 +70,6 @@ impl std::ops::Deref for NativeAttribute {
         &self.legacy
     }
 }
-impl std::ops::DerefMut for NativeAttribute {
-    fn deref_mut(&mut self) -> &mut AttributeData {
-        &mut self.legacy
-    }
-}
 /// Lossless namespace, name and value record for native browser consumers.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct AttributeDataUtf16 {

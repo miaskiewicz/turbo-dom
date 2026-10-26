@@ -36,9 +36,6 @@ changes in `tools/parity/expected/p5b-w7-turbo-dom-*.json`.
   layout, whose initial containing block would be the page box) keep an unknown height
   and lay out as before. The live path already used the viewport. Control: `icb-*` in
   `html-document` and in the pixel control `scripts/paint-chrome-control.mjs`.
-- `display: flow-root` (miaskiewicz/turbo-dom#88, found while fixing #80) establishes a
-  block formatting context: its children's vertical margins stay inside it, it contains
-  its floats and its box avoids outer floats. Control: `flow-root-*` in `html-document`.
 - Floats are shrink-to-fit (miaskiewicz/turbo-dom#83, found while fixing #79): a
   `width: auto` float took `min(max-content, container)` — squeezed below its
   min-content in a narrow container, its `min-width` / `max-width` ignored and its own
@@ -55,13 +52,6 @@ changes in `tools/parity/expected/p5b-w7-turbo-dom-*.json`.
   block's height less the insets, its margins and (content-box) its padding and border,
   then `min-height` / `max-height` (CSS 2.2 §10.6.4), as on the live path. Control:
   `abs-stretch-*` in `html-document`.
-- Column flex items (miaskiewicz/turbo-dom#86, found while fixing #79): in a
-  `flex-direction: column` container an item's flex basis came from its `width` and its
-  `width` was dropped, so it was stretched to the container despite an explicit width
-  and its main size (height) was its width. The basis now defaults to the item's
-  `height`, its `width` (`%`, `min-width` / `max-width`) is the cross size, and the
-  flexed main size is its used height (`flex-basis`, `flex-grow`). Control:
-  `column-flex-*` in `html-document`.
 - Floats side by side in a max-content width (miaskiewicz/turbo-dom#85, found while
   fixing #79): a block container's max-content took its widest float, so a
   shrink-to-fit container (a float, an inline-block, an auto table cell) was too narrow
@@ -88,6 +78,16 @@ changes in `tools/parity/expected/p5b-w7-turbo-dom-*.json`.
   the print initial containing block, so fixed boxes and absolutely positioned boxes it
   contains resolve `%` / `bottom` insets and `%` heights against it (as #81 does for
   screenshots). `layout_recorded` keeps the height unknown.
+- Positioned boxes against their containing block on the static path
+  (miaskiewicz/turbo-dom#100, found while fixing #89): an absolutely positioned / fixed
+  box resolved a `%` width (and `%` padding / margins) against its parent's content width
+  and was placed against its positioned ancestor's content box; it now uses its
+  containing block, the ancestor's padding box (the viewport for `fixed`), as Chrome and
+  the live path do. Control: `abs-percent-*` in `html-document`.
+- Also found and fixed on this branch (P5b-W7): turbo-dom#86 (column flex items) and #88
+  (`display: flow-root`) — P5b-W6 fixed both too; the merge keeps W6's implementations
+  (see its section below) and both branches' Chrome 156 cases (`column-flex-*`,
+  `flow-root-*`).
 
 ### Fixed — `HTMLTrackElement` and `TextTrack` (P5b-X6, miaskiewicz/turbo-dom#74, Chrome 156 control)
 - turbo-dom-browser-env: `<track>` had no interface, so `track.src`, `kind`, `srclang`,
@@ -301,6 +301,36 @@ flex-item-box-sizing}.html`).
   `flex-basis` / `min-*` / `max-*` lengths reached taffy (border boxes) unchanged, so a
   padded or bordered `box-sizing: content-box` item lost its frame. They are now
   border-box lengths. Control: `flex-item-*`.
+
+### Fixed — selector syntax, :scope and RCDATA fragments (P5-cov, miaskiewicz/turbo-dom#91/#92/#96/#98, Chrome 156 controls)
+Found by the new `scripts/rtdom-core-chrome-control.mjs` control
+(`crates/turbo-dom/tests/fixtures/rtdom_core_chrome156.json`); both engines (rtdom and the
+npm `selectors.mjs` / parser crate) unless noted.
+- CSS comments in selectors were rejected (`p /* c */`): they are removed as CSS
+  tokenizes them, still separating two names (`div/**/p` throws, `[title=a/**/i]` is
+  `[title=a i]`); a DOM-API selector's unterminated string / `[` / `(` closes at its end
+  (`[title`, `:state(x`, `:is(p`), and an escape at its end is U+FFFD (`[id=x\`) (#91, #98).
+- rtdom: `:not()` / `:has()` / `of S` accepted empty items (`:not(p, )`) and items edged
+  by a combinator (`:not(p >)`, `:not(> p)`); `:is()` / `:where()` kept such items (#91, #98).
+- `:-webkit-any()` never matched in the rtdom DOM APIs and was forgiving in stylesheets: it
+  now matches like `:is()` with Chrome's grammar — compound selectors only, unforgiving,
+  no pseudo-elements or `:has()` (#91).
+- rtdom: `:scope` never matched in the DOM APIs; it is the element `matches()` /
+  `closest()` / element-rooted queries are called on (new `Tree::closest`,
+  `matches_scoped`, `closest_units`, `matches_units_scoped`), `:root` for document queries
+  and stylesheets. npm: `closest()` matched each ancestor as its own scope (#96).
+- An+B integers clamp to 32 bits (overflowing digits parsed as 0), an integer glued into
+  `n-123` must fit 32 bits, and an A or B outside 31 bits never matches (#98).
+- `textarea` / `title` (RCDATA) fragments drop a literal U+0000 like Chrome (they kept it
+  as U+FFFD); `&#0;` and every other context are unchanged (#92).
+
+### Changed — turbo-dom crate coverage 100% (P5-cov-core)
+- CI's turbo-dom coverage floor is 100 (was 88). New behaviour tests: the html5lib fixtures
+  through the UTF-16 tokenizer fork, the Chrome-156 core control (`tests/rtdom_core_chrome.rs`),
+  core / API edge and storage integrity tests.
+- The UTF-16 tokenizer fork no longer carries upstream code the crate never runs (the
+  `exact_errors` / `discard_bom` / `profile` options, the per-architecture SIMD data-state
+  scan — a portable byte scan produces the same chunks; `UPSTREAM.json` lists the changes).
 
 ### Fixed — turbo-dom-layout tables, clipping and box sizing (P5b-W5, miaskiewicz/turbo-dom#41/#51/#52/#55/#62/#63/#64/#65/#69/#70, Chrome 156 controls)
 Each fix is backed by a Chrome for Testing 156 control and lists the corpus outputs it

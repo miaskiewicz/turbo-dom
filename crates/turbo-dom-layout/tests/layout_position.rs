@@ -117,7 +117,8 @@ fn absolute_is_relative_to_positioned_ancestor() {
     // An absolute box is positioned against its nearest positioned ancestor's
     // padding box, not the page. Parent is `position:relative` 60px down with 10px
     // padding; child `absolute; top:0; left:0` lands at the parent's padding-box
-    // origin (x = 0, y = 60), not its content origin (miaskiewicz/turbo-dom#102).
+    // origin (x = 0, y = 60), as in Chrome (miaskiewicz/turbo-dom#100; it used to land
+    // at the content origin, x = 10, y = 70).
     let g = galley(&format!(
         "<div style=\"height:60px\"></div>\
          <div style=\"position:relative;padding:10px;background-color:#cccccc\">{}</div>",
