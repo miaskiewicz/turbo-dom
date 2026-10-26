@@ -7,6 +7,12 @@ at the time); this file reconstructs them from history.
 
 ## [Unreleased]
 
+### Fixed (consolidation P5b)
+- `turbo-dom-browser-env`: the `Option(text, value, defaultSelected, selected)` legacy
+  factory function exists (turbo-dom#20): a `new`-only native constructor sharing
+  `HTMLOptionElement.prototype` that honours `NewTarget`, matching Chrome 156
+  (`src/option_factory_chrome156.json`).
+
 ## [0.6.0] — turbo-dom consolidation
 
 turbo-dom becomes the home of the shared browser engine of turbo-html2pdf, turbo-test

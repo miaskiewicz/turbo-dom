@@ -6441,7 +6441,15 @@ fn native_dom_function_dispatch(
         .get_index(scope, 1)
         .is_some_and(|value| value.boolean_value(scope));
     if require_new && !args.is_construct_call() {
-        let message = v8::String::new(scope, "Constructor requires 'new'").unwrap();
+        // An interface may name its own call-without-new message (Blink's legacy
+        // factory functions say "Failed to construct 'Option': Please use the 'new' …").
+        let message = match data
+            .get_index(scope, 4)
+            .and_then(|value| v8::Local::<v8::String>::try_from(value).ok())
+        {
+            Some(message) => message,
+            None => v8::String::new(scope, "Constructor requires 'new'").unwrap(),
+        };
         let error = v8::Exception::type_error(scope, message);
         scope.throw_exception(error);
         return;
@@ -6544,6 +6552,11 @@ fn make_native_dom_function(
     };
     let require_new = v8::Boolean::new(scope, require_new);
     let class_construct = v8::Boolean::new(scope, class_construct);
+    let call_message = if args.get(6).is_string() {
+        args.get(6)
+    } else {
+        v8::undefined(scope).into()
+    };
     let data = v8::Array::new_with_elements(
         scope,
         &[
@@ -6551,6 +6564,7 @@ fn make_native_dom_function(
             require_new.into(),
             class_construct.into(),
             args.data(),
+            call_message,
         ],
     );
     let template = v8::FunctionTemplate::builder(native_dom_function_dispatch)

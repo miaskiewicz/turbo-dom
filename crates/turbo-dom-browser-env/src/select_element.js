@@ -278,6 +278,47 @@
     const index = select ? apply(indexOf, optionsOf(select), [option]) : -1;
     return index < 0 ? 0 : index;
   });
+  // The legacy factory function Option(text, value, defaultSelected, selected) (HTML 4.10.10,
+  // Web IDL [LegacyFactoryFunction]), measured in option_factory_chrome156.json: a native
+  // constructor (length 0) that only works with `new`, shares HTMLOptionElement.prototype and
+  // honours NewTarget's prototype (subclasses, Reflect.construct). Like Blink, `selected` sets the
+  // option's selectedness after the `selected` content attribute, so defaultSelected alone leaves
+  // the option unselected.
+  const realmDocument = g.document,
+    createTextNode = g.Document.prototype.createTextNode,
+    getPrototype = Reflect.get,
+    factoryError = (detail) => new ErrorType("Failed to construct 'Option': " + detail);
+  const optionString = (value) => {
+    if (typeof value === "symbol") throw factoryError("Cannot convert a Symbol value to a string");
+    return StringValue(value);
+  };
+  const OptionFactory = make(
+    class {
+      constructor(text, value, defaultSelected, selected) {
+        text = text === undefined ? "" : optionString(text);
+        value = value === undefined ? undefined : optionString(value);
+        defaultSelected = !!defaultSelected;
+        selected = !!selected;
+        const option = apply(createElement, realmDocument, ["option"]);
+        if (text !== "") apply(insertBefore, option, [apply(createTextNode, realmDocument, [text]), null]);
+        if (value !== undefined) apply(setAttribute, option, ["value", value]);
+        if (defaultSelected) apply(setAttribute, option, ["selected", ""]);
+        state(option, selected);
+        const prototype = getPrototype(new.target, "prototype");
+        if (prototype !== OP && prototype !== null && (typeof prototype === "object" || typeof prototype === "function"))
+          setPrototypeOf(option, prototype);
+        return option;
+      }
+    },
+    "Option",
+    0,
+    true,
+    true,
+    true,
+    "Failed to construct 'Option': Please use the 'new' operator, this DOM object constructor cannot be called as a function.",
+  );
+  define(OptionFactory, "prototype", { value: OP, writable: false, enumerable: false, configurable: false });
+  define(g, "Option", { value: OptionFactory, writable: true, enumerable: false, configurable: true });
   // HTMLOptionsCollection: select.options, a live HTMLCollection over the select's list of
   // options whose mutators are the select's own algorithms above ([SameObject] per select).
   const collectionCtor = make(
