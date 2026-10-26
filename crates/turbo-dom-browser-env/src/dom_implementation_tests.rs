@@ -211,3 +211,49 @@ fn borrowed_text_and_fragment_constructors_keep_their_creation_document() {
         .is_true());
     reset();
 }
+
+/// The committed control names and pins its probe, and the collector writes exactly those
+/// fields, so a recollected control stays comparable (it wrote "dom-implementation-probe.js"
+/// and no probeSha256 while the control says "dom_implementation_probe.js").
+#[test]
+fn dom_implementation_collector_labels_its_control_like_the_committed_one() {
+    use sha2::{Digest, Sha256};
+    let probe = include_str!("dom_implementation_probe.js");
+    let control: serde_json::Value =
+        serde_json::from_str(include_str!("dom_implementation_chrome155.json")).unwrap();
+    assert_eq!(control["fixture"], "dom_implementation_probe.js");
+    assert_eq!(
+        control["probeSha256"],
+        format!("{:x}", Sha256::digest(probe.as_bytes()))
+    );
+    let collector = include_str!("../scripts/dom-implementation-chrome-control.mjs");
+    assert!(collector.contains(r#"const probe = join(envSrc, "dom_implementation_probe.js");"#));
+    assert!(collector.contains("fixture: basename(probe),"));
+    assert!(collector.contains(
+        r#"probeSha256: createHash("sha256").update(readFileSync(probe)).digest("hex"),"#
+    ));
+    assert!(!collector.contains("dom-implementation-probe.js"));
+    let fields: Vec<&str> = control
+        .as_object()
+        .unwrap()
+        .keys()
+        .map(String::as_str)
+        .collect();
+    let order = [
+        "browser",
+        "v8",
+        "recordedAt",
+        "fixture",
+        "probeSha256",
+        "effectiveExtensionFlags",
+        "result",
+    ];
+    assert_eq!(fields.len(), order.len());
+    let mut at = 0;
+    for field in order {
+        let found = collector[at..]
+            .find(&format!("    {field}:"))
+            .unwrap_or_else(|| panic!("collector writes {field} in the control's order"));
+        at += found;
+    }
+}

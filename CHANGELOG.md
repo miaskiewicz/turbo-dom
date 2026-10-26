@@ -22,6 +22,10 @@ at the time); this file reconstructs them from history.
   loading hosts publish load state through the document record's
   `imageHost.setState(img, state)`. `test_support` exports the
   `HTML_IMAGE_*` probe/cases/control (70 files).
+- `turbo-dom-browser-env/scripts/dom-implementation-chrome-control.mjs` labels its
+  control `fixture: "dom_implementation_probe.js"` and writes `probeSha256`, like the
+  committed `dom_implementation_chrome155.json` (it wrote `dom-implementation-probe.js`
+  and no hash); a Chrome 156 recollection matches the committed result.
 
 ## [0.6.0] — turbo-dom consolidation
 
