@@ -985,3 +985,19 @@ Regenerate: run the four configurations with `scratchpad/scripts/baseline-cargo.
 | `turbo_surf_raster<src/lib.rs>::style_extract::tests::strip_noscript_removes_tag_and_body` | `turbo_dom_raster<src/lib.rs>::style_extract::tests::strip_noscript_removes_tag_and_body` | verbatim | ok |
 | `turbo_surf_raster<src/lib.rs>::style_extract::tests::stylesheet_hrefs_decode_html_entities` | `turbo_dom_raster<src/lib.rs>::style_extract::tests::stylesheet_hrefs_decode_html_entities` | verbatim | ok |
 | `turbo_surf_raster<src/lib.rs>::style_extract::tests::stylesheet_hrefs_extracts_rel_stylesheet` | `turbo_dom_raster<src/lib.rs>::style_extract::tests::stylesheet_hrefs_extracts_rel_stylesheet` | verbatim | ok |
+
+## S3a — selector engine Chrome fixes (turbo-dom `consol/s3a-selectors`)
+
+No test moves. Test ids below are `binary<source>::test`. "legacy" means
+`--features selector-dual` with `TURBO_DOM_SELECTOR_ENGINE=legacy`, where callers get the
+frozen B-main engine's answers. That column lists the exact expected-to-fail-in-legacy set
+of Gate A. Every other turbo-dom and turbo-dom-browser-env test has the same result as at
+S0 in plain, legacy and new builds.
+
+| test id | category | plain / new | legacy |
+|---|---|---|---|
+| `turbo_dom<src/lib.rs>::rtdom::query::tests::pseudo_optional_readonly_readwrite_selected` | changed@S3a (control `cascade_selectors_chrome156.json` `read-only-read-write`) | ok | FAILED (B-main `:read-only` = the `readonly` attribute) |
+| `cascade_selectors_chrome<tests/cascade_selectors_chrome.rs>::selectors_match_chrome156` | added (the Chrome 156 control) | ok | FAILED (every bug-list entry disagrees) |
+| `turbo_dom<src/lib.rs>::rtdom::query::tests::s3a_selector_fixes_edge_cases` | added (edges of the fixes the control does not reach) | ok | FAILED |
+| `turbo_dom<src/lib.rs>::rtdom::query_frozen::frozen_tests::*` (59) | dual builds only: B-main's query.rs tests run against the frozen engine | ok | ok |
+| `turbo_dom<src/lib.rs>::rtdom::selector_dual::tests::star_bar_p_divergence_is_logged_again_on_the_second_identical_qsa_call` | dual builds only (gate unit test) | ok | ok |

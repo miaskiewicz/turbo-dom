@@ -64,7 +64,7 @@ Run the worked example: `cargo run --release --example crawl`.
 | module | role |
 |---|---|
 | `tree` | COW tree over the immutable SoA + `version` counter; lazy attrs; mutations; `set_inner_html`; shadow DOM; mutation recording |
-| `query` | selectors (tag/`.class`/`#id`/`[attr]` with `^=`/`$=`/`*=`/`~=`/`\|=`, descendant + child, comma, full pseudo-class set, `:not`); version-cached `querySelectorAll` / `getElementById` |
+| `query` | selectors (tag incl. `*\|`/`\|` prefixes/`.class`/`#id`/`[attr]` with `^=`/`$=`/`*=`/`~=`/`\|=`, CSS escapes, all four combinators, comma, structural/form/link pseudo-classes incl. `:nth-child(An+B of S)`, `:is`/`:where`/`:not`/`:has`), checked against a Chrome 156 control; version-cached `querySelectorAll` / `getElementById` |
 | `cascade` | partial `getComputedStyle` — inline + matched `<style>` rules with specificity/order, curated inheritance, `:host`/`::slotted` shadow scoping, color canonicalization; memoized per version |
 | `events` | `Dom` (owns the tree + listeners); capture/target/bubble dispatch, listener-less fast-skip, `stopPropagation`/`preventDefault`, tree-mutating handlers |
 | `serialize` | inner/outerHTML (void + raw-text, single-pass escaping) |

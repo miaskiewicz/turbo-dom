@@ -1,8 +1,8 @@
 //! Parse original DOM string units into native selector records. Identifiers use
 //! CSS replacement rules; raw quoted attribute strings preserve their units.
 use super::{
-    parse_pseudo, Attr, AttrMatch, Combinator, Complex, Compound, Handle, NodeType, Pseudo,
-    RelativeSelector, Tree,
+    nth_of_position, parse_nth, parse_pseudo, Attr, AttrMatch, Combinator, Complex, Compound,
+    Handle, NodeType, Pseudo, RelativeSelector, Tree, TypeNamespace,
 };
 #[derive(Debug, Clone)]
 pub(super) struct UnitAttrMatch {
@@ -412,6 +412,17 @@ fn pseudo(name: &str, arg: Option<&[u16]>) -> Pseudo {
         "is" => Pseudo::Is(list(arg)),
         "where" => Pseudo::Where(list(arg)),
         "not" => Pseudo::Not(list(arg)),
+        // `An+B of S`: S keeps its original units (escapes decoded by `list`).
+        "nth-child" | "nth-last-child" if nth_of_position(arg).is_some() => {
+            let at = nth_of_position(arg).unwrap_or_default();
+            let (a, b) = parse_nth(&String::from_utf16_lossy(&arg[..at]));
+            let of = list(&arg[at + 2..]);
+            if name == "nth-child" {
+                Pseudo::NthChildOf(a, b, of)
+            } else {
+                Pseudo::NthLastChildOf(a, b, of)
+            }
+        }
         "has" => Pseudo::Has(
             split(arg, 44)
                 .into_iter()
@@ -464,8 +475,12 @@ fn complex(source: &[u16]) -> Option<Complex> {
         let begin = index;
         let mut compound = Compound::default();
         if !matches!(source[index], 35 | 46 | 58 | 91) {
+            let start = index;
             let tag = ident(source, &mut index);
-            if tag != "*" && !tag.is_empty() {
+            if let Some((namespace, name)) = namespaced_type(&source[start..index]) {
+                compound.namespace = namespace;
+                compound.tag = name;
+            } else if tag != "*" && !tag.is_empty() {
                 compound.tag = Some(tag);
             }
         }
@@ -512,13 +527,44 @@ fn complex(source: &[u16]) -> Option<Complex> {
     }
     first.map(|first| Complex { first, rest })
 }
-fn list(source: &[u16]) -> Vec<Complex> {
+/// A type selector's raw units split at an unescaped namespace bar: `*|p`, `|p`, `*|*`.
+/// `None` when there is no bar (an escaped `\|` is part of the name). Only `*` (any) and
+/// the empty prefix (no namespace) are declared for DOM selector APIs.
+fn namespaced_type(raw: &[u16]) -> Option<(TypeNamespace, Option<String>)> {
+    let mut i = 0;
+    let bar = loop {
+        match raw.get(i) {
+            None => return None,
+            Some(92) => i = escaped_end(raw, i),
+            Some(124) => break i,
+            Some(_) => i += 1,
+        }
+    };
+    let (prefix, name) = (&raw[..bar], &raw[bar + 1..]);
+    let namespace = match prefix {
+        _ if name.is_empty() => TypeNamespace::Invalid,
+        [42] => TypeNamespace::Any,
+        [] => TypeNamespace::Null,
+        _ => TypeNamespace::Invalid,
+    };
+    let name = (name != [42]).then(|| identifier(name));
+    Some((namespace, name))
+}
+pub(super) fn list(source: &[u16]) -> Vec<Complex> {
     split(source, 44).into_iter().filter_map(complex).collect()
 }
 impl Tree {
     /// Original-unit selector path; its parsed records are not cached under a
     /// lossy scalar key. Ordinary valid UTF-8 calls retain the existing fast API.
     pub fn query_selector_all_units(&self, source: &[u16]) -> std::rc::Rc<[Handle]> {
+        dual!(
+            self,
+            "query_selector_all_units",
+            Units(source),
+            None,
+            self.query_selector_all_units(source),
+            self.frozen_query_selector_all_units(source)
+        );
         self.query_selector_all_from_units(self.root(), source)
     }
     pub fn query_selector_all_from_units(
@@ -526,6 +572,14 @@ impl Tree {
         root: Handle,
         source: &[u16],
     ) -> std::rc::Rc<[Handle]> {
+        dual!(
+            self,
+            "query_selector_all_from_units",
+            Units(source),
+            Some(root),
+            self.query_selector_all_from_units(root, source),
+            self.frozen_query_selector_all_from_units(root, source)
+        );
         let selectors = list(source);
         let mut result = Vec::new();
         let mut stack = self.children(root);
@@ -545,14 +599,38 @@ impl Tree {
         result.into()
     }
     pub fn query_selector_units(&self, source: &[u16]) -> Option<Handle> {
+        dual!(
+            self,
+            "query_selector_units",
+            Units(source),
+            None,
+            self.query_selector_units(source),
+            self.frozen_query_selector_units(source)
+        );
         self.query_selector_all_units(source).first().copied()
     }
     pub fn matches_units(&self, node: Handle, source: &[u16]) -> bool {
+        dual!(
+            self,
+            "matches_units",
+            Units(source),
+            Some(node),
+            self.matches_units(node, source),
+            self.frozen_matches_units(node, source)
+        );
         list(source)
             .iter()
             .any(|selector| self.matches_complex(node, selector))
     }
     pub fn get_element_by_id_units(&self, id: &[u16]) -> Option<Handle> {
+        dual!(
+            self,
+            "get_element_by_id_units",
+            Units(id),
+            None,
+            self.get_element_by_id_units(id),
+            self.frozen_get_element_by_id_units(id)
+        );
         let mut stack = vec![self.root()];
         while let Some(node) = stack.pop() {
             if self.node_type(node) == NodeType::Element

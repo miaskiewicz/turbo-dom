@@ -12,6 +12,13 @@ categories = ["parser-implementations", "web-programming"]
 [lib]
 crate-type = ["rlib"]
 
+[features]
+# TEMPORARY consolidation gate (S3a/S3b, docs/selector-dual-gate.md): run the frozen B-main
+# selector engine next to the current one at every engine output, log disagreements, and
+# answer per TURBO_DOM_SELECTOR_ENGINE=legacy|new. Never enable it in a published or
+# production build; removed in the last S3b commit.
+selector-dual = []
+
 [dependencies]
 # Spec-compliant WHATWG parser (same core as turbo-dom). The runtime builds its
 # COW tree directly over the SoA this produces.
