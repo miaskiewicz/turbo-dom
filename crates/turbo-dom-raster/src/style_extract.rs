@@ -624,7 +624,7 @@ mod tests {
             Vec::<String>::new()
         );
         assert_eq!(
-            stylesheet_hrefs(r#"<link rel=stylesheet href=a.css><link rel=stylesheet href=b.css"#),
+            stylesheet_hrefs("<link rel=stylesheet href=a.css><link rel=stylesheet href=b.css"),
             ["a.css"]
         );
     }
