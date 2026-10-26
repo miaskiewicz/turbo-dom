@@ -154,6 +154,12 @@ changes in `tools/parity/expected/p5b-w3-turbo-dom-28-*.json`.
   cell keeping its full borders (`68x20` for two 2px-bordered cells, was `70x20`), and a
   collapsed table with its own border no longer counts it twice (also fixed layout).
   Control: `table-collapse-auto-*` in `live-geometry` and `html-document`.
+- Spanning cells in separated tables (miaskiewicz/turbo-dom#56, found while fixing #49):
+  a `colspan` cell wider than its columns spreads the excess over them in proportion to
+  their widths (evenly when empty) instead of widening only the last one, the
+  border-spacing between them counting towards the span — for the max-content and the
+  min-content — and the cell is laid out over that spacing too, as in Chrome.
+  Control: `table-colspan-*` in `live-geometry` and `html-document`.
 
 ### Changed — selector follow-ups (P5b-X2, miaskiewicz/turbo-dom#24, Chrome 156 controls)
 - `rtdom::cascade` (`getComputedStyle`) and the npm `cascade.mjs` rank rules by the

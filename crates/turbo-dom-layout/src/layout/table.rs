@@ -265,7 +265,9 @@ fn cell_span_width(cols: &[f32], col: usize, span: usize) -> f32 {
     cols[col..col + span].iter().sum()
 }
 
-fn auto_columns(placed: &[Placed], ncols: usize, fonts: &FontRegistry) -> Vec<f32> {
+/// Each column's max-content for a separated table with horizontal border-spacing
+/// `hs`.
+fn auto_columns(placed: &[Placed], ncols: usize, hs: f32, fonts: &FontRegistry) -> Vec<f32> {
     let mut w = vec![0.0_f32; ncols];
     for p in placed {
         if p.colspan == 1 {
@@ -273,17 +275,20 @@ fn auto_columns(placed: &[Placed], ncols: usize, fonts: &FontRegistry) -> Vec<f3
         }
     }
     for p in placed {
-        fit_span(&mut w, p, fonts);
+        fit_span(&mut w, p, hs, fonts);
     }
     w
 }
 
-fn fit_span(w: &mut [f32], p: &Placed, fonts: &FontRegistry) {
+/// Widen the columns a spanning cell covers to its max-content: the spacing between
+/// them counts towards the span and the excess spreads in proportion to the columns'
+/// widths, evenly when they are empty (Chrome 156; miaskiewicz/turbo-dom#56).
+fn fit_span(w: &mut [f32], p: &Placed, hs: f32, fonts: &FontRegistry) {
     if p.colspan > 1 {
-        let have = cell_span_width(w, p.col, p.colspan);
-        let need = natural_width(p.lb, fonts);
-        if need > have {
-            w[p.col + p.colspan - 1] += need - have;
+        let have = cell_span_width(w, p.col, p.colspan) + hs * (p.colspan - 1) as f32;
+        let need = natural_width(p.lb, fonts) - have;
+        if need > 0.0 {
+            spread(&mut w[p.col..p.col + p.colspan], need);
         }
     }
 }
@@ -490,7 +495,7 @@ fn column_widths(
     // The columns fill the table box: an auto table is already shrink-to-fit (its
     // columns' max-content, wider under `min-width` or when stretched), an explicit
     // width is `cw` itself.
-    let mut cols = auto_columns(placed, ncols, fonts);
+    let mut cols = auto_columns(placed, ncols, border_spacing(style).0, fonts);
     let mins = min_columns(placed, ncols, fonts);
     fit_columns(&mut cols, &mins, &column_percents(placed, ncols), cw);
     cols
@@ -850,8 +855,14 @@ struct LaidCell<'a> {
     content_h: f32,
 }
 
-fn layout_one<'a>(p: &'a Placed<'a>, cols: &[f32], fs: f32, ctx: &mut Ctx) -> LaidCell<'a> {
-    let w = cell_span_width(cols, p.col, p.colspan);
+fn layout_one<'a>(
+    p: &'a Placed<'a>,
+    cols: &[f32],
+    hs: f32,
+    fs: f32,
+    ctx: &mut Ctx,
+) -> LaidCell<'a> {
+    let w = cell_span_width(cols, p.col, p.colspan) + hs * (p.colspan - 1) as f32;
     let bs = p.lb.resolved(ResolveCtx {
         parent_font_size: fs,
         cb_width: w,
@@ -866,15 +877,18 @@ fn layout_one<'a>(p: &'a Placed<'a>, cols: &[f32], fs: f32, ctx: &mut Ctx) -> La
     }
 }
 
+/// Lay out every cell at its columns' width (a spanning cell also over the
+/// border-spacing `hs` between them; miaskiewicz/turbo-dom#56).
 fn layout_cells<'a>(
     placed: &'a [Placed],
     cols: &[f32],
+    hs: f32,
     fs: f32,
     ctx: &mut Ctx,
 ) -> Vec<LaidCell<'a>> {
     placed
         .iter()
-        .map(|p| layout_one(p, cols, fs, ctx))
+        .map(|p| layout_one(p, cols, hs, fs, ctx))
         .collect()
 }
 
@@ -1200,28 +1214,30 @@ pub(crate) fn max_content(
         return (collapsed_width(&[total], &vert, style), unbounded);
     }
     let (hs, _) = border_spacing(style);
-    let cols = auto_columns(&placed, ncols, fonts);
+    let cols = auto_columns(&placed, ncols, hs, fonts);
     let (total, unbounded) = percent_aware_total(&cols, &pcts);
     (total + hs * (ncols as f32 + 1.0), unbounded)
 }
 
 /// Separated-border table min-content. Each column's min-content is the widest
 /// single-column cell (text wraps to its longest word; a fixed-width cell keeps its
-/// size). The table is at least the sum of those, and at least any spanning cell's
-/// own min-content (e.g. the infobox's 267px cat-image row that spans both columns),
-/// plus the border-spacing between and around the columns.
+/// size); a spanning cell wider than its columns and the spacing between them (e.g.
+/// the infobox's 267px cat-image row that spans both columns) widens them in
+/// proportion, as for the max-content (miaskiewicz/turbo-dom#56). Plus the
+/// border-spacing between and around the columns.
 fn separated_min_content(placed: &[Placed], ncols: usize, hs: f32, fonts: &FontRegistry) -> f32 {
     let mut w = vec![0.0_f32; ncols];
     for p in placed.iter().filter(|p| p.colspan == 1) {
         w[p.col] = w[p.col].max(super::flex::min_content_width(p.lb, fonts));
     }
-    let base: f32 = w.iter().sum();
-    let span_max = placed
-        .iter()
-        .filter(|p| p.colspan > 1)
-        .map(|p| super::flex::min_content_width(p.lb, fonts))
-        .fold(0.0_f32, f32::max);
-    base.max(span_max) + hs * (ncols as f32 + 1.0)
+    for p in placed.iter().filter(|p| p.colspan > 1) {
+        let have = cell_span_width(&w, p.col, p.colspan) + hs * (p.colspan - 1) as f32;
+        let need = super::flex::min_content_width(p.lb, fonts) - have;
+        if need > 0.0 {
+            spread(&mut w[p.col..p.col + p.colspan], need);
+        }
+    }
+    w.iter().sum::<f32>() + hs * (ncols as f32 + 1.0)
 }
 
 /// Returns the row fragments (galley-absolute) and the table content height.
@@ -1265,7 +1281,7 @@ pub(crate) fn layout_table(
     // columns + gaps still fit the table box.
     let inner = (cw - hs * (ncols as f32 + 1.0)).max(1.0);
     let cols = column_widths(&table.style, &placed, ncols, inner, ctx.fonts);
-    let laid = layout_cells(&placed, &cols, fs, ctx);
+    let laid = layout_cells(&placed, &cols, hs, fs, ctx);
     let row_h = row_heights(&laid, &rows);
     let nrows = row_h.len();
     let geom = Geom {

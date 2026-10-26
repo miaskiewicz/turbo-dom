@@ -325,7 +325,6 @@ fn colspan_case(id: &str) -> bool {
 }
 
 #[test]
-#[ignore = "turbo-dom#56: fails until the fix"]
 fn spanning_cells_spread_over_their_columns_like_chrome_156() {
     assert_matches_chrome(compare_cases(colspan_case));
 }
