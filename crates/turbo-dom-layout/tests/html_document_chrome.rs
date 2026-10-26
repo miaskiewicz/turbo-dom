@@ -380,7 +380,6 @@ fn float_sum_case(id: &str) -> bool {
 }
 
 #[test]
-#[ignore = "turbo-dom#85: fails until the fix"]
 fn floats_sit_side_by_side_in_max_content_like_chrome_156() {
     compare_cases(float_sum_case);
 }

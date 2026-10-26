@@ -1628,6 +1628,17 @@ fn intrinsic_formatting_root(lb: &LayoutBox, bs: &BoxStyle) -> bool {
     lb.document_root() || bs.float != Float::None || bs.position.is_out_of_flow()
 }
 
+/// Whether an in-flow block-level box avoids floats (a formatting-context root or a
+/// replaced box): it sits beside them rather than under them — also in a max-content
+/// width (miaskiewicz/turbo-dom#85).
+pub(crate) fn avoids_floats(lb: &LayoutBox) -> bool {
+    let bs = lb.resolved(ResolveCtx {
+        parent_font_size: DEFAULT_FONT_SIZE,
+        cb_width: 0.0,
+    });
+    establishes_bfc(lb, &bs) || lb.is_replaced()
+}
+
 fn establishes_bfc(lb: &LayoutBox, bs: &BoxStyle) -> bool {
     if intrinsic_formatting_root(lb, bs) {
         return true;

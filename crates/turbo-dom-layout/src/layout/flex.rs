@@ -490,6 +490,43 @@ fn kids_natural(kids: &[LayoutBox], fonts: &FontRegistry) -> f32 {
         .fold(0.0_f32, f32::max)
 }
 
+/// A block container's max-content width (miaskiewicz/turbo-dom#85): consecutive floats
+/// sit side by side, so their margin boxes add up (per side, a `clear` closing the side's
+/// run); an in-flow block ends the run, and one that avoids floats (a formatting-context
+/// root) sits beside it (its contribution adds the run). Otherwise the widest margin box.
+fn block_natural(kids: &[LayoutBox], fonts: &FontRegistry) -> f32 {
+    let (mut widest, mut left, mut right) = (0.0_f32, 0.0_f32, 0.0_f32);
+    for k in in_flow(kids) {
+        let w = margin_box(k, natural_width(k, fonts));
+        let (clear_left, clear_right) = match k.style.get("clear").map(str::trim) {
+            Some("both") => (true, true),
+            Some("left") => (true, false),
+            Some("right") => (false, true),
+            _ => (false, false),
+        };
+        if clear_left || clear_right {
+            widest = widest.max(left + right);
+            left = if clear_left { 0.0 } else { left };
+            right = if clear_right { 0.0 } else { right };
+        }
+        if k.floated() {
+            match super::value::float_of(&k.style) {
+                super::value::Float::Right => right += w,
+                _ => left += w,
+            }
+            continue;
+        }
+        let beside = if block::avoids_floats(k) {
+            left + right
+        } else {
+            0.0
+        };
+        widest = widest.max(left + right).max(w + beside);
+        (left, right) = (0.0, 0.0);
+    }
+    widest.max(left + right)
+}
+
 /// The in-flow children of a box: absolutely positioned and fixed ones are out of flow
 /// and add nothing to its intrinsic widths (miaskiewicz/turbo-dom#84).
 fn in_flow(kids: &[LayoutBox]) -> impl Iterator<Item = &LayoutBox> {
@@ -607,7 +644,7 @@ pub(crate) fn natural_width(lb: &LayoutBox, fonts: &FontRegistry) -> f32 {
             // (miaskiewicz/turbo-dom#28 item 4), not its widest row group.
             BoxKind::Table(k) => super::table::max_content_width(k, &lb.style, fonts),
             BoxKind::Grid(k) => grid_natural(k, &lb.style, fonts),
-            BoxKind::Block(k) => kids_natural(k, fonts),
+            BoxKind::Block(k) => block_natural(k, fonts),
             BoxKind::Marker(_) => 0.0,
         };
         inner + frame

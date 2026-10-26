@@ -62,6 +62,13 @@ changes in `tools/parity/expected/p5b-w7-turbo-dom-*.json`.
   `height`, its `width` (`%`, `min-width` / `max-width`) is the cross size, and the
   flexed main size is its used height (`flex-basis`, `flex-grow`). Control:
   `column-flex-*` in `html-document`.
+- Floats side by side in a max-content width (miaskiewicz/turbo-dom#85, found while
+  fixing #79): a block container's max-content took its widest float, so a
+  shrink-to-fit container (a float, an inline-block, an auto table cell) was too narrow
+  and its floats wrapped onto separate rows. Consecutive floats now add up (per side,
+  a `clear` closing that side's run); an in-flow block ends the run, and one that avoids
+  floats (a formatting-context root, a replaced box) counts beside it. Control:
+  `float-sum-*` in `html-document`.
 
 ### Fixed — turbo-dom-layout tables, clipping and box sizing (P5b-W5, miaskiewicz/turbo-dom#41/#51/#52/#55/#62/#63/#64/#65/#69/#70, Chrome 156 controls)
 Each fix is backed by a Chrome for Testing 156 control and lists the corpus outputs it
