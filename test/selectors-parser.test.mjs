@@ -63,7 +63,8 @@ test('a type selector must come first in its compound (div[id=x]y is a SyntaxErr
 test('malformed selectors still throw SyntaxError', () => {
   assert.throws(() => parseSelectorList('>'), SyntaxError); // leading combinator ⇒ empty compound
   assert.throws(() => parseSelectorList('div!p'), SyntaxError); // unexpected char
-  assert.throws(() => parseSelectorList('[href'), SyntaxError); // unterminated attribute
+  // the end of a DOM-API selector closes an open `[` (Chrome 156; turbo-dom#91)
+  assert.equal(parseSelectorList('[href')[0].first.attrs[0].name, 'href');
   assert.throws(() => parseSelectorList('a > > b'), SyntaxError); // empty compound between combinators
   assert.throws(() => parseSelectorList('a + > b'), SyntaxError);
 });
@@ -113,7 +114,8 @@ test('attribute parsing: presence, every operator, quote stripping, empty values
   assert.deepEqual(one('[|a]').first.attrs, [present('a')]);
   // comments are allowed inside the brackets
   assert.deepEqual(one('[a/**/="b"/**/]').first.attrs, [attr('a', 'equals', 'b')]);
-  assert.throws(() => parseSelectorList('[a/*="b"]'), SyntaxError);
+  // an unterminated comment runs to the end (Chrome 156; turbo-dom#91)
+  assert.deepEqual(one('[a/*="b"]').first.attrs, [present('a')]);
   // multiple attributes in one compound
   assert.deepEqual(one('a[b][c]').first.attrs, [present('b'), present('c')]);
   // each operator folds to its named op (no value key on presence)

@@ -1,0 +1,24 @@
+{
+ "id": "miaskiewicz/turbo-dom#93",
+ "reason": "A content-box flex item's width / height / flex-basis / min / max lengths reach taffy as border-box lengths (its padding and border added). No existing corpus output changes (Fresh-target parity builds (turbo-html2pdf refactor 923c89f, path-patched): d17e810 -> 2ae7d19 (#88) -> f9e5a60 (#86) -> b6b3d4a (#93) -> 1315ee4 (+ extra inputs, merged refactor 1b6c9fa): 0 changed at b6b3d4a); the new extra input flex-item-box-sizing.html pins it. P5b-W6.",
+ "control": "scripts/html-document-chrome-control.mjs flex-item-* cases",
+ "e2e": "crates/turbo-dom-layout/tests/html_document_chrome.rs (content_box_flex_items_add_their_frame_like_chrome_156)",
+ "changes": {
+  "html2pdf": [],
+  "html2pdf-svg": [],
+  "html2pdf-extra": [],
+  "surf": [],
+  "surf-extra": []
+ },
+ "added": {
+  "html2pdf-extra": [
+   "extra-flex-item-box-sizing.boxes.json",
+   "extra-flex-item-box-sizing.pdf",
+   "extra-flex-item-box-sizing.ua.pdf"
+  ],
+  "surf-extra": [
+   "static-extra-flex-item-box-sizing.png",
+   "static-extra-flex-item-box-sizing.svg"
+  ]
+ }
+}

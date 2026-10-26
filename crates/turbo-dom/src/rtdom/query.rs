@@ -100,11 +100,18 @@ enum AttrMatch {
     Units(UnitAttrMatch),
     Equals(String),   // [attr=v]
     Includes(String), // [attr~=v]  whitespace-separated word
-    Dash(String),     // [attr|=v]  v or v-...
+    // (`[attr|=v]` always takes the unit path: `specialized_attribute` claims every `|`)
     Prefix(String),   // [attr^=v]
     Suffix(String),   // [attr$=v]
     Substr(String),   // [attr*=v]
 }
+
+#[path = "selector_source.rs"]
+mod source;
+
+#[cfg(test)]
+#[path = "query_internal_tests.rs"]
+mod internal_tests;
 
 #[path = "query_utf16.rs"]
 mod units;
@@ -120,11 +127,12 @@ pub use cascade::{
 impl AttrMatch {
     /// Does `got` (the element's attribute value) satisfy this test? SAME
     /// semantics as the old `attr_op_matches`: the `!want.is_empty()` guards on
-    /// prefix/suffix/substr/includes are preserved, `Dash` = `v` or `v-…`.
+    /// prefix/suffix/substr/includes are preserved.
     fn matches(&self, got: &str) -> bool {
         match self {
             AttrMatch::Present => true,
-            AttrMatch::Units(m) => m.matches(&got.encode_utf16().collect::<Vec<_>>()),
+            // unit records are matched against unit values (`matches_compound`)
+            AttrMatch::Units(_) => unreachable!("unit attribute records match units"),
             AttrMatch::Equals(want) => got == want,
             AttrMatch::Prefix(want) => !want.is_empty() && got.starts_with(want.as_str()),
             AttrMatch::Suffix(want) => !want.is_empty() && got.ends_with(want.as_str()),
@@ -132,7 +140,6 @@ impl AttrMatch {
             AttrMatch::Includes(want) => {
                 !want.is_empty() && got.split_ascii_whitespace().any(|w| w == want)
             }
-            AttrMatch::Dash(want) => got == want || got.starts_with(&format!("{want}-")),
         }
     }
 }
@@ -233,6 +240,10 @@ enum Pseudo {
     NthLastOfType(i64, i64),
     Empty,
     Root,
+    // `:scope`: the scoping element of a DOM-API match (`matches` / `closest`: the element
+    // called on; element-rooted queries: that element; document queries and stylesheets:
+    // `:root`; miaskiewicz/turbo-dom#96).
+    Scope,
     // Form-state
     Checked,
     Disabled,
@@ -350,11 +361,8 @@ enum Token {
 /// is `ch` a token boundary (the lexer can never put it inside an `Ident`)?
 #[inline]
 fn is_special(ch: char) -> bool {
-    ch.is_whitespace()
-        || matches!(
-            ch,
-            '>' | '+' | '~' | '#' | '.' | ':' | '[' | ']' | '(' | ')'
-        )
+    let delimiter = matches!(ch, '>' | '+' | '~' | '#' | '.' | ':' | '[' | ']' | '(' | ')');
+    ch.is_whitespace() || delimiter
 }
 
 /// A type-selector / pseudo-name may START with an ASCII letter (mirrors the JS
@@ -574,6 +582,11 @@ fn lex_strict(src: &str) -> Result<Vec<StrictTok>, SelectorError> {
                 let argument = scan_balanced(&chars, &mut i, '(', ')');
                 if selector_list {
                     lex_strict(&argument)?;
+                } else if matches!(lower.as_str(), "nth-child" | "nth-last-child") {
+                    // the `of S` part is a selector list too (`:nth-child(1 of !)`)
+                    if let Some(at) = nth_of_position(argument.as_bytes()) {
+                        lex_strict(&argument[at + 2..])?;
+                    }
                 }
                 if state
                     && (i == n
@@ -622,22 +635,23 @@ fn push_part(
     Ok(())
 }
 
-/// Structural validation of a selector list: a combinator must have a non-empty compound
-/// on its LEFT (else "empty compound"), across every top-level comma segment, and a type
-/// selector must be the first simple selector of its compound (`[a]div`). Empty segments
-/// and a trailing combinator pass here; [`parse_for_cascade`] (which calls this per item)
-/// rejects them, as Chrome does.
+/// Structural validation of one selector-list item: a combinator must have a non-empty
+/// compound on its LEFT (else "empty compound"), and a type selector must be the first
+/// simple selector of its compound (`[a]div`). A trailing combinator passes here;
+/// [`parse_for_cascade`] (which calls this per item) rejects it, as Chrome does.
 fn validate_selector_list(src: &str) -> Result<(), SelectorError> {
     let toks = lex_strict(src)?;
-    // `matched` = the compound currently being built has at least one part. A comma
-    // starts a fresh segment (reset); whitespace is a transparent separator.
+    // `matched` = the compound currently being built has at least one part; whitespace
+    // is a transparent separator.
     let mut matched = false;
     // `compound` = the current compound has a part not separated from the next by
     // whitespace (a type selector must come first).
     let mut compound = false;
     for t in &toks {
         match t {
-            StrictTok::Comma => (matched, compound) = (false, false),
+            // callers validate one top-level item (commas inside arguments are lexed
+            // by the nested `lex_strict` only)
+            StrictTok::Comma => unreachable!("validate_selector_list takes one item"),
             StrictTok::Ws => compound = false,
             StrictTok::Comb => {
                 if !matched {
@@ -663,7 +677,7 @@ fn validate_selector_list(src: &str) -> Result<(), SelectorError> {
 /// match nothing; empty items, a trailing combinator and unknown pseudos are
 /// `SyntaxError`s).
 fn validate_checked(src: &str) -> Result<(), SelectorError> {
-    parse_for_cascade(src).map(|_| ())
+    parse_for_cascade(&source::normalize_str(src, source::Mode::Dom)).map(|_| ())
 }
 
 /// Scan from just past an opening `open` to its matching `close`, honoring quotes
@@ -937,6 +951,33 @@ fn forgive_nested_has(complex: &mut Complex) {
     }
 }
 
+/// Does a selector-list argument have an invalid item: empty (`p, `, `,p`, `p,,a`, or
+/// nothing), ending in a combinator (`p >`), or — unless `relative` (`:has()`) —
+/// starting with one (`> p`)? The unforgiving lists reject it.
+fn has_empty_item(arg: &str, relative: bool) -> bool {
+    split_top_level_commas(arg)
+        .iter()
+        .any(|item| invalid_list_item(item, relative))
+}
+
+/// See [`has_empty_item`]; an escaped `\>` is a name, not a combinator.
+fn invalid_list_item(item: &str, relative: bool) -> bool {
+    let item = item.trim();
+    let mut tail = item.chars().rev();
+    item.is_empty()
+        || (matches!(tail.next(), Some('>' | '+' | '~')) && tail.next() != Some('\\'))
+        || (!relative && item.starts_with(['>', '+', '~']))
+}
+
+/// A forgiving list (`:is()` / `:where()`): its invalid items are dropped.
+fn parse_forgiving_list(src: &str) -> Vec<Complex> {
+    split_top_level_commas(src)
+        .into_iter()
+        .filter(|item| !invalid_list_item(item, false))
+        .filter_map(|item| parse_complex(item.trim()))
+        .collect()
+}
+
 /// Map a pseudo `name` + optional `arg` to a `Pseudo`. Unrecognized → `Unknown`
 /// (never matches). Mirrors selectors.mjs `matchPseudo` switch.
 fn parse_pseudo(name: &str, arg: Option<&str>) -> Pseudo {
@@ -967,6 +1008,7 @@ fn parse_pseudo(name: &str, arg: Option<&str>) -> Pseudo {
             | "has"
             | "lang"
             | "dir"
+            | "-webkit-any"
     );
     if functional != arg.is_some() {
         return Pseudo::unknown(name, arg);
@@ -980,6 +1022,7 @@ fn parse_pseudo(name: &str, arg: Option<&str>) -> Pseudo {
         "only-of-type" => Pseudo::OnlyOfType,
         "empty" => Pseudo::Empty,
         "root" => Pseudo::Root,
+        "scope" => Pseudo::Scope,
         "checked" => Pseudo::Checked,
         "disabled" => Pseudo::Disabled,
         "enabled" => Pseudo::Enabled,
@@ -997,6 +1040,9 @@ fn parse_pseudo(name: &str, arg: Option<&str>) -> Pseudo {
             let last = name == "nth-last-child";
             if let Some((anb, of)) = split_nth_of(arg) {
                 if !valid_anb(anb) {
+                    return Pseudo::unknown(name, Some(arg));
+                }
+                if has_empty_item(of, false) {
                     return Pseudo::unknown(name, Some(arg));
                 }
                 let (a, b) = parse_nth(anb);
@@ -1030,10 +1076,15 @@ fn parse_pseudo(name: &str, arg: Option<&str>) -> Pseudo {
                 Pseudo::NthLastOfType(a, b)
             }
         }
-        "is" => Pseudo::Is(parse_selector_list_str(arg.unwrap_or(""))),
-        "where" => Pseudo::Where(parse_selector_list_str(arg.unwrap_or(""))),
+        "is" => Pseudo::Is(parse_forgiving_list(arg.unwrap_or(""))),
+        "where" => Pseudo::Where(parse_forgiving_list(arg.unwrap_or(""))),
+        // the unforgiving lists reject an empty item (`:not(p, )`; Chrome: SyntaxError)
+        "not" if has_empty_item(arg.unwrap_or(""), false) => Pseudo::unknown(name, arg),
+        "has" if has_empty_item(arg.unwrap_or(""), true) => Pseudo::unknown(name, arg),
         "not" => Pseudo::Not(parse_selector_list_str(arg.unwrap_or(""))),
         "has" => Pseudo::Has(parse_relative_selector_list(arg.unwrap_or(""))),
+        "-webkit-any" => cascade::webkit_any(arg.unwrap_or(""))
+            .map_or_else(|| Pseudo::unknown(name, arg), Pseudo::WebkitAny),
         "lang" => arg
             .and_then(|arg| units::lang_range(&arg.encode_utf16().collect::<Vec<_>>()))
             .map_or_else(|| Pseudo::unknown(name, arg), Pseudo::Lang),
@@ -1109,6 +1160,12 @@ fn valid_anb(arg: &str) -> bool {
         return coefficient && i == b.len();
     }
     i += 1;
+    // `n-123` is one ident (or dimension unit): Chrome converts its integer exactly, so
+    // it must fit 32 bits (a separate number token is clamped instead)
+    let glued = b.get(i) == Some(&b'-') && b.get(i + 1).is_some_and(u8::is_ascii_digit);
+    if glued && clamped_int(true, &s[i + 1..]) == i64::from(i32::MIN) - 1 {
+        return false;
+    }
     let skip = |i: &mut usize| {
         while b.get(*i).copied().is_some_and(space) {
             *i += 1;
@@ -1153,26 +1210,46 @@ fn parse_nth(arg: &str) -> (i64, i64) {
         let a = match acoef {
             "" | "+" => 1,
             "-" => -1,
-            s => s.parse::<i64>().unwrap_or(0),
+            s => signed_int(s),
         };
         let brest = &a0[npos + 1..];
-        let b = if brest.is_empty() {
-            0
-        } else {
-            brest.parse::<i64>().unwrap_or(0)
-        };
+        let b = if brest.is_empty() { 0 } else { signed_int(brest) };
         return (a, b);
     }
     // bare integer
-    match a0.parse::<i64>() {
-        Ok(n) => (0, n),
-        Err(_) => (0, 0),
+    (0, signed_int(&a0))
+}
+
+/// A validated `[+-]digits` integer as Chrome stores it: clamped to 32 bits.
+fn signed_int(s: &str) -> i64 {
+    let negative = s.starts_with('-');
+    let digits = s.trim_start_matches(['+', '-']);
+    clamped_int(negative, digits).clamp(i64::from(i32::MIN), i64::from(i32::MAX))
+}
+
+/// The value of `digits` (ASCII digits, leading ones only) with that sign, saturating
+/// one past the 32-bit range (so `i32::MIN - 1` / `i32::MAX + 1` mean "does not fit").
+fn clamped_int(negative: bool, digits: &str) -> i64 {
+    let limit = i64::from(i32::MAX) + 2;
+    let magnitude = digits
+        .bytes()
+        .take_while(u8::is_ascii_digit)
+        .fold(0i64, |v, d| (v * 10 + i64::from(d - b'0')).min(limit));
+    if negative {
+        (-magnitude).max(i64::from(i32::MIN) - 1)
+    } else {
+        magnitude.min(i64::from(i32::MAX) + 1)
     }
 }
 
 /// Does 1-based `index` satisfy `an+b`? Mirrors selectors.mjs `nthMatch`:
 /// for a==0, exact match; otherwise `(index-b) % a == 0 && (index-b)/a >= 0`.
+/// Chrome 156 matches nothing when A or B is outside 31 bits (`1073741824n+1`).
 fn nth_match(a: i64, b: i64, index: i64) -> bool {
+    const LIMIT: i64 = 1 << 30;
+    if !(-LIMIT..LIMIT).contains(&a) || !(-LIMIT..LIMIT).contains(&b) {
+        return false;
+    }
     if a == 0 {
         return index == b;
     }
@@ -1202,7 +1279,7 @@ fn parse_attr(inner: &str) -> Attr {
             let val = val.to_string();
             let (m, name) = match raw_name.as_bytes().last() {
                 Some(b'~') => (AttrMatch::Includes(val), &raw_name[..raw_name.len() - 1]),
-                Some(b'|') => (AttrMatch::Dash(val), &raw_name[..raw_name.len() - 1]),
+                Some(b'|') => unreachable!("`|=` takes the unit path"),
                 Some(b'^') => (AttrMatch::Prefix(val), &raw_name[..raw_name.len() - 1]),
                 Some(b'$') => (AttrMatch::Suffix(val), &raw_name[..raw_name.len() - 1]),
                 Some(b'*') => (AttrMatch::Substr(val), &raw_name[..raw_name.len() - 1]),
@@ -1334,6 +1411,10 @@ pub trait Navigator {
     fn type_name(&self, h: Handle) -> Option<&str>;
     /// `:root`.
     fn is_root(&self, h: Handle) -> bool;
+    /// `:scope`: without a scoping element (document queries, stylesheets) it is `:root`.
+    fn is_scope(&self, h: Handle) -> bool {
+        self.is_root(h)
+    }
     /// `:empty`.
     fn is_empty(&self, h: Handle) -> bool;
     /// Whether some descendant element of `root` (in the scope, `root` excluded) satisfies
@@ -1347,6 +1428,51 @@ pub trait Navigator {
     /// The slot `h` is assigned to, for `::slotted()` (`None`: not in a composed context).
     fn assigned_slot(&self, _h: Handle) -> Option<Handle> {
         None
+    }
+}
+
+/// [`LiveNavigator`] with a scoping element: `:scope` is `scope` (the DOM APIs).
+struct ScopedNavigator<'t> {
+    live: LiveNavigator<'t>,
+    scope: Handle,
+}
+
+impl Navigator for ScopedNavigator<'_> {
+    fn tree(&self) -> &Tree {
+        self.live.tree()
+    }
+    fn parent(&self, h: Handle) -> Option<Handle> {
+        self.live.parent(h)
+    }
+    fn previous_element_sibling(&self, h: Handle) -> Option<Handle> {
+        self.live.previous_element_sibling(h)
+    }
+    fn next_element_sibling(&self, h: Handle) -> Option<Handle> {
+        self.live.next_element_sibling(h)
+    }
+    fn element_siblings(&self, h: Handle) -> Vec<Handle> {
+        self.live.element_siblings(h)
+    }
+    fn same_type(&self, a: Handle, b: Handle) -> bool {
+        self.live.same_type(a, b)
+    }
+    fn type_name(&self, h: Handle) -> Option<&str> {
+        self.live.type_name(h)
+    }
+    fn is_root(&self, h: Handle) -> bool {
+        self.live.is_root(h)
+    }
+    fn is_scope(&self, h: Handle) -> bool {
+        h == self.scope
+    }
+    fn is_empty(&self, h: Handle) -> bool {
+        self.live.is_empty(h)
+    }
+    fn some_descendant(&self, root: Handle, pred: &mut dyn FnMut(Handle) -> bool) -> bool {
+        self.live.some_descendant(root, pred)
+    }
+    fn some_self_or_descendant(&self, root: Handle, pred: &mut dyn FnMut(Handle) -> bool) -> bool {
+        self.live.some_self_or_descendant(root, pred)
     }
 }
 
@@ -1620,6 +1746,18 @@ impl Tree {
     pub(crate) fn matches_complex(&self, h: Handle, cx: &Complex) -> bool {
         matches_complex(&LiveNavigator(self), h, cx)
     }
+
+    /// [`Tree::matches_complex`] with `scope` as the `:scope` element.
+    pub(crate) fn matches_complex_in(&self, h: Handle, cx: &Complex, scope: Handle) -> bool {
+        matches_complex(
+            &ScopedNavigator {
+                live: LiveNavigator(self),
+                scope,
+            },
+            h,
+            cx,
+        )
+    }
 }
 
 fn matches_compound<N: Navigator + ?Sized>(nav: &N, h: Handle, c: &Compound) -> bool {
@@ -1672,12 +1810,12 @@ fn matches_compound<N: Navigator + ?Sized>(nav: &N, h: Handle, c: &Compound) -> 
             &a.name
         };
         if a.any_namespace {
+            // `[*|a]` is built by the unit parser only (`Attr::namespaced`)
+            let AttrMatch::Units(m) = &a.m else {
+                unreachable!("namespaced attribute selectors are unit records")
+            };
             let found = tree.local_attributes(h).any(|(local, value)| {
-                local == name
-                    && match &a.m {
-                        AttrMatch::Units(m) => m.matches(&value.encode_utf16().collect::<Vec<_>>()),
-                        m => m.matches(value),
-                    }
+                local == name && m.matches(&value.encode_utf16().collect::<Vec<_>>())
             });
             if !found {
                 return false;
@@ -1759,6 +1897,7 @@ fn matches_pseudo<N: Navigator + ?Sized>(nav: &N, h: Handle, p: &Pseudo) -> bool
         }
         Pseudo::Empty => nav.is_empty(h),
         Pseudo::Root => nav.is_root(h),
+        Pseudo::Scope => nav.is_scope(h),
         // Form-state. Mirrors selectors.mjs: read the live IDL property first (what a
         // consumer / React sets via set_form_property, the analogue of `el.checked`),
         // falling back to the HTML attribute when no live override is set.
@@ -1969,23 +2108,45 @@ impl Tree {
         // A selector with CSS escapes goes through the UTF-16 parser, which decodes them
         // (the scalar tokenizer would split `.md\:flex` at the `:`). The binding already
         // routes escaped JS selectors there, so both APIs read escapes the same way.
-        let list: std::rc::Rc<[Complex]> = if selector.contains('\\') {
-            units::list(&selector.encode_utf16().collect::<Vec<_>>()).into()
+        let source = source::normalize_str(selector, source::Mode::Dom);
+        let list: std::rc::Rc<[Complex]> = if source.contains('\\') {
+            units::list(&source.encode_utf16().collect::<Vec<_>>()).into()
         } else {
-            parse_selector_list_str(selector).into()
+            parse_selector_list_str(&source).into()
         };
         let mut cache = self.parse_cache.borrow_mut();
         bounded_insert(&mut cache, selector.to_string(), list.clone());
         list
     }
 
+    /// `element.matches(selector)`: `:scope` is `h` itself.
     pub fn matches(&self, h: Handle, selector: &str) -> bool {
+        self.matches_scoped(h, selector, h)
+    }
+
+    /// Does `h` match `selector` with `scope` as the `:scope` element (an element-rooted
+    /// query or `closest()` tests each candidate against the element it was called on)?
+    pub fn matches_scoped(&self, h: Handle, selector: &str, scope: Handle) -> bool {
         // every `cx` reaching the matcher is a non-empty `Complex` (parse_selector_cached
         // drops empty/combinator-only segments). Re-parsing is avoided across an
         // element-loop `matches()` via the parse cache.
         self.parse_selector_cached(selector)
             .iter()
-            .any(|cx| self.matches_complex(h, cx))
+            .any(|cx| self.matches_complex_in(h, cx, scope))
+    }
+
+    /// `element.closest(selector)`: the nearest inclusive element ancestor of `h` matching
+    /// `selector`, with `h` as the `:scope` element.
+    #[must_use]
+    pub fn closest(&self, h: Handle, selector: &str) -> Option<Handle> {
+        let mut node = Some(h);
+        while let Some(current) = node.filter(|&n| self.node_type(n) == NodeType::Element) {
+            if self.matches_scoped(current, selector, h) {
+                return Some(current);
+            }
+            node = self.parent(current);
+        }
+        None
     }
 
     /// querySelectorAll, document-order, version-cached by selector string. Returns a
@@ -2967,11 +3128,14 @@ mod tests {
             tree.query_selector_all_checked("div!p"),
             Err(SelectorError::UnexpectedChar('!'))
         );
+        // the end of a DOM-API selector closes an open `[` (Chrome 156; turbo-dom#91) ...
+        assert_eq!(tree.query_selector_all_checked("[href").map(|l| l.len()), Ok(0));
+        assert_eq!(tree.query_selector_checked("[href"), Ok(None));
+        // ... while a stylesheet prelude never ends inside one
         assert_eq!(
-            tree.query_selector_all_checked("[href"),
+            super::parse_for_cascade("[href").map(|_| ()),
             Err(SelectorError::UnterminatedAttribute)
         );
-        assert!(tree.query_selector_checked("[href").is_err());
         assert!(tree.matches_checked(s, ">").is_err());
         // P5b (turbo-dom#18): Chrome 156 throws on empty lists and items and on a trailing
         // combinator (the lenient path still drops them)

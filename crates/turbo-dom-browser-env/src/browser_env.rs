@@ -4099,11 +4099,12 @@ fn el_closest<'s>(
     let found = with_tree(|t| {
         let mut cur = Some(h);
         while let Some(c) = cur {
+            // `:scope` is the element closest() is called on (turbo-dom#96)
             if t.node_type_id(c) == 1
                 && if unit_path {
-                    t.matches_units(c, &units)
+                    t.matches_units_scoped(c, &units, h)
                 } else {
-                    t.matches(c, &sel)
+                    t.matches_scoped(c, &sel, h)
                 }
             {
                 return Some(c);

@@ -39,7 +39,10 @@ test('quoted attribute values: escapes and line continuations', () => {
   assert.deepEqual(one("[a='it\\'s']").attrs[0].match.value, "it's");
   assert.deepEqual(one('[a="]\\"" i]').attrs[0], { name: 'a', match: { op: 'equals', value: ']"' }, ci: true });
   assert.deepEqual(one('[a="x" I]').attrs[0].ci, true);
-  for (const s of ['[|=x]', '[a b]', '[a=b i x]', '[a ~ = b]', '[a="b"c]', '[a=b/*', '[a/*x]', '[*|]', '[|]']) bad(s);
+  for (const s of ['[|=x]', '[a b]', '[a=b i x]', '[a ~ = b]', '[a="b"c]', '[*|]', '[|]']) bad(s);
+  // an unterminated comment runs to the end, which closes the block (Chrome 156; turbo-dom#91)
+  assert.deepEqual(one('[a=b/*').attrs[0], { name: 'a', match: { op: 'equals', value: 'b' } });
+  assert.deepEqual(one('[a/*x]').attrs[0], { name: 'a', match: { op: 'present' } });
   // comments outside quotes are whitespace; inside quotes they are text
   assert.deepEqual(one('[a="/*x*/"]').attrs[0].match.value, '/*x*/');
   bad('[a=\\/*x*/ i]'); // an escaped `/` does not open a comment
@@ -63,7 +66,9 @@ test('pseudo-class arity, arguments and nesting', () => {
   // forgiving lists drop invalid items (a fully invalid list matches nothing)
   assert.equal(one(':is(:bogus, p)').pseudos[0].parsed.list.length, 1);
   assert.equal(one(':where(:bogus)').pseudos[0].parsed.list.length, 0);
-  assert.equal(one(':-webkit-any(p, ::before)').pseudos[0].parsed.list.length, 1);
+  // :-webkit-any() is unforgiving (Chrome 156; turbo-dom#91)
+  bad(':-webkit-any(p, ::before)');
+  assert.equal(one(':-webkit-any(p, :hover)').pseudos[0].parsed.list.length, 2);
   assert.deepEqual(one(':nth-child(2n+1 of .a, .b)').pseudos[0].parsed.of.length, 2);
   assert.equal(one(':has(> a, + b, ~ c, d)').pseudos[0].parsed.rel.map((r) => r.combinator).join(''), '>+~ ');
   assert.equal(one(':state(on)').pseudos[0].parsed.v, 'on');

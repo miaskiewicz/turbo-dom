@@ -391,9 +391,10 @@ jobs:
             bash scripts/verify-copied-layout.sh
 
   # ---- coverage floors (tarpaulin, LLVM engine, macOS arm64 where they were measured) ----
-  # Each gate is the crate's CURRENT measured line coverage (rounded down; measured at the
-  # 0.6.0 release prep, see docs/CONSOLIDATION.md "Coverage"). The coverage phase (P5-cov)
-  # raises every gate to >= 99 and then 100 as tests land; never lower one to pass a change.
+  # Each gate is the crate's CURRENT measured line coverage (rounded down; see
+  # docs/CONSOLIDATION.md "Coverage"). The coverage phase (P5-cov) raises every gate to >= 99
+  # and then 100 as tests land (turbo-dom: 100 since P5-cov-core); never lower one to pass a
+  # change.
   coverage:
     name: coverage (${{ matrix.crate }} >= ${{ matrix.floor }}%)
     runs-on: macos-latest
@@ -401,7 +402,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { crate: turbo-dom,             floor: 88, features: '' }
+          - { crate: turbo-dom,             floor: 100, features: '' }
           - { crate: turbo-dom-layout,      floor: 90, features: '' }
           - { crate: turbo-dom-raster,      floor: 77, features: '' }
           - { crate: turbo-dom-browser-env, floor: 88, features: '--features host-internals,test-support' }
