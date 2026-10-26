@@ -35,7 +35,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Mutex, OnceLock};
 
 /// The B-main commit the frozen engine was copied from (`scripts/verify-query-frozen.sh`).
-pub const FROZEN_SHA: &str = "a49793a0131e58d19d5deb78b9c9185574577581";
+pub const FROZEN_SHA: &str = "4d5a63df36f3f94fcfb22b184039b25afd485640";
 
 /// The frozen engine's own caches (B-main kept them on `Tree` as `qcache` /
 /// `parse_cache`). They hang off the cascade cache slot so `tree.rs` stays untouched in
@@ -553,31 +553,23 @@ fn json_str(s: &str) -> String {
 mod tests {
     use super::super::tree::Tree;
 
-    fn divergences(selector: &str) -> usize {
-        let needle = format!(
-            "\"api\":\"query_selector_all\",\"selector\":{}",
-            super::json_str(selector)
-        );
-        std::fs::read_to_string(super::log_path())
-            .unwrap()
-            .lines()
-            .filter(|l| l.starts_with("{\"type\":\"divergence\"") && l.contains(&needle))
-            .count()
-    }
-
     #[test]
-    fn star_bar_p_divergence_is_logged_again_on_the_second_identical_qsa_call() {
-        // `*|p` is a bug-list entry: the frozen B-main engine reads the type selector as a
-        // literal `*|p` tag (matches nothing), the current engine as any-namespace `p`.
+    fn a_repeated_qsa_is_compared_again_from_each_engines_own_cache() {
+        // Since S3b the frozen engine is the S3a tip, which the live Tree must still agree
+        // with exactly (S3b changes only the cascade), so no selector diverges here. The
+        // repeat must still be answered by BOTH engines from their OWN version-keyed caches.
         let tree = Tree::parse("<p class=dual-cache-probe>x</p>");
-        let selector = "*|p.dual-cache-probe";
-        let before = divergences(selector);
+        let selector = "p.dual-cache-probe";
+        let compared = || super::log().compared.load(super::Ordering::Relaxed);
+        let before = compared();
         let first = tree.query_selector_all(selector);
-        assert_eq!(divergences(selector), before + 1);
         let second = tree.query_selector_all(selector);
-        // both engines answered the repeat from their OWN version-keyed caches...
         assert!(std::rc::Rc::ptr_eq(&first, &second));
-        // ...and the repeat was still compared: no cache sharing hides a divergence.
-        assert_eq!(divergences(selector), before + 2);
+        assert!(compared() >= before + 2, "both calls were compared");
+        let frozen = tree.frozen_caches();
+        let cache = frozen.qcache.borrow();
+        let frozen_hit = cache.map.get(selector).expect("the frozen engine cached it");
+        assert_eq!(&frozen_hit[..], &first[..]);
+        assert!(!std::rc::Rc::ptr_eq(frozen_hit, &first), "no cache sharing");
     }
 }

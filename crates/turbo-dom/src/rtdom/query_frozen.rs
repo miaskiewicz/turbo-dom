@@ -1,15 +1,25 @@
-//! FROZEN selector engine for the `selector-dual` gate (turbo-dom consolidation S3a): B-main
-//! (a49793a) `query.rs` after the scripted rewrite in `scripts/verify-query-frozen.rules`. Never edit
-//! by hand (`scripts/verify-query-frozen.sh --write` regenerates it); deleted with the gate at S3b.
+//! FROZEN selector engine for the `selector-dual` gate (turbo-dom consolidation S3b): the S3a
+//! tip (4d5a63d) `query.rs` after the scripted rewrite in `scripts/verify-query-frozen.rules`. Never edit
+//! by hand (`scripts/verify-query-frozen.sh --write` regenerates it); deleted with the gate at the end of S3b.
 //! Selector matching + query API over `Tree`. Mirrors the JS runtime's
 //! alloc-free matcher discipline (whole-word class scan, index loops, no regex)
 //! and version-keyed result caching (`Document.__version` → `Tree.version`).
 //!
 //! Selector support: comma lists, descendant (` `), child (`>`), adjacent (`+`)
-//! and general-sibling (`~`) combinators, compounds of `tag` / `.class` / `#id` /
-//! `[attr]` / `[attr=val]`, the `:is()` / `:where()` / `:not()` selector-list
-//! pseudo-classes, and the relational `:has()`. Enough for RTL-style queries;
-//! extend as the gauntlet demands.
+//! and general-sibling (`~`) combinators, compounds of `tag` (optionally `*|` / `|`
+//! namespace-prefixed) / `.class` / `#id` / `[attr]` / `[attr=val]`, the `:is()` /
+//! `:where()` / `:not()` selector-list pseudo-classes, the relational `:has()`, and the
+//! structural / form-state / link pseudo-classes listed on `Pseudo`. Enough for
+//! RTL-style queries; extend as the gauntlet demands.
+//!
+//! Chrome 156 is the reference (consolidation S3a, miaskiewicz/turbo-dom#18, control
+//! `tests/fixtures/cascade_selectors_chrome156.json`): CSS escapes and non-ASCII
+//! identifiers (a selector containing `\` is parsed by the UTF-16 parser in
+//! `query_utf16.rs`, which decodes escapes), `:empty` ignoring comments / processing
+//! instructions / template content, the HTML `:read-only` / `:read-write` rule,
+//! `:nth-child(An+B of S)` and `:link` / `:any-link`. With the `selector-dual` feature
+//! every public output here also runs the frozen B-main engine (`dual!`, see
+//! `docs/selector-dual-gate.md`).
 
 use super::tree::{FormProp, Handle, NodeType, Tree};
 
@@ -18,6 +28,51 @@ use super::tree::{FormProp, Handle, NodeType, Tree};
 /// the cache exists for the repeated-query RTL pattern, not to memoize an
 /// unbounded stream of unique selectors, so a hard ceiling keeps it from leaking.
 const CACHE_CAP: usize = 10_000;
+
+const HTML_NS: &str = "http://www.w3.org/1999/xhtml";
+
+/// `<input type>` states the `readonly` attribute applies to (HTML); a missing or unknown
+/// type is the Text state.
+const READONLY_INPUT_TYPES: &[&str] = &[
+    "text",
+    "search",
+    "url",
+    "tel",
+    "email",
+    "password",
+    "date",
+    "month",
+    "week",
+    "time",
+    "datetime-local",
+    "number",
+];
+
+/// Every `<input type>` keyword HTML defines (anything else falls back to Text).
+const KNOWN_INPUT_TYPES: &[&str] = &[
+    "hidden",
+    "text",
+    "search",
+    "tel",
+    "url",
+    "email",
+    "password",
+    "date",
+    "month",
+    "week",
+    "time",
+    "datetime-local",
+    "number",
+    "range",
+    "color",
+    "checkbox",
+    "radio",
+    "file",
+    "submit",
+    "image",
+    "reset",
+    "button",
+];
 
 /// Insert `(key, val)` into a `CACHE_CAP`-bounded map, clearing it wholesale first
 /// if it has reached the cap. Shared by the parse cache and the two query caches so
@@ -49,6 +104,7 @@ enum AttrMatch {
     Suffix(String),   // [attr$=v]
     Substr(String),   // [attr*=v]
 }
+
 
 #[path = "query_frozen_utf16.rs"]
 mod units;
@@ -90,9 +146,47 @@ impl Attr {
     }
 }
 
+/// The namespace prefix of a type/universal selector. DOM selector APIs have no
+/// `@namespace` declarations, so (as in Chrome) the only meaningful prefixes are `*|`
+/// (any namespace — same as no prefix) and `|` (no namespace); any other prefix is
+/// undeclared, which the strict `_checked` path rejects and the lenient path never matches.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+enum TypeNamespace {
+    /// No prefix (`p`, `*`): any namespace.
+    #[default]
+    Default,
+    /// `*|p`: any namespace.
+    Any,
+    /// `|p`: elements with no namespace.
+    Null,
+    /// `foo|p` (undeclared prefix) or a prefix with no name (`p|`): never matches.
+    Invalid,
+}
+
+/// Split a type/universal selector's raw text at its namespace bar. `None` tag = any
+/// element. The input never contains escapes (the string API hands escaped selectors to
+/// the UTF-16 parser, which splits on the raw units itself).
+fn split_type_selector(raw: &str) -> (TypeNamespace, Option<String>) {
+    let Some(bar) = raw.find('|') else {
+        return (
+            TypeNamespace::Default,
+            (raw != "*").then(|| raw.to_string()),
+        );
+    };
+    let (prefix, name) = (&raw[..bar], &raw[bar + 1..]);
+    let namespace = match prefix {
+        _ if name.is_empty() => TypeNamespace::Invalid,
+        "*" => TypeNamespace::Any,
+        "" => TypeNamespace::Null,
+        _ => TypeNamespace::Invalid,
+    };
+    (namespace, (name != "*").then(|| name.to_string()))
+}
+
 #[derive(Debug, Clone, Default)]
 struct Compound {
     tag: Option<String>, // None or "*" = any
+    namespace: TypeNamespace,
     id: Option<String>,
     classes: Vec<String>,
     attrs: Vec<Attr>,
@@ -113,6 +207,10 @@ enum Pseudo {
     OnlyOfType,
     NthChild(i64, i64), // (a, b) from `an+b`
     NthLastChild(i64, i64),
+    // `:nth-child(An+B of S)` / `:nth-last-child(An+B of S)`: positions count only the
+    // element siblings matching the selector list S, and the element itself must match S.
+    NthChildOf(i64, i64, Vec<Complex>),
+    NthLastChildOf(i64, i64, Vec<Complex>),
     NthOfType(i64, i64),
     NthLastOfType(i64, i64),
     Empty,
@@ -127,6 +225,9 @@ enum Pseudo {
     ReadWrite,
     Selected,
     State(Vec<u16>),
+    // `:link` / `:any-link`: an HTML `a`/`area` or SVG `a` with an `href` (every link is
+    // unvisited here, so the two are identical and `:visited` never matches).
+    Link,
     // Matching pseudos whose argument is a SELECTOR LIST (comma-separated complex
     // selectors), each anchored at the element under test. `:where` matches
     // identically to `:is` (the specificity difference is a cascade concern, out of
@@ -260,9 +361,64 @@ enum StrictTok {
     Comma,
 }
 
+/// Is `chars[i]` (a `\`) a valid CSS escape — i.e. not followed by a newline? A `\` at the
+/// very end is valid (CSS turns it into U+FFFD).
+fn valid_escape(chars: &[char], i: usize) -> bool {
+    chars
+        .get(i + 1)
+        .is_none_or(|&next| !matches!(next, '\n' | '\r' | '\u{c}'))
+}
+
+/// Index just past the CSS escape starting at `chars[i]` (a `\`): up to six hex digits
+/// plus one optional whitespace terminator, or the single escaped code point.
+fn escape_end(chars: &[char], i: usize) -> usize {
+    let mut j = i + 1;
+    while j < chars.len() && j < i + 7 && chars[j].is_ascii_hexdigit() {
+        j += 1;
+    }
+    if j == i + 1 {
+        return (i + 2).min(chars.len());
+    }
+    if chars.get(j).is_some_and(|c| c.is_whitespace()) {
+        if chars[j] == '\r' && chars.get(j + 1) == Some(&'\n') {
+            j += 1;
+        }
+        j += 1;
+    }
+    j
+}
+
+/// Scan a run of name code points from `*i`: `keep(c)` ASCII characters, any non-ASCII
+/// code point, and valid CSS escapes (CSS ident rules; Chrome accepts `.café`, `.md\:flex`).
+fn scan_name(chars: &[char], i: &mut usize, keep: fn(char) -> bool) {
+    while *i < chars.len() {
+        let c = chars[*i];
+        if keep(c) || !c.is_ascii() {
+            *i += 1;
+        } else if c == '\\' && valid_escape(chars, *i) {
+            *i = escape_end(chars, *i);
+        } else {
+            break;
+        }
+    }
+}
+
+/// Can a type selector (or the name after a namespace bar) start at `chars[i]`?
+fn starts_type(chars: &[char], i: usize) -> bool {
+    chars.get(i).is_some_and(|&c| {
+        is_type_start(c) || !c.is_ascii() || (c == '\\' && valid_escape(chars, i))
+    })
+}
+
+fn is_pseudo_name_char(ch: char) -> bool {
+    is_type_start(ch) || ch == '-'
+}
+
 /// Strict lex mirroring `selectors.mjs` `tokenize`: same accept set, same two throw
 /// points (unterminated attribute, unexpected char). Unterminated `(...)` is tolerated
-/// (JS tolerates it too — only `[...]` throws).
+/// (JS tolerates it too — only `[...]` throws). Names follow CSS ident rules (non-ASCII
+/// code points and escapes included), and a type/universal selector may carry the `*|` or
+/// `|` namespace prefix (no other prefix is declared for DOM selector APIs).
 fn lex_strict(src: &str) -> Result<Vec<StrictTok>, SelectorError> {
     let chars: Vec<char> = src.chars().collect();
     let n = chars.len();
@@ -281,14 +437,25 @@ fn lex_strict(src: &str) -> Result<Vec<StrictTok>, SelectorError> {
         } else if matches!(c, '>' | '+' | '~') {
             out.push(StrictTok::Comb);
             i += 1;
-        } else if c == '*' {
-            out.push(StrictTok::Part);
-            i += 1;
-        } else if c == '#' || c == '.' {
-            i += 1;
-            while i < n && is_name_char(chars[i]) {
+        } else if c == '*' || (c == '|' && !matches!(out.last(), Some(StrictTok::Part))) {
+            // universal selector, or a namespace prefix (`*|`, `|`) before a type
+            if c == '*' {
                 i += 1;
             }
+            if chars.get(i) == Some(&'|') {
+                if chars.get(i + 1) == Some(&'*') {
+                    i += 2;
+                } else if starts_type(&chars, i + 1) {
+                    i += 1;
+                    scan_name(&chars, &mut i, is_name_char);
+                } else {
+                    return Err(SelectorError::UnexpectedChar('|'));
+                }
+            }
+            out.push(StrictTok::Part);
+        } else if c == '#' || c == '.' {
+            i += 1;
+            scan_name(&chars, &mut i, is_name_char);
             out.push(StrictTok::Part);
         } else if c == '[' {
             i += 1; // past '['
@@ -304,9 +471,7 @@ fn lex_strict(src: &str) -> Result<Vec<StrictTok>, SelectorError> {
         } else if c == ':' {
             i += 1; // past ':'
             let name_start = i;
-            while i < n && (is_type_start(chars[i]) || chars[i] == '-') {
-                i += 1;
-            }
+            scan_name(&chars, &mut i, is_pseudo_name_char);
             let selector_list = matches!(
                 chars[name_start..i]
                     .iter()
@@ -339,11 +504,14 @@ fn lex_strict(src: &str) -> Result<Vec<StrictTok>, SelectorError> {
                 return Err(SelectorError::UnexpectedChar(':'));
             }
             out.push(StrictTok::Part);
-        } else if is_type_start(c) {
-            i += 1;
-            while i < n && is_name_char(chars[i]) {
+        } else if starts_type(&chars, i) {
+            if c == '\\' {
+                i = escape_end(&chars, i);
+            } else {
                 i += 1;
             }
+            scan_name(&chars, &mut i, is_name_char);
+            // `svg|rect`: an undeclared namespace prefix (Chrome: SyntaxError)
             out.push(StrictTok::Part);
         } else {
             return Err(SelectorError::UnexpectedChar(c));
@@ -500,11 +668,9 @@ fn take_ident(toks: &[Token], i: &mut usize) -> String {
 /// `Pseudo::Unknown`, and a leading `Ident` of `"*"` means "any tag".
 fn parse_compound_tokens(toks: &[Token], i: &mut usize) -> Compound {
     let mut c = Compound::default();
-    // optional leading type selector
+    // optional leading type selector (with an optional `*|` / `|` namespace prefix)
     if let Some(Token::Ident(s)) = toks.get(*i) {
-        if s != "*" {
-            c.tag = Some(s.clone());
-        }
+        (c.namespace, c.tag) = split_type_selector(s);
         *i += 1;
     }
     while let Some(tok) = toks.get(*i) {
@@ -658,13 +824,26 @@ fn parse_pseudo(name: &str, arg: Option<&str>) -> Pseudo {
         "read-only" => Pseudo::ReadOnly,
         "read-write" => Pseudo::ReadWrite,
         "selected" => Pseudo::Selected,
-        "nth-child" => {
-            let (a, b) = parse_nth(arg.unwrap_or(""));
-            Pseudo::NthChild(a, b)
-        }
-        "nth-last-child" => {
-            let (a, b) = parse_nth(arg.unwrap_or(""));
-            Pseudo::NthLastChild(a, b)
+        "link" | "any-link" => Pseudo::Link,
+        "nth-child" | "nth-last-child" => {
+            let arg = arg.unwrap_or("");
+            let last = name == "nth-last-child";
+            if let Some((anb, of)) = split_nth_of(arg) {
+                let (a, b) = parse_nth(anb);
+                let of = parse_selector_list_str(of);
+                if last {
+                    Pseudo::NthLastChildOf(a, b, of)
+                } else {
+                    Pseudo::NthChildOf(a, b, of)
+                }
+            } else {
+                let (a, b) = parse_nth(arg);
+                if last {
+                    Pseudo::NthLastChild(a, b)
+                } else {
+                    Pseudo::NthChild(a, b)
+                }
+            }
         }
         "nth-of-type" => {
             let (a, b) = parse_nth(arg.unwrap_or(""));
@@ -680,6 +859,35 @@ fn parse_pseudo(name: &str, arg: Option<&str>) -> Pseudo {
         "has" => Pseudo::Has(parse_relative_selector_list(arg.unwrap_or(""))),
         _ => Pseudo::Unknown,
     }
+}
+
+/// Position of the `of` keyword in an `:nth-child()` / `:nth-last-child()` argument
+/// (`2n+1 of .x`): lowercase `of` (Chrome rejects `OF`), whitespace before it, a non-empty
+/// `An+B` part, and no name code point right after it (`of.x` is fine, `ofx` is not). Works on any code-unit slice so the
+/// UTF-16 parser shares it; `An+B` is ASCII, so the first such `of` is the keyword.
+fn nth_of_position<T: Copy + Into<u32>>(units: &[T]) -> Option<usize> {
+    let unit = |i: usize| units.get(i).map(|&u| u.into());
+    let space = |u: u32| matches!(u, 9 | 10 | 12 | 13 | 32);
+    (1..units.len().saturating_sub(1)).find(|&i| {
+        let after = unit(i + 2);
+        unit(i) == Some(u32::from(b'o'))
+            && unit(i + 1) == Some(u32::from(b'f'))
+            && unit(i - 1).is_some_and(space)
+            && units[..i].iter().any(|&u| !space(u.into()))
+            && after.is_none_or(|u| {
+                u < 128
+                    && !(char::from_u32(u).is_some_and(|c| c.is_ascii_alphanumeric())
+                        || u == u32::from(b'_')
+                        || u == u32::from(b'-')
+                        || u == u32::from(b'\\'))
+            })
+    })
+}
+
+/// Split `An+B of S` into `("An+B", "S")`; `None` when there is no `of` clause.
+fn split_nth_of(arg: &str) -> Option<(&str, &str)> {
+    let bytes = arg.as_bytes();
+    nth_of_position(bytes).map(|at| (&arg[..at], &arg[at + 2..]))
 }
 
 /// Parse an `An+B` / `odd` / `even` / integer argument into `(a, b)` coefficients
@@ -841,6 +1049,11 @@ impl Tree {
     fn frozen_matches_compound(&self, h: Handle, c: &Compound) -> bool {
         if self.node_type(h) != NodeType::Element {
             return false;
+        }
+        match c.namespace {
+            TypeNamespace::Default | TypeNamespace::Any => {}
+            TypeNamespace::Null if self.namespace_uri(h).is_none() => {}
+            TypeNamespace::Null | TypeNamespace::Invalid => return false,
         }
         if let Some(tag) = &c.tag {
             if !self
@@ -1010,6 +1223,26 @@ impl Tree {
                     .position(|&c| c == h)
                     .is_some_and(|idx| nth_match(*a, *b, sibs.len() as i64 - idx as i64))
             }
+            Pseudo::NthChildOf(a, b, of) | Pseudo::NthLastChildOf(a, b, of) => {
+                let matches_of = |c: Handle| of.iter().any(|cx| self.frozen_matches_complex(c, cx));
+                if !matches_of(h) {
+                    return false;
+                }
+                let sibs: Vec<Handle> = self
+                    .frozen_element_siblings(h)
+                    .into_iter()
+                    .filter(|&c| c == h || matches_of(c))
+                    .collect();
+                let last = matches!(p, Pseudo::NthLastChildOf(..));
+                sibs.iter().position(|&c| c == h).is_some_and(|idx| {
+                    let index = if last {
+                        sibs.len() as i64 - idx as i64
+                    } else {
+                        idx as i64 + 1
+                    };
+                    nth_match(*a, *b, index)
+                })
+            }
             Pseudo::NthOfType(a, b) => {
                 let same: Vec<Handle> = self
                     .frozen_element_siblings(h)
@@ -1030,10 +1263,20 @@ impl Tree {
                     .position(|&c| c == h)
                     .is_some_and(|idx| nth_match(*a, *b, same.len() as i64 - idx as i64))
             }
-            // :empty — no child nodes at all (any node type counts in the JS, which
-            // checks childNodes.length). We have only element children via children();
-            // mirror "no children" honestly.
-            Pseudo::Empty => self.children(h).is_empty(),
+            // :empty — no element child and no non-empty text child (Chrome). Comments,
+            // processing instructions, empty text nodes and a <template>'s content
+            // fragment don't count; whitespace-only text does.
+            Pseudo::Empty => {
+                let mut empty = true;
+                self.for_each_child(h, |c| {
+                    empty &= match self.node_type(c) {
+                        NodeType::Element => false,
+                        NodeType::Text => self.node_value(c).is_none_or(|t| t.is_empty()),
+                        _ => true,
+                    };
+                });
+                empty
+            }
             Pseudo::Root => match self.parent(h) {
                 None => true,
                 // parent is the document/root container, not an element
@@ -1074,9 +1317,11 @@ impl Tree {
                 matches!(self.local_name(h), Some("input" | "select" | "textarea"))
                     && !self.frozen_form_state(h, FormProp::Required, "required")
             }
-            Pseudo::ReadOnly => self.frozen_form_state(h, FormProp::ReadOnly, "readonly"),
-            Pseudo::ReadWrite => !self.frozen_form_state(h, FormProp::ReadOnly, "readonly"),
+            // HTML read-write rule; non-HTML elements match neither (Chrome).
+            Pseudo::ReadOnly => self.frozen_is_html(h) && !self.frozen_read_write(h),
+            Pseudo::ReadWrite => self.frozen_is_html(h) && self.frozen_read_write(h),
             Pseudo::Selected => self.frozen_form_state(h, FormProp::Selected, "selected"),
+            Pseudo::Link => self.frozen_is_link(h),
             // selector-list pseudos: each Complex is anchored at `h` (matches_complex
             // tests the rightmost compound against `h` and walks left).
             Pseudo::Is(list) | Pseudo::Where(list) => {
@@ -1112,6 +1357,106 @@ impl Tree {
     fn frozen_form_state(&self, h: Handle, prop: FormProp, attr: &str) -> bool {
         self.form_property(h, prop)
             .unwrap_or_else(|| self.has_attribute(h, attr))
+    }
+
+    fn frozen_is_html(&self, h: Handle) -> bool {
+        self.namespace_uri(h) == Some(HTML_NS)
+    }
+
+    fn frozen_is_html_named(&self, h: Handle, names: &[&str]) -> bool {
+        self.frozen_is_html(h) && self.local_name(h).is_some_and(|name| names.contains(&name))
+    }
+
+    /// `:link` / `:any-link`: an HTML `a`/`area` or an SVG `a` with an `href` (SVG also
+    /// honours `xlink:href`), as in Chrome. Every link is unvisited.
+    fn frozen_is_link(&self, h: Handle) -> bool {
+        if self.frozen_is_html_named(h, &["a", "area"]) {
+            return self.has_attribute(h, "href");
+        }
+        self.namespace_uri(h) == Some("http://www.w3.org/2000/svg")
+            && self.local_name(h) == Some("a")
+            && (self.get_attribute_ns_borrowed(h, None, "href").is_some()
+                || self
+                    .get_attribute_ns_borrowed(h, Some("http://www.w3.org/1999/xlink"), "href")
+                    .is_some())
+    }
+
+    /// HTML "actually disabled" for a form control: its own disabled state (live property
+    /// or attribute), or a disabled `<fieldset>` ancestor unless the control sits inside
+    /// that fieldset's first `<legend>` child.
+    fn frozen_is_actually_disabled(&self, h: Handle) -> bool {
+        if self.frozen_form_state(h, FormProp::Disabled, "disabled") {
+            return true;
+        }
+        let mut child = h;
+        let mut ancestor = self.parent(h);
+        while let Some(a) = ancestor {
+            if self.frozen_is_html_named(a, &["fieldset"])
+                && self.frozen_form_state(a, FormProp::Disabled, "disabled")
+            {
+                let mut first_legend = None;
+                self.for_each_child(a, |c| {
+                    if first_legend.is_none() && self.frozen_is_html_named(c, &["legend"]) {
+                        first_legend = Some(c);
+                    }
+                });
+                if first_legend != Some(child) {
+                    return true;
+                }
+            }
+            child = a;
+            ancestor = self.parent(a);
+        }
+        false
+    }
+
+    /// Is `h` an editing host or editable content? The nearest HTML ancestor-or-self with
+    /// a valid `contenteditable` state decides (`""`/`true`/`plaintext-only` = editable,
+    /// `false` = not); invalid values inherit.
+    fn frozen_is_editable(&self, h: Handle) -> bool {
+        let mut node = Some(h);
+        while let Some(n) = node {
+            if self.node_type(n) == NodeType::Element && self.frozen_is_html(n) {
+                if let Some(value) = self.get_attribute(n, "contenteditable") {
+                    if value.is_empty()
+                        || value.eq_ignore_ascii_case("true")
+                        || value.eq_ignore_ascii_case("plaintext-only")
+                    {
+                        return true;
+                    }
+                    if value.eq_ignore_ascii_case("false") {
+                        return false;
+                    }
+                }
+            }
+            node = self.parent(n);
+        }
+        false
+    }
+
+    /// The HTML `:read-write` rule (for an HTML element): a mutable `input` whose type
+    /// accepts `readonly`, a mutable `textarea`, or any other element that is editable.
+    /// Mutable = not readonly (live property or attribute) and not actually disabled.
+    fn frozen_read_write(&self, h: Handle) -> bool {
+        match self.local_name(h) {
+            Some("input") => {
+                let readonly_applies = self.get_attribute(h, "type").is_none_or(|kind| {
+                    READONLY_INPUT_TYPES
+                        .iter()
+                        .any(|t| kind.eq_ignore_ascii_case(t))
+                        || !KNOWN_INPUT_TYPES
+                            .iter()
+                            .any(|t| kind.eq_ignore_ascii_case(t))
+                });
+                readonly_applies
+                    && !self.frozen_form_state(h, FormProp::ReadOnly, "readonly")
+                    && !self.frozen_is_actually_disabled(h)
+            }
+            Some("textarea") => {
+                !self.frozen_form_state(h, FormProp::ReadOnly, "readonly") && !self.frozen_is_actually_disabled(h)
+            }
+            _ => self.frozen_is_editable(h),
+        }
     }
 
     fn frozen_matches_complex(&self, h: Handle, cx: &Complex) -> bool {
@@ -1260,7 +1605,14 @@ impl Tree {
         if let Some(hit) = self.frozen_caches().parse_cache.borrow().get(selector) {
             return hit.clone();
         }
-        let list: std::rc::Rc<[Complex]> = parse_selector_list_str(selector).into();
+        // A selector with CSS escapes goes through the UTF-16 parser, which decodes them
+        // (the scalar tokenizer would split `.md\:flex` at the `:`). The binding already
+        // routes escaped JS selectors there, so both APIs read escapes the same way.
+        let list: std::rc::Rc<[Complex]> = if selector.contains('\\') {
+            units::list(&selector.encode_utf16().collect::<Vec<_>>()).into()
+        } else {
+            parse_selector_list_str(selector).into()
+        };
         let frozen = self.frozen_caches();
         let mut cache = frozen.parse_cache.borrow_mut();
         bounded_insert(&mut cache, selector.to_string(), list.clone());
@@ -1690,11 +2042,16 @@ mod frozen_tests {
         );
         // :optional — form fields without `required`: the bare input, the readonly input, and the select
         assert_eq!(tree.frozen_query_selector_all("input:optional").len(), 2);
-        // :read-only — has the readonly attribute
-        assert_eq!(tree.frozen_query_selector_all(":read-only").len(), 1);
-        // :read-write — does NOT have readonly (all the non-readonly inputs + others)
+        // changed@S3a (control: cascade_selectors_chrome156.json "read-only-read-write"):
+        // :read-only — every HTML element that is not read-write: html, head, body, form,
+        // the readonly input, the select and its two options (Chrome; was: only the
+        // element carrying `readonly`).
+        assert_eq!(tree.frozen_query_selector_all(":read-only").len(), 8);
+        assert_eq!(tree.frozen_query_selector_all("input:read-only").len(), 1);
+        // :read-write — mutable text inputs (the bare and the required one)
         let rw = tree.frozen_query_selector_all("input:read-write");
         assert_eq!(rw.len(), 2);
+        assert_eq!(tree.frozen_query_selector_all(":read-write").len(), 2);
         // :selected — the selected option
         let sel = tree.frozen_query_selector_all("option:selected");
         assert_eq!(sel.len(), 1);
@@ -2243,6 +2600,90 @@ mod frozen_tests {
             SelectorError::UnterminatedAttribute.to_string(),
             "unterminated attribute selector"
         );
+    }
+
+    #[test]
+    fn s3a_selector_fixes_edge_cases() {
+        // Edges of the S3a Chrome fixes not reached by the Chrome control
+        // (tests/cascade_selectors_chrome.rs covers the main cases).
+        use super::SelectorError;
+        let mut tree = Tree::parse(
+            "<div class='md:flex'><p>x</p></div>\
+             <div contenteditable=bogus><span id=inherit>x</span></div>\
+             <div contenteditable><div contenteditable=bogus><i id=deep>x</i></div></div>",
+        );
+        let root = tree.root();
+        // strict lexer: escapes (CRLF after a hex escape, `\` at the very end), a `\` +
+        // newline is not an escape, namespace prefixes
+        assert!(tree.frozen_query_selector_all_checked(".md\\3a\r\nflex").is_ok());
+        assert!(tree.frozen_query_selector_all_checked(".a\\").is_ok());
+        assert_eq!(
+            tree.frozen_query_selector_all_checked(".a\\\nb"),
+            Err(SelectorError::UnexpectedChar('\\'))
+        );
+        for ok in ["*|*", "*|p", "|p", "a |p", "\\70", "\\@x"] {
+            assert!(tree.frozen_query_selector_all_checked(ok).is_ok(), "{ok}");
+        }
+        for bad in ["*|", "*|.x", "a|p", ".x|p", "[a]|p", "|"] {
+            assert_eq!(
+                tree.frozen_query_selector_all_checked(bad),
+                Err(SelectorError::UnexpectedChar('|')),
+                "{bad}"
+            );
+        }
+        // lenient namespace forms: `p|` and undeclared prefixes never match, `*|*` is `*`
+        assert_eq!(tree.frozen_query_selector_all("p|").len(), 0);
+        assert_eq!(tree.frozen_query_selector_all("x|p").len(), 0);
+        assert_eq!(
+            *tree.frozen_query_selector_all("*|*"),
+            *tree.frozen_query_selector_all("*")
+        );
+        assert_eq!(
+            tree.query_selector_all_units(&"p|".encode_utf16().collect::<Vec<_>>())
+                .len(),
+            0
+        );
+        assert_eq!(
+            tree.query_selector_all_units(&"x|p".encode_utf16().collect::<Vec<_>>())
+                .len(),
+            0
+        );
+        // an escaped bar is part of the type name, not a namespace separator
+        let escaped_bar: Vec<u16> = "p\\|x".encode_utf16().collect();
+        assert_eq!(tree.query_selector_all_units(&escaped_bar).len(), 0);
+        assert_eq!(tree.frozen_query_selector_all("p\\|x").len(), 0);
+        // `|p`: only elements with no namespace
+        let bare = tree.create_element_namespace(None, "p");
+        tree.append_child(root, bare);
+        assert!(tree.frozen_matches(bare, "|p") && tree.frozen_matches(bare, "*|p"));
+        let html_p = tree.frozen_query_selector("div > p").unwrap();
+        assert!(!tree.frozen_matches(html_p, "|p") && tree.frozen_matches(html_p, "*|p"));
+        // neither read-only nor read-write outside the HTML namespace
+        assert!(!tree.frozen_matches(bare, ":read-only") && !tree.frozen_matches(bare, ":read-write"));
+        // :empty: an empty text node and a processing instruction don't count
+        let host = tree.create_element("div");
+        tree.append_child(root, host);
+        let empty_text = tree.create_text_node("");
+        tree.append_child(host, empty_text);
+        let pi = tree.create_processing_instruction_utf16("x", &[]);
+        tree.append_child(host, pi);
+        assert!(tree.frozen_matches(host, ":empty"));
+        let text = tree.create_text_node(" ");
+        tree.append_child(host, text);
+        assert!(!tree.frozen_matches(host, ":empty"));
+        // contenteditable: an invalid value inherits (no editable ancestor / an editable one)
+        let inherit = tree.frozen_get_element_by_id("inherit").unwrap();
+        assert!(tree.frozen_matches(inherit, ":read-only"));
+        let deep = tree.frozen_get_element_by_id("deep").unwrap();
+        assert!(tree.frozen_matches(deep, ":read-write"));
+        // `of` needs whitespace before it and no name code point after it
+        let list = Tree::parse("<ul><li class=x>1</li><li class=x>2</li></ul>");
+        assert_eq!(list.query_selector_all(":nth-child(2 of .x)").len(), 1);
+        assert_eq!(list.query_selector_all(":nth-child(2of .x)").len(), 0);
+        assert_eq!(list.query_selector_all(":nth-child(2 ofx)").len(), 0);
+        assert_eq!(list.query_selector_all(":nth-child(2 of)").len(), 0);
+        let units: Vec<u16> = ":nth-last-child(1 of .x)".encode_utf16().collect();
+        assert_eq!(list.query_selector_all_units(&units).len(), 1);
     }
 
     #[test]

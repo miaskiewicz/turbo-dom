@@ -13,7 +13,7 @@
 # the last S3b commit.
 set -euo pipefail
 
-FROZEN_SHA=a49793a0131e58d19d5deb78b9c9185574577581
+FROZEN_SHA=4d5a63df36f3f94fcfb22b184039b25afd485640
 root=$(cd "$(dirname "$0")/.." && pwd)
 rules=$root/scripts/verify-query-frozen.rules
 mode=${1:-check}
