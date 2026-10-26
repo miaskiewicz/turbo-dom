@@ -345,18 +345,7 @@ fn layout_positioned(
         return layout_box(lb, origin.0, origin.1, width, fs, ctx);
     }
     if !ctx.live_geometry {
-        let stretched = static_stretched_height(lb, &bs, ctx);
-        if let Some(height) = stretched {
-            bs.height = height;
-        }
-        return match auto_positioned_width(lb, &bs, origin.0, ctx) {
-            Some(border_width) => layout_box_sized(lb, &bs, origin.0, origin.1, border_width, ctx),
-            None if stretched.is_some() => {
-                let border_width = border_box_width(&bs, width);
-                layout_box_sized(lb, &bs, origin.0, origin.1, border_width, ctx)
-            }
-            None => layout_box(lb, origin.0, origin.1, width, fs, ctx),
-        };
+        return layout_positioned_static(lb, bs, origin, (width, fs), ctx);
     }
     bs = resolve(lb, width, fs);
     let border = bs.border.widths();
@@ -382,6 +371,30 @@ fn layout_positioned(
     let border_width = auto_positioned_width(lb, &bs, origin.0, ctx)
         .unwrap_or_else(|| border_box_width(&bs, width));
     layout_box_sized(lb, &bs, origin.0, origin.1, border_width, ctx)
+}
+
+/// [`layout_positioned`] on the static path: shrink-to-fit `width: auto`
+/// ([`auto_positioned_width`]) and the `top` + `bottom` stretched auto height
+/// ([`static_stretched_height`], miaskiewicz/turbo-dom#89).
+fn layout_positioned_static(
+    lb: &LayoutBox,
+    mut bs: BoxStyle,
+    origin: (f32, f32),
+    (width, fs): (f32, f32),
+    ctx: &mut Ctx,
+) -> Fragment {
+    let stretched = static_stretched_height(lb, &bs, ctx);
+    if let Some(height) = stretched {
+        bs.height = height;
+    }
+    match auto_positioned_width(lb, &bs, origin.0, ctx) {
+        Some(border_width) => layout_box_sized(lb, &bs, origin.0, origin.1, border_width, ctx),
+        None if stretched.is_some() => {
+            let border_width = border_box_width(&bs, width);
+            layout_box_sized(lb, &bs, origin.0, origin.1, border_width, ctx)
+        }
+        None => layout_box(lb, origin.0, origin.1, width, fs, ctx),
+    }
 }
 
 /// The used border-box width of an absolutely positioned non-replaced box with

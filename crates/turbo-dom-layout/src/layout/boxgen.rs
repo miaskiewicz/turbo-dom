@@ -1355,42 +1355,52 @@ fn hoist_top_layer(root: &mut BoxKind, ids: &mut Ids) {
 /// Remove the top-layer boxes under `kind` into `out`, in document order (a nested one
 /// after its top-layer ancestor).
 fn take_top_layer(kind: &mut BoxKind, out: &mut Vec<LayoutBox>) {
-    let top = |b: &LayoutBox| b.style.get(TOP_LAYER).is_some();
-    let mut taken = Vec::new();
-    match kind {
+    let taken = match kind {
         BoxKind::Block(kids) | BoxKind::Flex(kids) | BoxKind::Grid(kids) | BoxKind::Table(kids) => {
-            for b in std::mem::take(kids) {
-                if top(&b) {
-                    taken.push(b);
-                } else {
-                    kids.push(b);
-                }
-            }
-            for b in kids.iter_mut() {
-                take_top_layer(&mut b.kind, out);
-            }
+            take_top_layer_boxes(kids, out)
         }
-        BoxKind::Lines(items) => {
-            for item in std::mem::take(items) {
-                match item {
-                    InlineItem::Atomic(b) if top(&b) => taken.push(b),
-                    other => items.push(other),
-                }
-            }
-            for item in items.iter_mut() {
-                if let InlineItem::Atomic(b) = item {
-                    take_top_layer(&mut b.kind, out);
-                }
-            }
-        }
-        BoxKind::Marker(_) => {}
-    }
+        BoxKind::Lines(items) => take_top_layer_items(items, out),
+        BoxKind::Marker(_) => Vec::new(),
+    };
     for mut b in taken {
         let mut nested = Vec::new();
         take_top_layer(&mut b.kind, &mut nested);
         out.push(b);
         out.append(&mut nested);
     }
+}
+
+/// Whether a box is in the top layer.
+fn in_top_layer(b: &LayoutBox) -> bool {
+    b.style.get(TOP_LAYER).is_some()
+}
+
+/// [`take_top_layer`] over block-level children: the top-layer children (returned) leave
+/// `kids`; the others' subtrees give theirs to `out`.
+fn take_top_layer_boxes(kids: &mut Vec<LayoutBox>, out: &mut Vec<LayoutBox>) -> Vec<LayoutBox> {
+    let (taken, kept): (Vec<_>, Vec<_>) = std::mem::take(kids).into_iter().partition(in_top_layer);
+    *kids = kept;
+    for b in kids.iter_mut() {
+        take_top_layer(&mut b.kind, out);
+    }
+    taken
+}
+
+/// [`take_top_layer`] over line content: top-layer atomics (returned) leave `items`.
+fn take_top_layer_items(items: &mut Vec<InlineItem>, out: &mut Vec<LayoutBox>) -> Vec<LayoutBox> {
+    let mut taken = Vec::new();
+    for item in std::mem::take(items) {
+        match item {
+            InlineItem::Atomic(b) if in_top_layer(&b) => taken.push(b),
+            other => items.push(other),
+        }
+    }
+    for item in items.iter_mut() {
+        if let InlineItem::Atomic(b) = item {
+            take_top_layer(&mut b.kind, out);
+        }
+    }
+    taken
 }
 
 /// The fullscreen element's `::backdrop` (Chrome 156: `position: fixed; inset: 0;

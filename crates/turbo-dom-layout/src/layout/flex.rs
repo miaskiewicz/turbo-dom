@@ -495,36 +495,72 @@ fn kids_natural(kids: &[LayoutBox], fonts: &FontRegistry) -> f32 {
 /// run); an in-flow block ends the run, and one that avoids floats (a formatting-context
 /// root) sits beside it (its contribution adds the run). Otherwise the widest margin box.
 fn block_natural(kids: &[LayoutBox], fonts: &FontRegistry) -> f32 {
-    let (mut widest, mut left, mut right) = (0.0_f32, 0.0_f32, 0.0_f32);
+    let mut run = FloatRun::default();
     for k in in_flow(kids) {
         let w = margin_box(k, natural_width(k, fonts));
-        let (clear_left, clear_right) = match k.style.get("clear").map(str::trim) {
-            Some("both") => (true, true),
-            Some("left") => (true, false),
-            Some("right") => (false, true),
-            _ => (false, false),
-        };
-        if clear_left || clear_right {
-            widest = widest.max(left + right);
-            left = if clear_left { 0.0 } else { left };
-            right = if clear_right { 0.0 } else { right };
-        }
+        run.clear(clear_sides(k));
         if k.floated() {
-            match super::value::float_of(&k.style) {
-                super::value::Float::Right => right += w,
-                _ => left += w,
-            }
-            continue;
-        }
-        let beside = if block::avoids_floats(k) {
-            left + right
+            run.float(super::value::float_of(&k.style), w);
         } else {
-            0.0
-        };
-        widest = widest.max(left + right).max(w + beside);
-        (left, right) = (0.0, 0.0);
+            run.block(w, block::avoids_floats(k));
+        }
     }
-    widest.max(left + right)
+    run.end()
+}
+
+/// The `clear` sides of a box: (left, right).
+fn clear_sides(k: &LayoutBox) -> (bool, bool) {
+    match k.style.get("clear").map(str::trim) {
+        Some("both") => (true, true),
+        Some("left") => (true, false),
+        Some("right") => (false, true),
+        _ => (false, false),
+    }
+}
+
+/// [`block_natural`]'s running state: the widest line so far and the current run of
+/// floats on each side.
+#[derive(Default)]
+struct FloatRun {
+    widest: f32,
+    left: f32,
+    right: f32,
+}
+
+impl FloatRun {
+    /// A `clear` ends the cleared sides' runs.
+    fn clear(&mut self, (left, right): (bool, bool)) {
+        if left || right {
+            self.widest = self.widest.max(self.left + self.right);
+        }
+        if left {
+            self.left = 0.0;
+        }
+        if right {
+            self.right = 0.0;
+        }
+    }
+
+    /// A float of margin-box width `w` joins its side's run.
+    fn float(&mut self, side: super::value::Float, w: f32) {
+        match side {
+            super::value::Float::Right => self.right += w,
+            _ => self.left += w,
+        }
+    }
+
+    /// An in-flow block of margin-box width `w` ends the run; one that avoids floats
+    /// (`beside`) sits beside it.
+    fn block(&mut self, w: f32, beside: bool) {
+        let floats = self.left + self.right;
+        let line = if beside { w + floats } else { w };
+        self.widest = self.widest.max(floats).max(line);
+        (self.left, self.right) = (0.0, 0.0);
+    }
+
+    fn end(&self) -> f32 {
+        self.widest.max(self.left + self.right)
+    }
 }
 
 /// The in-flow children of a box: absolutely positioned and fixed ones are out of flow
