@@ -567,17 +567,11 @@ pub(crate) fn is_hidden(style: &ComputedStyle) -> bool {
 /// use dozens; without honoring them their text renders — and, being
 /// `position:absolute` with no offset, piles up at the containing block's origin.
 fn is_visually_hidden(style: &ComputedStyle) -> bool {
-    // `clip: rect(...)` — deprecated everywhere *except* the classic sr-only clip
-    // hack (`clip:rect(1px,1px,1px,1px)` / `rect(0,0,0,0)`), so any rect() clip is
-    // the hide pattern.
-    if style
-        .get("clip")
-        .map(str::trim)
-        .is_some_and(|c| c.starts_with("rect("))
-    {
-        return true;
-    }
-    clip_path_hides(style) || tiny_clipped(style)
+    // An absolutely positioned box whose `clip: rect()` keeps nothing — the classic
+    // sr-only clip (`rect(1px,1px,1px,1px)` / `rect(0,0,0,0)`). A partial clip lays out
+    // and paints its region (the fragment's `clip`); `clip` on any other box does not
+    // apply (miaskiewicz/turbo-dom#52).
+    super::value::clip_keeps_nothing(style) || clip_path_hides(style) || tiny_clipped(style)
 }
 
 /// `clip-path: inset(50%|100%)` clips the whole box away.

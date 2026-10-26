@@ -780,6 +780,94 @@ fn specified_display(s: &ComputedStyle) -> Display {
     }
 }
 
+/// The four offsets (`top`, `right`, `bottom`, `left`) of an absolutely positioned box's
+/// `clip: rect(…)` (CSS 2.1 §11.1.2), each a `Px` length or `Auto` (commas optional, `em`
+/// against the box's font size). `None` when it does not clip: `clip: auto`, an invalid
+/// value (a percentage is invalid), or a box that is not absolutely positioned (`clip`
+/// does not apply). Shared by layout (the fragment's [`ClipRect`]) and hit testing
+/// (miaskiewicz/turbo-dom#28 item 1, #52).
+///
+/// [`ClipRect`]: super::fragment::ClipRect
+pub(crate) fn clip_offsets(style: &ComputedStyle) -> Option<[LengthPct; 4]> {
+    if !position_of(style).is_out_of_flow() {
+        return None;
+    }
+    let font = font_px(style);
+    let offsets: Option<Vec<LengthPct>> = rect_args(style.get("clip")?)?
+        .iter()
+        .map(|edge| clip_offset(edge, font))
+        .collect();
+    offsets?.try_into().ok()
+}
+
+/// One `rect()` offset: `auto` or a length (a `<shape>` offset is a length: a percentage
+/// is invalid).
+fn clip_offset(edge: &str, font: f32) -> Option<LengthPct> {
+    parse_length_pct(edge, font).filter(|o| matches!(o, LengthPct::Auto | LengthPct::Px(_)))
+}
+
+/// The four arguments of a `rect(…)` value, separated by commas and/or white space.
+fn rect_args(value: &str) -> Option<[&str; 4]> {
+    let inner = value.trim().strip_prefix("rect(")?.strip_suffix(')')?;
+    let edges: Vec<&str> = inner
+        .split(|c: char| c == ',' || c.is_whitespace())
+        .filter(|edge| !edge.is_empty())
+        .collect();
+    edges.try_into().ok()
+}
+
+/// A box's font size in px (`em` clip offsets), the 16px initial value when unknown.
+fn font_px(style: &ComputedStyle) -> f32 {
+    style
+        .get("font-size")
+        .and_then(|value| match parse_length_pct(value, DEFAULT_FONT_SIZE) {
+            Some(LengthPct::Px(px)) => Some(px),
+            _ => None,
+        })
+        .unwrap_or(DEFAULT_FONT_SIZE)
+}
+
+/// The region of a `width` x `height` border box an absolutely positioned box's
+/// `clip: rect()` keeps, from the border box's top-left (`auto` = the edge; empty when an
+/// edge passes its opposite one), `scale`d (a live layout's `zoom`). `None`: no clip.
+pub(crate) fn clip_region(
+    style: &ComputedStyle,
+    width: f32,
+    height: f32,
+    scale: f32,
+) -> Option<super::fragment::ClipRect> {
+    let [top, right, bottom, left] = clip_offsets(style)?;
+    let at = |offset: LengthPct, auto: f32| match offset {
+        LengthPct::Px(px) => px * scale,
+        _ => auto,
+    };
+    let (top, right) = (at(top, 0.0), at(right, width));
+    let (bottom, left) = (at(bottom, height), at(left, 0.0));
+    Some(super::fragment::ClipRect {
+        x: left,
+        y: top,
+        width: (right - left).max(0.0),
+        height: (bottom - top).max(0.0),
+    })
+}
+
+/// Whether an absolutely positioned box's `clip: rect()` keeps nothing whatever the
+/// box's size: a right edge at or before the left one (an `auto` left is 0), or a bottom
+/// edge at or before the top one — the sr-only pattern (`rect(0,0,0,0)`,
+/// `rect(1px,1px,1px,1px)`). Static layouts leave such a box out entirely (no box, text or
+/// tag; miaskiewicz/turbo-dom#52).
+pub(crate) fn clip_keeps_nothing(style: &ComputedStyle) -> bool {
+    let Some([top, right, bottom, left]) = clip_offsets(style) else {
+        return false;
+    };
+    let empty = |near: LengthPct, far: LengthPct| match (near, far) {
+        (LengthPct::Px(near), LengthPct::Px(far)) => far <= near,
+        (LengthPct::Auto, LengthPct::Px(far)) => far <= 0.0,
+        _ => false,
+    };
+    empty(left, right) || empty(top, bottom)
+}
+
 /// The CSS `position` scheme (defaults to `static`).
 pub fn position_of(s: &ComputedStyle) -> Position {
     match s.get("position").map(str::trim) {
@@ -2106,5 +2194,102 @@ mod display_tests {
             display(&[("display", "inline"), ("float", "inline-start")]),
             Display::Inline
         );
+    }
+}
+
+#[cfg(test)]
+mod clip_tests {
+    use super::{clip_keeps_nothing, clip_region, ComputedStyle};
+    use crate::layout::fragment::ClipRect;
+
+    fn style(pairs: &[(&str, &str)]) -> ComputedStyle {
+        ComputedStyle::from_pairs(pairs.iter().copied())
+    }
+
+    #[test]
+    fn clip_region_resolves_offsets_auto_edges_and_scale() {
+        let abs = ("position", "absolute");
+        let region =
+            |clip: &str, scale| clip_region(&style(&[abs, ("clip", clip)]), 50.0, 40.0, scale);
+        let rect = |x, y, width, height| {
+            Some(ClipRect {
+                x,
+                y,
+                width,
+                height,
+            })
+        };
+        assert_eq!(
+            region("rect(10px,40px,30px,5px)", 1.0),
+            rect(5.0, 10.0, 35.0, 20.0)
+        );
+        assert_eq!(
+            region("rect(auto auto auto auto)", 1.0),
+            rect(0.0, 0.0, 50.0, 40.0)
+        );
+        assert_eq!(region("rect(1px,2px,3px,0)", 2.0), rect(0.0, 2.0, 4.0, 4.0));
+        // An edge past its opposite keeps nothing; a region may pass the border box.
+        assert_eq!(
+            region("rect(0,auto,auto,60px)", 1.0),
+            rect(60.0, 0.0, 0.0, 40.0)
+        );
+        assert_eq!(
+            region("rect(-5px,90px,auto,auto)", 1.0),
+            rect(0.0, -5.0, 90.0, 45.0)
+        );
+        let font = style(&[abs, ("font-size", "10px"), ("clip", "rect(1em,2em,3em,0)")]);
+        assert_eq!(
+            clip_region(&font, 50.0, 40.0, 1.0),
+            rect(0.0, 10.0, 20.0, 20.0)
+        );
+        // `clip` applies only to absolutely positioned boxes; invalid values do not clip.
+        for pairs in [
+            &[("clip", "rect(0,0,0,0)")][..],
+            &[("position", "relative"), ("clip", "rect(0,0,0,0)")],
+            &[abs],
+            &[abs, ("clip", "auto")],
+            &[abs, ("clip", "rect(0,0,0)")],
+            &[abs, ("clip", "rect(10%,0,0,0)")],
+            &[abs, ("clip", "rect(0,0,0,0")],
+        ] {
+            assert_eq!(
+                clip_region(&style(pairs), 50.0, 40.0, 1.0),
+                None,
+                "{pairs:?}"
+            );
+        }
+        assert!(clip_region(
+            &style(&[("position", "fixed"), ("clip", "rect(0,1px,1px,0)")]),
+            9.0,
+            9.0,
+            1.0
+        )
+        .is_some());
+    }
+
+    #[test]
+    fn clip_keeps_nothing_only_when_empty_at_every_size() {
+        let keeps_nothing =
+            |clip: &str| clip_keeps_nothing(&style(&[("position", "absolute"), ("clip", clip)]));
+        for empty in [
+            "rect(0,0,0,0)",
+            "rect(1px,1px,1px,1px)",
+            "rect(0 0 0 0)",
+            "rect(10px,auto,10px,auto)",
+            "rect(auto,0,auto,auto)",
+            "rect(auto,auto,0,auto)",
+            "rect(0,5px,auto,10px)",
+        ] {
+            assert!(keeps_nothing(empty), "{empty}");
+        }
+        for kept in [
+            "rect(10px,40px,40px,10px)",
+            "rect(auto,auto,auto,auto)",
+            "rect(0,auto,auto,60px)",
+            "rect(auto,auto,auto,auto",
+        ] {
+            assert!(!keeps_nothing(kept), "{kept}");
+        }
+        assert!(!clip_keeps_nothing(&style(&[("clip", "rect(0,0,0,0)")])));
     }
 }

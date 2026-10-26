@@ -64,7 +64,11 @@ fn lay_out(html: &str) -> Result<Fragment, RenderError> {
   placed at the top of its line, which wraps beside it; an out-of-flow box adds its own
   margins once; the anonymous block around an inline run inherits only inherited
   properties; a line holding only out-of-flow places is zero-height. CSSOM-View hit
-  testing (`cssom_view::hit`) honours `clip: rect()` of absolutely positioned boxes.
+  testing (`cssom_view::hit`) honours `clip: rect()` of absolutely positioned boxes, and
+  so does the galley (turbo-dom#52): such a box keeps its box and records the region in
+  `Fragment::clip` (`ClipRect`, from its border-box corner) for the painters; one whose
+  clip keeps nothing at any size (the sr-only pattern) is left out of static layouts
+  (no box, text or tag); `clip` on any other box is ignored.
   Also (turbo-dom#48/#49/#50/#53/#56): absolutely positioned `width: auto` boxes shrink to
   fit; `inline-flex` / `inline-grid` are inline-level; auto-layout collapsed tables merge
   borders; percentage columns take their share; spanning cells spread over their columns.

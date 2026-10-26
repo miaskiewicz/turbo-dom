@@ -1944,13 +1944,7 @@ fn layout_box_sized_impl(
     }
     // A table wrapper box (a captioned table): its frame, background and heights are
     // its grid box's (miaskiewicz/turbo-dom#51).
-    let wrapper;
-    let bs = if super::table::is_wrapper(lb) {
-        wrapper = super::table::wrapper_style(bs);
-        &wrapper
-    } else {
-        bs
-    };
+    let bs: &BoxStyle = &super::table::own_style(lb, bs);
     let bw = bs.border.widths();
     let content_x = bx + bw.left + bs.padding.left;
     let content_y = by + bw.top + bs.padding.top;
@@ -2031,6 +2025,7 @@ fn layout_box_sized_impl(
         children,
         z_index: bs.z_index,
         is_positioned: bs.position != Position::Static,
+        clip: super::value::clip_region(&lb.style, bbw, bbh, 1.0),
     }
 }
 
@@ -2311,6 +2306,7 @@ fn image_fragment(lb: &LayoutBox, bx: f32, by: f32, sized: &SizedImage, bs: &Box
         children: Vec::new(),
         z_index: bs.z_index,
         is_positioned: bs.position != Position::Static,
+        clip: super::value::clip_region(&lb.style, sized.width, sized.height, 1.0),
     }
 }
 

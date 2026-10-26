@@ -1215,9 +1215,18 @@ fn caption_floor(items: &[LayoutBox], style: &ComputedStyle, fonts: &FontRegistr
     })
 }
 
+/// The style `lb` lays out with: `bs`, or for a table wrapper box [`wrapper_style`].
+pub(crate) fn own_style<'a>(lb: &LayoutBox, bs: &'a BoxStyle) -> std::borrow::Cow<'a, BoxStyle> {
+    if is_wrapper(lb) {
+        std::borrow::Cow::Owned(wrapper_style(bs))
+    } else {
+        std::borrow::Cow::Borrowed(bs)
+    }
+}
+
 /// The used style of a table wrapper box: the table's, without the frame, background,
 /// shadow and heights that belong to its grid box (they paint and size the grid).
-pub(crate) fn wrapper_style(bs: &BoxStyle) -> BoxStyle {
+fn wrapper_style(bs: &BoxStyle) -> BoxStyle {
     BoxStyle {
         padding: Edges::default(),
         border: BorderEdges::default(),
