@@ -531,6 +531,100 @@
      "class": "R"
     }
    ]
+  },
+  {
+   "id": "icb-fixed-bottom-right",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div style=\"width:10px;height:2000px\"></div><div data-cid=\"c\" style=\"position:fixed;right:10px;bottom:10px;width:20px;height:20px;background:#ff0000\"></div></body></html>",
+   "assets": [],
+   "boxes": [
+    {
+     "cid": "c",
+     "x": 1250,
+     "y": 770,
+     "width": 20,
+     "height": 20
+    }
+   ],
+   "probes": [
+    {
+     "x": 1260,
+     "y": 780,
+     "class": "R"
+    },
+    {
+     "x": 1251,
+     "y": 771,
+     "class": "R"
+    },
+    {
+     "x": 1260,
+     "y": 765,
+     "class": "T"
+    },
+    {
+     "x": 1260,
+     "y": 795,
+     "class": "T"
+    },
+    {
+     "x": 1275,
+     "y": 780,
+     "class": "T"
+    },
+    {
+     "x": 1260,
+     "y": 10,
+     "class": "T"
+    }
+   ]
+  },
+  {
+   "id": "icb-absolute-bottom-and-percent",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div data-cid=\"b\" style=\"position:absolute;left:100px;bottom:0;width:200px;height:20px;background:#0000ff\"></div><div data-cid=\"m\" style=\"position:absolute;left:100px;top:50%;width:200px;height:20px;background:#00ff00\"></div></body></html>",
+   "assets": [],
+   "boxes": [
+    {
+     "cid": "b",
+     "x": 100,
+     "y": 780,
+     "width": 200,
+     "height": 20
+    },
+    {
+     "cid": "m",
+     "x": 100,
+     "y": 400,
+     "width": 200,
+     "height": 20
+    }
+   ],
+   "probes": [
+    {
+     "x": 200,
+     "y": 790,
+     "class": "B"
+    },
+    {
+     "x": 200,
+     "y": 779,
+     "class": "T"
+    },
+    {
+     "x": 200,
+     "y": 410,
+     "class": "G"
+    },
+    {
+     "x": 200,
+     "y": 399,
+     "class": "T"
+    },
+    {
+     "x": 200,
+     "y": 10,
+     "class": "T"
+    }
+   ]
   }
  ]
 }

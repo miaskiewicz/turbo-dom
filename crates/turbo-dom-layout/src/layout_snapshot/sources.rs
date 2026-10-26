@@ -158,6 +158,16 @@ impl Walker<'_> {
         ancestors: &[SourceId],
         excluded: bool,
     ) {
+        // A top-layer box (the fullscreen element, miaskiewicz/turbo-dom#82) is laid out
+        // as a child of the initial containing block: no ancestor clips, scrolls or
+        // transforms it.
+        let ancestors: &[SourceId] = if matches!(node, StyledNode::Element(element)
+            if element.style.get("-internal-top-layer").is_some())
+        {
+            &[]
+        } else {
+            ancestors
+        };
         let excluded = excluded
             || matches!(node, StyledNode::Element(element) if display_of(&element.style) == Display::None
                 || crate::layout::contents::suppresses_subtree(element));

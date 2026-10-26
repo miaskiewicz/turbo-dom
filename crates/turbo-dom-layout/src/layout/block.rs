@@ -64,6 +64,15 @@ pub(crate) struct Ctx<'a> {
     /// `position:fixed` boxes.
     pub(crate) root_w: f32,
     pub(crate) root_h: f32,
+    /// The initial containing block's height on the static path (the viewport height
+    /// of [`crate::layout_in_viewport`]; 0 = unknown): what `position: fixed` boxes and
+    /// absolutely positioned boxes whose containing block is the initial one resolve
+    /// `bottom` / `%` insets and `%` heights against (miaskiewicz/turbo-dom#81). The live
+    /// path keeps its own viewport bases (`root_h`, `abs_cb_h`).
+    pub(crate) icb_h: f32,
+    /// Whether the containing block of `absolute` descendants is the initial containing
+    /// block (no positioned ancestor yet); saved/restored with `abs_cb_*`.
+    pub(crate) abs_cb_icb: bool,
     /// Live snapshots use viewport geometry rather than pagination image caps.
     pub(crate) live_geometry: bool,
     pub(crate) used_metrics: Option<HashMap<NodeId, UsedBoxMetrics>>,
@@ -239,11 +248,14 @@ fn definite_content_height(bs: &BoxStyle, outer_cb_h: f32) -> f32 {
 /// The containing-block height a box resolves its `%` `height` / `min-height` /
 /// `max-height` against on the static path: a positioned box's `abs_cb_h` (so a
 /// `bottom:0; height:33%` overlay fills its band on a card sized by its content), an
-/// in-flow box's parent's definite content height `cb_h` (miaskiewicz/turbo-dom#78).
-/// 0 = indefinite: the percentages then behave as `auto` / 0 / `none`.
+/// in-flow box's parent's definite content height `cb_h` (miaskiewicz/turbo-dom#78), a fixed
+/// box's or an initial-containing-block absolute box's known initial containing block
+/// height `icb_h` (#81). 0 = indefinite: the percentages then behave as `auto` / 0 / `none`.
 fn percentage_height_basis(bs: &BoxStyle, ctx: &Ctx) -> f32 {
     if bs.position == Position::Static {
         ctx.cb_h
+    } else if in_known_icb(bs, ctx) {
+        ctx.icb_h
     } else {
         ctx.abs_cb_h
     }
@@ -287,7 +299,7 @@ fn positioned_child_block(
             content.0,
             content.1,
             content.2,
-            definite_content_height(bs, ctx.abs_cb_h),
+            definite_content_height(bs, percentage_height_basis(bs, ctx)),
         );
     }
     let border = bs.border.widths();
@@ -326,10 +338,7 @@ fn layout_positioned(
         return layout_box(lb, origin.0, origin.1, width, fs, ctx);
     }
     if !ctx.live_geometry {
-        return match auto_positioned_width(lb, &bs, origin.0, ctx) {
-            Some(border_width) => layout_box_sized(lb, &bs, origin.0, origin.1, border_width, ctx),
-            None => layout_box(lb, origin.0, origin.1, width, fs, ctx),
-        };
+        return layout_positioned_static(lb, bs, origin, (width, fs), ctx);
     }
     bs = resolve(lb, width, fs);
     let border = bs.border.widths();
@@ -355,6 +364,30 @@ fn layout_positioned(
     let border_width = auto_positioned_width(lb, &bs, origin.0, ctx)
         .unwrap_or_else(|| border_box_width(&bs, width));
     layout_box_sized(lb, &bs, origin.0, origin.1, border_width, ctx)
+}
+
+/// [`layout_positioned`] on the static path: shrink-to-fit `width: auto`
+/// ([`auto_positioned_width`]) and the `top` + `bottom` stretched auto height
+/// ([`static_stretched_height`], miaskiewicz/turbo-dom#89).
+fn layout_positioned_static(
+    lb: &LayoutBox,
+    mut bs: BoxStyle,
+    origin: (f32, f32),
+    (width, fs): (f32, f32),
+    ctx: &mut Ctx,
+) -> Fragment {
+    let stretched = static_stretched_height(lb, &bs, ctx);
+    if let Some(height) = stretched {
+        bs.height = height;
+    }
+    match auto_positioned_width(lb, &bs, origin.0, ctx) {
+        Some(border_width) => layout_box_sized(lb, &bs, origin.0, origin.1, border_width, ctx),
+        None if stretched.is_some() => {
+            let border_width = border_box_width(&bs, width);
+            layout_box_sized(lb, &bs, origin.0, origin.1, border_width, ctx)
+        }
+        None => layout_box(lb, origin.0, origin.1, width, fs, ctx),
+    }
 }
 
 /// The used border-box width of an absolutely positioned non-replaced box with
@@ -387,6 +420,25 @@ fn auto_positioned_width(lb: &LayoutBox, bs: &BoxStyle, border_x: f32, ctx: &Ctx
     Some(clamp_width(width.max(0.0), bs, cbw, extra))
 }
 
+/// The static-path used `height` of an absolutely positioned (or fixed) non-table box
+/// with `height: auto` and both `top` and `bottom` set: the containing block's height
+/// less the insets, its vertical margins and (content-box) its padding and border (CSS
+/// 2.2 §10.6.4; miaskiewicz/turbo-dom#89), as the live path stretches it. `None` when it
+/// does not apply or the containing block's height is unknown (0).
+fn static_stretched_height(lb: &LayoutBox, bs: &BoxStyle, ctx: &Ctx) -> Option<LengthPct> {
+    let cbh = out_of_flow_height(bs, ctx);
+    if bs.height != LengthPct::Auto || cbh <= 0.0 || matches!(lb.kind, BoxKind::Table(_)) {
+        return None;
+    }
+    let frame = match bs.box_sizing {
+        BoxSizing::ContentBox => bs.padding.vertical() + bs.border.widths().vertical(),
+        BoxSizing::BorderBox => 0.0,
+    };
+    let insets = (bs.inset_top, bs.inset_bottom);
+    let height = stretch_insets(bs.height, insets, cbh, bs.margin.vertical() + frame);
+    (height != LengthPct::Auto).then_some(height)
+}
+
 fn stretch_insets(
     value: LengthPct,
     insets: (LengthPct, LengthPct),
@@ -415,9 +467,24 @@ fn out_of_flow_width(bs: &BoxStyle, width: f32, ctx: &Ctx) -> f32 {
 fn out_of_flow_height(bs: &BoxStyle, ctx: &Ctx) -> f32 {
     if ctx.live_geometry {
         live_height_basis(bs, ctx)
+    } else if in_known_icb(bs, ctx) {
+        ctx.icb_h
     } else {
         ctx.abs_cb_h
     }
+}
+
+/// Whether a static-path box is positioned against the initial containing block of a
+/// known height (miaskiewicz/turbo-dom#81): a `position: fixed` box, or an absolutely
+/// positioned one with no positioned ancestor. With the height unknown (`icb_h == 0`,
+/// e.g. a paged layout) such a box keeps the containing-block basis it had before.
+fn in_known_icb(bs: &BoxStyle, ctx: &Ctx) -> bool {
+    ctx.icb_h > 0.0
+        && match bs.position {
+            Position::Fixed => true,
+            Position::Absolute => ctx.abs_cb_icb,
+            _ => false,
+        }
 }
 
 fn live_height_basis(bs: &BoxStyle, ctx: &Ctx) -> f32 {
@@ -591,10 +658,13 @@ fn marker_frag(node_id: NodeId, kind: MarkerKind, x: f32, y: f32) -> Fragment {
 /// Lay out an atomic inline (`inline-block` / replaced `<img>`) at the origin so
 /// its size is known; the caller translates it to its placed line position. An
 /// auto-width, non-replaced `inline-block` shrinks to its content (else it would
-/// fill the line); replaced/explicit-width boxes size themselves normally.
+/// fill the line); replaced/explicit-width boxes size themselves normally. An
+/// `inline-block` is a block formatting context root, so its first / last child's
+/// vertical margins stay inside it (miaskiewicz/turbo-dom#80).
 fn lay_atomic(b: &LayoutBox, cw: f32, fs: f32, ctx: &mut Ctx) -> Fragment {
     let bs = resolve(b, cw, fs);
     let replaced = b.is_replaced();
+    let root = inline_block(b);
     if !replaced && bs.width.resolve(cw).is_none() {
         // Shrink-to-fit, then honor `min-width`/`max-width` — google's header "Sign in"
         // pill has `min-width:85px`; unclamped it shrank to its ~68px text and, nearly
@@ -608,10 +678,20 @@ fn lay_atomic(b: &LayoutBox, cw: f32, fs: f32, ctx: &mut Ctx) -> Fragment {
         let mc = super::flex::min_content_width(b, ctx.fonts);
         let w = clamp_width(nat.min(cw.max(mc)), &bs, cw, extra);
         let w = super::value::html_used_value(w, ctx.html_font_scale);
-        layout_box_sized(b, &bs, 0.0, 0.0, w, ctx)
+        layout_box_sized_impl(b, &bs, 0.0, 0.0, w, ctx, root)
+    } else if root {
+        let bbw = border_box_width(&bs, cw);
+        layout_box_sized_isolated(b, &bs, 0.0, 0.0, bbw, ctx)
     } else {
         layout_box(b, 0.0, 0.0, cw, fs, ctx)
     }
+}
+
+/// Whether an atomic inline is an `inline-block` (as specified: it lays out as a block
+/// container that establishes a block formatting context). A nested block the generic
+/// policy keeps atomic inside an inline is not.
+fn inline_block(b: &LayoutBox) -> bool {
+    b.style.get("display").map(str::trim) == Some("inline-block")
 }
 
 /// Lay out an inline formatting context: text runs and atomic inline boxes flow
@@ -1454,7 +1534,7 @@ fn anchor_bottom(frag: &mut Fragment, kbs: &BoxStyle, content_h: f32, ctx: &Ctx)
     let Some(bottom) = kbs.inset_bottom.resolve(content_h) else {
         return;
     };
-    let origin_y = if ctx.live_geometry {
+    let origin_y = if ctx.live_geometry || in_known_icb(kbs, ctx) {
         containing_block(kbs, ctx).1
     } else {
         ctx.abs_cb_y
@@ -1627,18 +1707,22 @@ fn auto_x_margins(s: &crate::style::ComputedStyle) -> bool {
 
 /// Whether a box establishes a new block formatting context — floats it contains
 /// are isolated from the outer context (they don't wrap outer floats, and they
-/// grow this box). Floats, out-of-flow boxes, non-`visible` `overflow`, and the
-/// independent formatting roots (flex/grid/table) all qualify.
+/// grow this box). Floats, out-of-flow boxes, non-`visible` `overflow`, `display:
+/// flow-root` (miaskiewicz/turbo-dom#88) and the independent formatting roots
+/// (flex/grid/table) all qualify.
 fn intrinsic_formatting_root(lb: &LayoutBox, bs: &BoxStyle) -> bool {
-    lb.document_root() || bs.float != Float::None || bs.position.is_out_of_flow() || flow_root(lb)
+    lb.document_root() || bs.float != Float::None || bs.position.is_out_of_flow()
 }
 
-/// `display: flow-root` (also the two-value `block flow-root`): a block box that
-/// establishes a block formatting context (CSS Display 3; miaskiewicz/turbo-dom#88).
-fn flow_root(lb: &LayoutBox) -> bool {
-    lb.style
-        .get("display")
-        .is_some_and(|display| display.split_whitespace().any(|token| token == "flow-root"))
+/// Whether an in-flow block-level box avoids floats (a formatting-context root or a
+/// replaced box): it sits beside them rather than under them — also in a max-content
+/// width (miaskiewicz/turbo-dom#85).
+pub(crate) fn avoids_floats(lb: &LayoutBox) -> bool {
+    let bs = lb.resolved(ResolveCtx {
+        parent_font_size: DEFAULT_FONT_SIZE,
+        cb_width: 0.0,
+    });
+    establishes_bfc(lb, &bs) || lb.is_replaced()
 }
 
 fn establishes_bfc(lb: &LayoutBox, bs: &BoxStyle) -> bool {
@@ -1648,7 +1732,8 @@ fn establishes_bfc(lb: &LayoutBox, bs: &BoxStyle) -> bool {
     if matches!(
         lb.kind,
         BoxKind::Flex(_) | BoxKind::Grid(_) | BoxKind::Table(_)
-    ) {
+    ) || lb.style.get("display").map(str::trim) == Some("flow-root")
+    {
         return true;
     }
     ["overflow", "overflow-x", "overflow-y"].iter().any(|p| {
@@ -1799,8 +1884,11 @@ fn lay_float(kid: &LayoutBox, cw: f32, fs: f32, ctx: &mut Ctx) -> Fragment {
 }
 
 /// The border-box width of a float and whether it is shrink-to-fit sized. An
-/// `auto`-width non-replaced float takes its natural width capped at the container
-/// (`shrink = true`); otherwise it takes its resolved border-box width.
+/// `auto`-width non-replaced float is shrink-to-fit (CSS 2.2 §10.3.5;
+/// miaskiewicz/turbo-dom#83): `min(max(min-content, available), max-content)`, the
+/// available width being the container's less the float's own horizontal margins, then
+/// `min-width` / `max-width` (`shrink = true`); otherwise it takes its resolved
+/// border-box width.
 fn float_width(
     kid: &LayoutBox,
     kbs: &BoxStyle,
@@ -1810,7 +1898,11 @@ fn float_width(
 ) -> (f32, bool) {
     let shrink = !replaced && kbs.width.resolve(cw).is_none();
     let w = if shrink {
-        super::flex::natural_width(kid, fonts).min(cw)
+        let available = cw - kbs.margin.horizontal();
+        let min = super::flex::min_content_width(kid, fonts);
+        let fit = super::flex::natural_width(kid, fonts).min(available.max(min));
+        let extra = kbs.padding.horizontal() + kbs.border.widths().horizontal();
+        clamp_width(fit, kbs, cw, extra)
     } else {
         border_box_width(kbs, cw)
     };
@@ -2061,12 +2153,13 @@ fn layout_box_sized_impl(
     // A positioned box establishes the containing block for its `absolute`
     // descendants (its content box). Save/restore around the child layout.
     let saved_cb = (ctx.abs_cb_x, ctx.abs_cb_y, ctx.abs_cb_w, ctx.abs_cb_h);
-    let saved_abs_known = ctx.abs_cb_h_known;
+    let saved_abs_known = (ctx.abs_cb_h_known, ctx.abs_cb_icb);
     let own_height = resolved_live_height(bs.height, native_height_basis(bs, ctx), 0.0);
     if contains_positioned(bs) {
         (ctx.abs_cb_x, ctx.abs_cb_y, ctx.abs_cb_w, ctx.abs_cb_h) =
             positioned_child_block(bs, (bx, by, bbw), (content_x, content_y, content_w), ctx);
         ctx.abs_cb_h_known = own_height.is_some();
+        ctx.abs_cb_icb = false;
     }
     // In-flow `%`-height CB: expose this box's own definite content height to its
     // children (any box, not just positioned) so a `height:100%`/`max-height:100%`
@@ -2094,7 +2187,7 @@ fn layout_box_sized_impl(
     (ctx.abs_cb_x, ctx.abs_cb_y, ctx.abs_cb_w, ctx.abs_cb_h) = saved_cb;
     ctx.cb_h = saved_cb_h;
     ctx.cb_h_known = saved_cb_known;
-    ctx.abs_cb_h_known = saved_abs_known;
+    (ctx.abs_cb_h_known, ctx.abs_cb_icb) = saved_abs_known;
     // The content-box height honoring an explicit/min/max `height` — a `background`
     // or `mask` image fills the box even when it has no flow content (an empty icon
     // span sized only by `height`, whose measured `content_h` is 0).
@@ -2503,10 +2596,22 @@ pub fn layout_tree_with_images(
     images: &ImageCtx,
     diags: &mut Diagnostics,
 ) -> Fragment {
+    layout_tree_in_viewport(root, (cb_width, 0.0), fonts, images, diags)
+}
+
+/// [`layout_tree_with_images`] in a `(width, height)` viewport: the initial containing
+/// block's height is `height` (0 = unknown; see [`crate::layout_in_viewport`]).
+pub(crate) fn layout_tree_in_viewport(
+    root: &LayoutBox,
+    (cb_width, icb_height): (f32, f32),
+    fonts: &FontRegistry,
+    images: &ImageCtx,
+    diags: &mut Diagnostics,
+) -> Fragment {
     layout_tree_policy(
         root,
         cb_width,
-        0.0,
+        (0.0, icb_height),
         (false, TextLayoutPolicy::default(), false),
         fonts,
         images,
@@ -2519,7 +2624,7 @@ pub fn layout_tree_with_images(
 /// (source-recording mode; the galley is identical).
 pub(crate) fn layout_tree_recorded(
     root: &LayoutBox,
-    cb_width: f32,
+    (cb_width, icb_height): (f32, f32),
     fonts: &FontRegistry,
     images: &ImageCtx,
     diags: &mut Diagnostics,
@@ -2527,7 +2632,7 @@ pub(crate) fn layout_tree_recorded(
     let laid = layout_tree_policy(
         root,
         cb_width,
-        0.0,
+        (0.0, icb_height),
         (false, TextLayoutPolicy::default(), true),
         fonts,
         images,
@@ -2552,7 +2657,7 @@ pub(crate) fn layout_tree_live(
     let laid = layout_tree_policy(
         root,
         viewport.0,
-        viewport.1,
+        (viewport.1, 0.0),
         (true, text_start, false),
         fonts,
         images,
@@ -2573,7 +2678,7 @@ struct PolicyLayout {
 fn layout_tree_policy(
     root: &LayoutBox,
     cb_width: f32,
-    viewport_height: f32,
+    (viewport_height, icb_h): (f32, f32),
     policy: (bool, TextLayoutPolicy, bool),
     fonts: &FontRegistry,
     images: &ImageCtx,
@@ -2601,6 +2706,8 @@ fn layout_tree_policy(
         cb_h_known: live_geometry,
         root_w: cb_width,
         root_h: viewport_height,
+        icb_h,
+        abs_cb_icb: true,
         live_geometry,
         used_metrics: live_geometry.then(HashMap::new),
         html_font_metrics: text_start.is_some_and(|value| value.1),

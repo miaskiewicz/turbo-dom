@@ -9,8 +9,11 @@
 // cases of the bugs found while fixing it (one group per issue, labelled). P5b-W6 adds the
 // `min-height` / `max-height` cases of miaskiewicz/turbo-dom#75 item 1
 // (`min-height-margin-*`), zero-area `clip: rect()` boxes of item 2 (`clip-zero-area-*`,
-// `clip-sr-only*`) and cases of the bugs found while fixing them (#76, #77, #78, #79, #86,
-// #88, #93).
+// `clip-sr-only*`) and cases of the bugs found while fixing them (#76, #77, #78, #79
+// `intrinsic-margin-*`, #86 `column-flex-item-*`, #88 `flow-root-*` /
+// `empty-formatting-root-*`, #93 `flex-item-*`). P5b-W7 adds miaskiewicz/turbo-dom#79
+// (`intrinsic-margins-*`), #80 (`inline-block-margins-*`) and #81 (`icb-*`), and the bugs
+// found while fixing them (one group per issue, labelled).
 //
 // For every case below, Chrome for Testing 156 (viewport 1280x800) records:
 //   - `boxes`: getBoundingClientRect() of every `[data-cid]` element (document order), as
@@ -305,6 +308,103 @@ const CASES = [
   { id: "th-centers-inline-content", html: DOC(S("body{margin:0}"), `<table><tr><th data-cid="th" style="width:100px"><i data-cid="i" style="display:inline-block;width:10px;height:10px"></i></th></tr></table>`), measure: "xw" },
   { id: "th-author-text-align", html: DOC(S("body{margin:0}"), `<table><tr><th data-cid="th" style="width:100px;text-align:left"><i data-cid="i" style="display:inline-block;width:10px;height:10px"></i></th></tr></table>`), measure: "xw" },
   { id: "th-leaves-block-children", html: DOC(S("body{margin:0}"), `<table><tr><th data-cid="th" style="width:100px"><div data-cid="d" style="width:10px;height:10px"></div></th></tr></table>`) },
+  // P5b-W7, miaskiewicz/turbo-dom#79: a box's intrinsic (min-/max-content) width counts
+  // its in-flow children's horizontal margins (signed; `%` and `auto` margins count 0), so
+  // a float, an absolutely positioned or inline-block `width: auto` box and an auto table
+  // cell are as wide as their children's margin boxes.
+  { id: "intrinsic-margins-float", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="float:left"><div data-cid="d" style="width:30px;height:15px;margin:0 4px 0 6px"></div></div>`) },
+  { id: "intrinsic-margins-abs", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="position:absolute;left:5px"><div data-cid="d" style="width:30px;height:15px;margin:0 4px 0 6px"></div></div>`) },
+  { id: "intrinsic-margins-inline-block", html: DOC(S("body{margin:0}"), `<div style="font-size:0"><div data-cid="c" style="display:inline-block"><div data-cid="d" style="width:30px;height:15px;margin:0 4px 0 6px"></div></div></div>`) },
+  { id: "intrinsic-margins-table-cell", html: DOC(S("body{margin:0}"), `<table style="border-spacing:0"><tr><td data-cid="c" style="padding:0"><div data-cid="d" style="width:30px;height:15px;margin:0 4px 0 6px"></div></td></tr></table>`) },
+  { id: "intrinsic-margins-table-cell-min-content", html: DOC(S("body{margin:0}"), `<table style="border-spacing:0;width:1px"><tr><td data-cid="c" style="padding:0"><div data-cid="d" style="width:30px;height:15px;margin:0 4px 0 6px"></div></td></tr></table>`) },
+  { id: "intrinsic-margins-nested", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="float:left"><div data-cid="e" style="margin:0 5px"><div data-cid="d" style="width:30px;height:15px;margin:0 4px 0 6px"></div></div></div>`) },
+  { id: "intrinsic-margins-negative", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="float:left"><div data-cid="d" style="width:30px;height:15px;margin-left:-10px"></div></div>`) },
+  { id: "intrinsic-margins-negative-clamped", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="float:left"><div data-cid="d" style="width:30px;height:15px;margin-right:-40px"></div></div>`) },
+  { id: "intrinsic-margins-negative-beside-sibling", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="float:left"><div data-cid="d" style="width:30px;height:15px;margin-left:-10px"></div><div style="width:25px;height:5px"></div></div>`) },
+  { id: "intrinsic-margins-percent-and-auto", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="float:left"><div data-cid="d" style="width:30px;height:15px;margin:0 10% 0 0"></div><div data-cid="e" style="width:20px;height:5px;margin:0 auto"></div></div>`) },
+  { id: "intrinsic-margins-em", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="float:left;font-size:10px"><div data-cid="d" style="width:30px;height:15px;margin:0 1em"></div></div>`) },
+  { id: "intrinsic-margins-inline-block-in-float", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="float:left;font-size:0"><span data-cid="d" style="display:inline-block;width:30px;height:15px;margin:0 4px 0 6px"></span><span data-cid="e" style="display:inline-block;width:20px;height:15px;margin:0 3px"></span></div>`) },
+  { id: "intrinsic-margins-column-flex", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="float:left"><div style="display:flex;flex-direction:column"><div data-cid="d" style="width:30px;height:15px;margin:0 4px 0 6px"></div></div></div>`), measure: "xw" },
+  { id: "intrinsic-margins-grid", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="float:left"><div style="display:grid"><div data-cid="d" style="width:30px;height:15px;margin:0 4px 0 6px"></div></div></div>`) },
+  // P5b-W7, miaskiewicz/turbo-dom#80: an inline-block is a block formatting context root
+  // (CSS 2.2 §8.3.1): its first / last in-flow child's vertical margins stay inside it.
+  { id: "inline-block-margins-kept", html: DOC(S("body{margin:0}"), `<div style="font-size:0"><div data-cid="c" style="display:inline-block"><div data-cid="d" style="width:30px;height:15px;margin:3px 0 5px"></div></div></div>`) },
+  { id: "inline-block-margins-explicit-width", html: DOC(S("body{margin:0}"), `<div style="font-size:0"><div data-cid="c" style="display:inline-block;width:50px"><div data-cid="d" style="width:30px;height:15px;margin:3px 0 5px"></div></div></div>`) },
+  { id: "inline-block-margins-nested", html: DOC(S("body{margin:0}"), `<div style="font-size:0"><div data-cid="c" style="display:inline-block"><div data-cid="e"><div data-cid="d" style="width:30px;height:15px;margin:10px 0 7px"></div></div></div></div>`) },
+  { id: "inline-block-margins-own-and-child", html: DOC(S("body{margin:0}"), `<div style="font-size:0"><div data-cid="c" style="display:inline-block;margin:4px 0 2px"><div data-cid="d" style="width:30px;height:15px;margin:3px 0 5px"></div></div><div data-cid="g" style="height:10px"></div></div>`) },
+  { id: "inline-block-margins-negative", html: DOC(S("body{margin:0}"), `<div style="font-size:0"><div data-cid="c" style="display:inline-block"><div data-cid="d" style="width:30px;height:15px;margin:-4px 0 6px"></div></div></div>`) },
+  { id: "inline-block-margins-two-children", html: DOC(S("body{margin:0}"), `<div style="font-size:0"><div data-cid="c" style="display:inline-block"><div data-cid="d" style="width:30px;height:15px;margin:3px 0 5px"></div><div data-cid="e" style="width:20px;height:10px;margin:8px 0 2px"></div></div></div>`) },
+  // P5b-W7, miaskiewicz/turbo-dom#81: an absolutely positioned box whose containing block is
+  // the initial containing block, and a `position: fixed` box, resolve `bottom` / `%`
+  // insets and `%` heights against the viewport height (CSS 2.2 §10.1).
+  { id: "icb-fixed-bottom-right", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="position:fixed;right:10px;bottom:10px;width:20px;height:20px"></div>`) },
+  { id: "icb-absolute-bottom", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="position:absolute;bottom:0;width:20px;height:20px"></div>`) },
+  { id: "icb-absolute-bottom-margin", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="position:absolute;bottom:10px;margin-bottom:5px;width:20px;height:20px"></div>`) },
+  { id: "icb-absolute-top-percent", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="position:absolute;top:50%;width:20px;height:20px"></div>`) },
+  { id: "icb-fixed-bottom-percent", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="position:fixed;bottom:25%;width:20px;height:20px"></div>`) },
+  { id: "icb-absolute-height-percent", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="position:absolute;top:0;height:50%;width:20px"></div>`) },
+  { id: "icb-absolute-in-static-parents", html: DOC(S("body{margin:0}"), `<div style="margin:30px;padding:5px"><div data-cid="c" style="position:absolute;bottom:7px;width:20px;height:20px"></div></div>`) },
+  { id: "icb-fixed-in-positioned-ancestor", html: DOC(S("body{margin:0}"), `<div style="position:relative;top:40px;height:100px"><div data-cid="c" style="position:fixed;bottom:10px;left:3px;width:20px;height:20px"></div></div>`) },
+  { id: "icb-absolute-taller-document", html: DOC(S("body{margin:0}"), `<div style="height:2000px"></div><div data-cid="c" style="position:absolute;bottom:0;width:20px;height:20px"></div>`) },
+  { id: "icb-absolute-in-inline-run", html: DOC(S("body{margin:0}"), `<div style="font-size:0"><span>x<span data-cid="c" style="position:absolute;bottom:4px;width:20px;height:20px"></span></span></div>`) },
+  { id: "icb-positioned-parent-bottom-unchanged", html: DOC(S("body{margin:0}"), `<div style="position:relative;height:100px"><div data-cid="c" style="position:absolute;bottom:10px;width:20px;height:20px"></div></div>`) },
+  // P5b-W7, miaskiewicz/turbo-dom#88: `display: flow-root` establishes a block formatting
+  // context: its children's vertical margins stay inside it and it contains its floats.
+  { id: "flow-root-keeps-child-margins", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="display:flow-root"><div data-cid="d" style="width:30px;height:15px;margin:3px 0 5px"></div></div><div data-cid="g" style="height:10px"></div>`) },
+  { id: "flow-root-contains-floats", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="display:flow-root"><div data-cid="d" style="float:left;width:30px;height:40px"></div></div><div data-cid="g" style="height:10px"></div>`) },
+  { id: "flow-root-beside-a-float", html: DOC(S("body{margin:0}"), `<div style="float:left;width:100px;height:50px"></div><div data-cid="c" style="display:flow-root;height:20px"></div>`) },
+  // P5b-W7, miaskiewicz/turbo-dom#83: a `width: auto` float is shrink-to-fit —
+  // min(max(min-content, available), max-content) — so it never gets narrower than its
+  // min-content.
+  { id: "float-shrink-min-content-floor", html: DOC(S("body{margin:0}"), `<div style="width:20px"><div data-cid="c" style="float:left"><div data-cid="d" style="width:30px;height:15px"></div></div></div>`) },
+  { id: "float-shrink-min-content-right", html: DOC(S("body{margin:0}"), `<div style="width:20px"><div data-cid="c" style="float:right"><div data-cid="d" style="width:30px;height:15px"></div></div></div>`) },
+  { id: "float-shrink-between-min-and-max", html: DOC(S("body{margin:0}"), `<div style="width:50px;font-size:0"><div data-cid="c" style="float:left"><span data-cid="a" style="display:inline-block;width:30px;height:15px"></span> <span data-cid="b" style="display:inline-block;width:40px;height:15px"></span></div></div>`) },
+  { id: "float-shrink-min-content-with-frame", html: DOC(S("body{margin:0}"), `<div style="width:20px"><div data-cid="c" style="float:left;padding:0 3px;border:2px solid"><div data-cid="d" style="width:30px;height:15px"></div></div></div>`) },
+  { id: "float-shrink-max-width", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="float:left;max-width:20px"><div data-cid="d" style="width:30px;height:15px"></div></div>`) },
+  { id: "float-shrink-min-width", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="float:left;min-width:50px"><div data-cid="d" style="width:30px;height:15px"></div></div>`) },
+  { id: "float-shrink-available-minus-margins", html: DOC(S("body{margin:0}"), `<div style="width:60px;font-size:0"><div data-cid="c" style="float:left;margin:0 10px"><span style="display:inline-block;width:30px;height:15px"></span> <span style="display:inline-block;width:20px;height:15px"></span></div></div>`) },
+  // P5b-W7, miaskiewicz/turbo-dom#84: absolutely positioned and fixed children are out of
+  // flow and add nothing to their parent's intrinsic widths.
+  { id: "intrinsic-oof-absolute-child", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="float:left"><div style="position:absolute;width:100px;height:5px"></div><div data-cid="d" style="width:30px;height:15px"></div></div>`) },
+  { id: "intrinsic-oof-fixed-child", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="float:left"><div style="position:fixed;width:100px;height:5px"></div><div data-cid="d" style="width:30px;height:15px"></div></div>`) },
+  { id: "intrinsic-oof-only-child", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="float:left"><div style="position:absolute;width:100px;height:5px"></div></div>`) },
+  { id: "intrinsic-oof-table-cell", html: DOC(S("body{margin:0}"), `<table style="border-spacing:0"><tr><td data-cid="c" style="padding:0"><div style="position:absolute;width:100px;height:5px"></div><div data-cid="d" style="width:30px;height:15px"></div></td></tr></table>`) },
+  { id: "intrinsic-oof-min-content", html: DOC(S("body{margin:0}"), `<table style="border-spacing:0;width:1px"><tr><td data-cid="c" style="padding:0"><div style="position:absolute;width:100px;height:5px"></div><div data-cid="d" style="width:30px;height:15px"></div></td></tr></table>`) },
+  { id: "intrinsic-oof-inline-block", html: DOC(S("body{margin:0}"), `<div style="font-size:0"><div data-cid="c" style="display:inline-block"><div style="position:absolute;width:100px;height:5px"></div><div data-cid="d" style="width:30px;height:15px"></div></div></div>`) },
+  { id: "intrinsic-oof-row-flex", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="float:left"><div style="display:flex"><div style="position:absolute;width:100px;height:5px"></div><div data-cid="d" style="width:30px;height:15px"></div></div></div>`) },
+  // P5b-W7, miaskiewicz/turbo-dom#89: an absolutely positioned box with `height: auto` and
+  // both `top` and `bottom` is stretched between them (CSS 2.2 §10.6.4).
+  { id: "abs-stretch-definite-parent", html: DOC(S("body{margin:0}"), `<div style="position:relative;height:100px"><div data-cid="c" style="position:absolute;top:10px;bottom:20px;width:20px"></div></div>`) },
+  { id: "abs-stretch-auto-parent", html: DOC(S("body{margin:0}"), `<div style="position:relative"><div style="height:100px"></div><div data-cid="c" style="position:absolute;top:10px;bottom:20px;width:20px"></div></div>`) },
+  { id: "abs-stretch-frame-and-margins", html: DOC(S("body{margin:0}"), `<div style="position:relative;height:100px"><div data-cid="c" style="position:absolute;top:10px;bottom:20px;width:20px;padding:4px 0 6px;border:2px solid;margin:3px 0 5px"></div></div>`) },
+  { id: "abs-stretch-border-box", html: DOC(S("body{margin:0}"), `<div style="position:relative;height:100px"><div data-cid="c" style="position:absolute;top:10px;bottom:20px;width:20px;padding:4px 0 6px;box-sizing:border-box"></div></div>`) },
+  { id: "abs-stretch-content-overflows", html: DOC(S("body{margin:0}"), `<div style="position:relative;height:100px"><div data-cid="c" style="position:absolute;top:10px;bottom:20px;width:20px"><div data-cid="d" style="height:200px"></div></div></div>`) },
+  { id: "abs-stretch-max-height", html: DOC(S("body{margin:0}"), `<div style="position:relative;height:100px"><div data-cid="c" style="position:absolute;top:10px;bottom:20px;width:20px;max-height:30px"></div></div>`) },
+  { id: "abs-stretch-explicit-height-wins", html: DOC(S("body{margin:0}"), `<div style="position:relative;height:100px"><div data-cid="c" style="position:absolute;top:10px;bottom:20px;height:15px;width:20px"></div></div>`) },
+  { id: "abs-stretch-fixed-viewport", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="position:fixed;top:10px;bottom:20px;width:20px"></div>`) },
+  { id: "abs-stretch-initial-containing-block", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="position:absolute;top:10px;bottom:20px;width:20px"></div>`) },
+  // P5b-W7, miaskiewicz/turbo-dom#86: in a column flex container an item's flex basis is
+  // its `height` (the main size) and its `width` is its cross size.
+  { id: "column-flex-explicit-sizes", html: DOC(S("body{margin:0}"), `<div data-cid="f" style="display:flex;flex-direction:column"><div data-cid="d" style="width:30px;height:15px"></div><div data-cid="e" style="width:40px;height:5px"></div></div>`) },
+  { id: "column-flex-content-height", html: DOC(S("body{margin:0}"), `<div data-cid="f" style="display:flex;flex-direction:column"><div data-cid="d" style="width:30px"><div style="height:15px"></div></div></div>`) },
+  { id: "column-flex-stretch-auto-width", html: DOC(S("body{margin:0}"), `<div data-cid="f" style="display:flex;flex-direction:column;width:200px"><div data-cid="d" style="height:15px"></div></div>`) },
+  { id: "column-flex-align-start-shrinks", html: DOC(S("body{margin:0}"), `<div data-cid="f" style="display:flex;flex-direction:column;align-items:flex-start"><div data-cid="d"><div style="width:30px;height:15px"></div></div></div>`) },
+  { id: "column-flex-basis", html: DOC(S("body{margin:0}"), `<div data-cid="f" style="display:flex;flex-direction:column"><div data-cid="d" style="width:30px;height:15px;flex-basis:40px"></div></div>`) },
+  { id: "column-flex-grow-in-definite-height", html: DOC(S("body{margin:0}"), `<div data-cid="f" style="display:flex;flex-direction:column;height:100px"><div data-cid="d" style="width:30px;height:15px"></div><div data-cid="e" style="width:30px;flex:1"></div></div>`) },
+  { id: "column-flex-percent-width", html: DOC(S("body{margin:0}"), `<div data-cid="f" style="display:flex;flex-direction:column;width:200px"><div data-cid="d" style="width:50%;height:15px"></div></div>`) },
+  { id: "column-flex-reverse", html: DOC(S("body{margin:0}"), `<div data-cid="f" style="display:flex;flex-direction:column-reverse"><div data-cid="d" style="width:30px;height:15px"></div><div data-cid="e" style="width:40px;height:5px"></div></div>`) },
+  { id: "column-flex-min-max-width", html: DOC(S("body{margin:0}"), `<div data-cid="f" style="display:flex;flex-direction:column;width:200px"><div data-cid="d" style="max-width:50px;height:15px"></div><div data-cid="e" style="min-width:300px;height:5px"></div></div>`) },
+  // P5b-W7, miaskiewicz/turbo-dom#85: in a max-content width consecutive floats sit side
+  // by side (their margin boxes add up, per side, until a `clear`); a block that
+  // establishes a formatting context sits beside them.
+  { id: "float-sum-two-left", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="float:left"><div style="float:left;height:5px;width:20px;margin:0 3px"></div><div style="float:left;height:5px;width:20px;margin:0 2px"></div></div>`) },
+  { id: "float-sum-left-and-right", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="float:left"><div style="float:left;height:5px;width:20px"></div><div style="float:right;width:30px;height:5px"></div></div>`) },
+  { id: "float-sum-then-block", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="float:left"><div style="float:left;height:5px;width:20px"></div><div style="float:left;height:5px;width:30px"></div><div style="width:40px;height:5px"></div></div>`) },
+  { id: "float-sum-then-wide-block", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="float:left"><div style="float:left;height:5px;width:20px"></div><div style="width:40px;height:5px"></div><div style="float:left;height:5px;width:30px"></div></div>`) },
+  { id: "float-sum-beside-formatting-context", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="float:left"><div style="float:left;height:5px;width:20px"></div><div style="overflow:hidden;width:40px;height:5px"></div></div>`) },
+  { id: "float-sum-clear-resets", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="float:left"><div style="float:left;height:5px;width:20px"></div><div style="float:left;height:5px;width:30px;clear:left"></div></div>`) },
+  { id: "float-sum-in-inline-block", html: DOC(S("body{margin:0}"), `<div style="font-size:0"><div data-cid="c" style="display:inline-block"><div style="float:left;height:5px;width:20px"></div><div style="float:left;height:5px;width:25px"></div></div></div>`) },
+  { id: "float-sum-in-table-cell", html: DOC(S("body{margin:0}"), `<table style="border-spacing:0"><tr><td data-cid="c" style="padding:0"><div style="float:left;height:5px;width:20px"></div><div style="float:left;height:5px;width:25px"></div></td></tr></table>`) },
   // P5b-W6, miaskiewicz/turbo-dom#75 item 1: a last child's bottom margin and its parent's
   // `min-height` / `max-height`. The margin collapses through an auto-height parent whose
   // used height is its content height; when `min-height` (or `max-height`) changes the

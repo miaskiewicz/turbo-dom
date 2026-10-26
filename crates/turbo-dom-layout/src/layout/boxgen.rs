@@ -456,6 +456,9 @@ struct Ids {
     recorded: Option<Recorded>,
     atomic_internal_links: bool,
     keep_zero_area_clips: bool,
+    /// Whether a box in the top layer (the fullscreen element, miaskiewicz/turbo-dom#82)
+    /// was built: [`build_root`] then hoists it.
+    top_layer: bool,
 }
 
 impl Ids {
@@ -467,6 +470,7 @@ impl Ids {
             recorded: options.record_sources.then(Recorded::default),
             atomic_internal_links: options.atomic_internal_links,
             keep_zero_area_clips: options.keep_zero_area_clips,
+            top_layer: false,
         }
     }
 
@@ -979,6 +983,7 @@ fn build_block_box(el: &StyledElement, ids: &mut Ids) -> LayoutBox {
     };
     // A table wrapper box paints nothing of its own: its grid box has the images.
     let wrapper = is_table_wrapper(&kind);
+    ids.top_layer |= el.style.get(TOP_LAYER).is_some();
     LayoutBox {
         node_id,
         source_role: source_role(el, ids),
@@ -1323,7 +1328,116 @@ fn html_document_roots(styled: &[StyledNode]) -> std::collections::HashSet<usize
 fn build_root(styled: &[StyledNode], ids: &mut Ids) -> LayoutBox {
     let node_id = ids.alloc();
     let style = ComputedStyle::default();
-    let kind = build_flow(styled, &style, ids);
+    let mut kind = build_flow(styled, &style, ids);
+    if ids.top_layer {
+        hoist_top_layer(&mut kind, ids);
+    }
+    anonymous_box(node_id, style, kind)
+}
+
+/// The internal property the fullscreen UA rule sets on the fullscreen element
+/// (`crate::style::fullscreen_user_agent_css`): its box is in the top layer.
+const TOP_LAYER: &str = "-internal-top-layer";
+
+/// The `z-index` that keeps the top layer above every other box.
+const TOP_LAYER_Z: &str = "2147483647";
+
+/// Move every top-layer box (the fullscreen element, miaskiewicz/turbo-dom#82) out of
+/// its place to the end of the initial containing block's content (`root`), each after
+/// its `::backdrop` (a black viewport-filling fixed box), above all other boxes: Chrome
+/// lays the top layer out as children of the initial containing block, so no ancestor's
+/// offset, transform, clip or stacking context reaches it, and its old place collapses.
+fn hoist_top_layer(root: &mut BoxKind, ids: &mut Ids) {
+    let mut layer = Vec::new();
+    take_top_layer(root, &mut layer);
+    for mut element in layer {
+        element.style.set("z-index", TOP_LAYER_Z.to_string());
+        let backdrop = backdrop_box(ids.alloc());
+        for b in [backdrop, element] {
+            match root {
+                BoxKind::Lines(items) => items.push(InlineItem::Atomic(b)),
+                BoxKind::Block(kids)
+                | BoxKind::Flex(kids)
+                | BoxKind::Grid(kids)
+                | BoxKind::Table(kids) => kids.push(b),
+                BoxKind::Marker(_) => {}
+            }
+        }
+    }
+}
+
+/// Remove the top-layer boxes under `kind` into `out`, in document order (a nested one
+/// after its top-layer ancestor).
+fn take_top_layer(kind: &mut BoxKind, out: &mut Vec<LayoutBox>) {
+    let taken = match kind {
+        BoxKind::Block(kids) | BoxKind::Flex(kids) | BoxKind::Grid(kids) | BoxKind::Table(kids) => {
+            take_top_layer_boxes(kids, out)
+        }
+        BoxKind::Lines(items) => take_top_layer_items(items, out),
+        BoxKind::Marker(_) => Vec::new(),
+    };
+    for mut b in taken {
+        let mut nested = Vec::new();
+        take_top_layer(&mut b.kind, &mut nested);
+        out.push(b);
+        out.append(&mut nested);
+    }
+}
+
+/// Whether a box is in the top layer.
+fn in_top_layer(b: &LayoutBox) -> bool {
+    b.style.get(TOP_LAYER).is_some()
+}
+
+/// [`take_top_layer`] over block-level children: the top-layer children (returned) leave
+/// `kids`; the others' subtrees give theirs to `out`.
+fn take_top_layer_boxes(kids: &mut Vec<LayoutBox>, out: &mut Vec<LayoutBox>) -> Vec<LayoutBox> {
+    let (taken, kept): (Vec<_>, Vec<_>) = std::mem::take(kids).into_iter().partition(in_top_layer);
+    *kids = kept;
+    for b in kids.iter_mut() {
+        take_top_layer(&mut b.kind, out);
+    }
+    taken
+}
+
+/// [`take_top_layer`] over line content: top-layer atomics (returned) leave `items`.
+fn take_top_layer_items(items: &mut Vec<InlineItem>, out: &mut Vec<LayoutBox>) -> Vec<LayoutBox> {
+    let mut taken = Vec::new();
+    for item in std::mem::take(items) {
+        match item {
+            InlineItem::Atomic(b) if in_top_layer(&b) => taken.push(b),
+            other => items.push(other),
+        }
+    }
+    for item in items.iter_mut() {
+        if let InlineItem::Atomic(b) = item {
+            take_top_layer(&mut b.kind, out);
+        }
+    }
+    taken
+}
+
+/// The fullscreen element's `::backdrop` (Chrome 156: `position: fixed; inset: 0;
+/// background: black`), an anonymous box under it in the top layer.
+fn backdrop_box(node_id: NodeId) -> LayoutBox {
+    let mut style = ComputedStyle::default();
+    for (property, value) in [
+        ("display", "block"),
+        ("position", "fixed"),
+        ("top", "0"),
+        ("right", "0"),
+        ("bottom", "0"),
+        ("left", "0"),
+        ("background-color", "rgb(0, 0, 0)"),
+        ("z-index", TOP_LAYER_Z),
+    ] {
+        style.set(property, value.to_string());
+    }
+    anonymous_box(node_id, style, BoxKind::Block(Vec::new()))
+}
+
+/// A sourceless block box.
+fn anonymous_box(node_id: NodeId, style: ComputedStyle, kind: BoxKind) -> LayoutBox {
     LayoutBox {
         node_id,
         source_role: SourceRole::Ordinary,
@@ -1346,6 +1460,110 @@ fn build_root(styled: &[StyledNode], ids: &mut Ids) -> LayoutBox {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// A `div` with `style` (property, value) pairs and `children`.
+    fn styled_div(pairs: &[(&str, &str)], children: Vec<StyledNode>) -> StyledNode {
+        let mut style = ComputedStyle::default();
+        for (property, value) in pairs {
+            style.set(property, (*value).to_string());
+        }
+        StyledNode::Element(StyledElement {
+            tag: Tag::Html("div".into()),
+            attrs: vec![],
+            style,
+            children,
+            source: None,
+        })
+    }
+
+    const FULLSCREEN: &[(&str, &str)] = &[("position", "fixed"), (TOP_LAYER, "fullscreen")];
+
+    fn kids(b: &LayoutBox) -> &[LayoutBox] {
+        match &b.kind {
+            BoxKind::Block(k) => k,
+            other => panic!("not a block: {other:?}"),
+        }
+    }
+
+    /// miaskiewicz/turbo-dom#82: top-layer boxes move, in document order (a nested one
+    /// after its top-layer ancestor), to the end of the root, each after a black fixed
+    /// backdrop; both get the top `z-index`; boxes without the marker stay put.
+    #[test]
+    fn top_layer_boxes_move_to_the_root_after_their_backdrops() {
+        let styled = vec![
+            styled_div(
+                &[],
+                vec![styled_div(FULLSCREEN, vec![styled_div(FULLSCREEN, vec![])])],
+            ),
+            styled_div(&[("height", "5px")], vec![]),
+        ];
+        let root = build_box_tree(&styled);
+        let top = kids(&root);
+        assert_eq!(top.len(), 6);
+        // The two ordinary boxes keep their ids (0 is the root); the first lost its child.
+        assert_eq!((top[0].node_id, top[1].node_id), (NodeId(1), NodeId(4)));
+        assert!(kids(&top[0]).is_empty());
+        let (outer, inner) = (&top[3], &top[5]);
+        assert_eq!((outer.node_id, inner.node_id), (NodeId(2), NodeId(3)));
+        assert!(
+            kids(outer).is_empty(),
+            "the nested top-layer box left it too"
+        );
+        for (backdrop, id) in [(&top[2], 5), (&top[4], 6)] {
+            assert_eq!(backdrop.node_id, NodeId(id));
+            assert!(backdrop.attrs.is_empty() && kids(backdrop).is_empty());
+            assert_eq!(backdrop.style.get("background-color"), Some("rgb(0, 0, 0)"));
+            for side in ["position", "top", "right", "bottom", "left"] {
+                assert!(backdrop.style.get(side).is_some(), "{side}");
+            }
+            assert_eq!(backdrop.style.get("position"), Some("fixed"));
+            assert_eq!(backdrop.style.get("top"), Some("0"));
+            assert_eq!(backdrop.style.get("right"), Some("0"));
+            assert_eq!(backdrop.style.get("bottom"), Some("0"));
+            assert_eq!(backdrop.style.get("left"), Some("0"));
+            assert_eq!(backdrop.style.get("display"), Some("block"));
+        }
+        for b in [&top[2], outer, &top[4], inner] {
+            assert_eq!(b.style.get("z-index"), Some(TOP_LAYER_Z));
+        }
+        assert_eq!(top[1].style.get("z-index"), None);
+    }
+
+    /// A top-layer box in line content (an inline run at the root) moves to the end of
+    /// that run, as atomics after its backdrop.
+    #[test]
+    fn top_layer_boxes_in_line_content_move_to_the_end_of_the_run() {
+        let text = StyledNode::Text(crate::style::StyledText {
+            text: "x".into(),
+            source: None,
+        });
+        let mut inline = ComputedStyle::default();
+        inline.set("display", "inline-block".into());
+        let mut fullscreen_inline = inline.clone();
+        fullscreen_inline.set("position", "fixed".into());
+        fullscreen_inline.set(TOP_LAYER, "fullscreen".into());
+        let atom = |style: ComputedStyle| {
+            StyledNode::Element(StyledElement {
+                tag: Tag::Html("span".into()),
+                attrs: vec![],
+                style,
+                children: vec![],
+                source: None,
+            })
+        };
+        let root = build_box_tree(&[atom(fullscreen_inline), text, atom(inline)]);
+        let BoxKind::Lines(items) = &root.kind else {
+            panic!("an inline root: {:?}", root.kind);
+        };
+        let atoms: Vec<(u32, bool)> = items
+            .iter()
+            .filter_map(|item| match item {
+                InlineItem::Atomic(b) => Some((b.node_id.0, b.style.get(TOP_LAYER).is_some())),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(atoms, vec![(3, false), (4, false), (1, true)]);
+    }
 
     fn html_el(tag: &str, children: Vec<StyledNode>) -> StyledNode {
         StyledNode::Element(StyledElement {

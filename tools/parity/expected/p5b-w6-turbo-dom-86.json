@@ -1,8 +1,8 @@
 {
  "id": "miaskiewicz/turbo-dom#86",
- "reason": "A column flex item takes its flex basis from height and keeps its width as its cross size; taffy's main size wins over a px height. No existing corpus output changes (Fresh-target parity builds (turbo-html2pdf refactor 923c89f, path-patched): d17e810 -> 2ae7d19 (#88) -> f9e5a60 (#86) -> b6b3d4a (#93) -> 1315ee4 (+ extra inputs, merged refactor 1b6c9fa): 0 changed at f9e5a60); the new extra input column-flex.html pins it. P5b-W6.",
+ "reason": "Column flex items take their basis from height and keep their width (P5b-W6 f9e5a60; on merging P5b-W7, which fixed #86 too, W7's implementation is kept). No existing corpus output changes; this file declares the outputs of the extra input column-flex.html that P5b-W6 added to pin the behaviour. P5b-W6.",
  "control": "scripts/html-document-chrome-control.mjs column-flex-item-* cases",
- "e2e": "crates/turbo-dom-layout/tests/html_document_chrome.rs (column_flex_items_size_on_their_axes_like_chrome_156)",
+ "e2e": "crates/turbo-dom-layout/tests/html_document_chrome.rs (column_flex_items_size_by_their_height_like_chrome_156, P5b-W7's, also over the column-flex-item-* cases)",
  "changes": {
   "html2pdf": [],
   "html2pdf-svg": [],

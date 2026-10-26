@@ -143,6 +143,12 @@ fn style_document(
     document_css.push_str(&collect_style_css_tree(&view, &document_roots(&view)));
     let cascade = build_cascade_with_width(extra_css, "", TokenSet::default(), cb_width)
         .for_document(&document_css);
+    // The fullscreen element's UA box, only while there is one (miaskiewicz/turbo-dom#82).
+    let cascade = if tree.fullscreen_stack().is_empty() {
+        cascade
+    } else {
+        cascade.with_fullscreen()
+    };
     let input = StyleInput {
         view: view.strip_non_visual(true),
         roots: Roots::Document,
@@ -177,11 +183,12 @@ pub fn propagate_canvas_background(styled: &mut [StyledNode]) -> Option<Rgba> {
     take_background_color(&mut body.style)
 }
 
-/// Lay a styled document out at `cb_width` (`rem` against its root font size) and
-/// paint its propagated canvas colour as the galley root's background.
+/// Lay a styled document out in a `(width, height)` viewport (`rem` against its root
+/// font size; height 0 = unknown, see [`crate::layout_in_viewport`]) and paint its
+/// propagated canvas colour as the galley root's background.
 fn lay_out_document(
     mut styled: Vec<StyledNode>,
-    cb_width: f32,
+    viewport: (f32, f32),
     fonts: &FontRegistry,
     images: &ImageCtx,
     options: LayoutOptions,
@@ -190,7 +197,7 @@ fn lay_out_document(
     let canvas = propagate_canvas_background(&mut styled);
     let _root_font = root_font_scope(document_root_font_px(&styled));
     let mut galley =
-        crate::layout::layout_with_options(&styled, cb_width, fonts, images, &options, diags);
+        crate::layout::layout_in_viewport(&styled, viewport, fonts, images, &options, diags);
     if let FragmentContent::Box { background, .. } = &mut galley.content {
         *background = canvas;
     }
@@ -262,7 +269,8 @@ pub fn layout_html_with_images(
 }
 
 /// The HTML drive over an already-parsed [`Tree`] with explicit [`HtmlOptions`]
-/// (see the module docs); [`layout_html_with_images`] is this with the defaults.
+/// (see the module docs); [`layout_html_with_images`] is this with the defaults. The
+/// initial containing block's height is unknown (see [`layout_html_tree_in_viewport`]).
 pub fn layout_html_tree(
     tree: &Tree,
     extra_css: &str,
@@ -272,8 +280,34 @@ pub fn layout_html_tree(
     options: &HtmlOptions,
     diags: &mut Diagnostics,
 ) -> Fragment {
+    layout_html_tree_in_viewport(
+        tree,
+        extra_css,
+        (cb_width, 0.0),
+        fonts,
+        images,
+        options,
+        diags,
+    )
+}
+
+/// [`layout_html_tree`] in a `(width, height)` px viewport: the initial containing
+/// block has the viewport's height, which `bottom` / `%` insets and `%` heights of
+/// `position: fixed` boxes and of absolutely positioned boxes it contains resolve
+/// against (miaskiewicz/turbo-dom#81; see [`crate::layout_in_viewport`]). A screenshot
+/// lays out in its canvas size.
+pub fn layout_html_tree_in_viewport(
+    tree: &Tree,
+    extra_css: &str,
+    (cb_width, viewport_height): (f32, f32),
+    fonts: &FontRegistry,
+    images: &ImageCtx,
+    options: &HtmlOptions,
+    diags: &mut Diagnostics,
+) -> Fragment {
     let styled = style_document(tree, extra_css, cb_width, options);
-    lay_out_document(styled, cb_width, fonts, images, options.layout(), diags)
+    let viewport = (cb_width, viewport_height);
+    lay_out_document(styled, viewport, fonts, images, options.layout(), diags)
 }
 
 /// One laid-out box paired with the `data-cid` its source element carried
@@ -315,9 +349,12 @@ pub struct CidBox {
 /// clip region, and it and its descendants report their border boxes
 /// (miaskiewicz/turbo-dom#75).
 ///
-/// `cb_height` bounds the (here absent) image height cap only; the galley height
-/// is otherwise unbounded, so a percentage height against the root resolves to 0
-/// as in the normal no-geometry layout entry.
+/// `cb_height` is the viewport height: the initial containing block's height (which
+/// `position: fixed` boxes and absolutely positioned boxes it contains resolve their
+/// `bottom` / `%` insets and `%` heights against; miaskiewicz/turbo-dom#81), the
+/// `@media` / `vh` height and the image height cap basis. The galley height is
+/// otherwise unbounded, so an in-flow percentage height against the root resolves to
+/// 0 as in the normal no-geometry layout entry.
 pub fn layout_boxes(
     html: &str,
     extra_css: &str,
@@ -379,8 +416,14 @@ pub fn layout_boxes_tree(
         resolver: &resolver,
         body_height: Some(cb_height),
     };
-    let root =
-        crate::layout::layout_geometry(&styled, cb_width, fonts, &ctx, &layout_options, diags);
+    let root = crate::layout::layout_geometry(
+        &styled,
+        (cb_width, cb_height),
+        fonts,
+        &ctx,
+        &layout_options,
+        diags,
+    );
 
     let mut out = Vec::new();
     let mut seen: std::collections::HashSet<u32> = std::collections::HashSet::new();

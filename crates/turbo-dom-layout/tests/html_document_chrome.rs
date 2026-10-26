@@ -103,7 +103,7 @@ fn inline_flex_grid_case(id: &str) -> bool {
 /// The control cases of an open bug, each asserted by its own test (`#[ignore]`d until
 /// its fix lands) and held out of [`html_documents_lay_out_as_chrome_156`].
 fn held_out(id: &str) -> bool {
-    let groups: [fn(&str) -> bool; 24] = [
+    let groups: [fn(&str) -> bool; 30] = [
         auto_table_case,
         inline_flex_grid_case,
         abs_auto_width_case,
@@ -125,8 +125,14 @@ fn held_out(id: &str) -> bool {
         percent_height_case,
         self_collapsing_first_child_case,
         intrinsic_margin_case,
+        inline_block_margin_case,
+        icb_case,
         flow_root_case,
-        column_flex_item_case,
+        float_shrink_case,
+        intrinsic_oof_case,
+        abs_stretch_case,
+        column_flex_case,
+        float_sum_case,
         flex_item_box_sizing_case,
     ];
     groups.iter().any(|group| group(id))
@@ -318,39 +324,6 @@ fn self_collapsing_first_child_margins_like_chrome_156() {
     compare_cases(self_collapsing_first_child_case);
 }
 
-/// miaskiewicz/turbo-dom#79: intrinsic widths count the children's horizontal margins.
-fn intrinsic_margin_case(id: &str) -> bool {
-    id.starts_with("intrinsic-margin-")
-}
-
-#[test]
-#[ignore = "turbo-dom#79: fails until the fix"]
-fn intrinsic_widths_count_child_margins_like_chrome_156() {
-    compare_cases(intrinsic_margin_case);
-}
-
-/// miaskiewicz/turbo-dom#88: `display: flow-root` establishes a block formatting context;
-/// an empty formatting-context root is not self-collapsing.
-fn flow_root_case(id: &str) -> bool {
-    id.starts_with("flow-root-") || id.starts_with("empty-formatting-root-")
-}
-
-#[test]
-fn flow_root_establishes_a_formatting_context_like_chrome_156() {
-    compare_cases(flow_root_case);
-}
-
-/// miaskiewicz/turbo-dom#86: a column flex item's basis is its `height`, its `width` its
-/// cross size.
-fn column_flex_item_case(id: &str) -> bool {
-    id.starts_with("column-flex-item-")
-}
-
-#[test]
-fn column_flex_items_size_on_their_axes_like_chrome_156() {
-    compare_cases(column_flex_item_case);
-}
-
 /// miaskiewicz/turbo-dom#93: a content-box flex item's sizes exclude its padding and border.
 fn flex_item_box_sizing_case(id: &str) -> bool {
     id.starts_with("flex-item-")
@@ -390,6 +363,98 @@ fn header_cells_are_bold_and_centred_like_chrome_156() {
     let th = find_th(&styled).expect("a th");
     assert_eq!(th.style.get("font-weight"), Some("bold"));
     assert_eq!(th.style.get("text-align"), Some("center"));
+}
+
+/// miaskiewicz/turbo-dom#79: intrinsic widths count the children's horizontal margins
+/// (P5b-W6's `intrinsic-margin-*` cases and P5b-W7's `intrinsic-margins-*`).
+fn intrinsic_margin_case(id: &str) -> bool {
+    id.starts_with("intrinsic-margin-") || id.starts_with("intrinsic-margins-")
+}
+
+#[test]
+fn intrinsic_widths_count_child_margins_like_chrome_156() {
+    compare_cases(intrinsic_margin_case);
+}
+
+/// miaskiewicz/turbo-dom#80: an inline-block keeps its children's vertical margins.
+fn inline_block_margin_case(id: &str) -> bool {
+    id.starts_with("inline-block-margins-")
+}
+
+#[test]
+fn inline_blocks_keep_child_margins_like_chrome_156() {
+    compare_cases(inline_block_margin_case);
+}
+
+/// miaskiewicz/turbo-dom#81: insets against the initial containing block's height.
+fn icb_case(id: &str) -> bool {
+    id.starts_with("icb-")
+}
+
+#[test]
+fn initial_containing_block_insets_like_chrome_156() {
+    compare_cases(icb_case);
+}
+
+/// miaskiewicz/turbo-dom#88: `display: flow-root` establishes a block formatting context;
+/// an empty formatting-context root is not self-collapsing.
+fn flow_root_case(id: &str) -> bool {
+    id.starts_with("flow-root-") || id.starts_with("empty-formatting-root-")
+}
+
+#[test]
+fn flow_root_establishes_a_formatting_context_like_chrome_156() {
+    compare_cases(flow_root_case);
+}
+
+/// miaskiewicz/turbo-dom#83: a `width: auto` float is shrink-to-fit.
+fn float_shrink_case(id: &str) -> bool {
+    id.starts_with("float-shrink-")
+}
+
+#[test]
+fn floats_shrink_to_fit_like_chrome_156() {
+    compare_cases(float_shrink_case);
+}
+
+/// miaskiewicz/turbo-dom#84: out-of-flow children add nothing to intrinsic widths.
+fn intrinsic_oof_case(id: &str) -> bool {
+    id.starts_with("intrinsic-oof-")
+}
+
+#[test]
+fn out_of_flow_children_add_no_intrinsic_width_like_chrome_156() {
+    compare_cases(intrinsic_oof_case);
+}
+
+/// miaskiewicz/turbo-dom#89: `top` + `bottom` stretch an auto-height positioned box.
+fn abs_stretch_case(id: &str) -> bool {
+    id.starts_with("abs-stretch-")
+}
+
+#[test]
+fn top_and_bottom_stretch_auto_heights_like_chrome_156() {
+    compare_cases(abs_stretch_case);
+}
+
+/// miaskiewicz/turbo-dom#86: column flex items take their basis from `height`, their cross size from `width`.
+fn column_flex_case(id: &str) -> bool {
+    id.starts_with("column-flex-")
+}
+
+#[test]
+fn column_flex_items_size_by_their_height_like_chrome_156() {
+    compare_cases(column_flex_case);
+}
+
+/// miaskiewicz/turbo-dom#85: consecutive floats add up in a max-content width.
+fn float_sum_case(id: &str) -> bool {
+    id.starts_with("float-sum-")
+}
+
+#[test]
+fn floats_sit_side_by_side_in_max_content_like_chrome_156() {
+    compare_cases(float_sum_case);
 }
 
 /// The first `<th>` of a styled forest.

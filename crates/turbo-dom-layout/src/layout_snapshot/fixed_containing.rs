@@ -25,11 +25,15 @@ fn validate_node(node: &StyledNode, transformed: bool) -> Result<(), SnapshotErr
     )
 }
 
+/// A fixed box under a transformed ancestor (whose containing block that ancestor would
+/// be), unless it is in the top layer — the fullscreen element is laid out against the
+/// viewport whatever its ancestors (miaskiewicz/turbo-dom#82).
 fn is_transformed_fixed(style: &ComputedStyle, transformed: bool) -> bool {
     transformed
         && style
             .get("position")
             .is_some_and(|p| p.eq_ignore_ascii_case("fixed"))
+        && style.get("-internal-top-layer").is_none()
 }
 
 fn establishes_transform(style: &ComputedStyle) -> bool {
