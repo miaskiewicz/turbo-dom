@@ -85,9 +85,12 @@ Run the worked example: `cargo run --release --example crawl`.
 
 ## Status
 
-- Line coverage is gated in CI at its measured floor (88.33% at 0.6.0, gate 88; tarpaulin
-  LLVM over `src/`); the consolidation's coverage phase raises it to >= 99, then 100.
-- The parser core (`turbo_dom::core`) is byte-identical to the parser crate's and
+- Line coverage is gated in CI at **100%** (tarpaulin LLVM over `src/`; 88.33% at 0.6.0),
+  with behaviour-asserting tests: Chrome 156 controls for what a page can observe
+  (`tests/rtdom_core_chrome.rs`, `tests/cascade_selectors_chrome.rs`, …) and the html5lib
+  tree-construction fixtures through both parsers (upstream html5ever and the UTF-16
+  tokenizer fork).
+- The parser core (`turbo_dom::core`) shares the parser crate's html5ever options and
   passes html5lib-tests tree-construction conformance at **99.72%** there.
 - Honest by design: `getComputedStyle` only returns values a real rule/inline/
   inherited declaration set (no invented initial values, no layout/`@media`/state).

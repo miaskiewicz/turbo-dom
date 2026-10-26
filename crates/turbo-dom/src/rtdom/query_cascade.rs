@@ -17,9 +17,9 @@
 //!   parsed unforgivingly (`@supports selector(…)` / `CSS.supports("selector(…)")`).
 //! - pseudo-classes Chrome knows but the DOM engine does not evaluate parse as valid and
 //!   never match (the static resting state: `:hover`, `:focus`, `:visited`, …). Names are
-//!   ASCII case-insensitive. `:scope` is `:root`, and `:-webkit-any()` is evaluated
-//!   (cascade-only: the DOM APIs keep their behaviour); `:defined` and `:lang()` are shared
-//!   with the DOM APIs.
+//!   ASCII case-insensitive. `:scope` is `:root` in a stylesheet (the DOM APIs match the
+//!   scoping element: `Navigator::is_scope`); `:-webkit-any()`, `:defined` and `:lang()`
+//!   are shared with the DOM APIs (turbo-dom#91, #96).
 //! - **specificity** per Selectors 4: `:where()` is 0; `:is()`, `:not()` and `:has()` take
 //!   their most specific argument; `:nth-child(An+B of S)` is a pseudo-class plus S;
 //!   pseudo-elements count as types.

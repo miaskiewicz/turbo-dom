@@ -76,7 +76,13 @@ of `style/cascade.rs`). Since S3b it uses this engine:
   stylesheet when Chrome knows them (`:hover`, `:focus`, `:visited`, `:default`,
   `:placeholder-shown`, `:valid`, …; `:dir()` until P5b). `:scope` (= `:root`), `:defined`,
   `:lang()` and `:-webkit-any()` were evaluated in stylesheets only at S3b (P5b moved
-  `:defined` and `:lang()` into the DOM APIs too). `::slotted()` matches only through a navigator that reports slot assignment
+  `:defined` and `:lang()` into the DOM APIs too; P5-cov `:-webkit-any()` with Chrome's
+  compound-only, unforgiving grammar, and `:scope` as the scoping element — turbo-dom#91,
+  #96). Selector source is CSS-preprocessed once (`rtdom/selector_source.rs`, npm
+  `normalizeSource`): comments go, a DOM-API selector's open strings / blocks close at its
+  end (#91); An+B integers clamp to 32 bits and an A or B outside 31 bits never matches
+  (#98). Their Chrome rows live in `rtdom_core_chrome156.json`
+  (`scripts/rtdom-core-chrome-control.mjs`). `::slotted()` matches only through a navigator that reports slot assignment
   (a scaffold: turbo-surf's composed cascade still walks `:host()`/`::slotted()` with its
   own matcher, plan §1.4 follow-up).
 

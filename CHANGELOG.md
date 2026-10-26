@@ -7,6 +7,36 @@ at the time); this file reconstructs them from history.
 
 ## [Unreleased]
 
+### Fixed — selector syntax, :scope and RCDATA fragments (P5-cov, miaskiewicz/turbo-dom#91/#92/#96/#98, Chrome 156 controls)
+Found by the new `scripts/rtdom-core-chrome-control.mjs` control
+(`crates/turbo-dom/tests/fixtures/rtdom_core_chrome156.json`); both engines (rtdom and the
+npm `selectors.mjs` / parser crate) unless noted.
+- CSS comments in selectors were rejected (`p /* c */`): they are removed as CSS
+  tokenizes them, still separating two names (`div/**/p` throws, `[title=a/**/i]` is
+  `[title=a i]`); a DOM-API selector's unterminated string / `[` / `(` closes at its end
+  (`[title`, `:state(x`, `:is(p`), and an escape at its end is U+FFFD (`[id=x\`) (#91, #98).
+- rtdom: `:not()` / `:has()` / `of S` accepted empty items (`:not(p, )`) and items edged
+  by a combinator (`:not(p >)`, `:not(> p)`); `:is()` / `:where()` kept such items (#91, #98).
+- `:-webkit-any()` never matched in the rtdom DOM APIs and was forgiving in stylesheets: it
+  now matches like `:is()` with Chrome's grammar — compound selectors only, unforgiving,
+  no pseudo-elements or `:has()` (#91).
+- rtdom: `:scope` never matched in the DOM APIs; it is the element `matches()` /
+  `closest()` / element-rooted queries are called on (new `Tree::closest`,
+  `matches_scoped`, `closest_units`, `matches_units_scoped`), `:root` for document queries
+  and stylesheets. npm: `closest()` matched each ancestor as its own scope (#96).
+- An+B integers clamp to 32 bits (overflowing digits parsed as 0), an integer glued into
+  `n-123` must fit 32 bits, and an A or B outside 31 bits never matches (#98).
+- `textarea` / `title` (RCDATA) fragments drop a literal U+0000 like Chrome (they kept it
+  as U+FFFD); `&#0;` and every other context are unchanged (#92).
+
+### Changed — turbo-dom crate coverage 100% (P5-cov-core)
+- CI's turbo-dom coverage floor is 100 (was 88). New behaviour tests: the html5lib fixtures
+  through the UTF-16 tokenizer fork, the Chrome-156 core control (`tests/rtdom_core_chrome.rs`),
+  core / API edge and storage integrity tests.
+- The UTF-16 tokenizer fork no longer carries upstream code the crate never runs (the
+  `exact_errors` / `discard_bom` / `profile` options, the per-architecture SIMD data-state
+  scan — a portable byte scan produces the same chunks; `UPSTREAM.json` lists the changes).
+
 ### Fixed — turbo-dom-layout tables, clipping and box sizing (P5b-W5, miaskiewicz/turbo-dom#41/#51/#52/#55/#62/#63/#64/#65/#69/#70, Chrome 156 controls)
 Each fix is backed by a Chrome for Testing 156 control and lists the corpus outputs it
 changes in `tools/parity/expected/p5b-w5-turbo-dom-*.json`.
