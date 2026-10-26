@@ -133,6 +133,9 @@
       const backdropProps = ['display', 'position', 'visibility', 'top', 'right', 'bottom', 'left', 'background-color', 'color', 'opacity', 'transform'];
       const read = (el, list, pseudo) => { const s = getComputedStyle(el, pseudo); return list.map((p) => s.getPropertyValue(p)).join('|'); };
       const backdrop = (el) => read(el, backdropProps, '::backdrop');
+      // width / height resolve against the viewport (innerWidth x innerHeight; Chrome's window
+      // size itself varies between fullscreen requests, so the probe reads the relation).
+      const sized = (el) => { const s = getComputedStyle(el); return [s.width === innerWidth + 'px', s.height === innerHeight + 'px']; };
       const name = (node) => node === null ? null : node === document ? '#document' : node.id || node.nodeName;
       const ids = (selector) => { try { return Array.from(document.querySelectorAll(selector), name); } catch (e) { return e.name; } };
       const state = () => [name(document.fullscreenElement), document.fullscreen, name(document.webkitFullscreenElement), ids(':fullscreen'), ids(':-webkit-full-screen'), ids(':-webkit-full-screen-ancestor'), ids(':modal')];
@@ -149,12 +152,15 @@
       fs.resolved = [state(), log.slice()];
       await tick();
       fs.full = [state(), log.splice(0), read(a, full), backdrop(a), read($('fsChild'), box), read(b, box), a.matches(':fullscreen'), a.matches(':modal')];
+      fs.fullSize = sized(a);
       // A second request needs a second activation; the first was consumed.
       fs.consumed = [await settle(b.requestFullscreen()), (await tick(), log.splice(0)), state()];
       await gesture();
       fs.nested = [await settle(b.requestFullscreen()), (await tick(), log.splice(0)), state(), read(a, box), read(b, full), backdrop(a), backdrop(b), a.matches(':modal')];
+      fs.nestedSize = [sized(a), sized(b)];
       fs.exit = [await settle(document.exitFullscreen()), (await tick(), log.splice(0)), state(), read(b, box), backdrop(b)];
       fs.exitAll = [await settle(document.exitFullscreen()), (await tick(), log.splice(0)), state(), read(a, box), backdrop(a)];
+      fs.exitSize = sized(a);
       fs.exitNone = [await settle(document.exitFullscreen()), (await tick(), log.splice(0))];
       await gesture();
       const html = document.documentElement;
@@ -164,6 +170,7 @@
       await gesture();
       const c = $('fsAuthored');
       fs.authored = [await settle(c.requestFullscreen()), (await tick(), log.splice(0)), state(), read(c, full.concat(['z-index', 'background-color'])), backdrop(c)];
+      fs.authoredSize = sized(c);
       c.remove();
       fs.removed = [(await tick(), log.splice(0)), state(), read(c, box)];
       document.body.append(c);
@@ -175,6 +182,7 @@
       await gesture();
       const svg = $('fsSvg');
       fs.svg = [await settle(svg.requestFullscreen()), (await tick(), log.splice(0)), state(), read(svg, full)];
+      fs.svgSize = sized(svg);
       await settle(document.exitFullscreen()); await tick(); log.splice(0);
       // A modal dialog over the fullscreen element: both are :modal.
       await gesture();
