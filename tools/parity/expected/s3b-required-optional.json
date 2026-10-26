@@ -1,0 +1,13 @@
+{
+ "id": "S3b/required-optional",
+ "class": "required/optional",
+ "reason": ":required / :optional: dropped by the old parser; now evaluated. Consolidation S3b: the html2pdf / surf-static cascade parses and matches with turbo-dom's selector engine.",
+ "control": "crates/turbo-dom/tests/fixtures/cascade_selectors_chrome156.json (cases/guards, cascade_cases/unsupported-pseudo-class)",
+ "e2e": "crates/turbo-dom-layout/tests/cascade_selectors_chrome.rs",
+ "changes": {
+  "html2pdf": [],
+  "html2pdf-svg": [],
+  "html2pdf-extra": [],
+  "surf": []
+ }
+}

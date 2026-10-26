@@ -203,6 +203,20 @@ fn style_document(
     )
 }
 
+/// Style a parsed HTML document exactly as [`layout_html_tree`] does before laying it
+/// out: the body's `<style>` text then `extra_css` as author CSS (cascade built at
+/// `cb_width`), the body content under the `<html>`/`<body>` shells. Returns the styled
+/// body content.
+#[must_use]
+pub fn style_html_tree(
+    tree: &Tree,
+    extra_css: &str,
+    cb_width: f32,
+    options: &HtmlOptions,
+) -> Vec<StyledNode> {
+    style_document(tree, extra_css, cb_width, options)
+}
+
 /// Lay a raw HTML string out into a [`Fragment`] galley at content width
 /// `cb_width` px, template-free. The page's own `<style>` blocks are collected as
 /// author CSS and `extra_css` (UA overrides, a caller reset, etc.) is appended

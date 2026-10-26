@@ -21,18 +21,21 @@
 //! position with no preceding siblings and match `:empty`; only body content is
 //! styled; content positions are computed after stripping and comment removal).
 //!
-//! The selector matcher reads its structure — kept children, sibling positions,
-//! preceding siblings, `:empty`, attributes — through [`TreeView`]; this is the
-//! seam the shared turbo-dom selector engine plugs into later.
+//! Selectors match through turbo-dom's one selector engine
+//! ([`match_for_cascade`](turbo_dom::rtdom::query::match_for_cascade)) over the scope's
+//! [`Navigator`]: kept children, sibling positions, preceding siblings, `:empty`,
+//! `:root`, the scope cutoff and the shells.
 
 use std::borrow::Cow;
 
 use turbo_dom::rtdom::tree::NodeType;
 use turbo_dom::{Handle, Tree};
 
+use turbo_dom::rtdom::query::{Navigator as SelectorNavigator, PositionCache, SiblingGroup};
+
 use super::{
-    ctx_from, positions_from_keys, resolve_style, root_pos, tag_key, Attrs, Cascade, ComputedStyle,
-    Ctx, ElemPos, StyledElement, StyledNode, StyledText,
+    resolve_style, tag_key, Attrs, Cascade, ComputedStyle, StyledElement, StyledNode, StyledText,
+    Subject,
 };
 use crate::node::{Attr, Element, MarkerClassifier, MarkerKind, Node, Tag};
 
@@ -202,21 +205,19 @@ impl<'t> TreeView<'t> {
 
     /// The element's local name as the matcher sees it (`None` for markers, which
     /// type selectors never match).
-    fn match_name(&self, h: Handle, tag: &Tag) -> Option<&'t str> {
-        match tag {
-            Tag::Html(_) => self.tree.local_name(h),
-            Tag::Marker(_) => None,
+    fn match_name(&self, h: Handle) -> Option<&'t str> {
+        match self.marker(h) {
+            None => self.tree.local_name(h),
+            Some(_) => None,
         }
     }
 
-    fn ctx(&self, h: Handle, tag: &Tag, pos: ElemPos, empty: bool, prev: Vec<Ctx<'t>>) -> Ctx<'t> {
-        ctx_from(
-            self.match_name(h, tag),
-            Attrs::Tree(self.tree, h),
-            pos,
-            empty,
-            prev,
-        )
+    /// Whether `h` has no kept child.
+    fn has_no_kept_child(&self, h: Handle) -> bool {
+        let mut none = true;
+        self.tree
+            .for_each_child(h, |child| none &= !self.is_kept(child));
+        none
     }
 }
 
@@ -258,30 +259,38 @@ pub struct SiblingPosition {
     pub siblings: usize,
 }
 
-impl From<ElemPos> for SiblingPosition {
-    fn from(pos: ElemPos) -> Self {
-        SiblingPosition {
-            index: pos.index,
-            of_type_index: pos.of_type_index,
-            of_type_total: pos.of_type_total,
-            siblings: pos.siblings,
-        }
-    }
-}
+/// A shell's position: index 0 of one (so `:first-child`/`:last-child` are false and
+/// `:only-child` true, exactly as the legacy shells matched).
+const SHELL_POSITION: SiblingPosition = SiblingPosition {
+    index: 0,
+    of_type_index: 0,
+    of_type_total: 1,
+    siblings: 1,
+};
 
 /// The structure selector matching reads for one styled scope (a [`TreeView`] plus
 /// its [`Roots`]): kept children, parents with the scope cutoff, sibling positions,
-/// `:empty`, attributes. The cascade builds its match contexts from it; it is the
-/// seam the shared turbo-dom selector engine plugs into.
+/// `:empty`, attributes. It implements turbo-dom's selector [`Navigator`
+/// trait](turbo_dom::rtdom::query::Navigator), so the cascade matches through
+/// [`match_for_cascade`](turbo_dom::rtdom::query::match_for_cascade) — the one selector
+/// engine — with these scope rules:
 ///
-/// Scope rules: a [`Roots::Detached`] root has no parent and its siblings are the
-/// other kept roots; under [`Roots::Shell`] the body content's parent is the
-/// `<body>` shell, `<body>`'s is the `<html>` shell, and each shell is childless,
-/// empty and alone at the root position (its real surroundings are invisible).
+/// - a [`Roots::Detached`] root has no parent and its siblings are the other kept roots;
+/// - under [`Roots::Shell`] the body content's parent is the `<body>` shell, `<body>`'s
+///   is the `<html>` shell, and each shell is alone at the root position
+///   ([`SHELL_POSITION`]), matches `:empty` and has no preceding sibling (its real
+///   surroundings are invisible); `:has()` still sees the content below a shell;
+/// - only kept nodes exist (no comments, no template content, stripped subtrees gone);
+/// - `:root` is an element named `html` (the shell, or nothing in a detached flow), type
+///   selectors never match a marker and `*-of-type` groups markers by kind.
+///
+/// Sibling positions are computed once per sibling list (turbo-dom's cascade-mode
+/// [`PositionCache`]).
 pub struct Navigator<'v, 't> {
     view: &'v TreeView<'t>,
     roots: Vec<Handle>,
     shells: Vec<Handle>,
+    positions: PositionCache,
 }
 
 impl<'v, 't> Navigator<'v, 't> {
@@ -289,11 +298,11 @@ impl<'v, 't> Navigator<'v, 't> {
     #[must_use]
     pub fn new(view: &'v TreeView<'t>, roots: Roots) -> Self {
         match roots {
-            Roots::Detached(roots) => Navigator {
+            Roots::Detached(roots) => Navigator::with_shells(
                 view,
-                roots: roots.iter().copied().filter(|&h| view.is_kept(h)).collect(),
-                shells: Vec::new(),
-            },
+                Vec::new(),
+                roots.iter().copied().filter(|&h| view.is_kept(h)).collect(),
+            ),
             Roots::Shell => {
                 let body = view
                     .find_element("body")
@@ -303,12 +312,22 @@ impl<'v, 't> Navigator<'v, 't> {
                     .into_iter()
                     .chain(std::iter::once(body))
                     .collect();
-                Navigator {
-                    view,
-                    roots: view.children(body),
-                    shells,
-                }
+                Navigator::with_shells(view, shells, view.children(body))
             }
+        }
+    }
+
+    /// The navigator of explicit match-only `shells` (outermost first) over `roots`.
+    pub(crate) fn with_shells(
+        view: &'v TreeView<'t>,
+        shells: Vec<Handle>,
+        roots: Vec<Handle>,
+    ) -> Self {
+        Navigator {
+            view,
+            roots,
+            shells,
+            positions: PositionCache::default(),
         }
     }
 
@@ -328,6 +347,10 @@ impl<'v, 't> Navigator<'v, 't> {
         self.shells.contains(&h)
     }
 
+    fn is_root(&self, h: Handle) -> bool {
+        self.roots.contains(&h)
+    }
+
     /// The kept children of `h` (none for a shell).
     #[must_use]
     pub fn children(&self, h: Handle) -> Vec<Handle> {
@@ -343,7 +366,7 @@ impl<'v, 't> Navigator<'v, 't> {
         if let Some(i) = self.shells.iter().position(|&s| s == h) {
             return i.checked_sub(1).map(|p| self.shells[p]);
         }
-        if self.roots.contains(&h) {
+        if self.is_root(h) {
             return self.shells.last().copied();
         }
         self.view.tree().parent(h)
@@ -355,7 +378,7 @@ impl<'v, 't> Navigator<'v, 't> {
         if self.is_shell(h) {
             return vec![h];
         }
-        if self.roots.contains(&h) {
+        if self.is_root(h) {
             return self.roots.clone();
         }
         self.parent(h)
@@ -365,18 +388,27 @@ impl<'v, 't> Navigator<'v, 't> {
     /// The structural position of element `h` (`None` for a non-element).
     #[must_use]
     pub fn position(&self, h: Handle) -> Option<SiblingPosition> {
-        if self.is_shell(h) {
-            return Some(root_pos().into());
+        if self.view.tree().node_type(h) != NodeType::Element {
+            return None;
         }
-        let siblings = self.siblings(h);
-        let i = siblings.iter().position(|&s| s == h)?;
-        self.positions(&siblings)[i].map(SiblingPosition::from)
+        if self.is_shell(h) {
+            return Some(SHELL_POSITION);
+        }
+        let group = self.group(h);
+        let (index, siblings) = group.child_position(h);
+        let (of_type_index, of_type_total) = group.type_position(h);
+        Some(SiblingPosition {
+            index,
+            of_type_index,
+            of_type_total,
+            siblings,
+        })
     }
 
     /// Whether `h` matches `:empty` (no kept children; a shell always does).
     #[must_use]
     pub fn is_empty(&self, h: Handle) -> bool {
-        self.children(h).is_empty()
+        self.is_shell(h) || self.view.has_no_kept_child(h)
     }
 
     /// The tag of an element node, `None` for text.
@@ -384,25 +416,100 @@ impl<'v, 't> Navigator<'v, 't> {
         (self.view.tree().node_type(h) == NodeType::Element).then(|| self.view.tag(h))
     }
 
-    /// The positions of the element siblings in `siblings` (text gets `None`).
-    fn positions(&self, siblings: &[Handle]) -> Vec<Option<ElemPos>> {
-        let keys: Vec<Option<String>> = siblings
-            .iter()
-            .map(|&h| self.tag(h).as_ref().map(tag_key))
-            .collect();
-        positions_from_keys(&keys)
+    /// The element siblings of non-shell `h` with their `*-of-type` keys, positions
+    /// computed once per sibling list.
+    fn group(&self, h: Handle) -> std::rc::Rc<SiblingGroup> {
+        self.positions.group(h, || {
+            self.siblings(h)
+                .into_iter()
+                .filter_map(|s| self.tag(s).map(|tag| (s, tag_key(&tag))))
+                .collect()
+        })
     }
 
-    /// A shell's match context: a plain element at the root position, empty, with
-    /// no preceding siblings.
-    fn shell_ctx(&self, h: Handle) -> Ctx<'t> {
-        ctx_from(
-            self.view.tree().local_name(h),
-            Attrs::Tree(self.view.tree(), h),
-            root_pos(),
-            true,
-            Vec::new(),
-        )
+    /// What the non-selector cascade inputs read from element `h`.
+    pub(crate) fn subject(&self, h: Handle) -> Subject<'t> {
+        Subject {
+            tag: self.view.match_name(h),
+            attrs: Attrs::Tree(self.view.tree(), h),
+        }
+    }
+
+    /// The element sibling `offset` places from `h` (`None` for shells and at the ends).
+    fn sibling_at(&self, h: Handle, forward: bool) -> Option<Handle> {
+        if self.is_shell(h) {
+            return None;
+        }
+        let group = self.group(h);
+        let (index, count) = group.child_position(h);
+        let elements = group.elements();
+        match (forward, index) {
+            (_, 0) => None,
+            (true, i) if i < count => Some(elements[i]),
+            (false, i) if i > 1 => Some(elements[i - 2]),
+            _ => None,
+        }
+    }
+
+    /// `:has()` search: the kept descendants of `root` (a shell's real kept content too).
+    fn some_kept_descendant(&self, root: Handle, pred: &mut dyn FnMut(Handle) -> bool) -> bool {
+        let mut stack = self.view.children(root);
+        stack.reverse();
+        while let Some(h) = stack.pop() {
+            if self.view.tree().node_type(h) == NodeType::Element {
+                if pred(h) {
+                    return true;
+                }
+                let mut children = self.view.children(h);
+                children.reverse();
+                stack.extend(children);
+            }
+        }
+        false
+    }
+}
+
+impl SelectorNavigator for Navigator<'_, '_> {
+    fn tree(&self) -> &Tree {
+        self.view.tree()
+    }
+    fn parent(&self, h: Handle) -> Option<Handle> {
+        Navigator::parent(self, h)
+    }
+    fn previous_element_sibling(&self, h: Handle) -> Option<Handle> {
+        self.sibling_at(h, false)
+    }
+    fn next_element_sibling(&self, h: Handle) -> Option<Handle> {
+        self.sibling_at(h, true)
+    }
+    fn element_siblings(&self, h: Handle) -> Vec<Handle> {
+        if self.is_shell(h) {
+            return vec![h];
+        }
+        self.group(h).elements().to_vec()
+    }
+    fn same_type(&self, a: Handle, b: Handle) -> bool {
+        tag_key(&self.view.tag(a)) == tag_key(&self.view.tag(b))
+    }
+    fn child_position(&self, h: Handle) -> (usize, usize) {
+        let p = self.position(h).unwrap_or(SHELL_POSITION);
+        (p.index, p.siblings)
+    }
+    fn type_position(&self, h: Handle) -> (usize, usize) {
+        let p = self.position(h).unwrap_or(SHELL_POSITION);
+        (p.of_type_index, p.of_type_total)
+    }
+    fn type_name(&self, h: Handle) -> Option<&str> {
+        self.view.match_name(h)
+    }
+    fn is_root(&self, h: Handle) -> bool {
+        self.view.match_name(h) == Some("html")
+    }
+    fn is_empty(&self, h: Handle) -> bool {
+        Navigator::is_empty(self, h)
+    }
+    fn some_descendant(&self, root: Handle, pred: &mut dyn FnMut(Handle) -> bool) -> bool {
+        self.some_kept_descendant(root, pred)
     }
 }
 
@@ -419,30 +526,28 @@ pub fn style_input(
     options: &StyleOptions,
 ) -> Vec<StyledNode> {
     let _cmyk = crate::layout::value::cmyk_scope(options.accept_cmyk);
-    let nav = Navigator::new(&input.view, input.roots);
-    let ancestors: Vec<Ctx> = nav.shells().iter().map(|&h| nav.shell_ctx(h)).collect();
-    // Each shell's own style resolves down the chain, so the content inherits from
-    // the real `<body>` computed style (default when detached).
-    let mut parent = ComputedStyle::default();
-    for i in 0..ancestors.len() {
-        parent = resolve_style(&ancestors[..=i], &parent, cascade);
-    }
-    style_siblings(&nav, nav.roots(), &ancestors, &parent, cascade)
+    style_scope(&Navigator::new(&input.view, input.roots), cascade)
 }
 
-fn style_siblings<'t>(
-    nav: &Navigator<'_, 't>,
+/// Style a navigator's roots: each shell's own style resolves down the chain, so the
+/// content inherits from the real `<body>` computed style (default when detached).
+pub(crate) fn style_scope(nav: &Navigator, cascade: &Cascade) -> Vec<StyledNode> {
+    let mut parent = ComputedStyle::default();
+    for &shell in nav.shells() {
+        parent = resolve_style(nav, shell, &parent, cascade);
+    }
+    style_siblings(nav, nav.roots(), &parent, cascade)
+}
+
+fn style_siblings(
+    nav: &Navigator,
     nodes: &[Handle],
-    ancestors: &[Ctx<'t>],
     parent: &ComputedStyle,
     cascade: &Cascade,
 ) -> Vec<StyledNode> {
     let view = nav.view;
-    let positions = nav.positions(nodes);
-    // Each preceding element sibling's (prev-less) context, for `+`/`~`.
-    let mut prev: Vec<Ctx<'t>> = Vec::new();
     let mut out = Vec::with_capacity(nodes.len());
-    for (&h, pos) in nodes.iter().zip(positions) {
+    for &h in nodes {
         let Some(tag) = nav.tag(h) else {
             out.push(StyledNode::Text(StyledText {
                 text: view.text(h).into_owned(),
@@ -450,14 +555,9 @@ fn style_siblings<'t>(
             }));
             continue;
         };
-        let pos = pos.expect("element has a position");
+        let style = resolve_style(nav, h, parent, cascade);
         let children = nav.children(h);
-        let empty = children.is_empty();
-        let sibling = view.ctx(h, &tag, pos, empty, Vec::new());
-        let mut path = ancestors.to_vec();
-        path.push(view.ctx(h, &tag, pos, empty, prev.clone()));
-        let style = resolve_style(&path, parent, cascade);
-        let styled_children = style_siblings(nav, &children, &path, &style, cascade);
+        let styled_children = style_siblings(nav, &children, &style, cascade);
         out.push(StyledNode::Element(StyledElement {
             tag,
             attrs: view.attrs(h),
@@ -465,7 +565,6 @@ fn style_siblings<'t>(
             children: styled_children,
             source: Some(h),
         }));
-        prev.push(sibling);
     }
     out
 }

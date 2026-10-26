@@ -41,10 +41,6 @@ native-sdk-frame-read = []
 host-internals = []
 # Probe/control/case data constants for embedders' Chrome-parity tests.
 test-support = []
-# TEMPORARY consolidation gate (docs/selector-dual-gate.md): forwards turbo-dom's
-# `selector-dual` (frozen B-main selector engine run next to the current one). Never
-# enable it in a published or production build; removed in the last S3b commit.
-selector-dual = ["turbo-dom-parser/selector-dual"]
 
 [dev-dependencies]
 sha2 = "0.10"

@@ -9,9 +9,15 @@
 //! - `querySelectorAll` / `querySelector` through both APIs;
 //! - the cascade: with `<style>SEL { order: 1 }</style>` appended to `<head>`,
 //!   `rtdom::cascade::computed_style` resolves `order: 1` exactly where Chrome's
-//!   `getComputedStyle(el).order` is `1`.
+//!   `getComputedStyle(el).order` is `1`;
+//! - the stylesheet engine (consolidation S3b): `parse_for_cascade` accepts exactly the
+//!   valid selectors and `match_for_cascade` (live navigator) matches exactly where the
+//!   selector matches; and for every cascade case (one per S3b quirk class) a
+//!   minimal cascade over `parse_for_cascade` + `match_for_cascade` + `specificity()`
+//!   (highest specificity, then source order) picks Chrome's winning `order`.
 use serde_json::Value;
 use turbo_dom::rtdom::cascade::computed_style;
+use turbo_dom::rtdom::query::{match_for_cascade, parse_for_cascade, LiveNavigator};
 use turbo_dom::rtdom::tree::NodeType;
 use turbo_dom::{Handle, Tree};
 
@@ -156,6 +162,28 @@ fn selectors_match_chrome156() {
             if first_units != want_qsa.first().copied() {
                 fail(format!("query_selector_units {first_units:?}"));
             }
+            // the stylesheet engine: validity and matching (on the case document; the
+            // sentinel-sheet document is checked through `winner` below)
+            match parse_for_cascade(sel) {
+                Ok(list) if valid => {
+                    let nav = LiveNavigator(&tree);
+                    for (i, &h) in els.iter().enumerate() {
+                        let got = list
+                            .selectors()
+                            .iter()
+                            .any(|s| match_for_cascade(&nav, h, s));
+                        if got != want[i] {
+                            fail(format!(
+                                "match_for_cascade el#{i} <{}> = {got}, Chrome {}",
+                                tags[i], want[i]
+                            ));
+                        }
+                    }
+                }
+                Ok(_) => fail("parse_for_cascade accepted an invalid selector".into()),
+                Err(e) if valid => fail(format!("parse_for_cascade rejected it: {e}")),
+                Err(_) => {}
+            }
             // cascade: the sentinel rule as the last <head> child
             if cascade_comparable(sel) {
                 let doc = html.replacen(
@@ -185,11 +213,65 @@ fn selectors_match_chrome156() {
             }
         }
     }
+    let cascade_cases = fixture["cascade_cases"].as_array().unwrap();
+    for case in cascade_cases {
+        check_cascade_case(case, &mut failures);
+    }
     assert!(checked > 90, "fixture shrank: {checked} selectors");
+    assert!(cascade_cases.len() >= 7, "cascade cases shrank");
     assert!(
         failures.is_empty(),
         "{} disagreements with Chrome 156:\n{}",
         failures.len(),
         failures.join("\n")
     );
+}
+
+/// A minimal cascade over the case's sheet: each `SELECTORS { order: N }` rule in source
+/// order, the winner per element = the matching rule with the highest specificity, then
+/// the latest; invalid selector lists drop their rule. `0` when nothing matches.
+fn check_cascade_case(case: &Value, failures: &mut Vec<String>) {
+    let id = case["id"].as_str().unwrap();
+    let tree = Tree::parse(case["html"].as_str().unwrap());
+    let els = elements(&tree);
+    let rules: Vec<(String, String)> = case["css"]
+        .as_str()
+        .unwrap()
+        .split('}')
+        .filter_map(|rule| {
+            let (prelude, body) = rule.split_once('{')?;
+            let value = body.trim().strip_prefix("order:")?.trim().to_string();
+            Some((prelude.trim().to_string(), value))
+        })
+        .collect();
+    let nav = LiveNavigator(&tree);
+    let want = case["winners"].as_array().unwrap();
+    assert_eq!(want.len(), els.len(), "{id}: element list");
+    for (i, &h) in els.iter().enumerate() {
+        let mut best: Option<((u32, u32, u32), usize, &str)> = None;
+        for (order, (prelude, value)) in rules.iter().enumerate() {
+            let Ok(list) = parse_for_cascade(prelude) else {
+                continue;
+            };
+            let spec = list
+                .selectors()
+                .iter()
+                .filter(|s| match_for_cascade(&nav, h, s))
+                .map(turbo_dom::rtdom::query::CascadeSelector::specificity)
+                .max();
+            if let Some(spec) = spec {
+                if best.is_none_or(|(b, o, _)| (spec, order) > (b, o)) {
+                    best = Some((spec, order, value));
+                }
+            }
+        }
+        let got = best.map_or("0", |(_, _, v)| v);
+        let w = want[i].as_str().unwrap();
+        if got != w {
+            failures.push(format!(
+                "cascade case {id}: el#{i} <{}> order {got}, Chrome {w}",
+                tree.local_name(h).unwrap_or("")
+            ));
+        }
+    }
 }

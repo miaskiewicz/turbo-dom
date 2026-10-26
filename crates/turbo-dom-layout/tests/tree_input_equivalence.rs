@@ -60,7 +60,11 @@ const ADVERSARIAL: &[(&str, &str)] = &[
     ),
     (
         "svg-xlink-href",
-        r##"<body><style>[href]{color:red} a[href^="#"]{margin:1px}</style><svg xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 10 10"><a xlink:href="#t"><text>x</text></a><use xlink:href="#u"/><linearGradient id="g"/></svg></body>"##,
+        // The attributes keep their local names (`xlink:href` -> `href`). Since S3b the
+        // selectors avoid `[href]`: the legacy forest has no attribute namespaces, while
+        // the Tree input matches like Chrome (`[href]` is a no-namespace attribute;
+        // turbo-dom cascade control "attribute-namespace").
+        r##"<body><style>svg a{color:red} use{margin:1px} [id=g]{padding:1px}</style><svg xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 10 10"><a xlink:href="#t"><text>x</text></a><use xlink:href="#u"/><linearGradient id="g"/></svg></body>"##,
     ),
     (
         "content-in-head",

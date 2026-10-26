@@ -30,8 +30,8 @@ cargo test -p turbo-dom-raster                           # screenshot painter
 scripts/verify-copied-layout.sh                          # S1 moved code (at VERIFY_REF) == its source commits (+ allow-listed rewrites)
 cargo test -p turbo-dom churn_alloc_gate -- --ignored    # perf gate: churn allocs/op ≤ 380 (≈363)
 cargo test -p turbo-dom --test cascade_selectors_chrome  # selector engine vs the Chrome 156 control
-scripts/verify-query-frozen.sh                           # selector-dual frozen engine == B-main + rules
-scripts/selector-dual-gate.sh S3a legacy|new             # TEMPORARY dual-engine gate (docs/selector-dual-gate.md)
+cargo test -p turbo-dom-layout --test cascade_selectors_chrome  # the same control end to end (HTML-path cascade)
+scripts/check-no-selector-dual.sh                        # the retired selector-dual gate must not come back
 ```
 
 **Two independent runtimes, one repo.** The JS runtime (`src/runtime/*.mjs`, the npm/vitest path)
@@ -108,7 +108,10 @@ package or publish workflow.
   `Tree` directly (`style::TreeView` + `Roots::{Detached, Shell}`; the legacy `Node` input stays
   for turbo-surf's copier until S4); html2pdf's `t:` directives are opaque `MarkerKind` markers
   from a caller classifier, and its PDF switches are runtime `LayoutOptions`/`StyleOptions`
-  (no PDF features here). `tests/tree_input_equivalence.rs` is the Tree-vs-Node gate
+  (no PDF features here). Since S3b selectors parse and match with turbo-dom's engine
+  (`style::RuleSelectors` = `parse_for_cascade`; the scope `style::Navigator` implements
+  turbo-dom's `Navigator`: kept nodes, Detached cutoff, Shell positions, marker type keys);
+  html2pdf's old `style/selector.rs` is gone. `tests/tree_input_equivalence.rs` is the Tree-vs-Node gate
   (`TURBO_DOM_LAYOUT_EQUIV_DIRS` adds corpora). `scripts/verify-copied-layout.sh` checks the S1
   tree (`VERIFY_REF`) against the source commits; later edits are reviewed changes on top.
 - `crates/turbo-dom-raster` — synthetic screenshots: paints the layout galley to PNG/SVG
@@ -170,9 +173,9 @@ package or publish workflow.
   API; also parses any string selector containing `\`) are checked against
   `crates/turbo-dom/tests/fixtures/cascade_selectors_chrome156.json` (regenerate with
   `scripts/cascade-selectors-chrome-control.mjs`). Behaviour changes there need a Chrome control.
-  During the consolidation the `selector-dual` feature compiles a frozen v0.5.8 engine
-  (`query_frozen*.rs`, never hand-edited: `scripts/verify-query-frozen.sh`) next to it; never enable
-  that feature outside the gate, and don't use `--all-features` on dual-capable crates.
+  It is the ONE engine: `query_cascade.rs` (`parse_for_cascade` / `match_for_cascade`, matching
+  generic over a `Navigator`; `LiveNavigator` = the DOM APIs' raw-node semantics) also serves
+  turbo-dom-layout's cascade (html2pdf PDFs, raster screenshots). See `docs/selector-engine.md`.
 - **Selector parse cache** (`__selectorCache` in selectors.mjs) memoizes selector STRING → AST.
   Pure (DOM-independent) → no mutation invalidation. Never cache *results* without it.
 

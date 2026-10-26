@@ -8,7 +8,13 @@
 //   - `winner`: getComputedStyle(el).order for every element (a 0/1 string) when the case
 //     document gets one extra `<style>SEL { order: 1 }</style>` as the last child of
 //     <head> (the sentinel; 0 = the rule did not apply).
-// Asserted by crates/turbo-dom/tests/cascade_selectors_chrome.rs.
+// Plus `cascade_cases` (consolidation S3b, one per quirk class of the old html2pdf selector
+// engine): each case's sheet is appended to <head> as one <style>, and `winners` records
+// getComputedStyle(el).order for every element (the winning declaration of a cascade where
+// several rules compete — validity, specificity, matching).
+// Asserted by crates/turbo-dom/tests/cascade_selectors_chrome.rs (matches, cascade
+// matching and specificity) and end to end through the layout HTML path by
+// crates/turbo-dom-layout/tests/cascade_selectors_chrome.rs.
 //
 // Usage: node scripts/cascade-selectors-chrome-control.mjs [--chrome PATH] [--out PATH]
 //   --chrome defaults to the Playwright-cached Chrome for Testing 156
@@ -181,6 +187,74 @@ const CASES = [
   },
 ];
 
+
+// S3b cascade cases: `class` names the old html2pdf engine's quirk class (docs/selector-engine.md,
+// "What S3b changed") whose Chrome behaviour the case pins.
+const CASCADE_CASES = [
+  {
+    id: "unknown-pseudo-class",
+    class: "unknown-pseudo",
+    html: DOC(`<p id="a" class="x">a</p><p id="b">b</p><a id="c" href="#">c</a><div class="y z">d</div><span class="w">e</span>`),
+    css:
+      "p { order: 1 } p:totallyunknown, .x { order: 2 } a:hover, #c { order: 3 } P:FIRST-CHILD { order: 4 } " +
+      "div::-moz-selection, .y { order: 5 } .z::-webkit-scrollbar, .z:not(.q) { order: 6 } " +
+      ":matches(span), .w { order: 7 } span:-moz-any(.w) { order: 8 } span:selected, .w { order: 9 }",
+  },
+  {
+    id: "unsupported-pseudo-class",
+    class: "unknown-pseudo",
+    html: DOC(
+      `<div id="g"><p class="x">1</p><p>2</p></div><div id="h"><span>3</span></div>` +
+        `<input id="r" required><input id="o"><textarea id="t" readonly></textarea><textarea id="u"></textarea>`,
+    ),
+    css:
+      "div:has(> p.x) { order: 1 } p:nth-last-child(1) { order: 2 } :required { order: 3 } input:optional { order: 4 } " +
+      "textarea:read-only { order: 5 } textarea:read-write { order: 6 } p:nth-last-of-type(2) { order: 7 }",
+  },
+  {
+    id: "attribute-namespace",
+    class: "attribute-namespace",
+    html: DOC(
+      `<a id="h" href="#x">h</a><svg><a id="s" xlink:href="#y"><text>s</text></a><a id="p" href="#z"><text>p</text></a>` +
+        `<use id="u" xlink:href="#u"></use></svg>`,
+    ),
+    css: `[href] { order: 1 } a[href^="#"] { order: 2 }`,
+  },
+  {
+    id: "specificity-where",
+    class: "specificity",
+    html: DOC(`<p id="a" class="c">a</p><p id="b" class="c d">b</p>`),
+    css: "p:where(.c) { order: 1 } p { order: 2 } .d:where(#b) { order: 3 } p.d { order: 4 }",
+  },
+  {
+    id: "specificity-is-not-has",
+    class: "specificity",
+    html: DOC(`<p id="a" class="c d">a</p><p id="b" class="c">b</p><div id="g" class="k"><span class="s">x</span></div>`),
+    css:
+      ":is(#a, .zz) { order: 1 } p.c.d { order: 2 } p:not(#z) { order: 3 } p.c { order: 4 } " +
+      "div:has(> #nope, .s) { order: 5 } div.k { order: 6 } div:not(.a.b.c) { order: 7 } div.k { order: 8 }",
+  },
+  {
+    id: "specificity-pseudo-element",
+    class: "specificity",
+    html: DOC(`<p class="c">a</p><div class="bar">b</div>`),
+    css:
+      "p { order: 1 } .c::after { order: 2 } .c:before { order: 3 } .bar::first-line { order: 4 } div { order: 5 } " +
+      ".bar::-webkit-scrollbar { order: 6 } .bar::-webkit-scrollbar-thumb:hover { order: 7 } .c::marker { order: 8 }",
+  },
+  {
+    id: "cascade-only-pseudos",
+    class: "unknown-pseudo",
+    html: DOC(
+      `<div lang="en-US"><p id="a" class="c">a</p><x-foo id="x">x</x-foo></div><p id="b" lang="de">b</p>` +
+        `<span id="s" class="c">s</span>`,
+    ),
+    css:
+      ":lang(en) { order: 1 } :lang(de) { order: 2 } x-foo:defined { order: 3 } x-foo:not(:defined) { order: 4 } " +
+      ":scope span { order: 5 } :-webkit-any(#s) { order: 6 } span.c { order: 7 }",
+  },
+];
+
 const browser = await chromium.launch({ executablePath: chromePath, headless: true });
 const version = browser.version();
 const page = await browser.newPage();
@@ -222,6 +296,26 @@ for (const testCase of CASES) {
   }, testCase.selectors);
   result.push({ id: testCase.id, bug: testCase.bug, html: testCase.html, elements: recorded.elements, selectors: recorded.rows });
 }
+const cascadeResult = [];
+for (const testCase of CASCADE_CASES) {
+  await page.setContent(testCase.html, { waitUntil: "domcontentloaded" });
+  const recorded = await page.evaluate((css) => {
+    const sheet = document.createElement("style");
+    sheet.textContent = css;
+    document.head.appendChild(sheet);
+    const elements = [];
+    const walk = (el) => {
+      elements.push(el);
+      for (const child of el.children) walk(child);
+    };
+    walk(document.documentElement);
+    const listed = elements.filter((el) => el !== sheet);
+    const winners = listed.map((el) => getComputedStyle(el).order);
+    sheet.remove();
+    return { elements: listed.map((el) => el.localName), winners };
+  }, testCase.css);
+  cascadeResult.push({ id: testCase.id, class: testCase.class, html: testCase.html, css: testCase.css, ...recorded });
+}
 await browser.close();
 const fixture = {
   generator: "scripts/cascade-selectors-chrome-control.mjs",
@@ -229,6 +323,10 @@ const fixture = {
   playwright_core: playwrightVersion,
   sentinel: "order",
   cases: result,
+  cascade_cases: cascadeResult,
 };
 writeFileSync(out, `${JSON.stringify(fixture, null, 1)}\n`);
-console.log(`Chrome ${version}: ${result.length} cases, ${result.reduce((n, c) => n + c.selectors.length, 0)} selectors -> ${out}`);
+console.log(
+  `Chrome ${version}: ${result.length} cases, ${result.reduce((n, c) => n + c.selectors.length, 0)} selectors, ` +
+    `${cascadeResult.length} cascade cases -> ${out}`,
+);

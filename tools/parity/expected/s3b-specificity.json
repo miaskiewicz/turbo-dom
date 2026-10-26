@@ -1,0 +1,13 @@
+{
+ "id": "S3b/specificity",
+ "class": "specificity",
+ "reason": "Specificity (Selectors 4): `:where()` is 0, `:is()`/`:not()`/`:has()` take their most specific argument, `of S` adds S; the old engine counted each as one pseudo-class. Consolidation S3b: the html2pdf / surf-static cascade parses and matches with turbo-dom's selector engine.",
+ "control": "crates/turbo-dom/tests/fixtures/cascade_selectors_chrome156.json (cascade_cases/specificity-where, cascade_cases/specificity-is-not-has)",
+ "e2e": "crates/turbo-dom-layout/tests/cascade_selectors_chrome.rs",
+ "changes": {
+  "html2pdf": [],
+  "html2pdf-svg": [],
+  "html2pdf-extra": [],
+  "surf": []
+ }
+}

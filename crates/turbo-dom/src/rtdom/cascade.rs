@@ -373,11 +373,6 @@ pub(crate) struct CssCache {
     pub rules_key: Option<u64>,
     pub rules: Option<std::rc::Rc<Vec<Rule>>>,
     pub computed: HashMap<Handle, std::rc::Rc<HashMap<String, String>>>,
-    /// `selector-dual` builds only: the frozen selector engine's own caches. They ride on
-    /// this per-`Tree` slot (not used by the cascade) because it is reset exactly where
-    /// `Tree.qcache` is (storage collection) and `tree.rs` is left untouched in S3a.
-    #[cfg(feature = "selector-dual")]
-    pub(crate) dual: std::rc::Rc<crate::rtdom::selector_dual::FrozenCaches>,
 }
 
 /// Hash every `<style>` element's text in document order — the cache key for the parsed rule

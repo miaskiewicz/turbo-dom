@@ -3,8 +3,13 @@
 //! and a focused parser keeps the engine dependency-light and deterministic.
 //! At-rules (`@page`, `@media`, …) are sliced out here and handled elsewhere
 //! (page geometry in the pagination phase); unknown at-rules are dropped.
+//! Selector lists are parsed by turbo-dom's one selector engine
+//! ([`parse_for_cascade`]), with Chrome's stylesheet validity.
 
-use super::selector::{parse_selector_list, Selector};
+use turbo_dom::rtdom::query::{
+    match_for_cascade, parse_for_cascade, CascadeSelector, SelectorList, Specificity,
+};
+use turbo_dom::Handle;
 
 /// A single `property: value` declaration.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -17,8 +22,73 @@ pub struct Declaration {
 /// A style rule: a selector list sharing a declaration block.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Rule {
-    pub selectors: Vec<Selector>,
+    pub selectors: RuleSelectors,
     pub declarations: Vec<Declaration>,
+}
+
+/// A style rule's selector list: its prelude text and, when Chrome accepts it, the
+/// parsed list. An invalid list keeps its rule (and that rule's place in the source
+/// order) but never matches.
+#[derive(Debug, Clone)]
+pub struct RuleSelectors {
+    prelude: String,
+    list: Option<SelectorList>,
+}
+
+impl PartialEq for RuleSelectors {
+    fn eq(&self, other: &Self) -> bool {
+        self.prelude == other.prelude
+    }
+}
+
+impl Eq for RuleSelectors {}
+
+impl RuleSelectors {
+    /// Parse a rule prelude (see [`parse_for_cascade`]).
+    #[must_use]
+    pub fn parse(prelude: &str) -> Self {
+        RuleSelectors {
+            prelude: prelude.to_string(),
+            list: parse_for_cascade(prelude).ok(),
+        }
+    }
+
+    /// The prelude text.
+    #[must_use]
+    pub fn prelude(&self) -> &str {
+        &self.prelude
+    }
+
+    /// Whether the list is valid (an invalid one never matches).
+    #[must_use]
+    pub fn is_valid(&self) -> bool {
+        self.list.is_some()
+    }
+
+    /// The complex selectors (none when invalid).
+    #[must_use]
+    pub fn selectors(&self) -> &[CascadeSelector] {
+        self.list.as_ref().map_or(&[], SelectorList::selectors)
+    }
+
+    /// The highest specificity among the selectors matching `h` through `nav`.
+    pub(crate) fn best_match(&self, nav: &super::Navigator, h: Handle) -> Option<Specificity> {
+        self.selectors()
+            .iter()
+            .filter(|s| match_for_cascade(nav, h, s))
+            .map(CascadeSelector::specificity)
+            .max()
+    }
+}
+
+/// Whether a prelude takes a rule slot: it has some character besides whitespace, commas
+/// and combinators (what the legacy parser required before keeping a rule). A rule whose
+/// list Chrome rejects still takes its slot (and never matches), so the cascade order of
+/// every other rule is unchanged.
+fn takes_rule_slot(prelude: &str) -> bool {
+    prelude
+        .chars()
+        .any(|c| !(c.is_whitespace() || matches!(c, ',' | '>' | '+' | '~')))
 }
 
 /// A parsed stylesheet plus any at-rule preludes/bodies kept verbatim for later
@@ -214,12 +284,11 @@ fn at_rule_from(chunk: &Chunk) -> AtRule {
 }
 
 fn rule_from(chunk: &Chunk) -> Option<Rule> {
-    let selectors = parse_selector_list(&chunk.prelude);
-    if selectors.is_empty() {
+    if !takes_rule_slot(&chunk.prelude) {
         return None;
     }
     Some(Rule {
-        selectors,
+        selectors: RuleSelectors::parse(&chunk.prelude),
         declarations: parse_declarations(&chunk.body),
     })
 }

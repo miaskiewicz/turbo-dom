@@ -1036,3 +1036,27 @@ type change (`StyledElement.source`, `StyledText`, `Tag::Marker`, `Page.semantic
 | turbo-html2pdf-core | `image`, `svg`, `layout_snapshot` (Node literals) | adapted (dual-input `style_nodes`) |
 | turbo-html2pdf-core | `nodes` (`Flow::to_nodes`), `endnotes` (rewrite on a `Flow`), `xref` + `conformance_flags` (pages from `render_pages`, links/anchors from `Page::semantics`) | adapted |
 | turbo-html2pdf-core | `layout_block`, `layout_boxgen`, `layout_flex`, `layout_fragment`, `layout_snapshot`, `svg_viewport_snapshot`, `native_inline_coverage`, `emit` (`Tag::Marker`), `append`, `print_color`, `stamp`, `image`, `encrypt`, `encryption_roundtrip`, `watermark` (`Page.semantics`) | adapted (mechanical) |
+
+## S3b — the layout cascade on turbo-dom's selector engine (turbo-dom `consol/s3b-unify`, turbo-html2pdf `consol/s3b-unify`)
+
+No test moves. Test ids are `binary<source>::test`. "legacy" means a `selector-dual`
+build with `TURBO_DOM_SELECTOR_ENGINE=legacy` (the cascade gets the old html2pdf
+parser + matcher's answers, the live Tree the frozen S3a engine's); that column is the
+exact expected-to-fail-in-legacy set of Gate A. Every other turbo-dom, turbo-dom-browser-env,
+turbo-dom-layout, turbo-dom-raster and turbo-html2pdf test has the S2 result in plain,
+legacy and new builds (all configurations: layout default / svg / no-default / every
+feature; html2pdf workspace, core every feature / no-default / svg).
+
+| test id | category | plain / new | legacy |
+|---|---|---|---|
+| turbo-dom-layout `cascade_selectors_chrome<tests/cascade_selectors_chrome.rs>::html_path_cascade_matches_chrome156` | added (the end-to-end HTML-path Chrome 156 control: every S3a selector case + every S3b cascade case) | ok | FAILED (209 disagreements with Chrome: the old engine's quirk classes) |
+| turbo-html2pdf `style<tests/style.rs>::unknown_pseudo_class_is_ignored` | changed@S3b (control `cascade_selectors_chrome156.json` cascade case `unknown-pseudo-class`): an unknown pseudo-class drops the rule | ok | FAILED (old: `a:totallyunknown` matched every `a`) |
+| turbo-dom-layout `tree_input_equivalence<tests/tree_input_equivalence.rs>::tree_input_matches_the_legacy_node_input` | adapted@S3b: the `svg-xlink-href` document styles with `svg a` / `use` / `[id=g]` instead of `[href]` (the legacy forest has no attribute namespaces; the Tree input matches `[href]` like Chrome — control `attribute-namespace`) | ok | ok |
+| turbo-dom `cascade_selectors_chrome<tests/cascade_selectors_chrome.rs>::selectors_match_chrome156` | extended: also asserts `parse_for_cascade` validity, `match_for_cascade` (live navigator) and, for every S3b cascade case, a minimal cascade with `specificity()` | ok | ok |
+| turbo-dom `turbo_dom<src/lib.rs>::rtdom::query::cascade::tests::*` (6: `validity_follows_chrome_stylesheet_rules`, `specificity_follows_selectors_4`, `pseudo_elements_never_match_and_name_their_target`, `slotted_matches_only_through_a_slot_aware_navigator`, `cascade_only_pseudos_match_like_chrome`, `position_cache_builds_each_sibling_list_once`) | added (cascade-mode API edges) | ok | ok |
+| turbo-dom `turbo_dom<src/lib.rs>::rtdom::query_frozen::frozen_tests::*` (56) | dual builds only, deleted with the gate: the S3a tip's query.rs tests against the re-frozen engine | — | ok |
+| turbo-dom `turbo_dom<src/lib.rs>::rtdom::selector_dual::tests::a_repeated_qsa_is_compared_again_from_each_engines_own_cache` | dual builds only, deleted with the gate (renamed from `star_bar_p_divergence_is_logged_again_on_the_second_identical_qsa_call`: no live selector diverges from the S3a engine) | — | ok |
+
+The S3a dual-only tests (`query_frozen::frozen_tests::*`, the `selector_dual` unit test)
+and `scripts/test_selector_dual_check.py` were deleted with the gate in the last S3b
+commit; the Chrome controls stay.
