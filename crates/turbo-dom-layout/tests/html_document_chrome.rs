@@ -103,7 +103,7 @@ fn inline_flex_grid_case(id: &str) -> bool {
 /// The control cases of an open bug, each asserted by its own test (`#[ignore]`d until
 /// its fix lands) and held out of [`html_documents_lay_out_as_chrome_156`].
 fn held_out(id: &str) -> bool {
-    let groups: [fn(&str) -> bool; 22] = [
+    let groups: [fn(&str) -> bool; 23] = [
         auto_table_case,
         inline_flex_grid_case,
         abs_auto_width_case,
@@ -126,6 +126,7 @@ fn held_out(id: &str) -> bool {
         float_shrink_case,
         intrinsic_oof_case,
         abs_stretch_case,
+        column_flex_case,
     ];
     groups.iter().any(|group| group(id))
 }
@@ -360,6 +361,17 @@ fn abs_stretch_case(id: &str) -> bool {
 #[test]
 fn top_and_bottom_stretch_auto_heights_like_chrome_156() {
     compare_cases(abs_stretch_case);
+}
+
+/// miaskiewicz/turbo-dom#86: column flex items take their basis from `height`, their cross size from `width`.
+fn column_flex_case(id: &str) -> bool {
+    id.starts_with("column-flex-")
+}
+
+#[test]
+#[ignore = "turbo-dom#86: fails until the fix"]
+fn column_flex_items_size_by_their_height_like_chrome_156() {
+    compare_cases(column_flex_case);
 }
 
 /// The first `<th>` of a styled forest.

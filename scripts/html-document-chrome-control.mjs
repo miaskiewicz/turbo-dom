@@ -379,6 +379,17 @@ const CASES = [
   { id: "abs-stretch-explicit-height-wins", html: DOC(S("body{margin:0}"), `<div style="position:relative;height:100px"><div data-cid="c" style="position:absolute;top:10px;bottom:20px;height:15px;width:20px"></div></div>`) },
   { id: "abs-stretch-fixed-viewport", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="position:fixed;top:10px;bottom:20px;width:20px"></div>`) },
   { id: "abs-stretch-initial-containing-block", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="position:absolute;top:10px;bottom:20px;width:20px"></div>`) },
+  // P5b-W7, miaskiewicz/turbo-dom#86: in a column flex container an item's flex basis is
+  // its `height` (the main size) and its `width` is its cross size.
+  { id: "column-flex-explicit-sizes", html: DOC(S("body{margin:0}"), `<div data-cid="f" style="display:flex;flex-direction:column"><div data-cid="d" style="width:30px;height:15px"></div><div data-cid="e" style="width:40px;height:5px"></div></div>`) },
+  { id: "column-flex-content-height", html: DOC(S("body{margin:0}"), `<div data-cid="f" style="display:flex;flex-direction:column"><div data-cid="d" style="width:30px"><div style="height:15px"></div></div></div>`) },
+  { id: "column-flex-stretch-auto-width", html: DOC(S("body{margin:0}"), `<div data-cid="f" style="display:flex;flex-direction:column;width:200px"><div data-cid="d" style="height:15px"></div></div>`) },
+  { id: "column-flex-align-start-shrinks", html: DOC(S("body{margin:0}"), `<div data-cid="f" style="display:flex;flex-direction:column;align-items:flex-start"><div data-cid="d"><div style="width:30px;height:15px"></div></div></div>`) },
+  { id: "column-flex-basis", html: DOC(S("body{margin:0}"), `<div data-cid="f" style="display:flex;flex-direction:column"><div data-cid="d" style="width:30px;height:15px;flex-basis:40px"></div></div>`) },
+  { id: "column-flex-grow-in-definite-height", html: DOC(S("body{margin:0}"), `<div data-cid="f" style="display:flex;flex-direction:column;height:100px"><div data-cid="d" style="width:30px;height:15px"></div><div data-cid="e" style="width:30px;flex:1"></div></div>`) },
+  { id: "column-flex-percent-width", html: DOC(S("body{margin:0}"), `<div data-cid="f" style="display:flex;flex-direction:column;width:200px"><div data-cid="d" style="width:50%;height:15px"></div></div>`) },
+  { id: "column-flex-reverse", html: DOC(S("body{margin:0}"), `<div data-cid="f" style="display:flex;flex-direction:column-reverse"><div data-cid="d" style="width:30px;height:15px"></div><div data-cid="e" style="width:40px;height:5px"></div></div>`) },
+  { id: "column-flex-min-max-width", html: DOC(S("body{margin:0}"), `<div data-cid="f" style="display:flex;flex-direction:column;width:200px"><div data-cid="d" style="max-width:50px;height:15px"></div><div data-cid="e" style="min-width:300px;height:5px"></div></div>`) },
 ];
 
 /** The RGB of a 1x1 PNG screenshot (any filter: a single pixel's filter adds 0). */
