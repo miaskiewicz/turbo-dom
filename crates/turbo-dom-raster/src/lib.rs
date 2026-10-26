@@ -343,8 +343,11 @@ pub fn screenshot(html: &str, viewport: Viewport, format: Format) -> Result<Vec<
 /// `<noscript>` fallbacks stay inert raw text), then replace the parsed inline `<svg>`
 /// elements with `<img>`s whose rasterized SVGs join `decoded` — the engine has no
 /// inline-SVG painter (miaskiewicz/turbo-dom#25: elements of the tree, never `<svg` text).
+/// The document's `<img src="data:…">` images are decoded from their URLs into `decoded`
+/// (miaskiewicz/turbo-dom#27: no caller bytes needed).
 fn parse_document(html: &str, decoded: &mut image_paint::DecodedAssets) -> Tree {
     let mut tree = parse_html_tree(&style_extract::delazy_images(html));
+    image_paint::add_img_data_urls(decoded, &tree);
     let inline_svgs = image_paint::inline_svg_to_img(&mut tree);
     image_paint::add_inline_svg_assets(decoded, &inline_svgs);
     tree

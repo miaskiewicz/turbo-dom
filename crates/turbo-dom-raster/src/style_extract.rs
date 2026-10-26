@@ -111,7 +111,8 @@ fn numeric_entity(entity: &str) -> Option<char> {
 /// are returned **verbatim** — exactly the resolver key turbo-dom-layout uses (the
 /// raw `src`, or the unquoted `url(...)` inner) — so the caller resolves each
 /// against the page URL, fetches the bytes, and stores them under the same key.
-/// `data:` URIs are skipped (self-contained, nothing to fetch).
+/// `data:` URIs are skipped (self-contained, nothing to fetch: the screenshot decodes an
+/// `<img src="data:…">` itself, miaskiewicz/turbo-dom#27).
 #[must_use]
 pub fn image_urls(html: &str) -> Vec<String> {
     let mut urls = Vec::new();

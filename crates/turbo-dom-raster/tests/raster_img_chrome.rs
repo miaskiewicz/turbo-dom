@@ -105,7 +105,6 @@ fn compare_svg_images(case: &serde_json::Value, failures: &mut Vec<String>) {
 }
 
 #[test]
-#[ignore = "turbo-dom#27: fails until the fix"]
 fn data_url_images_paint_like_chrome_156() {
     let mut failures = Vec::new();
     for case in cases("data-") {
