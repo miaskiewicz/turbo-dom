@@ -46,13 +46,14 @@ EXCLUDES="bin bundler.rs coverage.rs coverage_branch.rs esm_cjs.rs graph.rs laun
 SEMANTIC_EDITS="
 cssom_parser.rs: zoom_value + helpers moved to turbo_dom::rtdom::css_values (re-exported here)
 interceptor_mode.rs: frame read placed behind the native-sdk-frame-read feature scaffolding
-browser_env.rs: module docs name the turbo-dom crate and drop the retired TURBO_RUST_DOM gate; P5b turbo-dom#20 native functions take a call-without-new message
+browser_env.rs: module docs name the turbo-dom crate and drop the retired TURBO_RUST_DOM gate; P5b turbo-dom#20 native functions take a call-without-new message, named definers pass V8's should-throw mode
 css_admission_tests.rs: comment no longer names turbo-test as the standalone host
 css_selector_syntax.rs: doc comment no longer names turbo-test as the standalone host
 editing_tests.rs: deviation notes say \"standalone binding\" instead of turbo-test
 view_transitions_tests.rs: comment no longer calls the binding vendored
-select_element.js: P5b turbo-dom#20 Option() legacy factory function
-select_element_tests.rs: P5b turbo-dom#20 Option() factory vs its Chrome 156 control
+select_element.js: P5b turbo-dom#20 Option() legacy factory function; quiet accessor definitions on HTMLOptionsCollection
+select_element_tests.rs: P5b turbo-dom#20 Option() factory + options-collection definer vs their Chrome 156 control
+document_basics.js: P5b turbo-dom#20 live collections pass the definer's should-throw mode to setIndex
 "
 # Crate-owned files under src/ that were not part of the move.
 OWNED="lib.rs crate_surface.rs host_internals.rs test_support.rs css_snapshot.rs option_factory_probe.js option_factory_cases.json option_factory_chrome156.json"

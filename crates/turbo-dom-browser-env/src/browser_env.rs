@@ -6774,7 +6774,20 @@ where
             object.set(scope, key.into(), value.unwrap());
         }
     }
-    if let Some(result) = named_dispatch(scope, &args, "define", Some(name), Some(object.into())) {
+    // The dispatcher also receives V8's should-throw mode: an interface whose definer rejects a
+    // descriptor throws only where the definition must (Object.defineProperty) and reports the
+    // Reflect form quietly, as Blink's interceptors do (HTMLOptionsCollection accessors).
+    let Ok(callback) = v8::Local::<v8::Function>::try_from(args.data()) else {
+        return v8::Intercepted::kYes;
+    };
+    let operation = v8::String::new(scope, "define").unwrap();
+    let throws = interceptor_mode::should_throw(scope, &args);
+    let throws = v8::Boolean::new(scope, throws);
+    if let Some(result) = callback.call(
+        scope,
+        args.holder().into(),
+        &[operation.into(), name.into(), object.into(), throws.into()],
+    ) {
         if result.is_undefined() {
             return v8::Intercepted::kNo;
         }

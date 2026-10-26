@@ -420,9 +420,17 @@
       kind: "HTMLOptionsCollection",
       // Unlike HTMLCollection, the options collection's named properties are enumerable.
       namedEnumerable: true,
-      setIndex(index, value, defining) {
+      setIndex(index, value, defining, throws) {
         if (defining) {
-          if ("get" in value || "set" in value) throw new ErrorType("Accessor properties are not allowed.");
+          // Blink's indexed definer ignores accessor descriptors: Object.defineProperty throws,
+          // Reflect.defineProperty quietly reports true (option_factory_chrome156.json).
+          if ("get" in value || "set" in value) {
+            if (throws)
+              throw new ErrorType(
+                "Failed to set an indexed property [" + index + "] on 'HTMLOptionsCollection': Accessor properties are not allowed.",
+              );
+            return true;
+          }
           value = value.value;
         }
         return indexedSet(select, index, value);

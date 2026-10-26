@@ -12,6 +12,10 @@ at the time); this file reconstructs them from history.
   factory function exists (turbo-dom#20): a `new`-only native constructor sharing
   `HTMLOptionElement.prototype` that honours `NewTarget`, matching Chrome 156
   (`src/option_factory_chrome156.json`).
+- `turbo-dom-browser-env`: `Reflect.defineProperty(select.options, i, {get(){}})` returns
+  `true` and changes nothing, as in Chrome, instead of throwing; `Object.defineProperty`
+  still throws, now with Blink's message (turbo-dom#20). Named-object definers receive
+  V8's should-throw mode.
 
 ## [0.6.0] — turbo-dom consolidation
 

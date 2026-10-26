@@ -145,3 +145,13 @@ fn option_legacy_factory_matches_chrome156_control() {
     assert!(found.is_empty(), "{}", found.join("\n"));
     assert_eq!(actual["factory"], expected["factory"]);
 }
+
+// turbo-dom#20: HTMLOptionsCollection's indexed definer. Accessor descriptors are ignored: the
+// Reflect form quietly reports true, Object.defineProperty throws Blink's TypeError.
+#[test]
+fn options_collection_definer_matches_chrome156_control() {
+    let (actual, expected) = run_option_probe();
+    let found = mismatches(&actual["collection"], &expected["collection"]);
+    assert!(found.is_empty(), "{}", found.join("\n"));
+    assert_eq!(actual, expected);
+}
