@@ -9774,6 +9774,31 @@
    "canvas": "#ffffff"
   },
   {
+   "id": "abs-padding-box-percent-height-definite",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><div style=\"position:relative;height:100px\"><div style=\"position:relative;height:50%;padding:10px 0\"><div style=\"height:30px\"></div><div data-cid=\"c\" style=\"position:absolute;top:0;width:10px;height:100%\"></div></div></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "c",
+     "x": 0,
+     "y": 0,
+     "width": 10,
+     "height": 70
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
    "id": "min-height-margin-larger",
    "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><div data-cid=\"w\" style=\"min-height:400px\"><div style=\"height:100px\"></div><div data-cid=\"k\" style=\"height:200px;margin-bottom:20px\"></div></div><div data-cid=\"g\" style=\"height:60px\"></div></body></html>",
    "measure": "xywh",
