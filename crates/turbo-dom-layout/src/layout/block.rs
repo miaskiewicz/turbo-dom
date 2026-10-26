@@ -1476,8 +1476,9 @@ fn layout_in_flow_kid(
         ctx,
     );
     // Horizontally align a width-constrained block within its inline region:
-    // `margin: … auto` centers it, and a `text-align:center`/`right` container
-    // centers/right-aligns block children (legacy `<center>` / `align=center`).
+    // `margin: … auto` centers it, and a legacy `text-align: -webkit-center` /
+    // `-webkit-right` container (`<center>`, `align=center`) centers / right-aligns
+    // block children (`block_align`).
     let hx = block_h_offset(flow.align, kbs, kid, frag.width, region_w);
     if hx != 0.0 {
         frag.translate(hx, 0.0);
@@ -1527,8 +1528,9 @@ fn flow_region(
 
 /// The horizontal shift to align a width-constrained in-flow block within its
 /// container (0 for a full-width/auto block, which fills the line). `margin:auto`
-/// centers; otherwise the container's `text-align` centers/right-aligns block
-/// children — the legacy behavior `<center>` and `align="center"` rely on.
+/// centers; otherwise the container's block alignment (`block_align`: a legacy
+/// `-webkit-*` `text-align`, as `<center>` and `align="center"` give) centers /
+/// right-aligns block children.
 fn block_h_offset(align: Align, kbs: &BoxStyle, kid: &LayoutBox, frag_w: f32, cw: f32) -> f32 {
     let avail = (cw - kbs.margin.horizontal()).max(0.0);
     if frag_w >= avail - 0.5 {

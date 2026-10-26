@@ -280,19 +280,21 @@ fn header_cells_are_bold_and_centred_like_chrome_156() {
         1280.0,
         &turbo_dom_layout::HtmlOptions::default(),
     );
-    fn th(nodes: &[turbo_dom_layout::StyledNode]) -> Option<&turbo_dom_layout::StyledElement> {
-        nodes.iter().find_map(|node| match node {
-            turbo_dom_layout::StyledNode::Element(el) => {
-                if matches!(&el.tag, turbo_dom_layout::Tag::Html(n) if n == "th") {
-                    Some(el)
-                } else {
-                    th(&el.children)
-                }
-            }
-            _ => None,
-        })
-    }
-    let th = th(&styled).expect("a th");
+    let th = find_th(&styled).expect("a th");
     assert_eq!(th.style.get("font-weight"), Some("bold"));
     assert_eq!(th.style.get("text-align"), Some("center"));
+}
+
+/// The first `<th>` of a styled forest.
+fn find_th(nodes: &[turbo_dom_layout::StyledNode]) -> Option<&turbo_dom_layout::StyledElement> {
+    nodes.iter().find_map(|node| match node {
+        turbo_dom_layout::StyledNode::Element(el) => {
+            if matches!(&el.tag, turbo_dom_layout::Tag::Html(n) if n == "th") {
+                Some(el)
+            } else {
+                find_th(&el.children)
+            }
+        }
+        turbo_dom_layout::StyledNode::Text(_) => None,
+    })
 }
