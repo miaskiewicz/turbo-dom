@@ -274,37 +274,72 @@ fn compare_case(case: &serde_json::Value, control: &serde_json::Value) {
 }
 
 #[test]
-fn unsupported_ordinary_inline_contexts_reject_without_inventing_partial_boxes() {
+fn unsupported_ordinary_inline_contexts_fail_only_their_own_reads() {
+    use turbo_dom_layout::cssom_view::metrics::element_geometry;
     use turbo_dom_layout::layout_snapshot::SnapshotError;
+    // miaskiewicz/turbo-surf#31: no partial boxes are invented for the unsupported
+    // element (it and its subtree fail their reads), and the rest of the document lays
+    // out and answers.
     let cases = [
         (
-            "<span style='position:relative'><div>block</div></span>",
+            "<span id=u style='position:relative'><div>block</div></span>",
             SnapshotError::UnsupportedInlineBlockSplit,
         ),
         (
-            "<span style='vertical-align:middle'>middle</span>",
+            "<span id=u style='vertical-align:middle'>middle</span>",
             SnapshotError::UnsupportedInlineAlignment,
         ),
         (
-            "<span style='direction:rtl'>rtl</span>",
+            "<span id=u style='direction:rtl'>rtl</span>",
             SnapshotError::UnsupportedInlineWriting,
         ),
         (
-            "<span style='writing-mode:vertical-rl'>vertical</span>",
+            "<span id=u style='writing-mode:vertical-rl'>vertical</span>",
             SnapshotError::UnsupportedInlineWriting,
         ),
         (
-            "<span style='position:absolute'>absolute</span>",
+            "<span id=u style='position:sticky'>sticky</span>",
             SnapshotError::UnsupportedInlinePosition,
         ),
     ];
-    for (html, expected) in cases {
-        match capture_result(html) {
-            Err(error) => assert_eq!(
-                error,
-                turbo_dom_layout::layout_snapshot::SvgSnapshotError::from(expected)
-            ),
-            Ok(_) => panic!("unsupported inline accepted: {html}"),
+    for (markup, expected) in cases {
+        let html = format!("<div id=box>{markup}</div><p id=ok>ok</p>");
+        let (snapshot, names) = capture(&html);
+        let failing = snapshot.source(names["u"]).unwrap();
+        let subtree: Vec<_> = snapshot
+            .sources()
+            .iter()
+            .filter(|source| source.path.starts_with(&failing.path))
+            .collect();
+        assert!(subtree.len() > 1, "{markup}: the element and its content");
+        for source in subtree {
+            assert_eq!(
+                snapshot.unsupported_inline_geometry(source.id),
+                Some(&expected),
+                "{markup}"
+            );
+        }
+        assert_eq!(
+            element_geometry(&snapshot, names["u"]),
+            Err(expected.to_string()),
+            "{markup}"
+        );
+        for answering in ["box", "ok"] {
+            assert_eq!(snapshot.unsupported_inline_geometry(names[answering]), None);
+            assert!(
+                element_geometry(&snapshot, names[answering]).is_ok(),
+                "{markup}"
+            );
         }
     }
+    // position:absolute blockifies (CSS 2.1 §9.7): a supported out-of-flow block box.
+    let (snapshot, names) = capture("<span id=a style='position:absolute'>absolute</span>");
+    assert_eq!(snapshot.unsupported_inline_geometry(names["a"]), None);
+    let used = snapshot.fragments()[snapshot.source(names["a"]).unwrap().fragment_indices[0]]
+        .used_box
+        .unwrap();
+    assert_eq!(
+        used.display,
+        turbo_dom_layout::layout::value::Display::Block
+    );
 }

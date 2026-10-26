@@ -22,7 +22,7 @@ use super::fragment::{BreakMeta, Fragment, FragmentContent, ImagePlacement, Node
 use super::imgsize::{size_replaced, SizeCtx, SizedImage};
 use super::inline::{self, InlineRun};
 use super::value::{
-    resolve_box_style, BoxSizing, BoxStyle, Float, LengthPct, Position, ResolveCtx,
+    resolve_box_style, BoxSizing, BoxStyle, Float, LengthPct, Position, ResolveCtx, VAlign,
     DEFAULT_FONT_SIZE,
 };
 use super::ImageCtx;
@@ -680,19 +680,106 @@ fn layout_nonempty_lines(
     ));
     lines_to_fragments(&para, cx, cy, &mut frags, &mut ctx.text_capture, &offsets);
     // Translate each pre-laid atom to where it landed within its line.
+    let atoms = AtomPlacement {
+        items,
+        atoms: &atom_frags,
+        offsets: &offsets,
+        origin: (cx, cy),
+        cw,
+        font_size: bs.font_size,
+    };
     for line in &para.layout.lines {
         for placed in &line.atoms {
-            let mut f = atom_frags[placed.id].clone();
-            let (dx, dy) = offsets.get(&f.node_id).copied().unwrap_or_default();
-            f.translate(
-                cx + line.indent + placed.x + dx,
-                cy + line.top + placed.y + dy,
-            );
-            frags.push(f);
+            frags.push(place_atom(line, placed, &atoms, ctx));
         }
     }
     frags.extend(directives);
     (frags, para.layout.height)
+}
+
+/// What placing a paragraph's atoms reads: its items, the pre-laid atoms, the inline
+/// source offsets and the content box.
+struct AtomPlacement<'a> {
+    items: &'a [InlineItem],
+    atoms: &'a [Fragment],
+    offsets: &'a HashMap<NodeId, (f32, f32)>,
+    origin: (f32, f32),
+    cw: f32,
+    font_size: f32,
+}
+
+/// One atom where it landed in `line`; an absolutely positioned box is laid out
+/// from that static position instead (its zero-size place is the line top there).
+fn place_atom(
+    line: &inline::InlineLine,
+    placed: &inline::PlacedAtom,
+    atoms: &AtomPlacement,
+    ctx: &mut Ctx,
+) -> Fragment {
+    let atom = &atoms.atoms[placed.id];
+    let (dx, dy) = atoms
+        .offsets
+        .get(&atom.node_id)
+        .copied()
+        .unwrap_or_default();
+    let (cx, cy) = atoms.origin;
+    let x = cx + line.indent + placed.x + dx;
+    if let Some(kid) = out_of_flow_kid(atoms.items, atom.node_id) {
+        return place_inline_out_of_flow(
+            kid,
+            (x, cy + line.top + dy),
+            atoms.cw,
+            atoms.font_size,
+            ctx,
+        );
+    }
+    let mut f = atom.clone();
+    f.translate(x, cy + line.top + placed.y + dy);
+    f
+}
+
+/// The absolutely positioned atomic box of `items` with id `node_id`, if it is one.
+fn out_of_flow_kid(items: &[InlineItem], node_id: NodeId) -> Option<&LayoutBox> {
+    items.iter().find_map(|item| match item {
+        InlineItem::Atomic(b) if b.node_id == node_id && b.out_of_flow() => Some(b),
+        _ => None,
+    })
+}
+
+/// The zero-size line piece an absolutely positioned box leaves at its static
+/// position: no advance, no height, no margins.
+fn out_of_flow_atom(id: usize) -> inline::InlineAtom {
+    inline::InlineAtom {
+        id,
+        width: 0.0,
+        height: 0.0,
+        valign: VAlign::Baseline,
+        font_size: 0.0,
+        margin_top: 0.0,
+        margin_bottom: 0.0,
+        margin_left: 0.0,
+        margin_right: 0.0,
+    }
+}
+
+/// Lay out an absolutely positioned box from an inline run at its static position
+/// `static_pos` (the line top at its place in the line), as [`place_special_kid`]
+/// does for one between blocks.
+fn place_inline_out_of_flow(
+    kid: &LayoutBox,
+    static_pos: (f32, f32),
+    cw: f32,
+    fs: f32,
+    ctx: &mut Ctx,
+) -> Fragment {
+    let kbs = resolve(kid, cw, fs);
+    let (bx, by) = out_of_flow_origin(&kbs, cw, ctx, static_pos);
+    let mut frag = layout_positioned(kid, (bx, by), cw, fs, ctx);
+    let height = out_of_flow_height(&kbs, ctx);
+    if height > 0.0 {
+        anchor_bottom(&mut frag, &kbs, height, ctx);
+    }
+    frag
 }
 
 /// Pre-lay the inline sequence in document order, returning `(pieces, atoms,
@@ -747,6 +834,19 @@ fn build_inline_pieces(
                 append_source_break(*node_id, style, bs.font_size, cw, ctx, &mut pieces);
             }
             InlineItem::LineBreak => pieces.push(inline::Piece::Break),
+            // An absolutely positioned box only takes a zero-size place in the line
+            // (its static position); it is laid out once that place is known.
+            InlineItem::Atomic(b) if b.out_of_flow() => {
+                pieces.push(inline::Piece::Atom(out_of_flow_atom(atom_frags.len())));
+                atom_frags.push(Fragment::new(
+                    b.node_id,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    content_kind(b, &resolve(b, cw, bs.font_size), 0.0, 0.0),
+                ));
+            }
             InlineItem::Atomic(b) => {
                 let f = lay_atomic(b, cw, bs.font_size, ctx);
                 // Cheap re-resolve (style cache memoizes) to read the box's own

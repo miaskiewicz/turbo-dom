@@ -23,6 +23,19 @@ changes in `tools/parity/expected/p5b-w1-*.json`.
   `:empty`, the `<p>` of `<style></style><p>` is not `:first-child`, `script + p` matches.
   Control: `scripts/html-document-chrome-control.mjs` (`*-empty`, `*-sibling*`,
   `has-style-child`, `meta-link-title-in-body-count` cases).
+- Positioned inlines and unsupported inline constructs in live snapshots
+  (miaskiewicz/turbo-surf#31): `position: absolute` / `fixed` blockify the box
+  (`display_of`, CSS 2.1 §9.7, every layout path), and such a box inside inline content
+  takes a zero-size place at its static position in the line — it no longer splits its
+  inline ancestor or the surrounding text into anonymous blocks, and no longer counts
+  towards the run's intrinsic widths. The native HTML snapshot no longer fails as a whole
+  on an inline construct its inline producer does not support (top/bottom/middle
+  `vertical-align`, vertical/RTL writing, `sticky`, a displaced block-in-inline split):
+  `LayoutSnapshot::unsupported_inline_geometry` names that element's subtree and
+  `cssom_view::metrics::element_geometry` fails those reads with the same message, while
+  every other element answers (a visually-hidden `.sr-only` span made every read on the
+  page throw). Control: `scripts/live-geometry-chrome-control.mjs`
+  (`crates/turbo-dom-layout/src/live/chrome_tests.rs`).
 
 ### Fixed — selector engine and cascade order (P5b-X, Chrome 156 controls)
 Each fix is backed by `crates/turbo-dom/tests/fixtures/cascade_selectors_chrome156.json`

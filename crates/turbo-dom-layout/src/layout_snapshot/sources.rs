@@ -36,6 +36,31 @@ impl BuildSources {
         }
     }
 
+    /// The mapped sources of `element` and its whole styled subtree (elements and
+    /// text), in document order.
+    pub(crate) fn subtree_sources(&self, element: &crate::StyledElement) -> Vec<SourceId> {
+        let mut out = Vec::new();
+        self.push_source(std::ptr::from_ref(element) as usize, &mut out);
+        self.subtree_children(&element.children, &mut out);
+        out
+    }
+
+    fn subtree_children(&self, nodes: &[StyledNode], out: &mut Vec<SourceId>) {
+        for node in nodes {
+            match node {
+                StyledNode::Element(element) => {
+                    self.push_source(std::ptr::from_ref(element) as usize, out);
+                    self.subtree_children(&element.children, out);
+                }
+                StyledNode::Text(_) => self.push_source(std::ptr::from_ref(node) as usize, out),
+            }
+        }
+    }
+
+    fn push_source(&self, key: usize, out: &mut Vec<SourceId>) {
+        out.extend(self.nodes.get(&key).and_then(|record| record.id));
+    }
+
     pub(crate) fn record(&mut self, node: NodeId, key: usize) {
         if let Some(source) = self.nodes.get(&key) {
             self.records.insert(node, source.clone());

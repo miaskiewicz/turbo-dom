@@ -421,7 +421,7 @@ fn atomics_natural(items: &[InlineItem], fonts: &FontRegistry) -> f32 {
     items
         .iter()
         .filter_map(|it| match it {
-            InlineItem::Atomic(b) => Some(natural_width(b, fonts)),
+            InlineItem::Atomic(b) if !b.out_of_flow() => Some(natural_width(b, fonts)),
             _ => None,
         })
         .sum()
@@ -551,7 +551,7 @@ fn lines_min(
     let atom = items
         .iter()
         .filter_map(|it| match it {
-            InlineItem::Atomic(b) => Some(min_content_width(b, fonts)),
+            InlineItem::Atomic(b) if !b.out_of_flow() => Some(min_content_width(b, fonts)),
             _ => None,
         })
         .fold(0.0_f32, f32::max);

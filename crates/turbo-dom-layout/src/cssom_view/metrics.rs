@@ -37,9 +37,7 @@ pub fn element_geometry(
     if source.excluded_from_layout {
         return Ok(empty_geometry());
     }
-    if snapshot.unsupported_svg_source_geometry(id) {
-        return Err("native SVG descendant geometry is unsupported".into());
-    }
+    supported_source(snapshot, id)?;
 
     let boxes: Vec<_> = source
         .fragment_indices
@@ -99,6 +97,18 @@ pub fn element_geometry(
             height: integer(first.rect.height)?,
         },
     })
+}
+
+/// A source whose geometry this snapshot cannot supply fails its reads: an SVG
+/// descendant, or a source inside an unsupported native inline construct (per element,
+/// miaskiewicz/turbo-surf#31).
+fn supported_source(snapshot: &LayoutSnapshot, id: SourceId) -> Result<(), String> {
+    if snapshot.unsupported_svg_source_geometry(id) {
+        return Err("native SVG descendant geometry is unsupported".into());
+    }
+    snapshot
+        .unsupported_inline_geometry(id)
+        .map_or(Ok(()), |error| Err(error.to_string()))
 }
 
 fn all_fragment_bounds(rects: &[Rect]) -> Rect {
