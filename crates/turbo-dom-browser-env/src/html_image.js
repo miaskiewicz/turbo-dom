@@ -7,8 +7,8 @@
   //
   // The binding does not fetch or decode images; the embedder owns load state. Without host
   // state an image is "not loading": complete is true, the natural size is 0x0 and currentSrc is
-  // the resolved src ("" without one), which is Chrome's answer for an image without a source and
-  // for a broken one. An embedder that loads images publishes each image's state through the
+  // the selected source (srcset / sizes / <picture>, else src; "" without one), which is Chrome's
+  // answer for an image without a source and for a broken one. An embedder that loads images publishes each image's state through the
   // document's private interface record (never reachable from page JS):
   //   record.imageHost.setState(img, {complete, naturalWidth, naturalHeight, currentSrc})
   //   record.imageHost.setState(img, null)   // back to the not-loading defaults
