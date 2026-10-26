@@ -42,6 +42,13 @@ changes in `tools/parity/expected/p5b-w1-*.json`.
   width, and in live geometry it records used box metrics, so `getBoundingClientRect()`
   on a `<tr>` answers (`[10,10,9.109375,20]` for a one-cell table in Chrome) instead of
   failing with "used box metrics are missing". Control: `live-geometry` `table-width-*`.
+- Table row groups in live geometry (miaskiewicz/turbo-surf#31): a `<tbody>` / `<thead>` /
+  `<tfoot>` gets a transparent box — the union of its rows, which it now contains — with
+  used box metrics, so its CSSOM reads answer (`[10,10,9.109375,20]` for a one-cell
+  table) instead of failing through the inline fallback ("decorated inline border
+  production is pending" / "empty inline placement is pending"). PDF and screenshot
+  layouts keep the rows flat (unchanged output). Control: `live-geometry`
+  `table-sections`, `table-two-bodies`, `table-empty-cell`, `table-decorated-collapsed`.
 - Auto-width tables in live geometry (miaskiewicz/turbo-surf#36 item 3): a `width: auto`
   table is shrink-to-fit — no wider than its columns' max-content plus border-spacing,
   padding and borders (`min-width`/`max-width` still apply, and it never drops below its

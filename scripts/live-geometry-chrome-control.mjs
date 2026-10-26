@@ -5,7 +5,8 @@
 //     (CSS 2.1 §9.7) and laid out at its static position without splitting its inline
 //     ancestor, and an unsupported inline construct fails that element only, instead of
 //     failing the whole snapshot; a table row is a box spanning its cells (inside the
-//     border-spacing) with used box metrics;
+//     border-spacing) with used box metrics, and a row group (`<tbody>`/`<thead>`/
+//     `<tfoot>`) is a box: the union of its rows;
 //   - miaskiewicz/turbo-surf#36 item 3: an auto-width table shrinks to fit its columns.
 //
 // For every case, Chrome for Testing 156 (viewport 1280x800) records the
@@ -110,6 +111,35 @@ const CASES = [
   {
     id: "table-auto-wide-content-fills",
     html: DOC("", `<table data-cid="table"><tr data-cid="tr">${CELL(2000, 10, "td")}</tr></table>`),
+  },
+  // turbo-surf#31 B: a row group (`<tbody>`/`<thead>`/`<tfoot>`) is a box: the union of
+  // its rows.
+  {
+    id: "table-sections",
+    html: DOC(
+      "",
+      `<table data-cid="table"><thead data-cid="thead"><tr data-cid="h">${CELL(30, 10, "hc")}</tr></thead><tbody data-cid="tbody"><tr data-cid="r1">${CELL(30, 20, "c1")}</tr><tr data-cid="r2">${CELL(30, 5, "c2")}</tr></tbody><tfoot data-cid="tfoot"><tr data-cid="f">${CELL(30, 7, "fc")}</tr></tfoot></table>`,
+    ),
+  },
+  {
+    id: "table-two-bodies",
+    html: DOC(
+      "",
+      `<table data-cid="table"><tbody data-cid="b1"><tr data-cid="r1">${CELL(10, 10, "c1")}</tr></tbody><tbody data-cid="b2"><tr data-cid="r2">${CELL(10, 10, "c2")}</tr></tbody></table>`,
+    ),
+  },
+  {
+    id: "table-empty-cell",
+    html: DOC("", `<table data-cid="table"><tbody data-cid="tbody"><tr data-cid="tr"><td data-cid="td"></td></tr></tbody></table>`),
+  },
+  {
+    // turbo-surf#31's decorated fixed table (collapsed borders; the cells' text does not
+    // move any box: fixed widths, explicit heights).
+    id: "table-decorated-collapsed",
+    html: DOC(
+      "#t{border-collapse:collapse;table-layout:fixed;width:240px}#t td{width:120px;height:30px;padding:6px;border:1px solid #333}",
+      `<table id="t" data-cid="table"><tbody data-cid="tbody"><tr data-cid="r1"><td data-cid="a">A1</td><td data-cid="b">B1</td></tr><tr data-cid="r2"><td data-cid="c">A2</td><td data-cid="d">B2</td></tr></tbody></table>`,
+    ),
   },
 ];
 

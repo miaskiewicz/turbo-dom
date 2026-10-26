@@ -85,6 +85,39 @@ fn row_min_height(row: &LayoutBox) -> f32 {
         .max(0.0)
 }
 
+/// A row group (`<tbody>` / `<thead>` / `<tfoot>`) and the run of collected rows it
+/// holds (`rows[start..start + count]`).
+struct GroupRef {
+    node_id: NodeId,
+    position: Position,
+    display: Display,
+    start: usize,
+    count: usize,
+}
+
+/// The row groups among a table's children (every child that is not itself a row,
+/// as [`collect_rows`] flattens them) with at least one row, in order, indexed into
+/// [`collect_rows`]' rows.
+fn row_groups(items: &[LayoutBox]) -> Vec<GroupRef> {
+    let mut out = Vec::new();
+    let mut start = 0;
+    for child in items {
+        let row = matches!(child.display, Display::TableRow);
+        let count = if row { 1 } else { rows_of(child).len() };
+        if count > 0 && !row {
+            out.push(GroupRef {
+                node_id: child.node_id,
+                position: position_of(&child.style),
+                display: child.display,
+                start,
+                count,
+            });
+        }
+        start += count;
+    }
+    out
+}
+
 fn collect_rows(items: &[LayoutBox]) -> Vec<RowRef<'_>> {
     let mut out = Vec::new();
     for child in items {
@@ -580,6 +613,7 @@ struct Grid<'a> {
     rows: &'a [RowRef<'a>],
     placed: &'a [Placed<'a>],
     ncols: usize,
+    groups: &'a [GroupRef],
 }
 
 /// Lay out a fixed-layout `border-collapse: collapse` table (§17.6.2): merge shared
@@ -598,6 +632,7 @@ fn layout_table_collapsed(
         rows,
         placed,
         ncols,
+        ..
     } = grid;
     let nrows = rows.len();
     let vert = vborders(placed, ncols, &table.style);
@@ -619,7 +654,7 @@ fn layout_table_collapsed(
     record_rows(rows, ctx);
     let frags = finalize(rows, laid, &geom, cx, cy);
     record_row_metrics(rows, &frags, ctx);
-    (frags, height)
+    (wrap_row_groups(frags, grid.groups, ctx), height)
 }
 
 // --------------------------------------------------------------------------
@@ -782,6 +817,60 @@ fn empty_box_metrics(frag: &Fragment, position: Position, display: Display) -> U
     }
 }
 
+/// In live geometry, nest each row group's rows under a transparent box for the group:
+/// the union of its rows, with frameless used metrics (miaskiewicz/turbo-surf#31), so
+/// a `<tbody>` answers its CSSOM reads. Other layouts keep the rows flat (the PDF
+/// fragmenter repeats `<thead>`/`<tfoot>` rows from the table's own children).
+fn wrap_row_groups(frags: Vec<Fragment>, groups: &[GroupRef], ctx: &mut Ctx) -> Vec<Fragment> {
+    let Some(metrics) = &mut ctx.used_metrics else {
+        return frags;
+    };
+    let mut rows: Vec<Option<Fragment>> = frags.into_iter().map(Some).collect();
+    let mut out = Vec::new();
+    let mut next = 0;
+    for group in groups {
+        out.extend(rows[next..group.start].iter_mut().filter_map(Option::take));
+        next = group.start + group.count;
+        let children = rows[group.start..next].iter_mut().filter_map(Option::take);
+        let frag = group_fragment(group.node_id, children.collect());
+        metrics.insert(
+            group.node_id,
+            empty_box_metrics(&frag, group.position, group.display),
+        );
+        out.push(frag);
+    }
+    out.extend(rows[next..].iter_mut().filter_map(Option::take));
+    out
+}
+
+/// A transparent box over `rows` (their union).
+fn group_fragment(node_id: NodeId, rows: Vec<Fragment>) -> Fragment {
+    let (first, last) = (&rows[0], &rows[rows.len() - 1]);
+    let x = rows.iter().map(|r| r.x).fold(f32::INFINITY, f32::min);
+    let right = rows
+        .iter()
+        .map(|r| r.x + r.width)
+        .fold(f32::NEG_INFINITY, f32::max);
+    let content = FragmentContent::Box {
+        background: None,
+        border: BorderEdges::default(),
+        border_radius: 0.0,
+        shadow: None,
+        gradient: None,
+        transform: None,
+    };
+    let mut frag = Fragment::new(
+        node_id,
+        x,
+        first.y,
+        right - x,
+        last.y + last.height - first.y,
+        content,
+    );
+    frag.children = rows;
+    frag
+}
+
 fn finalize(rows: &[RowRef], laid: Vec<LaidCell>, geom: &Geom, cx: f32, cy: f32) -> Vec<Fragment> {
     let mut row_frags: Vec<Fragment> = rows
         .iter()
@@ -909,6 +998,7 @@ pub(crate) fn layout_table(
             rows: &rows,
             placed: &placed,
             ncols,
+            groups: &row_groups(items),
         };
         return layout_table_collapsed(table, &grid, cx, cy, cw, fs, ctx);
     }
@@ -931,5 +1021,5 @@ pub(crate) fn layout_table(
     record_rows(&rows, ctx);
     let frags = finalize(&rows, laid, &geom, cx, cy);
     record_row_metrics(&rows, &frags, ctx);
-    (frags, height)
+    (wrap_row_groups(frags, &row_groups(items), ctx), height)
 }
