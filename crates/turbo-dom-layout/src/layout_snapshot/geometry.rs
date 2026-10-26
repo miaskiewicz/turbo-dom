@@ -124,7 +124,7 @@ fn kind(content: &FragmentContent) -> GeometryKind {
         FragmentContent::Box { .. } => GeometryKind::BorderBox,
         FragmentContent::Image(_) => GeometryKind::ImagePaint,
         FragmentContent::TextLine { .. } => GeometryKind::TextLineContainer,
-        FragmentContent::Directive(_) => GeometryKind::Directive,
+        FragmentContent::Marker(_) => GeometryKind::Marker,
     }
 }
 

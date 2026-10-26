@@ -167,7 +167,7 @@ impl Walker<'_> {
         if let StyledNode::Text(text) = node {
             self.text_sources.push(SnapshotTextSource {
                 source_id: id,
-                text: text.clone(),
+                text: text.text.clone(),
             });
         }
     }

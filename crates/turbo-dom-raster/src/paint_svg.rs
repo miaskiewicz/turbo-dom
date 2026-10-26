@@ -100,7 +100,7 @@ fn paint_fragment(svg: &mut String, f: &Fragment, images: &DecodedAssets) {
             *color,
         ),
         FragmentContent::Image(placement) => paint_image(svg, f, &placement.name, images),
-        FragmentContent::Directive(_) => {}
+        FragmentContent::Marker(_) => {}
     }
     // Paint children back-to-front in CSS stacking order (§9.9), not raw DOM
     // order, so `position`/`z-index` boxes (menus, modals) layer correctly.

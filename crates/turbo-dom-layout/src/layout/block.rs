@@ -14,7 +14,7 @@
 use crate::error::Diagnostics;
 use crate::image::probe;
 use crate::layout_snapshot::UsedBoxMetrics;
-use crate::node::TKind;
+use crate::node::MarkerKind;
 use crate::text::{Align, FontRegistry};
 use std::collections::HashMap;
 
@@ -73,6 +73,9 @@ pub(crate) struct Ctx<'a> {
     pub(crate) html_font_scale: Option<f32>,
     pub(crate) original_units: Option<&'a crate::layout_snapshot::text_units::NativeUnitMap>,
     pub(crate) native_transforms: Option<HashMap<NodeId, super::value::NativeTransform>>,
+    /// Source-recording mode: the boxes laid out as table rows (see
+    /// [`crate::layout::NodeSources::table_rows`]). `None` = not recording.
+    pub(crate) table_rows: Option<std::collections::HashSet<NodeId>>,
     /// Floats active in the current **block formatting context**, in absolute
     /// galley coordinates. In-flow content within the same BFC flows in the
     /// inline region these leave free (a `float:right` infobox narrows the text
@@ -534,23 +537,8 @@ fn lines_to_fragments(
     }
 }
 
-fn directive_frag(node_id: NodeId, kind: TKind, x: f32, y: f32) -> Fragment {
-    Fragment::new(node_id, x, y, 0.0, 0.0, FragmentContent::Directive(kind))
-}
-
-/// A directive fragment carrying a `<t:anchor name>`'s destination so emit can
-/// register it as a named GoTo target (`xref` feature, AC-3.25).
-#[cfg(feature = "xref")]
-fn anchor_directive_frag(
-    node_id: NodeId,
-    kind: TKind,
-    x: f32,
-    y: f32,
-    anchor: &Option<String>,
-) -> Fragment {
-    let mut frag = directive_frag(node_id, kind, x, y);
-    frag.xref.anchor = anchor.clone();
-    frag
+fn marker_frag(node_id: NodeId, kind: MarkerKind, x: f32, y: f32) -> Fragment {
+    Fragment::new(node_id, x, y, 0.0, 0.0, FragmentContent::Marker(kind))
 }
 
 /// Lay out an atomic inline (`inline-block` / replaced `<img>`) at the origin so
@@ -779,17 +767,8 @@ fn build_inline_pieces(
                 }));
                 atom_frags.push(f);
             }
-            #[cfg(not(feature = "xref"))]
-            InlineItem::Directive { node_id, kind } => {
-                directives.push(directive_frag(*node_id, *kind, cx, cy));
-            }
-            #[cfg(feature = "xref")]
-            InlineItem::Directive {
-                node_id,
-                kind,
-                anchor,
-            } => {
-                directives.push(anchor_directive_frag(*node_id, *kind, cx, cy, anchor));
+            InlineItem::Marker { node_id, kind } => {
+                directives.push(marker_frag(*node_id, *kind, cx, cy));
             }
         }
     }
@@ -1472,7 +1451,7 @@ fn layout_content(
         BoxKind::Grid(kids) => super::flex::layout_grid(lb, kids, cx, cy, cw, bs.font_size, ctx),
         BoxKind::Table(kids) => super::table::layout_table(lb, kids, cx, cy, cw, bs.font_size, ctx),
         BoxKind::Lines(items) => layout_lines(lb, items, bs, cx, cy, cw, ctx),
-        BoxKind::Directive(_) => (Vec::new(), 0.0),
+        BoxKind::Marker(_) => (Vec::new(), 0.0),
     }
 }
 
@@ -1490,7 +1469,7 @@ fn break_meta_of(bs: &BoxStyle) -> BreakMeta {
 
 fn content_kind(lb: &LayoutBox, bs: &BoxStyle, bbw: f32, bbh: f32) -> FragmentContent {
     match &lb.kind {
-        BoxKind::Directive(k) => FragmentContent::Directive(*k),
+        BoxKind::Marker(k) => FragmentContent::Marker(*k),
         _ => FragmentContent::Box {
             // A masked box paints its fill THROUGH the mask (a separate tinted image
             // fragment), so it must not also paint a solid rectangle behind it. A
@@ -1697,30 +1676,6 @@ fn layout_box_sized_impl(
         children,
         z_index: bs.z_index,
         is_positioned: bs.position != Position::Static,
-        #[cfg(feature = "xref")]
-        xref: box_xref(lb),
-        #[cfg(feature = "pdf-ua")]
-        role: lb.ua_role,
-        #[cfg(feature = "pdf-ua")]
-        alt: None,
-    }
-}
-
-/// The cross-reference payload for a box fragment: the `#name` target of an
-/// `<a href="#name">` whose box this is, drawn from the box's HTML attributes
-/// (`xref` feature, AC-3.25).
-#[cfg(feature = "xref")]
-fn box_xref(lb: &LayoutBox) -> super::fragment::XrefMeta {
-    let link_href = lb
-        .attrs
-        .iter()
-        .find(|a| a.name == "href")
-        .and_then(|a| a.value.strip_prefix('#'))
-        .filter(|t| !t.is_empty())
-        .map(str::to_string);
-    super::fragment::XrefMeta {
-        anchor: None,
-        link_href,
     }
 }
 
@@ -1810,7 +1765,7 @@ pub(crate) fn stamp_intrinsic_widths(lb: &LayoutBox, images: &ImageCtx) {
             .iter()
             .filter_map(inline_atomic)
             .for_each(|c| stamp_intrinsic_widths(c, images)),
-        BoxKind::Directive(_) => {}
+        BoxKind::Marker(_) => {}
     }
 }
 
@@ -1978,12 +1933,6 @@ fn image_fragment(lb: &LayoutBox, bx: f32, by: f32, sized: &SizedImage, bs: &Box
         children: Vec::new(),
         z_index: bs.z_index,
         is_positioned: bs.position != Position::Static,
-        #[cfg(feature = "xref")]
-        xref: super::fragment::XrefMeta::default(),
-        #[cfg(feature = "pdf-ua")]
-        role: lb.ua_role,
-        #[cfg(feature = "pdf-ua")]
-        alt: lb.ua_alt.clone(),
     }
 }
 
@@ -2074,12 +2023,33 @@ pub fn layout_tree_with_images(
         root,
         cb_width,
         0.0,
-        (false, TextLayoutPolicy::default()),
+        (false, TextLayoutPolicy::default(), false),
         fonts,
         images,
         diags,
     )
-    .0
+    .frag
+}
+
+/// [`layout_tree_with_images`] that also returns the boxes laid out as table rows
+/// (source-recording mode; the galley is identical).
+pub(crate) fn layout_tree_recorded(
+    root: &LayoutBox,
+    cb_width: f32,
+    fonts: &FontRegistry,
+    images: &ImageCtx,
+    diags: &mut Diagnostics,
+) -> (Fragment, std::collections::HashSet<NodeId>) {
+    let laid = layout_tree_policy(
+        root,
+        cb_width,
+        0.0,
+        (false, TextLayoutPolicy::default(), true),
+        fonts,
+        images,
+        diags,
+    );
+    (laid.frag, laid.table_rows.unwrap_or_default())
 }
 
 pub(crate) fn layout_tree_live(
@@ -2095,37 +2065,43 @@ pub(crate) fn layout_tree_live(
     Option<crate::layout_snapshot::text::TextCapture>,
     HashMap<NodeId, super::value::NativeTransform>,
 ) {
-    layout_tree_policy(
+    let laid = layout_tree_policy(
         root,
         viewport.0,
         viewport.1,
-        (true, text_start),
+        (true, text_start, false),
         fonts,
         images,
         diags,
-    )
+    );
+    (laid.frag, laid.metrics, laid.text_capture, laid.transforms)
+}
+
+/// Everything one [`layout_tree_policy`] run produces.
+struct PolicyLayout {
+    frag: Fragment,
+    metrics: HashMap<NodeId, UsedBoxMetrics>,
+    text_capture: Option<crate::layout_snapshot::text::TextCapture>,
+    transforms: HashMap<NodeId, super::value::NativeTransform>,
+    table_rows: Option<std::collections::HashSet<NodeId>>,
 }
 
 fn layout_tree_policy(
     root: &LayoutBox,
     cb_width: f32,
     viewport_height: f32,
-    policy: (bool, TextLayoutPolicy),
+    policy: (bool, TextLayoutPolicy, bool),
     fonts: &FontRegistry,
     images: &ImageCtx,
     diags: &mut Diagnostics,
-) -> (
-    Fragment,
-    HashMap<NodeId, UsedBoxMetrics>,
-    Option<crate::layout_snapshot::text::TextCapture>,
-    HashMap<NodeId, super::value::NativeTransform>,
-) {
+) -> PolicyLayout {
     let (
         live_geometry,
         TextLayoutPolicy {
             start: text_start,
             original_units,
         },
+        record_rows,
     ) = policy;
     let mut ctx = Ctx {
         fonts,
@@ -2150,6 +2126,7 @@ fn layout_tree_policy(
         text_capture: text_start
             .map(|value| crate::layout_snapshot::text::TextCapture::new(value.0)),
         floats: Vec::new(),
+        table_rows: record_rows.then(std::collections::HashSet::new),
     };
     root.set_html_layout_policy((ctx.html_font_metrics, ctx.html_font_scale));
     root.set_original_units(original_units.as_ref());
@@ -2162,12 +2139,13 @@ fn layout_tree_policy(
     if float_bottom > frag.height {
         frag.height = float_bottom;
     }
-    (
+    PolicyLayout {
         frag,
-        ctx.used_metrics.unwrap_or_default(),
-        ctx.text_capture,
-        ctx.native_transforms.unwrap_or_default(),
-    )
+        metrics: ctx.used_metrics.unwrap_or_default(),
+        text_capture: ctx.text_capture,
+        transforms: ctx.native_transforms.unwrap_or_default(),
+        table_rows: ctx.table_rows,
+    }
 }
 
 #[cfg(test)]
@@ -2184,6 +2162,7 @@ mod tests {
             attrs: vec![],
             style: ComputedStyle::from_pairs([("display".to_string(), "flex".to_string())]),
             children: vec![],
+            source: None,
         })
     }
 

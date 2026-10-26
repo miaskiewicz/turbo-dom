@@ -38,10 +38,6 @@ struct RowRef<'a> {
     /// like Hacker News) reserves its space instead of collapsing to zero.
     min_height: f32,
     repeat: Option<RepeatKind>,
-    /// The row's PDF/UA structure role (`pdf-ua`), so the synthetic row fragment
-    /// can carry `TableRow` for the tagged-PDF struct tree (AC-11.1).
-    #[cfg(feature = "pdf-ua")]
-    ua_role: Option<crate::layout::fragment::UaRole>,
 }
 
 fn cells_of(row: &LayoutBox) -> Vec<&LayoutBox> {
@@ -72,8 +68,6 @@ fn row_ref<'a>(row: &'a LayoutBox, repeat: Option<RepeatKind>) -> RowRef<'a> {
         cells: cells_of(row),
         min_height: row_min_height(row),
         repeat,
-        #[cfg(feature = "pdf-ua")]
-        ua_role: row.ua_role,
     }
 }
 
@@ -617,6 +611,7 @@ fn layout_table_collapsed(
         table_w: col_cp.iter().sum::<f32>() + vert_total,
     };
     let height = row_cp.iter().sum::<f32>() + horiz.iter().sum::<f32>();
+    record_rows(rows, ctx);
     (finalize(rows, laid, &geom, cx, cy), height)
 }
 
@@ -734,11 +729,15 @@ fn make_row_frag(row: &RowRef, r: usize, geom: &Geom, cx: f32, cy: f32) -> Fragm
         content,
     );
     f.break_meta.repeatable = row.repeat;
-    #[cfg(feature = "pdf-ua")]
-    {
-        f.role = row.ua_role;
-    }
     f
+}
+
+/// In source-recording mode, note which boxes were laid out as table rows (their
+/// one fragment is the synthetic row box above, not an ordinary box fragment).
+fn record_rows(rows: &[RowRef], ctx: &mut Ctx) {
+    if let Some(recorded) = &mut ctx.table_rows {
+        recorded.extend(rows.iter().map(|row| row.node_id));
+    }
 }
 
 fn finalize(rows: &[RowRef], laid: Vec<LaidCell>, geom: &Geom, cx: f32, cy: f32) -> Vec<Fragment> {
@@ -869,5 +868,6 @@ pub(crate) fn layout_table(
         row_h,
     };
     let height = geom.row_h.iter().sum::<f32>() + vs * (nrows as f32 + 1.0);
+    record_rows(&rows, ctx);
     (finalize(&rows, laid, &geom, cx, cy), height)
 }

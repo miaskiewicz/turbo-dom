@@ -20,11 +20,12 @@ fn el(tag: &str, pairs: &[(&str, &str)], children: Vec<StyledNode>) -> StyledNod
         attrs: vec![],
         style: cs(pairs),
         children,
+        source: None,
     })
 }
 
 fn item(pairs: &[(&str, &str)], text: &str) -> StyledNode {
-    el("div", pairs, vec![StyledNode::Text(text.to_string())])
+    el("div", pairs, vec![StyledNode::Text(text.into())])
 }
 
 fn grid(container_extra: &[(&str, &str)], items: Vec<StyledNode>, cw: f32) -> Fragment {

@@ -13,8 +13,8 @@ use std::cell::RefCell;
 
 use crate::layout_snapshot::sources::{BuildSources, SourceRecord};
 
-use crate::node::{Attr, TKind, Tag};
-use crate::style::{ComputedStyle, StyledElement, StyledNode};
+use crate::node::{Attr, MarkerKind, Tag};
+use crate::style::{ComputedStyle, StyledElement, StyledNode, StyledText};
 
 use super::fragment::NodeId;
 use super::value::{
@@ -69,14 +69,6 @@ pub struct LayoutBox {
     /// FULL sub-layout, so a deeply nested flex tree is exponential without this —
     /// keyed by the rounded proposed width (a handful of distinct values per box).
     measure_cache: RefCell<Option<Box<MeasuredSizes>>>,
-    /// The PDF/UA structure role derived from this box's HTML tag (`pdf-ua`),
-    /// carried down to the fragment so the emitter can tag it (AC-11.1).
-    #[cfg(feature = "pdf-ua")]
-    pub ua_role: Option<crate::layout::fragment::UaRole>,
-    /// Alternate text for an `<img>` (`alt` attribute), written as `/Alt` on the
-    /// figure's struct element (`pdf-ua`).
-    #[cfg(feature = "pdf-ua")]
-    pub ua_alt: Option<String>,
 }
 
 fn same_original_inputs(
@@ -277,7 +269,7 @@ impl LayoutBox {
                     }
                 }
             }
-            BoxKind::Directive(_) => {}
+            BoxKind::Marker(_) => {}
         }
     }
 
@@ -298,7 +290,7 @@ impl LayoutBox {
                     }
                 }
             }
-            BoxKind::Directive(_) => {}
+            BoxKind::Marker(_) => {}
         }
     }
 
@@ -350,8 +342,8 @@ pub enum BoxKind {
     /// A table; children are rows/row-groups (interpreted by `table.rs` via
     /// each child's `display`).
     Table(Vec<LayoutBox>),
-    /// An opaque paged-media directive marker.
-    Directive(TKind),
+    /// An opaque block-level marker element (see [`MarkerKind`]).
+    Marker(MarkerKind),
 }
 
 /// One inline-level item inside a [`BoxKind::Lines`] context.
@@ -379,15 +371,8 @@ pub enum InlineItem {
     /// next (browser-faithful inline behavior). It carries no metrics of its own —
     /// the line-height in effect comes from the line's content and the block strut.
     LineBreak,
-    /// An inline paged-media directive (e.g. a footnote reference).
-    Directive {
-        node_id: NodeId,
-        kind: TKind,
-        /// A `<t:anchor name>`'s destination name (`xref` feature, AC-3.25),
-        /// carried so the positioned directive fragment can define the dest.
-        #[cfg(feature = "xref")]
-        anchor: Option<String>,
-    },
+    /// An inline marker element (e.g. html2pdf's footnote reference).
+    Marker { node_id: NodeId, kind: MarkerKind },
 }
 
 /// A block-level box or an inline-level run, before anonymous-block wrapping.
@@ -408,14 +393,47 @@ enum FlowLevel {
     Inline(Vec<InlineItem>),
 }
 
+/// Box-generation options (the layout-level switches of [`super::LayoutOptions`]).
+#[derive(Debug, Clone, Copy, Default)]
+pub(crate) struct BuildOptions {
+    /// Lay an `<a href="#name">` out as an atomic inline box (its own fragment).
+    pub(crate) atomic_internal_links: bool,
+    /// Record each box's source [`turbo_dom::Handle`] (see [`super::NodeSources`]).
+    pub(crate) record_sources: bool,
+}
+
+/// The source handles recorded per box id in source-recording mode.
+#[derive(Debug, Default)]
+pub(crate) struct Recorded {
+    pub(crate) elements: std::collections::HashMap<NodeId, turbo_dom::Handle>,
+    pub(crate) texts: std::collections::HashMap<NodeId, turbo_dom::Handle>,
+}
+
 /// A monotonic source of pre-order node ids.
 struct Ids {
     next: u32,
+    /// Snapshot mode (live geometry): the snapshot's source identities. Also
+    /// switches the snapshot-only box-generation rules (hidden boxes, markers,
+    /// anonymous styles).
     sources: Option<BuildSources>,
     document_roots: std::collections::HashSet<usize>,
+    /// Source-recording mode — independent of snapshot mode: it only records the
+    /// [`StyledElement::source`]/text sources per allocated id.
+    recorded: Option<Recorded>,
+    atomic_internal_links: bool,
 }
 
 impl Ids {
+    fn new(sources: Option<BuildSources>, options: BuildOptions) -> Ids {
+        Ids {
+            next: 0,
+            sources,
+            document_roots: Default::default(),
+            recorded: options.record_sources.then(Recorded::default),
+            atomic_internal_links: options.atomic_internal_links,
+        }
+    }
+
     fn alloc(&mut self) -> NodeId {
         let id = NodeId(self.next);
         self.next += 1;
@@ -431,7 +449,19 @@ impl Ids {
     }
 
     fn element(&mut self, element: &StyledElement) -> NodeId {
-        self.sourced(element as *const StyledElement as usize)
+        let id = self.sourced(element as *const StyledElement as usize);
+        if let (Some(recorded), Some(source)) = (&mut self.recorded, element.source) {
+            recorded.elements.insert(id, source);
+        }
+        id
+    }
+
+    fn text(&mut self, node: &StyledNode, text: &StyledText) -> NodeId {
+        let id = self.sourced(node as *const StyledNode as usize);
+        if let (Some(recorded), Some(source)) = (&mut self.recorded, text.source) {
+            recorded.texts.insert(id, source);
+        }
+        id
     }
 
     fn is_svg_viewport(&self, element: &StyledElement) -> bool {
@@ -451,28 +481,20 @@ impl Ids {
     }
 }
 
-/// `t:` directives that sit inline within text flow (vs. block-level ones).
-fn inline_directive(kind: TKind) -> bool {
-    matches!(
-        kind,
-        TKind::Footnote
-            | TKind::Page
-            | TKind::Pages
-            | TKind::Counter
-            | TKind::Leader
-            | TKind::Anchor
-    )
+fn is_marker(el: &StyledElement) -> bool {
+    matches!(el.tag, Tag::Marker(_))
 }
 
-fn is_directive(el: &StyledElement) -> bool {
-    matches!(el.tag, Tag::Directive(_))
-}
-
-fn text_item(node: &StyledNode, text: &str, style: &ComputedStyle, ids: &mut Ids) -> InlineItem {
+fn text_item(
+    node: &StyledNode,
+    text: &StyledText,
+    style: &ComputedStyle,
+    ids: &mut Ids,
+) -> InlineItem {
     InlineItem::Text {
-        node_id: ids.sourced(node as *const StyledNode as usize),
+        node_id: ids.text(node, text),
         style: style.clone(),
-        text: text.to_string(),
+        text: text.text.clone(),
     }
 }
 
@@ -480,13 +502,11 @@ fn text_item(node: &StyledNode, text: &str, style: &ComputedStyle, ids: &mut Ids
 // classification
 // --------------------------------------------------------------------------
 
-fn directive_level(kind: TKind, el: &StyledElement, ids: &mut Ids) -> Level {
-    if inline_directive(kind) {
-        Level::Inline(vec![InlineItem::Directive {
+fn marker_level(kind: MarkerKind, el: &StyledElement, ids: &mut Ids) -> Level {
+    if kind.inline {
+        Level::Inline(vec![InlineItem::Marker {
             node_id: ids.element(el),
             kind,
-            #[cfg(feature = "xref")]
-            anchor: xref::anchor_name(kind, el),
         }])
     } else {
         Level::Block(build_block_box(el, ids))
@@ -581,13 +601,7 @@ fn classify_html(el: &StyledElement, ids: &mut Ids) -> Option<Level> {
     if is_br(el) {
         return Some(Level::Inline(vec![line_break(el, ids)]));
     }
-    #[cfg(feature = "xref")]
-    if xref::internal_link_href(el).is_some()
-        && !ids
-            .sources
-            .as_ref()
-            .is_some_and(|sources| sources.inline_borders)
-    {
+    if atomic_link(el, ids) {
         // An `<a href="#name">` is laid out as an atomic inline box so it carries
         // its own fragment (and thus a link rectangle) through layout (AC-3.25).
         return Some(Level::Inline(vec![InlineItem::Atomic(build_block_box(
@@ -595,6 +609,25 @@ fn classify_html(el: &StyledElement, ids: &mut Ids) -> Option<Level> {
         ))]));
     }
     classify_display(el, ids)
+}
+
+/// Whether `el` is an internal link laid out atomically: the option is on and the
+/// tree is not a native-inline snapshot.
+fn atomic_link(el: &StyledElement, ids: &Ids) -> bool {
+    ids.atomic_internal_links
+        && is_internal_link(el)
+        && !ids
+            .sources
+            .as_ref()
+            .is_some_and(|sources| sources.inline_borders)
+}
+
+/// An `<a href="#name">` (a non-empty fragment-only target).
+fn is_internal_link(el: &StyledElement) -> bool {
+    matches!(&el.tag, Tag::Html(name) if name == "a")
+        && attr_value(&el.attrs, "href")
+            .and_then(|href| href.strip_prefix('#'))
+            .is_some_and(|target| !target.is_empty())
 }
 
 fn classify_display(el: &StyledElement, ids: &mut Ids) -> Option<Level> {
@@ -719,8 +752,8 @@ fn classify(node: &StyledNode, parent_style: &ComputedStyle, ids: &mut Ids) -> O
         }
         StyledNode::Element(e) => e,
     };
-    // Live snapshots exclude every display-none subtree, including directives;
-    // the PDF path preserves its existing directive interpretation.
+    // Live snapshots exclude every display-none subtree, including markers;
+    // the PDF path preserves its existing marker interpretation.
     if ids.sources.is_some() && ids.hidden(&el.style) {
         return None;
     }
@@ -732,7 +765,7 @@ fn classify(node: &StyledNode, parent_style: &ComputedStyle, ids: &mut Ids) -> O
 
 fn classify_element(el: &StyledElement, ids: &mut Ids) -> Option<Level> {
     match &el.tag {
-        Tag::Directive(kind) => Some(directive_level(*kind, el, ids)),
+        Tag::Marker(kind) => Some(marker_level(*kind, el, ids)),
         Tag::Html(_) => classify_html(el, ids),
     }
 }
@@ -758,7 +791,7 @@ fn box_kind_for(display: Display, el: &StyledElement, ids: &mut Ids) -> BoxKind 
     // ATTRIBUTE, not as text content — render it so the box isn't empty (google's
     // "Google Search" / "I'm Feeling Lucky" buttons were blank grey rectangles).
     if let Some(label) = input_button_text(el) {
-        let text = vec![StyledNode::Text(label)];
+        let text = vec![StyledNode::Text(label.into())];
         return build_flow(&text, &el.style, ids);
     }
     match display {
@@ -803,14 +836,14 @@ fn native_iframe(element: &StyledElement, ids: &Ids) -> bool {
 
 fn build_block_box(el: &StyledElement, ids: &mut Ids) -> LayoutBox {
     let node_id = ids.element(el);
-    if let Tag::Directive(kind) = &el.tag {
+    if let Tag::Marker(kind) = &el.tag {
         return LayoutBox {
             node_id,
             source_role: SourceRole::Ordinary,
             style: el.style.clone(),
             attrs: el.attrs.clone(),
             display: Display::Block,
-            kind: BoxKind::Directive(*kind),
+            kind: BoxKind::Marker(*kind),
             image: None,
             svg_viewport: None,
             mask: None,
@@ -820,10 +853,6 @@ fn build_block_box(el: &StyledElement, ids: &mut Ids) -> LayoutBox {
             min_content_cache: std::cell::Cell::new(None),
             intrinsic_w: std::cell::Cell::new(None),
             measure_cache: RefCell::new(None),
-            #[cfg(feature = "pdf-ua")]
-            ua_role: None,
-            #[cfg(feature = "pdf-ua")]
-            ua_alt: None,
         };
     }
     let svg_viewport = ids.is_svg_viewport(el).then(|| {
@@ -854,10 +883,6 @@ fn build_block_box(el: &StyledElement, ids: &mut Ids) -> LayoutBox {
         min_content_cache: std::cell::Cell::new(None),
         intrinsic_w: std::cell::Cell::new(None),
         measure_cache: RefCell::new(None),
-        #[cfg(feature = "pdf-ua")]
-        ua_role: ua::role_of(el),
-        #[cfg(feature = "pdf-ua")]
-        ua_alt: ua::alt_of(el),
     }
 }
 
@@ -1010,7 +1035,7 @@ fn flush_flex_text(
 
 fn block_child(node: &StyledNode, ids: &mut Ids) -> Option<LayoutBox> {
     let el = node.as_element()?;
-    if !is_directive(el) && ids.hidden(&el.style) {
+    if !is_marker(el) && ids.hidden(&el.style) {
         return None;
     }
     Some(build_block_box(el, ids))
@@ -1050,11 +1075,6 @@ fn anon_lines_box(
         min_content_cache: std::cell::Cell::new(None),
         intrinsic_w: std::cell::Cell::new(None),
         measure_cache: RefCell::new(None),
-        // An anonymous block wrapping an inline run reads as a paragraph of text.
-        #[cfg(feature = "pdf-ua")]
-        ua_role: Some(crate::layout::fragment::UaRole::Paragraph),
-        #[cfg(feature = "pdf-ua")]
-        ua_alt: None,
     }
 }
 
@@ -1123,12 +1143,18 @@ fn build_flow(children: &[StyledNode], parent_style: &ComputedStyle, ids: &mut I
 /// Build the box tree for a document flow. The root is an anonymous block box
 /// (id 0) whose `kind` is the top-level formatting context.
 pub fn build_box_tree(styled: &[StyledNode]) -> LayoutBox {
-    let mut ids = Ids {
-        next: 0,
-        sources: None,
-        document_roots: Default::default(),
-    };
-    build_root(styled, &mut ids)
+    build_box_tree_with(styled, BuildOptions::default()).0
+}
+
+/// [`build_box_tree`] with box-generation options; returns the recorded sources
+/// (empty unless `record_sources`) and the id count.
+pub(crate) fn build_box_tree_with(
+    styled: &[StyledNode],
+    options: BuildOptions,
+) -> (LayoutBox, Recorded, u32) {
+    let mut ids = Ids::new(None, options);
+    let root = build_root(styled, &mut ids);
+    (root, ids.recorded.unwrap_or_default(), ids.next)
 }
 
 /// Geometry uses the identical tree once, with source identities out of band.
@@ -1140,11 +1166,8 @@ pub(crate) fn build_sourced_tree(
     std::collections::HashMap<NodeId, SourceRecord>,
     u32,
 ) {
-    let mut ids = Ids {
-        next: 0,
-        sources: Some(sources),
-        document_roots: html_document_roots(styled),
-    };
+    let mut ids = Ids::new(Some(sources), BuildOptions::default());
+    ids.document_roots = html_document_roots(styled);
     let root = build_root(styled, &mut ids);
     (
         root,
@@ -1181,27 +1204,8 @@ fn build_root(styled: &[StyledNode], ids: &mut Ids) -> LayoutBox {
         min_content_cache: std::cell::Cell::new(None),
         intrinsic_w: std::cell::Cell::new(None),
         measure_cache: RefCell::new(None),
-        // The synthetic document root maps to the `Document` structure element.
-        #[cfg(feature = "pdf-ua")]
-        ua_role: Some(crate::layout::fragment::UaRole::Group),
-        #[cfg(feature = "pdf-ua")]
-        ua_alt: None,
     }
 }
-
-/// PDF/UA role derivation from the semantic HTML tag (`pdf-ua` feature, AC-11.1).
-/// The gated-only body lives in its own module file so its branches stay out of
-/// the default coverage surface; exercised by the `--features pdf-ua` tests.
-#[cfg(feature = "pdf-ua")]
-#[path = "boxgen_ua.rs"]
-mod ua;
-
-/// `xref`-feature box-generation helpers (anchor names + internal link hrefs,
-/// AC-3.25). The gated-only body lives in its own module file so its branches
-/// stay out of the default coverage surface; exercised by `--features xref`.
-#[cfg(feature = "xref")]
-#[path = "boxgen_xref.rs"]
-mod xref;
 
 #[cfg(test)]
 mod tests {
@@ -1213,6 +1217,7 @@ mod tests {
             attrs: vec![],
             style: ComputedStyle::default(),
             children,
+            source: None,
         })
     }
 
@@ -1222,6 +1227,7 @@ mod tests {
             attrs: vec![],
             style: ComputedStyle::default(),
             children: vec![],
+            source: None,
         }
     }
 
@@ -1279,7 +1285,7 @@ mod tests {
                     _ => None,
                 })
                 .collect(),
-            BoxKind::Directive(_) => Vec::new(),
+            BoxKind::Marker(_) => Vec::new(),
         }
     }
     fn cache_signature(root: &LayoutBox) -> Vec<(Option<f32>, Option<f32>, Option<String>)> {
@@ -1427,9 +1433,9 @@ mod tests {
         let tree = build_box_tree(&[html_el(
             "div",
             vec![
-                StyledNode::Text("a".to_string()),
+                StyledNode::Text("a".into()),
                 html_el("br", vec![]),
-                StyledNode::Text("b".to_string()),
+                StyledNode::Text("b".into()),
             ],
         )]);
         let BoxKind::Block(kids) = &tree.kind else {

@@ -32,22 +32,13 @@ perf = []
 # reproducible output; 0.46+ changes raster output) into the RGBA image pipeline.
 svg = ["dep:resvg"]
 
-# TEMPORARY (until the consolidation's S2 step replaces them with runtime layout options):
-# the PDF-side capability gates whose cfg'd fields/branches live in the layout code. They are
-# forwarded from turbo-html2pdf-core's features of the same name; no other consumer should
-# enable them.
-# - `xref`: anchor names / internal `<a href="#…">` links carried on fragments.
-xref = []
-# - `pdf-ua`: structure role + alt text carried on fragments.
-pdf-ua = []
-# - `print-color`: accept `cmyk(...)` colours.
-print-color = []
-
 # Test fixtures for downstream crates' tests (`FontFace::collection_fixture_faces`). Never
 # enable in a production build.
 test-support = []
 
 [dependencies]
+# The DOM the cascade styles and lays out directly (`style::TreeView`).
+turbo-dom = { path = "../turbo-dom", version = "0.5.8" }
 thiserror = "2"
 html5ever = "0.39.0"
 markup5ever_rcdom = "0.39.0"

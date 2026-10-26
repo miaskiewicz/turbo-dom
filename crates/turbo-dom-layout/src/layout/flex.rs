@@ -523,7 +523,7 @@ pub(crate) fn natural_width(lb: &LayoutBox, fonts: &FontRegistry) -> f32 {
             ),
             BoxKind::Flex(k) => flex_natural(k, &lb.style, fonts),
             BoxKind::Block(k) | BoxKind::Grid(k) | BoxKind::Table(k) => kids_natural(k, fonts),
-            BoxKind::Directive(_) => 0.0,
+            BoxKind::Marker(_) => 0.0,
         };
         inner + frame
     })
@@ -584,7 +584,7 @@ pub(crate) fn min_content_width(lb: &LayoutBox, fonts: &FontRegistry) -> f32 {
                 .iter()
                 .map(|c| min_content_width(c, fonts))
                 .fold(0.0_f32, f32::max),
-            BoxKind::Directive(_) => 0.0,
+            BoxKind::Marker(_) => 0.0,
         };
         inner + frame
     })
@@ -701,6 +701,7 @@ fn measure_item(
             original_units,
             native_transforms: None,
             floats: Vec::new(),
+            table_rows: None,
         };
         let frag = block::layout_box_sized_isolated(item, &bs, 0.0, 0.0, w, &mut mctx);
         (frag.width, frag.height)
@@ -1258,7 +1259,7 @@ pub(crate) fn layout_flex(
 mod coverage_tests {
     use super::*;
     use crate::layout::boxgen::build_box_tree;
-    use crate::node::{Attr, TKind, Tag};
+    use crate::node::{Attr, MarkerKind, Tag};
     use crate::text::FontRegistry;
     use crate::{StyledElement, StyledNode};
 
@@ -1526,11 +1527,12 @@ mod coverage_tests {
             attrs: vec![],
             style: cs(pairs),
             children,
+            source: None,
         })
     }
 
     fn text_item(t: &str) -> StyledNode {
-        el("div", &[], vec![StyledNode::Text(t.to_string())])
+        el("div", &[], vec![StyledNode::Text(t.into())])
     }
 
     // --- item_basis: flex-basis %, and the non-length fallback to `width` ---
@@ -1618,7 +1620,7 @@ mod coverage_tests {
             vec![el(
                 "span",
                 &[("display", "inline-block")],
-                vec![StyledNode::Text("Settings".to_string())],
+                vec![StyledNode::Text("Settings".into())],
             )],
         )]);
         let nat = natural_width(&tree, &fonts);
@@ -1633,7 +1635,7 @@ mod coverage_tests {
         );
     }
 
-    // --- min_content_width: replaced image path + directive (zero) path ---
+    // --- min_content_width: replaced image path + marker (zero) path ---
     #[test]
     fn min_content_replaced_image_and_directive() {
         let fonts = FontRegistry::new();
@@ -1648,16 +1650,21 @@ mod coverage_tests {
             }],
             style: cs(&[]),
             children: vec![],
+            source: None,
         });
         let root = build_box_tree(&[el("div", &[("display", "flex")], vec![img])]);
         assert!(min_content_width(&root, &fonts) >= 0.0);
 
-        // A paged-media directive box has zero min-content width.
+        // A marker box has zero min-content width.
         let directive = StyledNode::Element(StyledElement {
-            tag: Tag::Directive(TKind::Anchor),
+            tag: Tag::Marker(MarkerKind {
+                id: 0,
+                inline: true,
+            }),
             attrs: vec![],
             style: cs(&[]),
             children: vec![],
+            source: None,
         });
         let root = build_box_tree(&[el("div", &[("display", "flex")], vec![directive])]);
         assert_eq!(min_content_width(&root, &fonts), 0.0);

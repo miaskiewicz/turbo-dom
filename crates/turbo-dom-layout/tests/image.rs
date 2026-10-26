@@ -694,6 +694,7 @@ fn mask_image_box_emits_tinted_image_and_no_solid_background() {
         attrs: Vec::new(),
         style,
         children: vec![],
+        source: None,
     };
     let styled = vec![StyledNode::Element(el)];
     let resolver = MapResolver::new(vec![("caret.svg", png_rgb_2x2())]);

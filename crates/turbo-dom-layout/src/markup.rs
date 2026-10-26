@@ -1,58 +1,29 @@
-//! Parse rendered markup into the resolved node tree (§1 Stage 1, §2.1). The
-//! Jinja pass produces an intermediate markup string; html5ever turns it into a
-//! DOM, which we lower into our own owned [`Node`] tree, recognizing `t:`
-//! elements as typed directives. The markup string never escapes to the caller.
+//! The LEGACY markup -> owned [`Node`] conversion (html5ever + `markup5ever_rcdom`).
+//!
+//! The layout pipeline now styles a turbo-dom [`Tree`](turbo_dom::Tree) directly
+//! ([`crate::style::TreeView`]); this converter stays for the legacy [`Node`] input
+//! ([`crate::html_layout::parse_html`]) and as the reference the Tree path is
+//! checked against (equivalence tests). It lowers the document's `<body>` children
+//! into [`Node`]s — elements and text only (comments, processing instructions and
+//! doctypes are dropped; `<template>` content is not a child) — parsed with
+//! html5ever's default options (scripting on, so `<noscript>` content is raw
+//! text). An optional classifier turns elements into [`Tag::Marker`]s or rejects
+//! them with an error.
 
 use html5ever::tendril::TendrilSink;
 use html5ever::{parse_document, ParseOpts};
 use markup5ever_rcdom::{Handle, NodeData, RcDom};
 
-use crate::error::{ErrorCode, RenderError, Span};
-use crate::node::{t_kind, Attr, Element, Node, Tag};
+use crate::error::RenderError;
+use crate::node::{Attr, Element, Node, Tag};
 
-fn markup_err(code: ErrorCode, message: impl Into<String>) -> RenderError {
-    RenderError {
-        code,
-        message: message.into(),
-        span: Span::default(),
-    }
-}
+/// Maps an element's local name to its [`Tag`] (a marker, a plain element, or an
+/// error for a name the embedder rejects).
+pub type TagClassifier<'a> = &'a dyn Fn(&str) -> Result<Tag, RenderError>;
 
-/// The element name in an open tag prefix like `<t:region slot="x"` (no `<`/ws).
-fn elem_name(open: &str) -> &str {
-    let body = &open[1..];
-    let end = body.find(char::is_whitespace).unwrap_or(body.len());
-    &body[..end]
-}
-
-/// Rewrite one `<t:...>` tag starting at `s`, expanding a self-closing form into
-/// an explicit open+close pair. Returns (bytes consumed, replacement).
-fn rewrite_one(s: &str) -> (usize, String) {
-    let Some(gt) = s.find('>') else {
-        return (s.len(), s.to_string());
-    };
-    let tag = &s[..=gt];
-    match tag.strip_suffix("/>") {
-        Some(open) => (gt + 1, format!("{open}></{}>", elem_name(open))),
-        None => (gt + 1, tag.to_string()),
-    }
-}
-
-/// Expand self-closing `t:` convenience elements (`<t:page/>`) into balanced
-/// pairs (`<t:page></t:page>`), since the HTML parser does not honor `/>` on
-/// unknown elements and would otherwise nest following siblings inside them.
-fn expand_self_closing(markup: &str) -> String {
-    let mut out = String::with_capacity(markup.len());
-    let mut rest = markup;
-    while let Some(idx) = rest.find("<t:") {
-        out.push_str(&rest[..idx]);
-        let after = &rest[idx..];
-        let (consumed, rewritten) = rewrite_one(after);
-        out.push_str(&rewritten);
-        rest = &after[consumed..];
-    }
-    out.push_str(rest);
-    out
+/// Every element is a plain [`Tag::Html`] (no markers, no errors).
+fn plain_tag(local: &str) -> Result<Tag, RenderError> {
+    Ok(Tag::Html(local.to_string()))
 }
 
 /// Parse `markup` into the top-level flow nodes (the `<body>` children).
@@ -66,15 +37,24 @@ pub fn parse(markup: &str) -> Result<Vec<Node>, RenderError> {
 /// `vector-feature-*`, `client-js`, theme classes, …) match, even though those
 /// elements are not themselves laid out as boxes.
 pub fn parse_with_roots(markup: &str) -> Result<(Vec<Node>, Vec<Element>), RenderError> {
-    let expanded = expand_self_closing(markup);
+    parse_classified(markup, &plain_tag)
+}
+
+/// [`parse_with_roots`] with an element classifier: `classify(local_name)` decides
+/// each element's [`Tag`] (pre-order; the first error wins and aborts the parse).
+/// The `<html>`/`<body>` shells are always plain elements.
+pub fn parse_classified(
+    markup: &str,
+    classify: TagClassifier,
+) -> Result<(Vec<Node>, Vec<Element>), RenderError> {
     let dom = parse_document(RcDom::default(), ParseOpts::default())
         .from_utf8()
-        .read_from(&mut expanded.as_bytes())
+        .read_from(&mut markup.as_bytes())
         .expect("reading from an in-memory slice is infallible");
     let body =
         find_element(&dom.document, "body").expect("the HTML parser always produces a <body>");
     let mut out = Vec::new();
-    convert_children(&body, &mut out)?;
+    convert_children(&body, classify, &mut out)?;
     let mut roots = Vec::new();
     if let Some(html) = find_element(&dom.document, "html") {
         roots.push(shell(&html));
@@ -115,22 +95,31 @@ fn match_or_descend(child: &Handle, name: &str) -> Option<Handle> {
     find_element(child, name)
 }
 
-fn convert_children(parent: &Handle, out: &mut Vec<Node>) -> Result<(), RenderError> {
+fn convert_children(
+    parent: &Handle,
+    classify: TagClassifier,
+    out: &mut Vec<Node>,
+) -> Result<(), RenderError> {
     for child in parent.children.borrow().iter() {
-        if let Some(node) = convert_node(child)? {
+        if let Some(node) = convert_node(child, classify)? {
             out.push(node);
         }
     }
     Ok(())
 }
 
-fn convert_node(handle: &Handle) -> Result<Option<Node>, RenderError> {
+fn convert_node(handle: &Handle, classify: TagClassifier) -> Result<Option<Node>, RenderError> {
     match &handle.data {
         NodeData::Text { contents } => Ok(Some(Node::Text(contents.borrow().to_string()))),
         NodeData::Element { name, attrs, .. } => {
-            let local = name.local.to_string();
-            let element = convert_element(&local, &collect_attrs(attrs), handle)?;
-            Ok(Some(element))
+            let tag = classify(&name.local)?;
+            let mut children = Vec::new();
+            convert_children(handle, classify, &mut children)?;
+            Ok(Some(Node::Element(Element {
+                tag,
+                attrs: collect_attrs(attrs),
+                children,
+            })))
         }
         _ => Ok(None),
     }
@@ -147,29 +136,41 @@ fn collect_attrs(attrs: &std::cell::RefCell<Vec<html5ever::Attribute>>) -> Vec<A
         .collect()
 }
 
-fn convert_element(local: &str, attrs: &[Attr], handle: &Handle) -> Result<Node, RenderError> {
-    let tag = tag_of(local)?;
-    let mut children = Vec::new();
-    convert_children(handle, &mut children)?;
-    Ok(Node::Element(Element {
-        tag,
-        attrs: attrs.to_vec(),
-        children,
-    }))
-}
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::error::{ErrorCode, Span};
+    use crate::node::MarkerKind;
 
-fn tag_of(local: &str) -> Result<Tag, RenderError> {
-    match local.strip_prefix("t:") {
-        Some(rest) => t_kind(rest)
-            .map(Tag::Directive)
-            .ok_or_else(|| unknown_t(rest)),
-        None => Ok(Tag::Html(local.to_string())),
+    #[test]
+    fn classifier_marks_rejects_and_shells_stay_plain() {
+        let marker = MarkerKind {
+            id: 7,
+            inline: true,
+        };
+        let classify = |local: &str| match local {
+            "x:mark" => Ok(Tag::Marker(marker)),
+            "x:bad" => Err(RenderError {
+                code: ErrorCode::UnknownElement,
+                message: "bad".into(),
+                span: Span::default(),
+            }),
+            other => Ok(Tag::Html(other.to_string())),
+        };
+        let (nodes, roots) =
+            parse_classified("<p>a<x:mark></x:mark><!--c--></p>", &classify).expect("parse");
+        let p = nodes[0].as_element().expect("p");
+        assert_eq!(p.children.len(), 2, "comment dropped");
+        assert_eq!(p.children[1].as_element().unwrap().tag, Tag::Marker(marker));
+        assert_eq!(roots.len(), 2);
+        assert!(roots.iter().all(|r| matches!(r.tag, Tag::Html(_))));
+        let err = parse_classified("<div><x:bad></x:bad></div>", &classify).unwrap_err();
+        assert_eq!(err.code, ErrorCode::UnknownElement);
+        // The default parse never classifies.
+        let plain = parse("<x:mark></x:mark>").expect("plain parse");
+        assert_eq!(
+            plain[0].as_element().unwrap().tag,
+            Tag::Html("x:mark".into())
+        );
     }
-}
-
-fn unknown_t(rest: &str) -> RenderError {
-    markup_err(
-        ErrorCode::UnknownElement,
-        format!("unknown t: element 't:{rest}'"),
-    )
 }
