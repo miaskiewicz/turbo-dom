@@ -1363,6 +1363,114 @@
    ]
   },
   {
+   "id": "shadow-spread-small-radius",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div style=\"position:absolute;left:600px;top:60px;width:40px;height:40px;background:#00ff00;box-shadow:0 0 0 8px #ff0000\"></div><div style=\"position:absolute;left:700px;top:60px;width:40px;height:40px;background:#00ff00;border-radius:2px;box-shadow:0 0 0 8px #ff0000\"></div></body></html>",
+   "assets": [],
+   "boxes": [],
+   "probes": [
+    {
+     "x": 593,
+     "y": 53,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 646,
+     "y": 53,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 593,
+     "y": 106,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 646,
+     "y": 106,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 620,
+     "y": 53,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 694,
+     "y": 54,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 745,
+     "y": 54,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 694,
+     "y": 105,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 745,
+     "y": 105,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 720,
+     "y": 53,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    }
+   ]
+  },
+  {
    "id": "shadow-blur-256",
    "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div style=\"position:absolute;left:600px;top:300px;width:100px;height:100px;background:#0000ff;box-shadow:0 0 256px #000000\"></div></body></html>",
    "assets": [],

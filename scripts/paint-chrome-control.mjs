@@ -198,6 +198,17 @@ const CASES = [
     probes: [[100, 320], [100, 370], [10, 370], [100, 400], [1270, 370], [640, 345]],
   },
   {
+    // A spread grows the shadow's corner radius by the spread scaled by 1 + (r/s - 1)^3 when
+    // the radius r is below the spread s (CSS Backgrounds 3 §7.1): a square box keeps a square
+    // shadow; a 2px radius with an 8px spread rounds to about 6.6px, not 10px.
+    id: "shadow-spread-small-radius",
+    html: DOC(
+      `<div style="${at(600, 60)};width:40px;height:40px;background:#00ff00;box-shadow:0 0 0 8px #ff0000"></div>` +
+        `<div style="${at(700, 60)};width:40px;height:40px;background:#00ff00;border-radius:2px;box-shadow:0 0 0 8px #ff0000"></div>`,
+    ),
+    probes: [[593, 53], [646, 53], [593, 106], [646, 106], [620, 53], [694, 54], [745, 54], [694, 105], [745, 105], [720, 53]],
+  },
+  {
     id: "shadow-blur-256",
     html: DOC(`<div style="${at(600, 300)};width:100px;height:100px;background:#0000ff;box-shadow:0 0 256px #000000"></div>`),
     probes: [[550, 350], [500, 350], [450, 350], [650, 250], [650, 150], [400, 600]],

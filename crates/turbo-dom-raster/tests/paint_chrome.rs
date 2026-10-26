@@ -200,6 +200,17 @@ fn wide_box_shadows_paint_like_chrome_156() {
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
 
+/// A spread enlarges a shadow's corner radius by the spread scaled by 1 + (r/s - 1)^3 below
+/// it (CSS Backgrounds 3 §7.1): a square box's shadow stays square, in both painters (found
+/// by the P5-cov mutation pass).
+#[test]
+#[ignore = "shadow spread radius: fails until the fix"]
+fn shadow_spread_radii_follow_css_like_chrome_156() {
+    let mut failures = differences(|id| id == "shadow-spread-small-radius");
+    failures.extend(svg_differences(|id| id == "shadow-spread-small-radius"));
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+}
+
 /// Chrome paints every shadow blur from 256px up identically (the control's 256px and 400px
 /// cases have equal pixels); so does the raster (miaskiewicz/turbo-dom#95).
 #[test]
@@ -307,7 +318,7 @@ fn svg_rounded_borders_follow_the_radius_like_chrome_156() {
 /// The vector screenshot of every case, rasterized, against the same Chrome probes.
 #[test]
 fn svg_screenshots_paint_like_chrome_156() {
-    let failures = svg_differences(|id| !pending_case(id));
+    let failures = svg_differences(|id| !pending_case(id) && id != "shadow-spread-small-radius");
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
 
