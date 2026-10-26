@@ -14,7 +14,8 @@
 // `empty-formatting-root-*`, #93 `flex-item-*`). P5b-W7 adds miaskiewicz/turbo-dom#79
 // (`intrinsic-margins-*`), #80 (`inline-block-margins-*`) and #81 (`icb-*`), and the bugs
 // found while fixing them (one group per issue, labelled). P5b-W6 also adds
-// miaskiewicz/turbo-dom#100 (`positioned-percent-*`) and #101 (`block-in-inline-*`).
+// miaskiewicz/turbo-dom#100 (`positioned-percent-*`), #101 (`block-in-inline-*`) and #102
+// (`positioned-padding-box-*`).
 //
 // For every case below, Chrome for Testing 156 (viewport 1280x800) records:
 //   - `boxes`: getBoundingClientRect() of every `[data-cid]` element (document order), as
@@ -532,6 +533,17 @@ const CASES = [
   { id: "block-in-inline-nested-spans", html: DOC(S("body{margin:0}i{display:inline-block;width:10px;height:10px}"), `<div style="font-size:0"><b><span><i data-cid="a"></i><div data-cid="d" style="height:5px"></div></span></b><i data-cid="c"></i></div>`) },
   { id: "block-in-inline-margins", html: DOC(S("body{margin:0}i{display:inline-block;width:10px;height:10px}"), `<div style="font-size:0"><span><i data-cid="a"></i><div data-cid="d" style="height:5px;margin:4px 6px"></div><i data-cid="b"></i></span></div><div data-cid="g" style="height:5px"></div>`) },
   { id: "block-in-inline-two-blocks", html: DOC(S("body{margin:0}i{display:inline-block;width:10px;height:10px}"), `<div style="font-size:0"><span><div data-cid="d" style="height:5px"></div><div data-cid="e" style="height:6px;margin-top:3px"></div></span></div>`) },
+  // P5b-W6, miaskiewicz/turbo-dom#102: an absolutely positioned box's containing block is
+  // its positioned ancestor's padding box (insets and percentages; the static position
+  // stays in the content box).
+  { id: "positioned-padding-box-top-left", html: DOC(S("body{margin:0}"), `<div data-cid="cb" style="position:relative;width:400px;height:50px;padding:20px"><div data-cid="c" style="position:absolute;left:0;top:0;width:10px;height:5px"></div></div><div data-cid="g" style="height:5px"></div>`) },
+  { id: "positioned-padding-box-percent-width", html: DOC(S("body{margin:0}"), `<div data-cid="cb" style="position:relative;width:400px;height:50px;padding:20px"><div data-cid="c" style="position:absolute;left:0;top:0;width:50%;height:5px"></div></div><div data-cid="g" style="height:5px"></div>`) },
+  { id: "positioned-padding-box-right-bottom", html: DOC(S("body{margin:0}"), `<div data-cid="cb" style="position:relative;width:400px;height:50px;padding:20px"><div data-cid="c" style="position:absolute;right:0;bottom:0;width:10px;height:5px"></div></div><div data-cid="g" style="height:5px"></div>`) },
+  { id: "positioned-padding-box-border", html: DOC(S("body{margin:0}"), `<div data-cid="cb" style="position:relative;width:400px;height:50px;padding:10px;border:5px solid"><div data-cid="c" style="position:absolute;left:0;top:0;width:10px;height:5px"></div></div><div data-cid="g" style="height:5px"></div>`) },
+  { id: "positioned-padding-box-static-position", html: DOC(S("body{margin:0}"), `<div data-cid="cb" style="position:relative;width:400px;height:50px;padding:20px"><div data-cid="c" style="position:absolute;width:10px;height:5px"></div></div><div data-cid="g" style="height:5px"></div>`) },
+  { id: "positioned-padding-box-percent-height", html: DOC(S("body{margin:0}"), `<div data-cid="cb" style="position:relative;width:400px;height:50px;padding:20px"><div data-cid="c" style="position:absolute;left:0;top:0;width:10px;height:50%"></div></div><div data-cid="g" style="height:5px"></div>`) },
+  { id: "positioned-padding-box-stretch", html: DOC(S("body{margin:0}"), `<div data-cid="cb" style="position:relative;width:400px;height:50px;padding:20px"><div data-cid="c" style="position:absolute;left:5px;right:5px;top:0;height:5px"></div></div><div data-cid="g" style="height:5px"></div>`) },
+  { id: "positioned-padding-box-auto-height-cb", html: DOC(S("body{margin:0}"), `<div data-cid="cb" style="position:relative;width:400px;padding:20px"><div style="height:30px"></div><div data-cid="c" style="position:absolute;left:0;bottom:0;width:10px;height:50%"></div></div>`) },
 ];
 
 /** The RGB of a 1x1 PNG screenshot (any filter: a single pixel's filter adds 0). */
