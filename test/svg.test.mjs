@@ -116,7 +116,7 @@ test('SVG built via innerHTML also gets wrappers', () => {
 // svg_mathml_element_chrome156.json control: parsed and createElementNS math/mi are
 // instances, an SVG element is not, MathMLElement.prototype extends Element.prototype),
 // with a working inline style and dataset like SVG / HTML elements.
-test('MathML elements are MathMLElement instances (turbo-dom#87)', { todo: 'turbo-dom#87' }, () => {
+test('MathML elements are MathMLElement instances (turbo-dom#87)', () => {
   const { window, document } = createEnvironment('<!doctype html><body><math style="color: red" data-m="w"><mi>x</mi></math><svg></svg></body>');
   const { MathMLElement, SVGElement, Element } = window;
   assert.equal(typeof MathMLElement, 'function');

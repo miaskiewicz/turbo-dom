@@ -494,7 +494,7 @@ export class Element extends Node {
     // HTMLElement (=== Element here) as a custom element constructor: `new C()` / an
     // upgrade's super() for a defined C (custom-elements.mjs); internal construction never
     // takes this branch.
-    if (new.target !== Element && new.target !== SVGElement) {
+    if (new.target !== Element && new.target !== SVGElement && new.target !== MathMLElement) {
       const custom = constructCustomElement(new.target);
       if (custom !== null) return custom;
     }
@@ -1154,13 +1154,17 @@ for (const attr of SVG_LENGTH_ATTRS) {
   });
 }
 
+// MathML-namespace elements are MathMLElements (turbo-dom#87); the interface adds no members
+// over Element here (style / dataset / focus live on Element in this runtime).
+export class MathMLElement extends Element {}
+
 // createElement's ElementCreationOptions `is` (a string options argument is ignored, as Chrome).
 const isOption = (options) => (options !== null && typeof options === 'object' && options.is !== undefined ? String(options.is) : null);
 
-// Element factory: SVG namespace → SVGElement, everything else → Element. One place so
+// Element factory: SVG namespace → SVGElement, MathML → MathMLElement, everything else → Element. One place so
 // every construction site (buffer inflation, innerHTML, cloneNode, createElementNS) agrees.
 function newElement(doc, tag, ns) {
-  return ns === 'svg' ? new SVGElement(doc, tag, ns) : new Element(doc, tag, ns);
+  return ns === 'svg' ? new SVGElement(doc, tag, ns) : ns === 'math' ? new MathMLElement(doc, tag, ns) : new Element(doc, tag, ns);
 }
 
 
