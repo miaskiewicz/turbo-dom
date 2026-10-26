@@ -330,14 +330,13 @@ fn flow_root_establishes_a_formatting_context_like_chrome_156() {
     compare_cases(flow_root_case);
 }
 
-/// miaskiewicz/turbo-dom#83: a `width: auto` float floors at its min-content.
+/// miaskiewicz/turbo-dom#83: a `width: auto` float is shrink-to-fit.
 fn float_shrink_case(id: &str) -> bool {
     id.starts_with("float-shrink-")
 }
 
 #[test]
-#[ignore = "turbo-dom#83: fails until the fix"]
-fn floats_shrink_to_fit_at_least_min_content_like_chrome_156() {
+fn floats_shrink_to_fit_like_chrome_156() {
     compare_cases(float_shrink_case);
 }
 

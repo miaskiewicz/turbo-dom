@@ -1760,8 +1760,11 @@ fn lay_float(kid: &LayoutBox, cw: f32, fs: f32, ctx: &mut Ctx) -> Fragment {
 }
 
 /// The border-box width of a float and whether it is shrink-to-fit sized. An
-/// `auto`-width non-replaced float takes its natural width capped at the container
-/// (`shrink = true`); otherwise it takes its resolved border-box width.
+/// `auto`-width non-replaced float is shrink-to-fit (CSS 2.2 §10.3.5;
+/// miaskiewicz/turbo-dom#83): `min(max(min-content, available), max-content)`, the
+/// available width being the container's less the float's own horizontal margins, then
+/// `min-width` / `max-width` (`shrink = true`); otherwise it takes its resolved
+/// border-box width.
 fn float_width(
     kid: &LayoutBox,
     kbs: &BoxStyle,
@@ -1771,7 +1774,11 @@ fn float_width(
 ) -> (f32, bool) {
     let shrink = !replaced && kbs.width.resolve(cw).is_none();
     let w = if shrink {
-        super::flex::natural_width(kid, fonts).min(cw)
+        let available = cw - kbs.margin.horizontal();
+        let min = super::flex::min_content_width(kid, fonts);
+        let fit = super::flex::natural_width(kid, fonts).min(available.max(min));
+        let extra = kbs.padding.horizontal() + kbs.border.widths().horizontal();
+        clamp_width(fit, kbs, cw, extra)
     } else {
         border_box_width(kbs, cw)
     };

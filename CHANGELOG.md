@@ -39,6 +39,12 @@ changes in `tools/parity/expected/p5b-w7-turbo-dom-*.json`.
 - `display: flow-root` (miaskiewicz/turbo-dom#88, found while fixing #80) establishes a
   block formatting context: its children's vertical margins stay inside it, it contains
   its floats and its box avoids outer floats. Control: `flow-root-*` in `html-document`.
+- Floats are shrink-to-fit (miaskiewicz/turbo-dom#83, found while fixing #79): a
+  `width: auto` float took `min(max-content, container)` — squeezed below its
+  min-content in a narrow container, its `min-width` / `max-width` ignored and its own
+  margins counted as available space. It is now `min(max(min-content, available),
+  max-content)` with `available` net of its margins, then `min-width` / `max-width`
+  (CSS 2.2 §10.3.5). Control: `float-shrink-*` in `html-document`.
 
 ### Fixed — turbo-dom-layout tables, clipping and box sizing (P5b-W5, miaskiewicz/turbo-dom#41/#51/#52/#55/#62/#63/#64/#65/#69/#70, Chrome 156 controls)
 Each fix is backed by a Chrome for Testing 156 control and lists the corpus outputs it
