@@ -390,7 +390,11 @@ if wants surf-static; then
     >"$out/build-surf-static.json" 2>"$out/build-surf-static.err"
   record_artifacts surf-static "$out/build-surf-static.json"
   rm -rf "$out/logs/surf-static"
-  bin=$(ls "$out"/surf-static-target/release/* 2>/dev/null | while read -r f; do [ -f "$f" ] && [ -x "$f" ] && echo "$f"; done | head -1)
+  bin=$(python3 -c 'import json,sys
+for line in open(sys.argv[1]):
+    try: m = json.loads(line)
+    except ValueError: continue
+    if m.get("reason") == "compiler-artifact" and m.get("executable"): print(m["executable"])' "$out/build-surf-static.json" | tail -1)
   # the inputs of tools/parity's `surf` + `surf-extra` static screenshots
   parity=$root/tools/parity
   (env $(suite_env surf-static) "$bin" "$parity/.cache/turbo-surf/harness" "$parity/.cache/turbo-surf/rust/crates/turbo-surf-render" \
