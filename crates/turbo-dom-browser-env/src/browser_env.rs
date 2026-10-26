@@ -7220,7 +7220,12 @@ fn install_with_tree(scope: &mut v8::PinScope, mut tree: Tree) {
     css_policy::register(scope);
     event_handlers::register(scope);
     bind_method(scope, global, "__checkedNative", form_checked_native);
-    bind_method(scope, global, "__nativeRealmDOMException", native_realm_dom_exception);
+    bind_method(
+        scope,
+        global,
+        "__nativeRealmDOMException",
+        native_realm_dom_exception,
+    );
     run_js(scope, BOOTSTRAP);
     trusted_types::install(scope);
     script_state::install_text(scope);
@@ -9643,6 +9648,10 @@ mod dom_projection_tests;
 #[cfg(test)]
 #[path = "dom_exception_realm_tests.rs"]
 mod dom_exception_realm_tests;
+
+#[cfg(test)]
+#[path = "custom_elements_collect_tests.rs"]
+mod custom_elements_collect_tests;
 
 #[cfg(test)]
 #[path = "css_adoption_tests.rs"]
