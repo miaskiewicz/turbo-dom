@@ -1,11 +1,11 @@
 //! `__cssShorthandNative`: turbo-dom's CSSOM shorthand engine (`rtdom::css_shorthand`, the
 //! Chrome 156 shorthand table, grammars and serializers) for the binding's
-//! `CSSStyleDeclaration` (turbo-dom#90). A declaration block crosses as a flat array of
+//! `CSSStyleDeclaration` (turbo-dom#90) and its longhand spelling (turbo-dom#97). A declaration block crosses as a flat array of
 //! `name, value, important, pendingShorthand | null, pendingText | null` quintuples.
 use super::*;
 use turbo_dom_parser::rtdom::css_shorthand::{
-    block_text, canonical, declarations, expand, longhand_alias, longhands, shorthand_value,
-    shorthands_of, Declaration,
+    block_text, canonical, declarations, expand, longhand_alias, longhand_value, longhands,
+    shorthand_value, shorthands_of, Declaration, Spelled,
 };
 
 fn string<'s>(scope: &mut v8::PinScope<'s, '_>, text: &str) -> v8::Local<'s, v8::Value> {
@@ -88,6 +88,18 @@ fn native(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv:
             };
             let items: Vec<v8::Local<v8::Value>> =
                 list.iter().map(|name| string(scope, name)).collect();
+            rv.set(v8::Array::new_with_elements(scope, &items).into());
+        }
+        // A longhand value's spelling: ["valid" | "invalid" | "unchecked", text].
+        "longhand" => {
+            let name = args.get(1).to_rust_string_lossy(scope);
+            let value = args.get(2).to_rust_string_lossy(scope);
+            let (kind, text) = match longhand_value(&name, &value) {
+                Spelled::Valid(text) => ("valid", text),
+                Spelled::Invalid => ("invalid", String::new()),
+                Spelled::Unchecked(text) => ("unchecked", text),
+            };
+            let items = [string(scope, kind), string(scope, &text)];
             rv.set(v8::Array::new_with_elements(scope, &items).into());
         }
         // The shorthands a longhand belongs to.

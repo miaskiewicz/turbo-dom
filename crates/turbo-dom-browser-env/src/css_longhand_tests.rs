@@ -19,7 +19,7 @@ fn fixture(name: &str) -> String {
 }
 
 #[test]
-#[ignore = "turbo-dom#97: fails until the fix"]
+
 fn inline_style_longhands_spell_values_like_chrome156() {
     let probe = fixture("css-longhand-probe.js");
     let cases = fixture("css-longhand-cases.json");

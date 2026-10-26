@@ -10,23 +10,23 @@ pub(super) enum Parsed {
 }
 
 type Out = Vec<(&'static str, String)>;
-type Ty = fn(&Comp) -> Option<String>;
+pub(super) type Ty = fn(&Comp) -> Option<String>;
 
 const INITIAL: &str = "initial";
 
-fn kw(comp: &Comp, names: &[&str]) -> Option<String> {
+pub(super) fn kw(comp: &Comp, names: &[&str]) -> Option<String> {
     comp.keyword(names)
 }
-fn margin_v(c: &Comp) -> Option<String> {
+pub(super) fn margin_v(c: &Comp) -> Option<String> {
     c.length_percentage(true).or_else(|| kw(c, &["auto"]))
 }
-fn padding_v(c: &Comp) -> Option<String> {
+pub(super) fn padding_v(c: &Comp) -> Option<String> {
     c.length_percentage(false)
 }
-fn scroll_margin_v(c: &Comp) -> Option<String> {
+pub(super) fn scroll_margin_v(c: &Comp) -> Option<String> {
     c.length(true)
 }
-fn scroll_padding_v(c: &Comp) -> Option<String> {
+pub(super) fn scroll_padding_v(c: &Comp) -> Option<String> {
     c.length_percentage(false).or_else(|| kw(c, &["auto"]))
 }
 pub(super) fn line_width(c: &Comp) -> Option<String> {
@@ -39,58 +39,58 @@ pub(super) const LINE_STYLES: &[&str] = &[
 pub(super) fn line_style(c: &Comp) -> Option<String> {
     kw(c, LINE_STYLES)
 }
-fn color(c: &Comp) -> Option<String> {
+pub(super) fn color(c: &Comp) -> Option<String> {
     c.color()
 }
-fn corner_shape(c: &Comp) -> Option<String> {
+pub(super) fn corner_shape(c: &Comp) -> Option<String> {
     kw(
         c,
         &["round", "scoop", "bevel", "notch", "square", "squircle"],
     )
     .or_else(|| c.function_named(&["superellipse"]))
 }
-fn radius(c: &Comp) -> Option<String> {
+pub(super) fn radius(c: &Comp) -> Option<String> {
     c.length_percentage(false)
 }
-fn gap_v(c: &Comp) -> Option<String> {
+pub(super) fn gap_v(c: &Comp) -> Option<String> {
     c.length_percentage(false).or_else(|| kw(c, &["normal"]))
 }
-fn overflow_v(c: &Comp) -> Option<String> {
+pub(super) fn overflow_v(c: &Comp) -> Option<String> {
     kw(
         c,
         &["visible", "hidden", "clip", "scroll", "auto", "overlay"],
     )
 }
-fn overscroll_v(c: &Comp) -> Option<String> {
+pub(super) fn overscroll_v(c: &Comp) -> Option<String> {
     kw(c, &["auto", "contain", "none", "chain"])
 }
-fn spacing_v(c: &Comp) -> Option<String> {
+pub(super) fn spacing_v(c: &Comp) -> Option<String> {
     c.length(false)
 }
-fn delay_v(c: &Comp) -> Option<String> {
+pub(super) fn delay_v(c: &Comp) -> Option<String> {
     kw(c, &["normal"]).or_else(|| c.time(false))
 }
-fn rule_inset_v(c: &Comp) -> Option<String> {
+pub(super) fn rule_inset_v(c: &Comp) -> Option<String> {
     c.length_percentage(true)
         .or_else(|| kw(c, &["overlap-join"]))
 }
-fn rule_break_v(c: &Comp) -> Option<String> {
+pub(super) fn rule_break_v(c: &Comp) -> Option<String> {
     kw(c, &["none", "normal", "intersection"])
 }
-fn rule_visibility_v(c: &Comp) -> Option<String> {
+pub(super) fn rule_visibility_v(c: &Comp) -> Option<String> {
     kw(c, &["all", "normal", "around", "between"])
 }
-fn marker_v(c: &Comp) -> Option<String> {
+pub(super) fn marker_v(c: &Comp) -> Option<String> {
     kw(c, &["none"]).or_else(|| c.url())
 }
 
-fn single(comps: &[Comp], ty: Ty) -> Option<String> {
+pub(super) fn single(comps: &[Comp], ty: Ty) -> Option<String> {
     match comps {
         [comp] => ty(comp),
         _ => None,
     }
 }
-fn list(comps: &[Comp], ty: Ty, max: usize) -> Option<Vec<String>> {
+pub(super) fn list(comps: &[Comp], ty: Ty, max: usize) -> Option<Vec<String>> {
     if comps.is_empty() || comps.len() > max {
         return None;
     }
@@ -153,7 +153,7 @@ fn any_order(comps: &[Comp], slots: &[Slot<'_>]) -> Option<Vec<Option<String>>> 
 }
 
 /// Split at top-level commas; `None` on an empty item.
-fn commas(comps: &[Comp]) -> Option<Vec<&[Comp]>> {
+pub(super) fn commas(comps: &[Comp]) -> Option<Vec<&[Comp]>> {
     let items: Vec<&[Comp]> = comps.split(Comp::is_comma).collect();
     items.iter().all(|item| !item.is_empty()).then_some(items)
 }
@@ -668,7 +668,7 @@ fn names_or_initial(names: &[&'static str], parsed: Vec<Option<String>>) -> Out 
         .collect()
 }
 
-fn outline_style(c: &Comp) -> Option<String> {
+pub(super) fn outline_style(c: &Comp) -> Option<String> {
     kw(c, &["auto"]).or_else(|| line_style(c))
 }
 
@@ -1018,7 +1018,7 @@ fn positions(comps: &[Comp]) -> Option<(String, String)> {
     Some((xs.join(", "), ys.join(", ")))
 }
 
-const RANGE_NAMES: &[&str] = &[
+pub(super) const RANGE_NAMES: &[&str] = &[
     "cover",
     "contain",
     "entry",
@@ -1029,7 +1029,7 @@ const RANGE_NAMES: &[&str] = &[
 ];
 
 /// `normal | <length-percentage> | <timeline-range-name> <length-percentage>?` from the front.
-fn range_value(
+pub(super) fn range_value(
     comps: &[Comp],
     initial: &str,
     end: bool,
@@ -1077,7 +1077,7 @@ fn range_pair(
     Some(vec![(start, start_value), (end, end_value)])
 }
 
-fn text_decoration(comps: &[Comp]) -> Option<Out> {
+pub(super) fn text_decoration(comps: &[Comp]) -> Option<Out> {
     let lines = |comps: &[Comp]| -> Option<(usize, String)> {
         if comps.first()?.is_ident(&["none"]) {
             return Some((1, "none".into()));
@@ -1401,7 +1401,7 @@ fn text_box(comps: &[Comp]) -> Option<Out> {
     ])
 }
 
-const TRY_TACTICS: &[&str] = &[
+pub(super) const TRY_TACTICS: &[&str] = &[
     "flip-block",
     "flip-inline",
     "flip-start",
@@ -1437,7 +1437,7 @@ fn position_try(comps: &[Comp]) -> Option<Out> {
         ("position-try-fallbacks", fallbacks),
     ])
 }
-fn try_fallbacks(comps: &[Comp]) -> Option<String> {
+pub(super) fn try_fallbacks(comps: &[Comp]) -> Option<String> {
     let mut out = Vec::new();
     for item in commas(comps)? {
         let mut ident = None;
@@ -1510,20 +1510,20 @@ fn view_timeline(comps: &[Comp]) -> Option<Out> {
     ])
 }
 
-const LIGATURES: &[&[&str]] = &[
+pub(super) const LIGATURES: &[&[&str]] = &[
     &["common-ligatures", "no-common-ligatures"],
     &["discretionary-ligatures", "no-discretionary-ligatures"],
     &["historical-ligatures", "no-historical-ligatures"],
     &["contextual", "no-contextual"],
 ];
-const NUMERIC: &[&[&str]] = &[
+pub(super) const NUMERIC: &[&[&str]] = &[
     &["lining-nums", "oldstyle-nums"],
     &["proportional-nums", "tabular-nums"],
     &["diagonal-fractions", "stacked-fractions"],
     &["ordinal"],
     &["slashed-zero"],
 ];
-const EAST_ASIAN: &[&[&str]] = &[
+pub(super) const EAST_ASIAN: &[&[&str]] = &[
     &[
         "jis78",
         "jis83",
@@ -1535,7 +1535,7 @@ const EAST_ASIAN: &[&[&str]] = &[
     &["full-width", "proportional-width"],
     &["ruby"],
 ];
-const CAPS: &[&str] = &[
+pub(super) const CAPS: &[&str] = &[
     "small-caps",
     "all-small-caps",
     "petite-caps",
@@ -1545,7 +1545,7 @@ const CAPS: &[&str] = &[
 ];
 
 /// Keywords of one `font-variant-*` group set: at most one per group, canonical group order.
-fn group_set(comps: &[Comp], groups: &[&[&str]]) -> Option<(usize, String)> {
+pub(super) fn group_set(comps: &[Comp], groups: &[&[&str]]) -> Option<(usize, String)> {
     let mut picked: Vec<Option<String>> = vec![None; groups.len()];
     let mut used = 0;
     for comp in comps {
@@ -1713,7 +1713,7 @@ const SYSTEM_FONTS: &[&str] = &[
 pub(super) fn is_system_font(text: &str) -> bool {
     SYSTEM_FONTS.contains(&text)
 }
-const FONT_SIZES: &[&str] = &[
+pub(super) const FONT_SIZES: &[&str] = &[
     "xx-small",
     "x-small",
     "small",
@@ -1726,7 +1726,7 @@ const FONT_SIZES: &[&str] = &[
     "smaller",
     "-webkit-xxx-large",
 ];
-const STRETCHES: &[&str] = &[
+pub(super) const STRETCHES: &[&str] = &[
     "ultra-condensed",
     "extra-condensed",
     "condensed",
@@ -1737,7 +1737,7 @@ const STRETCHES: &[&str] = &[
     "ultra-expanded",
 ];
 
-const GENERIC_FAMILIES: &[&str] = &[
+pub(super) const GENERIC_FAMILIES: &[&str] = &[
     "serif",
     "sans-serif",
     "cursive",
@@ -1814,8 +1814,12 @@ pub(super) fn font_family(comps: &[Comp]) -> Option<String> {
                 }
                 // Chrome quotes a family name of several identifiers.
                 let name = words.join(" ");
+                let lower = name.to_ascii_lowercase();
                 families.push(if words.len() > 1 {
                     format!("\"{name}\"")
+                } else if GENERIC_FAMILIES.contains(&lower.as_str()) {
+                    // A generic family is a keyword: lowercase.
+                    lower
                 } else {
                     name
                 });
@@ -1930,7 +1934,7 @@ fn font(comps: &[Comp]) -> Option<Parsed> {
 }
 
 /// `<grid-line>` with Chrome's canonical part order (`span`, integer, name).
-fn grid_line(comps: &[Comp]) -> Option<String> {
+pub(super) fn grid_line(comps: &[Comp]) -> Option<String> {
     match comps {
         [only] if only.is_ident(&["auto"]) => return Some("auto".into()),
         [] => return None,
@@ -2031,7 +2035,7 @@ fn grid_area(comps: &[Comp]) -> Option<Out> {
 }
 
 /// A `<track-list>` / `<auto-track-list>` (loosely: track sizes, `repeat()`, line names).
-fn track_list(comps: &[Comp]) -> Option<String> {
+pub(super) fn track_list(comps: &[Comp]) -> Option<String> {
     if comps.is_empty() {
         return None;
     }
@@ -2063,15 +2067,30 @@ fn track_list(comps: &[Comp]) -> Option<String> {
     }
     let spelled: Vec<Comp> = comps
         .iter()
-        .map(|comp| match comp.kind {
+        .map(|comp| match &comp.kind {
             Kind::Number { .. } => Comp {
                 kind: comp.kind.clone(),
                 text: "0px".into(),
+            },
+            Kind::Ident(name) => Comp {
+                kind: comp.kind.clone(),
+                text: name.to_ascii_lowercase(),
             },
             _ => comp.clone(),
         })
         .collect();
     Some(join(&spelled))
+}
+
+/// A `grid-template-areas` string: its cell tokens separated by single spaces.
+pub(super) fn area_string(comp: &Comp) -> Option<String> {
+    let Kind::Str(text) = &comp.kind else {
+        return None;
+    };
+    Some(format!(
+        "\"{}\"",
+        text.split_whitespace().collect::<Vec<_>>().join(" ")
+    ))
 }
 
 /// `grid-template`: rows, columns, areas.
@@ -2114,7 +2133,7 @@ fn grid_template(comps: &[Comp]) -> Option<(String, String, String)> {
     };
     while at < rows.len() {
         names(&mut at, &mut tracks);
-        let area = rows.get(at)?.string()?;
+        let area = area_string(rows.get(at)?)?;
         areas.push(area);
         at += 1;
         let size = rows.get(at).and_then(|c| {
@@ -2340,7 +2359,7 @@ fn border_image(comps: &[Comp], webkit: bool) -> Option<[Option<String>; 5]> {
 }
 
 /// `path()` data with Chrome's spacing (commands and numbers separated by one space).
-fn path_text(text: &str) -> String {
+pub(super) fn path_text(text: &str) -> String {
     let Some(start) = text.find('"') else {
         return text.to_string();
     };
@@ -2469,7 +2488,7 @@ fn offset(comps: &[Comp]) -> Option<Out> {
 }
 
 /// `<repeat-style>`: Chrome's canonical spelling.
-fn repeat_style(comps: &[Comp]) -> Option<(usize, String)> {
+pub(super) fn repeat_style(comps: &[Comp]) -> Option<(usize, String)> {
     let first = comps.first()?;
     if let Some(value) = first.keyword(&["repeat-x", "repeat-y"]) {
         return Some((1, value));
@@ -2500,7 +2519,7 @@ fn layer_position(comps: &[Comp]) -> Option<(usize, (String, String))> {
         .rev()
         .find_map(|len| position(&comps[..len]).map(|value| (len, value)))
 }
-fn bg_size(comps: &[Comp]) -> Option<(usize, String)> {
+pub(super) fn bg_size(comps: &[Comp]) -> Option<(usize, String)> {
     let first = comps.first()?;
     if let Some(value) = first.keyword(&["cover", "contain"]) {
         return Some((1, value));
@@ -2714,7 +2733,7 @@ fn mask(comps: &[Comp]) -> Option<Out> {
     ])
 }
 
-const EASINGS: &[&str] = &[
+pub(super) const EASINGS: &[&str] = &[
     "linear",
     "ease",
     "ease-in",
@@ -2723,7 +2742,7 @@ const EASINGS: &[&str] = &[
     "step-start",
     "step-end",
 ];
-fn easing(c: &Comp) -> Option<String> {
+pub(super) fn easing(c: &Comp) -> Option<String> {
     kw(c, EASINGS).or_else(|| c.function_named(&["cubic-bezier", "steps", "linear"]))
 }
 
@@ -2784,7 +2803,7 @@ fn transition(comps: &[Comp]) -> Option<Out> {
     ])
 }
 
-const ANIMATION_KEYWORDS: &[&str] = &[
+pub(super) const ANIMATION_KEYWORDS: &[&str] = &[
     "none",
     "auto",
     "infinite",

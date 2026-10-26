@@ -10,6 +10,7 @@
 mod block;
 mod components;
 mod grammar;
+mod longhand;
 mod serialize;
 mod table;
 
@@ -17,6 +18,7 @@ pub use block::{
     declarations, longhand_alias, DeclarationBlock, LonghandSpelling, LONGHAND_ALIASES,
 };
 use components::{components, has_substitution, substitution_text, CSS_WIDE};
+pub use longhand::{longhand_value, Spelled};
 pub use table::{is_shorthand, longhands};
 
 /// One longhand a shorthand sets.

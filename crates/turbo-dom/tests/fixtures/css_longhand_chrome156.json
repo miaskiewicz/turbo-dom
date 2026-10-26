@@ -1,7 +1,7 @@
 {
   "browser": "Chrome/156.0.8078.4",
   "v8": "15.6.75",
-  "casesSha256": "2f7a6d424952950b8a0e6baeed75e68bce4624d614a823976cf34ec0e00b55c6",
+  "casesSha256": "882e32f701d19023713e7e938042d7123b37ec52b296bc4d69c4c09d3ee14087",
   "probeSha256": "a458463e8721c083a75be76315f0bdaf5cee10e5d0a6fc8d470a0b926d6ee37e",
   "collectorSha256": "7bd6ffb7440d38e05cd2b8fbe0e84e91cf462043577ceada3e276728ad216172",
   "flags": [
@@ -12717,21 +12717,15 @@
         ],
         [
           "text-align",
-          "CENTER",
-          "center",
-          "text-align: center;"
-        ],
-        [
-          "text-align",
-          "-webkit-center",
+          "-WEBKIT-CENTER",
           "-webkit-center",
           "text-align: -webkit-center;"
         ],
         [
           "text-align",
-          "start",
-          "start",
-          "text-align: start;"
+          "bogus",
+          "",
+          ""
         ],
         [
           "cursor",
@@ -13050,6 +13044,84 @@
           "-0",
           "0px",
           "margin-top: 0px;"
+        ],
+        [
+          "margin-top",
+          "calc(1em + 1ch)",
+          "calc(1ch + 1em)",
+          "margin-top: calc(1ch + 1em);"
+        ],
+        [
+          "margin-top",
+          "calc(1ch + 1em)",
+          "calc(1ch + 1em)",
+          "margin-top: calc(1ch + 1em);"
+        ],
+        [
+          "margin-top",
+          "calc(1px + 1em)",
+          "calc(1em + 1px)",
+          "margin-top: calc(1em + 1px);"
+        ],
+        [
+          "margin-top",
+          "calc(1vw + 1px + 1rem)",
+          "calc(1px + 1rem + 1vw)",
+          "margin-top: calc(1px + 1rem + 1vw);"
+        ],
+        [
+          "margin-top",
+          "calc(1in + 1cm)",
+          "calc(133.795px)",
+          "margin-top: calc(133.795px);"
+        ],
+        [
+          "margin-top",
+          "calc(1px + 1q)",
+          "calc(1.94488px)",
+          "margin-top: calc(1.94488px);"
+        ],
+        [
+          "margin-top",
+          "calc(2% + 1px + 1em)",
+          "calc(2% + 1em + 1px)",
+          "margin-top: calc(2% + 1em + 1px);"
+        ],
+        [
+          "margin-top",
+          "calc(1in)",
+          "calc(96px)",
+          "margin-top: calc(96px);"
+        ],
+        [
+          "animation-duration",
+          "-1s",
+          "",
+          ""
+        ],
+        [
+          "font-variant-alternates",
+          "swash(a)",
+          "swash(a)",
+          "font-variant-alternates: swash(a);"
+        ],
+        [
+          "font-variant-alternates",
+          "bogus",
+          "",
+          ""
+        ],
+        [
+          "min-height",
+          "fit-content(10px)",
+          "",
+          ""
+        ],
+        [
+          "min-height",
+          "anchor-size(width)",
+          "anchor-size(width)",
+          "min-height: anchor-size(width);"
         ],
         [
           "border-top-color",

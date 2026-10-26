@@ -70,7 +70,9 @@ EXTRA = {
     "overflow-wrap": ["ANYWHERE"], "word-wrap": ["break-word"], "white-space-collapse": ["PRESERVE"],
     "column-rule-color": ["red", "#00ff00"], "row-rule-color": ["red"], "position-try-fallbacks": ["--a", "--a, --b", "flip-block"],
     "interest-delay-start": ["inherit", "1s", "NORMAL"], "interest-delay-end": ["initial", "200ms"],
-    "top": ["0", "1PX", "AUTO", "calc(1px + 2px)"], "margin-top": ["0", "1PX", "Auto", "-0"],
+    "top": ["0", "1PX", "AUTO", "calc(1px + 2px)"], "margin-top": ["0", "1PX", "Auto", "-0", "calc(1em + 1ch)", "calc(1ch + 1em)", "calc(1px + 1em)", "calc(1vw + 1px + 1rem)", "calc(1in + 1cm)", "calc(1px + 1q)", "calc(2% + 1px + 1em)", "calc(1in)"],
+    "animation-duration": ["auto", "1S", "-1s"], "text-align": ["-WEBKIT-CENTER", "bogus"], "font-variant-alternates": ["swash(a)", "bogus"],
+    "min-height": ["fit-content(10px)", "anchor-size(width)"],
     "border-top-color": ["#abc", "RED"], "outline-color": ["Red"], "flex-basis": ["0", "10PX", "AUTO", "Content"],
     "flex-grow": ["1.50", "+2", "0"],
 }

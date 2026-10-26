@@ -367,6 +367,29 @@ fn calc_sum(inner: &[Comp]) -> Option<String> {
         index += 2;
     }
     push(&mut terms, current, sign);
+    // Absolute lengths combine in px.
+    let absolute = |unit: &str| match unit {
+        "in" => Some(96.0),
+        "cm" => Some(96.0 / 2.54),
+        "mm" => Some(96.0 / 25.4),
+        "q" => Some(96.0 / 101.6),
+        "pt" => Some(96.0 / 72.0),
+        "pc" => Some(16.0),
+        _ => None,
+    };
+    if terms.iter().any(|(unit, _)| absolute(unit).is_some()) {
+        let mut px = 0.0;
+        let mut rest = Vec::new();
+        for (unit, value) in terms {
+            match absolute(&unit) {
+                Some(factor) => px += value * factor,
+                None if unit == "px" => px += value,
+                None => rest.push((unit, value)),
+            }
+        }
+        rest.push(("px".to_string(), px));
+        terms = rest;
+    }
     Some(calc_text(terms))
 }
 

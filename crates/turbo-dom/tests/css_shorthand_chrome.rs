@@ -7,25 +7,27 @@
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 use turbo_dom::rtdom::css_shorthand::{
-    longhand_alias, longhands, DeclarationBlock, LONGHAND_ALIASES,
+    longhand_alias, longhand_value, longhands, DeclarationBlock, Spelled, LONGHAND_ALIASES,
 };
 
 const PROBE: &str = include_str!("fixtures/css-shorthand-probe.js");
 const CASES: &str = include_str!("fixtures/css-shorthand-cases.json");
 const CONTROL: &str = include_str!("fixtures/css_shorthand_chrome156.json");
 
-/// Scenarios whose Chrome result needs a longhand spelling this module does not own (the
-/// embedder spells longhands set directly; turbo-dom#97: `top: 0` is `0px`), by id.
-const KNOWN_GAPS: &[&str] = &["css-inset-longhands"];
+/// Scenarios whose Chrome result differs for a documented reason, by id.
+const KNOWN_GAPS: &[&str] = &[];
 
 fn sha(text: &str) -> String {
     format!("{:x}", Sha256::digest(text.as_bytes()))
 }
 
-/// Longhands set directly keep their (already canonical) control spelling.
-#[allow(clippy::unnecessary_wraps)] // the `LonghandSpelling` signature
-fn longhand(_: &str, value: &str) -> Option<String> {
-    Some(value.trim().to_string())
+/// Longhands set directly: `longhand_value`'s spelling (turbo-dom#97); the control's
+/// longhands are all valid, so an unchecked spelling is taken as admitted.
+fn longhand(name: &str, value: &str) -> Option<String> {
+    match longhand_value(name, value) {
+        Spelled::Valid(text) | Spelled::Unchecked(text) => Some(text),
+        Spelled::Invalid => None,
+    }
 }
 
 fn record(block: &DeclarationBlock, table: &Value) -> Value {
