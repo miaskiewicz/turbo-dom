@@ -345,8 +345,16 @@ fn layout_positioned(
         return layout_box(lb, origin.0, origin.1, width, fs, ctx);
     }
     if !ctx.live_geometry {
+        let stretched = static_stretched_height(lb, &bs, ctx);
+        if let Some(height) = stretched {
+            bs.height = height;
+        }
         return match auto_positioned_width(lb, &bs, origin.0, ctx) {
             Some(border_width) => layout_box_sized(lb, &bs, origin.0, origin.1, border_width, ctx),
+            None if stretched.is_some() => {
+                let border_width = border_box_width(&bs, width);
+                layout_box_sized(lb, &bs, origin.0, origin.1, border_width, ctx)
+            }
             None => layout_box(lb, origin.0, origin.1, width, fs, ctx),
         };
     }
@@ -404,6 +412,25 @@ fn auto_positioned_width(lb: &LayoutBox, bs: &BoxStyle, border_x: f32, ctx: &Ctx
     };
     let extra = bs.padding.horizontal() + bs.border.widths().horizontal();
     Some(clamp_width(width.max(0.0), bs, cbw, extra))
+}
+
+/// The static-path used `height` of an absolutely positioned (or fixed) non-table box
+/// with `height: auto` and both `top` and `bottom` set: the containing block's height
+/// less the insets, its vertical margins and (content-box) its padding and border (CSS
+/// 2.2 §10.6.4; miaskiewicz/turbo-dom#89), as the live path stretches it. `None` when it
+/// does not apply or the containing block's height is unknown (0).
+fn static_stretched_height(lb: &LayoutBox, bs: &BoxStyle, ctx: &Ctx) -> Option<LengthPct> {
+    let cbh = out_of_flow_height(bs, ctx);
+    if bs.height != LengthPct::Auto || cbh <= 0.0 || matches!(lb.kind, BoxKind::Table(_)) {
+        return None;
+    }
+    let frame = match bs.box_sizing {
+        BoxSizing::ContentBox => bs.padding.vertical() + bs.border.widths().vertical(),
+        BoxSizing::BorderBox => 0.0,
+    };
+    let insets = (bs.inset_top, bs.inset_bottom);
+    let height = stretch_insets(bs.height, insets, cbh, bs.margin.vertical() + frame);
+    (height != LengthPct::Auto).then_some(height)
 }
 
 fn stretch_insets(

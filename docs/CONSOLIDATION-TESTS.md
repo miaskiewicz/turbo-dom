@@ -1208,6 +1208,7 @@ Declared behaviour changes (Chrome 156 controls), not moves:
 | turbo-dom-layout | `html_document_chrome<tests/html_document_chrome.rs>::flow_root_establishes_a_formatting_context_like_chrome_156` | new (turbo-dom#88, test-first) |
 | turbo-dom-layout | `html_document_chrome<tests/html_document_chrome.rs>::floats_shrink_to_fit_like_chrome_156` | new (turbo-dom#83, test-first) |
 | turbo-dom-layout | `html_document_chrome<tests/html_document_chrome.rs>::out_of_flow_children_add_no_intrinsic_width_like_chrome_156` | new (turbo-dom#84, test-first) |
+| turbo-dom-layout | `html_document_chrome<tests/html_document_chrome.rs>::top_and_bottom_stretch_auto_heights_like_chrome_156` | new (turbo-dom#89, test-first) |
 
 ## P5b-W2 — raster inline SVG on the tree (turbo-dom `consol/p5b-w2`)
 

@@ -358,7 +358,6 @@ fn abs_stretch_case(id: &str) -> bool {
 }
 
 #[test]
-#[ignore = "turbo-dom#89: fails until the fix"]
 fn top_and_bottom_stretch_auto_heights_like_chrome_156() {
     compare_cases(abs_stretch_case);
 }

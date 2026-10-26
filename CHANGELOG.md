@@ -49,6 +49,12 @@ changes in `tools/parity/expected/p5b-w7-turbo-dom-*.json`.
   while fixing #79): an absolutely positioned or fixed child widened its parent's min- /
   max-content (a float, an inline-block, an auto table cell or a row flex container
   was as wide as it). Control: `intrinsic-oof-*` in `html-document`.
+- `top` + `bottom` stretch an auto height on the static path (miaskiewicz/turbo-dom#89,
+  found while fixing #81): an absolutely positioned or fixed box with `height: auto`
+  and both insets took its content height (0 when empty); it is now the containing
+  block's height less the insets, its margins and (content-box) its padding and border,
+  then `min-height` / `max-height` (CSS 2.2 §10.6.4), as on the live path. Control:
+  `abs-stretch-*` in `html-document`.
 
 ### Fixed — turbo-dom-layout tables, clipping and box sizing (P5b-W5, miaskiewicz/turbo-dom#41/#51/#52/#55/#62/#63/#64/#65/#69/#70, Chrome 156 controls)
 Each fix is backed by a Chrome for Testing 156 control and lists the corpus outputs it
