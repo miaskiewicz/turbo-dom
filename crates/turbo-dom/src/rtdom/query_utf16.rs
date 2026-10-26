@@ -418,6 +418,8 @@ fn pseudo(name: &str, arg: Option<&[u16]>) -> Pseudo {
     let Some(arg) = arg else {
         return parse_pseudo(name, None);
     };
+    let lower = name.to_ascii_lowercase();
+    let name = lower.as_str();
     if name.eq_ignore_ascii_case("state") {
         return state_argument(arg).map_or_else(
             || Pseudo::unknown(name, Some(&String::from_utf16_lossy(arg))),

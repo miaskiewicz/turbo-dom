@@ -222,6 +222,7 @@ const CASES = [
       "p:not(:lang(en))",
       ":lang(en) > p",
       "span:lang(en)",
+      ":LANG(en)",
     ],
   },
   {
@@ -345,6 +346,14 @@ const CASES = [
       "option:selected",
       "#a#a",
       "*|*",
+      // pseudo-class names are ASCII case-insensitive
+      "P:FIRST-CHILD",
+      "DIV:NOT(.y)",
+      ":Nth-Child(ODD)",
+      ":NTH-CHILD(2N OF .X)",
+      ":Is(p)",
+      "OPTION:CHECKED",
+      ":EMPTY",
     ],
   },
   {

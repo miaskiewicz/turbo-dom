@@ -39,6 +39,8 @@ outputs it changes in `tools/parity/expected/p5b-*.json`.
   stylesheets), matches the range or a `-` subtag extension, and reads the nearest
   `xml:lang` or `lang` attribute on any element (SVG `lang` counts; `lang=""` matches
   nothing).
+- Pseudo-class names are ASCII case-insensitive in the DOM APIs too (`P:FIRST-CHILD`,
+  `:Not(.x)`, `:LANG(en)`; miaskiewicz/turbo-dom#18) — stylesheets already were.
 
 ## [0.6.0] — turbo-dom consolidation
 

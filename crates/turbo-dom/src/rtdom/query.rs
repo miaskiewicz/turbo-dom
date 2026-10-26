@@ -898,6 +898,14 @@ fn parse_relative_selector_list(src: &str) -> Vec<RelativeSelector> {
 /// Map a pseudo `name` + optional `arg` to a `Pseudo`. Unrecognized → `Unknown`
 /// (never matches). Mirrors selectors.mjs `matchPseudo` switch.
 fn parse_pseudo(name: &str, arg: Option<&str>) -> Pseudo {
+    // pseudo-class names are ASCII case-insensitive (`P:FIRST-CHILD`, `:Not(.x)`)
+    if name.bytes().any(|b| b.is_ascii_uppercase()) {
+        return match parse_pseudo(&name.to_ascii_lowercase(), arg) {
+            // keep the author's spelling for the stylesheet layer's checks and errors
+            Pseudo::Unknown(_) => Pseudo::unknown(name, arg),
+            parsed => parsed,
+        };
+    }
     if name.eq_ignore_ascii_case("state") {
         return arg
             .and_then(|value| units::state_argument(&value.encode_utf16().collect::<Vec<_>>()))

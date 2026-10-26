@@ -1541,6 +1541,18 @@
      "qsa": [],
      "winner": "00000000000000",
      "sheet_valid": true
+    },
+    {
+     "selector": ":LANG(en)",
+     "valid": true,
+     "matches": "00011001000000",
+     "qsa": [
+      3,
+      4,
+      7
+     ],
+     "winner": "00011001000000",
+     "sheet_valid": true
     }
    ]
   },
@@ -2655,6 +2667,78 @@
       6
      ],
      "winner": "1111111",
+     "sheet_valid": true
+    },
+    {
+     "selector": "P:FIRST-CHILD",
+     "valid": true,
+     "matches": "0000100",
+     "qsa": [
+      4
+     ],
+     "winner": "0000100",
+     "sheet_valid": true
+    },
+    {
+     "selector": "DIV:NOT(.y)",
+     "valid": true,
+     "matches": "0001000",
+     "qsa": [
+      3
+     ],
+     "winner": "0001000",
+     "sheet_valid": true
+    },
+    {
+     "selector": ":Nth-Child(ODD)",
+     "valid": true,
+     "matches": "1101101",
+     "qsa": [
+      0,
+      1,
+      3,
+      4,
+      6
+     ],
+     "winner": "1101101",
+     "sheet_valid": true
+    },
+    {
+     "selector": ":NTH-CHILD(2N OF .X)",
+     "valid": false,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": false
+    },
+    {
+     "selector": ":Is(p)",
+     "valid": true,
+     "matches": "0000100",
+     "qsa": [
+      4
+     ],
+     "winner": "0000100",
+     "sheet_valid": true
+    },
+    {
+     "selector": "OPTION:CHECKED",
+     "valid": true,
+     "matches": "0000001",
+     "qsa": [
+      6
+     ],
+     "winner": "0000001",
+     "sheet_valid": true
+    },
+    {
+     "selector": ":EMPTY",
+     "valid": true,
+     "matches": "0100000",
+     "qsa": [
+      1
+     ],
+     "winner": "0000000",
      "sheet_valid": true
     }
    ]
