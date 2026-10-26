@@ -8576,6 +8576,31 @@
    "canvas": "#ffffff"
   },
   {
+   "id": "intrinsic-oof-inline-min-content",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><table style=\"border-spacing:0;width:1px\"><tr><td data-cid=\"c\" style=\"padding:0;font-size:0\"><span style=\"display:inline-block;width:30px;height:5px\"></span><span style=\"position:absolute;width:100px;height:5px\"></span></td></tr></table></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "c",
+     "x": 0,
+     "y": 0,
+     "width": 30,
+     "height": 5
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
    "id": "abs-stretch-definite-parent",
    "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><div style=\"position:relative;height:100px\"><div data-cid=\"c\" style=\"position:absolute;top:10px;bottom:20px;width:20px\"></div></div></body></html>",
    "measure": "xywh",

@@ -375,6 +375,7 @@ const CASES = [
   { id: "intrinsic-oof-row-flex", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="float:left"><div style="display:flex"><div style="position:absolute;width:100px;height:5px"></div><div data-cid="d" style="width:30px;height:15px"></div></div></div>`) },
   { id: "intrinsic-oof-inline-in-float", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="float:left;font-size:0"><span style="display:inline-block;width:30px;height:5px"></span><span style="position:absolute;width:100px;height:5px"></span></div>`) },
   { id: "intrinsic-oof-row-flex-gap", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="float:left"><div style="display:flex;column-gap:10px"><div style="width:20px;height:5px"></div><div style="position:absolute;width:100px;height:5px"></div><div style="width:20px;height:5px"></div></div></div>`) },
+  { id: "intrinsic-oof-inline-min-content", html: DOC(S("body{margin:0}"), `<table style="border-spacing:0;width:1px"><tr><td data-cid="c" style="padding:0;font-size:0"><span style="display:inline-block;width:30px;height:5px"></span><span style="position:absolute;width:100px;height:5px"></span></td></tr></table>`) },
   // P5b-W7, miaskiewicz/turbo-dom#89: an absolutely positioned box with `height: auto` and
   // both `top` and `bottom` is stretched between them (CSS 2.2 §10.6.4).
   { id: "abs-stretch-definite-parent", html: DOC(S("body{margin:0}"), `<div style="position:relative;height:100px"><div data-cid="c" style="position:absolute;top:10px;bottom:20px;width:20px"></div></div>`) },
