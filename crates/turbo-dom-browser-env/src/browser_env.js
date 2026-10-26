@@ -1,6 +1,6 @@
 (function(){
   var g = globalThis;
-  var compatibilityElementPrototype,computedStyleNativeMatches,computedStyleNativeOwner,computedStyleNativeTag,computedStyleNativeNamespace,computedStyleNativeConnected,computedStyleNativeRoot;
+  var compatibilityElementPrototype,computedStyleNativeMatches,computedStyleNativeGetAttribute,computedStyleNativeOwner,computedStyleNativeTag,computedStyleNativeNamespace,computedStyleNativeConnected,computedStyleNativeRoot;
   var normalizeComputedColor=g.__normalizeComputedColor;delete g.__normalizeComputedColor;
   var computedFontContext=g.__computedFontContext;delete g.__computedFontContext;
   var cssFontNumber=Number,cssFontString=String,cssFontFinite=Number.isFinite,cssFontPrecision=Number.prototype.toPrecision,cssFontLower=String.prototype.toLowerCase;
@@ -272,6 +272,20 @@
     if (display === 'contents') return computedFlexOrGridItem(el, parentStyle);
     return /^(inline-)?(flex|grid)$/.test(display);
   }
+  // html.css form controls (turbo-dom#61): `font: -webkit-small-control` (13.3333px Arial;
+  // monospace for textarea and the date / time inputs), optgroup bolder, option normal; the measured button
+  // box values. `tag` is the HTML element's tagName.
+  var monospaceInputTypes = { __proto__: null, 'date': 1, 'time': 1, 'datetime-local': 1, 'month': 1, 'week': 1 };
+  function formControlUserAgent(el, tag){
+    if (tag === 'BUTTON') return { 'display': 'inline-block', 'font': '13.3333px Arial', 'margin': '0px', 'padding': '1px 6px', 'border-width': '2px', 'vertical-align': 'baseline' };
+    if (tag === 'TEXTAREA') return { 'font': '13.3333px monospace' };
+    if (tag === 'SELECT') return { 'font': '13.3333px Arial' };
+    if (tag === 'OPTGROUP') return { 'font-weight': 'bolder' };
+    if (tag === 'OPTION') return { 'font-weight': 'normal' };
+    if (tag !== 'INPUT') return null;
+    var type = ''; try { type = cssApply(cssFontLower, String(cssApply(computedStyleNativeGetAttribute, el, ['type']) || ''), []); } catch(e){}
+    return { 'font': '13.3333px ' + (monospaceInputTypes[type] ? 'monospace' : 'Arial') };
+  }
   // CSS Position 4: a top-layer box whose position is static / relative / sticky is absolute.
   function topLayerPosition(position){ return /^(static|relative|sticky)$/.test(position) ? 'absolute' : position; }
   // Chrome 156 html.css values for a modal dialog (`dialog:modal`) and for ::backdrop; the
@@ -387,7 +401,7 @@
     // rule (including a universal selector) and inline value takes precedence.
     var ua = null, layer = '';
     try { if(pseudo||cssApply(computedStyleNativeConnected,el,[]))layer=computedTopLayer(el); } catch(e){}
-    try { if(pseudo==='backdrop')ua=backdropUserAgent(layer);else if(!pseudo&&layer==='modal')ua=modalDialogUserAgent;else if(!pseudo&&cssApply(computedStyleNativeTag,el,[])==='BUTTON'&&cssApply(computedStyleNativeNamespace,el,[])==='http://www.w3.org/1999/xhtml'&&cssApply(computedStyleNativeConnected,el,[])){var fontContext=computedFontContext(el);if(fontContext&&fontContext[4])ua={'display':'inline-block','font':'13.3333px Arial','margin':'0px','padding':'1px 6px','border-width':'2px','vertical-align':'baseline'};} } catch(e){}
+    try { if(pseudo==='backdrop')ua=backdropUserAgent(layer);else if(!pseudo&&layer==='modal')ua=modalDialogUserAgent;else if(!pseudo&&cssApply(computedStyleNativeNamespace,el,[])==='http://www.w3.org/1999/xhtml'&&cssApply(computedStyleNativeConnected,el,[])){var fontContext=computedFontContext(el);if(fontContext&&fontContext[4])ua=formControlUserAgent(el,cssApply(computedStyleNativeTag,el,[]));} } catch(e){}
     if(ua){Object.keys(ua).forEach(function(name){setProp(name,ua[name]);});uaValues=Object.create(null);Object.keys(decl).forEach(function(name){if(typeof decl[name]==='string')uaValues[name]=decl[name];});}
     try {
       var owner=el?cssApply(computedStyleNativeOwner,el,[]):null;
@@ -2414,6 +2428,7 @@ if(typeof __ns.makeNativeFunction==='function'){
       });
     });
     computedStyleNativeMatches=Object.getOwnPropertyDescriptor(prototypes.Element,'matches').value;
+    computedStyleNativeGetAttribute=Object.getOwnPropertyDescriptor(prototypes.Element,'getAttribute').value;
     computedStyleNativeRoot=Object.getOwnPropertyDescriptor(prototypes.Node,'getRootNode').value;
     ['querySelector','querySelectorAll','append','prepend','replaceChildren'].forEach(function(name){
       var descriptor=Object.getOwnPropertyDescriptor(d,name)||Object.getOwnPropertyDescriptor(elementProto,name);

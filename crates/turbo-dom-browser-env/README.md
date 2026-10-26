@@ -151,7 +151,11 @@ controls → `none`, and MathML `math` / `block math`. It is then blockified for
 floats, `position: absolute` / `fixed` and flex / grid items. `position` is
 `static` (`dialog` → `absolute`, `[popover]` → `fixed`), and `visibility` is
 inherited, `visible` at the root. `inherit` / `initial` / `unset` / `revert`
-resolve. Disconnected elements and children of `<video>` / `<audio>` report `""`, as
+resolve. Form controls take html.css's `font: -webkit-small-control` (turbo-dom#61):
+`<input>` (every type), `<select>` and `<button>` compute `13.3333px Arial`,
+`<textarea>` and the date / time inputs `13.3333px monospace`, `<optgroup>` is
+`bolder` and `<option>` `normal` weight; author rules win (case `form-control-fonts`).
+Disconnected elements and children of `<video>` / `<audio>` report `""`, as
 in Chrome. Control: `src/computed_defaults_chrome156.json`, which also records that
 a document has no `<title>` it did not parse (`document.title = …` creates one).
 

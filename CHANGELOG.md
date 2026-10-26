@@ -7,6 +7,15 @@ at the time); this file reconstructs them from history.
 
 ## [Unreleased]
 
+### Fixed — form control fonts in `getComputedStyle` (P5b-X6, miaskiewicz/turbo-dom#61, Chrome 156 control)
+- turbo-dom-browser-env: only `<button>` had Chrome's form-control UA font; `<input>`,
+  `<select>` and `<textarea>` reported the inherited font (`16px Times`, or the parent's).
+  They now compute html.css's `font: -webkit-small-control`: `13.3333px Arial` for every
+  input type and `<select>`, `13.3333px monospace` for `<textarea>` and the date / time /
+  datetime-local / month / week inputs. `<optgroup>` is `font-weight: bolder` and
+  `<option>` `normal`. Author rules (`font: inherit` too) win. Control: case
+  `form-control-fonts` of `src/computed_defaults_chrome156.json`.
+
 ### Fixed — `createDocument` qualified names (P5b-X5, miaskiewicz/turbo-dom#57, Chrome 156 control)
 - turbo-dom-browser-env: `document.implementation.createDocument` checked the qualified
   name against the XML `Name` production and rejected every name with two colons. It now

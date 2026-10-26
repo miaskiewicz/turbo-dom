@@ -172,7 +172,6 @@ fn pseudo_element_forms_match_chrome156_control() {
 /// `font: -webkit-small-control` (13.3333px Arial; monospace for textarea and the date / time
 /// inputs), optgroup is bolder, author rules win (case `form-control-fonts`).
 #[test]
-#[ignore = "turbo-dom#61: fails until the fix"]
 fn form_control_fonts_match_chrome156_control() {
     let found = mismatches(|id| id == "form-control-fonts");
     assert!(
