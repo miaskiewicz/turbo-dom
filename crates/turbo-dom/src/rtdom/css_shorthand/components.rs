@@ -265,6 +265,9 @@ fn read(input: &mut Parser<'_, '_>, out: &mut Vec<Comp>) -> Option<()> {
                         kind: Kind::Url(url.clone()),
                     }
                 } else {
+                    if !function_valid(&name, &inner) {
+                        return None;
+                    }
                     let text = match name.as_str() {
                         "calc" => calc_sum(&inner),
                         "min" | "max" | "clamp" => min_max(&name, &inner),
@@ -351,7 +354,7 @@ fn calc_sum(inner: &[Comp]) -> Option<String> {
                     _ => return None,
                 };
             }
-            Kind::Slash | Kind::Delim('/') if next.0.is_empty() && next.1 != 0.0 => {
+            Kind::Slash | Kind::Delim('/') if next.0.is_empty() => {
                 current = (current.0, current.1 / next.1);
             }
             Kind::Delim(operator @ ('+' | '-')) => {
@@ -367,6 +370,41 @@ fn calc_sum(inner: &[Comp]) -> Option<String> {
     Some(calc_text(terms))
 }
 
+/// Structural checks Chrome makes before keeping a function: a `calc()` sum alternates
+/// operands and operators (a literal product has at most one unit), `rgb()` / `hsl()` use
+/// commas everywhere or nowhere, and `linear()` has at least two stops.
+fn function_valid(name: &str, inner: &[Comp]) -> bool {
+    match name {
+        "calc" => {
+            if inner.is_empty() || inner.len().is_multiple_of(2) {
+                return false;
+            }
+            let unit =
+                |comp: &Comp| matches!(comp.kind, Kind::Dimension { .. } | Kind::Percentage(_));
+            inner.iter().enumerate().all(|(index, comp)| {
+                if index % 2 == 1 {
+                    let product = matches!(comp.kind, Kind::Delim('*'));
+                    let operator =
+                        product || matches!(comp.kind, Kind::Delim('+' | '-' | '/') | Kind::Slash);
+                    operator && !(product && unit(&inner[index - 1]) && unit(&inner[index + 1]))
+                } else {
+                    !matches!(comp.kind, Kind::Comma | Kind::Slash | Kind::Delim(_))
+                }
+            })
+        }
+        "rgb" | "rgba" | "hsl" | "hsla" => {
+            let commas = inner.iter().filter(|comp| comp.kind == Kind::Comma).count();
+            commas == 0
+                || inner
+                    .iter()
+                    .enumerate()
+                    .all(|(index, comp)| (comp.kind == Kind::Comma) == (index % 2 == 1))
+        }
+        "linear" => inner.iter().any(|comp| comp.kind == Kind::Comma),
+        _ => true,
+    }
+}
+
 /// `calc()` of simplified terms: numbers, then percentages, then units in ASCII order.
 fn calc_text(mut terms: Vec<(String, f64)>) -> String {
     let rank = |unit: &str| match unit {
@@ -375,6 +413,24 @@ fn calc_text(mut terms: Vec<(String, f64)>) -> String {
         _ => 2,
     };
     terms.sort_by(|a, b| rank(&a.0).cmp(&rank(&b.0)).then(a.0.cmp(&b.0)));
+    if let [(unit, value)] = terms.as_slice() {
+        if !value.is_finite() {
+            // `calc(1px / 0)` is `calc(infinity * 1px)`.
+            let infinity = if value.is_nan() {
+                "NaN"
+            } else if *value < 0.0 {
+                "-infinity"
+            } else {
+                "infinity"
+            };
+            let unit = if unit.is_empty() {
+                String::new()
+            } else {
+                format!(" * 1{unit}")
+            };
+            return format!("calc({infinity}{unit})");
+        }
+    }
     let mut out = String::from("calc(");
     for (index, (unit, value)) in terms.iter().enumerate() {
         let number = |value: f64| css_number(value as f32);
@@ -507,7 +563,16 @@ fn color_function(name: &str, inner: &[Comp]) -> Option<String> {
     } else {
         let hue = match &parts[0].kind {
             Kind::Number { value, .. } => f64::from(*value),
-            Kind::Dimension { value, unit } if unit == "deg" => f64::from(*value),
+            Kind::Dimension { value, unit } => {
+                f64::from(*value)
+                    * match unit.as_str() {
+                        "deg" => 1.0,
+                        "grad" => 0.9,
+                        "rad" => 180.0 / std::f64::consts::PI,
+                        "turn" => 360.0,
+                        _ => return None,
+                    }
+            }
             _ => return None,
         };
         let (saturation, lightness) = (percent(parts[1])? / 100.0, percent(parts[2])? / 100.0);
@@ -584,14 +649,14 @@ fn linear_text(inner: &[Comp]) -> Option<String> {
                 _ => None,
             })
             .collect::<Option<Vec<_>>>()?;
-        stops.push((
-            output.text.clone(),
-            if positions.is_empty() {
-                vec![None]
-            } else {
-                positions
-            },
-        ));
+        if positions.is_empty() {
+            stops.push((output.text.clone(), vec![None]));
+        } else {
+            // A stop with two input positions is two stops.
+            for position in positions {
+                stops.push((output.text.clone(), vec![position]));
+            }
+        }
     }
     if stops.len() < 2 {
         return None;

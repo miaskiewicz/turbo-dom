@@ -16,17 +16,6 @@ const CONTROL: &str = include_str!("fixtures/css_shorthand_chrome156.json");
 
 /// Scenarios whose Chrome result needs a longhand spelling this module does not own (the
 /// embedder spells longhands set directly; turbo-dom#97: `top: 0` is `0px`), by id.
-/// Round-four scenarios (invalid calc() / rgb() / linear(), calc infinity, hue units) the
-/// grammars do not handle like Chrome yet (turbo-dom#90).
-const EDGE_GAPS: &[&str] = &[
-    "margin|calc(1px * 2px)",
-    "margin|calc(1px / 0)",
-    "margin|calc(1px 2px)",
-    "background|hsl(1turn 50% 50%)",
-    "background|rgb(1, 2 3)",
-    "transition|opacity linear(0, 1 20% 40%)",
-    "transition|opacity linear(1)",
-];
 const KNOWN_GAPS: &[&str] = &["css-inset-longhands"];
 
 fn sha(text: &str) -> String {
@@ -186,7 +175,7 @@ fn shorthands_expand_and_serialize_like_chrome156() {
         }
         if !out.is_empty() {
             failed_ids.push(id.to_string());
-            if !KNOWN_GAPS.contains(&id) && !EDGE_GAPS.contains(&id) {
+            if !KNOWN_GAPS.contains(&id) {
                 failures.push(format!("{id}:\n  {}", out.join("\n  ")));
             }
         }
@@ -208,7 +197,6 @@ fn shorthands_expand_and_serialize_like_chrome156() {
     }
     let stale: Vec<_> = KNOWN_GAPS
         .iter()
-        .chain(EDGE_GAPS)
         .filter(|id| !failed_ids.iter().any(|failed| failed == *id))
         .collect();
     assert!(stale.is_empty(), "stale KNOWN_GAPS: {stale:?}");
