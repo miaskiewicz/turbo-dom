@@ -2001,7 +2001,7 @@
   // A declaration-backed map reads the live CSSStyleDeclaration of its owner.
   function declarationOf(record) { return record.kind === 'inline' ? ns.makeInlineStyleDeclaration(record.owner) : apply(ruleStyle, record.owner, []); }
   function declarationNames(record) { const declaration = declarationOf(record), length = apply(declarationLength, declaration, []), names = list(); for (let index = 0; index < length; index++) push(names, apply(declarationItem, declaration, [index])); return names; }
-  function declarationValue(record, name) { const declaration = declarationOf(record), text = apply(declarationGet, declaration, [name]); return text === '' ? null : text; }
+  function declarationValue(record, name) { const text = ns.declarationAuthoredValue(declarationOf(record), name); return text === '' ? null : text; }
   // Blink stores box shorthands as their longhands; the binding keeps the authored shorthand,
   // so the map's view expands them in place (a later longhand replaces its slot).
   const SPLIT_SHORTHANDS = plainSet(['margin', 'padding', 'inset', 'scroll-margin', 'scroll-padding', 'border-width', 'border-style', 'border-color', 'gap', 'overflow']);
@@ -2035,7 +2035,8 @@
   function storedText(record, name) { const entries = storedView(record); for (let index = 0; index < entries.length; index++) if (entries[index][0] === name) return entries[index][1]; return null; }
   const writtenValues = new WeakMap();
   function writeDeclaration(record, name, text, node) {
-    apply(declarationSet, declarationOf(record), [name, text]);
+    // Stored as the value serializes, not respelled (Chrome keeps the CSSStyleValue).
+    ns.setDeclarationAuthored(declarationOf(record), name, text);
     let memo = weakGet(writtenValues, record.owner);
     if (!memo) { memo = create(null); weakSet(writtenValues, record.owner, memo); }
     const stored = storedText(record, name);

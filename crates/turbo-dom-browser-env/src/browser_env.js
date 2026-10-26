@@ -14,6 +14,8 @@
   // not as `__*` string globals. Reachable from every realm via globalThis[Symbol.for('ts')].
   var __ns = g[Symbol.for('ts')] || (Object.defineProperty(g, Symbol.for('ts'), { value: {}, configurable: true, enumerable: false }), g[Symbol.for('ts')]);
   if (typeof g.__parseCssNative === 'function') { __ns.parseCssNative = g.__parseCssNative; delete g.__parseCssNative; }
+  if (typeof g.__cssShorthandNative === 'function') { __ns.cssShorthandNative = g.__cssShorthandNative; delete g.__cssShorthandNative; }
+  var cssShorthand = __ns.cssShorthandNative;
   var cssNativeParse=__ns.parseCssNative,cssSetPrototype=Object.setPrototypeOf,cssApply=Reflect.apply,cssMapGet=Function.prototype.call.bind(Map.prototype.get),cssTagUpper=Function.prototype.call.bind(String.prototype.toUpperCase);
   var computedSnapshotMap=WeakMap,computedSnapshotGet=Function.prototype.call.bind(WeakMap.prototype.get),computedSnapshotSet=Function.prototype.call.bind(WeakMap.prototype.set);
   if (typeof g.__domAccessor === 'function') { __ns.domAccessor = g.__domAccessor; delete g.__domAccessor; }
@@ -34,61 +36,15 @@
   });
   if (typeof g.frameElement === 'undefined') { try { Object.defineProperty(g, 'frameElement', { value: null, writable: true, configurable: true, enumerable: false }); } catch(e){ try { g.frameElement = null; } catch(e2){} } }
   // ---- CSS shorthand expansion ----------------------------------------------------------------
-  // Computed-style reads derive common longhands from shorthands, including marginTop,
-  // borderWidth, backgroundColor, rowGap, flexBasis. Expand the common shorthands into longhands so
-  // those reads resolve. `emit(prop, value)` writes a single longhand.
-  var LINE_STYLES = { none:1,hidden:1,dotted:1,dashed:1,solid:1,double:1,groove:1,ridge:1,inset:1,outset:1 };
-  var isLen = function(t){ return /^[\d.]+(px|em|rem|%|pt|vh|vw|vmin|vmax|ch|ex|fr|cm|mm|in)$/.test(t) || t === '0' || /^calc\(/.test(t); };
-  var isColor = function(t){ return /^#[0-9a-fA-F]{3,8}$/.test(t) || /^(rgb|rgba|hsl|hsla)\(/i.test(t) || t === 'transparent' || t === 'currentColor' || /^[a-z]+$/i.test(t) && !LINE_STYLES[t] && !isLen(t); };
-  // split on top-level whitespace, keeping parenthesized groups (rgb(...), calc(...), url(...)) intact
-  var splitTop = function(v){ var out=[], depth=0, cur=''; for (var i=0;i<v.length;i++){ var c=v[i]; if (c==='(') depth++; else if (c===')') depth--; if (/\s/.test(c) && depth===0){ if (cur){ out.push(cur); cur=''; } } else cur+=c; } if (cur) out.push(cur); return out; };
-  var box4 = function(p){ return p.length===1 ? [p[0],p[0],p[0],p[0]] : p.length===2 ? [p[0],p[1],p[0],p[1]] : p.length===3 ? [p[0],p[1],p[2],p[1]] : [p[0],p[1],p[2],p[3]]; };
+  // Computed-style reads resolve longhands (marginTop, borderWidth, backgroundColor, rowGap,
+  // flexBasis) of shorthands from the UA tables and Web Animations keyframes: rtdom's Chrome 156
+  // shorthand grammars expand them (turbo-dom#90). `emit(prop, value)` writes one longhand; a
+  // var() value reaches each longhand as written.
   function fontLower(value){return cssApply(cssFontLower,value,[]);}
   var expandShorthand = function(name, val, emit){
-    var p = splitTop(val.trim());
-    // 4-side box shorthands
-    if (/^(margin|padding|inset|scroll-margin|scroll-padding)$/.test(name)){
-      if (name === 'inset'){ var s4=box4(p); ['top','right','bottom','left'].forEach(function(s,i){ if(s4[i]) emit(s,s4[i]); }); return; }
-      var s=box4(p); ['top','right','bottom','left'].forEach(function(side,i){ if(s[i]) emit(name+'-'+side, s[i]); }); return;
-    }
-    // border-width / -style / -color: also 4-side
-    if (/^border-(width|style|color)$/.test(name)){ var which=name.split('-')[1]; var b=box4(p); ['top','right','bottom','left'].forEach(function(side,i){ if(b[i]) emit('border-'+side+'-'+which, b[i]); }); return; }
-    // border[-side] / outline: width | style | color (any order)
-    if (/^(border(-(top|right|bottom|left))?|outline)$/.test(name)){
-      var pre = name;
-      p.forEach(function(tok){ if (isLen(tok)||tok==='thin'||tok==='medium'||tok==='thick') emit(pre+'-width', tok); else if (LINE_STYLES[tok]) emit(pre+'-style', tok); else if (isColor(tok)) emit(pre+'-color', tok); });
-      return;
-    }
-    // border-radius: up to 4 corners (ignore the "/" vertical-radii form)
-    if (name === 'border-radius'){ var r=val.split('/')[0].trim().split(/\s+/); var c=box4(r); emit('border-top-left-radius',c[0]); emit('border-top-right-radius',c[1]); emit('border-bottom-right-radius',c[2]); emit('border-bottom-left-radius',c[3]); return; }
-    // two-axis shorthands
-    if (name === 'gap'){ emit('row-gap', p[0]); emit('column-gap', p[1]||p[0]); return; }
-    if (name === 'interest-delay'){ emit('interest-delay-start', p[0]); emit('interest-delay-end', p[1]||p[0]); return; }
-    if (name === 'overflow'){ emit('overflow-x', p[0]); emit('overflow-y', p[1]||p[0]); return; }
-    if (name === 'place-items' || name === 'place-content' || name === 'place-self'){ var base=name.split('-')[1]; emit('align-'+base, p[0]); emit('justify-'+base, p[1]||p[0]); return; }
-    // flex: grow [shrink] [basis]
-    if (name === 'flex'){
-      if (p.length===1 && p[0]==='none'){ emit('flex-grow','0'); emit('flex-shrink','0'); emit('flex-basis','auto'); return; }
-      if (p[0]!=null) emit('flex-grow', p[0]); if (p[1]!=null && /^[\d.]+$/.test(p[1])) emit('flex-shrink', p[1]); var basis = p.filter(function(t){ return isLen(t)||t==='auto'||t==='content'; }); if (basis.length) emit('flex-basis', basis[basis.length-1]); return;
-    }
-    // Font shorthand resets omitted longhands; CSS-wide keywords apply to each.
-    if (name === 'font'){
-      var fontProps=['font-style','font-variant','font-variant-caps','font-weight','font-stretch','font-size','line-height','font-family'];
-      var wide=fontLower(val);if (/^(initial|inherit|unset|revert|revert-layer)$/.test(wide)){fontProps.forEach(function(prop){emit(prop,wide);});return;}
-      ['font-style','font-variant','font-variant-caps','font-weight','font-stretch','line-height'].forEach(function(prop){emit(prop,'normal');});
-      var tokens=splitTop(val.replace(/\s*\/\s*/g,'/')),fi=0;
-      while(fi<tokens.length){var token=fontLower(tokens[fi]);if(token==='italic'||token==='oblique')emit('font-style',token);else if(token==='small-caps'){emit('font-variant',token);emit('font-variant-caps',token);}else if(/^(normal|bold|bolder|lighter|[1-9]00)$/.test(token))emit('font-weight',token);else if(/^(ultra-|extra-|semi-)?(condensed|expanded)$/.test(token))emit('font-stretch',token);else break;fi++;}
-      if(fi<tokens.length){var sizeLine=tokens[fi++].split('/');emit('font-size',sizeLine[0]);if(sizeLine[1])emit('line-height',sizeLine[1]);}
-      if(fi<tokens.length)emit('font-family',tokens.slice(fi).join(' '));return;
-    }
-    if(name==='font-variant'&&/^(normal|small-caps|initial|inherit|unset|revert|revert-layer)$/i.test(val)){emit('font-variant-caps',fontLower(val));return;}
-    // text-decoration: line | style | color
-    if (name === 'text-decoration'){
-      var lines={none:1,underline:1,overline:1,'line-through':1,blink:1}; var styles={solid:1,double:1,dotted:1,dashed:1,wavy:1};
-      p.forEach(function(tok){ if (lines[tok]) emit('text-decoration-line', tok); else if (styles[tok]) emit('text-decoration-style', tok); else if (isColor(tok)) emit('text-decoration-color', tok); }); return;
-    }
-    // background: extract the color token -> background-color (position/size/repeat are layout-y)
-    if (name === 'background'){ for (var bi=0; bi<p.length; bi++){ if (/^#[0-9a-fA-F]{3,8}$/.test(p[bi]) || /^(rgb|rgba|hsl|hsla)\(/i.test(p[bi]) || p[bi]==='transparent'){ emit('background-color', p[bi]); break; } } return; }
+    var flat = cssShorthand ? cssShorthand('expand', name, String(val)) : null;
+    if (!flat) return;
+    for (var index = 0; index < flat.length; index += 4) emit(flat[index], flat[index + 2] === null ? flat[index + 1] : flat[index + 3]);
   };
   __ns.expandCssShorthand = expandShorthand;
 
@@ -582,10 +538,13 @@
     // Priority is private per computed snapshot; public CSSStyleDeclaration methods
     // and page overrides cannot change the importance of parsed declarations.
     var uaValues=null,priorities={__proto__:null};
-    var setProp = function(name, val, important){ name = String(name).trim(); if (!name) return; if(important!==undefined){if(priorities[name]&&!important)return;priorities[name]=important;} if(uaValues&&typeof val==='string'&&/^revert$/i.test(val.trim())&&uaValues[name]!==undefined)val=uaValues[name]; if (typeof val === 'string' && name.slice(0, 2) !== '--'){ var t = val.trim(); if (t.charAt(0) === '#') val = normColor(t); else if (t === '0' && LEN_PROP.test(name)) val = '0px'; else if (val.indexOf(',') >= 0) val = cssPrelude(val,true); } decl[name] = val; decl[camel(name)] = val; if (sink) sink.order[name] = ++sink.count;
-      if (typeof val === 'string') expandShorthand(name, val, function(property,value){setProp(property,value,important);});
+    // A cascaded longhand outdates the shorthand entries an earlier declaration (a UA table)
+    // stored; the shorthand being expanded keeps its own.
+    var expandingShorthand = null;
+    var setProp = function(name, val, important){ name = String(name).trim(); if (!name) return; if(important!==undefined){if(priorities[name]&&!important)return;priorities[name]=important;} if(uaValues&&typeof val==='string'&&/^revert$/i.test(val.trim())&&uaValues[name]!==undefined)val=uaValues[name]; if (typeof val === 'string' && name.slice(0, 2) !== '--'){ var t = val.trim(); if (t.charAt(0) === '#') val = normColor(t); else if (t === '0' && LEN_PROP.test(name)) val = '0px'; else if (val.indexOf(',') >= 0) val = cssPrelude(val,true); } decl[name] = val; decl[camel(name)] = val; staleShorthands(name).forEach(function(shorthand){ if (shorthand !== expandingShorthand) { delete decl[shorthand]; delete decl[camel(shorthand)]; } }); if (sink) sink.order[name] = ++sink.count;
+      if (typeof val === 'string') { var outer = expandingShorthand; expandingShorthand = name; try { expandShorthand(name, val, function(property,value){setProp(property,value,important);}); } finally { expandingShorthand = outer; } }
     };
-    function applyDeclarations(record,accepts){for(var index=0;index<record.names.length;index++){var name=record.names[index],value=cssMapGet(record.values,name);if(accepts&&name.slice(0,2)!=='--'&&!accepts(name))continue;setProp(name,value.text,value.priority==='important');}}
+    function applyDeclarations(record,accepts){for(var index=0;index<record.names.length;index++){var name=record.names[index],value=cssMapGet(record.values,name);if(accepts&&name.slice(0,2)!=='--'&&!accepts(name))continue;setProp(name,value.pending?value.pending[1]:value.raw||value.text,value.priority==='important');}}
     var info=pseudo&&pseudo!=='backdrop'&&pseudo!=='before'&&pseudo!=='after'?computedPseudoInfo(el,pseudo,parentStyle):null;
     // Measured Chrome button defaults are UA declarations: every matching author
     // rule (including a universal selector) and inline value takes precedence.
@@ -1039,7 +998,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     return state;
   }
   function endEventDispatch(state){state.currentTarget=null;state.eventPhase=0;state.path=[];state.dispatching=false;state.stop=false;state.stopImmediate=false;}
-  var ctors = ['Node','Element','HTMLElement','HTMLDivElement','HTMLInputElement','HTMLButtonElement','HTMLAnchorElement','HTMLSelectElement','HTMLTextAreaElement','HTMLFormElement','HTMLImageElement','HTMLLabelElement','HTMLOptionElement','HTMLUListElement','HTMLLIElement','HTMLSpanElement','HTMLParagraphElement','HTMLHeadingElement','HTMLTableElement','HTMLIFrameElement','HTMLCanvasElement','HTMLStyleElement','HTMLScriptElement','HTMLDocument','Document','DocumentFragment','ShadowRoot','Text','Comment','SVGElement','SVGSVGElement','DOMParser','EventTarget','AbortController','AbortSignal','DOMException',
+  var ctors = ['Node','Element','HTMLElement','HTMLDivElement','HTMLInputElement','HTMLButtonElement','HTMLAnchorElement','HTMLSelectElement','HTMLTextAreaElement','HTMLFormElement','HTMLImageElement','HTMLLabelElement','HTMLOptionElement','HTMLUListElement','HTMLLIElement','HTMLSpanElement','HTMLParagraphElement','HTMLHeadingElement','HTMLTableElement','HTMLIFrameElement','HTMLCanvasElement','HTMLStyleElement','HTMLScriptElement','HTMLDocument','Document','DocumentFragment','ShadowRoot','Text','Comment','SVGElement','SVGSVGElement','MathMLElement','DOMParser','EventTarget','AbortController','AbortSignal','DOMException',
     'UIEvent','MouseEvent','KeyboardEvent','FocusEvent','InputEvent','TouchEvent','PointerEvent','WheelEvent','DragEvent','ClipboardEvent','AnimationEvent','TransitionEvent','MessageEvent','ProgressEvent','CompositionEvent','PopStateEvent','HashChangeEvent','StorageEvent','ErrorEvent','CloseEvent',
     // DOM node/collection/CSS interfaces app bundles do `instanceof` against (an
     // undefined RHS throws "not an object" and aborts the chunk — a single missing
@@ -1259,15 +1218,52 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
   function cssString(value){if(typeof value==='symbol')throw new TypeError('Cannot convert a Symbol to a string');return String(value);}
   function cssPropertyName(name){if(name==='cssFloat')return 'float';return String(name).replace(/[A-Z]/g,function(c){return '-'+c.toLowerCase();}).replace(/^webkit-/,'-webkit-');}
   function knownProperty(name){if(cssPropertyCache.has(name))return cssPropertyCache.get(name);var known=typeof cssNativeParse==='function'&&cssNativeParse(name,true);if(!known&&__ns.typedOmProperty)known=__ns.typedOmProperty(name);if(known||__ns.typedOmProperty)cssPropertyCache.set(name,!!known);return !!known;}
-  function declarationText(record){var text='';for(var index=0;index<record.names.length;index++){var name=record.names[index],value=cssMapGet(record.values,name);if(index)text+=' ';text+=name+': '+value.text+(value.priority?' !important':'')+';';}return text;}
+  // CSSOM shorthands (turbo-dom#90): rtdom::css_shorthand (__cssShorthandNative) expands a
+  // shorthand into its longhands and serializes shorthands and cssText from them like Chrome
+  // 156. A value is {text, priority, pending}: `pending` is [shorthand, text] for a longhand a
+  // var() shorthand set (its text is ''), which only that shorthand serializes back.
+  // Name lookups and longhand spellings are pure: memoized per name / declaration.
+  var shorthandNames=new Map(),propertyAliases=new Map(),longhandTexts=new Map();
+  var shorthandLists=new Map();
+  function staleShorthands(name){if(!cssShorthand||name.slice(0,2)==='--')return [];var list=shorthandLists.get(name);if(!list){list=cssShorthand('shorthands',name);shorthandLists.set(name,list);}return list;}
+  function shorthandName(name){if(!cssShorthand)return null;var known=shorthandNames.get(name);if(known===undefined){known=cssShorthand('shorthand',name);shorthandNames.set(name,known);}return known;}
+  function propertyAlias(name){if(!cssShorthand||name.slice(0,2)==='--')return name;var alias=propertyAliases.get(name);if(alias===undefined){alias=cssShorthand('alias',name)||name;propertyAliases.set(name,alias);}return alias;}
+  function blockEntries(record){var flat=[];for(var index=0;index<record.names.length;index++){var name=record.names[index],value=cssMapGet(record.values,name);flat.push(name,value.text,value.priority==='important',value.pending?value.pending[0]:null,value.pending?value.pending[1]:null);}return flat;}
+  function declarationText(record){if(cssShorthand&&!record.fontFace)return cssShorthand('text',blockEntries(record));var text='';for(var index=0;index<record.names.length;index++){var name=record.names[index],value=cssMapGet(record.values,name);if(index)text+=' ';text+=name+': '+value.text+(value.priority?' !important':'')+';';}return text;}
+  function shorthandValue(record,name){return cssShorthand('value',name,blockEntries(record));}
+  // The longhands a valid shorthand value sets: [[name, text, pending], ...], or null.
+  function expandShorthandValue(name,value){var flat=cssShorthand('expand',name,value);if(!flat)return null;var out=[];for(var index=0;index<flat.length;index+=4)out.push([flat[index],flat[index+1],flat[index+2]===null?null:[flat[index+2],flat[index+3]]]);return out;}
   __ns.readDeclarationText=function(style){return declarationText(declarationRecord(style));};
   function colorText(name,text){if(!/(?:^color$|color$)/.test(name))return text;var match=/^#([\da-f]{3}|[\da-f]{6})$/i.exec(text);if(!match)return text;var hex=match[1];if(hex.length===3)hex=hex.replace(/./g,function(c){return c+c;});return 'rgb('+parseInt(hex.slice(0,2),16)+', '+parseInt(hex.slice(2,4),16)+', '+parseInt(hex.slice(4,6),16)+')';}
-  function storeDeclaration(record,name,text,priority){if(!record.values.has(name))record.names.push(name);record.values.set(name,{text:colorText(name,text),priority:priority||''});}
-  function parseDeclaration(record,text){record.names=[];record.values=new Map();var selector=record.fontFace?'@font-face':'x',parsed=typeof cssNativeParse==='function'?cssNativeParse(selector+' { '+text+' }'):selector+' { '+text+' }';var body=parsed.slice(parsed.indexOf('{')+1,parsed.lastIndexOf('}'));cssParts(body,';').forEach(function(part){var index=part.indexOf(':');if(index<1)return;var name=part.slice(0,index).trim();if(!record.fontFace&&!name.startsWith('--')&&!knownProperty(name))return;var value=part.slice(index+1).trim(),important=/\s*!important\s*$/i.test(value);if(important)value=value.replace(/\s*!important\s*$/i,'').trim();if(!record.fontFace&&!name.startsWith('--')&&__ns.typedOmValid&&!__ns.typedOmValid(name,value))return;var previous=record.values.get(name);if(previous&&previous.priority&&!important)return;storeDeclaration(record,name,value,important?'important':'');});}
+  // `raw` is the stylesheet grammar's text of a longhand set directly: the computed cascade
+  // reads it (full number precision), CSSOM reads the Chrome spelling in `text`.
+  function storeDeclaration(record,name,text,priority,pending,raw){if(!record.values.has(name))record.names.push(name);record.values.set(name,{text:pending?'':colorText(name,text),priority:priority||'',pending:pending||null,raw:raw||null});}
+  // cssText parsing: a repeated property moves to the end; an !important one keeps out a later normal one.
+  function parsedDeclaration(record,name,text,priority,pending,raw){var previous=record.values.get(name);if(previous){if(previous.priority&&!priority)return;record.values.delete(name);record.names.splice(record.names.indexOf(name),1);}storeDeclaration(record,name,text,priority,pending,raw);}
+  // A longhand's value as Chrome spells it (turbo-dom#97): [text, raw] or null. rtdom's grammar
+  // admits (or rejects) and spells the longhands it knows; any other value the stylesheet
+  // grammar admits, rtdom spells context-free. `raw` is the stylesheet grammar's text.
+  function longhandText(name,value){var key=name+'\u0000'+value,cached=longhandTexts.get(key);if(cached!==undefined)return cached;var raw=parseLonghandText(name,value),result=raw===null?null:[raw,raw];if(cssShorthand&&name.slice(0,2)!=='--'){var spelled=cssShorthand('longhand',name,value);if(spelled[0]==='valid')result=[spelled[1],raw===null?spelled[1]:raw];else if(spelled[0]==='invalid')result=null;else if(raw!==null)result=[spelled[1],raw];}if(longhandTexts.size>=4096)longhandTexts.clear();longhandTexts.set(key,result);return result;}
+  function parseLonghandText(name,value){if(!name.startsWith('--')&&!knownProperty(name))return null;var parsed=typeof cssNativeParse==='function'?cssNativeParse('x { '+name+': '+value+' }'):'x { '+name+': '+value+' }';var body=parsed.slice(parsed.indexOf('{')+1,parsed.lastIndexOf('}')),accepted=null;cssParts(body,';').forEach(function(part){var index=part.indexOf(':');if(index<1||part.slice(0,index).trim()!==name)return;var text=part.slice(index+1).trim();if(/\s*!important\s*$/i.test(text))return;if(!name.startsWith('--')&&__ns.typedOmValid&&!__ns.typedOmValid(name,text))return;accepted=text;});return accepted;}
+  // The [[name, text, pending, raw], ...] a declaration sets, or null when it is invalid.
+  function declarationEntries(name,value){name=propertyAlias(name);if(shorthandName(name))return expandShorthandValue(name,value);var text=longhandText(name,value);return text===null?null:[[name,text[0],null,text[1]]];}
+  function parseDeclaration(record,text){if(cssShorthand&&!record.fontFace){record.names=[];record.values=new Map();var list=cssShorthand('declarations',text);for(var index=0;index<list.length;index+=3){var name=list[index];if(name.slice(0,2)!=='--')name=name.toLowerCase();var entries=declarationEntries(name,list[index+1]);if(entries)entries.forEach(function(entry){parsedDeclaration(record,entry[0],entry[1],list[index+2]?'important':'',entry[2],entry[3]);});}return;}parseLegacyDeclaration(record,text);}
+  function parseLegacyDeclaration(record,text){record.names=[];record.values=new Map();var selector=record.fontFace?'@font-face':'x',parsed=typeof cssNativeParse==='function'?cssNativeParse(selector+' { '+text+' }'):selector+' { '+text+' }';var body=parsed.slice(parsed.indexOf('{')+1,parsed.lastIndexOf('}'));cssParts(body,';').forEach(function(part){var index=part.indexOf(':');if(index<1)return;var name=part.slice(0,index).trim();if(!record.fontFace&&!name.startsWith('--')&&!knownProperty(name))return;var value=part.slice(index+1).trim(),important=/\s*!important\s*$/i.test(value);if(important)value=value.replace(/\s*!important\s*$/i,'').trim();if(!record.fontFace&&!name.startsWith('--')&&__ns.typedOmValid&&!__ns.typedOmValid(name,value))return;var previous=record.values.get(name);if(previous&&previous.priority&&!important)return;storeDeclaration(record,name,value,important?'important':'');});}
   function writableDeclaration(record){if(record.readOnly)throw new __ns.DOMException('The declaration is read-only','NoModificationAllowedError');}
   function commitDeclaration(record){if(record.owner){record.source=declarationText(record);appliedInlineWrite.call(record.owner,record.source);}}
-  function removeDeclaration(record,name){var previous=record.values.get(name);if(!previous)return '';record.values.delete(name);record.names.splice(record.names.indexOf(name),1);commitDeclaration(record);return previous.text;}
-  function setDeclaration(record,name,value,priority){writableDeclaration(record);name=cssString(name);value=value===null?'':cssString(value);priority=priority==null?'':cssString(priority).toLowerCase();if(!value){removeDeclaration(record,name);return;}if(priority&&priority!=='important'||!record.fontFace&&!name.startsWith('--')&&!knownProperty(name))return;var parsed={names:[],values:new Map(),fontFace:record.fontFace};parseDeclaration(parsed,name+': '+value+(priority?' !important':'')+';');var accepted=parsed.values.get(name);if(!accepted&&record.fontFace&&knownProperty(name)){parsed.fontFace=false;parseDeclaration(parsed,name+': '+value+(priority?' !important':'')+';');accepted=parsed.values.get(name);}if(!accepted)return;storeDeclaration(record,name,accepted.text,accepted.priority);commitDeclaration(record);}
+  // removeProperty: a shorthand removes its longhands and returns '' (Chrome).
+  function removeDeclaration(record,name){if(!record.fontFace){name=propertyAlias(name);var longhands=shorthandName(name)&&cssShorthand('longhands',name);if(longhands){var removed=false;longhands.forEach(function(longhand){if(record.values.delete(longhand)){record.names.splice(record.names.indexOf(longhand),1);removed=true;}});if(removed)commitDeclaration(record);return '';}}var previous=record.values.get(name);if(!previous)return '';record.values.delete(name);record.names.splice(record.names.indexOf(name),1);commitDeclaration(record);return previous.text;}
+  function setDeclaration(record,name,value,priority){writableDeclaration(record);name=cssString(name);value=value===null?'':cssString(value);priority=priority==null?'':cssString(priority).toLowerCase();if(!value){removeDeclaration(record,name);return;}if(cssShorthand&&!record.fontFace){if(priority&&priority!=='important')return;if(name.slice(0,2)!=='--')name=name.toLowerCase();var entries=declarationEntries(name,value);if(!entries)return;entries.forEach(function(entry){storeDeclaration(record,entry[0],entry[1],priority,entry[2],entry[3]);});commitDeclaration(record);return;}if(priority&&priority!=='important'||!record.fontFace&&!name.startsWith('--')&&!knownProperty(name))return;var parsed={names:[],values:new Map(),fontFace:record.fontFace};parseDeclaration(parsed,name+': '+value+(priority?' !important':'')+';');var accepted=parsed.values.get(name);if(!accepted&&record.fontFace&&knownProperty(name)){parsed.fontFace=false;parseDeclaration(parsed,name+': '+value+(priority?' !important':'')+';');accepted=parsed.values.get(name);}if(!accepted)return;storeDeclaration(record,name,accepted.text,accepted.priority);commitDeclaration(record);}
+  // Typed OM writes (StylePropertyMap.set / append): Chrome stores the CSSStyleValue, so a
+  // longhand keeps the value's own serialization (calc() sums in their order, products,
+  // percentages) instead of the specified-value spelling setProperty applies (turbo-dom#97).
+  __ns.setDeclarationAuthored=function(style,name,value){var record=declarationRecord(style);writableDeclaration(record);name=propertyAlias(cssString(name));value=cssString(value);if(record.fontFace||!cssShorthand||name.slice(0,2)==='--'||shorthandName(name)){setDeclaration(record,name,value,'');return;}var raw=parseLonghandText(name,value);if(raw===null)return;storeDeclaration(record,name,raw,'',null,raw);commitDeclaration(record);};
+  // Typed OM reads reify the value as parsed (Chrome's expression tree: calc() terms in their
+  // authored order), not the specified-value spelling getPropertyValue returns.
+  __ns.declarationAuthoredValue=function(style,name){var record=declarationRecord(style);if(record.fontFace||!cssShorthand)return propertyValue(record,name);name=propertyAlias(cssString(name));var value=record.values.get(name);if(value)return value.pending||!value.raw?value.text:colorText(name,value.raw);return shorthandName(name)?shorthandValue(record,name):'';};
+  // getPropertyValue: a shorthand serializes from its longhands (a computed declaration's own
+  // shorthand entry wins); a pending longhand reads ''.
+  function propertyValue(record,name){if(!record.fontFace&&cssShorthand){name=propertyAlias(name);var value=record.values.get(name);if(value)return value.text;return shorthandName(name)?shorthandValue(record,name):'';}var value=record.values.get(name);return value?value.text:'';}
   var declarationConstructor=__ns.makeNativeFunction(function(){throw new TypeError('Illegal constructor');},'CSSStyleDeclaration',0,true);
   declarationConstructor.prototype={};Object.defineProperty(declarationConstructor.prototype,'constructor',{value:declarationConstructor,writable:true,configurable:true});Object.defineProperty(declarationConstructor.prototype,Symbol.toStringTag,{value:'CSSStyleDeclaration',configurable:true});Object.defineProperty(declarationConstructor,'prototype',{writable:false});Object.defineProperty(g,'CSSStyleDeclaration',{value:declarationConstructor,writable:true,configurable:true,enumerable:false});
   var declarationPrototype=declarationConstructor.prototype;
@@ -1276,11 +1272,11 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
   declarationMember('parentRule',function(){return declarationRecord(this).parentRule||null;});
   declarationMember('cssFloat',function(){var value=declarationRecord(this).values.get('float');return value?value.text:'';},function(value){setDeclaration(declarationRecord(this),'float',value,'');});
   declarationMember('cssText',function(){var record=declarationRecord(this);return record.computed?'':declarationText(record);},function(value){var record=declarationRecord(this);writableDeclaration(record);parseDeclaration(record,cssString(value));commitDeclaration(record);});
-  var declarationMethods={getPropertyValue:function(name){if(!arguments.length)throw new TypeError('getPropertyValue requires 1 argument');if(!declarationRecords.get(this))throw new TypeError('Illegal invocation');name=cssString(name);var record=declarationRecord(this),value=record.values.get(name);return value?value.text:'';},getPropertyPriority:function(name){if(!arguments.length)throw new TypeError('getPropertyPriority requires 1 argument');var value=declarationRecord(this).values.get(cssString(name));return value?value.priority:'';},setProperty:function(name,value,priority){if(arguments.length<2)throw new TypeError('setProperty requires 2 arguments');setDeclaration(declarationRecord(this),name,value,priority);},removeProperty:function(name){if(!arguments.length)throw new TypeError('removeProperty requires 1 argument');var record=declarationRecord(this);writableDeclaration(record);return removeDeclaration(record,cssString(name));},item:function(index){if(!arguments.length)throw new TypeError('item requires 1 argument');return declarationRecord(this).names[Number(index)>>>0]||'';}};
+  var declarationMethods={getPropertyValue:function(name){if(!arguments.length)throw new TypeError('getPropertyValue requires 1 argument');if(!declarationRecords.get(this))throw new TypeError('Illegal invocation');name=cssString(name);var record=declarationRecord(this);return propertyValue(record,name);},getPropertyPriority:function(name){if(!arguments.length)throw new TypeError('getPropertyPriority requires 1 argument');var record=declarationRecord(this);name=cssString(name);if(!record.fontFace&&cssShorthand){name=propertyAlias(name);var longhands=shorthandName(name)&&cssShorthand('longhands',name);if(longhands)return longhands.every(function(longhand){var value=record.values.get(longhand);return value&&value.priority==='important';})?'important':'';}var value=record.values.get(name);return value?value.priority:'';},setProperty:function(name,value,priority){if(arguments.length<2)throw new TypeError('setProperty requires 2 arguments');setDeclaration(declarationRecord(this),name,value,priority);},removeProperty:function(name){if(!arguments.length)throw new TypeError('removeProperty requires 1 argument');var record=declarationRecord(this);writableDeclaration(record);return removeDeclaration(record,cssString(name));},item:function(index){if(!arguments.length)throw new TypeError('item requires 1 argument');return declarationRecord(this).names[Number(index)>>>0]||'';}};
   Object.keys(declarationMethods).forEach(function(name){Object.defineProperty(declarationPrototype,name,{value:__ns.makeNativeFunction(declarationMethods[name],name,name==='setProperty'?2:1),writable:true,enumerable:true,configurable:true});});
   Object.defineProperty(declarationPrototype,Symbol.iterator,{value:Array.prototype.values,writable:true,configurable:true});
   function declarationProperty(name,record){if(typeof name!=='string'||name.startsWith('--'))return null;var cssName=cssPropertyName(name);return knownProperty(cssName)||record&&record.fontFace&&['src','font-display','unicode-range','size-adjust','ascent-override','descent-override','line-gap-override'].indexOf(cssName)>=0?cssName:null;}
-  var cssDeclaration=function(text,owner,parentRule,readOnly,fontFace){var target=Object.create(declarationPrototype),record={__proto__:null,fontFace:!!fontFace,refresh:null,names:[],values:new Map(),owner:owner||null,parentRule:parentRule||null,source:String(text||''),readOnly:!!readOnly},proxy;parseDeclaration(record,record.source);proxy=new Proxy(target,{get:function(obj,key,receiver){var index=cssIndex(key);if(index>=0)return declarationRecord(proxy).names[index];if(Reflect.has(obj,key))return Reflect.get(obj,key,receiver);var name=declarationProperty(key,record),value=name&&declarationRecord(proxy).values.get(name);return name?value?value.text:'':undefined;},set:function(obj,key,value,receiver){if(cssIndex(key)>=0)return false;if(Reflect.has(obj,key))return Reflect.set(obj,key,value,receiver);var name=declarationProperty(key,record);if(name){setDeclaration(declarationRecord(proxy),name,value,'');return true;}return Reflect.set(obj,key,value,receiver);},has:function(obj,key){return cssIndex(key)>=0?cssIndex(key)<declarationRecord(proxy).names.length:Reflect.has(obj,key)||!!declarationProperty(key,record);},ownKeys:function(){return declarationRecord(proxy).names.map(function(_,i){return String(i);}).concat(Reflect.ownKeys(target));},getOwnPropertyDescriptor:function(obj,key){var index=cssIndex(key),names=declarationRecord(proxy).names;if(index>=0&&index<names.length)return {value:names[index],writable:false,enumerable:true,configurable:true};var descriptor=Reflect.getOwnPropertyDescriptor(obj,key);if(descriptor)return descriptor;if(Reflect.has(declarationPrototype,key))return undefined;var name=declarationProperty(key,record),value=name&&declarationRecord(proxy).values.get(name);return name?{value:value?value.text:'',writable:true,enumerable:true,configurable:true}:undefined;},deleteProperty:function(obj,key){return cssIndex(key)<0&&Reflect.deleteProperty(obj,key);}});declarationRecords.set(proxy,record);return proxy;};
+  var cssDeclaration=function(text,owner,parentRule,readOnly,fontFace){var target=Object.create(declarationPrototype),record={__proto__:null,fontFace:!!fontFace,refresh:null,names:[],values:new Map(),owner:owner||null,parentRule:parentRule||null,source:String(text||''),readOnly:!!readOnly},proxy;parseDeclaration(record,record.source);proxy=new Proxy(target,{get:function(obj,key,receiver){var index=cssIndex(key);if(index>=0)return declarationRecord(proxy).names[index];if(Reflect.has(obj,key))return Reflect.get(obj,key,receiver);var name=declarationProperty(key,record);return name?propertyValue(declarationRecord(proxy),name):undefined;},set:function(obj,key,value,receiver){if(cssIndex(key)>=0)return false;if(Reflect.has(obj,key))return Reflect.set(obj,key,value,receiver);var name=declarationProperty(key,record);if(name){setDeclaration(declarationRecord(proxy),name,value,'');return true;}return Reflect.set(obj,key,value,receiver);},has:function(obj,key){return cssIndex(key)>=0?cssIndex(key)<declarationRecord(proxy).names.length:Reflect.has(obj,key)||!!declarationProperty(key,record);},ownKeys:function(){return declarationRecord(proxy).names.map(function(_,i){return String(i);}).concat(Reflect.ownKeys(target));},getOwnPropertyDescriptor:function(obj,key){var index=cssIndex(key),names=declarationRecord(proxy).names;if(index>=0&&index<names.length)return {value:names[index],writable:false,enumerable:true,configurable:true};var descriptor=Reflect.getOwnPropertyDescriptor(obj,key);if(descriptor)return descriptor;if(Reflect.has(declarationPrototype,key))return undefined;var name=declarationProperty(key,record);return name?{value:propertyValue(declarationRecord(proxy),name),writable:true,enumerable:true,configurable:true}:undefined;},deleteProperty:function(obj,key){return cssIndex(key)<0&&Reflect.deleteProperty(obj,key);}});declarationRecords.set(proxy,record);return proxy;};
   var inlineDeclarationReceiver=__ns.domAccessor('nodeType',false,'Element');
   __ns.makeInlineStyleDeclaration=function(element){inlineDeclarationReceiver.call(element);var style=inlineDeclarations.get(element);if(!style){style=cssDeclaration(appliedInlineRead.call(element),element);inlineDeclarations.set(element,style);}return style;};
   var computedStyleReader=g.getComputedStyle;
@@ -2466,7 +2462,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     // Reinstallation keeps read-only constructor prototypes from the previous
     // document; compatibility descriptors belong to this bootstrap's raw nodes.
     var oldBase=compatibilityElementPrototype||g.HTMLElement.prototype,oldDocument=g.Document.prototype;
-    var nodeConstructors=['Node','Element','HTMLElement','Document','HTMLDocument','CharacterData','Attr','DocumentType','NamedNodeMap','Text','Comment','CDATASection','ProcessingInstruction','DocumentFragment','ShadowRoot','SVGElement','SVGSVGElement'];
+    var nodeConstructors=['Node','Element','HTMLElement','Document','HTMLDocument','CharacterData','Attr','DocumentType','NamedNodeMap','Text','Comment','CDATASection','ProcessingInstruction','DocumentFragment','ShadowRoot','SVGElement','SVGSVGElement','MathMLElement'];
     Object.getOwnPropertyNames(g).forEach(function(name){if(/^HTML.*Element$/.test(name)&&typeof g[name]==='function'&&nodeConstructors.indexOf(name)<0)nodeConstructors.push(name);});
     nodeConstructors.forEach(function(name){var previous=g[name];var ctor=__ns.makeNativeFunction(function(){throw new TypeError('Illegal constructor');},name,0,true);ctor.prototype=previous.prototype;Object.defineProperty(g,name,{value:ctor,writable:true,configurable:true,enumerable:false});});
     var prototypes={};
@@ -2515,6 +2511,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     defineInterface('ShadowRoot',g.DocumentFragment.prototype);
     defineInterface('SVGElement',elementProto);
     defineInterface('SVGSVGElement',g.SVGElement.prototype);
+    defineInterface('MathMLElement',elementProto);
     Object.getOwnPropertyNames(g).forEach(function(name){
       if(!/^HTML.*Element$/.test(name)||name==='HTMLElement'||typeof g[name]!=='function')return;
       var proto=g[name].prototype;
@@ -2558,6 +2555,10 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
       Node:['nodeType','nodeName','isConnected','ownerDocument','parentNode','parentElement','childNodes','firstChild','nextSibling','nodeValue','textContent'],
       Element:['namespaceURI','prefix','localName','tagName','id','className','attributes','innerHTML','outerHTML','children','firstElementChild','shadowRoot'],
       HTMLElement:['style','dataset','contentEditable','isContentEditable'],
+      // ElementCSSInlineStyle: Chrome puts `style` on each of the three (`dataset`, from
+      // HTMLOrSVGElement, is document_basics.js's).
+      SVGElement:['style'],
+      MathMLElement:['style'],
       CharacterData:['data'],
       DocumentType:['publicId','systemId'],
       Document:['activeElement','children','firstElementChild'],
@@ -2581,7 +2582,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
       Object.defineProperty(prototypes.Attr,name,descriptor);
     });
     var doctypeName=__ns.domAccessor('__nodeName',false,'DocumentType');Object.defineProperty(prototypes.DocumentType,'name',{get:__ns.makeNativeFunction(function(){return doctypeName.call(this);},'get name',0),enumerable:true,configurable:true});
-    var inlineStyle=Object.getOwnPropertyDescriptor(htmlProto,'style');inlineStyle.set=__ns.makeNativeFunction(function(value){var style=inlineStyle.get.call(this);Object.getOwnPropertyDescriptor(declarationPrototype,'cssText').set.call(style,value);},'set style',1);Object.defineProperty(htmlProto,'style',inlineStyle);
+    [htmlProto,prototypes.SVGElement,prototypes.MathMLElement].forEach(function(proto){var inlineStyle=Object.getOwnPropertyDescriptor(proto,'style');inlineStyle.set=__ns.makeNativeFunction(function(value){var style=inlineStyle.get.call(this);Object.getOwnPropertyDescriptor(declarationPrototype,'cssText').set.call(style,value);},'set style',1);Object.defineProperty(proto,'style',inlineStyle);});
     ['Element','Document','DocumentFragment'].forEach(function(owner){
       var children=Object.getOwnPropertyDescriptor(prototypes[owner],'children').get;
       ['childElementCount','lastElementChild'].forEach(function(name){
@@ -2659,6 +2660,36 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
         }
       });
     });
+    // HTMLOrSVGElement (turbo-dom#87): focus() / blur() brand-check their interface. An SVG or
+    // MathML element takes script focus when connected, rendered and given a valid tabindex (or,
+    // in SVG, when it is an <a> with an href / xlink:href).
+    var nativeFocus=htmlProto.focus,nativeBlur=htmlProto.blur,nativeClick=htmlProto.click;
+    // Internal focusing steps (dialogs, focusgroup navigation) focus any element kind.
+    __ns.focusElement=nativeFocus;
+    var parsesTabIndex=function(element){var value=element.getAttribute('tabindex');return value!==null&&/^[\t\n\f\r ]*[+-]?[0-9]/.test(value);};
+    // Rendering, as Chrome 156 measures it: an SVG element other than <svg> needs a non-HTML
+    // parent, a non-SVG element under SVG needs a <foreignObject> parent, and no inclusive
+    // ancestor may compute display: none.
+    var foreignRendered=function(element){
+      for(var node=element;node&&node.nodeType===1;node=node.parentNode){
+        var parent=node.parentNode,parentSpace=parent&&parent.nodeType===1?parent.namespaceURI:null;
+        if(node.namespaceURI==='http://www.w3.org/2000/svg'&&node.localName!=='svg'&&(parentSpace===null||parentSpace==='http://www.w3.org/1999/xhtml'))return false;
+        if(node.namespaceURI!=='http://www.w3.org/2000/svg'&&parentSpace==='http://www.w3.org/2000/svg'&&parent.localName!=='foreignObject')return false;
+        if(g.getComputedStyle(node).display==='none')return false;
+      }
+      return true;
+    };
+    var foreignFocusable=function(element,svg){
+      if(!element.isConnected)return false;
+      if(!parsesTabIndex(element)&&!(svg&&element.localName==='a'&&(element.hasAttribute('href')||element.hasAttributeNS('http://www.w3.org/1999/xlink','href'))))return false;
+      return foreignRendered(element);
+    };
+    [['HTMLElement',htmlProto],['SVGElement',prototypes.SVGElement],['MathMLElement',prototypes.MathMLElement]].forEach(function(entry){
+      var check=__ns.domAccessor('nodeType',false,entry[0]),foreign=entry[0]!=='HTMLElement',svg=entry[0]==='SVGElement';
+      var operations={focus:foreign?function(){check.call(this);if(foreignFocusable(this,svg))return nativeFocus.apply(this,arguments);}:function(){check.call(this);return nativeFocus.apply(this,arguments);},blur:function(){check.call(this);return nativeBlur.apply(this,arguments);}};
+      if(!foreign)operations.click=function(){check.call(this);return nativeClick.apply(this,arguments);};
+      Object.keys(operations).forEach(function(name){Object.defineProperty(entry[1],name,{value:__ns.makeNativeFunction(operations[name],name,0),writable:true,configurable:true,enumerable:true});});
+    });
     computedStyleNativeMatches=Object.getOwnPropertyDescriptor(prototypes.Element,'matches').value;
     computedStyleNativeGetAttribute=Object.getOwnPropertyDescriptor(prototypes.Element,'getAttribute').value;
     computedStyleNativeRoot=Object.getOwnPropertyDescriptor(prototypes.Node,'getRootNode').value;
@@ -2732,6 +2763,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     enumAttribute('enterKeyHint',['enter','done','go','next','previous','search','send'],'');
     enumAttribute('virtualKeyboardPolicy',['auto','manual'],'');
     ['autofocus','inert'].forEach(function(name){reflectedMember(name,function(){return this.hasAttribute(name);},function(value){if(value)this.setAttribute(name,'');else this.removeAttribute(name);});});
+    ['SVGElement','MathMLElement'].forEach(function(owner){var check=__ns.domAccessor('nodeType',false,owner);Object.defineProperty(prototypes[owner],'autofocus',{configurable:true,enumerable:true,get:__ns.makeNativeFunction(function(){check.call(this);return this.hasAttribute('autofocus');},'get autofocus',0),set:__ns.makeNativeFunction(function(value){check.call(this);if(value)this.setAttribute('autofocus','');else this.removeAttribute('autofocus');},'set autofocus',1)});});
     reflectedMember('hidden',function(){var value=this.getAttribute('hidden');return value===null?false:value.toLowerCase()==='until-found'?'until-found':true;},function(value){if(typeof value!=='boolean'&&value!=null){value=attributeString(value);if(value.toLowerCase()==='until-found'){this.setAttribute('hidden','until-found');return;}}if(value)this.setAttribute('hidden','');else this.removeAttribute('hidden');});
     function inheritedAttribute(el,name,accepted){for(var node=el;node&&node.nodeType===1;node=node.parentElement){var value=node.getAttribute(name);if(value!==null&&accepted.indexOf(value.toLowerCase())>=0)return value.toLowerCase();}return null;}
     reflectedMember('translate',function(){return inheritedAttribute(this,'translate',['','yes','no'])!=='no';},function(value){this.setAttribute('translate',value?'yes':'no');});
@@ -2772,11 +2804,13 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     });
     var elementOperations={getAttributeNames(){return Array.from(this.attributes,function(attribute){return attribute.name;});},hasAttributes(){return this.attributes.length>0;},insertAdjacentText(position,text){if(typeof position==='symbol'||typeof text==='symbol')throw new TypeError('Cannot convert a Symbol to a string');position=String(position).toLowerCase();var node=this.ownerDocument.createTextNode(String(text));if(position==='beforebegin'){if(this.parentNode)this.parentNode.insertBefore(node,this);}else if(position==='afterend'){if(this.parentNode)this.parentNode.insertBefore(node,this.nextSibling);}else if(position==='afterbegin')this.insertBefore(node,this.firstChild);else if(position==='beforeend')this.appendChild(node);else throw new __ns.DOMException('Invalid adjacent position','SyntaxError');}};
     Object.keys(elementOperations).forEach(function(name){var delegate=elementOperations[name],check=__ns.domAccessor('nodeType',false,'Element');Object.defineProperty(elementProto,name,{value:__ns.makeNativeFunction(function(){check.call(this);if(arguments.length<delegate.length)throw new TypeError(name+' requires '+delegate.length+' arguments');return delegate.apply(this,arguments);},name,delegate.length),writable:true,enumerable:true,configurable:true});});
-    var eventHandlers=new WeakMap(),checkHandlerReceiver=__ns.domAccessor('nodeType',false,'HTMLElement');
+    // GlobalEventHandlers: HTMLElement, SVGElement and MathMLElement each brand-check (turbo-dom#87).
+    var eventHandlers=new WeakMap();
     var handlerNames='abort animationcancel animationend animationiteration animationstart auxclick beforeinput beforematch beforetoggle beforexrselect blur cancel canplay canplaythrough change click close command contentvisibilityautostatechange contextlost contextmenu contextrestored copy cuechange cut dblclick drag dragend dragenter dragleave dragover dragstart drop durationchange emptied ended error focus formdata gotpointercapture input invalid keydown keypress keyup load loadeddata loadedmetadata loadstart lostpointercapture mousedown mouseenter mouseleave mousemove mouseout mouseover mouseup mousewheel paste pause play playing pointercancel pointerdown pointerenter pointerleave pointermove pointerout pointerover pointerrawupdate pointerup progress ratechange reset resize scroll scrollend scrollsnapchange scrollsnapchanging securitypolicyviolation seeked seeking select selectionchange selectstart slotchange stalled submit suspend timeupdate toggle transitioncancel transitionend transitionrun transitionstart volumechange waiting webkitanimationend webkitanimationiteration webkitanimationstart webkittransitionend wheel'.split(' ');
+    [['HTMLElement',htmlProto],['SVGElement',prototypes.SVGElement],['MathMLElement',prototypes.MathMLElement]].forEach(function(owner){var checkHandlerReceiver=__ns.domAccessor('nodeType',false,owner[0]);
     handlerNames.forEach(function(type){
       var name='on'+type;
-      Object.defineProperty(htmlProto,name,{configurable:true,enumerable:true,
+      Object.defineProperty(owner[1],name,{configurable:true,enumerable:true,
         get:__ns.makeNativeFunction(function(){checkHandlerReceiver.call(this);if(prepareInlineHandler)prepareInlineHandler.call(this,name);var handlers=eventHandlers.get(this);return handlers&&handlers[name]&&handlers[name].value||null;},'get '+name,0),
         set:__ns.makeNativeFunction(function(value){
           checkHandlerReceiver.call(this);if(noteInlineHandler)noteInlineHandler.call(this,name);value=typeof value==='function'?value:null;
@@ -2787,6 +2821,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
           if(!value&&entry.value)this.removeEventListener(type,entry.callback);
           entry.value=value;
         },'set '+name,1)});
+    });
     });
     var nodeOperations={
       lookupNamespaceURI(prefix){prefix=prefix==null||prefix===''?null:attributeString(prefix);var element=this.nodeType===9?this.documentElement:this.nodeType===2?this.ownerElement:this.nodeType===1?this:this.parentElement;while(element){if(prefix==='xml')return 'http://www.w3.org/XML/1998/namespace';if(prefix==='xmlns')return 'http://www.w3.org/2000/xmlns/';if(element.namespaceURI&&element.prefix===prefix)return element.namespaceURI;var declaration=element.getAttributeNodeNS('http://www.w3.org/2000/xmlns/',prefix===null?'xmlns':prefix);if(declaration&&(prefix===null?declaration.prefix===null:declaration.prefix==='xmlns'))return declaration.value||null;element=element.parentElement;}return null;},
@@ -2827,7 +2862,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
         if(namespace==='http://www.w3.org/2000/svg'){
           var localStart=0;for(var index=0;index<tag.length;index++)if(tag[index]===':')localStart=index+1;
           name=projectionApply(projectionSlice,tag,[localStart])==='svg'?'SVGSVGElement':'SVGElement';
-        }else name=namespace==='http://www.w3.org/1999/xhtml'?htmlInterfaceName(tag):'Element';
+        }else name=namespace==='http://www.w3.org/1999/xhtml'?htmlInterfaceName(tag):namespace==='http://www.w3.org/1998/Math/MathML'?'MathMLElement':'Element';
       }else name=type===11&&projectionApply(isShadowRoot,obj,[])?'ShadowRoot':({2:'Attr',10:'DocumentType',3:'Text',4:'CDATASection',7:'ProcessingInstruction',8:'Comment',9:'HTMLDocument',11:'DocumentFragment'})[type]||'Node';
       projectionSetPrototype(obj,prototypes[name]);
       projectionApply(projectionAdd,projected,[obj]);

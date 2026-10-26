@@ -89,6 +89,64 @@ changes in `tools/parity/expected/p5b-w7-turbo-dom-*.json`.
   contains resolve `%` / `bottom` insets and `%` heights against it (as #81 does for
   screenshots). `layout_recorded` keeps the height unknown.
 
+### Fixed — CSSOM shorthands expand and serialize like Chrome (P5b-X8, miaskiewicz/turbo-dom#90, Chrome 156 control)
+- `element.style` (and `CSSStyleRule.style`) stored a shorthand verbatim: `style.flex = '1'`
+  read `1` with empty `flex-grow` / `flex-shrink` / `flex-basis` (Chrome `1 1 0%`), and no
+  shorthand set its longhands. turbo-dom's new `rtdom::css_shorthand` implements Chrome 156's
+  129 shorthands (plus 15 shorthand aliases): every longhand set in Chrome's order (omitted
+  ones at their initial value, `var()` values pending on the shorthand), `getPropertyValue`
+  / `cssText` serialized from the longhands with Blink's rules and shorthand preference,
+  `removeProperty(shorthand)`, `cssText` parsing order and `!important`, 101 longhand aliases
+  (`word-wrap` is `overflow-wrap`). Used by turbo-dom-browser-env (`__cssShorthandNative`) and,
+  as the lockstep port `src/runtime/css-shorthand.mjs`, by the npm runtime's `el.style`.
+- turbo-dom-browser-env's computed cascade expands UA / Web Animations shorthands with the
+  same engine (the old token-shape heuristics are gone) and drops a UA shorthand entry a later
+  longhand outdates.
+- npm runtime behaviour changes: `cssText` / the `style` attribute end each declaration with
+  `;`; multi-token shorthands set their longhands (the single-token read fallback is gone);
+  an invalid shorthand value is ignored.
+- Control: `crates/turbo-dom/tests/fixtures/css-shorthand-{probe.js,cases.json}` →
+  `css_shorthand_chrome156.json` (3088 scenarios, `scripts/make-css-shorthand-cases.py`; round
+  five — cases a mutation run showed unpinned — also fixed `calc()` type checks and nested /
+  distributed simplification (`calc(2 * (1px + 1em))` → `calc(2em + 2px)`, `pi`, `e`), `min()` /
+  `clamp()` arity, `rgb()` / `hsl()` arity, `none` and `calc()` channels, `linear()` stop
+  clamping, `steps()` / `cubic-bezier()` ranges, family names and quoted animation names spelled
+  like Chrome, `oblique` angle range, three-value positions with `center`, grid track sign checks,
+  `timeline-trigger` lists and omitted parts, layered shorthands with uneven longhand lists, and
+  `font-variant` alternates anywhere).
+
+### Fixed — CSSStyleDeclaration longhand spelling (P5b-X8, miaskiewicz/turbo-dom#97, Chrome 156 control)
+- A longhand set directly kept its authored text (`width: 0` → `0`, Chrome `0px`; `1PX`,
+  `url(a)`, single quotes) and some valid values were rejected (`column-rule-color: red`,
+  `position-try-fallbacks: --a`, `interest-delay-start: inherit`, `animation-duration: auto`,
+  `text-align: -webkit-center`). `rtdom::css_shorthand::longhand_value` spells (and, for the
+  longhands it has a grammar for, admits or rejects) values like Chrome; the binding and the npm
+  runtime store that spelling. The binding's computed cascade keeps reading the stylesheet
+  grammar's text (full precision).
+- Control: `crates/turbo-dom/tests/fixtures/css-longhand-{probe.js,cases.json}` →
+  `css_longhand_chrome156.json` (2380 pairs, `scripts/make-css-longhand-cases.py`; round two
+  added grammars for `transform-origin`, `perspective-origin`, `object-position`, `offset-anchor`
+  / `-position`, `border-image-slice` / `-width` / `-outset`, `justify-items`, `animation-trigger`).
+- Typed OM (`StylePropertyMap.set` / `append`, the map's reads) keeps the value as parsed —
+  Chrome stores the `CSSStyleValue` — instead of setProperty's specified-value spelling
+  (`__ns.setDeclarationAuthored` / `__ns.declarationAuthoredValue`).
+
+### Fixed — SVG and MathML elements: style, dataset and the HTMLOrSVGElement mixins (P5b-X8, miaskiewicz/turbo-dom#87, Chrome 156 control)
+- turbo-dom-browser-env: `svg.style` was `undefined` (React components with an inline-styled
+  SVG icon threw, miaskiewicz/turbo-test#79), and SVG / MathML elements had no `nonce`,
+  `tabIndex`, `autofocus`, `focus()`, `blur()` or `on*` handlers; MathML elements were plain
+  `Element`s. `SVGElement` and the new `MathMLElement` carry those members like Chrome, each
+  brand-checked (HTMLElement's `dataset`, `focus()`, `blur()`, `click()` no longer accept SVG /
+  MathML receivers); SVG / MathML script focus follows Chrome's measured rules.
+- npm runtime: MathML-namespace elements are `MathMLElement`s (`window.MathMLElement`).
+- Control: `crates/turbo-dom-browser-env/src/svg_mathml_element_{probe.js,cases.json,chrome156.json}`.
+
+### Fixed — HTMLTrackElement constants in deferred key order (P5b-X8, miaskiewicz/turbo-dom#99)
+- turbo-dom-browser-env: `NONE` / `LOADING` / `LOADED` / `ERROR` were created
+  non-configurable, so the key-order step could not move them after attributes installed
+  later (turbo-surf's child frames listed them before `src`); they are now configurable until
+  the key order freezes them.
+
 ### Fixed — `HTMLTrackElement` and `TextTrack` (P5b-X6, miaskiewicz/turbo-dom#74, Chrome 156 control)
 - turbo-dom-browser-env: `<track>` had no interface, so `track.src`, `kind`, `srclang`,
   `label`, `default`, `readyState`, `track` and `NONE` / `LOADING` / `LOADED` / `ERROR` were

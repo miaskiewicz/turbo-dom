@@ -156,6 +156,8 @@ mod html_popover;
 mod pointer_events;
 #[path = "typed_om.rs"]
 mod typed_om;
+#[path = "css_shorthand.rs"]
+mod css_shorthand;
 pub use pointer_events::{host_pointer, PointerLockPolicy};
 #[path = "form_pseudo.rs"]
 mod form_pseudo;
@@ -6665,6 +6667,8 @@ fn dom_accessor_dispatch(
                     "Attr" => kind == 2,
                     "DocumentType" => kind == 10,
                     "HTMLElement" => kind == 1 && tree.namespace_id(h) == 0,
+                    "SVGElement" => kind == 1 && tree.namespace_id(h) == 1,
+                    "MathMLElement" => kind == 1 && tree.namespace_id(h) == 2,
                     "CharacterData" => matches!(kind, 3 | 4 | 7 | 8),
                     "Text" => matches!(kind, 3 | 4),
                     "Document" => kind == 9,
@@ -7332,6 +7336,7 @@ fn computed_font_context<'s>(
 pub fn register_css_parser(scope: &mut v8::PinScope) {
     let global = scope.get_current_context().global(scope);
     bind_method(scope, global, "__parseCssNative", parse_css_native);
+    css_shorthand::register(scope, global);
     bind_method(
         scope,
         global,
@@ -9899,6 +9904,15 @@ mod html_track_tests;
 #[cfg(test)]
 #[path = "shadow_events_tests.rs"]
 mod shadow_events_tests;
+#[cfg(test)]
+#[path = "svg_mathml_element_tests.rs"]
+mod svg_mathml_element_tests;
+#[cfg(test)]
+#[path = "css_shorthand_tests.rs"]
+mod css_shorthand_tests;
+#[cfg(test)]
+#[path = "css_longhand_tests.rs"]
+mod css_longhand_tests;
 
 #[cfg(test)]
 #[path = "css_live_tests.rs"]

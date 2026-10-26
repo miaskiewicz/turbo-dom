@@ -362,7 +362,7 @@ test('parse cache stays correct after >64 distinct shells (LRU, no wholesale cle
 });
 
 // 7. style longhand reads fall back to a single-token shorthand
-test('style longhand reads fall back to single-token shorthand', () => {
+test('style shorthands expand into longhands like Chrome 156 (turbo-dom#90)', () => {
   const { document } = env('<div id=d></div>');
   const d = document.getElementById('d');
   d.style.background = 'red';
@@ -370,8 +370,11 @@ test('style longhand reads fall back to single-token shorthand', () => {
   assert.equal(d.style.getPropertyValue('background-color'), 'red');
   d.style.margin = '5px';
   assert.equal(d.style.marginTop, '5px');
-  d.style.padding = '2px 4px'; // multi-token → no single-longhand fallback (honest)
-  assert.equal(d.style.paddingTop, '');
+  d.style.padding = '2px 4px';
+  assert.deepEqual([d.style.paddingTop, d.style.paddingRight], ['2px', '4px']);
+  d.style.flex = '1';
+  assert.deepEqual([d.style.flex, d.style.flexGrow, d.style.flexShrink, d.style.flexBasis], ['1 1 0%', '1', '1', '0%']);
+  assert.equal(d.getAttribute('style'), 'background: red; margin: 5px; padding: 2px 4px; flex: 1 1 0%;');
 });
 
 // ------------------------------ report categories B / C / E (real gaps) ----

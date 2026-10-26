@@ -1,0 +1,13 @@
+{
+ "id": "turbo-dom#90",
+ "reason": "CSSStyleDeclaration expands every Chrome 156 shorthand into its longhands and serializes getPropertyValue / cssText from them (turbo-dom rtdom::css_shorthand, used by the binding and ported to the npm runtime); the binding's computed cascade expands UA / animation shorthands with the same engine. html2pdf's cascade does not call rtdom::css_shorthand. MEASURED as a proxy: the 117 pinned surf live pages (bin/corpus-surf.mjs inputs) were loaded into turbo-dom-browser-env at ed33331 and at this branch and the live dump's computed PROPS plus every element's style.cssText were read: all 117 identical. The pages' own scripts were not run by the proxy; those that touch style (harness/detection/fixtures/css-security.html: opacity; the React fixtures: display) use longhands whose spelling does not change, so the surf live dump is predicted unchanged (the surf corpus is rebuilt at surf integration). Static screenshots and the html2pdf corpora do not run the binding. P5b-X8.",
+ "control": "crates/turbo-dom/tests/fixtures/css_shorthand_chrome156.json (2456 scenarios)",
+ "e2e": "crates/turbo-dom/tests/css_shorthand_chrome.rs; crates/turbo-dom-browser-env/src/css_shorthand_tests.rs; test/css-shorthand-chrome.test.mjs",
+ "changes": {
+  "html2pdf": [],
+  "html2pdf-svg": [],
+  "html2pdf-extra": [],
+  "surf": [],
+  "surf-extra": []
+ }
+}
