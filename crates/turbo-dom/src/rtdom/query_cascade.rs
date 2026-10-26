@@ -351,11 +351,8 @@ fn parse_raw(item: &str) -> Result<Complex, SelectorError> {
     }
     if item.contains('\\') {
         let units: Vec<u16> = item.encode_utf16().collect();
-        let mut list = units::list(&units);
-        if list.len() != 1 {
-            return Err(SelectorError::EmptyCompound);
-        }
-        Ok(list.remove(0))
+        // one validated item is one complex selector
+        units::list(&units).into_iter().next().ok_or(SelectorError::EmptyCompound)
     } else {
         parse_complex(item).ok_or(SelectorError::EmptyCompound)
     }
@@ -498,12 +495,14 @@ fn reject_nested_has(complex: &mut Complex) -> Result<(), SelectorError> {
                 Pseudo::Is(list) | Pseudo::Where(list) | Pseudo::WebkitAny(list) => {
                     list.retain(|c| !contains_has(c));
                 }
-                Pseudo::Not(list)
-                | Pseudo::NthChildOf(_, _, list)
-                | Pseudo::NthLastChildOf(_, _, list)
-                    if list.iter().any(contains_has) =>
-                {
-                    return Err(invalid(":has() inside :has()"));
+                Pseudo::Not(list) if list.iter().any(contains_has) => {
+                    return Err(invalid(":has() inside :not() inside :has()"));
+                }
+                Pseudo::NthChildOf(_, _, list) if list.iter().any(contains_has) => {
+                    return Err(invalid(":has() inside :nth-child() inside :has()"));
+                }
+                Pseudo::NthLastChildOf(_, _, list) if list.iter().any(contains_has) => {
+                    return Err(invalid(":has() inside :nth-last-child() inside :has()"));
                 }
                 _ => {}
             }
@@ -517,18 +516,23 @@ pub(super) fn contains_has(complex: &Complex) -> bool {
     std::iter::once(&complex.first)
         .chain(complex.rest.iter().map(|(_, c)| c))
         .flat_map(|c| &c.pseudos)
-        .any(|p| match p {
-            Pseudo::Has(_) => true,
-            Pseudo::Is(list)
-            | Pseudo::Where(list)
-            | Pseudo::Not(list)
-            | Pseudo::WebkitAny(list)
-            | Pseudo::NthChildOf(_, _, list)
-            | Pseudo::NthLastChildOf(_, _, list) => {
-                list.iter().any(contains_has)
-            }
-            _ => false,
-        })
+        .any(|p| matches!(p, Pseudo::Has(_)) || selector_list(p).iter().any(contains_has))
+}
+
+/// The selector-list argument of `:is()`, `:where()`, `:not()`, `:-webkit-any()` and
+/// `of S` (empty for every other pseudo). One arm per variant: LLVM attributes a
+/// multi-line or-pattern's continuation lines to never-counted gap regions.
+#[allow(clippy::match_same_arms)]
+fn selector_list(p: &Pseudo) -> &[Complex] {
+    match p {
+        Pseudo::Is(list) => list,
+        Pseudo::Where(list) => list,
+        Pseudo::Not(list) => list,
+        Pseudo::WebkitAny(list) => list,
+        Pseudo::NthChildOf(_, _, list) => list,
+        Pseudo::NthLastChildOf(_, _, list) => list,
+        _ => &[],
+    }
 }
 
 fn check_nested(complex: &mut Complex) -> Result<(), SelectorError> {

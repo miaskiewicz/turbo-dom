@@ -109,6 +109,10 @@ enum AttrMatch {
 #[path = "selector_source.rs"]
 mod source;
 
+#[cfg(test)]
+#[path = "query_internal_tests.rs"]
+mod internal_tests;
+
 #[path = "query_utf16.rs"]
 mod units;
 use units::UnitAttrMatch;
@@ -942,25 +946,29 @@ fn forgive_nested_has(complex: &mut Complex) {
     }
 }
 
-/// Does a selector-list argument have an empty item (`p, `, `,p`, `p,,a`, or nothing)
-/// or one ending in a combinator (`p >`)? The unforgiving lists reject it.
-fn has_empty_item(arg: &str) -> bool {
+/// Does a selector-list argument have an invalid item: empty (`p, `, `,p`, `p,,a`, or
+/// nothing), ending in a combinator (`p >`), or — unless `relative` (`:has()`) —
+/// starting with one (`> p`)? The unforgiving lists reject it.
+fn has_empty_item(arg: &str, relative: bool) -> bool {
     split_top_level_commas(arg)
         .iter()
-        .any(|item| item.trim().is_empty() || trailing_combinator(item))
+        .any(|item| invalid_list_item(item, relative))
 }
 
-/// Does a selector-list item end in a combinator (`p >`; an escaped `\>` is a name)?
-fn trailing_combinator(item: &str) -> bool {
-    let mut tail = item.trim_end().chars().rev();
-    matches!(tail.next(), Some('>' | '+' | '~')) && tail.next() != Some('\\')
+/// See [`has_empty_item`]; an escaped `\>` is a name, not a combinator.
+fn invalid_list_item(item: &str, relative: bool) -> bool {
+    let item = item.trim();
+    let mut tail = item.chars().rev();
+    item.is_empty()
+        || (matches!(tail.next(), Some('>' | '+' | '~')) && tail.next() != Some('\\'))
+        || (!relative && item.starts_with(['>', '+', '~']))
 }
 
-/// A forgiving list (`:is()` / `:where()`): items ending in a combinator are dropped.
+/// A forgiving list (`:is()` / `:where()`): its invalid items are dropped.
 fn parse_forgiving_list(src: &str) -> Vec<Complex> {
     split_top_level_commas(src)
         .into_iter()
-        .filter(|item| !trailing_combinator(item))
+        .filter(|item| !invalid_list_item(item, false))
         .filter_map(|item| parse_complex(item.trim()))
         .collect()
 }
@@ -1027,7 +1035,7 @@ fn parse_pseudo(name: &str, arg: Option<&str>) -> Pseudo {
                 if !valid_anb(anb) {
                     return Pseudo::unknown(name, Some(arg));
                 }
-                if has_empty_item(of) {
+                if has_empty_item(of, false) {
                     return Pseudo::unknown(name, Some(arg));
                 }
                 let (a, b) = parse_nth(anb);
@@ -1064,7 +1072,8 @@ fn parse_pseudo(name: &str, arg: Option<&str>) -> Pseudo {
         "is" => Pseudo::Is(parse_forgiving_list(arg.unwrap_or(""))),
         "where" => Pseudo::Where(parse_forgiving_list(arg.unwrap_or(""))),
         // the unforgiving lists reject an empty item (`:not(p, )`; Chrome: SyntaxError)
-        "not" | "has" if has_empty_item(arg.unwrap_or("")) => Pseudo::unknown(name, arg),
+        "not" if has_empty_item(arg.unwrap_or(""), false) => Pseudo::unknown(name, arg),
+        "has" if has_empty_item(arg.unwrap_or(""), true) => Pseudo::unknown(name, arg),
         "not" => Pseudo::Not(parse_selector_list_str(arg.unwrap_or(""))),
         "has" => Pseudo::Has(parse_relative_selector_list(arg.unwrap_or(""))),
         "-webkit-any" => cascade::webkit_any(arg.unwrap_or(""))

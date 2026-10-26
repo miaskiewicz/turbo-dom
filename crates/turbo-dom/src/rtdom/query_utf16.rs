@@ -267,7 +267,9 @@ fn attribute_value(source: &[u16]) -> (&[u16], bool, Option<Vec<u16>>) {
             }
             end = escaped_end(source, end);
         }
-        return (source, true, None);
+        // the bracket scanner only closes `[` outside a string, and DOM-API sources are
+        // EOF-closed string first (`selector_source`): the quote always ends here
+        unreachable!("unterminated quoted attribute value");
     }
     let end = unquoted_end(source);
     (
@@ -438,20 +440,19 @@ fn pseudo(name: &str, arg: Option<&[u16]>) -> Pseudo {
     }
     // the unforgiving lists reject an empty item or one ending in a combinator
     // (`:not(p, )`, `:not(p >)`; Chrome: SyntaxError), the forgiving ones drop it
-    let empty_item = || split(arg, 44).into_iter().any(invalid_item);
+    let invalid = |relative| split(arg, 44).into_iter().any(|item| invalid_item(item, relative));
     let forgiving = || {
         split(arg, 44)
             .into_iter()
-            .filter(|item| !invalid_item(item))
+            .filter(|item| !invalid_item(item, false))
             .filter_map(complex)
             .collect()
     };
     match name {
         "is" => Pseudo::Is(forgiving()),
         "where" => Pseudo::Where(forgiving()),
-        "not" | "has" if empty_item() => {
-            Pseudo::unknown(name, Some(&String::from_utf16_lossy(arg)))
-        }
+        "not" if invalid(false) => Pseudo::unknown(name, Some(&String::from_utf16_lossy(arg))),
+        "has" if invalid(true) => Pseudo::unknown(name, Some(&String::from_utf16_lossy(arg))),
         "not" => Pseudo::Not(list(arg)),
         // `An+B of S`: S keeps its original units (escapes decoded by `list`).
         "nth-child" | "nth-last-child" if nth_of_position(arg).is_some() => {
@@ -461,7 +462,7 @@ fn pseudo(name: &str, arg: Option<&[u16]>) -> Pseudo {
                 return Pseudo::unknown(name, Some(&String::from_utf16_lossy(arg)));
             }
             let of = &arg[at + 2..];
-            if split(of, 44).into_iter().any(invalid_item) {
+            if split(of, 44).into_iter().any(|item| invalid_item(item, false)) {
                 return Pseudo::unknown(name, Some(&String::from_utf16_lossy(arg)));
             }
             let (a, b) = parse_nth(&anb);
@@ -496,12 +497,14 @@ fn pseudo(name: &str, arg: Option<&[u16]>) -> Pseudo {
         _ => parse_pseudo(name, Some(&String::from_utf16_lossy(arg))),
     }
 }
-/// A list item that is empty or ends in an unescaped combinator (`p >`).
-fn invalid_item(item: &[u16]) -> bool {
+/// A list item that is empty, ends in an unescaped combinator (`p >`) or — unless
+/// `relative` (`:has()`) — starts with one (`> p`).
+fn invalid_item(item: &[u16], relative: bool) -> bool {
     let item = trim(item);
     item.is_empty()
         || (matches!(item.last(), Some(62 | 43 | 126))
             && item.len().checked_sub(2).and_then(|at| item.get(at)) != Some(&92))
+        || (!relative && matches!(item.first(), Some(62 | 43 | 126)))
 }
 fn complex(source: &[u16]) -> Option<Complex> {
     let mut index = 0;

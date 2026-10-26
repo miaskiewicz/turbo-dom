@@ -314,3 +314,33 @@ fn pending_records_account_their_lone_unit_names_until_drained() {
     assert_eq!(tree.processing_instruction_target(pi), Some("t"));
     assert_eq!(serialize_inner(&tree, p), "<!--parsed--><?t changed?>");
 }
+
+#[test]
+fn stylesheet_selectors_keep_an_escape_at_the_end_as_a_replacement_character() {
+    use turbo_dom::rtdom::query::{match_for_cascade, parse_for_cascade, LiveNavigator};
+    let mut tree = Tree::parse("<p>x</p>");
+    let p = tree.query_selector("p").unwrap();
+    let replaced = tree.create_element("p\u{fffd}");
+    // a prelude is not EOF-closed: `p\` is the name `p\u{FFFD}` (CSS Syntax)
+    let list = parse_for_cascade("p\\").unwrap();
+    let nav = LiveNavigator(&tree);
+    let matches = |h| list.selectors().iter().any(|s| match_for_cascade(&nav, h, s));
+    assert!(!matches(p));
+    assert!(matches(replaced));
+    // and an unterminated block or string in a prelude stays an error
+    assert!(parse_for_cascade("[a=\"x").is_err());
+    assert!(parse_for_cascade("[a").is_err());
+    assert!(parse_for_cascade(":is(p").is_ok(), "an open function argument is tolerated");
+}
+
+#[test]
+fn the_lenient_utf16_query_skips_a_character_it_cannot_place() {
+    let tree = Tree::parse("<p>x</p><a></a>");
+    let p = tree.query_selector("p").unwrap();
+    // `)` cannot start a compound: the lenient API skips it (the `_checked` / binding
+    // validation rejects such a selector before any query)
+    assert_eq!(tree.query_selector_all_units(&u("\\70)")).to_vec(), [p]);
+    assert_eq!(tree.query_selector_all_checked("\\70)").map(|l| l.len()).ok(), None);
+    // garbage the parser can place nowhere matches nothing
+    assert_eq!(tree.query_selector_all_units(&u("!\\70")).len(), 0);
+}
