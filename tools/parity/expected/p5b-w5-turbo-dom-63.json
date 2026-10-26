@@ -1,0 +1,13 @@
+{
+ "id": "miaskiewicz/turbo-dom#63",
+ "reason": "border-spacing is inherited, initially 0; UA table { border-spacing: 2px }. Fresh-target parity builds turbo-dom f62 -> f63 (P5b-W5 steps, html2pdf consol/p5b-w5 950754e): 0 existing outputs change. P5b-W5.",
+ "control": "scripts/html-document-chrome-control.mjs css-table-* / table-spacing-not-inherited-past-a-table cases",
+ "e2e": "crates/turbo-dom-layout/tests/html_document_chrome.rs (border_spacing_is_inherited_and_initially_zero_like_chrome_156)",
+ "changes": {
+  "html2pdf": [],
+  "html2pdf-svg": [],
+  "html2pdf-extra": [],
+  "surf": [],
+  "surf-extra": []
+ }
+}

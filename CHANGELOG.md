@@ -61,6 +61,96 @@ at the time); this file reconstructs them from history.
   collection now records the state first. Reproduced through the binding
   (`collect_native_storage` after `install_html` and a GC, then the
   `custom_elements_defined_chrome156.json` probe).
+### Fixed — turbo-dom-layout tables, clipping and box sizing (P5b-W5, miaskiewicz/turbo-dom#41/#51/#52/#55/#62/#63/#64/#65/#69/#70, Chrome 156 controls)
+Each fix is backed by a Chrome for Testing 156 control and lists the corpus outputs it
+changes in `tools/parity/expected/p5b-w5-turbo-dom-*.json`.
+- Table captions (#51): a `<caption>` (UA `caption { display: table-caption; text-align:
+  -webkit-center }`; `caption-side` is inherited) was laid out as a row group — its block content
+  became grid rows, its text was dropped and it had no box. A table with captions is now
+  a table wrapper box (CSS Tables 3 §3.1, as Chrome lays it out): the `<table>`'s box (its
+  `getBoundingClientRect()` / `layoutBoxes`) holds the `caption-side: top` captions in
+  source order, an anonymous table grid box, then the `bottom` captions. The wrapper is
+  as wide as the grid or the widest caption's min-content margin box, whichever is wider,
+  and the grid stretches to it; each caption is a block formatting context at that width
+  with its own box, its margins inside the wrapper. The grid box carries the table's
+  border, padding, background, shadow, `height` and rows, so they no longer cover the
+  captions; margins, positioning and transforms stay on the wrapper. Every layout path
+  (PDF, screenshot, live). `NodeSources::table_grids` lists the grid boxes (no source
+  element; html2pdf tags their rows as the table's). Tables without a caption lay out as
+  before. Control: `caption-*` in `html-document`, `live-geometry` and the new pixel
+  control `scripts/paint-chrome-control.mjs` (`crates/turbo-dom-raster/tests/
+  paint_chrome.rs`).
+- Partial `clip: rect()` (#52): on the PDF and screenshot paths every element whose `clip`
+  started with `rect(` was dropped from layout and paint (it had no box, no
+  `layoutBoxes` entry and no pixels), so a partially clipped box — a CSS sprite, a
+  clipped badge — vanished. Now only an absolutely positioned box whose clip keeps
+  nothing at any size (the sr-only `rect(0,0,0,0)` / `rect(1px,1px,1px,1px)`) is left out
+  (its text stays out of PDF text and tagging); any other box lays out (`clip` does not
+  apply to a box that is not absolutely positioned, as in Chrome), and an absolutely
+  positioned one records its clip region in `Fragment::clip` (`ClipRect`, from the
+  border-box corner, `auto` = the edge). turbo-dom-raster paints the box and its
+  descendants through it (PNG: a masked layer over the region, in the box's transformed
+  space; SVG: a `<clipPath>`), as does turbo-html2pdf's PDF emitter. Control: `clip-*` in
+  `scripts/paint-chrome-control.mjs` (pixels + boxes).
+- `box-sizing: border-box` widths (#65, found while fixing #51): a `px` width under
+  `border-box` is the border box — never narrower than the padding and border — in a
+  box's intrinsic widths too (`flex::natural_width` / `min_content_width`: floats,
+  inline-blocks, flex items and shrink-to-fit tables around it) and in table column
+  widths (a cell's `width`, auto and fixed layout; collapsed: less its half-borders).
+  They counted the padding and border twice (a float around a `border-box; width:100px;
+  padding:10px` box was 120px wide). Control: `border-box-*` in `html-document`.
+- `<table>` is `box-sizing: border-box` (#62, found while fixing #51): the UA `table`
+  rule (also `user_agent_css()` for embedders) sets it as Chrome's does, so a table's
+  `width` / `min-width` / `max-width` / `height` include its border and padding (a
+  `width:120px; border:4px` table was 128px wide; an author `box-sizing` still wins).
+  Control: `table-border-box-*` / `table-content-box-author` in `html-document`,
+  `caption-narrow` in the paint control.
+- `border-spacing` (#63, found while fixing #51): the property is inherited and its
+  initial value is 0; the UA `table` rule gives `<table>` its 2px. Every table box used
+  to default to 2px, so a `display: table` element that is not a `<table>` (CSS tables,
+  a caption test's anonymous table) had 2px gaps around and between its cells, and a
+  `display: table` element did not inherit a `border-spacing` from its ancestors.
+  Control: `css-table-*` / `table-spacing-not-inherited-past-a-table` in `html-document`.
+- Table heights (#64, found while fixing #51): a table whose `height` / `min-height` is
+  more than its rows need gives the extra height to its rows, as Chrome 156 does — to
+  the body sections (else every section) in proportion to their heights, inside a
+  section to its rows without an explicit `height` (else all of them) in proportion,
+  equally when they are empty, in 1/64 px units — so cells stretch, and their
+  backgrounds, borders and `vertical-align` follow. The table box was tall but its rows
+  kept their content height. Separated and collapsed tables, every path. Control:
+  `table-height-*` in `html-document`.
+- Table column growth (#55): a table wider than its columns' max-content (a definite
+  `width`, `min-width`, or stretched) gives the extra width to its auto columns (no `px`
+  cell width) in proportion to their max-content, equally when they are all empty, and
+  only without auto columns to the `px` ones — as Chrome 156 does. Empty cells of a
+  `width:100%` table used to get 0px (no backgrounds or heights painted), and a
+  `width:100px` cell beside content grew with it (307px instead of 100px). Control:
+  `table-columns-*` in `html-document`.
+- Last-child bottom margins (#41): under the generic / PDF layout policy a block dropped
+  its last in-flow child's bottom margin — it was neither kept inside a parent with a
+  bottom border or padding, a definite height or its own formatting context, nor
+  collapsed through an auto-height parent into the parent's margin. It now follows CSS
+  2.2 §8.3.1 on every policy (the live / HTML-metrics policy already did), and a box
+  laid out as its own formatting context by its parent (a table cell, a flex or grid
+  item) keeps its children's top and bottom margins inside. Changes the galley of every
+  PDF whose blocks end with a margined child (and paginated breaks: turbo-html2pdf#32's
+  `exact-fill-child-margin`). Control: `last-margin-*` in `html-document`.
+
+- Legacy alignment (#69, found while fixing #51): a `text-align: center` / `right`
+  container centred / right-aligned its block-level children; in Chrome only the legacy
+  `-webkit-center` / `-webkit-right` / `-webkit-left` values do (plain values align inline
+  content only). Those values are now parsed (inline content aligns as `center` /
+  `right` / `left`; `BoxStyle::legacy_align` moves the blocks), the UA `center` and
+  `caption` rules use `-webkit-center`, and the `align` attribute of `div`, `p`, `h1`-`h6`,
+  `td`, `th` and `tr` is a presentational hint (`center`/`middle` → `-webkit-center`,
+  `left`/`right` → `-webkit-left`/`-webkit-right`, `justify`; also in
+  `presentational_declarations` for live layouts). Control: `legacy-align-*` in
+  `html-document`.
+
+- Header cells (#70, found while fixing #51): the UA stylesheet gains Chrome's
+  `th { font-weight: bold; text-align: center }` (`center` aligns the cell's inline
+  content, not its blocks, as Chrome's `-internal-center`); `<th>` text was regular weight
+  and left-aligned in PDFs and screenshots. Control: `th-*` in `html-document`.
 
 ### Fixed — raster `<img>` handling, AVIF orientation (P5b-W4, Chrome 156 controls)
 - `turbo-dom-raster` paints an `<img src="data:…">` from its own URL

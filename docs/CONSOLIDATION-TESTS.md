@@ -1174,6 +1174,28 @@ Declared behaviour changes (Chrome 156 controls), not moves:
 | turbo-dom-layout | `turbo_dom_layout<src/lib.rs>::live::chrome_tests::{inline_flex_and_grid_are_inline_level_like_chrome_156, absolutely_positioned_auto_widths_shrink_to_fit_like_chrome_156, percentage_columns_size_auto_tables_like_chrome_156, auto_layout_collapsed_tables_merge_borders_like_chrome_156, spanning_cells_spread_over_their_columns_like_chrome_156}`, `html_document_chrome<tests/html_document_chrome.rs>::(the same five)` | new (bugs found while fixing #28: turbo-dom#53, #48, #50, #49, #56; each test-first) |
 | turbo-dom-layout | `turbo_dom_layout<src/lib.rs>::layout::value::display_tests::inline_flex_and_grid_are_inline_level_until_blockified`, `::layout::flex::tests::grid_natural_sums_px_tracks_and_gaps`, `::layout::table::percent_tests::{percent_aware_total_matches_chromes_auto_table_max_content, fit_columns_gives_percentage_columns_their_share}` | new |
 
+## P5b-W5 (layout/raster bug fixes, turbo-dom#51/#52/#41/#55/#62/#63/#64): adapted and new tests
+
+Declared behaviour changes (Chrome 156 controls), not moves:
+
+| crate | test (binary::name) | category |
+|---|---|---|
+| turbo-dom-layout | `turbo_dom_layout<src/lib.rs>::live::chrome_tests::table_captions_lay_out_in_the_table_wrapper_like_chrome_156`, `html_document_chrome<tests/html_document_chrome.rs>::table_captions_lay_out_in_the_table_wrapper_like_chrome_156`, `layout_options<tests/layout_options.rs>::recorded_sources_mark_the_grid_box_of_a_captioned_table` | new (turbo-dom#51, test-first) |
+| turbo-dom-raster | `paint_chrome<tests/paint_chrome.rs>::table_captions_paint_outside_the_grid_like_chrome_156` | new (turbo-dom#51, Chrome 156 pixel control `scripts/paint-chrome-control.mjs`) |
+| turbo-dom-raster | `paint_chrome<tests/paint_chrome.rs>::{clip_rect_clips_the_box_and_its_descendants_like_chrome_156, svg_screenshot_clips_with_a_clip_path}` | new (turbo-dom#52, test-first; Chrome 156 pixel control) |
+| turbo-dom-layout | `html_document_chrome<tests/html_document_chrome.rs>::border_box_widths_size_intrinsically_like_chrome_156` | new (turbo-dom#65, test-first) |
+| turbo-dom-layout | `html_document_chrome<tests/html_document_chrome.rs>::tables_are_border_box_sized_like_chrome_156`, turbo-dom-raster `paint_chrome<tests/paint_chrome.rs>::tables_are_border_box_sized_like_chrome_156` | new (turbo-dom#62, test-first) |
+| turbo-dom-layout | `html_document_chrome<tests/html_document_chrome.rs>::border_spacing_is_inherited_and_initially_zero_like_chrome_156` | new (turbo-dom#63, test-first) |
+| turbo-dom-layout | `layout_table<tests/layout_table.rs>::border_spacing_separates_cells_by_default` | adapted@P5b-W5 (turbo-dom#63: a styled tree without UA rules has no spacing; the 2px case declares the UA `border-spacing: 2px`) |
+| turbo-dom-layout | `html_document_chrome<tests/html_document_chrome.rs>::table_height_is_distributed_over_the_rows_like_chrome_156` | new (turbo-dom#64, test-first) |
+| turbo-dom-layout | `html_document_chrome<tests/html_document_chrome.rs>::extra_table_width_goes_to_auto_columns_like_chrome_156`, `turbo_dom_layout<src/lib.rs>::layout::table::percent_tests::grow_columns_prefers_auto_columns_like_chrome` | new (turbo-dom#55, test-first) |
+| turbo-dom-layout | `turbo_dom_layout<src/lib.rs>::layout::table::percent_tests::fit_columns_gives_percentage_columns_their_share` | adapted@P5b-W5 (turbo-dom#55: `fit_columns` takes the column `Limits`; same expectations) |
+| turbo-dom-layout | `html_document_chrome<tests/html_document_chrome.rs>::last_child_bottom_margins_like_chrome_156` | new (turbo-dom#41, test-first) |
+| turbo-dom-layout | `html_document_chrome<tests/html_document_chrome.rs>::legacy_alignment_moves_blocks_like_chrome_156` | new (turbo-dom#69, test-first) |
+| turbo-dom-layout | `layout_block<tests/layout_block.rs>::{text_align_center_and_margin_auto_center_width_constrained_blocks, text_align_right_pushes_block_child_to_right}` | adapted@P5b-W5 (turbo-dom#69: the block-moving containers use `-webkit-center` / `-webkit-right`; plain `center` leaves blocks) |
+| turbo-dom-layout | `html_document_chrome<tests/html_document_chrome.rs>::header_cells_are_bold_and_centred_like_chrome_156` | new (turbo-dom#70, test-first) |
+| turbo-dom-layout | `turbo_dom_layout<src/lib.rs>::layout::value::clip_tests::{clip_region_resolves_offsets_auto_edges_and_scale, clip_keeps_nothing_only_when_empty_at_every_size}` | new (turbo-dom#52) |
+
 ## P5b-W2 — raster inline SVG on the tree (turbo-dom `consol/p5b-w2`)
 
 Every test id not listed keeps its result (turbo-dom-raster default and `--features avif`).

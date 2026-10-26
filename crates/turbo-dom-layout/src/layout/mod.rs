@@ -56,6 +56,12 @@ pub struct NodeSources {
     /// The boxes laid out as table rows (their single fragment is the synthetic
     /// row box, not an ordinary box fragment).
     pub table_rows: HashSet<NodeId>,
+    /// The anonymous table grid boxes of captioned tables: the table's own fragment is
+    /// the table wrapper box (the captions and this grid), the grid's fragment carries
+    /// the table's frame, background and rows (miaskiewicz/turbo-dom#51). A grid has no
+    /// source element and is no structure of its own (PDF/UA: its rows belong to the
+    /// table).
+    pub table_grids: HashSet<NodeId>,
 }
 
 /// A galley plus the [`NodeSources`] of its boxes.
@@ -163,6 +169,7 @@ pub fn layout_recorded(
             elements: shift_map(recorded.elements),
             texts: shift_map(recorded.texts),
             table_rows: rows.into_iter().map(shift).collect(),
+            table_grids: recorded.table_grids.into_iter().map(shift).collect(),
         },
     }
 }

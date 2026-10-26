@@ -3339,6 +3339,3640 @@
     }
    },
    "canvas": "#ffffff"
+  },
+  {
+   "id": "caption-wider-than-grid",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><table data-cid=\"t\" style=\"\"><caption data-cid=\"c\"><div style=\"width:100px;height:10px\"></div></caption><tr><td data-cid=\"td\" style=\"\"><div style=\"width:30px;height:10px\"></div></td></tr></table><div data-cid=\"after\" style=\"height:5px\"></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "t",
+     "x": 0,
+     "y": 0,
+     "width": 100,
+     "height": 26
+    },
+    {
+     "cid": "c",
+     "x": 0,
+     "y": 0,
+     "width": 100,
+     "height": 10
+    },
+    {
+     "cid": "td",
+     "x": 2,
+     "y": 12,
+     "width": 96,
+     "height": 12
+    },
+    {
+     "cid": "after",
+     "x": 0,
+     "y": 26,
+     "width": 1280,
+     "height": 5
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "caption-narrower-than-grid",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><table data-cid=\"t\" style=\"\"><caption data-cid=\"c\"><div style=\"width:10px;height:10px\"></div></caption><tr><td data-cid=\"td\" style=\"\"><div style=\"width:30px;height:10px\"></div></td></tr></table><div data-cid=\"after\" style=\"height:5px\"></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "t",
+     "x": 0,
+     "y": 0,
+     "width": 36,
+     "height": 26
+    },
+    {
+     "cid": "c",
+     "x": 0,
+     "y": 0,
+     "width": 36,
+     "height": 10
+    },
+    {
+     "cid": "td",
+     "x": 2,
+     "y": 12,
+     "width": 32,
+     "height": 12
+    },
+    {
+     "cid": "after",
+     "x": 0,
+     "y": 26,
+     "width": 1280,
+     "height": 5
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "caption-table-width",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><table data-cid=\"t\" style=\"width:100px\"><caption data-cid=\"c\"><div style=\"width:10px;height:10px\"></div></caption><tr><td data-cid=\"td\" style=\"\"><div style=\"width:30px;height:10px\"></div></td></tr></table><div data-cid=\"after\" style=\"height:5px\"></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "t",
+     "x": 0,
+     "y": 0,
+     "width": 100,
+     "height": 26
+    },
+    {
+     "cid": "c",
+     "x": 0,
+     "y": 0,
+     "width": 100,
+     "height": 10
+    },
+    {
+     "cid": "td",
+     "x": 2,
+     "y": 12,
+     "width": 96,
+     "height": 12
+    },
+    {
+     "cid": "after",
+     "x": 0,
+     "y": 26,
+     "width": 1280,
+     "height": 5
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "caption-wider-than-table-width",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><table data-cid=\"t\" style=\"width:100px\"><caption data-cid=\"c\"><div style=\"width:150px;height:10px\"></div></caption><tr><td data-cid=\"td\" style=\"\"><div style=\"width:30px;height:10px\"></div></td></tr></table><div data-cid=\"after\" style=\"height:5px\"></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "t",
+     "x": 0,
+     "y": 0,
+     "width": 150,
+     "height": 26
+    },
+    {
+     "cid": "c",
+     "x": 0,
+     "y": 0,
+     "width": 150,
+     "height": 10
+    },
+    {
+     "cid": "td",
+     "x": 2,
+     "y": 12,
+     "width": 146,
+     "height": 12
+    },
+    {
+     "cid": "after",
+     "x": 0,
+     "y": 26,
+     "width": 1280,
+     "height": 5
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "caption-frame-margins",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><table data-cid=\"t\" style=\"border:3px solid #000;padding:5px;background:#f00;margin:7px\"><caption data-cid=\"c\" style=\"padding:2px;border:1px solid #00f;margin:4px\"><div style=\"width:100px;height:10px\"></div></caption><tr><td data-cid=\"td\" style=\"\"><div style=\"width:30px;height:10px\"></div></td></tr></table><div data-cid=\"after\" style=\"height:5px\"></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "t",
+     "x": 7,
+     "y": 7,
+     "width": 114,
+     "height": 56
+    },
+    {
+     "cid": "c",
+     "x": 11,
+     "y": 11,
+     "width": 106,
+     "height": 16
+    },
+    {
+     "cid": "td",
+     "x": 17,
+     "y": 41,
+     "width": 94,
+     "height": 12
+    },
+    {
+     "cid": "after",
+     "x": 0,
+     "y": 70,
+     "width": 1280,
+     "height": 5
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "caption-side-bottom",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><table data-cid=\"t\" style=\"caption-side:bottom\"><caption data-cid=\"c\"><div style=\"width:100px;height:10px\"></div></caption><tr><td data-cid=\"td\" style=\"\"><div style=\"width:30px;height:10px\"></div></td></tr></table><div data-cid=\"after\" style=\"height:5px\"></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "t",
+     "x": 0,
+     "y": 0,
+     "width": 100,
+     "height": 26
+    },
+    {
+     "cid": "c",
+     "x": 0,
+     "y": 16,
+     "width": 100,
+     "height": 10
+    },
+    {
+     "cid": "td",
+     "x": 2,
+     "y": 2,
+     "width": 96,
+     "height": 12
+    },
+    {
+     "cid": "after",
+     "x": 0,
+     "y": 26,
+     "width": 1280,
+     "height": 5
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "caption-multiple",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><table data-cid=\"t\" style=\"\"><caption data-cid=\"c\"><div style=\"width:40px;height:10px\"></div></caption><tr><td data-cid=\"td\" style=\"\"><div style=\"width:30px;height:10px\"></div></td></tr><caption data-cid=\"c2\" style=\"caption-side:bottom\"><div style=\"width:50px;height:7px\"></div></caption><caption data-cid=\"c3\"><div style=\"width:20px;height:3px\"></div></caption></table><div data-cid=\"after\" style=\"height:5px\"></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "t",
+     "x": 0,
+     "y": 0,
+     "width": 50,
+     "height": 36
+    },
+    {
+     "cid": "c",
+     "x": 0,
+     "y": 0,
+     "width": 50,
+     "height": 10
+    },
+    {
+     "cid": "td",
+     "x": 2,
+     "y": 15,
+     "width": 46,
+     "height": 12
+    },
+    {
+     "cid": "c2",
+     "x": 0,
+     "y": 29,
+     "width": 50,
+     "height": 7
+    },
+    {
+     "cid": "c3",
+     "x": 0,
+     "y": 10,
+     "width": 50,
+     "height": 3
+    },
+    {
+     "cid": "after",
+     "x": 0,
+     "y": 36,
+     "width": 1280,
+     "height": 5
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "caption-own-width",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><table data-cid=\"t\" style=\"\"><caption data-cid=\"c\" style=\"width:200px\"><div style=\"width:10px;height:10px\"></div></caption><tr><td data-cid=\"td\" style=\"\"><div style=\"width:30px;height:10px\"></div></td></tr></table><div data-cid=\"after\" style=\"height:5px\"></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "t",
+     "x": 0,
+     "y": 0,
+     "width": 200,
+     "height": 26
+    },
+    {
+     "cid": "c",
+     "x": 0,
+     "y": 0,
+     "width": 200,
+     "height": 10
+    },
+    {
+     "cid": "td",
+     "x": 2,
+     "y": 12,
+     "width": 196,
+     "height": 12
+    },
+    {
+     "cid": "after",
+     "x": 0,
+     "y": 26,
+     "width": 1280,
+     "height": 5
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "caption-percent-table-width",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><table data-cid=\"t\" style=\"width:50%\"><caption data-cid=\"c\"><div style=\"width:100px;height:10px\"></div></caption><tr><td data-cid=\"td\" style=\"\"><div style=\"width:30px;height:10px\"></div></td></tr></table><div data-cid=\"after\" style=\"height:5px\"></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "t",
+     "x": 0,
+     "y": 0,
+     "width": 640,
+     "height": 26
+    },
+    {
+     "cid": "c",
+     "x": 0,
+     "y": 0,
+     "width": 640,
+     "height": 10
+    },
+    {
+     "cid": "td",
+     "x": 2,
+     "y": 12,
+     "width": 636,
+     "height": 12
+    },
+    {
+     "cid": "after",
+     "x": 0,
+     "y": 26,
+     "width": 1280,
+     "height": 5
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "caption-centered-table",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><table data-cid=\"t\" style=\"margin:0 auto\"><caption data-cid=\"c\"><div style=\"width:100px;height:10px\"></div></caption><tr><td data-cid=\"td\" style=\"\"><div style=\"width:30px;height:10px\"></div></td></tr></table><div data-cid=\"after\" style=\"height:5px\"></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "t",
+     "x": 590,
+     "y": 0,
+     "width": 100,
+     "height": 26
+    },
+    {
+     "cid": "c",
+     "x": 590,
+     "y": 0,
+     "width": 100,
+     "height": 10
+    },
+    {
+     "cid": "td",
+     "x": 592,
+     "y": 12,
+     "width": 96,
+     "height": 12
+    },
+    {
+     "cid": "after",
+     "x": 0,
+     "y": 26,
+     "width": 1280,
+     "height": 5
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "caption-absolute-table",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><table data-cid=\"t\" style=\"position:absolute;left:10px;top:20px\"><caption data-cid=\"c\"><div style=\"width:100px;height:10px\"></div></caption><tr><td data-cid=\"td\" style=\"\"><div style=\"width:30px;height:10px\"></div></td></tr></table><div data-cid=\"after\" style=\"height:5px\"></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "t",
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 26
+    },
+    {
+     "cid": "c",
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 10
+    },
+    {
+     "cid": "td",
+     "x": 12,
+     "y": 32,
+     "width": 96,
+     "height": 12
+    },
+    {
+     "cid": "after",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 5
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "caption-table-height",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><table data-cid=\"t\" style=\"height:100px\"><caption data-cid=\"c\"><div style=\"width:100px;height:10px\"></div></caption><tr><td data-cid=\"td\" style=\"\"><div style=\"width:30px;height:10px\"></div></td></tr></table><div data-cid=\"after\" style=\"height:5px\"></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "t",
+     "x": 0,
+     "y": 0,
+     "width": 100,
+     "height": 110
+    },
+    {
+     "cid": "c",
+     "x": 0,
+     "y": 0,
+     "width": 100,
+     "height": 10
+    },
+    {
+     "cid": "td",
+     "x": 2,
+     "y": 12,
+     "width": 96,
+     "height": 96
+    },
+    {
+     "cid": "after",
+     "x": 0,
+     "y": 110,
+     "width": 1280,
+     "height": 5
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "caption-margins",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><table data-cid=\"t\" style=\"\"><caption data-cid=\"c\" style=\"margin:10px 0 5px\"><div style=\"width:100px;height:10px\"></div></caption><tr><td data-cid=\"td\" style=\"\"><div style=\"width:30px;height:10px\"></div></td></tr></table><div data-cid=\"after\" style=\"height:5px\"></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "t",
+     "x": 0,
+     "y": 0,
+     "width": 100,
+     "height": 41
+    },
+    {
+     "cid": "c",
+     "x": 0,
+     "y": 10,
+     "width": 100,
+     "height": 10
+    },
+    {
+     "cid": "td",
+     "x": 2,
+     "y": 27,
+     "width": 96,
+     "height": 12
+    },
+    {
+     "cid": "after",
+     "x": 0,
+     "y": 41,
+     "width": 1280,
+     "height": 5
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "caption-collapsed-borders",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><table data-cid=\"t\" style=\"border-collapse:collapse;border:2px solid #000\"><caption data-cid=\"c\"><div style=\"width:100px;height:10px\"></div></caption><tr><td data-cid=\"td\" style=\"border:1px solid #000\"><div style=\"width:30px;height:10px\"></div></td></tr></table><div data-cid=\"after\" style=\"height:5px\"></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "t",
+     "x": 0,
+     "y": 0,
+     "width": 100,
+     "height": 26
+    },
+    {
+     "cid": "c",
+     "x": 0,
+     "y": 0,
+     "width": 100,
+     "height": 10
+    },
+    {
+     "cid": "td",
+     "x": 1,
+     "y": 11,
+     "width": 98,
+     "height": 14
+    },
+    {
+     "cid": "after",
+     "x": 0,
+     "y": 26,
+     "width": 1280,
+     "height": 5
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "caption-no-rows",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><table data-cid=\"t\"><caption data-cid=\"c\"><div style=\"width:100px;height:10px\"></div></caption></table></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "t",
+     "x": 0,
+     "y": 0,
+     "width": 100,
+     "height": 10
+    },
+    {
+     "cid": "c",
+     "x": 0,
+     "y": 0,
+     "width": 100,
+     "height": 10
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "caption-narrow-container",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><div data-cid=\"d\" style=\"width:60px\"><table data-cid=\"t\"><caption data-cid=\"c\"><div style=\"width:100px;height:10px\"></div></caption><tr><td data-cid=\"td\"><div style=\"width:30px;height:10px\"></div></td></tr></table></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "d",
+     "x": 0,
+     "y": 0,
+     "width": 60,
+     "height": 26
+    },
+    {
+     "cid": "t",
+     "x": 0,
+     "y": 0,
+     "width": 100,
+     "height": 26
+    },
+    {
+     "cid": "c",
+     "x": 0,
+     "y": 0,
+     "width": 100,
+     "height": 10
+    },
+    {
+     "cid": "td",
+     "x": 2,
+     "y": 12,
+     "width": 96,
+     "height": 12
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "caption-inline-table",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><div data-cid=\"d\" style=\"font-size:0\"><i style=\"display:inline-block;width:5px;height:5px\"></i><table data-cid=\"t\" style=\"display:inline-table\"><caption data-cid=\"c\"><div style=\"width:100px;height:10px\"></div></caption><tr><td data-cid=\"td\"><div style=\"width:30px;height:10px\"></div></td></tr></table></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "d",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 26
+    },
+    {
+     "cid": "t",
+     "x": 5,
+     "y": 0,
+     "width": 100,
+     "height": 26
+    },
+    {
+     "cid": "c",
+     "x": 5,
+     "y": 0,
+     "width": 100,
+     "height": 10
+    },
+    {
+     "cid": "td",
+     "x": 7,
+     "y": 12,
+     "width": 96,
+     "height": 12
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "caption-in-flex-item",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><div data-cid=\"d\" style=\"display:flex\"><table data-cid=\"t\"><caption data-cid=\"c\"><div style=\"width:100px;height:10px\"></div></caption><tr><td data-cid=\"td\"><div style=\"width:30px;height:10px\"></div></td></tr></table></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "d",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 26
+    },
+    {
+     "cid": "t",
+     "x": 0,
+     "y": 0,
+     "width": 100,
+     "height": 26
+    },
+    {
+     "cid": "c",
+     "x": 0,
+     "y": 0,
+     "width": 100,
+     "height": 10
+    },
+    {
+     "cid": "td",
+     "x": 2,
+     "y": 12,
+     "width": 96,
+     "height": 12
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "caption-float-table",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><table data-cid=\"t\" style=\"float:left;width:50px\"><caption data-cid=\"c\"><div style=\"width:80px;height:10px\"></div></caption><tr><td data-cid=\"td\"><div style=\"width:30px;height:10px\"></div></td></tr></table><div data-cid=\"d\" style=\"overflow:hidden;height:10px\"></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "t",
+     "x": 0,
+     "y": 0,
+     "width": 80,
+     "height": 26
+    },
+    {
+     "cid": "c",
+     "x": 0,
+     "y": 0,
+     "width": 80,
+     "height": 10
+    },
+    {
+     "cid": "td",
+     "x": 2,
+     "y": 12,
+     "width": 76,
+     "height": 12
+    },
+    {
+     "cid": "d",
+     "x": 80,
+     "y": 0,
+     "width": 1200,
+     "height": 10
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "caption-nested-table",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><table data-cid=\"o\"><tr><td data-cid=\"oc\"><table data-cid=\"t\"><caption data-cid=\"c\"><div style=\"width:100px;height:10px\"></div></caption><tr><td data-cid=\"td\"><div style=\"width:30px;height:10px\"></div></td></tr></table></td></tr></table></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "o",
+     "x": 0,
+     "y": 0,
+     "width": 106,
+     "height": 32
+    },
+    {
+     "cid": "oc",
+     "x": 2,
+     "y": 2,
+     "width": 102,
+     "height": 28
+    },
+    {
+     "cid": "t",
+     "x": 3,
+     "y": 3,
+     "width": 100,
+     "height": 26
+    },
+    {
+     "cid": "c",
+     "x": 3,
+     "y": 3,
+     "width": 100,
+     "height": 10
+    },
+    {
+     "cid": "td",
+     "x": 5,
+     "y": 15,
+     "width": 96,
+     "height": 12
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "caption-display-table-caption",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><div data-cid=\"t\" style=\"display:table\"><div data-cid=\"c\" style=\"display:table-caption\"><div style=\"width:100px;height:10px\"></div></div><div style=\"display:table-row\"><div data-cid=\"td\" style=\"display:table-cell\"><div style=\"width:30px;height:10px\"></div></div></div></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "t",
+     "x": 0,
+     "y": 0,
+     "width": 100,
+     "height": 20
+    },
+    {
+     "cid": "c",
+     "x": 0,
+     "y": 0,
+     "width": 100,
+     "height": 10
+    },
+    {
+     "cid": "td",
+     "x": 0,
+     "y": 10,
+     "width": 100,
+     "height": 10
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "caption-text",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><table data-cid=\"t\"><caption data-cid=\"c\">A rather long caption text that is wider than the table</caption><tr><td data-cid=\"td\"><div style=\"width:30px;height:10px\"></div></td></tr></table></body></html>",
+   "measure": "x",
+   "boxes": [
+    {
+     "cid": "t",
+     "x": 0,
+     "y": 0,
+     "width": 47.094,
+     "height": 196
+    },
+    {
+     "cid": "c",
+     "x": 0,
+     "y": 0,
+     "width": 47.094,
+     "height": 180
+    },
+    {
+     "cid": "td",
+     "x": 2,
+     "y": 182,
+     "width": 43.094,
+     "height": 12
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "border-box-float-child",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><div data-cid=\"f\" style=\"float:left\"><div data-cid=\"c\" style=\"box-sizing:border-box;width:100px;padding:10px;height:10px\"></div></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "f",
+     "x": 0,
+     "y": 0,
+     "width": 100,
+     "height": 20
+    },
+    {
+     "cid": "c",
+     "x": 0,
+     "y": 0,
+     "width": 100,
+     "height": 20
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "border-box-inline-block-child",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><div data-cid=\"d\" style=\"font-size:0\"><div data-cid=\"i\" style=\"display:inline-block\"><div style=\"box-sizing:border-box;width:100px;padding:10px;height:10px\"></div></div><i data-cid=\"j\" style=\"display:inline-block;width:10px;height:10px\"></i></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "d",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 20
+    },
+    {
+     "cid": "i",
+     "x": 0,
+     "y": 0,
+     "width": 100,
+     "height": 20
+    },
+    {
+     "cid": "j",
+     "x": 100,
+     "y": 10,
+     "width": 10,
+     "height": 10
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "border-box-table-content",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}td{padding:0}</style></head><body><table data-cid=\"t\" style=\"border-spacing:0\"><tr><td data-cid=\"td\"><div data-cid=\"c\" style=\"box-sizing:border-box;width:100px;padding:10px;height:10px\"></div></td></tr></table></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "t",
+     "x": 0,
+     "y": 0,
+     "width": 100,
+     "height": 20
+    },
+    {
+     "cid": "td",
+     "x": 0,
+     "y": 0,
+     "width": 100,
+     "height": 20
+    },
+    {
+     "cid": "c",
+     "x": 0,
+     "y": 0,
+     "width": 100,
+     "height": 20
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "border-box-table-min-content",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}td{padding:0}</style></head><body><table data-cid=\"t\" style=\"width:1px;border-spacing:0\"><tr><td data-cid=\"td\"><div data-cid=\"c\" style=\"box-sizing:border-box;width:100px;padding:10px;height:10px\"></div></td></tr></table></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "t",
+     "x": 0,
+     "y": 0,
+     "width": 100,
+     "height": 20
+    },
+    {
+     "cid": "td",
+     "x": 0,
+     "y": 0,
+     "width": 100,
+     "height": 20
+    },
+    {
+     "cid": "c",
+     "x": 0,
+     "y": 0,
+     "width": 100,
+     "height": 20
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "border-box-cell-width",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><table data-cid=\"t\"><tr><td data-cid=\"a\" style=\"box-sizing:border-box;width:100px;padding:10px\"></td><td data-cid=\"b\"><div style=\"width:10px;height:10px\"></div></td></tr></table></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "t",
+     "x": 0,
+     "y": 0,
+     "width": 118,
+     "height": 24
+    },
+    {
+     "cid": "a",
+     "x": 2,
+     "y": 2,
+     "width": 100,
+     "height": 20
+    },
+    {
+     "cid": "b",
+     "x": 104,
+     "y": 2,
+     "width": 12,
+     "height": 20
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "border-box-cell-width-collapsed",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><table data-cid=\"t\" style=\"border-collapse:collapse\"><tr><td data-cid=\"a\" style=\"box-sizing:border-box;width:100px;padding:10px;border:2px solid\"></td><td data-cid=\"b\"><div style=\"width:10px;height:10px\"></div></td></tr></table></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "t",
+     "x": 0,
+     "y": 0,
+     "width": 114,
+     "height": 24
+    },
+    {
+     "cid": "a",
+     "x": 1,
+     "y": 1,
+     "width": 100,
+     "height": 22
+    },
+    {
+     "cid": "b",
+     "x": 101,
+     "y": 1,
+     "width": 13,
+     "height": 22
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "border-box-cell-width-fixed",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><table data-cid=\"t\" style=\"table-layout:fixed;width:300px\"><tr><td data-cid=\"a\" style=\"box-sizing:border-box;width:100px;padding:10px\"></td><td data-cid=\"b\"><div style=\"width:10px;height:10px\"></div></td></tr></table></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "t",
+     "x": 0,
+     "y": 0,
+     "width": 300,
+     "height": 24
+    },
+    {
+     "cid": "a",
+     "x": 2,
+     "y": 2,
+     "width": 100,
+     "height": 20
+    },
+    {
+     "cid": "b",
+     "x": 104,
+     "y": 2,
+     "width": 194,
+     "height": 20
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "border-box-cell-width-fixed-collapsed",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><table data-cid=\"t\" style=\"table-layout:fixed;width:300px;border-collapse:collapse\"><tr><td data-cid=\"a\" style=\"box-sizing:border-box;width:100px;padding:10px;border:2px solid\"></td><td data-cid=\"b\"><div style=\"width:10px;height:10px\"></div></td></tr></table></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "t",
+     "x": 0,
+     "y": 0,
+     "width": 300,
+     "height": 24
+    },
+    {
+     "cid": "a",
+     "x": 1,
+     "y": 1,
+     "width": 100,
+     "height": 22
+    },
+    {
+     "cid": "b",
+     "x": 101,
+     "y": 1,
+     "width": 199,
+     "height": 22
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "border-box-wider-than-frame",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><div data-cid=\"f\" style=\"float:left\"><div data-cid=\"c\" style=\"box-sizing:border-box;width:10px;padding:10px;height:10px\"></div></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "f",
+     "x": 0,
+     "y": 0,
+     "width": 20,
+     "height": 20
+    },
+    {
+     "cid": "c",
+     "x": 0,
+     "y": 0,
+     "width": 20,
+     "height": 20
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "table-border-box-width",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><table data-cid=\"t\" style=\"width:120px;border:4px solid;padding:3px\"><tr><td data-cid=\"td\"><div style=\"width:30px;height:10px\"></div></td></tr></table></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "t",
+     "x": 0,
+     "y": 0,
+     "width": 120,
+     "height": 30
+    },
+    {
+     "cid": "td",
+     "x": 9,
+     "y": 9,
+     "width": 102,
+     "height": 12
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "table-border-box-width-collapsed",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><table data-cid=\"t\" style=\"width:120px;border:4px solid;border-collapse:collapse\"><tr><td data-cid=\"td\"><div style=\"width:30px;height:10px\"></div></td></tr></table></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "t",
+     "x": 0,
+     "y": 0,
+     "width": 120,
+     "height": 20
+    },
+    {
+     "cid": "td",
+     "x": 2,
+     "y": 2,
+     "width": 116,
+     "height": 16
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "table-border-box-percent-width",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><table data-cid=\"t\" style=\"width:50%;border:10px solid\"><tr><td data-cid=\"td\"><div style=\"width:30px;height:10px\"></div></td></tr></table></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "t",
+     "x": 0,
+     "y": 0,
+     "width": 640,
+     "height": 36
+    },
+    {
+     "cid": "td",
+     "x": 12,
+     "y": 12,
+     "width": 616,
+     "height": 12
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "table-border-box-min-width",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><table data-cid=\"t\" style=\"min-width:100px;border:5px solid\"><tr><td data-cid=\"td\"><div style=\"width:30px;height:10px\"></div></td></tr></table></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "t",
+     "x": 0,
+     "y": 0,
+     "width": 100,
+     "height": 26
+    },
+    {
+     "cid": "td",
+     "x": 7,
+     "y": 7,
+     "width": 86,
+     "height": 12
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "table-border-box-max-width",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><table data-cid=\"t\" style=\"width:300px;max-width:100px;border:5px solid\"><tr><td data-cid=\"td\"><div style=\"width:30px;height:10px\"></div></td></tr></table></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "t",
+     "x": 0,
+     "y": 0,
+     "width": 100,
+     "height": 26
+    },
+    {
+     "cid": "td",
+     "x": 7,
+     "y": 7,
+     "width": 86,
+     "height": 12
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "table-content-box-author",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><table data-cid=\"t\" style=\"box-sizing:content-box;width:120px;border:4px solid\"><tr><td data-cid=\"td\"><div style=\"width:30px;height:10px\"></div></td></tr></table></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "t",
+     "x": 0,
+     "y": 0,
+     "width": 128,
+     "height": 24
+    },
+    {
+     "cid": "td",
+     "x": 6,
+     "y": 6,
+     "width": 116,
+     "height": 12
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "table-border-box-in-float",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><div data-cid=\"f\" style=\"float:left\"><table data-cid=\"t\" style=\"width:120px;border:4px solid\"><tr><td data-cid=\"td\"><div style=\"width:30px;height:10px\"></div></td></tr></table></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "f",
+     "x": 0,
+     "y": 0,
+     "width": 120,
+     "height": 24
+    },
+    {
+     "cid": "t",
+     "x": 0,
+     "y": 0,
+     "width": 120,
+     "height": 24
+    },
+    {
+     "cid": "td",
+     "x": 6,
+     "y": 6,
+     "width": 108,
+     "height": 12
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "table-border-box-fixed",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><table data-cid=\"t\" style=\"table-layout:fixed;width:120px;border:4px solid;padding:2px\"><tr><td data-cid=\"a\"><div style=\"width:10px;height:10px\"></div></td><td data-cid=\"b\"><div style=\"width:10px;height:10px\"></div></td></tr></table></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "t",
+     "x": 0,
+     "y": 0,
+     "width": 120,
+     "height": 28
+    },
+    {
+     "cid": "a",
+     "x": 8,
+     "y": 8,
+     "width": 51,
+     "height": 12
+    },
+    {
+     "cid": "b",
+     "x": 61,
+     "y": 8,
+     "width": 51,
+     "height": 12
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "css-table-no-spacing",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><div data-cid=\"t\" style=\"display:table\"><div style=\"display:table-row\"><div data-cid=\"td\" style=\"display:table-cell\"><div style=\"width:30px;height:10px\"></div></div></div></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "t",
+     "x": 0,
+     "y": 0,
+     "width": 30,
+     "height": 10
+    },
+    {
+     "cid": "td",
+     "x": 0,
+     "y": 0,
+     "width": 30,
+     "height": 10
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "css-table-explicit-spacing",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><div data-cid=\"t\" style=\"display:table;border-spacing:5px 3px\"><div style=\"display:table-row\"><div data-cid=\"td\" style=\"display:table-cell\"><div style=\"width:30px;height:10px\"></div></div></div></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "t",
+     "x": 0,
+     "y": 0,
+     "width": 40,
+     "height": 16
+    },
+    {
+     "cid": "td",
+     "x": 5,
+     "y": 3,
+     "width": 30,
+     "height": 10
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "css-table-inherits-spacing",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><div style=\"border-spacing:5px\"><div data-cid=\"t\" style=\"display:table\"><div style=\"display:table-row\"><div data-cid=\"td\" style=\"display:table-cell\"><div style=\"width:30px;height:10px\"></div></div></div></div></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "t",
+     "x": 0,
+     "y": 0,
+     "width": 40,
+     "height": 20
+    },
+    {
+     "cid": "td",
+     "x": 5,
+     "y": 5,
+     "width": 30,
+     "height": 10
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "css-table-in-table-cell",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}td{padding:0}</style></head><body><table data-cid=\"o\" style=\"border-spacing:7px\"><tr><td><div data-cid=\"t\" style=\"display:table\"><div style=\"display:table-row\"><div data-cid=\"td\" style=\"display:table-cell\"><div style=\"width:30px;height:10px\"></div></div></div></div></td></tr></table></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "o",
+     "x": 0,
+     "y": 0,
+     "width": 58,
+     "height": 38
+    },
+    {
+     "cid": "t",
+     "x": 7,
+     "y": 7,
+     "width": 44,
+     "height": 24
+    },
+    {
+     "cid": "td",
+     "x": 14,
+     "y": 14,
+     "width": 30,
+     "height": 10
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "table-spacing-not-inherited-past-a-table",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}td{padding:0}</style></head><body><div style=\"border-spacing:9px\"><table data-cid=\"t\"><tr><td data-cid=\"td\"><div style=\"width:30px;height:10px\"></div></td></tr></table></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "t",
+     "x": 0,
+     "y": 0,
+     "width": 34,
+     "height": 14
+    },
+    {
+     "cid": "td",
+     "x": 2,
+     "y": 2,
+     "width": 30,
+     "height": 10
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "table-height-rows-proportional",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><table data-cid=\"t\" style=\"height:100px\"><tr><td data-cid=\"a\"><div style=\"width:30px;height:10px\"></div></td></tr><tr><td data-cid=\"b\"><div style=\"width:30px;height:30px\"></div></td></tr></table></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "t",
+     "x": 0,
+     "y": 0,
+     "width": 36,
+     "height": 100
+    },
+    {
+     "cid": "a",
+     "x": 2,
+     "y": 2,
+     "width": 32,
+     "height": 25.625
+    },
+    {
+     "cid": "b",
+     "x": 2,
+     "y": 29.625,
+     "width": 32,
+     "height": 68.375
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "table-height-empty-rows",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}td{padding:0}</style></head><body><table data-cid=\"t\" style=\"height:100px;border-spacing:0\"><tr><td data-cid=\"a\"></td></tr><tr><td data-cid=\"b\"></td></tr></table></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "t",
+     "x": 0,
+     "y": 0,
+     "width": 0,
+     "height": 100
+    },
+    {
+     "cid": "a",
+     "x": 0,
+     "y": 0,
+     "width": 0,
+     "height": 50
+    },
+    {
+     "cid": "b",
+     "x": 0,
+     "y": 50,
+     "width": 0,
+     "height": 50
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "table-height-explicit-row",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}td{padding:0}</style></head><body><table data-cid=\"t\" style=\"height:100px;border-spacing:0\"><tr style=\"height:20px\"><td data-cid=\"a\"><div style=\"width:30px;height:10px\"></div></td></tr><tr><td data-cid=\"b\"><div style=\"width:30px;height:10px\"></div></td></tr></table></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "t",
+     "x": 0,
+     "y": 0,
+     "width": 30,
+     "height": 100
+    },
+    {
+     "cid": "a",
+     "x": 0,
+     "y": 0,
+     "width": 30,
+     "height": 20
+    },
+    {
+     "cid": "b",
+     "x": 0,
+     "y": 20,
+     "width": 30,
+     "height": 80
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "table-height-all-explicit-rows",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}td{padding:0}</style></head><body><table data-cid=\"t\" style=\"height:100px;border-spacing:0\"><tr style=\"height:20px\"><td data-cid=\"a\"><div style=\"width:30px;height:10px\"></div></td></tr><tr style=\"height:30px\"><td data-cid=\"b\"><div style=\"width:30px;height:10px\"></div></td></tr></table></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "t",
+     "x": 0,
+     "y": 0,
+     "width": 30,
+     "height": 100
+    },
+    {
+     "cid": "a",
+     "x": 0,
+     "y": 0,
+     "width": 30,
+     "height": 40
+    },
+    {
+     "cid": "b",
+     "x": 0,
+     "y": 40,
+     "width": 30,
+     "height": 60
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "table-height-frame",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}td{padding:0}</style></head><body><table data-cid=\"t\" style=\"height:100px;border:5px solid;padding:3px;border-spacing:2px\"><tr><td data-cid=\"a\"><div style=\"width:30px;height:10px\"></div></td></tr></table></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "t",
+     "x": 0,
+     "y": 0,
+     "width": 50,
+     "height": 100
+    },
+    {
+     "cid": "a",
+     "x": 10,
+     "y": 10,
+     "width": 30,
+     "height": 80
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "table-height-collapsed",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}td{padding:0;border:2px solid}</style></head><body><table data-cid=\"t\" style=\"height:100px;border-collapse:collapse\"><tr><td data-cid=\"a\"><div style=\"width:30px;height:10px\"></div></td></tr><tr><td data-cid=\"b\"><div style=\"width:30px;height:30px\"></div></td></tr></table></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "t",
+     "x": 0,
+     "y": 0,
+     "width": 34,
+     "height": 100
+    },
+    {
+     "cid": "a",
+     "x": 1,
+     "y": 1,
+     "width": 32,
+     "height": 26.719
+    },
+    {
+     "cid": "b",
+     "x": 1,
+     "y": 27.719,
+     "width": 32,
+     "height": 71.281
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "table-height-rowspan",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}td{padding:0}</style></head><body><table data-cid=\"t\" style=\"height:100px;border-spacing:0\"><tr><td data-cid=\"a\" rowspan=2><div style=\"width:30px;height:10px\"></div></td><td data-cid=\"b\"><div style=\"width:30px;height:10px\"></div></td></tr><tr><td data-cid=\"c\"><div style=\"width:30px;height:30px\"></div></td></tr></table></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "t",
+     "x": 0,
+     "y": 0,
+     "width": 60,
+     "height": 100
+    },
+    {
+     "cid": "a",
+     "x": 0,
+     "y": 0,
+     "width": 30,
+     "height": 100
+    },
+    {
+     "cid": "b",
+     "x": 30,
+     "y": 0,
+     "width": 30,
+     "height": 25
+    },
+    {
+     "cid": "c",
+     "x": 30,
+     "y": 25,
+     "width": 30,
+     "height": 75
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "table-height-vertical-align",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}td{padding:0}</style></head><body><table data-cid=\"t\" style=\"height:100px;border-spacing:0\"><tr><td data-cid=\"a\" style=\"vertical-align:middle\"><div data-cid=\"d\" style=\"width:30px;height:10px\"></div></td></tr></table></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "t",
+     "x": 0,
+     "y": 0,
+     "width": 30,
+     "height": 100
+    },
+    {
+     "cid": "a",
+     "x": 0,
+     "y": 0,
+     "width": 30,
+     "height": 100
+    },
+    {
+     "cid": "d",
+     "x": 0,
+     "y": 45,
+     "width": 30,
+     "height": 10
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "table-height-head-and-body",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}td{padding:0}</style></head><body><table data-cid=\"t\" style=\"height:100px;border-spacing:0\"><thead><tr><td data-cid=\"a\"><div style=\"width:30px;height:10px\"></div></td></tr></thead><tbody><tr><td data-cid=\"b\"><div style=\"width:30px;height:30px\"></div></td></tr></tbody></table></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "t",
+     "x": 0,
+     "y": 0,
+     "width": 30,
+     "height": 100
+    },
+    {
+     "cid": "a",
+     "x": 0,
+     "y": 0,
+     "width": 30,
+     "height": 10
+    },
+    {
+     "cid": "b",
+     "x": 0,
+     "y": 10,
+     "width": 30,
+     "height": 90
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "table-height-two-bodies",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}td{padding:0}</style></head><body><table data-cid=\"t\" style=\"height:100px;border-spacing:0\"><tbody><tr><td data-cid=\"a\"><div style=\"width:30px;height:10px\"></div></td></tr></tbody><tbody><tr><td data-cid=\"b\"><div style=\"width:30px;height:30px\"></div></td></tr></tbody></table></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "t",
+     "x": 0,
+     "y": 0,
+     "width": 30,
+     "height": 100
+    },
+    {
+     "cid": "a",
+     "x": 0,
+     "y": 0,
+     "width": 30,
+     "height": 25
+    },
+    {
+     "cid": "b",
+     "x": 0,
+     "y": 25,
+     "width": 30,
+     "height": 75
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "table-height-head-and-foot-only",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}td{padding:0}</style></head><body><table data-cid=\"t\" style=\"height:100px;border-spacing:0\"><thead><tr><td data-cid=\"a\"><div style=\"width:30px;height:10px\"></div></td></tr></thead><tfoot><tr><td data-cid=\"b\"><div style=\"width:30px;height:30px\"></div></td></tr></tfoot></table></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "t",
+     "x": 0,
+     "y": 0,
+     "width": 30,
+     "height": 100
+    },
+    {
+     "cid": "a",
+     "x": 0,
+     "y": 0,
+     "width": 30,
+     "height": 25
+    },
+    {
+     "cid": "b",
+     "x": 0,
+     "y": 25,
+     "width": 30,
+     "height": 75
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "table-height-empty-body",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}td{padding:0}</style></head><body><table data-cid=\"t\" style=\"height:100px;border-spacing:0\"><tbody><tr><td data-cid=\"a\"></td></tr></tbody><tbody><tr><td data-cid=\"b\"><div style=\"width:30px;height:30px\"></div></td></tr></tbody></table></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "t",
+     "x": 0,
+     "y": 0,
+     "width": 30,
+     "height": 100
+    },
+    {
+     "cid": "a",
+     "x": 0,
+     "y": 0,
+     "width": 30,
+     "height": 0
+    },
+    {
+     "cid": "b",
+     "x": 0,
+     "y": 0,
+     "width": 30,
+     "height": 100
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "table-height-css-rows",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><div data-cid=\"t\" style=\"display:table;height:100px\"><div style=\"display:table-row\"><div data-cid=\"a\" style=\"display:table-cell\"><div style=\"width:30px;height:10px\"></div></div></div><div style=\"display:table-row\"><div data-cid=\"b\" style=\"display:table-cell\"><div style=\"width:30px;height:30px\"></div></div></div></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "t",
+     "x": 0,
+     "y": 0,
+     "width": 30,
+     "height": 100
+    },
+    {
+     "cid": "a",
+     "x": 0,
+     "y": 0,
+     "width": 30,
+     "height": 25
+    },
+    {
+     "cid": "b",
+     "x": 0,
+     "y": 25,
+     "width": 30,
+     "height": 75
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "table-height-min-height",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}td{padding:0}</style></head><body><table data-cid=\"t\" style=\"min-height:100px;border-spacing:0\"><tr><td data-cid=\"a\"><div style=\"width:30px;height:10px\"></div></td></tr></table></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "t",
+     "x": 0,
+     "y": 0,
+     "width": 30,
+     "height": 100
+    },
+    {
+     "cid": "a",
+     "x": 0,
+     "y": 0,
+     "width": 30,
+     "height": 100
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "table-height-explicit-and-empty",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}td{padding:0}</style></head><body><table data-cid=\"t\" style=\"height:100px;border-spacing:0\"><tr style=\"height:20px\"><td data-cid=\"a\"></td></tr><tr><td data-cid=\"b\"></td></tr><tr><td data-cid=\"c\"></td></tr></table></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "t",
+     "x": 0,
+     "y": 0,
+     "width": 0,
+     "height": 100
+    },
+    {
+     "cid": "a",
+     "x": 0,
+     "y": 0,
+     "width": 0,
+     "height": 20
+    },
+    {
+     "cid": "b",
+     "x": 0,
+     "y": 20,
+     "width": 0,
+     "height": 40
+    },
+    {
+     "cid": "c",
+     "x": 0,
+     "y": 60,
+     "width": 0,
+     "height": 40
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "table-columns-empty-share",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}table{width:100%;border-spacing:0}td{padding:0}</style></head><body><table data-cid=\"t\"><tr><td data-cid=\"a\" style=\"height:100px;background:#f00\"></td><td data-cid=\"b\" style=\"height:100px;background:#0f0\"></td></tr></table></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "t",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 100
+    },
+    {
+     "cid": "a",
+     "x": 0,
+     "y": 0,
+     "width": 640,
+     "height": 100
+    },
+    {
+     "cid": "b",
+     "x": 640,
+     "y": 0,
+     "width": 640,
+     "height": 100
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "table-columns-one-empty",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}table{width:100%;border-spacing:0}td{padding:0}</style></head><body><table data-cid=\"t\"><tr><td data-cid=\"a\" style=\"height:100px\"></td></tr></table></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "t",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 100
+    },
+    {
+     "cid": "a",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 100
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "table-columns-empty-beside-content",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}table{width:400px;border-spacing:0}td{padding:0}</style></head><body><table data-cid=\"t\"><tr><td data-cid=\"a\"></td><td data-cid=\"b\"><div style=\"width:30px;height:10px\"></div></td></tr></table></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "t",
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 10
+    },
+    {
+     "cid": "a",
+     "x": 0,
+     "y": 0,
+     "width": 0,
+     "height": 10
+    },
+    {
+     "cid": "b",
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 10
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "table-columns-empty-beside-fixed",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}table{width:400px;border-spacing:0}td{padding:0}</style></head><body><table data-cid=\"t\"><tr><td data-cid=\"a\" style=\"width:100px\"></td><td data-cid=\"b\"></td></tr></table></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "t",
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 0
+    },
+    {
+     "cid": "a",
+     "x": 0,
+     "y": 0,
+     "width": 100,
+     "height": 0
+    },
+    {
+     "cid": "b",
+     "x": 100,
+     "y": 0,
+     "width": 300,
+     "height": 0
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "table-columns-empty-collapsed",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}table{width:400px;border-collapse:collapse}td{padding:0;border:2px solid}</style></head><body><table data-cid=\"t\"><tr><td data-cid=\"a\"></td><td data-cid=\"b\"></td></tr></table></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "t",
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 4
+    },
+    {
+     "cid": "a",
+     "x": 1,
+     "y": 1,
+     "width": 199,
+     "height": 2
+    },
+    {
+     "cid": "b",
+     "x": 200,
+     "y": 1,
+     "width": 199,
+     "height": 2
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "table-columns-empty-spacing",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}table{width:400px}td{padding:0}</style></head><body><table data-cid=\"t\"><tr><td data-cid=\"a\"></td><td data-cid=\"b\"></td></tr></table></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "t",
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 4
+    },
+    {
+     "cid": "a",
+     "x": 2,
+     "y": 2,
+     "width": 197,
+     "height": 0
+    },
+    {
+     "cid": "b",
+     "x": 201,
+     "y": 2,
+     "width": 197,
+     "height": 0
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "table-columns-empty-beside-percent",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}table{width:400px;border-spacing:0}td{padding:0}</style></head><body><table data-cid=\"t\"><tr><td data-cid=\"a\" style=\"width:25%\"></td><td data-cid=\"b\"></td><td data-cid=\"c\"></td></tr></table></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "t",
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 0
+    },
+    {
+     "cid": "a",
+     "x": 0,
+     "y": 0,
+     "width": 100,
+     "height": 0
+    },
+    {
+     "cid": "b",
+     "x": 100,
+     "y": 0,
+     "width": 150,
+     "height": 0
+    },
+    {
+     "cid": "c",
+     "x": 250,
+     "y": 0,
+     "width": 150,
+     "height": 0
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "table-columns-empty-auto-table",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}td{padding:0}</style></head><body><table data-cid=\"t\"><tr><td data-cid=\"a\"></td><td data-cid=\"b\"></td></tr></table></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "t",
+     "x": 0,
+     "y": 0,
+     "width": 6,
+     "height": 4
+    },
+    {
+     "cid": "a",
+     "x": 2,
+     "y": 2,
+     "width": 0,
+     "height": 0
+    },
+    {
+     "cid": "b",
+     "x": 4,
+     "y": 2,
+     "width": 0,
+     "height": 0
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "table-columns-fixed-beside-content",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}table{width:400px;border-spacing:0}td{padding:0}</style></head><body><table data-cid=\"t\"><tr><td data-cid=\"a\" style=\"width:100px\"></td><td data-cid=\"b\"><div style=\"width:30px;height:10px\"></div></td></tr></table></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "t",
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 10
+    },
+    {
+     "cid": "a",
+     "x": 0,
+     "y": 0,
+     "width": 100,
+     "height": 10
+    },
+    {
+     "cid": "b",
+     "x": 100,
+     "y": 0,
+     "width": 300,
+     "height": 10
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "table-columns-fixed-content-and-empty",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}table{width:400px;border-spacing:0}td{padding:0}</style></head><body><table data-cid=\"t\"><tr><td data-cid=\"a\" style=\"width:100px\"><div style=\"width:30px;height:10px\"></div></td><td data-cid=\"b\"><div style=\"width:30px;height:10px\"></div></td><td data-cid=\"c\"></td></tr></table></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "t",
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 10
+    },
+    {
+     "cid": "a",
+     "x": 0,
+     "y": 0,
+     "width": 100,
+     "height": 10
+    },
+    {
+     "cid": "b",
+     "x": 100,
+     "y": 0,
+     "width": 300,
+     "height": 10
+    },
+    {
+     "cid": "c",
+     "x": 400,
+     "y": 0,
+     "width": 0,
+     "height": 10
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "last-margin-inside-padding",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><div data-cid=\"w\" style=\"padding-bottom:20px\"><div style=\"height:100px\"></div><div data-cid=\"k\" style=\"height:200px;margin-bottom:20px\"></div></div><div data-cid=\"g\" style=\"height:60px\"></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "w",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 340
+    },
+    {
+     "cid": "k",
+     "x": 0,
+     "y": 100,
+     "width": 1280,
+     "height": 200
+    },
+    {
+     "cid": "g",
+     "x": 0,
+     "y": 340,
+     "width": 1280,
+     "height": 60
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "last-margin-collapses-through",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><div data-cid=\"w\"><div style=\"height:100px\"></div><div data-cid=\"k\" style=\"height:200px;margin-bottom:20px\"></div></div><div data-cid=\"g\" style=\"height:60px\"></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "w",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 300
+    },
+    {
+     "cid": "k",
+     "x": 0,
+     "y": 100,
+     "width": 1280,
+     "height": 200
+    },
+    {
+     "cid": "g",
+     "x": 0,
+     "y": 320,
+     "width": 1280,
+     "height": 60
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "last-margin-inside-border",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><div data-cid=\"w\" style=\"border-bottom:3px solid\"><div style=\"height:100px\"></div><div data-cid=\"k\" style=\"height:200px;margin-bottom:20px\"></div></div><div data-cid=\"g\" style=\"height:60px\"></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "w",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 323
+    },
+    {
+     "cid": "k",
+     "x": 0,
+     "y": 100,
+     "width": 1280,
+     "height": 200
+    },
+    {
+     "cid": "g",
+     "x": 0,
+     "y": 323,
+     "width": 1280,
+     "height": 60
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "last-margin-inside-bfc",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><div data-cid=\"w\" style=\"overflow:hidden\"><div style=\"height:100px\"></div><div data-cid=\"k\" style=\"height:200px;margin-bottom:20px\"></div></div><div data-cid=\"g\" style=\"height:60px\"></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "w",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 320
+    },
+    {
+     "cid": "k",
+     "x": 0,
+     "y": 100,
+     "width": 1280,
+     "height": 200
+    },
+    {
+     "cid": "g",
+     "x": 0,
+     "y": 320,
+     "width": 1280,
+     "height": 60
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "last-margin-height-auto-nested",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><div data-cid=\"w\"><div data-cid=\"v\"><div style=\"height:100px\"></div><div data-cid=\"k\" style=\"height:200px;margin-bottom:20px\"></div></div></div><div data-cid=\"g\" style=\"height:60px\"></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "w",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 300
+    },
+    {
+     "cid": "v",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 300
+    },
+    {
+     "cid": "k",
+     "x": 0,
+     "y": 100,
+     "width": 1280,
+     "height": 200
+    },
+    {
+     "cid": "g",
+     "x": 0,
+     "y": 320,
+     "width": 1280,
+     "height": 60
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "last-margin-collapses-with-parent-margin",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><div data-cid=\"w\" style=\"margin-bottom:30px\"><div style=\"height:100px\"></div><div data-cid=\"k\" style=\"height:200px;margin-bottom:20px\"></div></div><div data-cid=\"g\" style=\"height:60px\"></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "w",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 300
+    },
+    {
+     "cid": "k",
+     "x": 0,
+     "y": 100,
+     "width": 1280,
+     "height": 200
+    },
+    {
+     "cid": "g",
+     "x": 0,
+     "y": 330,
+     "width": 1280,
+     "height": 60
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "last-margin-collapses-with-next-margin",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><div data-cid=\"w\"><div style=\"height:100px\"></div><div data-cid=\"k\" style=\"height:200px;margin-bottom:20px\"></div></div><div data-cid=\"g\" style=\"height:60px;margin-top:35px\"></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "w",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 300
+    },
+    {
+     "cid": "k",
+     "x": 0,
+     "y": 100,
+     "width": 1280,
+     "height": 200
+    },
+    {
+     "cid": "g",
+     "x": 0,
+     "y": 335,
+     "width": 1280,
+     "height": 60
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "last-margin-negative",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><div data-cid=\"w\" style=\"padding-bottom:5px\"><div data-cid=\"k\" style=\"height:20px;margin-bottom:-10px\"></div></div><div data-cid=\"g\" style=\"height:60px\"></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "w",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 15
+    },
+    {
+     "cid": "k",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 20
+    },
+    {
+     "cid": "g",
+     "x": 0,
+     "y": 15,
+     "width": 1280,
+     "height": 60
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "last-margin-in-table-cell",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><table data-cid=\"t\" style=\"border-spacing:0\"><tr><td data-cid=\"td\" style=\"padding:0\"><p data-cid=\"p\" style=\"margin:10px 0 15px;height:20px\"></p></td></tr></table><div data-cid=\"g\" style=\"height:60px\"></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "t",
+     "x": 0,
+     "y": 0,
+     "width": 0,
+     "height": 45
+    },
+    {
+     "cid": "td",
+     "x": 0,
+     "y": 0,
+     "width": 0,
+     "height": 45
+    },
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 10,
+     "width": 0,
+     "height": 20
+    },
+    {
+     "cid": "g",
+     "x": 0,
+     "y": 45,
+     "width": 1280,
+     "height": 60
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "last-margin-in-flex-item",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><div data-cid=\"f\" style=\"display:flex\"><div data-cid=\"w\"><div style=\"height:100px\"></div><div data-cid=\"k\" style=\"height:200px;margin-bottom:20px\"></div></div></div><div data-cid=\"g\" style=\"height:60px\"></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "f",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 320
+    },
+    {
+     "cid": "w",
+     "x": 0,
+     "y": 0,
+     "width": 0,
+     "height": 320
+    },
+    {
+     "cid": "k",
+     "x": 0,
+     "y": 100,
+     "width": 0,
+     "height": 200
+    },
+    {
+     "cid": "g",
+     "x": 0,
+     "y": 320,
+     "width": 1280,
+     "height": 60
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "last-margin-in-float",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><div data-cid=\"w\" style=\"float:left;width:50px\"><div style=\"height:100px\"></div><div data-cid=\"k\" style=\"height:200px;margin-bottom:20px\"></div></div><div data-cid=\"g\" style=\"height:60px;clear:both\"></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "w",
+     "x": 0,
+     "y": 0,
+     "width": 50,
+     "height": 320
+    },
+    {
+     "cid": "k",
+     "x": 0,
+     "y": 100,
+     "width": 50,
+     "height": 200
+    },
+    {
+     "cid": "g",
+     "x": 0,
+     "y": 320,
+     "width": 1280,
+     "height": 60
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "legacy-align-text-center-inline-only",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><div data-cid=\"p\" style=\"text-align:center;width:200px\"><div data-cid=\"d\" style=\"width:10px;height:10px\"></div><i data-cid=\"i\" style=\"display:inline-block;width:10px;height:10px\"></i></div></body></html>",
+   "measure": "xw",
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 200,
+     "height": 28
+    },
+    {
+     "cid": "d",
+     "x": 0,
+     "y": 0,
+     "width": 10,
+     "height": 10
+    },
+    {
+     "cid": "i",
+     "x": 95,
+     "y": 14,
+     "width": 10,
+     "height": 10
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "legacy-align-text-right-inline-only",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><div data-cid=\"p\" style=\"text-align:right;width:200px\"><div data-cid=\"d\" style=\"width:10px;height:10px\"></div></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 200,
+     "height": 10
+    },
+    {
+     "cid": "d",
+     "x": 0,
+     "y": 0,
+     "width": 10,
+     "height": 10
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "legacy-align-webkit-center",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><div data-cid=\"p\" style=\"text-align:-webkit-center;width:200px\"><div data-cid=\"d\" style=\"width:10px;height:10px\"></div></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 200,
+     "height": 10
+    },
+    {
+     "cid": "d",
+     "x": 95,
+     "y": 0,
+     "width": 10,
+     "height": 10
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "legacy-align-webkit-right",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><div data-cid=\"p\" style=\"text-align:-webkit-right;width:200px\"><div data-cid=\"d\" style=\"width:10px;height:10px\"></div></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 200,
+     "height": 10
+    },
+    {
+     "cid": "d",
+     "x": 190,
+     "y": 0,
+     "width": 10,
+     "height": 10
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "legacy-align-webkit-center-inherited",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><div style=\"text-align:-webkit-center;width:200px\"><div data-cid=\"p\" style=\"width:100px\"><div data-cid=\"d\" style=\"width:10px;height:10px\"></div></div></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 50,
+     "y": 0,
+     "width": 100,
+     "height": 10
+    },
+    {
+     "cid": "d",
+     "x": 95,
+     "y": 0,
+     "width": 10,
+     "height": 10
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "legacy-align-center-element",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><center data-cid=\"p\" style=\"width:200px\"><div data-cid=\"d\" style=\"width:10px;height:10px\"></div></center></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 200,
+     "height": 10
+    },
+    {
+     "cid": "d",
+     "x": 95,
+     "y": 0,
+     "width": 10,
+     "height": 10
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "legacy-align-div-attribute",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><div data-cid=\"p\" align=\"center\" style=\"width:200px\"><div data-cid=\"d\" style=\"width:10px;height:10px\"></div></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 200,
+     "height": 10
+    },
+    {
+     "cid": "d",
+     "x": 95,
+     "y": 0,
+     "width": 10,
+     "height": 10
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "legacy-align-p-attribute-right",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><p data-cid=\"p\" align=\"right\" style=\"width:200px;margin:0\"><div data-cid=\"d\" style=\"width:10px;height:10px\"></div></p></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 200,
+     "height": 0
+    },
+    {
+     "cid": "d",
+     "x": 0,
+     "y": 0,
+     "width": 10,
+     "height": 10
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "legacy-align-td-attribute",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><table style=\"border-spacing:0\"><tr><td data-cid=\"p\" align=\"center\" style=\"width:200px;padding:0\"><div data-cid=\"d\" style=\"width:10px;height:10px\"></div></td></tr></table></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 200,
+     "height": 10
+    },
+    {
+     "cid": "d",
+     "x": 95,
+     "y": 0,
+     "width": 10,
+     "height": 10
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "legacy-align-author-overrides-attribute",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><div data-cid=\"p\" align=\"center\" style=\"width:200px;text-align:left\"><div data-cid=\"d\" style=\"width:10px;height:10px\"></div></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 200,
+     "height": 10
+    },
+    {
+     "cid": "d",
+     "x": 0,
+     "y": 0,
+     "width": 10,
+     "height": 10
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "th-centers-inline-content",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><table><tr><th data-cid=\"th\" style=\"width:100px\"><i data-cid=\"i\" style=\"display:inline-block;width:10px;height:10px\"></i></th></tr></table></body></html>",
+   "measure": "xw",
+   "boxes": [
+    {
+     "cid": "th",
+     "x": 2,
+     "y": 2,
+     "width": 102,
+     "height": 20
+    },
+    {
+     "cid": "i",
+     "x": 48,
+     "y": 7,
+     "width": 10,
+     "height": 10
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "th-author-text-align",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><table><tr><th data-cid=\"th\" style=\"width:100px;text-align:left\"><i data-cid=\"i\" style=\"display:inline-block;width:10px;height:10px\"></i></th></tr></table></body></html>",
+   "measure": "xw",
+   "boxes": [
+    {
+     "cid": "th",
+     "x": 2,
+     "y": 2,
+     "width": 102,
+     "height": 20
+    },
+    {
+     "cid": "i",
+     "x": 3,
+     "y": 7,
+     "width": 10,
+     "height": 10
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "th-leaves-block-children",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><table><tr><th data-cid=\"th\" style=\"width:100px\"><div data-cid=\"d\" style=\"width:10px;height:10px\"></div></th></tr></table></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "th",
+     "x": 2,
+     "y": 2,
+     "width": 102,
+     "height": 12
+    },
+    {
+     "cid": "d",
+     "x": 3,
+     "y": 3,
+     "width": 10,
+     "height": 10
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
   }
  ]
 }

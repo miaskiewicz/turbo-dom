@@ -37,7 +37,8 @@ fn lay_out(html: &str) -> Result<Fragment, RenderError> {
 - `StyleOptions` / `LayoutOptions` / `HtmlOptions`: `accept_cmyk` (print colour),
   `atomic_internal_links` (`<a href="#x">` as its own box), `first_node_id`.
 - `layout_recorded` returns the galley plus `NodeSources` (box id → source element /
-  text node, table rows, id range) — html2pdf derives PDF/UA roles and links from it.
+  text node, table rows, the grid boxes of captioned tables, id range) — html2pdf derives
+  PDF/UA roles and links from it.
 - The string HTML entries (`layout_html`, `layout_boxes`) use no markers: `t:*` are
   ordinary unknown elements, as in a browser.
 - `live` — the live-DOM input ("surf mode"): an embedder that owns a live document
@@ -63,11 +64,27 @@ fn lay_out(html: &str) -> Result<Fragment, RenderError> {
   placed at the top of its line, which wraps beside it; an out-of-flow box adds its own
   margins once; the anonymous block around an inline run inherits only inherited
   properties; a line holding only out-of-flow places is zero-height. CSSOM-View hit
-  testing (`cssom_view::hit`) honours `clip: rect()` of absolutely positioned boxes.
+  testing (`cssom_view::hit`) honours `clip: rect()` of absolutely positioned boxes, and
+  so does the galley (turbo-dom#52): such a box keeps its box and records the region in
+  `Fragment::clip` (`ClipRect`, from its border-box corner) for the painters; one whose
+  clip keeps nothing at any size (the sr-only pattern) is left out of static layouts
+  (no box, text or tag); `clip` on any other box is ignored.
   Also (turbo-dom#48/#49/#50/#53/#56): absolutely positioned `width: auto` boxes shrink to
   fit; `inline-flex` / `inline-grid` are inline-level; auto-layout collapsed tables merge
   borders; percentage columns take their share; spanning cells spread over their columns.
-  `<caption>` is not laid out yet (turbo-dom#51).
+  A table with a caption (`display: table-caption`, the UA style of `<caption>`) is a
+  table wrapper box (turbo-dom#51): the table's fragment holds the captions
+  (`caption-side: top` above, `bottom` below, in source order) and an anonymous grid
+  box (`NodeSources::table_grids`) stretched to the widest of the grid and the captions'
+  min-content, which carries the table's frame, background, `height` and rows.
+  Also P5b-W5 (Chrome 156 controls in `scripts/html-document-chrome-control.mjs`): a last
+  child's bottom margin is kept inside / collapsed through its parent on every policy
+  (turbo-dom#41); a table's extra width goes to its auto columns, equally when empty
+  (#55), and its extra height to its rows (#64); UA `table { box-sizing: border-box;
+  border-spacing: 2px }` with `border-spacing` inherited and initially 0 (#62, #63);
+  `border-box` widths count once in intrinsic and column widths (#65); only legacy
+  `-webkit-*` alignment (UA `center`, `align` attributes) moves block children (#69); UA
+  `th` is bold and centred (#70).
 - `layout_snapshot::snapshot_{,html_}live_tree*` capture a snapshot of a `StyleInput`
   (identity paths index the styled forest).
 - `image` — the ONE image layer shared by the PDF emitter and turbo-dom-raster:

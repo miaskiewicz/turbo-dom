@@ -108,11 +108,20 @@ enum SourceRole {
     DocumentRoot,
     NativeIframe,
     AnonymousInlineFlow,
+    /// The anonymous table grid box of a captioned table (miaskiewicz/turbo-dom#51).
+    TableGrid,
 }
 
 impl LayoutBox {
     pub(crate) fn anonymous_inline_flow(&self) -> bool {
         self.source_role == SourceRole::AnonymousInlineFlow
+    }
+
+    /// Whether this is the anonymous table grid box of a table with captions: the
+    /// table's own box is then the table wrapper box, holding the captions and this grid
+    /// (CSS Tables 3 §3.1; miaskiewicz/turbo-dom#51).
+    pub(crate) fn table_grid(&self) -> bool {
+        self.source_role == SourceRole::TableGrid
     }
 
     pub(crate) fn document_root(&self) -> bool {
@@ -424,6 +433,8 @@ pub(crate) struct BuildOptions {
 pub(crate) struct Recorded {
     pub(crate) elements: std::collections::HashMap<NodeId, turbo_dom::Handle>,
     pub(crate) texts: std::collections::HashMap<NodeId, turbo_dom::Handle>,
+    /// The anonymous table grid boxes ([`LayoutBox::table_grid`]).
+    pub(crate) table_grids: std::collections::HashSet<NodeId>,
 }
 
 /// A monotonic source of pre-order node ids.
@@ -556,17 +567,11 @@ pub(crate) fn is_hidden(style: &ComputedStyle) -> bool {
 /// use dozens; without honoring them their text renders — and, being
 /// `position:absolute` with no offset, piles up at the containing block's origin.
 fn is_visually_hidden(style: &ComputedStyle) -> bool {
-    // `clip: rect(...)` — deprecated everywhere *except* the classic sr-only clip
-    // hack (`clip:rect(1px,1px,1px,1px)` / `rect(0,0,0,0)`), so any rect() clip is
-    // the hide pattern.
-    if style
-        .get("clip")
-        .map(str::trim)
-        .is_some_and(|c| c.starts_with("rect("))
-    {
-        return true;
-    }
-    clip_path_hides(style) || tiny_clipped(style)
+    // An absolutely positioned box whose `clip: rect()` keeps nothing — the classic
+    // sr-only clip (`rect(1px,1px,1px,1px)` / `rect(0,0,0,0)`). A partial clip lays out
+    // and paints its region (the fragment's `clip`); `clip` on any other box does not
+    // apply (miaskiewicz/turbo-dom#52).
+    super::value::clip_keeps_nothing(style) || clip_path_hides(style) || tiny_clipped(style)
 }
 
 /// `clip-path: inset(50%|100%)` clips the whole box away.
@@ -818,9 +823,79 @@ fn box_kind_for(display: Display, el: &StyledElement, ids: &mut Ids) -> BoxKind 
     match display {
         Display::Flex | Display::InlineFlex => BoxKind::Flex(flex_grid_children(el, ids)),
         Display::Grid | Display::InlineGrid => BoxKind::Grid(flex_grid_children(el, ids)),
-        Display::Table | Display::InlineTable => BoxKind::Table(child_block_boxes(el, ids)),
+        Display::Table | Display::InlineTable => table_kind(el, ids),
         _ => build_flow(&el.children, &el.style, ids),
     }
+}
+
+/// A table's children. With a caption (`display: table-caption`) the table's box is the
+/// table wrapper box: its children are the captions, in source order, and one anonymous
+/// table grid box holding every other child (rows and row groups) that carries the
+/// table's frame, background and table properties (CSS Tables 3 §3.1, as Chrome 156 lays
+/// it out; miaskiewicz/turbo-dom#51). Without one the children are the rows themselves.
+fn table_kind(el: &StyledElement, ids: &mut Ids) -> BoxKind {
+    let kids = child_block_boxes(el, ids);
+    if !kids.iter().any(|kid| kid.display == Display::TableCaption) {
+        return BoxKind::Table(kids);
+    }
+    let (mut captions, rows): (Vec<LayoutBox>, Vec<LayoutBox>) = kids
+        .into_iter()
+        .partition(|kid| kid.display == Display::TableCaption);
+    let node_id = ids.alloc();
+    if let Some(recorded) = &mut ids.recorded {
+        recorded.table_grids.insert(node_id);
+    }
+    captions.push(LayoutBox {
+        node_id,
+        source_role: SourceRole::TableGrid,
+        style: grid_style(&el.style),
+        attrs: Vec::new(),
+        display: Display::Table,
+        kind: BoxKind::Table(rows),
+        image: image_of(el),
+        svg_viewport: None,
+        mask: mask_image(&el.style),
+        style_cache: RefCell::new(StyleCache::Unknown),
+        html_layout_policy: std::cell::Cell::new((false, 0.0)),
+        natural_cache: std::cell::Cell::new(None),
+        min_content_cache: std::cell::Cell::new(None),
+        intrinsic_w: std::cell::Cell::new(None),
+        measure_cache: RefCell::new(None),
+    });
+    BoxKind::Table(captions)
+}
+
+/// The table grid box's style: the table's, less what applies to the table wrapper box
+/// (margins, positioning, floating, stacking and transforms).
+fn grid_style(table: &ComputedStyle) -> ComputedStyle {
+    let mut style = table.clone();
+    for property in [
+        "margin",
+        "margin-top",
+        "margin-right",
+        "margin-bottom",
+        "margin-left",
+        "position",
+        "inset",
+        "top",
+        "right",
+        "bottom",
+        "left",
+        "float",
+        "clear",
+        "z-index",
+        "transform",
+        "transform-origin",
+    ] {
+        style.remove(property);
+    }
+    style.set("display", "table".to_string());
+    style
+}
+
+/// Whether `kind` is a table wrapper box's (a captioned table; see [`table_kind`]).
+fn is_table_wrapper(kind: &BoxKind) -> bool {
+    matches!(kind, BoxKind::Table(kids) if kids.iter().any(LayoutBox::table_grid))
 }
 
 /// The label of a button-like `<input>` (`type` submit/button/reset) — its `value`
@@ -888,6 +963,8 @@ fn build_block_box(el: &StyledElement, ids: &mut Ids) -> LayoutBox {
         let display = display_of(&el.style);
         (display, box_kind_for(display, el, ids))
     };
+    // A table wrapper box paints nothing of its own: its grid box has the images.
+    let wrapper = is_table_wrapper(&kind);
     LayoutBox {
         node_id,
         source_role: source_role(el, ids),
@@ -895,9 +972,9 @@ fn build_block_box(el: &StyledElement, ids: &mut Ids) -> LayoutBox {
         attrs: el.attrs.clone(),
         display,
         kind,
-        image: image_of(el),
+        image: image_of(el).filter(|_| !wrapper),
         svg_viewport,
-        mask: mask_image(&el.style),
+        mask: mask_image(&el.style).filter(|_| !wrapper),
         style_cache: RefCell::new(StyleCache::Unknown),
         html_layout_policy: std::cell::Cell::new((false, 0.0)),
         natural_cache: std::cell::Cell::new(None),
