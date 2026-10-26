@@ -209,6 +209,8 @@ const INHERITED: &[&str] = &[
     "list-style-position",
     "visibility",
     "image-orientation",
+    "caption-side",
+    "border-spacing",
 ];
 
 // --------------------------------------------------------------------------
@@ -365,6 +367,7 @@ fn collect_presentational(element: Subject, out: &mut Vec<Cand>) {
             .and_then(attr_length)
             .map(height_decl),
         font_color_decl(element),
+        align_decl(element),
     ]
     .into_iter()
     .flatten()
@@ -399,6 +402,32 @@ fn bgcolor_decl(element: Subject) -> Option<Declaration> {
         .map(str::trim)
         .filter(|v| !v.is_empty())?;
     Some(pres_decl("background-color", bg.to_string()))
+}
+
+/// `align="center|left|right|justify"` on a block or table cell/row → `text-align`: the
+/// legacy `-webkit-*` value Chrome maps it to (it aligns block children too; `middle` is
+/// `center`), `justify` as is (miaskiewicz/turbo-dom#69).
+fn align_decl(element: Subject) -> Option<Declaration> {
+    const ALIGNED: [&str; 11] = [
+        "div", "p", "h1", "h2", "h3", "h4", "h5", "h6", "td", "th", "tr",
+    ];
+    if !ALIGNED.iter().any(|tag| is_tag(element, tag)) {
+        return None;
+    }
+    let value = match element
+        .attrs
+        .get_ignore_case("align")?
+        .trim()
+        .to_ascii_lowercase()
+        .as_str()
+    {
+        "center" | "middle" => "-webkit-center",
+        "left" => "-webkit-left",
+        "right" => "-webkit-right",
+        "justify" => "justify",
+        _ => return None,
+    };
+    Some(pres_decl("text-align", value.to_string()))
 }
 
 /// `<font color="...">` → `color`, when non-empty (only on the `<font>` tag).

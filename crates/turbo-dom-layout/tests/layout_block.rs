@@ -553,12 +553,26 @@ fn visibility_hidden_and_opacity_zero_drop_the_box() {
 
 #[test]
 fn text_align_center_and_margin_auto_center_width_constrained_blocks() {
-    // A `text-align:center` container (like `<center>`) centers a narrow block
-    // child; a full-width child is untouched.
-    let centered = lay(
+    // A `text-align:-webkit-center` container (`<center>`, `align="center"`) centers a
+    // narrow block child; a full-width child is untouched. Plain `text-align:center`
+    // aligns inline content only (Chrome 156; miaskiewicz/turbo-dom#69).
+    let plain = lay(
         &[el(
             "div",
             &[("text-align", "center")],
+            vec![el(
+                "div",
+                &[("width", "100px"), ("background-color", "#ff0000")],
+                vec![],
+            )],
+        )],
+        500.0,
+    );
+    assert!(bg_boxes(&plain)[0].x.abs() < 0.5, "plain center leaves blocks");
+    let centered = lay(
+        &[el(
+            "div",
+            &[("text-align", "-webkit-center")],
             vec![el(
                 "div",
                 &[("width", "100px"), ("background-color", "#ff0000")],
@@ -868,12 +882,13 @@ fn oversized_float_stays_put_no_finite_drop() {
 
 #[test]
 fn text_align_right_pushes_block_child_to_right() {
-    // A `text-align:right` container right-aligns a width-constrained block child
-    // (`block_h_offset`'s Align::Right arm).
+    // A `text-align:-webkit-right` container (`align="right"`) right-aligns a
+    // width-constrained block child (`block_h_offset`'s Align::Right arm); plain `right`
+    // aligns inline content only (miaskiewicz/turbo-dom#69).
     let root = lay(
         &[el(
             "div",
-            &[("text-align", "right")],
+            &[("text-align", "-webkit-right")],
             vec![el(
                 "div",
                 &[("width", "100px"), ("background-color", "#ff0000")],

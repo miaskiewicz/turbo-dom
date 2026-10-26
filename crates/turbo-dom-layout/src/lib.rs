@@ -40,8 +40,8 @@ pub use html_layout::{
 };
 pub use image::{ImageResolver, NoImages};
 pub use layout::fragment::{
-    BoxShadow, BreakMeta, Fragment, FragmentContent, GradientStop, ImagePlacement, LinearGradient,
-    NodeId, PositionedGlyph, RepeatKind, Transform2D,
+    BoxShadow, BreakMeta, ClipRect, Fragment, FragmentContent, GradientStop, ImagePlacement,
+    LinearGradient, NodeId, PositionedGlyph, RepeatKind, Transform2D,
 };
 pub use layout::value::{BreakRule, Rgba};
 pub use layout::{

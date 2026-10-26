@@ -8,7 +8,8 @@ use std::fmt::Write;
 
 use turbo_dom_layout::layout::value::{BorderEdges, BorderSide};
 use turbo_dom_layout::{
-    BoxShadow, Fragment, FragmentContent, LinearGradient as CssGradient, PositionedGlyph, Rgba,
+    BoxShadow, ClipRect, Fragment, FragmentContent, LinearGradient as CssGradient, PositionedGlyph,
+    Rgba,
 };
 
 use crate::glyph::{self, Pen, Tracer};
@@ -64,6 +65,37 @@ fn paint_fragment(svg: &mut String, f: &Fragment, images: &DecodedAssets) {
             -ox, -oy
         );
     }
+    match f.clip {
+        Some(clip) => paint_clipped(svg, f, clip, images),
+        None => paint_subtree(svg, f, images),
+    }
+    if transformed {
+        svg.push_str("</g>");
+    }
+}
+
+/// Paint a fragment whose box has a `clip: rect()` (miaskiewicz/turbo-dom#52) inside a
+/// `<g clip-path>` of that region (in the box's own, possibly transformed, user space;
+/// the `clipPath` id is the document offset, unique); an empty region paints nothing.
+fn paint_clipped(svg: &mut String, f: &Fragment, clip: ClipRect, images: &DecodedAssets) {
+    if clip.width <= 0.0 || clip.height <= 0.0 {
+        return;
+    }
+    let id = svg.len();
+    let _ = write!(
+        svg,
+        "<clipPath id=\"clip{id}\"><rect x=\"{:.2}\" y=\"{:.2}\" width=\"{:.2}\" height=\"{:.2}\"/></clipPath><g clip-path=\"url(#clip{id})\">",
+        f.x + clip.x,
+        f.y + clip.y,
+        clip.width,
+        clip.height
+    );
+    paint_subtree(svg, f, images);
+    svg.push_str("</g>");
+}
+
+/// Paint a fragment's own content, then its children in stacking order.
+fn paint_subtree(svg: &mut String, f: &Fragment, images: &DecodedAssets) {
     match &f.content {
         FragmentContent::Box {
             background,
@@ -106,9 +138,6 @@ fn paint_fragment(svg: &mut String, f: &Fragment, images: &DecodedAssets) {
     // order, so `position`/`z-index` boxes (menus, modals) layer correctly.
     for &i in &f.paint_order() {
         paint_fragment(svg, &f.children[i], images);
-    }
-    if transformed {
-        svg.push_str("</g>");
     }
 }
 

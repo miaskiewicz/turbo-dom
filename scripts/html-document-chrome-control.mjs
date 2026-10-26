@@ -5,6 +5,8 @@
 // miaskiewicz/turbo-dom#24 item 1 (`@media` / `@supports` rules in source order) and
 // miaskiewicz/turbo-dom#25 item 2 (elements the drive does not lay out still count for
 // selectors). P5b-W3 adds the layout cases of miaskiewicz/turbo-dom#28 (one group per item).
+// P5b-W5 adds the table caption cases of miaskiewicz/turbo-dom#51 (`caption-*`) and the
+// cases of the bugs found while fixing it (one group per issue, labelled).
 //
 // For every case below, Chrome for Testing 156 (viewport 1280x800) records:
 //   - `boxes`: getBoundingClientRect() of every `[data-cid]` element (document order), as
@@ -50,6 +52,8 @@ const DOC = (head, body, htmlAttrs = "", bodyAttrs = "") =>
 const S = (css) => `<style>${css}</style>`;
 const ROOTS = ` data-cid="html"`;
 const BODY = ` data-cid="body"`;
+// A caption's text-free content block.
+const CAP = (w, h) => `<div style="width:${w}px;height:${h}px"></div>`;
 
 // `measure` lists what the test compares per box ("xywh" by default; text boxes skip the
 // font-dependent height).
@@ -172,6 +176,131 @@ const CASES = [
   { id: "table-colspan-spreads-in-proportion", html: DOC(S("body{margin:0}td{padding:0}"), `<table data-cid="t"><tr><td data-cid="s" colspan="2"><div style="width:102px;height:10px"></div></td></tr><tr><td data-cid="a"><div style="width:20px;height:10px"></div></td><td data-cid="b"><div style="width:60px;height:10px"></div></td></tr></table>`) },
   { id: "table-colspan-counts-inner-spacing", html: DOC(S("body{margin:0}td{padding:0}table{border-spacing:5px}"), `<table data-cid="t"><tr><td data-cid="s" colspan="2"><div style="width:125px;height:10px"></div></td></tr><tr><td data-cid="a"><div style="width:10px;height:10px"></div></td><td data-cid="b"><div style="width:30px;height:10px"></div></td></tr></table>`) },
   { id: "table-colspan-empty-columns-evenly", html: DOC(S("body{margin:0}td{padding:0}"), `<table data-cid="t"><tr><td data-cid="s" colspan="2"><div style="width:62px;height:10px"></div></td><td data-cid="c"></td></tr><tr><td data-cid="a"></td><td data-cid="b"></td><td><div style="width:10px;height:10px"></div></td></tr></table>`) },
+  // P5b-W5, miaskiewicz/turbo-dom#51: a caption is not part of the grid. The table wrapper box
+  // (the `<table>`'s box) holds the captions — `caption-side: top` above the grid, `bottom`
+  // below, each in source order — and the grid box, which stretches to the wrapper's width:
+  // the grid's own width or the widest caption's min-content (margin box), whichever is wider.
+  // Caption margins do not collapse with the table's; `height` sizes the grid.
+  ...[
+    ["caption-wider-than-grid", "", `<caption data-cid="c">${CAP(100, 10)}</caption>`],
+    ["caption-narrower-than-grid", "", `<caption data-cid="c">${CAP(10, 10)}</caption>`],
+    ["caption-table-width", "width:100px", `<caption data-cid="c">${CAP(10, 10)}</caption>`],
+    ["caption-wider-than-table-width", "width:100px", `<caption data-cid="c">${CAP(150, 10)}</caption>`],
+    ["caption-frame-margins", "border:3px solid #000;padding:5px;background:#f00;margin:7px", `<caption data-cid="c" style="padding:2px;border:1px solid #00f;margin:4px">${CAP(100, 10)}</caption>`],
+    ["caption-side-bottom", "caption-side:bottom", `<caption data-cid="c">${CAP(100, 10)}</caption>`],
+    ["caption-multiple", "", `<caption data-cid="c">${CAP(40, 10)}</caption>`, `<caption data-cid="c2" style="caption-side:bottom">${CAP(50, 7)}</caption><caption data-cid="c3">${CAP(20, 3)}</caption>`],
+    ["caption-own-width", "", `<caption data-cid="c" style="width:200px">${CAP(10, 10)}</caption>`],
+    ["caption-percent-table-width", "width:50%", `<caption data-cid="c">${CAP(100, 10)}</caption>`],
+    ["caption-centered-table", "margin:0 auto", `<caption data-cid="c">${CAP(100, 10)}</caption>`],
+    ["caption-absolute-table", "position:absolute;left:10px;top:20px", `<caption data-cid="c">${CAP(100, 10)}</caption>`],
+    ["caption-table-height", "height:100px", `<caption data-cid="c">${CAP(100, 10)}</caption>`],
+    ["caption-margins", "", `<caption data-cid="c" style="margin:10px 0 5px">${CAP(100, 10)}</caption>`],
+    ["caption-collapsed-borders", "border-collapse:collapse;border:2px solid #000", `<caption data-cid="c">${CAP(100, 10)}</caption>`, "", "border:1px solid #000"],
+  ].map(([id, table, caption, after = "", cell = ""]) => ({
+    id,
+    html: DOC(S("body{margin:0}"), `<table data-cid="t" style="${table}">${caption}<tr><td data-cid="td" style="${cell}"><div style="width:30px;height:10px"></div></td></tr>${after}</table><div data-cid="after" style="height:5px"></div>`),
+  })),
+  { id: "caption-no-rows", html: DOC(S("body{margin:0}"), `<table data-cid="t"><caption data-cid="c">${CAP(100, 10)}</caption></table>`) },
+  { id: "caption-narrow-container", html: DOC(S("body{margin:0}"), `<div data-cid="d" style="width:60px"><table data-cid="t"><caption data-cid="c">${CAP(100, 10)}</caption><tr><td data-cid="td"><div style="width:30px;height:10px"></div></td></tr></table></div>`) },
+  { id: "caption-inline-table", html: DOC(S("body{margin:0}"), `<div data-cid="d" style="font-size:0"><i style="display:inline-block;width:5px;height:5px"></i><table data-cid="t" style="display:inline-table"><caption data-cid="c">${CAP(100, 10)}</caption><tr><td data-cid="td"><div style="width:30px;height:10px"></div></td></tr></table></div>`) },
+  { id: "caption-in-flex-item", html: DOC(S("body{margin:0}"), `<div data-cid="d" style="display:flex"><table data-cid="t"><caption data-cid="c">${CAP(100, 10)}</caption><tr><td data-cid="td"><div style="width:30px;height:10px"></div></td></tr></table></div>`) },
+  { id: "caption-float-table", html: DOC(S("body{margin:0}"), `<table data-cid="t" style="float:left;width:50px"><caption data-cid="c">${CAP(80, 10)}</caption><tr><td data-cid="td"><div style="width:30px;height:10px"></div></td></tr></table><div data-cid="d" style="overflow:hidden;height:10px"></div>`) },
+  { id: "caption-nested-table", html: DOC(S("body{margin:0}"), `<table data-cid="o"><tr><td data-cid="oc"><table data-cid="t"><caption data-cid="c">${CAP(100, 10)}</caption><tr><td data-cid="td"><div style="width:30px;height:10px"></div></td></tr></table></td></tr></table>`) },
+  { id: "caption-display-table-caption", html: DOC(S("body{margin:0}"), `<div data-cid="t" style="display:table"><div data-cid="c" style="display:table-caption">${CAP(100, 10)}</div><div style="display:table-row"><div data-cid="td" style="display:table-cell"><div style="width:30px;height:10px"></div></div></div></div>`) },
+  // A text caption wraps to its min-content (its widest word): font-dependent sizes, so only
+  // the caption's box and the x edges are compared.
+  { id: "caption-text", html: DOC(S("body{margin:0}"), `<table data-cid="t"><caption data-cid="c">A rather long caption text that is wider than the table</caption><tr><td data-cid="td"><div style="width:30px;height:10px"></div></td></tr></table>`), measure: "x" },
+  // P5b-W5, miaskiewicz/turbo-dom#65: a `px` width is the border box under
+  // `box-sizing: border-box` in intrinsic sizes (floats, inline-blocks, shrink-to-fit
+  // tables) and in table column widths.
+  { id: "border-box-float-child", html: DOC(S("body{margin:0}"), `<div data-cid="f" style="float:left"><div data-cid="c" style="box-sizing:border-box;width:100px;padding:10px;height:10px"></div></div>`) },
+  { id: "border-box-inline-block-child", html: DOC(S("body{margin:0}"), `<div data-cid="d" style="font-size:0"><div data-cid="i" style="display:inline-block"><div style="box-sizing:border-box;width:100px;padding:10px;height:10px"></div></div><i data-cid="j" style="display:inline-block;width:10px;height:10px"></i></div>`) },
+  { id: "border-box-table-content", html: DOC(S("body{margin:0}td{padding:0}"), `<table data-cid="t" style="border-spacing:0"><tr><td data-cid="td"><div data-cid="c" style="box-sizing:border-box;width:100px;padding:10px;height:10px"></div></td></tr></table>`) },
+  { id: "border-box-table-min-content", html: DOC(S("body{margin:0}td{padding:0}"), `<table data-cid="t" style="width:1px;border-spacing:0"><tr><td data-cid="td"><div data-cid="c" style="box-sizing:border-box;width:100px;padding:10px;height:10px"></div></td></tr></table>`) },
+  { id: "border-box-cell-width", html: DOC(S("body{margin:0}"), `<table data-cid="t"><tr><td data-cid="a" style="box-sizing:border-box;width:100px;padding:10px"></td><td data-cid="b"><div style="width:10px;height:10px"></div></td></tr></table>`) },
+  { id: "border-box-cell-width-collapsed", html: DOC(S("body{margin:0}"), `<table data-cid="t" style="border-collapse:collapse"><tr><td data-cid="a" style="box-sizing:border-box;width:100px;padding:10px;border:2px solid"></td><td data-cid="b"><div style="width:10px;height:10px"></div></td></tr></table>`) },
+  { id: "border-box-cell-width-fixed", html: DOC(S("body{margin:0}"), `<table data-cid="t" style="table-layout:fixed;width:300px"><tr><td data-cid="a" style="box-sizing:border-box;width:100px;padding:10px"></td><td data-cid="b"><div style="width:10px;height:10px"></div></td></tr></table>`) },
+  { id: "border-box-cell-width-fixed-collapsed", html: DOC(S("body{margin:0}"), `<table data-cid="t" style="table-layout:fixed;width:300px;border-collapse:collapse"><tr><td data-cid="a" style="box-sizing:border-box;width:100px;padding:10px;border:2px solid"></td><td data-cid="b"><div style="width:10px;height:10px"></div></td></tr></table>`) },
+  { id: "border-box-wider-than-frame", html: DOC(S("body{margin:0}"), `<div data-cid="f" style="float:left"><div data-cid="c" style="box-sizing:border-box;width:10px;padding:10px;height:10px"></div></div>`) },
+  // P5b-W5, miaskiewicz/turbo-dom#62: Chrome's UA sizes `<table>` as `box-sizing: border-box`.
+  { id: "table-border-box-width", html: DOC(S("body{margin:0}"), `<table data-cid="t" style="width:120px;border:4px solid;padding:3px"><tr><td data-cid="td"><div style="width:30px;height:10px"></div></td></tr></table>`) },
+  { id: "table-border-box-width-collapsed", html: DOC(S("body{margin:0}"), `<table data-cid="t" style="width:120px;border:4px solid;border-collapse:collapse"><tr><td data-cid="td"><div style="width:30px;height:10px"></div></td></tr></table>`) },
+  { id: "table-border-box-percent-width", html: DOC(S("body{margin:0}"), `<table data-cid="t" style="width:50%;border:10px solid"><tr><td data-cid="td"><div style="width:30px;height:10px"></div></td></tr></table>`) },
+  { id: "table-border-box-min-width", html: DOC(S("body{margin:0}"), `<table data-cid="t" style="min-width:100px;border:5px solid"><tr><td data-cid="td"><div style="width:30px;height:10px"></div></td></tr></table>`) },
+  { id: "table-border-box-max-width", html: DOC(S("body{margin:0}"), `<table data-cid="t" style="width:300px;max-width:100px;border:5px solid"><tr><td data-cid="td"><div style="width:30px;height:10px"></div></td></tr></table>`) },
+  { id: "table-content-box-author", html: DOC(S("body{margin:0}"), `<table data-cid="t" style="box-sizing:content-box;width:120px;border:4px solid"><tr><td data-cid="td"><div style="width:30px;height:10px"></div></td></tr></table>`) },
+  { id: "table-border-box-in-float", html: DOC(S("body{margin:0}"), `<div data-cid="f" style="float:left"><table data-cid="t" style="width:120px;border:4px solid"><tr><td data-cid="td"><div style="width:30px;height:10px"></div></td></tr></table></div>`) },
+  { id: "table-border-box-fixed", html: DOC(S("body{margin:0}"), `<table data-cid="t" style="table-layout:fixed;width:120px;border:4px solid;padding:2px"><tr><td data-cid="a"><div style="width:10px;height:10px"></div></td><td data-cid="b"><div style="width:10px;height:10px"></div></td></tr></table>`) },
+  // P5b-W5, miaskiewicz/turbo-dom#63: `border-spacing` is inherited with initial value 0;
+  // only the UA `table` rule gives `<table>` 2px.
+  { id: "css-table-no-spacing", html: DOC(S("body{margin:0}"), `<div data-cid="t" style="display:table"><div style="display:table-row"><div data-cid="td" style="display:table-cell"><div style="width:30px;height:10px"></div></div></div></div>`) },
+  { id: "css-table-explicit-spacing", html: DOC(S("body{margin:0}"), `<div data-cid="t" style="display:table;border-spacing:5px 3px"><div style="display:table-row"><div data-cid="td" style="display:table-cell"><div style="width:30px;height:10px"></div></div></div></div>`) },
+  { id: "css-table-inherits-spacing", html: DOC(S("body{margin:0}"), `<div style="border-spacing:5px"><div data-cid="t" style="display:table"><div style="display:table-row"><div data-cid="td" style="display:table-cell"><div style="width:30px;height:10px"></div></div></div></div></div>`) },
+  { id: "css-table-in-table-cell", html: DOC(S("body{margin:0}td{padding:0}"), `<table data-cid="o" style="border-spacing:7px"><tr><td><div data-cid="t" style="display:table"><div style="display:table-row"><div data-cid="td" style="display:table-cell"><div style="width:30px;height:10px"></div></div></div></div></td></tr></table>`) },
+  { id: "table-spacing-not-inherited-past-a-table", html: DOC(S("body{margin:0}td{padding:0}"), `<div style="border-spacing:9px"><table data-cid="t"><tr><td data-cid="td"><div style="width:30px;height:10px"></div></td></tr></table></div>`) },
+  // P5b-W5, miaskiewicz/turbo-dom#64: a table taller than its rows gives the extra height to
+  // its rows: to the tbody sections (else all) in proportion to their heights, inside a
+  // section to its auto-height rows (else all) in proportion (equally when all are empty).
+  { id: "table-height-rows-proportional", html: DOC(S("body{margin:0}"), `<table data-cid="t" style="height:100px"><tr><td data-cid="a"><div style="width:30px;height:10px"></div></td></tr><tr><td data-cid="b"><div style="width:30px;height:30px"></div></td></tr></table>`) },
+  { id: "table-height-empty-rows", html: DOC(S("body{margin:0}td{padding:0}"), `<table data-cid="t" style="height:100px;border-spacing:0"><tr><td data-cid="a"></td></tr><tr><td data-cid="b"></td></tr></table>`) },
+  { id: "table-height-explicit-row", html: DOC(S("body{margin:0}td{padding:0}"), `<table data-cid="t" style="height:100px;border-spacing:0"><tr style="height:20px"><td data-cid="a"><div style="width:30px;height:10px"></div></td></tr><tr><td data-cid="b"><div style="width:30px;height:10px"></div></td></tr></table>`) },
+  { id: "table-height-all-explicit-rows", html: DOC(S("body{margin:0}td{padding:0}"), `<table data-cid="t" style="height:100px;border-spacing:0"><tr style="height:20px"><td data-cid="a"><div style="width:30px;height:10px"></div></td></tr><tr style="height:30px"><td data-cid="b"><div style="width:30px;height:10px"></div></td></tr></table>`) },
+  { id: "table-height-frame", html: DOC(S("body{margin:0}td{padding:0}"), `<table data-cid="t" style="height:100px;border:5px solid;padding:3px;border-spacing:2px"><tr><td data-cid="a"><div style="width:30px;height:10px"></div></td></tr></table>`) },
+  { id: "table-height-collapsed", html: DOC(S("body{margin:0}td{padding:0;border:2px solid}"), `<table data-cid="t" style="height:100px;border-collapse:collapse"><tr><td data-cid="a"><div style="width:30px;height:10px"></div></td></tr><tr><td data-cid="b"><div style="width:30px;height:30px"></div></td></tr></table>`) },
+  { id: "table-height-rowspan", html: DOC(S("body{margin:0}td{padding:0}"), `<table data-cid="t" style="height:100px;border-spacing:0"><tr><td data-cid="a" rowspan=2><div style="width:30px;height:10px"></div></td><td data-cid="b"><div style="width:30px;height:10px"></div></td></tr><tr><td data-cid="c"><div style="width:30px;height:30px"></div></td></tr></table>`) },
+  { id: "table-height-vertical-align", html: DOC(S("body{margin:0}td{padding:0}"), `<table data-cid="t" style="height:100px;border-spacing:0"><tr><td data-cid="a" style="vertical-align:middle"><div data-cid="d" style="width:30px;height:10px"></div></td></tr></table>`) },
+  { id: "table-height-head-and-body", html: DOC(S("body{margin:0}td{padding:0}"), `<table data-cid="t" style="height:100px;border-spacing:0"><thead><tr><td data-cid="a"><div style="width:30px;height:10px"></div></td></tr></thead><tbody><tr><td data-cid="b"><div style="width:30px;height:30px"></div></td></tr></tbody></table>`) },
+  { id: "table-height-two-bodies", html: DOC(S("body{margin:0}td{padding:0}"), `<table data-cid="t" style="height:100px;border-spacing:0"><tbody><tr><td data-cid="a"><div style="width:30px;height:10px"></div></td></tr></tbody><tbody><tr><td data-cid="b"><div style="width:30px;height:30px"></div></td></tr></tbody></table>`) },
+  { id: "table-height-head-and-foot-only", html: DOC(S("body{margin:0}td{padding:0}"), `<table data-cid="t" style="height:100px;border-spacing:0"><thead><tr><td data-cid="a"><div style="width:30px;height:10px"></div></td></tr></thead><tfoot><tr><td data-cid="b"><div style="width:30px;height:30px"></div></td></tr></tfoot></table>`) },
+  { id: "table-height-empty-body", html: DOC(S("body{margin:0}td{padding:0}"), `<table data-cid="t" style="height:100px;border-spacing:0"><tbody><tr><td data-cid="a"></td></tr></tbody><tbody><tr><td data-cid="b"><div style="width:30px;height:30px"></div></td></tr></tbody></table>`) },
+  { id: "table-height-css-rows", html: DOC(S("body{margin:0}"), `<div data-cid="t" style="display:table;height:100px"><div style="display:table-row"><div data-cid="a" style="display:table-cell"><div style="width:30px;height:10px"></div></div></div><div style="display:table-row"><div data-cid="b" style="display:table-cell"><div style="width:30px;height:30px"></div></div></div></div>`) },
+  { id: "table-height-min-height", html: DOC(S("body{margin:0}td{padding:0}"), `<table data-cid="t" style="min-height:100px;border-spacing:0"><tr><td data-cid="a"><div style="width:30px;height:10px"></div></td></tr></table>`) },
+  { id: "table-height-explicit-and-empty", html: DOC(S("body{margin:0}td{padding:0}"), `<table data-cid="t" style="height:100px;border-spacing:0"><tr style="height:20px"><td data-cid="a"></td></tr><tr><td data-cid="b"></td></tr><tr><td data-cid="c"></td></tr></table>`) },
+  // P5b-W5, miaskiewicz/turbo-dom#55: a table wider than its columns' max-content gives the
+  // extra width to its auto columns (no `px` width) in proportion to their max-content,
+  // equally when they are all empty; only without auto columns to the fixed ones.
+  { id: "table-columns-empty-share", html: DOC(S("body{margin:0}table{width:100%;border-spacing:0}td{padding:0}"), `<table data-cid="t"><tr><td data-cid="a" style="height:100px;background:#f00"></td><td data-cid="b" style="height:100px;background:#0f0"></td></tr></table>`) },
+  { id: "table-columns-one-empty", html: DOC(S("body{margin:0}table{width:100%;border-spacing:0}td{padding:0}"), `<table data-cid="t"><tr><td data-cid="a" style="height:100px"></td></tr></table>`) },
+  { id: "table-columns-empty-beside-content", html: DOC(S("body{margin:0}table{width:400px;border-spacing:0}td{padding:0}"), `<table data-cid="t"><tr><td data-cid="a"></td><td data-cid="b"><div style="width:30px;height:10px"></div></td></tr></table>`) },
+  { id: "table-columns-empty-beside-fixed", html: DOC(S("body{margin:0}table{width:400px;border-spacing:0}td{padding:0}"), `<table data-cid="t"><tr><td data-cid="a" style="width:100px"></td><td data-cid="b"></td></tr></table>`) },
+  { id: "table-columns-empty-collapsed", html: DOC(S("body{margin:0}table{width:400px;border-collapse:collapse}td{padding:0;border:2px solid}"), `<table data-cid="t"><tr><td data-cid="a"></td><td data-cid="b"></td></tr></table>`) },
+  { id: "table-columns-empty-spacing", html: DOC(S("body{margin:0}table{width:400px}td{padding:0}"), `<table data-cid="t"><tr><td data-cid="a"></td><td data-cid="b"></td></tr></table>`) },
+  { id: "table-columns-empty-beside-percent", html: DOC(S("body{margin:0}table{width:400px;border-spacing:0}td{padding:0}"), `<table data-cid="t"><tr><td data-cid="a" style="width:25%"></td><td data-cid="b"></td><td data-cid="c"></td></tr></table>`) },
+  { id: "table-columns-empty-auto-table", html: DOC(S("body{margin:0}td{padding:0}"), `<table data-cid="t"><tr><td data-cid="a"></td><td data-cid="b"></td></tr></table>`) },
+  { id: "table-columns-fixed-beside-content", html: DOC(S("body{margin:0}table{width:400px;border-spacing:0}td{padding:0}"), `<table data-cid="t"><tr><td data-cid="a" style="width:100px"></td><td data-cid="b"><div style="width:30px;height:10px"></div></td></tr></table>`) },
+  { id: "table-columns-fixed-content-and-empty", html: DOC(S("body{margin:0}table{width:400px;border-spacing:0}td{padding:0}"), `<table data-cid="t"><tr><td data-cid="a" style="width:100px"><div style="width:30px;height:10px"></div></td><td data-cid="b"><div style="width:30px;height:10px"></div></td><td data-cid="c"></td></tr></table>`) },
+  // P5b-W5, miaskiewicz/turbo-dom#41: a last child's bottom margin is kept inside a parent
+  // with a bottom border/padding, a definite or minimum height, or its own formatting
+  // context, and otherwise collapses through it (CSS 2.2 §8.3.1) — on every layout policy.
+  { id: "last-margin-inside-padding", html: DOC(S("body{margin:0}"), `<div data-cid="w" style="padding-bottom:20px"><div style="height:100px"></div><div data-cid="k" style="height:200px;margin-bottom:20px"></div></div><div data-cid="g" style="height:60px"></div>`) },
+  { id: "last-margin-collapses-through", html: DOC(S("body{margin:0}"), `<div data-cid="w"><div style="height:100px"></div><div data-cid="k" style="height:200px;margin-bottom:20px"></div></div><div data-cid="g" style="height:60px"></div>`) },
+  { id: "last-margin-inside-border", html: DOC(S("body{margin:0}"), `<div data-cid="w" style="border-bottom:3px solid"><div style="height:100px"></div><div data-cid="k" style="height:200px;margin-bottom:20px"></div></div><div data-cid="g" style="height:60px"></div>`) },
+  { id: "last-margin-inside-bfc", html: DOC(S("body{margin:0}"), `<div data-cid="w" style="overflow:hidden"><div style="height:100px"></div><div data-cid="k" style="height:200px;margin-bottom:20px"></div></div><div data-cid="g" style="height:60px"></div>`) },
+  { id: "last-margin-height-auto-nested", html: DOC(S("body{margin:0}"), `<div data-cid="w"><div data-cid="v"><div style="height:100px"></div><div data-cid="k" style="height:200px;margin-bottom:20px"></div></div></div><div data-cid="g" style="height:60px"></div>`) },
+  { id: "last-margin-collapses-with-parent-margin", html: DOC(S("body{margin:0}"), `<div data-cid="w" style="margin-bottom:30px"><div style="height:100px"></div><div data-cid="k" style="height:200px;margin-bottom:20px"></div></div><div data-cid="g" style="height:60px"></div>`) },
+  { id: "last-margin-collapses-with-next-margin", html: DOC(S("body{margin:0}"), `<div data-cid="w"><div style="height:100px"></div><div data-cid="k" style="height:200px;margin-bottom:20px"></div></div><div data-cid="g" style="height:60px;margin-top:35px"></div>`) },
+  { id: "last-margin-negative", html: DOC(S("body{margin:0}"), `<div data-cid="w" style="padding-bottom:5px"><div data-cid="k" style="height:20px;margin-bottom:-10px"></div></div><div data-cid="g" style="height:60px"></div>`) },
+  { id: "last-margin-in-table-cell", html: DOC(S("body{margin:0}"), `<table data-cid="t" style="border-spacing:0"><tr><td data-cid="td" style="padding:0"><p data-cid="p" style="margin:10px 0 15px;height:20px"></p></td></tr></table><div data-cid="g" style="height:60px"></div>`) },
+  { id: "last-margin-in-flex-item", html: DOC(S("body{margin:0}"), `<div data-cid="f" style="display:flex"><div data-cid="w"><div style="height:100px"></div><div data-cid="k" style="height:200px;margin-bottom:20px"></div></div></div><div data-cid="g" style="height:60px"></div>`) },
+  { id: "last-margin-in-float", html: DOC(S("body{margin:0}"), `<div data-cid="w" style="float:left;width:50px"><div style="height:100px"></div><div data-cid="k" style="height:200px;margin-bottom:20px"></div></div><div data-cid="g" style="height:60px;clear:both"></div>`) },
+  // P5b-W5, miaskiewicz/turbo-dom#69: only the legacy `-webkit-center` / `-webkit-right`
+  // (UA `center`, `align` attributes) align block children; `text-align: center` / `right`
+  // align inline content only.
+  { id: "legacy-align-text-center-inline-only", html: DOC(S("body{margin:0}"), `<div data-cid="p" style="text-align:center;width:200px"><div data-cid="d" style="width:10px;height:10px"></div><i data-cid="i" style="display:inline-block;width:10px;height:10px"></i></div>`), measure: "xw" },
+  { id: "legacy-align-text-right-inline-only", html: DOC(S("body{margin:0}"), `<div data-cid="p" style="text-align:right;width:200px"><div data-cid="d" style="width:10px;height:10px"></div></div>`) },
+  { id: "legacy-align-webkit-center", html: DOC(S("body{margin:0}"), `<div data-cid="p" style="text-align:-webkit-center;width:200px"><div data-cid="d" style="width:10px;height:10px"></div></div>`) },
+  { id: "legacy-align-webkit-right", html: DOC(S("body{margin:0}"), `<div data-cid="p" style="text-align:-webkit-right;width:200px"><div data-cid="d" style="width:10px;height:10px"></div></div>`) },
+  { id: "legacy-align-webkit-center-inherited", html: DOC(S("body{margin:0}"), `<div style="text-align:-webkit-center;width:200px"><div data-cid="p" style="width:100px"><div data-cid="d" style="width:10px;height:10px"></div></div></div>`) },
+  { id: "legacy-align-center-element", html: DOC(S("body{margin:0}"), `<center data-cid="p" style="width:200px"><div data-cid="d" style="width:10px;height:10px"></div></center>`) },
+  { id: "legacy-align-div-attribute", html: DOC(S("body{margin:0}"), `<div data-cid="p" align="center" style="width:200px"><div data-cid="d" style="width:10px;height:10px"></div></div>`) },
+  { id: "legacy-align-p-attribute-right", html: DOC(S("body{margin:0}"), `<p data-cid="p" align="right" style="width:200px;margin:0"><div data-cid="d" style="width:10px;height:10px"></div></p>`) },
+  { id: "legacy-align-td-attribute", html: DOC(S("body{margin:0}"), `<table style="border-spacing:0"><tr><td data-cid="p" align="center" style="width:200px;padding:0"><div data-cid="d" style="width:10px;height:10px"></div></td></tr></table>`) },
+  { id: "legacy-align-author-overrides-attribute", html: DOC(S("body{margin:0}"), `<div data-cid="p" align="center" style="width:200px;text-align:left"><div data-cid="d" style="width:10px;height:10px"></div></div>`) },
+  // P5b-W5, miaskiewicz/turbo-dom#70: UA `th { font-weight: bold; text-align: center }`
+  // (`-internal-center`: inline content only).
+  { id: "th-centers-inline-content", html: DOC(S("body{margin:0}"), `<table><tr><th data-cid="th" style="width:100px"><i data-cid="i" style="display:inline-block;width:10px;height:10px"></i></th></tr></table>`), measure: "xw" },
+  { id: "th-author-text-align", html: DOC(S("body{margin:0}"), `<table><tr><th data-cid="th" style="width:100px;text-align:left"><i data-cid="i" style="display:inline-block;width:10px;height:10px"></i></th></tr></table>`), measure: "xw" },
+  { id: "th-leaves-block-children", html: DOC(S("body{margin:0}"), `<table><tr><th data-cid="th" style="width:100px"><div data-cid="d" style="width:10px;height:10px"></div></th></tr></table>`) },
 ];
 
 /** The RGB of a 1x1 PNG screenshot (any filter: a single pixel's filter adds 0). */
