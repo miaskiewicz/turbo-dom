@@ -142,6 +142,7 @@ pub fn layout_with_options(
 /// [`layout_with_options`] for the geometry seam ([`crate::layout_boxes`]): boxes that
 /// paint nothing at any size (a zero-area `clip: rect()`) are laid out too, so their
 /// border boxes are reported (miaskiewicz/turbo-dom#75). Not a render galley.
+#[allow(clippy::trivially_copy_pass_by_ref)] // mirrors `layout_with_options`
 pub(crate) fn layout_geometry(
     styled: &[StyledNode],
     cb_width: f32,
@@ -159,6 +160,7 @@ pub(crate) fn layout_geometry(
 }
 
 /// The box-generation options of [`layout_geometry`] (also used to map its box ids).
+#[allow(clippy::trivially_copy_pass_by_ref)] // mirrors the other `&LayoutOptions` readers
 pub(crate) fn geometry_build_options(options: &LayoutOptions) -> boxgen::BuildOptions {
     boxgen::BuildOptions {
         keep_zero_area_clips: true,

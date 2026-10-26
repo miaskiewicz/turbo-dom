@@ -1184,28 +1184,40 @@ fn inflow_children(
 /// `auto` height, a zero `min-height`, no vertical border or padding, and only such
 /// in-flow children (an empty `<div>`, nested empty `<div>`s).
 fn self_collapsing(lb: &LayoutBox, bs: &BoxStyle, cw: f32) -> bool {
-    let border = bs.border.widths();
-    let no_frame = border.top == 0.0
-        && border.bottom == 0.0
-        && bs.padding.top == 0.0
-        && bs.padding.bottom == 0.0;
-    let zero_height =
-        matches!(bs.height, LengthPct::Auto) || matches!(bs.height, LengthPct::Px(h) if h == 0.0);
-    let zero_min = matches!(bs.min_height, LengthPct::Auto)
-        || matches!(bs.min_height, LengthPct::Px(h) | LengthPct::Pct(h) if h == 0.0);
-    let replaced = lb.image.as_ref().is_some_and(|image| image.replaced);
-    // An element with no content at all is an empty `Lines` box.
+    empty_flow_container(lb, bs)
+        && collapsible_extent(bs)
+        && inflow_children(lb, cw, bs.font_size).all(|(kid, kbs)| self_collapsing(kid, &kbs, cw))
+}
+
+/// A box whose content can collapse away: a collapsing block container, or an element
+/// with no content at all (an empty `Lines` box) that does not establish a formatting
+/// context — not a replaced image.
+fn empty_flow_container(lb: &LayoutBox, bs: &BoxStyle) -> bool {
     let container = match &lb.kind {
         BoxKind::Lines(items) => items.is_empty() && lb.node_id.0 != 0 && !establishes_bfc(lb, bs),
         _ => collapsing_block_container(lb, bs),
     };
-    container
-        && no_frame
-        && zero_height
-        && zero_min
-        && !replaced
+    container && !lb.image.as_ref().is_some_and(|image| image.replaced)
+}
+
+/// No vertical border or padding, a zero / `auto` `height` and `min-height`, no
+/// `aspect-ratio`: nothing gives the box a height of its own.
+fn collapsible_extent(bs: &BoxStyle) -> bool {
+    let border = bs.border.widths();
+    let frame = border.top + border.bottom + bs.padding.top + bs.padding.bottom;
+    frame == 0.0
+        && zero_or_auto(bs.height)
+        && zero_or_auto(bs.min_height)
         && bs.aspect_ratio.is_none()
-        && inflow_children(lb, cw, bs.font_size).all(|(kid, kbs)| self_collapsing(kid, &kbs, cw))
+}
+
+/// Whether a `height`-like length is `auto` or zero.
+fn zero_or_auto(value: LengthPct) -> bool {
+    match value {
+        LengthPct::Auto => true,
+        LengthPct::Px(v) | LengthPct::Pct(v) => v == 0.0,
+        LengthPct::Calc { pct, px } => pct == 0.0 && px == 0.0,
+    }
 }
 
 /// The collapsed top margin that shows *above* `lb`'s content: its own `margin-top`
@@ -1346,15 +1358,7 @@ fn layout_block_flow(
         // The box's leading (collapsed) top margin — suppressed while this container
         // hoists it out its own top edge (parent/child collapse), else the child's
         // `margin-top` collapsed with any margins that escape ITS borderless top.
-        let leading = child_leading(kid, &kbs, cw, fs, hoisting);
-        let empty = hoisting && self_collapsing(kid, &kbs, cw);
-        let fragment = layout_in_flow_kid(kid, leading, cx, cw, fs, &mut flow, ctx);
-        if empty {
-            // Its own margins were hoisted too: nothing is left pending.
-            flow.pending = 0.0;
-        } else {
-            hoisting = false;
-        }
+        let fragment = layout_flow_child(kid, &kbs, (cx, cw, fs), &mut hoisting, &mut flow, ctx);
         flush_empty_inline(&mut empty_inline, (cx, fragment.y), cw, fs, ctx, &mut frags);
         frags.push(fragment);
     }
@@ -1379,6 +1383,29 @@ fn layout_block_flow(
         ctx,
     );
     (frags, content_h)
+}
+
+/// Lay out one in-flow child of [`layout_block_flow`] (`(cx, cw, fs)`: the content box's
+/// x, width and font size). While `hoisting`, the child's leading margin was applied by
+/// this box's caller; an empty (self-collapsing) child's own margins were too, so it
+/// leaves nothing pending and the hoisting goes on past it (miaskiewicz/turbo-dom#76).
+fn layout_flow_child(
+    kid: &LayoutBox,
+    kbs: &BoxStyle,
+    (cx, cw, fs): (f32, f32, f32),
+    hoisting: &mut bool,
+    flow: &mut FlowRun,
+    ctx: &mut Ctx,
+) -> Fragment {
+    let leading = child_leading(kid, kbs, cw, fs, *hoisting);
+    let empty = *hoisting && self_collapsing(kid, kbs, cw);
+    let fragment = layout_in_flow_kid(kid, leading, cx, cw, fs, flow, ctx);
+    if empty {
+        flow.pending = 0.0;
+    } else {
+        *hoisting = false;
+    }
+    fragment
 }
 
 /// Whether an `absolute` child must wait for its CB's content height: the parent
