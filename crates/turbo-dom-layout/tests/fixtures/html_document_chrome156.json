@@ -12583,6 +12583,170 @@
     }
    },
    "canvas": "#ffffff"
+  },
+  {
+   "id": "positioned-percent-width-absolute",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><div style=\"position:relative;width:400px;height:50px\"><div style=\"width:100px\"><div data-cid=\"c\" style=\"position:absolute;width:50%;height:5px\"></div></div></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "c",
+     "x": 0,
+     "y": 0,
+     "width": 200,
+     "height": 5
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "positioned-percent-width-fixed",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><div style=\"width:100px\"><div data-cid=\"f\" style=\"position:fixed;width:50%;height:5px\"></div></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "f",
+     "x": 0,
+     "y": 0,
+     "width": 640,
+     "height": 5
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "positioned-percent-width-icb",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><div style=\"width:100px\"><div data-cid=\"c\" style=\"position:absolute;width:25%;height:5px\"></div></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "c",
+     "x": 0,
+     "y": 0,
+     "width": 320,
+     "height": 5
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "positioned-percent-min-max-width",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><div style=\"position:relative;width:400px;height:50px\"><div style=\"width:100px\"><div data-cid=\"c\" style=\"position:absolute;width:10px;min-width:50%;height:5px\"></div><div data-cid=\"d\" style=\"position:absolute;top:10px;width:300px;max-width:25%;height:5px\"></div></div></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "c",
+     "x": 0,
+     "y": 0,
+     "width": 200,
+     "height": 5
+    },
+    {
+     "cid": "d",
+     "x": 0,
+     "y": 10,
+     "width": 100,
+     "height": 5
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "positioned-percent-padding-margin",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><div style=\"position:relative;width:400px;height:50px\"><div style=\"width:100px\"><div data-cid=\"c\" style=\"position:absolute;width:10px;padding-left:10%;margin-left:5%;height:5px\"></div></div></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "c",
+     "x": 20,
+     "y": 0,
+     "width": 50,
+     "height": 5
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "positioned-percent-width-child-percent",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><div style=\"position:relative;width:400px;height:50px\"><div style=\"width:100px\"><div data-cid=\"c\" style=\"position:absolute;width:50%;height:5px\"><div data-cid=\"d\" style=\"width:50%;height:2px\"></div></div></div></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "c",
+     "x": 0,
+     "y": 0,
+     "width": 200,
+     "height": 5
+    },
+    {
+     "cid": "d",
+     "x": 0,
+     "y": 0,
+     "width": 100,
+     "height": 2
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
   }
  ]
 }

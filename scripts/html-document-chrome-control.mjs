@@ -13,7 +13,8 @@
 // `intrinsic-margin-*`, #86 `column-flex-item-*`, #88 `flow-root-*` /
 // `empty-formatting-root-*`, #93 `flex-item-*`). P5b-W7 adds miaskiewicz/turbo-dom#79
 // (`intrinsic-margins-*`), #80 (`inline-block-margins-*`) and #81 (`icb-*`), and the bugs
-// found while fixing them (one group per issue, labelled).
+// found while fixing them (one group per issue, labelled). P5b-W6 also adds
+// miaskiewicz/turbo-dom#100 (`positioned-percent-*`).
 //
 // For every case below, Chrome for Testing 156 (viewport 1280x800) records:
 //   - `boxes`: getBoundingClientRect() of every `[data-cid]` element (document order), as
@@ -513,6 +514,15 @@ const CASES = [
   { id: "flex-item-border-box-row", html: DOC(S("body{margin:0}"), `<div data-cid="f" style="display:flex"><div data-cid="d" style="box-sizing:border-box;width:30px;height:15px;padding:5px"></div><div data-cid="e" style="width:10px;height:5px"></div></div><div data-cid="g" style="height:5px"></div>`) },
   { id: "flex-item-content-box-column-padding", html: DOC(S("body{margin:0}"), `<div data-cid="f" style="display:flex;flex-direction:column"><div data-cid="d" style="width:30px;height:15px;padding:5px"></div><div data-cid="e" style="width:10px;height:5px"></div></div><div data-cid="g" style="height:5px"></div>`) },
   { id: "flex-item-content-box-min-max", html: DOC(S("body{margin:0}"), `<div data-cid="f" style="display:flex"><div data-cid="d" style="width:10px;min-width:30px;height:15px;max-height:10px;padding:5px"></div></div><div data-cid="g" style="height:5px"></div>`) },
+  // P5b-W6, miaskiewicz/turbo-dom#100: a positioned box's percentage width (and min / max
+  // width, horizontal padding and margins) resolves against its containing block — the
+  // positioned ancestor, the viewport for `fixed` — not its parent.
+  { id: "positioned-percent-width-absolute", html: DOC(S("body{margin:0}"), `<div style="position:relative;width:400px;height:50px"><div style="width:100px"><div data-cid="c" style="position:absolute;width:50%;height:5px"></div></div></div>`) },
+  { id: "positioned-percent-width-fixed", html: DOC(S("body{margin:0}"), `<div style="width:100px"><div data-cid="f" style="position:fixed;width:50%;height:5px"></div></div>`) },
+  { id: "positioned-percent-width-icb", html: DOC(S("body{margin:0}"), `<div style="width:100px"><div data-cid="c" style="position:absolute;width:25%;height:5px"></div></div>`) },
+  { id: "positioned-percent-min-max-width", html: DOC(S("body{margin:0}"), `<div style="position:relative;width:400px;height:50px"><div style="width:100px"><div data-cid="c" style="position:absolute;width:10px;min-width:50%;height:5px"></div><div data-cid="d" style="position:absolute;top:10px;width:300px;max-width:25%;height:5px"></div></div></div>`) },
+  { id: "positioned-percent-padding-margin", html: DOC(S("body{margin:0}"), `<div style="position:relative;width:400px;height:50px"><div style="width:100px"><div data-cid="c" style="position:absolute;width:10px;padding-left:10%;margin-left:5%;height:5px"></div></div></div>`) },
+  { id: "positioned-percent-width-child-percent", html: DOC(S("body{margin:0}"), `<div style="position:relative;width:400px;height:50px"><div style="width:100px"><div data-cid="c" style="position:absolute;width:50%;height:5px"><div data-cid="d" style="width:50%;height:2px"></div></div></div></div>`) },
 ];
 
 /** The RGB of a 1x1 PNG screenshot (any filter: a single pixel's filter adds 0). */
