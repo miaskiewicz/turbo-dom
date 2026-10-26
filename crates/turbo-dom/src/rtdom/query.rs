@@ -245,9 +245,10 @@ enum Pseudo {
     Has(Vec<RelativeSelector>),
     // `:lang(range)`: one identifier, lowercased (Chrome 156 rejects strings and lists).
     Lang(String),
-    // Cascade-only (produced by `parse_for_cascade`, never by the DOM-API parsers):
-    // `:defined` and `:-webkit-any()` (matches like `:is()`, specificity of a pseudo-class).
+    // `:defined`: not an (undefined) custom element — see `query_cascade::is_defined`.
     Defined,
+    // Cascade-only (produced by `parse_for_cascade`, never by the DOM-API parsers):
+    // `:-webkit-any()` (matches like `:is()`, specificity of a pseudo-class).
     WebkitAny(Vec<Complex>),
     // Unrecognized / unparseable → never matches. Keeps the name and argument text so the
     // cascade parser (`parse_for_cascade`) can tell pseudo-elements and the pseudo-classes
@@ -946,6 +947,7 @@ fn parse_pseudo(name: &str, arg: Option<&str>) -> Pseudo {
         "read-write" => Pseudo::ReadWrite,
         "selected" => Pseudo::Selected,
         "link" | "any-link" => Pseudo::Link,
+        "defined" => Pseudo::Defined,
         "nth-child" | "nth-last-child" => {
             let arg = arg.unwrap_or("");
             let last = name == "nth-last-child";
@@ -2981,6 +2983,28 @@ mod tests {
             assert!(!tree.matches(el("a"), bad), "{bad}");
             assert!(tree.matches_checked(el("a"), bad).is_err(), "{bad}");
         }
+    }
+
+    /// turbo-dom#18 (P5b): `:defined` in the DOM APIs (Chrome 156, parsed document).
+    #[test]
+    fn pseudo_defined_in_the_dom_apis() {
+        let tree = Tree::parse(
+            "<x-foo id=c></x-foo><button is=x-b id=b></button><p is id=p></p><div id=d></div>\
+             <svg><x-bar id=s></x-bar></svg>",
+        );
+        let el = |id: &str| tree.get_element_by_id(id).unwrap();
+        for (id, defined) in [
+            ("c", false),
+            ("b", false),
+            ("p", false),
+            ("d", true),
+            ("s", true),
+        ] {
+            assert_eq!(tree.matches(el(id), ":defined"), defined, "{id}");
+            assert_eq!(tree.matches(el(id), ":not(:defined)"), !defined, "{id}");
+        }
+        assert!(tree.matches_checked(el("d"), ":defined()").is_err());
+        assert!(!tree.matches(el("d"), ":defined(x)"));
     }
 
     /// `<an+b>` grammar edges (CSS Syntax 3 §6; Chrome 156 cases in the malformed control).

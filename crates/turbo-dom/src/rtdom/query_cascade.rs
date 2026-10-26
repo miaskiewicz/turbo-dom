@@ -17,9 +17,9 @@
 //!   parsed unforgivingly (`@supports selector(…)` / `CSS.supports("selector(…)")`).
 //! - pseudo-classes Chrome knows but the DOM engine does not evaluate parse as valid and
 //!   never match (the static resting state: `:hover`, `:focus`, `:visited`, …). Names are
-//!   ASCII case-insensitive. `:scope` is `:root`, and `:defined` and `:-webkit-any()` are
-//!   evaluated (cascade-only: the DOM APIs keep their behaviour); `:lang()` is shared with
-//!   the DOM APIs.
+//!   ASCII case-insensitive. `:scope` is `:root`, and `:-webkit-any()` is evaluated
+//!   (cascade-only: the DOM APIs keep their behaviour); `:defined` and `:lang()` are shared
+//!   with the DOM APIs.
 //! - **specificity** per Selectors 4: `:where()` is 0; `:is()`, `:not()` and `:has()` take
 //!   their most specific argument; `:nth-child(An+B of S)` is a pseudo-class plus S;
 //!   pseudo-elements count as types.
@@ -521,7 +521,6 @@ fn cascade_pseudo(unknown: &UnknownPseudo) -> Result<Pseudo, SelectorError> {
     }
     match (lower.as_str(), arg) {
         ("scope", None) => Ok(Pseudo::Root),
-        ("defined", None) => Ok(Pseudo::Defined),
         ("-webkit-any", Some(arg)) => {
             let mut list = super::parse_selector_list_str(arg);
             forgive(&mut list);
@@ -550,10 +549,15 @@ pub fn match_for_cascade<N: Navigator + ?Sized>(nav: &N, h: Handle, sel: &Cascad
 
 // ------------------------------------------------------------------ cascade-only pseudos
 
-/// `:defined`: every element except an HTML autonomous custom element (no script runs, so
-/// none is ever defined).
+/// `:defined`: every element except an HTML element whose custom element state is
+/// "undefined" — an autonomous custom element (no script runs here, so none is ever
+/// defined) or one created with an `is` value (`<button is="x-b">`, even `is=""`: no
+/// definition matches), as Chrome 156 reports for a parsed document. An embedder that runs
+/// custom element definitions (the V8 binding) knows more than the tree does.
 pub(super) fn is_defined(tree: &Tree, h: Handle) -> bool {
-    !(tree.is_html(h) && tree.local_name(h).is_some_and(is_custom_element_name))
+    !(tree.is_html(h)
+        && (tree.local_name(h).is_some_and(is_custom_element_name)
+            || tree.get_attribute_ns_borrowed(h, None, "is").is_some()))
 }
 
 fn is_custom_element_name(name: &str) -> bool {

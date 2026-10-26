@@ -41,6 +41,12 @@ outputs it changes in `tools/parity/expected/p5b-*.json`.
   nothing).
 - Pseudo-class names are ASCII case-insensitive in the DOM APIs too (`P:FIRST-CHILD`,
   `:Not(.x)`, `:LANG(en)`; miaskiewicz/turbo-dom#18) — stylesheets already were.
+- `:defined` (miaskiewicz/turbo-dom#18) is evaluated by the DOM APIs too (it never
+  matched there): every element except an HTML autonomous custom element or one parsed
+  with an `is` attribute (`<button is="x-b">`, also `is=""`), whose custom element state is
+  "undefined" in a document without definitions. The stylesheet side gains the `is` rule.
+  (Elements upgraded by a script-defined custom element are still `:not(:defined)` here:
+  the tree does not know the binding's registry.)
 
 ## [0.6.0] — turbo-dom consolidation
 
