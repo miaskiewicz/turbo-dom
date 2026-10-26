@@ -92,6 +92,24 @@ enum AttrMatch {
     Substr(String),   // [attr*=v]
 }
 
+/// `selector-dual` builds: answer an engine output through `rtdom::selector_dual`, which
+/// runs this engine AND the frozen B-main one, logs any disagreement and returns the
+/// answer `TURBO_DOM_SELECTOR_ENGINE` selects. Expands to nothing in normal builds.
+#[cfg(feature = "selector-dual")]
+macro_rules! dual {
+    ($tree:expr, $api:literal, $sel:expr, $el:expr, $new:expr, $legacy:expr) => {
+        if let Some(answer) =
+            $crate::rtdom::selector_dual::dual($tree, $api, $sel, $el, || $new, || $legacy)
+        {
+            return answer;
+        }
+    };
+}
+#[cfg(not(feature = "selector-dual"))]
+macro_rules! dual {
+    ($($ignored:tt)*) => {};
+}
+
 #[path = "query_utf16.rs"]
 mod units;
 use units::UnitAttrMatch;
@@ -1603,6 +1621,8 @@ impl Tree {
     }
 
     pub fn matches(&self, h: Handle, selector: &str) -> bool {
+        dual!(self, "matches", super::selector_dual::Sel::Str(selector), Some(h),
+            self.matches(h, selector), self.frozen_matches(h, selector));
         // every `cx` reaching the matcher is a non-empty `Complex` (parse_selector_cached
         // drops empty/combinator-only segments). Re-parsing is avoided across an
         // element-loop `matches()` via the parse cache.
@@ -1615,6 +1635,8 @@ impl Tree {
     /// shared `Rc<[Handle]>` so a cache hit (the common RTL repeated-query case) is a
     /// pointer bump — no Vec copy. Deref to `&[Handle]` for `.len()`/`[i]`/`.iter()`.
     pub fn query_selector_all(&self, selector: &str) -> std::rc::Rc<[Handle]> {
+        dual!(self, "query_selector_all", super::selector_dual::Sel::Str(selector), None,
+            self.query_selector_all(selector), self.frozen_query_selector_all(selector));
         {
             let mut cache = self.qcache.borrow_mut();
             if cache.version != self.version {
@@ -1657,6 +1679,8 @@ impl Tree {
     }
 
     pub fn query_selector(&self, selector: &str) -> Option<Handle> {
+        dual!(self, "query_selector", super::selector_dual::Sel::Str(selector), None,
+            self.query_selector(selector), self.frozen_query_selector(selector));
         self.query_selector_all(selector).first().copied()
     }
 
@@ -1675,6 +1699,9 @@ impl Tree {
         &self,
         selector: &str,
     ) -> Result<std::rc::Rc<[Handle]>, SelectorError> {
+        dual!(self, "query_selector_all_checked", super::selector_dual::Sel::Str(selector), None,
+            self.query_selector_all_checked(selector),
+            self.frozen_query_selector_all_checked(selector).map_err(super::selector_dual::thaw));
         validate_selector_list(selector)?;
         Ok(self.query_selector_all(selector))
     }
@@ -1684,6 +1711,9 @@ impl Tree {
     /// # Errors
     /// Returns [`SelectorError`] when `selector` is malformed.
     pub fn query_selector_checked(&self, selector: &str) -> Result<Option<Handle>, SelectorError> {
+        dual!(self, "query_selector_checked", super::selector_dual::Sel::Str(selector), None,
+            self.query_selector_checked(selector),
+            self.frozen_query_selector_checked(selector).map_err(super::selector_dual::thaw));
         validate_selector_list(selector)?;
         Ok(self.query_selector(selector))
     }
@@ -1693,6 +1723,9 @@ impl Tree {
     /// # Errors
     /// Returns [`SelectorError`] when `selector` is malformed.
     pub fn matches_checked(&self, h: Handle, selector: &str) -> Result<bool, SelectorError> {
+        dual!(self, "matches_checked", super::selector_dual::Sel::Str(selector), Some(h),
+            self.matches_checked(h, selector),
+            self.frozen_matches_checked(h, selector).map_err(super::selector_dual::thaw));
         validate_selector_list(selector)?;
         Ok(self.matches(h, selector))
     }
@@ -1701,6 +1734,8 @@ impl Tree {
     /// `\u{1}`-prefixed key (never a valid selector char, so no collision). Result is
     /// stored as a 0- or 1-element Vec. Mirrors the JS `__idCache`.
     pub fn get_element_by_id(&self, id: &str) -> Option<Handle> {
+        dual!(self, "get_element_by_id", super::selector_dual::Sel::Str(id), None,
+            self.get_element_by_id(id), self.frozen_get_element_by_id(id));
         let key = {
             let mut k = String::with_capacity(id.len() + 1);
             k.push('\u{1}');
@@ -1739,6 +1774,8 @@ impl Tree {
     }
 
     pub fn get_elements_by_tag_name(&self, tag: &str) -> Vec<Handle> {
+        dual!(self, "get_elements_by_tag_name", super::selector_dual::Sel::Str(tag), None,
+            self.get_elements_by_tag_name(tag), self.frozen_get_elements_by_tag_name(tag));
         let any = tag == "*";
         let mut out = Vec::new();
         let mut stack = vec![self.root()];

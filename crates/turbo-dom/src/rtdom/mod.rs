@@ -5,6 +5,8 @@
 //! Modules:
 //!   * `tree`  — COW tree over the immutable parse buffer + version counter.
 //!   * `query` — selector matching + version-cached querySelectorAll/getElementBy*.
+//!     With the `selector-dual` feature, every output is also computed by the frozen
+//!     B-main engine (`query_frozen`) and compared (`selector_dual`).
 //!   * `color` — CSS color canonicalization (rgb()/rgba()), pure functions.
 //!   * `css_values` — Chrome-compatible CSS value grammars (`zoom`), pure functions.
 
@@ -20,6 +22,14 @@ pub mod location;
 pub mod mutations;
 pub mod node_ref;
 pub mod query;
+// The `selector-dual` gate (consolidation S3a): the frozen B-main selector engine and the
+// layer that runs it next to `query` at every engine output. Never in default builds.
+#[cfg(feature = "selector-dual")]
+#[allow(dead_code, clippy::all, clippy::pedantic)]
+#[rustfmt::skip]
+mod query_frozen;
+#[cfg(feature = "selector-dual")]
+pub(crate) mod selector_dual;
 pub mod serialize;
 pub mod stubs;
 pub mod svg;
