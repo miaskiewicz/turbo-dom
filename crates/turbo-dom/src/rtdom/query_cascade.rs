@@ -722,6 +722,8 @@ mod tests {
             ":lang(en, \"de\")",
             ":-webkit-any(p, .x)",
             "li:nth-child(2 of .x)",
+            ":not(div p)",
+            ":has(> a b)",
             "a\\>",
         ] {
             assert!(parse_for_cascade(ok).is_ok(), "{ok} should be valid");
@@ -914,6 +916,15 @@ mod tests {
             span,
             &sel("slot::slotted(.a)")
         ));
+        // `:has()` with sibling heads through the trait's default self-or-descendant walk
+        let doc = Tree::parse("<div id=a></div><span id=s><i class=x></i></span><p id=z></p>");
+        let nav = Slotting(LiveNavigator(&doc));
+        let el = |id: &str| doc.get_element_by_id(id).unwrap();
+        assert!(match_for_cascade(&nav, el("a"), &sel("div:has(+ span)")));
+        assert!(match_for_cascade(&nav, el("a"), &sel("div:has(+ span .x)")));
+        assert!(!match_for_cascade(&nav, el("a"), &sel("div:has(~ .x)")));
+        assert!(match_for_cascade(&nav, el("a"), &sel("div:has(~ p)")));
+        assert!(!match_for_cascade(&nav, el("z"), &sel("p:has(+ *)")));
         // the delegating methods behave like the live tree
         assert_eq!(slotting.type_position(b), (1, 1));
         assert!(slotting.next_element_sibling(span).is_some());
