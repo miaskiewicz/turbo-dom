@@ -16,6 +16,8 @@
 //! the PDF and the raster painter) answer Chrome's load / natural size at every prefix, and the
 //! HTML drive lays a loadable prefix out at its natural size and a broken one like an image
 //! that does not resolve.
+use std::fmt::Write as _;
+
 use serde_json::Value;
 use turbo_dom_layout::image::{probe, probe_natural};
 use turbo_dom_layout::{layout_boxes, Diagnostics, FontRegistry};
@@ -44,14 +46,17 @@ fn size(i: Option<turbo_dom_layout::image::Intrinsic>) -> Option<(u32, u32)> {
 }
 
 #[test]
-#[ignore = "turbo-dom#59: fails until the fix"]
 fn the_probes_report_a_size_at_chromes_prefix_lengths() {
     let fixture = fixture();
     let mut failures = Vec::new();
     for image in fixture["images"].as_array().unwrap() {
         let file = image["file"].as_str().unwrap();
         let bytes = read(file);
-        assert_eq!(bytes.len() as u64, image["length"].as_u64().unwrap(), "{file}");
+        assert_eq!(
+            bytes.len() as u64,
+            image["length"].as_u64().unwrap(),
+            "{file}"
+        );
         let natural = image["natural"].as_array().unwrap();
         let natural = (
             natural[0].as_u64().unwrap() as u32,
@@ -60,7 +65,11 @@ fn the_probes_report_a_size_at_chromes_prefix_lengths() {
         let loads = image["loads"].as_str().unwrap().as_bytes();
         assert_eq!(loads.len(), bytes.len() + 1, "{file}");
         for (n, &chrome) in loads.iter().enumerate() {
-            assert!(chrome == b'L' || chrome == b'E', "{file}@{n}: {}", chrome as char);
+            assert!(
+                chrome == b'L' || chrome == b'E',
+                "{file}@{n}: {}",
+                chrome as char
+            );
             let want = (chrome == b'L').then_some(natural);
             let head = &bytes[..n];
             for (name, got) in [
@@ -78,7 +87,6 @@ fn the_probes_report_a_size_at_chromes_prefix_lengths() {
 
 #[cfg(feature = "svg-rasterize")]
 #[test]
-#[ignore = "turbo-dom#59: fails until the fix"]
 fn svg_images_need_an_svg_namespace_root() {
     let fixture = fixture();
     let mut failures = Vec::new();
@@ -97,12 +105,9 @@ fn svg_images_need_an_svg_namespace_root() {
         });
         let natural = size(probe_natural(&bytes));
         // The raster painter's 1x rasterizer decides the same.
-        let raster = turbo_dom_layout::svg::rasterize(
-            &bytes,
-            1.0,
-            turbo_dom_layout::svg::Oversize::Reject,
-        )
-        .map(|i| (i.width, i.height));
+        let raster =
+            turbo_dom_layout::svg::rasterize(&bytes, 1.0, turbo_dom_layout::svg::Oversize::Reject)
+                .map(|i| (i.width, i.height));
         if natural != want || raster != want {
             failures.push(format!(
                 "{id}: probe_natural {natural:?}, rasterize {raster:?}, Chrome {want:?}"
@@ -124,7 +129,11 @@ fn gzip_stored(data: &[u8]) -> Vec<u8> {
     for &b in data {
         crc ^= u32::from(b);
         for _ in 0..8 {
-            crc = if crc & 1 == 1 { (crc >> 1) ^ 0xedb8_8320 } else { crc >> 1 };
+            crc = if crc & 1 == 1 {
+                (crc >> 1) ^ 0xedb8_8320
+            } else {
+                crc >> 1
+            };
         }
     }
     out.extend_from_slice(&(!crc).to_le_bytes());
@@ -136,7 +145,11 @@ fn base64(bytes: &[u8]) -> String {
     const A: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     let mut out = String::new();
     for chunk in bytes.chunks(3) {
-        let b = [chunk[0], *chunk.get(1).unwrap_or(&0), *chunk.get(2).unwrap_or(&0)];
+        let b = [
+            chunk[0],
+            *chunk.get(1).unwrap_or(&0),
+            *chunk.get(2).unwrap_or(&0),
+        ];
         let n = u32::from(b[0]) << 16 | u32::from(b[1]) << 8 | u32::from(b[2]);
         for i in 0..4 {
             out.push(if i <= chunk.len() {
@@ -150,7 +163,6 @@ fn base64(bytes: &[u8]) -> String {
 }
 
 #[test]
-#[ignore = "turbo-dom#59: fails until the fix"]
 fn truncated_img_boxes_follow_chromes_load_decision() {
     // Per image: the last broken prefix and the first loadable one, as absolutely positioned
     // `<img>`s, next to an `<img>` whose source no decoder reads (the not-loaded box).
@@ -179,11 +191,13 @@ fn truncated_img_boxes_follow_chromes_load_decision() {
             let id = format!("{file}-{kind}");
             let top = 20 + i * 40;
             let left = if kind == "broken" { 100 } else { 300 };
-            body.push_str(&format!(
+            write!(
+                body,
                 r#"<img data-cid="{id}" src="data:{};base64,{}" style="position:absolute;left:{left}px;top:{top}px">"#,
                 mime(file),
                 base64(&bytes[..n])
-            ));
+            )
+            .unwrap();
             expected.push((id, kind == "loads", natural));
         }
     }

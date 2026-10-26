@@ -7,6 +7,22 @@ at the time); this file reconstructs them from history.
 
 ## [Unreleased]
 
+### Fixed — image size points, `srcset`/`<picture>`, binding DOMExceptions (P5b-X7, Chrome 156 controls)
+- The shared image probe follows Blink's load decision for cut-short bodies
+  (miaskiewicz/turbo-dom#59). `image::probe` and `image::probe_natural` size a JPEG from
+  the end of its first `SOS` header, a GIF from its first image descriptor's position and
+  size, a WebP only with its whole declared RIFF payload (a PNG, from its first `IDAT`
+  header, already did); before that the image is broken, so layout (and the PDF) does not
+  size it and a live `<img>` load errors. `svg::parse`, so every SVG path, rejects a root
+  that is not an SVG-namespace `<svg>` (no namespace, another namespace, an unbound
+  prefix, `<SVG>`, an `<html>` root) and gzip (`svgz`) streams, and the sniffs accept a
+  prefixed `<s:svg>` root, which Chrome renders. turbo-dom-raster decodes a PNG/JPEG/GIF/WebP
+  only when the probe sizes it and lays one whose pixels do not decode out at its size (the
+  placeholder): Chrome 156 loads the parity inputs `extra/images/png-truncated.png` and
+  `jpeg-corrupt.jpg` at 64x40, which the screenshot used to drop. Control:
+  `scripts/image-truncation-chrome-control.mjs` (every byte prefix of the
+  `scripts/make_truncation_fixtures.py` images).
+
 ### Fixed — raster `<img>` handling, AVIF orientation (P5b-W4, Chrome 156 controls)
 - `turbo-dom-raster` paints an `<img src="data:…">` from its own URL
   (miaskiewicz/turbo-dom#27 item 1). The screenshot decodes every `data:` image of the

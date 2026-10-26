@@ -12,7 +12,6 @@ fn layout_fixture(path: &str) -> std::path::PathBuf {
 }
 
 #[test]
-#[ignore = "turbo-dom#59: fails until the fix"]
 fn truncated_images_decode_like_chrome_156() {
     let fixture: serde_json::Value = serde_json::from_str(
         &std::fs::read_to_string(layout_fixture("image_truncation_chrome156.json")).unwrap(),
