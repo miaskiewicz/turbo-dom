@@ -7,6 +7,28 @@ at the time); this file reconstructs them from history.
 
 ## [Unreleased]
 
+### Fixed — `getComputedStyle` defaults and no injected `<title>` (P5b-X3, miaskiewicz/turbo-surf#36 items 1–2, Chrome 156 control)
+- turbo-dom-browser-env: `getComputedStyle` used to return `""` for `display`, `position`
+  and `visibility` when no author rule applied; only `<button>` had UA values. It now
+  reports Chrome 156's computed values:
+  - `display` is the element's html.css display: block / inline / none / table-* /
+    list-item / inline-block / contents / ruby. `[hidden]`, a closed `dialog` or popover,
+    `input[type=hidden]` and `audio` without controls are `none`. MathML gives `math` /
+    `block math`.
+  - `display` is then blockified for floats, absolutely positioned elements and flex /
+    grid items, as in Chrome.
+  - `position` is `static`, except `dialog` (`absolute`) and `[popover]` (`fixed`).
+  - `visibility` is inherited and `visible` at the root.
+  - The CSS-wide keywords and shadow-scoped (`:host`) declarations resolve.
+  - Disconnected elements and children of `<video>` / `<audio>` report `""`, like Chrome.
+- turbo-dom-browser-env: the document no longer gets an empty `<title>` injected into
+  `<head>` at setup (`<!doctype html><body>` has an empty head, as in Chrome). Setting
+  `document.title` still creates the `<title>`.
+- Control: `src/computed_defaults_{probe.js,cases.json,chrome156.json}`, also exported as
+  `test_support::COMPUTED_DEFAULTS_*` (76 files) so turbo-surf can run it through
+  `PageSession`. Corpus: every surf `live-*` dump changes
+  (`tools/parity/expected/p5b-x3-surf-36.json`).
+
 ### Changed — npm `:defined` and custom elements (P5b-X3, miaskiewicz/turbo-dom#26 item 2, Chrome 156 control)
 - The JS runtime keeps each element's HTML custom element state in lockstep with the Rust
   tree (`src/runtime/custom-elements.mjs`): the creation-time rule (a valid custom element

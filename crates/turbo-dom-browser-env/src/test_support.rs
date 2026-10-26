@@ -40,6 +40,13 @@ pub const ANIMATIONS_FRAMES_CASES_JSON: &[u8] = include_bytes!("animations_frame
 pub const ANIMATIONS_FRAMES_CHROME156_JSON: &str = include_str!("animations_frames_chrome156.json");
 /// `src/animations_frames_probe.js`.
 pub const ANIMATIONS_FRAMES_PROBE_JS: &str = include_str!("animations_frames_probe.js");
+/// `src/computed_defaults_cases.json` (turbo-surf#36: UA display / position / visibility
+/// defaults, and documents without a parsed `<title>`).
+pub const COMPUTED_DEFAULTS_CASES_JSON: &[u8] = include_bytes!("computed_defaults_cases.json");
+/// `src/computed_defaults_chrome156.json`.
+pub const COMPUTED_DEFAULTS_CHROME156_JSON: &str = include_str!("computed_defaults_chrome156.json");
+/// `src/computed_defaults_probe.js` (getComputedStyle defaults + `<head>` contents; sync).
+pub const COMPUTED_DEFAULTS_PROBE_JS: &str = include_str!("computed_defaults_probe.js");
 /// `src/control_labels_chrome155.json`.
 pub const CONTROL_LABELS_CHROME155_JSON: &str = include_str!("control_labels_chrome155.json");
 /// `src/control_labels_gc_chrome155.json`.
@@ -225,6 +232,15 @@ pub const FILES: &[(&str, &[u8])] = &[
     (
         "animations_frames_probe.js",
         ANIMATIONS_FRAMES_PROBE_JS.as_bytes(),
+    ),
+    ("computed_defaults_cases.json", COMPUTED_DEFAULTS_CASES_JSON),
+    (
+        "computed_defaults_chrome156.json",
+        COMPUTED_DEFAULTS_CHROME156_JSON.as_bytes(),
+    ),
+    (
+        "computed_defaults_probe.js",
+        COMPUTED_DEFAULTS_PROBE_JS.as_bytes(),
     ),
     (
         "control_labels_chrome155.json",

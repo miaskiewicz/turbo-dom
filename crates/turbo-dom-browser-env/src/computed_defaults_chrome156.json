@@ -1,0 +1,1368 @@
+{
+  "browser": "Chrome/156.0.8078.4",
+  "v8": "15.6.75",
+  "casesSha256": "b0a6cd4f7baf70fde221b578951e73bba58408da7c7b142b1c0d5100b9b35de0",
+  "probeSha256": "a6d2399320a0a96079dc9ccb227e34d497cf6a5787867d388e4fb37d366aac91",
+  "collectorSha256": "7174415de76a891d657bbc3e66952c7b91356030e8fcd9d0ac4f52603d0c3952",
+  "flags": [
+    "--headless=new",
+    "--remote-debugging-pipe",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "about:blank"
+  ],
+  "errors": [],
+  "result": [
+    {
+      "id": "computed-defaults",
+      "result": {
+        "head": {
+          "children": [
+            "title",
+            "meta",
+            "link",
+            "style",
+            "script",
+            "base"
+          ],
+          "title": "t",
+          "titles": 1,
+          "view": [
+            "none",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ]
+        },
+        "elements": {
+          "title": [
+            "none",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "meta": [
+            "none",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "link": [
+            "none",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "style": [
+            "none",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "script": [
+            "none",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "base": [
+            "none",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "body": [
+            "block",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "div": [
+            "block",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "span": [
+            "inline",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "p": [
+            "block",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "a": [
+            "inline",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "b": [
+            "inline",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "em": [
+            "inline",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "strong": [
+            "inline",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "code": [
+            "inline",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "br": [
+            "inline",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "img": [
+            "inline",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "input": [
+            "inline-block",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "button": [
+            "inline-block",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "select": [
+            "inline-block",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "optgroup": [
+            "block",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "option": [
+            "block",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "textarea": [
+            "inline-block",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "label": [
+            "inline",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "form": [
+            "block",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "fieldset": [
+            "block",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "legend": [
+            "block",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "table": [
+            "table",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "caption": [
+            "table-caption",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "colgroup": [
+            "table-column-group",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "col": [
+            "table-column",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "thead": [
+            "table-header-group",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "th": [
+            "table-cell",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "tbody": [
+            "table-row-group",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "tr": [
+            "table-row",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "td": [
+            "table-cell",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "tfoot": [
+            "table-footer-group",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "ul": [
+            "block",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "li": [
+            "list-item",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "ol": [
+            "block",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "dl": [
+            "block",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "dt": [
+            "block",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "dd": [
+            "block",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "menu": [
+            "block",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "dir": [
+            "block",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "h1": [
+            "block",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "h2": [
+            "block",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "h6": [
+            "block",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "hgroup": [
+            "block",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "section": [
+            "block",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "article": [
+            "block",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "nav": [
+            "block",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "header": [
+            "block",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "footer": [
+            "block",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "main": [
+            "block",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "aside": [
+            "block",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "search": [
+            "block",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "address": [
+            "block",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "figure": [
+            "block",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "figcaption": [
+            "block",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "blockquote": [
+            "block",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "center": [
+            "block",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "pre": [
+            "block",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "listing": [
+            "block",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "xmp": [
+            "block",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "hr": [
+            "block",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "details": [
+            "block",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "summary": [
+            "list-item",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "detailsBody": [
+            "block",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "dialog": [
+            "none",
+            "absolute",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "template": [
+            "none",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "slot": [
+            "contents",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "iframe": [
+            "inline",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "canvas": [
+            "inline",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "video": [
+            "inline",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "track": [
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          "audio": [
+            "none",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "svg": [
+            "inline",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "rect": [
+            "inline",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "math": [
+            "math",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "mi": [
+            "block math",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "noscript": [
+            "inline",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "ruby": [
+            "ruby",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "rp": [
+            "none",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "rt": [
+            "ruby-text",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "marquee": [
+            "inline-block",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "progress": [
+            "inline-block",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "meter": [
+            "inline-block",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "output": [
+            "inline",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "datalist": [
+            "none",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "map": [
+            "inline",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "area": [
+            "none",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "object": [
+            "inline",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "param": [
+            "none",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "embed": [
+            "inline",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "picture": [
+            "inline",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "source": [
+            "inline",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "abbr": [
+            "inline",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "sub": [
+            "inline",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "sup": [
+            "inline",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "small": [
+            "inline",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "mark": [
+            "inline",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "del": [
+            "inline",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "ins": [
+            "inline",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "q": [
+            "inline",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "cite": [
+            "inline",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "dfn": [
+            "inline",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "kbd": [
+            "inline",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "samp": [
+            "inline",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "var": [
+            "inline",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "time": [
+            "inline",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "data": [
+            "inline",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "s": [
+            "inline",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "u": [
+            "inline",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "i": [
+            "inline",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "bdi": [
+            "inline",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "bdo": [
+            "inline",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "wbr": [
+            "inline",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "noembed": [
+            "none",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "noframes": [
+            "none",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "x-custom": [
+            "inline",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "unknownel": [
+            "inline",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "hiddenAttr": [
+            "none",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "untilFound": [
+            "block",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "hiddenEmbed": [
+            "inline",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "inputHidden": [
+            "none",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "inputText": [
+            "inline-block",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "audioControls": [
+            "inline",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "dialogOpen": [
+            "block",
+            "absolute",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "popover": [
+            "none",
+            "fixed",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "abs": [
+            "block",
+            "absolute",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "fixed": [
+            "block",
+            "fixed",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "rel": [
+            "inline",
+            "relative",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "sticky": [
+            "inline",
+            "sticky",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "floatLeft": [
+            "block",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "ibFloat": [
+            "block",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "itAbs": [
+            "table",
+            "absolute",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "flexItem": [
+            "block",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "flexInlineFlex": [
+            "flex",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "flexContents": [
+            "contents",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "throughContents": [
+            "block",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "gridItem": [
+            "block",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "inNone": [
+            "inline",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "divInNone": [
+            "block",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "visInherited": [
+            "inline",
+            "static",
+            "hidden",
+            "1",
+            "none",
+            "1"
+          ],
+          "visBack": [
+            "inline",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "visCollapse": [
+            "inline",
+            "static",
+            "collapse",
+            "1",
+            "none",
+            "1"
+          ],
+          "kwInitial": [
+            "inline",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "kwInherit": [
+            "flex",
+            "relative",
+            "hidden",
+            "1",
+            "none",
+            "1"
+          ],
+          "kwUnset": [
+            "block",
+            "static",
+            "hidden",
+            "1",
+            "none",
+            "1"
+          ],
+          "kwRevert": [
+            "block",
+            "static",
+            "hidden",
+            "1",
+            "none",
+            "1"
+          ],
+          "authorWins": [
+            "inline",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "hiddenAuthor": [
+            "flex",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ],
+          "host": [
+            "block",
+            "static",
+            "visible",
+            "1",
+            "none",
+            "1"
+          ]
+        },
+        "camel": [
+          "block",
+          "static",
+          "visible"
+        ],
+        "html": [
+          "block",
+          "static",
+          "visible",
+          "1",
+          "none",
+          "1"
+        ],
+        "shadowHost": [
+          "block",
+          "relative",
+          "visible",
+          "1",
+          "none",
+          "1"
+        ],
+        "inShadow": [
+          "inline",
+          "static",
+          "visible",
+          "1",
+          "none",
+          "1"
+        ],
+        "detached": [
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        "appended": [
+          "block",
+          "static",
+          "visible",
+          "1",
+          "none",
+          "1"
+        ],
+        "removed": [
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ]
+      }
+    },
+    {
+      "id": "no-title",
+      "result": {
+        "head": {
+          "children": [],
+          "title": "",
+          "titles": 0
+        },
+        "afterSet": {
+          "children": [
+            "title"
+          ],
+          "title": "set",
+          "text": "set"
+        }
+      }
+    },
+    {
+      "id": "with-title",
+      "result": {
+        "head": {
+          "children": [
+            "title"
+          ],
+          "title": "a b",
+          "titles": 1
+        },
+        "afterSet": {
+          "children": [
+            "title"
+          ],
+          "title": "set",
+          "text": "set"
+        }
+      }
+    }
+  ]
+}

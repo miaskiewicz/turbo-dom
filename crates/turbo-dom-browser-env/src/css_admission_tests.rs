@@ -93,8 +93,9 @@ fn implicit_visibility_inheritance_reads_the_edited_rule() {
       return rows;
     })()"#,
     );
+    // with no rule left the value is the initial `visible` (turbo-surf#36), not ""
     assert_eq!(
         value,
-        serde_json::json!(["hidden", "visible", "collapse", ""])
+        serde_json::json!(["hidden", "visible", "collapse", "visible"])
     );
 }
