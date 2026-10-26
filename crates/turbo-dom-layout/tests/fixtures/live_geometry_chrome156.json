@@ -3501,6 +3501,214 @@
      "position": "static"
     }
    ]
+  },
+  {
+   "id": "fullscreen-element-fills-viewport",
+   "html": "<!doctype html><style>body{margin:0}</style><div style=\"height:50px\"></div><div data-cid=\"f\" id=\"t\" style=\"width:100px;height:40px;margin:10px;padding:5px;border:3px solid\"><div data-cid=\"k\" style=\"width:20px;height:10px\"></div></div><div data-cid=\"after\" style=\"position:relative;z-index:5;width:50px;height:50px\"></div>",
+   "fullscreen": "f",
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "f",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 800,
+     "display": "block",
+     "position": "fixed"
+    },
+    {
+     "cid": "k",
+     "x": 8,
+     "y": 8,
+     "width": 20,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "after",
+     "x": 0,
+     "y": 50,
+     "width": 50,
+     "height": 50,
+     "display": "block",
+     "position": "relative"
+    }
+   ],
+   "hits": [
+    {
+     "x": 10,
+     "y": 10,
+     "hit": "k"
+    },
+    {
+     "x": 25,
+     "y": 30,
+     "hit": "f"
+    },
+    {
+     "x": 640,
+     "y": 400,
+     "hit": "f"
+    },
+    {
+     "x": 25,
+     "y": 75,
+     "hit": "f"
+    },
+    {
+     "x": 1279,
+     "y": 799,
+     "hit": "f"
+    }
+   ]
+  },
+  {
+   "id": "fullscreen-escapes-ancestors",
+   "html": "<!doctype html><style>body{margin:0}</style><div data-cid=\"a\" style=\"position:relative;left:30px;top:20px;width:200px;height:60px;overflow:hidden;transform:translateX(10px)\"><div data-cid=\"f\" id=\"t\" style=\"width:100px;height:40px\"><div data-cid=\"k\" style=\"width:20px;height:10px\"></div></div></div><div data-cid=\"after\" style=\"height:20px\"></div>",
+   "fullscreen": "f",
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "a",
+     "x": 40,
+     "y": 20,
+     "width": 200,
+     "height": 60,
+     "display": "block",
+     "position": "relative"
+    },
+    {
+     "cid": "f",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 800,
+     "display": "block",
+     "position": "fixed"
+    },
+    {
+     "cid": "k",
+     "x": 0,
+     "y": 0,
+     "width": 20,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "after",
+     "x": 0,
+     "y": 60,
+     "width": 1280,
+     "height": 20,
+     "display": "block",
+     "position": "static"
+    }
+   ],
+   "hits": [
+    {
+     "x": 5,
+     "y": 5,
+     "hit": "k"
+    },
+    {
+     "x": 100,
+     "y": 100,
+     "hit": "f"
+    },
+    {
+     "x": 640,
+     "y": 400,
+     "hit": "f"
+    }
+   ]
+  },
+  {
+   "id": "fullscreen-overrides-author-box",
+   "html": "<!doctype html><style>body{margin:0}#t{position:absolute;left:40px;top:30px;width:50px;height:20px;margin:7px;padding:4px;box-sizing:content-box;max-width:30px;min-height:10px;transform:translateY(5px)}</style><div style=\"height:10px\"></div><div data-cid=\"f\" id=\"t\"><div data-cid=\"k\" style=\"width:20px;height:10px\"></div></div>",
+   "fullscreen": "f",
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "f",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 800,
+     "display": "block",
+     "position": "fixed"
+    },
+    {
+     "cid": "k",
+     "x": 4,
+     "y": 4,
+     "width": 20,
+     "height": 10,
+     "display": "block",
+     "position": "static"
+    }
+   ],
+   "hits": [
+    {
+     "x": 5,
+     "y": 5,
+     "hit": "k"
+    },
+    {
+     "x": 640,
+     "y": 400,
+     "hit": "f"
+    }
+   ]
+  },
+  {
+   "id": "fullscreen-inline-element-blockified",
+   "html": "<!doctype html><style>body{margin:0}</style><div data-cid=\"p\" style=\"font-size:0\"><span data-cid=\"f\" id=\"t\" style=\"display:inline-block;width:30px;height:30px\"></span><span data-cid=\"s\" style=\"display:inline-block;width:20px;height:20px\"></span></div>",
+   "fullscreen": "f",
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 20,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "f",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 800,
+     "display": "block",
+     "position": "fixed"
+    },
+    {
+     "cid": "s",
+     "x": 0,
+     "y": 0,
+     "width": 20,
+     "height": 20,
+     "display": "inline-block",
+     "position": "static"
+    }
+   ],
+   "hits": [
+    {
+     "x": 5,
+     "y": 5,
+     "hit": "f"
+    },
+    {
+     "x": 640,
+     "y": 400,
+     "hit": "f"
+    }
+   ]
   }
  ]
 }

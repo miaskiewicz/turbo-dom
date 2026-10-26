@@ -11,7 +11,11 @@
 //     columns, and a `<template>` (display:none) has an all-zero rect.
 // P5b-W3 adds the cases of miaskiewicz/turbo-dom#28 (one group per item, labelled); P5b-W5
 // the table captions of miaskiewicz/turbo-dom#51 (`caption-*`); P5b-W7 the inline-block
-// formatting context of miaskiewicz/turbo-dom#80 (`inline-block-margins-*`).
+// formatting context of miaskiewicz/turbo-dom#80 (`inline-block-margins-*`) and the
+// fullscreen element of miaskiewicz/turbo-dom#82 (`fullscreen-*`: a case's `fullscreen` names
+// the cid made fullscreen — a trusted click (CDP Input.dispatchMouseEvent) runs its
+// requestFullscreen() — before the reads; Chrome's `:not(:root):fullscreen` UA box: fixed,
+// inset 0, 100% x 100%, margin 0, border-box, in the top layer).
 //
 // For every case, Chrome for Testing 156 (viewport 1280x800) records the
 // getBoundingClientRect() of every `[data-cid]` element (document order) as
@@ -273,6 +277,32 @@ const CASES = [
   { id: "inline-block-margins-own-and-child", html: DOC("body{margin:0}", `<div style="font-size:0"><div data-cid="c" style="display:inline-block;margin:4px 0 2px"><div data-cid="d" style="width:30px;height:15px;margin:3px 0 5px"></div></div><div data-cid="g" style="height:10px"></div></div>`) },
   { id: "inline-block-margins-negative", html: DOC("body{margin:0}", `<div style="font-size:0"><div data-cid="c" style="display:inline-block"><div data-cid="d" style="width:30px;height:15px;margin:-4px 0 6px"></div></div></div>`) },
   { id: "inline-block-margins-two-children", html: DOC("body{margin:0}", `<div style="font-size:0"><div data-cid="c" style="display:inline-block"><div data-cid="d" style="width:30px;height:15px;margin:3px 0 5px"></div><div data-cid="e" style="width:20px;height:10px;margin:8px 0 2px"></div></div></div>`) },
+  // P5b-W7, miaskiewicz/turbo-dom#82: the fullscreen element's UA box, in the top layer.
+  {
+    id: "fullscreen-element-fills-viewport",
+    html: DOC("body{margin:0}", `<div style="height:50px"></div><div data-cid="f" id="t" style="width:100px;height:40px;margin:10px;padding:5px;border:3px solid"><div data-cid="k" style="width:20px;height:10px"></div></div><div data-cid="after" style="position:relative;z-index:5;width:50px;height:50px"></div>`),
+    fullscreen: "f",
+    hits: [[10, 10], [25, 30], [640, 400], [25, 75], [1279, 799]],
+  },
+  {
+    id: "fullscreen-escapes-ancestors",
+    html: DOC("body{margin:0}", `<div data-cid="a" style="position:relative;left:30px;top:20px;width:200px;height:60px;overflow:hidden;transform:translateX(10px)"><div data-cid="f" id="t" style="width:100px;height:40px"><div data-cid="k" style="width:20px;height:10px"></div></div></div><div data-cid="after" style="height:20px"></div>`),
+    fullscreen: "f",
+    hits: [[5, 5], [100, 100], [640, 400]],
+  },
+  {
+    id: "fullscreen-overrides-author-box",
+    html: DOC("body{margin:0}#t{position:absolute;left:40px;top:30px;width:50px;height:20px;margin:7px;padding:4px;box-sizing:content-box;max-width:30px;min-height:10px;transform:translateY(5px)}", `<div style="height:10px"></div><div data-cid="f" id="t"><div data-cid="k" style="width:20px;height:10px"></div></div>`),
+    fullscreen: "f",
+    hits: [[5, 5], [640, 400]],
+  },
+  {
+    id: "fullscreen-inline-element-blockified",
+    html: DOC("body{margin:0}", `<div data-cid="p" style="font-size:0"><span data-cid="f" id="t" style="display:inline-block;width:30px;height:30px"></span><span data-cid="s" style="display:inline-block;width:20px;height:20px"></span></div>`),
+    fullscreen: "f",
+    measure: {},
+    hits: [[5, 5], [640, 400]],
+  },
 ];
 
 const browser = await chromium.launch({ executablePath: chromePath, headless: true });
@@ -281,6 +311,14 @@ const page = await browser.newPage({ viewport: { width: 1280, height: 800 }, dev
 const result = [];
 for (const testCase of CASES) {
   await page.setContent(testCase.html, { waitUntil: "load" });
+  if (testCase.fullscreen) {
+    const target = `[data-cid="${testCase.fullscreen}"]`;
+    await page.evaluate((sel) => {
+      document.querySelector(sel).addEventListener("click", (event) => event.currentTarget.requestFullscreen(), { once: true });
+    }, target);
+    await page.click(target, { position: { x: 1, y: 1 } });
+    await page.waitForFunction((sel) => document.fullscreenElement === document.querySelector(sel), target);
+  }
   const { boxes, hits } = await page.evaluate((points) => {
     const boxes = [...document.querySelectorAll("[data-cid]")].map((el) => {
       const b = el.getBoundingClientRect();

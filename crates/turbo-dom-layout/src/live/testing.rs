@@ -117,10 +117,23 @@ pub(crate) fn capture_light(tree: &Tree, children: &HashMap<Handle, Vec<Handle>>
 pub(crate) fn layout(
     html: &str,
     css: &str,
-    (width, height): (f32, f32),
+    viewport: (f32, f32),
     layout_scale: Option<f32>,
 ) -> (Tree, LayoutSnapshot, SourceStyles) {
-    let tree = Tree::parse(html);
+    layout_with(html, css, viewport, layout_scale, |_| {})
+}
+
+/// [`layout`] of the parsed `html` after `prepare` sets embedder state on the tree (the
+/// fullscreen stack the binding reports, miaskiewicz/turbo-dom#82).
+pub(crate) fn layout_with(
+    html: &str,
+    css: &str,
+    (width, height): (f32, f32),
+    layout_scale: Option<f32>,
+    prepare: impl FnOnce(&mut Tree),
+) -> (Tree, LayoutSnapshot, SourceStyles) {
+    let mut tree = Tree::parse(html);
+    prepare(&mut tree);
     let children = light_children(&tree);
     let captured = capture_light(&tree, &children);
     let origins = prematch(&tree, css, width);
