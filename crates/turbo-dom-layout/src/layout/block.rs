@@ -1594,8 +1594,9 @@ fn auto_x_margins(s: &crate::style::ComputedStyle) -> bool {
 
 /// Whether a box establishes a new block formatting context — floats it contains
 /// are isolated from the outer context (they don't wrap outer floats, and they
-/// grow this box). Floats, out-of-flow boxes, non-`visible` `overflow`, and the
-/// independent formatting roots (flex/grid/table) all qualify.
+/// grow this box). Floats, out-of-flow boxes, non-`visible` `overflow`, `display:
+/// flow-root` (miaskiewicz/turbo-dom#88) and the independent formatting roots
+/// (flex/grid/table) all qualify.
 fn intrinsic_formatting_root(lb: &LayoutBox, bs: &BoxStyle) -> bool {
     lb.document_root() || bs.float != Float::None || bs.position.is_out_of_flow()
 }
@@ -1607,7 +1608,8 @@ fn establishes_bfc(lb: &LayoutBox, bs: &BoxStyle) -> bool {
     if matches!(
         lb.kind,
         BoxKind::Flex(_) | BoxKind::Grid(_) | BoxKind::Table(_)
-    ) {
+    ) || lb.style.get("display").map(str::trim) == Some("flow-root")
+    {
         return true;
     }
     ["overflow", "overflow-x", "overflow-y"].iter().any(|p| {

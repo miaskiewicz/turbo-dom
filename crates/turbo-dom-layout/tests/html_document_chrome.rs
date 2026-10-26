@@ -325,7 +325,6 @@ fn flow_root_case(id: &str) -> bool {
 }
 
 #[test]
-#[ignore = "turbo-dom#88: fails until the fix"]
 fn flow_root_establishes_a_formatting_context_like_chrome_156() {
     compare_cases(flow_root_case);
 }

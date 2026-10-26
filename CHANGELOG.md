@@ -36,6 +36,9 @@ changes in `tools/parity/expected/p5b-w7-turbo-dom-*.json`.
   layout, whose initial containing block would be the page box) keep an unknown height
   and lay out as before. The live path already used the viewport. Control: `icb-*` in
   `html-document` and in the pixel control `scripts/paint-chrome-control.mjs`.
+- `display: flow-root` (miaskiewicz/turbo-dom#88, found while fixing #80) establishes a
+  block formatting context: its children's vertical margins stay inside it, it contains
+  its floats and its box avoids outer floats. Control: `flow-root-*` in `html-document`.
 
 ### Fixed — turbo-dom-layout tables, clipping and box sizing (P5b-W5, miaskiewicz/turbo-dom#41/#51/#52/#55/#62/#63/#64/#65/#69/#70, Chrome 156 controls)
 Each fix is backed by a Chrome for Testing 156 control and lists the corpus outputs it

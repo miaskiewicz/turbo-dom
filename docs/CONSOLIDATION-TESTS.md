@@ -1196,7 +1196,7 @@ Declared behaviour changes (Chrome 156 controls), not moves:
 | turbo-dom-layout | `html_document_chrome<tests/html_document_chrome.rs>::header_cells_are_bold_and_centred_like_chrome_156` | new (turbo-dom#70, test-first) |
 | turbo-dom-layout | `turbo_dom_layout<src/lib.rs>::layout::value::clip_tests::{clip_region_resolves_offsets_auto_edges_and_scale, clip_keeps_nothing_only_when_empty_at_every_size}` | new (turbo-dom#52) |
 
-## P5b-W7 (layout bug fixes, turbo-dom#79/#80/#81): new tests
+## P5b-W7 (layout bug fixes, turbo-dom#79/#80/#81 and the bugs found while fixing them): new tests
 
 Declared behaviour changes (Chrome 156 controls), not moves:
 
@@ -1205,6 +1205,7 @@ Declared behaviour changes (Chrome 156 controls), not moves:
 | turbo-dom-layout | `html_document_chrome<tests/html_document_chrome.rs>::intrinsic_widths_count_child_margins_like_chrome_156` | new (turbo-dom#79, test-first) |
 | turbo-dom-layout | `html_document_chrome<tests/html_document_chrome.rs>::inline_blocks_keep_child_margins_like_chrome_156`, `turbo_dom_layout<src/lib.rs>::live::chrome_tests::inline_blocks_keep_child_margins_like_chrome_156` | new (turbo-dom#80, test-first) |
 | turbo-dom-layout | `html_document_chrome<tests/html_document_chrome.rs>::initial_containing_block_insets_like_chrome_156`, turbo-dom-raster `paint_chrome<tests/paint_chrome.rs>::fixed_and_icb_boxes_anchor_to_the_viewport_like_chrome_156` | new (turbo-dom#81, test-first) |
+| turbo-dom-layout | `html_document_chrome<tests/html_document_chrome.rs>::flow_root_establishes_a_formatting_context_like_chrome_156` | new (turbo-dom#88, test-first) |
 
 ## P5b-W2 — raster inline SVG on the tree (turbo-dom `consol/p5b-w2`)
 
