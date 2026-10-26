@@ -69,7 +69,8 @@ at the time); this file reconstructs them from history.
     fullscreen element.
   - A fullscreen element (not the root) computes Chrome's `:not(:root):fullscreen` UA
     values: `position: fixed`, `inset: 0`, `margin: 0`, `box-sizing: border-box`, min / max
-    sizes, `width` / `height: 100%` and `transform: none`, all `!important`, plus
+    sizes, `width` / `height: 100%` (reported as the viewport's `innerWidth` /
+    `innerHeight` px, as Chrome does) and `transform: none`, all `!important`, plus
     `object-fit: contain`.
   - Its `::backdrop` is fixed at inset 0 and black.
 - Control: async case `fullscreen` of `src/computed_defaults_chrome156.json` (user

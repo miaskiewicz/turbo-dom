@@ -251,7 +251,6 @@ fn form_control_fonts_match_chrome156_control() {
 /// `:not(:root):fullscreen` UA values, the black fixed `::backdrop`, fullscreenchange /
 /// fullscreenerror, the root element, removal, a dialog, a shadow tree (case `fullscreen`).
 #[test]
-#[ignore = "turbo-dom#58: fullscreen width / height fail until the fix"]
 fn fullscreen_matches_chrome156_control() {
     let found = mismatches(|id| id == "fullscreen");
     assert!(

@@ -744,7 +744,15 @@
       if ((raw === '' || raw === 'auto') && axis === 'width') return usedPx(parent, axis, depth + 1);
       return null;
     };
-    // The fullscreen element's 100% sizes are the viewport's (unresolved here).
+    // The fullscreen element's width / height (100% !important of the viewport, its
+    // containing block as a fixed box) are the viewport's innerWidth / innerHeight in px
+    // (turbo-dom#58); without a viewport they stay 100%.
+    if (!pseudo && layer === 'fullscreen') {
+      [['width', g.innerWidth], ['height', g.innerHeight]].forEach(function(pair){
+        var size = +pair[1];
+        if (size > 0 && cssFontFinite(size)) setProp(pair[0], (Math.round(size * 1000) / 1000) + 'px', true);
+      });
+    }
     if (!pseudo && layer !== 'fullscreen') try {
       ['width', 'height'].forEach(function(axis){
         var raw = decl[axis];
