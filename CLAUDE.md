@@ -29,6 +29,9 @@ cargo test -p turbo-dom-layout                           # layout engine (+ --fe
 cargo test -p turbo-dom-raster                           # screenshot painter
 scripts/verify-copied-layout.sh                          # S1 moved code == its source commits (+ allow-listed rewrites)
 cargo test -p turbo-dom churn_alloc_gate -- --ignored    # perf gate: churn allocs/op ≤ 380 (≈363)
+cargo test -p turbo-dom --test cascade_selectors_chrome  # selector engine vs the Chrome 156 control
+scripts/verify-query-frozen.sh                           # selector-dual frozen engine == B-main + rules
+scripts/selector-dual-gate.sh S3a legacy|new             # TEMPORARY dual-engine gate (docs/selector-dual-gate.md)
 ```
 
 **Two independent runtimes, one repo.** The JS runtime (`src/runtime/*.mjs`, the npm/vitest path)
@@ -160,6 +163,13 @@ package or publish workflow.
   whole-word string scan, index loops over `__children()`, and the for-loop `getAttribute`.
   This is what makes repeated-query throughput ~2.2× happy-dom / ~460× jsdom; a stray `classList`
   in a matcher tanks it.
+- **Rust selector engine = Chrome 156.** `rtdom/query.rs` (string API) and `query_utf16.rs` (UTF-16
+  API; also parses any string selector containing `\`) are checked against
+  `crates/turbo-dom/tests/fixtures/cascade_selectors_chrome156.json` (regenerate with
+  `scripts/cascade-selectors-chrome-control.mjs`). Behaviour changes there need a Chrome control.
+  During the consolidation the `selector-dual` feature compiles a frozen v0.5.8 engine
+  (`query_frozen*.rs`, never hand-edited: `scripts/verify-query-frozen.sh`) next to it; never enable
+  that feature outside the gate, and don't use `--all-features` on dual-capable crates.
 - **Selector parse cache** (`__selectorCache` in selectors.mjs) memoizes selector STRING → AST.
   Pure (DOM-independent) → no mutation invalidation. Never cache *results* without it.
 
