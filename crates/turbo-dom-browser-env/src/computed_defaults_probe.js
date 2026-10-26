@@ -124,11 +124,17 @@
     // it, the author rules that select it (only the properties it accepts; ::placeholder,
     // ::file-selector-button, ::details-content and ::picker(select) only on the elements that
     // have them), and inheritance from the element (highlight pseudo-elements: from the
-    // parent's highlight once a highlight rule applies). Some forms read as blank declarations
+    // parent's highlight once a rule of that highlight applies). Some forms read as blank declarations
     // (::scroll-marker, invalid arguments); unknown -webkit- / -internal- ones and ::cue read
     // the element. Part `forms` reads every form, part `elements` the UA-styled ones.
     const props = ['display', 'position', 'visibility', 'color', 'content', 'font-size', 'opacity', 'transform', 'zoom'];
-    const read = (el, pseudo, list) => { const s = getComputedStyle(el, pseudo); return (list || props).map((p) => s.getPropertyValue(p)).join('|'); };
+    // A highlight's color with no rule of its type on the element or an ancestor is not
+    // stable in Chrome 156: getComputedStyle reuses the first such read's style for later
+    // elements (read a child before its parent and both report the child's color). Those
+    // colors read as '~'; every other value of the highlight is read.
+    const highlights = /^::(selection|highlight\(|spelling-error|grammar-error|target-text|search-text)/;
+    const ruled = (el, pseudo) => { for (let node = el; node; node = node.parentElement) if (node.classList.contains('au') || pseudo === '::selection' && (node.id === 'sel' || node.id === 'selParent')) return true; return false; };
+    const read = (el, pseudo, list) => { const s = getComputedStyle(el, pseudo), unstable = highlights.test(pseudo) && !ruled(el, pseudo); return (list || props).map((p) => p === 'color' && unstable ? '~' : s.getPropertyValue(p)).join('|'); };
     const pseudos = ['::marker', '::placeholder', '::first-line', '::first-letter', ':first-line', ':first-letter', '::selection', '::file-selector-button', '::details-content', '::checkmark', '::picker-icon', '::picker(select)', '::picker(foo)', '::picker()', '::scroll-marker', '::scroll-marker-group', '::column', '::view-transition', '::view-transition-group(x)', '::view-transition-group(*)', '::view-transition-image-pair(x)', '::view-transition-old(x)', '::view-transition-new(x)', '::view-transition-old(*)', '::view-transition-group(x y)', '::highlight(x)', '::highlight(*)', '::highlight()', '::spelling-error', '::grammar-error', '::target-text', '::search-text', '::search-text:current', '::cue', '::cue(b)', '::-webkit-scrollbar', '::-webkit-scrollbar-thumb', '::-webkit-scrollbar-track', '::-webkit-scrollbar-button', '::-webkit-scrollbar-corner', '::-webkit-scrollbar-track-piece', '::-webkit-resizer', '::-webkit-input-placeholder', '::-webkit-file-upload-button', '::-webkit-details-marker', '::-webkit-foo', '::scroll-button(up)', '::scroll-button(*)', '::scroll-button(foo)', '::MARKER', '::Placeholder', '::marker()', '::selection:window-inactive', '::column::scroll-marker', '::interest-hint', '::-internal-loading-auto-fill-button', '::-internal-foo'];
     const ua = {};
     const $ = (id) => id === 'root' ? document.documentElement : document.getElementById(id);
