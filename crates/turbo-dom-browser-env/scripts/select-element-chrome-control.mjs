@@ -3,6 +3,9 @@
 //          --out src/x_chrome156.json [--chrome /path/to/Chrome]
 // Run from crates/turbo-dom-browser-env: src/ holds the binding's probes, cases and Chrome
 // controls (the files its tests and `test_support` read).
+// A probe that needs user activation calls `__cdpGesture()`: the collector clicks the page
+// with trusted CDP input (Input.dispatchMouseEvent press + release at 1,1) and then calls
+// the page's `__cdpGestureDone()`.
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -58,6 +61,12 @@ chrome.stdio[4].on("data", (chunk) => {
   for (let end = buffer.indexOf(0); end >= 0; end = buffer.indexOf(0)) {
     const message = JSON.parse(buffer.subarray(0, end).toString("utf8"));
     buffer = buffer.subarray(end + 1);
+    if (message.method === "Runtime.bindingCalled" && message.params.name === "__cdpGesture") {
+      gestures = gestures
+        .then(() => gesture(message.sessionId))
+        .catch((error) => process.stderr.write(`gesture failed: ${error.stack}\n`));
+      continue;
+    }
     const waiter = message.id && pending.get(message.id);
     if (!waiter) continue;
     pending.delete(message.id);
@@ -71,6 +80,12 @@ const call = (method, params = {}, sessionId) =>
     pending.set(id, { resolve: done, reject: fail });
     chrome.stdio[3].write(`${JSON.stringify({ id, method, params, ...(sessionId ? { sessionId } : {}) })}\0`);
   });
+let gestures = Promise.resolve();
+async function gesture(sessionId) {
+  for (const type of ["mousePressed", "mouseReleased"])
+    await call("Input.dispatchMouseEvent", { type, x: 1, y: 1, button: "left", clickCount: 1 }, sessionId);
+  await call("Runtime.evaluate", { expression: "__cdpGestureDone()" }, sessionId);
+}
 const pause = (ms) => new Promise((done) => setTimeout(done, ms));
 const errors = [],
   result = [];
@@ -82,6 +97,8 @@ try {
     const { targetId } = await call("Target.createTarget", { url: "about:blank" });
     const { sessionId } = await call("Target.attachToTarget", { targetId, flatten: true });
     await call("Page.enable", {}, sessionId);
+    await call("Runtime.enable", {}, sessionId);
+    await call("Runtime.addBinding", { name: "__cdpGesture" }, sessionId);
     await call("Page.navigate", { url: `http://127.0.0.1:${server.address().port}/` }, sessionId);
     for (let tries = 0; tries < 200; tries++) {
       const state = await call(

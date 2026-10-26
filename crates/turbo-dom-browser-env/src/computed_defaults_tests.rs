@@ -4,7 +4,8 @@
 //! injected `<title>`. Checked against the Chrome 156 control (`computed_defaults_probe.js` +
 //! `computed_defaults_cases.json` -> `computed_defaults_chrome156.json`, recorded by
 //! scripts/select-element-chrome-control.mjs), every case and section. Case `dialog-top-layer`
-//! (turbo-dom#30) covers modal dialogs, the top layer and `::backdrop`.
+//! (turbo-dom#30) covers modal dialogs, the top layer and `::backdrop`; `pseudo-elements` and
+//! `pseudo-ua` (turbo-dom#47) the `pseudoElt` argument and the UA-styled pseudo-elements.
 use super::*;
 use sha2::{Digest, Sha256};
 
@@ -87,7 +88,12 @@ fn mismatches(select: impl Fn(&str) -> bool) -> Vec<String> {
 
 #[test]
 fn computed_defaults_and_head_match_chrome156_control() {
-    let found = mismatches(|id| id != "dialog-top-layer" && id != "pseudo-elements");
+    let found = mismatches(|id| {
+        !matches!(
+            id,
+            "dialog-top-layer" | "pseudo-elements" | "pseudo-ua-forms" | "pseudo-ua"
+        )
+    });
     assert!(
         found.is_empty(),
         "{} mismatches:\n{}",
@@ -113,9 +119,43 @@ fn dialog_top_layer_matches_chrome156_control() {
 /// forms, escapes, comments), invalid pseudo-elements (empty declaration), strings without a
 /// leading colon (the element), disconnected elements, live reads (case `pseudo-elements`).
 #[test]
-
 fn pseudo_elements_match_chrome156_control() {
     let found = mismatches(|id| id == "pseudo-elements");
+    assert!(
+        found.is_empty(),
+        "{} mismatches:\n{}",
+        found.len(),
+        found.join("\n")
+    );
+}
+
+/// turbo-dom#47: the UA-styled pseudo-elements (`::marker`, `::placeholder`, `::first-line`,
+/// `::first-letter`, `::selection` and the other highlights, `::file-selector-button`,
+/// `::details-content`, `::checkmark`, `::picker-icon`, `::picker(select)`,
+/// `::scroll-marker-group`, `::column`, `::view-transition*`, `::-webkit-scrollbar*`,
+/// `::scroll-button()`): Chrome's UA values, the author properties each accepts, inheritance
+/// (highlights from the parent's highlight), and the forms that read blank or the element
+/// (case `pseudo-ua`).
+#[test]
+#[ignore = "turbo-dom#47: fails until the fix"]
+fn pseudo_element_ua_styles_match_chrome156_control() {
+    let found = mismatches(|id| id == "pseudo-ua");
+    assert!(
+        found.is_empty(),
+        "{} mismatches:\n{}",
+        found.len(),
+        found.join("\n")
+    );
+}
+
+/// turbo-dom#47: every `pseudoElt` form Chrome 156 accepts — computed, blank (`::scroll-marker`,
+/// invalid arguments, pseudo-classes after the pseudo-element) or the element's own style
+/// (`::cue`, unknown `-webkit-` / `-internal-` names) — on a div, a list item and an input
+/// (case `pseudo-ua-forms`).
+#[test]
+#[ignore = "turbo-dom#47: fails until the fix"]
+fn pseudo_element_forms_match_chrome156_control() {
+    let found = mismatches(|id| id == "pseudo-ua-forms");
     assert!(
         found.is_empty(),
         "{} mismatches:\n{}",

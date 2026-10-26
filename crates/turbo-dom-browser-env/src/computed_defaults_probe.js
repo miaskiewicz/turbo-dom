@@ -112,6 +112,69 @@
       return [before, style.color, style === getComputedStyle(host, '::before')];
     })();
     out.pseudo = pseudo;
+  } else if (document.getElementById('pseudoUa')) {
+    // turbo-dom#47: the UA-styled pseudo-elements. Each computes Chrome's html.css values for
+    // it, the author rules that select it (only the properties it accepts; ::placeholder,
+    // ::file-selector-button, ::details-content and ::picker(select) only on the elements that
+    // have them), and inheritance from the element (highlight pseudo-elements: from the
+    // parent's highlight once a highlight rule applies). Some forms read as blank declarations
+    // (::scroll-marker, invalid arguments); unknown -webkit- / -internal- ones and ::cue read
+    // the element. Part `forms` reads every form, part `elements` the UA-styled ones.
+    const props = ['display', 'position', 'visibility', 'color', 'content', 'font-size', 'opacity', 'transform', 'zoom'];
+    const read = (el, pseudo, list) => { const s = getComputedStyle(el, pseudo); return (list || props).map((p) => s.getPropertyValue(p)).join('|'); };
+    const pseudos = ['::marker', '::placeholder', '::first-line', '::first-letter', ':first-line', ':first-letter', '::selection', '::file-selector-button', '::details-content', '::checkmark', '::picker-icon', '::picker(select)', '::picker(foo)', '::picker()', '::scroll-marker', '::scroll-marker-group', '::column', '::view-transition', '::view-transition-group(x)', '::view-transition-group(*)', '::view-transition-image-pair(x)', '::view-transition-old(x)', '::view-transition-new(x)', '::view-transition-old(*)', '::view-transition-group(x y)', '::highlight(x)', '::highlight(*)', '::highlight()', '::spelling-error', '::grammar-error', '::target-text', '::search-text', '::search-text:current', '::cue', '::cue(b)', '::-webkit-scrollbar', '::-webkit-scrollbar-thumb', '::-webkit-scrollbar-track', '::-webkit-scrollbar-button', '::-webkit-scrollbar-corner', '::-webkit-scrollbar-track-piece', '::-webkit-resizer', '::-webkit-input-placeholder', '::-webkit-file-upload-button', '::-webkit-details-marker', '::-webkit-foo', '::scroll-button(up)', '::scroll-button(*)', '::scroll-button(foo)', '::MARKER', '::Placeholder', '::marker()', '::selection:window-inactive', '::column::scroll-marker', '::interest-hint', '::-internal-loading-auto-fill-button', '::-internal-foo'];
+    const ua = {};
+    const $ = (id) => id === 'root' ? document.documentElement : document.getElementById(id);
+    const part = document.getElementById('pseudoUa').getAttribute('data-part');
+    if (part === 'forms') {
+      // Every form on elements of each kind: valid (computed), blank, or the element's style.
+      for (const id of ['div', 'li', 'input']) ua[id] = Object.fromEntries(pseudos.map((p) => [p, read($(id), p)]));
+      out.ua = ua;
+      return out;
+    }
+    // The pseudo-elements with their own UA rules, on the elements those rules (and the
+    // author rules of class `au`, which set every property) select, plus generic ones.
+    const core = ['::marker', '::placeholder', '::first-line', '::first-letter', '::selection', '::file-selector-button', '::details-content', '::checkmark', '::picker-icon', '::picker(select)', '::scroll-marker-group', '::column', '::view-transition', '::view-transition-group(x)', '::view-transition-old(x)', '::highlight(x)', '::spelling-error', '::target-text', '::-webkit-scrollbar', '::-webkit-scrollbar-thumb', '::scroll-button(up)', '::scroll-button(*)'];
+    const generic = ['::first-line', '::selection', '::checkmark', '::view-transition', '::scroll-marker-group'];
+    const matrix = [
+      [['auDiv', 'flexHost', 'hiddenHost', 'svg', 'root'], core],
+      [['li', 'styledLi', 'auLi', 'insideLi', 'oli', 'summary', 'span'], ['::marker'].concat(generic)],
+      [['input', 'styledInput', 'auInput', 'ta'], ['::placeholder', '::file-selector-button', '::marker', '::first-letter'].concat(generic)],
+      [['file', 'auFile'], ['::file-selector-button', '::placeholder'].concat(generic)],
+      [['det', 'detOpen', 'auDetails'], ['::details-content', '::marker'].concat(generic)],
+      [['select', 'auSelect', 'button'], ['::picker(select)', '::picker-icon', '::checkmark', '::marker'].concat(generic)],
+      [['p1', 'div'], ['::first-line', '::first-letter', '::marker'].concat(generic)],
+      [['sel', 'selParent', 'selChild', 'selGrand'], ['::selection', '::highlight(x)', '::spelling-error', '::target-text']],
+    ];
+    for (const [list, names] of matrix) for (const id of list) ua[id] = Object.fromEntries(names.map((p) => [p, read($(id), p)]));
+    // Properties the UA rules of particular pseudo-elements set, read where those rules apply.
+    const extras = [
+      ['::marker', ['li', 'styledLi', 'oli', 'div', 'summary', 'auLi', 'insideLi'], ['white-space', 'font-variant-numeric', 'unicode-bidi', 'text-transform']],
+      ['::placeholder', ['input', 'styledInput', 'ta', 'auInput'], ['pointer-events', 'unicode-bidi']],
+      ['::placeholder', ['input', 'styledInput', 'auInput'], ['white-space', 'overflow']],
+      ['::file-selector-button', ['file', 'auFile'], ['background-color', 'white-space', 'padding-top', 'padding-left', 'margin-right', 'margin-left', 'border-top-width', 'border-top-style', 'text-align', 'box-sizing', 'user-select']],
+      ['::details-content', ['det', 'detOpen', 'auDetails'], ['content-visibility']],
+      ['::view-transition', ['div', 'auDiv'], ['top', 'right', 'bottom', 'left']],
+      ['::view-transition-group(x)', ['div', 'auDiv'], ['top', 'right', 'bottom', 'left']],
+      ['::view-transition-image-pair(x)', ['div', 'auDiv'], ['top', 'right', 'bottom', 'left']],
+      ['::view-transition-old(x)', ['div', 'auDiv'], ['top', 'right', 'bottom', 'left']],
+      ['::view-transition-new(x)', ['div', 'auDiv'], ['top', 'right', 'bottom', 'left']],
+      ['::spelling-error', ['div', 'auDiv'], ['text-decoration-line']],
+      ['::grammar-error', ['div', 'auDiv'], ['text-decoration-line']],
+      ['::picker(select)', ['select', 'auSelect'], ['overflow', 'white-space', 'unicode-bidi']],
+      ['::selection', ['sel', 'selChild', 'selGrand', 'auDiv', 'div'], ['background-color']],
+      ['::backdrop', ['div'], ['background-color']],
+    ];
+    const extra = {};
+    for (const [pseudo, list, names] of extras) for (const id of list) extra[pseudo + ' ' + id + ' ' + names.join(',')] = read(document.getElementById(id), pseudo, names);
+    ua.extra = extra;
+    ua.detached = Object.fromEntries(['::marker', '::placeholder', '::selection', '::scroll-marker', '::-webkit-foo'].map((p) => [p, read(document.createElement('li'), p)]));
+    ua.live = (() => {
+      const li = document.getElementById('li'), style = getComputedStyle(li, '::marker'), before = style.color;
+      document.getElementById('uaSheet').textContent += '#li::marker{color:rgb(0, 255, 0)}';
+      return [before, style.color, style === getComputedStyle(li, '::marker')];
+    })();
+    out.ua = ua;
   } else {
     // the title setter creates a <title> on demand
     document.title = 'set';
