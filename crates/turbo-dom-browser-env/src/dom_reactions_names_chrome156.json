@@ -1,0 +1,398 @@
+{
+  "browser": "Chrome/156.0.8078.4",
+  "v8": "15.6.75",
+  "casesSha256": "75652313126034145215b17006244ce344b90e21cc5cf859905c880c9a5ee38c",
+  "probeSha256": "32c9c83fec2ed453d2eada88dee75b7d06420781c7be797b5acc5320745f7bba",
+  "collectorSha256": "7174415de76a891d657bbc3e66952c7b91356030e8fcd9d0ac4f52603d0c3952",
+  "flags": [
+    "--headless=new",
+    "--remote-debugging-pipe",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "about:blank"
+  ],
+  "errors": [],
+  "result": [
+    {
+      "id": "dom-reactions-names",
+      "result": {
+        "order": [
+          [
+            "--",
+            "innerHTML"
+          ],
+          [
+            "ctor",
+            "a1",
+            true,
+            2
+          ],
+          [
+            "conn",
+            "a1",
+            2
+          ],
+          [
+            "ctor",
+            "a2",
+            true,
+            2
+          ],
+          [
+            "conn",
+            "a2",
+            2
+          ],
+          [
+            "--",
+            "outerHTML"
+          ],
+          [
+            "ctor",
+            "b1",
+            true,
+            3
+          ],
+          [
+            "conn",
+            "b1",
+            3
+          ],
+          [
+            "ctor",
+            "b2",
+            true,
+            3
+          ],
+          [
+            "conn",
+            "b2",
+            3
+          ],
+          [
+            "disc",
+            "a1",
+            3
+          ],
+          [
+            "--",
+            "setHTMLUnsafe"
+          ],
+          [
+            "ctor",
+            "c1",
+            true,
+            1
+          ],
+          [
+            "conn",
+            "c1",
+            1
+          ],
+          [
+            "disc",
+            "b1",
+            1
+          ],
+          [
+            "disc",
+            "b2",
+            1
+          ],
+          [
+            "disc",
+            "a2",
+            1
+          ],
+          [
+            "--",
+            "insertAdjacentHTML"
+          ],
+          [
+            "ctor",
+            "d1",
+            true,
+            2
+          ],
+          [
+            "conn",
+            "d1",
+            2
+          ],
+          [
+            "--",
+            "contextualFragment"
+          ],
+          [
+            "ctor",
+            "e1",
+            false,
+            2
+          ],
+          [
+            "fragment",
+            true
+          ],
+          [
+            "disc",
+            "d1",
+            1
+          ],
+          [
+            "disc",
+            "c1",
+            1
+          ],
+          [
+            "conn",
+            "e1",
+            1
+          ],
+          [
+            "--",
+            "end"
+          ],
+          [
+            "disc",
+            "e1",
+            0
+          ]
+        ],
+        "removal": [
+          "conn",
+          "remove:in",
+          "disc",
+          "remove:out",
+          "conn",
+          "removeChild:in",
+          "disc",
+          "removeChild:out",
+          "conn",
+          "replaceChild:in",
+          "disc",
+          "replaceChild:out",
+          "conn",
+          "textContent:in",
+          "disc",
+          "textContent:out",
+          "conn",
+          "replaceChildren:in",
+          "disc",
+          "replaceChildren:out"
+        ],
+        "names": {
+          "a:b:c": {
+            "element": [
+              "a",
+              "b",
+              "a:b"
+            ],
+            "attributeNode": [
+              "a",
+              "b",
+              "a:b",
+              "urn:x"
+            ],
+            "setAttributeNS": [
+              [
+                "a",
+                "b",
+                "a:b",
+                "urn:x"
+              ],
+              null,
+              "1"
+            ],
+            "xmlElement": [
+              "a",
+              "b"
+            ]
+          },
+          "a:b:c:d": {
+            "element": [
+              "a",
+              "b",
+              "a:b"
+            ],
+            "attributeNode": [
+              "a",
+              "b",
+              "a:b",
+              "urn:x"
+            ],
+            "setAttributeNS": [
+              [
+                "a",
+                "b",
+                "a:b",
+                "urn:x"
+              ],
+              null,
+              "1"
+            ],
+            "xmlElement": [
+              "a",
+              "b"
+            ]
+          },
+          "a::b": {
+            "element": "InvalidCharacterError",
+            "attributeNode": "InvalidCharacterError",
+            "setAttributeNS": "InvalidCharacterError",
+            "xmlElement": "InvalidCharacterError"
+          },
+          "a:b:": {
+            "element": [
+              "a",
+              "b",
+              "a:b"
+            ],
+            "attributeNode": [
+              "a",
+              "b",
+              "a:b",
+              "urn:x"
+            ],
+            "setAttributeNS": [
+              [
+                "a",
+                "b",
+                "a:b",
+                "urn:x"
+              ],
+              null,
+              "1"
+            ],
+            "xmlElement": [
+              "a",
+              "b"
+            ]
+          },
+          ":a:b": {
+            "element": "InvalidCharacterError",
+            "attributeNode": "InvalidCharacterError",
+            "setAttributeNS": "InvalidCharacterError",
+            "xmlElement": "InvalidCharacterError"
+          },
+          "a:1b:c": {
+            "element": "InvalidCharacterError",
+            "attributeNode": [
+              "a",
+              "1b",
+              "a:1b",
+              "urn:x"
+            ],
+            "setAttributeNS": [
+              [
+                "a",
+                "1b",
+                "a:1b",
+                "urn:x"
+              ],
+              null,
+              null
+            ],
+            "xmlElement": "InvalidCharacterError"
+          },
+          "a:b c:d": {
+            "element": "InvalidCharacterError",
+            "attributeNode": "InvalidCharacterError",
+            "setAttributeNS": "InvalidCharacterError",
+            "xmlElement": "InvalidCharacterError"
+          },
+          "xmlns:a:b": {
+            "element": "NamespaceError",
+            "attributeNode": "NamespaceError",
+            "setAttributeNS": "NamespaceError",
+            "xmlElement": "NamespaceError"
+          },
+          "xml:a:b": {
+            "element": "NamespaceError",
+            "attributeNode": "NamespaceError",
+            "setAttributeNS": "NamespaceError",
+            "xmlElement": [
+              "xml",
+              "a"
+            ]
+          }
+        },
+        "documentNames": {
+          "a:b:c": [
+            [
+              "a",
+              "b",
+              "a:b"
+            ],
+            "NamespaceError"
+          ],
+          "a:b:c:d": [
+            [
+              "a",
+              "b",
+              "a:b"
+            ],
+            "NamespaceError"
+          ],
+          "a::b": [
+            "InvalidCharacterError",
+            "InvalidCharacterError"
+          ],
+          "a:b:": [
+            [
+              "a",
+              "b",
+              "a:b"
+            ],
+            "NamespaceError"
+          ],
+          ":a:b": [
+            "InvalidCharacterError",
+            "InvalidCharacterError"
+          ],
+          "a:1b:c": [
+            "InvalidCharacterError",
+            "InvalidCharacterError"
+          ],
+          "a:b c:d": [
+            "InvalidCharacterError",
+            "InvalidCharacterError"
+          ],
+          "xmlns:a:b": [
+            "NamespaceError",
+            "NamespaceError"
+          ],
+          "xml:a:b": [
+            "NamespaceError",
+            "NamespaceError"
+          ],
+          "p:Root": [
+            [
+              "p",
+              "Root",
+              "p:Root"
+            ],
+            "NamespaceError"
+          ],
+          "Root": [
+            [
+              null,
+              "Root",
+              "Root"
+            ],
+            [
+              null,
+              "Root"
+            ]
+          ],
+          "bad name": [
+            "InvalidCharacterError",
+            "InvalidCharacterError"
+          ]
+        }
+      }
+    }
+  ]
+}

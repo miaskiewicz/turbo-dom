@@ -399,6 +399,7 @@ pub(super) fn set_html_unsafe<'s>(
     }
     template_contents::realize(scope, source);
     let incoming = children(scope, source);
+    let mut mark = None;
     {
         let _target = DomScope::for_object(scope, target);
         let Some(parent) = handle_of(scope, target) else {
@@ -411,15 +412,18 @@ pub(super) fn set_html_unsafe<'s>(
             .iter()
             .map(|node| dom_mutations::Incoming::Node(*node))
             .collect::<Vec<_>>();
+        mark = custom_elements::event_mark(scope);
         if !dom_mutations::replace_inputs(scope, parent, &nodes, &existing) {
             return;
         }
         css_policy::invalidate_sheet(parent);
     }
     template_contents::realize(scope, target);
+    let parsed = incoming.clone();
     for node in incoming.into_iter().chain(roots) {
         template_contents::mark_parsed(scope, node, true);
     }
+    custom_elements::parser_inserted(scope, target, &parsed, mark);
 }
 
 /// Serialization options of `getHTML`.

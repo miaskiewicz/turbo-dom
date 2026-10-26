@@ -6,20 +6,21 @@
   const string=value=>{if(typeof value==='symbol')throw new TypeErrorValue('Cannot convert a Symbol value to a string');return StringValue(value);};
   const type=Object.getOwnPropertyDescriptor(Node.prototype,'nodeType').get;
   const namespaceXML='http://www.w3.org/XML/1998/namespace',namespaceXMLNS='http://www.w3.org/2000/xmlns/';
-  const xmlName=/^[:A-Z_a-z\u00c0-\u00d6\u00d8-\u00f6\u00f8-\u02ff\u0370-\u037d\u037f-\u1fff\u200c-\u200d\u2070-\u218f\u2c00-\u2fef\u3001-\udfff\uf900-\ufdcf\ufdf0-\ufffd\u{10000}-\u{effff}][:A-Z_a-z\u00c0-\u00d6\u00d8-\u00f6\u00f8-\u02ff\u0370-\u037d\u037f-\u1fff\u200c-\u200d\u2070-\u218f\u2c00-\u2fef\u3001-\udfff\uf900-\ufdcf\ufdf0-\ufffd\u{10000}-\u{effff}\-.0-9\u00b7\u0300-\u036f\u203f-\u2040]*$/u;
-  define(xmlName,'exec',{__proto__:null,value:regexExec});
+  // https://dom.spec.whatwg.org/#validate-and-extract, as createElementNS runs it (turbo-dom#57):
+  // strict ':' split (prefix = first part, local name = second), element-name character
+  // rules (InvalidCharacterError), then the namespace rules (NamespaceError). Returns the
+  // effective qualified name (`a:b:c` -> `a:b`).
+  const stringSplit=String.prototype.split,forbidden=/[\0\t\n\f\r />]/,asciiAlpha=/^[A-Za-z]$/,looseStart=/^(?:[_:]|[^\0-\x7f])$/,strictRest=/[\0-\x2c\x2f\x3b-\x40\x5b-\x5e\x60\x7b-\x7f]/;
+  for(const pattern of [forbidden,asciiAlpha,looseStart,strictRest])define(pattern,'exec',{__proto__:null,value:regexExec});
   function qualified(namespace,name) {
-    if(!apply(regexTest,xmlName,[name]))throw new Exception('Invalid element name','InvalidCharacterError');
-    let colon=-1;
-    for(let index=0;index<name.length;index++)if(name[index]===':'){
-      if(colon!==-1)throw new Exception('Invalid qualified name','NamespaceError');colon=index;
-    }
-    let prefix=null;
-    if(colon!==-1){
-      prefix=apply(stringSlice,name,[0,colon]);const local=apply(stringSlice,name,[colon+1]);
-      if(!prefix||!local||!apply(regexTest,xmlName,[prefix])||!apply(regexTest,xmlName,[local]))throw new Exception('Invalid qualified name','NamespaceError');
-    }
-    if(prefix&&!namespace||prefix==='xml'&&namespace!==namespaceXML||(name==='xmlns'||prefix==='xmlns')&&namespace!==namespaceXMLNS||namespace===namespaceXMLNS&&name!=='xmlns'&&prefix!=='xmlns')throw new Exception('Invalid namespace for qualified name','NamespaceError');
+    const parts=apply(stringSplit,name,[':']);
+    const prefix=parts.length>1?parts[0]:null,local=parts.length>1?parts[1]:name;
+    if(prefix!==null&&(prefix===''||apply(regexTest,forbidden,[prefix]))||local===''||apply(regexTest,forbidden,[local]))throw new Exception('Invalid qualified name','InvalidCharacterError');
+    const first=local[0],rest=apply(stringSlice,local,[1]);
+    if(!apply(regexTest,asciiAlpha,[first])&&(!apply(regexTest,looseStart,[first])||apply(regexTest,strictRest,[rest])))throw new Exception('Invalid qualified name','InvalidCharacterError');
+    const effective=parts.length>2?prefix+':'+local:name;
+    if(prefix!==null&&!namespace||prefix==='xml'&&namespace!==namespaceXML||(effective==='xmlns'||prefix==='xmlns')&&namespace!==namespaceXMLNS||namespace===namespaceXMLNS&&effective!=='xmlns'&&prefix!=='xmlns')throw new Exception('Invalid namespace for qualified name','NamespaceError');
+    return effective;
   }
 
   const DOMImplementation=make(function(){throw new TypeErrorValue('Illegal constructor');},'DOMImplementation',0,true,true);
@@ -40,7 +41,7 @@
     namespace=namespace==null?null:string(namespace);if(namespace==='')namespace=null;
     name=name==null?'':string(name);
     if(doctype!=null&&apply(type,doctype,[])!==10)throw new TypeErrorValue('The value is not a DocumentType');
-    if(name)qualified(namespace,name);
+    if(name)name=qualified(namespace,name);
     const document=native('xml',this,namespace,name,doctype==null?null:doctype);
     setPrototype(document,XMLDocument.prototype);
     return document;

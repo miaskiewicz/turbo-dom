@@ -3,7 +3,8 @@
 //! `[hidden]`, dialog / popover positions, CSS-wide keywords), and the document carries no
 //! injected `<title>`. Checked against the Chrome 156 control (`computed_defaults_probe.js` +
 //! `computed_defaults_cases.json` -> `computed_defaults_chrome156.json`, recorded by
-//! scripts/select-element-chrome-control.mjs), every case and section.
+//! scripts/select-element-chrome-control.mjs), every case and section. Case `dialog-top-layer`
+//! (turbo-dom#30) covers modal dialogs, the top layer and `::backdrop`.
 use super::*;
 use sha2::{Digest, Sha256};
 
@@ -41,8 +42,8 @@ fn rows(prefix: &str, value: &serde_json::Value, out: &mut Vec<(String, String)>
     }
 }
 
-#[test]
-fn computed_defaults_and_head_match_chrome156_control() {
+/// Every control row of the cases `select` keeps, as `path: binding …, chrome …` mismatches.
+fn mismatches(select: impl Fn(&str) -> bool) -> Vec<String> {
     let control: serde_json::Value = serde_json::from_str(CONTROL).unwrap();
     assert!(control["browser"]
         .as_str()
@@ -63,6 +64,9 @@ fn computed_defaults_and_head_match_chrome156_control() {
         let id = case["id"].as_str().unwrap();
         let expected = &control["result"][index];
         assert_eq!(expected["id"], case["id"]);
+        if !select(id) {
+            continue;
+        }
         let actual = probe(case["html"].as_str().unwrap());
         let (mut want, mut got) = (Vec::new(), Vec::new());
         rows(id, &expected["result"], &mut want);
@@ -78,6 +82,40 @@ fn computed_defaults_and_head_match_chrome156_control() {
             }
         }
     }
+    found
+}
+
+#[test]
+fn computed_defaults_and_head_match_chrome156_control() {
+    let found = mismatches(|id| id != "dialog-top-layer" && id != "pseudo-elements");
+    assert!(
+        found.is_empty(),
+        "{} mismatches:\n{}",
+        found.len(),
+        found.join("\n")
+    );
+}
+
+/// turbo-dom#30: show() vs showModal() vs close(), `:modal`, the top-layer position rule and
+/// `::backdrop` reads (case `dialog-top-layer`).
+#[test]
+fn dialog_top_layer_matches_chrome156_control() {
+    let found = mismatches(|id| id == "dialog-top-layer");
+    assert!(
+        found.is_empty(),
+        "{} mismatches:\n{}",
+        found.len(),
+        found.join("\n")
+    );
+}
+
+/// turbo-dom#47: `getComputedStyle(el, pseudoElt)` — `::before` / `::after` (legacy and bare
+/// forms, escapes, comments), invalid pseudo-elements (empty declaration), strings without a
+/// leading colon (the element), disconnected elements, live reads (case `pseudo-elements`).
+#[test]
+
+fn pseudo_elements_match_chrome156_control() {
+    let found = mismatches(|id| id == "pseudo-elements");
     assert!(
         found.is_empty(),
         "{} mismatches:\n{}",
