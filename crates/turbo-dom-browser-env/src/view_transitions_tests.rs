@@ -169,7 +169,10 @@ fn view_transitions_match_chrome_156() {
     // KNOWN_GAP: DOMParser is provided by the turbo-surf runtime, not this binding; the
     // render tier runs it against Chrome. parseHTMLUnsafe is now in the vendored binding
     // (Sanitizer batch) and is compared against the Chrome fixture below.
-    assert_eq!(actual["documents"]["domParser"][0], "unavailable", "domParser");
+    assert_eq!(
+        actual["documents"]["domParser"][0], "unavailable",
+        "domParser"
+    );
     // KNOWN_GAP: the binding's selector-method SyntaxError (shared by matches, closest and
     // querySelector*) omits Chrome's "Failed to execute 'matches' on 'Element': " prefix;
     // the rejected selectors and the exception names agree.

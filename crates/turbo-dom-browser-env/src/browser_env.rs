@@ -11,6 +11,8 @@
 //! removeChild, get/setAttribute, id/className/tagName/textContent, querySelector(All)/getElementById.
 //! Events, cssom/style, classList, forms etc. grow in P3.3. Gated by `TURBO_RUST_DOM`.
 
+#[path = "animations.rs"]
+mod animations;
 #[path = "css_selector_syntax.rs"]
 mod css_selector_syntax;
 #[path = "cssom_parser.rs"]
@@ -21,8 +23,6 @@ mod dom_isolation;
 mod dom_ownership;
 #[path = "element_internals.rs"]
 mod element_internals;
-#[path = "animations.rs"]
-mod animations;
 #[path = "element_members.rs"]
 mod element_members;
 pub use dom_isolation::{activate_isolate, reset_isolate, NativeDomScope};
@@ -137,26 +137,28 @@ mod document_xpath;
 pub use document_xpath::is_native_xpath_object;
 #[path = "dom_mutations.rs"]
 mod dom_mutations;
+#[path = "editing.rs"]
+mod editing;
 #[path = "element_relations.rs"]
 mod element_relations;
 #[path = "file_inputs.rs"]
 mod file_inputs;
 #[path = "focus_group.rs"]
 mod focus_group;
-#[path = "editing.rs"]
-mod editing;
 pub use editing::editing_user_input;
 #[path = "html_dialog.rs"]
 mod html_dialog;
-#[path = "typed_om.rs"]
-mod typed_om;
 #[path = "html_invokers.rs"]
 mod html_invokers;
 #[path = "html_popover.rs"]
 mod html_popover;
 #[path = "pointer_events.rs"]
 mod pointer_events;
+#[path = "typed_om.rs"]
+mod typed_om;
 pub use pointer_events::{host_pointer, PointerLockPolicy};
+#[path = "form_pseudo.rs"]
+mod form_pseudo;
 #[path = "html_text.rs"]
 mod html_text;
 #[path = "hyperlink_utils.rs"]
@@ -165,16 +167,14 @@ mod hyperlink_utils;
 mod input_members;
 #[path = "interest_invokers.rs"]
 mod interest_invokers;
-#[path = "reference_target.rs"]
-mod reference_target;
-#[path = "shadow_html.rs"]
-mod shadow_html;
-#[path = "select_element.rs"]
-mod select_element;
-#[path = "form_pseudo.rs"]
-mod form_pseudo;
 #[path = "key_order.rs"]
 mod key_order;
+#[path = "reference_target.rs"]
+mod reference_target;
+#[path = "select_element.rs"]
+mod select_element;
+#[path = "shadow_html.rs"]
+mod shadow_html;
 pub use key_order::{defer as defer_key_order, finish as finish_key_order};
 #[path = "shadow_slots.rs"]
 mod shadow_slots;
@@ -9573,29 +9573,29 @@ mod utf16_contract_tests;
 mod form_outputs_tests;
 
 #[cfg(test)]
-#[path = "html_dialog_tests.rs"]
-mod html_dialog_tests;
-#[cfg(test)]
-#[path = "sanitizer_tests.rs"]
-mod sanitizer_tests;
-#[cfg(test)]
-#[path = "pointer_events_tests.rs"]
-mod pointer_events_tests;
-#[cfg(test)]
 #[path = "animations_tests.rs"]
 mod animations_tests;
 #[cfg(test)]
 #[path = "file_inputs_tests.rs"]
 mod file_inputs_tests;
 #[cfg(test)]
-#[path = "typed_om_tests.rs"]
-mod typed_om_tests;
-#[cfg(test)]
 #[path = "form_pseudo_tests.rs"]
 mod form_pseudo_tests;
 #[cfg(test)]
+#[path = "html_dialog_tests.rs"]
+mod html_dialog_tests;
+#[cfg(test)]
 #[path = "key_order_tests.rs"]
 mod key_order_tests;
+#[cfg(test)]
+#[path = "pointer_events_tests.rs"]
+mod pointer_events_tests;
+#[cfg(test)]
+#[path = "sanitizer_tests.rs"]
+mod sanitizer_tests;
+#[cfg(test)]
+#[path = "typed_om_tests.rs"]
+mod typed_om_tests;
 
 #[cfg(test)]
 #[path = "view_transitions_tests.rs"]
