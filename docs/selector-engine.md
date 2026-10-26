@@ -148,9 +148,9 @@ static screenshots of the surf static inputs to S5.
 | `rtdom::cascade` lists | split on every `,`; invalid rules applied their valid half | `parse_for_cascade` items; an invalid list drops the rule; stylesheet matching (`:scope` = `:root`) | every row's sentinel `winner`, `cases/cascade-comma` |
 | npm `selectors.mjs` | pre-S3a engine, lenient | the same Chrome grammar and matching (`test/selectors-chrome.test.mjs` asserts the shared fixture: validity, `matches`, `querySelectorAll`, cascade sentinel, probes); `cascade.mjs` splits lists like `rtdom::cascade`; the `s` modifier throws | all `cases` + `probes` |
 
-Known limits: through the V8 binding a custom element upgraded by `customElements.define()`
-still matches `:not(:defined)` (the tree does not see the binding's registry);
-`rtdom::cascade` keeps its rough per-item specificity count.
+Known limits (both fixed by P5b-X2 below): through the V8 binding a custom element upgraded
+by `customElements.define()` still matched `:not(:defined)`; `rtdom::cascade` kept its rough
+per-item specificity count.
 
 ## What P5b-X2 changed (turbo-dom#24)
 
@@ -159,6 +159,7 @@ Chrome 156 control and a parity expected-diff file `tools/parity/expected/p5b-x2
 
 | item | before | now (Chrome 156) | control |
 |---|---|---|---|
+| `rtdom::cascade` specificity (#24 item 2) | a per-token count of each selector item's text (`a*10000 + b*100 + c` over `#…`, `.…` / `[…]` / `:…`, type names after a combinator): `:where(#a) p` outranked `p`, `:not(.x)` and `.md\:x` counted two classes, `[title="#t"]` an id, `div :is(i)` a class | the `parse_for_cascade` item's Selectors 4 `specificity()` — the layout cascade's: `:where()` 0, `:is()` / `:not()` / `:has()` their most specific argument, `:nth-child(… of S)` a pseudo-class plus S, pseudo-elements as types; npm `cascade.mjs` the same (`selectors.mjs` `specificity()` / `compareSpecificity()`) | `cascade_cases/specificity-*` (new `specificity-arguments`), `cascade-only-pseudos` — now also asserted through `rtdom::cascade::computed_style` and the npm `getComputedStyle` |
 | `s` attribute modifier (#24 item 4) | a documented Rust extension of the lenient / `_checked` / stylesheet parsers (`[a=b s]` compared case-sensitively); the Chrome rows were skipped (`RUST_CONTRACT_ROWS`) | a SyntaxError in the checked APIs, never a match in the lenient ones, an invalid stylesheet rule — like Chrome and the npm engine | `cases/malformed` (`[a=b s]`, `[a=b S]`, `[a="1" s]`), `tests/fixtures/attribute-case` (7 `s` cases) |
 
 ## Regenerating the Chrome control
@@ -196,7 +197,10 @@ turbo-dom's test asserts the S3a rows through `matches`, `matches_checked`,
 `matches_units`, `query_selector[_all]`, `query_selector[_all]_units`,
 `rtdom::cascade::computed_style`, `parse_for_cascade` and `match_for_cascade` (live
 navigator), and each cascade case through a minimal cascade over `parse_for_cascade`,
-`match_for_cascade` and `specificity()`. turbo-dom-layout's test styles every S3a selector
+`match_for_cascade` and `specificity()` and (all but the `cascade-order` class: importance and
+origins are the layout cascade's) through `rtdom::cascade::computed_style`;
+`test/selectors-chrome.test.mjs` checks the same cascade cases through the npm
+`getComputedStyle`. turbo-dom-layout's test styles every S3a selector
 and every cascade case through `style_html_tree` (the styling step of `layout_html`) and
 compares each styled element's `order` with Chrome.
 

@@ -8,6 +8,13 @@ at the time); this file reconstructs them from history.
 ## [Unreleased]
 
 ### Changed — selector follow-ups (P5b-X2, miaskiewicz/turbo-dom#24, Chrome 156 controls)
+- `rtdom::cascade` (`getComputedStyle`) and the npm `cascade.mjs` rank rules by the
+  Selectors 4 specificity of each `parse_for_cascade` item — the layout cascade's — instead
+  of a per-token count: `:where()` adds nothing, `:is()` / `:not()` / `:has()` count their
+  most specific argument once, `:nth-child(… of S)` is a pseudo-class plus S, an escaped
+  `\:` or a `#` inside an attribute value is not a pseudo-class / id, and a type selector
+  inside a pseudo-class argument counts. A later rule of equal specificity now wins
+  (`:where(#a) p` vs `p`). npm: `_internal.specificity` / `compareSpecificity`.
 - BREAKING (Rust API): the `s` (case-sensitive) attribute selector modifier is rejected
   like Chrome 156 does — `[a=b s]` is a `SelectorError` in `query_selector*_checked` /
   `matches_checked` / `parse_for_cascade`, never matches through the lenient APIs, and drops

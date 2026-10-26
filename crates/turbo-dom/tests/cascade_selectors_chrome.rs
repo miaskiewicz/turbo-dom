@@ -239,6 +239,9 @@ fn selectors_match_chrome156() {
         if case["layout_only"].as_bool() != Some(true) {
             check_cascade_case(case, &mut failures);
         }
+        if case["class"].as_str() != Some("cascade-order") {
+            check_rtdom_cascade_case(case, &mut failures);
+        }
     }
     let probes = fixture["probes"].as_array().unwrap();
     for probe in probes {
@@ -312,6 +315,42 @@ fn check_cascade_case(case: &Value, failures: &mut Vec<String>) {
         if got != w {
             failures.push(format!(
                 "cascade case {id}: el#{i} <{}> order {got}, Chrome {w}",
+                tree.local_name(h).unwrap_or("")
+            ));
+        }
+    }
+}
+
+/// `rtdom::cascade::computed_style` (`getComputedStyle`) over a cascade case: the case's sheet
+/// as the last `<head>` child resolves every element's `order` to Chrome's winner — rule
+/// validity, matching and Selectors 4 specificity (miaskiewicz/turbo-dom#24 item 2). The
+/// `cascade-order` cases (importance, origins, declaration order) are the layout cascade's;
+/// `rtdom::cascade` has no `!important` or user-agent origin.
+fn check_rtdom_cascade_case(case: &Value, failures: &mut Vec<String>) {
+    let id = case["id"].as_str().unwrap();
+    let html = case["html"].as_str().unwrap().replacen(
+        "</head>",
+        &format!("<style>{}</style></head>", case["css"].as_str().unwrap()),
+        1,
+    );
+    let tree = Tree::parse(&html);
+    let head = tree.query_selector("head").unwrap();
+    let sheet = *tree.children(head).last().unwrap();
+    let els: Vec<Handle> = elements(&tree)
+        .into_iter()
+        .filter(|&h| h != sheet)
+        .collect();
+    let want = case["winners"].as_array().unwrap();
+    assert_eq!(want.len(), els.len(), "{id}: element list");
+    for (i, &h) in els.iter().enumerate() {
+        let got = computed_style(&tree, h)
+            .get("order")
+            .cloned()
+            .unwrap_or_else(|| "0".to_string());
+        let w = want[i].as_str().unwrap();
+        if got != w {
+            failures.push(format!(
+                "rtdom::cascade case {id}: el#{i} <{}> order {got}, Chrome {w}",
                 tree.local_name(h).unwrap_or("")
             ));
         }

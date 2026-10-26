@@ -3519,6 +3519,34 @@
    ]
   },
   {
+   "id": "specificity-arguments",
+   "class": "specificity",
+   "html": "<!DOCTYPE html><html><head></head><body><div id=\"w\" class=\"k\"><p id=\"a\" class=\"c d\">a</p><p id=\"b\" class=\"c\" title=\"#t\">b</p><span id=\"s\" class=\"md:x e\">s</span><p id=\"q\" class=\"c k\">q</p><i id=\"t\">t</i></div></body></html>",
+   "css": ":nth-child(1 of #a, .c) { order: 1 } #a.c { order: 2 } .md\\:x { order: 3 } span.e { order: 4 } p[title=\"#t\"] { order: 5 } p[title] { order: 6 } #q:not(.zz) { order: 7 } #q.k { order: 8 } div :is(i) { order: 9 } div > i { order: 10 } div:has(> #a) { order: 11 } #w.k { order: 12 }",
+   "elements": [
+    "html",
+    "head",
+    "body",
+    "div",
+    "p",
+    "p",
+    "span",
+    "p",
+    "i"
+   ],
+   "winners": [
+    "0",
+    "0",
+    "0",
+    "12",
+    "2",
+    "6",
+    "4",
+    "8",
+    "10"
+   ]
+  },
+  {
    "id": "cascade-only-pseudos",
    "class": "unknown-pseudo",
    "html": "<!DOCTYPE html><html><head></head><body><div lang=\"en-US\"><p id=\"a\" class=\"c\">a</p><x-foo id=\"x\">x</x-foo></div><p id=\"b\" lang=\"de\">b</p><span id=\"s\" class=\"c\">s</span></body></html>",

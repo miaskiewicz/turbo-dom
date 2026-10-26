@@ -18,8 +18,9 @@
 // Plus `probes` (P5b): scripted DOM checks (template content traversal, `:root` outside the
 // document element) whose named results the Rust test reproduces through the Tree API.
 // Asserted by crates/turbo-dom/tests/cascade_selectors_chrome.rs (matches, cascade
-// matching and specificity) and end to end through the layout HTML path by
-// crates/turbo-dom-layout/tests/cascade_selectors_chrome.rs.
+// matching and specificity; cascade cases also through rtdom::cascade, P5b-X2), by
+// test/selectors-chrome.test.mjs (the npm engine) and end to end through the layout HTML
+// path by crates/turbo-dom-layout/tests/cascade_selectors_chrome.rs.
 //
 // Usage: node scripts/cascade-selectors-chrome-control.mjs [--chrome PATH] [--out PATH]
 //   --chrome defaults to the Playwright-cached Chrome for Testing 156
@@ -481,6 +482,26 @@ const CASCADE_CASES = [
     css:
       "p { order: 1 } .c::after { order: 2 } .c:before { order: 3 } .bar::first-line { order: 4 } div { order: 5 } " +
       ".bar::-webkit-scrollbar { order: 6 } .bar::-webkit-scrollbar-thumb:hover { order: 7 } .c::marker { order: 8 }",
+  },
+  // P5b-X2 (miaskiewicz/turbo-dom#24 item 2): selectors whose Selectors 4 specificity
+  // differs from a per-token count — `:nth-child(… of S)`, `:not()` / `:is()` / `:has()`
+  // taking their most specific argument, escaped `:` in a class, `#` inside an attribute
+  // value, a type selector inside a pseudo-class argument. Each pair's later rule wins only
+  // under spec specificity.
+  {
+    id: "specificity-arguments",
+    class: "specificity",
+    html: DOC(
+      `<div id="w" class="k"><p id="a" class="c d">a</p><p id="b" class="c" title="#t">b</p>` +
+        `<span id="s" class="md:x e">s</span><p id="q" class="c k">q</p><i id="t">t</i></div>`,
+    ),
+    css:
+      ":nth-child(1 of #a, .c) { order: 1 } #a.c { order: 2 } " +
+      ".md\\:x { order: 3 } span.e { order: 4 } " +
+      'p[title="#t"] { order: 5 } p[title] { order: 6 } ' +
+      "#q:not(.zz) { order: 7 } #q.k { order: 8 } " +
+      "div :is(i) { order: 9 } div > i { order: 10 } " +
+      "div:has(> #a) { order: 11 } #w.k { order: 12 }",
   },
   {
     id: "cascade-only-pseudos",

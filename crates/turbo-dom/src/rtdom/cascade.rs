@@ -1,7 +1,8 @@
 //! Partial computed-style cascade — pure-Rust port of `src/runtime/cascade.mjs`.
 //!
 //! Resolves `getComputedStyle` from injected `<style>` sheets (emotion/MUI
-//! `.css-HASH { … }`), inline styles, and specificity ordering.
+//! `.css-HASH { … }`), inline styles, and specificity ordering (each rule item's Selectors 4
+//! specificity from `parse_for_cascade`, then source order).
 //!
 //! HONEST: this only ever returns values that come from a REAL matched rule or
 //! inline style (or inherited from one — see `INHERITED`). A property no
@@ -13,7 +14,9 @@
 //! matching what a browser serializes.
 
 use crate::rtdom::color;
-use crate::rtdom::query::{match_for_cascade, parse_for_cascade, CascadeSelector, LiveNavigator};
+use crate::rtdom::query::{
+    match_for_cascade, parse_for_cascade, CascadeSelector, LiveNavigator, Specificity,
+};
 use crate::rtdom::tree::{Handle, NodeType, Tree};
 use std::collections::{HashMap, HashSet};
 
@@ -235,85 +238,6 @@ fn parse_decls(text: &str, map: &mut HashMap<String, String>) {
     }
 }
 
-/// Rough WHATWG specificity: a*10000 + b*100 + c (ids, classes/attrs/pseudos, types).
-fn specificity(sel: &str) -> u32 {
-    let bytes = sel.as_bytes();
-    let n = bytes.len();
-    let is_ident = |c: u8| c.is_ascii_alphanumeric() || c == b'_' || c == b'-';
-
-    // a: count of `#[\w-]+`
-    let mut a = 0u32;
-    let mut i = 0;
-    while i < n {
-        if bytes[i] == b'#' {
-            let mut j = i + 1;
-            while j < n && is_ident(bytes[j]) {
-                j += 1;
-            }
-            if j > i + 1 {
-                a += 1;
-            }
-            i = j;
-        } else {
-            i += 1;
-        }
-    }
-
-    // b: count of `\.[\w-]+ | \[[^\]]*\] | :[\w-]+`
-    let mut b = 0u32;
-    i = 0;
-    while i < n {
-        match bytes[i] {
-            b'.' | b':' => {
-                let mut j = i + 1;
-                while j < n && is_ident(bytes[j]) {
-                    j += 1;
-                }
-                if j > i + 1 {
-                    b += 1;
-                    i = j;
-                } else {
-                    i += 1;
-                }
-            }
-            b'[' => {
-                let mut j = i + 1;
-                while j < n && bytes[j] != b']' {
-                    j += 1;
-                }
-                // `[^\]]*` matches zero or more, so `[]` still counts.
-                b += 1;
-                i = if j < n { j + 1 } else { n };
-            }
-            _ => i += 1,
-        }
-    }
-
-    // c: count of `(^|[\s>+~])[a-zA-Z][\w-]*` — a type selector at start or after
-    // a combinator/whitespace.
-    let mut c = 0u32;
-    i = 0;
-    while i < n {
-        let at_boundary = i == 0
-            || matches!(
-                bytes[i - 1],
-                b' ' | b'\t' | b'\n' | b'\r' | b'>' | b'+' | b'~'
-            );
-        if at_boundary && bytes[i].is_ascii_alphabetic() {
-            let mut j = i + 1;
-            while j < n && is_ident(bytes[j]) {
-                j += 1;
-            }
-            c += 1;
-            i = j;
-        } else {
-            i += 1;
-        }
-    }
-
-    a * 10000 + b * 100 + c
-}
-
 /// Strip `/* … */` comments.
 fn strip_comments(css: &str) -> String {
     let mut out = String::with_capacity(css.len());
@@ -356,7 +280,9 @@ pub(crate) struct Rule {
     selector: String,
     parsed: CascadeSelector,
     decls: HashMap<String, String>,
-    spec: u32,
+    /// Selectors 4 specificity from `parse_for_cascade` (`:where()` 0, `:is()` / `:not()` /
+    /// `:has()` their most specific argument, `:nth-child(… of S)` a pseudo-class plus S).
+    spec: Specificity,
     order: u32,
 }
 
@@ -461,7 +387,7 @@ fn parse_stylesheet(css: &str, start_order: u32, rules: &mut Vec<Rule>) -> u32 {
                         selector: item.text().to_string(),
                         parsed: item.clone(),
                         decls: decls.clone(),
-                        spec: specificity(item.text()),
+                        spec: item.specificity(),
                         order,
                     });
                     order += 1;
@@ -924,14 +850,53 @@ mod tests {
     }
 
     #[test]
-    fn specificity_ordering() {
-        assert!(specificity("#id") > specificity(".card"));
-        assert!(specificity(".card") > specificity("div"));
-        assert_eq!(specificity("#id"), 10000);
-        assert_eq!(specificity(".card"), 100);
-        assert_eq!(specificity("div"), 1);
-        // descendant of two types + a class
-        assert_eq!(specificity("div .card span"), 100 + 2);
+    fn rules_carry_selectors_4_specificity() {
+        // each rule's specificity is parse_for_cascade's (miaskiewicz/turbo-dom#24 item 2),
+        // not a per-token count of `#` / `.` / `:` / `[` / type names
+        let mut rules = Vec::new();
+        parse_stylesheet(
+            "#id, .card, div, div .card span { a: 1 } \
+             :where(#a) p, :is(#a, .b), :not(.x, #y), p:has(> .a), :nth-child(2 of #a, .b) { a: 1 } \
+             .md\\:x, [title=\"#t\"], div :is(i), [data-x], p::before { a: 1 }",
+            0,
+            &mut rules,
+        );
+        let specs: Vec<(&str, Specificity)> = rules
+            .iter()
+            .map(|r| (r.selector.as_str(), r.spec))
+            .collect();
+        assert_eq!(
+            specs,
+            [
+                ("#id", (1, 0, 0)),
+                (".card", (0, 1, 0)),
+                ("div", (0, 0, 1)),
+                ("div .card span", (0, 1, 2)),
+                (":where(#a) p", (0, 0, 1)),
+                (":is(#a, .b)", (1, 0, 0)),
+                (":not(.x, #y)", (1, 0, 0)),
+                ("p:has(> .a)", (0, 1, 1)),
+                (":nth-child(2 of #a, .b)", (1, 1, 0)),
+                (".md\\:x", (0, 1, 0)),
+                ("[title=\"#t\"]", (0, 1, 0)),
+                ("div :is(i)", (0, 0, 2)),
+                ("[data-x]", (0, 1, 0)),
+                ("p::before", (0, 0, 2)),
+            ]
+        );
+        // lexicographic: one id beats any number of classes
+        assert!((1, 0, 0) > (0, 99, 99));
+    }
+
+    #[test]
+    fn equal_specificity_falls_back_to_source_order() {
+        // `:where()` adds nothing and `:not(.zz)` counts its argument once, so the later rule
+        // of equal specificity wins (Chrome 156: cascade_cases/specificity-*)
+        let html = "<style>:where(#x) p { color: red } p { color: blue } \
+                    #y:not(.zz) { color: red } #y.k { color: green }</style>\
+                    <div id=x><p>a</p><p id=y class=k>b</p></div>";
+        assert_eq!(gcs_prop(html, "#x > p", "color"), "rgb(0, 0, 255)");
+        assert_eq!(gcs_prop(html, "#y", "color"), "rgb(0, 128, 0)");
     }
 
     #[test]
@@ -987,18 +952,6 @@ mod tests {
             "background-color",
         );
         assert_eq!(got, "rgb(255, 0, 0)");
-    }
-
-    #[test]
-    fn specificity_attribute_selector() {
-        // `[...]` branch: attribute selector counts as a `b`
-        assert_eq!(specificity("[data-x]"), 100);
-        // empty `[]` still counts (per the `[^\]]*` zero-or-more comment)
-        assert_eq!(specificity("[]"), 100);
-        // unterminated `[` runs to end of string
-        assert_eq!(specificity("div["), 100 + 1);
-        // bare `.` / `:` with no ident don't count
-        assert_eq!(specificity(". :"), 0);
     }
 
     #[test]
