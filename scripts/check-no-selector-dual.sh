@@ -4,7 +4,7 @@
 # feature, if a frozen engine copy (`query_frozen*.rs`) or a dual layer (`selector_dual.rs`)
 # exists, or if source, build, script or workflow files mention `selector-dual`,
 # `selector_dual`, `query_frozen` or `TURBO_DOM_SELECTOR_ENGINE`. Documentation (*.md)
-# may record the gate's history.
+# may record the gate's history, and any file may name this guard script itself.
 #
 # usage: scripts/check-no-selector-dual.sh [DIR]    (default: this repository)
 # Publish workflows (here and in consumers checking their own tree) run it before
@@ -24,7 +24,13 @@ hits=$(grep -rIln -E 'selector-dual|selector_dual|query_frozen|TURBO_DOM_SELECTO
   --include='*.rs' --include='*.toml' --include='*.sh' --include='*.py' --include='*.mjs' \
   --include='*.js' --include='*.ts' --include='*.yml' --include='*.yaml' --include='*.json' \
   --exclude-dir=target --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=.cache \
-  | grep -v -x -F "$self" || true)
+  | grep -v -x -F "$self" \
+  | while IFS= read -r file; do
+      # Naming this guard (check-no-selector-dual.sh, e.g. in a workflow step) is fine.
+      sed 's/check-no-selector-dual//g' "$file" \
+        | grep -q -E 'selector-dual|selector_dual|query_frozen|TURBO_DOM_SELECTOR_ENGINE' \
+        && echo "$file"
+    done || true)
 if [ -n "$hits" ]; then
   echo "check-no-selector-dual: files mention the removed selector dual gate:"
   echo "$hits"
