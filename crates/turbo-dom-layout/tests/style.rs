@@ -107,11 +107,15 @@ fn conditional_rules_cascade_at_their_source_position() {
             .collect()
     };
     assert_eq!(
-        order("@media screen { .m { a: b } } .p { a: b } @supports (display: grid) { .s { a: b } }"),
+        order(
+            "@media screen { .m { a: b } } .p { a: b } @supports (display: grid) { .s { a: b } }"
+        ),
         [".m", ".p", ".s"]
     );
     assert_eq!(
-        order("@supports (display: block) { @media screen { .n { a: b } } .s { a: b } } .p { a: b }"),
+        order(
+            "@supports (display: block) { @media screen { .n { a: b } } .s { a: b } } .p { a: b }"
+        ),
         [".n", ".s", ".p"]
     );
     // A block whose condition fails keeps nothing, and leaves the order of the rest.

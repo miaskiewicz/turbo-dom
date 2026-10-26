@@ -161,7 +161,11 @@ fn stripped_elements_still_count_for_selectors() {
     assert!(nav.is_empty(by_id("e")), "a comment is not a child");
     assert!(nav.children(by_id("s")).is_empty(), "nothing to lay out");
     assert_eq!(nav.children(body).len(), 3, "div, div, p are laid out");
-    assert_eq!(nav.siblings(by_id("p")).len(), 5, "script and template count");
+    assert_eq!(
+        nav.siblings(by_id("p")).len(),
+        5,
+        "script and template count"
+    );
     assert_eq!(
         nav.position(by_id("p")),
         Some(SiblingPosition {
