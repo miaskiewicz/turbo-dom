@@ -353,7 +353,6 @@ fn block_in_inline_case(id: &str) -> bool {
 }
 
 #[test]
-#[ignore = "turbo-dom#101: fails until the fix"]
 fn blocks_in_inlines_split_them_like_chrome_156() {
     compare_cases(block_in_inline_case);
 }
