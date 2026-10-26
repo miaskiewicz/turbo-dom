@@ -270,7 +270,6 @@ fn th_case(id: &str) -> bool {
 }
 
 #[test]
-#[ignore = "miaskiewicz/turbo-dom#70: fails until the fix"]
 fn header_cells_are_bold_and_centred_like_chrome_156() {
     compare_cases(th_case);
     // Chrome 156's computed style of a `<th>`: `font-weight: 700; text-align: center`.

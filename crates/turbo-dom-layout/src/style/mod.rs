@@ -62,6 +62,7 @@ tfoot { display: table-footer-group }
 tr { display: table-row }
 caption { display: table-caption; text-align: -webkit-center }
 td, th { display: table-cell; padding: 1px }
+th { font-weight: bold; text-align: center }
 li { display: list-item }
 center { display: block; text-align: -webkit-center }
 hr { display: block; height: 1px; background-color: #cccccc }
