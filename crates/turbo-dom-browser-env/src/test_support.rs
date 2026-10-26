@@ -147,6 +147,12 @@ pub const FORMDATA_EVENT_PROBE_JS: &str = include_str!("formdata_event_probe.js"
 pub const FORMDATA_GUARDS_CHROME155_JSON: &str = include_str!("formdata_guards_chrome155.json");
 /// `src/formdata_guards_probe.js`.
 pub const FORMDATA_GUARDS_PROBE_JS: &str = include_str!("formdata_guards_probe.js");
+/// `src/html_image_cases.json` (turbo-surf#32: the parsed images and the decodable one's size).
+pub const HTML_IMAGE_CASES_JSON: &[u8] = include_bytes!("html_image_cases.json");
+/// `src/html_image_chrome156.json`.
+pub const HTML_IMAGE_CHROME156_JSON: &str = include_str!("html_image_chrome156.json");
+/// `src/html_image_probe.js` (HTMLImageElement image-state accessors; async).
+pub const HTML_IMAGE_PROBE_JS: &str = include_str!("html_image_probe.js");
 /// `src/key_order_chrome156.json`.
 pub const KEY_ORDER_CHROME156_JSON: &str = include_str!("key_order_chrome156.json");
 /// `src/key_order_probe.js`.
@@ -378,6 +384,12 @@ pub const FILES: &[(&str, &[u8])] = &[
         "formdata_guards_probe.js",
         FORMDATA_GUARDS_PROBE_JS.as_bytes(),
     ),
+    ("html_image_cases.json", HTML_IMAGE_CASES_JSON),
+    (
+        "html_image_chrome156.json",
+        HTML_IMAGE_CHROME156_JSON.as_bytes(),
+    ),
+    ("html_image_probe.js", HTML_IMAGE_PROBE_JS.as_bytes()),
     (
         "key_order_chrome156.json",
         KEY_ORDER_CHROME156_JSON.as_bytes(),

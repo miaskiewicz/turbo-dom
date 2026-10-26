@@ -46,7 +46,7 @@ EXCLUDES="bin bundler.rs coverage.rs coverage_branch.rs esm_cjs.rs graph.rs laun
 SEMANTIC_EDITS="
 cssom_parser.rs: zoom_value + helpers moved to turbo_dom::rtdom::css_values (re-exported here)
 interceptor_mode.rs: frame read placed behind the native-sdk-frame-read feature scaffolding
-browser_env.rs: module docs name the turbo-dom crate and drop the retired TURBO_RUST_DOM gate; P5b turbo-dom#20 native functions take a call-without-new message, named definers pass V8's should-throw mode
+browser_env.rs: module docs name the turbo-dom crate and drop the retired TURBO_RUST_DOM gate; P5b turbo-dom#20 native functions take a call-without-new message, named definers pass V8's should-throw mode; P5b turbo-surf#32 installs html_image.js + its tests
 css_admission_tests.rs: comment no longer names turbo-test as the standalone host
 css_selector_syntax.rs: doc comment no longer names turbo-test as the standalone host
 editing_tests.rs: deviation notes say \"standalone binding\" instead of turbo-test
@@ -56,7 +56,7 @@ select_element_tests.rs: P5b turbo-dom#20 Option() factory + options-collection 
 document_basics.js: P5b turbo-dom#20 live collections pass the definer's should-throw mode to setIndex
 "
 # Crate-owned files under src/ that were not part of the move.
-OWNED="lib.rs crate_surface.rs host_internals.rs test_support.rs css_snapshot.rs option_factory_probe.js option_factory_cases.json option_factory_chrome156.json"
+OWNED="lib.rs crate_surface.rs host_internals.rs test_support.rs css_snapshot.rs option_factory_probe.js option_factory_cases.json option_factory_chrome156.json html_image.js html_image_tests.rs html_image_probe.js html_image_cases.json html_image_chrome156.json"
 
 repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 turbo_test=${TURBO_TEST_REPO:-$repo_root/../turbo-test}

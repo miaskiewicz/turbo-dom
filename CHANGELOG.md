@@ -16,6 +16,12 @@ at the time); this file reconstructs them from history.
   `true` and changes nothing, as in Chrome, instead of throwing; `Object.defineProperty`
   still throws, now with Blink's message (turbo-dom#20). Named-object definers receive
   V8's should-throw mode.
+- `turbo-dom-browser-env`: `HTMLImageElement.prototype` has Chrome's `complete`,
+  `naturalWidth`, `naturalHeight` and `currentSrc` accessors (turbo-surf#32). Without
+  host state they report a not-loading image (`complete` true, 0×0, resolved `src`);
+  loading hosts publish load state through the document record's
+  `imageHost.setState(img, state)`. `test_support` exports the
+  `HTML_IMAGE_*` probe/cases/control (70 files).
 
 ## [0.6.0] — turbo-dom consolidation
 

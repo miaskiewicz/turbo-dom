@@ -59,8 +59,8 @@ Nothing here is reachable from page JavaScript.
   binding or V8), `handle_of`, `wrap`, `is_connected`, `host_composed_children`.
 - Document state: `current_document_id`, `document_id_of`, `is_browsing_context`,
   `current_document_context`, `retire_context`.
-- Private records: `interface_record` (e.g. a document's `cssHost`),
-  `cascade_policy` (`StylePolicy`).
+- Private records: `interface_record` (e.g. a document's `cssHost` and
+  `imageHost`, see "Image load state"), `cascade_policy` (`StylePolicy`).
 - Re-exports: `Tree`, `Handle`, `StylePolicy`, `zoom_value`, `SheetSnapshot`,
   `RuleSnapshot`.
 
@@ -74,13 +74,38 @@ bytes), named after the file (`KEY_ORDER_PROBE_JS`, `ANIMATIONS_FRAMES_CASES_JSO
 …), plus `FILES` (file name → bytes) and `frame_read_should_throw` (the
 frame-read interceptor source, for accessor agreement tests). The files ship in
 the package under `src/`; consumers reference the constants, never copy files.
-The 67 files are exactly what turbo-surf's Chrome-parity integration tests read,
+The 70 files are what turbo-surf's Chrome-parity integration tests read,
 including the custom-element lifecycle contract (`tests/custom_elements.rs`:
 `CUSTOM_ELEMENTS{,_EXTENDED,_REACTIONS,_IDL,_MOVES,_CALLBACKS,_RETIRED}_*`,
-`DOM_PARSER_OBSERVER_LIFECYCLE_*`, `CSS_ADOPTION_LIFECYCLE_*` probe/control pairs).
+`DOM_PARSER_OBSERVER_LIFECYCLE_*`, `CSS_ADOPTION_LIFECYCLE_*` probe/control pairs)
+and the image-state control (`HTML_IMAGE_{PROBE_JS,CASES_JSON,CHROME156_JSON}`) an
+image-loading host runs through its own loader.
 Add a constant (and its `FILES` entry) when another consumer needs a file.
 `tests/test_support_api.rs` checks every constant against its file and every
 probe/control pair's recorded `probeSha256`.
+
+### Image load state
+
+The binding never fetches or decodes images. `HTMLImageElement.prototype` carries
+`complete`, `naturalWidth`, `naturalHeight` and `currentSrc` as Chrome's read-only
+accessors (an `<img>` never has them as own properties); without host state an
+image is "not loading": `complete` is `true`, the natural size `0`×`0` and
+`currentSrc` the resolved `src` (`""` without one), which is Chrome's answer for an
+image without a source and for a broken image (`src/html_image_chrome156.json`). A
+host that loads images (turbo-surf) publishes each image's state through the
+document's private interface record, which page JS cannot reach:
+
+```js
+record.imageHost.setState(img, { complete: false });                    // a load started
+record.imageHost.setState(img, { complete: true, naturalWidth: 64,
+                                 naturalHeight: 40, currentSrc: url }); // it finished
+record.imageHost.setState(img, null);                                  // back to the defaults
+```
+
+`setState` accepts only an HTML `<img>` of the realm (TypeError otherwise), copies
+the state when called (`complete` → boolean, sizes → unsigned long, `currentSrc` →
+string, missing → `""`) and keeps it until the host replaces or clears it, so the
+host updates it whenever a load starts or ends (including `src` changes).
 
 ### Feature `native-sdk-frame-read` (off by default)
 

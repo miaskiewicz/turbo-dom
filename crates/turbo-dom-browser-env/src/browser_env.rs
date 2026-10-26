@@ -7196,6 +7196,9 @@ fn install_with_tree(scope: &mut v8::PinScope, mut tree: Tree) {
     );
     run_js(scope, include_str!("element_tokens.js"));
     run_js(scope, include_str!("element_relations.js"));
+    // HTMLImageElement image-state accessors + the document record's `imageHost` (needs the
+    // collection-record helpers, which document_basics.js retires).
+    run_js(scope, include_str!("html_image.js"));
     run_js(scope, include_str!("document_basics.js"));
     document_legacy::install(scope);
     capture_node_projector(scope);
@@ -9559,6 +9562,10 @@ mod frame_tokens_tests;
 #[cfg(test)]
 #[path = "html_meta_tests.rs"]
 mod html_meta_tests;
+
+#[cfg(test)]
+#[path = "html_image_tests.rs"]
+mod html_image_tests;
 
 #[cfg(test)]
 #[path = "css_live_tests.rs"]

@@ -1,0 +1,404 @@
+{
+  "browser": "Chrome/156.0.8078.4",
+  "v8": "15.6.75",
+  "casesSha256": "e592cacafbf6f95e0fda2559ec0fa70092e940ed2eaba1f83eb10e3aa9d1e3b1",
+  "probeSha256": "f40a6dc60b0623b081ea346ca5717611210de9a63861aa16da6ebd0c7b4b093d",
+  "collectorSha256": "7174415de76a891d657bbc3e66952c7b91356030e8fcd9d0ac4f52603d0c3952",
+  "flags": [
+    "--headless=new",
+    "--remote-debugging-pipe",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "about:blank"
+  ],
+  "errors": [],
+  "result": [
+    {
+      "id": "html-image-state",
+      "result": {
+        "shape": {
+          "complete": {
+            "keys": [
+              "get",
+              "set",
+              "enumerable",
+              "configurable"
+            ],
+            "enumerable": true,
+            "configurable": true,
+            "get": [
+              "get complete",
+              0,
+              "function get complete() { [native code] }",
+              false
+            ],
+            "set": "undefined"
+          },
+          "currentSrc": {
+            "keys": [
+              "get",
+              "set",
+              "enumerable",
+              "configurable"
+            ],
+            "enumerable": true,
+            "configurable": true,
+            "get": [
+              "get currentSrc",
+              0,
+              "function get currentSrc() { [native code] }",
+              false
+            ],
+            "set": "undefined"
+          },
+          "naturalHeight": {
+            "keys": [
+              "get",
+              "set",
+              "enumerable",
+              "configurable"
+            ],
+            "enumerable": true,
+            "configurable": true,
+            "get": [
+              "get naturalHeight",
+              0,
+              "function get naturalHeight() { [native code] }",
+              false
+            ],
+            "set": "undefined"
+          },
+          "naturalWidth": {
+            "keys": [
+              "get",
+              "set",
+              "enumerable",
+              "configurable"
+            ],
+            "enumerable": true,
+            "configurable": true,
+            "get": [
+              "get naturalWidth",
+              0,
+              "function get naturalWidth() { [native code] }",
+              false
+            ],
+            "set": "undefined"
+          }
+        },
+        "inPrototype": [
+          true,
+          true,
+          true,
+          true
+        ],
+        "inElement": [
+          false,
+          false,
+          false,
+          false
+        ],
+        "prototypeRead": [
+          [
+            "throw",
+            "TypeError",
+            "Illegal invocation"
+          ],
+          [
+            "throw",
+            "TypeError",
+            "Illegal invocation"
+          ],
+          [
+            "throw",
+            "TypeError",
+            "Illegal invocation"
+          ],
+          [
+            "throw",
+            "TypeError",
+            "Illegal invocation"
+          ]
+        ],
+        "receivers": {
+          "plain": [
+            [
+              "throw",
+              "TypeError",
+              "Illegal invocation"
+            ],
+            [
+              "throw",
+              "TypeError",
+              "Illegal invocation"
+            ],
+            [
+              "throw",
+              "TypeError",
+              "Illegal invocation"
+            ],
+            [
+              "throw",
+              "TypeError",
+              "Illegal invocation"
+            ]
+          ],
+          "inherited": [
+            [
+              "throw",
+              "TypeError",
+              "Illegal invocation"
+            ],
+            [
+              "throw",
+              "TypeError",
+              "Illegal invocation"
+            ],
+            [
+              "throw",
+              "TypeError",
+              "Illegal invocation"
+            ],
+            [
+              "throw",
+              "TypeError",
+              "Illegal invocation"
+            ]
+          ],
+          "div": [
+            [
+              "throw",
+              "TypeError",
+              "Illegal invocation"
+            ],
+            [
+              "throw",
+              "TypeError",
+              "Illegal invocation"
+            ],
+            [
+              "throw",
+              "TypeError",
+              "Illegal invocation"
+            ],
+            [
+              "throw",
+              "TypeError",
+              "Illegal invocation"
+            ]
+          ],
+          "input": [
+            [
+              "throw",
+              "TypeError",
+              "Illegal invocation"
+            ],
+            [
+              "throw",
+              "TypeError",
+              "Illegal invocation"
+            ],
+            [
+              "throw",
+              "TypeError",
+              "Illegal invocation"
+            ],
+            [
+              "throw",
+              "TypeError",
+              "Illegal invocation"
+            ]
+          ],
+          "svgImage": [
+            [
+              "throw",
+              "TypeError",
+              "Illegal invocation"
+            ],
+            [
+              "throw",
+              "TypeError",
+              "Illegal invocation"
+            ],
+            [
+              "throw",
+              "TypeError",
+              "Illegal invocation"
+            ],
+            [
+              "throw",
+              "TypeError",
+              "Illegal invocation"
+            ]
+          ],
+          "foreignImg": [
+            [
+              "throw",
+              "TypeError",
+              "Illegal invocation"
+            ],
+            [
+              "throw",
+              "TypeError",
+              "Illegal invocation"
+            ],
+            [
+              "throw",
+              "TypeError",
+              "Illegal invocation"
+            ],
+            [
+              "throw",
+              "TypeError",
+              "Illegal invocation"
+            ]
+          ],
+          "document": [
+            [
+              "throw",
+              "TypeError",
+              "Illegal invocation"
+            ],
+            [
+              "throw",
+              "TypeError",
+              "Illegal invocation"
+            ],
+            [
+              "throw",
+              "TypeError",
+              "Illegal invocation"
+            ],
+            [
+              "throw",
+              "TypeError",
+              "Illegal invocation"
+            ]
+          ]
+        },
+        "nullReceiver": [
+          "throw",
+          "TypeError",
+          "Illegal invocation"
+        ],
+        "parsed": {
+          "nosrc": {
+            "complete": true,
+            "naturalWidth": 0,
+            "naturalHeight": 0,
+            "currentSrc": "",
+            "own": [],
+            "ownState": [],
+            "enumerated": [
+              "complete",
+              "currentSrc",
+              "naturalHeight",
+              "naturalWidth"
+            ]
+          },
+          "empty": {
+            "complete": true,
+            "naturalWidth": 0,
+            "naturalHeight": 0,
+            "currentSrc": "",
+            "own": [],
+            "ownState": [],
+            "enumerated": [
+              "complete",
+              "currentSrc",
+              "naturalHeight",
+              "naturalWidth"
+            ]
+          },
+          "loaded": {
+            "complete": true,
+            "naturalWidth": 3,
+            "naturalHeight": 2,
+            "currentSrc": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAMAAAACCAYAAACddGYaAAAAEUlEQVR4nGP4z8DwH4YZkDkAm34L9XKwuTwAAAAASUVORK5CYII=",
+            "own": [],
+            "ownState": [],
+            "enumerated": [
+              "complete",
+              "currentSrc",
+              "naturalHeight",
+              "naturalWidth"
+            ]
+          },
+          "broken": {
+            "complete": true,
+            "naturalWidth": 0,
+            "naturalHeight": 0,
+            "currentSrc": "data:image/png;base64,AAAA",
+            "own": [],
+            "ownState": [],
+            "enumerated": [
+              "complete",
+              "currentSrc",
+              "naturalHeight",
+              "naturalWidth"
+            ]
+          }
+        },
+        "created": {
+          "complete": true,
+          "naturalWidth": 0,
+          "naturalHeight": 0,
+          "currentSrc": "",
+          "own": [],
+          "ownState": [],
+          "enumerated": [
+            "complete",
+            "currentSrc",
+            "naturalHeight",
+            "naturalWidth"
+          ]
+        },
+        "createdNS": {
+          "complete": true,
+          "naturalWidth": 0,
+          "naturalHeight": 0,
+          "currentSrc": "",
+          "own": [],
+          "ownState": [],
+          "enumerated": [
+            "complete",
+            "currentSrc",
+            "naturalHeight",
+            "naturalWidth"
+          ]
+        },
+        "innerHTML": {
+          "complete": true,
+          "naturalWidth": 0,
+          "naturalHeight": 0,
+          "currentSrc": "",
+          "own": [],
+          "ownState": [],
+          "enumerated": [
+            "complete",
+            "currentSrc",
+            "naturalHeight",
+            "naturalWidth"
+          ]
+        },
+        "assignStrict": [
+          "throw",
+          "TypeError",
+          "Cannot set property naturalWidth of #<HTMLImageElement> which has only a getter"
+        ],
+        "assignSloppy": [
+          true,
+          "",
+          []
+        ],
+        "defineOwn": [
+          7,
+          0
+        ]
+      }
+    }
+  ]
+}
