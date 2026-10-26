@@ -368,6 +368,17 @@ const CASES = [
   { id: "intrinsic-oof-min-content", html: DOC(S("body{margin:0}"), `<table style="border-spacing:0;width:1px"><tr><td data-cid="c" style="padding:0"><div style="position:absolute;width:100px;height:5px"></div><div data-cid="d" style="width:30px;height:15px"></div></td></tr></table>`) },
   { id: "intrinsic-oof-inline-block", html: DOC(S("body{margin:0}"), `<div style="font-size:0"><div data-cid="c" style="display:inline-block"><div style="position:absolute;width:100px;height:5px"></div><div data-cid="d" style="width:30px;height:15px"></div></div></div>`) },
   { id: "intrinsic-oof-row-flex", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="float:left"><div style="display:flex"><div style="position:absolute;width:100px;height:5px"></div><div data-cid="d" style="width:30px;height:15px"></div></div></div>`) },
+  // P5b-W7, miaskiewicz/turbo-dom#89: an absolutely positioned box with `height: auto` and
+  // both `top` and `bottom` is stretched between them (CSS 2.2 §10.6.4).
+  { id: "abs-stretch-definite-parent", html: DOC(S("body{margin:0}"), `<div style="position:relative;height:100px"><div data-cid="c" style="position:absolute;top:10px;bottom:20px;width:20px"></div></div>`) },
+  { id: "abs-stretch-auto-parent", html: DOC(S("body{margin:0}"), `<div style="position:relative"><div style="height:100px"></div><div data-cid="c" style="position:absolute;top:10px;bottom:20px;width:20px"></div></div>`) },
+  { id: "abs-stretch-frame-and-margins", html: DOC(S("body{margin:0}"), `<div style="position:relative;height:100px"><div data-cid="c" style="position:absolute;top:10px;bottom:20px;width:20px;padding:4px 0 6px;border:2px solid;margin:3px 0 5px"></div></div>`) },
+  { id: "abs-stretch-border-box", html: DOC(S("body{margin:0}"), `<div style="position:relative;height:100px"><div data-cid="c" style="position:absolute;top:10px;bottom:20px;width:20px;padding:4px 0 6px;box-sizing:border-box"></div></div>`) },
+  { id: "abs-stretch-content-overflows", html: DOC(S("body{margin:0}"), `<div style="position:relative;height:100px"><div data-cid="c" style="position:absolute;top:10px;bottom:20px;width:20px"><div data-cid="d" style="height:200px"></div></div></div>`) },
+  { id: "abs-stretch-max-height", html: DOC(S("body{margin:0}"), `<div style="position:relative;height:100px"><div data-cid="c" style="position:absolute;top:10px;bottom:20px;width:20px;max-height:30px"></div></div>`) },
+  { id: "abs-stretch-explicit-height-wins", html: DOC(S("body{margin:0}"), `<div style="position:relative;height:100px"><div data-cid="c" style="position:absolute;top:10px;bottom:20px;height:15px;width:20px"></div></div>`) },
+  { id: "abs-stretch-fixed-viewport", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="position:fixed;top:10px;bottom:20px;width:20px"></div>`) },
+  { id: "abs-stretch-initial-containing-block", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="position:absolute;top:10px;bottom:20px;width:20px"></div>`) },
 ];
 
 /** The RGB of a 1x1 PNG screenshot (any filter: a single pixel's filter adds 0). */
