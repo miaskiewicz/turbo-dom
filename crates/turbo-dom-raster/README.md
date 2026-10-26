@@ -9,7 +9,9 @@ order, so the two agree. Caller-supplied `<img>` / `background-image` bytes
 the `jxl` feature) are
 decoded and painted; it does no I/O itself.
 
-It also replays a recorded 2D-canvas op log (`canvas_ops_png` / `canvas_ops_rgba`)
+It also replays a recorded 2D-canvas op log (`canvas_ops_png` / `canvas_ops_rgba`; style
+colours through turbo-dom's CSS colour parser `rtdom::color::parse_color`, so `hsl()`,
+percentage `rgb()` and every named colour resolve as in Chrome)
 and, under `gpu-metal`, a recorded WebGL call batch (`webgl_readback`).
 
 ```rust
