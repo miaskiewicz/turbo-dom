@@ -237,6 +237,18 @@ const CASES = [
     probes: [[4, 14], [19, 4], [34, 14], [19, 14], [55, 4], [5, 50], [6, 50], [70, 70], [52, 52], [88, 88]],
   },
   {
+    // Straight-alpha readback over many colour / alpha pairs: a 16 x 16 grid of 4px cells,
+    // channels r = 17i, g = 17j, b = (37i + 11j) mod 256 at alpha (16i + j + 1) / 257.
+    id: "unpremultiply",
+    size: [64, 64],
+    ops: Array.from({ length: 256 }, (_, k) => {
+      const [i, j] = [Math.floor(k / 16), k % 16];
+      const fill = `rgba(${17 * i}, ${17 * j}, ${(37 * i + 11 * j) % 256}, ${((16 * i + j + 1) / 257).toFixed(6)})`;
+      return op("fillRect", [i * 4, j * 4, 4, 4], { fill });
+    }),
+    probes: Array.from({ length: 256 }, (_, k) => [Math.floor(k / 16) * 4 + 2, (k % 16) * 4 + 2]),
+  },
+  {
     // globalAlpha folds into each fill's alpha (and clamps); straight-alpha readback.
     id: "global-alpha",
     size: [64, 32],
@@ -247,8 +259,11 @@ const CASES = [
       op("fillRect", [48, 0, 16, 16], { fill: "#000000", alpha: 0.25 }),
       op("fillRect", [0, 16, 16, 16], { fill: "#0000ff" }),
       op("fillRect", [0, 16, 16, 16], { fill: "#ff0000", alpha: 0.5 }),
+      // Translucent mid-tones: the straight-alpha readback rounds premultiplied values.
+      op("fillRect", [16, 16, 16, 16], { fill: "rgba(128, 64, 32, 0.4)" }),
+      op("fillRect", [48, 16, 16, 16], { fill: "rgba(201, 77, 13, 0.3)" }),
     ],
-    probes: [[8, 8], [24, 8], [40, 8], [56, 8], [8, 24], [40, 24]],
+    probes: [[8, 8], [24, 8], [40, 8], [56, 8], [8, 24], [40, 24], [24, 24], [56, 24]],
   },
 ];
 
