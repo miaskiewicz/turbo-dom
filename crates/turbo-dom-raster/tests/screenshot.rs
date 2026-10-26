@@ -2,7 +2,7 @@
 
 use std::collections::HashMap;
 
-use turbo_surf_raster::{
+use turbo_dom_raster::{
     image_urls, screenshot_png, screenshot_png_with_assets, screenshot_svg,
     screenshot_svg_with_assets, Format, ImageAssets, Viewport,
 };
@@ -69,7 +69,7 @@ fn format_dispatch_matches_direct() {
         width: 320,
         height: 240,
     };
-    let via_enum = turbo_surf_raster::screenshot(PAGE, vp, Format::Png).expect("png");
+    let via_enum = turbo_dom_raster::screenshot(PAGE, vp, Format::Png).expect("png");
     assert_eq!(&via_enum[..4], &[0x89, b'P', b'N', b'G']);
 }
 
@@ -491,7 +491,7 @@ fn background_image_div_paints_supplied_bytes() {
 fn system_fonts_opt_in_renders() {
     // The opt-in system-font path produces a valid PNG (fonts resolve against the
     // machine's installed set; falls back to bundled when absent).
-    use turbo_surf_raster::screenshot_png_with_opts;
+    use turbo_dom_raster::screenshot_png_with_opts;
     let vp = Viewport {
         width: 200,
         height: 100,
@@ -512,7 +512,7 @@ fn system_fonts_opt_in_renders() {
 fn image_urls_extracts_lazy_and_responsive_attrs() {
     // Modern sites omit `src` and put the real URL in a lazy/responsive attribute
     // (Nike uses `data-landscape-url`). `image_urls` must recover all of them.
-    use turbo_surf_raster::image_urls;
+    use turbo_dom_raster::image_urls;
     let html = concat!(
         r#"<img src="a.png">"#,
         r#"<img data-src="b.png">"#,
@@ -531,7 +531,7 @@ fn image_urls_extracts_lazy_and_responsive_attrs() {
 fn delazy_populates_missing_img_src_for_layout() {
     // The layout reads `<img src>`; a `src`-less lazy image must get its `src`
     // filled from the lazy attr so an image box (and its pixels) render.
-    use turbo_surf_raster::delazy_images;
+    use turbo_dom_raster::delazy_images;
     let out = delazy_images(r#"<img data-landscape-url="hero.jpg" alt="x">"#);
     assert!(
         out.contains(r#"src="hero.jpg""#),
