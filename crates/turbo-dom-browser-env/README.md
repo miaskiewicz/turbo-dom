@@ -108,6 +108,16 @@ the state when called (`complete` → boolean, sizes → unsigned long, `current
 string, missing → `""`) and keeps it until the host replaces or clears it, so the
 host updates it whenever a load starts or ends (including `src` changes).
 
+`HTMLImageElement.prototype.decode()` resolves when the host's state is complete
+with a natural size and rejects with an `EncodingError` otherwise (no source,
+broken, not loading); called while the host reports `complete: false` it settles
+at the host's next `setState`. The native legacy factory `Image(width, height)`
+(new-only, length 0, `Image.prototype === HTMLImageElement.prototype`, NewTarget's
+prototype honoured) creates an ordinary `<img>` with the `width` / `height`
+attributes — no own `src`, no fake `onload`: loads (and their `load` / `error`
+events) are the host's. Control: `src/html_image_chrome156.json` (`factory`, `own`,
+`decode` sections).
+
 ### Custom element state (`:defined`)
 
 `customElements` upgrades, constructions and failed constructors report each

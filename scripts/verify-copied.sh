@@ -56,7 +56,9 @@ editing_tests.rs: deviation notes say \"standalone binding\" instead of turbo-te
 view_transitions_tests.rs: comment no longer calls the binding vendored
 select_element.js: P5b turbo-dom#20 Option() legacy factory function; quiet accessor definitions on HTMLOptionsCollection
 select_element_tests.rs: P5b turbo-dom#20 Option() factory + options-collection definer vs their Chrome 156 control
+browser_env.js: P5b-X2 turbo-dom#23 drops the JS Image() fallback (own src + fake onload); Image() is native in html_image.js
 document_basics.js: P5b turbo-dom#20 live collections pass the definer's should-throw mode to setIndex
+html_popover.rs: P5b turbo-dom#18 internal selector paths anchor with :not(* > *) instead of :root (6a23551)
 dom_implementation_tests.rs: P5b the dom-implementation collector must label its control like the committed one
 "
 # Crate-owned files under src/ that were not part of the move.
