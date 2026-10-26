@@ -16,6 +16,7 @@ import { matchesSelector, querySelector as qsel, querySelectorAll as qselAll } f
 import { serializeInner, serializeOuter } from './html-serialize.mjs';
 import { CSSStyleSheet, styleSheetList } from './cssom.mjs';
 import { COLOR_PROPS, canonicalizeColor } from './color.mjs';
+import { blockText, canonical, declarations, expand, longhandAlias, longhands, shorthandValue } from './css-shorthand.mjs';
 import { SVGAnimatedString, SVGAnimatedLength, SVGAnimatedRect, SVG_LENGTH_ATTRS } from './svg.mjs';
 
 // Per-node query-result cache keyed by (selector, document version). querySelectorAll
@@ -1592,72 +1593,117 @@ export class XMLSerializer {
 
 // minimal inline-style CSSOM (honest: only inline + explicitly set props)
 function makeStyle(el) {
-  // parse → { values: Map<prop,value>, prio: Map<prop,'important'|''> } (handles !important)
+  // The inline declaration block, re-parsed whenever the `style` attribute changed:
+  // [{ name, value, important, pending }] with shorthands expanded into their longhands
+  // (miaskiewicz/turbo-dom#90, css-shorthand.mjs; the V8 binding's lockstep twin). Longhand
+  // values are kept as authored (colors canonicalized), with no further validation.
+  let source = null, entries = [];
   const parse = () => {
-    const values = new Map();
-    const prio = new Map();
-    for (const decl of (el.getAttribute('style') || '').split(';')) {
-      const i = decl.indexOf(':');
-      if (i === -1) continue;
-      const prop = decl.slice(0, i).trim();
-      let val = decl.slice(i + 1).trim();
-      if (!prop) continue;
-      const m = /\s*!\s*important\s*$/i.exec(val);
-      if (m) { val = val.slice(0, m.index).trim(); prio.set(prop, 'important'); }
-      values.set(prop, val);
+    const text = el.getAttribute('style') || '';
+    if (text !== source) {
+      source = text;
+      entries = [];
+      for (const [name, value, important] of declarations(text)) {
+        const set = declarationEntries(name, value);
+        if (!set) continue;
+        for (const entry of set) {
+          const index = entries.findIndex((e) => e.name === entry.name);
+          if (index >= 0) {
+            // A repeated property moves to the end; an !important one keeps out a later normal one.
+            if (entries[index].important && !important) continue;
+            entries.splice(index, 1);
+          }
+          entries.push({ ...entry, important });
+        }
+      }
     }
-    return { values, prio };
+    return entries;
   };
-  const write = ({ values, prio }) => {
-    el.setAttribute('style', [...values].map(([k, v]) => `${k}: ${v}${prio.get(k) === 'important' ? ' !important' : ''}`).join('; '));
+  const write = () => { source = blockText(entries); el.setAttribute('style', source); };
+  const value = (prop) => {
+    const name = propertyName(prop);
+    const found = parse().find((e) => e.name === name);
+    if (found) return found.value;
+    return canonical(name) ? shorthandValue(name, entries) : '';
+  };
+  const priority = (prop) => {
+    const name = propertyName(prop);
+    const list = longhands(name);
+    const all = parse();
+    const important = (n) => all.some((e) => e.name === n && e.important);
+    return (list ? list.every(important) : important(name)) ? 'important' : '';
+  };
+  const setProperty = (prop, v, prio) => {
+    const text = v === null || v === undefined ? '' : String(v);
+    if (!text.trim()) { removeProperty(prop); return; }
+    const p = prio === null || prio === undefined ? '' : String(prio).toLowerCase();
+    if (p && p !== 'important') return;
+    const set = declarationEntries(prop, text);
+    if (!set) return;
+    const all = parse();
+    for (const entry of set) {
+      const index = all.findIndex((e) => e.name === entry.name);
+      const next = { ...entry, important: p === 'important' };
+      if (index >= 0) all[index] = next; else all.push(next);
+    }
+    write();
+  };
+  // removeProperty: a shorthand removes its longhands and returns '' (Chrome).
+  const removeProperty = (prop) => {
+    const name = propertyName(prop);
+    const all = parse();
+    const list = longhands(name);
+    if (list) {
+      const kept = all.filter((e) => !list.includes(e.name));
+      if (kept.length !== all.length) { entries = kept; write(); }
+      return '';
+    }
+    const index = all.findIndex((e) => e.name === name);
+    if (index < 0) return '';
+    const [removed] = all.splice(index, 1);
+    write();
+    return removed.value;
   };
   return new Proxy({}, {
     get(_t, key) {
-      if (key === 'getPropertyValue') return (p) => styleGet(parse().values, p);
-      if (key === 'getPropertyPriority') return (p) => parse().prio.get(p) ?? '';
-      if (key === 'setProperty') return (p, v, priority) => { const s = parse(); s.values.set(p, String(v)); if (priority) s.prio.set(p, 'important'); else s.prio.delete(p); write(s); };
-      if (key === 'removeProperty') return (p) => { const s = parse(); const v = s.values.get(p) ?? ''; s.values.delete(p); s.prio.delete(p); write(s); return v; };
-      if (key === 'item') return (i) => [...parse().values.keys()][i] ?? '';
-      if (key === 'length') return parse().values.size;
-      if (key === 'cssText') return el.getAttribute('style') || '';
-      if (key === 'cssFloat') return parse().values.get('float') ?? '';
-      if (key === Symbol.iterator) { const keys = [...parse().values.keys()]; return keys[Symbol.iterator].bind(keys); }
+      if (key === 'getPropertyValue') return value;
+      if (key === 'getPropertyPriority') return priority;
+      if (key === 'setProperty') return setProperty;
+      if (key === 'removeProperty') return removeProperty;
+      if (key === 'item') return (i) => parse()[i]?.name ?? '';
+      if (key === 'length') return parse().length;
+      if (key === 'cssText') return blockText(parse());
+      if (key === 'cssFloat') return value('float');
+      if (key === Symbol.iterator) { const keys = parse().map((e) => e.name); return keys[Symbol.iterator].bind(keys); }
       if (typeof key !== 'string') return undefined;
-      return styleGet(parse().values, kebab(key));
+      return value(kebab(key));
     },
-    set(_t, key, value) {
-      if (key === 'cssText') { el.setAttribute('style', String(value)); return true; }
-      const s = parse(); s.values.set(kebab(key), String(value)); write(s); return true;
+    set(_t, key, v) {
+      if (key === 'cssText') { el.setAttribute('style', String(v)); return true; }
+      setProperty(key === 'cssFloat' ? 'float' : kebab(key), v, '');
+      return true;
     },
     has(_t, key) { return typeof key === 'string'; },
   });
 }
-const kebab = (s) => s.replace(/[A-Z]/g, (m) => '-' + m.toLowerCase());
-
-// We store inline styles verbatim (no shorthand expansion). For the common case
-// `style.background='red'; style.backgroundColor` we let a longhand READ fall back
-// to its shorthand when the shorthand holds a single token (one value that applies
-// to all sides / the only sub-property). Multi-token shorthands stay honest: the
-// longhand reads '' rather than guessing which token maps where.
-const SHORTHAND_OF = {
-  'background-color': 'background',
-  'margin-top': 'margin', 'margin-right': 'margin', 'margin-bottom': 'margin', 'margin-left': 'margin',
-  'padding-top': 'padding', 'padding-right': 'padding', 'padding-bottom': 'padding', 'padding-left': 'padding',
-};
-function styleGet(values, prop) {
-  let v = values.get(prop);
-  if (v === undefined) {
-    const sh = SHORTHAND_OF[prop];
-    if (sh) { const s = values.get(sh); if (s !== undefined && !/\s/.test(s.trim())) v = s; }
-  }
-  if (v === undefined) return '';
-  // Inline CSSOM canonicalizes <color> values the way a browser does on read-back:
-  // hex/rgb()/hsl() → rgb()/rgba(), but NAMED keywords stay as authored (includeNamed
-  // =false) — `el.style.color='red'` reads back `'red'`, `'#fff'` reads back rgb().
-  // This keeps el.style read-back consistent with getComputedStyle so jest-dom's
-  // toHaveStyle (which normalizes the expected value via el.style) compares equal.
-  if (COLOR_PROPS.has(prop)) { const c = canonicalizeColor(v, false); if (c) return c; }
-  return v;
+const kebab = (s) => s.replace(/[A-Z]/g, (m) => '-' + m.toLowerCase()).replace(/^webkit-/, '-webkit-');
+// A property name as CSSOM keys it: custom properties as authored, others lowercase with
+// longhand aliases (`word-wrap` -> `overflow-wrap`) resolved.
+function propertyName(name) {
+  const text = String(name);
+  if (text.startsWith('--')) return text;
+  const lower = text.toLowerCase();
+  return longhandAlias(lower) ?? lower;
+}
+// The entries a declaration sets: a shorthand's longhands, or the longhand as authored (a
+// <color> canonicalized the way Chrome's inline CSSOM spells it: hex / rgb() / hsl() ->
+// rgb()/rgba(), named keywords as written); null for an invalid shorthand value.
+function declarationEntries(prop, text) {
+  const name = propertyName(prop);
+  if (canonical(name)) return expand(name, text);
+  let v = String(text).trim();
+  if (COLOR_PROPS.has(name)) { const c = canonicalizeColor(v, false); if (c) v = c; }
+  return [{ name, value: v, pending: null }];
 }
 
 // WHATWG value-sanitization per input type. Returns the accepted value, or null
