@@ -249,6 +249,15 @@ fn svg_differences(select: impl Fn(&str) -> bool) -> Vec<String> {
 /// stroke) — a pre-existing gap, reported in the P5-cov raster coverage report.
 const SVG_LEFT_OUT: &[&str] = &["clip-image-sprite", "paint-round-border"];
 
+/// A rounded box's border follows its radius in the vector screenshot too: the corners
+/// outside the radius stay the backdrop (miaskiewicz/turbo-dom#95).
+#[test]
+#[ignore = "turbo-dom#95: fails until the fix"]
+fn svg_rounded_borders_follow_the_radius_like_chrome_156() {
+    let failures = svg_differences(|id| id == "paint-round-border");
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+}
+
 /// The vector screenshot of every other case, rasterized, against the same Chrome probes.
 #[test]
 fn svg_screenshots_paint_like_chrome_156() {
