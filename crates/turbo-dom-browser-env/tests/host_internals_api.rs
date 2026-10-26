@@ -188,6 +188,22 @@ fn host_internals_cover_native_layout_capture_and_link_discovery() {
         state.to_rust_string_lossy(scope),
         "true,64,40,https://x.test/a.png,0"
     );
+    // Its layout query: the host's layout answers a rendered image's box to the
+    // width / height / x / y accessors (turbo-dom#26); null = not being rendered.
+    let size = eval(scope, "[hostImage.width,hostImage.height].join()");
+    assert_eq!(size.to_rust_string_lossy(scope), "64,40");
+    let query = object(
+        scope,
+        "(img=>img===hostImage?{width:32,height:20,x:4,y:5}:null)",
+    );
+    call(scope, image_host, "setLayoutQuery", &[query.into()]);
+    let rendered = eval(
+        scope,
+        "[hostImage.width,hostImage.height,hostImage.x,hostImage.y].join()",
+    );
+    assert_eq!(rendered.to_rust_string_lossy(scope), "32,20,4,5");
+    let null = v8::null(scope);
+    call(scope, image_host, "setLayoutQuery", &[null.into()]);
 
     // The host CSS policy and the shared zoom grammar.
     let policy: StylePolicy = cascade_policy(scope);

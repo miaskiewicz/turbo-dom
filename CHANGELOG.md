@@ -7,6 +7,22 @@ at the time); this file reconstructs them from history.
 
 ## [Unreleased]
 
+### Added — `HTMLImageElement` `width` / `height` / `x` / `y` (P5b-X3, miaskiewicz/turbo-dom#26 item 1, Chrome 156 control)
+- turbo-dom-browser-env: `HTMLImageElement.prototype` gains the `width` / `height`
+  reflecting IDL attributes (HTML §4.8.4.3; `img.width` was `undefined`) and the CSSOM
+  View `x` / `y`, as Chrome's prototype accessors ("Illegal invocation" for other
+  receivers). The getters return the rendered box while the image is being rendered, which
+  the host answers through the new private hook `record.imageHost.setLayoutQuery(query)`
+  (`query(img)` → `{width, height, x, y}` or `null`); otherwise, as Blink, the attribute
+  when it parses as a non-negative integer (≤ 4294967295), else the natural size from
+  `imageHost.setState` (`0` without one), and `x` / `y` are `0`. The setters write the
+  attribute as unsigned long (ToUint32, above 2147483647 → `0`; Symbol / BigInt rejected
+  with Blink's "Failed to set the 'width' property …" TypeError). Without a query (turbo-test)
+  no image is being rendered. Control: `src/html_image_probe.js` gains a `dimensions` section
+  and `src/html_image_cases.json` rendered / `display: none` images with their layout
+  boxes (`layout`), recaptured on Chrome for Testing 156.0.8078.4 (earlier sections
+  unchanged).
+
 ### Changed — selector follow-ups (P5b-X2, miaskiewicz/turbo-dom#24, Chrome 156 controls)
 - `rtdom::cascade` (`getComputedStyle`) and the npm `cascade.mjs` rank rules by the
   Selectors 4 specificity of each `parse_for_cascade` item — the layout cascade's — instead
