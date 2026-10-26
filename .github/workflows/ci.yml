@@ -1,19 +1,38 @@
 name: CI
 
+# One job family per published unit (docs/CONSOLIDATION.md, "CI"):
+#   base         turbo-dom + turbo-dom-parser (npm addon: napi matrix, WASM, JS suites)
+#   layout       turbo-dom-layout (linux + macOS; feature configs, wasm32/musl checks)
+#   raster       turbo-dom-raster (linux + macOS; coretext / gpu-metal checks)
+#   v8           turbo-dom-v8 (generated) + turbo-dom-browser-env, 4 platforms x default/simdutf
+#   msrv         Rust 1.89 for turbo-dom, -layout, -raster
+#   guards       version agreement, retired-gate guard, verify-copied reviews, script self-tests
+#   coverage     tarpaulin per crate with fail-under floors (raised by the coverage phase)
+# publish.yml calls this whole workflow before it publishes anything.
+
 on:
   push:
     branches: [main]
-    tags: ['v*']
   pull_request:
     branches: [main]
+  workflow_call:
 
 permissions:
   contents: read
 
+env:
+  RUST_TOOLCHAIN: 1.98.0
+  RUSTY_V8_VERSION: 150.4.0
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: 0
+  CARGO_PROFILE_DEV_DEBUG: 0
+  CARGO_PROFILE_TEST_DEBUG: 0
+  TZ: UTC
+
 jobs:
-  # ---- Build napi prebuilt binaries across platforms ----
+  # ---- base: build napi prebuilt binaries across platforms (bundled into the npm package) ----
   build:
-    name: build ${{ matrix.target }}
+    name: base / napi ${{ matrix.target }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -32,8 +51,9 @@ jobs:
           node-version: 22
 
       - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@master
         with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
           targets: ${{ matrix.target }}
 
       - name: Linux musl deps
@@ -42,7 +62,7 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
         with:
-          key: ${{ matrix.target }}
+          key: napi-${{ matrix.target }}
 
       - run: npm install --ignore-scripts --legacy-peer-deps
 
@@ -60,9 +80,9 @@ jobs:
           path: '*.node'
           if-no-files-found: error
 
-  # ---- Run the full test suite + conformance on Linux ----
+  # ---- base: turbo-dom + turbo-dom-parser tests, clippy and the JS suites on Linux ----
   test:
-    name: test (linux-x64)
+    name: base / test (linux-x64)
     runs-on: ubuntu-latest
     # Escalate ALL Rust compiler warnings in our crates to hard errors. Deps are
     # unaffected — cargo applies `--cap-lints allow` to dependencies, so this only
@@ -76,10 +96,14 @@ jobs:
         with:
           node-version: 22
 
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@master
         with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
           targets: wasm32-unknown-unknown
+          components: clippy
       - uses: Swatinem/rust-cache@v2
+        with:
+          key: base
       - uses: jetli/wasm-pack-action@v0.4.0
 
       - run: npm install --legacy-peer-deps
@@ -90,15 +114,14 @@ jobs:
       - name: Build WASM parser (nodejs + web targets — exercised by parser.test.mjs)
         run: npm run build:wasm:pkg && npm run build:wasm:web
 
-      - name: Rust core tests
-        run: cargo test --lib
+      - name: Rust parser tests (turbo-dom-parser)
+        run: cargo test -p turbo-dom-parser --lib
 
-      - name: Clippy (workspace + feature variants — zero warnings, pedantic-gated)
-        # Both crates enable clippy::pedantic via [lints.clippy]; -D warnings makes any
-        # pedantic warning fail CI. --workspace covers turbo-dom + turbo-dom-parser
-        # (default/napi); the extra runs cover the root crate's wasm front-ends.
+      - name: Clippy (turbo-dom + turbo-dom-parser + feature variants — zero warnings, pedantic-gated)
+        # Scoped to the two base crates so V8 (turbo-dom-browser-env) is not built here;
+        # the other crates are linted in their own jobs.
         run: |
-          cargo clippy --workspace --all-targets -- -D warnings
+          cargo clippy -p turbo-dom -p turbo-dom-parser --all-targets -- -D warnings
           cargo clippy -p turbo-dom-parser --all-targets --no-default-features --features wasm-bind -- -D warnings
           cargo clippy -p turbo-dom-parser --all-targets --no-default-features --features wasm-runtime -- -D warnings
 
@@ -124,71 +147,284 @@ jobs:
       - name: html5lib conformance report
         run: npm run conformance
 
-  # ---- WASM fallback builds ----
+  # ---- base: WASM fallback build ----
   wasm:
-    name: wasm fallback
+    name: base / wasm fallback
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@master
         with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
           targets: wasm32-unknown-unknown
       - uses: Swatinem/rust-cache@v2
+        with:
+          key: wasm
       - run: cargo build --release --no-default-features --features wasm-bind --target wasm32-unknown-unknown
 
-  # ---- Publish to npm on a version tag ----
-  # Single bundled package: all platform *.node binaries ship inside `@miaskiewicz/turbo-dom`
-  # (index.js loads the matching local binary). One package to publish — no
-  # per-platform sub-packages to create. Requires repository secret NPM_TOKEN
-  # (a token allowed to publish the scoped `@miaskiewicz/turbo-dom` package).
-  publish:
-    name: publish
-    needs: [build, test]
-    if: startsWith(github.ref, 'refs/tags/v')
-    runs-on: ubuntu-latest
+  # ---- turbo-dom-layout ----
+  layout:
+    name: layout (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-python@v5
         with:
-          node-version: 22
-          registry-url: https://registry.npmjs.org
-      # prepublishOnly rebuilds the native addon AND both WASM targets (pkg/ + pkg-web/),
-      # which ship in the package — so the publish runner needs the Rust + wasm toolchain.
-      - uses: dtolnay/rust-toolchain@stable
+          python-version: '3.12'
+      - uses: dtolnay/rust-toolchain@master
         with:
-          targets: wasm32-unknown-unknown
-      - uses: jetli/wasm-pack-action@v0.4.0
-      - run: npm install --ignore-scripts --legacy-peer-deps
-
-      - name: Download all prebuilt binaries
-        uses: actions/download-artifact@v4
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+          targets: ${{ runner.os == 'Linux' && 'wasm32-unknown-unknown,x86_64-unknown-linux-musl' || 'wasm32-unknown-unknown' }}
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
         with:
-          path: artifacts
-
-      - name: Bundle binaries into the package root
+          key: layout
+      - name: Clippy (default, all features we ship, no default features)
         run: |
-          find artifacts -name '*.node' -exec cp {} . \;
-          ls -1 *.node
+          cargo clippy -p turbo-dom-layout --all-targets -- -D warnings
+          cargo clippy -p turbo-dom-layout --all-targets --features svg,perf,serde,test-support -- -D warnings
+          cargo clippy -p turbo-dom-layout --all-targets --no-default-features -- -D warnings
+      - name: Test (default = bundled-fonts)
+        run: cargo test -p turbo-dom-layout
+      - name: Test --no-default-features (exact baseline-red list, turbo-html2pdf#28)
+        # Everything outside scripts/baseline-red/turbo-dom-layout-no-default-features.tsv
+        # must pass (--exact --skip), and exactly the listed tests must fail.
+        run: >-
+          python scripts/check-baseline-red.py
+          scripts/baseline-red/turbo-dom-layout-no-default-features.tsv
+          -- -p turbo-dom-layout --no-default-features
+      - name: Test --features svg
+        run: cargo test -p turbo-dom-layout --features svg
+      - name: Test --features perf
+        run: cargo test -p turbo-dom-layout --features perf
+      - name: Test --features serde,test-support
+        run: cargo test -p turbo-dom-layout --features serde,test-support
+      - name: Check wasm32 (no default features)
+        run: cargo check -p turbo-dom-layout --no-default-features --target wasm32-unknown-unknown
+      - name: Check musl
+        if: runner.os == 'Linux'
+        run: cargo check -p turbo-dom-layout --all-features --target x86_64-unknown-linux-musl
 
-      - name: Publish turbo-dom
-        run: npm publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+  # ---- turbo-dom-raster ----
+  raster:
+    name: raster (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: raster
+      - name: Clippy
+        run: cargo clippy -p turbo-dom-raster --all-targets -- -D warnings
+      - name: Test
+        run: cargo test -p turbo-dom-raster
+      - name: Clippy + check coretext / gpu-metal (macOS; the CoreText deps are macOS-only)
+        if: runner.os == 'macOS'
+        run: |
+          cargo clippy -p turbo-dom-raster --all-targets --features coretext,gpu-metal -- -D warnings
+          cargo check -p turbo-dom-raster --features coretext
+          cargo check -p turbo-dom-raster --features gpu-metal
+      - name: Check gpu-metal (wgpu builds on Linux too; coretext is inert there)
+        if: runner.os == 'Linux'
+        run: cargo check -p turbo-dom-raster --features coretext,gpu-metal
 
-  # ---- Publish the Rust-native runtime crate to crates.io on a version tag ----
-  # The `turbo-dom` crate is the pure-Rust DOM runtime (workspace member crates/turbo-dom),
-  # for in-process Rust consumers. Independent of the npm package above; same v* tag fires
-  # both. Requires repository secret CARGO_REGISTRY_TOKEN (a crates.io API token allowed to
-  # publish the turbo-dom crate). cargo reads CARGO_REGISTRY_TOKEN from the environment natively.
-  publish-crate:
-    name: publish-crate
-    needs: [build, test]
-    if: startsWith(github.ref, 'refs/tags/v')
+  # ---- turbo-dom-v8 (generated fork) + turbo-dom-browser-env ----
+  v8:
+    name: v8 + browser-env (${{ matrix.platform.target }}, ${{ matrix.variant }})
+    runs-on: ${{ matrix.platform.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - { os: ubuntu-latest,    target: x86_64-unknown-linux-gnu }
+          - { os: ubuntu-24.04-arm, target: aarch64-unknown-linux-gnu }
+          - { os: macos-latest,     target: aarch64-apple-darwin }
+          - { os: windows-latest,   target: x86_64-pc-windows-msvc }
+        variant: [default, simdutf]
+    defaults:
+      run:
+        shell: bash
+    env:
+      # One target directory per crate x variant: the fork and the binding never share
+      # build outputs, and default/simdutf V8 archives never mix.
+      V8_TARGET_DIR: ${{ github.workspace }}/target-v8-${{ matrix.variant }}
+      ENV_TARGET_DIR: ${{ github.workspace }}/target-browser-env-${{ matrix.variant }}
+      V8_FEATURES: ${{ matrix.variant == 'simdutf' && '--features simdutf' || '' }}
+      ENV_V8_FEATURE: ${{ matrix.variant == 'simdutf' && 'v8/simdutf,' || '' }}
+      # Build the binding against the fork generated from THIS tree (not the PR
+      # candidate branch the root manifest's [patch] names).
+      V8_PATCH: patch.crates-io.turbo-dom-v8.path="crates/turbo-dom-v8/crate"
+    steps:
+      - name: Keep checked-out bytes exact (patch hashes are pinned)
+        run: git config --global core.autocrlf false
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+          components: clippy
+      - name: Generate turbo-dom-v8 (pinned upstream crate + patches -> crates/turbo-dom-v8/crate)
+        run: python crates/turbo-dom-v8/scripts/generate.py --download --write
+      - name: Prebuilt rusty_v8 ${{ env.RUSTY_V8_VERSION }} archive (cache)
+        id: v8-cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/rusty_v8
+          key: rusty-v8-${{ env.RUSTY_V8_VERSION }}-${{ matrix.platform.target }}-${{ matrix.variant }}
+      - name: Prebuilt rusty_v8 archive (download + RUSTY_V8_ARCHIVE)
+        run: |
+          suffix=$([ "${{ matrix.variant }}" = simdutf ] && echo _simdutf || true)
+          case "${{ matrix.platform.target }}" in
+            *windows*) name="rusty_v8${suffix}_release_${{ matrix.platform.target }}.lib" ;;
+            *) name="librusty_v8${suffix}_release_${{ matrix.platform.target }}.a" ;;
+          esac
+          dir="${{ runner.temp }}/rusty_v8"
+          if [ ! -f "$dir/$name" ]; then
+            mkdir -p "$dir"
+            curl -fsSL --retry 3 -o "$dir/$name.gz" \
+              "https://github.com/denoland/rusty_v8/releases/download/v${RUSTY_V8_VERSION}/$name.gz"
+            gunzip -f "$dir/$name.gz"
+          fi
+          echo "RUSTY_V8_ARCHIVE=$dir/$name" >> "$GITHUB_ENV"
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: v8-${{ matrix.variant }}
+          workspaces: . -> target-browser-env-${{ matrix.variant }}
+          cache-directories: target-v8-${{ matrix.variant }}
+      - name: turbo-dom-v8 tests (fork regression tests + build.rs pin test)
+        working-directory: crates/turbo-dom-v8/crate
+        run: |
+          CARGO_TARGET_DIR="$V8_TARGET_DIR" cargo test $V8_FEATURES
+          ignored=$(CARGO_TARGET_DIR="$V8_TARGET_DIR" cargo test $V8_FEATURES --test interceptor_should_throw -- --list --ignored | grep -c ': test$' || true)
+          [ "$ignored" = 0 ] || { echo "interceptor_should_throw has $ignored ignored tests"; exit 1; }
+      - name: turbo-dom-browser-env tests (default features)
+        run: CARGO_TARGET_DIR="$ENV_TARGET_DIR" cargo test -p turbo-dom-browser-env --config "$V8_PATCH" --features "${ENV_V8_FEATURE}"
+      - name: turbo-dom-browser-env tests (host-internals, test-support)
+        run: CARGO_TARGET_DIR="$ENV_TARGET_DIR" cargo test -p turbo-dom-browser-env --config "$V8_PATCH" --features "${ENV_V8_FEATURE}host-internals,test-support"
+      - name: turbo-dom-browser-env clippy (crate is lint-exempt by design; deny new warnings)
+        if: matrix.variant == 'default'
+        run: CARGO_TARGET_DIR="$ENV_TARGET_DIR" cargo clippy -p turbo-dom-browser-env --config "$V8_PATCH" --all-targets --features host-internals,test-support -- -D warnings
+
+  # ---- MSRV for the 1.89 crates (turbo-dom-v8 / -browser-env declare 1.91) ----
+  msrv:
+    name: msrv 1.89 (turbo-dom, -layout, -raster)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - name: Publish turbo-dom crate
-        run: cargo publish -p turbo-dom
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: '1.89'
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: msrv
+      - name: cargo +1.89 check (lib + tests)
+        run: |
+          cargo check -p turbo-dom -p turbo-dom-layout -p turbo-dom-raster --all-targets
+          cargo check -p turbo-dom-layout --all-targets --no-default-features --features svg,perf,serde,test-support
+
+  # ---- guards: versions, retired selector-dual gate, verify-copied reviews, script self-tests ----
+  guards:
+    name: guards
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # verify-copied*.sh locate the verbatim-copy commits (and VERIFY_REF) in history.
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+          components: rustfmt
+      - name: One release version everywhere
+        run: python scripts/check-versions.py
+      - name: The retired selector-dual gate stays gone
+        run: sh scripts/check-no-selector-dual.sh
+      - name: turbo-dom-v8 generator + release script self-tests
+        run: python -m unittest discover -s crates/turbo-dom-v8/scripts -p 'test_*.py'
+      - name: turbo-dom-v8 regenerates to the pinned tree
+        run: python crates/turbo-dom-v8/scripts/generate.py --download --check
+      - name: Parity harness self-test (no addons)
+        run: python -m unittest discover -s tools/parity -p 'test_*.py'
+      - name: verify-copied — binding move from turbo-test@cb5c64e (verbatim + current)
         env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+          TURBO_TEST_FETCH: '1'
+        run: |
+          sh scripts/verify-copied.sh verbatim
+          sh scripts/verify-copied.sh current
+      - name: verify-copied — Chrome-control collectors from turbo-test@39b5911
+        env:
+          TURBO_TEST_FETCH: '1'
+        run: sh scripts/verify-copied-collectors.sh
+      - name: verify-copied — S1 layout/raster relocation (turbo-html2pdf@e2d7c4d, turbo-surf@b1de4eb)
+        run: |
+          fetch() { git init -q --bare "$RUNNER_TEMP/$1.git"; git -C "$RUNNER_TEMP/$1.git" fetch -q --depth 1 "https://github.com/miaskiewicz/$1" "$2"; }
+          fetch turbo-html2pdf e2d7c4dc6719dbd87fcf56d75c719fecf5bf50ba
+          fetch turbo-surf b1de4ebf74e87d73ed128ee3b36e13a40000c3fc
+          HTML2PDF_REPO="$RUNNER_TEMP/turbo-html2pdf.git" SURF_REPO="$RUNNER_TEMP/turbo-surf.git" \
+            bash scripts/verify-copied-layout.sh
+
+  # ---- coverage floors (tarpaulin, LLVM engine, macOS arm64 where they were measured) ----
+  # Each gate is the crate's CURRENT measured line coverage (rounded down; measured at the
+  # 0.6.0 release prep, see docs/CONSOLIDATION.md "Coverage"). The coverage phase (P5-cov)
+  # raises every gate to >= 99 and then 100 as tests land; never lower one to pass a change.
+  coverage:
+    name: coverage (${{ matrix.crate }} >= ${{ matrix.floor }}%)
+    runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { crate: turbo-dom,             floor: 88, features: '' }
+          - { crate: turbo-dom-layout,      floor: 90, features: '' }
+          - { crate: turbo-dom-raster,      floor: 77, features: '' }
+          - { crate: turbo-dom-browser-env, floor: 88, features: '--features host-internals,test-support' }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+          components: llvm-tools-preview
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-tarpaulin@0.37.5
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: coverage-${{ matrix.crate }}
+      - name: Prebuilt rusty_v8 archive for turbo-dom-browser-env
+        # The binding resolves turbo-dom-v8 through the root manifest's pre-publish
+        # [patch] (the v8 job tests the freshly generated fork).
+        if: matrix.crate == 'turbo-dom-browser-env'
+        run: |
+          mkdir -p "$RUNNER_TEMP/rusty_v8"
+          curl -fsSL --retry 3 -o "$RUNNER_TEMP/rusty_v8/v8.a.gz" \
+            "https://github.com/denoland/rusty_v8/releases/download/v${RUSTY_V8_VERSION}/librusty_v8_release_aarch64-apple-darwin.a.gz"
+          gunzip -f "$RUNNER_TEMP/rusty_v8/v8.a.gz"
+          echo "RUSTY_V8_ARCHIVE=$RUNNER_TEMP/rusty_v8/v8.a" >> "$GITHUB_ENV"
+      - name: tarpaulin ${{ matrix.crate }} (fail under ${{ matrix.floor }}%)
+        run: >-
+          cargo tarpaulin --engine llvm -p ${{ matrix.crate }} ${{ matrix.features }}
+          --include-files 'crates/${{ matrix.crate }}/src/*'
+          --timeout 600 --out Json --out Stdout --output-dir coverage/${{ matrix.crate }}
+          --fail-under ${{ matrix.floor }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-${{ matrix.crate }}
+          path: coverage/${{ matrix.crate }}
