@@ -179,9 +179,12 @@ fn resolve(lb: &LayoutBox, cb_width: f32, parent_fs: f32) -> BoxStyle {
 // width resolution
 // --------------------------------------------------------------------------
 
-fn to_border(value: f32, sizing: BoxSizing, extra: f32) -> f32 {
+/// A `width`-like length `value` as a border-box width, given the box's horizontal
+/// padding + border `extra`: under `box-sizing: border-box` the length is the border box,
+/// never narrower than its padding and border (miaskiewicz/turbo-dom#65).
+pub(crate) fn to_border(value: f32, sizing: BoxSizing, extra: f32) -> f32 {
     match sizing {
-        BoxSizing::BorderBox => value,
+        BoxSizing::BorderBox => value.max(extra),
         BoxSizing::ContentBox => value + extra,
     }
 }
@@ -196,7 +199,7 @@ fn clamp_width(mut bb: f32, bs: &BoxStyle, cb_width: f32, extra: f32) -> f32 {
     bb
 }
 
-fn border_box_width(bs: &BoxStyle, cb_width: f32) -> f32 {
+pub(crate) fn border_box_width(bs: &BoxStyle, cb_width: f32) -> f32 {
     let avail = (cb_width - bs.margin.horizontal()).max(0.0);
     let extra = bs.padding.horizontal() + bs.border.widths().horizontal();
     let bb = match bs.width.resolve(cb_width) {
@@ -1115,6 +1118,17 @@ struct FlowRun {
     align: Align,
 }
 
+/// How a block container aligns its block-level children: by its `text-align` only
+/// when that is a legacy `-webkit-*` value (Chrome 156; plain `center` / `right` align
+/// inline content only; miaskiewicz/turbo-dom#69).
+fn block_align(bs: &BoxStyle) -> Align {
+    if bs.legacy_align {
+        bs.text_align
+    } else {
+        Align::Left
+    }
+}
+
 /// Collapse two adjacent vertical margins (CSS 2.1 §8.3.1): the used margin is the
 /// largest positive margin plus the most-negative negative margin, so an all-
 /// positive pair takes the max (the common case) while a negative margin pulls the
@@ -1177,12 +1191,13 @@ fn leading_margin(lb: &LayoutBox, bs: &BoxStyle, cw: f32, fs: f32) -> f32 {
     m
 }
 
+/// Whether a block's last in-flow child's bottom margin collapses through its bottom
+/// edge (CSS 2.2 §8.3.1): a collapsing block container (no own formatting context)
+/// with no bottom border or padding and an automatic height — on every layout policy
+/// (miaskiewicz/turbo-dom#41; the generic / PDF one used to drop the margin).
 fn bottom_margins_collapse_through(lb: &LayoutBox, bs: &BoxStyle) -> bool {
     let open_edge = bs.border.widths().bottom == 0.0 && bs.padding.bottom == 0.0;
-    lb.uses_html_font_metrics()
-        && collapsing_block_container(lb, bs)
-        && open_edge
-        && automatic_min_height(bs)
+    collapsing_block_container(lb, bs) && open_edge && automatic_min_height(bs)
 }
 fn automatic_min_height(bs: &BoxStyle) -> bool {
     bs.height == LengthPct::Auto && zero_min_height(bs.min_height)
@@ -1267,7 +1282,7 @@ fn layout_block_flow(
     let mut flow = FlowRun {
         cursor: cy,
         pending: 0.0,
-        align: bs.text_align,
+        align: block_align(bs),
     };
     let mut deferred: Vec<(&LayoutBox, (f32, f32))> = Vec::new();
     let mut first_inflow = true;
@@ -1461,8 +1476,9 @@ fn layout_in_flow_kid(
         ctx,
     );
     // Horizontally align a width-constrained block within its inline region:
-    // `margin: … auto` centers it, and a `text-align:center`/`right` container
-    // centers/right-aligns block children (legacy `<center>` / `align=center`).
+    // `margin: … auto` centers it, and a legacy `text-align: -webkit-center` /
+    // `-webkit-right` container (`<center>`, `align=center`) centers / right-aligns
+    // block children (`block_align`).
     let hx = block_h_offset(flow.align, kbs, kid, frag.width, region_w);
     if hx != 0.0 {
         frag.translate(hx, 0.0);
@@ -1512,8 +1528,9 @@ fn flow_region(
 
 /// The horizontal shift to align a width-constrained in-flow block within its
 /// container (0 for a full-width/auto block, which fills the line). `margin:auto`
-/// centers; otherwise the container's `text-align` centers/right-aligns block
-/// children — the legacy behavior `<center>` and `align="center"` rely on.
+/// centers; otherwise the container's block alignment (`block_align`: a legacy
+/// `-webkit-*` `text-align`, as `<center>` and `align="center"` give) centers /
+/// right-aligns block children.
 fn block_h_offset(align: Align, kbs: &BoxStyle, kid: &LayoutBox, frag_w: f32, cw: f32) -> f32 {
     let avail = (cw - kbs.margin.horizontal()).max(0.0);
     if frag_w >= avail - 0.5 {
@@ -1761,34 +1778,32 @@ fn reanchor_right_float(f: &mut Fragment, kbs: &BoxStyle, rx: f32, rw: f32, w: f
 fn layout_content(
     lb: &LayoutBox,
     bs: &BoxStyle,
-    cx: f32,
-    cy: f32,
-    cw: f32,
+    (cx, cy, cw): (f32, f32, f32),
+    bfc: bool,
     ctx: &mut Ctx,
 ) -> (Vec<Fragment>, f32) {
     match &lb.kind {
         BoxKind::Block(kids) => {
             // When this box lets its first child's top margin collapse through, that
             // leading margin is applied by THIS box's own caller (via `leading_margin`)
-            // — so suppress it inside to avoid double-counting.
-            let suppress_first = top_margins_collapse_through(lb, bs);
-            layout_block_flow(
-                kids,
-                cx,
-                cy,
-                cw,
-                bs,
-                ctx,
-                (
-                    suppress_first,
-                    lb.document_root()
-                        || ctx.html_font_metrics && !bottom_margins_collapse_through(lb, bs),
-                ),
-            )
+            // — so suppress it inside to avoid double-counting. A box that establishes a
+            // formatting context (`bfc`, also a flex item or table cell) keeps its
+            // children's margins inside, as does one whose last child's bottom margin
+            // cannot collapse through it (miaskiewicz/turbo-dom#41).
+            let suppress_first = !bfc && top_margins_collapse_through(lb, bs);
+            let keep_last = lb.document_root() || bfc || !bottom_margins_collapse_through(lb, bs);
+            layout_block_flow(kids, cx, cy, cw, bs, ctx, (suppress_first, keep_last))
         }
         BoxKind::Flex(kids) => super::flex::layout_flex(lb, kids, cx, cy, cw, bs.font_size, ctx),
         BoxKind::Grid(kids) => super::flex::layout_grid(lb, kids, cx, cy, cw, bs.font_size, ctx),
-        BoxKind::Table(kids) => super::table::layout_table(lb, kids, cx, cy, cw, bs.font_size, ctx),
+        BoxKind::Table(kids) if super::table::is_wrapper(lb) => {
+            super::table::layout_wrapper(kids, cx, cy, cw, bs.font_size, ctx)
+        }
+        BoxKind::Table(kids) => {
+            // The rows share the table's definite height (miaskiewicz/turbo-dom#64).
+            let fill = resolved_content_height(bs, 0.0, ctx);
+            super::table::layout_table(lb, kids, (cx, cy, cw, fill), bs.font_size, ctx)
+        }
         BoxKind::Lines(items) => layout_lines(lb, items, bs, cx, cy, cw, ctx),
         BoxKind::Marker(_) => (Vec::new(), 0.0),
     }
@@ -1939,6 +1954,9 @@ fn layout_box_sized_impl(
     if let Some(frag) = replaced_image_box(lb, bs, bx, by, bbw, ctx) {
         return frag;
     }
+    // A table wrapper box (a captioned table): its frame, background and heights are
+    // its grid box's (miaskiewicz/turbo-dom#51).
+    let bs: &BoxStyle = &super::table::own_style(lb, bs);
     let bw = bs.border.widths();
     let content_x = bx + bw.left + bs.padding.left;
     let content_y = by + bw.top + bs.padding.top;
@@ -1966,7 +1984,7 @@ fn layout_box_sized_impl(
     let bfc = force_bfc || establishes_bfc(lb, bs);
     let saved_floats = bfc.then(|| std::mem::take(&mut ctx.floats));
     let (mut children, mut content_h) =
-        layout_content(lb, bs, content_x, content_y, content_w, ctx);
+        layout_content(lb, bs, (content_x, content_y, content_w), bfc, ctx);
     if let Some(outer) = saved_floats {
         let inner_bottom = ctx
             .floats
@@ -2019,6 +2037,7 @@ fn layout_box_sized_impl(
         children,
         z_index: bs.z_index,
         is_positioned: bs.position != Position::Static,
+        clip: super::value::clip_region(&lb.style, bbw, bbh, 1.0),
     }
 }
 
@@ -2299,6 +2318,7 @@ fn image_fragment(lb: &LayoutBox, bx: f32, by: f32, sized: &SizedImage, bs: &Box
         children: Vec::new(),
         z_index: bs.z_index,
         is_positioned: bs.position != Position::Static,
+        clip: super::value::clip_region(&lb.style, sized.width, sized.height, 1.0),
     }
 }
 

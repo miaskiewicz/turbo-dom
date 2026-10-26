@@ -4,13 +4,13 @@
 //! pixmap edge is clipped by tiny-skia, giving a viewport-clipped screenshot.
 
 use tiny_skia::{
-    FillRule, GradientStop, LinearGradient, Paint, Path, PathBuilder, Pixmap, PixmapPaint, Point,
-    Rect, SpreadMode, Stroke, Transform,
+    FillRule, GradientStop, LinearGradient, Mask, Paint, Path, PathBuilder, Pixmap, PixmapPaint,
+    Point, Rect, SpreadMode, Stroke, Transform,
 };
 use turbo_dom_layout::layout::value::{BorderEdges, BorderSide};
 use turbo_dom_layout::{
-    BoxShadow, Fragment, FragmentContent, LinearGradient as CssGradient, PositionedGlyph, Rgba,
-    Transform2D as BoxTransform,
+    BoxShadow, ClipRect, Fragment, FragmentContent, LinearGradient as CssGradient, PositionedGlyph,
+    Rgba, Transform2D as BoxTransform,
 };
 
 use crate::glyph::{self, Pen, Tracer};
@@ -62,6 +62,57 @@ fn paint_fragment(pm: &mut Pixmap, f: &Fragment, images: &DecodedAssets, xf: Tra
         } => compose_transform(xf, f, t),
         _ => xf,
     };
+    match f.clip {
+        Some(clip) => paint_clipped(pm, f, clip, images, xf),
+        None => paint_subtree(pm, f, images, xf),
+    }
+}
+
+/// Paint a fragment whose box has a `clip: rect()` (miaskiewicz/turbo-dom#52): it and its
+/// subtree paint into a layer covering the clip region's device bounds (in the box's own,
+/// possibly transformed, space), masked to that region and composited source-over. An
+/// empty region paints nothing.
+fn paint_clipped(
+    pm: &mut Pixmap,
+    f: &Fragment,
+    clip: ClipRect,
+    images: &DecodedAssets,
+    xf: Transform,
+) {
+    let Some(region) = Rect::from_xywh(f.x + clip.x, f.y + clip.y, clip.width, clip.height) else {
+        return;
+    };
+    let path = PathBuilder::from_rect(region);
+    let Some(bounds) = path.clone().transform(xf).map(|p| p.bounds()) else {
+        return;
+    };
+    let x0 = bounds.left().floor().max(0.0) as i32;
+    let y0 = bounds.top().floor().max(0.0) as i32;
+    let x1 = (bounds.right().ceil() as i32).min(pm.width() as i32);
+    let y1 = (bounds.bottom().ceil() as i32).min(pm.height() as i32);
+    if x1 <= x0 || y1 <= y0 {
+        return;
+    }
+    let (w, h) = ((x1 - x0) as u32, (y1 - y0) as u32);
+    let (Some(mut layer), Some(mut mask)) = (Pixmap::new(w, h), Mask::new(w, h)) else {
+        return;
+    };
+    let local = Transform::from_translate(-x0 as f32, -y0 as f32).pre_concat(xf);
+    paint_subtree(&mut layer, f, images, local);
+    mask.fill_path(&path, FillRule::Winding, true, local);
+    layer.apply_mask(&mask);
+    pm.draw_pixmap(
+        x0,
+        y0,
+        layer.as_ref(),
+        &PixmapPaint::default(),
+        Transform::identity(),
+        None,
+    );
+}
+
+/// Paint a fragment's own content, then its children in stacking order.
+fn paint_subtree(pm: &mut Pixmap, f: &Fragment, images: &DecodedAssets, xf: Transform) {
     match &f.content {
         FragmentContent::Box {
             background,

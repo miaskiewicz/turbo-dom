@@ -1,0 +1,13 @@
+{
+ "id": "miaskiewicz/turbo-dom#65",
+ "reason": "A px width under box-sizing:border-box is the border box (never below padding+border) in intrinsic widths and table column widths. Fresh-target parity builds turbo-dom f52i -> f65 (P5b-W5 steps, html2pdf consol/p5b-w5 950754e): 0 existing outputs change. P5b-W5.",
+ "control": "scripts/html-document-chrome-control.mjs border-box-* cases",
+ "e2e": "crates/turbo-dom-layout/tests/html_document_chrome.rs (border_box_widths_size_intrinsically_like_chrome_156)",
+ "changes": {
+  "html2pdf": [],
+  "html2pdf-svg": [],
+  "html2pdf-extra": [],
+  "surf": [],
+  "surf-extra": []
+ }
+}

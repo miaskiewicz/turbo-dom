@@ -521,6 +521,15 @@ fn item_hmargin(k: &LayoutBox) -> f32 {
     bs.margin.left.max(0.0) + bs.margin.right.max(0.0)
 }
 
+/// A box's border-box width `w`, widened for a table wrapper box to its widest caption's
+/// min-content (miaskiewicz/turbo-dom#51).
+fn caption_floored(lb: &LayoutBox, w: f32, fonts: &FontRegistry) -> f32 {
+    match &lb.kind {
+        BoxKind::Table(items) => super::table::caption_min(items, fonts).map_or(w, |c| w.max(c)),
+        _ => w,
+    }
+}
+
 pub(crate) fn natural_width(lb: &LayoutBox, fonts: &FontRegistry) -> f32 {
     crate::hot!("layout.natural_width");
     lb.natural_cached(|| {
@@ -530,7 +539,7 @@ pub(crate) fn natural_width(lb: &LayoutBox, fonts: &FontRegistry) -> f32 {
         });
         let frame = bs.padding.horizontal() + bs.border.widths().horizontal();
         if let LengthPct::Px(w) = bs.width {
-            return w + frame;
+            return caption_floored(lb, block::to_border(w, bs.box_sizing, frame), fonts);
         }
         // A replaced `<img>`: its intrinsic width (stamped from the resolver before
         // layout) â so a `<div>` wrapping a logo measures the image, not 0.
@@ -595,7 +604,7 @@ pub(crate) fn min_content_width(lb: &LayoutBox, fonts: &FontRegistry) -> f32 {
         });
         let frame = bs.padding.horizontal() + bs.border.widths().horizontal();
         if let LengthPct::Px(w) = bs.width {
-            return w + frame;
+            return caption_floored(lb, block::to_border(w, bs.box_sizing, frame), fonts);
         }
         if lb.is_replaced() {
             return natural_width(lb, fonts); // replaced image: intrinsic/declared size

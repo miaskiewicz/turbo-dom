@@ -1,0 +1,13 @@
+{
+ "id": "miaskiewicz/turbo-dom#62",
+ "reason": "UA table { box-sizing: border-box }. Fresh-target parity builds turbo-dom f65 -> f62 (P5b-W5 steps, html2pdf consol/p5b-w5 950754e): 0 existing outputs change. P5b-W5.",
+ "control": "scripts/html-document-chrome-control.mjs table-border-box-* / table-content-box-author cases; paint control caption-narrow",
+ "e2e": "crates/turbo-dom-layout/tests/html_document_chrome.rs + turbo-dom-raster paint_chrome.rs (tables_are_border_box_sized_like_chrome_156)",
+ "changes": {
+  "html2pdf": [],
+  "html2pdf-svg": [],
+  "html2pdf-extra": [],
+  "surf": [],
+  "surf-extra": []
+ }
+}

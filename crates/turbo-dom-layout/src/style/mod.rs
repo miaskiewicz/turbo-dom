@@ -56,13 +56,15 @@ sub, sup, abbr, cite, q, mark, u, s, label, time { display: inline }
 sub, sup { font-size: 0.83em }
 sub { vertical-align: sub }
 sup { vertical-align: super }
-table { display: table; text-align: left }
+table { display: table; text-align: left; box-sizing: border-box; border-spacing: 2px }
 thead { display: table-header-group }
 tfoot { display: table-footer-group }
 tr { display: table-row }
+caption { display: table-caption; text-align: -webkit-center }
 td, th { display: table-cell; padding: 1px }
+th { font-weight: bold; text-align: center }
 li { display: list-item }
-center { display: block; text-align: center }
+center { display: block; text-align: -webkit-center }
 hr { display: block; height: 1px; background-color: #cccccc }
 input { display: inline-block; width: 150px; height: 1.4em; border: 1px solid #a9a9a9; background-color: #ffffff }
 input[type=hidden] { display: none }

@@ -141,6 +141,18 @@ pub struct ImagePlacement {
     pub orientation: crate::image::Orientation,
 }
 
+/// The region an absolutely positioned box's `clip: rect()` keeps (CSS 2.1 §11.1.2), in
+/// px from the fragment's border-box top-left (so it moves with the fragment). The box
+/// and every descendant fragment paint only inside it; it may be empty (paints nothing)
+/// and may extend past the border box (miaskiewicz/turbo-dom#52).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ClipRect {
+    pub x: f32,
+    pub y: f32,
+    pub width: f32,
+    pub height: f32,
+}
+
 /// Break hints attached to a fragment, consumed by the fragmenter.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BreakMeta {
@@ -190,6 +202,9 @@ pub struct Fragment {
     /// positioned box paints above its in-flow siblings within the same stacking
     /// context, and (with a `z-index`) participates in z ordering.
     pub is_positioned: bool,
+    /// The box's `clip: rect()` region (`None` = unclipped): painters clip this fragment
+    /// and its subtree to it.
+    pub clip: Option<ClipRect>,
 }
 
 impl Fragment {
@@ -214,6 +229,7 @@ impl Fragment {
             children: Vec::new(),
             z_index: None,
             is_positioned: false,
+            clip: None,
         }
     }
 

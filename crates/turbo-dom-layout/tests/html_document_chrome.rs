@@ -103,13 +103,22 @@ fn inline_flex_grid_case(id: &str) -> bool {
 /// The control cases of an open bug, each asserted by its own test (`#[ignore]`d until
 /// its fix lands) and held out of [`html_documents_lay_out_as_chrome_156`].
 fn held_out(id: &str) -> bool {
-    let groups: [fn(&str) -> bool; 6] = [
+    let groups: [fn(&str) -> bool; 15] = [
         auto_table_case,
         inline_flex_grid_case,
         abs_auto_width_case,
         percent_column_case,
         collapsed_auto_case,
         colspan_case,
+        caption_case,
+        border_box_case,
+        table_border_box_case,
+        spacing_case,
+        table_height_case,
+        column_growth_case,
+        last_margin_case,
+        legacy_align_case,
+        th_case,
     ];
     groups.iter().any(|group| group(id))
 }
@@ -167,4 +176,125 @@ fn colspan_case(id: &str) -> bool {
 #[test]
 fn spanning_cells_spread_over_their_columns_like_chrome_156() {
     compare_cases(colspan_case);
+}
+
+/// miaskiewicz/turbo-dom#51: table captions in the table wrapper box (two also need
+/// #63's border-spacing and #64's row heights).
+fn caption_case(id: &str) -> bool {
+    id.starts_with("caption-")
+}
+
+#[test]
+fn table_captions_lay_out_in_the_table_wrapper_like_chrome_156() {
+    compare_cases(caption_case);
+}
+
+/// miaskiewicz/turbo-dom#65: `box-sizing: border-box` in intrinsic and column widths.
+fn border_box_case(id: &str) -> bool {
+    id.starts_with("border-box-")
+}
+
+#[test]
+fn border_box_widths_size_intrinsically_like_chrome_156() {
+    compare_cases(border_box_case);
+}
+
+/// miaskiewicz/turbo-dom#62: `<table>` is `box-sizing: border-box` (Chrome's UA).
+fn table_border_box_case(id: &str) -> bool {
+    id.starts_with("table-border-box-") || id == "table-content-box-author"
+}
+
+#[test]
+fn tables_are_border_box_sized_like_chrome_156() {
+    compare_cases(table_border_box_case);
+}
+
+/// miaskiewicz/turbo-dom#63: `border-spacing` is inherited, initially 0 (2px only from the
+/// UA `table` rule).
+fn spacing_case(id: &str) -> bool {
+    id.starts_with("css-table-")
+        || matches!(
+            id,
+            "table-spacing-not-inherited-past-a-table" | "caption-display-table-caption"
+        )
+}
+
+#[test]
+fn border_spacing_is_inherited_and_initially_zero_like_chrome_156() {
+    compare_cases(spacing_case);
+}
+
+/// miaskiewicz/turbo-dom#64: a table's extra height goes to its rows.
+fn table_height_case(id: &str) -> bool {
+    id.starts_with("table-height-") || id == "caption-table-height"
+}
+
+#[test]
+fn table_height_is_distributed_over_the_rows_like_chrome_156() {
+    compare_cases(table_height_case);
+}
+
+/// miaskiewicz/turbo-dom#55: a table's extra width goes to its auto columns.
+fn column_growth_case(id: &str) -> bool {
+    id.starts_with("table-columns-")
+}
+
+#[test]
+fn extra_table_width_goes_to_auto_columns_like_chrome_156() {
+    compare_cases(column_growth_case);
+}
+
+/// miaskiewicz/turbo-dom#41: a last child's bottom margin under every layout policy.
+fn last_margin_case(id: &str) -> bool {
+    id.starts_with("last-margin-")
+}
+
+#[test]
+fn last_child_bottom_margins_like_chrome_156() {
+    compare_cases(last_margin_case);
+}
+
+/// miaskiewicz/turbo-dom#69: only legacy `-webkit-*` alignment moves block children.
+fn legacy_align_case(id: &str) -> bool {
+    id.starts_with("legacy-align-")
+}
+
+#[test]
+fn legacy_alignment_moves_blocks_like_chrome_156() {
+    compare_cases(legacy_align_case);
+}
+
+/// miaskiewicz/turbo-dom#70: the UA `th` rule.
+fn th_case(id: &str) -> bool {
+    id.starts_with("th-")
+}
+
+#[test]
+fn header_cells_are_bold_and_centred_like_chrome_156() {
+    compare_cases(th_case);
+    // Chrome 156's computed style of a `<th>`: `font-weight: 700; text-align: center`.
+    let tree = turbo_dom_layout::parse_html_tree("<table><tr><th>x</th></tr></table>");
+    let styled = turbo_dom_layout::style_html_tree(
+        &tree,
+        "",
+        1280.0,
+        &turbo_dom_layout::HtmlOptions::default(),
+    );
+    let th = find_th(&styled).expect("a th");
+    assert_eq!(th.style.get("font-weight"), Some("bold"));
+    assert_eq!(th.style.get("text-align"), Some("center"));
+}
+
+/// The first `<th>` of a styled forest.
+fn find_th(nodes: &[turbo_dom_layout::StyledNode]) -> Option<&turbo_dom_layout::StyledElement> {
+    nodes.iter().find_map(|node| match node {
+        turbo_dom_layout::StyledNode::Element(el) => {
+            if matches!(&el.tag, turbo_dom_layout::Tag::Html(n) if n == "th") {
+                Some(el)
+            } else {
+                find_th(&el.children)
+            }
+        }
+        turbo_dom_layout::StyledNode::Text(_) => None,
+    })
 }

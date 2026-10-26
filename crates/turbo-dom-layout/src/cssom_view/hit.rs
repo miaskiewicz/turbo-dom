@@ -3,7 +3,6 @@
 //! Clipping is an ancestor's `overflow` (its padding box) and the `clip: rect()` of
 //! an absolutely positioned box or ancestor (miaskiewicz/turbo-dom#28 item 1).
 use super::scroll::{scroll_translation, SourceStyle, SourceStyles};
-use crate::layout::value::{parse_length_pct, LengthPct};
 use crate::layout_snapshot::{GeometryKind, LayoutSnapshot, Rect, SourceId};
 use std::collections::{BTreeMap, BTreeSet};
 #[must_use]
@@ -252,64 +251,18 @@ fn clip_rect_excludes(
 
 /// The region an absolutely positioned box's `clip: rect(top, right, bottom, left)`
 /// keeps (CSS 2.1 §11.1.2): offsets from its border box's top-left corner, `auto` the
-/// border-box edge, commas optional. `None` when it does not clip: `clip: auto`, an
-/// invalid value, or a box that is not absolutely positioned (`clip` does not apply).
+/// border-box edge, commas optional, lengths in zoomed pixels. `None` when it does not
+/// clip: `clip: auto`, an invalid value, or a box that is not absolutely positioned
+/// (`clip` does not apply). The parse is layout's (`value::clip_region`).
 fn clip_rect(style: &SourceStyle, border: Rect) -> Option<Rect> {
-    if !matches!(style.style.get("position"), Some("absolute" | "fixed")) {
-        return None;
-    }
-    let [top, right, bottom, left] = rect_offsets(style.style.get("clip")?, font_px(style))?;
-    let at = |offset: LengthPct, auto: f32| match offset {
-        LengthPct::Px(px) => px * style.zoom,
-        _ => auto,
-    };
-    let (top, right) = (at(top, 0.0), at(right, border.width));
-    let (bottom, left) = (at(bottom, border.height), at(left, 0.0));
+    let clip =
+        crate::layout::value::clip_region(&style.style, border.width, border.height, style.zoom)?;
     Some(Rect {
-        x: border.x + left,
-        y: border.y + top,
-        width: (right - left).max(0.0),
-        height: (bottom - top).max(0.0),
+        x: border.x + clip.x,
+        y: border.y + clip.y,
+        width: clip.width,
+        height: clip.height,
     })
-}
-
-/// The four offsets of a `rect(…)` value (each `Px` or `Auto`), or `None` when the
-/// value is not a valid `rect()`.
-fn rect_offsets(value: &str, font: f32) -> Option<[LengthPct; 4]> {
-    let inner = value.trim().strip_prefix("rect(")?.strip_suffix(')')?;
-    let edges: Vec<&str> = inner
-        .split(|c: char| c == ',' || c.is_whitespace())
-        .filter(|edge| !edge.is_empty())
-        .collect();
-    let [top, right, bottom, left] = edges[..] else {
-        return None;
-    };
-    let offset = |edge| clip_offset(edge, font);
-    let [Some(top), Some(right), Some(bottom), Some(left)] =
-        [offset(top), offset(right), offset(bottom), offset(left)]
-    else {
-        return None;
-    };
-    Some([top, right, bottom, left])
-}
-
-/// One `rect()` offset: `auto` or a length (a `<shape>` offset is a length: a
-/// percentage is invalid).
-fn clip_offset(edge: &str, font: f32) -> Option<LengthPct> {
-    parse_length_pct(edge, font)
-        .filter(|offset| matches!(offset, LengthPct::Auto | LengthPct::Px(_)))
-}
-
-/// The box's font size in px (`em` offsets), the 16px initial value when unknown.
-fn font_px(style: &SourceStyle) -> f32 {
-    style
-        .style
-        .get("font-size")
-        .and_then(|value| match parse_length_pct(value, 16.0) {
-            Some(LengthPct::Px(px)) => Some(px),
-            _ => None,
-        })
-        .unwrap_or(16.0)
 }
 
 #[cfg(test)]
