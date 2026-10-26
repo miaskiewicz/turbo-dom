@@ -651,7 +651,7 @@ fn classify_display(el: &StyledElement, ids: &mut Ids) -> Option<Level> {
     // never reach here — no `Display::None` arm (it would be dead code).
     match display_of(&el.style) {
         Display::Inline => Some(native_inline_items(el, ids)),
-        Display::InlineBlock | Display::InlineTable => {
+        Display::InlineBlock | Display::InlineTable | Display::InlineFlex | Display::InlineGrid => {
             Some(Level::Inline(vec![InlineItem::Atomic(build_block_box(
                 el, ids,
             ))]))
@@ -816,8 +816,8 @@ fn box_kind_for(display: Display, el: &StyledElement, ids: &mut Ids) -> BoxKind 
         return build_flow(&text, &el.style, ids);
     }
     match display {
-        Display::Flex => BoxKind::Flex(flex_grid_children(el, ids)),
-        Display::Grid => BoxKind::Grid(flex_grid_children(el, ids)),
+        Display::Flex | Display::InlineFlex => BoxKind::Flex(flex_grid_children(el, ids)),
+        Display::Grid | Display::InlineGrid => BoxKind::Grid(flex_grid_children(el, ids)),
         Display::Table | Display::InlineTable => BoxKind::Table(child_block_boxes(el, ids)),
         _ => build_flow(&el.children, &el.style, ids),
     }

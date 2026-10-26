@@ -143,7 +143,11 @@ fn displaced_block(style: &ComputedStyle) -> bool {
 fn is_block_split(display: Display) -> bool {
     !matches!(
         display,
-        Display::Inline | Display::InlineBlock | Display::InlineTable
+        Display::Inline
+            | Display::InlineBlock
+            | Display::InlineTable
+            | Display::InlineFlex
+            | Display::InlineGrid
     )
 }
 /// An ordinary inline's own unsupported style. `absolute` / `fixed` never reach here:

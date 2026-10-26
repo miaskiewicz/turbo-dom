@@ -490,6 +490,27 @@ fn flex_natural(kids: &[LayoutBox], s: &ComputedStyle, fonts: &FontRegistry) -> 
     }
 }
 
+/// A grid's max-content width: its explicit `grid-template-columns` when every track
+/// is a `px` length (their sum plus the column gaps; miaskiewicz/turbo-dom#53, an
+/// `inline-grid` shrinks to it), else its widest item (one implicit column).
+fn grid_natural(kids: &[LayoutBox], s: &ComputedStyle, fonts: &FontRegistry) -> f32 {
+    let tracks: Option<Vec<f32>> = s.get("grid-template-columns").and_then(|columns| {
+        columns
+            .split_whitespace()
+            .map(|track| parse_px(track, DEFAULT_FONT_SIZE))
+            .collect()
+    });
+    let Some(tracks) = tracks.filter(|tracks| !tracks.is_empty()) else {
+        return kids_natural(kids, fonts);
+    };
+    let gap = s
+        .get("column-gap")
+        .or_else(|| s.get("gap").and_then(|gap| gap.split_whitespace().last()))
+        .and_then(|v| parse_px(v, DEFAULT_FONT_SIZE))
+        .unwrap_or(0.0);
+    tracks.iter().sum::<f32>() + gap * (tracks.len() - 1) as f32
+}
+
 /// The item's positive horizontal margins (px), which sit between it and its flex
 /// siblings. Negative/auto margins contribute nothing to the intrinsic width.
 fn item_hmargin(k: &LayoutBox) -> f32 {
@@ -528,7 +549,8 @@ pub(crate) fn natural_width(lb: &LayoutBox, fonts: &FontRegistry) -> f32 {
             // A table's max-content: its columns side by side plus border-spacing
             // (miaskiewicz/turbo-dom#28 item 4), not its widest row group.
             BoxKind::Table(k) => super::table::max_content_width(k, &lb.style, fonts),
-            BoxKind::Block(k) | BoxKind::Grid(k) => kids_natural(k, fonts),
+            BoxKind::Grid(k) => grid_natural(k, &lb.style, fonts),
+            BoxKind::Block(k) => kids_natural(k, fonts),
             BoxKind::Marker(_) => 0.0,
         };
         inner + frame
@@ -1587,6 +1609,37 @@ mod coverage_tests {
             track_of("120px"),
             TrackSizingFunction::from_length(120.0_f32)
         );
+    }
+
+    // --- grid natural width: px column tracks + gaps, else the widest item ---
+    #[test]
+    fn grid_natural_sums_px_tracks_and_gaps() {
+        let fonts = FontRegistry::new();
+        let item = |w: &'static str| el("div", &[("width", w), ("height", "1px")], vec![]);
+        let grid = |pairs: &[(&str, &str)]| {
+            let mut style = vec![("display", "grid")];
+            style.extend_from_slice(pairs);
+            let tree = build_box_tree(&[el("div", &style, vec![item("7px"), item("9px")])]);
+            let BoxKind::Block(kids) = &tree.kind else {
+                unreachable!()
+            };
+            natural_width(&kids[0], &fonts)
+        };
+        assert_eq!(grid(&[("grid-template-columns", "15px 25px")]), 40.0);
+        assert_eq!(
+            grid(&[
+                ("grid-template-columns", "15px 25px"),
+                ("column-gap", "3px")
+            ]),
+            43.0
+        );
+        assert_eq!(
+            grid(&[("grid-template-columns", "15px 25px"), ("gap", "1px 4px")]),
+            44.0
+        );
+        // Not all px tracks (or none): the widest item.
+        assert_eq!(grid(&[("grid-template-columns", "15px 1fr")]), 9.0);
+        assert_eq!(grid(&[]), 9.0);
     }
 
     // --- flex_natural: row sums items, column takes the widest ---

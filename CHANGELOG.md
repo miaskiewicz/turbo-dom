@@ -122,6 +122,12 @@ changes in `tools/parity/expected/p5b-w3-turbo-dom-28-*.json`.
   table no longer leaves them at their natural widths). Changes many html2pdf PDFs: the
   exact list is `tools/parity/expected/p5b-w3-turbo-dom-28-item7.json`. Control:
   `table-auto-*` in `html-document` and `live-geometry`.
+- `inline-flex` / `inline-grid` (miaskiewicz/turbo-dom#53, found while fixing #28 item 4):
+  `Display::InlineFlex` / `InlineGrid` are atomic inline-level flex / grid containers that
+  sit in the line and shrink to fit (`flex` / `grid` once blockified), instead of
+  block-level boxes filling the line; a grid's intrinsic width is its `px` column tracks
+  plus gaps (else its widest item). Control: `inline-flex-*` / `inline-grid-*` in
+  `live-geometry` and `html-document`.
 
 ### Changed — selector follow-ups (P5b-X2, miaskiewicz/turbo-dom#24, Chrome 156 controls)
 - `rtdom::cascade` (`getComputedStyle`) and the npm `cascade.mjs` rank rules by the

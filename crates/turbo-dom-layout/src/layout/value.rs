@@ -91,7 +91,11 @@ pub enum Display {
     /// (miaskiewicz/turbo-dom#28 item 4).
     InlineTable,
     Flex,
+    /// `inline-flex` / `inline-grid`: atomic inline-level flex / grid containers
+    /// (miaskiewicz/turbo-dom#53).
+    InlineFlex,
     Grid,
+    InlineGrid,
     None,
     Table,
     TableRow,
@@ -733,11 +737,13 @@ pub fn display_of(s: &ComputedStyle) -> Display {
 }
 
 /// The CSS 2.1 §9.7 blockification of `display` (the inline-level and internal
-/// table values become `block`, `inline-table` becomes `table`; `none`, `flex`,
-/// `grid`, `table` and `list-item` stay).
+/// table values become `block`, `inline-table` / `inline-flex` / `inline-grid` become
+/// `table` / `flex` / `grid`; `none`, `flex`, `grid`, `table` and `list-item` stay).
 fn blockified(display: Display) -> Display {
     match display {
         Display::InlineTable => Display::Table,
+        Display::InlineFlex => Display::Flex,
+        Display::InlineGrid => Display::Grid,
         Display::Inline
         | Display::InlineBlock
         | Display::TableRow
@@ -753,8 +759,10 @@ fn specified_display(s: &ComputedStyle) -> Display {
     match s.get("display").unwrap_or("block").trim() {
         "inline" => Display::Inline,
         "inline-block" => Display::InlineBlock,
-        "flex" | "inline-flex" => Display::Flex,
-        "grid" | "inline-grid" => Display::Grid,
+        "flex" => Display::Flex,
+        "inline-flex" => Display::InlineFlex,
+        "grid" => Display::Grid,
+        "inline-grid" => Display::InlineGrid,
         "none" => Display::None,
         "table" => Display::Table,
         "inline-table" => Display::InlineTable,
@@ -2039,6 +2047,20 @@ mod display_tests {
                 Display::Table
             );
         }
+    }
+
+    #[test]
+    fn inline_flex_and_grid_are_inline_level_until_blockified() {
+        assert_eq!(display(&[("display", "inline-flex")]), Display::InlineFlex);
+        assert_eq!(display(&[("display", "inline-grid")]), Display::InlineGrid);
+        assert_eq!(
+            display(&[("display", "inline-flex"), ("float", "left")]),
+            Display::Flex
+        );
+        assert_eq!(
+            display(&[("display", "inline-grid"), ("position", "absolute")]),
+            Display::Grid
+        );
     }
 
     #[test]

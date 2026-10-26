@@ -266,7 +266,6 @@ fn live_geometry_matches_chrome_156() {
 }
 
 #[test]
-#[ignore = "turbo-dom#53: fails until the fix"]
 fn inline_flex_and_grid_are_inline_level_like_chrome_156() {
     assert_matches_chrome(compare_cases(inline_flex_grid_case));
 }

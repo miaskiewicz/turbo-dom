@@ -112,7 +112,6 @@ fn html_documents_lay_out_as_chrome_156() {
 }
 
 #[test]
-#[ignore = "turbo-dom#53: fails until the fix"]
 fn inline_flex_and_grid_are_inline_level_like_chrome_156() {
     compare_cases(inline_flex_grid_case);
 }
