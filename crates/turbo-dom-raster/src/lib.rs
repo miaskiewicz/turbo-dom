@@ -73,7 +73,7 @@ use std::collections::HashMap;
 
 use turbo_dom_layout::text::FontRegistry;
 use turbo_dom_layout::{
-    layout_html_with_images, Diagnostics, Fragment, FragmentContent, ImageCtx, ImageResolver, Rgba,
+    layout_html_with_images, Diagnostics, Fragment, FragmentContent, ImageCtx, Rgba,
 };
 
 /// Fetched image bytes keyed by their reference — the raw `<img src>` /
@@ -86,15 +86,6 @@ pub type ImageAssets = HashMap<String, Vec<u8>>;
 /// out without pixels (as the `*_with_css` entries do).
 fn no_assets() -> ImageAssets {
     HashMap::new()
-}
-
-/// An [`ImageResolver`] backed by an [`ImageAssets`] map (verbatim key lookup).
-struct AssetResolver<'a>(&'a ImageAssets);
-
-impl ImageResolver for AssetResolver<'_> {
-    fn resolve(&self, name: &str) -> Option<&[u8]> {
-        self.0.get(name).map(Vec::as_slice)
-    }
 }
 
 /// The layout viewport a snapshot is rendered against. `width` drives CSS layout
@@ -229,7 +220,7 @@ pub fn screenshot_png_with_opts(
         external_css,
         viewport.width,
         viewport.height,
-        &image_paint::png_map(&decoded),
+        &decoded,
         system_fonts,
     )?;
     let bg = canvas_background(&galley, viewport.width);
@@ -257,7 +248,7 @@ pub fn screenshot_svg_with_opts(
         external_css,
         viewport.width,
         viewport.height,
-        &image_paint::png_map(&decoded),
+        &decoded,
         system_fonts,
     )?;
     let bg = canvas_background(&galley, viewport.width);
@@ -356,7 +347,7 @@ fn lay_out(
     external_css: &str,
     width: u32,
     height: u32,
-    images: &ImageAssets,
+    images: &image_paint::DecodedAssets,
     system_fonts: bool,
 ) -> Result<Fragment, String> {
     // Tell the cascade the viewport HEIGHT so `@media (min-height/max-height:…)`
@@ -382,7 +373,7 @@ fn lay_out(
     let delazied = style_extract::delazy_images(html);
     let visible_html = style_extract::strip_non_visual(&delazied);
     let mut diags = Diagnostics::default();
-    let resolver = AssetResolver(images);
+    let resolver = image_paint::AssetResolver(images);
     // No page-height basis in a viewport render — only the 100%-width cap applies
     // (images shrink to fit their column, keeping aspect ratio).
     let image_ctx = ImageCtx {

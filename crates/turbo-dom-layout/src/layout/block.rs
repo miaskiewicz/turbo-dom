@@ -12,7 +12,6 @@
 //! `border-collapse` border merging (see `table.rs`).
 
 use crate::error::Diagnostics;
-use crate::image::probe;
 use crate::layout_snapshot::UsedBoxMetrics;
 use crate::node::MarkerKind;
 use crate::text::{Align, FontRegistry};
@@ -1787,7 +1786,7 @@ fn stamp_replaced_intrinsic(lb: &LayoutBox, images: &ImageCtx) {
     let Some(src) = lb.image.as_ref().filter(|s| s.replaced) else {
         return;
     };
-    if let Some(i) = images.resolver.resolve(&src.name).and_then(probe) {
+    if let Some(i) = images.resolver.intrinsic(&src.name) {
         lb.intrinsic_w.set(Some(i.width as f32));
     }
 }
@@ -1991,11 +1990,11 @@ fn live_image_fragment(
     outer
 }
 
-/// Probe an image source for its intrinsic size + alpha flag via the resolver,
-/// or `None` if it does not resolve or decode.
+/// Probe an image source for its intrinsic size + alpha flag via the resolver
+/// ([`ImageResolver::intrinsic`](crate::image::ImageResolver::intrinsic)), or `None`
+/// if it does not resolve or decode.
 fn probe_source(src: &ImageSource, ctx: &Ctx) -> Option<crate::image::Intrinsic> {
-    let bytes = ctx.images.resolver.resolve(&src.name)?;
-    probe(bytes)
+    ctx.images.resolver.intrinsic(&src.name)
 }
 
 /// Lay out a box tree (root from `boxgen::build_box_tree`) into a galley fragment

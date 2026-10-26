@@ -12,28 +12,30 @@ description = "turbo-dom synthetic screenshot tier: HTML snapshot → turbo-dom-
 
 [dependencies]
 # The layout + style + font engine (turbo-dom-layout, relocated from
-# turbo-html2pdf-core 0.3.9). We consume only its public HTML→Fragment drive
-# (`layout_html`) + the `Fragment` display list and paint it ourselves. Default
-# features (`bundled-fonts`); its `svg` feature is never enabled from here.
-turbo-dom-layout = { path = "../turbo-dom-layout", version = "0.6.0" }
+# turbo-html2pdf-core 0.3.9). We consume its public HTML→Fragment drive
+# (`layout_html`) + the `Fragment` display list and paint it ourselves, plus the shared
+# image layer: the PNG decode (`image::decode_png_rgba`), the header size probe and,
+# via `svg-rasterize`, the one SVG rasterizer (at 1x). Features explicit: its `svg`
+# feature (the PDF SVG pipeline) is never enabled from here.
+turbo-dom-layout = { path = "../turbo-dom-layout", version = "0.6.0", default-features = false, features = [
+    "bundled-fonts",
+    "svg-rasterize",
+] }
 # Raster canvas + PNG encode (Pixmap::encode_png, default `png-format` feature).
 tiny-skia = "0.11"
 # Glyph outlines: we parse `FontFace::data()` bytes independently to trace each
 # glyph into a fill path (both the PNG and SVG painters share the trace).
 ttf-parser = "0.25"
-# Decode + scale fetched raster image bytes (PNG/JPEG/GIF/WebP) for painting. The
-# raster normalizes every decoded image to RGBA, so turbo-html2pdf only ever sizes
-# a re-encoded PNG — format support lives here, not in the layout engine.
+# Decode + scale fetched raster image bytes for painting: JPEG (zune-jpeg backend), GIF
+# (frame 0 composited onto the logical screen) and WebP decode to RGBA here; PNG decodes
+# through turbo-dom-layout's shared decoder (byte-identical to this crate's `to_rgba8`).
+# Also `imageops::resize` (Triangle) for paint and the PNG re-encode of SVG `data:` URIs.
 image = { version = "0.25", default-features = false, features = [
     "png",
     "jpeg",
     "gif",
     "webp",
 ] }
-# Rasterize SVG `<img>`/`background-image` sources (logos/icons are ubiquitous).
-# Pinned to match turbo-html2pdf's svg tier (0.45.1; 0.46+ changes raster output).
-# resvg re-exports `usvg` + `tiny-skia`, used only inside the SVG decode path.
-resvg = { version = "=0.45.1", default-features = false }
 # Parse the 2D-canvas op-log JSON (`canvas_ops_png`). Value-tree parse only — the op set is
 # small + forgiving (unknown ops are skipped), so no derive is needed.
 serde_json = "1"
@@ -77,3 +79,6 @@ gpu-metal = ["dep:wgpu", "dep:pollster", "dep:lyon_tessellation", "dep:naga", "d
 # Screenshot tests build a fixture PNG and decode the rendered output to sample
 # pixels (verifying an image was painted, not a placeholder).
 tiny-skia = "0.11"
+# The image-layer differential test (src/image_paint.rs `shared_layer_tests`) keeps the
+# pre-consolidation SVG decode as its oracle (same pinned resvg as turbo-dom-layout).
+resvg = { version = "=0.45.1", default-features = false }

@@ -29,7 +29,7 @@ pub mod markup;
 pub mod node;
 pub mod perf;
 pub mod style;
-#[cfg(feature = "svg")]
+#[cfg(feature = "svg-rasterize")]
 pub mod svg;
 pub mod text;
 

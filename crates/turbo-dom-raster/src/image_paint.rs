@@ -1,21 +1,27 @@
 //! Decode fetched image bytes (PNG/JPEG/GIF/WebP + SVG) into a single canonical
-//! form — straight-alpha RGBA8 — that both painters and the layout engine consume:
+//! form — straight-alpha RGBA8 — that both painters consume, plus the intrinsic size
+//! the layout engine sizes the image box with:
 //!
-//! - **Layout sizing**: turbo-dom-layout's `probe` only reads PNG/JPEG/SVG, so we
-//!   normalize *every* decoded image to a PNG ([`DecodedImage::to_png`]) and hand
-//!   that to the resolver. The layout engine never sees WebP/GIF — it just sizes a
-//!   PNG of the right intrinsic dimensions.
+//! - **Decode** runs through turbo-dom-layout's shared image layer where it is
+//!   byte-identical: PNG via [`turbo_dom_layout::image::decode_png_rgba`] (the same
+//!   decode the PDF emitter uses, reproducing `image::to_rgba8`), SVG via the one
+//!   rasterizer [`turbo_dom_layout::svg::rasterize`] at 1x. JPEG (zune-jpeg), GIF
+//!   (frame 0 composited) and WebP stay on the `image` crate.
+//! - **Layout sizing**: [`DecodedImage::intrinsic`] — the shared header probe
+//!   ([`turbo_dom_layout::image::probe`]) for raster formats, the rasterized 1x size
+//!   for SVG — answered through [`ImageResolver::intrinsic`](turbo_dom_layout::ImageResolver::intrinsic),
+//!   so nothing is re-encoded to PNG for sizing.
 //! - **PNG paint**: scale the RGBA into the fragment box ([`DecodedImage::scaled_pixmap`]).
 //! - **SVG paint**: embed a base64 PNG `data:` URI ([`data_uri`]) — universally
 //!   renderable regardless of the source format.
-//!
-//! Format support therefore lives entirely here (the `image` crate's codec list +
-//! resvg for SVG), decoupled from the layout engine.
 
 use std::collections::HashMap;
 use std::io::Cursor;
 
 use tiny_skia::{Pixmap, PremultipliedColorU8};
+use turbo_dom_layout::image::{self as layout_image, Format, Intrinsic, Rgba8Image};
+use turbo_dom_layout::svg::{self as layout_svg, Oversize};
+use turbo_dom_layout::ImageResolver;
 
 /// A decoded image in straight-alpha RGBA8 (row-major, 4 bytes/px), plus its
 /// intrinsic pixel size. The canonical form every source format normalizes to.
@@ -23,6 +29,9 @@ pub struct DecodedImage {
     pub width: u32,
     pub height: u32,
     pub rgba: Vec<u8>,
+    /// The size + alpha flag layout sizes the image box with. `has_alpha` is always
+    /// true: the painters draw every image as straight RGBA.
+    pub intrinsic: Intrinsic,
 }
 
 /// Decoded images keyed by their reference (the same key [`crate::image_urls`]
@@ -37,15 +46,20 @@ pub fn decode_all(raw: &HashMap<String, Vec<u8>>) -> DecodedAssets {
         .collect()
 }
 
-/// The `ref -> PNG bytes` map handed to turbo-dom-layout's image resolver: every
-/// decoded image re-encoded as PNG so the layout engine can size it regardless of
-/// the original format. Images that fail to re-encode are omitted (they lay out
-/// without a box, as an unresolved image would).
-pub fn png_map(decoded: &DecodedAssets) -> HashMap<String, Vec<u8>> {
-    decoded
-        .iter()
-        .filter_map(|(k, img)| Some((k.clone(), img.to_png()?)))
-        .collect()
+/// The layout engine's view of the decoded assets: sizing only (layout never needs
+/// the bytes — the painters draw from the decode). Keys are looked up verbatim.
+pub struct AssetResolver<'a>(pub &'a DecodedAssets);
+
+impl ImageResolver for AssetResolver<'_> {
+    /// Layout sizes through [`intrinsic`](Self::intrinsic); no encoded bytes are
+    /// handed out.
+    fn resolve(&self, _name: &str) -> Option<&[u8]> {
+        None
+    }
+
+    fn intrinsic(&self, name: &str) -> Option<Intrinsic> {
+        self.0.get(name).map(|img| img.intrinsic)
+    }
 }
 
 /// Decode every `data:` image URI referenced by a `url(...)` (a CSS `mask-image`,
@@ -338,18 +352,49 @@ fn base64_decode(s: &str) -> Option<Vec<u8>> {
     Some(out)
 }
 
-/// Decode PNG/JPEG/GIF/WebP (via the `image` crate) or SVG (via resvg) into
-/// straight-alpha RGBA. `None` on an unrecognized or corrupt image.
+/// Decode PNG (turbo-dom-layout's shared decoder), JPEG/GIF/WebP (the `image` crate)
+/// or SVG (the shared rasterizer, 1x) into straight-alpha RGBA. `None` on an
+/// unrecognized or corrupt image.
 pub fn decode(bytes: &[u8]) -> Option<DecodedImage> {
     if is_svg(bytes) {
         return decode_svg(bytes);
     }
-    let rgba = image::load_from_memory(bytes).ok()?.to_rgba8();
-    Some(DecodedImage {
-        width: rgba.width(),
-        height: rgba.height(),
-        rgba: rgba.into_raw(),
-    })
+    let rgba = if layout_image::sniff(bytes) == Some(Format::Png) {
+        layout_image::decode_png_rgba(bytes)?
+    } else {
+        let rgba = image::load_from_memory(bytes).ok()?.to_rgba8();
+        Rgba8Image {
+            width: rgba.width(),
+            height: rgba.height(),
+            rgba: rgba.into_raw(),
+        }
+    };
+    let intrinsic = raster_intrinsic(bytes, &rgba);
+    Some(with_intrinsic(rgba, intrinsic))
+}
+
+/// The layout size of a decoded raster image: the shared header probe of its bytes.
+/// Should the probe ever fail or disagree with what the decoder produced (a file the
+/// `image` crate decodes but the header reader can't size), the decoded frame size
+/// wins — that is what layout sized before the probe was shared.
+fn raster_intrinsic(bytes: &[u8], rgba: &Rgba8Image) -> (u32, u32) {
+    layout_image::probe(bytes)
+        .map(|i| (i.width, i.height))
+        .filter(|&size| size == (rgba.width, rgba.height))
+        .unwrap_or((rgba.width, rgba.height))
+}
+
+fn with_intrinsic(rgba: Rgba8Image, (width, height): (u32, u32)) -> DecodedImage {
+    DecodedImage {
+        width: rgba.width,
+        height: rgba.height,
+        rgba: rgba.rgba,
+        intrinsic: Intrinsic {
+            width,
+            height,
+            has_alpha: true,
+        },
+    }
 }
 
 /// A light structural SVG sniff (SVG has no byte magic): the first non-space chunk
@@ -362,37 +407,17 @@ fn is_svg(bytes: &[u8]) -> bool {
         && (lower.starts_with(b"<svg") || contains(b"<?xml") || contains(b"<!doctype"))
 }
 
-/// Rasterize SVG bytes at their intrinsic CSS-pixel size into straight RGBA. Uses
-/// resvg's re-exported tiny-skia internally, converting to a plain `Vec<u8>` so
-/// the raster's own tiny-skia version is never coupled to resvg's.
+/// Rasterize SVG bytes at their intrinsic CSS-pixel size (1x, an axis above 8192 px
+/// rejected) through the shared rasterizer; laid out at that pixel size.
 fn decode_svg(bytes: &[u8]) -> Option<DecodedImage> {
-    use resvg::{tiny_skia as rsk, usvg};
-    // Default options ship an empty fontdb (deterministic; shapes/paths/gradients
-    // render, text is skipped) — matching turbo-dom-layout's svg tier.
-    let tree = usvg::Tree::from_data(bytes, &usvg::Options::default()).ok()?;
-    let size = tree.size();
-    let (w, h) = (size.width().ceil() as u32, size.height().ceil() as u32);
-    if w == 0 || h == 0 || w > 8192 || h > 8192 {
-        return None;
-    }
-    let mut pm = rsk::Pixmap::new(w, h)?;
-    resvg::render(&tree, rsk::Transform::identity(), &mut pm.as_mut());
-    // Convert premultiplied → straight RGBA (`demultiply`), the canonical form.
-    let mut rgba = Vec::with_capacity((w * h * 4) as usize);
-    for px in pm.pixels() {
-        let c = px.demultiply();
-        rgba.extend_from_slice(&[c.red(), c.green(), c.blue(), c.alpha()]);
-    }
-    Some(DecodedImage {
-        width: w,
-        height: h,
-        rgba,
-    })
+    let rgba = layout_svg::rasterize(bytes, 1.0, Oversize::Reject)?;
+    let size = (rgba.width, rgba.height);
+    Some(with_intrinsic(rgba, size))
 }
 
 impl DecodedImage {
-    /// Re-encode as a PNG (for the layout resolver + SVG data-URIs). `None` on an
-    /// encode failure or a degenerate size.
+    /// Re-encode as a PNG (for SVG data-URIs). `None` on an encode failure or a
+    /// degenerate size.
     pub fn to_png(&self) -> Option<Vec<u8>> {
         let img = image::RgbaImage::from_raw(self.width, self.height, self.rgba.clone())?;
         let mut out = Cursor::new(Vec::new());
@@ -573,5 +598,191 @@ mod tests {
         assert_eq!(img.rgba.len(), 10 * 6 * 4);
         // Top-left pixel is red, fully opaque.
         assert_eq!(&img.rgba[0..4], &[255, 0, 0, 255]);
+    }
+}
+
+/// The S5 differential gate for the shared image layer: every decode and size the
+/// screenshot painter gets from turbo-dom-layout's image layer equals the
+/// pre-consolidation path byte for byte — `image::load_from_memory(..).to_rgba8()`
+/// (and the old 1x resvg decode for SVG) for the pixels, layout's probe of the old
+/// PNG re-encode for the size.
+#[cfg(test)]
+mod shared_layer_tests {
+    use super::{decode, is_svg, DecodedImage};
+    use image::{ImageBuffer, Luma, LumaA, Rgb, Rgba};
+    use std::path::{Path, PathBuf};
+    use turbo_dom_layout::image::{probe, Intrinsic};
+
+    /// The pre-S5 raster decode: the `image` crate for every raster format, resvg at
+    /// 1x for SVG.
+    fn old_decode(bytes: &[u8]) -> Option<(u32, u32, Vec<u8>)> {
+        if is_svg(bytes) {
+            return old_decode_svg(bytes);
+        }
+        let rgba = image::load_from_memory(bytes).ok()?.to_rgba8();
+        Some((rgba.width(), rgba.height(), rgba.into_raw()))
+    }
+
+    /// The pre-S5 `decode_svg` (turbo-surf-raster 0.5.5), verbatim.
+    fn old_decode_svg(bytes: &[u8]) -> Option<(u32, u32, Vec<u8>)> {
+        use resvg::{tiny_skia as rsk, usvg};
+        let tree = usvg::Tree::from_data(bytes, &usvg::Options::default()).ok()?;
+        let size = tree.size();
+        let (w, h) = (size.width().ceil() as u32, size.height().ceil() as u32);
+        if w == 0 || h == 0 || w > 8192 || h > 8192 {
+            return None;
+        }
+        let mut pm = rsk::Pixmap::new(w, h)?;
+        resvg::render(&tree, rsk::Transform::identity(), &mut pm.as_mut());
+        let mut rgba = Vec::with_capacity((w * h * 4) as usize);
+        for px in pm.pixels() {
+            let c = px.demultiply();
+            rgba.extend_from_slice(&[c.red(), c.green(), c.blue(), c.alpha()]);
+        }
+        Some((w, h, rgba))
+    }
+
+    /// What layout sized an image with before S5: its probe of the PNG re-encode.
+    fn old_intrinsic(width: u32, height: u32, rgba: Vec<u8>) -> Option<Intrinsic> {
+        let img = DecodedImage {
+            width,
+            height,
+            rgba,
+            intrinsic: Intrinsic {
+                width: 0,
+                height: 0,
+                has_alpha: false,
+            },
+        };
+        probe(&img.to_png()?)
+    }
+
+    /// Assert old == new for one input; returns whether it decoded.
+    fn assert_same(label: &str, bytes: &[u8]) -> bool {
+        let old = old_decode(bytes);
+        let new = decode(bytes);
+        match (old, new) {
+            (None, None) => false,
+            (Some((w, h, rgba)), Some(new)) => {
+                assert_eq!((new.width, new.height), (w, h), "{label}: size");
+                assert!(new.rgba == rgba, "{label}: RGBA bytes differ");
+                let old_size = old_intrinsic(w, h, rgba).expect("re-encode probes");
+                assert_eq!(new.intrinsic, old_size, "{label}: layout intrinsic");
+                assert_eq!(
+                    probe(bytes)
+                        .map(|i| (i.width, i.height))
+                        .filter(|_| !is_svg(bytes)),
+                    (!is_svg(bytes)).then_some((w, h)),
+                    "{label}: the shared header probe sizes it directly"
+                );
+                true
+            }
+            (old, new) => panic!(
+                "{label}: decodes differ (old {}, new {})",
+                old.is_some(),
+                new.is_some()
+            ),
+        }
+    }
+
+    fn matrix_dirs() -> Vec<PathBuf> {
+        let parity = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tools/parity/inputs");
+        vec![
+            parity.join("image-matrix/images"),
+            parity.join("extra/images"),
+        ]
+    }
+
+    #[test]
+    fn image_matrix_decodes_and_sizes_byte_identically() {
+        let dirs = matrix_dirs();
+        if !dirs[0].is_dir() {
+            eprintln!("SKIP: no tools/parity inputs (packaged crate)");
+            return;
+        }
+        let (mut files, mut decoded) = (0, 0);
+        for dir in dirs {
+            let mut entries: Vec<_> = std::fs::read_dir(&dir)
+                .expect("matrix dir")
+                .map(|e| e.expect("entry").path())
+                .collect();
+            entries.sort();
+            for path in entries {
+                let bytes = std::fs::read(&path).expect("read image");
+                files += 1;
+                decoded += usize::from(assert_same(&path.display().to_string(), &bytes));
+            }
+        }
+        // 19 matrix images + 4 extra (AVIF and the corrupt JPEG do not decode).
+        assert_eq!((files, decoded), (23, 20));
+    }
+
+    fn png<P: image::PixelWithColorType>(img: &ImageBuffer<P, Vec<P::Subpixel>>) -> Vec<u8>
+    where
+        [P::Subpixel]: image::EncodableLayout,
+    {
+        let mut out = std::io::Cursor::new(Vec::new());
+        img.write_to(&mut out, image::ImageFormat::Png)
+            .expect("encode test png");
+        out.into_inner()
+    }
+
+    #[test]
+    fn every_sample_value_converts_like_to_rgba8() {
+        // 256x256 16-bit images carrying every u16 sample value in every channel
+        // layout, and 16x16 8-bit ones carrying every u8: the RGBA derived from the
+        // shared decode must equal `to_rgba8` for each (incl. the gray f32 path).
+        let v16 = |x: u32, y: u32| (y * 256 + x) as u16;
+        let v8 = |x: u32, y: u32| (y * 16 + x) as u8;
+        let r16 = |x: u32, y: u32| v16(x, y).rotate_left(5);
+        let cases: Vec<(&str, Vec<u8>)> = vec![
+            (
+                "L16",
+                png(&ImageBuffer::from_fn(256, 256, |x, y| Luma([v16(x, y)]))),
+            ),
+            (
+                "La16",
+                png(&ImageBuffer::from_fn(256, 256, |x, y| {
+                    LumaA([v16(x, y), r16(x, y)])
+                })),
+            ),
+            (
+                "Rgb16",
+                png(&ImageBuffer::from_fn(256, 256, |x, y| {
+                    Rgb([v16(x, y), r16(x, y), !v16(x, y)])
+                })),
+            ),
+            (
+                "Rgba16",
+                png(&ImageBuffer::from_fn(256, 256, |x, y| {
+                    Rgba([v16(x, y), r16(x, y), !v16(x, y), r16(y, x)])
+                })),
+            ),
+            (
+                "L8",
+                png(&ImageBuffer::from_fn(16, 16, |x, y| Luma([v8(x, y)]))),
+            ),
+            (
+                "La8",
+                png(&ImageBuffer::from_fn(16, 16, |x, y| {
+                    LumaA([v8(x, y), v8(y, x)])
+                })),
+            ),
+            (
+                "Rgb8",
+                png(&ImageBuffer::from_fn(16, 16, |x, y| {
+                    Rgb([v8(x, y), v8(y, x), !v8(x, y)])
+                })),
+            ),
+            (
+                "Rgba8",
+                png(&ImageBuffer::from_fn(16, 16, |x, y| {
+                    Rgba([v8(x, y), v8(y, x), !v8(x, y), v8(x, y) ^ 0x5a])
+                })),
+            ),
+        ];
+        for (label, bytes) in cases {
+            assert!(assert_same(label, &bytes), "{label} decodes");
+        }
     }
 }

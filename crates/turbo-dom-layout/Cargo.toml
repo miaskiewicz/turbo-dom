@@ -28,9 +28,15 @@ bundled-fonts = []
 # production builds pay nothing.
 perf = []
 
-# Vector (SVG) image support: `image/svg+xml` bytes are rasterized (resvg, pinned EXACT for
-# reproducible output; 0.46+ changes raster output) into the RGBA image pipeline.
-svg = ["dep:resvg"]
+# Vector (SVG) image support for the PDF image pipeline: `image::probe`/`image::decode`
+# route `image/svg+xml` bytes through the shared rasterizer (2x oversample) into the RGBA
+# image pipeline.
+svg = ["svg-rasterize"]
+
+# The shared SVG rasterizer alone (`svg::rasterize`, resvg pinned EXACT for reproducible
+# output; 0.46+ changes raster output) without routing `image::probe`/`decode` through it.
+# turbo-dom-raster enables this (never `svg`) for its 1x SVG images.
+svg-rasterize = ["dep:resvg"]
 
 # `serde::Serialize` for the CSSOM-View metrics records (`cssom_view::metrics`,
 # `cssom_view::scroll`), which turbo-surf returns to page script.
@@ -53,7 +59,7 @@ taffy = "0.8"
 png = "0.18.1"
 jpeg-decoder = { version = "0.3.2", default-features = false }
 encoding_rs = "0.8"
-# `svg` feature only. `default-features = false` drops `system-fonts` (the only
+# `svg-rasterize` feature only. `default-features = false` drops `system-fonts` (the only
 # non-deterministic input) plus the `text`/raster-image decoders; resvg re-exports `usvg`
 # and `tiny-skia`. See src/svg.rs.
 resvg = { version = "=0.45.1", default-features = false, optional = true }

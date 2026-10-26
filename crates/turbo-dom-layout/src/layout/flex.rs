@@ -625,10 +625,7 @@ fn replaced_probe_width(item: &LayoutBox, images: &ImageCtx, fs: f32) -> Option<
     if let LengthPct::Px(w) = bs.width {
         return Some(w + frame);
     }
-    let intrinsic = images
-        .resolver
-        .resolve(&src.name)
-        .and_then(crate::image::probe)?;
+    let intrinsic = images.resolver.intrinsic(&src.name)?;
     Some(intrinsic.width as f32 + frame)
 }
 
