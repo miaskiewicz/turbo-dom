@@ -113,6 +113,11 @@ class CascadeClassifier(unittest.TestCase):
         self.assertIsNone(check.classify_cascade(
             cascade(".md\\:flex", cascade_element(attrs=[("class", "md")]), legacy=False, new=True)))
         self.assertEqual(check.classify_cascade(cascade("\\70", cascade_element("span"))), "escapes")
+        # escapes outside the subject compound, or negated, constrain nothing on the element
+        self.assertEqual(check.classify_cascade(
+            cascade(":is(.md\\:flex) p", cascade_element("p"), legacy=False, new=True)), "escapes")
+        self.assertEqual(check.classify_cascade(
+            cascade(":not(.md\\:flex)", cascade_element("span"), legacy=False, new=True)), "escapes")
 
     def test_namespace_prefixes(self):
         self.assertEqual(check.classify_cascade(cascade("*|p", cascade_element("p"), legacy=False, new=True)),

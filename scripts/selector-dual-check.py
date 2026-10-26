@@ -255,8 +255,31 @@ def k_escapes(sel, rec):
         return False
     if not match_records(rec) or rec.get("new") is not True:
         return True
-    escaped = {t for t, e, _ in runs(sel) if e}
+    subject = subject_compound(sel)
+    escaped = {t for t, e, _ in runs(re.sub(r":not\([^)]*\)", "", subject)) if e}
+    if not escaped:
+        # the escapes constrain an ancestor/sibling or sit in a negation: the new match
+        # follows from the old engine misreading them, nothing to check on the element
+        return True
     return bool(escaped & element_tokens(rec["element"]))
+
+
+def subject_compound(sel):
+    """The last compound of `sel` (after the last top-level combinator)."""
+    depth, start, i = 0, 0, 0
+    while i < len(sel):
+        c = sel[i]
+        if c == "\\":
+            i += 2
+            continue
+        if c in "([":
+            depth += 1
+        elif c in ")]":
+            depth -= 1
+        elif depth == 0 and (c in ">+~" or c.isspace()):
+            start = i + 1
+        i += 1
+    return sel[start:]
 
 
 UNDECLARED_PREFIX = re.compile(r"(?:^|[\s>+~(,])[A-Za-z_-][\w-]*\|")
