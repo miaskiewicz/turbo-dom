@@ -178,6 +178,9 @@ package or publish workflow.
   Wrappers are built lazily on access (live over the attribute, no snapshot). `newElement()`
   picks the subclass by ns at every construction site (inflate/innerHTML/cloneNode/createElementNS)
   — HTML elements stay plain `Element` (no SVG getters, no regression, no hot-path cost).
+  An element's `__ns` is `''` (HTML), `'svg'`, `'math'`, or — only from `createElementNS` in any
+  other namespace — `'ns:' + URI` (`'ns:'` = the null namespace), so "HTML or not" stays one
+  string test; `__prefix` exists only on prefixed elements (turbo-dom#29 item 1).
 - **CSSOM is minimal + test-time only** (`cssom.mjs`): `<style>.sheet` (lazy `__sheet`, only
   emotion-touched styles allocate one) + live `document.styleSheets` + `insertRule`/`deleteRule`.
   `insertRule` bumps `Document.__version` (via owner `__touch()`), and `cascade.mjs` reads

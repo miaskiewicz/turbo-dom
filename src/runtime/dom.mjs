@@ -73,7 +73,55 @@ export const DOCUMENT_FRAGMENT_NODE = 11;
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const MATHML_NS = 'http://www.w3.org/1998/Math/MathML';
 const HTML_NS = 'http://www.w3.org/1999/xhtml';
-const nsUri = (short) => (short === 'svg' ? SVG_NS : short === 'math' ? MATHML_NS : HTML_NS);
+const XML_NS = 'http://www.w3.org/XML/1998/namespace';
+const XMLNS_NS = 'http://www.w3.org/2000/xmlns/';
+// An element's `__ns` is '' (HTML), 'svg' or 'math' — what the parser produces — or, for
+// createElementNS in any other namespace, 'ns:' + the namespace URI ('ns:' alone is the
+// null namespace). Every '' / truthy test ("HTML or not") stays a single string check.
+const nsUri = (short) => (short === '' ? HTML_NS : short === 'svg' ? SVG_NS : short === 'math' ? MATHML_NS
+  : short.length > 3 ? short.slice(3) : null);
+const nsShort = (uri) => (uri === HTML_NS ? '' : uri === SVG_NS ? 'svg' : uri === MATHML_NS ? 'math' : 'ns:' + (uri ?? ''));
+
+// A DOMException (a plain Error with its name where the host has none, e.g. a bare V8).
+function domError(name, message) {
+  if (typeof DOMException === 'function') return new DOMException(message, name);
+  const error = new Error(message);
+  error.name = name;
+  return error;
+}
+// DOM "valid element local name" (createElement / createElementNS, Chrome 156): an ASCII
+// letter followed by anything but ASCII whitespace, NULL, '/' and '>'; or ':', '_' or a
+// non-ASCII code point followed by ASCII alphanumerics, '-', '.', ':', '_' and non-ASCII.
+function validLocalName(name) {
+  const n = name.length;
+  if (n === 0) return false;
+  const c0 = name.charCodeAt(0) | 0x20;
+  if (c0 >= 97 && c0 <= 122) {
+    for (let i = 1; i < n; i++) {
+      const c = name.charCodeAt(i);
+      if (c <= 32 ? c === 32 || c === 9 || c === 10 || c === 12 || c === 13 || c === 0 : c === 47 || c === 62) return false;
+    }
+    return true;
+  }
+  const first = name.charCodeAt(0);
+  if (first !== 58 && first !== 95 && first < 0x80) return false;
+  for (let i = 1; i < n; i++) {
+    const c = name.charCodeAt(i);
+    if (c >= 0x80 || c === 45 || c === 46 || c === 58 || c === 95 || (c >= 48 && c <= 57) || ((c | 0x20) >= 97 && (c | 0x20) <= 122)) continue;
+    return false;
+  }
+  return true;
+}
+// DOM "valid namespace prefix": non-empty, no ASCII whitespace, NULL, '/' or '>'.
+function validPrefix(prefix) {
+  if (prefix.length === 0) return false;
+  for (let i = 0; i < prefix.length; i++) {
+    const c = prefix.charCodeAt(i);
+    if (c === 32 || c === 9 || c === 10 || c === 12 || c === 13 || c === 0 || c === 47 || c === 62) return false;
+  }
+  return true;
+}
+const invalidName = (name) => domError('InvalidCharacterError', `The qualified name provided ('${name}') contains the invalid name-start character or invalid character.`);
 
 // ------------------------------------------------------------------ Node ----
 export class Node extends EventTarget {
@@ -441,9 +489,15 @@ export class Element extends Node {
   }
 
   get nodeType() { return ELEMENT_NODE; }
-  get tagName() { return this.__ns ? this.localName : this.localName.toUpperCase(); }
+  // the qualified name, uppercased for HTML elements (an HTML document)
+  get tagName() {
+    const p = this.__prefix, q = p === undefined ? this.localName : `${p}:${this.localName}`;
+    return this.__ns ? q : q.toUpperCase();
+  }
   get nodeName() { return this.tagName; }
   get namespaceURI() { return nsUri(this.__ns); }
+  // createElementNS's prefix (`__prefix`, set only on the elements that have one)
+  get prefix() { return this.__prefix ?? null; }
 
   // ---- attributes ----
   // attrs inflate lazily: a buffer-backed element leaves __attrs undefined and
@@ -747,9 +801,9 @@ export class Element extends Node {
   querySelector(sel) { return cachedQS(this, sel); }
   querySelectorAll(sel) { return cachedQSA(this, sel); }
   getElementsByTagName(tag) {
-    const self = this, t = tag.toLowerCase();
+    const self = this, raw = String(tag), t = raw.toLowerCase();
     let cv = -1, ca; // version-cache the subtree walk within this collection (live; re-walk on mutation)
-    return liveHTMLCollection(() => { const d = self.ownerDocument, v = d ? (d.__version || 0) : 0; if (v === cv) return ca; cv = v; return (ca = collectByTag(self, t)); });
+    return liveHTMLCollection(() => { const d = self.ownerDocument, v = d ? (d.__version || 0) : 0; if (v === cv) return ca; cv = v; return (ca = collectByTag(self, raw, t)); });
   }
   getElementsByClassName(cls) {
     const self = this, classes = splitClasses(cls);
@@ -760,7 +814,9 @@ export class Element extends Node {
   // ---- innerHTML / outerHTML ----
   get innerHTML() { return serializeInner(this); }
   set innerHTML(html) {
-    const frag = getParser().parseFragment(String(html), this.__ns ? `${this.__ns} ${this.localName}` : this.localName);
+    // fragment context: the element itself; another namespace's element parses like <body>
+    const ns = this.__ns;
+    const frag = getParser().parseFragment(String(html), ns === '' ? this.localName : ns === 'svg' || ns === 'math' ? `${ns} ${this.localName}` : '');
     this.__detachKids();
     this.__kids = [];
     this.__touch();
@@ -792,6 +848,7 @@ export class Element extends Node {
 
   cloneNode(deep = false) {
     const el = newElement(this.ownerDocument, this.localName, this.__ns);
+    if (this.__prefix !== undefined) el.__prefix = this.__prefix;
     el.__attrs = (this.__attrs ?? (this.__attrs = this.__buildAttrs())).map((a) => ({ ...a }));
     // custom element state travels (an `is` value / custom name -> "undefined", upgraded
     // when its definition exists); plain HTML elements and foreign ones skip the call
@@ -1122,9 +1179,9 @@ export class ShadowRoot extends DocumentFragment {
     return found;
   }
   getElementsByTagName(tag) {
-    const self = this, t = tag.toLowerCase();
+    const self = this, raw = String(tag), t = raw.toLowerCase();
     let cv = -1, ca; // version-cache the subtree walk within this collection (live; re-walk on mutation)
-    return liveHTMLCollection(() => { const d = self.ownerDocument, v = d ? (d.__version || 0) : 0; if (v === cv) return ca; cv = v; return (ca = collectByTag(self, t)); });
+    return liveHTMLCollection(() => { const d = self.ownerDocument, v = d ? (d.__version || 0) : 0; if (v === cv) return ca; cv = v; return (ca = collectByTag(self, raw, t)); });
   }
   getElementsByClassName(cls) {
     const self = this, classes = splitClasses(cls);
@@ -1155,15 +1212,21 @@ function findSlot(shadowRoot, name) {
   return found;
 }
 
-function collectByTag(root, tag) {
+// The elements with qualified name `raw` (DOM "list of elements with qualified name"): HTML
+// elements compare against the lowercased `tag`, others (SVG camelCase, other namespaces)
+// against `raw` exactly. Only a name with a colon can match a prefixed element.
+function collectByTag(root, raw, tag = raw) {
   const out = [];
-  const all = tag === '*';
+  const all = raw === '*';
+  const colon = raw.indexOf(':') !== -1;
   const visit = (node) => {
     const kids = node.__children();
     for (let i = 0; i < kids.length; i++) {
       const c = kids[i];
       if (c.nodeType !== ELEMENT_NODE) continue;
-      if (all || c.localName === tag) out.push(c);
+      if (all) out.push(c);
+      else if (c.__ns === '') { if (c.localName === tag ? c.__prefix === undefined : colon && c.__prefix !== undefined && `${c.__prefix}:${c.localName}` === tag) out.push(c); }
+      else if (c.localName === raw ? c.__prefix === undefined : colon && c.__prefix !== undefined && `${c.__prefix}:${c.localName}` === raw) out.push(c);
       visit(c);
     }
   };
@@ -1753,15 +1816,37 @@ export class Document extends Node {
 
   // ---- factories (owned nodes, no buffer) ----
   createElement(tag, options) {
-    const name = String(tag).toLowerCase();
+    const raw = String(tag);
+    if (!validLocalName(raw)) throw invalidName(raw);
+    const name = raw.toLowerCase();
     if (this.__ceRegistry === undefined && options === undefined) return new Element(this, name, '');
     return createCustomElement(this, name, isOption(options), true);
   }
-  createElementNS(ns, qualified, options) {
-    const short = ns === SVG_NS ? 'svg' : ns === MATHML_NS ? 'math' : '';
-    const local = qualified.includes(':') ? qualified.split(':')[1] : qualified;
-    if (ns === HTML_NS && (this.__ceRegistry !== undefined || options !== undefined)) return createCustomElement(this, local, isOption(options), true);
-    return newElement(this, local, short);
+  // DOM "create an element NS": validate and extract the qualified name (Chrome 156 keeps
+  // the local name up to a second colon: 'a:b:c' -> prefix 'a', local name 'b'), then an
+  // element in that namespace — HTML (custom elements), SVG, MathML, or any other / null
+  // namespace (a plain, case-preserving Element).
+  createElementNS(namespace, qualifiedName, options) {
+    const ns = namespace === null || namespace === undefined || namespace === '' ? null : String(namespace);
+    const qualified = String(qualifiedName);
+    let prefix = null, local = qualified;
+    const colon = qualified.indexOf(':');
+    if (colon !== -1) {
+      prefix = qualified.slice(0, colon);
+      const end = qualified.indexOf(':', colon + 1);
+      local = end === -1 ? qualified.slice(colon + 1) : qualified.slice(colon + 1, end);
+      if (!validPrefix(prefix)) throw invalidName(qualified);
+    }
+    if (!validLocalName(local)) throw invalidName(qualified);
+    if ((prefix !== null && ns === null) || (prefix === 'xml' && ns !== XML_NS)
+      || ((qualified === 'xmlns' || prefix === 'xmlns') !== (ns === XMLNS_NS))) {
+      throw domError('NamespaceError', `The namespace and qualified name ('${qualified}') do not match.`);
+    }
+    const el = ns === HTML_NS && (this.__ceRegistry !== undefined || options !== undefined)
+      ? createCustomElement(this, local, isOption(options), true)
+      : newElement(this, local, nsShort(ns));
+    if (prefix !== null) el.__prefix = prefix;
+    return el;
   }
   __newHtmlElement(localName) { return new Element(this, localName, ''); }
   createTextNode(data) { return new Text(this, String(data)); }
@@ -1847,12 +1932,12 @@ export class Document extends Node {
   // query (e.g. RTL getByLabelText calls element.labels per element, each doing
   // document.getElementsByTagName('label')). Without caching that's O(n²) tree
   // walks. The cache invalidates whenever the DOM version bumps (any mutation).
-  __byTag(t) {
+  __byTag(raw, t) {
     const v = this.__version || 0;
-    const c = this.__tagCache && this.__tagCache.get(t);
+    const c = this.__tagCache && this.__tagCache.get(raw);
     if (c && c.v === v) return c.arr;
-    const arr = collectByTag(this, t);
-    (this.__tagCache || (this.__tagCache = new Map())).set(t, { v, arr });
+    const arr = collectByTag(this, raw, t);
+    (this.__tagCache || (this.__tagCache = new Map())).set(raw, { v, arr });
     return arr;
   }
   __byClass(key, classes) {
@@ -1867,10 +1952,10 @@ export class Document extends Node {
   // the version-cached __byTag/__byClass on every access, so a memoized Proxy still
   // reflects mutations — only the per-call Proxy allocation is saved.
   getElementsByTagName(tag) {
-    const t = tag.toLowerCase();
+    const raw = String(tag);
     const m = this.__tagColl || (this.__tagColl = new Map());
-    let coll = m.get(t);
-    if (!coll) { const self = this; coll = liveHTMLCollection(() => self.__byTag(t)); m.set(t, coll); }
+    let coll = m.get(raw);
+    if (!coll) { const self = this, t = raw.toLowerCase(); coll = liveHTMLCollection(() => self.__byTag(raw, t)); m.set(raw, coll); }
     return coll;
   }
   getElementsByClassName(cls) {

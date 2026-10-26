@@ -7,6 +7,23 @@ at the time); this file reconstructs them from history.
 
 ## [Unreleased]
 
+### Fixed — npm runtime namespaces, adoption, template contents, reaction order (P5b-X4, miaskiewicz/turbo-dom#29, Chrome 156 control)
+- `createElementNS` creates the element in the namespace it is given: any namespace other
+  than HTML / SVG / MathML (and the null namespace — `null`, `undefined` or `''`) gives a
+  plain, case-preserving `Element` (`namespaceURI`, `localName`, attribute names and
+  `tagName` keep their case; it is never a custom element). It used to create an HTML
+  element. Prefixes are kept (`prefix`, `tagName` = the qualified name, e.g. `svg:rect`;
+  they were dropped) and the qualified name is validated like Chrome 156
+  (`InvalidCharacterError` / `NamespaceError`; Chrome keeps the local name up to a second
+  colon). `createElement` validates its name too (`createElement('a b')` threw nothing).
+  `getElementsByTagName` matches non-HTML elements by their exact qualified name
+  (`getElementsByTagName('foreignObject')` found nothing), and the serializer writes other
+  namespaces' qualified names and treats only HTML elements as void / `<template>`.
+  Control: `test/fixtures/dom_adoption_reactions_chrome156.json` (probe + cases beside it,
+  recorded with `crates/turbo-dom-browser-env/scripts/select-element-chrome-control.mjs`),
+  asserted by `test/dom-adoption-reactions-chrome.test.mjs` (the one deviation: the runtime's
+  `HTMLElement` is `Element`, so `instanceof HTMLElement` is true for every element).
+
 ### Changed — npm `:defined` and custom elements (P5b-X3, miaskiewicz/turbo-dom#26 item 2, Chrome 156 control)
 - The JS runtime keeps each element's HTML custom element state in lockstep with the Rust
   tree (`src/runtime/custom-elements.mjs`): the creation-time rule (a valid custom element
