@@ -1,0 +1,13 @@
+{
+ "id": "S3b/escapes",
+ "class": "escapes",
+ "reason": "CSS escapes (`.md\\:flex`, `\\70`, `#\\31 23`): the old html2pdf parser read `\\` as a separator, so the selector meant something else. Consolidation S3b: the html2pdf / surf-static cascade parses and matches with turbo-dom's selector engine.",
+ "control": "crates/turbo-dom/tests/fixtures/cascade_selectors_chrome156.json (cases/escapes)",
+ "e2e": "crates/turbo-dom-layout/tests/cascade_selectors_chrome.rs",
+ "changes": {
+  "html2pdf": [],
+  "html2pdf-svg": [],
+  "html2pdf-extra": [],
+  "surf": []
+ }
+}
