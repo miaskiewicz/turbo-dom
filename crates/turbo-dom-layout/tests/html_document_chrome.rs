@@ -103,7 +103,7 @@ fn inline_flex_grid_case(id: &str) -> bool {
 /// The control cases of an open bug, each asserted by its own test (`#[ignore]`d until
 /// its fix lands) and held out of [`html_documents_lay_out_as_chrome_156`].
 fn held_out(id: &str) -> bool {
-    let groups: [fn(&str) -> bool; 23] = [
+    let groups: [fn(&str) -> bool; 24] = [
         auto_table_case,
         inline_flex_grid_case,
         abs_auto_width_case,
@@ -127,6 +127,7 @@ fn held_out(id: &str) -> bool {
         intrinsic_margin_case,
         flow_root_case,
         column_flex_item_case,
+        flex_item_box_sizing_case,
     ];
     groups.iter().any(|group| group(id))
 }
@@ -348,6 +349,17 @@ fn column_flex_item_case(id: &str) -> bool {
 #[test]
 fn column_flex_items_size_on_their_axes_like_chrome_156() {
     compare_cases(column_flex_item_case);
+}
+
+/// miaskiewicz/turbo-dom#93: a content-box flex item's sizes exclude its padding and border.
+fn flex_item_box_sizing_case(id: &str) -> bool {
+    id.starts_with("flex-item-")
+}
+
+#[test]
+#[ignore = "turbo-dom#93: fails until the fix"]
+fn content_box_flex_items_add_their_frame_like_chrome_156() {
+    compare_cases(flex_item_box_sizing_case);
 }
 
 /// miaskiewicz/turbo-dom#69: only legacy `-webkit-*` alignment moves block children.

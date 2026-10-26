@@ -10,7 +10,7 @@
 // `min-height` / `max-height` cases of miaskiewicz/turbo-dom#75 item 1
 // (`min-height-margin-*`), zero-area `clip: rect()` boxes of item 2 (`clip-zero-area-*`,
 // `clip-sr-only*`) and cases of the bugs found while fixing them (#76, #77, #78, #79, #86,
-// #88).
+// #88, #93).
 //
 // For every case below, Chrome for Testing 156 (viewport 1280x800) records:
 //   - `boxes`: getBoundingClientRect() of every `[data-cid]` element (document order), as
@@ -402,6 +402,14 @@ const CASES = [
   { id: "column-flex-item-content-height", html: DOC(S("body{margin:0}"), `<div data-cid="f" style="display:flex;flex-direction:column"><div data-cid="d" style="width:30px"><div style="height:12px"></div></div></div><div data-cid="g" style="height:5px"></div>`) },
   { id: "column-flex-item-grow", html: DOC(S("body{margin:0}"), `<div data-cid="f" style="display:flex;flex-direction:column;height:100px"><div data-cid="d" style="width:20px;height:20px"></div><div data-cid="e" style="width:20px;flex-grow:1"></div></div><div data-cid="g" style="height:5px"></div>`) },
   { id: "column-flex-item-percent-width", html: DOC(S("body{margin:0}"), `<div data-cid="f" style="display:flex;flex-direction:column;width:200px"><div data-cid="d" style="width:50%;height:10px"></div></div><div data-cid="g" style="height:5px"></div>`) },
+  // P5b-W6, miaskiewicz/turbo-dom#93: a content-box flex item's sizes exclude its padding
+  // and border (its border box is larger by them).
+  { id: "flex-item-content-box-row-padding", html: DOC(S("body{margin:0}"), `<div data-cid="f" style="display:flex"><div data-cid="d" style="width:30px;height:15px;padding:5px"></div><div data-cid="e" style="width:10px;height:5px"></div></div><div data-cid="g" style="height:5px"></div>`) },
+  { id: "flex-item-content-box-row-border", html: DOC(S("body{margin:0}"), `<div data-cid="f" style="display:flex"><div data-cid="d" style="width:30px;height:15px;border:3px solid"></div><div data-cid="e" style="width:10px;height:5px"></div></div><div data-cid="g" style="height:5px"></div>`) },
+  { id: "flex-item-content-box-row-basis", html: DOC(S("body{margin:0}"), `<div data-cid="f" style="display:flex"><div data-cid="d" style="flex-basis:30px;height:15px;padding:0 5px"></div><div data-cid="e" style="width:10px;height:5px"></div></div><div data-cid="g" style="height:5px"></div>`) },
+  { id: "flex-item-border-box-row", html: DOC(S("body{margin:0}"), `<div data-cid="f" style="display:flex"><div data-cid="d" style="box-sizing:border-box;width:30px;height:15px;padding:5px"></div><div data-cid="e" style="width:10px;height:5px"></div></div><div data-cid="g" style="height:5px"></div>`) },
+  { id: "flex-item-content-box-column-padding", html: DOC(S("body{margin:0}"), `<div data-cid="f" style="display:flex;flex-direction:column"><div data-cid="d" style="width:30px;height:15px;padding:5px"></div><div data-cid="e" style="width:10px;height:5px"></div></div><div data-cid="g" style="height:5px"></div>`) },
+  { id: "flex-item-content-box-min-max", html: DOC(S("body{margin:0}"), `<div data-cid="f" style="display:flex"><div data-cid="d" style="width:10px;min-width:30px;height:15px;max-height:10px;padding:5px"></div></div><div data-cid="g" style="height:5px"></div>`) },
 ];
 
 /** The RGB of a 1x1 PNG screenshot (any filter: a single pixel's filter adds 0). */
