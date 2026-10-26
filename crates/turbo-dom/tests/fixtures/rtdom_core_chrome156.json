@@ -1177,6 +1177,360 @@
    ]
   },
   {
+   "id": "selector_syntax",
+   "html": "<div class=d><p title=a class=a id=x>x</p><span></span></div>",
+   "elements": [
+    "html",
+    "head",
+    "body",
+    "div",
+    "p",
+    "span"
+   ],
+   "selectors": [
+    {
+     "selector": ":not(p, )",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": ":not(p,,a)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": ":not(,p)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": ":is(p,,a)",
+     "valid": true,
+     "matches": "000010"
+    },
+    {
+     "selector": ":where(p, )",
+     "valid": true,
+     "matches": "000010"
+    },
+    {
+     "selector": ":nth-child(1 of p,)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": ":has(p,)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": ":has(,p)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "p\\",
+     "valid": true,
+     "matches": "000000"
+    },
+    {
+     "selector": "p,",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "p,,a",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "div/**/p",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "p/**/.a",
+     "valid": true,
+     "matches": "000010"
+    },
+    {
+     "selector": "p /**/ .a",
+     "valid": true,
+     "matches": "000000"
+    },
+    {
+     "selector": ".d/*x*/>p",
+     "valid": true,
+     "matches": "000010"
+    },
+    {
+     "selector": "p,/*c*/span",
+     "valid": true,
+     "matches": "000011"
+    },
+    {
+     "selector": "/* c */p",
+     "valid": true,
+     "matches": "000010"
+    },
+    {
+     "selector": "p/*",
+     "valid": true,
+     "matches": "000010"
+    },
+    {
+     "selector": "[ti/**/tle]",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "[title/**/=a]",
+     "valid": true,
+     "matches": "000010"
+    },
+    {
+     "selector": "[title=/**/a]",
+     "valid": true,
+     "matches": "000010"
+    },
+    {
+     "selector": "[title=a/**/i]",
+     "valid": true,
+     "matches": "000010"
+    },
+    {
+     "selector": "[title=a/**/b]",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "#/**/x",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": "./**/a",
+     "valid": true,
+     "matches": "000010"
+    },
+    {
+     "selector": ":is(div/**/p, p)",
+     "valid": true,
+     "matches": "000010"
+    },
+    {
+     "selector": "p:/**/first-child",
+     "valid": true,
+     "matches": "000010"
+    },
+    {
+     "selector": "[title=\"a/**/b\"]",
+     "valid": true,
+     "matches": "000000"
+    },
+    {
+     "selector": "[title=\"a",
+     "valid": true,
+     "matches": "000010"
+    },
+    {
+     "selector": "[title='a",
+     "valid": true,
+     "matches": "000010"
+    },
+    {
+     "selector": "[title=\"a\" i",
+     "valid": true,
+     "matches": "000010"
+    },
+    {
+     "selector": ":nth-child(2n+1",
+     "valid": true,
+     "matches": "110110"
+    },
+    {
+     "selector": ":not(p",
+     "valid": true,
+     "matches": "111101"
+    },
+    {
+     "selector": "p:has(span",
+     "valid": true,
+     "matches": "000000"
+    },
+    {
+     "selector": ":lang(en",
+     "valid": true,
+     "matches": "000000"
+    },
+    {
+     "selector": ":is(p, :where(span",
+     "valid": true,
+     "matches": "000011"
+    },
+    {
+     "selector": ":-webkit-any(div p)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": ":-webkit-any(div > p)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": ":-webkit-any()",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": ":-webkit-any(p, )",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": ":-webkit-any(*)",
+     "valid": true,
+     "matches": "111111"
+    },
+    {
+     "selector": ":-webkit-any(:-webkit-any(p))",
+     "valid": true,
+     "matches": "000010"
+    },
+    {
+     "selector": ":-webkit-any(p, :hover)",
+     "valid": true,
+     "matches": "000010"
+    },
+    {
+     "selector": ":-webkit-any(.a, span)",
+     "valid": true,
+     "matches": "000011"
+    },
+    {
+     "selector": ":-webkit-any(p",
+     "valid": true,
+     "matches": "000010"
+    },
+    {
+     "selector": ":-webkit-any(p:not(.b))",
+     "valid": true,
+     "matches": "000010"
+    },
+    {
+     "selector": ":-webkit-any(:is(div p))",
+     "valid": true,
+     "matches": "000000"
+    },
+    {
+     "selector": ":-WEBKIT-ANY(p)",
+     "valid": true,
+     "matches": "000010"
+    },
+    {
+     "selector": "p:-webkit-any(.a)",
+     "valid": true,
+     "matches": "000010"
+    },
+    {
+     "selector": "div :-webkit-any(p)",
+     "valid": true,
+     "matches": "000010"
+    },
+    {
+     "selector": ":-webkit-any(:not(div p))",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": ":-webkit-any(:not(div))",
+     "valid": true,
+     "matches": "111011"
+    },
+    {
+     "selector": ":-webkit-any(:is(p, div p))",
+     "valid": true,
+     "matches": "000010"
+    },
+    {
+     "selector": ":-webkit-any(:where(div p))",
+     "valid": true,
+     "matches": "000000"
+    },
+    {
+     "selector": ":-webkit-any(:nth-child(1 of div p))",
+     "valid": true,
+     "matches": "000010"
+    },
+    {
+     "selector": ":-webkit-any(:not(:has(p)))",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": ":-webkit-any(p::before)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": ":-webkit-any(p,,a)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": ":not(:-webkit-any(div p))",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": ":is(:-webkit-any(div p), p)",
+     "valid": true,
+     "matches": "000010"
+    },
+    {
+     "selector": ":-webkit-any(:is(:has(p)))",
+     "valid": true,
+     "matches": "000000"
+    },
+    {
+     "selector": ":-webkit-any(*|p)",
+     "valid": true,
+     "matches": "000010"
+    },
+    {
+     "selector": ":-webkit-any([title])",
+     "valid": true,
+     "matches": "000010"
+    },
+    {
+     "selector": ":-webkit-any(p.a#x)",
+     "valid": true,
+     "matches": "000010"
+    },
+    {
+     "selector": ":-webkit-any(:-webkit-any(div p))",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": ":-webkit-any(:not(:is(div p)))",
+     "valid": true,
+     "matches": "111111"
+    },
+    {
+     "selector": ":-webkit-any(:scope)",
+     "valid": true,
+     "matches": "111111"
+    },
+    {
+     "selector": ":-webkit-any(:nth-child(1 of :is(div p)))",
+     "valid": true,
+     "matches": "000000"
+    }
+   ]
+  },
+  {
    "id": "pseudo_edge_cases",
    "html": "<div><p id=x></p><p></p></div>",
    "elements": [
