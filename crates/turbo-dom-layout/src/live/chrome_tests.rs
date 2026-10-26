@@ -92,6 +92,8 @@ fn check_box(
         Some("block") => Some(Display::Block),
         Some("table") => Some(Display::Table),
         Some("inline-table") => Some(Display::InlineTable),
+        Some("flex") => Some(Display::Flex),
+        Some("grid") => Some(Display::Grid),
         _ => None,
     };
     if let (Some(chrome), Some(used)) = (chrome, display) {
@@ -247,9 +249,26 @@ fn assert_matches_chrome((compared, failures): (usize, Vec<String>)) {
     );
 }
 
+/// The control cases of an open bug, each asserted by its own test (`#[ignore]`d until
+/// its fix lands) and held out of [`live_geometry_matches_chrome_156`].
+fn held_out(id: &str) -> bool {
+    AUTO_TABLE_CASES.contains(&id) || inline_flex_grid_case(id)
+}
+
+/// miaskiewicz/turbo-dom#53: `inline-flex` / `inline-grid`.
+fn inline_flex_grid_case(id: &str) -> bool {
+    id.starts_with("inline-flex-") || id.starts_with("inline-grid-")
+}
+
 #[test]
 fn live_geometry_matches_chrome_156() {
-    assert_matches_chrome(compare_cases(|id| !AUTO_TABLE_CASES.contains(&id)));
+    assert_matches_chrome(compare_cases(|id| !held_out(id)));
+}
+
+#[test]
+#[ignore = "turbo-dom#53: fails until the fix"]
+fn inline_flex_and_grid_are_inline_level_like_chrome_156() {
+    assert_matches_chrome(compare_cases(inline_flex_grid_case));
 }
 
 #[test]

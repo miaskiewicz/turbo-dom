@@ -144,6 +144,11 @@ const CASES = [
   { id: "table-auto-max-width-floors-at-content", html: DOC(S("body{margin:0}table{max-width:20px}"), `<table data-cid="table"><tr><td data-cid="td"><div style="width:30px;height:10px"></div></td></tr></table>`) },
   { id: "table-auto-in-flex-item", html: DOC(S("body{margin:0}div{display:flex}"), `<div><table data-cid="table"><tr><td data-cid="td"><div style="width:30px;height:10px"></div></td></tr></table></div>`) },
   { id: "table-auto-nested", html: DOC(S("body{margin:0}"), `<table data-cid="outer"><tr><td data-cid="cell"><table data-cid="inner"><tr><td><div style="width:30px;height:10px"></div></td></tr></table></td></tr></table>`) },
+  // miaskiewicz/turbo-dom#53: `inline-flex` / `inline-grid` are atomic inline-level boxes.
+  { id: "inline-flex-is-inline-level", html: DOC(S("body{margin:0}"), `<div data-cid="d" style="font-size:0"><div data-cid="a" style="display:inline-flex;width:40px;height:20px"></div><div data-cid="b" style="display:inline-flex;width:40px;height:20px"></div></div>`) },
+  { id: "inline-flex-shrinks-to-content", html: DOC(S("body{margin:0}"), `<div data-cid="d" style="font-size:0"><span data-cid="a" style="display:inline-flex"><i style="display:block;width:30px;height:10px"></i><i style="display:block;width:20px;height:10px"></i></span><i data-cid="b" style="display:inline-block;width:10px;height:10px"></i></div>`) },
+  { id: "inline-grid-is-inline-level", html: DOC(S("body{margin:0}"), `<div data-cid="d" style="font-size:0"><div data-cid="a" style="display:inline-grid;width:40px;height:20px"></div><div data-cid="b" style="display:inline-grid;grid-template-columns:15px 25px"><i style="display:block;height:10px"></i><i style="display:block;height:10px"></i></div></div>`) },
+  { id: "inline-flex-grid-blockified", html: DOC(S("body{margin:0}"), `<div data-cid="f" style="display:inline-flex;float:left;width:40px;height:20px"></div><div data-cid="g" style="display:inline-grid;position:absolute;left:100px;top:50px;width:40px;height:20px"></div>`) },
 ];
 
 /** The RGB of a 1x1 PNG screenshot (any filter: a single pixel's filter adds 0). */

@@ -95,9 +95,26 @@ fn auto_table_case(id: &str) -> bool {
     id.starts_with("table-auto-")
 }
 
+/// miaskiewicz/turbo-dom#53: `inline-flex` / `inline-grid` are atomic inline-level boxes.
+fn inline_flex_grid_case(id: &str) -> bool {
+    id.starts_with("inline-flex-") || id.starts_with("inline-grid-")
+}
+
+/// The control cases of an open bug, each asserted by its own test (`#[ignore]`d until
+/// its fix lands) and held out of [`html_documents_lay_out_as_chrome_156`].
+fn held_out(id: &str) -> bool {
+    auto_table_case(id) || inline_flex_grid_case(id)
+}
+
 #[test]
 fn html_documents_lay_out_as_chrome_156() {
-    compare_cases(|id| !auto_table_case(id));
+    compare_cases(|id| !held_out(id));
+}
+
+#[test]
+#[ignore = "turbo-dom#53: fails until the fix"]
+fn inline_flex_and_grid_are_inline_level_like_chrome_156() {
+    compare_cases(inline_flex_grid_case);
 }
 
 #[test]
