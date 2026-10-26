@@ -613,6 +613,22 @@ mod tests {
         );
     }
 
+    /// An unterminated `<link` at the end of the document is dropped (the HTML tokenizer
+    /// discards a tag cut off by EOF, so Chrome loads nothing) — the scan must not panic.
+    #[test]
+    #[ignore = "unterminated <link panic: fails until the fix"]
+    fn an_unterminated_link_at_the_end_is_not_a_stylesheet() {
+        use super::stylesheet_hrefs;
+        assert_eq!(
+            stylesheet_hrefs(r#"<link rel="stylesheet" href="a.css""#),
+            Vec::<String>::new()
+        );
+        assert_eq!(
+            stylesheet_hrefs(r#"<link rel=stylesheet href=a.css><link rel=stylesheet href=b.css"#),
+            ["a.css"]
+        );
+    }
+
     #[test]
     fn rel_is_matched_as_a_whole_attribute_name() {
         use super::stylesheet_hrefs;
