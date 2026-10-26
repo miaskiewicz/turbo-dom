@@ -139,6 +139,35 @@ pub fn layout_with_options(
     galley
 }
 
+/// [`layout_with_options`] for the geometry seam ([`crate::layout_boxes`]): boxes that
+/// paint nothing at any size (a zero-area `clip: rect()`) are laid out too, so their
+/// border boxes are reported (miaskiewicz/turbo-dom#75). Not a render galley.
+#[allow(clippy::trivially_copy_pass_by_ref)] // mirrors `layout_with_options`
+pub(crate) fn layout_geometry(
+    styled: &[StyledNode],
+    cb_width: f32,
+    fonts: &FontRegistry,
+    images: &ImageCtx,
+    options: &LayoutOptions,
+    diags: &mut Diagnostics,
+) -> Fragment {
+    let _cmyk = value::cmyk_scope(options.accept_cmyk);
+    let build = geometry_build_options(options);
+    let (tree, _, _) = boxgen::build_box_tree_with(styled, build);
+    let mut galley = block::layout_tree_with_images(&tree, cb_width, fonts, images, diags);
+    shift_node_ids(&mut galley, options.first_node_id);
+    galley
+}
+
+/// The box-generation options of [`layout_geometry`] (also used to map its box ids).
+#[allow(clippy::trivially_copy_pass_by_ref)] // mirrors the other `&LayoutOptions` readers
+pub(crate) fn geometry_build_options(options: &LayoutOptions) -> boxgen::BuildOptions {
+    boxgen::BuildOptions {
+        keep_zero_area_clips: true,
+        ..build_options(options, false)
+    }
+}
+
 /// [`layout_with_options`] that also records each box's source (the
 /// [`StyledElement::source`](crate::StyledElement::source) /
 /// [`StyledText::source`](crate::style::StyledText::source) it was built from).
@@ -179,6 +208,7 @@ fn build_options(options: &LayoutOptions, record_sources: bool) -> boxgen::Build
     boxgen::BuildOptions {
         atomic_internal_links: options.atomic_internal_links,
         record_sources,
+        keep_zero_area_clips: false,
     }
 }
 

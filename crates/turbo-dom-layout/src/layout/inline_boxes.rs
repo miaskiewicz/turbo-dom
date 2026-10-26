@@ -786,6 +786,7 @@ mod defensive_contract_tests {
             native_transforms: Some(HashMap::new()),
             floats: Vec::new(),
             table_rows: None,
+            dropped_end_margins: std::collections::HashSet::new(),
         };
         let edge = super::super::inline::PlacedInlineEdge {
             edge: InlineEdge {
