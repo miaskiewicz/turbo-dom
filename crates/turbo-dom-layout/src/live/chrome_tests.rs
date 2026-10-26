@@ -252,7 +252,13 @@ fn assert_matches_chrome((compared, failures): (usize, Vec<String>)) {
 /// The control cases of an open bug, each asserted by its own test (`#[ignore]`d until
 /// its fix lands) and held out of [`live_geometry_matches_chrome_156`].
 fn held_out(id: &str) -> bool {
-    AUTO_TABLE_CASES.contains(&id) || inline_flex_grid_case(id) || abs_auto_width_case(id)
+    let groups: [fn(&str) -> bool; 4] = [
+        |id| AUTO_TABLE_CASES.contains(&id),
+        inline_flex_grid_case,
+        abs_auto_width_case,
+        percent_column_case,
+    ];
+    groups.iter().any(|group| group(id))
 }
 
 /// miaskiewicz/turbo-dom#53: `inline-flex` / `inline-grid`.
@@ -289,4 +295,15 @@ fn abs_auto_width_case(id: &str) -> bool {
 #[test]
 fn absolutely_positioned_auto_widths_shrink_to_fit_like_chrome_156() {
     assert_matches_chrome(compare_cases(abs_auto_width_case));
+}
+
+/// miaskiewicz/turbo-dom#50: percentage column widths in the automatic table layout.
+fn percent_column_case(id: &str) -> bool {
+    id.starts_with("table-percent-")
+}
+
+#[test]
+#[ignore = "turbo-dom#50: fails until the fix"]
+fn percentage_columns_size_auto_tables_like_chrome_156() {
+    assert_matches_chrome(compare_cases(percent_column_case));
 }

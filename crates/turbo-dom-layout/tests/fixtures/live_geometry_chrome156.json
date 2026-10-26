@@ -2480,6 +2480,194 @@
      "position": "absolute"
     }
    ]
+  },
+  {
+   "id": "table-percent-column-half",
+   "html": "<!doctype html><style>body{margin:0}</style><table data-cid=\"t\"><tr><td data-cid=\"a\" style=\"width:50%\"><div style=\"width:30px;height:10px\"></div></td><td data-cid=\"b\"><div style=\"width:20px;height:10px\"></div></td></tr></table>",
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "t",
+     "x": 0,
+     "y": 0,
+     "width": 70,
+     "height": 16,
+     "display": "table",
+     "position": "static"
+    },
+    {
+     "cid": "a",
+     "x": 2,
+     "y": 2,
+     "width": 32,
+     "height": 12,
+     "display": "table-cell",
+     "position": "static"
+    },
+    {
+     "cid": "b",
+     "x": 36,
+     "y": 2,
+     "width": 32,
+     "height": 12,
+     "display": "table-cell",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "table-percent-column-full",
+   "html": "<!doctype html><style>body{margin:0}</style><table data-cid=\"t\"><tr><td data-cid=\"a\" style=\"width:100%\"><div style=\"width:30px;height:10px\"></div></td><td data-cid=\"b\"><div style=\"width:20px;height:10px\"></div></td></tr></table>",
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "t",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 16,
+     "display": "table",
+     "position": "static"
+    },
+    {
+     "cid": "a",
+     "x": 2,
+     "y": 2,
+     "width": 1252,
+     "height": 12,
+     "display": "table-cell",
+     "position": "static"
+    },
+    {
+     "cid": "b",
+     "x": 1256,
+     "y": 2,
+     "width": 22,
+     "height": 12,
+     "display": "table-cell",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "table-percent-columns-two-quarters",
+   "html": "<!doctype html><style>body{margin:0}</style><table data-cid=\"t\"><tr><td data-cid=\"a\" style=\"width:25%\"><div style=\"width:30px;height:10px\"></div></td><td data-cid=\"b\" style=\"width:25%\"><div style=\"width:20px;height:10px\"></div></td><td data-cid=\"c\"><div style=\"width:20px;height:10px\"></div></td></tr></table>",
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "t",
+     "x": 0,
+     "y": 0,
+     "width": 136,
+     "height": 16,
+     "display": "table",
+     "position": "static"
+    },
+    {
+     "cid": "a",
+     "x": 2,
+     "y": 2,
+     "width": 32,
+     "height": 12,
+     "display": "table-cell",
+     "position": "static"
+    },
+    {
+     "cid": "b",
+     "x": 36,
+     "y": 2,
+     "width": 32,
+     "height": 12,
+     "display": "table-cell",
+     "position": "static"
+    },
+    {
+     "cid": "c",
+     "x": 70,
+     "y": 2,
+     "width": 64,
+     "height": 12,
+     "display": "table-cell",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "table-percent-column-explicit-table-width",
+   "html": "<!doctype html><style>body{margin:0}table{width:400px}</style><table data-cid=\"t\"><tr><td data-cid=\"a\" style=\"width:25%\"><div style=\"width:30px;height:10px\"></div></td><td data-cid=\"b\"><div style=\"width:20px;height:10px\"></div></td><td data-cid=\"c\"><div style=\"width:20px;height:10px\"></div></td></tr></table>",
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "t",
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 16,
+     "display": "table",
+     "position": "static"
+    },
+    {
+     "cid": "a",
+     "x": 2,
+     "y": 2,
+     "width": 98,
+     "height": 12,
+     "display": "table-cell",
+     "position": "static"
+    },
+    {
+     "cid": "b",
+     "x": 102,
+     "y": 2,
+     "width": 147,
+     "height": 12,
+     "display": "table-cell",
+     "position": "static"
+    },
+    {
+     "cid": "c",
+     "x": 251,
+     "y": 2,
+     "width": 147,
+     "height": 12,
+     "display": "table-cell",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "table-percent-column-attribute",
+   "html": "<!doctype html><style>body{margin:0}</style><table data-cid=\"t\" width=\"300\"><tr><td data-cid=\"a\" width=\"60%\"><div style=\"width:10px;height:10px\"></div></td><td data-cid=\"b\"><div style=\"width:20px;height:10px\"></div></td></tr></table>",
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "t",
+     "x": 0,
+     "y": 0,
+     "width": 300,
+     "height": 16,
+     "display": "table",
+     "position": "static"
+    },
+    {
+     "cid": "a",
+     "x": 2,
+     "y": 2,
+     "width": 176.390625,
+     "height": 12,
+     "display": "table-cell",
+     "position": "static"
+    },
+    {
+     "cid": "b",
+     "x": 180.390625,
+     "y": 2,
+     "width": 117.609375,
+     "height": 12,
+     "display": "table-cell",
+     "position": "static"
+    }
+   ]
   }
  ]
 }

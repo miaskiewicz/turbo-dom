@@ -235,6 +235,13 @@ const CASES = [
   { id: "fixed-auto-width-shrinks", html: DOC("body{margin:0}", `<div data-cid="f" style="position:fixed;right:10px;top:10px"><div style="width:25px;height:15px"></div></div>`) },
   { id: "abs-auto-width-margins", html: DOC("body{margin:0}", `<div data-cid="a" style="position:absolute;left:0;top:0;margin:0 4px 0 6px"><div style="width:30px;height:10px"></div></div><div data-cid="b" style="position:absolute;right:0;top:20px;margin:0 4px 0 6px"><div style="width:30px;height:10px"></div></div>`) },
   { id: "abs-auto-width-both-insets", html: DOC("body{margin:0}", `<div style="position:relative;width:300px;height:40px"><div data-cid="a" style="position:absolute;left:10px;right:20px;top:0;padding:0 3px"><div style="width:30px;height:10px"></div></div><div data-cid="b" style="position:absolute;left:10px;right:20px;top:20px;margin:0 5px"><div style="width:30px;height:10px"></div></div></div>`) },
+  // turbo-dom#50: a percentage cell width makes its column that share of the table, and
+  // an auto table's max-content grows so it can (unbounded at >= 100% beside other content).
+  { id: "table-percent-column-half", html: DOC("body{margin:0}", `<table data-cid="t"><tr><td data-cid="a" style="width:50%"><div style="width:30px;height:10px"></div></td><td data-cid="b"><div style="width:20px;height:10px"></div></td></tr></table>`) },
+  { id: "table-percent-column-full", html: DOC("body{margin:0}", `<table data-cid="t"><tr><td data-cid="a" style="width:100%"><div style="width:30px;height:10px"></div></td><td data-cid="b"><div style="width:20px;height:10px"></div></td></tr></table>`) },
+  { id: "table-percent-columns-two-quarters", html: DOC("body{margin:0}", `<table data-cid="t"><tr><td data-cid="a" style="width:25%"><div style="width:30px;height:10px"></div></td><td data-cid="b" style="width:25%"><div style="width:20px;height:10px"></div></td><td data-cid="c"><div style="width:20px;height:10px"></div></td></tr></table>`) },
+  { id: "table-percent-column-explicit-table-width", html: DOC("body{margin:0}table{width:400px}", `<table data-cid="t"><tr><td data-cid="a" style="width:25%"><div style="width:30px;height:10px"></div></td><td data-cid="b"><div style="width:20px;height:10px"></div></td><td data-cid="c"><div style="width:20px;height:10px"></div></td></tr></table>`) },
+  { id: "table-percent-column-attribute", html: DOC("body{margin:0}", `<table data-cid="t" width="300"><tr><td data-cid="a" width="60%"><div style="width:10px;height:10px"></div></td><td data-cid="b"><div style="width:20px;height:10px"></div></td></tr></table>`) },
 ];
 
 const browser = await chromium.launch({ executablePath: chromePath, headless: true });
