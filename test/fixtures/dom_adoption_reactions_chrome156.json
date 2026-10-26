@@ -2,7 +2,7 @@
   "browser": "Chrome/156.0.8078.4",
   "v8": "15.6.75",
   "casesSha256": "6390d35780d5d7b9012578c76f9409a521ab1d3837b428e045089c5611fc3f07",
-  "probeSha256": "31d70dd541687e9f73f8444d2fd32cd737b691fb4244055fa2e730db7a462893",
+  "probeSha256": "3634eb4e32db11fcef8882b33b153006adb2299f19ed930167084a0a98dbccde",
   "collectorSha256": "7174415de76a891d657bbc3e66952c7b91356030e8fcd9d0ac4f52603d0c3952",
   "flags": [
     "--headless=new",
@@ -319,6 +319,19 @@
           "html"
         ],
         "foreignVoid": "<br>x</br>",
+        "contentProperty": [
+          "",
+          "width=device-width",
+          "width=device-width",
+          "undefined",
+          5,
+          true,
+          "undefined"
+        ],
+        "shadowAdopt": [
+          true,
+          true
+        ],
         "log": [
           [
             "--",

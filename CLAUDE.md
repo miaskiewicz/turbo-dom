@@ -195,7 +195,13 @@ package or publish workflow.
   default, so `<noscript>` content is parsed as markup, not rawtext. Don't flip it.
 - **`<template>` content** is NOT in `children` — html5ever puts it in `template_contents`.
   `walk()` appends it as a synthetic `nodeType 11` `content` fragment node. html5lib prints it
-  as the literal word `content`.
+  as the literal word `content`. In the JS runtime that fragment (and every template's
+  contents — created lazily by the `content` accessor) belongs to the document's inert
+  "template contents owner document" (`Document.__templateDocument()`: no window, no custom
+  element registry, so contents and their clones never upgrade). It shares the document's
+  buffer, so contents move to and from the document by switching owners (`rehome`), still
+  lazy; `template.innerHTML` parses into the contents, `cloneNode(true)` clones them, and
+  `importNode` clones into the importing document (`__clone(doc, deep)`; turbo-dom#29 item 3).
 - **Foreign content:** elements carry `namespace` ("svg"/"math", else ""); foreign attrs carry
   `prefix` ("xlink" etc). The serializer renders `<svg svg>` and `xlink href="…"`.
 - **Fragment context:** `parseFragment(html, context)` where context is `"td"` or namespaced

@@ -247,6 +247,22 @@
     const wrap = document.createElement('div');
     wrap.append(foreign);
     out.foreignVoid = wrap.innerHTML;
+    // <meta>.content reflects the attribute; other elements have no `content` property
+    const meta = document.createElement('meta');
+    const metaBefore = meta.content;
+    meta.content = 'width=device-width';
+    const plain = document.createElement('div');
+    const plainBefore = typeof plain.content;
+    plain.content = 5;
+    out.contentProperty = [metaBefore, meta.getAttribute('content'), meta.content, plainBefore, plain.content,
+      Object.keys(plain).includes('content'), typeof document.createElementNS(SVG, 'svg').content];
+    // adoption reaches shadow-including descendants
+    const shadowHost = other.createElement('div');
+    const shadowRoot = shadowHost.attachShadow({ mode: 'open' });
+    shadowRoot.innerHTML = '<p>x</p>';
+    document.body.append(shadowHost);
+    out.shadowAdopt = [shadowRoot.ownerDocument === document, shadowRoot.firstChild.ownerDocument === document];
+    shadowHost.remove();
   });
   mark('end');
   host.textContent = '';

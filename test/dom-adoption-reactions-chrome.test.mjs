@@ -61,8 +61,9 @@ const ITEMS = {
   3: { sections: ['template'], keys: ['inert', 'contentClone', 'upgradeInert', 'detached', 'connected', 'imported', 'templateInner', 'intoContent', 'templateClone', 'moveContent'] },
   4: { sections: ['reactions', 'crossDocument'], keys: ['cloneDeep', 'log'] },
   // pre-existing bugs found on the way: turbo-dom#33 (void serialization), #34 (insert before
-  // itself), #35 (doctype clones)
-  extra: { sections: ['extra'], keys: ['foreignVoid', 'insertSelf', 'doctypeClone'] },
+  // itself), #35 (doctype clones), #37 (<meta>.content), #38 (shadow roots adopt); #36 (the
+  // template element model) is item 3's `inert` / `templateInner` / `templateClone`
+  extra: { sections: ['extra'], keys: ['foreignVoid', 'insertSelf', 'doctypeClone', 'contentProperty', 'shadowAdopt'] },
 };
 function check(item) {
   const { expected, actual } = results();
@@ -73,4 +74,5 @@ function check(item) {
 
 test('turbo-dom#29 item 1: createElementNS in any namespace matches Chrome 156', () => check(1));
 test('turbo-dom#29 item 2: insertion across documents adopts like Chrome 156', () => check(2));
-test('turbo-dom#33/#34/#35: void serialization, insert before itself, doctype clones match Chrome 156', () => check('extra'));
+test('turbo-dom#29 item 3: template contents are inert until inserted, like Chrome 156', () => check(3));
+test('turbo-dom#33-#38: serialization, insert before itself, doctype clones, meta.content, shadow adoption match Chrome 156', () => check('extra'));

@@ -306,12 +306,9 @@ export class Node extends EventTarget {
     if (a === -1 || b === -1) return 1;
     return a < b ? 4 : 2;
   }
-  cloneNode(deep = false) {
-    // base fallback; Element/Text/Comment override
-    const n = new this.constructor(this.ownerDocument);
-    if (deep) for (const c of this.__children()) n.appendChild(c.cloneNode(true));
-    return n;
-  }
+  // cloneNode = DOM "clone a node" into the node's own document; importNode clones into
+  // another one. Every node type implements `__clone(document, deep)`.
+  cloneNode(deep = false) { return this.__clone(this.ownerDocument, !!deep); }
 
   get textContent() {
     // <style> whose CSSOM sheet received insertRule() (emotion/styled-components
@@ -435,13 +432,13 @@ export class Text extends CharacterData {
     if (this.parentNode) this.parentNode.insertBefore(node, this.nextSibling);
     return node;
   }
-  cloneNode() { return new Text(this.ownerDocument, this._data); }
+  __clone(doc) { return new Text(doc, this._data); }
 }
 
 export class Comment extends CharacterData {
   get nodeType() { return COMMENT_NODE; }
   get nodeName() { return '#comment'; }
-  cloneNode() { return new Comment(this.ownerDocument, this._data); }
+  __clone(doc) { return new Comment(doc, this._data); }
 }
 
 export class DocumentType extends Node {
@@ -451,7 +448,7 @@ export class DocumentType extends Node {
   }
   get nodeType() { return DOCUMENT_TYPE_NODE; }
   get nodeName() { return this.name; }
-  cloneNode() { return new DocumentType(this.ownerDocument, this.name, this.publicId, this.systemId); } // turbo-dom#35
+  __clone(doc) { return new DocumentType(doc, this.name, this.publicId, this.systemId); } // turbo-dom#35
 }
 
 // ------------------------------------------------------------ Element ----
@@ -489,7 +486,7 @@ export class Element extends Node {
     this.__ns = namespace;            // '', 'svg', 'math'
     this.__attrs = undefined;         // lazily built (buffer or []) on first attr touch
     this.__attrIdx = -1;              // buffer index for lazy attr inflation
-    this.content = null;              // <template> content fragment
+    this.__content = undefined;       // <template> contents (a fragment in the inert document), lazy
     this.shadowRoot = null;           // open shadow root, if attached
     // Predeclare the hot lazy fields (left at their "absent" sentinel) so every
     // Element shares ONE hidden class. Without this, fields added on demand in
@@ -505,6 +502,23 @@ export class Element extends Node {
   }
 
   get nodeType() { return ELEMENT_NODE; }
+  // HTML <template> contents: a fragment owned by the document's inert "template contents
+  // owner document" (no browsing context, no custom element registry), created on first
+  // read. <meta>'s `content` reflects its attribute; no other element has the property.
+  get content() {
+    if (this.__ns === '') {
+      if (this.localName === 'template') return this.__content ?? (this.__content = new DocumentFragment(this.ownerDocument.__templateDocument()));
+      if (this.localName === 'meta') return this.getAttribute('content') ?? '';
+    }
+    return undefined;
+  }
+  set content(value) {
+    if (this.__ns === '') {
+      if (this.localName === 'meta') { this.setAttribute('content', value); return; }
+      if (this.localName === 'template') return; // read-only
+    }
+    Object.defineProperty(this, 'content', { value, writable: true, enumerable: true, configurable: true });
+  }
   // the qualified name, uppercased for HTML elements (an HTML document)
   get tagName() {
     const p = this.__prefix, q = p === undefined ? this.localName : `${p}:${this.localName}`;
@@ -833,16 +847,19 @@ export class Element extends Node {
     // fragment context: the element itself; another namespace's element parses like <body>
     const ns = this.__ns;
     const frag = getParser().parseFragment(String(html), ns === '' ? this.localName : ns === 'svg' || ns === 'math' ? `${ns} ${this.localName}` : '');
-    this.__detachKids();
-    this.__kids = [];
-    this.__touch();
+    // a <template>'s markup replaces its contents (in the inert document), not its children
+    const target = ns === '' && this.localName === 'template' ? this.content : this;
+    const doc = target.ownerDocument;
+    target.__detachKids();
+    const kids = target.__kids = [];
+    target.__touch();
     for (const rawChild of frag.children) {
       if (rawChild.nodeType === DOCUMENT_FRAGMENT_NODE && rawChild.name === 'content') continue;
-      const child = this.ownerDocument.__inflateNested(rawChild);
-      child.parentNode = this;
-      this.__kids.push(child);
+      const child = doc.__inflateNested(rawChild);
+      child.parentNode = target;
+      kids.push(child);
     }
-    if (this.ownerDocument.__ceRegistry !== undefined) parsedFragment(this.__kids);
+    if (doc.__ceRegistry !== undefined) parsedFragment(kids);
   }
   get outerHTML() { return serializeOuter(this); }
   get innerText() { return this.textContent; }
@@ -862,18 +879,23 @@ export class Element extends Node {
     }
   }
 
-  cloneNode(deep = false) {
-    const el = newElement(this.ownerDocument, this.localName, this.__ns);
+  __clone(doc, deep) {
+    const el = newElement(doc, this.localName, this.__ns);
     if (this.__prefix !== undefined) el.__prefix = this.__prefix;
     el.__attrs = (this.__attrs ?? (this.__attrs = this.__buildAttrs())).map((a) => ({ ...a }));
     // custom element state travels (an `is` value / custom name -> "undefined", upgraded
-    // when its definition exists); plain HTML elements and foreign ones skip the call
+    // when the clone's document has its definition — never in a template's inert
+    // document); plain HTML elements and foreign ones skip the call
     if (this.__ns === '' && (this.__ce !== undefined || this.__ceIs !== undefined || this.__attrIdx >= 0 || this.localName.indexOf('-') !== -1)) clonedElement(this, el);
     if (deep) {
       // build the cloned child array directly — the clone is detached, so per-child
       // appendChild's notifyMutation (version bump) + reparent check are pure waste.
-      const src = this.__children(), od = el.ownerDocument, kids = el.__kids = new Array(src.length);
-      for (let i = 0; i < src.length; i++) { const cl = src[i].cloneNode(true); cl.parentNode = el; cl.ownerDocument = od; kids[i] = cl; }
+      el.__kids = cloneKids(this, el, doc);
+      // HTML template "cloning steps": the contents are cloned into the copy's contents
+      if (this.__ns === '' && this.localName === 'template') {
+        const content = el.content;
+        content.__kids = cloneKids(this.content, content, content.ownerDocument);
+      }
     }
     return el;
   }
@@ -1141,12 +1163,9 @@ export class DocumentFragment extends Node {
   get lastElementChild() { return this.__children().findLast((n) => n.nodeType === ELEMENT_NODE) ?? null; }
   get childElementCount() { return this.__children().filter((n) => n.nodeType === ELEMENT_NODE).length; }
   append(...nodes) { for (const n of nodes) this.appendChild(toNode(this.ownerDocument, n)); }
-  cloneNode(deep = false) {
-    const f = new DocumentFragment(this.ownerDocument);
-    if (deep) { // direct __kids build — detached clone, per-child appendChild bookkeeping is waste (see Element.cloneNode)
-      const src = this.__children(), od = f.ownerDocument, kids = f.__kids = new Array(src.length);
-      for (let i = 0; i < src.length; i++) { const cl = src[i].cloneNode(true); cl.parentNode = f; cl.ownerDocument = od; kids[i] = cl; }
-    }
+  __clone(doc, deep) {
+    const f = new DocumentFragment(doc);
+    if (deep) f.__kids = cloneKids(this, f, doc); // direct __kids build (see Element.__clone)
     return f;
   }
 }
@@ -1210,6 +1229,13 @@ export class ShadowRoot extends DocumentFragment {
 
 // ------------------------------------------------------------ helpers ----
 function toNode(doc, n) { return typeof n === 'string' ? doc.createTextNode(n) : n; }
+
+// Deep clones of `source`'s children, created in `doc` and parented to `parent`.
+function cloneKids(source, parent, doc) {
+  const src = source.__children(), kids = new Array(src.length);
+  for (let i = 0; i < src.length; i++) { const cl = src[i].__clone(doc, true); cl.parentNode = parent; kids[i] = cl; }
+  return kids;
+}
 
 // First <slot> within a shadow tree whose name matches (default slot: name '').
 function findSlot(shadowRoot, name) {
@@ -1614,6 +1640,8 @@ function makeDataset(el) {
 function adoptInto(node, doc) {
   if (node.ownerDocument === doc) return;
   const old = node.ownerDocument;
+  // a document and its inert template document share one buffer: keep the lazy links
+  if (old.__buf !== null && old.__buf === doc.__buf) { rehome(node, doc); return; }
   if (node.__idx >= 0) old.__cache[node.__idx] = undefined; // the old document no longer holds it
   if (node.nodeType === ELEMENT_NODE) {
     if (node.__attrs === undefined && node.__attrIdx >= 0) node.__attrs = node.__buildAttrs();
@@ -1624,6 +1652,15 @@ function adoptInto(node, doc) {
   node.__idx = -1;
   node.ownerDocument = doc;
   for (const c of kids) adoptInto(c, doc);
+  if (node.__shadow) adoptInto(node.__shadow, doc); // shadow-including descendants
+}
+// Same buffer: switch the owner of the inflated nodes; the rest inflate in `doc` later
+// (a node's children only exist once its __kids is built, so none is left behind).
+function rehome(node, doc) {
+  node.ownerDocument = doc;
+  const kids = node.__kids;
+  if (kids) for (let i = 0; i < kids.length; i++) rehome(kids[i], doc);
+  if (node.__shadow) rehome(node.__shadow, doc);
 }
 
 // DOM "adopt" (after the node left its old parent): re-home the subtree, bump the old
@@ -1719,9 +1756,30 @@ export class Document extends Node {
     this.__mo = null;             // registered MutationObservers (lazy — most files never observe())
     this.__moPending = null;      // observers with queued records awaiting microtask
     this.__ceRegistry = undefined; // the window's custom element registry, once touched (custom-elements.mjs)
+    this.__inert = undefined;     // the template contents owner document (lazy), or true on that document
+  }
+  // HTML "appropriate template contents owner document": one inert document per document
+  // (itself for an inert one) — no browsing context and no registry, so template contents
+  // and their clones never upgrade; it shares the buffer, so buffer-backed contents inflate
+  // lazily from it and move to and from the document without being materialized.
+  __templateDocument() {
+    const inert = this.__inert;
+    if (inert === true) return this;
+    if (inert !== undefined) return inert;
+    const doc = new Document();
+    doc.__buf = this.__buf;
+    doc.__inert = true;
+    doc.__version = ++VERSION;
+    return (this.__inert = doc);
   }
   get nodeType() { return DOCUMENT_NODE; }
   get nodeName() { return '#document'; }
+  // a document clone is a new document; its children are cloned into it
+  __clone(_doc, deep) {
+    const copy = new Document();
+    if (deep) copy.__kids = cloneKids(this, copy, copy);
+    return copy;
+  }
 
   // ---- MutationObserver registry ----
   __moRegister(obs, target, options) {
@@ -1762,7 +1820,7 @@ export class Document extends Node {
         if (tag === 'template') {
           for (let c = buf.firstChild(idx); c !== -1; c = buf.nextSib(c)) {
             if (buf.nodeType(c) === DOCUMENT_FRAGMENT_NODE && buf.tagName(c) === 'content') {
-              node.content = this.__nodeAt(c);
+              node.__content = this.__templateDocument().__nodeAt(c); // owned by the inert document
               break;
             }
           }
@@ -1793,7 +1851,7 @@ export class Document extends Node {
         if (node.__ns === '' && raw.attrs.length !== 0) parsedIsAttribute(node);
         if (raw.name === 'template') {
           const contentRaw = raw.children.find((c) => c.nodeType === DOCUMENT_FRAGMENT_NODE && c.name === 'content');
-          if (contentRaw) { node.content = this.__inflateNested(contentRaw); }
+          if (contentRaw) node.__content = this.__templateDocument().__inflateNested(contentRaw);
         }
         break;
       case TEXT_NODE: node = new Text(this, raw.value); break;
@@ -1828,6 +1886,7 @@ export class Document extends Node {
     this.__tagCache = null;
     this.__classCache = null;
     this.__ceRegistry = undefined; // the window's globals (customElements) reset with the document
+    this.__inert = undefined;      // a new buffer gets a new template contents owner document
   }
 
   get documentElement() { return this.__children().find((n) => n.nodeType === ELEMENT_NODE && n.localName === 'html') ?? null; }
@@ -1898,7 +1957,8 @@ export class Document extends Node {
   createRange() { return new Range(this); }
   createAttribute(name) { return { name, value: '', ownerElement: null }; }
   getSelection() { if (!this.__selection) this.__selection = makeSelection(this); return this.__selection; }
-  importNode(node, deep) { return node.cloneNode(deep); }
+  // a clone created in THIS document (custom elements upgrade here, not in the source's)
+  importNode(node, deep) { return node.__clone(this, !!deep); }
   adoptNode(node) {
     if (node.parentNode) node.parentNode.removeChild(node);
     if (node.ownerDocument !== this) adopt(node, this);

@@ -34,6 +34,18 @@ at the time); this file reconstructs them from history.
   child before inserting the new one (MutationObserver records in that order;
   turbo-dom#34). `DocumentType.cloneNode()` keeps `name` / `publicId` / `systemId`
   (turbo-dom#35).
+- `<template>` contents live in the document's inert template contents owner document
+  (`content.ownerDocument !== document`, no `defaultView`, no custom element registry),
+  so `template.content.cloneNode(true)` no longer upgrades custom elements right away:
+  they upgrade once inserted into the document (`document.importNode(content, true)`
+  clones into the document and upgrades there). Every template now has its contents
+  (`document.createElement('template').content` was `null`), `template.innerHTML` parses
+  into them (it replaced the template's children), and `cloneNode(true)` clones them
+  (turbo-dom#36). Moving parsed contents in and out of the document stays lazy (the
+  inert document shares the buffer). `element.content` is an accessor: `<meta>` reflects
+  its attribute (it was `null`; turbo-dom#37), other elements have no such property.
+  Adoption reaches shadow roots (a shadow host's root stayed in the old document;
+  turbo-dom#38), and `document.cloneNode(true)` clones the children into the new document.
   Control: `test/fixtures/dom_adoption_reactions_chrome156.json` (probe + cases beside it,
   recorded with `crates/turbo-dom-browser-env/scripts/select-element-chrome-control.mjs`),
   asserted by `test/dom-adoption-reactions-chrome.test.mjs` (the one deviation: the runtime's
