@@ -1394,6 +1394,34 @@ fn native_realm_dom_exception(
         rv.set(constructor);
     }
 }
+/// html_image.js's URL resolver (miaskiewicz/turbo-dom#71: srcset candidates and
+/// `currentSrc`): `url` (argument 1) parsed against the base URL of the document of `node`
+/// (argument 0) — its first connected `<base href>` resolved against the document URL, else
+/// the document URL — or `url` unchanged when it does not parse.
+fn native_resolve_document_url(
+    scope: &mut v8::PinScope,
+    args: v8::FunctionCallbackArguments,
+    mut rv: v8::ReturnValue,
+) {
+    let Ok(node) = v8::Local::<v8::Object>::try_from(args.get(0)) else {
+        return;
+    };
+    let raw = args.get(1).to_rust_string_lossy(scope);
+    let base_href = form_submission_base_href(scope, node);
+    let _dom = DomScope::for_object(scope, node);
+    let value = url::Url::parse(&event_handlers::document_url())
+        .ok()
+        .map(|document| {
+            base_href
+                .and_then(|base| document.join(&base).ok())
+                .unwrap_or(document)
+        })
+        .and_then(|base| base.join(&raw).ok())
+        .map_or(raw, |url| url.to_string());
+    if let Some(value) = v8::String::new(scope, &value) {
+        rv.set(value.into());
+    }
+}
 fn dom_exception_key<'s>(scope: &mut v8::PinScope<'s, '_>) -> v8::Local<'s, v8::Private> {
     let name = v8::String::new(scope, "turbo.native.DOMException").unwrap();
     v8::Private::for_api(scope, Some(name))
@@ -7262,6 +7290,12 @@ fn install_with_tree(scope: &mut v8::PinScope, mut tree: Tree) {
     run_js(scope, include_str!("element_relations.js"));
     // HTMLImageElement image-state accessors + the document record's `imageHost` (needs the
     // collection-record helpers, which document_basics.js retires).
+    bind_method(
+        scope,
+        global,
+        "__nativeResolveDocumentURL",
+        native_resolve_document_url,
+    );
     run_js(scope, include_str!("html_image.js"));
     run_js(scope, include_str!("document_basics.js"));
     document_legacy::install(scope);

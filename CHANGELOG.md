@@ -33,6 +33,17 @@ at the time); this file reconstructs them from history.
   `new g.DOMException(…)` sites from following a page script's reassignment of
   `globalThis.DOMException` (miaskiewicz/turbo-dom#72, filed here). Control:
   `src/dom_exception_realm_chrome156.json`.
+- turbo-dom-browser-env: `srcset` / `sizes` and `<picture>` source selection
+  (miaskiewicz/turbo-dom#71). HTMLImageElement `srcset` / `sizes` and HTMLSourceElement
+  `srcset` / `sizes` / `width` / `height` were missing, and source `media` / `type` turned
+  `null` into `""`. They now reflect like Chrome. The binding implements Chrome 156's source
+  selection: `<picture>` sources by `media` and `type`, `x` and `w` descriptors with the HTML
+  srcset parser, and `sizes` with media conditions and `calc()`. It is exposed to hosts as
+  `imageHost.selectSource(img, environment)` → `{url, density}` and
+  `imageHost.naturalSize(w, h, density)`. Without host state `currentSrc` is the selected
+  URL, which is Chrome's answer when nothing loads (before: the `src` attribute). The
+  `src`-only `currentSrc` is now parsed against the document base URL by a native resolver
+  even without an embedder URL global. Control: `src/html_image_srcset_chrome156.json`.
 - turbo-dom: a parser-created `is=` element stayed "undefined" (`:not(:defined)`) only
   until native storage collection (miaskiewicz/turbo-surf#41). `Tree::collect_unreachable`
   re-materializes the retained parsed nodes as new ones, and their creation-time state was

@@ -124,6 +124,13 @@ pub const CUSTOM_ELEMENTS_RETIRED_CHROME155_JSON: &str =
     include_str!("custom_elements_retired_chrome155.json");
 /// `src/custom_elements_retired_probe.js`.
 pub const CUSTOM_ELEMENTS_RETIRED_PROBE_JS: &str = include_str!("custom_elements_retired_probe.js");
+/// `src/dom_exception_realm_cases.json` (turbo-surf#42: the page the realm-DOMException probe runs on).
+pub const DOM_EXCEPTION_REALM_CASES_JSON: &[u8] = include_bytes!("dom_exception_realm_cases.json");
+/// `src/dom_exception_realm_chrome156.json`.
+pub const DOM_EXCEPTION_REALM_CHROME156_JSON: &str =
+    include_str!("dom_exception_realm_chrome156.json");
+/// `src/dom_exception_realm_probe.js` (binding-raised DOMExceptions are the realm's interface; async).
+pub const DOM_EXCEPTION_REALM_PROBE_JS: &str = include_str!("dom_exception_realm_probe.js");
 /// `src/dom_implementation_chrome155.json`.
 pub const DOM_IMPLEMENTATION_CHROME155_JSON: &str =
     include_str!("dom_implementation_chrome155.json");
@@ -169,6 +176,14 @@ pub const HTML_IMAGE_CASES_JSON: &[u8] = include_bytes!("html_image_cases.json")
 pub const HTML_IMAGE_CHROME156_JSON: &str = include_str!("html_image_chrome156.json");
 /// `src/html_image_probe.js` (HTMLImageElement image-state and width / height / x / y accessors; async).
 pub const HTML_IMAGE_PROBE_JS: &str = include_str!("html_image_probe.js");
+/// `src/html_image_srcset_cases.json` (turbo-dom#71: the srcset / sizes / `<picture>` page,
+/// viewport 1024x768; image URLs `/img/<W>x<H>/<name>.png`).
+pub const HTML_IMAGE_SRCSET_CASES_JSON: &[u8] = include_bytes!("html_image_srcset_cases.json");
+/// `src/html_image_srcset_chrome156.json` (`load1` / `load2`: DPR 1 / 2, every image loads;
+/// `none1`: nothing loads).
+pub const HTML_IMAGE_SRCSET_CHROME156_JSON: &str = include_str!("html_image_srcset_chrome156.json");
+/// `src/html_image_srcset_probe.js` (run after the load event).
+pub const HTML_IMAGE_SRCSET_PROBE_JS: &str = include_str!("html_image_srcset_probe.js");
 /// `src/key_order_chrome156.json`.
 pub const KEY_ORDER_CHROME156_JSON: &str = include_str!("key_order_chrome156.json");
 /// `src/key_order_probe.js`.
@@ -364,6 +379,18 @@ pub const FILES: &[(&str, &[u8])] = &[
         CUSTOM_ELEMENTS_RETIRED_PROBE_JS.as_bytes(),
     ),
     (
+        "dom_exception_realm_cases.json",
+        DOM_EXCEPTION_REALM_CASES_JSON,
+    ),
+    (
+        "dom_exception_realm_chrome156.json",
+        DOM_EXCEPTION_REALM_CHROME156_JSON.as_bytes(),
+    ),
+    (
+        "dom_exception_realm_probe.js",
+        DOM_EXCEPTION_REALM_PROBE_JS.as_bytes(),
+    ),
+    (
         "dom_implementation_chrome155.json",
         DOM_IMPLEMENTATION_CHROME155_JSON.as_bytes(),
     ),
@@ -427,6 +454,15 @@ pub const FILES: &[(&str, &[u8])] = &[
         HTML_IMAGE_CHROME156_JSON.as_bytes(),
     ),
     ("html_image_probe.js", HTML_IMAGE_PROBE_JS.as_bytes()),
+    ("html_image_srcset_cases.json", HTML_IMAGE_SRCSET_CASES_JSON),
+    (
+        "html_image_srcset_chrome156.json",
+        HTML_IMAGE_SRCSET_CHROME156_JSON.as_bytes(),
+    ),
+    (
+        "html_image_srcset_probe.js",
+        HTML_IMAGE_SRCSET_PROBE_JS.as_bytes(),
+    ),
     (
         "key_order_chrome156.json",
         KEY_ORDER_CHROME156_JSON.as_bytes(),

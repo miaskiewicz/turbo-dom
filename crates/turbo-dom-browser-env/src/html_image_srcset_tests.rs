@@ -74,7 +74,16 @@ fn probe(setup: &str) -> serde_json::Value {
         &format!("JSON.stringify({})", PROBE.trim().trim_end_matches(';')),
     );
     reset();
-    serde_json::from_str(&result).unwrap()
+    let mut result: serde_json::Value = serde_json::from_str(&result).unwrap();
+    // The probe strips `location.origin`, which this realm does not model: strip the page's.
+    for row in result["images"].as_object_mut().unwrap().values_mut() {
+        if let Some(url) = row[0].as_str() {
+            if let Some(path) = url.strip_prefix("http://127.0.0.1/") {
+                row[0] = serde_json::json!(format!("/{path}"));
+            }
+        }
+    }
+    result
 }
 
 fn mismatches(actual: &serde_json::Value, expected: &serde_json::Value) -> Vec<String> {
@@ -89,7 +98,6 @@ fn mismatches(actual: &serde_json::Value, expected: &serde_json::Value) -> Vec<S
 
 /// The reflected attributes' shapes and conversions (the same in every run of the control).
 #[test]
-#[ignore = "turbo-dom#71: fails until the fix"]
 fn srcset_attributes_reflect_like_chrome156() {
     let control = control();
     let actual = probe("true");
@@ -105,7 +113,6 @@ fn srcset_attributes_reflect_like_chrome156() {
 /// Without host state (turbo-test: nothing loads) every image reports Chrome's answer when
 /// nothing loads: the selected URL, complete, 0x0.
 #[test]
-#[ignore = "turbo-dom#71: fails until the fix"]
 fn without_a_host_current_src_is_the_selected_source() {
     let control = control();
     let actual = probe("true");
@@ -117,7 +124,6 @@ fn without_a_host_current_src_is_the_selected_source() {
 /// size at device pixel ratio 1 and 2. The control's server answers `/img/<W>x<H>/…` with a
 /// W x H image and fails everything else.
 #[test]
-#[ignore = "turbo-dom#71: fails until the fix"]
 fn host_loads_of_the_selected_source_match_chrome156_at_dpr_1_and_2() {
     let control = control();
     for (label, dpr) in [("load1", 1), ("load2", 2)] {
