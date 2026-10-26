@@ -128,7 +128,9 @@ pub fn is_connected(tree: &Tree, handle: Handle) -> bool {
 
 /// The private interface record of a DOM wrapper (e.g. a document's
 /// `cssHost`, whose `sheet`/`readAdopted`/`exportSheet` methods produce
-/// [`SheetSnapshot`] JSON). Page JS cannot reach it.
+/// [`SheetSnapshot`] JSON, and its `imageHost`, whose `setState(img, state)`
+/// publishes an image's load state to the `HTMLImageElement` accessors; see the
+/// crate README "Image load state"). Page JS cannot reach it.
 pub fn interface_record<'s>(
     scope: &mut v8::PinScope<'s, '_>,
     object: v8::Local<'s, v8::Object>,

@@ -59,8 +59,8 @@ Nothing here is reachable from page JavaScript.
   binding or V8), `handle_of`, `wrap`, `is_connected`, `host_composed_children`.
 - Document state: `current_document_id`, `document_id_of`, `is_browsing_context`,
   `current_document_context`, `retire_context`.
-- Private records: `interface_record` (e.g. a document's `cssHost`),
-  `cascade_policy` (`StylePolicy`).
+- Private records: `interface_record` (e.g. a document's `cssHost` and
+  `imageHost`, see "Image load state"), `cascade_policy` (`StylePolicy`).
 - Re-exports: `Tree`, `Handle`, `StylePolicy`, `zoom_value`, `SheetSnapshot`,
   `RuleSnapshot`.
 
@@ -74,13 +74,38 @@ bytes), named after the file (`KEY_ORDER_PROBE_JS`, `ANIMATIONS_FRAMES_CASES_JSO
 …), plus `FILES` (file name → bytes) and `frame_read_should_throw` (the
 frame-read interceptor source, for accessor agreement tests). The files ship in
 the package under `src/`; consumers reference the constants, never copy files.
-The 67 files are exactly what turbo-surf's Chrome-parity integration tests read,
+The 70 files are what turbo-surf's Chrome-parity integration tests read,
 including the custom-element lifecycle contract (`tests/custom_elements.rs`:
 `CUSTOM_ELEMENTS{,_EXTENDED,_REACTIONS,_IDL,_MOVES,_CALLBACKS,_RETIRED}_*`,
-`DOM_PARSER_OBSERVER_LIFECYCLE_*`, `CSS_ADOPTION_LIFECYCLE_*` probe/control pairs).
+`DOM_PARSER_OBSERVER_LIFECYCLE_*`, `CSS_ADOPTION_LIFECYCLE_*` probe/control pairs)
+and the image-state control (`HTML_IMAGE_{PROBE_JS,CASES_JSON,CHROME156_JSON}`) an
+image-loading host runs through its own loader.
 Add a constant (and its `FILES` entry) when another consumer needs a file.
 `tests/test_support_api.rs` checks every constant against its file and every
 probe/control pair's recorded `probeSha256`.
+
+### Image load state
+
+The binding never fetches or decodes images. `HTMLImageElement.prototype` carries
+`complete`, `naturalWidth`, `naturalHeight` and `currentSrc` as Chrome's read-only
+accessors (an `<img>` never has them as own properties); without host state an
+image is "not loading": `complete` is `true`, the natural size `0`×`0` and
+`currentSrc` the resolved `src` (`""` without one), which is Chrome's answer for an
+image without a source and for a broken image (`src/html_image_chrome156.json`). A
+host that loads images (turbo-surf) publishes each image's state through the
+document's private interface record, which page JS cannot reach:
+
+```js
+record.imageHost.setState(img, { complete: false });                    // a load started
+record.imageHost.setState(img, { complete: true, naturalWidth: 64,
+                                 naturalHeight: 40, currentSrc: url }); // it finished
+record.imageHost.setState(img, null);                                  // back to the defaults
+```
+
+`setState` accepts only an HTML `<img>` of the realm (TypeError otherwise), copies
+the state when called (`complete` → boolean, sizes → unsigned long, `currentSrc` →
+string, missing → `""`) and keeps it until the host replaces or clears it, so the
+host updates it whenever a load starts or ends (including `src` changes).
 
 ### Feature `native-sdk-frame-read` (off by default)
 
@@ -107,7 +132,7 @@ read probes and write controls):
 | `scripts/dom-lifecycle-chrome-control.mjs` | lifecycle probes (custom elements, adoption, templates, form collections, …) |
 | `scripts/css-probe-chrome-control.mjs`, `scripts/css-live-chrome-control.mjs` | CSS/CSSOM probes; `css_live_chrome155.json` |
 | `scripts/dom-implementation-chrome-control.mjs`, `scripts/xml-factory-elements-chrome-control.mjs` | `dom_implementation_chrome155.json`, `xml_factory_elements_chrome155.json` |
-| `scripts/animations-chrome-control.mjs`, `scripts/select-element-chrome-control.mjs`, `scripts/typed-om-chrome-control.mjs` | probe + cases controls (`animations*`, `select_element*`/form pseudo-classes, `typed_om*`) |
+| `scripts/animations-chrome-control.mjs`, `scripts/select-element-chrome-control.mjs`, `scripts/typed-om-chrome-control.mjs` | probe + cases controls (`animations*`, `select_element*`/form pseudo-classes, `option_factory*` (`new Option()`, `HTMLOptionsCollection` definer), `typed_om*`) |
 | `scripts/typed-om-registry.mjs` | `typed_om_registry_cases.json` and the production registry `typed_om_properties.json` (from Blink's json5 metadata + the registry control) |
 | `scripts/view-transitions-chrome-control.mjs`, `scripts/shadow-html-chrome-control.mjs` | `view_transitions_chrome156.json`; shadow-root / HTML serialization / sanitizer controls |
 | `scripts/invokers-chrome-control.mjs`, `scripts/editing-input-chrome-control.mjs`, `scripts/trusted-input-chrome-control.mjs` | invokers/popover, editing, pointer and other trusted-input controls |
