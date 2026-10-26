@@ -6,7 +6,7 @@ use turbo_dom_browser_env::test_support::{self, FILES};
 
 #[test]
 fn test_support_constants_are_the_shipped_files() {
-    assert_eq!(FILES.len(), 76);
+    assert_eq!(FILES.len(), 82);
     let src = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
     for (name, bytes) in FILES {
         assert_eq!(*bytes, std::fs::read(src.join(name)).unwrap(), "{name}");
@@ -21,6 +21,54 @@ fn test_support_constants_are_the_shipped_files() {
     // The frame-read source is exported for embedders' agreement tests.
     let _: fn(&mut v8::PinScope<'_, '_>, &v8::PropertyCallbackArguments<'_>) -> bool =
         test_support::frame_read_should_throw;
+}
+
+/// The custom element reaction controls ship in the crate (no file outside it is read):
+/// the DOM adoption / reactions control the npm runtime shares and the fragment-parser /
+/// qualified-name one (miaskiewicz/turbo-dom P5b-X6).
+#[test]
+fn dom_reaction_controls_are_exported() {
+    for name in [
+        "dom_adoption_reactions_cases.json",
+        "dom_adoption_reactions_chrome156.json",
+        "dom_adoption_reactions_probe.js",
+        "dom_reactions_names_cases.json",
+        "dom_reactions_names_chrome156.json",
+        "dom_reactions_names_probe.js",
+    ] {
+        assert!(
+            FILES.iter().any(|(file, _)| *file == name),
+            "{name} is not in test_support::FILES"
+        );
+    }
+}
+
+/// The crate's tests are self-contained: no `include_str!` / `include_bytes!` reaches
+/// outside the crate, so they run from the published package too.
+#[test]
+fn tests_read_no_file_outside_the_crate() {
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+    let mut outside = Vec::new();
+    for dir in ["src", "tests"] {
+        for entry in std::fs::read_dir(root.join(dir)).unwrap() {
+            let path = entry.unwrap().path();
+            if path.extension().is_some_and(|ext| ext == "rs") {
+                let text = std::fs::read_to_string(&path).unwrap();
+                for macro_name in ["include_str!(\"", "include_bytes!(\""] {
+                    for (at, _) in text.match_indices(macro_name) {
+                        let rest = &text[at + macro_name.len()..];
+                        let file = &rest[..rest.find('"').unwrap()];
+                        let target = path.parent().unwrap().join(file);
+                        let resolved = std::fs::canonicalize(&target).unwrap_or(target);
+                        if !resolved.starts_with(std::fs::canonicalize(root).unwrap()) {
+                            outside.push(format!("{}: {file}", path.display()));
+                        }
+                    }
+                }
+            }
+        }
+    }
+    assert!(outside.is_empty(), "{outside:#?}");
 }
 
 /// The probe/control pairs turbo-surf's `tests/custom_elements.rs` contract runs:

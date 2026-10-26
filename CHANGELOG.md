@@ -189,6 +189,88 @@ changes in `tools/parity/expected/p5b-w5-turbo-dom-*.json`.
   three cases. The PDF does not embed JPEG XL.
   Corpus changes: `tools/parity/expected/p5b-w4-turbo-dom-27-*.json`,
   `-turbo-dom-45-1.json`.
+
+### Changed — self-contained binding tests (P5b-X6)
+- The DOM adoption / custom element reactions control moved from the npm tree
+  (`test/fixtures/dom_adoption_reactions_{probe.js,cases.json,chrome156.json}`) into
+  `crates/turbo-dom-browser-env/src/`. `src/dom_reactions_tests.rs` used to `include_str!` it
+  from outside the crate, so the test could not build from the published package. The npm
+  test `test/dom-adoption-reactions-chrome.test.mjs` now reads it from the crate.
+- `test_support` exports it and the `dom_reactions_names_*` control
+  (`DOM_ADOPTION_REACTIONS_*`, `DOM_REACTIONS_NAMES_*`; `FILES` has 82 entries).
+- A test now asserts that no `include_str!` / `include_bytes!` in the crate's `src/` or
+  `tests/` leaves the crate.
+
+### Fixed — document rules no longer style shadow trees (P5b-X6, miaskiewicz/turbo-dom#68, Chrome 156 control)
+- turbo-dom-browser-env: `getComputedStyle`'s JS cascade read the owner document's sheets
+  for every element, so document rules selected elements inside shadow trees. A shadow tree
+  is its own style scope, as in Chrome; its elements now see only inline style and their
+  tree's own (native, shadow-scoped) rules. Control: case `fullscreen`, section `shadow`, of
+  `src/computed_defaults_chrome156.json` (a document `:fullscreen { opacity: 0.5 }` does not
+  reach a fullscreen element in a shadow root).
+
+### Fixed — `getComputedStyle` of a disconnected element (P5b-X6, miaskiewicz/turbo-dom#67, Chrome 156 control)
+- turbo-dom-browser-env: a disconnected element blanked only the defaults the binding
+  models. Author-rule and inline values (`position: relative`, `transform: scale(2)`, …)
+  still came through. Chrome computes no style for it, so every property now reads `""` until
+  the element is connected again; the declaration stays live. Typed OM's cascade read is
+  unchanged. Control: case `fullscreen`, section `removed`, of
+  `src/computed_defaults_chrome156.json`.
+
+### Fixed — fullscreen top layer (P5b-X6, miaskiewicz/turbo-dom#58, Chrome 156 controls)
+- turbo-dom: `Tree::set_fullscreen_stack` / `fullscreen_stack` / `fullscreen_element` /
+  `is_fullscreen` / `is_fullscreen_ancestor`. The selector engine (DOM APIs, cascade,
+  `rtdom::cascade`) now evaluates `:fullscreen` / `:-webkit-full-screen` (the elements in
+  the stack) and `:-webkit-full-screen-ancestor` (shadow-including ancestors of the top). They
+  used to be never-matching, and `:-webkit-full-screen-ancestor` was rejected although Chrome
+  accepts it. A tree without a reported stack matches nothing, so static documents, html2pdf
+  and raster are unchanged. npm `selectors.mjs` accepts `:-webkit-full-screen-ancestor` (never
+  matching). Control: selector case `fullscreen` of
+  `crates/turbo-dom/tests/fixtures/cascade_selectors_chrome156.json`.
+- turbo-dom-browser-env:
+  - The fullscreen stack is reported to the tree, and `:modal` also matches the
+    fullscreen element.
+  - A fullscreen element (not the root) computes Chrome's `:not(:root):fullscreen` UA
+    values: `position: fixed`, `inset: 0`, `margin: 0`, `box-sizing: border-box`, min / max
+    sizes, `width` / `height: 100%` and `transform: none`, all `!important`, plus
+    `object-fit: contain`.
+  - Its `::backdrop` is fixed at inset 0 and black.
+- Control: async case `fullscreen` of `src/computed_defaults_chrome156.json` (user
+  activation through the collector's trusted CDP click `__cdpGesture()`). Known gap, filed:
+  #66 (composed events stop at the shadow root).
+
+### Fixed — UA-styled pseudo-elements in `getComputedStyle` (P5b-X6, miaskiewicz/turbo-dom#47, Chrome 156 control)
+- turbo-dom-browser-env: `getComputedStyle(el, pseudoElt)` computed only `::before`,
+  `::after` and `::backdrop`; the other pseudo-elements read the element's style. Every
+  pseudo-element Chrome 156 computes now gets its html.css values, the author rules that
+  select it, and inheritance from the element:
+  - `::marker` (`inline-block`, or `inline` when inside; `white-space: pre`; marker
+    properties only);
+  - `::placeholder`, `::file-selector-button`, `::details-content`, `::picker(select)` on
+    the elements that have them;
+  - `::first-line` / `::first-letter` (only the properties they accept);
+  - the highlights (`::selection`, `::highlight()`, `::spelling-error`, …), with highlight
+    inheritance once a rule of their type applies;
+  - `::checkmark`, `::picker-icon`, `::scroll-marker-group`, `::column`,
+    `::-webkit-scrollbar*`, `::scroll-button()`, and the view-transition pseudo-elements
+    (inheriting along their tree).
+- `::scroll-marker` and invalid arguments read an empty declaration. `::cue` and unknown
+  `-webkit-` / `-internal-` names read the element. Author `::-webkit-input-placeholder` /
+  `::-webkit-file-upload-button` rules apply as their standard names. Strings in `content`
+  serialize double-quoted on every pseudo-element.
+- Control: cases `pseudo-ua-forms` / `pseudo-ua` of `src/computed_defaults_chrome156.json`.
+  Chrome reuses the first unstyled highlight read's color for later elements, so those
+  colors are not compared.
+
+### Fixed — form control fonts in `getComputedStyle` (P5b-X6, miaskiewicz/turbo-dom#61, Chrome 156 control)
+- turbo-dom-browser-env: only `<button>` had Chrome's form-control UA font; `<input>`,
+  `<select>` and `<textarea>` reported the inherited font (`16px Times`, or the parent's).
+  They now compute html.css's `font: -webkit-small-control`: `13.3333px Arial` for every
+  input type and `<select>`, `13.3333px monospace` for `<textarea>` and the date / time /
+  datetime-local / month / week inputs. `<optgroup>` is `font-weight: bolder` and
+  `<option>` `normal`. Author rules (`font: inherit` too) win. Control: case
+  `form-control-fonts` of `src/computed_defaults_chrome156.json`.
+
 ### Fixed — `createDocument` qualified names (P5b-X5, miaskiewicz/turbo-dom#57, Chrome 156 control)
 - turbo-dom-browser-env: `document.implementation.createDocument` checked the qualified
   name against the XML `Name` production and rejected every name with two colons. It now
@@ -203,7 +285,7 @@ changes in `tools/parity/expected/p5b-w5-turbo-dom-*.json`.
   The prefix is the first part and the local name the second: `a:b:c` / `a:b:c:d` /
   `a:b:` create prefix `a`, local name `b`, qualified name `a:b`. An empty second part
   (`a::b`) throws `InvalidCharacterError`. The binding used to keep `b:c` as the local name.
-- Controls: `nsTwoColons` in `test/fixtures/dom_adoption_reactions_chrome156.json` and
+- Controls: `nsTwoColons` in `src/dom_adoption_reactions_chrome156.json` and
   section `names` of `src/dom_reactions_names_chrome156.json`.
 
 ### Fixed — custom element upgrades and reaction order (P5b-X5, miaskiewicz/turbo-dom#42, #43, Chrome 156 controls)
@@ -221,8 +303,7 @@ changes in `tools/parity/expected/p5b-w5-turbo-dom-*.json`.
   `insertAdjacentHTML`, `setHTMLUnsafe`, `createContextualFragment`) queues its elements'
   upgrades before the setter's removals queue `disconnectedCallback`s
   (`ctor r4, conn r4, disc r1, …`).
-- Controls: the npm runtime's `test/fixtures/dom_adoption_reactions_chrome156.json` (read
-  in place by `src/dom_reactions_tests.rs`) and the new
+- Controls: `src/dom_adoption_reactions_chrome156.json` (shared with the npm runtime) and the new
   `src/dom_reactions_names_{probe.js,cases.json,chrome156.json}` (fragment-parser setters).
 
 ### Fixed — custom element reactions in independent documents (P5b-X5, miaskiewicz/turbo-dom#54, Chrome 156 control)
@@ -345,8 +426,8 @@ changes in `tools/parity/expected/p5b-w5-turbo-dom-*.json`.
   constructed; SVG context lost; positions are case-insensitive; `NoModificationAllowedError`
   / `SyntaxError` like Chrome; turbo-dom#39). `replaceWith(…)` listing the node itself keeps
   it, and the node is removed before its replacements go in (turbo-dom#40).
-  Control: `test/fixtures/dom_adoption_reactions_chrome156.json` (probe + cases beside it,
-  recorded with `crates/turbo-dom-browser-env/scripts/select-element-chrome-control.mjs`),
+  Control: `crates/turbo-dom-browser-env/src/dom_adoption_reactions_chrome156.json` (probe +
+  cases beside it; under `test/fixtures/` until P5b-X6), recorded with `crates/turbo-dom-browser-env/scripts/select-element-chrome-control.mjs`),
   asserted by `test/dom-adoption-reactions-chrome.test.mjs` (the one deviation: the runtime's
   `HTMLElement` is `Element`, so `instanceof HTMLElement` is true for every element).
 

@@ -1,0 +1,13 @@
+{
+ "id": "turbo-dom#67",
+ "reason": "turbo-dom-browser-env getComputedStyle returns an empty declaration (every property \"\") for a disconnected element, as Chrome 156 does; author-rule and inline values used to come through. No corpus output changes: the surf live dump reads getComputedStyle for document.querySelectorAll('*'), all connected; static screenshots and the html2pdf corpora do not run the binding. P5b-X6.",
+ "control": "crates/turbo-dom-browser-env/src/computed_defaults_chrome156.json (case fullscreen, section removed)",
+ "e2e": "crates/turbo-dom-browser-env/src/computed_defaults_tests.rs",
+ "changes": {
+  "html2pdf": [],
+  "html2pdf-svg": [],
+  "html2pdf-extra": [],
+  "surf": [],
+  "surf-extra": []
+ }
+}

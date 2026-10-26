@@ -124,6 +124,16 @@ pub const CUSTOM_ELEMENTS_RETIRED_CHROME155_JSON: &str =
     include_str!("custom_elements_retired_chrome155.json");
 /// `src/custom_elements_retired_probe.js`.
 pub const CUSTOM_ELEMENTS_RETIRED_PROBE_JS: &str = include_str!("custom_elements_retired_probe.js");
+/// `src/dom_adoption_reactions_cases.json` (turbo-dom#29 / #42-#44: namespaces, cross-document
+/// adoption, template contents, custom element reaction order; shared with the npm runtime's
+/// `test/dom-adoption-reactions-chrome.test.mjs`).
+pub const DOM_ADOPTION_REACTIONS_CASES_JSON: &str =
+    include_str!("dom_adoption_reactions_cases.json");
+/// `src/dom_adoption_reactions_chrome156.json`.
+pub const DOM_ADOPTION_REACTIONS_CHROME156_JSON: &str =
+    include_str!("dom_adoption_reactions_chrome156.json");
+/// `src/dom_adoption_reactions_probe.js` (sync; one `new DOMParser().parseFromString(…)`).
+pub const DOM_ADOPTION_REACTIONS_PROBE_JS: &str = include_str!("dom_adoption_reactions_probe.js");
 /// `src/dom_implementation_chrome155.json`.
 pub const DOM_IMPLEMENTATION_CHROME155_JSON: &str =
     include_str!("dom_implementation_chrome155.json");
@@ -135,6 +145,14 @@ pub const DOM_PARSER_OBSERVER_LIFECYCLE_CHROME155_JSON: &str =
 /// `src/dom_parser_observer_lifecycle_probe.js`.
 pub const DOM_PARSER_OBSERVER_LIFECYCLE_PROBE_JS: &str =
     include_str!("dom_parser_observer_lifecycle_probe.js");
+/// `src/dom_reactions_names_cases.json` (turbo-dom#43 / #44 / #54 / #57: fragment-parser
+/// reaction order, qualified names, independent-document removals, createDocument names).
+pub const DOM_REACTIONS_NAMES_CASES_JSON: &str = include_str!("dom_reactions_names_cases.json");
+/// `src/dom_reactions_names_chrome156.json`.
+pub const DOM_REACTIONS_NAMES_CHROME156_JSON: &str =
+    include_str!("dom_reactions_names_chrome156.json");
+/// `src/dom_reactions_names_probe.js`.
+pub const DOM_REACTIONS_NAMES_PROBE_JS: &str = include_str!("dom_reactions_names_probe.js");
 /// `src/file_inputs_cases.json`.
 pub const FILE_INPUTS_CASES_JSON: &str = include_str!("file_inputs_cases.json");
 /// `src/file_inputs_chrome156.json`.
@@ -364,6 +382,18 @@ pub const FILES: &[(&str, &[u8])] = &[
         CUSTOM_ELEMENTS_RETIRED_PROBE_JS.as_bytes(),
     ),
     (
+        "dom_adoption_reactions_cases.json",
+        DOM_ADOPTION_REACTIONS_CASES_JSON.as_bytes(),
+    ),
+    (
+        "dom_adoption_reactions_chrome156.json",
+        DOM_ADOPTION_REACTIONS_CHROME156_JSON.as_bytes(),
+    ),
+    (
+        "dom_adoption_reactions_probe.js",
+        DOM_ADOPTION_REACTIONS_PROBE_JS.as_bytes(),
+    ),
+    (
         "dom_implementation_chrome155.json",
         DOM_IMPLEMENTATION_CHROME155_JSON.as_bytes(),
     ),
@@ -378,6 +408,18 @@ pub const FILES: &[(&str, &[u8])] = &[
     (
         "dom_parser_observer_lifecycle_probe.js",
         DOM_PARSER_OBSERVER_LIFECYCLE_PROBE_JS.as_bytes(),
+    ),
+    (
+        "dom_reactions_names_cases.json",
+        DOM_REACTIONS_NAMES_CASES_JSON.as_bytes(),
+    ),
+    (
+        "dom_reactions_names_chrome156.json",
+        DOM_REACTIONS_NAMES_CHROME156_JSON.as_bytes(),
+    ),
+    (
+        "dom_reactions_names_probe.js",
+        DOM_REACTIONS_NAMES_PROBE_JS.as_bytes(),
     ),
     ("file_inputs_cases.json", FILE_INPUTS_CASES_JSON.as_bytes()),
     (

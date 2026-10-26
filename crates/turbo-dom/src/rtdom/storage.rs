@@ -177,6 +177,7 @@ impl Tree {
             charge(&mut work, 1 + states.len(), budget)?;
         }
         charge(&mut work, self.custom_element_states.len(), budget)?;
+        charge(&mut work, self.fullscreen_stack.len(), budget)?;
         let before = self.storage_stats();
         let mut roots = vec![self.root()];
         roots.extend_from_slice(pins);
@@ -321,6 +322,7 @@ impl Tree {
         self.custom_element_states
             .retain(|node, _| retained.contains(node));
         self.custom_element_states.shrink_to_fit();
+        self.fullscreen_stack.retain(|node| retained.contains(node));
         self.element_namespaces.shrink_to_fit();
         self.attribute_nodes.shrink_to_fit();
         self.shadow_root_of_host.shrink_to_fit();

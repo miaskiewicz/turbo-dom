@@ -56,16 +56,18 @@ editing_tests.rs: deviation notes say \"standalone binding\" instead of turbo-te
 view_transitions_tests.rs: comment no longer calls the binding vendored
 select_element.js: P5b turbo-dom#20 Option() legacy factory function; quiet accessor definitions on HTMLOptionsCollection
 select_element_tests.rs: P5b turbo-dom#20 Option() factory + options-collection definer vs their Chrome 156 control
-browser_env.js: P5b-X2 turbo-dom#23 drops the JS Image() fallback (own src + fake onload); Image() is native in html_image.js; P5b-X3 turbo-surf#36 getComputedStyle UA display / position / visibility defaults, no eager <title>; P5b-X5 turbo-dom#30 dialog:modal / top layer / ::backdrop, turbo-dom#47 pseudoElt parsing and ::before / ::after
+browser_env.js: P5b-X2 turbo-dom#23 drops the JS Image() fallback (own src + fake onload); Image() is native in html_image.js; P5b-X3 turbo-surf#36 getComputedStyle UA display / position / visibility defaults, no eager <title>; P5b-X5 turbo-dom#30 dialog:modal / top layer / ::backdrop, turbo-dom#47 pseudoElt parsing and ::before / ::after; P5b-X6 turbo-dom#61 form control UA fonts, turbo-dom#47 UA-styled pseudo-elements, turbo-dom#58 fullscreen UA values and backdrop, turbo-dom#67 disconnected elements compute no style, turbo-dom#68 document sheets do not select shadow-tree elements
 document_basics.js: P5b turbo-dom#20 live collections pass the definer's should-throw mode to setIndex
 html_popover.rs: P5b turbo-dom#18 internal selector paths anchor with :not(* > *) instead of :root (6a23551)
 shadow_html.rs: P5b-X5 turbo-dom#43 setHTMLUnsafe queues the parsed elements' custom element upgrades before its removals
 dom_implementation.js: P5b-X5 turbo-dom#57 createDocument validates and extracts its qualified name like createElementNS
 mutation_observers.rs: P5b-X5 turbo-dom#54 flush delivers an independently installed document's recorded mutations when the call returns
 dom_implementation_tests.rs: P5b the dom-implementation collector must label its control like the committed one
+html_dialog.rs: P5b-X6 turbo-dom#58 :fullscreen matches in the selector engine (no rewrite); :modal also matches the fullscreen element
+user_activation_gates.rs: P5b-X6 turbo-dom#58 the fullscreen stack is reported to the tree (Tree::set_fullscreen_stack)
 "
 # Crate-owned files under src/ that were not part of the move.
-OWNED="lib.rs crate_surface.rs host_internals.rs test_support.rs css_snapshot.rs option_factory_probe.js option_factory_cases.json option_factory_chrome156.json html_image.js html_image_tests.rs html_image_probe.js html_image_cases.json html_image_chrome156.json custom_elements_defined_probe.js custom_elements_defined_cases.json custom_elements_defined_chrome156.json computed_defaults_probe.js computed_defaults_cases.json computed_defaults_chrome156.json computed_defaults_tests.rs dom_reactions_names_probe.js dom_reactions_names_cases.json dom_reactions_names_chrome156.json dom_reactions_tests.rs"
+OWNED="lib.rs crate_surface.rs host_internals.rs test_support.rs css_snapshot.rs option_factory_probe.js option_factory_cases.json option_factory_chrome156.json html_image.js html_image_tests.rs html_image_probe.js html_image_cases.json html_image_chrome156.json custom_elements_defined_probe.js custom_elements_defined_cases.json custom_elements_defined_chrome156.json computed_defaults_probe.js computed_defaults_cases.json computed_defaults_chrome156.json computed_defaults_tests.rs dom_reactions_names_probe.js dom_reactions_names_cases.json dom_reactions_names_chrome156.json dom_reactions_tests.rs dom_adoption_reactions_probe.js dom_adoption_reactions_cases.json dom_adoption_reactions_chrome156.json"
 
 repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 turbo_test=${TURBO_TEST_REPO:-$repo_root/../turbo-test}
