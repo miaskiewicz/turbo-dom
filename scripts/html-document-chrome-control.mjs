@@ -6,8 +6,11 @@
 // miaskiewicz/turbo-dom#25 item 2 (elements the drive does not lay out still count for
 // selectors). P5b-W3 adds the layout cases of miaskiewicz/turbo-dom#28 (one group per item).
 // P5b-W5 adds the table caption cases of miaskiewicz/turbo-dom#51 (`caption-*`) and the
-// cases of the bugs found while fixing it (one group per issue, labelled).
-// P5b-W7 adds miaskiewicz/turbo-dom#79 (`intrinsic-margins-*`), #80
+// cases of the bugs found while fixing it (one group per issue, labelled). P5b-W6 adds the
+// `min-height` / `max-height` cases of miaskiewicz/turbo-dom#75 item 1
+// (`min-height-margin-*`), zero-area `clip: rect()` boxes of item 2 (`clip-zero-area-*`,
+// `clip-sr-only*`) and cases of the bugs found while fixing them (#76, #77, #78, #79
+// `intrinsic-margin-*`). P5b-W7 adds miaskiewicz/turbo-dom#79 (`intrinsic-margins-*`), #80
 // (`inline-block-margins-*`) and #81 (`icb-*`), and the bugs found while fixing them (one
 // group per issue, labelled).
 //
@@ -401,6 +404,81 @@ const CASES = [
   { id: "float-sum-clear-resets", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="float:left"><div style="float:left;height:5px;width:20px"></div><div style="float:left;height:5px;width:30px;clear:left"></div></div>`) },
   { id: "float-sum-in-inline-block", html: DOC(S("body{margin:0}"), `<div style="font-size:0"><div data-cid="c" style="display:inline-block"><div style="float:left;height:5px;width:20px"></div><div style="float:left;height:5px;width:25px"></div></div></div>`) },
   { id: "float-sum-in-table-cell", html: DOC(S("body{margin:0}"), `<table style="border-spacing:0"><tr><td data-cid="c" style="padding:0"><div style="float:left;height:5px;width:20px"></div><div style="float:left;height:5px;width:25px"></div></td></tr></table>`) },
+  // P5b-W6, miaskiewicz/turbo-dom#75 item 1: a last child's bottom margin and its parent's
+  // `min-height` / `max-height`. The margin collapses through an auto-height parent whose
+  // used height is its content height; when `min-height` (or `max-height`) changes the
+  // used height, the margin is neither collapsed through nor added inside — it is dropped.
+  { id: "min-height-margin-larger", html: DOC(S("body{margin:0}"), `<div data-cid="w" style="min-height:400px"><div style="height:100px"></div><div data-cid="k" style="height:200px;margin-bottom:20px"></div></div><div data-cid="g" style="height:60px"></div>`) },
+  { id: "min-height-margin-between", html: DOC(S("body{margin:0}"), `<div data-cid="w" style="min-height:310px"><div style="height:100px"></div><div data-cid="k" style="height:200px;margin-bottom:20px"></div></div><div data-cid="g" style="height:60px"></div>`) },
+  { id: "min-height-margin-smaller", html: DOC(S("body{margin:0}"), `<div data-cid="w" style="min-height:100px"><div style="height:100px"></div><div data-cid="k" style="height:200px;margin-bottom:20px"></div></div><div data-cid="g" style="height:60px"></div>`) },
+  { id: "min-height-margin-equal", html: DOC(S("body{margin:0}"), `<div data-cid="w" style="min-height:300px"><div style="height:100px"></div><div data-cid="k" style="height:200px;margin-bottom:20px"></div></div><div data-cid="g" style="height:60px"></div>`) },
+  { id: "min-height-margin-next-margin", html: DOC(S("body{margin:0}"), `<div data-cid="w" style="min-height:400px"><div data-cid="k" style="height:200px;margin-bottom:20px"></div></div><div data-cid="g" style="height:60px;margin-top:35px"></div>`) },
+  { id: "min-height-margin-parent-margin", html: DOC(S("body{margin:0}"), `<div data-cid="w" style="min-height:400px;margin-bottom:30px"><div data-cid="k" style="height:200px;margin-bottom:50px"></div></div><div data-cid="g" style="height:60px"></div>`) },
+  { id: "min-height-margin-smaller-parent-margin", html: DOC(S("body{margin:0}"), `<div data-cid="w" style="min-height:100px;margin-bottom:30px"><div data-cid="k" style="height:200px;margin-bottom:50px"></div></div><div data-cid="g" style="height:60px"></div>`) },
+  { id: "min-height-margin-in-auto-parent", html: DOC(S("body{margin:0}"), `<div data-cid="o"><div data-cid="w" style="min-height:400px"><div data-cid="k" style="height:200px;margin-bottom:20px"></div></div></div><div data-cid="g" style="height:60px"></div>`) },
+  { id: "min-height-margin-auto-child", html: DOC(S("body{margin:0}"), `<div data-cid="w" style="min-height:400px"><div data-cid="v"><div data-cid="k" style="height:200px;margin-bottom:20px"></div></div></div><div data-cid="g" style="height:60px"></div>`) },
+  { id: "min-height-margin-percent-indefinite", html: DOC(S("body{margin:0}"), `<div data-cid="w" style="min-height:50%"><div data-cid="k" style="height:200px;margin-bottom:20px"></div></div><div data-cid="g" style="height:60px"></div>`) },
+  { id: "min-height-margin-border-box", html: DOC(S("body{margin:0}"), `<div data-cid="w" style="min-height:400px;box-sizing:border-box;padding-top:10px"><div data-cid="k" style="height:200px;margin-bottom:20px"></div></div><div data-cid="g" style="height:60px"></div>`) },
+  { id: "min-height-margin-negative", html: DOC(S("body{margin:0}"), `<div data-cid="w" style="min-height:100px"><div data-cid="k" style="height:200px;margin-bottom:-20px"></div></div><div data-cid="g" style="height:60px"></div>`) },
+  { id: "min-height-margin-negative-absorbed", html: DOC(S("body{margin:0}"), `<div data-cid="w" style="min-height:400px"><div data-cid="k" style="height:200px;margin-bottom:-20px"></div></div><div data-cid="g" style="height:60px"></div>`) },
+  { id: "min-height-margin-empty-box", html: DOC(S("body{margin:0}"), `<div data-cid="a" style="height:10px;margin-bottom:20px"></div><div data-cid="w" style="min-height:50px;margin:15px 0"></div><div data-cid="g" style="height:60px;margin-top:5px"></div>`) },
+  { id: "min-height-margin-first-child-top", html: DOC(S("body{margin:0}"), `<div data-cid="a" style="height:10px"></div><div data-cid="w" style="min-height:400px"><div data-cid="k" style="height:200px;margin-top:20px"></div></div><div data-cid="g" style="height:60px"></div>`) },
+  { id: "min-height-margin-max-height-clamps", html: DOC(S("body{margin:0}"), `<div data-cid="w" style="max-height:100px"><div data-cid="k" style="height:200px;margin-bottom:20px"></div></div><div data-cid="g" style="height:60px"></div>`) },
+  { id: "min-height-margin-max-height-larger", html: DOC(S("body{margin:0}"), `<div data-cid="w" style="max-height:500px"><div data-cid="k" style="height:200px;margin-bottom:20px"></div></div><div data-cid="g" style="height:60px"></div>`) },
+  { id: "min-height-margin-padding-keeps-inside", html: DOC(S("body{margin:0}"), `<div data-cid="w" style="min-height:210px;padding-bottom:1px"><div data-cid="k" style="height:200px;margin-bottom:20px"></div></div><div data-cid="g" style="height:60px"></div>`) },
+  { id: "min-height-margin-bfc-keeps-inside", html: DOC(S("body{margin:0}"), `<div data-cid="w" style="min-height:210px;overflow:hidden"><div data-cid="k" style="height:200px;margin-bottom:20px"></div></div><div data-cid="g" style="height:60px"></div>`) },
+  { id: "min-height-margin-flex-item", html: DOC(S("body{margin:0}"), `<div data-cid="f" style="display:flex"><div data-cid="w" style="min-height:210px"><div data-cid="k" style="height:200px;margin-bottom:20px"></div></div></div><div data-cid="g" style="height:60px"></div>`) },
+  { id: "min-height-margin-em", html: DOC(S("body{margin:0}"), `<div data-cid="w" style="min-height:20em"><div data-cid="k" style="height:200px;margin-bottom:20px"></div></div><div data-cid="g" style="height:60px"></div>`) },
+  { id: "min-height-margin-text", html: DOC(S("body{margin:0}"), `<div data-cid="w" style="min-height:100px"><p data-cid="p" style="margin:0 0 20px">x</p></div><div data-cid="g" style="height:60px"></div>`), measure: "xyw" },
+  { id: "min-height-margin-absolute", html: DOC(S("body{margin:0}"), `<div data-cid="w" style="position:absolute;top:0;left:0;width:100px;min-height:400px"><div data-cid="k" style="height:200px;margin-bottom:20px"></div></div>`) },
+  // P5b-W6, miaskiewicz/turbo-dom#75 item 2: an absolutely positioned box whose
+  // `clip: rect()` keeps nothing (the sr-only pattern) paints nothing, but it and its
+  // descendants still have their border boxes.
+  { id: "clip-zero-area-box", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="position:absolute;left:20px;top:20px;width:50px;height:50px;background:#f00;clip:rect(0,0,0,0)"></div>`) },
+  { id: "clip-sr-only", html: DOC(S("body{margin:0}.sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}"), `<div data-cid="p" style="height:30px"><span class="sr" data-cid="s">Skip to content</span></div><div data-cid="g" style="height:10px"></div>`) },
+  { id: "clip-sr-only-1px", html: DOC(S("body{margin:0}"), `<div style="padding:10px"><div data-cid="s" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(1px,1px,1px,1px)"><div data-cid="d" style="width:40px;height:40px;background:#f00"></div></div></div>`) },
+  { id: "clip-zero-area-auto-edge", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="position:absolute;left:20px;top:20px;width:50px;height:50px;background:#f00;clip:rect(0,auto,auto,60px)"><div data-cid="d" style="width:10px;height:10px"></div></div>`) },
+  { id: "clip-zero-area-auto-height", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="position:absolute;left:5px;top:7px;clip:rect(0 0 0 0)"><div data-cid="d" style="width:30px;height:15px;margin:3px 0"></div></div>`) },
+  { id: "clip-zero-area-fixed", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="position:fixed;left:30px;top:40px;width:20px;height:20px;clip:rect(0,0,0,0)"></div>`) },
+  { id: "clip-zero-area-in-relative", html: DOC(S("body{margin:0}"), `<div style="position:relative;margin:30px"><div data-cid="c" style="position:absolute;right:0;top:4px;width:20px;height:20px;clip:rect(5px,5px,5px,5px)"></div></div>`) },
+  { id: "clip-zero-area-transformed", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="position:absolute;left:20px;top:20px;width:50px;height:50px;transform:translate(100px,0);clip:rect(0,0,0,0)"></div>`) },
+  // P5b-W6, miaskiewicz/turbo-dom#76: an empty (self-collapsing) first child's margins
+  // collapse through it and out of its parent's top edge (CSS 2.2 §8.3.1).
+  { id: "self-collapsing-first-child-padded-parent", html: DOC(S("body{margin:0}"), `<div data-cid="w" style="padding-bottom:1px"><div data-cid="k" style="margin-bottom:20px"></div></div><div data-cid="g" style="height:60px"></div>`) },
+  { id: "self-collapsing-first-child-then-block", html: DOC(S("body{margin:0}"), `<div data-cid="w" style="padding-bottom:1px"><div data-cid="k" style="margin-bottom:20px"></div><div data-cid="b" style="height:10px;margin-top:5px"></div></div><div data-cid="g" style="height:60px"></div>`) },
+  { id: "self-collapsing-first-child-fixed-height", html: DOC(S("body{margin:0}"), `<div data-cid="w" style="height:50px"><div data-cid="k" style="margin-bottom:20px"></div></div><div data-cid="g" style="height:60px"></div>`) },
+  { id: "self-collapsing-first-child-min-height", html: DOC(S("body{margin:0}"), `<div data-cid="w" style="min-height:10px"><div data-cid="k" style="margin-bottom:20px"></div></div><div data-cid="g" style="height:60px"></div>`) },
+  { id: "self-collapsing-first-child-two-empty-children", html: DOC(S("body{margin:0}"), `<div data-cid="a" style="height:10px"></div><div data-cid="w" style="padding-bottom:1px;margin-top:5px"><div data-cid="k" style="margin:8px 0 3px"></div><div data-cid="l" style="margin-bottom:12px"></div><div data-cid="b" style="height:10px;margin-top:15px"></div></div>`) },
+  { id: "self-collapsing-first-child-nested-empty", html: DOC(S("body{margin:0}"), `<div data-cid="w" style="padding-bottom:1px"><div data-cid="k"><div data-cid="j" style="margin-bottom:25px"></div></div><div data-cid="b" style="height:10px"></div></div>`) },
+  { id: "self-collapsing-first-child-negative-margin", html: DOC(S("body{margin:0}"), `<div data-cid="a" style="height:30px"></div><div data-cid="w" style="padding-bottom:1px;margin-top:10px"><div data-cid="k" style="margin-bottom:-4px"></div><div data-cid="b" style="height:10px;margin-top:6px"></div></div>`) },
+  { id: "self-collapsing-first-child-padded-child-is-not-empty", html: DOC(S("body{margin:0}"), `<div data-cid="w" style="padding-bottom:1px"><div data-cid="k" style="padding-top:1px;margin-bottom:20px"></div><div data-cid="b" style="height:10px"></div></div>`) },
+  { id: "self-collapsing-first-child-height-zero", html: DOC(S("body{margin:0}"), `<div data-cid="w" style="padding-bottom:1px"><div data-cid="k" style="height:0;margin-bottom:20px"></div><div data-cid="b" style="height:10px"></div></div>`) },
+  { id: "self-collapsing-first-child-bfc-child-is-not-empty", html: DOC(S("body{margin:0}"), `<div data-cid="w" style="padding-bottom:1px"><div data-cid="k" style="overflow:hidden;margin-bottom:20px"></div><div data-cid="b" style="height:10px"></div></div>`) },
+  // P5b-W6, miaskiewicz/turbo-dom#77: `min-height` wins over `max-height` and `height`
+  // (CSS 2.2 §10.7).
+  { id: "min-max-height-min-wins-over-max", html: DOC(S("body{margin:0}"), `<div data-cid="w" style="min-height:400px;max-height:100px"><div data-cid="k" style="height:200px"></div></div><div data-cid="g" style="height:60px"></div>`) },
+  { id: "min-max-height-min-wins-over-height", html: DOC(S("body{margin:0}"), `<div data-cid="w" style="height:50px;min-height:100px"><div data-cid="k" style="height:200px"></div></div><div data-cid="g" style="height:60px"></div>`) },
+  { id: "min-max-height-all-three", html: DOC(S("body{margin:0}"), `<div data-cid="w" style="height:300px;max-height:100px;min-height:200px"><div data-cid="k" style="height:200px"></div></div><div data-cid="g" style="height:60px"></div>`) },
+  { id: "min-max-height-border-box", html: DOC(S("body{margin:0}"), `<div data-cid="w" style="box-sizing:border-box;padding:10px;min-height:150px;max-height:100px"><div data-cid="k" style="height:200px"></div></div><div data-cid="g" style="height:60px"></div>`) },
+  // P5b-W6, miaskiewicz/turbo-dom#78: a percentage `height` / `min-height` / `max-height` resolves
+  // against a definite containing-block height (against an indefinite one: `auto` / 0 / `none`).
+  { id: "percent-min-height-definite", html: DOC(S("body{margin:0}"), `<div style="height:600px"><div data-cid="w" style="min-height:50%"><div data-cid="k" style="height:200px"></div></div><div data-cid="g" style="height:60px"></div></div>`) },
+  { id: "percent-max-height-definite", html: DOC(S("body{margin:0}"), `<div style="height:600px"><div data-cid="w" style="max-height:25%"><div data-cid="k" style="height:200px"></div></div><div data-cid="g" style="height:60px"></div></div>`) },
+  { id: "percent-height-definite", html: DOC(S("body{margin:0}"), `<div style="height:600px"><div data-cid="w" style="height:50%"><div data-cid="k" style="height:200px"></div></div><div data-cid="g" style="height:60px"></div></div>`) },
+  { id: "percent-height-chain-definite", html: DOC(S("body{margin:0}"), `<div style="height:600px"><div data-cid="w" style="height:50%"><div data-cid="v" style="height:50%"></div></div><div data-cid="g" style="height:60px"></div></div>`) },
+  { id: "percent-height-border-box-definite", html: DOC(S("body{margin:0}"), `<div style="height:600px"><div data-cid="w" style="box-sizing:border-box;padding:10px;height:50%"><div data-cid="k" style="height:200px"></div></div><div data-cid="g" style="height:60px"></div></div>`) },
+  { id: "percent-height-auto-parent-indefinite", html: DOC(S("body{margin:0}"), `<div><div data-cid="w" style="height:50%"><div data-cid="k" style="height:200px"></div></div><div data-cid="g" style="height:60px"></div></div>`) },
+  { id: "percent-min-height-auto-parent-indefinite", html: DOC(S("body{margin:0}"), `<div><div data-cid="w" style="min-height:50%;max-height:10%"><div data-cid="k" style="height:200px"></div></div><div data-cid="g" style="height:60px"></div></div>`) },
+  // P5b-W6, miaskiewicz/turbo-dom#79: a box's intrinsic widths count its in-flow
+  // children's horizontal margins (their margin boxes).
+  { id: "intrinsic-margin-float", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="float:left"><div data-cid="d" style="width:30px;height:15px;margin:0 4px 0 6px"></div></div>`) },
+  { id: "intrinsic-margin-abs", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="position:absolute;left:5px;top:7px"><div data-cid="d" style="width:30px;height:15px;margin:0 4px 0 6px"></div></div>`) },
+  { id: "intrinsic-margin-inline-block", html: DOC(S("body{margin:0}"), `<div style="font-size:0"><div data-cid="c" style="display:inline-block"><div data-cid="d" style="width:30px;height:15px;margin:0 4px 0 6px"></div></div></div>`) },
+  { id: "intrinsic-margin-table-cell", html: DOC(S("body{margin:0}"), `<table style="border-spacing:0"><tr><td data-cid="c" style="padding:0"><div data-cid="d" style="width:30px;height:15px;margin:0 4px 0 6px"></div></td></tr></table>`) },
+  { id: "intrinsic-margin-widest-margin-box", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="float:left"><div data-cid="d" style="width:30px;height:5px;margin-left:20px"></div><div data-cid="e" style="width:45px;height:5px"></div></div>`) },
+  { id: "intrinsic-margin-negative", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="float:left"><div data-cid="d" style="width:30px;height:5px;margin-right:-10px"></div></div>`) },
+  { id: "intrinsic-margin-min-content", html: DOC(S("body{margin:0}"), `<table data-cid="t" style="width:1px;border-spacing:0"><tr><td data-cid="c" style="padding:0"><div data-cid="d" style="width:30px;height:15px;margin:0 5px"></div></td></tr></table>`) },
+  { id: "intrinsic-margin-column-flex", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="display:flex;flex-direction:column;float:left"><div data-cid="d" style="width:30px;height:15px;margin:0 4px 0 6px"></div></div>`) },
 ];
 
 /** The RGB of a 1x1 PNG screenshot (any filter: a single pixel's filter adds 0). */

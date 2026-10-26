@@ -8,7 +8,7 @@
   const g = globalThis, ns = g[Symbol.for('ts')], native = ns.makeNativeFunction;
   const Native = g.__inputNative; delete g.__inputNative;
   const apply = Reflect.apply, define = Object.defineProperty, describe = Object.getOwnPropertyDescriptor;
-  const StringValue = String, NumberValue = Number, DateValue = Date, TypeErrorValue = TypeError, Exception = g.DOMException;
+  const StringValue = String, NumberValue = Number, DateValue = Date, TypeErrorValue = TypeError, Exception = g[Symbol.for('ts')].DOMException;
   const isFiniteNumber = Number.isFinite, isNaNValue = Number.isNaN, floor = Math.floor, absolute = Math.abs;
   const dateTime = Date.prototype.getTime, regexTest = RegExp.prototype.test, replaceText = String.prototype.replace;
   const sliceText = String.prototype.slice, padText = String.prototype.padStart, charCode = String.prototype.charCodeAt;

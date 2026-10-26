@@ -1,0 +1,299 @@
+{
+  "browser": "Chrome/156.0.8078.4",
+  "v8": "15.6.75",
+  "casesSha256": "bbf3f55626cfec36b6e1c9fe56851e6666854e52707dae70f5fdb921d9cecc99",
+  "probeSha256": "658463f22ba09dfe88d762597f8adf630b5f7cd248c58ab194af985125598f0d",
+  "collectorSha256": "7174415de76a891d657bbc3e66952c7b91356030e8fcd9d0ac4f52603d0c3952",
+  "flags": [
+    "--headless=new",
+    "--remote-debugging-pipe",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "about:blank"
+  ],
+  "errors": [],
+  "result": [
+    {
+      "id": "page",
+      "result": {
+        "installed": {
+          "imageDecode": [
+            "EncodingError",
+            true,
+            true
+          ],
+          "animationPseudo": [
+            "SyntaxError",
+            true,
+            true
+          ],
+          "customElementName": [
+            "SyntaxError",
+            true,
+            true
+          ],
+          "xpathSyntax": [
+            "SyntaxError",
+            true,
+            true
+          ],
+          "pictureInPicture": [
+            "InvalidStateError",
+            true,
+            true
+          ],
+          "qualifiedName": [
+            "NamespaceError",
+            true,
+            true
+          ],
+          "attachInternals": [
+            "NotSupportedError",
+            true,
+            true
+          ],
+          "editContext": [
+            "NotSupportedError",
+            true,
+            true
+          ],
+          "fileInputValue": [
+            "InvalidStateError",
+            true,
+            true
+          ],
+          "abortReason": [
+            "AbortError",
+            true,
+            true
+          ],
+          "requestSubmit": [
+            "NotFoundError",
+            true,
+            true
+          ],
+          "outerText": [
+            "NoModificationAllowedError",
+            true,
+            true
+          ],
+          "dialogModal": [
+            "InvalidStateError",
+            true,
+            true
+          ],
+          "pointerCapture": [
+            "NotFoundError",
+            true,
+            true
+          ],
+          "stepUp": [
+            "InvalidStateError",
+            true,
+            true
+          ],
+          "rangeOffset": [
+            "IndexSizeError",
+            true,
+            true
+          ],
+          "rangeSurround": [
+            "HierarchyRequestError",
+            true,
+            true
+          ],
+          "selectionIndex": [
+            "IndexSizeError",
+            true,
+            true
+          ],
+          "showPicker": [
+            "NotAllowedError",
+            true,
+            true
+          ],
+          "typedOm": [
+            "SyntaxError",
+            true,
+            true
+          ],
+          "adoptSheet": [
+            "NotAllowedError",
+            true,
+            true
+          ],
+          "selectionRange": [
+            "InvalidStateError",
+            true,
+            true
+          ],
+          "insertRule": [
+            "IndexSizeError",
+            true,
+            true
+          ],
+          "processingInstruction": [
+            "InvalidCharacterError",
+            true,
+            true
+          ],
+          "createElement": [
+            "InvalidCharacterError",
+            true,
+            true
+          ],
+          "querySelector": [
+            "SyntaxError",
+            true,
+            true
+          ],
+          "appendChild": [
+            "HierarchyRequestError",
+            true,
+            true
+          ]
+        },
+        "replaced": {
+          "imageDecode": [
+            "EncodingError",
+            true,
+            true
+          ],
+          "animationPseudo": [
+            "SyntaxError",
+            true,
+            true
+          ],
+          "customElementName": [
+            "SyntaxError",
+            true,
+            true
+          ],
+          "xpathSyntax": [
+            "SyntaxError",
+            true,
+            true
+          ],
+          "pictureInPicture": [
+            "InvalidStateError",
+            true,
+            true
+          ],
+          "qualifiedName": [
+            "NamespaceError",
+            true,
+            true
+          ],
+          "attachInternals": [
+            "NotSupportedError",
+            true,
+            true
+          ],
+          "editContext": [
+            "NotSupportedError",
+            true,
+            true
+          ],
+          "fileInputValue": [
+            "InvalidStateError",
+            true,
+            true
+          ],
+          "abortReason": [
+            "AbortError",
+            true,
+            true
+          ],
+          "requestSubmit": [
+            "NotFoundError",
+            true,
+            true
+          ],
+          "outerText": [
+            "NoModificationAllowedError",
+            true,
+            true
+          ],
+          "dialogModal": [
+            "InvalidStateError",
+            true,
+            true
+          ],
+          "pointerCapture": [
+            "NotFoundError",
+            true,
+            true
+          ],
+          "stepUp": [
+            "InvalidStateError",
+            true,
+            true
+          ],
+          "rangeOffset": [
+            "IndexSizeError",
+            true,
+            true
+          ],
+          "rangeSurround": [
+            "HierarchyRequestError",
+            true,
+            true
+          ],
+          "selectionIndex": [
+            "IndexSizeError",
+            true,
+            true
+          ],
+          "showPicker": [
+            "NotAllowedError",
+            true,
+            true
+          ],
+          "typedOm": [
+            "SyntaxError",
+            true,
+            true
+          ],
+          "adoptSheet": [
+            "NotAllowedError",
+            true,
+            true
+          ],
+          "selectionRange": [
+            "InvalidStateError",
+            true,
+            true
+          ],
+          "insertRule": [
+            "IndexSizeError",
+            true,
+            true
+          ],
+          "processingInstruction": [
+            "InvalidCharacterError",
+            true,
+            true
+          ],
+          "createElement": [
+            "InvalidCharacterError",
+            true,
+            true
+          ],
+          "querySelector": [
+            "SyntaxError",
+            true,
+            true
+          ],
+          "appendChild": [
+            "HierarchyRequestError",
+            true,
+            true
+          ]
+        }
+      }
+    }
+  ]
+}

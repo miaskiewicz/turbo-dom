@@ -67,6 +67,10 @@ fn children<'s>(
         .map(|child| wrap(scope, child))
         .collect()
 }
+/// The root of `node`'s tree (a shadow root stops the climb).
+pub(super) fn tree_root(tree: &Tree, node: Handle) -> Handle {
+    top(tree, node)
+}
 fn top(tree: &Tree, node: Handle) -> Handle {
     let mut cursor = node;
     while let Some(parent) = tree.parent(cursor) {

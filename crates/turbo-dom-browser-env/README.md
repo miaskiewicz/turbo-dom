@@ -86,14 +86,29 @@ Add a constant (and its `FILES` entry) when another consumer needs a file.
 `tests/test_support_api.rs` checks every constant against its file and every
 probe/control pair's recorded `probeSha256`.
 
+### DOMException interface
+
+Every DOMException the binding raises — natively (`throw_dom_error`) or from its JS
+modules — is built, when it is raised, from the realm's registered interface: the
+binding's own `DOMException`, recorded at install, unless the embedder installs its own
+and hands it over with `register_dom_exception(scope, constructor)` (turbo-surf's runtime)
+or by calling `capture_window_event_interfaces(scope)` after installing it. No module keeps
+a constructor captured at install, and page script reassigning `globalThis.DOMException`
+changes nothing, as in Chrome (miaskiewicz/turbo-surf#42, miaskiewicz/turbo-dom#72). Module
+code uses `new ts.DOMException(message, name)` / `instanceof ts.DOMException` (the
+`globalThis[Symbol.for('ts')]` namespace; `ts.realmDOMException()` returns the current
+interface). Control: `src/dom_exception_realm_chrome156.json` (27 operations across the
+modules, with the interface as installed and after page script replaced it).
+
 ### Image load state
 
 The binding never fetches or decodes images. `HTMLImageElement.prototype` carries
 `complete`, `naturalWidth`, `naturalHeight` and `currentSrc` as Chrome's read-only
 accessors (an `<img>` never has them as own properties); without host state an
 image is "not loading": `complete` is `true`, the natural size `0`×`0` and
-`currentSrc` the resolved `src` (`""` without one), which is Chrome's answer for an
-image without a source and for a broken image (`src/html_image_chrome156.json`). A
+`currentSrc` the selected source (below; `""` without one), which is Chrome's answer for an
+image without a source and for a broken image (`src/html_image_chrome156.json`,
+`src/html_image_srcset_chrome156.json` `none1`). A
 host that loads images (turbo-surf) publishes each image's state through the
 document's private interface record, which page JS cannot reach:
 
@@ -129,6 +144,35 @@ when it parses as a non-negative integer (up to 4294967295: `"12px"` → 12, `"-
 `"4294967296"` fall through), else the natural size from `setState` (`0` without one);
 `x` / `y` are `0`. Control: `src/html_image_chrome156.json` `dimensions` (rendered,
 `display: none` and detached images, attribute parsing, setter conversions).
+
+`srcset` / `sizes` (HTMLImageElement and HTMLSourceElement), HTMLSourceElement `media` /
+`type` (DOMString reflections) and `width` / `height` (unsigned long) reflect their
+attributes. The binding selects an image's source like Chrome 156 (HTML "select an image
+source", miaskiewicz/turbo-dom#71): the first `<source>` before the image in its `<picture>`
+parent with a non-empty `srcset` whose `media` query list matches and whose `type` Chrome
+decodes (JPEG, PNG, APNG, GIF, BMP, ICO, XBM, WebP, AVIF, JPEG XL, SVG; MIME parameters
+ignored), else the image's own `srcset` plus `src` as `1x`; `w` descriptors divided by the
+`sizes` source size (media conditions with `and` / `or` / `not`, range syntax, `width` /
+`height` / `aspect-ratio` / `orientation` / `resolution` / `-webkit-device-pixel-ratio`;
+`px`, `em` (16 px), viewport units, `calc()` / `min()` / `max()` / `clamp()`; default
+`100vw`), then the first candidate whose density is at least the device pixel ratio, else
+the densest. URLs are parsed against the document base URL (the first `<base href>`, else
+the document URL) by the native resolver `ts.resolveDocumentURL`, which the reflected `src` /
+`href` getters use too (miaskiewicz/turbo-dom#73; no embedder `URL` global needed). A host that loads images asks
+for the choice and reports the natural size Chrome derives from it:
+
+```js
+const chosen = record.imageHost.selectSource(img, { devicePixelRatio: 2 }); // {url, density} | null
+// environment fields default to window.innerWidth / innerHeight / devicePixelRatio
+// (1024 x 768 at 1 where the window has none, as in turbo-test)
+const { naturalWidth, naturalHeight } = record.imageHost.naturalSize(w, h, chosen.density);
+record.imageHost.setState(img, { complete: true, naturalWidth, naturalHeight, currentSrc: chosen.url });
+```
+
+`naturalSize` floors the size times the float reciprocal of the density (a 301-px-wide
+`2x` image is 150 wide). Control: `src/html_image_srcset_chrome156.json`
+(`scripts/image-srcset-chrome-control.mjs` over `scripts/make-image-srcset-cases.py`'s 95
+images at DPR 1 and 2, and with nothing loading).
 
 `HTMLImageElement.prototype.decode()` resolves when the host's state is complete
 with a natural size and rejects with an `EncodingError` otherwise (no source,
@@ -179,12 +223,33 @@ and `:-webkit-full-screen-ancestor` (the top's shadow-including ancestors) every
 stylesheets and the shadow-scoped native cascade included; `:modal` also matches the
 fullscreen element. A fullscreen element other than the root computes Chrome's
 `:not(:root):fullscreen` values — `position: fixed`, `inset: 0`, `margin: 0`,
-`box-sizing: border-box`, `min-*: 0`, `max-*: none`, `width` / `height: 100%` (left
-unresolved), `transform: none`, all `!important`, and `object-fit: contain` — and its
+`box-sizing: border-box`, `min-*: 0`, `max-*: none`, `width` / `height: 100%` (computed
+as the viewport's `innerWidth` / `innerHeight` px), `transform: none`, all `!important`, and `object-fit: contain` — and its
 `::backdrop` is fixed at inset 0 with `rgb(0, 0, 0)`. `fullscreenchange` /
 `fullscreenerror` fire as before. Control: case `fullscreen` (async; the collector's
-`__cdpGesture()` is a trusted CDP click). Known gaps, filed: composed events stop at the
-shadow root (turbo-dom#66).
+`__cdpGesture()` is a trusted CDP click).
+
+### Text tracks
+
+`<track>` is an `HTMLTrackElement` (turbo-dom#74, control `src/html_track_chrome156.json`):
+`kind` (missing → `subtitles`, invalid → `metadata`), `srclang`, `label`, `default`, the
+shared `src` URL reflection, `readyState` `NONE` (no track is ever loaded) and the
+`NONE`..`ERROR` constants; `track` is the element's `TextTrack` (kind / label / language / id
+from the element, `mode` `disabled` / `hidden` / `showing`, empty `TextTrackCueList`s for
+`cues` / `activeCues` once enabled, `oncuechange`; `addCue` / `removeCue` reject non-cues).
+
+### Events across shadow trees
+
+`dispatchEvent` builds the DOM event path through shadow trees (turbo-dom#66): a composed
+event crosses each shadow root into its host (an uncomposed one stops at the root of the
+target's tree), a slotted node passes through its assigned slot, and every listener sees
+`event.target` and `relatedTarget` (MouseEvent / FocusEvent and subclasses) retargeted
+against its own tree; hosts receive the event AT_TARGET, `composedPath()` hides closed
+trees the listener is outside of, propagation stops where the retargeted `relatedTarget`
+is the host it would enter (nothing is dispatched when it equals the target), and after
+dispatch `target` / `relatedTarget` are cleared when they stayed inside a shadow tree.
+Events whose path crosses no shadow root dispatch as before. Control:
+`src/shadow_events_chrome156.json` (exported as `test_support::SHADOW_EVENTS_*`).
 
 `getComputedStyle(el, pseudoElt)` parses `pseudoElt` like Chrome (turbo-dom#47):
 `::before` / `::after` (and `:before` / `:after` / bare `before` / `after`) compute
@@ -282,6 +347,7 @@ read probes and write controls):
 | `scripts/typed-om-registry.mjs` | `typed_om_registry_cases.json` and the production registry `typed_om_properties.json` (from Blink's json5 metadata + the registry control) |
 | `scripts/view-transitions-chrome-control.mjs`, `scripts/shadow-html-chrome-control.mjs` | `view_transitions_chrome156.json`; shadow-root / HTML serialization / sanitizer controls |
 | `scripts/invokers-chrome-control.mjs`, `scripts/editing-input-chrome-control.mjs`, `scripts/trusted-input-chrome-control.mjs` | invokers/popover, editing, pointer and other trusted-input controls |
+| `scripts/image-srcset-chrome-control.mjs` | `html_image_srcset_chrome156.json` (Playwright, DPR 1 / 2, local image server; cases from `scripts/make-image-srcset-cases.py`) |
 | `scripts/document-legacy-chrome-control.mjs` | `document_legacy_chrome156.json` (loopback HTTP/HTTPS cases) |
 | `scripts/trusted-types-control/` | Trusted Types controls (`trusted_types*_chrome155.json`); `cdp-connection.mjs` is shared with the document-legacy collector |
 

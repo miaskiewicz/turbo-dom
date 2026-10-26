@@ -1235,9 +1235,9 @@ fn deferred_absolute_without_vertical_inset_keeps_static_y() {
 
 #[test]
 fn in_flow_percent_height_stays_content_derived() {
-    // An in-flow `%` height has no definite basis in the flow model, so the box
-    // still sizes to its content (the `positioned_pct_height` guard is in-flow →
-    // `None`), not to the percentage.
+    // An in-flow `%` height whose parent (here the galley root) has no definite
+    // height has no basis, so the box still sizes to its content, not to the
+    // percentage (a definite parent height resolves it: miaskiewicz/turbo-dom#78).
     let root = lay(
         &[el(
             "div",

@@ -343,6 +343,12 @@ pub struct CidBox {
 /// resolved on box-generating elements (block, `inline-block`, flex/grid/table
 /// items, replaced `<img>`). Tag the box-generating element under test.
 ///
+/// Like `getBoundingClientRect()`, it also reports the boxes the render leaves out
+/// because they paint nothing at any size: an absolutely positioned box whose
+/// `clip: rect()` keeps nothing (the sr-only pattern) is laid out here with its empty
+/// clip region, and it and its descendants report their border boxes
+/// (miaskiewicz/turbo-dom#75).
+///
 /// `cb_height` is the viewport height: the initial containing block's height (which
 /// `position: fixed` boxes and absolutely positioned boxes it contains resolve their
 /// `bottom` / `%` insets and `%` heights against; miaskiewicz/turbo-dom#81), the
@@ -401,10 +407,7 @@ pub fn layout_boxes_tree(
     let mut cids: HashMap<u32, String> = HashMap::new();
     let (boxes, _, _) = crate::layout::boxgen::build_box_tree_with(
         &styled,
-        crate::layout::boxgen::BuildOptions {
-            atomic_internal_links: layout_options.atomic_internal_links,
-            record_sources: false,
-        },
+        crate::layout::geometry_build_options(&layout_options),
     );
     collect_cids(&boxes, &mut cids);
 
@@ -413,7 +416,7 @@ pub fn layout_boxes_tree(
         resolver: &resolver,
         body_height: Some(cb_height),
     };
-    let root = crate::layout::layout_in_viewport(
+    let root = crate::layout::layout_geometry(
         &styled,
         (cb_width, cb_height),
         fonts,

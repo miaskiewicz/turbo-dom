@@ -11,7 +11,7 @@
   let fileEntries=null;ns.registerFileEntries=entries=>{fileEntries=entries;delete ns.registerFileEntries;};
   const apply = Reflect.apply, define = Object.defineProperty, create = Object.create;
   const string = String, number = Number;
-  const ErrorType = TypeError, Exception = DOMException, Regex = RegExp;
+  const ErrorType = TypeError, Exception = g[Symbol.for('ts')].DOMException, Regex = RegExp;
   const isNaNValue=Number.isNaN,absolute=Math.abs,round=Math.round,floor=Math.floor;
   const tagGetter = ns.domAccessor('tagName', false, 'Element');
   const localNameGetter = ns.domAccessor('localName', false, 'Element');

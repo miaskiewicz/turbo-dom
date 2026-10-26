@@ -1,0 +1,13 @@
+{
+ "id": "turbo-surf#41",
+ "reason": "Tree::collect_unreachable records the creation-time 'undefined' state of parser-created is= elements before it drops the parse buffer. Commit bac0074. No pinned input has an is= attribute or uses :defined (grep of the parity cache). html2pdf and static screenshots never collect storage, and html2pdf manifests are byte-identical. Prediction: no surf live change. P5b-X7.",
+ "control": "crates/turbo-dom-browser-env/src/custom_elements_defined_chrome156.json (through collect_native_storage)",
+ "e2e": "crates/turbo-dom-browser-env/src/custom_elements_collect_tests.rs, crates/turbo-dom/tests/custom_element_state.rs",
+ "changes": {
+  "html2pdf": [],
+  "html2pdf-svg": [],
+  "html2pdf-extra": [],
+  "surf": [],
+  "surf-extra": []
+ }
+}

@@ -426,6 +426,12 @@ pub(crate) struct BuildOptions {
     pub(crate) atomic_internal_links: bool,
     /// Record each box's source [`turbo_dom::Handle`] (see [`super::NodeSources`]).
     pub(crate) record_sources: bool,
+    /// Keep an absolutely positioned box whose `clip: rect()` keeps nothing (the
+    /// sr-only pattern; [`super::value::clip_keeps_nothing`]) in the box tree: it paints
+    /// nothing, so a render leaves it out, but the geometry seam
+    /// ([`crate::layout_boxes`]) reports its border box like Chrome
+    /// (miaskiewicz/turbo-dom#75).
+    pub(crate) keep_zero_area_clips: bool,
 }
 
 /// The source handles recorded per box id in source-recording mode.
@@ -449,6 +455,7 @@ struct Ids {
     /// [`StyledElement::source`]/text sources per allocated id.
     recorded: Option<Recorded>,
     atomic_internal_links: bool,
+    keep_zero_area_clips: bool,
     /// Whether a box in the top layer (the fullscreen element, miaskiewicz/turbo-dom#82)
     /// was built: [`build_root`] then hoists it.
     top_layer: bool,
@@ -462,6 +469,7 @@ impl Ids {
             document_roots: std::collections::HashSet::default(),
             recorded: options.record_sources.then(Recorded::default),
             atomic_internal_links: options.atomic_internal_links,
+            keep_zero_area_clips: options.keep_zero_area_clips,
             top_layer: false,
         }
     }
@@ -508,7 +516,7 @@ impl Ids {
         if self.sources.is_some() {
             display_of(style) == Display::None
         } else {
-            is_hidden(style)
+            is_hidden(style, self.keep_zero_area_clips)
         }
     }
 }
@@ -549,8 +557,9 @@ fn marker_level(kind: MarkerKind, el: &StyledElement, ids: &mut Ids) -> Level {
 /// invisible states `visibility:hidden` / `opacity:0`. We drop it rather than
 /// paint an invisible box — which is also what keeps hover/click-revealed menus
 /// (Wikipedia's nav dropdowns) hidden in a static snapshot, since their reveal
-/// rule (`:hover`/`:checked ~ …`) is never applied.
-pub(crate) fn is_hidden(style: &ComputedStyle) -> bool {
+/// rule (`:hover`/`:checked ~ …`) is never applied. `keep_zero_area_clips`: a box
+/// whose `clip: rect()` keeps nothing is not dropped for it ([`BuildOptions`]).
+pub(crate) fn is_hidden(style: &ComputedStyle, keep_zero_area_clips: bool) -> bool {
     if matches!(display_of(style), Display::None) {
         return true;
     }
@@ -563,19 +572,24 @@ pub(crate) fn is_hidden(style: &ComputedStyle) -> bool {
     ) {
         return true;
     }
-    is_visually_hidden(style)
+    is_visually_hidden(style, keep_zero_area_clips)
 }
 
 /// The "visually hidden" / screen-reader-only patterns: content that's in the DOM
 /// (for a11y) but clipped away so it never paints. Real pages (Wikipedia, Nike)
 /// use dozens; without honoring them their text renders — and, being
 /// `position:absolute` with no offset, piles up at the containing block's origin.
-fn is_visually_hidden(style: &ComputedStyle) -> bool {
+fn is_visually_hidden(style: &ComputedStyle, keep_zero_area_clips: bool) -> bool {
     // An absolutely positioned box whose `clip: rect()` keeps nothing — the classic
     // sr-only clip (`rect(1px,1px,1px,1px)` / `rect(0,0,0,0)`). A partial clip lays out
     // and paints its region (the fragment's `clip`); `clip` on any other box does not
-    // apply (miaskiewicz/turbo-dom#52).
-    super::value::clip_keeps_nothing(style) || clip_path_hides(style) || tiny_clipped(style)
+    // apply (miaskiewicz/turbo-dom#52). Kept for geometry, such a box is laid out with
+    // its (empty) clip region, whatever other hiding pattern it also matches (the
+    // sr-only class is also 1px with clipped overflow; miaskiewicz/turbo-dom#75).
+    if super::value::clip_keeps_nothing(style) {
+        return !keep_zero_area_clips;
+    }
+    clip_path_hides(style) || tiny_clipped(style)
 }
 
 /// `clip-path: inset(50%|100%)` clips the whole box away.

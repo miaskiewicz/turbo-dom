@@ -19,7 +19,7 @@
   const sub = (s, a, b) => apply(sliceF, s, b === undefined ? [a] : [a, b]);
   const push = (a, v) => define(a, a.length, { __proto__: null, value: v, writable: true, enumerable: true, configurable: true });
   function lookup(object, name) { for (let o = object; o !== null && o !== undefined; o = getProto(o)) { const d = getOwn(o, name); if (d) return d; } return null; }
-  const EventType = g.Event, Target = g.EventTarget, Exception = g.DOMException;
+  const EventType = g.Event, Target = g.EventTarget, Exception = g[Symbol.for('ts')].DOMException;
   const addListener = lookup(Target.prototype, 'addEventListener').value, removeListener = lookup(Target.prototype, 'removeEventListener').value;
   const typeOf = lookup(g.Node.prototype, 'nodeType').get, localOf = lookup(g.Element.prototype, 'localName').get, namespaceOf = lookup(g.Element.prototype, 'namespaceURI').get;
   const HTML = 'http://www.w3.org/1999/xhtml';

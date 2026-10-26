@@ -66,7 +66,10 @@ pub fn is_svg(bytes: &[u8]) -> bool {
     // Scan a bounded prefix for the `<svg` tag or an XML declaration that an SVG
     // document opens with. Bounded so a huge non-SVG blob is rejected cheaply.
     let head = &rest[..rest.len().min(512)];
-    contains_ci(head, b"<svg") || (head.starts_with(b"<?xml") && contains_ci(rest, b"<svg"))
+    contains_ci(head, b"<svg")
+        || (head.starts_with(b"<?xml") && contains_ci(rest, b"<svg"))
+        // A prefixed root (`<s:svg xmlns:s="…/svg">`), which Chrome renders too.
+        || (contains_ci(head, b":svg") && contains_ci(rest, SVG_NS.as_bytes()))
 }
 
 /// Case-insensitive substring search over a byte slice (ASCII), used for the SVG
@@ -77,14 +80,36 @@ fn contains_ci(haystack: &[u8], needle: &[u8]) -> bool {
         .any(|w| w.eq_ignore_ascii_case(needle))
 }
 
+/// The SVG namespace an SVG image's root element must be in.
+const SVG_NS: &str = "http://www.w3.org/2000/svg";
+
 /// Parse SVG bytes into a usvg tree with the deterministic default options
 /// (empty font database: no system-font lookup, no I/O). `None` on malformed
-/// input.
+/// input and on documents Blink does not render as an SVG image
+/// (miaskiewicz/turbo-dom#59, Chrome 156 control
+/// `scripts/image-truncation-chrome-control.mjs`): the root element must be an `<svg>`
+/// in the SVG namespace (XML: case-sensitive, any prefix), and the bytes are XML text —
+/// a gzip (`svgz`) stream is not inflated.
 #[must_use]
 pub fn parse(bytes: &[u8]) -> Option<usvg::Tree> {
+    let document = parse_xml(bytes)?;
     // `Options::default()` ships an empty `fontdb`; we deliberately never call
-    // `load_system_fonts`, so the parse depends only on the input bytes.
-    usvg::Tree::from_data(bytes, &usvg::Options::default()).ok()
+    // `load_system_fonts`, so the parse depends only on the input bytes. (The same
+    // parse `usvg::Tree::from_data` runs on XML text, with the root checked first.)
+    usvg::Tree::from_xmltree(&document, &usvg::Options::default()).ok()
+}
+
+/// The XML document of an SVG image: UTF-8 XML (DTDs allowed, as usvg parses) whose
+/// root element is an SVG-namespace `<svg>`.
+fn parse_xml(bytes: &[u8]) -> Option<usvg::roxmltree::Document<'_>> {
+    let text = std::str::from_utf8(bytes).ok()?;
+    let options = usvg::roxmltree::ParsingOptions {
+        allow_dtd: true,
+        ..Default::default()
+    };
+    let document = usvg::roxmltree::Document::parse_with_options(text, options).ok()?;
+    let root = document.root_element().tag_name();
+    (root.namespace() == Some(SVG_NS) && root.name() == "svg").then_some(document)
 }
 
 /// The intrinsic CSS-pixel size of a parsed SVG (its root `width`/`height`, or the
@@ -160,11 +185,10 @@ pub fn rasterize(bytes: &[u8], scale: f32, oversize: Oversize) -> Option<Rgba8Im
 #[must_use]
 pub fn natural_size(bytes: &[u8]) -> Option<(f32, f32)> {
     parse(bytes)?;
-    let text = std::str::from_utf8(bytes).ok()?;
-    let start = text.find("<svg")?;
-    let tag = &text[start..start + text[start..].find('>')?];
-    let (width, height) = (svg_length(tag, "width"), svg_length(tag, "height"));
-    let ratio = view_box_ratio(tag).or_else(|| width.zip(height).map(|(w, h)| w / h));
+    let document = parse_xml(bytes)?;
+    let root = document.root_element();
+    let (width, height) = (svg_length(root, "width"), svg_length(root, "height"));
+    let ratio = view_box_ratio(root).or_else(|| width.zip(height).map(|(w, h)| w / h));
     Some(natural_from(width, height, ratio))
 }
 
@@ -189,43 +213,23 @@ fn contain_default(r: f32) -> (f32, f32) {
     }
 }
 
-/// An absolute length attribute of the root tag (a plain number or `px`), if positive.
-fn svg_length(tag: &str, name: &str) -> Option<f32> {
-    let v = svg_attr(tag, name)?.trim();
+/// An absolute length attribute of the root element (a plain number or `px`), if positive.
+fn svg_length(root: usvg::roxmltree::Node<'_, '_>, name: &str) -> Option<f32> {
+    let v = root.attribute(name)?.trim();
     let v = v.strip_suffix("px").unwrap_or(v).trim();
     v.parse::<f32>().ok().filter(|n| n.is_finite() && *n > 0.0)
 }
 
 /// The width/height ratio of the root's `viewBox`, if it is four numbers with a
 /// positive size.
-fn view_box_ratio(tag: &str) -> Option<f32> {
-    let n: Vec<f32> = svg_attr(tag, "viewBox")?
+fn view_box_ratio(root: usvg::roxmltree::Node<'_, '_>) -> Option<f32> {
+    let n: Vec<f32> = root
+        .attribute("viewBox")?
         .split(|c: char| c.is_whitespace() || c == ',')
         .filter(|t| !t.is_empty())
         .filter_map(|t| t.parse().ok())
         .collect();
     (n.len() == 4 && n[2] > 0.0 && n[3] > 0.0).then(|| n[2] / n[3])
-}
-
-/// The quoted value of attribute `name` in an opening tag (a whole attribute name:
-/// preceded by whitespace).
-fn svg_attr<'t>(tag: &'t str, name: &str) -> Option<&'t str> {
-    let mut rest = tag;
-    loop {
-        let at = rest.find(name)?;
-        let preceded = rest[..at].ends_with(char::is_whitespace);
-        rest = &rest[at + name.len()..];
-        if preceded {
-            return quoted_value(rest);
-        }
-    }
-}
-
-/// The value of `= "…"` / `= '…'` at the start of `rest`.
-fn quoted_value(rest: &str) -> Option<&str> {
-    let value = rest.trim_start().strip_prefix('=')?.trim_start();
-    let quote = value.chars().next().filter(|&q| q == '"' || q == '\'')?;
-    value[1..].split(quote).next()
 }
 
 /// The PDF pipeline's intrinsic size of an SVG: its [`PDF_SVG_SCALE`] pixel size

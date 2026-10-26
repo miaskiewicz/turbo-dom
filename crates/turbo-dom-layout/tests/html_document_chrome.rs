@@ -103,7 +103,7 @@ fn inline_flex_grid_case(id: &str) -> bool {
 /// The control cases of an open bug, each asserted by its own test (`#[ignore]`d until
 /// its fix lands) and held out of [`html_documents_lay_out_as_chrome_156`].
 fn held_out(id: &str) -> bool {
-    let groups: [fn(&str) -> bool; 24] = [
+    let groups: [fn(&str) -> bool; 29] = [
         auto_table_case,
         inline_flex_grid_case,
         abs_auto_width_case,
@@ -119,6 +119,11 @@ fn held_out(id: &str) -> bool {
         last_margin_case,
         legacy_align_case,
         th_case,
+        min_height_margin_case,
+        zero_area_clip_case,
+        min_max_height_case,
+        percent_height_case,
+        self_collapsing_first_child_case,
         intrinsic_margin_case,
         inline_block_margin_case,
         icb_case,
@@ -263,6 +268,61 @@ fn last_child_bottom_margins_like_chrome_156() {
     compare_cases(last_margin_case);
 }
 
+/// miaskiewicz/turbo-dom#75 item 1: a last child's bottom margin vs its parent's
+/// `min-height` / `max-height` (collapses through when the used height is the content
+/// height, else is dropped).
+fn min_height_margin_case(id: &str) -> bool {
+    id.starts_with("min-height-margin-")
+}
+
+#[test]
+fn last_child_bottom_margin_with_min_height_like_chrome_156() {
+    compare_cases(min_height_margin_case);
+}
+
+/// miaskiewicz/turbo-dom#75 item 2: a zero-area `clip: rect()` box (the sr-only pattern)
+/// paints nothing but keeps its border box (and its descendants theirs).
+fn zero_area_clip_case(id: &str) -> bool {
+    id.starts_with("clip-zero-area-") || id.starts_with("clip-sr-only")
+}
+
+#[test]
+fn zero_area_clip_boxes_keep_their_geometry_like_chrome_156() {
+    compare_cases(zero_area_clip_case);
+}
+
+/// miaskiewicz/turbo-dom#77: `min-height` wins over `max-height` and `height`.
+fn min_max_height_case(id: &str) -> bool {
+    id.starts_with("min-max-height-")
+}
+
+#[test]
+fn min_height_wins_over_max_height_like_chrome_156() {
+    compare_cases(min_max_height_case);
+}
+
+/// miaskiewicz/turbo-dom#78: percentage `height` / `min-height` / `max-height` against a
+/// definite containing-block height.
+fn percent_height_case(id: &str) -> bool {
+    id.starts_with("percent-") && id.ends_with("definite")
+}
+
+#[test]
+fn percentage_heights_resolve_against_a_definite_parent_like_chrome_156() {
+    compare_cases(percent_height_case);
+}
+
+/// miaskiewicz/turbo-dom#76: an empty (self-collapsing) first child's margins collapse
+/// through it and out of its parent's top edge.
+fn self_collapsing_first_child_case(id: &str) -> bool {
+    id.starts_with("self-collapsing-first-child-")
+}
+
+#[test]
+fn self_collapsing_first_child_margins_like_chrome_156() {
+    compare_cases(self_collapsing_first_child_case);
+}
+
 /// miaskiewicz/turbo-dom#69: only legacy `-webkit-*` alignment moves block children.
 fn legacy_align_case(id: &str) -> bool {
     id.starts_with("legacy-align-")
@@ -294,9 +354,10 @@ fn header_cells_are_bold_and_centred_like_chrome_156() {
     assert_eq!(th.style.get("text-align"), Some("center"));
 }
 
-/// miaskiewicz/turbo-dom#79: intrinsic widths count the children's horizontal margins.
+/// miaskiewicz/turbo-dom#79: intrinsic widths count the children's horizontal margins
+/// (P5b-W6's `intrinsic-margin-*` cases and P5b-W7's `intrinsic-margins-*`).
 fn intrinsic_margin_case(id: &str) -> bool {
-    id.starts_with("intrinsic-margins-")
+    id.starts_with("intrinsic-margin-") || id.starts_with("intrinsic-margins-")
 }
 
 #[test]
