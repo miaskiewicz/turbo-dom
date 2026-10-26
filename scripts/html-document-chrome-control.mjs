@@ -6,7 +6,9 @@
 // miaskiewicz/turbo-dom#25 item 2 (elements the drive does not lay out still count for
 // selectors). P5b-W3 adds the layout cases of miaskiewicz/turbo-dom#28 (one group per item).
 // P5b-W5 adds the table caption cases of miaskiewicz/turbo-dom#51 (`caption-*`) and the
-// cases of the bugs found while fixing it (one group per issue, labelled).
+// cases of the bugs found while fixing it (one group per issue, labelled). P5b-W6 adds the
+// `min-height` / `max-height` cases of miaskiewicz/turbo-dom#75 item 1
+// (`min-height-margin-*`).
 //
 // For every case below, Chrome for Testing 156 (viewport 1280x800) records:
 //   - `boxes`: getBoundingClientRect() of every `[data-cid]` element (document order), as
@@ -301,6 +303,33 @@ const CASES = [
   { id: "th-centers-inline-content", html: DOC(S("body{margin:0}"), `<table><tr><th data-cid="th" style="width:100px"><i data-cid="i" style="display:inline-block;width:10px;height:10px"></i></th></tr></table>`), measure: "xw" },
   { id: "th-author-text-align", html: DOC(S("body{margin:0}"), `<table><tr><th data-cid="th" style="width:100px;text-align:left"><i data-cid="i" style="display:inline-block;width:10px;height:10px"></i></th></tr></table>`), measure: "xw" },
   { id: "th-leaves-block-children", html: DOC(S("body{margin:0}"), `<table><tr><th data-cid="th" style="width:100px"><div data-cid="d" style="width:10px;height:10px"></div></th></tr></table>`) },
+  // P5b-W6, miaskiewicz/turbo-dom#75 item 1: a last child's bottom margin and its parent's
+  // `min-height` / `max-height`. The margin collapses through an auto-height parent whose
+  // used height is its content height; when `min-height` (or `max-height`) changes the
+  // used height, the margin is neither collapsed through nor added inside — it is dropped.
+  { id: "min-height-margin-larger", html: DOC(S("body{margin:0}"), `<div data-cid="w" style="min-height:400px"><div style="height:100px"></div><div data-cid="k" style="height:200px;margin-bottom:20px"></div></div><div data-cid="g" style="height:60px"></div>`) },
+  { id: "min-height-margin-between", html: DOC(S("body{margin:0}"), `<div data-cid="w" style="min-height:310px"><div style="height:100px"></div><div data-cid="k" style="height:200px;margin-bottom:20px"></div></div><div data-cid="g" style="height:60px"></div>`) },
+  { id: "min-height-margin-smaller", html: DOC(S("body{margin:0}"), `<div data-cid="w" style="min-height:100px"><div style="height:100px"></div><div data-cid="k" style="height:200px;margin-bottom:20px"></div></div><div data-cid="g" style="height:60px"></div>`) },
+  { id: "min-height-margin-equal", html: DOC(S("body{margin:0}"), `<div data-cid="w" style="min-height:300px"><div style="height:100px"></div><div data-cid="k" style="height:200px;margin-bottom:20px"></div></div><div data-cid="g" style="height:60px"></div>`) },
+  { id: "min-height-margin-next-margin", html: DOC(S("body{margin:0}"), `<div data-cid="w" style="min-height:400px"><div data-cid="k" style="height:200px;margin-bottom:20px"></div></div><div data-cid="g" style="height:60px;margin-top:35px"></div>`) },
+  { id: "min-height-margin-parent-margin", html: DOC(S("body{margin:0}"), `<div data-cid="w" style="min-height:400px;margin-bottom:30px"><div data-cid="k" style="height:200px;margin-bottom:50px"></div></div><div data-cid="g" style="height:60px"></div>`) },
+  { id: "min-height-margin-smaller-parent-margin", html: DOC(S("body{margin:0}"), `<div data-cid="w" style="min-height:100px;margin-bottom:30px"><div data-cid="k" style="height:200px;margin-bottom:50px"></div></div><div data-cid="g" style="height:60px"></div>`) },
+  { id: "min-height-margin-in-auto-parent", html: DOC(S("body{margin:0}"), `<div data-cid="o"><div data-cid="w" style="min-height:400px"><div data-cid="k" style="height:200px;margin-bottom:20px"></div></div></div><div data-cid="g" style="height:60px"></div>`) },
+  { id: "min-height-margin-auto-child", html: DOC(S("body{margin:0}"), `<div data-cid="w" style="min-height:400px"><div data-cid="v"><div data-cid="k" style="height:200px;margin-bottom:20px"></div></div></div><div data-cid="g" style="height:60px"></div>`) },
+  { id: "min-height-margin-percent-indefinite", html: DOC(S("body{margin:0}"), `<div data-cid="w" style="min-height:50%"><div data-cid="k" style="height:200px;margin-bottom:20px"></div></div><div data-cid="g" style="height:60px"></div>`) },
+  { id: "min-height-margin-border-box", html: DOC(S("body{margin:0}"), `<div data-cid="w" style="min-height:400px;box-sizing:border-box;padding-top:10px"><div data-cid="k" style="height:200px;margin-bottom:20px"></div></div><div data-cid="g" style="height:60px"></div>`) },
+  { id: "min-height-margin-negative", html: DOC(S("body{margin:0}"), `<div data-cid="w" style="min-height:100px"><div data-cid="k" style="height:200px;margin-bottom:-20px"></div></div><div data-cid="g" style="height:60px"></div>`) },
+  { id: "min-height-margin-negative-absorbed", html: DOC(S("body{margin:0}"), `<div data-cid="w" style="min-height:400px"><div data-cid="k" style="height:200px;margin-bottom:-20px"></div></div><div data-cid="g" style="height:60px"></div>`) },
+  { id: "min-height-margin-empty-box", html: DOC(S("body{margin:0}"), `<div data-cid="a" style="height:10px;margin-bottom:20px"></div><div data-cid="w" style="min-height:50px;margin:15px 0"></div><div data-cid="g" style="height:60px;margin-top:5px"></div>`) },
+  { id: "min-height-margin-first-child-top", html: DOC(S("body{margin:0}"), `<div data-cid="a" style="height:10px"></div><div data-cid="w" style="min-height:400px"><div data-cid="k" style="height:200px;margin-top:20px"></div></div><div data-cid="g" style="height:60px"></div>`) },
+  { id: "min-height-margin-max-height-clamps", html: DOC(S("body{margin:0}"), `<div data-cid="w" style="max-height:100px"><div data-cid="k" style="height:200px;margin-bottom:20px"></div></div><div data-cid="g" style="height:60px"></div>`) },
+  { id: "min-height-margin-max-height-larger", html: DOC(S("body{margin:0}"), `<div data-cid="w" style="max-height:500px"><div data-cid="k" style="height:200px;margin-bottom:20px"></div></div><div data-cid="g" style="height:60px"></div>`) },
+  { id: "min-height-margin-padding-keeps-inside", html: DOC(S("body{margin:0}"), `<div data-cid="w" style="min-height:210px;padding-bottom:1px"><div data-cid="k" style="height:200px;margin-bottom:20px"></div></div><div data-cid="g" style="height:60px"></div>`) },
+  { id: "min-height-margin-bfc-keeps-inside", html: DOC(S("body{margin:0}"), `<div data-cid="w" style="min-height:210px;overflow:hidden"><div data-cid="k" style="height:200px;margin-bottom:20px"></div></div><div data-cid="g" style="height:60px"></div>`) },
+  { id: "min-height-margin-flex-item", html: DOC(S("body{margin:0}"), `<div data-cid="f" style="display:flex"><div data-cid="w" style="min-height:210px"><div data-cid="k" style="height:200px;margin-bottom:20px"></div></div></div><div data-cid="g" style="height:60px"></div>`) },
+  { id: "min-height-margin-em", html: DOC(S("body{margin:0}"), `<div data-cid="w" style="min-height:20em"><div data-cid="k" style="height:200px;margin-bottom:20px"></div></div><div data-cid="g" style="height:60px"></div>`) },
+  { id: "min-height-margin-text", html: DOC(S("body{margin:0}"), `<div data-cid="w" style="min-height:100px"><p data-cid="p" style="margin:0 0 20px">x</p></div><div data-cid="g" style="height:60px"></div>`), measure: "xyw" },
+  { id: "min-height-margin-absolute", html: DOC(S("body{margin:0}"), `<div data-cid="w" style="position:absolute;top:0;left:0;width:100px;min-height:400px"><div data-cid="k" style="height:200px;margin-bottom:20px"></div></div>`) },
 ];
 
 /** The RGB of a 1x1 PNG screenshot (any filter: a single pixel's filter adds 0). */

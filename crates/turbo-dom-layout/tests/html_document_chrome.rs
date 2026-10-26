@@ -103,7 +103,7 @@ fn inline_flex_grid_case(id: &str) -> bool {
 /// The control cases of an open bug, each asserted by its own test (`#[ignore]`d until
 /// its fix lands) and held out of [`html_documents_lay_out_as_chrome_156`].
 fn held_out(id: &str) -> bool {
-    let groups: [fn(&str) -> bool; 15] = [
+    let groups: [fn(&str) -> bool; 16] = [
         auto_table_case,
         inline_flex_grid_case,
         abs_auto_width_case,
@@ -119,6 +119,7 @@ fn held_out(id: &str) -> bool {
         last_margin_case,
         legacy_align_case,
         th_case,
+        min_height_margin_case,
     ];
     groups.iter().any(|group| group(id))
 }
@@ -252,6 +253,19 @@ fn last_margin_case(id: &str) -> bool {
 #[test]
 fn last_child_bottom_margins_like_chrome_156() {
     compare_cases(last_margin_case);
+}
+
+/// miaskiewicz/turbo-dom#75 item 1: a last child's bottom margin vs its parent's
+/// `min-height` / `max-height` (collapses through when the used height is the content
+/// height, else is dropped).
+fn min_height_margin_case(id: &str) -> bool {
+    id.starts_with("min-height-margin-")
+}
+
+#[test]
+#[ignore = "turbo-dom#75: fails until the fix"]
+fn last_child_bottom_margin_with_min_height_like_chrome_156() {
+    compare_cases(min_height_margin_case);
 }
 
 /// miaskiewicz/turbo-dom#69: only legacy `-webkit-*` alignment moves block children.
