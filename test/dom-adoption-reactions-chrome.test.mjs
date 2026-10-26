@@ -63,7 +63,8 @@ const ITEMS = {
   // pre-existing bugs found on the way: turbo-dom#33 (void serialization), #34 (insert before
   // itself), #35 (doctype clones), #37 (<meta>.content), #38 (shadow roots adopt); #36 (the
   // template element model) is item 3's `inert` / `templateInner` / `templateClone`
-  extra: { sections: ['extra'], keys: ['foreignVoid', 'insertSelf', 'doctypeClone', 'contentProperty', 'shadowAdopt'] },
+  // #39 (insertAdjacentHTML context), #40 (replaceWith listing itself)
+  extra: { sections: ['extra'], keys: ['foreignVoid', 'insertSelf', 'doctypeClone', 'contentProperty', 'shadowAdopt', 'replaceWithSelf', 'insertAdjacent'] },
 };
 function check(item) {
   const { expected, actual } = results();
@@ -75,4 +76,11 @@ function check(item) {
 test('turbo-dom#29 item 1: createElementNS in any namespace matches Chrome 156', () => check(1));
 test('turbo-dom#29 item 2: insertion across documents adopts like Chrome 156', () => check(2));
 test('turbo-dom#29 item 3: template contents are inert until inserted, like Chrome 156', () => check(3));
-test('turbo-dom#33-#38: serialization, insert before itself, doctype clones, meta.content, shadow adoption match Chrome 156', () => check('extra'));
+test('turbo-dom#29 item 4: custom element reactions run when the DOM call returns, like Chrome 156', () => check(4));
+test('turbo-dom#33-#40: pre-existing bugs found on the way match Chrome 156', () => check('extra'));
+test('turbo-dom#29: the whole probe result matches Chrome 156', () => {
+  const { expected, actual } = results();
+  const covered = new Set(['errors', ...Object.values(ITEMS).flatMap((i) => i.keys)]);
+  assert.deepEqual(Object.keys(expected).filter((k) => !covered.has(k)), []);
+  assert.deepEqual(actual, expected);
+});

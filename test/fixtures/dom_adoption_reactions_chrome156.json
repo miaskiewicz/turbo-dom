@@ -2,7 +2,7 @@
   "browser": "Chrome/156.0.8078.4",
   "v8": "15.6.75",
   "casesSha256": "6390d35780d5d7b9012578c76f9409a521ab1d3837b428e045089c5611fc3f07",
-  "probeSha256": "3634eb4e32db11fcef8882b33b153006adb2299f19ed930167084a0a98dbccde",
+  "probeSha256": "56a9ba3d1acb987eec0561b44f7eb9a0cc07ae71626408e3e08f5b87867e453d",
   "collectorSha256": "7174415de76a891d657bbc3e66952c7b91356030e8fcd9d0ac4f52603d0c3952",
   "flags": [
     "--headless=new",
@@ -331,6 +331,18 @@
         "shadowAdopt": [
           true,
           true
+        ],
+        "replaceWithSelf": [
+          "i",
+          "b"
+        ],
+        "insertAdjacent": [
+          "http://www.w3.org/2000/svg",
+          "NoModificationAllowedError",
+          "SyntaxError",
+          "ok",
+          "<i></i>",
+          "NoModificationAllowedError"
         ],
         "log": [
           [

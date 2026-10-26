@@ -60,8 +60,15 @@ import { Buffer } from './buffer.mjs';
 import { makeCanvasStub } from './stubs.mjs';
 import {
   constructCustomElement, createCustomElement, clonedElement, insertedNode, parsedFragment, removedNode,
-  attributeChanged, adoptedNode, freezeParsedIs, parsedIsAttribute,
+  attributeChanged, adoptedNode, freezeParsedIs, parsedIsAttribute, reactionDepth, withReactions,
 } from './custom-elements.mjs';
+
+// Custom element reactions ([CEReactions], custom-elements.mjs): a DOM call that can queue
+// reactions re-enters itself inside one reaction scope when `doc` has the hooks armed and no
+// scope is open yet, so its reactions run when it returns. One predicted-false read
+// otherwise. `METHOD` holds the original implementations (spy-proof re-entry).
+const ceScope = (doc) => doc.__ceRegistry !== undefined && reactionDepth === 0;
+const METHOD = {};
 
 // DOM versions come from ONE process-wide counter, so a version value is never reused by
 // another document: a node adopted into another document cannot hit a cache entry (keyed on
@@ -197,6 +204,7 @@ export class Node extends EventTarget {
   appendChild(node) { return this.insertBefore(node, null); }
 
   insertBefore(node, ref) {
+    if ((this.ownerDocument.__ceRegistry !== undefined || node.ownerDocument.__ceRegistry !== undefined) && reactionDepth === 0) return withReactions(METHOD.insertBefore, this, [node, ref]);
     // DOM "pre-insert": check the reference child before touching the tree, and a node
     // inserted before itself goes before its next sibling (miaskiewicz/turbo-dom#34)
     if (ref && ref.parentNode !== this) throw new Error('NotFoundError: ref is not a child');
@@ -221,6 +229,7 @@ export class Node extends EventTarget {
   }
 
   removeChild(node) {
+    if (this.ownerDocument.__ceRegistry !== undefined && reactionDepth === 0) return withReactions(METHOD.removeChild, this, [node]);
     const kids = this.__children();
     const i = kids.indexOf(node);
     if (i === -1) throw new Error('NotFoundError: node is not a child');
@@ -237,6 +246,7 @@ export class Node extends EventTarget {
   // next sibling (or the new node's own next sibling when that is it) — so replacing a
   // node with itself leaves it in place (miaskiewicz/turbo-dom#34)
   replaceChild(newNode, oldNode) {
+    if ((this.ownerDocument.__ceRegistry !== undefined || newNode.ownerDocument.__ceRegistry !== undefined) && reactionDepth === 0) return withReactions(METHOD.replaceChild, this, [newNode, oldNode]);
     if (oldNode.parentNode !== this) throw new Error('NotFoundError: node is not a child');
     let ref = oldNode.nextSibling;
     if (ref === newNode) ref = newNode.nextSibling;
@@ -292,7 +302,10 @@ export class Node extends EventTarget {
     // and feed MutationObservers, like every other childList mutation path.
     if (changed) notifyMutation(this, 'childList', null, null, null);
   }
-  replaceChildren(...nodes) { this.__detachKids(); this.__kids = []; this.__touch(); for (const n of nodes) this.appendChild(typeof n === 'string' ? this.ownerDocument.createTextNode(n) : n); }
+  replaceChildren(...nodes) {
+    if (ceScope(this.ownerDocument)) return withReactions(METHOD.replaceChildren, this, nodes);
+    this.__detachKids(); this.__kids = []; this.__touch(); for (const n of nodes) this.appendChild(toNode(this.ownerDocument, n));
+  }
   // bitmask: 1 DISCONNECTED, 2 PRECEDING, 4 FOLLOWING, 8 CONTAINS, 16 CONTAINED_BY
   compareDocumentPosition(other) {
     if (other === this) return 0;
@@ -308,7 +321,10 @@ export class Node extends EventTarget {
   }
   // cloneNode = DOM "clone a node" into the node's own document; importNode clones into
   // another one. Every node type implements `__clone(document, deep)`.
-  cloneNode(deep = false) { return this.__clone(this.ownerDocument, !!deep); }
+  cloneNode(deep = false) {
+    if (ceScope(this.ownerDocument)) return withReactions(METHOD.cloneNode, this, [deep]);
+    return this.__clone(this.ownerDocument, !!deep);
+  }
 
   get textContent() {
     // <style> whose CSSOM sheet received insertRule() (emotion/styled-components
@@ -338,6 +354,7 @@ export class Node extends EventTarget {
     return s;
   }
   set textContent(value) {
+    if (ceScope(this.ownerDocument)) { withReactions(METHOD.setTextContent, this, [value]); return; }
     this.__detachKids();
     this.__kids = [];
     this.__touch();
@@ -410,9 +427,9 @@ class CharacterData extends Node {
   insertData(offset, s) { this.data = this._data.slice(0, offset) + s + this._data.slice(offset); }
   deleteData(offset, count) { this.data = this._data.slice(0, offset) + this._data.slice(offset + count); }
   replaceData(offset, count, s) { this.data = this._data.slice(0, offset) + s + this._data.slice(offset + count); }
-  before(...nodes) { const p = this.parentNode; if (p) for (const n of nodes) p.insertBefore(typeof n === 'string' ? this.ownerDocument.createTextNode(n) : n, this); }
-  after(...nodes) { const p = this.parentNode; if (!p) return; const ref = viableNextSibling(this, nodes); for (const n of nodes) p.insertBefore(typeof n === 'string' ? this.ownerDocument.createTextNode(n) : n, ref); }
-  replaceWith(...nodes) { const p = this.parentNode; if (!p) return; const ref = viableNextSibling(this, nodes); for (const n of nodes) if (n !== this) p.insertBefore(typeof n === 'string' ? this.ownerDocument.createTextNode(n) : n, ref); this.remove(); }
+  before(...nodes) { childBefore(this, nodes); }
+  after(...nodes) { childAfter(this, nodes); }
+  replaceWith(...nodes) { childReplaceWith(this, nodes); }
 }
 
 export class Text extends CharacterData {
@@ -818,12 +835,14 @@ export class Element extends Node {
   }
 
   // ---- modern insertion ----
-  append(...nodes) { for (const n of nodes) this.appendChild(toNode(this.ownerDocument, n)); }
-  prepend(...nodes) { const first = this.firstChild; for (const n of nodes) this.insertBefore(toNode(this.ownerDocument, n), first); }
-  before(...nodes) { const p = this.parentNode; if (!p) return; for (const n of nodes) p.insertBefore(toNode(this.ownerDocument, n), this); }
-  after(...nodes) { const p = this.parentNode; if (!p) return; const ref = viableNextSibling(this, nodes); for (const n of nodes) p.insertBefore(toNode(this.ownerDocument, n), ref); }
-  replaceWith(...nodes) { const p = this.parentNode; if (!p) return; const ref = viableNextSibling(this, nodes); for (const n of nodes) if (n !== this) p.insertBefore(toNode(this.ownerDocument, n), ref); this.remove(); }
-  replaceChildren(...nodes) { this.__detachKids(); this.__kids = []; this.__touch(); for (const n of nodes) this.appendChild(toNode(this.ownerDocument, n)); }
+  append(...nodes) { parentAppend(this, nodes); }
+  prepend(...nodes) {
+    if (ceScope(this.ownerDocument)) { withReactions(METHOD.prepend, this, nodes); return; }
+    const first = this.firstChild; for (const n of nodes) this.insertBefore(toNode(this.ownerDocument, n), first);
+  }
+  before(...nodes) { childBefore(this, nodes); }
+  after(...nodes) { childAfter(this, nodes); }
+  replaceWith(...nodes) { childReplaceWith(this, nodes); }
 
   // ---- queries ----
   matches(sel) { return matchesSelector(this, sel); }
@@ -844,39 +863,33 @@ export class Element extends Node {
   // ---- innerHTML / outerHTML ----
   get innerHTML() { return serializeInner(this); }
   set innerHTML(html) {
-    // fragment context: the element itself; another namespace's element parses like <body>
-    const ns = this.__ns;
-    const frag = getParser().parseFragment(String(html), ns === '' ? this.localName : ns === 'svg' || ns === 'math' ? `${ns} ${this.localName}` : '');
+    if (ceScope(this.ownerDocument)) { withReactions(METHOD.setInnerHTML, this, [html]); return; }
     // a <template>'s markup replaces its contents (in the inert document), not its children
-    const target = ns === '' && this.localName === 'template' ? this.content : this;
-    const doc = target.ownerDocument;
-    target.__detachKids();
-    const kids = target.__kids = [];
-    target.__touch();
-    for (const rawChild of frag.children) {
-      if (rawChild.nodeType === DOCUMENT_FRAGMENT_NODE && rawChild.name === 'content') continue;
-      const child = doc.__inflateNested(rawChild);
-      child.parentNode = target;
-      kids.push(child);
-    }
-    if (doc.__ceRegistry !== undefined) parsedFragment(kids);
+    const target = this.__ns === '' && this.localName === 'template' ? this.content : this;
+    replaceAllWithMarkup(target, this, html);
   }
   get outerHTML() { return serializeOuter(this); }
   get innerText() { return this.textContent; }
   set innerText(v) { this.textContent = v; }
 
+  // The markup is parsed with this element (afterbegin / beforeend) or its parent as the
+  // context, straight into nodes of this document (turbo-dom#39: it used to parse through a
+  // createElement(this.localName) scratch element — a constructed custom element, the
+  // namespace lost).
   insertAdjacentHTML(position, html) {
-    const tmp = this.ownerDocument.createElement(this.localName);
-    tmp.innerHTML = html;
-    const nodes = tmp.__children().slice();
-    const p = this.parentNode;
-    switch (position) {
-      case 'beforebegin': for (const n of nodes) p.insertBefore(n, this); break;
-      case 'afterbegin': { const first = this.firstChild; for (const n of nodes) this.insertBefore(n, first); break; }
-      case 'beforeend': for (const n of nodes) this.appendChild(n); break;
-      case 'afterend': { const ref = this.nextSibling; for (const n of nodes) p.insertBefore(n, ref); break; }
-      default: throw new Error(`bad insertAdjacentHTML position: ${position}`);
+    if (ceScope(this.ownerDocument)) { withReactions(METHOD.insertAdjacentHTML, this, [position, html]); return; }
+    const where = String(position).toLowerCase();
+    let parent = this, ref = null;
+    switch (where) {
+      case 'beforebegin': parent = this.parentNode; ref = this; break;
+      case 'afterbegin': ref = this.firstChild; break;
+      case 'beforeend': break;
+      case 'afterend': parent = this.parentNode; ref = this.nextSibling; break;
+      default: throw domError('SyntaxError', `The value provided ('${position}') is not one of 'beforeBegin', 'afterBegin', 'beforeEnd', or 'afterEnd'.`);
     }
+    if (parent === null || parent.nodeType === DOCUMENT_NODE) throw domError('NoModificationAllowedError', 'The element has no parent.');
+    const nodes = parseMarkup(parent.nodeType === ELEMENT_NODE ? parent : null, html, this.ownerDocument);
+    for (const n of nodes) parent.insertBefore(n, ref);
   }
 
   __clone(doc, deep) {
@@ -1162,7 +1175,7 @@ export class DocumentFragment extends Node {
   get firstElementChild() { return this.__children().find((n) => n.nodeType === ELEMENT_NODE) ?? null; }
   get lastElementChild() { return this.__children().findLast((n) => n.nodeType === ELEMENT_NODE) ?? null; }
   get childElementCount() { return this.__children().filter((n) => n.nodeType === ELEMENT_NODE).length; }
-  append(...nodes) { for (const n of nodes) this.appendChild(toNode(this.ownerDocument, n)); }
+  append(...nodes) { parentAppend(this, nodes); }
   __clone(doc, deep) {
     const f = new DocumentFragment(doc);
     if (deep) f.__kids = cloneKids(this, f, doc); // direct __kids build (see Element.__clone)
@@ -1186,17 +1199,8 @@ export class ShadowRoot extends DocumentFragment {
   get nodeName() { return '#document-fragment'; }
   get innerHTML() { return serializeInner(this); }
   set innerHTML(html) {
-    const frag = getParser().parseFragment(String(html), ''); // empty context → body
-    this.__detachKids();
-    this.__kids = [];
-    this.__touch();
-    for (const rawChild of frag.children) {
-      if (rawChild.nodeType === DOCUMENT_FRAGMENT_NODE && rawChild.name === 'content') continue;
-      const child = this.ownerDocument.__inflateNested(rawChild);
-      child.parentNode = this;
-      this.__kids.push(child);
-    }
-    if (this.ownerDocument.__ceRegistry !== undefined) parsedFragment(this.__kids);
+    if (ceScope(this.ownerDocument)) { withReactions(METHOD.setShadowInnerHTML, this, [html]); return; }
+    replaceAllWithMarkup(this, null, html); // no context element → body
   }
   getElementById(id) {
     let found = null;
@@ -1229,6 +1233,60 @@ export class ShadowRoot extends DocumentFragment {
 
 // ------------------------------------------------------------ helpers ----
 function toNode(doc, n) { return typeof n === 'string' ? doc.createTextNode(n) : n; }
+
+// Fragment-parse `html` with `context` (an element; null = <body>) into owned nodes of
+// `doc`. Elements in other namespaces parse like <body> too.
+function parseMarkup(context, html, doc) {
+  const ns = context === null ? '' : context.__ns;
+  const name = context === null ? '' : ns === '' ? context.localName : ns === 'svg' || ns === 'math' ? `${ns} ${context.localName}` : '';
+  const frag = getParser().parseFragment(String(html), name);
+  const nodes = [];
+  // (template contents never sit at the top level: they hang off their <template>)
+  for (const rawChild of frag.children) nodes.push(doc.__inflateNested(rawChild));
+  // custom elements: upgrades queued at creation (custom-elements.mjs parsedFragment)
+  if (nodes.length !== 0 && doc.__ceRegistry !== undefined) parsedFragment(nodes);
+  return nodes;
+}
+
+// innerHTML: the parsed nodes replace all of `target`'s children (created first, so their
+// upgrades queue before the old children's disconnectedCallbacks, as in Chrome).
+function replaceAllWithMarkup(target, context, html) {
+  const kids = parseMarkup(context, html, target.ownerDocument);
+  target.__detachKids();
+  for (let i = 0; i < kids.length; i++) kids[i].parentNode = target;
+  target.__kids = kids;
+  target.__touch();
+}
+
+// ParentNode append / ChildNode before / after / replaceWith, shared by elements, text,
+// comments and fragments; one reaction scope for the whole call.
+function parentAppend(parent, nodes) {
+  if (ceScope(parent.ownerDocument)) { withReactions(parentAppend, null, [parent, nodes]); return; }
+  for (const n of nodes) parent.appendChild(toNode(parent.ownerDocument, n));
+}
+function childBefore(child, nodes) {
+  const p = child.parentNode;
+  if (!p) return;
+  if (ceScope(child.ownerDocument)) { withReactions(childBefore, null, [child, nodes]); return; }
+  for (const n of nodes) p.insertBefore(toNode(child.ownerDocument, n), child);
+}
+function childAfter(child, nodes) {
+  const p = child.parentNode;
+  if (!p) return;
+  if (ceScope(child.ownerDocument)) { withReactions(childAfter, null, [child, nodes]); return; }
+  const ref = viableNextSibling(child, nodes);
+  for (const n of nodes) p.insertBefore(toNode(child.ownerDocument, n), ref);
+}
+// DOM "replaceWith": the node is removed before the replacements go in (a node passed among
+// its own replacements just moves; turbo-dom#40)
+function childReplaceWith(child, nodes) {
+  const p = child.parentNode;
+  if (!p) return;
+  if (ceScope(child.ownerDocument)) { withReactions(childReplaceWith, null, [child, nodes]); return; }
+  const ref = viableNextSibling(child, nodes);
+  if (!nodes.includes(child)) p.removeChild(child);
+  for (const n of nodes) p.insertBefore(toNode(child.ownerDocument, n), ref);
+}
 
 // Deep clones of `source`'s children, created in `doc` and parented to `parent`.
 function cloneKids(source, parent, doc) {
@@ -1406,6 +1464,7 @@ class Range {
     return frag;
   }
   extractContents() {
+    if (ceScope(this.__doc)) return withReactions(METHOD.extractContents, this, []);
     const frag = this.__doc.createDocumentFragment();
     const c = this.startContainer;
     if (this.__sameContainerKids() && c && c.nodeType !== TEXT_NODE && c.nodeType !== COMMENT_NODE && c.__children) {
@@ -1416,6 +1475,7 @@ class Range {
     return frag;
   }
   deleteContents() {
+    if (ceScope(this.__doc)) { withReactions(METHOD.deleteContents, this, []); return; }
     const c = this.startContainer;
     if (this.__sameContainerKids() && c && c.nodeType !== TEXT_NODE && c.nodeType !== COMMENT_NODE && c.__children) {
       const kids = c.__children().slice(this.startOffset, this.endOffset);
@@ -1425,6 +1485,7 @@ class Range {
   }
   insertNode(node) { if (this.startContainer && this.startContainer.insertBefore) this.startContainer.insertBefore(node, this.startContainer.__children ? (this.startContainer.__children()[this.startOffset] ?? null) : null); }
   surroundContents(node) {
+    if (ceScope(this.__doc)) { withReactions(METHOD.surroundContents, this, [node]); return; }
     const frag = this.extractContents();
     this.insertNode(node);
     node.appendChild(frag);
@@ -1696,9 +1757,12 @@ function notifyMutation(target, type, added, removed, nextSibling, attributeName
   // bump the DOM version on every structural/attribute mutation — invalidates
   // the document's getElementsBy* caches. Unconditional (independent of observers).
   doc.__version = ++VERSION;
-  if (type === 'attributes' && doc.__ceRegistry !== undefined) attributeChanged(target, attributeName, oldValue);
   const mo = doc.__mo;
-  if (!mo || mo.length === 0) return;
+  if (mo && mo.length !== 0) queueRecords(mo, doc, target, type, added, removed, nextSibling, attributeName, oldValue);
+  // attributeChangedCallback: queued after the mutation record, like Chrome
+  if (type === 'attributes' && doc.__ceRegistry !== undefined) attributeChanged(target, attributeName, oldValue);
+}
+function queueRecords(mo, doc, target, type, added, removed, nextSibling, attributeName, oldValue) {
   const addedNodes = added ? [added] : EMPTY_NODES;
   const removedNodes = removed ? [removed] : EMPTY_NODES;
   for (const reg of mo) {
@@ -1958,8 +2022,12 @@ export class Document extends Node {
   createAttribute(name) { return { name, value: '', ownerElement: null }; }
   getSelection() { if (!this.__selection) this.__selection = makeSelection(this); return this.__selection; }
   // a clone created in THIS document (custom elements upgrade here, not in the source's)
-  importNode(node, deep) { return node.__clone(this, !!deep); }
+  importNode(node, deep) {
+    if (ceScope(this)) return withReactions(METHOD.importNode, this, [node, deep]);
+    return node.__clone(this, !!deep);
+  }
   adoptNode(node) {
+    if ((this.__ceRegistry !== undefined || node.ownerDocument.__ceRegistry !== undefined) && reactionDepth === 0) return withReactions(METHOD.adoptNode, this, [node]);
     if (node.parentNode) node.parentNode.removeChild(node);
     if (node.ownerDocument !== this) adopt(node, this);
     return node;
@@ -2092,6 +2160,26 @@ export class Document extends Node {
 }
 
 export { Event, CustomEvent };
+
+// The reaction scopes' re-entry targets (see `ceScope`).
+const setterOf = (proto, name) => Object.getOwnPropertyDescriptor(proto, name).set;
+Object.assign(METHOD, {
+  insertBefore: Node.prototype.insertBefore,
+  removeChild: Node.prototype.removeChild,
+  replaceChild: Node.prototype.replaceChild,
+  replaceChildren: Node.prototype.replaceChildren,
+  cloneNode: Node.prototype.cloneNode,
+  setTextContent: setterOf(Node.prototype, 'textContent'),
+  prepend: Element.prototype.prepend,
+  setInnerHTML: setterOf(Element.prototype, 'innerHTML'),
+  insertAdjacentHTML: Element.prototype.insertAdjacentHTML,
+  setShadowInnerHTML: setterOf(ShadowRoot.prototype, 'innerHTML'),
+  extractContents: Range.prototype.extractContents,
+  deleteContents: Range.prototype.deleteContents,
+  surroundContents: Range.prototype.surroundContents,
+  importNode: Document.prototype.importNode,
+  adoptNode: Document.prototype.adoptNode,
+});
 
 // Parse an HTML string into a fresh Document over the immutable SoA buffer.
 export function parseDocument(html) {

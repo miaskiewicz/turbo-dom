@@ -46,6 +46,18 @@ at the time); this file reconstructs them from history.
   its attribute (it was `null`; turbo-dom#37), other elements have no such property.
   Adoption reaches shadow roots (a shadow host's root stayed in the old document;
   turbo-dom#38), and `document.cloneNode(true)` clones the children into the new document.
+- Custom element reactions are queued on each element and run when the DOM call returns,
+  element by element, like Chrome's `[CEReactions]`: callbacks see the finished operation
+  (`append(a, b)`: `a`'s `connectedCallback` sees `b` inserted; `innerHTML` /
+  `replaceChildren` / `textContent`: `disconnectedCallback` sees the new children; clone /
+  `importNode` constructors see the cloned children; `innerHTML` queues the new elements'
+  upgrades before the old children's disconnections), and DOM calls made inside a callback
+  run their own reactions first. `attributeChangedCallback` runs after the mutation record
+  is queued. `insertAdjacentHTML` parses with the element or its parent as the context
+  instead of a `createElement(localName)` scratch element (a custom element of that name was
+  constructed; SVG context lost; positions are case-insensitive; `NoModificationAllowedError`
+  / `SyntaxError` like Chrome; turbo-dom#39). `replaceWith(…)` listing the node itself keeps
+  it, and the node is removed before its replacements go in (turbo-dom#40).
   Control: `test/fixtures/dom_adoption_reactions_chrome156.json` (probe + cases beside it,
   recorded with `crates/turbo-dom-browser-env/scripts/select-element-chrome-control.mjs`),
   asserted by `test/dom-adoption-reactions-chrome.test.mjs` (the one deviation: the runtime's

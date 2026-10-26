@@ -158,7 +158,12 @@ package or publish workflow.
   Proxy (`window.mjs`) self-replaces lazy globals and traces touched ones. Selectors read the
   internal `node.__children()` array, NOT the live `childNodes` Proxy. Honest stubs in
   `stubs.mjs`; custom elements (state, registry, upgrades, lifecycle callbacks) in
-  `custom-elements.mjs`, hooked into `dom.mjs` only once a registry exists (`Document.__ceRegistry`). Two deliberate non-honest areas (both test-time only, see notes below):
+  `custom-elements.mjs`, hooked into `dom.mjs` only once a registry exists (`Document.__ceRegistry`;
+  `null` = hooks armed without a registry, for a document a custom element was adopted into).
+  Reactions are queued per element and run when the outermost DOM call returns ([CEReactions]):
+  each DOM call that can queue them re-enters itself through `withReactions(METHOD.x, …)` when
+  `ceScope(doc)` — one predicted-false read otherwise; a new such DOM path needs the same gate
+  (turbo-dom#29 item 4). Two deliberate non-honest areas (both test-time only, see notes below):
   the partial style cascade in `cascade.mjs`, and the **synthetic geometry** in `dom.mjs`
   (`getBoundingClientRect`/offset/client/scroll **size** are non-zero — positions stay 0 —
   because honest-zero deadlocks React's measure→setState→re-measure loop). Validated by `test/differential.test.mjs`

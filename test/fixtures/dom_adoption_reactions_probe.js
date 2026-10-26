@@ -263,6 +263,19 @@
     document.body.append(shadowHost);
     out.shadowAdopt = [shadowRoot.ownerDocument === document, shadowRoot.firstChild.ownerDocument === document];
     shadowHost.remove();
+    // replaceWith() listing the node itself keeps it (it just moves)
+    const row = document.createElement('p');
+    const [x, y] = [document.createElement('b'), document.createElement('i')];
+    row.append(x);
+    x.replaceWith(y, x);
+    out.replaceWithSelf = Array.from(row.childNodes, (n) => n.localName);
+    // insertAdjacentHTML: the context's namespace, the position case, and its errors
+    const svgCtx = document.createElementNS(SVG, 'svg');
+    svgCtx.insertAdjacentHTML('afterbegin', '<rect/>');
+    const orphan = document.createElement('div');
+    out.insertAdjacent = [svgCtx.firstChild.namespaceURI, errName(() => orphan.insertAdjacentHTML('afterend', '<i></i>')),
+      errName(() => orphan.insertAdjacentHTML('bogus', '<i></i>')), errName(() => orphan.insertAdjacentHTML('BeforeEnd', '<i></i>')),
+      orphan.innerHTML, errName(() => document.documentElement.insertAdjacentHTML('beforebegin', '<i></i>'))];
   });
   mark('end');
   host.textContent = '';

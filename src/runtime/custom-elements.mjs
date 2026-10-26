@@ -19,11 +19,12 @@
 // registry with a definition (`Document.__ceRegistry`, set when `window.customElements` is
 // first touched); until then every mutation path is unchanged.
 //
-// Reactions run synchronously at the mutation (Chrome runs them when the DOM call returns):
-// upgrades, then attributeChangedCallback for observed attributes and connectedCallback;
-// disconnectedCallback on removal; adoptedCallback on adoptNode. Exceptions from
-// constructors and callbacks are reported (`window.reportError`), never thrown into the
-// DOM call, like Chrome; a throwing constructor leaves the element "failed".
+// Reactions are queued per element and run when the outermost DOM call returns, element by
+// element, like Chrome's [CEReactions] (see "reactions" below; miaskiewicz/turbo-dom#29 item
+// 4): upgrades (constructor, then attributeChangedCallback for observed attributes and
+// connectedCallback), disconnectedCallback on removal, adoptedCallback on adoption.
+// Exceptions from constructors and callbacks are reported (`window.reportError`), never
+// thrown into the DOM call, like Chrome; a throwing constructor leaves the element "failed".
 
 export const UNDEFINED = 'undefined';
 export const FAILED = 'failed';
@@ -134,11 +135,70 @@ function definitionOf(el) {
   return reg && lookup(reg, el.localName, isValue(el));
 }
 
-function callback(el, def, name, args) {
+// ------------------------------------------------------------- reactions ----
+// HTML [CEReactions]: upgrades and lifecycle callbacks are queued on the element's own
+// reaction queue (`el.__ceReactions`) and the element on the open scope's element queue;
+// the outermost DOM call of the current script level runs them when it returns, element by
+// element (each element's whole queue, then the next element). dom.mjs opens a scope
+// (`withReactions`) around the DOM calls that can queue reactions, only when a document
+// involved has custom element hooks armed (`__ceRegistry !== undefined`). Constructors and
+// callbacks run with no scope open (`reactionDepth === 0`), so a DOM call they make opens
+// its own scope and runs its reactions before returning to them. A reaction queued with no
+// scope open (a single-step DOM call such as setAttribute) runs right away — the same
+// moment as "when the call returns".
+
+export let reactionDepth = 0;
+let elementQueue = null;
+
+// Run `fn.apply(self, args)` as one [CEReactions] scope.
+export function withReactions(fn, self, args) {
+  if (reactionDepth++ === 0) elementQueue = [];
+  try {
+    return fn.apply(self, args);
+  } finally {
+    if (--reactionDepth === 0) {
+      const queue = elementQueue;
+      elementQueue = null;
+      for (let i = 0; i < queue.length; i++) drain(queue[i]);
+    }
+  }
+}
+
+// Invoke the element's queued reactions in order (later ones queued meanwhile included).
+function drain(el) {
+  const reactions = el.__ceReactions;
+  while (reactions.length !== 0) {
+    const reaction = reactions.shift();
+    if (reaction.fn === undefined) upgrade(el, reaction.def);
+    // reported in the definition's window (the element may have moved to another document)
+    else try { reaction.fn.apply(el, reaction.args); } catch (error) { report(reaction.def.registry.document, error); }
+  }
+}
+
+function enqueue(el, reaction) {
+  const reactions = el.__ceReactions;
+  if (reactions === undefined) el.__ceReactions = [reaction];
+  else reactions.push(reaction);
+  if (elementQueue !== null) elementQueue.push(el);
+  else drain(el);
+}
+
+// HTML "enqueue a custom element callback reaction" (a no-op without that callback).
+function enqueueCallback(el, def, name, args) {
   const fn = def[name];
-  if (fn === undefined) return;
-  // reported in the definition's window (the element may have moved to another document)
-  try { fn.apply(el, args); } catch (error) { report(def.registry.document, error); }
+  if (fn !== undefined) enqueue(el, { def, fn, args });
+}
+
+// HTML "enqueue a custom element upgrade reaction".
+function enqueueUpgrade(el, def) {
+  enqueue(el, { def, fn: undefined, args: undefined });
+}
+
+// A callback queued while the element's own reactions are running (upgrade's initial
+// attributeChanged / connected): picked up by the running drain, no element queue entry.
+function enqueueOwn(el, def, name, args) {
+  const fn = def[name];
+  if (fn !== undefined) el.__ceReactions.push({ def, fn, args });
 }
 
 // HTML "upgrade an element": run the definition's constructor on the existing element.
@@ -160,19 +220,20 @@ function upgrade(el, def) {
   }
   el.__ceDef = def;
   setCustomElementState(el, CUSTOM);
+  if (el.__ceReactions === undefined) el.__ceReactions = [];
   if (def.attributeChangedCallback !== undefined) {
     for (const name of def.observed) {
       const value = el.getAttribute(name);
-      if (value !== null) callback(el, def, 'attributeChangedCallback', [name, null, value, null]);
+      if (value !== null) enqueueOwn(el, def, 'attributeChangedCallback', [name, null, value, null]);
     }
   }
-  if (el.isConnected) callback(el, def, 'connectedCallback', []);
+  if (el.isConnected) enqueueOwn(el, def, 'connectedCallback', []);
 }
 
-// HTML "try to upgrade an element".
+// HTML "try to upgrade an element": queue an upgrade when its definition exists.
 function tryUpgrade(el) {
   const def = definitionOf(el);
-  if (def) upgrade(el, def);
+  if (def) enqueueUpgrade(el, def);
 }
 
 // Shadow-including inclusive descendants in shadow-including tree order (elements only).
@@ -232,14 +293,16 @@ export function createCustomElement(doc, localName, is, synchronous) {
   }
   const el = doc.__newHtmlElement(localName);
   if (is !== null) { el.__ceIs = is; el.__ce = UNDEFINED; }
+  // a customized built-in upgrades synchronously; a fresh element queues no reactions
   if (def) upgrade(el, def);
   return el;
 }
 
 // ------------------------------------------------------------- DOM hooks ----
 // Called by dom.mjs only when `doc.__ceRegistry` is set (one predicted-false read otherwise).
+// They queue reactions; the enclosing withReactions scope runs them.
 
-// A clone (or import) of `source`: copy the state, upgrade when a definition exists.
+// A clone (or import) of `source`: copy the state, queue an upgrade when a definition exists.
 export function clonedElement(source, copy) {
   copyCustomElementState(source, copy);
   if (active(copy.ownerDocument)) tryUpgrade(copy);
@@ -251,13 +314,14 @@ export function insertedNode(node) {
   if (!node.isConnected) return;
   const upgrades = active(node.ownerDocument) !== null;
   eachElement(node, (el) => {
-    if (el.__ce === CUSTOM) { if (el.__ceDef) callback(el, el.__ceDef, 'connectedCallback', []); }
+    if (el.__ce === CUSTOM) { if (el.__ceDef) enqueueCallback(el, el.__ceDef, 'connectedCallback', []); }
     else if (upgrades) tryUpgrade(el);
   });
 }
 
-// Elements created by an HTML fragment parse (innerHTML): upgraded when their definition
-// exists, connected or not (Chrome creates them in the context element's document).
+// Elements created by an HTML fragment parse (innerHTML, insertAdjacentHTML): upgrades
+// queued at creation when their definition exists, connected or not (Chrome creates them
+// in the context element's document) — before the old children are removed.
 export function parsedFragment(nodes) {
   if (nodes.length === 0 || !active(nodes[0].ownerDocument)) return;
   for (const node of nodes) eachElement(node, tryUpgrade);
@@ -265,20 +329,20 @@ export function parsedFragment(nodes) {
 
 // `node` was removed from a connected tree: disconnectedCallback for custom elements.
 export function removedNode(node) {
-  eachElement(node, (el) => { if (el.__ce === CUSTOM && el.__ceDef) callback(el, el.__ceDef, 'disconnectedCallback', []); });
+  eachElement(node, (el) => { if (el.__ce === CUSTOM && el.__ceDef) enqueueCallback(el, el.__ceDef, 'disconnectedCallback', []); });
 }
 
 // An attribute of `el` changed (`oldValue` null when it was added).
 export function attributeChanged(el, name, oldValue) {
   const def = el.__ce === CUSTOM ? el.__ceDef : undefined;
   if (def === undefined || def.attributeChangedCallback === undefined || !def.observed.includes(name)) return;
-  callback(el, def, 'attributeChangedCallback', [name, oldValue, el.getAttribute(name), null]);
+  enqueueCallback(el, def, 'attributeChangedCallback', [name, oldValue, el.getAttribute(name), null]);
 }
 
 // `node` was adopted from `oldDocument`: adoptedCallback for custom elements.
 export function adoptedNode(node, oldDocument, newDocument) {
   eachElement(node, (el) => {
-    if (el.__ce === CUSTOM && el.__ceDef) callback(el, el.__ceDef, 'adoptedCallback', [oldDocument, newDocument]);
+    if (el.__ce === CUSTOM && el.__ceDef) enqueueCallback(el, el.__ceDef, 'adoptedCallback', [oldDocument, newDocument]);
   });
 }
 
@@ -308,13 +372,9 @@ export function makeCustomElements(document) {
       reg.defs.set(name, def);
       definitions.set(ctor, def);
       // upgrade the document's candidates in shadow-including tree order
-      if (document && document.__ceRegistry === reg) {
-        const candidates = [];
-        eachElement(document, (el) => {
-          if (el.localName === localName && customElementState(el) === UNDEFINED && lookup(reg, localName, isValue(el)) === def) candidates.push(el);
-        });
-        for (const el of candidates) upgrade(el, def);
-      }
+      if (document && document.__ceRegistry === reg) withReactions(eachElement, null, [document, (el) => {
+        if (el.localName === localName && customElementState(el) === UNDEFINED && lookup(reg, localName, isValue(el)) === def) enqueueUpgrade(el, def);
+      }]);
       const w = waiters.get(name);
       if (w) { w.forEach((resolve) => resolve(ctor)); waiters.delete(name); }
     },
@@ -328,13 +388,11 @@ export function makeCustomElements(document) {
     },
     upgrade(root) {
       if (!root || typeof root.__children !== 'function') return;
-      const pending = [];
-      eachElement(root, (el) => pending.push(el));
-      for (const el of pending) {
+      withReactions(eachElement, null, [root, (el) => {
         const def = el.ownerDocument && el.ownerDocument.__ceRegistry === reg && customElementState(el) === UNDEFINED
           ? lookup(reg, el.localName, isValue(el)) : null;
-        if (def) upgrade(el, def);
-      }
+        if (def) enqueueUpgrade(el, def);
+      }]);
     },
   };
 }
