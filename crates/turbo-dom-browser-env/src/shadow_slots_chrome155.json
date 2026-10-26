@@ -1,0 +1,264 @@
+{
+  "browser": "Chrome/155.0.8059.79",
+  "v8": "15.5.35.23",
+  "probeSha256": "72eeb553683dd007f1644117d7d5f9c5a8c33288641a0741e11959694aef5c54",
+  "collectorSha256": "b13d2f18eba0accfb1bf4391b5970509bc95225c2dd6e5941e34596bbd3a7695",
+  "flags": [
+    "--remote-debugging-port=0",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "about:blank"
+  ],
+  "errors": [],
+  "result": {
+    "reentrantOrder": ["observer", "slot:0", "promise", "observer", "slot:0"],
+    "rows": [
+      {
+        "name": "named-initial",
+        "nodes": [["a"], [], ["b", "#text:light"]],
+        "flat": [["a"], [], ["b", "#text:light"]],
+        "elements": [["a"], [], ["b"]],
+        "assigned": ["x1", "default", "default"]
+      },
+      {
+        "name": "slot-attribute",
+        "nodes": [["b"], [], ["a", "#text:light"]],
+        "flat": [["b"], [], ["a", "#text:light"]],
+        "elements": [["b"], [], ["a"]],
+        "assigned": ["default", "x1", "default"]
+      },
+      {
+        "name": "slot-name",
+        "nodes": [[], ["b"], ["a", "#text:light"]],
+        "flat": [["fallback-x"], ["b"], ["a", "#text:light"]],
+        "elements": [[], ["b"], ["a"]],
+        "assigned": ["default", "x2", "default"]
+      },
+      {
+        "name": "slot-remove",
+        "nodes": [[], [], ["a", "#text:light"]],
+        "flat": [["fallback-x"], [], ["a", "#text:light"]],
+        "elements": [[], [], ["a"]],
+        "assigned": ["default", null, "default"]
+      },
+      {
+        "name": "fallback",
+        "nodes": [[], [], []],
+        "flat": [["fallback-x"], [], ["fallback-default"]],
+        "elements": [[], [], []],
+        "assigned": [null, null, null]
+      },
+      {
+        "name": "nested-fallback",
+        "nodes": [[], []],
+        "flat": [["#text:nested fallback"], ["#text:nested fallback"]],
+        "elements": [[], []],
+        "assigned": [null]
+      },
+      {
+        "name": "outside",
+        "nodes": [],
+        "flat": []
+      },
+      {
+        "name": "light-slot-kept",
+        "nodes": [["light-slot"], []],
+        "flat": [["light-slot"], []],
+        "elements": [["light-slot"], []],
+        "assigned": ["light-receiver"]
+      },
+      {
+        "name": "closed",
+        "nodes": [["closed-child"]],
+        "flat": [["closed-child"]],
+        "elements": [["closed-child"]],
+        "assigned": [null]
+      },
+      {
+        "name": "manual-initial",
+        "nodes": [[], []],
+        "flat": [[], []],
+        "elements": [[], []],
+        "assigned": [null, null, null]
+      },
+      {
+        "name": "manual-order",
+        "nodes": [["m2", "#text:manual", "m1"], []],
+        "flat": [["m2", "#text:manual", "m1"], []],
+        "elements": [["m2", "m1"], []],
+        "assigned": ["manual1", "manual1", "manual1"]
+      },
+      {
+        "name": "manual-steal",
+        "nodes": [["m2", "#text:manual"], ["m1"]],
+        "flat": [["m2", "#text:manual"], ["m1"]],
+        "elements": [["m2"], ["m1"]],
+        "assigned": ["manual2", "manual1", "manual1"]
+      },
+      {
+        "name": "manual-failed",
+        "nodes": [["m2", "#text:manual"], ["m1"]],
+        "flat": [["m2", "#text:manual"], ["m1"]],
+        "elements": [["m2"], ["m1"]],
+        "assigned": ["manual2", "manual1", "manual1"]
+      },
+      {
+        "name": "manual-foreign-before",
+        "nodes": [[]],
+        "flat": [[]],
+        "elements": [[]],
+        "assigned": [null]
+      },
+      {
+        "name": "manual-foreign-after",
+        "nodes": [["foreign"]],
+        "flat": [["foreign"]],
+        "elements": [["foreign"]],
+        "assigned": ["manual2"]
+      },
+      {
+        "name": "manual-clear",
+        "nodes": [[], ["foreign"]],
+        "flat": [[], ["foreign"]],
+        "elements": [[], ["foreign"]],
+        "assigned": [null, null, null, "manual2"]
+      },
+      {
+        "name": "foreign-source-assigned",
+        "nodes": [["foreign-child"]],
+        "flat": [["foreign-child"]],
+        "elements": [["foreign-child"]],
+        "assigned": ["foreign-slot"]
+      },
+      {
+        "name": "foreign-steal-before-adoption",
+        "nodes": [[], []],
+        "flat": [[], []],
+        "elements": [[], []],
+        "assigned": [null]
+      },
+      {
+        "name": "foreign-steal-after-adoption",
+        "nodes": [[], ["foreign-child"]],
+        "flat": [[], ["foreign-child"]],
+        "elements": [[], ["foreign-child"]],
+        "assigned": ["manual2"]
+      },
+      {
+        "name": "named-assign",
+        "nodes": [[]],
+        "flat": [["#text:nested fallback"]],
+        "elements": [[]],
+        "assigned": [null]
+      }
+    ],
+    "mutationOrder": [
+      {
+        "observer": true
+      },
+      {
+        "slot": "x1",
+        "target": true,
+        "bubbles": true,
+        "composed": false,
+        "cancelable": false,
+        "trusted": true
+      },
+      {
+        "slot": "default",
+        "target": true,
+        "bubbles": true,
+        "composed": false,
+        "cancelable": false,
+        "trusted": true
+      },
+      {
+        "promise": true
+      }
+    ],
+    "badAssign": {
+      "error": "TypeError"
+    },
+    "invalidAssignment": {
+      "error": "TypeError"
+    },
+    "assignNamed": {},
+    "brands": [
+      {
+        "error": "TypeError"
+      },
+      {
+        "error": "TypeError"
+      },
+      {
+        "error": "TypeError"
+      },
+      {
+        "error": "TypeError"
+      },
+      {
+        "value": []
+      }
+    ],
+    "dictionaries": [
+      {
+        "value": []
+      },
+      {
+        "value": []
+      },
+      {
+        "error": "TypeError"
+      },
+      {
+        "error": "TypeError"
+      },
+      {
+        "error": "TypeError"
+      },
+      {
+        "value": ["#text:nested fallback"]
+      },
+      {
+        "error": "RangeError"
+      }
+    ],
+    "shapes": {
+      "root": "named",
+      "manual": "manual",
+      "descriptor": {
+        "enumerable": true,
+        "configurable": true,
+        "name": "get slotAssignment",
+        "length": 0
+      },
+      "name": "y",
+      "methods": [
+        {
+          "name": "assign",
+          "length": 0,
+          "native": true
+        },
+        {
+          "name": "assignedNodes",
+          "length": 0,
+          "native": true
+        },
+        {
+          "name": "assignedElements",
+          "length": 0,
+          "native": true
+        }
+      ],
+      "elementBrand": {
+        "error": "TypeError"
+      },
+      "textBrand": {
+        "error": "TypeError"
+      }
+    }
+  }
+}

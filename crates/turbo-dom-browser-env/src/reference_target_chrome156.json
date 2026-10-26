@@ -1,0 +1,550 @@
+{
+  "browser": "Chrome/156.0.8078.47",
+  "v8": "15.6.75.19",
+  "probe": "reference_target_probe.js",
+  "probeSha256": "d2345ce6970d62115e19a711c2105a12c6f3c6fcb970e178c3d822c085ce655c",
+  "collectorSha256": "e6cadc004087a31da5ba698e45efbc62530e73d28f401d29b96226fa9ed3f94d",
+  "flags": [
+    "--headless=new",
+    "--remote-debugging-pipe",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "about:blank"
+  ],
+  "result": {
+    "surface": {
+      "descriptors": [
+        [
+          true,
+          true,
+          [
+            "get referenceTarget",
+            0,
+            "E:TypeError:f is not a constructor"
+          ],
+          [
+            "set referenceTarget",
+            1,
+            "E:TypeError:f is not a constructor"
+          ],
+          false
+        ],
+        [
+          true,
+          true,
+          [
+            "get shadowRootReferenceTarget",
+            0,
+            "E:TypeError:f is not a constructor"
+          ],
+          [
+            "set shadowRootReferenceTarget",
+            1,
+            "E:TypeError:f is not a constructor"
+          ],
+          false
+        ],
+        false,
+        false
+      ],
+      "initial": null,
+      "values": [
+        "a",
+        "",
+        null,
+        null,
+        "5",
+        " x ",
+        "A B",
+        "[object Object]",
+        "true"
+      ],
+      "symbol": "E:TypeError:Failed to set the 'referenceTarget' property on 'ShadowRoot': Cannot convert a Symbol value to a string",
+      "afterSymbol": "true",
+      "brands": [
+        [
+          "E:TypeError:Illegal invocation",
+          "E:TypeError:Illegal invocation"
+        ],
+        [
+          "E:TypeError:Illegal invocation",
+          "E:TypeError:Illegal invocation"
+        ],
+        [
+          "E:TypeError:Illegal invocation",
+          "E:TypeError:Illegal invocation"
+        ],
+        [
+          "E:TypeError:Illegal invocation",
+          "E:TypeError:Illegal invocation"
+        ],
+        [
+          "E:TypeError:Illegal invocation",
+          "E:TypeError:Illegal invocation"
+        ]
+      ],
+      "attach": [
+        null,
+        null,
+        "",
+        "x",
+        "0",
+        "false"
+      ],
+      "attachMissing": null,
+      "attachSymbol": "E:TypeError:Failed to execute 'attachShadow' on 'Element': Failed to read the 'referenceTarget' property from 'ShadowRootInit': Cannot convert a Symbol value to a string",
+      "order": [
+        [
+          "clonable",
+          "customElementRegistry",
+          "delegatesFocus",
+          "mode",
+          "referenceTarget",
+          "serializable",
+          "slotAssignment"
+        ],
+        "z"
+      ],
+      "orderOnBadMode": [
+        "mode"
+      ],
+      "template": [
+        null,
+        [
+          "foo",
+          "foo"
+        ],
+        [
+          "",
+          ""
+        ],
+        [
+          null,
+          null
+        ],
+        [
+          null,
+          null
+        ],
+        [
+          "7",
+          "7"
+        ],
+        "ATTR"
+      ],
+      "templateSymbol": "E:TypeError:Failed to set the 'shadowRootReferenceTarget' property on 'HTMLTemplateElement': Cannot convert a Symbol value to a string",
+      "templateBrand": "E:TypeError:Illegal invocation"
+    },
+    "declarative": {
+      "declarative": [
+        "inner",
+        null,
+        "a\"b&c<"
+      ],
+      "declarativeTemplate": true,
+      "serialized": "<div id=\"s1\"><template shadowrootmode=\"open\" shadowrootserializable=\"\" shadowrootreferencetarget=\"inner\"><input id=\"inner\"></template></div><div id=\"s2\"><template shadowrootmode=\"closed\" shadowrootdelegatesfocus=\"\" shadowrootserializable=\"\" shadowrootclonable=\"\" shadowrootreferencetarget=\"a&quot;b&amp;c&lt;\"></template></div><div id=\"s3\"><template shadowrootmode=\"open\" shadowrootserializable=\"\" shadowrootreferencetarget=\"\"></template></div><div id=\"s4\"><template shadowrootmode=\"open\" shadowrootserializable=\"\"></template></div>",
+      "clone": [
+        "in",
+        "in"
+      ],
+      "cloneNull": null,
+      "unclonable": null,
+      "imported": "in",
+      "adopted": [
+        "in",
+        true
+      ]
+    },
+    "references": {
+      "input": [
+        "host",
+        null,
+        "host",
+        "host",
+        [
+          "host",
+          "x"
+        ],
+        "host",
+        [
+          "host"
+        ]
+      ],
+      "datalist": [
+        null,
+        "host",
+        "host",
+        "host",
+        [
+          "host",
+          "x"
+        ],
+        "host",
+        [
+          "host"
+        ]
+      ],
+      "plain": [
+        null,
+        null,
+        "host",
+        "host",
+        [
+          "host",
+          "x"
+        ],
+        "host",
+        [
+          "host"
+        ]
+      ],
+      "missing": [
+        null,
+        null,
+        "host",
+        "host",
+        [
+          "host",
+          "x"
+        ],
+        "host",
+        [
+          "host"
+        ]
+      ],
+      "none": [
+        null,
+        null,
+        "host",
+        "host",
+        [
+          "host",
+          "x"
+        ],
+        "host",
+        [
+          "host"
+        ]
+      ],
+      "empty": [
+        null,
+        null,
+        "host",
+        "host",
+        [
+          "host",
+          "x"
+        ],
+        "host",
+        [
+          "host"
+        ]
+      ],
+      "labels": [
+        "lab"
+      ],
+      "renamed": [
+        null,
+        null,
+        "host",
+        "host",
+        [
+          "host",
+          "x"
+        ],
+        "host",
+        [
+          "host"
+        ],
+        []
+      ],
+      "restored": [
+        "host",
+        null,
+        "host",
+        "host",
+        [
+          "host",
+          "x"
+        ],
+        "host",
+        [
+          "host"
+        ],
+        [
+          "lab"
+        ]
+      ],
+      "nested": [
+        "host",
+        [
+          "lab"
+        ],
+        null
+      ],
+      "nestedMissing": [
+        null,
+        null
+      ],
+      "nestedList": [
+        null,
+        "host"
+      ],
+      "duplicate": null,
+      "inside": [
+        "in2",
+        [
+          "lab",
+          "inside"
+        ]
+      ],
+      "wrapping": [
+        "wh",
+        1
+      ],
+      "wrappingPlain": [
+        "after",
+        0
+      ],
+      "wrappingMissing": "after",
+      "order": [
+        "o1",
+        "i1",
+        "o2"
+      ],
+      "customBefore": [
+        "fh",
+        1
+      ],
+      "customAfter": [
+        "fh",
+        0,
+        1
+      ],
+      "customMissing": "fh"
+    },
+    "invokers": {
+      "log": [
+        [
+          "pp",
+          "beforetoggle",
+          "open",
+          "t1",
+          "pp"
+        ],
+        [
+          "host",
+          "beforetoggle",
+          "open",
+          "t1",
+          "ph"
+        ],
+        [
+          "pp",
+          "toggle",
+          "open",
+          "t1",
+          "pp"
+        ],
+        [
+          "host",
+          "toggle",
+          "open",
+          "t1",
+          "ph"
+        ],
+        [
+          "open",
+          true
+        ],
+        [
+          "pp",
+          "beforetoggle",
+          "closed",
+          "t1",
+          "pp"
+        ],
+        [
+          "host",
+          "beforetoggle",
+          "closed",
+          "t1",
+          "ph"
+        ],
+        [
+          "pp",
+          "toggle",
+          "closed",
+          "t1",
+          "pp"
+        ],
+        [
+          "host",
+          "toggle",
+          "closed",
+          "t1",
+          "ph"
+        ],
+        [
+          "closed",
+          false
+        ],
+        [
+          "pp",
+          "command",
+          "show-popover",
+          "t2",
+          "pp"
+        ],
+        [
+          "host",
+          "command",
+          "show-popover",
+          "t2",
+          "ph"
+        ],
+        [
+          "pp",
+          "beforetoggle",
+          "open",
+          "t2",
+          "pp"
+        ],
+        [
+          "host",
+          "beforetoggle",
+          "open",
+          "t2",
+          "ph"
+        ],
+        [
+          "pp",
+          "toggle",
+          "open",
+          "t2",
+          "pp"
+        ],
+        [
+          "host",
+          "toggle",
+          "open",
+          "t2",
+          "ph"
+        ],
+        [
+          "shown",
+          true
+        ],
+        [
+          "pp",
+          "beforetoggle",
+          "closed",
+          null,
+          "pp"
+        ],
+        [
+          "pp",
+          "toggle",
+          "closed",
+          null,
+          "pp"
+        ],
+        [
+          "pp",
+          "command",
+          "--custom",
+          "t3",
+          "pp"
+        ],
+        [
+          "host",
+          "command",
+          "--custom",
+          "t3",
+          "ph"
+        ],
+        [
+          "no-target",
+          false,
+          false
+        ],
+        [
+          "missing-host",
+          false,
+          false
+        ],
+        [
+          "host",
+          "command",
+          "show-popover",
+          "t2",
+          "ph"
+        ],
+        [
+          "host",
+          "beforetoggle",
+          "open",
+          "t2",
+          "ph"
+        ],
+        [
+          "host",
+          "toggle",
+          "open",
+          "t2",
+          "ph"
+        ],
+        [
+          "other",
+          true
+        ],
+        "---",
+        [
+          "pp",
+          "beforetoggle",
+          "open",
+          "button",
+          "pp"
+        ],
+        [
+          "host",
+          "beforetoggle",
+          "open",
+          "button",
+          "ph"
+        ],
+        [
+          "pp",
+          "toggle",
+          "open",
+          "button",
+          "pp"
+        ],
+        [
+          "host",
+          "toggle",
+          "open",
+          "button",
+          "ph"
+        ],
+        [
+          "explicit",
+          "ph",
+          true
+        ]
+      ]
+    },
+    "forms": {
+      "owner": [
+        "fh",
+        [
+          "input",
+          "fi"
+        ]
+      ]
+    }
+  }
+}

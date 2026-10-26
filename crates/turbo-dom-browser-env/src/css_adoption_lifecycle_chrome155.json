@@ -1,0 +1,81 @@
+{
+  "browser": "Chrome/155.0.8059.80",
+  "v8": "15.5.35.23",
+  "probeSha256": "d3472d629999e1f1e4ff49f225b3eb0f06dce884c46e56d92393615f3d87569c",
+  "collectorSha256": "09c6f14e992b00cc8f5fe5bd4c6f71e22648cf3244ba9cf8ee91dc187e422b15",
+  "errors": [],
+  "result": {
+    "sameDocument": [
+      1,
+      2,
+      true,
+      true
+    ],
+    "disconnected": [
+      1,
+      2,
+      true,
+      true
+    ],
+    "reconnected": [
+      1,
+      2,
+      true,
+      true
+    ],
+    "foreign": [
+      0,
+      0,
+      true,
+      true
+    ],
+    "foreignOldSheet": "NotAllowedError",
+    "unreadRoundtrip": [
+      0,
+      0,
+      true,
+      true
+    ],
+    "foreignRealm": [
+      0,
+      1,
+      true,
+      true,
+      true
+    ],
+    "backToSource": [
+      0,
+      0,
+      true,
+      true
+    ],
+    "callbacks": [
+      [
+        0,
+        0
+      ],
+      [
+        0,
+        0
+      ],
+      [
+        0,
+        0
+      ],
+      [
+        0,
+        0
+      ],
+      [
+        0,
+        0
+      ],
+      [
+        0,
+        0
+      ]
+    ],
+    "publicHooks": 0,
+    "oldSheetIntact": "29px"
+  }
+}

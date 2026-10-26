@@ -32,6 +32,9 @@ smol_str = "0.3"
 smallvec = "1"
 # The license-preserved UTF-16 tokenizer adapter uses the upstream diagnostics.
 log = "0.4"
+# CSS Syntax tokenizer for the Chrome-compatible value grammars in rtdom::css_values
+# (`zoom`), shared by turbo-dom-browser-env and native layout consumers.
+cssparser = "0.37"
 
 # Adopt clippy's opt-in `pedantic` group as a warn-level gate (CI's `-D warnings`
 # escalates it to an error). The lints allowed below don't fit a DOM / layout / parse

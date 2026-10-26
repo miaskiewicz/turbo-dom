@@ -1,7 +1,8 @@
 [workspace]
 # The root package (turbo-dom-parser) plus the standalone Rust-native DOM runtime
-# crate published to crates.io as `turbo-dom`. The parser ships to npm.
-members = ["crates/turbo-dom"]
+# crate published to crates.io as `turbo-dom`, and `turbo-dom-browser-env`, the
+# rtdom <-> V8 browser binding over it. The parser ships to npm.
+members = ["crates/turbo-dom", "crates/turbo-dom-browser-env"]
 # turbo-dom-v8 is generated (crates/turbo-dom-v8/scripts/generate.py) into the
 # gitignored crates/turbo-dom-v8/crate/ and built as its own standalone package, so a
 # fresh checkout resolves this workspace without generating V8 first.

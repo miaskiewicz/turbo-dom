@@ -1,0 +1,2823 @@
+{
+  "browser": "Chrome/156.0.8078.47",
+  "v8": "15.6.75.19",
+  "casesSha256": "5ee397f2cc2d1261f000ed4e4e96fdd97eaff0fa687e637176e7c458d27175fb",
+  "probeSha256": "72d8c52ab2e892bd233a134c1407f2db1646cda84c42ebac94fca6e32e9e52ad",
+  "collectorSha256": "4e61b029135dacd18fdb68e4194fea875766edc7f203f7560bd3b826ad6aa0cb",
+  "flags": [
+    "--remote-debugging-port=0",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "about:blank"
+  ],
+  "errors": [],
+  "result": [
+    {
+      "result": {
+        "descriptors": {
+          "HTMLMeterElement.value": [
+            true,
+            true,
+            false,
+            "get value",
+            0,
+            "function get value() { [native code] }",
+            false,
+            "set value",
+            1,
+            "function set value() { [native code] }"
+          ],
+          "HTMLMeterElement.min": [
+            true,
+            true,
+            false,
+            "get min",
+            0,
+            "function get min() { [native code] }",
+            false,
+            "set min",
+            1,
+            "function set min() { [native code] }"
+          ],
+          "HTMLMeterElement.max": [
+            true,
+            true,
+            false,
+            "get max",
+            0,
+            "function get max() { [native code] }",
+            false,
+            "set max",
+            1,
+            "function set max() { [native code] }"
+          ],
+          "HTMLMeterElement.low": [
+            true,
+            true,
+            false,
+            "get low",
+            0,
+            "function get low() { [native code] }",
+            false,
+            "set low",
+            1,
+            "function set low() { [native code] }"
+          ],
+          "HTMLMeterElement.high": [
+            true,
+            true,
+            false,
+            "get high",
+            0,
+            "function get high() { [native code] }",
+            false,
+            "set high",
+            1,
+            "function set high() { [native code] }"
+          ],
+          "HTMLMeterElement.optimum": [
+            true,
+            true,
+            false,
+            "get optimum",
+            0,
+            "function get optimum() { [native code] }",
+            false,
+            "set optimum",
+            1,
+            "function set optimum() { [native code] }"
+          ],
+          "HTMLProgressElement.value": [
+            true,
+            true,
+            false,
+            "get value",
+            0,
+            "function get value() { [native code] }",
+            false,
+            "set value",
+            1,
+            "function set value() { [native code] }"
+          ],
+          "HTMLProgressElement.max": [
+            true,
+            true,
+            false,
+            "get max",
+            0,
+            "function get max() { [native code] }",
+            false,
+            "set max",
+            1,
+            "function set max() { [native code] }"
+          ],
+          "HTMLProgressElement.position": [
+            true,
+            true,
+            false,
+            "get position",
+            0,
+            "function get position() { [native code] }",
+            false,
+            null,
+            null,
+            null
+          ],
+          "HTMLOutputElement.htmlFor": [
+            true,
+            true,
+            false,
+            "get htmlFor",
+            0,
+            "function get htmlFor() { [native code] }",
+            false,
+            "set htmlFor",
+            1,
+            "function set htmlFor() { [native code] }"
+          ],
+          "HTMLOutputElement.name": [
+            true,
+            true,
+            false,
+            "get name",
+            0,
+            "function get name() { [native code] }",
+            false,
+            "set name",
+            1,
+            "function set name() { [native code] }"
+          ],
+          "HTMLOutputElement.type": [
+            true,
+            true,
+            false,
+            "get type",
+            0,
+            "function get type() { [native code] }",
+            false,
+            null,
+            null,
+            null
+          ],
+          "HTMLOutputElement.defaultValue": [
+            true,
+            true,
+            false,
+            "get defaultValue",
+            0,
+            "function get defaultValue() { [native code] }",
+            false,
+            "set defaultValue",
+            1,
+            "function set defaultValue() { [native code] }"
+          ],
+          "HTMLOutputElement.value": [
+            true,
+            true,
+            false,
+            "get value",
+            0,
+            "function get value() { [native code] }",
+            false,
+            "set value",
+            1,
+            "function set value() { [native code] }"
+          ]
+        },
+        "keys": {
+          "HTMLMeterElement": [
+            "Symbol(Symbol.toStringTag)",
+            "constructor",
+            "high",
+            "labels",
+            "low",
+            "max",
+            "min",
+            "optimum",
+            "value"
+          ],
+          "HTMLProgressElement": [
+            "Symbol(Symbol.toStringTag)",
+            "constructor",
+            "labels",
+            "max",
+            "position",
+            "value"
+          ],
+          "HTMLOutputElement": [
+            "Symbol(Symbol.toStringTag)",
+            "checkValidity",
+            "constructor",
+            "defaultValue",
+            "form",
+            "htmlFor",
+            "labels",
+            "name",
+            "reportValidity",
+            "setCustomValidity",
+            "type",
+            "validationMessage",
+            "validity",
+            "value",
+            "willValidate"
+          ]
+        },
+        "brands": {
+          "HTMLMeterElement.value": {
+            "plain": [
+              "TypeError",
+              "TypeError",
+              ""
+            ],
+            "div": [
+              "TypeError",
+              "TypeError",
+              ""
+            ],
+            "meter": [
+              "ok",
+              "ok",
+              "valueOf"
+            ],
+            "progress": [
+              "TypeError",
+              "TypeError",
+              ""
+            ],
+            "output": [
+              "TypeError",
+              "TypeError",
+              ""
+            ],
+            "svg": [
+              "TypeError",
+              "TypeError",
+              ""
+            ]
+          },
+          "HTMLMeterElement.min": {
+            "plain": [
+              "TypeError",
+              "TypeError",
+              ""
+            ],
+            "div": [
+              "TypeError",
+              "TypeError",
+              ""
+            ],
+            "meter": [
+              "ok",
+              "ok",
+              "valueOf"
+            ],
+            "progress": [
+              "TypeError",
+              "TypeError",
+              ""
+            ],
+            "output": [
+              "TypeError",
+              "TypeError",
+              ""
+            ],
+            "svg": [
+              "TypeError",
+              "TypeError",
+              ""
+            ]
+          },
+          "HTMLMeterElement.max": {
+            "plain": [
+              "TypeError",
+              "TypeError",
+              ""
+            ],
+            "div": [
+              "TypeError",
+              "TypeError",
+              ""
+            ],
+            "meter": [
+              "ok",
+              "ok",
+              "valueOf"
+            ],
+            "progress": [
+              "TypeError",
+              "TypeError",
+              ""
+            ],
+            "output": [
+              "TypeError",
+              "TypeError",
+              ""
+            ],
+            "svg": [
+              "TypeError",
+              "TypeError",
+              ""
+            ]
+          },
+          "HTMLMeterElement.low": {
+            "plain": [
+              "TypeError",
+              "TypeError",
+              ""
+            ],
+            "div": [
+              "TypeError",
+              "TypeError",
+              ""
+            ],
+            "meter": [
+              "ok",
+              "ok",
+              "valueOf"
+            ],
+            "progress": [
+              "TypeError",
+              "TypeError",
+              ""
+            ],
+            "output": [
+              "TypeError",
+              "TypeError",
+              ""
+            ],
+            "svg": [
+              "TypeError",
+              "TypeError",
+              ""
+            ]
+          },
+          "HTMLMeterElement.high": {
+            "plain": [
+              "TypeError",
+              "TypeError",
+              ""
+            ],
+            "div": [
+              "TypeError",
+              "TypeError",
+              ""
+            ],
+            "meter": [
+              "ok",
+              "ok",
+              "valueOf"
+            ],
+            "progress": [
+              "TypeError",
+              "TypeError",
+              ""
+            ],
+            "output": [
+              "TypeError",
+              "TypeError",
+              ""
+            ],
+            "svg": [
+              "TypeError",
+              "TypeError",
+              ""
+            ]
+          },
+          "HTMLMeterElement.optimum": {
+            "plain": [
+              "TypeError",
+              "TypeError",
+              ""
+            ],
+            "div": [
+              "TypeError",
+              "TypeError",
+              ""
+            ],
+            "meter": [
+              "ok",
+              "ok",
+              "valueOf"
+            ],
+            "progress": [
+              "TypeError",
+              "TypeError",
+              ""
+            ],
+            "output": [
+              "TypeError",
+              "TypeError",
+              ""
+            ],
+            "svg": [
+              "TypeError",
+              "TypeError",
+              ""
+            ]
+          },
+          "HTMLProgressElement.value": {
+            "plain": [
+              "TypeError",
+              "TypeError",
+              ""
+            ],
+            "div": [
+              "TypeError",
+              "TypeError",
+              ""
+            ],
+            "meter": [
+              "TypeError",
+              "TypeError",
+              ""
+            ],
+            "progress": [
+              "ok",
+              "ok",
+              "valueOf"
+            ],
+            "output": [
+              "TypeError",
+              "TypeError",
+              ""
+            ],
+            "svg": [
+              "TypeError",
+              "TypeError",
+              ""
+            ]
+          },
+          "HTMLProgressElement.max": {
+            "plain": [
+              "TypeError",
+              "TypeError",
+              ""
+            ],
+            "div": [
+              "TypeError",
+              "TypeError",
+              ""
+            ],
+            "meter": [
+              "TypeError",
+              "TypeError",
+              ""
+            ],
+            "progress": [
+              "ok",
+              "ok",
+              "valueOf"
+            ],
+            "output": [
+              "TypeError",
+              "TypeError",
+              ""
+            ],
+            "svg": [
+              "TypeError",
+              "TypeError",
+              ""
+            ]
+          },
+          "HTMLProgressElement.position": {
+            "plain": [
+              "TypeError"
+            ],
+            "div": [
+              "TypeError"
+            ],
+            "meter": [
+              "TypeError"
+            ],
+            "progress": [
+              "ok"
+            ],
+            "output": [
+              "TypeError"
+            ],
+            "svg": [
+              "TypeError"
+            ]
+          },
+          "HTMLOutputElement.htmlFor": {
+            "plain": [
+              "TypeError",
+              "TypeError",
+              ""
+            ],
+            "div": [
+              "TypeError",
+              "TypeError",
+              ""
+            ],
+            "meter": [
+              "TypeError",
+              "TypeError",
+              ""
+            ],
+            "progress": [
+              "TypeError",
+              "TypeError",
+              ""
+            ],
+            "output": [
+              "ok",
+              "ok",
+              "toString"
+            ],
+            "svg": [
+              "TypeError",
+              "TypeError",
+              ""
+            ]
+          },
+          "HTMLOutputElement.name": {
+            "plain": [
+              "TypeError",
+              "TypeError",
+              ""
+            ],
+            "div": [
+              "TypeError",
+              "TypeError",
+              ""
+            ],
+            "meter": [
+              "TypeError",
+              "TypeError",
+              ""
+            ],
+            "progress": [
+              "TypeError",
+              "TypeError",
+              ""
+            ],
+            "output": [
+              "ok",
+              "ok",
+              "toString"
+            ],
+            "svg": [
+              "TypeError",
+              "TypeError",
+              ""
+            ]
+          },
+          "HTMLOutputElement.type": {
+            "plain": [
+              "TypeError"
+            ],
+            "div": [
+              "TypeError"
+            ],
+            "meter": [
+              "TypeError"
+            ],
+            "progress": [
+              "TypeError"
+            ],
+            "output": [
+              "ok"
+            ],
+            "svg": [
+              "TypeError"
+            ]
+          },
+          "HTMLOutputElement.defaultValue": {
+            "plain": [
+              "TypeError",
+              "TypeError",
+              ""
+            ],
+            "div": [
+              "TypeError",
+              "TypeError",
+              ""
+            ],
+            "meter": [
+              "TypeError",
+              "TypeError",
+              ""
+            ],
+            "progress": [
+              "TypeError",
+              "TypeError",
+              ""
+            ],
+            "output": [
+              "ok",
+              "ok",
+              "toString"
+            ],
+            "svg": [
+              "TypeError",
+              "TypeError",
+              ""
+            ]
+          },
+          "HTMLOutputElement.value": {
+            "plain": [
+              "TypeError",
+              "TypeError",
+              ""
+            ],
+            "div": [
+              "TypeError",
+              "TypeError",
+              ""
+            ],
+            "meter": [
+              "TypeError",
+              "TypeError",
+              ""
+            ],
+            "progress": [
+              "TypeError",
+              "TypeError",
+              ""
+            ],
+            "output": [
+              "ok",
+              "ok",
+              "toString"
+            ],
+            "svg": [
+              "TypeError",
+              "TypeError",
+              ""
+            ]
+          }
+        },
+        "grammar": [
+          [
+            0,
+            1,
+            0,
+            0
+          ],
+          [
+            1,
+            1,
+            1,
+            1
+          ],
+          [
+            1,
+            1,
+            1,
+            1
+          ],
+          [
+            2,
+            2,
+            2,
+            1
+          ],
+          [
+            3,
+            3,
+            3,
+            1
+          ],
+          [
+            4,
+            4,
+            4,
+            1
+          ],
+          [
+            5,
+            5,
+            5,
+            1
+          ],
+          [
+            0,
+            1,
+            0,
+            0
+          ],
+          [
+            0,
+            1,
+            0,
+            0
+          ],
+          [
+            0,
+            1,
+            0,
+            0
+          ],
+          [
+            0,
+            1,
+            0,
+            0
+          ],
+          [
+            1,
+            1,
+            1,
+            1
+          ],
+          [
+            0,
+            1,
+            0,
+            0
+          ],
+          [
+            0,
+            1,
+            0,
+            0
+          ],
+          [
+            0,
+            1,
+            0,
+            0
+          ],
+          [
+            0,
+            1,
+            0,
+            0
+          ],
+          [
+            0,
+            1,
+            0,
+            0
+          ],
+          [
+            0,
+            1,
+            0,
+            0
+          ],
+          [
+            0,
+            1,
+            0,
+            0
+          ],
+          [
+            0.5,
+            0.5,
+            0.5,
+            1
+          ],
+          [
+            -0.5,
+            1,
+            0,
+            0
+          ],
+          [
+            0.5,
+            0.5,
+            0.5,
+            1
+          ],
+          [
+            1,
+            1,
+            1,
+            1
+          ],
+          [
+            100000,
+            100000,
+            100000,
+            1
+          ],
+          [
+            0,
+            1,
+            0,
+            0
+          ],
+          [
+            0,
+            1,
+            0,
+            0
+          ],
+          [
+            1,
+            1,
+            1,
+            1
+          ],
+          [
+            1.5,
+            1.5,
+            1.5,
+            1
+          ],
+          [
+            1,
+            1,
+            1,
+            1
+          ],
+          [
+            1,
+            1,
+            1,
+            1
+          ],
+          [
+            1,
+            1,
+            1,
+            1
+          ],
+          [
+            100,
+            100,
+            100,
+            1
+          ],
+          [
+            100000,
+            100000,
+            100000,
+            1
+          ],
+          [
+            0.00001,
+            0.00001,
+            0.00001,
+            1
+          ],
+          [
+            1.5,
+            1.5,
+            1.5,
+            1
+          ],
+          [
+            1.5,
+            1.5,
+            1.5,
+            1
+          ],
+          [
+            1,
+            1,
+            1,
+            1
+          ],
+          [
+            100000,
+            100000,
+            100000,
+            1
+          ],
+          [
+            0,
+            1,
+            0,
+            0
+          ],
+          [
+            0,
+            1,
+            0,
+            0
+          ],
+          [
+            0,
+            1,
+            0,
+            0
+          ],
+          [
+            1,
+            1,
+            1,
+            1
+          ],
+          [
+            1,
+            1,
+            1,
+            1
+          ],
+          [
+            1,
+            1,
+            1,
+            1
+          ],
+          [
+            0,
+            1,
+            0,
+            0
+          ],
+          [
+            0,
+            1,
+            0,
+            0
+          ],
+          [
+            0,
+            1,
+            0,
+            0
+          ],
+          [
+            1e+308,
+            1e+308,
+            1e+308,
+            1
+          ],
+          [
+            0,
+            1,
+            0,
+            0
+          ],
+          [
+            0,
+            1,
+            0,
+            0
+          ],
+          [
+            0,
+            1,
+            0,
+            0
+          ],
+          [
+            0,
+            1,
+            0,
+            0
+          ],
+          [
+            5e-324,
+            5e-324,
+            5e-324,
+            1
+          ],
+          [
+            0,
+            1,
+            0,
+            0
+          ],
+          [
+            0,
+            1,
+            0,
+            0
+          ],
+          [
+            0.5,
+            0.5,
+            0.5,
+            1
+          ],
+          [
+            1.2345678901234568e+22,
+            1.2345678901234568e+22,
+            1.2345678901234568e+22,
+            1
+          ],
+          [
+            1,
+            1,
+            1,
+            1
+          ],
+          [
+            0,
+            1,
+            0,
+            0
+          ],
+          [
+            1,
+            1,
+            1,
+            1
+          ],
+          [
+            0,
+            1,
+            0,
+            0
+          ],
+          [
+            0,
+            1,
+            0,
+            0
+          ],
+          [
+            0,
+            1,
+            0,
+            0
+          ],
+          [
+            1,
+            1,
+            1,
+            1
+          ],
+          [
+            0.30000000000000004,
+            0.30000000000000004,
+            0.30000000000000004,
+            1
+          ],
+          [
+            9007199254740992,
+            9007199254740992,
+            9007199254740992,
+            1
+          ]
+        ],
+        "meterSteps": [
+          [
+            0,
+            1,
+            0,
+            0,
+            1,
+            0.5
+          ],
+          [
+            "min",
+            "5",
+            [
+              5,
+              5,
+              5,
+              5,
+              5,
+              5
+            ]
+          ],
+          [
+            "max",
+            "2",
+            [
+              5,
+              5,
+              5,
+              5,
+              5,
+              5
+            ]
+          ],
+          [
+            "value",
+            "9",
+            [
+              5,
+              5,
+              5,
+              5,
+              5,
+              5
+            ]
+          ],
+          [
+            "low",
+            "1",
+            [
+              5,
+              5,
+              5,
+              5,
+              5,
+              5
+            ]
+          ],
+          [
+            "high",
+            "7",
+            [
+              5,
+              5,
+              5,
+              5,
+              5,
+              5
+            ]
+          ],
+          [
+            "optimum",
+            "100",
+            [
+              5,
+              5,
+              5,
+              5,
+              5,
+              5
+            ]
+          ],
+          [
+            "min",
+            "-10",
+            [
+              -10,
+              2,
+              2,
+              1,
+              2,
+              2
+            ]
+          ],
+          [
+            "low",
+            "3",
+            [
+              -10,
+              2,
+              2,
+              2,
+              2,
+              2
+            ]
+          ],
+          [
+            "high",
+            "1",
+            [
+              -10,
+              2,
+              2,
+              2,
+              2,
+              2
+            ]
+          ],
+          [
+            "max",
+            "x",
+            [
+              -10,
+              1,
+              1,
+              1,
+              1,
+              1
+            ]
+          ],
+          [
+            "min",
+            "x",
+            [
+              0,
+              1,
+              1,
+              1,
+              1,
+              1
+            ]
+          ],
+          [
+            "optimum",
+            "-50",
+            [
+              0,
+              1,
+              1,
+              1,
+              1,
+              0
+            ]
+          ],
+          [
+            "value",
+            "-5",
+            [
+              0,
+              1,
+              0,
+              1,
+              1,
+              0
+            ]
+          ],
+          [
+            "min",
+            "-3",
+            [
+              -3,
+              1,
+              -3,
+              1,
+              1,
+              -3
+            ]
+          ],
+          [
+            "max",
+            "-1",
+            [
+              -3,
+              -1,
+              -3,
+              -1,
+              -1,
+              -3
+            ]
+          ],
+          [
+            "low",
+            "-2",
+            [
+              -3,
+              -1,
+              -3,
+              -2,
+              -1,
+              -3
+            ]
+          ],
+          [
+            "high",
+            "-2.5",
+            [
+              -3,
+              -1,
+              -3,
+              -2,
+              -2,
+              -3
+            ]
+          ],
+          [
+            "optimum",
+            "-2",
+            [
+              -3,
+              -1,
+              -3,
+              -2,
+              -2,
+              -2
+            ]
+          ],
+          [
+            "value",
+            "-1.5",
+            [
+              -3,
+              -1,
+              -1.5,
+              -2,
+              -2,
+              -2
+            ]
+          ],
+          [
+            "low",
+            "9",
+            [
+              -3,
+              -1,
+              -1.5,
+              -1,
+              -1,
+              -2
+            ]
+          ],
+          [
+            "high",
+            "-9",
+            [
+              -3,
+              -1,
+              -1.5,
+              -1,
+              -1,
+              -2
+            ]
+          ],
+          [
+            "min",
+            "0.5",
+            [
+              0.5,
+              0.5,
+              0.5,
+              0.5,
+              0.5,
+              0.5
+            ]
+          ],
+          [
+            "max",
+            "0.25",
+            [
+              0.5,
+              0.5,
+              0.5,
+              0.5,
+              0.5,
+              0.5
+            ]
+          ]
+        ],
+        "meterDefaults": [
+          [
+            0,
+            1,
+            0,
+            0,
+            1,
+            0.5
+          ],
+          [
+            3,
+            3,
+            3,
+            3,
+            3,
+            3
+          ],
+          [
+            -3,
+            1,
+            0,
+            -3,
+            1,
+            -1
+          ],
+          [
+            0.5,
+            1,
+            0.5,
+            0.5,
+            1,
+            0.75
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            2,
+            6,
+            2,
+            2,
+            6,
+            4
+          ],
+          [
+            6,
+            6,
+            6,
+            6,
+            6,
+            6
+          ]
+        ],
+        "meterSetters": {
+          "min": {
+            "accepted": [
+              "0.1",
+              "1e+21",
+              "1e-7",
+              "0",
+              "5e-324",
+              "-100",
+              "123456789012345680000",
+              "0.3333333333333333",
+              "5",
+              "7",
+              "0",
+              "0",
+              "0",
+              "1",
+              "0",
+              "3",
+              "4",
+              "6",
+              "8"
+            ],
+            "rejected": [
+              [
+                [
+                  "TypeError",
+                  "Failed to set the 'min' property on 'HTMLMeterElement': The provided double value is non-finite."
+                ],
+                "kept"
+              ],
+              [
+                [
+                  "TypeError",
+                  "Failed to set the 'min' property on 'HTMLMeterElement': The provided double value is non-finite."
+                ],
+                "kept"
+              ],
+              [
+                [
+                  "TypeError",
+                  "Failed to set the 'min' property on 'HTMLMeterElement': The provided double value is non-finite."
+                ],
+                "kept"
+              ],
+              [
+                [
+                  "TypeError"
+                ],
+                "kept"
+              ],
+              [
+                [
+                  "TypeError"
+                ],
+                "kept"
+              ],
+              [
+                [
+                  "TypeError"
+                ],
+                "kept"
+              ],
+              [
+                [
+                  "TypeError"
+                ],
+                "kept"
+              ],
+              [
+                [
+                  "TypeError"
+                ],
+                "kept"
+              ],
+              [
+                [
+                  "TypeError"
+                ],
+                "kept"
+              ]
+            ],
+            "missing": [
+              "TypeError"
+            ],
+            "attributes": [
+              "kept",
+              null,
+              null,
+              null,
+              null,
+              null
+            ]
+          },
+          "max": {
+            "accepted": [
+              "0.1",
+              "1e+21",
+              "1e-7",
+              "0",
+              "5e-324",
+              "-100",
+              "123456789012345680000",
+              "0.3333333333333333",
+              "5",
+              "7",
+              "0",
+              "0",
+              "0",
+              "1",
+              "0",
+              "3",
+              "4",
+              "6",
+              "8"
+            ],
+            "rejected": [
+              [
+                [
+                  "TypeError",
+                  "Failed to set the 'max' property on 'HTMLMeterElement': The provided double value is non-finite."
+                ],
+                "kept"
+              ],
+              [
+                [
+                  "TypeError",
+                  "Failed to set the 'max' property on 'HTMLMeterElement': The provided double value is non-finite."
+                ],
+                "kept"
+              ],
+              [
+                [
+                  "TypeError",
+                  "Failed to set the 'max' property on 'HTMLMeterElement': The provided double value is non-finite."
+                ],
+                "kept"
+              ],
+              [
+                [
+                  "TypeError"
+                ],
+                "kept"
+              ],
+              [
+                [
+                  "TypeError"
+                ],
+                "kept"
+              ],
+              [
+                [
+                  "TypeError"
+                ],
+                "kept"
+              ],
+              [
+                [
+                  "TypeError"
+                ],
+                "kept"
+              ],
+              [
+                [
+                  "TypeError"
+                ],
+                "kept"
+              ],
+              [
+                [
+                  "TypeError"
+                ],
+                "kept"
+              ]
+            ],
+            "missing": [
+              "TypeError"
+            ],
+            "attributes": [
+              null,
+              "kept",
+              null,
+              null,
+              null,
+              null
+            ]
+          },
+          "value": {
+            "accepted": [
+              "0.1",
+              "1e+21",
+              "1e-7",
+              "0",
+              "5e-324",
+              "-100",
+              "123456789012345680000",
+              "0.3333333333333333",
+              "5",
+              "7",
+              "0",
+              "0",
+              "0",
+              "1",
+              "0",
+              "3",
+              "4",
+              "6",
+              "8"
+            ],
+            "rejected": [
+              [
+                [
+                  "TypeError",
+                  "Failed to set the 'value' property on 'HTMLMeterElement': The provided double value is non-finite."
+                ],
+                "kept"
+              ],
+              [
+                [
+                  "TypeError",
+                  "Failed to set the 'value' property on 'HTMLMeterElement': The provided double value is non-finite."
+                ],
+                "kept"
+              ],
+              [
+                [
+                  "TypeError",
+                  "Failed to set the 'value' property on 'HTMLMeterElement': The provided double value is non-finite."
+                ],
+                "kept"
+              ],
+              [
+                [
+                  "TypeError"
+                ],
+                "kept"
+              ],
+              [
+                [
+                  "TypeError"
+                ],
+                "kept"
+              ],
+              [
+                [
+                  "TypeError"
+                ],
+                "kept"
+              ],
+              [
+                [
+                  "TypeError"
+                ],
+                "kept"
+              ],
+              [
+                [
+                  "TypeError"
+                ],
+                "kept"
+              ],
+              [
+                [
+                  "TypeError"
+                ],
+                "kept"
+              ]
+            ],
+            "missing": [
+              "TypeError"
+            ],
+            "attributes": [
+              null,
+              null,
+              "kept",
+              null,
+              null,
+              null
+            ]
+          },
+          "low": {
+            "accepted": [
+              "0.1",
+              "1e+21",
+              "1e-7",
+              "0",
+              "5e-324",
+              "-100",
+              "123456789012345680000",
+              "0.3333333333333333",
+              "5",
+              "7",
+              "0",
+              "0",
+              "0",
+              "1",
+              "0",
+              "3",
+              "4",
+              "6",
+              "8"
+            ],
+            "rejected": [
+              [
+                [
+                  "TypeError",
+                  "Failed to set the 'low' property on 'HTMLMeterElement': The provided double value is non-finite."
+                ],
+                "kept"
+              ],
+              [
+                [
+                  "TypeError",
+                  "Failed to set the 'low' property on 'HTMLMeterElement': The provided double value is non-finite."
+                ],
+                "kept"
+              ],
+              [
+                [
+                  "TypeError",
+                  "Failed to set the 'low' property on 'HTMLMeterElement': The provided double value is non-finite."
+                ],
+                "kept"
+              ],
+              [
+                [
+                  "TypeError"
+                ],
+                "kept"
+              ],
+              [
+                [
+                  "TypeError"
+                ],
+                "kept"
+              ],
+              [
+                [
+                  "TypeError"
+                ],
+                "kept"
+              ],
+              [
+                [
+                  "TypeError"
+                ],
+                "kept"
+              ],
+              [
+                [
+                  "TypeError"
+                ],
+                "kept"
+              ],
+              [
+                [
+                  "TypeError"
+                ],
+                "kept"
+              ]
+            ],
+            "missing": [
+              "TypeError"
+            ],
+            "attributes": [
+              null,
+              null,
+              null,
+              "kept",
+              null,
+              null
+            ]
+          },
+          "high": {
+            "accepted": [
+              "0.1",
+              "1e+21",
+              "1e-7",
+              "0",
+              "5e-324",
+              "-100",
+              "123456789012345680000",
+              "0.3333333333333333",
+              "5",
+              "7",
+              "0",
+              "0",
+              "0",
+              "1",
+              "0",
+              "3",
+              "4",
+              "6",
+              "8"
+            ],
+            "rejected": [
+              [
+                [
+                  "TypeError",
+                  "Failed to set the 'high' property on 'HTMLMeterElement': The provided double value is non-finite."
+                ],
+                "kept"
+              ],
+              [
+                [
+                  "TypeError",
+                  "Failed to set the 'high' property on 'HTMLMeterElement': The provided double value is non-finite."
+                ],
+                "kept"
+              ],
+              [
+                [
+                  "TypeError",
+                  "Failed to set the 'high' property on 'HTMLMeterElement': The provided double value is non-finite."
+                ],
+                "kept"
+              ],
+              [
+                [
+                  "TypeError"
+                ],
+                "kept"
+              ],
+              [
+                [
+                  "TypeError"
+                ],
+                "kept"
+              ],
+              [
+                [
+                  "TypeError"
+                ],
+                "kept"
+              ],
+              [
+                [
+                  "TypeError"
+                ],
+                "kept"
+              ],
+              [
+                [
+                  "TypeError"
+                ],
+                "kept"
+              ],
+              [
+                [
+                  "TypeError"
+                ],
+                "kept"
+              ]
+            ],
+            "missing": [
+              "TypeError"
+            ],
+            "attributes": [
+              null,
+              null,
+              null,
+              null,
+              "kept",
+              null
+            ]
+          },
+          "optimum": {
+            "accepted": [
+              "0.1",
+              "1e+21",
+              "1e-7",
+              "0",
+              "5e-324",
+              "-100",
+              "123456789012345680000",
+              "0.3333333333333333",
+              "5",
+              "7",
+              "0",
+              "0",
+              "0",
+              "1",
+              "0",
+              "3",
+              "4",
+              "6",
+              "8"
+            ],
+            "rejected": [
+              [
+                [
+                  "TypeError",
+                  "Failed to set the 'optimum' property on 'HTMLMeterElement': The provided double value is non-finite."
+                ],
+                "kept"
+              ],
+              [
+                [
+                  "TypeError",
+                  "Failed to set the 'optimum' property on 'HTMLMeterElement': The provided double value is non-finite."
+                ],
+                "kept"
+              ],
+              [
+                [
+                  "TypeError",
+                  "Failed to set the 'optimum' property on 'HTMLMeterElement': The provided double value is non-finite."
+                ],
+                "kept"
+              ],
+              [
+                [
+                  "TypeError"
+                ],
+                "kept"
+              ],
+              [
+                [
+                  "TypeError"
+                ],
+                "kept"
+              ],
+              [
+                [
+                  "TypeError"
+                ],
+                "kept"
+              ],
+              [
+                [
+                  "TypeError"
+                ],
+                "kept"
+              ],
+              [
+                [
+                  "TypeError"
+                ],
+                "kept"
+              ],
+              [
+                [
+                  "TypeError"
+                ],
+                "kept"
+              ]
+            ],
+            "missing": [
+              "TypeError"
+            ],
+            "attributes": [
+              null,
+              null,
+              null,
+              null,
+              null,
+              "kept"
+            ]
+          }
+        },
+        "progressSteps": [
+          [
+            null,
+            null,
+            1,
+            0,
+            -1
+          ],
+          [
+            "set",
+            "max",
+            "0",
+            [
+              null,
+              null,
+              1,
+              0,
+              -1
+            ]
+          ],
+          [
+            "attr",
+            "max",
+            "5",
+            [
+              "5",
+              null,
+              5,
+              0,
+              -1
+            ]
+          ],
+          [
+            "set",
+            "max",
+            "0",
+            [
+              "5",
+              null,
+              5,
+              0,
+              -1
+            ]
+          ],
+          [
+            "set",
+            "max",
+            "-3",
+            [
+              "5",
+              null,
+              5,
+              0,
+              -1
+            ]
+          ],
+          [
+            "set",
+            "max",
+            "0.5",
+            [
+              "0.5",
+              null,
+              0.5,
+              0,
+              -1
+            ]
+          ],
+          [
+            "set",
+            "value",
+            "2",
+            [
+              "0.5",
+              "2",
+              0.5,
+              0.5,
+              1
+            ]
+          ],
+          [
+            "set",
+            "value",
+            "0",
+            [
+              "0.5",
+              "0",
+              0.5,
+              0,
+              0
+            ]
+          ],
+          [
+            "set",
+            "value",
+            "-2",
+            [
+              "0.5",
+              "0",
+              0.5,
+              0,
+              0
+            ]
+          ],
+          [
+            "attr",
+            "value",
+            "junk",
+            [
+              "0.5",
+              "junk",
+              0.5,
+              0,
+              0
+            ]
+          ],
+          [
+            "attr",
+            "value",
+            "-1",
+            [
+              "0.5",
+              "-1",
+              0.5,
+              0,
+              0
+            ]
+          ],
+          [
+            "attr",
+            "max",
+            "-1",
+            [
+              "-1",
+              "-1",
+              1,
+              0,
+              0
+            ]
+          ],
+          [
+            "attr",
+            "max",
+            "0",
+            [
+              "0",
+              "-1",
+              1,
+              0,
+              0
+            ]
+          ],
+          [
+            "attr",
+            "value",
+            "0.25",
+            [
+              "0",
+              "0.25",
+              1,
+              0.25,
+              0.25
+            ]
+          ],
+          [
+            "remove",
+            "value",
+            "undefined",
+            [
+              "0",
+              null,
+              1,
+              0,
+              -1
+            ]
+          ],
+          [
+            "attr",
+            "max",
+            "4",
+            [
+              "4",
+              null,
+              4,
+              0,
+              -1
+            ]
+          ],
+          [
+            "attr",
+            "value",
+            "3",
+            [
+              "4",
+              "3",
+              4,
+              3,
+              0.75
+            ]
+          ],
+          [
+            "attr",
+            "value",
+            "30",
+            [
+              "4",
+              "30",
+              4,
+              4,
+              1
+            ]
+          ],
+          [
+            "set",
+            "value",
+            "0.000001",
+            [
+              "4",
+              "0.000001",
+              4,
+              0.000001,
+              2.5e-7
+            ]
+          ],
+          [
+            "set",
+            "max",
+            "1e-300",
+            [
+              "1e-300",
+              "0.000001",
+              1e-300,
+              1e-300,
+              1
+            ]
+          ],
+          [
+            "set",
+            "value",
+            "1e+300",
+            [
+              "1e-300",
+              "1e+300",
+              1e-300,
+              1e-300,
+              1
+            ]
+          ],
+          [
+            "attr",
+            "value",
+            "",
+            [
+              "1e-300",
+              "",
+              1e-300,
+              0,
+              0
+            ]
+          ],
+          [
+            "remove",
+            "max",
+            "undefined",
+            [
+              null,
+              "",
+              1,
+              0,
+              0
+            ]
+          ],
+          [
+            "set",
+            "max",
+            "7",
+            [
+              "7",
+              "",
+              7,
+              0,
+              0
+            ]
+          ],
+          [
+            "set",
+            "value",
+            "null",
+            [
+              "7",
+              "0",
+              7,
+              0,
+              0
+            ]
+          ]
+        ],
+        "progressSetters": {
+          "max": {
+            "accepted": [
+              "0.1",
+              "1e+21",
+              "1e-7",
+              null,
+              "5e-324",
+              null,
+              "123456789012345680000",
+              "0.3333333333333333",
+              "5",
+              "7",
+              null,
+              null,
+              null,
+              "1",
+              null,
+              "3",
+              "4",
+              "6",
+              "8"
+            ],
+            "rejected": [
+              [
+                [
+                  "TypeError",
+                  "Failed to set the 'max' property on 'HTMLProgressElement': The provided double value is non-finite."
+                ],
+                "kept"
+              ],
+              [
+                [
+                  "TypeError",
+                  "Failed to set the 'max' property on 'HTMLProgressElement': The provided double value is non-finite."
+                ],
+                "kept"
+              ],
+              [
+                [
+                  "TypeError",
+                  "Failed to set the 'max' property on 'HTMLProgressElement': The provided double value is non-finite."
+                ],
+                "kept"
+              ],
+              [
+                [
+                  "TypeError"
+                ],
+                "kept"
+              ],
+              [
+                [
+                  "TypeError"
+                ],
+                "kept"
+              ],
+              [
+                [
+                  "TypeError"
+                ],
+                "kept"
+              ],
+              [
+                [
+                  "TypeError"
+                ],
+                "kept"
+              ],
+              [
+                [
+                  "TypeError"
+                ],
+                "kept"
+              ],
+              [
+                [
+                  "TypeError"
+                ],
+                "kept"
+              ]
+            ]
+          },
+          "value": {
+            "accepted": [
+              "0.1",
+              "1e+21",
+              "1e-7",
+              "0",
+              "5e-324",
+              "0",
+              "123456789012345680000",
+              "0.3333333333333333",
+              "5",
+              "7",
+              "0",
+              "0",
+              "0",
+              "1",
+              "0",
+              "3",
+              "4",
+              "6",
+              "8"
+            ],
+            "rejected": [
+              [
+                [
+                  "TypeError",
+                  "Failed to set the 'value' property on 'HTMLProgressElement': The provided double value is non-finite."
+                ],
+                "kept"
+              ],
+              [
+                [
+                  "TypeError",
+                  "Failed to set the 'value' property on 'HTMLProgressElement': The provided double value is non-finite."
+                ],
+                "kept"
+              ],
+              [
+                [
+                  "TypeError",
+                  "Failed to set the 'value' property on 'HTMLProgressElement': The provided double value is non-finite."
+                ],
+                "kept"
+              ],
+              [
+                [
+                  "TypeError"
+                ],
+                "kept"
+              ],
+              [
+                [
+                  "TypeError"
+                ],
+                "kept"
+              ],
+              [
+                [
+                  "TypeError"
+                ],
+                "kept"
+              ],
+              [
+                [
+                  "TypeError"
+                ],
+                "kept"
+              ],
+              [
+                [
+                  "TypeError"
+                ],
+                "kept"
+              ],
+              [
+                [
+                  "TypeError"
+                ],
+                "kept"
+              ]
+            ]
+          }
+        },
+        "position": [
+          [
+            "TypeError"
+          ],
+          false,
+          0
+        ],
+        "parsed": [
+          [
+            2,
+            8,
+            5,
+            3,
+            6,
+            7
+          ],
+          [
+            "6",
+            " 3",
+            6,
+            3,
+            0.5
+          ],
+          [
+            null,
+            null,
+            1,
+            0,
+            -1
+          ],
+          [
+            "123",
+            "123",
+            "total",
+            "output",
+            [
+              "a",
+              "b"
+            ],
+            " a  b a ",
+            2
+          ]
+        ],
+        "htmlFor": {
+          "same": true,
+          "distinct": true,
+          "classDistinct": true,
+          "tag": "[object DOMTokenList]",
+          "proto": true,
+          "initial": [
+            0,
+            "",
+            null
+          ],
+          "added": [
+            "x y",
+            "x y",
+            true,
+            "y",
+            "x"
+          ],
+          "attribute": [
+            2,
+            [
+              "p",
+              "q"
+            ],
+            "  p\tq  p ",
+            "  p\tq  p "
+          ],
+          "forwarded": [
+            true,
+            "m n",
+            [
+              "m",
+              "n"
+            ]
+          ],
+          "forwardedNull": "null",
+          "symbol": [
+            "TypeError",
+            "null"
+          ],
+          "removed": [
+            "",
+            true
+          ],
+          "toggled": "w",
+          "supports": [
+            "TypeError"
+          ],
+          "errors": [
+            "SyntaxError",
+            "InvalidCharacterError"
+          ],
+          "foreignSetter": "TypeError"
+        },
+        "name": [
+          "",
+          [
+            "n",
+            "n"
+          ],
+          [
+            "",
+            ""
+          ],
+          [
+            "null",
+            "null"
+          ],
+          [
+            "undefined",
+            "undefined"
+          ],
+          [
+            "12",
+            "12"
+          ],
+          [
+            "a\u0000b",
+            "a\u0000b"
+          ],
+          "TypeError",
+          "upper"
+        ],
+        "type": [
+          "output",
+          "TypeError",
+          false,
+          "output",
+          false,
+          "output"
+        ],
+        "outputSteps": [
+          [
+            "text abc",
+            [
+              "abc",
+              "abc",
+              1
+            ]
+          ],
+          [
+            "defaultValue ''",
+            [
+              "abc",
+              "abc",
+              1
+            ]
+          ],
+          [
+            "defaultValue d",
+            [
+              "d",
+              "d",
+              1
+            ]
+          ],
+          [
+            "value v",
+            [
+              "v",
+              "d",
+              1
+            ]
+          ],
+          [
+            "defaultValue e",
+            [
+              "v",
+              "e",
+              1
+            ]
+          ],
+          [
+            "value w",
+            [
+              "w",
+              "e",
+              1
+            ]
+          ],
+          [
+            "text t",
+            [
+              "t",
+              "e",
+              1
+            ]
+          ],
+          [
+            "defaultValue e again",
+            [
+              "t",
+              "e",
+              1
+            ]
+          ],
+          [
+            "value null",
+            [
+              "null",
+              "e",
+              1
+            ]
+          ],
+          [
+            "defaultValue undefined",
+            [
+              "null",
+              "undefined",
+              1
+            ]
+          ],
+          [
+            "value 12",
+            [
+              "12",
+              "undefined",
+              1
+            ]
+          ],
+          [
+            "value ''",
+            [
+              "",
+              "undefined",
+              0
+            ]
+          ],
+          [
+            "defaultValue object",
+            [
+              "",
+              "obj",
+              0
+            ]
+          ]
+        ],
+        "outputSymbol": [
+          "TypeError",
+          "TypeError",
+          [
+            "",
+            "obj",
+            0
+          ]
+        ],
+        "identity": [
+          true,
+          [
+            "a",
+            "b",
+            1
+          ],
+          false,
+          [
+            "q",
+            "q",
+            1
+          ],
+          [
+            "xy",
+            "xy",
+            3
+          ],
+          "z"
+        ],
+        "resets": [
+          [
+            "value mode",
+            [
+              "dv",
+              "dv",
+              1
+            ]
+          ],
+          [
+            "default mode after reset",
+            [
+              "dv2",
+              "dv2",
+              1
+            ]
+          ],
+          [
+            "equal value",
+            [
+              "dv2",
+              "dv2",
+              1
+            ]
+          ],
+          [
+            "stays in value mode",
+            [
+              "dv2",
+              "dv3",
+              1
+            ]
+          ],
+          [
+            "after text edit",
+            [
+              "dv3",
+              "dv3",
+              1
+            ]
+          ],
+          [
+            "captured text",
+            [
+              "q",
+              "q",
+              1
+            ]
+          ],
+          [
+            "captured text then default",
+            [
+              "q",
+              "w",
+              1
+            ]
+          ],
+          [
+            "cancelled",
+            [
+              "pending",
+              "dv3",
+              1
+            ]
+          ],
+          [
+            "uncancelled",
+            [
+              "dv3",
+              "dv3",
+              1
+            ]
+          ],
+          [
+            "form attribute",
+            [
+              "ld",
+              "ld",
+              1
+            ]
+          ],
+          [
+            "unassociated",
+            [
+              "free",
+              "ld",
+              1
+            ]
+          ],
+          [
+            "detached form",
+            [
+              "x",
+              "x",
+              1
+            ]
+          ]
+        ],
+        "resetEvents": [
+          [
+            "reset",
+            true,
+            true,
+            "beforeEvent"
+          ],
+          "dv3"
+        ],
+        "clone": [
+          [
+            "sv",
+            "sv",
+            1
+          ],
+          [
+            "cd",
+            "cd",
+            1
+          ],
+          [
+            "sv",
+            "sd",
+            1
+          ]
+        ]
+      }
+    }
+  ]
+}

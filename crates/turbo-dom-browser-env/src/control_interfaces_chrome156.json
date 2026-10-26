@@ -1,0 +1,2541 @@
+{
+  "browser": "Chrome/156.0.8078.47",
+  "v8": "15.6.75.19",
+  "casesSha256": "4b9763173e9fa662bf2b32ebe3bd3376843500ec7fd49729b3eecfbd33cbec36",
+  "probeSha256": "fdd097137051ff1bb1b0073f70e8ffe2b8897bdbeaf57dd5183e23a0f7671b7a",
+  "collectorSha256": "eff66fa3d1ac0bb8d9cd965e2d7fdb9f6ef3fa41d0a8ca092898c3208a567e9a",
+  "flags": [
+    "--headless=new",
+    "--remote-debugging-pipe",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "about:blank"
+  ],
+  "errors": [],
+  "result": [
+    {
+      "id": "control-interfaces",
+      "result": {
+        "shapes": {
+          "HTMLLabelElement": {
+            "ctor": {
+              "length": {
+                "c": true,
+                "e": false,
+                "w": false,
+                "v": 0
+              },
+              "name": {
+                "c": true,
+                "e": false,
+                "w": false,
+                "v": "HTMLLabelElement"
+              },
+              "prototype": {
+                "c": false,
+                "e": false,
+                "w": false,
+                "v": "object"
+              }
+            },
+            "proto": {
+              "Symbol(Symbol.toStringTag)": {
+                "c": true,
+                "e": false,
+                "w": false,
+                "v": "HTMLLabelElement"
+              },
+              "constructor": {
+                "c": true,
+                "e": false,
+                "w": true,
+                "v": {
+                  "name": "HTMLLabelElement",
+                  "length": 0,
+                  "ctor": true,
+                  "proto": true
+                }
+              },
+              "control": {
+                "c": true,
+                "e": true,
+                "get": {
+                  "name": "get control",
+                  "length": 0,
+                  "ctor": false,
+                  "proto": false
+                },
+                "set": "undefined"
+              },
+              "form": {
+                "c": true,
+                "e": true,
+                "get": {
+                  "name": "get form",
+                  "length": 0,
+                  "ctor": false,
+                  "proto": false
+                },
+                "set": "undefined"
+              },
+              "htmlFor": {
+                "c": true,
+                "e": true,
+                "get": {
+                  "name": "get htmlFor",
+                  "length": 0,
+                  "ctor": false,
+                  "proto": false
+                },
+                "set": {
+                  "name": "set htmlFor",
+                  "length": 1,
+                  "ctor": false,
+                  "proto": false
+                }
+              }
+            },
+            "parent": "HTMLElement",
+            "protoParent": "[object HTMLElement]",
+            "global": {
+              "c": true,
+              "e": false,
+              "w": true,
+              "v": {
+                "name": "HTMLLabelElement",
+                "length": 0,
+                "ctor": true,
+                "proto": true
+              }
+            },
+            "construct": [
+              "throw",
+              "TypeError"
+            ]
+          },
+          "HTMLOptionElement": {
+            "ctor": {
+              "length": {
+                "c": true,
+                "e": false,
+                "w": false,
+                "v": 0
+              },
+              "name": {
+                "c": true,
+                "e": false,
+                "w": false,
+                "v": "HTMLOptionElement"
+              },
+              "prototype": {
+                "c": false,
+                "e": false,
+                "w": false,
+                "v": "object"
+              }
+            },
+            "proto": {
+              "Symbol(Symbol.toStringTag)": {
+                "c": true,
+                "e": false,
+                "w": false,
+                "v": "HTMLOptionElement"
+              },
+              "constructor": {
+                "c": true,
+                "e": false,
+                "w": true,
+                "v": {
+                  "name": "HTMLOptionElement",
+                  "length": 0,
+                  "ctor": true,
+                  "proto": true
+                }
+              },
+              "defaultSelected": {
+                "c": true,
+                "e": true,
+                "get": {
+                  "name": "get defaultSelected",
+                  "length": 0,
+                  "ctor": false,
+                  "proto": false
+                },
+                "set": {
+                  "name": "set defaultSelected",
+                  "length": 1,
+                  "ctor": false,
+                  "proto": false
+                }
+              },
+              "disabled": {
+                "c": true,
+                "e": true,
+                "get": {
+                  "name": "get disabled",
+                  "length": 0,
+                  "ctor": false,
+                  "proto": false
+                },
+                "set": {
+                  "name": "set disabled",
+                  "length": 1,
+                  "ctor": false,
+                  "proto": false
+                }
+              },
+              "form": {
+                "c": true,
+                "e": true,
+                "get": {
+                  "name": "get form",
+                  "length": 0,
+                  "ctor": false,
+                  "proto": false
+                },
+                "set": "undefined"
+              },
+              "index": {
+                "c": true,
+                "e": true,
+                "get": {
+                  "name": "get index",
+                  "length": 0,
+                  "ctor": false,
+                  "proto": false
+                },
+                "set": "undefined"
+              },
+              "label": {
+                "c": true,
+                "e": true,
+                "get": {
+                  "name": "get label",
+                  "length": 0,
+                  "ctor": false,
+                  "proto": false
+                },
+                "set": {
+                  "name": "set label",
+                  "length": 1,
+                  "ctor": false,
+                  "proto": false
+                }
+              },
+              "selected": {
+                "c": true,
+                "e": true,
+                "get": {
+                  "name": "get selected",
+                  "length": 0,
+                  "ctor": false,
+                  "proto": false
+                },
+                "set": {
+                  "name": "set selected",
+                  "length": 1,
+                  "ctor": false,
+                  "proto": false
+                }
+              },
+              "text": {
+                "c": true,
+                "e": true,
+                "get": {
+                  "name": "get text",
+                  "length": 0,
+                  "ctor": false,
+                  "proto": false
+                },
+                "set": {
+                  "name": "set text",
+                  "length": 1,
+                  "ctor": false,
+                  "proto": false
+                }
+              },
+              "value": {
+                "c": true,
+                "e": true,
+                "get": {
+                  "name": "get value",
+                  "length": 0,
+                  "ctor": false,
+                  "proto": false
+                },
+                "set": {
+                  "name": "set value",
+                  "length": 1,
+                  "ctor": false,
+                  "proto": false
+                }
+              }
+            },
+            "parent": "HTMLElement",
+            "protoParent": "[object HTMLElement]",
+            "global": {
+              "c": true,
+              "e": false,
+              "w": true,
+              "v": {
+                "name": "HTMLOptionElement",
+                "length": 0,
+                "ctor": true,
+                "proto": true
+              }
+            },
+            "construct": [
+              "throw",
+              "TypeError"
+            ]
+          },
+          "HTMLSelectElement": {
+            "ctor": {
+              "length": {
+                "c": true,
+                "e": false,
+                "w": false,
+                "v": 0
+              },
+              "name": {
+                "c": true,
+                "e": false,
+                "w": false,
+                "v": "HTMLSelectElement"
+              },
+              "prototype": {
+                "c": false,
+                "e": false,
+                "w": false,
+                "v": "object"
+              }
+            },
+            "proto": {
+              "Symbol(Symbol.iterator)": {
+                "c": true,
+                "e": false,
+                "w": true,
+                "v": {
+                  "name": "values",
+                  "length": 0,
+                  "ctor": false,
+                  "proto": false
+                }
+              },
+              "Symbol(Symbol.toStringTag)": {
+                "c": true,
+                "e": false,
+                "w": false,
+                "v": "HTMLSelectElement"
+              },
+              "add": {
+                "c": true,
+                "e": true,
+                "w": true,
+                "v": {
+                  "name": "add",
+                  "length": 1,
+                  "ctor": false,
+                  "proto": false
+                }
+              },
+              "autocomplete": {
+                "c": true,
+                "e": true,
+                "get": {
+                  "name": "get autocomplete",
+                  "length": 0,
+                  "ctor": false,
+                  "proto": false
+                },
+                "set": {
+                  "name": "set autocomplete",
+                  "length": 1,
+                  "ctor": false,
+                  "proto": false
+                }
+              },
+              "checkValidity": {
+                "c": true,
+                "e": true,
+                "w": true,
+                "v": {
+                  "name": "checkValidity",
+                  "length": 0,
+                  "ctor": false,
+                  "proto": false
+                }
+              },
+              "constructor": {
+                "c": true,
+                "e": false,
+                "w": true,
+                "v": {
+                  "name": "HTMLSelectElement",
+                  "length": 0,
+                  "ctor": true,
+                  "proto": true
+                }
+              },
+              "disabled": {
+                "c": true,
+                "e": true,
+                "get": {
+                  "name": "get disabled",
+                  "length": 0,
+                  "ctor": false,
+                  "proto": false
+                },
+                "set": {
+                  "name": "set disabled",
+                  "length": 1,
+                  "ctor": false,
+                  "proto": false
+                }
+              },
+              "form": {
+                "c": true,
+                "e": true,
+                "get": {
+                  "name": "get form",
+                  "length": 0,
+                  "ctor": false,
+                  "proto": false
+                },
+                "set": "undefined"
+              },
+              "item": {
+                "c": true,
+                "e": true,
+                "w": true,
+                "v": {
+                  "name": "item",
+                  "length": 1,
+                  "ctor": false,
+                  "proto": false
+                }
+              },
+              "labels": {
+                "c": true,
+                "e": true,
+                "get": {
+                  "name": "get labels",
+                  "length": 0,
+                  "ctor": false,
+                  "proto": false
+                },
+                "set": "undefined"
+              },
+              "length": {
+                "c": true,
+                "e": true,
+                "get": {
+                  "name": "get length",
+                  "length": 0,
+                  "ctor": false,
+                  "proto": false
+                },
+                "set": {
+                  "name": "set length",
+                  "length": 1,
+                  "ctor": false,
+                  "proto": false
+                }
+              },
+              "multiple": {
+                "c": true,
+                "e": true,
+                "get": {
+                  "name": "get multiple",
+                  "length": 0,
+                  "ctor": false,
+                  "proto": false
+                },
+                "set": {
+                  "name": "set multiple",
+                  "length": 1,
+                  "ctor": false,
+                  "proto": false
+                }
+              },
+              "name": {
+                "c": true,
+                "e": true,
+                "get": {
+                  "name": "get name",
+                  "length": 0,
+                  "ctor": false,
+                  "proto": false
+                },
+                "set": {
+                  "name": "set name",
+                  "length": 1,
+                  "ctor": false,
+                  "proto": false
+                }
+              },
+              "namedItem": {
+                "c": true,
+                "e": true,
+                "w": true,
+                "v": {
+                  "name": "namedItem",
+                  "length": 1,
+                  "ctor": false,
+                  "proto": false
+                }
+              },
+              "options": {
+                "c": true,
+                "e": true,
+                "get": {
+                  "name": "get options",
+                  "length": 0,
+                  "ctor": false,
+                  "proto": false
+                },
+                "set": "undefined"
+              },
+              "remove": {
+                "c": true,
+                "e": true,
+                "w": true,
+                "v": {
+                  "name": "remove",
+                  "length": 0,
+                  "ctor": false,
+                  "proto": false
+                }
+              },
+              "reportValidity": {
+                "c": true,
+                "e": true,
+                "w": true,
+                "v": {
+                  "name": "reportValidity",
+                  "length": 0,
+                  "ctor": false,
+                  "proto": false
+                }
+              },
+              "required": {
+                "c": true,
+                "e": true,
+                "get": {
+                  "name": "get required",
+                  "length": 0,
+                  "ctor": false,
+                  "proto": false
+                },
+                "set": {
+                  "name": "set required",
+                  "length": 1,
+                  "ctor": false,
+                  "proto": false
+                }
+              },
+              "selectedIndex": {
+                "c": true,
+                "e": true,
+                "get": {
+                  "name": "get selectedIndex",
+                  "length": 0,
+                  "ctor": false,
+                  "proto": false
+                },
+                "set": {
+                  "name": "set selectedIndex",
+                  "length": 1,
+                  "ctor": false,
+                  "proto": false
+                }
+              },
+              "selectedOptions": {
+                "c": true,
+                "e": true,
+                "get": {
+                  "name": "get selectedOptions",
+                  "length": 0,
+                  "ctor": false,
+                  "proto": false
+                },
+                "set": "undefined"
+              },
+              "setCustomValidity": {
+                "c": true,
+                "e": true,
+                "w": true,
+                "v": {
+                  "name": "setCustomValidity",
+                  "length": 1,
+                  "ctor": false,
+                  "proto": false
+                }
+              },
+              "showPicker": {
+                "c": true,
+                "e": true,
+                "w": true,
+                "v": {
+                  "name": "showPicker",
+                  "length": 0,
+                  "ctor": false,
+                  "proto": false
+                }
+              },
+              "size": {
+                "c": true,
+                "e": true,
+                "get": {
+                  "name": "get size",
+                  "length": 0,
+                  "ctor": false,
+                  "proto": false
+                },
+                "set": {
+                  "name": "set size",
+                  "length": 1,
+                  "ctor": false,
+                  "proto": false
+                }
+              },
+              "type": {
+                "c": true,
+                "e": true,
+                "get": {
+                  "name": "get type",
+                  "length": 0,
+                  "ctor": false,
+                  "proto": false
+                },
+                "set": "undefined"
+              },
+              "validationMessage": {
+                "c": true,
+                "e": true,
+                "get": {
+                  "name": "get validationMessage",
+                  "length": 0,
+                  "ctor": false,
+                  "proto": false
+                },
+                "set": "undefined"
+              },
+              "validity": {
+                "c": true,
+                "e": true,
+                "get": {
+                  "name": "get validity",
+                  "length": 0,
+                  "ctor": false,
+                  "proto": false
+                },
+                "set": "undefined"
+              },
+              "value": {
+                "c": true,
+                "e": true,
+                "get": {
+                  "name": "get value",
+                  "length": 0,
+                  "ctor": false,
+                  "proto": false
+                },
+                "set": {
+                  "name": "set value",
+                  "length": 1,
+                  "ctor": false,
+                  "proto": false
+                }
+              },
+              "willValidate": {
+                "c": true,
+                "e": true,
+                "get": {
+                  "name": "get willValidate",
+                  "length": 0,
+                  "ctor": false,
+                  "proto": false
+                },
+                "set": "undefined"
+              }
+            },
+            "parent": "HTMLElement",
+            "protoParent": "[object HTMLElement]",
+            "global": {
+              "c": true,
+              "e": false,
+              "w": true,
+              "v": {
+                "name": "HTMLSelectElement",
+                "length": 0,
+                "ctor": true,
+                "proto": true
+              }
+            },
+            "construct": [
+              "throw",
+              "TypeError"
+            ]
+          },
+          "HTMLTextAreaElement": {
+            "ctor": {
+              "length": {
+                "c": true,
+                "e": false,
+                "w": false,
+                "v": 0
+              },
+              "name": {
+                "c": true,
+                "e": false,
+                "w": false,
+                "v": "HTMLTextAreaElement"
+              },
+              "prototype": {
+                "c": false,
+                "e": false,
+                "w": false,
+                "v": "object"
+              }
+            },
+            "proto": {
+              "Symbol(Symbol.toStringTag)": {
+                "c": true,
+                "e": false,
+                "w": false,
+                "v": "HTMLTextAreaElement"
+              },
+              "autocomplete": {
+                "c": true,
+                "e": true,
+                "get": {
+                  "name": "get autocomplete",
+                  "length": 0,
+                  "ctor": false,
+                  "proto": false
+                },
+                "set": {
+                  "name": "set autocomplete",
+                  "length": 1,
+                  "ctor": false,
+                  "proto": false
+                }
+              },
+              "checkValidity": {
+                "c": true,
+                "e": true,
+                "w": true,
+                "v": {
+                  "name": "checkValidity",
+                  "length": 0,
+                  "ctor": false,
+                  "proto": false
+                }
+              },
+              "cols": {
+                "c": true,
+                "e": true,
+                "get": {
+                  "name": "get cols",
+                  "length": 0,
+                  "ctor": false,
+                  "proto": false
+                },
+                "set": {
+                  "name": "set cols",
+                  "length": 1,
+                  "ctor": false,
+                  "proto": false
+                }
+              },
+              "constructor": {
+                "c": true,
+                "e": false,
+                "w": true,
+                "v": {
+                  "name": "HTMLTextAreaElement",
+                  "length": 0,
+                  "ctor": true,
+                  "proto": true
+                }
+              },
+              "createValueRange": {
+                "c": true,
+                "e": true,
+                "w": true,
+                "v": {
+                  "name": "createValueRange",
+                  "length": 2,
+                  "ctor": false,
+                  "proto": false
+                }
+              },
+              "defaultValue": {
+                "c": true,
+                "e": true,
+                "get": {
+                  "name": "get defaultValue",
+                  "length": 0,
+                  "ctor": false,
+                  "proto": false
+                },
+                "set": {
+                  "name": "set defaultValue",
+                  "length": 1,
+                  "ctor": false,
+                  "proto": false
+                }
+              },
+              "dirName": {
+                "c": true,
+                "e": true,
+                "get": {
+                  "name": "get dirName",
+                  "length": 0,
+                  "ctor": false,
+                  "proto": false
+                },
+                "set": {
+                  "name": "set dirName",
+                  "length": 1,
+                  "ctor": false,
+                  "proto": false
+                }
+              },
+              "disabled": {
+                "c": true,
+                "e": true,
+                "get": {
+                  "name": "get disabled",
+                  "length": 0,
+                  "ctor": false,
+                  "proto": false
+                },
+                "set": {
+                  "name": "set disabled",
+                  "length": 1,
+                  "ctor": false,
+                  "proto": false
+                }
+              },
+              "form": {
+                "c": true,
+                "e": true,
+                "get": {
+                  "name": "get form",
+                  "length": 0,
+                  "ctor": false,
+                  "proto": false
+                },
+                "set": "undefined"
+              },
+              "labels": {
+                "c": true,
+                "e": true,
+                "get": {
+                  "name": "get labels",
+                  "length": 0,
+                  "ctor": false,
+                  "proto": false
+                },
+                "set": "undefined"
+              },
+              "maxLength": {
+                "c": true,
+                "e": true,
+                "get": {
+                  "name": "get maxLength",
+                  "length": 0,
+                  "ctor": false,
+                  "proto": false
+                },
+                "set": {
+                  "name": "set maxLength",
+                  "length": 1,
+                  "ctor": false,
+                  "proto": false
+                }
+              },
+              "minLength": {
+                "c": true,
+                "e": true,
+                "get": {
+                  "name": "get minLength",
+                  "length": 0,
+                  "ctor": false,
+                  "proto": false
+                },
+                "set": {
+                  "name": "set minLength",
+                  "length": 1,
+                  "ctor": false,
+                  "proto": false
+                }
+              },
+              "name": {
+                "c": true,
+                "e": true,
+                "get": {
+                  "name": "get name",
+                  "length": 0,
+                  "ctor": false,
+                  "proto": false
+                },
+                "set": {
+                  "name": "set name",
+                  "length": 1,
+                  "ctor": false,
+                  "proto": false
+                }
+              },
+              "placeholder": {
+                "c": true,
+                "e": true,
+                "get": {
+                  "name": "get placeholder",
+                  "length": 0,
+                  "ctor": false,
+                  "proto": false
+                },
+                "set": {
+                  "name": "set placeholder",
+                  "length": 1,
+                  "ctor": false,
+                  "proto": false
+                }
+              },
+              "readOnly": {
+                "c": true,
+                "e": true,
+                "get": {
+                  "name": "get readOnly",
+                  "length": 0,
+                  "ctor": false,
+                  "proto": false
+                },
+                "set": {
+                  "name": "set readOnly",
+                  "length": 1,
+                  "ctor": false,
+                  "proto": false
+                }
+              },
+              "reportValidity": {
+                "c": true,
+                "e": true,
+                "w": true,
+                "v": {
+                  "name": "reportValidity",
+                  "length": 0,
+                  "ctor": false,
+                  "proto": false
+                }
+              },
+              "required": {
+                "c": true,
+                "e": true,
+                "get": {
+                  "name": "get required",
+                  "length": 0,
+                  "ctor": false,
+                  "proto": false
+                },
+                "set": {
+                  "name": "set required",
+                  "length": 1,
+                  "ctor": false,
+                  "proto": false
+                }
+              },
+              "rows": {
+                "c": true,
+                "e": true,
+                "get": {
+                  "name": "get rows",
+                  "length": 0,
+                  "ctor": false,
+                  "proto": false
+                },
+                "set": {
+                  "name": "set rows",
+                  "length": 1,
+                  "ctor": false,
+                  "proto": false
+                }
+              },
+              "select": {
+                "c": true,
+                "e": true,
+                "w": true,
+                "v": {
+                  "name": "select",
+                  "length": 0,
+                  "ctor": false,
+                  "proto": false
+                }
+              },
+              "selectionDirection": {
+                "c": true,
+                "e": true,
+                "get": {
+                  "name": "get selectionDirection",
+                  "length": 0,
+                  "ctor": false,
+                  "proto": false
+                },
+                "set": {
+                  "name": "set selectionDirection",
+                  "length": 1,
+                  "ctor": false,
+                  "proto": false
+                }
+              },
+              "selectionEnd": {
+                "c": true,
+                "e": true,
+                "get": {
+                  "name": "get selectionEnd",
+                  "length": 0,
+                  "ctor": false,
+                  "proto": false
+                },
+                "set": {
+                  "name": "set selectionEnd",
+                  "length": 1,
+                  "ctor": false,
+                  "proto": false
+                }
+              },
+              "selectionStart": {
+                "c": true,
+                "e": true,
+                "get": {
+                  "name": "get selectionStart",
+                  "length": 0,
+                  "ctor": false,
+                  "proto": false
+                },
+                "set": {
+                  "name": "set selectionStart",
+                  "length": 1,
+                  "ctor": false,
+                  "proto": false
+                }
+              },
+              "setCustomValidity": {
+                "c": true,
+                "e": true,
+                "w": true,
+                "v": {
+                  "name": "setCustomValidity",
+                  "length": 1,
+                  "ctor": false,
+                  "proto": false
+                }
+              },
+              "setRangeText": {
+                "c": true,
+                "e": true,
+                "w": true,
+                "v": {
+                  "name": "setRangeText",
+                  "length": 1,
+                  "ctor": false,
+                  "proto": false
+                }
+              },
+              "setSelectionRange": {
+                "c": true,
+                "e": true,
+                "w": true,
+                "v": {
+                  "name": "setSelectionRange",
+                  "length": 2,
+                  "ctor": false,
+                  "proto": false
+                }
+              },
+              "textLength": {
+                "c": true,
+                "e": true,
+                "get": {
+                  "name": "get textLength",
+                  "length": 0,
+                  "ctor": false,
+                  "proto": false
+                },
+                "set": "undefined"
+              },
+              "type": {
+                "c": true,
+                "e": true,
+                "get": {
+                  "name": "get type",
+                  "length": 0,
+                  "ctor": false,
+                  "proto": false
+                },
+                "set": "undefined"
+              },
+              "validationMessage": {
+                "c": true,
+                "e": true,
+                "get": {
+                  "name": "get validationMessage",
+                  "length": 0,
+                  "ctor": false,
+                  "proto": false
+                },
+                "set": "undefined"
+              },
+              "validity": {
+                "c": true,
+                "e": true,
+                "get": {
+                  "name": "get validity",
+                  "length": 0,
+                  "ctor": false,
+                  "proto": false
+                },
+                "set": "undefined"
+              },
+              "value": {
+                "c": true,
+                "e": true,
+                "get": {
+                  "name": "get value",
+                  "length": 0,
+                  "ctor": false,
+                  "proto": false
+                },
+                "set": {
+                  "name": "set value",
+                  "length": 1,
+                  "ctor": false,
+                  "proto": false
+                }
+              },
+              "willValidate": {
+                "c": true,
+                "e": true,
+                "get": {
+                  "name": "get willValidate",
+                  "length": 0,
+                  "ctor": false,
+                  "proto": false
+                },
+                "set": "undefined"
+              },
+              "wrap": {
+                "c": true,
+                "e": true,
+                "get": {
+                  "name": "get wrap",
+                  "length": 0,
+                  "ctor": false,
+                  "proto": false
+                },
+                "set": {
+                  "name": "set wrap",
+                  "length": 1,
+                  "ctor": false,
+                  "proto": false
+                }
+              }
+            },
+            "parent": "HTMLElement",
+            "protoParent": "[object HTMLElement]",
+            "global": {
+              "c": true,
+              "e": false,
+              "w": true,
+              "v": {
+                "name": "HTMLTextAreaElement",
+                "length": 0,
+                "ctor": true,
+                "proto": true
+              }
+            },
+            "construct": [
+              "throw",
+              "TypeError"
+            ]
+          },
+          "HTMLOptionsCollection": {
+            "ctor": {
+              "length": {
+                "c": true,
+                "e": false,
+                "w": false,
+                "v": 0
+              },
+              "name": {
+                "c": true,
+                "e": false,
+                "w": false,
+                "v": "HTMLOptionsCollection"
+              },
+              "prototype": {
+                "c": false,
+                "e": false,
+                "w": false,
+                "v": "object"
+              }
+            },
+            "proto": {
+              "Symbol(Symbol.iterator)": {
+                "c": true,
+                "e": false,
+                "w": true,
+                "v": {
+                  "name": "values",
+                  "length": 0,
+                  "ctor": false,
+                  "proto": false
+                }
+              },
+              "Symbol(Symbol.toStringTag)": {
+                "c": true,
+                "e": false,
+                "w": false,
+                "v": "HTMLOptionsCollection"
+              },
+              "add": {
+                "c": true,
+                "e": true,
+                "w": true,
+                "v": {
+                  "name": "add",
+                  "length": 1,
+                  "ctor": false,
+                  "proto": false
+                }
+              },
+              "constructor": {
+                "c": true,
+                "e": false,
+                "w": true,
+                "v": {
+                  "name": "HTMLOptionsCollection",
+                  "length": 0,
+                  "ctor": true,
+                  "proto": true
+                }
+              },
+              "length": {
+                "c": true,
+                "e": true,
+                "get": {
+                  "name": "get length",
+                  "length": 0,
+                  "ctor": false,
+                  "proto": false
+                },
+                "set": {
+                  "name": "set length",
+                  "length": 1,
+                  "ctor": false,
+                  "proto": false
+                }
+              },
+              "remove": {
+                "c": true,
+                "e": true,
+                "w": true,
+                "v": {
+                  "name": "remove",
+                  "length": 1,
+                  "ctor": false,
+                  "proto": false
+                }
+              },
+              "selectedIndex": {
+                "c": true,
+                "e": true,
+                "get": {
+                  "name": "get selectedIndex",
+                  "length": 0,
+                  "ctor": false,
+                  "proto": false
+                },
+                "set": {
+                  "name": "set selectedIndex",
+                  "length": 1,
+                  "ctor": false,
+                  "proto": false
+                }
+              }
+            },
+            "parent": "HTMLCollection",
+            "protoParent": "[object HTMLCollection]",
+            "global": {
+              "c": true,
+              "e": false,
+              "w": true,
+              "v": {
+                "name": "HTMLOptionsCollection",
+                "length": 0,
+                "ctor": true,
+                "proto": true
+              }
+            },
+            "construct": [
+              "throw",
+              "TypeError"
+            ]
+          },
+          "CustomEvent": {
+            "ctor": {
+              "length": {
+                "c": true,
+                "e": false,
+                "w": false,
+                "v": 1
+              },
+              "name": {
+                "c": true,
+                "e": false,
+                "w": false,
+                "v": "CustomEvent"
+              },
+              "prototype": {
+                "c": false,
+                "e": false,
+                "w": false,
+                "v": "object"
+              }
+            },
+            "proto": {
+              "Symbol(Symbol.toStringTag)": {
+                "c": true,
+                "e": false,
+                "w": false,
+                "v": "CustomEvent"
+              },
+              "constructor": {
+                "c": true,
+                "e": false,
+                "w": true,
+                "v": {
+                  "name": "CustomEvent",
+                  "length": 1,
+                  "ctor": true,
+                  "proto": true
+                }
+              },
+              "detail": {
+                "c": true,
+                "e": true,
+                "get": {
+                  "name": "get detail",
+                  "length": 0,
+                  "ctor": false,
+                  "proto": false
+                },
+                "set": "undefined"
+              },
+              "initCustomEvent": {
+                "c": true,
+                "e": true,
+                "w": true,
+                "v": {
+                  "name": "initCustomEvent",
+                  "length": 1,
+                  "ctor": false,
+                  "proto": false
+                }
+              }
+            },
+            "parent": "Event",
+            "protoParent": "[object Event]",
+            "global": {
+              "c": true,
+              "e": false,
+              "w": true,
+              "v": {
+                "name": "CustomEvent",
+                "length": 1,
+                "ctor": true,
+                "proto": true
+              }
+            },
+            "construct": [
+              "ok",
+              {
+                "isTrusted": false
+              }
+            ]
+          },
+          "PopStateEvent": {
+            "ctor": {
+              "length": {
+                "c": true,
+                "e": false,
+                "w": false,
+                "v": 1
+              },
+              "name": {
+                "c": true,
+                "e": false,
+                "w": false,
+                "v": "PopStateEvent"
+              },
+              "prototype": {
+                "c": false,
+                "e": false,
+                "w": false,
+                "v": "object"
+              }
+            },
+            "proto": {
+              "Symbol(Symbol.toStringTag)": {
+                "c": true,
+                "e": false,
+                "w": false,
+                "v": "PopStateEvent"
+              },
+              "constructor": {
+                "c": true,
+                "e": false,
+                "w": true,
+                "v": {
+                  "name": "PopStateEvent",
+                  "length": 1,
+                  "ctor": true,
+                  "proto": true
+                }
+              },
+              "hasUAVisualTransition": {
+                "c": true,
+                "e": true,
+                "get": {
+                  "name": "get hasUAVisualTransition",
+                  "length": 0,
+                  "ctor": false,
+                  "proto": false
+                },
+                "set": "undefined"
+              },
+              "state": {
+                "c": true,
+                "e": true,
+                "get": {
+                  "name": "get state",
+                  "length": 0,
+                  "ctor": false,
+                  "proto": false
+                },
+                "set": "undefined"
+              }
+            },
+            "parent": "Event",
+            "protoParent": "[object Event]",
+            "global": {
+              "c": true,
+              "e": false,
+              "w": true,
+              "v": {
+                "name": "PopStateEvent",
+                "length": 1,
+                "ctor": true,
+                "proto": true
+              }
+            },
+            "construct": [
+              "ok",
+              {
+                "isTrusted": false
+              }
+            ]
+          },
+          "HashChangeEvent": {
+            "ctor": {
+              "length": {
+                "c": true,
+                "e": false,
+                "w": false,
+                "v": 1
+              },
+              "name": {
+                "c": true,
+                "e": false,
+                "w": false,
+                "v": "HashChangeEvent"
+              },
+              "prototype": {
+                "c": false,
+                "e": false,
+                "w": false,
+                "v": "object"
+              }
+            },
+            "proto": {
+              "Symbol(Symbol.toStringTag)": {
+                "c": true,
+                "e": false,
+                "w": false,
+                "v": "HashChangeEvent"
+              },
+              "constructor": {
+                "c": true,
+                "e": false,
+                "w": true,
+                "v": {
+                  "name": "HashChangeEvent",
+                  "length": 1,
+                  "ctor": true,
+                  "proto": true
+                }
+              },
+              "newURL": {
+                "c": true,
+                "e": true,
+                "get": {
+                  "name": "get newURL",
+                  "length": 0,
+                  "ctor": false,
+                  "proto": false
+                },
+                "set": "undefined"
+              },
+              "oldURL": {
+                "c": true,
+                "e": true,
+                "get": {
+                  "name": "get oldURL",
+                  "length": 0,
+                  "ctor": false,
+                  "proto": false
+                },
+                "set": "undefined"
+              }
+            },
+            "parent": "Event",
+            "protoParent": "[object Event]",
+            "global": {
+              "c": true,
+              "e": false,
+              "w": true,
+              "v": {
+                "name": "HashChangeEvent",
+                "length": 1,
+                "ctor": true,
+                "proto": true
+              }
+            },
+            "construct": [
+              "ok",
+              {
+                "isTrusted": false
+              }
+            ]
+          },
+          "ProgressEvent": {
+            "ctor": {
+              "length": {
+                "c": true,
+                "e": false,
+                "w": false,
+                "v": 1
+              },
+              "name": {
+                "c": true,
+                "e": false,
+                "w": false,
+                "v": "ProgressEvent"
+              },
+              "prototype": {
+                "c": false,
+                "e": false,
+                "w": false,
+                "v": "object"
+              }
+            },
+            "proto": {
+              "Symbol(Symbol.toStringTag)": {
+                "c": true,
+                "e": false,
+                "w": false,
+                "v": "ProgressEvent"
+              },
+              "constructor": {
+                "c": true,
+                "e": false,
+                "w": true,
+                "v": {
+                  "name": "ProgressEvent",
+                  "length": 1,
+                  "ctor": true,
+                  "proto": true
+                }
+              },
+              "lengthComputable": {
+                "c": true,
+                "e": true,
+                "get": {
+                  "name": "get lengthComputable",
+                  "length": 0,
+                  "ctor": false,
+                  "proto": false
+                },
+                "set": "undefined"
+              },
+              "loaded": {
+                "c": true,
+                "e": true,
+                "get": {
+                  "name": "get loaded",
+                  "length": 0,
+                  "ctor": false,
+                  "proto": false
+                },
+                "set": "undefined"
+              },
+              "total": {
+                "c": true,
+                "e": true,
+                "get": {
+                  "name": "get total",
+                  "length": 0,
+                  "ctor": false,
+                  "proto": false
+                },
+                "set": "undefined"
+              }
+            },
+            "parent": "Event",
+            "protoParent": "[object Event]",
+            "global": {
+              "c": true,
+              "e": false,
+              "w": true,
+              "v": {
+                "name": "ProgressEvent",
+                "length": 1,
+                "ctor": true,
+                "proto": true
+              }
+            },
+            "construct": [
+              "ok",
+              {
+                "isTrusted": false
+              }
+            ]
+          },
+          "CloseEvent": {
+            "ctor": {
+              "length": {
+                "c": true,
+                "e": false,
+                "w": false,
+                "v": 1
+              },
+              "name": {
+                "c": true,
+                "e": false,
+                "w": false,
+                "v": "CloseEvent"
+              },
+              "prototype": {
+                "c": false,
+                "e": false,
+                "w": false,
+                "v": "object"
+              }
+            },
+            "proto": {
+              "Symbol(Symbol.toStringTag)": {
+                "c": true,
+                "e": false,
+                "w": false,
+                "v": "CloseEvent"
+              },
+              "code": {
+                "c": true,
+                "e": true,
+                "get": {
+                  "name": "get code",
+                  "length": 0,
+                  "ctor": false,
+                  "proto": false
+                },
+                "set": "undefined"
+              },
+              "constructor": {
+                "c": true,
+                "e": false,
+                "w": true,
+                "v": {
+                  "name": "CloseEvent",
+                  "length": 1,
+                  "ctor": true,
+                  "proto": true
+                }
+              },
+              "reason": {
+                "c": true,
+                "e": true,
+                "get": {
+                  "name": "get reason",
+                  "length": 0,
+                  "ctor": false,
+                  "proto": false
+                },
+                "set": "undefined"
+              },
+              "wasClean": {
+                "c": true,
+                "e": true,
+                "get": {
+                  "name": "get wasClean",
+                  "length": 0,
+                  "ctor": false,
+                  "proto": false
+                },
+                "set": "undefined"
+              }
+            },
+            "parent": "Event",
+            "protoParent": "[object Event]",
+            "global": {
+              "c": true,
+              "e": false,
+              "w": true,
+              "v": {
+                "name": "CloseEvent",
+                "length": 1,
+                "ctor": true,
+                "proto": true
+              }
+            },
+            "construct": [
+              "ok",
+              {
+                "isTrusted": false
+              }
+            ]
+          },
+          "HTMLAnchorElement.url": {
+            "href": {
+              "c": true,
+              "e": true,
+              "get": {
+                "name": "get href",
+                "length": 0,
+                "ctor": false,
+                "proto": false
+              },
+              "set": {
+                "name": "set href",
+                "length": 1,
+                "ctor": false,
+                "proto": false
+              }
+            },
+            "origin": {
+              "c": true,
+              "e": true,
+              "get": {
+                "name": "get origin",
+                "length": 0,
+                "ctor": false,
+                "proto": false
+              },
+              "set": "undefined"
+            },
+            "protocol": {
+              "c": true,
+              "e": true,
+              "get": {
+                "name": "get protocol",
+                "length": 0,
+                "ctor": false,
+                "proto": false
+              },
+              "set": {
+                "name": "set protocol",
+                "length": 1,
+                "ctor": false,
+                "proto": false
+              }
+            },
+            "username": {
+              "c": true,
+              "e": true,
+              "get": {
+                "name": "get username",
+                "length": 0,
+                "ctor": false,
+                "proto": false
+              },
+              "set": {
+                "name": "set username",
+                "length": 1,
+                "ctor": false,
+                "proto": false
+              }
+            },
+            "password": {
+              "c": true,
+              "e": true,
+              "get": {
+                "name": "get password",
+                "length": 0,
+                "ctor": false,
+                "proto": false
+              },
+              "set": {
+                "name": "set password",
+                "length": 1,
+                "ctor": false,
+                "proto": false
+              }
+            },
+            "host": {
+              "c": true,
+              "e": true,
+              "get": {
+                "name": "get host",
+                "length": 0,
+                "ctor": false,
+                "proto": false
+              },
+              "set": {
+                "name": "set host",
+                "length": 1,
+                "ctor": false,
+                "proto": false
+              }
+            },
+            "hostname": {
+              "c": true,
+              "e": true,
+              "get": {
+                "name": "get hostname",
+                "length": 0,
+                "ctor": false,
+                "proto": false
+              },
+              "set": {
+                "name": "set hostname",
+                "length": 1,
+                "ctor": false,
+                "proto": false
+              }
+            },
+            "port": {
+              "c": true,
+              "e": true,
+              "get": {
+                "name": "get port",
+                "length": 0,
+                "ctor": false,
+                "proto": false
+              },
+              "set": {
+                "name": "set port",
+                "length": 1,
+                "ctor": false,
+                "proto": false
+              }
+            },
+            "pathname": {
+              "c": true,
+              "e": true,
+              "get": {
+                "name": "get pathname",
+                "length": 0,
+                "ctor": false,
+                "proto": false
+              },
+              "set": {
+                "name": "set pathname",
+                "length": 1,
+                "ctor": false,
+                "proto": false
+              }
+            },
+            "search": {
+              "c": true,
+              "e": true,
+              "get": {
+                "name": "get search",
+                "length": 0,
+                "ctor": false,
+                "proto": false
+              },
+              "set": {
+                "name": "set search",
+                "length": 1,
+                "ctor": false,
+                "proto": false
+              }
+            },
+            "hash": {
+              "c": true,
+              "e": true,
+              "get": {
+                "name": "get hash",
+                "length": 0,
+                "ctor": false,
+                "proto": false
+              },
+              "set": {
+                "name": "set hash",
+                "length": 1,
+                "ctor": false,
+                "proto": false
+              }
+            },
+            "toString": {
+              "c": true,
+              "e": true,
+              "w": true,
+              "v": {
+                "name": "toString",
+                "length": 0,
+                "ctor": false,
+                "proto": false
+              }
+            }
+          },
+          "HTMLAreaElement.url": {
+            "href": {
+              "c": true,
+              "e": true,
+              "get": {
+                "name": "get href",
+                "length": 0,
+                "ctor": false,
+                "proto": false
+              },
+              "set": {
+                "name": "set href",
+                "length": 1,
+                "ctor": false,
+                "proto": false
+              }
+            },
+            "origin": {
+              "c": true,
+              "e": true,
+              "get": {
+                "name": "get origin",
+                "length": 0,
+                "ctor": false,
+                "proto": false
+              },
+              "set": "undefined"
+            },
+            "protocol": {
+              "c": true,
+              "e": true,
+              "get": {
+                "name": "get protocol",
+                "length": 0,
+                "ctor": false,
+                "proto": false
+              },
+              "set": {
+                "name": "set protocol",
+                "length": 1,
+                "ctor": false,
+                "proto": false
+              }
+            },
+            "username": {
+              "c": true,
+              "e": true,
+              "get": {
+                "name": "get username",
+                "length": 0,
+                "ctor": false,
+                "proto": false
+              },
+              "set": {
+                "name": "set username",
+                "length": 1,
+                "ctor": false,
+                "proto": false
+              }
+            },
+            "password": {
+              "c": true,
+              "e": true,
+              "get": {
+                "name": "get password",
+                "length": 0,
+                "ctor": false,
+                "proto": false
+              },
+              "set": {
+                "name": "set password",
+                "length": 1,
+                "ctor": false,
+                "proto": false
+              }
+            },
+            "host": {
+              "c": true,
+              "e": true,
+              "get": {
+                "name": "get host",
+                "length": 0,
+                "ctor": false,
+                "proto": false
+              },
+              "set": {
+                "name": "set host",
+                "length": 1,
+                "ctor": false,
+                "proto": false
+              }
+            },
+            "hostname": {
+              "c": true,
+              "e": true,
+              "get": {
+                "name": "get hostname",
+                "length": 0,
+                "ctor": false,
+                "proto": false
+              },
+              "set": {
+                "name": "set hostname",
+                "length": 1,
+                "ctor": false,
+                "proto": false
+              }
+            },
+            "port": {
+              "c": true,
+              "e": true,
+              "get": {
+                "name": "get port",
+                "length": 0,
+                "ctor": false,
+                "proto": false
+              },
+              "set": {
+                "name": "set port",
+                "length": 1,
+                "ctor": false,
+                "proto": false
+              }
+            },
+            "pathname": {
+              "c": true,
+              "e": true,
+              "get": {
+                "name": "get pathname",
+                "length": 0,
+                "ctor": false,
+                "proto": false
+              },
+              "set": {
+                "name": "set pathname",
+                "length": 1,
+                "ctor": false,
+                "proto": false
+              }
+            },
+            "search": {
+              "c": true,
+              "e": true,
+              "get": {
+                "name": "get search",
+                "length": 0,
+                "ctor": false,
+                "proto": false
+              },
+              "set": {
+                "name": "set search",
+                "length": 1,
+                "ctor": false,
+                "proto": false
+              }
+            },
+            "hash": {
+              "c": true,
+              "e": true,
+              "get": {
+                "name": "get hash",
+                "length": 0,
+                "ctor": false,
+                "proto": false
+              },
+              "set": {
+                "name": "set hash",
+                "length": 1,
+                "ctor": false,
+                "proto": false
+              }
+            },
+            "toString": {
+              "c": true,
+              "e": true,
+              "w": true,
+              "v": {
+                "name": "toString",
+                "length": 0,
+                "ctor": false,
+                "proto": false
+              }
+            }
+          }
+        },
+        "options": {
+          "identity": [
+            true,
+            true,
+            true,
+            "[object HTMLOptionsCollection]"
+          ],
+          "initial": [
+            3,
+            [
+              "a",
+              "b",
+              "c"
+            ],
+            0,
+            "a"
+          ],
+          "item": [
+            true,
+            null,
+            "throw",
+            true,
+            true,
+            null,
+            true,
+            true
+          ],
+          "keys": [
+            [
+              "0",
+              "1",
+              "2",
+              "ia",
+              "nb"
+            ],
+            [
+              "0",
+              "1",
+              "2",
+              "ia",
+              "nb"
+            ],
+            [
+              "0",
+              "1",
+              "2",
+              "ia",
+              "nb"
+            ]
+          ],
+          "indexDesc": [
+            {
+              "c": true,
+              "e": true,
+              "w": true,
+              "v": "object"
+            },
+            {
+              "c": true,
+              "e": true,
+              "w": false,
+              "v": "object"
+            },
+            null,
+            true,
+            true,
+            false
+          ],
+          "iterate": [
+            [
+              "a",
+              "b",
+              "c"
+            ],
+            [],
+            true,
+            "undefined"
+          ],
+          "grow": [
+            5,
+            [
+              "a",
+              "b",
+              "c",
+              "",
+              ""
+            ],
+            5,
+            true,
+            0
+          ],
+          "shrink": [
+            2,
+            [
+              "a",
+              "b"
+            ],
+            3
+          ],
+          "setPad": [
+            4,
+            [
+              "a",
+              "b",
+              "",
+              "d"
+            ]
+          ],
+          "setReplace": [
+            4,
+            [
+              "z",
+              "b",
+              "",
+              "d"
+            ]
+          ],
+          "setNull": [
+            3,
+            [
+              "z",
+              "",
+              "d"
+            ]
+          ],
+          "setBad": [
+            "throw",
+            "TypeError"
+          ],
+          "defineAccessor": [
+            "throw",
+            "TypeError"
+          ],
+          "defineValue": [
+            [
+              "ok",
+              {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {},
+                "5": {},
+                "6": {},
+                "7": {},
+                "8": {},
+                "foo": 1
+              }
+            ],
+            7,
+            [
+              "z",
+              "",
+              "d",
+              "",
+              "",
+              "",
+              "q"
+            ]
+          ],
+          "deleteIndex": [
+            [
+              "throw",
+              "TypeError"
+            ],
+            [
+              "throw",
+              "TypeError"
+            ],
+            7
+          ],
+          "namedSet": [
+            [
+              "ok",
+              1
+            ],
+            true
+          ],
+          "add": [
+            [
+              "f",
+              "z",
+              "g",
+              "",
+              "d",
+              "",
+              "",
+              "",
+              "q",
+              "e"
+            ],
+            "TypeError",
+            "TypeError",
+            "NotFoundError"
+          ],
+          "selectedIndex": [
+            2,
+            2,
+            "g",
+            true
+          ],
+          "unselect": [
+            -1,
+            -1,
+            ""
+          ],
+          "remove": [
+            [
+              "z",
+              "g",
+              "",
+              "d",
+              "",
+              "",
+              "",
+              "q",
+              "e"
+            ],
+            "TypeError",
+            9
+          ],
+          "selectedOptions": [
+            true,
+            true,
+            "[object HTMLCollection]",
+            2,
+            true,
+            true
+          ],
+          "brand": [
+            "throw",
+            "throw",
+            "throw",
+            "throw",
+            true,
+            9
+          ]
+        },
+        "option": {
+          "text": "hello big word end",
+          "value": "hello big word end",
+          "label": "hello big word end",
+          "index": 1,
+          "form": true,
+          "loneIndex": 0,
+          "loneForm": null,
+          "labelAttr": [
+            "",
+            "hello big word end"
+          ],
+          "setText": [
+            "set me",
+            1
+          ],
+          "setLabel": "L",
+          "setValue": [
+            "9",
+            "9"
+          ],
+          "datalist": [
+            0,
+            null
+          ],
+          "extras": []
+        },
+        "label": {
+          "form": [
+            true,
+            true,
+            null,
+            null,
+            true
+          ],
+          "htmlFor": [
+            "x",
+            "x"
+          ],
+          "extras": [],
+          "brand": "throw"
+        },
+        "controlExtras": {
+          "textarea": [],
+          "select": []
+        },
+        "events": {
+          "custom": [
+            1,
+            true,
+            5,
+            [
+              "ok",
+              [
+                "z",
+                true,
+                true,
+                5
+              ]
+            ],
+            [
+              [
+                "isTrusted"
+              ],
+              true
+            ],
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError"
+          ],
+          "pop": [
+            1,
+            null,
+            false,
+            [
+              [
+                "isTrusted"
+              ],
+              true
+            ],
+            "TypeError",
+            "TypeError"
+          ],
+          "progress": [
+            [
+              true,
+              5.7,
+              -1
+            ],
+            [
+              false,
+              9007199254740992,
+              3
+            ],
+            [
+              false,
+              0,
+              0
+            ],
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError"
+          ],
+          "close": [
+            [
+              true,
+              4464,
+              "4"
+            ],
+            [
+              false,
+              0,
+              ""
+            ],
+            "TypeError",
+            "TypeError"
+          ],
+          "hash": [
+            "a",
+            "7",
+            "",
+            [
+              [
+                "isTrusted"
+              ],
+              true
+            ],
+            "TypeError",
+            "TypeError"
+          ]
+        },
+        "hyperlink": {
+          "read": [
+            "https://user:pw@example.com:8080/p/q?x=1#frag",
+            "https://example.com:8080",
+            "https:",
+            "user",
+            "pw",
+            "example.com:8080",
+            "example.com",
+            "8080",
+            "/p/q",
+            "?x=1",
+            "#frag"
+          ],
+          "string": [
+            "https://user:pw@example.com:8080/p/q?x=1#frag",
+            "https://user:pw@example.com:8080/p/q?x=1#frag"
+          ],
+          "protocol": "http://user:pw@example.com:8080/p/q?x=1#frag",
+          "host": "http://user:pw@other.test:81/p/q?x=1#frag",
+          "hostname": "http://user:pw@h.test:81/p/q?x=1#frag",
+          "port": "http://user:pw@h.test:99/p/q?x=1#frag",
+          "pathname": "http://user:pw@h.test:99/a%20b?x=1#frag",
+          "search": "http://user:pw@h.test:99/a%20b?y=2#frag",
+          "hash": "http://user:pw@h.test:99/a%20b?y=2#h2",
+          "username": "http://u:pw@h.test:99/a%20b?y=2#h2",
+          "password": "http://u:p@h.test:99/a%20b?y=2#h2",
+          "originSet": [
+            "throw",
+            "TypeError"
+          ],
+          "noHref": [
+            "",
+            "",
+            ":",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          "noHrefSet": false,
+          "bad": [
+            "http://[bad",
+            "",
+            ":",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          "badSet": "http://[bad",
+          "relative": [
+            true,
+            "/rel",
+            "?a",
+            "#b"
+          ],
+          "area": [
+            "example.org",
+            "/z",
+            "https://example.org/z"
+          ],
+          "brand": [
+            "throw",
+            "TypeError"
+          ]
+        }
+      }
+    }
+  ]
+}

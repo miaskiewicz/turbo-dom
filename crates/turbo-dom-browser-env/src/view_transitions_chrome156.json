@@ -1,0 +1,2258 @@
+{
+  "browser": "Chrome/156.0.8078.47",
+  "v8": "15.6.75.19",
+  "probe": "view_transitions_probe.js",
+  "probeSha256": "54f9b8185c29b0aba8b4a0133b8218d68b7115ead25932f90fcc3466d0b368b7",
+  "hiddenProbe": "view_transitions_hidden_probe.js",
+  "hiddenProbeSha256": "a47b6bce3691ebdfb05376444f05f447cc9a32dd897fe66ad7d0fe369099dee3",
+  "collectorSha256": "f9825107659a8b2349fa3e95828f335f5366844f8a09f12b6b556a698b5e76be",
+  "flags": [
+    "--headless=new",
+    "--remote-debugging-pipe",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "about:blank"
+  ],
+  "result": {
+    "surface": {
+      "Document.startViewTransition": [
+        "wtrue",
+        "etrue",
+        "ctrue",
+        "value",
+        "startViewTransition",
+        0
+      ],
+      "Document.activeViewTransition": [
+        "etrue",
+        "ctrue",
+        "get",
+        "get activeViewTransition",
+        0
+      ],
+      "Element.startViewTransition": [
+        "wtrue",
+        "etrue",
+        "ctrue",
+        "value",
+        "startViewTransition",
+        0
+      ],
+      "Element.activeViewTransition": [
+        "etrue",
+        "ctrue",
+        "get",
+        "get activeViewTransition",
+        0
+      ],
+      "HTMLElement.startViewTransition": null,
+      "HTMLElement.activeViewTransition": null,
+      "ViewTransition": [
+        "ViewTransition",
+        0,
+        [
+          "length",
+          "name",
+          "prototype"
+        ],
+        [
+          "wtrue",
+          "efalse",
+          "ctrue",
+          "value",
+          "ViewTransition",
+          0
+        ],
+        [
+          "wfalse",
+          "efalse",
+          "cfalse",
+          "value",
+          "[object ViewTransition]"
+        ],
+        true,
+        [
+          "finished",
+          "ready",
+          "updateCallbackDone",
+          "types",
+          "transitionRoot",
+          "skipTransition",
+          "waitUntil",
+          "constructor"
+        ],
+        [
+          "Symbol(Symbol.toStringTag)"
+        ],
+        [
+          [
+            "etrue",
+            "ctrue",
+            "get",
+            "get finished",
+            0
+          ],
+          [
+            "etrue",
+            "ctrue",
+            "get",
+            "get ready",
+            0
+          ],
+          [
+            "etrue",
+            "ctrue",
+            "get",
+            "get updateCallbackDone",
+            0
+          ],
+          [
+            "etrue",
+            "ctrue",
+            "get",
+            "get types",
+            0
+          ],
+          [
+            "etrue",
+            "ctrue",
+            "get",
+            "get transitionRoot",
+            0
+          ],
+          [
+            "wtrue",
+            "etrue",
+            "ctrue",
+            "value",
+            "skipTransition",
+            0
+          ],
+          [
+            "wtrue",
+            "etrue",
+            "ctrue",
+            "value",
+            "waitUntil",
+            1
+          ],
+          [
+            "wtrue",
+            "efalse",
+            "ctrue",
+            "value",
+            "ViewTransition",
+            0
+          ]
+        ],
+        [
+          "wfalse",
+          "efalse",
+          "ctrue",
+          "value",
+          "ViewTransition"
+        ],
+        [
+          "TypeError",
+          "Failed to construct 'ViewTransition': Illegal constructor",
+          false
+        ],
+        [
+          "TypeError",
+          "Illegal constructor",
+          false
+        ]
+      ],
+      "ViewTransitionTypeSet": [
+        "ViewTransitionTypeSet",
+        0,
+        [
+          "length",
+          "name",
+          "prototype"
+        ],
+        [
+          "wtrue",
+          "efalse",
+          "ctrue",
+          "value",
+          "ViewTransitionTypeSet",
+          0
+        ],
+        [
+          "wfalse",
+          "efalse",
+          "cfalse",
+          "value",
+          "[object ViewTransitionTypeSet]"
+        ],
+        true,
+        [
+          "size",
+          "add",
+          "clear",
+          "delete",
+          "entries",
+          "forEach",
+          "has",
+          "keys",
+          "values",
+          "constructor"
+        ],
+        [
+          "Symbol(Symbol.toStringTag)",
+          "Symbol(Symbol.iterator)"
+        ],
+        [
+          [
+            "etrue",
+            "ctrue",
+            "get",
+            "get size",
+            0
+          ],
+          [
+            "wtrue",
+            "etrue",
+            "ctrue",
+            "value",
+            "add",
+            1
+          ],
+          [
+            "wtrue",
+            "etrue",
+            "ctrue",
+            "value",
+            "clear",
+            0
+          ],
+          [
+            "wtrue",
+            "etrue",
+            "ctrue",
+            "value",
+            "delete",
+            1
+          ],
+          [
+            "wtrue",
+            "etrue",
+            "ctrue",
+            "value",
+            "entries",
+            0
+          ],
+          [
+            "wtrue",
+            "etrue",
+            "ctrue",
+            "value",
+            "forEach",
+            1
+          ],
+          [
+            "wtrue",
+            "etrue",
+            "ctrue",
+            "value",
+            "has",
+            1
+          ],
+          [
+            "wtrue",
+            "etrue",
+            "ctrue",
+            "value",
+            "keys",
+            0
+          ],
+          [
+            "wtrue",
+            "etrue",
+            "ctrue",
+            "value",
+            "values",
+            0
+          ],
+          [
+            "wtrue",
+            "efalse",
+            "ctrue",
+            "value",
+            "ViewTransitionTypeSet",
+            0
+          ]
+        ],
+        [
+          "wfalse",
+          "efalse",
+          "ctrue",
+          "value",
+          "ViewTransitionTypeSet"
+        ],
+        [
+          "TypeError",
+          "Failed to construct 'ViewTransitionTypeSet': Illegal constructor",
+          false
+        ],
+        [
+          "TypeError",
+          "Illegal constructor",
+          false
+        ]
+      ],
+      "typeSetAliases": [
+        true,
+        false,
+        [
+          "wtrue",
+          "efalse",
+          "ctrue",
+          "value",
+          "values",
+          0
+        ]
+      ],
+      "globals": [
+        "ViewTransition",
+        "ViewTransitionTypeSet"
+      ]
+    },
+    "brands": {
+      "updateCallbackDone": [
+        true,
+        [
+          "TypeError",
+          "Failed to read the 'updateCallbackDone' property from 'ViewTransition': Illegal invocation",
+          false
+        ]
+      ],
+      "ready": [
+        true,
+        [
+          "TypeError",
+          "Failed to read the 'ready' property from 'ViewTransition': Illegal invocation",
+          false
+        ]
+      ],
+      "finished": [
+        true,
+        [
+          "TypeError",
+          "Failed to read the 'finished' property from 'ViewTransition': Illegal invocation",
+          false
+        ]
+      ],
+      "types": [
+        "TypeError",
+        "Illegal invocation",
+        false
+      ],
+      "transitionRoot": [
+        "TypeError",
+        "Illegal invocation",
+        false
+      ],
+      "skipTransition": [
+        "TypeError",
+        "Illegal invocation",
+        false
+      ],
+      "waitUntil": [
+        "TypeError",
+        "Illegal invocation",
+        false
+      ],
+      "documentStart": [
+        "TypeError",
+        "Illegal invocation",
+        false
+      ],
+      "elementStart": [
+        "TypeError",
+        "Illegal invocation",
+        false
+      ],
+      "documentActive": [
+        "TypeError",
+        "Illegal invocation",
+        false
+      ],
+      "elementActive": [
+        "TypeError",
+        "Illegal invocation",
+        false
+      ],
+      "size": [
+        "TypeError",
+        "Illegal invocation",
+        false
+      ],
+      "add": [
+        "TypeError",
+        "Illegal invocation",
+        false
+      ],
+      "clear": [
+        "TypeError",
+        "Illegal invocation",
+        false
+      ],
+      "delete": [
+        "TypeError",
+        "Illegal invocation",
+        false
+      ],
+      "entries": [
+        "TypeError",
+        "Illegal invocation",
+        false
+      ],
+      "forEach": [
+        "TypeError",
+        "Illegal invocation",
+        false
+      ],
+      "has": [
+        "TypeError",
+        "Illegal invocation",
+        false
+      ],
+      "keys": [
+        "TypeError",
+        "Illegal invocation",
+        false
+      ],
+      "values": [
+        "TypeError",
+        "Illegal invocation",
+        false
+      ]
+    },
+    "conversion": {
+      "none": [],
+      "undefined": [],
+      "null": [],
+      "number": [
+        "TypeError",
+        "Failed to execute 'startViewTransition' on 'Document': Overload resolution failed.",
+        false
+      ],
+      "string": [
+        "TypeError",
+        "Failed to execute 'startViewTransition' on 'Document': Overload resolution failed.",
+        false
+      ],
+      "boolean": [
+        "TypeError",
+        "Failed to execute 'startViewTransition' on 'Document': Overload resolution failed.",
+        false
+      ],
+      "symbol": [
+        "TypeError",
+        "Failed to execute 'startViewTransition' on 'Document': Overload resolution failed.",
+        false
+      ],
+      "object": [],
+      "array": [],
+      "typesString": [
+        "TypeError",
+        "Failed to execute 'startViewTransition' on 'Document': Failed to read the 'types' property from 'ViewTransitionOptions': The provided value cannot be converted to a sequence.",
+        false
+      ],
+      "typesNull": [],
+      "typesNumber": [
+        "TypeError",
+        "Failed to execute 'startViewTransition' on 'Document': Failed to read the 'types' property from 'ViewTransitionOptions': The provided value cannot be converted to a sequence.",
+        false
+      ],
+      "typesSymbol": [
+        "TypeError",
+        "Failed to execute 'startViewTransition' on 'Document': Failed to read the 'types' property from 'ViewTransitionOptions': Cannot convert a Symbol value to a string",
+        false
+      ],
+      "updateNumber": [
+        "TypeError",
+        "Failed to execute 'startViewTransition' on 'Document': Failed to read the 'update' property from 'ViewTransitionOptions': The given value is not a function.",
+        false
+      ],
+      "updateNull": [],
+      "updateObject": [
+        "TypeError",
+        "Failed to execute 'startViewTransition' on 'Document': Failed to read the 'update' property from 'ViewTransitionOptions': The given value is not a function.",
+        false
+      ],
+      "elementNumber": [
+        "TypeError",
+        "Failed to execute 'startViewTransition' on 'Element': Overload resolution failed.",
+        false
+      ],
+      "elementTypes": [
+        "TypeError",
+        "Failed to execute 'startViewTransition' on 'Element': Failed to read the 'types' property from 'ViewTransitionOptions': The provided value cannot be converted to a sequence.",
+        false
+      ],
+      "order": [
+        "b",
+        "a"
+      ],
+      "reads": [
+        "types",
+        "update"
+      ],
+      "iterable": [
+        "1",
+        "z"
+      ]
+    },
+    "lifecycle": {
+      "basic": {
+        "log": [
+          "startedAM",
+          "microtaskAM",
+          "taskAM",
+          "frameAM",
+          "callbackAM",
+          "ucdAM",
+          "readyAM",
+          "frameAM",
+          "finished--",
+          "after--",
+          "frame--"
+        ],
+        "timing": [
+          true,
+          true
+        ],
+        "framesDuringCallback": 0
+      },
+      "noCallback": {
+        "log": [
+          "startedAM",
+          "microtaskAM",
+          "taskAM",
+          "frameAM",
+          "ucdAM",
+          "readyAM",
+          "frameAM",
+          "finished--",
+          "after--",
+          "frame--"
+        ],
+        "timing": [
+          true,
+          true
+        ],
+        "framesDuringCallback": 0
+      },
+      "options": {
+        "log": [
+          "startedAM",
+          "microtaskAM",
+          "taskAM",
+          "frameAM",
+          "callbackAM",
+          "ucdAM",
+          "readyAM",
+          "frameAM",
+          "finished--",
+          "after--",
+          "frame--"
+        ],
+        "timing": [
+          true,
+          true
+        ],
+        "framesDuringCallback": 0
+      },
+      "asyncCallback": {
+        "log": [
+          "startedAM",
+          "microtaskAM",
+          "taskAM",
+          "frameAM",
+          "callbackAM",
+          "ucdAM",
+          "readyAM",
+          "frameAM",
+          "finished--",
+          "after--",
+          "frame--"
+        ],
+        "timing": [
+          true,
+          true
+        ],
+        "framesDuringCallback": 0
+      },
+      "skipImmediately": {
+        "log": [
+          "started--",
+          "microtask--",
+          "ready:AbortError--",
+          "task--",
+          "callback--",
+          "ucd--",
+          "finished--",
+          "after--",
+          "frame--"
+        ],
+        "timing": null,
+        "framesDuringCallback": 0
+      },
+      "throws": {
+        "log": [
+          "startedAM",
+          "microtaskAM",
+          "taskAM",
+          "frameAM",
+          "callbackAM",
+          "ucd:TypeError--",
+          "ready:TypeError--",
+          "finished:TypeError--",
+          "after--",
+          "frame--"
+        ],
+        "timing": null,
+        "framesDuringCallback": 0
+      },
+      "rejects": {
+        "log": [
+          "startedAM",
+          "microtaskAM",
+          "taskAM",
+          "frameAM",
+          "callbackAM",
+          "ucd:RangeError--",
+          "ready:RangeError--",
+          "finished:RangeError--",
+          "after--",
+          "frame--"
+        ],
+        "timing": null,
+        "framesDuringCallback": 0
+      },
+      "element": {
+        "log": [
+          "started--",
+          "microtask--",
+          "task--",
+          "frame--",
+          "callback--",
+          "ucd--",
+          "ready--",
+          "frame--",
+          "finished--",
+          "after--",
+          "frame--"
+        ],
+        "timing": [
+          true,
+          true
+        ],
+        "framesDuringCallback": 0
+      }
+    },
+    "frameFromCallback": [
+      "callback",
+      "ucd",
+      "ready",
+      "frame-from-callback"
+    ],
+    "values": [
+      true,
+      true,
+      null,
+      true,
+      true,
+      true,
+      true,
+      true,
+      "[object ViewTransition]",
+      "[object ViewTransitionTypeSet]",
+      null
+    ],
+    "rootElement": [
+      true,
+      true,
+      true,
+      {
+        "ucd": "ok",
+        "ready": "ok",
+        "finished": "ok"
+      },
+      null
+    ],
+    "skips": {
+      "beforeCallback": {
+        "log": [
+          "skipped--",
+          "callback"
+        ],
+        "outcome": {
+          "ucd": "ok",
+          "ready": [
+            "AbortError",
+            "Transition was skipped. skipTransition() called",
+            true
+          ],
+          "finished": "ok"
+        }
+      },
+      "inCallback": {
+        "log": [
+          "callback",
+          "skipped--"
+        ],
+        "outcome": {
+          "ucd": "ok",
+          "ready": [
+            "AbortError",
+            "Transition was skipped. skipTransition() called",
+            true
+          ],
+          "finished": "ok"
+        }
+      },
+      "afterUcd": {
+        "log": [
+          "callback",
+          "skipped--"
+        ],
+        "outcome": {
+          "ucd": "ok",
+          "ready": [
+            "AbortError",
+            "Transition was skipped. skipTransition() called",
+            true
+          ],
+          "finished": "ok"
+        }
+      },
+      "afterReady": {
+        "log": [
+          "callback",
+          "skipped--",
+          "undefined"
+        ],
+        "outcome": {
+          "ucd": "ok",
+          "ready": "ok",
+          "finished": "ok"
+        }
+      }
+    },
+    "abort": {
+      "pendingCapture": {
+        "active": true,
+        "first": {
+          "ucd": "ok",
+          "ready": [
+            "AbortError",
+            "Transition was skipped. New ViewTransition started",
+            true
+          ],
+          "finished": "ok"
+        },
+        "second": {
+          "ucd": "ok",
+          "ready": "ok",
+          "finished": "ok"
+        },
+        "calls": [
+          "first",
+          "second"
+        ],
+        "after": null
+      },
+      "pendingCallback": [
+        "first-callback",
+        "second-started",
+        "first-ready:AbortError",
+        "second-callback",
+        "second-ready",
+        "first-ucd",
+        "first-finished",
+        "first-done"
+      ],
+      "animating": [
+        "second-started",
+        "first-finished",
+        "second-callback",
+        "second-ready",
+        "second-finished"
+      ]
+    },
+    "skipOrder": {
+      "skipTransition": [
+        "m1",
+        "ready",
+        "m2",
+        "m3",
+        "m4",
+        "m5",
+        "callback",
+        "ucd",
+        "finished",
+        "task"
+      ],
+      "inertDocument": [
+        "m1",
+        "ready",
+        "m2",
+        "m3",
+        "m4",
+        "m5",
+        "callback",
+        "ucd",
+        "finished",
+        "task"
+      ],
+      "detachedElement": [
+        "m1",
+        "ready",
+        "m2",
+        "m3",
+        "m4",
+        "m5",
+        "callback",
+        "ucd",
+        "finished",
+        "task"
+      ],
+      "replaced": [
+        "m1",
+        "ready",
+        "m2",
+        "m3",
+        "m4",
+        "m5",
+        "callback",
+        "ucd",
+        "finished",
+        "task"
+      ]
+    },
+    "cascade": [
+      [
+        "rgb(0, 0, 0)",
+        "rgb(0, 0, 0)"
+      ],
+      [
+        "rgb(1, 2, 3)",
+        "rgb(4, 5, 6)"
+      ],
+      [
+        "rgb(1, 2, 3)",
+        "rgb(1, 2, 3)"
+      ],
+      [
+        "rgb(0, 0, 0)",
+        "rgb(0, 0, 0)"
+      ]
+    ],
+    "results": {
+      "nonPromise": {
+        "ucd": "ok",
+        "ready": "ok",
+        "finished": "ok"
+      },
+      "thenable": {
+        "ucd": "ok",
+        "ready": "ok",
+        "finished": "ok"
+      },
+      "rejectsLater": {
+        "ucd": [
+          "SyntaxError",
+          "late",
+          false
+        ],
+        "ready": [
+          "SyntaxError",
+          "late",
+          false
+        ],
+        "finished": [
+          "SyntaxError",
+          "late",
+          false
+        ]
+      },
+      "timeout": [
+        [
+          "TimeoutError",
+          "Transition was aborted because of timeout in DOM update. DOM update timed out",
+          true
+        ],
+        4,
+        "pending",
+        "pending",
+        null
+      ]
+    },
+    "documents": {
+      "createHTMLDocument": {
+        "sync": [
+          null,
+          null,
+          true,
+          false
+        ],
+        "outcome": {
+          "ucd": "ok",
+          "ready": [
+            "InvalidStateError",
+            "Transition was aborted because of invalid state. Unsupported layout or style",
+            true
+          ],
+          "finished": "ok"
+        },
+        "log": [
+          "microtask",
+          "callback:null"
+        ]
+      },
+      "createDocument": {
+        "sync": [
+          null,
+          null,
+          true,
+          false
+        ],
+        "outcome": {
+          "ucd": "ok",
+          "ready": [
+            "InvalidStateError",
+            "Transition was aborted because of invalid state. Unsupported layout or style",
+            true
+          ],
+          "finished": "ok"
+        },
+        "log": [
+          "microtask",
+          "callback:null"
+        ]
+      },
+      "createEmptyDocument": "null",
+      "xhtml": {
+        "sync": [
+          null,
+          null,
+          true,
+          false
+        ],
+        "outcome": {
+          "ucd": "ok",
+          "ready": [
+            "InvalidStateError",
+            "Transition was aborted because of invalid state. Unsupported layout or style",
+            true
+          ],
+          "finished": "ok"
+        },
+        "log": [
+          "microtask",
+          "callback:null"
+        ]
+      },
+      "domParser": {
+        "sync": [
+          null,
+          null,
+          true,
+          false
+        ],
+        "outcome": {
+          "ucd": "ok",
+          "ready": [
+            "InvalidStateError",
+            "Transition was aborted because of invalid state. Unsupported layout or style",
+            true
+          ],
+          "finished": "ok"
+        },
+        "log": [
+          "microtask",
+          "callback:null"
+        ]
+      },
+      "parseHTMLUnsafe": {
+        "sync": [
+          null,
+          null,
+          true,
+          false
+        ],
+        "outcome": {
+          "ucd": "ok",
+          "ready": [
+            "InvalidStateError",
+            "Transition was aborted because of invalid state. Unsupported layout or style",
+            true
+          ],
+          "finished": "ok"
+        },
+        "log": [
+          "microtask",
+          "callback:null"
+        ]
+      },
+      "constructed": "null",
+      "alongsideMain": [
+        true,
+        {
+          "ucd": "ok",
+          "ready": [
+            "InvalidStateError",
+            "Transition was aborted because of invalid state. Unsupported layout or style",
+            true
+          ],
+          "finished": "ok"
+        },
+        {
+          "ucd": "ok",
+          "ready": "ok",
+          "finished": "ok"
+        }
+      ]
+    },
+    "scopes": {
+      "div": {
+        "sync": [
+          true,
+          null,
+          true,
+          true,
+          false
+        ],
+        "outcome": {
+          "ucd": "ok",
+          "ready": "ok",
+          "finished": "ok"
+        },
+        "log": [
+          "callback:true"
+        ]
+      },
+      "span": {
+        "sync": [
+          true,
+          null,
+          true,
+          true,
+          false
+        ],
+        "outcome": {
+          "ucd": "ok",
+          "ready": [
+            "InvalidStateError",
+            "Transition was aborted because of invalid state. Unsupported layout or style",
+            true
+          ],
+          "finished": "ok"
+        },
+        "log": [
+          "callback:false"
+        ]
+      },
+      "displayNone": {
+        "sync": [
+          true,
+          null,
+          true,
+          true,
+          false
+        ],
+        "outcome": {
+          "ucd": "ok",
+          "ready": [
+            "InvalidStateError",
+            "Transition was aborted because of invalid state. Unsupported layout or style",
+            true
+          ],
+          "finished": "ok"
+        },
+        "log": [
+          "callback:false"
+        ]
+      },
+      "contents": {
+        "sync": [
+          true,
+          null,
+          true,
+          true,
+          false
+        ],
+        "outcome": {
+          "ucd": "ok",
+          "ready": [
+            "InvalidStateError",
+            "Transition was aborted because of invalid state. Unsupported layout or style",
+            true
+          ],
+          "finished": "ok"
+        },
+        "log": [
+          "callback:false"
+        ]
+      },
+      "hiddenAttribute": {
+        "sync": [
+          true,
+          null,
+          true,
+          true,
+          false
+        ],
+        "outcome": {
+          "ucd": "ok",
+          "ready": [
+            "InvalidStateError",
+            "Transition was aborted because of invalid state. Unsupported layout or style",
+            true
+          ],
+          "finished": "ok"
+        },
+        "log": [
+          "callback:false"
+        ]
+      },
+      "insideDisplayNone": {
+        "sync": [
+          true,
+          null,
+          true,
+          true,
+          false
+        ],
+        "outcome": {
+          "ucd": "ok",
+          "ready": [
+            "InvalidStateError",
+            "Transition was aborted because of invalid state. Unsupported layout or style",
+            true
+          ],
+          "finished": "ok"
+        },
+        "log": [
+          "callback:false"
+        ]
+      },
+      "visibilityHidden": {
+        "sync": [
+          true,
+          null,
+          true,
+          true,
+          false
+        ],
+        "outcome": {
+          "ucd": "ok",
+          "ready": "ok",
+          "finished": "ok"
+        },
+        "log": [
+          "callback:true"
+        ]
+      },
+      "inlineBlock": {
+        "sync": [
+          true,
+          null,
+          true,
+          true,
+          false
+        ],
+        "outcome": {
+          "ucd": "ok",
+          "ready": "ok",
+          "finished": "ok"
+        },
+        "log": [
+          "callback:true"
+        ]
+      },
+      "inlineFlex": {
+        "sync": [
+          true,
+          null,
+          true,
+          true,
+          false
+        ],
+        "outcome": {
+          "ucd": "ok",
+          "ready": "ok",
+          "finished": "ok"
+        },
+        "log": [
+          "callback:true"
+        ]
+      },
+      "listItem": {
+        "sync": [
+          true,
+          null,
+          true,
+          true,
+          false
+        ],
+        "outcome": {
+          "ucd": "ok",
+          "ready": "ok",
+          "finished": "ok"
+        },
+        "log": [
+          "callback:true"
+        ]
+      },
+      "tableRow": {
+        "sync": [
+          true,
+          null,
+          true,
+          true,
+          false
+        ],
+        "outcome": {
+          "ucd": "ok",
+          "ready": [
+            "InvalidStateError",
+            "Transition was aborted because of invalid state. Unsupported layout or style",
+            true
+          ],
+          "finished": "ok"
+        },
+        "log": [
+          "callback:false"
+        ]
+      },
+      "tableCell": {
+        "sync": [
+          true,
+          null,
+          true,
+          true,
+          false
+        ],
+        "outcome": {
+          "ucd": "ok",
+          "ready": "ok",
+          "finished": "ok"
+        },
+        "log": [
+          "callback:true"
+        ]
+      },
+      "tableRowGroup": {
+        "sync": [
+          true,
+          null,
+          true,
+          true,
+          false
+        ],
+        "outcome": {
+          "ucd": "ok",
+          "ready": [
+            "InvalidStateError",
+            "Transition was aborted because of invalid state. Unsupported layout or style",
+            true
+          ],
+          "finished": "ok"
+        },
+        "log": [
+          "callback:false"
+        ]
+      },
+      "tableColumn": {
+        "sync": [
+          true,
+          null,
+          true,
+          true,
+          false
+        ],
+        "outcome": {
+          "ucd": "ok",
+          "ready": [
+            "InvalidStateError",
+            "Transition was aborted because of invalid state. Unsupported layout or style",
+            true
+          ],
+          "finished": "ok"
+        },
+        "log": [
+          "callback:false"
+        ]
+      },
+      "tableCaption": {
+        "sync": [
+          true,
+          null,
+          true,
+          true,
+          false
+        ],
+        "outcome": {
+          "ucd": "ok",
+          "ready": "ok",
+          "finished": "ok"
+        },
+        "log": [
+          "callback:true"
+        ]
+      },
+      "flexChildSpan": {
+        "sync": [
+          true,
+          null,
+          true,
+          true,
+          false
+        ],
+        "outcome": {
+          "ucd": "ok",
+          "ready": "ok",
+          "finished": "ok"
+        },
+        "log": [
+          "callback:true"
+        ]
+      },
+      "ruby": {
+        "sync": [
+          true,
+          null,
+          true,
+          true,
+          false
+        ],
+        "outcome": {
+          "ucd": "ok",
+          "ready": [
+            "InvalidStateError",
+            "Transition was aborted because of invalid state. Unsupported layout or style",
+            true
+          ],
+          "finished": "ok"
+        },
+        "log": [
+          "callback:false"
+        ]
+      },
+      "details": {
+        "sync": [
+          true,
+          null,
+          true,
+          true,
+          false
+        ],
+        "outcome": {
+          "ucd": "ok",
+          "ready": "ok",
+          "finished": "ok"
+        },
+        "log": [
+          "callback:true"
+        ]
+      },
+      "summaryInClosedDetails": {
+        "sync": [
+          true,
+          null,
+          true,
+          true,
+          false
+        ],
+        "outcome": {
+          "ucd": "ok",
+          "ready": "ok",
+          "finished": "ok"
+        },
+        "log": [
+          "callback:true"
+        ]
+      },
+      "contentInClosedDetails": {
+        "sync": [
+          true,
+          null,
+          true,
+          true,
+          false
+        ],
+        "outcome": {
+          "ucd": "ok",
+          "ready": [
+            "InvalidStateError",
+            "Transition was aborted because of invalid state. Unsupported layout or style",
+            true
+          ],
+          "finished": "ok"
+        },
+        "log": [
+          "callback:false"
+        ]
+      },
+      "closedDialog": {
+        "sync": [
+          true,
+          null,
+          true,
+          true,
+          false
+        ],
+        "outcome": {
+          "ucd": "ok",
+          "ready": [
+            "InvalidStateError",
+            "Transition was aborted because of invalid state. Unsupported layout or style",
+            true
+          ],
+          "finished": "ok"
+        },
+        "log": [
+          "callback:false"
+        ]
+      },
+      "head": {
+        "sync": [
+          true,
+          null,
+          true,
+          true,
+          false
+        ],
+        "outcome": {
+          "ucd": "ok",
+          "ready": [
+            "InvalidStateError",
+            "Transition was aborted because of invalid state. Unsupported layout or style",
+            true
+          ],
+          "finished": "ok"
+        },
+        "log": [
+          "callback:false"
+        ]
+      },
+      "table": {
+        "sync": [
+          true,
+          null,
+          true,
+          true,
+          false
+        ],
+        "outcome": {
+          "ucd": "ok",
+          "ready": "ok",
+          "finished": "ok"
+        },
+        "log": [
+          "callback:true"
+        ]
+      },
+      "absoluteSpan": {
+        "sync": [
+          true,
+          null,
+          true,
+          true,
+          false
+        ],
+        "outcome": {
+          "ucd": "ok",
+          "ready": "ok",
+          "finished": "ok"
+        },
+        "log": [
+          "callback:true"
+        ]
+      },
+      "floatSpan": {
+        "sync": [
+          true,
+          null,
+          true,
+          true,
+          false
+        ],
+        "outcome": {
+          "ucd": "ok",
+          "ready": "ok",
+          "finished": "ok"
+        },
+        "log": [
+          "callback:true"
+        ]
+      },
+      "img": {
+        "sync": [
+          true,
+          null,
+          true,
+          true,
+          false
+        ],
+        "outcome": {
+          "ucd": "ok",
+          "ready": "ok",
+          "finished": "ok"
+        },
+        "log": [
+          "callback:true"
+        ]
+      },
+      "input": {
+        "sync": [
+          true,
+          null,
+          true,
+          true,
+          false
+        ],
+        "outcome": {
+          "ucd": "ok",
+          "ready": "ok",
+          "finished": "ok"
+        },
+        "log": [
+          "callback:true"
+        ]
+      },
+      "button": {
+        "sync": [
+          true,
+          null,
+          true,
+          true,
+          false
+        ],
+        "outcome": {
+          "ucd": "ok",
+          "ready": "ok",
+          "finished": "ok"
+        },
+        "log": [
+          "callback:true"
+        ]
+      },
+      "canvas": {
+        "sync": [
+          true,
+          null,
+          true,
+          true,
+          false
+        ],
+        "outcome": {
+          "ucd": "ok",
+          "ready": "ok",
+          "finished": "ok"
+        },
+        "log": [
+          "callback:true"
+        ]
+      },
+      "textarea": {
+        "sync": [
+          true,
+          null,
+          true,
+          true,
+          false
+        ],
+        "outcome": {
+          "ucd": "ok",
+          "ready": "ok",
+          "finished": "ok"
+        },
+        "log": [
+          "callback:true"
+        ]
+      },
+      "anchor": {
+        "sync": [
+          true,
+          null,
+          true,
+          true,
+          false
+        ],
+        "outcome": {
+          "ucd": "ok",
+          "ready": [
+            "InvalidStateError",
+            "Transition was aborted because of invalid state. Unsupported layout or style",
+            true
+          ],
+          "finished": "ok"
+        },
+        "log": [
+          "callback:false"
+        ]
+      },
+      "svg": {
+        "sync": [
+          true,
+          null,
+          true,
+          true,
+          false
+        ],
+        "outcome": {
+          "ucd": "ok",
+          "ready": "ok",
+          "finished": "ok"
+        },
+        "log": [
+          "callback:true"
+        ]
+      },
+      "detached": {
+        "sync": [
+          false,
+          null,
+          true,
+          false,
+          false
+        ],
+        "outcome": {
+          "ucd": "ok",
+          "ready": [
+            "InvalidStateError",
+            "Transition was aborted because of invalid state. Unsupported layout or style",
+            true
+          ],
+          "finished": "ok"
+        },
+        "log": [
+          "callback:false"
+        ]
+      },
+      "body": {
+        "sync": [
+          true,
+          null,
+          true,
+          true,
+          false
+        ],
+        "outcome": {
+          "ucd": "ok",
+          "ready": "ok",
+          "finished": "ok"
+        },
+        "log": [
+          "callback:true"
+        ]
+      }
+    },
+    "scoped": {
+      "concurrent": {
+        "sync": [
+          true,
+          true,
+          true
+        ],
+        "replaced": [
+          true,
+          true
+        ],
+        "first": {
+          "ucd": "ok",
+          "ready": [
+            "AbortError",
+            "Transition was skipped. New ViewTransition started",
+            true
+          ],
+          "finished": "ok"
+        },
+        "other": {
+          "ucd": "ok",
+          "ready": "ok",
+          "finished": "ok"
+        },
+        "whole": {
+          "ucd": "ok",
+          "ready": "ok",
+          "finished": "ok"
+        },
+        "second": {
+          "ucd": "ok",
+          "ready": "ok",
+          "finished": "ok"
+        },
+        "nested": {
+          "ucd": "ok",
+          "ready": "ok",
+          "finished": "ok"
+        }
+      },
+      "documentThenElement": [
+        {
+          "ucd": "ok",
+          "ready": "ok",
+          "finished": "ok"
+        },
+        {
+          "ucd": "ok",
+          "ready": "ok",
+          "finished": "ok"
+        }
+      ],
+      "elementThenDocument": [
+        {
+          "ucd": "ok",
+          "ready": "ok",
+          "finished": "ok"
+        },
+        {
+          "ucd": "ok",
+          "ready": "ok",
+          "finished": "ok"
+        }
+      ],
+      "removedSync": [
+        true,
+        {
+          "ucd": "ok",
+          "ready": [
+            "InvalidStateError",
+            "Transition was aborted because of invalid state. Unsupported layout or style",
+            true
+          ],
+          "finished": "ok"
+        }
+      ],
+      "removedAfterCallback": {
+        "ucd": "ok",
+        "ready": [
+          "InvalidStateError",
+          "Transition was aborted because of invalid state. Unsupported layout or style",
+          true
+        ],
+        "finished": "ok"
+      },
+      "removedAnimating": [
+        true,
+        {
+          "ucd": "ok",
+          "ready": "ok",
+          "finished": "ok"
+        }
+      ],
+      "types": [
+        true,
+        false,
+        1,
+        true
+      ],
+      "renderingDuringCallback": true
+    },
+    "names": {
+      "old": {
+        "outcome": {
+          "ucd": "ok",
+          "ready": [
+            "InvalidStateError",
+            "Transition was aborted because of invalid state. Snapshot capture failed",
+            true
+          ],
+          "finished": "ok"
+        },
+        "log": [
+          "callback"
+        ]
+      },
+      "unique": {
+        "outcome": {
+          "ucd": "ok",
+          "ready": "ok",
+          "finished": "ok"
+        },
+        "log": [
+          "callback"
+        ]
+      },
+      "newState": {
+        "outcome": {
+          "ucd": "ok",
+          "ready": [
+            "InvalidStateError",
+            "Transition was aborted because of invalid state. Animation start failed",
+            true
+          ],
+          "finished": "ok"
+        },
+        "log": [
+          "callback"
+        ]
+      },
+      "removedInCallback": {
+        "outcome": {
+          "ucd": "ok",
+          "ready": [
+            "InvalidStateError",
+            "Transition was aborted because of invalid state. Snapshot capture failed",
+            true
+          ],
+          "finished": "ok"
+        },
+        "log": [
+          "callback"
+        ]
+      },
+      "renamedInCallback": {
+        "outcome": {
+          "ucd": "ok",
+          "ready": [
+            "InvalidStateError",
+            "Transition was aborted because of invalid state. Animation start failed",
+            true
+          ],
+          "finished": "ok"
+        },
+        "log": [
+          "callback"
+        ]
+      },
+      "displayNone": {
+        "outcome": {
+          "ucd": "ok",
+          "ready": "ok",
+          "finished": "ok"
+        },
+        "log": [
+          "callback"
+        ]
+      },
+      "insideDisplayNone": {
+        "outcome": {
+          "ucd": "ok",
+          "ready": "ok",
+          "finished": "ok"
+        },
+        "log": [
+          "callback"
+        ]
+      },
+      "hiddenAttribute": {
+        "outcome": {
+          "ucd": "ok",
+          "ready": "ok",
+          "finished": "ok"
+        },
+        "log": [
+          "callback"
+        ]
+      },
+      "visibilityHidden": {
+        "outcome": {
+          "ucd": "ok",
+          "ready": [
+            "InvalidStateError",
+            "Transition was aborted because of invalid state. Snapshot capture failed",
+            true
+          ],
+          "finished": "ok"
+        },
+        "log": [
+          "callback"
+        ]
+      },
+      "root": {
+        "outcome": {
+          "ucd": "ok",
+          "ready": [
+            "InvalidStateError",
+            "Transition was aborted because of invalid state. Snapshot capture failed",
+            true
+          ],
+          "finished": "ok"
+        },
+        "log": [
+          "callback"
+        ]
+      },
+      "none": {
+        "outcome": {
+          "ucd": "ok",
+          "ready": "ok",
+          "finished": "ok"
+        },
+        "log": [
+          "callback"
+        ]
+      },
+      "auto": {
+        "outcome": {
+          "ucd": "ok",
+          "ready": "ok",
+          "finished": "ok"
+        },
+        "log": [
+          "callback"
+        ]
+      },
+      "stylesheet": {
+        "outcome": {
+          "ucd": "ok",
+          "ready": [
+            "InvalidStateError",
+            "Transition was aborted because of invalid state. Snapshot capture failed",
+            true
+          ],
+          "finished": "ok"
+        },
+        "log": [
+          "callback"
+        ]
+      },
+      "span": {
+        "outcome": {
+          "ucd": "ok",
+          "ready": [
+            "InvalidStateError",
+            "Transition was aborted because of invalid state. Snapshot capture failed",
+            true
+          ],
+          "finished": "ok"
+        },
+        "log": [
+          "callback"
+        ]
+      },
+      "contents": {
+        "outcome": {
+          "ucd": "ok",
+          "ready": "ok",
+          "finished": "ok"
+        },
+        "log": [
+          "callback"
+        ]
+      },
+      "closedDetails": {
+        "outcome": {
+          "ucd": "ok",
+          "ready": "ok",
+          "finished": "ok"
+        },
+        "log": [
+          "callback"
+        ]
+      },
+      "shadow": {
+        "ucd": "ok",
+        "ready": "ok",
+        "finished": "ok"
+      },
+      "shadowPair": {
+        "ucd": "ok",
+        "ready": "ok",
+        "finished": "ok"
+      },
+      "scopeAndChild": {
+        "ucd": "ok",
+        "ready": [
+          "InvalidStateError",
+          "Transition was aborted because of invalid state. Snapshot capture failed",
+          true
+        ],
+        "finished": "ok"
+      },
+      "outsideScope": {
+        "ucd": "ok",
+        "ready": "ok",
+        "finished": "ok"
+      }
+    },
+    "selectors": {
+      "sync": [
+        true,
+        true,
+        false,
+        true,
+        false,
+        false,
+        1,
+        true,
+        false,
+        true,
+        true,
+        true
+      ],
+      "syntax": [
+        [
+          "SyntaxError",
+          "Failed to execute 'matches' on 'Element': ':active-view-transition-type()' is not a valid selector.",
+          true
+        ],
+        [
+          "SyntaxError",
+          "Failed to execute 'matches' on 'Element': ':active-view-transition-type(*)' is not a valid selector.",
+          true
+        ],
+        [
+          "SyntaxError",
+          "Failed to execute 'matches' on 'Element': ':active-view-transition-type(\"fade\")' is not a valid selector.",
+          true
+        ],
+        [
+          "SyntaxError",
+          "Failed to execute 'matches' on 'Element': ':active-view-transition()' is not a valid selector.",
+          true
+        ],
+        [
+          "SyntaxError",
+          "Failed to execute 'matches' on 'Element': ':active-view-transition-type(1)' is not a valid selector.",
+          true
+        ],
+        [
+          "SyntaxError",
+          "Failed to execute 'matches' on 'Element': ':active-view-transition-type(a b)' is not a valid selector.",
+          true
+        ],
+        [
+          "SyntaxError",
+          "Failed to execute 'matches' on 'Element': ':active-view-transition-type(a,)' is not a valid selector.",
+          true
+        ]
+      ],
+      "mutation": [
+        "undefined",
+        3,
+        true,
+        true,
+        true,
+        false,
+        false,
+        "undefined",
+        true,
+        [
+          "TypeError",
+          "Failed to execute 'add' on 'ViewTransitionTypeSet': Cannot convert a Symbol value to a string",
+          false
+        ],
+        [
+          "TypeError",
+          "Failed to execute 'has' on 'ViewTransitionTypeSet': 1 argument required, but only 0 present.",
+          false
+        ],
+        [
+          "TypeError",
+          "Failed to execute 'add' on 'ViewTransitionTypeSet': 1 argument required, but only 0 present.",
+          false
+        ],
+        [
+          "TypeError",
+          "Failed to execute 'delete' on 'ViewTransitionTypeSet': 1 argument required, but only 0 present.",
+          false
+        ],
+        [
+          "Slide",
+          "fade",
+          "5"
+        ],
+        [
+          "Slide",
+          "fade",
+          "5"
+        ],
+        [
+          "Slide,Slide",
+          "fade,fade",
+          "5,5"
+        ]
+      ],
+      "forEach": [
+        [
+          [
+            "Slide",
+            "Slide",
+            true,
+            true
+          ],
+          [
+            "fade",
+            "fade",
+            true,
+            true
+          ],
+          [
+            "5",
+            "5",
+            true,
+            true
+          ]
+        ],
+        [
+          "TypeError",
+          "Failed to execute 'forEach' on 'ViewTransitionTypeSet': 1 argument required, but only 0 present.",
+          false
+        ],
+        [
+          "TypeError",
+          "Failed to execute 'forEach' on 'ViewTransitionTypeSet': parameter 1 is not of type 'Function'.",
+          false
+        ]
+      ],
+      "iterator": [
+        "[object ViewTransitionTypeSet Iterator]",
+        [
+          "next"
+        ],
+        [
+          "wtrue",
+          "etrue",
+          "ctrue",
+          "value",
+          "next",
+          0
+        ],
+        [
+          "wfalse",
+          "efalse",
+          "ctrue",
+          "value",
+          "ViewTransitionTypeSet Iterator"
+        ],
+        true,
+        {
+          "done": false,
+          "value": "Slide"
+        },
+        {
+          "done": false,
+          "value": "fade"
+        },
+        {
+          "done": false,
+          "value": "5"
+        },
+        {
+          "done": false,
+          "value": "tail"
+        },
+        {
+          "done": true
+        }
+      ],
+      "ready": [
+        true,
+        true
+      ],
+      "cleared": [
+        0,
+        false,
+        true
+      ],
+      "finished": [
+        false,
+        false,
+        [
+          "fade"
+        ]
+      ],
+      "afterFinish": [
+        "fade",
+        "post"
+      ],
+      "skipped": [
+        false,
+        false,
+        [
+          "gone"
+        ]
+      ]
+    },
+    "waitUntil": {
+      "noArgument": [
+        "TypeError",
+        "Failed to execute 'waitUntil' on 'ViewTransition': 1 argument required, but only 0 present.",
+        false
+      ],
+      "number": "undefined",
+      "returned": "undefined",
+      "held": [
+        "still-active:true",
+        "matches:true",
+        "finished:true",
+        "after:null"
+      ],
+      "afterFinished": "undefined",
+      "rejected": {
+        "ucd": "ok",
+        "ready": "ok",
+        "finished": "ok"
+      },
+      "skipped": [
+        null,
+        "ok"
+      ],
+      "afterSkip": [
+        "undefined",
+        {
+          "ucd": "ok",
+          "ready": [
+            "AbortError",
+            "Transition was skipped. skipTransition() called",
+            true
+          ],
+          "finished": "ok"
+        }
+      ]
+    },
+    "unhandled": [
+      "AbortError",
+      "SyntaxError",
+      "SyntaxError",
+      "SyntaxError"
+    ]
+  },
+  "hidden": {
+    "sync": [
+      "hidden",
+      null,
+      false
+    ],
+    "documentOutcome": {
+      "ucd": "ok",
+      "ready": [
+        "InvalidStateError",
+        "Transition was aborted because of invalid state. Document hidden",
+        true
+      ],
+      "finished": "ok"
+    },
+    "elementSync": [
+      null,
+      false
+    ],
+    "elementOutcome": {
+      "ucd": "ok",
+      "ready": [
+        "InvalidStateError",
+        "Transition was aborted because of invalid state. Document hidden",
+        true
+      ],
+      "finished": "ok"
+    },
+    "log": [
+      "microtask",
+      "callback",
+      "task",
+      "element-callback"
+    ]
+  }
+}

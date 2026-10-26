@@ -1,0 +1,118 @@
+{
+  "browser": "Chrome/155.0.8059.80",
+  "v8": "15.5.35.23",
+  "casesSha256": "6736f4b238dfa43d76cc4b3361538e0b24d5c417729ed3dbead03d210da5a822",
+  "probeSha256": "c31a81a093cd8c2c07f431d76303865757740d2b30a167c8fc51e48c7e19f1c9",
+  "collectorSha256": "700a755df1701cfa30a95ca9f20800e81724f50ca7aafd6b46f77e87b2b91351",
+  "flags": [
+    "--remote-debugging-port=0",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "about:blank"
+  ],
+  "errors": [],
+  "result": [
+    {
+      "id": "private-computed-style-intrinsics",
+      "result": {
+        "values": [
+          [
+            "17px",
+            "rgb(255, 0, 0)"
+          ],
+          [
+            "17px",
+            "rgb(255, 0, 0)"
+          ],
+          [
+            "17px",
+            "rgb(255, 0, 0)"
+          ],
+          [
+            "17px",
+            "rgb(255, 0, 0)"
+          ],
+          [
+            "23px",
+            "rgb(255, 0, 0)"
+          ]
+        ],
+        "retainedValues": [
+          [
+            "23px",
+            "rgb(255, 0, 0)"
+          ],
+          [
+            "31px",
+            "rgb(0, 128, 0)"
+          ],
+          [
+            "41px",
+            "rgb(0, 0, 255)"
+          ],
+          [
+            "31px",
+            "rgb(0, 128, 0)"
+          ],
+          [
+            "23px",
+            "rgb(255, 0, 0)"
+          ],
+          [
+            "47px",
+            "rgb(255, 0, 0)"
+          ],
+          [
+            "13px",
+            "rgb(255, 0, 0)"
+          ],
+          [
+            "47px",
+            "rgb(255, 0, 0)"
+          ],
+          [
+            "47px",
+            "rgb(255, 0, 0)"
+          ]
+        ],
+        "matchesReads": 0,
+        "ownerReads": 0,
+        "sheetReads": 0,
+        "listReads": 0,
+        "replacedSheet": true,
+        "retainedOldRules": 1,
+        "inheritedValues": [
+          [
+            "rgb(0, 0, 255)",
+            "32px"
+          ],
+          [
+            "rgb(255, 0, 0)",
+            "64px"
+          ],
+          [
+            "rgb(0, 128, 0)",
+            "64px"
+          ],
+          [
+            "rgb(255, 0, 0)",
+            "64px"
+          ],
+          [
+            "rgb(255, 0, 0)",
+            "32px"
+          ],
+          [
+            "rgb(255, 0, 0)",
+            "32px"
+          ]
+        ],
+        "colorReads": 0,
+        "computedReads": 0
+      }
+    }
+  ]
+}

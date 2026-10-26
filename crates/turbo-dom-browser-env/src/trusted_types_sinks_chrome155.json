@@ -1,0 +1,956 @@
+{
+  "browser": "Chrome/155.0.8059.79",
+  "v8": "15.5.35.23",
+  "casesSha256": "94bfda227aad8f79dd285c91746de02779022869b81e90d00bb465ea18f7dce5",
+  "probeSha256": "5272a5482221802a0a8b613191423398019cf3480cc14b25f237fe335ccd6000",
+  "collectorSha256": "28c5e30fd556dffcaac973373d4fb0ad0202ab6f168b14f0950b55bf28054fe8",
+  "flags": [
+    "--remote-debugging-port=0",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "about:blank"
+  ],
+  "errors": [],
+  "result": [
+    {
+      "id": "sink-enforce",
+      "result": {
+        "rows": [
+          [
+            "innerHTML",
+            {
+              "error": "TypeError",
+              "message": "Failed to set the 'innerHTML' property on 'Element': This document requires 'TrustedHTML' assignment."
+            }
+          ],
+          [
+            "outerHTML",
+            {
+              "error": "TypeError",
+              "message": "Failed to set the 'outerHTML' property on 'Element': This document requires 'TrustedHTML' assignment."
+            }
+          ],
+          [
+            "insertAdjacentHTML",
+            {
+              "error": "TypeError",
+              "message": "Failed to execute 'insertAdjacentHTML' on 'Element': This document requires 'TrustedHTML' assignment."
+            }
+          ],
+          [
+            "script.text",
+            {
+              "error": "TypeError",
+              "message": "Failed to set the 'text' property on 'HTMLScriptElement': This document requires 'TrustedScript' assignment."
+            }
+          ],
+          [
+            "script.textContent",
+            {
+              "error": "TypeError",
+              "message": "Failed to set the 'textContent' property on 'HTMLScriptElement': This document requires 'TrustedScript' assignment."
+            }
+          ],
+          [
+            "script.innerText",
+            {
+              "error": "TypeError",
+              "message": "Failed to set the 'innerText' property on 'HTMLScriptElement': This document requires 'TrustedScript' assignment."
+            }
+          ],
+          [
+            "script.src",
+            {
+              "error": "TypeError",
+              "message": "Failed to set the 'src' property on 'HTMLScriptElement': This document requires 'TrustedScriptURL' assignment."
+            }
+          ],
+          [
+            "setAttribute.src",
+            {
+              "error": "TypeError",
+              "message": "Failed to execute 'setAttribute' on 'Element': This document requires 'TrustedScriptURL' assignment."
+            }
+          ],
+          [
+            "setAttribute.onclick",
+            {
+              "error": "TypeError",
+              "message": "Failed to execute 'setAttribute' on 'Element': This document requires 'TrustedScript' assignment."
+            }
+          ],
+          [
+            "iframe.srcdoc",
+            {
+              "error": "TypeError",
+              "message": "Failed to set the 'srcdoc' property on 'HTMLIFrameElement': This document requires 'TrustedHTML' assignment."
+            }
+          ],
+          [
+            "embed.src",
+            {
+              "error": "TypeError",
+              "message": "Failed to set the 'src' property on 'HTMLEmbedElement': This document requires 'TrustedScriptURL' assignment."
+            }
+          ],
+          [
+            "object.data",
+            {
+              "error": "TypeError",
+              "message": "Failed to set the 'data' property on 'HTMLObjectElement': This document requires 'TrustedScriptURL' assignment."
+            }
+          ],
+          [
+            "DOMParser",
+            {
+              "error": "TypeError",
+              "message": "Failed to execute 'parseFromString' on 'DOMParser': This document requires 'TrustedHTML' assignment."
+            }
+          ],
+          [
+            "Range",
+            {
+              "error": "TypeError",
+              "message": "Failed to execute 'createContextualFragment' on 'Range': This document requires 'TrustedHTML' assignment."
+            }
+          ],
+          [
+            "typed-innerHTML",
+            {
+              "ok": true,
+              "value": "<em>typed</em>"
+            }
+          ]
+        ],
+        "trace": [],
+        "violations": [
+          {
+            "effectiveDirective": "require-trusted-types-for",
+            "blockedURI": "trusted-types-sink",
+            "disposition": "enforce",
+            "sample": "Element innerHTML|<b>X</b>"
+          },
+          {
+            "effectiveDirective": "require-trusted-types-for",
+            "blockedURI": "trusted-types-sink",
+            "disposition": "enforce",
+            "sample": "Element outerHTML|<b>Y</b>"
+          },
+          {
+            "effectiveDirective": "require-trusted-types-for",
+            "blockedURI": "trusted-types-sink",
+            "disposition": "enforce",
+            "sample": "Element insertAdjacentHTML|<i>Z</i>"
+          },
+          {
+            "effectiveDirective": "require-trusted-types-for",
+            "blockedURI": "trusted-types-sink",
+            "disposition": "enforce",
+            "sample": "HTMLScriptElement text|void 0"
+          },
+          {
+            "effectiveDirective": "require-trusted-types-for",
+            "blockedURI": "trusted-types-sink",
+            "disposition": "enforce",
+            "sample": "HTMLScriptElement textContent|void 1"
+          },
+          {
+            "effectiveDirective": "require-trusted-types-for",
+            "blockedURI": "trusted-types-sink",
+            "disposition": "enforce",
+            "sample": "HTMLScriptElement innerText|void 2"
+          },
+          {
+            "effectiveDirective": "require-trusted-types-for",
+            "blockedURI": "trusted-types-sink",
+            "disposition": "enforce",
+            "sample": "HTMLScriptElement src|/script.js"
+          },
+          {
+            "effectiveDirective": "require-trusted-types-for",
+            "blockedURI": "trusted-types-sink",
+            "disposition": "enforce",
+            "sample": "HTMLScriptElement src|/attr.js"
+          },
+          {
+            "effectiveDirective": "require-trusted-types-for",
+            "blockedURI": "trusted-types-sink",
+            "disposition": "enforce",
+            "sample": "Element onclick|void 3"
+          },
+          {
+            "effectiveDirective": "require-trusted-types-for",
+            "blockedURI": "trusted-types-sink",
+            "disposition": "enforce",
+            "sample": "HTMLIFrameElement srcdoc|<p>frame</p>"
+          },
+          {
+            "effectiveDirective": "require-trusted-types-for",
+            "blockedURI": "trusted-types-sink",
+            "disposition": "enforce",
+            "sample": "HTMLEmbedElement src|/embed"
+          },
+          {
+            "effectiveDirective": "require-trusted-types-for",
+            "blockedURI": "trusted-types-sink",
+            "disposition": "enforce",
+            "sample": "HTMLObjectElement data|/object"
+          },
+          {
+            "effectiveDirective": "require-trusted-types-for",
+            "blockedURI": "trusted-types-sink",
+            "disposition": "enforce",
+            "sample": "DOMParser parseFromString|<b>parse</b>"
+          },
+          {
+            "effectiveDirective": "require-trusted-types-for",
+            "blockedURI": "trusted-types-sink",
+            "disposition": "enforce",
+            "sample": "Range createContextualFragment|<b>range</b>"
+          }
+        ]
+      }
+    },
+    {
+      "id": "sink-report",
+      "result": {
+        "rows": [
+          [
+            "innerHTML",
+            {
+              "ok": true,
+              "value": "<b>X</b>"
+            }
+          ],
+          [
+            "outerHTML",
+            {
+              "ok": true,
+              "value": "<b>Y</b>"
+            }
+          ],
+          [
+            "insertAdjacentHTML",
+            {
+              "ok": true,
+              "value": "<b>Y</b><i>Z</i>"
+            }
+          ],
+          [
+            "script.text",
+            {
+              "ok": true,
+              "value": "void 0"
+            }
+          ],
+          [
+            "script.textContent",
+            {
+              "ok": true,
+              "value": "void 1"
+            }
+          ],
+          [
+            "script.innerText",
+            {
+              "ok": true,
+              "value": "void 2"
+            }
+          ],
+          [
+            "script.src",
+            {
+              "ok": true,
+              "value": "/script.js"
+            }
+          ],
+          [
+            "setAttribute.src",
+            {
+              "ok": true,
+              "value": "/attr.js"
+            }
+          ],
+          [
+            "setAttribute.onclick",
+            {
+              "ok": true,
+              "value": "void 3"
+            }
+          ],
+          [
+            "iframe.srcdoc",
+            {
+              "ok": true,
+              "value": "<p>frame</p>"
+            }
+          ],
+          [
+            "embed.src",
+            {
+              "ok": true,
+              "value": "/embed"
+            }
+          ],
+          [
+            "object.data",
+            {
+              "ok": true,
+              "value": "/object"
+            }
+          ],
+          [
+            "DOMParser",
+            {
+              "ok": true,
+              "value": "<b>parse</b>"
+            }
+          ],
+          [
+            "Range",
+            {
+              "ok": true,
+              "value": "range"
+            }
+          ],
+          [
+            "typed-innerHTML",
+            {
+              "ok": true,
+              "value": "<em>typed</em>"
+            }
+          ]
+        ],
+        "trace": [],
+        "violations": [
+          {
+            "effectiveDirective": "require-trusted-types-for",
+            "blockedURI": "trusted-types-sink",
+            "disposition": "report",
+            "sample": "Element innerHTML|<b>X</b>"
+          },
+          {
+            "effectiveDirective": "require-trusted-types-for",
+            "blockedURI": "trusted-types-sink",
+            "disposition": "report",
+            "sample": "Element outerHTML|<b>Y</b>"
+          },
+          {
+            "effectiveDirective": "require-trusted-types-for",
+            "blockedURI": "trusted-types-sink",
+            "disposition": "report",
+            "sample": "Element insertAdjacentHTML|<i>Z</i>"
+          },
+          {
+            "effectiveDirective": "require-trusted-types-for",
+            "blockedURI": "trusted-types-sink",
+            "disposition": "report",
+            "sample": "HTMLScriptElement text|void 0"
+          },
+          {
+            "effectiveDirective": "require-trusted-types-for",
+            "blockedURI": "trusted-types-sink",
+            "disposition": "report",
+            "sample": "HTMLScriptElement textContent|void 1"
+          },
+          {
+            "effectiveDirective": "require-trusted-types-for",
+            "blockedURI": "trusted-types-sink",
+            "disposition": "report",
+            "sample": "HTMLScriptElement innerText|void 2"
+          },
+          {
+            "effectiveDirective": "require-trusted-types-for",
+            "blockedURI": "trusted-types-sink",
+            "disposition": "report",
+            "sample": "HTMLScriptElement src|/script.js"
+          },
+          {
+            "effectiveDirective": "require-trusted-types-for",
+            "blockedURI": "trusted-types-sink",
+            "disposition": "report",
+            "sample": "HTMLScriptElement src|/attr.js"
+          },
+          {
+            "effectiveDirective": "require-trusted-types-for",
+            "blockedURI": "trusted-types-sink",
+            "disposition": "report",
+            "sample": "Element onclick|void 3"
+          },
+          {
+            "effectiveDirective": "require-trusted-types-for",
+            "blockedURI": "trusted-types-sink",
+            "disposition": "report",
+            "sample": "HTMLIFrameElement srcdoc|<p>frame</p>"
+          },
+          {
+            "effectiveDirective": "require-trusted-types-for",
+            "blockedURI": "trusted-types-sink",
+            "disposition": "report",
+            "sample": "HTMLEmbedElement src|/embed"
+          },
+          {
+            "effectiveDirective": "require-trusted-types-for",
+            "blockedURI": "trusted-types-sink",
+            "disposition": "report",
+            "sample": "HTMLObjectElement data|/object"
+          },
+          {
+            "effectiveDirective": "require-trusted-types-for",
+            "blockedURI": "trusted-types-sink",
+            "disposition": "report",
+            "sample": "DOMParser parseFromString|<b>parse</b>"
+          },
+          {
+            "effectiveDirective": "require-trusted-types-for",
+            "blockedURI": "trusted-types-sink",
+            "disposition": "report",
+            "sample": "Range createContextualFragment|<b>range</b>"
+          }
+        ]
+      }
+    },
+    {
+      "id": "sink-default",
+      "result": {
+        "rows": [
+          [
+            "innerHTML",
+            {
+              "ok": true,
+              "value": "<b>X</b>"
+            }
+          ],
+          [
+            "outerHTML",
+            {
+              "ok": true,
+              "value": "<b>Y</b>"
+            }
+          ],
+          [
+            "insertAdjacentHTML",
+            {
+              "ok": true,
+              "value": "<b>Y</b><i>Z</i>"
+            }
+          ],
+          [
+            "script.text",
+            {
+              "ok": true,
+              "value": "void 0"
+            }
+          ],
+          [
+            "script.textContent",
+            {
+              "ok": true,
+              "value": "void 1"
+            }
+          ],
+          [
+            "script.innerText",
+            {
+              "ok": true,
+              "value": "void 2"
+            }
+          ],
+          [
+            "script.src",
+            {
+              "ok": true,
+              "value": "/script.js"
+            }
+          ],
+          [
+            "setAttribute.src",
+            {
+              "ok": true,
+              "value": "/attr.js"
+            }
+          ],
+          [
+            "setAttribute.onclick",
+            {
+              "ok": true,
+              "value": "void 3"
+            }
+          ],
+          [
+            "iframe.srcdoc",
+            {
+              "ok": true,
+              "value": "<p>frame</p>"
+            }
+          ],
+          [
+            "embed.src",
+            {
+              "ok": true,
+              "value": "/embed"
+            }
+          ],
+          [
+            "object.data",
+            {
+              "ok": true,
+              "value": "/object"
+            }
+          ],
+          [
+            "DOMParser",
+            {
+              "ok": true,
+              "value": "<b>parse</b>"
+            }
+          ],
+          [
+            "Range",
+            {
+              "ok": true,
+              "value": "range"
+            }
+          ],
+          [
+            "typed-innerHTML",
+            {
+              "ok": true,
+              "value": "<em>typed</em>"
+            }
+          ]
+        ],
+        "trace": [
+          [
+            "createHTML",
+            "<b>X</b>",
+            [
+              "TrustedHTML",
+              "Element innerHTML"
+            ]
+          ],
+          [
+            "createHTML",
+            "<b>Y</b>",
+            [
+              "TrustedHTML",
+              "Element outerHTML"
+            ]
+          ],
+          [
+            "createHTML",
+            "<i>Z</i>",
+            [
+              "TrustedHTML",
+              "Element insertAdjacentHTML"
+            ]
+          ],
+          [
+            "createScript",
+            "void 0",
+            [
+              "TrustedScript",
+              "HTMLScriptElement text"
+            ]
+          ],
+          [
+            "createScript",
+            "void 1",
+            [
+              "TrustedScript",
+              "HTMLScriptElement textContent"
+            ]
+          ],
+          [
+            "createScript",
+            "void 2",
+            [
+              "TrustedScript",
+              "HTMLScriptElement innerText"
+            ]
+          ],
+          [
+            "createScriptURL",
+            "/script.js",
+            [
+              "TrustedScriptURL",
+              "HTMLScriptElement src"
+            ]
+          ],
+          [
+            "createScriptURL",
+            "/attr.js",
+            [
+              "TrustedScriptURL",
+              "HTMLScriptElement src"
+            ]
+          ],
+          [
+            "createScript",
+            "void 3",
+            [
+              "TrustedScript",
+              "Element onclick"
+            ]
+          ],
+          [
+            "createHTML",
+            "<p>frame</p>",
+            [
+              "TrustedHTML",
+              "HTMLIFrameElement srcdoc"
+            ]
+          ],
+          [
+            "createScriptURL",
+            "/embed",
+            [
+              "TrustedScriptURL",
+              "HTMLEmbedElement src"
+            ]
+          ],
+          [
+            "createScriptURL",
+            "/object",
+            [
+              "TrustedScriptURL",
+              "HTMLObjectElement data"
+            ]
+          ],
+          [
+            "createHTML",
+            "<b>parse</b>",
+            [
+              "TrustedHTML",
+              "DOMParser parseFromString"
+            ]
+          ],
+          [
+            "createHTML",
+            "<b>range</b>",
+            [
+              "TrustedHTML",
+              "Range createContextualFragment"
+            ]
+          ]
+        ],
+        "violations": []
+      }
+    },
+    {
+      "id": "sink-default-null",
+      "result": {
+        "rows": [
+          [
+            "innerHTML",
+            {
+              "error": "TypeError",
+              "message": "Failed to set the 'innerHTML' property on 'Element': This document requires 'TrustedHTML' assignment and the 'default' policy failed to execute."
+            }
+          ],
+          [
+            "outerHTML",
+            {
+              "error": "TypeError",
+              "message": "Failed to set the 'outerHTML' property on 'Element': This document requires 'TrustedHTML' assignment and the 'default' policy failed to execute."
+            }
+          ],
+          [
+            "insertAdjacentHTML",
+            {
+              "error": "TypeError",
+              "message": "Failed to execute 'insertAdjacentHTML' on 'Element': This document requires 'TrustedHTML' assignment and the 'default' policy failed to execute."
+            }
+          ],
+          [
+            "script.text",
+            {
+              "error": "TypeError",
+              "message": "Failed to set the 'text' property on 'HTMLScriptElement': This document requires 'TrustedScript' assignment and the 'default' policy failed to execute."
+            }
+          ],
+          [
+            "script.textContent",
+            {
+              "error": "TypeError",
+              "message": "Failed to set the 'textContent' property on 'HTMLScriptElement': This document requires 'TrustedScript' assignment and the 'default' policy failed to execute."
+            }
+          ],
+          [
+            "script.innerText",
+            {
+              "error": "TypeError",
+              "message": "Failed to set the 'innerText' property on 'HTMLScriptElement': This document requires 'TrustedScript' assignment and the 'default' policy failed to execute."
+            }
+          ],
+          [
+            "script.src",
+            {
+              "error": "TypeError",
+              "message": "Failed to set the 'src' property on 'HTMLScriptElement': This document requires 'TrustedScriptURL' assignment and the 'default' policy failed to execute."
+            }
+          ],
+          [
+            "setAttribute.src",
+            {
+              "error": "TypeError",
+              "message": "Failed to execute 'setAttribute' on 'Element': This document requires 'TrustedScriptURL' assignment and the 'default' policy failed to execute."
+            }
+          ],
+          [
+            "setAttribute.onclick",
+            {
+              "error": "TypeError",
+              "message": "Failed to execute 'setAttribute' on 'Element': This document requires 'TrustedScript' assignment and the 'default' policy failed to execute."
+            }
+          ],
+          [
+            "iframe.srcdoc",
+            {
+              "error": "TypeError",
+              "message": "Failed to set the 'srcdoc' property on 'HTMLIFrameElement': This document requires 'TrustedHTML' assignment and the 'default' policy failed to execute."
+            }
+          ],
+          [
+            "embed.src",
+            {
+              "error": "TypeError",
+              "message": "Failed to set the 'src' property on 'HTMLEmbedElement': This document requires 'TrustedScriptURL' assignment and the 'default' policy failed to execute."
+            }
+          ],
+          [
+            "object.data",
+            {
+              "error": "TypeError",
+              "message": "Failed to set the 'data' property on 'HTMLObjectElement': This document requires 'TrustedScriptURL' assignment and the 'default' policy failed to execute."
+            }
+          ],
+          [
+            "DOMParser",
+            {
+              "error": "TypeError",
+              "message": "Failed to execute 'parseFromString' on 'DOMParser': This document requires 'TrustedHTML' assignment and the 'default' policy failed to execute."
+            }
+          ],
+          [
+            "Range",
+            {
+              "error": "TypeError",
+              "message": "Failed to execute 'createContextualFragment' on 'Range': This document requires 'TrustedHTML' assignment and the 'default' policy failed to execute."
+            }
+          ],
+          [
+            "typed-innerHTML",
+            {
+              "ok": true,
+              "value": "<em>typed</em>"
+            }
+          ]
+        ],
+        "trace": [
+          [
+            "createHTML",
+            "<b>X</b>",
+            [
+              "TrustedHTML",
+              "Element innerHTML"
+            ]
+          ],
+          [
+            "createHTML",
+            "<b>Y</b>",
+            [
+              "TrustedHTML",
+              "Element outerHTML"
+            ]
+          ],
+          [
+            "createHTML",
+            "<i>Z</i>",
+            [
+              "TrustedHTML",
+              "Element insertAdjacentHTML"
+            ]
+          ],
+          [
+            "createScript",
+            "void 0",
+            [
+              "TrustedScript",
+              "HTMLScriptElement text"
+            ]
+          ],
+          [
+            "createScript",
+            "void 1",
+            [
+              "TrustedScript",
+              "HTMLScriptElement textContent"
+            ]
+          ],
+          [
+            "createScript",
+            "void 2",
+            [
+              "TrustedScript",
+              "HTMLScriptElement innerText"
+            ]
+          ],
+          [
+            "createScriptURL",
+            "/script.js",
+            [
+              "TrustedScriptURL",
+              "HTMLScriptElement src"
+            ]
+          ],
+          [
+            "createScriptURL",
+            "/attr.js",
+            [
+              "TrustedScriptURL",
+              "HTMLScriptElement src"
+            ]
+          ],
+          [
+            "createScript",
+            "void 3",
+            [
+              "TrustedScript",
+              "Element onclick"
+            ]
+          ],
+          [
+            "createHTML",
+            "<p>frame</p>",
+            [
+              "TrustedHTML",
+              "HTMLIFrameElement srcdoc"
+            ]
+          ],
+          [
+            "createScriptURL",
+            "/embed",
+            [
+              "TrustedScriptURL",
+              "HTMLEmbedElement src"
+            ]
+          ],
+          [
+            "createScriptURL",
+            "/object",
+            [
+              "TrustedScriptURL",
+              "HTMLObjectElement data"
+            ]
+          ],
+          [
+            "createHTML",
+            "<b>parse</b>",
+            [
+              "TrustedHTML",
+              "DOMParser parseFromString"
+            ]
+          ],
+          [
+            "createHTML",
+            "<b>range</b>",
+            [
+              "TrustedHTML",
+              "Range createContextualFragment"
+            ]
+          ]
+        ],
+        "violations": [
+          {
+            "effectiveDirective": "require-trusted-types-for",
+            "blockedURI": "trusted-types-sink",
+            "disposition": "enforce",
+            "sample": "Element innerHTML|<b>X</b>"
+          },
+          {
+            "effectiveDirective": "require-trusted-types-for",
+            "blockedURI": "trusted-types-sink",
+            "disposition": "enforce",
+            "sample": "Element outerHTML|<b>Y</b>"
+          },
+          {
+            "effectiveDirective": "require-trusted-types-for",
+            "blockedURI": "trusted-types-sink",
+            "disposition": "enforce",
+            "sample": "Element insertAdjacentHTML|<i>Z</i>"
+          },
+          {
+            "effectiveDirective": "require-trusted-types-for",
+            "blockedURI": "trusted-types-sink",
+            "disposition": "enforce",
+            "sample": "HTMLScriptElement text|void 0"
+          },
+          {
+            "effectiveDirective": "require-trusted-types-for",
+            "blockedURI": "trusted-types-sink",
+            "disposition": "enforce",
+            "sample": "HTMLScriptElement textContent|void 1"
+          },
+          {
+            "effectiveDirective": "require-trusted-types-for",
+            "blockedURI": "trusted-types-sink",
+            "disposition": "enforce",
+            "sample": "HTMLScriptElement innerText|void 2"
+          },
+          {
+            "effectiveDirective": "require-trusted-types-for",
+            "blockedURI": "trusted-types-sink",
+            "disposition": "enforce",
+            "sample": "HTMLScriptElement src|/script.js"
+          },
+          {
+            "effectiveDirective": "require-trusted-types-for",
+            "blockedURI": "trusted-types-sink",
+            "disposition": "enforce",
+            "sample": "HTMLScriptElement src|/attr.js"
+          },
+          {
+            "effectiveDirective": "require-trusted-types-for",
+            "blockedURI": "trusted-types-sink",
+            "disposition": "enforce",
+            "sample": "Element onclick|void 3"
+          },
+          {
+            "effectiveDirective": "require-trusted-types-for",
+            "blockedURI": "trusted-types-sink",
+            "disposition": "enforce",
+            "sample": "HTMLIFrameElement srcdoc|<p>frame</p>"
+          },
+          {
+            "effectiveDirective": "require-trusted-types-for",
+            "blockedURI": "trusted-types-sink",
+            "disposition": "enforce",
+            "sample": "HTMLEmbedElement src|/embed"
+          },
+          {
+            "effectiveDirective": "require-trusted-types-for",
+            "blockedURI": "trusted-types-sink",
+            "disposition": "enforce",
+            "sample": "HTMLObjectElement data|/object"
+          },
+          {
+            "effectiveDirective": "require-trusted-types-for",
+            "blockedURI": "trusted-types-sink",
+            "disposition": "enforce",
+            "sample": "DOMParser parseFromString|<b>parse</b>"
+          },
+          {
+            "effectiveDirective": "require-trusted-types-for",
+            "blockedURI": "trusted-types-sink",
+            "disposition": "enforce",
+            "sample": "Range createContextualFragment|<b>range</b>"
+          }
+        ]
+      }
+    }
+  ]
+}

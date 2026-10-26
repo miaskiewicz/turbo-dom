@@ -1,0 +1,5602 @@
+{
+  "browser": "Chrome/156.0.8078.47",
+  "v8": "15.6.75.19",
+  "recordedAt": "2026-10-25T11:31:48.721Z",
+  "fixture": "css_selector_admission_probe.js",
+  "probeSha256": "03171004337de098006412c008437dd08b47fab7d801e44dcad146809311b64f",
+  "effectiveExtensionFlags": [
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages"
+  ],
+  "result": [
+    {
+      "selector": ":active",
+      "parsed": [
+        ".p",
+        ":active",
+        ".q"
+      ],
+      "inserted": ":active",
+      "list": ".target, :active",
+      "assigned": ":active",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":any-link",
+      "parsed": [
+        ".p",
+        ":any-link",
+        ".q"
+      ],
+      "inserted": ":any-link",
+      "list": ".target, :any-link",
+      "assigned": ":any-link",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":autofill",
+      "parsed": [
+        ".p",
+        ":autofill",
+        ".q"
+      ],
+      "inserted": ":autofill",
+      "list": ".target, :autofill",
+      "assigned": ":autofill",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":blank",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": ":buffering",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": ":checked",
+      "parsed": [
+        ".p",
+        ":checked",
+        ".q"
+      ],
+      "inserted": ":checked",
+      "list": ".target, :checked",
+      "assigned": ":checked",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":closed",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": ":current",
+      "parsed": [
+        ".p",
+        ":current",
+        ".q"
+      ],
+      "inserted": ":current",
+      "list": ".target, :current",
+      "assigned": ":current",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":default",
+      "parsed": [
+        ".p",
+        ":default",
+        ".q"
+      ],
+      "inserted": ":default",
+      "list": ".target, :default",
+      "assigned": ":default",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":defined",
+      "parsed": [
+        ".p",
+        ":defined",
+        ".q"
+      ],
+      "inserted": ":defined",
+      "list": ".target, :defined",
+      "assigned": ":defined",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":dir(rtl)",
+      "parsed": [
+        ".p",
+        ":dir(rtl)",
+        ".q"
+      ],
+      "inserted": ":dir(rtl)",
+      "list": ".target, :dir(rtl)",
+      "assigned": ":dir(rtl)",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":disabled",
+      "parsed": [
+        ".p",
+        ":disabled",
+        ".q"
+      ],
+      "inserted": ":disabled",
+      "list": ".target, :disabled",
+      "assigned": ":disabled",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":empty",
+      "parsed": [
+        ".p",
+        ":empty",
+        ".q"
+      ],
+      "inserted": ":empty",
+      "list": ".target, :empty",
+      "assigned": ":empty",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":enabled",
+      "parsed": [
+        ".p",
+        ":enabled",
+        ".q"
+      ],
+      "inserted": ":enabled",
+      "list": ".target, :enabled",
+      "assigned": ":enabled",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":first",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": ":first-child",
+      "parsed": [
+        ".p",
+        ":first-child",
+        ".q"
+      ],
+      "inserted": ":first-child",
+      "list": ".target, :first-child",
+      "assigned": ":first-child",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":first-of-type",
+      "parsed": [
+        ".p",
+        ":first-of-type",
+        ".q"
+      ],
+      "inserted": ":first-of-type",
+      "list": ".target, :first-of-type",
+      "assigned": ":first-of-type",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":focus",
+      "parsed": [
+        ".p",
+        ":focus",
+        ".q"
+      ],
+      "inserted": ":focus",
+      "list": ".target, :focus",
+      "assigned": ":focus",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":focus-visible",
+      "parsed": [
+        ".p",
+        ":focus-visible",
+        ".q"
+      ],
+      "inserted": ":focus-visible",
+      "list": ".target, :focus-visible",
+      "assigned": ":focus-visible",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":focus-within",
+      "parsed": [
+        ".p",
+        ":focus-within",
+        ".q"
+      ],
+      "inserted": ":focus-within",
+      "list": ".target, :focus-within",
+      "assigned": ":focus-within",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":fullscreen",
+      "parsed": [
+        ".p",
+        ":fullscreen",
+        ".q"
+      ],
+      "inserted": ":fullscreen",
+      "list": ".target, :fullscreen",
+      "assigned": ":fullscreen",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":future",
+      "parsed": [
+        ".p",
+        ":future",
+        ".q"
+      ],
+      "inserted": ":future",
+      "list": ".target, :future",
+      "assigned": ":future",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":has-slotted",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": ":heading",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": ":heading(1)",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": ":host",
+      "parsed": [
+        ".p",
+        ":host",
+        ".q"
+      ],
+      "inserted": ":host",
+      "list": ".target, :host",
+      "assigned": ":host",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":host(.a)",
+      "parsed": [
+        ".p",
+        ":host(.a)",
+        ".q"
+      ],
+      "inserted": ":host(.a)",
+      "list": ".target, :host(.a)",
+      "assigned": ":host(.a)",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":host-context(.a)",
+      "parsed": [
+        ".p",
+        ":host-context(.a)",
+        ".q"
+      ],
+      "inserted": ":host-context(.a)",
+      "list": ".target, :host-context(.a)",
+      "assigned": ":host-context(.a)",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":hover",
+      "parsed": [
+        ".p",
+        ":hover",
+        ".q"
+      ],
+      "inserted": ":hover",
+      "list": ".target, :hover",
+      "assigned": ":hover",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":in-range",
+      "parsed": [
+        ".p",
+        ":in-range",
+        ".q"
+      ],
+      "inserted": ":in-range",
+      "list": ".target, :in-range",
+      "assigned": ":in-range",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":indeterminate",
+      "parsed": [
+        ".p",
+        ":indeterminate",
+        ".q"
+      ],
+      "inserted": ":indeterminate",
+      "list": ".target, :indeterminate",
+      "assigned": ":indeterminate",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":interest-source",
+      "parsed": [
+        ".p",
+        ":interest-source",
+        ".q"
+      ],
+      "inserted": ":interest-source",
+      "list": ".target, :interest-source",
+      "assigned": ":interest-source",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":interest-target",
+      "parsed": [
+        ".p",
+        ":interest-target",
+        ".q"
+      ],
+      "inserted": ":interest-target",
+      "list": ".target, :interest-target",
+      "assigned": ":interest-target",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":invalid",
+      "parsed": [
+        ".p",
+        ":invalid",
+        ".q"
+      ],
+      "inserted": ":invalid",
+      "list": ".target, :invalid",
+      "assigned": ":invalid",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":is(.a)",
+      "parsed": [
+        ".p",
+        ":is(.a)",
+        ".q"
+      ],
+      "inserted": ":is(.a)",
+      "list": ".target, :is(.a)",
+      "assigned": ":is(.a)",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":lang(en)",
+      "parsed": [
+        ".p",
+        ":lang(en)",
+        ".q"
+      ],
+      "inserted": ":lang(en)",
+      "list": ".target, :lang(en)",
+      "assigned": ":lang(en)",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":last-child",
+      "parsed": [
+        ".p",
+        ":last-child",
+        ".q"
+      ],
+      "inserted": ":last-child",
+      "list": ".target, :last-child",
+      "assigned": ":last-child",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":last-of-type",
+      "parsed": [
+        ".p",
+        ":last-of-type",
+        ".q"
+      ],
+      "inserted": ":last-of-type",
+      "list": ".target, :last-of-type",
+      "assigned": ":last-of-type",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":left",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": ":link",
+      "parsed": [
+        ".p",
+        ":link",
+        ".q"
+      ],
+      "inserted": ":link",
+      "list": ".target, :link",
+      "assigned": ":link",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":local-link",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": ":modal",
+      "parsed": [
+        ".p",
+        ":modal",
+        ".q"
+      ],
+      "inserted": ":modal",
+      "list": ".target, :modal",
+      "assigned": ":modal",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":muted",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": ":not(.a)",
+      "parsed": [
+        ".p",
+        ":not(.a)",
+        ".q"
+      ],
+      "inserted": ":not(.a)",
+      "list": ".target, :not(.a)",
+      "assigned": ":not(.a)",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":nth-child(2n+1)",
+      "parsed": [
+        ".p",
+        ":nth-child(2n+1)",
+        ".q"
+      ],
+      "inserted": ":nth-child(2n+1)",
+      "list": ".target, :nth-child(2n+1)",
+      "assigned": ":nth-child(2n+1)",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":nth-child(2 of .a)",
+      "parsed": [
+        ".p",
+        ":nth-child(2 of .a)",
+        ".q"
+      ],
+      "inserted": ":nth-child(2 of .a)",
+      "list": ".target, :nth-child(2 of .a)",
+      "assigned": ":nth-child(2 of .a)",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":nth-col(1)",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": ":nth-last-child(1)",
+      "parsed": [
+        ".p",
+        ":nth-last-child(1)",
+        ".q"
+      ],
+      "inserted": ":nth-last-child(1)",
+      "list": ".target, :nth-last-child(1)",
+      "assigned": ":nth-last-child(1)",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":nth-last-col(1)",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": ":nth-last-of-type(1)",
+      "parsed": [
+        ".p",
+        ":nth-last-of-type(1)",
+        ".q"
+      ],
+      "inserted": ":nth-last-of-type(1)",
+      "list": ".target, :nth-last-of-type(1)",
+      "assigned": ":nth-last-of-type(1)",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":nth-of-type(1)",
+      "parsed": [
+        ".p",
+        ":nth-of-type(1)",
+        ".q"
+      ],
+      "inserted": ":nth-of-type(1)",
+      "list": ".target, :nth-of-type(1)",
+      "assigned": ":nth-of-type(1)",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":only-child",
+      "parsed": [
+        ".p",
+        ":only-child",
+        ".q"
+      ],
+      "inserted": ":only-child",
+      "list": ".target, :only-child",
+      "assigned": ":only-child",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":only-of-type",
+      "parsed": [
+        ".p",
+        ":only-of-type",
+        ".q"
+      ],
+      "inserted": ":only-of-type",
+      "list": ".target, :only-of-type",
+      "assigned": ":only-of-type",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":open",
+      "parsed": [
+        ".p",
+        ":open",
+        ".q"
+      ],
+      "inserted": ":open",
+      "list": ".target, :open",
+      "assigned": ":open",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":optional",
+      "parsed": [
+        ".p",
+        ":optional",
+        ".q"
+      ],
+      "inserted": ":optional",
+      "list": ".target, :optional",
+      "assigned": ":optional",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":out-of-range",
+      "parsed": [
+        ".p",
+        ":out-of-range",
+        ".q"
+      ],
+      "inserted": ":out-of-range",
+      "list": ".target, :out-of-range",
+      "assigned": ":out-of-range",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":past",
+      "parsed": [
+        ".p",
+        ":past",
+        ".q"
+      ],
+      "inserted": ":past",
+      "list": ".target, :past",
+      "assigned": ":past",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":paused",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": ":picture-in-picture",
+      "parsed": [
+        ".p",
+        ":picture-in-picture",
+        ".q"
+      ],
+      "inserted": ":picture-in-picture",
+      "list": ".target, :picture-in-picture",
+      "assigned": ":picture-in-picture",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":placeholder-shown",
+      "parsed": [
+        ".p",
+        ":placeholder-shown",
+        ".q"
+      ],
+      "inserted": ":placeholder-shown",
+      "list": ".target, :placeholder-shown",
+      "assigned": ":placeholder-shown",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":playing",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": ":popover-open",
+      "parsed": [
+        ".p",
+        ":popover-open",
+        ".q"
+      ],
+      "inserted": ":popover-open",
+      "list": ".target, :popover-open",
+      "assigned": ":popover-open",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":read-only",
+      "parsed": [
+        ".p",
+        ":read-only",
+        ".q"
+      ],
+      "inserted": ":read-only",
+      "list": ".target, :read-only",
+      "assigned": ":read-only",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":read-write",
+      "parsed": [
+        ".p",
+        ":read-write",
+        ".q"
+      ],
+      "inserted": ":read-write",
+      "list": ".target, :read-write",
+      "assigned": ":read-write",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":required",
+      "parsed": [
+        ".p",
+        ":required",
+        ".q"
+      ],
+      "inserted": ":required",
+      "list": ".target, :required",
+      "assigned": ":required",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":right",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": ":root",
+      "parsed": [
+        ".p",
+        ":root",
+        ".q"
+      ],
+      "inserted": ":root",
+      "list": ".target, :root",
+      "assigned": ":root",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":scope",
+      "parsed": [
+        ".p",
+        ":scope",
+        ".q"
+      ],
+      "inserted": ":scope",
+      "list": ".target, :scope",
+      "assigned": ":scope",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":seeking",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": ":stalled",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": ":state(ready)",
+      "parsed": [
+        ".p",
+        ":state(ready)",
+        ".q"
+      ],
+      "inserted": ":state(ready)",
+      "list": ".target, :state(ready)",
+      "assigned": ":state(ready)",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":target",
+      "parsed": [
+        ".p",
+        ":target",
+        ".q"
+      ],
+      "inserted": ":target",
+      "list": ".target, :target",
+      "assigned": ":target",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":target-current",
+      "parsed": [
+        ".p",
+        ":target-current",
+        ".q"
+      ],
+      "inserted": ":target-current",
+      "list": ".target, :target-current",
+      "assigned": ":target-current",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":target-within",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": ":user-invalid",
+      "parsed": [
+        ".p",
+        ":user-invalid",
+        ".q"
+      ],
+      "inserted": ":user-invalid",
+      "list": ".target, :user-invalid",
+      "assigned": ":user-invalid",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":user-valid",
+      "parsed": [
+        ".p",
+        ":user-valid",
+        ".q"
+      ],
+      "inserted": ":user-valid",
+      "list": ".target, :user-valid",
+      "assigned": ":user-valid",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":valid",
+      "parsed": [
+        ".p",
+        ":valid",
+        ".q"
+      ],
+      "inserted": ":valid",
+      "list": ".target, :valid",
+      "assigned": ":valid",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":visited",
+      "parsed": [
+        ".p",
+        ":visited",
+        ".q"
+      ],
+      "inserted": ":visited",
+      "list": ".target, :visited",
+      "assigned": ":visited",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":volume-locked",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": ":where(.a)",
+      "parsed": [
+        ".p",
+        ":where(.a)",
+        ".q"
+      ],
+      "inserted": ":where(.a)",
+      "list": ".target, :where(.a)",
+      "assigned": ":where(.a)",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":has(.a)",
+      "parsed": [
+        ".p",
+        ":has(.a)",
+        ".q"
+      ],
+      "inserted": ":has(.a)",
+      "list": ".target, :has(.a)",
+      "assigned": ":has(.a)",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":xr-overlay",
+      "parsed": [
+        ".p",
+        ":xr-overlay",
+        ".q"
+      ],
+      "inserted": ":xr-overlay",
+      "list": ".target, :xr-overlay",
+      "assigned": ":xr-overlay",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":active-view-transition",
+      "parsed": [
+        ".p",
+        ":active-view-transition",
+        ".q"
+      ],
+      "inserted": ":active-view-transition",
+      "list": ".target, :active-view-transition",
+      "assigned": ":active-view-transition",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":active-view-transition-type(a)",
+      "parsed": [
+        ".p",
+        ":active-view-transition-type(a)",
+        ".q"
+      ],
+      "inserted": ":active-view-transition-type(a)",
+      "list": ".target, :active-view-transition-type(a)",
+      "assigned": ":active-view-transition-type(a)",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":drop",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": ":focus-ring",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": ":unresolved",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": ":matches(.a)",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": ":any(.a)",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": ":local(.a)",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": ":global(.a)",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": ":local",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": ":global",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": ":horizontal",
+      "parsed": [
+        ".p",
+        ":horizontal",
+        ".q"
+      ],
+      "inserted": ":horizontal",
+      "list": ".target, :horizontal",
+      "assigned": ":horizontal",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":vertical",
+      "parsed": [
+        ".p",
+        ":vertical",
+        ".q"
+      ],
+      "inserted": ":vertical",
+      "list": ".target, :vertical",
+      "assigned": ":vertical",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":decrement",
+      "parsed": [
+        ".p",
+        ":decrement",
+        ".q"
+      ],
+      "inserted": ":decrement",
+      "list": ".target, :decrement",
+      "assigned": ":decrement",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":increment",
+      "parsed": [
+        ".p",
+        ":increment",
+        ".q"
+      ],
+      "inserted": ":increment",
+      "list": ".target, :increment",
+      "assigned": ":increment",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":start",
+      "parsed": [
+        ".p",
+        ":start",
+        ".q"
+      ],
+      "inserted": ":start",
+      "list": ".target, :start",
+      "assigned": ":start",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":end",
+      "parsed": [
+        ".p",
+        ":end",
+        ".q"
+      ],
+      "inserted": ":end",
+      "list": ".target, :end",
+      "assigned": ":end",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":double-button",
+      "parsed": [
+        ".p",
+        ":double-button",
+        ".q"
+      ],
+      "inserted": ":double-button",
+      "list": ".target, :double-button",
+      "assigned": ":double-button",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":single-button",
+      "parsed": [
+        ".p",
+        ":single-button",
+        ".q"
+      ],
+      "inserted": ":single-button",
+      "list": ".target, :single-button",
+      "assigned": ":single-button",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":no-button",
+      "parsed": [
+        ".p",
+        ":no-button",
+        ".q"
+      ],
+      "inserted": ":no-button",
+      "list": ".target, :no-button",
+      "assigned": ":no-button",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":corner-present",
+      "parsed": [
+        ".p",
+        ":corner-present",
+        ".q"
+      ],
+      "inserted": ":corner-present",
+      "list": ".target, :corner-present",
+      "assigned": ":corner-present",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":window-inactive",
+      "parsed": [
+        ".p",
+        ":window-inactive",
+        ".q"
+      ],
+      "inserted": ":window-inactive",
+      "list": ".target, :window-inactive",
+      "assigned": ":window-inactive",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":selection",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": ":placeholder",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": ":before",
+      "parsed": [
+        ".p",
+        "::before",
+        ".q"
+      ],
+      "inserted": "::before",
+      "list": ".target, ::before",
+      "assigned": "::before",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":after",
+      "parsed": [
+        ".p",
+        "::after",
+        ".q"
+      ],
+      "inserted": "::after",
+      "list": ".target, ::after",
+      "assigned": "::after",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":first-line",
+      "parsed": [
+        ".p",
+        "::first-line",
+        ".q"
+      ],
+      "inserted": "::first-line",
+      "list": ".target, ::first-line",
+      "assigned": "::first-line",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":first-letter",
+      "parsed": [
+        ".p",
+        "::first-letter",
+        ".q"
+      ],
+      "inserted": "::first-letter",
+      "list": ".target, ::first-letter",
+      "assigned": "::first-letter",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":marker",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": ":backdrop",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": ":definitely-unknown",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": ":definitely-unknown(.a)",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": ":HOVER",
+      "parsed": [
+        ".p",
+        ":hover",
+        ".q"
+      ],
+      "inserted": ":hover",
+      "list": ".target, :hover",
+      "assigned": ":hover",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":Is(.a)",
+      "parsed": [
+        ".p",
+        ":is(.a)",
+        ".q"
+      ],
+      "inserted": ":is(.a)",
+      "list": ".target, :is(.a)",
+      "assigned": ":is(.a)",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":NTH-CHILD(odd)",
+      "parsed": [
+        ".p",
+        ":nth-child(2n+1)",
+        ".q"
+      ],
+      "inserted": ":nth-child(2n+1)",
+      "list": ".target, :nth-child(2n+1)",
+      "assigned": ":nth-child(2n+1)",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":-webkit-any-link",
+      "parsed": [
+        ".p",
+        ":-webkit-any-link",
+        ".q"
+      ],
+      "inserted": ":-webkit-any-link",
+      "list": ".target, :-webkit-any-link",
+      "assigned": ":-webkit-any-link",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":-webkit-any(.a)",
+      "parsed": [
+        ".p",
+        ":-webkit-any(.a)",
+        ".q"
+      ],
+      "inserted": ":-webkit-any(.a)",
+      "list": ".target, :-webkit-any(.a)",
+      "assigned": ":-webkit-any(.a)",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":-webkit-autofill",
+      "parsed": [
+        ".p",
+        ":-webkit-autofill",
+        ".q"
+      ],
+      "inserted": ":-webkit-autofill",
+      "list": ".target, :-webkit-autofill",
+      "assigned": ":-webkit-autofill",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":-webkit-drag",
+      "parsed": [
+        ".p",
+        ":-webkit-drag",
+        ".q"
+      ],
+      "inserted": ":-webkit-drag",
+      "list": ".target, :-webkit-drag",
+      "assigned": ":-webkit-drag",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":-webkit-full-screen",
+      "parsed": [
+        ".p",
+        ":-webkit-full-screen",
+        ".q"
+      ],
+      "inserted": ":-webkit-full-screen",
+      "list": ".target, :-webkit-full-screen",
+      "assigned": ":-webkit-full-screen",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":-webkit-full-screen-ancestor",
+      "parsed": [
+        ".p",
+        ":-webkit-full-screen-ancestor",
+        ".q"
+      ],
+      "inserted": ":-webkit-full-screen-ancestor",
+      "list": ".target, :-webkit-full-screen-ancestor",
+      "assigned": ":-webkit-full-screen-ancestor",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":-webkit-full-screen-document",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": ":-webkit-full-page-media",
+      "parsed": [
+        ".p",
+        ":-webkit-full-page-media",
+        ".q"
+      ],
+      "inserted": ":-webkit-full-page-media",
+      "list": ".target, :-webkit-full-page-media",
+      "assigned": ":-webkit-full-page-media",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":-webkit-full-screen-controls-hidden",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": ":-webkit-definitely-unknown",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": ":-moz-any-link",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": ":-moz-focusring",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": ":-moz-placeholder",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": ":-moz-read-only",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": ":-ms-input-placeholder",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": ":-internal-autofill-selected",
+      "parsed": [
+        ".p",
+        ":-internal-autofill-selected",
+        ".q"
+      ],
+      "inserted": ":-internal-autofill-selected",
+      "list": ".target, :-internal-autofill-selected",
+      "assigned": ":-internal-autofill-selected",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":-internal-list-box",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": ":-internal-definitely-unknown",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": "::after",
+      "parsed": [
+        ".p",
+        "::after",
+        ".q"
+      ],
+      "inserted": "::after",
+      "list": ".target, ::after",
+      "assigned": "::after",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::before",
+      "parsed": [
+        ".p",
+        "::before",
+        ".q"
+      ],
+      "inserted": "::before",
+      "list": ".target, ::before",
+      "assigned": "::before",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::backdrop",
+      "parsed": [
+        ".p",
+        "::backdrop",
+        ".q"
+      ],
+      "inserted": "::backdrop",
+      "list": ".target, ::backdrop",
+      "assigned": "::backdrop",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::checkmark",
+      "parsed": [
+        ".p",
+        "::checkmark",
+        ".q"
+      ],
+      "inserted": "::checkmark",
+      "list": ".target, ::checkmark",
+      "assigned": "::checkmark",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::column",
+      "parsed": [
+        ".p",
+        "::column",
+        ".q"
+      ],
+      "inserted": "::column",
+      "list": ".target, ::column",
+      "assigned": "::column",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::cue",
+      "parsed": [
+        ".p",
+        "::cue",
+        ".q"
+      ],
+      "inserted": "::cue",
+      "list": ".target, ::cue",
+      "assigned": "::cue",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::cue(.a)",
+      "parsed": [
+        ".p",
+        "::cue(.a)",
+        ".q"
+      ],
+      "inserted": "::cue(.a)",
+      "list": ".target, ::cue(.a)",
+      "assigned": "::cue(.a)",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::cue-region",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": "::details-content",
+      "parsed": [
+        ".p",
+        "::details-content",
+        ".q"
+      ],
+      "inserted": "::details-content",
+      "list": ".target, ::details-content",
+      "assigned": "::details-content",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::file-selector-button",
+      "parsed": [
+        ".p",
+        "::file-selector-button",
+        ".q"
+      ],
+      "inserted": "::file-selector-button",
+      "list": ".target, ::file-selector-button",
+      "assigned": "::file-selector-button",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::first-letter",
+      "parsed": [
+        ".p",
+        "::first-letter",
+        ".q"
+      ],
+      "inserted": "::first-letter",
+      "list": ".target, ::first-letter",
+      "assigned": "::first-letter",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::first-line",
+      "parsed": [
+        ".p",
+        "::first-line",
+        ".q"
+      ],
+      "inserted": "::first-line",
+      "list": ".target, ::first-line",
+      "assigned": "::first-line",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::grammar-error",
+      "parsed": [
+        ".p",
+        "::grammar-error",
+        ".q"
+      ],
+      "inserted": "::grammar-error",
+      "list": ".target, ::grammar-error",
+      "assigned": "::grammar-error",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::highlight(a)",
+      "parsed": [
+        ".p",
+        "::highlight(a)",
+        ".q"
+      ],
+      "inserted": "::highlight(a)",
+      "list": ".target, ::highlight(a)",
+      "assigned": "::highlight(a)",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::interest-hint",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": "::marker",
+      "parsed": [
+        ".p",
+        "::marker",
+        ".q"
+      ],
+      "inserted": "::marker",
+      "list": ".target, ::marker",
+      "assigned": "::marker",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::part(a)",
+      "parsed": [
+        ".p",
+        "::part(a)",
+        ".q"
+      ],
+      "inserted": "::part(a)",
+      "list": ".target, ::part(a)",
+      "assigned": "::part(a)",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::picker(select)",
+      "parsed": [
+        ".p",
+        "::picker(select)",
+        ".q"
+      ],
+      "inserted": "::picker(select)",
+      "list": ".target, ::picker(select)",
+      "assigned": "::picker(select)",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::picker-icon",
+      "parsed": [
+        ".p",
+        "::picker-icon",
+        ".q"
+      ],
+      "inserted": "::picker-icon",
+      "list": ".target, ::picker-icon",
+      "assigned": "::picker-icon",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::placeholder",
+      "parsed": [
+        ".p",
+        "::placeholder",
+        ".q"
+      ],
+      "inserted": "::placeholder",
+      "list": ".target, ::placeholder",
+      "assigned": "::placeholder",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::scroll-button(*)",
+      "parsed": [
+        ".p",
+        "::scroll-button(*)",
+        ".q"
+      ],
+      "inserted": "::scroll-button(*)",
+      "list": ".target, ::scroll-button(*)",
+      "assigned": "::scroll-button(*)",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::scroll-marker",
+      "parsed": [
+        ".p",
+        "::scroll-marker",
+        ".q"
+      ],
+      "inserted": "::scroll-marker",
+      "list": ".target, ::scroll-marker",
+      "assigned": "::scroll-marker",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::scroll-marker-group",
+      "parsed": [
+        ".p",
+        "::scroll-marker-group",
+        ".q"
+      ],
+      "inserted": "::scroll-marker-group",
+      "list": ".target, ::scroll-marker-group",
+      "assigned": "::scroll-marker-group",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::search-text",
+      "parsed": [
+        ".p",
+        "::search-text",
+        ".q"
+      ],
+      "inserted": "::search-text",
+      "list": ".target, ::search-text",
+      "assigned": "::search-text",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::selection",
+      "parsed": [
+        ".p",
+        "::selection",
+        ".q"
+      ],
+      "inserted": "::selection",
+      "list": ".target, ::selection",
+      "assigned": "::selection",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::slotted(*)",
+      "parsed": [
+        ".p",
+        "::slotted(*)",
+        ".q"
+      ],
+      "inserted": "::slotted(*)",
+      "list": ".target, ::slotted(*)",
+      "assigned": "::slotted(*)",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::slotted(.a)",
+      "parsed": [
+        ".p",
+        "::slotted(.a)",
+        ".q"
+      ],
+      "inserted": "::slotted(.a)",
+      "list": ".target, ::slotted(.a)",
+      "assigned": "::slotted(.a)",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::spelling-error",
+      "parsed": [
+        ".p",
+        "::spelling-error",
+        ".q"
+      ],
+      "inserted": "::spelling-error",
+      "list": ".target, ::spelling-error",
+      "assigned": "::spelling-error",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::target-text",
+      "parsed": [
+        ".p",
+        "::target-text",
+        ".q"
+      ],
+      "inserted": "::target-text",
+      "list": ".target, ::target-text",
+      "assigned": "::target-text",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::view-transition",
+      "parsed": [
+        ".p",
+        "::view-transition",
+        ".q"
+      ],
+      "inserted": "::view-transition",
+      "list": ".target, ::view-transition",
+      "assigned": "::view-transition",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::view-transition-group(*)",
+      "parsed": [
+        ".p",
+        "::view-transition-group(*)",
+        ".q"
+      ],
+      "inserted": "::view-transition-group(*)",
+      "list": ".target, ::view-transition-group(*)",
+      "assigned": "::view-transition-group(*)",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::view-transition-image-pair(*)",
+      "parsed": [
+        ".p",
+        "::view-transition-image-pair(*)",
+        ".q"
+      ],
+      "inserted": "::view-transition-image-pair(*)",
+      "list": ".target, ::view-transition-image-pair(*)",
+      "assigned": "::view-transition-image-pair(*)",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::view-transition-new(*)",
+      "parsed": [
+        ".p",
+        "::view-transition-new(*)",
+        ".q"
+      ],
+      "inserted": "::view-transition-new(*)",
+      "list": ".target, ::view-transition-new(*)",
+      "assigned": "::view-transition-new(*)",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::view-transition-old(*)",
+      "parsed": [
+        ".p",
+        "::view-transition-old(*)",
+        ".q"
+      ],
+      "inserted": "::view-transition-old(*)",
+      "list": ".target, ::view-transition-old(*)",
+      "assigned": "::view-transition-old(*)",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::view-transition-group-children(*)",
+      "parsed": [
+        ".p",
+        "::view-transition-group-children(*)",
+        ".q"
+      ],
+      "inserted": "::view-transition-group-children(*)",
+      "list": ".target, ::view-transition-group-children(*)",
+      "assigned": "::view-transition-group-children(*)",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::definitely-unknown",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": "::definitely-unknown(a)",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": "::BEFORE",
+      "parsed": [
+        ".p",
+        "::before",
+        ".q"
+      ],
+      "inserted": "::before",
+      "list": ".target, ::before",
+      "assigned": "::before",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::Part(a)",
+      "parsed": [
+        ".p",
+        "::part(a)",
+        ".q"
+      ],
+      "inserted": "::part(a)",
+      "list": ".target, ::part(a)",
+      "assigned": "::part(a)",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::-webkit-scrollbar",
+      "parsed": [
+        ".p",
+        "::-webkit-scrollbar",
+        ".q"
+      ],
+      "inserted": "::-webkit-scrollbar",
+      "list": ".target, ::-webkit-scrollbar",
+      "assigned": "::-webkit-scrollbar",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::-webkit-scrollbar-button",
+      "parsed": [
+        ".p",
+        "::-webkit-scrollbar-button",
+        ".q"
+      ],
+      "inserted": "::-webkit-scrollbar-button",
+      "list": ".target, ::-webkit-scrollbar-button",
+      "assigned": "::-webkit-scrollbar-button",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::-webkit-scrollbar-corner",
+      "parsed": [
+        ".p",
+        "::-webkit-scrollbar-corner",
+        ".q"
+      ],
+      "inserted": "::-webkit-scrollbar-corner",
+      "list": ".target, ::-webkit-scrollbar-corner",
+      "assigned": "::-webkit-scrollbar-corner",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::-webkit-scrollbar-thumb",
+      "parsed": [
+        ".p",
+        "::-webkit-scrollbar-thumb",
+        ".q"
+      ],
+      "inserted": "::-webkit-scrollbar-thumb",
+      "list": ".target, ::-webkit-scrollbar-thumb",
+      "assigned": "::-webkit-scrollbar-thumb",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::-webkit-scrollbar-track",
+      "parsed": [
+        ".p",
+        "::-webkit-scrollbar-track",
+        ".q"
+      ],
+      "inserted": "::-webkit-scrollbar-track",
+      "list": ".target, ::-webkit-scrollbar-track",
+      "assigned": "::-webkit-scrollbar-track",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::-webkit-scrollbar-track-piece",
+      "parsed": [
+        ".p",
+        "::-webkit-scrollbar-track-piece",
+        ".q"
+      ],
+      "inserted": "::-webkit-scrollbar-track-piece",
+      "list": ".target, ::-webkit-scrollbar-track-piece",
+      "assigned": "::-webkit-scrollbar-track-piece",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::-webkit-resizer",
+      "parsed": [
+        ".p",
+        "::-webkit-resizer",
+        ".q"
+      ],
+      "inserted": "::-webkit-resizer",
+      "list": ".target, ::-webkit-resizer",
+      "assigned": "::-webkit-resizer",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::-webkit-input-placeholder",
+      "parsed": [
+        ".p",
+        "::-webkit-input-placeholder",
+        ".q"
+      ],
+      "inserted": "::-webkit-input-placeholder",
+      "list": ".target, ::-webkit-input-placeholder",
+      "assigned": "::-webkit-input-placeholder",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::-webkit-file-upload-button",
+      "parsed": [
+        ".p",
+        "::-webkit-file-upload-button",
+        ".q"
+      ],
+      "inserted": "::-webkit-file-upload-button",
+      "list": ".target, ::-webkit-file-upload-button",
+      "assigned": "::-webkit-file-upload-button",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::-webkit-search-cancel-button",
+      "parsed": [
+        ".p",
+        "::-webkit-search-cancel-button",
+        ".q"
+      ],
+      "inserted": "::-webkit-search-cancel-button",
+      "list": ".target, ::-webkit-search-cancel-button",
+      "assigned": "::-webkit-search-cancel-button",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::-webkit-inner-spin-button",
+      "parsed": [
+        ".p",
+        "::-webkit-inner-spin-button",
+        ".q"
+      ],
+      "inserted": "::-webkit-inner-spin-button",
+      "list": ".target, ::-webkit-inner-spin-button",
+      "assigned": "::-webkit-inner-spin-button",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::-webkit-details-marker",
+      "parsed": [
+        ".p",
+        "::-webkit-details-marker",
+        ".q"
+      ],
+      "inserted": "::-webkit-details-marker",
+      "list": ".target, ::-webkit-details-marker",
+      "assigned": "::-webkit-details-marker",
+      "supports": false,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::-webkit-progress-bar",
+      "parsed": [
+        ".p",
+        "::-webkit-progress-bar",
+        ".q"
+      ],
+      "inserted": "::-webkit-progress-bar",
+      "list": ".target, ::-webkit-progress-bar",
+      "assigned": "::-webkit-progress-bar",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::-webkit-slider-thumb",
+      "parsed": [
+        ".p",
+        "::-webkit-slider-thumb",
+        ".q"
+      ],
+      "inserted": "::-webkit-slider-thumb",
+      "list": ".target, ::-webkit-slider-thumb",
+      "assigned": "::-webkit-slider-thumb",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::-webkit-meter-bar",
+      "parsed": [
+        ".p",
+        "::-webkit-meter-bar",
+        ".q"
+      ],
+      "inserted": "::-webkit-meter-bar",
+      "list": ".target, ::-webkit-meter-bar",
+      "assigned": "::-webkit-meter-bar",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::-webkit-backdrop",
+      "parsed": [
+        ".p",
+        "::-webkit-backdrop",
+        ".q"
+      ],
+      "inserted": "::-webkit-backdrop",
+      "list": ".target, ::-webkit-backdrop",
+      "assigned": "::-webkit-backdrop",
+      "supports": false,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::-webkit-definitely-unknown",
+      "parsed": [
+        ".p",
+        "::-webkit-definitely-unknown",
+        ".q"
+      ],
+      "inserted": "::-webkit-definitely-unknown",
+      "list": ".target, ::-webkit-definitely-unknown",
+      "assigned": "::-webkit-definitely-unknown",
+      "supports": false,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::-webkit-definitely-unknown(a)",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": "::-moz-selection",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": "::-moz-placeholder",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": "::-ms-clear",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": "::-internal-media-controls-overlay-cast-button",
+      "parsed": [
+        ".p",
+        "::-internal-media-controls-overlay-cast-button",
+        ".q"
+      ],
+      "inserted": "::-internal-media-controls-overlay-cast-button",
+      "list": ".target, ::-internal-media-controls-overlay-cast-button",
+      "assigned": "::-internal-media-controls-overlay-cast-button",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::-internal-definitely-unknown",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": "::-webkit-slider-runnable-track",
+      "parsed": [
+        ".p",
+        "::-webkit-slider-runnable-track",
+        ".q"
+      ],
+      "inserted": "::-webkit-slider-runnable-track",
+      "list": ".target, ::-webkit-slider-runnable-track",
+      "assigned": "::-webkit-slider-runnable-track",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::-webkit-progress-value",
+      "parsed": [
+        ".p",
+        "::-webkit-progress-value",
+        ".q"
+      ],
+      "inserted": "::-webkit-progress-value",
+      "list": ".target, ::-webkit-progress-value",
+      "assigned": "::-webkit-progress-value",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::-webkit-progress-inner-element",
+      "parsed": [
+        ".p",
+        "::-webkit-progress-inner-element",
+        ".q"
+      ],
+      "inserted": "::-webkit-progress-inner-element",
+      "list": ".target, ::-webkit-progress-inner-element",
+      "assigned": "::-webkit-progress-inner-element",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::-webkit-meter-optimum-value",
+      "parsed": [
+        ".p",
+        "::-webkit-meter-optimum-value",
+        ".q"
+      ],
+      "inserted": "::-webkit-meter-optimum-value",
+      "list": ".target, ::-webkit-meter-optimum-value",
+      "assigned": "::-webkit-meter-optimum-value",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::-webkit-meter-suboptimum-value",
+      "parsed": [
+        ".p",
+        "::-webkit-meter-suboptimum-value",
+        ".q"
+      ],
+      "inserted": "::-webkit-meter-suboptimum-value",
+      "list": ".target, ::-webkit-meter-suboptimum-value",
+      "assigned": "::-webkit-meter-suboptimum-value",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::-webkit-meter-even-less-good-value",
+      "parsed": [
+        ".p",
+        "::-webkit-meter-even-less-good-value",
+        ".q"
+      ],
+      "inserted": "::-webkit-meter-even-less-good-value",
+      "list": ".target, ::-webkit-meter-even-less-good-value",
+      "assigned": "::-webkit-meter-even-less-good-value",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::-webkit-search-decoration",
+      "parsed": [
+        ".p",
+        "::-webkit-search-decoration",
+        ".q"
+      ],
+      "inserted": "::-webkit-search-decoration",
+      "list": ".target, ::-webkit-search-decoration",
+      "assigned": "::-webkit-search-decoration",
+      "supports": false,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::-webkit-search-results-button",
+      "parsed": [
+        ".p",
+        "::-webkit-search-results-button",
+        ".q"
+      ],
+      "inserted": "::-webkit-search-results-button",
+      "list": ".target, ::-webkit-search-results-button",
+      "assigned": "::-webkit-search-results-button",
+      "supports": false,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::-webkit-search-results-decoration",
+      "parsed": [
+        ".p",
+        "::-webkit-search-results-decoration",
+        ".q"
+      ],
+      "inserted": "::-webkit-search-results-decoration",
+      "list": ".target, ::-webkit-search-results-decoration",
+      "assigned": "::-webkit-search-results-decoration",
+      "supports": false,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::-webkit-calendar-picker-indicator",
+      "parsed": [
+        ".p",
+        "::-webkit-calendar-picker-indicator",
+        ".q"
+      ],
+      "inserted": "::-webkit-calendar-picker-indicator",
+      "list": ".target, ::-webkit-calendar-picker-indicator",
+      "assigned": "::-webkit-calendar-picker-indicator",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::-webkit-clear-button",
+      "parsed": [
+        ".p",
+        "::-webkit-clear-button",
+        ".q"
+      ],
+      "inserted": "::-webkit-clear-button",
+      "list": ".target, ::-webkit-clear-button",
+      "assigned": "::-webkit-clear-button",
+      "supports": false,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::-webkit-datetime-edit",
+      "parsed": [
+        ".p",
+        "::-webkit-datetime-edit",
+        ".q"
+      ],
+      "inserted": "::-webkit-datetime-edit",
+      "list": ".target, ::-webkit-datetime-edit",
+      "assigned": "::-webkit-datetime-edit",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::-webkit-datetime-edit-fields-wrapper",
+      "parsed": [
+        ".p",
+        "::-webkit-datetime-edit-fields-wrapper",
+        ".q"
+      ],
+      "inserted": "::-webkit-datetime-edit-fields-wrapper",
+      "list": ".target, ::-webkit-datetime-edit-fields-wrapper",
+      "assigned": "::-webkit-datetime-edit-fields-wrapper",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::-webkit-datetime-edit-text",
+      "parsed": [
+        ".p",
+        "::-webkit-datetime-edit-text",
+        ".q"
+      ],
+      "inserted": "::-webkit-datetime-edit-text",
+      "list": ".target, ::-webkit-datetime-edit-text",
+      "assigned": "::-webkit-datetime-edit-text",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::-webkit-datetime-edit-year-field",
+      "parsed": [
+        ".p",
+        "::-webkit-datetime-edit-year-field",
+        ".q"
+      ],
+      "inserted": "::-webkit-datetime-edit-year-field",
+      "list": ".target, ::-webkit-datetime-edit-year-field",
+      "assigned": "::-webkit-datetime-edit-year-field",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::-webkit-datetime-edit-month-field",
+      "parsed": [
+        ".p",
+        "::-webkit-datetime-edit-month-field",
+        ".q"
+      ],
+      "inserted": "::-webkit-datetime-edit-month-field",
+      "list": ".target, ::-webkit-datetime-edit-month-field",
+      "assigned": "::-webkit-datetime-edit-month-field",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::-webkit-datetime-edit-day-field",
+      "parsed": [
+        ".p",
+        "::-webkit-datetime-edit-day-field",
+        ".q"
+      ],
+      "inserted": "::-webkit-datetime-edit-day-field",
+      "list": ".target, ::-webkit-datetime-edit-day-field",
+      "assigned": "::-webkit-datetime-edit-day-field",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::-webkit-datetime-edit-hour-field",
+      "parsed": [
+        ".p",
+        "::-webkit-datetime-edit-hour-field",
+        ".q"
+      ],
+      "inserted": "::-webkit-datetime-edit-hour-field",
+      "list": ".target, ::-webkit-datetime-edit-hour-field",
+      "assigned": "::-webkit-datetime-edit-hour-field",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::-webkit-datetime-edit-minute-field",
+      "parsed": [
+        ".p",
+        "::-webkit-datetime-edit-minute-field",
+        ".q"
+      ],
+      "inserted": "::-webkit-datetime-edit-minute-field",
+      "list": ".target, ::-webkit-datetime-edit-minute-field",
+      "assigned": "::-webkit-datetime-edit-minute-field",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::-webkit-datetime-edit-second-field",
+      "parsed": [
+        ".p",
+        "::-webkit-datetime-edit-second-field",
+        ".q"
+      ],
+      "inserted": "::-webkit-datetime-edit-second-field",
+      "list": ".target, ::-webkit-datetime-edit-second-field",
+      "assigned": "::-webkit-datetime-edit-second-field",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::-webkit-datetime-edit-ampm-field",
+      "parsed": [
+        ".p",
+        "::-webkit-datetime-edit-ampm-field",
+        ".q"
+      ],
+      "inserted": "::-webkit-datetime-edit-ampm-field",
+      "list": ".target, ::-webkit-datetime-edit-ampm-field",
+      "assigned": "::-webkit-datetime-edit-ampm-field",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::-webkit-color-swatch",
+      "parsed": [
+        ".p",
+        "::-webkit-color-swatch",
+        ".q"
+      ],
+      "inserted": "::-webkit-color-swatch",
+      "list": ".target, ::-webkit-color-swatch",
+      "assigned": "::-webkit-color-swatch",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::-webkit-color-swatch-wrapper",
+      "parsed": [
+        ".p",
+        "::-webkit-color-swatch-wrapper",
+        ".q"
+      ],
+      "inserted": "::-webkit-color-swatch-wrapper",
+      "list": ".target, ::-webkit-color-swatch-wrapper",
+      "assigned": "::-webkit-color-swatch-wrapper",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::-webkit-media-controls",
+      "parsed": [
+        ".p",
+        "::-webkit-media-controls",
+        ".q"
+      ],
+      "inserted": "::-webkit-media-controls",
+      "list": ".target, ::-webkit-media-controls",
+      "assigned": "::-webkit-media-controls",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::-webkit-media-controls-panel",
+      "parsed": [
+        ".p",
+        "::-webkit-media-controls-panel",
+        ".q"
+      ],
+      "inserted": "::-webkit-media-controls-panel",
+      "list": ".target, ::-webkit-media-controls-panel",
+      "assigned": "::-webkit-media-controls-panel",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::-webkit-media-controls-play-button",
+      "parsed": [
+        ".p",
+        "::-webkit-media-controls-play-button",
+        ".q"
+      ],
+      "inserted": "::-webkit-media-controls-play-button",
+      "list": ".target, ::-webkit-media-controls-play-button",
+      "assigned": "::-webkit-media-controls-play-button",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::-webkit-media-controls-timeline",
+      "parsed": [
+        ".p",
+        "::-webkit-media-controls-timeline",
+        ".q"
+      ],
+      "inserted": "::-webkit-media-controls-timeline",
+      "list": ".target, ::-webkit-media-controls-timeline",
+      "assigned": "::-webkit-media-controls-timeline",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::-webkit-media-controls-enclosure",
+      "parsed": [
+        ".p",
+        "::-webkit-media-controls-enclosure",
+        ".q"
+      ],
+      "inserted": "::-webkit-media-controls-enclosure",
+      "list": ".target, ::-webkit-media-controls-enclosure",
+      "assigned": "::-webkit-media-controls-enclosure",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::-webkit-media-text-track-container",
+      "parsed": [
+        ".p",
+        "::-webkit-media-text-track-container",
+        ".q"
+      ],
+      "inserted": "::-webkit-media-text-track-container",
+      "list": ".target, ::-webkit-media-text-track-container",
+      "assigned": "::-webkit-media-text-track-container",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::-webkit-textfield-decoration-container",
+      "parsed": [
+        ".p",
+        "::-webkit-textfield-decoration-container",
+        ".q"
+      ],
+      "inserted": "::-webkit-textfield-decoration-container",
+      "list": ".target, ::-webkit-textfield-decoration-container",
+      "assigned": "::-webkit-textfield-decoration-container",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::-webkit-validation-bubble",
+      "parsed": [
+        ".p",
+        "::-webkit-validation-bubble",
+        ".q"
+      ],
+      "inserted": "::-webkit-validation-bubble",
+      "list": ".target, ::-webkit-validation-bubble",
+      "assigned": "::-webkit-validation-bubble",
+      "supports": false,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::-webkit-outer-spin-button",
+      "parsed": [
+        ".p",
+        "::-webkit-outer-spin-button",
+        ".q"
+      ],
+      "inserted": "::-webkit-outer-spin-button",
+      "list": ".target, ::-webkit-outer-spin-button",
+      "assigned": "::-webkit-outer-spin-button",
+      "supports": false,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::-webkit-caps-lock-indicator",
+      "parsed": [
+        ".p",
+        "::-webkit-caps-lock-indicator",
+        ".q"
+      ],
+      "inserted": "::-webkit-caps-lock-indicator",
+      "list": ".target, ::-webkit-caps-lock-indicator",
+      "assigned": "::-webkit-caps-lock-indicator",
+      "supports": false,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::-webkit-contacts-auto-fill-button",
+      "parsed": [
+        ".p",
+        "::-webkit-contacts-auto-fill-button",
+        ".q"
+      ],
+      "inserted": "::-webkit-contacts-auto-fill-button",
+      "list": ".target, ::-webkit-contacts-auto-fill-button",
+      "assigned": "::-webkit-contacts-auto-fill-button",
+      "supports": false,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::-webkit-credentials-auto-fill-button",
+      "parsed": [
+        ".p",
+        "::-webkit-credentials-auto-fill-button",
+        ".q"
+      ],
+      "inserted": "::-webkit-credentials-auto-fill-button",
+      "list": ".target, ::-webkit-credentials-auto-fill-button",
+      "assigned": "::-webkit-credentials-auto-fill-button",
+      "supports": false,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::-webkit-input-speech-button",
+      "parsed": [
+        ".p",
+        "::-webkit-input-speech-button",
+        ".q"
+      ],
+      "inserted": "::-webkit-input-speech-button",
+      "list": ".target, ::-webkit-input-speech-button",
+      "assigned": "::-webkit-input-speech-button",
+      "supports": false,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::-webkit-keygen-select",
+      "parsed": [
+        ".p",
+        "::-webkit-keygen-select",
+        ".q"
+      ],
+      "inserted": "::-webkit-keygen-select",
+      "list": ".target, ::-webkit-keygen-select",
+      "assigned": "::-webkit-keygen-select",
+      "supports": false,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::-webkit-full-page-media",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": "::-webkit-file-upload-button(a)",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": ":is(.a, :definitely-unknown)",
+      "parsed": [
+        ".p",
+        ":is(.a)",
+        ".q"
+      ],
+      "inserted": ":is(.a)",
+      "list": ".target, :is(.a)",
+      "assigned": ":is(.a)",
+      "supports": false,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":is(:definitely-unknown)",
+      "parsed": [
+        ".p",
+        ":is()",
+        ".q"
+      ],
+      "inserted": ":is()",
+      "list": ".target, :is()",
+      "assigned": ":is()",
+      "supports": false,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":where(.a, :definitely-unknown)",
+      "parsed": [
+        ".p",
+        ":where(.a)",
+        ".q"
+      ],
+      "inserted": ":where(.a)",
+      "list": ".target, :where(.a)",
+      "assigned": ":where(.a)",
+      "supports": false,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":where(::before)",
+      "parsed": [
+        ".p",
+        ":where()",
+        ".q"
+      ],
+      "inserted": ":where()",
+      "list": ".target, :where()",
+      "assigned": ":where()",
+      "supports": false,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":is(.a, ???)",
+      "parsed": [
+        ".p",
+        ":is(.a)",
+        ".q"
+      ],
+      "inserted": ":is(.a)",
+      "list": ".target, :is(.a)",
+      "assigned": ":is(.a)",
+      "supports": false,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":is(.a, ::-webkit-definitely-unknown)",
+      "parsed": [
+        ".p",
+        ":is(.a)",
+        ".q"
+      ],
+      "inserted": ":is(.a)",
+      "list": ".target, :is(.a)",
+      "assigned": ":is(.a)",
+      "supports": false,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":has(.a, :definitely-unknown)",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": ":has(:definitely-unknown)",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": ":has(:is(:definitely-unknown))",
+      "parsed": [
+        ".p",
+        ":has(:is())",
+        ".q"
+      ],
+      "inserted": ":has(:is())",
+      "list": ".target, :has(:is())",
+      "assigned": ":has(:is())",
+      "supports": false,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":not(.a, :definitely-unknown)",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": ":not(:is(:definitely-unknown))",
+      "parsed": [
+        ".p",
+        ":not(:is())",
+        ".q"
+      ],
+      "inserted": ":not(:is())",
+      "list": ".target, :not(:is())",
+      "assigned": ":not(:is())",
+      "supports": false,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":nth-child(2 of :definitely-unknown)",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": ":nth-child(2 of :is(:definitely-unknown))",
+      "parsed": [
+        ".p",
+        ":nth-child(2 of :is())",
+        ".q"
+      ],
+      "inserted": ":nth-child(2 of :is())",
+      "list": ".target, :nth-child(2 of :is())",
+      "assigned": ":nth-child(2 of :is())",
+      "supports": false,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":host(:definitely-unknown)",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": "::slotted(:definitely-unknown)",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": ":is(:hover, :-webkit-autofill)",
+      "parsed": [
+        ".p",
+        ":is(:hover, :-webkit-autofill)",
+        ".q"
+      ],
+      "inserted": ":is(:hover, :-webkit-autofill)",
+      "list": ".target, :is(:hover, :-webkit-autofill)",
+      "assigned": ":is(:hover, :-webkit-autofill)",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":is(:-moz-focusring)",
+      "parsed": [
+        ".p",
+        ":is()",
+        ".q"
+      ],
+      "inserted": ":is()",
+      "list": ".target, :is()",
+      "assigned": ":is()",
+      "supports": false,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::-webkit-scrollbar:horizontal",
+      "parsed": [
+        ".p",
+        "::-webkit-scrollbar:horizontal",
+        ".q"
+      ],
+      "inserted": "::-webkit-scrollbar:horizontal",
+      "list": ".target, ::-webkit-scrollbar:horizontal",
+      "assigned": "::-webkit-scrollbar:horizontal",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::-webkit-scrollbar-thumb:window-inactive",
+      "parsed": [
+        ".p",
+        "::-webkit-scrollbar-thumb:window-inactive",
+        ".q"
+      ],
+      "inserted": "::-webkit-scrollbar-thumb:window-inactive",
+      "list": ".target, ::-webkit-scrollbar-thumb:window-inactive",
+      "assigned": "::-webkit-scrollbar-thumb:window-inactive",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::-webkit-scrollbar:definitely-unknown",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": "::before:hover",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": "::part(a):hover",
+      "parsed": [
+        ".p",
+        "::part(a):hover",
+        ".q"
+      ],
+      "inserted": "::part(a):hover",
+      "list": ".target, ::part(a):hover",
+      "assigned": "::part(a):hover",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::before .a",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": "::-webkit-definitely-unknown .a",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": ".a::-webkit-definitely-unknown",
+      "parsed": [
+        ".p",
+        ".a::-webkit-definitely-unknown",
+        ".q"
+      ],
+      "inserted": ".a::-webkit-definitely-unknown",
+      "list": ".target, .a::-webkit-definitely-unknown",
+      "assigned": ".a::-webkit-definitely-unknown",
+      "supports": false,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::-webkit-definitely-unknown:hover",
+      "parsed": [
+        ".p",
+        "::-webkit-definitely-unknown:hover",
+        ".q"
+      ],
+      "inserted": "::-webkit-definitely-unknown:hover",
+      "list": ".target, ::-webkit-definitely-unknown:hover",
+      "assigned": "::-webkit-definitely-unknown:hover",
+      "supports": false,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":is(::-webkit-definitely-unknown)",
+      "parsed": [
+        ".p",
+        ":is()",
+        ".q"
+      ],
+      "inserted": ":is()",
+      "list": ".target, :is()",
+      "assigned": ":is()",
+      "supports": false,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::selection:window-inactive",
+      "parsed": [
+        ".p",
+        "::selection:window-inactive",
+        ".q"
+      ],
+      "inserted": "::selection:window-inactive",
+      "list": ".target, ::selection:window-inactive",
+      "assigned": "::selection:window-inactive",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::-webkit-input-placeholder:hover",
+      "parsed": [
+        ".p",
+        "::-webkit-input-placeholder:hover",
+        ".q"
+      ],
+      "inserted": "::-webkit-input-placeholder:hover",
+      "list": ".target, ::-webkit-input-placeholder:hover",
+      "assigned": "::-webkit-input-placeholder:hover",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ".a:hover::before",
+      "parsed": [
+        ".p",
+        ".a:hover::before",
+        ".q"
+      ],
+      "inserted": ".a:hover::before",
+      "list": ".target, .a:hover::before",
+      "assigned": ".a:hover::before",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":hover:is(.a)",
+      "parsed": [
+        ".p",
+        ":hover:is(.a)",
+        ".q"
+      ],
+      "inserted": ":hover:is(.a)",
+      "list": ".target, :hover:is(.a)",
+      "assigned": ":hover:is(.a)",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":not(:hover, :focus)",
+      "parsed": [
+        ".p",
+        ":not(:hover, :focus)",
+        ".q"
+      ],
+      "inserted": ":not(:hover, :focus)",
+      "list": ".target, :not(:hover, :focus)",
+      "assigned": ":not(:hover, :focus)",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":has(> .a)",
+      "parsed": [
+        ".p",
+        ":has(> .a)",
+        ".q"
+      ],
+      "inserted": ":has(> .a)",
+      "list": ".target, :has(> .a)",
+      "assigned": ":has(> .a)",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":has(:has(.a))",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": ":is(:has(.a))",
+      "parsed": [
+        ".p",
+        ":is(:has(.a))",
+        ".q"
+      ],
+      "inserted": ":is(:has(.a))",
+      "list": ".target, :is(:has(.a))",
+      "assigned": ":is(:has(.a))",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":host(.a):hover",
+      "parsed": [
+        ".p",
+        ":host(.a):hover",
+        ".q"
+      ],
+      "inserted": ":host(.a):hover",
+      "list": ".target, :host(.a):hover",
+      "assigned": ":host(.a):hover",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":state(--x)",
+      "parsed": [
+        ".p",
+        ":state(--x)",
+        ".q"
+      ],
+      "inserted": ":state(--x)",
+      "list": ".target, :state(--x)",
+      "assigned": ":state(--x)",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::highlight(--x)",
+      "parsed": [
+        ".p",
+        "::highlight(--x)",
+        ".q"
+      ],
+      "inserted": "::highlight(--x)",
+      "list": ".target, ::highlight(--x)",
+      "assigned": "::highlight(--x)",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::before::marker",
+      "parsed": [
+        ".p",
+        "::before::marker",
+        ".q"
+      ],
+      "inserted": "::before::marker",
+      "list": ".target, ::before::marker",
+      "assigned": "::before::marker",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::after::marker",
+      "parsed": [
+        ".p",
+        "::after::marker",
+        ".q"
+      ],
+      "inserted": "::after::marker",
+      "list": ".target, ::after::marker",
+      "assigned": "::after::marker",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::part(a)::before",
+      "parsed": [
+        ".p",
+        "::part(a)::before",
+        ".q"
+      ],
+      "inserted": "::part(a)::before",
+      "list": ".target, ::part(a)::before",
+      "assigned": "::part(a)::before",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::slotted(.a)::before",
+      "parsed": [
+        ".p",
+        "::slotted(.a)::before",
+        ".q"
+      ],
+      "inserted": "::slotted(.a)::before",
+      "list": ".target, ::slotted(.a)::before",
+      "assigned": "::slotted(.a)::before",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::before::before",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": "::marker::before",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": "::part(a):first-child",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": "::part(a):is(:hover)",
+      "parsed": [
+        ".p",
+        "::part(a):is(:hover)",
+        ".q"
+      ],
+      "inserted": "::part(a):is(:hover)",
+      "list": ".target, ::part(a):is(:hover)",
+      "assigned": "::part(a):is(:hover)",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::part(a):not(:hover)",
+      "parsed": [
+        ".p",
+        "::part(a):not(:hover)",
+        ".q"
+      ],
+      "inserted": "::part(a):not(:hover)",
+      "list": ".target, ::part(a):not(:hover)",
+      "assigned": "::part(a):not(:hover)",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::part(a)::-webkit-scrollbar",
+      "parsed": [
+        ".p",
+        "::part(a)::-webkit-scrollbar",
+        ".q"
+      ],
+      "inserted": "::part(a)::-webkit-scrollbar",
+      "list": ".target, ::part(a)::-webkit-scrollbar",
+      "assigned": "::part(a)::-webkit-scrollbar",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::part(a)::part(b)",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": "::-webkit-scrollbar:hover",
+      "parsed": [
+        ".p",
+        "::-webkit-scrollbar:hover",
+        ".q"
+      ],
+      "inserted": "::-webkit-scrollbar:hover",
+      "list": ".target, ::-webkit-scrollbar:hover",
+      "assigned": "::-webkit-scrollbar:hover",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::-webkit-scrollbar-thumb:horizontal:active",
+      "parsed": [
+        ".p",
+        "::-webkit-scrollbar-thumb:horizontal:active",
+        ".q"
+      ],
+      "inserted": "::-webkit-scrollbar-thumb:horizontal:active",
+      "list": ".target, ::-webkit-scrollbar-thumb:horizontal:active",
+      "assigned": "::-webkit-scrollbar-thumb:horizontal:active",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::-webkit-scrollbar:first-child",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": "::-webkit-scrollbar:horizontal .a",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": "::selection:hover",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": "::placeholder:hover",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": "::marker:hover",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": "::backdrop:hover",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": "::-webkit-input-placeholder:first-child",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": "::-webkit-input-placeholder:focus",
+      "parsed": [
+        ".p",
+        "::-webkit-input-placeholder:focus",
+        ".q"
+      ],
+      "inserted": "::-webkit-input-placeholder:focus",
+      "list": ".target, ::-webkit-input-placeholder:focus",
+      "assigned": "::-webkit-input-placeholder:focus",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::-webkit-input-placeholder::before",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": ":horizontal::-webkit-scrollbar",
+      "parsed": [
+        ".p",
+        ":horizontal::-webkit-scrollbar",
+        ".q"
+      ],
+      "inserted": ":horizontal::-webkit-scrollbar",
+      "list": ".target, :horizontal::-webkit-scrollbar",
+      "assigned": ":horizontal::-webkit-scrollbar",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ".a :horizontal",
+      "parsed": [
+        ".p",
+        ".a :horizontal",
+        ".q"
+      ],
+      "inserted": ".a :horizontal",
+      "list": ".target, .a :horizontal",
+      "assigned": ".a :horizontal",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":-webkit-any(.a, :definitely-unknown)",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": ":-webkit-any(.a .b)",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": ":host-context(:definitely-unknown)",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": "::cue(:definitely-unknown)",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": ":nth-child(odd of .a, :definitely-unknown)",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": ":is(.a, :definitely-unknown)::before",
+      "parsed": [
+        ".p",
+        ":is(.a)::before",
+        ".q"
+      ],
+      "inserted": ":is(.a)::before",
+      "list": ".target, :is(.a)::before",
+      "assigned": ":is(.a)::before",
+      "supports": false,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":where(:is(:definitely-unknown))",
+      "parsed": [
+        ".p",
+        ":where(:is())",
+        ".q"
+      ],
+      "inserted": ":where(:is())",
+      "list": ".target, :where(:is())",
+      "assigned": ":where(:is())",
+      "supports": false,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":active-view-transition-type(a, b)",
+      "parsed": [
+        ".p",
+        ":active-view-transition-type(a, b)",
+        ".q"
+      ],
+      "inserted": ":active-view-transition-type(a, b)",
+      "list": ".target, :active-view-transition-type(a, b)",
+      "assigned": ":active-view-transition-type(a, b)",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":dir(sideways)",
+      "parsed": [
+        ".p",
+        ":dir(sideways)",
+        ".q"
+      ],
+      "inserted": ":dir(sideways)",
+      "list": ".target, :dir(sideways)",
+      "assigned": ":dir(sideways)",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":lang(\"en\")",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": ":lang(en, fr)",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": "::highlight(a b)",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": "::part(a b)",
+      "parsed": [
+        ".p",
+        "::part(a b)",
+        ".q"
+      ],
+      "inserted": "::part(a b)",
+      "list": ".target, ::part(a b)",
+      "assigned": "::part(a b)",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::picker(foo)",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": "::view-transition-group(.a)",
+      "parsed": [
+        ".p",
+        "::view-transition-group(*.a)",
+        ".q"
+      ],
+      "inserted": "::view-transition-group(*.a)",
+      "list": ".target, ::view-transition-group(*.a)",
+      "assigned": "::view-transition-group(*.a)",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::view-transition-group(a.b)",
+      "parsed": [
+        ".p",
+        "::view-transition-group(a.b)",
+        ".q"
+      ],
+      "inserted": "::view-transition-group(a.b)",
+      "list": ".target, ::view-transition-group(a.b)",
+      "assigned": "::view-transition-group(a.b)",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::scroll-button(up)",
+      "parsed": [
+        ".p",
+        "::scroll-button(up)",
+        ".q"
+      ],
+      "inserted": "::scroll-button(up)",
+      "list": ".target, ::scroll-button(up)",
+      "assigned": "::scroll-button(up)",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::scroll-button(foo)",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": ":nth-child(-n + 3)",
+      "parsed": [
+        ".p",
+        ":nth-child(-n+3)",
+        ".q"
+      ],
+      "inserted": ":nth-child(-n+3)",
+      "list": ".target, :nth-child(-n+3)",
+      "assigned": ":nth-child(-n+3)",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":nth-child(+5)",
+      "parsed": [
+        ".p",
+        ":nth-child(5)",
+        ".q"
+      ],
+      "inserted": ":nth-child(5)",
+      "list": ".target, :nth-child(5)",
+      "assigned": ":nth-child(5)",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":nth-of-type(EVEN)",
+      "parsed": [
+        ".p",
+        ":nth-of-type(2n)",
+        ".q"
+      ],
+      "inserted": ":nth-of-type(2n)",
+      "list": ".target, :nth-of-type(2n)",
+      "assigned": ":nth-of-type(2n)",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":nth-last-child(0n+0)",
+      "parsed": [
+        ".p",
+        ":nth-last-child(0)",
+        ".q"
+      ],
+      "inserted": ":nth-last-child(0)",
+      "list": ".target, :nth-last-child(0)",
+      "assigned": ":nth-last-child(0)",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":nth-child(-2n-1)",
+      "parsed": [
+        ".p",
+        ":nth-child(-2n-1)",
+        ".q"
+      ],
+      "inserted": ":nth-child(-2n-1)",
+      "list": ".target, :nth-child(-2n-1)",
+      "assigned": ":nth-child(-2n-1)",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":is()",
+      "parsed": [
+        ".p",
+        ":is()",
+        ".q"
+      ],
+      "inserted": ":is()",
+      "list": ".target, :is()",
+      "assigned": ":is()",
+      "supports": false,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":not()",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": ":has()",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": ":where()",
+      "parsed": [
+        ".p",
+        ":where()",
+        ".q"
+      ],
+      "inserted": ":where()",
+      "list": ".target, :where()",
+      "assigned": ":where()",
+      "supports": false,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":is(.a,,.b)",
+      "parsed": [
+        ".p",
+        ":is(.a, .b)",
+        ".q"
+      ],
+      "inserted": ":is(.a, .b)",
+      "list": ".target, :is(.a, .b)",
+      "assigned": ":is(.a, .b)",
+      "supports": false,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":not(::before)",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": ":has(::before)",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": ":host(::before)",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": ":is(:host)",
+      "parsed": [
+        ".p",
+        ":is(:host)",
+        ".q"
+      ],
+      "inserted": ":is(:host)",
+      "list": ".target, :is(:host)",
+      "assigned": ":is(:host)",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":has(:host)",
+      "parsed": [
+        ".p",
+        ":has(:host)",
+        ".q"
+      ],
+      "inserted": ":has(:host)",
+      "list": ".target, :has(:host)",
+      "assigned": ":has(:host)",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":host:has(.a)",
+      "parsed": [
+        ".p",
+        ":host:has(.a)",
+        ".q"
+      ],
+      "inserted": ":host:has(.a)",
+      "list": ".target, :host:has(.a)",
+      "assigned": ":host:has(.a)",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":has(:is(:has(.a)))",
+      "parsed": [
+        ".p",
+        ":has(:is())",
+        ".q"
+      ],
+      "inserted": ":has(:is())",
+      "list": ".target, :has(:is())",
+      "assigned": ":has(:is())",
+      "supports": false,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":has(:not(:has(.a)))",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": ":has(:where(.a))",
+      "parsed": [
+        ".p",
+        ":has(:where(.a))",
+        ".q"
+      ],
+      "inserted": ":has(:where(.a))",
+      "list": ".target, :has(:where(.a))",
+      "assigned": ":has(:where(.a))",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":scope > .a",
+      "parsed": [
+        ".p",
+        ":scope > .a",
+        ".q"
+      ],
+      "inserted": ":scope > .a",
+      "list": ".target, :scope > .a",
+      "assigned": ":scope > .a",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "a|b",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": "*|a",
+      "parsed": [
+        ".p",
+        "a",
+        ".q"
+      ],
+      "inserted": "a",
+      "list": ".target, a",
+      "assigned": "a",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "|a",
+      "parsed": [
+        ".p",
+        "|a",
+        ".q"
+      ],
+      "inserted": "|a",
+      "list": ".target, |a",
+      "assigned": "|a",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ".a:not(:is(.b, :definitely-unknown), .c)",
+      "parsed": [
+        ".p",
+        ".a:not(:is(.b), .c)",
+        ".q"
+      ],
+      "inserted": ".a:not(:is(.b), .c)",
+      "list": ".target, .a:not(:is(.b), .c)",
+      "assigned": ".a:not(:is(.b), .c)",
+      "supports": false,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":is(.a, :definitely-unknown, .b)",
+      "parsed": [
+        ".p",
+        ":is(.a, .b)",
+        ".q"
+      ],
+      "inserted": ":is(.a, .b)",
+      "list": ".target, :is(.a, .b)",
+      "assigned": ":is(.a, .b)",
+      "supports": false,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":IS(.a, :DEFINITELY-unknown)",
+      "parsed": [
+        ".p",
+        ":is(.a)",
+        ".q"
+      ],
+      "inserted": ":is(.a)",
+      "list": ".target, :is(.a)",
+      "assigned": ":is(.a)",
+      "supports": false,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":is( .a , :definitely-unknown )",
+      "parsed": [
+        ".p",
+        ":is(.a)",
+        ".q"
+      ],
+      "inserted": ":is(.a)",
+      "list": ".target, :is(.a)",
+      "assigned": ":is(.a)",
+      "supports": false,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":is(.a /* x */, :definitely-unknown)",
+      "parsed": [
+        ".p",
+        ":is(.a)",
+        ".q"
+      ],
+      "inserted": ":is(.a)",
+      "list": ".target, :is(.a)",
+      "assigned": ":is(.a)",
+      "supports": false,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":is(.a:hover, :definitely-unknown > .b)",
+      "parsed": [
+        ".p",
+        ":is(.a:hover)",
+        ".q"
+      ],
+      "inserted": ":is(.a:hover)",
+      "list": ".target, :is(.a:hover)",
+      "assigned": ":is(.a:hover)",
+      "supports": false,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "& .a",
+      "parsed": [
+        ".p",
+        "& .a",
+        ".q"
+      ],
+      "inserted": "& .a",
+      "list": ".target, & .a",
+      "assigned": "& .a",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ".a &",
+      "parsed": [
+        ".p",
+        ".a &",
+        ".q"
+      ],
+      "inserted": ".a &",
+      "list": ".target, .a &",
+      "assigned": ".a &",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":is(&)",
+      "parsed": [
+        ".p",
+        ":is(&)",
+        ".q"
+      ],
+      "inserted": ":is(&)",
+      "list": ".target, :is(&)",
+      "assigned": ":is(&)",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::scroll-button(down)",
+      "parsed": [
+        ".p",
+        "::scroll-button(down)",
+        ".q"
+      ],
+      "inserted": "::scroll-button(down)",
+      "list": ".target, ::scroll-button(down)",
+      "assigned": "::scroll-button(down)",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::scroll-button(left)",
+      "parsed": [
+        ".p",
+        "::scroll-button(left)",
+        ".q"
+      ],
+      "inserted": "::scroll-button(left)",
+      "list": ".target, ::scroll-button(left)",
+      "assigned": "::scroll-button(left)",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::scroll-button(right)",
+      "parsed": [
+        ".p",
+        "::scroll-button(right)",
+        ".q"
+      ],
+      "inserted": "::scroll-button(right)",
+      "list": ".target, ::scroll-button(right)",
+      "assigned": "::scroll-button(right)",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::scroll-button(block-start)",
+      "parsed": [
+        ".p",
+        "::scroll-button(block-start)",
+        ".q"
+      ],
+      "inserted": "::scroll-button(block-start)",
+      "list": ".target, ::scroll-button(block-start)",
+      "assigned": "::scroll-button(block-start)",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::scroll-button(inline-end)",
+      "parsed": [
+        ".p",
+        "::scroll-button(inline-end)",
+        ".q"
+      ],
+      "inserted": "::scroll-button(inline-end)",
+      "list": ".target, ::scroll-button(inline-end)",
+      "assigned": "::scroll-button(inline-end)",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::scroll-button(prev)",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": "::scroll-button(next)",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": "::part()",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": ":state()",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": ":dir()",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": "::highlight()",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": ":host(.a, .b)",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": "::slotted(.a .b)",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": "::slotted(.a, .b)",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": ":host-context(.a .b)",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": ":-webkit-any()",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": "::cue(.a, .b)",
+      "parsed": [
+        ".p",
+        "::cue(.a, .b)",
+        ".q"
+      ],
+      "inserted": "::cue(.a, .b)",
+      "list": ".target, ::cue(.a, .b)",
+      "assigned": "::cue(.a, .b)",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::cue(::before)",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": ":nth-child(2 of ::before)",
+      "parsed": [
+        ".p",
+        ":nth-child(2 of ::before)",
+        ".q"
+      ],
+      "inserted": ":nth-child(2 of ::before)",
+      "list": ".target, :nth-child(2 of ::before)",
+      "assigned": ":nth-child(2 of ::before)",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":nth-of-type(2 of .a)",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": "::part(a)::marker",
+      "parsed": [
+        ".p",
+        "::part(a)::marker",
+        ".q"
+      ],
+      "inserted": "::part(a)::marker",
+      "list": ".target, ::part(a)::marker",
+      "assigned": "::part(a)::marker",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::slotted(.a)::marker",
+      "parsed": [
+        ".p",
+        "::slotted(.a)::marker",
+        ".q"
+      ],
+      "inserted": "::slotted(.a)::marker",
+      "list": ".target, ::slotted(.a)::marker",
+      "assigned": "::slotted(.a)::marker",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::slotted(.a)::part(b)",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": "::part(a)::slotted(.b)",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": "::part(a)::before:hover",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": "::part(a)::-webkit-scrollbar:horizontal",
+      "parsed": [
+        ".p",
+        "::part(a)::-webkit-scrollbar:horizontal",
+        ".q"
+      ],
+      "inserted": "::part(a)::-webkit-scrollbar:horizontal",
+      "list": ".target, ::part(a)::-webkit-scrollbar:horizontal",
+      "assigned": "::part(a)::-webkit-scrollbar:horizontal",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::view-transition-group(*):only-child",
+      "parsed": [
+        ".p",
+        "::view-transition-group(*):only-child",
+        ".q"
+      ],
+      "inserted": "::view-transition-group(*):only-child",
+      "list": ".target, ::view-transition-group(*):only-child",
+      "assigned": "::view-transition-group(*):only-child",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "[a=1]",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": "[a=\"1\"]",
+      "parsed": [
+        ".p",
+        "[a=\"1\"]",
+        ".q"
+      ],
+      "inserted": "[a=\"1\"]",
+      "list": ".target, [a=\"1\"]",
+      "assigned": "[a=\"1\"]",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "[ns|a]",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": "[*|a]",
+      "parsed": [
+        ".p",
+        "[*|a]",
+        ".q"
+      ],
+      "inserted": "[*|a]",
+      "list": ".target, [*|a]",
+      "assigned": "[*|a]",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "[|a]",
+      "parsed": [
+        ".p",
+        "[a]",
+        ".q"
+      ],
+      "inserted": "[a]",
+      "list": ".target, [a]",
+      "assigned": "[a]",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "[a=b i]",
+      "parsed": [
+        ".p",
+        "[a=\"b\" i]",
+        ".q"
+      ],
+      "inserted": "[a=\"b\" i]",
+      "list": ".target, [a=\"b\" i]",
+      "assigned": "[a=\"b\" i]",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "[a=b s]",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": "[a=b x]",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": "#1a",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": ".1a",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": "a||b",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": "> .a",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": ".a >",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": ".a,",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": ":has(+ .a)",
+      "parsed": [
+        ".p",
+        ":has(+ .a)",
+        ".q"
+      ],
+      "inserted": ":has(+ .a)",
+      "list": ".target, :has(+ .a)",
+      "assigned": ":has(+ .a)",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":has(~ .a, > .b)",
+      "parsed": [
+        ".p",
+        ":has(~ .a, > .b)",
+        ".q"
+      ],
+      "inserted": ":has(~ .a, > .b)",
+      "list": ".target, :has(~ .a, > .b)",
+      "assigned": ":has(~ .a, > .b)",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::before:is(:hover)",
+      "parsed": [
+        ".p",
+        "::before:is()",
+        ".q"
+      ],
+      "inserted": "::before:is()",
+      "list": ".target, ::before:is()",
+      "assigned": "::before:is()",
+      "supports": false,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":is(.a)::part(b)",
+      "parsed": [
+        ".p",
+        ":is(.a)::part(b)",
+        ".q"
+      ],
+      "inserted": ":is(.a)::part(b)",
+      "list": ".target, :is(.a)::part(b)",
+      "assigned": ":is(.a)::part(b)",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ".a::slotted(.b)",
+      "parsed": [
+        ".p",
+        ".a::slotted(.b)",
+        ".q"
+      ],
+      "inserted": ".a::slotted(.b)",
+      "list": ".target, .a::slotted(.b)",
+      "assigned": ".a::slotted(.b)",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "*|*",
+      "parsed": [
+        ".p",
+        "*",
+        ".q"
+      ],
+      "inserted": "*",
+      "list": ".target, *",
+      "assigned": "*",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "*|a.b",
+      "parsed": [
+        ".p",
+        "a.b",
+        ".q"
+      ],
+      "inserted": "a.b",
+      "list": ".target, a.b",
+      "assigned": "a.b",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "A.B",
+      "parsed": [
+        ".p",
+        "a.B",
+        ".q"
+      ],
+      "inserted": "a.B",
+      "list": ".target, a.B",
+      "assigned": "a.B",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::part(a):focus-visible",
+      "parsed": [
+        ".p",
+        "::part(a):focus-visible",
+        ".q"
+      ],
+      "inserted": "::part(a):focus-visible",
+      "list": ".target, ::part(a):focus-visible",
+      "assigned": "::part(a):focus-visible",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::-webkit-scrollbar:enabled",
+      "parsed": [
+        ".p",
+        "::-webkit-scrollbar:enabled",
+        ".q"
+      ],
+      "inserted": "::-webkit-scrollbar:enabled",
+      "list": ".target, ::-webkit-scrollbar:enabled",
+      "assigned": "::-webkit-scrollbar:enabled",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::-webkit-scrollbar:focus",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": "::-webkit-input-placeholder:active",
+      "parsed": [
+        ".p",
+        "::-webkit-input-placeholder:active",
+        ".q"
+      ],
+      "inserted": "::-webkit-input-placeholder:active",
+      "list": ".target, ::-webkit-input-placeholder:active",
+      "assigned": "::-webkit-input-placeholder:active",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::-webkit-input-placeholder:focus-within",
+      "parsed": [
+        ".p",
+        "::-webkit-input-placeholder:focus-within",
+        ".q"
+      ],
+      "inserted": "::-webkit-input-placeholder:focus-within",
+      "list": ".target, ::-webkit-input-placeholder:focus-within",
+      "assigned": "::-webkit-input-placeholder:focus-within",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::-webkit-definitely-unknown:focus-visible",
+      "parsed": [
+        ".p",
+        "::-webkit-definitely-unknown:focus-visible",
+        ".q"
+      ],
+      "inserted": "::-webkit-definitely-unknown:focus-visible",
+      "list": ".target, ::-webkit-definitely-unknown:focus-visible",
+      "assigned": "::-webkit-definitely-unknown:focus-visible",
+      "supports": false,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": "::selection:window-inactive:hover",
+      "parsed": [
+        ".p",
+        ".q"
+      ],
+      "inserted": "SyntaxError",
+      "list": "SyntaxError",
+      "assigned": ".q",
+      "supports": false,
+      "query": "SyntaxError",
+      "matches": "SyntaxError"
+    },
+    {
+      "selector": ":host::before",
+      "parsed": [
+        ".p",
+        ":host::before",
+        ".q"
+      ],
+      "inserted": ":host::before",
+      "list": ".target, :host::before",
+      "assigned": ":host::before",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":host(.a)::part(b)",
+      "parsed": [
+        ".p",
+        ":host(.a)::part(b)",
+        ".q"
+      ],
+      "inserted": ":host(.a)::part(b)",
+      "list": ".target, :host(.a)::part(b)",
+      "assigned": ":host(.a)::part(b)",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ":is(.a) .b::before",
+      "parsed": [
+        ".p",
+        ":is(.a) .b::before",
+        ".q"
+      ],
+      "inserted": ":is(.a) .b::before",
+      "list": ".target, :is(.a) .b::before",
+      "assigned": ":is(.a) .b::before",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    },
+    {
+      "selector": ".a>.b+.c~.d",
+      "parsed": [
+        ".p",
+        ".a > .b + .c ~ .d",
+        ".q"
+      ],
+      "inserted": ".a > .b + .c ~ .d",
+      "list": ".target, .a > .b + .c ~ .d",
+      "assigned": ".a > .b + .c ~ .d",
+      "supports": true,
+      "query": "ok",
+      "matches": "ok"
+    }
+  ]
+}

@@ -228,6 +228,9 @@ let style = cascade::computed_style(&dom.tree, cards[0]);   // partial honest ca
   `examples/crawl.rs`, 227 tests, 100% line coverage, and a direct html5lib-tests gate at
   **99.75%**. From the repo: `npm run build:rtdom` (= `cargo build -p turbo-dom --release`),
   `npm run test:rust` (= `cargo test -p turbo-dom`), `npm run conformance:rtdom`.
+- **Browser environment over V8:** [`turbo-dom-browser-env`](./crates/turbo-dom-browser-env)
+  binds the `rtdom` tree to V8 with native callbacks (`window`/`document`/CSSOM/forms/events,
+  Chrome-control tested) — the shared DOM layer of turbo-test and turbo-surf.
 
 ## Limitations (by design)
 

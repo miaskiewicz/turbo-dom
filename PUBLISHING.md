@@ -62,7 +62,10 @@ x64 native addons. The `publish` job downloads and bundles these binaries, rebui
 both WASM targets through `prepublishOnly`, and publishes **one scoped npm bundle**
 using the repository's `NPM_TOKEN`. The `publish-crate` job publishes the pure-Rust
 `turbo-dom` crate using `CARGO_REGISTRY_TOKEN`. It does not publish the parser crate
-or platform-specific npm subpackages. Both publish jobs depend on native builds
+or platform-specific npm subpackages. `turbo-dom-browser-env` (workspace member since
+the 0.6.0 consolidation) is not yet in the publish chain: it publishes after
+`turbo-dom-v8` and `turbo-dom` once that chain lands, and its `turbo-dom` path
+dependency gains a version requirement then. Both publish jobs depend on native builds
 and the full Linux test job.
 
 Monitor the tag's workflow until both publish jobs succeed. Verify npm's `latest`

@@ -1,0 +1,54 @@
+{
+  "browser": "Chrome/155.0.8059.79",
+  "v8": "15.5.35.23",
+  "recordedAt": "2026-10-14T17:27:17.824Z",
+  "result": {
+    "rows": [
+      {
+        "operation": "append",
+        "self": "accepted",
+        "count": 1,
+        "first": true
+      },
+      {
+        "operation": "prepend",
+        "self": "accepted",
+        "count": 1,
+        "first": true
+      },
+      {
+        "operation": "replaceChildren",
+        "self": "accepted",
+        "count": 1,
+        "first": true
+      }
+    ],
+    "observer": {
+      "outer": 0,
+      "inner": [
+        [
+          "childList",
+          true,
+          1,
+          2
+        ]
+      ],
+      "oldOwner": true
+    },
+    "unreadHandler": {
+      "value": 9,
+      "native": "function onclick(event) {\nreturn 9\n}"
+    },
+    "parse": {
+      "ordinary": 0,
+      "nested": 0,
+      "text": "payload",
+      "bodyQuery": true,
+      "markup": "<template><template><i id=\"deep\">payload</i></template></template>"
+    },
+    "scriptRuns": [
+      "contextual",
+      "parser"
+    ]
+  }
+}

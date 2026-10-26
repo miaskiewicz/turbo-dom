@@ -1,0 +1,5427 @@
+{
+  "browser": "Chrome/156.0.8078.47",
+  "v8": "15.6.75.19",
+  "recordedAt": "2026-10-25T14:17:01.281Z",
+  "fixture": "sanitizer_probe.js",
+  "probeSha256": "ae45f6209b9ac8a59fd3a5570184472dd00b54fa0f7564091bedfab7f71eb346",
+  "flags": [
+    "--headless=new",
+    "--disable-extensions"
+  ],
+  "result": {
+    "surface": {
+      "global": {
+        "enumerable": false,
+        "configurable": true,
+        "writable": true,
+        "value": [
+          "Sanitizer",
+          0
+        ]
+      },
+      "length": 0,
+      "prototypeDescriptor": {
+        "enumerable": false,
+        "configurable": false,
+        "writable": false,
+        "value": "[object Sanitizer]"
+      },
+      "own": [
+        "allowAttribute",
+        "allowElement",
+        "get",
+        "removeAttribute",
+        "removeElement",
+        "removeUnsafe",
+        "replaceElementWithChildren",
+        "setComments",
+        "setDataAttributes",
+        "allowProcessingInstruction",
+        "removeProcessingInstruction",
+        "constructor"
+      ],
+      "members": {
+        "allowAttribute": {
+          "enumerable": true,
+          "configurable": true,
+          "writable": true,
+          "value": [
+            "allowAttribute",
+            1
+          ]
+        },
+        "allowElement": {
+          "enumerable": true,
+          "configurable": true,
+          "writable": true,
+          "value": [
+            "allowElement",
+            1
+          ]
+        },
+        "get": {
+          "enumerable": true,
+          "configurable": true,
+          "writable": true,
+          "value": [
+            "get",
+            0
+          ]
+        },
+        "removeAttribute": {
+          "enumerable": true,
+          "configurable": true,
+          "writable": true,
+          "value": [
+            "removeAttribute",
+            1
+          ]
+        },
+        "removeElement": {
+          "enumerable": true,
+          "configurable": true,
+          "writable": true,
+          "value": [
+            "removeElement",
+            1
+          ]
+        },
+        "removeUnsafe": {
+          "enumerable": true,
+          "configurable": true,
+          "writable": true,
+          "value": [
+            "removeUnsafe",
+            0
+          ]
+        },
+        "replaceElementWithChildren": {
+          "enumerable": true,
+          "configurable": true,
+          "writable": true,
+          "value": [
+            "replaceElementWithChildren",
+            1
+          ]
+        },
+        "setComments": {
+          "enumerable": true,
+          "configurable": true,
+          "writable": true,
+          "value": [
+            "setComments",
+            1
+          ]
+        },
+        "setDataAttributes": {
+          "enumerable": true,
+          "configurable": true,
+          "writable": true,
+          "value": [
+            "setDataAttributes",
+            1
+          ]
+        },
+        "allowProcessingInstruction": {
+          "enumerable": true,
+          "configurable": true,
+          "writable": true,
+          "value": [
+            "allowProcessingInstruction",
+            1
+          ]
+        },
+        "removeProcessingInstruction": {
+          "enumerable": true,
+          "configurable": true,
+          "writable": true,
+          "value": [
+            "removeProcessingInstruction",
+            1
+          ]
+        },
+        "constructor": {
+          "enumerable": false,
+          "configurable": true,
+          "writable": true,
+          "value": [
+            "Sanitizer",
+            0
+          ]
+        }
+      },
+      "tag": {
+        "enumerable": false,
+        "configurable": true,
+        "writable": false,
+        "value": "Sanitizer"
+      },
+      "statics": [
+        "length",
+        "name",
+        "prototype"
+      ],
+      "chain": [
+        true,
+        true
+      ],
+      "source": [
+        "function Sanitizer() { [native code] }",
+        "function setHTML() { [native code] }",
+        "function parseHTML() { [native code] }"
+      ],
+      "toString": "[object Sanitizer]",
+      "ownKeys": 0,
+      "element": {
+        "setHTML": {
+          "enumerable": true,
+          "configurable": true,
+          "writable": true,
+          "value": [
+            "setHTML",
+            1
+          ]
+        },
+        "setHTMLUnsafe": {
+          "enumerable": true,
+          "configurable": true,
+          "writable": true,
+          "value": [
+            "setHTMLUnsafe",
+            1
+          ]
+        },
+        "getHTML": {
+          "enumerable": true,
+          "configurable": true,
+          "writable": true,
+          "value": [
+            "getHTML",
+            0
+          ]
+        }
+      },
+      "shadowRoot": {
+        "setHTML": {
+          "enumerable": true,
+          "configurable": true,
+          "writable": true,
+          "value": [
+            "setHTML",
+            1
+          ]
+        },
+        "setHTMLUnsafe": {
+          "enumerable": true,
+          "configurable": true,
+          "writable": true,
+          "value": [
+            "setHTMLUnsafe",
+            1
+          ]
+        },
+        "getHTML": {
+          "enumerable": true,
+          "configurable": true,
+          "writable": true,
+          "value": [
+            "getHTML",
+            0
+          ]
+        }
+      },
+      "document": {
+        "parseHTML": {
+          "enumerable": true,
+          "configurable": true,
+          "writable": true,
+          "value": [
+            "parseHTML",
+            1
+          ]
+        },
+        "parseHTMLUnsafe": {
+          "enumerable": true,
+          "configurable": true,
+          "writable": true,
+          "value": [
+            "parseHTMLUnsafe",
+            1
+          ]
+        }
+      },
+      "documentPrototype": [
+        false,
+        false,
+        false
+      ],
+      "otherHosts": [
+        false,
+        false,
+        true
+      ]
+    },
+    "brands": {
+      "call": {
+        "error": "TypeError",
+        "message": "Failed to construct 'Sanitizer': Please use the 'new' operator, this DOM object constructor cannot be called as a function.",
+        "same": false
+      },
+      "getPlain": {
+        "error": "TypeError",
+        "message": "Illegal invocation",
+        "same": false
+      },
+      "getProto": {
+        "error": "TypeError",
+        "message": "Illegal invocation",
+        "same": false
+      },
+      "allowDocument": {
+        "error": "TypeError",
+        "message": "Illegal invocation",
+        "same": false
+      },
+      "unsafeUndefined": {
+        "error": "TypeError",
+        "message": "Illegal invocation",
+        "same": false
+      },
+      "setHTMLDocument": {
+        "error": "TypeError",
+        "message": "Illegal invocation",
+        "same": false
+      },
+      "setHTMLFragment": {
+        "error": "TypeError",
+        "message": "Illegal invocation",
+        "same": false
+      },
+      "shadowSetHTMLElement": {
+        "error": "TypeError",
+        "message": "Illegal invocation",
+        "same": false
+      },
+      "parseHTMLReceiver": {
+        "value": "<b>x</b>"
+      },
+      "parseUnsafeReceiver": {
+        "value": "<b>x</b>"
+      },
+      "subclass": {
+        "value": [
+          "<i>2</i>",
+          true,
+          1
+        ]
+      }
+    },
+    "defaultGet": {
+      "attributes": [
+        {
+          "name": "alignment-baseline",
+          "namespace": null
+        },
+        {
+          "name": "baseline-shift",
+          "namespace": null
+        },
+        {
+          "name": "clip-path",
+          "namespace": null
+        },
+        {
+          "name": "clip-rule",
+          "namespace": null
+        },
+        {
+          "name": "color",
+          "namespace": null
+        },
+        {
+          "name": "color-interpolation",
+          "namespace": null
+        },
+        {
+          "name": "cursor",
+          "namespace": null
+        },
+        {
+          "name": "dir",
+          "namespace": null
+        },
+        {
+          "name": "direction",
+          "namespace": null
+        },
+        {
+          "name": "display",
+          "namespace": null
+        },
+        {
+          "name": "displaystyle",
+          "namespace": null
+        },
+        {
+          "name": "dominant-baseline",
+          "namespace": null
+        },
+        {
+          "name": "fill",
+          "namespace": null
+        },
+        {
+          "name": "fill-opacity",
+          "namespace": null
+        },
+        {
+          "name": "fill-rule",
+          "namespace": null
+        },
+        {
+          "name": "font-family",
+          "namespace": null
+        },
+        {
+          "name": "font-size",
+          "namespace": null
+        },
+        {
+          "name": "font-size-adjust",
+          "namespace": null
+        },
+        {
+          "name": "font-stretch",
+          "namespace": null
+        },
+        {
+          "name": "font-style",
+          "namespace": null
+        },
+        {
+          "name": "font-variant",
+          "namespace": null
+        },
+        {
+          "name": "font-weight",
+          "namespace": null
+        },
+        {
+          "name": "lang",
+          "namespace": null
+        },
+        {
+          "name": "letter-spacing",
+          "namespace": null
+        },
+        {
+          "name": "marker-end",
+          "namespace": null
+        },
+        {
+          "name": "marker-mid",
+          "namespace": null
+        },
+        {
+          "name": "marker-start",
+          "namespace": null
+        },
+        {
+          "name": "mathbackground",
+          "namespace": null
+        },
+        {
+          "name": "mathcolor",
+          "namespace": null
+        },
+        {
+          "name": "mathsize",
+          "namespace": null
+        },
+        {
+          "name": "opacity",
+          "namespace": null
+        },
+        {
+          "name": "paint-order",
+          "namespace": null
+        },
+        {
+          "name": "pointer-events",
+          "namespace": null
+        },
+        {
+          "name": "scriptlevel",
+          "namespace": null
+        },
+        {
+          "name": "shape-rendering",
+          "namespace": null
+        },
+        {
+          "name": "stop-color",
+          "namespace": null
+        },
+        {
+          "name": "stop-opacity",
+          "namespace": null
+        },
+        {
+          "name": "stroke",
+          "namespace": null
+        },
+        {
+          "name": "stroke-dasharray",
+          "namespace": null
+        },
+        {
+          "name": "stroke-dashoffset",
+          "namespace": null
+        },
+        {
+          "name": "stroke-linecap",
+          "namespace": null
+        },
+        {
+          "name": "stroke-linejoin",
+          "namespace": null
+        },
+        {
+          "name": "stroke-miterlimit",
+          "namespace": null
+        },
+        {
+          "name": "stroke-opacity",
+          "namespace": null
+        },
+        {
+          "name": "stroke-width",
+          "namespace": null
+        },
+        {
+          "name": "text-anchor",
+          "namespace": null
+        },
+        {
+          "name": "text-decoration",
+          "namespace": null
+        },
+        {
+          "name": "text-overflow",
+          "namespace": null
+        },
+        {
+          "name": "text-rendering",
+          "namespace": null
+        },
+        {
+          "name": "title",
+          "namespace": null
+        },
+        {
+          "name": "transform",
+          "namespace": null
+        },
+        {
+          "name": "transform-origin",
+          "namespace": null
+        },
+        {
+          "name": "unicode-bidi",
+          "namespace": null
+        },
+        {
+          "name": "vector-effect",
+          "namespace": null
+        },
+        {
+          "name": "visibility",
+          "namespace": null
+        },
+        {
+          "name": "white-space",
+          "namespace": null
+        },
+        {
+          "name": "word-spacing",
+          "namespace": null
+        },
+        {
+          "name": "writing-mode",
+          "namespace": null
+        }
+      ],
+      "comments": false,
+      "dataAttributes": false,
+      "elements": [
+        {
+          "name": "math",
+          "namespace": "http://www.w3.org/1998/Math/MathML",
+          "attributes": []
+        },
+        {
+          "name": "merror",
+          "namespace": "http://www.w3.org/1998/Math/MathML",
+          "attributes": []
+        },
+        {
+          "name": "mfrac",
+          "namespace": "http://www.w3.org/1998/Math/MathML",
+          "attributes": []
+        },
+        {
+          "name": "mi",
+          "namespace": "http://www.w3.org/1998/Math/MathML",
+          "attributes": []
+        },
+        {
+          "name": "mmultiscripts",
+          "namespace": "http://www.w3.org/1998/Math/MathML",
+          "attributes": []
+        },
+        {
+          "name": "mn",
+          "namespace": "http://www.w3.org/1998/Math/MathML",
+          "attributes": []
+        },
+        {
+          "name": "mo",
+          "namespace": "http://www.w3.org/1998/Math/MathML",
+          "attributes": [
+            {
+              "name": "fence",
+              "namespace": null
+            },
+            {
+              "name": "form",
+              "namespace": null
+            },
+            {
+              "name": "largeop",
+              "namespace": null
+            },
+            {
+              "name": "lspace",
+              "namespace": null
+            },
+            {
+              "name": "maxsize",
+              "namespace": null
+            },
+            {
+              "name": "minsize",
+              "namespace": null
+            },
+            {
+              "name": "movablelimits",
+              "namespace": null
+            },
+            {
+              "name": "rspace",
+              "namespace": null
+            },
+            {
+              "name": "separator",
+              "namespace": null
+            },
+            {
+              "name": "stretchy",
+              "namespace": null
+            },
+            {
+              "name": "symmetric",
+              "namespace": null
+            }
+          ]
+        },
+        {
+          "name": "mover",
+          "namespace": "http://www.w3.org/1998/Math/MathML",
+          "attributes": [
+            {
+              "name": "accent",
+              "namespace": null
+            }
+          ]
+        },
+        {
+          "name": "mpadded",
+          "namespace": "http://www.w3.org/1998/Math/MathML",
+          "attributes": [
+            {
+              "name": "depth",
+              "namespace": null
+            },
+            {
+              "name": "height",
+              "namespace": null
+            },
+            {
+              "name": "lspace",
+              "namespace": null
+            },
+            {
+              "name": "voffset",
+              "namespace": null
+            },
+            {
+              "name": "width",
+              "namespace": null
+            }
+          ]
+        },
+        {
+          "name": "mphantom",
+          "namespace": "http://www.w3.org/1998/Math/MathML",
+          "attributes": []
+        },
+        {
+          "name": "mprescripts",
+          "namespace": "http://www.w3.org/1998/Math/MathML",
+          "attributes": []
+        },
+        {
+          "name": "mroot",
+          "namespace": "http://www.w3.org/1998/Math/MathML",
+          "attributes": []
+        },
+        {
+          "name": "mrow",
+          "namespace": "http://www.w3.org/1998/Math/MathML",
+          "attributes": []
+        },
+        {
+          "name": "ms",
+          "namespace": "http://www.w3.org/1998/Math/MathML",
+          "attributes": []
+        },
+        {
+          "name": "mspace",
+          "namespace": "http://www.w3.org/1998/Math/MathML",
+          "attributes": [
+            {
+              "name": "depth",
+              "namespace": null
+            },
+            {
+              "name": "height",
+              "namespace": null
+            },
+            {
+              "name": "width",
+              "namespace": null
+            }
+          ]
+        },
+        {
+          "name": "msqrt",
+          "namespace": "http://www.w3.org/1998/Math/MathML",
+          "attributes": []
+        },
+        {
+          "name": "mstyle",
+          "namespace": "http://www.w3.org/1998/Math/MathML",
+          "attributes": []
+        },
+        {
+          "name": "msub",
+          "namespace": "http://www.w3.org/1998/Math/MathML",
+          "attributes": []
+        },
+        {
+          "name": "msubsup",
+          "namespace": "http://www.w3.org/1998/Math/MathML",
+          "attributes": []
+        },
+        {
+          "name": "msup",
+          "namespace": "http://www.w3.org/1998/Math/MathML",
+          "attributes": []
+        },
+        {
+          "name": "mtable",
+          "namespace": "http://www.w3.org/1998/Math/MathML",
+          "attributes": []
+        },
+        {
+          "name": "mtd",
+          "namespace": "http://www.w3.org/1998/Math/MathML",
+          "attributes": [
+            {
+              "name": "columnspan",
+              "namespace": null
+            },
+            {
+              "name": "rowspan",
+              "namespace": null
+            }
+          ]
+        },
+        {
+          "name": "mtext",
+          "namespace": "http://www.w3.org/1998/Math/MathML",
+          "attributes": []
+        },
+        {
+          "name": "mtr",
+          "namespace": "http://www.w3.org/1998/Math/MathML",
+          "attributes": []
+        },
+        {
+          "name": "munder",
+          "namespace": "http://www.w3.org/1998/Math/MathML",
+          "attributes": [
+            {
+              "name": "accentunder",
+              "namespace": null
+            }
+          ]
+        },
+        {
+          "name": "munderover",
+          "namespace": "http://www.w3.org/1998/Math/MathML",
+          "attributes": [
+            {
+              "name": "accent",
+              "namespace": null
+            },
+            {
+              "name": "accentunder",
+              "namespace": null
+            }
+          ]
+        },
+        {
+          "name": "semantics",
+          "namespace": "http://www.w3.org/1998/Math/MathML",
+          "attributes": []
+        },
+        {
+          "name": "a",
+          "namespace": "http://www.w3.org/1999/xhtml",
+          "attributes": [
+            {
+              "name": "href",
+              "namespace": null
+            },
+            {
+              "name": "hreflang",
+              "namespace": null
+            },
+            {
+              "name": "type",
+              "namespace": null
+            }
+          ]
+        },
+        {
+          "name": "abbr",
+          "namespace": "http://www.w3.org/1999/xhtml",
+          "attributes": []
+        },
+        {
+          "name": "address",
+          "namespace": "http://www.w3.org/1999/xhtml",
+          "attributes": []
+        },
+        {
+          "name": "article",
+          "namespace": "http://www.w3.org/1999/xhtml",
+          "attributes": []
+        },
+        {
+          "name": "aside",
+          "namespace": "http://www.w3.org/1999/xhtml",
+          "attributes": []
+        },
+        {
+          "name": "b",
+          "namespace": "http://www.w3.org/1999/xhtml",
+          "attributes": []
+        },
+        {
+          "name": "bdi",
+          "namespace": "http://www.w3.org/1999/xhtml",
+          "attributes": []
+        },
+        {
+          "name": "bdo",
+          "namespace": "http://www.w3.org/1999/xhtml",
+          "attributes": []
+        },
+        {
+          "name": "blockquote",
+          "namespace": "http://www.w3.org/1999/xhtml",
+          "attributes": [
+            {
+              "name": "cite",
+              "namespace": null
+            }
+          ]
+        },
+        {
+          "name": "body",
+          "namespace": "http://www.w3.org/1999/xhtml",
+          "attributes": []
+        },
+        {
+          "name": "br",
+          "namespace": "http://www.w3.org/1999/xhtml",
+          "attributes": []
+        },
+        {
+          "name": "caption",
+          "namespace": "http://www.w3.org/1999/xhtml",
+          "attributes": []
+        },
+        {
+          "name": "cite",
+          "namespace": "http://www.w3.org/1999/xhtml",
+          "attributes": []
+        },
+        {
+          "name": "code",
+          "namespace": "http://www.w3.org/1999/xhtml",
+          "attributes": []
+        },
+        {
+          "name": "col",
+          "namespace": "http://www.w3.org/1999/xhtml",
+          "attributes": [
+            {
+              "name": "span",
+              "namespace": null
+            }
+          ]
+        },
+        {
+          "name": "colgroup",
+          "namespace": "http://www.w3.org/1999/xhtml",
+          "attributes": [
+            {
+              "name": "span",
+              "namespace": null
+            }
+          ]
+        },
+        {
+          "name": "data",
+          "namespace": "http://www.w3.org/1999/xhtml",
+          "attributes": [
+            {
+              "name": "value",
+              "namespace": null
+            }
+          ]
+        },
+        {
+          "name": "dd",
+          "namespace": "http://www.w3.org/1999/xhtml",
+          "attributes": []
+        },
+        {
+          "name": "del",
+          "namespace": "http://www.w3.org/1999/xhtml",
+          "attributes": [
+            {
+              "name": "cite",
+              "namespace": null
+            },
+            {
+              "name": "datetime",
+              "namespace": null
+            }
+          ]
+        },
+        {
+          "name": "dfn",
+          "namespace": "http://www.w3.org/1999/xhtml",
+          "attributes": []
+        },
+        {
+          "name": "div",
+          "namespace": "http://www.w3.org/1999/xhtml",
+          "attributes": []
+        },
+        {
+          "name": "dl",
+          "namespace": "http://www.w3.org/1999/xhtml",
+          "attributes": []
+        },
+        {
+          "name": "dt",
+          "namespace": "http://www.w3.org/1999/xhtml",
+          "attributes": []
+        },
+        {
+          "name": "em",
+          "namespace": "http://www.w3.org/1999/xhtml",
+          "attributes": []
+        },
+        {
+          "name": "figcaption",
+          "namespace": "http://www.w3.org/1999/xhtml",
+          "attributes": []
+        },
+        {
+          "name": "figure",
+          "namespace": "http://www.w3.org/1999/xhtml",
+          "attributes": []
+        },
+        {
+          "name": "footer",
+          "namespace": "http://www.w3.org/1999/xhtml",
+          "attributes": []
+        },
+        {
+          "name": "h1",
+          "namespace": "http://www.w3.org/1999/xhtml",
+          "attributes": []
+        },
+        {
+          "name": "h2",
+          "namespace": "http://www.w3.org/1999/xhtml",
+          "attributes": []
+        },
+        {
+          "name": "h3",
+          "namespace": "http://www.w3.org/1999/xhtml",
+          "attributes": []
+        },
+        {
+          "name": "h4",
+          "namespace": "http://www.w3.org/1999/xhtml",
+          "attributes": []
+        },
+        {
+          "name": "h5",
+          "namespace": "http://www.w3.org/1999/xhtml",
+          "attributes": []
+        },
+        {
+          "name": "h6",
+          "namespace": "http://www.w3.org/1999/xhtml",
+          "attributes": []
+        },
+        {
+          "name": "head",
+          "namespace": "http://www.w3.org/1999/xhtml",
+          "attributes": []
+        },
+        {
+          "name": "header",
+          "namespace": "http://www.w3.org/1999/xhtml",
+          "attributes": []
+        },
+        {
+          "name": "hgroup",
+          "namespace": "http://www.w3.org/1999/xhtml",
+          "attributes": []
+        },
+        {
+          "name": "hr",
+          "namespace": "http://www.w3.org/1999/xhtml",
+          "attributes": []
+        },
+        {
+          "name": "html",
+          "namespace": "http://www.w3.org/1999/xhtml",
+          "attributes": []
+        },
+        {
+          "name": "i",
+          "namespace": "http://www.w3.org/1999/xhtml",
+          "attributes": []
+        },
+        {
+          "name": "ins",
+          "namespace": "http://www.w3.org/1999/xhtml",
+          "attributes": [
+            {
+              "name": "cite",
+              "namespace": null
+            },
+            {
+              "name": "datetime",
+              "namespace": null
+            }
+          ]
+        },
+        {
+          "name": "kbd",
+          "namespace": "http://www.w3.org/1999/xhtml",
+          "attributes": []
+        },
+        {
+          "name": "li",
+          "namespace": "http://www.w3.org/1999/xhtml",
+          "attributes": [
+            {
+              "name": "value",
+              "namespace": null
+            }
+          ]
+        },
+        {
+          "name": "main",
+          "namespace": "http://www.w3.org/1999/xhtml",
+          "attributes": []
+        },
+        {
+          "name": "mark",
+          "namespace": "http://www.w3.org/1999/xhtml",
+          "attributes": []
+        },
+        {
+          "name": "menu",
+          "namespace": "http://www.w3.org/1999/xhtml",
+          "attributes": []
+        },
+        {
+          "name": "nav",
+          "namespace": "http://www.w3.org/1999/xhtml",
+          "attributes": []
+        },
+        {
+          "name": "ol",
+          "namespace": "http://www.w3.org/1999/xhtml",
+          "attributes": [
+            {
+              "name": "reversed",
+              "namespace": null
+            },
+            {
+              "name": "start",
+              "namespace": null
+            },
+            {
+              "name": "type",
+              "namespace": null
+            }
+          ]
+        },
+        {
+          "name": "p",
+          "namespace": "http://www.w3.org/1999/xhtml",
+          "attributes": []
+        },
+        {
+          "name": "pre",
+          "namespace": "http://www.w3.org/1999/xhtml",
+          "attributes": []
+        },
+        {
+          "name": "q",
+          "namespace": "http://www.w3.org/1999/xhtml",
+          "attributes": []
+        },
+        {
+          "name": "rp",
+          "namespace": "http://www.w3.org/1999/xhtml",
+          "attributes": []
+        },
+        {
+          "name": "rt",
+          "namespace": "http://www.w3.org/1999/xhtml",
+          "attributes": []
+        },
+        {
+          "name": "ruby",
+          "namespace": "http://www.w3.org/1999/xhtml",
+          "attributes": []
+        },
+        {
+          "name": "s",
+          "namespace": "http://www.w3.org/1999/xhtml",
+          "attributes": []
+        },
+        {
+          "name": "samp",
+          "namespace": "http://www.w3.org/1999/xhtml",
+          "attributes": []
+        },
+        {
+          "name": "search",
+          "namespace": "http://www.w3.org/1999/xhtml",
+          "attributes": []
+        },
+        {
+          "name": "section",
+          "namespace": "http://www.w3.org/1999/xhtml",
+          "attributes": []
+        },
+        {
+          "name": "small",
+          "namespace": "http://www.w3.org/1999/xhtml",
+          "attributes": []
+        },
+        {
+          "name": "span",
+          "namespace": "http://www.w3.org/1999/xhtml",
+          "attributes": []
+        },
+        {
+          "name": "strong",
+          "namespace": "http://www.w3.org/1999/xhtml",
+          "attributes": []
+        },
+        {
+          "name": "sub",
+          "namespace": "http://www.w3.org/1999/xhtml",
+          "attributes": []
+        },
+        {
+          "name": "sup",
+          "namespace": "http://www.w3.org/1999/xhtml",
+          "attributes": []
+        },
+        {
+          "name": "table",
+          "namespace": "http://www.w3.org/1999/xhtml",
+          "attributes": []
+        },
+        {
+          "name": "tbody",
+          "namespace": "http://www.w3.org/1999/xhtml",
+          "attributes": []
+        },
+        {
+          "name": "td",
+          "namespace": "http://www.w3.org/1999/xhtml",
+          "attributes": [
+            {
+              "name": "colspan",
+              "namespace": null
+            },
+            {
+              "name": "headers",
+              "namespace": null
+            },
+            {
+              "name": "rowspan",
+              "namespace": null
+            }
+          ]
+        },
+        {
+          "name": "tfoot",
+          "namespace": "http://www.w3.org/1999/xhtml",
+          "attributes": []
+        },
+        {
+          "name": "th",
+          "namespace": "http://www.w3.org/1999/xhtml",
+          "attributes": [
+            {
+              "name": "abbr",
+              "namespace": null
+            },
+            {
+              "name": "colspan",
+              "namespace": null
+            },
+            {
+              "name": "headers",
+              "namespace": null
+            },
+            {
+              "name": "rowspan",
+              "namespace": null
+            },
+            {
+              "name": "scope",
+              "namespace": null
+            }
+          ]
+        },
+        {
+          "name": "thead",
+          "namespace": "http://www.w3.org/1999/xhtml",
+          "attributes": []
+        },
+        {
+          "name": "time",
+          "namespace": "http://www.w3.org/1999/xhtml",
+          "attributes": [
+            {
+              "name": "datetime",
+              "namespace": null
+            }
+          ]
+        },
+        {
+          "name": "title",
+          "namespace": "http://www.w3.org/1999/xhtml",
+          "attributes": []
+        },
+        {
+          "name": "tr",
+          "namespace": "http://www.w3.org/1999/xhtml",
+          "attributes": []
+        },
+        {
+          "name": "u",
+          "namespace": "http://www.w3.org/1999/xhtml",
+          "attributes": []
+        },
+        {
+          "name": "ul",
+          "namespace": "http://www.w3.org/1999/xhtml",
+          "attributes": []
+        },
+        {
+          "name": "var",
+          "namespace": "http://www.w3.org/1999/xhtml",
+          "attributes": []
+        },
+        {
+          "name": "wbr",
+          "namespace": "http://www.w3.org/1999/xhtml",
+          "attributes": []
+        },
+        {
+          "name": "a",
+          "namespace": "http://www.w3.org/2000/svg",
+          "attributes": [
+            {
+              "name": "href",
+              "namespace": null
+            },
+            {
+              "name": "hreflang",
+              "namespace": null
+            },
+            {
+              "name": "type",
+              "namespace": null
+            }
+          ]
+        },
+        {
+          "name": "circle",
+          "namespace": "http://www.w3.org/2000/svg",
+          "attributes": [
+            {
+              "name": "cx",
+              "namespace": null
+            },
+            {
+              "name": "cy",
+              "namespace": null
+            },
+            {
+              "name": "pathLength",
+              "namespace": null
+            },
+            {
+              "name": "r",
+              "namespace": null
+            }
+          ]
+        },
+        {
+          "name": "defs",
+          "namespace": "http://www.w3.org/2000/svg",
+          "attributes": []
+        },
+        {
+          "name": "desc",
+          "namespace": "http://www.w3.org/2000/svg",
+          "attributes": []
+        },
+        {
+          "name": "ellipse",
+          "namespace": "http://www.w3.org/2000/svg",
+          "attributes": [
+            {
+              "name": "cx",
+              "namespace": null
+            },
+            {
+              "name": "cy",
+              "namespace": null
+            },
+            {
+              "name": "pathLength",
+              "namespace": null
+            },
+            {
+              "name": "rx",
+              "namespace": null
+            },
+            {
+              "name": "ry",
+              "namespace": null
+            }
+          ]
+        },
+        {
+          "name": "foreignObject",
+          "namespace": "http://www.w3.org/2000/svg",
+          "attributes": [
+            {
+              "name": "height",
+              "namespace": null
+            },
+            {
+              "name": "width",
+              "namespace": null
+            },
+            {
+              "name": "x",
+              "namespace": null
+            },
+            {
+              "name": "y",
+              "namespace": null
+            }
+          ]
+        },
+        {
+          "name": "g",
+          "namespace": "http://www.w3.org/2000/svg",
+          "attributes": []
+        },
+        {
+          "name": "line",
+          "namespace": "http://www.w3.org/2000/svg",
+          "attributes": [
+            {
+              "name": "pathLength",
+              "namespace": null
+            },
+            {
+              "name": "x1",
+              "namespace": null
+            },
+            {
+              "name": "x2",
+              "namespace": null
+            },
+            {
+              "name": "y1",
+              "namespace": null
+            },
+            {
+              "name": "y2",
+              "namespace": null
+            }
+          ]
+        },
+        {
+          "name": "marker",
+          "namespace": "http://www.w3.org/2000/svg",
+          "attributes": [
+            {
+              "name": "markerHeight",
+              "namespace": null
+            },
+            {
+              "name": "markerUnits",
+              "namespace": null
+            },
+            {
+              "name": "markerWidth",
+              "namespace": null
+            },
+            {
+              "name": "orient",
+              "namespace": null
+            },
+            {
+              "name": "preserveAspectRatio",
+              "namespace": null
+            },
+            {
+              "name": "refX",
+              "namespace": null
+            },
+            {
+              "name": "refY",
+              "namespace": null
+            },
+            {
+              "name": "viewBox",
+              "namespace": null
+            }
+          ]
+        },
+        {
+          "name": "metadata",
+          "namespace": "http://www.w3.org/2000/svg",
+          "attributes": []
+        },
+        {
+          "name": "path",
+          "namespace": "http://www.w3.org/2000/svg",
+          "attributes": [
+            {
+              "name": "d",
+              "namespace": null
+            },
+            {
+              "name": "pathLength",
+              "namespace": null
+            }
+          ]
+        },
+        {
+          "name": "polygon",
+          "namespace": "http://www.w3.org/2000/svg",
+          "attributes": [
+            {
+              "name": "pathLength",
+              "namespace": null
+            },
+            {
+              "name": "points",
+              "namespace": null
+            }
+          ]
+        },
+        {
+          "name": "polyline",
+          "namespace": "http://www.w3.org/2000/svg",
+          "attributes": [
+            {
+              "name": "pathLength",
+              "namespace": null
+            },
+            {
+              "name": "points",
+              "namespace": null
+            }
+          ]
+        },
+        {
+          "name": "rect",
+          "namespace": "http://www.w3.org/2000/svg",
+          "attributes": [
+            {
+              "name": "height",
+              "namespace": null
+            },
+            {
+              "name": "pathLength",
+              "namespace": null
+            },
+            {
+              "name": "rx",
+              "namespace": null
+            },
+            {
+              "name": "ry",
+              "namespace": null
+            },
+            {
+              "name": "width",
+              "namespace": null
+            },
+            {
+              "name": "x",
+              "namespace": null
+            },
+            {
+              "name": "y",
+              "namespace": null
+            }
+          ]
+        },
+        {
+          "name": "svg",
+          "namespace": "http://www.w3.org/2000/svg",
+          "attributes": [
+            {
+              "name": "height",
+              "namespace": null
+            },
+            {
+              "name": "preserveAspectRatio",
+              "namespace": null
+            },
+            {
+              "name": "viewBox",
+              "namespace": null
+            },
+            {
+              "name": "width",
+              "namespace": null
+            },
+            {
+              "name": "x",
+              "namespace": null
+            },
+            {
+              "name": "y",
+              "namespace": null
+            }
+          ]
+        },
+        {
+          "name": "text",
+          "namespace": "http://www.w3.org/2000/svg",
+          "attributes": [
+            {
+              "name": "dx",
+              "namespace": null
+            },
+            {
+              "name": "dy",
+              "namespace": null
+            },
+            {
+              "name": "lengthAdjust",
+              "namespace": null
+            },
+            {
+              "name": "rotate",
+              "namespace": null
+            },
+            {
+              "name": "textLength",
+              "namespace": null
+            },
+            {
+              "name": "x",
+              "namespace": null
+            },
+            {
+              "name": "y",
+              "namespace": null
+            }
+          ]
+        },
+        {
+          "name": "textPath",
+          "namespace": "http://www.w3.org/2000/svg",
+          "attributes": [
+            {
+              "name": "lengthAdjust",
+              "namespace": null
+            },
+            {
+              "name": "method",
+              "namespace": null
+            },
+            {
+              "name": "path",
+              "namespace": null
+            },
+            {
+              "name": "side",
+              "namespace": null
+            },
+            {
+              "name": "spacing",
+              "namespace": null
+            },
+            {
+              "name": "startOffset",
+              "namespace": null
+            },
+            {
+              "name": "textLength",
+              "namespace": null
+            }
+          ]
+        },
+        {
+          "name": "title",
+          "namespace": "http://www.w3.org/2000/svg",
+          "attributes": []
+        },
+        {
+          "name": "tspan",
+          "namespace": "http://www.w3.org/2000/svg",
+          "attributes": [
+            {
+              "name": "dx",
+              "namespace": null
+            },
+            {
+              "name": "dy",
+              "namespace": null
+            },
+            {
+              "name": "lengthAdjust",
+              "namespace": null
+            },
+            {
+              "name": "rotate",
+              "namespace": null
+            },
+            {
+              "name": "textLength",
+              "namespace": null
+            },
+            {
+              "name": "x",
+              "namespace": null
+            },
+            {
+              "name": "y",
+              "namespace": null
+            }
+          ]
+        }
+      ],
+      "processingInstructions": []
+    },
+    "defaults": {
+      "preset": {
+        "value": true
+      },
+      "undefinedArg": {
+        "value": true
+      },
+      "copy": {
+        "value": [
+          121,
+          false,
+          true
+        ]
+      },
+      "removeUnsafeNoop": {
+        "value": true
+      }
+    },
+    "config": {
+      "empty": {
+        "value": {
+          "comments": true,
+          "removeAttributes": [],
+          "removeElements": [],
+          "removeProcessingInstructions": []
+        }
+      },
+      "nullConfig": {
+        "value": {
+          "comments": true,
+          "removeAttributes": [],
+          "removeElements": [],
+          "removeProcessingInstructions": []
+        }
+      },
+      "functionConfig": {
+        "value": {
+          "comments": true,
+          "removeAttributes": [],
+          "removeElements": [],
+          "removeProcessingInstructions": []
+        }
+      },
+      "arrayConfig": {
+        "value": {
+          "comments": true,
+          "removeAttributes": [],
+          "removeElements": [],
+          "removeProcessingInstructions": []
+        }
+      },
+      "badPreset": {
+        "error": "TypeError",
+        "message": "Failed to construct 'Sanitizer': The provided value 'foo' is not a valid enum value of type SanitizerPresets.",
+        "same": false
+      },
+      "numberPreset": {
+        "error": "TypeError",
+        "message": "Failed to construct 'Sanitizer': The provided value '1' is not a valid enum value of type SanitizerPresets.",
+        "same": false
+      },
+      "booleanPreset": {
+        "error": "TypeError",
+        "message": "Failed to construct 'Sanitizer': The provided value 'true' is not a valid enum value of type SanitizerPresets.",
+        "same": false
+      },
+      "bothElements": {
+        "error": "TypeError",
+        "message": "Failed to construct 'Sanitizer': Invalid Sanitizer configuration.",
+        "same": false
+      },
+      "bothAttributes": {
+        "error": "TypeError",
+        "message": "Failed to construct 'Sanitizer': Invalid Sanitizer configuration.",
+        "same": false
+      },
+      "bothInstructions": {
+        "error": "TypeError",
+        "message": "Failed to construct 'Sanitizer': Invalid Sanitizer configuration.",
+        "same": false
+      },
+      "duplicateElements": {
+        "error": "TypeError",
+        "message": "Failed to construct 'Sanitizer': Invalid Sanitizer configuration.",
+        "same": false
+      },
+      "duplicateRemove": {
+        "error": "TypeError",
+        "message": "Failed to construct 'Sanitizer': Invalid Sanitizer configuration.",
+        "same": false
+      },
+      "duplicateReplace": {
+        "error": "TypeError",
+        "message": "Failed to construct 'Sanitizer': Invalid Sanitizer configuration.",
+        "same": false
+      },
+      "duplicateAttributes": {
+        "error": "TypeError",
+        "message": "Failed to construct 'Sanitizer': Invalid Sanitizer configuration.",
+        "same": false
+      },
+      "duplicateRemoveAttributes": {
+        "error": "TypeError",
+        "message": "Failed to construct 'Sanitizer': Invalid Sanitizer configuration.",
+        "same": false
+      },
+      "duplicateInstructions": {
+        "error": "TypeError",
+        "message": "Failed to construct 'Sanitizer': Invalid Sanitizer configuration.",
+        "same": false
+      },
+      "duplicateRemoveInstructions": {
+        "error": "TypeError",
+        "message": "Failed to construct 'Sanitizer': Invalid Sanitizer configuration.",
+        "same": false
+      },
+      "elementAttributeDuplicate": {
+        "error": "TypeError",
+        "message": "Failed to construct 'Sanitizer': Invalid Sanitizer configuration.",
+        "same": false
+      },
+      "elementRemoveDuplicate": {
+        "error": "TypeError",
+        "message": "Failed to construct 'Sanitizer': Invalid Sanitizer configuration.",
+        "same": false
+      },
+      "elementAttributeOverlap": {
+        "error": "TypeError",
+        "message": "Failed to construct 'Sanitizer': Invalid Sanitizer configuration.",
+        "same": false
+      },
+      "elementRemoveNotSubset": {
+        "error": "TypeError",
+        "message": "Failed to construct 'Sanitizer': Invalid Sanitizer configuration.",
+        "same": false
+      },
+      "elementBothWithRemoveList": {
+        "error": "TypeError",
+        "message": "Failed to construct 'Sanitizer': Invalid Sanitizer configuration.",
+        "same": false
+      },
+      "elementBothWithAllowList": {
+        "value": {
+          "attributes": [
+            {
+              "name": "x",
+              "namespace": null
+            }
+          ],
+          "comments": true,
+          "dataAttributes": true,
+          "elements": [
+            {
+              "name": "b",
+              "namespace": "http://www.w3.org/1999/xhtml",
+              "attributes": [
+                {
+                  "name": "y",
+                  "namespace": null
+                }
+              ],
+              "removeAttributes": [
+                {
+                  "name": "x",
+                  "namespace": null
+                }
+              ]
+            }
+          ],
+          "removeProcessingInstructions": []
+        }
+      },
+      "elementAllowVsRemoveList": {
+        "error": "TypeError",
+        "message": "Failed to construct 'Sanitizer': Invalid Sanitizer configuration.",
+        "same": false
+      },
+      "elementRemoveVsRemoveList": {
+        "error": "TypeError",
+        "message": "Failed to construct 'Sanitizer': Invalid Sanitizer configuration.",
+        "same": false
+      },
+      "elementRemoveOkRemoveList": {
+        "value": {
+          "comments": true,
+          "elements": [
+            {
+              "name": "b",
+              "namespace": "http://www.w3.org/1999/xhtml",
+              "removeAttributes": [
+                {
+                  "name": "x",
+                  "namespace": null
+                }
+              ]
+            }
+          ],
+          "removeAttributes": [
+            {
+              "name": "y",
+              "namespace": null
+            }
+          ],
+          "removeProcessingInstructions": []
+        }
+      },
+      "replaceOnly": {
+        "value": {
+          "comments": true,
+          "removeAttributes": [],
+          "removeElements": [],
+          "removeProcessingInstructions": [],
+          "replaceWithChildrenElements": [
+            {
+              "name": "b",
+              "namespace": "http://www.w3.org/1999/xhtml"
+            }
+          ]
+        }
+      },
+      "replaceHtml": {
+        "error": "TypeError",
+        "message": "Failed to construct 'Sanitizer': Invalid Sanitizer configuration.",
+        "same": false
+      },
+      "replaceSvg": {
+        "error": "TypeError",
+        "message": "Failed to construct 'Sanitizer': Invalid Sanitizer configuration.",
+        "same": false
+      },
+      "replaceMath": {
+        "error": "TypeError",
+        "message": "Failed to construct 'Sanitizer': Invalid Sanitizer configuration.",
+        "same": false
+      },
+      "replaceHtmlOtherNamespace": {
+        "value": {
+          "comments": true,
+          "removeAttributes": [],
+          "removeElements": [],
+          "removeProcessingInstructions": [],
+          "replaceWithChildrenElements": [
+            {
+              "name": "html",
+              "namespace": null
+            }
+          ]
+        }
+      },
+      "replaceAndElements": {
+        "error": "TypeError",
+        "message": "Failed to construct 'Sanitizer': Invalid Sanitizer configuration.",
+        "same": false
+      },
+      "replaceAndRemove": {
+        "error": "TypeError",
+        "message": "Failed to construct 'Sanitizer': Invalid Sanitizer configuration.",
+        "same": false
+      },
+      "dataWithRemoveList": {
+        "error": "TypeError",
+        "message": "Failed to construct 'Sanitizer': Invalid Sanitizer configuration.",
+        "same": false
+      },
+      "dataFalseWithRemoveList": {
+        "error": "TypeError",
+        "message": "Failed to construct 'Sanitizer': Invalid Sanitizer configuration.",
+        "same": false
+      },
+      "dataInAllowList": {
+        "error": "TypeError",
+        "message": "Failed to construct 'Sanitizer': Invalid Sanitizer configuration.",
+        "same": false
+      },
+      "dataInAllowListDefault": {
+        "error": "TypeError",
+        "message": "Failed to construct 'Sanitizer': Invalid Sanitizer configuration.",
+        "same": false
+      },
+      "dataFalse": {
+        "value": {
+          "attributes": [
+            {
+              "name": "data-x",
+              "namespace": null
+            }
+          ],
+          "comments": true,
+          "dataAttributes": false,
+          "removeElements": [],
+          "removeProcessingInstructions": []
+        }
+      },
+      "dataUpper": {
+        "error": "TypeError",
+        "message": "Failed to construct 'Sanitizer': Invalid Sanitizer configuration.",
+        "same": false
+      },
+      "dataCaps": {
+        "value": {
+          "attributes": [
+            {
+              "name": "DATA-x",
+              "namespace": null
+            }
+          ],
+          "comments": true,
+          "dataAttributes": true,
+          "removeElements": [],
+          "removeProcessingInstructions": []
+        }
+      },
+      "dataBare": {
+        "error": "TypeError",
+        "message": "Failed to construct 'Sanitizer': Invalid Sanitizer configuration.",
+        "same": false
+      },
+      "dataColon": {
+        "error": "TypeError",
+        "message": "Failed to construct 'Sanitizer': Invalid Sanitizer configuration.",
+        "same": false
+      },
+      "dataNamespaced": {
+        "error": "TypeError",
+        "message": "Failed to construct 'Sanitizer': Invalid Sanitizer configuration.",
+        "same": false
+      },
+      "dataInElement": {
+        "error": "TypeError",
+        "message": "Failed to construct 'Sanitizer': Invalid Sanitizer configuration.",
+        "same": false
+      },
+      "dataInElementFalse": {
+        "value": {
+          "attributes": [],
+          "comments": true,
+          "dataAttributes": false,
+          "elements": [
+            {
+              "name": "b",
+              "namespace": "http://www.w3.org/1999/xhtml",
+              "attributes": [
+                {
+                  "name": "data-x",
+                  "namespace": null
+                }
+              ]
+            }
+          ],
+          "removeProcessingInstructions": []
+        }
+      },
+      "dataInElementRemoveList": {
+        "value": {
+          "comments": true,
+          "elements": [
+            {
+              "name": "b",
+              "namespace": "http://www.w3.org/1999/xhtml",
+              "attributes": [
+                {
+                  "name": "data-x",
+                  "namespace": null
+                }
+              ]
+            }
+          ],
+          "removeAttributes": [],
+          "removeProcessingInstructions": []
+        }
+      },
+      "namespaces": {
+        "value": {
+          "attributes": [
+            {
+              "name": "a",
+              "namespace": null
+            },
+            {
+              "name": "c",
+              "namespace": null
+            },
+            {
+              "name": "b",
+              "namespace": "urn:b"
+            }
+          ],
+          "comments": true,
+          "dataAttributes": true,
+          "elements": [
+            {
+              "name": "x",
+              "namespace": null,
+              "removeAttributes": []
+            },
+            {
+              "name": "y",
+              "namespace": null,
+              "removeAttributes": []
+            },
+            {
+              "name": "z",
+              "namespace": "http://www.w3.org/1999/xhtml",
+              "removeAttributes": []
+            },
+            {
+              "name": "q",
+              "namespace": "urn:a",
+              "removeAttributes": []
+            }
+          ],
+          "removeProcessingInstructions": []
+        }
+      },
+      "order": {
+        "error": "TypeError",
+        "message": "Failed to construct 'Sanitizer': Invalid Sanitizer configuration.",
+        "same": false
+      },
+      "instructions": {
+        "value": {
+          "comments": true,
+          "processingInstructions": [
+            {
+              "target": "Foo"
+            },
+            {
+              "target": "foo"
+            },
+            {
+              "target": "xml-stylesheet"
+            }
+          ],
+          "removeAttributes": [],
+          "removeElements": []
+        }
+      },
+      "removeInstructions": {
+        "value": {
+          "comments": true,
+          "removeAttributes": [],
+          "removeElements": [],
+          "removeProcessingInstructions": [
+            {
+              "target": "a"
+            },
+            {
+              "target": "b"
+            }
+          ]
+        }
+      },
+      "comments": {
+        "value": {
+          "comments": false,
+          "removeAttributes": [],
+          "removeElements": [],
+          "removeProcessingInstructions": []
+        }
+      },
+      "coerced": {
+        "value": {
+          "attributes": [],
+          "comments": true,
+          "dataAttributes": false,
+          "removeElements": [],
+          "removeProcessingInstructions": []
+        }
+      },
+      "unknownKey": {
+        "value": {
+          "comments": true,
+          "elements": [
+            {
+              "name": "b",
+              "namespace": "http://www.w3.org/1999/xhtml",
+              "removeAttributes": []
+            }
+          ],
+          "removeAttributes": [],
+          "removeProcessingInstructions": []
+        }
+      },
+      "setIterable": {
+        "value": {
+          "comments": true,
+          "elements": [
+            {
+              "name": "b",
+              "namespace": "http://www.w3.org/1999/xhtml",
+              "removeAttributes": []
+            },
+            {
+              "name": "i",
+              "namespace": "http://www.w3.org/1999/xhtml",
+              "removeAttributes": []
+            }
+          ],
+          "removeAttributes": [],
+          "removeProcessingInstructions": []
+        }
+      },
+      "sanitizerAsConfig": {
+        "value": {
+          "comments": true,
+          "removeAttributes": [],
+          "removeElements": [],
+          "removeProcessingInstructions": []
+        }
+      },
+      "caseSensitive": {
+        "value": {
+          "comments": true,
+          "removeAttributes": [
+            {
+              "name": "X",
+              "namespace": null
+            },
+            {
+              "name": "x",
+              "namespace": null
+            }
+          ],
+          "removeElements": [
+            {
+              "name": "B",
+              "namespace": "http://www.w3.org/1999/xhtml"
+            },
+            {
+              "name": "b",
+              "namespace": "http://www.w3.org/1999/xhtml"
+            }
+          ],
+          "removeProcessingInstructions": []
+        }
+      },
+      "emptyNames": {
+        "value": {
+          "comments": true,
+          "removeAttributes": [
+            {
+              "name": "",
+              "namespace": null
+            }
+          ],
+          "removeElements": [
+            {
+              "name": "",
+              "namespace": "http://www.w3.org/1999/xhtml"
+            }
+          ],
+          "removeProcessingInstructions": []
+        }
+      },
+      "coercedNames": {
+        "value": {
+          "comments": true,
+          "removeAttributes": [
+            {
+              "name": "true",
+              "namespace": null
+            }
+          ],
+          "removeElements": [
+            {
+              "name": "null",
+              "namespace": null
+            },
+            {
+              "name": "6",
+              "namespace": "7"
+            },
+            {
+              "name": "",
+              "namespace": "http://www.w3.org/1999/xhtml"
+            },
+            {
+              "name": "5",
+              "namespace": "http://www.w3.org/1999/xhtml"
+            }
+          ],
+          "removeProcessingInstructions": []
+        }
+      }
+    },
+    "conversion": {
+      "order": {
+        "value": [
+          "attributes",
+          "comments",
+          "dataAttributes",
+          "elements",
+          "processingInstructions",
+          "removeAttributes",
+          "removeElements",
+          "removeProcessingInstructions",
+          "replaceWithChildrenElements"
+        ]
+      },
+      "nested": {
+        "value": [
+          "el.name",
+          "el.namespace",
+          "el.attributes",
+          "attr.name",
+          "attr.namespace",
+          "el.removeAttributes"
+        ]
+      },
+      "proxyConfig": {
+        "value": [
+          "attributes",
+          "comments",
+          "dataAttributes",
+          "elements",
+          "processingInstructions",
+          "removeAttributes",
+          "removeElements",
+          "removeProcessingInstructions",
+          "replaceWithChildrenElements"
+        ]
+      },
+      "elementNull": {
+        "error": "TypeError",
+        "message": "Failed to construct 'Sanitizer': Failed to read the 'elements' property from 'SanitizerConfig': The provided value is not of type 'SanitizerElementNamespaceWithAttributes'.",
+        "same": false
+      },
+      "elementUndefined": {
+        "error": "TypeError",
+        "message": "Failed to construct 'Sanitizer': Failed to read the 'elements' property from 'SanitizerConfig': The provided value is not of type 'SanitizerElementNamespaceWithAttributes'.",
+        "same": false
+      },
+      "elementEmpty": {
+        "error": "TypeError",
+        "message": "Failed to construct 'Sanitizer': Failed to read the 'elements' property from 'SanitizerConfig': Failed to read the 'name' property from 'SanitizerElementNamespace': Required member is undefined.",
+        "same": false
+      },
+      "elementSymbol": {
+        "error": "TypeError",
+        "message": "Failed to construct 'Sanitizer': Failed to read the 'elements' property from 'SanitizerConfig': Cannot convert a Symbol value to a string",
+        "same": false
+      },
+      "elementNameSymbol": {
+        "error": "TypeError",
+        "message": "Failed to construct 'Sanitizer': Failed to read the 'elements' property from 'SanitizerConfig': Failed to read the 'name' property from 'SanitizerElementNamespace': Cannot convert a Symbol value to a string",
+        "same": false
+      },
+      "elementNamespaceSymbol": {
+        "error": "TypeError",
+        "message": "Failed to construct 'Sanitizer': Failed to read the 'elements' property from 'SanitizerConfig': Failed to read the 'namespace' property from 'SanitizerElementNamespace': Cannot convert a Symbol value to a string",
+        "same": false
+      },
+      "elementAttributesString": {
+        "error": "TypeError",
+        "message": "Failed to construct 'Sanitizer': Failed to read the 'elements' property from 'SanitizerConfig': Failed to read the 'attributes' property from 'SanitizerElementNamespaceWithAttributes': The provided value cannot be converted to a sequence.",
+        "same": false
+      },
+      "elementAttributesNull": {
+        "error": "TypeError",
+        "message": "Failed to construct 'Sanitizer': Failed to read the 'elements' property from 'SanitizerConfig': Failed to read the 'attributes' property from 'SanitizerElementNamespaceWithAttributes': The provided value is not of type 'SanitizerAttributeNamespace'.",
+        "same": false
+      },
+      "elementAttributesEmpty": {
+        "error": "TypeError",
+        "message": "Failed to construct 'Sanitizer': Failed to read the 'elements' property from 'SanitizerConfig': Failed to read the 'attributes' property from 'SanitizerElementNamespaceWithAttributes': Failed to read the 'name' property from 'SanitizerAttributeNamespace': Required member is undefined.",
+        "same": false
+      },
+      "elementRemoveAttributesEmpty": {
+        "error": "TypeError",
+        "message": "Failed to construct 'Sanitizer': Failed to read the 'elements' property from 'SanitizerConfig': Failed to read the 'removeAttributes' property from 'SanitizerElementNamespaceWithAttributes': Failed to read the 'name' property from 'SanitizerAttributeNamespace': Required member is undefined.",
+        "same": false
+      },
+      "elementToString": {
+        "error": "TypeError",
+        "message": "Failed to construct 'Sanitizer': Failed to read the 'elements' property from 'SanitizerConfig': Failed to read the 'name' property from 'SanitizerElementNamespace': Required member is undefined.",
+        "same": false
+      },
+      "nameToString": {
+        "error": "TypeError",
+        "message": "mine",
+        "same": true
+      },
+      "attributeNull": {
+        "error": "TypeError",
+        "message": "Failed to construct 'Sanitizer': Failed to read the 'attributes' property from 'SanitizerConfig': The provided value is not of type 'SanitizerAttributeNamespace'.",
+        "same": false
+      },
+      "attributeEmpty": {
+        "error": "TypeError",
+        "message": "Failed to construct 'Sanitizer': Failed to read the 'attributes' property from 'SanitizerConfig': Failed to read the 'name' property from 'SanitizerAttributeNamespace': Required member is undefined.",
+        "same": false
+      },
+      "removeElementNull": {
+        "error": "TypeError",
+        "message": "Failed to construct 'Sanitizer': Failed to read the 'removeElements' property from 'SanitizerConfig': The provided value is not of type 'SanitizerElementNamespace'.",
+        "same": false
+      },
+      "replaceEmpty": {
+        "error": "TypeError",
+        "message": "Failed to construct 'Sanitizer': Failed to read the 'replaceWithChildrenElements' property from 'SanitizerConfig': Failed to read the 'name' property from 'SanitizerElementNamespace': Required member is undefined.",
+        "same": false
+      },
+      "instructionNull": {
+        "error": "TypeError",
+        "message": "Failed to construct 'Sanitizer': Failed to read the 'processingInstructions' property from 'SanitizerConfig': The provided value is not of type 'SanitizerProcessingInstruction'.",
+        "same": false
+      },
+      "instructionEmpty": {
+        "error": "TypeError",
+        "message": "Failed to construct 'Sanitizer': Failed to read the 'processingInstructions' property from 'SanitizerConfig': Failed to read the 'target' property from 'SanitizerProcessingInstruction': Required member is undefined.",
+        "same": false
+      },
+      "removeInstructionEmpty": {
+        "error": "TypeError",
+        "message": "Failed to construct 'Sanitizer': Failed to read the 'removeProcessingInstructions' property from 'SanitizerConfig': Failed to read the 'target' property from 'SanitizerProcessingInstruction': Required member is undefined.",
+        "same": false
+      },
+      "elementsString": {
+        "error": "TypeError",
+        "message": "Failed to construct 'Sanitizer': Failed to read the 'elements' property from 'SanitizerConfig': The provided value cannot be converted to a sequence.",
+        "same": false
+      },
+      "elementsNull": {
+        "error": "TypeError",
+        "message": "Failed to construct 'Sanitizer': Failed to read the 'elements' property from 'SanitizerConfig': The provided value cannot be converted to a sequence.",
+        "same": false
+      },
+      "elementsUndefined": {
+        "value": {
+          "comments": true,
+          "removeAttributes": [],
+          "removeElements": [],
+          "removeProcessingInstructions": []
+        }
+      },
+      "elementsObject": {
+        "error": "TypeError",
+        "message": "Failed to construct 'Sanitizer': Failed to read the 'elements' property from 'SanitizerConfig': The object must have a callable @@iterator property.",
+        "same": false
+      },
+      "iteratorNotCallable": {
+        "error": "TypeError",
+        "message": "Failed to construct 'Sanitizer': Failed to read the 'elements' property from 'SanitizerConfig': @@iterator must be a callable.",
+        "same": false
+      },
+      "iteratorNotObject": {
+        "error": "TypeError",
+        "message": "Failed to construct 'Sanitizer': Failed to read the 'elements' property from 'SanitizerConfig': Iterator object must be an object.",
+        "same": false
+      },
+      "stepNotObject": {
+        "error": "TypeError",
+        "message": "Failed to construct 'Sanitizer': Failed to read the 'elements' property from 'SanitizerConfig': Expected iterator.next() to return an Object.",
+        "same": false
+      },
+      "iteratorThrows": {
+        "error": "TypeError",
+        "message": "mine",
+        "same": true
+      },
+      "getterThrows": {
+        "error": "TypeError",
+        "message": "mine",
+        "same": true
+      },
+      "nameGetterThrows": {
+        "error": "TypeError",
+        "message": "mine",
+        "same": true
+      }
+    },
+    "methods": {
+      "removeListElements": {
+        "value": {
+          "results": [
+            {
+              "value": false
+            },
+            {
+              "value": false
+            },
+            {
+              "value": false
+            },
+            {
+              "value": false
+            },
+            {
+              "value": true
+            },
+            {
+              "value": false
+            },
+            {
+              "value": true
+            },
+            {
+              "value": false
+            },
+            {
+              "value": true
+            },
+            {
+              "value": true
+            },
+            {
+              "value": false
+            }
+          ],
+          "get": {
+            "comments": true,
+            "removeAttributes": [],
+            "removeElements": [],
+            "removeProcessingInstructions": [],
+            "replaceWithChildrenElements": []
+          }
+        }
+      },
+      "allowListElements": {
+        "value": {
+          "results": [
+            {
+              "value": true
+            },
+            {
+              "value": false
+            },
+            {
+              "value": true
+            },
+            {
+              "value": false
+            },
+            {
+              "value": true
+            },
+            {
+              "value": false
+            },
+            {
+              "value": true
+            },
+            {
+              "value": false
+            },
+            {
+              "value": true
+            },
+            {
+              "value": false
+            },
+            {
+              "value": false
+            },
+            {
+              "value": false
+            },
+            {
+              "value": true
+            },
+            {
+              "value": true
+            },
+            {
+              "value": true
+            }
+          ],
+          "get": {
+            "comments": true,
+            "elements": [
+              {
+                "name": "i",
+                "namespace": "http://www.w3.org/1999/xhtml",
+                "removeAttributes": []
+              }
+            ],
+            "removeAttributes": [],
+            "removeProcessingInstructions": [],
+            "replaceWithChildrenElements": [
+              {
+                "name": "u",
+                "namespace": "http://www.w3.org/1999/xhtml"
+              }
+            ]
+          }
+        }
+      },
+      "replaceMovesFromLists": {
+        "value": {
+          "results": [
+            {
+              "value": true
+            },
+            {
+              "value": true
+            }
+          ],
+          "get": {
+            "comments": true,
+            "elements": [
+              {
+                "name": "b",
+                "namespace": "http://www.w3.org/1999/xhtml",
+                "removeAttributes": []
+              }
+            ],
+            "removeAttributes": [],
+            "removeProcessingInstructions": [],
+            "replaceWithChildrenElements": []
+          }
+        }
+      },
+      "replaceFromRemoveList": {
+        "value": {
+          "results": [
+            {
+              "value": true
+            },
+            {
+              "value": true
+            }
+          ],
+          "get": {
+            "comments": true,
+            "removeAttributes": [],
+            "removeElements": [
+              {
+                "name": "b",
+                "namespace": "http://www.w3.org/1999/xhtml"
+              }
+            ],
+            "removeProcessingInstructions": [],
+            "replaceWithChildrenElements": []
+          }
+        }
+      },
+      "elementAttributeOrder": {
+        "value": {
+          "results": [
+            {
+              "value": false
+            },
+            {
+              "value": false
+            }
+          ],
+          "get": {
+            "comments": true,
+            "elements": [
+              {
+                "name": "b",
+                "namespace": "http://www.w3.org/1999/xhtml",
+                "attributes": [
+                  {
+                    "name": "x",
+                    "namespace": null
+                  },
+                  {
+                    "name": "y",
+                    "namespace": null
+                  }
+                ]
+              }
+            ],
+            "removeAttributes": [],
+            "removeProcessingInstructions": []
+          }
+        }
+      },
+      "allowListAttributes": {
+        "value": {
+          "results": [
+            {
+              "value": true
+            },
+            {
+              "value": false
+            },
+            {
+              "value": true
+            },
+            {
+              "value": false
+            },
+            {
+              "value": "<undefined>"
+            },
+            {
+              "value": false
+            },
+            {
+              "value": "<undefined>"
+            },
+            {
+              "value": true
+            },
+            {
+              "value": "<undefined>"
+            }
+          ],
+          "get": {
+            "attributes": [
+              {
+                "name": "data-y",
+                "namespace": null
+              }
+            ],
+            "comments": true,
+            "dataAttributes": true,
+            "removeElements": [],
+            "removeProcessingInstructions": []
+          }
+        }
+      },
+      "removeListAttributes": {
+        "value": {
+          "results": [
+            {
+              "value": true
+            },
+            {
+              "value": false
+            },
+            {
+              "value": true
+            },
+            {
+              "value": false
+            },
+            {
+              "value": "<undefined>"
+            },
+            {
+              "value": "<undefined>"
+            },
+            {
+              "value": "<undefined>"
+            },
+            {
+              "value": "<undefined>"
+            }
+          ],
+          "get": {
+            "comments": false,
+            "dataAttributes": true,
+            "removeAttributes": [],
+            "removeElements": [],
+            "removeProcessingInstructions": []
+          }
+        }
+      },
+      "elementAttributeFixups": {
+        "value": {
+          "results": [
+            {
+              "value": true
+            },
+            {
+              "value": true
+            },
+            {
+              "value": true
+            },
+            {
+              "value": "<undefined>"
+            }
+          ],
+          "get": {
+            "attributes": [
+              {
+                "name": "x",
+                "namespace": null
+              }
+            ],
+            "comments": true,
+            "dataAttributes": false,
+            "elements": [
+              {
+                "name": "b",
+                "namespace": "http://www.w3.org/1999/xhtml",
+                "attributes": []
+              },
+              {
+                "name": "i",
+                "namespace": "http://www.w3.org/1999/xhtml",
+                "removeAttributes": []
+              }
+            ],
+            "removeProcessingInstructions": []
+          }
+        }
+      },
+      "removeListElementFixups": {
+        "value": {
+          "results": [
+            {
+              "value": true
+            },
+            {
+              "value": true
+            },
+            {
+              "value": true
+            }
+          ],
+          "get": {
+            "comments": true,
+            "elements": [
+              {
+                "name": "b",
+                "namespace": "http://www.w3.org/1999/xhtml",
+                "attributes": [
+                  {
+                    "name": "y",
+                    "namespace": null
+                  }
+                ]
+              },
+              {
+                "name": "i",
+                "namespace": "http://www.w3.org/1999/xhtml",
+                "removeAttributes": []
+              }
+            ],
+            "removeAttributes": [
+              {
+                "name": "x",
+                "namespace": null
+              }
+            ],
+            "removeProcessingInstructions": []
+          }
+        }
+      },
+      "allowElementDedupe": {
+        "value": {
+          "results": [
+            {
+              "value": true
+            }
+          ],
+          "get": {
+            "attributes": [
+              {
+                "name": "g",
+                "namespace": null
+              }
+            ],
+            "comments": true,
+            "dataAttributes": true,
+            "elements": [
+              {
+                "name": "b",
+                "namespace": "http://www.w3.org/1999/xhtml",
+                "attributes": [
+                  {
+                    "name": "x",
+                    "namespace": null
+                  }
+                ],
+                "removeAttributes": [
+                  {
+                    "name": "g",
+                    "namespace": null
+                  }
+                ]
+              }
+            ],
+            "removeProcessingInstructions": []
+          }
+        }
+      },
+      "allowElementRemoveListDedupe": {
+        "value": {
+          "results": [
+            {
+              "value": true
+            },
+            {
+              "value": true
+            }
+          ],
+          "get": {
+            "comments": true,
+            "elements": [
+              {
+                "name": "b",
+                "namespace": "http://www.w3.org/1999/xhtml",
+                "attributes": [
+                  {
+                    "name": "x",
+                    "namespace": null
+                  }
+                ]
+              },
+              {
+                "name": "i",
+                "namespace": "http://www.w3.org/1999/xhtml",
+                "removeAttributes": [
+                  {
+                    "name": "s",
+                    "namespace": null
+                  }
+                ]
+              }
+            ],
+            "removeAttributes": [
+              {
+                "name": "r",
+                "namespace": null
+              }
+            ],
+            "removeProcessingInstructions": []
+          }
+        }
+      },
+      "allowElementOnRemoveList": {
+        "value": {
+          "results": [
+            {
+              "value": false
+            },
+            {
+              "value": true
+            },
+            {
+              "value": false
+            }
+          ],
+          "get": {
+            "comments": true,
+            "removeAttributes": [
+              {
+                "name": "r",
+                "namespace": null
+              }
+            ],
+            "removeElements": [],
+            "removeProcessingInstructions": []
+          }
+        }
+      },
+      "setDataAttributesKeepsLists": {
+        "value": {
+          "results": [
+            {
+              "value": "<undefined>"
+            },
+            {
+              "value": true
+            }
+          ],
+          "get": {
+            "attributes": [
+              {
+                "name": "data-x",
+                "namespace": null
+              },
+              {
+                "name": "title",
+                "namespace": null
+              }
+            ],
+            "comments": true,
+            "dataAttributes": true,
+            "elements": [
+              {
+                "name": "b",
+                "namespace": "http://www.w3.org/1999/xhtml",
+                "attributes": [
+                  {
+                    "name": "data-y",
+                    "namespace": null
+                  },
+                  {
+                    "name": "id",
+                    "namespace": null
+                  }
+                ]
+              },
+              {
+                "name": "i",
+                "namespace": "http://www.w3.org/1999/xhtml",
+                "attributes": [
+                  {
+                    "name": "w",
+                    "namespace": null
+                  }
+                ]
+              }
+            ],
+            "removeProcessingInstructions": []
+          }
+        }
+      },
+      "removeUnsafe": {
+        "value": {
+          "results": [
+            {
+              "value": "<undefined>"
+            },
+            {
+              "value": "<undefined>"
+            }
+          ],
+          "get": {
+            "comments": true,
+            "removeAttributes": [
+              {
+                "name": "onabort",
+                "namespace": null
+              },
+              {
+                "name": "onactivate",
+                "namespace": null
+              },
+              {
+                "name": "onafterprint",
+                "namespace": null
+              },
+              {
+                "name": "onanimationcancel",
+                "namespace": null
+              },
+              {
+                "name": "onanimationend",
+                "namespace": null
+              },
+              {
+                "name": "onanimationiteration",
+                "namespace": null
+              },
+              {
+                "name": "onanimationstart",
+                "namespace": null
+              },
+              {
+                "name": "onautofill",
+                "namespace": null
+              },
+              {
+                "name": "onauxclick",
+                "namespace": null
+              },
+              {
+                "name": "onbeforecopy",
+                "namespace": null
+              },
+              {
+                "name": "onbeforecut",
+                "namespace": null
+              },
+              {
+                "name": "onbeforefilter",
+                "namespace": null
+              },
+              {
+                "name": "onbeforeinput",
+                "namespace": null
+              },
+              {
+                "name": "onbeforepaste",
+                "namespace": null
+              },
+              {
+                "name": "onbeforeprint",
+                "namespace": null
+              },
+              {
+                "name": "onbeforetoggle",
+                "namespace": null
+              },
+              {
+                "name": "onbeforeunload",
+                "namespace": null
+              },
+              {
+                "name": "onbegin",
+                "namespace": null
+              },
+              {
+                "name": "onblur",
+                "namespace": null
+              },
+              {
+                "name": "oncancel",
+                "namespace": null
+              },
+              {
+                "name": "oncanplay",
+                "namespace": null
+              },
+              {
+                "name": "oncanplaythrough",
+                "namespace": null
+              },
+              {
+                "name": "onchange",
+                "namespace": null
+              },
+              {
+                "name": "onclick",
+                "namespace": null
+              },
+              {
+                "name": "onclose",
+                "namespace": null
+              },
+              {
+                "name": "oncommand",
+                "namespace": null
+              },
+              {
+                "name": "oncontentvisibilityautostatechange",
+                "namespace": null
+              },
+              {
+                "name": "oncontextlost",
+                "namespace": null
+              },
+              {
+                "name": "oncontextmenu",
+                "namespace": null
+              },
+              {
+                "name": "oncontextrestored",
+                "namespace": null
+              },
+              {
+                "name": "oncopy",
+                "namespace": null
+              },
+              {
+                "name": "oncuechange",
+                "namespace": null
+              },
+              {
+                "name": "oncut",
+                "namespace": null
+              },
+              {
+                "name": "ondblclick",
+                "namespace": null
+              },
+              {
+                "name": "ondrag",
+                "namespace": null
+              },
+              {
+                "name": "ondragend",
+                "namespace": null
+              },
+              {
+                "name": "ondragenter",
+                "namespace": null
+              },
+              {
+                "name": "ondragleave",
+                "namespace": null
+              },
+              {
+                "name": "ondragover",
+                "namespace": null
+              },
+              {
+                "name": "ondragstart",
+                "namespace": null
+              },
+              {
+                "name": "ondrop",
+                "namespace": null
+              },
+              {
+                "name": "ondurationchange",
+                "namespace": null
+              },
+              {
+                "name": "onemptied",
+                "namespace": null
+              },
+              {
+                "name": "onend",
+                "namespace": null
+              },
+              {
+                "name": "onended",
+                "namespace": null
+              },
+              {
+                "name": "onerror",
+                "namespace": null
+              },
+              {
+                "name": "onfocus",
+                "namespace": null
+              },
+              {
+                "name": "onfocusin",
+                "namespace": null
+              },
+              {
+                "name": "onfocusout",
+                "namespace": null
+              },
+              {
+                "name": "onformdata",
+                "namespace": null
+              },
+              {
+                "name": "ongotpointercapture",
+                "namespace": null
+              },
+              {
+                "name": "onhashchange",
+                "namespace": null
+              },
+              {
+                "name": "oninput",
+                "namespace": null
+              },
+              {
+                "name": "oninstallresult",
+                "namespace": null
+              },
+              {
+                "name": "oninvalid",
+                "namespace": null
+              },
+              {
+                "name": "onkeydown",
+                "namespace": null
+              },
+              {
+                "name": "onkeypress",
+                "namespace": null
+              },
+              {
+                "name": "onkeyup",
+                "namespace": null
+              },
+              {
+                "name": "onlanguagechange",
+                "namespace": null
+              },
+              {
+                "name": "onload",
+                "namespace": null
+              },
+              {
+                "name": "onloadeddata",
+                "namespace": null
+              },
+              {
+                "name": "onloadedmetadata",
+                "namespace": null
+              },
+              {
+                "name": "onloadstart",
+                "namespace": null
+              },
+              {
+                "name": "onlocation",
+                "namespace": null
+              },
+              {
+                "name": "onlostpointercapture",
+                "namespace": null
+              },
+              {
+                "name": "onmessage",
+                "namespace": null
+              },
+              {
+                "name": "onmessageerror",
+                "namespace": null
+              },
+              {
+                "name": "onmousedown",
+                "namespace": null
+              },
+              {
+                "name": "onmouseenter",
+                "namespace": null
+              },
+              {
+                "name": "onmouseleave",
+                "namespace": null
+              },
+              {
+                "name": "onmousemove",
+                "namespace": null
+              },
+              {
+                "name": "onmouseout",
+                "namespace": null
+              },
+              {
+                "name": "onmouseover",
+                "namespace": null
+              },
+              {
+                "name": "onmouseup",
+                "namespace": null
+              },
+              {
+                "name": "onmousewheel",
+                "namespace": null
+              },
+              {
+                "name": "onmove",
+                "namespace": null
+              },
+              {
+                "name": "onoffline",
+                "namespace": null
+              },
+              {
+                "name": "ononline",
+                "namespace": null
+              },
+              {
+                "name": "onorientationchange",
+                "namespace": null
+              },
+              {
+                "name": "onpagehide",
+                "namespace": null
+              },
+              {
+                "name": "onpageshow",
+                "namespace": null
+              },
+              {
+                "name": "onpaste",
+                "namespace": null
+              },
+              {
+                "name": "onpause",
+                "namespace": null
+              },
+              {
+                "name": "onplay",
+                "namespace": null
+              },
+              {
+                "name": "onplaying",
+                "namespace": null
+              },
+              {
+                "name": "onpointercancel",
+                "namespace": null
+              },
+              {
+                "name": "onpointerdown",
+                "namespace": null
+              },
+              {
+                "name": "onpointerenter",
+                "namespace": null
+              },
+              {
+                "name": "onpointerleave",
+                "namespace": null
+              },
+              {
+                "name": "onpointermove",
+                "namespace": null
+              },
+              {
+                "name": "onpointerout",
+                "namespace": null
+              },
+              {
+                "name": "onpointerover",
+                "namespace": null
+              },
+              {
+                "name": "onpointerrawupdate",
+                "namespace": null
+              },
+              {
+                "name": "onpointerup",
+                "namespace": null
+              },
+              {
+                "name": "onpopstate",
+                "namespace": null
+              },
+              {
+                "name": "onprogress",
+                "namespace": null
+              },
+              {
+                "name": "onpromptaction",
+                "namespace": null
+              },
+              {
+                "name": "onpromptdismiss",
+                "namespace": null
+              },
+              {
+                "name": "onratechange",
+                "namespace": null
+              },
+              {
+                "name": "onrepeat",
+                "namespace": null
+              },
+              {
+                "name": "onreset",
+                "namespace": null
+              },
+              {
+                "name": "onresize",
+                "namespace": null
+              },
+              {
+                "name": "onscroll",
+                "namespace": null
+              },
+              {
+                "name": "onscrollend",
+                "namespace": null
+              },
+              {
+                "name": "onscrollsnapchange",
+                "namespace": null
+              },
+              {
+                "name": "onscrollsnapchanging",
+                "namespace": null
+              },
+              {
+                "name": "onsearch",
+                "namespace": null
+              },
+              {
+                "name": "onsecuritypolicyviolation",
+                "namespace": null
+              },
+              {
+                "name": "onseeked",
+                "namespace": null
+              },
+              {
+                "name": "onseeking",
+                "namespace": null
+              },
+              {
+                "name": "onselect",
+                "namespace": null
+              },
+              {
+                "name": "onselectionchange",
+                "namespace": null
+              },
+              {
+                "name": "onselectstart",
+                "namespace": null
+              },
+              {
+                "name": "onshow",
+                "namespace": null
+              },
+              {
+                "name": "onslotchange",
+                "namespace": null
+              },
+              {
+                "name": "onstalled",
+                "namespace": null
+              },
+              {
+                "name": "onstorage",
+                "namespace": null
+              },
+              {
+                "name": "onstream",
+                "namespace": null
+              },
+              {
+                "name": "onsubmit",
+                "namespace": null
+              },
+              {
+                "name": "onsuspend",
+                "namespace": null
+              },
+              {
+                "name": "ontimeupdate",
+                "namespace": null
+              },
+              {
+                "name": "ontimezonechange",
+                "namespace": null
+              },
+              {
+                "name": "ontoggle",
+                "namespace": null
+              },
+              {
+                "name": "ontouchcancel",
+                "namespace": null
+              },
+              {
+                "name": "ontouchend",
+                "namespace": null
+              },
+              {
+                "name": "ontouchmove",
+                "namespace": null
+              },
+              {
+                "name": "ontouchstart",
+                "namespace": null
+              },
+              {
+                "name": "ontransitionend",
+                "namespace": null
+              },
+              {
+                "name": "onunload",
+                "namespace": null
+              },
+              {
+                "name": "onvalidationstatuschange",
+                "namespace": null
+              },
+              {
+                "name": "onvolumechange",
+                "namespace": null
+              },
+              {
+                "name": "onwaiting",
+                "namespace": null
+              },
+              {
+                "name": "onwebkitanimationend",
+                "namespace": null
+              },
+              {
+                "name": "onwebkitanimationiteration",
+                "namespace": null
+              },
+              {
+                "name": "onwebkitanimationstart",
+                "namespace": null
+              },
+              {
+                "name": "onwebkitfullscreenchange",
+                "namespace": null
+              },
+              {
+                "name": "onwebkitfullscreenerror",
+                "namespace": null
+              },
+              {
+                "name": "onwebkittransitionend",
+                "namespace": null
+              },
+              {
+                "name": "onwheel",
+                "namespace": null
+              }
+            ],
+            "removeElements": [
+              {
+                "name": "base",
+                "namespace": "http://www.w3.org/1999/xhtml"
+              },
+              {
+                "name": "embed",
+                "namespace": "http://www.w3.org/1999/xhtml"
+              },
+              {
+                "name": "frame",
+                "namespace": "http://www.w3.org/1999/xhtml"
+              },
+              {
+                "name": "iframe",
+                "namespace": "http://www.w3.org/1999/xhtml"
+              },
+              {
+                "name": "object",
+                "namespace": "http://www.w3.org/1999/xhtml"
+              },
+              {
+                "name": "script",
+                "namespace": "http://www.w3.org/1999/xhtml"
+              },
+              {
+                "name": "script",
+                "namespace": "http://www.w3.org/2000/svg"
+              },
+              {
+                "name": "use",
+                "namespace": "http://www.w3.org/2000/svg"
+              }
+            ],
+            "removeProcessingInstructions": []
+          }
+        }
+      },
+      "removeUnsafeAllowList": {
+        "error": "TypeError",
+        "message": "Failed to construct 'Sanitizer': Invalid Sanitizer configuration.",
+        "same": false
+      },
+      "instructions": {
+        "value": {
+          "results": [
+            {
+              "value": false
+            },
+            {
+              "value": true
+            },
+            {
+              "value": false
+            },
+            {
+              "value": true
+            }
+          ],
+          "get": {
+            "comments": true,
+            "removeAttributes": [],
+            "removeElements": [],
+            "removeProcessingInstructions": []
+          }
+        }
+      },
+      "instructionAllowList": {
+        "value": {
+          "results": [
+            {
+              "value": true
+            },
+            {
+              "value": false
+            },
+            {
+              "value": true
+            },
+            {
+              "value": false
+            }
+          ],
+          "get": {
+            "comments": true,
+            "processingInstructions": [],
+            "removeAttributes": [],
+            "removeElements": []
+          }
+        }
+      },
+      "argumentErrors": {
+        "value": {
+          "results": [
+            {
+              "error": "TypeError",
+              "message": "Failed to execute 'allowElement' on 'Sanitizer': 1 argument required, but only 0 present.",
+              "same": false
+            },
+            {
+              "error": "TypeError",
+              "message": "Failed to execute 'allowElement' on 'Sanitizer': Failed to read the 'name' property from 'SanitizerElementNamespace': Required member is undefined.",
+              "same": false
+            },
+            {
+              "value": false
+            },
+            {
+              "error": "TypeError",
+              "message": "Failed to execute 'allowElement' on 'Sanitizer': The provided value is not of type 'SanitizerElementNamespaceWithAttributes'.",
+              "same": false
+            },
+            {
+              "error": "TypeError",
+              "message": "Failed to execute 'allowElement' on 'Sanitizer': The provided value is not of type 'SanitizerElementNamespaceWithAttributes'.",
+              "same": false
+            },
+            {
+              "error": "TypeError",
+              "message": "Failed to execute 'allowElement' on 'Sanitizer': Failed to read the 'name' property from 'SanitizerElementNamespace': Cannot convert a Symbol value to a string",
+              "same": false
+            },
+            {
+              "error": "TypeError",
+              "message": "Failed to execute 'removeElement' on 'Sanitizer': The provided value is not of type 'SanitizerElementNamespace'.",
+              "same": false
+            },
+            {
+              "error": "TypeError",
+              "message": "Failed to execute 'removeElement' on 'Sanitizer': Failed to read the 'name' property from 'SanitizerElementNamespace': Required member is undefined.",
+              "same": false
+            },
+            {
+              "error": "TypeError",
+              "message": "Failed to execute 'removeElement' on 'Sanitizer': Cannot convert a Symbol value to a string",
+              "same": false
+            },
+            {
+              "error": "TypeError",
+              "message": "Failed to execute 'replaceElementWithChildren' on 'Sanitizer': The provided value is not of type 'SanitizerElementNamespace'.",
+              "same": false
+            },
+            {
+              "error": "TypeError",
+              "message": "Failed to execute 'allowAttribute' on 'Sanitizer': Failed to read the 'name' property from 'SanitizerAttributeNamespace': Required member is undefined.",
+              "same": false
+            },
+            {
+              "error": "TypeError",
+              "message": "Failed to execute 'allowAttribute' on 'Sanitizer': The provided value is not of type 'SanitizerAttributeNamespace'.",
+              "same": false
+            },
+            {
+              "error": "TypeError",
+              "message": "Failed to execute 'removeAttribute' on 'Sanitizer': The provided value is not of type 'SanitizerAttributeNamespace'.",
+              "same": false
+            },
+            {
+              "error": "TypeError",
+              "message": "Failed to execute 'setComments' on 'Sanitizer': 1 argument required, but only 0 present.",
+              "same": false
+            },
+            {
+              "value": "<undefined>"
+            },
+            {
+              "error": "TypeError",
+              "message": "Failed to execute 'setDataAttributes' on 'Sanitizer': 1 argument required, but only 0 present.",
+              "same": false
+            },
+            {
+              "error": "TypeError",
+              "message": "Failed to execute 'allowProcessingInstruction' on 'Sanitizer': Failed to read the 'target' property from 'SanitizerProcessingInstruction': Required member is undefined.",
+              "same": false
+            },
+            {
+              "error": "TypeError",
+              "message": "Failed to execute 'allowProcessingInstruction' on 'Sanitizer': The provided value is not of type 'SanitizerProcessingInstruction'.",
+              "same": false
+            },
+            {
+              "error": "TypeError",
+              "message": "Failed to execute 'removeProcessingInstruction' on 'Sanitizer': The provided value is not of type 'SanitizerProcessingInstruction'.",
+              "same": false
+            },
+            {
+              "error": "TypeError",
+              "message": "Failed to execute 'allowProcessingInstruction' on 'Sanitizer': Failed to read the 'target' property from 'SanitizerProcessingInstruction': Cannot convert a Symbol value to a string",
+              "same": false
+            },
+            {
+              "error": "TypeError",
+              "message": "mine",
+              "same": true
+            },
+            {
+              "value": {
+                "comments": true,
+                "removeAttributes": [],
+                "removeElements": [],
+                "removeProcessingInstructions": []
+              }
+            },
+            {
+              "value": "<undefined>"
+            }
+          ],
+          "get": {
+            "comments": true,
+            "removeAttributes": [
+              {
+                "name": "onabort",
+                "namespace": null
+              },
+              {
+                "name": "onactivate",
+                "namespace": null
+              },
+              {
+                "name": "onafterprint",
+                "namespace": null
+              },
+              {
+                "name": "onanimationcancel",
+                "namespace": null
+              },
+              {
+                "name": "onanimationend",
+                "namespace": null
+              },
+              {
+                "name": "onanimationiteration",
+                "namespace": null
+              },
+              {
+                "name": "onanimationstart",
+                "namespace": null
+              },
+              {
+                "name": "onautofill",
+                "namespace": null
+              },
+              {
+                "name": "onauxclick",
+                "namespace": null
+              },
+              {
+                "name": "onbeforecopy",
+                "namespace": null
+              },
+              {
+                "name": "onbeforecut",
+                "namespace": null
+              },
+              {
+                "name": "onbeforefilter",
+                "namespace": null
+              },
+              {
+                "name": "onbeforeinput",
+                "namespace": null
+              },
+              {
+                "name": "onbeforepaste",
+                "namespace": null
+              },
+              {
+                "name": "onbeforeprint",
+                "namespace": null
+              },
+              {
+                "name": "onbeforetoggle",
+                "namespace": null
+              },
+              {
+                "name": "onbeforeunload",
+                "namespace": null
+              },
+              {
+                "name": "onbegin",
+                "namespace": null
+              },
+              {
+                "name": "onblur",
+                "namespace": null
+              },
+              {
+                "name": "oncancel",
+                "namespace": null
+              },
+              {
+                "name": "oncanplay",
+                "namespace": null
+              },
+              {
+                "name": "oncanplaythrough",
+                "namespace": null
+              },
+              {
+                "name": "onchange",
+                "namespace": null
+              },
+              {
+                "name": "onclick",
+                "namespace": null
+              },
+              {
+                "name": "onclose",
+                "namespace": null
+              },
+              {
+                "name": "oncommand",
+                "namespace": null
+              },
+              {
+                "name": "oncontentvisibilityautostatechange",
+                "namespace": null
+              },
+              {
+                "name": "oncontextlost",
+                "namespace": null
+              },
+              {
+                "name": "oncontextmenu",
+                "namespace": null
+              },
+              {
+                "name": "oncontextrestored",
+                "namespace": null
+              },
+              {
+                "name": "oncopy",
+                "namespace": null
+              },
+              {
+                "name": "oncuechange",
+                "namespace": null
+              },
+              {
+                "name": "oncut",
+                "namespace": null
+              },
+              {
+                "name": "ondblclick",
+                "namespace": null
+              },
+              {
+                "name": "ondrag",
+                "namespace": null
+              },
+              {
+                "name": "ondragend",
+                "namespace": null
+              },
+              {
+                "name": "ondragenter",
+                "namespace": null
+              },
+              {
+                "name": "ondragleave",
+                "namespace": null
+              },
+              {
+                "name": "ondragover",
+                "namespace": null
+              },
+              {
+                "name": "ondragstart",
+                "namespace": null
+              },
+              {
+                "name": "ondrop",
+                "namespace": null
+              },
+              {
+                "name": "ondurationchange",
+                "namespace": null
+              },
+              {
+                "name": "onemptied",
+                "namespace": null
+              },
+              {
+                "name": "onend",
+                "namespace": null
+              },
+              {
+                "name": "onended",
+                "namespace": null
+              },
+              {
+                "name": "onerror",
+                "namespace": null
+              },
+              {
+                "name": "onfocus",
+                "namespace": null
+              },
+              {
+                "name": "onfocusin",
+                "namespace": null
+              },
+              {
+                "name": "onfocusout",
+                "namespace": null
+              },
+              {
+                "name": "onformdata",
+                "namespace": null
+              },
+              {
+                "name": "ongotpointercapture",
+                "namespace": null
+              },
+              {
+                "name": "onhashchange",
+                "namespace": null
+              },
+              {
+                "name": "oninput",
+                "namespace": null
+              },
+              {
+                "name": "oninstallresult",
+                "namespace": null
+              },
+              {
+                "name": "oninvalid",
+                "namespace": null
+              },
+              {
+                "name": "onkeydown",
+                "namespace": null
+              },
+              {
+                "name": "onkeypress",
+                "namespace": null
+              },
+              {
+                "name": "onkeyup",
+                "namespace": null
+              },
+              {
+                "name": "onlanguagechange",
+                "namespace": null
+              },
+              {
+                "name": "onload",
+                "namespace": null
+              },
+              {
+                "name": "onloadeddata",
+                "namespace": null
+              },
+              {
+                "name": "onloadedmetadata",
+                "namespace": null
+              },
+              {
+                "name": "onloadstart",
+                "namespace": null
+              },
+              {
+                "name": "onlocation",
+                "namespace": null
+              },
+              {
+                "name": "onlostpointercapture",
+                "namespace": null
+              },
+              {
+                "name": "onmessage",
+                "namespace": null
+              },
+              {
+                "name": "onmessageerror",
+                "namespace": null
+              },
+              {
+                "name": "onmousedown",
+                "namespace": null
+              },
+              {
+                "name": "onmouseenter",
+                "namespace": null
+              },
+              {
+                "name": "onmouseleave",
+                "namespace": null
+              },
+              {
+                "name": "onmousemove",
+                "namespace": null
+              },
+              {
+                "name": "onmouseout",
+                "namespace": null
+              },
+              {
+                "name": "onmouseover",
+                "namespace": null
+              },
+              {
+                "name": "onmouseup",
+                "namespace": null
+              },
+              {
+                "name": "onmousewheel",
+                "namespace": null
+              },
+              {
+                "name": "onmove",
+                "namespace": null
+              },
+              {
+                "name": "onoffline",
+                "namespace": null
+              },
+              {
+                "name": "ononline",
+                "namespace": null
+              },
+              {
+                "name": "onorientationchange",
+                "namespace": null
+              },
+              {
+                "name": "onpagehide",
+                "namespace": null
+              },
+              {
+                "name": "onpageshow",
+                "namespace": null
+              },
+              {
+                "name": "onpaste",
+                "namespace": null
+              },
+              {
+                "name": "onpause",
+                "namespace": null
+              },
+              {
+                "name": "onplay",
+                "namespace": null
+              },
+              {
+                "name": "onplaying",
+                "namespace": null
+              },
+              {
+                "name": "onpointercancel",
+                "namespace": null
+              },
+              {
+                "name": "onpointerdown",
+                "namespace": null
+              },
+              {
+                "name": "onpointerenter",
+                "namespace": null
+              },
+              {
+                "name": "onpointerleave",
+                "namespace": null
+              },
+              {
+                "name": "onpointermove",
+                "namespace": null
+              },
+              {
+                "name": "onpointerout",
+                "namespace": null
+              },
+              {
+                "name": "onpointerover",
+                "namespace": null
+              },
+              {
+                "name": "onpointerrawupdate",
+                "namespace": null
+              },
+              {
+                "name": "onpointerup",
+                "namespace": null
+              },
+              {
+                "name": "onpopstate",
+                "namespace": null
+              },
+              {
+                "name": "onprogress",
+                "namespace": null
+              },
+              {
+                "name": "onpromptaction",
+                "namespace": null
+              },
+              {
+                "name": "onpromptdismiss",
+                "namespace": null
+              },
+              {
+                "name": "onratechange",
+                "namespace": null
+              },
+              {
+                "name": "onrepeat",
+                "namespace": null
+              },
+              {
+                "name": "onreset",
+                "namespace": null
+              },
+              {
+                "name": "onresize",
+                "namespace": null
+              },
+              {
+                "name": "onscroll",
+                "namespace": null
+              },
+              {
+                "name": "onscrollend",
+                "namespace": null
+              },
+              {
+                "name": "onscrollsnapchange",
+                "namespace": null
+              },
+              {
+                "name": "onscrollsnapchanging",
+                "namespace": null
+              },
+              {
+                "name": "onsearch",
+                "namespace": null
+              },
+              {
+                "name": "onsecuritypolicyviolation",
+                "namespace": null
+              },
+              {
+                "name": "onseeked",
+                "namespace": null
+              },
+              {
+                "name": "onseeking",
+                "namespace": null
+              },
+              {
+                "name": "onselect",
+                "namespace": null
+              },
+              {
+                "name": "onselectionchange",
+                "namespace": null
+              },
+              {
+                "name": "onselectstart",
+                "namespace": null
+              },
+              {
+                "name": "onshow",
+                "namespace": null
+              },
+              {
+                "name": "onslotchange",
+                "namespace": null
+              },
+              {
+                "name": "onstalled",
+                "namespace": null
+              },
+              {
+                "name": "onstorage",
+                "namespace": null
+              },
+              {
+                "name": "onstream",
+                "namespace": null
+              },
+              {
+                "name": "onsubmit",
+                "namespace": null
+              },
+              {
+                "name": "onsuspend",
+                "namespace": null
+              },
+              {
+                "name": "ontimeupdate",
+                "namespace": null
+              },
+              {
+                "name": "ontimezonechange",
+                "namespace": null
+              },
+              {
+                "name": "ontoggle",
+                "namespace": null
+              },
+              {
+                "name": "ontouchcancel",
+                "namespace": null
+              },
+              {
+                "name": "ontouchend",
+                "namespace": null
+              },
+              {
+                "name": "ontouchmove",
+                "namespace": null
+              },
+              {
+                "name": "ontouchstart",
+                "namespace": null
+              },
+              {
+                "name": "ontransitionend",
+                "namespace": null
+              },
+              {
+                "name": "onunload",
+                "namespace": null
+              },
+              {
+                "name": "onvalidationstatuschange",
+                "namespace": null
+              },
+              {
+                "name": "onvolumechange",
+                "namespace": null
+              },
+              {
+                "name": "onwaiting",
+                "namespace": null
+              },
+              {
+                "name": "onwebkitanimationend",
+                "namespace": null
+              },
+              {
+                "name": "onwebkitanimationiteration",
+                "namespace": null
+              },
+              {
+                "name": "onwebkitanimationstart",
+                "namespace": null
+              },
+              {
+                "name": "onwebkitfullscreenchange",
+                "namespace": null
+              },
+              {
+                "name": "onwebkitfullscreenerror",
+                "namespace": null
+              },
+              {
+                "name": "onwebkittransitionend",
+                "namespace": null
+              },
+              {
+                "name": "onwheel",
+                "namespace": null
+              }
+            ],
+            "removeElements": [
+              {
+                "name": "base",
+                "namespace": "http://www.w3.org/1999/xhtml"
+              },
+              {
+                "name": "embed",
+                "namespace": "http://www.w3.org/1999/xhtml"
+              },
+              {
+                "name": "frame",
+                "namespace": "http://www.w3.org/1999/xhtml"
+              },
+              {
+                "name": "iframe",
+                "namespace": "http://www.w3.org/1999/xhtml"
+              },
+              {
+                "name": "object",
+                "namespace": "http://www.w3.org/1999/xhtml"
+              },
+              {
+                "name": "script",
+                "namespace": "http://www.w3.org/1999/xhtml"
+              },
+              {
+                "name": "script",
+                "namespace": "http://www.w3.org/2000/svg"
+              },
+              {
+                "name": "use",
+                "namespace": "http://www.w3.org/2000/svg"
+              }
+            ],
+            "removeProcessingInstructions": []
+          }
+        }
+      },
+      "getterOrder": {
+        "value": [
+          [
+            "name",
+            "namespace",
+            "attributes",
+            "removeAttributes"
+          ],
+          [
+            "name",
+            "namespace"
+          ],
+          [
+            "target"
+          ]
+        ]
+      }
+    },
+    "options": {
+      "noArguments": {
+        "error": "TypeError",
+        "message": "Failed to execute 'setHTML' on 'Element': 1 argument required, but only 0 present.",
+        "same": false
+      },
+      "shadowNoArguments": {
+        "error": "TypeError",
+        "message": "Failed to execute 'setHTML' on 'ShadowRoot': 1 argument required, but only 0 present.",
+        "same": false
+      },
+      "parseNoArguments": {
+        "error": "TypeError",
+        "message": "Failed to execute 'parseHTML' on 'Document': 1 argument required, but only 0 present.",
+        "same": false
+      },
+      "parseUnsafeNoArguments": {
+        "error": "TypeError",
+        "message": "Failed to execute 'parseHTMLUnsafe' on 'Document': 1 argument required, but only 0 present.",
+        "same": false
+      },
+      "unsafeNoArguments": {
+        "error": "TypeError",
+        "message": "Failed to execute 'setHTMLUnsafe' on 'Element': 1 argument required, but only 0 present.",
+        "same": false
+      },
+      "nullOptions": {
+        "value": "<b>n</b>"
+      },
+      "numberOptions": {
+        "error": "TypeError",
+        "message": "Failed to execute 'setHTML' on 'Element': The provided value is not of type 'SetHTMLOptions'.",
+        "same": false
+      },
+      "stringOptions": {
+        "error": "TypeError",
+        "message": "Failed to execute 'setHTML' on 'Element': The provided value is not of type 'SetHTMLOptions'.",
+        "same": false
+      },
+      "functionOptions": {
+        "value": "<b>f</b>"
+      },
+      "sanitizerNull": {
+        "value": "<b>n</b>"
+      },
+      "sanitizerUndefined": {
+        "value": "<b>n</b>"
+      },
+      "sanitizerNumber": {
+        "error": "TypeError",
+        "message": "Failed to execute 'setHTML' on 'Element': Failed to read the 'sanitizer' property from 'SetHTMLOptions': The provided value '5' is not a valid enum value of type SanitizerPresets.",
+        "same": false
+      },
+      "sanitizerBadPreset": {
+        "error": "TypeError",
+        "message": "Failed to execute 'setHTML' on 'Element': Failed to read the 'sanitizer' property from 'SetHTMLOptions': The provided value 'nope' is not a valid enum value of type SanitizerPresets.",
+        "same": false
+      },
+      "sanitizerSymbol": {
+        "error": "TypeError",
+        "message": "Failed to execute 'setHTML' on 'Element': Failed to read the 'sanitizer' property from 'SetHTMLOptions': Cannot convert a Symbol value to a string",
+        "same": false
+      },
+      "sanitizerInvalid": {
+        "error": "TypeError",
+        "message": "Failed to execute 'setHTML' on 'Element': Invalid Sanitizer configuration.",
+        "same": false
+      },
+      "sanitizerElementEmpty": {
+        "error": "TypeError",
+        "message": "Failed to execute 'setHTML' on 'Element': Failed to read the 'sanitizer' property from 'SetHTMLOptions': Failed to read the 'elements' property from 'SanitizerConfig': Failed to read the 'name' property from 'SanitizerElementNamespace': Required member is undefined.",
+        "same": false
+      },
+      "sanitizerElementNull": {
+        "error": "TypeError",
+        "message": "Failed to execute 'setHTML' on 'Element': Failed to read the 'sanitizer' property from 'SetHTMLOptions': Failed to read the 'elements' property from 'SanitizerConfig': The provided value is not of type 'SanitizerElementNamespaceWithAttributes'.",
+        "same": false
+      },
+      "sanitizerAttributeEmpty": {
+        "error": "TypeError",
+        "message": "Failed to execute 'setHTML' on 'Element': Failed to read the 'sanitizer' property from 'SetHTMLOptions': Failed to read the 'elements' property from 'SanitizerConfig': Failed to read the 'attributes' property from 'SanitizerElementNamespaceWithAttributes': Failed to read the 'name' property from 'SanitizerAttributeNamespace': Required member is undefined.",
+        "same": false
+      },
+      "sanitizerGetterThrows": {
+        "error": "TypeError",
+        "message": "mine",
+        "same": true
+      },
+      "shadowBadPreset": {
+        "error": "TypeError",
+        "message": "Failed to execute 'setHTML' on 'ShadowRoot': Failed to read the 'sanitizer' property from 'SetHTMLOptions': The provided value 'x' is not a valid enum value of type SanitizerPresets.",
+        "same": false
+      },
+      "unsafeInvalid": {
+        "error": "TypeError",
+        "message": "Failed to execute 'setHTMLUnsafe' on 'Element': Invalid Sanitizer configuration.",
+        "same": false
+      },
+      "unsafeBadPreset": {
+        "error": "TypeError",
+        "message": "Failed to execute 'setHTMLUnsafe' on 'Element': Failed to read the 'sanitizer' property from 'SetHTMLUnsafeOptions': The provided value 'x' is not a valid enum value of type SanitizerPresets.",
+        "same": false
+      },
+      "unsafeNumber": {
+        "error": "TypeError",
+        "message": "Failed to execute 'setHTMLUnsafe' on 'Element': Overload resolution failed.",
+        "same": false
+      },
+      "unsafeTrue": {
+        "error": "TypeError",
+        "message": "Failed to execute 'setHTMLUnsafe' on 'Element': Overload resolution failed.",
+        "same": false
+      },
+      "unsafeString": {
+        "error": "TypeError",
+        "message": "Failed to execute 'setHTMLUnsafe' on 'Element': Overload resolution failed.",
+        "same": false
+      },
+      "unsafeNull": {
+        "value": "<b onclick=\"1\">x</b>"
+      },
+      "unsafeFunction": {
+        "value": "<b onclick=\"1\">x</b>"
+      },
+      "unsafeSanitizerNull": {
+        "value": "<b onclick=\"1\">n</b><!--c-->"
+      },
+      "shadowUnsafeNumber": {
+        "error": "TypeError",
+        "message": "Failed to execute 'setHTMLUnsafe' on 'ShadowRoot': Overload resolution failed.",
+        "same": false
+      },
+      "parseUnsafeNumber": {
+        "error": "TypeError",
+        "message": "Failed to execute 'parseHTMLUnsafe' on 'Document': Overload resolution failed.",
+        "same": false
+      },
+      "parseUnsafeInvalid": {
+        "error": "TypeError",
+        "message": "Failed to execute 'parseHTMLUnsafe' on 'Document': Invalid Sanitizer configuration.",
+        "same": false
+      },
+      "parseInvalid": {
+        "error": "TypeError",
+        "message": "Failed to execute 'parseHTML' on 'Document': Invalid Sanitizer configuration.",
+        "same": false
+      },
+      "parseBadPreset": {
+        "error": "TypeError",
+        "message": "Failed to execute 'parseHTML' on 'Document': Failed to read the 'sanitizer' property from 'SetHTMLOptions': The provided value 'x' is not a valid enum value of type SanitizerPresets.",
+        "same": false
+      },
+      "parseNumber": {
+        "error": "TypeError",
+        "message": "Failed to execute 'parseHTML' on 'Document': The provided value is not of type 'SetHTMLOptions'.",
+        "same": false
+      },
+      "htmlSymbol": {
+        "error": "TypeError",
+        "message": "Failed to execute 'setHTML' on 'Element': Cannot convert a Symbol value to a string",
+        "same": false
+      },
+      "htmlThrows": {
+        "error": "TypeError",
+        "message": "mine",
+        "same": true
+      },
+      "unsafeHtmlSymbol": {
+        "error": "TypeError",
+        "message": "Failed to execute 'setHTMLUnsafe' on 'Element': Cannot convert a Symbol value to a string",
+        "same": false
+      },
+      "parseHtmlSymbol": {
+        "error": "TypeError",
+        "message": "Failed to execute 'parseHTML' on 'Document': Cannot convert a Symbol value to a string",
+        "same": false
+      },
+      "parseUnsafeHtmlSymbol": {
+        "error": "TypeError",
+        "message": "Failed to execute 'parseHTMLUnsafe' on 'Document': Cannot convert a Symbol value to a string",
+        "same": false
+      },
+      "order": [
+        {
+          "value": [
+            "html",
+            "sanitizer"
+          ]
+        },
+        {
+          "value": [
+            "html",
+            "sanitizer"
+          ]
+        },
+        {
+          "value": [
+            "html",
+            "sanitizer"
+          ]
+        },
+        {
+          "value": [
+            "html",
+            "sanitizer"
+          ]
+        }
+      ],
+      "invalidKeepsChildren": {
+        "value": "<i>keep</i>"
+      },
+      "instanceNotMutated": {
+        "value": [
+          "<b>x</b>",
+          {
+            "attributes": [
+              {
+                "name": "onclick",
+                "namespace": null
+              }
+            ],
+            "comments": true,
+            "dataAttributes": true,
+            "elements": [
+              {
+                "name": "b",
+                "namespace": "http://www.w3.org/1999/xhtml",
+                "removeAttributes": []
+              },
+              {
+                "name": "script",
+                "namespace": "http://www.w3.org/1999/xhtml",
+                "removeAttributes": []
+              }
+            ],
+            "removeProcessingInstructions": []
+          }
+        ]
+      },
+      "instanceComments": {
+        "value": [
+          "<!--c--><b>y</b>",
+          0
+        ]
+      },
+      "fakeSanitizer": {
+        "value": "<b>1</b><i>2</i>"
+      }
+    },
+    "contexts": {
+      "template": {
+        "value": [
+          "<b>x</b>",
+          0,
+          1
+        ]
+      },
+      "script": {
+        "value": "old"
+      },
+      "scriptInvalidConfig": {
+        "error": "TypeError",
+        "message": "Failed to execute 'setHTML' on 'Element': Invalid Sanitizer configuration.",
+        "same": false
+      },
+      "scriptBadOptions": {
+        "error": "TypeError",
+        "message": "Failed to execute 'setHTML' on 'Element': The provided value is not of type 'SetHTMLOptions'.",
+        "same": false
+      },
+      "svgScript": {
+        "value": "old"
+      },
+      "otherScript": {
+        "value": "<b>x</b>"
+      },
+      "scriptUnsafe": {
+        "value": "<b>x</b>"
+      },
+      "style": {
+        "value": "<b>x</b>"
+      },
+      "textarea": {
+        "value": "&lt;b&gt;x&lt;/b&gt;"
+      },
+      "shadowRoot": {
+        "value": "<b>x</b>"
+      },
+      "existingShadow": {
+        "value": [
+          "<b>y</b>",
+          "<i>x</i>"
+        ]
+      },
+      "mutations": [
+        [
+          "childList",
+          2,
+          2,
+          true
+        ]
+      ]
+    },
+    "safe": {
+      "defaultBasic": {
+        "value": "<b title=\"t\">a</b><i>i</i><a>l</a><a>l2</a><a href=\"https://x\">l3</a>"
+      },
+      "permissive": {
+        "value": "<b>a</b><i data-x=\"1\">i</i><a>l</a><svg></svg>"
+      },
+      "permissiveInstance": {
+        "value": "<b>a</b><!--c-->"
+      },
+      "allowScript": {
+        "value": "<b onfoo=\"3\">b</b>"
+      },
+      "allowScriptInstance": {
+        "value": "<b onfoo=\"3\">b</b>"
+      },
+      "elementsOnly": {
+        "value": "<p id=\"1\" class=\"2\"><b title=\"t\">x</b></p>"
+      },
+      "replace": {
+        "value": "<p>x<i>y</i></p>"
+      },
+      "removeVsReplace": {
+        "value": "<p>1245</p>"
+      },
+      "replaceTemplate": {
+        "value": "<p><b>t</b>after</p>"
+      },
+      "template": {
+        "value": "<template><b>t</b></template>"
+      },
+      "templateNested": {
+        "value": "<template><template><i>n</i></template></template>"
+      },
+      "perElementRemove": {
+        "value": "<p>1</p><b title=\"t\" id=\"y\">2</b>"
+      },
+      "perElementRemoveList": {
+        "error": "TypeError",
+        "message": "Failed to execute 'setHTML' on 'Element': Invalid Sanitizer configuration.",
+        "same": false
+      },
+      "attributeList": {
+        "value": "<b title=\"t\">x</b>"
+      },
+      "attributeListInstance": {
+        "value": "<b title=\"t\" data-x=\"1\">x</b>"
+      },
+      "dataAttributes": {
+        "value": "<b data-x=\"1\" data-y=\"2\" data-=\"3\" title=\"4\" data-z=\"5\">x</b>"
+      },
+      "dataAttributesFalse": {
+        "value": "<b data-x=\"1\" title=\"4\">x</b>"
+      },
+      "dataForeign": {
+        "value": "<svg data-x=\"1\" data-y=\"2\"><text data-z=\"3\">t</text></svg><math data-m=\"1\"><mi data-n=\"2\">x</mi></math><b data-b=\"1\">b</b>"
+      },
+      "comments": {
+        "value": "<!--a--><b><!--b-->x</b><template><!--c--></template>"
+      },
+      "commentsOff": {
+        "value": "<b>x</b>"
+      },
+      "commentsDictionary": {
+        "value": "<!--a--><b>x</b>"
+      },
+      "bogusComments": {
+        "value": "<!--?xml x?--><b>a</b><!--[CDATA[x]]-->"
+      },
+      "noscript": {
+        "value": "<noscript><b>x</b><p>y</p></noscript>"
+      },
+      "customElement": {
+        "value": ""
+      },
+      "customAllowed": {
+        "value": "<my-el foo=\"1\"><b>x</b></my-el>"
+      },
+      "style": {
+        "value": "<style>b{}</style><b style=\"color:red\">x</b>"
+      },
+      "anchors": {
+        "value": "<a id=\"a0\">0</a><a id=\"a1\">1</a><a id=\"a2\">2</a><a id=\"a3\">3</a><a id=\"a4\">4</a><a id=\"a5\">5</a><a id=\"a6\" href=\"javascript\">6</a><a id=\"a7\" href=\"vbscript:g\">7</a><a id=\"a8\" href=\"data:text/html,h\">8</a><a id=\"a9\" href=\"java�script:i\">9</a><a id=\"a10\" href=\"  &nbsp;javascript:j\">10</a><a id=\"a11\" href=\"javascript :k\">11</a><a id=\"a12\" href=\"jav​ascript:l\">12</a><a id=\"a13\">13</a><a id=\"a14\">14</a><a id=\"a15\" href=\"https://ok\">15</a><a id=\"a16\" href=\"#frag\">16</a><a id=\"a17\" href=\"javascript\u0001:n\">17</a><a id=\"a18\">18</a>"
+      },
+      "anchorsUnsafeDefault": {
+        "value": "<a href=\"javascript:a\">0</a><a href=\" javascript:b\">1</a><a href=\"\tjava\nscript:c\">2</a><a href=\"JaVaScRiPt:d\">3</a><a href=\"javascript:e\">4</a><a href=\"\u0001javascript:f\">5</a>"
+      },
+      "urlAttributes": {
+        "value": "<a ping=\"javascript:b\" cite=\"javascript:x\" xlink:href=\"javascript:h\"></a><blockquote cite=\"javascript:c\"></blockquote><q cite=\"javascript:d\"></q><form formaction=\"javascript:x\"></form><button action=\"javascript:x\"></button><input><img src=\"javascript:h\" srcset=\"javascript:i\"><video poster=\"javascript:j\"></video><area><link href=\"javascript:m\"><div href=\"javascript:n\"></div>"
+      },
+      "svgUrls": {
+        "value": "<svg><a>x</a><a href=\"https://ok\" xlink:href=\"https://ok2\">y</a><image href=\"javascript:c\" xlink:href=\"javascript:d\"></image><feImage href=\"javascript:f\"></feImage><animate></animate><animate attributeName=\"HREF\"></animate><animate attributeName=\" href\"></animate><animate></animate><animateMotion attributeName=\"href\"></animateMotion><animateTransform></animateTransform><set></set><set attributeName=\"fill\"></set><set></set><discard attributeName=\"href\"></discard></svg>"
+      },
+      "mathUrls": {
+        "value": "<math><mi href=\"https://ok\">x</mi><mo>y</mo><mtext>z</mtext><mn src=\"javascript:d\">1</mn></math>"
+      },
+      "namespacedAttributes": {
+        "value": "<svg xml:lang=\"en\" foo:bar=\"1\"><text>a</text></svg><p xlink:href=\"javascript:x\">p</p>"
+      },
+      "caseNames": {
+        "value": ""
+      },
+      "elementNamespaces": {
+        "value": "<svg><a>svga</a></svg>"
+      },
+      "nullNamespace": {
+        "value": ""
+      },
+      "defaultMatrix": {
+        "value": "<h1 title=\"t\" lang=\"en\" dir=\"rtl\">h</h1><a href=\"https://x\" hreflang=\"en\" type=\"t\">a</a><table><caption>c</caption><colgroup span=\"2\"><col span=\"1\"></colgroup><thead><tr><th colspan=\"2\" rowspan=\"1\" scope=\"col\" headers=\"h\" abbr=\"a\">t</th></tr></thead><tbody><tr><td colspan=\"2\" headers=\"x\">d</td></tr></tbody><tfoot><tr><td>f</td></tr></tfoot></table><ol start=\"3\" reversed=\"\" type=\"a\"><li value=\"5\">l</li></ol><ul><li>u</li></ul><q>q</q><blockquote cite=\"https://c\">b</blockquote><time datetime=\"2020\">t</time><data value=\"1\">d</data><abbr title=\"t\">a</abbr><del cite=\"x\" datetime=\"y\">d</del><ins cite=\"x\" datetime=\"y\">i</ins><br><hr><wbr><pre>p</pre><bdo dir=\"rtl\">b</bdo><bdi>i</bdi><ruby>r<rp>(</rp><rt>t</rt></ruby><search>s</search><menu><li>m</li></menu><hgroup><h2>h</h2></hgroup><figure><figcaption>f</figcaption></figure><main>m</main><nav>n</nav><article>a</article><aside>a</aside><section>s</section><header>h</header><footer>f</footer><address>a</address><dl><dt>t</dt><dd>d</dd></dl><span>s</span><div>d</div><em>e</em><strong>s</strong><small>s</small><s>s</s><cite>c</cite><dfn>d</dfn><code>c</code><var>v</var><samp>s</samp><kbd>k</kbd><sub>s</sub><sup>s</sup><i>i</i><u>u</u><mark>m</mark><p>p</p><h3>3</h3><h4>4</h4><h5>5</h5><h6>6</h6>"
+      },
+      "svgDefault": {
+        "value": "<svg viewBox=\"0 0 10 10\" width=\"10\" height=\"10\" fill=\"red\"><circle cx=\"1\" cy=\"2\" r=\"3\" fill=\"red\" stroke=\"blue\" transform=\"t\"></circle><path d=\"M0\" pathLength=\"1\"></path><text x=\"1\" y=\"2\" dx=\"1\" text-anchor=\"middle\" font-size=\"3\">t<tspan>u</tspan></text><foreignObject width=\"1\"><div>x</div></foreignObject><g><rect x=\"1\" width=\"2\" rx=\"1\"></rect></g><defs></defs><a href=\"https://x\">a</a><title>t</title><desc>d</desc><marker markerWidth=\"1\"></marker><polygon points=\"1\"></polygon><polyline points=\"1\"></polyline><line x1=\"1\"></line><ellipse rx=\"1\"></ellipse><textPath>p</textPath><metadata>m</metadata></svg>"
+      },
+      "mathDefault": {
+        "value": "<math display=\"block\" dir=\"rtl\" mathcolor=\"red\"><mrow><mi>x</mi><mo stretchy=\"true\" fence=\"true\" form=\"prefix\" lspace=\"1\">+</mo><mn>1</mn><mfrac><mi>a</mi><mi>b</mi></mfrac><msqrt><mi>c</mi></msqrt><mroot><mi>d</mi><mn>3</mn></mroot><mtable><mtr><mtd columnspan=\"2\" rowspan=\"1\">e</mtd></mtr></mtable><mspace width=\"1\"></mspace><mtext>t</mtext><ms>s</ms><mstyle scriptlevel=\"1\">s</mstyle><mpadded width=\"1\">p</mpadded><mphantom>p</mphantom><msub><mi>a</mi><mn>1</mn></msub><msup><mi>a</mi><mn>2</mn></msup><msubsup><mi>a</mi><mn>1</mn><mn>2</mn></msubsup><munder><mi>a</mi><mi>b</mi></munder><mover><mi>a</mi><mi>b</mi></mover><munderover><mi>a</mi><mi>b</mi><mi>c</mi></munderover><mmultiscripts><mi>a</mi><mprescripts></mprescripts><mi>b</mi></mmultiscripts><semantics><mi>x</mi></semantics><merror>e</merror></mrow></math>"
+      },
+      "headElements": {
+        "value": "<title>t</title><meta charset=\"x\"><link rel=\"x\"><style>s</style>x"
+      }
+    },
+    "declarative": {
+      "host": {
+        "value": [
+          "<b>x</b>",
+          "<div></div><p><template shadowrootmode=\"closed\" shadowrootserializable=\"\"><i>z</i></template></p>"
+        ]
+      },
+      "defaultConfig": {
+        "value": [
+          "<div>light</div>",
+          null
+        ]
+      },
+      "nested": {
+        "value": "<b>deep</b>"
+      },
+      "hostRemoved": {
+        "value": ""
+      },
+      "allowListFilters": {
+        "value": [
+          "<div></div>",
+          null
+        ]
+      },
+      "templateRules": {
+        "defaults": {
+          "value": [
+            "<div>light</div>",
+            null,
+            [
+              "ok",
+              "",
+              true
+            ],
+            "<div>light</div>"
+          ]
+        },
+        "empty": {
+          "value": [
+            "<div>light</div>",
+            [
+              "<b>x</b><i>y</i>",
+              null
+            ],
+            [
+              "ok",
+              "",
+              true
+            ],
+            "<div>light</div>"
+          ]
+        },
+        "divOnly": {
+          "value": [
+            "<div>light</div>",
+            null,
+            [
+              "ok",
+              "",
+              true
+            ],
+            "<div>light</div>"
+          ]
+        },
+        "divAndB": {
+          "value": [
+            "<div>light</div>",
+            null,
+            [
+              "ok",
+              "",
+              true
+            ],
+            "<div>light</div>"
+          ]
+        },
+        "divTemplate": {
+          "value": [
+            "<div>light</div>",
+            [
+              "",
+              null
+            ],
+            [
+              "ok",
+              "",
+              true
+            ],
+            "<div>light</div>"
+          ]
+        },
+        "divTemplateB": {
+          "value": [
+            "<div>light</div>",
+            [
+              "<b>x</b>",
+              null
+            ],
+            [
+              "ok",
+              "",
+              true
+            ],
+            "<div>light</div>"
+          ]
+        },
+        "removeTemplate": {
+          "value": [
+            "<div>light</div>",
+            null,
+            [
+              "ok",
+              "",
+              true
+            ],
+            "<div>light</div>"
+          ]
+        },
+        "replaceTemplate": {
+          "value": [
+            "<div><b>x</b><i>y</i>light</div>",
+            null,
+            [
+              "ok",
+              "",
+              true
+            ],
+            "<div><b>x</b><i>y</i>light</div>"
+          ]
+        },
+        "templateWithoutAttributes": {
+          "value": [
+            "<div><template><b>x</b></template>light</div>",
+            null,
+            [
+              "ok",
+              "",
+              true
+            ],
+            "<div><template><b>x</b></template>light</div>"
+          ]
+        },
+        "templateKeepsMode": {
+          "value": [
+            "<div>light</div>",
+            [
+              "<b>x</b>",
+              null
+            ],
+            [
+              "ok",
+              "",
+              true
+            ],
+            "<div>light</div>"
+          ]
+        },
+        "removeModeAttribute": {
+          "value": [
+            "<div><template><b>x</b><i>y</i></template>light</div>",
+            null,
+            [
+              "ok",
+              "",
+              true
+            ],
+            "<div><template><b>x</b><i>y</i></template>light</div>"
+          ]
+        },
+        "removeSerializable": {
+          "value": [
+            "<div>light</div>",
+            null,
+            [
+              "NotSupportedError"
+            ],
+            "<div>light</div>"
+          ]
+        },
+        "closedDefault": {
+          "value": [
+            "<div>light</div>",
+            null,
+            [
+              "ok",
+              "",
+              true
+            ],
+            "<div>light</div>"
+          ]
+        },
+        "closedTemplate": {
+          "value": [
+            "<div>light</div>",
+            null,
+            [
+              "NotSupportedError"
+            ],
+            "<div><template shadowrootmode=\"closed\" shadowrootserializable=\"\"><b>x</b></template>light</div>"
+          ]
+        },
+        "nested": {
+          "value": [
+            "<div></div>",
+            [
+              "<span>s</span>",
+              "<b>deep</b>"
+            ],
+            [
+              "ok",
+              "",
+              true
+            ],
+            "<div></div>"
+          ]
+        },
+        "unsafeNoTemplate": {
+          "value": [
+            "<div>light</div>",
+            null,
+            [
+              "ok",
+              "",
+              true
+            ],
+            "<div>light</div>"
+          ]
+        },
+        "unsafeRemoveTemplate": {
+          "value": [
+            "<div>light</div>",
+            null,
+            [
+              "ok",
+              "",
+              true
+            ],
+            "<div>light</div>"
+          ]
+        },
+        "unsafeReplaceTemplate": {
+          "value": [
+            "<div><b>x</b><i>y</i>light</div>",
+            null,
+            [
+              "ok",
+              "",
+              true
+            ],
+            "<div><b>x</b><i>y</i>light</div>"
+          ]
+        },
+        "unsafeDefault": {
+          "value": [
+            "<div>light</div>",
+            null,
+            [
+              "ok",
+              "",
+              true
+            ],
+            "<div>light</div>"
+          ]
+        },
+        "unsafeNone": {
+          "value": [
+            "<div>light</div>",
+            [
+              "<b>x</b><i>y</i>",
+              null
+            ],
+            [
+              "ok",
+              "",
+              true
+            ],
+            "<div>light</div>"
+          ]
+        }
+      },
+      "parsedTemplateRules": {
+        "safeDefault": {
+          "value": [
+            "<div>light</div>",
+            null
+          ]
+        },
+        "safeEmpty": {
+          "value": [
+            "<div>light</div>",
+            "<b>x</b><i>y</i>"
+          ]
+        },
+        "safeNoTemplate": {
+          "value": [
+            "<div>light</div>",
+            null
+          ]
+        },
+        "safeTemplate": {
+          "value": [
+            "<div>light</div>",
+            "<b>x</b>"
+          ]
+        },
+        "unsafeNone": {
+          "value": [
+            "<div>light</div>",
+            "<b>x</b><i>y</i>"
+          ]
+        },
+        "unsafeNoTemplate": {
+          "value": [
+            "<div>light</div>",
+            null
+          ]
+        },
+        "unsafeRemoveTemplate": {
+          "value": [
+            "<div>light</div>",
+            null
+          ]
+        },
+        "unsafeReplaceTemplate": {
+          "value": [
+            "<div><b>x</b><i>y</i>light</div>",
+            null
+          ]
+        }
+      },
+      "replacedHost": {
+        "value": "light"
+      },
+      "templateAttributes": {
+        "value": [
+          "<div></div>",
+          "<b>in</b>"
+        ]
+      },
+      "invalidHost": {
+        "value": "<a><template shadowrootmode=\"open\"><b>in</b></template></a>"
+      },
+      "topLevel": {
+        "value": [
+          "<template shadowrootmode=\"open\"><b>in</b></template>",
+          false
+        ]
+      },
+      "flags": {
+        "value": [
+          "<div><template shadowrootmode=\"closed\" shadowrootdelegatesfocus=\"\" shadowrootserializable=\"\" shadowrootclonable=\"\"><b>in</b></template></div><section></section>",
+          "manual"
+        ]
+      },
+      "unsafeSanitized": {
+        "value": [
+          "<b onclick=\"1\">x</b><!--c-->",
+          "manual"
+        ]
+      }
+    },
+    "unsafe": {
+      "empty": {
+        "value": "<a href=\"javascript:x\" onclick=\"1\">l</a><script>s</script><!--c--><i data-x=\"1\">i</i><iframe></iframe>"
+      },
+      "defaultPreset": {
+        "value": "<a href=\"javascript:x\" title=\"t\">l</a><b>x</b>"
+      },
+      "instance": {
+        "value": "<a href=\"javascript:x\">l</a><script>s</script>"
+      },
+      "elements": {
+        "value": "<b onclick=\"1\">x</b><!--c-->"
+      },
+      "attributes": {
+        "value": "<b title=\"t\" data-x=\"1\">x</b>"
+      },
+      "svgAnimation": {
+        "value": "<svg><set attributeName=\"href\"></set><a href=\"javascript:x\">a</a></svg><math href=\"javascript:y\"></math>"
+      }
+    },
+    "parse": {
+      "safeDefault": {
+        "value": [
+          "BackCompat",
+          null,
+          [
+            1
+          ],
+          "<html><head><title>t</title></head><body><b>x</b></body></html>",
+          "about:blank",
+          "text/html",
+          "UTF-8",
+          true,
+          false
+        ]
+      },
+      "safeDoctype": {
+        "value": [
+          "CSS1Compat",
+          "html",
+          [
+            10,
+            1
+          ],
+          "<html><head></head><body><b>x</b></body></html>",
+          "about:blank",
+          "text/html",
+          "UTF-8",
+          true,
+          false
+        ]
+      },
+      "safeComments": {
+        "value": [
+          "CSS1Compat",
+          "html",
+          [
+            8,
+            10,
+            8,
+            1,
+            8
+          ],
+          "<html><head></head><body>x</body></html>",
+          "about:blank",
+          "text/html",
+          "UTF-8",
+          true,
+          false
+        ]
+      },
+      "safeInstanceComments": {
+        "value": [
+          "CSS1Compat",
+          "html",
+          [
+            8,
+            10,
+            1
+          ],
+          "<html><head></head><body>x<!--d--></body></html>",
+          "about:blank",
+          "text/html",
+          "UTF-8",
+          true,
+          false
+        ]
+      },
+      "safeNoComments": {
+        "value": [
+          "CSS1Compat",
+          "html",
+          [
+            8,
+            10,
+            1
+          ],
+          "<html><head></head><body><b>x</b></body></html>",
+          "about:blank",
+          "text/html",
+          "UTF-8",
+          true,
+          false
+        ]
+      },
+      "removeHtml": {
+        "value": [
+          "CSS1Compat",
+          "html",
+          [
+            8,
+            10
+          ],
+          null,
+          "about:blank",
+          "text/html",
+          "UTF-8",
+          true,
+          false
+        ]
+      },
+      "elementsOnly": {
+        "value": [
+          "BackCompat",
+          null,
+          [],
+          null,
+          "about:blank",
+          "text/html",
+          "UTF-8",
+          true,
+          false
+        ]
+      },
+      "removeElements": {
+        "value": [
+          "BackCompat",
+          null,
+          [
+            1
+          ],
+          "<html><head></head><body><b>x</b></body></html>",
+          "about:blank",
+          "text/html",
+          "UTF-8",
+          true,
+          false
+        ]
+      },
+      "replaceBody": {
+        "value": [
+          "BackCompat",
+          null,
+          [
+            1
+          ],
+          "<html><head></head><p>a</p></html>",
+          "about:blank",
+          "text/html",
+          "UTF-8",
+          true,
+          false
+        ]
+      },
+      "removeHead": {
+        "value": [
+          "BackCompat",
+          null,
+          [
+            1
+          ],
+          "<html><body><p>a</p></body></html>",
+          "about:blank",
+          "text/html",
+          "UTF-8",
+          true,
+          false
+        ]
+      },
+      "frameset": {
+        "value": [
+          "BackCompat",
+          null,
+          [
+            1
+          ],
+          "<html><head></head><frameset></frameset></html>",
+          "about:blank",
+          "text/html",
+          "UTF-8",
+          true,
+          false
+        ]
+      },
+      "unsafeNone": {
+        "value": [
+          "CSS1Compat",
+          "html",
+          [
+            8,
+            10,
+            1
+          ],
+          "<html><head></head><body><script>x</script><b onclick=\"1\">x</b></body></html>",
+          "about:blank",
+          "text/html",
+          "UTF-8",
+          true,
+          false
+        ]
+      },
+      "unsafeDefault": {
+        "value": [
+          "CSS1Compat",
+          "html",
+          [
+            10,
+            1
+          ],
+          "<html><head><title>t</title></head><body><b>x</b></body></html>",
+          "about:blank",
+          "text/html",
+          "UTF-8",
+          true,
+          false
+        ]
+      },
+      "unsafeElements": {
+        "value": [
+          "BackCompat",
+          null,
+          [
+            1
+          ],
+          "<html><head></head><body><b onclick=\"1\">x</b><!--c--></body></html>",
+          "about:blank",
+          "text/html",
+          "UTF-8",
+          true,
+          false
+        ]
+      },
+      "unsafeNoComments": {
+        "value": [
+          "CSS1Compat",
+          "html",
+          [
+            8,
+            10,
+            1
+          ],
+          "<html><head></head><body><b>x</b></body></html>",
+          "about:blank",
+          "text/html",
+          "UTF-8",
+          true,
+          false
+        ]
+      },
+      "trustedLikeObject": {
+        "value": [
+          "BackCompat",
+          null,
+          [
+            1
+          ],
+          "<html><head></head><body><p>obj</p></body></html>",
+          "about:blank",
+          "text/html",
+          "UTF-8",
+          true,
+          false
+        ]
+      },
+      "scriptsInert": {
+        "value": [
+          0,
+          0,
+          true
+        ]
+      }
+    }
+  }
+}

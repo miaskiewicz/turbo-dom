@@ -1,0 +1,67 @@
+{
+  "browser": "Chrome/156.0.8078.47",
+  "v8": "15.6.75.19",
+  "casesSha256": "bdc0496f2c95fccabd21e6784f5345a1ddb1c03f2bcc2d711191d8a99ac384cf",
+  "probeSha256": "586b4502507a7daf3ace9068cfa89ae74e2c99396668e38a4d908bd00687832b",
+  "collectorSha256": "eff66fa3d1ac0bb8d9cd965e2d7fdb9f6ef3fa41d0a8ca092898c3208a567e9a",
+  "flags": [
+    "--headless=new",
+    "--remote-debugging-pipe",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "about:blank"
+  ],
+  "errors": [],
+  "result": [
+    {
+      "id": "input-sanitization",
+      "result": [
+        [
+          "text",
+          " abcd "
+        ],
+        " x ",
+        [
+          "search",
+          " abcd "
+        ],
+        " x ",
+        [
+          "tel",
+          " abcd "
+        ],
+        " x ",
+        [
+          "password",
+          " abcd "
+        ],
+        " x ",
+        [
+          "url",
+          "abcd"
+        ],
+        "x",
+        [
+          "email",
+          "abcd"
+        ],
+        "x",
+        [
+          "hidden",
+          " a\r\nb\nc\rd "
+        ],
+        "\n x \r",
+        [
+          "invalid-state",
+          " abcd "
+        ],
+        " x ",
+        "a@b.c,d@e.f,",
+        "xy"
+      ]
+    }
+  ]
+}
