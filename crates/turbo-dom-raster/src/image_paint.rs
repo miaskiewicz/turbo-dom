@@ -445,6 +445,13 @@ pub fn decode(bytes: &[u8]) -> Option<DecodedImage> {
             // at the image's real size and paints as the placeholder.
             None => return size_only(bytes),
         },
+        Some(Format::Jxl) => match crate::jxl::decode(bytes) {
+            Some(rgba) => rgba,
+            // Without the `jxl` feature (or on a codestream error) the box still lays out
+            // at the image's real size (the shared header probe) and paints as the
+            // placeholder.
+            None => return size_only(bytes),
+        },
         // The entry a browser shows: a PNG entry through the shared PNG decoder (the
         // `image` crate's ICO decoder rejects non-RGBA PNG entries, which Chrome shows),
         // else the `image` crate's ICO decoder — format forced, as a cursor (resource

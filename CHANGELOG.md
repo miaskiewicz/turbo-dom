@@ -7,6 +7,34 @@ at the time); this file reconstructs them from history.
 
 ## [Unreleased]
 
+### Fixed — raster `<img>` handling, AVIF orientation (P5b-W4, Chrome 156 controls)
+- `turbo-dom-raster` paints an `<img src="data:…">` from its own URL
+  (miaskiewicz/turbo-dom#27 item 1). The screenshot decodes every `data:` image of the
+  parsed document through `image::decode_data_url` (base64 or percent-encoded, any case of
+  the scheme); before, it painted only caller-supplied bytes.
+- `image_urls` and the lazy-image fill walk the parsed document's HTML `<img>` elements,
+  skipping template content (miaskiewicz/turbo-dom#27 item 2). `<img` text in an
+  attribute value, a `<script>` string or a comment is no longer fetched or rewritten:
+  the old text rewrite could end a quoted attribute early and replace the element's own
+  style. New `delazy_tree(&mut Tree)` is what the screenshot uses. `delazy_images` returns
+  the filled document re-serialized (doctype identifiers kept) when an image changes,
+  else the input. Control: `scripts/raster-img-chrome-control.mjs` (shared PNG sampling in
+  `scripts/lib/png-samples.mjs`).
+- AVIF `irot` / `imir` transform properties orient the image
+  (miaskiewicz/turbo-dom#45 item 1). The probe composes them, in association order, into
+  `Intrinsic::orientation` (new `Orientation::then`), so the natural size, the box
+  (stored under `image-orientation: none`), the raster pixels and the PDF placement match
+  Chrome. The fixtures are derived from `q.avif` by `scripts/make_format_fixtures.py`, and
+  the control `scripts/image-formats-chrome-control.mjs` gains seven cases.
+- JPEG XL images (miaskiewicz/turbo-dom#45 item 2). Chrome 156 decodes them (jxl-rs). The
+  shared probe now reads a JPEG XL's `SizeHeader` and orientation in every build: bare
+  codestream or container, new `Format::Jxl`. turbo-dom-raster decodes it under the new
+  off-by-default `jxl` feature with `jxl-oxide` (MIT OR Apache-2.0, pure Rust, no thread
+  pool; CI raster job). The fixtures are three jxl-rs test files with their BSD-3-Clause
+  license (`crates/turbo-dom-layout/tests/fixtures/images/jxl/`), and the control gains
+  three cases. The PDF does not embed JPEG XL.
+  Corpus changes: `tools/parity/expected/p5b-w4-turbo-dom-27-*.json`,
+  `-turbo-dom-45-1.json`.
 ### Fixed — `createDocument` qualified names (P5b-X5, miaskiewicz/turbo-dom#57, Chrome 156 control)
 - turbo-dom-browser-env: `document.implementation.createDocument` checked the qualified
   name against the XML `Name` production and rejected every name with two colons. It now
@@ -209,29 +237,6 @@ at the time); this file reconstructs them from history.
   and `src/html_image_cases.json` rendered / `display: none` images with their layout
   boxes (`layout`), recaptured on Chrome for Testing 156.0.8078.4 (earlier sections
   unchanged).
-
-### Fixed — raster `<img>` handling, AVIF orientation (P5b-W4, Chrome 156 controls)
-- `turbo-dom-raster` paints an `<img src="data:…">` from its own URL
-  (miaskiewicz/turbo-dom#27 item 1). The screenshot decodes every `data:` image of the
-  parsed document through `image::decode_data_url` (base64 or percent-encoded, any case of
-  the scheme); before, it painted only caller-supplied bytes.
-- `image_urls` and the lazy-image fill walk the parsed document's HTML `<img>` elements,
-  skipping template content (miaskiewicz/turbo-dom#27 item 2). `<img` text in an
-  attribute value, a `<script>` string or a comment is no longer fetched or rewritten:
-  the old text rewrite could end a quoted attribute early and replace the element's own
-  style. New `delazy_tree(&mut Tree)` is what the screenshot uses. `delazy_images` returns
-  the filled document re-serialized (doctype identifiers kept) when an image changes,
-  else the input. Control: `scripts/raster-img-chrome-control.mjs` (shared PNG sampling in
-  `scripts/lib/png-samples.mjs`).
-- AVIF `irot` / `imir` transform properties orient the image
-  (miaskiewicz/turbo-dom#45 item 1). The probe composes them, in association order, into
-  `Intrinsic::orientation` (new `Orientation::then`), so the natural size, the box
-  (stored under `image-orientation: none`), the raster pixels and the PDF placement match
-  Chrome. The fixtures are derived from `q.avif` by `scripts/make_format_fixtures.py`, and
-  the control `scripts/image-formats-chrome-control.mjs` gains seven cases. JPEG XL is left
-  as is: Chrome 156 *decodes* it (jxl-rs), so matching it needs a decoder (open decision).
-  Corpus changes: `tools/parity/expected/p5b-w4-turbo-dom-27-*.json`,
-  `-turbo-dom-45-1.json`.
 
 ### Fixed — turbo-dom-layout bug fixes (P5b-W1, Chrome 156 controls)
 Each fix is backed by a Chrome for Testing 156 control and lists the corpus outputs it

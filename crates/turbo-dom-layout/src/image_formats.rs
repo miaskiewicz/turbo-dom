@@ -353,7 +353,11 @@ fn bmff_extent(bytes: &[u8], at: usize, size: u64) -> Option<(usize, usize)> {
 
 /// The child boxes of `range` (a box body, or the whole file), skipping `skip` leading
 /// bytes (a full box's version/flags).
-fn bmff_children(bytes: &[u8], range: &std::ops::Range<usize>, skip: usize) -> Vec<BmffBox> {
+pub(super) fn bmff_children(
+    bytes: &[u8],
+    range: &std::ops::Range<usize>,
+    skip: usize,
+) -> Vec<BmffBox> {
     let scope = bytes.get(..range.end).unwrap_or_default();
     let mut out = Vec::new();
     let mut at = range.start + skip;
@@ -880,6 +884,7 @@ pub(super) fn sniff_extra(bytes: &[u8]) -> Option<Format> {
         (is_bmp as fn(&[u8]) -> bool, Format::Bmp),
         (is_ico, Format::Ico),
         (is_avif, Format::Avif),
+        (super::jxl::is_jxl, Format::Jxl),
     ]
     .into_iter()
     .find(|(is, _)| is(bytes))
