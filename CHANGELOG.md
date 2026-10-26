@@ -72,6 +72,23 @@ outputs it changes in `tools/parity/expected/p5b-*.json`.
   `:nth-child(2 of .a, .b)` and `[title="a,b"]` stay whole), an invalid list drops the whole
   rule (`.c, :bogus {}`), and items match with stylesheet semantics (`:scope` is `:root`).
   Specificity keeps the rough per-item count.
+- npm `@miaskiewicz/turbo-dom` JS engine (`src/runtime/selectors.mjs`, miaskiewicz/turbo-dom#18):
+  rewritten in lockstep with the Rust engine and asserted against the same Chrome 156
+  control (`test/selectors-chrome.test.mjs`: every row's validity, `matches`,
+  `querySelectorAll`, the cascade sentinel, and the template / `:root` probes). New:
+  CSS escapes and non-ASCII identifiers, `*|` / `|` prefixes (types and attributes), the
+  `i` attribute modifier, `:nth-child(An+B of S)`, `:link` / `:any-link`, `:lang()`,
+  `:dir()`, `:defined` (reads the window's `customElements` registry), `:scope`,
+  `:-webkit-any()`, the valid never-matching pseudo-classes (`:hover`, `:focus`, …) and
+  pseudo-elements (never match); Chrome's `:empty`, `:root`, `:read-only` / `:read-write`
+  and `:disabled` rules. **Breaking for lenient callers**: every selector Chrome rejects
+  now throws `SyntaxError` — empty lists and items (`""`, `a,,b`), a trailing combinator
+  (`a >`), a type after another simple selector (`div[id=x]y`, `.foo*`), empty or
+  non-identifier names (`#`, `.1a`), unquoted non-identifier attribute values
+  (`[href=a.html]`, `[a=]`), unknown pseudo-classes and pseudo-elements, `:selected` (use
+  `:checked`), wrong arity / invalid An+B (`:nth-child()`), nested `:has()`, the `s`
+  modifier. `cascade.mjs` splits rule selector lists at top-level commas and drops invalid
+  rules, like `rtdom::cascade`.
 
 ## [0.6.0] — turbo-dom consolidation
 

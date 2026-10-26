@@ -44,23 +44,19 @@ test('parity corpus: compounds, combinators, attrs, pseudos', () => {
   );
   assert.deepEqual(one('p + i'), cx(cmp({ tag: 'p' }), seg('+', cmp({ tag: 'i' }))));
   assert.deepEqual(one('p ~ b'), cx(cmp({ tag: 'p' }), seg('~', cmp({ tag: 'b' }))));
-  // lenient: a trailing bare type after a full compound is dropped (≡ div[id=x])
-  assert.deepEqual(one('div[id=x]y'), cx(cmp({ tag: 'div', attrs: [attr('id', 'equals', 'x')] })));
+  // namespace prefixes and escaped / non-ASCII identifiers (decoded)
+  assert.deepEqual(one('*|p'), cx(cmp({ tag: 'p', ns: 'any' })));
+  assert.deepEqual(one('|*'), cx(cmp({ tag: '*', ns: 'none' })));
+  assert.deepEqual(one('.md\\:flex #\\31 23 .café'), cx(cmp({ classes: ['md:flex'] }), seg(' ', cmp({ id: '123' })), seg(' ', cmp({ classes: ['café'] }))));
 });
 
-// ── Leniency the matcher relies on ───────────────────────────────────────────
-test('lenient div[id=x]y matches a <div id="x"> (no throw)', () => {
+// ── Chrome 156 grammar (miaskiewicz/turbo-dom#18): no leniency ──────────────
+test('a type selector must come first in its compound (div[id=x]y is a SyntaxError)', () => {
   const { document } = createEnvironment('<!doctype html><body><div id="x">hi</div></body>');
-  assert.equal(document.querySelectorAll('div[id=x]y').length, 1);
-  assert.equal(document.querySelector('div[id=x]y').textContent, 'hi');
-});
-
-test('redundant leading type / * is dropped (first wins)', () => {
-  // a second type after a class is ignored; `*` only fills an unset tag
-  assert.deepEqual(one('.foo*'), cx(cmp({ tag: '*', classes: ['foo'] })));
+  assert.throws(() => document.querySelectorAll('div[id=x]y'), SyntaxError);
+  for (const bad of ['.foo*', 'div*', '[a]div', ':not(p)x']) assert.throws(() => parseSelectorList(bad), SyntaxError, bad);
   assert.deepEqual(one('*'), cx(cmp({ tag: '*' })));
   assert.deepEqual(one('DIV'), cx(cmp({ tag: 'div' }))); // type lowercased
-  assert.deepEqual(one('div*'), cx(cmp({ tag: 'div' }))); // redundant * dropped
 });
 
 // ── Throw cases preserved exactly ────────────────────────────────────────────
@@ -72,18 +68,10 @@ test('malformed selectors still throw SyntaxError', () => {
   assert.throws(() => parseSelectorList('a + > b'), SyntaxError);
 });
 
-// ── Empty / comma / whitespace edges (no throw — empties are dropped) ─────────
-// SHAPE-ONLY UPDATE: a Complex is now always non-empty. parseComplexTokens returns
-// null for an empty segment and parseSelectorList filters the nulls, so an empty /
-// all-whitespace / comma-only segment yields NO complex rather than an empty
-// `{ compounds:[], combinators:[] }`. (The old empty pair could only ever throw if
-// matched, so no querySelectorAll/matches COUNT changes — see the matcher tests.)
-test('empty complex selectors are dropped (no throw)', () => {
-  assert.deepEqual(parseSelectorList(''), []);
-  assert.deepEqual(parseSelectorList('   '), []); // all-whitespace ⇒ no complex
-  assert.deepEqual(parseSelectorList(','), []); // two empty segments, both dropped
-  assert.equal(parseSelectorList('a,,b').length, 2); // the empty middle segment is dropped
-  assert.deepEqual(parseSelectorList('a,,b'), [cx(cmp({ tag: 'a' })), cx(cmp({ tag: 'b' }))]);
+// ── Empty / comma / whitespace edges: SyntaxErrors in Chrome 156 ─────────────
+test('empty selectors and empty list items are SyntaxErrors', () => {
+  for (const bad of ['', '   ', ',', 'a,,b', 'a,', ',a']) assert.throws(() => parseSelectorList(bad), SyntaxError, JSON.stringify(bad));
+  assert.deepEqual(parseSelectorList('a, b'), [cx(cmp({ tag: 'a' })), cx(cmp({ tag: 'b' }))]);
 });
 
 test('leading/trailing/repeated whitespace is trimmed; all whitespace kinds work', () => {
@@ -94,19 +82,11 @@ test('leading/trailing/repeated whitespace is trimmed; all whitespace kinds work
   assert.deepEqual(one('a\r\n>\fb'), cx(cmp({ tag: 'a' }), seg('>', cmp({ tag: 'b' }))));
 });
 
-test('dangling trailing combinator is dropped by result (a > ≡ a)', () => {
-  // SHAPE-ONLY UPDATE: the old desynced `{compounds:[a], combinators:['>']}` (one
-  // compound, one stray combinator) is now the honest `{first:a, rest:[]}`. The
-  // combinator is only paired once a trailing compound is read, so the dangling `>`
-  // simply has nothing to attach to. Behavior is unchanged: `a >` matches like `a`.
-  assert.deepEqual(one('a >'), cx(cmp({ tag: 'a' })));
+test('a dangling trailing combinator is a SyntaxError (a >)', () => {
   const { document } = createEnvironment('<!doctype html><body><a>x</a><a>y</a></body>');
-  // selects the SAME nodes (by reference) as plain `a`
-  const dangling = document.querySelectorAll('a >');
-  const plain = document.querySelectorAll('a');
-  assert.equal(dangling.length, 2);
-  assert.equal(dangling.length, plain.length);
-  for (let i = 0; i < plain.length; i++) assert.equal(dangling[i], plain[i]);
+  assert.throws(() => document.querySelectorAll('a >'), SyntaxError);
+  assert.throws(() => parseSelectorList('a ~'), SyntaxError);
+  assert.equal(document.querySelectorAll('a').length, 2);
 });
 
 // ── Attribute interior parsing ───────────────────────────────────────────────
@@ -118,14 +98,22 @@ test('attribute parsing: presence, every operator, quote stripping, empty values
   assert.deepEqual(one('[title=""]').first.attrs, [attr('title', 'equals', '')]);
   assert.deepEqual(one("[title='']").first.attrs, [attr('title', 'equals', '')]);
   assert.deepEqual(one('[href^=""]').first.attrs, [attr('href', 'prefix', '')]);
-  // bare (unquoted) empty value after '='
-  assert.deepEqual(one('[a=]').first.attrs, [attr('a', 'equals', '')]);
-  // bare (unquoted) multi-char value is NOT quote-stripped
-  assert.deepEqual(one('[href=index.html]').first.attrs, [attr('href', 'equals', 'index.html')]);
+  // an unquoted value is an identifier: empty, `index.html`, a number or trailing junk
+  // after a string are SyntaxErrors (Chrome 156)
+  for (const bad of ['[a=]', '[href=index.html]', '[a=1]', '[x="a"b]', '[1a]', '[ns|a]', '[a=b s]']) {
+    assert.throws(() => parseSelectorList(bad), SyntaxError, bad);
+  }
+  assert.deepEqual(one('[href="index.html"]').first.attrs, [attr('href', 'equals', 'index.html')]);
+  assert.deepEqual(one('[a=\\31]').first.attrs, [attr('a', 'equals', '1')]); // escaped ident
   // a ']' inside a quoted value must NOT close the attribute
   assert.deepEqual(one('[a="]"]').first.attrs, [attr('a', 'equals', ']')]);
-  // value that opens with a quote but doesn't end with one is left intact (not stripped)
-  assert.deepEqual(one('[x="a"b]').first.attrs, [attr('x', 'equals', '"a"b')]);
+  // the `i` modifier and the `*|` prefix
+  assert.deepEqual(one('[a="B" i]').first.attrs, [{ ...attr('a', 'equals', 'B'), ci: true }]);
+  assert.deepEqual(one('[*|a]').first.attrs, [{ ...present('a'), ns: 'any' }]);
+  assert.deepEqual(one('[|a]').first.attrs, [present('a')]);
+  // comments are allowed inside the brackets
+  assert.deepEqual(one('[a/**/="b"/**/]').first.attrs, [attr('a', 'equals', 'b')]);
+  assert.throws(() => parseSelectorList('[a/*="b"]'), SyntaxError);
   // multiple attributes in one compound
   assert.deepEqual(one('a[b][c]').first.attrs, [present('b'), present('c')]);
   // each operator folds to its named op (no value key on presence)
@@ -138,26 +126,32 @@ test('attribute parsing: presence, every operator, quote stripping, empty values
 // ── Pseudo parsing ───────────────────────────────────────────────────────────
 test('pseudo parsing: no-arg, arg, nested + quoted parens, unterminated arg', () => {
   assert.deepEqual(one(':first-child').first.pseudos, [{ name: 'first-child', arg: null }]);
-  assert.deepEqual(one(':nth-child()').first.pseudos, [{ name: 'nth-child', arg: '' }]);
+  assert.deepEqual(one(':FIRST-CHILD').first.pseudos, [{ name: 'first-child', arg: null }]); // case-insensitive
   assert.deepEqual(one(':not(.x)').first.pseudos, [{ name: 'not', arg: '.x' }]);
   // a quoted ')' inside the arg does not terminate it (double- and single-quoted)
   assert.deepEqual(one(':not([title=")"])').first.pseudos, [{ name: 'not', arg: '[title=")"]' }]);
   assert.deepEqual(one(":not([title=')'])").first.pseudos, [{ name: 'not', arg: "[title=')']" }]);
-  // double colon + empty pseudo name are tolerated (unknown ⇒ never matches)
-  assert.deepEqual(one('div::before').first.pseudos, [
-    { name: '', arg: null },
-    { name: 'before', arg: null },
-  ]);
-  // unterminated pseudo arg: take everything after '(' (lenient, no throw)
+  // a pseudo-element is kept apart from the pseudo-classes (and never matches)
+  assert.deepEqual(one('div::before').first, { ...cmp({ tag: 'div' }), pe: { name: 'before', arg: null } });
+  assert.deepEqual(one('p:after').first.pe, { name: 'after', arg: null }); // legacy single colon
+  // an unterminated argument closes at the end of the selector (CSS)
   assert.deepEqual(one(':not(.x').first.pseudos, [{ name: 'not', arg: '.x' }]);
+  // SyntaxErrors (Chrome 156): arity, An+B, unknown names, misplaced pseudo-elements
+  for (const bad of [':nth-child()', ':nth-child', ':first-child(1)', ':is', ':bogus', '::bogus', ':selected', '::before.x', '::before span', ':not(::before)', ':has(:has(p))', ':lang(en, de)', ':dir("ltr")', '::before:hover', ':before(x)', '::slotted(a, b)', ':state', ':state(1)']) {
+    assert.throws(() => parseSelectorList(bad), SyntaxError, bad);
+  }
+  for (const ok of ['::-webkit-scrollbar:hover', '::part(x):hover', '::selection:window-inactive', '::file-selector-button:focus', ':is(::before)', ':host', ':host(.x)', ':state(on)', '::slotted(p)', ':-webkit-any(p)']) {
+    assert.ok(parseSelectorList(ok).length === 1, ok);
+  }
 });
 
 // ── id / class edges + selector list + cache ────────────────────────────────
 test('id/class names, empty names, comma list and parse cache', () => {
   assert.deepEqual(one('#app').first.id, 'app');
   assert.deepEqual(one('.x.y').first.classes, ['x', 'y']);
-  assert.equal(one('#').first.id, ''); // empty id name tolerated
-  assert.deepEqual(one('.').first.classes, ['']); // empty class name tolerated
+  // an id / class name is an identifier (Chrome 156)
+  for (const bad of ['#', '.', '#1a', '.1a', 'p..x', 'p:']) assert.throws(() => parseSelectorList(bad), SyntaxError, bad);
+  assert.deepEqual(one('.--a').first.classes, ['--a']);
   const list = parseSelectorList('h1, h2 , h3');
   assert.equal(list.length, 3);
   assert.equal(list[2].first.tag, 'h3');
@@ -171,6 +165,6 @@ test('_internal.parseComplex parses a single complex selector string', () => {
     parseComplex('ul > li.active'),
     cx(cmp({ tag: 'ul' }), seg('>', cmp({ tag: 'li', classes: ['active'] }))),
   );
-  // an empty selector string parses to null (filtered out of a list)
-  assert.equal(parseComplex('   '), null);
+  // an empty selector string is a SyntaxError
+  assert.throws(() => parseComplex('   '), SyntaxError);
 });

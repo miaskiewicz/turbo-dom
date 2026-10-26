@@ -45,14 +45,19 @@ test('form-state pseudo-classes read live properties', () => {
   assert.ok(document.getElementById('r').matches(':required'));
   assert.ok(document.getElementById('c').matches(':optional'));
   assert.ok(document.getElementById('ro').matches(':read-only'));
-  assert.ok(document.getElementById('c').matches(':read-write'));
+  // the HTML read-write rule (Chrome; turbo-dom#18 S3a port): a checkbox is read-only, a
+  // text input read-write
+  assert.ok(document.getElementById('c').matches(':read-only'));
+  assert.ok(document.getElementById('r').matches(':read-write'));
   assert.ok(document.getElementById('o').matches(':checked')); // selected option
 });
 
-test('unknown pseudo never matches (honest)', () => {
+test('unknown pseudo is a SyntaxError; valid stateful ones never match (honest)', () => {
   const { document } = fresh();
   document.body.innerHTML = '<div id="d"></div>';
-  assert.equal(document.getElementById('d').matches(':totally-made-up'), false);
+  // Chrome 156 rejects an unknown pseudo-class (miaskiewicz/turbo-dom#18)
+  assert.throws(() => document.getElementById('d').matches(':totally-made-up'), SyntaxError);
+  assert.equal(document.getElementById('d').matches(':hover'), false);
 });
 
 // ---------------------------------------------------------- DOM edges ----
@@ -379,10 +384,12 @@ test('querySelector .class also scans past a substring near-miss', () => {
   assert.equal(document.querySelectorAll('.foo').length, 1);
 });
 
-test('option:selected pseudo matches selected options', () => {
+test('option:checked matches selected options; :selected is not a pseudo-class', () => {
   const { document } = fresh();
   document.body.innerHTML = '<select><option>a</option><option selected>b</option></select>';
-  assert.equal(document.querySelectorAll('option:selected').length, 1);
+  assert.equal(document.querySelectorAll('option:checked').length, 1);
+  // Chrome 156 rejects `:selected` (it was a runtime extension; miaskiewicz/turbo-dom#18)
+  assert.throws(() => document.querySelectorAll('option:selected'), SyntaxError);
 });
 
 test('dataset getOwnPropertyDescriptor is undefined for a missing attr', () => {
@@ -1490,14 +1497,16 @@ test('nth-child with empty arg + sibling skip over text/comment nodes', () => {
   const items = document.querySelectorAll('li');
   assert.equal(items[0].nextElementSibling, items[1]);
   assert.equal(items[1].previousElementSibling, items[0]);
-  // :nth-child() with empty/garbage arg never matches
-  assert.equal(document.querySelectorAll('li:nth-child()').length, 0);
+  // :nth-child() with an empty / garbage argument is a SyntaxError (Chrome 156)
+  assert.throws(() => document.querySelectorAll('li:nth-child()'), SyntaxError);
+  assert.throws(() => document.querySelectorAll('li:nth-child(foo)'), SyntaxError);
 });
 
-test(':root matches a detached element with no parent', () => {
+test(':root is the document element only, not a detached element', () => {
   const { document } = fresh();
   const el = document.createElement('div'); // no parent
-  assert.equal(el.matches(':root'), true);
+  assert.equal(el.matches(':root'), false); // Chrome 156 (miaskiewicz/turbo-dom#18)
+  assert.equal(document.documentElement.matches(':root'), true);
   // first/last/only-child on a detached element (no siblings)
   assert.equal(el.matches(':first-child'), true);
   assert.equal(el.matches(':last-child'), true);
