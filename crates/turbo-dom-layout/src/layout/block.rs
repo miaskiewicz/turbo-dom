@@ -901,7 +901,8 @@ fn out_of_flow_kid(items: &[InlineItem], node_id: NodeId) -> Option<&LayoutBox> 
 }
 
 /// The zero-size line piece an absolutely positioned box leaves at its static
-/// position: no advance, no height, no margins.
+/// position (or a float at its place in the line): no advance, no height, no margins,
+/// and no in-flow content for the line box.
 fn out_of_flow_atom(id: usize) -> inline::InlineAtom {
     inline::InlineAtom {
         id,
@@ -913,6 +914,7 @@ fn out_of_flow_atom(id: usize) -> inline::InlineAtom {
         margin_bottom: 0.0,
         margin_left: 0.0,
         margin_right: 0.0,
+        placeholder: true,
     }
 }
 
@@ -1022,6 +1024,7 @@ fn build_inline_pieces(
                     margin_bottom: abs.margin.bottom,
                     margin_left: abs.margin.left,
                     margin_right: abs.margin.right,
+                    placeholder: false,
                 }));
                 atom_frags.push(f);
             }

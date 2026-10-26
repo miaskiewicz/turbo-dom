@@ -64,6 +64,10 @@ pub struct InlineAtom {
     pub margin_bottom: f32,
     pub margin_left: f32,
     pub margin_right: f32,
+    /// The zero-size place of an absolutely positioned or floated box: not in-flow
+    /// content, so a line holding nothing else is a zero-height line box (CSS 2.1
+    /// §9.4.2; miaskiewicz/turbo-dom#28 item 6).
+    pub placeholder: bool,
 }
 
 impl InlineAtom {
@@ -1751,6 +1755,16 @@ fn shape_space(
     }
     run
 }
+/// Whether a word is no in-flow content of its line: no glyphs (collapsible spaces
+/// make no word), no forced break, no atom but a placeholder, and only inline edges
+/// without a horizontal margin, border or padding.
+fn phantom_word(word: &Word) -> bool {
+    word.segs.is_empty()
+        && !word.break_after
+        && word.atom.is_none_or(|atom| atom.placeholder)
+        && word.edges.iter().all(|(_, edge)| edge.advance == 0.0)
+}
+
 #[allow(clippy::needless_pass_by_value)] // signature kept as relocated; borrowing instead changes nothing observable
 fn place_line(
     words: Vec<Word>,
@@ -1761,9 +1775,20 @@ fn place_line(
     strut_metrics: Option<(f32, f32)>,
     policy: (bool, bool, Option<f32>),
 ) -> SourceLine {
-    let m = match strut_metrics {
-        Some(strut) => native_line_metrics(&words, open_edges, strut, policy.2),
-        None => line_metrics(&words, strut, policy.1, policy.2, open_edges),
+    let m = if words.iter().all(phantom_word) {
+        // No text, preserved white space, framed inline, in-flow atom or `<br>`: a
+        // zero-height line box (CSS 2.1 §9.4.2), e.g. one holding only an
+        // absolutely positioned box's static position.
+        Metrics {
+            ascent: 0.0,
+            descent: 0.0,
+            height: 0.0,
+        }
+    } else {
+        match strut_metrics {
+            Some(strut) => native_line_metrics(&words, open_edges, strut, policy.2),
+            None => line_metrics(&words, strut, policy.1, policy.2, open_edges),
+        }
     };
     let half_leading = (m.height - m.ascent - m.descent) / 2.0;
     let leading = policy
@@ -2138,6 +2163,62 @@ mod tests {
             margin_bottom: 0.0,
             margin_left: 0.0,
             margin_right: 0.0,
+            placeholder: false,
+        }
+    }
+
+    fn placeholder(id: usize) -> Piece {
+        Piece::Atom(InlineAtom {
+            id,
+            width: 0.0,
+            height: 0.0,
+            font_size: 0.0,
+            placeholder: true,
+            ..atom(VAlign::Baseline)
+        })
+    }
+
+    fn edge(advance: f32, reg: &FontRegistry) -> Piece {
+        Piece::Edge(InlineEdge {
+            node_id: NodeId(9),
+            start: true,
+            advance,
+            face: face(reg),
+            font_size: 20.0,
+            line_height: Some(20.0),
+            baseline_shift: 0.0,
+            contributes_metrics: true,
+            valign: VAlign::Baseline,
+        })
+    }
+
+    // miaskiewicz/turbo-dom#28 item 6: a line of nothing but out-of-flow placeholders
+    // (and frameless inline edges) is zero-height; a `<br>`, an in-flow atom, an edge
+    // with a horizontal frame or text gives it the strut.
+    #[test]
+    fn placeholder_only_lines_are_zero_height() {
+        let reg = FontRegistry::new();
+        let height = |pieces: &[Piece]| {
+            let mut diags = Diagnostics::default();
+            layout_paragraph_in(
+                pieces,
+                &reg,
+                Align::Left,
+                &mut diags,
+                &|_| (0.0, 500.0),
+                20.0,
+            )
+            .height
+        };
+        assert_eq!(height(&[placeholder(0)]), 0.0);
+        assert_eq!(height(&[placeholder(0), placeholder(1)]), 0.0);
+        assert!(height(&[placeholder(0), Piece::Break]) >= 20.0);
+        assert!(height(&[placeholder(0), Piece::Atom(atom(VAlign::Baseline))]) >= 20.0);
+        // Edges and text need a face.
+        if cfg!(feature = "bundled-fonts") {
+            assert_eq!(height(&[edge(0.0, &reg), placeholder(0)]), 0.0);
+            assert!(height(&[edge(1.0, &reg), placeholder(0)]) >= 20.0);
+            assert!(height(&[placeholder(0), run("a", &reg, Some(20.0))]) >= 20.0);
         }
     }
 

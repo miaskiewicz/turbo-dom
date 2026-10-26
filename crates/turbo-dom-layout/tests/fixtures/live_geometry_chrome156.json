@@ -1818,6 +1818,151 @@
      "position": "static"
     }
    ]
+  },
+  {
+   "id": "abs-only-line-in-inline",
+   "html": "<!doctype html><style>body{margin:0}</style><div data-cid=\"d\"><span><span data-cid=\"a\" style=\"position:absolute;width:5px;height:5px\"></span></span></div><div data-cid=\"e\" style=\"height:5px\"></div>",
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "d",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 0,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "a",
+     "x": 0,
+     "y": 0,
+     "width": 5,
+     "height": 5,
+     "display": "block",
+     "position": "absolute"
+    },
+    {
+     "cid": "e",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 5,
+     "display": "block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "abs-only-line-with-collapsible-spaces",
+   "html": "<!doctype html><style>body{margin:0}</style><div data-cid=\"d\"> <span>  <i data-cid=\"a\" style=\"position:absolute;width:5px;height:5px\"></i> </span> <b data-cid=\"b\" style=\"position:absolute;left:20px;width:5px;height:5px\"></b> </div><div data-cid=\"e\" style=\"height:5px\"></div>",
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "d",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 0,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "a",
+     "x": 0,
+     "y": 0,
+     "width": 5,
+     "height": 5,
+     "display": "block",
+     "position": "absolute"
+    },
+    {
+     "cid": "b",
+     "x": 20,
+     "y": 0,
+     "width": 5,
+     "height": 5,
+     "display": "block",
+     "position": "absolute"
+    },
+    {
+     "cid": "e",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 5,
+     "display": "block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "abs-only-line-between-empty-inlines",
+   "html": "<!doctype html><style>body{margin:0}</style><div data-cid=\"d\"><span></span><b data-cid=\"a\" style=\"position:absolute;width:5px;height:5px\"></b><span></span></div><div data-cid=\"e\" style=\"height:5px\"></div>",
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "d",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 0,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "a",
+     "x": 0,
+     "y": 0,
+     "width": 5,
+     "height": 5,
+     "display": "block",
+     "position": "absolute"
+    },
+    {
+     "cid": "e",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 5,
+     "display": "block",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "float-only-line-in-inline",
+   "html": "<!doctype html><style>body{margin:0}</style><div data-cid=\"d\"><a href=\"#\"><span data-cid=\"f\" style=\"float:left;width:30px;height:20px\"></span></a></div><div data-cid=\"e\" style=\"height:5px\"></div>",
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "d",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 0,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "f",
+     "x": 0,
+     "y": 0,
+     "width": 30,
+     "height": 20,
+     "display": "block",
+     "position": "static"
+    },
+    {
+     "cid": "e",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 5,
+     "display": "block",
+     "position": "static"
+    }
+   ]
   }
  ]
 }

@@ -31,9 +31,11 @@ const GAPS: &[(&str, &str, &str)] = &[(
     "native ordinary inline top/bottom/middle alignment is unsupported",
 )];
 
-/// Cases whose compared boxes are laid out with text (the bundled fonts must be there).
+/// Cases whose compared boxes are laid out with text or contain an inline element
+/// (its edges need a font face): the bundled fonts must be there.
 const TEXT_CASES: &[&str] = &[
     "clip-rect-sr-only-text",
+    "float-in-inline",
     "table-decorated-collapsed",
     "absolute-span-static-position",
     "sr-only-in-link",

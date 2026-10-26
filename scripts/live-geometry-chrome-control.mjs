@@ -206,6 +206,12 @@ const CASES = [
   { id: "empty-row-group-between", html: DOC("body{margin:0}table{border-spacing:5px 7px}", `<table data-cid="t"><tbody data-cid="b1"><tr><td><div style="width:30px;height:10px"></div></td></tr></tbody><tbody data-cid="e"></tbody><tbody data-cid="b2"><tr><td><div style="width:30px;height:10px"></div></td></tr></tbody></table>`) },
   { id: "empty-row-group-after-rows", html: DOC("body{margin:0}table{border-spacing:5px 7px}", `<table data-cid="t"><tbody data-cid="b"><tr><td><div style="width:30px;height:10px"></div></td></tr></tbody><tfoot data-cid="f"></tfoot></table>`) },
   { id: "empty-row-group-collapsed-fixed", html: DOC("body{margin:0}table{border-collapse:collapse;table-layout:fixed;width:200px}td{border:2px solid}", `<table data-cid="t"><tbody data-cid="b"><tr><td><div style="width:30px;height:10px"></div></td></tr></tbody><tbody data-cid="e"></tbody></table>`) },
+  // turbo-dom#28 item 6: a line whose only content is absolutely positioned (or floated)
+  // boxes, collapsible spaces and empty inlines is a zero-height line box (CSS 2.1 §9.4.2).
+  { id: "abs-only-line-in-inline", html: DOC("body{margin:0}", `<div data-cid="d"><span><span data-cid="a" style="position:absolute;width:5px;height:5px"></span></span></div><div data-cid="e" style="height:5px"></div>`) },
+  { id: "abs-only-line-with-collapsible-spaces", html: DOC("body{margin:0}", `<div data-cid="d"> <span>  <i data-cid="a" style="position:absolute;width:5px;height:5px"></i> </span> <b data-cid="b" style="position:absolute;left:20px;width:5px;height:5px"></b> </div><div data-cid="e" style="height:5px"></div>`) },
+  { id: "abs-only-line-between-empty-inlines", html: DOC("body{margin:0}", `<div data-cid="d"><span></span><b data-cid="a" style="position:absolute;width:5px;height:5px"></b><span></span></div><div data-cid="e" style="height:5px"></div>`) },
+  { id: "float-only-line-in-inline", html: DOC("body{margin:0}", `<div data-cid="d"><a href="#"><span data-cid="f" style="float:left;width:30px;height:20px"></span></a></div><div data-cid="e" style="height:5px"></div>`) },
 ];
 
 const browser = await chromium.launch({ executablePath: chromePath, headless: true });

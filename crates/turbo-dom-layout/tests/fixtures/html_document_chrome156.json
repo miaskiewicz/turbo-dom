@@ -1829,6 +1829,169 @@
     }
    },
    "canvas": "#ffffff"
+  },
+  {
+   "id": "abs-only-line-in-inline",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><div data-cid=\"d\"><span><span data-cid=\"a\" style=\"position:absolute;width:5px;height:5px\"></span></span></div><div data-cid=\"e\" style=\"height:5px\"></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "d",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 0
+    },
+    {
+     "cid": "a",
+     "x": 0,
+     "y": 0,
+     "width": 5,
+     "height": 5
+    },
+    {
+     "cid": "e",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 5
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "abs-only-line-with-collapsible-spaces",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><div data-cid=\"d\"> <span>  <i data-cid=\"a\" style=\"position:absolute;width:5px;height:5px\"></i> </span> <b data-cid=\"b\" style=\"position:absolute;left:20px;width:5px;height:5px\"></b> </div><div data-cid=\"e\" style=\"height:5px\"></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "d",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 0
+    },
+    {
+     "cid": "a",
+     "x": 0,
+     "y": 0,
+     "width": 5,
+     "height": 5
+    },
+    {
+     "cid": "b",
+     "x": 20,
+     "y": 0,
+     "width": 5,
+     "height": 5
+    },
+    {
+     "cid": "e",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 5
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "abs-only-line-between-empty-inlines",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><div data-cid=\"d\"><span></span><b data-cid=\"a\" style=\"position:absolute;width:5px;height:5px\"></b><span></span></div><div data-cid=\"e\" style=\"height:5px\"></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "d",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 0
+    },
+    {
+     "cid": "a",
+     "x": 0,
+     "y": 0,
+     "width": 5,
+     "height": 5
+    },
+    {
+     "cid": "e",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 5
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "float-only-line-in-inline",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><div data-cid=\"d\"><a href=\"#\"><span data-cid=\"f\" style=\"float:left;width:30px;height:20px\"></span></a></div><div data-cid=\"e\" style=\"height:5px\"></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "d",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 0
+    },
+    {
+     "cid": "f",
+     "x": 0,
+     "y": 0,
+     "width": 30,
+     "height": 20
+    },
+    {
+     "cid": "e",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 5
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
   }
  ]
 }

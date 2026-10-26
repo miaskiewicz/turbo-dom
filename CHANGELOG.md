@@ -103,6 +103,14 @@ changes in `tools/parity/expected/p5b-w3-turbo-dom-28-*.json`.
   (the first row edge when none precede it; zero-size at the content-box origin of a
   table without columns), as in Chrome, instead of no box (its reads failed with "native
   empty inline placement is pending"). Control: `live-geometry` `empty-row-group-*`.
+- Zero-height lines (item 6): a line box holding no text, preserved white space, framed
+  inline (horizontal margin/border/padding), in-flow atom or `<br>` — only the places of
+  absolutely positioned or floated boxes, collapsible spaces and empty inlines — is
+  zero-height (CSS 2.1 §9.4.2), on every path, instead of one strut tall:
+  `<div><span><span style="position:absolute"></span></span></div>` is 0px high as in
+  Chrome (was 18px live / 19.36px PDF). `layout::inline::InlineAtom` gains `placeholder`
+  (set for those places). Control: `abs-only-line-*` / `float-only-line-in-inline` in
+  `live-geometry` and `html-document`.
 
 ### Changed — selector follow-ups (P5b-X2, miaskiewicz/turbo-dom#24, Chrome 156 controls)
 - `rtdom::cascade` (`getComputedStyle`) and the npm `cascade.mjs` rank rules by the

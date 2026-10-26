@@ -123,6 +123,12 @@ const CASES = [
   { id: "inline-table-is-inline-level", html: DOC(S("body{margin:0}"), `<div data-cid="d" style="font-size:0"><div data-cid="t" style="display:inline-table;width:40px;height:20px"></div><div data-cid="t2" style="display:inline-table;width:40px;height:20px"></div></div>`) },
   { id: "inline-table-cells", html: DOC(S("body{margin:0}"), `<div data-cid="d" style="font-size:0"><i style="display:inline-block;width:15px;height:10px"></i><table data-cid="t" style="display:inline-table;border-spacing:2px"><tr><td data-cid="td" style="padding:1px"><div style="width:30px;height:10px"></div></td></tr></table></div>`) },
   { id: "inline-table-blockified", html: DOC(S("body{margin:0}"), `<div data-cid="t" style="display:inline-table;float:left;width:40px;height:20px"></div><div data-cid="u" style="display:inline-table;position:absolute;left:100px;top:50px;width:40px;height:20px"></div><span data-cid="v" style="display:inline-block;float:right;width:10px;height:10px"></span>`) },
+  // P5b-W3, miaskiewicz/turbo-dom#28 item 6: a line holding only absolutely positioned (or
+  // floated) boxes, collapsible spaces and empty inlines is a zero-height line box.
+  { id: "abs-only-line-in-inline", html: DOC(S("body{margin:0}"), `<div data-cid="d"><span><span data-cid="a" style="position:absolute;width:5px;height:5px"></span></span></div><div data-cid="e" style="height:5px"></div>`) },
+  { id: "abs-only-line-with-collapsible-spaces", html: DOC(S("body{margin:0}"), `<div data-cid="d"> <span>  <i data-cid="a" style="position:absolute;width:5px;height:5px"></i> </span> <b data-cid="b" style="position:absolute;left:20px;width:5px;height:5px"></b> </div><div data-cid="e" style="height:5px"></div>`) },
+  { id: "abs-only-line-between-empty-inlines", html: DOC(S("body{margin:0}"), `<div data-cid="d"><span></span><b data-cid="a" style="position:absolute;width:5px;height:5px"></b><span></span></div><div data-cid="e" style="height:5px"></div>`) },
+  { id: "float-only-line-in-inline", html: DOC(S("body{margin:0}"), `<div data-cid="d"><a href="#"><span data-cid="f" style="float:left;width:30px;height:20px"></span></a></div><div data-cid="e" style="height:5px"></div>`) },
 ];
 
 /** The RGB of a 1x1 PNG screenshot (any filter: a single pixel's filter adds 0). */
