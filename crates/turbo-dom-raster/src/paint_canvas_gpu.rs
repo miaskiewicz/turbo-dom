@@ -18,7 +18,7 @@ use lyon_tessellation::{
     BuffersBuilder, FillOptions, FillRule, FillTessellator, FillVertex, StrokeOptions,
     StrokeTessellator, StrokeVertex, VertexBuffers,
 };
-use turbo_html2pdf_core::Rgba;
+use turbo_dom_layout::Rgba;
 use wgpu::util::DeviceExt;
 
 use crate::canvas_ops::{self, CanvasBackend, Op, SubPath};

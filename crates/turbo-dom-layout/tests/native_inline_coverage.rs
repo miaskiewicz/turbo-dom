@@ -1,15 +1,15 @@
 use std::collections::HashMap;
-use turbo_html2pdf_core::layout::inline::{
+use turbo_dom_layout::layout::inline::{
     layout_html_paragraph_in_with_sources, layout_paragraph_in_with_sources, InlineEdge, InlineRun,
     Piece,
 };
-use turbo_html2pdf_core::layout::value::{Rgba, VAlign};
-use turbo_html2pdf_core::layout_snapshot::{
+use turbo_dom_layout::layout::value::{Rgba, VAlign};
+use turbo_dom_layout::layout_snapshot::{
     snapshot_html_live_tree_with_native_text, GeometryKind, LayoutSnapshot, NativeTextOptions,
     SnapshotInputs, SourceId, SourceIdentity,
 };
-use turbo_html2pdf_core::text::Align;
-use turbo_html2pdf_core::{
+use turbo_dom_layout::text::Align;
+use turbo_dom_layout::{
     build_cascade, parse_html, Diagnostics, FontRegistry, ImageCtx, NoImages, Node, NodeId,
 };
 
@@ -88,7 +88,7 @@ fn public_source_paragraphs_keep_edge_advances_and_optional_font_metrics() {
         assert!(natural.layout.height > disabled.layout.height);
         assert!(natural.layout.lines[0].baseline > disabled.layout.lines[0].baseline);
         let original_offsets =
-            |clusters: &[turbo_html2pdf_core::layout::inline::GlyphSourceCluster]| {
+            |clusters: &[turbo_dom_layout::layout::inline::GlyphSourceCluster]| {
                 clusters
                     .iter()
                     .map(|cluster| (cluster.utf16_start, cluster.utf16_end, cluster.advance))
@@ -401,7 +401,7 @@ fn preserved_whitespace_and_inline_directives_keep_real_source_provenance() {
     let Node::Element(marker) = &mut parent.children[1] else {
         unreachable!()
     };
-    marker.tag = turbo_html2pdf_core::Tag::Directive(turbo_html2pdf_core::TKind::Page);
+    marker.tag = turbo_dom_layout::Tag::Directive(turbo_dom_layout::TKind::Page);
     let (snapshot, names) = snapshot_nodes(nodes);
     let source = snapshot.source(names["marker"]).unwrap();
     assert!(!source.excluded_from_layout);

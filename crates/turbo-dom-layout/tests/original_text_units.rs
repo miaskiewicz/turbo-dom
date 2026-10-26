@@ -1,8 +1,8 @@
-use turbo_html2pdf_core::layout_snapshot::{
+use turbo_dom_layout::layout_snapshot::{
     snapshot_html_live_tree_with_native_text, NativeTextOptions, SnapshotInputs, SourceId,
     SourceIdentity,
 };
-use turbo_html2pdf_core::{
+use turbo_dom_layout::{
     Attr, Diagnostics, Element, FontFace, FontRegistry, ImageCtx, Node, Tag,
 };
 
@@ -21,11 +21,11 @@ fn snapshot(
     fonts: &FontRegistry,
     family: &str,
 ) -> Result<
-    turbo_html2pdf_core::layout_snapshot::LayoutSnapshot,
-    turbo_html2pdf_core::layout_snapshot::SvgSnapshotError,
+    turbo_dom_layout::layout_snapshot::LayoutSnapshot,
+    turbo_dom_layout::layout_snapshot::SvgSnapshotError,
 > {
     let nodes = nodes(&String::from_utf16_lossy(units), family);
-    let originals = [turbo_html2pdf_core::layout_snapshot::SourceTextUnits {
+    let originals = [turbo_dom_layout::layout_snapshot::SourceTextUnits {
         source_id: SourceId(7),
         units,
     }];
@@ -35,7 +35,7 @@ fn snapshot(
             id: SourceId(7),
             path: vec![0, 0],
         }],
-        &turbo_html2pdf_core::build_cascade("", "", Default::default()),
+        &turbo_dom_layout::build_cascade("", "", Default::default()),
         &NativeTextOptions {
             original_text: &originals,
             svg_viewports: &[],
@@ -46,7 +46,7 @@ fn snapshot(
             height: 600.0,
             fonts,
             images: &ImageCtx {
-                resolver: &turbo_html2pdf_core::NoImages,
+                resolver: &turbo_dom_layout::NoImages,
                 body_height: None,
             },
         },
@@ -85,7 +85,7 @@ fn public_original_units_retain_native_source_identity_and_validation() {
         Some([0xdbff, 0xdfff].as_slice())
     );
     let nodes = nodes("a", "Go");
-    let bad = [turbo_html2pdf_core::layout_snapshot::SourceTextUnits {
+    let bad = [turbo_dom_layout::layout_snapshot::SourceTextUnits {
         source_id: SourceId(7),
         units: &[0x62],
     }];
@@ -100,14 +100,14 @@ fn public_original_units_retain_native_source_identity_and_validation() {
             id: SourceId(7),
             path: vec![0, 0]
         }],
-        &turbo_html2pdf_core::build_cascade("", "", Default::default()),
+        &turbo_dom_layout::build_cascade("", "", Default::default()),
         &options,
         &SnapshotInputs {
             width: 800.0,
             height: 600.0,
             fonts: &fonts,
             images: &ImageCtx {
-                resolver: &turbo_html2pdf_core::NoImages,
+                resolver: &turbo_dom_layout::NoImages,
                 body_height: None
             }
         },

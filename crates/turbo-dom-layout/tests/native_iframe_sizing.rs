@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 use std::sync::OnceLock;
-use turbo_html2pdf_core::layout_snapshot::{
+use turbo_dom_layout::layout_snapshot::{
     snapshot_html_live_tree_with_native_text, snapshot_live_tree_with_text, LayoutSnapshot,
     NativeTextOptions, SnapshotInputs, SourceId, SourceIdentity,
 };
-use turbo_html2pdf_core::{
+use turbo_dom_layout::{
     build_cascade, parse_html, Attr, Diagnostics, Element, FontRegistry, ImageCtx, NoImages, Node,
     Tag,
 };
@@ -101,7 +101,7 @@ fn capture_nodes_with_policy(
     };
     (snapshot, names)
 }
-fn rect(value: turbo_html2pdf_core::layout_snapshot::Rect) -> [f64; 4] {
+fn rect(value: turbo_dom_layout::layout_snapshot::Rect) -> [f64; 4] {
     [
         value.x as f64,
         value.y as f64,
@@ -235,11 +235,11 @@ fn native_iframe_fallback_sources_remain_identifiable_without_rendered_glyphs() 
     assert!(source.fragment_indices.is_empty());
     assert_eq!(
         native.text_range_boxes(text.source_id, 0, 8),
-        Err(turbo_html2pdf_core::layout_snapshot::TextGeometryError::UnresolvedSource)
+        Err(turbo_dom_layout::layout_snapshot::TextGeometryError::UnresolvedSource)
     );
     assert_eq!(
         native.text_range_boxes(text.source_id, 0, 9),
-        Err(turbo_html2pdf_core::layout_snapshot::TextGeometryError::InvalidOffsets)
+        Err(turbo_dom_layout::layout_snapshot::TextGeometryError::InvalidOffsets)
     );
     let (pdf, _) = capture_nodes_with_policy(nodes, [1200.0, 900.0], false);
     let text = pdf

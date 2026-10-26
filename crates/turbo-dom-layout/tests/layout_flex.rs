@@ -3,11 +3,11 @@
 
 mod common;
 
-use turbo_html2pdf_core::layout::block::layout_tree;
-use turbo_html2pdf_core::layout::boxgen::build_box_tree;
-use turbo_html2pdf_core::layout::fragment::Fragment;
-use turbo_html2pdf_core::node::{TKind, Tag};
-use turbo_html2pdf_core::{ComputedStyle, Diagnostics, StyledElement, StyledNode};
+use turbo_dom_layout::layout::block::layout_tree;
+use turbo_dom_layout::layout::boxgen::build_box_tree;
+use turbo_dom_layout::layout::fragment::Fragment;
+use turbo_dom_layout::node::{TKind, Tag};
+use turbo_dom_layout::{ComputedStyle, Diagnostics, StyledElement, StyledNode};
 
 fn cs(pairs: &[(&str, &str)]) -> ComputedStyle {
     ComputedStyle::from_pairs(pairs.iter().map(|(k, v)| (k.to_string(), v.to_string())))
@@ -276,7 +276,7 @@ fn deeply_nested_flex_is_not_exponential() {
     // each probe recurses a full sub-layout, so nested flex was exponential in depth
     // (~8 levels stopped completing). The per-box measure cache collapses the repeat
     // probes; a depth-7 tree must lay out — this test completing is the assertion.
-    use turbo_html2pdf_core::{layout_html, Diagnostics, FontRegistry};
+    use turbo_dom_layout::{layout_html, Diagnostics, FontRegistry};
     let mut html = String::from("<span>leaf</span>");
     for _ in 0..7 {
         html = format!("<div style=\"display:flex\"><div>a</div>{html}<div>b</div></div>");

@@ -29,13 +29,13 @@ use crate::{Diagnostics, RenderError};
 /// the Jinja pass. This is the Stage-1 html5ever parse exposed on its own for
 /// callers that already have final HTML (see the module docs).
 pub fn parse_html(html: &str) -> Result<Vec<Node>, RenderError> {
-    crate::template::markup::parse(html)
+    crate::markup::parse(html)
 }
 
 /// Parse `html`, returning the body flow nodes plus the `<html>`/`<body>` ancestor
 /// shells the cascade seeds for selector matching (see [`parse_with_roots`]).
 pub fn parse_html_with_roots(html: &str) -> Result<(Vec<Node>, Vec<Element>), RenderError> {
-    crate::template::markup::parse_with_roots(html)
+    crate::markup::parse_with_roots(html)
 }
 
 /// Elements whose text content is *not* visible page content and must not be laid

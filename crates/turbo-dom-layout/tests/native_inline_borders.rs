@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 use std::sync::OnceLock;
-use turbo_html2pdf_core::layout_snapshot::{
+use turbo_dom_layout::layout_snapshot::{
     snapshot_html_live_tree_with_native_text, GeometryKind, LayoutSnapshot, NativeTextOptions,
     SnapshotInputs, SourceId, SourceIdentity,
 };
-use turbo_html2pdf_core::{
+use turbo_dom_layout::{
     build_cascade, parse_html, Diagnostics, FontRegistry, ImageCtx, NoImages, Node,
 };
 
@@ -29,7 +29,7 @@ fn identities(
     }
 }
 fn record_name(
-    element: &turbo_html2pdf_core::Element,
+    element: &turbo_dom_layout::Element,
     id: SourceId,
     names: &mut HashMap<String, SourceId>,
 ) {
@@ -54,7 +54,7 @@ fn capture_result(
     html: &str,
 ) -> Result<
     (LayoutSnapshot, HashMap<String, SourceId>),
-    turbo_html2pdf_core::layout_snapshot::SvgSnapshotError,
+    turbo_dom_layout::layout_snapshot::SvgSnapshotError,
 > {
     let nodes = parse_html(html).unwrap();
     let mut ids = Vec::new();
@@ -122,13 +122,13 @@ fn ordinary_inline_and_replaced_source_fragments_remain_distinct() {
 
 #[test]
 fn transparent_ancestors_reference_child_regions_without_repainting_child_alpha_or_borders() {
-    use turbo_html2pdf_core::FragmentContent;
+    use turbo_dom_layout::FragmentContent;
     let (snapshot,names)=capture("<div id=box><span id=outer><span id=inner style='background:rgba(255,0,0,.5);border:1px solid;padding:2px'>abc</span></span></div>");
     assert_eq!(
         rects(&snapshot, names["outer"]),
         rects(&snapshot, names["inner"])
     );
-    fn paints(fragment: &turbo_html2pdf_core::Fragment) -> usize {
+    fn paints(fragment: &turbo_dom_layout::Fragment) -> usize {
         let own = usize::from(matches!(
             &fragment.content,
             FragmentContent::Box {
@@ -269,7 +269,7 @@ fn compare_case(case: &serde_json::Value, control: &serde_json::Value) {
 
 #[test]
 fn unsupported_ordinary_inline_contexts_reject_without_inventing_partial_boxes() {
-    use turbo_html2pdf_core::layout_snapshot::SnapshotError;
+    use turbo_dom_layout::layout_snapshot::SnapshotError;
     let cases = [
         (
             "<span style='position:relative'><div>block</div></span>",
@@ -296,7 +296,7 @@ fn unsupported_ordinary_inline_contexts_reject_without_inventing_partial_boxes()
         match capture_result(html) {
             Err(error) => assert_eq!(
                 error,
-                turbo_html2pdf_core::layout_snapshot::SvgSnapshotError::from(expected)
+                turbo_dom_layout::layout_snapshot::SvgSnapshotError::from(expected)
             ),
             Ok(_) => panic!("unsupported inline accepted: {html}"),
         }

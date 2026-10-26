@@ -5,14 +5,14 @@ use serde_json::Value;
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
 use std::sync::OnceLock;
-use turbo_html2pdf_core::layout::inline::{layout_paragraph, InlineAtom, InlineRun, Piece};
-use turbo_html2pdf_core::layout::value::{Rgba, VAlign};
-use turbo_html2pdf_core::layout_snapshot::{
+use turbo_dom_layout::layout::inline::{layout_paragraph, InlineAtom, InlineRun, Piece};
+use turbo_dom_layout::layout::value::{Rgba, VAlign};
+use turbo_dom_layout::layout_snapshot::{
     snapshot_html_live_tree_with_native_text, snapshot_live_tree_with_text, GeometryKind,
     LayoutSnapshot, NativeTextOptions, Rect, SnapshotInputs, SourceId, SourceIdentity,
 };
-use turbo_html2pdf_core::text::Align;
-use turbo_html2pdf_core::{
+use turbo_dom_layout::text::Align;
+use turbo_dom_layout::{
     build_cascade, parse_html, Diagnostics, FontRegistry, Fragment, FragmentContent, ImageCtx,
     NoImages, Node, NodeId,
 };
@@ -625,7 +625,7 @@ fn ordinary_wrapping_keeps_trailing_whitespace_with_its_previous_word() {
 
 #[test]
 fn rendered_collapsible_space_keeps_its_real_caret_edges_and_provenance() {
-    use turbo_html2pdf_core::layout_snapshot::Point;
+    use turbo_dom_layout::layout_snapshot::Point;
     let (snapshot, ids) = capture(
         "<span style='display:inline-block;width:10px;height:10px'></span>",
         "  abc",

@@ -4,8 +4,8 @@
 //! visually-hidden / clipped / collapsed patterns are honored — the two things a
 //! "pile of overlapping text" on those pages comes down to.
 
-use turbo_html2pdf_core::FontRegistry;
-use turbo_html2pdf_core::{layout_html, Diagnostics, Fragment, FragmentContent, Rgba};
+use turbo_dom_layout::FontRegistry;
+use turbo_dom_layout::{layout_html, Diagnostics, Fragment, FragmentContent, Rgba};
 
 fn lay(html: &str, w: f32) -> Fragment {
     let mut d = Diagnostics::default();

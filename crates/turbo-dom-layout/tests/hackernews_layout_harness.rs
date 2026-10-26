@@ -5,8 +5,8 @@
 //! fails here fast. Text colours are read off the laid-out `TextLine` fragments;
 //! boxes are tagged with distinct background colours and found by colour.
 
-use turbo_html2pdf_core::FontRegistry;
-use turbo_html2pdf_core::{layout_html, Diagnostics, Fragment, FragmentContent, Rgba};
+use turbo_dom_layout::FontRegistry;
+use turbo_dom_layout::{layout_html, Diagnostics, Fragment, FragmentContent, Rgba};
 
 fn lay(html: &str, w: f32) -> Fragment {
     let mut d = Diagnostics::default();

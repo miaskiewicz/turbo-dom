@@ -7,8 +7,8 @@ use tiny_skia::{
     FillRule, GradientStop, LinearGradient, Paint, Path, PathBuilder, Pixmap, PixmapPaint, Point,
     Rect, SpreadMode, Stroke, Transform,
 };
-use turbo_html2pdf_core::layout::value::{BorderEdges, BorderSide};
-use turbo_html2pdf_core::{
+use turbo_dom_layout::layout::value::{BorderEdges, BorderSide};
+use turbo_dom_layout::{
     BoxShadow, Fragment, FragmentContent, LinearGradient as CssGradient, PositionedGlyph, Rgba,
     Transform2D as BoxTransform,
 };
@@ -127,7 +127,7 @@ fn paint_fragment(pm: &mut Pixmap, f: &Fragment, images: &DecodedAssets, xf: Tra
 fn paint_image(
     pm: &mut Pixmap,
     f: &Fragment,
-    placement: &turbo_html2pdf_core::ImagePlacement,
+    placement: &turbo_dom_layout::ImagePlacement,
     images: &DecodedAssets,
     xf: Transform,
 ) {

@@ -1,2 +1,7 @@
 # scripts/verify-copied-layout.sh allow-listed scripted rewrites.
 # <destination glob><TAB><perl -pe expression>, applied to the source before comparing.
+crates/turbo-dom-layout/tests/*.rs	s/\bturbo_html2pdf_core\b/turbo_dom_layout/g
+crates/turbo-dom-raster/src/*.rs	s/\bturbo_html2pdf_core\b/turbo_dom_layout/g
+crates/turbo-dom-raster/tests/*.rs	s/\bturbo_html2pdf_core\b/turbo_dom_layout/g
+crates/turbo-dom-layout/src/html_layout.rs	s/\bcrate::template::markup::/crate::markup::/g
+crates/turbo-dom-layout/src/text/font.rs	s/\bcrate::emit::tounicode::reverse_cmap\b/crate::cmap::reverse_cmap/g

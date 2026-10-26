@@ -8,15 +8,15 @@
 //! the no-bundled behaviour the other suites exercise.
 #![cfg(feature = "bundled-fonts")]
 
-use turbo_html2pdf_core::layout::fragment::{Fragment, FragmentContent};
-use turbo_html2pdf_core::style::TokenSet;
-use turbo_html2pdf_core::{
+use turbo_dom_layout::layout::fragment::{Fragment, FragmentContent};
+use turbo_dom_layout::style::TokenSet;
+use turbo_dom_layout::{
     build_cascade, compile, emit_pdf, render_pages, style::AtRule, CompileOptions, Diagnostics,
     EmitOptions, FontFace, FontRegistry, Page, RenderInputs,
 };
 
 fn at_rules(css: &str) -> Vec<AtRule> {
-    turbo_html2pdf_core::style::parse_stylesheet(css).at_rules
+    turbo_dom_layout::style::parse_stylesheet(css).at_rules
 }
 
 /// Drive a template + CSS through the full pipeline with NO caller fonts.
@@ -35,7 +35,7 @@ fn pages_no_caller_fonts(template: &str, css: &str) -> Vec<Page> {
         cascade: &cascade,
         at_rules: &rules,
         fonts: &fonts,
-        images: &turbo_html2pdf_core::NoImages,
+        images: &turbo_dom_layout::NoImages,
         now: Some(0),
     };
     let mut diags = Diagnostics::default();

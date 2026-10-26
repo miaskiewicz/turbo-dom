@@ -7,7 +7,7 @@
 //! ([`crate::paint_canvas_gpu`]) paints the same op stream on the real GPU.
 
 use tiny_skia::{BlendMode, FillRule, Paint, PathBuilder, Pixmap, Stroke, Transform};
-use turbo_html2pdf_core::Rgba;
+use turbo_dom_layout::Rgba;
 
 use crate::canvas_ops::{self, CanvasBackend, Op, State, SubPath};
 

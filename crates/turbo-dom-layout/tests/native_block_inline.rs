@@ -1,11 +1,11 @@
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
 use std::sync::OnceLock;
-use turbo_html2pdf_core::layout_snapshot::{
+use turbo_dom_layout::layout_snapshot::{
     snapshot_html_live_tree_with_native_text, GeometryKind, LayoutSnapshot, NativeTextOptions,
     SnapshotInputs, SourceId, SourceIdentity,
 };
-use turbo_html2pdf_core::{
+use turbo_dom_layout::{
     build_cascade, parse_html, Diagnostics, FontRegistry, ImageCtx, NoImages, Node,
 };
 
@@ -38,11 +38,11 @@ fn identities(
     }
 }
 fn record_names(
-    element: &turbo_html2pdf_core::Element,
+    element: &turbo_dom_layout::Element,
     id: SourceId,
     names: &mut HashMap<String, SourceId>,
 ) {
-    if let turbo_html2pdf_core::Tag::Html(tag) = &element.tag {
+    if let turbo_dom_layout::Tag::Html(tag) = &element.tag {
         names.entry(tag.clone()).or_insert(id);
     }
     for attr in &element.attrs {
@@ -65,17 +65,17 @@ fn capture(markup: &str) -> Captured {
 }
 fn capture_result(
     markup: &str,
-) -> Result<Captured, turbo_html2pdf_core::layout_snapshot::SvgSnapshotError> {
+) -> Result<Captured, turbo_dom_layout::layout_snapshot::SvgSnapshotError> {
     capture_with_partial_identities(markup, false)
 }
 fn capture_with_partial_identities(
     markup: &str,
     omit_inline: bool,
-) -> Result<Captured, turbo_html2pdf_core::layout_snapshot::SvgSnapshotError> {
+) -> Result<Captured, turbo_dom_layout::layout_snapshot::SvgSnapshotError> {
     let html = format!("<div id=rso>{markup}</div><button id=dismiss>Reject</button><input name=q type=hidden value=hidden><form><textarea name=q></textarea><button>Search</button></form>");
     let element = |tag: &str, children| {
-        Node::Element(turbo_html2pdf_core::Element {
-            tag: turbo_html2pdf_core::Tag::Html(tag.into()),
+        Node::Element(turbo_dom_layout::Element {
+            tag: turbo_dom_layout::Tag::Html(tag.into()),
             attrs: Vec::new(),
             children,
         })
@@ -217,7 +217,7 @@ fn unsupported_displaced_splits_reject_but_boxless_text_does_not() {
         "<a><div style='float:left'>block</div></a>",
     ] {
         match capture_result(markup) {
-            Err(error) => assert_eq!(error, turbo_html2pdf_core::layout_snapshot::SvgSnapshotError::from(turbo_html2pdf_core::layout_snapshot::SnapshotError::UnsupportedInlineBlockSplit)),
+            Err(error) => assert_eq!(error, turbo_dom_layout::layout_snapshot::SvgSnapshotError::from(turbo_dom_layout::layout_snapshot::SnapshotError::UnsupportedInlineBlockSplit)),
             Ok(_) => panic!("unsupported displaced split accepted: {markup}"),
         }
     }

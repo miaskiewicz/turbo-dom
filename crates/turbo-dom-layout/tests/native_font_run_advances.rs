@@ -5,14 +5,14 @@ use serde_json::Value;
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
 use std::sync::OnceLock;
-use turbo_html2pdf_core::layout::inline::{layout_paragraph, InlineRun, Piece};
-use turbo_html2pdf_core::layout::value::{Rgba, VAlign};
-use turbo_html2pdf_core::layout_snapshot::{
+use turbo_dom_layout::layout::inline::{layout_paragraph, InlineRun, Piece};
+use turbo_dom_layout::layout::value::{Rgba, VAlign};
+use turbo_dom_layout::layout_snapshot::{
     snapshot_html_live_tree_with_native_text, snapshot_live_tree_with_text, GeometryKind,
     LayoutSnapshot, NativeTextOptions, Rect, SnapshotInputs, SourceId, SourceIdentity,
 };
-use turbo_html2pdf_core::text::Align;
-use turbo_html2pdf_core::{
+use turbo_dom_layout::text::Align;
+use turbo_dom_layout::{
     build_cascade, parse_html, Attr, Diagnostics, Element, FontRegistry, Fragment, FragmentContent,
     ImageCtx, NoImages, Node, NodeId, Tag,
 };
@@ -404,7 +404,7 @@ fn native_rotated_element_and_partial_text_use_their_distinct_chrome_bounds() {
     }
 }
 
-fn ordinary_run(face: turbo_html2pdf_core::FontFace) -> InlineRun {
+fn ordinary_run(face: turbo_dom_layout::FontFace) -> InlineRun {
     InlineRun {
         node_id: NodeId(77),
         text: "abcde".into(),

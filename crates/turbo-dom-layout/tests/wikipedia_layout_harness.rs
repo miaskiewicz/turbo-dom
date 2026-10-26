@@ -6,8 +6,8 @@
 //! screenshot. Elements under test are tagged with distinct `background-color`s so
 //! their fragments can be found by colour and their rectangles asserted.
 
-use turbo_html2pdf_core::FontRegistry;
-use turbo_html2pdf_core::{layout_html, Diagnostics, Fragment, FragmentContent, Rgba};
+use turbo_dom_layout::FontRegistry;
+use turbo_dom_layout::{layout_html, Diagnostics, Fragment, FragmentContent, Rgba};
 
 /// Lay `html` out at content width `w` over the bundled fonts.
 fn lay(html: &str, w: f32) -> Fragment {
@@ -680,7 +680,7 @@ fn empty_box_honors_min_height() {
 
 #[test]
 fn border_radius_50pct_is_half_the_shorter_side() {
-    use turbo_html2pdf_core::FragmentContent;
+    use turbo_dom_layout::FragmentContent;
     fn radius(f: &Fragment) -> Option<f32> {
         if let FragmentContent::Box { border_radius, .. } = &f.content {
             if *border_radius > 0.0 {

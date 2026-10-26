@@ -1,8 +1,8 @@
-use turbo_html2pdf_core::layout_snapshot::{
+use turbo_dom_layout::layout_snapshot::{
     snapshot_live_tree, snapshot_styled_tree, GeometryKind, LayoutSnapshot, Rect, SnapshotError,
     SnapshotInputs, SourceId, SourceIdentity, SourceKind,
 };
-use turbo_html2pdf_core::{
+use turbo_dom_layout::{
     build_cascade, layout_with_images, style_tree, Attr, Diagnostics, Element, FontRegistry,
     ImageCtx, ImageResolver, NoImages, Node, Tag,
 };
@@ -50,7 +50,7 @@ fn capture(nodes: &[Node], ids: &[SourceIdentity]) -> LayoutSnapshot {
 fn border(
     snapshot: &LayoutSnapshot,
     id: u64,
-) -> &turbo_html2pdf_core::layout_snapshot::SnapshotFragment {
+) -> &turbo_dom_layout::layout_snapshot::SnapshotFragment {
     let source = snapshot.source(SourceId(id)).unwrap();
     source
         .fragment_indices
@@ -175,7 +175,7 @@ fn all_text_lines_keep_source_and_flattened_inline_ancestry_without_fake_range_r
         assert_eq!(fragment.source_ancestors, vec![SourceId(1), SourceId(2)]);
         assert!(fragment.rect.height > 0.0);
     }
-    fn count(fragment: &turbo_html2pdf_core::Fragment) -> usize {
+    fn count(fragment: &turbo_dom_layout::Fragment) -> usize {
         1 + fragment.children.iter().map(count).sum::<usize>()
     }
     assert_eq!(count(snapshot.galley()), snapshot.fragments().len());
@@ -556,7 +556,7 @@ fn compare_authored_cases(fixture: &serde_json::Value, oracle: &serde_json::Valu
     let mut fonts = FontRegistry::new();
     if fixture["font"] == "Go" {
         fonts.add(
-            turbo_html2pdf_core::FontFace::from_bytes(
+            turbo_dom_layout::FontFace::from_bytes(
                 include_bytes!("../assets/fonts/Go-Regular.ttf").to_vec(),
                 "ParityGo",
                 400,
@@ -597,7 +597,7 @@ fn compare_authored_cases(fixture: &serde_json::Value, oracle: &serde_json::Valu
             .collect();
         if fixture["font"] == "Go" {
             let snapshot =
-                turbo_html2pdf_core::layout_snapshot::snapshot_html_live_tree_with_svg_viewports(
+                turbo_dom_layout::layout_snapshot::snapshot_html_live_tree_with_svg_viewports(
                     &nodes,
                     &identities,
                     &[],
@@ -715,7 +715,7 @@ fn used_box_metrics_are_captured_before_transforms_and_follow_final_translations
     );
     assert_eq!(
         metrics.position,
-        turbo_html2pdf_core::layout::value::Position::Relative
+        turbo_dom_layout::layout::value::Position::Relative
     );
     assert_eq!(metrics.border.left, 2.0);
     assert_eq!(fragment.transformed_bounds.width, 188.0);
@@ -738,7 +738,7 @@ fn used_box_metrics_are_captured_before_transforms_and_follow_final_translations
 }
 
 fn compare_chrome_metrics(
-    fragment: &turbo_html2pdf_core::layout_snapshot::SnapshotFragment,
+    fragment: &turbo_dom_layout::layout_snapshot::SnapshotFragment,
     expected: &serde_json::Value,
     context: &str,
 ) {
@@ -784,7 +784,7 @@ fn compare_chrome_metrics(
 #[test]
 fn directive_fragments_keep_actual_source_identity_and_category() {
     let node = Node::Element(Element {
-        tag: Tag::Directive(turbo_html2pdf_core::TKind::Page),
+        tag: Tag::Directive(turbo_dom_layout::TKind::Page),
         attrs: Vec::new(),
         children: Vec::new(),
     });
@@ -830,7 +830,7 @@ fn zero_fragment_provenance_distinguishes_excluded_subtrees_from_empty_visible_i
 #[test]
 fn hidden_directives_and_their_descendants_have_no_live_geometry() {
     let node = Node::Element(Element {
-        tag: Tag::Directive(turbo_html2pdf_core::TKind::Page),
+        tag: Tag::Directive(turbo_dom_layout::TKind::Page),
         attrs: vec![Attr {
             name: "style".into(),
             value: "display:none".into(),
@@ -965,7 +965,7 @@ fn invalid_quad_declarations_preserve_prior_valid_sides_and_inherited_variables_
         Vec::new(),
     )];
     let styled = style_tree(&nodes, &build_cascade("", "", Default::default()));
-    let turbo_html2pdf_core::StyledNode::Element(element) = &styled[0] else {
+    let turbo_dom_layout::StyledNode::Element(element) = &styled[0] else {
         panic!("element");
     };
     assert_eq!(element.style.get("border-left-width"), Some("7px"));

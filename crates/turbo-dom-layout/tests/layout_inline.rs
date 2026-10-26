@@ -4,11 +4,11 @@
 
 mod common;
 
-use turbo_html2pdf_core::layout::fragment::NodeId;
-use turbo_html2pdf_core::layout::inline::*;
-use turbo_html2pdf_core::layout::value::{Rgba, VAlign};
-use turbo_html2pdf_core::text::{Align, FontFace, FontRegistry};
-use turbo_html2pdf_core::{Diagnostics, LintCode};
+use turbo_dom_layout::layout::fragment::NodeId;
+use turbo_dom_layout::layout::inline::*;
+use turbo_dom_layout::layout::value::{Rgba, VAlign};
+use turbo_dom_layout::text::{Align, FontFace, FontRegistry};
+use turbo_dom_layout::{Diagnostics, LintCode};
 
 fn run(text: &str, face: &FontFace) -> InlineRun {
     InlineRun {

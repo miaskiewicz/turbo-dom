@@ -4,9 +4,9 @@
 //! synthetic-screenshot rasterizer builds on. Uses `FontRegistry::new()`
 //! (bundled-fonts default) so no font fixture is required.
 
-use turbo_html2pdf_core::layout::fragment::{Fragment, FragmentContent};
-use turbo_html2pdf_core::text::FontRegistry;
-use turbo_html2pdf_core::{layout_html, Diagnostics, Rgba};
+use turbo_dom_layout::layout::fragment::{Fragment, FragmentContent};
+use turbo_dom_layout::text::FontRegistry;
+use turbo_dom_layout::{layout_html, Diagnostics, Rgba};
 
 fn walk<'a>(f: &'a Fragment, out: &mut Vec<&'a Fragment>) {
     out.push(f);

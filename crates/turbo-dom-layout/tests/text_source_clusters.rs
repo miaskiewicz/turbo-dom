@@ -1,9 +1,9 @@
-use turbo_html2pdf_core::layout::inline::{
+use turbo_dom_layout::layout::inline::{
     layout_paragraph_in, layout_paragraph_in_with_sources, InlineRun, Piece,
 };
-use turbo_html2pdf_core::layout::value::{Rgba, VAlign};
-use turbo_html2pdf_core::text::Align;
-use turbo_html2pdf_core::{Diagnostics, FontRegistry, NodeId};
+use turbo_dom_layout::layout::value::{Rgba, VAlign};
+use turbo_dom_layout::text::Align;
+use turbo_dom_layout::{Diagnostics, FontRegistry, NodeId};
 
 fn run(registry: &FontRegistry, id: u32, text: &str) -> Piece {
     Piece::Run(InlineRun {
@@ -147,7 +147,7 @@ fn capture_snapshot(
     texts: &[&str],
     width: f32,
     enabled: bool,
-) -> turbo_html2pdf_core::layout_snapshot::LayoutSnapshot {
+) -> turbo_dom_layout::layout_snapshot::LayoutSnapshot {
     capture_snapshot_style(texts, width, enabled, "transform:translate(5px,7px)")
 }
 
@@ -156,11 +156,11 @@ fn capture_snapshot_style(
     width: f32,
     enabled: bool,
     style: &str,
-) -> turbo_html2pdf_core::layout_snapshot::LayoutSnapshot {
-    use turbo_html2pdf_core::layout_snapshot::{
+) -> turbo_dom_layout::layout_snapshot::LayoutSnapshot {
+    use turbo_dom_layout::layout_snapshot::{
         snapshot_live_tree, snapshot_live_tree_with_text, SnapshotInputs, SourceId, SourceIdentity,
     };
-    use turbo_html2pdf_core::{build_cascade, Attr, Element, ImageCtx, NoImages, Node, Tag};
+    use turbo_dom_layout::{build_cascade, Attr, Element, ImageCtx, NoImages, Node, Tag};
     let nodes = [Node::Element(Element {
         tag: Tag::Html("div".into()),
         attrs: vec![Attr {
@@ -202,7 +202,7 @@ fn capture_snapshot_style(
 
 #[test]
 fn actual_snapshot_run_ids_distinguish_identical_wrapped_words_and_keep_source_and_transforms() {
-    use turbo_html2pdf_core::layout_snapshot::{GeometryKind, SourceId};
+    use turbo_dom_layout::layout_snapshot::{GeometryKind, SourceId};
     let native = capture_snapshot(&["ab ab"], 20.0, true);
     let runs = native.text_runs();
     assert_eq!(runs.len(), 2);
@@ -245,10 +245,10 @@ fn existing_box_only_snapshots_keep_output_and_do_not_allocate_text_provenance()
 
 #[test]
 fn atom_cloning_and_positioning_preserve_real_nested_text_source_clusters() {
-    use turbo_html2pdf_core::layout_snapshot::{
+    use turbo_dom_layout::layout_snapshot::{
         snapshot_live_tree_with_text, SnapshotInputs, SourceId, SourceIdentity,
     };
-    use turbo_html2pdf_core::{build_cascade, Attr, Element, ImageCtx, NoImages, Node, Tag};
+    use turbo_dom_layout::{build_cascade, Attr, Element, ImageCtx, NoImages, Node, Tag};
     let nodes = [Node::Element(Element {
         tag: Tag::Html("div".into()),
         attrs: vec![],
@@ -317,7 +317,7 @@ fn atom_cloning_and_positioning_preserve_real_nested_text_source_clusters() {
 
 #[test]
 fn native_cluster_advances_match_independent_chrome_ranges_with_the_same_real_font() {
-    use turbo_html2pdf_core::{FontFace, ImageCtx, NoImages};
+    use turbo_dom_layout::{FontFace, ImageCtx, NoImages};
     let oracle: serde_json::Value =
         serde_json::from_str(include_str!("fixtures/text-source-chrome155.json")).unwrap();
     assert_eq!(
@@ -358,12 +358,12 @@ fn native_cluster_advances_match_independent_chrome_ranges_with_the_same_real_fo
 fn controlled_font_snapshot(
     case: &serde_json::Value,
     fonts: &FontRegistry,
-    images: &turbo_html2pdf_core::ImageCtx<'_>,
-) -> turbo_html2pdf_core::layout_snapshot::LayoutSnapshot {
-    use turbo_html2pdf_core::layout_snapshot::{
+    images: &turbo_dom_layout::ImageCtx<'_>,
+) -> turbo_dom_layout::layout_snapshot::LayoutSnapshot {
+    use turbo_dom_layout::layout_snapshot::{
         snapshot_html_live_tree_with_svg_viewports, SnapshotInputs, SourceId, SourceIdentity,
     };
-    use turbo_html2pdf_core::{build_cascade, Attr, Element, Node, Tag};
+    use turbo_dom_layout::{build_cascade, Attr, Element, Node, Tag};
     let width = case["width"].as_f64().unwrap();
     let font_size = case["fontSize"].as_f64().unwrap_or(64.0);
     let line_height = case["lineHeight"].as_f64().unwrap_or(80.0);
@@ -429,7 +429,7 @@ fn controlled_font_snapshot(
 
 #[test]
 fn physical_font_metrics_and_leading_match_small_controlled_chrome_fonts() {
-    use turbo_html2pdf_core::{FontFace, ImageCtx, NoImages};
+    use turbo_dom_layout::{FontFace, ImageCtx, NoImages};
     let oracle: serde_json::Value =
         serde_json::from_str(include_str!("fixtures/text-source-chrome155.json")).unwrap();
     let mut fonts = FontRegistry::new();
@@ -474,7 +474,7 @@ fn physical_font_metrics_and_leading_match_small_controlled_chrome_fonts() {
 }
 
 fn assert_cluster_geometry(
-    native: &turbo_html2pdf_core::layout_snapshot::LayoutSnapshot,
+    native: &turbo_dom_layout::layout_snapshot::LayoutSnapshot,
     case: &serde_json::Value,
 ) {
     for box_ in native.text_cluster_boxes() {
@@ -503,11 +503,11 @@ fn assert_cluster_geometry(
 
 #[test]
 fn text_snapshot_errors_keep_the_original_source_and_viewport_validation() {
-    use turbo_html2pdf_core::layout_snapshot::{
+    use turbo_dom_layout::layout_snapshot::{
         snapshot_live_tree_with_text, SnapshotError, SnapshotInputs, SourceId, SourceIdentity,
         TextSnapshotError,
     };
-    use turbo_html2pdf_core::{build_cascade, ImageCtx, NoImages, Node};
+    use turbo_dom_layout::{build_cascade, ImageCtx, NoImages, Node};
     let nodes = [Node::Text("ab".into())];
     let fonts = FontRegistry::new();
     let images = ImageCtx {
@@ -579,7 +579,7 @@ fn source_metadata_preserves_distinct_baselines_with_identical_public_run_identi
 
 #[test]
 fn font_alias_does_not_select_a_foreign_legacy_metric_adjustment() {
-    use turbo_html2pdf_core::FontFace;
+    use turbo_dom_layout::FontFace;
     let face = FontFace::from_bytes(
         include_bytes!("../assets/fonts/Go-Regular.ttf").to_vec(),
         "ParityGo",
@@ -595,7 +595,7 @@ fn font_alias_does_not_select_a_foreign_legacy_metric_adjustment() {
 
 #[test]
 fn actual_text_source_keeps_collapsed_whitespace_and_distinct_owner_inputs() {
-    use turbo_html2pdf_core::layout_snapshot::SourceId;
+    use turbo_dom_layout::layout_snapshot::SourceId;
     let native = capture_snapshot(&["  a  b ", "é😀"], 80.0, true);
     let inputs = native.text_sources();
     assert_eq!(inputs.len(), 2);
@@ -610,10 +610,10 @@ fn actual_text_source_keeps_collapsed_whitespace_and_distinct_owner_inputs() {
 
 #[test]
 fn whitespace_only_source_bytes_have_a_bound_before_native_layout_capture() {
-    use turbo_html2pdf_core::layout_snapshot::{
+    use turbo_dom_layout::layout_snapshot::{
         snapshot_styled_tree_with_text, SnapshotInputs, TextSnapshotError,
     };
-    use turbo_html2pdf_core::{ImageCtx, NoImages, StyledNode};
+    use turbo_dom_layout::{ImageCtx, NoImages, StyledNode};
     let nodes = [StyledNode::Text(" ".repeat(16 * 1024 * 1024 + 1))];
     let fonts = FontRegistry::new();
     let images = ImageCtx {
@@ -656,10 +656,10 @@ fn source_clusters_preserve_native_shaper_direction_without_claiming_bidi_itemiz
 
 #[test]
 fn source_character_work_has_a_bound_even_below_the_byte_budget() {
-    use turbo_html2pdf_core::layout_snapshot::{
+    use turbo_dom_layout::layout_snapshot::{
         snapshot_styled_tree_with_text, SnapshotInputs, TextSnapshotError,
     };
-    use turbo_html2pdf_core::{ImageCtx, NoImages, StyledNode};
+    use turbo_dom_layout::{ImageCtx, NoImages, StyledNode};
     let nodes = [StyledNode::Text("é".repeat(1_000_001))];
     let fonts = FontRegistry::new();
     let images = ImageCtx {
@@ -683,7 +683,7 @@ fn source_character_work_has_a_bound_even_below_the_byte_budget() {
 #[test]
 fn cluster_geometry_shares_immutable_native_ancestry_and_survives_snapshot_drop() {
     use std::sync::Arc;
-    use turbo_html2pdf_core::layout_snapshot::SourceId;
+    use turbo_dom_layout::layout_snapshot::SourceId;
     let native = capture_snapshot(&["ab"], 80.0, true);
     let cells = native.text_cluster_boxes();
     assert_eq!(cells.len(), 2);
@@ -698,10 +698,10 @@ fn cluster_geometry_shares_immutable_native_ancestry_and_survives_snapshot_drop(
 }
 
 fn assert_range_geometry(
-    native: &turbo_html2pdf_core::layout_snapshot::LayoutSnapshot,
+    native: &turbo_dom_layout::layout_snapshot::LayoutSnapshot,
     case: &serde_json::Value,
 ) {
-    use turbo_html2pdf_core::layout_snapshot::SourceId;
+    use turbo_dom_layout::layout_snapshot::SourceId;
     for (offsets, expected) in case["ranges"].as_object().unwrap() {
         let (start, end) = offsets.split_once(':').unwrap();
         let boxes = native
@@ -737,10 +737,10 @@ fn assert_range_geometry(
 }
 
 fn assert_caret_geometry(
-    native: &turbo_html2pdf_core::layout_snapshot::LayoutSnapshot,
+    native: &turbo_dom_layout::layout_snapshot::LayoutSnapshot,
     case: &serde_json::Value,
 ) {
-    use turbo_html2pdf_core::layout_snapshot::{Point, SourceId};
+    use turbo_dom_layout::layout_snapshot::{Point, SourceId};
     let hits = case["hits"]
         .as_array()
         .unwrap()
@@ -767,7 +767,7 @@ fn assert_caret_geometry(
 
 #[test]
 fn text_geometry_errors_preserve_missing_unplaced_and_invalid_input_distinctions() {
-    use turbo_html2pdf_core::layout_snapshot::{Point, SourceId, TextGeometryError};
+    use turbo_dom_layout::layout_snapshot::{Point, SourceId, TextGeometryError};
     let native = capture_snapshot(&["ab"], 80.0, true);
     let point = Point { x: 5.0, y: 7.0 };
     assert_eq!(
@@ -798,7 +798,7 @@ fn text_geometry_errors_preserve_missing_unplaced_and_invalid_input_distinctions
 
 #[test]
 fn nonfinite_caret_input_and_unsupported_real_transforms_are_explicit() {
-    use turbo_html2pdf_core::layout_snapshot::{Point, SourceId, TextGeometryError};
+    use turbo_dom_layout::layout_snapshot::{Point, SourceId, TextGeometryError};
     let native = capture_snapshot(&["ab"], 80.0, true);
     for point in [
         Point {
@@ -839,7 +839,7 @@ fn nonfinite_caret_input_and_unsupported_real_transforms_are_explicit() {
 
 #[test]
 fn caret_selects_actual_combining_cluster_edges_without_inventing_an_internal_offset() {
-    use turbo_html2pdf_core::layout_snapshot::{Point, SourceId};
+    use turbo_dom_layout::layout_snapshot::{Point, SourceId};
     let native = capture_snapshot(&["e\u{301}"], 80.0, true);
     let cells = native.text_cluster_boxes();
     assert_eq!(cells.len(), 1);
@@ -863,7 +863,7 @@ fn caret_selects_actual_combining_cluster_edges_without_inventing_an_internal_of
 
 #[test]
 fn same_source_font_fallback_runs_choose_the_nearby_actual_edge() {
-    use turbo_html2pdf_core::layout_snapshot::{Point, SourceId};
+    use turbo_dom_layout::layout_snapshot::{Point, SourceId};
     let native = capture_snapshot(&["aאב"], 200.0, true);
     assert!(
         native.text_runs().len() >= 2,
@@ -885,7 +885,7 @@ fn same_source_font_fallback_runs_choose_the_nearby_actual_edge() {
 
 #[test]
 fn source_scoped_cluster_geometry_retains_original_ownership_and_full_query_results() {
-    use turbo_html2pdf_core::layout_snapshot::SourceId;
+    use turbo_dom_layout::layout_snapshot::SourceId;
     let native = capture_snapshot(&["first", "second"], 200.0, true);
     let all = native.text_cluster_boxes();
     let selected = native.text_cluster_boxes_for_source(SourceId(101));
@@ -901,7 +901,7 @@ fn source_scoped_cluster_geometry_retains_original_ownership_and_full_query_resu
 
 #[test]
 fn html_negative_leading_keeps_native_font_boxes_without_changing_pdf_line_height() {
-    use turbo_html2pdf_core::layout::inline::layout_html_paragraph_in_with_sources;
+    use turbo_dom_layout::layout::inline::layout_html_paragraph_in_with_sources;
     let fonts = FontRegistry::new();
     let Piece::Run(mut text) = run(&fonts, 71, "ab") else {
         unreachable!()
@@ -945,11 +945,11 @@ fn html_negative_leading_keeps_native_font_boxes_without_changing_pdf_line_heigh
 
 #[test]
 fn physical_font_overflow_fails_before_any_source_geometry_can_be_published() {
-    use turbo_html2pdf_core::layout_snapshot::{
+    use turbo_dom_layout::layout_snapshot::{
         snapshot_html_live_tree_with_svg_viewports, SnapshotInputs, SvgSnapshotError,
         TextSnapshotError,
     };
-    use turbo_html2pdf_core::{build_cascade, parse_html, ImageCtx, NoImages};
+    use turbo_dom_layout::{build_cascade, parse_html, ImageCtx, NoImages};
     let nodes =
         parse_html("<div style='font-size:300000000000000000000000000000000000000px'>ab</div>")
             .unwrap();
@@ -980,8 +980,8 @@ fn physical_font_overflow_fails_before_any_source_geometry_can_be_published() {
 
 #[test]
 fn html_flex_intrinsic_measurement_preserves_physical_font_policy_and_negative_leading() {
-    use turbo_html2pdf_core::layout_snapshot::SourceId;
-    use turbo_html2pdf_core::{FontFace, ImageCtx, NoImages};
+    use turbo_dom_layout::layout_snapshot::SourceId;
+    use turbo_dom_layout::{FontFace, ImageCtx, NoImages};
     let oracle: serde_json::Value =
         serde_json::from_str(include_str!("fixtures/text-review-chrome155.json")).unwrap();
     let case = oracle["result"]["cases"]
@@ -1013,7 +1013,7 @@ fn html_flex_intrinsic_measurement_preserves_physical_font_policy_and_negative_l
 
 #[test]
 fn fractional_html_used_values_and_indent_match_chrome_before_affine_projection() {
-    use turbo_html2pdf_core::{FontFace, ImageCtx, NoImages};
+    use turbo_dom_layout::{FontFace, ImageCtx, NoImages};
     let oracle: serde_json::Value =
         serde_json::from_str(include_str!("fixtures/text-review-chrome155.json")).unwrap();
     let mut fonts = FontRegistry::new();

@@ -5,12 +5,12 @@ use serde_json::Value;
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
 use std::sync::OnceLock;
-use turbo_html2pdf_core::layout_snapshot::{
+use turbo_dom_layout::layout_snapshot::{
     snapshot_html_live_tree_with_native_text, GeometryKind, LayoutSnapshot, NativeTextOptions,
     Rect, SnapshotError, SnapshotInputs, SourceId, SourceIdentity, SvgSnapshotError,
     TextSnapshotError,
 };
-use turbo_html2pdf_core::{
+use turbo_dom_layout::{
     build_cascade, parse_html, Attr, Diagnostics, Element, FontRegistry, Fragment, FragmentContent,
     ImageCtx, NoImages, Node, NodeId, Tag,
 };

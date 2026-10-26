@@ -3,9 +3,9 @@
 
 mod common;
 
-use turbo_html2pdf_core::layout::fragment::*;
-use turbo_html2pdf_core::layout::value::{BorderEdges, BreakRule, Rgba};
-use turbo_html2pdf_core::node::TKind;
+use turbo_dom_layout::layout::fragment::*;
+use turbo_dom_layout::layout::value::{BorderEdges, BreakRule, Rgba};
+use turbo_dom_layout::node::TKind;
 
 fn box_content() -> FragmentContent {
     FragmentContent::Box {

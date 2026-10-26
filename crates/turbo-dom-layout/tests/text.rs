@@ -2,8 +2,8 @@
 //! fixtures under `assets/fonts/` (never from a system path), so the suite is
 //! self-contained and deterministic.
 
-use turbo_html2pdf_core::text::FontRegistry;
-use turbo_html2pdf_core::{layout_text, Align, FontFace, TextStyle, WhiteSpace};
+use turbo_dom_layout::text::FontRegistry;
+use turbo_dom_layout::{layout_text, Align, FontFace, TextStyle, WhiteSpace};
 
 fn load(name: &str) -> Vec<u8> {
     let path = format!("{}/assets/fonts/{name}", env!("CARGO_MANIFEST_DIR"));

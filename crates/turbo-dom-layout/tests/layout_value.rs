@@ -2,9 +2,9 @@
 //! resolution from a `ComputedStyle`. One assertion family per branch so the
 //! coverage gate stays honest.
 
-use turbo_html2pdf_core::layout::value::*;
-use turbo_html2pdf_core::text::{Align, WhiteSpace};
-use turbo_html2pdf_core::ComputedStyle;
+use turbo_dom_layout::layout::value::*;
+use turbo_dom_layout::text::{Align, WhiteSpace};
+use turbo_dom_layout::ComputedStyle;
 
 fn style(pairs: &[(&str, &str)]) -> ComputedStyle {
     ComputedStyle::from_pairs(pairs.iter().map(|(k, v)| (k.to_string(), v.to_string())))
@@ -488,8 +488,8 @@ fn background_shorthand_resolves_color() {
 
 #[test]
 fn parse_viewport_units_resolve_against_layout_viewport() {
-    use turbo_html2pdf_core::style::TokenSet;
-    use turbo_html2pdf_core::{build_cascade_with_width, set_media_viewport_height};
+    use turbo_dom_layout::style::TokenSet;
+    use turbo_dom_layout::{build_cascade_with_width, set_media_viewport_height};
     // Set the layout viewport: width 1000 (via the cascade), height 900.
     set_media_viewport_height(900.0);
     let _ = build_cascade_with_width("", "", TokenSet::new(), 1000.0);

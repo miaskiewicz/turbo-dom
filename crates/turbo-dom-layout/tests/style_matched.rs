@@ -1,8 +1,8 @@
-use turbo_html2pdf_core::style::{
+use turbo_dom_layout::style::{
     parse_declarations, presentational_declarations, resolve_matched_style, user_agent_css,
     user_agent_stylesheet, CascadeOrigin, ComputedStyle, MatchedDeclaration,
 };
-use turbo_html2pdf_core::{Attr, Element, Tag};
+use turbo_dom_layout::{Attr, Element, Tag};
 
 fn matched(css: &str, origin: CascadeOrigin, depth: u32) -> MatchedDeclaration {
     MatchedDeclaration {
@@ -121,7 +121,7 @@ fn attribute_hints_are_explicit_candidates_overridden_by_author_rules() {
 fn ua_defaults_are_available_without_inherited_style_becoming_a_rule() {
     let sheet = user_agent_stylesheet();
     assert_eq!(
-        turbo_html2pdf_core::style::parse_stylesheet(user_agent_css()),
+        turbo_dom_layout::style::parse_stylesheet(user_agent_css()),
         sheet
     );
     assert!(sheet

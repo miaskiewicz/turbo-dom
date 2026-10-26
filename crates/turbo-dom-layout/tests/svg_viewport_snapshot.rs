@@ -1,8 +1,8 @@
-use turbo_html2pdf_core::layout_snapshot::{
+use turbo_dom_layout::layout_snapshot::{
     snapshot_html_live_tree_with_svg_viewports, GeometryKind, LayoutSnapshot, SnapshotInputs,
     SourceId, SourceIdentity,
 };
-use turbo_html2pdf_core::{
+use turbo_dom_layout::{
     build_cascade, Attr, Diagnostics, Element, FontRegistry, ImageCtx, NoImages, Node, Tag,
 };
 
@@ -76,7 +76,7 @@ fn capture(
     nodes: &[Node],
     identities: &[SourceIdentity],
     viewports: &[SourceId],
-) -> Result<LayoutSnapshot, turbo_html2pdf_core::layout_snapshot::SvgSnapshotError> {
+) -> Result<LayoutSnapshot, turbo_dom_layout::layout_snapshot::SvgSnapshotError> {
     capture_at_scale(nodes, identities, viewports, 2.0)
 }
 
@@ -85,7 +85,7 @@ fn capture_at_scale(
     identities: &[SourceIdentity],
     viewports: &[SourceId],
     scale: f32,
-) -> Result<LayoutSnapshot, turbo_html2pdf_core::layout_snapshot::SvgSnapshotError> {
+) -> Result<LayoutSnapshot, turbo_dom_layout::layout_snapshot::SvgSnapshotError> {
     let fonts = FontRegistry::new();
     let images = ImageCtx {
         resolver: &NoImages,
@@ -196,7 +196,7 @@ fn assert_source_box(
 
 #[test]
 fn viewport_declaration_errors_do_not_erase_or_reinterpret_source_identities() {
-    use turbo_html2pdf_core::layout_snapshot::SvgSnapshotError;
+    use turbo_dom_layout::layout_snapshot::SvgSnapshotError;
     let case = serde_json::json!({"attrs":{"width":"40","height":"20"}});
     let nodes = graph(&case);
     assert!(matches!(
@@ -218,7 +218,7 @@ fn viewport_declaration_errors_do_not_erase_or_reinterpret_source_identities() {
 
 #[test]
 fn nested_svg_declarations_fail_and_undeclared_nested_sources_remain_explicit() {
-    use turbo_html2pdf_core::layout_snapshot::SvgSnapshotError;
+    use turbo_dom_layout::layout_snapshot::SvgSnapshotError;
     let case = serde_json::json!({"attrs":{"width":"40","height":"20"}});
     let mut nodes = graph(&case);
     let Node::Element(root) = &mut nodes[0] else {
@@ -246,7 +246,7 @@ fn nested_svg_declarations_fail_and_undeclared_nested_sources_remain_explicit() 
 
 #[test]
 fn native_viewport_layout_scale_is_bounded_and_configurable_before_box_allocation() {
-    use turbo_html2pdf_core::layout_snapshot::SvgSnapshotError;
+    use turbo_dom_layout::layout_snapshot::SvgSnapshotError;
     let case = serde_json::json!({"attrs":{"width":"32.51","height":"24.29"}});
     let nodes = graph(&case);
     for scale in [0.0, -1.0, 17.0, f32::NAN, f32::INFINITY] {
@@ -270,10 +270,10 @@ fn native_viewport_layout_scale_is_bounded_and_configurable_before_box_allocatio
 
 #[test]
 fn text_paths_directives_and_invalid_viewports_cannot_be_declared_svg_sources() {
-    use turbo_html2pdf_core::layout_snapshot::{
+    use turbo_dom_layout::layout_snapshot::{
         SnapshotError, SvgSnapshotError, TextSnapshotError,
     };
-    use turbo_html2pdf_core::TKind;
+    use turbo_dom_layout::TKind;
     let text = [Node::Text("not an SVG viewport".into())];
     let ids = [SourceIdentity {
         id: SourceId(2),

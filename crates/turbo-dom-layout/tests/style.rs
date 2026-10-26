@@ -2,13 +2,13 @@
 //! tokens, node-style injection, the 6-level cascade, and inheritance.
 
 use serde_json::json;
-use turbo_html2pdf_core::style::{
+use turbo_dom_layout::style::{
     build_cascade, parse_stylesheet, style_tree, Declaration, StyleToken, StyledElement,
     StyledNode, TokenSet,
 };
-use turbo_html2pdf_core::{compile, CompileOptions};
+use turbo_dom_layout::{compile, CompileOptions};
 
-fn render_nodes(tpl: &str) -> Vec<turbo_html2pdf_core::Node> {
+fn render_nodes(tpl: &str) -> Vec<turbo_dom_layout::Node> {
     let (program, _) = compile(tpl, &CompileOptions::default()).expect("compile");
     program.render_nodes(&json!({}), None).expect("render").0
 }
@@ -409,7 +409,7 @@ fn bgcolor_attribute_maps_to_background() {
     );
     let table = find(
         &tree,
-        &|e| matches!(&e.tag, turbo_html2pdf_core::Tag::Html(t) if t == "table"),
+        &|e| matches!(&e.tag, turbo_dom_layout::Tag::Html(t) if t == "table"),
     )
     .expect("table");
     assert_eq!(table.style.get("background-color"), Some("#ff6600"));
@@ -424,7 +424,7 @@ fn author_css_overrides_presentational_hint() {
     );
     let table = find(
         &tree,
-        &|e| matches!(&e.tag, turbo_html2pdf_core::Tag::Html(t) if t == "table"),
+        &|e| matches!(&e.tag, turbo_dom_layout::Tag::Html(t) if t == "table"),
     )
     .expect("table");
     assert_eq!(table.style.get("background-color"), Some("#00ff00"));
@@ -435,7 +435,7 @@ fn width_height_attributes_map_to_lengths() {
     let tree = styled(r#"<img width="200" height="50%">"#, "");
     let img = find(
         &tree,
-        &|e| matches!(&e.tag, turbo_html2pdf_core::Tag::Html(t) if t == "img"),
+        &|e| matches!(&e.tag, turbo_dom_layout::Tag::Html(t) if t == "img"),
     )
     .expect("img");
     assert_eq!(img.style.get("width"), Some("200px"));
@@ -445,7 +445,7 @@ fn width_height_attributes_map_to_lengths() {
 // ---------------------------------------------------------------- @media queries
 
 fn styled_at_width(tpl: &str, css: &str, width: f32) -> Vec<StyledNode> {
-    use turbo_html2pdf_core::build_cascade_with_width;
+    use turbo_dom_layout::build_cascade_with_width;
     let nodes = render_nodes(tpl);
     let cascade = build_cascade_with_width(css, "", TokenSet::new(), width);
     style_tree(&nodes, &cascade)
@@ -458,7 +458,7 @@ fn media_min_width_applies_above_breakpoint() {
     let wide = styled_at_width("<div>x</div>", css, 1280.0);
     let d = find(
         &wide,
-        &|e| matches!(&e.tag, turbo_html2pdf_core::Tag::Html(t) if t == "div"),
+        &|e| matches!(&e.tag, turbo_dom_layout::Tag::Html(t) if t == "div"),
     )
     .unwrap();
     assert_eq!(d.style.get("color"), Some("green"));
@@ -466,7 +466,7 @@ fn media_min_width_applies_above_breakpoint() {
     let narrow = styled_at_width("<div>x</div>", css, 500.0);
     let d = find(
         &narrow,
-        &|e| matches!(&e.tag, turbo_html2pdf_core::Tag::Html(t) if t == "div"),
+        &|e| matches!(&e.tag, turbo_dom_layout::Tag::Html(t) if t == "div"),
     )
     .unwrap();
     assert_eq!(d.style.get("color"), Some("red"));
@@ -477,7 +477,7 @@ fn media_height_gates_rules() {
     // Google's homepage hides its tall search box below `max-height:575px`. The
     // cascade must evaluate height features (not silently ignore them, which left
     // the rule always applied → the box always `display:none`).
-    use turbo_html2pdf_core::{build_cascade_with_width, set_media_viewport_height};
+    use turbo_dom_layout::{build_cascade_with_width, set_media_viewport_height};
     let css = "div { display: block } @media (max-height: 575px) { div { display: none } }";
     let styled = |vh: f32| {
         set_media_viewport_height(vh);
@@ -489,7 +489,7 @@ fn media_height_gates_rules() {
     let short = styled(500.0);
     let d = find(
         &short,
-        &|e| matches!(&e.tag, turbo_html2pdf_core::Tag::Html(t) if t == "div"),
+        &|e| matches!(&e.tag, turbo_dom_layout::Tag::Html(t) if t == "div"),
     )
     .unwrap();
     assert_eq!(d.style.get("display"), Some("none"));
@@ -497,7 +497,7 @@ fn media_height_gates_rules() {
     let tall = styled(800.0);
     let d = find(
         &tall,
-        &|e| matches!(&e.tag, turbo_html2pdf_core::Tag::Html(t) if t == "div"),
+        &|e| matches!(&e.tag, turbo_dom_layout::Tag::Html(t) if t == "div"),
     )
     .unwrap();
     assert_eq!(d.style.get("display"), Some("block"));
@@ -510,7 +510,7 @@ fn media_print_is_dropped_for_screen() {
     let tree = styled_at_width("<div>x</div>", css, 1280.0);
     let d = find(
         &tree,
-        &|e| matches!(&e.tag, turbo_html2pdf_core::Tag::Html(t) if t == "div"),
+        &|e| matches!(&e.tag, turbo_dom_layout::Tag::Html(t) if t == "div"),
     )
     .unwrap();
     assert_eq!(
@@ -527,14 +527,14 @@ fn media_em_breakpoint_uses_16px_root() {
     let at1280 = styled_at_width("<div>x</div>", css, 1280.0);
     let d = find(
         &at1280,
-        &|e| matches!(&e.tag, turbo_html2pdf_core::Tag::Html(t) if t == "div"),
+        &|e| matches!(&e.tag, turbo_dom_layout::Tag::Html(t) if t == "div"),
     )
     .unwrap();
     assert_eq!(d.style.get("color"), Some("green"));
     let at1000 = styled_at_width("<div>x</div>", css, 1000.0);
     let d = find(
         &at1000,
-        &|e| matches!(&e.tag, turbo_html2pdf_core::Tag::Html(t) if t == "div"),
+        &|e| matches!(&e.tag, turbo_dom_layout::Tag::Html(t) if t == "div"),
     )
     .unwrap();
     assert_eq!(d.style.get("color"), None);
@@ -902,7 +902,7 @@ fn root_pseudo_matches_html_element() {
     // `:root` (cascade.rs Root → ctx.tag == Some("html")). The compiler strips the
     // `<html>` wrapper before render, so build a tree with a top-level html element
     // by hand and style it directly.
-    use turbo_html2pdf_core::{Attr, Element, Node, Tag};
+    use turbo_dom_layout::{Attr, Element, Node, Tag};
     let html = Node::Element(Element {
         tag: Tag::Html("html".to_string()),
         attrs: vec![Attr {
@@ -1051,7 +1051,7 @@ fn media_calc_single_term_breakpoint() {
     let wide = styled_at_width("<div>x</div>", css, 1280.0);
     let d = find(
         &wide,
-        &|e| matches!(&e.tag, turbo_html2pdf_core::Tag::Html(t) if t == "div"),
+        &|e| matches!(&e.tag, turbo_dom_layout::Tag::Html(t) if t == "div"),
     )
     .unwrap();
     assert_eq!(d.style.get("color"), Some("green"));

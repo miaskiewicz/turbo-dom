@@ -1,10 +1,10 @@
 #![cfg(target_os = "macos")]
 use sha2::{Digest, Sha256};
-use turbo_html2pdf_core::layout_snapshot::{
+use turbo_dom_layout::layout_snapshot::{
     snapshot_html_live_tree_with_native_text, LayoutSnapshot, NativeTextOptions, SnapshotInputs,
     SourceId, SourceIdentity,
 };
-use turbo_html2pdf_core::{
+use turbo_dom_layout::{
     build_cascade, parse_html, Diagnostics, FontRegistry, ImageCtx, NoImages,
 };
 
@@ -76,7 +76,7 @@ fn compare_font_case(fonts: &FontRegistry, case: &serde_json::Value) {
         "{family} {size} line box"
     );
 }
-fn rect(value: turbo_html2pdf_core::layout_snapshot::Rect) -> [f64; 4] {
+fn rect(value: turbo_dom_layout::layout_snapshot::Rect) -> [f64; 4] {
     [
         value.x as f64,
         value.y as f64,

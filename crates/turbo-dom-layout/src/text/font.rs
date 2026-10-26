@@ -312,7 +312,7 @@ impl FontFace {
     /// The first codepoint mapping to a glyph wins (deterministic: subtables and codepoints
     /// are iterated in table order). Glyphs with no Unicode mapping are omitted.
     pub fn glyph_to_unicode(&self, glyphs: &[u16]) -> Vec<(u16, u32)> {
-        let map = crate::emit::tounicode::reverse_cmap(self.ttf());
+        let map = crate::cmap::reverse_cmap(self.ttf());
         glyphs
             .iter()
             .filter_map(|&g| map.get(&g).map(|&cp| (g, cp)))

@@ -6,8 +6,8 @@
 
 use std::fmt::Write;
 
-use turbo_html2pdf_core::layout::value::{BorderEdges, BorderSide};
-use turbo_html2pdf_core::{
+use turbo_dom_layout::layout::value::{BorderEdges, BorderSide};
+use turbo_dom_layout::{
     BoxShadow, Fragment, FragmentContent, LinearGradient as CssGradient, PositionedGlyph, Rgba,
 };
 

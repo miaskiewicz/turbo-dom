@@ -4,8 +4,8 @@
 //! fixture through the real engine and asserts the absolute box lands on its
 //! nearest positioned ancestor, not an outer one.
 
-use turbo_html2pdf_core::FontRegistry;
-use turbo_html2pdf_core::{layout_html, Diagnostics, Fragment, FragmentContent, Rgba};
+use turbo_dom_layout::FontRegistry;
+use turbo_dom_layout::{layout_html, Diagnostics, Fragment, FragmentContent, Rgba};
 
 fn lay(html: &str, w: f32) -> Fragment {
     let mut d = Diagnostics::default();

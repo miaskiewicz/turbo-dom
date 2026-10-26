@@ -7,8 +7,8 @@
 //! [`Op`] stream, CSS-colour/font parsing, and affine [`Matrix`], so the two agree
 //! on *what* to draw and differ only in *how* the pixels are produced.
 
-use turbo_html2pdf_core::text::{FontFace, FontRegistry};
-use turbo_html2pdf_core::Rgba;
+use turbo_dom_layout::text::{FontFace, FontRegistry};
+use turbo_dom_layout::Rgba;
 
 /// One normalized canvas draw/state op. Coordinates stay in canvas user space;
 /// each backend folds the current [`Matrix`] in when it emits geometry. Unknown

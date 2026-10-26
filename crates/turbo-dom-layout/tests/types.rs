@@ -1,6 +1,6 @@
 //! Unit tests for the public error / diagnostic / option types (§8.1, §9).
 
-use turbo_html2pdf_core::{
+use turbo_dom_layout::{
     compile, CompileError, CompileOptions, Diagnostics, ErrorCode, Lint, LintCode, Program,
     RenderError, Span, DEFAULT_INCLUDE_DEPTH,
 };

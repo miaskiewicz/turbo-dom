@@ -15,14 +15,14 @@ mod common;
 
 use std::collections::HashMap;
 
-use turbo_html2pdf_core::image::{decode, probe, ColorSpace, Payload};
-use turbo_html2pdf_core::paginate::{paginate, Page};
-use turbo_html2pdf_core::svg::{decode_svg, is_svg, probe_svg};
-use turbo_html2pdf_core::{
+use turbo_dom_layout::image::{decode, probe, ColorSpace, Payload};
+use turbo_dom_layout::paginate::{paginate, Page};
+use turbo_dom_layout::svg::{decode_svg, is_svg, probe_svg};
+use turbo_dom_layout::{
     build_cascade, emit_pdf_with_images, layout_with_images, style_tree, Attr, Diagnostics,
     Element, EmitOptions, ImageCtx, ImageResolver, Node, Tag,
 };
-use turbo_html2pdf_core::{style::TokenSet, StyledNode};
+use turbo_dom_layout::{style::TokenSet, StyledNode};
 
 // --------------------------------------------------------------------------
 // committed SVG inputs (shapes only — deterministic without fonts)

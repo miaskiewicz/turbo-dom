@@ -71,8 +71,8 @@ pub use style_extract::{delazy_images, image_urls, image_urls_in_css, stylesheet
 
 use std::collections::HashMap;
 
-use turbo_html2pdf_core::text::FontRegistry;
-use turbo_html2pdf_core::{
+use turbo_dom_layout::text::FontRegistry;
+use turbo_dom_layout::{
     layout_html_with_images, Diagnostics, Fragment, FragmentContent, ImageCtx, ImageResolver, Rgba,
 };
 
@@ -363,7 +363,7 @@ fn lay_out(
     // conditions evaluate correctly (else every height feature is ignored and its
     // rules always apply — Google's tall search box is `display:none` below
     // `max-height:575px`, so it always vanished → blank render).
-    turbo_html2pdf_core::set_media_viewport_height(height as f32);
+    turbo_dom_layout::set_media_viewport_height(height as f32);
     // Drop `<noscript>` first: turbo-surf rasters the hydrated (JS-enabled) DOM, so
     // noscript content is inert — its `<style>` must not cascade (Google hides every
     // display-less div via a noscript `table,div,span,p{display:none}`) and its `<img>`

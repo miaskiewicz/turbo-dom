@@ -3,8 +3,8 @@
 //! builder. `dead_code` is allowed because each test binary uses a subset.
 #![allow(dead_code)]
 
-use turbo_html2pdf_core::text::FontRegistry;
-use turbo_html2pdf_core::{ComputedStyle, FontFace};
+use turbo_dom_layout::text::FontRegistry;
+use turbo_dom_layout::{ComputedStyle, FontFace};
 
 pub fn font_bytes(name: &str) -> Vec<u8> {
     let path = format!("{}/assets/fonts/{name}", env!("CARGO_MANIFEST_DIR"));

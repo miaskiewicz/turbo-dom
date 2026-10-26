@@ -4,13 +4,13 @@
 
 mod common;
 
-use turbo_html2pdf_core::layout::block::layout_tree;
-use turbo_html2pdf_core::layout::boxgen::build_box_tree;
-use turbo_html2pdf_core::layout::fragment::{Fragment, FragmentContent};
-use turbo_html2pdf_core::layout::value::BreakRule;
-use turbo_html2pdf_core::node::{TKind, Tag};
-use turbo_html2pdf_core::text::FontRegistry;
-use turbo_html2pdf_core::{ComputedStyle, Diagnostics, StyledElement, StyledNode};
+use turbo_dom_layout::layout::block::layout_tree;
+use turbo_dom_layout::layout::boxgen::build_box_tree;
+use turbo_dom_layout::layout::fragment::{Fragment, FragmentContent};
+use turbo_dom_layout::layout::value::BreakRule;
+use turbo_dom_layout::node::{TKind, Tag};
+use turbo_dom_layout::text::FontRegistry;
+use turbo_dom_layout::{ComputedStyle, Diagnostics, StyledElement, StyledNode};
 
 fn cs(pairs: &[(&str, &str)]) -> ComputedStyle {
     ComputedStyle::from_pairs(pairs.iter().map(|(k, v)| (k.to_string(), v.to_string())))

@@ -17,7 +17,7 @@ use core_graphics::color_space::CGColorSpace;
 use core_graphics::context::CGContext;
 use core_text::line::CTLine;
 use tiny_skia::Pixmap;
-use turbo_html2pdf_core::Rgba;
+use turbo_dom_layout::Rgba;
 
 /// Rasterize `text` at canvas coords `(x, y)` (baseline) in `color` and source-over composite it
 /// onto `pm`. Returns `false` (caller falls back to the vector glyph trace) when the CTM is not a

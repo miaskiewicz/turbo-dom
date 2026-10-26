@@ -11,10 +11,10 @@
 //! layout in block.rs) is implemented. Do not weaken them to match current
 //! (position-ignoring) output.
 
-use turbo_html2pdf_core::layout::fragment::{Fragment, FragmentContent};
-use turbo_html2pdf_core::layout::value::Rgba;
-use turbo_html2pdf_core::text::FontRegistry;
-use turbo_html2pdf_core::{layout_html, Diagnostics};
+use turbo_dom_layout::layout::fragment::{Fragment, FragmentContent};
+use turbo_dom_layout::layout::value::Rgba;
+use turbo_dom_layout::text::FontRegistry;
+use turbo_dom_layout::{layout_html, Diagnostics};
 
 const WIDTH: f32 = 1000.0;
 

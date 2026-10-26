@@ -6,7 +6,7 @@
 
 mod common;
 
-use turbo_html2pdf_core::perf;
+use turbo_dom_layout::perf;
 
 #[test]
 fn a_face_parses_the_font_once() {
@@ -30,8 +30,8 @@ fn shaping_runs_once_per_distinct_run() {
 
 #[test]
 fn report_hot_path_breakdown() {
-    use turbo_html2pdf_core::style::TokenSet;
-    use turbo_html2pdf_core::{
+    use turbo_dom_layout::style::TokenSet;
+    use turbo_dom_layout::{
         build_cascade, compile, layout, style_tree, CompileOptions, Diagnostics,
     };
     let tmpl = "<table>{% for r in rows %}<tr><td>{{ r.a }}</td><td>{{ r.b }}</td>\
@@ -56,8 +56,8 @@ fn report_hot_path_breakdown() {
 #[test]
 fn invoice_stage_timing() {
     use std::time::Instant;
-    use turbo_html2pdf_core::style::TokenSet;
-    use turbo_html2pdf_core::{
+    use turbo_dom_layout::style::TokenSet;
+    use turbo_dom_layout::{
         build_cascade, compile, layout, style_tree, CompileOptions, Diagnostics,
     };
     let tmpl = "<style>.tot{font-weight:bold}</style><h1>Invoice {{ n }}</h1>\

@@ -13,17 +13,17 @@ mod common;
 use std::collections::HashMap;
 use std::io::Cursor;
 
-use turbo_html2pdf_core::image::{decode, probe, sniff, ColorSpace, Format, Payload};
-use turbo_html2pdf_core::layout::boxgen::build_box_tree;
-use turbo_html2pdf_core::layout::imgsize::{size_replaced, SizeCtx};
-use turbo_html2pdf_core::layout::value::{resolve_box_style, ResolveCtx};
-use turbo_html2pdf_core::paginate::{paginate, Page, PageGeometry};
-use turbo_html2pdf_core::style::TokenSet;
-use turbo_html2pdf_core::{
+use turbo_dom_layout::image::{decode, probe, sniff, ColorSpace, Format, Payload};
+use turbo_dom_layout::layout::boxgen::build_box_tree;
+use turbo_dom_layout::layout::imgsize::{size_replaced, SizeCtx};
+use turbo_dom_layout::layout::value::{resolve_box_style, ResolveCtx};
+use turbo_dom_layout::paginate::{paginate, Page, PageGeometry};
+use turbo_dom_layout::style::TokenSet;
+use turbo_dom_layout::{
     build_cascade, emit_pdf, emit_pdf_with_images, layout_with_images, style_tree, ComputedStyle,
     Diagnostics, EmitOptions, ImageResolver, Node, StyledElement, StyledNode, Tag,
 };
-use turbo_html2pdf_core::{Attr, FragmentContent, ImageCtx, NoImages};
+use turbo_dom_layout::{Attr, FragmentContent, ImageCtx, NoImages};
 
 // --------------------------------------------------------------------------
 // test image generation
@@ -360,7 +360,7 @@ fn empty_style() -> ComputedStyle {
     ComputedStyle::default()
 }
 
-fn box_style(style: &ComputedStyle) -> turbo_html2pdf_core::layout::value::BoxStyle {
+fn box_style(style: &ComputedStyle) -> turbo_dom_layout::layout::value::BoxStyle {
     resolve_box_style(
         style,
         ResolveCtx {
@@ -529,7 +529,7 @@ fn explicit_height_fills_width_from_aspect_ratio() {
 fn degenerate_zero_dimension_falls_back_to_given() {
     // A zero-width intrinsic (degenerate) with an explicit height must not divide
     // by zero: the dependent axis falls back to the given value.
-    use turbo_html2pdf_core::image::Intrinsic;
+    use turbo_dom_layout::image::Intrinsic;
     let style = ComputedStyle::from_pairs([("height", "50px")]);
     let bs = box_style(&style);
     let ctx = SizeCtx {
@@ -569,7 +569,7 @@ fn height_cap_inactive_without_body_height() {
 // --------------------------------------------------------------------------
 
 fn img_node(src: &str) -> Vec<Node> {
-    vec![Node::Element(turbo_html2pdf_core::Element {
+    vec![Node::Element(turbo_dom_layout::Element {
         tag: Tag::Html("img".into()),
         attrs: vec![Attr {
             name: "src".into(),
@@ -584,10 +584,10 @@ fn styled_img(src: &str) -> Vec<StyledNode> {
     style_tree(&img_node(src), &cascade)
 }
 
-fn page_with(body: Vec<turbo_html2pdf_core::Fragment>) -> Page {
+fn page_with(body: Vec<turbo_dom_layout::Fragment>) -> Page {
     Page {
         geometry: PageGeometry::a4(),
-        kind: turbo_html2pdf_core::PageKind::First,
+        kind: turbo_dom_layout::PageKind::First,
         number: 1,
         body,
         header: Vec::new(),
@@ -664,15 +664,15 @@ fn unresolved_image_emits_nothing_and_lays_out_zero_sized() {
 fn no_image_default_path_skips_image_fragments() {
     // `emit_pdf` (no resolver) on a page that carries an Image fragment must skip
     // it: no XObject, still a valid PDF. Exercises the painter's resolve-miss arm.
-    let placement = turbo_html2pdf_core::ImagePlacement {
+    let placement = turbo_dom_layout::ImagePlacement {
         name: "x.png".into(),
         intrinsic_w: 2,
         intrinsic_h: 2,
         has_alpha: false,
         tint: None,
     };
-    let frag = turbo_html2pdf_core::Fragment::new(
-        turbo_html2pdf_core::NodeId(1),
+    let frag = turbo_dom_layout::Fragment::new(
+        turbo_dom_layout::NodeId(1),
         10.0,
         10.0,
         20.0,
@@ -689,16 +689,16 @@ fn no_images_resolver_resolves_nothing() {
     assert!(NoImages.resolve("anything").is_none());
 }
 
-fn image_frag(name: &str) -> turbo_html2pdf_core::Fragment {
-    let placement = turbo_html2pdf_core::ImagePlacement {
+fn image_frag(name: &str) -> turbo_dom_layout::Fragment {
+    let placement = turbo_dom_layout::ImagePlacement {
         name: name.into(),
         intrinsic_w: 2,
         intrinsic_h: 2,
         has_alpha: false,
         tint: None,
     };
-    let mut frag = turbo_html2pdf_core::Fragment::new(
-        turbo_html2pdf_core::NodeId(1),
+    let mut frag = turbo_dom_layout::Fragment::new(
+        turbo_dom_layout::NodeId(1),
         0.0,
         0.0,
         2.0,
@@ -713,8 +713,8 @@ fn image_frag(name: &str) -> turbo_html2pdf_core::Fragment {
         },
     );
     // Carry the image as a child so collect recurses into it too.
-    frag.children.push(turbo_html2pdf_core::Fragment::new(
-        turbo_html2pdf_core::NodeId(2),
+    frag.children.push(turbo_dom_layout::Fragment::new(
+        turbo_dom_layout::NodeId(2),
         0.0,
         0.0,
         2.0,
@@ -726,7 +726,7 @@ fn image_frag(name: &str) -> turbo_html2pdf_core::Fragment {
 
 #[test]
 fn image_store_collect_dedups_and_reports_size() {
-    use turbo_html2pdf_core::emit::ImageStore;
+    use turbo_dom_layout::emit::ImageStore;
     let resolver = MapResolver::new(vec![("dup.png", png_rgb_2x2())]);
     // The same name appears twice (across two fragments): collect must dedup.
     let page = page_with(vec![image_frag("dup.png"), image_frag("dup.png")]);
@@ -742,7 +742,7 @@ fn image_store_collect_dedups_and_reports_size() {
 
 #[test]
 fn image_store_skips_unresolvable_names_during_collect() {
-    use turbo_html2pdf_core::emit::ImageStore;
+    use turbo_dom_layout::emit::ImageStore;
     // The resolver lacks this name: collect resolves nothing and stores nothing.
     let resolver = MapResolver::new(vec![]);
     let store = ImageStore::collect(&[page_with(vec![image_frag("gone.png")])], &resolver);
@@ -751,7 +751,7 @@ fn image_store_skips_unresolvable_names_during_collect() {
 
 #[test]
 fn image_store_skips_undecodable_names_during_collect() {
-    use turbo_html2pdf_core::emit::ImageStore;
+    use turbo_dom_layout::emit::ImageStore;
     // The name resolves to bytes that are not a valid image: skipped, not panic.
     let resolver = MapResolver::new(vec![("bad.png", b"not an image".to_vec())]);
     let store = ImageStore::collect(&[page_with(vec![image_frag("bad.png")])], &resolver);
@@ -798,9 +798,9 @@ fn background_image_emits_xobject_behind_box() {
 
 /// The child boxes of a container box, or an empty slice for leaf kinds.
 fn box_kids(
-    b: &turbo_html2pdf_core::layout::boxgen::LayoutBox,
-) -> &[turbo_html2pdf_core::layout::boxgen::LayoutBox] {
-    use turbo_html2pdf_core::layout::boxgen::BoxKind;
+    b: &turbo_dom_layout::layout::boxgen::LayoutBox,
+) -> &[turbo_dom_layout::layout::boxgen::LayoutBox] {
+    use turbo_dom_layout::layout::boxgen::BoxKind;
     match &b.kind {
         BoxKind::Block(kids) | BoxKind::Flex(kids) | BoxKind::Table(kids) => kids,
         _ => &[],
@@ -808,7 +808,7 @@ fn box_kids(
 }
 
 /// Whether any box in the tree records a replaced image named `name`.
-fn tree_has_replaced_image(b: &turbo_html2pdf_core::layout::boxgen::LayoutBox, name: &str) -> bool {
+fn tree_has_replaced_image(b: &turbo_dom_layout::layout::boxgen::LayoutBox, name: &str) -> bool {
     let here = b
         .image
         .as_ref()
@@ -877,7 +877,7 @@ fn assert_qpdf_clean(name: &str, pdf: &[u8]) {
 // --------------------------------------------------------------------------
 
 /// Count the `Image` fragments in a galley subtree.
-fn count_images(f: &FragmentContent, kids: &[turbo_html2pdf_core::Fragment]) -> usize {
+fn count_images(f: &FragmentContent, kids: &[turbo_dom_layout::Fragment]) -> usize {
     let here = usize::from(matches!(f, FragmentContent::Image(_)));
     here + kids
         .iter()
@@ -890,7 +890,7 @@ fn layout_html_with_images_sizes_a_resolvable_img() {
     // A raw HTML string with an `<img>` whose bytes the resolver supplies is laid
     // out as an `Image` fragment (the caller then paints it); an unresolvable
     // `<img>` produces none.
-    use turbo_html2pdf_core::{layout_html_with_images, FontRegistry};
+    use turbo_dom_layout::{layout_html_with_images, FontRegistry};
     let resolver = MapResolver::new(vec![("pic.png", png_rgb_2x2())]);
     let images = ImageCtx {
         resolver: &resolver,
@@ -919,7 +919,7 @@ fn mask_image_box_emits_tinted_image_and_no_solid_background() {
     // Image fragment), and must NOT also paint a solid rectangle — otherwise the
     // icon glyph shows as a filled square. The tinted image fills the box even with
     // no flow content (an empty icon span sized only by width/height).
-    fn find_tinted(f: &turbo_html2pdf_core::Fragment) -> Option<(String, [u8; 4], f32, f32)> {
+    fn find_tinted(f: &turbo_dom_layout::Fragment) -> Option<(String, [u8; 4], f32, f32)> {
         if let FragmentContent::Image(p) = &f.content {
             if let Some(t) = p.tint {
                 return Some((p.name.clone(), [t.r, t.g, t.b, t.a], f.width, f.height));
@@ -927,7 +927,7 @@ fn mask_image_box_emits_tinted_image_and_no_solid_background() {
         }
         f.children.iter().find_map(find_tinted)
     }
-    fn any_solid_bg(f: &turbo_html2pdf_core::Fragment) -> bool {
+    fn any_solid_bg(f: &turbo_dom_layout::Fragment) -> bool {
         (matches!(
             &f.content,
             FragmentContent::Box {
@@ -972,7 +972,7 @@ fn mask_image_box_emits_tinted_image_and_no_solid_background() {
 }
 
 /// Depth-first: the width of the first fragment whose content is a raster image.
-fn first_image_frag(f: &turbo_html2pdf_core::Fragment) -> Option<(f32, f32)> {
+fn first_image_frag(f: &turbo_dom_layout::Fragment) -> Option<(f32, f32)> {
     if matches!(f.content, FragmentContent::Image(_)) {
         return Some((f.width, f.height));
     }
@@ -986,7 +986,7 @@ fn flex_row_img_item_sizes_to_intrinsic_not_zero() {
     // against a 0-width containing block (its `max-width:100%` clamping to 0) AND the
     // item placement flowed it as an empty container, so a logo / hero image
     // collapsed to nothing.
-    let nodes = vec![Node::Element(turbo_html2pdf_core::Element {
+    let nodes = vec![Node::Element(turbo_dom_layout::Element {
         tag: Tag::Html("div".into()),
         attrs: vec![],
         children: img_node("logo"),
@@ -1015,7 +1015,7 @@ fn flex_row_img_item_sizes_to_intrinsic_not_zero() {
 fn flex_img_item_with_explicit_width_uses_it() {
     // An `<img width="8">` flex item takes its explicit width (the `LengthPct::Px`
     // arm of the replaced-image probe), not the intrinsic 2px.
-    let nodes = vec![Node::Element(turbo_html2pdf_core::Element {
+    let nodes = vec![Node::Element(turbo_dom_layout::Element {
         tag: Tag::Html("div".into()),
         attrs: vec![],
         children: img_node("logo"),
@@ -1038,7 +1038,7 @@ fn percent_height_img_resolves_against_definite_parent() {
     // `<img height:100%>` in a fixed-height parent takes the parent's content height
     // (200px) — its `%` now resolves against the parent's definite height instead of
     // falling back to the 2px intrinsic. Width follows the 1:1 aspect ratio.
-    let nodes = vec![Node::Element(turbo_html2pdf_core::Element {
+    let nodes = vec![Node::Element(turbo_dom_layout::Element {
         tag: Tag::Html("div".into()),
         attrs: vec![],
         children: img_node("logo"),
@@ -1067,7 +1067,7 @@ fn percent_height_img_resolves_against_definite_parent() {
 fn percent_height_absolute_img_resolves_against_positioned_ancestor() {
     // A `position:absolute` `<img height:100%>` resolves against its nearest
     // positioned ancestor's definite height (`abs_cb_h`), not its parent's `cb_h`.
-    let nodes = vec![Node::Element(turbo_html2pdf_core::Element {
+    let nodes = vec![Node::Element(turbo_dom_layout::Element {
         tag: Tag::Html("div".into()),
         attrs: vec![],
         children: img_node("logo"),
@@ -1098,7 +1098,7 @@ fn flex_item_wrapping_img_sizes_to_img_intrinsic() {
     // <div.k1zIA><img.lnXdpd>). The item's max-content width must come from the
     // nested image's intrinsic width (2px) — not collapse to 0, which clamped the
     // logo to nothing.
-    let img = Node::Element(turbo_html2pdf_core::Element {
+    let img = Node::Element(turbo_dom_layout::Element {
         tag: Tag::Html("img".into()),
         attrs: vec![Attr {
             name: "src".into(),
@@ -1106,12 +1106,12 @@ fn flex_item_wrapping_img_sizes_to_img_intrinsic() {
         }],
         children: Vec::new(),
     });
-    let wrap = turbo_html2pdf_core::Element {
+    let wrap = turbo_dom_layout::Element {
         tag: Tag::Html("div".into()),
         attrs: vec![],
         children: vec![img],
     };
-    let nodes = vec![Node::Element(turbo_html2pdf_core::Element {
+    let nodes = vec![Node::Element(turbo_dom_layout::Element {
         tag: Tag::Html("div".into()),
         attrs: vec![],
         children: vec![Node::Element(wrap)],
@@ -1141,7 +1141,7 @@ fn flex_row_item_wrapping_img_natural_width_uses_intrinsic() {
     // A flex ROW measures each item's max-content via `natural_width`; a `<div>`
     // wrapping an `<img>` must contribute the image's intrinsic width (2px), else the
     // row (and the item) collapses. Exercises the replaced-image `natural_width` path.
-    let img = Node::Element(turbo_html2pdf_core::Element {
+    let img = Node::Element(turbo_dom_layout::Element {
         tag: Tag::Html("img".into()),
         attrs: vec![Attr {
             name: "src".into(),
@@ -1149,12 +1149,12 @@ fn flex_row_item_wrapping_img_natural_width_uses_intrinsic() {
         }],
         children: Vec::new(),
     });
-    let wrap = Node::Element(turbo_html2pdf_core::Element {
+    let wrap = Node::Element(turbo_dom_layout::Element {
         tag: Tag::Html("div".into()),
         attrs: vec![],
         children: vec![img],
     });
-    let nodes = vec![Node::Element(turbo_html2pdf_core::Element {
+    let nodes = vec![Node::Element(turbo_dom_layout::Element {
         tag: Tag::Html("div".into()),
         attrs: vec![],
         children: vec![wrap],

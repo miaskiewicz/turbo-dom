@@ -4,10 +4,10 @@
 
 #![cfg(feature = "print-color")]
 
-use turbo_html2pdf_core::layout::fragment::{Fragment, FragmentContent, NodeId};
-use turbo_html2pdf_core::layout::value::{parse_color, BorderEdges, Rgba};
-use turbo_html2pdf_core::paginate::{Page, PageGeometry};
-use turbo_html2pdf_core::{emit_pdf, EmitOptions, PageKind};
+use turbo_dom_layout::layout::fragment::{Fragment, FragmentContent, NodeId};
+use turbo_dom_layout::layout::value::{parse_color, BorderEdges, Rgba};
+use turbo_dom_layout::paginate::{Page, PageGeometry};
+use turbo_dom_layout::{emit_pdf, EmitOptions, PageKind};
 
 /// A solid-coloured box fragment of the given fill.
 fn box_fragment(background: Rgba) -> Fragment {

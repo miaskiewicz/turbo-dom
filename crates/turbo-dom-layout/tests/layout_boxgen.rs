@@ -1,10 +1,10 @@
 //! Box generation (§5.1): styled tree -> box tree, anonymous-block wrapping of
 //! inline runs (AC-5.1), `display:none` dropping, and `t:` directive markers.
 
-use turbo_html2pdf_core::layout::boxgen::*;
-use turbo_html2pdf_core::layout::value::Display;
-use turbo_html2pdf_core::node::{TKind, Tag};
-use turbo_html2pdf_core::{ComputedStyle, StyledElement, StyledNode};
+use turbo_dom_layout::layout::boxgen::*;
+use turbo_dom_layout::layout::value::Display;
+use turbo_dom_layout::node::{TKind, Tag};
+use turbo_dom_layout::{ComputedStyle, StyledElement, StyledNode};
 
 fn cs(pairs: &[(&str, &str)]) -> ComputedStyle {
     ComputedStyle::from_pairs(pairs.iter().map(|(k, v)| (k.to_string(), v.to_string())))
@@ -262,7 +262,7 @@ fn mask_shorthand_url_is_extracted_via_token_scan() {
 
 #[test]
 fn img_lazy_data_url_and_srcset_become_replaced_source() {
-    use turbo_html2pdf_core::node::Attr;
+    use turbo_dom_layout::node::Attr;
     let img = |attrs: &[(&str, &str)]| {
         StyledNode::Element(StyledElement {
             tag: Tag::Html("img".into()),
@@ -305,7 +305,7 @@ fn img_lazy_data_url_and_srcset_become_replaced_source() {
 
 #[test]
 fn input_button_value_renders_as_text() {
-    use turbo_html2pdf_core::node::Attr;
+    use turbo_dom_layout::node::Attr;
     let input = |ty: &str| {
         StyledNode::Element(StyledElement {
             tag: Tag::Html("input".into()),
