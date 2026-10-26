@@ -37,7 +37,8 @@ fn lay_out(html: &str) -> Result<Fragment, RenderError> {
 - `StyleOptions` / `LayoutOptions` / `HtmlOptions`: `accept_cmyk` (print colour),
   `atomic_internal_links` (`<a href="#x">` as its own box), `first_node_id`.
 - `layout_recorded` returns the galley plus `NodeSources` (box id → source element /
-  text node, table rows, id range) — html2pdf derives PDF/UA roles and links from it.
+  text node, table rows, the grid boxes of captioned tables, id range) — html2pdf derives
+  PDF/UA roles and links from it.
 - The string HTML entries (`layout_html`, `layout_boxes`) use no markers: `t:*` are
   ordinary unknown elements, as in a browser.
 - `live` — the live-DOM input ("surf mode"): an embedder that owns a live document
@@ -67,7 +68,11 @@ fn lay_out(html: &str) -> Result<Fragment, RenderError> {
   Also (turbo-dom#48/#49/#50/#53/#56): absolutely positioned `width: auto` boxes shrink to
   fit; `inline-flex` / `inline-grid` are inline-level; auto-layout collapsed tables merge
   borders; percentage columns take their share; spanning cells spread over their columns.
-  `<caption>` is not laid out yet (turbo-dom#51).
+  A table with a caption (`display: table-caption`, the UA style of `<caption>`) is a
+  table wrapper box (turbo-dom#51): the table's fragment holds the captions
+  (`caption-side: top` above, `bottom` below, in source order) and an anonymous grid
+  box (`NodeSources::table_grids`) stretched to the widest of the grid and the captions'
+  min-content, which carries the table's frame, background, `height` and rows.
 - `layout_snapshot::snapshot_{,html_}live_tree*` capture a snapshot of a `StyleInput`
   (identity paths index the styled forest).
 - `image` — the ONE image layer shared by the PDF emitter and turbo-dom-raster:

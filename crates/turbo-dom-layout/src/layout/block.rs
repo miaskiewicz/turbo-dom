@@ -196,7 +196,7 @@ fn clamp_width(mut bb: f32, bs: &BoxStyle, cb_width: f32, extra: f32) -> f32 {
     bb
 }
 
-fn border_box_width(bs: &BoxStyle, cb_width: f32) -> f32 {
+pub(crate) fn border_box_width(bs: &BoxStyle, cb_width: f32) -> f32 {
     let avail = (cb_width - bs.margin.horizontal()).max(0.0);
     let extra = bs.padding.horizontal() + bs.border.widths().horizontal();
     let bb = match bs.width.resolve(cb_width) {
@@ -1788,6 +1788,9 @@ fn layout_content(
         }
         BoxKind::Flex(kids) => super::flex::layout_flex(lb, kids, cx, cy, cw, bs.font_size, ctx),
         BoxKind::Grid(kids) => super::flex::layout_grid(lb, kids, cx, cy, cw, bs.font_size, ctx),
+        BoxKind::Table(kids) if super::table::is_wrapper(lb) => {
+            super::table::layout_wrapper(kids, cx, cy, cw, bs.font_size, ctx)
+        }
         BoxKind::Table(kids) => super::table::layout_table(lb, kids, cx, cy, cw, bs.font_size, ctx),
         BoxKind::Lines(items) => layout_lines(lb, items, bs, cx, cy, cw, ctx),
         BoxKind::Marker(_) => (Vec::new(), 0.0),
@@ -1939,6 +1942,15 @@ fn layout_box_sized_impl(
     if let Some(frag) = replaced_image_box(lb, bs, bx, by, bbw, ctx) {
         return frag;
     }
+    // A table wrapper box (a captioned table): its frame, background and heights are
+    // its grid box's (miaskiewicz/turbo-dom#51).
+    let wrapper;
+    let bs = if super::table::is_wrapper(lb) {
+        wrapper = super::table::wrapper_style(bs);
+        &wrapper
+    } else {
+        bs
+    };
     let bw = bs.border.widths();
     let content_x = bx + bw.left + bs.padding.left;
     let content_y = by + bw.top + bs.padding.top;

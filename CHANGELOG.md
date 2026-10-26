@@ -7,6 +7,26 @@ at the time); this file reconstructs them from history.
 
 ## [Unreleased]
 
+### Fixed — turbo-dom-layout table captions (P5b-W5, miaskiewicz/turbo-dom#51, Chrome 156 controls)
+Each fix is backed by a Chrome for Testing 156 control and lists the corpus outputs it
+changes in `tools/parity/expected/p5b-w5-turbo-dom-*.json`.
+- Table captions (#51): a `<caption>` (UA `caption { display: table-caption; text-align:
+  center }`; `caption-side` is inherited) was laid out as a row group — its block content
+  became grid rows, its text was dropped and it had no box. A table with captions is now
+  a table wrapper box (CSS Tables 3 §3.1, as Chrome lays it out): the `<table>`'s box (its
+  `getBoundingClientRect()` / `layoutBoxes`) holds the `caption-side: top` captions in
+  source order, an anonymous table grid box, then the `bottom` captions. The wrapper is
+  as wide as the grid or the widest caption's min-content margin box, whichever is wider,
+  and the grid stretches to it; each caption is a block formatting context at that width
+  with its own box, its margins inside the wrapper. The grid box carries the table's
+  border, padding, background, shadow, `height` and rows, so they no longer cover the
+  captions; margins, positioning and transforms stay on the wrapper. Every layout path
+  (PDF, screenshot, live). `NodeSources::table_grids` lists the grid boxes (no source
+  element; html2pdf tags their rows as the table's). Tables without a caption lay out as
+  before. Control: `caption-*` in `html-document`, `live-geometry` and the new pixel
+  control `scripts/paint-chrome-control.mjs` (`crates/turbo-dom-raster/tests/
+  paint_chrome.rs`).
+
 ### Fixed — `getComputedStyle` defaults and no injected `<title>` (P5b-X3, miaskiewicz/turbo-surf#36 items 1–2, Chrome 156 control)
 - turbo-dom-browser-env: `getComputedStyle` used to return `""` for `display`, `position`
   and `visibility` when no author rule applied; only `<button>` had UA values. It now

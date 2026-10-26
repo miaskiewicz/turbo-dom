@@ -209,6 +209,7 @@ const INHERITED: &[&str] = &[
     "list-style-position",
     "visibility",
     "image-orientation",
+    "caption-side",
 ];
 
 // --------------------------------------------------------------------------

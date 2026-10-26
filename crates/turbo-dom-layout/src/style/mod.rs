@@ -60,6 +60,7 @@ table { display: table; text-align: left }
 thead { display: table-header-group }
 tfoot { display: table-footer-group }
 tr { display: table-row }
+caption { display: table-caption; text-align: center }
 td, th { display: table-cell; padding: 1px }
 li { display: list-item }
 center { display: block; text-align: center }

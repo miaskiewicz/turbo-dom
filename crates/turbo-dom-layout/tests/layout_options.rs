@@ -169,3 +169,41 @@ fn markers_are_opaque_kept_and_unmatched_by_type_selectors() {
         "block marker laid out as a block box"
     );
 }
+
+/// miaskiewicz/turbo-dom#51: a captioned table is a table wrapper box. Its fragment holds
+/// the caption's and the anonymous grid box's (recorded in `table_grids`, unsourced), the
+/// grid's the rows; the table's background paints the grid only.
+#[test]
+fn recorded_sources_mark_the_grid_box_of_a_captioned_table() {
+    let tree = parse_html_tree(
+        "<body><table id=t style='background:#f00'><caption id=c>x</caption><tr id=r><td>c</td></tr></table><table><tr><td>d</td></tr></table></body>",
+    );
+    let laid = lay(&tree, "", LayoutOptions::default());
+    let id_of = |name: &str| {
+        laid.sources
+            .elements
+            .iter()
+            .find(|(_, &h)| tree.get_attribute(h, "id") == Some(name))
+            .map(|(id, _)| *id)
+            .unwrap()
+    };
+    assert_eq!(
+        laid.sources.table_grids.len(),
+        1,
+        "only the captioned table"
+    );
+    let grid = *laid.sources.table_grids.iter().next().unwrap();
+    assert!(!laid.sources.elements.contains_key(&grid));
+    let frags = fragments(&laid.galley);
+    let table = frags.iter().find(|f| f.node_id == id_of("t")).unwrap();
+    let kids: Vec<NodeId> = table.children.iter().map(|f| f.node_id).collect();
+    assert_eq!(kids, [id_of("c"), grid]);
+    let grid_frag = &table.children[1];
+    assert_eq!(grid_frag.children[0].node_id, id_of("r"));
+    let background = |f: &Fragment| match &f.content {
+        FragmentContent::Box { background, .. } => *background,
+        _ => None,
+    };
+    assert_eq!(background(table), None);
+    assert!(background(grid_frag).is_some());
+}

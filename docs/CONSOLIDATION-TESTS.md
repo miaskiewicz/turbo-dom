@@ -1174,6 +1174,15 @@ Declared behaviour changes (Chrome 156 controls), not moves:
 | turbo-dom-layout | `turbo_dom_layout<src/lib.rs>::live::chrome_tests::{inline_flex_and_grid_are_inline_level_like_chrome_156, absolutely_positioned_auto_widths_shrink_to_fit_like_chrome_156, percentage_columns_size_auto_tables_like_chrome_156, auto_layout_collapsed_tables_merge_borders_like_chrome_156, spanning_cells_spread_over_their_columns_like_chrome_156}`, `html_document_chrome<tests/html_document_chrome.rs>::(the same five)` | new (bugs found while fixing #28: turbo-dom#53, #48, #50, #49, #56; each test-first) |
 | turbo-dom-layout | `turbo_dom_layout<src/lib.rs>::layout::value::display_tests::inline_flex_and_grid_are_inline_level_until_blockified`, `::layout::flex::tests::grid_natural_sums_px_tracks_and_gaps`, `::layout::table::percent_tests::{percent_aware_total_matches_chromes_auto_table_max_content, fit_columns_gives_percentage_columns_their_share}` | new |
 
+## P5b-W5 (layout/raster bug fixes, turbo-dom#51/#52/#41/#55/#62/#63/#64): adapted and new tests
+
+Declared behaviour changes (Chrome 156 controls), not moves:
+
+| crate | test (binary::name) | category |
+|---|---|---|
+| turbo-dom-layout | `turbo_dom_layout<src/lib.rs>::live::chrome_tests::table_captions_lay_out_in_the_table_wrapper_like_chrome_156`, `html_document_chrome<tests/html_document_chrome.rs>::table_captions_lay_out_in_the_table_wrapper_like_chrome_156`, `layout_options<tests/layout_options.rs>::recorded_sources_mark_the_grid_box_of_a_captioned_table` | new (turbo-dom#51, test-first) |
+| turbo-dom-raster | `paint_chrome<tests/paint_chrome.rs>::table_captions_paint_outside_the_grid_like_chrome_156` | new (turbo-dom#51, Chrome 156 pixel control `scripts/paint-chrome-control.mjs`) |
+
 ## P5b-W2 — raster inline SVG on the tree (turbo-dom `consol/p5b-w2`)
 
 Every test id not listed keeps its result (turbo-dom-raster default and `--features avif`).

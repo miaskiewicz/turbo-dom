@@ -4309,7 +4309,7 @@
   {
    "id": "caption-text",
    "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><table data-cid=\"t\"><caption data-cid=\"c\">A rather long caption text that is wider than the table</caption><tr><td data-cid=\"td\"><div style=\"width:30px;height:10px\"></div></td></tr></table></body></html>",
-   "measure": "xy",
+   "measure": "x",
    "boxes": [
     {
      "cid": "t",

@@ -9,8 +9,10 @@
 //! edges onto a collapsed grid (each shared border counted once, half on each side,
 //! CSS 2.1 §17.6.2; the table's own border is the outer grid line) so table/row/cell
 //! boxes size correctly across a `colspan`; see the collapsed-border section below.
-//! Deferred (documented): `<caption>` (miaskiewicz/turbo-dom#51); a cell taller than
-//! its row span expands the last spanned row.
+//! A table with captions is a table wrapper box (CSS Tables 3 §3.1, as Chrome 156 lays it
+//! out; miaskiewicz/turbo-dom#51): box generation gives it the captions and one anonymous
+//! grid box (see [`layout_wrapper`]).
+//! Deferred (documented): a cell taller than its row span expands the last spanned row.
 
 use crate::style::ComputedStyle;
 use crate::tag::Attr;
@@ -21,8 +23,8 @@ use super::boxgen::{BoxKind, LayoutBox};
 use super::flex::natural_width;
 use super::fragment::{Fragment, FragmentContent, NodeId, RepeatKind};
 use super::value::{
-    parse_px, position_of, resolve_box_style, BorderEdges, Display, Edges, LengthPct, Position,
-    ResolveCtx, VAlign, DEFAULT_FONT_SIZE,
+    parse_px, position_of, resolve_box_style, BorderEdges, BoxStyle, Display, Edges, LengthPct,
+    Position, ResolveCtx, VAlign, DEFAULT_FONT_SIZE,
 };
 use crate::layout_snapshot::UsedBoxMetrics;
 
@@ -1156,11 +1158,160 @@ fn spaced_offsets(tracks: &[f32], gap: f32) -> Vec<f32> {
     out
 }
 
+// --------------------------------------------------------------------------
+// the table wrapper box (captions)
+// --------------------------------------------------------------------------
+
+/// The anonymous grid box among a table's children: `Some` for a table wrapper box.
+fn grid_of(items: &[LayoutBox]) -> Option<&LayoutBox> {
+    items.iter().find(|item| item.table_grid())
+}
+
+/// The rows and row groups of a table: its children, or its grid box's when the table is
+/// a table wrapper box.
+fn grid_items(items: &[LayoutBox]) -> &[LayoutBox] {
+    match grid_of(items).map(|grid| &grid.kind) {
+        Some(BoxKind::Table(rows)) => rows,
+        _ => items,
+    }
+}
+
+/// Whether a table's box is a table wrapper box (it has captions).
+pub(crate) fn is_wrapper(lb: &LayoutBox) -> bool {
+    matches!(&lb.kind, BoxKind::Table(items) if grid_of(items).is_some())
+}
+
+/// The widest caption's min-content margin box: the narrowest a table wrapper box can be
+/// (Chrome 156). `None` without captions.
+pub(crate) fn caption_min(items: &[LayoutBox], fonts: &FontRegistry) -> Option<f32> {
+    grid_of(items)?;
+    Some(
+        items
+            .iter()
+            .filter(|item| !item.table_grid())
+            .map(|caption| {
+                let bs = caption.resolved(ResolveCtx {
+                    parent_font_size: DEFAULT_FONT_SIZE,
+                    cb_width: 0.0,
+                });
+                super::flex::min_content_width(caption, fonts) + bs.margin.horizontal()
+            })
+            .fold(0.0_f32, f32::max),
+    )
+}
+
+/// [`caption_min`] as a content width of the table box whose frame is `style`'s, or
+/// `0` without captions.
+fn caption_floor(items: &[LayoutBox], style: &ComputedStyle, fonts: &FontRegistry) -> f32 {
+    caption_min(items, fonts).map_or(0.0, |min| {
+        let frame = resolve_box_style(
+            style,
+            ResolveCtx {
+                parent_font_size: DEFAULT_FONT_SIZE,
+                cb_width: 0.0,
+            },
+        );
+        min - frame.padding.horizontal() - frame.border.widths().horizontal()
+    })
+}
+
+/// The used style of a table wrapper box: the table's, without the frame, background,
+/// shadow and heights that belong to its grid box (they paint and size the grid).
+pub(crate) fn wrapper_style(bs: &BoxStyle) -> BoxStyle {
+    BoxStyle {
+        padding: Edges::default(),
+        border: BorderEdges::default(),
+        height: LengthPct::Auto,
+        min_height: LengthPct::Px(0.0),
+        max_height: LengthPct::Auto,
+        aspect_ratio: None,
+        border_radius: LengthPct::Px(0.0),
+        background: None,
+        box_shadow: None,
+        background_gradient: None,
+        ..bs.clone()
+    }
+}
+
+/// Whether a caption sits below the grid (`caption-side: bottom`).
+fn below(caption: &LayoutBox) -> bool {
+    caption.style.get("caption-side").map(str::trim) == Some("bottom")
+}
+
+/// Lay out a table wrapper box's content at `(cx, cy)`, `cw` wide (its border box: the
+/// wrapper has no frame): the `caption-side: top` captions in source order, the grid box
+/// stretched to `cw`, then the `bottom` captions. Each caption is a block formatting
+/// context at the wrapper's width, its margins inside the wrapper (Chrome 156). Returns
+/// the fragments and the content height.
+pub(crate) fn layout_wrapper(
+    items: &[LayoutBox],
+    cx: f32,
+    cy: f32,
+    cw: f32,
+    fs: f32,
+    ctx: &mut Ctx,
+) -> (Vec<Fragment>, f32) {
+    let mut out = Vec::with_capacity(items.len());
+    let mut y = cy;
+    let captions = || items.iter().filter(|item| !item.table_grid());
+    for caption in captions().filter(|c| !below(c)) {
+        y = place_caption(caption, (cx, y, cw, fs), ctx, &mut out);
+    }
+    if let Some(grid) = grid_of(items) {
+        let bs = grid.resolved(ResolveCtx {
+            parent_font_size: fs,
+            cb_width: cw,
+        });
+        let frag = block::layout_box_sized(grid, &bs, cx, y, cw, ctx);
+        y += frag.height;
+        out.push(frag);
+    }
+    for caption in captions().filter(|c| below(c)) {
+        y = place_caption(caption, (cx, y, cw, fs), ctx, &mut out);
+    }
+    (out, y - cy)
+}
+
+/// Lay out one caption at the top of `y` (`at` = `(cx, y, cw, parent font size)`);
+/// returns the y below its bottom margin.
+fn place_caption(
+    caption: &LayoutBox,
+    (cx, y, cw, fs): (f32, f32, f32, f32),
+    ctx: &mut Ctx,
+    out: &mut Vec<Fragment>,
+) -> f32 {
+    let bs = caption.resolved(ResolveCtx {
+        parent_font_size: fs,
+        cb_width: cw,
+    });
+    let width = block::border_box_width(&bs, cw);
+    let frag = block::layout_box_sized_isolated(
+        caption,
+        &bs,
+        cx + bs.margin.left,
+        y + bs.margin.top,
+        width,
+        ctx,
+    );
+    let next = y + bs.margin.vertical() + frag.height;
+    out.push(frag);
+    next
+}
+
 pub(crate) fn min_content_width(
     items: &[LayoutBox],
     style: &ComputedStyle,
     fonts: &FontRegistry,
 ) -> f32 {
+    let grid = grid_min_content(grid_items(items), style, fonts);
+    if grid_of(items).is_some() {
+        return grid.max(caption_floor(items, style, fonts));
+    }
+    grid
+}
+
+/// The grid's min-content (see [`min_content_width`]).
+fn grid_min_content(items: &[LayoutBox], style: &ComputedStyle, fonts: &FontRegistry) -> f32 {
     let rows = collect_rows(items);
     let (placed, ncols) = build_grid(&rows);
     if ncols == 0 {
@@ -1201,10 +1352,24 @@ pub(crate) fn max_content(
     style: &ComputedStyle,
     fonts: &FontRegistry,
 ) -> (f32, bool) {
+    let (grid, unbounded) = grid_max_content(grid_items(items), style, fonts);
+    if grid_of(items).is_some() {
+        // A caption widens the table to its min-content only (Chrome 156).
+        return (grid.max(caption_floor(items, style, fonts)), unbounded);
+    }
+    (grid, unbounded)
+}
+
+/// The grid's [`max_content`].
+fn grid_max_content(
+    items: &[LayoutBox],
+    style: &ComputedStyle,
+    fonts: &FontRegistry,
+) -> (f32, bool) {
     let rows = collect_rows(items);
     let (placed, ncols) = build_grid(&rows);
     if ncols == 0 || fixed_layout(style) && collapsed(style) {
-        return (min_content_width(items, style, fonts), false);
+        return (grid_min_content(items, style, fonts), false);
     }
     let pcts = column_percents(&placed, ncols);
     if collapsed(style) {

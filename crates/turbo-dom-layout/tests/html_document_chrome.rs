@@ -110,7 +110,7 @@ fn held_out(id: &str) -> bool {
         percent_column_case,
         collapsed_auto_case,
         colspan_case,
-        caption_case,
+        |id| id.starts_with("caption-"),
     ];
     groups.iter().any(|group| group(id))
 }
@@ -170,13 +170,19 @@ fn spanning_cells_spread_over_their_columns_like_chrome_156() {
     compare_cases(colspan_case);
 }
 
-/// miaskiewicz/turbo-dom#51: table captions in the table wrapper box.
+/// miaskiewicz/turbo-dom#51: table captions in the table wrapper box (less the cases
+/// that also need another open fix, [`pending_case`]).
 fn caption_case(id: &str) -> bool {
-    id.starts_with("caption-")
+    id.starts_with("caption-") && !pending_case(id)
+}
+
+/// Caption cases that also need an open fix: a `display: table` element's border-spacing
+/// (miaskiewicz/turbo-dom#63) and a table's extra height (miaskiewicz/turbo-dom#64).
+fn pending_case(id: &str) -> bool {
+    matches!(id, "caption-display-table-caption" | "caption-table-height")
 }
 
 #[test]
-#[ignore = "miaskiewicz/turbo-dom#51: fails until the fix"]
 fn table_captions_lay_out_in_the_table_wrapper_like_chrome_156() {
     compare_cases(caption_case);
 }

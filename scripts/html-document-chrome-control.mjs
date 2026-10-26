@@ -206,8 +206,9 @@ const CASES = [
   { id: "caption-float-table", html: DOC(S("body{margin:0}"), `<table data-cid="t" style="float:left;width:50px"><caption data-cid="c">${CAP(80, 10)}</caption><tr><td data-cid="td"><div style="width:30px;height:10px"></div></td></tr></table><div data-cid="d" style="overflow:hidden;height:10px"></div>`) },
   { id: "caption-nested-table", html: DOC(S("body{margin:0}"), `<table data-cid="o"><tr><td data-cid="oc"><table data-cid="t"><caption data-cid="c">${CAP(100, 10)}</caption><tr><td data-cid="td"><div style="width:30px;height:10px"></div></td></tr></table></td></tr></table>`) },
   { id: "caption-display-table-caption", html: DOC(S("body{margin:0}"), `<div data-cid="t" style="display:table"><div data-cid="c" style="display:table-caption">${CAP(100, 10)}</div><div style="display:table-row"><div data-cid="td" style="display:table-cell"><div style="width:30px;height:10px"></div></div></div></div>`) },
-  // A text caption wraps to its min-content (its widest word): font-dependent sizes.
-  { id: "caption-text", html: DOC(S("body{margin:0}"), `<table data-cid="t"><caption data-cid="c">A rather long caption text that is wider than the table</caption><tr><td data-cid="td"><div style="width:30px;height:10px"></div></td></tr></table>`), measure: "xy" },
+  // A text caption wraps to its min-content (its widest word): font-dependent sizes, so only
+  // the caption's box and the x edges are compared.
+  { id: "caption-text", html: DOC(S("body{margin:0}"), `<table data-cid="t"><caption data-cid="c">A rather long caption text that is wider than the table</caption><tr><td data-cid="td"><div style="width:30px;height:10px"></div></td></tr></table>`), measure: "x" },
 ];
 
 /** The RGB of a 1x1 PNG screenshot (any filter: a single pixel's filter adds 0). */

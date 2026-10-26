@@ -336,7 +336,6 @@ fn caption_case(id: &str) -> bool {
 }
 
 #[test]
-#[ignore = "miaskiewicz/turbo-dom#51: fails until the fix"]
 fn table_captions_lay_out_in_the_table_wrapper_like_chrome_156() {
     assert_matches_chrome(compare_cases(caption_case));
 }

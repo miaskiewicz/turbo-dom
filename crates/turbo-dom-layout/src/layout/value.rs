@@ -102,6 +102,9 @@ pub enum Display {
     TableCell,
     TableHeaderGroup,
     TableFooterGroup,
+    /// `table-caption`: a caption of its parent table, laid out in the table wrapper box
+    /// above or below the grid (miaskiewicz/turbo-dom#51); a block anywhere else.
+    TableCaption,
     ListItem,
 }
 
@@ -749,7 +752,8 @@ fn blockified(display: Display) -> Display {
         | Display::TableRow
         | Display::TableCell
         | Display::TableHeaderGroup
-        | Display::TableFooterGroup => Display::Block,
+        | Display::TableFooterGroup
+        | Display::TableCaption => Display::Block,
         other => other,
     }
 }
@@ -770,6 +774,7 @@ fn specified_display(s: &ComputedStyle) -> Display {
         "table-cell" => Display::TableCell,
         "table-header-group" => Display::TableHeaderGroup,
         "table-footer-group" => Display::TableFooterGroup,
+        "table-caption" => Display::TableCaption,
         "list-item" => Display::ListItem,
         _ => Display::Block,
     }
