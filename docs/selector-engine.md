@@ -76,7 +76,9 @@ of `style/cascade.rs`). Since S3b it uses this engine:
   stylesheet when Chrome knows them (`:hover`, `:focus`, `:visited`, `:default`,
   `:placeholder-shown`, `:valid`, …; `:dir()` until P5b). `:scope` (= `:root`), `:defined`,
   `:lang()` and `:-webkit-any()` were evaluated in stylesheets only at S3b (P5b moved
-  `:defined` and `:lang()` into the DOM APIs too). `::slotted()` matches only through a navigator that reports slot assignment
+  `:defined` and `:lang()` into the DOM APIs too; P5b-X6 added `:fullscreen` /
+  `:-webkit-full-screen` / `:-webkit-full-screen-ancestor`, which read the embedder-reported
+  `Tree::fullscreen_stack`, miaskiewicz/turbo-dom#58). `::slotted()` matches only through a navigator that reports slot assignment
   (a scaffold: turbo-surf's composed cascade still walks `:host()`/`::slotted()` with its
   own matcher, plan §1.4 follow-up).
 

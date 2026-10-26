@@ -265,6 +265,11 @@ enum Pseudo {
     Dir(Option<bool>),
     // `:defined`: not an (undefined) custom element — see `query_cascade::is_defined`.
     Defined,
+    // `:fullscreen` / `:-webkit-full-screen`: in the embedder-reported fullscreen stack;
+    // `:-webkit-full-screen-ancestor`: a shadow-including ancestor of its top
+    // (`Tree::fullscreen_stack`, miaskiewicz/turbo-dom#58).
+    Fullscreen,
+    FullscreenAncestor,
     // Cascade-only (produced by `parse_for_cascade`, never by the DOM-API parsers):
     // `:-webkit-any()` (matches like `:is()`, specificity of a pseudo-class).
     WebkitAny(Vec<Complex>),
@@ -985,6 +990,8 @@ fn parse_pseudo(name: &str, arg: Option<&str>) -> Pseudo {
         "selected" => Pseudo::Selected,
         "link" | "any-link" => Pseudo::Link,
         "defined" => Pseudo::Defined,
+        "fullscreen" | "-webkit-full-screen" => Pseudo::Fullscreen,
+        "-webkit-full-screen-ancestor" => Pseudo::FullscreenAncestor,
         "nth-child" | "nth-last-child" => {
             let arg = arg.unwrap_or("");
             let last = name == "nth-last-child";
@@ -1788,6 +1795,8 @@ fn matches_pseudo<N: Navigator + ?Sized>(nav: &N, h: Handle, p: &Pseudo) -> bool
         // from `h` per its leading combinator, scoped to `h`'s subtree.
         Pseudo::Has(list) => list.iter().any(|rel| has_match(nav, h, rel)),
         Pseudo::Defined => cascade::is_defined(tree, h),
+        Pseudo::Fullscreen => tree.is_fullscreen(h),
+        Pseudo::FullscreenAncestor => tree.is_fullscreen_ancestor(h),
         Pseudo::Lang(range) => cascade::lang_matches(tree, h, range),
         Pseudo::Dir(rtl) => rtl.is_some_and(|rtl| cascade::is_rtl(tree, h) == rtl),
         Pseudo::Unknown(_) => false,

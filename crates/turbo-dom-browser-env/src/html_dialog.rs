@@ -358,8 +358,6 @@ pub(super) fn install(scope: &mut v8::PinScope) {
 enum Pseudo {
     Modal,
     Open,
-    /// Every element in the document's fullscreen stack.
-    Fullscreen,
     /// A complex selector a forgiving `:is()`/`:where()` list drops for an invalid
     /// `:modal()`/`:open()`: it can never match.
     Never,
@@ -370,8 +368,6 @@ fn pseudo_kind(name: &str) -> Option<Pseudo> {
         Some(Pseudo::Modal)
     } else if name.eq_ignore_ascii_case("open") {
         Some(Pseudo::Open)
-    } else if name.eq_ignore_ascii_case("fullscreen") {
-        Some(Pseudo::Fullscreen)
     } else {
         None
     }
@@ -481,7 +477,9 @@ fn close_blocks(source: &str) -> String {
 
 /// Represent private dialog state as structural selectors within this exact DOM root, as
 /// `:popover-open` does. `:open` is the dialog/details open attribute (no select picker is
-/// ever shown); `:modal` is the is-modal flag, which outlives a removed `open` attribute.
+/// ever shown); `:modal` is the is-modal flag, which outlives a removed `open` attribute,
+/// and the document's fullscreen element (Chrome 156). `:fullscreen` and its prefixed forms
+/// match in the selector engine (`Tree::fullscreen_stack`, miaskiewicz/turbo-dom#58).
 pub(super) fn selector(scope: &mut v8::PinScope, anchor: Handle, source: &str) -> Option<String> {
     let mut input = cssparser::ParserInput::new(source);
     let mut parser = cssparser::Parser::new(&mut input);
@@ -494,8 +492,8 @@ pub(super) fn selector(scope: &mut v8::PinScope, anchor: Handle, source: &str) -
     if ranges.is_empty() {
         return Some(source.to_owned());
     }
-    let fullscreen_stack = user_activation_gates::fullscreen_elements();
-    let (modal, open, fullscreen) = DOM.with(|dom| {
+    let fullscreen_top = user_activation_gates::fullscreen_elements().last().copied();
+    let (modal, open) = DOM.with(|dom| {
         let dom = dom.borrow();
         let dom = dom.as_ref().unwrap();
         let tree = &dom.tree;
@@ -511,8 +509,10 @@ pub(super) fn selector(scope: &mut v8::PinScope, anchor: Handle, source: &str) -
             .dialog
             .modal
             .iter()
-            .filter(|&&entry| html_popover::selector_root(tree, entry) == root)
-            .map(|&entry| html_popover::selector_path(tree, entry))
+            .copied()
+            .chain(fullscreen_top)
+            .filter(|&entry| html_popover::selector_root(tree, entry) == root)
+            .map(|entry| html_popover::selector_path(tree, entry))
             .collect::<Vec<_>>();
         let mut open = Vec::new();
         let mut stack = vec![root];
@@ -524,16 +524,7 @@ pub(super) fn selector(scope: &mut v8::PinScope, anchor: Handle, source: &str) -
             }
             stack.extend(tree.children(node));
         }
-        let fullscreen = fullscreen_stack
-            .iter()
-            .filter(|&&entry| html_popover::selector_root(tree, entry) == root)
-            .map(|&entry| html_popover::selector_path(tree, entry))
-            .collect::<Vec<_>>();
-        (
-            replacement(modal),
-            replacement(open),
-            replacement(fullscreen),
-        )
+        (replacement(modal), replacement(open))
     });
     let mut result = String::new();
     let mut start = 0;
@@ -542,7 +533,6 @@ pub(super) fn selector(scope: &mut v8::PinScope, anchor: Handle, source: &str) -
         result.push_str(match pseudo {
             Pseudo::Modal => &modal,
             Pseudo::Open => &open,
-            Pseudo::Fullscreen => &fullscreen,
             Pseudo::Never => ":not(*)",
         });
         start = to;

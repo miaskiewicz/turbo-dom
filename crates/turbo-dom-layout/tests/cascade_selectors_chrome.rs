@@ -24,8 +24,8 @@ use turbo_dom::{Handle, Tree};
 use turbo_dom_layout::{parse_html_tree, style_html_tree, HtmlOptions, StyledNode};
 
 /// P5b items not fixed yet (miaskiewicz/turbo-dom#18, #21): skipped until their fixing
-/// commit removes them here. miaskiewicz/turbo-dom#58: the fullscreen pseudo-classes.
-const OPEN: &[&str] = &["fullscreen"];
+/// commit removes them here. All P5b-X items have landed.
+const OPEN: &[&str] = &[];
 
 fn fixture() -> Value {
     let path = concat!(

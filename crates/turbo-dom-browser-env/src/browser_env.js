@@ -267,11 +267,13 @@
     var position = computedNativeMatches(el, '[popover]') || layer === 'modal' ? 'fixed' : name === 'dialog' ? 'absolute' : 'static';
     return { display: display, position: position, topLayer: layer !== '' };
   }
-  // turbo-dom#30: why `el` is in the top layer — 'modal' (a dialog shown with showModal(), which
-  // matches :modal), 'popover' (an open popover) — or '' when it is not.
+  // turbo-dom#30, #58: why `el` is in the top layer — 'modal' (a dialog shown with showModal(),
+  // which matches :modal), 'fullscreen' (in the fullscreen stack; the root element takes no
+  // fullscreen UA values in Chrome 156), 'popover' (an open popover) — or '' when it is not.
   function computedTopLayer(el){
     var namespace = '', tag = '';
     try { namespace = cssApply(computedStyleNativeNamespace, el, []); tag = cssApply(computedStyleNativeTag, el, []); } catch(e){}
+    if (computedNativeMatches(el, ':fullscreen:not(:root)')) return 'fullscreen';
     if (namespace !== 'http://www.w3.org/1999/xhtml') return '';
     if (tag === 'DIALOG' && computedNativeMatches(el, ':modal')) return 'modal';
     return computedNativeMatches(el, '[popover]') && computedNativeMatches(el, ':popover-open') ? 'popover' : '';
@@ -304,8 +306,12 @@
   var modalDialogUserAgent = { 'overflow': 'auto', 'top': '0px', 'bottom': '0px', 'visibility': 'visible' };
   function backdropUserAgent(layer){
     var inset = layer ? '0px' : 'auto';
-    return { 'top': inset, 'right': inset, 'bottom': inset, 'left': inset, 'background-color': layer === 'modal' ? 'rgba(0, 0, 0, 0.1)' : 'rgba(0, 0, 0, 0)' };
+    return { 'top': inset, 'right': inset, 'bottom': inset, 'left': inset, 'background-color': layer === 'modal' ? 'rgba(0, 0, 0, 0.1)' : layer === 'fullscreen' ? 'rgb(0, 0, 0)' : 'rgba(0, 0, 0, 0)' };
   }
+  // Chrome 156 fullscreen.css `:not(:root):fullscreen` (turbo-dom#58): object-fit is an
+  // ordinary UA declaration, the rest are !important and beat every author declaration.
+  var fullscreenUserAgent = { 'object-fit': 'contain' };
+  var fullscreenImportant = { 'position': 'fixed', 'inset': '0px', 'margin': '0px', 'box-sizing': 'border-box', 'min-width': '0px', 'max-width': 'none', 'min-height': '0px', 'max-height': 'none', 'width': '100%', 'height': '100%', 'transform': 'none' };
   // Split a selector list at its top-level commas (outside (), [] and strings).
   function selectorListItems(text){
     var items = [], depth = 0, quote = '', start = 0;
@@ -574,7 +580,8 @@
     // rule (including a universal selector) and inline value takes precedence.
     var ua = null, layer = '';
     try { if(pseudo||cssApply(computedStyleNativeConnected,el,[]))layer=computedTopLayer(el); } catch(e){}
-    try { if(pseudo==='backdrop')ua=backdropUserAgent(layer);else if(info)ua=info.ua;else if(!pseudo&&layer==='modal')ua=modalDialogUserAgent;else if(!pseudo&&cssApply(computedStyleNativeNamespace,el,[])==='http://www.w3.org/1999/xhtml'&&cssApply(computedStyleNativeConnected,el,[])){var fontContext=computedFontContext(el);if(fontContext&&fontContext[4])ua=formControlUserAgent(el,cssApply(computedStyleNativeTag,el,[]));} } catch(e){}
+    try { if(pseudo==='backdrop')ua=backdropUserAgent(layer);else if(info)ua=info.ua;else if(!pseudo&&layer==='modal')ua=modalDialogUserAgent;else if(!pseudo&&cssApply(computedStyleNativeNamespace,el,[])==='http://www.w3.org/1999/xhtml'&&cssApply(computedStyleNativeConnected,el,[])){var fontContext=computedFontContext(el);if(fontContext&&fontContext[4])ua=formControlUserAgent(el,cssApply(computedStyleNativeTag,el,[]));}
+      if(!pseudo&&layer==='fullscreen')ua=Object.assign({},ua||{},fullscreenUserAgent); } catch(e){}
     if(ua){Object.keys(ua).forEach(function(name){setProp(name,ua[name]);});uaValues=Object.create(null);Object.keys(decl).forEach(function(name){if(typeof decl[name]==='string')uaValues[name]=decl[name];});}
     try {
       // Element-backed pseudo-elements the element does not have see no author rules.
@@ -604,8 +611,10 @@
     // overlay inline style (own props React/components set: background, height, display, ...)
     var st = !pseudo && el && __ns.makeInlineStyleDeclaration(el);
     if (st) applyDeclarations(declarationRecord(st));
-    // !important UA declarations (::placeholder pointer-events) beat every author one.
-    if (info && info.important) Object.keys(info.important).forEach(function(name){ delete priorities[name]; setProp(name, info.important[name], true); });
+    // !important UA declarations (::placeholder pointer-events, the fullscreen element's box)
+    // beat every author one.
+    var important = info ? info.important : !pseudo && layer === 'fullscreen' ? fullscreenImportant : null;
+    if (important) Object.keys(important).forEach(function(name){ setProp(name, important[name], true); });
     if (sink) { var cascaded = { __proto__: null }; Object.keys(decl).forEach(function(name){ if (typeof decl[name] === 'string' && (name.slice(0, 2) === '--' || name === name.toLowerCase())) cascaded[name] = decl[name]; }); sink.values = cascaded; return null; }
     // Inherited values come from the composed parent's snapshot in this read, so
     // CSSOM edits to document sheets reach descendants. Native cascade only adds
@@ -724,7 +733,8 @@
       if ((raw === '' || raw === 'auto') && axis === 'width') return usedPx(parent, axis, depth + 1);
       return null;
     };
-    if (!pseudo) try {
+    // The fullscreen element's 100% sizes are the viewport's (unresolved here).
+    if (!pseudo && layer !== 'fullscreen') try {
       ['width', 'height'].forEach(function(axis){
         var raw = decl[axis];
         if (typeof raw === 'string' && /^-?\d+(?:\.\d+)?%$/.test(raw.trim())) {

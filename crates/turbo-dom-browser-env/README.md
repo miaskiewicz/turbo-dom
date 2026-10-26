@@ -169,6 +169,22 @@ computes `absolute`. `getComputedStyle(el, '::backdrop')` computes the backdrop:
 inside it (`rgba(0, 0, 0, 0.1)` behind a modal dialog), author `::backdrop` rules,
 inheritance from the element. Control: case `dialog-top-layer` of the same file.
 
+Fullscreen (turbo-dom#58): `requestFullscreen()` with the embedder's user activation
+(`set_activation_host`; each request consumes it) puts the element in the document's
+fullscreen stack, which the binding reports to the tree (`Tree::set_fullscreen_stack`):
+the selector engine matches `:fullscreen` / `:-webkit-full-screen` (every stacked element)
+and `:-webkit-full-screen-ancestor` (the top's shadow-including ancestors) everywhere,
+stylesheets and the shadow-scoped native cascade included; `:modal` also matches the
+fullscreen element. A fullscreen element other than the root computes Chrome's
+`:not(:root):fullscreen` values — `position: fixed`, `inset: 0`, `margin: 0`,
+`box-sizing: border-box`, `min-*: 0`, `max-*: none`, `width` / `height: 100%` (left
+unresolved), `transform: none`, all `!important`, and `object-fit: contain` — and its
+`::backdrop` is fixed at inset 0 with `rgb(0, 0, 0)`. `fullscreenchange` /
+`fullscreenerror` fire as before. Control: case `fullscreen` (async; the collector's
+`__cdpGesture()` is a trusted CDP click). Known gaps, filed: composed events stop at the
+shadow root (turbo-dom#66), disconnected elements keep author values (turbo-dom#67),
+document rules reach shadow trees (turbo-dom#68).
+
 `getComputedStyle(el, pseudoElt)` parses `pseudoElt` like Chrome (turbo-dom#47):
 `::before` / `::after` (and `:before` / `:after` / bare `before` / `after`) compute
 the pseudo-element (own rules, inheritance from the element, `display: inline`

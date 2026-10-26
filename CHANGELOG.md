@@ -7,6 +7,29 @@ at the time); this file reconstructs them from history.
 
 ## [Unreleased]
 
+### Fixed — fullscreen top layer (P5b-X6, miaskiewicz/turbo-dom#58, Chrome 156 controls)
+- turbo-dom: `Tree::set_fullscreen_stack` / `fullscreen_stack` / `fullscreen_element` /
+  `is_fullscreen` / `is_fullscreen_ancestor`. The selector engine (DOM APIs, cascade,
+  `rtdom::cascade`) now evaluates `:fullscreen` / `:-webkit-full-screen` (the elements in
+  the stack) and `:-webkit-full-screen-ancestor` (shadow-including ancestors of the top). They
+  used to be never-matching, and `:-webkit-full-screen-ancestor` was rejected although Chrome
+  accepts it. A tree without a reported stack matches nothing, so static documents, html2pdf
+  and raster are unchanged. npm `selectors.mjs` accepts `:-webkit-full-screen-ancestor` (never
+  matching). Control: selector case `fullscreen` of
+  `crates/turbo-dom/tests/fixtures/cascade_selectors_chrome156.json`.
+- turbo-dom-browser-env:
+  - The fullscreen stack is reported to the tree, and `:modal` also matches the
+    fullscreen element.
+  - A fullscreen element (not the root) computes Chrome's `:not(:root):fullscreen` UA
+    values: `position: fixed`, `inset: 0`, `margin: 0`, `box-sizing: border-box`, min / max
+    sizes, `width` / `height: 100%` and `transform: none`, all `!important`, plus
+    `object-fit: contain`.
+  - Its `::backdrop` is fixed at inset 0 and black.
+- Control: async case `fullscreen` of `src/computed_defaults_chrome156.json` (user
+  activation through the collector's trusted CDP click `__cdpGesture()`). Known gaps, filed:
+  #66 (composed events stop at the shadow root), #67 (disconnected elements keep author
+  values), #68 (document rules reach shadow trees).
+
 ### Fixed — UA-styled pseudo-elements in `getComputedStyle` (P5b-X6, miaskiewicz/turbo-dom#47, Chrome 156 control)
 - turbo-dom-browser-env: `getComputedStyle(el, pseudoElt)` computed only `::before`,
   `::after` and `::backdrop`; the other pseudo-elements read the element's style. Every

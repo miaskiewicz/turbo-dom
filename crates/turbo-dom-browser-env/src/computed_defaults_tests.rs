@@ -45,6 +45,11 @@ fn probe_activation(
 /// Run the probe over `html`; an async case (`fullscreen`) settles over a FIFO task queue
 /// standing in for timers, with `__cdpGesture()` granting user activation.
 fn probe(html: &str) -> serde_json::Value {
+    run(html, PROBE)
+}
+
+/// Run `source` (an expression, possibly a promise) in `html` with the probe harness.
+fn run(html: &str, source: &str) -> serde_json::Value {
     super::tests::init_v8();
     let isolate = &mut v8::Isolate::new(Default::default());
     v8::scope!(let scope, isolate);
@@ -60,7 +65,7 @@ fn probe(html: &str) -> serde_json::Value {
     capture_popover_scheduler(scope);
     let code = format!(
         "Promise.resolve({}).then(JSON.stringify)",
-        PROBE.trim().trim_end_matches(';')
+        source.trim().trim_end_matches(';')
     );
     let code = v8::String::new(scope, &code).unwrap();
     v8::tc_scope!(let scope, scope);
@@ -83,12 +88,19 @@ fn probe(html: &str) -> serde_json::Value {
     serde_json::from_str(&value).unwrap()
 }
 
-/// Flatten `value` into `path = json` rows so a mismatch names the element and property.
+/// Flatten `value` into `path = json` rows so a mismatch names the element and property
+/// (array items by index).
 fn rows(prefix: &str, value: &serde_json::Value, out: &mut Vec<(String, String)>) {
     match value {
         serde_json::Value::Object(map) => {
             for (key, value) in map {
                 rows(&format!("{prefix}.{key}"), value, out);
+            }
+        }
+        serde_json::Value::Array(items) => {
+            out.push((format!("{prefix}.length"), items.len().to_string()));
+            for (index, value) in items.iter().enumerate() {
+                rows(&format!("{prefix}.{index}"), value, out);
             }
         }
         _ => out.push((prefix.to_owned(), value.to_string())),
@@ -238,13 +250,36 @@ fn form_control_fonts_match_chrome156_control() {
 /// `:not(:root):fullscreen` UA values, the black fixed `::backdrop`, fullscreenchange /
 /// fullscreenerror, the root element, removal, a dialog, a shadow tree (case `fullscreen`).
 #[test]
-#[ignore = "turbo-dom#58: fails until the fix"]
 fn fullscreen_matches_chrome156_control() {
     let found = mismatches(|id| id == "fullscreen");
+    let unexpected: Vec<_> = found
+        .iter()
+        .filter(|row| !FULLSCREEN_KNOWN_GAPS.iter().any(|gap| row.starts_with(gap)))
+        .collect();
+    let resolved: Vec<_> = FULLSCREEN_KNOWN_GAPS
+        .iter()
+        .filter(|gap| !found.iter().any(|row| row.starts_with(*gap)))
+        .collect();
     assert!(
-        found.is_empty(),
-        "{} mismatches:\n{}",
-        found.len(),
-        found.join("\n")
+        unexpected.is_empty() && resolved.is_empty(),
+        "{} unexpected mismatches:\n{}\nresolved gaps: {resolved:?}",
+        unexpected.len(),
+        unexpected
+            .iter()
+            .map(|row| row.as_str())
+            .collect::<Vec<_>>()
+            .join("\n")
     );
 }
+
+/// Case `fullscreen` rows the binding does not reproduce yet, each a filed issue:
+/// - turbo-dom#66: composed events stop at the shadow root, so the fullscreenchange of an
+///   element in a shadow tree never reaches the document (`shadow.1`, the event log);
+/// - turbo-dom#67: a disconnected element still reports its author values (`removed.2`);
+/// - turbo-dom#68: document rules reach elements in shadow trees (`shadow.4`: the document's
+///   `:fullscreen { opacity: 0.5 }`).
+const FULLSCREEN_KNOWN_GAPS: &[&str] = &[
+    "fullscreen.fullscreen.shadow.1.",
+    "fullscreen.fullscreen.removed.2:",
+    "fullscreen.fullscreen.shadow.4:",
+];

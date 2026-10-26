@@ -236,7 +236,9 @@ package or publish workflow.
   invalid selector throws `SyntaxError`). `:defined` reads `Tree::custom_element_state` (creation-time
   state unless an embedder — the V8 binding — reports an upgrade); the npm engine reads the same state
   from `src/runtime/custom-elements.mjs` (its registry upgrades / constructs like Chrome; both checked
-  against `custom_elements_defined_chrome156.json`); `rtdom::cascade` / `cascade.mjs` rank
+  against `custom_elements_defined_chrome156.json`); `:fullscreen` / `:-webkit-full-screen` /
+  `:-webkit-full-screen-ancestor` read `Tree::fullscreen_stack` (empty unless the binding reports
+  one; the npm engine never matches them, turbo-dom#58); `rtdom::cascade` / `cascade.mjs` rank
   rules by each item's Selectors 4 `specificity()`. See `docs/selector-engine.md`.
 - **Selector parse cache** (`__selectorCache` in selectors.mjs) memoizes selector STRING → AST.
   Pure (DOM-independent) → no mutation invalidation. Never cache *results* without it.
