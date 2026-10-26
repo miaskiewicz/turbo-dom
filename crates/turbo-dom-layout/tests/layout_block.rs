@@ -11,7 +11,7 @@ use turbo_dom_layout::layout::block::layout_tree;
 use turbo_dom_layout::layout::boxgen::build_box_tree;
 use turbo_dom_layout::layout::fragment::{Fragment, FragmentContent};
 use turbo_dom_layout::layout::value::BreakRule;
-use turbo_dom_layout::node::Tag;
+use turbo_dom_layout::tag::Tag;
 use turbo_dom_layout::text::FontRegistry;
 use turbo_dom_layout::{ComputedStyle, Diagnostics, StyledElement, StyledNode};
 

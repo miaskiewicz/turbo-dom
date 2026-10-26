@@ -42,16 +42,15 @@ svg-rasterize = ["dep:resvg"]
 # `cssom_view::scroll`), which turbo-surf returns to page script.
 serde = ["dep:serde"]
 
-# Test fixtures for downstream crates' tests (`FontFace::collection_fixture_faces`). Never
-# enable in a production build.
+# Test fixtures for this crate's and downstream crates' tests (`test_support`: font
+# fixtures from `assets/fonts`, `ComputedStyle` pairs, tree literals;
+# `FontFace::collection_fixture_faces`). Never enable in a production build.
 test-support = []
 
 [dependencies]
 # The DOM the cascade styles and lays out directly (`style::TreeView`).
 turbo-dom = { path = "../turbo-dom", version = "0.5.8" }
 thiserror = "2"
-html5ever = "0.39.0"
-markup5ever_rcdom = "0.39.0"
 rustybuzz = "0.20.1"
 self_cell = "1"
 unicode-linebreak = "0.1.5"
@@ -72,3 +71,7 @@ core-foundation = "0.9"
 [dev-dependencies]
 sha2 = "0.10"
 serde_json = { version = "1", features = ["preserve_order", "float_roundtrip"] }
+# The integration tests use the crate's own `test-support` helpers (font fixtures, the
+# test-only tree literals); `default-features = false` so the test build keeps exactly
+# the features the command line asked for (`--no-default-features` stays font-less).
+turbo-dom-layout = { path = ".", default-features = false, features = ["test-support"] }

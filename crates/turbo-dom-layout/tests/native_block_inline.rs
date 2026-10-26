@@ -5,9 +5,9 @@ use turbo_dom_layout::layout_snapshot::{
     snapshot_html_live_tree_with_native_text, GeometryKind, LayoutSnapshot, NativeTextOptions,
     SnapshotInputs, SourceId, SourceIdentity,
 };
-use turbo_dom_layout::{
-    build_cascade, parse_html, Diagnostics, FontRegistry, ImageCtx, NoImages, Node,
-};
+use turbo_dom_layout::test_support::literal;
+use turbo_dom_layout::test_support::literal::{parse_html, Node};
+use turbo_dom_layout::{build_cascade, Diagnostics, FontRegistry, ImageCtx, NoImages};
 
 const CASES: [(&str, &str); 6] = [
     ("exactOneBlock", "<a><h3>Old result</h3></a>"),
@@ -38,7 +38,7 @@ fn identities(
     }
 }
 fn record_names(
-    element: &turbo_dom_layout::Element,
+    element: &turbo_dom_layout::test_support::literal::Element,
     id: SourceId,
     names: &mut HashMap<String, SourceId>,
 ) {
@@ -74,7 +74,7 @@ fn capture_with_partial_identities(
 ) -> Result<Captured, turbo_dom_layout::layout_snapshot::SvgSnapshotError> {
     let html = format!("<div id=rso>{markup}</div><button id=dismiss>Reject</button><input name=q type=hidden value=hidden><form><textarea name=q></textarea><button>Search</button></form>");
     let element = |tag: &str, children| {
-        Node::Element(turbo_dom_layout::Element {
+        Node::Element(turbo_dom_layout::test_support::literal::Element {
             tag: turbo_dom_layout::Tag::Html(tag.into()),
             attrs: Vec::new(),
             children,
@@ -98,7 +98,7 @@ fn capture_with_partial_identities(
         resolver: &NoImages,
         body_height: None,
     };
-    let snapshot = snapshot_html_live_tree_with_native_text(&nodes, &ids,
+    let snapshot = snapshot_html_live_tree_with_native_text(&literal::tree(&nodes).input(), &ids,
         &build_cascade("body{margin:8px;font-family:serif}head,style,script,title,meta,link,base,noscript{display:none}button{font-family:Arial;font-size:13.3333px;line-height:normal;padding:1px 6px;border:2px solid;box-sizing:border-box}", "", Default::default()),
         &NativeTextOptions { original_text: &[], svg_viewports: &[], layout_scale: 2.0 },
         &SnapshotInputs { width:1280.0, height:800.0, fonts:fonts(), images:&images },

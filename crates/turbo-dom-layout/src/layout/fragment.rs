@@ -7,7 +7,7 @@
 //! Deferred to later phases (added when first populated): the footnote/running-
 //! element payloads on `BreakMeta` (Phases 7/8).
 
-use crate::node::MarkerKind;
+use crate::tag::MarkerKind;
 use crate::text::FontFace;
 
 use super::value::{BorderEdges, BreakRule, Rgba};

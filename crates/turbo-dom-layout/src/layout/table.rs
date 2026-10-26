@@ -13,8 +13,8 @@
 //! still lay out with each cell's full borders); a cell taller than its row span
 //! expands the last spanned row.
 
-use crate::node::Attr;
 use crate::style::ComputedStyle;
+use crate::tag::Attr;
 use crate::text::FontRegistry;
 
 use super::block::{self, Ctx};

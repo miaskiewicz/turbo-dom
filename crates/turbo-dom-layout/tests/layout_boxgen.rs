@@ -6,7 +6,7 @@
 
 use turbo_dom_layout::layout::boxgen::*;
 use turbo_dom_layout::layout::value::Display;
-use turbo_dom_layout::node::Tag;
+use turbo_dom_layout::tag::Tag;
 use turbo_dom_layout::{ComputedStyle, StyledElement, StyledNode};
 
 fn cs(pairs: &[(&str, &str)]) -> ComputedStyle {
@@ -216,7 +216,7 @@ fn mask_shorthand_url_is_extracted_via_token_scan() {
 
 #[test]
 fn img_lazy_data_url_and_srcset_become_replaced_source() {
-    use turbo_dom_layout::node::Attr;
+    use turbo_dom_layout::tag::Attr;
     let img = |attrs: &[(&str, &str)]| {
         StyledNode::Element(StyledElement {
             tag: Tag::Html("img".into()),
@@ -260,7 +260,7 @@ fn img_lazy_data_url_and_srcset_become_replaced_source() {
 
 #[test]
 fn input_button_value_renders_as_text() {
-    use turbo_dom_layout::node::Attr;
+    use turbo_dom_layout::tag::Attr;
     let input = |ty: &str| {
         StyledNode::Element(StyledElement {
             tag: Tag::Html("input".into()),

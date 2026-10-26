@@ -1,9 +1,9 @@
 //! The cascade over a turbo-dom [`Tree`] — the "html2pdf mode" style input.
 //!
-//! [`style_input`] styles a [`Tree`] directly (no copy into the legacy
-//! [`Node`](crate::Node) tree) and produces exactly the [`StyledNode`] tree the
-//! legacy input produced for the same document, plus a `source` handle on every
-//! element and text node. The view reproduces the legacy html5ever conversion:
+//! [`style_input`] styles a [`Tree`] directly and produces the [`StyledNode`] tree,
+//! with a `source` handle on every element and text node. The view reproduces the
+//! html5ever conversion the pre-consolidation owned-node input used (its
+//! equivalence was gated through consolidation S2–S4):
 //!
 //! - only elements and text are content: comments, processing instructions,
 //!   doctypes and `<template>` content (a document-fragment child) are skipped;
@@ -17,7 +17,7 @@
 //! roots of their own flow (no ancestor contexts, a default parent style, matching
 //! cut off at the scope root — template body flow, footnotes, regions), and
 //! [`Roots::Shell`] styles the `<body>` content under match-only `<html>`/`<body>`
-//! shells exactly as the legacy HTML path did (the shells sit at the root
+//! shells exactly as the pre-consolidation HTML path did (the shells sit at the root
 //! position with no preceding siblings and match `:empty`; only body content is
 //! styled; content positions are computed after stripping and comment removal).
 //!
@@ -37,12 +37,12 @@ use super::{
     resolve_style, tag_key, Attrs, Cascade, ComputedStyle, StyledElement, StyledNode, StyledText,
     Subject,
 };
-use crate::node::{Attr, Element, MarkerClassifier, MarkerKind, Node, Tag};
+use crate::tag::{Attr, MarkerClassifier, MarkerKind, Tag};
 
 /// Elements whose content is not visible page content (their bodies are CSS/JS/
 /// metadata, collected separately or dropped) — removed by
 /// [`TreeView::strip_non_visual`].
-pub(crate) fn is_non_visual(name: &str) -> bool {
+fn is_non_visual(name: &str) -> bool {
     matches!(
         name.to_ascii_lowercase().as_str(),
         "style" | "script" | "head" | "title" | "meta" | "link" | "noscript" | "template"
@@ -158,7 +158,7 @@ impl<'t> TreeView<'t> {
 
     /// Depth-first (document order) search of the whole document for the first
     /// element with local name `name`, over every child except `<template>`
-    /// content — the lookup the legacy conversion used to find `<html>`/`<body>`.
+    /// content — how the HTML path finds `<html>`/`<body>`.
     #[must_use]
     pub fn find_element(&self, name: &str) -> Option<Handle> {
         let mut pending = vec![self.tree.root()];
@@ -178,29 +178,6 @@ impl<'t> TreeView<'t> {
             pending.extend(children.into_iter().rev());
         }
         None
-    }
-
-    /// The legacy [`Node`] copy of the kept content under `roots` (kept roots only):
-    /// what the legacy conversion produced for the same document. A bridge for
-    /// embedders and tests that still consume [`Node`]s.
-    #[must_use]
-    pub fn to_nodes(&self, roots: &[Handle]) -> Vec<Node> {
-        roots
-            .iter()
-            .filter(|&&h| self.is_kept(h))
-            .map(|&h| self.node_copy(h))
-            .collect()
-    }
-
-    fn node_copy(&self, h: Handle) -> Node {
-        if self.tree.node_type(h) == NodeType::Text {
-            return Node::Text(self.text(h).into_owned());
-        }
-        Node::Element(Element {
-            tag: self.tag(h),
-            attrs: self.attrs(h),
-            children: self.to_nodes(&self.children(h)),
-        })
     }
 
     /// The element's local name as the matcher sees it (`None` for markers, which
@@ -260,7 +237,7 @@ pub struct SiblingPosition {
 }
 
 /// A shell's position: index 0 of one (so `:first-child`/`:last-child` are false and
-/// `:only-child` true, exactly as the legacy shells matched).
+/// `:only-child` true, exactly as the pre-consolidation shells matched).
 const SHELL_POSITION: SiblingPosition = SiblingPosition {
     index: 0,
     of_type_index: 0,
@@ -514,11 +491,7 @@ impl SelectorNavigator for Navigator<'_, '_> {
 }
 
 /// Style a [`StyleInput`] under `cascade` into the styled tree (see the module
-/// docs). Equal — up to the `source` fields — to the legacy [`style_tree`] /
-/// [`style_tree_with_roots`] over the legacy conversion of the same document.
-///
-/// [`style_tree`]: super::style_tree
-/// [`style_tree_with_roots`]: super::style_tree_with_roots
+/// docs).
 #[must_use]
 pub fn style_input(
     input: &StyleInput,

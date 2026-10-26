@@ -13,8 +13,8 @@ use std::cell::RefCell;
 
 use crate::layout_snapshot::sources::{BuildSources, SourceRecord};
 
-use crate::node::{Attr, MarkerKind, Tag};
 use crate::style::{ComputedStyle, StyledElement, StyledNode, StyledText};
+use crate::tag::{Attr, MarkerKind, Tag};
 
 use super::fragment::NodeId;
 use super::value::{
@@ -1232,12 +1232,13 @@ mod tests {
     }
 
     fn reuse_policy_tree(text: &str) -> LayoutBox {
-        let nodes = vec![crate::Node::Element(crate::Element {
+        use crate::test_support::literal::{style_nodes, Element, Node};
+        let nodes = vec![Node::Element(Element {
             tag: Tag::Html("div".into()),
             attrs: vec![Attr { name: "style".into(), value: "display:flex;width:41.145px;font-family:ParityGo;font-size:13px;line-height:10px;padding-left:3.145px".into() }],
-            children: vec![crate::Node::Element(crate::Element { tag: Tag::Html("div".into()), attrs: vec![Attr { name: "style".into(), value: "display:flex;padding-left:2.61px".into() }], children: vec![crate::Node::Text(text.into())] })],
+            children: vec![Node::Element(Element { tag: Tag::Html("div".into()), attrs: vec![Attr { name: "style".into(), value: "display:flex;padding-left:2.61px".into() }], children: vec![Node::Text(text.into())] })],
         })];
-        build_box_tree(&crate::style::style_tree(
+        build_box_tree(&style_nodes(
             &nodes,
             &crate::style::build_cascade("", "", Default::default()),
         ))

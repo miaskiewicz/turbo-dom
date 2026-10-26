@@ -13,7 +13,7 @@
 
 use crate::error::Diagnostics;
 use crate::layout_snapshot::UsedBoxMetrics;
-use crate::node::MarkerKind;
+use crate::tag::MarkerKind;
 use crate::text::{Align, FontRegistry};
 use std::collections::HashMap;
 
@@ -2152,7 +2152,7 @@ mod tests {
     use super::{first_inflow_child, zero_min_height};
     use crate::layout::boxgen::{build_box_tree, BoxKind};
     use crate::layout::value::LengthPct;
-    use crate::node::Tag;
+    use crate::tag::Tag;
     use crate::{ComputedStyle, StyledElement, StyledNode};
 
     fn flex_div() -> StyledNode {

@@ -11,10 +11,12 @@ use turbo_dom_layout::layout_snapshot::{
     snapshot_html_live_tree_with_native_text, snapshot_live_tree_with_text, GeometryKind,
     LayoutSnapshot, NativeTextOptions, Rect, SnapshotInputs, SourceId, SourceIdentity,
 };
+use turbo_dom_layout::test_support::literal;
+use turbo_dom_layout::test_support::literal::{parse_html, Element, Node};
 use turbo_dom_layout::text::Align;
 use turbo_dom_layout::{
-    build_cascade, parse_html, Attr, Diagnostics, Element, FontRegistry, Fragment, FragmentContent,
-    ImageCtx, NoImages, Node, NodeId, Tag,
+    build_cascade, Attr, Diagnostics, FontRegistry, Fragment, FragmentContent, ImageCtx, NoImages,
+    NodeId, Tag,
 };
 
 #[derive(Default)]
@@ -159,7 +161,7 @@ fn capture(row: &Value, decorated: bool, native: bool) -> (LayoutSnapshot, Ids) 
     let mut diagnostics = Diagnostics::default();
     let snapshot = if native {
         snapshot_html_live_tree_with_native_text(
-            &nodes,
+            &literal::tree(&nodes).input(),
             &ids.entries,
             &cascade,
             &NativeTextOptions {
@@ -172,8 +174,14 @@ fn capture(row: &Value, decorated: bool, native: bool) -> (LayoutSnapshot, Ids) 
         )
         .unwrap()
     } else {
-        snapshot_live_tree_with_text(&nodes, &ids.entries, &cascade, &inputs, &mut diagnostics)
-            .unwrap()
+        snapshot_live_tree_with_text(
+            &literal::tree(&nodes).input(),
+            &ids.entries,
+            &cascade,
+            &inputs,
+            &mut diagnostics,
+        )
+        .unwrap()
     };
     assert_actual_font(&snapshot, row["geometry"]["family"].as_str().unwrap());
     (snapshot, ids)

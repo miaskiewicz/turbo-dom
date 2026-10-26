@@ -4,10 +4,9 @@ use turbo_dom_layout::layout_snapshot::{
     snapshot_html_live_tree_with_native_text, snapshot_live_tree_with_text, LayoutSnapshot,
     NativeTextOptions, SnapshotInputs, SourceId, SourceIdentity,
 };
-use turbo_dom_layout::{
-    build_cascade, parse_html, Attr, Diagnostics, Element, FontRegistry, ImageCtx, NoImages, Node,
-    Tag,
-};
+use turbo_dom_layout::test_support::literal;
+use turbo_dom_layout::test_support::literal::{parse_html, Element, Node};
+use turbo_dom_layout::{build_cascade, Attr, Diagnostics, FontRegistry, ImageCtx, NoImages, Tag};
 fn fonts() -> &'static FontRegistry {
     static FONTS: OnceLock<FontRegistry> = OnceLock::new();
     FONTS.get_or_init(|| {
@@ -61,7 +60,7 @@ fn capture_nodes_with_policy(
     let cascade=build_cascade("body{margin:0;font-family:serif}#host{width:400px;height:200px;font-family:monospace;font-size:16px;line-height:24px}iframe{display:inline;border:2px inset}","",Default::default());
     let snapshot = if native {
         snapshot_html_live_tree_with_native_text(
-            &nodes,
+            &literal::tree(&nodes).input(),
             &ids,
             &cascade,
             &NativeTextOptions {
@@ -83,7 +82,7 @@ fn capture_nodes_with_policy(
         .unwrap()
     } else {
         snapshot_live_tree_with_text(
-            &nodes,
+            &literal::tree(&nodes).input(),
             &ids,
             &cascade,
             &SnapshotInputs {

@@ -4,9 +4,9 @@ use turbo_dom_layout::layout_snapshot::{
     snapshot_html_live_tree_with_native_text, GeometryKind, LayoutSnapshot, NativeTextOptions,
     SnapshotInputs, SourceId, SourceIdentity,
 };
-use turbo_dom_layout::{
-    build_cascade, parse_html, Diagnostics, FontRegistry, ImageCtx, NoImages, Node,
-};
+use turbo_dom_layout::test_support::literal;
+use turbo_dom_layout::test_support::literal::{parse_html, Node};
+use turbo_dom_layout::{build_cascade, Diagnostics, FontRegistry, ImageCtx, NoImages};
 
 fn identities(
     nodes: &[Node],
@@ -29,7 +29,7 @@ fn identities(
     }
 }
 fn record_name(
-    element: &turbo_dom_layout::Element,
+    element: &turbo_dom_layout::test_support::literal::Element,
     id: SourceId,
     names: &mut HashMap<String, SourceId>,
 ) {
@@ -66,7 +66,7 @@ fn capture_result(
     };
     let cascade=build_cascade("#box{font-family:monospace;font-size:16px;line-height:24px;width:75px}span{vertical-align:baseline}","",Default::default());
     let snapshot = snapshot_html_live_tree_with_native_text(
-        &nodes,
+        &literal::tree(&nodes).input(),
         &ids,
         &cascade,
         &NativeTextOptions {

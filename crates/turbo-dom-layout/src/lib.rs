@@ -1,8 +1,7 @@
 //! turbo-dom layout engine.
 //!
 //! The native HTML/CSS layout half of turbo-dom: a style cascade over a turbo-dom
-//! [`Tree`](turbo_dom::Tree) ([`style::style_input`] over a [`style::TreeView`];
-//! the legacy owned [`Node`] tree is still accepted by [`style_tree`]), box
+//! [`Tree`](turbo_dom::Tree) ([`style::style_input`] over a [`style::TreeView`]), box
 //! generation, block/inline/flex/grid/table layout into one continuous galley of
 //! positioned [`Fragment`]s, a font registry with shaping + fallback (optionally
 //! with bundled OFL faces), image intrinsic sizing, and CSSOM-View style layout
@@ -25,19 +24,19 @@ pub mod image;
 pub mod layout;
 pub mod layout_snapshot;
 pub mod live;
-pub mod markup;
-pub mod node;
 pub mod perf;
 pub mod style;
 #[cfg(feature = "svg-rasterize")]
 pub mod svg;
+pub mod tag;
+#[cfg(any(test, feature = "test-support"))]
+pub mod test_support;
 pub mod text;
 
 pub use error::{CompileError, Diagnostics, ErrorCode, Lint, LintCode, RenderError, Span};
 pub use html_layout::{
-    collect_style_css, collect_style_css_tree, layout_boxes, layout_boxes_tree, layout_html,
-    layout_html_tree, layout_html_with_images, parse_html, parse_html_tree, style_html_tree,
-    CidBox, HtmlOptions,
+    collect_style_css_tree, layout_boxes, layout_boxes_tree, layout_html, layout_html_tree,
+    layout_html_with_images, parse_html_tree, style_html_tree, CidBox, HtmlOptions,
 };
 pub use image::{ImageResolver, NoImages};
 pub use layout::fragment::{
@@ -49,11 +48,11 @@ pub use layout::{
     layout, layout_recorded, layout_with_images, layout_with_options, ImageCtx, LaidOut,
     LayoutOptions, NodeSources,
 };
-pub use node::{tree_from_nodes, Attr, Element, MarkerClassifier, MarkerKind, Node, NodeTree, Tag};
 pub use style::{
     build_cascade, build_cascade_with_width, set_media_viewport_height, set_media_viewport_width,
-    style_input, style_tree, Cascade, ComputedStyle, Roots, StyleInput, StyleOptions,
-    StyledElement, StyledNode, StyledText, TreeView,
+    style_input, Cascade, ComputedStyle, Roots, StyleInput, StyleOptions, StyledElement,
+    StyledNode, StyledText, TreeView,
 };
+pub use tag::{Attr, MarkerClassifier, MarkerKind, Tag};
 pub use text::{layout_text, Align, FontFace, FontRegistry, LineBox, TextStyle, WhiteSpace};
 pub use turbo_dom;

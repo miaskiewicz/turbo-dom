@@ -10,9 +10,11 @@ use turbo_dom_layout::layout_snapshot::{
     Rect, SnapshotError, SnapshotInputs, SourceId, SourceIdentity, SvgSnapshotError,
     TextSnapshotError,
 };
+use turbo_dom_layout::test_support::literal;
+use turbo_dom_layout::test_support::literal::{parse_html, Element, Node};
 use turbo_dom_layout::{
-    build_cascade, parse_html, Attr, Diagnostics, Element, FontRegistry, Fragment, FragmentContent,
-    ImageCtx, NoImages, Node, NodeId, Tag,
+    build_cascade, Attr, Diagnostics, FontRegistry, Fragment, FragmentContent, ImageCtx, NoImages,
+    NodeId, Tag,
 };
 
 #[derive(Default)]
@@ -161,7 +163,7 @@ fn capture(
         images: &images,
     };
     let snapshot = snapshot_html_live_tree_with_native_text(
-        &nodes,
+        &literal::tree(&nodes).input(),
         &ids.entries,
         &cascade,
         &NativeTextOptions {

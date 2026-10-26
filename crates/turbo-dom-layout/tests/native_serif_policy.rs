@@ -4,7 +4,9 @@ use turbo_dom_layout::layout_snapshot::{
     snapshot_html_live_tree_with_native_text, LayoutSnapshot, NativeTextOptions, SnapshotInputs,
     SourceId, SourceIdentity,
 };
-use turbo_dom_layout::{build_cascade, parse_html, Diagnostics, FontRegistry, ImageCtx, NoImages};
+use turbo_dom_layout::test_support::literal;
+use turbo_dom_layout::test_support::literal::parse_html;
+use turbo_dom_layout::{build_cascade, Diagnostics, FontRegistry, ImageCtx, NoImages};
 
 #[test]
 fn native_serif_primary_is_physical_times_while_pdf_keeps_its_existing_alias() {
@@ -92,7 +94,7 @@ fn snapshot(fonts: &FontRegistry, family: &str, size: f32) -> LayoutSnapshot {
     ))
     .unwrap();
     snapshot_html_live_tree_with_native_text(
-        &nodes,
+        &literal::tree(&nodes).input(),
         &[
             SourceIdentity {
                 id: SourceId(1),

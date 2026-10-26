@@ -428,7 +428,8 @@ mod native_capture_loss_contracts {
         use crate::layout_snapshot::{
             snapshot_html_live_tree_with_text, SnapshotInputs, SourceIdentity,
         };
-        use crate::{build_cascade, Diagnostics, FontRegistry, ImageCtx, NoImages, Node};
+        use crate::test_support::literal::{tree, Node};
+        use crate::{build_cascade, Diagnostics, FontRegistry, ImageCtx, NoImages};
         let nodes = [Node::Text("ab".into())];
         let fonts = FontRegistry::new();
         let images = ImageCtx {
@@ -436,7 +437,7 @@ mod native_capture_loss_contracts {
             body_height: None,
         };
         let mut native = snapshot_html_live_tree_with_text(
-            &nodes,
+            &tree(&nodes).input(),
             &[SourceIdentity {
                 id: SourceId(100),
                 path: vec![0],

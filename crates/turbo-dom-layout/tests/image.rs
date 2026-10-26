@@ -21,9 +21,10 @@ use turbo_dom_layout::layout::boxgen::build_box_tree;
 use turbo_dom_layout::layout::imgsize::{size_replaced, SizeCtx};
 use turbo_dom_layout::layout::value::{resolve_box_style, ResolveCtx};
 use turbo_dom_layout::style::TokenSet;
+use turbo_dom_layout::test_support::literal::Node;
 use turbo_dom_layout::{
-    build_cascade, layout_with_images, ComputedStyle, Diagnostics, ImageResolver, Node,
-    StyledElement, StyledNode, Tag,
+    build_cascade, layout_with_images, ComputedStyle, Diagnostics, ImageResolver, StyledElement,
+    StyledNode, Tag,
 };
 use turbo_dom_layout::{Attr, FragmentContent, ImageCtx, NoImages};
 
@@ -567,14 +568,16 @@ fn height_cap_inactive_without_body_height() {
 // --------------------------------------------------------------------------
 
 fn img_node(src: &str) -> Vec<Node> {
-    vec![Node::Element(turbo_dom_layout::Element {
-        tag: Tag::Html("img".into()),
-        attrs: vec![Attr {
-            name: "src".into(),
-            value: src.into(),
-        }],
-        children: Vec::new(),
-    })]
+    vec![Node::Element(
+        turbo_dom_layout::test_support::literal::Element {
+            tag: Tag::Html("img".into()),
+            attrs: vec![Attr {
+                name: "src".into(),
+                value: src.into(),
+            }],
+            children: Vec::new(),
+        },
+    )]
 }
 
 fn styled_img(src: &str) -> Vec<StyledNode> {
@@ -733,11 +736,13 @@ fn flex_row_img_item_sizes_to_intrinsic_not_zero() {
     // against a 0-width containing block (its `max-width:100%` clamping to 0) AND the
     // item placement flowed it as an empty container, so a logo / hero image
     // collapsed to nothing.
-    let nodes = vec![Node::Element(turbo_dom_layout::Element {
-        tag: Tag::Html("div".into()),
-        attrs: vec![],
-        children: img_node("logo"),
-    })];
+    let nodes = vec![Node::Element(
+        turbo_dom_layout::test_support::literal::Element {
+            tag: Tag::Html("div".into()),
+            attrs: vec![],
+            children: img_node("logo"),
+        },
+    )];
     let cascade = build_cascade(
         "div{display:flex} img{max-width:100%;width:auto}",
         "",
@@ -762,11 +767,13 @@ fn flex_row_img_item_sizes_to_intrinsic_not_zero() {
 fn flex_img_item_with_explicit_width_uses_it() {
     // An `<img width="8">` flex item takes its explicit width (the `LengthPct::Px`
     // arm of the replaced-image probe), not the intrinsic 2px.
-    let nodes = vec![Node::Element(turbo_dom_layout::Element {
-        tag: Tag::Html("div".into()),
-        attrs: vec![],
-        children: img_node("logo"),
-    })];
+    let nodes = vec![Node::Element(
+        turbo_dom_layout::test_support::literal::Element {
+            tag: Tag::Html("div".into()),
+            attrs: vec![],
+            children: img_node("logo"),
+        },
+    )];
     let cascade = build_cascade("div{display:flex} img{width:8px}", "", TokenSet::default());
     let styled = common::style_nodes(&nodes, &cascade);
     let resolver = MapResolver::new(vec![("logo", png_rgb_2x2())]);
@@ -785,11 +792,13 @@ fn percent_height_img_resolves_against_definite_parent() {
     // `<img height:100%>` in a fixed-height parent takes the parent's content height
     // (200px) — its `%` now resolves against the parent's definite height instead of
     // falling back to the 2px intrinsic. Width follows the 1:1 aspect ratio.
-    let nodes = vec![Node::Element(turbo_dom_layout::Element {
-        tag: Tag::Html("div".into()),
-        attrs: vec![],
-        children: img_node("logo"),
-    })];
+    let nodes = vec![Node::Element(
+        turbo_dom_layout::test_support::literal::Element {
+            tag: Tag::Html("div".into()),
+            attrs: vec![],
+            children: img_node("logo"),
+        },
+    )];
     let cascade = build_cascade(
         "div{height:200px} img{height:100%;width:auto}",
         "",
@@ -814,11 +823,13 @@ fn percent_height_img_resolves_against_definite_parent() {
 fn percent_height_absolute_img_resolves_against_positioned_ancestor() {
     // A `position:absolute` `<img height:100%>` resolves against its nearest
     // positioned ancestor's definite height (`abs_cb_h`), not its parent's `cb_h`.
-    let nodes = vec![Node::Element(turbo_dom_layout::Element {
-        tag: Tag::Html("div".into()),
-        attrs: vec![],
-        children: img_node("logo"),
-    })];
+    let nodes = vec![Node::Element(
+        turbo_dom_layout::test_support::literal::Element {
+            tag: Tag::Html("div".into()),
+            attrs: vec![],
+            children: img_node("logo"),
+        },
+    )];
     let cascade = build_cascade(
         "div{position:relative;height:120px} img{position:absolute;height:100%;width:auto}",
         "",
@@ -845,7 +856,7 @@ fn flex_item_wrapping_img_sizes_to_img_intrinsic() {
     // <div.k1zIA><img.lnXdpd>). The item's max-content width must come from the
     // nested image's intrinsic width (2px) — not collapse to 0, which clamped the
     // logo to nothing.
-    let img = Node::Element(turbo_dom_layout::Element {
+    let img = Node::Element(turbo_dom_layout::test_support::literal::Element {
         tag: Tag::Html("img".into()),
         attrs: vec![Attr {
             name: "src".into(),
@@ -853,16 +864,18 @@ fn flex_item_wrapping_img_sizes_to_img_intrinsic() {
         }],
         children: Vec::new(),
     });
-    let wrap = turbo_dom_layout::Element {
+    let wrap = turbo_dom_layout::test_support::literal::Element {
         tag: Tag::Html("div".into()),
         attrs: vec![],
         children: vec![img],
     };
-    let nodes = vec![Node::Element(turbo_dom_layout::Element {
-        tag: Tag::Html("div".into()),
-        attrs: vec![],
-        children: vec![Node::Element(wrap)],
-    })];
+    let nodes = vec![Node::Element(
+        turbo_dom_layout::test_support::literal::Element {
+            tag: Tag::Html("div".into()),
+            attrs: vec![],
+            children: vec![Node::Element(wrap)],
+        },
+    )];
     let cascade = build_cascade(
         "div{display:flex;flex-direction:column;align-items:center} img{max-width:100%;max-height:100%;width:auto}",
         "",
@@ -888,7 +901,7 @@ fn flex_row_item_wrapping_img_natural_width_uses_intrinsic() {
     // A flex ROW measures each item's max-content via `natural_width`; a `<div>`
     // wrapping an `<img>` must contribute the image's intrinsic width (2px), else the
     // row (and the item) collapses. Exercises the replaced-image `natural_width` path.
-    let img = Node::Element(turbo_dom_layout::Element {
+    let img = Node::Element(turbo_dom_layout::test_support::literal::Element {
         tag: Tag::Html("img".into()),
         attrs: vec![Attr {
             name: "src".into(),
@@ -896,16 +909,18 @@ fn flex_row_item_wrapping_img_natural_width_uses_intrinsic() {
         }],
         children: Vec::new(),
     });
-    let wrap = Node::Element(turbo_dom_layout::Element {
+    let wrap = Node::Element(turbo_dom_layout::test_support::literal::Element {
         tag: Tag::Html("div".into()),
         attrs: vec![],
         children: vec![img],
     });
-    let nodes = vec![Node::Element(turbo_dom_layout::Element {
-        tag: Tag::Html("div".into()),
-        attrs: vec![],
-        children: vec![wrap],
-    })];
+    let nodes = vec![Node::Element(
+        turbo_dom_layout::test_support::literal::Element {
+            tag: Tag::Html("div".into()),
+            attrs: vec![],
+            children: vec![wrap],
+        },
+    )];
     let cascade = build_cascade(
         "div{display:flex;flex-direction:row} img{width:auto}",
         "",

@@ -7,9 +7,11 @@ use turbo_dom_layout::layout_snapshot::{
     snapshot_live_tree, snapshot_styled_tree, GeometryKind, LayoutSnapshot, Rect, SnapshotError,
     SnapshotInputs, SourceId, SourceIdentity, SourceKind,
 };
+use turbo_dom_layout::test_support::literal;
+use turbo_dom_layout::test_support::literal::{Element, Node};
 use turbo_dom_layout::{
-    build_cascade, layout_with_images, Attr, Diagnostics, Element, FontRegistry, ImageCtx,
-    ImageResolver, NoImages, Node, Tag,
+    build_cascade, layout_with_images, Attr, Diagnostics, FontRegistry, ImageCtx, ImageResolver,
+    NoImages, Tag,
 };
 
 fn element(tag: &str, css: &str, children: Vec<Node>) -> Node {
@@ -43,7 +45,7 @@ fn capture(nodes: &[Node], ids: &[SourceIdentity]) -> LayoutSnapshot {
         images: &images,
     };
     snapshot_live_tree(
-        nodes,
+        &literal::tree(nodes).input(),
         ids,
         &build_cascade("", "", Default::default()),
         &inputs,
@@ -375,7 +377,7 @@ fn image_snapshot(css: &str) -> LayoutSnapshot {
         images: &images,
     };
     snapshot_live_tree(
-        &nodes,
+        &literal::tree(&nodes).input(),
         &[identity(9, &[0])],
         &build_cascade("", "", Default::default()),
         &inputs,
@@ -603,7 +605,7 @@ fn compare_authored_cases(fixture: &serde_json::Value, oracle: &serde_json::Valu
         if fixture["font"] == "Go" {
             let snapshot =
                 turbo_dom_layout::layout_snapshot::snapshot_html_live_tree_with_svg_viewports(
-                    &nodes,
+                    &literal::tree(&nodes).input(),
                     &identities,
                     &[],
                     2.0,
@@ -616,7 +618,7 @@ fn compare_authored_cases(fixture: &serde_json::Value, oracle: &serde_json::Valu
             continue;
         }
         let result = snapshot_live_tree(
-            &nodes,
+            &literal::tree(&nodes).input(),
             &identities,
             &build_cascade("", "", Default::default()),
             &inputs,
@@ -839,7 +841,13 @@ fn transformed_fixed_admission_is_identity_independent_and_shared_by_both_entry_
         images: &images,
     };
     let cascade = build_cascade("", "", Default::default());
-    let result = snapshot_live_tree(&nodes, &[], &cascade, &inputs, &mut Diagnostics::default());
+    let result = snapshot_live_tree(
+        &literal::tree(&nodes).input(),
+        &[],
+        &cascade,
+        &inputs,
+        &mut Diagnostics::default(),
+    );
     assert!(matches!(
         result,
         Err(SnapshotError::UnsupportedFixedContainingBlock)

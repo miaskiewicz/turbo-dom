@@ -11,10 +11,10 @@ use turbo_dom_layout::layout_snapshot::{
     snapshot_html_live_tree_with_native_text, GeometryKind, LayoutSnapshot, NativeTextOptions,
     SnapshotInputs, SourceId, SourceIdentity,
 };
+use turbo_dom_layout::test_support::literal;
+use turbo_dom_layout::test_support::literal::{parse_html, Node};
 use turbo_dom_layout::text::Align;
-use turbo_dom_layout::{
-    build_cascade, parse_html, Diagnostics, FontRegistry, ImageCtx, NoImages, Node, NodeId,
-};
+use turbo_dom_layout::{build_cascade, Diagnostics, FontRegistry, ImageCtx, NoImages, NodeId};
 
 fn source_pieces(fonts: &FontRegistry, contributes: bool, line_height: Option<f32>) -> Vec<Piece> {
     let face = fonts.select(&["sans-serif"], 400, false).unwrap().clone();
@@ -148,7 +148,7 @@ fn snapshot_nodes(nodes: Vec<Node>) -> (LayoutSnapshot, HashMap<String, SourceId
         Default::default(),
     );
     let snapshot = snapshot_html_live_tree_with_native_text(
-        &nodes,
+        &literal::tree(&nodes).input(),
         &ids,
         &cascade,
         &NativeTextOptions {

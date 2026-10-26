@@ -1256,7 +1256,7 @@ pub(crate) fn layout_flex(
 mod coverage_tests {
     use super::*;
     use crate::layout::boxgen::build_box_tree;
-    use crate::node::{Attr, MarkerKind, Tag};
+    use crate::tag::{Attr, MarkerKind, Tag};
     use crate::text::FontRegistry;
     use crate::{StyledElement, StyledNode};
 
