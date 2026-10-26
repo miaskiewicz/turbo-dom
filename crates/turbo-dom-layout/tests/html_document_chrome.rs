@@ -110,7 +110,7 @@ fn held_out(id: &str) -> bool {
         percent_column_case,
         collapsed_auto_case,
         colspan_case,
-        |id| id.starts_with("caption-"),
+        caption_case,
         border_box_case,
         table_border_box_case,
         spacing_case,
@@ -174,17 +174,10 @@ fn spanning_cells_spread_over_their_columns_like_chrome_156() {
     compare_cases(colspan_case);
 }
 
-/// miaskiewicz/turbo-dom#51: table captions in the table wrapper box (less the cases
-/// that also need another open fix, [`pending_case`]).
+/// miaskiewicz/turbo-dom#51: table captions in the table wrapper box (two also need
+/// #63's border-spacing and #64's row heights).
 fn caption_case(id: &str) -> bool {
-    id.starts_with("caption-") && !pending_case(id)
-}
-
-/// Caption cases that also need another fix: a `display: table` element's border-spacing
-/// (miaskiewicz/turbo-dom#63, [`spacing_case`]) and a table's extra height
-/// (miaskiewicz/turbo-dom#64, [`table_height_case`]).
-fn pending_case(id: &str) -> bool {
-    matches!(id, "caption-display-table-caption" | "caption-table-height")
+    id.starts_with("caption-")
 }
 
 #[test]
@@ -233,7 +226,6 @@ fn table_height_case(id: &str) -> bool {
 }
 
 #[test]
-#[ignore = "miaskiewicz/turbo-dom#64: fails until the fix"]
 fn table_height_is_distributed_over_the_rows_like_chrome_156() {
     compare_cases(table_height_case);
 }

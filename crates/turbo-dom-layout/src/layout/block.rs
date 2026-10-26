@@ -1794,7 +1794,11 @@ fn layout_content(
         BoxKind::Table(kids) if super::table::is_wrapper(lb) => {
             super::table::layout_wrapper(kids, cx, cy, cw, bs.font_size, ctx)
         }
-        BoxKind::Table(kids) => super::table::layout_table(lb, kids, cx, cy, cw, bs.font_size, ctx),
+        BoxKind::Table(kids) => {
+            // The rows share the table's definite height (miaskiewicz/turbo-dom#64).
+            let fill = resolved_content_height(bs, 0.0, ctx);
+            super::table::layout_table(lb, kids, (cx, cy, cw, fill), bs.font_size, ctx)
+        }
         BoxKind::Lines(items) => layout_lines(lb, items, bs, cx, cy, cw, ctx),
         BoxKind::Marker(_) => (Vec::new(), 0.0),
     }

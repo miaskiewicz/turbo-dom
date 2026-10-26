@@ -119,6 +119,114 @@ fn row_groups(items: &[LayoutBox]) -> Vec<GroupRef> {
     out
 }
 
+/// A run of a table's rows that forms one section: a row group's rows, or consecutive
+/// rows directly in the table (an anonymous body): `rows[start..start + count]`, and
+/// whether it is a body (not a `<thead>` / `<tfoot>`).
+struct Section {
+    start: usize,
+    count: usize,
+    body: bool,
+}
+
+/// The sections of a table's children, indexed into [`collect_rows`]' rows.
+fn sections(items: &[LayoutBox]) -> Vec<Section> {
+    let mut out = Vec::new();
+    let mut start = 0;
+    for child in items {
+        let row = child.display == Display::TableRow;
+        let count = if row { 1 } else { rows_of(child).len() };
+        match out.last_mut() {
+            Some(Section {
+                start: s,
+                count: n,
+                body: true,
+            }) if row && *s + *n == start => {
+                *n += 1;
+            }
+            _ => out.push(Section {
+                start,
+                count,
+                body: group_repeat(child.display).is_none(),
+            }),
+        }
+        start += count;
+    }
+    out
+}
+
+/// Give a table's `extra` height (beyond its rows and spacing) to its rows `h`, as Chrome
+/// 156 does: to the body sections (else every section) in proportion to their `weights`,
+/// and inside a section to its rows without an explicit height (else all of them), in
+/// proportion — equally when they weigh nothing (miaskiewicz/turbo-dom#64).
+fn distribute_extra(
+    h: &mut [f32],
+    weights: &[f32],
+    (rows, sections): (&[RowRef], &[Section]),
+    extra: f32,
+) {
+    if extra <= 0.0 {
+        return;
+    }
+    let chosen = receiving_sections(sections);
+    let section_weights: Vec<f32> = chosen
+        .iter()
+        .map(|s| weights[s.start..s.start + s.count].iter().sum())
+        .collect();
+    for (section, share) in chosen.iter().zip(shares(extra, &section_weights)) {
+        let range = section.start..section.start + section.count;
+        let auto: Vec<usize> = range
+            .clone()
+            .filter(|&r| rows[r].min_height <= 0.0)
+            .collect();
+        let idx: Vec<usize> = if auto.is_empty() {
+            range.collect()
+        } else {
+            auto
+        };
+        let row_weights: Vec<f32> = idx.iter().map(|&r| weights[r]).collect();
+        for (&r, add) in idx.iter().zip(shares(share, &row_weights)) {
+            h[r] += add;
+        }
+    }
+}
+
+/// The sections that receive a table's extra height: its non-empty bodies, else every
+/// non-empty section.
+fn receiving_sections(sections: &[Section]) -> Vec<&Section> {
+    let filled: Vec<&Section> = sections.iter().filter(|s| s.count > 0).collect();
+    let bodies: Vec<&Section> = filled.iter().copied().filter(|s| s.body).collect();
+    if bodies.is_empty() {
+        filled
+    } else {
+        bodies
+    }
+}
+
+/// `total` split in proportion to `weights` (equally when they sum to 0), each share
+/// floored to Chrome's layout unit (1/64 px) and the last taking the remainder.
+fn shares(total: f32, weights: &[f32]) -> Vec<f32> {
+    let sum: f32 = weights.iter().sum();
+    let n = weights.len() as f32;
+    let mut left = total;
+    let mut out: Vec<f32> = weights
+        .iter()
+        .map(|w| {
+            let share = if sum > 0.0 {
+                total * w / sum
+            } else {
+                total / n
+            };
+            let share = (share * 64.0).floor() / 64.0;
+            left -= share;
+            share
+        })
+        .collect();
+    if let Some(last) = out.last_mut() {
+        *last += left;
+    }
+    out
+}
+
 fn collect_rows(items: &[LayoutBox]) -> Vec<RowRef<'_>> {
     let mut out = Vec::new();
     for child in items {
@@ -798,6 +906,10 @@ struct Grid<'a> {
     placed: &'a [Placed<'a>],
     ncols: usize,
     groups: &'a [GroupRef],
+    /// The row sections ([`sections`]) and the table's definite content height the rows
+    /// share ([`distribute_extra`]).
+    sections: &'a [Section],
+    fill: f32,
 }
 
 /// Lay out a fixed-layout `border-collapse: collapse` table (§17.6.2): merge shared
@@ -840,7 +952,14 @@ fn layout_table_collapsed(
     let line_x = line_centers(&col_cp, &vert);
     let laid = layout_cells_collapsed(placed, &line_x, &vert, fs, ctx);
     let horiz = hborders(placed, nrows, &table.style);
-    let row_cp = collapse_row_heights(&laid, rows);
+    let mut row_cp = collapse_row_heights(&laid, rows);
+    // Each row's extent between its grid-line centres weighs its share of the extra.
+    let weights: Vec<f32> = (0..nrows)
+        .map(|r| row_cp[r] + (horiz[r] + horiz[r + 1]) / 2.0)
+        .collect();
+    let extra =
+        grid.fill - (row_cp.iter().sum::<f32>() + horiz.iter().sum::<f32>() - own.vertical());
+    distribute_extra(&mut row_cp, &weights, (rows, grid.sections), extra);
     let line_y = line_centers(&row_cp, &horiz);
     let geom = Geom {
         col_x: line_x[..ncols].to_vec(),
@@ -1426,13 +1545,13 @@ fn separated_min_content(placed: &[Placed], ncols: usize, hs: f32, fonts: &FontR
     w.iter().sum::<f32>() + hs * (ncols as f32 + 1.0)
 }
 
+/// Lay out a table's rows into its content box at `(cx, cy)`, `cw` wide; rows taller
+/// than their content share `fill`, the table's definite content height (0: none).
 /// Returns the row fragments (galley-absolute) and the table content height.
 pub(crate) fn layout_table(
     table: &LayoutBox,
     items: &[LayoutBox],
-    cx: f32,
-    cy: f32,
-    cw: f32,
+    (cx, cy, cw, fill): (f32, f32, f32, f32),
     fs: f32,
     ctx: &mut Ctx,
 ) -> (Vec<Fragment>, f32) {
@@ -1459,6 +1578,8 @@ pub(crate) fn layout_table(
             placed: &placed,
             ncols,
             groups: &row_groups(items),
+            sections: &sections(items),
+            fill,
         };
         return layout_table_collapsed(table, &grid, cx, cy, cw, fs, ctx);
     }
@@ -1468,8 +1589,12 @@ pub(crate) fn layout_table(
     let inner = (cw - hs * (ncols as f32 + 1.0)).max(1.0);
     let cols = column_widths(&table.style, &placed, ncols, inner, ctx.fonts);
     let laid = layout_cells(&placed, &cols, hs, fs, ctx);
-    let row_h = row_heights(&laid, &rows);
+    let mut row_h = row_heights(&laid, &rows);
     let nrows = row_h.len();
+    let spacing = vs * (nrows as f32 + 1.0);
+    let weights = row_h.clone();
+    let extra = fill - row_h.iter().sum::<f32>() - spacing;
+    distribute_extra(&mut row_h, &weights, (&rows, &sections(items)), extra);
     let geom = Geom {
         col_x: spaced_offsets(&cols, hs),
         row_y: spaced_offsets(&row_h, vs),
@@ -1477,7 +1602,7 @@ pub(crate) fn layout_table(
         row_w: cols.iter().sum::<f32>() + hs * (ncols as f32 - 1.0),
         row_h,
     };
-    let height = geom.row_h.iter().sum::<f32>() + vs * (nrows as f32 + 1.0);
+    let height = geom.row_h.iter().sum::<f32>() + spacing;
     record_rows(&rows, ctx);
     let frags = finalize(&rows, laid, &geom, cx, cy);
     record_row_metrics(&rows, &frags, ctx);

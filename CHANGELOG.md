@@ -7,7 +7,7 @@ at the time); this file reconstructs them from history.
 
 ## [Unreleased]
 
-### Fixed — turbo-dom-layout tables, clipping and box sizing (P5b-W5, miaskiewicz/turbo-dom#51/#52/#62/#63/#65, Chrome 156 controls)
+### Fixed — turbo-dom-layout tables, clipping and box sizing (P5b-W5, miaskiewicz/turbo-dom#51/#52/#62/#63/#64/#65, Chrome 156 controls)
 Each fix is backed by a Chrome for Testing 156 control and lists the corpus outputs it
 changes in `tools/parity/expected/p5b-w5-turbo-dom-*.json`.
 - Table captions (#51): a `<caption>` (UA `caption { display: table-caption; text-align:
@@ -57,6 +57,14 @@ changes in `tools/parity/expected/p5b-w5-turbo-dom-*.json`.
   a caption test's anonymous table) had 2px gaps around and between its cells, and a
   `display: table` element did not inherit a `border-spacing` from its ancestors.
   Control: `css-table-*` / `table-spacing-not-inherited-past-a-table` in `html-document`.
+- Table heights (#64, found while fixing #51): a table whose `height` / `min-height` is
+  more than its rows need gives the extra height to its rows, as Chrome 156 does — to
+  the body sections (else every section) in proportion to their heights, inside a
+  section to its rows without an explicit `height` (else all of them) in proportion,
+  equally when they are empty, in 1/64 px units — so cells stretch, and their
+  backgrounds, borders and `vertical-align` follow. The table box was tall but its rows
+  kept their content height. Separated and collapsed tables, every path. Control:
+  `table-height-*` in `html-document`.
 
 ### Fixed — `getComputedStyle` defaults and no injected `<title>` (P5b-X3, miaskiewicz/turbo-surf#36 items 1–2, Chrome 156 control)
 - turbo-dom-browser-env: `getComputedStyle` used to return `""` for `display`, `position`
