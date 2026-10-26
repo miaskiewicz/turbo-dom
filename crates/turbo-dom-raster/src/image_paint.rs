@@ -21,6 +21,8 @@ use std::io::Cursor;
 use tiny_skia::{Pixmap, PremultipliedColorU8};
 use turbo_dom_layout::image::{self as layout_image, Format, Intrinsic, Orientation, Rgba8Image};
 use turbo_dom_layout::svg::{self as layout_svg, Oversize};
+use turbo_dom_layout::turbo_dom::rtdom::tree::{Namespace, NodeType};
+use turbo_dom_layout::turbo_dom::{Handle, Tree};
 use turbo_dom_layout::ImageResolver;
 
 /// A decoded image in straight-alpha RGBA8 (row-major, 4 bytes/px), plus its
@@ -84,132 +86,169 @@ pub fn add_data_uri_images(decoded: &mut DecodedAssets, css: &str, html: &str) {
     }
 }
 
-/// Rewrite each inline `<svg>…</svg>` element to an `<img>` sized from the SVG's own
-/// `width`/`height` (carrying its `class`/`style` so CSS sizing still applies) with a
-/// synthetic `src` key, returning the rewritten HTML plus `(key, svg-source)` pairs
-/// for the caller to decode into the asset map (see [`add_inline_svg_assets`]). The
-/// layout engine has no inline-SVG painter, so a page's inline `<svg>` logos/icons
-/// (google.com ships ~21) render blank; routing them through the existing `<img>` +
-/// resvg path paints them. Nested `<svg>` are depth-matched; an unclosed/again-open
-/// `<svg` is left untouched.
-pub fn inline_svg_to_img(html: &str) -> (String, Vec<(String, String)>) {
-    let lower = html.to_ascii_lowercase();
-    let bytes = html.as_bytes();
-    let mut out = String::with_capacity(html.len());
-    let mut assets = Vec::new();
-    let mut cursor = 0;
-    while let Some(rel) = lower[cursor..].find("<svg") {
-        let start = cursor + rel;
-        // `<svg` must be a whole tag name (`<svg>`/`<svg `/`<svg/`), not `<svga…`.
-        let after = bytes.get(start + 4).copied();
-        if !matches!(after, Some(b) if b == b'>' || b == b'/' || b.is_ascii_whitespace()) {
-            out.push_str(&html[cursor..start + 4]);
-            cursor = start + 4;
-            continue;
-        }
-        let Some(otrel) = lower[start..].find('>') else {
-            break;
-        };
-        let open_end = start + otrel + 1;
-        let open_tag = &html[start..open_end];
-        // Locate the matching `</svg>` (depth-counted), or bail on this element.
-        let close_end = if open_tag.trim_end().ends_with("/>") {
-            Some(open_end) // self-closed: no content
-        } else {
-            svg_close_end(&lower, open_end)
-        };
-        let Some(close_end) = close_end else {
-            // Unbalanced — emit the open tag verbatim and move past it.
-            out.push_str(&html[cursor..open_end]);
-            cursor = open_end;
-            continue;
-        };
+/// Replace each inline `<svg>` ELEMENT of the parsed document (the outermost one of a
+/// nested set) with an `<img>` carrying the SVG's `class`/`style`/`width`/`height` (so CSS
+/// sizing still applies) and a synthetic `src` key, returning the `(key, svg-source)` pairs
+/// for the caller to decode into the asset map (see [`add_inline_svg_assets`]). The layout
+/// engine has no inline-SVG painter, so a page's inline `<svg>` logos/icons (google.com
+/// ships ~21) would render blank; routing them through the existing `<img>` + resvg path
+/// paints them.
+///
+/// It works on the turbo-dom tree, never on source text (miaskiewicz/turbo-dom#25): only
+/// what the HTML parser made an SVG `<svg>` element is converted, so a `<svg` inside an
+/// attribute value (a raw-UTF-8 SVG `data:` URL), a `<script>` string or `<noscript>` raw
+/// text is left alone, and the parser's own recovery (implied end tags, HTML elements
+/// breaking out of foreign content) applies. Each source is the element re-serialized as
+/// namespace-well-formed XML ([`svg_markup`]).
+pub fn inline_svg_to_img(tree: &mut Tree) -> Vec<(String, String)> {
+    let roots = svg_roots(tree);
+    let mut assets = Vec::with_capacity(roots.len());
+    for svg in roots {
         let key = format!("turbo-inline-svg-{}", assets.len());
-        out.push_str(&html[cursor..start]);
-        out.push_str("<img src=\"");
-        out.push_str(&key);
+        let source = svg_markup(tree, svg);
+        let img = tree.create_element("img");
+        tree.set_attribute(img, "src", &key);
+        for name in ["class", "style", "width", "height"] {
+            if let Some(value) = tree.get_attribute(svg, name).map(str::to_owned) {
+                tree.set_attribute(img, name, &value);
+            }
+        }
+        tree.replace_with(svg, &[img]);
+        assets.push((key, source));
+    }
+    assets
+}
+
+/// Whether `h` is an SVG-namespace `<svg>` element.
+fn is_svg_element(tree: &Tree, h: Handle) -> bool {
+    tree.node_type(h) == NodeType::Element
+        && tree.namespace(h) == Namespace::Svg
+        && tree.local_name(h) == Some("svg")
+}
+
+/// The outermost `<svg>` elements of the document, in document order (a nested `<svg>`
+/// belongs to its ancestor's source). Document-fragment children — `<template>` content
+/// (not rendered) and shadow roots (the layout's document view skips them) — are not
+/// visited.
+fn svg_roots(tree: &Tree) -> Vec<Handle> {
+    let mut roots = Vec::new();
+    let mut stack = vec![tree.root()];
+    while let Some(h) = stack.pop() {
+        if is_svg_element(tree, h) {
+            roots.push(h);
+            continue;
+        }
+        let children = tree.children(h);
+        stack.extend(
+            children
+                .into_iter()
+                .rev()
+                .filter(|&c| tree.node_type(c) != NodeType::Fragment),
+        );
+    }
+    roots
+}
+
+/// The `<svg>` element `root` as a standalone XML document for the rasterizer: the root
+/// declares the SVG and `XLink` namespaces (inline SVG in HTML needs neither); SVG-namespace
+/// descendants are written with the parser's (case-adjusted) names; attributes keep their
+/// `xlink:`/`xml:` prefixes; text is XML-escaped (HTML character references are already decoded).
+/// What XML cannot carry and resvg would not paint is dropped: comments, non-SVG elements
+/// (`<foreignObject>` HTML content), namespace declarations, and names that are not plain
+/// XML names (e.g. an undeclared `inkscape:label`).
+fn svg_markup(tree: &Tree, root: Handle) -> String {
+    enum Step {
+        Open(Handle),
+        Close(Handle),
+    }
+    let mut out = String::new();
+    let mut stack = vec![Step::Open(root)];
+    while let Some(step) = stack.pop() {
+        match step {
+            Step::Close(h) => {
+                out.push_str("</");
+                out.push_str(tree.local_name(h).unwrap_or_default());
+                out.push('>');
+            }
+            Step::Open(h) => match tree.node_type(h) {
+                NodeType::Text => xml_escape(&tree.node_value(h).unwrap_or_default(), &mut out),
+                NodeType::Element if h == root || is_xml_svg_element(tree, h) => {
+                    open_tag(tree, h, h == root, &mut out);
+                    stack.push(Step::Close(h));
+                    let children = tree.children(h);
+                    stack.extend(children.into_iter().rev().map(Step::Open));
+                }
+                _ => {}
+            },
+        }
+    }
+    out
+}
+
+/// Write `h`'s start tag (with the namespace declarations on the document `root`).
+fn open_tag(tree: &Tree, h: Handle, root: bool, out: &mut String) {
+    out.push('<');
+    out.push_str(tree.local_name(h).unwrap_or("svg"));
+    if root {
+        out.push_str(
+            r#" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink""#,
+        );
+    }
+    tree.for_each_attr_full(h, |prefix, local, value| {
+        let Some(prefix) = xml_attr_prefix(prefix, local) else {
+            return;
+        };
+        out.push(' ');
+        out.push_str(prefix);
+        out.push_str(local);
+        out.push_str("=\"");
+        xml_escape(value, out);
         out.push('"');
-        for attr in ["class", "style", "width", "height"] {
-            if let Some(v) = svg_attr(open_tag, attr) {
-                if !v.contains('"') {
-                    out.push(' ');
-                    out.push_str(attr);
-                    out.push_str("=\"");
-                    out.push_str(&v);
-                    out.push('"');
-                }
-            }
-        }
-        out.push('>');
-        assets.push((key, html[start..close_end].to_string()));
-        cursor = close_end;
-    }
-    out.push_str(&html[cursor..]);
-    (out, assets)
+    });
+    out.push('>');
 }
 
-/// The byte offset just past the `</svg>` that closes the `<svg>` whose content
-/// starts at `from` (depth-counted over lowercased `lower`), or `None` if unbalanced.
-fn svg_close_end(lower: &str, from: usize) -> Option<usize> {
-    let mut depth = 1usize;
-    let mut scan = from;
-    while depth > 0 {
-        let next_open = lower[scan..].find("<svg");
-        let next_close = lower[scan..].find("</svg");
-        match (next_open, next_close) {
-            (Some(o), Some(c)) if o < c => {
-                depth += 1;
-                scan += o + 4;
-            }
-            (_, Some(c)) => {
-                depth -= 1;
-                let cabs = scan + c;
-                if depth == 0 {
-                    return lower[cabs..].find('>').map(|g| cabs + g + 1);
-                }
-                scan = cabs + 5;
-            }
-            _ => return None,
-        }
-    }
-    None
+/// An SVG-namespace element whose local name is a plain XML name.
+fn is_xml_svg_element(tree: &Tree, h: Handle) -> bool {
+    tree.namespace(h) == Namespace::Svg && tree.local_name(h).is_some_and(is_xml_name)
 }
 
-/// A single attribute value from an element's opening tag (`name="v"`/`name='v'`),
-/// or `None`. Minimal — used only for the inline-SVG rewrite.
-fn svg_attr(open_tag: &str, name: &str) -> Option<String> {
-    let lower = open_tag.to_ascii_lowercase();
-    let mut from = 0;
-    loop {
-        let rel = lower[from..].find(name)?;
-        let at = from + rel;
-        // Require a boundary before the name (space/`<`) and `=` (maybe spaced) after.
-        let before_ok = at == 0 || open_tag.as_bytes()[at - 1].is_ascii_whitespace();
-        let mut k = at + name.len();
-        while open_tag
-            .as_bytes()
-            .get(k)
-            .is_some_and(u8::is_ascii_whitespace)
-        {
-            k += 1;
+/// The XML prefix (`""`, `"xlink:"`, `"xml:"`) an attribute is written with, or `None` to
+/// drop it: namespace declarations (the root declares what the output uses) and names that
+/// are not plain XML names.
+fn xml_attr_prefix(prefix: &str, local: &str) -> Option<&'static str> {
+    let prefix = match prefix {
+        "" if local == "xmlns" => return None,
+        "" => "",
+        "xlink" => "xlink:",
+        "xml" => "xml:",
+        _ => return None,
+    };
+    is_xml_name(local).then_some(prefix)
+}
+
+/// An ASCII XML name without a colon: a letter or `_`, then letters, digits, `-`, `_`, `.`.
+fn is_xml_name(name: &str) -> bool {
+    let mut bytes = name.bytes();
+    bytes
+        .next()
+        .is_some_and(|b| b.is_ascii_alphabetic() || b == b'_')
+        && bytes.all(|b| b.is_ascii_alphanumeric() || matches!(b, b'-' | b'_' | b'.'))
+}
+
+/// Append `s` XML-escaped (text and double-quoted attribute values alike), dropping the
+/// characters XML 1.0 cannot carry (C0 controls other than tab/LF/CR, U+FFFE/U+FFFF).
+fn xml_escape(s: &str, out: &mut String) {
+    for c in s.chars() {
+        match c {
+            '&' => out.push_str("&amp;"),
+            '<' => out.push_str("&lt;"),
+            '>' => out.push_str("&gt;"),
+            '"' => out.push_str("&quot;"),
+            '\t' | '\n' | '\r' => out.push(c),
+            c if c < ' ' || c == '\u{fffe}' || c == '\u{ffff}' => {}
+            c => out.push(c),
         }
-        if before_ok && open_tag.as_bytes().get(k) == Some(&b'=') {
-            k += 1;
-            while open_tag
-                .as_bytes()
-                .get(k)
-                .is_some_and(u8::is_ascii_whitespace)
-            {
-                k += 1;
-            }
-            let q = *open_tag.as_bytes().get(k)?;
-            if q == b'"' || q == b'\'' {
-                let vstart = k + 1;
-                let vend = open_tag[vstart..].find(q as char)? + vstart;
-                return Some(open_tag[vstart..vend].to_string());
-            }
-        }
-        from = at + name.len();
     }
 }
 
@@ -543,33 +582,92 @@ mod tests {
     };
     use super::{decode, inline_svg_to_img, DecodedAssets};
 
-    #[test]
-    fn inline_svg_becomes_img_carrying_size_and_class() {
-        let html = r#"<div><svg class="ic" width="60" height="30" viewBox="0 0 60 30"><rect width="60" height="30"/></svg> after</div>"#;
-        let (out, assets) = inline_svg_to_img(html);
-        assert_eq!(assets.len(), 1);
-        assert_eq!(assets[0].0, "turbo-inline-svg-0");
-        assert!(assets[0].1.starts_with("<svg") && assets[0].1.ends_with("</svg>"));
-        assert!(
-            out.contains(r#"<img src="turbo-inline-svg-0""#)
-                && out.contains(r#"class="ic""#)
-                && out.contains(r#"width="60""#)
-                && out.contains(r#"height="30""#),
-            "rewritten: {out}"
-        );
-        assert!(out.contains("> after</div>"), "text after preserved: {out}");
+    fn converted(html: &str) -> (String, Vec<(String, String)>) {
+        let mut tree = turbo_dom_layout::parse_html_tree(html);
+        let assets = inline_svg_to_img(&mut tree);
+        let body =
+            turbo_dom_layout::turbo_dom::rtdom::serialize::serialize_inner(&tree, tree.root());
+        (body, assets)
     }
 
     #[test]
-    fn inline_svg_nested_is_depth_matched_and_unbalanced_left_alone() {
-        // Nested <svg> — the OUTER close is the boundary, one asset.
-        let (_, nested) = inline_svg_to_img("<svg><svg></svg></svg>");
+    fn inline_svg_becomes_img_carrying_size_and_class() {
+        let html = r#"<div><svg class="ic" width="60" height="30" viewBox="0 0 60 30"><rect width="60" height="30"/></svg> after</div>"#;
+        let (out, assets) = converted(html);
+        assert_eq!(assets.len(), 1);
+        assert_eq!(assets[0].0, "turbo-inline-svg-0");
+        assert_eq!(
+            assets[0].1,
+            r#"<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" class="ic" width="60" height="30" viewBox="0 0 60 30"><rect width="60" height="30"></rect></svg>"#
+        );
+        assert!(
+            out.contains(r#"<div><img src="turbo-inline-svg-0" class="ic" width="60" height="30"> after</div>"#),
+            "converted: {out}"
+        );
+    }
+
+    #[test]
+    fn inline_svg_nested_is_one_source_and_an_unclosed_svg_is_closed_by_the_parser() {
+        // Nested <svg> — the OUTER element is the source, one asset.
+        let (_, nested) = converted("<svg><svg></svg></svg>");
         assert_eq!(nested.len(), 1);
-        assert_eq!(nested[0].1, "<svg><svg></svg></svg>");
-        // Unbalanced — left verbatim, nothing extracted.
-        let (out, none) = inline_svg_to_img("<svg width=\"1\"><rect/>");
-        assert!(none.is_empty());
-        assert_eq!(out, "<svg width=\"1\"><rect/>");
+        assert!(
+            nested[0].1.ends_with("><svg></svg></svg>"),
+            "{}",
+            nested[0].1
+        );
+        // Unclosed — the parser closes it at EOF (as Chrome does), so it converts.
+        let (out, one) = converted("<svg width=\"1\"><rect/>");
+        assert_eq!(one.len(), 1);
+        assert!(
+            one[0].1.ends_with(r#" width="1"><rect></rect></svg>"#),
+            "{}",
+            one[0].1
+        );
+        assert!(
+            out.contains(r#"<img src="turbo-inline-svg-0" width="1">"#),
+            "{out}"
+        );
+    }
+
+    #[test]
+    fn svg_text_outside_elements_is_not_converted() {
+        let html = concat!(
+            r#"<img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg'></svg>">"#,
+            r#"<script>var a = '<svg>', b = '</svg>';</script><div title="<svg>"></div>"#,
+            r#"<noscript><svg></svg></noscript><template><svg></svg></template>"#,
+        );
+        let (out, none) = converted(html);
+        assert!(none.is_empty(), "{none:?}");
+        assert!(
+            out.contains(
+                r#"src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg'></svg>""#
+            ),
+            "{out}"
+        );
+    }
+
+    #[test]
+    fn svg_markup_is_namespace_well_formed_xml() {
+        let html = concat!(
+            r#"<svg xmlns="urn:wrong" xmlns:xlink="urn:wrong" xml:space="preserve" viewbox="0 0 1 1" "#,
+            r#"@click="x" inkscape:label="l" data-a="&quot;&lt;&amp;"><lineargradient id="g"/>"#,
+            r##"<use xlink:href="#g"/><!-- c --><title>a&nbsp;&lt;b&gt;&#1;</title>"##,
+            r#"<foreignObject><div>html</div></foreignObject><x:y/></svg>"#,
+        );
+        let (_, assets) = converted(html);
+        assert_eq!(
+            assets[0].1,
+            concat!(
+                r#"<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" "#,
+                r#"xml:space="preserve" viewBox="0 0 1 1" data-a="&quot;&lt;&amp;">"#,
+                r##"<linearGradient id="g"></linearGradient><use xlink:href="#g"></use>"##,
+                "<title>a\u{a0}&lt;b&gt;</title><foreignObject></foreignObject></svg>",
+            )
+        );
+        assert!(
+            resvg::usvg::Tree::from_str(&assets[0].1, &resvg::usvg::Options::default()).is_ok()
+        );
     }
 
     #[test]
