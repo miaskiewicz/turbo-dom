@@ -2,7 +2,7 @@
   "browser": "Chrome/156.0.8078.4",
   "v8": "15.6.75",
   "casesSha256": "b03ecf3504e851b6aa02b779834658da29f7aa5b4619eea115cd818d5562cdc9",
-  "probeSha256": "b177991d4a34acbdf546304fff31f1e6008538437f38ce13421f0c59fe2e0795",
+  "probeSha256": "a6ff9bbd7aed33404a3ef87f949328968159ae78ee7348dcacca69a0125bbdea",
   "collectorSha256": "7bd6ffb7440d38e05cd2b8fbe0e84e91cf462043577ceada3e276728ad216172",
   "flags": [
     "--headless=new",
@@ -924,6 +924,54 @@
           ],
           [
             "HTMLElement",
+            "blur",
+            "html",
+            "ok"
+          ],
+          [
+            "HTMLElement",
+            "blur",
+            "svg",
+            "TypeError"
+          ],
+          [
+            "HTMLElement",
+            "blur",
+            "math",
+            "TypeError"
+          ],
+          [
+            "HTMLElement",
+            "blur",
+            "other",
+            "TypeError"
+          ],
+          [
+            "HTMLElement",
+            "click",
+            "html",
+            "ok"
+          ],
+          [
+            "HTMLElement",
+            "click",
+            "svg",
+            "TypeError"
+          ],
+          [
+            "HTMLElement",
+            "click",
+            "math",
+            "TypeError"
+          ],
+          [
+            "HTMLElement",
+            "click",
+            "other",
+            "TypeError"
+          ],
+          [
+            "HTMLElement",
             "onclick",
             "html",
             "ok"
@@ -1092,6 +1140,35 @@
           ],
           [
             "SVGElement",
+            "blur",
+            "html",
+            "TypeError"
+          ],
+          [
+            "SVGElement",
+            "blur",
+            "svg",
+            "ok"
+          ],
+          [
+            "SVGElement",
+            "blur",
+            "math",
+            "TypeError"
+          ],
+          [
+            "SVGElement",
+            "blur",
+            "other",
+            "TypeError"
+          ],
+          [
+            "SVGElement",
+            "click",
+            "missing"
+          ],
+          [
+            "SVGElement",
             "onclick",
             "html",
             "TypeError"
@@ -1257,6 +1334,35 @@
             "focus",
             "other",
             "TypeError"
+          ],
+          [
+            "MathMLElement",
+            "blur",
+            "html",
+            "TypeError"
+          ],
+          [
+            "MathMLElement",
+            "blur",
+            "svg",
+            "TypeError"
+          ],
+          [
+            "MathMLElement",
+            "blur",
+            "math",
+            "ok"
+          ],
+          [
+            "MathMLElement",
+            "blur",
+            "other",
+            "TypeError"
+          ],
+          [
+            "MathMLElement",
+            "click",
+            "missing"
           ],
           [
             "MathMLElement",
@@ -1282,6 +1388,84 @@
             "other",
             "TypeError"
           ]
+        ],
+        "focusRules": [
+          [
+            "svg-a-xlink-href",
+            true,
+            0
+          ],
+          [
+            "svg-a-no-href",
+            false,
+            0
+          ],
+          [
+            "svg-bogus-tabindex",
+            false,
+            -1
+          ],
+          [
+            "svg-negative-tabindex",
+            true,
+            -1
+          ],
+          [
+            "svg-in-math",
+            true,
+            0
+          ],
+          [
+            "svg-rect-in-html",
+            false,
+            0
+          ],
+          [
+            "svg-root-tabindex",
+            true,
+            0
+          ],
+          [
+            "svg-detached",
+            false,
+            0
+          ],
+          [
+            "svg-nested-foreign",
+            true,
+            0
+          ],
+          [
+            "mi-in-html",
+            true,
+            0
+          ],
+          [
+            "svg-in-g",
+            true,
+            0
+          ],
+          [
+            "svg-display-none",
+            false,
+            0
+          ],
+          [
+            "mi-hidden-host",
+            false,
+            0
+          ],
+          [
+            "math-in-svg",
+            false,
+            0
+          ]
+        ],
+        "inlineHandler": [
+          "function",
+          "onclick",
+          false,
+          2
         ]
       }
     }

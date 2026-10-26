@@ -143,8 +143,9 @@
   result.brand = [];
   const receivers = { html: document.createElement("div"), svg: document.createElementNS(SVG, "svg"), math: document.createElementNS(MATHML, "math"), other: document.createElementNS("urn:x", "x") };
   for (const owner of ["HTMLElement", "SVGElement", "MathMLElement"]) {
-    for (const key of ["style", "dataset", "nonce", "tabIndex", "autofocus", "focus", "onclick"]) {
+    for (const key of ["style", "dataset", "nonce", "tabIndex", "autofocus", "focus", "blur", "click", "onclick"]) {
       const d = Object.getOwnPropertyDescriptor(globalThis[owner].prototype, key);
+      if (!d) { result.brand.push([owner, key, "missing"]); continue; }
       for (const [label, receiver] of Object.entries(receivers)) {
         try {
           if (d.get) d.get.call(receiver); else d.value.call(receiver);
@@ -155,5 +156,41 @@
       }
     }
   }
+  // Script focus needs a valid tabindex (or an SVG <a> with href / xlink:href) and a rendering
+  // root of the element's own namespace.
+  result.focusRules = [];
+  const focusCase = (label, build) => {
+    const host = document.createElement("div");
+    document.body.append(host);
+    const target = build(host);
+    target.focus();
+    result.focusRules.push([label, document.activeElement === target, target.tabIndex]);
+    if (document.activeElement !== document.body) document.activeElement.blur();
+    host.remove();
+  };
+  const inRoot = (space, root, local, attributes) => (host) => {
+    const outer = document.createElementNS(space, root), target = document.createElementNS(space, local);
+    for (const [key, value, attributeSpace] of attributes) if (attributeSpace) target.setAttributeNS(attributeSpace, key, value); else target.setAttribute(key, value);
+    outer.append(target); host.append(outer); return target;
+  };
+  focusCase("svg-a-xlink-href", inRoot(SVG, "svg", "a", [["xlink:href", "#x", "http://www.w3.org/1999/xlink"]]));
+  focusCase("svg-a-no-href", inRoot(SVG, "svg", "a", []));
+  focusCase("svg-bogus-tabindex", inRoot(SVG, "svg", "rect", [["tabindex", "bogus"]]));
+  focusCase("svg-negative-tabindex", inRoot(SVG, "svg", "rect", [["tabindex", "-1"]]));
+  focusCase("svg-in-math", inRoot(MATHML, "math", "rect", [["tabindex", "0"]]));
+  focusCase("svg-rect-in-html", (host) => { const target = document.createElementNS(SVG, "rect"); target.setAttribute("tabindex", "0"); host.append(target); return target; });
+  focusCase("svg-root-tabindex", (host) => { const target = document.createElementNS(SVG, "svg"); target.setAttribute("tabindex", "0"); host.append(target); return target; });
+  focusCase("svg-detached", () => { const target = document.createElementNS(SVG, "svg"); target.setAttribute("tabindex", "0"); return target; });
+  focusCase("svg-nested-foreign", (host) => { const outer = document.createElementNS(SVG, "svg"), object = document.createElementNS(SVG, "foreignObject"), math = document.createElementNS(MATHML, "math"), target = document.createElementNS(MATHML, "mi"); target.setAttribute("tabindex", "0"); math.append(target); object.append(math); outer.append(object); host.append(outer); return target; });
+  focusCase("mi-in-html", (host) => { const target = document.createElementNS(MATHML, "mi"); target.setAttribute("tabindex", "0"); host.append(target); return target; });
+  focusCase("svg-in-g", (host) => { const outer = document.createElementNS(SVG, "svg"), group = document.createElementNS(SVG, "g"), target = document.createElementNS(SVG, "rect"); target.setAttribute("tabindex", "0"); group.append(target); outer.append(group); host.append(outer); return target; });
+  focusCase("svg-display-none", (host) => { const outer = document.createElementNS(SVG, "svg"), target = document.createElementNS(SVG, "rect"); target.setAttribute("tabindex", "0"); outer.style.display = "none"; outer.append(target); host.append(outer); return target; });
+  focusCase("mi-hidden-host", (host) => { host.hidden = true; const math = document.createElementNS(MATHML, "math"), target = document.createElementNS(MATHML, "mi"); target.setAttribute("tabindex", "0"); math.append(target); host.append(math); return target; });
+  focusCase("math-in-svg", (host) => { const outer = document.createElementNS(SVG, "svg"), target = document.createElementNS(MATHML, "math"); target.setAttribute("tabindex", "0"); outer.append(target); host.append(outer); return target; });
+  const handler = document.createElementNS(SVG, "rect");
+  handler.setAttribute("onclick", "return 1");
+  const first = handler.onclick;
+  handler.setAttribute("onclick", "return 2");
+  result.inlineHandler = [typeof first, first && first.name, handler.onclick === first, handler.onclick && handler.onclick.call(handler, new MouseEvent("click"))];
   return result;
 })();

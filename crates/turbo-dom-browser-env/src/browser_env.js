@@ -1039,7 +1039,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     return state;
   }
   function endEventDispatch(state){state.currentTarget=null;state.eventPhase=0;state.path=[];state.dispatching=false;state.stop=false;state.stopImmediate=false;}
-  var ctors = ['Node','Element','HTMLElement','HTMLDivElement','HTMLInputElement','HTMLButtonElement','HTMLAnchorElement','HTMLSelectElement','HTMLTextAreaElement','HTMLFormElement','HTMLImageElement','HTMLLabelElement','HTMLOptionElement','HTMLUListElement','HTMLLIElement','HTMLSpanElement','HTMLParagraphElement','HTMLHeadingElement','HTMLTableElement','HTMLIFrameElement','HTMLCanvasElement','HTMLStyleElement','HTMLScriptElement','HTMLDocument','Document','DocumentFragment','ShadowRoot','Text','Comment','SVGElement','SVGSVGElement','DOMParser','EventTarget','AbortController','AbortSignal','DOMException',
+  var ctors = ['Node','Element','HTMLElement','HTMLDivElement','HTMLInputElement','HTMLButtonElement','HTMLAnchorElement','HTMLSelectElement','HTMLTextAreaElement','HTMLFormElement','HTMLImageElement','HTMLLabelElement','HTMLOptionElement','HTMLUListElement','HTMLLIElement','HTMLSpanElement','HTMLParagraphElement','HTMLHeadingElement','HTMLTableElement','HTMLIFrameElement','HTMLCanvasElement','HTMLStyleElement','HTMLScriptElement','HTMLDocument','Document','DocumentFragment','ShadowRoot','Text','Comment','SVGElement','SVGSVGElement','MathMLElement','DOMParser','EventTarget','AbortController','AbortSignal','DOMException',
     'UIEvent','MouseEvent','KeyboardEvent','FocusEvent','InputEvent','TouchEvent','PointerEvent','WheelEvent','DragEvent','ClipboardEvent','AnimationEvent','TransitionEvent','MessageEvent','ProgressEvent','CompositionEvent','PopStateEvent','HashChangeEvent','StorageEvent','ErrorEvent','CloseEvent',
     // DOM node/collection/CSS interfaces app bundles do `instanceof` against (an
     // undefined RHS throws "not an object" and aborts the chunk — a single missing
@@ -2466,7 +2466,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     // Reinstallation keeps read-only constructor prototypes from the previous
     // document; compatibility descriptors belong to this bootstrap's raw nodes.
     var oldBase=compatibilityElementPrototype||g.HTMLElement.prototype,oldDocument=g.Document.prototype;
-    var nodeConstructors=['Node','Element','HTMLElement','Document','HTMLDocument','CharacterData','Attr','DocumentType','NamedNodeMap','Text','Comment','CDATASection','ProcessingInstruction','DocumentFragment','ShadowRoot','SVGElement','SVGSVGElement'];
+    var nodeConstructors=['Node','Element','HTMLElement','Document','HTMLDocument','CharacterData','Attr','DocumentType','NamedNodeMap','Text','Comment','CDATASection','ProcessingInstruction','DocumentFragment','ShadowRoot','SVGElement','SVGSVGElement','MathMLElement'];
     Object.getOwnPropertyNames(g).forEach(function(name){if(/^HTML.*Element$/.test(name)&&typeof g[name]==='function'&&nodeConstructors.indexOf(name)<0)nodeConstructors.push(name);});
     nodeConstructors.forEach(function(name){var previous=g[name];var ctor=__ns.makeNativeFunction(function(){throw new TypeError('Illegal constructor');},name,0,true);ctor.prototype=previous.prototype;Object.defineProperty(g,name,{value:ctor,writable:true,configurable:true,enumerable:false});});
     var prototypes={};
@@ -2515,6 +2515,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     defineInterface('ShadowRoot',g.DocumentFragment.prototype);
     defineInterface('SVGElement',elementProto);
     defineInterface('SVGSVGElement',g.SVGElement.prototype);
+    defineInterface('MathMLElement',elementProto);
     Object.getOwnPropertyNames(g).forEach(function(name){
       if(!/^HTML.*Element$/.test(name)||name==='HTMLElement'||typeof g[name]!=='function')return;
       var proto=g[name].prototype;
@@ -2558,6 +2559,10 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
       Node:['nodeType','nodeName','isConnected','ownerDocument','parentNode','parentElement','childNodes','firstChild','nextSibling','nodeValue','textContent'],
       Element:['namespaceURI','prefix','localName','tagName','id','className','attributes','innerHTML','outerHTML','children','firstElementChild','shadowRoot'],
       HTMLElement:['style','dataset','contentEditable','isContentEditable'],
+      // ElementCSSInlineStyle: Chrome puts `style` on each of the three (`dataset`, from
+      // HTMLOrSVGElement, is document_basics.js's).
+      SVGElement:['style'],
+      MathMLElement:['style'],
       CharacterData:['data'],
       DocumentType:['publicId','systemId'],
       Document:['activeElement','children','firstElementChild'],
@@ -2581,7 +2586,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
       Object.defineProperty(prototypes.Attr,name,descriptor);
     });
     var doctypeName=__ns.domAccessor('__nodeName',false,'DocumentType');Object.defineProperty(prototypes.DocumentType,'name',{get:__ns.makeNativeFunction(function(){return doctypeName.call(this);},'get name',0),enumerable:true,configurable:true});
-    var inlineStyle=Object.getOwnPropertyDescriptor(htmlProto,'style');inlineStyle.set=__ns.makeNativeFunction(function(value){var style=inlineStyle.get.call(this);Object.getOwnPropertyDescriptor(declarationPrototype,'cssText').set.call(style,value);},'set style',1);Object.defineProperty(htmlProto,'style',inlineStyle);
+    [htmlProto,prototypes.SVGElement,prototypes.MathMLElement].forEach(function(proto){var inlineStyle=Object.getOwnPropertyDescriptor(proto,'style');inlineStyle.set=__ns.makeNativeFunction(function(value){var style=inlineStyle.get.call(this);Object.getOwnPropertyDescriptor(declarationPrototype,'cssText').set.call(style,value);},'set style',1);Object.defineProperty(proto,'style',inlineStyle);});
     ['Element','Document','DocumentFragment'].forEach(function(owner){
       var children=Object.getOwnPropertyDescriptor(prototypes[owner],'children').get;
       ['childElementCount','lastElementChild'].forEach(function(name){
@@ -2659,6 +2664,36 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
         }
       });
     });
+    // HTMLOrSVGElement (turbo-dom#87): focus() / blur() brand-check their interface. An SVG or
+    // MathML element takes script focus when connected, rendered and given a valid tabindex (or,
+    // in SVG, when it is an <a> with an href / xlink:href).
+    var nativeFocus=htmlProto.focus,nativeBlur=htmlProto.blur,nativeClick=htmlProto.click;
+    // Internal focusing steps (dialogs, focusgroup navigation) focus any element kind.
+    __ns.focusElement=nativeFocus;
+    var parsesTabIndex=function(element){var value=element.getAttribute('tabindex');return value!==null&&/^[\t\n\f\r ]*[+-]?[0-9]/.test(value);};
+    // Rendering, as Chrome 156 measures it: an SVG element other than <svg> needs a non-HTML
+    // parent, a non-SVG element under SVG needs a <foreignObject> parent, and no inclusive
+    // ancestor may compute display: none.
+    var foreignRendered=function(element){
+      for(var node=element;node&&node.nodeType===1;node=node.parentNode){
+        var parent=node.parentNode,parentSpace=parent&&parent.nodeType===1?parent.namespaceURI:null;
+        if(node.namespaceURI==='http://www.w3.org/2000/svg'&&node.localName!=='svg'&&(parentSpace===null||parentSpace==='http://www.w3.org/1999/xhtml'))return false;
+        if(node.namespaceURI!=='http://www.w3.org/2000/svg'&&parentSpace==='http://www.w3.org/2000/svg'&&parent.localName!=='foreignObject')return false;
+        if(g.getComputedStyle(node).display==='none')return false;
+      }
+      return true;
+    };
+    var foreignFocusable=function(element,svg){
+      if(!element.isConnected)return false;
+      if(!parsesTabIndex(element)&&!(svg&&element.localName==='a'&&(element.hasAttribute('href')||element.hasAttributeNS('http://www.w3.org/1999/xlink','href'))))return false;
+      return foreignRendered(element);
+    };
+    [['HTMLElement',htmlProto],['SVGElement',prototypes.SVGElement],['MathMLElement',prototypes.MathMLElement]].forEach(function(entry){
+      var check=__ns.domAccessor('nodeType',false,entry[0]),foreign=entry[0]!=='HTMLElement',svg=entry[0]==='SVGElement';
+      var operations={focus:foreign?function(){check.call(this);if(foreignFocusable(this,svg))return nativeFocus.apply(this,arguments);}:function(){check.call(this);return nativeFocus.apply(this,arguments);},blur:function(){check.call(this);return nativeBlur.apply(this,arguments);}};
+      if(!foreign)operations.click=function(){check.call(this);return nativeClick.apply(this,arguments);};
+      Object.keys(operations).forEach(function(name){Object.defineProperty(entry[1],name,{value:__ns.makeNativeFunction(operations[name],name,0),writable:true,configurable:true,enumerable:true});});
+    });
     computedStyleNativeMatches=Object.getOwnPropertyDescriptor(prototypes.Element,'matches').value;
     computedStyleNativeGetAttribute=Object.getOwnPropertyDescriptor(prototypes.Element,'getAttribute').value;
     computedStyleNativeRoot=Object.getOwnPropertyDescriptor(prototypes.Node,'getRootNode').value;
@@ -2732,6 +2767,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     enumAttribute('enterKeyHint',['enter','done','go','next','previous','search','send'],'');
     enumAttribute('virtualKeyboardPolicy',['auto','manual'],'');
     ['autofocus','inert'].forEach(function(name){reflectedMember(name,function(){return this.hasAttribute(name);},function(value){if(value)this.setAttribute(name,'');else this.removeAttribute(name);});});
+    ['SVGElement','MathMLElement'].forEach(function(owner){var check=__ns.domAccessor('nodeType',false,owner);Object.defineProperty(prototypes[owner],'autofocus',{configurable:true,enumerable:true,get:__ns.makeNativeFunction(function(){check.call(this);return this.hasAttribute('autofocus');},'get autofocus',0),set:__ns.makeNativeFunction(function(value){check.call(this);if(value)this.setAttribute('autofocus','');else this.removeAttribute('autofocus');},'set autofocus',1)});});
     reflectedMember('hidden',function(){var value=this.getAttribute('hidden');return value===null?false:value.toLowerCase()==='until-found'?'until-found':true;},function(value){if(typeof value!=='boolean'&&value!=null){value=attributeString(value);if(value.toLowerCase()==='until-found'){this.setAttribute('hidden','until-found');return;}}if(value)this.setAttribute('hidden','');else this.removeAttribute('hidden');});
     function inheritedAttribute(el,name,accepted){for(var node=el;node&&node.nodeType===1;node=node.parentElement){var value=node.getAttribute(name);if(value!==null&&accepted.indexOf(value.toLowerCase())>=0)return value.toLowerCase();}return null;}
     reflectedMember('translate',function(){return inheritedAttribute(this,'translate',['','yes','no'])!=='no';},function(value){this.setAttribute('translate',value?'yes':'no');});
@@ -2772,11 +2808,13 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     });
     var elementOperations={getAttributeNames(){return Array.from(this.attributes,function(attribute){return attribute.name;});},hasAttributes(){return this.attributes.length>0;},insertAdjacentText(position,text){if(typeof position==='symbol'||typeof text==='symbol')throw new TypeError('Cannot convert a Symbol to a string');position=String(position).toLowerCase();var node=this.ownerDocument.createTextNode(String(text));if(position==='beforebegin'){if(this.parentNode)this.parentNode.insertBefore(node,this);}else if(position==='afterend'){if(this.parentNode)this.parentNode.insertBefore(node,this.nextSibling);}else if(position==='afterbegin')this.insertBefore(node,this.firstChild);else if(position==='beforeend')this.appendChild(node);else throw new __ns.DOMException('Invalid adjacent position','SyntaxError');}};
     Object.keys(elementOperations).forEach(function(name){var delegate=elementOperations[name],check=__ns.domAccessor('nodeType',false,'Element');Object.defineProperty(elementProto,name,{value:__ns.makeNativeFunction(function(){check.call(this);if(arguments.length<delegate.length)throw new TypeError(name+' requires '+delegate.length+' arguments');return delegate.apply(this,arguments);},name,delegate.length),writable:true,enumerable:true,configurable:true});});
-    var eventHandlers=new WeakMap(),checkHandlerReceiver=__ns.domAccessor('nodeType',false,'HTMLElement');
+    // GlobalEventHandlers: HTMLElement, SVGElement and MathMLElement each brand-check (turbo-dom#87).
+    var eventHandlers=new WeakMap();
     var handlerNames='abort animationcancel animationend animationiteration animationstart auxclick beforeinput beforematch beforetoggle beforexrselect blur cancel canplay canplaythrough change click close command contentvisibilityautostatechange contextlost contextmenu contextrestored copy cuechange cut dblclick drag dragend dragenter dragleave dragover dragstart drop durationchange emptied ended error focus formdata gotpointercapture input invalid keydown keypress keyup load loadeddata loadedmetadata loadstart lostpointercapture mousedown mouseenter mouseleave mousemove mouseout mouseover mouseup mousewheel paste pause play playing pointercancel pointerdown pointerenter pointerleave pointermove pointerout pointerover pointerrawupdate pointerup progress ratechange reset resize scroll scrollend scrollsnapchange scrollsnapchanging securitypolicyviolation seeked seeking select selectionchange selectstart slotchange stalled submit suspend timeupdate toggle transitioncancel transitionend transitionrun transitionstart volumechange waiting webkitanimationend webkitanimationiteration webkitanimationstart webkittransitionend wheel'.split(' ');
+    [['HTMLElement',htmlProto],['SVGElement',prototypes.SVGElement],['MathMLElement',prototypes.MathMLElement]].forEach(function(owner){var checkHandlerReceiver=__ns.domAccessor('nodeType',false,owner[0]);
     handlerNames.forEach(function(type){
       var name='on'+type;
-      Object.defineProperty(htmlProto,name,{configurable:true,enumerable:true,
+      Object.defineProperty(owner[1],name,{configurable:true,enumerable:true,
         get:__ns.makeNativeFunction(function(){checkHandlerReceiver.call(this);if(prepareInlineHandler)prepareInlineHandler.call(this,name);var handlers=eventHandlers.get(this);return handlers&&handlers[name]&&handlers[name].value||null;},'get '+name,0),
         set:__ns.makeNativeFunction(function(value){
           checkHandlerReceiver.call(this);if(noteInlineHandler)noteInlineHandler.call(this,name);value=typeof value==='function'?value:null;
@@ -2787,6 +2825,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
           if(!value&&entry.value)this.removeEventListener(type,entry.callback);
           entry.value=value;
         },'set '+name,1)});
+    });
     });
     var nodeOperations={
       lookupNamespaceURI(prefix){prefix=prefix==null||prefix===''?null:attributeString(prefix);var element=this.nodeType===9?this.documentElement:this.nodeType===2?this.ownerElement:this.nodeType===1?this:this.parentElement;while(element){if(prefix==='xml')return 'http://www.w3.org/XML/1998/namespace';if(prefix==='xmlns')return 'http://www.w3.org/2000/xmlns/';if(element.namespaceURI&&element.prefix===prefix)return element.namespaceURI;var declaration=element.getAttributeNodeNS('http://www.w3.org/2000/xmlns/',prefix===null?'xmlns':prefix);if(declaration&&(prefix===null?declaration.prefix===null:declaration.prefix==='xmlns'))return declaration.value||null;element=element.parentElement;}return null;},
@@ -2827,7 +2866,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
         if(namespace==='http://www.w3.org/2000/svg'){
           var localStart=0;for(var index=0;index<tag.length;index++)if(tag[index]===':')localStart=index+1;
           name=projectionApply(projectionSlice,tag,[localStart])==='svg'?'SVGSVGElement':'SVGElement';
-        }else name=namespace==='http://www.w3.org/1999/xhtml'?htmlInterfaceName(tag):'Element';
+        }else name=namespace==='http://www.w3.org/1999/xhtml'?htmlInterfaceName(tag):namespace==='http://www.w3.org/1998/Math/MathML'?'MathMLElement':'Element';
       }else name=type===11&&projectionApply(isShadowRoot,obj,[])?'ShadowRoot':({2:'Attr',10:'DocumentType',3:'Text',4:'CDATASection',7:'ProcessingInstruction',8:'Comment',9:'HTMLDocument',11:'DocumentFragment'})[type]||'Node';
       projectionSetPrototype(obj,prototypes[name]);
       projectionApply(projectionAdd,projected,[obj]);

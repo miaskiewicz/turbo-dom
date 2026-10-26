@@ -10,7 +10,7 @@
   const apply = Reflect.apply, define = Object.defineProperty, create = Object.create;
   const check = ns.domAccessor('nodeType', false, 'HTML:dialog'), connectedGetter = ns.domAccessor('isConnected', false, 'Node');
   const getAttribute = g.Element.prototype.getAttributeNS, setAttribute = g.Element.prototype.setAttributeNS, removeAttribute = g.Element.prototype.removeAttributeNS;
-  const focus = g.HTMLElement.prototype.focus;
+  const focus = ns.focusElement;
   const ToggleEvent = g.ToggleEvent, EventType = g.Event, Exception = g[Symbol.for('ts')].DOMException, ErrorType = TypeError;
   const records = new WeakMap(), weakGet = WeakMap.prototype.get, weakSet = WeakMap.prototype.set;
   const lower = Function.prototype.call.bind(String.prototype.toLowerCase);

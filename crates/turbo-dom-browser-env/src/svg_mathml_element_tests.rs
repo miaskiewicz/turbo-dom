@@ -1,7 +1,8 @@
 //! turbo-dom#87 (from miaskiewicz/turbo-test#79 item 4): `SVGElement` and `MathMLElement`
 //! include the `ElementCSSInlineStyle` (`style`), `HTMLOrSVGElement` (`dataset`, `nonce`,
 //! `autofocus`, `tabIndex`, `focus()`, `blur()`) and `GlobalEventHandlers` (`on*`) mixins, and
-//! MathML-namespace elements are `MathMLElement`s, so `svg.style.flexGrow = '1'` works.
+//! MathML-namespace elements are `MathMLElement`s, so `svg.style.flexGrow = '1'` works. Script
+//! focus of an SVG / MathML element follows Chrome's measured rules (`focusRules`).
 //! Checked against the Chrome 156 control (`svg_mathml_element_probe.js` +
 //! `svg_mathml_element_cases.json` -> `svg_mathml_element_chrome156.json`, recorded by
 //! scripts/select-element-chrome-control.mjs).
@@ -17,7 +18,6 @@ fn sha(bytes: &[u8]) -> String {
 }
 
 #[test]
-#[ignore = "turbo-dom#87: fails until the fix"]
 fn svg_and_mathml_elements_include_the_html_or_svg_mixins_like_chrome() {
     let control: serde_json::Value = serde_json::from_str(CONTROL).unwrap();
     assert_eq!(control["browser"], "Chrome/156.0.8078.4");
