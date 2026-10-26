@@ -23,13 +23,8 @@ const FIXTURE: &str = include_str!("fixtures/rtdom_core_chrome156.json");
 /// Recorded Chrome answers rtdom does not give yet, each with its issue; skipped by the
 /// assertions until the fixing commit removes them here. (turbo-dom#92, RCDATA-context
 /// fragments dropping U+0000, is fixed.)
-/// - miaskiewicz/turbo-dom#103: an empty DOCTYPE system identifier counts as missing.
-const OPEN_DOCUMENTS: &[&str] = &[
-    "doctype_transitional_empty_system",
-    "doctype_transitional_single_empty_system",
-    "doctype_transitional_empty_system_table",
-    "doctype_frameset_empty_system",
-];
+/// (turbo-dom#103, an empty DOCTYPE system identifier counting as missing, is fixed.)
+const OPEN_DOCUMENTS: &[&str] = &[];
 /// (turbo-dom#91, #96 and #98 are fixed.)
 const OPEN_SELECTORS: &[&str] = &[];
 

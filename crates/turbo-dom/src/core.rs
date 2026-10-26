@@ -6,9 +6,13 @@
 //! marshaling proving to be the actual cost. Do not SoA-ify here yet.
 
 use html5ever::driver::ParseOpts;
+use html5ever::tendril::StrTendril;
+use html5ever::tokenizer::{BufferQueue, Token, TokenSink, TokenSinkResult, Tokenizer};
+use html5ever::TokenizerResult;
+use html5ever::tree_builder::TreeBuilder;
 use html5ever::tendril::TendrilSink;
 use html5ever::tree_builder::TreeBuilderOpts;
-use html5ever::{ns, parse_document, parse_fragment, LocalName, QualName};
+use html5ever::{ns, parse_fragment, LocalName, QualName};
 use markup5ever_rcdom::{Handle, NodeData, RcDom};
 
 /// DOM nodeType constants (subset html5ever can emit).
@@ -76,13 +80,53 @@ fn opts_with_scripting(scripting_enabled: bool) -> ParseOpts {
     }
 }
 
+/// Chrome 156 treats an empty DOCTYPE system identifier as missing when it picks the
+/// document's quirks mode (miaskiewicz/turbo-dom#103): `<!DOCTYPE html PUBLIC "-//W3C//DTD
+/// HTML 4.01 Transitional//EN" "">` is quirks (a `<table>` stays in an open `<p>`), where the
+/// HTML spec (and html5ever) reads a present identifier. `doctype.systemId` is `""` both ways.
+#[must_use]
+pub fn chrome_doctype(token: Token) -> Token {
+    match token {
+        Token::DoctypeToken(mut doctype) if doctype.system_id.as_deref() == Some("") => {
+            doctype.system_id = None;
+            Token::DoctypeToken(doctype)
+        }
+        token => token,
+    }
+}
+
+/// A token sink that applies [`chrome_doctype`] before the wrapped sink (html5ever's tree
+/// builder) sees a token.
+pub struct ChromeTokens<S>(pub S);
+
+impl<S: TokenSink> TokenSink for ChromeTokens<S> {
+    type Handle = S::Handle;
+    fn process_token(&self, token: Token, line_number: u64) -> TokenSinkResult<S::Handle> {
+        self.0.process_token(chrome_doctype(token), line_number)
+    }
+    fn end(&self) {
+        self.0.end();
+    }
+    fn adjusted_current_node_present_but_not_in_html_namespace(&self) -> bool {
+        self.0.adjusted_current_node_present_but_not_in_html_namespace()
+    }
+}
+
+/// `html5ever::parse_document` over a whole string, with [`ChromeTokens`].
+fn parse_document_dom(html: &str, opts: ParseOpts) -> RcDom {
+    let builder = TreeBuilder::new(RcDom::default(), opts.tree_builder);
+    let tokenizer = Tokenizer::new(ChromeTokens(builder), opts.tokenizer);
+    let input = BufferQueue::default();
+    input.push_back(StrTendril::from_slice(html));
+    while !matches!(tokenizer.feed(&input), TokenizerResult::Done) {}
+    tokenizer.end();
+    tokenizer.sink.0.sink
+}
+
 /// Parse a full HTML document. Always yields a Document root (nodeType 9).
 #[must_use]
 pub fn parse_html_document(html: &str) -> Node {
-    let dom = parse_document(RcDom::default(), opts())
-        .from_utf8()
-        .read_from(&mut html.as_bytes())
-        .expect("RcDom read_from is infallible over a byte slice");
+    let dom = parse_document_dom(html, opts());
     walk(&dom.document)
 }
 
@@ -307,10 +351,7 @@ pub fn parse_html_soa_with_compat_mode(html: &str) -> (Soa, &'static str) {
 /// what native layout consumers that render `<noscript>` as raw text use).
 #[must_use]
 pub fn parse_html_soa_with_scripting(html: &str, scripting: bool) -> (Soa, &'static str) {
-    let dom = parse_document(RcDom::default(), opts_with_scripting(scripting))
-        .from_utf8()
-        .read_from(&mut html.as_bytes())
-        .expect("RcDom read_from is infallible over a byte slice");
+    let dom = parse_document_dom(html, opts_with_scripting(scripting));
     let mut b = SoaBuilder {
         soa: Soa::default(),
         // pre-reserve typical intern-table sizes so the build loop doesn't rehash:
@@ -342,10 +383,7 @@ pub fn parse_html_soa_with_scripting(html: &str, scripting: bool) -> (Soa, &'sta
 /// marshaling. Isolates raw html5ever parse cost from tree-build + boundary cost.
 #[must_use]
 pub fn parse_html_document_count(html: &str) -> u32 {
-    let dom = parse_document(RcDom::default(), opts())
-        .from_utf8()
-        .read_from(&mut html.as_bytes())
-        .expect("RcDom read_from is infallible over a byte slice");
+    let dom = parse_document_dom(html, opts());
     count(&dom.document)
 }
 
