@@ -149,7 +149,8 @@ impl Cascade {
     #[must_use]
     pub fn with_fullscreen(&self) -> Cascade {
         let mut rules = self.rules.clone();
-        let mut order = rules.iter().map(|r| r.order + 1).max().unwrap_or(0);
+        // A cascade numbers its rules 0, 1, ... in order: the fullscreen rules follow.
+        let mut order = rules.len();
         add_leveled(&mut rules, &mut order, 0, FULLSCREEN_UA_SHEET.clone());
         Cascade {
             rules,
