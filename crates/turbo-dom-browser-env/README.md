@@ -196,7 +196,7 @@ trees the listener is outside of, propagation stops where the retargeted `relate
 is the host it would enter (nothing is dispatched when it equals the target), and after
 dispatch `target` / `relatedTarget` are cleared when they stayed inside a shadow tree.
 Events whose path crosses no shadow root dispatch as before. Control:
-`src/shadow_events_chrome156.json`.
+`src/shadow_events_chrome156.json` (exported as `test_support::SHADOW_EVENTS_*`).
 
 `getComputedStyle(el, pseudoElt)` parses `pseudoElt` like Chrome (turbo-dom#47):
 `::before` / `::after` (and `:before` / `:after` / bare `before` / `after`) compute

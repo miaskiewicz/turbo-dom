@@ -33,8 +33,9 @@ at the time); this file reconstructs them from history.
   `crates/turbo-dom-browser-env/src/`. `src/dom_reactions_tests.rs` used to `include_str!` it
   from outside the crate, so the test could not build from the published package. The npm
   test `test/dom-adoption-reactions-chrome.test.mjs` now reads it from the crate.
-- `test_support` exports it and the `dom_reactions_names_*` control
-  (`DOM_ADOPTION_REACTIONS_*`, `DOM_REACTIONS_NAMES_*`; `FILES` has 82 entries).
+- `test_support` exports it, the `dom_reactions_names_*` control and the `shadow_events_*`
+  control (`DOM_ADOPTION_REACTIONS_*`, `DOM_REACTIONS_NAMES_*`, `SHADOW_EVENTS_*`; `FILES`
+  has 85 entries).
 - A test now asserts that no `include_str!` / `include_bytes!` in the crate's `src/` or
   `tests/` leaves the crate.
 
