@@ -7,49 +7,6 @@ at the time); this file reconstructs them from history.
 
 ## [Unreleased]
 
-### Fixed — turbo-dom-layout margins, heights, zero-area clips, flow-root and flex item sizes (P5b-W6, miaskiewicz/turbo-dom#75/#76/#77/#78/#86/#88/#93, Chrome 156 controls)
-Each fix is backed by Chrome for Testing 156 cases in `scripts/html-document-chrome-control.mjs`
-and lists the corpus outputs it changes in `tools/parity/expected/p5b-w6-turbo-dom-*.json`
-(new pinned corpus inputs: `tools/parity/inputs/extra/{min-height-margin,
-self-collapsing-margins,min-max-height,percent-height,flow-root,column-flex,
-flex-item-box-sizing}.html`).
-- A last child's bottom margin and `min-height` / `max-height` (#75 item 1): a non-zero
-  `min-height` kept the margin inside the parent (`max(min-height, content + margin)`).
-  As in Chrome, an auto-height parent lays its content out without it; the margin
-  collapses through when the used height is the content height and is dropped (neither
-  through nor inside) when `min-height` / `max-height` changed it. Bottom padding /
-  border, a definite `height` or an own formatting context still keep it inside.
-  Control: `min-height-margin-*`.
-- Zero-area `clip: rect()` boxes in `layout_boxes` (#75 item 2): an absolutely positioned
-  box whose clip keeps nothing (the sr-only pattern) had no `layoutBoxes` entry. The
-  geometry seam (`layout_boxes`, html2pdf / turbo-pdf-napi `layoutBoxes`) now lays it out
-  with its empty clip region and reports its border box and its descendants' like
-  `getBoundingClientRect()`; renders still leave it out (nothing paints; its text stays
-  out of PDF text and tagging). Control: `clip-zero-area-*` / `clip-sr-only*`.
-- An empty first child's margins (#76, found while fixing #75): the top and bottom
-  margins of an empty (self-collapsing) first child, and the next child's top margin,
-  collapse through the parent's top edge (CSS 2.2 §8.3.1) instead of staying inside it.
-  Control: `self-collapsing-first-child-*`.
-- `min-height` wins over `max-height` (#77, found while fixing #75): the static path
-  clamped by `max-height` last. Control: `min-max-height-*`.
-- Percentage heights on the static path (#78, found while fixing #75): a `%` `height` /
-  `min-height` / `max-height` of an in-flow box resolves against its parent's definite
-  height (positioned boxes: also `min-height` / `max-height`); against an indefinite height
-  they still behave as `auto` / 0 / `none`. Control: `percent-*`.
-- `display: flow-root` (#88): laid out as a plain block, it now establishes a block
-  formatting context — its children's margins stay inside, it contains its floats and
-  avoids outer floats. A zero-height box that establishes a formatting context (flow-root,
-  `overflow`, flex / grid / table) is no longer self-collapsing: margins no longer run
-  through an empty one. Control: `flow-root-*` / `empty-formatting-root-*`.
-- Column flex items (#86): an item's flex basis came from its `width` and its `width` was
-  dropped, so it stretched to the container and its height became its width. In a column
-  the basis falls back to `height` and `width` is the cross size; taffy's main size wins
-  over a `px` `height` (basis, grow, shrink). Control: `column-flex-item-*`.
-- Content-box flex items (#93, found while fixing #86): an item's `width` / `height` /
-  `flex-basis` / `min-*` / `max-*` lengths reached taffy (border boxes) unchanged, so a
-  padded or bordered `box-sizing: content-box` item lost its frame. They are now
-  border-box lengths. Control: `flex-item-*`.
-
 ### Fixed — `HTMLTrackElement` and `TextTrack` (P5b-X6, miaskiewicz/turbo-dom#74, Chrome 156 control)
 - turbo-dom-browser-env: `<track>` had no interface, so `track.src`, `kind`, `srclang`,
   `label`, `default`, `readyState`, `track` and `NONE` / `LOADING` / `LOADED` / `ERROR` were
@@ -223,6 +180,50 @@ flex-item-box-sizing}.html`).
   collection now records the state first. Reproduced through the binding
   (`collect_native_storage` after `install_html` and a GC, then the
   `custom_elements_defined_chrome156.json` probe).
+
+### Fixed — turbo-dom-layout margins, heights, zero-area clips, flow-root and flex item sizes (P5b-W6, miaskiewicz/turbo-dom#75/#76/#77/#78/#86/#88/#93, Chrome 156 controls)
+Each fix is backed by Chrome for Testing 156 cases in `scripts/html-document-chrome-control.mjs`
+and lists the corpus outputs it changes in `tools/parity/expected/p5b-w6-turbo-dom-*.json`
+(new pinned corpus inputs: `tools/parity/inputs/extra/{min-height-margin,
+self-collapsing-margins,min-max-height,percent-height,flow-root,column-flex,
+flex-item-box-sizing}.html`).
+- A last child's bottom margin and `min-height` / `max-height` (#75 item 1): a non-zero
+  `min-height` kept the margin inside the parent (`max(min-height, content + margin)`).
+  As in Chrome, an auto-height parent lays its content out without it; the margin
+  collapses through when the used height is the content height and is dropped (neither
+  through nor inside) when `min-height` / `max-height` changed it. Bottom padding /
+  border, a definite `height` or an own formatting context still keep it inside.
+  Control: `min-height-margin-*`.
+- Zero-area `clip: rect()` boxes in `layout_boxes` (#75 item 2): an absolutely positioned
+  box whose clip keeps nothing (the sr-only pattern) had no `layoutBoxes` entry. The
+  geometry seam (`layout_boxes`, html2pdf / turbo-pdf-napi `layoutBoxes`) now lays it out
+  with its empty clip region and reports its border box and its descendants' like
+  `getBoundingClientRect()`; renders still leave it out (nothing paints; its text stays
+  out of PDF text and tagging). Control: `clip-zero-area-*` / `clip-sr-only*`.
+- An empty first child's margins (#76, found while fixing #75): the top and bottom
+  margins of an empty (self-collapsing) first child, and the next child's top margin,
+  collapse through the parent's top edge (CSS 2.2 §8.3.1) instead of staying inside it.
+  Control: `self-collapsing-first-child-*`.
+- `min-height` wins over `max-height` (#77, found while fixing #75): the static path
+  clamped by `max-height` last. Control: `min-max-height-*`.
+- Percentage heights on the static path (#78, found while fixing #75): a `%` `height` /
+  `min-height` / `max-height` of an in-flow box resolves against its parent's definite
+  height (positioned boxes: also `min-height` / `max-height`); against an indefinite height
+  they still behave as `auto` / 0 / `none`. Control: `percent-*`.
+- `display: flow-root` (#88): laid out as a plain block, it now establishes a block
+  formatting context — its children's margins stay inside, it contains its floats and
+  avoids outer floats. A zero-height box that establishes a formatting context (flow-root,
+  `overflow`, flex / grid / table) is no longer self-collapsing: margins no longer run
+  through an empty one. Control: `flow-root-*` / `empty-formatting-root-*`.
+- Column flex items (#86): an item's flex basis came from its `width` and its `width` was
+  dropped, so it stretched to the container and its height became its width. In a column
+  the basis falls back to `height` and `width` is the cross size; taffy's main size wins
+  over a `px` `height` (basis, grow, shrink). Control: `column-flex-item-*`.
+- Content-box flex items (#93, found while fixing #86): an item's `width` / `height` /
+  `flex-basis` / `min-*` / `max-*` lengths reached taffy (border boxes) unchanged, so a
+  padded or bordered `box-sizing: content-box` item lost its frame. They are now
+  border-box lengths. Control: `flex-item-*`.
+
 ### Fixed — turbo-dom-layout tables, clipping and box sizing (P5b-W5, miaskiewicz/turbo-dom#41/#51/#52/#55/#62/#63/#64/#65/#69/#70, Chrome 156 controls)
 Each fix is backed by a Chrome for Testing 156 control and lists the corpus outputs it
 changes in `tools/parity/expected/p5b-w5-turbo-dom-*.json`.
