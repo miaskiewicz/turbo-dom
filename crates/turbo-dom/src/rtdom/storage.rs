@@ -564,3 +564,101 @@ fn document_buffer() -> Soa {
         strings: vec![],
     }
 }
+
+/// Collection's graph checks against states the Tree API cannot build (P5-cov): each test
+/// corrupts one overlay the way a bug in a mutation path would, and the collector must
+/// refuse with `InvalidGraph` and leave every node and payload untouched.
+#[cfg(test)]
+mod integrity_tests {
+    use super::super::{Handle, Tree};
+    use super::{CollectionBudget, CollectionError};
+
+    fn budget() -> CollectionBudget {
+        CollectionBudget {
+            max_nodes: 10_000,
+            max_edges: 100_000,
+            max_payload_bytes: 1_000_000,
+        }
+    }
+
+    fn refused(tree: &mut Tree, pins: &[Handle], error: CollectionError) {
+        let before = tree.storage_stats();
+        let version = tree.version;
+        assert_eq!(tree.collect_unreachable(pins, budget()), Err(error));
+        assert_eq!(tree.storage_stats(), before);
+        assert_eq!(tree.version, version);
+    }
+
+    #[test]
+    fn a_dead_child_is_rejected() {
+        let mut tree = Tree::parse("<p></p>");
+        let p = tree.query_selector("p").unwrap();
+        let gone = tree.create_element("i");
+        tree.collect_unreachable(&[], budget()).unwrap();
+        assert!(!tree.is_live(gone));
+        tree.ensure_children(p).push(gone);
+        tree.parent_ov.insert(gone, Some(p));
+        refused(&mut tree, &[], CollectionError::InvalidGraph);
+    }
+
+    #[test]
+    fn a_child_whose_parent_points_elsewhere_is_rejected() {
+        let mut tree = Tree::parse("<p></p><q></q>");
+        let p = tree.query_selector("p").unwrap();
+        let q = tree.query_selector("q").unwrap();
+        let child = tree.create_element("i");
+        tree.append_child(p, child);
+        tree.parent_ov.insert(child, Some(q));
+        refused(&mut tree, &[], CollectionError::InvalidGraph);
+    }
+
+    #[test]
+    fn a_shadow_root_with_another_host_is_rejected() {
+        let mut tree = Tree::parse("<p></p><q></q>");
+        let p = tree.query_selector("p").unwrap();
+        let q = tree.query_selector("q").unwrap();
+        let shadow = tree.attach_shadow(p);
+        tree.host_of_shadow_root.insert(shadow, q);
+        refused(&mut tree, &[], CollectionError::InvalidGraph);
+    }
+
+    #[test]
+    fn a_pinned_node_missing_from_its_parents_children_is_rejected() {
+        let mut tree = Tree::parse("<p></p>");
+        let p = tree.query_selector("p").unwrap();
+        let orphan = tree.create_element("i");
+        // the node claims a parent whose child list does not hold it
+        tree.parent_ov.insert(orphan, Some(p));
+        refused(&mut tree, &[orphan], CollectionError::InvalidGraph);
+        // consistent again: it collects
+        tree.ensure_children(p).push(orphan);
+        assert!(tree.collect_unreachable(&[orphan], budget()).is_ok());
+        assert!(tree.is_live(orphan));
+    }
+
+    #[test]
+    fn pins_and_pending_records_count_against_the_edge_budget_together() {
+        let mut tree = Tree::parse("");
+        let root = tree.root();
+        let el = tree.create_element("i");
+        tree.start_recording();
+        tree.append_child(root, el);
+        let max_edges = 64;
+        let bounds = CollectionBudget {
+            max_edges,
+            ..budget()
+        };
+        // the pins alone fit (pins.len() <= max_edges), the record's nodes push it over
+        let pins = vec![root; max_edges];
+        let before = tree.storage_stats();
+        assert_eq!(
+            tree.collect_unreachable(&pins, bounds),
+            Err(CollectionError::BudgetExceeded)
+        );
+        assert_eq!(tree.storage_stats(), before);
+        // the same pending record with one pin fits the same budget
+        let report = tree.collect_unreachable(&[root], bounds).unwrap();
+        assert_eq!(report.reclaimed_nodes, 0);
+        assert!(tree.is_live(el));
+    }
+}

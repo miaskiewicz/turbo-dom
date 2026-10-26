@@ -100,7 +100,7 @@ enum AttrMatch {
     Units(UnitAttrMatch),
     Equals(String),   // [attr=v]
     Includes(String), // [attr~=v]  whitespace-separated word
-    Dash(String),     // [attr|=v]  v or v-...
+    // (`[attr|=v]` always takes the unit path: `specialized_attribute` claims every `|`)
     Prefix(String),   // [attr^=v]
     Suffix(String),   // [attr$=v]
     Substr(String),   // [attr*=v]
@@ -123,11 +123,12 @@ pub use cascade::{
 impl AttrMatch {
     /// Does `got` (the element's attribute value) satisfy this test? SAME
     /// semantics as the old `attr_op_matches`: the `!want.is_empty()` guards on
-    /// prefix/suffix/substr/includes are preserved, `Dash` = `v` or `v-…`.
+    /// prefix/suffix/substr/includes are preserved.
     fn matches(&self, got: &str) -> bool {
         match self {
             AttrMatch::Present => true,
-            AttrMatch::Units(m) => m.matches(&got.encode_utf16().collect::<Vec<_>>()),
+            // unit records are matched against unit values (`matches_compound`)
+            AttrMatch::Units(_) => unreachable!("unit attribute records match units"),
             AttrMatch::Equals(want) => got == want,
             AttrMatch::Prefix(want) => !want.is_empty() && got.starts_with(want.as_str()),
             AttrMatch::Suffix(want) => !want.is_empty() && got.ends_with(want.as_str()),
@@ -135,7 +136,6 @@ impl AttrMatch {
             AttrMatch::Includes(want) => {
                 !want.is_empty() && got.split_ascii_whitespace().any(|w| w == want)
             }
-            AttrMatch::Dash(want) => got == want || got.starts_with(&format!("{want}-")),
         }
     }
 }
@@ -352,11 +352,8 @@ enum Token {
 /// is `ch` a token boundary (the lexer can never put it inside an `Ident`)?
 #[inline]
 fn is_special(ch: char) -> bool {
-    ch.is_whitespace()
-        || matches!(
-            ch,
-            '>' | '+' | '~' | '#' | '.' | ':' | '[' | ']' | '(' | ')'
-        )
+    let delimiter = matches!(ch, '>' | '+' | '~' | '#' | '.' | ':' | '[' | ']' | '(' | ')');
+    ch.is_whitespace() || delimiter
 }
 
 /// A type-selector / pseudo-name may START with an ASCII letter (mirrors the JS
@@ -624,22 +621,23 @@ fn push_part(
     Ok(())
 }
 
-/// Structural validation of a selector list: a combinator must have a non-empty compound
-/// on its LEFT (else "empty compound"), across every top-level comma segment, and a type
-/// selector must be the first simple selector of its compound (`[a]div`). Empty segments
-/// and a trailing combinator pass here; [`parse_for_cascade`] (which calls this per item)
-/// rejects them, as Chrome does.
+/// Structural validation of one selector-list item: a combinator must have a non-empty
+/// compound on its LEFT (else "empty compound"), and a type selector must be the first
+/// simple selector of its compound (`[a]div`). A trailing combinator passes here;
+/// [`parse_for_cascade`] (which calls this per item) rejects it, as Chrome does.
 fn validate_selector_list(src: &str) -> Result<(), SelectorError> {
     let toks = lex_strict(src)?;
-    // `matched` = the compound currently being built has at least one part. A comma
-    // starts a fresh segment (reset); whitespace is a transparent separator.
+    // `matched` = the compound currently being built has at least one part; whitespace
+    // is a transparent separator.
     let mut matched = false;
     // `compound` = the current compound has a part not separated from the next by
     // whitespace (a type selector must come first).
     let mut compound = false;
     for t in &toks {
         match t {
-            StrictTok::Comma => (matched, compound) = (false, false),
+            // callers validate one top-level item (commas inside arguments are lexed
+            // by the nested `lex_strict` only)
+            StrictTok::Comma => unreachable!("validate_selector_list takes one item"),
             StrictTok::Ws => compound = false,
             StrictTok::Comb => {
                 if !matched {
@@ -1218,7 +1216,7 @@ fn parse_attr(inner: &str) -> Attr {
             let val = val.to_string();
             let (m, name) = match raw_name.as_bytes().last() {
                 Some(b'~') => (AttrMatch::Includes(val), &raw_name[..raw_name.len() - 1]),
-                Some(b'|') => (AttrMatch::Dash(val), &raw_name[..raw_name.len() - 1]),
+                Some(b'|') => unreachable!("`|=` takes the unit path"),
                 Some(b'^') => (AttrMatch::Prefix(val), &raw_name[..raw_name.len() - 1]),
                 Some(b'$') => (AttrMatch::Suffix(val), &raw_name[..raw_name.len() - 1]),
                 Some(b'*') => (AttrMatch::Substr(val), &raw_name[..raw_name.len() - 1]),
@@ -1749,12 +1747,12 @@ fn matches_compound<N: Navigator + ?Sized>(nav: &N, h: Handle, c: &Compound) -> 
             &a.name
         };
         if a.any_namespace {
+            // `[*|a]` is built by the unit parser only (`Attr::namespaced`)
+            let AttrMatch::Units(m) = &a.m else {
+                unreachable!("namespaced attribute selectors are unit records")
+            };
             let found = tree.local_attributes(h).any(|(local, value)| {
-                local == name
-                    && match &a.m {
-                        AttrMatch::Units(m) => m.matches(&value.encode_utf16().collect::<Vec<_>>()),
-                        m => m.matches(value),
-                    }
+                local == name && m.matches(&value.encode_utf16().collect::<Vec<_>>())
             });
             if !found {
                 return false;

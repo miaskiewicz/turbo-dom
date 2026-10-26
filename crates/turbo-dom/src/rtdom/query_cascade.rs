@@ -28,7 +28,7 @@
 //! [`Navigator`]; [`PositionCache`] memoizes sibling positions for navigators that style a
 //! whole tree (each sibling list is scanned once instead of once per structural pseudo).
 use super::{
-    matches_complex, parse_complex, parse_pseudo, split_top_level_commas, units,
+    matches_complex, parse_complex, split_top_level_commas, units,
     validate_selector_list, Complex, Compound, Handle, Navigator, Pseudo, SelectorError, Tree,
     UnknownPseudo,
 };
@@ -524,7 +524,9 @@ pub(super) fn contains_has(complex: &Complex) -> bool {
             | Pseudo::Not(list)
             | Pseudo::WebkitAny(list)
             | Pseudo::NthChildOf(_, _, list)
-            | Pseudo::NthLastChildOf(_, _, list) => list.iter().any(contains_has),
+            | Pseudo::NthLastChildOf(_, _, list) => {
+                list.iter().any(contains_has)
+            }
             _ => false,
         })
 }
@@ -608,15 +610,10 @@ fn unforgiving_list(arg: &str) -> Result<Vec<Complex>, SelectorError> {
 /// A pseudo the shared parser left `Unknown`: an implemented one written in another case,
 /// a cascade-only one, a valid never-matching one, or an error.
 fn cascade_pseudo(unknown: &UnknownPseudo) -> Result<Pseudo, SelectorError> {
+    // (`parse_pseudo` already tried the ASCII-lowercased name: an implemented pseudo in
+    // another case never reaches here)
     let lower = unknown.name.to_ascii_lowercase();
     let arg = unknown.arg.as_deref();
-    if lower != unknown.name {
-        let mut parsed = parse_pseudo(&lower, arg);
-        if !matches!(parsed, Pseudo::Unknown(_)) {
-            check_pseudo(&mut parsed)?;
-            return Ok(parsed);
-        }
-    }
     match (lower.as_str(), arg) {
         (name, None) if NEVER_PSEUDO_CLASSES.contains(&name) => Ok(Pseudo::unknown(name, None)),
         (name, Some(_)) if NEVER_FUNCTIONAL_PSEUDO_CLASSES.contains(&name) => {

@@ -449,17 +449,15 @@ impl Tree {
         node
     }
     #[must_use]
+    /// None for every other node (only created nodes are processing instructions).
     pub fn processing_instruction_target_utf16(&self, node: Handle) -> Option<Vec<u16>> {
-        if self.node_type(node) != NodeType::ProcessingInstruction {
+        if !self.is_new(node) {
             return None;
         }
-        if self.is_new(node) {
-            if let NewNode::ProcessingInstruction(data) = self.new_ref(node) {
-                return Some(data.target.units());
-            }
+        match self.new_ref(node) {
+            NewNode::ProcessingInstruction(data) => Some(data.target.units()),
+            _ => None,
         }
-        self.processing_instruction_target(node)
-            .map(|target| target.encode_utf16().collect())
     }
     #[must_use]
     pub fn doctype_name_utf16(&self, node: Handle) -> Option<Vec<u16>> {

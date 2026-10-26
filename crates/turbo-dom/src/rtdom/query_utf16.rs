@@ -16,11 +16,10 @@ impl UnitAttrMatch {
             AttrMatch::Present => (0, ""),
             AttrMatch::Equals(value) => (61, value.as_str()),
             AttrMatch::Includes(value) => (126, value.as_str()),
-            AttrMatch::Dash(value) => (124, value.as_str()),
             AttrMatch::Prefix(value) => (94, value.as_str()),
             AttrMatch::Suffix(value) => (36, value.as_str()),
             AttrMatch::Substr(value) => (42, value.as_str()),
-            AttrMatch::Units(value) => return value.clone(),
+            AttrMatch::Units(_) => unreachable!("only scalar records are converted"),
         };
         Self {
             op,

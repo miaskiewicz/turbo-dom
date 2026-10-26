@@ -508,4 +508,12 @@ mod payload_tests {
         assert_eq!(units.clone().units(), vec![0xd800, 65]);
         assert_ne!(units, DomString::from("�A"));
     }
+    #[test]
+    fn debug_shows_lone_units_as_units_and_everything_else_as_text() {
+        assert_eq!(format!("{:?}", DomString::from_units(&[0xd800, 65])), "[55296, 65]");
+        assert_eq!(format!("{:?}", DomString::from("short")), "\"short\"");
+        let long = "a scalar payload larger than the inline capacity";
+        assert_eq!(format!("{:?}", DomString::from(long)), format!("{long:?}"));
+        assert_eq!(format!("{:?}", DomString::from_units(&[0x61, 0x22])), "\"a\\\"\"");
+    }
 }
