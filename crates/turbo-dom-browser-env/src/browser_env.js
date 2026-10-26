@@ -507,9 +507,12 @@
     return false;
   }
   // The style sheets whose rules can select `el`: its owner's sheets, plus the document's
-  // adopted sheets for elements of the document tree.
+  // adopted sheets, for elements of the document tree. A shadow tree is its own style scope:
+  // document rules never select its elements (turbo-dom#68; its own rules come from the
+  // native shadow-scoped cascade).
   function computedSheets(el){
     var owner=el?cssApply(computedStyleNativeOwner,el,[]):null;
+    if(owner&&cssApply(computedStyleNativeRoot,el,[])!==owner&&cssApply(computedStyleNativeConnected,el,[]))return [];
     // A live list refreshes on every indexed/length read. Refresh its private
     // backing array once per computation; retained declarations still recompute.
     var ownerRecord=owner&&collectionGet(owner),host=ownerRecord&&ownerRecord.cssHost;

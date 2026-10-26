@@ -143,7 +143,8 @@ events) are the host's. Control: `src/html_image_chrome156.json` (`factory`, `ow
 ### Computed style defaults
 
 `getComputedStyle` (the binding's cascade over document sheets, inline style and
-shadow-scoped rules) reports Chrome 156's computed values where no author rule
+shadow-scoped rules; document rules never select elements inside shadow trees,
+turbo-dom#68) reports Chrome 156's computed values where no author rule
 applies. `display` is the element's html.css display: block / inline / none /
 table-* / list-item / inline-block / contents / ruby, plus `[hidden]`,
 `dialog:not([open])`, closed popovers, `input[type=hidden]` and `audio` without
@@ -183,7 +184,7 @@ unresolved), `transform: none`, all `!important`, and `object-fit: contain` — 
 `::backdrop` is fixed at inset 0 with `rgb(0, 0, 0)`. `fullscreenchange` /
 `fullscreenerror` fire as before. Control: case `fullscreen` (async; the collector's
 `__cdpGesture()` is a trusted CDP click). Known gaps, filed: composed events stop at the
-shadow root (turbo-dom#66), document rules reach shadow trees (turbo-dom#68).
+shadow root (turbo-dom#66).
 
 `getComputedStyle(el, pseudoElt)` parses `pseudoElt` like Chrome (turbo-dom#47):
 `::before` / `::after` (and `:before` / `:after` / bare `before` / `after`) compute

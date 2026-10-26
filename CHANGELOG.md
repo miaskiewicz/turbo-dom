@@ -7,6 +7,14 @@ at the time); this file reconstructs them from history.
 
 ## [Unreleased]
 
+### Fixed — document rules no longer style shadow trees (P5b-X6, miaskiewicz/turbo-dom#68, Chrome 156 control)
+- turbo-dom-browser-env: `getComputedStyle`'s JS cascade read the owner document's sheets
+  for every element, so document rules selected elements inside shadow trees. A shadow tree
+  is its own style scope, as in Chrome; its elements now see only inline style and their
+  tree's own (native, shadow-scoped) rules. Control: case `fullscreen`, section `shadow`, of
+  `src/computed_defaults_chrome156.json` (a document `:fullscreen { opacity: 0.5 }` does not
+  reach a fullscreen element in a shadow root).
+
 ### Fixed — `getComputedStyle` of a disconnected element (P5b-X6, miaskiewicz/turbo-dom#67, Chrome 156 control)
 - turbo-dom-browser-env: a disconnected element blanked only the defaults the binding
   models. Author-rule and inline values (`position: relative`, `transform: scale(2)`, …)
@@ -34,8 +42,8 @@ at the time); this file reconstructs them from history.
     `object-fit: contain`.
   - Its `::backdrop` is fixed at inset 0 and black.
 - Control: async case `fullscreen` of `src/computed_defaults_chrome156.json` (user
-  activation through the collector's trusted CDP click `__cdpGesture()`). Known gaps, filed:
-  #66 (composed events stop at the shadow root), #68 (document rules reach shadow trees).
+  activation through the collector's trusted CDP click `__cdpGesture()`). Known gap, filed:
+  #66 (composed events stop at the shadow root).
 
 ### Fixed — UA-styled pseudo-elements in `getComputedStyle` (P5b-X6, miaskiewicz/turbo-dom#47, Chrome 156 control)
 - turbo-dom-browser-env: `getComputedStyle(el, pseudoElt)` computed only `::before`,
