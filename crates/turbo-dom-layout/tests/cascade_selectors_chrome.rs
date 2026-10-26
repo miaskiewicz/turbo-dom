@@ -31,7 +31,6 @@ const OPEN: &[&str] = &[
     "malformed",
     "cascade-comma",
     "disabled-fieldset",
-    "cascade-order",
 ];
 
 fn fixture() -> Value {
