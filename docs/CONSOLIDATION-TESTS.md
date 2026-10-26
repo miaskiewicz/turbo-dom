@@ -1150,3 +1150,25 @@ from turbo-dom-layout's `assets/fonts` through `test_support`; **new**.
 | turbo-html2pdf-core | `turbo_html2pdf_core<src/lib.rs>::equivalence_tests::tree_input_matches_the_legacy_node_input` | retired@S5 (the S2 gate) |
 | turbo-html2pdf-core | `html_drive<tests/html_drive.rs>::parse_html_returns_the_legacy_node_copy` -> `::parse_html_returns_the_flow_with_directives_as_markers`, `::flow_debug_shows_the_node_copy` -> `::flow_debug_shows_the_markup` | adapted@S5 (renamed: `parse_html` returns the `Flow`; `Flow`'s Debug shows the serialized markup) |
 | turbo-html2pdf-core | `nodes`, `endnotes` (flows read back via `literal::from_tree`), `image`, `svg`, `svg_viewport_snapshot`, `layout_snapshot`, `layout_block`, `layout_boxgen`, `layout_flex`, `native_inline_coverage` (tree literals), `fixtures`, `pdf_a`, `emit`, `layout`, `style`, `conformance_flags` (`style_flow` without the legacy comparison), every `tests/common` font user, `turbo_html2pdf_core<src/lib.rs>::emit::tounicode::tests::reverse_mapping_uses_original_font_and_handles_stripped_cmap` (Go font via `test_support::font_bytes`) | adapted@S5 |
+
+## P5b-W1 (layout bug fixes): adapted and new tests
+
+Declared behaviour changes (Chrome 156 controls), not moves:
+
+| crate | test (binary::name) | category |
+|---|---|---|
+| turbo-dom-layout | `native_inline_borders<tests/native_inline_borders.rs>::unsupported_ordinary_inline_contexts_reject_without_inventing_partial_boxes` -> `::unsupported_ordinary_inline_contexts_fail_only_their_own_reads` | adapted@P5b-W1 (renamed; turbo-surf#31: the construct fails its own subtree's reads, not the snapshot; `position:absolute` blockifies and is supported, `sticky` takes its place) |
+| turbo-dom-layout | `native_block_inline<tests/native_block_inline.rs>::unsupported_displaced_splits_reject_but_boxless_text_does_not` -> `::unsupported_displaced_splits_fail_their_own_reads_but_boxless_text_does_not` | adapted@P5b-W1 (renamed; turbo-surf#31: per-element failure; an absolutely positioned block no longer splits its inline) |
+| turbo-dom-layout | `turbo_dom_layout<src/lib.rs>::live::chrome_tests::{live_geometry_matches_chrome_156, css_of_reads_the_first_style_element}`, `layout_table<tests/layout_table.rs>::row_box_spans_its_cells_inside_the_border_spacing`, `style<tests/style.rs>::{at_rules_remember_their_source_position, conditional_rules_cascade_at_their_source_position}`, `tree_view<tests/tree_view.rs>::stripped_elements_still_count_for_selectors` | new |
+
+## P5b-W2 — raster inline SVG on the tree (turbo-dom `consol/p5b-w2`)
+
+Every test id not listed keeps its result (turbo-dom-raster default and `--features avif`).
+
+| crate | test (binary::name) | category |
+|---|---|---|
+| turbo-dom-raster | `turbo_dom_raster<src/lib.rs>::image_paint::tests::inline_svg_becomes_img_carrying_size_and_class` | adapted (turbo-dom#25: asserts the tree conversion and the XML source) |
+| turbo-dom-raster | `turbo_dom_raster<src/lib.rs>::image_paint::tests::inline_svg_nested_is_depth_matched_and_unbalanced_left_alone` -> `::inline_svg_nested_is_one_source_and_an_unclosed_svg_is_closed_by_the_parser` | adapted (an unclosed `<svg>` is closed by the parser and converts, as Chrome renders it) |
+| turbo-dom-raster | `turbo_dom_raster<src/lib.rs>::image_paint::tests::{svg_text_outside_elements_is_not_converted, svg_markup_is_namespace_well_formed_xml}`, `::style_extract::tests::{delazy_leaves_a_data_uri_src_with_character_references_verbatim, delazy_escapes_the_lazy_url_it_writes}` | new |
+| turbo-dom-raster | `inline_svg_chrome<tests/inline_svg_chrome.rs>::{inline_svg_pixels_match_chrome_156, svg_screenshot_embeds_one_image_per_parsed_svg_element}` | new (Chrome 156 control) |
+| turbo-dom-raster | `image_formats_chrome<tests/image_formats_chrome.rs>::decoded_pixels_match_chrome_156` | changed (also compares the `svg-utf8` source) |

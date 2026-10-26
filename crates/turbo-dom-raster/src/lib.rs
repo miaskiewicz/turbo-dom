@@ -74,6 +74,7 @@ pub use style_extract::{delazy_images, image_urls, image_urls_in_css, stylesheet
 use std::collections::HashMap;
 
 use turbo_dom_layout::text::{FontRegistry, SystemFontPolicy};
+use turbo_dom_layout::turbo_dom::Tree;
 use turbo_dom_layout::{
     layout_html_tree, parse_html_tree, Diagnostics, Fragment, FragmentContent, HtmlOptions,
     ImageCtx, Rgba,
@@ -208,18 +209,13 @@ pub fn screenshot_png_with_opts(
     full_page: bool,
     system_fonts: bool,
 ) -> Result<Vec<u8>, String> {
-    // Rewrite inline `<svg>` to `<img>` (+ decode the SVGs) so the layout's `<img>`
-    // path paints them — the engine has no inline-SVG painter. Do this first so both
-    // the data-URI recovery and the layout see the rewritten markup.
-    let (html, inline_svgs) = image_paint::inline_svg_to_img(html);
-    let html = html.as_str();
     let mut decoded = image_paint::decode_all(images);
     // Recover inline `data:` image masks/backgrounds the fetch step skips (nothing
     // to fetch) — e.g. Wikipedia's TOC-toggle chevron mask-image.
     image_paint::add_data_uri_images(&mut decoded, external_css, html);
-    image_paint::add_inline_svg_assets(&mut decoded, &inline_svgs);
+    let tree = parse_document(html, &mut decoded);
     let galley = lay_out(
-        html,
+        &tree,
         external_css,
         viewport.width,
         viewport.height,
@@ -241,13 +237,11 @@ pub fn screenshot_svg_with_opts(
     full_page: bool,
     system_fonts: bool,
 ) -> Result<String, String> {
-    let (html, inline_svgs) = image_paint::inline_svg_to_img(html);
-    let html = html.as_str();
     let mut decoded = image_paint::decode_all(images);
     image_paint::add_data_uri_images(&mut decoded, external_css, html);
-    image_paint::add_inline_svg_assets(&mut decoded, &inline_svgs);
+    let tree = parse_document(html, &mut decoded);
     let galley = lay_out(
-        html,
+        &tree,
         external_css,
         viewport.width,
         viewport.height,
@@ -342,13 +336,27 @@ pub fn screenshot(html: &str, viewport: Viewport, format: Format) -> Result<Vec<
     }
 }
 
-/// Drive the borrowed layout engine: de-lazy images and lay the whole document out at
-/// viewport width `width` over the bundled font set. The page's own `<style>` sheets
-/// (head and body) are collected by the layout's HTML drive (which never lays out
+/// Parse the snapshot for layout: de-lazy images (fill in `src`-less lazy images —
+/// data-src/srcset/data-*-url — so their boxes render; [`image_urls`] returns the same
+/// URLs, so the caller's fetched bytes resolve against these boxes), parse it into a
+/// turbo-dom tree (scripting on: turbo-surf rasters the hydrated, JS-enabled DOM, so
+/// `<noscript>` fallbacks stay inert raw text), then replace the parsed inline `<svg>`
+/// elements with `<img>`s whose rasterized SVGs join `decoded` — the engine has no
+/// inline-SVG painter (miaskiewicz/turbo-dom#25: elements of the tree, never `<svg` text).
+fn parse_document(html: &str, decoded: &mut image_paint::DecodedAssets) -> Tree {
+    let mut tree = parse_html_tree(&style_extract::delazy_images(html));
+    let inline_svgs = image_paint::inline_svg_to_img(&mut tree);
+    image_paint::add_inline_svg_assets(decoded, &inline_svgs);
+    tree
+}
+
+/// Drive the borrowed layout engine: lay the parsed document out at viewport width
+/// `width` over the bundled font set. The page's own `<style>` sheets (head and body) are
+/// collected by the layout's HTML drive (which never lays out
 /// `<style>`/`<script>`/`<noscript>`/`<template>`); the caller's fetched `<link>` sheets
 /// precede them.
 fn lay_out(
-    html: &str,
+    tree: &Tree,
     external_css: &str,
     width: u32,
     height: u32,
@@ -360,11 +368,6 @@ fn lay_out(
     // rules always apply — Google's tall search box is `display:none` below
     // `max-height:575px`, so it always vanished → blank render).
     turbo_dom_layout::set_media_viewport_height(height as f32);
-    // Fill in `src`-less lazy images (data-src/srcset/data-*-url) so their boxes
-    // render. `image_urls` returns the same URLs, so the caller's fetched bytes resolve
-    // against these boxes. (turbo-surf rasters the hydrated, JS-enabled DOM: the layout
-    // parses with scripting on, so `<noscript>` fallbacks stay inert raw text.)
-    let delazied = style_extract::delazy_images(html);
     let mut diags = Diagnostics::default();
     let resolver = image_paint::AssetResolver(images);
     // No page-height basis in a viewport render — only the 100%-width cap applies
@@ -378,7 +381,7 @@ fn lay_out(
         ..HtmlOptions::default()
     };
     layout_html_tree(
-        &parse_html_tree(&delazied),
+        tree,
         "",
         width as f32,
         &font_registry(system_fonts),

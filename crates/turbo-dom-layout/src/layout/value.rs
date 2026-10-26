@@ -714,9 +714,36 @@ fn resolve_font_size(s: &ComputedStyle, parent: f32) -> f32 {
 }
 
 /// The resolved `display` keyword (needed at box-generation time, before widths
-/// are known).
+/// are known). An absolutely positioned (`absolute` / `fixed`) box is blockified
+/// (CSS 2.1 §9.7, as Chrome computes it): an inline-level or internal table display
+/// becomes `block` (miaskiewicz/turbo-surf#31).
 #[must_use]
 pub fn display_of(s: &ComputedStyle) -> Display {
+    let display = specified_display(s);
+    if position_of(s).is_out_of_flow() {
+        blockified(display)
+    } else {
+        display
+    }
+}
+
+/// The CSS 2.1 §9.7 blockification of `display` (the inline-level and internal
+/// table values become `block`; `none`, `flex`, `grid`, `table` and `list-item`
+/// stay).
+fn blockified(display: Display) -> Display {
+    match display {
+        Display::Inline
+        | Display::InlineBlock
+        | Display::TableRow
+        | Display::TableCell
+        | Display::TableHeaderGroup
+        | Display::TableFooterGroup => Display::Block,
+        other => other,
+    }
+}
+
+/// The `display` keyword as specified (before blockification).
+fn specified_display(s: &ComputedStyle) -> Display {
     match s.get("display").unwrap_or("block").trim() {
         "inline" => Display::Inline,
         "inline-block" => Display::InlineBlock,

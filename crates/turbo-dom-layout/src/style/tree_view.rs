@@ -24,8 +24,10 @@
 //!
 //! Selectors match through turbo-dom's one selector engine
 //! ([`match_for_cascade`](turbo_dom::rtdom::query::match_for_cascade)) over the scope's
-//! [`Navigator`]: kept children, sibling positions, preceding siblings, `:empty`,
-//! `:root` and the scope cutoff.
+//! [`Navigator`]: content children, sibling positions, preceding siblings, `:empty`,
+//! `:root` and the scope cutoff. A stripped non-visual element is not laid out but is
+//! still a child for selectors, as in Chrome (`<div><style></style></div>` is not
+//! `:empty`; miaskiewicz/turbo-dom#25).
 
 use std::borrow::Cow;
 
@@ -135,6 +137,24 @@ impl<'t> TreeView<'t> {
         out
     }
 
+    /// Whether `h` is a content node for selector matching: an element or a text
+    /// node, kept or stripped (a stripped `<style>` is not laid out, but it is still a
+    /// child, a sibling and a `:has()` descendant, as in Chrome).
+    fn is_content(&self, h: Handle) -> bool {
+        matches!(self.tree.node_type(h), NodeType::Text | NodeType::Element)
+    }
+
+    /// The content children of `h` (kept and stripped elements, text), in order.
+    fn content_children(&self, h: Handle) -> Vec<Handle> {
+        let mut out = Vec::new();
+        self.tree.for_each_child(h, |child| {
+            if self.is_content(child) {
+                out.push(child);
+            }
+        });
+        out
+    }
+
     /// An element's attributes by local name, in order.
     #[must_use]
     pub fn attrs(&self, h: Handle) -> Vec<Attr> {
@@ -192,11 +212,11 @@ impl<'t> TreeView<'t> {
         }
     }
 
-    /// Whether `h` has no kept child.
-    fn has_no_kept_child(&self, h: Handle) -> bool {
+    /// Whether `h` has no content child (a stripped element still counts).
+    fn has_no_content_child(&self, h: Handle) -> bool {
         let mut none = true;
         self.tree
-            .for_each_child(h, |child| none &= !self.is_kept(child));
+            .for_each_child(h, |child| none &= !self.is_content(child));
         none
     }
 }
@@ -227,7 +247,7 @@ pub struct StyleOptions {
     pub accept_cmyk: bool,
 }
 
-/// One element's place among its kept siblings (what the structural pseudo-classes
+/// One element's place among its siblings (what the structural pseudo-classes
 /// read): 1-based `index` among the element siblings, `of_type_index` /
 /// `of_type_total` among those with the same type key, and the element-sibling
 /// count.
@@ -240,7 +260,7 @@ pub struct SiblingPosition {
 }
 
 /// The structure selector matching reads for one styled scope (a [`TreeView`] plus
-/// its [`Roots`]): kept children, parents with the scope cutoff, sibling positions,
+/// its [`Roots`]): content children, parents with the scope cutoff, sibling positions,
 /// `:empty`, attributes. It implements turbo-dom's selector [`Navigator`
 /// trait](turbo_dom::rtdom::query::Navigator), so the cascade matches through
 /// [`match_for_cascade`](turbo_dom::rtdom::query::match_for_cascade) — the one selector
@@ -251,7 +271,9 @@ pub struct SiblingPosition {
 ///   parent and is alone among its siblings (the document's only element child), so
 ///   `html:first-child` matches as in a browser, and every other element sits under its
 ///   real parent;
-/// - only kept nodes exist (no comments, no template content, stripped subtrees gone);
+/// - only content nodes exist (no comments, no template content); a stripped
+///   non-visual element is still a child, sibling and descendant, as in Chrome — it only
+///   has no styled node of its own;
 /// - `:root` is an element named `html` (nothing in a detached flow), type selectors
 ///   never match a marker and `*-of-type` groups markers by kind.
 ///
@@ -316,14 +338,15 @@ impl<'v, 't> Navigator<'v, 't> {
         self.view.tree().parent(h)
     }
 
-    /// The kept siblings of `h`, including `h`.
+    /// The siblings of `h` for selector matching, including `h`: the other roots of
+    /// the scope, else every content child of its parent (stripped elements included).
     #[must_use]
     pub fn siblings(&self, h: Handle) -> Vec<Handle> {
         if self.is_root(h) {
             return self.roots.clone();
         }
         self.parent(h)
-            .map_or_else(|| vec![h], |parent| self.view.children(parent))
+            .map_or_else(|| vec![h], |parent| self.view.content_children(parent))
     }
 
     /// The structural position of element `h` (`None` for a non-element).
@@ -343,10 +366,10 @@ impl<'v, 't> Navigator<'v, 't> {
         })
     }
 
-    /// Whether `h` matches `:empty` (no kept children).
+    /// Whether `h` matches `:empty` (no element or text child, stripped ones counting).
     #[must_use]
     pub fn is_empty(&self, h: Handle) -> bool {
-        self.view.has_no_kept_child(h)
+        self.view.has_no_content_child(h)
     }
 
     /// The tag of an element node, `None` for text.
@@ -386,16 +409,16 @@ impl<'v, 't> Navigator<'v, 't> {
         }
     }
 
-    /// `:has()` search: the kept descendants of `root`.
-    fn some_kept_descendant(&self, root: Handle, pred: &mut dyn FnMut(Handle) -> bool) -> bool {
-        let mut stack = self.view.children(root);
+    /// `:has()` search: the content descendants of `root` (stripped ones included).
+    fn some_content_descendant(&self, root: Handle, pred: &mut dyn FnMut(Handle) -> bool) -> bool {
+        let mut stack = self.view.content_children(root);
         stack.reverse();
         while let Some(h) = stack.pop() {
             if self.view.tree().node_type(h) == NodeType::Element {
                 if pred(h) {
                     return true;
                 }
-                let mut children = self.view.children(h);
+                let mut children = self.view.content_children(h);
                 children.reverse();
                 stack.extend(children);
             }
@@ -440,7 +463,7 @@ impl SelectorNavigator for Navigator<'_, '_> {
         Navigator::is_empty(self, h)
     }
     fn some_descendant(&self, root: Handle, pred: &mut dyn FnMut(Handle) -> bool) -> bool {
-        self.some_kept_descendant(root, pred)
+        self.some_content_descendant(root, pred)
     }
 }
 

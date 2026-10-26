@@ -1,7 +1,10 @@
 // Chrome-156 control for the HTML drive's document model (P5b, miaskiewicz/turbo-html2pdf#29):
 // `<head>` styles apply, and `<html>`/`<body>` are real boxes with Chrome's UA semantics
 // (`body { margin: 8px }`, root margins never collapse, `rem` against the root font size,
-// the root/body background propagated to the canvas).
+// the root/body background propagated to the canvas). P5b-W1 adds the cascade cases of
+// miaskiewicz/turbo-dom#24 item 1 (`@media` / `@supports` rules in source order) and
+// miaskiewicz/turbo-dom#25 item 2 (elements the drive does not lay out still count for
+// selectors).
 //
 // For every case below, Chrome for Testing 156 (viewport 1280x800) records:
 //   - `boxes`: getBoundingClientRect() of every `[data-cid]` element (document order), as
@@ -78,6 +81,25 @@ const CASES = [
   { id: "canvas-translucent-body", html: DOC(S("body{background:rgba(0,0,255,0.5)}"), BOX) },
   { id: "canvas-shorthand-keeps-image", html: DOC(S("body{background:#00ff00 linear-gradient(#ff0000,#ff0000) no-repeat 0 0/10px 10px}"), BOX) },
   { id: "canvas-wrapper-not-propagated", html: DOC(S("body{margin:0} div{background:#000000;height:100px}"), `<div data-cid="d"></div>`) },
+  // P5b-W1, miaskiewicz/turbo-dom#24 item 1: `@media` / `@supports` rules take their place in
+  // the cascade by source position, not after the sheet's top-level rules.
+  { id: "media-rule-before-plain-rule", html: DOC(S("@media screen{div{width:10px}} div{width:20px;height:10px}"), `<div data-cid="d"></div>`) },
+  { id: "supports-rule-before-plain-rule", html: DOC(S("@supports (display:grid){div{width:10px}} div{width:20px;height:10px}"), `<div data-cid="d"></div>`) },
+  { id: "media-rule-after-plain-rule", html: DOC(S("div{width:20px;height:10px} @media screen{div{width:10px}}"), `<div data-cid="d"></div>`) },
+  { id: "media-in-supports-source-order", html: DOC(S("@supports (display:block){@media screen{div{width:10px}} div{width:30px}} div{height:10px}"), `<div data-cid="d"></div>`) },
+  { id: "media-sheet-before-later-sheet", html: DOC(S("@media screen{div{width:10px;height:10px}}"), S("div{width:20px}") + `<div data-cid="d"></div>`) },
+  // P5b-W1, miaskiewicz/turbo-dom#25 item 2: the elements the HTML drive does not lay out
+  // (style, script, noscript, template, title, meta, link) are still children for selectors.
+  { id: "style-child-is-not-empty", html: DOC(S("div{height:10px} div:empty{width:10px}"), `<div data-cid="d"><style></style></div><div data-cid="e"></div>`) },
+  { id: "script-child-is-not-empty", html: DOC(S("div{height:10px} div:empty{width:10px}"), `<div data-cid="d"><script></script></div>`) },
+  { id: "style-sibling-before-first-child", html: DOC(S("p{margin:0;height:10px} p:first-child{width:10px}"), `<div><style></style><p data-cid="p"></p></div>`) },
+  { id: "script-counts-for-nth-child", html: DOC(S("p{margin:0;height:10px} p:nth-child(2){width:10px}"), `<div><script></script><p data-cid="p"></p></div>`) },
+  { id: "template-sibling-after-last-child", html: DOC(S("p{margin:0;height:10px} p:last-child{width:10px}"), `<div><p data-cid="p"></p><template><i></i></template></div>`) },
+  { id: "noscript-adjacent-sibling", html: DOC(S("p{margin:0;height:10px} noscript + p{width:10px}"), `<div><noscript></noscript><p data-cid="p"></p></div>`) },
+  { id: "script-general-sibling", html: DOC(S("p{margin:0;height:10px} script ~ p{width:10px}"), `<div><script></script><i></i><p data-cid="p"></p></div>`) },
+  { id: "style-sibling-breaks-only-child", html: DOC(S("p{margin:0;height:10px} p:only-child{width:10px}"), `<div><p data-cid="p"></p><style></style></div>`) },
+  { id: "has-style-child", html: DOC(S("div{height:10px} div:has(> style){width:10px}"), `<div data-cid="d"><style></style></div>`) },
+  { id: "meta-link-title-in-body-count", html: DOC(S("p{margin:0;height:10px} p:nth-child(4){width:10px}"), `<div><meta><link><title></title><p data-cid="p"></p></div>`) },
 ];
 
 /** The RGB of a 1x1 PNG screenshot (any filter: a single pixel's filter adds 0). */

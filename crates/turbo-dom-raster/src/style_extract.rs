@@ -330,7 +330,14 @@ pub fn delazy_images(html: &str) -> String {
         if real_src {
             return; // already points at a real image
         }
-        let Some(url) = best_img_url(tag, tag_lower) else {
+        // A present placeholder `src` yields only to a lazy URL (else it stands, its
+        // source text untouched); a missing one takes the lazy/responsive fallback. The
+        // URL is html-unescaped, so it is re-escaped for the attribute it is written into.
+        let url = match src {
+            Some(ref s) if !s.is_empty() => lazy_img_url(tag, tag_lower),
+            _ => best_img_url(tag, tag_lower),
+        };
+        let Some(url) = url.map(|u| attr_escape(&u)) else {
             return;
         };
         match src {
@@ -366,6 +373,13 @@ pub fn delazy_images(html: &str) -> String {
         out.replace_range(s..e, &text);
     }
     out
+}
+
+/// `s` escaped for a double- or single-quoted attribute value (`&`, `"`, `'`).
+fn attr_escape(s: &str) -> String {
+    s.replace('&', "&amp;")
+        .replace('"', "&quot;")
+        .replace('\'', "&#39;")
 }
 
 /// Push the url of every `background`/`background-image: url(...)` declaration
@@ -511,6 +525,28 @@ mod tests {
         // look past a placeholder when a real lazy URL exists to use instead).
         let real = r#"<img src="data:image/png;base64,iVBORw0KGgoAAAANSU">"#;
         assert_eq!(delazy_images(real), real);
+    }
+
+    #[test]
+    fn delazy_leaves_a_data_uri_src_with_character_references_verbatim() {
+        use super::delazy_images;
+        // A raw-UTF-8 SVG `data:` URL carries its quotes as `&quot;`: with no lazy URL to
+        // swap in, the source text must not be rewritten (writing the unescaped value back
+        // would end the attribute at its first `"`; miaskiewicz/turbo-dom#25).
+        let real = r#"<img src="data:image/svg+xml;utf8,<svg xmlns=&quot;http://www.w3.org/2000/svg&quot;></svg>">"#;
+        assert_eq!(delazy_images(real), real);
+    }
+
+    #[test]
+    fn delazy_escapes_the_lazy_url_it_writes() {
+        use super::delazy_images;
+        let out = delazy_images(r#"<img data-src="a.jpg?x=1&amp;q=&quot;'">"#);
+        assert!(
+            out.contains(r#" src="a.jpg?x=1&amp;q=&quot;&#39;""#),
+            "{out}"
+        );
+        let out = delazy_images(r#"<img src="data:," data-src="b.jpg?x=1&amp;y=2">"#);
+        assert!(out.contains(r#"<img src="b.jpg?x=1&amp;y=2""#), "{out}");
     }
 
     #[test]

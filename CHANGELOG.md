@@ -70,6 +70,59 @@ at the time); this file reconstructs them from history.
   and `src/html_image_cases.json` rendered / `display: none` images with their layout
   boxes (`layout`), recaptured on Chrome for Testing 156.0.8078.4 (earlier sections
   unchanged).
+### Fixed — turbo-dom-layout bug fixes (P5b-W1, Chrome 156 controls)
+Each fix is backed by a Chrome for Testing 156 control and lists the corpus outputs it
+changes in `tools/parity/expected/p5b-w1-*.json`.
+- `@media` / `@supports` rule order (miaskiewicz/turbo-dom#24 item 1): the rules of a
+  conditional group rule whose condition holds take the block's own source position in the
+  cascade (recursively for nested blocks), instead of following every top-level rule of the
+  sheet — `@media screen{div{width:10px}} div{width:20px}` is 20px wide, as in Chrome.
+  `Stylesheet::at_rule_position` exposes where each at-rule sat among the qualified rules.
+  Control: `scripts/html-document-chrome-control.mjs` (`media-*` / `supports-*` cases).
+- Elements the HTML drive does not lay out still count for selectors
+  (miaskiewicz/turbo-dom#25 item 2): a stripped `<style>`, `<script>`, `<noscript>`,
+  `<template>`, `<title>`, `<meta>` or `<link>` is a child, a sibling and a `:has()`
+  descendant in the layout cascade, as in Chrome — `<div><style></style></div>` is not
+  `:empty`, the `<p>` of `<style></style><p>` is not `:first-child`, `script + p` matches.
+  Control: `scripts/html-document-chrome-control.mjs` (`*-empty`, `*-sibling*`,
+  `has-style-child`, `meta-link-title-in-body-count` cases).
+- Positioned inlines and unsupported inline constructs in live snapshots
+  (miaskiewicz/turbo-surf#31): `position: absolute` / `fixed` blockify the box
+  (`display_of`, CSS 2.1 §9.7, every layout path), and such a box inside inline content
+  takes a zero-size place at its static position in the line — it no longer splits its
+  inline ancestor or the surrounding text into anonymous blocks, and no longer counts
+  towards the run's intrinsic widths. The native HTML snapshot no longer fails as a whole
+  on an inline construct its inline producer does not support (top/bottom/middle
+  `vertical-align`, vertical/RTL writing, `sticky`, a displaced block-in-inline split):
+  `LayoutSnapshot::unsupported_inline_geometry` names that element's subtree and
+  `cssom_view::metrics::element_geometry` fails those reads with the same message, while
+  every other element answers (a visually-hidden `.sr-only` span made every read on the
+  page throw). Control: `scripts/live-geometry-chrome-control.mjs`
+  (`crates/turbo-dom-layout/src/live/chrome_tests.rs`).
+- Table rows (miaskiewicz/turbo-surf#31): a row box runs from its first cell's left edge
+  to its last cell's right edge — inside the border-spacing, or between the outer
+  grid-line centres of a collapsed table — instead of over the table's whole content
+  width, and in live geometry it records used box metrics, so `getBoundingClientRect()`
+  on a `<tr>` answers (`[10,10,9.109375,20]` for a one-cell table in Chrome) instead of
+  failing with "used box metrics are missing". Control: `live-geometry` `table-width-*`.
+- Table row groups in live geometry (miaskiewicz/turbo-surf#31): a `<tbody>` / `<thead>` /
+  `<tfoot>` gets a transparent box — the union of its rows, which it now contains — with
+  used box metrics, so its CSSOM reads answer (`[10,10,9.109375,20]` for a one-cell
+  table) instead of failing through the inline fallback ("decorated inline border
+  production is pending" / "empty inline placement is pending"). PDF and screenshot
+  layouts keep the rows flat (unchanged output). Control: `live-geometry`
+  `table-sections`, `table-two-bodies`, `table-empty-cell`, `table-decorated-collapsed`.
+- Auto-width tables in live geometry (miaskiewicz/turbo-surf#36 item 3): a `width: auto`
+  table is shrink-to-fit — no wider than its columns' max-content plus border-spacing,
+  padding and borders (`min-width`/`max-width` still apply, and it never drops below its
+  min-content) — so a one-cell table is `[8,8,13.109375,24]` as in Chrome, not the full
+  1264px line, and `margin: 0 auto` centres it. The PDF / screenshot paths keep filling
+  the containing block (unchanged output). Control: `live-geometry` `table-auto-*`.
+- `<template>` is `display: none` in the user-agent sheet (miaskiewicz/turbo-surf#36 item
+  4), as in Chrome: a live `<template>` (also one inside a table cell) has the all-zero
+  rect of a boxless element instead of an empty box at its flow position. Embedders that
+  match `user_agent_css()` (turbo-surf) get the rule too; the HTML drive already stripped
+  `<template>`. Control: `live-geometry` `template-in-*`.
 
 ### Changed — selector follow-ups (P5b-X2, miaskiewicz/turbo-dom#24, Chrome 156 controls)
 - `rtdom::cascade` (`getComputedStyle`) and the npm `cascade.mjs` rank rules by the
@@ -215,6 +268,23 @@ outputs it changes in `tools/parity/expected/p5b-*.json`.
   control `fixture: "dom_implementation_probe.js"` and writes `probeSha256`, like the
   committed `dom_implementation_chrome155.json` (it wrote `dom-implementation-probe.js`
   and no hash); a Chrome 156 recollection matches the committed result.
+
+### Fixed — screenshot inline SVG, CI (P5b-W2, Chrome 156 controls)
+- `turbo-dom-raster` inline `<svg>` (miaskiewicz/turbo-dom#25 item 1): the screenshot
+  converts the parsed document's `<svg>` elements, not `<svg` source text. A raw-UTF-8 SVG
+  `data:` URL in an `<img src>`, a `<script>` string, an attribute value or `<noscript>`
+  text is left alone (it used to be cut out and rasterized, swallowing whatever lay
+  between it and the next `</svg>`). The element is re-serialized as namespace-well-formed
+  XML, so `xlink:href` without an `xmlns:xlink`, HTML character references (`&nbsp;`) and
+  lowercase `viewbox`/`lineargradient` (adjusted by the parser) now paint. Control:
+  `scripts/inline-svg-chrome-control.mjs` → `crates/turbo-dom-raster/tests/fixtures/inline_svg_chrome156.json`;
+  `tests/image_formats_chrome.rs` now also compares the `svg-utf8` source.
+- `turbo-dom-raster` `delazy_images`: a placeholder `src` (any `data:` URI, spacer names)
+  with no lazy URL is no longer rewritten with its own unescaped value (that cut a
+  `&quot;`-quoted SVG `data:` URL at its first `"`); inserted lazy URLs are
+  attribute-escaped.
+- CI: the raster job runs clippy and the tests with `--features avif` too.
+- Corpus outputs: none change (`tools/parity/expected/p5b-w2-turbo-dom-25.json`).
 
 ## [0.6.0] — turbo-dom consolidation
 

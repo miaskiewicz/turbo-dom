@@ -214,23 +214,48 @@ fn all_static_split_variants_preserve_original_source_ownership() {
 }
 
 #[test]
-fn unsupported_displaced_splits_reject_but_boxless_text_does_not() {
-    for markup in [
-        "<a style='position:relative;left:5px'><h3>block</h3></a>",
-        "<a style='float:left'><h3>block</h3></a>",
-        "<a><div style='position:absolute'>block</div></a>",
-        "<a><div style='float:left'>block</div></a>",
+fn unsupported_displaced_splits_fail_their_own_reads_but_boxless_text_does_not() {
+    use turbo_dom_layout::cssom_view::metrics::element_geometry;
+    use turbo_dom_layout::layout_snapshot::SnapshotError;
+    // miaskiewicz/turbo-surf#31: the unsupported construct fails that element's (and
+    // its subtree's) reads only; the rest of the document still answers.
+    for (markup, failing) in [
+        (
+            "<a style='position:relative;left:5px'><h3>block</h3></a>",
+            "a",
+        ),
+        ("<a style='float:left'><h3>block</h3></a>", "a"),
+        ("<a><div id=f style='float:left'>block</div></a>", "f"),
     ] {
-        match capture_result(markup) {
-            Err(error) => assert_eq!(
-                error,
-                turbo_dom_layout::layout_snapshot::SvgSnapshotError::from(
-                    turbo_dom_layout::layout_snapshot::SnapshotError::UnsupportedInlineBlockSplit
-                )
-            ),
-            Ok(_) => panic!("unsupported displaced split accepted: {markup}"),
+        let (snapshot, names) = capture(markup);
+        let error = SnapshotError::UnsupportedInlineBlockSplit;
+        assert_eq!(
+            snapshot.unsupported_inline_geometry(names[failing]),
+            Some(&error),
+            "{markup}"
+        );
+        assert_eq!(
+            element_geometry(&snapshot, names[failing]),
+            Err(error.to_string()),
+            "{markup}"
+        );
+        for answering in ["rso", "dismiss", "body"] {
+            assert_eq!(snapshot.unsupported_inline_geometry(names[answering]), None);
+            assert!(
+                element_geometry(&snapshot, names[answering]).is_ok(),
+                "{markup}"
+            );
         }
     }
+    // An absolutely positioned block does not split its inline: nothing fails, and the
+    // box sits at its static position in the link's line.
+    let (snapshot, names) = capture("<a>Read<div id=abs style='position:absolute'>block</div></a>");
+    assert_eq!(snapshot.unsupported_inline_geometry(names["a"]), None);
+    assert_eq!(snapshot.unsupported_inline_geometry(names["abs"]), None);
+    assert_eq!(rects(&snapshot, names["a"]).len(), 1, "one link fragment");
+    let block = rects(&snapshot, names["abs"]);
+    assert_eq!(block.len(), 1);
+    assert_eq!(block[0][1], rects(&snapshot, names["a"])[0][1], "line top");
     let (plain, names) = capture("<a style='position:relative;left:5px'>Before</a>");
     let (contents, contents_names) = capture(
         "<a style='position:relative;left:5px'><span style='display:contents'>Before</span></a>",

@@ -510,3 +510,29 @@ fn collapse_tall_rowspan_grows_last_spanned_row() {
         "tall rowspan expands the spanned rows: {total}"
     );
 }
+
+#[test]
+fn row_box_spans_its_cells_inside_the_border_spacing() {
+    // miaskiewicz/turbo-surf#31 (Chrome 156: tests/fixtures/live_geometry_chrome156.json
+    // `table-width-*`): a row runs from its first cell's left edge to its last cell's
+    // right edge, not over the table's border-spacing.
+    let cell = |w: &str| {
+        ela(
+            "td",
+            &[],
+            &[("display", "table-cell"), ("width", w), ("height", "10px")],
+            vec![],
+        )
+    };
+    for pairs in [
+        vec![("width", "300px"), ("border-spacing", "6px 4px")],
+        vec![("width", "300px"), ("border-collapse", "collapse")],
+    ] {
+        let t = table(vec![tr(vec![cell("30px"), cell("50px")])], &pairs, 600.0);
+        let row = &rows(&t)[0];
+        let c = cells(row);
+        assert_eq!(row.x, c[0].x, "{pairs:?}");
+        assert_eq!(row.x + row.width, c[1].x + c[1].width, "{pairs:?}");
+        assert_eq!(row.y, c[0].y, "{pairs:?}");
+    }
+}

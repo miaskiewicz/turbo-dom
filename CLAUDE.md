@@ -125,14 +125,19 @@ package or publish workflow.
   from a caller classifier, and its PDF switches are runtime `LayoutOptions`/`StyleOptions`
   (no PDF features here). Since S3b selectors parse and match with turbo-dom's engine
   (`style::RuleSelectors` = `parse_for_cascade`; the scope `style::Navigator` implements
-  turbo-dom's `Navigator`: kept nodes, Detached cutoff, the document scope, marker type keys);
+  turbo-dom's `Navigator`: element/text nodes — stripped non-visual elements still count for
+  selectors, turbo-dom#25 — Detached cutoff, the document scope, marker type keys);
   html2pdf's old `style/selector.rs` is gone. `scripts/verify-copied-layout.sh` checks the S1
   tree (`VERIFY_REF`) against the source commits; later edits are reviewed changes on top.
   Since S4 `live` is the live-DOM input ("surf mode"): turbo-surf's CSSOM-View layout styles
   the page's own composed `Tree` (embedder-supplied composed children, pre-matched rules,
   inline overrides) under the copier's exact budgets/errors, with no copy; `cssom_view`
   holds surf's pure geometry modules (metrics, hit, scroll, visibility, inline, text, range,
-  the `Composition` scope graph). Since S5 the legacy owned `Node` input is gone (`node.rs`,
+  the `Composition` scope graph). Since P5b-W1 live tables give rows and row groups boxes
+  with used metrics and shrink auto widths, `position:absolute/fixed` blockify and stay in
+  their inline run, and unsupported inline constructs fail per element
+  (`LayoutSnapshot::unsupported_inline_geometry`; turbo-surf#31/#36, Chrome control
+  `scripts/live-geometry-chrome-control.mjs` -> `src/live/chrome_tests.rs`). Since S5 the legacy owned `Node` input is gone (`node.rs`,
   `markup.rs`, `style_tree*`; `Tag`/`Attr`/`MarkerKind` live in `tag`); the
   `snapshot_*live_tree*` entries take a `StyleInput`. `image` is the ONE image layer: the
   header size probe (`ImageResolver::intrinsic`), the shared PNG decode (`PngFrame`: PDF

@@ -68,6 +68,7 @@ input { display: inline-block; width: 150px; height: 1.4em; border: 1px solid #a
 input[type=hidden] { display: none }
 textarea { display: inline-block; width: 200px; height: 3em; border: 1px solid #a9a9a9; background-color: #ffffff }
 select, button { display: inline-block; border: 1px solid #a9a9a9; background-color: #efefef }
+template { display: none }
 ";
 
 /// The user-agent rules a whole HTML document adds to [`UA_CSS`] when it is styled
@@ -126,8 +127,21 @@ pub fn user_agent_css() -> &'static str {
     UA_CSS
 }
 
+/// Add `sheet`'s rules at `level` in source order. A `@media` / `@supports` block
+/// whose condition holds contributes its rules (recursively, so nested blocks too)
+/// at the block's own source position, as Chrome orders every style rule by where
+/// it appears whether or not it is nested (miaskiewicz/turbo-dom#24): a conditional
+/// rule before a plain rule of equal specificity loses to it. Non-matching /
+/// non-`screen` blocks and every other at-rule are dropped.
 fn add_leveled(rules: &mut Vec<LeveledRule>, order: &mut usize, level: u8, sheet: Stylesheet) {
-    for rule in sheet.rules {
+    let positions: Vec<usize> = (0..sheet.at_rules.len())
+        .map(|i| sheet.at_rule_position(i))
+        .collect();
+    let mut at_rules = sheet.at_rules.into_iter().zip(positions).peekable();
+    for (index, rule) in sheet.rules.into_iter().enumerate() {
+        while let Some((at, _)) = at_rules.next_if(|(_, position)| *position <= index) {
+            add_conditional(rules, order, level, &at);
+        }
         rules.push(LeveledRule {
             level,
             order: *order,
@@ -135,19 +149,21 @@ fn add_leveled(rules: &mut Vec<LeveledRule>, order: &mut usize, level: u8, sheet
         });
         *order += 1;
     }
-    // `@media` blocks whose condition matches the viewport contribute their rules
-    // at the same level, after the sheet's top-level rules (so they win on order,
-    // as in CSS). Non-matching / non-`screen` blocks are dropped. Nested at-rules
-    // inside a matched block are handled one level deep (the common case).
-    for at in sheet.at_rules {
-        let apply = match at.name.as_str() {
-            "media" => media_matches(&at.prelude, VIEWPORT_WIDTH.get(), VIEWPORT_HEIGHT.get()),
-            "supports" => supports_matches(&at.prelude),
-            _ => false,
-        };
-        if apply {
-            add_leveled(rules, order, level, parse_stylesheet(&at.body));
-        }
+    for (at, _) in at_rules {
+        add_conditional(rules, order, level, &at);
+    }
+}
+
+/// Add a conditional group rule's contents when its condition holds (see
+/// [`add_leveled`]).
+fn add_conditional(rules: &mut Vec<LeveledRule>, order: &mut usize, level: u8, at: &AtRule) {
+    let apply = match at.name.as_str() {
+        "media" => media_matches(&at.prelude, VIEWPORT_WIDTH.get(), VIEWPORT_HEIGHT.get()),
+        "supports" => supports_matches(&at.prelude),
+        _ => false,
+    };
+    if apply {
+        add_leveled(rules, order, level, parse_stylesheet(&at.body));
     }
 }
 
