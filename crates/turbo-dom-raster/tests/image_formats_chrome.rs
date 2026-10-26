@@ -75,11 +75,37 @@ fn decoded_pixels_match_chrome_156() {
         // Without the `avif` feature an AVIF is laid out at its size but not decoded: the
         // box paints as the light-grey placeholder (class W; the backdrop is T); so is a
         // JPEG XL without a decoder.
-        let want = if (id.starts_with("avif") && !cfg!(feature = "avif")) || id.starts_with("jxl") {
+        let want = if (id.starts_with("avif") && !cfg!(feature = "avif"))
+            || (id.starts_with("jxl") && !cfg!(feature = "jxl"))
+        {
             "WWWW"
         } else {
             case["samples"].as_str().unwrap()
         };
+        // With the `jxl` decoder the (solid black) JPEG XL test images compare their
+        // pixels with Chrome's within a small tolerance.
+        if id.starts_with("jxl") && cfg!(feature = "jxl") {
+            compared += 1;
+            let got: Vec<[u8; 3]> = case["points"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|p| {
+                    let (x, y) = (p[0].as_u64().unwrap() as u32, p[1].as_u64().unwrap() as u32);
+                    let c = pm.pixel(x, y).expect("in bounds");
+                    [c.red(), c.green(), c.blue()]
+                })
+                .collect();
+            let want: Vec<[u8; 3]> = serde_json::from_value(case["rgb"].clone()).unwrap();
+            let near = got
+                .iter()
+                .zip(&want)
+                .all(|(g, w)| g.iter().zip(w).all(|(a, b)| a.abs_diff(*b) <= 8));
+            if !near {
+                failures.push(format!("{id}: {got:?}, Chrome {want:?}"));
+            }
+            continue;
+        }
         let got: String = case["points"]
             .as_array()
             .unwrap()
