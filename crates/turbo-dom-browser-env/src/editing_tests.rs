@@ -161,13 +161,13 @@ fn edit_context_matches_chrome_156() {
             (
                 "/bounds/6",
                 serde_json::json!(["ok", [["Object", null, null, null, null], ["Object", null, null, null, null]]]),
-                "standalone turbo-test's DOMRect is the generic interface stub; the embedder's geometry \
+                "the standalone binding's DOMRect is the generic interface stub; the embedder's geometry \
                  DOMRect (turbo-surf geometry_backend) is resolved lazily and carries the copied values",
             ),
             (
                 "/bounds/12",
                 serde_json::json!("ok"),
-                "same DOMRect stub: the stored copy has no readable x in standalone turbo-test",
+                "same DOMRect stub: the stored copy has no readable x in the standalone binding",
             ),
         ],
     );

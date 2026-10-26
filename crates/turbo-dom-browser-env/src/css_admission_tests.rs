@@ -10,7 +10,7 @@ fn evaluate(probe: &str) -> serde_json::Value {
         scope,
         "<!doctype html><html><head></head><body></body></html>",
     );
-    // turbo-test has no CSS namespace. The probe's CSS.supports column checks the
+    // The standalone binding installs no CSS namespace. The probe's CSS.supports column checks the
     // shared selector predicate that hosts install behind `CSS.supports`.
     fn supports(
         scope: &mut v8::PinScope,

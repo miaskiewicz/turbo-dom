@@ -889,8 +889,8 @@ pub(super) fn selector_list(source: &str) -> Option<Admitted> {
 }
 
 /// `CSS.supports("selector(...)")`: one complex selector that Chrome parses
-/// without forgiving drops or compatibility pseudo-elements. turbo-test has no
-/// CSS namespace; hosts that install `CSS.supports` share this predicate.
+/// without forgiving drops or compatibility pseudo-elements. The binding installs
+/// no CSS namespace; hosts that install `CSS.supports` share this predicate.
 #[cfg_attr(not(test), allow(dead_code))]
 pub fn supports_selector(source: &str) -> bool {
     selector_list(source).is_some_and(|admitted| admitted.supported && admitted.complex == 1)

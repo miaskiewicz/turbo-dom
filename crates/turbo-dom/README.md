@@ -70,6 +70,7 @@ Run the worked example: `cargo run --release --example crawl`.
 | `serialize` | inner/outerHTML (void + raw-text, single-pass escaping) |
 | `node_ref` | ergonomic `NodeRef` + `DocumentExt` façade over handles |
 | `color` | CSS color → `rgb()`/`rgba()` (named/hex/hsl) |
+| `css_values` | Chrome-compatible CSS value grammars: `zoom_value` (Chrome 156 standardized `zoom`, incl. `calc()`), `css_number` (Blink number serialization) |
 | `cssom` | `CssStyleSheet`/`CssStyleRule` + insert/deleteRule + parse |
 | `svg` | SVG length/string/viewBox accessors |
 | `file` | Blob/File + sync FileReader (text / data-URL base64 / array-buffer) |

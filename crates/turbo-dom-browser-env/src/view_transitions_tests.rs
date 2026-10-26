@@ -167,7 +167,7 @@ fn view_transitions_match_chrome_156() {
     // harness never fires unhandledrejection (nor, today, does the turbo-surf render tier).
     assert_eq!(actual["unhandled"], serde_json::json!([]));
     // KNOWN_GAP: DOMParser is provided by the turbo-surf runtime, not this binding; the
-    // render tier runs it against Chrome. parseHTMLUnsafe is now in the vendored binding
+    // render tier runs it against Chrome. parseHTMLUnsafe is in this binding
     // (Sanitizer batch) and is compared against the Chrome fixture below.
     assert_eq!(
         actual["documents"]["domParser"][0], "unavailable",

@@ -1,5 +1,5 @@
-//! Browser environment shim (P3) — the V8 BINDING + browser globals over turbo-dom's pure-Rust `rtdom` (the `turbo-dom-parser` crate, built with
-//! `rust-runtime`) to V8 via native rusty-v8 callbacks, so tests get `window`/`document`/Element with
+//! Browser environment shim (P3) — the V8 BINDING + browser globals over turbo-dom's pure-Rust `rtdom` (the `turbo-dom` crate,
+//! imported as `turbo_dom_parser`) to V8 via native rusty-v8 callbacks, so tests get `window`/`document`/Element with
 //! NO JS DOM (no `installGlobals`, no `.node` parser, no node_modules turbo-dom).
 //!
 //! Model: the DOM lives in Rust as one `Tree` per context (handle-based — each node is a `u32`
@@ -9,7 +9,7 @@
 //!
 //! This is the P3.2 vertical slice: document/createElement/createTextNode, appendChild/insertBefore/
 //! removeChild, get/setAttribute, id/className/tagName/textContent, querySelector(All)/getElementById.
-//! Events, cssom/style, classList, forms etc. grow in P3.3. Gated by `TURBO_RUST_DOM`.
+//! Events, cssom/style, classList, forms etc. grew in P3.3 and later. Always on (`enabled()`).
 
 #[path = "animations.rs"]
 mod animations;

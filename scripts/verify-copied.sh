@@ -46,6 +46,11 @@ EXCLUDES="bin bundler.rs coverage.rs coverage_branch.rs esm_cjs.rs graph.rs laun
 SEMANTIC_EDITS="
 cssom_parser.rs: zoom_value + helpers moved to turbo_dom::rtdom::css_values (re-exported here)
 interceptor_mode.rs: frame read placed behind the native-sdk-frame-read feature scaffolding
+browser_env.rs: module docs name the turbo-dom crate and drop the retired TURBO_RUST_DOM gate
+css_admission_tests.rs: comment no longer names turbo-test as the standalone host
+css_selector_syntax.rs: doc comment no longer names turbo-test as the standalone host
+editing_tests.rs: deviation notes say \"standalone binding\" instead of turbo-test
+view_transitions_tests.rs: comment no longer calls the binding vendored
 "
 # Crate-owned files under src/ that were not part of the move.
 OWNED="lib.rs crate_surface.rs host_internals.rs test_support.rs css_snapshot.rs"

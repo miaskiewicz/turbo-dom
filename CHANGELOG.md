@@ -5,6 +5,18 @@ environment for vitest/jest. Format based on [Keep a Changelog](https://keepacha
 Early versions were released as lightweight tags / version-stamped commits (no per-release notes
 at the time); this file reconstructs them from history.
 
+## [Unreleased] — 0.6.0 consolidation
+
+### Added
+- `turbo-dom-browser-env` 0.6.0: turbo-test's rtdom <-> V8 browser binding moved into
+  this workspace (from miaskiewicz/turbo-test@cb5c64e), on V8 150.4, with
+  `install_independent_srcdoc_units`, `install_html`, `document_html`, the
+  `css_snapshot` JSON contract and the `host-internals`, `test-support` and
+  `native-sdk-frame-read` features.
+- `turbo_dom::rtdom::css_values`: the Chrome 156 `zoom` grammar (`zoom_value`) and
+  Blink number serialization (`css_number`), moved from the binding so every consumer
+  shares one grammar. turbo-dom now depends on `cssparser` 0.37.
+
 ## [0.5.8] — 2026-10-25 — iframe srcdoc no-quirks parsing
 
 ### Added

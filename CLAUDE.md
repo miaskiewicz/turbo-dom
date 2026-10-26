@@ -78,10 +78,16 @@ package or publish workflow.
   design as the JS runtime: lazy COW `Tree` over the SoA (`tree.rs`, `version` counter = cache key),
   selectors + version-cached queries (`query.rs`), partial `getComputedStyle` memoized per version
   (`cascade.rs`), event dispatch with the listener-less fast-skip (`events.rs`), serialize, shadow DOM,
-  plus `color`/`cssom`/`svg`/`file`/`canvas`/`custom_elements`/`location`/`mutations`/`node_ref`.
+  plus `color`/`css_values`/`cssom`/`svg`/`file`/`canvas`/`custom_elements`/`location`/`mutations`/`node_ref`.
   Test-only harness: `dump.rs` (html5lib tree-dump) + `conformance.rs` (direct gate, 99.75%) +
   `bench.rs`/`gauntlet.rs`. **100% line coverage.** Don't expose rtdom to JS (the boundary loses);
   the JS path stays `src/runtime/`. Per-commit perf-win → Rust mapping in `RUST_PORT_PERF_HISTORY.md`.
+- `crates/turbo-dom-browser-env` — the rtdom <-> V8 browser binding (moved from turbo-test
+  @cb5c64e; `scripts/verify-copied.sh` re-derives that one-time move for review). Shared by
+  turbo-test and turbo-surf; features `host-internals` (doc-hidden host access),
+  `test-support` (probe/control consts), `native-sdk-frame-read` (interceptor mode source).
+  Needs a V8 archive (`RUSTY_V8_ARCHIVE`). Lint-exempt by design (`#![allow(unused, clippy::all)]`);
+  see its README. The shared `zoom` grammar lives in base `rtdom::css_values`.
 - `harness/` — JS conformance tooling (dat parser, serializer, runner). All unit-tested.
 - `src/runtime/` — the lazy COW DOM + window (Layers 2–5). `index.mjs` exports
   `createEnvironment(html)` → `{ window, document, reset, touched }`. Nodes inflate lazily
