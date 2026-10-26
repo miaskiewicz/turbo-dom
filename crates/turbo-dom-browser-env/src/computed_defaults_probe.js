@@ -90,6 +90,28 @@
     }
     out.popover = popover;
     out.otherBackdrop = { div: backdrop($('plain')), detached: backdrop(document.createElement('dialog')) };
+  } else if (document.getElementById('pseudoHost')) {
+    // turbo-dom#47: getComputedStyle(el, pseudoElt). ::before / ::after (also :before / :after
+    // and a bare before / after) compute the pseudo-element: its own rules, inheritance from
+    // the element, display inline (blockified in a flex / grid container), content none. An
+    // invalid pseudo-element yields an empty declaration; a string without a leading colon
+    // reads the element.
+    const props = ['display', 'position', 'visibility', 'color', 'content', 'font-size', 'opacity', 'transform', 'zoom'];
+    const read = (el, pseudo) => { const s = getComputedStyle(el, pseudo); return props.map((p) => s.getPropertyValue(p)).join('|'); };
+    const pseudos = ['::before', ':before', '::after', ':after', '::BEFORE', ':AFTER', 'before', 'AFTER', '::\\62 efore', 'befor\\65', '::before/**/', '::backdrop', ':backdrop', '::foo', '::part(x)', '::slotted(x)', '::before::marker', '::before:hover', 'x:before', '::before ', '::', ':', ':::before', '::before()', ' ::before', '\t::before', '', 'backdrop', 'beforex', ':marker', ':placeholder', null, undefined, 5];
+    const pseudo = {};
+    for (const id of ['pseudoHost', 'item', 'grid', 'flex', 'hiddenHost', 'quoted']) {
+      const el = document.getElementById(id);
+      pseudo[id] = Object.fromEntries(pseudos.map((p) => [String(p), read(el, p)]));
+    }
+    pseudo.detached = read(document.createElement('div'), '::before');
+    pseudo.symbol = (() => { try { getComputedStyle(document.body, Symbol('x')); return 'no throw'; } catch (e) { return e.name; } })();
+    pseudo.live = (() => {
+      const host = document.getElementById('pseudoHost'), style = getComputedStyle(host, '::before'), before = style.color;
+      document.getElementById('pseudoSheet').textContent += '#pseudoHost::before{color:rgb(0, 255, 0)}';
+      return [before, style.color, style === getComputedStyle(host, '::before')];
+    })();
+    out.pseudo = pseudo;
   } else {
     // the title setter creates a <title> on demand
     document.title = 'set';

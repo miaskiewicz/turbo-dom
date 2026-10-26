@@ -87,7 +87,7 @@ fn mismatches(select: impl Fn(&str) -> bool) -> Vec<String> {
 
 #[test]
 fn computed_defaults_and_head_match_chrome156_control() {
-    let found = mismatches(|id| id != "dialog-top-layer");
+    let found = mismatches(|id| id != "dialog-top-layer" && id != "pseudo-elements");
     assert!(
         found.is_empty(),
         "{} mismatches:\n{}",
@@ -101,6 +101,21 @@ fn computed_defaults_and_head_match_chrome156_control() {
 #[test]
 fn dialog_top_layer_matches_chrome156_control() {
     let found = mismatches(|id| id == "dialog-top-layer");
+    assert!(
+        found.is_empty(),
+        "{} mismatches:\n{}",
+        found.len(),
+        found.join("\n")
+    );
+}
+
+/// turbo-dom#47: `getComputedStyle(el, pseudoElt)` — `::before` / `::after` (legacy and bare
+/// forms, escapes, comments), invalid pseudo-elements (empty declaration), strings without a
+/// leading colon (the element), disconnected elements, live reads (case `pseudo-elements`).
+#[test]
+#[ignore = "turbo-dom#47: fails until the fix"]
+fn pseudo_elements_match_chrome156_control() {
+    let found = mismatches(|id| id == "pseudo-elements");
     assert!(
         found.is_empty(),
         "{} mismatches:\n{}",
