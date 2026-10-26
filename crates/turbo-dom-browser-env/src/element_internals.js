@@ -15,7 +15,7 @@
     define = Object.defineProperty,
     create = Object.create,
     freeze = Object.freeze;
-  const Exception = DOMException,
+  const Exception = g[Symbol.for("ts")].DOMException,
     ErrorType = TypeError,
     StringValue = String,
     MapValue = Map,

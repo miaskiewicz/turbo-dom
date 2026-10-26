@@ -108,8 +108,6 @@ const NEVER_PSEUDO_CLASSES: &[&str] = &[
     "focus",
     "focus-visible",
     "focus-within",
-    "fullscreen",
-    "-webkit-full-screen",
     "future",
     "host",
     "hover",
@@ -235,6 +233,7 @@ fn allowed_after_pseudo_element(element: &str, p: &Pseudo) -> bool {
                         | Pseudo::ReadWrite
                         | Pseudo::Link
                         | Pseudo::State(_)
+                        | Pseudo::Fullscreen
                 )
         }
         _ if ELEMENT_BACKED.contains(&element) => plain(USER_ACTION),

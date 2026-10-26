@@ -214,7 +214,8 @@ pub fn probe(bytes: &[u8]) -> Option<Intrinsic> {
 /// decode. `has_alpha` is left false — GIF transparency is per-frame and only
 /// matters at emit, which this format doesn't take.
 fn probe_gif(bytes: &[u8]) -> Option<Intrinsic> {
-    if bytes.len() < 10 {
+    // Chrome's size point is the first image descriptor (turbo-dom#59).
+    if !formats::gif_size_available(bytes) {
         return None;
     }
     let w = u16::from_le_bytes([bytes[6], bytes[7]]);
@@ -225,6 +226,10 @@ fn probe_gif(bytes: &[u8]) -> Option<Intrinsic> {
 /// WebP intrinsic size across the three chunk layouts (lossy `VP8 `, lossless
 /// `VP8L`, extended `VP8X`). Reads only the header dimensions — no pixel decode.
 fn probe_webp(bytes: &[u8]) -> Option<Intrinsic> {
+    // Chrome sizes a WebP only with its whole RIFF payload (turbo-dom#59).
+    if !formats::webp_complete(bytes) {
+        return None;
+    }
     // The chunk FourCC follows the 12-byte RIFF/WEBP header.
     let fourcc = bytes.get(12..16)?;
     let (w, h) = webp_size(fourcc, bytes)?;
@@ -302,6 +307,10 @@ fn png_has_alpha(color: png::ColorType, has_trns: bool) -> bool {
 }
 
 fn probe_jpeg(bytes: &[u8]) -> Option<Intrinsic> {
+    // Chrome's size point is the first start-of-scan header (turbo-dom#59).
+    if !formats::jpeg_size_available(bytes) {
+        return None;
+    }
     let mut decoder = jpeg_decoder::Decoder::new(Cursor::new(bytes));
     decoder.read_info().ok()?;
     let info = decoder.info()?;
@@ -679,10 +688,18 @@ mod format_tests {
 
     #[test]
     fn probe_gif_reads_logical_screen_size() {
-        // GIF89a header: signature, then width=120 (0x0078) and height=60 (0x003C) LE.
-        let gif = b"GIF89a\x78\x00\x3c\x00\xf0\x00\x00";
-        let intrinsic = probe(gif).expect("gif intrinsic");
+        // GIF89a header: signature, then width=120 (0x0078) and height=60 (0x003C) LE, a
+        // 2-entry global colour table, then the first image descriptor's separator and
+        // position/size — Chrome's size point (turbo-dom#59).
+        let screen = b"GIF89a\x78\x00\x3c\x00\xf0\x00\x00";
+        let gif = [&screen[..], &[0; 6], b"\x2c\0\0\0\0\x78\0\x3c\0"].concat();
+        let intrinsic = probe(&gif).expect("gif intrinsic");
         assert_eq!((intrinsic.width, intrinsic.height), (120, 60));
+        assert!(
+            probe(&gif[..gif.len() - 1]).is_none(),
+            "descriptor cut short"
+        );
+        assert!(probe(screen).is_none(), "logical screen only");
     }
 
     #[test]
@@ -711,9 +728,72 @@ mod format_tests {
     fn gif_is_probed_but_not_decoded() {
         // Intrinsic sizing works (layout) but the pixel decode is intentionally
         // unsupported (paint) — an unsupported decode emits nothing.
-        let gif = b"GIF89a\x08\x00\x06\x00\xf0\x00\x00";
+        let gif = b"GIF89a\x08\x00\x06\x00\x00\x00\x00\x2c\0\0\0\0\x08\0\x06\0";
         assert!(probe(gif).is_some());
         assert!(decode(gif).is_none());
+    }
+
+    #[test]
+    fn size_points_walk_markers_and_blocks() {
+        // turbo-dom#59: JPEG fill bytes and standalone markers are skipped; a scan before
+        // any frame header, a zero length, EOI, a cut segment and a non-marker stop it.
+        let sof = b"\xff\xc0\x00\x0b\x08\x00\x04\x00\x05\x01\x01\x11\x00";
+        let sos = b"\xff\xda\x00\x08\x01\x01\x00\x00\x3f\x00";
+        let jpeg = |parts: &[&[u8]]| [&b"\xff\xd8"[..], &parts.concat()].concat();
+        assert!(formats::jpeg_size_available(&jpeg(&[
+            b"\xff\xff",
+            sof,
+            b"\xff\xd0\xff\x01",
+            sos
+        ])));
+        assert!(
+            !formats::jpeg_size_available(&jpeg(&[sos, sof])),
+            "scan before frame"
+        );
+        assert!(
+            !formats::jpeg_size_available(&jpeg(&[sof, b"\xff\xd9", sos])),
+            "EOI"
+        );
+        assert!(
+            !formats::jpeg_size_available(&jpeg(&[sof, b"\xff\xd8"])),
+            "second SOI"
+        );
+        assert!(
+            !formats::jpeg_size_available(&jpeg(&[b"\xff\xe0\x00\x01", sof, sos])),
+            "length < 2"
+        );
+        assert!(
+            !formats::jpeg_size_available(&jpeg(&[sof, &sos[..9]])),
+            "cut scan header"
+        );
+        assert!(
+            !formats::jpeg_size_available(&jpeg(&[b"\x00", sof, sos])),
+            "not a marker"
+        );
+        // GIF: extensions are skipped whole; a cut extension, a trailer or junk is broken.
+        let screen = b"GIF89a\x01\x00\x01\x00\x00\x00\x00";
+        let ext = b"\x21\xf9\x04\x00\x00\x00\x00\x00";
+        let desc = b"\x2c\0\0\0\0\x01\0\x01\0";
+        assert!(formats::gif_size_available(
+            &[&screen[..], ext, desc].concat()
+        ));
+        assert!(
+            !formats::gif_size_available(&[&screen[..], &ext[..4]].concat()),
+            "cut extension"
+        );
+        assert!(
+            !formats::gif_size_available(&[&screen[..], b"\x3b"].concat()),
+            "trailer"
+        );
+        assert!(
+            !formats::gif_size_available(b"GIF89a\x01\x00"),
+            "no screen descriptor"
+        );
+        // WebP: the declared RIFF payload must be present; extra bytes are fine.
+        assert!(formats::webp_complete(b"RIFF\x04\x00\x00\x00WEBP"));
+        assert!(formats::webp_complete(b"RIFF\x04\x00\x00\x00WEBPjunk"));
+        assert!(!formats::webp_complete(b"RIFF\x05\x00\x00\x00WEBP"));
+        assert!(!formats::webp_complete(b"RIFF"));
     }
 
     #[test]

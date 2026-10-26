@@ -171,6 +171,13 @@ fn flattened<'s>(
     }
     result
 }
+/// The slot `node` (a host's child) is assigned to, in an open or closed tree: the event
+/// path's "get the parent" (turbo-dom#66).
+pub(super) fn event_slot(scope: &mut v8::PinScope, node: Handle) -> Option<Handle> {
+    let object = wrap(scope, node);
+    let slot = assigned_slot(scope, object)?;
+    handle_of(scope, slot)
+}
 fn assigned_slot<'s>(
     scope: &mut v8::PinScope<'s, '_>,
     node: v8::Local<'s, v8::Object>,

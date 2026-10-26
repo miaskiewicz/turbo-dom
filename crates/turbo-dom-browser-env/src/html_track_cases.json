@@ -1,0 +1,1 @@
+[{"id": "track", "html": "<!doctype html><html><head><base href=\"https://x.test/dir/\"></head><body><div><track id=\"t\" src=\"../a.vtt\" kind=\"CAPTIONS\" srclang=\"en\" label=\"L\" default></div><track id=\"p\" src=\"c.vtt\"></body></html>"}]

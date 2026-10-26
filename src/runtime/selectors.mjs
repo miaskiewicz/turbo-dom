@@ -254,10 +254,11 @@ const PLAIN = new Set([
   'empty', 'root', 'scope', 'checked', 'disabled', 'enabled', 'required', 'optional',
   'read-only', 'read-write', 'link', 'any-link', 'defined',
 ]);
-// Valid and never matching (a static document's resting state).
+// Valid and never matching (a static document's resting state; the npm runtime has no
+// fullscreen API, so the fullscreen pseudo-classes never match — turbo-dom#58).
 const NEVER = new Set([
   'active', 'autofill', '-webkit-autofill', 'buffering', 'current', 'default', 'focus',
-  'focus-visible', 'focus-within', 'fullscreen', '-webkit-full-screen', 'future', 'host',
+  'focus-visible', 'focus-within', 'fullscreen', '-webkit-full-screen', '-webkit-full-screen-ancestor', 'future', 'host',
   'hover', 'in-range', 'indeterminate', 'invalid', 'modal', 'muted', 'open', 'out-of-range',
   'past', 'paused', 'picture-in-picture', 'placeholder-shown', 'playing', 'popover-open',
   'seeking', 'stalled', 'target', 'user-invalid', 'user-valid', 'valid', 'visited',

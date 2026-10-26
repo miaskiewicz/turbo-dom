@@ -7,7 +7,9 @@
 //! that the parser created with an `is` attribute, is "undefined" (no definitions exist
 //! without an embedder); every other element is "uncustomized". The `is` attribute counts
 //! only as the parser saw it — an `is` attribute set, changed or removed later never changes
-//! the state (HTML: the `is` value is read once, at creation).
+//! the state (HTML: the `is` value is read once, at creation). Storage collection
+//! ([`Tree::collect_unreachable`]) records that parsed state before it drops the parse buffer
+//! (miaskiewicz/turbo-surf#41).
 use super::{Handle, NodeType, Tree};
 
 /// HTML's custom element state. `:defined` matches [`Uncustomized`](Self::Uncustomized)
@@ -99,6 +101,24 @@ impl Tree {
         match self.custom_element_state(source) {
             CustomElementState::Uncustomized => CustomElementState::Uncustomized,
             _ => CustomElementState::Undefined,
+        }
+    }
+
+    /// Record the creation-time state of the parser-created elements among `nodes` that
+    /// derive it from their parse-buffer `is` attribute (and have no report), so it survives
+    /// storage collection re-materializing them as new nodes (miaskiewicz/turbo-surf#41).
+    pub(super) fn record_parsed_states(&mut self, nodes: impl IntoIterator<Item = Handle>) {
+        let parsed: Vec<Handle> = nodes
+            .into_iter()
+            .filter(|&h| {
+                !self.custom_element_states.contains_key(&h)
+                    && self.parsed_is_value(h)
+                    && self.custom_element_state(h) == CustomElementState::Undefined
+            })
+            .collect();
+        for h in parsed {
+            self.custom_element_states
+                .insert(h, CustomElementState::Undefined);
         }
     }
 

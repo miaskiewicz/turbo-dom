@@ -177,6 +177,7 @@ impl Tree {
             charge(&mut work, 1 + states.len(), budget)?;
         }
         charge(&mut work, self.custom_element_states.len(), budget)?;
+        charge(&mut work, self.fullscreen_stack.len(), budget)?;
         let before = self.storage_stats();
         let mut roots = vec![self.root()];
         roots.extend_from_slice(pins);
@@ -279,6 +280,8 @@ impl Tree {
                 return Err(CollectionError::BudgetExceeded);
             }
         }
+        // The parse buffer goes away: keep the creation-time custom element state it implies.
+        self.record_parsed_states(retained.iter().copied());
         let mut nodes = FxHashMap::default();
         let mut parents = Overlay::collected();
         let mut children = Overlay::collected();
@@ -321,6 +324,7 @@ impl Tree {
         self.custom_element_states
             .retain(|node, _| retained.contains(node));
         self.custom_element_states.shrink_to_fit();
+        self.fullscreen_stack.retain(|node| retained.contains(node));
         self.element_namespaces.shrink_to_fit();
         self.attribute_nodes.shrink_to_fit();
         self.shadow_root_of_host.shrink_to_fit();

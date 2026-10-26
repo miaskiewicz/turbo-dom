@@ -555,6 +555,8 @@ mod custom_states;
 
 #[path = "custom_element_state.rs"]
 mod custom_element_state;
+#[path = "fullscreen_state.rs"]
+mod fullscreen_state;
 #[cfg(test)]
 pub(crate) use custom_element_state::is_custom_element_name;
 pub use custom_element_state::CustomElementState;
@@ -614,6 +616,8 @@ pub struct Tree {
     /// Embedder-reported (and import-time) custom element states; absent = derived at read
     /// time from the element's creation (`custom_element_state.rs`).
     custom_element_states: FxHashMap<Handle, CustomElementState>,
+    /// The embedder-reported fullscreen stack, bottom first (`fullscreen_state.rs`).
+    fullscreen_stack: Vec<Handle>,
 }
 
 /// The boolean IDL form-state properties whose selector semantics can diverge from the
@@ -673,6 +677,7 @@ impl Tree {
             form_props: FxHashMap::default(),
             custom_states: FxHashMap::default(),
             custom_element_states: FxHashMap::default(),
+            fullscreen_stack: Vec::new(),
         }
     }
 

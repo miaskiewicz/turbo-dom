@@ -1,5 +1,6 @@
 // The JS runtime against the Chrome 156 control for miaskiewicz/turbo-dom#29
-// (test/fixtures/dom_adoption_reactions_{probe.js,cases.json,chrome156.json}, recorded with
+// (crates/turbo-dom-browser-env/src/dom_adoption_reactions_{probe.js,cases.json,chrome156.json},
+// shared with the binding's dom_reactions_tests.rs; recorded with
 // crates/turbo-dom-browser-env/scripts/select-element-chrome-control.mjs):
 //   1. createElementNS in any namespace (null / unknown namespaces, prefixes, name checks),
 //   2. insertion across documents adopts the node (old document no longer reports it),
@@ -13,7 +14,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { createEnvironment } from '../src/runtime/index.mjs';
 
-const dir = new URL('./fixtures/', import.meta.url);
+const dir = new URL('../crates/turbo-dom-browser-env/src/', import.meta.url);
 const read = (name) => readFileSync(new URL(name, dir));
 const cases = JSON.parse(read('dom_adoption_reactions_cases.json'));
 const control = JSON.parse(read('dom_adoption_reactions_chrome156.json'));

@@ -216,6 +216,11 @@ pub fn capture_window_event_interfaces(scope: &mut v8::PinScope) {
         .get(scope, key.into())
         .filter(|value| value.is_function())
     {
+        // The host's installed DOMException becomes the realm's interface: every binding
+        // module resolves its exceptions through the registration (turbo-surf#42).
+        if let Ok(constructor) = v8::Local::<v8::Function>::try_from(exception) {
+            register_dom_exception(scope, constructor);
+        }
         set_prop(scope, values, "DOMException", exception);
     }
     for (interface, names) in [

@@ -1,0 +1,24 @@
+{
+ "id": "miaskiewicz/turbo-dom#78",
+ "reason": "A percentage height / min-height / max-height resolves against a definite parent height on the static path (positioned boxes: also min/max). No existing corpus output changes (Fresh-target parity builds (turbo-html2pdf refactor 266b467 = 923c89f code, path-patched): turbo-dom 495d7bd (base) -> 1b832f2 (#75 item 1) -> 0e9f8a3 (#75 item 2) -> b5998db (#77) -> 18c5850 (#78) -> 3bd9953 (#76) -> d17e810 (+ extra inputs, merged refactor be87ef2): 0 changed at 18c5850); the new extra input percent-height.html pins it. P5b-W6.",
+ "control": "scripts/html-document-chrome-control.mjs percent-* cases",
+ "e2e": "crates/turbo-dom-layout/tests/html_document_chrome.rs (percentage_heights_resolve_against_a_definite_parent_like_chrome_156)",
+ "changes": {
+  "html2pdf": [],
+  "html2pdf-svg": [],
+  "html2pdf-extra": [],
+  "surf": [],
+  "surf-extra": []
+ },
+ "added": {
+  "html2pdf-extra": [
+   "extra-percent-height.boxes.json",
+   "extra-percent-height.pdf",
+   "extra-percent-height.ua.pdf"
+  ],
+  "surf-extra": [
+   "static-extra-percent-height.png",
+   "static-extra-percent-height.svg"
+  ]
+ }
+}
