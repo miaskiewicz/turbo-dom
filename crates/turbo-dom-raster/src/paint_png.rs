@@ -822,10 +822,8 @@ mod tests {
     }
 
     #[test]
-    fn a_shadow_beyond_the_scratch_bound_is_not_painted() {
-        // A blurred shadow's scratch buffer is capped at 8192 px a side (the shadow is
-        // skipped, the box still paints) — Chrome paints such a shadow; see the P5-cov
-        // report.
+    #[ignore = "turbo-dom#95: fails until the fix"]
+    fn a_box_wider_than_8192px_casts_its_blurred_shadow() {
         let shadowed = |w: f32| {
             with_box(plain(10.0, 10.0, w, 20.0, Some(RED)), |_, sh, _, _| {
                 *sh = Some(BoxShadow {
@@ -839,10 +837,20 @@ mod tests {
             })
         };
         let small = render(&shadowed(30.0), 60, 60, &HashMap::new());
-        assert_eq!(rgb(&small, 25, 40), [0, 0, 255], "shadow core");
         let huge = render(&shadowed(9000.0), 60, 60, &HashMap::new());
         assert_eq!(rgb(&huge, 20, 20), [255, 0, 0], "the box");
-        assert_eq!(rgb(&huge, 25, 40), [255, 255, 255], "no shadow");
+        // Away from the narrow box's right end the two shadows are the same pixels.
+        for y in 0..60 {
+            for x in 0..30 {
+                assert_eq!(rgb(&huge, x, y), rgb(&small, x, y), "({x},{y})");
+            }
+        }
+        assert_eq!(rgb(&huge, 25, 40), [0, 0, 255], "shadow core");
+        assert_eq!(
+            rgb(&huge, 55, 40),
+            [0, 0, 255],
+            "the wide box's shadow continues"
+        );
     }
 
     #[test]

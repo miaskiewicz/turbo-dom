@@ -1293,6 +1293,210 @@
      ]
     }
    ]
+  },
+  {
+   "id": "shadow-wide",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div style=\"position:absolute;left:20px;top:300px;width:9000px;height:40px;background:#00ff00;box-shadow:0 50px 4px #ff0000\"></div></body></html>",
+   "assets": [],
+   "boxes": [],
+   "probes": [
+    {
+     "x": 100,
+     "y": 320,
+     "class": "G",
+     "rgb": [
+      0,
+      255,
+      0
+     ]
+    },
+    {
+     "x": 100,
+     "y": 370,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 10,
+     "y": 370,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 100,
+     "y": 400,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 1270,
+     "y": 370,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 640,
+     "y": 345,
+     "class": "T",
+     "rgb": [
+      3,
+      252,
+      252
+     ]
+    }
+   ]
+  },
+  {
+   "id": "shadow-blur-256",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div style=\"position:absolute;left:600px;top:300px;width:100px;height:100px;background:#0000ff;box-shadow:0 0 256px #000000\"></div></body></html>",
+   "assets": [],
+   "boxes": [],
+   "probes": [
+    {
+     "x": 550,
+     "y": 350,
+     "class": "T",
+     "rgb": [
+      0,
+      237,
+      237
+     ]
+    },
+    {
+     "x": 500,
+     "y": 350,
+     "class": "T",
+     "rgb": [
+      0,
+      242,
+      242
+     ]
+    },
+    {
+     "x": 450,
+     "y": 350,
+     "class": "T",
+     "rgb": [
+      0,
+      248,
+      248
+     ]
+    },
+    {
+     "x": 650,
+     "y": 250,
+     "class": "T",
+     "rgb": [
+      0,
+      237,
+      237
+     ]
+    },
+    {
+     "x": 650,
+     "y": 150,
+     "class": "T",
+     "rgb": [
+      0,
+      248,
+      248
+     ]
+    },
+    {
+     "x": 400,
+     "y": 600,
+     "class": "T",
+     "rgb": [
+      0,
+      254,
+      254
+     ]
+    }
+   ]
+  },
+  {
+   "id": "shadow-blur-400",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div style=\"position:absolute;left:600px;top:300px;width:100px;height:100px;background:#0000ff;box-shadow:0 0 400px #000000\"></div></body></html>",
+   "assets": [],
+   "boxes": [],
+   "probes": [
+    {
+     "x": 550,
+     "y": 350,
+     "class": "T",
+     "rgb": [
+      0,
+      237,
+      237
+     ]
+    },
+    {
+     "x": 500,
+     "y": 350,
+     "class": "T",
+     "rgb": [
+      0,
+      242,
+      242
+     ]
+    },
+    {
+     "x": 450,
+     "y": 350,
+     "class": "T",
+     "rgb": [
+      0,
+      248,
+      248
+     ]
+    },
+    {
+     "x": 650,
+     "y": 250,
+     "class": "T",
+     "rgb": [
+      0,
+      237,
+      237
+     ]
+    },
+    {
+     "x": 650,
+     "y": 150,
+     "class": "T",
+     "rgb": [
+      0,
+      248,
+      248
+     ]
+    },
+    {
+     "x": 400,
+     "y": 600,
+     "class": "T",
+     "rgb": [
+      0,
+      254,
+      254
+     ]
+    }
+   ]
   }
  ]
 }

@@ -189,6 +189,23 @@ const CASES = [
     html: DOC(`<div style="${at(500, 20)};width:40px;height:100px;background:linear-gradient(#ff0000, #0000ff)"></div>`),
     probes: [[520, 23], [520, 117], [520, 70], [545, 70]],
   },
+  // miaskiewicz/turbo-dom#95: blurred shadows of boxes far wider than the viewport, and the
+  // blur radius Chrome caps (every blur from 256px up paints the same pixels).
+  {
+    id: "shadow-wide",
+    html: DOC(`<div style="${at(20, 300)};width:9000px;height:40px;background:#00ff00;box-shadow:0 50px 4px #ff0000"></div>`),
+    probes: [[100, 320], [100, 370], [10, 370], [100, 400], [1270, 370], [640, 345]],
+  },
+  {
+    id: "shadow-blur-256",
+    html: DOC(`<div style="${at(600, 300)};width:100px;height:100px;background:#0000ff;box-shadow:0 0 256px #000000"></div>`),
+    probes: [[550, 350], [500, 350], [450, 350], [650, 250], [650, 150], [400, 600]],
+  },
+  {
+    id: "shadow-blur-400",
+    html: DOC(`<div style="${at(600, 300)};width:100px;height:100px;background:#0000ff;box-shadow:0 0 400px #000000"></div>`),
+    probes: [[550, 350], [500, 350], [450, 350], [650, 250], [650, 150], [400, 600]],
+  },
 ];
 
 /** Decode an 8-bit RGB/RGBA PNG (all five filters) to px(x, y) -> [r,g,b]. */
