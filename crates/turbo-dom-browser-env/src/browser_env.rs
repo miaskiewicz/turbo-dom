@@ -2290,11 +2290,13 @@ fn el_insert_adjacent_html<'s>(
     })
     .flatten();
     // These nodes are freshly parsed, so they cannot contain an existing ancestor.
+    let mark = custom_elements::event_mark(scope);
     with_tree_mut(|tree| tree.insert_adjacent_html_utf16(target, &position, &html));
     if let Some((parent, _, _)) = location {
         let object = wrap(scope, parent);
         template_contents::realize(scope, object);
     }
+    let mut parsed = Vec::new();
     if let Some((parent, index, previous_count)) = location {
         let count = with_tree(|tree| tree.children(parent).len()).unwrap_or(previous_count);
         let added = count.saturating_sub(previous_count);
@@ -2309,9 +2311,11 @@ fn el_insert_adjacent_html<'s>(
         {
             let object = wrap(scope, child);
             template_contents::mark_parsed(scope, object, true);
+            parsed.push(object);
         }
         range_live::inserting(scope, parent, index, added);
     }
+    custom_elements::parser_inserted(scope, args.this(), &parsed, mark);
 }
 fn el_toggle_attribute<'s>(
     scope: &mut v8::PinScope<'s, '_>,
@@ -3266,14 +3270,18 @@ fn set_inner_html<'s>(
     }
     html_popover::disconnect(scope, h, false);
     range_live::replacing_children(scope, h);
+    let mark = custom_elements::event_mark(scope);
     with_tree_mut(|t| t.set_inner_html_utf16(h, &html));
     form_checked_state::parsed(h);
     template_contents::realize(scope, node);
+    let mut parsed = Vec::new();
     for child in with_tree(|tree| tree.children(h)).unwrap_or_default() {
         let object = wrap(scope, child);
         template_contents::mark_parsed(scope, object, true);
+        parsed.push(object);
     }
     css_policy::invalidate_sheet(h);
+    custom_elements::parser_inserted(scope, node, &parsed, mark);
 }
 fn get_outer_html(
     scope: &mut v8::PinScope,
@@ -3339,12 +3347,14 @@ fn set_outer_html<'s>(
     })
     .flatten();
     range_live::removing(scope, node);
+    let mark = custom_elements::event_mark(scope);
     with_tree_mut(|tree| {
         tree.insert_adjacent_html_utf16(node, "beforebegin", &html);
         tree.remove_child(parent, node);
     });
     let object = wrap(scope, parent);
     template_contents::realize(scope, object);
+    let mut parsed = Vec::new();
     if let Some((index, previous_count)) = position {
         let count = with_tree(|tree| tree.children(parent).len()).unwrap_or(previous_count - 1);
         let added = count.saturating_add(1).saturating_sub(previous_count);
@@ -3357,11 +3367,13 @@ fn set_outer_html<'s>(
         })
         .unwrap_or_default()
         {
-            let object = wrap(scope, child);
-            template_contents::mark_parsed(scope, object, true);
+            let child = wrap(scope, child);
+            template_contents::mark_parsed(scope, child, true);
+            parsed.push(child);
         }
         range_live::inserting(scope, parent, index, added);
     }
+    custom_elements::parser_inserted(scope, object, &parsed, mark);
 }
 
 /// `children` = element-only child nodes (HTMLCollection-ish array).
@@ -6089,6 +6101,9 @@ fn ownership_setter<'s, 'i, S>(
     if scope.is_execution_terminating() {
         return;
     }
+    // Setters are [CEReactions] too (innerHTML, outerHTML, reflected attributes): their
+    // custom element reactions run when the setter returns, element by element (turbo-dom#43).
+    let reactions = custom_elements::reactions(scope);
     S::get()(scope, name, value, args, rv);
     if scope.has_terminated() {
         scope.rethrow();
@@ -6102,6 +6117,7 @@ fn ownership_setter<'s, 'i, S>(
         scope.reset();
     }
     mutation_observers::flush(scope);
+    reactions.flush(scope);
     if scope.has_terminated() || scope.is_execution_terminating() {
         scope.rethrow();
         return;

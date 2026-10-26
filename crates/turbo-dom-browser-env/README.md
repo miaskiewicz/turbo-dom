@@ -185,6 +185,22 @@ values from the parser vs `createElement(…, {is})`, a throwing constructor). C
 and adopted nodes carry the state with them. Without a report the tree derives the
 creation-time state (custom element names and parsed `is` attributes are undefined).
 
+### Custom element reactions
+
+DOM methods and setters are `[CEReactions]` scopes: the reactions a call queues run
+when it returns, element by element — an element's upgrade (constructor, then the
+`attributeChangedCallback` / `connectedCallback` it queues) completes before the
+next element's reactions (turbo-dom#43). The HTML fragment parser (`innerHTML`,
+`outerHTML`, `insertAdjacentHTML`, `setHTMLUnsafe`, `createContextualFragment`)
+queues its elements' upgrades when it creates them, so they run before the old
+children's `disconnectedCallback`s. Insertion upgrades connected elements only;
+`customElements.upgrade(root)` skips candidates another registry (or none, like
+template contents in their inert document) governs; an element is constructed at
+most once (turbo-dom#42). Independently installed documents deliver their reactions
+before the call returns too (turbo-dom#54). Controls: the npm runtime's
+`test/fixtures/dom_adoption_reactions_chrome156.json` (read in place by
+`src/dom_reactions_tests.rs`) and `src/dom_reactions_names_chrome156.json`.
+
 ### Feature `native-sdk-frame-read` (off by default)
 
 How setter/definer/deleter interceptors learn whether the caller must throw

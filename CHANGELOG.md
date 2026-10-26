@@ -7,6 +7,25 @@ at the time); this file reconstructs them from history.
 
 ## [Unreleased]
 
+### Fixed — custom element upgrades and reaction order (P5b-X5, miaskiewicz/turbo-dom#42, #43, Chrome 156 controls)
+- turbo-dom-browser-env, #42: `customElements.upgrade(root)` used to upgrade template
+  contents, whose inert document has no registry. It now skips every candidate the
+  registry does not govern. Inserting into a disconnected tree no longer upgrades either:
+  only connected elements upgrade on insertion. So template contents appended to a
+  detached element adopt without constructing, and upgrade once when connected. An element
+  is never constructed twice.
+- #43: an element's upgrade is now queued in its own reaction queue inside a `[CEReactions]`
+  call. Its constructor and the `attributeChangedCallback` / `connectedCallback` it queues
+  run before the next element's reactions (`importNode`: `ctor u1, attr u1, ctor u2`).
+- #43: setters (`innerHTML`, `outerHTML`, reflected attributes, …) are `[CEReactions]`
+  scopes like methods. The HTML fragment parser (`innerHTML`, `outerHTML`,
+  `insertAdjacentHTML`, `setHTMLUnsafe`, `createContextualFragment`) queues its elements'
+  upgrades before the setter's removals queue `disconnectedCallback`s
+  (`ctor r4, conn r4, disc r1, …`).
+- Controls: the npm runtime's `test/fixtures/dom_adoption_reactions_chrome156.json` (read
+  in place by `src/dom_reactions_tests.rs`) and the new
+  `src/dom_reactions_names_{probe.js,cases.json,chrome156.json}` (fragment-parser setters).
+
 ### Fixed — custom element reactions in independent documents (P5b-X5, miaskiewicz/turbo-dom#54, Chrome 156 control)
 - turbo-dom-browser-env: in a document installed with `install_independent_html`,
   `removeChild()` / `remove()` (and every other call that mutates the tree directly)

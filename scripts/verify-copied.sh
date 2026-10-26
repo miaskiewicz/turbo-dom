@@ -46,9 +46,9 @@ EXCLUDES="bin bundler.rs coverage.rs coverage_branch.rs esm_cjs.rs graph.rs laun
 SEMANTIC_EDITS="
 cssom_parser.rs: zoom_value + helpers moved to turbo_dom::rtdom::css_values (re-exported here)
 interceptor_mode.rs: frame read placed behind the native-sdk-frame-read feature scaffolding
-browser_env.rs: module docs name the turbo-dom crate and drop the retired TURBO_RUST_DOM gate; P5b turbo-dom#20 native functions take a call-without-new message, named definers pass V8's should-throw mode; P5b turbo-surf#32 installs html_image.js + its tests; P5b-X2 turbo-dom#24 clones keep the custom element state; P5b-X3 turbo-surf#36 computed-defaults control test module
-custom_elements.js: P5b-X2 turbo-dom#24 reports custom element states to the tree (:defined)
-custom_elements.rs: P5b-X2 turbo-dom#24 __customElementState native + the :defined Chrome 156 control test
+browser_env.rs: module docs name the turbo-dom crate and drop the retired TURBO_RUST_DOM gate; P5b turbo-dom#20 native functions take a call-without-new message, named definers pass V8's should-throw mode; P5b turbo-surf#32 installs html_image.js + its tests; P5b-X2 turbo-dom#24 clones keep the custom element state; P5b-X3 turbo-surf#36 computed-defaults control test module; P5b-X5 turbo-dom#43 setters are [CEReactions] scopes and fragment-parser setters report their parsed elements
+custom_elements.js: P5b-X2 turbo-dom#24 reports custom element states to the tree (:defined); P5b-X5 turbo-dom#42/#43 queued upgrades, parsed-element upgrades, connected-only insertion upgrades, upgrade(root) per registry
+custom_elements.rs: P5b-X2 turbo-dom#24 __customElementState native + the :defined Chrome 156 control test; P5b-X5 turbo-dom#43 parser_inserted / event_mark (parsed elements' upgrades ahead of a setter's removals)
 document_basics.rs: P5b-X2 turbo-dom#24 adoption moves the custom element state with the node
 css_admission_tests.rs: comment no longer names turbo-test as the standalone host; P5b-X3 turbo-surf#36 a rule-less visibility is the initial visible
 css_selector_syntax.rs: doc comment no longer names turbo-test as the standalone host
@@ -56,9 +56,10 @@ editing_tests.rs: deviation notes say \"standalone binding\" instead of turbo-te
 view_transitions_tests.rs: comment no longer calls the binding vendored
 select_element.js: P5b turbo-dom#20 Option() legacy factory function; quiet accessor definitions on HTMLOptionsCollection
 select_element_tests.rs: P5b turbo-dom#20 Option() factory + options-collection definer vs their Chrome 156 control
-browser_env.js: P5b-X2 turbo-dom#23 drops the JS Image() fallback (own src + fake onload); Image() is native in html_image.js; P5b-X3 turbo-surf#36 getComputedStyle UA display / position / visibility defaults, no eager <title>
+browser_env.js: P5b-X2 turbo-dom#23 drops the JS Image() fallback (own src + fake onload); Image() is native in html_image.js; P5b-X3 turbo-surf#36 getComputedStyle UA display / position / visibility defaults, no eager <title>; P5b-X5 turbo-dom#30 dialog:modal / top layer / ::backdrop, turbo-dom#47 pseudoElt parsing and ::before / ::after
 document_basics.js: P5b turbo-dom#20 live collections pass the definer's should-throw mode to setIndex
 html_popover.rs: P5b turbo-dom#18 internal selector paths anchor with :not(* > *) instead of :root (6a23551)
+shadow_html.rs: P5b-X5 turbo-dom#43 setHTMLUnsafe queues the parsed elements' custom element upgrades before its removals
 mutation_observers.rs: P5b-X5 turbo-dom#54 flush delivers an independently installed document's recorded mutations when the call returns
 dom_implementation_tests.rs: P5b the dom-implementation collector must label its control like the committed one
 "

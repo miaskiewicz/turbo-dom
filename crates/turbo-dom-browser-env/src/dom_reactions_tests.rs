@@ -127,7 +127,6 @@ fn assert_none(found: &[String]) {
 /// candidates alone; appending them to a detached element adopts without constructing; they
 /// upgrade once (and only once) when connected.
 #[test]
-#[ignore = "turbo-dom#42: fails until the fix"]
 fn template_contents_upgrade_once_matching_chrome156() {
     let (binding, chrome) = run(ADOPTION_PROBE, ADOPTION_CASES, ADOPTION_CONTROL);
     assert_none(&mismatches(
@@ -143,7 +142,6 @@ fn template_contents_upgrade_once_matching_chrome156() {
 /// queues its elements' upgrades before innerHTML / outerHTML / setHTMLUnsafe remove the old
 /// children.
 #[test]
-#[ignore = "turbo-dom#43: fails until the fix"]
 fn reactions_run_element_by_element_matching_chrome156() {
     let (binding, chrome) = run(ADOPTION_PROBE, ADOPTION_CASES, ADOPTION_CONTROL);
     let mut found = mismatches(&binding, &chrome, &[], &["import", "innerHTML-replace"]);
