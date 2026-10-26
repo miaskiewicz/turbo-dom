@@ -1,9 +1,8 @@
 // Capture a shadow-root/HTML-serialization probe in independently installed headless Chrome.
-// Usage: node scripts/shadow-html-chrome-control.mjs --probe $ENV_SRC/x_probe.js --out $ENV_SRC/x_chrome156.json [--chrome PATH] [--page PAGE.html]
+// Usage: node scripts/shadow-html-chrome-control.mjs --probe src/x_probe.js --out src/x_chrome156.json [--chrome PATH] [--page PAGE.html]
 // --page serves that document (recorded with its SHA-256) instead of the empty default page.
-// $ENV_SRC is turbo-dom-browser-env's source directory, where the binding's probes,
-// cases and Chrome controls live (miaskiewicz/turbo-dom crates/turbo-dom-browser-env/src,
-// e.g. ../turbo-dom/crates/turbo-dom-browser-env/src from this checkout).
+// Run from crates/turbo-dom-browser-env: src/ holds the binding's probes, cases and Chrome
+// controls (the files its tests and `test_support` read).
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";

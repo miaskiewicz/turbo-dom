@@ -1,8 +1,7 @@
 # Private live stylesheet snapshots
 
-This describes the DOM binding turbo-test links, turbo-dom's `turbo-dom-browser-env`
-crate (miaskiewicz/turbo-dom `crates/turbo-dom-browser-env`); `$ENV_SRC` below is that
-crate's `src/` directory.
+This describes `turbo-dom-browser-env` (this crate), the DOM binding turbo-test and
+turbo-surf link. Paths below are relative to `crates/turbo-dom-browser-env`.
 
 The embedding host can retrieve a document's private native interface record with
 `turbo_dom_browser_env::browser_env::get_interface_record`. Its `cssHost.exportSheet(sheet)` function
@@ -34,16 +33,15 @@ The descriptor grammar follows [CSS Fonts 4](https://www.w3.org/TR/css-fonts-4/)
 
 ## Independent controls
 
-`$ENV_SRC/css_live_tests.rs` contains seven offline contracts, including the exact authored
-public fixture in `$ENV_SRC/css_live_probe.js` compared with the saved installed
-Chrome155.0.8059.79 / V8 15.5.35.23 result. Refresh that control with (the script reads
-the probe from `$TURBO_DOM_BROWSER_ENV_SRC`, default `../turbo-dom/crates/turbo-dom-browser-env/src`
-next to this checkout):
+`src/css_live_tests.rs` contains seven offline contracts, including the exact authored
+public fixture in `src/css_live_probe.js` compared with the saved installed
+Chrome155.0.8059.79 / V8 15.5.35.23 result. Refresh that control from this crate's
+directory (the script reads `src/css_live_probe.js` and writes
+`src/css_live_chrome155.json` unless `--out` names another file):
 
 ```sh
 node scripts/css-live-chrome-control.mjs \
-  --runner /absolute/path/to/turbo-surf/harness/detection/chrome-cdp-trace.mjs \
-  --out /absolute/path/to/turbo-dom/crates/turbo-dom-browser-env/src/css_live_chrome155.json
+  --runner /absolute/path/to/turbo-surf/harness/detection/chrome-cdp-trace.mjs
 ```
 
 The oracle uses only an authored loopback page and records its explicit

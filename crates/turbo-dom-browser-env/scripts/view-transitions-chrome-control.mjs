@@ -1,13 +1,12 @@
 // Capture the committed view-transition probes in independently installed headless Chrome.
 //   node scripts/view-transitions-chrome-control.mjs --chrome /path/to/chrome \
-//     --probe $ENV_SRC/view_transitions_probe.js --hidden $ENV_SRC/view_transitions_hidden_probe.js \
-//     --out $ENV_SRC/view_transitions_chrome156.json
+//     --probe src/view_transitions_probe.js --hidden src/view_transitions_hidden_probe.js \
+//     --out src/view_transitions_chrome156.json
 // Self-contained CDP over --remote-debugging-pipe: no Playwright and no turbo-surf runner.
 // The main probe runs in a foreground tab (visible document, real vsync-driven frames); the
 // hidden probe runs in a background tab, whose document Chrome reports as hidden.
-// $ENV_SRC is turbo-dom-browser-env's source directory, where the binding's probes,
-// cases and Chrome controls live (miaskiewicz/turbo-dom crates/turbo-dom-browser-env/src,
-// e.g. ../turbo-dom/crates/turbo-dom-browser-env/src from this checkout).
+// Run from crates/turbo-dom-browser-env: src/ holds the binding's probes, cases and Chrome
+// controls (the files its tests and `test_support` read).
 import { createHash } from "node:crypto";
 import { spawn } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";

@@ -1,9 +1,8 @@
 // Capture a CSS probe fixture with independently installed Chrome.
 //   node scripts/css-probe-chrome-control.mjs --runner /abs/chrome-cdp-trace.mjs \
-//     --probe $ENV_SRC/css_selector_admission_probe.js --out $ENV_SRC/css_selector_admission_chrome156.json
-// $ENV_SRC is turbo-dom-browser-env's source directory, where the binding's probes,
-// cases and Chrome controls live (miaskiewicz/turbo-dom crates/turbo-dom-browser-env/src,
-// e.g. ../turbo-dom/crates/turbo-dom-browser-env/src from this checkout).
+//     --probe src/css_selector_admission_probe.js --out src/css_selector_admission_chrome156.json
+// Run from crates/turbo-dom-browser-env: src/ holds the binding's probes, cases and Chrome
+// controls (the files its tests and `test_support` read).
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -24,7 +23,7 @@ const { values } = parseArgs({
 });
 if (!values.runner || !values.probe || !values.out)
   throw Error(
-    "Pass --runner /absolute/chrome-cdp-trace.mjs --probe $ENV_SRC/x_probe.js --out /absolute/oracle.json",
+    "Pass --runner /absolute/chrome-cdp-trace.mjs --probe src/x_probe.js --out /absolute/oracle.json",
   );
 const probe = resolve(root, values.probe);
 const directory = mkdtempSync(join(tmpdir(), "turbo-css-oracle-"));

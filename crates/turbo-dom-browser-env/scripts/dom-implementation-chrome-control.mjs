@@ -8,12 +8,8 @@ import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-// The probe lives with the binding in turbo-dom-browser-env (miaskiewicz/turbo-dom
-// crates/turbo-dom-browser-env/src); default to a sibling turbo-dom checkout.
-const envSrc = resolve(
-  process.env.TURBO_DOM_BROWSER_ENV_SRC ??
-    join(root, "../turbo-dom/crates/turbo-dom-browser-env/src"),
-);
+// root is crates/turbo-dom-browser-env; the probe and its Chrome control live in src/.
+const envSrc = join(root, "src");
 const { values } = parseArgs({
   options: {
     runner: { type: "string" },
@@ -21,8 +17,10 @@ const { values } = parseArgs({
     chrome: { type: "string" },
   },
 });
-if (!values.runner || !values.out)
-  throw Error("Pass --runner /absolute/chrome-cdp-trace.mjs --out /absolute/oracle.json");
+// The control is written next to its probe unless --out names another file.
+values.out ??= join(root, "src/dom_implementation_chrome155.json");
+if (!values.runner)
+  throw Error("Pass --runner /absolute/chrome-cdp-trace.mjs [--out /absolute/oracle.json, default src/dom_implementation_chrome155.json]");
 const directory = mkdtempSync(join(tmpdir(), "turbo-dom-implementation-oracle-"));
 const server = createServer((_request, response) => {
   response.setHeader("Content-Type", "text/html");

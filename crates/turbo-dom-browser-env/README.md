@@ -80,6 +80,89 @@ links the `turbo-dom-v8` fork, so the accessor is the default; only native V8
 SDKs that lack the fork fix (turbo-surf's engine-154/155 overlay) enable the
 frame read.
 
+## Chrome controls
+
+Every `src/*_chrome15x.json` control is Chrome's own result for the probe next to
+it (`src/*_probe.js`, cases in `src/*_cases.json`), recorded with an independently
+installed Chrome and pinned to the probe by its `probeSha256`. The collectors that
+recorded them live in `scripts/` (moved from miaskiewicz/turbo-test@39b5911 with the
+controls' binding; run them from this crate's directory, so `src/` is where they
+read probes and write controls):
+
+| collector | records |
+|---|---|
+| `scripts/dom-lifecycle-chrome-control.mjs` | lifecycle probes (custom elements, adoption, templates, form collections, …) |
+| `scripts/css-probe-chrome-control.mjs`, `scripts/css-live-chrome-control.mjs` | CSS/CSSOM probes; `css_live_chrome155.json` |
+| `scripts/dom-implementation-chrome-control.mjs`, `scripts/xml-factory-elements-chrome-control.mjs` | `dom_implementation_chrome155.json`, `xml_factory_elements_chrome155.json` |
+| `scripts/animations-chrome-control.mjs`, `scripts/select-element-chrome-control.mjs`, `scripts/typed-om-chrome-control.mjs` | probe + cases controls (`animations*`, `select_element*`/form pseudo-classes, `typed_om*`) |
+| `scripts/typed-om-registry.mjs` | `typed_om_registry_cases.json` and the production registry `typed_om_properties.json` (from Blink's json5 metadata + the registry control) |
+| `scripts/view-transitions-chrome-control.mjs`, `scripts/shadow-html-chrome-control.mjs` | `view_transitions_chrome156.json`; shadow-root / HTML serialization / sanitizer controls |
+| `scripts/invokers-chrome-control.mjs`, `scripts/editing-input-chrome-control.mjs`, `scripts/trusted-input-chrome-control.mjs` | invokers/popover, editing, pointer and other trusted-input controls |
+| `scripts/document-legacy-chrome-control.mjs` | `document_legacy_chrome156.json` (loopback HTTP/HTTPS cases) |
+| `scripts/trusted-types-control/` | Trusted Types controls (`trusted_types*_chrome155.json`); `cdp-connection.mjs` is shared with the document-legacy collector |
+
+The `--runner` collectors drive turbo-surf's `harness/detection/chrome-cdp-trace.mjs`
+(pass its absolute path); the others speak CDP over `--remote-debugging-pipe`
+themselves. A refreshed control is a behaviour change of the oracle: commit it with
+the probe change that needed it, and the crate's tests assert it. See
+[docs/live-css-host.md](docs/live-css-host.md) for the private live stylesheet
+snapshot (`cssHost.exportSheet`) and its control.
+
+### Native DOM lifecycle controls
+
+The binding keeps constructed shadow stylesheet lists during
+same-document adoption and disconnect/reconnect, and clears them during
+cross-document adoption before custom-element adopted callbacks. Retained
+`adoptedStyleSheets` arrays keep their identity. Internal adoption reads private
+records instead of page-overridden DOM getters or array methods.
+
+Embedders call `retire_custom_element_context(context)` when a frame's browsing
+context is retired. This host-only boundary preserves retained registries,
+definitions and existing element identity while stopping automatic construction
+and callbacks from that definition realm, including reactions already queued.
+Ordinary inert documents remain distinct from retired frame contexts.
+Text and DocumentFragment constructors create actual native nodes with Web IDL
+string conversion, subclass prototypes and constructor-realm document ownership.
+The listener-backed EventTarget constructor preserves Node's constructor link.
+
+Independent Chrome155 controls cover these stylesheet transitions, reentrant
+custom-element callbacks, contextual fragment ownership, scoped registries and
+inert templates. Computed font controls additionally cover actual owner-document
+preferences, live inheritance, arithmetic `calc()`, named/manual slots and
+retirement. Supported font units and grammar keywords are ASCII case-insensitive;
+quoted/custom family names and unresolved custom-property names retain their
+original spelling. The host-only `set_computed_font_defaults(context, family, size)`
+accepts a nonempty family and finite positive initial size. macOS `Times` is
+measured against Chrome155; other-platform `Times New Roman` remains a conventional,
+uncertified preference. Metric-dependent `ch`/`ex`, viewport units, `min`/`max`/
+`clamp`, custom-property substitution and other per-element heading/form-control
+UA font defaults, full `font-variant` combinations and unit-cancelling division
+remain unsupported by this bounded resolver. Scalar `calc()` line-height retains
+its inherited factor. Unresolved font text is retained through descendants instead
+of manufacturing numeric values.
+Measured Chrome155 button UA declarations reset its normal Arial 13.3333px font,
+spacing and border widths before author CSS is applied. Universal and inline
+styles, `font:inherit`, `initial` and measured `revert` behavior are covered by
+`src/computed_button_ua_probe.js` and its source-bound Chrome control.
+Computed author declarations retain parsed `!important` priority through shorthand
+expansion and inline overrides. The source-bound
+`src/computed_border_priority_probe.js` control covers nine border cascade cases;
+the native-layout/client metrics columns are validated by turbo-surf separately.
+
+Recollect a lifecycle control with turbo-surf's CDP collector and a current Node
+version that provides WebSocket (`--chrome /absolute/path/to/Chrome` selects the
+executable; use `--probe src/computed_button_ua_probe.js` for the button control):
+
+```bash
+node scripts/dom-lifecycle-chrome-control.mjs \
+  --runner /absolute/path/to/turbo-surf/harness/detection/chrome-cdp-trace.mjs \
+  --probe src/css_adoption_lifecycle_probe.js \
+  --out /tmp/css-adoption-control.json
+```
+
+These are bounded behavior controls; broader XML parsing and complete browser
+lifecycle conformance remain separate work.
+
 ## Building and testing
 
 The `v8` dependency links a prebuilt static library. Point `RUSTY_V8_ARCHIVE` at

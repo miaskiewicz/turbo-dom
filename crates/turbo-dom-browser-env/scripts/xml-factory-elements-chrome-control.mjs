@@ -7,7 +7,8 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 
-const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
+// root is crates/turbo-dom-browser-env; the probe and its Chrome control live in src/.
+const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const { values } = parseArgs({
   options: {
     runner: { type: "string" },
@@ -15,8 +16,10 @@ const { values } = parseArgs({
     chrome: { type: "string" },
   },
 });
-if (!values.runner || !values.out)
-  throw Error("Pass --runner /absolute/chrome-cdp-trace.mjs --out /absolute/oracle.json");
+// The control is written next to its probe unless --out names another file.
+values.out ??= join(root, "src/xml_factory_elements_chrome155.json");
+if (!values.runner)
+  throw Error("Pass --runner /absolute/chrome-cdp-trace.mjs [--out /absolute/oracle.json, default src/xml_factory_elements_chrome155.json]");
 const directory = mkdtempSync(join(tmpdir(), "turbo-xml-elements-oracle-"));
 const server = createServer((_request, response) => {
   response.setHeader("Content-Type", "text/html");
@@ -33,7 +36,7 @@ try {
       waitMs: 25,
       disableExtensions: true,
       steps: [],
-      probes: [join(root, "harness/detection/xml-factory-elements-probe.js")],
+      probes: [join(root, "src/xml_factory_elements_probe.js")],
       ...(values.chrome ? { chromePath: resolve(values.chrome) } : {}),
     }),
   );

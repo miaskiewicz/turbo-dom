@@ -1,12 +1,12 @@
-// Build $ENV_SRC/typed_om_properties.json, the CSS property registry Typed OM reads, from Blink's own
+// Build src/typed_om_properties.json, the CSS property registry Typed OM reads, from Blink's own
 // property metadata at the Chrome 156 tag plus the measured Chrome 156 registry control.
 //
-//   node scripts/typed-om-registry.mjs cases --json5 css_properties.json5 --out $ENV_SRC/typed_om_registry_cases.json
-//   node scripts/typed-om-chrome-control.mjs --probe $ENV_SRC/typed_om_registry_probe.js \
-//     --cases $ENV_SRC/typed_om_registry_cases.json --out $ENV_SRC/typed_om_registry_chrome156.json
+//   node scripts/typed-om-registry.mjs cases --json5 css_properties.json5 --out src/typed_om_registry_cases.json
+//   node scripts/typed-om-chrome-control.mjs --probe src/typed_om_registry_probe.js \
+//     --cases src/typed_om_registry_cases.json --out src/typed_om_registry_chrome156.json
 //   node scripts/typed-om-registry.mjs build --json5 css_properties.json5 \
-//     --keywords css_value_keywords.json5 --control $ENV_SRC/typed_om_registry_chrome156.json \
-//     --out $ENV_SRC/typed_om_properties.json
+//     --keywords css_value_keywords.json5 --control src/typed_om_registry_chrome156.json \
+//     --out src/typed_om_properties.json
 //
 // Both json5 files come from https://chromium.googlesource.com/chromium/src/+/refs/tags/156.0.8078.47/
 // third_party/blink/renderer/core/css/ (css_properties.json5, css_value_keywords.json5).
@@ -16,9 +16,8 @@
 // computable longhands in computedStyleMap() order with their computed values on an element no
 // UA rule styles (the property's initial value or the root's inherited value), and the UA
 // `display` and `unicode-bidi` of HTML elements.
-// $ENV_SRC is turbo-dom-browser-env's source directory, where the binding's probes,
-// cases and Chrome controls live (miaskiewicz/turbo-dom crates/turbo-dom-browser-env/src,
-// e.g. ../turbo-dom/crates/turbo-dom-browser-env/src from this checkout).
+// Run from crates/turbo-dom-browser-env: src/ holds the binding's probes, cases and Chrome
+// controls (the files its tests and `test_support` read).
 import { createHash } from "node:crypto";
 import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
