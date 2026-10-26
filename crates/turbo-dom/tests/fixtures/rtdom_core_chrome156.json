@@ -411,6 +411,456 @@
    "dump": "| \"a�b</style>c\""
   },
   {
+   "id": "fragment_textarea_nul",
+   "context": "textarea",
+   "html": "a\u0000b",
+   "dump": "| \"ab\""
+  },
+  {
+   "id": "fragment_textarea_char_ref_nul",
+   "context": "textarea",
+   "html": "a&#0;b",
+   "dump": "| \"a�b\""
+  },
+  {
+   "id": "fragment_textarea_end_tag",
+   "context": "textarea",
+   "html": "a\u0000b</textarea>c\u0000d",
+   "dump": "| \"ab</textarea>cd\""
+  },
+  {
+   "id": "fragment_textarea_char_ref_split",
+   "context": "textarea",
+   "html": "x&am\u0000p;&not\u0000in;&#x4\u00001;y",
+   "dump": "| \"x&amp;¬in;\u00041;y\""
+  },
+  {
+   "id": "fragment_textarea_newlines",
+   "context": "textarea",
+   "html": "a\r\u0000\nb\r\n\u0000c",
+   "dump": "| \"a\n\nb\nc\""
+  },
+  {
+   "id": "fragment_title_nul",
+   "context": "title",
+   "html": "a\u0000b",
+   "dump": "| \"ab\""
+  },
+  {
+   "id": "fragment_title_char_ref_nul",
+   "context": "title",
+   "html": "a&#0;b",
+   "dump": "| \"a�b\""
+  },
+  {
+   "id": "fragment_title_end_tag",
+   "context": "title",
+   "html": "a\u0000b</title>c\u0000d",
+   "dump": "| \"ab</title>cd\""
+  },
+  {
+   "id": "fragment_title_char_ref_split",
+   "context": "title",
+   "html": "x&am\u0000p;&not\u0000in;&#x4\u00001;y",
+   "dump": "| \"x&amp;¬in;\u00041;y\""
+  },
+  {
+   "id": "fragment_title_newlines",
+   "context": "title",
+   "html": "a\r\u0000\nb\r\n\u0000c",
+   "dump": "| \"a\n\nb\nc\""
+  },
+  {
+   "id": "fragment_script_nul",
+   "context": "script",
+   "html": "a\u0000b",
+   "dump": "| \"a�b\""
+  },
+  {
+   "id": "fragment_script_char_ref_nul",
+   "context": "script",
+   "html": "a&#0;b",
+   "dump": "| \"a&#0;b\""
+  },
+  {
+   "id": "fragment_script_end_tag",
+   "context": "script",
+   "html": "a\u0000b</script>c\u0000d",
+   "dump": "| \"a�b</script>c�d\""
+  },
+  {
+   "id": "fragment_script_char_ref_split",
+   "context": "script",
+   "html": "x&am\u0000p;&not\u0000in;&#x4\u00001;y",
+   "dump": "| \"x&am�p;&not�in;&#x4�1;y\""
+  },
+  {
+   "id": "fragment_script_newlines",
+   "context": "script",
+   "html": "a\r\u0000\nb\r\n\u0000c",
+   "dump": "| \"a\n�\nb\n�c\""
+  },
+  {
+   "id": "fragment_style_nul",
+   "context": "style",
+   "html": "a\u0000b",
+   "dump": "| \"a�b\""
+  },
+  {
+   "id": "fragment_style_char_ref_nul",
+   "context": "style",
+   "html": "a&#0;b",
+   "dump": "| \"a&#0;b\""
+  },
+  {
+   "id": "fragment_style_end_tag",
+   "context": "style",
+   "html": "a\u0000b</style>c\u0000d",
+   "dump": "| \"a�b</style>c�d\""
+  },
+  {
+   "id": "fragment_style_char_ref_split",
+   "context": "style",
+   "html": "x&am\u0000p;&not\u0000in;&#x4\u00001;y",
+   "dump": "| \"x&am�p;&not�in;&#x4�1;y\""
+  },
+  {
+   "id": "fragment_style_newlines",
+   "context": "style",
+   "html": "a\r\u0000\nb\r\n\u0000c",
+   "dump": "| \"a\n�\nb\n�c\""
+  },
+  {
+   "id": "fragment_xmp_nul",
+   "context": "xmp",
+   "html": "a\u0000b",
+   "dump": "| \"a�b\""
+  },
+  {
+   "id": "fragment_xmp_char_ref_nul",
+   "context": "xmp",
+   "html": "a&#0;b",
+   "dump": "| \"a&#0;b\""
+  },
+  {
+   "id": "fragment_xmp_end_tag",
+   "context": "xmp",
+   "html": "a\u0000b</xmp>c\u0000d",
+   "dump": "| \"a�b</xmp>c�d\""
+  },
+  {
+   "id": "fragment_xmp_char_ref_split",
+   "context": "xmp",
+   "html": "x&am\u0000p;&not\u0000in;&#x4\u00001;y",
+   "dump": "| \"x&am�p;&not�in;&#x4�1;y\""
+  },
+  {
+   "id": "fragment_xmp_newlines",
+   "context": "xmp",
+   "html": "a\r\u0000\nb\r\n\u0000c",
+   "dump": "| \"a\n�\nb\n�c\""
+  },
+  {
+   "id": "fragment_iframe_nul",
+   "context": "iframe",
+   "html": "a\u0000b",
+   "dump": "| \"a�b\""
+  },
+  {
+   "id": "fragment_iframe_char_ref_nul",
+   "context": "iframe",
+   "html": "a&#0;b",
+   "dump": "| \"a&#0;b\""
+  },
+  {
+   "id": "fragment_iframe_end_tag",
+   "context": "iframe",
+   "html": "a\u0000b</iframe>c\u0000d",
+   "dump": "| \"a�b</iframe>c�d\""
+  },
+  {
+   "id": "fragment_iframe_char_ref_split",
+   "context": "iframe",
+   "html": "x&am\u0000p;&not\u0000in;&#x4\u00001;y",
+   "dump": "| \"x&am�p;&not�in;&#x4�1;y\""
+  },
+  {
+   "id": "fragment_iframe_newlines",
+   "context": "iframe",
+   "html": "a\r\u0000\nb\r\n\u0000c",
+   "dump": "| \"a\n�\nb\n�c\""
+  },
+  {
+   "id": "fragment_noembed_nul",
+   "context": "noembed",
+   "html": "a\u0000b",
+   "dump": "| \"a�b\""
+  },
+  {
+   "id": "fragment_noembed_char_ref_nul",
+   "context": "noembed",
+   "html": "a&#0;b",
+   "dump": "| \"a&#0;b\""
+  },
+  {
+   "id": "fragment_noembed_end_tag",
+   "context": "noembed",
+   "html": "a\u0000b</noembed>c\u0000d",
+   "dump": "| \"a�b</noembed>c�d\""
+  },
+  {
+   "id": "fragment_noembed_char_ref_split",
+   "context": "noembed",
+   "html": "x&am\u0000p;&not\u0000in;&#x4\u00001;y",
+   "dump": "| \"x&am�p;&not�in;&#x4�1;y\""
+  },
+  {
+   "id": "fragment_noembed_newlines",
+   "context": "noembed",
+   "html": "a\r\u0000\nb\r\n\u0000c",
+   "dump": "| \"a\n�\nb\n�c\""
+  },
+  {
+   "id": "fragment_noframes_nul",
+   "context": "noframes",
+   "html": "a\u0000b",
+   "dump": "| \"a�b\""
+  },
+  {
+   "id": "fragment_noframes_char_ref_nul",
+   "context": "noframes",
+   "html": "a&#0;b",
+   "dump": "| \"a&#0;b\""
+  },
+  {
+   "id": "fragment_noframes_end_tag",
+   "context": "noframes",
+   "html": "a\u0000b</noframes>c\u0000d",
+   "dump": "| \"a�b</noframes>c�d\""
+  },
+  {
+   "id": "fragment_noframes_char_ref_split",
+   "context": "noframes",
+   "html": "x&am\u0000p;&not\u0000in;&#x4\u00001;y",
+   "dump": "| \"x&am�p;&not�in;&#x4�1;y\""
+  },
+  {
+   "id": "fragment_noframes_newlines",
+   "context": "noframes",
+   "html": "a\r\u0000\nb\r\n\u0000c",
+   "dump": "| \"a\n�\nb\n�c\""
+  },
+  {
+   "id": "fragment_plaintext_nul",
+   "context": "plaintext",
+   "html": "a\u0000b",
+   "dump": "| \"a�b\""
+  },
+  {
+   "id": "fragment_plaintext_char_ref_nul",
+   "context": "plaintext",
+   "html": "a&#0;b",
+   "dump": "| \"a&#0;b\""
+  },
+  {
+   "id": "fragment_plaintext_end_tag",
+   "context": "plaintext",
+   "html": "a\u0000b</plaintext>c\u0000d",
+   "dump": "| \"a�b</plaintext>c�d\""
+  },
+  {
+   "id": "fragment_plaintext_char_ref_split",
+   "context": "plaintext",
+   "html": "x&am\u0000p;&not\u0000in;&#x4\u00001;y",
+   "dump": "| \"x&am�p;&not�in;&#x4�1;y\""
+  },
+  {
+   "id": "fragment_plaintext_newlines",
+   "context": "plaintext",
+   "html": "a\r\u0000\nb\r\n\u0000c",
+   "dump": "| \"a\n�\nb\n�c\""
+  },
+  {
+   "id": "fragment_noscript_nul",
+   "context": "noscript",
+   "html": "a\u0000b",
+   "dump": "| \"ab\""
+  },
+  {
+   "id": "fragment_noscript_char_ref_nul",
+   "context": "noscript",
+   "html": "a&#0;b",
+   "dump": "| \"a�b\""
+  },
+  {
+   "id": "fragment_noscript_end_tag",
+   "context": "noscript",
+   "html": "a\u0000b</noscript>c\u0000d",
+   "dump": "| \"abcd\""
+  },
+  {
+   "id": "fragment_noscript_char_ref_split",
+   "context": "noscript",
+   "html": "x&am\u0000p;&not\u0000in;&#x4\u00001;y",
+   "dump": "| \"x&amp;¬in;\u00041;y\""
+  },
+  {
+   "id": "fragment_noscript_newlines",
+   "context": "noscript",
+   "html": "a\r\u0000\nb\r\n\u0000c",
+   "dump": "| \"a\n\nb\nc\""
+  },
+  {
+   "id": "fragment_div_nul",
+   "context": "div",
+   "html": "a\u0000b",
+   "dump": "| \"ab\""
+  },
+  {
+   "id": "fragment_div_char_ref_nul",
+   "context": "div",
+   "html": "a&#0;b",
+   "dump": "| \"a�b\""
+  },
+  {
+   "id": "fragment_div_end_tag",
+   "context": "div",
+   "html": "a\u0000b</div>c\u0000d",
+   "dump": "| \"abcd\""
+  },
+  {
+   "id": "fragment_div_char_ref_split",
+   "context": "div",
+   "html": "x&am\u0000p;&not\u0000in;&#x4\u00001;y",
+   "dump": "| \"x&amp;¬in;\u00041;y\""
+  },
+  {
+   "id": "fragment_div_newlines",
+   "context": "div",
+   "html": "a\r\u0000\nb\r\n\u0000c",
+   "dump": "| \"a\n\nb\nc\""
+  },
+  {
+   "id": "fragment_select_nul",
+   "context": "select",
+   "html": "a\u0000b",
+   "dump": "| \"ab\""
+  },
+  {
+   "id": "fragment_select_char_ref_nul",
+   "context": "select",
+   "html": "a&#0;b",
+   "dump": "| \"a�b\""
+  },
+  {
+   "id": "fragment_select_end_tag",
+   "context": "select",
+   "html": "a\u0000b</select>c\u0000d",
+   "dump": "| \"abcd\""
+  },
+  {
+   "id": "fragment_select_char_ref_split",
+   "context": "select",
+   "html": "x&am\u0000p;&not\u0000in;&#x4\u00001;y",
+   "dump": "| \"x&amp;¬in;\u00041;y\""
+  },
+  {
+   "id": "fragment_select_newlines",
+   "context": "select",
+   "html": "a\r\u0000\nb\r\n\u0000c",
+   "dump": "| \"a\n\nb\nc\""
+  },
+  {
+   "id": "fragment_td_nul",
+   "context": "td",
+   "html": "a\u0000b",
+   "dump": "| \"ab\""
+  },
+  {
+   "id": "fragment_td_char_ref_nul",
+   "context": "td",
+   "html": "a&#0;b",
+   "dump": "| \"a�b\""
+  },
+  {
+   "id": "fragment_td_end_tag",
+   "context": "td",
+   "html": "a\u0000b</td>c\u0000d",
+   "dump": "| \"abcd\""
+  },
+  {
+   "id": "fragment_td_char_ref_split",
+   "context": "td",
+   "html": "x&am\u0000p;&not\u0000in;&#x4\u00001;y",
+   "dump": "| \"x&amp;¬in;\u00041;y\""
+  },
+  {
+   "id": "fragment_td_newlines",
+   "context": "td",
+   "html": "a\r\u0000\nb\r\n\u0000c",
+   "dump": "| \"a\n\nb\nc\""
+  },
+  {
+   "id": "fragment_svg_title_nul",
+   "context": "svg title",
+   "html": "a\u0000b",
+   "dump": "| \"ab\""
+  },
+  {
+   "id": "fragment_svg_title_char_ref_nul",
+   "context": "svg title",
+   "html": "a&#0;b",
+   "dump": "| \"a�b\""
+  },
+  {
+   "id": "fragment_svg_title_end_tag",
+   "context": "svg title",
+   "html": "a\u0000b</title>c\u0000d",
+   "dump": "| \"abcd\""
+  },
+  {
+   "id": "fragment_svg_title_char_ref_split",
+   "context": "svg title",
+   "html": "x&am\u0000p;&not\u0000in;&#x4\u00001;y",
+   "dump": "| \"x&amp;¬in;\u00041;y\""
+  },
+  {
+   "id": "fragment_svg_title_newlines",
+   "context": "svg title",
+   "html": "a\r\u0000\nb\r\n\u0000c",
+   "dump": "| \"a\n\nb\nc\""
+  },
+  {
+   "id": "fragment_math_mi_nul",
+   "context": "math mi",
+   "html": "a\u0000b",
+   "dump": "| \"ab\""
+  },
+  {
+   "id": "fragment_math_mi_char_ref_nul",
+   "context": "math mi",
+   "html": "a&#0;b",
+   "dump": "| \"a�b\""
+  },
+  {
+   "id": "fragment_math_mi_end_tag",
+   "context": "math mi",
+   "html": "a\u0000b</mi>c\u0000d",
+   "dump": "| \"abcd\""
+  },
+  {
+   "id": "fragment_math_mi_char_ref_split",
+   "context": "math mi",
+   "html": "x&am\u0000p;&not\u0000in;&#x4\u00001;y",
+   "dump": "| \"x&amp;¬in;\u00041;y\""
+  },
+  {
+   "id": "fragment_math_mi_newlines",
+   "context": "math mi",
+   "html": "a\r\u0000\nb\r\n\u0000c",
+   "dump": "| \"a\n\nb\nc\""
+  },
+  {
    "id": "fragment_svg_cdata",
    "context": "svg svg",
    "html": "<![CDATA[x]]y]]z]]]>w",
