@@ -749,7 +749,7 @@ fn resolve_style(
 }
 
 // --------------------------------------------------------------------------
-// the legacy Node input
+// the legacy Node input (reference + turbo-html2pdf-core's Node-literal tests)
 // --------------------------------------------------------------------------
 
 /// The element name a [`Tag::Marker`] gets in the turbo-dom copy of a legacy forest (no

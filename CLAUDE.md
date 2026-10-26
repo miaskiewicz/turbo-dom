@@ -105,8 +105,7 @@ package or publish workflow.
   flex/grid/table layout → `Fragment` galley, fonts, image sizing, layout snapshots,
   `layout_html`). Relocated verbatim from turbo-html2pdf-core 0.3.9 (S1); turbo-html2pdf-core
   depends on it and re-exports it at its old paths. Since S2 the cascade styles a turbo-dom
-  `Tree` directly (`style::TreeView` + `Roots::{Detached, Shell}`; the legacy `Node` input stays
-  for turbo-surf's copier until S4); html2pdf's `t:` directives are opaque `MarkerKind` markers
+  `Tree` directly (`style::TreeView` + `Roots::{Detached, Shell}`); html2pdf's `t:` directives are opaque `MarkerKind` markers
   from a caller classifier, and its PDF switches are runtime `LayoutOptions`/`StyleOptions`
   (no PDF features here). Since S3b selectors parse and match with turbo-dom's engine
   (`style::RuleSelectors` = `parse_for_cascade`; the scope `style::Navigator` implements
@@ -114,6 +113,13 @@ package or publish workflow.
   html2pdf's old `style/selector.rs` is gone. `tests/tree_input_equivalence.rs` is the Tree-vs-Node gate
   (`TURBO_DOM_LAYOUT_EQUIV_DIRS` adds corpora). `scripts/verify-copied-layout.sh` checks the S1
   tree (`VERIFY_REF`) against the source commits; later edits are reviewed changes on top.
+  Since S4 `live` is the live-DOM input ("surf mode"): turbo-surf's CSSOM-View layout styles
+  the page's own composed `Tree` (embedder-supplied composed children, pre-matched rules,
+  inline overrides) under the copier's exact budgets/errors, with no copy; `cssom_view`
+  holds surf's pure geometry modules (metrics, hit, scroll, visibility, inline, text, range,
+  the `Composition` scope graph). The legacy owned `Node` input (`node::Node`, `style_tree*`,
+  `snapshot_*live_tree*`) has no production consumer any more; it stays only for
+  turbo-html2pdf-core's re-exports and Node-literal tests (removed when html2pdf drops them).
 - `crates/turbo-dom-raster` — synthetic screenshots: paints the layout galley to PNG/SVG
   (tiny-skia / SVG), canvas op-log replay, `gpu-metal` WebGL. Relocated verbatim from
   turbo-surf-raster 0.5.5 (S1).
