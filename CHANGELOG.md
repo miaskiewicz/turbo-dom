@@ -83,7 +83,12 @@ changes in `tools/parity/expected/p5b-w7-turbo-dom-*.json`.
   box resolved a `%` width (and `%` padding / margins) against its parent's content width
   and was placed against its positioned ancestor's content box; it now uses its
   containing block, the ancestor's padding box (the viewport for `fixed`), as Chrome and
-  the live path do. Control: `abs-percent-*` in `html-document`.
+  the live path do. A definite zero-height ancestor's padding box keeps its padding (the
+  `height: 0; padding-bottom: N%` aspect-ratio box). Control: `abs-percent-*` /
+  `abs-padding-box-*` in `html-document`. P5b-W6 fixed #100's insets / margins side too
+  (`positioned_style`) and turbo-dom#101 (a block inside an inline splits it on the
+  generic policy); the merge keeps both, and W6's #102 control
+  (`positioned-padding-box-*`) passes with this padding-box fix.
 - Also found and fixed on this branch (P5b-W7): turbo-dom#86 (column flex items) and #88
   (`display: flow-root`) — P5b-W6 fixed both too; the merge keeps W6's implementations
   (see its section below) and both branches' Chrome 156 cases (`column-flex-*`,
@@ -263,7 +268,7 @@ changes in `tools/parity/expected/p5b-w7-turbo-dom-*.json`.
   (`collect_native_storage` after `install_html` and a GC, then the
   `custom_elements_defined_chrome156.json` probe).
 
-### Fixed — turbo-dom-layout margins, heights, zero-area clips, flow-root and flex item sizes (P5b-W6, miaskiewicz/turbo-dom#75/#76/#77/#78/#86/#88/#93, Chrome 156 controls)
+### Fixed — turbo-dom-layout margins, heights, zero-area clips, empty formatting roots and flex item sizes (P5b-W6, miaskiewicz/turbo-dom#75/#76/#77/#78/#88/#93, Chrome 156 controls)
 Each fix is backed by Chrome for Testing 156 cases in `scripts/html-document-chrome-control.mjs`
 and lists the corpus outputs it changes in `tools/parity/expected/p5b-w6-turbo-dom-*.json`
 (new pinned corpus inputs: `tools/parity/inputs/extra/{min-height-margin,
@@ -292,16 +297,12 @@ flex-item-box-sizing}.html`).
   `min-height` / `max-height` of an in-flow box resolves against its parent's definite
   height (positioned boxes: also `min-height` / `max-height`); against an indefinite height
   they still behave as `auto` / 0 / `none`. Control: `percent-*`.
-- `display: flow-root` (#88): laid out as a plain block, it now establishes a block
-  formatting context — its children's margins stay inside, it contains its floats and
-  avoids outer floats. A zero-height box that establishes a formatting context (flow-root,
-  `overflow`, flex / grid / table) is no longer self-collapsing: margins no longer run
-  through an empty one. Control: `flow-root-*` / `empty-formatting-root-*`.
-- Column flex items (#86): an item's flex basis came from its `width` and its `width` was
-  dropped, so it stretched to the container and its height became its width. In a column
-  the basis falls back to `height` and `width` is the cross size; taffy's main size wins
-  over a `px` `height` (basis, grow, shrink). Control: `column-flex-item-*`.
-- Content-box flex items (#93, found while fixing #86): an item's `width` / `height` /
+- Empty formatting-context roots (#88; P5b-W7 made `display: flow-root` one): a zero-height
+  box that establishes a formatting context (flow-root, `overflow`, flex / grid / table) is
+  never self-collapsing, so margins no longer run through an empty one. Control:
+  `flow-root-*` / `empty-formatting-root-*`; P5b-W6 also adds the `column-flex-item-*`
+  cases of #86 (fixed by P5b-W7).
+- Content-box flex items (#93, found while working on #86): an item's `width` / `height` /
   `flex-basis` / `min-*` / `max-*` lengths reached taffy (border boxes) unchanged, so a
   padded or bordered `box-sizing: content-box` item lost its frame. They are now
   border-box lengths. Control: `flex-item-*`.

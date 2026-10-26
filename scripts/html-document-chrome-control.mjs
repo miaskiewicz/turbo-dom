@@ -10,9 +10,12 @@
 // `min-height` / `max-height` cases of miaskiewicz/turbo-dom#75 item 1
 // (`min-height-margin-*`), zero-area `clip: rect()` boxes of item 2 (`clip-zero-area-*`,
 // `clip-sr-only*`) and cases of the bugs found while fixing them (#76, #77, #78, #79
-// `intrinsic-margin-*`, #86, #88, #93). P5b-W7 adds miaskiewicz/turbo-dom#79
+// `intrinsic-margin-*`, #86 `column-flex-item-*`, #88 `flow-root-*` /
+// `empty-formatting-root-*`, #93 `flex-item-*`). P5b-W7 adds miaskiewicz/turbo-dom#79
 // (`intrinsic-margins-*`), #80 (`inline-block-margins-*`) and #81 (`icb-*`), and the bugs
-// found while fixing them (one group per issue, labelled).
+// found while fixing them (one group per issue, labelled). P5b-W6 also adds
+// miaskiewicz/turbo-dom#100 (`positioned-percent-*`), #101 (`block-in-inline-*`) and #102
+// (`positioned-padding-box-*`).
 //
 // For every case below, Chrome for Testing 156 (viewport 1280x800) records:
 //   - `boxes`: getBoundingClientRect() of every `[data-cid]` element (document order), as
@@ -540,6 +543,35 @@ const CASES = [
   { id: "flex-item-border-box-row", html: DOC(S("body{margin:0}"), `<div data-cid="f" style="display:flex"><div data-cid="d" style="box-sizing:border-box;width:30px;height:15px;padding:5px"></div><div data-cid="e" style="width:10px;height:5px"></div></div><div data-cid="g" style="height:5px"></div>`) },
   { id: "flex-item-content-box-column-padding", html: DOC(S("body{margin:0}"), `<div data-cid="f" style="display:flex;flex-direction:column"><div data-cid="d" style="width:30px;height:15px;padding:5px"></div><div data-cid="e" style="width:10px;height:5px"></div></div><div data-cid="g" style="height:5px"></div>`) },
   { id: "flex-item-content-box-min-max", html: DOC(S("body{margin:0}"), `<div data-cid="f" style="display:flex"><div data-cid="d" style="width:10px;min-width:30px;height:15px;max-height:10px;padding:5px"></div></div><div data-cid="g" style="height:5px"></div>`) },
+  // P5b-W6, miaskiewicz/turbo-dom#100: a positioned box's percentage width (and min / max
+  // width, horizontal padding and margins) resolves against its containing block — the
+  // positioned ancestor, the viewport for `fixed` — not its parent.
+  { id: "positioned-percent-width-absolute", html: DOC(S("body{margin:0}"), `<div style="position:relative;width:400px;height:50px"><div style="width:100px"><div data-cid="c" style="position:absolute;width:50%;height:5px"></div></div></div>`) },
+  { id: "positioned-percent-width-fixed", html: DOC(S("body{margin:0}"), `<div style="width:100px"><div data-cid="f" style="position:fixed;width:50%;height:5px"></div></div>`) },
+  { id: "positioned-percent-width-icb", html: DOC(S("body{margin:0}"), `<div style="width:100px"><div data-cid="c" style="position:absolute;width:25%;height:5px"></div></div>`) },
+  { id: "positioned-percent-min-max-width", html: DOC(S("body{margin:0}"), `<div style="position:relative;width:400px;height:50px"><div style="width:100px"><div data-cid="c" style="position:absolute;width:10px;min-width:50%;height:5px"></div><div data-cid="d" style="position:absolute;top:10px;width:300px;max-width:25%;height:5px"></div></div></div>`) },
+  { id: "positioned-percent-padding-margin", html: DOC(S("body{margin:0}"), `<div style="position:relative;width:400px;height:50px"><div style="width:100px"><div data-cid="c" style="position:absolute;width:10px;padding-left:10%;margin-left:5%;height:5px"></div></div></div>`) },
+  { id: "positioned-percent-width-child-percent", html: DOC(S("body{margin:0}"), `<div style="position:relative;width:400px;height:50px"><div style="width:100px"><div data-cid="c" style="position:absolute;width:50%;height:5px"><div data-cid="d" style="width:50%;height:2px"></div></div></div></div>`) },
+  // P5b-W6, miaskiewicz/turbo-dom#101: a block inside an inline element splits the inline
+  // around it (CSS 2.2 §9.2.1.1): it fills the line width and margins collapse through it.
+  { id: "block-in-inline-child-margin", html: DOC(S("body{margin:0}i{display:inline-block;width:10px;height:10px}"), `<div style="font-size:0"><span>x<div data-cid="d" style="height:5px"><div data-cid="k" style="margin-top:7px;height:3px"></div></div></span></div>`) },
+  { id: "block-in-inline-fills-line", html: DOC(S("body{margin:0}i{display:inline-block;width:10px;height:10px}"), `<div data-cid="p" style="font-size:0"><span><i data-cid="a"></i><div data-cid="d" style="height:5px"></div><i data-cid="b"></i></span></div>`) },
+  { id: "block-in-inline-empty", html: DOC(S("body{margin:0}i{display:inline-block;width:10px;height:10px}"), `<div data-cid="p" style="font-size:0"><span><i data-cid="a"></i><div data-cid="d"></div><i data-cid="b"></i></span></div>`) },
+  { id: "block-in-inline-explicit-width", html: DOC(S("body{margin:0}i{display:inline-block;width:10px;height:10px}"), `<div style="font-size:0"><span><i></i><div data-cid="d" style="width:50px;height:5px"></div></span></div>`) },
+  { id: "block-in-inline-nested-spans", html: DOC(S("body{margin:0}i{display:inline-block;width:10px;height:10px}"), `<div style="font-size:0"><b><span><i data-cid="a"></i><div data-cid="d" style="height:5px"></div></span></b><i data-cid="c"></i></div>`) },
+  { id: "block-in-inline-margins", html: DOC(S("body{margin:0}i{display:inline-block;width:10px;height:10px}"), `<div style="font-size:0"><span><i data-cid="a"></i><div data-cid="d" style="height:5px;margin:4px 6px"></div><i data-cid="b"></i></span></div><div data-cid="g" style="height:5px"></div>`) },
+  { id: "block-in-inline-two-blocks", html: DOC(S("body{margin:0}i{display:inline-block;width:10px;height:10px}"), `<div style="font-size:0"><span><div data-cid="d" style="height:5px"></div><div data-cid="e" style="height:6px;margin-top:3px"></div></span></div>`) },
+  // P5b-W6, miaskiewicz/turbo-dom#102: an absolutely positioned box's containing block is
+  // its positioned ancestor's padding box (insets and percentages; the static position
+  // stays in the content box).
+  { id: "positioned-padding-box-top-left", html: DOC(S("body{margin:0}"), `<div data-cid="cb" style="position:relative;width:400px;height:50px;padding:20px"><div data-cid="c" style="position:absolute;left:0;top:0;width:10px;height:5px"></div></div><div data-cid="g" style="height:5px"></div>`) },
+  { id: "positioned-padding-box-percent-width", html: DOC(S("body{margin:0}"), `<div data-cid="cb" style="position:relative;width:400px;height:50px;padding:20px"><div data-cid="c" style="position:absolute;left:0;top:0;width:50%;height:5px"></div></div><div data-cid="g" style="height:5px"></div>`) },
+  { id: "positioned-padding-box-right-bottom", html: DOC(S("body{margin:0}"), `<div data-cid="cb" style="position:relative;width:400px;height:50px;padding:20px"><div data-cid="c" style="position:absolute;right:0;bottom:0;width:10px;height:5px"></div></div><div data-cid="g" style="height:5px"></div>`) },
+  { id: "positioned-padding-box-border", html: DOC(S("body{margin:0}"), `<div data-cid="cb" style="position:relative;width:400px;height:50px;padding:10px;border:5px solid"><div data-cid="c" style="position:absolute;left:0;top:0;width:10px;height:5px"></div></div><div data-cid="g" style="height:5px"></div>`) },
+  { id: "positioned-padding-box-static-position", html: DOC(S("body{margin:0}"), `<div data-cid="cb" style="position:relative;width:400px;height:50px;padding:20px"><div data-cid="c" style="position:absolute;width:10px;height:5px"></div></div><div data-cid="g" style="height:5px"></div>`) },
+  { id: "positioned-padding-box-percent-height", html: DOC(S("body{margin:0}"), `<div data-cid="cb" style="position:relative;width:400px;height:50px;padding:20px"><div data-cid="c" style="position:absolute;left:0;top:0;width:10px;height:50%"></div></div><div data-cid="g" style="height:5px"></div>`) },
+  { id: "positioned-padding-box-stretch", html: DOC(S("body{margin:0}"), `<div data-cid="cb" style="position:relative;width:400px;height:50px;padding:20px"><div data-cid="c" style="position:absolute;left:5px;right:5px;top:0;height:5px"></div></div><div data-cid="g" style="height:5px"></div>`) },
+  { id: "positioned-padding-box-auto-height-cb", html: DOC(S("body{margin:0}"), `<div data-cid="cb" style="position:relative;width:400px;padding:20px"><div style="height:30px"></div><div data-cid="c" style="position:absolute;left:0;bottom:0;width:10px;height:50%"></div></div>`) },
 ];
 
 /** The RGB of a 1x1 PNG screenshot (any filter: a single pixel's filter adds 0). */

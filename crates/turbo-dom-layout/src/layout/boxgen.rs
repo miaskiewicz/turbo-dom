@@ -700,7 +700,7 @@ fn native_inline_items(el: &StyledElement, ids: &mut Ids) -> Level {
     } else if native {
         native_inline_flow(el, ids)
     } else {
-        Level::Inline(flatten_inline(el, ids))
+        flatten_inline(el, ids)
     }
 }
 
@@ -814,16 +814,40 @@ fn classify_element(el: &StyledElement, ids: &mut Ids) -> Option<Level> {
     }
 }
 
-/// Flatten an inline element's content into inline items (its own style applies;
-/// a nested block becomes an atomic inline).
-fn flatten_inline(el: &StyledElement, ids: &mut Ids) -> Vec<InlineItem> {
+/// Flatten an inline element's content into inline items (its own style applies). A
+/// nested in-flow block splits the inline around it (CSS 2.2 §9.2.1.1,
+/// miaskiewicz/turbo-dom#101): the element becomes a [`Level::Split`] of its inline runs
+/// and the blocks, which its block container wraps into anonymous line boxes and block
+/// boxes; an absolutely positioned or floated box stays in its run.
+fn flatten_inline(el: &StyledElement, ids: &mut Ids) -> Level {
     let mut levels = Vec::new();
     super::contents::visit(&el.children, &el.style, &mut |child, style| {
         if let Some(level) = classify(child, style, ids) {
             append_level(&mut levels, level);
         }
     });
-    inline_items_of(levels)
+    if !levels.iter().any(splits_inline) {
+        return Level::Inline(inline_items_of(levels));
+    }
+    let mut out = Vec::new();
+    let mut run = Vec::new();
+    for level in levels {
+        match level {
+            FlowLevel::Block(block) if !block.line_placeholder() => {
+                out.push(FlowLevel::Inline(std::mem::take(&mut run)));
+                out.push(FlowLevel::Block(block));
+            }
+            other => run.extend(inline_items_of(vec![other])),
+        }
+    }
+    out.push(FlowLevel::Inline(run));
+    Level::Split(out)
+}
+
+/// Whether a flattened level splits its inline ancestor: an in-flow block (an
+/// absolutely positioned or floated one is a placeholder in the line run).
+fn splits_inline(level: &FlowLevel) -> bool {
+    matches!(level, FlowLevel::Block(block) if !block.line_placeholder())
 }
 
 // --------------------------------------------------------------------------
