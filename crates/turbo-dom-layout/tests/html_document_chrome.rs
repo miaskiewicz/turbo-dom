@@ -103,7 +103,7 @@ fn inline_flex_grid_case(id: &str) -> bool {
 /// The control cases of an open bug, each asserted by its own test (`#[ignore]`d until
 /// its fix lands) and held out of [`html_documents_lay_out_as_chrome_156`].
 fn held_out(id: &str) -> bool {
-    auto_table_case(id) || inline_flex_grid_case(id)
+    auto_table_case(id) || inline_flex_grid_case(id) || abs_auto_width_case(id)
 }
 
 #[test]
@@ -119,4 +119,15 @@ fn inline_flex_and_grid_are_inline_level_like_chrome_156() {
 #[test]
 fn auto_width_tables_shrink_to_fit_like_chrome_156() {
     compare_cases(auto_table_case);
+}
+
+/// miaskiewicz/turbo-dom#48: absolutely positioned `width: auto` boxes shrink to fit.
+fn abs_auto_width_case(id: &str) -> bool {
+    id.starts_with("abs-auto-width-") || id == "fixed-auto-width-shrinks"
+}
+
+#[test]
+#[ignore = "turbo-dom#48: fails until the fix"]
+fn absolutely_positioned_auto_widths_shrink_to_fit_like_chrome_156() {
+    compare_cases(abs_auto_width_case);
 }

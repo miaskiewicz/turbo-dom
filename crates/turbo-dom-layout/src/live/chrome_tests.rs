@@ -252,7 +252,7 @@ fn assert_matches_chrome((compared, failures): (usize, Vec<String>)) {
 /// The control cases of an open bug, each asserted by its own test (`#[ignore]`d until
 /// its fix lands) and held out of [`live_geometry_matches_chrome_156`].
 fn held_out(id: &str) -> bool {
-    AUTO_TABLE_CASES.contains(&id) || inline_flex_grid_case(id)
+    AUTO_TABLE_CASES.contains(&id) || inline_flex_grid_case(id) || abs_auto_width_case(id)
 }
 
 /// miaskiewicz/turbo-dom#53: `inline-flex` / `inline-grid`.
@@ -279,4 +279,15 @@ fn auto_width_tables_shrink_to_fit_like_chrome_156() {
 fn css_of_reads_the_first_style_element() {
     assert_eq!(css_of("<style>a{}</style><style>b{}</style>"), "a{}");
     assert_eq!(css_of("<p>"), "");
+}
+
+/// miaskiewicz/turbo-dom#48: absolutely positioned `width: auto` boxes shrink to fit.
+fn abs_auto_width_case(id: &str) -> bool {
+    id.starts_with("abs-auto-width-") || id == "fixed-auto-width-shrinks"
+}
+
+#[test]
+#[ignore = "turbo-dom#48: fails until the fix"]
+fn absolutely_positioned_auto_widths_shrink_to_fit_like_chrome_156() {
+    assert_matches_chrome(compare_cases(abs_auto_width_case));
 }
