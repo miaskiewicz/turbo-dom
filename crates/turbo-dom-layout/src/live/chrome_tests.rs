@@ -186,8 +186,21 @@ fn compare_rect(case: &Value, want: &Value, rect: Rect, failures: &mut Vec<Strin
     }
 }
 
-#[test]
-fn live_geometry_matches_chrome_156() {
+/// The miaskiewicz/turbo-dom#28 item 7 auto-width table cases, held out of
+/// [`live_geometry_matches_chrome_156`] until the fix lands.
+const AUTO_TABLE_CASES: &[&str] = &[
+    "table-auto-fixed-layout",
+    "table-auto-fixed-collapsed",
+    "table-auto-px-cell",
+    "table-auto-min-width",
+    "table-auto-max-width-floors-at-content",
+    "table-auto-in-flex-item",
+    "table-auto-nested",
+];
+
+/// Lay out every fixture case `select` picks and compare it with Chrome: the number
+/// of compared reads and the differences.
+fn compare_cases(select: impl Fn(&str) -> bool) -> (usize, Vec<String>) {
     let fixture: Value = serde_json::from_str(FIXTURE).unwrap();
     assert!(fixture["chrome"].as_str().unwrap().starts_with("156."));
     let cases = fixture["cases"].as_array().unwrap();
@@ -195,7 +208,7 @@ fn live_geometry_matches_chrome_156() {
     let mut compared = 0;
     for case in cases {
         let id = case["id"].as_str().unwrap();
-        if !cfg!(feature = "bundled-fonts") && TEXT_CASES.contains(&id) {
+        if !select(id) || !cfg!(feature = "bundled-fonts") && TEXT_CASES.contains(&id) {
             continue;
         }
         let html = case["html"].as_str().unwrap();
@@ -218,6 +231,10 @@ fn live_geometry_matches_chrome_156() {
         }
         compared += check_hits(case, &tree, &snapshot, &styles, &mut failures);
     }
+    (compared, failures)
+}
+
+fn assert_matches_chrome((compared, failures): (usize, Vec<String>)) {
     assert!(compared > 0);
     assert!(
         failures.is_empty(),
@@ -225,6 +242,17 @@ fn live_geometry_matches_chrome_156() {
         failures.len(),
         failures.join("\n")
     );
+}
+
+#[test]
+fn live_geometry_matches_chrome_156() {
+    assert_matches_chrome(compare_cases(|id| !AUTO_TABLE_CASES.contains(&id)));
+}
+
+#[test]
+#[ignore = "turbo-dom#28: fails until the fix"]
+fn auto_width_tables_shrink_to_fit_like_chrome_156() {
+    assert_matches_chrome(compare_cases(|id| AUTO_TABLE_CASES.contains(&id)));
 }
 
 #[test]

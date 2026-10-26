@@ -129,6 +129,21 @@ const CASES = [
   { id: "abs-only-line-with-collapsible-spaces", html: DOC(S("body{margin:0}"), `<div data-cid="d"> <span>  <i data-cid="a" style="position:absolute;width:5px;height:5px"></i> </span> <b data-cid="b" style="position:absolute;left:20px;width:5px;height:5px"></b> </div><div data-cid="e" style="height:5px"></div>`) },
   { id: "abs-only-line-between-empty-inlines", html: DOC(S("body{margin:0}"), `<div data-cid="d"><span></span><b data-cid="a" style="position:absolute;width:5px;height:5px"></b><span></span></div><div data-cid="e" style="height:5px"></div>`) },
   { id: "float-only-line-in-inline", html: DOC(S("body{margin:0}"), `<div data-cid="d"><a href="#"><span data-cid="f" style="float:left;width:30px;height:20px"></span></a></div><div data-cid="e" style="height:5px"></div>`) },
+  // P5b-W3, miaskiewicz/turbo-dom#28 item 7: a `width: auto` table is shrink-to-fit on the
+  // HTML (PDF / screenshot) path too — its columns' max-content plus spacing and frame,
+  // clamped by min/max-width, never below its min-content.
+  { id: "table-auto-width", html: DOC(S("body{margin:0}"), `<table data-cid="table"><tr><td data-cid="td"><div style="width:30px;height:10px"></div></td></tr></table>`) },
+  { id: "table-auto-two-columns", html: DOC(S("body{margin:0}"), `<table data-cid="table"><tr><td data-cid="a"><div style="width:30px;height:10px"></div></td><td data-cid="b"><div style="width:50px;height:20px"></div></td></tr><tr><td data-cid="c"><div style="width:10px;height:5px"></div></td><td data-cid="d"><div style="width:10px;height:5px"></div></td></tr></table>`) },
+  { id: "table-auto-spacing-padding-border", html: DOC(S("body{margin:0}table{border-spacing:6px 4px;border:3px solid #000;padding:5px}td{padding:2px;border:1px solid #000}"), `<table data-cid="table"><tr><td data-cid="a"><div style="width:20px;height:10px"></div></td><td data-cid="b"><div style="width:20px;height:10px"></div></td></tr></table>`) },
+  { id: "table-auto-margin-centered", html: DOC(S("body{margin:0}table{margin:0 auto}"), `<table data-cid="table"><tr><td data-cid="td"><div style="width:40px;height:10px"></div></td></tr></table>`) },
+  { id: "table-auto-wide-content-fills", html: DOC(S("body{margin:0}"), `<table data-cid="table"><tr><td data-cid="td"><div style="width:2000px;height:10px"></div></td></tr></table>`) },
+  { id: "table-auto-fixed-layout", html: DOC(S("body{margin:0}table{table-layout:fixed}"), `<table data-cid="table"><tr><td data-cid="a"><div style="width:30px;height:10px"></div></td><td data-cid="b"><div style="width:20px;height:10px"></div></td></tr></table>`) },
+  { id: "table-auto-fixed-collapsed", html: DOC(S("body{margin:0}table{table-layout:fixed;border-collapse:collapse}td{border:1px solid #000}"), `<table data-cid="table"><tr><td data-cid="a" style="width:50px"><div style="width:30px;height:10px"></div></td><td data-cid="b"><div style="width:20px;height:10px"></div></td></tr></table>`) },
+  { id: "table-auto-px-cell", html: DOC(S("body{margin:0}"), `<table data-cid="table"><tr><td data-cid="a" style="width:100px"><div style="width:30px;height:10px"></div></td><td data-cid="b"><div style="width:20px;height:10px"></div></td></tr></table>`) },
+  { id: "table-auto-min-width", html: DOC(S("body{margin:0}table{min-width:100px}"), `<table data-cid="table"><tr><td data-cid="td"><div style="width:30px;height:10px"></div></td></tr></table>`) },
+  { id: "table-auto-max-width-floors-at-content", html: DOC(S("body{margin:0}table{max-width:20px}"), `<table data-cid="table"><tr><td data-cid="td"><div style="width:30px;height:10px"></div></td></tr></table>`) },
+  { id: "table-auto-in-flex-item", html: DOC(S("body{margin:0}div{display:flex}"), `<div><table data-cid="table"><tr><td data-cid="td"><div style="width:30px;height:10px"></div></td></tr></table></div>`) },
+  { id: "table-auto-nested", html: DOC(S("body{margin:0}"), `<table data-cid="outer"><tr><td data-cid="cell"><table data-cid="inner"><tr><td><div style="width:30px;height:10px"></div></td></tr></table></td></tr></table>`) },
 ];
 
 /** The RGB of a 1x1 PNG screenshot (any filter: a single pixel's filter adds 0). */

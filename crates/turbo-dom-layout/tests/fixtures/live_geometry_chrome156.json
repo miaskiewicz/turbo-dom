@@ -1963,6 +1963,217 @@
      "position": "static"
     }
    ]
+  },
+  {
+   "id": "table-auto-fixed-layout",
+   "html": "<!doctype html><style>body{margin:0}table{table-layout:fixed}</style><table data-cid=\"table\"><tr><td data-cid=\"a\"><div style=\"width:30px;height:10px\"></div></td><td data-cid=\"b\"><div style=\"width:20px;height:10px\"></div></td></tr></table>",
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "table",
+     "x": 0,
+     "y": 0,
+     "width": 60,
+     "height": 16,
+     "display": "table",
+     "position": "static"
+    },
+    {
+     "cid": "a",
+     "x": 2,
+     "y": 2,
+     "width": 32,
+     "height": 12,
+     "display": "table-cell",
+     "position": "static"
+    },
+    {
+     "cid": "b",
+     "x": 36,
+     "y": 2,
+     "width": 22,
+     "height": 12,
+     "display": "table-cell",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "table-auto-fixed-collapsed",
+   "html": "<!doctype html><style>body{margin:0}table{table-layout:fixed;border-collapse:collapse}td{border:1px solid #000}</style><table data-cid=\"table\"><tr><td data-cid=\"a\" style=\"width:50px\"><div style=\"width:30px;height:10px\"></div></td><td data-cid=\"b\"><div style=\"width:20px;height:10px\"></div></td></tr></table>",
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "table",
+     "x": 0,
+     "y": 0,
+     "width": 77,
+     "height": 14,
+     "display": "table",
+     "position": "static"
+    },
+    {
+     "cid": "a",
+     "x": 0.5,
+     "y": 0.5,
+     "width": 53,
+     "height": 13,
+     "display": "table-cell",
+     "position": "static"
+    },
+    {
+     "cid": "b",
+     "x": 53.5,
+     "y": 0.5,
+     "width": 23,
+     "height": 13,
+     "display": "table-cell",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "table-auto-px-cell",
+   "html": "<!doctype html><style>body{margin:0}</style><table data-cid=\"table\"><tr><td data-cid=\"a\" style=\"width:100px\"><div style=\"width:30px;height:10px\"></div></td><td data-cid=\"b\"><div style=\"width:20px;height:10px\"></div></td></tr></table>",
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "table",
+     "x": 0,
+     "y": 0,
+     "width": 130,
+     "height": 16,
+     "display": "table",
+     "position": "static"
+    },
+    {
+     "cid": "a",
+     "x": 2,
+     "y": 2,
+     "width": 102,
+     "height": 12,
+     "display": "table-cell",
+     "position": "static"
+    },
+    {
+     "cid": "b",
+     "x": 106,
+     "y": 2,
+     "width": 22,
+     "height": 12,
+     "display": "table-cell",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "table-auto-min-width",
+   "html": "<!doctype html><style>body{margin:0}table{min-width:100px}</style><table data-cid=\"table\"><tr><td data-cid=\"td\"><div style=\"width:30px;height:10px\"></div></td></tr></table>",
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "table",
+     "x": 0,
+     "y": 0,
+     "width": 100,
+     "height": 16,
+     "display": "table",
+     "position": "static"
+    },
+    {
+     "cid": "td",
+     "x": 2,
+     "y": 2,
+     "width": 96,
+     "height": 12,
+     "display": "table-cell",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "table-auto-max-width-floors-at-content",
+   "html": "<!doctype html><style>body{margin:0}table{max-width:20px}</style><table data-cid=\"table\"><tr><td data-cid=\"td\"><div style=\"width:30px;height:10px\"></div></td></tr></table>",
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "table",
+     "x": 0,
+     "y": 0,
+     "width": 36,
+     "height": 16,
+     "display": "table",
+     "position": "static"
+    },
+    {
+     "cid": "td",
+     "x": 2,
+     "y": 2,
+     "width": 32,
+     "height": 12,
+     "display": "table-cell",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "table-auto-in-flex-item",
+   "html": "<!doctype html><style>body{margin:0}div{display:flex}</style><div><table data-cid=\"table\"><tr><td data-cid=\"td\"><div style=\"width:30px;height:10px\"></div></td></tr></table></div>",
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "table",
+     "x": 0,
+     "y": 0,
+     "width": 36,
+     "height": 16,
+     "display": "table",
+     "position": "static"
+    },
+    {
+     "cid": "td",
+     "x": 2,
+     "y": 2,
+     "width": 32,
+     "height": 12,
+     "display": "table-cell",
+     "position": "static"
+    }
+   ]
+  },
+  {
+   "id": "table-auto-nested",
+   "html": "<!doctype html><style>body{margin:0}</style><table data-cid=\"outer\"><tr><td data-cid=\"cell\"><table data-cid=\"inner\"><tr><td><div style=\"width:30px;height:10px\"></div></td></tr></table></td></tr></table>",
+   "measure": {},
+   "boxes": [
+    {
+     "cid": "outer",
+     "x": 0,
+     "y": 0,
+     "width": 42,
+     "height": 22,
+     "display": "table",
+     "position": "static"
+    },
+    {
+     "cid": "cell",
+     "x": 2,
+     "y": 2,
+     "width": 38,
+     "height": 18,
+     "display": "table-cell",
+     "position": "static"
+    },
+    {
+     "cid": "inner",
+     "x": 3,
+     "y": 3,
+     "width": 36,
+     "height": 16,
+     "display": "table",
+     "position": "static"
+    }
+   ]
   }
  ]
 }

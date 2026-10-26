@@ -212,6 +212,15 @@ const CASES = [
   { id: "abs-only-line-with-collapsible-spaces", html: DOC("body{margin:0}", `<div data-cid="d"> <span>  <i data-cid="a" style="position:absolute;width:5px;height:5px"></i> </span> <b data-cid="b" style="position:absolute;left:20px;width:5px;height:5px"></b> </div><div data-cid="e" style="height:5px"></div>`) },
   { id: "abs-only-line-between-empty-inlines", html: DOC("body{margin:0}", `<div data-cid="d"><span></span><b data-cid="a" style="position:absolute;width:5px;height:5px"></b><span></span></div><div data-cid="e" style="height:5px"></div>`) },
   { id: "float-only-line-in-inline", html: DOC("body{margin:0}", `<div data-cid="d"><a href="#"><span data-cid="f" style="float:left;width:30px;height:20px"></span></a></div><div data-cid="e" style="height:5px"></div>`) },
+  // turbo-dom#28 item 7: shrink-to-fit auto-width tables on every path — more shapes (the
+  // table-auto-* cases above are turbo-surf#36 item 3's).
+  { id: "table-auto-fixed-layout", html: DOC("body{margin:0}table{table-layout:fixed}", `<table data-cid="table"><tr><td data-cid="a"><div style="width:30px;height:10px"></div></td><td data-cid="b"><div style="width:20px;height:10px"></div></td></tr></table>`) },
+  { id: "table-auto-fixed-collapsed", html: DOC("body{margin:0}table{table-layout:fixed;border-collapse:collapse}td{border:1px solid #000}", `<table data-cid="table"><tr><td data-cid="a" style="width:50px"><div style="width:30px;height:10px"></div></td><td data-cid="b"><div style="width:20px;height:10px"></div></td></tr></table>`) },
+  { id: "table-auto-px-cell", html: DOC("body{margin:0}", `<table data-cid="table"><tr><td data-cid="a" style="width:100px"><div style="width:30px;height:10px"></div></td><td data-cid="b"><div style="width:20px;height:10px"></div></td></tr></table>`) },
+  { id: "table-auto-min-width", html: DOC("body{margin:0}table{min-width:100px}", `<table data-cid="table"><tr><td data-cid="td"><div style="width:30px;height:10px"></div></td></tr></table>`) },
+  { id: "table-auto-max-width-floors-at-content", html: DOC("body{margin:0}table{max-width:20px}", `<table data-cid="table"><tr><td data-cid="td"><div style="width:30px;height:10px"></div></td></tr></table>`) },
+  { id: "table-auto-in-flex-item", html: DOC("body{margin:0}div{display:flex}", `<div><table data-cid="table"><tr><td data-cid="td"><div style="width:30px;height:10px"></div></td></tr></table></div>`) },
+  { id: "table-auto-nested", html: DOC("body{margin:0}", `<table data-cid="outer"><tr><td data-cid="cell"><table data-cid="inner"><tr><td><div style="width:30px;height:10px"></div></td></tr></table></td></tr></table>`) },
 ];
 
 const browser = await chromium.launch({ executablePath: chromePath, headless: true });
