@@ -29,10 +29,9 @@ use html5ever::{ns, small_char_set, TokenizerResult};
 use log::{debug, trace};
 use std::borrow::Cow::{self, Borrowed};
 use std::cell::{Cell, RefCell, RefMut};
-use std::collections::BTreeMap;
 use std::mem;
 
-use self::macros::{time, unwrap_or_return};
+use self::macros::unwrap_or_return;
 pub use html5ever::buffer_queue::{BufferQueue, FromSet, NotFromSet, SetResult};
 use html5ever::tendril::StrTendril;
 use html5ever::{Attribute, LocalName, QualName, SmallCharSet};
@@ -71,21 +70,13 @@ fn option_push(opt_str: &mut Option<StrTendril>, c: char) {
     }
 }
 
-/// Tokenizer options, with an impl for `Default`.
-#[derive(Clone)]
+/// Tokenizer options, with a derived `Default`.
+///
+/// The native adapter never discards a leading U+FEFF (it is DOM-string content),
+/// reports parse errors in the inexact form, and never profiles, so upstream's
+/// `exact_errors`, `discard_bom` and `profile` options are not carried.
+#[derive(Clone, Default)]
 pub struct TokenizerOpts {
-    /// Report all parse errors described in the spec, at some
-    /// performance penalty?  Default: false
-    pub exact_errors: bool,
-
-    /// Discard a `U+FEFF BYTE ORDER MARK` if we see one at the beginning
-    /// of the stream?  Default: true
-    pub discard_bom: bool,
-
-    /// Keep a record of how long we spent in each state?  Printed
-    /// when `end()` is called.  Default: false
-    pub profile: bool,
-
     /// Initial state override.  Only the test runner should use
     /// a non-`None` value!
     pub initial_state: Option<states::State>,
@@ -98,23 +89,8 @@ pub struct TokenizerOpts {
     pub last_start_tag_name: Option<String>,
 }
 
-impl Default for TokenizerOpts {
-    fn default() -> TokenizerOpts {
-        TokenizerOpts {
-            exact_errors: false,
-            discard_bom: true,
-            profile: false,
-            initial_state: None,
-            last_start_tag_name: None,
-        }
-    }
-}
-
 /// The HTML tokenizer.
 pub struct Tokenizer<Sink> {
-    /// Options controlling the behavior of the tokenizer.
-    opts: TokenizerOpts,
-
     /// Destination for tokens we emit.
     pub sink: Sink,
 
@@ -138,10 +114,6 @@ pub struct Tokenizer<Sink> {
     /// Did we just consume \r, translating it to \n?  In that case we need
     /// to ignore the next character if it's \n.
     ignore_lf: Cell<bool>,
-
-    /// Discard a U+FEFF BYTE ORDER MARK if we see one?  Only done at the
-    /// beginning of the stream.
-    discard_bom: Cell<bool>,
 
     /// Current tag kind.
     current_tag_kind: Cell<TagKind>,
@@ -176,27 +148,16 @@ pub struct Tokenizer<Sink> {
     /// The "temporary buffer" mentioned in the spec.
     temp_buf: RefCell<StrTendril>,
 
-    /// Record of how many ns we spent in each state, if profiling is enabled.
-    state_profile: RefCell<BTreeMap<states::State, u64>>,
-
-    /// Record of how many ns we spent in the token sink.
-    time_in_sink: Cell<u64>,
-
     /// Track current line
     current_line: Cell<u64>,
 }
 
 impl<Sink: TokenSink> Tokenizer<Sink> {
     /// Create a new tokenizer which feeds tokens to a particular `TokenSink`.
-    pub fn new(sink: Sink, mut opts: TokenizerOpts) -> Tokenizer<Sink> {
-        let start_tag_name = opts
-            .last_start_tag_name
-            .take()
-            .map(|s| LocalName::from(&*s));
+    pub fn new(sink: Sink, opts: TokenizerOpts) -> Tokenizer<Sink> {
+        let start_tag_name = opts.last_start_tag_name.map(|s| LocalName::from(&*s));
         let state = opts.initial_state.unwrap_or(states::Data);
-        let discard_bom = opts.discard_bom;
         Tokenizer {
-            opts,
             sink,
             state: Cell::new(state),
             char_ref_tokenizer: RefCell::new(None),
@@ -204,7 +165,6 @@ impl<Sink: TokenSink> Tokenizer<Sink> {
             current_char: Cell::new('\0'),
             reconsume: Cell::new(false),
             ignore_lf: Cell::new(false),
-            discard_bom: Cell::new(discard_bom),
             current_tag_kind: Cell::new(StartTag),
             current_tag_name: RefCell::new(StrTendril::new()),
             current_tag_self_closing: Cell::new(false),
@@ -216,8 +176,6 @@ impl<Sink: TokenSink> Tokenizer<Sink> {
             current_doctype: RefCell::new(Doctype::default()),
             last_start_tag_name: RefCell::new(start_tag_name),
             temp_buf: RefCell::new(StrTendril::new()),
-            state_profile: RefCell::new(BTreeMap::new()),
-            time_in_sink: Cell::new(0),
             current_line: Cell::new(1),
         }
     }
@@ -228,32 +186,11 @@ impl<Sink: TokenSink> Tokenizer<Sink> {
             return TokenizerResult::Done;
         }
 
-        if self.discard_bom.get() {
-            if let Some(c) = input.peek() {
-                if c == '\u{feff}' {
-                    input.next();
-                }
-            } else {
-                return TokenizerResult::Done;
-            }
-        };
-
         self.run(input)
     }
 
-    #[allow(dead_code)] // Upstream capability retained; the native adapter initializes this state directly.
-    pub fn set_plaintext_state(&self) {
-        self.state.set(states::Plaintext);
-    }
-
     fn process_token(&self, token: Token) -> TokenSinkResult<Sink::Handle> {
-        if self.opts.profile {
-            let (ret, dt) = time!(self.sink.process_token(token, self.current_line.get()));
-            self.time_in_sink.set(self.time_in_sink.get() + dt);
-            ret
-        } else {
-            self.sink.process_token(token, self.current_line.get())
-        }
+        self.sink.process_token(token, self.current_line.get())
     }
 
     fn process_token_and_continue(&self, token: Token) {
@@ -283,17 +220,6 @@ impl<Sink: TokenSink> Tokenizer<Sink> {
             self.current_line.set(self.current_line.get() + 1);
         }
 
-        if self.opts.exact_errors
-            && match c as u32 {
-                0x01..=0x08 | 0x0B | 0x0E..=0x1F | 0x7F..=0x9F | 0xFDD0..=0xFDEF => true,
-                n if (n & 0xFFFE) == 0xFFFE => true,
-                _ => false,
-            }
-        {
-            let msg = format!("Bad character {c}");
-            self.emit_error(Cow::Owned(msg));
-        }
-
         trace!("got character {c}");
         self.current_char.set(c);
         Some(c)
@@ -317,7 +243,7 @@ impl<Sink: TokenSink> Tokenizer<Sink> {
         // This means that `FromSet` can contain characters not in the set!
         // It shouldn't matter because the fallback `FromSet` case should
         // always do the same thing as the `NotFromSet` case.
-        if self.opts.exact_errors || self.reconsume.get() || self.ignore_lf.get() {
+        if self.reconsume.get() || self.ignore_lf.get() {
             return self.get_char(input).map(FromSet);
         }
 
@@ -360,41 +286,13 @@ impl<Sink: TokenSink> Tokenizer<Sink> {
 
     /// Run the state machine for as long as we can.
     fn run(&self, input: &BufferQueue) -> TokenizerResult<Sink::Handle> {
-        if self.opts.profile {
-            loop {
-                let state = self.state.get();
-                let old_sink = self.time_in_sink.get();
-                let (run, mut dt) = time!(self.step(input));
-                dt -= self.time_in_sink.get() - old_sink;
-                let new = match self.state_profile.borrow_mut().get_mut(&state) {
-                    Some(x) => {
-                        *x += dt;
-                        false
-                    }
-                    None => true,
-                };
-                if new {
-                    // do this here because of borrow shenanigans
-                    self.state_profile.borrow_mut().insert(state, dt);
-                }
-                match run {
-                    ProcessResult::Continue => (),
-                    ProcessResult::Suspend => break,
-                    ProcessResult::Script(node) => return TokenizerResult::Script(node),
-                    ProcessResult::EncodingIndicator(encoding) => {
-                        return TokenizerResult::EncodingIndicator(encoding)
-                    }
-                }
-            }
-        } else {
-            loop {
-                match self.step(input) {
-                    ProcessResult::Continue => (),
-                    ProcessResult::Suspend => break,
-                    ProcessResult::Script(node) => return TokenizerResult::Script(node),
-                    ProcessResult::EncodingIndicator(encoding) => {
-                        return TokenizerResult::EncodingIndicator(encoding)
-                    }
+        loop {
+            match self.step(input) {
+                ProcessResult::Continue => (),
+                ProcessResult::Suspend => break,
+                ProcessResult::Script(node) => return TokenizerResult::Script(node),
+                ProcessResult::EncodingIndicator(encoding) => {
+                    return TokenizerResult::EncodingIndicator(encoding)
                 }
             }
         }
@@ -406,14 +304,9 @@ impl<Sink: TokenSink> Tokenizer<Sink> {
         #[cfg(feature = "trace_tokenizer")]
         trace!("  error");
 
-        let msg = if self.opts.exact_errors {
-            Cow::from("Bad character")
-        } else {
-            let c = self.current_char.get();
-            let state = self.state.get();
-            Cow::from(format!("Saw {c} in state {state:?}"))
-        };
-        self.emit_error(msg);
+        let c = self.current_char.get();
+        let state = self.state.get();
+        self.emit_error(Cow::from(format!("Saw {c} in state {state:?}")));
     }
 
     #[inline]
@@ -421,13 +314,8 @@ impl<Sink: TokenSink> Tokenizer<Sink> {
         #[cfg(feature = "trace_tokenizer")]
         trace!("  error_eof");
 
-        let msg = if self.opts.exact_errors {
-            Cow::from("Unexpected EOF")
-        } else {
-            let state = self.state.get();
-            Cow::from(format!("Saw EOF in state {state:?}"))
-        };
-        self.emit_error(msg);
+        let state = self.state.get();
+        self.emit_error(Cow::from(format!("Saw EOF in state {state:?}")));
     }
 
     fn emit_char(&self, c: char) {
@@ -745,12 +633,9 @@ impl<Sink: TokenSink> Tokenizer<Sink> {
             states::Data => loop {
                 let set = small_char_set!('\r' '\0' '&' '<' '\n');
 
-                #[cfg(any(target_arch = "x86", target_arch = "x86_64", target_arch = "aarch64"))]
-                let set_result = if !(self.opts.exact_errors
-                    || self.reconsume.get()
-                    || self.ignore_lf.get())
-                    && Self::is_supported_simd_feature_detected()
-                {
+                let set_result = if self.reconsume.get() || self.ignore_lf.get() {
+                    self.pop_except_from(input, set)
+                } else {
                     let front_buffer = input.peek_front_chunk_mut();
                     let Some(mut front_buffer) = front_buffer else {
                         return ProcessResult::Suspend;
@@ -767,27 +652,16 @@ impl<Sink: TokenSink> Tokenizer<Sink> {
                         drop(front_buffer);
                         self.pop_except_from(input, set)
                     } else {
-                        // SAFETY:
-                        // This CPU is guaranteed to support SIMD due to the is_supported_simd_feature_detected check above
-                        let result = unsafe { self.data_state_simd_fast_path(&mut front_buffer) };
+                        let result = self.data_state_fast_path(&mut front_buffer);
 
                         if front_buffer.is_empty() {
                             drop(front_buffer);
                             input.pop_front();
                         }
 
-                        result
+                        Some(result)
                     }
-                } else {
-                    self.pop_except_from(input, set)
                 };
-
-                #[cfg(not(any(
-                    target_arch = "x86",
-                    target_arch = "x86_64",
-                    target_arch = "aarch64"
-                )))]
-                let set_result = self.pop_except_from(input, set);
 
                 let Some(set_result) = set_result else {
                     return ProcessResult::Suspend;
@@ -1774,33 +1648,6 @@ impl<Sink: TokenSink> Tokenizer<Sink> {
         }
 
         self.sink.end();
-
-        if self.opts.profile {
-            self.dump_profile();
-        }
-    }
-
-    fn dump_profile(&self) {
-        let mut results: Vec<(states::State, u64)> = self
-            .state_profile
-            .borrow()
-            .iter()
-            .map(|(s, t)| (*s, *t))
-            .collect();
-        results.sort_by_key(|&(_, x)| std::cmp::Reverse(x));
-
-        let total: u64 = results.iter().map(|&(_, t)| t).sum::<u64>();
-        println!("\nTokenizer profile, in nanoseconds");
-        println!(
-            "\n{:12}         total in token sink",
-            self.time_in_sink.get()
-        );
-        println!("\n{total:12}         total in tokenizer");
-
-        for (k, v) in results.into_iter() {
-            let pct = 100.0 * (v as f64) / (total as f64);
-            println!("{v:12}  {pct:4.1}%  {k:?}");
-        }
     }
 
     fn eof_step(&self) -> ProcessResult<Sink::Handle> {
@@ -1927,223 +1774,34 @@ impl<Sink: TokenSink> Tokenizer<Sink> {
         }
     }
 
-    /// Checks for supported SIMD feature, which is now either SSE2 for x86/x86_64 or NEON for aarch64.
-    fn is_supported_simd_feature_detected() -> bool {
-        #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-        {
-            is_x86_feature_detected!("sse2")
-        }
-
-        #[cfg(target_arch = "aarch64")]
-        {
-            std::arch::is_aarch64_feature_detected!("neon")
-        }
-
-        #[cfg(not(any(target_arch = "x86", target_arch = "x86_64", target_arch = "aarch64")))]
-        false
-    }
-
-    #[cfg(any(target_arch = "x86", target_arch = "x86_64", target_arch = "aarch64"))]
-    /// Implements the [data state] with SIMD instructions.
-    /// Calls SSE2- or NEON-specific function for chunks and processes any remaining bytes.
+    /// Implements the [data state] fast path: consumes the run of bytes before the
+    /// next `<`, `&`, `\r` or NUL (newlines included, counted for `current_line`) as
+    /// one chunk. The caller guarantees the first character is not in that set, so
+    /// the run is never empty.
     ///
-    /// The algorithm implemented is the naive SIMD approach described [here].
-    ///
-    /// ### SAFETY:
-    /// Calling this function on a CPU that supports neither SSE2 nor NEON causes undefined behaviour.
+    /// Upstream html5ever scans 16-byte chunks with SSE2 (x86) or NEON (aarch64)
+    /// intrinsics here, with a scalar fallback compiled on neither. The native
+    /// adapter scans portably: the same chunks and tokens on every target, with
+    /// no `unsafe` and no per-architecture code (measured within noise on the
+    /// UTF-16 / source-position parse paths this tokenizer serves).
     ///
     /// [data state]: https://html.spec.whatwg.org/#data-state
-    /// [here]: https://lemire.me/blog/2024/06/08/scan-html-faster-with-simd-instructions-chrome-edition/
-    unsafe fn data_state_simd_fast_path(&self, input: &mut StrTendril) -> Option<SetResult> {
-        #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-        let (mut i, mut n_newlines) = self.data_state_sse2_fast_path(input);
-
-        #[cfg(target_arch = "aarch64")]
-        let (mut i, mut n_newlines) = self.data_state_neon_fast_path(input);
-
-        // Process any remaining bytes (less than STRIDE)
-        while let Some(c) = input.as_bytes().get(i) {
-            if matches!(*c, b'<' | b'&' | b'\r' | b'\0') {
-                break;
-            }
-            if *c == b'\n' {
-                n_newlines += 1;
-            }
-
-            i += 1;
-        }
-
-        let set_result = if i == 0 {
-            let first_char = input.pop_front_char().unwrap();
-            debug_assert!(matches!(first_char, '<' | '&' | '\r' | '\0'));
-
-            // FIXME: Passing a bogus input queue is only relevant when c is \n, which can never happen in this case.
-            // Still, it would be nice to not have to do that.
-            // The same is true for the unwrap call.
-            let preprocessed_char = self
-                .get_preprocessed_char(first_char, &BufferQueue::default())
-                .unwrap();
-            SetResult::FromSet(preprocessed_char)
-        } else {
-            debug_assert!(
-                input.len() >= i,
-                "Trying to remove {:?} bytes from a tendril that is only {:?} bytes long",
-                i,
-                input.len()
-            );
-            let consumed_chunk = input.unsafe_subtendril(0, i as u32);
-            input.unsafe_pop_front(i as u32);
-            SetResult::NotFromSet(consumed_chunk)
-        };
+    fn data_state_fast_path(&self, input: &mut StrTendril) -> SetResult {
+        let mut n_newlines = 0;
+        let end = input
+            .as_bytes()
+            .iter()
+            .position(|&b| {
+                n_newlines += u64::from(b == b'\n');
+                matches!(b, b'<' | b'&' | b'\r' | b'\0')
+            })
+            .unwrap_or(input.len());
+        let consumed_chunk = input.subtendril(0, end as u32);
+        input.pop_front(end as u32);
 
         self.current_line.set(self.current_line.get() + n_newlines);
 
-        Some(set_result)
-    }
-
-    #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-    #[target_feature(enable = "sse2")]
-    /// Implements the [data state] with SSE2 instructions for x86/x86_64.
-    /// Returns a pair of the number of bytes processed and the number of newlines found.
-    ///
-    /// ### SAFETY:
-    /// Calling this function on a CPU that does not support NEON causes undefined behaviour.
-    ///
-    /// [data state]: https://html.spec.whatwg.org/#data-state
-    unsafe fn data_state_sse2_fast_path(&self, input: &mut StrTendril) -> (usize, u64) {
-        #[cfg(target_arch = "x86")]
-        use std::arch::x86::{
-            __m128i, _mm_cmpeq_epi8, _mm_loadu_si128, _mm_movemask_epi8, _mm_or_si128,
-            _mm_set1_epi8,
-        };
-        #[cfg(target_arch = "x86_64")]
-        use std::arch::x86_64::{
-            __m128i, _mm_cmpeq_epi8, _mm_loadu_si128, _mm_movemask_epi8, _mm_or_si128,
-            _mm_set1_epi8,
-        };
-
-        debug_assert!(!input.is_empty());
-
-        let quote_mask = _mm_set1_epi8('<' as i8);
-        let escape_mask = _mm_set1_epi8('&' as i8);
-        let carriage_return_mask = _mm_set1_epi8('\r' as i8);
-        let zero_mask = _mm_set1_epi8('\0' as i8);
-        let newline_mask = _mm_set1_epi8('\n' as i8);
-
-        let raw_bytes: &[u8] = input.as_bytes();
-        let start = raw_bytes.as_ptr();
-
-        const STRIDE: usize = 16;
-        let mut i = 0;
-        let mut n_newlines = 0;
-        while i + STRIDE <= raw_bytes.len() {
-            // Load a 16 byte chunk from the input
-            let data = _mm_loadu_si128(start.add(i) as *const __m128i);
-
-            // Compare the chunk against each mask
-            let quotes = _mm_cmpeq_epi8(data, quote_mask);
-            let escapes = _mm_cmpeq_epi8(data, escape_mask);
-            let carriage_returns = _mm_cmpeq_epi8(data, carriage_return_mask);
-            let zeros = _mm_cmpeq_epi8(data, zero_mask);
-            let newlines = _mm_cmpeq_epi8(data, newline_mask);
-
-            // Combine all test results and create a bitmask from them.
-            // Each bit in the mask will be 1 if the character at the bit position is in the set and 0 otherwise.
-            let test_result = _mm_or_si128(
-                _mm_or_si128(quotes, zeros),
-                _mm_or_si128(escapes, carriage_returns),
-            );
-            let bitmask = _mm_movemask_epi8(test_result);
-            let newline_mask = _mm_movemask_epi8(newlines);
-
-            if bitmask != 0 {
-                // We have reached one of the characters that cause the state machine to transition
-                let position = if cfg!(target_endian = "little") {
-                    bitmask.trailing_zeros() as usize
-                } else {
-                    bitmask.leading_zeros() as usize
-                };
-
-                n_newlines += (newline_mask & ((1 << position) - 1)).count_ones() as u64;
-                i += position;
-                break;
-            } else {
-                n_newlines += newline_mask.count_ones() as u64;
-            }
-
-            i += STRIDE;
-        }
-
-        (i, n_newlines)
-    }
-
-    #[cfg(target_arch = "aarch64")]
-    #[target_feature(enable = "neon")]
-    /// Implements the [data state] with NEON SIMD instructions for AArch64.
-    /// Returns a pair of the number of bytes processed and the number of newlines found.
-    ///
-    /// ### SAFETY:
-    /// Calling this function on a CPU that does not support NEON causes undefined behaviour.
-    ///
-    /// [data state]: https://html.spec.whatwg.org/#data-state
-    unsafe fn data_state_neon_fast_path(&self, input: &mut StrTendril) -> (usize, u64) {
-        use std::arch::aarch64::{vceqq_u8, vdupq_n_u8, vld1q_u8, vmaxvq_u8, vorrq_u8};
-
-        debug_assert!(!input.is_empty());
-
-        let quote_mask = vdupq_n_u8(b'<');
-        let escape_mask = vdupq_n_u8(b'&');
-        let carriage_return_mask = vdupq_n_u8(b'\r');
-        let zero_mask = vdupq_n_u8(b'\0');
-        let newline_mask = vdupq_n_u8(b'\n');
-
-        let raw_bytes: &[u8] = input.as_bytes();
-        let start = raw_bytes.as_ptr();
-
-        const STRIDE: usize = 16;
-        let mut i = 0;
-        let mut n_newlines = 0;
-        while i + STRIDE <= raw_bytes.len() {
-            // Load a 16 byte chunk from the input
-            let data = vld1q_u8(start.add(i));
-
-            // Compare the chunk against each mask
-            let quotes = vceqq_u8(data, quote_mask);
-            let escapes = vceqq_u8(data, escape_mask);
-            let carriage_returns = vceqq_u8(data, carriage_return_mask);
-            let zeros = vceqq_u8(data, zero_mask);
-            let newlines = vceqq_u8(data, newline_mask);
-
-            // Combine all test results and create a bitmask from them.
-            // Each bit in the mask will be 1 if the character at the bit position is in the set and 0 otherwise.
-            let test_result =
-                vorrq_u8(vorrq_u8(quotes, zeros), vorrq_u8(escapes, carriage_returns));
-            let bitmask = vmaxvq_u8(test_result);
-            let newline_mask = vmaxvq_u8(newlines);
-            if bitmask != 0 {
-                // We have reached one of the characters that cause the state machine to transition
-                let chunk_bytes = std::slice::from_raw_parts(start.add(i), STRIDE);
-                let position = chunk_bytes
-                    .iter()
-                    .position(|&b| matches!(b, b'<' | b'&' | b'\r' | b'\0'))
-                    .unwrap();
-
-                n_newlines += chunk_bytes[..position]
-                    .iter()
-                    .filter(|&&b| b == b'\n')
-                    .count() as u64;
-
-                i += position;
-                break;
-            } else if newline_mask != 0 {
-                let chunk_bytes = std::slice::from_raw_parts(start.add(i), STRIDE);
-                n_newlines += chunk_bytes.iter().filter(|&&b| b == b'\n').count() as u64;
-            }
-
-            i += STRIDE;
-        }
-
-        (i, n_newlines)
+        NotFromSet(consumed_chunk)
     }
 }
 
@@ -2285,9 +1943,6 @@ mod test {
     #[test]
     fn check_lines() {
         let opts = TokenizerOpts {
-            exact_errors: false,
-            discard_bom: true,
-            profile: false,
             initial_state: None,
             last_start_tag_name: None,
         };
@@ -2310,9 +1965,6 @@ mod test {
     #[test]
     fn check_lines_with_new_line() {
         let opts = TokenizerOpts {
-            exact_errors: false,
-            discard_bom: true,
-            profile: false,
             initial_state: None,
             last_start_tag_name: None,
         };

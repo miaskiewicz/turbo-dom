@@ -398,10 +398,7 @@ impl Tree {
         };
         let tokenizer = Tokenizer::new(
             sink,
-            TokenizerOpts {
-                discard_bom: false,
-                ..Default::default()
-            },
+            TokenizerOpts::default(),
         );
         while !matches!(tokenizer.feed(&queue), html5ever::TokenizerResult::Done) {}
         tokenizer.end();

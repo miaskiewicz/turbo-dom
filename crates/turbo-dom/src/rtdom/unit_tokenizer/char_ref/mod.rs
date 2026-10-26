@@ -13,7 +13,7 @@ use html5ever::data;
 use html5ever::tendril::StrTendril;
 
 use log::debug;
-use std::borrow::Cow::{self, Borrowed};
+use std::borrow::Cow::Borrowed;
 use std::char::from_u32;
 
 //§ tokenizing-character-references
@@ -239,15 +239,7 @@ impl CharRefTokenizer {
         };
 
         if error {
-            let msg = if tokenizer.opts.exact_errors {
-                Cow::from(format!(
-                    "Invalid numeric character reference value 0x{:06X}",
-                    self.num
-                ))
-            } else {
-                Cow::from("Invalid numeric character reference")
-            };
-            tokenizer.emit_error(msg);
+            tokenizer.emit_error(Borrowed("Invalid numeric character reference"));
         }
 
         self.finish_one(c)
@@ -283,12 +275,7 @@ impl CharRefTokenizer {
     }
 
     fn emit_name_error<Sink: TokenSink>(&mut self, tokenizer: &Tokenizer<Sink>) {
-        let msg = if tokenizer.opts.exact_errors {
-            Cow::from(format!("Invalid character reference &{}", self.name_buf()))
-        } else {
-            Cow::from("Invalid character reference")
-        };
-        tokenizer.emit_error(msg);
+        tokenizer.emit_error(Borrowed("Invalid character reference"));
     }
 
     fn unconsume_name(&mut self, input: &BufferQueue) {

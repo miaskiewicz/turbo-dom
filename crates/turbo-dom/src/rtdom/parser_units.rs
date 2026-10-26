@@ -108,7 +108,6 @@ fn parsed_with_options(
     let tokenizer = Tokenizer::new(
         builder,
         TokenizerOpts {
-            discard_bom: false,
             initial_state,
             ..Default::default()
         },
