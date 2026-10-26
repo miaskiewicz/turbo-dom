@@ -10,7 +10,8 @@
     nativeReport = g.__customElementReport,
     nativeDefining = g.__customElementDefining,
     nativeReact = g.__customElementReact,
-    nativeActive = g.__customElementActive;
+    nativeActive = g.__customElementActive,
+    nativeState = g.__customElementState;
   delete g.__customElementConstructor;
   delete g.__customElementChildren;
   delete g.__customElementUpgrade;
@@ -19,6 +20,7 @@
   delete g.__customElementDefining;
   delete g.__customElementReact;
   delete g.__customElementActive;
+  delete g.__customElementState;
   const apply = Reflect.apply,
     construct = Reflect.construct,
     ProxyValue = Proxy,
@@ -230,6 +232,7 @@
       connected: read(connected, node),
     };
     wset(elementStates, node, record);
+    nativeState(node, record.status);
     if (initializeInternals) initializeInternals(node, definition);
     const initial = [],
       attributes = read(attrs, node);
@@ -241,8 +244,10 @@
     try {
       nativeUpgrade(definition.constructor, node);
       record.status = "custom";
+      nativeState(node, "custom");
     } catch (error) {
       record.status = "failed";
+      nativeState(node, "failed");
       report(error);
       return;
     }
@@ -595,6 +600,7 @@
           owner: contextDocument,
           connected: false,
         });
+        nativeState(node, "custom");
         if (initializeInternals) initializeInternals(node, definition);
       }
       return node;
@@ -624,6 +630,7 @@
     const fallback = apply(create, documentOf(node), [definition.local]);
     setPrototype(fallback, unknownPrototype);
     wset(elementStates, fallback, { definition, status: "failed" });
+    nativeState(fallback, "failed");
     report(error);
     return fallback;
   }
@@ -635,7 +642,11 @@
         "A foreign global registry cannot create elements in this document",
         "NotSupportedError",
       );
-    if (is !== undefined) nativePrivate(node, is);
+    if (is !== undefined) {
+      nativePrivate(node, is);
+      // an `is` value makes the element "undefined" until a definition upgrades it
+      nativeState(node, "undefined");
+    }
     associate(node, selected, options.selected === undefined && associationFor(node) === false);
     const definition = definitionFor(node, selected);
     if (!definition) return node;
@@ -653,8 +664,10 @@
           owner: documentOf(node),
           connected: false,
         });
+        nativeState(node, "constructing");
         custom = nativeUpgrade(definition.constructor, node, false);
         wget(elementStates, node).status = "custom";
+        nativeState(node, "custom");
       }
     } catch (error) {
       return failedCreation(node, definition, error);

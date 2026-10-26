@@ -67,6 +67,25 @@ test('partial cascade applies the sentinel rule exactly where Chrome does', () =
   assert.deepEqual(failures, []);
 });
 
+// miaskiewicz/turbo-dom#24 item 2: the partial cascade ranks rules by Selectors 4 specificity
+// (then source order), so every cascade case but the layout cascade's `cascade-order` ones
+// (importance, origins) resolves Chrome's winning `order`.
+test('partial cascade picks Chrome\'s winner in every specificity / validity cascade case', () => {
+  const failures = [];
+  let cases = 0;
+  for (const c of fixture.cascade_cases) {
+    if (c.class === 'cascade-order') continue;
+    cases++;
+    const html = c.html.replace('</head>', `<style>${c.css}</style></head>`);
+    const { window, document } = createEnvironment(html);
+    const els = elements(document).filter((e) => e !== document.head.lastElementChild);
+    const got = els.map((e) => window.getComputedStyle(e).order || '0');
+    if (JSON.stringify(got) !== JSON.stringify(c.winners)) failures.push(`${c.id}: ${got}, Chrome ${c.winners}`);
+  }
+  assert.ok(cases >= 8, `cascade cases shrank: ${cases}`);
+  assert.deepEqual(failures, []);
+});
+
 test('scripted probes: template content traversal and :root', () => {
   const probes = Object.fromEntries(fixture.probes.map((p) => [p.id, p]));
   {

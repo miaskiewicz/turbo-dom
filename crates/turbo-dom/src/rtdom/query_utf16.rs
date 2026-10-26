@@ -9,7 +9,6 @@ pub(super) struct UnitAttrMatch {
     op: u16,
     value: Vec<u16>,
     insensitive: bool,
-    sensitive: bool,
 }
 impl UnitAttrMatch {
     pub(super) fn scalar(source: &AttrMatch) -> Self {
@@ -27,7 +26,6 @@ impl UnitAttrMatch {
             op,
             value: value.encode_utf16().collect(),
             insensitive: false,
-            sensitive: false,
         }
     }
 
@@ -36,7 +34,7 @@ impl UnitAttrMatch {
     }
     pub(super) fn matches_case(&self, got: &[u16], implicit: bool) -> bool {
         let value = &self.value;
-        let insensitive = !self.sensitive && (self.insensitive || implicit);
+        let insensitive = self.insensitive || implicit;
         let equal = |a: &[u16], b: &[u16]| equal_units(a, b, insensitive);
         match self.op {
             0 => true,
@@ -203,7 +201,6 @@ fn invalid_attr(name: String) -> Attr {
             op: u16::MAX,
             value: Vec::new(),
             insensitive: false,
-            sensitive: false,
         }),
     )
 }
@@ -221,7 +218,6 @@ pub(super) fn attr(inner: &[u16]) -> Attr {
                 op: 0,
                 value: Vec::new(),
                 insensitive: false,
-                sensitive: false,
             }),
         );
     };
@@ -234,11 +230,11 @@ pub(super) fn attr(inner: &[u16]) -> Attr {
     let source = trim(&inner[eq + 1..]);
     let (value, quoted, modifier) = attribute_value(source);
     // an unquoted value is an identifier (Chrome: `[a=1]`, `[a=]`, `[href=a.html]` throw);
-    // the `s` modifier is a Rust contract (tests/attribute_case.rs) Chrome 156 rejects
+    // the only modifier is `i` (Chrome 156 rejects the CSS `s` modifier: turbo-dom#24)
     let valid = (quoted || is_ident(value))
         && modifier
             .as_deref()
-            .is_some_and(|m| m.is_empty() || m == [105] || m == [73] || m == [115] || m == [83]);
+            .is_some_and(|m| m.is_empty() || m == [105] || m == [73]);
     let Some((any, name)) = attribute_name(trim(name)) else {
         return invalid_attr(identifier(trim(name)));
     };
@@ -253,7 +249,6 @@ pub(super) fn attr(inner: &[u16]) -> Attr {
             },
             value: decoded(value, quoted),
             insensitive: modifier.as_deref().is_some_and(|m| m == [105] || m == [73]),
-            sensitive: modifier.as_deref().is_some_and(|m| m == [115] || m == [83]),
         }),
     )
 }
@@ -358,7 +353,6 @@ pub(super) fn specialized_attribute(inner: &str) -> Option<Attr> {
     match &parsed.m {
         AttrMatch::Units(m)
             if m.insensitive
-                || m.sensitive
                 || m.op == u16::MAX
                 || parsed.name.eq_ignore_ascii_case("type")
                 || inner.contains("/*")

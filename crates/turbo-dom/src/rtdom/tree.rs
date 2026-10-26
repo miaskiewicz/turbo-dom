@@ -557,6 +557,12 @@ pub use utf16::Utf16MutationEvent;
 #[path = "custom_states.rs"]
 mod custom_states;
 
+#[path = "custom_element_state.rs"]
+mod custom_element_state;
+#[cfg(test)]
+pub(crate) use custom_element_state::is_custom_element_name;
+pub use custom_element_state::CustomElementState;
+
 #[path = "storage.rs"]
 mod storage;
 
@@ -609,6 +615,9 @@ pub struct Tree {
     /// form-state pseudo-classes in query.rs). Empty on the parse/no-interaction path.
     form_props: FxHashMap<(Handle, FormProp), bool>,
     custom_states: FxHashMap<Handle, FxHashSet<Box<[u16]>>>,
+    /// Embedder-reported (and import-time) custom element states; absent = derived at read
+    /// time from the element's creation (`custom_element_state.rs`).
+    custom_element_states: FxHashMap<Handle, CustomElementState>,
 }
 
 /// The boolean IDL form-state properties whose selector semantics can diverge from the
@@ -667,6 +676,7 @@ impl Tree {
             mutation_name_units: FxHashMap::default(),
             form_props: FxHashMap::default(),
             custom_states: FxHashMap::default(),
+            custom_element_states: FxHashMap::default(),
         }
     }
 
@@ -2243,6 +2253,15 @@ impl Tree {
                         format!("{}:{}", a.prefix, a.name)
                     };
                     self.set_attribute_ns(h, namespace, &qualified, &a.value);
+                }
+                // fragment parsing reads the `is` value at creation, like the initial parse
+                if ns == Namespace::Html
+                    && n.attrs
+                        .iter()
+                        .any(|a| a.prefix.is_empty() && a.name == "is")
+                {
+                    self.custom_element_states
+                        .insert(h, CustomElementState::Undefined);
                 }
                 h
             }

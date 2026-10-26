@@ -179,8 +179,8 @@ function scanString(src, i) {
 }
 // Parse a `[ … ]` interior: { name, match, ns?, ci? } — `match` = { op: 'present' } or
 // { op, value }; `ns: 'any'` for `[*|a]`; `ci: true` for the `i` modifier. Throws on what
-// Chrome 156 rejects, including the `s` modifier (the Rust engine keeps `s` as a documented
-// extension of its lenient/`_checked` API; this runtime answers like the browser).
+// Chrome 156 rejects, including the `s` modifier (so does the Rust engine since
+// turbo-dom#24).
 function parseAttr(raw, src) {
   const s = stripAttrComments(raw);
   let i = 0;
@@ -444,6 +444,8 @@ function parsePseudoElement(tok, src) {
   if (name === 'slotted' && arg !== null) {
     const list = parseList(arg, { nested: true, forgiving: false, inHas: false });
     if (list.length !== 1) throw syntax(src, '::slotted() takes one compound selector');
+    // kept for specificity (non-enumerable, like a pseudo-class's `parsed`)
+    Object.defineProperty(pe, 'parsed', { value: list });
   }
   return pe;
 }
@@ -566,6 +568,54 @@ export function parseSelectorList(selector) {
 export function ruleSelectors(prelude) {
   try { parseSelectorList(prelude); } catch { return []; }
   return splitTopLevel(prelude).map(trimWs);
+}
+
+// Selectors 4 specificity `[ids, classes + attributes + pseudo-classes, types +
+// pseudo-elements]` of one complex selector of a (valid) rule, compared lexicographically by
+// compareSpecificity — mirrors the Rust query_cascade specificity (miaskiewicz/turbo-dom#24):
+// `:where()` is 0; `:is()`, `:not()` and `:has()` take their most specific argument;
+// `:nth-child(An+B of S)` is a pseudo-class plus S; `*` counts nothing; a pseudo-element
+// counts as a type (`::slotted(S)` plus S); everything else is one pseudo-class.
+function addSpecificity(a, b) {
+  a[0] += b[0]; a[1] += b[1]; a[2] += b[2];
+  return a;
+}
+export function compareSpecificity(a, b) {
+  return a[0] - b[0] || a[1] - b[1] || a[2] - b[2];
+}
+function maxSpecificity(list) {
+  let best = [0, 0, 0];
+  for (const cx of list) {
+    const s = complexSpecificity(cx);
+    if (compareSpecificity(s, best) > 0) best = s;
+  }
+  return best;
+}
+function complexSpecificity(cx) {
+  const s = compoundSpecificity(cx.first);
+  for (const r of cx.rest) addSpecificity(s, compoundSpecificity(r.compound));
+  return s;
+}
+function compoundSpecificity(c) {
+  const s = [c.id !== null ? 1 : 0, c.classes.length + c.attrs.length, c.tag !== null && c.tag !== '*' ? 1 : 0];
+  for (const p of c.pseudos) addSpecificity(s, pseudoSpecificity(p));
+  if (c.pe !== null) {
+    s[2]++;
+    if (c.pe.parsed) addSpecificity(s, maxSpecificity(c.pe.parsed));
+  }
+  return s;
+}
+function pseudoSpecificity(p) {
+  const parsed = p.parsed;
+  if (p.name === 'where') return [0, 0, 0];
+  if (parsed !== undefined && parsed.list !== undefined && p.name !== '-webkit-any') return maxSpecificity(parsed.list);
+  if (parsed !== undefined && parsed.rel !== undefined) return maxSpecificity(parsed.rel.map((r) => r.complex));
+  if (parsed !== undefined && parsed.of) return addSpecificity([0, 1, 0], maxSpecificity(parsed.of));
+  return [0, 1, 0];
+}
+// The specificity of one item of ruleSelectors() (a valid complex selector).
+export function specificity(item) {
+  return complexSpecificity(parseSelectorList(item)[0]);
 }
 
 // ── element state helpers ───────────────────────────────────────────────────
@@ -1064,4 +1114,4 @@ export function querySelector(root, selector) {
   return queryWalk(root, selector, true)[0] || null;
 }
 
-export const _internal = { parseComplex, parseSelectorList, matchCompound, matchComplex, parseAnB, ruleSelectors };
+export const _internal = { parseComplex, parseSelectorList, matchCompound, matchComplex, parseAnB, ruleSelectors, specificity, compareSpecificity };
