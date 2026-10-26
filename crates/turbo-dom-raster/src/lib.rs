@@ -71,7 +71,7 @@ pub use style_extract::{delazy_images, image_urls, image_urls_in_css, stylesheet
 
 use std::collections::HashMap;
 
-use turbo_dom_layout::text::FontRegistry;
+use turbo_dom_layout::text::{FontRegistry, SystemFontPolicy};
 use turbo_dom_layout::{
     layout_html_with_images, Diagnostics, Fragment, FragmentContent, ImageCtx, Rgba,
 };
@@ -263,19 +263,15 @@ pub fn screenshot_svg_with_opts(
 }
 
 /// The font registry for a render: the bundled fallback set, plus (opt-in) every
-/// installed system font. The system-font set is loaded once and cloned per call
-/// (loading the whole OS font directory is slow; the parsed faces are `Arc`-shared
-/// so the clone is cheap).
+/// installed system font. The system-font set is turbo-dom-layout's process-wide
+/// registry ([`FontRegistry::system`], loaded once per process and shared with every
+/// other embedder) cloned per call (the parsed faces are `Arc`-shared, so the clone is
+/// cheap).
 fn font_registry(system_fonts: bool) -> FontRegistry {
     if !system_fonts {
         return FontRegistry::new();
     }
-    static SYSTEM: std::sync::LazyLock<FontRegistry> = std::sync::LazyLock::new(|| {
-        let mut reg = FontRegistry::new();
-        reg.load_system_fonts();
-        reg
-    });
-    SYSTEM.clone()
+    FontRegistry::system(SystemFontPolicy::Default).clone()
 }
 
 /// Measure the advance width (and an approximate line height) of `text` under a CSS

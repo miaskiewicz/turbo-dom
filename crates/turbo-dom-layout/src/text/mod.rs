@@ -11,4 +11,4 @@ mod registry;
 
 pub use font::{FontFace, HtmlFontMetrics, ShapedGlyph};
 pub use inline::{layout_text, Align, LineBox, TextStyle, WhiteSpace};
-pub use registry::FontRegistry;
+pub use registry::{FontRegistry, SystemFontPolicy};
