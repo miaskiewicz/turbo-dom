@@ -838,6 +838,225 @@ mod tests {
     }
 
     #[test]
+    fn matrices_compose_the_canvas_way() {
+        let m = Matrix([1.0, 2.0, 3.0, 4.0, 5.0, 6.0]);
+        assert_eq!(m.apply(1.0, 1.0), (9.0, 12.0));
+        assert_eq!(m.apply(-2.0, 0.5), (4.5, 4.0));
+        // `m.then(n)` applies `n` first: every term of the 2x3 product.
+        let n = [7.0, 8.0, 9.0, 10.0, 11.0, 12.0];
+        assert_eq!(m.then(n).0, [31.0, 46.0, 39.0, 58.0, 52.0, 76.0]);
+        // The origin maps through `n`'s translation, then `m`.
+        assert_eq!(m.then(n).apply(0.0, 0.0), m.apply(11.0, 12.0));
+        assert_eq!(m.translate(1.0, -1.0).0, [1.0, 2.0, 3.0, 4.0, 3.0, 4.0]);
+        assert_eq!(m.scale(2.0, -3.0).0, [2.0, 4.0, -9.0, -12.0, 5.0, 6.0]);
+        let r = Matrix::identity().rotate(std::f32::consts::FRAC_PI_2).0;
+        let want = [0.0, 1.0, -1.0, 0.0, 0.0, 0.0];
+        assert!(
+            r.iter().zip(want).all(|(a, b)| (a - b).abs() < 1e-6),
+            "{r:?}"
+        );
+    }
+
+    #[test]
+    fn line_widths_scale_by_the_root_of_the_area_scale() {
+        let w = |m: [f32; 4], width: f32| {
+            device_line_width(&Matrix([m[0], m[1], m[2], m[3], 9.0, 9.0]), width)
+        };
+        assert_eq!(w([1.0, 0.0, 0.0, 1.0], 3.0), 3.0);
+        assert_eq!(w([4.0, 0.0, 0.0, 9.0], 1.0), 6.0, "sqrt(36)");
+        assert_eq!(w([2.0, 1.0, 1.0, 3.0], 1.0), 5.0_f32.sqrt(), "ad - bc = 5");
+        assert_eq!(w([0.0, 2.0, 2.0, 0.0], 1.0), 2.0, "|ad - bc| = 4");
+        // A singular matrix keeps the user width; a negative width is no width.
+        assert_eq!(w([0.0, 0.0, 0.0, 0.0], 2.0), 2.0);
+        assert_eq!(w([1.0, 2.0, 2.0, 4.0], 2.0), 2.0);
+        assert_eq!(w([1.0, 0.0, 0.0, 1.0], -1.0), 0.0);
+    }
+
+    /// The flattened points of one arc on an empty path, through the identity.
+    fn arc(start: f32, end: f32, ccw: bool) -> Vec<(f32, f32)> {
+        let mut path = Vec::new();
+        arc_into(
+            &mut path,
+            &Matrix::identity(),
+            10.0,
+            20.0,
+            5.0,
+            start,
+            end,
+            ccw,
+        );
+        path.into_iter().flat_map(|s| s.pts).collect()
+    }
+
+    fn near(a: (f32, f32), b: (f32, f32)) -> bool {
+        (a.0 - b.0).abs() < 1e-4 && (a.1 - b.1).abs() < 1e-4
+    }
+
+    #[test]
+    fn arcs_flatten_into_64_segments_per_turn_at_least_6() {
+        use std::f32::consts::{FRAC_PI_2, PI, TAU};
+        // A full turn: 64 segments (65 points) from and back to angle 0.
+        let full = arc(0.0, TAU, false);
+        assert_eq!(full.len(), 65);
+        assert!(near(full[0], (15.0, 20.0)) && near(full[64], (15.0, 20.0)));
+        assert!(
+            near(full[16], (10.0, 25.0)),
+            "a quarter turn clockwise is +y"
+        );
+        // Half a turn: 32; a quarter: 16; a sliver: the minimum 6.
+        assert_eq!(arc(0.0, PI, false).len(), 33);
+        assert_eq!(arc(0.0, FRAC_PI_2, false).len(), 17);
+        let sliver = arc(0.0, 0.01, false);
+        assert_eq!(sliver.len(), 7);
+        assert!(near(
+            sliver[6],
+            (10.0 + 5.0 * 0.01_f32.cos(), 20.0 + 5.0 * 0.01_f32.sin())
+        ));
+        // Points are evenly spaced in angle: the midpoint of a half turn is at a quarter.
+        assert!(near(arc(0.0, PI, false)[16], (10.0, 25.0)));
+        // More than a turn draws one turn, ending where it started.
+        let laps = arc(0.0, 7.0 * PI, false);
+        assert_eq!(laps.len(), 65);
+        assert!(near(laps[64], (15.0, 20.0)));
+        // A radius of zero or less adds nothing.
+        let mut path = Vec::new();
+        arc_into(
+            &mut path,
+            &Matrix::identity(),
+            1.0,
+            1.0,
+            0.0,
+            0.0,
+            1.0,
+            false,
+        );
+        arc_into(
+            &mut path,
+            &Matrix::identity(),
+            1.0,
+            1.0,
+            -2.0,
+            0.0,
+            1.0,
+            false,
+        );
+        assert!(path.is_empty());
+    }
+
+    #[test]
+    fn arc_sweeps_follow_the_direction_and_wrap_once() {
+        use std::f32::consts::{FRAC_PI_2, PI};
+        // Clockwise from pi to 0 wraps forward through 3pi/2 (up, -y).
+        let cw = arc(PI, 0.0, false);
+        assert_eq!(cw.len(), 33);
+        assert!(
+            near(cw[0], (5.0, 20.0)) && near(cw[16], (10.0, 15.0)) && near(cw[32], (15.0, 20.0))
+        );
+        // Anticlockwise from 0 to pi wraps back through -pi/2 (up).
+        let ccw = arc(0.0, PI, true);
+        assert_eq!(ccw.len(), 33);
+        assert!(near(ccw[16], (10.0, 15.0)) && near(ccw[32], (5.0, 20.0)));
+        // Anticlockwise from pi/2 down to -pi/2 needs no wrap: through 0 (+x).
+        let right = arc(FRAC_PI_2, -FRAC_PI_2, true);
+        assert_eq!(right.len(), 33);
+        assert!(near(right[16], (15.0, 20.0)));
+        // Equal angles are an empty sweep in either direction: the start point only.
+        for ccw in [false, true] {
+            let still = arc(1.0, 1.0, ccw);
+            assert_eq!(still.len(), 7);
+            assert!(still.iter().all(|&p| near(p, still[0])), "{ccw}");
+        }
+    }
+
+    #[test]
+    fn paths_continue_from_the_current_point() {
+        let mut path = Vec::new();
+        append_point(&mut path, (1.0, 1.0));
+        append_point(&mut path, (2.0, 1.0));
+        assert_eq!(
+            path.len(),
+            1,
+            "a bare lineTo opens the path, the next one extends it"
+        );
+        assert_eq!(path[0].pts, [(1.0, 1.0), (2.0, 1.0)]);
+        path[0].closed = true;
+        append_point(&mut path, (5.0, 5.0));
+        assert_eq!(path.len(), 2);
+        assert_eq!(
+            path[1].pts,
+            [(1.0, 1.0), (5.0, 5.0)],
+            "from the closed subpath's start"
+        );
+        assert!(!path[1].closed);
+        // An arc after a moveTo connects from it.
+        let mut arcs = vec![SubPath {
+            pts: vec![(0.0, 0.0)],
+            closed: false,
+        }];
+        arc_into(
+            &mut arcs,
+            &Matrix::identity(),
+            10.0,
+            0.0,
+            1.0,
+            0.0,
+            1.0,
+            false,
+        );
+        assert_eq!(arcs.len(), 1);
+        assert_eq!(arcs[0].pts[0], (0.0, 0.0));
+        assert_eq!(arcs[0].pts[1], (11.0, 0.0));
+    }
+
+    #[test]
+    fn glyphs_are_placed_by_their_advances_and_mark_offsets() {
+        // A combining acute over `q` (no precomposed glyph) is positioned by its shaping
+        // offsets; each glyph traces at x + the advances so far + its x offset, baseline
+        // y - its y offset.
+        let st = State {
+            font_px: 40.0,
+            font_families: vec!["serif".to_string()],
+            ..State::default()
+        };
+        let face = resolve_face(&st.font_families);
+        let shaped = face.shape("q\u{301}x");
+        assert!(
+            shaped.iter().any(|g| g.x_offset != 0 || g.y_offset != 0),
+            "{shaped:?}"
+        );
+        let scale = 40.0 / f32::from(face.units_per_em());
+        let ttf = crate::glyph::outline_face(&face);
+        let mut sink = FlattenSink {
+            ctm: st.ctm,
+            subs: Vec::new(),
+            cur: Vec::new(),
+        };
+        let mut pen = 3.0;
+        for g in &shaped {
+            let at = crate::glyph::Pen {
+                origin_x: pen + g.x_offset as f32 * scale,
+                baseline_y: 50.0 - g.y_offset as f32 * scale,
+                scale,
+            };
+            crate::glyph::trace_glyph(&ttf, g.glyph_id, at, &mut sink);
+            sink.flush();
+            pen += g.x_advance as f32 * scale;
+        }
+        let got = glyph_subpaths(&st, "q\u{301}x", 3.0, 50.0);
+        assert_eq!(got.len(), sink.subs.len());
+        for (a, b) in got.iter().zip(&sink.subs) {
+            assert_eq!(a.pts, b.pts);
+        }
+        // The mark sits above the q's x-height, not below the baseline.
+        let mark_top = got
+            .iter()
+            .flat_map(|s| &s.pts)
+            .map(|p| p.1)
+            .fold(f32::INFINITY, f32::min);
+        assert!(mark_top < 50.0 - 20.0, "{mark_top}");
+    }
+
+    #[test]
     fn font_shorthand_tolerates_whitespace_runs() {
         // Single space (baseline).
         let (size, fams) = parse_font("bold 20px Arial");
