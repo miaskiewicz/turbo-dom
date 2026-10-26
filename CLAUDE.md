@@ -119,11 +119,13 @@ package or publish workflow.
   flex/grid/table layout → `Fragment` galley, fonts, image sizing, layout snapshots,
   `layout_html`). Relocated verbatim from turbo-html2pdf-core 0.3.9 (S1); turbo-html2pdf-core
   depends on it and re-exports it at its old paths. Since S2 the cascade styles a turbo-dom
-  `Tree` directly (`style::TreeView` + `Roots::{Detached, Shell}`); html2pdf's `t:` directives are opaque `MarkerKind` markers
+  `Tree` directly (`style::TreeView` + `Roots::{Detached, Document}`; since P5b the HTML
+  drive styles the whole document like Chrome — head `<style>`s, real `<html>`/`<body>` boxes
+  with `body { margin: 8px }`, root-relative `rem`, canvas background; turbo-html2pdf#29); html2pdf's `t:` directives are opaque `MarkerKind` markers
   from a caller classifier, and its PDF switches are runtime `LayoutOptions`/`StyleOptions`
   (no PDF features here). Since S3b selectors parse and match with turbo-dom's engine
   (`style::RuleSelectors` = `parse_for_cascade`; the scope `style::Navigator` implements
-  turbo-dom's `Navigator`: kept nodes, Detached cutoff, Shell positions, marker type keys);
+  turbo-dom's `Navigator`: kept nodes, Detached cutoff, the document scope, marker type keys);
   html2pdf's old `style/selector.rs` is gone. `scripts/verify-copied-layout.sh` checks the S1
   tree (`VERIFY_REF`) against the source commits; later edits are reviewed changes on top.
   Since S4 `live` is the live-DOM input ("surf mode"): turbo-surf's CSSOM-View layout styles

@@ -804,8 +804,8 @@ fn collapsing_block_container(lb: &LayoutBox, bs: &BoxStyle) -> bool {
 }
 
 fn top_margins_collapse_through(lb: &LayoutBox, bs: &BoxStyle) -> bool {
-    // The document root (the synthetic box `build_box_tree` stamps id 0, standing in
-    // for html/body which this engine models as match-only shells) does NOT collapse
+    // The galley root (the synthetic box `build_box_tree` stamps id 0, the initial
+    // containing block — a styled document's `<html>` sits inside it) does NOT collapse
     // its children's margins out its top — root-element margins never collapse (CSS
     // 2.1 §8.3.1), so a first child's `margin-top` manifests at the page top as a
     // browser renders it, rather than vanishing to y=0.

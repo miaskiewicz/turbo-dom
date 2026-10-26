@@ -1,4 +1,4 @@
-//! The turbo-dom `Tree` style input's own contract (`TreeView`, `Roots::Shell` /
+//! The turbo-dom `Tree` style input's own contract (`TreeView`, `Roots::Document` /
 //! `Roots::Detached`, the scope `Navigator`, markers). Kept from the consolidation S2
 //! gate `tree_input_equivalence.rs` when its legacy-input comparison was retired at S5
 //! (the owned-`Node` input is gone; the parity harness covers the corpora).
@@ -11,25 +11,35 @@ use turbo_dom_layout::{
 };
 
 #[test]
-fn shell_styling_records_sources_and_skips_non_content() {
+fn document_styling_records_sources_and_skips_non_content() {
     let tree = parse_html_tree(
-        "<body><!--c--><p id=a>x<b>y</b></p><style>p{}</style><template><i>t</i></template></body>",
+        "<head><title>t</title></head><body><!--c--><p id=a>x<b>y</b></p><style>p{}</style><template><i>t</i></template></body>",
     );
     let view = TreeView::new(&tree);
     let styled = style_input(
         &StyleInput {
             view: view.strip_non_visual(true),
-            roots: Roots::Shell,
+            roots: Roots::Document,
         },
         &turbo_dom_layout::build_cascade("", "", TokenSet::default()),
         &StyleOptions::default(),
     );
+    assert_eq!(styled.len(), 1, "the root element");
+    let StyledNode::Element(html) = &styled[0] else {
+        panic!("html element")
+    };
+    assert_eq!(html.source, view.find_element("html"));
+    let [StyledNode::Element(head), StyledNode::Element(body)] = &html.children[..] else {
+        panic!("head + body, got {:?}", html.children)
+    };
+    assert!(head.children.is_empty(), "title stripped");
+    assert_eq!(body.source, view.find_element("body"));
     assert_eq!(
-        styled.len(),
+        body.children.len(),
         1,
         "comment, style and template are not content"
     );
-    let StyledNode::Element(p) = &styled[0] else {
+    let StyledNode::Element(p) = &body.children[0] else {
         panic!("p element")
     };
     assert_eq!(view.attr(p.source.unwrap(), "id"), Some("a"));
@@ -60,7 +70,7 @@ fn markers_classify_by_local_name_and_never_strip() {
 }
 
 #[test]
-fn navigator_scopes_detached_and_shell_matching() {
+fn navigator_scopes_detached_and_document_matching() {
     use turbo_dom_layout::style::{Navigator, SiblingPosition};
     let tree = parse_html_tree(
         "<html class=h><body class=b><!--c--><p>a<i>x</i></p>t<p></p><style>s</style></body></html>",
@@ -73,7 +83,7 @@ fn navigator_scopes_detached_and_shell_matching() {
     let detached = Navigator::new(&view, Roots::Detached(&roots));
     let kept = detached.roots().to_vec();
     assert_eq!(kept.len(), 4, "p, text, p, style (comment skipped)");
-    assert!(detached.shells().is_empty());
+    assert!(!detached.is_document_root(kept[0]));
     assert_eq!(
         detached.parent(kept[0]),
         None,
@@ -96,23 +106,39 @@ fn navigator_scopes_detached_and_shell_matching() {
     assert_eq!(detached.siblings(i).len(), 2);
 
     let stripped = view.strip_non_visual(true);
-    let shell = Navigator::new(&stripped, Roots::Shell);
-    assert_eq!(shell.shells(), [html, body]);
-    assert_eq!(shell.roots().len(), 3, "style stripped");
-    assert_eq!(shell.parent(shell.roots()[0]), Some(body));
-    assert_eq!(shell.parent(body), Some(html));
-    assert_eq!(shell.parent(html), None);
-    for h in [html, body] {
-        assert!(shell.children(h).is_empty() && shell.is_empty(h));
-        assert_eq!(shell.siblings(h), [h]);
-        assert_eq!(
-            shell.position(h),
-            Some(SiblingPosition {
-                index: 0,
-                of_type_index: 0,
-                of_type_total: 1,
-                siblings: 1
-            })
-        );
-    }
+    let document = Navigator::new(&stripped, Roots::Document);
+    assert_eq!(document.roots(), [html]);
+    assert!(document.is_document_root(html) && !document.is_document_root(body));
+    let head = view.find_element("head").unwrap();
+    assert_eq!(
+        document.children(html),
+        [head, body],
+        "head is kept, positioned"
+    );
+    assert_eq!(document.children(body).len(), 3, "style stripped");
+    assert_eq!(document.parent(document.children(body)[0]), Some(body));
+    assert_eq!(document.parent(body), Some(html));
+    assert_eq!(document.parent(html), None);
+    assert_eq!(document.siblings(html), [html]);
+    assert!(!document.is_empty(html) && !document.is_empty(body) && document.is_empty(head));
+    assert_eq!(
+        document.position(html),
+        Some(SiblingPosition {
+            index: 1,
+            of_type_index: 1,
+            of_type_total: 1,
+            siblings: 1
+        }),
+        "the root element is the document's only element child"
+    );
+    assert_eq!(
+        document.position(body),
+        Some(SiblingPosition {
+            index: 2,
+            of_type_index: 1,
+            of_type_total: 1,
+            siblings: 2
+        }),
+        "body follows head"
+    );
 }

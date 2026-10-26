@@ -28,6 +28,22 @@ APIs and the layout cascade, and turbo-surf static rendering of `t:*` elements a
 unknown inline elements. MSRV: 1.89 for turbo-dom, -layout and -raster; 1.91 for
 turbo-dom-v8 and -browser-env.
 
+### Bug fixes (P5b — intended, Chrome 156-controlled behaviour changes)
+- turbo-dom-layout HTML drive (miaskiewicz/turbo-html2pdf#29): the whole document is
+  styled as Chrome does (`Roots::Document` replaces the match-only `Roots::Shell`):
+  `<head>` `<style>` sheets apply (all `<style>`s in document order, ahead of the caller's
+  extra CSS; `HtmlOptions::linked_css` for fetched `<link>` sheets), `<html>`/`<body>` are
+  real boxes (UA `body { margin: 8px }`, `head { display: none }`, root margins never
+  collapse), `rem` resolves against the root element's font size (`root_font_scope`), and
+  the root's (else `<body>`'s) background colour is propagated to the canvas (the galley
+  root's background). New `Cascade::for_document`, `document_root_font_px`,
+  `html_layout::propagate_canvas_background`. turbo-dom-raster no longer scrapes `<style>`
+  blocks out of the raw HTML (`style_extract::collect_style_blocks` and the text-level
+  script/noscript/template strips are gone) and fills the canvas from the propagated
+  background instead of guessing it from the first full-width box. Control:
+  `scripts/html-document-chrome-control.mjs` -> `crates/turbo-dom-layout/tests/fixtures/
+  html_document_chrome156.json`; corpus diffs: `tools/parity/expected/p5b-turbo-html2pdf-29.json`.
+
 ### Release (consolidation S5b)
 - Versions: turbo-dom, turbo-dom-parser and npm 0.6.0; intra-workspace path
   dependencies carry `version = "0.6.0"` so the crates publish.

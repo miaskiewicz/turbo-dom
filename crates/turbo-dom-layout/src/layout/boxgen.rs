@@ -1148,6 +1148,10 @@ pub(crate) fn build_box_tree_with(
     options: BuildOptions,
 ) -> (LayoutBox, Recorded, u32) {
     let mut ids = Ids::new(None, options);
+    // A styled document (the HTML drive's `Roots::Document`) has its root element at
+    // the top: it lays out as the document root (its own block formatting context, so
+    // margins never collapse through it), exactly as in the live-DOM layout.
+    ids.document_roots = html_document_roots(styled);
     let root = build_root(styled, &mut ids);
     (root, ids.recorded.unwrap_or_default(), ids.next)
 }

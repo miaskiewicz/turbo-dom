@@ -42,6 +42,17 @@ impl ComputedStyle {
         )
     }
 
+    /// Remove a property (the HTML drive moves a propagated background off its
+    /// element; see `html_layout`).
+    pub(crate) fn remove(&mut self, property: &str) -> Option<String> {
+        self.map.remove(property)
+    }
+
+    /// Set a property's computed value.
+    pub(crate) fn set(&mut self, property: &str, value: String) {
+        self.map.insert(property.to_string(), value);
+    }
+
     pub(crate) fn inline_fragment_style(&self, first: bool, last: bool) -> Self {
         let mut style = self.clone();
         for (side, retained) in [("left", first), ("right", last)] {
@@ -403,8 +414,8 @@ fn is_tag(element: Subject, name: &str) -> bool {
     element.tag.is_some_and(|t| t.eq_ignore_ascii_case(name))
 }
 
-/// The `cellpadding` (px) of the nearest ancestor `<table>` (within the matching scope,
-/// shells included) — a legacy table attribute that pads every cell (e.g. HN's
+/// The `cellpadding` (px) of the nearest ancestor `<table>` (within the matching
+/// scope) — a legacy table attribute that pads every cell (e.g. HN's
 /// `cellpadding="1"` divider bar, an empty coloured `<td>` that must reserve its padding
 /// to show as a line).
 fn ancestor_cellpadding(nav: &Navigator, h: Handle) -> Option<f32> {
@@ -446,8 +457,9 @@ fn pick_winners(cands: Vec<Cand>) -> BTreeMap<String, String> {
     best.into_iter().map(|(k, (_, v))| (k, v)).collect()
 }
 
-/// The document root font size (px). CSS `rem` and the initial `font-size` both
-/// resolve against it; turbo does not honor an `html { font-size }` override.
+/// The initial font size (px): `medium`, the keyword sizes and the root element's
+/// own `rem` resolve against it. `rem` everywhere else resolves against the root
+/// element's computed font size ([`crate::style::root_font_px`]).
 const ROOT_FONT_PX: f32 = 16.0;
 
 /// Resolve `font-size` to an absolute px value against the parent's (already
@@ -465,6 +477,15 @@ fn resolve_font_size(map: &mut BTreeMap<String, String>, parent: &ComputedStyle)
     };
     let px = font_size_px(raw, parent_px);
     map.insert("font-size".to_string(), format!("{px}px"));
+}
+
+/// An element's computed `font-size` in px (the cascade stores it absolute), or the
+/// initial 16px when it has none.
+pub(crate) fn computed_font_px(style: &ComputedStyle) -> f32 {
+    style
+        .get("font-size")
+        .and_then(parse_abs_px)
+        .unwrap_or(ROOT_FONT_PX)
 }
 
 /// Parse an already-absolute px string (`"28.8px"` / `"16"`); `None` for anything
@@ -509,7 +530,7 @@ fn font_size_px(value: &str, parent_px: f32) -> f32 {
         "cm" => n * 96.0 / 2.54,
         "mm" => n * 96.0 / 25.4,
         "em" => n * parent_px,
-        "rem" => n * ROOT_FONT_PX,
+        "rem" => n * crate::style::root_font_px(),
         "%" => n / 100.0 * parent_px,
         _ => parent_px,
     }

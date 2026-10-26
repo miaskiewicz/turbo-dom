@@ -1,0 +1,747 @@
+{
+ "generator": "scripts/html-document-chrome-control.mjs",
+ "chrome": "156.0.8078.4",
+ "playwright_core": "1.61.0",
+ "viewport": [
+  1280,
+  800
+ ],
+ "cases": [
+  {
+   "id": "ua-body-margin",
+   "html": "<!DOCTYPE html><html data-cid=\"html\"><head></head><body data-cid=\"body\"><div data-cid=\"d\" style=\"height:10px\"></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "html",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 26
+    },
+    {
+     "cid": "body",
+     "x": 8,
+     "y": 8,
+     "width": 1264,
+     "height": 10
+    },
+    {
+     "cid": "d",
+     "x": 8,
+     "y": 8,
+     "width": 1264,
+     "height": 10
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "head-style",
+   "html": "<!DOCTYPE html><html data-cid=\"html\"><head><style>div{width:96px;height:60px;margin:8px}</style></head><body data-cid=\"body\"><div data-cid=\"d\"></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "html",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 76
+    },
+    {
+     "cid": "body",
+     "x": 8,
+     "y": 8,
+     "width": 1264,
+     "height": 60
+    },
+    {
+     "cid": "d",
+     "x": 16,
+     "y": 8,
+     "width": 96,
+     "height": 60
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "head-then-body-order",
+   "html": "<!DOCTYPE html><html><head><style>div{width:10px;height:10px}</style></head><body><style>div{width:20px}</style><div data-cid=\"d\"></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "d",
+     "x": 8,
+     "y": 8,
+     "width": 20,
+     "height": 10
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "body-margin",
+   "html": "<!DOCTYPE html><html data-cid=\"html\"><head><style>body{margin:20px}</style></head><body data-cid=\"body\"><div data-cid=\"d\" style=\"height:10px\"></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "html",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 50
+    },
+    {
+     "cid": "body",
+     "x": 20,
+     "y": 20,
+     "width": 1240,
+     "height": 10
+    },
+    {
+     "cid": "d",
+     "x": 20,
+     "y": 20,
+     "width": 1240,
+     "height": 10
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "html-padding",
+   "html": "<!DOCTYPE html><html data-cid=\"html\"><head><style>html{padding:30px}</style></head><body data-cid=\"body\"><div data-cid=\"d\" style=\"height:10px\"></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "html",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 86
+    },
+    {
+     "cid": "body",
+     "x": 38,
+     "y": 38,
+     "width": 1204,
+     "height": 10
+    },
+    {
+     "cid": "d",
+     "x": 38,
+     "y": 38,
+     "width": 1204,
+     "height": 10
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "html-margin-no-collapse",
+   "html": "<!DOCTYPE html><html data-cid=\"html\"><head><style>html{margin:10px}</style></head><body data-cid=\"body\"><div data-cid=\"d\" style=\"height:10px\"></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "html",
+     "x": 10,
+     "y": 10,
+     "width": 1260,
+     "height": 26
+    },
+    {
+     "cid": "body",
+     "x": 18,
+     "y": 18,
+     "width": 1244,
+     "height": 10
+    },
+    {
+     "cid": "d",
+     "x": 18,
+     "y": 18,
+     "width": 1244,
+     "height": 10
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "body-width",
+   "html": "<!DOCTYPE html><html data-cid=\"html\"><head><style>body{width:300px}</style></head><body data-cid=\"body\"><div data-cid=\"d\" style=\"height:10px\"></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "html",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 26
+    },
+    {
+     "cid": "body",
+     "x": 8,
+     "y": 8,
+     "width": 300,
+     "height": 10
+    },
+    {
+     "cid": "d",
+     "x": 8,
+     "y": 8,
+     "width": 300,
+     "height": 10
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "body-width-percent",
+   "html": "<!DOCTYPE html><html data-cid=\"html\"><head><style>body{width:50%;margin:0 auto}</style></head><body data-cid=\"body\"><div data-cid=\"d\" style=\"height:10px\"></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "html",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 10
+    },
+    {
+     "cid": "body",
+     "x": 320,
+     "y": 0,
+     "width": 640,
+     "height": 10
+    },
+    {
+     "cid": "d",
+     "x": 320,
+     "y": 0,
+     "width": 640,
+     "height": 10
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "body-padding-border",
+   "html": "<!DOCTYPE html><html data-cid=\"html\"><head><style>body{margin:0;padding:5px;border:3px solid #000}</style></head><body data-cid=\"body\"><div data-cid=\"d\" style=\"height:10px\"></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "html",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 26
+    },
+    {
+     "cid": "body",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 26
+    },
+    {
+     "cid": "d",
+     "x": 8,
+     "y": 8,
+     "width": 1264,
+     "height": 10
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "rem-root-font-size",
+   "html": "<!DOCTYPE html><html><head><style>html{font-size:40px} div{height:2rem;width:3rem}</style></head><body><div data-cid=\"d\"></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "d",
+     "x": 8,
+     "y": 8,
+     "width": 120,
+     "height": 80
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "40px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "40px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "rem-root-percent",
+   "html": "<!DOCTYPE html><html><head><style>html{font-size:62.5%} div{height:2rem;width:10rem;margin-left:1rem}</style></head><body><div data-cid=\"d\"></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "d",
+     "x": 18,
+     "y": 8,
+     "width": 100,
+     "height": 20
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "10px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "10px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "rem-font-size",
+   "html": "<!DOCTYPE html><html><head><style>html{font-size:20px} div{font-size:2rem;height:1em;width:1rem}</style></head><body><div data-cid=\"d\"></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "d",
+     "x": 8,
+     "y": 8,
+     "width": 20,
+     "height": 40
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "20px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "20px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "em-body-font-size",
+   "html": "<!DOCTYPE html><html><head><style>body{font-size:40px} div{height:2em}</style></head><body><div data-cid=\"d\"></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "d",
+     "x": 8,
+     "y": 8,
+     "width": 1264,
+     "height": 80
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "40px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "body-flex",
+   "html": "<!DOCTYPE html><html><head><style>body{display:flex} div{width:10px;height:10px}</style></head><body><div data-cid=\"d\"></div><div data-cid=\"e\"></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "d",
+     "x": 8,
+     "y": 8,
+     "width": 10,
+     "height": 10
+    },
+    {
+     "cid": "e",
+     "x": 18,
+     "y": 8,
+     "width": 10,
+     "height": 10
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "first-child-margin-collapses-with-body",
+   "html": "<!DOCTYPE html><html data-cid=\"html\"><head><style>h1{margin:30px 0}</style></head><body data-cid=\"body\"><h1 data-cid=\"h\">x</h1></body></html>",
+   "measure": "xyw",
+   "boxes": [
+    {
+     "cid": "html",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 97
+    },
+    {
+     "cid": "body",
+     "x": 8,
+     "y": 30,
+     "width": 1264,
+     "height": 37
+    },
+    {
+     "cid": "h",
+     "x": 8,
+     "y": 30,
+     "width": 1264,
+     "height": 37
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "body-structural-selectors",
+   "html": "<!DOCTYPE html><html><head><style>html:first-child div{width:11px} body:first-child div{height:99px} head + body div{height:7px}</style></head><body><div data-cid=\"d\"></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "d",
+     "x": 8,
+     "y": 8,
+     "width": 11,
+     "height": 7
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "style-and-script-in-body-not-rendered",
+   "html": "<!DOCTYPE html><html><head></head><body><style>div{width:40px;height:40px}</style><script>var x = 1;</script><div data-cid=\"d\"></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "d",
+     "x": 8,
+     "y": 8,
+     "width": 40,
+     "height": 40
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "canvas-from-body",
+   "html": "<!DOCTYPE html><html data-cid=\"html\"><head><style>body{background:#123456}</style></head><body data-cid=\"body\"><div data-cid=\"d\" style=\"height:10px\"></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "html",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 26
+    },
+    {
+     "cid": "body",
+     "x": 8,
+     "y": 8,
+     "width": 1264,
+     "height": 10
+    },
+    {
+     "cid": "d",
+     "x": 8,
+     "y": 8,
+     "width": 1264,
+     "height": 10
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgb(18, 52, 86)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#123456"
+  },
+  {
+   "id": "canvas-from-html",
+   "html": "<!DOCTYPE html><html data-cid=\"html\"><head><style>html{background-color:#abcdef} body{background-color:#123456}</style></head><body data-cid=\"body\"><div data-cid=\"d\" style=\"height:10px\"></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "html",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 26
+    },
+    {
+     "cid": "body",
+     "x": 8,
+     "y": 8,
+     "width": 1264,
+     "height": 10
+    },
+    {
+     "cid": "d",
+     "x": 8,
+     "y": 8,
+     "width": 1264,
+     "height": 10
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgb(171, 205, 239)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgb(18, 52, 86)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#abcdef"
+  },
+  {
+   "id": "canvas-default-white",
+   "html": "<!DOCTYPE html><html><head><style>div{background:#ff0000}</style></head><body><div data-cid=\"d\" style=\"height:10px\"></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "d",
+     "x": 8,
+     "y": 8,
+     "width": 1264,
+     "height": 10
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "canvas-translucent-body",
+   "html": "<!DOCTYPE html><html><head><style>body{background:rgba(0,0,255,0.5)}</style></head><body><div data-cid=\"d\" style=\"height:10px\"></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "d",
+     "x": 8,
+     "y": 8,
+     "width": 1264,
+     "height": 10
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 255, 0.5)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#7f7fff"
+  },
+  {
+   "id": "canvas-shorthand-keeps-image",
+   "html": "<!DOCTYPE html><html><head><style>body{background:#00ff00 linear-gradient(#ff0000,#ff0000) no-repeat 0 0/10px 10px}</style></head><body><div data-cid=\"d\" style=\"height:10px\"></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "d",
+     "x": 8,
+     "y": 8,
+     "width": 1264,
+     "height": 10
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgb(0, 255, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#00ff00"
+  },
+  {
+   "id": "canvas-wrapper-not-propagated",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0} div{background:#000000;height:100px}</style></head><body><div data-cid=\"d\"></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "d",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 100
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  }
+ ]
+}

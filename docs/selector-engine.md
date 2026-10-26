@@ -64,7 +64,9 @@ of `style/cascade.rs`). Since S3b it uses this engine:
   live-Tree `LiveNavigator` keeps the raw-node semantics exactly, so `matches` /
   `querySelector*` did not change (the live-Tree dual differential against the frozen S3a
   engine: zero divergences). turbo-dom-layout's `style::Navigator` (a `TreeView` scope)
-  implements it: kept nodes only, the `Roots::Detached` cutoff, `Roots::Shell` positions,
+  implements it: kept nodes only, the `Roots::Detached` cutoff, the `Roots::Document`
+  scope (real `<html>`/`<head>`/`<body>`; the S3b-era `Roots::Shell` match-only shells
+  were replaced in P5b, turbo-html2pdf#29),
   `:root` = an element named `html`, marker type keys; `PositionCache` builds each sibling
   list's positions once.
 - Pseudo-classes the DOM engine does not evaluate are valid and never match in a
@@ -98,7 +100,8 @@ No rendered output of the parity corpora changed (`tools/parity/expected/s3b-*.j
 file per class, each listing no change): html2pdf, html2pdf-svg and html2pdf-extra are
 byte-identical to `b-main`, and turbo-dom-raster's static screenshots of the surf static
 inputs are byte-identical to S2. The scoping contexts with no Chrome equivalent —
-`Roots::Detached` (template body, notes, regions), the `Roots::Shell` html/body shells,
+`Roots::Detached` (template body, notes, regions), the `Roots::Shell` html/body shells
+(since replaced by the browser-like `Roots::Document`, P5b turbo-html2pdf#29),
 markers, and `:root` there — keep the old engine's answers by construction (the navigator
 reproduces the old match contexts), and the dual gate saw no divergence there.
 

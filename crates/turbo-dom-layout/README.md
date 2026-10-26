@@ -26,8 +26,14 @@ fn lay_out(html: &str) -> Result<Fragment, RenderError> {
   marker classifier (`MarkerKind`: opaque inline/block markers such as html2pdf's `t:`
   directives) and optional stripping of non-visual subtrees.
 - `Roots::Detached(&[Handle])` styles nodes as their own flow (no ancestors, default
-  parent); `Roots::Shell` styles `<body>` content under match-only `<html>`/`<body>`
-  shells (the HTML drive).
+  parent); `Roots::Document` styles the whole document from its root element, as a
+  browser does (the HTML drive): `<html>`/`<head>`/`<body>` are real elements, `rem`
+  resolves against the root font size (`root_font_scope`), and `Cascade::for_document`
+  adds the document UA rules (`head { display: none }`, `body { margin: 8px }`) and the
+  document's own `<style>` sheets. The HTML drive also propagates the root/body
+  background colour to the canvas (the galley root's background;
+  `html_layout::propagate_canvas_background`) — Chrome-controlled by
+  `tests/html_document_chrome.rs` (`scripts/html-document-chrome-control.mjs`).
 - `StyleOptions` / `LayoutOptions` / `HtmlOptions`: `accept_cmyk` (print colour),
   `atomic_internal_links` (`<a href="#x">` as its own box), `first_node_id`.
 - `layout_recorded` returns the galley plus `NodeSources` (box id → source element /
