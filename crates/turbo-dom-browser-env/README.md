@@ -143,7 +143,8 @@ events) are the host's. Control: `src/html_image_chrome156.json` (`factory`, `ow
 ### Computed style defaults
 
 `getComputedStyle` (the binding's cascade over document sheets, inline style and
-shadow-scoped rules) reports Chrome 156's computed values where no author rule
+shadow-scoped rules; document rules never select elements inside shadow trees,
+turbo-dom#68) reports Chrome 156's computed values where no author rule
 applies. `display` is the element's html.css display: block / inline / none /
 table-* / list-item / inline-block / contents / ruby, plus `[hidden]`,
 `dialog:not([open])`, closed popovers, `input[type=hidden]` and `audio` without
@@ -151,8 +152,13 @@ controls → `none`, and MathML `math` / `block math`. It is then blockified for
 floats, `position: absolute` / `fixed` and flex / grid items. `position` is
 `static` (`dialog` → `absolute`, `[popover]` → `fixed`), and `visibility` is
 inherited, `visible` at the root. `inherit` / `initial` / `unset` / `revert`
-resolve. Disconnected elements and children of `<video>` / `<audio>` report `""`, as
-in Chrome. Control: `src/computed_defaults_chrome156.json`, which also records that
+resolve. Form controls take html.css's `font: -webkit-small-control` (turbo-dom#61):
+`<input>` (every type), `<select>` and `<button>` compute `13.3333px Arial`,
+`<textarea>` and the date / time inputs `13.3333px monospace`, `<optgroup>` is
+`bolder` and `<option>` `normal` weight; author rules win (case `form-control-fonts`).
+Disconnected elements report `""` for every property, author and inline values
+included (turbo-dom#67; the declaration fills in once the element is connected), and
+children of `<video>` / `<audio>` report `""` for the defaults, as in Chrome. Control: `src/computed_defaults_chrome156.json`, which also records that
 a document has no `<title>` it did not parse (`document.title = …` creates one).
 
 The top layer is modelled as far as the binding has one (turbo-dom#30): a dialog
@@ -165,13 +171,58 @@ computes `absolute`. `getComputedStyle(el, '::backdrop')` computes the backdrop:
 inside it (`rgba(0, 0, 0, 0.1)` behind a modal dialog), author `::backdrop` rules,
 inheritance from the element. Control: case `dialog-top-layer` of the same file.
 
+Fullscreen (turbo-dom#58): `requestFullscreen()` with the embedder's user activation
+(`set_activation_host`; each request consumes it) puts the element in the document's
+fullscreen stack, which the binding reports to the tree (`Tree::set_fullscreen_stack`):
+the selector engine matches `:fullscreen` / `:-webkit-full-screen` (every stacked element)
+and `:-webkit-full-screen-ancestor` (the top's shadow-including ancestors) everywhere,
+stylesheets and the shadow-scoped native cascade included; `:modal` also matches the
+fullscreen element. A fullscreen element other than the root computes Chrome's
+`:not(:root):fullscreen` values — `position: fixed`, `inset: 0`, `margin: 0`,
+`box-sizing: border-box`, `min-*: 0`, `max-*: none`, `width` / `height: 100%` (left
+unresolved), `transform: none`, all `!important`, and `object-fit: contain` — and its
+`::backdrop` is fixed at inset 0 with `rgb(0, 0, 0)`. `fullscreenchange` /
+`fullscreenerror` fire as before. Control: case `fullscreen` (async; the collector's
+`__cdpGesture()` is a trusted CDP click). Known gaps, filed: composed events stop at the
+shadow root (turbo-dom#66).
+
 `getComputedStyle(el, pseudoElt)` parses `pseudoElt` like Chrome (turbo-dom#47):
 `::before` / `::after` (and `:before` / `:after` / bare `before` / `after`) compute
 the pseudo-element (own rules, inheritance from the element, `display: inline`
 blockified in flex / grid containers, `content: none` unless set), an invalid
 pseudo-element returns an empty declaration, and a string without a leading colon
-reads the element. Other UA-styled pseudo-elements (`::marker`, `::placeholder`,
-`::first-line`, …) still read the element. Control: case `pseudo-elements`.
+reads the element. Control: case `pseudo-elements`.
+
+The UA-styled pseudo-elements compute too (cases `pseudo-ua-forms` / `pseudo-ua`):
+each takes Chrome's html.css values, the author rules that select it — only the
+properties it accepts — and inherits from the element:
+- `::marker`: `inline-block` (`inline` when `list-style-position` is `inside`, as for
+  `summary`), `white-space: pre` (inherited when inside), `tabular-nums`, `isolate`;
+  only font / color / content / text properties apply.
+- `::placeholder` (text inputs and textarea with a `placeholder`): `block`,
+  `rgb(117, 117, 117)`, `pointer-events: none !important`; inputs also `white-space: pre`,
+  `overflow: hidden`.
+- `::file-selector-button` (file inputs): the button box (`rgb(239, 239, 239)`,
+  `1px 6px` padding, `2px outset` border, `margin-inline-end: 4px`, …).
+- `::details-content` (details): `block`, `content-visibility: hidden` unless open.
+- `::picker(select)`: `none` / `fixed` / `overflow: auto`; `::picker-icon` on select is
+  `block`.
+- `::first-line` / `::first-letter`: font / color / text / opacity / visibility
+  properties (plus float, margins, padding and borders on `::first-letter`).
+- highlights (`::selection`, `::highlight()`, `::spelling-error`, `::grammar-error`,
+  `::target-text`, `::search-text`): `inline` and `visible`, color / background /
+  decoration properties only. A highlight with a rule of its type on the element or an
+  ancestor inherits from the parent's highlight; otherwise it takes the element's color.
+- `::checkmark` / `::picker-icon` (`content: none`), `::scroll-marker-group` (`block`),
+  `::column`, `::-webkit-scrollbar*`, `::scroll-button()`, and the view-transition tree
+  (`block`, `absolute`, its insets, inheriting along `::view-transition` > `-group()` >
+  `-image-pair()` > `-old()` / `-new()`).
+
+Element-backed pseudo-elements on other elements, and `::checkmark` and the like, are
+plain `inline` pseudo-elements; author rules for the element-backed ones do not reach
+them. `::scroll-marker` and invalid arguments (`::highlight(*)`, `::picker(foo)`, …)
+read an empty declaration. `::cue` and unknown `-webkit-` / `-internal-` names read the
+element.
 
 ### Custom element state (`:defined`)
 
@@ -197,9 +248,10 @@ children's `disconnectedCallback`s. Insertion upgrades connected elements only;
 `customElements.upgrade(root)` skips candidates another registry (or none, like
 template contents in their inert document) governs; an element is constructed at
 most once (turbo-dom#42). Independently installed documents deliver their reactions
-before the call returns too (turbo-dom#54). Controls: the npm runtime's
-`test/fixtures/dom_adoption_reactions_chrome156.json` (read in place by
-`src/dom_reactions_tests.rs`) and `src/dom_reactions_names_chrome156.json`.
+before the call returns too (turbo-dom#54). Controls:
+`src/dom_adoption_reactions_chrome156.json` (shared with the npm runtime's
+`test/dom-adoption-reactions-chrome.test.mjs`, which reads it from this crate) and
+`src/dom_reactions_names_chrome156.json`, both exported through `test_support`.
 
 ### Feature `native-sdk-frame-read` (off by default)
 

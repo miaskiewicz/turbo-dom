@@ -112,6 +112,165 @@
       return [before, style.color, style === getComputedStyle(host, '::before')];
     })();
     out.pseudo = pseudo;
+  } else if (document.getElementById('fsA')) {
+    // turbo-dom#58: requestFullscreen() / exitFullscreen(). With user activation (a trusted
+    // click: `__cdpGesture('click')` asks the host for one and calls `__cdpGestureDone()` after it),
+    // the element enters the document's fullscreen stack and the top layer:
+    // document.fullscreenElement, :fullscreen (every element in the stack), :modal and
+    // :-webkit-full-screen (the fullscreen element only; the stack for :-webkit-full-screen),
+    // :-webkit-full-screen-ancestor; Chrome's `:not(:root):fullscreen` UA values (position
+    // fixed, inset 0, margin 0, box-sizing border-box, min / max sizes, transform none — all
+    // !important — and object-fit contain) and a black fixed ::backdrop; fullscreenchange at
+    // the element (bubbling, composed) after the promise resolves; fullscreenerror and a
+    // TypeError without activation, for a dialog or a disconnected element. The root element
+    // gets no UA values and its ::backdrop stays outside the top layer. This case is async.
+    return (async () => {
+      const gesture = () => new Promise((done) => { globalThis.__cdpGestureDone = done; __cdpGesture('click'); });
+      const tick = () => new Promise((done) => setTimeout(done, 50));
+      const settle = async (promise) => { try { await promise; return 'ok'; } catch (e) { return [e.name, e.message]; } };
+      const box = ['display', 'position', 'visibility', 'color', 'opacity', 'transform'];
+      const full = box.concat(['top', 'right', 'bottom', 'left', 'margin-top', 'margin-right', 'margin-bottom', 'margin-left', 'box-sizing', 'min-width', 'max-width', 'min-height', 'max-height', 'object-fit']);
+      const backdropProps = ['display', 'position', 'visibility', 'top', 'right', 'bottom', 'left', 'background-color', 'color', 'opacity', 'transform'];
+      const read = (el, list, pseudo) => { const s = getComputedStyle(el, pseudo); return list.map((p) => s.getPropertyValue(p)).join('|'); };
+      const backdrop = (el) => read(el, backdropProps, '::backdrop');
+      const name = (node) => node === null ? null : node === document ? '#document' : node.id || node.nodeName;
+      const ids = (selector) => { try { return Array.from(document.querySelectorAll(selector), name); } catch (e) { return e.name; } };
+      const state = () => [name(document.fullscreenElement), document.fullscreen, name(document.webkitFullscreenElement), ids(':fullscreen'), ids(':-webkit-full-screen'), ids(':-webkit-full-screen-ancestor'), ids(':modal')];
+      const $ = (id) => document.getElementById(id);
+      const a = $('fsA'), b = $('fsB'), log = [];
+      for (const target of [document, a, b]) for (const type of ['fullscreenchange', 'fullscreenerror']) target.addEventListener(type, (e) => log.push([type, name(e.target), name(e.currentTarget), name(document.fullscreenElement), e.bubbles, e.composed]));
+      const fs = {};
+      fs.before = [state(), read(a, box), backdrop(a)];
+      fs.noGesture = [await settle(a.requestFullscreen()), (await tick(), log.splice(0))];
+      await gesture();
+      const request = a.requestFullscreen();
+      fs.sync = state();
+      fs.request = await settle(request);
+      fs.resolved = [state(), log.slice()];
+      await tick();
+      fs.full = [state(), log.splice(0), read(a, full), backdrop(a), read($('fsChild'), box), read(b, box), a.matches(':fullscreen'), a.matches(':modal')];
+      // A second request needs a second activation; the first was consumed.
+      fs.consumed = [await settle(b.requestFullscreen()), (await tick(), log.splice(0)), state()];
+      await gesture();
+      fs.nested = [await settle(b.requestFullscreen()), (await tick(), log.splice(0)), state(), read(a, box), read(b, full), backdrop(a), backdrop(b), a.matches(':modal')];
+      fs.exit = [await settle(document.exitFullscreen()), (await tick(), log.splice(0)), state(), read(b, box), backdrop(b)];
+      fs.exitAll = [await settle(document.exitFullscreen()), (await tick(), log.splice(0)), state(), read(a, box), backdrop(a)];
+      fs.exitNone = [await settle(document.exitFullscreen()), (await tick(), log.splice(0))];
+      await gesture();
+      const html = document.documentElement;
+      fs.root = [await settle(html.requestFullscreen()), (await tick(), log.splice(0)), state(), read(html, box), backdrop(html)];
+      await settle(document.exitFullscreen()); await tick(); log.splice(0);
+      // Author rules lose to the !important UA values but keep everything else.
+      await gesture();
+      const c = $('fsAuthored');
+      fs.authored = [await settle(c.requestFullscreen()), (await tick(), log.splice(0)), state(), read(c, full.concat(['z-index', 'background-color'])), backdrop(c)];
+      c.remove();
+      fs.removed = [(await tick(), log.splice(0)), state(), read(c, box)];
+      document.body.append(c);
+      fs.reinserted = [state(), read(c, ['display', 'position', 'visibility'])];
+      await gesture();
+      fs.dialog = [await settle($('fsDialog').requestFullscreen()), (await tick(), log.splice(0)), state()];
+      await gesture();
+      fs.detached = [await settle(document.createElement('div').requestFullscreen()), (await tick(), log.splice(0)), state()];
+      await gesture();
+      const svg = $('fsSvg');
+      fs.svg = [await settle(svg.requestFullscreen()), (await tick(), log.splice(0)), state(), read(svg, full)];
+      await settle(document.exitFullscreen()); await tick(); log.splice(0);
+      // A modal dialog over the fullscreen element: both are :modal.
+      await gesture();
+      fs.withModal = [await settle(a.requestFullscreen()), (await tick(), log.splice(0))];
+      const dialog = $('fsDialog');
+      dialog.showModal();
+      fs.withModal.push(state(), read(a, box), read(dialog, box), backdrop(a), backdrop(dialog));
+      dialog.close();
+      await settle(document.exitFullscreen()); await tick(); log.splice(0);
+      // In a shadow tree: the document reports the host; the shadow root the element.
+      const host = $('fsHost'), root = host.attachShadow({ mode: 'open' });
+      root.innerHTML = '<style>#inner:fullscreen{color:rgb(0, 0, 255)}</style><div id="inner">i</div>';
+      const inner = root.getElementById('inner');
+      await gesture();
+      fs.shadow = [await settle(inner.requestFullscreen()), (await tick(), log.splice(0)), state(), name(root.fullscreenElement), read(inner, box.concat(['top'])), host.matches(':fullscreen'), inner.matches(':fullscreen'), inner.matches(':modal'), host.matches(':-webkit-full-screen-ancestor')];
+      await settle(document.exitFullscreen()); await tick(); log.splice(0);
+      fs.after = [state(), read(a, box), backdrop(a)];
+      out.fullscreen = fs;
+      return out;
+    })();
+  } else if (document.getElementById('controlFonts')) {
+    // turbo-dom#61: form controls take html.css `font: -webkit-small-control` (13.3333px Arial;
+    // monospace for textarea and the date / time inputs), optgroup is bolder; author rules
+    // (including `font: inherit`) win; other elements inherit.
+    const props = ['font-size', 'font-family', 'font-weight', 'font-style', 'line-height', 'font'];
+    out.fonts = Object.fromEntries(Array.from(document.querySelectorAll('body [id]'), (el) => [el.id, props.map((p) => getComputedStyle(el).getPropertyValue(p)).join('|')]));
+    out.fonts.detached = props.map((p) => getComputedStyle(document.createElement('input')).getPropertyValue(p)).join('|');
+  } else if (document.getElementById('pseudoUa')) {
+    // turbo-dom#47: the UA-styled pseudo-elements. Each computes Chrome's html.css values for
+    // it, the author rules that select it (only the properties it accepts; ::placeholder,
+    // ::file-selector-button, ::details-content and ::picker(select) only on the elements that
+    // have them), and inheritance from the element (highlight pseudo-elements: from the
+    // parent's highlight once a rule of that highlight applies). Some forms read as blank declarations
+    // (::scroll-marker, invalid arguments); unknown -webkit- / -internal- ones and ::cue read
+    // the element. Part `forms` reads every form, part `elements` the UA-styled ones.
+    const props = ['display', 'position', 'visibility', 'color', 'content', 'font-size', 'opacity', 'transform', 'zoom'];
+    // A highlight's color with no rule of its type on the element or an ancestor is not
+    // stable in Chrome 156: getComputedStyle reuses the first such read's style for later
+    // elements (read a child before its parent and both report the child's color). Those
+    // colors read as '~'; every other value of the highlight is read.
+    const highlights = /^::(selection|highlight\(|spelling-error|grammar-error|target-text|search-text)/;
+    const ruled = (el, pseudo) => { for (let node = el; node; node = node.parentElement) if (node.classList.contains('au') || pseudo === '::selection' && (node.id === 'sel' || node.id === 'selParent')) return true; return false; };
+    const read = (el, pseudo, list) => { const s = getComputedStyle(el, pseudo), unstable = highlights.test(pseudo) && !ruled(el, pseudo); return (list || props).map((p) => p === 'color' && unstable ? '~' : s.getPropertyValue(p)).join('|'); };
+    const pseudos = ['::marker', '::placeholder', '::first-line', '::first-letter', ':first-line', ':first-letter', '::selection', '::file-selector-button', '::details-content', '::checkmark', '::picker-icon', '::picker(select)', '::picker(foo)', '::picker()', '::scroll-marker', '::scroll-marker-group', '::column', '::view-transition', '::view-transition-group(x)', '::view-transition-group(*)', '::view-transition-image-pair(x)', '::view-transition-old(x)', '::view-transition-new(x)', '::view-transition-old(*)', '::view-transition-group(x y)', '::highlight(x)', '::highlight(*)', '::highlight()', '::spelling-error', '::grammar-error', '::target-text', '::search-text', '::search-text:current', '::cue', '::cue(b)', '::-webkit-scrollbar', '::-webkit-scrollbar-thumb', '::-webkit-scrollbar-track', '::-webkit-scrollbar-button', '::-webkit-scrollbar-corner', '::-webkit-scrollbar-track-piece', '::-webkit-resizer', '::-webkit-input-placeholder', '::-webkit-file-upload-button', '::-webkit-details-marker', '::-webkit-foo', '::scroll-button(up)', '::scroll-button(*)', '::scroll-button(foo)', '::MARKER', '::Placeholder', '::marker()', '::selection:window-inactive', '::column::scroll-marker', '::interest-hint', '::-internal-loading-auto-fill-button', '::-internal-foo'];
+    const ua = {};
+    const $ = (id) => id === 'root' ? document.documentElement : document.getElementById(id);
+    const part = document.getElementById('pseudoUa').getAttribute('data-part');
+    if (part === 'forms') {
+      // Every form on elements of each kind: valid (computed), blank, or the element's style.
+      for (const id of ['div', 'li', 'input']) ua[id] = Object.fromEntries(pseudos.map((p) => [p, read($(id), p)]));
+      out.ua = ua;
+      return out;
+    }
+    // The pseudo-elements with their own UA rules, on the elements those rules (and the
+    // author rules of class `au`, which set every property) select, plus generic ones.
+    const core = ['::marker', '::placeholder', '::first-line', '::first-letter', '::selection', '::file-selector-button', '::details-content', '::checkmark', '::picker-icon', '::picker(select)', '::scroll-marker-group', '::column', '::view-transition', '::view-transition-group(x)', '::view-transition-old(x)', '::highlight(x)', '::spelling-error', '::target-text', '::-webkit-scrollbar', '::-webkit-scrollbar-thumb', '::scroll-button(up)', '::scroll-button(*)'];
+    const generic = ['::first-line', '::selection', '::checkmark', '::view-transition', '::scroll-marker-group'];
+    const matrix = [
+      [['auDiv', 'flexHost', 'hiddenHost', 'svg', 'root'], core],
+      [['li', 'styledLi', 'auLi', 'insideLi', 'oli', 'summary', 'span'], ['::marker'].concat(generic)],
+      [['input', 'styledInput', 'auInput', 'ta'], ['::placeholder', '::file-selector-button', '::marker', '::first-letter'].concat(generic)],
+      [['file', 'auFile'], ['::file-selector-button', '::placeholder'].concat(generic)],
+      [['det', 'detOpen', 'auDetails'], ['::details-content', '::marker'].concat(generic)],
+      [['select', 'auSelect', 'button'], ['::picker(select)', '::picker-icon', '::checkmark', '::marker'].concat(generic)],
+      [['p1', 'div'], ['::first-line', '::first-letter', '::marker'].concat(generic)],
+      [['sel', 'selParent', 'selChild', 'selGrand'], ['::selection', '::highlight(x)', '::spelling-error', '::target-text']],
+    ];
+    for (const [list, names] of matrix) for (const id of list) ua[id] = Object.fromEntries(names.map((p) => [p, read($(id), p)]));
+    // Properties the UA rules of particular pseudo-elements set, read where those rules apply.
+    const extras = [
+      ['::marker', ['li', 'styledLi', 'oli', 'div', 'summary', 'auLi', 'insideLi'], ['white-space', 'font-variant-numeric', 'unicode-bidi', 'text-transform']],
+      ['::placeholder', ['input', 'styledInput', 'ta', 'auInput'], ['pointer-events', 'unicode-bidi']],
+      ['::placeholder', ['input', 'styledInput', 'auInput'], ['white-space', 'overflow']],
+      ['::file-selector-button', ['file', 'auFile'], ['background-color', 'white-space', 'padding-top', 'padding-left', 'margin-right', 'margin-left', 'border-top-width', 'border-top-style', 'text-align', 'box-sizing', 'user-select']],
+      ['::details-content', ['det', 'detOpen', 'auDetails'], ['content-visibility']],
+      ['::view-transition', ['div', 'auDiv'], ['top', 'right', 'bottom', 'left']],
+      ['::view-transition-group(x)', ['div', 'auDiv'], ['top', 'right', 'bottom', 'left']],
+      ['::view-transition-image-pair(x)', ['div', 'auDiv'], ['top', 'right', 'bottom', 'left']],
+      ['::view-transition-old(x)', ['div', 'auDiv'], ['top', 'right', 'bottom', 'left']],
+      ['::view-transition-new(x)', ['div', 'auDiv'], ['top', 'right', 'bottom', 'left']],
+      ['::spelling-error', ['div', 'auDiv'], ['text-decoration-line']],
+      ['::grammar-error', ['div', 'auDiv'], ['text-decoration-line']],
+      ['::picker(select)', ['select', 'auSelect'], ['overflow', 'white-space', 'unicode-bidi']],
+      ['::selection', ['sel', 'selChild', 'selGrand', 'auDiv', 'div'], ['background-color']],
+      ['::backdrop', ['div'], ['background-color']],
+    ];
+    const extra = {};
+    for (const [pseudo, list, names] of extras) for (const id of list) extra[pseudo + ' ' + id + ' ' + names.join(',')] = read(document.getElementById(id), pseudo, names);
+    ua.extra = extra;
+    ua.detached = Object.fromEntries(['::marker', '::placeholder', '::selection', '::scroll-marker', '::-webkit-foo'].map((p) => [p, read(document.createElement('li'), p)]));
+    ua.live = (() => {
+      const li = document.getElementById('li'), style = getComputedStyle(li, '::marker'), before = style.color;
+      document.getElementById('uaSheet').textContent += '#li::marker{color:rgb(0, 255, 0)}';
+      return [before, style.color, style === getComputedStyle(li, '::marker')];
+    })();
+    out.ua = ua;
   } else {
     // the title setter creates a <title> on demand
     document.title = 'set';

@@ -1,9 +1,9 @@
 {
   "browser": "Chrome/156.0.8078.4",
   "v8": "15.6.75",
-  "casesSha256": "75af163d9a0b57b12c9cba3b0521fcd72735c744e8504a986d48b6330276cbe3",
-  "probeSha256": "2ca83f0754544e1ba95404b02afcd69a4f1d2bfd6440622e1c8955377c778991",
-  "collectorSha256": "7174415de76a891d657bbc3e66952c7b91356030e8fcd9d0ac4f52603d0c3952",
+  "casesSha256": "2512495d716201215553c2cefce2e1428a85dd29a7c6313de48e22493c54f365",
+  "probeSha256": "f4c6b196c296d9506b783220e1ba6600c3a346f1e554be391932560981aff967",
+  "collectorSha256": "7bd6ffb7440d38e05cd2b8fbe0e84e91cf462043577ceada3e276728ad216172",
   "flags": [
     "--headless=new",
     "--remote-debugging-pipe",
@@ -2244,6 +2244,1257 @@
             "rgb(255, 0, 0)",
             "rgb(0, 255, 0)",
             false
+          ]
+        }
+      }
+    },
+    {
+      "id": "pseudo-ua-forms",
+      "result": {
+        "head": {
+          "children": [
+            "style"
+          ],
+          "title": "",
+          "titles": 0
+        },
+        "ua": {
+          "div": {
+            "::marker": "inline-block|static|visible|rgb(9, 9, 9)|normal|12px|1|none|1",
+            "::placeholder": "inline|static|visible|rgb(9, 9, 9)|normal|12px|1|none|1",
+            "::first-line": "inline|static|visible|rgb(9, 9, 9)|normal|12px|1|none|1",
+            "::first-letter": "inline|static|visible|rgb(9, 9, 9)|normal|12px|1|none|1",
+            ":first-line": "inline|static|visible|rgb(9, 9, 9)|normal|12px|1|none|1",
+            ":first-letter": "inline|static|visible|rgb(9, 9, 9)|normal|12px|1|none|1",
+            "::selection": "inline|static|visible|~|normal|12px|1|none|1",
+            "::file-selector-button": "inline|static|visible|rgb(9, 9, 9)|normal|12px|1|none|1",
+            "::details-content": "inline|static|visible|rgb(9, 9, 9)|normal|12px|1|none|1",
+            "::checkmark": "inline|static|visible|rgb(9, 9, 9)|none|12px|1|none|1",
+            "::picker-icon": "inline|static|visible|rgb(9, 9, 9)|none|12px|1|none|1",
+            "::picker(select)": "inline|static|visible|rgb(9, 9, 9)|normal|12px|1|none|1",
+            "::picker(foo)": "||||||||",
+            "::picker()": "||||||||",
+            "::scroll-marker": "||||||||",
+            "::scroll-marker-group": "block|static|visible|rgb(9, 9, 9)|normal|12px|1|none|1",
+            "::column": "inline|static|visible|rgb(9, 9, 9)|normal|12px|1|none|1",
+            "::view-transition": "block|absolute|visible|rgb(9, 9, 9)|normal|12px|1|none|1",
+            "::view-transition-group(x)": "block|absolute|visible|rgb(9, 9, 9)|normal|12px|1|none|1",
+            "::view-transition-group(*)": "||||||||",
+            "::view-transition-image-pair(x)": "block|absolute|visible|rgb(9, 9, 9)|normal|12px|1|none|1",
+            "::view-transition-old(x)": "block|absolute|visible|rgb(9, 9, 9)|normal|12px|1|none|1",
+            "::view-transition-new(x)": "block|absolute|visible|rgb(9, 9, 9)|normal|12px|1|none|1",
+            "::view-transition-old(*)": "||||||||",
+            "::view-transition-group(x y)": "||||||||",
+            "::highlight(x)": "inline|static|visible|~|normal|12px|1|none|1",
+            "::highlight(*)": "|||~|||||",
+            "::highlight()": "|||~|||||",
+            "::spelling-error": "inline|static|visible|~|normal|12px|1|none|1",
+            "::grammar-error": "inline|static|visible|~|normal|12px|1|none|1",
+            "::target-text": "inline|static|visible|~|normal|12px|1|none|1",
+            "::search-text": "inline|static|visible|~|normal|12px|1|none|1",
+            "::search-text:current": "|||~|||||",
+            "::cue": "block|static|visible|rgb(9, 9, 9)|normal|12px|1|none|1",
+            "::cue(b)": "||||||||",
+            "::-webkit-scrollbar": "inline|static|visible|rgb(9, 9, 9)|normal|12px|1|none|1",
+            "::-webkit-scrollbar-thumb": "inline|static|visible|rgb(9, 9, 9)|normal|12px|1|none|1",
+            "::-webkit-scrollbar-track": "inline|static|visible|rgb(9, 9, 9)|normal|12px|1|none|1",
+            "::-webkit-scrollbar-button": "inline|static|visible|rgb(9, 9, 9)|normal|12px|1|none|1",
+            "::-webkit-scrollbar-corner": "inline|static|visible|rgb(9, 9, 9)|normal|12px|1|none|1",
+            "::-webkit-scrollbar-track-piece": "inline|static|visible|rgb(9, 9, 9)|normal|12px|1|none|1",
+            "::-webkit-resizer": "inline|static|visible|rgb(9, 9, 9)|normal|12px|1|none|1",
+            "::-webkit-input-placeholder": "block|static|visible|rgb(9, 9, 9)|normal|12px|1|none|1",
+            "::-webkit-file-upload-button": "block|static|visible|rgb(9, 9, 9)|normal|12px|1|none|1",
+            "::-webkit-details-marker": "block|static|visible|rgb(9, 9, 9)|normal|12px|1|none|1",
+            "::-webkit-foo": "block|static|visible|rgb(9, 9, 9)|normal|12px|1|none|1",
+            "::scroll-button(up)": "inline|static|visible|rgb(9, 9, 9)|normal|12px|1|none|1",
+            "::scroll-button(*)": "inline|static|visible|rgb(9, 9, 9)|normal|12px|1|none|1",
+            "::scroll-button(foo)": "||||||||",
+            "::MARKER": "inline-block|static|visible|rgb(9, 9, 9)|normal|12px|1|none|1",
+            "::Placeholder": "inline|static|visible|rgb(9, 9, 9)|normal|12px|1|none|1",
+            "::marker()": "||||||||",
+            "::selection:window-inactive": "|||~|||||",
+            "::column::scroll-marker": "||||||||",
+            "::interest-hint": "||||||||",
+            "::-internal-loading-auto-fill-button": "block|static|visible|rgb(9, 9, 9)|normal|12px|1|none|1",
+            "::-internal-foo": "block|static|visible|rgb(9, 9, 9)|normal|12px|1|none|1"
+          },
+          "li": {
+            "::marker": "inline-block|static|visible|rgb(7, 7, 7)|normal|18px|1|none|1",
+            "::placeholder": "inline|static|visible|rgb(7, 7, 7)|normal|18px|1|none|1",
+            "::first-line": "inline|static|visible|rgb(7, 7, 7)|normal|18px|1|none|1",
+            "::first-letter": "inline|static|visible|rgb(7, 7, 7)|normal|18px|1|none|1",
+            ":first-line": "inline|static|visible|rgb(7, 7, 7)|normal|18px|1|none|1",
+            ":first-letter": "inline|static|visible|rgb(7, 7, 7)|normal|18px|1|none|1",
+            "::selection": "inline|static|visible|~|normal|18px|1|none|1",
+            "::file-selector-button": "inline|static|visible|rgb(7, 7, 7)|normal|18px|1|none|1",
+            "::details-content": "inline|static|visible|rgb(7, 7, 7)|normal|18px|1|none|1",
+            "::checkmark": "inline|static|visible|rgb(7, 7, 7)|none|18px|1|none|1",
+            "::picker-icon": "inline|static|visible|rgb(7, 7, 7)|none|18px|1|none|1",
+            "::picker(select)": "inline|static|visible|rgb(7, 7, 7)|normal|18px|1|none|1",
+            "::picker(foo)": "||||||||",
+            "::picker()": "||||||||",
+            "::scroll-marker": "||||||||",
+            "::scroll-marker-group": "block|static|visible|rgb(7, 7, 7)|normal|18px|1|none|1",
+            "::column": "inline|static|visible|rgb(7, 7, 7)|normal|18px|1|none|1",
+            "::view-transition": "block|absolute|visible|rgb(7, 7, 7)|normal|18px|1|none|1",
+            "::view-transition-group(x)": "block|absolute|visible|rgb(7, 7, 7)|normal|18px|1|none|1",
+            "::view-transition-group(*)": "||||||||",
+            "::view-transition-image-pair(x)": "block|absolute|visible|rgb(7, 7, 7)|normal|18px|1|none|1",
+            "::view-transition-old(x)": "block|absolute|visible|rgb(7, 7, 7)|normal|18px|1|none|1",
+            "::view-transition-new(x)": "block|absolute|visible|rgb(7, 7, 7)|normal|18px|1|none|1",
+            "::view-transition-old(*)": "||||||||",
+            "::view-transition-group(x y)": "||||||||",
+            "::highlight(x)": "inline|static|visible|~|normal|18px|1|none|1",
+            "::highlight(*)": "|||~|||||",
+            "::highlight()": "|||~|||||",
+            "::spelling-error": "inline|static|visible|~|normal|18px|1|none|1",
+            "::grammar-error": "inline|static|visible|~|normal|18px|1|none|1",
+            "::target-text": "inline|static|visible|~|normal|18px|1|none|1",
+            "::search-text": "inline|static|visible|~|normal|18px|1|none|1",
+            "::search-text:current": "|||~|||||",
+            "::cue": "list-item|static|visible|rgb(7, 7, 7)|normal|18px|1|none|1",
+            "::cue(b)": "||||||||",
+            "::-webkit-scrollbar": "inline|static|visible|rgb(7, 7, 7)|normal|18px|1|none|1",
+            "::-webkit-scrollbar-thumb": "inline|static|visible|rgb(7, 7, 7)|normal|18px|1|none|1",
+            "::-webkit-scrollbar-track": "inline|static|visible|rgb(7, 7, 7)|normal|18px|1|none|1",
+            "::-webkit-scrollbar-button": "inline|static|visible|rgb(7, 7, 7)|normal|18px|1|none|1",
+            "::-webkit-scrollbar-corner": "inline|static|visible|rgb(7, 7, 7)|normal|18px|1|none|1",
+            "::-webkit-scrollbar-track-piece": "inline|static|visible|rgb(7, 7, 7)|normal|18px|1|none|1",
+            "::-webkit-resizer": "inline|static|visible|rgb(7, 7, 7)|normal|18px|1|none|1",
+            "::-webkit-input-placeholder": "list-item|static|visible|rgb(7, 7, 7)|normal|18px|1|none|1",
+            "::-webkit-file-upload-button": "list-item|static|visible|rgb(7, 7, 7)|normal|18px|1|none|1",
+            "::-webkit-details-marker": "list-item|static|visible|rgb(7, 7, 7)|normal|18px|1|none|1",
+            "::-webkit-foo": "list-item|static|visible|rgb(7, 7, 7)|normal|18px|1|none|1",
+            "::scroll-button(up)": "inline|static|visible|rgb(7, 7, 7)|normal|18px|1|none|1",
+            "::scroll-button(*)": "inline|static|visible|rgb(7, 7, 7)|normal|18px|1|none|1",
+            "::scroll-button(foo)": "||||||||",
+            "::MARKER": "inline-block|static|visible|rgb(7, 7, 7)|normal|18px|1|none|1",
+            "::Placeholder": "inline|static|visible|rgb(7, 7, 7)|normal|18px|1|none|1",
+            "::marker()": "||||||||",
+            "::selection:window-inactive": "|||~|||||",
+            "::column::scroll-marker": "||||||||",
+            "::interest-hint": "||||||||",
+            "::-internal-loading-auto-fill-button": "list-item|static|visible|rgb(7, 7, 7)|normal|18px|1|none|1",
+            "::-internal-foo": "list-item|static|visible|rgb(7, 7, 7)|normal|18px|1|none|1"
+          },
+          "input": {
+            "::marker": "inline-block|static|visible|rgb(0, 0, 0)|normal|13.3333px|1|none|1",
+            "::placeholder": "block|static|visible|rgb(117, 117, 117)|normal|13.3333px|1|none|1",
+            "::first-line": "inline|static|visible|rgb(0, 0, 0)|normal|13.3333px|1|none|1",
+            "::first-letter": "inline|static|visible|rgb(0, 0, 0)|normal|13.3333px|1|none|1",
+            ":first-line": "inline|static|visible|rgb(0, 0, 0)|normal|13.3333px|1|none|1",
+            ":first-letter": "inline|static|visible|rgb(0, 0, 0)|normal|13.3333px|1|none|1",
+            "::selection": "inline|static|visible|~|normal|13.3333px|1|none|1",
+            "::file-selector-button": "inline|static|visible|rgb(0, 0, 0)|normal|13.3333px|1|none|1",
+            "::details-content": "inline|static|visible|rgb(0, 0, 0)|normal|13.3333px|1|none|1",
+            "::checkmark": "inline|static|visible|rgb(0, 0, 0)|none|13.3333px|1|none|1",
+            "::picker-icon": "inline|static|visible|rgb(0, 0, 0)|none|13.3333px|1|none|1",
+            "::picker(select)": "inline|static|visible|rgb(0, 0, 0)|normal|13.3333px|1|none|1",
+            "::picker(foo)": "||||||||",
+            "::picker()": "||||||||",
+            "::scroll-marker": "||||||||",
+            "::scroll-marker-group": "block|static|visible|rgb(0, 0, 0)|normal|13.3333px|1|none|1",
+            "::column": "inline|static|visible|rgb(0, 0, 0)|normal|13.3333px|1|none|1",
+            "::view-transition": "block|absolute|visible|rgb(0, 0, 0)|normal|13.3333px|1|none|1",
+            "::view-transition-group(x)": "block|absolute|visible|rgb(0, 0, 0)|normal|13.3333px|1|none|1",
+            "::view-transition-group(*)": "||||||||",
+            "::view-transition-image-pair(x)": "block|absolute|visible|rgb(0, 0, 0)|normal|13.3333px|1|none|1",
+            "::view-transition-old(x)": "block|absolute|visible|rgb(0, 0, 0)|normal|13.3333px|1|none|1",
+            "::view-transition-new(x)": "block|absolute|visible|rgb(0, 0, 0)|normal|13.3333px|1|none|1",
+            "::view-transition-old(*)": "||||||||",
+            "::view-transition-group(x y)": "||||||||",
+            "::highlight(x)": "inline|static|visible|~|normal|13.3333px|1|none|1",
+            "::highlight(*)": "|||~|||||",
+            "::highlight()": "|||~|||||",
+            "::spelling-error": "inline|static|visible|~|normal|13.3333px|1|none|1",
+            "::grammar-error": "inline|static|visible|~|normal|13.3333px|1|none|1",
+            "::target-text": "inline|static|visible|~|normal|13.3333px|1|none|1",
+            "::search-text": "inline|static|visible|~|normal|13.3333px|1|none|1",
+            "::search-text:current": "|||~|||||",
+            "::cue": "inline-block|static|visible|rgb(0, 0, 0)|normal|13.3333px|1|none|1",
+            "::cue(b)": "||||||||",
+            "::-webkit-scrollbar": "inline|static|visible|rgb(0, 0, 0)|normal|13.3333px|1|none|1",
+            "::-webkit-scrollbar-thumb": "inline|static|visible|rgb(0, 0, 0)|normal|13.3333px|1|none|1",
+            "::-webkit-scrollbar-track": "inline|static|visible|rgb(0, 0, 0)|normal|13.3333px|1|none|1",
+            "::-webkit-scrollbar-button": "inline|static|visible|rgb(0, 0, 0)|normal|13.3333px|1|none|1",
+            "::-webkit-scrollbar-corner": "inline|static|visible|rgb(0, 0, 0)|normal|13.3333px|1|none|1",
+            "::-webkit-scrollbar-track-piece": "inline|static|visible|rgb(0, 0, 0)|normal|13.3333px|1|none|1",
+            "::-webkit-resizer": "inline|static|visible|rgb(0, 0, 0)|normal|13.3333px|1|none|1",
+            "::-webkit-input-placeholder": "inline-block|static|visible|rgb(0, 0, 0)|normal|13.3333px|1|none|1",
+            "::-webkit-file-upload-button": "inline-block|static|visible|rgb(0, 0, 0)|normal|13.3333px|1|none|1",
+            "::-webkit-details-marker": "inline-block|static|visible|rgb(0, 0, 0)|normal|13.3333px|1|none|1",
+            "::-webkit-foo": "inline-block|static|visible|rgb(0, 0, 0)|normal|13.3333px|1|none|1",
+            "::scroll-button(up)": "inline|static|visible|rgb(0, 0, 0)|normal|13.3333px|1|none|1",
+            "::scroll-button(*)": "inline|static|visible|rgb(0, 0, 0)|normal|13.3333px|1|none|1",
+            "::scroll-button(foo)": "||||||||",
+            "::MARKER": "inline-block|static|visible|rgb(0, 0, 0)|normal|13.3333px|1|none|1",
+            "::Placeholder": "block|static|visible|rgb(117, 117, 117)|normal|13.3333px|1|none|1",
+            "::marker()": "||||||||",
+            "::selection:window-inactive": "|||~|||||",
+            "::column::scroll-marker": "||||||||",
+            "::interest-hint": "||||||||",
+            "::-internal-loading-auto-fill-button": "inline-block|static|visible|rgb(0, 0, 0)|normal|13.3333px|1|none|1",
+            "::-internal-foo": "inline-block|static|visible|rgb(0, 0, 0)|normal|13.3333px|1|none|1"
+          }
+        }
+      }
+    },
+    {
+      "id": "pseudo-ua",
+      "result": {
+        "head": {
+          "children": [
+            "style"
+          ],
+          "title": "",
+          "titles": 0
+        },
+        "ua": {
+          "auDiv": {
+            "::marker": "inline-block|static|visible|rgb(1, 2, 3)|\"c\"|30px|1|none|1",
+            "::placeholder": "inline|static|visible|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "::first-line": "inline|static|hidden|rgb(1, 2, 3)|normal|30px|0.5|none|1",
+            "::first-letter": "inline|static|hidden|rgb(1, 2, 3)|normal|30px|0.5|none|1",
+            "::selection": "inline|static|visible|rgb(1, 2, 3)|normal|16px|1|none|1",
+            "::file-selector-button": "inline|static|visible|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "::details-content": "inline|static|visible|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "::checkmark": "block|absolute|hidden|rgb(1, 2, 3)|\"c\"|30px|0.5|none|1",
+            "::picker-icon": "block|absolute|hidden|rgb(1, 2, 3)|\"c\"|30px|0.5|none|1",
+            "::picker(select)": "inline|static|visible|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "::scroll-marker-group": "block|absolute|hidden|rgb(1, 2, 3)|\"c\"|30px|0.5|none|1",
+            "::column": "block|absolute|hidden|rgb(1, 2, 3)|\"c\"|30px|0.5|none|1",
+            "::view-transition": "block|absolute|hidden|rgb(1, 2, 3)|\"c\"|30px|0.5|none|1",
+            "::view-transition-group(x)": "block|absolute|hidden|rgb(1, 2, 3)|\"c\"|30px|0.5|none|1",
+            "::view-transition-old(x)": "block|absolute|hidden|rgb(1, 2, 3)|normal|30px|1|none|1",
+            "::highlight(x)": "inline|static|visible|rgb(1, 2, 3)|normal|16px|1|none|1",
+            "::spelling-error": "inline|static|visible|rgb(1, 2, 3)|normal|16px|1|none|1",
+            "::target-text": "inline|static|visible|rgb(1, 2, 3)|normal|16px|1|none|1",
+            "::-webkit-scrollbar": "block|absolute|hidden|rgb(1, 2, 3)|\"c\"|30px|0.5|none|1",
+            "::-webkit-scrollbar-thumb": "inline|static|visible|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "::scroll-button(up)": "block|absolute|hidden|rgb(1, 2, 3)|\"c\"|30px|0.5|none|1",
+            "::scroll-button(*)": "block|absolute|hidden|rgb(1, 2, 3)|\"c\"|30px|0.5|none|1"
+          },
+          "flexHost": {
+            "::marker": "block|static|visible|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "::placeholder": "block|static|visible|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "::first-line": "block|static|visible|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "::first-letter": "inline|static|visible|rgb(5, 5, 5)|normal|16px|1|none|1",
+            "::selection": "inline|static|visible|~|normal|16px|1|none|1",
+            "::file-selector-button": "block|static|visible|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "::details-content": "block|static|visible|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "::checkmark": "block|static|visible|rgb(0, 0, 0)|none|16px|1|none|1",
+            "::picker-icon": "block|static|visible|rgb(0, 0, 0)|none|16px|1|none|1",
+            "::picker(select)": "block|static|visible|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "::scroll-marker-group": "block|static|visible|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "::column": "block|static|visible|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "::view-transition": "block|absolute|visible|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "::view-transition-group(x)": "block|absolute|visible|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "::view-transition-old(x)": "block|absolute|visible|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "::highlight(x)": "inline|static|visible|~|normal|16px|1|none|1",
+            "::spelling-error": "inline|static|visible|~|normal|16px|1|none|1",
+            "::target-text": "inline|static|visible|~|normal|16px|1|none|1",
+            "::-webkit-scrollbar": "block|static|visible|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "::-webkit-scrollbar-thumb": "block|static|visible|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "::scroll-button(up)": "block|static|visible|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "::scroll-button(*)": "block|static|visible|rgb(0, 0, 0)|normal|16px|1|none|1"
+          },
+          "hiddenHost": {
+            "::marker": "inline-block|static|hidden|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "::placeholder": "inline|static|hidden|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "::first-line": "inline|static|hidden|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "::first-letter": "inline|static|hidden|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "::selection": "inline|static|visible|~|normal|16px|1|none|1",
+            "::file-selector-button": "inline|static|hidden|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "::details-content": "inline|static|hidden|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "::checkmark": "inline|static|hidden|rgb(0, 0, 0)|none|16px|1|none|1",
+            "::picker-icon": "inline|static|hidden|rgb(0, 0, 0)|none|16px|1|none|1",
+            "::picker(select)": "inline|static|hidden|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "::scroll-marker-group": "block|static|hidden|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "::column": "inline|static|hidden|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "::view-transition": "block|absolute|hidden|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "::view-transition-group(x)": "block|absolute|hidden|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "::view-transition-old(x)": "block|absolute|hidden|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "::highlight(x)": "inline|static|visible|~|normal|16px|1|none|1",
+            "::spelling-error": "inline|static|visible|~|normal|16px|1|none|1",
+            "::target-text": "inline|static|visible|~|normal|16px|1|none|1",
+            "::-webkit-scrollbar": "inline|static|hidden|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "::-webkit-scrollbar-thumb": "inline|static|hidden|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "::scroll-button(up)": "inline|static|hidden|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "::scroll-button(*)": "inline|static|hidden|rgb(0, 0, 0)|normal|16px|1|none|1"
+          },
+          "svg": {
+            "::marker": "inline-block|static|visible|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "::placeholder": "inline|static|visible|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "::first-line": "inline|static|visible|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "::first-letter": "inline|static|visible|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "::selection": "inline|static|visible|~|normal|16px|1|none|1",
+            "::file-selector-button": "inline|static|visible|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "::details-content": "inline|static|visible|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "::checkmark": "inline|static|visible|rgb(0, 0, 0)|none|16px|1|none|1",
+            "::picker-icon": "inline|static|visible|rgb(0, 0, 0)|none|16px|1|none|1",
+            "::picker(select)": "inline|static|visible|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "::scroll-marker-group": "block|static|visible|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "::column": "inline|static|visible|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "::view-transition": "inline|static|visible|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "::view-transition-group(x)": "inline|static|visible|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "::view-transition-old(x)": "inline|static|visible|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "::highlight(x)": "inline|static|visible|~|normal|16px|1|none|1",
+            "::spelling-error": "inline|static|visible|~|normal|16px|1|none|1",
+            "::target-text": "inline|static|visible|~|normal|16px|1|none|1",
+            "::-webkit-scrollbar": "inline|static|visible|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "::-webkit-scrollbar-thumb": "inline|static|visible|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "::scroll-button(up)": "inline|static|visible|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "::scroll-button(*)": "inline|static|visible|rgb(0, 0, 0)|normal|16px|1|none|1"
+          },
+          "root": {
+            "::marker": "inline-block|static|visible|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "::placeholder": "inline|static|visible|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "::first-line": "inline|static|visible|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "::first-letter": "inline|static|visible|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "::selection": "inline|static|visible|~|normal|16px|1|none|1",
+            "::file-selector-button": "inline|static|visible|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "::details-content": "inline|static|visible|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "::checkmark": "inline|static|visible|rgb(0, 0, 0)|none|16px|1|none|1",
+            "::picker-icon": "inline|static|visible|rgb(0, 0, 0)|none|16px|1|none|1",
+            "::picker(select)": "inline|static|visible|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "::scroll-marker-group": "block|static|visible|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "::column": "inline|static|visible|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "::view-transition": "block|absolute|visible|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "::view-transition-group(x)": "block|absolute|visible|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "::view-transition-old(x)": "block|absolute|visible|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "::highlight(x)": "inline|static|visible|~|normal|16px|1|none|1",
+            "::spelling-error": "inline|static|visible|~|normal|16px|1|none|1",
+            "::target-text": "inline|static|visible|~|normal|16px|1|none|1",
+            "::-webkit-scrollbar": "inline|static|visible|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "::-webkit-scrollbar-thumb": "inline|static|visible|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "::scroll-button(up)": "inline|static|visible|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "::scroll-button(*)": "inline|static|visible|rgb(0, 0, 0)|normal|16px|1|none|1"
+          },
+          "li": {
+            "::marker": "inline-block|static|visible|rgb(7, 7, 7)|normal|18px|1|none|1",
+            "::first-line": "inline|static|visible|rgb(7, 7, 7)|normal|18px|1|none|1",
+            "::selection": "inline|static|visible|~|normal|18px|1|none|1",
+            "::checkmark": "inline|static|visible|rgb(7, 7, 7)|none|18px|1|none|1",
+            "::view-transition": "block|absolute|visible|rgb(7, 7, 7)|normal|18px|1|none|1",
+            "::scroll-marker-group": "block|static|visible|rgb(7, 7, 7)|normal|18px|1|none|1"
+          },
+          "styledLi": {
+            "::marker": "inline-block|static|visible|rgb(0, 0, 255)|\"-\"|30px|1|none|1",
+            "::first-line": "inline|static|visible|rgb(7, 7, 7)|normal|18px|1|none|1",
+            "::selection": "inline|static|visible|~|normal|18px|1|none|1",
+            "::checkmark": "inline|static|visible|rgb(7, 7, 7)|none|18px|1|none|1",
+            "::view-transition": "block|absolute|visible|rgb(7, 7, 7)|normal|18px|1|none|1",
+            "::scroll-marker-group": "block|static|visible|rgb(7, 7, 7)|normal|18px|1|none|1"
+          },
+          "auLi": {
+            "::marker": "inline-block|static|visible|rgb(1, 2, 3)|\"c\"|30px|1|none|1",
+            "::first-line": "inline|static|hidden|rgb(1, 2, 3)|normal|30px|0.5|none|1",
+            "::selection": "inline|static|visible|rgb(1, 2, 3)|normal|18px|1|none|1",
+            "::checkmark": "block|absolute|hidden|rgb(1, 2, 3)|\"c\"|30px|0.5|none|1",
+            "::view-transition": "block|absolute|hidden|rgb(1, 2, 3)|\"c\"|30px|0.5|none|1",
+            "::scroll-marker-group": "block|absolute|hidden|rgb(1, 2, 3)|\"c\"|30px|0.5|none|1"
+          },
+          "insideLi": {
+            "::marker": "inline|static|visible|rgb(7, 7, 7)|normal|18px|1|none|1",
+            "::first-line": "inline|static|visible|rgb(7, 7, 7)|normal|18px|1|none|1",
+            "::selection": "inline|static|visible|~|normal|18px|1|none|1",
+            "::checkmark": "inline|static|visible|rgb(7, 7, 7)|none|18px|1|none|1",
+            "::view-transition": "block|absolute|visible|rgb(7, 7, 7)|normal|18px|1|none|1",
+            "::scroll-marker-group": "block|static|visible|rgb(7, 7, 7)|normal|18px|1|none|1"
+          },
+          "oli": {
+            "::marker": "inline-block|static|visible|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "::first-line": "inline|static|visible|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "::selection": "inline|static|visible|~|normal|16px|1|none|1",
+            "::checkmark": "inline|static|visible|rgb(0, 0, 0)|none|16px|1|none|1",
+            "::view-transition": "block|absolute|visible|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "::scroll-marker-group": "block|static|visible|rgb(0, 0, 0)|normal|16px|1|none|1"
+          },
+          "summary": {
+            "::marker": "inline|static|visible|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "::first-line": "inline|static|visible|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "::selection": "inline|static|visible|~|normal|16px|1|none|1",
+            "::checkmark": "inline|static|visible|rgb(0, 0, 0)|none|16px|1|none|1",
+            "::view-transition": "block|absolute|visible|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "::scroll-marker-group": "block|static|visible|rgb(0, 0, 0)|normal|16px|1|none|1"
+          },
+          "span": {
+            "::marker": "inline-block|static|visible|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "::first-line": "inline|static|visible|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "::selection": "inline|static|visible|~|normal|16px|1|none|1",
+            "::checkmark": "inline|static|visible|rgb(0, 0, 0)|none|16px|1|none|1",
+            "::view-transition": "block|absolute|visible|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "::scroll-marker-group": "block|static|visible|rgb(0, 0, 0)|normal|16px|1|none|1"
+          },
+          "input": {
+            "::placeholder": "block|static|visible|rgb(117, 117, 117)|normal|13.3333px|1|none|1",
+            "::file-selector-button": "inline|static|visible|rgb(0, 0, 0)|normal|13.3333px|1|none|1",
+            "::marker": "inline-block|static|visible|rgb(0, 0, 0)|normal|13.3333px|1|none|1",
+            "::first-letter": "inline|static|visible|rgb(0, 0, 0)|normal|13.3333px|1|none|1",
+            "::first-line": "inline|static|visible|rgb(0, 0, 0)|normal|13.3333px|1|none|1",
+            "::selection": "inline|static|visible|~|normal|13.3333px|1|none|1",
+            "::checkmark": "inline|static|visible|rgb(0, 0, 0)|none|13.3333px|1|none|1",
+            "::view-transition": "block|absolute|visible|rgb(0, 0, 0)|normal|13.3333px|1|none|1",
+            "::scroll-marker-group": "block|static|visible|rgb(0, 0, 0)|normal|13.3333px|1|none|1"
+          },
+          "styledInput": {
+            "::placeholder": "block|static|visible|rgb(1, 1, 1)|normal|30px|0.5|none|1",
+            "::file-selector-button": "inline|static|visible|rgb(0, 0, 0)|normal|13.3333px|1|none|1",
+            "::marker": "inline-block|static|visible|rgb(0, 0, 0)|normal|13.3333px|1|none|1",
+            "::first-letter": "inline|static|visible|rgb(0, 0, 0)|normal|13.3333px|1|none|1",
+            "::first-line": "inline|static|visible|rgb(0, 0, 0)|normal|13.3333px|1|none|1",
+            "::selection": "inline|static|visible|~|normal|13.3333px|1|none|1",
+            "::checkmark": "inline|static|visible|rgb(0, 0, 0)|none|13.3333px|1|none|1",
+            "::view-transition": "block|absolute|visible|rgb(0, 0, 0)|normal|13.3333px|1|none|1",
+            "::scroll-marker-group": "block|static|visible|rgb(0, 0, 0)|normal|13.3333px|1|none|1"
+          },
+          "auInput": {
+            "::placeholder": "block|absolute|hidden|rgb(1, 2, 3)|\"c\"|30px|0.5|none|1",
+            "::file-selector-button": "inline|static|visible|rgb(0, 0, 0)|normal|13.3333px|1|none|1",
+            "::marker": "inline-block|static|visible|rgb(1, 2, 3)|\"c\"|30px|1|none|1",
+            "::first-letter": "inline|static|hidden|rgb(1, 2, 3)|normal|30px|0.5|none|1",
+            "::first-line": "inline|static|hidden|rgb(1, 2, 3)|normal|30px|0.5|none|1",
+            "::selection": "inline|static|visible|rgb(1, 2, 3)|normal|13.3333px|1|none|1",
+            "::checkmark": "block|absolute|hidden|rgb(1, 2, 3)|\"c\"|30px|0.5|none|1",
+            "::view-transition": "block|absolute|hidden|rgb(1, 2, 3)|\"c\"|30px|0.5|none|1",
+            "::scroll-marker-group": "block|absolute|hidden|rgb(1, 2, 3)|\"c\"|30px|0.5|none|1"
+          },
+          "ta": {
+            "::placeholder": "block|static|visible|rgb(117, 117, 117)|normal|13.3333px|1|none|1",
+            "::file-selector-button": "inline|static|visible|rgb(0, 0, 0)|normal|13.3333px|1|none|1",
+            "::marker": "inline-block|static|visible|rgb(0, 0, 0)|normal|13.3333px|1|none|1",
+            "::first-letter": "inline|static|visible|rgb(0, 0, 0)|normal|13.3333px|1|none|1",
+            "::first-line": "inline|static|visible|rgb(0, 0, 0)|normal|13.3333px|1|none|1",
+            "::selection": "inline|static|visible|~|normal|13.3333px|1|none|1",
+            "::checkmark": "inline|static|visible|rgb(0, 0, 0)|none|13.3333px|1|none|1",
+            "::view-transition": "block|absolute|visible|rgb(0, 0, 0)|normal|13.3333px|1|none|1",
+            "::scroll-marker-group": "block|static|visible|rgb(0, 0, 0)|normal|13.3333px|1|none|1"
+          },
+          "file": {
+            "::file-selector-button": "inline-block|static|visible|rgb(2, 2, 2)|normal|13.3333px|1|none|1",
+            "::placeholder": "inline|static|visible|rgb(0, 0, 0)|normal|13.3333px|1|none|1",
+            "::first-line": "inline|static|visible|rgb(0, 0, 0)|normal|13.3333px|1|none|1",
+            "::selection": "inline|static|visible|~|normal|13.3333px|1|none|1",
+            "::checkmark": "inline|static|visible|rgb(0, 0, 0)|none|13.3333px|1|none|1",
+            "::view-transition": "block|absolute|visible|rgb(0, 0, 0)|normal|13.3333px|1|none|1",
+            "::scroll-marker-group": "block|static|visible|rgb(0, 0, 0)|normal|13.3333px|1|none|1"
+          },
+          "auFile": {
+            "::file-selector-button": "block|absolute|hidden|rgb(1, 2, 3)|\"c\"|30px|0.5|none|1",
+            "::placeholder": "inline|static|visible|rgb(0, 0, 0)|normal|13.3333px|1|none|1",
+            "::first-line": "inline|static|hidden|rgb(1, 2, 3)|normal|30px|0.5|none|1",
+            "::selection": "inline|static|visible|rgb(1, 2, 3)|normal|13.3333px|1|none|1",
+            "::checkmark": "block|absolute|hidden|rgb(1, 2, 3)|\"c\"|30px|0.5|none|1",
+            "::view-transition": "block|absolute|hidden|rgb(1, 2, 3)|\"c\"|30px|0.5|none|1",
+            "::scroll-marker-group": "block|absolute|hidden|rgb(1, 2, 3)|\"c\"|30px|0.5|none|1"
+          },
+          "det": {
+            "::details-content": "block|static|visible|rgb(3, 3, 3)|normal|16px|1|none|1",
+            "::marker": "inline-block|static|visible|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "::first-line": "inline|static|visible|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "::selection": "inline|static|visible|~|normal|16px|1|none|1",
+            "::checkmark": "inline|static|visible|rgb(0, 0, 0)|none|16px|1|none|1",
+            "::view-transition": "block|absolute|visible|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "::scroll-marker-group": "block|static|visible|rgb(0, 0, 0)|normal|16px|1|none|1"
+          },
+          "detOpen": {
+            "::details-content": "block|static|visible|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "::marker": "inline-block|static|visible|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "::first-line": "inline|static|visible|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "::selection": "inline|static|visible|~|normal|16px|1|none|1",
+            "::checkmark": "inline|static|visible|rgb(0, 0, 0)|none|16px|1|none|1",
+            "::view-transition": "block|absolute|visible|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "::scroll-marker-group": "block|static|visible|rgb(0, 0, 0)|normal|16px|1|none|1"
+          },
+          "auDetails": {
+            "::details-content": "block|absolute|hidden|rgb(1, 2, 3)|\"c\"|30px|0.5|none|1",
+            "::marker": "inline-block|static|visible|rgb(1, 2, 3)|\"c\"|30px|1|none|1",
+            "::first-line": "inline|static|hidden|rgb(1, 2, 3)|normal|30px|0.5|none|1",
+            "::selection": "inline|static|visible|rgb(1, 2, 3)|normal|16px|1|none|1",
+            "::checkmark": "block|absolute|hidden|rgb(1, 2, 3)|\"c\"|30px|0.5|none|1",
+            "::view-transition": "block|absolute|hidden|rgb(1, 2, 3)|\"c\"|30px|0.5|none|1",
+            "::scroll-marker-group": "block|absolute|hidden|rgb(1, 2, 3)|\"c\"|30px|0.5|none|1"
+          },
+          "select": {
+            "::picker(select)": "none|fixed|visible|rgb(0, 0, 0)|normal|13.3333px|1|none|1",
+            "::picker-icon": "block|static|visible|rgb(0, 0, 0)|none|13.3333px|1|none|1",
+            "::checkmark": "inline|static|visible|rgb(0, 0, 0)|none|13.3333px|1|none|1",
+            "::marker": "inline-block|static|visible|rgb(0, 0, 0)|normal|13.3333px|1|none|1",
+            "::first-line": "inline|static|visible|rgb(0, 0, 0)|normal|13.3333px|1|none|1",
+            "::selection": "inline|static|visible|~|normal|13.3333px|1|none|1",
+            "::view-transition": "block|absolute|visible|rgb(0, 0, 0)|normal|13.3333px|1|none|1",
+            "::scroll-marker-group": "block|static|visible|rgb(0, 0, 0)|normal|13.3333px|1|none|1"
+          },
+          "auSelect": {
+            "::picker(select)": "block|absolute|hidden|rgb(1, 2, 3)|\"c\"|30px|0.5|none|1",
+            "::picker-icon": "block|absolute|hidden|rgb(1, 2, 3)|\"c\"|30px|0.5|none|1",
+            "::checkmark": "block|absolute|hidden|rgb(1, 2, 3)|\"c\"|30px|0.5|none|1",
+            "::marker": "inline-block|static|visible|rgb(1, 2, 3)|\"c\"|30px|1|none|1",
+            "::first-line": "inline|static|hidden|rgb(1, 2, 3)|normal|30px|0.5|none|1",
+            "::selection": "inline|static|visible|rgb(1, 2, 3)|normal|13.3333px|1|none|1",
+            "::view-transition": "block|absolute|hidden|rgb(1, 2, 3)|\"c\"|30px|0.5|none|1",
+            "::scroll-marker-group": "block|absolute|hidden|rgb(1, 2, 3)|\"c\"|30px|0.5|none|1"
+          },
+          "button": {
+            "::picker(select)": "inline|static|visible|rgb(0, 0, 0)|normal|13.3333px|1|none|1",
+            "::picker-icon": "inline|static|visible|rgb(0, 0, 0)|none|13.3333px|1|none|1",
+            "::checkmark": "inline|static|visible|rgb(0, 0, 0)|none|13.3333px|1|none|1",
+            "::marker": "inline-block|static|visible|rgb(0, 0, 0)|normal|13.3333px|1|none|1",
+            "::first-line": "inline|static|visible|rgb(0, 0, 0)|normal|13.3333px|1|none|1",
+            "::selection": "inline|static|visible|~|normal|13.3333px|1|none|1",
+            "::view-transition": "block|absolute|visible|rgb(0, 0, 0)|normal|13.3333px|1|none|1",
+            "::scroll-marker-group": "block|static|visible|rgb(0, 0, 0)|normal|13.3333px|1|none|1"
+          },
+          "p1": {
+            "::first-line": "inline|static|visible|rgb(0, 128, 0)|normal|25px|0.5|none|1",
+            "::first-letter": "block|static|visible|rgb(4, 4, 4)|normal|40px|1|none|1",
+            "::marker": "inline-block|static|visible|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "::selection": "inline|static|visible|~|normal|16px|1|none|1",
+            "::checkmark": "inline|static|visible|rgb(0, 0, 0)|none|16px|1|none|1",
+            "::view-transition": "block|absolute|visible|rgb(0, 0, 0)|normal|16px|1|none|1",
+            "::scroll-marker-group": "block|static|visible|rgb(0, 0, 0)|normal|16px|1|none|1"
+          },
+          "div": {
+            "::first-line": "inline|static|visible|rgb(9, 9, 9)|normal|12px|1|none|1",
+            "::first-letter": "inline|static|visible|rgb(9, 9, 9)|normal|12px|1|none|1",
+            "::marker": "inline-block|static|visible|rgb(9, 9, 9)|normal|12px|1|none|1",
+            "::selection": "inline|static|visible|~|normal|12px|1|none|1",
+            "::checkmark": "inline|static|visible|rgb(9, 9, 9)|none|12px|1|none|1",
+            "::view-transition": "block|absolute|visible|rgb(9, 9, 9)|normal|12px|1|none|1",
+            "::scroll-marker-group": "block|static|visible|rgb(9, 9, 9)|normal|12px|1|none|1"
+          },
+          "sel": {
+            "::selection": "inline|static|visible|rgb(255, 0, 0)|normal|16px|1|none|1",
+            "::highlight(x)": "inline|static|visible|~|normal|16px|1|none|1",
+            "::spelling-error": "inline|static|visible|~|normal|16px|1|none|1",
+            "::target-text": "inline|static|visible|~|normal|16px|1|none|1"
+          },
+          "selParent": {
+            "::selection": "inline|static|visible|rgb(9, 8, 7)|normal|16px|1|none|1",
+            "::highlight(x)": "inline|static|visible|~|normal|16px|1|none|1",
+            "::spelling-error": "inline|static|visible|~|normal|16px|1|none|1",
+            "::target-text": "inline|static|visible|~|normal|16px|1|none|1"
+          },
+          "selChild": {
+            "::selection": "inline|static|visible|rgb(9, 8, 7)|normal|16px|1|none|1",
+            "::highlight(x)": "inline|static|visible|~|normal|16px|1|none|1",
+            "::spelling-error": "inline|static|visible|~|normal|16px|1|none|1",
+            "::target-text": "inline|static|visible|~|normal|16px|1|none|1"
+          },
+          "selGrand": {
+            "::selection": "inline|static|visible|rgb(9, 8, 7)|normal|16px|1|none|1",
+            "::highlight(x)": "inline|static|visible|~|normal|16px|1|none|1",
+            "::spelling-error": "inline|static|visible|~|normal|16px|1|none|1",
+            "::target-text": "inline|static|visible|~|normal|16px|1|none|1"
+          },
+          "extra": {
+            "::marker li white-space,font-variant-numeric,unicode-bidi,text-transform": "pre|tabular-nums|isolate|none",
+            "::marker styledLi white-space,font-variant-numeric,unicode-bidi,text-transform": "pre|tabular-nums|isolate|none",
+            "::marker oli white-space,font-variant-numeric,unicode-bidi,text-transform": "pre|tabular-nums|isolate|none",
+            "::marker div white-space,font-variant-numeric,unicode-bidi,text-transform": "pre|tabular-nums|isolate|none",
+            "::marker summary white-space,font-variant-numeric,unicode-bidi,text-transform": "normal|tabular-nums|isolate|none",
+            "::marker auLi white-space,font-variant-numeric,unicode-bidi,text-transform": "pre|normal|normal|uppercase",
+            "::marker insideLi white-space,font-variant-numeric,unicode-bidi,text-transform": "normal|tabular-nums|isolate|none",
+            "::placeholder input pointer-events,unicode-bidi": "none|isolate",
+            "::placeholder styledInput pointer-events,unicode-bidi": "none|isolate",
+            "::placeholder ta pointer-events,unicode-bidi": "none|isolate",
+            "::placeholder auInput pointer-events,unicode-bidi": "none|normal",
+            "::placeholder input white-space,overflow": "pre|hidden",
+            "::placeholder styledInput white-space,overflow": "pre|hidden",
+            "::placeholder auInput white-space,overflow": "normal|scroll",
+            "::file-selector-button file background-color,white-space,padding-top,padding-left,margin-right,margin-left,border-top-width,border-top-style,text-align,box-sizing,user-select": "rgb(239, 239, 239)|nowrap|1px|6px|4px|0px|2px|outset|center|border-box|none",
+            "::file-selector-button auFile background-color,white-space,padding-top,padding-left,margin-right,margin-left,border-top-width,border-top-style,text-align,box-sizing,user-select": "rgb(4, 5, 6)|normal|9px|9px|10px|10px|2px|outset|right|content-box|text",
+            "::details-content det content-visibility": "hidden",
+            "::details-content detOpen content-visibility": "visible",
+            "::details-content auDetails content-visibility": "auto",
+            "::view-transition div top,right,bottom,left": "0px|0px|0px|0px",
+            "::view-transition auDiv top,right,bottom,left": "7px|0px|0px|8px",
+            "::view-transition-group(x) div top,right,bottom,left": "0px|auto|auto|0px",
+            "::view-transition-group(x) auDiv top,right,bottom,left": "7px|auto|auto|8px",
+            "::view-transition-image-pair(x) div top,right,bottom,left": "0px|0px|0px|0px",
+            "::view-transition-image-pair(x) auDiv top,right,bottom,left": "7px|0px|0px|8px",
+            "::view-transition-old(x) div top,right,bottom,left": "0px|auto|auto|auto",
+            "::view-transition-old(x) auDiv top,right,bottom,left": "0px|auto|auto|auto",
+            "::view-transition-new(x) div top,right,bottom,left": "0px|auto|auto|auto",
+            "::view-transition-new(x) auDiv top,right,bottom,left": "0px|auto|auto|auto",
+            "::spelling-error div text-decoration-line": "spelling-error",
+            "::spelling-error auDiv text-decoration-line": "underline",
+            "::grammar-error div text-decoration-line": "grammar-error",
+            "::grammar-error auDiv text-decoration-line": "underline",
+            "::picker(select) select overflow,white-space,unicode-bidi": "auto|normal|isolate",
+            "::picker(select) auSelect overflow,white-space,unicode-bidi": "scroll|normal|normal",
+            "::selection sel background-color": "rgb(0, 0, 0)",
+            "::selection selChild background-color": "rgb(7, 8, 9)",
+            "::selection selGrand background-color": "rgb(7, 8, 9)",
+            "::selection auDiv background-color": "rgb(4, 5, 6)",
+            "::selection div background-color": "rgba(0, 0, 0, 0)",
+            "::backdrop div background-color": "rgba(0, 0, 0, 0)"
+          },
+          "detached": {
+            "::marker": "||||||||",
+            "::placeholder": "||||||||",
+            "::selection": "|||~|||||",
+            "::scroll-marker": "||||||||",
+            "::-webkit-foo": "||||||||"
+          },
+          "live": [
+            "rgb(7, 7, 7)",
+            "rgb(0, 255, 0)",
+            false
+          ]
+        }
+      }
+    },
+    {
+      "id": "form-control-fonts",
+      "result": {
+        "head": {
+          "children": [
+            "style"
+          ],
+          "title": "",
+          "titles": 0
+        },
+        "fonts": {
+          "controlFonts": "30px|fantasy|400|normal|normal|30px fantasy",
+          "t-text": "13.3333px|Arial|400|normal|normal|13.3333px Arial",
+          "t-checkbox": "13.3333px|Arial|400|normal|normal|13.3333px Arial",
+          "t-radio": "13.3333px|Arial|400|normal|normal|13.3333px Arial",
+          "t-range": "13.3333px|Arial|400|normal|normal|13.3333px Arial",
+          "t-color": "13.3333px|Arial|400|normal|normal|13.3333px Arial",
+          "t-file": "13.3333px|Arial|400|normal|normal|13.3333px Arial",
+          "t-submit": "13.3333px|Arial|400|normal|normal|13.3333px Arial",
+          "t-button": "13.3333px|Arial|400|normal|normal|13.3333px Arial",
+          "t-reset": "13.3333px|Arial|400|normal|normal|13.3333px Arial",
+          "t-image": "13.3333px|Arial|400|normal|normal|13.3333px Arial",
+          "t-hidden": "13.3333px|Arial|400|normal|normal|13.3333px Arial",
+          "t-date": "13.3333px|monospace|400|normal|normal|13.3333px monospace",
+          "t-time": "13.3333px|monospace|400|normal|normal|13.3333px monospace",
+          "t-datetime-local": "13.3333px|monospace|400|normal|normal|13.3333px monospace",
+          "t-month": "13.3333px|monospace|400|normal|normal|13.3333px monospace",
+          "t-week": "13.3333px|monospace|400|normal|normal|13.3333px monospace",
+          "t-number": "13.3333px|Arial|400|normal|normal|13.3333px Arial",
+          "t-password": "13.3333px|Arial|400|normal|normal|13.3333px Arial",
+          "t-search": "13.3333px|Arial|400|normal|normal|13.3333px Arial",
+          "t-email": "13.3333px|Arial|400|normal|normal|13.3333px Arial",
+          "t-tel": "13.3333px|Arial|400|normal|normal|13.3333px Arial",
+          "t-url": "13.3333px|Arial|400|normal|normal|13.3333px Arial",
+          "t-bogus": "13.3333px|Arial|400|normal|normal|13.3333px Arial",
+          "upper": "13.3333px|monospace|400|normal|normal|13.3333px monospace",
+          "ta": "13.3333px|monospace|400|normal|normal|13.3333px monospace",
+          "sel": "13.3333px|Arial|400|normal|normal|13.3333px Arial",
+          "opt": "13.3333px|Arial|400|normal|normal|13.3333px Arial",
+          "og": "13.3333px|Arial|700|normal|normal|700 13.3333px Arial",
+          "ogOpt": "13.3333px|Arial|400|normal|normal|13.3333px Arial",
+          "multi": "13.3333px|Arial|400|normal|normal|13.3333px Arial",
+          "btn": "13.3333px|Arial|400|normal|normal|13.3333px Arial",
+          "big": "20px|Arial|400|normal|normal|20px Arial",
+          "inh": "30px|fantasy|400|normal|normal|30px fantasy",
+          "taFam": "13.3333px|serif|400|normal|normal|13.3333px serif",
+          "selInh": "30px|fantasy|400|normal|normal|30px fantasy",
+          "ogWeight": "13.3333px|Arial|300|normal|normal|300 13.3333px Arial",
+          "fs": "30px|fantasy|400|normal|normal|30px fantasy",
+          "lg": "30px|fantasy|400|normal|normal|30px fantasy",
+          "lab": "30px|fantasy|400|normal|normal|30px fantasy",
+          "out": "30px|fantasy|400|normal|normal|30px fantasy",
+          "meter": "30px|fantasy|400|normal|normal|30px fantasy",
+          "prog": "30px|fantasy|400|normal|normal|30px fantasy",
+          "span": "30px|fantasy|400|normal|normal|30px fantasy",
+          "boldOpt": "13.3333px|Arial|400|normal|normal|13.3333px Arial",
+          "boldOg": "13.3333px|Arial|900|normal|normal|900 13.3333px Arial",
+          "boldOgOpt": "13.3333px|Arial|400|normal|normal|13.3333px Arial",
+          "looseOpt": "30px|fantasy|400|normal|normal|30px fantasy",
+          "looseOg": "30px|fantasy|900|normal|normal|900 30px fantasy",
+          "looseOgOpt": "30px|fantasy|400|normal|normal|30px fantasy",
+          "plain": "13.3333px|Arial|400|normal|normal|13.3333px Arial",
+          "inSvg": "13.3333px|Arial|400|normal|normal|13.3333px Arial",
+          "detached": "|||||"
+        }
+      }
+    },
+    {
+      "id": "fullscreen",
+      "result": {
+        "head": {
+          "children": [
+            "style"
+          ],
+          "title": "",
+          "titles": 0
+        },
+        "fullscreen": {
+          "before": [
+            [
+              null,
+              false,
+              null,
+              [],
+              [],
+              [],
+              []
+            ],
+            "block|static|visible|rgb(0, 0, 0)|1|none",
+            "block|absolute|visible|auto|auto|auto|auto|rgba(0, 0, 0, 0)|rgb(0, 0, 0)|1|none"
+          ],
+          "noGesture": [
+            [
+              "TypeError",
+              "Permissions check failed"
+            ],
+            [
+              [
+                "fullscreenerror",
+                "fsA",
+                "fsA",
+                null,
+                true,
+                true
+              ],
+              [
+                "fullscreenerror",
+                "fsA",
+                "#document",
+                null,
+                true,
+                true
+              ]
+            ]
+          ],
+          "sync": [
+            null,
+            false,
+            null,
+            [],
+            [],
+            [],
+            []
+          ],
+          "request": "ok",
+          "resolved": [
+            [
+              "fsA",
+              true,
+              "fsA",
+              [
+                "fsA"
+              ],
+              [
+                "fsA"
+              ],
+              [
+                "HTML",
+                "BODY"
+              ],
+              [
+                "fsA"
+              ]
+            ],
+            []
+          ],
+          "full": [
+            [
+              "fsA",
+              true,
+              "fsA",
+              [
+                "fsA"
+              ],
+              [
+                "fsA"
+              ],
+              [
+                "HTML",
+                "BODY"
+              ],
+              [
+                "fsA"
+              ]
+            ],
+            [
+              [
+                "fullscreenchange",
+                "fsA",
+                "fsA",
+                "fsA",
+                true,
+                true
+              ],
+              [
+                "fullscreenchange",
+                "fsA",
+                "#document",
+                "fsA",
+                true,
+                true
+              ]
+            ],
+            "block|fixed|visible|rgb(255, 0, 0)|0.5|none|0px|0px|0px|0px|0px|0px|0px|0px|border-box|0px|none|0px|none|contain",
+            "block|fixed|visible|0px|0px|0px|0px|rgb(0, 0, 0)|rgb(0, 255, 0)|1|none",
+            "inline|static|visible|rgb(255, 0, 0)|1|none",
+            "block|static|visible|rgb(255, 0, 0)|1|none",
+            true,
+            true
+          ],
+          "consumed": [
+            [
+              "TypeError",
+              "Permissions check failed"
+            ],
+            [
+              [
+                "fullscreenerror",
+                "fsB",
+                "fsB",
+                "fsA",
+                true,
+                true
+              ],
+              [
+                "fullscreenerror",
+                "fsB",
+                "fsA",
+                "fsA",
+                true,
+                true
+              ],
+              [
+                "fullscreenerror",
+                "fsB",
+                "#document",
+                "fsA",
+                true,
+                true
+              ]
+            ],
+            [
+              "fsA",
+              true,
+              "fsA",
+              [
+                "fsA"
+              ],
+              [
+                "fsA"
+              ],
+              [
+                "HTML",
+                "BODY"
+              ],
+              [
+                "fsA"
+              ]
+            ]
+          ],
+          "nested": [
+            "ok",
+            [
+              [
+                "fullscreenchange",
+                "fsB",
+                "fsB",
+                "fsB",
+                true,
+                true
+              ],
+              [
+                "fullscreenchange",
+                "fsB",
+                "fsA",
+                "fsB",
+                true,
+                true
+              ],
+              [
+                "fullscreenchange",
+                "fsB",
+                "#document",
+                "fsB",
+                true,
+                true
+              ]
+            ],
+            [
+              "fsB",
+              true,
+              "fsB",
+              [
+                "fsA",
+                "fsB"
+              ],
+              [
+                "fsA",
+                "fsB"
+              ],
+              [
+                "HTML",
+                "BODY",
+                "fsA"
+              ],
+              [
+                "fsB"
+              ]
+            ],
+            "block|fixed|visible|rgb(255, 0, 0)|0.5|none",
+            "block|fixed|visible|rgb(255, 0, 0)|0.5|none|0px|0px|0px|0px|0px|0px|0px|0px|border-box|0px|none|0px|none|contain",
+            "block|fixed|visible|0px|0px|0px|0px|rgb(0, 0, 0)|rgb(0, 255, 0)|1|none",
+            "block|fixed|visible|0px|0px|0px|0px|rgb(0, 0, 0)|rgb(255, 0, 0)|1|none",
+            false
+          ],
+          "exit": [
+            "ok",
+            [
+              [
+                "fullscreenchange",
+                "fsB",
+                "fsB",
+                "fsA",
+                true,
+                true
+              ],
+              [
+                "fullscreenchange",
+                "fsB",
+                "fsA",
+                "fsA",
+                true,
+                true
+              ],
+              [
+                "fullscreenchange",
+                "fsB",
+                "#document",
+                "fsA",
+                true,
+                true
+              ]
+            ],
+            [
+              "fsA",
+              true,
+              "fsA",
+              [
+                "fsA"
+              ],
+              [
+                "fsA"
+              ],
+              [
+                "HTML",
+                "BODY"
+              ],
+              [
+                "fsA"
+              ]
+            ],
+            "block|static|visible|rgb(255, 0, 0)|1|none",
+            "block|absolute|visible|auto|auto|auto|auto|rgba(0, 0, 0, 0)|rgb(255, 0, 0)|1|none"
+          ],
+          "exitAll": [
+            "ok",
+            [
+              [
+                "fullscreenchange",
+                "fsA",
+                "fsA",
+                null,
+                true,
+                true
+              ],
+              [
+                "fullscreenchange",
+                "fsA",
+                "#document",
+                null,
+                true,
+                true
+              ]
+            ],
+            [
+              null,
+              false,
+              null,
+              [],
+              [],
+              [],
+              []
+            ],
+            "block|static|visible|rgb(0, 0, 0)|1|none",
+            "block|absolute|visible|auto|auto|auto|auto|rgba(0, 0, 0, 0)|rgb(0, 0, 0)|1|none"
+          ],
+          "exitNone": [
+            [
+              "TypeError",
+              "Failed to execute 'exitFullscreen' on 'Document': Document not active"
+            ],
+            []
+          ],
+          "root": [
+            "ok",
+            [
+              [
+                "fullscreenchange",
+                "HTML",
+                "#document",
+                "HTML",
+                true,
+                true
+              ]
+            ],
+            [
+              "HTML",
+              true,
+              "HTML",
+              [
+                "HTML"
+              ],
+              [
+                "HTML"
+              ],
+              [],
+              [
+                "HTML"
+              ]
+            ],
+            "block|static|visible|rgb(0, 0, 0)|0.5|none",
+            "block|absolute|visible|auto|auto|auto|auto|rgba(0, 0, 0, 0)|rgb(0, 0, 0)|1|none"
+          ],
+          "authored": [
+            "ok",
+            [
+              [
+                "fullscreenchange",
+                "fsAuthored",
+                "#document",
+                "fsAuthored",
+                true,
+                true
+              ]
+            ],
+            [
+              "fsAuthored",
+              true,
+              "fsAuthored",
+              [
+                "fsAuthored"
+              ],
+              [
+                "fsAuthored"
+              ],
+              [
+                "HTML",
+                "BODY"
+              ],
+              [
+                "fsAuthored"
+              ]
+            ],
+            "block|fixed|visible|rgb(0, 0, 0)|0.5|none|0px|0px|0px|0px|0px|0px|0px|0px|border-box|0px|none|0px|none|cover|3|rgb(1, 2, 3)",
+            "block|absolute|visible|0px|0px|0px|0px|rgb(0, 0, 255)|rgb(0, 0, 0)|1|none"
+          ],
+          "removed": [
+            [
+              [
+                "fullscreenchange",
+                "#document",
+                "#document",
+                null,
+                true,
+                true
+              ]
+            ],
+            [
+              null,
+              false,
+              null,
+              [],
+              [],
+              [],
+              []
+            ],
+            "|||||"
+          ],
+          "reinserted": [
+            [
+              null,
+              false,
+              null,
+              [],
+              [],
+              [],
+              []
+            ],
+            "inline|relative|visible"
+          ],
+          "dialog": [
+            [
+              "TypeError",
+              "Dialog elements are invalid"
+            ],
+            [
+              [
+                "fullscreenerror",
+                "fsDialog",
+                "#document",
+                null,
+                true,
+                true
+              ]
+            ],
+            [
+              null,
+              false,
+              null,
+              [],
+              [],
+              [],
+              []
+            ]
+          ],
+          "detached": [
+            [
+              "TypeError",
+              "Element is not connected"
+            ],
+            [
+              [
+                "fullscreenerror",
+                "#document",
+                "#document",
+                null,
+                true,
+                true
+              ]
+            ],
+            [
+              null,
+              false,
+              null,
+              [],
+              [],
+              [],
+              []
+            ]
+          ],
+          "svg": [
+            "ok",
+            [
+              [
+                "fullscreenchange",
+                "fsSvg",
+                "#document",
+                "fsSvg",
+                true,
+                true
+              ]
+            ],
+            [
+              "fsSvg",
+              true,
+              "fsSvg",
+              [
+                "fsSvg"
+              ],
+              [
+                "fsSvg"
+              ],
+              [
+                "HTML",
+                "BODY"
+              ],
+              [
+                "fsSvg"
+              ]
+            ],
+            "block|fixed|visible|rgb(0, 0, 0)|0.5|none|0px|0px|0px|0px|0px|0px|0px|0px|border-box|0px|none|0px|none|contain"
+          ],
+          "withModal": [
+            "ok",
+            [
+              [
+                "fullscreenchange",
+                "fsA",
+                "fsA",
+                "fsA",
+                true,
+                true
+              ],
+              [
+                "fullscreenchange",
+                "fsA",
+                "#document",
+                "fsA",
+                true,
+                true
+              ]
+            ],
+            [
+              "fsA",
+              true,
+              "fsA",
+              [
+                "fsA"
+              ],
+              [
+                "fsA"
+              ],
+              [
+                "HTML",
+                "BODY"
+              ],
+              [
+                "fsA",
+                "fsDialog"
+              ]
+            ],
+            "block|fixed|visible|rgb(255, 0, 0)|0.5|none",
+            "block|fixed|visible|rgb(0, 0, 0)|1|none",
+            "block|fixed|visible|0px|0px|0px|0px|rgb(0, 0, 0)|rgb(0, 255, 0)|1|none",
+            "block|fixed|visible|0px|0px|0px|0px|rgba(0, 0, 0, 0.1)|rgb(0, 0, 0)|1|none"
+          ],
+          "shadow": [
+            "ok",
+            [
+              [
+                "fullscreenchange",
+                "fsHost",
+                "#document",
+                "fsHost",
+                true,
+                true
+              ]
+            ],
+            [
+              "fsHost",
+              true,
+              "fsHost",
+              [],
+              [],
+              [
+                "HTML",
+                "BODY",
+                "fsHost"
+              ],
+              []
+            ],
+            "inner",
+            "block|fixed|visible|rgb(0, 0, 255)|1|none|0px",
+            false,
+            true,
+            true,
+            true
+          ],
+          "after": [
+            [
+              null,
+              false,
+              null,
+              [],
+              [],
+              [],
+              []
+            ],
+            "block|static|visible|rgb(0, 0, 0)|1|none",
+            "block|absolute|visible|auto|auto|auto|auto|rgba(0, 0, 0, 0)|rgb(0, 0, 0)|1|none"
           ]
         }
       }

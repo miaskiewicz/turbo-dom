@@ -1,7 +1,7 @@
 {
  "id": "turbo-dom#44",
  "reason": "createElementNS / setAttributeNS / createAttributeNS split a qualified name strictly on ':' (a:b:c -> prefix a, local name b). Only names with two or more colons change; the pinned inputs only reach these APIs through React's createElementNS(svg/math namespace, tag) and setAttributeNS(xlink/xml namespace, single-colon name such as xlink:href), so no corpus output is predicted to change. Static screenshots and the html2pdf corpora do not run the binding; the surf live corpus is not rebuildable in this slice (prediction, unmeasured). P5b-X5.",
- "control": "test/fixtures/dom_adoption_reactions_chrome156.json nsTwoColons; crates/turbo-dom-browser-env/src/dom_reactions_names_chrome156.json section names",
+ "control": "crates/turbo-dom-browser-env/src/dom_adoption_reactions_chrome156.json nsTwoColons; crates/turbo-dom-browser-env/src/dom_reactions_names_chrome156.json section names",
  "e2e": "crates/turbo-dom-browser-env/src/dom_reactions_tests.rs",
  "changes": {
   "html2pdf": [],

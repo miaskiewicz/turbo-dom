@@ -1898,6 +1898,114 @@
    ]
   },
   {
+   "id": "fullscreen",
+   "bug": "fullscreen",
+   "html": "<!DOCTYPE html><html><head></head><body><div id=\"a\"><p id=\"p\">p</p></div></body></html>",
+   "elements": [
+    "html",
+    "head",
+    "body",
+    "div",
+    "p"
+   ],
+   "selectors": [
+    {
+     "selector": ":fullscreen",
+     "valid": true,
+     "matches": "00000",
+     "qsa": [],
+     "winner": "00000",
+     "sheet_valid": true
+    },
+    {
+     "selector": ":-webkit-full-screen",
+     "valid": true,
+     "matches": "00000",
+     "qsa": [],
+     "winner": "00000",
+     "sheet_valid": true
+    },
+    {
+     "selector": ":-webkit-full-screen-ancestor",
+     "valid": true,
+     "matches": "00000",
+     "qsa": [],
+     "winner": "00000",
+     "sheet_valid": true
+    },
+    {
+     "selector": ":-webkit-full-screen-document",
+     "valid": false,
+     "matches": "00000",
+     "qsa": [],
+     "winner": "00000",
+     "sheet_valid": false
+    },
+    {
+     "selector": ":FULLSCREEN",
+     "valid": true,
+     "matches": "00000",
+     "qsa": [],
+     "winner": "00000",
+     "sheet_valid": true
+    },
+    {
+     "selector": ":-WEBKIT-FULL-SCREEN-ANCESTOR",
+     "valid": true,
+     "matches": "00000",
+     "qsa": [],
+     "winner": "00000",
+     "sheet_valid": true
+    },
+    {
+     "selector": ":fullscreen()",
+     "valid": false,
+     "matches": "00000",
+     "qsa": [],
+     "winner": "00000",
+     "sheet_valid": false
+    },
+    {
+     "selector": "div:not(:fullscreen)",
+     "valid": true,
+     "matches": "00010",
+     "qsa": [
+      3
+     ],
+     "winner": "00010",
+     "sheet_valid": true
+    },
+    {
+     "selector": ":-webkit-full-screen-ancestor p",
+     "valid": true,
+     "matches": "00000",
+     "qsa": [],
+     "winner": "00000",
+     "sheet_valid": true
+    },
+    {
+     "selector": ":is(:fullscreen, p)",
+     "valid": true,
+     "matches": "00001",
+     "qsa": [
+      4
+     ],
+     "winner": "00001",
+     "sheet_valid": true
+    },
+    {
+     "selector": "p:not(:-webkit-full-screen-ancestor)",
+     "valid": true,
+     "matches": "00001",
+     "qsa": [
+      4
+     ],
+     "winner": "00001",
+     "sheet_valid": true
+    }
+   ]
+  },
+  {
    "id": "template",
    "bug": "template",
    "html": "<!DOCTYPE html><html><head></head><body><template id=\"t\"><p class=\"t\" id=\"in\">x</p><div><span>s</span></div></template><p class=\"t\" id=\"out\">y</p><div id=\"w\"><template><b id=\"deep\">d</b></template></div></body></html>",
