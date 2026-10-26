@@ -258,3 +258,61 @@ fn markers_classify_by_local_name_and_never_strip() {
     assert_eq!(view.tag(kids[0]), turbo_dom_layout::Tag::Marker(kind));
     assert_eq!(view.tag(body), turbo_dom_layout::Tag::Html("body".into()));
 }
+
+#[test]
+fn navigator_scopes_detached_and_shell_matching() {
+    use turbo_dom_layout::style::{Navigator, SiblingPosition};
+    let tree = parse_html_tree(
+        "<html class=h><body class=b><!--c--><p>a<i>x</i></p>t<p></p><style>s</style></body></html>",
+    );
+    let view = TreeView::new(&tree);
+    let body = view.find_element("body").unwrap();
+    let html = view.find_element("html").unwrap();
+    let roots = tree.children(body);
+
+    let detached = Navigator::new(&view, Roots::Detached(&roots));
+    let kept = detached.roots().to_vec();
+    assert_eq!(kept.len(), 4, "p, text, p, style (comment skipped)");
+    assert!(detached.shells().is_empty());
+    assert_eq!(
+        detached.parent(kept[0]),
+        None,
+        "matching stops at the scope root"
+    );
+    assert_eq!(detached.siblings(kept[2]), kept);
+    assert_eq!(
+        detached.position(kept[2]),
+        Some(SiblingPosition {
+            index: 2,
+            of_type_index: 2,
+            of_type_total: 2,
+            siblings: 3
+        })
+    );
+    assert_eq!(detached.position(kept[1]), None, "text has no position");
+    assert!(detached.is_empty(kept[2]) && !detached.is_empty(kept[0]));
+    let i = detached.children(kept[0])[1];
+    assert_eq!(detached.parent(i), Some(kept[0]));
+    assert_eq!(detached.siblings(i).len(), 2);
+
+    let stripped = view.strip_non_visual(true);
+    let shell = Navigator::new(&stripped, Roots::Shell);
+    assert_eq!(shell.shells(), [html, body]);
+    assert_eq!(shell.roots().len(), 3, "style stripped");
+    assert_eq!(shell.parent(shell.roots()[0]), Some(body));
+    assert_eq!(shell.parent(body), Some(html));
+    assert_eq!(shell.parent(html), None);
+    for h in [html, body] {
+        assert!(shell.children(h).is_empty() && shell.is_empty(h));
+        assert_eq!(shell.siblings(h), [h]);
+        assert_eq!(
+            shell.position(h),
+            Some(SiblingPosition {
+                index: 0,
+                of_type_index: 0,
+                of_type_total: 1,
+                siblings: 1
+            })
+        );
+    }
+}

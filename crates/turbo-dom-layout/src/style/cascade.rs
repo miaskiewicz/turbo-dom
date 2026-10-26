@@ -1110,7 +1110,9 @@ pub use matched::{
     presentational_declarations, resolve_matched_style, CascadeOrigin, MatchedDeclaration,
 };
 pub(crate) use tree_view::is_non_visual;
-pub use tree_view::{style_input, Roots, StyleInput, StyleOptions, TreeView};
+pub use tree_view::{
+    style_input, Navigator, Roots, SiblingPosition, StyleInput, StyleOptions, TreeView,
+};
 
 #[cfg(test)]
 mod dimension_hint_tests {

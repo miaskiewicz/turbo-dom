@@ -246,6 +246,166 @@ pub struct StyleOptions {
     pub accept_cmyk: bool,
 }
 
+/// One element's place among its kept siblings (what the structural pseudo-classes
+/// read): 1-based `index` among the element siblings, `of_type_index` /
+/// `of_type_total` among those with the same type key, and the element-sibling
+/// count. A shell sits at the root position (index 0, an only child).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct SiblingPosition {
+    pub index: usize,
+    pub of_type_index: usize,
+    pub of_type_total: usize,
+    pub siblings: usize,
+}
+
+impl From<ElemPos> for SiblingPosition {
+    fn from(pos: ElemPos) -> Self {
+        SiblingPosition {
+            index: pos.index,
+            of_type_index: pos.of_type_index,
+            of_type_total: pos.of_type_total,
+            siblings: pos.siblings,
+        }
+    }
+}
+
+/// The structure selector matching reads for one styled scope (a [`TreeView`] plus
+/// its [`Roots`]): kept children, parents with the scope cutoff, sibling positions,
+/// `:empty`, attributes. The cascade builds its match contexts from it; it is the
+/// seam the shared turbo-dom selector engine plugs into.
+///
+/// Scope rules: a [`Roots::Detached`] root has no parent and its siblings are the
+/// other kept roots; under [`Roots::Shell`] the body content's parent is the
+/// `<body>` shell, `<body>`'s is the `<html>` shell, and each shell is childless,
+/// empty and alone at the root position (its real surroundings are invisible).
+pub struct Navigator<'v, 't> {
+    view: &'v TreeView<'t>,
+    roots: Vec<Handle>,
+    shells: Vec<Handle>,
+}
+
+impl<'v, 't> Navigator<'v, 't> {
+    /// The navigator of `roots` over `view`.
+    #[must_use]
+    pub fn new(view: &'v TreeView<'t>, roots: Roots) -> Self {
+        match roots {
+            Roots::Detached(roots) => Navigator {
+                view,
+                roots: roots.iter().copied().filter(|&h| view.is_kept(h)).collect(),
+                shells: Vec::new(),
+            },
+            Roots::Shell => {
+                let body = view
+                    .find_element("body")
+                    .expect("the HTML parser always produces a <body>");
+                let shells = view
+                    .find_element("html")
+                    .into_iter()
+                    .chain(std::iter::once(body))
+                    .collect();
+                Navigator {
+                    view,
+                    roots: view.children(body),
+                    shells,
+                }
+            }
+        }
+    }
+
+    /// The styled top-level nodes.
+    #[must_use]
+    pub fn roots(&self) -> &[Handle] {
+        &self.roots
+    }
+
+    /// The match-only ancestor shells, outermost first (empty when detached).
+    #[must_use]
+    pub fn shells(&self) -> &[Handle] {
+        &self.shells
+    }
+
+    fn is_shell(&self, h: Handle) -> bool {
+        self.shells.contains(&h)
+    }
+
+    /// The kept children of `h` (none for a shell).
+    #[must_use]
+    pub fn children(&self, h: Handle) -> Vec<Handle> {
+        if self.is_shell(h) {
+            return Vec::new();
+        }
+        self.view.children(h)
+    }
+
+    /// The parent of `h` within the scope (`None` past the scope root).
+    #[must_use]
+    pub fn parent(&self, h: Handle) -> Option<Handle> {
+        if let Some(i) = self.shells.iter().position(|&s| s == h) {
+            return i.checked_sub(1).map(|p| self.shells[p]);
+        }
+        if self.roots.contains(&h) {
+            return self.shells.last().copied();
+        }
+        self.view.tree().parent(h)
+    }
+
+    /// The kept siblings of `h`, including `h` (a shell is alone).
+    #[must_use]
+    pub fn siblings(&self, h: Handle) -> Vec<Handle> {
+        if self.is_shell(h) {
+            return vec![h];
+        }
+        if self.roots.contains(&h) {
+            return self.roots.clone();
+        }
+        self.parent(h)
+            .map_or_else(|| vec![h], |parent| self.view.children(parent))
+    }
+
+    /// The structural position of element `h` (`None` for a non-element).
+    #[must_use]
+    pub fn position(&self, h: Handle) -> Option<SiblingPosition> {
+        if self.is_shell(h) {
+            return Some(root_pos().into());
+        }
+        let siblings = self.siblings(h);
+        let i = siblings.iter().position(|&s| s == h)?;
+        self.positions(&siblings)[i].map(SiblingPosition::from)
+    }
+
+    /// Whether `h` matches `:empty` (no kept children; a shell always does).
+    #[must_use]
+    pub fn is_empty(&self, h: Handle) -> bool {
+        self.children(h).is_empty()
+    }
+
+    /// The tag of an element node, `None` for text.
+    fn tag(&self, h: Handle) -> Option<Tag> {
+        (self.view.tree().node_type(h) == NodeType::Element).then(|| self.view.tag(h))
+    }
+
+    /// The positions of the element siblings in `siblings` (text gets `None`).
+    fn positions(&self, siblings: &[Handle]) -> Vec<Option<ElemPos>> {
+        let keys: Vec<Option<String>> = siblings
+            .iter()
+            .map(|&h| self.tag(h).as_ref().map(tag_key))
+            .collect();
+        positions_from_keys(&keys)
+    }
+
+    /// A shell's match context: a plain element at the root position, empty, with
+    /// no preceding siblings.
+    fn shell_ctx(&self, h: Handle) -> Ctx<'t> {
+        ctx_from(
+            self.view.tree().local_name(h),
+            Attrs::Tree(self.view.tree(), h),
+            root_pos(),
+            true,
+            Vec::new(),
+        )
+    }
+}
+
 /// Style a [`StyleInput`] under `cascade` into the styled tree (see the module
 /// docs). Equal — up to the `source` fields — to the legacy [`style_tree`] /
 /// [`style_tree_with_roots`] over the legacy conversion of the same document.
@@ -259,64 +419,31 @@ pub fn style_input(
     options: &StyleOptions,
 ) -> Vec<StyledNode> {
     let _cmyk = crate::layout::value::cmyk_scope(options.accept_cmyk);
-    let view = &input.view;
-    match input.roots {
-        Roots::Detached(roots) => {
-            let nodes: Vec<Handle> = roots.iter().copied().filter(|&h| view.is_kept(h)).collect();
-            style_siblings(view, &nodes, &[], &ComputedStyle::default(), cascade)
-        }
-        Roots::Shell => style_shell(view, cascade),
-    }
-}
-
-fn style_shell(view: &TreeView, cascade: &Cascade) -> Vec<StyledNode> {
-    let body = view
-        .find_element("body")
-        .expect("the HTML parser always produces a <body>");
-    let shells: Vec<Handle> = view
-        .find_element("html")
-        .into_iter()
-        .chain(std::iter::once(body))
-        .collect();
-    // The shells are plain elements at the root position, with no children and no
-    // preceding siblings, whatever the document holds around them.
-    let ancestors: Vec<Ctx> = shells
-        .iter()
-        .map(|&h| {
-            ctx_from(
-                view.tree.local_name(h),
-                Attrs::Tree(view.tree, h),
-                root_pos(),
-                true,
-                Vec::new(),
-            )
-        })
-        .collect();
+    let nav = Navigator::new(&input.view, input.roots);
+    let ancestors: Vec<Ctx> = nav.shells().iter().map(|&h| nav.shell_ctx(h)).collect();
+    // Each shell's own style resolves down the chain, so the content inherits from
+    // the real `<body>` computed style (default when detached).
     let mut parent = ComputedStyle::default();
     for i in 0..ancestors.len() {
         parent = resolve_style(&ancestors[..=i], &parent, cascade);
     }
-    style_siblings(view, &view.children(body), &ancestors, &parent, cascade)
+    style_siblings(&nav, nav.roots(), &ancestors, &parent, cascade)
 }
 
 fn style_siblings<'t>(
-    view: &TreeView<'t>,
+    nav: &Navigator<'_, 't>,
     nodes: &[Handle],
     ancestors: &[Ctx<'t>],
     parent: &ComputedStyle,
     cascade: &Cascade,
 ) -> Vec<StyledNode> {
-    let tags: Vec<Option<Tag>> = nodes
-        .iter()
-        .map(|&h| (view.tree.node_type(h) == NodeType::Element).then(|| view.tag(h)))
-        .collect();
-    let keys: Vec<Option<String>> = tags.iter().map(|tag| tag.as_ref().map(tag_key)).collect();
-    let positions = positions_from_keys(&keys);
+    let view = nav.view;
+    let positions = nav.positions(nodes);
     // Each preceding element sibling's (prev-less) context, for `+`/`~`.
     let mut prev: Vec<Ctx<'t>> = Vec::new();
     let mut out = Vec::with_capacity(nodes.len());
-    for ((&h, tag), pos) in nodes.iter().zip(tags).zip(positions) {
-        let Some(tag) = tag else {
+    for (&h, pos) in nodes.iter().zip(positions) {
+        let Some(tag) = nav.tag(h) else {
             out.push(StyledNode::Text(StyledText {
                 text: view.text(h).into_owned(),
                 source: Some(h),
@@ -324,13 +451,13 @@ fn style_siblings<'t>(
             continue;
         };
         let pos = pos.expect("element has a position");
-        let children = view.children(h);
+        let children = nav.children(h);
         let empty = children.is_empty();
         let sibling = view.ctx(h, &tag, pos, empty, Vec::new());
         let mut path = ancestors.to_vec();
         path.push(view.ctx(h, &tag, pos, empty, prev.clone()));
         let style = resolve_style(&path, parent, cascade);
-        let styled_children = style_siblings(view, &children, &path, &style, cascade);
+        let styled_children = style_siblings(nav, &children, &path, &style, cascade);
         out.push(StyledNode::Element(StyledElement {
             tag,
             attrs: view.attrs(h),
