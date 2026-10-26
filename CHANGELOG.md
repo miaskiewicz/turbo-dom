@@ -25,8 +25,14 @@ at the time); this file reconstructs them from history.
   `Intrinsic::orientation` (new `Orientation::then`), so the natural size, the box
   (stored under `image-orientation: none`), the raster pixels and the PDF placement match
   Chrome. The fixtures are derived from `q.avif` by `scripts/make_format_fixtures.py`, and
-  the control `scripts/image-formats-chrome-control.mjs` gains seven cases. JPEG XL is left
-  as is: Chrome 156 *decodes* it (jxl-rs), so matching it needs a decoder (open decision).
+  the control `scripts/image-formats-chrome-control.mjs` gains seven cases.
+- JPEG XL images (miaskiewicz/turbo-dom#45 item 2). Chrome 156 decodes them (jxl-rs). The
+  shared probe now reads a JPEG XL's `SizeHeader` and orientation in every build: bare
+  codestream or container, new `Format::Jxl`. turbo-dom-raster decodes it under the new
+  off-by-default `jxl` feature with `jxl-oxide` (MIT OR Apache-2.0, pure Rust, no thread
+  pool; CI raster job). The fixtures are three jxl-rs test files with their BSD-3-Clause
+  license (`crates/turbo-dom-layout/tests/fixtures/images/jxl/`), and the control gains
+  three cases. The PDF does not embed JPEG XL.
   Corpus changes: `tools/parity/expected/p5b-w4-turbo-dom-27-*.json`,
   `-turbo-dom-45-1.json`.
 
