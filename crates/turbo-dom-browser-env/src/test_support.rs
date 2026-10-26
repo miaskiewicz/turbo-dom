@@ -187,6 +187,12 @@ pub const HTML_IMAGE_CASES_JSON: &[u8] = include_bytes!("html_image_cases.json")
 pub const HTML_IMAGE_CHROME156_JSON: &str = include_str!("html_image_chrome156.json");
 /// `src/html_image_probe.js` (HTMLImageElement image-state and width / height / x / y accessors; async).
 pub const HTML_IMAGE_PROBE_JS: &str = include_str!("html_image_probe.js");
+/// `src/html_track_cases.json` (turbo-dom#74: HTMLTrackElement / TextTrack).
+pub const HTML_TRACK_CASES_JSON: &str = include_str!("html_track_cases.json");
+/// `src/html_track_chrome156.json`.
+pub const HTML_TRACK_CHROME156_JSON: &str = include_str!("html_track_chrome156.json");
+/// `src/html_track_probe.js` (sync).
+pub const HTML_TRACK_PROBE_JS: &str = include_str!("html_track_probe.js");
 /// `src/key_order_chrome156.json`.
 pub const KEY_ORDER_CHROME156_JSON: &str = include_str!("key_order_chrome156.json");
 /// `src/key_order_probe.js`.
@@ -202,6 +208,12 @@ pub const RADIO_DIRTY_CASES_JSON: &str = include_str!("radio_dirty_cases.json");
 pub const RADIO_DIRTY_GC_CHROME155_JSON: &str = include_str!("radio_dirty_gc_chrome155.json");
 /// `src/radio_dirty_gc_probe.js`.
 pub const RADIO_DIRTY_GC_PROBE_JS: &str = include_str!("radio_dirty_gc_probe.js");
+/// `src/shadow_events_cases.json` (turbo-dom#66: event paths across shadow trees).
+pub const SHADOW_EVENTS_CASES_JSON: &str = include_str!("shadow_events_cases.json");
+/// `src/shadow_events_chrome156.json`.
+pub const SHADOW_EVENTS_CHROME156_JSON: &str = include_str!("shadow_events_chrome156.json");
+/// `src/shadow_events_probe.js` (sync).
+pub const SHADOW_EVENTS_PROBE_JS: &str = include_str!("shadow_events_probe.js");
 /// `src/template_lifecycle_chrome155.json`.
 pub const TEMPLATE_LIFECYCLE_CHROME155_JSON: &str =
     include_str!("template_lifecycle_chrome155.json");
@@ -469,6 +481,12 @@ pub const FILES: &[(&str, &[u8])] = &[
         HTML_IMAGE_CHROME156_JSON.as_bytes(),
     ),
     ("html_image_probe.js", HTML_IMAGE_PROBE_JS.as_bytes()),
+    ("html_track_cases.json", HTML_TRACK_CASES_JSON.as_bytes()),
+    (
+        "html_track_chrome156.json",
+        HTML_TRACK_CHROME156_JSON.as_bytes(),
+    ),
+    ("html_track_probe.js", HTML_TRACK_PROBE_JS.as_bytes()),
     (
         "key_order_chrome156.json",
         KEY_ORDER_CHROME156_JSON.as_bytes(),
@@ -491,6 +509,15 @@ pub const FILES: &[(&str, &[u8])] = &[
         "radio_dirty_gc_probe.js",
         RADIO_DIRTY_GC_PROBE_JS.as_bytes(),
     ),
+    (
+        "shadow_events_cases.json",
+        SHADOW_EVENTS_CASES_JSON.as_bytes(),
+    ),
+    (
+        "shadow_events_chrome156.json",
+        SHADOW_EVENTS_CHROME156_JSON.as_bytes(),
+    ),
+    ("shadow_events_probe.js", SHADOW_EVENTS_PROBE_JS.as_bytes()),
     (
         "template_lifecycle_chrome155.json",
         TEMPLATE_LIFECYCLE_CHROME155_JSON.as_bytes(),

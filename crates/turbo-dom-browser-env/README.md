@@ -179,12 +179,33 @@ and `:-webkit-full-screen-ancestor` (the top's shadow-including ancestors) every
 stylesheets and the shadow-scoped native cascade included; `:modal` also matches the
 fullscreen element. A fullscreen element other than the root computes Chrome's
 `:not(:root):fullscreen` values — `position: fixed`, `inset: 0`, `margin: 0`,
-`box-sizing: border-box`, `min-*: 0`, `max-*: none`, `width` / `height: 100%` (left
-unresolved), `transform: none`, all `!important`, and `object-fit: contain` — and its
+`box-sizing: border-box`, `min-*: 0`, `max-*: none`, `width` / `height: 100%` (computed
+as the viewport's `innerWidth` / `innerHeight` px), `transform: none`, all `!important`, and `object-fit: contain` — and its
 `::backdrop` is fixed at inset 0 with `rgb(0, 0, 0)`. `fullscreenchange` /
 `fullscreenerror` fire as before. Control: case `fullscreen` (async; the collector's
-`__cdpGesture()` is a trusted CDP click). Known gaps, filed: composed events stop at the
-shadow root (turbo-dom#66).
+`__cdpGesture()` is a trusted CDP click).
+
+### Text tracks
+
+`<track>` is an `HTMLTrackElement` (turbo-dom#74, control `src/html_track_chrome156.json`):
+`kind` (missing → `subtitles`, invalid → `metadata`), `srclang`, `label`, `default`, the
+shared `src` URL reflection, `readyState` `NONE` (no track is ever loaded) and the
+`NONE`..`ERROR` constants; `track` is the element's `TextTrack` (kind / label / language / id
+from the element, `mode` `disabled` / `hidden` / `showing`, empty `TextTrackCueList`s for
+`cues` / `activeCues` once enabled, `oncuechange`; `addCue` / `removeCue` reject non-cues).
+
+### Events across shadow trees
+
+`dispatchEvent` builds the DOM event path through shadow trees (turbo-dom#66): a composed
+event crosses each shadow root into its host (an uncomposed one stops at the root of the
+target's tree), a slotted node passes through its assigned slot, and every listener sees
+`event.target` and `relatedTarget` (MouseEvent / FocusEvent and subclasses) retargeted
+against its own tree; hosts receive the event AT_TARGET, `composedPath()` hides closed
+trees the listener is outside of, propagation stops where the retargeted `relatedTarget`
+is the host it would enter (nothing is dispatched when it equals the target), and after
+dispatch `target` / `relatedTarget` are cleared when they stayed inside a shadow tree.
+Events whose path crosses no shadow root dispatch as before. Control:
+`src/shadow_events_chrome156.json` (exported as `test_support::SHADOW_EVENTS_*`).
 
 `getComputedStyle(el, pseudoElt)` parses `pseudoElt` like Chrome (turbo-dom#47):
 `::before` / `::after` (and `:before` / `:after` / bare `before` / `after`) compute

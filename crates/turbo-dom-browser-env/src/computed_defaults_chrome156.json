@@ -2,7 +2,7 @@
   "browser": "Chrome/156.0.8078.4",
   "v8": "15.6.75",
   "casesSha256": "2512495d716201215553c2cefce2e1428a85dd29a7c6313de48e22493c54f365",
-  "probeSha256": "f4c6b196c296d9506b783220e1ba6600c3a346f1e554be391932560981aff967",
+  "probeSha256": "c64ed30b05b4dc02a95bbb509f8b8a5c1a9367b5fa82527b5e39b7f300b35d0c",
   "collectorSha256": "7bd6ffb7440d38e05cd2b8fbe0e84e91cf462043577ceada3e276728ad216172",
   "flags": [
     "--headless=new",
@@ -3035,6 +3035,10 @@
             true,
             true
           ],
+          "fullSize": [
+            true,
+            true
+          ],
           "consumed": [
             [
               "TypeError",
@@ -3140,6 +3144,16 @@
             "block|fixed|visible|0px|0px|0px|0px|rgb(0, 0, 0)|rgb(255, 0, 0)|1|none",
             false
           ],
+          "nestedSize": [
+            [
+              true,
+              true
+            ],
+            [
+              true,
+              true
+            ]
+          ],
           "exit": [
             "ok",
             [
@@ -3221,6 +3235,10 @@
             "block|static|visible|rgb(0, 0, 0)|1|none",
             "block|absolute|visible|auto|auto|auto|auto|rgba(0, 0, 0, 0)|rgb(0, 0, 0)|1|none"
           ],
+          "exitSize": [
+            false,
+            false
+          ],
           "exitNone": [
             [
               "TypeError",
@@ -3290,6 +3308,10 @@
             ],
             "block|fixed|visible|rgb(0, 0, 0)|0.5|none|0px|0px|0px|0px|0px|0px|0px|0px|border-box|0px|none|0px|none|cover|3|rgb(1, 2, 3)",
             "block|absolute|visible|0px|0px|0px|0px|rgb(0, 0, 255)|rgb(0, 0, 0)|1|none"
+          ],
+          "authoredSize": [
+            true,
+            true
           ],
           "removed": [
             [
@@ -3406,6 +3428,10 @@
               ]
             ],
             "block|fixed|visible|rgb(0, 0, 0)|0.5|none|0px|0px|0px|0px|0px|0px|0px|0px|border-box|0px|none|0px|none|contain"
+          ],
+          "svgSize": [
+            true,
+            true
           ],
           "withModal": [
             "ok",

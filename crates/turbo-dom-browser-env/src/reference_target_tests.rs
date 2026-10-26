@@ -16,22 +16,11 @@ fn reference_targets_match_chrome156() {
         }
         differences(section, &actual[section], value, &mut out);
     }
-    // KNOWN_GAP: composed events dispatched inside a shadow tree do not yet propagate to the
-    // host (engine-wide event-path composition). Every target-side entry must match Chrome,
-    // and the host-side entries Chrome records are absent.
-    let host = |entry: &serde_json::Value| entry[0] == "host";
-    let chrome = expected["invokers"]["log"].as_array().unwrap();
-    let binding = actual["invokers"]["log"].as_array().unwrap();
-    assert!(chrome.iter().any(host) && !binding.iter().any(host));
-    let chrome: Vec<_> = chrome
-        .iter()
-        .filter(|entry| !host(entry))
-        .cloned()
-        .collect();
+    // Composed events dispatched inside a shadow tree reach the host (turbo-dom#66).
     differences(
         "invokers.log",
-        &serde_json::Value::Array(binding.clone()),
-        &serde_json::Value::Array(chrome),
+        &actual["invokers"]["log"],
+        &expected["invokers"]["log"],
         &mut out,
     );
     assert!(out.is_empty(), "{}", out.join("\n"));
