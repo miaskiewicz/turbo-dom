@@ -49,6 +49,12 @@ fn lay_out(html: &str) -> Result<Fragment, RenderError> {
   rejection; exact error messages in `LiveError`); `live::snapshot` styles the composed
   tree, runs the embedder's post-cascade hook and lays it out with native text
   provenance. Qualified attribute names, no markers, sources on elements and text.
+  Live layouts give table rows and row groups (`<tbody>`/`<thead>`/`<tfoot>`) border
+  boxes with used metrics and shrink `width: auto` tables to fit; an inline construct the
+  native inline producer does not support fails only that element's reads
+  (`LayoutSnapshot::unsupported_inline_geometry`), not the snapshot (P5b,
+  turbo-surf#31/#36; Chrome 156 control `scripts/live-geometry-chrome-control.mjs` in
+  turbo-dom, asserted by `src/live/chrome_tests.rs`).
 - `layout_snapshot::snapshot_{,html_}live_tree*` capture a snapshot of a `StyleInput`
   (identity paths index the styled forest).
 - `image` — the ONE image layer shared by the PDF emitter and turbo-dom-raster:

@@ -133,7 +133,11 @@ package or publish workflow.
   the page's own composed `Tree` (embedder-supplied composed children, pre-matched rules,
   inline overrides) under the copier's exact budgets/errors, with no copy; `cssom_view`
   holds surf's pure geometry modules (metrics, hit, scroll, visibility, inline, text, range,
-  the `Composition` scope graph). Since S5 the legacy owned `Node` input is gone (`node.rs`,
+  the `Composition` scope graph). Since P5b-W1 live tables give rows and row groups boxes
+  with used metrics and shrink auto widths, `position:absolute/fixed` blockify and stay in
+  their inline run, and unsupported inline constructs fail per element
+  (`LayoutSnapshot::unsupported_inline_geometry`; turbo-surf#31/#36, Chrome control
+  `scripts/live-geometry-chrome-control.mjs` -> `src/live/chrome_tests.rs`). Since S5 the legacy owned `Node` input is gone (`node.rs`,
   `markup.rs`, `style_tree*`; `Tag`/`Attr`/`MarkerKind` live in `tag`); the
   `snapshot_*live_tree*` entries take a `StyleInput`. `image` is the ONE image layer: the
   header size probe (`ImageResolver::intrinsic`), the shared PNG decode (`PngFrame`: PDF
