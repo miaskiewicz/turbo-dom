@@ -1134,7 +1134,7 @@ if(typeof __ns.makeNativeFunction==='function'){
     LEGEND:'HTMLLegendElement', OL:'HTMLOListElement', DL:'HTMLDListElement', PRE:'HTMLPreElement',
     TR:'HTMLTableRowElement', COL:'HTMLTableColElement', CAPTION:'HTMLTableCaptionElement',
     PROGRESS:'HTMLProgressElement', METER:'HTMLMeterElement', DETAILS:'HTMLDetailsElement',
-    PICTURE:'HTMLPictureElement', SOURCE:'HTMLSourceElement', VIDEO:'HTMLVideoElement',
+    PICTURE:'HTMLPictureElement', SOURCE:'HTMLSourceElement', TRACK:'HTMLTrackElement', VIDEO:'HTMLVideoElement',
     AUDIO:'HTMLAudioElement', TEMPLATE:'HTMLTemplateElement', SLOT:'HTMLSlotElement',
     BODY:'HTMLBodyElement', HTML:'HTMLHtmlElement', HEAD:'HTMLHeadElement', META:'HTMLMetaElement',
     LINK:'HTMLLinkElement', TITLE:'HTMLTitleElement', BASE:'HTMLBaseElement', BR:'HTMLBRElement',

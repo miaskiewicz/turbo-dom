@@ -604,12 +604,13 @@
           ? wget(constructors, target)
           : wget(elementStates, existing)?.definition;
       if (!definition || definition.constructor !== target)
-        throw new TypeErrorValue("Illegal constructor");
+        throw new TypeErrorValue("Failed to construct '" + name + "': Illegal constructor");
       const required =
         definition.local === definition.name
           ? htmlPrototype
           : getPrototype(apply(create, contextDocument, [definition.local]));
-      if (required !== expected) throw new TypeErrorValue("Illegal constructor");
+      if (required !== expected)
+        throw new TypeErrorValue("Failed to construct '" + name + "': Illegal constructor");
       const node =
         existing === undefined ? apply(create, contextDocument, [definition.local]) : existing;
       setPrototype(
@@ -632,6 +633,10 @@
       return node;
     }, name);
     define(replacement, "prototype", { value: expected, writable: false });
+    // Interface constants (HTMLTrackElement.NONE, ...) stay on the constructor.
+    for (const key of Reflect.ownKeys(old))
+      if (key !== "length" && key !== "name" && key !== "prototype")
+        define(replacement, key, Object.getOwnPropertyDescriptor(old, key));
     define(expected, "constructor", {
       value: replacement,
       writable: true,

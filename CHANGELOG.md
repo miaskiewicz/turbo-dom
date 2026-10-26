@@ -7,6 +7,23 @@ at the time); this file reconstructs them from history.
 
 ## [Unreleased]
 
+### Fixed — `HTMLTrackElement` and `TextTrack` (P5b-X6, miaskiewicz/turbo-dom#74, Chrome 156 control)
+- turbo-dom-browser-env: `<track>` had no interface, so `track.src`, `kind`, `srclang`,
+  `label`, `default`, `readyState`, `track` and `NONE` / `LOADING` / `LOADED` / `ERROR` were
+  `undefined`. `HTMLTrackElement` now exists with Chrome's members and key order:
+  - `kind` is the enumerated reflection (missing → `subtitles`, invalid → `metadata`);
+  - `srclang` / `label` / `default` reflect;
+  - `readyState` is `NONE` (the binding never loads tracks);
+  - `track` is one `TextTrack` per element (an `EventTarget`). Its `kind` / `label` /
+    `language` / `id` follow the element, `mode` is enumerated (`disabled` by default, invalid
+    values ignored), `cues` / `activeCues` are empty `TextTrackCueList`s once enabled,
+    `oncuechange` works, and `addCue` / `removeCue` reject non-cues.
+- Every HTML element constructor now throws Chrome's `Failed to construct 'X': Illegal
+  constructor` and keeps its interface constants.
+- `track.src` uses the shared reflected-URL getter, so `<base href>` resolution comes with
+  turbo-dom#73 (P5b-X7). Its four control rows are listed as pending on #73.
+- Control: `src/html_track_{probe.js,cases.json,chrome156.json}`.
+
 ### Fixed — events across shadow trees (P5b-X6, miaskiewicz/turbo-dom#66, Chrome 156 control)
 - turbo-dom-browser-env: `dispatchEvent` used to build its path from DOM parents only, so an
   event never left a shadow tree, even with `composed: true`, and its target was never

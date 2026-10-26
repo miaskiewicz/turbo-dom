@@ -5728,6 +5728,7 @@ fn get_constructor(
             Some("DETAILS") => "HTMLDetailsElement",
             Some("PICTURE") => "HTMLPictureElement",
             Some("SOURCE") => "HTMLSourceElement",
+            Some("TRACK") => "HTMLTrackElement",
             Some("VIDEO") => "HTMLVideoElement",
             Some("AUDIO") => "HTMLAudioElement",
             Some("TEMPLATE") => "HTMLTemplateElement",
@@ -7460,6 +7461,8 @@ fn install_with_tree(scope: &mut v8::PinScope, mut tree: Tree) {
     // HTMLImageElement image-state accessors + the document record's `imageHost` (needs the
     // collection-record helpers, which document_basics.js retires).
     run_js(scope, include_str!("html_image.js"));
+    // HTMLTrackElement members and its TextTrack (turbo-dom#74).
+    run_js(scope, include_str!("html_track.js"));
     run_js(scope, include_str!("document_basics.js"));
     document_legacy::install(scope);
     capture_node_projector(scope);

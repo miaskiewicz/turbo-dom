@@ -185,6 +185,15 @@ as the viewport's `innerWidth` / `innerHeight` px), `transform: none`, all `!imp
 `fullscreenerror` fire as before. Control: case `fullscreen` (async; the collector's
 `__cdpGesture()` is a trusted CDP click).
 
+### Text tracks
+
+`<track>` is an `HTMLTrackElement` (turbo-dom#74, control `src/html_track_chrome156.json`):
+`kind` (missing → `subtitles`, invalid → `metadata`), `srclang`, `label`, `default`, the
+shared `src` URL reflection, `readyState` `NONE` (no track is ever loaded) and the
+`NONE`..`ERROR` constants; `track` is the element's `TextTrack` (kind / label / language / id
+from the element, `mode` `disabled` / `hidden` / `showing`, empty `TextTrackCueList`s for
+`cues` / `activeCues` once enabled, `oncuechange`; `addCue` / `removeCue` reject non-cues).
+
 ### Events across shadow trees
 
 `dispatchEvent` builds the DOM event path through shadow trees (turbo-dom#66): a composed
