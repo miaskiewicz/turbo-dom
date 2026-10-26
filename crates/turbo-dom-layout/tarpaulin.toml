@@ -3,13 +3,19 @@
 # Run from the workspace root:
 #   cargo tarpaulin --config crates/turbo-dom-layout/tarpaulin.toml
 # (The coverage + cc gate thresholds for this crate are decided from the P0
-# partition data; this file only keeps the feature-gated-module excludes.)
+# partition data; this file only keeps the feature-gated-module excludes. At S1
+# the crate's own tests cover 97.05% (7889/8129 lines); the rest — the `t:`
+# markup error path, TKind, cascade tokens, parts of the selector matcher — is
+# covered by turbo-html2pdf-core's templating / directive tests.)
 [default]
 packages = ["turbo-dom-layout"]
 # Pin the LLVM source-based engine on every platform (tarpaulin's `Auto` picks
 # `Llvm` on macOS but `Ptrace` on Linux, and the two disagree on line attribution).
 engine = "Llvm"
 exclude-files = [
+    # Other workspace members compiled as dependencies are not this crate's surface.
+    "crates/turbo-dom/*",
+    "src/*",
     # Opt-in hot-path instrumentation (the `perf` feature); off in normal builds
     # and covered functionally by the `--features perf` tests in tests/perf.rs.
     "crates/turbo-dom-layout/src/perf.rs",
