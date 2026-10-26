@@ -336,7 +336,7 @@ jobs:
           cargo check -p turbo-dom -p turbo-dom-layout -p turbo-dom-raster --all-targets
           cargo check -p turbo-dom-layout --all-targets --no-default-features --features svg,perf,serde,test-support
 
-  # ---- guards: versions, retired selector-dual gate, verify-copied reviews, script self-tests ----
+  # ---- guards: versions, retired dual selector-engine gate, verify-copied reviews, script self-tests ----
   guards:
     name: guards
     runs-on: ubuntu-latest
@@ -354,12 +354,14 @@ jobs:
           components: rustfmt
       - name: One release version everywhere
         run: python scripts/check-versions.py
-      - name: The retired selector-dual gate stays gone
+      - name: The retired dual selector-engine gate stays gone
         run: sh scripts/check-no-selector-dual.sh
       - name: turbo-dom-v8 generator + release script self-tests
         run: python -m unittest discover -s crates/turbo-dom-v8/scripts -p 'test_*.py'
       - name: turbo-dom-v8 regenerates to the pinned tree
         run: python crates/turbo-dom-v8/scripts/generate.py --download --check
+      - name: Release helper self-tests (scripts/publish-crates.py)
+        run: python -m unittest discover -s scripts -p 'test_*.py'
       - name: Parity harness self-test (no addons)
         run: python -m unittest discover -s tools/parity -p 'test_*.py'
       - name: verify-copied — binding move from turbo-test@cb5c64e (verbatim + current)
