@@ -114,12 +114,19 @@ engine, macOS arm64, `--include-files 'crates/<crate>/src/*'`), rounded down:
 |---|---|---|
 | turbo-dom | 88.33% (6327/7163) | 88 |
 | turbo-dom-layout | 90.63% (8450/9324) | 90 |
-| turbo-dom-raster | 77.23% (1184/1533) | 77 |
+| turbo-dom-raster | 77.23% (1184/1533); P5-cov: 100% (1514/1514) | 100 |
+| turbo-dom-raster `--features avif` | P5-cov: 79.63% (1337/1679) → 100% (1644/1644) | 100 |
+| turbo-dom-raster `--features jxl` | P5-cov: 79.31% (1246/1571) → 100% (1540/1540) | 100 |
 | turbo-dom-browser-env (`host-internals,test-support`) | 88.59% (14538/16411) | 88 |
 
 The coverage phase (P5-cov) adds behaviour-asserting tests and raises every gate to
 >= 99, then 100 per crate as it gets there (turbo-dom-v8: 100% of the fork delta through
-a coverage filter). A gate is never lowered to pass a change. (turbo-dom#22's 47.5% was
+a coverage filter). A gate is never lowered to pass a change. turbo-dom-raster reached 100% in
+every configuration CI tests (P5-cov-raster: 79.02% → 100% default, measured at the
+consolidation tip be87ef2); its new pixel expectations come from Chrome 156 controls
+(`scripts/canvas-ops-chrome-control.mjs`, `scripts/raster-avif-chrome-control.mjs`, new cases in
+`scripts/paint-chrome-control.mjs`), and the unreachable defensive branches it had were removed
+as provably dead (crate README, "Coverage"). (turbo-dom#22's 47.5% was
 measured without the `--include-files` filter, i.e. counting other packages' files.)
 
 ## Parity harness

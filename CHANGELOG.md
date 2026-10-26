@@ -7,6 +7,22 @@ at the time); this file reconstructs them from history.
 
 ## [Unreleased]
 
+### Tests — turbo-dom-raster at 100% line coverage (P5-cov)
+- turbo-dom-raster reaches 100% line coverage (tarpaulin, LLVM engine) by default and with
+  `--features avif` / `--features jxl` (79.02% / 79.63% / 79.31% before); the CI `coverage`
+  job gates each configuration at 100. New Chrome 156 controls back the pixel tests:
+  `scripts/canvas-ops-chrome-control.mjs` (the 2D-canvas op log),
+  `scripts/raster-avif-chrome-control.mjs` (every AVIF chroma layout, matrix family and
+  range, fixtures from `scripts/make_raster_avif_fixtures.py`) and new `paint-*` cases in
+  `scripts/paint-chrome-control.mjs` (rounded borders and gradients, shadows, translucency;
+  the SVG screenshot is checked against the same probes through resvg).
+- No behaviour change. Dead defensive branches were restructured or removed with their
+  invariant documented: `glyph::outline_face` (a `FontFace` always re-parses at its index),
+  the bundled faces always resolve (`measure_text`, canvas text), clip layers and shadow
+  scratch buffers within their bounds always allocate, the box blur's empty guards (a
+  `Pixmap` is never empty), the AVIF / JPEG XL size-only fallback is one branch, rav1d's
+  open / get-picture results share their exits, and JPEG XL's unreachable empty-sample arm.
+
 ### Fixed — turbo-dom-layout tables, clipping and box sizing (P5b-W5, miaskiewicz/turbo-dom#41/#51/#52/#55/#62/#63/#64/#65/#69/#70, Chrome 156 controls)
 Each fix is backed by a Chrome for Testing 156 control and lists the corpus outputs it
 changes in `tools/parity/expected/p5b-w5-turbo-dom-*.json`.

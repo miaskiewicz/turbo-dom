@@ -79,12 +79,34 @@ code change is the dependency `turbo-html2pdf-core` -> `turbo-dom-layout` (same 
 same names). `scripts/verify-copied-layout.sh` checks the copy.
 
 ```bash
-cargo test -p turbo-dom-raster        # 42 unit tests (45 with `jxl`), tests/screenshot.rs (24) + the Chrome 156 controls
+cargo test -p turbo-dom-raster        # unit tests, tests/screenshot.rs + the Chrome 156 controls
 cargo check -p turbo-dom-raster --features gpu-metal,coretext
 cargo test -p turbo-dom-raster --features avif  # AVIF pixels vs the Chrome 156 control (CI raster job)
 cargo test -p turbo-dom-raster --features jxl   # JPEG XL pixels vs the Chrome 156 control (CI raster job)
 ```
 
 Lints: `clippy::pedantic` via `[workspace.lints]` (see turbo-dom-layout's README).
+
+## Coverage
+
+100% line coverage (tarpaulin, LLVM engine) in each configuration CI tests — default,
+`--features avif`, `--features jxl` — gated at 100 in turbo-dom's `coverage` job:
+
+```bash
+cargo tarpaulin --engine llvm -p turbo-dom-raster [--features avif|jxl] --include-files 'crates/turbo-dom-raster/src/*'
+```
+
+Expected pixels come from Chrome 156 controls where Chrome can observe them:
+`tests/paint_chrome.rs` (box decorations, clips, translucency; the SVG screenshot is
+rasterized with resvg against the same probes), `tests/canvas_ops_chrome.rs` (the 2D-canvas
+op log: colour syntaxes, transforms, paths, arcs, strokes, `clearRect`, `globalAlpha`;
+`scripts/canvas-ops-chrome-control.mjs`) and `tests/avif_decode_chrome.rs` (every chroma
+layout / matrix family / range and a file without `nclx`; fixtures from
+`scripts/make_raster_avif_fixtures.py`, control `scripts/raster-avif-chrome-control.mjs`).
+Branches that could not run were restructured or removed as provably dead: a `FontFace`'s
+bytes always re-parse (`glyph::outline_face`), the bundled faces always resolve
+(`measure_text`, canvas text), a clip layer or shadow scratch within its bounds always
+allocates, a non-empty `Pixmap` never needs the blur's empty guards, and the AVIF / JPEG XL
+size-only fallback is one branch shared by both features.
 
 MSRV 1.89. License: MIT.

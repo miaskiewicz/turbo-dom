@@ -394,8 +394,9 @@ jobs:
   # Each gate is the crate's CURRENT measured line coverage (rounded down; measured at the
   # 0.6.0 release prep, see docs/CONSOLIDATION.md "Coverage"). The coverage phase (P5-cov)
   # raises every gate to >= 99 and then 100 as tests land; never lower one to pass a change.
+  # A crate measured in several feature configurations has one row (and `label`) per config.
   coverage:
-    name: coverage (${{ matrix.crate }} >= ${{ matrix.floor }}%)
+    name: coverage (${{ matrix.label || matrix.crate }} >= ${{ matrix.floor }}%)
     runs-on: macos-latest
     strategy:
       fail-fast: false
@@ -403,7 +404,9 @@ jobs:
         include:
           - { crate: turbo-dom,             floor: 88, features: '' }
           - { crate: turbo-dom-layout,      floor: 90, features: '' }
-          - { crate: turbo-dom-raster,      floor: 77, features: '' }
+          - { crate: turbo-dom-raster,      floor: 100, features: '' }
+          - { crate: turbo-dom-raster,      floor: 100, features: '--features avif', label: turbo-dom-raster-avif }
+          - { crate: turbo-dom-raster,      floor: 100, features: '--features jxl', label: turbo-dom-raster-jxl }
           - { crate: turbo-dom-browser-env, floor: 88, features: '--features host-internals,test-support' }
     steps:
       - uses: actions/checkout@v4
@@ -416,7 +419,7 @@ jobs:
           tool: cargo-tarpaulin@0.37.5
       - uses: Swatinem/rust-cache@v2
         with:
-          key: coverage-${{ matrix.crate }}
+          key: coverage-${{ matrix.label || matrix.crate }}
       - name: Prebuilt rusty_v8 archive for turbo-dom-browser-env
         # The binding resolves turbo-dom-v8 through the root manifest's pre-publish
         # [patch] (the v8 job tests the freshly generated fork).
@@ -427,14 +430,14 @@ jobs:
             "https://github.com/denoland/rusty_v8/releases/download/v${RUSTY_V8_VERSION}/librusty_v8_release_aarch64-apple-darwin.a.gz"
           gunzip -f "$RUNNER_TEMP/rusty_v8/v8.a.gz"
           echo "RUSTY_V8_ARCHIVE=$RUNNER_TEMP/rusty_v8/v8.a" >> "$GITHUB_ENV"
-      - name: tarpaulin ${{ matrix.crate }} (fail under ${{ matrix.floor }}%)
+      - name: tarpaulin ${{ matrix.label || matrix.crate }} (fail under ${{ matrix.floor }}%)
         run: >-
           cargo tarpaulin --engine llvm -p ${{ matrix.crate }} ${{ matrix.features }}
           --include-files 'crates/${{ matrix.crate }}/src/*'
-          --timeout 600 --out Json --out Stdout --output-dir coverage/${{ matrix.crate }}
+          --timeout 600 --out Json --out Stdout --output-dir coverage/${{ matrix.label || matrix.crate }}
           --fail-under ${{ matrix.floor }}
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: coverage-${{ matrix.crate }}
-          path: coverage/${{ matrix.crate }}
+          name: coverage-${{ matrix.label || matrix.crate }}
+          path: coverage/${{ matrix.label || matrix.crate }}
