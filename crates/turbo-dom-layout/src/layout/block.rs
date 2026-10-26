@@ -2099,7 +2099,8 @@ fn shrink_auto_table(
         return bbw;
     }
     let extra = bs.padding.horizontal() + bs.border.widths().horizontal();
-    let fit = super::table::max_content_width(items, &lb.style, ctx.fonts) + extra;
+    let (max_content, unbounded) = super::table::max_content(items, &lb.style, ctx.fonts);
+    let fit = if unbounded { bbw } else { max_content + extra };
     clamp_width(bbw.min(fit), bs, cb_width, extra)
 }
 

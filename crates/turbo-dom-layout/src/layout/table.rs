@@ -302,6 +302,105 @@ fn min_columns(placed: &[Placed], ncols: usize, fonts: &FontRegistry) -> Vec<f32
     w
 }
 
+/// Each column's percentage width: the largest `width: N%` of its single-column cells
+/// (miaskiewicz/turbo-dom#50).
+fn column_percents(placed: &[Placed], ncols: usize) -> Vec<Option<f32>> {
+    let mut pct = vec![None; ncols];
+    for p in placed.iter().filter(|p| p.colspan == 1) {
+        if let Some(v) = cell_percent(p.lb) {
+            pct[p.col] = Some(pct[p.col].map_or(v, |w: f32| w.max(v)));
+        }
+    }
+    pct
+}
+
+/// A cell's positive `width` percentage.
+fn cell_percent(lb: &LayoutBox) -> Option<f32> {
+    let bs = lb.resolved(ResolveCtx {
+        parent_font_size: DEFAULT_FONT_SIZE,
+        cb_width: 0.0,
+    });
+    match bs.width {
+        LengthPct::Pct(p) if p > 0.0 => Some(p),
+        _ => None,
+    }
+}
+
+/// The columns' max-content total honouring percentage columns, as Chrome 156 sizes an
+/// auto table: the largest of the plain sum, each percentage column's max-content
+/// over its share, and the other columns' over the share left to them — and whether
+/// it is unbounded (percentages total 100% or more beside other content: the table
+/// then fills the line).
+fn percent_aware_total(cols: &[f32], pcts: &[Option<f32>]) -> (f32, bool) {
+    let sum: f32 = cols.iter().sum();
+    let pct_total = pcts.iter().flatten().sum::<f32>().min(100.0);
+    if pct_total <= 0.0 {
+        return (sum, false);
+    }
+    let paired = || cols.iter().zip(pcts);
+    let from_pct = paired()
+        .filter_map(|(c, p)| p.map(|p| c * 100.0 / p))
+        .fold(0.0_f32, f32::max);
+    let rest: f32 = paired().filter(|(_, p)| p.is_none()).map(|(c, _)| c).sum();
+    let from_rest = if pct_total < 100.0 {
+        rest * 100.0 / (100.0 - pct_total)
+    } else {
+        0.0
+    };
+    (
+        sum.max(from_pct).max(from_rest),
+        pct_total >= 100.0 && rest > 0.0,
+    )
+}
+
+/// Fit the auto `cols` to the table's `target` width: a percentage column takes its
+/// share of `target` (never below its min-content; shares over 100% scale down), the
+/// other columns share the rest as [`scale_to`] does, taking back from the percentage
+/// columns what their minima need (miaskiewicz/turbo-dom#50). Without percentages this
+/// is [`scale_to`].
+fn fit_columns(cols: &mut [f32], mins: &[f32], pcts: &[Option<f32>], target: f32) {
+    if pcts.iter().all(Option::is_none) {
+        return scale_to(cols, target, mins);
+    }
+    let total: f32 = pcts.iter().flatten().sum();
+    let scale = 100.0_f32.min(total) / total / 100.0;
+    let (pct_cols, auto_cols): (Vec<usize>, Vec<usize>) =
+        (0..cols.len()).partition(|&i| pcts[i].is_some());
+    for &i in &pct_cols {
+        cols[i] = mins[i].max(target * pcts[i].unwrap_or(0.0) * scale);
+    }
+    let auto_min: f32 = auto_cols.iter().map(|&i| mins[i]).sum();
+    let taken: f32 = pct_cols.iter().map(|&i| cols[i]).sum();
+    if taken > target - auto_min {
+        shrink_subset(cols, mins, &pct_cols, taken - (target - auto_min).max(0.0));
+    }
+    // Only percentage columns: they fill the table between them.
+    let (idx, target) = if auto_cols.is_empty() {
+        (&pct_cols, target)
+    } else {
+        let rest = target - pct_cols.iter().map(|&i| cols[i]).sum::<f32>();
+        (&auto_cols, rest.max(auto_min))
+    };
+    let mut subset: Vec<f32> = idx.iter().map(|&i| cols[i]).collect();
+    let subset_mins: Vec<f32> = idx.iter().map(|&i| mins[i]).collect();
+    scale_to(&mut subset, target, &subset_mins);
+    scatter(cols, idx, &subset);
+}
+
+/// [`shrink_columns`] over the columns `idx` of `cols`.
+fn shrink_subset(cols: &mut [f32], mins: &[f32], idx: &[usize], reduce: f32) {
+    let mut subset: Vec<f32> = idx.iter().map(|&i| cols[i]).collect();
+    let subset_mins: Vec<f32> = idx.iter().map(|&i| mins[i]).collect();
+    shrink_columns(&mut subset, &subset_mins, reduce);
+    scatter(cols, idx, &subset);
+}
+
+fn scatter(cols: &mut [f32], idx: &[usize], values: &[f32]) {
+    for (&i, &v) in idx.iter().zip(values) {
+        cols[i] = v;
+    }
+}
+
 /// Fit `cols` to `target`. Growing scales up proportionally; shrinking takes only
 /// from each column's slack above its min-content, so a column never clips its
 /// content (the infobox label column kept clipping "Infraclass:" when the whole
@@ -370,7 +469,7 @@ fn column_widths(
     // width is `cw` itself.
     let mut cols = auto_columns(placed, ncols, fonts);
     let mins = min_columns(placed, ncols, fonts);
-    scale_to(&mut cols, cw, &mins);
+    fit_columns(&mut cols, &mins, &column_percents(placed, ncols), cw);
     cols
 }
 
@@ -988,13 +1087,26 @@ pub(crate) fn max_content_width(
     style: &ComputedStyle,
     fonts: &FontRegistry,
 ) -> f32 {
+    max_content(items, style, fonts).0
+}
+
+/// [`max_content_width`] and whether the table's max-content is unbounded (a
+/// percentage column of 100% or more beside other content; see
+/// [`percent_aware_total`]): a `width: auto` table then fills its line.
+pub(crate) fn max_content(
+    items: &[LayoutBox],
+    style: &ComputedStyle,
+    fonts: &FontRegistry,
+) -> (f32, bool) {
     let rows = collect_rows(items);
     let (placed, ncols) = build_grid(&rows);
     if ncols == 0 || is_fixed(style) && collapsed(style) {
-        return min_content_width(items, style, fonts);
+        return (min_content_width(items, style, fonts), false);
     }
     let (hs, _) = border_spacing(style);
-    auto_columns(&placed, ncols, fonts).iter().sum::<f32>() + hs * (ncols as f32 + 1.0)
+    let cols = auto_columns(&placed, ncols, fonts);
+    let (total, unbounded) = percent_aware_total(&cols, &column_percents(&placed, ncols));
+    (total + hs * (ncols as f32 + 1.0), unbounded)
 }
 
 /// Separated-border table min-content. Each column's min-content is the widest
@@ -1075,4 +1187,80 @@ pub(crate) fn layout_table(
         wrap_row_groups(frags, &row_groups(items), frame, ctx),
         height,
     )
+}
+
+#[cfg(test)]
+mod percent_tests {
+    use super::{fit_columns, percent_aware_total};
+
+    #[test]
+    fn percent_aware_total_matches_chromes_auto_table_max_content() {
+        assert_eq!(
+            percent_aware_total(&[32.0, 22.0], &[None, None]),
+            (54.0, false)
+        );
+        // 50%: the 32px column must be half of the table.
+        assert_eq!(
+            percent_aware_total(&[32.0, 22.0], &[Some(50.0), None]),
+            (64.0, false)
+        );
+        // Two 25% columns: 32 / 0.25 = 128 wins over 22 / 0.5 = 44.
+        let two = percent_aware_total(&[32.0, 22.0, 22.0], &[Some(25.0), Some(25.0), None]);
+        assert_eq!(two, (128.0, false));
+        // 100% beside other content is unbounded; alone it is not.
+        assert!(percent_aware_total(&[32.0, 22.0], &[Some(100.0), None]).1);
+        assert!(!percent_aware_total(&[32.0, 22.0], &[Some(60.0), Some(40.0)]).1);
+        assert!(!percent_aware_total(&[32.0, 0.0], &[Some(100.0), None]).1);
+    }
+
+    #[test]
+    fn fit_columns_gives_percentage_columns_their_share() {
+        let fit = |cols: &[f32], mins: &[f32], pcts: &[Option<f32>], target| {
+            let mut cols = cols.to_vec();
+            fit_columns(&mut cols, mins, pcts, target);
+            cols
+        };
+        // No percentages: plain proportional growth.
+        assert_eq!(
+            fit(&[10.0, 30.0], &[10.0, 30.0], &[None, None], 80.0),
+            [20.0, 60.0]
+        );
+        // 25% + 25% of 128, the rest to the auto column.
+        let quarters = fit(
+            &[32.0, 22.0, 22.0],
+            &[32.0, 22.0, 22.0],
+            &[Some(25.0), Some(25.0), None],
+            128.0,
+        );
+        assert_eq!(quarters, [32.0, 32.0, 64.0]);
+        // 100%: the other column keeps its min-content.
+        assert_eq!(
+            fit(&[32.0, 22.0], &[32.0, 22.0], &[Some(100.0), None], 1274.0),
+            [1252.0, 22.0]
+        );
+        // Shares over 100% scale down; percentage-only tables fill the target.
+        assert_eq!(
+            fit(
+                &[10.0, 10.0],
+                &[10.0, 10.0],
+                &[Some(100.0), Some(100.0)],
+                100.0
+            ),
+            [50.0, 50.0]
+        );
+        assert_eq!(
+            fit(
+                &[10.0, 10.0],
+                &[10.0, 10.0],
+                &[Some(20.0), Some(30.0)],
+                200.0
+            ),
+            [80.0, 120.0]
+        );
+        // A share below the column's min-content keeps the min-content.
+        assert_eq!(
+            fit(&[50.0, 10.0], &[50.0, 10.0], &[Some(10.0), None], 100.0),
+            [50.0, 50.0]
+        );
+    }
 }

@@ -303,7 +303,6 @@ fn percent_column_case(id: &str) -> bool {
 }
 
 #[test]
-#[ignore = "turbo-dom#50: fails until the fix"]
 fn percentage_columns_size_auto_tables_like_chrome_156() {
     assert_matches_chrome(compare_cases(percent_column_case));
 }

@@ -137,6 +137,13 @@ changes in `tools/parity/expected/p5b-w3-turbo-dom-28-*.json`.
   the whole containing block (`<div style="position:absolute;right:0">` of a 30px child
   was 1280px wide at x=0). Control: `abs-auto-width-*` / `fixed-auto-width-shrinks` in
   `live-geometry` and `html-document`.
+- Percentage columns (miaskiewicz/turbo-dom#50, found while fixing #28 item 7): in the
+  automatic table layout a column whose cell has `width: N%` (or `width="N%"`) takes that
+  share of the table (never below its min-content; the other columns share the rest), and
+  an auto table's max-content grows so it can — the largest of the plain sum, each
+  percentage column's max-content over its share and the other columns' over theirs;
+  unbounded (the table fills the line) at 100% or more beside other content — as in
+  Chrome. Control: `table-percent-*` in `live-geometry` and `html-document`.
 
 ### Changed — selector follow-ups (P5b-X2, miaskiewicz/turbo-dom#24, Chrome 156 controls)
 - `rtdom::cascade` (`getComputedStyle`) and the npm `cascade.mjs` rank rules by the
