@@ -225,13 +225,29 @@ let style = cascade::computed_style(&dom.tree, cards[0]);   // partial honest ca
 - **crates.io:** [`turbo-dom`](https://crates.io/crates/turbo-dom) — the Rust DOM engine lives
   here and only here (the workspace-member crate `crates/turbo-dom/`; there is no in-repo
   `src/rtdom` copy and no `rust-runtime` cargo feature — an earlier feature gated a duplicate copy
-  that was consolidated away). Minimal deps (`html5ever` + `rustc-hash`, no napi/wasm), a runnable
-  `examples/crawl.rs`, 227 tests, 100% line coverage, and a direct html5lib-tests gate at
-  **99.75%**. From the repo: `npm run build:rtdom` (= `cargo build -p turbo-dom --release`),
+  that was consolidated away). Minimal deps (`html5ever`, `rustc-hash`, `smol_str`, `cssparser`;
+  no napi/wasm), MSRV 1.89, a runnable `examples/crawl.rs`, a CI coverage floor, and a direct
+  html5lib-tests gate at **99.75%**. From the repo: `npm run build:rtdom` (= `cargo build -p turbo-dom --release`),
   `npm run test:rust` (= `cargo test -p turbo-dom`), `npm run conformance:rtdom`.
 - **Browser environment over V8:** [`turbo-dom-browser-env`](./crates/turbo-dom-browser-env)
   binds the `rtdom` tree to V8 with native callbacks (`window`/`document`/CSSOM/forms/events,
-  Chrome-control tested) — the shared DOM layer of turbo-test and turbo-surf.
+  Chrome-control tested) — the shared DOM layer of turbo-test and turbo-surf. It links
+  [`turbo-dom-v8`](./crates/turbo-dom-v8) 150.4.0, turbo-dom's rusty_v8 fork (generated from the
+  upstream crate + reviewed patches; nothing vendored).
+
+### The published crates (0.6.0)
+
+| crate | for |
+|---|---|
+| `turbo-dom` | the Rust DOM, selector engine, CSSOM |
+| `turbo-dom-layout` | HTML/CSS layout (turbo-html2pdf, turbo-surf) |
+| `turbo-dom-raster` | synthetic screenshots (turbo-surf) |
+| `turbo-dom-browser-env` | the V8 browser environment (turbo-test, turbo-surf) |
+| `turbo-dom-v8` (150.4.0) | the V8 binding fork they link |
+
+One `vX.Y.Z` tag publishes all of them plus the npm package, in dependency order
+([PUBLISHING.md](./PUBLISHING.md)); architecture, dependency graph and how consumers depend on
+them: [docs/CONSOLIDATION.md](./docs/CONSOLIDATION.md).
 
 ### Layout + raster crates (`turbo-dom-layout`, `turbo-dom-raster`)
 

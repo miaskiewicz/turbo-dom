@@ -13,6 +13,19 @@ turbo-test and turbo-surf share one published crate instead of copies.
 `scripts/verify-copied.sh` (repository root) re-derives that one-time move for
 review; it is not a sync tool and nothing is copied after the move.
 
+## Install
+
+```toml
+[dependencies]
+turbo-dom-browser-env = "0.6"                     # + features = ["host-internals"] for embedders
+[dev-dependencies]
+turbo-dom-browser-env = { version = "0.6", features = ["test-support"] }
+```
+
+MSRV 1.91 (turbo-dom-v8). The crate links `turbo-dom-v8` `~150.4`, which downloads the
+prebuilt rusty_v8 150.4.0 static library unless `RUSTY_V8_ARCHIVE` points at one; a graph
+holds exactly one turbo-dom-v8 (`links = "rusty_v8"`).
+
 ## Model
 
 One native document lives per V8 context. A JS node is a V8 object carrying its
