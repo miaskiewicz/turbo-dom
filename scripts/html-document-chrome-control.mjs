@@ -329,6 +329,20 @@ const CASES = [
   { id: "inline-block-margins-own-and-child", html: DOC(S("body{margin:0}"), `<div style="font-size:0"><div data-cid="c" style="display:inline-block;margin:4px 0 2px"><div data-cid="d" style="width:30px;height:15px;margin:3px 0 5px"></div></div><div data-cid="g" style="height:10px"></div></div>`) },
   { id: "inline-block-margins-negative", html: DOC(S("body{margin:0}"), `<div style="font-size:0"><div data-cid="c" style="display:inline-block"><div data-cid="d" style="width:30px;height:15px;margin:-4px 0 6px"></div></div></div>`) },
   { id: "inline-block-margins-two-children", html: DOC(S("body{margin:0}"), `<div style="font-size:0"><div data-cid="c" style="display:inline-block"><div data-cid="d" style="width:30px;height:15px;margin:3px 0 5px"></div><div data-cid="e" style="width:20px;height:10px;margin:8px 0 2px"></div></div></div>`) },
+  // P5b-W7, miaskiewicz/turbo-dom#81: an absolutely positioned box whose containing block is
+  // the initial containing block, and a `position: fixed` box, resolve `bottom` / `%`
+  // insets and `%` heights against the viewport height (CSS 2.2 §10.1).
+  { id: "icb-fixed-bottom-right", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="position:fixed;right:10px;bottom:10px;width:20px;height:20px"></div>`) },
+  { id: "icb-absolute-bottom", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="position:absolute;bottom:0;width:20px;height:20px"></div>`) },
+  { id: "icb-absolute-bottom-margin", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="position:absolute;bottom:10px;margin-bottom:5px;width:20px;height:20px"></div>`) },
+  { id: "icb-absolute-top-percent", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="position:absolute;top:50%;width:20px;height:20px"></div>`) },
+  { id: "icb-fixed-bottom-percent", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="position:fixed;bottom:25%;width:20px;height:20px"></div>`) },
+  { id: "icb-absolute-height-percent", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="position:absolute;top:0;height:50%;width:20px"></div>`) },
+  { id: "icb-absolute-in-static-parents", html: DOC(S("body{margin:0}"), `<div style="margin:30px;padding:5px"><div data-cid="c" style="position:absolute;bottom:7px;width:20px;height:20px"></div></div>`) },
+  { id: "icb-fixed-in-positioned-ancestor", html: DOC(S("body{margin:0}"), `<div style="position:relative;top:40px;height:100px"><div data-cid="c" style="position:fixed;bottom:10px;left:3px;width:20px;height:20px"></div></div>`) },
+  { id: "icb-absolute-taller-document", html: DOC(S("body{margin:0}"), `<div style="height:2000px"></div><div data-cid="c" style="position:absolute;bottom:0;width:20px;height:20px"></div>`) },
+  { id: "icb-absolute-in-inline-run", html: DOC(S("body{margin:0}"), `<div style="font-size:0"><span>x<span data-cid="c" style="position:absolute;bottom:4px;width:20px;height:20px"></span></span></div>`) },
+  { id: "icb-positioned-parent-bottom-unchanged", html: DOC(S("body{margin:0}"), `<div style="position:relative;height:100px"><div data-cid="c" style="position:absolute;bottom:10px;width:20px;height:20px"></div></div>`) },
 ];
 
 /** The RGB of a 1x1 PNG screenshot (any filter: a single pixel's filter adds 0). */
