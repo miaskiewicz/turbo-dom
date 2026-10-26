@@ -99,7 +99,6 @@ fn computed_defaults_and_head_match_chrome156_control() {
 /// turbo-dom#30: show() vs showModal() vs close(), `:modal`, the top-layer position rule and
 /// `::backdrop` reads (case `dialog-top-layer`).
 #[test]
-#[ignore = "turbo-dom#30: fails until the fix"]
 fn dialog_top_layer_matches_chrome156_control() {
     let found = mismatches(|id| id == "dialog-top-layer");
     assert!(

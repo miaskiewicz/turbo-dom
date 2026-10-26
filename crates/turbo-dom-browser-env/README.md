@@ -155,6 +155,16 @@ resolve. Disconnected elements and children of `<video>` / `<audio>` report `""`
 in Chrome. Control: `src/computed_defaults_chrome156.json`, which also records that
 a document has no `<title>` it did not parse (`document.title = …` creates one).
 
+The top layer is modelled as far as the binding has one (turbo-dom#30): a dialog
+shown with `showModal()` matches `:modal` and computes `position: fixed`,
+`top` / `bottom: 0px`, `max-width` / `max-height: calc(100% - 6px - 2em)`,
+`overflow: auto` and `visibility: visible` (author rules win); a top-layer element
+(modal dialog, open popover) with `position: static` / `relative` / `sticky`
+computes `absolute`. `getComputedStyle(el, '::backdrop')` computes the backdrop:
+`block`, `absolute` with `auto` insets outside the top layer, `fixed` at inset 0
+inside it (`rgba(0, 0, 0, 0.1)` behind a modal dialog), author `::backdrop` rules,
+inheritance from the element. Control: case `dialog-top-layer` of the same file.
+
 ### Custom element state (`:defined`)
 
 `customElements` upgrades, constructions and failed constructors report each

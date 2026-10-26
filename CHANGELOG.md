@@ -7,6 +7,26 @@ at the time); this file reconstructs them from history.
 
 ## [Unreleased]
 
+### Fixed — `getComputedStyle` for modal dialogs, the top layer and `::backdrop` (P5b-X5, miaskiewicz/turbo-dom#30, Chrome 156 control)
+- turbo-dom-browser-env: a `<dialog>` opened with `showModal()` (it matches `:modal`) now
+  computes Chrome's `dialog:modal` values: `position: fixed`, `top` / `bottom: 0px`,
+  `max-width` / `max-height: calc(100% - 6px - 2em)` at the dialog's font size (16px →
+  `calc(100% - 38px)`), `overflow: auto` and `visibility: visible`. Author and inline
+  declarations still win. A dialog opened with `show()` stays `position: absolute`;
+  `close()` and removal from the document leave the top layer.
+- A top-layer element (modal dialog, open popover) whose `position` is `static`,
+  `relative` or `sticky` computes to `absolute` (CSS Position 4).
+- `getComputedStyle(el, '::backdrop')` reads the backdrop instead of the element. It is
+  `display: block`. Outside the top layer it is `position: absolute` with `auto` insets.
+  In the top layer it is `position: fixed` at inset `0px`, with `rgba(0, 0, 0, 0.1)`
+  behind a modal dialog (popovers: transparent). Author `::backdrop` rules apply, and
+  `visibility`, `color` and fonts inherit from the element. A disconnected element's
+  backdrop reports `""`. The returned declaration stays live like the element's.
+- Control: new case `dialog-top-layer` in `src/computed_defaults_{probe.js,cases.json,chrome156.json}`
+  (show / showModal / close, open attribute removed while modal, removal, stacked modals,
+  hidden ancestor, author overrides, popovers, `::backdrop`); the earlier sections are
+  unchanged. No corpus output changes (`tools/parity/expected/p5b-x5-30.json`).
+
 ### Fixed — `getComputedStyle` defaults and no injected `<title>` (P5b-X3, miaskiewicz/turbo-surf#36 items 1–2, Chrome 156 control)
 - turbo-dom-browser-env: `getComputedStyle` used to return `""` for `display`, `position`
   and `visibility` when no author rule applied; only `<button>` had UA values. It now
