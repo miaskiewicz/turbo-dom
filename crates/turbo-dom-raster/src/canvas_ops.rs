@@ -837,6 +837,105 @@ mod tests {
         }
     }
 
+    fn sink(ctm: Matrix) -> FlattenSink {
+        FlattenSink {
+            ctm,
+            subs: Vec::new(),
+            cur: Vec::new(),
+        }
+    }
+
+    fn close_to(a: &[(f32, f32)], b: &[(f32, f32)]) -> bool {
+        a.len() == b.len()
+            && a.iter()
+                .zip(b)
+                .all(|(p, q)| (p.0 - q.0).abs() < 1e-3 && (p.1 - q.1).abs() < 1e-3)
+    }
+
+    #[test]
+    fn flattened_contours_split_at_each_move_and_close() {
+        use crate::glyph::Tracer;
+        let mut s = sink(Matrix::identity().translate(10.0, 0.0));
+        s.move_to(1.0, 2.0);
+        s.line_to(3.0, 4.0);
+        s.move_to(5.0, 6.0); // ends the first contour
+        s.line_to(7.0, 8.0);
+        s.close();
+        s.move_to(9.0, 9.0); // a lone point is no contour
+        s.close();
+        s.close();
+        assert_eq!(s.subs.len(), 2);
+        assert_eq!(s.subs[0].pts, [(11.0, 2.0), (13.0, 4.0)]);
+        assert_eq!(s.subs[1].pts, [(15.0, 6.0), (17.0, 8.0)]);
+        assert!(s.subs.iter().all(|sp| sp.closed));
+        assert!(s.cur.is_empty());
+    }
+
+    /// The curve samples a sink emits under `ctm` for a curve drawn from local `start`.
+    fn bezier_samples(ctm: Matrix, curve: impl Fn(f32) -> (f32, f32)) -> Vec<(f32, f32)> {
+        (1..=CURVE_STEPS)
+            .map(|i| {
+                let (x, y) = curve(i as f32 / CURVE_STEPS as f32);
+                ctm.apply(x, y)
+            })
+            .collect()
+    }
+
+    #[test]
+    fn curves_flatten_to_eight_exact_samples_through_the_transform() {
+        use crate::glyph::Tracer;
+        // A general (invertible) matrix: the curve's start comes back out of device space.
+        for ctm in [Matrix::identity(), Matrix([2.0, 1.0, 1.0, 3.0, 5.0, 7.0])] {
+            let mut q = sink(ctm);
+            q.move_to(0.0, 0.0);
+            q.quad_to(8.0, 8.0, 16.0, 0.0);
+            let want = bezier_samples(ctm, |t| (16.0 * t, 16.0 * t * (1.0 - t)));
+            assert!(close_to(&q.cur[1..], &want), "quad {ctm:?}: {:?}", q.cur);
+            let mut c = sink(ctm);
+            c.move_to(0.0, 0.0);
+            c.cubic_to(0.0, 8.0, 8.0, 8.0, 8.0, 0.0);
+            let want = bezier_samples(ctm, |t| {
+                let m = 1.0 - t;
+                (
+                    3.0 * m * t * t * 8.0 + t * t * t * 8.0,
+                    3.0 * m * m * t * 8.0 + 3.0 * m * t * t * 8.0,
+                )
+            });
+            assert!(close_to(&c.cur[1..], &want), "cubic {ctm:?}: {:?}", c.cur);
+            // An asymmetric cubic: every control point weighs in.
+            let mut a = sink(ctm);
+            a.move_to(1.0, 2.0);
+            a.cubic_to(4.0, 9.0, 10.0, -3.0, 12.0, 5.0);
+            let want = bezier_samples(ctm, |t| {
+                let m = 1.0 - t;
+                let b = |p0: f32, p1: f32, p2: f32, p3: f32| {
+                    m * m * m * p0 + 3.0 * m * m * t * p1 + 3.0 * m * t * t * p2 + t * t * t * p3
+                };
+                (b(1.0, 4.0, 10.0, 12.0), b(2.0, 9.0, -3.0, 5.0))
+            });
+            assert!(close_to(&a.cur[1..], &want), "asym {ctm:?}: {:?}", a.cur);
+        }
+    }
+
+    #[test]
+    fn a_curve_start_is_recovered_through_the_inverse_transform() {
+        let m = Matrix([2.0, 1.0, 1.0, 3.0, 5.0, 7.0]);
+        for local in [(0.0, 0.0), (3.0, -2.0), (-1.5, 4.25)] {
+            let got = last_local(&[(0.0, 0.0), m.apply(local.0, local.1)], m, (99.0, 99.0));
+            assert!(close_to(&[got], &[local]), "{local:?}: {got:?}");
+        }
+        // Without a point, or through a singular matrix, the fallback stands.
+        assert_eq!(last_local(&[], m, (1.0, 2.0)), (1.0, 2.0));
+        let singular = Matrix([1.0, 2.0, 2.0, 4.0, 0.0, 0.0]);
+        assert_eq!(last_local(&[(3.0, 3.0)], singular, (1.0, 2.0)), (1.0, 2.0));
+        // A determinant of exactly 1e-9 is still inverted; below it is singular.
+        let tiny = Matrix([1e-9, 0.0, 0.0, 1.0, 0.0, 0.0]);
+        let got = last_local(&[(5e-9, 7.0)], tiny, (0.0, 0.0));
+        assert!((got.0 - 5.0).abs() < 1e-3 && got.1 == 7.0, "{got:?}");
+        let tinier = Matrix([1e-10, 0.0, 0.0, 1.0, 0.0, 0.0]);
+        assert_eq!(last_local(&[(5e-9, 7.0)], tinier, (8.0, 9.0)), (8.0, 9.0));
+    }
+
     #[test]
     fn matrices_compose_the_canvas_way() {
         let m = Matrix([1.0, 2.0, 3.0, 4.0, 5.0, 6.0]);
