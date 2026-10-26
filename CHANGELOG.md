@@ -23,6 +23,19 @@ changes in `tools/parity/expected/p5b-w7-turbo-dom-*.json`.
   formatting context (CSS 2.2 §8.3.1), so those margins stay inside it, as for a float.
   Every layout path. Control: `inline-block-margins-*` in `html-document` and
   `live-geometry`.
+- The initial containing block on the static path (miaskiewicz/turbo-dom#81): on the
+  screenshot / `layoutBoxes` path a `position: fixed` box, and an absolutely positioned
+  box whose containing block is the initial containing block, resolved `bottom` (and `%`
+  insets and a `%` height) as if that block had no height — it landed at its static
+  position (y = 0). New entries `layout_in_viewport` and `layout_html_tree_in_viewport`
+  take the viewport `(width, height)`: the initial containing block has the viewport's
+  height, so such a box anchors to the viewport's bottom edge however tall the document
+  (a fixed box ignores positioned ancestors). `layout_boxes` lays out in its
+  `cb_width x cb_height` viewport and turbo-dom-raster's screenshots in their canvas
+  size. `layout_with_options` / `layout_html_tree` (and so turbo-html2pdf's paged
+  layout, whose initial containing block would be the page box) keep an unknown height
+  and lay out as before. The live path already used the viewport. Control: `icb-*` in
+  `html-document` and in the pixel control `scripts/paint-chrome-control.mjs`.
 
 ### Fixed — turbo-dom-layout tables, clipping and box sizing (P5b-W5, miaskiewicz/turbo-dom#41/#51/#52/#55/#62/#63/#64/#65/#69/#70, Chrome 156 controls)
 Each fix is backed by a Chrome for Testing 156 control and lists the corpus outputs it

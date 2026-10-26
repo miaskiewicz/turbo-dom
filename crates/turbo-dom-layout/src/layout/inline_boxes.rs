@@ -777,6 +777,8 @@ mod defensive_contract_tests {
             cb_h_known: true,
             root_w: 200.0,
             root_h: 100.0,
+            icb_h: 0.0,
+            abs_cb_icb: true,
             live_geometry: true,
             used_metrics: Some(HashMap::new()),
             text_capture: None,

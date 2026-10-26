@@ -123,7 +123,8 @@ pub fn layout_with_images(
     block::layout_tree_with_images(&tree, cb_width, fonts, images, diags)
 }
 
-/// [`layout_with_images`] with explicit [`LayoutOptions`].
+/// [`layout_with_images`] with explicit [`LayoutOptions`]. The initial containing
+/// block's height is unknown (see [`layout_in_viewport`]).
 pub fn layout_with_options(
     styled: &[StyledNode],
     cb_width: f32,
@@ -132,9 +133,28 @@ pub fn layout_with_options(
     options: &LayoutOptions,
     diags: &mut Diagnostics,
 ) -> Fragment {
+    layout_in_viewport(styled, (cb_width, 0.0), fonts, images, options, diags)
+}
+
+/// [`layout_with_options`] in a viewport `(width, height)` px: the initial containing
+/// block is the viewport, so an absolutely positioned box whose containing block it is
+/// and a `position: fixed` box resolve their `top` / `bottom` insets and `%` height
+/// against `height` (CSS 2.2 §10.1; miaskiewicz/turbo-dom#81) — `bottom: 0` sits at the
+/// viewport's bottom edge, however tall the document. A `height` of 0 leaves the
+/// initial containing block's height unknown, as [`layout_with_options`] does (such
+/// insets keep the box at its static position).
+pub fn layout_in_viewport(
+    styled: &[StyledNode],
+    (cb_width, viewport_height): (f32, f32),
+    fonts: &FontRegistry,
+    images: &ImageCtx,
+    options: &LayoutOptions,
+    diags: &mut Diagnostics,
+) -> Fragment {
     let _cmyk = value::cmyk_scope(options.accept_cmyk);
     let (tree, _, _) = boxgen::build_box_tree_with(styled, build_options(options, false));
-    let mut galley = block::layout_tree_with_images(&tree, cb_width, fonts, images, diags);
+    let mut galley =
+        block::layout_tree_in_viewport(&tree, (cb_width, viewport_height), fonts, images, diags);
     shift_node_ids(&mut galley, options.first_node_id);
     galley
 }

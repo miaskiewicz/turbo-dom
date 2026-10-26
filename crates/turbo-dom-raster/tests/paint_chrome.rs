@@ -150,7 +150,6 @@ fn clip_rect_clips_the_box_and_its_descendants_like_chrome_156() {
 
 /// miaskiewicz/turbo-dom#81: the screenshot's initial containing block is its viewport.
 #[test]
-#[ignore = "turbo-dom#81: fails until the fix"]
 fn fixed_and_icb_boxes_anchor_to_the_viewport_like_chrome_156() {
     let failures = differences(|id| id.starts_with("icb-"));
     assert!(failures.is_empty(), "{}", failures.join("\n"));

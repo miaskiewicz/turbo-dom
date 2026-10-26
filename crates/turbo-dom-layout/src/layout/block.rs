@@ -64,6 +64,15 @@ pub(crate) struct Ctx<'a> {
     /// `position:fixed` boxes.
     pub(crate) root_w: f32,
     pub(crate) root_h: f32,
+    /// The initial containing block's height on the static path (the viewport height
+    /// of [`crate::layout_in_viewport`]; 0 = unknown): what `position: fixed` boxes and
+    /// absolutely positioned boxes whose containing block is the initial one resolve
+    /// `bottom` / `%` insets and `%` heights against (miaskiewicz/turbo-dom#81). The live
+    /// path keeps its own viewport bases (`root_h`, `abs_cb_h`).
+    pub(crate) icb_h: f32,
+    /// Whether the containing block of `absolute` descendants is the initial containing
+    /// block (no positioned ancestor yet); saved/restored with `abs_cb_*`.
+    pub(crate) abs_cb_icb: bool,
     /// Live snapshots use viewport geometry rather than pagination image caps.
     pub(crate) live_geometry: bool,
     pub(crate) used_metrics: Option<HashMap<NodeId, UsedBoxMetrics>>,
@@ -252,6 +261,8 @@ fn positioned_pct_height(bs: &BoxStyle, inset: f32, pos_cb_h: f32) -> Option<f32
 fn positioned_cb_height(bs: &BoxStyle, ctx: &Ctx) -> f32 {
     if bs.position == Position::Static {
         0.0
+    } else if in_known_icb(bs, ctx) {
+        ctx.icb_h
     } else {
         ctx.abs_cb_h
     }
@@ -295,7 +306,7 @@ fn positioned_child_block(
             content.0,
             content.1,
             content.2,
-            definite_content_height(bs, ctx.abs_cb_h),
+            definite_content_height(bs, positioned_cb_height(bs, ctx)),
         );
     }
     let border = bs.border.widths();
@@ -423,9 +434,24 @@ fn out_of_flow_width(bs: &BoxStyle, width: f32, ctx: &Ctx) -> f32 {
 fn out_of_flow_height(bs: &BoxStyle, ctx: &Ctx) -> f32 {
     if ctx.live_geometry {
         live_height_basis(bs, ctx)
+    } else if in_known_icb(bs, ctx) {
+        ctx.icb_h
     } else {
         ctx.abs_cb_h
     }
+}
+
+/// Whether a static-path box is positioned against the initial containing block of a
+/// known height (miaskiewicz/turbo-dom#81): a `position: fixed` box, or an absolutely
+/// positioned one with no positioned ancestor. With the height unknown (`icb_h == 0`,
+/// e.g. a paged layout) such a box keeps the containing-block basis it had before.
+fn in_known_icb(bs: &BoxStyle, ctx: &Ctx) -> bool {
+    ctx.icb_h > 0.0
+        && match bs.position {
+            Position::Fixed => true,
+            Position::Absolute => ctx.abs_cb_icb,
+            _ => false,
+        }
 }
 
 fn live_height_basis(bs: &BoxStyle, ctx: &Ctx) -> f32 {
@@ -1400,7 +1426,7 @@ fn anchor_bottom(frag: &mut Fragment, kbs: &BoxStyle, content_h: f32, ctx: &Ctx)
     let Some(bottom) = kbs.inset_bottom.resolve(content_h) else {
         return;
     };
-    let origin_y = if ctx.live_geometry {
+    let origin_y = if ctx.live_geometry || in_known_icb(kbs, ctx) {
         containing_block(kbs, ctx).1
     } else {
         ctx.abs_cb_y
@@ -1977,12 +2003,13 @@ fn layout_box_sized_impl(
     // A positioned box establishes the containing block for its `absolute`
     // descendants (its content box). Save/restore around the child layout.
     let saved_cb = (ctx.abs_cb_x, ctx.abs_cb_y, ctx.abs_cb_w, ctx.abs_cb_h);
-    let saved_abs_known = ctx.abs_cb_h_known;
+    let saved_abs_known = (ctx.abs_cb_h_known, ctx.abs_cb_icb);
     let own_height = resolved_live_height(bs.height, native_height_basis(bs, ctx), 0.0);
     if contains_positioned(bs) {
         (ctx.abs_cb_x, ctx.abs_cb_y, ctx.abs_cb_w, ctx.abs_cb_h) =
             positioned_child_block(bs, (bx, by, bbw), (content_x, content_y, content_w), ctx);
         ctx.abs_cb_h_known = own_height.is_some();
+        ctx.abs_cb_icb = false;
     }
     // In-flow `%`-height CB: expose this box's own definite content height to its
     // children (any box, not just positioned) so a `height:100%`/`max-height:100%`
@@ -2010,7 +2037,7 @@ fn layout_box_sized_impl(
     (ctx.abs_cb_x, ctx.abs_cb_y, ctx.abs_cb_w, ctx.abs_cb_h) = saved_cb;
     ctx.cb_h = saved_cb_h;
     ctx.cb_h_known = saved_cb_known;
-    ctx.abs_cb_h_known = saved_abs_known;
+    (ctx.abs_cb_h_known, ctx.abs_cb_icb) = saved_abs_known;
     // The content-box height honoring an explicit/min/max `height` — a `background`
     // or `mask` image fills the box even when it has no flow content (an empty icon
     // span sized only by `height`, whose measured `content_h` is 0).
@@ -2418,10 +2445,22 @@ pub fn layout_tree_with_images(
     images: &ImageCtx,
     diags: &mut Diagnostics,
 ) -> Fragment {
+    layout_tree_in_viewport(root, (cb_width, 0.0), fonts, images, diags)
+}
+
+/// [`layout_tree_with_images`] in a `(width, height)` viewport: the initial containing
+/// block's height is `height` (0 = unknown; see [`crate::layout_in_viewport`]).
+pub(crate) fn layout_tree_in_viewport(
+    root: &LayoutBox,
+    (cb_width, icb_height): (f32, f32),
+    fonts: &FontRegistry,
+    images: &ImageCtx,
+    diags: &mut Diagnostics,
+) -> Fragment {
     layout_tree_policy(
         root,
         cb_width,
-        0.0,
+        (0.0, icb_height),
         (false, TextLayoutPolicy::default(), false),
         fonts,
         images,
@@ -2442,7 +2481,7 @@ pub(crate) fn layout_tree_recorded(
     let laid = layout_tree_policy(
         root,
         cb_width,
-        0.0,
+        (0.0, 0.0),
         (false, TextLayoutPolicy::default(), true),
         fonts,
         images,
@@ -2467,7 +2506,7 @@ pub(crate) fn layout_tree_live(
     let laid = layout_tree_policy(
         root,
         viewport.0,
-        viewport.1,
+        (viewport.1, 0.0),
         (true, text_start, false),
         fonts,
         images,
@@ -2488,7 +2527,7 @@ struct PolicyLayout {
 fn layout_tree_policy(
     root: &LayoutBox,
     cb_width: f32,
-    viewport_height: f32,
+    (viewport_height, icb_h): (f32, f32),
     policy: (bool, TextLayoutPolicy, bool),
     fonts: &FontRegistry,
     images: &ImageCtx,
@@ -2516,6 +2555,8 @@ fn layout_tree_policy(
         cb_h_known: live_geometry,
         root_w: cb_width,
         root_h: viewport_height,
+        icb_h,
+        abs_cb_icb: true,
         live_geometry,
         used_metrics: live_geometry.then(HashMap::new),
         html_font_metrics: text_start.is_some_and(|value| value.1),

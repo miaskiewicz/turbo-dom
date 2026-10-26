@@ -314,7 +314,6 @@ fn icb_case(id: &str) -> bool {
 }
 
 #[test]
-#[ignore = "turbo-dom#81: fails until the fix"]
 fn initial_containing_block_insets_like_chrome_156() {
     compare_cases(icb_case);
 }

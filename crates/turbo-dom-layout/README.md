@@ -41,6 +41,12 @@ fn lay_out(html: &str) -> Result<Fragment, RenderError> {
   PDF/UA roles and links from it.
 - The string HTML entries (`layout_html`, `layout_boxes`) use no markers: `t:*` are
   ordinary unknown elements, as in a browser.
+- `layout_in_viewport` / `layout_html_tree_in_viewport` lay out in a viewport
+  `(width, height)`: the initial containing block has the viewport's height, so a
+  `position: fixed` box and an absolutely positioned box with no positioned ancestor
+  resolve `bottom` / `%` insets and a `%` height against it (turbo-dom#81).
+  `layout_boxes` (its `cb_height`) and turbo-dom-raster's screenshots use it; the other
+  static entries leave that height unknown (paged output: the page box would be it).
 - `live` — the live-DOM input ("surf mode"): an embedder that owns a live document
   (turbo-surf) supplies its composed children (`Fn(Handle) -> &[Handle]`), pre-matched
   rules per origin (`PreMatched`: declarations, targets with specificity, shadow-scope
@@ -84,7 +90,10 @@ fn lay_out(html: &str) -> Result<Fragment, RenderError> {
   border-spacing: 2px }` with `border-spacing` inherited and initially 0 (#62, #63);
   `border-box` widths count once in intrinsic and column widths (#65); only legacy
   `-webkit-*` alignment (UA `center`, `align` attributes) moves block children (#69); UA
-  `th` is bold and centred (#70).
+  `th` is bold and centred (#70). P5b-W7: a box's intrinsic widths count its children's
+  horizontal margins (signed; `%` / `auto` count 0; turbo-dom#79); an `inline-block` is a
+  block formatting context root, keeping its first / last child's vertical margins
+  (#80); the initial containing block's height on the static path (#81, above).
 - `layout_snapshot::snapshot_{,html_}live_tree*` capture a snapshot of a `StyleInput`
   (identity paths index the styled forest).
 - `image` — the ONE image layer shared by the PDF emitter and turbo-dom-raster:

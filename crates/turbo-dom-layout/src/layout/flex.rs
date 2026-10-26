@@ -746,6 +746,8 @@ fn measure_item(
             cb_h_known: false,
             root_w: w,
             root_h: crate::style::viewport_px().1,
+            icb_h: 0.0,
+            abs_cb_icb: false,
             live_geometry,
             used_metrics: None,
             text_capture: None,
