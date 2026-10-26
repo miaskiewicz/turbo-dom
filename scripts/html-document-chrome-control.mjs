@@ -9,7 +9,7 @@
 // cases of the bugs found while fixing it (one group per issue, labelled). P5b-W6 adds the
 // `min-height` / `max-height` cases of miaskiewicz/turbo-dom#75 item 1
 // (`min-height-margin-*`), zero-area `clip: rect()` boxes of item 2 (`clip-zero-area-*`,
-// `clip-sr-only*`) and cases of the bugs found while fixing them (#76, #77, #78, #79).
+// `clip-sr-only*`) and cases of the bugs found while fixing them (#76, #77, #78, #79, #88).
 //
 // For every case below, Chrome for Testing 156 (viewport 1280x800) records:
 //   - `boxes`: getBoundingClientRect() of every `[data-cid]` element (document order), as
@@ -379,6 +379,17 @@ const CASES = [
   { id: "intrinsic-margin-negative", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="float:left"><div data-cid="d" style="width:30px;height:5px;margin-right:-10px"></div></div>`) },
   { id: "intrinsic-margin-min-content", html: DOC(S("body{margin:0}"), `<table data-cid="t" style="width:1px;border-spacing:0"><tr><td data-cid="c" style="padding:0"><div data-cid="d" style="width:30px;height:15px;margin:0 5px"></div></td></tr></table>`) },
   { id: "intrinsic-margin-column-flex", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="display:flex;flex-direction:column;float:left"><div data-cid="d" style="width:30px;height:15px;margin:0 4px 0 6px"></div></div>`) },
+  // P5b-W6, miaskiewicz/turbo-dom#88: `display: flow-root` establishes a block formatting
+  // context (its children's margins stay inside, it contains floats, avoids outer floats);
+  // an empty formatting-context root is not self-collapsing.
+  { id: "flow-root-child-margins", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="display:flow-root"><div data-cid="d" style="width:30px;height:15px;margin:3px 0 5px"></div></div><div data-cid="g" style="height:10px"></div>`) },
+  { id: "flow-root-own-margins", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="display:flow-root;margin:10px 0"><div data-cid="d" style="height:15px;margin:20px 0"></div></div><div data-cid="g" style="height:10px"></div>`) },
+  { id: "flow-root-contains-float", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="display:flow-root"><div data-cid="f" style="float:left;width:20px;height:50px"></div></div><div data-cid="g" style="height:10px"></div>`) },
+  { id: "flow-root-beside-float", html: DOC(S("body{margin:0}"), `<div data-cid="f" style="float:left;width:100px;height:50px"></div><div data-cid="c" style="display:flow-root;height:20px"></div>`) },
+  { id: "flow-root-nested-in-inline-context", html: DOC(S("body{margin:0}"), `<div data-cid="p"><div data-cid="c" style="display:flow-root;width:50px"><div data-cid="d" style="height:10px;margin-top:7px"></div></div></div>`) },
+  { id: "flow-root-empty", html: DOC(S("body{margin:0}"), `<div data-cid="a" style="height:10px;margin-bottom:10px"></div><div data-cid="c" style="display:flow-root;margin:15px 0"></div><div data-cid="g" style="height:10px;margin-top:5px"></div>`) },
+  { id: "empty-formatting-root-overflow", html: DOC(S("body{margin:0}"), `<div data-cid="a" style="height:10px;margin-bottom:10px"></div><div data-cid="c" style="overflow:hidden;margin:15px 0"></div><div data-cid="g" style="height:10px;margin-top:5px"></div>`) },
+  { id: "empty-formatting-root-flex", html: DOC(S("body{margin:0}"), `<div data-cid="a" style="height:10px;margin-bottom:10px"></div><div data-cid="c" style="display:flex;margin:15px 0"></div><div data-cid="g" style="height:10px;margin-top:5px"></div>`) },
 ];
 
 /** The RGB of a 1x1 PNG screenshot (any filter: a single pixel's filter adds 0). */

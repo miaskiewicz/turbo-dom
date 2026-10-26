@@ -103,7 +103,7 @@ fn inline_flex_grid_case(id: &str) -> bool {
 /// The control cases of an open bug, each asserted by its own test (`#[ignore]`d until
 /// its fix lands) and held out of [`html_documents_lay_out_as_chrome_156`].
 fn held_out(id: &str) -> bool {
-    let groups: [fn(&str) -> bool; 21] = [
+    let groups: [fn(&str) -> bool; 22] = [
         auto_table_case,
         inline_flex_grid_case,
         abs_auto_width_case,
@@ -125,6 +125,7 @@ fn held_out(id: &str) -> bool {
         percent_height_case,
         self_collapsing_first_child_case,
         intrinsic_margin_case,
+        flow_root_case,
     ];
     groups.iter().any(|group| group(id))
 }
@@ -324,6 +325,18 @@ fn intrinsic_margin_case(id: &str) -> bool {
 #[ignore = "turbo-dom#79: fails until the fix"]
 fn intrinsic_widths_count_child_margins_like_chrome_156() {
     compare_cases(intrinsic_margin_case);
+}
+
+/// miaskiewicz/turbo-dom#88: `display: flow-root` establishes a block formatting context;
+/// an empty formatting-context root is not self-collapsing.
+fn flow_root_case(id: &str) -> bool {
+    id.starts_with("flow-root-") || id.starts_with("empty-formatting-root-")
+}
+
+#[test]
+#[ignore = "turbo-dom#88: fails until the fix"]
+fn flow_root_establishes_a_formatting_context_like_chrome_156() {
+    compare_cases(flow_root_case);
 }
 
 /// miaskiewicz/turbo-dom#69: only legacy `-webkit-*` alignment moves block children.
