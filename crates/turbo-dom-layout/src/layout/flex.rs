@@ -456,11 +456,18 @@ fn lines_natural(
     text + atomics_natural(items, fonts)
 }
 
-/// The widest child's max-content contribution: its margin box (miaskiewicz/turbo-dom#79).
+/// The widest in-flow child's max-content contribution: its margin box
+/// (miaskiewicz/turbo-dom#79); out-of-flow children contribute nothing (#84).
 fn kids_natural(kids: &[LayoutBox], fonts: &FontRegistry) -> f32 {
-    kids.iter()
+    in_flow(kids)
         .map(|k| margin_box(k, natural_width(k, fonts)))
         .fold(0.0_f32, f32::max)
+}
+
+/// The in-flow children of a box: absolutely positioned and fixed ones are out of flow
+/// and add nothing to its intrinsic widths (miaskiewicz/turbo-dom#84).
+fn in_flow(kids: &[LayoutBox]) -> impl Iterator<Item = &LayoutBox> {
+    kids.iter().filter(|k| !k.out_of_flow())
 }
 
 /// A child's intrinsic size contribution: its border-box width `w` plus its horizontal
@@ -496,11 +503,10 @@ fn flex_natural(kids: &[LayoutBox], s: &ComputedStyle, fonts: &FontRegistry) -> 
         // omitting them undersizes the row and its children overflow (Wikipedia's
         // page-action tabs are margin-spaced; the row measured short and "View
         // history" spilled past the toolbar into the next column).
-        let sum: f32 = kids
-            .iter()
+        let sum: f32 = in_flow(kids)
             .map(|k| natural_width(k, fonts) + item_hmargin(k))
             .sum();
-        sum + gap * kids.len().saturating_sub(1) as f32
+        sum + gap * in_flow(kids).count().saturating_sub(1) as f32
     } else {
         kids_natural(kids, fonts)
     }
@@ -636,8 +642,7 @@ pub(crate) fn min_content_width(lb: &LayoutBox, fonts: &FontRegistry) -> f32 {
                 lb.uses_html_font_metrics(),
             ),
             BoxKind::Table(k) => super::table::min_content_width(k, &lb.style, fonts),
-            BoxKind::Flex(k) | BoxKind::Block(k) | BoxKind::Grid(k) => k
-                .iter()
+            BoxKind::Flex(k) | BoxKind::Block(k) | BoxKind::Grid(k) => in_flow(k)
                 .map(|c| margin_box(c, min_content_width(c, fonts)))
                 .fold(0.0_f32, f32::max),
             BoxKind::Marker(_) => 0.0,

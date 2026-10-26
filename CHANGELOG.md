@@ -45,6 +45,10 @@ changes in `tools/parity/expected/p5b-w7-turbo-dom-*.json`.
   margins counted as available space. It is now `min(max(min-content, available),
   max-content)` with `available` net of its margins, then `min-width` / `max-width`
   (CSS 2.2 §10.3.5). Control: `float-shrink-*` in `html-document`.
+- Out-of-flow children add nothing to intrinsic widths (miaskiewicz/turbo-dom#84, found
+  while fixing #79): an absolutely positioned or fixed child widened its parent's min- /
+  max-content (a float, an inline-block, an auto table cell or a row flex container
+  was as wide as it). Control: `intrinsic-oof-*` in `html-document`.
 
 ### Fixed — turbo-dom-layout tables, clipping and box sizing (P5b-W5, miaskiewicz/turbo-dom#41/#51/#52/#55/#62/#63/#64/#65/#69/#70, Chrome 156 controls)
 Each fix is backed by a Chrome for Testing 156 control and lists the corpus outputs it

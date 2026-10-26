@@ -347,7 +347,6 @@ fn intrinsic_oof_case(id: &str) -> bool {
 }
 
 #[test]
-#[ignore = "turbo-dom#84: fails until the fix"]
 fn out_of_flow_children_add_no_intrinsic_width_like_chrome_156() {
     compare_cases(intrinsic_oof_case);
 }
