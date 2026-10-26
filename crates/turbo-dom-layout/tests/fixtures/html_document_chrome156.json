@@ -867,6 +867,263 @@
     }
    },
    "canvas": "#ffffff"
+  },
+  {
+   "id": "style-child-is-not-empty",
+   "html": "<!DOCTYPE html><html><head><style>div{height:10px} div:empty{width:10px}</style></head><body><div data-cid=\"d\"><style></style></div><div data-cid=\"e\"></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "d",
+     "x": 8,
+     "y": 8,
+     "width": 1264,
+     "height": 10
+    },
+    {
+     "cid": "e",
+     "x": 8,
+     "y": 18,
+     "width": 10,
+     "height": 10
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "script-child-is-not-empty",
+   "html": "<!DOCTYPE html><html><head><style>div{height:10px} div:empty{width:10px}</style></head><body><div data-cid=\"d\"><script></script></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "d",
+     "x": 8,
+     "y": 8,
+     "width": 1264,
+     "height": 10
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "style-sibling-before-first-child",
+   "html": "<!DOCTYPE html><html><head><style>p{margin:0;height:10px} p:first-child{width:10px}</style></head><body><div><style></style><p data-cid=\"p\"></p></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 8,
+     "y": 8,
+     "width": 1264,
+     "height": 10
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "script-counts-for-nth-child",
+   "html": "<!DOCTYPE html><html><head><style>p{margin:0;height:10px} p:nth-child(2){width:10px}</style></head><body><div><script></script><p data-cid=\"p\"></p></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 8,
+     "y": 8,
+     "width": 10,
+     "height": 10
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "template-sibling-after-last-child",
+   "html": "<!DOCTYPE html><html><head><style>p{margin:0;height:10px} p:last-child{width:10px}</style></head><body><div><p data-cid=\"p\"></p><template><i></i></template></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 8,
+     "y": 8,
+     "width": 1264,
+     "height": 10
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "noscript-adjacent-sibling",
+   "html": "<!DOCTYPE html><html><head><style>p{margin:0;height:10px} noscript + p{width:10px}</style></head><body><div><noscript></noscript><p data-cid=\"p\"></p></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 8,
+     "y": 8,
+     "width": 10,
+     "height": 10
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "script-general-sibling",
+   "html": "<!DOCTYPE html><html><head><style>p{margin:0;height:10px} script ~ p{width:10px}</style></head><body><div><script></script><i></i><p data-cid=\"p\"></p></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 8,
+     "y": 8,
+     "width": 10,
+     "height": 10
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "style-sibling-breaks-only-child",
+   "html": "<!DOCTYPE html><html><head><style>p{margin:0;height:10px} p:only-child{width:10px}</style></head><body><div><p data-cid=\"p\"></p><style></style></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 8,
+     "y": 8,
+     "width": 1264,
+     "height": 10
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "has-style-child",
+   "html": "<!DOCTYPE html><html><head><style>div{height:10px} div:has(> style){width:10px}</style></head><body><div data-cid=\"d\"><style></style></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "d",
+     "x": 8,
+     "y": 8,
+     "width": 10,
+     "height": 10
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "meta-link-title-in-body-count",
+   "html": "<!DOCTYPE html><html><head><style>p{margin:0;height:10px} p:nth-child(4){width:10px}</style></head><body><div><meta><link><title></title><p data-cid=\"p\"></p></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 8,
+     "y": 8,
+     "width": 10,
+     "height": 10
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
   }
  ]
 }

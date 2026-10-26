@@ -16,6 +16,13 @@ changes in `tools/parity/expected/p5b-w1-*.json`.
   sheet — `@media screen{div{width:10px}} div{width:20px}` is 20px wide, as in Chrome.
   `Stylesheet::at_rule_position` exposes where each at-rule sat among the qualified rules.
   Control: `scripts/html-document-chrome-control.mjs` (`media-*` / `supports-*` cases).
+- Elements the HTML drive does not lay out still count for selectors
+  (miaskiewicz/turbo-dom#25 item 2): a stripped `<style>`, `<script>`, `<noscript>`,
+  `<template>`, `<title>`, `<meta>` or `<link>` is a child, a sibling and a `:has()`
+  descendant in the layout cascade, as in Chrome — `<div><style></style></div>` is not
+  `:empty`, the `<p>` of `<style></style><p>` is not `:first-child`, `script + p` matches.
+  Control: `scripts/html-document-chrome-control.mjs` (`*-empty`, `*-sibling*`,
+  `has-style-child`, `meta-link-title-in-body-count` cases).
 
 ### Fixed — selector engine and cascade order (P5b-X, Chrome 156 controls)
 Each fix is backed by `crates/turbo-dom/tests/fixtures/cascade_selectors_chrome156.json`

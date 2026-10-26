@@ -125,7 +125,8 @@ package or publish workflow.
   from a caller classifier, and its PDF switches are runtime `LayoutOptions`/`StyleOptions`
   (no PDF features here). Since S3b selectors parse and match with turbo-dom's engine
   (`style::RuleSelectors` = `parse_for_cascade`; the scope `style::Navigator` implements
-  turbo-dom's `Navigator`: kept nodes, Detached cutoff, the document scope, marker type keys);
+  turbo-dom's `Navigator`: element/text nodes — stripped non-visual elements still count for
+  selectors, turbo-dom#25 — Detached cutoff, the document scope, marker type keys);
   html2pdf's old `style/selector.rs` is gone. `scripts/verify-copied-layout.sh` checks the S1
   tree (`VERIFY_REF`) against the source commits; later edits are reviewed changes on top.
   Since S4 `live` is the live-DOM input ("surf mode"): turbo-surf's CSSOM-View layout styles
