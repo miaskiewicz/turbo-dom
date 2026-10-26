@@ -257,7 +257,7 @@ fn check_cascade_case(case: &Value, failures: &mut Vec<String>) {
                 .selectors()
                 .iter()
                 .filter(|s| match_for_cascade(&nav, h, s))
-                .map(|s| s.specificity())
+                .map(turbo_dom::rtdom::query::CascadeSelector::specificity)
                 .max();
             if let Some(spec) = spec {
                 if best.is_none_or(|(b, o, _)| (spec, order) > (b, o)) {

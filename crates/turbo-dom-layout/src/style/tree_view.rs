@@ -215,7 +215,8 @@ impl<'t> TreeView<'t> {
     /// Whether `h` has no kept child.
     fn has_no_kept_child(&self, h: Handle) -> bool {
         let mut none = true;
-        self.tree.for_each_child(h, |child| none &= !self.is_kept(child));
+        self.tree
+            .for_each_child(h, |child| none &= !self.is_kept(child));
         none
     }
 }
@@ -320,7 +321,11 @@ impl<'v, 't> Navigator<'v, 't> {
     }
 
     /// The navigator of explicit match-only `shells` (outermost first) over `roots`.
-    pub(crate) fn with_shells(view: &'v TreeView<'t>, shells: Vec<Handle>, roots: Vec<Handle>) -> Self {
+    pub(crate) fn with_shells(
+        view: &'v TreeView<'t>,
+        shells: Vec<Handle>,
+        roots: Vec<Handle>,
+    ) -> Self {
         Navigator {
             view,
             roots,

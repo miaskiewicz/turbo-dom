@@ -602,13 +602,22 @@ mod tests {
         let second = tree.query_selector_all(selector);
         assert!(std::rc::Rc::ptr_eq(&first, &second));
         assert!(compared() >= before + 2, "both calls were compared");
+        // whichever answer the mode returns, each engine holds its own cached copy
         let frozen = tree.frozen_caches();
-        let cache = frozen.qcache.borrow();
-        let frozen_hit = cache
+        let frozen_cache = frozen.qcache.borrow();
+        let frozen_hit = frozen_cache
             .map
             .get(selector)
             .expect("the frozen engine cached it");
-        assert_eq!(&frozen_hit[..], &first[..]);
-        assert!(!std::rc::Rc::ptr_eq(frozen_hit, &first), "no cache sharing");
+        let current_cache = tree.qcache.borrow();
+        let current_hit = current_cache
+            .map
+            .get(selector)
+            .expect("the current engine cached it");
+        assert_eq!(&frozen_hit[..], &current_hit[..]);
+        assert!(
+            !std::rc::Rc::ptr_eq(frozen_hit, current_hit),
+            "no cache sharing"
+        );
     }
 }

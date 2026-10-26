@@ -174,11 +174,23 @@ fn shape(nav: &Navigator, h: Handle) -> String {
     );
     out.push_str(",\"attrs\":[");
     for (i, (name, value)) in tree.attributes(h).iter().enumerate() {
-        let _ = write!(out, "{}[{},{}]", if i > 0 { "," } else { "" }, q(name), q(value));
+        let _ = write!(
+            out,
+            "{}[{},{}]",
+            if i > 0 { "," } else { "" },
+            q(name),
+            q(value)
+        );
     }
     out.push_str("],\"local_attrs\":[");
     for (i, (name, value)) in tree.local_attributes(h).enumerate() {
-        let _ = write!(out, "{}[{},{}]", if i > 0 { "," } else { "" }, q(name), q(value));
+        let _ = write!(
+            out,
+            "{}[{},{}]",
+            if i > 0 { "," } else { "" },
+            q(name),
+            q(value)
+        );
     }
     let position = nav.position(h).expect("an element");
     let mut ancestors = Vec::new();
@@ -223,7 +235,11 @@ fn legacy_path<'t>(nav: &Navigator<'_, 't>, h: Handle) -> Vec<Ctx<'t>> {
     while let Some(parent) = nav.parent(*chain.last().expect("non-empty")) {
         chain.push(parent);
     }
-    chain.iter().rev().map(|&e| legacy_ctx(nav, e, true)).collect()
+    chain
+        .iter()
+        .rev()
+        .map(|&e| legacy_ctx(nav, e, true))
+        .collect()
 }
 
 fn legacy_ctx<'t>(nav: &Navigator<'_, 't>, h: Handle, with_prev: bool) -> Ctx<'t> {
@@ -236,7 +252,13 @@ fn legacy_ctx<'t>(nav: &Navigator<'_, 't>, h: Handle, with_prev: bool) -> Ctx<'t
             of_type_total: 1,
             siblings: 1,
         };
-        return ctx_from(tree.local_name(h), Attrs::Tree(tree, h), pos, true, Vec::new());
+        return ctx_from(
+            tree.local_name(h),
+            Attrs::Tree(tree, h),
+            pos,
+            true,
+            Vec::new(),
+        );
     }
     let p = nav.position(h).expect("an element");
     let pos = ElemPos {

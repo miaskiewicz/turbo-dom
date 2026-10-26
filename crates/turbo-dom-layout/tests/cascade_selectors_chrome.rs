@@ -62,7 +62,10 @@ fn check(html: &str, css: &str, want: &[String], what: &str, failures: &mut Vec<
     let mut got = Vec::new();
     orders(&styled, &mut got);
     for (h, order) in &got {
-        let i = els.iter().position(|e| e == h).expect("styled elements are parsed elements");
+        let i = els
+            .iter()
+            .position(|e| e == h)
+            .expect("styled elements are parsed elements");
         if *order != want[i] {
             failures.push(format!(
                 "{what}: el#{i} <{}> order {order}, Chrome {}",
@@ -112,7 +115,10 @@ fn html_path_cascade_matches_chrome156() {
             &mut failures,
         );
     }
-    assert!(compared > 1000, "fixture shrank: {compared} element comparisons");
+    assert!(
+        compared > 1000,
+        "fixture shrank: {compared} element comparisons"
+    );
     assert!(
         failures.is_empty(),
         "{} disagreements with Chrome 156:\n{}",

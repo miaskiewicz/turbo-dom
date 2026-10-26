@@ -17,6 +17,18 @@
 #   surf-detection     turbo-surf `npm run test:detection`      }
 #   surf-corpus        tools/parity `surf` + `surf-extra` corpora through the dual napi addon,
 #                      compared with SURF_CORPUS_CHECKPOINT (needs tools/parity/fetch-inputs.sh)
+# S3b (the html2pdf cascade on the engine; the legacy engine is the old html2pdf matcher):
+#   layout             turbo-dom-layout + turbo-dom-raster cargo tests (this checkout), in the
+#   layout-svg         configurations of the S2 gate: default, svg, no-default and every
+#   layout-nodefault   feature listed explicitly (layout-allfeat: svg,perf,test-support)
+#   layout-allfeat
+#   html2pdf-ws        turbo-html2pdf `cargo test --workspace`          } in TURBO_HTML2PDF_DIR, whose
+#   html2pdf-core-*    core all-features (listed) / no-default / svg    } turbo-dom patch must point
+#   html2pdf-corpus    tools/parity html2pdf corpora through dual napi  } at this checkout
+#                      addons (default + svg), compared with HTML2PDF_CORPUS_CHECKPOINT
+#   surf-static        surf static screenshots (turbo-dom-raster) over the parity surf inputs,
+#                      through SURF_STATIC_HARNESS (a cargo package whose binary renders every
+#                      input given as arguments with this checkout's raster)
 #
 # environment:
 #   TURBO_TEST_DIR   turbo-test checkout (read only; copied)   default ../turbo-test-consolidation
@@ -32,6 +44,10 @@
 #   TURBO_SURF_CHROME_PATH  passed through to surf-detection
 #   SURF_CORPUS_CHECKPOINT  parity checkpoint for surf-corpus   default b2-surf
 #   SURF_CORPUS_EXPECT      optional expected-diff file(s) for surf-corpus (space separated)
+#   TURBO_HTML2PDF_DIR      turbo-html2pdf checkout (html2pdf-* suites; run in place)
+#   HTML2PDF_TARGET_DIR     its target dir                          default $OUT/html2pdf-target
+#   HTML2PDF_CORPUS_CHECKPOINT / HTML2PDF_CORPUS_EXPECT  as for surf-corpus (default b-main)
+#   SURF_STATIC_HARNESS     surf-static harness package dir
 #   CARGO_TARGET_DIR (turbo-dom), TT_TARGET_DIR, SURF_TARGET_DIR  target dirs (share them
 #                    across the two modes to avoid cold rebuilds; the build id differs anyway)
 #
@@ -291,7 +307,99 @@ if wants_prefix surf; then
   fi
 fi
 
-# ------------------------------------------------------------------ 4. manifest + checks
+# ------------------------------------------------------------------ 4. S3b: layout + raster
+layout_features() { # suite -> cargo feature args
+  case $1 in
+    layout) echo "--features turbo-dom-layout/selector-dual,turbo-dom-raster/selector-dual" ;;
+    layout-svg) echo "--features turbo-dom-layout/selector-dual,turbo-dom-layout/svg" ;;
+    layout-nodefault) echo "--no-default-features --features turbo-dom-layout/selector-dual" ;;
+    layout-allfeat) echo "--features turbo-dom-layout/selector-dual,turbo-dom-layout/svg,turbo-dom-layout/perf,turbo-dom-layout/test-support" ;;
+  esac
+}
+for suite in layout layout-svg layout-nodefault layout-allfeat; do
+  wants "$suite" || continue
+  id="$step-$mode-$suite-$stamp"
+  echo "$id" >>"$manifest_ids"
+  packages=(-p turbo-dom-layout)
+  [ "$suite" = layout ] && packages+=(-p turbo-dom-raster)
+  # shellcheck disable=SC2207
+  feats=($(layout_features "$suite"))
+  echo "== build $suite ($id)"
+  (cd "$root" && TURBO_DOM_DUAL_BUILD_ID=$id "${cargo[@]}" test --no-run --message-format=json "${packages[@]}" "${feats[@]}") \
+    >"$out/build-$suite.json" 2>"$out/build-$suite.err"
+  record_artifacts turbo-dom "$out/build-$suite.json"
+  TURBO_DOM_DUAL_BUILD_ID=$id run_cargo_suite "$suite" "$root" "${packages[@]}" "${feats[@]}"
+done
+
+# ------------------------------------------------------------------ 5. S3b: turbo-html2pdf (in place)
+h2p=${TURBO_HTML2PDF_DIR:-}
+h2p_target=${HTML2PDF_TARGET_DIR:-$out/html2pdf-target}
+h2p_suite_args() { # suite -> cargo args
+  case $1 in
+    html2pdf-ws) echo "--workspace --features turbo-html2pdf-core/selector-dual" ;;
+    html2pdf-core-allfeat) echo "-p turbo-html2pdf-core --features selector-dual,bundled-fonts,perf,endnotes,print-color,append,stamp,svg,xref,pdf-a,pdf-ua,encrypt" ;;
+    html2pdf-core-nodefault) echo "-p turbo-html2pdf-core --no-default-features --features selector-dual" ;;
+    html2pdf-core-svg) echo "-p turbo-html2pdf-core --features selector-dual,svg" ;;
+  esac
+}
+for suite in html2pdf-ws html2pdf-core-allfeat html2pdf-core-nodefault html2pdf-core-svg; do
+  wants "$suite" || continue
+  [ -n "$h2p" ] || { echo "TURBO_HTML2PDF_DIR is not set" >&2; exit 2; }
+  id="$step-$mode-$suite-$stamp"
+  echo "$id" >>"$manifest_ids"
+  # shellcheck disable=SC2207
+  args=($(h2p_suite_args "$suite"))
+  echo "== build $suite ($id)"
+  (cd "$h2p" && CARGO_TARGET_DIR=$h2p_target TURBO_DOM_DUAL_BUILD_ID=$id "${cargo[@]}" test --no-run --message-format=json "${args[@]}") \
+    >"$out/build-$suite.json" 2>"$out/build-$suite.err"
+  record_artifacts turbo-html2pdf "$out/build-$suite.json"
+  CARGO_TARGET_DIR=$h2p_target TURBO_DOM_DUAL_BUILD_ID=$id run_cargo_suite "$suite" "$h2p" "${args[@]}"
+done
+if wants html2pdf-corpus; then
+  [ -n "$h2p" ] || { echo "TURBO_HTML2PDF_DIR is not set" >&2; exit 2; }
+  id="$step-$mode-html2pdf-corpus-$stamp"
+  echo "$id" >>"$manifest_ids"
+  nodes=()
+  for variant in selector-dual svg,selector-dual; do
+    name=html2pdf$([ "$variant" = selector-dual ] || echo -svg)
+    echo "== build $name napi ($id, features $variant)"
+    (cd "$h2p" && CARGO_TARGET_DIR=$h2p_target-napi-$name TURBO_DOM_DUAL_BUILD_ID=$id "${cargo[@]}" build --release --message-format=json -p turbo-pdf-napi --features "$variant") \
+      >"$out/build-$name-napi.json" 2>"$out/build-$name-napi.err"
+    record_artifacts turbo-html2pdf "$out/build-$name-napi.json"
+    install_file "$h2p_target-napi-$name/release/libturbo_pdf_napi.dylib" "$out/html2pdf-napi/$name.node"
+    nodes+=("$out/html2pdf-napi/$name.node")
+  done
+  echo "== html2pdf-corpus"
+  rm -rf "$out/logs/html2pdf-corpus" "$out/html2pdf-corpus"
+  expect=()
+  for f in ${HTML2PDF_CORPUS_EXPECT:-}; do expect+=(--expect "$f"); done
+  env $(suite_env html2pdf-corpus) python3 "$root/tools/parity/parity.py" run "$out/html2pdf-corpus" \
+    --html2pdf "${nodes[0]}" --html2pdf-svg "${nodes[1]}" >"$out/html2pdf-corpus.log" 2>&1 || true
+  python3 "$root/tools/parity/parity.py" compare "$out/html2pdf-corpus" "${HTML2PDF_CORPUS_CHECKPOINT:-b-main}" \
+    "${expect[@]+"${expect[@]}"}" >"$out/html2pdf-corpus-compare.log" 2>&1 || true
+  tail -3 "$out/html2pdf-corpus-compare.log"
+fi
+
+# ------------------------------------------------------------------ 6. S3b: surf static screenshots
+if wants surf-static; then
+  harness=${SURF_STATIC_HARNESS:?SURF_STATIC_HARNESS is not set}
+  id="$step-$mode-surf-static-$stamp"
+  echo "$id" >>"$manifest_ids"
+  echo "== build surf-static ($id)"
+  (cd "$harness" && CARGO_TARGET_DIR=$out/surf-static-target TURBO_DOM_DUAL_BUILD_ID=$id "${cargo[@]}" build --release --message-format=json) \
+    >"$out/build-surf-static.json" 2>"$out/build-surf-static.err"
+  record_artifacts surf-static "$out/build-surf-static.json"
+  rm -rf "$out/logs/surf-static"
+  bin=$(ls "$out"/surf-static-target/release/* 2>/dev/null | while read -r f; do [ -f "$f" ] && [ -x "$f" ] && echo "$f"; done | head -1)
+  # the inputs of tools/parity's `surf` + `surf-extra` static screenshots
+  parity=$root/tools/parity
+  (env $(suite_env surf-static) "$bin" "$parity/.cache/turbo-surf/harness" "$parity/.cache/turbo-surf/rust/crates/turbo-surf-render" \
+    "$parity/.cache/turbo-html2pdf/benches/conformance/fixtures" "$parity/inputs/image-matrix/pages" "$parity/inputs/extra") \
+    >"$out/surf-static.log" 2>&1 || true
+  tail -1 "$out/surf-static.log"
+fi
+
+# ------------------------------------------------------------------ 7. manifest + checks
 python3 - "$out" "$step" "$mode" <<'PY'
 import json, sys
 out, step, mode = sys.argv[1:4]
