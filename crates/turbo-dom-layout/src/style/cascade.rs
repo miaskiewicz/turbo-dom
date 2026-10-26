@@ -817,7 +817,10 @@ mod order_tests {
         }
     }
 
-    fn winner(groups: &[(&[Declaration], u8, (u32, u32, u32), usize)]) -> String {
+    /// One declaration group: its declarations, level, specificity and source order.
+    type Group<'d> = (&'d [Declaration], u8, (u32, u32, u32), usize);
+
+    fn winner(groups: &[Group]) -> String {
         let mut cands: Vec<Cand> = Vec::new();
         for &(decls, level, spec, order) in groups {
             push_decls(decls, level, spec, order, &mut cands);
@@ -862,7 +865,11 @@ mod order_tests {
         let author = [decl("color", "author", true)];
         let inline = [decl("color", "inline", true)];
         assert_eq!(
-            winner(&[(&ua, UA_LEVEL, (0, 0, 1), 0), (&author, 1, (1, 0, 0), 5), (&inline, 4, (0, 0, 0), 0)]),
+            winner(&[
+                (&ua, UA_LEVEL, (0, 0, 1), 0),
+                (&author, 1, (1, 0, 0), 5),
+                (&inline, 4, (0, 0, 0), 0)
+            ]),
             "ua"
         );
         let ua = [decl("color", "ua", false)];
