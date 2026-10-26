@@ -1,6 +1,8 @@
 // Chrome-156 control for the image formats Chrome decodes (P5b, miaskiewicz/turbo-surf#30):
 // AVIF, BMP, ICO, CUR and SVG `<img>` sources (base64 and percent-encoded / utf8 `data:`
-// URIs), with TIFF as the unsupported control. The images are
+// URIs), with TIFF as the unsupported control, and AVIFs whose primary item carries HEIF
+// `irot` / `imir` transform properties (miaskiewicz/turbo-dom#45; also under
+// `image-orientation: none`). The images are
 // crates/turbo-dom-layout/tests/fixtures/images/formats (scripts/make_format_fixtures.py:
 // a 64x40 image in four colour quadrants — top-left red, top-right green, bottom-left
 // blue, bottom-right yellow).
@@ -66,14 +68,25 @@ const SOURCES = [
   ["svg-fractional", `data:image/svg+xml,${encodeURIComponent(svg.replace('width="64" height="40"', 'width="10.5" height="7.25" viewBox="0 0 64 40"'))}`],
   ["svg-no-size", `data:image/svg+xml,${encodeURIComponent(svg.replace(' width="64" height="40"', ""))}`],
   ["tiff", b64("image/tiff", "q.tiff")],
+  // [id, src, style]: AVIF transforms (`irot` angle x 90 degrees anti-clockwise; `imir`
+  // axis 0 exchanges top and bottom, 1 left and right), appended so the earlier images
+  // keep their places.
+  ["avif-irot90", b64("image/avif", "q-irot90.avif")],
+  ["avif-irot180", b64("image/avif", "q-irot180.avif")],
+  ["avif-irot270", b64("image/avif", "q-irot270.avif")],
+  ["avif-imir0", b64("image/avif", "q-imir0.avif")],
+  ["avif-imir1", b64("image/avif", "q-imir1.avif")],
+  ["avif-irot90-imir0", b64("image/avif", "q-irot90-imir0.avif")],
+  ["avif-irot90-orientation-none", b64("image/avif", "q-irot90.avif"), "image-orientation:none"],
 ];
 
 const ROW = 70;
 let body = "";
-const boxes = SOURCES.map(([id, src], i) => {
+const boxes = SOURCES.map(([id, src, style = ""], i) => {
   const [x, y] = [20 + (i % 2) * 400, 10 + Math.floor(i / 2) * ROW];
-  body += `<img data-cid="${id}" src="${src.replaceAll('"', "&quot;")}" style="position:absolute;left:${x}px;top:${y}px">`;
-  return { id, src, x, y };
+  const extra = style ? `;${style}` : "";
+  body += `<img data-cid="${id}" src="${src.replaceAll('"', "&quot;")}" style="position:absolute;left:${x}px;top:${y}px${extra}">`;
+  return style ? { id, src, x, y, style } : { id, src, x, y };
 });
 const html = `<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body>${body}</body></html>`;
 
@@ -181,4 +194,4 @@ const fixture = {
 };
 writeFileSync(out, `${JSON.stringify(fixture, null, 1)}\n`);
 console.log(`Chrome ${version}: ${cases.length} images -> ${out}`);
-for (const c of cases) console.log(c.id.padEnd(18), JSON.stringify(c.natural), c.event, c.rect.join(","), c.samples);
+for (const c of cases) console.log(c.id.padEnd(30), JSON.stringify(c.natural), c.event, c.rect.join(","), c.samples);
