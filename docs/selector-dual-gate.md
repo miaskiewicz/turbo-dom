@@ -131,7 +131,8 @@ Gate A (legacy mode) compares every suite's results with the previous step's ref
 which form the expected-to-fail-in-legacy set:
 
 - `rtdom::query::tests::pseudo_optional_readonly_readwrite_selected` (changed@S3a);
-- `cascade_selectors_chrome::selectors_match_chrome156` (new).
+- `cascade_selectors_chrome::selectors_match_chrome156` (new);
+- `rtdom::query::tests::s3a_selector_fixes_edge_cases` (new).
 
 Gate B (new mode) requires every divergence record to match one classifier in
 `selector-dual-check.py`. Each classifier tests both the selector feature and an
