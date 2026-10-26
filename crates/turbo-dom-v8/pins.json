@@ -10,26 +10,33 @@
     "version": "150.4.0",
     "revision": "5c15a6995c9bb4bacd3e341b59fff32c909c80bf",
     "repository": "https://github.com/denoland/rusty_v8",
-    "archive": "v8-150.4.0.crate",
-    "archive_sha256": "42a978ff11f15b24e5c05a7123cf2b68f41e763546699781a924ef4e2cf43a49",
-    "license_url": "https://github.com/denoland/rusty_v8/blob/5c15a6995c9bb4bacd3e341b59fff32c909c80bf/LICENSE",
-    "license_sha256": "1c6356fb751d45f0c53093ebf8a7f5e580e802f51999178e19d60f3ec39e147d"
+    "license_url": "https://github.com/denoland/rusty_v8/blob/5c15a6995c9bb4bacd3e341b59fff32c909c80bf/LICENSE"
   },
   "input": {
-    "description": "turbo-surf rust/vendor/rusty_v8: upstream v8-150.4.0.crate subset (root files + src gen tools tests benches examples) with rust/vendor/rusty-v8-150.patch applied",
-    "repository": "https://github.com/miaskiewicz/turbo-surf",
-    "commit": "b1de4ebf74e87d73ed128ee3b36e13a40000c3fc",
-    "path": "rust/vendor/rusty_v8",
-    "surf_patch_sha256": "3681ca9e18cbfecf23e696cdea202d3bfc005de59dc0e5d5ed2800f7ff8648ca",
+    "archive": "v8-150.4.0.crate",
+    "url": "https://static.crates.io/crates/v8/v8-150.4.0.crate",
+    "archive_sha256": "42a978ff11f15b24e5c05a7123cf2b68f41e763546699781a924ef4e2cf43a49",
+    "included_directories": [
+      "src",
+      "gen",
+      "tools",
+      "tests",
+      "benches",
+      "examples"
+    ],
     "original_function_sha256": "8e2a6d1a5649cd955002ae6f483532a6659cd8803d68d2081a04f252b5e05b4f",
-    "patched_function_sha256": "b12f0237fcb8622171a5d8ffd23407b04c860fa188ef96f26e53fcf6a79de05f",
     "original_isolate_sha256": "857451a4481061055176596a1b26f02303977fe7d07704937f1e51833c1b0873",
+    "extracted_files": 186,
+    "extracted_tree_sha256": "7797a1f5c795154b43a3be94c9399dd136e2727223e17b63162a43523c46244d",
+    "patched_function_sha256": "b12f0237fcb8622171a5d8ffd23407b04c860fa188ef96f26e53fcf6a79de05f",
     "patched_isolate_sha256": "4eb4214ba55192c0146bd4eccef66b13b7fcbeaa0b79233fee3cf0ecc8836543",
     "license_sha256": "1c6356fb751d45f0c53093ebf8a7f5e580e802f51999178e19d60f3ec39e147d",
-    "files": 187,
-    "tree_sha256": "dcb941136a3c9176cf2178ef3c80bee40a44a0c39faba0aea75f6bc38214e6cd"
+    "patched_files": 187,
+    "patched_tree_sha256": "dcb941136a3c9176cf2178ef3c80bee40a44a0c39faba0aea75f6bc38214e6cd",
+    "provenance": "patches/rusty-v8-150.patch moved verbatim from miaskiewicz/turbo-surf rust/vendor/rusty-v8-150.patch at b1de4ebf74e87d73ed128ee3b36e13a40000c3fc (sha256 3681ca9e18cbfecf23e696cdea202d3bfc005de59dc0e5d5ed2800f7ff8648ca); the patched tree equals that commit's rust/vendor/rusty_v8"
   },
   "patches": {
+    "rusty-v8-150.patch": "3681ca9e18cbfecf23e696cdea202d3bfc005de59dc0e5d5ed2800f7ff8648ca",
     "build-rs.patch": "51e992f627e5c42cd81ee63cae9302814773061ebdc77842b2730a6d22acc4de",
     "fork-marker.patch": "ff9a325c3c83afcf6ee73aaec4f9d166408b18c38acb9664fd43068315babbcf",
     "v8-teardown-tests.patch": "d5185408eb43c657f10dab2f0683c6797b2302d82a95823039164ac15df7e87c",

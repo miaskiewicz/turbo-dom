@@ -1,24 +1,28 @@
 #!/usr/bin/env python3
-"""Generate the publishable turbo-dom-v8 crate from the reviewed rusty_v8 150.4 source.
+"""Generate the publishable turbo-dom-v8 crate from upstream rusty_v8 150.4.0.
 
-Input: turbo-surf's already-patched rusty_v8 150.4.0 source tree
-(``rust/vendor/rusty_v8`` in miaskiewicz/turbo-surf; upstream ``v8-150.4.0.crate``
-plus ``rusty-v8-150.patch``: function.rs ShouldThrowOnError fix, isolate.rs weak
-teardown fix, retained MIT LICENSE). Every input file is checked against
-``pins.json`` before anything is written.
+Inputs (all in this repository except the checksum-pinned upstream archive):
+1. upstream ``v8-150.4.0.crate`` (static.crates.io, sha256 in ``pins.json``), taken
+   from ``--archive``, else Cargo's registry cache, else (``--download``) fetched into
+   the gitignored ``crates/turbo-dom-v8/.download/``. Only its Rust subset is used:
+   root files plus ``pins.json`` ``included_directories`` (no C++ trees).
+2. ``patches/rusty-v8-150.patch`` (moved from turbo-surf's
+   rust/vendor/rusty-v8-150.patch): src/function.rs interceptor ShouldThrowOnError fix,
+   src/isolate.rs weak teardown fix, build.rs source-build guard, MIT LICENSE.
+3. the turbo-dom deltas: ``patches/{build-rs,fork-marker,v8-teardown-tests,
+   lib-test-init}.patch``, the manifest transform in ``manifest()``, the reserved-file
+   removal and our regression tests (``tests/``) and ``rustfmt.toml``.
+Every stage is checked against ``pins.json`` before anything is written.
 
-On top of that input this script applies only the turbo-dom deltas:
-``patches/*.patch`` (build.rs ``UPSTREAM_V8_VERSION``, the fork marker and lint
-allows in lib.rs, the release teardown tests), the manifest transform in
-``manifest()``, the reserved-file removal, and our regression tests.
+  generate.py [--download] --write [--output DIR]  write the crate (default crate/)
+  generate.py [--download] --check [--output DIR]  regenerate and compare with pins
+                                                    (and with the output dir if present)
+  generate.py --verify DIR                          hash-check a generated crate only
+  generate.py ... --compare DIR                     also require the patched upstream tree
+                                                    (stage 2) to equal DIR byte-for-byte
+  generate.py --write --update-pins                 accept reviewed patch/test changes
 
-  generate.py --input DIR --write [--output DIR]   write the crate (default crate/)
-  generate.py --input DIR --check [--output DIR]   regenerate and compare with output
-  generate.py --verify DIR                         hash-check a generated crate only
-  generate.py --input DIR --write --update-pins    accept changed turbo-dom deltas
-
-``--input`` defaults to $TURBO_DOM_V8_INPUT. Nothing here downloads, builds V8 or
-touches Cargo's cache.
+Nothing here builds V8 or modifies Cargo's cache.
 """
 
 import argparse
@@ -29,14 +33,20 @@ import re
 import shutil
 import subprocess
 import sys
+import tarfile
 import tempfile
 import tomllib
-from pathlib import Path
+import urllib.request
+from pathlib import Path, PurePosixPath
 
 CRATE = Path(__file__).resolve().parents[1]
 PINS_PATH = CRATE / "pins.json"
 DEFAULT_OUTPUT = CRATE / "crate"
+DOWNLOAD_DIR = CRATE / ".download"
+ARCHIVE_LIMIT = 64 * 1024 * 1024
+UPSTREAM_PATCH = "rusty-v8-150.patch"
 PATCHES = [
+    UPSTREAM_PATCH,             # function.rs + isolate.rs fixes, build.rs guard, LICENSE
     "build-rs.patch",           # UPSTREAM_V8_VERSION at both download sites + guard + unit test
     "fork-marker.patch",        # pub const FORK_SHOULD_THROW_FIX + crate-level lint allows
     "v8-teardown-tests.patch",  # turbo-surf release-deps teardown tests (tests/test_api.rs)
@@ -83,21 +93,71 @@ def load_pins(path=PINS_PATH):
     return json.loads(path.read_text())
 
 
-def verify_input(source, pins):
-    tree = files(source)
-    expected = pins["input"]
-    for relative, key in [("src/function.rs", "patched_function_sha256"),
-                          ("src/isolate.rs", "patched_isolate_sha256"),
-                          ("LICENSE", "license_sha256")]:
-        if relative not in tree or sha256(tree[relative]) != expected[key]:
-            raise GenerationError(f"input {relative} does not match the reviewed turbo-surf source")
-    manifest = tomllib.loads(tree["Cargo.toml"].decode())["package"]
-    upstream = pins["upstream"]
-    if (manifest["name"], manifest["version"]) != (upstream["package"], upstream["version"]):
-        raise GenerationError("input manifest is not the pinned upstream release")
-    if len(tree) != expected["files"] or tree_digest(tree) != expected["tree_sha256"]:
-        raise GenerationError("input tree differs from the pinned turbo-surf rust/vendor/rusty_v8")
+def checked_archive(path, pins):
+    if path.is_symlink() or not path.is_file() or sha256(path.read_bytes()) != pins["input"]["archive_sha256"]:
+        raise GenerationError(f"missing or modified upstream archive: {path}")
+    return path
+
+
+def find_archive(pins, archive=None, cargo_home=None, download=False, urlopen=urllib.request.urlopen,
+                 download_dir=DOWNLOAD_DIR):
+    """Resolve the checksum-pinned upstream crate archive (never modifies Cargo's cache)."""
+    name = pins["input"]["archive"]
+    if archive is not None:
+        return checked_archive(Path(archive), pins)
+    home = Path(cargo_home or os.environ.get("CARGO_HOME") or Path.home() / ".cargo")
+    for cached in sorted(home.glob(f"registry/cache/*/{name}")):
+        return checked_archive(cached, pins)
+    downloaded = download_dir / name
+    if downloaded.exists() or downloaded.is_symlink():
+        return checked_archive(downloaded, pins)
+    if not download:
+        raise GenerationError(f"{name} is not in Cargo's cache; pass --archive PATH or --download")
+    request = urllib.request.Request(pins["input"]["url"], headers={"User-Agent": "turbo-dom-v8-generate"})
+    with urlopen(request, timeout=120) as response:
+        payload = response.read(ARCHIVE_LIMIT + 1)
+    if len(payload) > ARCHIVE_LIMIT:
+        raise GenerationError("upstream archive exceeds the size limit")
+    if sha256(payload) != pins["input"]["archive_sha256"]:
+        raise GenerationError("downloaded upstream archive checksum mismatch")
+    download_dir.mkdir(parents=True, exist_ok=True)
+    partial = downloaded.with_suffix(".partial")
+    partial.write_bytes(payload)
+    partial.replace(downloaded)
+    return checked_archive(downloaded, pins)
+
+
+def extract(archive, pins):
+    """Rust subset of the upstream archive: root files plus the included directories."""
+    prefix = f"{pins['upstream']['package']}-{pins['upstream']['version']}"
+    included = set(pins["input"]["included_directories"])
+    tree = {}
+    with tarfile.open(archive, mode="r:gz") as package:
+        for entry in package:
+            if entry.isdir():
+                continue
+            if not entry.isfile():
+                raise GenerationError(f"unexpected archive entry type: {entry.name}")
+            path = PurePosixPath(entry.name)
+            if path.is_absolute() or ".." in path.parts or not path.parts or path.parts[0] != prefix:
+                raise GenerationError(f"unsafe archive entry: {entry.name}")
+            relative = PurePosixPath(*path.parts[1:])
+            if len(relative.parts) > 1 and relative.parts[0] not in included:
+                continue
+            tree[str(relative)] = package.extractfile(entry).read()
     return tree
+
+
+def check(tree, expected, label):
+    if len(tree) != expected[f"{label}_files"] or tree_digest(tree) != expected[f"{label}_tree_sha256"]:
+        raise GenerationError(f"{label} upstream tree differs from pins.json")
+
+
+def write_tree(tree, destination):
+    for relative, data in tree.items():
+        path = destination / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(data)
 
 
 def replace_field(body, key, value):
@@ -169,8 +229,8 @@ def manifest(source, pins):
     return result
 
 
-def apply_patches(target, pins):
-    for name in PATCHES:
+def apply_patches(target, pins, names):
+    for name in names:
         patch = CRATE / "patches" / name
         if sha256(patch.read_bytes()) != pins["patches"][name]:
             raise GenerationError(f"patch changed: {name} (rerun with --update-pins after review)")
@@ -178,18 +238,36 @@ def apply_patches(target, pins):
                         "-i", str(patch)], cwd=target, check=True, stdout=subprocess.DEVNULL)
 
 
-def generate(source, destination, pins, update_pins=False):
+def generate(archive, destination, pins, update_pins=False, compare=None):
     """Write the generated crate into the empty directory destination; return its tree."""
-    tree = verify_input(source, pins)
-    for relative, data in tree.items():
-        path = destination / relative
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_bytes(data)
+    expected = pins["input"]
+    tree = extract(checked_archive(archive, pins), pins)
+    check(tree, expected, "extracted")
+    for relative, key in [("src/function.rs", "original_function_sha256"),
+                          ("src/isolate.rs", "original_isolate_sha256")]:
+        if sha256(tree[relative]) != expected[key]:
+            raise GenerationError(f"upstream {relative} does not match the reviewed original")
+    write_tree(tree, destination)
+    if update_pins:
+        pins["patches"] = {name: sha256((CRATE / "patches" / name).read_bytes()) for name in PATCHES}
+    apply_patches(destination, pins, [UPSTREAM_PATCH])
+    patched = files(destination)
+    for relative, key in [("src/function.rs", "patched_function_sha256"),
+                          ("src/isolate.rs", "patched_isolate_sha256"),
+                          ("LICENSE", "license_sha256")]:
+        if sha256(patched[relative]) != expected[key]:
+            raise GenerationError(f"patched {relative} does not match the reviewed fix")
+    check(patched, expected, "patched")
+    if compare is not None:
+        other = files(Path(compare))
+        different = sorted(path for path in patched.keys() | other.keys() if patched.get(path) != other.get(path))
+        if different:
+            raise GenerationError(f"patched upstream tree differs from {compare}: " + ", ".join(different))
     for name in REMOVED:
         (destination / name).unlink()
     if update_pins:
         pins["patches"] = {name: sha256((CRATE / "patches" / name).read_bytes()) for name in PATCHES}
-    apply_patches(destination, pins)
+    apply_patches(destination, pins, PATCHES[1:])
     leftovers = [p for p in destination.rglob("*") if p.suffix in {".orig", ".rej"}]
     if leftovers:
         raise GenerationError(f"patch left {leftovers}")
@@ -246,9 +324,12 @@ def replace_contents(output, generated):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--input", type=Path, default=os.environ.get("TURBO_DOM_V8_INPUT"),
-                        help="turbo-surf rust/vendor/rusty_v8 (default $TURBO_DOM_V8_INPUT)")
+    parser.add_argument("--archive", type=Path, help="upstream v8-150.4.0.crate (default: Cargo's cache)")
+    parser.add_argument("--download", action="store_true",
+                        help="fetch the pinned archive from static.crates.io if it is not cached")
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
+    parser.add_argument("--compare", type=Path, metavar="DIR",
+                        help="require upstream + rusty-v8-150.patch to equal DIR (e.g. a turbo-surf vendor tree)")
     modes = parser.add_mutually_exclusive_group(required=True)
     modes.add_argument("--write", action="store_true")
     modes.add_argument("--check", action="store_true")
@@ -256,30 +337,36 @@ def main(argv=None):
     parser.add_argument("--update-pins", action="store_true")
     args = parser.parse_args(argv)
     pins = load_pins()
+    if args.update_pins and not args.write:
+        parser.error("--update-pins requires --write")
     try:
         if args.verify:
             verify_output(args.verify, pins)
             print(f"Verified generated turbo-dom-v8 {pins['version']} at {args.verify}")
             return 0
-        if args.input is None:
-            parser.error("--input (or $TURBO_DOM_V8_INPUT) is required")
-        if args.update_pins and not args.write:
-            parser.error("--update-pins requires --write")
+        archive = find_archive(pins, args.archive, download=args.download)
         with tempfile.TemporaryDirectory(prefix="turbo-dom-v8-") as scratch:
-            generated = generate(args.input.resolve(), Path(scratch), pins, args.update_pins)
+            generated = generate(archive, Path(scratch), pins, args.update_pins, args.compare)
+            compared = ""
             if args.check:
-                if verify_output(args.output, pins) != generated:
-                    raise GenerationError("output differs from the regenerated crate")
+                if args.output.exists():
+                    if verify_output(args.output, pins) != generated:
+                        raise GenerationError("output differs from the regenerated crate")
+                    compared = f", output {args.output} identical"
+                else:
+                    compared = f", no output at {args.output}"
             else:
                 replace_contents(args.output, generated)
+                compared = f", written to {args.output}"
                 if args.update_pins:
                     PINS_PATH.write_text(json.dumps(pins, indent=2) + "\n")
     except GenerationError as error:
         print(f"error: {error}", file=sys.stderr)
         return 1
-    action = "Checked" if args.check else "Wrote"
-    print(f"{action} turbo-dom-v8 {pins['version']} (upstream v8 {pins['upstream']['version']}, "
-          f"{pins['generated']['files']} files, tree {pins['generated']['tree_sha256'][:12]}) at {args.output}")
+    action = "Checked" if args.check else "Generated"
+    print(f"{action} turbo-dom-v8 {pins['version']} from {archive.name} (upstream v8 {pins['upstream']['version']}): "
+          f"{pins['generated']['files']} files, tree {pins['generated']['tree_sha256'][:12]}"
+          + (f", stage 2 identical to {args.compare}" if args.compare else "") + compared)
     return 0
 
 

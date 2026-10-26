@@ -24,10 +24,12 @@ turbo-surf), which are left untouched on crates.io. Consumers require `~150.4`.
 
 ## What is in this directory
 
-Only the inputs: no V8 or rusty_v8 source is committed.
+Only the inputs: no V8 or rusty_v8 source is committed, and nothing depends on another
+repository.
 
 ```
-pins.json               upstream identity, the pinned input tree, patch hashes, generated-tree hash
+pins.json               upstream archive checksum, stage hashes, patch hashes, generated-tree hash
+patches/rusty-v8-150.patch  function.rs + isolate.rs fixes, build.rs source-build guard, LICENSE
 patches/*.patch         the turbo-dom deltas above (build.rs, lib.rs, test_api.rs, array_buffer.rs)
 tests/*.rs              our regression tests (copied into the generated crate)
 rustfmt.toml            upstream's 2-space style, also copied into the crate
@@ -35,28 +37,37 @@ scripts/generate.py     generator (+ test_generate.py)
 scripts/release.py      package / idempotent publish (+ test_release.py)
 scripts/push-candidate.sh  push the generated crate to the PR candidate branch
 crate/                  generated output (gitignored)
+.download/              --download cache of the upstream archive (gitignored)
 ```
 
-The input is turbo-surf's already-reviewed rusty_v8 150.4.0 source:
-`rust/vendor/rusty_v8` in miaskiewicz/turbo-surf at `b1de4eb` (the published
-`v8-150.4.0.crate` Rust subset plus turbo-surf's `rusty-v8-150.patch`, which carries the
-function.rs and isolate.rs fixes and the MIT `LICENSE`). `pins.json` pins every input
-file (count + tree hash) and the individual function.rs (`b12f0237…`), isolate.rs and
-LICENSE hashes.
+Generation has three checked stages:
+
+1. **Upstream archive**: `v8-150.4.0.crate` from static.crates.io (sha256 `42a978ff…`),
+   taken from `--archive PATH`, else Cargo's registry cache, else fetched with
+   `--download` into `.download/`. Only its Rust subset is extracted (root files plus
+   `src gen tools tests benches examples`; 186 files, no C++ trees); the stock function.rs
+   and isolate.rs hashes are verified.
+2. **Reviewed fixes**: `patches/rusty-v8-150.patch`, moved verbatim from turbo-surf's
+   `rust/vendor/rusty-v8-150.patch` (b1de4eb). The resulting 187-file tree, including
+   function.rs `b12f0237…`, isolate.rs `4eb4214b…` and LICENSE, is pinned; it is
+   byte-identical to the tree turbo-surf vendored at that commit (`--compare DIR` checks this
+   against such a tree).
+3. **turbo-dom deltas**: the remaining patches, the manifest transform, reserved-file
+   removal, our tests and rustfmt.toml; the 188-file result is pinned.
 
 ## Generate and check
 
 ```sh
-export TURBO_DOM_V8_INPUT=/path/to/turbo-surf/rust/vendor/rusty_v8
-python3 crates/turbo-dom-v8/scripts/generate.py --write    # -> crates/turbo-dom-v8/crate/
-python3 crates/turbo-dom-v8/scripts/generate.py --check    # regenerate + compare with crate/ and pins
-python3 crates/turbo-dom-v8/scripts/generate.py --verify DIR  # hash-check a generated crate (no input needed)
+python3 crates/turbo-dom-v8/scripts/generate.py --download --write   # -> crates/turbo-dom-v8/crate/
+python3 crates/turbo-dom-v8/scripts/generate.py --download --check   # regenerate; compare with pins (and crate/ if present)
+python3 crates/turbo-dom-v8/scripts/generate.py --verify DIR         # hash-check a generated crate, no archive needed
 python3 -m unittest discover -s crates/turbo-dom-v8/scripts -p 'test_*.py'
 ```
 
-After reviewing a change to `patches/`, `tests/` or the generator, accept it with
-`generate.py --write --update-pins` (input pins never change this way). Nothing here
-downloads V8 or builds it from source.
+`--download` is only needed when the archive is not already in Cargo's cache; CI needs
+just network access and this repository. After reviewing a change to `patches/`, `tests/`
+or the generator, accept it with `generate.py --write --update-pins` (upstream archive
+and stage hashes never change this way). Nothing here builds V8 from source.
 
 ## Build and test
 

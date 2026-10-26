@@ -1,16 +1,22 @@
 """Offline checks for the turbo-dom-v8 generator.
 
 Run: python3 -m unittest discover -s crates/turbo-dom-v8/scripts -p 'test_*.py'
-Set TURBO_DOM_V8_INPUT to turbo-surf's rust/vendor/rusty_v8 to also regenerate the
-crate from the real input and compare it with pins.json.
+When the pinned upstream v8-150.4.0.crate is available (Cargo's cache or
+crates/turbo-dom-v8/.download/), the crate is also regenerated from it and compared
+with pins.json. Set TURBO_DOM_V8_COMPARE to a turbo-surf rust/vendor/rusty_v8 tree to
+additionally require the patched upstream stage to equal it.
 """
+import copy
 import hashlib
 import importlib.util
+import io
 import os
+import tarfile
 import tempfile
 import tomllib
 import unittest
 from pathlib import Path
+from unittest import mock
 
 SCRIPTS = Path(__file__).resolve().parent
 SPEC = importlib.util.spec_from_file_location("turbo_dom_v8_generate", SCRIPTS / "generate.py")
@@ -137,7 +143,7 @@ class CommittedInputsTests(unittest.TestCase):
         self.assertEqual(PINS["patches"]["v8-teardown-tests.patch"],
                          "d5185408eb43c657f10dab2f0683c6797b2302d82a95823039164ac15df7e87c")
 
-    def test_input_pins_are_turbo_surfs_reviewed_source(self):
+    def test_patched_input_pins_are_the_reviewed_fixes(self):
         pinned = PINS["input"]
         self.assertTrue(pinned["patched_function_sha256"].startswith("b12f0237"))
         self.assertEqual(pinned["patched_isolate_sha256"],
@@ -173,20 +179,101 @@ class CommittedInputsTests(unittest.TestCase):
         self.assertEqual(config["tab_spaces"], 2)
 
 
+def crate_archive(entries):
+    stream = io.BytesIO()
+    with tarfile.open(fileobj=stream, mode="w:gz") as package:
+        for name, data in entries.items():
+            member = tarfile.TarInfo(name)
+            if data is None:
+                member.type = tarfile.SYMTYPE
+                member.linkname = "elsewhere"
+                package.addfile(member)
+                continue
+            member.size = len(data)
+            package.addfile(member, io.BytesIO(data))
+    return stream.getvalue()
+
+
+class ArchiveTests(unittest.TestCase):
+    def pins_for(self, payload):
+        pins = copy.deepcopy(PINS)
+        pins["input"]["archive_sha256"] = hashlib.sha256(payload).hexdigest()
+        return pins
+
+    def test_upstream_input_is_the_pinned_crates_io_archive(self):
+        self.assertEqual(PINS["input"]["url"], "https://static.crates.io/crates/v8/v8-150.4.0.crate")
+        self.assertEqual(PINS["input"]["archive_sha256"],
+                         "42a978ff11f15b24e5c05a7123cf2b68f41e763546699781a924ef4e2cf43a49")
+        self.assertEqual(GENERATE.PATCHES[0], "rusty-v8-150.patch")
+
+    def test_cached_archive_is_reused_without_download(self):
+        payload = b"cached crate"
+        pins = self.pins_for(payload)
+        with tempfile.TemporaryDirectory() as temporary:
+            cache = Path(temporary) / "registry/cache/index.crates.io-x"
+            cache.mkdir(parents=True)
+            (cache / "v8-150.4.0.crate").write_bytes(payload)
+            opener = mock.Mock(side_effect=AssertionError("no download"))
+            found = GENERATE.find_archive(pins, cargo_home=temporary, download=True, urlopen=opener,
+                                          download_dir=Path(temporary) / "dl")
+            self.assertEqual(found, cache / "v8-150.4.0.crate")
+            (cache / "v8-150.4.0.crate").write_bytes(b"tampered")
+            with self.assertRaises(GENERATE.GenerationError):
+                GENERATE.find_archive(pins, cargo_home=temporary, urlopen=opener, download_dir=Path(temporary) / "dl")
+
+    def test_download_is_checksum_verified_and_kept_for_reuse(self):
+        payload = b"published crate"
+        pins = self.pins_for(payload)
+        with tempfile.TemporaryDirectory() as temporary:
+            home, target = Path(temporary) / "home", Path(temporary) / "dl"
+            with self.assertRaises(GENERATE.GenerationError):
+                GENERATE.find_archive(pins, cargo_home=home, download_dir=target)
+            opener = mock.Mock(return_value=io.BytesIO(payload))
+            found = GENERATE.find_archive(pins, cargo_home=home, download=True, urlopen=opener, download_dir=target)
+            self.assertEqual(found.read_bytes(), payload)
+            self.assertEqual(opener.call_args.args[0].full_url, PINS["input"]["url"])
+            opener.reset_mock()
+            GENERATE.find_archive(pins, cargo_home=home, download=True, urlopen=opener, download_dir=target)
+            opener.assert_not_called()
+        with tempfile.TemporaryDirectory() as temporary:
+            opener = mock.Mock(return_value=io.BytesIO(b"other bytes"))
+            with self.assertRaises(GENERATE.GenerationError):
+                GENERATE.find_archive(pins, cargo_home=Path(temporary) / "home", download=True,
+                                      urlopen=opener, download_dir=Path(temporary) / "dl")
+            self.assertFalse((Path(temporary) / "dl" / "v8-150.4.0.crate").exists())
+
+    def test_extract_keeps_root_files_and_rust_directories_only(self):
+        archive = crate_archive({"v8-150.4.0/Cargo.toml": b"m", "v8-150.4.0/.gn": b"g",
+                                 "v8-150.4.0/src/lib.rs": b"l", "v8-150.4.0/v8/BUILD.gn": b"c++",
+                                 "v8-150.4.0/third_party/icu/x.cc": b"c++"})
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "a.crate"
+            path.write_bytes(archive)
+            self.assertEqual(sorted(GENERATE.extract(path, PINS)), [".gn", "Cargo.toml", "src/lib.rs"])
+
+    def test_extract_rejects_links_and_escaping_paths(self):
+        for entries in [{"v8-150.4.0/src/link.rs": None}, {"v8-150.4.0/../escape": b"x"},
+                        {"other-1.0/src/lib.rs": b"x"}]:
+            with tempfile.TemporaryDirectory() as temporary:
+                path = Path(temporary) / "a.crate"
+                path.write_bytes(crate_archive(entries))
+                with self.assertRaises(GENERATE.GenerationError):
+                    GENERATE.extract(path, PINS)
+
+
 class InputVerificationTests(unittest.TestCase):
     def test_modified_or_wrong_input_is_rejected_before_writing(self):
+        archive = crate_archive({"v8-150.4.0/src/function.rs": b"stock", "v8-150.4.0/src/isolate.rs": b"stock",
+                                 "v8-150.4.0/Cargo.toml": b'[package]\nname = "v8"\nversion = "150.4.0"\n'})
         with tempfile.TemporaryDirectory() as temporary:
-            source = Path(temporary) / "input"
-            (source / "src").mkdir(parents=True)
-            (source / "src/function.rs").write_text("stock")
-            (source / "src/isolate.rs").write_text("stock")
-            (source / "LICENSE").write_text("MIT")
-            (source / "Cargo.toml").write_text('[package]\nname = "v8"\nversion = "150.4.0"\n')
+            path = Path(temporary) / "v8-150.4.0.crate"
+            path.write_bytes(archive)
             output = Path(temporary) / "out"
             output.mkdir()
-            with self.assertRaises(GENERATE.GenerationError):
-                GENERATE.generate(source, output, PINS)
-            self.assertEqual(list(output.iterdir()), [])
+            for pins in [PINS, ArchiveTests.pins_for(None, archive)]:
+                with self.assertRaises(GENERATE.GenerationError):
+                    GENERATE.generate(path, output, pins)
+                self.assertEqual(list(output.iterdir()), [])
 
     def test_verify_rejects_a_tampered_generated_crate(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -196,12 +283,20 @@ class InputVerificationTests(unittest.TestCase):
                 GENERATE.verify_output(crate, PINS)
 
 
-@unittest.skipUnless(os.environ.get("TURBO_DOM_V8_INPUT"), "set TURBO_DOM_V8_INPUT to regenerate")
-class RealInputTests(unittest.TestCase):
+def cached_archive():
+    try:
+        return GENERATE.find_archive(PINS)
+    except GENERATE.GenerationError:
+        return None
+
+
+@unittest.skipUnless(cached_archive(), "pinned v8-150.4.0.crate not cached (generate.py --download)")
+class RealArchiveTests(unittest.TestCase):
     def test_regeneration_matches_pins_and_verify(self):
+        compare = os.environ.get("TURBO_DOM_V8_COMPARE")
         with tempfile.TemporaryDirectory() as temporary:
             out = Path(temporary)
-            generated = GENERATE.generate(Path(os.environ["TURBO_DOM_V8_INPUT"]), out, PINS)
+            generated = GENERATE.generate(cached_archive(), out, PINS, compare=compare)
             self.assertEqual(GENERATE.verify_output(out, PINS), generated)
             build = generated["build.rs"].decode()
             self.assertNotIn('env::var("CARGO_PKG_VERSION")', build)
