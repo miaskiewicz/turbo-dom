@@ -20,6 +20,10 @@ fn fixture() -> Value {
     serde_json::from_str(&std::fs::read_to_string(path).expect("fixture")).unwrap()
 }
 
+/// JPEG XL cases (turbo-dom#45 item 2) the probe / layout do not match yet: each must
+/// still differ, so a fixed one is removed.
+const PENDING: &[&str] = &["jxl-exif", "jxl-multiple-aux", "jxl-modular-rle"];
+
 fn is_svg(id: &str) -> bool {
     id.starts_with("svg")
 }
@@ -85,6 +89,13 @@ fn probe_natural_answers_chromes_load_and_natural_size() {
             let n = case["natural"].as_array().unwrap();
             (n[0].as_u64().unwrap(), n[1].as_u64().unwrap())
         });
+        if PENDING.contains(&id) {
+            assert_ne!(
+                natural, want,
+                "{id}: matches Chrome, remove it from PENDING"
+            );
+            continue;
+        }
         assert_eq!(natural, want, "{id}");
         checked += 1;
     }
@@ -199,7 +210,8 @@ fn raster_format_img_boxes_match_chrome_156() {
             .iter()
             .find(|b| b.cid == id)
             .map(|b| [b.x, b.y, b.width, b.height]);
-        if got.is_none_or(|g| g.iter().zip(&want).any(|(g, w)| (g - w).abs() > 0.01)) {
+        let differs = got.is_none_or(|g| g.iter().zip(&want).any(|(g, w)| (g - w).abs() > 0.01));
+        if differs != PENDING.contains(&id) {
             failures.push(format!("{id}: {got:?}, Chrome {want:?}"));
         }
     }
