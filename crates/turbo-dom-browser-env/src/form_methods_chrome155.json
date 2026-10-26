@@ -1,0 +1,586 @@
+{
+  "browser": "Chrome/155.0.8059.80",
+  "v8": "15.5.35.23",
+  "casesSha256": "494dfb74574ed43ef265698743d9472289020ad08da2382edab5e23fd58adff4",
+  "probeSha256": "e85c53052d6a821550f85a7b50a852d94ebf7234854a93516ec92e77a890284f",
+  "collectorSha256": "4e61b029135dacd18fdb68e4194fea875766edc7f203f7560bd3b826ad6aa0cb",
+  "flags": [
+    "--remote-debugging-port=0",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "about:blank"
+  ],
+  "errors": [],
+  "result": [
+    {
+      "id": "validation-and-request-submission",
+      "result": {
+        "validityState": {
+          "prototypeDescriptor": [
+            false,
+            false,
+            false
+          ],
+          "brand": [
+            true,
+            true,
+            "[object ValidityState]"
+          ],
+          "valid": {
+            "value": true,
+            "error": null
+          },
+          "illegalReceiver": {
+            "error": "TypeError"
+          },
+          "illegalConstructor": {
+            "error": "TypeError"
+          }
+        },
+        "HTMLFormElement.requestSubmit": {
+          "length": 0,
+          "name": "requestSubmit",
+          "enumerable": true,
+          "writable": true,
+          "configurable": true
+        },
+        "HTMLFormElement.submit": {
+          "length": 0,
+          "name": "submit",
+          "enumerable": true,
+          "writable": true,
+          "configurable": true
+        },
+        "HTMLFormElement.checkValidity": {
+          "length": 0,
+          "name": "checkValidity",
+          "enumerable": true,
+          "writable": true,
+          "configurable": true
+        },
+        "HTMLFormElement.reportValidity": {
+          "length": 0,
+          "name": "reportValidity",
+          "enumerable": true,
+          "writable": true,
+          "configurable": true
+        },
+        "HTMLInputElement.setCustomValidity": {
+          "length": 1,
+          "name": "setCustomValidity",
+          "enumerable": true,
+          "writable": true,
+          "configurable": true
+        },
+        "input": [
+          true,
+          "",
+          true,
+          true,
+          true
+        ],
+        "textarea": [
+          true,
+          "",
+          true,
+          true,
+          true
+        ],
+        "select": [
+          true,
+          "",
+          true,
+          true,
+          true
+        ],
+        "button": [
+          true,
+          "",
+          true,
+          true,
+          true
+        ],
+        "fieldset": [
+          false,
+          "",
+          true,
+          true,
+          true
+        ],
+        "object": [
+          false,
+          "",
+          true,
+          true,
+          true
+        ],
+        "output": [
+          false,
+          "",
+          true,
+          true,
+          true
+        ],
+        "required": [
+          true,
+          true,
+          false,
+          false,
+          false,
+          [
+            [
+              "invalid",
+              true,
+              false,
+              true,
+              true
+            ],
+            [
+              "invalid",
+              true,
+              false,
+              true,
+              true
+            ],
+            [
+              "invalid",
+              true,
+              false,
+              true,
+              true
+            ]
+          ]
+        ],
+        "filled": [
+          false,
+          true,
+          true
+        ],
+        "custom": [
+          "own message",
+          true,
+          false,
+          false
+        ],
+        "cleared": [
+          "",
+          false,
+          true
+        ],
+        "customSymbol": {
+          "error": "TypeError"
+        },
+        "customMissing": {
+          "error": "TypeError"
+        },
+        "disabled": [
+          false,
+          false,
+          true,
+          true,
+          true
+        ],
+        "readonly": [
+          false,
+          false,
+          true,
+          true,
+          true
+        ],
+        "type=\"hidden\"": [
+          false,
+          false,
+          true,
+          true,
+          true
+        ],
+        "request-omitted": [
+          {
+            "value": "undefined",
+            "error": null
+          },
+          [
+            {
+              "type": "submit",
+              "constructor": "SubmitEvent",
+              "trusted": true,
+              "bubbles": true,
+              "cancelable": true,
+              "composed": false,
+              "submitter": null
+            }
+          ]
+        ],
+        "request-undefined": [
+          {
+            "value": "undefined",
+            "error": null
+          },
+          [
+            {
+              "type": "submit",
+              "constructor": "SubmitEvent",
+              "trusted": true,
+              "bubbles": true,
+              "cancelable": true,
+              "composed": false,
+              "submitter": null
+            }
+          ]
+        ],
+        "request-null": [
+          {
+            "value": "undefined",
+            "error": null
+          },
+          [
+            {
+              "type": "submit",
+              "constructor": "SubmitEvent",
+              "trusted": true,
+              "bubbles": true,
+              "cancelable": true,
+              "composed": false,
+              "submitter": null
+            }
+          ]
+        ],
+        "request-button": [
+          {
+            "value": "undefined",
+            "error": null
+          },
+          [
+            {
+              "type": "submit",
+              "constructor": "SubmitEvent",
+              "trusted": true,
+              "bubbles": true,
+              "cancelable": true,
+              "composed": true,
+              "submitter": "send"
+            }
+          ]
+        ],
+        "request-input": [
+          {
+            "value": "undefined",
+            "error": null
+          },
+          [
+            {
+              "type": "submit",
+              "constructor": "SubmitEvent",
+              "trusted": true,
+              "bubbles": true,
+              "cancelable": true,
+              "composed": true,
+              "submitter": "send"
+            }
+          ]
+        ],
+        "request-foreign": [
+          {
+            "error": "NotFoundError"
+          },
+          []
+        ],
+        "request-non-submit": [
+          {
+            "error": "TypeError"
+          },
+          []
+        ],
+        "request-required": [
+          {
+            "value": "undefined",
+            "error": null
+          },
+          [
+            {
+              "type": "invalid",
+              "trusted": true
+            }
+          ]
+        ],
+        "request-novalidate": [
+          {
+            "value": "undefined",
+            "error": null
+          },
+          [
+            {
+              "type": "submit",
+              "constructor": "SubmitEvent",
+              "trusted": true,
+              "bubbles": true,
+              "cancelable": true,
+              "composed": false,
+              "submitter": null
+            }
+          ]
+        ],
+        "request-formnovalidate": [
+          {
+            "value": "undefined",
+            "error": null
+          },
+          [
+            {
+              "type": "submit",
+              "constructor": "SubmitEvent",
+              "trusted": true,
+              "bubbles": true,
+              "cancelable": true,
+              "composed": true,
+              "submitter": "send"
+            }
+          ]
+        ],
+        "flags-email-missing-at": [
+          {
+            "valueMissing": false,
+            "typeMismatch": true,
+            "patternMismatch": false,
+            "tooLong": false,
+            "tooShort": false,
+            "rangeUnderflow": false,
+            "rangeOverflow": false,
+            "stepMismatch": false,
+            "badInput": false,
+            "customError": false,
+            "valid": false
+          },
+          "Please include an '@' in the email address. 'bad' is missing an '@'."
+        ],
+        "flags-email-empty-user": [
+          {
+            "valueMissing": false,
+            "typeMismatch": true,
+            "patternMismatch": false,
+            "tooLong": false,
+            "tooShort": false,
+            "rangeUnderflow": false,
+            "rangeOverflow": false,
+            "stepMismatch": false,
+            "badInput": false,
+            "customError": false,
+            "valid": false
+          },
+          "Please enter a part followed by '@'. '@x.test' is incomplete."
+        ],
+        "flags-email-empty-host": [
+          {
+            "valueMissing": false,
+            "typeMismatch": true,
+            "patternMismatch": false,
+            "tooLong": false,
+            "tooShort": false,
+            "rangeUnderflow": false,
+            "rangeOverflow": false,
+            "stepMismatch": false,
+            "badInput": false,
+            "customError": false,
+            "valid": false
+          },
+          "Please enter a part following '@'. 'x@' is incomplete."
+        ],
+        "flags-email-invalid-host": [
+          {
+            "valueMissing": false,
+            "typeMismatch": true,
+            "patternMismatch": false,
+            "tooLong": false,
+            "tooShort": false,
+            "rangeUnderflow": false,
+            "rangeOverflow": false,
+            "stepMismatch": false,
+            "badInput": false,
+            "customError": false,
+            "valid": false
+          },
+          "'.' is used at a wrong position in 'bad..host'."
+        ],
+        "flags-email-multiple": [
+          {
+            "valueMissing": false,
+            "typeMismatch": false,
+            "patternMismatch": false,
+            "tooLong": false,
+            "tooShort": false,
+            "rangeUnderflow": false,
+            "rangeOverflow": false,
+            "stepMismatch": false,
+            "badInput": false,
+            "customError": false,
+            "valid": true
+          },
+          ""
+        ],
+        "flags-url-valid": [
+          {
+            "valueMissing": false,
+            "typeMismatch": false,
+            "patternMismatch": false,
+            "tooLong": false,
+            "tooShort": false,
+            "rangeUnderflow": false,
+            "rangeOverflow": false,
+            "stepMismatch": false,
+            "badInput": false,
+            "customError": false,
+            "valid": true
+          },
+          ""
+        ],
+        "flags-url-invalid": [
+          {
+            "valueMissing": false,
+            "typeMismatch": true,
+            "patternMismatch": false,
+            "tooLong": false,
+            "tooShort": false,
+            "rangeUnderflow": false,
+            "rangeOverflow": false,
+            "stepMismatch": false,
+            "badInput": false,
+            "customError": false,
+            "valid": false
+          },
+          "Please enter a URL."
+        ],
+        "flags-pattern": [
+          {
+            "valueMissing": false,
+            "typeMismatch": false,
+            "patternMismatch": true,
+            "tooLong": false,
+            "tooShort": false,
+            "rangeUnderflow": false,
+            "rangeOverflow": false,
+            "stepMismatch": false,
+            "badInput": false,
+            "customError": false,
+            "valid": false
+          },
+          "Please match the requested format."
+        ],
+        "flags-pattern-invalid": [
+          {
+            "valueMissing": false,
+            "typeMismatch": false,
+            "patternMismatch": false,
+            "tooLong": false,
+            "tooShort": false,
+            "rangeUnderflow": false,
+            "rangeOverflow": false,
+            "stepMismatch": false,
+            "badInput": false,
+            "customError": false,
+            "valid": true
+          },
+          ""
+        ],
+        "flags-number-min": [
+          {
+            "valueMissing": false,
+            "typeMismatch": false,
+            "patternMismatch": false,
+            "tooLong": false,
+            "tooShort": false,
+            "rangeUnderflow": true,
+            "rangeOverflow": false,
+            "stepMismatch": false,
+            "badInput": false,
+            "customError": false,
+            "valid": false
+          },
+          "Value must be greater than or equal to 5."
+        ],
+        "flags-number-max": [
+          {
+            "valueMissing": false,
+            "typeMismatch": false,
+            "patternMismatch": false,
+            "tooLong": false,
+            "tooShort": false,
+            "rangeUnderflow": false,
+            "rangeOverflow": true,
+            "stepMismatch": false,
+            "badInput": false,
+            "customError": false,
+            "valid": false
+          },
+          "Value must be less than or equal to 5."
+        ],
+        "flags-number-step": [
+          {
+            "valueMissing": false,
+            "typeMismatch": false,
+            "patternMismatch": false,
+            "tooLong": false,
+            "tooShort": false,
+            "rangeUnderflow": false,
+            "rangeOverflow": false,
+            "stepMismatch": true,
+            "badInput": false,
+            "customError": false,
+            "valid": false
+          },
+          "Please enter a valid value. The two nearest valid values are 2 and 4."
+        ],
+        "flags-checkbox-required": [
+          {
+            "valueMissing": true,
+            "typeMismatch": false,
+            "patternMismatch": false,
+            "tooLong": false,
+            "tooShort": false,
+            "rangeUnderflow": false,
+            "rangeOverflow": false,
+            "stepMismatch": false,
+            "badInput": false,
+            "customError": false,
+            "valid": false
+          },
+          "Please check this box if you want to proceed."
+        ],
+        "flags-textarea-required": [
+          {
+            "valueMissing": true,
+            "typeMismatch": false,
+            "patternMismatch": false,
+            "tooLong": false,
+            "tooShort": false,
+            "rangeUnderflow": false,
+            "rangeOverflow": false,
+            "stepMismatch": false,
+            "badInput": false,
+            "customError": false,
+            "valid": false
+          },
+          "Please fill out this field."
+        ],
+        "flags-select-required": [
+          {
+            "valueMissing": true,
+            "typeMismatch": false,
+            "patternMismatch": false,
+            "tooLong": false,
+            "tooShort": false,
+            "rangeUnderflow": false,
+            "rangeOverflow": false,
+            "stepMismatch": false,
+            "badInput": false,
+            "customError": false,
+            "valid": false
+          },
+          "Please select an item in the list."
+        ]
+      }
+    }
+  ]
+}

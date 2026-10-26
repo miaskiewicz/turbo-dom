@@ -1,0 +1,4228 @@
+{
+  "browser": "Chrome/156.0.8078.47",
+  "v8": "15.6.75.19",
+  "probe": "user_activation_gates_probe.js",
+  "probeSha256": "6f96911aa3567835683f35fa40fccd7ba7f571147626b2720d5962e045cf678d",
+  "collectorSha256": "e6cadc004087a31da5ba698e45efbc62530e73d28f401d29b96226fa9ed3f94d",
+  "flags": [
+    "--headless=new",
+    "--remote-debugging-pipe",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "about:blank"
+  ],
+  "result": {
+    "synthetic": {
+      "event:cb": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "event:dcb": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "event:radio": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "event:submit": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "event:dsubmit": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "event:reset": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "event:isubmit": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "event:ireset": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "event:ibutton": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "event:label": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "event:lspan": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "event:wrap": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "event:wspan": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "event:wa": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "event:wbutton": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "event:dlabel": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "event:anchor": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "event:aspan": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "event:nspan": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "event:summary": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "event:sspan": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "event:sbutton": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "event:other": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "event:loose": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "custom:cb": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "custom:dcb": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "custom:radio": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "custom:submit": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "custom:dsubmit": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "custom:reset": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "custom:isubmit": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "custom:ireset": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "custom:ibutton": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "custom:label": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "custom:lspan": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "custom:wrap": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "custom:wspan": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "custom:wa": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "custom:wbutton": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "custom:dlabel": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "custom:anchor": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "custom:aspan": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "custom:nspan": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "custom:summary": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "custom:sspan": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "custom:sbutton": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "custom:other": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "custom:loose": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "keyboard:cb": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "keyboard:dcb": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "keyboard:radio": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "keyboard:submit": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "keyboard:dsubmit": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "keyboard:reset": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "keyboard:isubmit": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "keyboard:ireset": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "keyboard:ibutton": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "keyboard:label": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "keyboard:lspan": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "keyboard:wrap": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "keyboard:wspan": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "keyboard:wa": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "keyboard:wbutton": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "keyboard:dlabel": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "keyboard:anchor": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "keyboard:aspan": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "keyboard:nspan": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "keyboard:summary": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "keyboard:sspan": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "keyboard:sbutton": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "keyboard:other": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "keyboard:loose": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "mouse:cb": {
+        "returned": true,
+        "sync": {
+          "cb": true,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": [
+          [
+            "input",
+            "cb",
+            true,
+            "Event"
+          ],
+          [
+            "change",
+            "cb",
+            true,
+            "Event"
+          ]
+        ]
+      },
+      "mouse:dcb": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": true,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": [
+          [
+            "input",
+            "dcb",
+            true,
+            "Event"
+          ],
+          [
+            "change",
+            "dcb",
+            true,
+            "Event"
+          ]
+        ]
+      },
+      "mouse:radio": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": true,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": [
+          [
+            "input",
+            "radio",
+            true,
+            "Event"
+          ],
+          [
+            "change",
+            "radio",
+            true,
+            "Event"
+          ]
+        ]
+      },
+      "mouse:submit": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": [
+          "submit:submit"
+        ]
+      },
+      "mouse:dsubmit": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "mouse:reset": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "orig",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": [
+          "reset"
+        ]
+      },
+      "mouse:isubmit": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": [
+          "submit:isubmit"
+        ]
+      },
+      "mouse:ireset": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "orig",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": [
+          "reset"
+        ]
+      },
+      "mouse:ibutton": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "mouse:label": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": true,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "lcb"
+        },
+        "hashLater": "",
+        "log": [
+          [
+            "click",
+            "lcb",
+            false,
+            "PointerEvent"
+          ],
+          [
+            "input",
+            "lcb",
+            true,
+            "Event"
+          ],
+          [
+            "change",
+            "lcb",
+            true,
+            "Event"
+          ]
+        ]
+      },
+      "mouse:lspan": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": true,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "lcb"
+        },
+        "hashLater": "",
+        "log": [
+          [
+            "click",
+            "lcb",
+            false,
+            "PointerEvent"
+          ],
+          [
+            "input",
+            "lcb",
+            true,
+            "Event"
+          ],
+          [
+            "change",
+            "lcb",
+            true,
+            "Event"
+          ]
+        ]
+      },
+      "mouse:wrap": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": true,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "wcb"
+        },
+        "hashLater": "",
+        "log": [
+          [
+            "click",
+            "wcb",
+            false,
+            "PointerEvent"
+          ],
+          [
+            "input",
+            "wcb",
+            true,
+            "Event"
+          ],
+          [
+            "change",
+            "wcb",
+            true,
+            "Event"
+          ]
+        ]
+      },
+      "mouse:wspan": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": true,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "wcb"
+        },
+        "hashLater": "",
+        "log": [
+          [
+            "click",
+            "wcb",
+            false,
+            "PointerEvent"
+          ],
+          [
+            "input",
+            "wcb",
+            true,
+            "Event"
+          ],
+          [
+            "change",
+            "wcb",
+            true,
+            "Event"
+          ]
+        ]
+      },
+      "mouse:wa": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "#wa",
+          "details": false,
+          "second": false,
+          "active": "wa"
+        },
+        "hashLater": "#wa",
+        "log": []
+      },
+      "mouse:wbutton": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "mouse:dlabel": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "mouse:anchor": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "#frag",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "#frag",
+        "log": []
+      },
+      "mouse:aspan": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "#frag",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "#frag",
+        "log": []
+      },
+      "mouse:nspan": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "mouse:summary": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": true,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": [
+          [
+            "toggle",
+            "details",
+            true,
+            "ToggleEvent"
+          ]
+        ]
+      },
+      "mouse:sspan": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": true,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": [
+          [
+            "toggle",
+            "details",
+            true,
+            "ToggleEvent"
+          ]
+        ]
+      },
+      "mouse:sbutton": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "mouse:other": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "mouse:loose": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "mouseNoBubble:cb": {
+        "returned": true,
+        "sync": {
+          "cb": true,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": [
+          [
+            "input",
+            "cb",
+            true,
+            "Event"
+          ],
+          [
+            "change",
+            "cb",
+            true,
+            "Event"
+          ]
+        ]
+      },
+      "mouseNoBubble:dcb": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": true,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": [
+          [
+            "input",
+            "dcb",
+            true,
+            "Event"
+          ],
+          [
+            "change",
+            "dcb",
+            true,
+            "Event"
+          ]
+        ]
+      },
+      "mouseNoBubble:radio": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": true,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": [
+          [
+            "input",
+            "radio",
+            true,
+            "Event"
+          ],
+          [
+            "change",
+            "radio",
+            true,
+            "Event"
+          ]
+        ]
+      },
+      "mouseNoBubble:submit": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": [
+          "submit:submit"
+        ]
+      },
+      "mouseNoBubble:dsubmit": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "mouseNoBubble:reset": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "orig",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": [
+          "reset"
+        ]
+      },
+      "mouseNoBubble:isubmit": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": [
+          "submit:isubmit"
+        ]
+      },
+      "mouseNoBubble:ireset": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "orig",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": [
+          "reset"
+        ]
+      },
+      "mouseNoBubble:ibutton": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "mouseNoBubble:label": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": true,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "lcb"
+        },
+        "hashLater": "",
+        "log": [
+          [
+            "click",
+            "lcb",
+            false,
+            "PointerEvent"
+          ],
+          [
+            "input",
+            "lcb",
+            true,
+            "Event"
+          ],
+          [
+            "change",
+            "lcb",
+            true,
+            "Event"
+          ]
+        ]
+      },
+      "mouseNoBubble:lspan": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "mouseNoBubble:wrap": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": true,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "wcb"
+        },
+        "hashLater": "",
+        "log": [
+          [
+            "click",
+            "wcb",
+            false,
+            "PointerEvent"
+          ],
+          [
+            "input",
+            "wcb",
+            true,
+            "Event"
+          ],
+          [
+            "change",
+            "wcb",
+            true,
+            "Event"
+          ]
+        ]
+      },
+      "mouseNoBubble:wspan": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "mouseNoBubble:wa": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "#wa",
+          "details": false,
+          "second": false,
+          "active": "wa"
+        },
+        "hashLater": "#wa",
+        "log": []
+      },
+      "mouseNoBubble:wbutton": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "mouseNoBubble:dlabel": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "mouseNoBubble:anchor": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "#frag",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "#frag",
+        "log": []
+      },
+      "mouseNoBubble:aspan": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "mouseNoBubble:nspan": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "mouseNoBubble:summary": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": true,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": [
+          [
+            "toggle",
+            "details",
+            true,
+            "ToggleEvent"
+          ]
+        ]
+      },
+      "mouseNoBubble:sspan": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "mouseNoBubble:sbutton": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "mouseNoBubble:other": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "mouseNoBubble:loose": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "pointer:cb": {
+        "returned": true,
+        "sync": {
+          "cb": true,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": [
+          [
+            "input",
+            "cb",
+            true,
+            "Event"
+          ],
+          [
+            "change",
+            "cb",
+            true,
+            "Event"
+          ]
+        ]
+      },
+      "pointer:dcb": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": true,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": [
+          [
+            "input",
+            "dcb",
+            true,
+            "Event"
+          ],
+          [
+            "change",
+            "dcb",
+            true,
+            "Event"
+          ]
+        ]
+      },
+      "pointer:radio": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": true,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": [
+          [
+            "input",
+            "radio",
+            true,
+            "Event"
+          ],
+          [
+            "change",
+            "radio",
+            true,
+            "Event"
+          ]
+        ]
+      },
+      "pointer:submit": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": [
+          "submit:submit"
+        ]
+      },
+      "pointer:dsubmit": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "pointer:reset": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "orig",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": [
+          "reset"
+        ]
+      },
+      "pointer:isubmit": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": [
+          "submit:isubmit"
+        ]
+      },
+      "pointer:ireset": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "orig",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": [
+          "reset"
+        ]
+      },
+      "pointer:ibutton": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "pointer:label": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": true,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "lcb"
+        },
+        "hashLater": "",
+        "log": [
+          [
+            "click",
+            "lcb",
+            false,
+            "PointerEvent"
+          ],
+          [
+            "input",
+            "lcb",
+            true,
+            "Event"
+          ],
+          [
+            "change",
+            "lcb",
+            true,
+            "Event"
+          ]
+        ]
+      },
+      "pointer:lspan": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": true,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "lcb"
+        },
+        "hashLater": "",
+        "log": [
+          [
+            "click",
+            "lcb",
+            false,
+            "PointerEvent"
+          ],
+          [
+            "input",
+            "lcb",
+            true,
+            "Event"
+          ],
+          [
+            "change",
+            "lcb",
+            true,
+            "Event"
+          ]
+        ]
+      },
+      "pointer:wrap": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": true,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "wcb"
+        },
+        "hashLater": "",
+        "log": [
+          [
+            "click",
+            "wcb",
+            false,
+            "PointerEvent"
+          ],
+          [
+            "input",
+            "wcb",
+            true,
+            "Event"
+          ],
+          [
+            "change",
+            "wcb",
+            true,
+            "Event"
+          ]
+        ]
+      },
+      "pointer:wspan": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": true,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "wcb"
+        },
+        "hashLater": "",
+        "log": [
+          [
+            "click",
+            "wcb",
+            false,
+            "PointerEvent"
+          ],
+          [
+            "input",
+            "wcb",
+            true,
+            "Event"
+          ],
+          [
+            "change",
+            "wcb",
+            true,
+            "Event"
+          ]
+        ]
+      },
+      "pointer:wa": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "#wa",
+          "details": false,
+          "second": false,
+          "active": "wa"
+        },
+        "hashLater": "#wa",
+        "log": []
+      },
+      "pointer:wbutton": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "pointer:dlabel": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "pointer:anchor": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "#frag",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "#frag",
+        "log": []
+      },
+      "pointer:aspan": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "#frag",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "#frag",
+        "log": []
+      },
+      "pointer:nspan": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "pointer:summary": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": true,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": [
+          [
+            "toggle",
+            "details",
+            true,
+            "ToggleEvent"
+          ]
+        ]
+      },
+      "pointer:sspan": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": true,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": [
+          [
+            "toggle",
+            "details",
+            true,
+            "ToggleEvent"
+          ]
+        ]
+      },
+      "pointer:sbutton": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "pointer:other": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "pointer:loose": {
+        "returned": true,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "method:cb": {
+        "sync": {
+          "cb": true,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": [
+          [
+            "input",
+            "cb",
+            true,
+            "Event"
+          ],
+          [
+            "change",
+            "cb",
+            true,
+            "Event"
+          ]
+        ]
+      },
+      "method:dcb": {
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "method:radio": {
+        "sync": {
+          "cb": false,
+          "radio": true,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": [
+          [
+            "input",
+            "radio",
+            true,
+            "Event"
+          ],
+          [
+            "change",
+            "radio",
+            true,
+            "Event"
+          ]
+        ]
+      },
+      "method:submit": {
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": [
+          "submit:submit"
+        ]
+      },
+      "method:dsubmit": {
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "method:reset": {
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "orig",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": [
+          "reset"
+        ]
+      },
+      "method:isubmit": {
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": [
+          "submit:isubmit"
+        ]
+      },
+      "method:ireset": {
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "orig",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": [
+          "reset"
+        ]
+      },
+      "method:ibutton": {
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "method:label": {
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": true,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "lcb"
+        },
+        "hashLater": "",
+        "log": [
+          [
+            "click",
+            "lcb",
+            false,
+            "PointerEvent"
+          ],
+          [
+            "input",
+            "lcb",
+            true,
+            "Event"
+          ],
+          [
+            "change",
+            "lcb",
+            true,
+            "Event"
+          ]
+        ]
+      },
+      "method:lspan": {
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": true,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "lcb"
+        },
+        "hashLater": "",
+        "log": [
+          [
+            "click",
+            "lcb",
+            false,
+            "PointerEvent"
+          ],
+          [
+            "input",
+            "lcb",
+            true,
+            "Event"
+          ],
+          [
+            "change",
+            "lcb",
+            true,
+            "Event"
+          ]
+        ]
+      },
+      "method:wrap": {
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": true,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "wcb"
+        },
+        "hashLater": "",
+        "log": [
+          [
+            "click",
+            "wcb",
+            false,
+            "PointerEvent"
+          ],
+          [
+            "input",
+            "wcb",
+            true,
+            "Event"
+          ],
+          [
+            "change",
+            "wcb",
+            true,
+            "Event"
+          ]
+        ]
+      },
+      "method:wspan": {
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": true,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "wcb"
+        },
+        "hashLater": "",
+        "log": [
+          [
+            "click",
+            "wcb",
+            false,
+            "PointerEvent"
+          ],
+          [
+            "input",
+            "wcb",
+            true,
+            "Event"
+          ],
+          [
+            "change",
+            "wcb",
+            true,
+            "Event"
+          ]
+        ]
+      },
+      "method:wa": {
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "#wa",
+          "details": false,
+          "second": false,
+          "active": "wa"
+        },
+        "hashLater": "#wa",
+        "log": []
+      },
+      "method:wbutton": {
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "method:dlabel": {
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "method:anchor": {
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "#frag",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "#frag",
+        "log": []
+      },
+      "method:aspan": {
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "#frag",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "#frag",
+        "log": []
+      },
+      "method:nspan": {
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "method:summary": {
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": true,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": [
+          [
+            "toggle",
+            "details",
+            true,
+            "ToggleEvent"
+          ]
+        ]
+      },
+      "method:sspan": {
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": true,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": [
+          [
+            "toggle",
+            "details",
+            true,
+            "ToggleEvent"
+          ]
+        ]
+      },
+      "method:sbutton": {
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "method:other": {
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "method:loose": {
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "mouseCanceled:cb": {
+        "returned": false,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "mouseCanceled:dcb": {
+        "returned": false,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "mouseCanceled:radio": {
+        "returned": false,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "mouseCanceled:submit": {
+        "returned": false,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "mouseCanceled:dsubmit": {
+        "returned": false,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "mouseCanceled:reset": {
+        "returned": false,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "mouseCanceled:isubmit": {
+        "returned": false,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "mouseCanceled:ireset": {
+        "returned": false,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "mouseCanceled:ibutton": {
+        "returned": false,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "mouseCanceled:label": {
+        "returned": false,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "mouseCanceled:lspan": {
+        "returned": false,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "mouseCanceled:wrap": {
+        "returned": false,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "mouseCanceled:wspan": {
+        "returned": false,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "mouseCanceled:wa": {
+        "returned": false,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "mouseCanceled:wbutton": {
+        "returned": false,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "mouseCanceled:dlabel": {
+        "returned": false,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "mouseCanceled:anchor": {
+        "returned": false,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "mouseCanceled:aspan": {
+        "returned": false,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "mouseCanceled:nspan": {
+        "returned": false,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "mouseCanceled:summary": {
+        "returned": false,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "mouseCanceled:sspan": {
+        "returned": false,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "mouseCanceled:sbutton": {
+        "returned": false,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "mouseCanceled:other": {
+        "returned": false,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      },
+      "mouseCanceled:loose": {
+        "returned": false,
+        "sync": {
+          "cb": false,
+          "radio": false,
+          "text": "changed",
+          "lcb": false,
+          "wcb": false,
+          "dcb": false,
+          "hash": "",
+          "details": false,
+          "second": false,
+          "active": "BODY"
+        },
+        "hashLater": "",
+        "log": []
+      }
+    },
+    "shape": {
+      "inputPicker": {
+        "kind": "function",
+        "get": null,
+        "set": null,
+        "name": "showPicker",
+        "length": 0,
+        "e": true,
+        "c": true,
+        "w": true
+      },
+      "selectPicker": {
+        "kind": "function",
+        "get": null,
+        "set": null,
+        "name": "showPicker",
+        "length": 0,
+        "e": true,
+        "c": true,
+        "w": true
+      },
+      "requestFullscreen": {
+        "kind": "function",
+        "get": null,
+        "set": null,
+        "name": "requestFullscreen",
+        "length": 0,
+        "e": true,
+        "c": true,
+        "w": true
+      },
+      "webkitRequestFullscreen": {
+        "kind": "function",
+        "get": null,
+        "set": null,
+        "name": "webkitRequestFullscreen",
+        "length": 0,
+        "e": true,
+        "c": true,
+        "w": true
+      },
+      "webkitRequestFullScreen": {
+        "kind": "function",
+        "get": null,
+        "set": null,
+        "name": "webkitRequestFullScreen",
+        "length": 0,
+        "e": true,
+        "c": true,
+        "w": true
+      },
+      "onfullscreenchange": {
+        "kind": "accessor",
+        "get": [
+          "get onfullscreenchange",
+          0
+        ],
+        "set": [
+          "set onfullscreenchange",
+          1
+        ],
+        "e": true,
+        "c": true,
+        "w": null
+      },
+      "onfullscreenerror": {
+        "kind": "accessor",
+        "get": [
+          "get onfullscreenerror",
+          0
+        ],
+        "set": [
+          "set onfullscreenerror",
+          1
+        ],
+        "e": true,
+        "c": true,
+        "w": null
+      },
+      "onwebkitfullscreenchange": {
+        "kind": "accessor",
+        "get": [
+          "get onwebkitfullscreenchange",
+          0
+        ],
+        "set": [
+          "set onwebkitfullscreenchange",
+          1
+        ],
+        "e": true,
+        "c": true,
+        "w": null
+      },
+      "onwebkitfullscreenerror": {
+        "kind": "accessor",
+        "get": [
+          "get onwebkitfullscreenerror",
+          0
+        ],
+        "set": [
+          "set onwebkitfullscreenerror",
+          1
+        ],
+        "e": true,
+        "c": true,
+        "w": null
+      },
+      "documentOnfullscreenchange": {
+        "kind": "accessor",
+        "get": [
+          "get onfullscreenchange",
+          0
+        ],
+        "set": [
+          "set onfullscreenchange",
+          1
+        ],
+        "e": true,
+        "c": true,
+        "w": null
+      },
+      "documentOnfullscreenerror": {
+        "kind": "accessor",
+        "get": [
+          "get onfullscreenerror",
+          0
+        ],
+        "set": [
+          "set onfullscreenerror",
+          1
+        ],
+        "e": true,
+        "c": true,
+        "w": null
+      },
+      "documentOnwebkitfullscreenchange": {
+        "kind": "accessor",
+        "get": [
+          "get onwebkitfullscreenchange",
+          0
+        ],
+        "set": [
+          "set onwebkitfullscreenchange",
+          1
+        ],
+        "e": true,
+        "c": true,
+        "w": null
+      },
+      "exitFullscreen": {
+        "kind": "function",
+        "get": null,
+        "set": null,
+        "name": "exitFullscreen",
+        "length": 0,
+        "e": true,
+        "c": true,
+        "w": true
+      },
+      "fullscreenElement": {
+        "kind": "accessor",
+        "get": [
+          "get fullscreenElement",
+          0
+        ],
+        "set": [
+          "set fullscreenElement",
+          1
+        ],
+        "e": true,
+        "c": true,
+        "w": null
+      }
+    },
+    "picker": {
+      "text": [
+        "NotAllowedError",
+        "Failed to execute 'showPicker' on 'HTMLInputElement': HTMLInputElement::showPicker() requires user activation."
+      ],
+      "date": [
+        "NotAllowedError",
+        "Failed to execute 'showPicker' on 'HTMLInputElement': HTMLInputElement::showPicker() requires user activation."
+      ],
+      "color": [
+        "NotAllowedError",
+        "Failed to execute 'showPicker' on 'HTMLInputElement': HTMLInputElement::showPicker() requires user activation."
+      ],
+      "file": [
+        "NotAllowedError",
+        "Failed to execute 'showPicker' on 'HTMLInputElement': HTMLInputElement::showPicker() requires user activation."
+      ],
+      "checkbox": [
+        "NotAllowedError",
+        "Failed to execute 'showPicker' on 'HTMLInputElement': HTMLInputElement::showPicker() requires user activation."
+      ],
+      "hidden": [
+        "NotAllowedError",
+        "Failed to execute 'showPicker' on 'HTMLInputElement': HTMLInputElement::showPicker() requires user activation."
+      ],
+      "range": [
+        "NotAllowedError",
+        "Failed to execute 'showPicker' on 'HTMLInputElement': HTMLInputElement::showPicker() requires user activation."
+      ],
+      "number": [
+        "InvalidStateError",
+        "Failed to execute 'showPicker' on 'HTMLInputElement': HTMLInputElement::showPicker() cannot be used on immutable controls."
+      ],
+      "dtext": [
+        "InvalidStateError",
+        "Failed to execute 'showPicker' on 'HTMLInputElement': HTMLInputElement::showPicker() cannot be used on immutable controls."
+      ],
+      "rtext": [
+        "InvalidStateError",
+        "Failed to execute 'showPicker' on 'HTMLInputElement': HTMLInputElement::showPicker() cannot be used on immutable controls."
+      ],
+      "rcheckbox": [
+        "NotAllowedError",
+        "Failed to execute 'showPicker' on 'HTMLInputElement': HTMLInputElement::showPicker() requires user activation."
+      ],
+      "rdate": [
+        "InvalidStateError",
+        "Failed to execute 'showPicker' on 'HTMLInputElement': HTMLInputElement::showPicker() cannot be used on immutable controls."
+      ],
+      "rcolor": [
+        "NotAllowedError",
+        "Failed to execute 'showPicker' on 'HTMLInputElement': HTMLInputElement::showPicker() requires user activation."
+      ],
+      "rfile": [
+        "NotAllowedError",
+        "Failed to execute 'showPicker' on 'HTMLInputElement': HTMLInputElement::showPicker() requires user activation."
+      ],
+      "dfile": [
+        "InvalidStateError",
+        "Failed to execute 'showPicker' on 'HTMLInputElement': HTMLInputElement::showPicker() cannot be used on immutable controls."
+      ],
+      "dhidden": [
+        "InvalidStateError",
+        "Failed to execute 'showPicker' on 'HTMLInputElement': HTMLInputElement::showPicker() cannot be used on immutable controls."
+      ],
+      "ltext": [
+        "NotAllowedError",
+        "Failed to execute 'showPicker' on 'HTMLInputElement': HTMLInputElement::showPicker() requires user activation."
+      ],
+      "ftext": [
+        "InvalidStateError",
+        "Failed to execute 'showPicker' on 'HTMLInputElement': HTMLInputElement::showPicker() cannot be used on immutable controls."
+      ],
+      "fselect": [
+        "InvalidStateError",
+        "Failed to execute 'showPicker' on 'HTMLSelectElement': showPicker() cannot be used on immutable controls."
+      ],
+      "select": [
+        "NotAllowedError",
+        "Failed to execute 'showPicker' on 'HTMLSelectElement': showPicker() requires user activation."
+      ],
+      "dselect": [
+        "InvalidStateError",
+        "Failed to execute 'showPicker' on 'HTMLSelectElement': showPicker() cannot be used on immutable controls."
+      ],
+      "multi": [
+        "NotAllowedError",
+        "Failed to execute 'showPicker' on 'HTMLSelectElement': showPicker() requires user activation."
+      ],
+      "nonetext": [
+        "NotAllowedError",
+        "Failed to execute 'showPicker' on 'HTMLInputElement': HTMLInputElement::showPicker() requires user activation."
+      ],
+      "noneselect": [
+        "NotAllowedError",
+        "Failed to execute 'showPicker' on 'HTMLSelectElement': showPicker() requires user activation."
+      ],
+      "detachedInput": [
+        "NotAllowedError",
+        "Failed to execute 'showPicker' on 'HTMLInputElement': HTMLInputElement::showPicker() requires user activation."
+      ],
+      "detachedSelect": [
+        "NotAllowedError",
+        "Failed to execute 'showPicker' on 'HTMLSelectElement': showPicker() requires user activation."
+      ],
+      "inputBrand": [
+        "TypeError",
+        "Illegal invocation"
+      ],
+      "selectBrand": [
+        "TypeError",
+        "Illegal invocation"
+      ],
+      "extraArgument": [
+        "InvalidStateError",
+        "Failed to execute 'showPicker' on 'HTMLInputElement': HTMLInputElement::showPicker() cannot be used on immutable controls."
+      ]
+    },
+    "fullscreen": {
+      "plain": [
+        "reject",
+        "TypeError",
+        "Permissions check failed"
+      ],
+      "brand": [
+        "reject",
+        "TypeError",
+        "Failed to execute 'requestFullscreen' on 'Element': Illegal invocation"
+      ],
+      "text": [
+        "reject",
+        "TypeError",
+        "Failed to execute 'requestFullscreen' on 'Element': Illegal invocation"
+      ],
+      "navigationUI": [
+        "reject",
+        "TypeError",
+        "Failed to execute 'requestFullscreen' on 'Element': Failed to read the 'navigationUI' property from 'FullscreenOptions': The provided value 'bogus' is not a valid enum value of type FullscreenNavigationUI."
+      ],
+      "primitive": [
+        "reject",
+        "TypeError",
+        "Failed to execute 'requestFullscreen' on 'Element': The provided value is not of type 'FullscreenOptions'."
+      ],
+      "screen": [
+        "reject",
+        "TypeError",
+        "Failed to execute 'requestFullscreen' on 'Element': Failed to read the 'screen' property from 'FullscreenOptions': Failed to convert value to 'Screen'."
+      ],
+      "hide": [
+        "reject",
+        "TypeError",
+        "Permissions check failed"
+      ],
+      "nullOptions": [
+        "reject",
+        "TypeError",
+        "Permissions check failed"
+      ],
+      "detached": [
+        "reject",
+        "TypeError",
+        "Element is not connected"
+      ],
+      "detachedBadUI": [
+        "reject",
+        "TypeError",
+        "Failed to execute 'requestFullscreen' on 'Element': Failed to read the 'navigationUI' property from 'FullscreenOptions': The provided value 'x' is not a valid enum value of type FullscreenNavigationUI."
+      ],
+      "dialog": [
+        "reject",
+        "TypeError",
+        "Dialog elements are invalid"
+      ],
+      "rect": [
+        "reject",
+        "TypeError",
+        "Element is not an HTML or SVG element"
+      ],
+      "svg": [
+        "reject",
+        "TypeError",
+        "Permissions check failed"
+      ],
+      "math": [
+        "reject",
+        "TypeError",
+        "Element is not an HTML or SVG element"
+      ],
+      "inert": [
+        "reject",
+        "TypeError",
+        "Failed to execute 'requestFullscreen' on 'Element': Document not active"
+      ],
+      "webkit": "undefined",
+      "webkitScreen": "undefined",
+      "exit": [
+        "reject",
+        "TypeError",
+        "Failed to execute 'exitFullscreen' on 'Document': Document not active"
+      ],
+      "webkitExit": "undefined",
+      "element": null,
+      "order": [
+        true,
+        "sync",
+        "settled"
+      ],
+      "events": [
+        [
+          "fullscreenerror",
+          "box",
+          true,
+          false,
+          true,
+          true
+        ],
+        [
+          "handler",
+          "box"
+        ],
+        [
+          "fullscreenerror",
+          "box",
+          true,
+          false,
+          true,
+          true
+        ],
+        [
+          "handler",
+          "box"
+        ],
+        [
+          "fullscreenerror",
+          "box",
+          true,
+          false,
+          true,
+          true
+        ],
+        [
+          "handler",
+          "box"
+        ],
+        [
+          "fullscreenerror",
+          "document",
+          true,
+          false,
+          true,
+          true
+        ],
+        [
+          "fullscreenerror",
+          "DIALOG",
+          true,
+          false,
+          true,
+          true
+        ],
+        [
+          "fullscreenerror",
+          "rect",
+          true,
+          false,
+          true,
+          true
+        ],
+        [
+          "fullscreenerror",
+          "svg",
+          true,
+          false,
+          true,
+          true
+        ],
+        [
+          "fullscreenerror",
+          "math",
+          true,
+          false,
+          true,
+          true
+        ],
+        [
+          "webkitfullscreenerror",
+          "box",
+          true,
+          false,
+          true,
+          true
+        ],
+        [
+          "webkitfullscreenerror",
+          "box",
+          true,
+          false,
+          true,
+          true
+        ]
+      ]
+    }
+  }
+}

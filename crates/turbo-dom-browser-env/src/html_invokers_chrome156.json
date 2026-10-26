@@ -1,0 +1,4231 @@
+{
+  "browser": "Chrome/156.0.8078.47",
+  "v8": "15.6.75.19",
+  "probe": "html_invokers_probe.js",
+  "probeSha256": "fc6af89bd984083fc33651466d1d8611811c3ac2e84804398ffcb6cd66e15339",
+  "collectorSha256": "e6cadc004087a31da5ba698e45efbc62530e73d28f401d29b96226fa9ed3f94d",
+  "flags": [
+    "--headless=new",
+    "--remote-debugging-pipe",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "about:blank"
+  ],
+  "result": {
+    "reflection": {
+      "command": [
+        [
+          null,
+          ""
+        ],
+        [
+          "",
+          ""
+        ],
+        [
+          "toggle-popover",
+          "toggle-popover"
+        ],
+        [
+          "TOGGLE-POPOVER",
+          "toggle-popover"
+        ],
+        [
+          "Show-Popover",
+          "show-popover"
+        ],
+        [
+          "hide-popover",
+          "hide-popover"
+        ],
+        [
+          "show-modal",
+          "show-modal"
+        ],
+        [
+          "CLOSE",
+          "close"
+        ],
+        [
+          "request-close",
+          "request-close"
+        ],
+        [
+          "--foo",
+          "--foo"
+        ],
+        [
+          "--Foo",
+          "--Foo"
+        ],
+        [
+          "--",
+          "--"
+        ],
+        [
+          "-foo",
+          ""
+        ],
+        [
+          "custom",
+          ""
+        ],
+        [
+          "toggle",
+          ""
+        ],
+        [
+          " close",
+          ""
+        ],
+        [
+          "x",
+          ""
+        ]
+      ],
+      "commandSet": [
+        "--Bar",
+        "--Bar"
+      ],
+      "commandNull": [
+        "null",
+        ""
+      ],
+      "commandUndefined": [
+        "undefined",
+        ""
+      ],
+      "commandSymbol": "TypeError",
+      "action": [
+        [
+          null,
+          "toggle"
+        ],
+        [
+          "",
+          "toggle"
+        ],
+        [
+          "show",
+          "show"
+        ],
+        [
+          "HIDE",
+          "hide"
+        ],
+        [
+          "toggle",
+          "toggle"
+        ],
+        [
+          "Toggle",
+          "toggle"
+        ],
+        [
+          "x",
+          "toggle"
+        ]
+      ],
+      "actionSet": [
+        "nonsense",
+        "toggle"
+      ],
+      "types": [
+        [
+          "",
+          "submit"
+        ],
+        [
+          "command=x",
+          "button"
+        ],
+        [
+          "commandfor=x",
+          "button"
+        ],
+        [
+          "command",
+          "button"
+        ],
+        [
+          "type=submit commandfor=x",
+          "submit"
+        ],
+        [
+          "type=BUTTON",
+          "button"
+        ],
+        [
+          "type=bogus commandfor=x",
+          "button"
+        ],
+        [
+          "type=reset command=x",
+          "reset"
+        ],
+        [
+          "type=bogus",
+          "submit"
+        ],
+        [
+          "popovertarget=x",
+          "submit"
+        ]
+      ],
+      "typeSet": [
+        "RESET",
+        "reset"
+      ],
+      "willValidate": [
+        false,
+        false,
+        true,
+        true
+      ],
+      "elements": [
+        [
+          "popoverTargetElement",
+          [
+            null,
+            "p",
+            null,
+            "",
+            "s",
+            "p",
+            null,
+            "s",
+            null,
+            null,
+            null,
+            "TypeError",
+            null
+          ]
+        ],
+        [
+          "commandForElement",
+          [
+            null,
+            "p",
+            null,
+            "",
+            "s",
+            "p",
+            null,
+            "s",
+            null,
+            null,
+            null,
+            "TypeError",
+            null
+          ]
+        ]
+      ],
+      "input": [
+        "p",
+        "toggle",
+        "SHOW",
+        "show",
+        null,
+        "TypeError"
+      ],
+      "scope": [
+        null,
+        "sp",
+        "p",
+        null,
+        null
+      ]
+    },
+    "descriptors": {
+      "button": {
+        "command": {
+          "enumerable": true,
+          "configurable": true,
+          "get": [
+            "get command",
+            0,
+            "function get command() { [native code] }",
+            "TypeError"
+          ],
+          "set": [
+            "set command",
+            1,
+            "function set command() { [native code] }",
+            "TypeError"
+          ]
+        },
+        "commandForElement": {
+          "enumerable": true,
+          "configurable": true,
+          "get": [
+            "get commandForElement",
+            0,
+            "function get commandForElement() { [native code] }",
+            "TypeError"
+          ],
+          "set": [
+            "set commandForElement",
+            1,
+            "function set commandForElement() { [native code] }",
+            "TypeError"
+          ]
+        },
+        "popoverTargetAction": {
+          "enumerable": true,
+          "configurable": true,
+          "get": [
+            "get popoverTargetAction",
+            0,
+            "function get popoverTargetAction() { [native code] }",
+            "TypeError"
+          ],
+          "set": [
+            "set popoverTargetAction",
+            1,
+            "function set popoverTargetAction() { [native code] }",
+            "TypeError"
+          ]
+        },
+        "popoverTargetElement": {
+          "enumerable": true,
+          "configurable": true,
+          "get": [
+            "get popoverTargetElement",
+            0,
+            "function get popoverTargetElement() { [native code] }",
+            "TypeError"
+          ],
+          "set": [
+            "set popoverTargetElement",
+            1,
+            "function set popoverTargetElement() { [native code] }",
+            "TypeError"
+          ]
+        },
+        "type": {
+          "enumerable": true,
+          "configurable": true,
+          "get": [
+            "get type",
+            0,
+            "function get type() { [native code] }",
+            "TypeError"
+          ],
+          "set": [
+            "set type",
+            1,
+            "function set type() { [native code] }",
+            "TypeError"
+          ]
+        }
+      },
+      "input": {
+        "popoverTargetAction": {
+          "enumerable": true,
+          "configurable": true,
+          "get": [
+            "get popoverTargetAction",
+            0,
+            "function get popoverTargetAction() { [native code] }",
+            "TypeError"
+          ],
+          "set": [
+            "set popoverTargetAction",
+            1,
+            "function set popoverTargetAction() { [native code] }",
+            "TypeError"
+          ]
+        },
+        "popoverTargetElement": {
+          "enumerable": true,
+          "configurable": true,
+          "get": [
+            "get popoverTargetElement",
+            0,
+            "function get popoverTargetElement() { [native code] }",
+            "TypeError"
+          ],
+          "set": [
+            "set popoverTargetElement",
+            1,
+            "function set popoverTargetElement() { [native code] }",
+            "TypeError"
+          ]
+        }
+      },
+      "brands": {
+        "button.command": [
+          "ok",
+          "ok",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError"
+        ],
+        "button.commandForElement": [
+          "ok",
+          "ok",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError"
+        ],
+        "button.popoverTargetAction": [
+          "ok",
+          "ok",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError"
+        ],
+        "button.popoverTargetElement": [
+          "ok",
+          "ok",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError"
+        ],
+        "button.type": [
+          "ok",
+          "ok",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError"
+        ],
+        "input.popoverTargetAction": [
+          "TypeError",
+          "TypeError",
+          "ok",
+          "ok",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError"
+        ],
+        "input.popoverTargetElement": [
+          "TypeError",
+          "TypeError",
+          "ok",
+          "ok",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError"
+        ]
+      },
+      "inPrototype": [
+        true,
+        true,
+        true,
+        false,
+        false,
+        false
+      ]
+    },
+    "commandEvent": {
+      "basic": [
+        "command",
+        "1",
+        null,
+        true,
+        true,
+        true,
+        false,
+        "[object CommandEvent]",
+        true
+      ],
+      "defaults": [
+        "",
+        null,
+        false,
+        false,
+        false
+      ],
+      "withSource": true,
+      "errors": [
+        "TypeError",
+        "TypeError",
+        "TypeError",
+        "TypeError",
+        "TypeError",
+        "TypeError"
+      ],
+      "nullInit": "",
+      "initOrder": [
+        "bubbles",
+        "cancelable",
+        "composed",
+        "command",
+        "source"
+      ],
+      "members": [
+        "source",
+        "command",
+        "constructor"
+      ],
+      "source": [
+        {
+          "enumerable": true,
+          "configurable": true,
+          "get": [
+            "get source",
+            0,
+            "function get source() { [native code] }",
+            "TypeError"
+          ]
+        },
+        "TypeError",
+        "TypeError"
+      ],
+      "command": [
+        {
+          "enumerable": true,
+          "configurable": true,
+          "get": [
+            "get command",
+            0,
+            "function get command() { [native code] }",
+            "TypeError"
+          ]
+        },
+        "TypeError",
+        "TypeError"
+      ],
+      "constructor": [
+        "CommandEvent",
+        1,
+        "function CommandEvent() { [native code] }",
+        true,
+        true,
+        false,
+        true,
+        true,
+        false
+      ],
+      "toStringTag": [
+        "CommandEvent",
+        false,
+        false,
+        true
+      ],
+      "subclass": [
+        "--s",
+        true,
+        true
+      ]
+    },
+    "retarget": {
+      "CommandEvent": {
+        "undispatched": "host",
+        "light": [
+          "host",
+          "host"
+        ],
+        "inner": [
+          "sb",
+          "host"
+        ],
+        "root": "sb"
+      },
+      "ToggleEvent": {
+        "undispatched": "host",
+        "light": [
+          "host",
+          "host"
+        ],
+        "inner": [
+          "sb",
+          "host"
+        ],
+        "root": "sb"
+      }
+    },
+    "activation": {
+      "ptBasic": {
+        "log": [
+          [
+            "click",
+            "b",
+            null,
+            "undefined",
+            null,
+            null,
+            false,
+            true,
+            true,
+            true,
+            "PointerEvent"
+          ],
+          [
+            "beforetoggle",
+            "p",
+            null,
+            "b",
+            "closed",
+            "open",
+            true,
+            true,
+            true,
+            false,
+            "ToggleEvent"
+          ],
+          [
+            "toggle",
+            "p",
+            null,
+            "b",
+            "closed",
+            "open",
+            true,
+            false,
+            true,
+            false,
+            "ToggleEvent"
+          ]
+        ],
+        "sync": 2,
+        "open": [
+          "p"
+        ]
+      },
+      "ptShowOnOpen": {
+        "log": [
+          [
+            "beforetoggle",
+            "p",
+            null,
+            null,
+            "closed",
+            "open",
+            true,
+            true,
+            false,
+            false,
+            "ToggleEvent"
+          ],
+          [
+            "click",
+            "b",
+            null,
+            "undefined",
+            null,
+            null,
+            false,
+            true,
+            true,
+            true,
+            "PointerEvent"
+          ],
+          [
+            "toggle",
+            "p",
+            null,
+            null,
+            "closed",
+            "open",
+            true,
+            false,
+            false,
+            false,
+            "ToggleEvent"
+          ]
+        ],
+        "sync": 2,
+        "open": [
+          "p"
+        ]
+      },
+      "ptHideOnOpen": {
+        "log": [
+          [
+            "beforetoggle",
+            "p",
+            null,
+            null,
+            "closed",
+            "open",
+            true,
+            true,
+            false,
+            false,
+            "ToggleEvent"
+          ],
+          [
+            "click",
+            "b",
+            null,
+            "undefined",
+            null,
+            null,
+            false,
+            true,
+            true,
+            true,
+            "PointerEvent"
+          ],
+          [
+            "beforetoggle",
+            "p",
+            null,
+            "b",
+            "open",
+            "closed",
+            true,
+            false,
+            true,
+            false,
+            "ToggleEvent"
+          ],
+          [
+            "toggle",
+            "p",
+            null,
+            "b",
+            "closed",
+            "closed",
+            true,
+            false,
+            true,
+            false,
+            "ToggleEvent"
+          ]
+        ],
+        "sync": 3,
+        "open": []
+      },
+      "ptHideOnClosed": {
+        "log": [
+          [
+            "click",
+            "b",
+            null,
+            "undefined",
+            null,
+            null,
+            false,
+            true,
+            true,
+            true,
+            "PointerEvent"
+          ]
+        ],
+        "sync": 1,
+        "open": []
+      },
+      "ptToggleOpen": {
+        "log": [
+          [
+            "beforetoggle",
+            "p",
+            null,
+            null,
+            "closed",
+            "open",
+            true,
+            true,
+            false,
+            false,
+            "ToggleEvent"
+          ],
+          [
+            "click",
+            "b",
+            null,
+            "undefined",
+            null,
+            null,
+            false,
+            true,
+            true,
+            true,
+            "PointerEvent"
+          ],
+          [
+            "beforetoggle",
+            "p",
+            null,
+            "b",
+            "open",
+            "closed",
+            true,
+            false,
+            true,
+            false,
+            "ToggleEvent"
+          ],
+          [
+            "toggle",
+            "p",
+            null,
+            "b",
+            "closed",
+            "closed",
+            true,
+            false,
+            true,
+            false,
+            "ToggleEvent"
+          ]
+        ],
+        "sync": 3,
+        "open": []
+      },
+      "ptHint": {
+        "log": [
+          [
+            "click",
+            "b",
+            null,
+            "undefined",
+            null,
+            null,
+            false,
+            true,
+            true,
+            true,
+            "PointerEvent"
+          ],
+          [
+            "beforetoggle",
+            "p",
+            null,
+            "b",
+            "closed",
+            "open",
+            true,
+            true,
+            true,
+            false,
+            "ToggleEvent"
+          ],
+          [
+            "toggle",
+            "p",
+            null,
+            "b",
+            "closed",
+            "open",
+            true,
+            false,
+            true,
+            false,
+            "ToggleEvent"
+          ]
+        ],
+        "sync": 2,
+        "open": [
+          "p"
+        ]
+      },
+      "ptManualShow": {
+        "log": [
+          [
+            "click",
+            "b",
+            null,
+            "undefined",
+            null,
+            null,
+            false,
+            true,
+            true,
+            true,
+            "PointerEvent"
+          ],
+          [
+            "beforetoggle",
+            "p",
+            null,
+            "b",
+            "closed",
+            "open",
+            true,
+            true,
+            true,
+            false,
+            "ToggleEvent"
+          ],
+          [
+            "toggle",
+            "p",
+            null,
+            "b",
+            "closed",
+            "open",
+            true,
+            false,
+            true,
+            false,
+            "ToggleEvent"
+          ]
+        ],
+        "sync": 2,
+        "open": [
+          "p"
+        ]
+      },
+      "ptFormDefault": {
+        "log": [
+          [
+            "click",
+            "b",
+            null,
+            "undefined",
+            null,
+            null,
+            false,
+            true,
+            true,
+            true,
+            "PointerEvent"
+          ],
+          [
+            "submit",
+            "f",
+            null,
+            "undefined",
+            null,
+            null,
+            true,
+            true,
+            true,
+            true,
+            "SubmitEvent"
+          ]
+        ],
+        "sync": 2,
+        "open": []
+      },
+      "ptFormButton": {
+        "log": [
+          [
+            "click",
+            "b",
+            null,
+            "undefined",
+            null,
+            null,
+            false,
+            true,
+            true,
+            true,
+            "PointerEvent"
+          ],
+          [
+            "beforetoggle",
+            "p",
+            null,
+            "b",
+            "closed",
+            "open",
+            true,
+            true,
+            true,
+            false,
+            "ToggleEvent"
+          ],
+          [
+            "toggle",
+            "p",
+            null,
+            "b",
+            "closed",
+            "open",
+            true,
+            false,
+            true,
+            false,
+            "ToggleEvent"
+          ]
+        ],
+        "sync": 2,
+        "open": [
+          "p"
+        ]
+      },
+      "ptFormReset": {
+        "log": [
+          [
+            "click",
+            "b",
+            null,
+            "undefined",
+            null,
+            null,
+            false,
+            true,
+            true,
+            true,
+            "PointerEvent"
+          ],
+          [
+            "reset",
+            "f",
+            null,
+            "undefined",
+            null,
+            null,
+            true,
+            true,
+            false,
+            true,
+            "Event"
+          ]
+        ],
+        "sync": 2,
+        "open": []
+      },
+      "ptFormAttributeOwner": {
+        "log": [
+          [
+            "click",
+            "b",
+            null,
+            "undefined",
+            null,
+            null,
+            false,
+            true,
+            true,
+            true,
+            "PointerEvent"
+          ],
+          [
+            "submit",
+            "f",
+            null,
+            "undefined",
+            null,
+            null,
+            true,
+            true,
+            true,
+            true,
+            "SubmitEvent"
+          ]
+        ],
+        "sync": 2,
+        "open": []
+      },
+      "ptNoFormSubmit": {
+        "log": [
+          [
+            "click",
+            "b",
+            null,
+            "undefined",
+            null,
+            null,
+            false,
+            true,
+            true,
+            true,
+            "PointerEvent"
+          ],
+          [
+            "beforetoggle",
+            "p",
+            null,
+            "b",
+            "closed",
+            "open",
+            true,
+            true,
+            true,
+            false,
+            "ToggleEvent"
+          ],
+          [
+            "toggle",
+            "p",
+            null,
+            "b",
+            "closed",
+            "open",
+            true,
+            false,
+            true,
+            false,
+            "ToggleEvent"
+          ]
+        ],
+        "sync": 2,
+        "open": [
+          "p"
+        ]
+      },
+      "ptAutoFormInvoker": {
+        "log": [
+          [
+            "click",
+            "b",
+            null,
+            "undefined",
+            null,
+            null,
+            false,
+            true,
+            true,
+            true,
+            "PointerEvent"
+          ]
+        ],
+        "sync": 1,
+        "open": []
+      },
+      "ptInput_button": {
+        "log": [
+          [
+            "click",
+            "b",
+            null,
+            "undefined",
+            null,
+            null,
+            false,
+            true,
+            true,
+            true,
+            "PointerEvent"
+          ],
+          [
+            "beforetoggle",
+            "p",
+            null,
+            "b",
+            "closed",
+            "open",
+            true,
+            true,
+            true,
+            false,
+            "ToggleEvent"
+          ],
+          [
+            "toggle",
+            "p",
+            null,
+            "b",
+            "closed",
+            "open",
+            true,
+            false,
+            true,
+            false,
+            "ToggleEvent"
+          ]
+        ],
+        "sync": 2,
+        "open": [
+          "p"
+        ]
+      },
+      "ptInputForm_button": {
+        "log": [
+          [
+            "click",
+            "b",
+            null,
+            "undefined",
+            null,
+            null,
+            false,
+            true,
+            true,
+            true,
+            "PointerEvent"
+          ],
+          [
+            "beforetoggle",
+            "p",
+            null,
+            "b",
+            "closed",
+            "open",
+            true,
+            true,
+            true,
+            false,
+            "ToggleEvent"
+          ],
+          [
+            "toggle",
+            "p",
+            null,
+            "b",
+            "closed",
+            "open",
+            true,
+            false,
+            true,
+            false,
+            "ToggleEvent"
+          ]
+        ],
+        "sync": 2,
+        "open": [
+          "p"
+        ]
+      },
+      "ptInput_reset": {
+        "log": [
+          [
+            "click",
+            "b",
+            null,
+            "undefined",
+            null,
+            null,
+            false,
+            true,
+            true,
+            true,
+            "PointerEvent"
+          ],
+          [
+            "beforetoggle",
+            "p",
+            null,
+            "b",
+            "closed",
+            "open",
+            true,
+            true,
+            true,
+            false,
+            "ToggleEvent"
+          ],
+          [
+            "toggle",
+            "p",
+            null,
+            "b",
+            "closed",
+            "open",
+            true,
+            false,
+            true,
+            false,
+            "ToggleEvent"
+          ]
+        ],
+        "sync": 2,
+        "open": [
+          "p"
+        ]
+      },
+      "ptInputForm_reset": {
+        "log": [
+          [
+            "click",
+            "b",
+            null,
+            "undefined",
+            null,
+            null,
+            false,
+            true,
+            true,
+            true,
+            "PointerEvent"
+          ],
+          [
+            "reset",
+            "f",
+            null,
+            "undefined",
+            null,
+            null,
+            true,
+            true,
+            false,
+            true,
+            "Event"
+          ]
+        ],
+        "sync": 2,
+        "open": []
+      },
+      "ptInput_submit": {
+        "log": [
+          [
+            "click",
+            "b",
+            null,
+            "undefined",
+            null,
+            null,
+            false,
+            true,
+            true,
+            true,
+            "PointerEvent"
+          ],
+          [
+            "beforetoggle",
+            "p",
+            null,
+            "b",
+            "closed",
+            "open",
+            true,
+            true,
+            true,
+            false,
+            "ToggleEvent"
+          ],
+          [
+            "toggle",
+            "p",
+            null,
+            "b",
+            "closed",
+            "open",
+            true,
+            false,
+            true,
+            false,
+            "ToggleEvent"
+          ]
+        ],
+        "sync": 2,
+        "open": [
+          "p"
+        ]
+      },
+      "ptInputForm_submit": {
+        "log": [
+          [
+            "click",
+            "b",
+            null,
+            "undefined",
+            null,
+            null,
+            false,
+            true,
+            true,
+            true,
+            "PointerEvent"
+          ],
+          [
+            "submit",
+            "f",
+            null,
+            "undefined",
+            null,
+            null,
+            true,
+            true,
+            true,
+            true,
+            "SubmitEvent"
+          ]
+        ],
+        "sync": 2,
+        "open": []
+      },
+      "ptInput_image": {
+        "log": [
+          [
+            "click",
+            "b",
+            null,
+            "undefined",
+            null,
+            null,
+            false,
+            true,
+            true,
+            true,
+            "PointerEvent"
+          ],
+          [
+            "beforetoggle",
+            "p",
+            null,
+            "b",
+            "closed",
+            "open",
+            true,
+            true,
+            true,
+            false,
+            "ToggleEvent"
+          ],
+          [
+            "toggle",
+            "p",
+            null,
+            "b",
+            "closed",
+            "open",
+            true,
+            false,
+            true,
+            false,
+            "ToggleEvent"
+          ]
+        ],
+        "sync": 2,
+        "open": [
+          "p"
+        ]
+      },
+      "ptInputForm_image": {
+        "log": [
+          [
+            "click",
+            "b",
+            null,
+            "undefined",
+            null,
+            null,
+            false,
+            true,
+            true,
+            true,
+            "PointerEvent"
+          ],
+          [
+            "submit",
+            "f",
+            null,
+            "undefined",
+            null,
+            null,
+            true,
+            true,
+            true,
+            true,
+            "SubmitEvent"
+          ]
+        ],
+        "sync": 2,
+        "open": []
+      },
+      "ptInput_text": {
+        "log": [
+          [
+            "click",
+            "b",
+            null,
+            "undefined",
+            null,
+            null,
+            false,
+            true,
+            true,
+            true,
+            "PointerEvent"
+          ]
+        ],
+        "sync": 1,
+        "open": []
+      },
+      "ptInputForm_text": {
+        "log": [
+          [
+            "click",
+            "b",
+            null,
+            "undefined",
+            null,
+            null,
+            false,
+            true,
+            true,
+            true,
+            "PointerEvent"
+          ]
+        ],
+        "sync": 1,
+        "open": []
+      },
+      "ptInput_checkbox": {
+        "log": [
+          [
+            "click",
+            "b",
+            null,
+            "undefined",
+            null,
+            null,
+            false,
+            true,
+            true,
+            true,
+            "PointerEvent"
+          ]
+        ],
+        "sync": 1,
+        "open": []
+      },
+      "ptInputForm_checkbox": {
+        "log": [
+          [
+            "click",
+            "b",
+            null,
+            "undefined",
+            null,
+            null,
+            false,
+            true,
+            true,
+            true,
+            "PointerEvent"
+          ]
+        ],
+        "sync": 1,
+        "open": []
+      },
+      "ptInputDisabled": {
+        "log": [],
+        "sync": 0,
+        "open": []
+      },
+      "ptInputCommandfor": {
+        "log": [
+          [
+            "click",
+            "b",
+            null,
+            "undefined",
+            null,
+            null,
+            false,
+            true,
+            true,
+            true,
+            "PointerEvent"
+          ]
+        ],
+        "sync": 1,
+        "open": []
+      },
+      "ptDisabled": {
+        "log": [],
+        "sync": 0,
+        "open": []
+      },
+      "ptDisabledDispatch": {
+        "log": [
+          [
+            "click",
+            "b",
+            null,
+            "undefined",
+            null,
+            null,
+            false,
+            false,
+            false,
+            true,
+            "MouseEvent"
+          ]
+        ],
+        "sync": 1,
+        "open": []
+      },
+      "ptFieldset": {
+        "log": [],
+        "sync": 0,
+        "open": []
+      },
+      "ptFieldsetLegend": {
+        "log": [
+          [
+            "click",
+            "b",
+            null,
+            "undefined",
+            null,
+            null,
+            false,
+            true,
+            true,
+            true,
+            "PointerEvent"
+          ],
+          [
+            "beforetoggle",
+            "p",
+            null,
+            "b",
+            "closed",
+            "open",
+            true,
+            true,
+            true,
+            false,
+            "ToggleEvent"
+          ],
+          [
+            "toggle",
+            "p",
+            null,
+            "b",
+            "closed",
+            "open",
+            true,
+            false,
+            true,
+            false,
+            "ToggleEvent"
+          ]
+        ],
+        "sync": 2,
+        "open": [
+          "p"
+        ]
+      },
+      "ptNoPopover": {
+        "log": [
+          [
+            "click",
+            "b",
+            null,
+            "undefined",
+            null,
+            null,
+            false,
+            true,
+            true,
+            true,
+            "PointerEvent"
+          ]
+        ],
+        "sync": 1,
+        "open": []
+      },
+      "ptChild": {
+        "log": [
+          [
+            "click",
+            "s",
+            null,
+            "undefined",
+            null,
+            null,
+            false,
+            true,
+            true,
+            true,
+            "PointerEvent"
+          ],
+          [
+            "beforetoggle",
+            "p",
+            null,
+            "b",
+            "closed",
+            "open",
+            true,
+            true,
+            true,
+            false,
+            "ToggleEvent"
+          ],
+          [
+            "toggle",
+            "p",
+            null,
+            "b",
+            "closed",
+            "open",
+            true,
+            false,
+            true,
+            false,
+            "ToggleEvent"
+          ]
+        ],
+        "sync": 2,
+        "open": [
+          "p"
+        ]
+      },
+      "ptAnchorChild": {
+        "log": [
+          [
+            "click",
+            "a",
+            null,
+            "undefined",
+            null,
+            null,
+            false,
+            true,
+            true,
+            true,
+            "PointerEvent"
+          ],
+          [
+            "beforetoggle",
+            "p",
+            null,
+            "b",
+            "closed",
+            "open",
+            true,
+            true,
+            true,
+            false,
+            "ToggleEvent"
+          ],
+          [
+            "toggle",
+            "p",
+            null,
+            "b",
+            "closed",
+            "open",
+            true,
+            false,
+            true,
+            false,
+            "ToggleEvent"
+          ]
+        ],
+        "sync": 2,
+        "open": [
+          "p"
+        ]
+      },
+      "ptHrefChild": {
+        "log": [
+          [
+            "click",
+            "a",
+            null,
+            "undefined",
+            null,
+            null,
+            false,
+            true,
+            false,
+            true,
+            "MouseEvent"
+          ]
+        ],
+        "sync": 1,
+        "open": []
+      },
+      "ptPlainEvent": {
+        "log": [
+          [
+            "click",
+            "b",
+            null,
+            "undefined",
+            null,
+            null,
+            false,
+            false,
+            false,
+            true,
+            "Event"
+          ]
+        ],
+        "sync": 1,
+        "open": []
+      },
+      "ptMouseEvent": {
+        "log": [
+          [
+            "click",
+            "b",
+            null,
+            "undefined",
+            null,
+            null,
+            false,
+            false,
+            false,
+            true,
+            "MouseEvent"
+          ],
+          [
+            "beforetoggle",
+            "p",
+            null,
+            "b",
+            "closed",
+            "open",
+            true,
+            true,
+            true,
+            false,
+            "ToggleEvent"
+          ],
+          [
+            "toggle",
+            "p",
+            null,
+            "b",
+            "closed",
+            "open",
+            true,
+            false,
+            true,
+            false,
+            "ToggleEvent"
+          ]
+        ],
+        "sync": 2,
+        "open": [
+          "p"
+        ]
+      },
+      "ptPointerEvent": {
+        "log": [
+          [
+            "click",
+            "b",
+            null,
+            "undefined",
+            null,
+            null,
+            false,
+            false,
+            false,
+            true,
+            "PointerEvent"
+          ],
+          [
+            "beforetoggle",
+            "p",
+            null,
+            "b",
+            "closed",
+            "open",
+            true,
+            true,
+            true,
+            false,
+            "ToggleEvent"
+          ],
+          [
+            "toggle",
+            "p",
+            null,
+            "b",
+            "closed",
+            "open",
+            true,
+            false,
+            true,
+            false,
+            "ToggleEvent"
+          ]
+        ],
+        "sync": 2,
+        "open": [
+          "p"
+        ]
+      },
+      "ptOtherType": {
+        "log": [],
+        "sync": 0,
+        "open": []
+      },
+      "ptNonBubblingChild": {
+        "log": [
+          [
+            "click",
+            "s",
+            null,
+            "undefined",
+            null,
+            null,
+            false,
+            false,
+            false,
+            false,
+            "MouseEvent"
+          ]
+        ],
+        "sync": 1,
+        "open": []
+      },
+      "ptClickPrevented": {
+        "log": [
+          [
+            "click",
+            "b",
+            null,
+            "undefined",
+            null,
+            null,
+            false,
+            true,
+            true,
+            true,
+            "PointerEvent"
+          ]
+        ],
+        "sync": 1,
+        "open": []
+      },
+      "ptInsidePopover": {
+        "log": [
+          [
+            "beforetoggle",
+            "p",
+            null,
+            null,
+            "closed",
+            "open",
+            true,
+            true,
+            false,
+            false,
+            "ToggleEvent"
+          ],
+          [
+            "click",
+            "s",
+            null,
+            "undefined",
+            null,
+            null,
+            false,
+            true,
+            true,
+            true,
+            "PointerEvent"
+          ],
+          [
+            "toggle",
+            "p",
+            null,
+            null,
+            "closed",
+            "open",
+            true,
+            false,
+            false,
+            false,
+            "ToggleEvent"
+          ]
+        ],
+        "sync": 2,
+        "open": [
+          "p"
+        ]
+      },
+      "ptNested": {
+        "log": [
+          [
+            "beforetoggle",
+            "a",
+            null,
+            null,
+            "closed",
+            "open",
+            true,
+            true,
+            false,
+            false,
+            "ToggleEvent"
+          ],
+          [
+            "click",
+            "b",
+            null,
+            "undefined",
+            null,
+            null,
+            false,
+            true,
+            true,
+            true,
+            "PointerEvent"
+          ],
+          [
+            "beforetoggle",
+            "c",
+            null,
+            "b",
+            "closed",
+            "open",
+            true,
+            true,
+            true,
+            false,
+            "ToggleEvent"
+          ],
+          [
+            "toggle",
+            "a",
+            null,
+            null,
+            "closed",
+            "open",
+            true,
+            false,
+            false,
+            false,
+            "ToggleEvent"
+          ],
+          [
+            "toggle",
+            "c",
+            null,
+            "b",
+            "closed",
+            "open",
+            true,
+            false,
+            true,
+            false,
+            "ToggleEvent"
+          ]
+        ],
+        "sync": 3,
+        "open": [
+          "a",
+          "c"
+        ]
+      },
+      "ptSibling": {
+        "log": [
+          [
+            "beforetoggle",
+            "a",
+            null,
+            null,
+            "closed",
+            "open",
+            true,
+            true,
+            false,
+            false,
+            "ToggleEvent"
+          ],
+          [
+            "click",
+            "b",
+            null,
+            "undefined",
+            null,
+            null,
+            false,
+            true,
+            true,
+            true,
+            "PointerEvent"
+          ],
+          [
+            "beforetoggle",
+            "c",
+            null,
+            "b",
+            "closed",
+            "open",
+            true,
+            true,
+            true,
+            false,
+            "ToggleEvent"
+          ],
+          [
+            "beforetoggle",
+            "a",
+            null,
+            null,
+            "open",
+            "closed",
+            true,
+            false,
+            false,
+            false,
+            "ToggleEvent"
+          ],
+          [
+            "toggle",
+            "a",
+            null,
+            null,
+            "closed",
+            "closed",
+            true,
+            false,
+            false,
+            false,
+            "ToggleEvent"
+          ],
+          [
+            "toggle",
+            "c",
+            null,
+            "b",
+            "closed",
+            "open",
+            true,
+            false,
+            true,
+            false,
+            "ToggleEvent"
+          ]
+        ],
+        "sync": 4,
+        "open": [
+          "c"
+        ]
+      },
+      "ptDisconnected": {
+        "log": [],
+        "sync": 0,
+        "open": []
+      },
+      "ptBeforetoggleCancel": {
+        "log": [
+          [
+            "click",
+            "b",
+            null,
+            "undefined",
+            null,
+            null,
+            false,
+            true,
+            true,
+            true,
+            "PointerEvent"
+          ],
+          [
+            "beforetoggle",
+            "p",
+            null,
+            "b",
+            "closed",
+            "open",
+            true,
+            true,
+            true,
+            false,
+            "ToggleEvent"
+          ]
+        ],
+        "sync": 2,
+        "open": []
+      },
+      "ptBeforetoggleRemoves": {
+        "log": [
+          [
+            "click",
+            "b",
+            null,
+            "undefined",
+            null,
+            null,
+            false,
+            true,
+            true,
+            true,
+            "PointerEvent"
+          ],
+          [
+            "beforetoggle",
+            "p",
+            null,
+            "b",
+            "closed",
+            "open",
+            true,
+            true,
+            true,
+            false,
+            "ToggleEvent"
+          ]
+        ],
+        "sync": 2,
+        "open": []
+      },
+      "cmdPopover_toggle-popover": {
+        "log": [
+          [
+            "click",
+            "b",
+            null,
+            "undefined",
+            null,
+            null,
+            false,
+            true,
+            true,
+            true,
+            "PointerEvent"
+          ],
+          [
+            "command",
+            "p",
+            "toggle-popover",
+            "b",
+            null,
+            null,
+            true,
+            true,
+            true,
+            false,
+            "CommandEvent"
+          ],
+          [
+            "beforetoggle",
+            "p",
+            null,
+            "b",
+            "closed",
+            "open",
+            true,
+            true,
+            true,
+            false,
+            "ToggleEvent"
+          ],
+          [
+            "toggle",
+            "p",
+            null,
+            "b",
+            "closed",
+            "open",
+            true,
+            false,
+            true,
+            false,
+            "ToggleEvent"
+          ]
+        ],
+        "sync": 3,
+        "open": [
+          "p"
+        ]
+      },
+      "cmdPopover_show-popover": {
+        "log": [
+          [
+            "click",
+            "b",
+            null,
+            "undefined",
+            null,
+            null,
+            false,
+            true,
+            true,
+            true,
+            "PointerEvent"
+          ],
+          [
+            "command",
+            "p",
+            "show-popover",
+            "b",
+            null,
+            null,
+            true,
+            true,
+            true,
+            false,
+            "CommandEvent"
+          ],
+          [
+            "beforetoggle",
+            "p",
+            null,
+            "b",
+            "closed",
+            "open",
+            true,
+            true,
+            true,
+            false,
+            "ToggleEvent"
+          ],
+          [
+            "toggle",
+            "p",
+            null,
+            "b",
+            "closed",
+            "open",
+            true,
+            false,
+            true,
+            false,
+            "ToggleEvent"
+          ]
+        ],
+        "sync": 3,
+        "open": [
+          "p"
+        ]
+      },
+      "cmdPopover_hide-popover": {
+        "log": [
+          [
+            "click",
+            "b",
+            null,
+            "undefined",
+            null,
+            null,
+            false,
+            true,
+            true,
+            true,
+            "PointerEvent"
+          ],
+          [
+            "command",
+            "p",
+            "hide-popover",
+            "b",
+            null,
+            null,
+            true,
+            true,
+            true,
+            false,
+            "CommandEvent"
+          ]
+        ],
+        "sync": 2,
+        "open": []
+      },
+      "cmdPopover_Show-Popover": {
+        "log": [
+          [
+            "click",
+            "b",
+            null,
+            "undefined",
+            null,
+            null,
+            false,
+            true,
+            true,
+            true,
+            "PointerEvent"
+          ],
+          [
+            "command",
+            "p",
+            "show-popover",
+            "b",
+            null,
+            null,
+            true,
+            true,
+            true,
+            false,
+            "CommandEvent"
+          ],
+          [
+            "beforetoggle",
+            "p",
+            null,
+            "b",
+            "closed",
+            "open",
+            true,
+            true,
+            true,
+            false,
+            "ToggleEvent"
+          ],
+          [
+            "toggle",
+            "p",
+            null,
+            "b",
+            "closed",
+            "open",
+            true,
+            false,
+            true,
+            false,
+            "ToggleEvent"
+          ]
+        ],
+        "sync": 3,
+        "open": [
+          "p"
+        ]
+      },
+      "cmdPopover_--custom": {
+        "log": [
+          [
+            "click",
+            "b",
+            null,
+            "undefined",
+            null,
+            null,
+            false,
+            true,
+            true,
+            true,
+            "PointerEvent"
+          ],
+          [
+            "command",
+            "p",
+            "--custom",
+            "b",
+            null,
+            null,
+            true,
+            true,
+            true,
+            false,
+            "CommandEvent"
+          ]
+        ],
+        "sync": 2,
+        "open": []
+      },
+      "cmdPopover_bogus": {
+        "log": [
+          [
+            "click",
+            "b",
+            null,
+            "undefined",
+            null,
+            null,
+            false,
+            true,
+            true,
+            true,
+            "PointerEvent"
+          ]
+        ],
+        "sync": 1,
+        "open": []
+      },
+      "cmdPopover_": {
+        "log": [
+          [
+            "click",
+            "b",
+            null,
+            "undefined",
+            null,
+            null,
+            false,
+            true,
+            true,
+            true,
+            "PointerEvent"
+          ]
+        ],
+        "sync": 1,
+        "open": []
+      },
+      "cmdPopover_show-modal": {
+        "log": [
+          [
+            "click",
+            "b",
+            null,
+            "undefined",
+            null,
+            null,
+            false,
+            true,
+            true,
+            true,
+            "PointerEvent"
+          ]
+        ],
+        "sync": 1,
+        "open": []
+      },
+      "cmdPopover_close": {
+        "log": [
+          [
+            "click",
+            "b",
+            null,
+            "undefined",
+            null,
+            null,
+            false,
+            true,
+            true,
+            true,
+            "PointerEvent"
+          ]
+        ],
+        "sync": 1,
+        "open": []
+      },
+      "cmdPopover_request-close": {
+        "log": [
+          [
+            "click",
+            "b",
+            null,
+            "undefined",
+            null,
+            null,
+            false,
+            true,
+            true,
+            true,
+            "PointerEvent"
+          ]
+        ],
+        "sync": 1,
+        "open": []
+      },
+      "cmdNoCommand": {
+        "log": [
+          [
+            "click",
+            "b",
+            null,
+            "undefined",
+            null,
+            null,
+            false,
+            true,
+            true,
+            true,
+            "PointerEvent"
+          ]
+        ],
+        "sync": 1,
+        "open": []
+      },
+      "cmdHideOpen": {
+        "log": [
+          [
+            "beforetoggle",
+            "p",
+            null,
+            null,
+            "closed",
+            "open",
+            true,
+            true,
+            false,
+            false,
+            "ToggleEvent"
+          ],
+          [
+            "click",
+            "b",
+            null,
+            "undefined",
+            null,
+            null,
+            false,
+            true,
+            true,
+            true,
+            "PointerEvent"
+          ],
+          [
+            "command",
+            "p",
+            "hide-popover",
+            "b",
+            null,
+            null,
+            true,
+            true,
+            true,
+            false,
+            "CommandEvent"
+          ],
+          [
+            "beforetoggle",
+            "p",
+            null,
+            "b",
+            "open",
+            "closed",
+            true,
+            false,
+            true,
+            false,
+            "ToggleEvent"
+          ],
+          [
+            "toggle",
+            "p",
+            null,
+            "b",
+            "closed",
+            "closed",
+            true,
+            false,
+            true,
+            false,
+            "ToggleEvent"
+          ]
+        ],
+        "sync": 4,
+        "open": []
+      },
+      "cmdShowOpen": {
+        "log": [
+          [
+            "beforetoggle",
+            "p",
+            null,
+            null,
+            "closed",
+            "open",
+            true,
+            true,
+            false,
+            false,
+            "ToggleEvent"
+          ],
+          [
+            "click",
+            "b",
+            null,
+            "undefined",
+            null,
+            null,
+            false,
+            true,
+            true,
+            true,
+            "PointerEvent"
+          ],
+          [
+            "command",
+            "p",
+            "show-popover",
+            "b",
+            null,
+            null,
+            true,
+            true,
+            true,
+            false,
+            "CommandEvent"
+          ],
+          [
+            "toggle",
+            "p",
+            null,
+            null,
+            "closed",
+            "open",
+            true,
+            false,
+            false,
+            false,
+            "ToggleEvent"
+          ]
+        ],
+        "sync": 3,
+        "open": [
+          "p"
+        ]
+      },
+      "cmdToggleOpen": {
+        "log": [
+          [
+            "beforetoggle",
+            "p",
+            null,
+            null,
+            "closed",
+            "open",
+            true,
+            true,
+            false,
+            false,
+            "ToggleEvent"
+          ],
+          [
+            "click",
+            "b",
+            null,
+            "undefined",
+            null,
+            null,
+            false,
+            true,
+            true,
+            true,
+            "PointerEvent"
+          ],
+          [
+            "command",
+            "p",
+            "toggle-popover",
+            "b",
+            null,
+            null,
+            true,
+            true,
+            true,
+            false,
+            "CommandEvent"
+          ],
+          [
+            "beforetoggle",
+            "p",
+            null,
+            "b",
+            "open",
+            "closed",
+            true,
+            false,
+            true,
+            false,
+            "ToggleEvent"
+          ],
+          [
+            "toggle",
+            "p",
+            null,
+            "b",
+            "closed",
+            "closed",
+            true,
+            false,
+            true,
+            false,
+            "ToggleEvent"
+          ]
+        ],
+        "sync": 4,
+        "open": []
+      },
+      "cmdDiv_toggle-popover": {
+        "log": [
+          [
+            "click",
+            "b",
+            null,
+            "undefined",
+            null,
+            null,
+            false,
+            true,
+            true,
+            true,
+            "PointerEvent"
+          ],
+          [
+            "command",
+            "p",
+            "toggle-popover",
+            "b",
+            null,
+            null,
+            true,
+            true,
+            true,
+            false,
+            "CommandEvent"
+          ]
+        ],
+        "sync": 2,
+        "open": []
+      },
+      "cmdDiv_--custom": {
+        "log": [
+          [
+            "click",
+            "b",
+            null,
+            "undefined",
+            null,
+            null,
+            false,
+            true,
+            true,
+            true,
+            "PointerEvent"
+          ],
+          [
+            "command",
+            "p",
+            "--custom",
+            "b",
+            null,
+            null,
+            true,
+            true,
+            true,
+            false,
+            "CommandEvent"
+          ]
+        ],
+        "sync": 2,
+        "open": []
+      },
+      "cmdDiv_show-modal": {
+        "log": [
+          [
+            "click",
+            "b",
+            null,
+            "undefined",
+            null,
+            null,
+            false,
+            true,
+            true,
+            true,
+            "PointerEvent"
+          ]
+        ],
+        "sync": 1,
+        "open": []
+      },
+      "cmdSvgCustom": {
+        "log": [
+          [
+            "click",
+            "b",
+            null,
+            "undefined",
+            null,
+            null,
+            false,
+            true,
+            true,
+            true,
+            "PointerEvent"
+          ],
+          [
+            "command",
+            "p",
+            "--x",
+            "b",
+            null,
+            null,
+            true,
+            true,
+            true,
+            false,
+            "CommandEvent"
+          ]
+        ],
+        "sync": 2,
+        "open": []
+      },
+      "cmdSvgPopover": {
+        "log": [
+          [
+            "click",
+            "b",
+            null,
+            "undefined",
+            null,
+            null,
+            false,
+            true,
+            true,
+            true,
+            "PointerEvent"
+          ]
+        ],
+        "sync": 1,
+        "open": []
+      },
+      "cmdMathCustom": {
+        "log": [
+          [
+            "click",
+            "b",
+            null,
+            "undefined",
+            null,
+            null,
+            false,
+            true,
+            true,
+            true,
+            "PointerEvent"
+          ],
+          [
+            "command",
+            "p",
+            "--x",
+            "b",
+            null,
+            null,
+            true,
+            true,
+            true,
+            false,
+            "CommandEvent"
+          ]
+        ],
+        "sync": 2,
+        "open": []
+      },
+      "cmdDialog_close": {
+        "log": [
+          [
+            "click",
+            "b",
+            null,
+            "undefined",
+            null,
+            null,
+            false,
+            true,
+            true,
+            true,
+            "PointerEvent"
+          ],
+          [
+            "command",
+            "d",
+            "close",
+            "b",
+            null,
+            null,
+            true,
+            true,
+            true,
+            false,
+            "CommandEvent"
+          ]
+        ],
+        "sync": 2,
+        "open": []
+      },
+      "cmdDialog_request-close": {
+        "log": [
+          [
+            "click",
+            "b",
+            null,
+            "undefined",
+            null,
+            null,
+            false,
+            true,
+            true,
+            true,
+            "PointerEvent"
+          ],
+          [
+            "command",
+            "d",
+            "request-close",
+            "b",
+            null,
+            null,
+            true,
+            true,
+            true,
+            false,
+            "CommandEvent"
+          ]
+        ],
+        "sync": 2,
+        "open": []
+      },
+      "cmdDialog_toggle-popover": {
+        "log": [
+          [
+            "click",
+            "b",
+            null,
+            "undefined",
+            null,
+            null,
+            false,
+            true,
+            true,
+            true,
+            "PointerEvent"
+          ],
+          [
+            "command",
+            "d",
+            "toggle-popover",
+            "b",
+            null,
+            null,
+            true,
+            true,
+            true,
+            false,
+            "CommandEvent"
+          ]
+        ],
+        "sync": 2,
+        "open": []
+      },
+      "cmdDialog_--x": {
+        "log": [
+          [
+            "click",
+            "b",
+            null,
+            "undefined",
+            null,
+            null,
+            false,
+            true,
+            true,
+            true,
+            "PointerEvent"
+          ],
+          [
+            "command",
+            "d",
+            "--x",
+            "b",
+            null,
+            null,
+            true,
+            true,
+            true,
+            false,
+            "CommandEvent"
+          ]
+        ],
+        "sync": 2,
+        "open": []
+      },
+      "cmdDialogShowModalCanceled": {
+        "log": [
+          [
+            "click",
+            "b",
+            null,
+            "undefined",
+            null,
+            null,
+            false,
+            true,
+            true,
+            true,
+            "PointerEvent"
+          ],
+          [
+            "command",
+            "d",
+            "show-modal",
+            "b",
+            null,
+            null,
+            true,
+            true,
+            true,
+            false,
+            "CommandEvent"
+          ]
+        ],
+        "sync": 2,
+        "open": []
+      },
+      "cmdCanceled": {
+        "log": [
+          [
+            "click",
+            "b",
+            null,
+            "undefined",
+            null,
+            null,
+            false,
+            true,
+            true,
+            true,
+            "PointerEvent"
+          ],
+          [
+            "command",
+            "p",
+            "toggle-popover",
+            "b",
+            null,
+            null,
+            true,
+            true,
+            true,
+            false,
+            "CommandEvent"
+          ]
+        ],
+        "sync": 2,
+        "open": []
+      },
+      "cmdRemoveTarget": {
+        "log": [
+          [
+            "click",
+            "b",
+            null,
+            "undefined",
+            null,
+            null,
+            false,
+            true,
+            true,
+            true,
+            "PointerEvent"
+          ],
+          [
+            "command",
+            "p",
+            "toggle-popover",
+            "b",
+            null,
+            null,
+            true,
+            true,
+            true,
+            false,
+            "CommandEvent"
+          ]
+        ],
+        "sync": 2,
+        "open": []
+      },
+      "cmdRemovePopoverAttribute": {
+        "log": [
+          [
+            "click",
+            "b",
+            null,
+            "undefined",
+            null,
+            null,
+            false,
+            true,
+            true,
+            true,
+            "PointerEvent"
+          ],
+          [
+            "command",
+            "p",
+            "show-popover",
+            "b",
+            null,
+            null,
+            true,
+            true,
+            true,
+            false,
+            "CommandEvent"
+          ]
+        ],
+        "sync": 2,
+        "open": []
+      },
+      "cmdChangesCommand": {
+        "log": [
+          [
+            "click",
+            "b",
+            null,
+            "undefined",
+            null,
+            null,
+            false,
+            true,
+            true,
+            true,
+            "PointerEvent"
+          ],
+          [
+            "command",
+            "p",
+            "show-popover",
+            "b",
+            null,
+            null,
+            true,
+            true,
+            true,
+            false,
+            "CommandEvent"
+          ],
+          [
+            "beforetoggle",
+            "p",
+            null,
+            "b",
+            "closed",
+            "open",
+            true,
+            true,
+            true,
+            false,
+            "ToggleEvent"
+          ],
+          [
+            "toggle",
+            "p",
+            null,
+            "b",
+            "closed",
+            "open",
+            true,
+            false,
+            true,
+            false,
+            "ToggleEvent"
+          ]
+        ],
+        "sync": 3,
+        "open": [
+          "p"
+        ]
+      },
+      "cmdAndPt": {
+        "log": [
+          [
+            "click",
+            "b",
+            null,
+            "undefined",
+            null,
+            null,
+            false,
+            true,
+            true,
+            true,
+            "PointerEvent"
+          ],
+          [
+            "command",
+            "p",
+            "toggle-popover",
+            "b",
+            null,
+            null,
+            true,
+            true,
+            true,
+            false,
+            "CommandEvent"
+          ],
+          [
+            "beforetoggle",
+            "p",
+            null,
+            "b",
+            "closed",
+            "open",
+            true,
+            true,
+            true,
+            false,
+            "ToggleEvent"
+          ],
+          [
+            "toggle",
+            "p",
+            null,
+            "b",
+            "closed",
+            "open",
+            true,
+            false,
+            true,
+            false,
+            "ToggleEvent"
+          ]
+        ],
+        "sync": 3,
+        "open": [
+          "p"
+        ]
+      },
+      "cmdInvalidAndPt": {
+        "log": [
+          [
+            "click",
+            "b",
+            null,
+            "undefined",
+            null,
+            null,
+            false,
+            true,
+            true,
+            true,
+            "PointerEvent"
+          ],
+          [
+            "beforetoggle",
+            "r",
+            null,
+            "b",
+            "closed",
+            "open",
+            true,
+            true,
+            true,
+            false,
+            "ToggleEvent"
+          ],
+          [
+            "toggle",
+            "r",
+            null,
+            "b",
+            "closed",
+            "open",
+            true,
+            false,
+            true,
+            false,
+            "ToggleEvent"
+          ]
+        ],
+        "sync": 2,
+        "open": [
+          "r"
+        ]
+      },
+      "cmdMissingTargetAndPt": {
+        "log": [
+          [
+            "click",
+            "b",
+            null,
+            "undefined",
+            null,
+            null,
+            false,
+            true,
+            true,
+            true,
+            "PointerEvent"
+          ],
+          [
+            "beforetoggle",
+            "r",
+            null,
+            "b",
+            "closed",
+            "open",
+            true,
+            true,
+            true,
+            false,
+            "ToggleEvent"
+          ],
+          [
+            "toggle",
+            "r",
+            null,
+            "b",
+            "closed",
+            "open",
+            true,
+            false,
+            true,
+            false,
+            "ToggleEvent"
+          ]
+        ],
+        "sync": 2,
+        "open": [
+          "r"
+        ]
+      },
+      "cmdInvalidForTargetAndPt": {
+        "log": [
+          [
+            "click",
+            "b",
+            null,
+            "undefined",
+            null,
+            null,
+            false,
+            true,
+            true,
+            true,
+            "PointerEvent"
+          ],
+          [
+            "beforetoggle",
+            "r",
+            null,
+            "b",
+            "closed",
+            "open",
+            true,
+            true,
+            true,
+            false,
+            "ToggleEvent"
+          ],
+          [
+            "toggle",
+            "r",
+            null,
+            "b",
+            "closed",
+            "open",
+            true,
+            false,
+            true,
+            false,
+            "ToggleEvent"
+          ]
+        ],
+        "sync": 2,
+        "open": [
+          "r"
+        ]
+      },
+      "cmdCanceledAndPt": {
+        "log": [
+          [
+            "click",
+            "b",
+            null,
+            "undefined",
+            null,
+            null,
+            false,
+            true,
+            true,
+            true,
+            "PointerEvent"
+          ],
+          [
+            "command",
+            "p",
+            "toggle-popover",
+            "b",
+            null,
+            null,
+            true,
+            true,
+            true,
+            false,
+            "CommandEvent"
+          ]
+        ],
+        "sync": 2,
+        "open": []
+      },
+      "cmdCustomAndPt": {
+        "log": [
+          [
+            "click",
+            "b",
+            null,
+            "undefined",
+            null,
+            null,
+            false,
+            true,
+            true,
+            true,
+            "PointerEvent"
+          ],
+          [
+            "command",
+            "p",
+            "--x",
+            "b",
+            null,
+            null,
+            true,
+            true,
+            true,
+            false,
+            "CommandEvent"
+          ]
+        ],
+        "sync": 2,
+        "open": []
+      },
+      "cmdFormDefault": {
+        "log": [
+          [
+            "click",
+            "b",
+            null,
+            "undefined",
+            null,
+            null,
+            false,
+            true,
+            true,
+            true,
+            "PointerEvent"
+          ]
+        ],
+        "sync": 1,
+        "open": []
+      },
+      "cmdFormOnlyCommand": {
+        "log": [
+          [
+            "click",
+            "b",
+            null,
+            "undefined",
+            null,
+            null,
+            false,
+            true,
+            true,
+            true,
+            "PointerEvent"
+          ]
+        ],
+        "sync": 1,
+        "open": []
+      },
+      "cmdFormSubmit": {
+        "log": [
+          [
+            "click",
+            "b",
+            null,
+            "undefined",
+            null,
+            null,
+            false,
+            true,
+            true,
+            true,
+            "PointerEvent"
+          ],
+          [
+            "submit",
+            "f",
+            null,
+            "undefined",
+            null,
+            null,
+            true,
+            true,
+            true,
+            true,
+            "SubmitEvent"
+          ]
+        ],
+        "sync": 2,
+        "open": []
+      },
+      "cmdFormInvalidType": {
+        "log": [
+          [
+            "click",
+            "b",
+            null,
+            "undefined",
+            null,
+            null,
+            false,
+            true,
+            true,
+            true,
+            "PointerEvent"
+          ]
+        ],
+        "sync": 1,
+        "open": []
+      },
+      "cmdFormButton": {
+        "log": [
+          [
+            "click",
+            "b",
+            null,
+            "undefined",
+            null,
+            null,
+            false,
+            true,
+            true,
+            true,
+            "PointerEvent"
+          ],
+          [
+            "command",
+            "p",
+            "toggle-popover",
+            "b",
+            null,
+            null,
+            true,
+            true,
+            true,
+            false,
+            "CommandEvent"
+          ],
+          [
+            "beforetoggle",
+            "p",
+            null,
+            "b",
+            "closed",
+            "open",
+            true,
+            true,
+            true,
+            false,
+            "ToggleEvent"
+          ],
+          [
+            "toggle",
+            "p",
+            null,
+            "b",
+            "closed",
+            "open",
+            true,
+            false,
+            true,
+            false,
+            "ToggleEvent"
+          ]
+        ],
+        "sync": 3,
+        "open": [
+          "p"
+        ]
+      },
+      "cmdFormReset": {
+        "log": [
+          [
+            "click",
+            "b",
+            null,
+            "undefined",
+            null,
+            null,
+            false,
+            true,
+            true,
+            true,
+            "PointerEvent"
+          ],
+          [
+            "reset",
+            "f",
+            null,
+            "undefined",
+            null,
+            null,
+            true,
+            true,
+            false,
+            true,
+            "Event"
+          ]
+        ],
+        "sync": 2,
+        "open": []
+      },
+      "cmdNoFormReset": {
+        "log": [
+          [
+            "click",
+            "b",
+            null,
+            "undefined",
+            null,
+            null,
+            false,
+            true,
+            true,
+            true,
+            "PointerEvent"
+          ],
+          [
+            "command",
+            "p",
+            "toggle-popover",
+            "b",
+            null,
+            null,
+            true,
+            true,
+            true,
+            false,
+            "CommandEvent"
+          ],
+          [
+            "beforetoggle",
+            "p",
+            null,
+            "b",
+            "closed",
+            "open",
+            true,
+            true,
+            true,
+            false,
+            "ToggleEvent"
+          ],
+          [
+            "toggle",
+            "p",
+            null,
+            "b",
+            "closed",
+            "open",
+            true,
+            false,
+            true,
+            false,
+            "ToggleEvent"
+          ]
+        ],
+        "sync": 3,
+        "open": [
+          "p"
+        ]
+      },
+      "cmdNoFormSubmit": {
+        "log": [
+          [
+            "click",
+            "b",
+            null,
+            "undefined",
+            null,
+            null,
+            false,
+            true,
+            true,
+            true,
+            "PointerEvent"
+          ],
+          [
+            "command",
+            "p",
+            "toggle-popover",
+            "b",
+            null,
+            null,
+            true,
+            true,
+            true,
+            false,
+            "CommandEvent"
+          ],
+          [
+            "beforetoggle",
+            "p",
+            null,
+            "b",
+            "closed",
+            "open",
+            true,
+            true,
+            true,
+            false,
+            "ToggleEvent"
+          ],
+          [
+            "toggle",
+            "p",
+            null,
+            "b",
+            "closed",
+            "open",
+            true,
+            false,
+            true,
+            false,
+            "ToggleEvent"
+          ]
+        ],
+        "sync": 3,
+        "open": [
+          "p"
+        ]
+      },
+      "cmdDisabled": {
+        "log": [],
+        "sync": 0,
+        "open": []
+      },
+      "cmdDisconnected": {
+        "log": [],
+        "sync": 0,
+        "open": []
+      },
+      "cmdChild": {
+        "log": [
+          [
+            "click",
+            "s",
+            null,
+            "undefined",
+            null,
+            null,
+            false,
+            true,
+            true,
+            true,
+            "PointerEvent"
+          ],
+          [
+            "command",
+            "p",
+            "toggle-popover",
+            "b",
+            null,
+            null,
+            true,
+            true,
+            true,
+            false,
+            "CommandEvent"
+          ],
+          [
+            "beforetoggle",
+            "p",
+            null,
+            "b",
+            "closed",
+            "open",
+            true,
+            true,
+            true,
+            false,
+            "ToggleEvent"
+          ],
+          [
+            "toggle",
+            "p",
+            null,
+            "b",
+            "closed",
+            "open",
+            true,
+            false,
+            true,
+            false,
+            "ToggleEvent"
+          ]
+        ],
+        "sync": 3,
+        "open": [
+          "p"
+        ]
+      },
+      "cmdNested": {
+        "log": [
+          [
+            "beforetoggle",
+            "a",
+            null,
+            null,
+            "closed",
+            "open",
+            true,
+            true,
+            false,
+            false,
+            "ToggleEvent"
+          ],
+          [
+            "click",
+            "b",
+            null,
+            "undefined",
+            null,
+            null,
+            false,
+            true,
+            true,
+            true,
+            "PointerEvent"
+          ],
+          [
+            "command",
+            "c",
+            "show-popover",
+            "b",
+            null,
+            null,
+            true,
+            true,
+            true,
+            false,
+            "CommandEvent"
+          ],
+          [
+            "beforetoggle",
+            "c",
+            null,
+            "b",
+            "closed",
+            "open",
+            true,
+            true,
+            true,
+            false,
+            "ToggleEvent"
+          ],
+          [
+            "toggle",
+            "a",
+            null,
+            null,
+            "closed",
+            "open",
+            true,
+            false,
+            false,
+            false,
+            "ToggleEvent"
+          ],
+          [
+            "toggle",
+            "c",
+            null,
+            "b",
+            "closed",
+            "open",
+            true,
+            false,
+            true,
+            false,
+            "ToggleEvent"
+          ]
+        ],
+        "sync": 4,
+        "open": [
+          "a",
+          "c"
+        ]
+      },
+      "cmdInsidePopover": {
+        "log": [
+          [
+            "beforetoggle",
+            "p",
+            null,
+            null,
+            "closed",
+            "open",
+            true,
+            true,
+            false,
+            false,
+            "ToggleEvent"
+          ],
+          [
+            "click",
+            "s",
+            null,
+            "undefined",
+            null,
+            null,
+            false,
+            true,
+            true,
+            true,
+            "PointerEvent"
+          ],
+          [
+            "command",
+            "p",
+            "toggle-popover",
+            "b",
+            null,
+            null,
+            true,
+            true,
+            true,
+            false,
+            "CommandEvent"
+          ],
+          [
+            "beforetoggle",
+            "p",
+            null,
+            "b",
+            "open",
+            "closed",
+            true,
+            false,
+            true,
+            false,
+            "ToggleEvent"
+          ],
+          [
+            "toggle",
+            "p",
+            null,
+            "b",
+            "closed",
+            "closed",
+            true,
+            false,
+            true,
+            false,
+            "ToggleEvent"
+          ]
+        ],
+        "sync": 4,
+        "open": []
+      },
+      "cmdShadowButton": {
+        "log": [
+          [
+            "command",
+            "p",
+            "show-popover",
+            "host",
+            null,
+            null,
+            true,
+            true,
+            true,
+            false,
+            "CommandEvent"
+          ],
+          [
+            "beforetoggle",
+            "p",
+            null,
+            "host",
+            "closed",
+            "open",
+            true,
+            true,
+            true,
+            false,
+            "ToggleEvent"
+          ],
+          [
+            "toggle",
+            "p",
+            null,
+            "host",
+            "closed",
+            "open",
+            true,
+            false,
+            true,
+            false,
+            "ToggleEvent"
+          ]
+        ],
+        "sync": 2,
+        "open": [
+          "p"
+        ]
+      },
+      "ptShadowUncomposed": {
+        "log": [
+          [
+            "beforetoggle",
+            "p",
+            null,
+            "host",
+            "closed",
+            "open",
+            true,
+            true,
+            true,
+            false,
+            "ToggleEvent"
+          ],
+          [
+            "toggle",
+            "p",
+            null,
+            "host",
+            "closed",
+            "open",
+            true,
+            false,
+            true,
+            false,
+            "ToggleEvent"
+          ]
+        ],
+        "sync": 1,
+        "open": [
+          "p"
+        ]
+      },
+      "ptLightButtonShadowPopover": {
+        "log": [
+          [
+            "click",
+            "b",
+            null,
+            "undefined",
+            null,
+            null,
+            false,
+            true,
+            true,
+            true,
+            "PointerEvent"
+          ]
+        ],
+        "sync": 1,
+        "open": []
+      }
+    },
+    "events": {
+      "fields": [
+        "command",
+        "--X",
+        false,
+        true,
+        true,
+        true,
+        2,
+        "p",
+        "p",
+        "b",
+        false,
+        true
+      ],
+      "bubbled": false,
+      "handler": [
+        1,
+        true
+      ],
+      "order": [
+        "click",
+        "command",
+        "beforetoggle",
+        "after-click",
+        "micro-click",
+        "micro-command",
+        "micro-beforetoggle",
+        "toggle"
+      ]
+    },
+    "clickDisabled": {
+      "button": [
+        0,
+        0,
+        1,
+        0,
+        1
+      ],
+      "input": [
+        0,
+        0,
+        1,
+        0,
+        1
+      ],
+      "select": [
+        0,
+        0,
+        1,
+        0,
+        1
+      ],
+      "textarea": [
+        0,
+        0,
+        1,
+        0,
+        1
+      ],
+      "fieldset": [
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "output": [
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "option": [
+        0,
+        1,
+        1,
+        1,
+        1
+      ],
+      "optgroup": [
+        0,
+        1,
+        1,
+        1,
+        1
+      ],
+      "object": [
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "div": [
+        1,
+        1,
+        1,
+        1,
+        1
+      ]
+    }
+  }
+}

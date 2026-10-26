@@ -1,0 +1,306 @@
+{
+  "collectedAt": "2026-10-14T00:52:47.277Z",
+  "browserVersion": "Chrome/155.0.8059.79",
+  "browserV8Version": "15.5.35.23",
+  "effectiveExtensionFlags": [
+    "--disable-extensions"
+  ],
+  "collectorSha256": "4d7d156dc24528c7c4d099ff0342552c82d6466251420f9773846fed2a65a5c4",
+  "result": {
+    "appendChild": {
+      "owner": true,
+      "identity": true,
+      "oldParentEmpty": true,
+      "listeners": 1,
+      "originalRealm": true,
+      "sourceRange": [
+        true,
+        0,
+        0,
+        ""
+      ],
+      "returned": "incoming",
+      "html": "<i>first</i><u>last</u><b>foreign</b>"
+    },
+    "insertBefore": {
+      "owner": true,
+      "identity": true,
+      "oldParentEmpty": true,
+      "listeners": 1,
+      "originalRealm": true,
+      "sourceRange": [
+        true,
+        0,
+        0,
+        ""
+      ],
+      "returned": "incoming",
+      "html": "<i>first</i><b>foreign</b><u>last</u>"
+    },
+    "replaceChild": {
+      "owner": true,
+      "identity": true,
+      "oldParentEmpty": true,
+      "listeners": 1,
+      "originalRealm": true,
+      "sourceRange": [
+        true,
+        0,
+        0,
+        ""
+      ],
+      "returned": "removed",
+      "html": "<b>foreign</b><u>last</u>"
+    },
+    "append": {
+      "owner": true,
+      "identity": true,
+      "oldParentEmpty": true,
+      "listeners": 1,
+      "originalRealm": true,
+      "sourceRange": [
+        true,
+        0,
+        0,
+        ""
+      ],
+      "returned": "undefined",
+      "html": "<i>first</i><u>last</u><b>foreign</b>tail"
+    },
+    "prepend": {
+      "owner": true,
+      "identity": true,
+      "oldParentEmpty": true,
+      "listeners": 1,
+      "originalRealm": true,
+      "sourceRange": [
+        true,
+        0,
+        0,
+        ""
+      ],
+      "returned": "undefined",
+      "html": "head<b>foreign</b><i>first</i><u>last</u>"
+    },
+    "before": {
+      "owner": true,
+      "identity": true,
+      "oldParentEmpty": true,
+      "listeners": 1,
+      "originalRealm": true,
+      "sourceRange": [
+        true,
+        0,
+        0,
+        ""
+      ],
+      "returned": "undefined",
+      "html": "<b>foreign</b><i>first</i><u>last</u>"
+    },
+    "after": {
+      "owner": true,
+      "identity": true,
+      "oldParentEmpty": true,
+      "listeners": 1,
+      "originalRealm": true,
+      "sourceRange": [
+        true,
+        0,
+        0,
+        ""
+      ],
+      "returned": "undefined",
+      "html": "<i>first</i><b>foreign</b><u>last</u>"
+    },
+    "replaceWith": {
+      "owner": true,
+      "identity": true,
+      "oldParentEmpty": true,
+      "listeners": 1,
+      "originalRealm": true,
+      "sourceRange": [
+        true,
+        0,
+        0,
+        ""
+      ],
+      "returned": "undefined",
+      "html": "<b>foreign</b><u>last</u>"
+    },
+    "replaceChildren": {
+      "owner": true,
+      "identity": true,
+      "oldParentEmpty": true,
+      "listeners": 1,
+      "originalRealm": true,
+      "sourceRange": [
+        true,
+        0,
+        0,
+        ""
+      ],
+      "returned": "undefined",
+      "html": "head<b>foreign</b>tail"
+    },
+    "adjacentElement": {
+      "owner": true,
+      "identity": true,
+      "oldParentEmpty": true,
+      "listeners": 1,
+      "originalRealm": true,
+      "sourceRange": [
+        true,
+        0,
+        0,
+        ""
+      ],
+      "returned": "incoming",
+      "html": "<i>first</i><b>foreign</b><u>last</u>"
+    },
+    "borrowedAppend": {
+      "owner": true,
+      "identity": true,
+      "oldParentEmpty": true,
+      "listeners": 1,
+      "originalRealm": true,
+      "sourceRange": [
+        true,
+        0,
+        0,
+        ""
+      ],
+      "returned": "incoming",
+      "html": "<i>first</i><u>last</u><b>foreign</b>"
+    },
+    "duplicate": [
+      "<i>first</i><u>last</u><b>foreign</b>end",
+      true,
+      true
+    ],
+    "fragment": [
+      true,
+      false,
+      0,
+      true,
+      true,
+      "<i>first</i><b>head</b>tail<u>last</u>"
+    ],
+    "mixedFragments": {
+      "node-text-fragment": [
+        "<i>first</i><u>last</u><b>foreign</b>mid<em>fragment</em>tail",
+        true,
+        0,
+        true,
+        0,
+        true
+      ],
+      "fragment-node-fragment": [
+        "<i>first</i><u>last</u><em>fragment</em>tail<b>foreign</b>",
+        true,
+        0,
+        true,
+        0,
+        true
+      ],
+      "node-fragment-node": [
+        "<i>first</i><u>last</u><em>fragment</em>tail<b>foreign</b>",
+        true,
+        0,
+        true,
+        0,
+        true
+      ]
+    },
+    "namespace": [
+      true,
+      "http://www.w3.org/2000/svg",
+      "0 0 10 20"
+    ],
+    "shadowInsertion": [
+      true,
+      true,
+      true,
+      0,
+      true,
+      true,
+      true,
+      0,
+      0,
+      "<i>first</i><u>last</u><b>shadow</b>tail"
+    ],
+    "failures": {
+      "secondDocumentElement": [
+        "HierarchyRequestError",
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "invalidParent": [
+        "HierarchyRequestError",
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "foreignReference": [
+        "NotFoundError",
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "foreignRemoval": [
+        "NotFoundError",
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "invalidAdjacentPosition": [
+        "SyntaxError",
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "documentNode": [
+        "HierarchyRequestError",
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "attributeNode": [
+        "HierarchyRequestError",
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "documentFragment": [
+        "HierarchyRequestError",
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ]
+    }
+  }
+}

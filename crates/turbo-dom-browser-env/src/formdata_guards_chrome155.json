@@ -1,0 +1,49 @@
+{
+  "browser": "Chrome/155.0.8059.80",
+  "v8": "15.5.35.23",
+  "casesSha256": "43dc4efe5b07a582b0379560d263af8082ed6ec6a178008b6b55f087de3548f4",
+  "probeSha256": "d6e60d92c73acf6e080cb6010589d175743891be731440ac36de4ab799726670",
+  "collectorSha256": "4e61b029135dacd18fdb68e4194fea875766edc7f203f7560bd3b826ad6aa0cb",
+  "flags": [
+    "--remote-debugging-port=0",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "about:blank"
+  ],
+  "errors": [],
+  "result": [
+    {
+      "result": [
+        [
+          "formdata",
+          true,
+          true,
+          false
+        ],
+        [
+          "nested",
+          "InvalidStateError"
+        ],
+        [
+          "submit",
+          true
+        ],
+        [
+          "request",
+          "done"
+        ],
+        [
+          "submitMethod",
+          "done"
+        ],
+        [
+          "submit",
+          true
+        ]
+      ]
+    }
+  ]
+}

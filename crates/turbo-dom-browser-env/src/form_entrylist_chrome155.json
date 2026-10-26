@@ -1,0 +1,51 @@
+{
+  "browser": "Chrome/155.0.8059.80",
+  "v8": "15.5.35.23",
+  "casesSha256": "a1c26a7adab265b933792e826b7499549f764db7ff995ed10dab0af70f756a93",
+  "probeSha256": "64f03fafdd26fccaa4af0f2ecf49055a0829dc9a6f93d4b1b7d36ffde4c1f58e",
+  "collectorSha256": "4e61b029135dacd18fdb68e4194fea875766edc7f203f7560bd3b826ad6aa0cb",
+  "flags": [
+    "--remote-debugging-port=0",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "about:blank"
+  ],
+  "errors": [],
+  "result": [
+    {
+      "result": [
+        [
+          "a",
+          "one"
+        ],
+        [
+          "a",
+          "two"
+        ],
+        [
+          "c",
+          "on"
+        ],
+        [
+          "t",
+          "hello"
+        ],
+        [
+          "_charset_",
+          "UTF-8"
+        ],
+        [
+          "_charset_",
+          "text"
+        ],
+        [
+          "button",
+          "send"
+        ]
+      ]
+    }
+  ]
+}

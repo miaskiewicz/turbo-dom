@@ -1,0 +1,1 @@
+(function(){'use strict';const g=globalThis,ns=g[Symbol.for('ts')],native=g.__templateContentsNative;delete g.__templateContentsNative;const apply=Reflect.apply;Object.defineProperty(g.HTMLTemplateElement.prototype,'content',{enumerable:true,configurable:true,get:ns.makeNativeFunction(function(){return apply(native,this,[]);},'get content',0)});})();

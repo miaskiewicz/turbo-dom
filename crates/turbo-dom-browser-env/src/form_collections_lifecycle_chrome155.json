@@ -1,0 +1,40 @@
+{
+  "browser": "Chrome/155.0.8059.80",
+  "v8": "15.5.35.23",
+  "casesSha256": "f9256b5b3547b609a60ad50e207527febcf8f15646045ed40972d32d885d932c",
+  "probeSha256": "67a5b000db6de4245354a14151a4a42ecaf8aa6699971c64f4146d1822b0b953",
+  "collectorSha256": "5586fe9d89a94f54616bec022bdb810ac2c02553b3465ef0139afd4c884e3725",
+  "flags": [
+    "--remote-debugging-port=0",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "about:blank"
+  ],
+  "errors": [],
+  "result": [
+    {
+      "id": "live-form-collections",
+      "result": {
+        "first": [
+          false,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "afterRelease": [
+          false,
+          false,
+          false,
+          false,
+          false,
+          false
+        ]
+      }
+    }
+  ]
+}

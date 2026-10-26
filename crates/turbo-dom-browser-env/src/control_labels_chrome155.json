@@ -1,0 +1,264 @@
+{
+  "browser": "Chrome/155.0.8059.80",
+  "v8": "15.5.35.23",
+  "casesSha256": "96345c459d1e1ba6acc95502476654ac4e55bb2cc1f693fdf9564fbebc89e74a",
+  "probeSha256": "2f0af09906bc32ed9c64f46062420b72d9bc21438d4fcddf93e568b30faca47c",
+  "collectorSha256": "700a755df1701cfa30a95ca9f20800e81724f50ca7aafd6b46f77e87b2b91351",
+  "flags": [
+    "--remote-debugging-port=0",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "about:blank"
+  ],
+  "errors": [],
+  "result": [
+    {
+      "id": "radio-dirty-lifecycle",
+      "result": {
+        "interfaces": {
+          "HTMLInputElement": {
+            "enumerable": true,
+            "configurable": true,
+            "get": "get labels",
+            "length": 0,
+            "setter": false
+          },
+          "HTMLButtonElement": {
+            "enumerable": true,
+            "configurable": true,
+            "get": "get labels",
+            "length": 0,
+            "setter": false
+          },
+          "HTMLTextAreaElement": {
+            "enumerable": true,
+            "configurable": true,
+            "get": "get labels",
+            "length": 0,
+            "setter": false
+          },
+          "HTMLSelectElement": {
+            "enumerable": true,
+            "configurable": true,
+            "get": "get labels",
+            "length": 0,
+            "setter": false
+          },
+          "HTMLOutputElement": {
+            "enumerable": true,
+            "configurable": true,
+            "get": "get labels",
+            "length": 0,
+            "setter": false
+          },
+          "HTMLMeterElement": {
+            "enumerable": true,
+            "configurable": true,
+            "get": "get labels",
+            "length": 0,
+            "setter": false
+          },
+          "HTMLProgressElement": {
+            "enumerable": true,
+            "configurable": true,
+            "get": "get labels",
+            "length": 0,
+            "setter": false
+          },
+          "HTMLFieldSetElement": null,
+          "HTMLObjectElement": null
+        },
+        "initial": {
+          "ids": [
+            "explicit",
+            "outer",
+            "inner"
+          ],
+          "same": true,
+          "tag": "[object NodeList]",
+          "nodeList": true
+        },
+        "index": {
+          "writable": false,
+          "enumerable": true,
+          "configurable": true,
+          "set": true,
+          "define": true,
+          "del": false
+        },
+        "hidden": [
+          true,
+          []
+        ],
+        "visible": [
+          true,
+          [
+            "explicit",
+            "outer",
+            "inner"
+          ]
+        ],
+        "firstNonlabelable": [
+          [
+            "outer",
+            "inner"
+          ],
+          [
+            "outer",
+            "inner"
+          ]
+        ],
+        "duplicate": [
+          [
+            "outer",
+            "inner"
+          ],
+          [
+            "explicit"
+          ]
+        ],
+        "liveAdded": [
+          "explicit",
+          "outer",
+          "inner",
+          "late"
+        ],
+        "renamed": [
+          "outer",
+          "inner"
+        ],
+        "nested": [
+          "explicit",
+          "outer",
+          "inner",
+          "late"
+        ],
+        "brands": [
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError"
+        ],
+        "shadow-open": [
+          "shadow-explicit",
+          "shadow-implicit"
+        ],
+        "shadow-closed": [
+          "shadow-explicit",
+          "shadow-implicit"
+        ],
+        "adoption": [
+          true,
+          [
+            "adopt-explicit",
+            "adopt-implicit"
+          ],
+          [
+            "adopt-explicit",
+            "adopt-implicit"
+          ]
+        ],
+        "namespace": [
+          [
+            "real-for"
+          ],
+          []
+        ],
+        "customFirst": [
+          true,
+          [
+            "custom-first"
+          ],
+          []
+        ],
+        "mutations": [
+          [
+            "0",
+            true,
+            true,
+            false,
+            false
+          ],
+          [
+            "99",
+            true,
+            true,
+            false,
+            true
+          ],
+          [
+            "custom",
+            true,
+            true,
+            true,
+            true
+          ]
+        ],
+        "emptyId": [
+          true,
+          []
+        ],
+        "utf16": [
+          "utf16-label"
+        ],
+        "detached": [],
+        "privateAuthority": [
+          [
+            "poison-label"
+          ],
+          true,
+          0
+        ],
+        "privatePrototype": true,
+        "attributeNamespaces": {
+          "id": {
+            "labels": 0,
+            "target": false
+          },
+          "for": {
+            "labels": 0,
+            "target": false
+          },
+          "type": {
+            "labels": 1,
+            "target": true
+          }
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,164 @@
+{
+  "browser": "Chrome/155.0.8059.79",
+  "v8": "15.5.35.23",
+  "probeSha256": "84d3c6f52c32b2a07cd0299c5559b96959aa84ffadd521ccfc23cc5a31deac2e",
+  "collectorSha256": "b13d2f18eba0accfb1bf4391b5970509bc95225c2dd6e5941e34596bbd3a7695",
+  "flags": [
+    "--remote-debugging-port=0",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "about:blank"
+  ],
+  "errors": [],
+  "result": {
+    "rows": [
+      {
+        "label": "initial",
+        "attribute": null,
+        "value": "",
+        "tokens": []
+      },
+      {
+        "label": "put-forwards",
+        "attribute": "allow-scripts  allow-forms",
+        "value": "allow-scripts  allow-forms",
+        "tokens": [
+          "allow-scripts",
+          "allow-forms"
+        ]
+      },
+      {
+        "label": "add",
+        "attribute": "allow-scripts allow-forms allow-popups",
+        "value": "allow-scripts allow-forms allow-popups",
+        "tokens": [
+          "allow-scripts",
+          "allow-forms",
+          "allow-popups"
+        ]
+      },
+      {
+        "label": "attribute",
+        "attribute": "allow-same-origin allow-scripts allow-scripts",
+        "value": "allow-same-origin allow-scripts allow-scripts",
+        "tokens": [
+          "allow-same-origin",
+          "allow-scripts"
+        ]
+      },
+      {
+        "label": "remove",
+        "attribute": "allow-same-origin",
+        "value": "allow-same-origin",
+        "tokens": [
+          "allow-same-origin"
+        ]
+      }
+    ],
+    "same": true,
+    "supported": {
+      "allow-downloads": {
+        "value": true
+      },
+      "allow-forms": {
+        "value": true
+      },
+      "allow-modals": {
+        "value": true
+      },
+      "allow-orientation-lock": {
+        "value": true
+      },
+      "allow-pointer-lock": {
+        "value": true
+      },
+      "allow-popups": {
+        "value": true
+      },
+      "allow-popups-to-escape-sandbox": {
+        "value": true
+      },
+      "allow-presentation": {
+        "value": true
+      },
+      "allow-same-origin": {
+        "value": true
+      },
+      "allow-scripts": {
+        "value": true
+      },
+      "allow-storage-access-by-user-activation": {
+        "value": true
+      },
+      "allow-top-navigation": {
+        "value": true
+      },
+      "allow-top-navigation-by-user-activation": {
+        "value": true
+      },
+      "allow-top-navigation-to-custom-protocols": {
+        "value": false
+      },
+      "allow-same-site-none-cookies": {
+        "value": true
+      },
+      "ALLOW-SCRIPTS": {
+        "value": true
+      },
+      "unknown": {
+        "value": false
+      },
+      "": {
+        "value": false
+      },
+      "a b": {
+        "value": false
+      }
+    },
+    "brands": [
+      {
+        "error": "TypeError"
+      },
+      {
+        "error": "TypeError"
+      },
+      {
+        "error": "TypeError"
+      },
+      {
+        "error": "TypeError"
+      },
+      {
+        "value": ""
+      }
+    ],
+    "forwarded": [
+      "own forwarded"
+    ],
+    "frozenForward": {
+      "value": "allow-same-origin"
+    },
+    "badForward": {
+      "error": "TypeError"
+    },
+    "symbolSupports": {
+      "error": "TypeError"
+    },
+    "classForwarded": [
+      "class forwarded"
+    ],
+    "descriptor": {
+      "enumerable": true,
+      "configurable": true,
+      "getName": "get sandbox",
+      "getLength": 0,
+      "setName": "set sandbox",
+      "setLength": 1,
+      "getNative": true,
+      "setNative": true
+    }
+  }
+}

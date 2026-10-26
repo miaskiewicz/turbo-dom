@@ -1,0 +1,78 @@
+{
+  "browser": "Chrome/155.0.8059.80",
+  "v8": "15.5.35.23",
+  "casesSha256": "367bd2e7f9c6886067449fa455abd887a18347767abb2bba1966964d0fe3102e",
+  "probeSha256": "9fff7630eff47e048720ef944adca6e1a30433f6507a3adb2e9cf30c5544237c",
+  "collectorSha256": "4e61b029135dacd18fdb68e4194fea875766edc7f203f7560bd3b826ad6aa0cb",
+  "flags": [
+    "--remote-debugging-port=0",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "about:blank"
+  ],
+  "errors": [],
+  "result": [
+    {
+      "result": [
+        {
+          "mode": "detached",
+          "events": [],
+          "result": "undefined"
+        },
+        {
+          "mode": "detached-invalid",
+          "events": [],
+          "result": "undefined"
+        },
+        {
+          "mode": "connected-canceled",
+          "events": [
+            "submit"
+          ],
+          "result": "undefined"
+        },
+        {
+          "mode": "removed-before",
+          "events": [],
+          "result": "undefined"
+        },
+        {
+          "mode": "removed-submit",
+          "events": [
+            "submit"
+          ],
+          "result": "undefined"
+        },
+        {
+          "mode": "reconnected-submit",
+          "events": [
+            "submit"
+          ],
+          "result": "undefined"
+        },
+        {
+          "mode": "detached-submit-method",
+          "events": [],
+          "result": "undefined"
+        },
+        {
+          "mode": "connected-invalid",
+          "events": [
+            "invalid"
+          ],
+          "result": "undefined"
+        },
+        {
+          "mode": "reconnected-invalid",
+          "events": [
+            "invalid"
+          ],
+          "result": "undefined"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,761 @@
+{
+  "browser": "Chrome/156.0.8078.47",
+  "v8": "15.6.75.19",
+  "probe": "focus_group_probe.js",
+  "probeSha256": "e3022c60cb9a4ff7fd9b9bb3d27bfa701f8fd65fb7ed3b6ed8337888aabf9d0f",
+  "collectorSha256": "b9a886428961d40ffbc61f650721aeef3e2b26e82361d35a4f8eef005e3b1603",
+  "flags": [
+    "--headless=new",
+    "--remote-debugging-pipe",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "--disable-background-timer-throttling",
+    "--disable-renderer-backgrounding",
+    "--disable-backgrounding-occluded-windows",
+    "about:blank"
+  ],
+  "result": {
+    "reflection": {
+      "descriptors": [
+        [
+          "HTMLElement",
+          [
+            true,
+            true,
+            [
+              "get focusGroup",
+              0,
+              "E:TypeError:f is not a constructor"
+            ],
+            [
+              "set focusGroup",
+              1,
+              "E:TypeError:f is not a constructor"
+            ],
+            false
+          ],
+          [
+            true,
+            true,
+            [
+              "get focusGroupStart",
+              0,
+              "E:TypeError:f is not a constructor"
+            ],
+            [
+              "set focusGroupStart",
+              1,
+              "E:TypeError:f is not a constructor"
+            ],
+            false
+          ]
+        ],
+        [
+          "SVGElement",
+          [
+            true,
+            true,
+            [
+              "get focusGroup",
+              0,
+              "E:TypeError:f is not a constructor"
+            ],
+            [
+              "set focusGroup",
+              1,
+              "E:TypeError:f is not a constructor"
+            ],
+            false
+          ],
+          [
+            true,
+            true,
+            [
+              "get focusGroupStart",
+              0,
+              "E:TypeError:f is not a constructor"
+            ],
+            [
+              "set focusGroupStart",
+              1,
+              "E:TypeError:f is not a constructor"
+            ],
+            false
+          ]
+        ],
+        [
+          "Element",
+          null,
+          null
+        ]
+      ],
+      "mathml": [
+        "function",
+        [
+          [
+            true,
+            true,
+            [
+              "get focusGroup",
+              0,
+              "E:TypeError:f is not a constructor"
+            ],
+            [
+              "set focusGroup",
+              1,
+              "E:TypeError:f is not a constructor"
+            ],
+            false
+          ],
+          [
+            true,
+            true,
+            [
+              "get focusGroupStart",
+              0,
+              "E:TypeError:f is not a constructor"
+            ],
+            [
+              "set focusGroupStart",
+              1,
+              "E:TypeError:f is not a constructor"
+            ],
+            false
+          ]
+        ]
+      ],
+      "list": [
+        true,
+        true,
+        0,
+        "",
+        ""
+      ],
+      "parsed": [
+        3,
+        [
+          "toolbar",
+          "wrap",
+          "bogus"
+        ],
+        "toolbar  wrap\tbogus",
+        true,
+        "wrap"
+      ],
+      "putForwards": [
+        "Menu NOWRAP",
+        [
+          "Menu",
+          "NOWRAP"
+        ]
+      ],
+      "putNull": "null",
+      "mutate": "listbox",
+      "supports": [
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        false,
+        true,
+        true,
+        false,
+        false,
+        false,
+        false
+      ],
+      "brands": [
+        0,
+        "E:TypeError:Illegal invocation",
+        "E:TypeError:Illegal invocation",
+        "E:TypeError:Illegal invocation",
+        "E:TypeError:Illegal invocation"
+      ],
+      "svg": [
+        [
+          "menu"
+        ],
+        false,
+        "E:TypeError:Illegal invocation"
+      ],
+      "start": [
+        false,
+        true,
+        true,
+        true,
+        true,
+        true,
+        null,
+        "",
+        null,
+        "",
+        null,
+        ""
+      ],
+      "startBrand": "E:TypeError:Illegal invocation"
+    },
+    "behaviors": {
+      "toolbar": [
+        "b",
+        "c",
+        "c",
+        "c",
+        "c",
+        "c",
+        "c",
+        "c",
+        "a",
+        "a"
+      ],
+      "tablist": [
+        "b",
+        "c",
+        "a",
+        "a",
+        "a",
+        "a",
+        "a",
+        "c",
+        "a",
+        "a"
+      ],
+      "radiogroup": [
+        "b",
+        "c",
+        "a",
+        "b",
+        "c",
+        "a",
+        "c",
+        "c",
+        "a",
+        "a"
+      ],
+      "listbox": [
+        "a",
+        "a",
+        "a",
+        "b",
+        "c",
+        "c",
+        "b",
+        "c",
+        "a",
+        "a"
+      ],
+      "menu": [
+        "a",
+        "a",
+        "a",
+        "b",
+        "c",
+        "a",
+        "c",
+        "c",
+        "a",
+        "a"
+      ],
+      "menubar": [
+        "b",
+        "c",
+        "a",
+        "a",
+        "a",
+        "a",
+        "a",
+        "c",
+        "a",
+        "a"
+      ],
+      "grid": [
+        "a",
+        "a",
+        "a",
+        "a",
+        "a",
+        "a",
+        "a",
+        "a",
+        "a",
+        "a"
+      ],
+      "(empty)": [
+        "a",
+        "a",
+        "a",
+        "a",
+        "a",
+        "a",
+        "a",
+        "a",
+        "a",
+        "a"
+      ],
+      "bogus": [
+        "a",
+        "a",
+        "a",
+        "a",
+        "a",
+        "a",
+        "a",
+        "a",
+        "a",
+        "a"
+      ],
+      "inline": [
+        "a",
+        "a",
+        "a",
+        "a",
+        "a",
+        "a",
+        "a",
+        "a",
+        "a",
+        "a"
+      ],
+      "wrap": [
+        "a",
+        "a",
+        "a",
+        "a",
+        "a",
+        "a",
+        "a",
+        "a",
+        "a",
+        "a"
+      ],
+      "TOOLBAR": [
+        "b",
+        "c",
+        "c",
+        "c",
+        "c",
+        "c",
+        "c",
+        "c",
+        "a",
+        "a"
+      ],
+      "toolbar wrap": [
+        "b",
+        "c",
+        "a",
+        "a",
+        "a",
+        "a",
+        "a",
+        "c",
+        "a",
+        "a"
+      ],
+      "wrap toolbar": [
+        "b",
+        "c",
+        "a",
+        "a",
+        "a",
+        "a",
+        "a",
+        "c",
+        "a",
+        "a"
+      ],
+      "toolbar bogus": [
+        "b",
+        "c",
+        "c",
+        "c",
+        "c",
+        "c",
+        "c",
+        "c",
+        "a",
+        "a"
+      ],
+      "x toolbar": [
+        "b",
+        "c",
+        "c",
+        "c",
+        "c",
+        "c",
+        "c",
+        "c",
+        "a",
+        "a"
+      ],
+      "toolbar menu": [
+        "b",
+        "c",
+        "c",
+        "c",
+        "c",
+        "c",
+        "c",
+        "c",
+        "a",
+        "a"
+      ],
+      "none toolbar": [
+        "a",
+        "a",
+        "a",
+        "a",
+        "a",
+        "a",
+        "a",
+        "a",
+        "a",
+        "a"
+      ],
+      "toolbar none": [
+        "a",
+        "a",
+        "a",
+        "a",
+        "a",
+        "a",
+        "a",
+        "a",
+        "a",
+        "a"
+      ],
+      "toolbar block": [
+        "a",
+        "a",
+        "a",
+        "b",
+        "c",
+        "c",
+        "b",
+        "c",
+        "a",
+        "a"
+      ],
+      "toolbar inline block": [
+        "b",
+        "c",
+        "c",
+        "c",
+        "c",
+        "c",
+        "b",
+        "c",
+        "a",
+        "a"
+      ],
+      "menu inline": [
+        "b",
+        "c",
+        "a",
+        "a",
+        "a",
+        "a",
+        "a",
+        "c",
+        "a",
+        "a"
+      ],
+      "radiogroup inline": [
+        "b",
+        "c",
+        "a",
+        "a",
+        "a",
+        "a",
+        "a",
+        "c",
+        "a",
+        "a"
+      ],
+      "listbox nowrap": [
+        "a",
+        "a",
+        "a",
+        "b",
+        "c",
+        "c",
+        "b",
+        "c",
+        "a",
+        "a"
+      ],
+      "tablist nowrap": [
+        "b",
+        "c",
+        "c",
+        "c",
+        "c",
+        "c",
+        "c",
+        "c",
+        "a",
+        "a"
+      ],
+      "menu wrap": [
+        "a",
+        "a",
+        "a",
+        "b",
+        "c",
+        "a",
+        "c",
+        "c",
+        "a",
+        "a"
+      ],
+      "toolbar wrap nowrap": [
+        "b",
+        "c",
+        "c",
+        "c",
+        "c",
+        "c",
+        "c",
+        "c",
+        "a",
+        "a"
+      ],
+      "homeEnd": [
+        "a",
+        "c",
+        "c",
+        "a"
+      ],
+      "modifiers": [
+        "a",
+        "a",
+        "a",
+        "a",
+        "b",
+        "b"
+      ]
+    },
+    "items": {
+      "tabindex": [
+        "l",
+        "z",
+        "p",
+        "c",
+        "c",
+        "p",
+        "z",
+        "l",
+        "a"
+      ],
+      "disabled": [
+        "c",
+        "a"
+      ],
+      "hidden": [
+        "c",
+        "a"
+      ],
+      "nested": [
+        "b",
+        "s",
+        "c",
+        "c",
+        "s"
+      ],
+      "optOut": [
+        "c",
+        "c",
+        "a"
+      ],
+      "insideOptOut": [
+        "b",
+        "b"
+      ],
+      "nestedGroup": [
+        "c",
+        "c",
+        "c"
+      ],
+      "insideNestedGroup": [
+        "m2",
+        "m1",
+        "m1",
+        "m2"
+      ],
+      "ownerItem": [
+        "b",
+        "a"
+      ],
+      "focusedOwner": [
+        "g",
+        "g"
+      ],
+      "outside": [
+        "x"
+      ],
+      "svg": [
+        "s",
+        "c",
+        "s",
+        "a"
+      ],
+      "shadow": [
+        "x",
+        "y",
+        "c",
+        "y",
+        "x",
+        "a"
+      ],
+      "slotted": [
+        "b",
+        "a",
+        "a",
+        "b"
+      ],
+      "shadowOwner": [
+        "y",
+        "x"
+      ],
+      "closedOwner": [
+        "y",
+        "x",
+        "y"
+      ]
+    },
+    "keys": {
+      "consumers": [
+        "k",
+        "i",
+        "o",
+        "o"
+      ],
+      "text": [
+        "t",
+        "t",
+        "t",
+        "t"
+      ],
+      "textarea": [
+        "t",
+        "t"
+      ],
+      "select": [
+        "s",
+        "s"
+      ],
+      "range": [
+        "r",
+        "r"
+      ],
+      "editable": [
+        "e",
+        "e"
+      ],
+      "rtl": [
+        "a",
+        "b",
+        "c",
+        "b"
+      ],
+      "cssRtl": [
+        "a",
+        "b"
+      ],
+      "itemRtl": [
+        "a",
+        "b",
+        "a"
+      ],
+      "innerRtl": [
+        "a",
+        "b"
+      ],
+      "rtlBlock": [
+        "b",
+        "b",
+        "b",
+        "a"
+      ],
+      "dirAuto": [
+        "a",
+        "b"
+      ],
+      "dirAutoLatin": [
+        "b",
+        "a"
+      ],
+      "ltrInsideRtl": [
+        "b",
+        "b"
+      ],
+      "vertical": [
+        "a",
+        "b",
+        "c",
+        "b"
+      ],
+      "prevented": [
+        "a",
+        "a"
+      ],
+      "preventedAncestor": [
+        "a",
+        "b"
+      ],
+      "events": [
+        [
+          "keydown",
+          "a",
+          true,
+          false
+        ],
+        [
+          "bubble",
+          false,
+          3
+        ],
+        [
+          "blur",
+          "a",
+          true,
+          false
+        ],
+        [
+          "focusout",
+          "a",
+          true,
+          false
+        ],
+        [
+          "focus",
+          "b",
+          true,
+          false
+        ],
+        [
+          "focusin",
+          "b",
+          true,
+          false
+        ],
+        [
+          "keyup",
+          "b",
+          true,
+          false
+        ]
+      ]
+    }
+  }
+}

@@ -1,0 +1,525 @@
+{
+  "reason": "Immediate GC WeakRef snapshots were not repeatable. Resolve readiness without the load Event, clear the readiness listener, and compare an explicitly captured real-task GC policy without adding renderer roots.",
+  "originalCanonicalRevision": "298c5f665f3e6ae4d6c13dbe77fd069d6fecbd40",
+  "originalOneoff": {
+    "browser": "Chrome/155.0.8059.80",
+    "v8": "15.5.35.23",
+    "casesSha256": "96345c459d1e1ba6acc95502476654ac4e55bb2cc1f693fdf9564fbebc89e74a",
+    "probeSha256": "ffb45802a93fa6119e1eba43d39201f7d5afdc69cbeb7cb55179cd8dae769fc8",
+    "collectorSha256": "5586fe9d89a94f54616bec022bdb810ac2c02553b3465ef0139afd4c884e3725",
+    "flags": [
+      "--remote-debugging-port=0",
+      "--user-data-dir=<fresh-profile>",
+      "--no-first-run",
+      "--no-default-browser-check",
+      "--disable-extensions",
+      "--disable-component-extensions-with-background-pages",
+      "about:blank"
+    ],
+    "errors": [],
+    "result": [
+      {
+        "id": "radio-dirty-lifecycle",
+        "result": {
+          "first": {
+            "alive": [
+              true,
+              true,
+              true,
+              true
+            ],
+            "selected": "b"
+          },
+          "afterRelease": {
+            "alive": [
+              false,
+              true,
+              true,
+              true
+            ],
+            "selected": "parent"
+          }
+        }
+      }
+    ]
+  },
+  "originalRepeats": [
+    {
+      "browser": "Chrome/155.0.8059.80",
+      "v8": "15.5.35.23",
+      "casesSha256": "96345c459d1e1ba6acc95502476654ac4e55bb2cc1f693fdf9564fbebc89e74a",
+      "probeSha256": "ffb45802a93fa6119e1eba43d39201f7d5afdc69cbeb7cb55179cd8dae769fc8",
+      "collectorSha256": "5586fe9d89a94f54616bec022bdb810ac2c02553b3465ef0139afd4c884e3725",
+      "flags": [
+        "--remote-debugging-port=0",
+        "--user-data-dir=<fresh-profile>",
+        "--no-first-run",
+        "--no-default-browser-check",
+        "--disable-extensions",
+        "--disable-component-extensions-with-background-pages",
+        "about:blank"
+      ],
+      "errors": [],
+      "result": [
+        {
+          "id": "radio-dirty-lifecycle",
+          "result": {
+            "first": {
+              "alive": [
+                false,
+                true,
+                true,
+                true
+              ],
+              "selected": "b"
+            },
+            "afterRelease": {
+              "alive": [
+                false,
+                true,
+                true,
+                true
+              ],
+              "selected": "parent"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "browser": "Chrome/155.0.8059.80",
+      "v8": "15.5.35.23",
+      "casesSha256": "96345c459d1e1ba6acc95502476654ac4e55bb2cc1f693fdf9564fbebc89e74a",
+      "probeSha256": "ffb45802a93fa6119e1eba43d39201f7d5afdc69cbeb7cb55179cd8dae769fc8",
+      "collectorSha256": "5586fe9d89a94f54616bec022bdb810ac2c02553b3465ef0139afd4c884e3725",
+      "flags": [
+        "--remote-debugging-port=0",
+        "--user-data-dir=<fresh-profile>",
+        "--no-first-run",
+        "--no-default-browser-check",
+        "--disable-extensions",
+        "--disable-component-extensions-with-background-pages",
+        "about:blank"
+      ],
+      "errors": [],
+      "result": [
+        {
+          "id": "radio-dirty-lifecycle",
+          "result": {
+            "first": {
+              "alive": [
+                false,
+                true,
+                true,
+                true
+              ],
+              "selected": "b"
+            },
+            "afterRelease": {
+              "alive": [
+                false,
+                true,
+                true,
+                true
+              ],
+              "selected": "parent"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "browser": "Chrome/155.0.8059.80",
+      "v8": "15.5.35.23",
+      "casesSha256": "96345c459d1e1ba6acc95502476654ac4e55bb2cc1f693fdf9564fbebc89e74a",
+      "probeSha256": "ffb45802a93fa6119e1eba43d39201f7d5afdc69cbeb7cb55179cd8dae769fc8",
+      "collectorSha256": "5586fe9d89a94f54616bec022bdb810ac2c02553b3465ef0139afd4c884e3725",
+      "flags": [
+        "--remote-debugging-port=0",
+        "--user-data-dir=<fresh-profile>",
+        "--no-first-run",
+        "--no-default-browser-check",
+        "--disable-extensions",
+        "--disable-component-extensions-with-background-pages",
+        "about:blank"
+      ],
+      "errors": [],
+      "result": [
+        {
+          "id": "radio-dirty-lifecycle",
+          "result": {
+            "first": {
+              "alive": [
+                false,
+                true,
+                true,
+                true
+              ],
+              "selected": "b"
+            },
+            "afterRelease": {
+              "alive": [
+                false,
+                true,
+                true,
+                true
+              ],
+              "selected": "parent"
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "correctedImmediateRepeats": [
+    {
+      "browser": "Chrome/155.0.8059.80",
+      "v8": "15.5.35.23",
+      "casesSha256": "96345c459d1e1ba6acc95502476654ac4e55bb2cc1f693fdf9564fbebc89e74a",
+      "probeSha256": "2b9fb49334e85f8a5dce64aa68a58e240e56af03fd73efb25b7c7a0499c4cf42",
+      "collectorSha256": "5586fe9d89a94f54616bec022bdb810ac2c02553b3465ef0139afd4c884e3725",
+      "flags": [
+        "--remote-debugging-port=0",
+        "--user-data-dir=<fresh-profile>",
+        "--no-first-run",
+        "--no-default-browser-check",
+        "--disable-extensions",
+        "--disable-component-extensions-with-background-pages",
+        "about:blank"
+      ],
+      "errors": [],
+      "result": [
+        {
+          "id": "radio-dirty-lifecycle",
+          "result": {
+            "first": {
+              "alive": [
+                false,
+                true,
+                true,
+                true
+              ],
+              "selected": "b"
+            },
+            "afterRelease": {
+              "alive": [
+                false,
+                false,
+                false,
+                false
+              ],
+              "selected": "parent"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "browser": "Chrome/155.0.8059.80",
+      "v8": "15.5.35.23",
+      "casesSha256": "96345c459d1e1ba6acc95502476654ac4e55bb2cc1f693fdf9564fbebc89e74a",
+      "probeSha256": "2b9fb49334e85f8a5dce64aa68a58e240e56af03fd73efb25b7c7a0499c4cf42",
+      "collectorSha256": "5586fe9d89a94f54616bec022bdb810ac2c02553b3465ef0139afd4c884e3725",
+      "flags": [
+        "--remote-debugging-port=0",
+        "--user-data-dir=<fresh-profile>",
+        "--no-first-run",
+        "--no-default-browser-check",
+        "--disable-extensions",
+        "--disable-component-extensions-with-background-pages",
+        "about:blank"
+      ],
+      "errors": [],
+      "result": [
+        {
+          "id": "radio-dirty-lifecycle",
+          "result": {
+            "first": {
+              "alive": [
+                false,
+                true,
+                true,
+                true
+              ],
+              "selected": "b"
+            },
+            "afterRelease": {
+              "alive": [
+                false,
+                true,
+                true,
+                true
+              ],
+              "selected": "parent"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "browser": "Chrome/155.0.8059.80",
+      "v8": "15.5.35.23",
+      "casesSha256": "96345c459d1e1ba6acc95502476654ac4e55bb2cc1f693fdf9564fbebc89e74a",
+      "probeSha256": "2b9fb49334e85f8a5dce64aa68a58e240e56af03fd73efb25b7c7a0499c4cf42",
+      "collectorSha256": "5586fe9d89a94f54616bec022bdb810ac2c02553b3465ef0139afd4c884e3725",
+      "flags": [
+        "--remote-debugging-port=0",
+        "--user-data-dir=<fresh-profile>",
+        "--no-first-run",
+        "--no-default-browser-check",
+        "--disable-extensions",
+        "--disable-component-extensions-with-background-pages",
+        "about:blank"
+      ],
+      "errors": [],
+      "result": [
+        {
+          "id": "radio-dirty-lifecycle",
+          "result": {
+            "first": {
+              "alive": [
+                false,
+                true,
+                true,
+                true
+              ],
+              "selected": "b"
+            },
+            "afterRelease": {
+              "alive": [
+                false,
+                false,
+                false,
+                false
+              ],
+              "selected": "parent"
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "correctedSettledRepeats": [
+    {
+      "gcPolicy": {
+        "rounds": 3,
+        "settleMs": 50,
+        "taskExpression": "0"
+      },
+      "browser": "Chrome/155.0.8059.80",
+      "v8": "15.5.35.23",
+      "casesSha256": "96345c459d1e1ba6acc95502476654ac4e55bb2cc1f693fdf9564fbebc89e74a",
+      "probeSha256": "2b9fb49334e85f8a5dce64aa68a58e240e56af03fd73efb25b7c7a0499c4cf42",
+      "collectorSha256": "482cff90c2f975f1f01bad124fe4e0c086baf8b23ec4c3aa8bf0031a90a0458d",
+      "flags": [
+        "--remote-debugging-port=0",
+        "--user-data-dir=<fresh-profile>",
+        "--no-first-run",
+        "--no-default-browser-check",
+        "--disable-extensions",
+        "--disable-component-extensions-with-background-pages",
+        "about:blank"
+      ],
+      "errors": [],
+      "result": [
+        {
+          "id": "radio-dirty-lifecycle",
+          "result": {
+            "first": {
+              "alive": [
+                false,
+                true,
+                true,
+                true
+              ],
+              "selected": "b"
+            },
+            "afterRelease": {
+              "alive": [
+                false,
+                false,
+                false,
+                false
+              ],
+              "selected": "parent"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "gcPolicy": {
+        "rounds": 3,
+        "settleMs": 50,
+        "taskExpression": "0"
+      },
+      "browser": "Chrome/155.0.8059.80",
+      "v8": "15.5.35.23",
+      "casesSha256": "96345c459d1e1ba6acc95502476654ac4e55bb2cc1f693fdf9564fbebc89e74a",
+      "probeSha256": "2b9fb49334e85f8a5dce64aa68a58e240e56af03fd73efb25b7c7a0499c4cf42",
+      "collectorSha256": "482cff90c2f975f1f01bad124fe4e0c086baf8b23ec4c3aa8bf0031a90a0458d",
+      "flags": [
+        "--remote-debugging-port=0",
+        "--user-data-dir=<fresh-profile>",
+        "--no-first-run",
+        "--no-default-browser-check",
+        "--disable-extensions",
+        "--disable-component-extensions-with-background-pages",
+        "about:blank"
+      ],
+      "errors": [],
+      "result": [
+        {
+          "id": "radio-dirty-lifecycle",
+          "result": {
+            "first": {
+              "alive": [
+                false,
+                true,
+                true,
+                true
+              ],
+              "selected": "b"
+            },
+            "afterRelease": {
+              "alive": [
+                false,
+                false,
+                false,
+                false
+              ],
+              "selected": "parent"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "gcPolicy": {
+        "rounds": 3,
+        "settleMs": 50,
+        "taskExpression": "0"
+      },
+      "browser": "Chrome/155.0.8059.80",
+      "v8": "15.5.35.23",
+      "casesSha256": "96345c459d1e1ba6acc95502476654ac4e55bb2cc1f693fdf9564fbebc89e74a",
+      "probeSha256": "2b9fb49334e85f8a5dce64aa68a58e240e56af03fd73efb25b7c7a0499c4cf42",
+      "collectorSha256": "482cff90c2f975f1f01bad124fe4e0c086baf8b23ec4c3aa8bf0031a90a0458d",
+      "flags": [
+        "--remote-debugging-port=0",
+        "--user-data-dir=<fresh-profile>",
+        "--no-first-run",
+        "--no-default-browser-check",
+        "--disable-extensions",
+        "--disable-component-extensions-with-background-pages",
+        "about:blank"
+      ],
+      "errors": [],
+      "result": [
+        {
+          "id": "radio-dirty-lifecycle",
+          "result": {
+            "first": {
+              "alive": [
+                false,
+                true,
+                true,
+                true
+              ],
+              "selected": "b"
+            },
+            "afterRelease": {
+              "alive": [
+                false,
+                false,
+                false,
+                false
+              ],
+              "selected": "parent"
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "frameElementAccess": {
+    "browser": "Chrome/155.0.8059.80",
+    "v8": "15.5.35.23",
+    "casesSha256": "96345c459d1e1ba6acc95502476654ac4e55bb2cc1f693fdf9564fbebc89e74a",
+    "probeSha256": "70a81e4ef519125943ef1629cf2caa7a99d393803bbd7cb7c6d0336f6e3ec557",
+    "collectorSha256": "5586fe9d89a94f54616bec022bdb810ac2c02553b3465ef0139afd4c884e3725",
+    "flags": [
+      "--remote-debugging-port=0",
+      "--user-data-dir=<fresh-profile>",
+      "--no-first-run",
+      "--no-default-browser-check",
+      "--disable-extensions",
+      "--disable-component-extensions-with-background-pages",
+      "about:blank"
+    ],
+    "errors": [],
+    "result": [
+      {
+        "id": "radio-dirty-lifecycle",
+        "result": {
+          "first": {
+            "alive": [
+              true,
+              true,
+              true,
+              true
+            ],
+            "selected": "b",
+            "frameElementNull": true,
+            "frameElementMatches": false
+          },
+          "afterRelease": {
+            "alive": [
+              false,
+              true,
+              true,
+              true
+            ],
+            "selected": "parent",
+            "frameElementNull": true,
+            "frameElementMatches": false
+          }
+        }
+      }
+    ]
+  },
+  "diagnosticFrameAccessProbe": "(async () => {\n  let frame=document.createElement('iframe');document.body.append(frame);\n  await new Promise(done=>{frame.onload=done;frame.srcdoc='<form><input type=\"radio\" name=\"g\" checked value=\"a\"><input type=\"radio\" name=\"g\" value=\"b\"></form>';});\n  let child=frame.contentWindow,doc=frame.contentDocument,form=doc.querySelector('form'),radio=form.lastChild;\n  radio.checked=true;\n  const target=document.createElement('form');target.id='adopted-radio-form';target.innerHTML='<input type=\"radio\" name=\"g\" value=\"parent\">';document.body.append(target);\n  target.append(document.adoptNode(radio));\n  globalThis.__internalsLifetime={retained:radio,refs:[frame,child,doc,radio].map(value=>new WeakRef(value))};\n  globalThis.__readInternalsLifetime=()=>{\n    const alive=__internalsLifetime.refs.map(ref=>!!ref.deref());\n    const selected=document.querySelector('#adopted-radio-form').elements.namedItem('g').value;\n    if(__internalsLifetime.retained){__internalsLifetime.retained.remove();}\n    const window=__internalsLifetime.refs[1].deref();const frameElement=window?.frameElement;return {alive,selected,frameElementNull:frameElement===null,frameElementMatches:!!frameElement&&frameElement===__internalsLifetime.refs[0].deref()};\n  };\n  frame.remove();frame=null;child=null;doc=null;form=null;radio=null;return 'prepared';\n})();\n",
+  "nativeProof": {
+    "engineVersion": "15.5.35.23-rusty",
+    "archiveSha256": "1866b4e3ee649fb1209d0dfb6d7a2dac7f5b8a2033adfdd0e112a7c675de7a9f",
+    "probeSha256": "2b9fb49334e85f8a5dce64aa68a58e240e56af03fd73efb25b7c7a0499c4cf42",
+    "driverSha256": "4cfea01a130f9f064e59a97911aeb8b5bbca99549831b24ee0f44d4f75b24365",
+    "logSha256": "00c67de40595cc475da53e839323e6474e4d4d3dad058be972eac0fe47248dc9",
+    "gcPolicy": {
+      "rounds": 3,
+      "settleMs": 50,
+      "taskExpression": "0"
+    },
+    "retiredFrameElementNull": true,
+    "first": {
+      "alive": [
+        false,
+        true,
+        true,
+        true
+      ],
+      "selected": "b"
+    },
+    "afterRelease": {
+      "alive": [
+        false,
+        false,
+        false,
+        false
+      ],
+      "selected": "parent"
+    },
+    "passed": true,
+    "elapsedSeconds": 0.61
+  }
+}

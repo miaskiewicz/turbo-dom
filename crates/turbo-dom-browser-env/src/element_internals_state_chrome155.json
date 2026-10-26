@@ -1,0 +1,147 @@
+{
+  "browser": "Chrome/155.0.8059.80",
+  "v8": "15.5.35.23",
+  "casesSha256": "3242d047db23696e172dbcaabc3994d5967c627215f7886071f62de179c5fa63",
+  "probeSha256": "74ba4710bc999b7b4bf1bc239adff1d2303fbfed455b53133d4e244378e322ba",
+  "collectorSha256": "4e61b029135dacd18fdb68e4194fea875766edc7f203f7560bd3b826ad6aa0cb",
+  "flags": [
+    "--remote-debugging-port=0",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "about:blank"
+  ],
+  "errors": [],
+  "result": [
+    {
+      "result": {
+        "events": [
+          [
+            "form",
+            "owner"
+          ],
+          [
+            "disabled",
+            true
+          ],
+          [
+            "disabled",
+            false
+          ],
+          [
+            "form",
+            null
+          ]
+        ],
+        "matches": [
+          true,
+          true,
+          true,
+          false,
+          false,
+          false
+        ],
+        "before": [
+          [
+            99,
+            116,
+            111,
+            114
+          ],
+          [
+            114,
+            101,
+            97,
+            100,
+            121
+          ],
+          [
+            104,
+            97,
+            115,
+            32,
+            115,
+            112,
+            97,
+            99,
+            101
+          ],
+          [
+            97,
+            44,
+            98
+          ],
+          [
+            55296
+          ],
+          [
+            56320
+          ],
+          [
+            0
+          ]
+        ],
+        "clone": [
+          [
+            99,
+            116,
+            111,
+            114
+          ]
+        ],
+        "imported": null,
+        "adopted": [
+          true,
+          true,
+          [
+            [
+              99,
+              116,
+              111,
+              114
+            ],
+            [
+              114,
+              101,
+              97,
+              100,
+              121
+            ],
+            [
+              104,
+              97,
+              115,
+              32,
+              115,
+              112,
+              97,
+              99,
+              101
+            ],
+            [
+              97,
+              44,
+              98
+            ],
+            [
+              55296
+            ],
+            [
+              56320
+            ],
+            [
+              0
+            ]
+          ],
+          true,
+          0
+        ],
+        "removed": false,
+        "later": true,
+        "cleared": false
+      }
+    }
+  ]
+}
