@@ -556,6 +556,12 @@
    "compatMode": "BackCompat"
   },
   {
+   "id": "selectedcontent_clone",
+   "html": "<select><button><selectedcontent></selectedcontent></button><option>A</option><option selected>B</option></select>",
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     <select>\n|       <button>\n|         <selectedcontent>\n|           \"B\"\n|       <option>\n|         \"A\"\n|       <option>\n|         selected=\"\"\n|         \"B\"",
+   "compatMode": "BackCompat"
+  },
+  {
    "id": "script_end_tags",
    "html": "<script>a</script><script>b</script>c",
    "dump": "| <html>\n|   <head>\n|     <script>\n|       \"a\"\n|     <script>\n|       \"b\"\n|   <body>\n|     \"c\"",

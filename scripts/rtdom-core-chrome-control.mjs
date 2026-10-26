@@ -148,6 +148,7 @@ const DOCUMENTS = [
   { id: "form_association", html: "<form id=f><table><input name=a></table></form>" },
   { id: "foreign_attributes_prefixed", html: '<svg xlink:href="u" xml:lang="en"><a xlink:title="t"/></svg>' },
   { id: "meta_charset", html: '<meta charset="utf-8"><p>x</p>' },
+  { id: "selectedcontent_clone", html: "<select><button><selectedcontent></selectedcontent></button><option>A</option><option selected>B</option></select>" },
   { id: "script_end_tags", html: "<script>a</script><script>b</script>c" },
   // fragments (innerHTML in a scripting-disabled document)
   // miaskiewicz/turbo-dom#92: Chrome drops a literal U+0000 in an RCDATA-context
