@@ -359,6 +359,15 @@ const CASES = [
   { id: "float-shrink-max-width", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="float:left;max-width:20px"><div data-cid="d" style="width:30px;height:15px"></div></div>`) },
   { id: "float-shrink-min-width", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="float:left;min-width:50px"><div data-cid="d" style="width:30px;height:15px"></div></div>`) },
   { id: "float-shrink-available-minus-margins", html: DOC(S("body{margin:0}"), `<div style="width:60px;font-size:0"><div data-cid="c" style="float:left;margin:0 10px"><span style="display:inline-block;width:30px;height:15px"></span> <span style="display:inline-block;width:20px;height:15px"></span></div></div>`) },
+  // P5b-W7, miaskiewicz/turbo-dom#84: absolutely positioned and fixed children are out of
+  // flow and add nothing to their parent's intrinsic widths.
+  { id: "intrinsic-oof-absolute-child", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="float:left"><div style="position:absolute;width:100px;height:5px"></div><div data-cid="d" style="width:30px;height:15px"></div></div>`) },
+  { id: "intrinsic-oof-fixed-child", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="float:left"><div style="position:fixed;width:100px;height:5px"></div><div data-cid="d" style="width:30px;height:15px"></div></div>`) },
+  { id: "intrinsic-oof-only-child", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="float:left"><div style="position:absolute;width:100px;height:5px"></div></div>`) },
+  { id: "intrinsic-oof-table-cell", html: DOC(S("body{margin:0}"), `<table style="border-spacing:0"><tr><td data-cid="c" style="padding:0"><div style="position:absolute;width:100px;height:5px"></div><div data-cid="d" style="width:30px;height:15px"></div></td></tr></table>`) },
+  { id: "intrinsic-oof-min-content", html: DOC(S("body{margin:0}"), `<table style="border-spacing:0;width:1px"><tr><td data-cid="c" style="padding:0"><div style="position:absolute;width:100px;height:5px"></div><div data-cid="d" style="width:30px;height:15px"></div></td></tr></table>`) },
+  { id: "intrinsic-oof-inline-block", html: DOC(S("body{margin:0}"), `<div style="font-size:0"><div data-cid="c" style="display:inline-block"><div style="position:absolute;width:100px;height:5px"></div><div data-cid="d" style="width:30px;height:15px"></div></div></div>`) },
+  { id: "intrinsic-oof-row-flex", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="float:left"><div style="display:flex"><div style="position:absolute;width:100px;height:5px"></div><div data-cid="d" style="width:30px;height:15px"></div></div></div>`) },
 ];
 
 /** The RGB of a 1x1 PNG screenshot (any filter: a single pixel's filter adds 0). */
