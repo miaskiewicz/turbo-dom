@@ -38,7 +38,6 @@ const OPEN: &[&str] = &[
     "root",
     "malformed",
     "cascade-comma",
-    "disabled-fieldset",
 ];
 
 fn open(item: &str) -> bool {

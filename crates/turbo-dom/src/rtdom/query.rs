@@ -1304,6 +1304,43 @@ impl Tree {
         false
     }
 
+    /// `:disabled` / `:enabled` (HTML "actually disabled", as Chrome 156 evaluates it):
+    /// `None` for an element the pair does not apply to (anything but an HTML `button`,
+    /// `input`, `select`, `textarea`, `fieldset`, `optgroup` or `option`), else whether it
+    /// is disabled. A form control or fieldset is disabled by its own state or a disabled
+    /// `<fieldset>` ancestor outside that fieldset's first `<legend>`; an `optgroup` by its
+    /// own attribute; an `option` by its own state, a disabled parent `optgroup`, or a
+    /// disabled owner `select`.
+    fn disabled_state(&self, h: Handle) -> Option<bool> {
+        if !self.is_html(h) {
+            return None;
+        }
+        match self.local_name(h)? {
+            "button" | "input" | "select" | "textarea" | "fieldset" => {
+                Some(self.is_actually_disabled(h))
+            }
+            "optgroup" => Some(self.form_state(h, FormProp::Disabled, "disabled")),
+            "option" => {
+                if self.form_state(h, FormProp::Disabled, "disabled") {
+                    return Some(true);
+                }
+                let mut parent = self.parent(h);
+                if let Some(group) = parent.filter(|&p| self.is_html_named(p, &["optgroup"])) {
+                    if self.form_state(group, FormProp::Disabled, "disabled") {
+                        return Some(true);
+                    }
+                    parent = self.parent(group);
+                }
+                Some(
+                    parent
+                        .filter(|&p| self.is_html_named(p, &["select"]))
+                        .is_some_and(|select| self.is_actually_disabled(select)),
+                )
+            }
+            _ => None,
+        }
+    }
+
     /// Is `h` an editing host or editable content? The nearest HTML ancestor-or-self with
     /// a valid `contenteditable` state decides (`""`/`true`/`plaintext-only` = editable,
     /// `false` = not); invalid values inherit.
@@ -1497,15 +1534,8 @@ fn matches_pseudo<N: Navigator + ?Sized>(nav: &N, h: Handle, p: &Pseudo) -> bool
                     && tree.form_state(h, FormProp::Checked, "checked")
             }
         }
-        Pseudo::Disabled => tree.form_state(h, FormProp::Disabled, "disabled"),
-        Pseudo::Enabled => {
-            matches!(
-                tree.local_name(h),
-                Some(
-                    "input" | "button" | "select" | "textarea" | "optgroup" | "option" | "fieldset"
-                )
-            ) && !tree.form_state(h, FormProp::Disabled, "disabled")
-        }
+        Pseudo::Disabled => tree.disabled_state(h) == Some(true),
+        Pseudo::Enabled => tree.disabled_state(h) == Some(false),
         Pseudo::Required => tree.form_state(h, FormProp::Required, "required"),
         Pseudo::Optional => {
             matches!(tree.local_name(h), Some("input" | "select" | "textarea"))
@@ -2033,6 +2063,32 @@ mod tests {
         assert_eq!(tree.query_selector_all("input:required").len(), 1);
         // enabled: input/button that isn't disabled (the required input + the button)
         assert_eq!(tree.query_selector_all(":enabled").len(), 2);
+    }
+
+    /// turbo-dom#18 (P5b): `:disabled` follows HTML "actually disabled" like Chrome 156 —
+    /// a disabled fieldset ancestor (outside its first legend), live properties included,
+    /// and an option of a disabled select; elements outside the form set match neither.
+    #[test]
+    fn pseudo_disabled_follows_fieldsets_and_owner_selects() {
+        use super::super::tree::FormProp;
+        let mut tree = Tree::parse(
+            "<fieldset id=f><legend><input id=a></legend><input id=b></fieldset>\
+             <select id=s><optgroup id=g><option id=o>x</option></optgroup></select><div id=d disabled></div>",
+        );
+        let el = |tree: &Tree, id: &str| tree.get_element_by_id(id).unwrap();
+        assert!(!tree.matches(el(&tree, "b"), ":disabled"));
+        let f = el(&tree, "f");
+        tree.set_form_property(f, FormProp::Disabled, true);
+        assert!(tree.matches(el(&tree, "b"), ":disabled"));
+        assert!(tree.matches(el(&tree, "a"), ":enabled"), "inside the first legend");
+        assert!(tree.matches(f, ":disabled"));
+        let (s, o) = (el(&tree, "s"), el(&tree, "o"));
+        assert!(tree.matches(o, ":enabled"));
+        tree.set_form_property(s, FormProp::Disabled, true);
+        assert!(tree.matches(o, ":disabled"), "owner select through an optgroup");
+        assert!(!tree.matches(el(&tree, "g"), ":disabled"), "optgroup: own state only");
+        let d = el(&tree, "d");
+        assert!(!tree.matches(d, ":disabled") && !tree.matches(d, ":enabled"));
     }
 
     #[test]

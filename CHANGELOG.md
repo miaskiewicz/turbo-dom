@@ -16,6 +16,11 @@ outputs it changes in `tools/parity/expected/p5b-*.json`.
   declaration's index in its rule — a later rule of equal specificity now wins over an
   earlier rule with more declarations (`p{margin:0;color:red} p{color:green}` is green), and
   an `!important` user-agent declaration beats an `!important` author one.
+- `:disabled` / `:enabled` (miaskiewicz/turbo-dom#18): HTML "actually disabled" — a
+  control inside a disabled `<fieldset>` (outside its first `<legend>`) is disabled, an
+  `option` follows its `optgroup` and owner `select`, and only `button`, `input`,
+  `select`, `textarea`, `fieldset`, `optgroup` and `option` match either (`div[disabled]`
+  is neither).
 
 ## [0.6.0] — turbo-dom consolidation
 
