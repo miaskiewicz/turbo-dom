@@ -1,0 +1,305 @@
+//! Probe, control and case data of the binding's Chrome-parity tests, for
+//! embedders' integration tests (feature `test-support`).
+//!
+//! Each probe (`*_probe.js`) runs in a page; each control (`*_chrome15x.json`) is
+//! the result Chrome recorded for it; `*_cases.json` drive table tests. The files
+//! ship in this crate's package (under `src/`); these constants are the library
+//! way to reach them, so consumers never copy the files. Names are the file name
+//! upper-cased with `.` and `-` replaced by `_`; [`FILES`] maps every file name to
+//! its bytes.
+//!
+//! The set is what turbo-surf's integration tests use today; add a constant here
+//! (next to its file) when another consumer needs one.
+
+/// `src/abstract_ranges_chrome155.json`.
+pub const ABSTRACT_RANGES_CHROME155_JSON: &str = include_str!("abstract_ranges_chrome155.json");
+/// `src/abstract_ranges_frames_chrome155.json`.
+pub const ABSTRACT_RANGES_FRAMES_CHROME155_JSON: &str =
+    include_str!("abstract_ranges_frames_chrome155.json");
+/// `src/abstract_ranges_frames_probe.js`.
+pub const ABSTRACT_RANGES_FRAMES_PROBE_JS: &str = include_str!("abstract_ranges_frames_probe.js");
+/// `src/abstract_ranges_probe.js`.
+pub const ABSTRACT_RANGES_PROBE_JS: &str = include_str!("abstract_ranges_probe.js");
+/// `src/animations_frames_cases.json`.
+pub const ANIMATIONS_FRAMES_CASES_JSON: &[u8] = include_bytes!("animations_frames_cases.json");
+/// `src/animations_frames_chrome156.json`.
+pub const ANIMATIONS_FRAMES_CHROME156_JSON: &str = include_str!("animations_frames_chrome156.json");
+/// `src/animations_frames_probe.js`.
+pub const ANIMATIONS_FRAMES_PROBE_JS: &str = include_str!("animations_frames_probe.js");
+/// `src/control_labels_chrome155.json`.
+pub const CONTROL_LABELS_CHROME155_JSON: &str = include_str!("control_labels_chrome155.json");
+/// `src/control_labels_gc_chrome155.json`.
+pub const CONTROL_LABELS_GC_CHROME155_JSON: &str = include_str!("control_labels_gc_chrome155.json");
+/// `src/control_labels_gc_probe.js`.
+pub const CONTROL_LABELS_GC_PROBE_JS: &str = include_str!("control_labels_gc_probe.js");
+/// `src/control_labels_probe.js`.
+pub const CONTROL_LABELS_PROBE_JS: &str = include_str!("control_labels_probe.js");
+/// `src/control_labels_realm_chrome155.json`.
+pub const CONTROL_LABELS_REALM_CHROME155_JSON: &str =
+    include_str!("control_labels_realm_chrome155.json");
+/// `src/control_labels_realm_probe.js`.
+pub const CONTROL_LABELS_REALM_PROBE_JS: &str = include_str!("control_labels_realm_probe.js");
+/// `src/css_adoption_chrome155.json`.
+pub const CSS_ADOPTION_CHROME155_JSON: &str = include_str!("css_adoption_chrome155.json");
+/// `src/css_adoption_ownership_chrome155.json`.
+pub const CSS_ADOPTION_OWNERSHIP_CHROME155_JSON: &str =
+    include_str!("css_adoption_ownership_chrome155.json");
+/// `src/css_adoption_ownership_probe.js`.
+pub const CSS_ADOPTION_OWNERSHIP_PROBE_JS: &str = include_str!("css_adoption_ownership_probe.js");
+/// `src/css_adoption_probe.js`.
+pub const CSS_ADOPTION_PROBE_JS: &str = include_str!("css_adoption_probe.js");
+/// `src/custom_elements_realms_chrome155.json`.
+pub const CUSTOM_ELEMENTS_REALMS_CHROME155_JSON: &str =
+    include_str!("custom_elements_realms_chrome155.json");
+/// `src/custom_elements_realms_probe.js`.
+pub const CUSTOM_ELEMENTS_REALMS_PROBE_JS: &str = include_str!("custom_elements_realms_probe.js");
+/// `src/dom_implementation_chrome155.json`.
+pub const DOM_IMPLEMENTATION_CHROME155_JSON: &str =
+    include_str!("dom_implementation_chrome155.json");
+/// `src/dom_implementation_probe.js`.
+pub const DOM_IMPLEMENTATION_PROBE_JS: &str = include_str!("dom_implementation_probe.js");
+/// `src/file_inputs_cases.json`.
+pub const FILE_INPUTS_CASES_JSON: &str = include_str!("file_inputs_cases.json");
+/// `src/file_inputs_chrome156.json`.
+pub const FILE_INPUTS_CHROME156_JSON: &str = include_str!("file_inputs_chrome156.json");
+/// `src/file_inputs_probe.js`.
+pub const FILE_INPUTS_PROBE_JS: &str = include_str!("file_inputs_probe.js");
+/// `src/form_collections_cases.json`.
+pub const FORM_COLLECTIONS_CASES_JSON: &str = include_str!("form_collections_cases.json");
+/// `src/form_collections_lifecycle_chrome155.json`.
+pub const FORM_COLLECTIONS_LIFECYCLE_CHROME155_JSON: &str =
+    include_str!("form_collections_lifecycle_chrome155.json");
+/// `src/form_collections_lifecycle_probe.js`.
+pub const FORM_COLLECTIONS_LIFECYCLE_PROBE_JS: &str =
+    include_str!("form_collections_lifecycle_probe.js");
+/// `src/form_collections_realm_chrome155.json`.
+pub const FORM_COLLECTIONS_REALM_CHROME155_JSON: &str =
+    include_str!("form_collections_realm_chrome155.json");
+/// `src/form_collections_realm_probe.js`.
+pub const FORM_COLLECTIONS_REALM_PROBE_JS: &str = include_str!("form_collections_realm_probe.js");
+/// `src/formdata_event_chrome155.json`.
+pub const FORMDATA_EVENT_CHROME155_JSON: &str = include_str!("formdata_event_chrome155.json");
+/// `src/formdata_event_probe.js`.
+pub const FORMDATA_EVENT_PROBE_JS: &str = include_str!("formdata_event_probe.js");
+/// `src/formdata_guards_chrome155.json`.
+pub const FORMDATA_GUARDS_CHROME155_JSON: &str = include_str!("formdata_guards_chrome155.json");
+/// `src/formdata_guards_probe.js`.
+pub const FORMDATA_GUARDS_PROBE_JS: &str = include_str!("formdata_guards_probe.js");
+/// `src/key_order_chrome156.json`.
+pub const KEY_ORDER_CHROME156_JSON: &str = include_str!("key_order_chrome156.json");
+/// `src/key_order_probe.js`.
+pub const KEY_ORDER_PROBE_JS: &str = include_str!("key_order_probe.js");
+/// `src/radio_dirty_adoption_gc_chrome155.json`.
+pub const RADIO_DIRTY_ADOPTION_GC_CHROME155_JSON: &str =
+    include_str!("radio_dirty_adoption_gc_chrome155.json");
+/// `src/radio_dirty_adoption_gc_probe.js`.
+pub const RADIO_DIRTY_ADOPTION_GC_PROBE_JS: &str = include_str!("radio_dirty_adoption_gc_probe.js");
+/// `src/radio_dirty_cases.json`.
+pub const RADIO_DIRTY_CASES_JSON: &str = include_str!("radio_dirty_cases.json");
+/// `src/radio_dirty_gc_chrome155.json`.
+pub const RADIO_DIRTY_GC_CHROME155_JSON: &str = include_str!("radio_dirty_gc_chrome155.json");
+/// `src/radio_dirty_gc_probe.js`.
+pub const RADIO_DIRTY_GC_PROBE_JS: &str = include_str!("radio_dirty_gc_probe.js");
+/// `src/template_lifecycle_chrome155.json`.
+pub const TEMPLATE_LIFECYCLE_CHROME155_JSON: &str =
+    include_str!("template_lifecycle_chrome155.json");
+/// `src/template_lifecycle_probe.js`.
+pub const TEMPLATE_LIFECYCLE_PROBE_JS: &str = include_str!("template_lifecycle_probe.js");
+/// `src/template_ownership_chrome155.json`.
+pub const TEMPLATE_OWNERSHIP_CHROME155_JSON: &str =
+    include_str!("template_ownership_chrome155.json");
+/// `src/template_ownership_probe.js`.
+pub const TEMPLATE_OWNERSHIP_PROBE_JS: &str = include_str!("template_ownership_probe.js");
+/// `src/view_transitions_chrome156.json`.
+pub const VIEW_TRANSITIONS_CHROME156_JSON: &str = include_str!("view_transitions_chrome156.json");
+/// `src/view_transitions_hidden_probe.js`.
+pub const VIEW_TRANSITIONS_HIDDEN_PROBE_JS: &str = include_str!("view_transitions_hidden_probe.js");
+/// `src/view_transitions_probe.js`.
+pub const VIEW_TRANSITIONS_PROBE_JS: &str = include_str!("view_transitions_probe.js");
+/// `src/xml_factory_elements_chrome155.json`.
+pub const XML_FACTORY_ELEMENTS_CHROME155_JSON: &str =
+    include_str!("xml_factory_elements_chrome155.json");
+/// `src/xml_factory_elements_probe.js`.
+pub const XML_FACTORY_ELEMENTS_PROBE_JS: &str = include_str!("xml_factory_elements_probe.js");
+
+/// Every constant above, keyed by its file name under `src/`.
+pub const FILES: &[(&str, &[u8])] = &[
+    (
+        "abstract_ranges_chrome155.json",
+        ABSTRACT_RANGES_CHROME155_JSON.as_bytes(),
+    ),
+    (
+        "abstract_ranges_frames_chrome155.json",
+        ABSTRACT_RANGES_FRAMES_CHROME155_JSON.as_bytes(),
+    ),
+    (
+        "abstract_ranges_frames_probe.js",
+        ABSTRACT_RANGES_FRAMES_PROBE_JS.as_bytes(),
+    ),
+    (
+        "abstract_ranges_probe.js",
+        ABSTRACT_RANGES_PROBE_JS.as_bytes(),
+    ),
+    ("animations_frames_cases.json", ANIMATIONS_FRAMES_CASES_JSON),
+    (
+        "animations_frames_chrome156.json",
+        ANIMATIONS_FRAMES_CHROME156_JSON.as_bytes(),
+    ),
+    (
+        "animations_frames_probe.js",
+        ANIMATIONS_FRAMES_PROBE_JS.as_bytes(),
+    ),
+    (
+        "control_labels_chrome155.json",
+        CONTROL_LABELS_CHROME155_JSON.as_bytes(),
+    ),
+    (
+        "control_labels_gc_chrome155.json",
+        CONTROL_LABELS_GC_CHROME155_JSON.as_bytes(),
+    ),
+    (
+        "control_labels_gc_probe.js",
+        CONTROL_LABELS_GC_PROBE_JS.as_bytes(),
+    ),
+    (
+        "control_labels_probe.js",
+        CONTROL_LABELS_PROBE_JS.as_bytes(),
+    ),
+    (
+        "control_labels_realm_chrome155.json",
+        CONTROL_LABELS_REALM_CHROME155_JSON.as_bytes(),
+    ),
+    (
+        "control_labels_realm_probe.js",
+        CONTROL_LABELS_REALM_PROBE_JS.as_bytes(),
+    ),
+    (
+        "css_adoption_chrome155.json",
+        CSS_ADOPTION_CHROME155_JSON.as_bytes(),
+    ),
+    (
+        "css_adoption_ownership_chrome155.json",
+        CSS_ADOPTION_OWNERSHIP_CHROME155_JSON.as_bytes(),
+    ),
+    (
+        "css_adoption_ownership_probe.js",
+        CSS_ADOPTION_OWNERSHIP_PROBE_JS.as_bytes(),
+    ),
+    ("css_adoption_probe.js", CSS_ADOPTION_PROBE_JS.as_bytes()),
+    (
+        "custom_elements_realms_chrome155.json",
+        CUSTOM_ELEMENTS_REALMS_CHROME155_JSON.as_bytes(),
+    ),
+    (
+        "custom_elements_realms_probe.js",
+        CUSTOM_ELEMENTS_REALMS_PROBE_JS.as_bytes(),
+    ),
+    (
+        "dom_implementation_chrome155.json",
+        DOM_IMPLEMENTATION_CHROME155_JSON.as_bytes(),
+    ),
+    (
+        "dom_implementation_probe.js",
+        DOM_IMPLEMENTATION_PROBE_JS.as_bytes(),
+    ),
+    ("file_inputs_cases.json", FILE_INPUTS_CASES_JSON.as_bytes()),
+    (
+        "file_inputs_chrome156.json",
+        FILE_INPUTS_CHROME156_JSON.as_bytes(),
+    ),
+    ("file_inputs_probe.js", FILE_INPUTS_PROBE_JS.as_bytes()),
+    (
+        "form_collections_cases.json",
+        FORM_COLLECTIONS_CASES_JSON.as_bytes(),
+    ),
+    (
+        "form_collections_lifecycle_chrome155.json",
+        FORM_COLLECTIONS_LIFECYCLE_CHROME155_JSON.as_bytes(),
+    ),
+    (
+        "form_collections_lifecycle_probe.js",
+        FORM_COLLECTIONS_LIFECYCLE_PROBE_JS.as_bytes(),
+    ),
+    (
+        "form_collections_realm_chrome155.json",
+        FORM_COLLECTIONS_REALM_CHROME155_JSON.as_bytes(),
+    ),
+    (
+        "form_collections_realm_probe.js",
+        FORM_COLLECTIONS_REALM_PROBE_JS.as_bytes(),
+    ),
+    (
+        "formdata_event_chrome155.json",
+        FORMDATA_EVENT_CHROME155_JSON.as_bytes(),
+    ),
+    (
+        "formdata_event_probe.js",
+        FORMDATA_EVENT_PROBE_JS.as_bytes(),
+    ),
+    (
+        "formdata_guards_chrome155.json",
+        FORMDATA_GUARDS_CHROME155_JSON.as_bytes(),
+    ),
+    (
+        "formdata_guards_probe.js",
+        FORMDATA_GUARDS_PROBE_JS.as_bytes(),
+    ),
+    (
+        "key_order_chrome156.json",
+        KEY_ORDER_CHROME156_JSON.as_bytes(),
+    ),
+    ("key_order_probe.js", KEY_ORDER_PROBE_JS.as_bytes()),
+    (
+        "radio_dirty_adoption_gc_chrome155.json",
+        RADIO_DIRTY_ADOPTION_GC_CHROME155_JSON.as_bytes(),
+    ),
+    (
+        "radio_dirty_adoption_gc_probe.js",
+        RADIO_DIRTY_ADOPTION_GC_PROBE_JS.as_bytes(),
+    ),
+    ("radio_dirty_cases.json", RADIO_DIRTY_CASES_JSON.as_bytes()),
+    (
+        "radio_dirty_gc_chrome155.json",
+        RADIO_DIRTY_GC_CHROME155_JSON.as_bytes(),
+    ),
+    (
+        "radio_dirty_gc_probe.js",
+        RADIO_DIRTY_GC_PROBE_JS.as_bytes(),
+    ),
+    (
+        "template_lifecycle_chrome155.json",
+        TEMPLATE_LIFECYCLE_CHROME155_JSON.as_bytes(),
+    ),
+    (
+        "template_lifecycle_probe.js",
+        TEMPLATE_LIFECYCLE_PROBE_JS.as_bytes(),
+    ),
+    (
+        "template_ownership_chrome155.json",
+        TEMPLATE_OWNERSHIP_CHROME155_JSON.as_bytes(),
+    ),
+    (
+        "template_ownership_probe.js",
+        TEMPLATE_OWNERSHIP_PROBE_JS.as_bytes(),
+    ),
+    (
+        "view_transitions_chrome156.json",
+        VIEW_TRANSITIONS_CHROME156_JSON.as_bytes(),
+    ),
+    (
+        "view_transitions_hidden_probe.js",
+        VIEW_TRANSITIONS_HIDDEN_PROBE_JS.as_bytes(),
+    ),
+    (
+        "view_transitions_probe.js",
+        VIEW_TRANSITIONS_PROBE_JS.as_bytes(),
+    ),
+    (
+        "xml_factory_elements_chrome155.json",
+        XML_FACTORY_ELEMENTS_CHROME155_JSON.as_bytes(),
+    ),
+    (
+        "xml_factory_elements_probe.js",
+        XML_FACTORY_ELEMENTS_PROBE_JS.as_bytes(),
+    ),
+];

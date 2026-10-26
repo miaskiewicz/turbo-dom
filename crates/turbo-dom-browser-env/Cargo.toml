@@ -24,6 +24,23 @@ url = "2.5"
 # Public-suffix registry for document.domain's top-level-domain check (Blink
 # includes private registries such as github.io).
 psl = "2"
+# The CSS export JSON contract (css_snapshot).
+serde = { version = "1", features = ["derive"] }
+
+[features]
+# Doc-hidden host-only access to native documents for embedders (turbo-surf's
+# native layout and resource discovery). Never reachable from page JS.
+host-internals = []
+# Probe/control/case data constants for embedders' Chrome-parity tests.
+test-support = []
 
 [dev-dependencies]
 sha2 = "0.10"
+
+[[test]]
+name = "host_internals_api"
+required-features = ["host-internals"]
+
+[[test]]
+name = "test_support_api"
+required-features = ["test-support"]
