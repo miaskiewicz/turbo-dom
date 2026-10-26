@@ -369,6 +369,11 @@
    "dump": "| <html>\n|   <head>\n|   <body>\n|     \"&#xg;&#g;A\""
   },
   {
+   "id": "char_ref_numeric_limits",
+   "html": "&#x10FFFF;|&#x110000;|&#4294967393;|&#x100000061;|&#1114111;",
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     \"􏿿|�|�|�|􏿿\""
+  },
+  {
    "id": "declarative_shadow_root_not_attached",
    "html": "<div><template shadowrootmode=\"open\"><b>x</b></template></div>",
    "dump": "| <html>\n|   <head>\n|   <body>\n|     <div>\n|       <template>\n|         shadowrootmode=\"open\"\n|         content\n|           <b>\n|             \"x\""
@@ -2236,10 +2241,27 @@
    }
   },
   {
+   "id": "contextual_fragment_form",
+   "values": {
+    "insideForm": [
+     "b"
+    ],
+    "insideSvgForm": [
+     "form",
+     "b"
+    ],
+    "insideDiv": [
+     "form",
+     "b"
+    ]
+   }
+  },
+  {
    "id": "contextual_fragment_is",
    "values": {
     "isDefined": false,
-    "plainDefined": true
+    "plainDefined": true,
+    "svgIsDefined": true
    }
   }
  ]

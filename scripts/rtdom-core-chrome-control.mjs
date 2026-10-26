@@ -127,6 +127,7 @@ const DOCUMENTS = [
   { id: "char_ref_numeric_no_semicolon", html: "x&#65y&#x42 z" },
   { id: "char_ref_numeric_invalid", html: "&#0;&#xD800;&#x110000;&#x80;&#x81;&#1;&#xFFFE;&#99999999999;" },
   { id: "char_ref_hex_no_digits", html: "&#xg;&#g;&#X41;" },
+  { id: "char_ref_numeric_limits", html: "&#x10FFFF;|&#x110000;|&#4294967393;|&#x100000061;|&#1114111;" },
   // tree builder hooks the UTF-16 path delegates to upstream
   { id: "declarative_shadow_root_not_attached", html: '<div><template shadowrootmode="open"><b>x</b></template></div>' },
   { id: "annotation_xml_integration_point", html: '<math><annotation-xml encoding="text/html"><div>x</div></annotation-xml></math>' },
@@ -752,14 +753,35 @@ const PROBES = [
     },
   },
   {
+    // the fragment parser's form pointer is the context's nearest HTML form ancestor
+    id: "contextual_fragment_form",
+    script: (doc) => {
+      const range = doc.createRange();
+      const fragmentIn = (container) => {
+        const context = doc.createElement("div");
+        container.append(context);
+        doc.body.append(container);
+        range.selectNodeContents(context);
+        const fragment = range.createContextualFragment("<form id=inner></form><b></b>");
+        return [...fragment.childNodes].map((n) => n.localName);
+      };
+      return {
+        insideForm: fragmentIn(doc.createElement("form")),
+        insideSvgForm: fragmentIn(doc.createElementNS("http://www.w3.org/2000/svg", "form")),
+        insideDiv: fragmentIn(doc.createElement("div")),
+      };
+    },
+  },
+  {
     id: "contextual_fragment_is",
     script: (doc) => {
       const range = doc.createRange();
       range.selectNodeContents(doc.body);
-      const fragment = range.createContextualFragment('<div is="x-y"></div><p></p>');
+      const fragment = range.createContextualFragment('<div is="x-y"></div><p></p><svg is="x-y"></svg>');
       return {
         isDefined: fragment.firstChild.matches(":defined"),
-        plainDefined: fragment.lastChild.matches(":defined"),
+        plainDefined: fragment.childNodes[1].matches(":defined"),
+        svgIsDefined: fragment.lastChild.matches(":defined"),
       };
     },
   },

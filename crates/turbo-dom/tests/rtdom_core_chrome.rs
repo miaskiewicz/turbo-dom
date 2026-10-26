@@ -496,12 +496,15 @@ fn remove_attribute_matches_chrome() {
 fn contextual_fragment_reads_is_at_creation_like_chrome() {
     let mut tree = Tree::parse("<body></body>");
     let body = tree.query_selector("body").unwrap();
-    let units: Vec<u16> = "<div is=\"x-y\"></div><p></p>".encode_utf16().collect();
+    let units: Vec<u16> = "<div is=\"x-y\"></div><p></p><svg is=\"x-y\"></svg>"
+        .encode_utf16()
+        .collect();
     let fragment = tree.create_contextual_fragment_utf16(body, &units, true);
     let children = tree.children(fragment);
     let got = json!({
         "isDefined": tree.matches(children[0], ":defined"),
         "plainDefined": tree.matches(children[1], ":defined"),
+        "svgIsDefined": tree.matches(children[2], ":defined"),
     });
     assert_eq!(got, probe(&fixture(), "contextual_fragment_is"));
 }
@@ -609,4 +612,30 @@ fn lone_unit_attribute_values_match_like_chrome() {
         "presence": m("[title]"),
     });
     assert_eq!(got, probe(&fixture(), "lone_unit_attributes"));
+}
+
+#[test]
+fn contextual_fragments_use_the_nearest_html_form_ancestor_like_chrome() {
+    let mut tree = Tree::parse("<body></body>");
+    let body = tree.query_selector("body").unwrap();
+    let units: Vec<u16> = "<form id=inner></form><b></b>".encode_utf16().collect();
+    let fragment_in = |tree: &mut Tree, container: Handle| -> Vec<String> {
+        let context = tree.create_element("div");
+        tree.append_child(container, context);
+        tree.append_child(body, container);
+        let fragment = tree.create_contextual_fragment_utf16(context, &units, false);
+        tree.children(fragment)
+            .iter()
+            .map(|&c| tree.local_name(c).unwrap().to_string())
+            .collect()
+    };
+    let form = tree.create_element("form");
+    let svg_form = tree.create_element_ns("form", Namespace::Svg);
+    let div = tree.create_element("div");
+    let got = json!({
+        "insideForm": fragment_in(&mut tree, form),
+        "insideSvgForm": fragment_in(&mut tree, svg_form),
+        "insideDiv": fragment_in(&mut tree, div),
+    });
+    assert_eq!(got, probe(&fixture(), "contextual_fragment_form"));
 }
