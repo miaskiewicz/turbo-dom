@@ -24,8 +24,33 @@ const FIXTURE: &str = include_str!("fixtures/rtdom_core_chrome156.json");
 /// assertions until the fixing commit removes them here. (turbo-dom#92, RCDATA-context
 /// fragments dropping U+0000, is fixed.)
 const OPEN_DOCUMENTS: &[&str] = &[];
-/// (turbo-dom#91 and #96 are fixed.)
-const OPEN_SELECTORS: &[&str] = &[];
+/// - miaskiewicz/turbo-dom#98: An+B limits, trailing combinators in nested lists, an
+///   escape at the end. (turbo-dom#91 and #96 are fixed.)
+const OPEN_SELECTORS: &[&str] = &[
+    ":is(p >, span)",
+    ":not(p >)",
+    ":nth-child(-1073741825n+1)",
+    ":nth-child(-2147483647n+1)",
+    ":nth-child(-2147483648n+1)",
+    ":nth-child(-2147483649n+1)",
+    ":nth-child(-99999999999999999999n+1)",
+    ":nth-child(-99999999999999999999n+3)",
+    ":nth-child(-n-2147483649)",
+    ":nth-child(-n-99999999999999999999)",
+    ":nth-child(1 of !)",
+    ":nth-child(1073741824n+1 of i)",
+    ":nth-child(1073741824n+1)",
+    ":nth-child(2147483647n+1)",
+    ":nth-child(99999999999999999999n+1)",
+    ":nth-child(99999999999999999999n-99999999999999999998)",
+    ":nth-child(n -2147483649)",
+    ":nth-child(n+99999999999999999999)",
+    ":nth-child(n- 2147483649)",
+    ":nth-child(n-2147483648)",
+    ":nth-child(n-2147483649)",
+    ":nth-of-type(1073741824n+1)",
+    "[id=x\\",
+];
 
 fn fixture() -> Value {
     let fixture: Value = serde_json::from_str(FIXTURE).unwrap();
@@ -584,4 +609,29 @@ fn scope_is_the_scoping_element_like_chrome() {
         "closest": closest,
     });
     assert_eq!(got, want);
+}
+
+#[test]
+fn lone_unit_attribute_values_match_like_chrome() {
+    let mut tree = Tree::parse("");
+    let el = tree.create_element("div");
+    let units = |s: &str| s.encode_utf16().collect::<Vec<u16>>();
+    tree.set_attribute_units(el, &units("class"), &[0x62, 0x20, 0xd800]);
+    tree.set_attribute_units(el, &units("lang"), &[0x65, 0x6e, 0x2d, 0xdc00]);
+    tree.set_attribute_units(el, &units("title"), &[0x78, 0xd800, 0x79]);
+    let m = |s: &str| tree.matches(el, s);
+    let got = json!({
+        "includes": m("[class~=b]"),
+        "includesReplacement": m("[class~=\"\u{fffd}\"]"),
+        "className": m(".b"),
+        "classReplacement": m(".\u{fffd}"),
+        "dash": m("[lang|=en]"),
+        "substr": m("[title*=x]"),
+        "substrReplacement": m("[title*=\"\u{fffd}\"]"),
+        "equalsReplacement": m("[title=\"x\u{fffd}y\"]"),
+        "prefix": m("[title^=x]"),
+        "suffix": m("[title$=y]"),
+        "presence": m("[title]"),
+    });
+    assert_eq!(got, probe(&fixture(), "lone_unit_attributes"));
 }

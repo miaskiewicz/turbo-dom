@@ -371,6 +371,76 @@ const SELECTORS = [
     ],
   },
   {
+    // P5-cov: strict-lexer, An+B, unforgiving-list and UTF-16 parser edges
+    id: "parser_edges",
+    html: "<div><p id=x title=ab></p><span></span><p></p></div>",
+    selectors: [
+      "p:state",
+      ":state",
+      ":nth-child(foo of p)",
+      ":nth-child(99999999999999999999)",
+      ":nth-child(-99999999999999999999n+1)",
+      ":not(p >)",
+      ":is(p >, span)",
+      ":not(!)",
+      ":nth-child(1 of !)",
+      ":has(!)",
+      ":not(\\70, )",
+      ":nth-child(1 of \\70,)",
+      ":has(+ \\73pan)",
+      ":has(~ \\70)",
+      ":has(> \\70)",
+      ":state(a\\\nb)",
+      ":state(\\61\r\n)",
+      ":state(\\61 )",
+      ":state(\\)",
+      "[title=\"a\\62",
+      "[id=x\\",
+      "#x\\",
+    ],
+  },
+  {
+    // P5-cov: An+B integers clamp to 32 bits, a "-digits" glued to `n` must fit, and an
+    // A or B outside 31 bits never matches (Chrome 156)
+    id: "anb_limits",
+    html: "<div><i></i><i></i><i></i><i></i><i></i></div>",
+    selectors: [
+      ":nth-child(-2147483648n+1)",
+      ":nth-child(-2147483649n+1)",
+      ":nth-child(-2147483647n+1)",
+      ":nth-child(2147483648)",
+      ":nth-child(2147483647)",
+      ":nth-child(-99999999999999999999n+3)",
+      ":nth-child(99999999999999999999n+1)",
+      ":nth-child(n+99999999999999999999)",
+      ":nth-child(-n+99999999999999999999)",
+      ":nth-child(-n-99999999999999999999)",
+      ":nth-child(2147483647n+1)",
+      ":nth-child(-2147483648)",
+      ":nth-child(99999999999999999999n-99999999999999999998)",
+      ":nth-child(-1000000n+1)",
+      ":nth-child(1000000n+1)",
+      ":nth-child(-n+1000000000)",
+      ":nth-child(1073741823n+1)",
+      ":nth-child(1073741824n+1)",
+      ":nth-child(-1073741824n+1)",
+      ":nth-child(-1073741825n+1)",
+      ":nth-child(n+1073741823)",
+      ":nth-child(n+1073741824)",
+      ":nth-child(-n+1073741823)",
+      ":nth-child(-n-2147483648)",
+      ":nth-child(-n-2147483649)",
+      ":nth-child(n-2147483648)",
+      ":nth-child(n-2147483649)",
+      ":nth-child(n- 2147483649)",
+      ":nth-child(n -2147483649)",
+      ":nth-child(2n-0000000000000000000001)",
+      ":nth-of-type(1073741824n+1)",
+      ":nth-last-child(-n+99999999999999999999)",
+      ":nth-child(1073741824n+1 of i)",
+    ],
+  },
+  {
     id: "pseudo_edge_cases",
     html: "<div><p id=x></p><p></p></div>",
     selectors: [
@@ -621,6 +691,31 @@ const PROBES = [
           id(s.closest("div :scope")),
           id(s.closest(":not(:scope)")),
         ],
+      };
+    },
+  },
+  {
+    // attribute values holding lone surrogates: string selectors match their scalar
+    // (U+FFFD) reading only where the original units agree
+    id: "lone_unit_attributes",
+    script: (doc) => {
+      const el = doc.createElement("div");
+      el.setAttribute("class", "b \uD800");
+      el.setAttribute("lang", "en-\uDC00");
+      el.setAttribute("title", "x\uD800y");
+      const m = (s) => el.matches(s);
+      return {
+        includes: m("[class~=b]"),
+        includesReplacement: m('[class~="\uFFFD"]'),
+        className: m(".b"),
+        classReplacement: m(".\uFFFD"),
+        dash: m("[lang|=en]"),
+        substr: m("[title*=x]"),
+        substrReplacement: m('[title*="\uFFFD"]'),
+        equalsReplacement: m('[title="x\uFFFDy"]'),
+        prefix: m("[title^=x]"),
+        suffix: m("[title$=y]"),
+        presence: m("[title]"),
       };
     },
   },

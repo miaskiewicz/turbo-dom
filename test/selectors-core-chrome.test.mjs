@@ -17,7 +17,30 @@ const fixture = JSON.parse(
 );
 
 // Recorded Chrome answers the JS engine does not give yet (each with its issue).
-const OPEN = new Set([]);
+const OPEN = new Set([
+  // miaskiewicz/turbo-dom#98
+  ":nth-child(-1073741825n+1)",
+  ":nth-child(-2147483647n+1)",
+  ":nth-child(-2147483648n+1)",
+  ":nth-child(-2147483649n+1)",
+  ":nth-child(-99999999999999999999n+1)",
+  ":nth-child(-99999999999999999999n+3)",
+  ":nth-child(-n+99999999999999999999)",
+  ":nth-child(-n-2147483649)",
+  ":nth-child(-n-99999999999999999999)",
+  ":nth-child(1073741824n+1 of i)",
+  ":nth-child(1073741824n+1)",
+  ":nth-child(2147483647n+1)",
+  ":nth-child(99999999999999999999n+1)",
+  ":nth-child(99999999999999999999n-99999999999999999998)",
+  ":nth-child(n -2147483649)",
+  ":nth-child(n- 2147483649)",
+  ":nth-child(n-2147483648)",
+  ":nth-child(n-2147483649)",
+  ":nth-last-child(-n+99999999999999999999)",
+  ":nth-of-type(1073741824n+1)",
+  "[id=x\\",
+]);
 
 function elements(document) {
   const out = [];

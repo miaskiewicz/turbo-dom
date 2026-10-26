@@ -1531,6 +1531,313 @@
    ]
   },
   {
+   "id": "parser_edges",
+   "html": "<div><p id=x title=ab></p><span></span><p></p></div>",
+   "elements": [
+    "html",
+    "head",
+    "body",
+    "div",
+    "p",
+    "span",
+    "p"
+   ],
+   "selectors": [
+    {
+     "selector": "p:state",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": ":state",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": ":nth-child(foo of p)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": ":nth-child(99999999999999999999)",
+     "valid": true,
+     "matches": "0000000"
+    },
+    {
+     "selector": ":nth-child(-99999999999999999999n+1)",
+     "valid": true,
+     "matches": "0000000"
+    },
+    {
+     "selector": ":not(p >)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": ":is(p >, span)",
+     "valid": true,
+     "matches": "0000010"
+    },
+    {
+     "selector": ":not(!)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": ":nth-child(1 of !)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": ":has(!)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": ":not(\\70, )",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": ":nth-child(1 of \\70,)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": ":has(+ \\73pan)",
+     "valid": true,
+     "matches": "0000100"
+    },
+    {
+     "selector": ":has(~ \\70)",
+     "valid": true,
+     "matches": "0000110"
+    },
+    {
+     "selector": ":has(> \\70)",
+     "valid": true,
+     "matches": "0001000"
+    },
+    {
+     "selector": ":state(a\\\nb)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": ":state(\\61\r\n)",
+     "valid": true,
+     "matches": "0000000"
+    },
+    {
+     "selector": ":state(\\61 )",
+     "valid": true,
+     "matches": "0000000"
+    },
+    {
+     "selector": ":state(\\)",
+     "valid": true,
+     "matches": "0000000"
+    },
+    {
+     "selector": "[title=\"a\\62",
+     "valid": true,
+     "matches": "0000100"
+    },
+    {
+     "selector": "[id=x\\",
+     "valid": true,
+     "matches": "0000000"
+    },
+    {
+     "selector": "#x\\",
+     "valid": true,
+     "matches": "0000000"
+    }
+   ]
+  },
+  {
+   "id": "anb_limits",
+   "html": "<div><i></i><i></i><i></i><i></i><i></i></div>",
+   "elements": [
+    "html",
+    "head",
+    "body",
+    "div",
+    "i",
+    "i",
+    "i",
+    "i",
+    "i"
+   ],
+   "selectors": [
+    {
+     "selector": ":nth-child(-2147483648n+1)",
+     "valid": true,
+     "matches": "000000000"
+    },
+    {
+     "selector": ":nth-child(-2147483649n+1)",
+     "valid": true,
+     "matches": "000000000"
+    },
+    {
+     "selector": ":nth-child(-2147483647n+1)",
+     "valid": true,
+     "matches": "000000000"
+    },
+    {
+     "selector": ":nth-child(2147483648)",
+     "valid": true,
+     "matches": "000000000"
+    },
+    {
+     "selector": ":nth-child(2147483647)",
+     "valid": true,
+     "matches": "000000000"
+    },
+    {
+     "selector": ":nth-child(-99999999999999999999n+3)",
+     "valid": true,
+     "matches": "000000000"
+    },
+    {
+     "selector": ":nth-child(99999999999999999999n+1)",
+     "valid": true,
+     "matches": "000000000"
+    },
+    {
+     "selector": ":nth-child(n+99999999999999999999)",
+     "valid": true,
+     "matches": "000000000"
+    },
+    {
+     "selector": ":nth-child(-n+99999999999999999999)",
+     "valid": true,
+     "matches": "000000000"
+    },
+    {
+     "selector": ":nth-child(-n-99999999999999999999)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": ":nth-child(2147483647n+1)",
+     "valid": true,
+     "matches": "000000000"
+    },
+    {
+     "selector": ":nth-child(-2147483648)",
+     "valid": true,
+     "matches": "000000000"
+    },
+    {
+     "selector": ":nth-child(99999999999999999999n-99999999999999999998)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": ":nth-child(-1000000n+1)",
+     "valid": true,
+     "matches": "110110000"
+    },
+    {
+     "selector": ":nth-child(1000000n+1)",
+     "valid": true,
+     "matches": "110110000"
+    },
+    {
+     "selector": ":nth-child(-n+1000000000)",
+     "valid": true,
+     "matches": "111111111"
+    },
+    {
+     "selector": ":nth-child(1073741823n+1)",
+     "valid": true,
+     "matches": "110110000"
+    },
+    {
+     "selector": ":nth-child(1073741824n+1)",
+     "valid": true,
+     "matches": "000000000"
+    },
+    {
+     "selector": ":nth-child(-1073741824n+1)",
+     "valid": true,
+     "matches": "110110000"
+    },
+    {
+     "selector": ":nth-child(-1073741825n+1)",
+     "valid": true,
+     "matches": "000000000"
+    },
+    {
+     "selector": ":nth-child(n+1073741823)",
+     "valid": true,
+     "matches": "000000000"
+    },
+    {
+     "selector": ":nth-child(n+1073741824)",
+     "valid": true,
+     "matches": "000000000"
+    },
+    {
+     "selector": ":nth-child(-n+1073741823)",
+     "valid": true,
+     "matches": "111111111"
+    },
+    {
+     "selector": ":nth-child(-n-2147483648)",
+     "valid": true,
+     "matches": "000000000"
+    },
+    {
+     "selector": ":nth-child(-n-2147483649)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": ":nth-child(n-2147483648)",
+     "valid": true,
+     "matches": "000000000"
+    },
+    {
+     "selector": ":nth-child(n-2147483649)",
+     "valid": false,
+     "matches": ""
+    },
+    {
+     "selector": ":nth-child(n- 2147483649)",
+     "valid": true,
+     "matches": "000000000"
+    },
+    {
+     "selector": ":nth-child(n -2147483649)",
+     "valid": true,
+     "matches": "000000000"
+    },
+    {
+     "selector": ":nth-child(2n-0000000000000000000001)",
+     "valid": true,
+     "matches": "110110101"
+    },
+    {
+     "selector": ":nth-of-type(1073741824n+1)",
+     "valid": true,
+     "matches": "000000000"
+    },
+    {
+     "selector": ":nth-last-child(-n+99999999999999999999)",
+     "valid": true,
+     "matches": "000000000"
+    },
+    {
+     "selector": ":nth-child(1073741824n+1 of i)",
+     "valid": true,
+     "matches": "000000000"
+    }
+   ]
+  },
+  {
    "id": "pseudo_edge_cases",
    "html": "<div><p id=x></p><p></p></div>",
    "elements": [
@@ -1775,6 +2082,22 @@
      "s",
      "p"
     ]
+   }
+  },
+  {
+   "id": "lone_unit_attributes",
+   "values": {
+    "includes": true,
+    "includesReplacement": false,
+    "className": true,
+    "classReplacement": false,
+    "dash": true,
+    "substr": true,
+    "substrReplacement": false,
+    "equalsReplacement": false,
+    "prefix": true,
+    "suffix": true,
+    "presence": true
    }
   },
   {
