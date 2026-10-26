@@ -9909,6 +9909,9 @@ mod svg_mathml_element_tests;
 #[cfg(test)]
 #[path = "css_shorthand_tests.rs"]
 mod css_shorthand_tests;
+#[cfg(test)]
+#[path = "css_longhand_tests.rs"]
+mod css_longhand_tests;
 
 #[cfg(test)]
 #[path = "css_live_tests.rs"]
