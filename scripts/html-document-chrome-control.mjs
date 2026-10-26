@@ -9,7 +9,7 @@
 // cases of the bugs found while fixing it (one group per issue, labelled). P5b-W6 adds the
 // `min-height` / `max-height` cases of miaskiewicz/turbo-dom#75 item 1
 // (`min-height-margin-*`), zero-area `clip: rect()` boxes of item 2 (`clip-zero-area-*`,
-// `clip-sr-only*`) and cases of the bugs found while fixing them (#77).
+// `clip-sr-only*`) and cases of the bugs found while fixing them (#77, #78).
 //
 // For every case below, Chrome for Testing 156 (viewport 1280x800) records:
 //   - `boxes`: getBoundingClientRect() of every `[data-cid]` element (document order), as
@@ -348,6 +348,15 @@ const CASES = [
   { id: "min-max-height-min-wins-over-height", html: DOC(S("body{margin:0}"), `<div data-cid="w" style="height:50px;min-height:100px"><div data-cid="k" style="height:200px"></div></div><div data-cid="g" style="height:60px"></div>`) },
   { id: "min-max-height-all-three", html: DOC(S("body{margin:0}"), `<div data-cid="w" style="height:300px;max-height:100px;min-height:200px"><div data-cid="k" style="height:200px"></div></div><div data-cid="g" style="height:60px"></div>`) },
   { id: "min-max-height-border-box", html: DOC(S("body{margin:0}"), `<div data-cid="w" style="box-sizing:border-box;padding:10px;min-height:150px;max-height:100px"><div data-cid="k" style="height:200px"></div></div><div data-cid="g" style="height:60px"></div>`) },
+  // P5b-W6, miaskiewicz/turbo-dom#78: a percentage `height` / `min-height` / `max-height` resolves
+  // against a definite containing-block height (against an indefinite one: `auto` / 0 / `none`).
+  { id: "percent-min-height-definite", html: DOC(S("body{margin:0}"), `<div style="height:600px"><div data-cid="w" style="min-height:50%"><div data-cid="k" style="height:200px"></div></div><div data-cid="g" style="height:60px"></div></div>`) },
+  { id: "percent-max-height-definite", html: DOC(S("body{margin:0}"), `<div style="height:600px"><div data-cid="w" style="max-height:25%"><div data-cid="k" style="height:200px"></div></div><div data-cid="g" style="height:60px"></div></div>`) },
+  { id: "percent-height-definite", html: DOC(S("body{margin:0}"), `<div style="height:600px"><div data-cid="w" style="height:50%"><div data-cid="k" style="height:200px"></div></div><div data-cid="g" style="height:60px"></div></div>`) },
+  { id: "percent-height-chain-definite", html: DOC(S("body{margin:0}"), `<div style="height:600px"><div data-cid="w" style="height:50%"><div data-cid="v" style="height:50%"></div></div><div data-cid="g" style="height:60px"></div></div>`) },
+  { id: "percent-height-border-box-definite", html: DOC(S("body{margin:0}"), `<div style="height:600px"><div data-cid="w" style="box-sizing:border-box;padding:10px;height:50%"><div data-cid="k" style="height:200px"></div></div><div data-cid="g" style="height:60px"></div></div>`) },
+  { id: "percent-height-auto-parent-indefinite", html: DOC(S("body{margin:0}"), `<div><div data-cid="w" style="height:50%"><div data-cid="k" style="height:200px"></div></div><div data-cid="g" style="height:60px"></div></div>`) },
+  { id: "percent-min-height-auto-parent-indefinite", html: DOC(S("body{margin:0}"), `<div><div data-cid="w" style="min-height:50%;max-height:10%"><div data-cid="k" style="height:200px"></div></div><div data-cid="g" style="height:60px"></div></div>`) },
 ];
 
 /** The RGB of a 1x1 PNG screenshot (any filter: a single pixel's filter adds 0). */

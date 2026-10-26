@@ -103,7 +103,7 @@ fn inline_flex_grid_case(id: &str) -> bool {
 /// The control cases of an open bug, each asserted by its own test (`#[ignore]`d until
 /// its fix lands) and held out of [`html_documents_lay_out_as_chrome_156`].
 fn held_out(id: &str) -> bool {
-    let groups: [fn(&str) -> bool; 18] = [
+    let groups: [fn(&str) -> bool; 19] = [
         auto_table_case,
         inline_flex_grid_case,
         abs_auto_width_case,
@@ -122,6 +122,7 @@ fn held_out(id: &str) -> bool {
         min_height_margin_case,
         zero_area_clip_case,
         min_max_height_case,
+        percent_height_case,
     ];
     groups.iter().any(|group| group(id))
 }
@@ -288,6 +289,18 @@ fn min_max_height_case(id: &str) -> bool {
 #[test]
 fn min_height_wins_over_max_height_like_chrome_156() {
     compare_cases(min_max_height_case);
+}
+
+/// miaskiewicz/turbo-dom#78: percentage `height` / `min-height` / `max-height` against a
+/// definite containing-block height.
+fn percent_height_case(id: &str) -> bool {
+    id.starts_with("percent-") && id.ends_with("definite")
+}
+
+#[test]
+#[ignore = "turbo-dom#78: fails until the fix"]
+fn percentage_heights_resolve_against_a_definite_parent_like_chrome_156() {
+    compare_cases(percent_height_case);
 }
 
 /// miaskiewicz/turbo-dom#69: only legacy `-webkit-*` alignment moves block children.
