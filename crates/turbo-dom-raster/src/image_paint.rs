@@ -336,7 +336,8 @@ fn data_uri_url_tokens(s: &str) -> Vec<String> {
         if name.starts_with("data:") {
             out.push(name.to_string());
         }
-        i = (i + rel + "url(".len()).max(j);
+        // `j` started at the token and only moved forward.
+        i = j;
     }
     out
 }
@@ -565,12 +566,13 @@ impl DecodedImage {
     /// Resize into a `w × h` premultiplied pixmap ready to `draw_pixmap` into the
     /// fragment box. `None` on a degenerate target size.
     pub fn scaled_pixmap(&self, w: u32, h: u32) -> Option<Pixmap> {
-        if w == 0 || h == 0 || self.width == 0 || self.height == 0 {
+        // `None` for a zero-size target.
+        let mut pm = Pixmap::new(w, h)?;
+        if self.width == 0 || self.height == 0 {
             return None;
         }
         let src = image::RgbaImage::from_raw(self.width, self.height, self.rgba.clone())?;
         let scaled = image::imageops::resize(&src, w, h, image::imageops::FilterType::Triangle);
-        let mut pm = Pixmap::new(w, h)?;
         for (src, dst) in scaled.pixels().zip(pm.pixels_mut()) {
             let [r, g, b, a] = src.0;
             // premul(c,a) ≤ a always, so the premultiplied invariant holds.
@@ -802,6 +804,132 @@ mod tests {
     const SQUARE: &str = r#"<svg xmlns="http://www.w3.org/2000/svg" width="3" height="2"/>"#;
 
     #[test]
+    fn url_tokens_read_unquoted_quoted_escaped_and_cut_off_values() {
+        let toks = |s: &str| data_uri_url_tokens(s);
+        assert_eq!(
+            toks("a{b:url(data:image/png;base64,QUJD)}"),
+            ["data:image/png;base64,QUJD"]
+        );
+        assert_eq!(
+            toks(r#"url( "data:a,\"x\")" ) url(data:b,1)"#),
+            [r#"data:a,\"x\")"#, "data:b,1"]
+        );
+        // Cut off by the end of the text: what was read so far.
+        assert_eq!(toks("url(\"data:c,1"), ["data:c,1"]);
+        assert_eq!(toks("url(data:d,2"), ["data:d,2"]);
+        assert_eq!(toks("url("), Vec::<String>::new());
+        assert_eq!(toks("url(   "), Vec::<String>::new());
+        assert_eq!(toks("url('"), Vec::<String>::new());
+        assert_eq!(toks("url( x.png ) url(\"y\")"), Vec::<String>::new());
+    }
+
+    #[test]
+    fn percent_escapes_decode_anywhere_with_two_hex_digits_after() {
+        assert_eq!(percent_decode("abcde%41"), b"abcdeA");
+        assert_eq!(percent_decode("%4"), b"%4");
+        assert_eq!(percent_decode("x%41%"), b"xA%");
+    }
+
+    #[test]
+    fn svg_is_sniffed_from_its_start_or_an_xml_or_doctype_preamble() {
+        let svg = r#"<svg xmlns="http://www.w3.org/2000/svg" width="3" height="2"/>"#;
+        for doc in [
+            svg.to_string(),
+            format!(r#"<?xml version="1.0"?>{svg}"#),
+            format!("<!DOCTYPE svg>{svg}"),
+            format!(
+                "  <?XML version='1.0'?>\n<!-- c -->{}",
+                svg.to_uppercase()
+                    .replace("HTTP://WWW.W3.ORG/2000/SVG", "http://www.w3.org/2000/svg")
+            ),
+        ] {
+            assert!(super::is_svg(doc.as_bytes()), "{doc}");
+        }
+        assert_eq!(
+            decode(format!(r#"<?xml version="1.0"?>{svg}"#).as_bytes())
+                .map(|i| (i.width, i.height)),
+            Some((3, 2))
+        );
+        assert_eq!(
+            decode(format!("<!DOCTYPE svg>{svg}").as_bytes()).map(|i| (i.width, i.height)),
+            Some((3, 2))
+        );
+        // `<svg` text in a document that starts otherwise, without a preamble, is not SVG;
+        // nor is an XML preamble without `<svg`.
+        assert!(!super::is_svg(b"<html><svg></svg></html>"));
+        assert!(!super::is_svg(b"<?xml version='1.0'?><note/>"));
+        assert!(!super::is_svg(b""));
+        // Only the first 1024 bytes are looked at.
+        assert!(!super::is_svg(
+            format!("<!doctype x>{}{svg}", " ".repeat(1024)).as_bytes()
+        ));
+    }
+
+    #[test]
+    fn a_png_carrying_xml_metadata_still_decodes_as_png() {
+        // An XMP-style text chunk with an XML preamble (and no `<svg`) right after the
+        // header: the bytes are a PNG, not an SVG.
+        let mut img = image::RgbaImage::new(2, 1);
+        img.put_pixel(1, 0, image::Rgba([1, 2, 3, 255]));
+        let mut png = std::io::Cursor::new(Vec::new());
+        img.write_to(&mut png, image::ImageFormat::Png).unwrap();
+        let png = png.into_inner();
+        let text = b"XML:com.adobe.xmp\0<?xml version='1.0'?><x:xmpmeta/>";
+        let crc = |data: &[u8]| {
+            let mut c = 0xffff_ffff_u32;
+            for &b in data {
+                c ^= u32::from(b);
+                for _ in 0..8 {
+                    c = if c & 1 == 1 {
+                        0xedb8_8320 ^ (c >> 1)
+                    } else {
+                        c >> 1
+                    };
+                }
+            }
+            !c
+        };
+        let mut chunk = (text.len() as u32).to_be_bytes().to_vec();
+        let body = [&b"tEXt"[..], text].concat();
+        chunk.extend_from_slice(&body);
+        chunk.extend_from_slice(&crc(&body).to_be_bytes());
+        // After the 8-byte signature and the 25-byte IHDR chunk.
+        let with_text = [&png[..33], &chunk, &png[33..]].concat();
+        let decoded = decode(&with_text).expect("still a PNG");
+        assert_eq!((decoded.width, decoded.height), (2, 1));
+        assert_eq!(decoded.rgba, [0, 0, 0, 0, 1, 2, 3, 255]);
+    }
+
+    #[test]
+    fn scaled_pixmaps_need_pixels_and_a_target() {
+        let red = DecodedImage {
+            width: 1,
+            height: 1,
+            rgba: vec![255, 0, 0, 128],
+            intrinsic: Intrinsic::new(1, 1, true),
+        };
+        let pm = red.scaled_pixmap(2, 3).unwrap();
+        assert_eq!((pm.width(), pm.height()), (2, 3));
+        let p = pm.pixel(1, 2).unwrap();
+        assert_eq!(
+            [p.red(), p.green(), p.blue(), p.alpha()],
+            [128, 0, 0, 128],
+            "premultiplied"
+        );
+        assert!(red.scaled_pixmap(0, 3).is_none());
+        assert!(red.scaled_pixmap(3, 0).is_none());
+        for (width, height) in [(0, 0), (0, 5), (5, 0)] {
+            let empty = DecodedImage {
+                width,
+                height,
+                rgba: Vec::new(),
+                intrinsic: Intrinsic::new(2, 2, true),
+            };
+            assert!(empty.scaled_pixmap(4, 4).is_none(), "{width}x{height}");
+        }
+    }
+
+    #[test]
     fn layout_sizes_through_the_resolver_and_never_gets_bytes() {
         let mut decoded = DecodedAssets::new();
         decoded.insert("a.svg".into(), decode(SQUARE.as_bytes()).unwrap());
@@ -821,6 +949,8 @@ mod tests {
             r#"<img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='5' height='4'/%3E">"#,
             r#"<img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='7' height='7'/%3E">"#,
             r#"<img src="data:,not-an-image">"#,
+            r#"<embed src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='9'/%3E">"#,
+            r#"<svg><image src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8'/%3E"/></svg>"#,
         ));
         let kept =
             "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='7' height='7'/%3E";
