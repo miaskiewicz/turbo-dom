@@ -3,7 +3,8 @@
 //          --out src/x_chrome156.json [--chrome /path/to/Chrome]
 // Run from crates/turbo-dom-browser-env: src/ holds the binding's probes, cases and Chrome
 // controls (the files its tests and `test_support` read).
-// A probe that needs user activation calls `__cdpGesture()`: the collector clicks the page
+// A probe that needs user activation calls `__cdpGesture('click')` (a CDP binding takes one
+// string): the collector clicks the page
 // with trusted CDP input (Input.dispatchMouseEvent press + release at 1,1) and then calls
 // the page's `__cdpGestureDone()`.
 import { spawn } from "node:child_process";

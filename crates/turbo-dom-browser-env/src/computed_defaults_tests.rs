@@ -5,7 +5,9 @@
 //! `computed_defaults_cases.json` -> `computed_defaults_chrome156.json`, recorded by
 //! scripts/select-element-chrome-control.mjs), every case and section. Case `dialog-top-layer`
 //! (turbo-dom#30) covers modal dialogs, the top layer and `::backdrop`; `pseudo-elements` and
-//! `pseudo-ua` (turbo-dom#47) the `pseudoElt` argument and the UA-styled pseudo-elements.
+//! `pseudo-ua` (turbo-dom#47) the `pseudoElt` argument and the UA-styled pseudo-elements;
+//! `form-control-fonts` (turbo-dom#61) form control fonts; `fullscreen` (turbo-dom#58, async,
+//! with simulated user activation) the fullscreen top layer.
 use super::*;
 use sha2::{Digest, Sha256};
 
@@ -13,6 +15,35 @@ const PROBE: &str = include_str!("computed_defaults_probe.js");
 const CASES: &[u8] = include_bytes!("computed_defaults_cases.json");
 const CONTROL: &str = include_str!("computed_defaults_chrome156.json");
 
+/// The probe page's user activation: `__cdpGesture()` (the collector's trusted CDP click)
+/// sets `__probeActivation`, which consuming APIs clear.
+fn probe_activation(
+    scope: &mut v8::PinScope,
+    document: v8::Local<v8::Object>,
+    query: ActivationQuery,
+) -> bool {
+    let Some(context) = document.get_creation_context(scope) else {
+        return false;
+    };
+    let global = context.global(scope);
+    let key = v8::String::new(scope, "__probeActivation").unwrap();
+    let active = global
+        .get(scope, key.into())
+        .is_some_and(|value| value.is_true());
+    match query {
+        ActivationQuery::Transient | ActivationQuery::HistoryAction => active,
+        ActivationQuery::ConsumeTransient | ActivationQuery::ConsumeHistoryAction => {
+            let inactive = v8::Boolean::new(scope, false);
+            global.set(scope, key.into(), inactive.into());
+            true
+        }
+        ActivationQuery::CrossOriginFrame => false,
+        ActivationQuery::FullscreenAllowed => true,
+    }
+}
+
+/// Run the probe over `html`; an async case (`fullscreen`) settles over a FIFO task queue
+/// standing in for timers, with `__cdpGesture()` granting user activation.
 fn probe(html: &str) -> serde_json::Value {
     super::tests::init_v8();
     let isolate = &mut v8::Isolate::new(Default::default());
@@ -20,13 +51,34 @@ fn probe(html: &str) -> serde_json::Value {
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);
     install_independent_html(scope, html);
-    let code = format!("JSON.stringify({})", PROBE.trim().trim_end_matches(';'));
+    set_activation_host(context, probe_activation);
+    run_js(
+        scope,
+        "globalThis.__tasks=[];globalThis.setTimeout=callback=>{__tasks.push(callback);return __tasks.length};\
+         globalThis.__cdpGesture=()=>{globalThis.__probeActivation=true;__tasks.push(()=>__cdpGestureDone());};",
+    );
+    capture_popover_scheduler(scope);
+    let code = format!(
+        "Promise.resolve({}).then(JSON.stringify)",
+        PROBE.trim().trim_end_matches(';')
+    );
     let code = v8::String::new(scope, &code).unwrap();
     v8::tc_scope!(let scope, scope);
-    let value = v8::Script::compile(scope, code, None)
+    let promise = v8::Script::compile(scope, code, None)
         .and_then(|script| script.run(scope))
-        .unwrap_or_else(|| panic!("{}", scope.exception().unwrap().to_rust_string_lossy(scope)))
-        .to_rust_string_lossy(scope);
+        .and_then(|value| v8::Local::<v8::Promise>::try_from(value).ok())
+        .unwrap_or_else(|| panic!("{}", scope.exception().unwrap().to_rust_string_lossy(scope)));
+    let step = v8::String::new(scope, "__tasks.length&&__tasks.shift()()").unwrap();
+    let step = v8::Script::compile(scope, step, None).unwrap();
+    for _ in 0..100_000 {
+        scope.perform_microtask_checkpoint();
+        if promise.state() != v8::PromiseState::Pending {
+            break;
+        }
+        step.run(scope);
+    }
+    let value = promise.result(scope).to_rust_string_lossy(scope);
+    assert_eq!(promise.state(), v8::PromiseState::Fulfilled, "{value}");
     reset();
     serde_json::from_str(&value).unwrap()
 }
@@ -96,6 +148,7 @@ fn computed_defaults_and_head_match_chrome156_control() {
                 | "pseudo-ua-forms"
                 | "pseudo-ua"
                 | "form-control-fonts"
+                | "fullscreen"
         )
     });
     assert!(
@@ -172,6 +225,22 @@ fn pseudo_element_forms_match_chrome156_control() {
 #[test]
 fn form_control_fonts_match_chrome156_control() {
     let found = mismatches(|id| id == "form-control-fonts");
+    assert!(
+        found.is_empty(),
+        "{} mismatches:\n{}",
+        found.len(),
+        found.join("\n")
+    );
+}
+
+/// turbo-dom#58: requestFullscreen() / exitFullscreen() with and without user activation,
+/// the fullscreen stack, `:fullscreen` / `:modal` / `:-webkit-full-screen(-ancestor)`, the
+/// `:not(:root):fullscreen` UA values, the black fixed `::backdrop`, fullscreenchange /
+/// fullscreenerror, the root element, removal, a dialog, a shadow tree (case `fullscreen`).
+#[test]
+#[ignore = "turbo-dom#58: fails until the fix"]
+fn fullscreen_matches_chrome156_control() {
+    let found = mismatches(|id| id == "fullscreen");
     assert!(
         found.is_empty(),
         "{} mismatches:\n{}",

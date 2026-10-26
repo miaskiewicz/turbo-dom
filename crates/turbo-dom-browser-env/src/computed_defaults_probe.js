@@ -112,6 +112,89 @@
       return [before, style.color, style === getComputedStyle(host, '::before')];
     })();
     out.pseudo = pseudo;
+  } else if (document.getElementById('fsA')) {
+    // turbo-dom#58: requestFullscreen() / exitFullscreen(). With user activation (a trusted
+    // click: `__cdpGesture('click')` asks the host for one and calls `__cdpGestureDone()` after it),
+    // the element enters the document's fullscreen stack and the top layer:
+    // document.fullscreenElement, :fullscreen (every element in the stack), :modal and
+    // :-webkit-full-screen (the fullscreen element only; the stack for :-webkit-full-screen),
+    // :-webkit-full-screen-ancestor; Chrome's `:not(:root):fullscreen` UA values (position
+    // fixed, inset 0, margin 0, box-sizing border-box, min / max sizes, transform none — all
+    // !important — and object-fit contain) and a black fixed ::backdrop; fullscreenchange at
+    // the element (bubbling, composed) after the promise resolves; fullscreenerror and a
+    // TypeError without activation, for a dialog or a disconnected element. The root element
+    // gets no UA values and its ::backdrop stays outside the top layer. This case is async.
+    return (async () => {
+      const gesture = () => new Promise((done) => { globalThis.__cdpGestureDone = done; __cdpGesture('click'); });
+      const tick = () => new Promise((done) => setTimeout(done, 50));
+      const settle = async (promise) => { try { await promise; return 'ok'; } catch (e) { return [e.name, e.message]; } };
+      const box = ['display', 'position', 'visibility', 'color', 'opacity', 'transform'];
+      const full = box.concat(['top', 'right', 'bottom', 'left', 'margin-top', 'margin-right', 'margin-bottom', 'margin-left', 'box-sizing', 'min-width', 'max-width', 'min-height', 'max-height', 'object-fit']);
+      const backdropProps = ['display', 'position', 'visibility', 'top', 'right', 'bottom', 'left', 'background-color', 'color', 'opacity', 'transform'];
+      const read = (el, list, pseudo) => { const s = getComputedStyle(el, pseudo); return list.map((p) => s.getPropertyValue(p)).join('|'); };
+      const backdrop = (el) => read(el, backdropProps, '::backdrop');
+      const name = (node) => node === null ? null : node === document ? '#document' : node.id || node.nodeName;
+      const ids = (selector) => { try { return Array.from(document.querySelectorAll(selector), name); } catch (e) { return e.name; } };
+      const state = () => [name(document.fullscreenElement), document.fullscreen, name(document.webkitFullscreenElement), ids(':fullscreen'), ids(':-webkit-full-screen'), ids(':-webkit-full-screen-ancestor'), ids(':modal')];
+      const $ = (id) => document.getElementById(id);
+      const a = $('fsA'), b = $('fsB'), log = [];
+      for (const target of [document, a, b]) for (const type of ['fullscreenchange', 'fullscreenerror']) target.addEventListener(type, (e) => log.push([type, name(e.target), name(e.currentTarget), name(document.fullscreenElement), e.bubbles, e.composed]));
+      const fs = {};
+      fs.before = [state(), read(a, box), backdrop(a)];
+      fs.noGesture = [await settle(a.requestFullscreen()), (await tick(), log.splice(0))];
+      await gesture();
+      const request = a.requestFullscreen();
+      fs.sync = state();
+      fs.request = await settle(request);
+      fs.resolved = [state(), log.slice()];
+      await tick();
+      fs.full = [state(), log.splice(0), read(a, full), backdrop(a), read($('fsChild'), box), read(b, box), a.matches(':fullscreen'), a.matches(':modal')];
+      // A second request needs a second activation; the first was consumed.
+      fs.consumed = [await settle(b.requestFullscreen()), (await tick(), log.splice(0)), state()];
+      await gesture();
+      fs.nested = [await settle(b.requestFullscreen()), (await tick(), log.splice(0)), state(), read(a, box), read(b, full), backdrop(a), backdrop(b), a.matches(':modal')];
+      fs.exit = [await settle(document.exitFullscreen()), (await tick(), log.splice(0)), state(), read(b, box), backdrop(b)];
+      fs.exitAll = [await settle(document.exitFullscreen()), (await tick(), log.splice(0)), state(), read(a, box), backdrop(a)];
+      fs.exitNone = [await settle(document.exitFullscreen()), (await tick(), log.splice(0))];
+      await gesture();
+      const html = document.documentElement;
+      fs.root = [await settle(html.requestFullscreen()), (await tick(), log.splice(0)), state(), read(html, box), backdrop(html)];
+      await settle(document.exitFullscreen()); await tick(); log.splice(0);
+      // Author rules lose to the !important UA values but keep everything else.
+      await gesture();
+      const c = $('fsAuthored');
+      fs.authored = [await settle(c.requestFullscreen()), (await tick(), log.splice(0)), state(), read(c, full.concat(['z-index', 'background-color'])), backdrop(c)];
+      c.remove();
+      fs.removed = [(await tick(), log.splice(0)), state(), read(c, box)];
+      document.body.append(c);
+      fs.reinserted = [state(), read(c, ['display', 'position', 'visibility'])];
+      await gesture();
+      fs.dialog = [await settle($('fsDialog').requestFullscreen()), (await tick(), log.splice(0)), state()];
+      await gesture();
+      fs.detached = [await settle(document.createElement('div').requestFullscreen()), (await tick(), log.splice(0)), state()];
+      await gesture();
+      const svg = $('fsSvg');
+      fs.svg = [await settle(svg.requestFullscreen()), (await tick(), log.splice(0)), state(), read(svg, full)];
+      await settle(document.exitFullscreen()); await tick(); log.splice(0);
+      // A modal dialog over the fullscreen element: both are :modal.
+      await gesture();
+      fs.withModal = [await settle(a.requestFullscreen()), (await tick(), log.splice(0))];
+      const dialog = $('fsDialog');
+      dialog.showModal();
+      fs.withModal.push(state(), read(a, box), read(dialog, box), backdrop(a), backdrop(dialog));
+      dialog.close();
+      await settle(document.exitFullscreen()); await tick(); log.splice(0);
+      // In a shadow tree: the document reports the host; the shadow root the element.
+      const host = $('fsHost'), root = host.attachShadow({ mode: 'open' });
+      root.innerHTML = '<style>#inner:fullscreen{color:rgb(0, 0, 255)}</style><div id="inner">i</div>';
+      const inner = root.getElementById('inner');
+      await gesture();
+      fs.shadow = [await settle(inner.requestFullscreen()), (await tick(), log.splice(0)), state(), name(root.fullscreenElement), read(inner, box.concat(['top'])), host.matches(':fullscreen'), inner.matches(':fullscreen'), inner.matches(':modal'), host.matches(':-webkit-full-screen-ancestor')];
+      await settle(document.exitFullscreen()); await tick(); log.splice(0);
+      fs.after = [state(), read(a, box), backdrop(a)];
+      out.fullscreen = fs;
+      return out;
+    })();
   } else if (document.getElementById('controlFonts')) {
     // turbo-dom#61: form controls take html.css `font: -webkit-small-control` (13.3333px Arial;
     // monospace for textarea and the date / time inputs), optgroup is bolder; author rules

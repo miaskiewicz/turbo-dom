@@ -1,9 +1,9 @@
 {
   "browser": "Chrome/156.0.8078.4",
   "v8": "15.6.75",
-  "casesSha256": "ae1c84aa0b1eb9ffc61f402d0a23313135bfd2a2ca0bd3cd3fe23e4cf540955c",
-  "probeSha256": "366a57ea97eacc4c40f1c9a5a9c33eeb73bddb01fd35f1ffd3776162c86d2cb1",
-  "collectorSha256": "33f11d2968b932a48a3341d0da10f967be05c33c71cfe9cd783b017c7d2f12f2",
+  "casesSha256": "2512495d716201215553c2cefce2e1428a85dd29a7c6313de48e22493c54f365",
+  "probeSha256": "f4c6b196c296d9506b783220e1ba6600c3a346f1e554be391932560981aff967",
+  "collectorSha256": "7bd6ffb7440d38e05cd2b8fbe0e84e91cf462043577ceada3e276728ad216172",
   "flags": [
     "--headless=new",
     "--remote-debugging-pipe",
@@ -2909,6 +2909,593 @@
           "plain": "13.3333px|Arial|400|normal|normal|13.3333px Arial",
           "inSvg": "13.3333px|Arial|400|normal|normal|13.3333px Arial",
           "detached": "|||||"
+        }
+      }
+    },
+    {
+      "id": "fullscreen",
+      "result": {
+        "head": {
+          "children": [
+            "style"
+          ],
+          "title": "",
+          "titles": 0
+        },
+        "fullscreen": {
+          "before": [
+            [
+              null,
+              false,
+              null,
+              [],
+              [],
+              [],
+              []
+            ],
+            "block|static|visible|rgb(0, 0, 0)|1|none",
+            "block|absolute|visible|auto|auto|auto|auto|rgba(0, 0, 0, 0)|rgb(0, 0, 0)|1|none"
+          ],
+          "noGesture": [
+            [
+              "TypeError",
+              "Permissions check failed"
+            ],
+            [
+              [
+                "fullscreenerror",
+                "fsA",
+                "fsA",
+                null,
+                true,
+                true
+              ],
+              [
+                "fullscreenerror",
+                "fsA",
+                "#document",
+                null,
+                true,
+                true
+              ]
+            ]
+          ],
+          "sync": [
+            null,
+            false,
+            null,
+            [],
+            [],
+            [],
+            []
+          ],
+          "request": "ok",
+          "resolved": [
+            [
+              "fsA",
+              true,
+              "fsA",
+              [
+                "fsA"
+              ],
+              [
+                "fsA"
+              ],
+              [
+                "HTML",
+                "BODY"
+              ],
+              [
+                "fsA"
+              ]
+            ],
+            []
+          ],
+          "full": [
+            [
+              "fsA",
+              true,
+              "fsA",
+              [
+                "fsA"
+              ],
+              [
+                "fsA"
+              ],
+              [
+                "HTML",
+                "BODY"
+              ],
+              [
+                "fsA"
+              ]
+            ],
+            [
+              [
+                "fullscreenchange",
+                "fsA",
+                "fsA",
+                "fsA",
+                true,
+                true
+              ],
+              [
+                "fullscreenchange",
+                "fsA",
+                "#document",
+                "fsA",
+                true,
+                true
+              ]
+            ],
+            "block|fixed|visible|rgb(255, 0, 0)|0.5|none|0px|0px|0px|0px|0px|0px|0px|0px|border-box|0px|none|0px|none|contain",
+            "block|fixed|visible|0px|0px|0px|0px|rgb(0, 0, 0)|rgb(0, 255, 0)|1|none",
+            "inline|static|visible|rgb(255, 0, 0)|1|none",
+            "block|static|visible|rgb(255, 0, 0)|1|none",
+            true,
+            true
+          ],
+          "consumed": [
+            [
+              "TypeError",
+              "Permissions check failed"
+            ],
+            [
+              [
+                "fullscreenerror",
+                "fsB",
+                "fsB",
+                "fsA",
+                true,
+                true
+              ],
+              [
+                "fullscreenerror",
+                "fsB",
+                "fsA",
+                "fsA",
+                true,
+                true
+              ],
+              [
+                "fullscreenerror",
+                "fsB",
+                "#document",
+                "fsA",
+                true,
+                true
+              ]
+            ],
+            [
+              "fsA",
+              true,
+              "fsA",
+              [
+                "fsA"
+              ],
+              [
+                "fsA"
+              ],
+              [
+                "HTML",
+                "BODY"
+              ],
+              [
+                "fsA"
+              ]
+            ]
+          ],
+          "nested": [
+            "ok",
+            [
+              [
+                "fullscreenchange",
+                "fsB",
+                "fsB",
+                "fsB",
+                true,
+                true
+              ],
+              [
+                "fullscreenchange",
+                "fsB",
+                "fsA",
+                "fsB",
+                true,
+                true
+              ],
+              [
+                "fullscreenchange",
+                "fsB",
+                "#document",
+                "fsB",
+                true,
+                true
+              ]
+            ],
+            [
+              "fsB",
+              true,
+              "fsB",
+              [
+                "fsA",
+                "fsB"
+              ],
+              [
+                "fsA",
+                "fsB"
+              ],
+              [
+                "HTML",
+                "BODY",
+                "fsA"
+              ],
+              [
+                "fsB"
+              ]
+            ],
+            "block|fixed|visible|rgb(255, 0, 0)|0.5|none",
+            "block|fixed|visible|rgb(255, 0, 0)|0.5|none|0px|0px|0px|0px|0px|0px|0px|0px|border-box|0px|none|0px|none|contain",
+            "block|fixed|visible|0px|0px|0px|0px|rgb(0, 0, 0)|rgb(0, 255, 0)|1|none",
+            "block|fixed|visible|0px|0px|0px|0px|rgb(0, 0, 0)|rgb(255, 0, 0)|1|none",
+            false
+          ],
+          "exit": [
+            "ok",
+            [
+              [
+                "fullscreenchange",
+                "fsB",
+                "fsB",
+                "fsA",
+                true,
+                true
+              ],
+              [
+                "fullscreenchange",
+                "fsB",
+                "fsA",
+                "fsA",
+                true,
+                true
+              ],
+              [
+                "fullscreenchange",
+                "fsB",
+                "#document",
+                "fsA",
+                true,
+                true
+              ]
+            ],
+            [
+              "fsA",
+              true,
+              "fsA",
+              [
+                "fsA"
+              ],
+              [
+                "fsA"
+              ],
+              [
+                "HTML",
+                "BODY"
+              ],
+              [
+                "fsA"
+              ]
+            ],
+            "block|static|visible|rgb(255, 0, 0)|1|none",
+            "block|absolute|visible|auto|auto|auto|auto|rgba(0, 0, 0, 0)|rgb(255, 0, 0)|1|none"
+          ],
+          "exitAll": [
+            "ok",
+            [
+              [
+                "fullscreenchange",
+                "fsA",
+                "fsA",
+                null,
+                true,
+                true
+              ],
+              [
+                "fullscreenchange",
+                "fsA",
+                "#document",
+                null,
+                true,
+                true
+              ]
+            ],
+            [
+              null,
+              false,
+              null,
+              [],
+              [],
+              [],
+              []
+            ],
+            "block|static|visible|rgb(0, 0, 0)|1|none",
+            "block|absolute|visible|auto|auto|auto|auto|rgba(0, 0, 0, 0)|rgb(0, 0, 0)|1|none"
+          ],
+          "exitNone": [
+            [
+              "TypeError",
+              "Failed to execute 'exitFullscreen' on 'Document': Document not active"
+            ],
+            []
+          ],
+          "root": [
+            "ok",
+            [
+              [
+                "fullscreenchange",
+                "HTML",
+                "#document",
+                "HTML",
+                true,
+                true
+              ]
+            ],
+            [
+              "HTML",
+              true,
+              "HTML",
+              [
+                "HTML"
+              ],
+              [
+                "HTML"
+              ],
+              [],
+              [
+                "HTML"
+              ]
+            ],
+            "block|static|visible|rgb(0, 0, 0)|0.5|none",
+            "block|absolute|visible|auto|auto|auto|auto|rgba(0, 0, 0, 0)|rgb(0, 0, 0)|1|none"
+          ],
+          "authored": [
+            "ok",
+            [
+              [
+                "fullscreenchange",
+                "fsAuthored",
+                "#document",
+                "fsAuthored",
+                true,
+                true
+              ]
+            ],
+            [
+              "fsAuthored",
+              true,
+              "fsAuthored",
+              [
+                "fsAuthored"
+              ],
+              [
+                "fsAuthored"
+              ],
+              [
+                "HTML",
+                "BODY"
+              ],
+              [
+                "fsAuthored"
+              ]
+            ],
+            "block|fixed|visible|rgb(0, 0, 0)|0.5|none|0px|0px|0px|0px|0px|0px|0px|0px|border-box|0px|none|0px|none|cover|3|rgb(1, 2, 3)",
+            "block|absolute|visible|0px|0px|0px|0px|rgb(0, 0, 255)|rgb(0, 0, 0)|1|none"
+          ],
+          "removed": [
+            [
+              [
+                "fullscreenchange",
+                "#document",
+                "#document",
+                null,
+                true,
+                true
+              ]
+            ],
+            [
+              null,
+              false,
+              null,
+              [],
+              [],
+              [],
+              []
+            ],
+            "|||||"
+          ],
+          "reinserted": [
+            [
+              null,
+              false,
+              null,
+              [],
+              [],
+              [],
+              []
+            ],
+            "inline|relative|visible"
+          ],
+          "dialog": [
+            [
+              "TypeError",
+              "Dialog elements are invalid"
+            ],
+            [
+              [
+                "fullscreenerror",
+                "fsDialog",
+                "#document",
+                null,
+                true,
+                true
+              ]
+            ],
+            [
+              null,
+              false,
+              null,
+              [],
+              [],
+              [],
+              []
+            ]
+          ],
+          "detached": [
+            [
+              "TypeError",
+              "Element is not connected"
+            ],
+            [
+              [
+                "fullscreenerror",
+                "#document",
+                "#document",
+                null,
+                true,
+                true
+              ]
+            ],
+            [
+              null,
+              false,
+              null,
+              [],
+              [],
+              [],
+              []
+            ]
+          ],
+          "svg": [
+            "ok",
+            [
+              [
+                "fullscreenchange",
+                "fsSvg",
+                "#document",
+                "fsSvg",
+                true,
+                true
+              ]
+            ],
+            [
+              "fsSvg",
+              true,
+              "fsSvg",
+              [
+                "fsSvg"
+              ],
+              [
+                "fsSvg"
+              ],
+              [
+                "HTML",
+                "BODY"
+              ],
+              [
+                "fsSvg"
+              ]
+            ],
+            "block|fixed|visible|rgb(0, 0, 0)|0.5|none|0px|0px|0px|0px|0px|0px|0px|0px|border-box|0px|none|0px|none|contain"
+          ],
+          "withModal": [
+            "ok",
+            [
+              [
+                "fullscreenchange",
+                "fsA",
+                "fsA",
+                "fsA",
+                true,
+                true
+              ],
+              [
+                "fullscreenchange",
+                "fsA",
+                "#document",
+                "fsA",
+                true,
+                true
+              ]
+            ],
+            [
+              "fsA",
+              true,
+              "fsA",
+              [
+                "fsA"
+              ],
+              [
+                "fsA"
+              ],
+              [
+                "HTML",
+                "BODY"
+              ],
+              [
+                "fsA",
+                "fsDialog"
+              ]
+            ],
+            "block|fixed|visible|rgb(255, 0, 0)|0.5|none",
+            "block|fixed|visible|rgb(0, 0, 0)|1|none",
+            "block|fixed|visible|0px|0px|0px|0px|rgb(0, 0, 0)|rgb(0, 255, 0)|1|none",
+            "block|fixed|visible|0px|0px|0px|0px|rgba(0, 0, 0, 0.1)|rgb(0, 0, 0)|1|none"
+          ],
+          "shadow": [
+            "ok",
+            [
+              [
+                "fullscreenchange",
+                "fsHost",
+                "#document",
+                "fsHost",
+                true,
+                true
+              ]
+            ],
+            [
+              "fsHost",
+              true,
+              "fsHost",
+              [],
+              [],
+              [
+                "HTML",
+                "BODY",
+                "fsHost"
+              ],
+              []
+            ],
+            "inner",
+            "block|fixed|visible|rgb(0, 0, 255)|1|none|0px",
+            false,
+            true,
+            true,
+            true
+          ],
+          "after": [
+            [
+              null,
+              false,
+              null,
+              [],
+              [],
+              [],
+              []
+            ],
+            "block|static|visible|rgb(0, 0, 0)|1|none",
+            "block|absolute|visible|auto|auto|auto|auto|rgba(0, 0, 0, 0)|rgb(0, 0, 0)|1|none"
+          ]
         }
       }
     }

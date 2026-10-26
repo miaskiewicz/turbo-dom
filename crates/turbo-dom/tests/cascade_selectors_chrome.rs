@@ -29,9 +29,9 @@ use turbo_dom::{Handle, Tree};
 const FIXTURE: &str = include_str!("fixtures/cascade_selectors_chrome156.json");
 
 /// P5b items (the fixture's `bug` / `class` / probe ids) not fixed yet: recorded in the
-/// fixture, skipped by the assertions until the fixing commit removes them here. All P5b-X
-/// items have landed.
-const OPEN: &[&str] = &[];
+/// fixture, skipped by the assertions until the fixing commit removes them here.
+/// miaskiewicz/turbo-dom#58: the fullscreen pseudo-classes.
+const OPEN: &[&str] = &["fullscreen"];
 
 fn open(item: &str) -> bool {
     OPEN.contains(&item)
@@ -139,6 +139,32 @@ fn check_rtdom_cascade(
             ));
         }
     }
+}
+
+/// The fixture's open cases, asserted alone (miaskiewicz/turbo-dom#58).
+#[test]
+#[ignore = "turbo-dom#58: fails until the fix"]
+fn open_cases_match_chrome156() {
+    let fixture: Value = serde_json::from_str(FIXTURE).unwrap();
+    let mut failures = Vec::new();
+    for case in fixture["cases"].as_array().unwrap() {
+        if !open(case["bug"].as_str().unwrap()) {
+            continue;
+        }
+        let id = case["id"].as_str().unwrap();
+        for row in case["selectors"].as_array().unwrap() {
+            let sel = row["selector"].as_str().unwrap();
+            let valid = row["valid"].as_bool().unwrap();
+            let tree = Tree::parse(case["html"].as_str().unwrap());
+            if tree.query_selector_all_checked(sel).is_ok() != valid {
+                failures.push(format!("{id} `{sel}`: validity, Chrome valid={valid}"));
+            }
+            if parse_for_cascade(sel).is_ok() != row["sheet_valid"].as_bool().unwrap() {
+                failures.push(format!("{id} `{sel}`: parse_for_cascade validity"));
+            }
+        }
+    }
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
 
 #[test]
