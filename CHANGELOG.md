@@ -5,7 +5,41 @@ environment for vitest/jest. Format based on [Keep a Changelog](https://keepacha
 Early versions were released as lightweight tags / version-stamped commits (no per-release notes
 at the time); this file reconstructs them from history.
 
-## [Unreleased] — 0.6.0 consolidation
+## [Unreleased]
+
+## [0.6.0] — turbo-dom consolidation
+
+turbo-dom becomes the home of the shared browser engine of turbo-html2pdf, turbo-test
+and turbo-surf: five published crates instead of copies in three repositories (see
+[docs/CONSOLIDATION.md](docs/CONSOLIDATION.md) for the architecture, dependency graph
+and publish order).
+
+| crate | version | from |
+|---|---|---|
+| `turbo-dom` (+ npm `@miaskiewicz/turbo-dom`) | 0.6.0 | this repository |
+| `turbo-dom-v8` | 150.4.0 | rusty_v8 150.4.0 + turbo-surf's reviewed fixes (generated, not vendored) |
+| `turbo-dom-layout` | 0.6.0 | turbo-html2pdf-core 0.3.9's layout half, turbo-surf's CSSOM-View modules |
+| `turbo-dom-raster` | 0.6.0 | turbo-surf-raster 0.5.5 |
+| `turbo-dom-browser-env` | 0.6.0 | turbo-test 0.4.8's rtdom <-> V8 binding |
+
+Every step was behaviour-preserving (consumer corpora byte-identical) except the two
+approved Chrome-matching changes: one Chrome 156-correct selector engine for the DOM
+APIs and the layout cascade, and turbo-surf static rendering of `t:*` elements as
+unknown inline elements. MSRV: 1.89 for turbo-dom, -layout and -raster; 1.91 for
+turbo-dom-v8 and -browser-env.
+
+### Release (consolidation S5b)
+- Versions: turbo-dom, turbo-dom-parser and npm 0.6.0; intra-workspace path
+  dependencies carry `version = "0.6.0"` so the crates publish.
+- `.github/workflows/publish.yml`: on a `v*` tag, after the full CI gate, publishes
+  turbo-dom-v8 -> turbo-dom -> turbo-dom-layout -> turbo-dom-raster ->
+  turbo-dom-browser-env sequentially (already-published guards, each waits for the
+  crates.io index) and the npm package; `scripts/check-no-selector-dual.sh` runs first.
+- CI per crate (base, layout, raster, V8 + browser-env matrix, MSRV 1.89, guards,
+  verify-copied checks, parity harness self-test, per-crate coverage floors).
+- `turbo-dom-browser-env`: the 18 custom-element lifecycle probe/control constants in
+  `test_support` (turbo-surf's `tests/custom_elements.rs`); the Chrome-control
+  collectors and `docs/live-css-host.md` moved from turbo-test into the crate.
 
 ### Added
 - `turbo-dom-browser-env` 0.6.0: turbo-test's rtdom <-> V8 browser binding moved into

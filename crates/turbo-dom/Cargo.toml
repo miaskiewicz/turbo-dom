@@ -1,7 +1,9 @@
 [package]
 name = "turbo-dom"
-version = "0.5.8"
+version = "0.6.0"
 edition = "2021"
+# Consolidation MSRV for turbo-dom, -layout and -raster (smol_str 0.3.6 sets the floor).
+rust-version = "1.89"
 description = "Pure-Rust DOM runtime — lazy copy-on-write tree over an html5ever SoA, native Rust API, zero JS boundary. For in-process Rust consumers (crawlers, extractors, SSR)."
 license = "MIT"
 repository = "https://github.com/miaskiewicz/turbo-dom"

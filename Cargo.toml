@@ -12,7 +12,7 @@ exclude = ["crates/turbo-dom-v8"]
 
 [package]
 name = "turbo-dom-parser"
-version = "0.5.8"
+version = "0.6.0"
 edition = "2021"
 description = "html5ever-backed native parser for turbo-dom (Layer 1)"
 # Ships to npm only (napi/wasm addon); never published to crates.io.

@@ -1,6 +1,7 @@
 # turbo-dom
 
-Release **0.5.8** (npm package, native parser and Rust DOM crate).
+Release **0.6.0** (npm package, native parser and the Rust crates `turbo-dom`,
+`turbo-dom-layout`, `turbo-dom-raster`, `turbo-dom-browser-env`; `turbo-dom-v8` 150.4.0).
 
 A faster, more spec-correct DOM for test runners — a drop-in-style alternative to
 **jsdom** and **happy-dom** for **vitest** and **jest**.
