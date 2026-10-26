@@ -423,6 +423,12 @@ const CASES = [
   { id: "abs-percent-width-initial-containing-block", html: DOC(S("body{margin:0}"), `<div style="width:100px"><div data-cid="c" style="position:absolute;width:10%;height:5px"></div></div>`) },
   { id: "abs-percent-width-fixed", html: DOC(S("body{margin:0}"), `<div style="position:relative;width:100px"><div data-cid="c" style="position:fixed;width:50%;height:5px"></div></div>`) },
   { id: "abs-percent-max-width", html: DOC(S("body{margin:0}"), `<div style="position:relative;width:400px;height:50px"><div style="width:100px"><div data-cid="c" style="position:absolute;width:300px;max-width:50%;height:5px"></div></div></div>`) },
+  // P5b-W7, miaskiewicz/turbo-dom#100: the containing block is the positioned ancestor's
+  // padding box (inside its border; its height includes the padding, a definite zero too).
+  { id: "abs-padding-box-in-bordered-ancestor", html: DOC(S("body{margin:0}"), `<div style="position:relative;border:5px solid;width:200px;height:50px;padding:10px"><div data-cid="c" style="position:absolute;top:0;left:0;width:50%;height:5px"></div></div>`) },
+  { id: "abs-padding-box-bottom-in-padded-ancestor", html: DOC(S("body{margin:0}"), `<div style="position:relative;border:3px solid;height:50px;padding:10px"><div data-cid="c" style="position:absolute;bottom:0;left:0;width:10px;height:5px"></div></div>`) },
+  { id: "abs-padding-box-full-height-zero-height-padded", html: DOC(S("body{margin:0}"), `<div style="position:relative;height:0;padding-bottom:40px"><div style="height:30px"></div><div data-cid="c" style="position:absolute;top:0;width:10px;height:100%"></div></div>`) },
+  { id: "abs-padding-box-full-height-auto-padded", html: DOC(S("body{margin:0}"), `<div style="position:relative;padding:6px 0 4px"><div style="height:30px"></div><div data-cid="c" style="position:absolute;top:0;width:10px;height:100%"></div></div>`) },
   // P5b-W6, miaskiewicz/turbo-dom#75 item 1: a last child's bottom margin and its parent's
   // `min-height` / `max-height`. The margin collapses through an auto-height parent whose
   // used height is its content height; when `min-height` (or `max-height`) changes the

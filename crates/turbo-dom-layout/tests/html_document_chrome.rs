@@ -103,7 +103,7 @@ fn inline_flex_grid_case(id: &str) -> bool {
 /// The control cases of an open bug, each asserted by its own test (`#[ignore]`d until
 /// its fix lands) and held out of [`html_documents_lay_out_as_chrome_156`].
 fn held_out(id: &str) -> bool {
-    let groups: [fn(&str) -> bool; 32] = [
+    let groups: [fn(&str) -> bool; 33] = [
         auto_table_case,
         inline_flex_grid_case,
         abs_auto_width_case,
@@ -136,6 +136,7 @@ fn held_out(id: &str) -> bool {
         abs_percent_case,
         column_flex_item_case,
         flex_item_box_sizing_case,
+        abs_padding_box_case,
     ];
     groups.iter().any(|group| group(id))
 }
@@ -478,6 +479,17 @@ fn abs_percent_case(id: &str) -> bool {
 #[test]
 fn percentage_widths_of_positioned_boxes_resolve_against_the_containing_block_like_chrome_156() {
     compare_cases(abs_percent_case);
+}
+
+/// miaskiewicz/turbo-dom#100: the containing block is the positioned ancestor's padding box.
+fn abs_padding_box_case(id: &str) -> bool {
+    id.starts_with("abs-padding-box-")
+}
+
+#[test]
+#[ignore = "turbo-dom#100: fails until the fix"]
+fn positioned_boxes_use_the_padding_box_of_their_containing_block_like_chrome_156() {
+    compare_cases(abs_padding_box_case);
 }
 
 /// The first `<th>` of a styled forest.
