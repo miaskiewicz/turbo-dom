@@ -222,6 +222,15 @@ const CASES = [
   { id: "border-box-cell-width-fixed", html: DOC(S("body{margin:0}"), `<table data-cid="t" style="table-layout:fixed;width:300px"><tr><td data-cid="a" style="box-sizing:border-box;width:100px;padding:10px"></td><td data-cid="b"><div style="width:10px;height:10px"></div></td></tr></table>`) },
   { id: "border-box-cell-width-fixed-collapsed", html: DOC(S("body{margin:0}"), `<table data-cid="t" style="table-layout:fixed;width:300px;border-collapse:collapse"><tr><td data-cid="a" style="box-sizing:border-box;width:100px;padding:10px;border:2px solid"></td><td data-cid="b"><div style="width:10px;height:10px"></div></td></tr></table>`) },
   { id: "border-box-wider-than-frame", html: DOC(S("body{margin:0}"), `<div data-cid="f" style="float:left"><div data-cid="c" style="box-sizing:border-box;width:10px;padding:10px;height:10px"></div></div>`) },
+  // P5b-W5, miaskiewicz/turbo-dom#62: Chrome's UA sizes `<table>` as `box-sizing: border-box`.
+  { id: "table-border-box-width", html: DOC(S("body{margin:0}"), `<table data-cid="t" style="width:120px;border:4px solid;padding:3px"><tr><td data-cid="td"><div style="width:30px;height:10px"></div></td></tr></table>`) },
+  { id: "table-border-box-width-collapsed", html: DOC(S("body{margin:0}"), `<table data-cid="t" style="width:120px;border:4px solid;border-collapse:collapse"><tr><td data-cid="td"><div style="width:30px;height:10px"></div></td></tr></table>`) },
+  { id: "table-border-box-percent-width", html: DOC(S("body{margin:0}"), `<table data-cid="t" style="width:50%;border:10px solid"><tr><td data-cid="td"><div style="width:30px;height:10px"></div></td></tr></table>`) },
+  { id: "table-border-box-min-width", html: DOC(S("body{margin:0}"), `<table data-cid="t" style="min-width:100px;border:5px solid"><tr><td data-cid="td"><div style="width:30px;height:10px"></div></td></tr></table>`) },
+  { id: "table-border-box-max-width", html: DOC(S("body{margin:0}"), `<table data-cid="t" style="width:300px;max-width:100px;border:5px solid"><tr><td data-cid="td"><div style="width:30px;height:10px"></div></td></tr></table>`) },
+  { id: "table-content-box-author", html: DOC(S("body{margin:0}"), `<table data-cid="t" style="box-sizing:content-box;width:120px;border:4px solid"><tr><td data-cid="td"><div style="width:30px;height:10px"></div></td></tr></table>`) },
+  { id: "table-border-box-in-float", html: DOC(S("body{margin:0}"), `<div data-cid="f" style="float:left"><table data-cid="t" style="width:120px;border:4px solid"><tr><td data-cid="td"><div style="width:30px;height:10px"></div></td></tr></table></div>`) },
+  { id: "table-border-box-fixed", html: DOC(S("body{margin:0}"), `<table data-cid="t" style="table-layout:fixed;width:120px;border:4px solid;padding:2px"><tr><td data-cid="a"><div style="width:10px;height:10px"></div></td><td data-cid="b"><div style="width:10px;height:10px"></div></td></tr></table>`) },
 ];
 
 /** The RGB of a 1x1 PNG screenshot (any filter: a single pixel's filter adds 0). */

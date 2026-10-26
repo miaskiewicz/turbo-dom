@@ -124,8 +124,8 @@ fn differences(select: impl Fn(&str) -> bool) -> Vec<String> {
     failures
 }
 
-/// Cases that also need an open fix: `caption-narrow`'s `width` is the table's border box
-/// (miaskiewicz/turbo-dom#62).
+/// Caption cases that also need another fix: `caption-narrow`'s `width` is the table's
+/// border box (miaskiewicz/turbo-dom#62, [`tables_are_border_box_sized_like_chrome_156`]).
 fn pending_case(id: &str) -> bool {
     id == "caption-narrow"
 }
@@ -133,6 +133,13 @@ fn pending_case(id: &str) -> bool {
 #[test]
 fn table_captions_paint_outside_the_grid_like_chrome_156() {
     let failures = differences(|id| id.starts_with("caption-") && !pending_case(id));
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+}
+
+#[test]
+#[ignore = "miaskiewicz/turbo-dom#62: fails until the fix"]
+fn tables_are_border_box_sized_like_chrome_156() {
+    let failures = differences(pending_case);
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
 

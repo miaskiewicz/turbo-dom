@@ -103,7 +103,7 @@ fn inline_flex_grid_case(id: &str) -> bool {
 /// The control cases of an open bug, each asserted by its own test (`#[ignore]`d until
 /// its fix lands) and held out of [`html_documents_lay_out_as_chrome_156`].
 fn held_out(id: &str) -> bool {
-    let groups: [fn(&str) -> bool; 8] = [
+    let groups: [fn(&str) -> bool; 9] = [
         auto_table_case,
         inline_flex_grid_case,
         abs_auto_width_case,
@@ -112,6 +112,7 @@ fn held_out(id: &str) -> bool {
         colspan_case,
         |id| id.starts_with("caption-"),
         border_box_case,
+        table_border_box_case,
     ];
     groups.iter().any(|group| group(id))
 }
@@ -196,4 +197,15 @@ fn border_box_case(id: &str) -> bool {
 #[test]
 fn border_box_widths_size_intrinsically_like_chrome_156() {
     compare_cases(border_box_case);
+}
+
+/// miaskiewicz/turbo-dom#62: `<table>` is `box-sizing: border-box` (Chrome's UA).
+fn table_border_box_case(id: &str) -> bool {
+    id.starts_with("table-border-box-") || id == "table-content-box-author"
+}
+
+#[test]
+#[ignore = "miaskiewicz/turbo-dom#62: fails until the fix"]
+fn tables_are_border_box_sized_like_chrome_156() {
+    compare_cases(table_border_box_case);
 }
