@@ -296,6 +296,11 @@ const CASES = [
   { id: "legacy-align-p-attribute-right", html: DOC(S("body{margin:0}"), `<p data-cid="p" align="right" style="width:200px;margin:0"><div data-cid="d" style="width:10px;height:10px"></div></p>`) },
   { id: "legacy-align-td-attribute", html: DOC(S("body{margin:0}"), `<table style="border-spacing:0"><tr><td data-cid="p" align="center" style="width:200px;padding:0"><div data-cid="d" style="width:10px;height:10px"></div></td></tr></table>`) },
   { id: "legacy-align-author-overrides-attribute", html: DOC(S("body{margin:0}"), `<div data-cid="p" align="center" style="width:200px;text-align:left"><div data-cid="d" style="width:10px;height:10px"></div></div>`) },
+  // P5b-W5, miaskiewicz/turbo-dom#70: UA `th { font-weight: bold; text-align: center }`
+  // (`-internal-center`: inline content only).
+  { id: "th-centers-inline-content", html: DOC(S("body{margin:0}"), `<table><tr><th data-cid="th" style="width:100px"><i data-cid="i" style="display:inline-block;width:10px;height:10px"></i></th></tr></table>`), measure: "xw" },
+  { id: "th-author-text-align", html: DOC(S("body{margin:0}"), `<table><tr><th data-cid="th" style="width:100px;text-align:left"><i data-cid="i" style="display:inline-block;width:10px;height:10px"></i></th></tr></table>`), measure: "xw" },
+  { id: "th-leaves-block-children", html: DOC(S("body{margin:0}"), `<table><tr><th data-cid="th" style="width:100px"><div data-cid="d" style="width:10px;height:10px"></div></th></tr></table>`) },
 ];
 
 /** The RGB of a 1x1 PNG screenshot (any filter: a single pixel's filter adds 0). */

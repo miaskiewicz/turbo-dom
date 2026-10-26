@@ -103,7 +103,7 @@ fn inline_flex_grid_case(id: &str) -> bool {
 /// The control cases of an open bug, each asserted by its own test (`#[ignore]`d until
 /// its fix lands) and held out of [`html_documents_lay_out_as_chrome_156`].
 fn held_out(id: &str) -> bool {
-    let groups: [fn(&str) -> bool; 14] = [
+    let groups: [fn(&str) -> bool; 15] = [
         auto_table_case,
         inline_flex_grid_case,
         abs_auto_width_case,
@@ -118,6 +118,7 @@ fn held_out(id: &str) -> bool {
         column_growth_case,
         last_margin_case,
         legacy_align_case,
+        th_case,
     ];
     groups.iter().any(|group| group(id))
 }
@@ -261,4 +262,38 @@ fn legacy_align_case(id: &str) -> bool {
 #[test]
 fn legacy_alignment_moves_blocks_like_chrome_156() {
     compare_cases(legacy_align_case);
+}
+
+/// miaskiewicz/turbo-dom#70: the UA `th` rule.
+fn th_case(id: &str) -> bool {
+    id.starts_with("th-")
+}
+
+#[test]
+#[ignore = "miaskiewicz/turbo-dom#70: fails until the fix"]
+fn header_cells_are_bold_and_centred_like_chrome_156() {
+    compare_cases(th_case);
+    // Chrome 156's computed style of a `<th>`: `font-weight: 700; text-align: center`.
+    let tree = turbo_dom_layout::parse_html_tree("<table><tr><th>x</th></tr></table>");
+    let styled = turbo_dom_layout::style_html_tree(
+        &tree,
+        "",
+        1280.0,
+        &turbo_dom_layout::HtmlOptions::default(),
+    );
+    fn th(nodes: &[turbo_dom_layout::StyledNode]) -> Option<&turbo_dom_layout::StyledElement> {
+        nodes.iter().find_map(|node| match node {
+            turbo_dom_layout::StyledNode::Element(el) => {
+                if matches!(&el.tag, turbo_dom_layout::Tag::Html(n) if n == "th") {
+                    Some(el)
+                } else {
+                    th(&el.children)
+                }
+            }
+            _ => None,
+        })
+    }
+    let th = th(&styled).expect("a th");
+    assert_eq!(th.style.get("font-weight"), Some("bold"));
+    assert_eq!(th.style.get("text-align"), Some("center"));
 }

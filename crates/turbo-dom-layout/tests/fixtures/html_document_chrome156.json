@@ -6877,6 +6877,102 @@
     }
    },
    "canvas": "#ffffff"
+  },
+  {
+   "id": "th-centers-inline-content",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><table><tr><th data-cid=\"th\" style=\"width:100px\"><i data-cid=\"i\" style=\"display:inline-block;width:10px;height:10px\"></i></th></tr></table></body></html>",
+   "measure": "xw",
+   "boxes": [
+    {
+     "cid": "th",
+     "x": 2,
+     "y": 2,
+     "width": 102,
+     "height": 20
+    },
+    {
+     "cid": "i",
+     "x": 48,
+     "y": 7,
+     "width": 10,
+     "height": 10
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "th-author-text-align",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><table><tr><th data-cid=\"th\" style=\"width:100px;text-align:left\"><i data-cid=\"i\" style=\"display:inline-block;width:10px;height:10px\"></i></th></tr></table></body></html>",
+   "measure": "xw",
+   "boxes": [
+    {
+     "cid": "th",
+     "x": 2,
+     "y": 2,
+     "width": 102,
+     "height": 20
+    },
+    {
+     "cid": "i",
+     "x": 3,
+     "y": 7,
+     "width": 10,
+     "height": 10
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "th-leaves-block-children",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><table><tr><th data-cid=\"th\" style=\"width:100px\"><div data-cid=\"d\" style=\"width:10px;height:10px\"></div></th></tr></table></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "th",
+     "x": 2,
+     "y": 2,
+     "width": 102,
+     "height": 12
+    },
+    {
+     "cid": "d",
+     "x": 3,
+     "y": 3,
+     "width": 10,
+     "height": 10
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
   }
  ]
 }
