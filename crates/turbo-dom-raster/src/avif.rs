@@ -293,6 +293,92 @@ mod tests {
         turbo_dom_layout::image::avif_payload(&avif).unwrap().color
     }
 
+    /// Every AVIF fixture of turbo-dom-layout and this crate.
+    fn fixtures() -> Vec<(String, Vec<u8>)> {
+        let root = env!("CARGO_MANIFEST_DIR");
+        let mut out = Vec::new();
+        for dir in [
+            format!("{root}/../turbo-dom-layout/tests/fixtures/images/formats"),
+            format!("{root}/tests/fixtures/images/avif"),
+        ] {
+            let mut paths: Vec<_> = std::fs::read_dir(&dir)
+                .unwrap()
+                .map(|e| e.unwrap().path())
+                .filter(|p| p.extension().is_some_and(|e| e == "avif"))
+                .collect();
+            paths.sort();
+            for p in paths {
+                out.push((p.display().to_string(), std::fs::read(&p).unwrap()));
+            }
+        }
+        out
+    }
+
+    /// The fuzz body [`corrupt_avifs_are_broken_images_never_a_process_abort`] runs in a
+    /// child process (an abort inside the decoder takes the whole process down, which a
+    /// test in this process could not observe): every AVIF fixture truncated at each
+    /// sixteenth and with single bytes flipped across the file, decoded end to end.
+    #[test]
+    #[ignore = "run in a child process by corrupt_avifs_are_broken_images_never_a_process_abort"]
+    fn corrupt_avif_fuzz_child() {
+        let (mut decoded, mut rejected) = (0, 0);
+        for (label, avif) in fixtures() {
+            let mut variants: Vec<Vec<u8>> = (1..16)
+                .map(|i| avif[..avif.len() * i / 16].to_vec())
+                .collect();
+            for at in (0..avif.len()).step_by(3) {
+                for mask in [0x01, 0x80, 0xff] {
+                    let mut v = avif.clone();
+                    v[at] ^= mask;
+                    variants.push(v);
+                }
+            }
+            for v in variants {
+                match super::decode(&v) {
+                    Some(img) => {
+                        assert_eq!(
+                            img.rgba.len(),
+                            img.width as usize * img.height as usize * 4,
+                            "{label}"
+                        );
+                        decoded += 1;
+                    }
+                    None => rejected += 1,
+                }
+            }
+        }
+        println!("FUZZ-DONE decoded={decoded} rejected={rejected}");
+    }
+
+    /// A corrupt AVIF decodes to `None` (the box paints as a broken image) — it never
+    /// aborts the process (miaskiewicz/turbo-dom#94: rav1d 1.1.0 panicked inside its
+    /// `extern "C"` API on a decode error with one frame context, aborting).
+    #[test]
+    #[ignore = "turbo-dom#94: fails until the fix"]
+    fn corrupt_avifs_are_broken_images_never_a_process_abort() {
+        let out = std::process::Command::new(std::env::current_exe().unwrap())
+            .args([
+                "--exact",
+                "avif::tests::corrupt_avif_fuzz_child",
+                "--ignored",
+                "--nocapture",
+                "--test-threads=1",
+            ])
+            .output()
+            .unwrap();
+        let stdout = String::from_utf8_lossy(&out.stdout);
+        assert!(
+            out.status.success() && stdout.contains("FUZZ-DONE"),
+            "child {:?}\n{stdout}\n{}",
+            out.status,
+            String::from_utf8_lossy(&out.stderr)
+                .lines()
+                .take(12)
+                .collect::<Vec<_>>()
+                .join("\n")
+        );
+    }
+
     #[test]
     fn a_colour_stream_decodes_to_its_frame() {
         let frame = av1::decode(&stream()).expect("decodes");
