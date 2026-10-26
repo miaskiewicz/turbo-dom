@@ -404,6 +404,14 @@ const CASES = [
   { id: "float-sum-clear-resets", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="float:left"><div style="float:left;height:5px;width:20px"></div><div style="float:left;height:5px;width:30px;clear:left"></div></div>`) },
   { id: "float-sum-in-inline-block", html: DOC(S("body{margin:0}"), `<div style="font-size:0"><div data-cid="c" style="display:inline-block"><div style="float:left;height:5px;width:20px"></div><div style="float:left;height:5px;width:25px"></div></div></div>`) },
   { id: "float-sum-in-table-cell", html: DOC(S("body{margin:0}"), `<table style="border-spacing:0"><tr><td data-cid="c" style="padding:0"><div style="float:left;height:5px;width:20px"></div><div style="float:left;height:5px;width:25px"></div></td></tr></table>`) },
+  // P5b-W7, miaskiewicz/turbo-dom#100: an absolutely positioned / fixed box's percentage
+  // `width` resolves against its containing block (the positioned ancestor's padding box,
+  // the viewport for `fixed`), not its parent.
+  { id: "abs-percent-width-containing-block", html: DOC(S("body{margin:0}"), `<div style="position:relative;width:400px;height:50px"><div style="width:100px"><div data-cid="c" style="position:absolute;width:50%;height:5px"></div></div></div>`) },
+  { id: "abs-percent-width-padding-box", html: DOC(S("body{margin:0}"), `<div style="position:relative;width:400px;padding:0 50px;height:50px"><div style="width:100px"><div data-cid="c" style="position:absolute;left:0;width:25%;height:5px"></div></div></div>`) },
+  { id: "abs-percent-width-initial-containing-block", html: DOC(S("body{margin:0}"), `<div style="width:100px"><div data-cid="c" style="position:absolute;width:10%;height:5px"></div></div>`) },
+  { id: "abs-percent-width-fixed", html: DOC(S("body{margin:0}"), `<div style="position:relative;width:100px"><div data-cid="c" style="position:fixed;width:50%;height:5px"></div></div>`) },
+  { id: "abs-percent-max-width", html: DOC(S("body{margin:0}"), `<div style="position:relative;width:400px;height:50px"><div style="width:100px"><div data-cid="c" style="position:absolute;width:300px;max-width:50%;height:5px"></div></div></div>`) },
   // P5b-W6, miaskiewicz/turbo-dom#75 item 1: a last child's bottom margin and its parent's
   // `min-height` / `max-height`. The margin collapses through an auto-height parent whose
   // used height is its content height; when `min-height` (or `max-height`) changes the
