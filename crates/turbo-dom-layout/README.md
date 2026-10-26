@@ -89,7 +89,9 @@ fn lay_out(html: &str) -> Result<Fragment, RenderError> {
   (`scripts/image-orientation-chrome-control.mjs`; fixtures from
   `scripts/make_orientation_fixtures.py`). Beyond PNG/JPEG/GIF/WebP the probe sizes BMP,
   ICO/CUR (`ico_entry`: the largest entry, as browsers show) and AVIF (the primary item's
-  `ispe`; `avif_payload` demuxes its AV1 streams for a decoder); the PDF does not embed
+  `ispe`, oriented by its `irot`/`imir` transform properties as Chrome displays them —
+  `Orientation::then` composes them in association order, miaskiewicz/turbo-dom#45;
+  `avif_payload` demuxes its AV1 streams for a decoder); the PDF does not embed
   them (decode emits nothing). `probe_natural` is the browser's `naturalWidth`/`Height`
   (displayed orientation; SVG under `svg-rasterize` via `svg::natural_size`, Chrome's
   300x150 default-object rules) and `decode_data_url` the Fetch-standard `data:` decoder

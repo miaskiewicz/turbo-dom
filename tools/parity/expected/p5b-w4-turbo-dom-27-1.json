@@ -1,0 +1,19 @@
+{
+ "id": "turbo-dom#27 item 1",
+ "reason": "turbo-dom-raster paints an <img src=\"data:\u2026\"> from its own URL (decoded through turbo-dom-layout's decode_data_url), with no caller bytes (bd19fd7). static harness (surf static screenshot_png/screenshot_svg at 1280x800, plain + caller-assets passes, 123 inputs; base = git rev, new = git-archived tree): 79a94d3 -> bd19fd7: 4 plain outputs, the data: images of conformance 56-img-percent-width-aspect and extra xref-anchors now painted as in Chrome; caller-assets pass 0 (it supplied those bytes). html2pdf corpora do not use the raster. P5b-W4.",
+ "control": "crates/turbo-dom-raster/tests/fixtures/raster_img_chrome156.json (scripts/raster-img-chrome-control.mjs, Chrome for Testing 156.0.8078.4) data-* cases",
+ "e2e": "crates/turbo-dom-raster/tests/raster_img_chrome.rs data_url_images_paint_like_chrome_156",
+ "changes": {
+  "html2pdf": [],
+  "html2pdf-svg": [],
+  "html2pdf-extra": [],
+  "surf": [
+   "static-turbo-html2pdf__benches__conformance__fixtures__56-img-percent-width-aspect.png",
+   "static-turbo-html2pdf__benches__conformance__fixtures__56-img-percent-width-aspect.svg"
+  ],
+  "surf-extra": [
+   "static-extra-xref-anchors.png",
+   "static-extra-xref-anchors.svg"
+  ]
+ }
+}

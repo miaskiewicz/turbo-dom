@@ -1,7 +1,13 @@
-//! Raw-HTML helpers for the screenshot drive: the URLs a caller must fetch
+//! HTML helpers for the screenshot drive: the URLs a caller must fetch
 //! ([`image_urls`], [`image_urls_in_css`], [`stylesheet_hrefs`] — the raster does no
 //! I/O; `<link rel="stylesheet">` bodies come back as the drive's linked CSS) and
-//! lazy-image filling ([`delazy_images`]).
+//! lazy-image filling ([`delazy_images`], [`delazy_tree`]).
+//!
+//! The `<img>` helpers work on the parsed document's HTML `<img>` ELEMENTS
+//! (miaskiewicz/turbo-dom#27), never on source text: `<img` inside an attribute value, a
+//! `<script>` string, a comment or `<template>` content is not an image (Chrome's
+//! `document.images`), and attribute values come character-reference-decoded from the
+//! parser.
 //!
 //! Nothing here touches the page's own `<style>`/`<script>`/`<noscript>`/`<template>`
 //! any more: turbo-dom-layout's HTML drive styles the whole parsed document (head and
@@ -10,6 +16,13 @@
 //! and never lays out non-visual elements. The old raw-source `<style>` scraper and the
 //! text-level script/noscript/template strips that kept scraped markup from painting
 //! are gone (corpus-identical without them).
+
+use turbo_dom_layout::parse_html_tree;
+use turbo_dom_layout::turbo_dom::rtdom::serialize::serialize_outer;
+use turbo_dom_layout::turbo_dom::rtdom::tree::NodeType;
+use turbo_dom_layout::turbo_dom::{Handle, Tree};
+
+use crate::image_paint::html_elements;
 
 /// The `href`s of every `<link rel="stylesheet">` in `html`, in source order.
 /// Values are returned verbatim (possibly relative) — the caller resolves them
@@ -111,11 +124,15 @@ fn numeric_entity(entity: &str) -> Option<char> {
 /// are returned **verbatim** — exactly the resolver key turbo-dom-layout uses (the
 /// raw `src`, or the unquoted `url(...)` inner) — so the caller resolves each
 /// against the page URL, fetches the bytes, and stores them under the same key.
-/// `data:` URIs are skipped (self-contained, nothing to fetch).
+/// `data:` URIs are skipped (self-contained, nothing to fetch: the screenshot decodes an
+/// `<img src="data:…">` itself, miaskiewicz/turbo-dom#27).
 #[must_use]
 pub fn image_urls(html: &str) -> Vec<String> {
-    let mut urls = Vec::new();
-    img_srcs(html, &mut urls);
+    let tree = parse_html_tree(html);
+    let mut urls: Vec<String> = html_elements(&tree, "img")
+        .into_iter()
+        .filter_map(|img| best_img_url(&|name| tree.get_attribute(img, name)))
+        .collect();
     background_image_urls(html, &mut urls);
     let mut seen = std::collections::HashSet::new();
     urls.retain(|u| !u.starts_with("data:") && seen.insert(u.clone()));
@@ -202,184 +219,120 @@ fn is_placeholder_src(src: &str) -> bool {
     s.starts_with("data:") || PLACEHOLDER_SRC_TOKENS.iter().any(|t| s.contains(t))
 }
 
-/// The first lazy/responsive attribute URL on the tag (order = preference).
-fn lazy_img_url(tag: &str, tag_lower: &str) -> Option<String> {
+/// An element's attribute value by name (character references decoded).
+type Attrs<'a> = dyn Fn(&str) -> Option<&'a str> + 'a;
+
+/// The first lazy/responsive attribute URL of an `<img>` (order = preference).
+fn lazy_img_url(attrs: &Attrs) -> Option<String> {
     for attr in LAZY_IMG_ATTRS {
-        if let Some(v) = attr_value(tag, tag_lower, attr) {
+        if let Some(v) = attrs(attr) {
             let v = v.trim();
             let url = if attr.contains("srcset") {
                 largest_srcset_url(v)
             } else {
                 v
             };
-            let url = html_unescape(url.trim());
+            let url = url.trim();
             if !url.is_empty() {
-                return Some(url);
+                return Some(url.to_string());
             }
         }
     }
     None
 }
 
-/// The best image URL for an `<img>` tag: a real (non-empty, non-placeholder)
-/// `src`, else the first lazy/responsive attribute that carries one. A placeholder
-/// `src` (1×1 spacer / inline `data:` pixel) yields to the lazy URL so the real
-/// image is fetched + painted instead of the spacer.
-fn best_img_url(tag: &str, tag_lower: &str) -> Option<String> {
-    let src = attr_value(tag, tag_lower, "src")
-        .map(|s| html_unescape(s.trim()))
-        .filter(|s| !s.is_empty());
+/// The best image URL for an `<img>`: a real (non-empty, non-placeholder) `src`, else the
+/// first lazy/responsive attribute that carries one. A placeholder `src` (1×1 spacer /
+/// inline `data:` pixel) yields to the lazy URL so the real image is fetched + painted
+/// instead of the spacer.
+fn best_img_url(attrs: &Attrs) -> Option<String> {
+    let src = attrs("src").map(str::trim).filter(|s| !s.is_empty());
     match src {
         // A real src wins outright.
-        Some(s) if !is_placeholder_src(&s) => Some(s),
+        Some(s) if !is_placeholder_src(s) => Some(s.to_string()),
         // A placeholder src yields to a lazy URL when one exists, else stands.
-        Some(s) => lazy_img_url(tag, tag_lower).or(Some(s)),
+        Some(s) => lazy_img_url(attrs).or_else(|| Some(s.to_string())),
         // No src at all → the lazy/responsive fallback.
-        None => lazy_img_url(tag, tag_lower),
+        None => lazy_img_url(attrs),
     }
 }
 
-/// Run `f` for each `<img>` tag with its (raw, lower) slice and its `[start,end)`.
-fn for_each_img(html: &str, mut f: impl FnMut(&str, &str, usize, usize)) {
-    let lower = html.to_ascii_lowercase();
-    let bytes = html.as_bytes();
-    let mut cursor = 0;
-    while let Some(rel) = lower[cursor..].find("<img") {
-        let tag_start = cursor + rel;
-        // Whole tag name: char after `<img` must end it (ws / `>` / `/`).
-        let after = bytes.get(tag_start + 4).copied();
-        if !matches!(after, Some(b) if b == b'>' || b == b'/' || b.is_ascii_whitespace()) {
-            cursor = tag_start + 4;
-            continue;
-        }
-        let end = tag_end(bytes, tag_start).unwrap_or(html.len());
-        f(
-            &html[tag_start..end],
-            &lower[tag_start..end],
-            tag_start,
-            end,
-        );
-        cursor = end + 1;
+/// What filling `<img>` element `img` takes: its new `src`, and whether to force it visible
+/// (it had no `src` and no inline `style`). `None`: it already has a real `src`, or has
+/// nothing better.
+fn lazy_fill(tree: &Tree, img: Handle) -> Option<(String, bool)> {
+    let attrs = |name: &str| tree.get_attribute(img, name);
+    let src = attrs("src").map(str::trim);
+    if src.is_some_and(|s| !s.is_empty() && !is_placeholder_src(s)) {
+        return None; // already points at a real image
     }
+    // A present placeholder `src` yields only to a lazy URL (else it stands); a missing one
+    // takes the lazy/responsive fallback.
+    let placeholder = src.is_some_and(|s| !s.is_empty());
+    let url = if placeholder {
+        lazy_img_url(&attrs)
+    } else {
+        best_img_url(&attrs)
+    }?;
+    Some((url, !placeholder && attrs("style").is_none()))
 }
 
-/// Byte offset of the `>` that closes the tag opening at `start`, skipping any `>`
-/// inside a quoted attribute value (`alt="PLAY MIND<br>GAMES"` — a stray `>` in the
-/// value must not end the tag). Returns `None` if unterminated.
-fn tag_end(bytes: &[u8], start: usize) -> Option<usize> {
-    let mut quote: Option<u8> = None;
-    for (i, &b) in bytes.iter().enumerate().skip(start) {
-        match quote {
-            Some(q) if b == q => quote = None,
-            None if b == b'"' || b == b'\'' => quote = Some(b),
-            None if b == b'>' => return Some(i),
-            Some(_) | None => {}
+/// Fill in a missing `<img src>` (or replace a lazy-load *placeholder* `src`) of every
+/// `<img>` element of the parsed document from its lazy/responsive attribute, so layout
+/// (which sizes/paints an image box from `src`) renders lazy-loaded images whose JS
+/// `src`-swap didn't run headless. A lazy image is revealed by JS swapping an
+/// opacity/visibility class on load; that can't run, so an image that had no `src` is
+/// forced visible too (else the engine drops it as `opacity:0` — nike's hero `<img>`s start
+/// `opacity:0` as a blank band) unless it has an inline `style` that would be clobbered.
+/// `<img>`s with a real `src` are left as-is. The URL matches what [`image_urls`] returns,
+/// so the caller's fetched bytes resolve. Returns whether anything changed.
+pub fn delazy_tree(tree: &mut Tree) -> bool {
+    let fills: Vec<(Handle, (String, bool))> = html_elements(tree, "img")
+        .into_iter()
+        .filter_map(|img| lazy_fill(tree, img).map(|fill| (img, fill)))
+        .collect();
+    for (img, (url, reveal)) in &fills {
+        tree.set_attribute(*img, "src", url);
+        if *reveal {
+            tree.set_attribute(*img, "style", REVEAL);
         }
     }
-    None
+    !fills.is_empty()
 }
 
-/// Push the resolved image URL (`src`, or a lazy/responsive fallback) of every
-/// `<img>` onto `out`.
-fn img_srcs(html: &str, out: &mut Vec<String>) {
-    for_each_img(html, |tag, tag_lower, _, _| {
-        if let Some(url) = best_img_url(tag, tag_lower) {
-            out.push(url);
-        }
-    });
-}
+/// The inline style that forces a de-lazied image visible.
+const REVEAL: &str = "opacity:1 !important;visibility:visible !important";
 
-/// The byte span `[start, end)` of attribute `name`'s (quoted) value within `tag`,
-/// or `None` if absent/unquoted. Mirrors [`attr_value`]'s scan but returns the span
-/// so a value can be rewritten in place.
-fn attr_value_span(tag: &str, tag_lower: &str, name: &str) -> Option<(usize, usize)> {
-    let mut from = 0;
-    loop {
-        let rel = tag_lower[from..].find(name)?;
-        let at = from + rel;
-        let before_ok = at == 0 || tag.as_bytes()[at - 1].is_ascii_whitespace();
-        let after_name = at + name.len();
-        if before_ok && tag_lower[after_name..].trim_start().starts_with('=') {
-            // Advance past `=` and any whitespace to the opening quote.
-            let eq = after_name + tag[after_name..].find('=')?;
-            let vstart_rel = tag[eq + 1..].find(['"', '\''])?;
-            let quote = tag.as_bytes()[eq + 1 + vstart_rel];
-            let val_start = eq + 1 + vstart_rel + 1;
-            let val_end = val_start + tag[val_start..].find(quote as char)?;
-            return Some((val_start, val_end));
-        }
-        from = after_name;
-    }
-}
-
-/// Fill in a missing `<img src>` (or replace a lazy-load *placeholder* `src`) from
-/// its lazy/responsive attribute, so the layout (which sizes/paints an image box
-/// from `src`) renders lazy-loaded images whose JS `src`-swap didn't run headless.
-/// `<img>`s with a real `src` are left as-is. The resulting URL matches what
-/// [`image_urls`] returns, so the caller's fetched bytes resolve.
+/// [`delazy_tree`] over an HTML string: `html` itself when no `<img>` changes, else the
+/// filled document re-serialized (its doctype, public/system ids included, then the
+/// document's nodes as `outerHTML`).
 #[must_use]
 pub fn delazy_images(html: &str) -> String {
-    // Collect edits `[start, end) -> text` (an insert is a zero-width span), then
-    // splice once, back-to-front so earlier offsets stay valid.
-    let mut edits: Vec<(usize, usize, String)> = Vec::new();
-    for_each_img(html, |tag, tag_lower, start, _end| {
-        let src = attr_value(tag, tag_lower, "src").map(|s| s.trim().to_string());
-        let real_src = src
-            .as_deref()
-            .is_some_and(|s| !s.is_empty() && !is_placeholder_src(s));
-        if real_src {
-            return; // already points at a real image
-        }
-        // A present placeholder `src` yields only to a lazy URL (else it stands, its
-        // source text untouched); a missing one takes the lazy/responsive fallback. The
-        // URL is html-unescaped, so it is re-escaped for the attribute it is written into.
-        let url = match src {
-            Some(ref s) if !s.is_empty() => lazy_img_url(tag, tag_lower),
-            _ => best_img_url(tag, tag_lower),
-        };
-        let Some(url) = url.map(|u| attr_escape(&u)) else {
-            return;
-        };
-        match src {
-            // A placeholder `src` is present: rewrite its value to the real URL in
-            // place (a second `src` attr would be ignored — first wins in the parser).
-            Some(s) if !s.is_empty() => {
-                if let Some((vs, ve)) = attr_value_span(tag, tag_lower, "src") {
-                    edits.push((start + vs, start + ve, url));
-                }
-            }
-            // No `src` at all: insert one right after `<img` (offset start+4). A lazy
-            // image is revealed by JS swapping an opacity/visibility class on load;
-            // we can't run that, so force it visible too (else the engine drops it as
-            // `opacity:0` — nike's hero `<img>`s start opacity:0 as a blank band).
-            // Only when the tag has no inline `style` we would otherwise clobber.
-            _ => {
-                let reveal = if attr_value(tag, tag_lower, "style").is_none() {
-                    r#" style="opacity:1 !important;visibility:visible !important""#
-                } else {
-                    ""
-                };
-                let at = start + 4;
-                edits.push((at, at, format!(r#" src="{url}"{reveal}"#)));
-            }
-        }
-    });
-    if edits.is_empty() {
+    let mut tree = parse_html_tree(html);
+    if !delazy_tree(&mut tree) {
         return html.to_string();
     }
-    edits.sort_by_key(|(s, _, _)| *s);
-    let mut out = html.to_string();
-    for (s, e, text) in edits.into_iter().rev() {
-        out.replace_range(s..e, &text);
-    }
-    out
+    tree.children(tree.root())
+        .into_iter()
+        .map(|node| match tree.node_type(node) {
+            NodeType::Doctype => doctype(&tree, node),
+            _ => serialize_outer(&tree, node),
+        })
+        .collect()
 }
 
-/// `s` escaped for a double- or single-quoted attribute value (`&`, `"`, `'`).
-fn attr_escape(s: &str) -> String {
-    s.replace('&', "&amp;")
-        .replace('"', "&quot;")
-        .replace('\'', "&#39;")
+/// A doctype node as source, with its public and system identifiers (they decide the
+/// document's quirks mode on a re-parse).
+fn doctype(tree: &Tree, node: Handle) -> String {
+    let name = tree.doctype_name(node).unwrap_or("html");
+    let public = tree.doctype_public_id(node).filter(|id| !id.is_empty());
+    let system = tree.doctype_system_id(node).filter(|id| !id.is_empty());
+    match (public, system) {
+        (Some(p), Some(s)) => format!(r#"<!DOCTYPE {name} PUBLIC "{p}" "{s}">"#),
+        (Some(p), None) => format!(r#"<!DOCTYPE {name} PUBLIC "{p}">"#),
+        (None, Some(s)) => format!(r#"<!DOCTYPE {name} SYSTEM "{s}">"#),
+        (None, None) => format!("<!DOCTYPE {name}>"),
+    }
 }
 
 /// Push the url of every `background`/`background-image: url(...)` declaration
@@ -538,13 +491,51 @@ mod tests {
     }
 
     #[test]
+    fn delazy_keeps_the_doctype_and_its_identifiers() {
+        use super::delazy_images;
+        let body = r#"<img data-src="a.jpg">"#;
+        for (doctype, kept) in [
+            (
+                r#"<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">"#,
+                r#"<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">"#,
+            ),
+            (
+                r#"<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">"#,
+                r#"<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">"#,
+            ),
+            (
+                r#"<!DOCTYPE html SYSTEM "about:legacy-compat">"#,
+                r#"<!DOCTYPE html SYSTEM "about:legacy-compat">"#,
+            ),
+            ("<!doctype html>", "<!DOCTYPE html>"),
+        ] {
+            let out = delazy_images(&format!("{doctype}{body}"));
+            assert!(out.starts_with(kept), "{out}");
+            assert!(out.contains(r#"src="a.jpg""#), "{out}");
+        }
+        // A document without one gets none; root-level comments are kept.
+        let out = delazy_images(&format!("<!-- c -->{body}"));
+        assert!(out.starts_with("<!-- c --><html>"), "{out}");
+    }
+
+    #[test]
+    fn delazy_and_image_urls_skip_template_content_and_img_text() {
+        use super::{delazy_images, image_urls};
+        // turbo-dom#27: only the document's <img> elements are images.
+        let html = r#"<template><img data-src="t.jpg"></template><script>"<img data-src='s.jpg'>"</script><!-- <img data-src="c.jpg"> --><p title="<img data-src='a.jpg'>"></p>"#;
+        assert_eq!(delazy_images(html), html);
+        assert!(image_urls(html).is_empty());
+    }
+
+    #[test]
     fn delazy_escapes_the_lazy_url_it_writes() {
         use super::delazy_images;
+        // The written URL round-trips: the output parses back to the decoded lazy URL.
         let out = delazy_images(r#"<img data-src="a.jpg?x=1&amp;q=&quot;'">"#);
-        assert!(
-            out.contains(r#" src="a.jpg?x=1&amp;q=&quot;&#39;""#),
-            "{out}"
-        );
+        assert!(out.contains(r#" src="a.jpg?x=1&amp;q=&quot;'""#), "{out}");
+        let tree = super::parse_html_tree(&out);
+        let img = super::html_elements(&tree, "img")[0];
+        assert_eq!(tree.get_attribute(img, "src"), Some(r#"a.jpg?x=1&q="'"#));
         let out = delazy_images(r#"<img src="data:," data-src="b.jpg?x=1&amp;y=2">"#);
         assert!(out.contains(r#"<img src="b.jpg?x=1&amp;y=2""#), "{out}");
     }

@@ -1,0 +1,19 @@
+{
+ "id": "turbo-html2pdf#34",
+ "reason": "The walker measures gaps and page fill on flow positions under relatively positioned blocks (their paint shift no longer pushes the rest of the flow), and the children of a split positioned block keep its paint level (93a33be). Attribution: napi builds (plain + svg, fresh target dirs, git-archived commits) of turbo-html2pdf consol/p5b-w4 against turbo-dom 79a94d3, each step vs the previous: 93a33be changes conformance-30-relative-offset (plain, svg, .ua). Chrome-ward: page-1 raster (pdftoppm -r 48) vs Chrome page.pdf() (A4 20mm) 1545 differing pixels, 3811 before (with #35's paint order).",
+ "control": "turbo-html2pdf crates/turbo-html2pdf-core/tests/fixtures/pagination_chrome156.json (scripts/pagination-chrome-control.mjs: Chrome for Testing 156.0.8078.4 page.pdf() of 600x400px @page boxes, pdftoppm -r 96) cases relative-offset-flow, relative-offset-split",
+ "e2e": "turbo-html2pdf crates/turbo-html2pdf-core/tests/pagination_chrome.rs (+ tests/paginate.rs); every control case also matches through the emitted PDF (pdftoppm) except exact-fill-child-margin (turbo-dom#41)",
+ "changes": {
+  "html2pdf": [
+   "conformance-30-relative-offset.pdf"
+  ],
+  "html2pdf-svg": [
+   "conformance-30-relative-offset.pdf"
+  ],
+  "html2pdf-extra": [
+   "conformance-30-relative-offset.ua.pdf"
+  ],
+  "surf": [],
+  "surf-extra": []
+ }
+}

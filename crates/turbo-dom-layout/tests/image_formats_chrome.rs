@@ -9,7 +9,7 @@
 //! `svg-rasterize`), and the HTML drive lays every raster-format `<img>` out at Chrome's
 //! rectangle.
 use serde_json::Value;
-use turbo_dom_layout::image::{decode_data_url, probe, probe_natural, sniff, Format};
+use turbo_dom_layout::image::{decode_data_url, probe, probe_natural, sniff, Format, Orientation};
 use turbo_dom_layout::{layout_boxes, Diagnostics, FontRegistry};
 
 fn fixture() -> Value {
@@ -137,6 +137,42 @@ fn the_new_formats_sniff_and_probe() {
             );
         }
     }
+}
+
+#[test]
+fn avif_transform_properties_orient_the_image() {
+    // miaskiewicz/turbo-dom#45: irot / imir compose, in association order, into the EXIF
+    // orientation the image is displayed with (as Chrome 156 displays them).
+    let read = |f: &str| {
+        std::fs::read(format!(
+            "{}/tests/fixtures/images/formats/{f}",
+            env!("CARGO_MANIFEST_DIR")
+        ))
+        .unwrap()
+    };
+    for (file, exif) in [
+        ("q.avif", 1),
+        ("q-irot90.avif", 8),
+        ("q-irot180.avif", 3),
+        ("q-irot270.avif", 6),
+        ("q-imir0.avif", 4),
+        ("q-imir1.avif", 2),
+        ("q-irot90-imir0.avif", 5),
+    ] {
+        let i = probe(&read(file)).expect(file);
+        assert_eq!(
+            (i.width, i.height, i.orientation.exif()),
+            (64, 40, exif),
+            "{file}"
+        );
+    }
+    let o = Orientation::from_exif;
+    assert_eq!(o(1).then(o(6)), o(6));
+    assert_eq!(o(6).then(o(8)), o(1), "a quarter turn and back");
+    assert_eq!(o(8).then(o(8)), o(3));
+    assert_eq!(o(2).then(o(2)), o(1), "a mirror twice");
+    assert_eq!(o(8).then(o(4)), o(5));
+    assert_eq!(o(4).then(o(8)), o(7), "the order matters");
 }
 
 #[test]
