@@ -9540,6 +9540,10 @@ mod html_meta_tests;
 mod svg_inline_style_tests;
 
 #[cfg(test)]
+#[path = "flex_shorthand_tests.rs"]
+mod flex_shorthand_tests;
+
+#[cfg(test)]
 #[path = "css_live_tests.rs"]
 mod css_live_tests;
 

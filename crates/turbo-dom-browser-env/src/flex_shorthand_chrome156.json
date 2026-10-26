@@ -1,0 +1,163 @@
+{
+  "browser": "Chrome/156.0.8078.4",
+  "v8": "15.6.75",
+  "probeSha256": "a5384778cded6be6f468d4a8654269263022faddea3755d5177ff5a2f01b3e11",
+  "collectorSha256": "440965c5c029143c92058c21f6e125a83d3d91f55331a2e4df225019fdf7a55f",
+  "errors": [],
+  "result": [
+    {
+      "value": "1",
+      "flex": "1 1 0%",
+      "longhands": [
+        "1",
+        "1",
+        "0%"
+      ],
+      "cssText": "flex: 1 1 0%;",
+      "attribute": "flex: 1 1 0%;"
+    },
+    {
+      "value": "auto",
+      "flex": "1 1 auto",
+      "longhands": [
+        "1",
+        "1",
+        "auto"
+      ],
+      "cssText": "flex: 1 1 auto;",
+      "attribute": "flex: 1 1 auto;"
+    },
+    {
+      "value": "none",
+      "flex": "0 0 auto",
+      "longhands": [
+        "0",
+        "0",
+        "auto"
+      ],
+      "cssText": "flex: 0 0 auto;",
+      "attribute": "flex: 0 0 auto;"
+    },
+    {
+      "value": "initial",
+      "flex": "initial",
+      "longhands": [
+        "initial",
+        "initial",
+        "initial"
+      ],
+      "cssText": "flex: initial;",
+      "attribute": "flex: initial;"
+    },
+    {
+      "value": "2 3",
+      "flex": "2 3 0%",
+      "longhands": [
+        "2",
+        "3",
+        "0%"
+      ],
+      "cssText": "flex: 2 3 0%;",
+      "attribute": "flex: 2 3 0%;"
+    },
+    {
+      "value": "1 0px",
+      "flex": "1 1 0px",
+      "longhands": [
+        "1",
+        "1",
+        "0px"
+      ],
+      "cssText": "flex: 1 1 0px;",
+      "attribute": "flex: 1 1 0px;"
+    },
+    {
+      "value": "10px",
+      "flex": "1 1 10px",
+      "longhands": [
+        "1",
+        "1",
+        "10px"
+      ],
+      "cssText": "flex: 1 1 10px;",
+      "attribute": "flex: 1 1 10px;"
+    },
+    {
+      "value": "0",
+      "flex": "0 1 0%",
+      "longhands": [
+        "0",
+        "1",
+        "0%"
+      ],
+      "cssText": "flex: 0 1 0%;",
+      "attribute": "flex: 0 1 0%;"
+    },
+    {
+      "value": "1 2 30%",
+      "flex": "1 2 30%",
+      "longhands": [
+        "1",
+        "2",
+        "30%"
+      ],
+      "cssText": "flex: 1 2 30%;",
+      "attribute": "flex: 1 2 30%;"
+    },
+    {
+      "value": "30% 1 2",
+      "flex": "1 2 30%",
+      "longhands": [
+        "1",
+        "2",
+        "30%"
+      ],
+      "cssText": "flex: 1 2 30%;",
+      "attribute": "flex: 1 2 30%;"
+    },
+    {
+      "value": "content",
+      "flex": "1 1 content",
+      "longhands": [
+        "1",
+        "1",
+        "content"
+      ],
+      "cssText": "flex: 1 1 content;",
+      "attribute": "flex: 1 1 content;"
+    },
+    {
+      "value": "0 0",
+      "flex": "0 0 0%",
+      "longhands": [
+        "0",
+        "0",
+        "0%"
+      ],
+      "cssText": "flex: 0 0 0%;",
+      "attribute": "flex: 0 0 0%;"
+    },
+    {
+      "value": "1.5",
+      "flex": "1.5 1 0%",
+      "longhands": [
+        "1.5",
+        "1",
+        "0%"
+      ],
+      "cssText": "flex: 1.5 1 0%;",
+      "attribute": "flex: 1.5 1 0%;"
+    },
+    {
+      "value": "1 1 auto",
+      "flex": "1 1 auto",
+      "longhands": [
+        "1",
+        "1",
+        "auto"
+      ],
+      "cssText": "flex: 1 1 auto;",
+      "attribute": "flex: 1 1 auto;"
+    }
+  ]
+}
