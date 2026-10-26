@@ -4951,6 +4951,173 @@
     }
    },
    "canvas": "#ffffff"
+  },
+  {
+   "id": "css-table-no-spacing",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><div data-cid=\"t\" style=\"display:table\"><div style=\"display:table-row\"><div data-cid=\"td\" style=\"display:table-cell\"><div style=\"width:30px;height:10px\"></div></div></div></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "t",
+     "x": 0,
+     "y": 0,
+     "width": 30,
+     "height": 10
+    },
+    {
+     "cid": "td",
+     "x": 0,
+     "y": 0,
+     "width": 30,
+     "height": 10
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "css-table-explicit-spacing",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><div data-cid=\"t\" style=\"display:table;border-spacing:5px 3px\"><div style=\"display:table-row\"><div data-cid=\"td\" style=\"display:table-cell\"><div style=\"width:30px;height:10px\"></div></div></div></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "t",
+     "x": 0,
+     "y": 0,
+     "width": 40,
+     "height": 16
+    },
+    {
+     "cid": "td",
+     "x": 5,
+     "y": 3,
+     "width": 30,
+     "height": 10
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "css-table-inherits-spacing",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><div style=\"border-spacing:5px\"><div data-cid=\"t\" style=\"display:table\"><div style=\"display:table-row\"><div data-cid=\"td\" style=\"display:table-cell\"><div style=\"width:30px;height:10px\"></div></div></div></div></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "t",
+     "x": 0,
+     "y": 0,
+     "width": 40,
+     "height": 20
+    },
+    {
+     "cid": "td",
+     "x": 5,
+     "y": 5,
+     "width": 30,
+     "height": 10
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "css-table-in-table-cell",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}td{padding:0}</style></head><body><table data-cid=\"o\" style=\"border-spacing:7px\"><tr><td><div data-cid=\"t\" style=\"display:table\"><div style=\"display:table-row\"><div data-cid=\"td\" style=\"display:table-cell\"><div style=\"width:30px;height:10px\"></div></div></div></div></td></tr></table></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "o",
+     "x": 0,
+     "y": 0,
+     "width": 58,
+     "height": 38
+    },
+    {
+     "cid": "t",
+     "x": 7,
+     "y": 7,
+     "width": 44,
+     "height": 24
+    },
+    {
+     "cid": "td",
+     "x": 14,
+     "y": 14,
+     "width": 30,
+     "height": 10
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "table-spacing-not-inherited-past-a-table",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}td{padding:0}</style></head><body><div style=\"border-spacing:9px\"><table data-cid=\"t\"><tr><td data-cid=\"td\"><div style=\"width:30px;height:10px\"></div></td></tr></table></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "t",
+     "x": 0,
+     "y": 0,
+     "width": 34,
+     "height": 14
+    },
+    {
+     "cid": "td",
+     "x": 2,
+     "y": 2,
+     "width": 30,
+     "height": 10
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
   }
  ]
 }

@@ -103,7 +103,7 @@ fn inline_flex_grid_case(id: &str) -> bool {
 /// The control cases of an open bug, each asserted by its own test (`#[ignore]`d until
 /// its fix lands) and held out of [`html_documents_lay_out_as_chrome_156`].
 fn held_out(id: &str) -> bool {
-    let groups: [fn(&str) -> bool; 9] = [
+    let groups: [fn(&str) -> bool; 10] = [
         auto_table_case,
         inline_flex_grid_case,
         abs_auto_width_case,
@@ -113,6 +113,7 @@ fn held_out(id: &str) -> bool {
         |id| id.starts_with("caption-"),
         border_box_case,
         table_border_box_case,
+        spacing_case,
     ];
     groups.iter().any(|group| group(id))
 }
@@ -178,8 +179,9 @@ fn caption_case(id: &str) -> bool {
     id.starts_with("caption-") && !pending_case(id)
 }
 
-/// Caption cases that also need an open fix: a `display: table` element's border-spacing
-/// (miaskiewicz/turbo-dom#63) and a table's extra height (miaskiewicz/turbo-dom#64).
+/// Caption cases that also need another fix: a `display: table` element's border-spacing
+/// (miaskiewicz/turbo-dom#63, [`spacing_case`]) and a table's extra height
+/// (miaskiewicz/turbo-dom#64).
 fn pending_case(id: &str) -> bool {
     matches!(id, "caption-display-table-caption" | "caption-table-height")
 }
@@ -207,4 +209,20 @@ fn table_border_box_case(id: &str) -> bool {
 #[test]
 fn tables_are_border_box_sized_like_chrome_156() {
     compare_cases(table_border_box_case);
+}
+
+/// miaskiewicz/turbo-dom#63: `border-spacing` is inherited, initially 0 (2px only from the
+/// UA `table` rule).
+fn spacing_case(id: &str) -> bool {
+    id.starts_with("css-table-")
+        || matches!(
+            id,
+            "table-spacing-not-inherited-past-a-table" | "caption-display-table-caption"
+        )
+}
+
+#[test]
+#[ignore = "miaskiewicz/turbo-dom#63: fails until the fix"]
+fn border_spacing_is_inherited_and_initially_zero_like_chrome_156() {
+    compare_cases(spacing_case);
 }

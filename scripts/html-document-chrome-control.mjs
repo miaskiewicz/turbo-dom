@@ -231,6 +231,13 @@ const CASES = [
   { id: "table-content-box-author", html: DOC(S("body{margin:0}"), `<table data-cid="t" style="box-sizing:content-box;width:120px;border:4px solid"><tr><td data-cid="td"><div style="width:30px;height:10px"></div></td></tr></table>`) },
   { id: "table-border-box-in-float", html: DOC(S("body{margin:0}"), `<div data-cid="f" style="float:left"><table data-cid="t" style="width:120px;border:4px solid"><tr><td data-cid="td"><div style="width:30px;height:10px"></div></td></tr></table></div>`) },
   { id: "table-border-box-fixed", html: DOC(S("body{margin:0}"), `<table data-cid="t" style="table-layout:fixed;width:120px;border:4px solid;padding:2px"><tr><td data-cid="a"><div style="width:10px;height:10px"></div></td><td data-cid="b"><div style="width:10px;height:10px"></div></td></tr></table>`) },
+  // P5b-W5, miaskiewicz/turbo-dom#63: `border-spacing` is inherited with initial value 0;
+  // only the UA `table` rule gives `<table>` 2px.
+  { id: "css-table-no-spacing", html: DOC(S("body{margin:0}"), `<div data-cid="t" style="display:table"><div style="display:table-row"><div data-cid="td" style="display:table-cell"><div style="width:30px;height:10px"></div></div></div></div>`) },
+  { id: "css-table-explicit-spacing", html: DOC(S("body{margin:0}"), `<div data-cid="t" style="display:table;border-spacing:5px 3px"><div style="display:table-row"><div data-cid="td" style="display:table-cell"><div style="width:30px;height:10px"></div></div></div></div>`) },
+  { id: "css-table-inherits-spacing", html: DOC(S("body{margin:0}"), `<div style="border-spacing:5px"><div data-cid="t" style="display:table"><div style="display:table-row"><div data-cid="td" style="display:table-cell"><div style="width:30px;height:10px"></div></div></div></div></div>`) },
+  { id: "css-table-in-table-cell", html: DOC(S("body{margin:0}td{padding:0}"), `<table data-cid="o" style="border-spacing:7px"><tr><td><div data-cid="t" style="display:table"><div style="display:table-row"><div data-cid="td" style="display:table-cell"><div style="width:30px;height:10px"></div></div></div></div></td></tr></table>`) },
+  { id: "table-spacing-not-inherited-past-a-table", html: DOC(S("body{margin:0}td{padding:0}"), `<div style="border-spacing:9px"><table data-cid="t"><tr><td data-cid="td"><div style="width:30px;height:10px"></div></td></tr></table></div>`) },
 ];
 
 /** The RGB of a 1x1 PNG screenshot (any filter: a single pixel's filter adds 0). */
