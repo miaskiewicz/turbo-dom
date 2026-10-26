@@ -74,12 +74,13 @@ bytes), named after the file (`KEY_ORDER_PROBE_JS`, `ANIMATIONS_FRAMES_CASES_JSO
 …), plus `FILES` (file name → bytes) and `frame_read_should_throw` (the
 frame-read interceptor source, for accessor agreement tests). The files ship in
 the package under `src/`; consumers reference the constants, never copy files.
-The 70 files are what turbo-surf's Chrome-parity integration tests read,
+The 73 files are what turbo-surf's Chrome-parity integration tests read,
 including the custom-element lifecycle contract (`tests/custom_elements.rs`:
 `CUSTOM_ELEMENTS{,_EXTENDED,_REACTIONS,_IDL,_MOVES,_CALLBACKS,_RETIRED}_*`,
 `DOM_PARSER_OBSERVER_LIFECYCLE_*`, `CSS_ADOPTION_LIFECYCLE_*` probe/control pairs)
-and the image-state control (`HTML_IMAGE_{PROBE_JS,CASES_JSON,CHROME156_JSON}`) an
-image-loading host runs through its own loader.
+the image-state control (`HTML_IMAGE_{PROBE_JS,CASES_JSON,CHROME156_JSON}`) an
+image-loading host runs through its own loader, and the `:defined` control
+(`CUSTOM_ELEMENTS_DEFINED_{PROBE_JS,CASES_JSON,CHROME156_JSON}`).
 Add a constant (and its `FILES` entry) when another consumer needs a file.
 `tests/test_support_api.rs` checks every constant against its file and every
 probe/control pair's recorded `probeSha256`.
@@ -106,6 +107,18 @@ record.imageHost.setState(img, null);                                  // back t
 the state when called (`complete` → boolean, sizes → unsigned long, `currentSrc` →
 string, missing → `""`) and keeps it until the host replaces or clears it, so the
 host updates it whenever a load starts or ends (including `src` changes).
+
+### Custom element state (`:defined`)
+
+`customElements` upgrades, constructions and failed constructors report each
+element's HTML custom element state to its turbo-dom `Tree`
+(`Tree::set_custom_element_state`), so `:defined` / `:not(:defined)` in `matches`,
+`querySelector*`, stylesheets and `getComputedStyle` follow `customElements.define()`
+as in Chrome (`src/custom_elements_defined_chrome156.json`: before/after `define()`,
+insertion, `customElements.upgrade()`, clones, `innerHTML`, template content, `is`
+values from the parser vs `createElement(…, {is})`, a throwing constructor). Clones
+and adopted nodes carry the state with them. Without a report the tree derives the
+creation-time state (custom element names and parsed `is` attributes are undefined).
 
 ### Feature `native-sdk-frame-read` (off by default)
 

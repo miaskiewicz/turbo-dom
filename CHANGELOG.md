@@ -15,6 +15,17 @@ at the time); this file reconstructs them from history.
   `\:` or a `#` inside an attribute value is not a pseudo-class / id, and a type selector
   inside a pseudo-class argument counts. A later rule of equal specificity now wins
   (`:where(#a) p` vs `p`). npm: `_internal.specificity` / `compareSpecificity`.
+- `:defined` after `customElements.define()` (miaskiewicz/turbo-dom#24 item 3): the tree
+  keeps each element's HTML custom element state (`Tree::custom_element_state` /
+  `set_custom_element_state`, `rtdom::tree::CustomElementState`). turbo-dom-browser-env
+  reports upgrades, constructions and failed constructors to it (and carries it through
+  clones and adoption), so an upgraded element matches `:defined` in `matches` /
+  `querySelector*` / stylesheets / `getComputedStyle` instead of `:not(:defined)`, and a
+  throwing constructor leaves it undefined. Without a report the state is the
+  creation-time one: the `is` attribute counts only as the parser saw it (setting `is`
+  on a created element no longer makes it undefined; removing it from a parsed one no
+  longer defines it), `createElement(…, {is})` is undefined, as Chrome 156
+  (`turbo-dom-browser-env/src/custom_elements_defined_chrome156.json`).
 - BREAKING (Rust API): the `s` (case-sensitive) attribute selector modifier is rejected
   like Chrome 156 does — `[a=b s]` is a `SelectorError` in `query_selector*_checked` /
   `matches_checked` / `parse_for_cascade`, never matches through the lenient APIs, and drops
@@ -62,8 +73,8 @@ outputs it changes in `tools/parity/expected/p5b-*.json`.
   matched there): every element except an HTML autonomous custom element or one parsed
   with an `is` attribute (`<button is="x-b">`, also `is=""`), whose custom element state is
   "undefined" in a document without definitions. The stylesheet side gains the `is` rule.
-  (Elements upgraded by a script-defined custom element are still `:not(:defined)` here:
-  the tree does not know the binding's registry.)
+  (Elements upgraded by a script-defined custom element stayed `:not(:defined)` here;
+  P5b-X2 above fixes that.)
 - `:dir(ltr|rtl)` (miaskiewicz/turbo-dom#18) is evaluated — DOM APIs and stylesheets; it
   never matched. HTML directionality as Chrome 156 computes it: a valid `dir` attribute
   (ASCII case-insensitive), `dir=auto` / `<bdi>` by the first strong character of the text

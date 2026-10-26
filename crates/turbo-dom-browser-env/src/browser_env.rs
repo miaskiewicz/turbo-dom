@@ -3784,6 +3784,11 @@ fn clone_subtree(t: &mut Tree, h: Handle, deep: bool) -> Handle {
                         &attribute.value,
                     );
                 }
+                // a clone keeps the source's `is` value: undefined until upgraded (turbo-dom#24)
+                let state = t.custom_element_copy_state(h);
+                if state != turbo_dom_parser::rtdom::tree::CustomElementState::Uncustomized {
+                    t.set_custom_element_state(e, state);
+                }
                 e
             }
         };

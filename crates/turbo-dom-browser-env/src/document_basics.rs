@@ -359,7 +359,8 @@ pub fn adopt<'s>(
                 .map(|(old, new)| {
                     let values = tree.custom_states_utf16(*old);
                     tree.clear_custom_states(*old);
-                    (*new, values)
+                    // the custom element state (`:defined`) moves with the node (turbo-dom#24)
+                    (*new, values, tree.custom_element_state(*old))
                 })
                 .collect::<Vec<_>>()
         })
@@ -401,9 +402,12 @@ pub fn adopt<'s>(
                 value,
             );
         }
-        for (node, values) in custom_states {
+        for (node, values, element_state) in custom_states {
             for value in values {
                 tree.set_custom_state_utf16(node, &value, true);
+            }
+            if element_state != turbo_dom_parser::rtdom::tree::CustomElementState::Uncustomized {
+                tree.set_custom_element_state(node, element_state);
             }
         }
     });

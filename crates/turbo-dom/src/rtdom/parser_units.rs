@@ -297,6 +297,15 @@ impl Tree {
                         &decode(&attribute.value),
                     );
                 }
+                // fragment parsing reads the `is` value at creation, like the initial parse
+                if self.namespace(target) == Namespace::Html
+                    && node.attrs.iter().any(|attribute| {
+                        attribute.prefix.is_empty() && decode(&attribute.name) == [105, 115]
+                    })
+                {
+                    self.custom_element_states
+                        .insert(target, super::CustomElementState::Undefined);
+                }
                 target
             }
             NodeType::Doctype => self.create_document_type_units(

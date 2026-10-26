@@ -75,6 +75,14 @@ pub const CUSTOM_ELEMENTS_CALLBACKS_PROBE_JS: &str =
     include_str!("custom_elements_callbacks_probe.js");
 /// `src/custom_elements_chrome155.json`.
 pub const CUSTOM_ELEMENTS_CHROME155_JSON: &str = include_str!("custom_elements_chrome155.json");
+/// `src/custom_elements_defined_cases.json`.
+pub const CUSTOM_ELEMENTS_DEFINED_CASES_JSON: &[u8] =
+    include_bytes!("custom_elements_defined_cases.json");
+/// `src/custom_elements_defined_chrome156.json`.
+pub const CUSTOM_ELEMENTS_DEFINED_CHROME156_JSON: &str =
+    include_str!("custom_elements_defined_chrome156.json");
+/// `src/custom_elements_defined_probe.js`.
+pub const CUSTOM_ELEMENTS_DEFINED_PROBE_JS: &str = include_str!("custom_elements_defined_probe.js");
 /// `src/custom_elements_extended_chrome155.json`.
 pub const CUSTOM_ELEMENTS_EXTENDED_CHROME155_JSON: &str =
     include_str!("custom_elements_extended_chrome155.json");
@@ -273,6 +281,18 @@ pub const FILES: &[(&str, &[u8])] = &[
     (
         "custom_elements_chrome155.json",
         CUSTOM_ELEMENTS_CHROME155_JSON.as_bytes(),
+    ),
+    (
+        "custom_elements_defined_cases.json",
+        CUSTOM_ELEMENTS_DEFINED_CASES_JSON,
+    ),
+    (
+        "custom_elements_defined_chrome156.json",
+        CUSTOM_ELEMENTS_DEFINED_CHROME156_JSON.as_bytes(),
+    ),
+    (
+        "custom_elements_defined_probe.js",
+        CUSTOM_ELEMENTS_DEFINED_PROBE_JS.as_bytes(),
     ),
     (
         "custom_elements_extended_chrome155.json",
