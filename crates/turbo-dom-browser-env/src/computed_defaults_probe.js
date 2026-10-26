@@ -27,6 +27,69 @@
     out.appended = view(later);
     later.remove();
     out.removed = view(later);
+  } else if (document.getElementById('modal')) {
+    // turbo-dom#30: show() vs showModal() vs close(). A modal dialog matches :modal and enters
+    // the top layer: html.css gives it position fixed, inset-block 0, max sizes of
+    // calc(100% - 6px - 2em), overflow auto and visibility visible; a top-layer element whose
+    // position is static / relative / sticky computes to absolute; its ::backdrop is fixed at
+    // inset 0 (dialogs tint it). Outside the top layer ::backdrop is block / absolute / auto.
+    const box = ['display', 'position', 'visibility'];
+    const modalProps = box.concat(['overflow', 'overflow-x', 'overflow-y', 'top', 'bottom', 'max-width', 'max-height']);
+    const backdropProps = box.concat(['top', 'right', 'bottom', 'left', 'background-color', 'color', 'opacity', 'transform']);
+    const read = (el, list, pseudo) => { const s = getComputedStyle(el, pseudo); return list.map((p) => s.getPropertyValue(p)); };
+    const backdrop = (el) => read(el, backdropProps, '::backdrop');
+    const flags = (el) => [el.open, el.matches(':modal'), el.matches(':open'), el.matches('dialog:not(:modal)'), document.querySelectorAll(':modal').length];
+    const $ = (id) => document.getElementById(id);
+    const d = $('modal'), dialog = {};
+    dialog.closed = [read(d, box), flags(d), backdrop(d)];
+    d.show();
+    dialog.shown = [read(d, box), flags(d), backdrop(d)];
+    d.close();
+    dialog.shownClosed = [read(d, box), flags(d), backdrop(d)];
+    d.showModal();
+    dialog.modal = [read(d, modalProps), flags(d), backdrop(d), read(d, box, '::BACKDROP'), document.querySelector(':modal') === d];
+    d.removeAttribute('open');
+    dialog.modalOpenRemoved = [read(d, modalProps), flags(d), backdrop(d)];
+    d.setAttribute('open', '');
+    d.close();
+    dialog.modalClosed = [read(d, box), flags(d), backdrop(d)];
+    d.showModal();
+    d.remove();
+    dialog.modalRemoved = [read(d, box), flags(d), backdrop(d)];
+    document.body.append(d);
+    dialog.modalReinserted = [read(d, box), flags(d), backdrop(d)];
+    d.close();
+    const h = $('inHidden');
+    h.showModal();
+    dialog.hiddenModal = [read(h, modalProps), backdrop(h)];
+    h.close();
+    h.show();
+    dialog.hiddenShown = [read(h, box), backdrop(h)];
+    h.close();
+    for (const id of ['authored', 'big', 'relative', 'sticky', 'absolute', 'overflowX']) {
+      const el = $(id);
+      el.showModal();
+      dialog[id] = [read(el, modalProps), backdrop(el)];
+      el.close();
+      dialog[id].push(read(el, box));
+    }
+    const first = $('first'), second = $('second');
+    first.showModal();
+    second.showModal();
+    dialog.stacked = [flags(first), flags(second), read(first, box), read(second, box), backdrop(first), backdrop(second)];
+    second.close();
+    first.close();
+    out.dialog = dialog;
+    const popover = {};
+    for (const id of ['pop', 'popStatic']) {
+      const el = $(id);
+      el.showPopover();
+      popover[id] = [read(el, box), backdrop(el)];
+      el.hidePopover();
+      popover[id].push(read(el, box), backdrop(el));
+    }
+    out.popover = popover;
+    out.otherBackdrop = { div: backdrop($('plain')), detached: backdrop(document.createElement('dialog')) };
   } else {
     // the title setter creates a <title> on demand
     document.title = 'set';

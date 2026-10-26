@@ -1,8 +1,8 @@
 {
   "browser": "Chrome/156.0.8078.4",
   "v8": "15.6.75",
-  "casesSha256": "b0a6cd4f7baf70fde221b578951e73bba58408da7c7b142b1c0d5100b9b35de0",
-  "probeSha256": "a6d2399320a0a96079dc9ccb227e34d497cf6a5787867d388e4fb37d366aac91",
+  "casesSha256": "2e2bf1e24a400f604d0612465f89cc2b8a9019ba68d5cf1b74724f462d4a1a22",
+  "probeSha256": "848179be54227d30950f63455fb658d553a3795112c9ef0c2dd52407f23aab67",
   "collectorSha256": "7174415de76a891d657bbc3e66952c7b91356030e8fcd9d0ac4f52603d0c3952",
   "flags": [
     "--headless=new",
@@ -1361,6 +1361,653 @@
           ],
           "title": "set",
           "text": "set"
+        }
+      }
+    },
+    {
+      "id": "dialog-top-layer",
+      "result": {
+        "head": {
+          "children": [
+            "style"
+          ],
+          "title": "",
+          "titles": 0
+        },
+        "dialog": {
+          "closed": [
+            [
+              "none",
+              "absolute",
+              "visible"
+            ],
+            [
+              false,
+              false,
+              false,
+              true,
+              0
+            ],
+            [
+              "block",
+              "absolute",
+              "visible",
+              "auto",
+              "auto",
+              "auto",
+              "auto",
+              "rgba(0, 0, 0, 0)",
+              "rgb(0, 0, 0)",
+              "1",
+              "none"
+            ]
+          ],
+          "shown": [
+            [
+              "block",
+              "absolute",
+              "visible"
+            ],
+            [
+              true,
+              false,
+              true,
+              true,
+              0
+            ],
+            [
+              "block",
+              "absolute",
+              "visible",
+              "auto",
+              "auto",
+              "auto",
+              "auto",
+              "rgba(0, 0, 0, 0)",
+              "rgb(0, 0, 0)",
+              "1",
+              "none"
+            ]
+          ],
+          "shownClosed": [
+            [
+              "none",
+              "absolute",
+              "visible"
+            ],
+            [
+              false,
+              false,
+              false,
+              true,
+              0
+            ],
+            [
+              "block",
+              "absolute",
+              "visible",
+              "auto",
+              "auto",
+              "auto",
+              "auto",
+              "rgba(0, 0, 0, 0)",
+              "rgb(0, 0, 0)",
+              "1",
+              "none"
+            ]
+          ],
+          "modal": [
+            [
+              "block",
+              "fixed",
+              "visible",
+              "auto",
+              "auto",
+              "auto",
+              "0px",
+              "0px",
+              "calc(100% - 38px)",
+              "calc(100% - 38px)"
+            ],
+            [
+              true,
+              true,
+              true,
+              false,
+              1
+            ],
+            [
+              "block",
+              "fixed",
+              "visible",
+              "0px",
+              "0px",
+              "0px",
+              "0px",
+              "rgba(0, 0, 0, 0.1)",
+              "rgb(0, 0, 0)",
+              "1",
+              "none"
+            ],
+            [
+              "block",
+              "fixed",
+              "visible"
+            ],
+            true
+          ],
+          "modalOpenRemoved": [
+            [
+              "none",
+              "fixed",
+              "visible",
+              "auto",
+              "auto",
+              "auto",
+              "0px",
+              "0px",
+              "calc(100% - 38px)",
+              "calc(100% - 38px)"
+            ],
+            [
+              false,
+              true,
+              false,
+              false,
+              1
+            ],
+            [
+              "block",
+              "fixed",
+              "visible",
+              "0px",
+              "0px",
+              "0px",
+              "0px",
+              "rgba(0, 0, 0, 0.1)",
+              "rgb(0, 0, 0)",
+              "1",
+              "none"
+            ]
+          ],
+          "modalClosed": [
+            [
+              "none",
+              "absolute",
+              "visible"
+            ],
+            [
+              false,
+              false,
+              false,
+              true,
+              0
+            ],
+            [
+              "block",
+              "absolute",
+              "visible",
+              "auto",
+              "auto",
+              "auto",
+              "auto",
+              "rgba(0, 0, 0, 0)",
+              "rgb(0, 0, 0)",
+              "1",
+              "none"
+            ]
+          ],
+          "modalRemoved": [
+            [
+              "",
+              "",
+              ""
+            ],
+            [
+              true,
+              false,
+              true,
+              true,
+              0
+            ],
+            [
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              ""
+            ]
+          ],
+          "modalReinserted": [
+            [
+              "block",
+              "absolute",
+              "visible"
+            ],
+            [
+              true,
+              false,
+              true,
+              true,
+              0
+            ],
+            [
+              "block",
+              "absolute",
+              "visible",
+              "auto",
+              "auto",
+              "auto",
+              "auto",
+              "rgba(0, 0, 0, 0)",
+              "rgb(0, 0, 0)",
+              "1",
+              "none"
+            ]
+          ],
+          "hiddenModal": [
+            [
+              "block",
+              "fixed",
+              "visible",
+              "auto",
+              "auto",
+              "auto",
+              "0px",
+              "0px",
+              "calc(100% - 38px)",
+              "calc(100% - 38px)"
+            ],
+            [
+              "block",
+              "fixed",
+              "visible",
+              "0px",
+              "0px",
+              "0px",
+              "0px",
+              "rgba(0, 0, 0, 0.1)",
+              "rgb(0, 0, 0)",
+              "1",
+              "none"
+            ]
+          ],
+          "hiddenShown": [
+            [
+              "block",
+              "absolute",
+              "hidden"
+            ],
+            [
+              "block",
+              "absolute",
+              "hidden",
+              "auto",
+              "auto",
+              "auto",
+              "auto",
+              "rgba(0, 0, 0, 0)",
+              "rgb(0, 0, 0)",
+              "1",
+              "none"
+            ]
+          ],
+          "authored": [
+            [
+              "block",
+              "absolute",
+              "visible",
+              "hidden",
+              "hidden",
+              "hidden",
+              "5px",
+              "0px",
+              "none",
+              "calc(100% - 38px)"
+            ],
+            [
+              "block",
+              "absolute",
+              "hidden",
+              "0px",
+              "0px",
+              "0px",
+              "0px",
+              "rgb(255, 0, 0)",
+              "rgb(0, 0, 0)",
+              "1",
+              "none"
+            ],
+            [
+              "inline",
+              "static",
+              "visible"
+            ]
+          ],
+          "big": [
+            [
+              "block",
+              "fixed",
+              "visible",
+              "auto",
+              "auto",
+              "auto",
+              "0px",
+              "0px",
+              "calc(100% - 46px)",
+              "calc(100% - 46px)"
+            ],
+            [
+              "block",
+              "fixed",
+              "visible",
+              "0px",
+              "0px",
+              "0px",
+              "0px",
+              "rgba(0, 0, 0, 0.1)",
+              "rgb(0, 0, 0)",
+              "1",
+              "none"
+            ],
+            [
+              "none",
+              "absolute",
+              "visible"
+            ]
+          ],
+          "relative": [
+            [
+              "block",
+              "absolute",
+              "visible",
+              "auto",
+              "auto",
+              "auto",
+              "0px",
+              "0px",
+              "calc(100% - 38px)",
+              "calc(100% - 38px)"
+            ],
+            [
+              "block",
+              "fixed",
+              "visible",
+              "0px",
+              "0px",
+              "0px",
+              "0px",
+              "rgba(0, 0, 0, 0.1)",
+              "rgb(0, 0, 0)",
+              "1",
+              "none"
+            ],
+            [
+              "none",
+              "relative",
+              "visible"
+            ]
+          ],
+          "sticky": [
+            [
+              "block",
+              "absolute",
+              "visible",
+              "auto",
+              "auto",
+              "auto",
+              "0px",
+              "0px",
+              "calc(100% - 38px)",
+              "calc(100% - 38px)"
+            ],
+            [
+              "block",
+              "fixed",
+              "visible",
+              "0px",
+              "0px",
+              "0px",
+              "0px",
+              "rgba(0, 0, 0, 0.1)",
+              "rgb(0, 0, 0)",
+              "1",
+              "none"
+            ],
+            [
+              "none",
+              "sticky",
+              "visible"
+            ]
+          ],
+          "absolute": [
+            [
+              "block",
+              "absolute",
+              "visible",
+              "auto",
+              "auto",
+              "auto",
+              "0px",
+              "0px",
+              "calc(100% - 38px)",
+              "calc(100% - 38px)"
+            ],
+            [
+              "block",
+              "fixed",
+              "visible",
+              "0px",
+              "0px",
+              "0px",
+              "0px",
+              "rgba(0, 0, 0, 0.1)",
+              "rgb(0, 0, 0)",
+              "1",
+              "none"
+            ],
+            [
+              "none",
+              "absolute",
+              "visible"
+            ]
+          ],
+          "overflowX": [
+            [
+              "block",
+              "fixed",
+              "visible",
+              "hidden auto",
+              "hidden",
+              "auto",
+              "0px",
+              "0px",
+              "calc(100% - 38px)",
+              "calc(100% - 38px)"
+            ],
+            [
+              "block",
+              "fixed",
+              "visible",
+              "0px",
+              "0px",
+              "0px",
+              "0px",
+              "rgba(0, 0, 0, 0.1)",
+              "rgb(0, 0, 0)",
+              "1",
+              "none"
+            ],
+            [
+              "none",
+              "absolute",
+              "visible"
+            ]
+          ],
+          "stacked": [
+            [
+              true,
+              true,
+              true,
+              false,
+              2
+            ],
+            [
+              true,
+              true,
+              true,
+              false,
+              2
+            ],
+            [
+              "block",
+              "fixed",
+              "visible"
+            ],
+            [
+              "block",
+              "fixed",
+              "visible"
+            ],
+            [
+              "block",
+              "fixed",
+              "visible",
+              "0px",
+              "0px",
+              "0px",
+              "0px",
+              "rgba(0, 0, 0, 0.1)",
+              "rgb(0, 0, 0)",
+              "1",
+              "none"
+            ],
+            [
+              "block",
+              "fixed",
+              "visible",
+              "0px",
+              "0px",
+              "0px",
+              "0px",
+              "rgba(0, 0, 0, 0.1)",
+              "rgb(0, 0, 0)",
+              "1",
+              "none"
+            ]
+          ]
+        },
+        "popover": {
+          "pop": [
+            [
+              "block",
+              "fixed",
+              "visible"
+            ],
+            [
+              "block",
+              "fixed",
+              "visible",
+              "0px",
+              "0px",
+              "0px",
+              "0px",
+              "rgba(0, 0, 0, 0)",
+              "rgb(0, 0, 0)",
+              "1",
+              "none"
+            ],
+            [
+              "none",
+              "fixed",
+              "visible"
+            ],
+            [
+              "block",
+              "absolute",
+              "visible",
+              "auto",
+              "auto",
+              "auto",
+              "auto",
+              "rgba(0, 0, 0, 0)",
+              "rgb(0, 0, 0)",
+              "1",
+              "none"
+            ]
+          ],
+          "popStatic": [
+            [
+              "block",
+              "absolute",
+              "visible"
+            ],
+            [
+              "block",
+              "fixed",
+              "visible",
+              "0px",
+              "0px",
+              "0px",
+              "0px",
+              "rgba(0, 0, 0, 0)",
+              "rgb(0, 0, 0)",
+              "1",
+              "none"
+            ],
+            [
+              "none",
+              "static",
+              "visible"
+            ],
+            [
+              "block",
+              "absolute",
+              "visible",
+              "auto",
+              "auto",
+              "auto",
+              "auto",
+              "rgba(0, 0, 0, 0)",
+              "rgb(0, 0, 0)",
+              "1",
+              "none"
+            ]
+          ]
+        },
+        "otherBackdrop": {
+          "div": [
+            "block",
+            "absolute",
+            "visible",
+            "auto",
+            "auto",
+            "auto",
+            "auto",
+            "rgba(0, 0, 0, 0)",
+            "rgb(0, 0, 0)",
+            "1",
+            "none"
+          ],
+          "detached": [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ]
         }
       }
     }
