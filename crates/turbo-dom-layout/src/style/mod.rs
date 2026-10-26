@@ -12,8 +12,9 @@ mod token;
 pub(crate) use cascade::is_non_visual;
 pub use cascade::{
     presentational_declarations, resolve_matched_style, style_input, style_tree,
-    style_tree_with_roots, Cascade, CascadeOrigin, ComputedStyle, LeveledRule, MatchedDeclaration,
-    Roots, StyleInput, StyleOptions, StyledElement, StyledNode, StyledText, TreeView,
+    style_tree_with_options, style_tree_with_roots, style_tree_with_roots_options, Cascade,
+    CascadeOrigin, ComputedStyle, LeveledRule, MatchedDeclaration, Roots, StyleInput, StyleOptions,
+    StyledElement, StyledNode, StyledText, TreeView,
 };
 pub use parser::{parse_declarations, parse_stylesheet, AtRule, Declaration, Rule, Stylesheet};
 pub use token::{StyleToken, TokenSet};

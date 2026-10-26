@@ -785,7 +785,17 @@ mod tests {
         // and a self-closing `<t:x/>` is not rewritten (the parser ignores `/>`).
         let mut diags = Diagnostics::default();
         let html = "<body><p>a<t:footnote>b</t:footnote>c<t:bogus/>d</p></body>";
-        let galley = super::layout_html(html, "", 400.0, &FontRegistry::new(), &mut diags)
+        let mut fonts = FontRegistry::new();
+        fonts.add(
+            crate::FontFace::from_bytes(
+                include_bytes!("../assets/fonts/Go-Regular.ttf").to_vec(),
+                "Go",
+                400,
+                false,
+            )
+            .unwrap(),
+        );
+        let galley = super::layout_html(html, "body{font-family:Go}", 400.0, &fonts, &mut diags)
             .expect("no unknown-element error");
         let mut lines = 0;
         let mut stack = vec![&galley];

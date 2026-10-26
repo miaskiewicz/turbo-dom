@@ -1044,6 +1044,17 @@ pub fn style_tree(nodes: &[Node], cascade: &Cascade) -> Vec<StyledNode> {
     style_siblings(nodes, &[], &ComputedStyle::default(), cascade)
 }
 
+/// [`style_tree`] with explicit [`StyleOptions`] (the legacy-input twin of
+/// [`style_input`]'s options).
+pub fn style_tree_with_options(
+    nodes: &[Node],
+    cascade: &Cascade,
+    options: &StyleOptions,
+) -> Vec<StyledNode> {
+    let _cmyk = crate::layout::value::cmyk_scope(options.accept_cmyk);
+    style_tree(nodes, cascade)
+}
+
 /// [`style_tree`] with `<html>`/`<body>` ancestor shells seeded as match-only
 /// contexts, so descendant selectors gated on their classes resolve. The shells
 /// are not laid out; they only participate in selector matching.
@@ -1066,6 +1077,17 @@ pub fn style_tree_with_roots(
         parent = resolve_style(&ancestors[..=i], &parent, cascade);
     }
     style_siblings(nodes, &ancestors, &parent, cascade)
+}
+
+/// [`style_tree_with_roots`] with explicit [`StyleOptions`].
+pub fn style_tree_with_roots_options(
+    nodes: &[Node],
+    cascade: &Cascade,
+    roots: &[Element],
+    options: &StyleOptions,
+) -> Vec<StyledNode> {
+    let _cmyk = crate::layout::value::cmyk_scope(options.accept_cmyk);
+    style_tree_with_roots(nodes, cascade, roots)
 }
 
 /// The position for a match-only root shell (a lone only-child); the structural
