@@ -60,6 +60,9 @@ const ITEMS = {
   2: { sections: ['adopt'], keys: ['adopt', 'adoptFragment', 'moverInOther', 'mover', 'otherCreate'] },
   3: { sections: ['template'], keys: ['inert', 'contentClone', 'upgradeInert', 'detached', 'connected', 'imported', 'templateInner', 'intoContent', 'templateClone', 'moveContent'] },
   4: { sections: ['reactions', 'crossDocument'], keys: ['cloneDeep', 'log'] },
+  // pre-existing bugs found on the way: turbo-dom#33 (void serialization), #34 (insert before
+  // itself), #35 (doctype clones)
+  extra: { sections: ['extra'], keys: ['foreignVoid', 'insertSelf', 'doctypeClone'] },
 };
 function check(item) {
   const { expected, actual } = results();
@@ -70,3 +73,4 @@ function check(item) {
 
 test('turbo-dom#29 item 1: createElementNS in any namespace matches Chrome 156', () => check(1));
 test('turbo-dom#29 item 2: insertion across documents adopts like Chrome 156', () => check(2));
+test('turbo-dom#33/#34/#35: void serialization, insert before itself, doctype clones match Chrome 156', () => check('extra'));

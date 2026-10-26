@@ -15,10 +15,11 @@ at the time); this file reconstructs them from history.
   element. Prefixes are kept (`prefix`, `tagName` = the qualified name, e.g. `svg:rect`;
   they were dropped) and the qualified name is validated like Chrome 156
   (`InvalidCharacterError` / `NamespaceError`; Chrome keeps the local name up to a second
-  colon). `createElement` validates its name too (`createElement('a b')` threw nothing).
-  `getElementsByTagName` matches non-HTML elements by their exact qualified name
-  (`getElementsByTagName('foreignObject')` found nothing), and the serializer writes other
-  namespaces' qualified names and treats only HTML elements as void / `<template>`.
+  colon). `createElement` validates its name too (`createElement('a b')` threw nothing;
+  turbo-dom#31). `getElementsByTagName` matches non-HTML elements by their exact qualified
+  name (`getElementsByTagName('foreignObject')` found nothing; turbo-dom#32), and the
+  serializer writes other namespaces' qualified names and treats only HTML elements as
+  void / `<template>` (turbo-dom#33).
 - Inserting a node from another document (`insertBefore` / `appendChild` / `append` /
   `replaceChild`, fragments' children too) adopts it, as `adoptNode` does: its subtree reads
   its own attributes and children instead of the new document's buffer (an un-inflated
@@ -27,6 +28,12 @@ at the time); this file reconstructs them from history.
   come from one process-wide counter, so an adopted node can never hit a cache entry keyed
   on its old document's version. A custom element moved into a document without a registry
   keeps its connected / disconnected callbacks there.
+- `insertBefore(node, node)` and `replaceChild(node, node)` no longer throw `NotFoundError`
+  after detaching the node (it was lost): the reference child is checked before the tree
+  changes and becomes the node's next sibling, as in Chrome; `replaceChild` removes the old
+  child before inserting the new one (MutationObserver records in that order;
+  turbo-dom#34). `DocumentType.cloneNode()` keeps `name` / `publicId` / `systemId`
+  (turbo-dom#35).
   Control: `test/fixtures/dom_adoption_reactions_chrome156.json` (probe + cases beside it,
   recorded with `crates/turbo-dom-browser-env/scripts/select-element-chrome-control.mjs`),
   asserted by `test/dom-adoption-reactions-chrome.test.mjs` (the one deviation: the runtime's

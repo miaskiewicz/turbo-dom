@@ -197,6 +197,10 @@ export class Node extends EventTarget {
   appendChild(node) { return this.insertBefore(node, null); }
 
   insertBefore(node, ref) {
+    // DOM "pre-insert": check the reference child before touching the tree, and a node
+    // inserted before itself goes before its next sibling (miaskiewicz/turbo-dom#34)
+    if (ref && ref.parentNode !== this) throw new Error('NotFoundError: ref is not a child');
+    if (ref === node) ref = node.nextSibling;
     if (node.nodeType === DOCUMENT_FRAGMENT_NODE) {
       for (const c of node.__children().slice()) this.insertBefore(c, ref);
       return node;
@@ -204,7 +208,6 @@ export class Node extends EventTarget {
     if (node.parentNode) node.parentNode.removeChild(node);
     const kids = this.__children();
     const i = ref ? kids.indexOf(ref) : -1;
-    if (ref && i === -1) throw new Error('NotFoundError: ref is not a child');
     // a node from another document is adopted first (DOM "insert" step 7.1)
     if (node.ownerDocument !== this.ownerDocument) adopt(node, this.ownerDocument);
     if (ref) kids.splice(i, 0, node); else kids.push(node);
@@ -230,9 +233,15 @@ export class Node extends EventTarget {
     return node;
   }
 
+  // DOM "replace": remove the old child, then insert the new one before the old child's
+  // next sibling (or the new node's own next sibling when that is it) — so replacing a
+  // node with itself leaves it in place (miaskiewicz/turbo-dom#34)
   replaceChild(newNode, oldNode) {
-    this.insertBefore(newNode, oldNode);
+    if (oldNode.parentNode !== this) throw new Error('NotFoundError: node is not a child');
+    let ref = oldNode.nextSibling;
+    if (ref === newNode) ref = newNode.nextSibling;
     this.removeChild(oldNode);
+    this.insertBefore(newNode, ref);
     return oldNode;
   }
 
@@ -442,6 +451,7 @@ export class DocumentType extends Node {
   }
   get nodeType() { return DOCUMENT_TYPE_NODE; }
   get nodeName() { return this.name; }
+  cloneNode() { return new DocumentType(this.ownerDocument, this.name, this.publicId, this.systemId); } // turbo-dom#35
 }
 
 // ------------------------------------------------------------ Element ----

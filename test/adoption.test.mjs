@@ -79,3 +79,25 @@ test('a custom element keeps its callbacks in a document without a registry; err
   other.body.innerHTML = '<x-m></x-m>';
   assert.equal(other.body.firstChild.matches(':defined'), false);
 });
+
+test('replaceChild: remove first, then insert before the old next sibling (turbo-dom#34)', () => {
+  const { document } = createEnvironment('<!doctype html><html><body><ul><li id="a"></li><li id="b"></li><li id="c"></li></ul></body></html>');
+  const ul = document.querySelector('ul');
+  const [a, b, c] = ul.children;
+  const ids = () => Array.from(ul.children, (li) => li.id).join('');
+  assert.equal(ul.replaceChild(b, a), a); // the new node is the old one's next sibling
+  assert.equal(ids(), 'bc');
+  assert.equal(a.parentNode, null);
+  assert.throws(() => ul.replaceChild(a, document.createElement('li')), /NotFoundError/);
+  assert.equal(ids(), 'bc');               // nothing moved before the throw
+  assert.throws(() => ul.insertBefore(a, document.createElement('li')), /NotFoundError/);
+  ul.insertBefore(c, c);
+  assert.equal(ids(), 'bc');
+  const records = [];
+  const mo = new document.defaultView.MutationObserver(() => {});
+  mo.observe(ul, { childList: true });
+  ul.replaceChild(a, c);
+  for (const r of mo.takeRecords()) records.push([r.addedNodes.length, r.removedNodes.length]);
+  assert.deepEqual(records, [[0, 1], [1, 0]]); // removal, then insertion
+  assert.equal(ids(), 'ba');
+});
