@@ -137,7 +137,6 @@ fn table_captions_paint_outside_the_grid_like_chrome_156() {
 }
 
 #[test]
-#[ignore = "miaskiewicz/turbo-dom#62: fails until the fix"]
 fn tables_are_border_box_sized_like_chrome_156() {
     let failures = differences(pending_case);
     assert!(failures.is_empty(), "{}", failures.join("\n"));

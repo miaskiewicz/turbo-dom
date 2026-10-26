@@ -1184,6 +1184,7 @@ Declared behaviour changes (Chrome 156 controls), not moves:
 | turbo-dom-raster | `paint_chrome<tests/paint_chrome.rs>::table_captions_paint_outside_the_grid_like_chrome_156` | new (turbo-dom#51, Chrome 156 pixel control `scripts/paint-chrome-control.mjs`) |
 | turbo-dom-raster | `paint_chrome<tests/paint_chrome.rs>::{clip_rect_clips_the_box_and_its_descendants_like_chrome_156, svg_screenshot_clips_with_a_clip_path}` | new (turbo-dom#52, test-first; Chrome 156 pixel control) |
 | turbo-dom-layout | `html_document_chrome<tests/html_document_chrome.rs>::border_box_widths_size_intrinsically_like_chrome_156` | new (turbo-dom#65, test-first) |
+| turbo-dom-layout | `html_document_chrome<tests/html_document_chrome.rs>::tables_are_border_box_sized_like_chrome_156`, turbo-dom-raster `paint_chrome<tests/paint_chrome.rs>::tables_are_border_box_sized_like_chrome_156` | new (turbo-dom#62, test-first) |
 | turbo-dom-layout | `turbo_dom_layout<src/lib.rs>::layout::value::clip_tests::{clip_region_resolves_offsets_auto_edges_and_scale, clip_keeps_nothing_only_when_empty_at_every_size}` | new (turbo-dom#52) |
 
 ## P5b-W2 — raster inline SVG on the tree (turbo-dom `consol/p5b-w2`)

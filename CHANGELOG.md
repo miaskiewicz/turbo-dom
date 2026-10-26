@@ -7,7 +7,7 @@ at the time); this file reconstructs them from history.
 
 ## [Unreleased]
 
-### Fixed — turbo-dom-layout tables, clipping and box sizing (P5b-W5, miaskiewicz/turbo-dom#51/#52/#65, Chrome 156 controls)
+### Fixed — turbo-dom-layout tables, clipping and box sizing (P5b-W5, miaskiewicz/turbo-dom#51/#52/#62/#65, Chrome 156 controls)
 Each fix is backed by a Chrome for Testing 156 control and lists the corpus outputs it
 changes in `tools/parity/expected/p5b-w5-turbo-dom-*.json`.
 - Table captions (#51): a `<caption>` (UA `caption { display: table-caption; text-align:
@@ -45,6 +45,12 @@ changes in `tools/parity/expected/p5b-w5-turbo-dom-*.json`.
   widths (a cell's `width`, auto and fixed layout; collapsed: less its half-borders).
   They counted the padding and border twice (a float around a `border-box; width:100px;
   padding:10px` box was 120px wide). Control: `border-box-*` in `html-document`.
+- `<table>` is `box-sizing: border-box` (#62, found while fixing #51): the UA `table`
+  rule (also `user_agent_css()` for embedders) sets it as Chrome's does, so a table's
+  `width` / `min-width` / `max-width` / `height` include its border and padding (a
+  `width:120px; border:4px` table was 128px wide; an author `box-sizing` still wins).
+  Control: `table-border-box-*` / `table-content-box-author` in `html-document`,
+  `caption-narrow` in the paint control.
 
 ### Fixed — `getComputedStyle` defaults and no injected `<title>` (P5b-X3, miaskiewicz/turbo-surf#36 items 1–2, Chrome 156 control)
 - turbo-dom-browser-env: `getComputedStyle` used to return `""` for `display`, `position`

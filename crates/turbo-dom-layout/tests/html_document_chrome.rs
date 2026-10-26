@@ -205,7 +205,6 @@ fn table_border_box_case(id: &str) -> bool {
 }
 
 #[test]
-#[ignore = "miaskiewicz/turbo-dom#62: fails until the fix"]
 fn tables_are_border_box_sized_like_chrome_156() {
     compare_cases(table_border_box_case);
 }
