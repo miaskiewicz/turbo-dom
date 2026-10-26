@@ -1,12 +1,15 @@
 //! Flex layout (§5.3, AC-5.6): taffy-backed grow/shrink/basis, direction, wrap,
 //! gap, justify/align, and content sizing. Driven through boxgen -> layout_tree.
+//!
+//! Split at the S1 relocation: the cases that need TKind directives, templating or the
+//! PDF emitter stay in turbo-html2pdf-core's `tests/layout_flex.rs`.
 
 mod common;
 
 use turbo_dom_layout::layout::block::layout_tree;
 use turbo_dom_layout::layout::boxgen::build_box_tree;
 use turbo_dom_layout::layout::fragment::Fragment;
-use turbo_dom_layout::node::{TKind, Tag};
+use turbo_dom_layout::node::Tag;
 use turbo_dom_layout::{ComputedStyle, Diagnostics, StyledElement, StyledNode};
 
 fn cs(pairs: &[(&str, &str)]) -> ComputedStyle {
@@ -144,19 +147,6 @@ fn nested_block_item_measures_children() {
     );
     let root = flex(&[], vec![inner], 500.0);
     assert!(items_of(&root)[0].width > 0.0);
-}
-
-#[test]
-fn directive_item_has_zero_natural_width() {
-    let d = StyledNode::Element(StyledElement {
-        tag: Tag::Directive(TKind::Anchor),
-        attrs: vec![],
-        style: cs(&[]),
-        children: vec![],
-    });
-    let root = flex(&[], vec![d], 500.0);
-    assert_eq!(items_of(&root).len(), 1);
-    assert_eq!(items_of(&root)[0].width, 0.0);
 }
 
 #[test]

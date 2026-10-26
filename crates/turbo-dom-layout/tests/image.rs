@@ -7,6 +7,9 @@
 //!
 //! All test images are generated in-process (PNG via the `png` encoder; one tiny
 //! committed baseline-JPEG byte array) so no external/system files are touched.
+//!
+//! Split at the S1 relocation: the cases that need TKind directives, templating or the
+//! PDF emitter stay in turbo-html2pdf-core's `tests/image.rs`.
 
 mod common;
 
@@ -17,11 +20,10 @@ use turbo_dom_layout::image::{decode, probe, sniff, ColorSpace, Format, Payload}
 use turbo_dom_layout::layout::boxgen::build_box_tree;
 use turbo_dom_layout::layout::imgsize::{size_replaced, SizeCtx};
 use turbo_dom_layout::layout::value::{resolve_box_style, ResolveCtx};
-use turbo_dom_layout::paginate::{paginate, Page, PageGeometry};
 use turbo_dom_layout::style::TokenSet;
 use turbo_dom_layout::{
-    build_cascade, emit_pdf, emit_pdf_with_images, layout_with_images, style_tree, ComputedStyle,
-    Diagnostics, EmitOptions, ImageResolver, Node, StyledElement, StyledNode, Tag,
+    build_cascade, layout_with_images, style_tree, ComputedStyle, Diagnostics, ImageResolver, Node,
+    StyledElement, StyledNode, Tag,
 };
 use turbo_dom_layout::{Attr, FragmentContent, ImageCtx, NoImages};
 
@@ -202,10 +204,6 @@ impl ImageResolver for MapResolver {
     fn resolve(&self, name: &str) -> Option<&[u8]> {
         self.map.get(name).map(Vec::as_slice)
     }
-}
-
-fn contains(haystack: &[u8], needle: &[u8]) -> bool {
-    haystack.windows(needle.len()).any(|w| w == needle)
 }
 
 // --------------------------------------------------------------------------
@@ -584,216 +582,9 @@ fn styled_img(src: &str) -> Vec<StyledNode> {
     style_tree(&img_node(src), &cascade)
 }
 
-fn page_with(body: Vec<turbo_dom_layout::Fragment>) -> Page {
-    Page {
-        geometry: PageGeometry::a4(),
-        kind: turbo_dom_layout::PageKind::First,
-        number: 1,
-        body,
-        header: Vec::new(),
-        footer: Vec::new(),
-        footnotes: Vec::new(),
-    }
-}
-
-/// Lay out a single `<img>` and paginate it into pages, sizing against `images`.
-fn paginate_img(src: &str, resolver: &dyn ImageResolver) -> Vec<Page> {
-    let styled = styled_img(src);
-    let ctx = ImageCtx {
-        resolver,
-        body_height: Some(700.0),
-    };
-    let mut diags = Diagnostics::default();
-    let galley = layout_with_images(&styled, 540.0, &common::registry(), &ctx, &mut diags);
-    paginate(&galley, &[], &mut diags).expect("paginate")
-}
-
-#[test]
-fn emits_image_xobject_for_resolved_img() {
-    let resolver = MapResolver::new(vec![("logo.png", png_rgb_2x2())]);
-    let pages = paginate_img("logo.png", &resolver);
-    let pdf = emit_pdf_with_images(&pages, &EmitOptions::default(), &resolver);
-    assert!(pdf.starts_with(b"%PDF-1.7"));
-    assert!(contains(&pdf, b"/Subtype /Image"), "missing image XObject");
-    assert!(contains(&pdf, b"/Im0"), "missing image resource name");
-    assert!(contains(&pdf, b"/DeviceRGB"), "rgb color space expected");
-    assert!(contains(&pdf, b"%%EOF"));
-}
-
-#[test]
-fn alpha_png_emits_smask() {
-    let resolver = MapResolver::new(vec![("a.png", png_rgba_2x2())]);
-    let pages = paginate_img("a.png", &resolver);
-    let pdf = emit_pdf_with_images(&pages, &EmitOptions::default(), &resolver);
-    assert!(contains(&pdf, b"/SMask"), "alpha image must emit an SMask");
-    assert!(
-        contains(&pdf, b"/DeviceGray"),
-        "smask must be a DeviceGray image"
-    );
-}
-
-#[test]
-fn jpeg_emits_dct_decode() {
-    let resolver = MapResolver::new(vec![("p.jpg", JPEG_RGB_2X2.to_vec())]);
-    let pages = paginate_img("p.jpg", &resolver);
-    let pdf = emit_pdf_with_images(&pages, &EmitOptions::default(), &resolver);
-    assert!(contains(&pdf, b"/DCTDecode"), "jpeg must ride DCTDecode");
-    assert!(!contains(&pdf, b"/SMask"), "baseline jpeg has no smask");
-}
-
-#[test]
-fn grayscale_png_emits_device_gray() {
-    let resolver = MapResolver::new(vec![("g.png", png_gray_2x2())]);
-    let pages = paginate_img("g.png", &resolver);
-    let pdf = emit_pdf_with_images(&pages, &EmitOptions::default(), &resolver);
-    assert!(contains(&pdf, b"/DeviceGray"));
-}
-
-#[test]
-fn unresolved_image_emits_nothing_and_lays_out_zero_sized() {
-    // The resolver has no entry for this name: layout sizes the box at zero and
-    // the emitter embeds no XObject, but the document is still valid.
-    let resolver = MapResolver::new(vec![]);
-    let pages = paginate_img("missing.png", &resolver);
-    let pdf = emit_pdf_with_images(&pages, &EmitOptions::default(), &resolver);
-    assert!(pdf.starts_with(b"%PDF-1.7"));
-    assert!(!contains(&pdf, b"/Subtype /Image"), "no image to embed");
-}
-
-#[test]
-fn no_image_default_path_skips_image_fragments() {
-    // `emit_pdf` (no resolver) on a page that carries an Image fragment must skip
-    // it: no XObject, still a valid PDF. Exercises the painter's resolve-miss arm.
-    let placement = turbo_dom_layout::ImagePlacement {
-        name: "x.png".into(),
-        intrinsic_w: 2,
-        intrinsic_h: 2,
-        has_alpha: false,
-        tint: None,
-    };
-    let frag = turbo_dom_layout::Fragment::new(
-        turbo_dom_layout::NodeId(1),
-        10.0,
-        10.0,
-        20.0,
-        20.0,
-        FragmentContent::Image(placement),
-    );
-    let pdf = emit_pdf(&[page_with(vec![frag])], &EmitOptions::default());
-    assert!(pdf.starts_with(b"%PDF-1.7"));
-    assert!(!contains(&pdf, b"/Subtype /Image"));
-}
-
 #[test]
 fn no_images_resolver_resolves_nothing() {
     assert!(NoImages.resolve("anything").is_none());
-}
-
-fn image_frag(name: &str) -> turbo_dom_layout::Fragment {
-    let placement = turbo_dom_layout::ImagePlacement {
-        name: name.into(),
-        intrinsic_w: 2,
-        intrinsic_h: 2,
-        has_alpha: false,
-        tint: None,
-    };
-    let mut frag = turbo_dom_layout::Fragment::new(
-        turbo_dom_layout::NodeId(1),
-        0.0,
-        0.0,
-        2.0,
-        2.0,
-        FragmentContent::Box {
-            background: None,
-            border: Default::default(),
-            border_radius: 0.0,
-            shadow: None,
-            gradient: None,
-            transform: None,
-        },
-    );
-    // Carry the image as a child so collect recurses into it too.
-    frag.children.push(turbo_dom_layout::Fragment::new(
-        turbo_dom_layout::NodeId(2),
-        0.0,
-        0.0,
-        2.0,
-        2.0,
-        FragmentContent::Image(placement),
-    ));
-    frag
-}
-
-#[test]
-fn image_store_collect_dedups_and_reports_size() {
-    use turbo_dom_layout::emit::ImageStore;
-    let resolver = MapResolver::new(vec![("dup.png", png_rgb_2x2())]);
-    // The same name appears twice (across two fragments): collect must dedup.
-    let page = page_with(vec![image_frag("dup.png"), image_frag("dup.png")]);
-    let store = ImageStore::collect(&[page], &resolver);
-    assert_eq!(store.len(), 1, "duplicate names collapse to one image");
-    assert!(!store.is_empty());
-
-    // An empty store reports emptiness.
-    let empty = ImageStore::collect(&[page_with(vec![])], &resolver);
-    assert!(empty.is_empty());
-    assert_eq!(empty.len(), 0);
-}
-
-#[test]
-fn image_store_skips_unresolvable_names_during_collect() {
-    use turbo_dom_layout::emit::ImageStore;
-    // The resolver lacks this name: collect resolves nothing and stores nothing.
-    let resolver = MapResolver::new(vec![]);
-    let store = ImageStore::collect(&[page_with(vec![image_frag("gone.png")])], &resolver);
-    assert!(store.is_empty(), "unresolved names are skipped in collect");
-}
-
-#[test]
-fn image_store_skips_undecodable_names_during_collect() {
-    use turbo_dom_layout::emit::ImageStore;
-    // The name resolves to bytes that are not a valid image: skipped, not panic.
-    let resolver = MapResolver::new(vec![("bad.png", b"not an image".to_vec())]);
-    let store = ImageStore::collect(&[page_with(vec![image_frag("bad.png")])], &resolver);
-    assert!(store.is_empty(), "undecodable bytes are skipped in collect");
-}
-
-#[test]
-fn image_emit_is_deterministic() {
-    let resolver = MapResolver::new(vec![
-        ("a.png", png_rgba_2x2()),
-        ("b.jpg", JPEG_RGB_2X2.to_vec()),
-    ]);
-    let pages = paginate_img("a.png", &resolver);
-    let a = emit_pdf_with_images(&pages, &EmitOptions::default(), &resolver);
-    let b = emit_pdf_with_images(&pages, &EmitOptions::default(), &resolver);
-    assert_eq!(a, b, "image embedding must be byte-deterministic");
-}
-
-#[test]
-fn background_image_emits_xobject_behind_box() {
-    let style = ComputedStyle::from_pairs([
-        ("background-image", "url('bg.png')"),
-        ("width", "100px"),
-        ("height", "60px"),
-    ]);
-    let el = StyledElement {
-        tag: Tag::Html("div".into()),
-        attrs: Vec::new(),
-        style,
-        children: vec![StyledNode::Text("hi".into())],
-    };
-    let styled = vec![StyledNode::Element(el)];
-    let resolver = MapResolver::new(vec![("bg.png", png_rgb_2x2())]);
-    let ctx = ImageCtx {
-        resolver: &resolver,
-        body_height: Some(700.0),
-    };
-    let mut diags = Diagnostics::default();
-    let galley = layout_with_images(&styled, 540.0, &common::registry(), &ctx, &mut diags);
-    let pages = paginate(&galley, &[], &mut diags).expect("paginate");
-    let pdf = emit_pdf_with_images(&pages, &EmitOptions::default(), &resolver);
-    assert!(contains(&pdf, b"/Subtype /Image"), "bg image must embed");
 }
 
 /// The child boxes of a container box, or an empty slice for leaf kinds.
@@ -824,51 +615,6 @@ fn build_box_tree_records_img_source() {
     assert!(
         tree_has_replaced_image(&tree, "z.png"),
         "img src must be recorded on the box"
-    );
-}
-
-// --------------------------------------------------------------------------
-// qpdf structural check (gated on availability)
-// --------------------------------------------------------------------------
-
-#[test]
-fn qpdf_check_image_pdf_when_available() {
-    if !qpdf_available() {
-        return;
-    }
-    let resolver = MapResolver::new(vec![
-        ("rgb.png", png_rgb_2x2()),
-        ("rgba.png", png_rgba_2x2()),
-        ("gray.png", png_gray_2x2()),
-        ("photo.jpg", JPEG_RGB_2X2.to_vec()),
-    ]);
-    for name in ["rgb.png", "rgba.png", "gray.png", "photo.jpg"] {
-        let pages = paginate_img(name, &resolver);
-        let pdf = emit_pdf_with_images(&pages, &EmitOptions::default(), &resolver);
-        assert_qpdf_clean(name, &pdf);
-    }
-}
-
-fn qpdf_available() -> bool {
-    std::process::Command::new("which")
-        .arg("qpdf")
-        .output()
-        .map(|o| o.status.success())
-        .unwrap_or(false)
-}
-
-fn assert_qpdf_clean(name: &str, pdf: &[u8]) {
-    let path = std::env::temp_dir().join(format!("turbo-pdf-img-{name}.pdf"));
-    std::fs::write(&path, pdf).expect("write temp pdf");
-    let out = std::process::Command::new("qpdf")
-        .arg("--check")
-        .arg(&path)
-        .output()
-        .expect("run qpdf");
-    assert!(
-        out.status.success(),
-        "{name}: qpdf --check failed: {}",
-        String::from_utf8_lossy(&out.stdout)
     );
 }
 

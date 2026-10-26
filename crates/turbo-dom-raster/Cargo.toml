@@ -1,20 +1,21 @@
 [package]
-name = "turbo-surf-raster"
-edition.workspace = true
-version.workspace = true
-license.workspace = true
-repository.workspace = true
-description = "turbo-surf synthetic screenshot tier: HTML snapshot → layout → PNG/SVG, no browser"
+name = "turbo-dom-raster"
+edition = "2021"
+version = "0.6.0"
+license = "MIT"
+repository = "https://github.com/miaskiewicz/turbo-dom"
+readme = "README.md"
+rust-version = "1.89"
+description = "turbo-dom synthetic screenshot tier: HTML snapshot → turbo-dom-layout → PNG/SVG, no browser"
+
+# Relocated verbatim from turbo-surf-raster 0.5.5 (miaskiewicz/turbo-surf @ b1de4eb).
 
 [dependencies]
-# The layout + style + font engine (from turbo-html2pdf, on crates.io). We
-# consume only its public HTML→Fragment drive (`layout_html`) + the `Fragment`
-# display list and paint it ourselves; no PDF code is pulled onto the hot path.
-# CSS `transform` (0.2.11) for carousels/rotate; image `%`-sizing + flex
-# `min-height` (0.2.10); `linear-gradient` (0.2.9); box-shadow (0.2.8);
-# border-radius (0.2.7).
-# Published0.3.8 includes the composed-layout and shared-font producer fixes.
-turbo-html2pdf-core = { version = "0.3.9" }
+# The layout + style + font engine (turbo-dom-layout, relocated from
+# turbo-html2pdf-core 0.3.9). We consume only its public HTML→Fragment drive
+# (`layout_html`) + the `Fragment` display list and paint it ourselves. Default
+# features (`bundled-fonts`); its `svg` feature is never enabled from here.
+turbo-dom-layout = { path = "../turbo-dom-layout", version = "0.6.0" }
 # Raster canvas + PNG encode (Pixmap::encode_png, default `png-format` feature).
 tiny-skia = "0.11"
 # Glyph outlines: we parse `FontFace::data()` bytes independently to trace each

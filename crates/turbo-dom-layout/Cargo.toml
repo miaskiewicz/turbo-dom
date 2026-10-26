@@ -1,0 +1,72 @@
+[package]
+name = "turbo-dom-layout"
+version = "0.6.0"
+edition = "2021"
+license = "MIT"
+description = "Native HTML/CSS style cascade, layout (block/inline/flex/grid/table) and font engine for turbo-dom: HTML -> positioned Fragment galley + layout snapshots"
+repository = "https://github.com/miaskiewicz/turbo-dom"
+readme = "README.md"
+keywords = ["html", "css", "layout", "fonts", "dom"]
+categories = ["text-processing", "graphics"]
+# Consolidation MSRV for turbo-dom, -layout and -raster (smol_str 0.3.6 sets the floor).
+rust-version = "1.89"
+
+# Relocated verbatim from turbo-html2pdf-core 0.3.9 (miaskiewicz/turbo-html2pdf @ e2d7c4d):
+# the layout half of the engine (style cascade, box generation + layout, text/fonts, layout
+# snapshots, the HTML drive). turbo-html2pdf-core depends on this crate and re-exports it at
+# the old paths; turbo-dom-raster paints its Fragment galley.
+
+[features]
+# `bundled-fonts` is ON by default: the crate embeds a small set of OFL-licensed faces
+# (Inter/Roboto, Liberation Serif/PT Serif, Fira Code/IBM Plex Mono) so a document lays out
+# with ZERO caller-supplied fonts. `--no-default-features` embeds no font bytes and
+# `FontRegistry` behaves exactly as a registry of only caller faces.
+default = ["bundled-fonts"]
+bundled-fonts = []
+
+# Hot-path instrumentation counters (`perf` module, `hot!` macro). Off by default so
+# production builds pay nothing.
+perf = []
+
+# Vector (SVG) image support: `image/svg+xml` bytes are rasterized (resvg, pinned EXACT for
+# reproducible output; 0.46+ changes raster output) into the RGBA image pipeline.
+svg = ["dep:resvg"]
+
+# TEMPORARY (until the consolidation's S2 step replaces them with runtime layout options):
+# the PDF-side capability gates whose cfg'd fields/branches live in the layout code. They are
+# forwarded from turbo-html2pdf-core's features of the same name; no other consumer should
+# enable them.
+# - `xref`: anchor names / internal `<a href="#…">` links carried on fragments.
+xref = []
+# - `pdf-ua`: structure role + alt text carried on fragments.
+pdf-ua = []
+# - `print-color`: accept `cmyk(...)` colours.
+print-color = []
+
+# Test fixtures for downstream crates' tests (`FontFace::collection_fixture_faces`). Never
+# enable in a production build.
+test-support = []
+
+[dependencies]
+thiserror = "2"
+html5ever = "0.39.0"
+markup5ever_rcdom = "0.39.0"
+rustybuzz = "0.20.1"
+self_cell = "1"
+unicode-linebreak = "0.1.5"
+taffy = "0.8"
+png = "0.18.1"
+jpeg-decoder = { version = "0.3.2", default-features = false }
+encoding_rs = "0.8"
+# `svg` feature only. `default-features = false` drops `system-fonts` (the only
+# non-deterministic input) plus the `text`/raster-image decoders; resvg re-exports `usvg`
+# and `tiny-skia`. See src/svg.rs.
+resvg = { version = "=0.45.1", default-features = false, optional = true }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+core-text = "20.1"
+core-foundation = "0.9"
+
+[dev-dependencies]
+sha2 = "0.10"
+serde_json = { version = "1", features = ["preserve_order", "float_roundtrip"] }

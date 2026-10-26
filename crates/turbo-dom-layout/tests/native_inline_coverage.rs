@@ -1,3 +1,6 @@
+//! Split at the S1 relocation: the cases that need TKind directives, templating or the
+//! PDF emitter stay in turbo-html2pdf-core's `tests/native_inline_coverage.rs`.
+
 use std::collections::HashMap;
 use turbo_dom_layout::layout::inline::{
     layout_html_paragraph_in_with_sources, layout_paragraph_in_with_sources, InlineEdge, InlineRun,
@@ -381,36 +384,4 @@ fn own_atomic_super_and_sub_alignment_shift_once_without_growing_a_dominant_stru
             first_box(&normal, names["box"])
         );
     }
-}
-
-#[test]
-fn preserved_whitespace_and_inline_directives_keep_real_source_provenance() {
-    let (pre, _) = snapshot("<div><span style='white-space:pre'>  </span></div>");
-    let text = pre
-        .text_sources()
-        .iter()
-        .find(|source| source.text == "  ")
-        .unwrap();
-    let selected = pre.text_range_boxes(text.source_id, 0, 2).unwrap();
-    assert!(!selected.is_empty());
-    assert!(selected.iter().any(|part| part.rect.width > 0.0));
-    let mut nodes = parse_html("<div>a<span id=marker></span>b</div>").unwrap();
-    let Node::Element(parent) = &mut nodes[0] else {
-        unreachable!()
-    };
-    let Node::Element(marker) = &mut parent.children[1] else {
-        unreachable!()
-    };
-    marker.tag = turbo_dom_layout::Tag::Directive(turbo_dom_layout::TKind::Page);
-    let (snapshot, names) = snapshot_nodes(nodes);
-    let source = snapshot.source(names["marker"]).unwrap();
-    assert!(!source.excluded_from_layout);
-    assert_eq!(source.fragment_indices.len(), 1);
-    let fragment = &snapshot.fragments()[source.fragment_indices[0]];
-    assert_eq!(fragment.kind, GeometryKind::Directive);
-    assert_eq!([fragment.rect.width, fragment.rect.height], [0.0, 0.0]);
-    assert_eq!(snapshot.text_sources().len(), 2);
-    assert!(snapshot.text_sources().iter().all(|text| !snapshot
-        .text_cluster_boxes_for_source(text.source_id)
-        .is_empty()));
 }

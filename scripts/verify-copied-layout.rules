@@ -8,3 +8,8 @@ crates/turbo-dom-layout/src/text/font.rs	s/\bcrate::emit::tounicode::reverse_cma
 crates/turbo-dom-raster/tests/*.rs	s/\bturbo_surf_raster\b/turbo_dom_raster/g
 crates/turbo-dom-layout/examples/*.rs	s/\bturbo_html2pdf_core\b/turbo_dom_layout/g
 crates/turbo-dom-layout/examples/font_startup.rs	s/-p turbo-html2pdf-core --example font_startup/-p turbo-dom-layout --example font_startup/g
+# Manual cross-crate visibility / test-support edits (S1 "small manual fixes"):
+crates/turbo-dom-layout/src/cmap.rs	s/^pub\(crate\) fn reverse_cmap\b/pub fn reverse_cmap/m
+crates/turbo-dom-layout/src/text/font.rs	s/^#\[cfg\(test\)\]\n(impl FontFace \{\n    pub\(crate\) fn collection_fixture_bytes)/#[cfg(any(test, feature = "test-support"))]\n$1/m
+crates/turbo-dom-layout/src/text/font.rs	s/^    pub\(crate\) fn collection_fixture_faces\(\)/    pub fn collection_fixture_faces()/m
+crates/turbo-dom-layout/src/text/font.rs	s/^#\[cfg\(test\)\]\n(fn relocate_fixture_tables)/#[cfg(any(test, feature = "test-support"))]\n$1/m

@@ -493,7 +493,7 @@ fn collect_glyphs(shaped: &rustybuzz::GlyphBuffer) -> Vec<ShapedGlyph> {
         .collect()
 }
 
-#[cfg(test)]
+#[cfg(any(test, feature = "test-support"))]
 impl FontFace {
     pub(crate) fn collection_fixture_bytes() -> Vec<u8> {
         let fonts: [&[u8]; 2] = [
@@ -511,7 +511,7 @@ impl FontFace {
         bytes
     }
 
-    pub(crate) fn collection_fixture_faces() -> [Self; 2] {
+    pub fn collection_fixture_faces() -> [Self; 2] {
         let bytes = Arc::new(Self::collection_fixture_bytes());
         [0, 1].map(|index| {
             Self::from_shared_bytes_index(bytes.clone(), index, "same CSS alias", 400, false)
@@ -520,7 +520,7 @@ impl FontFace {
     }
 }
 
-#[cfg(test)]
+#[cfg(any(test, feature = "test-support"))]
 fn relocate_fixture_tables(font: &mut [u8], start: u32) {
     let count = u16::from_be_bytes([font[4], font[5]]) as usize;
     for table in (0..count).map(|index| 12 + index * 16 + 8) {

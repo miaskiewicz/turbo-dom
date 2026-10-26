@@ -1,6 +1,9 @@
 //! Block layout (§5.3, AC-5.5): width resolution, margin collapsing (sibling +
 //! empty-block collapse-through), Lines/atomic/directive content, and the
 //! Flex/Table block-flow fallback. Driven through the real boxgen -> layout pipe.
+//!
+//! Split at the S1 relocation: the cases that need TKind directives, templating or the
+//! PDF emitter stay in turbo-html2pdf-core's `tests/layout_block.rs`.
 
 mod common;
 
@@ -8,7 +11,7 @@ use turbo_dom_layout::layout::block::layout_tree;
 use turbo_dom_layout::layout::boxgen::build_box_tree;
 use turbo_dom_layout::layout::fragment::{Fragment, FragmentContent};
 use turbo_dom_layout::layout::value::BreakRule;
-use turbo_dom_layout::node::{TKind, Tag};
+use turbo_dom_layout::node::Tag;
 use turbo_dom_layout::text::FontRegistry;
 use turbo_dom_layout::{ComputedStyle, Diagnostics, StyledElement, StyledNode};
 
@@ -21,15 +24,6 @@ fn el(tag: &str, pairs: &[(&str, &str)], children: Vec<StyledNode>) -> StyledNod
         tag: Tag::Html(tag.to_string()),
         attrs: vec![],
         style: cs(pairs),
-        children,
-    })
-}
-
-fn dir(kind: TKind, children: Vec<StyledNode>) -> StyledNode {
-    StyledNode::Element(StyledElement {
-        tag: Tag::Directive(kind),
-        attrs: vec![],
-        style: cs(&[]),
         children,
     })
 }
@@ -253,40 +247,6 @@ fn flex_and_table_fall_back_to_block_flow() {
         500.0,
     );
     assert!(text_lines(&table) >= 1);
-}
-
-#[test]
-fn block_directive_is_zero_size_marker() {
-    let root = lay(&[dir(TKind::RunningHeader, vec![])], 500.0);
-    let d = &root.children[0];
-    assert_eq!(d.height, 0.0);
-    assert!(matches!(
-        d.content,
-        FragmentContent::Directive(TKind::RunningHeader)
-    ));
-}
-
-#[test]
-fn lines_handle_text_directive_and_atomic() {
-    let root = lay(
-        &[el(
-            "p",
-            &[],
-            vec![
-                txt("a"),
-                dir(TKind::Footnote, vec![txt("note")]),
-                el("span", &[("display", "inline-block")], vec![txt("b")]),
-            ],
-        )],
-        500.0,
-    );
-    let frags = all(&root);
-    assert!(frags
-        .iter()
-        .any(|f| matches!(f.content, FragmentContent::TextLine { .. })));
-    assert!(frags
-        .iter()
-        .any(|f| matches!(f.content, FragmentContent::Directive(TKind::Footnote))));
 }
 
 /// The `Box` fragments carrying a background (the coloured probe boxes), in

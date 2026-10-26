@@ -1,3 +1,7 @@
+//! Reverse a font's Unicode `cmap` (glyph id -> lowest codepoint). Split out of
+//! turbo-html2pdf-core's `emit/tounicode.rs`: the text layer needs it for per-glyph
+//! source text, the PDF emitter for `/ToUnicode` CMaps.
+
 use std::collections::BTreeMap;
 
 use rustybuzz::ttf_parser::Face;
@@ -6,7 +10,7 @@ use rustybuzz::ttf_parser::Face;
 /// every Unicode subtable. Keeps the lowest codepoint per glyph (insert-if-absent
 /// in the ascending `codepoints` walk), so the `/ToUnicode` mapping a tagged PDF
 /// needs is deterministic. A font with no `cmap` yields an empty map.
-pub(crate) fn reverse_cmap(face: &Face) -> BTreeMap<u16, u32> {
+pub fn reverse_cmap(face: &Face) -> BTreeMap<u16, u32> {
     let mut out: BTreeMap<u16, u32> = BTreeMap::new();
     let Some(cmap) = face.tables().cmap else {
         return out;

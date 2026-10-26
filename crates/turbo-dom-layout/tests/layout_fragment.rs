@@ -1,11 +1,13 @@
 //! Galley fragment types (§5.5): construction, `bottom`, recursive `translate`,
 //! break metadata, and node-id round-trip (AC-5.11).
+//!
+//! Split at the S1 relocation: the cases that need TKind directives, templating or the
+//! PDF emitter stay in turbo-html2pdf-core's `tests/layout_fragment.rs`.
 
 mod common;
 
 use turbo_dom_layout::layout::fragment::*;
 use turbo_dom_layout::layout::value::{BorderEdges, BreakRule, Rgba};
-use turbo_dom_layout::node::TKind;
 
 fn box_content() -> FragmentContent {
     FragmentContent::Box {
@@ -93,22 +95,6 @@ fn text_line_holds_glyphs_and_face() {
             assert_eq!(*font_size, 16.0);
         }
         _ => panic!("expected text line"),
-    }
-}
-
-#[test]
-fn directive_content_roundtrips() {
-    let f = Fragment::new(
-        NodeId(9),
-        0.0,
-        0.0,
-        0.0,
-        0.0,
-        FragmentContent::Directive(TKind::Footnote),
-    );
-    match f.content {
-        FragmentContent::Directive(k) => assert_eq!(k, TKind::Footnote),
-        _ => panic!("expected directive"),
     }
 }
 

@@ -1,3 +1,6 @@
+//! Split at the S1 relocation: the cases that need TKind directives, templating or the
+//! PDF emitter stay in turbo-html2pdf-core's `tests/svg_viewport_snapshot.rs`.
+
 use turbo_dom_layout::layout_snapshot::{
     snapshot_html_live_tree_with_svg_viewports, GeometryKind, LayoutSnapshot, SnapshotInputs,
     SourceId, SourceIdentity,
@@ -266,67 +269,4 @@ fn native_viewport_layout_scale_is_bounded_and_configurable_before_box_allocatio
         (actual.rect.width, actual.rect.height),
         (4161.0 / 128.0, 3109.0 / 128.0)
     );
-}
-
-#[test]
-fn text_paths_directives_and_invalid_viewports_cannot_be_declared_svg_sources() {
-    use turbo_dom_layout::layout_snapshot::{
-        SnapshotError, SvgSnapshotError, TextSnapshotError,
-    };
-    use turbo_dom_layout::TKind;
-    let text = [Node::Text("not an SVG viewport".into())];
-    let ids = [SourceIdentity {
-        id: SourceId(2),
-        path: vec![0],
-    }];
-    assert!(matches!(
-        capture(&text, &ids, &[SourceId(2)]),
-        Err(SvgSnapshotError::InvalidViewportSource(SourceId(2)))
-    ));
-    let ids = [SourceIdentity {
-        id: SourceId(2),
-        path: vec![0, 0],
-    }];
-    assert!(matches!(
-        capture(&text, &ids, &[SourceId(2)]),
-        Err(SvgSnapshotError::InvalidViewportSource(SourceId(2)))
-    ));
-    let directives = [Node::Element(Element {
-        tag: Tag::Directive(TKind::Page),
-        attrs: vec![],
-        children: vec![],
-    })];
-    let ids = [SourceIdentity {
-        id: SourceId(2),
-        path: vec![0],
-    }];
-    assert!(matches!(
-        capture(&directives, &ids, &[SourceId(2)]),
-        Err(SvgSnapshotError::InvalidViewportSource(SourceId(2)))
-    ));
-    let fonts = FontRegistry::new();
-    let images = ImageCtx {
-        resolver: &NoImages,
-        body_height: None,
-    };
-    let result = snapshot_html_live_tree_with_svg_viewports(
-        &text,
-        &ids,
-        &[],
-        2.0,
-        &build_cascade("", "", Default::default()),
-        &SnapshotInputs {
-            width: -1.0,
-            height: 300.0,
-            fonts: &fonts,
-            images: &images,
-        },
-        &mut Diagnostics::default(),
-    );
-    assert!(matches!(
-        result,
-        Err(SvgSnapshotError::Text(TextSnapshotError::Snapshot(
-            SnapshotError::InvalidNativeViewport
-        )))
-    ));
 }

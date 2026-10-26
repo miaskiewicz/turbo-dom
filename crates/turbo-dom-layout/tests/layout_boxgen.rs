@@ -1,9 +1,12 @@
 //! Box generation (§5.1): styled tree -> box tree, anonymous-block wrapping of
 //! inline runs (AC-5.1), `display:none` dropping, and `t:` directive markers.
+//!
+//! Split at the S1 relocation: the cases that need TKind directives, templating or the
+//! PDF emitter stay in turbo-html2pdf-core's `tests/layout_boxgen.rs`.
 
 use turbo_dom_layout::layout::boxgen::*;
 use turbo_dom_layout::layout::value::Display;
-use turbo_dom_layout::node::{TKind, Tag};
+use turbo_dom_layout::node::Tag;
 use turbo_dom_layout::{ComputedStyle, StyledElement, StyledNode};
 
 fn cs(pairs: &[(&str, &str)]) -> ComputedStyle {
@@ -15,15 +18,6 @@ fn el(tag: &str, pairs: &[(&str, &str)], children: Vec<StyledNode>) -> StyledNod
         tag: Tag::Html(tag.to_string()),
         attrs: vec![],
         style: cs(pairs),
-        children,
-    })
-}
-
-fn dir(kind: TKind, children: Vec<StyledNode>) -> StyledNode {
-    StyledNode::Element(StyledElement {
-        tag: Tag::Directive(kind),
-        attrs: vec![],
-        style: cs(&[]),
         children,
     })
 }
@@ -120,33 +114,6 @@ fn inline_element_drops_hidden_child() {
 }
 
 #[test]
-fn inline_directive_is_inline_item() {
-    let nodes = vec![txt("a"), dir(TKind::Footnote, vec![txt("note")]), txt("b")];
-    let items = as_lines(&build_box_tree(&nodes).kind).to_vec();
-    assert_eq!(items.len(), 3);
-    assert!(matches!(
-        items[1],
-        InlineItem::Directive {
-            kind: TKind::Footnote,
-            ..
-        }
-    ));
-}
-
-#[test]
-fn block_directive_is_opaque_marker() {
-    let nodes = vec![
-        dir(TKind::RunningHeader, vec![]),
-        el("p", &[], vec![txt("x")]),
-    ];
-    let boxes = as_block(&build_box_tree(&nodes).kind);
-    assert!(matches!(
-        boxes[0].kind,
-        BoxKind::Directive(TKind::RunningHeader)
-    ));
-}
-
-#[test]
 fn flex_container_keeps_only_real_items() {
     let nodes = vec![el(
         "div",
@@ -160,20 +127,6 @@ fn flex_container_keeps_only_real_items() {
     let boxes = as_block(&build_box_tree(&nodes).kind);
     match &boxes[0].kind {
         BoxKind::Flex(items) => assert_eq!(items.len(), 1),
-        _ => panic!("expected Flex"),
-    }
-}
-
-#[test]
-fn flex_keeps_directive_child() {
-    let nodes = vec![el(
-        "div",
-        &[("display", "flex")],
-        vec![dir(TKind::Anchor, vec![])],
-    )];
-    let boxes = as_block(&build_box_tree(&nodes).kind);
-    match &boxes[0].kind {
-        BoxKind::Flex(items) => assert!(matches!(items[0].kind, BoxKind::Directive(TKind::Anchor))),
         _ => panic!("expected Flex"),
     }
 }

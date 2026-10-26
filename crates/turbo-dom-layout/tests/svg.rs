@@ -8,21 +8,16 @@
 //!
 //! All SVG inputs are tiny committed byte strings (shapes only — no external
 //! files, no fonts, so rendering is host-independent and deterministic).
+//!
+//! Split at the S1 relocation: the cases that need TKind directives, templating or the
+//! PDF emitter stay in turbo-html2pdf-core's `tests/svg.rs`.
 
 #![cfg(feature = "svg")]
 
 mod common;
 
-use std::collections::HashMap;
-
 use turbo_dom_layout::image::{decode, probe, ColorSpace, Payload};
-use turbo_dom_layout::paginate::{paginate, Page};
 use turbo_dom_layout::svg::{decode_svg, is_svg, probe_svg};
-use turbo_dom_layout::{
-    build_cascade, emit_pdf_with_images, layout_with_images, style_tree, Attr, Diagnostics,
-    Element, EmitOptions, ImageCtx, ImageResolver, Node, Tag,
-};
-use turbo_dom_layout::{style::TokenSet, StyledNode};
 
 // --------------------------------------------------------------------------
 // committed SVG inputs (shapes only — deterministic without fonts)
@@ -39,33 +34,6 @@ const SVG_RED_4X4: &str = r##"<svg xmlns="http://www.w3.org/2000/svg" width="4" 
 /// to exercise that branch of the sniffer (XML is case-sensitive, so the element
 /// itself stays lowercase `svg`).
 const SVG_WITH_PROLOG: &str = "\u{feff}<?xml version=\"1.0\"?>\n  <svg xmlns=\"http://www.w3.org/2000/svg\" width=\"2\" height=\"2\"><rect width=\"2\" height=\"2\" fill=\"green\"/></svg>";
-
-fn svg_bytes(s: &str) -> Vec<u8> {
-    s.as_bytes().to_vec()
-}
-
-/// A by-name resolver backed by a map (mirrors the raster image tests).
-struct MapResolver {
-    map: HashMap<String, Vec<u8>>,
-}
-
-impl MapResolver {
-    fn new(pairs: Vec<(&str, Vec<u8>)>) -> MapResolver {
-        MapResolver {
-            map: pairs.into_iter().map(|(k, v)| (k.to_string(), v)).collect(),
-        }
-    }
-}
-
-impl ImageResolver for MapResolver {
-    fn resolve(&self, name: &str) -> Option<&[u8]> {
-        self.map.get(name).map(Vec::as_slice)
-    }
-}
-
-fn contains(haystack: &[u8], needle: &[u8]) -> bool {
-    haystack.windows(needle.len()).any(|w| w == needle)
-}
 
 // --------------------------------------------------------------------------
 // sniff
@@ -185,111 +153,4 @@ fn prolog_svg_decodes() {
     let img = decode(SVG_WITH_PROLOG.as_bytes()).expect("decode prolog svg");
     assert_eq!((img.width, img.height), (4, 4)); // 2px * SVG_SCALE
     assert!(img.alpha.is_some());
-}
-
-// --------------------------------------------------------------------------
-// layout + emit pipeline
-// --------------------------------------------------------------------------
-
-fn img_node(src: &str) -> Vec<Node> {
-    vec![Node::Element(Element {
-        tag: Tag::Html("img".into()),
-        attrs: vec![Attr {
-            name: "src".into(),
-            value: src.into(),
-        }],
-        children: Vec::new(),
-    })]
-}
-
-fn styled_img(src: &str) -> Vec<StyledNode> {
-    let cascade = build_cascade("", "", TokenSet::default());
-    style_tree(&img_node(src), &cascade)
-}
-
-fn paginate_img(src: &str, resolver: &dyn ImageResolver) -> Vec<Page> {
-    let styled = styled_img(src);
-    let ctx = ImageCtx {
-        resolver,
-        body_height: Some(700.0),
-    };
-    let mut diags = Diagnostics::default();
-    let galley = layout_with_images(&styled, 540.0, &common::registry(), &ctx, &mut diags);
-    paginate(&galley, &[], &mut diags).expect("paginate")
-}
-
-#[test]
-fn svg_emits_image_xobject_with_smask() {
-    let resolver = MapResolver::new(vec![("logo.svg", svg_bytes(SVG_RED_4X4))]);
-    let pages = paginate_img("logo.svg", &resolver);
-    let pdf = emit_pdf_with_images(&pages, &EmitOptions::default(), &resolver);
-    assert!(pdf.starts_with(b"%PDF-1.7"));
-    assert!(contains(&pdf, b"/Subtype /Image"), "missing image XObject");
-    assert!(contains(&pdf, b"/Im0"), "missing image resource name");
-    assert!(contains(&pdf, b"/DeviceRGB"), "rasterized svg is rgb");
-    assert!(
-        contains(&pdf, b"/SMask"),
-        "transparent svg must emit an SMask"
-    );
-    assert!(contains(&pdf, b"/DeviceGray"), "smask is a gray image");
-    assert!(contains(&pdf, b"%%EOF"));
-}
-
-#[test]
-fn svg_emit_is_deterministic() {
-    let resolver = MapResolver::new(vec![("logo.svg", svg_bytes(SVG_RED_4X4))]);
-    let pages = paginate_img("logo.svg", &resolver);
-    let a = emit_pdf_with_images(&pages, &EmitOptions::default(), &resolver);
-    let b = emit_pdf_with_images(&pages, &EmitOptions::default(), &resolver);
-    assert_eq!(a, b, "svg embedding must be byte-deterministic");
-}
-
-#[test]
-fn malformed_svg_emits_nothing() {
-    let resolver = MapResolver::new(vec![("bad.svg", b"<svg><rect".to_vec())]);
-    let pages = paginate_img("bad.svg", &resolver);
-    let pdf = emit_pdf_with_images(&pages, &EmitOptions::default(), &resolver);
-    assert!(pdf.starts_with(b"%PDF-1.7"));
-    assert!(
-        !contains(&pdf, b"/Subtype /Image"),
-        "malformed svg embeds nothing"
-    );
-}
-
-// --------------------------------------------------------------------------
-// qpdf structural check (gated on availability)
-// --------------------------------------------------------------------------
-
-#[test]
-fn qpdf_check_svg_pdf_when_available() {
-    if !qpdf_available() {
-        return;
-    }
-    let resolver = MapResolver::new(vec![("logo.svg", svg_bytes(SVG_RED_4X4))]);
-    let pages = paginate_img("logo.svg", &resolver);
-    let pdf = emit_pdf_with_images(&pages, &EmitOptions::default(), &resolver);
-    assert_qpdf_clean("logo.svg", &pdf);
-}
-
-fn qpdf_available() -> bool {
-    std::process::Command::new("which")
-        .arg("qpdf")
-        .output()
-        .map(|o| o.status.success())
-        .unwrap_or(false)
-}
-
-fn assert_qpdf_clean(name: &str, pdf: &[u8]) {
-    let path = std::env::temp_dir().join(format!("turbo-pdf-svg-{name}.pdf"));
-    std::fs::write(&path, pdf).expect("write temp pdf");
-    let out = std::process::Command::new("qpdf")
-        .arg("--check")
-        .arg(&path)
-        .output()
-        .expect("run qpdf");
-    assert!(
-        out.status.success(),
-        "{name}: qpdf --check failed: {}",
-        String::from_utf8_lossy(&out.stdout)
-    );
 }
