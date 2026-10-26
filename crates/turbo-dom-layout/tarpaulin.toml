@@ -25,13 +25,4 @@ exclude-files = [
     # `--features svg` tests in tests/svg.rs. Listed defensively so a stray
     # tarpaulin cfg quirk cannot flag the gated-out module.
     "crates/turbo-dom-layout/src/svg.rs",
-] #[path = "boxgen_xref.rs"] mod xref;`), so the
-    # default build does not compile it. Exercised by turbo-html2pdf-core's
-    # `--features xref` tests (tests/xref.rs).
-    "crates/turbo-dom-layout/src/layout/boxgen_xref.rs",
-    # TEMPORARY `pdf-ua` feature: role derivation from the semantic HTML tag in
-    # this gated-only sibling of boxgen.rs (declared `#[cfg(feature = "pdf-ua")]
-    # #[path = "boxgen_ua.rs"] mod ua;`). Exercised by turbo-html2pdf-core's
-    # `--features pdf-ua` tests (tests/pdf_ua.rs).
-    "crates/turbo-dom-layout/src/layout/boxgen_ua.rs",
 ]
