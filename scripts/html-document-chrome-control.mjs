@@ -7,6 +7,8 @@
 // selectors). P5b-W3 adds the layout cases of miaskiewicz/turbo-dom#28 (one group per item).
 // P5b-W5 adds the table caption cases of miaskiewicz/turbo-dom#51 (`caption-*`) and the
 // cases of the bugs found while fixing it (one group per issue, labelled).
+// P5b-W7 adds miaskiewicz/turbo-dom#79 (`intrinsic-margins-*`), #80
+// (`inline-block-margins-*`) and #81.
 //
 // For every case below, Chrome for Testing 156 (viewport 1280x800) records:
 //   - `boxes`: getBoundingClientRect() of every `[data-cid]` element (document order), as
@@ -319,6 +321,14 @@ const CASES = [
   { id: "intrinsic-margins-inline-block-in-float", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="float:left;font-size:0"><span data-cid="d" style="display:inline-block;width:30px;height:15px;margin:0 4px 0 6px"></span><span data-cid="e" style="display:inline-block;width:20px;height:15px;margin:0 3px"></span></div>`) },
   { id: "intrinsic-margins-column-flex", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="float:left"><div style="display:flex;flex-direction:column"><div data-cid="d" style="width:30px;height:15px;margin:0 4px 0 6px"></div></div></div>`), measure: "xw" },
   { id: "intrinsic-margins-grid", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="float:left"><div style="display:grid"><div data-cid="d" style="width:30px;height:15px;margin:0 4px 0 6px"></div></div></div>`) },
+  // P5b-W7, miaskiewicz/turbo-dom#80: an inline-block is a block formatting context root
+  // (CSS 2.2 §8.3.1): its first / last in-flow child's vertical margins stay inside it.
+  { id: "inline-block-margins-kept", html: DOC(S("body{margin:0}"), `<div style="font-size:0"><div data-cid="c" style="display:inline-block"><div data-cid="d" style="width:30px;height:15px;margin:3px 0 5px"></div></div></div>`) },
+  { id: "inline-block-margins-explicit-width", html: DOC(S("body{margin:0}"), `<div style="font-size:0"><div data-cid="c" style="display:inline-block;width:50px"><div data-cid="d" style="width:30px;height:15px;margin:3px 0 5px"></div></div></div>`) },
+  { id: "inline-block-margins-nested", html: DOC(S("body{margin:0}"), `<div style="font-size:0"><div data-cid="c" style="display:inline-block"><div data-cid="e"><div data-cid="d" style="width:30px;height:15px;margin:10px 0 7px"></div></div></div></div>`) },
+  { id: "inline-block-margins-own-and-child", html: DOC(S("body{margin:0}"), `<div style="font-size:0"><div data-cid="c" style="display:inline-block;margin:4px 0 2px"><div data-cid="d" style="width:30px;height:15px;margin:3px 0 5px"></div></div><div data-cid="g" style="height:10px"></div></div>`) },
+  { id: "inline-block-margins-negative", html: DOC(S("body{margin:0}"), `<div style="font-size:0"><div data-cid="c" style="display:inline-block"><div data-cid="d" style="width:30px;height:15px;margin:-4px 0 6px"></div></div></div>`) },
+  { id: "inline-block-margins-two-children", html: DOC(S("body{margin:0}"), `<div style="font-size:0"><div data-cid="c" style="display:inline-block"><div data-cid="d" style="width:30px;height:15px;margin:3px 0 5px"></div><div data-cid="e" style="width:20px;height:10px;margin:8px 0 2px"></div></div></div>`) },
 ];
 
 /** The RGB of a 1x1 PNG screenshot (any filter: a single pixel's filter adds 0). */

@@ -10,7 +10,8 @@
 //   - miaskiewicz/turbo-surf#36 items 3 and 4: an auto-width table shrinks to fit its
 //     columns, and a `<template>` (display:none) has an all-zero rect.
 // P5b-W3 adds the cases of miaskiewicz/turbo-dom#28 (one group per item, labelled); P5b-W5
-// the table captions of miaskiewicz/turbo-dom#51 (`caption-*`).
+// the table captions of miaskiewicz/turbo-dom#51 (`caption-*`); P5b-W7 the inline-block
+// formatting context of miaskiewicz/turbo-dom#80 (`inline-block-margins-*`).
 //
 // For every case, Chrome for Testing 156 (viewport 1280x800) records the
 // getBoundingClientRect() of every `[data-cid]` element (document order) as
@@ -264,6 +265,14 @@ const CASES = [
   { id: "caption-frame-margins", html: DOC("body{margin:0}table{border:3px solid #000;padding:5px;margin:7px}caption{padding:2px;border:1px solid #00f;margin:4px}", `<table data-cid="t"><caption data-cid="c">${BOX(100, 10)}</caption><tr data-cid="tr">${CELL(30, 10, "td")}</tr></table>`) },
   { id: "caption-multiple", html: DOC("body{margin:0}", `<table data-cid="t"><caption data-cid="c">${BOX(40, 10)}</caption><tr data-cid="tr">${CELL(30, 10, "td")}</tr><caption data-cid="c2" style="caption-side:bottom">${BOX(50, 7)}</caption><caption data-cid="c3">${BOX(20, 3)}</caption></table>`) },
   { id: "caption-no-rows", html: DOC("body{margin:0}", `<table data-cid="t"><caption data-cid="c">${BOX(100, 10)}</caption></table>`) },
+  // P5b-W7, miaskiewicz/turbo-dom#80: an inline-block is a block formatting context root
+  // (CSS 2.2 §8.3.1): its first / last in-flow child's vertical margins stay inside it.
+  { id: "inline-block-margins-kept", html: DOC("body{margin:0}", `<div style="font-size:0"><div data-cid="c" style="display:inline-block"><div data-cid="d" style="width:30px;height:15px;margin:3px 0 5px"></div></div></div>`) },
+  { id: "inline-block-margins-explicit-width", html: DOC("body{margin:0}", `<div style="font-size:0"><div data-cid="c" style="display:inline-block;width:50px"><div data-cid="d" style="width:30px;height:15px;margin:3px 0 5px"></div></div></div>`) },
+  { id: "inline-block-margins-nested", html: DOC("body{margin:0}", `<div style="font-size:0"><div data-cid="c" style="display:inline-block"><div data-cid="e"><div data-cid="d" style="width:30px;height:15px;margin:10px 0 7px"></div></div></div></div>`) },
+  { id: "inline-block-margins-own-and-child", html: DOC("body{margin:0}", `<div style="font-size:0"><div data-cid="c" style="display:inline-block;margin:4px 0 2px"><div data-cid="d" style="width:30px;height:15px;margin:3px 0 5px"></div></div><div data-cid="g" style="height:10px"></div></div>`) },
+  { id: "inline-block-margins-negative", html: DOC("body{margin:0}", `<div style="font-size:0"><div data-cid="c" style="display:inline-block"><div data-cid="d" style="width:30px;height:15px;margin:-4px 0 6px"></div></div></div>`) },
+  { id: "inline-block-margins-two-children", html: DOC("body{margin:0}", `<div style="font-size:0"><div data-cid="c" style="display:inline-block"><div data-cid="d" style="width:30px;height:15px;margin:3px 0 5px"></div><div data-cid="e" style="width:20px;height:10px;margin:8px 0 2px"></div></div></div>`) },
 ];
 
 const browser = await chromium.launch({ executablePath: chromePath, headless: true });

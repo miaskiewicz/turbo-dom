@@ -103,7 +103,7 @@ fn inline_flex_grid_case(id: &str) -> bool {
 /// The control cases of an open bug, each asserted by its own test (`#[ignore]`d until
 /// its fix lands) and held out of [`html_documents_lay_out_as_chrome_156`].
 fn held_out(id: &str) -> bool {
-    let groups: [fn(&str) -> bool; 16] = [
+    let groups: [fn(&str) -> bool; 17] = [
         auto_table_case,
         inline_flex_grid_case,
         abs_auto_width_case,
@@ -120,6 +120,7 @@ fn held_out(id: &str) -> bool {
         legacy_align_case,
         th_case,
         intrinsic_margin_case,
+        inline_block_margin_case,
     ];
     groups.iter().any(|group| group(id))
 }
@@ -294,6 +295,17 @@ fn intrinsic_margin_case(id: &str) -> bool {
 #[test]
 fn intrinsic_widths_count_child_margins_like_chrome_156() {
     compare_cases(intrinsic_margin_case);
+}
+
+/// miaskiewicz/turbo-dom#80: an inline-block keeps its children's vertical margins.
+fn inline_block_margin_case(id: &str) -> bool {
+    id.starts_with("inline-block-margins-")
+}
+
+#[test]
+#[ignore = "turbo-dom#80: fails until the fix"]
+fn inline_blocks_keep_child_margins_like_chrome_156() {
+    compare_cases(inline_block_margin_case);
 }
 
 /// The first `<th>` of a styled forest.

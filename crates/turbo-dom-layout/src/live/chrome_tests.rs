@@ -252,7 +252,7 @@ fn assert_matches_chrome((compared, failures): (usize, Vec<String>)) {
 /// The control cases of an open bug, each asserted by its own test (`#[ignore]`d until
 /// its fix lands) and held out of [`live_geometry_matches_chrome_156`].
 fn held_out(id: &str) -> bool {
-    let groups: [fn(&str) -> bool; 7] = [
+    let groups: [fn(&str) -> bool; 8] = [
         |id| AUTO_TABLE_CASES.contains(&id),
         inline_flex_grid_case,
         abs_auto_width_case,
@@ -260,6 +260,7 @@ fn held_out(id: &str) -> bool {
         collapsed_auto_case,
         colspan_case,
         caption_case,
+        inline_block_margin_case,
     ];
     groups.iter().any(|group| group(id))
 }
@@ -338,4 +339,15 @@ fn caption_case(id: &str) -> bool {
 #[test]
 fn table_captions_lay_out_in_the_table_wrapper_like_chrome_156() {
     assert_matches_chrome(compare_cases(caption_case));
+}
+
+/// miaskiewicz/turbo-dom#80: an inline-block keeps its children's vertical margins.
+fn inline_block_margin_case(id: &str) -> bool {
+    id.starts_with("inline-block-margins-")
+}
+
+#[test]
+#[ignore = "turbo-dom#80: fails until the fix"]
+fn inline_blocks_keep_child_margins_like_chrome_156() {
+    assert_matches_chrome(compare_cases(inline_block_margin_case));
 }
