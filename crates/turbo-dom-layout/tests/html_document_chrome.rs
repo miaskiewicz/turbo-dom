@@ -103,7 +103,7 @@ fn inline_flex_grid_case(id: &str) -> bool {
 /// The control cases of an open bug, each asserted by its own test (`#[ignore]`d until
 /// its fix lands) and held out of [`html_documents_lay_out_as_chrome_156`].
 fn held_out(id: &str) -> bool {
-    let groups: [fn(&str) -> bool; 10] = [
+    let groups: [fn(&str) -> bool; 11] = [
         auto_table_case,
         inline_flex_grid_case,
         abs_auto_width_case,
@@ -114,6 +114,7 @@ fn held_out(id: &str) -> bool {
         border_box_case,
         table_border_box_case,
         spacing_case,
+        table_height_case,
     ];
     groups.iter().any(|group| group(id))
 }
@@ -181,7 +182,7 @@ fn caption_case(id: &str) -> bool {
 
 /// Caption cases that also need another fix: a `display: table` element's border-spacing
 /// (miaskiewicz/turbo-dom#63, [`spacing_case`]) and a table's extra height
-/// (miaskiewicz/turbo-dom#64).
+/// (miaskiewicz/turbo-dom#64, [`table_height_case`]).
 fn pending_case(id: &str) -> bool {
     matches!(id, "caption-display-table-caption" | "caption-table-height")
 }
@@ -224,4 +225,15 @@ fn spacing_case(id: &str) -> bool {
 #[test]
 fn border_spacing_is_inherited_and_initially_zero_like_chrome_156() {
     compare_cases(spacing_case);
+}
+
+/// miaskiewicz/turbo-dom#64: a table's extra height goes to its rows.
+fn table_height_case(id: &str) -> bool {
+    id.starts_with("table-height-") || id == "caption-table-height"
+}
+
+#[test]
+#[ignore = "miaskiewicz/turbo-dom#64: fails until the fix"]
+fn table_height_is_distributed_over_the_rows_like_chrome_156() {
+    compare_cases(table_height_case);
 }
