@@ -39,6 +39,16 @@ The repository has no Python package or PyPI publish workflow.
    push the release PR, and wait for all build, test and WASM CI jobs to pass on
    that exact head revision. Release jobs are skipped for an untagged PR.
 
+## turbo-dom-v8
+
+`turbo-dom-v8` (150.4.x, upstream-derived version) is not part of the workspace: it is
+generated from pinned inputs into `crates/turbo-dom-v8/crate/` and published first by
+`crates/turbo-dom-v8/scripts/release.py --publish`, which only runs on this repository's
+`v<crates/turbo-dom version>` tag and is idempotent by crate name and version (an
+already-published 150.4.0 must match the fresh package byte-for-byte apart from Cargo's
+generated lock/VCS records). See [crates/turbo-dom-v8/README.md](crates/turbo-dom-v8/README.md).
+The root `turbo-dom-parser` package is `publish = false` (npm only).
+
 ## Merge, tag and monitor
 
 Merge the green release PR with a **merge commit**. Resolve its actual merge SHA

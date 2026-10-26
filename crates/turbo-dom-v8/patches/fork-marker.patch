@@ -1,0 +1,27 @@
+--- a/src/lib.rs
++++ b/src/lib.rs
+@@ -24,6 +24,9 @@
+ //! ```
+ 
+ #![allow(clippy::missing_safety_doc)]
++// turbo-dom-v8: upstream sources are kept byte-for-byte apart from the
++// reviewed fixes, so the consuming workspace's lint gates do not apply here.
++#![allow(warnings, clippy::all, clippy::pedantic)]
+ 
+ #[macro_use]
+ extern crate bitflags;
+@@ -219,6 +222,14 @@
+ pub const TYPED_ARRAY_MAX_SIZE_IN_HEAP: usize =
+   binding::v8__TYPED_ARRAY_MAX_SIZE_IN_HEAP as _;
+ 
++/// Fork marker: `true` in turbo-dom-v8, whose
++/// `PropertyCallbackArguments::should_throw_on_error` reports the caller's
++/// ShouldThrowOnError mode for setter, definer and deleter interceptors
++/// (upstream rusty_v8 always reports `false`). Bindings that rely on the
++/// accessor assert this at compile time so a stock `v8` crate cannot be
++/// substituted silently.
++pub const FORK_SHOULD_THROW_FIX: bool = true;
++
+ #[cfg(test)]
+ #[allow(unused)]
+ pub(crate) fn initialize_v8() {

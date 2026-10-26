@@ -1,0 +1,59 @@
+{
+  "package": "turbo-dom-v8",
+  "version": "150.4.0",
+  "rust_version": "1.91",
+  "repository": "https://github.com/miaskiewicz/turbo-dom",
+  "description": "turbo-dom fork of rusty_v8 (v8 150.4.0) with the interceptor ShouldThrowOnError and isolate weak-teardown fixes: Rust bindings to V8",
+  "scope": "Rust-only fixes (src/function.rs interceptor ShouldThrowOnError, src/isolate.rs weak teardown); official prebuilt v150.4.0 SDK and generated bindings unchanged",
+  "upstream": {
+    "package": "v8",
+    "version": "150.4.0",
+    "revision": "5c15a6995c9bb4bacd3e341b59fff32c909c80bf",
+    "repository": "https://github.com/denoland/rusty_v8",
+    "license_url": "https://github.com/denoland/rusty_v8/blob/5c15a6995c9bb4bacd3e341b59fff32c909c80bf/LICENSE"
+  },
+  "input": {
+    "archive": "v8-150.4.0.crate",
+    "url": "https://static.crates.io/crates/v8/v8-150.4.0.crate",
+    "archive_sha256": "42a978ff11f15b24e5c05a7123cf2b68f41e763546699781a924ef4e2cf43a49",
+    "included_directories": [
+      "src",
+      "gen",
+      "tools",
+      "tests",
+      "benches",
+      "examples"
+    ],
+    "original_function_sha256": "8e2a6d1a5649cd955002ae6f483532a6659cd8803d68d2081a04f252b5e05b4f",
+    "original_isolate_sha256": "857451a4481061055176596a1b26f02303977fe7d07704937f1e51833c1b0873",
+    "extracted_files": 186,
+    "extracted_tree_sha256": "7797a1f5c795154b43a3be94c9399dd136e2727223e17b63162a43523c46244d",
+    "patched_function_sha256": "b12f0237fcb8622171a5d8ffd23407b04c860fa188ef96f26e53fcf6a79de05f",
+    "patched_isolate_sha256": "4eb4214ba55192c0146bd4eccef66b13b7fcbeaa0b79233fee3cf0ecc8836543",
+    "license_sha256": "1c6356fb751d45f0c53093ebf8a7f5e580e802f51999178e19d60f3ec39e147d",
+    "patched_files": 187,
+    "patched_tree_sha256": "dcb941136a3c9176cf2178ef3c80bee40a44a0c39faba0aea75f6bc38214e6cd",
+    "provenance": "patches/rusty-v8-150.patch moved verbatim from miaskiewicz/turbo-surf rust/vendor/rusty-v8-150.patch at b1de4ebf74e87d73ed128ee3b36e13a40000c3fc (sha256 3681ca9e18cbfecf23e696cdea202d3bfc005de59dc0e5d5ed2800f7ff8648ca); the patched tree equals that commit's rust/vendor/rusty_v8"
+  },
+  "patches": {
+    "rusty-v8-150.patch": "3681ca9e18cbfecf23e696cdea202d3bfc005de59dc0e5d5ed2800f7ff8648ca",
+    "build-rs.patch": "51e992f627e5c42cd81ee63cae9302814773061ebdc77842b2730a6d22acc4de",
+    "fork-marker.patch": "ff9a325c3c83afcf6ee73aaec4f9d166408b18c38acb9664fd43068315babbcf",
+    "v8-teardown-tests.patch": "d5185408eb43c657f10dab2f0683c6797b2302d82a95823039164ac15df7e87c",
+    "lib-test-init.patch": "c6ff2657b257348214f32a737ee0125c3ba4e5bc57d0e52ef578e9f2e56a39b0"
+  },
+  "generated": {
+    "files": 188,
+    "tree_sha256": "00754df15f17edd3a5aff7df713538b624aa6e0a7d5a8f5894edea226cc8a689",
+    "teardown_tests_sha256": "f057b3486c3d9140123bab8ecd6840cae8486e75cf79cfb8fc2ed20e05bdf63d",
+    "key_files": {
+      "Cargo.toml": "1201979a35a5205f22a3bde650aaae760009522b1d19f08b087de602e8c63c95",
+      "build.rs": "5f47149bd30592fef7620aa82bca23389d40d519285794c6920fb3d8214de5ee",
+      "src/lib.rs": "647aea9ba7621934b5d7ee3d3ab344f1534f456ac06c56ebc27b0898bfb15b65",
+      "src/function.rs": "b12f0237fcb8622171a5d8ffd23407b04c860fa188ef96f26e53fcf6a79de05f",
+      "src/isolate.rs": "4eb4214ba55192c0146bd4eccef66b13b7fcbeaa0b79233fee3cf0ecc8836543",
+      "LICENSE": "1c6356fb751d45f0c53093ebf8a7f5e580e802f51999178e19d60f3ec39e147d",
+      "tests/interceptor_should_throw.rs": "fd64854325c54d960a343780d5e7e67fff21e4f978c102043196b8705e4ed053"
+    }
+  }
+}

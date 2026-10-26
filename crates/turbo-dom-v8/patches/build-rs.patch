@@ -1,0 +1,59 @@
+--- a/build.rs
++++ b/build.rs
+@@ -18,6 +18,11 @@
+ use std::process::Stdio;
+ use which::which;
+ 
++/// Upstream rusty_v8 release whose official prebuilt static library and
++/// generated binding this fork links. turbo-dom-v8 patch releases change only
++/// Rust sources, so the download URLs must not follow CARGO_PKG_VERSION.
++const UPSTREAM_V8_VERSION: &str = "150.4.0";
++
+ fn main() {
+   println!("cargo:rerun-if-changed=.gn");
+   println!("cargo:rerun-if-changed=BUILD.gn");
+@@ -102,7 +107,7 @@
+   // Build from source
+   if env_bool("V8_FROM_SOURCE") {
+     if !Path::new("v8/BUILD.gn").is_file() {
+-      panic!("This reviewed vendor contains Rust/prebuilt SDK sources. Run python3 rust/vendor/update-rusty-v8.py --write --full-source before V8_FROM_SOURCE.");
++      panic!("turbo-dom-v8 ships Rust sources for the official prebuilt SDK only; V8_FROM_SOURCE needs the complete upstream v8 {UPSTREAM_V8_VERSION} source payload (crates/turbo-dom-v8/README.md in miaskiewicz/turbo-dom).");
+     }
+     if is_asan && env::var_os("OPT_LEVEL").unwrap_or_default() == "0" {
+       panic!(
+@@ -710,7 +715,7 @@
+   let default_base = "https://github.com/denoland/rusty_v8/releases/download";
+   let base =
+     env::var("RUSTY_V8_MIRROR").unwrap_or_else(|_| default_base.into());
+-  let version = env::var("CARGO_PKG_VERSION").unwrap();
++  let version = UPSTREAM_V8_VERSION;
+   let target = env::var("TARGET").unwrap();
+   let profile = prebuilt_profile();
+   let features = prebuilt_features_suffix();
+@@ -1021,7 +1026,7 @@
+   let src_binding_path = get_dirs().root.join("gen").join(name.clone());
+ 
+   if let Ok(base) = env::var("RUSTY_V8_MIRROR") {
+-    let version = env::var("CARGO_PKG_VERSION").unwrap();
++    let version = UPSTREAM_V8_VERSION;
+     let url = format!("{base}/v{version}/{name}");
+     download_file(&url, &src_binding_path);
+   }
+@@ -1418,6 +1423,17 @@
+   "#;
+ 
+   #[test]
++  fn upstream_v8_version_matches_pinned_upstream_release() {
++    let manifest = include_str!("Cargo.toml");
++    let pinned = format!("upstream-version = \"{UPSTREAM_V8_VERSION}\"");
++    assert!(
++      manifest.lines().any(|line| line == pinned),
++      "build.rs UPSTREAM_V8_VERSION {UPSTREAM_V8_VERSION} differs from the pinned upstream release"
++    );
++    assert_eq!(UPSTREAM_V8_VERSION, "150.4.0");
++  }
++
++  #[test]
+   fn test_parse_ninja_graph() {
+     let files = parse_ninja_graph(MOCK_GRAPH);
+     assert!(files.contains("../../../example/src/input.txt"));
