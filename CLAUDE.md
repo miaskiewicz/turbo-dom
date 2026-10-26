@@ -203,8 +203,12 @@ package or publish workflow.
   `crates/turbo-dom/tests/fixtures/cascade_selectors_chrome156.json` (regenerate with
   `scripts/cascade-selectors-chrome-control.mjs`). Behaviour changes there need a Chrome control.
   It is the ONE engine: `query_cascade.rs` (`parse_for_cascade` / `match_for_cascade`, matching
-  generic over a `Navigator`; `LiveNavigator` = the DOM APIs' raw-node semantics) also serves
-  turbo-dom-layout's cascade (html2pdf PDFs, raster screenshots). See `docs/selector-engine.md`.
+  generic over a `Navigator`; `LiveNavigator` = the DOM APIs' semantics: template content is
+  a separate fragment, `:root` is the document element) also serves turbo-dom-layout's cascade
+  (html2pdf PDFs, raster screenshots) and `rtdom::cascade`. `_checked` validity = Chrome's
+  `querySelector` (the `parse_for_cascade` grammar). The npm JS engine `src/runtime/selectors.mjs`
+  is kept in lockstep: `test/selectors-chrome.test.mjs` asserts the same fixture (every
+  invalid selector throws `SyntaxError`). See `docs/selector-engine.md`.
 - **Selector parse cache** (`__selectorCache` in selectors.mjs) memoizes selector STRING → AST.
   Pure (DOM-independent) → no mutation invalidation. Never cache *results* without it.
 

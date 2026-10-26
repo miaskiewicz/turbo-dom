@@ -9,12 +9,16 @@
 //! structural / form-state / link pseudo-classes listed on `Pseudo`. Enough for
 //! RTL-style queries; extend as the gauntlet demands.
 //!
-//! Chrome 156 is the reference (consolidation S3a, miaskiewicz/turbo-dom#18, control
+//! Chrome 156 is the reference (consolidation S3a + P5b, miaskiewicz/turbo-dom#18, control
 //! `tests/fixtures/cascade_selectors_chrome156.json`): CSS escapes and non-ASCII
 //! identifiers (a selector containing `\` is parsed by the UTF-16 parser in
 //! `query_utf16.rs`, which decodes escapes), `:empty` ignoring comments / processing
-//! instructions / template content, the HTML `:read-only` / `:read-write` rule,
-//! `:nth-child(An+B of S)` and `:link` / `:any-link` (see `docs/selector-engine.md`).
+//! instructions / template content, the HTML `:read-only` / `:read-write` and `:disabled`
+//! rules, `:nth-child(An+B of S)`, `:link` / `:any-link`, `:lang()`, `:dir()`, `:defined`,
+//! `:root` = the document element, queries that never enter template content, and
+//! `_checked` validity equal to Chrome's `querySelector` (see `docs/selector-engine.md`).
+//! The npm JS engine (`src/runtime/selectors.mjs`) is kept in lockstep against the same
+//! control.
 //! Stylesheet selectors (`parse_for_cascade` / `match_for_cascade`, consolidation S3b) live
 //! in `query_cascade.rs`; matching is generic over a [`Navigator`].
 
