@@ -252,11 +252,12 @@ fn assert_matches_chrome((compared, failures): (usize, Vec<String>)) {
 /// The control cases of an open bug, each asserted by its own test (`#[ignore]`d until
 /// its fix lands) and held out of [`live_geometry_matches_chrome_156`].
 fn held_out(id: &str) -> bool {
-    let groups: [fn(&str) -> bool; 4] = [
+    let groups: [fn(&str) -> bool; 5] = [
         |id| AUTO_TABLE_CASES.contains(&id),
         inline_flex_grid_case,
         abs_auto_width_case,
         percent_column_case,
+        collapsed_auto_case,
     ];
     groups.iter().any(|group| group(id))
 }
@@ -305,4 +306,15 @@ fn percent_column_case(id: &str) -> bool {
 #[test]
 fn percentage_columns_size_auto_tables_like_chrome_156() {
     assert_matches_chrome(compare_cases(percent_column_case));
+}
+
+/// miaskiewicz/turbo-dom#49: auto-layout `border-collapse: collapse` tables.
+fn collapsed_auto_case(id: &str) -> bool {
+    id.starts_with("table-collapse-auto-")
+}
+
+#[test]
+#[ignore = "turbo-dom#49: fails until the fix"]
+fn auto_layout_collapsed_tables_merge_borders_like_chrome_156() {
+    assert_matches_chrome(compare_cases(collapsed_auto_case));
 }
