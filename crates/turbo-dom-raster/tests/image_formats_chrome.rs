@@ -35,18 +35,10 @@ fn class([r, g, b]: [u8; 3]) -> char {
 /// Sources whose box this engine sizes differently from Chrome for reasons outside the
 /// format support under test: SVGs without a definite size (Chrome stretches an
 /// absolutely positioned one to its containing block / uses fractional sizes; the
-/// screenshot lays SVGs out at `ceil(css size)`), TIFF (Chrome's broken-image icon), and
-/// the raw-utf8 SVG `data:` source, whose literal `<svg` inside the `src` attribute the
-/// screenshot's textual inline-`<svg>` rewrite (`image_paint::inline_svg_to_img`) mistakes
-/// for an element (a pre-existing raster quirk; the URL itself decodes — see
-/// turbo-dom-layout's `image_formats_chrome.rs`).
-const OTHER_SIZING: &[&str] = &[
-    "svg-viewbox-only",
-    "svg-no-size",
-    "svg-fractional",
-    "svg-utf8",
-    "tiff",
-];
+/// screenshot lays SVGs out at `ceil(css size)`) and TIFF (Chrome's broken-image icon).
+/// (The raw-utf8 SVG `data:` source, whose `src` holds a literal `<svg`, is compared since
+/// the inline-`<svg>` conversion works on parsed elements: miaskiewicz/turbo-dom#25.)
+const OTHER_SIZING: &[&str] = &["svg-viewbox-only", "svg-no-size", "svg-fractional", "tiff"];
 
 #[test]
 fn decoded_pixels_match_chrome_156() {

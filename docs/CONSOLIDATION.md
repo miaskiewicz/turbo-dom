@@ -99,7 +99,7 @@ Manifests always name the registry version (`turbo-dom = "0.6"`,
 |---|---|
 | base | napi addon matrix (linux x64 glibc/musl, linux arm64, macOS arm64, windows x64), WASM build, `cargo test -p turbo-dom-parser --lib`, `cargo test -p turbo-dom` + churn allocation gate, clippy `-p turbo-dom -p turbo-dom-parser` (+ wasm front-ends), JS / vitest / jest / html5lib conformance |
 | layout (linux + macOS) | clippy (default / `svg,perf,serde,test-support` / no-default); tests default, `--no-default-features` (exact red list via `scripts/check-baseline-red.py`), `svg`, `perf`, `serde,test-support`; wasm32 check (no default features); musl check |
-| raster (linux + macOS) | clippy + tests; `coretext` / `gpu-metal` clippy and checks on macOS, `gpu-metal` check on Linux |
+| raster (linux + macOS) | clippy + tests, default and `--features avif`; `coretext` / `gpu-metal` clippy and checks on macOS, `gpu-metal` check on Linux |
 | v8 + browser-env | linux x64/arm64, macOS arm64, windows x64 × default/simdutf: generate turbo-dom-v8, prebuilt rusty_v8 150.4.0 archive (cached) as `RUSTY_V8_ARCHIVE`, fork tests (no ignored interceptor tests), browser-env tests default and `host-internals,test-support`, separate target dirs per crate × variant |
 | msrv | `cargo +1.89 check --all-targets` for turbo-dom, -layout, -raster |
 | guards | `check-versions.py`, `check-no-selector-dual.sh`, turbo-dom-v8 generator/release self-tests + `generate.py --check`, `scripts/` and `tools/parity` self-tests, `verify-copied.sh` (verbatim + current), `verify-copied-collectors.sh`, `verify-copied-layout.sh` |

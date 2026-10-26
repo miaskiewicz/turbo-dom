@@ -206,6 +206,23 @@ outputs it changes in `tools/parity/expected/p5b-*.json`.
   committed `dom_implementation_chrome155.json` (it wrote `dom-implementation-probe.js`
   and no hash); a Chrome 156 recollection matches the committed result.
 
+### Fixed — screenshot inline SVG, CI (P5b-W2, Chrome 156 controls)
+- `turbo-dom-raster` inline `<svg>` (miaskiewicz/turbo-dom#25 item 1): the screenshot
+  converts the parsed document's `<svg>` elements, not `<svg` source text. A raw-UTF-8 SVG
+  `data:` URL in an `<img src>`, a `<script>` string, an attribute value or `<noscript>`
+  text is left alone (it used to be cut out and rasterized, swallowing whatever lay
+  between it and the next `</svg>`). The element is re-serialized as namespace-well-formed
+  XML, so `xlink:href` without an `xmlns:xlink`, HTML character references (`&nbsp;`) and
+  lowercase `viewbox`/`lineargradient` (adjusted by the parser) now paint. Control:
+  `scripts/inline-svg-chrome-control.mjs` → `crates/turbo-dom-raster/tests/fixtures/inline_svg_chrome156.json`;
+  `tests/image_formats_chrome.rs` now also compares the `svg-utf8` source.
+- `turbo-dom-raster` `delazy_images`: a placeholder `src` (any `data:` URI, spacer names)
+  with no lazy URL is no longer rewritten with its own unescaped value (that cut a
+  `&quot;`-quoted SVG `data:` URL at its first `"`); inserted lazy URLs are
+  attribute-escaped.
+- CI: the raster job runs clippy and the tests with `--features avif` too.
+- Corpus outputs: none change (`tools/parity/expected/p5b-w2-turbo-dom-25.json`).
+
 ## [0.6.0] — turbo-dom consolidation
 
 turbo-dom becomes the home of the shared browser engine of turbo-html2pdf, turbo-test
