@@ -43,6 +43,16 @@ turbo-dom-v8 and -browser-env.
   background instead of guessing it from the first full-width box. Control:
   `scripts/html-document-chrome-control.mjs` -> `crates/turbo-dom-layout/tests/fixtures/
   html_document_chrome156.json`; corpus diffs: `tools/parity/expected/p5b-turbo-html2pdf-29.json`.
+- turbo-dom-layout image layer (miaskiewicz/turbo-html2pdf#30): EXIF orientation. The
+  probe reads it from a JPEG `APP1` Exif segment or a PNG `eXIf` chunk (`Orientation`,
+  `Intrinsic::orientation`; WebP `EXIF` is ignored, as in Chrome 156); boxes lay out at
+  the displayed size (5-8 swap width/height) unless `image-orientation: none` (now
+  inherited); `ImagePlacement::orientation` carries the transform to the painters —
+  turbo-dom-raster turns the decoded pixels (PNG and SVG screenshots), turbo-html2pdf
+  rotates the image `cm`. Breaking for struct literals: `Intrinsic` and `ImagePlacement`
+  gained a field (`Intrinsic::new`). Control: `scripts/image-orientation-chrome-control.mjs`
+  -> `crates/turbo-dom-layout/tests/fixtures/image_orientation_chrome156.json`; corpus diffs:
+  `tools/parity/expected/p5b-turbo-html2pdf-30.json`.
 
 ### Release (consolidation S5b)
 - Versions: turbo-dom, turbo-dom-parser and npm 0.6.0; intra-workspace path

@@ -1519,7 +1519,7 @@ fn prepend_mask_image(
         name: name.clone(),
         replaced: false,
     };
-    let Some(intrinsic) = probe_source(&src, ctx) else {
+    let Some(intrinsic) = probe_source(lb, &src, ctx) else {
         return;
     };
     let (cx, cy, cw, ch) = rect;
@@ -1705,7 +1705,7 @@ fn prepend_background_image(
 /// supply and decode (probe succeeds).
 fn background_placement(lb: &LayoutBox, ctx: &Ctx) -> Option<ImagePlacement> {
     let src = lb.image.as_ref().filter(|s| !s.replaced)?;
-    let intrinsic = probe_source(src, ctx)?;
+    let intrinsic = probe_source(lb, src, ctx)?;
     Some(super::imgsize::placement_of(src.name.clone(), intrinsic))
 }
 
@@ -1785,7 +1785,7 @@ fn stamp_replaced_intrinsic(lb: &LayoutBox, images: &ImageCtx) {
     let Some(src) = lb.image.as_ref().filter(|s| s.replaced) else {
         return;
     };
-    if let Some(i) = images.resolver.intrinsic(&src.name) {
+    if let Some(i) = super::imgsize::box_intrinsic(images.resolver, &src.name, &lb.style) {
         lb.intrinsic_w.set(Some(i.width as f32));
     }
 }
@@ -1813,7 +1813,7 @@ fn replaced_image_box(
         return Some(fragment);
     }
     let src = lb.image.as_ref().filter(|s| s.replaced)?;
-    let intrinsic = probe_source(src, ctx)?;
+    let intrinsic = probe_source(lb, src, ctx)?;
     let sizing = size_ctx(bs, cb_width, ctx);
     if ctx.live_geometry {
         let sized = super::imgsize::size_replaced_live(src.name.clone(), intrinsic, &sizing);
@@ -1992,8 +1992,8 @@ fn live_image_fragment(
 /// Probe an image source for its intrinsic size + alpha flag via the resolver
 /// ([`ImageResolver::intrinsic`](crate::image::ImageResolver::intrinsic)), or `None`
 /// if it does not resolve or decode.
-fn probe_source(src: &ImageSource, ctx: &Ctx) -> Option<crate::image::Intrinsic> {
-    ctx.images.resolver.intrinsic(&src.name)
+fn probe_source(lb: &LayoutBox, src: &ImageSource, ctx: &Ctx) -> Option<crate::image::Intrinsic> {
+    super::imgsize::box_intrinsic(ctx.images.resolver, &src.name, &lb.style)
 }
 
 /// Lay out a box tree (root from `boxgen::build_box_tree`) into a galley fragment

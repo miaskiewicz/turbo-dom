@@ -60,7 +60,15 @@ fn lay_out(html: &str) -> Result<Fragment, RenderError> {
   `svg::rasterize(bytes, scale, Oversize)` is the one SVG rasterizer with the intrinsic CSS
   size (`css_size`) separate from the oversampled pixel size (`pixel_size`): the PDF lays out
   and rasterizes at 2x clamping an axis to 8192 px, turbo-dom-raster at 1x rejecting above
-  8192. JPEG stays a header read + `DCTDecode` passthrough for the PDF.
+  8192. JPEG stays a header read + `DCTDecode` passthrough for the PDF. The probe also
+  reads the EXIF orientation (`Intrinsic::orientation`, an `Orientation`: JPEG `APP1`
+  Exif, PNG `eXIf`; not WebP `EXIF`, which Chrome 156 ignores): image boxes lay out at the
+  displayed size (`Intrinsic::displayed`, width/height swapped for orientations 5-8)
+  unless `image-orientation: none`, and `ImagePlacement::orientation` tells the painters
+  how to turn the stored pixels (`Orientation::apply_rgba` for raster; a rotated `cm` in
+  the PDF). Chrome-controlled by `tests/image_orientation_chrome.rs`
+  (`scripts/image-orientation-chrome-control.mjs`; fixtures from
+  `scripts/make_orientation_fixtures.py`).
 - `FontRegistry::system(SystemFontPolicy)` — the process-wide installed-font registry, loaded
   once per policy (`Default` = `load_system_fonts`, `Html` = `load_system_fonts_for_html`);
   `system_cell` exposes the `OnceLock` for embedders that warm it themselves.

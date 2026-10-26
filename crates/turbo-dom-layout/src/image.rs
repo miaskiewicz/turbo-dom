@@ -109,12 +109,206 @@ pub fn sniff(bytes: &[u8]) -> Option<Format> {
 }
 
 /// The intrinsic pixel size of an encoded image plus whether it has an alpha
-/// channel, all read from the header without decoding pixels.
+/// channel and its EXIF [`Orientation`], all read from the header without decoding
+/// pixels. `width`/`height` are the STORED pixel size; [`Intrinsic::displayed`] turns
+/// it into the size layout uses.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Intrinsic {
     pub width: u32,
     pub height: u32,
     pub has_alpha: bool,
+    /// How the stored pixels are displayed (`image-orientation: from-image`).
+    pub orientation: Orientation,
+}
+
+impl Intrinsic {
+    /// A stored size with no EXIF orientation.
+    #[must_use]
+    pub fn new(width: u32, height: u32, has_alpha: bool) -> Intrinsic {
+        Intrinsic {
+            width,
+            height,
+            has_alpha,
+            orientation: Orientation::IDENTITY,
+        }
+    }
+
+    /// The intrinsic an image box lays out and paints with: under
+    /// `image-orientation: from-image` (`from_image`, the CSS default) the displayed size
+    /// (width and height swapped for orientations 5–8) keeping the orientation to apply
+    /// at paint; under `image-orientation: none` the stored size, painted as stored.
+    #[must_use]
+    pub fn displayed(self, from_image: bool) -> Intrinsic {
+        if !from_image {
+            return Intrinsic {
+                orientation: Orientation::IDENTITY,
+                ..self
+            };
+        }
+        let (width, height) = self.orientation.displayed_size(self.width, self.height);
+        Intrinsic {
+            width,
+            height,
+            ..self
+        }
+    }
+}
+
+/// An image's EXIF orientation (TIFF tag 0x0112, values 1–8): how the stored pixels
+/// map onto the displayed image (CSS Images 3 `image-orientation: from-image`). Read by
+/// [`probe`] from a JPEG `APP1` Exif segment and a PNG `eXIf` chunk — the two sources
+/// Chrome 156 applies (it ignores WebP `EXIF` chunks; see turbo-dom's
+/// `scripts/image-orientation-chrome-control.mjs`). Anything else (absent, malformed,
+/// out of range) is [`Orientation::IDENTITY`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct Orientation(u8);
+
+impl Default for Orientation {
+    fn default() -> Self {
+        Orientation::IDENTITY
+    }
+}
+
+impl Orientation {
+    /// Orientation 1: the stored pixels are the displayed image.
+    pub const IDENTITY: Orientation = Orientation(1);
+
+    /// The orientation for EXIF value `value` (`1..=8`; anything else is identity).
+    #[must_use]
+    pub fn from_exif(value: u16) -> Orientation {
+        match u8::try_from(value) {
+            Ok(v @ 1..=8) => Orientation(v),
+            _ => Orientation::IDENTITY,
+        }
+    }
+
+    /// The EXIF value (`1..=8`).
+    #[must_use]
+    pub fn exif(self) -> u8 {
+        self.0
+    }
+
+    /// Whether this is orientation 1 (nothing to transform).
+    #[must_use]
+    pub fn is_identity(self) -> bool {
+        self.exif() == 1
+    }
+
+    /// Whether the displayed image is the stored one transposed (orientations 5–8: a
+    /// quarter turn), so its width and height swap.
+    #[must_use]
+    pub fn swaps_axes(self) -> bool {
+        self.exif() >= 5
+    }
+
+    /// The displayed `(width, height)` of a `width × height` stored image.
+    #[must_use]
+    pub fn displayed_size(self, width: u32, height: u32) -> (u32, u32) {
+        if self.swaps_axes() {
+            (height, width)
+        } else {
+            (width, height)
+        }
+    }
+
+    /// The stored pixel shown at displayed pixel `(x, y)` of a `width × height` STORED
+    /// image (`x`/`y` index the displayed image, whose size is
+    /// [`displayed_size`](Self::displayed_size)).
+    #[must_use]
+    pub fn source_pixel(self, x: u32, y: u32, width: u32, height: u32) -> (u32, u32) {
+        let (r, b) = (width - 1, height - 1);
+        match self.exif() {
+            2 => (r - x, y),
+            3 => (r - x, b - y),
+            4 => (x, b - y),
+            5 => (y, x),
+            6 => (y, b - x),
+            7 => (r - y, b - x),
+            8 => (r - y, x),
+            _ => (x, y),
+        }
+    }
+
+    /// Re-lay a `width × height` straight RGBA8 image (4 bytes/px, row-major) as
+    /// displayed: `(displayed width, displayed height, pixels)`.
+    #[must_use]
+    pub fn apply_rgba(self, width: u32, height: u32, rgba: &[u8]) -> (u32, u32, Vec<u8>) {
+        let (dw, dh) = self.displayed_size(width, height);
+        if self.is_identity() {
+            return (dw, dh, rgba.to_vec());
+        }
+        let mut out = Vec::with_capacity(rgba.len());
+        for y in 0..dh {
+            for x in 0..dw {
+                let (sx, sy) = self.source_pixel(x, y, width, height);
+                let at = ((sy * width + sx) * 4) as usize;
+                out.extend_from_slice(&rgba[at..at + 4]);
+            }
+        }
+        (dw, dh, out)
+    }
+}
+
+/// The orientation in a TIFF/Exif block (`II*\0` or `MM\0*` header): IFD0's
+/// Orientation (0x0112, SHORT) entry, else identity.
+fn tiff_orientation(tiff: &[u8]) -> Orientation {
+    exif_orientation_value(tiff).map_or(Orientation::IDENTITY, Orientation::from_exif)
+}
+
+fn exif_orientation_value(tiff: &[u8]) -> Option<u16> {
+    let little = match tiff.get(..4)? {
+        b"II*\0" => true,
+        b"MM\0*" => false,
+        _ => return None,
+    };
+    let u16_at = |at: usize| -> Option<u16> {
+        let b: [u8; 2] = tiff.get(at..at + 2)?.try_into().ok()?;
+        Some(if little {
+            u16::from_le_bytes(b)
+        } else {
+            u16::from_be_bytes(b)
+        })
+    };
+    let u32_at = |at: usize| -> Option<u32> {
+        let b: [u8; 4] = tiff.get(at..at + 4)?.try_into().ok()?;
+        Some(if little {
+            u32::from_le_bytes(b)
+        } else {
+            u32::from_be_bytes(b)
+        })
+    };
+    let ifd = usize::try_from(u32_at(4)?).ok()?;
+    let count = usize::from(u16_at(ifd)?);
+    (0..count).find_map(|i| {
+        let entry = ifd + 2 + i * 12;
+        // Tag 0x0112, type SHORT (3), the value in the entry's first two value bytes.
+        (u16_at(entry)? == 0x0112 && u16_at(entry + 2)? == 3).then(|| u16_at(entry + 8))?
+    })
+}
+
+/// A JPEG's orientation: the first `APP1` segment carrying `Exif\0\0`, scanning the
+/// marker segments up to start-of-scan.
+fn jpeg_orientation(bytes: &[u8]) -> Orientation {
+    let mut at = 2; // past SOI
+    while let Some(&[0xFF, marker]) = bytes.get(at..at + 2) {
+        if marker == 0xDA || marker == 0xD9 {
+            break; // start of scan / end of image: no more metadata segments
+        }
+        let Some(len) = bytes
+            .get(at + 2..at + 4)
+            .map(|b| usize::from(u16::from_be_bytes([b[0], b[1]])))
+        else {
+            break;
+        };
+        let body = bytes.get(at + 4..at + 2 + len).unwrap_or_default();
+        if marker == 0xE1 {
+            if let Some(tiff) = body.strip_prefix(b"Exif\0\0") {
+                return tiff_orientation(tiff);
+            }
+        }
+        at += 2 + len;
+    }
+    Orientation::IDENTITY
 }
 
 /// Read just the intrinsic size + alpha flag from encoded bytes, without
@@ -146,11 +340,7 @@ fn probe_gif(bytes: &[u8]) -> Option<Intrinsic> {
     }
     let w = u16::from_le_bytes([bytes[6], bytes[7]]);
     let h = u16::from_le_bytes([bytes[8], bytes[9]]);
-    (w > 0 && h > 0).then_some(Intrinsic {
-        width: u32::from(w),
-        height: u32::from(h),
-        has_alpha: false,
-    })
+    (w > 0 && h > 0).then_some(Intrinsic::new(u32::from(w), u32::from(h), false))
 }
 
 /// WebP intrinsic size across the three chunk layouts (lossy `VP8 `, lossless
@@ -159,11 +349,9 @@ fn probe_webp(bytes: &[u8]) -> Option<Intrinsic> {
     // The chunk FourCC follows the 12-byte RIFF/WEBP header.
     let fourcc = bytes.get(12..16)?;
     let (w, h) = webp_size(fourcc, bytes)?;
-    (w > 0 && h > 0).then_some(Intrinsic {
-        width: w,
-        height: h,
-        has_alpha: fourcc != b"VP8 ", // lossless/extended may carry alpha
-    })
+    // lossless/extended may carry alpha; an `EXIF` chunk's orientation is not applied
+    // (Chrome 156 ignores it).
+    (w > 0 && h > 0).then_some(Intrinsic::new(w, h, fourcc != b"VP8 "))
 }
 
 /// Dispatch to the per-chunk size reader for a WebP `FourCC`; unknown chunks yield
@@ -220,6 +408,11 @@ fn probe_png(bytes: &[u8]) -> Option<Intrinsic> {
         width: info.width,
         height: info.height,
         has_alpha: png_has_alpha(info.color_type, info.trns.is_some()),
+        // The `eXIf` chunk (read before the first IDAT) is a bare TIFF block.
+        orientation: info
+            .exif_metadata
+            .as_deref()
+            .map_or(Orientation::IDENTITY, tiff_orientation),
     })
 }
 
@@ -237,6 +430,7 @@ fn probe_jpeg(bytes: &[u8]) -> Option<Intrinsic> {
         width: u32::from(info.width),
         height: u32::from(info.height),
         has_alpha: false,
+        orientation: jpeg_orientation(bytes),
     })
 }
 

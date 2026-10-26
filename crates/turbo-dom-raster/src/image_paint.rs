@@ -19,12 +19,13 @@ use std::collections::HashMap;
 use std::io::Cursor;
 
 use tiny_skia::{Pixmap, PremultipliedColorU8};
-use turbo_dom_layout::image::{self as layout_image, Format, Intrinsic, Rgba8Image};
+use turbo_dom_layout::image::{self as layout_image, Format, Intrinsic, Orientation, Rgba8Image};
 use turbo_dom_layout::svg::{self as layout_svg, Oversize};
 use turbo_dom_layout::ImageResolver;
 
 /// A decoded image in straight-alpha RGBA8 (row-major, 4 bytes/px), plus its
 /// intrinsic pixel size. The canonical form every source format normalizes to.
+#[derive(Clone)]
 pub struct DecodedImage {
     pub width: u32,
     pub height: u32,
@@ -369,16 +370,21 @@ pub fn decode(bytes: &[u8]) -> Option<DecodedImage> {
             rgba: rgba.into_raw(),
         }
     };
-    let intrinsic = raster_intrinsic(bytes, &rgba);
-    Some(with_intrinsic(rgba, intrinsic))
+    let probed = layout_image::probe(bytes);
+    let size = raster_intrinsic(probed, &rgba);
+    let mut decoded = with_intrinsic(rgba, size);
+    // The EXIF orientation (JPEG APP1 / PNG eXIf) the shared probe reads; layout turns
+    // the box and the painters turn the pixels (`ImagePlacement::orientation`).
+    decoded.intrinsic.orientation = probed.map_or(Orientation::IDENTITY, |i| i.orientation);
+    Some(decoded)
 }
 
 /// The layout size of a decoded raster image: the shared header probe of its bytes.
 /// Should the probe ever fail or disagree with what the decoder produced (a file the
 /// `image` crate decodes but the header reader can't size), the decoded frame size
 /// wins — that is what layout sized before the probe was shared.
-fn raster_intrinsic(bytes: &[u8], rgba: &Rgba8Image) -> (u32, u32) {
-    layout_image::probe(bytes)
+fn raster_intrinsic(probed: Option<Intrinsic>, rgba: &Rgba8Image) -> (u32, u32) {
+    probed
         .map(|i| (i.width, i.height))
         .filter(|&size| size == (rgba.width, rgba.height))
         .unwrap_or((rgba.width, rgba.height))
@@ -389,11 +395,7 @@ fn with_intrinsic(rgba: Rgba8Image, (width, height): (u32, u32)) -> DecodedImage
         width: rgba.width,
         height: rgba.height,
         rgba: rgba.rgba,
-        intrinsic: Intrinsic {
-            width,
-            height,
-            has_alpha: true,
-        },
+        intrinsic: Intrinsic::new(width, height, true),
     }
 }
 
@@ -423,6 +425,22 @@ impl DecodedImage {
         let mut out = Cursor::new(Vec::new());
         img.write_to(&mut out, image::ImageFormat::Png).ok()?;
         Some(out.into_inner())
+    }
+
+    /// This image as displayed under `orientation` (the stored pixels re-laid; a copy
+    /// only when the orientation is not the identity).
+    #[must_use]
+    pub fn oriented(&self, orientation: Orientation) -> std::borrow::Cow<'_, DecodedImage> {
+        if orientation.is_identity() {
+            return std::borrow::Cow::Borrowed(self);
+        }
+        let (width, height, rgba) = orientation.apply_rgba(self.width, self.height, &self.rgba);
+        std::borrow::Cow::Owned(DecodedImage {
+            width,
+            height,
+            rgba,
+            intrinsic: Intrinsic::new(width, height, true),
+        })
     }
 
     /// Resize into a `w × h` premultiplied pixmap ready to `draw_pixmap` into the
@@ -648,11 +666,7 @@ mod shared_layer_tests {
             width,
             height,
             rgba,
-            intrinsic: Intrinsic {
-                width: 0,
-                height: 0,
-                has_alpha: false,
-            },
+            intrinsic: Intrinsic::new(0, 0, false),
         };
         probe(&img.to_png()?)
     }
@@ -667,7 +681,16 @@ mod shared_layer_tests {
                 assert_eq!((new.width, new.height), (w, h), "{label}: size");
                 assert!(new.rgba == rgba, "{label}: RGBA bytes differ");
                 let old_size = old_intrinsic(w, h, rgba).expect("re-encode probes");
-                assert_eq!(new.intrinsic, old_size, "{label}: layout intrinsic");
+                // The size + alpha layout used before S5 (the EXIF orientation, read since
+                // P5b turbo-html2pdf#30, is not part of the old re-encode probe).
+                assert_eq!(
+                    Intrinsic {
+                        orientation: old_size.orientation,
+                        ..new.intrinsic
+                    },
+                    old_size,
+                    "{label}: layout intrinsic"
+                );
                 assert_eq!(
                     probe(bytes)
                         .map(|i| (i.width, i.height))

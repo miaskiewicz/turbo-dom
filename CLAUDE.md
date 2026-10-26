@@ -138,7 +138,9 @@ package or publish workflow.
   header size probe (`ImageResolver::intrinsic`), the shared PNG decode (`PngFrame`: PDF
   native samples / raster RGBA = `image::to_rgba8` exactly) and, under `svg-rasterize`, the
   one SVG rasterizer (`svg::rasterize(bytes, scale, Oversize)`: PDF 2x clamp, raster 1x
-  reject). `FontRegistry::system(policy)` is the process-wide system-font load. The
+  reject); since P5b it also reads EXIF orientation —
+  `Intrinsic::orientation`, laid out displayed unless `image-orientation: none`, painted via
+  `ImagePlacement::orientation`; turbo-html2pdf#30). `FontRegistry::system(policy)` is the process-wide system-font load. The
   `test-support` feature (`test_support`) carries the font fixtures, `ComputedStyle` pairs
   and test-only tree literals for this crate's and turbo-html2pdf-core's tests (the crate's
   own integration tests enable it through a self dev-dependency).

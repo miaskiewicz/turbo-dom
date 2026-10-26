@@ -628,7 +628,7 @@ fn replaced_probe_width(item: &LayoutBox, images: &ImageCtx, fs: f32) -> Option<
     if let LengthPct::Px(w) = bs.width {
         return Some(w + frame);
     }
-    let intrinsic = images.resolver.intrinsic(&src.name)?;
+    let intrinsic = super::imgsize::box_intrinsic(images.resolver, &src.name, &item.style)?;
     Some(intrinsic.width as f32 + frame)
 }
 

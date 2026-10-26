@@ -157,11 +157,7 @@ pub fn rasterize(bytes: &[u8], scale: f32, oversize: Oversize) -> Option<Rgba8Im
 pub fn probe_svg(bytes: &[u8]) -> Option<Intrinsic> {
     let tree = parse(bytes)?;
     let (width, height) = pixel_size(css_size(&tree), PDF_SVG_SCALE, Oversize::Clamp)?;
-    Some(Intrinsic {
-        width,
-        height,
-        has_alpha: true,
-    })
+    Some(Intrinsic::new(width, height, true))
 }
 
 /// Rasterize SVG bytes into an embeddable [`RasterImage`] (PDF pipeline, 2x): RGB
