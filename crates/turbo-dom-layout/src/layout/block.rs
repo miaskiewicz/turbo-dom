@@ -1159,30 +1159,71 @@ fn collapsible_inline_box(kid: &LayoutBox, cw: f32, fs: f32) -> bool {
         if super::inline_boxes::collapsible_run(items, fs, cw))
 }
 
-/// The first in-flow (non-float, non-out-of-flow) child of a block container.
-fn first_inflow_child(lb: &LayoutBox, cw: f32, fs: f32) -> Option<&LayoutBox> {
-    let BoxKind::Block(kids) = &lb.kind else {
-        return None;
+/// The in-flow (non-float, non-out-of-flow) children of a block container, with their
+/// resolved styles (none for any other box).
+fn inflow_children(
+    lb: &LayoutBox,
+    cw: f32,
+    fs: f32,
+) -> impl Iterator<Item = (&LayoutBox, BoxStyle)> {
+    let kids: &[LayoutBox] = match &lb.kind {
+        BoxKind::Block(kids) => kids,
+        _ => &[],
     };
-    kids.iter().find(|k| {
+    kids.iter().filter_map(move |k| {
         let kbs = resolve(k, cw, fs);
-        kbs.float == Float::None
+        let inflow = kbs.float == Float::None
             && !kbs.position.is_out_of_flow()
-            && !collapsible_inline_box(k, cw, fs)
+            && !collapsible_inline_box(k, cw, fs);
+        inflow.then_some((k, kbs))
     })
 }
 
+/// Whether a box's own top and bottom margins adjoin (CSS 2.2 §8.3.1): an empty box or a
+/// collapsing block container (no own formatting context, not a replaced image) with a zero or
+/// `auto` height, a zero `min-height`, no vertical border or padding, and only such
+/// in-flow children (an empty `<div>`, nested empty `<div>`s).
+fn self_collapsing(lb: &LayoutBox, bs: &BoxStyle, cw: f32) -> bool {
+    let border = bs.border.widths();
+    let no_frame = border.top == 0.0
+        && border.bottom == 0.0
+        && bs.padding.top == 0.0
+        && bs.padding.bottom == 0.0;
+    let zero_height =
+        matches!(bs.height, LengthPct::Auto) || matches!(bs.height, LengthPct::Px(h) if h == 0.0);
+    let zero_min = matches!(bs.min_height, LengthPct::Auto)
+        || matches!(bs.min_height, LengthPct::Px(h) | LengthPct::Pct(h) if h == 0.0);
+    let replaced = lb.image.as_ref().is_some_and(|image| image.replaced);
+    // An element with no content at all is an empty `Lines` box.
+    let container = match &lb.kind {
+        BoxKind::Lines(items) => items.is_empty() && lb.node_id.0 != 0 && !establishes_bfc(lb, bs),
+        _ => collapsing_block_container(lb, bs),
+    };
+    container
+        && no_frame
+        && zero_height
+        && zero_min
+        && !replaced
+        && bs.aspect_ratio.is_none()
+        && inflow_children(lb, cw, bs.font_size).all(|(kid, kbs)| self_collapsing(kid, &kbs, cw))
+}
+
 /// The collapsed top margin that shows *above* `lb`'s content: its own `margin-top`
-/// collapsed with its first in-flow child's leading margin, recursively, whenever
-/// that child's top margin collapses through `lb`'s top edge. A box's caller uses
-/// this (rather than the bare `margin-top`) so a child's margin escaping a
+/// collapsed, whenever its children's margins collapse through its top edge, with its
+/// first in-flow child's leading margin, recursively — and while that child is empty
+/// (self-collapsing, [`self_collapsing`]) with its bottom margin and the next in-flow
+/// child's leading margin too (miaskiewicz/turbo-dom#76). A box's caller uses this
+/// (rather than the bare `margin-top`) so a child's margin escaping a
 /// borderless/paddingless parent stacks the parent against its sibling correctly.
 fn leading_margin(lb: &LayoutBox, bs: &BoxStyle, cw: f32, fs: f32) -> f32 {
     let mut m = bs.margin.top;
     if top_margins_collapse_through(lb, bs) {
-        if let Some(child) = first_inflow_child(lb, cw, fs) {
-            let cbs = resolve(child, cw, fs);
+        for (child, cbs) in inflow_children(lb, cw, fs) {
             m = collapse_margins(m, leading_margin(child, &cbs, cw, fs));
+            if !self_collapsing(child, &cbs, cw) {
+                break;
+            }
+            m = collapse_margins(m, cbs.margin.bottom);
         }
     }
     m
@@ -1226,17 +1267,12 @@ fn trailing_margin(lb: &LayoutBox, bs: &BoxStyle, cw: f32, dropped: &HashSet<Nod
     })
 }
 
-/// The leading top margin to feed a flow child: `0` when this container hoists the
-/// first child's margin out its own top (parent/child collapse), else the child's
+/// The leading top margin to feed a flow child: `0` while this container hoists its
+/// leading children's margins out its own top (parent/child collapse: the first in-flow
+/// child, past any empty ones, see [`leading_margin`]), else the child's
 /// [`leading_margin`].
-fn child_leading(
-    kid: &LayoutBox,
-    kbs: &BoxStyle,
-    cw: f32,
-    fs: f32,
-    suppressed: (bool, bool),
-) -> f32 {
-    if suppressed.0 && suppressed.1 {
+fn child_leading(kid: &LayoutBox, kbs: &BoxStyle, cw: f32, fs: f32, hoisted: bool) -> f32 {
+    if hoisted {
         0.0
     } else {
         leading_margin(kid, kbs, cw, fs)
@@ -1281,7 +1317,10 @@ fn layout_block_flow(
         align: block_align(bs),
     };
     let mut deferred: Vec<(&LayoutBox, (f32, f32))> = Vec::new();
-    let mut first_inflow = true;
+    // Whether the margins of the next in-flow child were hoisted out this box's top by
+    // its caller: the first in-flow child's, and past it each following child's while
+    // the earlier ones are empty (self-collapsing; miaskiewicz/turbo-dom#76).
+    let mut hoisting = boundaries.0;
     let mut empty_inline = Vec::new();
     for kid in kids {
         let kbs = resolve(kid, cw, fs);
@@ -1304,13 +1343,18 @@ fn layout_block_flow(
             frags.push(f);
             continue;
         }
-        // The box's leading (collapsed) top margin — suppressed for the first in-flow
-        // child when this container hoists it out its own top edge (parent/child
-        // collapse), else the child's `margin-top` collapsed with any margins that
-        // escape ITS borderless top.
-        let leading = child_leading(kid, &kbs, cw, fs, (first_inflow, boundaries.0));
-        first_inflow = false;
+        // The box's leading (collapsed) top margin — suppressed while this container
+        // hoists it out its own top edge (parent/child collapse), else the child's
+        // `margin-top` collapsed with any margins that escape ITS borderless top.
+        let leading = child_leading(kid, &kbs, cw, fs, hoisting);
+        let empty = hoisting && self_collapsing(kid, &kbs, cw);
         let fragment = layout_in_flow_kid(kid, leading, cx, cw, fs, &mut flow, ctx);
+        if empty {
+            // Its own margins were hoisted too: nothing is left pending.
+            flow.pending = 0.0;
+        } else {
+            hoisting = false;
+        }
         flush_empty_inline(&mut empty_inline, (cx, fragment.y), cw, fs, ctx, &mut frags);
         frags.push(fragment);
     }
@@ -2554,7 +2598,7 @@ fn layout_tree_policy(
 
 #[cfg(test)]
 mod tests {
-    use super::first_inflow_child;
+    use super::inflow_children;
     use crate::layout::boxgen::{build_box_tree, BoxKind};
     use crate::tag::Tag;
     use crate::{ComputedStyle, StyledElement, StyledNode};
@@ -2598,7 +2642,7 @@ mod tests {
     }
 
     #[test]
-    fn first_inflow_child_is_none_for_a_non_block_box() {
+    fn inflow_children_are_none_for_a_non_block_box() {
         // The box-flow "first in-flow child" only applies to a `BoxKind::Block`; a
         // flex box hits the let-else guard and yields `None`.
         let root = build_box_tree(&[flex_div()]);
@@ -2606,6 +2650,6 @@ mod tests {
             panic!("synthetic root is a block");
         };
         assert!(matches!(kids[0].kind, BoxKind::Flex(_)));
-        assert!(first_inflow_child(&kids[0], 100.0, 16.0).is_none());
+        assert!(inflow_children(&kids[0], 100.0, 16.0).next().is_none());
     }
 }

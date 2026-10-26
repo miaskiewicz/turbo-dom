@@ -310,7 +310,6 @@ fn self_collapsing_first_child_case(id: &str) -> bool {
 }
 
 #[test]
-#[ignore = "turbo-dom#76: fails until the fix"]
 fn self_collapsing_first_child_margins_like_chrome_156() {
     compare_cases(self_collapsing_first_child_case);
 }
