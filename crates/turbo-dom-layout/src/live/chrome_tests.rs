@@ -13,7 +13,7 @@ use std::collections::BTreeMap;
 use serde_json::Value;
 
 use super::source_id;
-use super::testing::{layout, DOCUMENT};
+use super::testing::{layout_with, DOCUMENT};
 use crate::cssom_view::{hit, inline, metrics};
 use crate::layout::value::Display;
 use crate::layout_snapshot::{GeometryKind, Rect};
@@ -217,7 +217,18 @@ fn compare_cases(select: impl Fn(&str) -> bool) -> (usize, Vec<String>) {
             continue;
         }
         let html = case["html"].as_str().unwrap();
-        let (tree, snapshot, styles) = layout(html, css_of(html), (1280.0, 800.0), Some(1.0));
+        // A `fullscreen` case: the binding reports that element as the fullscreen one.
+        let fullscreen = case["fullscreen"]
+            .as_str()
+            .map(|cid| format!("[data-cid=\"{cid}\"]"));
+        let prepare = |tree: &mut turbo_dom::Tree| {
+            if let Some(selector) = &fullscreen {
+                let element = tree.query_selector(selector).unwrap();
+                assert!(tree.set_fullscreen_stack(&[element]));
+            }
+        };
+        let (tree, snapshot, styles) =
+            layout_with(html, css_of(html), (1280.0, 800.0), Some(1.0), prepare);
         for want in case["boxes"].as_array().unwrap() {
             let cid = want["cid"].as_str().unwrap();
             let handle = tree
@@ -252,7 +263,7 @@ fn assert_matches_chrome((compared, failures): (usize, Vec<String>)) {
 /// The control cases of an open bug, each asserted by its own test (`#[ignore]`d until
 /// its fix lands) and held out of [`live_geometry_matches_chrome_156`].
 fn held_out(id: &str) -> bool {
-    let groups: [fn(&str) -> bool; 7] = [
+    let groups: [fn(&str) -> bool; 9] = [
         |id| AUTO_TABLE_CASES.contains(&id),
         inline_flex_grid_case,
         abs_auto_width_case,
@@ -260,6 +271,8 @@ fn held_out(id: &str) -> bool {
         collapsed_auto_case,
         colspan_case,
         caption_case,
+        inline_block_margin_case,
+        fullscreen_case,
     ];
     groups.iter().any(|group| group(id))
 }
@@ -338,4 +351,24 @@ fn caption_case(id: &str) -> bool {
 #[test]
 fn table_captions_lay_out_in_the_table_wrapper_like_chrome_156() {
     assert_matches_chrome(compare_cases(caption_case));
+}
+
+/// miaskiewicz/turbo-dom#80: an inline-block keeps its children's vertical margins.
+fn inline_block_margin_case(id: &str) -> bool {
+    id.starts_with("inline-block-margins-")
+}
+
+#[test]
+fn inline_blocks_keep_child_margins_like_chrome_156() {
+    assert_matches_chrome(compare_cases(inline_block_margin_case));
+}
+
+/// miaskiewicz/turbo-dom#82: the fullscreen element's UA box, in the top layer.
+fn fullscreen_case(id: &str) -> bool {
+    id.starts_with("fullscreen-")
+}
+
+#[test]
+fn the_fullscreen_element_fills_the_viewport_like_chrome_156() {
+    assert_matches_chrome(compare_cases(fullscreen_case));
 }

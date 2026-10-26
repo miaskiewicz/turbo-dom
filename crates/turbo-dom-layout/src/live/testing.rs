@@ -48,7 +48,13 @@ pub(crate) fn prematch(
 ) -> [(CascadeOrigin, Vec<PreMatched>); 2] {
     let mut cascade =
         crate::build_cascade_with_width(css, "", crate::style::TokenSet::default(), width);
-    let ua = crate::style::parse_stylesheet(LIVE_UA);
+    let mut ua = crate::style::parse_stylesheet(LIVE_UA);
+    // As the embedder does: the fullscreen UA rules join while the binding reports a
+    // fullscreen element (miaskiewicz/turbo-dom#82).
+    if !tree.fullscreen_stack().is_empty() {
+        let fullscreen = crate::style::parse_stylesheet(crate::style::fullscreen_user_agent_css());
+        ua.rules.extend(fullscreen.rules);
+    }
     let start = cascade.rules.len();
     cascade
         .rules
@@ -117,10 +123,23 @@ pub(crate) fn capture_light(tree: &Tree, children: &HashMap<Handle, Vec<Handle>>
 pub(crate) fn layout(
     html: &str,
     css: &str,
-    (width, height): (f32, f32),
+    viewport: (f32, f32),
     layout_scale: Option<f32>,
 ) -> (Tree, LayoutSnapshot, SourceStyles) {
-    let tree = Tree::parse(html);
+    layout_with(html, css, viewport, layout_scale, |_| {})
+}
+
+/// [`layout`] of the parsed `html` after `prepare` sets embedder state on the tree (the
+/// fullscreen stack the binding reports, miaskiewicz/turbo-dom#82).
+pub(crate) fn layout_with(
+    html: &str,
+    css: &str,
+    (width, height): (f32, f32),
+    layout_scale: Option<f32>,
+    prepare: impl FnOnce(&mut Tree),
+) -> (Tree, LayoutSnapshot, SourceStyles) {
+    let mut tree = Tree::parse(html);
+    prepare(&mut tree);
     let children = light_children(&tree);
     let captured = capture_light(&tree, &children);
     let origins = prematch(&tree, css, width);

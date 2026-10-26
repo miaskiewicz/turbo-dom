@@ -86,6 +86,32 @@ body { margin: 8px }
 static DOCUMENT_UA_SHEET: std::sync::LazyLock<Stylesheet> =
     std::sync::LazyLock::new(|| parse_stylesheet(DOCUMENT_UA_CSS));
 
+/// Chrome 156's user-agent rules for the fullscreen element (its `fullscreen.css`,
+/// miaskiewicz/turbo-dom#82): fixed to the viewport at 100% x 100%, border-box, no margin
+/// or transform, its min / max sizes reset, `object-fit: contain`. The internal
+/// `-internal-top-layer` value puts its box in the top layer (laid out above everything
+/// else as a child of the initial containing block, with its `::backdrop`). They match
+/// only an element in the tree's fullscreen stack (`Tree::fullscreen_stack`), so a
+/// cascade carries them only when that stack is non-empty
+/// ([`Cascade::with_fullscreen`], [`fullscreen_user_agent_css`]): a document without
+/// fullscreen pays nothing for them.
+const FULLSCREEN_UA_CSS: &str = ":not(:root):fullscreen { object-fit: contain; \
+position: fixed !important; inset: 0 !important; margin: 0 !important; \
+box-sizing: border-box !important; min-width: 0 !important; max-width: none !important; \
+min-height: 0 !important; max-height: none !important; width: 100% !important; \
+height: 100% !important; transform: none !important; \
+-internal-top-layer: fullscreen !important }";
+
+static FULLSCREEN_UA_SHEET: std::sync::LazyLock<Stylesheet> =
+    std::sync::LazyLock::new(|| parse_stylesheet(FULLSCREEN_UA_CSS));
+
+/// The user-agent rules an embedder adds to [`user_agent_css`] while its tree's
+/// fullscreen stack is non-empty (miaskiewicz/turbo-dom#82; see [`Cascade::with_fullscreen`]).
+#[must_use]
+pub fn fullscreen_user_agent_css() -> &'static str {
+    FULLSCREEN_UA_CSS
+}
+
 impl Cascade {
     /// This cascade for a whole HTML document styled from its root element: the
     /// document UA rules (`head { display: none }`, `body { margin: 8px }`) join the UA
@@ -109,6 +135,22 @@ impl Cascade {
             rules.push(LeveledRule { order, ..r.clone() });
             order += 1;
         }
+        Cascade {
+            rules,
+            tokens: self.tokens.clone(),
+        }
+    }
+}
+
+impl Cascade {
+    /// This cascade plus the fullscreen element's user-agent rules (at the UA level,
+    /// after its other UA rules) — for a tree whose fullscreen stack is non-empty
+    /// (miaskiewicz/turbo-dom#82). The HTML drive adds them itself.
+    #[must_use]
+    pub fn with_fullscreen(&self) -> Cascade {
+        let mut rules = self.rules.clone();
+        let mut order = rules.iter().map(|r| r.order + 1).max().unwrap_or(0);
+        add_leveled(&mut rules, &mut order, 0, FULLSCREEN_UA_SHEET.clone());
         Cascade {
             rules,
             tokens: self.tokens.clone(),

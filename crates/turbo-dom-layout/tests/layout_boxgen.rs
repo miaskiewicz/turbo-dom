@@ -89,15 +89,40 @@ fn inline_block_becomes_atomic() {
 }
 
 #[test]
-fn block_nested_in_inline_becomes_atomic() {
+fn block_nested_in_inline_splits_the_inline() {
+    // A block inside an inline splits it (CSS 2.2 §9.2.1.1; miaskiewicz/turbo-dom#101):
+    // the flow becomes a block context of the block alone (the empty runs around it
+    // generate nothing) ...
     let nodes = vec![el(
         "span",
         &[("display", "inline")],
         vec![el("div", &[], vec![txt("d")])],
     )];
-    let items = as_lines(&build_box_tree(&nodes).kind).clone();
-    assert_eq!(items.len(), 1);
-    assert!(matches!(items[0], InlineItem::Atomic(_)));
+    let boxes = as_block(&build_box_tree(&nodes).kind);
+    assert_eq!(boxes.len(), 1);
+    assert_eq!(boxes[0].display, Display::Block);
+    assert_eq!(as_lines(&boxes[0].kind).len(), 1);
+    // ... and the inline content around it goes to anonymous line boxes before and
+    // after it, in order; an absolutely positioned box stays in its run.
+    let nodes = vec![el(
+        "span",
+        &[("display", "inline")],
+        vec![
+            txt("a"),
+            el("i", &[("position", "absolute")], vec![]),
+            el("div", &[], vec![txt("d")]),
+            txt("b"),
+        ],
+    )];
+    let boxes = as_block(&build_box_tree(&nodes).kind);
+    assert_eq!(boxes.len(), 3);
+    let before = as_lines(&boxes[0].kind);
+    assert_eq!(before.len(), 2);
+    assert!(matches!(&before[0], InlineItem::Text { text, .. } if text.as_str() == "a"));
+    assert!(matches!(before[1], InlineItem::Atomic(_)));
+    assert_eq!(boxes[1].display, Display::Block);
+    let after = as_lines(&boxes[2].kind);
+    assert!(matches!(&after[..], [InlineItem::Text { text, .. }] if text.as_str() == "b"));
 }
 
 #[test]
