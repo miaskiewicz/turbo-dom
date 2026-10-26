@@ -88,7 +88,7 @@ pub(crate) struct Ctx<'a> {
 /// A placed float's margin box in absolute galley coordinates, plus which edge
 /// it packs against. Consulted to narrow the inline region of in-flow content
 /// whose vertical span overlaps `[top, bottom)`.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq)]
 pub(crate) struct FloatRect {
     x0: f32,
     x1: f32,
@@ -613,70 +613,54 @@ fn layout_nonempty_lines(
         &placement.baselines,
         ctx.html_font_metrics,
     );
-    let fonts = ctx.fonts;
     // Per-line float wrapping: each line's `(indent, width)` is the free inline
     // region the BFC's floats leave at that line's own y (absolute `cy + top`), so
     // text flows beside a `float:right` infobox and widens once below its bottom.
-    // Clone the float set so the closure can borrow it while `ctx.diags` is used.
-    let floats = ctx.floats.clone();
     let text_indent = lb
         .style
         .get("text-indent")
         .and_then(|value| super::value::parse_length_pct(value, bs.font_size))
         .and_then(|value| value.resolve(cw))
         .unwrap_or(0.0);
-    let text_indent = super::value::html_used_value(text_indent, ctx.html_font_scale);
-    let region = |top: f32| {
-        let (rx, rw) = inline_region_from(&floats, cx, cw, cy + top, 1.0);
-        let indent = if top == 0.0 { text_indent } else { 0.0 };
-        (rx - cx + indent, rw - indent)
+    let inputs = ParagraphInputs {
+        origin: (cx, cy),
+        cw,
+        text_indent: super::value::html_used_value(text_indent, ctx.html_font_scale),
+        strut: line_strut(bs, ctx.fonts),
+        strut_metrics: super::inline_boxes::strut(bs, ctx),
+        align: bs.text_align,
+        font_size: bs.font_size,
+        baselines: &placement.baselines,
     };
-    let native_region = |top: f32| {
-        let (rx, rw) = inline_region_from(&floats, cx, cw, cy + top, 0.0);
-        (rx - cx, rw)
-    };
-    let clearance = |top, needed| inline_clearance(&floats, (cx, cy, cw), top, needed);
-    let strut = line_strut(bs, fonts);
-    let para = if ctx.html_font_metrics {
-        inline::layout_html_paragraph_in_with_sources_at_scale(
-            &pieces,
-            fonts,
-            bs.text_align,
-            ctx.diags,
-            &native_region,
-            strut,
-            inline::NativeLineOptions {
-                scale: ctx.html_font_scale,
-                first_indent: text_indent,
-                clearance: &clearance,
-                original_units: ctx.original_units,
-                baselines: &placement.baselines,
-                strut_metrics: super::inline_boxes::strut(bs, ctx),
-            },
-        )
-    } else if ctx.text_capture.is_some() {
-        inline::layout_paragraph_in_with_sources(
-            &pieces,
-            fonts,
-            bs.text_align,
-            ctx.diags,
-            &region,
-            strut,
-        )
-    } else {
-        inline::ParagraphSourceLayout {
-            layout: inline::layout_paragraph_in(
-                &pieces,
-                fonts,
-                bs.text_align,
-                ctx.diags,
-                &region,
-                strut,
-            ),
-            clusters: Vec::new(),
-            font_boxes: Vec::new(),
+    // A float met inside the line content (miaskiewicz/turbo-dom#28 item 4) is placed
+    // at the top of the line it lands on and narrows that line and the ones beside
+    // it: re-lay the lines until the floats' places settle (scratch diagnostics),
+    // then lay them out for real.
+    let base = ctx.floats.clone();
+    let mut line_floats = Vec::new();
+    if items.iter().any(|item| floated_kid(item).is_some()) {
+        let mut scratch = Diagnostics::default();
+        for _ in 0..IN_LINE_FLOAT_PASSES {
+            let floats = [base.as_slice(), &rects(&line_floats)].concat();
+            let para = paragraph(&pieces, &floats, &inputs, ctx, &mut scratch);
+            let next = place_line_floats(&para.layout, items, &atom_frags, &base, &inputs, ctx);
+            let settled = rects(&next) == rects(&line_floats);
+            line_floats = next;
+            if settled {
+                break;
+            }
         }
+    }
+    let floats = [base.as_slice(), &rects(&line_floats)].concat();
+    let mut diags = std::mem::take(ctx.diags);
+    let para = paragraph(&pieces, &floats, &inputs, ctx, &mut diags);
+    *ctx.diags = diags;
+    let line_floats = if line_floats.is_empty() {
+        line_floats
+    } else {
+        place_line_floats(&para.layout, items, &atom_frags, &base, &inputs, ctx)
     };
+    ctx.floats.extend(rects(&line_floats));
     let offsets = placement.offsets;
     let mut frags = Vec::new();
     frags.extend(super::inline_boxes::fragments(
@@ -697,6 +681,7 @@ fn layout_nonempty_lines(
         origin: (cx, cy),
         cw,
         font_size: bs.font_size,
+        floats: &line_floats,
     };
     for line in &para.layout.lines {
         for placed in &line.atoms {
@@ -716,10 +701,164 @@ struct AtomPlacement<'a> {
     origin: (f32, f32),
     cw: f32,
     font_size: f32,
+    /// Where each in-line float was placed.
+    floats: &'a [LineFloat],
+}
+
+/// How many times a paragraph with floats inside its line content is re-laid at most
+/// while their places settle (each pass places them at the tops of the lines they
+/// landed on in the previous one).
+const IN_LINE_FLOAT_PASSES: usize = 4;
+
+/// The paragraph geometry every line layout pass shares.
+struct ParagraphInputs<'a> {
+    origin: (f32, f32),
+    cw: f32,
+    text_indent: f32,
+    strut: f32,
+    strut_metrics: Option<(f32, f32)>,
+    align: Align,
+    font_size: f32,
+    baselines: &'a HashMap<NodeId, f32>,
+}
+
+/// A float met in line content, placed: its id, border-box origin and margin box.
+#[derive(Clone, Copy)]
+struct LineFloat {
+    node_id: NodeId,
+    origin: (f32, f32),
+    rect: FloatRect,
+}
+
+fn rects(floats: &[LineFloat]) -> Vec<FloatRect> {
+    floats.iter().map(|float| float.rect).collect()
+}
+
+/// The floated box of an inline item, if it is one (an absolutely positioned box
+/// ignores `float`).
+fn floated_kid(item: &InlineItem) -> Option<&LayoutBox> {
+    match item {
+        InlineItem::Atomic(b) if !b.out_of_flow() && b.floated() => Some(b),
+        _ => None,
+    }
+}
+
+/// Lay out the paragraph's lines in the inline region `floats` leave free.
+fn paragraph(
+    pieces: &[inline::Piece],
+    floats: &[FloatRect],
+    inputs: &ParagraphInputs,
+    ctx: &Ctx,
+    diags: &mut Diagnostics,
+) -> inline::ParagraphSourceLayout {
+    let ((cx, cy), cw, text_indent) = (inputs.origin, inputs.cw, inputs.text_indent);
+    let region = |top: f32| {
+        let (rx, rw) = inline_region_from(floats, cx, cw, cy + top, 1.0);
+        let indent = if top == 0.0 { text_indent } else { 0.0 };
+        (rx - cx + indent, rw - indent)
+    };
+    let native_region = |top: f32| {
+        let (rx, rw) = inline_region_from(floats, cx, cw, cy + top, 0.0);
+        (rx - cx, rw)
+    };
+    let clearance = |top, needed| inline_clearance(floats, (cx, cy, cw), top, needed);
+    if ctx.html_font_metrics {
+        inline::layout_html_paragraph_in_with_sources_at_scale(
+            pieces,
+            ctx.fonts,
+            inputs.align,
+            diags,
+            &native_region,
+            inputs.strut,
+            inline::NativeLineOptions {
+                scale: ctx.html_font_scale,
+                first_indent: text_indent,
+                clearance: &clearance,
+                original_units: ctx.original_units,
+                baselines: inputs.baselines,
+                strut_metrics: inputs.strut_metrics,
+            },
+        )
+    } else if ctx.text_capture.is_some() {
+        inline::layout_paragraph_in_with_sources(
+            pieces,
+            ctx.fonts,
+            inputs.align,
+            diags,
+            &region,
+            inputs.strut,
+        )
+    } else {
+        inline::ParagraphSourceLayout {
+            layout: inline::layout_paragraph_in(
+                pieces,
+                ctx.fonts,
+                inputs.align,
+                diags,
+                &region,
+                inputs.strut,
+            ),
+            clusters: Vec::new(),
+            font_boxes: Vec::new(),
+        }
+    }
+}
+
+/// Place the in-line floats of `para` in line order: each at the top of the line
+/// its placeholder landed on (dropped below earlier floats it does not fit beside),
+/// packed against its edge of the region left free there (CSS 2.1 §9.5.1), exactly
+/// as [`place_float`] packs one between blocks.
+fn place_line_floats(
+    para: &inline::ParagraphLayout,
+    items: &[InlineItem],
+    atoms: &[Fragment],
+    base: &[FloatRect],
+    inputs: &ParagraphInputs,
+    ctx: &Ctx,
+) -> Vec<LineFloat> {
+    let ((cx, cy), cw) = (inputs.origin, inputs.cw);
+    let minimum = if ctx.html_font_metrics { 0.0 } else { 1.0 };
+    let mut floats = base.to_vec();
+    let mut placed = Vec::new();
+    for line in &para.lines {
+        for atom in &line.atoms {
+            let frag = &atoms[atom.id];
+            let Some(kid) = items
+                .iter()
+                .filter_map(floated_kid)
+                .find(|kid| kid.node_id == frag.node_id)
+            else {
+                continue;
+            };
+            let kbs = resolve(kid, cw, inputs.font_size);
+            let w = frag.width;
+            let y = float_drop_y_in(&floats, (cx, cw, minimum), w, cy + line.top) + kbs.margin.top;
+            let (rx, rw) = inline_region_from(&floats, cx, cw, y, minimum);
+            let bx = match kbs.float {
+                Float::Right => rx + rw - w - kbs.margin.right,
+                _ => rx + kbs.margin.left,
+            };
+            let rect = FloatRect {
+                x0: bx - kbs.margin.left,
+                x1: bx + w + kbs.margin.right,
+                top: y - kbs.margin.top,
+                bottom: y + frag.height + kbs.margin.bottom,
+                side: kbs.float,
+            };
+            floats.push(rect);
+            placed.push(LineFloat {
+                node_id: kid.node_id,
+                origin: (bx, y),
+                rect,
+            });
+        }
+    }
+    placed
 }
 
 /// One atom where it landed in `line`; an absolutely positioned box is laid out
-/// from that static position instead (its zero-size place is the line top there).
+/// from that static position instead (its zero-size place is the line top there),
+/// and an in-line float goes where [`place_line_floats`] put it.
 fn place_atom(
     line: &inline::InlineLine,
     placed: &inline::PlacedAtom,
@@ -733,6 +872,11 @@ fn place_atom(
         .copied()
         .unwrap_or_default();
     let (cx, cy) = atoms.origin;
+    if let Some(float) = atoms.floats.iter().find(|f| f.node_id == atom.node_id) {
+        let mut f = atom.clone();
+        f.translate(float.origin.0 + dx, float.origin.1 + dy);
+        return f;
+    }
     let x = cx + line.indent + placed.x + dx;
     if let Some(kid) = out_of_flow_kid(atoms.items, atom.node_id) {
         return place_inline_out_of_flow(
@@ -846,6 +990,12 @@ fn build_inline_pieces(
             InlineItem::LineBreak => pieces.push(inline::Piece::Break),
             // An absolutely positioned box only takes a zero-size place in the line
             // (its static position); it is laid out once that place is known.
+            // A float takes a zero-size place too; it is laid out (shrink-to-fit) now
+            // and moved to the line top it lands on (`place_line_floats`).
+            InlineItem::Atomic(b) if floated_kid(item).is_some() => {
+                pieces.push(inline::Piece::Atom(out_of_flow_atom(atom_frags.len())));
+                atom_frags.push(lay_float(b, cw, bs.font_size, ctx));
+            }
             InlineItem::Atomic(b) if b.out_of_flow() => {
                 pieces.push(inline::Piece::Atom(out_of_flow_atom(atom_frags.len())));
                 atom_frags.push(Fragment::new(
@@ -1470,6 +1620,18 @@ fn place_float(
     f
 }
 
+/// A float met in line content, laid out at the origin (border box at `0,0`) at its
+/// used width; [`place_atom`] moves it to its place.
+fn lay_float(kid: &LayoutBox, cw: f32, fs: f32, ctx: &mut Ctx) -> Fragment {
+    let kbs = resolve(kid, cw, fs);
+    let (w, shrink) = float_width(kid, &kbs, cw, ctx.fonts, kid.is_replaced());
+    if shrink {
+        layout_box_sized(kid, &kbs, 0.0, 0.0, w, ctx)
+    } else {
+        layout_box(kid, 0.0, 0.0, cw, fs, ctx)
+    }
+}
+
 /// The border-box width of a float and whether it is shrink-to-fit sized. An
 /// `auto`-width non-replaced float takes its natural width capped at the container
 /// (`shrink = true`); otherwise it takes its resolved border-box width.
@@ -1492,14 +1654,21 @@ fn float_width(
 /// The y at/below `y0` where a `w`-wide float fits beside existing same-BFC
 /// floats; if a row is too full, drop past the nearest float bottom and retry.
 fn float_drop_y(ctx: &Ctx, cx: f32, cw: f32, w: f32, y0: f32) -> f32 {
+    let minimum = if ctx.html_font_metrics { 0.0 } else { 1.0 };
+    float_drop_y_in(&ctx.floats, (cx, cw, minimum), w, y0)
+}
+
+/// [`float_drop_y`] against `floats` (`region`: the content box's x, width and the
+/// minimum region width).
+fn float_drop_y_in(floats: &[FloatRect], region: (f32, f32, f32), w: f32, y0: f32) -> f32 {
+    let (cx, cw, minimum) = region;
     let mut y = y0;
     loop {
-        let (_, avail) = inline_region(ctx, cx, cw, y);
+        let (_, avail) = inline_region_from(floats, cx, cw, y, minimum);
         if avail >= w - 0.5 {
             break;
         }
-        let next = ctx
-            .floats
+        let next = floats
             .iter()
             .filter(|f| f.bottom > y + 0.5)
             .map(|f| f.bottom)

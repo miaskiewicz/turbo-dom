@@ -128,6 +128,19 @@ impl LayoutBox {
         super::value::position_of(&self.style).is_out_of_flow()
     }
 
+    /// Whether the box floats (`float: left | right`; an absolutely positioned box
+    /// ignores `float`, see [`LayoutBox::out_of_flow`]).
+    pub(crate) fn floated(&self) -> bool {
+        super::value::float_of(&self.style) != super::value::Float::None
+    }
+
+    /// Whether the box takes only a place in surrounding inline content instead of
+    /// splitting it: an absolutely positioned box (its static position) or a float
+    /// (placed at the top of its line; miaskiewicz/turbo-dom#28 item 4).
+    pub(crate) fn line_placeholder(&self) -> bool {
+        self.out_of_flow() || self.floated()
+    }
+
     pub(crate) fn is_replaced(&self) -> bool {
         self.native_iframe()
             || self.svg_viewport.is_some()
@@ -638,9 +651,11 @@ fn classify_display(el: &StyledElement, ids: &mut Ids) -> Option<Level> {
     // never reach here — no `Display::None` arm (it would be dead code).
     match display_of(&el.style) {
         Display::Inline => Some(native_inline_items(el, ids)),
-        Display::InlineBlock => Some(Level::Inline(vec![InlineItem::Atomic(build_block_box(
-            el, ids,
-        ))])),
+        Display::InlineBlock | Display::InlineTable => {
+            Some(Level::Inline(vec![InlineItem::Atomic(build_block_box(
+                el, ids,
+            ))]))
+        }
         _ => Some(Level::Block(build_block_box(el, ids))),
     }
 }
@@ -711,9 +726,12 @@ fn native_inline_flow(el: &StyledElement, ids: &mut Ids) -> Level {
     for child in children {
         match child {
             FlowLevel::Inline(items) => run.extend(items),
-            // An absolutely positioned box does not split its inline ancestor: it
-            // stays in the run as a placeholder at its static position.
-            FlowLevel::Block(block) if block.out_of_flow() => run.push(InlineItem::Atomic(block)),
+            // An absolutely positioned box or a float does not split its inline
+            // ancestor: it stays in the run as a placeholder (its static position /
+            // the top of its line).
+            FlowLevel::Block(block) if block.line_placeholder() => {
+                run.push(InlineItem::Atomic(block));
+            }
             FlowLevel::Block(block) => {
                 out.push(FlowLevel::Inline(native_inline_run(
                     std::mem::take(&mut run),
@@ -800,7 +818,7 @@ fn box_kind_for(display: Display, el: &StyledElement, ids: &mut Ids) -> BoxKind 
     match display {
         Display::Flex => BoxKind::Flex(flex_grid_children(el, ids)),
         Display::Grid => BoxKind::Grid(flex_grid_children(el, ids)),
-        Display::Table => BoxKind::Table(child_block_boxes(el, ids)),
+        Display::Table | Display::InlineTable => BoxKind::Table(child_block_boxes(el, ids)),
         _ => build_flow(&el.children, &el.style, ids),
     }
 }
@@ -1103,9 +1121,10 @@ fn wrap_runs(
     for level in levels {
         match level {
             FlowLevel::Inline(items) => run.extend(items),
-            // An absolutely positioned box inside inline content stays in that line
-            // run (it neither ends nor splits it); one between blocks stays a block.
-            FlowLevel::Block(b) if b.out_of_flow() && !run_is_blank(&run) => {
+            // An absolutely positioned box or a float inside inline content stays in
+            // that line run (it neither ends nor splits it); one between blocks — or
+            // before any inline content — stays a block.
+            FlowLevel::Block(b) if b.line_placeholder() && !run_is_blank(&run) => {
                 run.push(InlineItem::Atomic(b));
             }
             FlowLevel::Block(b) => {

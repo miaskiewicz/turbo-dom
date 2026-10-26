@@ -525,7 +525,10 @@ pub(crate) fn natural_width(lb: &LayoutBox, fonts: &FontRegistry) -> f32 {
                 lb.uses_html_font_metrics(),
             ),
             BoxKind::Flex(k) => flex_natural(k, &lb.style, fonts),
-            BoxKind::Block(k) | BoxKind::Grid(k) | BoxKind::Table(k) => kids_natural(k, fonts),
+            // A table's max-content: its columns side by side plus border-spacing
+            // (miaskiewicz/turbo-dom#28 item 4), not its widest row group.
+            BoxKind::Table(k) => super::table::max_content_width(k, &lb.style, fonts),
+            BoxKind::Block(k) | BoxKind::Grid(k) => kids_natural(k, fonts),
             BoxKind::Marker(_) => 0.0,
         };
         inner + frame
@@ -583,7 +586,8 @@ pub(crate) fn min_content_width(lb: &LayoutBox, fonts: &FontRegistry) -> f32 {
                 lb.original_units().as_deref(),
                 lb.uses_html_font_metrics(),
             ),
-            BoxKind::Flex(k) | BoxKind::Block(k) | BoxKind::Grid(k) | BoxKind::Table(k) => k
+            BoxKind::Table(k) => super::table::min_content_width(k, &lb.style, fonts),
+            BoxKind::Flex(k) | BoxKind::Block(k) | BoxKind::Grid(k) => k
                 .iter()
                 .map(|c| min_content_width(c, fonts))
                 .fold(0.0_f32, f32::max),

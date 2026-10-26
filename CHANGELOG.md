@@ -85,6 +85,19 @@ changes in `tools/parity/expected/p5b-w3-turbo-dom-28-*.json`.
   padded, bordered, sized (`height`, `width`) and offset by the parent's margins a second
   time — `<div style="padding:10px">x<p>…</p></div>` pushed the `<p>` down by 20px. Control:
   `anonymous-block-*` in `html-document` and `live-geometry`.
+- Floats and `inline-table` (item 4): `display_of` blockifies a float like an absolutely
+  positioned box (CSS 2.1 §9.7) — a floated `<span>` is a shrink-to-fit block float
+  instead of an inline laid out in the line — and `inline-table` is its own
+  `Display::InlineTable`, an atomic inline-level table (`table` once blockified) instead of
+  a block. A float met inside line content (after inline content, or inside an inline
+  element) no longer splits the line or its inline ancestor: it takes a place in the run
+  and is placed at the top of the line it lands on, the lines beside it narrowed (the
+  paragraph is re-laid until the floats settle), as in Chrome; in live snapshots such a
+  float is supported instead of failing as a "positioned/floating block-in-inline
+  split". A table's intrinsic widths (`flex::natural_width` / `min_content_width`:
+  inline tables, floats, flex items, inline-blocks around tables) are its columns plus
+  border-spacing (`table::max_content_width` / `min_content_width`), not its widest
+  row. Control: `float-*` / `inline-table-*` in `live-geometry` and `html-document`.
 
 ### Changed — selector follow-ups (P5b-X2, miaskiewicz/turbo-dom#24, Chrome 156 controls)
 - `rtdom::cascade` (`getComputedStyle`) and the npm `cascade.mjs` rank rules by the

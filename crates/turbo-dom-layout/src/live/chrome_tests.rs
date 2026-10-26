@@ -84,12 +84,21 @@ fn check_box(
         return;
     };
     compare_rect(case, want, rect, failures);
-    // A blockified positioned inline lays out as a block box (CSS 2.1 §9.7).
-    if want["display"] == "block" && display.is_some_and(|display| display != Display::Block) {
-        failures.push(format!(
-            "{} used display {display:?}, Chrome block",
-            label(case, want)
-        ));
+    // A blockified positioned or floated inline lays out as a block box (CSS 2.1 §9.7),
+    // a blockified `inline-table` as a table.
+    let chrome = match want["display"].as_str() {
+        Some("block") => Some(Display::Block),
+        Some("table") => Some(Display::Table),
+        Some("inline-table") => Some(Display::InlineTable),
+        _ => None,
+    };
+    if let (Some(chrome), Some(used)) = (chrome, display) {
+        if used != chrome {
+            failures.push(format!(
+                "{} used display {used:?}, Chrome {chrome:?}",
+                label(case, want)
+            ));
+        }
     }
 }
 

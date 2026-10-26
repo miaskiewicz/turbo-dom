@@ -87,6 +87,9 @@ pub enum Display {
     Block,
     Inline,
     InlineBlock,
+    /// `inline-table`: an atomic inline-level box with a table inside
+    /// (miaskiewicz/turbo-dom#28 item 4).
+    InlineTable,
     Flex,
     Grid,
     None,
@@ -714,13 +717,15 @@ fn resolve_font_size(s: &ComputedStyle, parent: f32) -> f32 {
 }
 
 /// The resolved `display` keyword (needed at box-generation time, before widths
-/// are known). An absolutely positioned (`absolute` / `fixed`) box is blockified
-/// (CSS 2.1 §9.7, as Chrome computes it): an inline-level or internal table display
-/// becomes `block` (miaskiewicz/turbo-surf#31).
+/// are known). An absolutely positioned (`absolute` / `fixed`) or floated box is
+/// blockified (CSS 2.1 §9.7, as Chrome computes it): an inline-level or internal
+/// table display becomes `block`, `inline-table` becomes `table`
+/// (miaskiewicz/turbo-surf#31; floats and `inline-table`: miaskiewicz/turbo-dom#28
+/// item 4).
 #[must_use]
 pub fn display_of(s: &ComputedStyle) -> Display {
     let display = specified_display(s);
-    if position_of(s).is_out_of_flow() {
+    if position_of(s).is_out_of_flow() || float_of(s) != Float::None {
         blockified(display)
     } else {
         display
@@ -728,10 +733,11 @@ pub fn display_of(s: &ComputedStyle) -> Display {
 }
 
 /// The CSS 2.1 §9.7 blockification of `display` (the inline-level and internal
-/// table values become `block`; `none`, `flex`, `grid`, `table` and `list-item`
-/// stay).
+/// table values become `block`, `inline-table` becomes `table`; `none`, `flex`,
+/// `grid`, `table` and `list-item` stay).
 fn blockified(display: Display) -> Display {
     match display {
+        Display::InlineTable => Display::Table,
         Display::Inline
         | Display::InlineBlock
         | Display::TableRow
@@ -751,6 +757,7 @@ fn specified_display(s: &ComputedStyle) -> Display {
         "grid" | "inline-grid" => Display::Grid,
         "none" => Display::None,
         "table" => Display::Table,
+        "inline-table" => Display::InlineTable,
         "table-row" => Display::TableRow,
         "table-cell" => Display::TableCell,
         "table-header-group" => Display::TableHeaderGroup,
@@ -2003,6 +2010,74 @@ mod transform_tests {
         assert!(
             (t.linear[1] - 1.0).abs() < 1e-3,
             "rotate still applied: {t:?}"
+        );
+    }
+}
+
+#[cfg(test)]
+mod display_tests {
+    use super::*;
+
+    fn display(pairs: &[(&str, &str)]) -> Display {
+        display_of(&ComputedStyle::from_pairs(pairs.iter().copied()))
+    }
+
+    #[test]
+    fn inline_table_is_inline_level_until_blockified() {
+        assert_eq!(
+            display(&[("display", "inline-table")]),
+            Display::InlineTable
+        );
+        for blockify in [
+            ("float", "left"),
+            ("float", "right"),
+            ("position", "absolute"),
+            ("position", "fixed"),
+        ] {
+            assert_eq!(
+                display(&[("display", "inline-table"), blockify]),
+                Display::Table
+            );
+        }
+    }
+
+    #[test]
+    fn floats_blockify_like_absolutely_positioned_boxes() {
+        for value in [
+            "inline",
+            "inline-block",
+            "table-row",
+            "table-cell",
+            "table-header-group",
+            "table-footer-group",
+        ] {
+            assert_eq!(
+                display(&[("display", value), ("float", "left")]),
+                Display::Block,
+                "{value}"
+            );
+            assert_eq!(
+                display(&[("display", value), ("float", "none")]),
+                specified_display(&ComputedStyle::from_pairs([("display", value)])),
+                "{value}"
+            );
+        }
+        for value in ["flex", "grid", "table", "list-item", "none"] {
+            let specified = display(&[("display", value)]);
+            assert_eq!(
+                display(&[("display", value), ("float", "right")]),
+                specified,
+                "{value}"
+            );
+        }
+        // `position: relative` / `sticky` and an unknown float value do not blockify.
+        assert_eq!(
+            display(&[("display", "inline"), ("position", "relative")]),
+            Display::Inline
+        );
+        assert_eq!(
+            display(&[("display", "inline"), ("float", "inline-start")]),
+            Display::Inline
         );
     }
 }
