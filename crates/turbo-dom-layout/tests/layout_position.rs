@@ -3,9 +3,8 @@
 //!
 //! Each probe box carries a unique opaque `background-color`; helpers find its
 //! `Box` fragment by colour and read its border-box top-left. Boxes are styled
-//! **inline** (the layout engine applies `style=` attributes; `<head>` is dropped
-//! by the HTML parse, so class rules in `<style>` would need `<body>`-level
-//! sheets — inline keeps the fixtures unambiguous).
+//! **inline** (the layout engine applies `style=` attributes; inline keeps the
+//! fixtures unambiguous).
 //!
 //! These encode the *expected* behavior and FAIL until Phase 2 (out-of-flow
 //! layout in block.rs) is implemented. Do not weaken them to match current
