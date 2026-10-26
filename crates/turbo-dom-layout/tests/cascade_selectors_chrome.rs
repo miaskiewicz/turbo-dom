@@ -27,10 +27,6 @@ use turbo_dom_layout::{parse_html_tree, style_html_tree, HtmlOptions, StyledNode
 /// commit removes them here. All P5b-X items have landed.
 const OPEN: &[&str] = &[];
 
-/// Rows turbo-dom deliberately answers differently (the `s` attribute modifier; see
-/// turbo-dom's `tests/cascade_selectors_chrome.rs`).
-const RUST_CONTRACT_ROWS: &[&str] = &["[a=b s]", "[a=b S]", "[a=\"1\" s]"];
-
 fn fixture() -> Value {
     let path = concat!(
         env!("CARGO_MANIFEST_DIR"),
@@ -107,9 +103,6 @@ fn html_path_cascade_matches_chrome156() {
         let html = case["html"].as_str().unwrap();
         for row in case["selectors"].as_array().unwrap() {
             let sel = row["selector"].as_str().unwrap();
-            if RUST_CONTRACT_ROWS.contains(&sel) {
-                continue;
-            }
             let want: Vec<String> = row["winner"]
                 .as_str()
                 .unwrap()

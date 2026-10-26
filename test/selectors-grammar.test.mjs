@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import { createEnvironment } from '../src/runtime/index.mjs';
 import { _internal, matchesSelector } from '../src/runtime/selectors.mjs';
 
-const { parseSelectorList, parseAnB, ruleSelectors } = _internal;
+const { parseSelectorList, parseAnB, ruleSelectors, specificity, compareSpecificity } = _internal;
 const one = (sel) => parseSelectorList(sel)[0].first;
 const bad = (sel) => assert.throws(() => parseSelectorList(sel), SyntaxError, JSON.stringify(sel));
 const env = (body) => createEnvironment(`<!doctype html><html><head></head><body>${body}</body></html>`);
@@ -86,6 +86,22 @@ test('ruleSelectors splits a valid list at top-level commas and drops an invalid
   assert.deepEqual(ruleSelectors(':is(a, b), [t="x,y"], c\\,d'), [':is(a, b)', '[t="x,y"]', 'c\\,d']);
   assert.deepEqual(ruleSelectors('a, :bogus'), []);
   assert.deepEqual(ruleSelectors('p::before, :host(.x), ::slotted(span)'), ['p::before', ':host(.x)', '::slotted(span)']);
+});
+
+test('specificity follows Selectors 4 (mirrors the Rust specificity_follows_selectors_4)', () => {
+  const rows = {
+    '*': [0, 0, 0], '*|*': [0, 0, 0], '|p': [0, 0, 1], 'div p.a[x]:hover': [0, 3, 2], '#a .b': [1, 1, 0],
+    ':where(#a, .b) p': [0, 0, 1], ':is(#a, .b)': [1, 0, 0], ':is(.b, :bogus)': [0, 1, 0],
+    ':not(div, .a.b)': [0, 2, 0], ':not(div)': [0, 0, 1], 'p:has(> #x, .y)': [1, 0, 1],
+    ':nth-child(2 of #a, .b)': [1, 1, 0], ':nth-last-child(odd of p)': [0, 1, 1], ':nth-child(2)': [0, 1, 0],
+    'p::before': [0, 0, 2], 'p:before': [0, 0, 2], 'slot::slotted(.a)': [0, 1, 2], ':-webkit-any(#a, p)': [0, 1, 0],
+    ':scope': [0, 1, 0], ':FIRST-CHILD': [0, 1, 0], '.\\31 0': [0, 1, 0], '.md\\:x': [0, 1, 0],
+    '[title="#t"]': [0, 1, 0], 'div :is(i)': [0, 0, 2], ':host(.x)': [0, 1, 0], 'p::-webkit-scrollbar:hover': [0, 1, 2],
+  };
+  for (const [sel, want] of Object.entries(rows)) assert.deepEqual(specificity(sel), want, sel);
+  assert.ok(compareSpecificity([1, 0, 0], [0, 99, 99]) > 0);
+  assert.ok(compareSpecificity([0, 1, 2], [0, 1, 2]) === 0);
+  assert.ok(compareSpecificity([0, 0, 1], [0, 0, 2]) < 0);
 });
 
 test(':scope is the queried element, the document element for a document, nothing in a fragment', () => {

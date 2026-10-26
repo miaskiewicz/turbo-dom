@@ -690,6 +690,30 @@ pub(super) fn cloned(
         &[source.into(), clone.into(), deep.into()],
     );
 }
+/// `__customElementState(node, status)`: report an element's custom element state to its
+/// tree so `:defined` (DOM APIs, stylesheet matching, getComputedStyle) sees upgrades,
+/// construction and failures (turbo-dom#24). `status` is the JS record's status.
+fn element_state(
+    scope: &mut v8::PinScope,
+    args: v8::FunctionCallbackArguments,
+    _result: v8::ReturnValue,
+) {
+    use turbo_dom_parser::rtdom::tree::CustomElementState;
+    let Ok(node) = v8::Local::<v8::Object>::try_from(args.get(0)) else {
+        return;
+    };
+    let state = match args.get(1).to_rust_string_lossy(scope).as_str() {
+        "undefined" => CustomElementState::Undefined,
+        "failed" => CustomElementState::Failed,
+        "constructing" => CustomElementState::Precustomized,
+        "custom" => CustomElementState::Custom,
+        _ => return,
+    };
+    let _dom = DomScope::for_object(scope, node);
+    if let Some(handle) = handle_of(scope, node) {
+        with_tree_mut(|tree| tree.set_custom_element_state(handle, state));
+    }
+}
 fn bind_native<F>(scope: &mut v8::PinScope, global: v8::Local<v8::Object>, name: &str, callback: F)
 where
     F: v8::MapFnTo<v8::FunctionCallback>,
@@ -712,6 +736,7 @@ pub(super) fn install(scope: &mut v8::PinScope) {
     bind_native(scope, global, "__customElementDefining", defining);
     bind_native(scope, global, "__customElementReact", react);
     bind_native(scope, global, "__customElementActive", active);
+    bind_native(scope, global, "__customElementState", element_state);
     run_js(scope, include_str!("custom_elements.js"));
     for (name, family) in [
         ("__captureCustomElementMutation", 0),
@@ -833,6 +858,59 @@ mod tests {
             .unwrap()
             .to_rust_string_lossy(scope);
         assert_eq!(result, "PASS");
+        reset();
+    }
+    /// turbo-dom#24 item 3: `:defined` through matches / querySelectorAll / getComputedStyle
+    /// before and after customElements.define(), on insertion, customElements.upgrade(),
+    /// creation, construction, clones, innerHTML, template content, failed constructors and
+    /// `is` values (attribute vs createElement option) — the Chrome 156 control
+    /// `custom_elements_defined_chrome156.json` (probe + cases recorded by
+    /// scripts/select-element-chrome-control.mjs).
+    #[test]
+    fn defined_follows_upgrades_matching_chrome156() {
+        use sha2::{Digest, Sha256};
+        const PROBE: &str = include_str!("custom_elements_defined_probe.js");
+        const CASES: &[u8] = include_bytes!("custom_elements_defined_cases.json");
+        let control: serde_json::Value =
+            serde_json::from_str(include_str!("custom_elements_defined_chrome156.json")).unwrap();
+        assert!(control["browser"]
+            .as_str()
+            .unwrap()
+            .starts_with("Chrome/156."));
+        assert_eq!(control["errors"], serde_json::json!([]));
+        assert_eq!(
+            control["probeSha256"],
+            format!("{:x}", Sha256::digest(PROBE.as_bytes()))
+        );
+        assert_eq!(
+            control["casesSha256"],
+            format!("{:x}", Sha256::digest(CASES))
+        );
+        let cases: serde_json::Value = serde_json::from_slice(CASES).unwrap();
+        super::super::tests::init_v8();
+        let isolate = &mut v8::Isolate::new(Default::default());
+        v8::scope!(let scope, isolate);
+        let context = v8::Context::new(scope, Default::default());
+        let scope = &mut v8::ContextScope::new(scope, context);
+        install_independent_html(scope, cases[0]["html"].as_str().unwrap());
+        let code = format!("JSON.stringify({})", PROBE.trim().trim_end_matches(';'));
+        let code = v8::String::new(scope, &code).unwrap();
+        v8::tc_scope!(let scope, scope);
+        let value = v8::Script::compile(scope, code, None)
+            .and_then(|script| script.run(scope))
+            .unwrap_or_else(|| panic!("{}", scope.exception().unwrap().to_rust_string_lossy(scope)))
+            .to_rust_string_lossy(scope);
+        let actual: serde_json::Value = serde_json::from_str(&value).unwrap();
+        let expected = &control["result"][0]["result"];
+        let mismatches: Vec<String> = expected
+            .as_object()
+            .unwrap()
+            .iter()
+            .filter(|(key, value)| &actual[key.as_str()] != *value)
+            .map(|(key, value)| format!("{key}\n  binding: {}\n  chrome:  {value}", actual[key]))
+            .collect();
+        assert!(mismatches.is_empty(), "{}", mismatches.join("\n"));
+        assert_eq!(&actual, expected);
         reset();
     }
     #[test]

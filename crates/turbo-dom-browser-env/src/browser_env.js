@@ -313,17 +313,8 @@
   if (typeof g.cancelAnimationFrame === 'undefined') g.cancelAnimationFrame = function(id){ clearTimeout(id); };
   if (typeof g.matchMedia === 'undefined') g.matchMedia = function(q){ return { matches:false, media:q, addListener:function(){}, removeListener:function(){}, addEventListener:function(){}, removeEventListener:function(){}, dispatchEvent:function(){return false;} }; };
   if (typeof g.scrollTo === 'undefined') g.scrollTo = function(){};
-  // `new Image(w,h)` -> an <img> element (HTMLImageElement). Setting `.src` resolves `onload`
-  // asynchronously (no real network/decoding) so avatar/image-load effects fire.
-  if (typeof g.Image === 'undefined') {
-    g.Image = function(w, h){
-      var img = g.document.createElement('img');
-      if (w != null) img.width = w; if (h != null) img.height = h;
-      var _src = '';
-      try { Object.defineProperty(img, 'src', { configurable: true, get: function(){ return _src; }, set: function(v){ _src = v == null ? '' : String(v); this.setAttribute('src', _src); var self = this; if (_src) setTimeout(function(){ if (typeof self.onload === 'function') self.onload({ type: 'load', target: self }); }, 0); } }); } catch(e){}
-      return img;
-    };
-  }
+  // `Image(width, height)` is the native legacy factory in html_image.js (turbo-dom#23); image
+  // loading (load / error events, natural size) is the host's (record.imageHost).
   if (typeof g.location === 'undefined' || g.location == null) {
     g.location = { href: 'http://localhost/', origin: 'http://localhost', protocol: 'http:', host: 'localhost', hostname: 'localhost', port: '', pathname: '/', search: '', hash: '', assign: function(){}, replace: function(){}, reload: function(){}, toString: function(){ return this.href; } };
   }
@@ -1099,13 +1090,13 @@ if(typeof __ns.makeNativeFunction==='function'){
     var baseProto = compatibilityElementPrototype = Object.getPrototypeOf(orig.call(d,'span'));
     // Reflected IDL attributes on every element: setting el.src / el.href (script/img/link/a — a DOM
     // property) must show as the content attribute so attribute selectors like script[src*="maps"]
-    // and getAttribute('src') see it. (Image() defines its own src with onload; that shadows this.)
+    // and getAttribute('src') see it.
     // Reflected string IDL attributes on every element. `rel` is load-bearing: React's
     // clearContainerSparingly does `node.rel.toLowerCase()` over a container's <link> children during
     // hydration — undefined there aborts the whole app mount. `as`/`media`/`type` ride the same
     // pattern (<link rel=preload as=script media=…>, <script type=…>). For inputs `type` is shadowed
     // per-instance by the text-defaulting control descriptor (applyControlProto), so this is the
-    // fallback for non-control elements. (Image() defines its own src with onload; that shadows.)
+    // fallback for non-control elements.
     ['src','href','rel','as','media','type'].forEach(function(a){ if (!Object.getOwnPropertyDescriptor(baseProto, a)) { try { Object.defineProperty(baseProto, a, { configurable: true, get: function(){ return this.getAttribute(a) || ''; }, set: function(v){ this.setAttribute(a, v == null ? '' : String(v)); } }); } catch(e){} } });
     // CharacterData mutation methods (insertData/deleteData/appendData/replaceData/substringData/
     // splitText) are now native rtdom Tree ops bound on every node — see browser_env.rs.

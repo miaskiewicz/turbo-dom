@@ -1,0 +1,357 @@
+{
+  "browser": "Chrome/156.0.8078.4",
+  "v8": "15.6.75",
+  "casesSha256": "4eb8ab4c249314f8df0091bc39c8600df02b304dfedfa84d7269457fa60a89e2",
+  "probeSha256": "97f24426aeeb40f3af276e3d2468bf441d54da176681c8bde42feeb0bb5a8f83",
+  "collectorSha256": "7174415de76a891d657bbc3e66952c7b91356030e8fcd9d0ac4f52603d0c3952",
+  "flags": [
+    "--headless=new",
+    "--remote-debugging-pipe",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "about:blank"
+  ],
+  "errors": [],
+  "result": [
+    {
+      "id": "custom-elements-defined",
+      "result": {
+        "createdIsAttribute": null,
+        "before": {
+          "a": [
+            false,
+            true,
+            "2"
+          ],
+          "b": [
+            false,
+            true,
+            "2"
+          ],
+          "btn": [
+            false,
+            true,
+            "2"
+          ],
+          "btn2": [
+            false,
+            true,
+            "2"
+          ],
+          "f": [
+            false,
+            true,
+            "2"
+          ],
+          "plain": [
+            true,
+            false,
+            "1"
+          ],
+          "sx": [
+            true,
+            false,
+            "1"
+          ],
+          "up": [
+            true,
+            false,
+            "1"
+          ],
+          "later": [
+            false,
+            true,
+            "2"
+          ],
+          "autonomous": [
+            false,
+            true
+          ],
+          "customized": [
+            false,
+            true
+          ],
+          "isAttribute": [
+            true,
+            false
+          ],
+          "unknown": [
+            false,
+            true
+          ],
+          "upgradeLater": [
+            false,
+            true
+          ],
+          "qsaDefined": [
+            "plain",
+            "svg",
+            "sx",
+            "up",
+            "t"
+          ],
+          "qsaUndefined": [
+            "a",
+            "b",
+            "btn",
+            "btn2",
+            "f",
+            "x-a",
+            "later"
+          ]
+        },
+        "during": [
+          [
+            "a",
+            false
+          ],
+          [
+            "new",
+            false
+          ],
+          [
+            "new",
+            false
+          ],
+          [
+            "new",
+            false
+          ],
+          [
+            "new",
+            true
+          ],
+          [
+            "new",
+            true
+          ],
+          [
+            "a",
+            false
+          ],
+          [
+            "new",
+            false
+          ],
+          [
+            "new",
+            false
+          ]
+        ],
+        "afterDefine": {
+          "a": [
+            true,
+            false,
+            "1"
+          ],
+          "b": [
+            false,
+            true,
+            "2"
+          ],
+          "btn": [
+            true,
+            false,
+            "1"
+          ],
+          "btn2": [
+            false,
+            true,
+            "2"
+          ],
+          "f": [
+            false,
+            true,
+            "2"
+          ],
+          "plain": [
+            true,
+            false,
+            "1"
+          ],
+          "sx": [
+            true,
+            false,
+            "1"
+          ],
+          "up": [
+            true,
+            false,
+            "1"
+          ],
+          "later": [
+            false,
+            true,
+            "2"
+          ],
+          "autonomous": [
+            false,
+            true
+          ],
+          "customized": [
+            false,
+            true
+          ],
+          "isAttribute": [
+            true,
+            false
+          ],
+          "unknown": [
+            false,
+            true
+          ],
+          "upgradeLater": [
+            false,
+            true
+          ],
+          "qsaDefined": [
+            "a",
+            "btn",
+            "plain",
+            "svg",
+            "sx",
+            "up",
+            "x-a",
+            "t"
+          ],
+          "qsaUndefined": [
+            "b",
+            "btn2",
+            "f",
+            "later"
+          ]
+        },
+        "afterInsert": {
+          "a": [
+            true,
+            false,
+            "1"
+          ],
+          "b": [
+            false,
+            true,
+            "2"
+          ],
+          "btn": [
+            true,
+            false,
+            "1"
+          ],
+          "btn2": [
+            false,
+            true,
+            "2"
+          ],
+          "f": [
+            false,
+            true,
+            "2"
+          ],
+          "plain": [
+            true,
+            false,
+            "1"
+          ],
+          "sx": [
+            true,
+            false,
+            "1"
+          ],
+          "up": [
+            true,
+            false,
+            "1"
+          ],
+          "later": [
+            false,
+            true,
+            "2"
+          ],
+          "autonomous": [
+            true,
+            false,
+            "1"
+          ],
+          "customized": [
+            true,
+            false,
+            "1"
+          ],
+          "isAttribute": [
+            true,
+            false
+          ],
+          "unknown": [
+            false,
+            true
+          ],
+          "upgradeLater": [
+            true,
+            false
+          ],
+          "qsaDefined": [
+            "a",
+            "btn",
+            "plain",
+            "svg",
+            "sx",
+            "up",
+            "x-a",
+            "t",
+            "x-a",
+            "button"
+          ],
+          "qsaUndefined": [
+            "b",
+            "btn2",
+            "f",
+            "later"
+          ]
+        },
+        "failedAfterKind": "[object HTMLUnknownElement]",
+        "fresh": {
+          "createdAfter": [
+            true,
+            false
+          ],
+          "constructed": [
+            true,
+            false
+          ],
+          "customizedAfter": [
+            true,
+            false
+          ],
+          "failedAfter": [
+            false,
+            true
+          ],
+          "clone": [
+            true,
+            false
+          ],
+          "templateContent": [
+            false,
+            true
+          ],
+          "innerHTML": [
+            true,
+            false
+          ],
+          "innerHTMLButton": [
+            true,
+            false
+          ]
+        },
+        "later": [
+          true,
+          false,
+          "1"
+        ]
+      }
+    }
+  ]
+}

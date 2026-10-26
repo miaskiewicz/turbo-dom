@@ -118,7 +118,8 @@ fn image_state_with_host_load_state_matches_chrome156_control() {
 }
 
 /// Without host state (turbo-test: nothing loads) images report Chrome's not-loading answer:
-/// everything matches except the decodable image's natural size, which only a loader knows.
+/// everything matches except the decodable image's natural size and its `decode()` (resolved
+/// in Chrome, rejected as undecodable here), which only a loader knows.
 #[test]
 fn image_state_without_host_reports_not_loading_defaults() {
     let mut expected = control();
@@ -130,6 +131,10 @@ fn image_state_without_host_reports_not_loading_defaults() {
     );
     loaded["naturalWidth"] = serde_json::json!(0);
     loaded["naturalHeight"] = serde_json::json!(0);
+    let undecodable = expected["decode"]["parsed"]["broken"].clone();
+    let decoded = &mut expected["decode"]["parsed"]["loaded"];
+    assert_eq!(decoded, &serde_json::json!("resolved"));
+    *decoded = undecodable;
     let found = mismatches(&actual, &expected);
     assert!(found.is_empty(), "{}", found.join("\n"));
     assert_eq!(actual, expected);
@@ -196,6 +201,50 @@ fn image_host_set_state_contract() {
             "empty": [true, 0, 0, ""],
             "removed": [true, 0, 0, ""],
             "hidden": [false, false, 0, null]
+        })
+    );
+}
+
+/// turbo-dom#23: `decode()` waits for a load the host reports in progress and settles with the
+/// host's next state — resolved once decoded (complete with a natural size), an EncodingError
+/// when it failed or was cleared; every waiting call settles.
+#[test]
+fn decode_settles_with_host_load_state() {
+    let (result, _) = session(
+        r#"(async()=>{
+          const settle=(p,log,label)=>p.then(()=>log.push(label+':resolved'),e=>log.push(label+':'+e.name));
+          const tick=()=>new Promise(r=>Promise.resolve().then(r));
+          const log=[];
+          const img=new Image();
+          imageHostForTest.setState(img,{complete:false});
+          settle(img.decode(),log,'a');settle(img.decode(),log,'b');
+          await tick();
+          const waiting=log.length;
+          imageHostForTest.setState(img,{complete:false,naturalWidth:5,naturalHeight:5});
+          await tick();
+          const stillWaiting=log.length;
+          imageHostForTest.setState(img,{complete:true,naturalWidth:5,naturalHeight:4,currentSrc:'u'});
+          await tick();await tick();
+          const failed=document.createElement('img');
+          imageHostForTest.setState(failed,{complete:false});
+          settle(failed.decode(),log,'failed');
+          imageHostForTest.setState(failed,{complete:true,naturalWidth:0,naturalHeight:0});
+          const cleared=document.createElement('img');
+          imageHostForTest.setState(cleared,{complete:false});
+          settle(cleared.decode(),log,'cleared');
+          imageHostForTest.setState(cleared,null);
+          settle(img.decode(),log,'after');
+          await tick();await tick();
+          return {waiting,stillWaiting,log:log.sort()};
+        })()"#,
+        false,
+    );
+    assert_eq!(
+        result,
+        serde_json::json!({
+            "waiting": 0,
+            "stillWaiting": 0,
+            "log": ["a:resolved", "after:resolved", "b:resolved", "cleared:EncodingError", "failed:EncodingError"]
         })
     );
 }

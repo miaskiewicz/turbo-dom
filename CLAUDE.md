@@ -214,7 +214,9 @@ package or publish workflow.
   (html2pdf PDFs, raster screenshots) and `rtdom::cascade`. `_checked` validity = Chrome's
   `querySelector` (the `parse_for_cascade` grammar). The npm JS engine `src/runtime/selectors.mjs`
   is kept in lockstep: `test/selectors-chrome.test.mjs` asserts the same fixture (every
-  invalid selector throws `SyntaxError`). See `docs/selector-engine.md`.
+  invalid selector throws `SyntaxError`). `:defined` reads `Tree::custom_element_state` (creation-time
+  state unless an embedder — the V8 binding — reports an upgrade); `rtdom::cascade` / `cascade.mjs` rank
+  rules by each item's Selectors 4 `specificity()`. See `docs/selector-engine.md`.
 - **Selector parse cache** (`__selectorCache` in selectors.mjs) memoizes selector STRING → AST.
   Pure (DOM-independent) → no mutation invalidation. Never cache *results* without it.
 

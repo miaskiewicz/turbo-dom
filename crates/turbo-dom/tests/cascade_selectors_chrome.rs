@@ -37,11 +37,6 @@ fn open(item: &str) -> bool {
     OPEN.contains(&item)
 }
 
-/// Rows where turbo-dom deliberately differs from Chrome 156: the CSS-standard `s`
-/// (case-sensitive) attribute modifier is a Rust contract (`tests/attribute_case.rs`) that
-/// Chrome 156 rejects. Recorded, not asserted.
-const RUST_CONTRACT_ROWS: &[&str] = &["[a=b s]", "[a=b S]", "[a=\"1\" s]"];
-
 /// Elements in document order, template content excluded (Chrome walks `children`).
 fn elements(tree: &Tree) -> Vec<Handle> {
     fn walk(tree: &Tree, h: Handle, out: &mut Vec<Handle>) {
@@ -176,9 +171,6 @@ fn selectors_match_chrome156() {
         );
         for row in case["selectors"].as_array().unwrap() {
             let sel = row["selector"].as_str().unwrap();
-            if RUST_CONTRACT_ROWS.contains(&sel) {
-                continue;
-            }
             let units: Vec<u16> = sel.encode_utf16().collect();
             let valid = row["valid"].as_bool().unwrap();
             let sheet_valid = row["sheet_valid"].as_bool().unwrap();
@@ -246,6 +238,9 @@ fn selectors_match_chrome156() {
     for case in cascade_cases {
         if case["layout_only"].as_bool() != Some(true) {
             check_cascade_case(case, &mut failures);
+        }
+        if case["class"].as_str() != Some("cascade-order") {
+            check_rtdom_cascade_case(case, &mut failures);
         }
     }
     let probes = fixture["probes"].as_array().unwrap();
@@ -320,6 +315,42 @@ fn check_cascade_case(case: &Value, failures: &mut Vec<String>) {
         if got != w {
             failures.push(format!(
                 "cascade case {id}: el#{i} <{}> order {got}, Chrome {w}",
+                tree.local_name(h).unwrap_or("")
+            ));
+        }
+    }
+}
+
+/// `rtdom::cascade::computed_style` (`getComputedStyle`) over a cascade case: the case's sheet
+/// as the last `<head>` child resolves every element's `order` to Chrome's winner — rule
+/// validity, matching and Selectors 4 specificity (miaskiewicz/turbo-dom#24 item 2). The
+/// `cascade-order` cases (importance, origins, declaration order) are the layout cascade's;
+/// `rtdom::cascade` has no `!important` or user-agent origin.
+fn check_rtdom_cascade_case(case: &Value, failures: &mut Vec<String>) {
+    let id = case["id"].as_str().unwrap();
+    let html = case["html"].as_str().unwrap().replacen(
+        "</head>",
+        &format!("<style>{}</style></head>", case["css"].as_str().unwrap()),
+        1,
+    );
+    let tree = Tree::parse(&html);
+    let head = tree.query_selector("head").unwrap();
+    let sheet = *tree.children(head).last().unwrap();
+    let els: Vec<Handle> = elements(&tree)
+        .into_iter()
+        .filter(|&h| h != sheet)
+        .collect();
+    let want = case["winners"].as_array().unwrap();
+    assert_eq!(want.len(), els.len(), "{id}: element list");
+    for (i, &h) in els.iter().enumerate() {
+        let got = computed_style(&tree, h)
+            .get("order")
+            .cloned()
+            .unwrap_or_else(|| "0".to_string());
+        let w = want[i].as_str().unwrap();
+        if got != w {
+            failures.push(format!(
+                "rtdom::cascade case {id}: el#{i} <{}> order {got}, Chrome {w}",
                 tree.local_name(h).unwrap_or("")
             ));
         }
