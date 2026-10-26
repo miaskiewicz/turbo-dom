@@ -357,7 +357,6 @@ fn flex_item_box_sizing_case(id: &str) -> bool {
 }
 
 #[test]
-#[ignore = "turbo-dom#93: fails until the fix"]
 fn content_box_flex_items_add_their_frame_like_chrome_156() {
     compare_cases(flex_item_box_sizing_case);
 }

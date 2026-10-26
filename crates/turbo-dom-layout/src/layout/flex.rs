@@ -357,6 +357,42 @@ fn item_style(item: &LayoutBox, fs: f32, column: bool) -> Style {
     }
 }
 
+/// A flex item's style with its `size`, `min_size`, `max_size` and `flex_basis` lengths
+/// as border-box lengths, which is what taffy lays out: under `box-sizing: content-box`
+/// each grows by the item's padding and border on that axis (`column`: the basis is
+/// vertical; miaskiewicz/turbo-dom#93).
+fn border_box_sizes(mut style: Style, item: &LayoutBox, fs: f32, column: bool) -> Style {
+    let bs = item.resolved(ResolveCtx {
+        parent_font_size: fs,
+        cb_width: 0.0,
+    });
+    let border = bs.border.widths();
+    let frame = Size {
+        width: bs.padding.horizontal() + border.horizontal(),
+        height: bs.padding.vertical() + border.vertical(),
+    };
+    let grow = |size: Size<Dimension>| Size {
+        width: border_box(size.width, bs.box_sizing, frame.width),
+        height: border_box(size.height, bs.box_sizing, frame.height),
+    };
+    style.size = grow(style.size);
+    style.min_size = grow(style.min_size);
+    style.max_size = grow(style.max_size);
+    let main = if column { frame.height } else { frame.width };
+    style.flex_basis = border_box(style.flex_basis, bs.box_sizing, main);
+    style
+}
+
+/// A taffy length `d` as a border-box length for a box of `sizing` with `frame` px of
+/// padding and border on that axis; percentages and `auto` are left as they are.
+fn border_box(d: Dimension, sizing: BoxSizing, frame: f32) -> Dimension {
+    if d.tag() == taffy::CompactLength::LENGTH_TAG {
+        Dimension::length(block::to_border(d.value(), sizing, frame))
+    } else {
+        d
+    }
+}
+
 /// A flex item's taffy `size`: only its cross-axis size (the main axis is the basis).
 fn cross_size(bs: &BoxStyle, column: bool) -> Size<Dimension> {
     if column {
@@ -779,8 +815,11 @@ fn build_leaves(
         .iter()
         .enumerate()
         .map(|(i, it)| {
-            tree.new_leaf_with_context(item_style(it, fs, column), i)
-                .expect("flex leaf")
+            tree.new_leaf_with_context(
+                border_box_sizes(item_style(it, fs, column), it, fs, column),
+                i,
+            )
+            .expect("flex leaf")
         })
         .collect()
 }
