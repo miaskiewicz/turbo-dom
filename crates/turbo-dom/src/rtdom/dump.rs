@@ -88,8 +88,14 @@ fn serialize_node(tree: &Tree, h: Handle, depth: usize, out: &mut String) {
 /// Dump the document's children in html5lib format (root itself not printed).
 /// No trailing newline (matches the fixtures' `#document`).
 pub fn dump_tree(tree: &Tree) -> String {
+    dump_children(tree, tree.root())
+}
+
+/// Dump `parent`'s children (a document, fragment or fragment-parsing context
+/// element) in html5lib format, `parent` itself not printed. No trailing newline.
+pub fn dump_children(tree: &Tree, parent: Handle) -> String {
     let mut out = String::new();
-    for c in tree.children(tree.root()) {
+    for c in tree.children(parent) {
         serialize_node(tree, c, 0, &mut out);
     }
     if out.ends_with('\n') {
