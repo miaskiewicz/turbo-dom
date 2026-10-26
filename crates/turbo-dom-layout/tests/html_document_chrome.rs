@@ -222,7 +222,6 @@ fn spacing_case(id: &str) -> bool {
 }
 
 #[test]
-#[ignore = "miaskiewicz/turbo-dom#63: fails until the fix"]
 fn border_spacing_is_inherited_and_initially_zero_like_chrome_156() {
     compare_cases(spacing_case);
 }

@@ -210,6 +210,7 @@ const INHERITED: &[&str] = &[
     "visibility",
     "image-orientation",
     "caption-side",
+    "border-spacing",
 ];
 
 // --------------------------------------------------------------------------

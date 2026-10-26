@@ -394,9 +394,18 @@ fn empty_spacer_row_keeps_its_explicit_height() {
 
 #[test]
 fn border_spacing_separates_cells_by_default() {
-    // The default separate model puts 2px between cells (and at the edges), so a
-    // label cell doesn't butt against its value ("SpeciesF. catus" in the infobox).
-    let sep = table(vec![tr(vec![td(&[], "a"), td(&[], "b")])], &[], 500.0);
+    // The separate model with the UA `table { border-spacing: 2px }` puts 2px between
+    // cells (and at the edges), so a label cell doesn't butt against its value
+    // ("SpeciesF. catus" in the infobox). Without a `border-spacing` (a styled tree with
+    // no UA rules) there is none: the initial value is 0 (miaskiewicz/turbo-dom#63).
+    let bare = table(vec![tr(vec![td(&[], "a"), td(&[], "b")])], &[], 500.0);
+    let bc = cells(&rows(&bare)[0]);
+    assert!((bc[1].x - (bc[0].x + bc[0].width)).abs() < 0.01 && bc[0].x.abs() < 0.01);
+    let sep = table(
+        vec![tr(vec![td(&[], "a"), td(&[], "b")])],
+        &[("border-spacing", "2px")],
+        500.0,
+    );
     let cs = cells(&rows(&sep)[0]);
     let gap = cs[1].x - (cs[0].x + cs[0].width);
     assert!((gap - 2.0).abs() < 0.5, "2px between cells, got {gap}");

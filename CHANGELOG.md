@@ -7,7 +7,7 @@ at the time); this file reconstructs them from history.
 
 ## [Unreleased]
 
-### Fixed — turbo-dom-layout tables, clipping and box sizing (P5b-W5, miaskiewicz/turbo-dom#51/#52/#62/#65, Chrome 156 controls)
+### Fixed — turbo-dom-layout tables, clipping and box sizing (P5b-W5, miaskiewicz/turbo-dom#51/#52/#62/#63/#65, Chrome 156 controls)
 Each fix is backed by a Chrome for Testing 156 control and lists the corpus outputs it
 changes in `tools/parity/expected/p5b-w5-turbo-dom-*.json`.
 - Table captions (#51): a `<caption>` (UA `caption { display: table-caption; text-align:
@@ -51,6 +51,12 @@ changes in `tools/parity/expected/p5b-w5-turbo-dom-*.json`.
   `width:120px; border:4px` table was 128px wide; an author `box-sizing` still wins).
   Control: `table-border-box-*` / `table-content-box-author` in `html-document`,
   `caption-narrow` in the paint control.
+- `border-spacing` (#63, found while fixing #51): the property is inherited and its
+  initial value is 0; the UA `table` rule gives `<table>` its 2px. Every table box used
+  to default to 2px, so a `display: table` element that is not a `<table>` (CSS tables,
+  a caption test's anonymous table) had 2px gaps around and between its cells, and a
+  `display: table` element did not inherit a `border-spacing` from its ancestors.
+  Control: `css-table-*` / `table-spacing-not-inherited-past-a-table` in `html-document`.
 
 ### Fixed — `getComputedStyle` defaults and no injected `<title>` (P5b-X3, miaskiewicz/turbo-surf#36 items 1–2, Chrome 156 control)
 - turbo-dom-browser-env: `getComputedStyle` used to return `""` for `display`, `position`
