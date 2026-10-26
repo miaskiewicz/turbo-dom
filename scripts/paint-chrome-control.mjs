@@ -5,6 +5,9 @@
 //   - miaskiewicz/turbo-dom#52 (`clip-*`): an absolutely positioned box's `clip: rect()`
 //     clips the box and its descendants; a zero-area clip paints nothing; `clip` does not
 //     apply to a box that is not absolutely positioned.
+// P5b-W7 adds miaskiewicz/turbo-dom#81 (`icb-*`): the screenshot's initial containing block
+// is its viewport, so `position: fixed` boxes and absolutely positioned ones it contains
+// anchor `bottom` / `%` insets to the viewport's bottom edge.
 //
 // Every case is one page (viewport 1280x800, `body{margin:0;background:#00ffff}`). Chrome for
 // Testing 156 records, per case, the getBoundingClientRect() of every `[data-cid]` element
@@ -127,6 +130,20 @@ const CASES = [
     html: DOC(`<img data-cid="i" src="${SPRITE}" style="${at(20, 20)};clip:rect(0,50px,40px,0)">`),
     assets: [SPRITE],
     probes: [[45, 40], [95, 40], [21, 21], [69, 59]],
+  },
+  // miaskiewicz/turbo-dom#81.
+  {
+    // A fixed red square 10px off the bottom-right corner, below a taller-than-viewport block.
+    id: "icb-fixed-bottom-right",
+    html: DOC(`${BLOCK(10, 2000, "")}<div data-cid="c" style="position:fixed;right:10px;bottom:10px;width:20px;height:20px;background:#ff0000"></div>`),
+    probes: [[1260, 780], [1251, 771], [1260, 765], [1260, 795], [1275, 780], [1260, 10]],
+  },
+  {
+    // An absolutely positioned blue bar at the bottom of the initial containing block, and a
+    // green one at its vertical middle (`top: 50%`).
+    id: "icb-absolute-bottom-and-percent",
+    html: DOC(`<div data-cid="b" style="position:absolute;left:100px;bottom:0;width:200px;height:20px;background:#0000ff"></div><div data-cid="m" style="position:absolute;left:100px;top:50%;width:200px;height:20px;background:#00ff00"></div>`),
+    probes: [[200, 790], [200, 779], [200, 410], [200, 399], [200, 10]],
   },
 ];
 
