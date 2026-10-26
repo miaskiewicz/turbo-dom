@@ -1430,6 +1430,7 @@ dependencies = [
 name = "turbo-dom"
 version = "0.5.8"
 dependencies = [
+ "cssparser",
  "html5ever",
  "log",
  "markup5ever_rcdom",

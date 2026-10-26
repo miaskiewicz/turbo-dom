@@ -6,10 +6,12 @@
 //!   * `tree`  — COW tree over the immutable parse buffer + version counter.
 //!   * `query` — selector matching + version-cached querySelectorAll/getElementBy*.
 //!   * `color` — CSS color canonicalization (rgb()/rgba()), pure functions.
+//!   * `css_values` — Chrome-compatible CSS value grammars (`zoom`), pure functions.
 
 pub mod canvas;
 pub mod cascade;
 pub mod color;
+pub mod css_values;
 pub mod cssom;
 pub mod custom_elements;
 pub mod events;

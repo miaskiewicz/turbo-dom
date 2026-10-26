@@ -14,6 +14,8 @@ use lightningcss::stylesheet::PrinterOptions;
 use lightningcss::stylesheet::{ParserOptions, StyleSheet};
 use lightningcss::targets::{Features, Targets};
 use lightningcss::traits::ToCss;
+// The `zoom` grammar lives in base turbo-dom so native layout consumers share it.
+pub use turbo_dom_parser::rtdom::css_values::{css_number, zoom_value};
 
 pub fn is_supported_property(name: &str) -> bool {
     !matches!(PropertyId::from(name), PropertyId::Custom(_))
@@ -361,17 +363,6 @@ impl<'i> DeclarationParser<'i> for CssParser {
     }
 }
 
-/// Chrome156 standardized `zoom`: `normal`, a non-negative `<number>` or
-/// `<percentage>`, or one calc() of either kind. Returns Chrome's specified-value
-/// serialization and the factor it computes to (zero still means "no zoom").
-pub fn zoom_value(source: &str) -> Option<(String, f32)> {
-    let mut source = ParserInput::new(source);
-    let mut input = Parser::new(&mut source);
-    let value = zoom_component(&mut input).ok()?;
-    input.expect_exhausted().ok()?;
-    Some(value)
-}
-
 fn zoom_declaration<'i>(input: &mut Parser<'i, '_>) -> Result<String, ParseError<'i, ()>> {
     let start = input.state();
     let begin = input.position();
@@ -396,147 +387,6 @@ fn zoom_declaration<'i>(input: &mut Parser<'i, '_>) -> Result<String, ParseError
         .into_iter()
         .find(|keyword| text.eq_ignore_ascii_case(keyword));
     Ok(keyword.map_or_else(|| text.to_string(), str::to_string))
-}
-
-#[derive(Clone, Copy, PartialEq)]
-enum ZoomKind {
-    Number,
-    Percentage,
-}
-
-type ZoomResult<'i> = Result<(String, f32), ParseError<'i, ()>>;
-
-fn zoom_component<'i>(input: &mut Parser<'i, '_>) -> ZoomResult<'i> {
-    input.skip_whitespace();
-    let location = input.current_source_location();
-    let start = input.position();
-    match input.next()?.clone() {
-        cssparser::Token::Ident(name) if name.eq_ignore_ascii_case("normal") => {
-            Ok(("normal".into(), 1.0))
-        }
-        cssparser::Token::Number { value, .. } if value >= 0.0 => Ok((css_number(value), value)),
-        cssparser::Token::Percentage { unit_value, .. } if unit_value >= 0.0 => {
-            let percent = percentage(input.slice_from(start), unit_value);
-            Ok((format!("{}%", css_number(percent)), ratio(percent)))
-        }
-        cssparser::Token::Function(name) if name.eq_ignore_ascii_case("calc") => input
-            .parse_nested_block(|input| {
-                let (value, kind) = calc_sum(input)?;
-                input.expect_exhausted()?;
-                let suffix = if kind == ZoomKind::Percentage {
-                    "%"
-                } else {
-                    ""
-                };
-                let factor = if kind == ZoomKind::Percentage {
-                    ratio(value)
-                } else {
-                    value
-                };
-                Ok((
-                    format!("calc({}{suffix})", css_number(value)),
-                    factor.max(0.0),
-                ))
-            }),
-        _ => Err(location.new_custom_error(())),
-    }
-}
-
-// Blink keeps the authored percentage as a float and divides it for the factor;
-// the tokenizer's pre-divided unit value would round differently.
-fn percentage(token: &str, unit_value: f32) -> f32 {
-    token
-        .trim()
-        .trim_end_matches('%')
-        .parse()
-        .unwrap_or_else(|_| (f64::from(unit_value) * 100.0) as f32)
-}
-fn ratio(percent: f32) -> f32 {
-    (f64::from(percent) / 100.0) as f32
-}
-
-fn calc_sum<'i>(input: &mut Parser<'i, '_>) -> Result<(f32, ZoomKind), ParseError<'i, ()>> {
-    let (mut total, kind) = calc_product(input)?;
-    while let Ok(sign) = input.try_parse(|input| match input.next()?.clone() {
-        cssparser::Token::Delim(sign @ ('+' | '-')) => Ok(sign),
-        _ => Err(input.new_custom_error::<_, ()>(())),
-    }) {
-        let (value, other) = calc_product(input)?;
-        if other != kind {
-            return Err(input.new_custom_error(()));
-        }
-        total = if sign == '+' {
-            total + value
-        } else {
-            total - value
-        };
-    }
-    Ok((total, kind))
-}
-
-fn calc_product<'i>(input: &mut Parser<'i, '_>) -> Result<(f32, ZoomKind), ParseError<'i, ()>> {
-    let (mut total, mut kind) = calc_value(input)?;
-    while let Ok(operator) = input.try_parse(|input| match input.next()?.clone() {
-        cssparser::Token::Delim(operator @ ('*' | '/')) => Ok(operator),
-        _ => Err(input.new_custom_error::<_, ()>(())),
-    }) {
-        let (value, other) = calc_value(input)?;
-        match (operator, kind, other) {
-            ('*', _, ZoomKind::Number) => total *= value,
-            ('*', ZoomKind::Number, ZoomKind::Percentage) => {
-                total *= value;
-                kind = ZoomKind::Percentage;
-            }
-            ('/', _, ZoomKind::Number) if value != 0.0 => total /= value,
-            _ => return Err(input.new_custom_error(())),
-        }
-    }
-    Ok((total, kind))
-}
-
-fn calc_value<'i>(input: &mut Parser<'i, '_>) -> Result<(f32, ZoomKind), ParseError<'i, ()>> {
-    input.skip_whitespace();
-    let location = input.current_source_location();
-    let start = input.position();
-    match input.next()?.clone() {
-        cssparser::Token::Number { value, .. } => Ok((value, ZoomKind::Number)),
-        cssparser::Token::Percentage { unit_value, .. } => Ok((
-            percentage(input.slice_from(start), unit_value),
-            ZoomKind::Percentage,
-        )),
-        cssparser::Token::ParenthesisBlock => input.parse_nested_block(calc_sum),
-        cssparser::Token::Function(name) if name.eq_ignore_ascii_case("calc") => {
-            input.parse_nested_block(calc_sum)
-        }
-        _ => Err(location.new_custom_error(())),
-    }
-}
-
-/// Blink's CSS number serialization: six significant digits (printf `%g`).
-pub fn css_number(value: f32) -> String {
-    let value = f64::from(value);
-    if value == 0.0 || !value.is_finite() {
-        return "0".into();
-    }
-    let exponent = value.abs().log10().floor() as i32;
-    if !(-5..6).contains(&exponent) {
-        let text = format!("{value:.5e}");
-        let (mantissa, power) = text.split_once('e').unwrap_or((&text, "0"));
-        let mantissa = trim_fraction(mantissa);
-        let power: i32 = power.parse().unwrap_or(0);
-        let sign = if power < 0 { '-' } else { '+' };
-        return format!("{mantissa}e{sign}{:02}", power.abs());
-    }
-    let decimals = usize::try_from(5 - exponent).unwrap_or(0);
-    trim_fraction(&format!("{value:.decimals$}")).to_string()
-}
-
-fn trim_fraction(text: &str) -> &str {
-    if text.contains('.') {
-        text.trim_end_matches('0').trim_end_matches('.')
-    } else {
-        text
-    }
 }
 
 // These rules require descriptors to validate the rule itself. Testing an empty
