@@ -1,7 +1,8 @@
 //! Custom element reaction order, template-contents upgrades and qualified-name extraction
 //! through the binding, against two Chrome 156 controls:
-//! - the npm runtime's `test/fixtures/dom_adoption_reactions_{probe.js,cases.json,chrome156.json}`
-//!   (turbo-dom#29; read from the repository, not copied — standalone V8 has no `DOMParser`,
+//! - `dom_adoption_reactions_{probe.js,cases.json,chrome156.json}` (turbo-dom#29; shared with
+//!   the npm runtime's `test/dom-adoption-reactions-chrome.test.mjs`, which reads it here —
+//!   standalone V8 has no `DOMParser`,
 //!   so the probe's one `new DOMParser().parseFromString(…)` document is the binding's
 //!   `parse_html_document` of the same markup);
 //! - `dom_reactions_names_{probe.js,cases.json,chrome156.json}` (fragment-parser setters'
@@ -16,11 +17,9 @@
 use super::*;
 use sha2::{Digest, Sha256};
 
-const ADOPTION_PROBE: &str = include_str!("../../../test/fixtures/dom_adoption_reactions_probe.js");
-const ADOPTION_CASES: &str =
-    include_str!("../../../test/fixtures/dom_adoption_reactions_cases.json");
-const ADOPTION_CONTROL: &str =
-    include_str!("../../../test/fixtures/dom_adoption_reactions_chrome156.json");
+const ADOPTION_PROBE: &str = include_str!("dom_adoption_reactions_probe.js");
+const ADOPTION_CASES: &str = include_str!("dom_adoption_reactions_cases.json");
+const ADOPTION_CONTROL: &str = include_str!("dom_adoption_reactions_chrome156.json");
 const NAMES_PROBE: &str = include_str!("dom_reactions_names_probe.js");
 const NAMES_CASES: &str = include_str!("dom_reactions_names_cases.json");
 const NAMES_CONTROL: &str = include_str!("dom_reactions_names_chrome156.json");

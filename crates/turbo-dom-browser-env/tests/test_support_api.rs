@@ -6,7 +6,7 @@ use turbo_dom_browser_env::test_support::{self, FILES};
 
 #[test]
 fn test_support_constants_are_the_shipped_files() {
-    assert_eq!(FILES.len(), 76);
+    assert_eq!(FILES.len(), 82);
     let src = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
     for (name, bytes) in FILES {
         assert_eq!(*bytes, std::fs::read(src.join(name)).unwrap(), "{name}");
@@ -27,7 +27,6 @@ fn test_support_constants_are_the_shipped_files() {
 /// the DOM adoption / reactions control the npm runtime shares and the fragment-parser /
 /// qualified-name one (miaskiewicz/turbo-dom P5b-X6).
 #[test]
-#[ignore = "P5b-X6: fails until the fixture moves into the crate"]
 fn dom_reaction_controls_are_exported() {
     for name in [
         "dom_adoption_reactions_cases.json",
@@ -47,7 +46,6 @@ fn dom_reaction_controls_are_exported() {
 /// The crate's tests are self-contained: no `include_str!` / `include_bytes!` reaches
 /// outside the crate, so they run from the published package too.
 #[test]
-#[ignore = "P5b-X6: fails until the fixture moves into the crate"]
 fn tests_read_no_file_outside_the_crate() {
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
     let mut outside = Vec::new();

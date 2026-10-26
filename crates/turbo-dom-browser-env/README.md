@@ -248,9 +248,10 @@ children's `disconnectedCallback`s. Insertion upgrades connected elements only;
 `customElements.upgrade(root)` skips candidates another registry (or none, like
 template contents in their inert document) governs; an element is constructed at
 most once (turbo-dom#42). Independently installed documents deliver their reactions
-before the call returns too (turbo-dom#54). Controls: the npm runtime's
-`test/fixtures/dom_adoption_reactions_chrome156.json` (read in place by
-`src/dom_reactions_tests.rs`) and `src/dom_reactions_names_chrome156.json`.
+before the call returns too (turbo-dom#54). Controls:
+`src/dom_adoption_reactions_chrome156.json` (shared with the npm runtime's
+`test/dom-adoption-reactions-chrome.test.mjs`, which reads it from this crate) and
+`src/dom_reactions_names_chrome156.json`, both exported through `test_support`.
 
 ### Feature `native-sdk-frame-read` (off by default)
 

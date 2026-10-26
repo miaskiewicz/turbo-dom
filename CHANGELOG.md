@@ -7,6 +7,17 @@ at the time); this file reconstructs them from history.
 
 ## [Unreleased]
 
+### Changed — self-contained binding tests (P5b-X6)
+- The DOM adoption / custom element reactions control moved from the npm tree
+  (`test/fixtures/dom_adoption_reactions_{probe.js,cases.json,chrome156.json}`) into
+  `crates/turbo-dom-browser-env/src/`. `src/dom_reactions_tests.rs` used to `include_str!` it
+  from outside the crate, so the test could not build from the published package. The npm
+  test `test/dom-adoption-reactions-chrome.test.mjs` now reads it from the crate.
+- `test_support` exports it and the `dom_reactions_names_*` control
+  (`DOM_ADOPTION_REACTIONS_*`, `DOM_REACTIONS_NAMES_*`; `FILES` has 82 entries).
+- A test now asserts that no `include_str!` / `include_bytes!` in the crate's `src/` or
+  `tests/` leaves the crate.
+
 ### Fixed — document rules no longer style shadow trees (P5b-X6, miaskiewicz/turbo-dom#68, Chrome 156 control)
 - turbo-dom-browser-env: `getComputedStyle`'s JS cascade read the owner document's sheets
   for every element, so document rules selected elements inside shadow trees. A shadow tree
@@ -91,7 +102,7 @@ at the time); this file reconstructs them from history.
   The prefix is the first part and the local name the second: `a:b:c` / `a:b:c:d` /
   `a:b:` create prefix `a`, local name `b`, qualified name `a:b`. An empty second part
   (`a::b`) throws `InvalidCharacterError`. The binding used to keep `b:c` as the local name.
-- Controls: `nsTwoColons` in `test/fixtures/dom_adoption_reactions_chrome156.json` and
+- Controls: `nsTwoColons` in `src/dom_adoption_reactions_chrome156.json` and
   section `names` of `src/dom_reactions_names_chrome156.json`.
 
 ### Fixed — custom element upgrades and reaction order (P5b-X5, miaskiewicz/turbo-dom#42, #43, Chrome 156 controls)
@@ -109,8 +120,7 @@ at the time); this file reconstructs them from history.
   `insertAdjacentHTML`, `setHTMLUnsafe`, `createContextualFragment`) queues its elements'
   upgrades before the setter's removals queue `disconnectedCallback`s
   (`ctor r4, conn r4, disc r1, …`).
-- Controls: the npm runtime's `test/fixtures/dom_adoption_reactions_chrome156.json` (read
-  in place by `src/dom_reactions_tests.rs`) and the new
+- Controls: `src/dom_adoption_reactions_chrome156.json` (shared with the npm runtime) and the new
   `src/dom_reactions_names_{probe.js,cases.json,chrome156.json}` (fragment-parser setters).
 
 ### Fixed — custom element reactions in independent documents (P5b-X5, miaskiewicz/turbo-dom#54, Chrome 156 control)
@@ -233,8 +243,8 @@ at the time); this file reconstructs them from history.
   constructed; SVG context lost; positions are case-insensitive; `NoModificationAllowedError`
   / `SyntaxError` like Chrome; turbo-dom#39). `replaceWith(…)` listing the node itself keeps
   it, and the node is removed before its replacements go in (turbo-dom#40).
-  Control: `test/fixtures/dom_adoption_reactions_chrome156.json` (probe + cases beside it,
-  recorded with `crates/turbo-dom-browser-env/scripts/select-element-chrome-control.mjs`),
+  Control: `crates/turbo-dom-browser-env/src/dom_adoption_reactions_chrome156.json` (probe +
+  cases beside it; under `test/fixtures/` until P5b-X6), recorded with `crates/turbo-dom-browser-env/scripts/select-element-chrome-control.mjs`),
   asserted by `test/dom-adoption-reactions-chrome.test.mjs` (the one deviation: the runtime's
   `HTMLElement` is `Element`, so `instanceof HTMLElement` is true for every element).
 
