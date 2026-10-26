@@ -390,6 +390,17 @@ const CASES = [
   { id: "column-flex-percent-width", html: DOC(S("body{margin:0}"), `<div data-cid="f" style="display:flex;flex-direction:column;width:200px"><div data-cid="d" style="width:50%;height:15px"></div></div>`) },
   { id: "column-flex-reverse", html: DOC(S("body{margin:0}"), `<div data-cid="f" style="display:flex;flex-direction:column-reverse"><div data-cid="d" style="width:30px;height:15px"></div><div data-cid="e" style="width:40px;height:5px"></div></div>`) },
   { id: "column-flex-min-max-width", html: DOC(S("body{margin:0}"), `<div data-cid="f" style="display:flex;flex-direction:column;width:200px"><div data-cid="d" style="max-width:50px;height:15px"></div><div data-cid="e" style="min-width:300px;height:5px"></div></div>`) },
+  // P5b-W7, miaskiewicz/turbo-dom#85: in a max-content width consecutive floats sit side
+  // by side (their margin boxes add up, per side, until a `clear`); a block that
+  // establishes a formatting context sits beside them.
+  { id: "float-sum-two-left", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="float:left"><div style="float:left;height:5px;width:20px;margin:0 3px"></div><div style="float:left;height:5px;width:20px;margin:0 2px"></div></div>`) },
+  { id: "float-sum-left-and-right", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="float:left"><div style="float:left;height:5px;width:20px"></div><div style="float:right;width:30px;height:5px"></div></div>`) },
+  { id: "float-sum-then-block", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="float:left"><div style="float:left;height:5px;width:20px"></div><div style="float:left;height:5px;width:30px"></div><div style="width:40px;height:5px"></div></div>`) },
+  { id: "float-sum-then-wide-block", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="float:left"><div style="float:left;height:5px;width:20px"></div><div style="width:40px;height:5px"></div><div style="float:left;height:5px;width:30px"></div></div>`) },
+  { id: "float-sum-beside-formatting-context", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="float:left"><div style="float:left;height:5px;width:20px"></div><div style="overflow:hidden;width:40px;height:5px"></div></div>`) },
+  { id: "float-sum-clear-resets", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="float:left"><div style="float:left;height:5px;width:20px"></div><div style="float:left;height:5px;width:30px;clear:left"></div></div>`) },
+  { id: "float-sum-in-inline-block", html: DOC(S("body{margin:0}"), `<div style="font-size:0"><div data-cid="c" style="display:inline-block"><div style="float:left;height:5px;width:20px"></div><div style="float:left;height:5px;width:25px"></div></div></div>`) },
+  { id: "float-sum-in-table-cell", html: DOC(S("body{margin:0}"), `<table style="border-spacing:0"><tr><td data-cid="c" style="padding:0"><div style="float:left;height:5px;width:20px"></div><div style="float:left;height:5px;width:25px"></div></td></tr></table>`) },
 ];
 
 /** The RGB of a 1x1 PNG screenshot (any filter: a single pixel's filter adds 0). */

@@ -103,7 +103,7 @@ fn inline_flex_grid_case(id: &str) -> bool {
 /// The control cases of an open bug, each asserted by its own test (`#[ignore]`d until
 /// its fix lands) and held out of [`html_documents_lay_out_as_chrome_156`].
 fn held_out(id: &str) -> bool {
-    let groups: [fn(&str) -> bool; 23] = [
+    let groups: [fn(&str) -> bool; 24] = [
         auto_table_case,
         inline_flex_grid_case,
         abs_auto_width_case,
@@ -127,6 +127,7 @@ fn held_out(id: &str) -> bool {
         intrinsic_oof_case,
         abs_stretch_case,
         column_flex_case,
+        float_sum_case,
     ];
     groups.iter().any(|group| group(id))
 }
@@ -371,6 +372,17 @@ fn column_flex_case(id: &str) -> bool {
 #[test]
 fn column_flex_items_size_by_their_height_like_chrome_156() {
     compare_cases(column_flex_case);
+}
+
+/// miaskiewicz/turbo-dom#85: consecutive floats add up in a max-content width.
+fn float_sum_case(id: &str) -> bool {
+    id.starts_with("float-sum-")
+}
+
+#[test]
+#[ignore = "turbo-dom#85: fails until the fix"]
+fn floats_sit_side_by_side_in_max_content_like_chrome_156() {
+    compare_cases(float_sum_case);
 }
 
 /// The first `<th>` of a styled forest.
