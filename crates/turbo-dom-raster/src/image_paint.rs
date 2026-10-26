@@ -996,3 +996,7 @@ mod shared_layer_tests {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "image_truncation_tests.rs"]
+mod truncation_tests;
