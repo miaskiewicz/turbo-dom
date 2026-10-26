@@ -48,6 +48,14 @@ probe-of-the-re-encode equal the new ones over turbo-dom's `tools/parity` image 
 every 8/16-bit sample value. `system_fonts` renders share turbo-dom-layout's process-wide
 `FontRegistry::system` registry.
 
+Inline `<svg>`: the layout has no inline-SVG painter, so the screenshot parses the snapshot
+into a turbo-dom tree, replaces each outermost SVG-namespace `<svg>` element with an `<img>`
+(its `class`/`style`/`width`/`height`) and rasterizes the element re-serialized as
+namespace-well-formed XML (miaskiewicz/turbo-dom#25). Only parsed elements convert: a `<svg`
+inside an attribute value (a raw-UTF-8 SVG `data:` URL), a `<script>` string or `<noscript>`
+text stays as it is. `tests/inline_svg_chrome.rs` checks the pixels against Chrome 156
+(`scripts/inline-svg-chrome-control.mjs`).
+
 ## Provenance
 
 Relocated **verbatim** from `turbo-surf-raster` 0.5.5 (miaskiewicz/turbo-surf @
@@ -56,9 +64,9 @@ code change is the dependency `turbo-html2pdf-core` -> `turbo-dom-layout` (same 
 same names). `scripts/verify-copied-layout.sh` checks the copy.
 
 ```bash
-cargo test -p turbo-dom-raster        # 42 unit tests + tests/screenshot.rs (24)
+cargo test -p turbo-dom-raster        # 40 unit tests, tests/screenshot.rs (24) + the Chrome 156 controls
 cargo check -p turbo-dom-raster --features gpu-metal,coretext
-cargo test -p turbo-dom-raster --features avif  # AVIF pixels vs the Chrome 156 control
+cargo test -p turbo-dom-raster --features avif  # AVIF pixels vs the Chrome 156 control (CI raster job)
 ```
 
 Lints: `clippy::pedantic` via `[workspace.lints]` (see turbo-dom-layout's README).
