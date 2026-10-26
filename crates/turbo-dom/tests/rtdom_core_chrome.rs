@@ -23,7 +23,13 @@ const FIXTURE: &str = include_str!("fixtures/rtdom_core_chrome156.json");
 /// Recorded Chrome answers rtdom does not give yet, each with its issue; skipped by the
 /// assertions until the fixing commit removes them here. (turbo-dom#92, RCDATA-context
 /// fragments dropping U+0000, is fixed.)
-const OPEN_DOCUMENTS: &[&str] = &[];
+/// - miaskiewicz/turbo-dom#103: an empty DOCTYPE system identifier counts as missing.
+const OPEN_DOCUMENTS: &[&str] = &[
+    "doctype_transitional_empty_system",
+    "doctype_transitional_single_empty_system",
+    "doctype_transitional_empty_system_table",
+    "doctype_frameset_empty_system",
+];
 /// (turbo-dom#91, #96 and #98 are fixed.)
 const OPEN_SELECTORS: &[&str] = &[];
 
@@ -146,6 +152,18 @@ fn documents_match_chrome_through_both_parsers() {
         } else {
             let upstream = Tree::parse(html);
             let positioned = Tree::parse_with_source_positions(html);
+            let compat = case["compatMode"].as_str().unwrap();
+            for (path, tree) in [
+                ("parse", &upstream),
+                ("parse_with_source_positions", &positioned),
+            ] {
+                if tree.compat_mode() != compat {
+                    failures.push(format!(
+                        "{id} via {path}: compatMode {}, Chrome {compat}",
+                        tree.compat_mode()
+                    ));
+                }
+            }
             [
                 ("parse", dump(&upstream, upstream.root())),
                 (
