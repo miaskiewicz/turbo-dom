@@ -429,6 +429,8 @@ const CASES = [
   { id: "abs-padding-box-bottom-in-padded-ancestor", html: DOC(S("body{margin:0}"), `<div style="position:relative;border:3px solid;height:50px;padding:10px"><div data-cid="c" style="position:absolute;bottom:0;left:0;width:10px;height:5px"></div></div>`) },
   { id: "abs-padding-box-full-height-zero-height-padded", html: DOC(S("body{margin:0}"), `<div style="position:relative;height:0;padding-bottom:40px"><div style="height:30px"></div><div data-cid="c" style="position:absolute;top:0;width:10px;height:100%"></div></div>`) },
   { id: "abs-padding-box-full-height-auto-padded", html: DOC(S("body{margin:0}"), `<div style="position:relative;padding:6px 0 4px"><div style="height:30px"></div><div data-cid="c" style="position:absolute;top:0;width:10px;height:100%"></div></div>`) },
+  { id: "abs-padding-box-percent-height-indefinite", html: DOC(S("body{margin:0}"), `<div><div style="position:relative;height:50%;padding:10px 0"><div style="height:30px"></div><div data-cid="c" style="position:absolute;top:0;width:10px;height:100%"></div></div></div>`) },
+  { id: "abs-padding-box-auto-height-in-definite-ancestor", html: DOC(S("body{margin:0}"), `<div style="position:relative;height:100px"><div style="position:relative;padding:10px 0"><div style="height:30px"></div><div data-cid="c" style="position:absolute;top:0;width:10px;height:100%"></div></div></div>`) },
   // P5b-W6, miaskiewicz/turbo-dom#75 item 1: a last child's bottom margin and its parent's
   // `min-height` / `max-height`. The margin collapses through an auto-height parent whose
   // used height is its content height; when `min-height` (or `max-height`) changes the
