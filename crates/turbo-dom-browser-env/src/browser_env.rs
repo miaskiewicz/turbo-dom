@@ -9654,6 +9654,10 @@ mod dom_exception_realm_tests;
 mod custom_elements_collect_tests;
 
 #[cfg(test)]
+#[path = "html_image_srcset_tests.rs"]
+mod html_image_srcset_tests;
+
+#[cfg(test)]
 #[path = "css_adoption_tests.rs"]
 mod css_adoption_tests;
 
