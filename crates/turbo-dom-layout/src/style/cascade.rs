@@ -6,9 +6,9 @@
 use std::collections::BTreeMap;
 
 use super::parser::{parse_declarations, Declaration, Rule};
-use super::selector::{AttrOp, AttrSel, Combinator, Compound, Pseudo, Selector, Specificity};
 use super::token::{resolve_tokens, TokenSet};
 use crate::node::{Attr, Element, Node, Tag};
+use turbo_dom::rtdom::query::Specificity;
 use turbo_dom::Handle;
 
 /// Computed property values for one element.
@@ -199,37 +199,33 @@ const INHERITED: &[&str] = &[
 ];
 
 // --------------------------------------------------------------------------
-// element position + match context
+// the element being styled
 // --------------------------------------------------------------------------
 
-#[derive(Debug, Clone, Copy)]
-struct ElemPos {
-    index: usize,
-    of_type_index: usize,
-    of_type_total: usize,
-    siblings: usize,
-}
-
-/// Where a match context reads its element's attributes: the legacy owned node's
-/// list, or a turbo-dom element (by local attribute name, in attribute order —
-/// the same identities html5ever's `name.local` gave the legacy conversion).
+/// Where the non-selector cascade inputs (presentational hints, tokens, inline style,
+/// `cellpadding`) read an element's attributes: the legacy owned node's list, or a
+/// turbo-dom element (by local attribute name, in attribute order — the same identities
+/// html5ever's `name.local` gave the legacy conversion).
 #[derive(Clone, Copy)]
-enum Attrs<'a> {
+pub(crate) enum Attrs<'a> {
     Node(&'a [Attr]),
     Tree(&'a turbo_dom::Tree, Handle),
 }
 
 impl<'a> Attrs<'a> {
     /// The first attribute named exactly `name`.
-    fn get(self, name: &str) -> Option<&'a str> {
+    pub(crate) fn get(self, name: &str) -> Option<&'a str> {
         match self {
-            Attrs::Node(attrs) => find_attr(attrs, name),
+            Attrs::Node(attrs) => attrs
+                .iter()
+                .find(|a| a.name == name)
+                .map(|a| a.value.as_str()),
             Attrs::Tree(tree, h) => tree.get_attribute_local(h, name),
         }
     }
 
     /// The first attribute whose name equals `name` ignoring ASCII case.
-    fn get_ignore_case(self, name: &str) -> Option<&'a str> {
+    pub(crate) fn get_ignore_case(self, name: &str) -> Option<&'a str> {
         match self {
             Attrs::Node(attrs) => attrs
                 .iter()
@@ -243,25 +239,23 @@ impl<'a> Attrs<'a> {
     }
 }
 
-#[derive(Clone)]
-struct Ctx<'a> {
-    tag: Option<&'a str>,
-    id: Option<&'a str>,
-    classes: Vec<&'a str>,
-    attrs: Attrs<'a>,
-    pos: ElemPos,
-    /// Whether the element has no element/text children (`:empty`).
-    empty: bool,
-    /// Preceding element siblings in document order (for the `+`/`~` combinators).
-    /// Each carries an empty `prev`; the matcher re-slices this list when it steps
-    /// left across a sibling combinator.
-    prev: Vec<Ctx<'a>>,
+/// The element being styled, as the non-selector inputs see it: its local name (`None`
+/// for a marker) and attributes.
+#[derive(Clone, Copy)]
+pub(crate) struct Subject<'a> {
+    pub(crate) tag: Option<&'a str>,
+    pub(crate) attrs: Attrs<'a>,
 }
 
-fn html_name(element: &Element) -> Option<&str> {
-    match &element.tag {
-        Tag::Html(name) => Some(name),
-        Tag::Marker(_) => None,
+impl<'a> Subject<'a> {
+    pub(crate) fn node(element: &'a Element) -> Self {
+        Subject {
+            tag: match &element.tag {
+                Tag::Html(name) => Some(name),
+                Tag::Marker(_) => None,
+            },
+            attrs: Attrs::Node(&element.attrs),
+        }
     }
 }
 
@@ -276,239 +270,6 @@ fn tag_key(tag: &Tag) -> String {
 
 fn marker_key(kind: crate::node::MarkerKind) -> String {
     format!("\u{1}marker:{}", kind.id)
-}
-
-/// A match context over an element's name and attributes (shared by both inputs).
-fn ctx_from<'a>(
-    tag: Option<&'a str>,
-    attrs: Attrs<'a>,
-    pos: ElemPos,
-    empty: bool,
-    prev: Vec<Ctx<'a>>,
-) -> Ctx<'a> {
-    Ctx {
-        tag,
-        id: attrs.get("id"),
-        classes: attrs
-            .get("class")
-            .map(str::split_whitespace)
-            .map(Iterator::collect)
-            .unwrap_or_default(),
-        attrs,
-        pos,
-        empty,
-        prev,
-    }
-}
-
-fn ctx_of<'a>(element: &'a Element, pos: ElemPos, prev: Vec<Ctx<'a>>) -> Ctx<'a> {
-    ctx_from(
-        html_name(element),
-        Attrs::Node(&element.attrs),
-        pos,
-        element.children.is_empty(),
-        prev,
-    )
-}
-
-fn element_positions(nodes: &[Node]) -> Vec<Option<ElemPos>> {
-    let keys: Vec<Option<String>> = nodes
-        .iter()
-        .map(|n| n.as_element().map(|e| tag_key(&e.tag)))
-        .collect();
-    positions_from_keys(&keys)
-}
-
-/// Structural positions of the element siblings in `keys` (`None` = a text node):
-/// 1-based index among element siblings, index/total among same-key siblings.
-fn positions_from_keys(keys: &[Option<String>]) -> Vec<Option<ElemPos>> {
-    let elems: Vec<(usize, &str)> = keys
-        .iter()
-        .enumerate()
-        .filter_map(|(i, key)| key.as_deref().map(|key| (i, key)))
-        .collect();
-    let siblings = elems.len();
-    let mut positions = vec![None; keys.len()];
-    for (order, (i, key)) in elems.iter().enumerate() {
-        positions[*i] = Some(position_for(order, key, &elems, siblings));
-    }
-    positions
-}
-
-fn position_for(order: usize, key: &str, elems: &[(usize, &str)], siblings: usize) -> ElemPos {
-    let of_type_index = elems[..=order].iter().filter(|(_, k)| *k == key).count();
-    let of_type_total = elems.iter().filter(|(_, k)| *k == key).count();
-    ElemPos {
-        index: order + 1,
-        of_type_index,
-        of_type_total,
-        siblings,
-    }
-}
-
-// --------------------------------------------------------------------------
-// selector matching
-// --------------------------------------------------------------------------
-
-fn find_attr<'a>(attrs: &'a [Attr], name: &str) -> Option<&'a str> {
-    attrs
-        .iter()
-        .find(|a| a.name == name)
-        .map(|a| a.value.as_str())
-}
-
-fn dash_match(actual: &str, expected: &str) -> bool {
-    actual == expected || actual.starts_with(&format!("{expected}-"))
-}
-
-fn op_matches(op: &AttrOp, actual: &str, expected: &str) -> bool {
-    match op {
-        AttrOp::Exists => true,
-        AttrOp::Equals => actual == expected,
-        AttrOp::Includes => actual.split_whitespace().any(|w| w == expected),
-        AttrOp::DashMatch => dash_match(actual, expected),
-        AttrOp::Prefix => actual.starts_with(expected),
-        AttrOp::Suffix => actual.ends_with(expected),
-        AttrOp::Substring => actual.contains(expected),
-    }
-}
-
-fn attr_matches(sel: &AttrSel, attrs: Attrs) -> bool {
-    match attrs.get(&sel.name) {
-        Some(actual) => op_matches(&sel.op, actual, &sel.value),
-        None => false,
-    }
-}
-
-fn nth_match(a: i32, b: i32, index: usize) -> bool {
-    let idx = index as i32;
-    if a == 0 {
-        return idx == b;
-    }
-    let n = idx - b;
-    n % a == 0 && n / a >= 0
-}
-
-fn pseudo_matches(pseudo: &Pseudo, ctx: &Ctx) -> bool {
-    let pos = ctx.pos;
-    match pseudo {
-        Pseudo::FirstChild => pos.index == 1,
-        Pseudo::LastChild => pos.index == pos.siblings,
-        Pseudo::OnlyChild => pos.siblings == 1,
-        Pseudo::FirstOfType => pos.of_type_index == 1,
-        Pseudo::LastOfType => pos.of_type_index == pos.of_type_total,
-        Pseudo::OnlyOfType => pos.of_type_total == 1,
-        Pseudo::NthChild(a, b) => nth_match(*a, *b, pos.index),
-        Pseudo::NthOfType(a, b) => nth_match(*a, *b, pos.of_type_index),
-        Pseudo::Root => ctx.tag == Some("html"),
-        Pseudo::Empty => ctx.empty,
-        Pseudo::Checked => has_attr(ctx.attrs, "checked"),
-        Pseudo::Disabled => has_attr(ctx.attrs, "disabled"),
-        Pseudo::Enabled => is_form_control(ctx.tag) && !has_attr(ctx.attrs, "disabled"),
-        Pseudo::Link => {
-            matches!(ctx.tag, Some("a" | "area" | "link")) && has_attr(ctx.attrs, "href")
-        }
-        Pseudo::Not(compounds) => !compounds.iter().any(|c| compound_matches(c, ctx)),
-        Pseudo::Is(compounds) => compounds.iter().any(|c| compound_matches(c, ctx)),
-        Pseudo::NeverMatch => false,
-    }
-}
-
-fn has_attr(attrs: Attrs, name: &str) -> bool {
-    attrs.get_ignore_case(name).is_some()
-}
-
-fn is_form_control(tag: Option<&str>) -> bool {
-    matches!(
-        tag,
-        Some("input" | "button" | "select" | "textarea" | "option")
-    )
-}
-
-fn tag_ok(compound: &Compound, ctx: &Ctx) -> bool {
-    match &compound.tag {
-        Some(t) => ctx.tag == Some(t.as_str()),
-        None => true,
-    }
-}
-
-fn id_ok(compound: &Compound, ctx: &Ctx) -> bool {
-    match &compound.id {
-        Some(i) => ctx.id == Some(i.as_str()),
-        None => true,
-    }
-}
-
-fn classes_ok(compound: &Compound, ctx: &Ctx) -> bool {
-    compound
-        .classes
-        .iter()
-        .all(|c| ctx.classes.contains(&c.as_str()))
-}
-
-fn compound_matches(compound: &Compound, ctx: &Ctx) -> bool {
-    tag_ok(compound, ctx)
-        && id_ok(compound, ctx)
-        && classes_ok(compound, ctx)
-        && compound.attrs.iter().all(|a| attr_matches(a, ctx.attrs))
-        && compound.pseudos.iter().all(|p| pseudo_matches(p, ctx))
-}
-
-fn match_child(sel: &Selector, ci: usize, path: &[Ctx], pi: usize) -> bool {
-    pi > 0
-        && compound_matches(&sel.compounds[ci - 1], &path[pi - 1])
-        && match_ancestors(sel, ci - 1, path, pi - 1)
-}
-
-fn match_descendant(sel: &Selector, ci: usize, path: &[Ctx], pi: usize) -> bool {
-    (0..pi).rev().any(|parent| {
-        compound_matches(&sel.compounds[ci - 1], &path[parent])
-            && match_ancestors(sel, ci - 1, path, parent)
-    })
-}
-
-/// Match compound `ci-1` against a preceding sibling of the element at `path[pi]`,
-/// then continue the selector from that sibling. `immediate` restricts to the
-/// directly-preceding sibling (`+`); otherwise any earlier sibling (`~`).
-fn match_sibling(sel: &Selector, ci: usize, path: &[Ctx], pi: usize, immediate: bool) -> bool {
-    let sibs = &path[pi].prev;
-    let range = if immediate {
-        sibs.len().saturating_sub(1)..sibs.len()
-    } else {
-        0..sibs.len()
-    };
-    range.rev().any(|k| {
-        if !compound_matches(&sel.compounds[ci - 1], &sibs[k]) {
-            return false;
-        }
-        // Continue the match from the sibling at the same depth: reuse the shared
-        // ancestors, and give the sibling its own preceding siblings so chained
-        // sibling combinators (`a ~ b + c`) keep working.
-        let mut sp = path[..pi].to_vec();
-        let mut sib = sibs[k].clone();
-        sib.prev = sibs[..k].to_vec();
-        sp.push(sib);
-        match_ancestors(sel, ci - 1, &sp, pi)
-    })
-}
-
-fn match_ancestors(sel: &Selector, ci: usize, path: &[Ctx], pi: usize) -> bool {
-    if ci == 0 {
-        return true;
-    }
-    match sel.combinators[ci - 1] {
-        Combinator::Child => match_child(sel, ci, path, pi),
-        Combinator::Descendant => match_descendant(sel, ci, path, pi),
-        Combinator::NextSibling => match_sibling(sel, ci, path, pi, true),
-        Combinator::SubsequentSibling => match_sibling(sel, ci, path, pi, false),
-    }
-}
-
-fn matches(sel: &Selector, path: &[Ctx]) -> bool {
-    let last = path.len() - 1;
-    let subject = &sel.compounds[sel.compounds.len() - 1];
-    compound_matches(subject, &path[last])
-        && match_ancestors(sel, sel.compounds.len() - 1, path, last)
 }
 
 // --------------------------------------------------------------------------
@@ -540,30 +301,22 @@ fn push_decls(
     }
 }
 
-fn best_match(selectors: &[Selector], path: &[Ctx]) -> Option<Specificity> {
-    selectors
-        .iter()
-        .filter(|s| matches(s, path))
-        .map(|s| s.specificity)
-        .max()
-}
-
-fn collect_rules(cascade: &Cascade, path: &[Ctx], out: &mut Vec<Cand>) {
+fn collect_rules(cascade: &Cascade, nav: &Navigator, h: Handle, out: &mut Vec<Cand>) {
     for lr in &cascade.rules {
-        if let Some(spec) = best_match(&lr.rule.selectors, path) {
+        if let Some(spec) = lr.rule.selectors.best_match(nav, h) {
             push_decls(&lr.rule.declarations, lr.level, spec, lr.order, out);
         }
     }
 }
 
-fn collect_tokens(element: &Ctx, cascade: &Cascade, out: &mut Vec<Cand>) {
+fn collect_tokens(element: Subject, cascade: &Cascade, out: &mut Vec<Cand>) {
     if let Some(t_style) = element.attrs.get("t:style") {
         let decls = resolve_tokens(t_style, &cascade.tokens);
         push_decls(&decls, 2, (0, 0, 0), 0, out);
     }
 }
 
-fn collect_inline(element: &Ctx, out: &mut Vec<Cand>) {
+fn collect_inline(element: Subject, out: &mut Vec<Cand>) {
     if let Some(style) = element.attrs.get("style") {
         let decls = parse_declarations(style);
         push_decls(&decls, 4, (0, 0, 0), 0, out);
@@ -575,7 +328,7 @@ fn collect_inline(element: &Ctx, out: &mut Vec<Cand>) {
 /// just above the UA sheet and below any real author rule (level 1, specificity
 /// 0), so an author stylesheet always overrides them. Old table-layout sites
 /// (Hacker News' orange header `<td bgcolor>`, sized `<img>`) depend on them.
-fn collect_presentational(element: &Ctx, out: &mut Vec<Cand>) {
+fn collect_presentational(element: Subject, out: &mut Vec<Cand>) {
     // Order matters (bgcolor, width, height, then `<font color>`); each entry is
     // present only when its attribute is set and usable.
     let decls: Vec<Declaration> = [
@@ -618,7 +371,7 @@ fn height_decl(value: String) -> Declaration {
 }
 
 /// `bgcolor="..."` → `background-color`, when non-empty.
-fn bgcolor_decl(element: &Ctx) -> Option<Declaration> {
+fn bgcolor_decl(element: Subject) -> Option<Declaration> {
     let bg = element
         .attrs
         .get("bgcolor")
@@ -628,7 +381,7 @@ fn bgcolor_decl(element: &Ctx) -> Option<Declaration> {
 }
 
 /// `<font color="...">` → `color`, when non-empty (only on the `<font>` tag).
-fn font_color_decl(element: &Ctx) -> Option<Declaration> {
+fn font_color_decl(element: Subject) -> Option<Declaration> {
     if !is_tag(element, "font") {
         return None;
     }
@@ -658,25 +411,33 @@ fn valid_attr_length(value: &str) -> Option<f32> {
         .filter(|value| value.is_finite() && *value >= 0.0)
 }
 
-fn is_tag(element: &Ctx, name: &str) -> bool {
+fn is_tag(element: Subject, name: &str) -> bool {
     element.tag.is_some_and(|t| t.eq_ignore_ascii_case(name))
 }
 
-/// The `cellpadding` (px) of the nearest ancestor `<table>` — a legacy table
-/// attribute that pads every cell (e.g. HN's `cellpadding="1"` divider bar, an
-/// empty coloured `<td>` that must reserve its padding to show as a line).
-fn ancestor_cellpadding(path: &[Ctx]) -> Option<f32> {
-    let table = path.iter().rev().skip(1).find(|c| c.tag == Some("table"))?;
-    let value = table.attrs.get_ignore_case("cellpadding")?;
-    value.trim().parse::<f32>().ok()
+/// The `cellpadding` (px) of the nearest ancestor `<table>` (within the matching scope,
+/// shells included) — a legacy table attribute that pads every cell (e.g. HN's
+/// `cellpadding="1"` divider bar, an empty coloured `<td>` that must reserve its padding
+/// to show as a line).
+fn ancestor_cellpadding(nav: &Navigator, h: Handle) -> Option<f32> {
+    let mut ancestor = nav.parent(h);
+    while let Some(a) = ancestor {
+        let subject = nav.subject(a);
+        if subject.tag == Some("table") {
+            let value = subject.attrs.get_ignore_case("cellpadding")?;
+            return value.trim().parse::<f32>().ok();
+        }
+        ancestor = nav.parent(a);
+    }
+    None
 }
 
 /// Apply a table's `cellpadding` to its cells as a presentational padding hint.
-fn collect_cellpadding(element: &Ctx, path: &[Ctx], out: &mut Vec<Cand>) {
+fn collect_cellpadding(element: Subject, nav: &Navigator, h: Handle, out: &mut Vec<Cand>) {
     if !(is_tag(element, "td") || is_tag(element, "th")) {
         return;
     }
-    if let Some(pad) = ancestor_cellpadding(path) {
+    if let Some(pad) = ancestor_cellpadding(nav, h) {
         let decl = Declaration {
             property: "padding".to_string(),
             value: format!("{pad}px"),
@@ -970,78 +731,72 @@ fn resolved_quad<'a>(
     })
 }
 
-/// Resolve the computed style of the subject element `path.last()` (its ancestors
-/// and preceding siblings are the rest of the match path).
-fn resolve_style(path: &[Ctx], parent: &ComputedStyle, cascade: &Cascade) -> ComputedStyle {
-    let element = path.last().expect("a match path ends at its subject");
+/// Resolve the computed style of element `h`, matching through `nav` (its scope).
+fn resolve_style(
+    nav: &Navigator,
+    h: Handle,
+    parent: &ComputedStyle,
+    cascade: &Cascade,
+) -> ComputedStyle {
+    let element = nav.subject(h);
     let mut cands = Vec::new();
     collect_presentational(element, &mut cands);
-    collect_cellpadding(element, path, &mut cands);
-    collect_rules(cascade, path, &mut cands);
+    collect_cellpadding(element, nav, h, &mut cands);
+    collect_rules(cascade, nav, h, &mut cands);
     collect_tokens(element, cascade, &mut cands);
     collect_inline(element, &mut cands);
     inherit(pick_winners(expand_quad_candidates(cands, parent)), parent)
 }
 
 // --------------------------------------------------------------------------
-// tree construction
+// the legacy Node input
 // --------------------------------------------------------------------------
 
-fn style_element<'a>(
-    element: &'a Element,
-    pos: ElemPos,
-    ancestors: &[Ctx<'a>],
-    prev: Vec<Ctx<'a>>,
-    parent: &ComputedStyle,
-    cascade: &Cascade,
-) -> StyledNode {
-    let mut path = ancestors.to_vec();
-    path.push(ctx_of(element, pos, prev));
-    let style = resolve_style(&path, parent, cascade);
-    let children = style_siblings(&element.children, &path, &style, cascade);
-    StyledNode::Element(StyledElement {
-        tag: element.tag.clone(),
-        attrs: element.attrs.clone(),
-        style,
-        children,
-        source: None,
+/// The element name a [`Tag::Marker`] gets in the turbo-dom copy of a legacy forest (no
+/// parsed or authored element can have it), and its inverse.
+fn bridge_marker_name(kind: crate::node::MarkerKind) -> String {
+    format!("\u{1}marker:{}:{}", kind.id, u8::from(kind.inline))
+}
+
+fn bridge_marker(local: &str) -> Option<crate::node::MarkerKind> {
+    let (id, inline) = local.strip_prefix("\u{1}marker:")?.split_once(':')?;
+    Some(crate::node::MarkerKind {
+        id: id.parse().ok()?,
+        inline: inline == "1",
     })
 }
 
-fn style_siblings<'a>(
-    nodes: &'a [Node],
-    ancestors: &[Ctx<'a>],
-    parent: &ComputedStyle,
-    cascade: &Cascade,
-) -> Vec<StyledNode> {
-    let positions = element_positions(nodes);
-    // Accumulate each preceding element sibling's (prev-less) context so a later
-    // sibling can be matched against it by the `+`/`~` combinators.
-    let mut prev: Vec<Ctx<'a>> = Vec::new();
-    let mut out = Vec::with_capacity(nodes.len());
-    for (i, node) in nodes.iter().enumerate() {
-        match node {
-            Node::Text(t) => out.push(StyledNode::Text(t.as_str().into())),
-            Node::Element(e) => {
-                let pos = positions[i].expect("element has a position");
-                out.push(style_element(
-                    e,
-                    pos,
-                    ancestors,
-                    prev.clone(),
-                    parent,
-                    cascade,
-                ));
-                prev.push(ctx_of(e, pos, Vec::new()));
-            }
+/// Style a legacy forest: copy it into a turbo-dom [`Tree`](turbo_dom::Tree)
+/// ([`tree_from_nodes`](crate::tree_from_nodes)) and style the copy like any other Tree
+/// input, so both inputs share one selector engine. `shells` (outermost first) become
+/// match-only ancestors. The result carries no `source` handles.
+fn style_forest(nodes: &[Node], cascade: &Cascade, shells: &[Element]) -> Vec<StyledNode> {
+    let mut copy = crate::tree_from_nodes(nodes, &bridge_marker_name);
+    let mut shell_handles = Vec::with_capacity(shells.len());
+    for shell in shells {
+        let name = match &shell.tag {
+            Tag::Html(name) => name.clone(),
+            Tag::Marker(kind) => bridge_marker_name(*kind),
+        };
+        let h = copy
+            .tree
+            .create_element_ns(&name, turbo_dom::rtdom::tree::Namespace::Html);
+        for attr in &shell.attrs {
+            copy.tree.set_attribute(h, &attr.name, &attr.value);
         }
+        shell_handles.push(h);
     }
-    out
+    let view = TreeView::new(&copy.tree).markers(&bridge_marker);
+    let nav = Navigator::with_shells(&view, shell_handles, copy.roots.clone());
+    tree_view::style_scope(&nav, cascade)
+        .iter()
+        .map(StyledNode::without_sources)
+        .collect()
 }
 
 /// Build the styled tree for a flow of nodes under the given cascade.
 pub fn style_tree(nodes: &[Node], cascade: &Cascade) -> Vec<StyledNode> {
-    style_siblings(nodes, &[], &ComputedStyle::default(), cascade)
+    style_forest(nodes, cascade, &[])
 }
 
 /// [`style_tree`] with explicit [`StyleOptions`] (the legacy-input twin of
@@ -1057,26 +812,15 @@ pub fn style_tree_with_options(
 
 /// [`style_tree`] with `<html>`/`<body>` ancestor shells seeded as match-only
 /// contexts, so descendant selectors gated on their classes resolve. The shells
-/// are not laid out; they only participate in selector matching.
+/// are not laid out; they only participate in selector matching. Each shell's own
+/// style resolves down the chain so the content inherits from the real `<body>`
+/// computed style (nike's `html{box-sizing:border-box}` + `*{box-sizing:inherit}`).
 pub fn style_tree_with_roots(
     nodes: &[Node],
     cascade: &Cascade,
     roots: &[Element],
 ) -> Vec<StyledNode> {
-    let ancestors: Vec<Ctx> = roots
-        .iter()
-        .map(|e| ctx_of(e, root_pos(), Vec::new()))
-        .collect();
-    // Resolve each shell's own style down the chain so the content inherits from the
-    // real `<body>` computed style — not a blank default. Without this an inherited
-    // root declaration (nike's `html{box-sizing:border-box}`, plus font/color) never
-    // reached the page: `*{box-sizing:inherit}` resolved to nothing, so `width:50%`
-    // cards were content-box + padding, overflowed their row, and stacked half-width.
-    let mut parent = ComputedStyle::default();
-    for i in 0..roots.len() {
-        parent = resolve_style(&ancestors[..=i], &parent, cascade);
-    }
-    style_siblings(nodes, &ancestors, &parent, cascade)
+    style_forest(nodes, cascade, roots)
 }
 
 /// [`style_tree_with_roots`] with explicit [`StyleOptions`].
@@ -1088,17 +832,6 @@ pub fn style_tree_with_roots_options(
 ) -> Vec<StyledNode> {
     let _cmyk = crate::layout::value::cmyk_scope(options.accept_cmyk);
     style_tree_with_roots(nodes, cascade, roots)
-}
-
-/// The position for a match-only root shell (a lone only-child); the structural
-/// pseudos on `<html>`/`<body>` don't affect real page layout.
-fn root_pos() -> ElemPos {
-    ElemPos {
-        index: 0,
-        of_type_index: 0,
-        of_type_total: 1,
-        siblings: 1,
-    }
 }
 
 #[path = "matched.rs"]
@@ -1113,6 +846,10 @@ pub(crate) use tree_view::is_non_visual;
 pub use tree_view::{
     style_input, Navigator, Roots, SiblingPosition, StyleInput, StyleOptions, TreeView,
 };
+
+#[cfg(feature = "selector-dual")]
+#[path = "selector_dual.rs"]
+pub(crate) mod selector_dual;
 
 #[cfg(test)]
 mod dimension_hint_tests {

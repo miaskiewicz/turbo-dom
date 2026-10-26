@@ -1,4 +1,5 @@
-//! The style system (§4): CSS parsing, the selector engine, named style tokens,
+//! The style system (§4): CSS parsing, selector matching on turbo-dom's selector
+//! engine, named style tokens,
 //! render-time node styles, and cascade + inheritance into a styled tree — from a
 //! turbo-dom [`Tree`](turbo_dom::Tree) ([`style_input`] over a [`TreeView`]) or
 //! from the legacy owned [`Node`](crate::Node) tree ([`style_tree`]).
@@ -6,6 +7,8 @@
 mod cascade;
 mod parser;
 mod quad_shorthand;
+// The old html2pdf selector parser: the `selector-dual` gate's legacy engine only.
+#[cfg(feature = "selector-dual")]
 mod selector;
 mod token;
 
@@ -16,7 +19,9 @@ pub use cascade::{
     CascadeOrigin, ComputedStyle, LeveledRule, MatchedDeclaration, Navigator, Roots,
     SiblingPosition, StyleInput, StyleOptions, StyledElement, StyledNode, StyledText, TreeView,
 };
-pub use parser::{parse_declarations, parse_stylesheet, AtRule, Declaration, Rule, Stylesheet};
+pub use parser::{
+    parse_declarations, parse_stylesheet, AtRule, Declaration, Rule, RuleSelectors, Stylesheet,
+};
 pub use token::{StyleToken, TokenSet};
 
 /// A minimal user-agent stylesheet (§4.2): the defaults the cascade starts from.

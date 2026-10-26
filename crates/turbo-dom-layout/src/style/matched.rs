@@ -1,7 +1,5 @@
 //! Apply declarations selected by an embedder against its actual tree scopes.
-use super::{
-    collect_presentational, ctx_of, expand_quad_candidates, inherit, pick_winners, root_pos, Cand,
-};
+use super::{collect_presentational, expand_quad_candidates, inherit, pick_winners, Cand, Subject};
 use super::{ComputedStyle, Declaration};
 use crate::Element;
 
@@ -98,7 +96,7 @@ pub fn resolve_matched_style(
 #[must_use]
 pub fn presentational_declarations(element: &Element) -> Vec<Declaration> {
     let mut candidates = Vec::new();
-    collect_presentational(&ctx_of(element, root_pos(), Vec::new()), &mut candidates);
+    collect_presentational(Subject::node(element), &mut candidates);
     candidates
         .into_iter()
         .map(|candidate| Declaration {

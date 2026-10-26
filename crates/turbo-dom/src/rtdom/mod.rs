@@ -29,7 +29,8 @@ pub mod query;
 #[rustfmt::skip]
 mod query_frozen;
 #[cfg(feature = "selector-dual")]
-pub(crate) mod selector_dual;
+#[doc(hidden)]
+pub mod selector_dual;
 pub mod serialize;
 pub mod stubs;
 pub mod svg;

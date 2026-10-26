@@ -365,6 +365,8 @@ fn check_compound(compound: &mut Compound, nested: bool) -> Result<(), SelectorE
 fn check_pseudo(pseudo: &mut Pseudo) -> Result<(), SelectorError> {
     match pseudo {
         Pseudo::Unknown(unknown) => *pseudo = cascade_pseudo(unknown)?,
+        // a DOM-API extension (the JS runtime's `:selected`); not a CSS pseudo-class
+        Pseudo::Selected => return Err(invalid("unknown pseudo-class")),
         Pseudo::Is(list) | Pseudo::Where(list) => forgive(list),
         Pseudo::Not(list) | Pseudo::NthChildOf(_, _, list) | Pseudo::NthLastChildOf(_, _, list) => {
             if list.is_empty() {
@@ -758,6 +760,7 @@ mod tests {
             ":lang(en,)",
             ":state(--x y)",
             ":Nth-Child(1 of :bogus)",
+            "option:selected",
             "div[a",
             "a!b",
         ] {

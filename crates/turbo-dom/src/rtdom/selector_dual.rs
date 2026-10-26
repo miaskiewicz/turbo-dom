@@ -312,6 +312,48 @@ pub(crate) fn dual<T: Answer>(
     })
 }
 
+/// Cascade-mode hooks for turbo-dom-layout's dual layer (consolidation S3b): it runs the
+/// old html2pdf selector parser + matcher next to [`parse_for_cascade`] /
+/// [`match_for_cascade`] and reports through this process's log.
+///
+/// [`parse_for_cascade`]: super::query::parse_for_cascade
+/// [`match_for_cascade`]: super::query::match_for_cascade
+#[doc(hidden)]
+pub mod cascade {
+    use super::{log, Mode, Ordering};
+
+    /// Whether callers get the legacy answer (`TURBO_DOM_SELECTOR_ENGINE=legacy`).
+    #[must_use]
+    pub fn legacy_mode() -> bool {
+        log().mode == Mode::Legacy
+    }
+
+    /// Count one compared cascade output and, when the engines disagree, append
+    /// `{"type":"divergence","pid":…,"engine":"cascade",<fields>}` (`fields`: JSON members).
+    pub fn compared(divergence: Option<&str>) {
+        let log = log();
+        let compared = log.compared.fetch_add(1, Ordering::Relaxed) + 1;
+        if compared.is_power_of_two() {
+            log.write(&format!(
+                "{{\"type\":\"count\",\"pid\":{},\"compared\":{compared}}}\n",
+                std::process::id()
+            ));
+        }
+        if let Some(fields) = divergence {
+            log.write(&format!(
+                "{{\"type\":\"divergence\",\"pid\":{},\"engine\":\"cascade\",{fields}}}\n",
+                std::process::id()
+            ));
+        }
+    }
+
+    /// `s` as a JSON string literal.
+    #[must_use]
+    pub fn json_str(s: &str) -> String {
+        super::json_str(s)
+    }
+}
+
 /// Elements recorded per divergence (the answers' symmetric difference is capped).
 const MAX_ELEMENTS: usize = 16;
 /// Nodes examined for element-side facts / recorded tokens (caps keep huge pages bounded;

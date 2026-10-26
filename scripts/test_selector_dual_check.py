@@ -81,5 +81,82 @@ class Classifier(unittest.TestCase):
         self.assertIsNone(check.classify(record("p", api="query_selector_all", legacy=[], new=[3])))
 
 
+def cascade_element(tag="div", attrs=(), local_attrs=None, ancestors=()):
+    attrs = [list(a) for a in attrs]
+    return {"tag": tag, "attrs": attrs,
+            "local_attrs": [list(a) for a in local_attrs] if local_attrs is not None else attrs,
+            "facts": {"shell": False, "marker": False, "scope_root": False,
+                      "position": [1, 1, 1, 1], "kept_children": [], "ancestors": list(ancestors)}}
+
+
+def cascade(selector, el=None, api="cascade_match", legacy=True, new=False):
+    rec = {"type": "divergence", "engine": "cascade", "api": api, "legacy": legacy, "new": new}
+    if api in ("cascade_match", "cascade_specificity"):
+        rec["selector"] = selector
+    else:
+        rec["prelude"] = selector
+    if el is not None:
+        rec["element"] = el
+    return rec
+
+
+class CascadeClassifier(unittest.TestCase):
+    """S3b: old html2pdf engine vs the cascade engine (turbo-dom-layout records)."""
+
+    def test_live_tree_records_are_never_classified_at_s3b(self):
+        self.assertIsNone(check.classify_cascade(record(".md\\:flex", element(["md:flex"]))))
+
+    def test_escapes_new_matches_need_the_decoded_identifier(self):
+        self.assertEqual(check.classify_cascade(
+            cascade(".md\\:flex", cascade_element(attrs=[("class", "md:flex")]), legacy=False, new=True)),
+            "escapes")
+        self.assertIsNone(check.classify_cascade(
+            cascade(".md\\:flex", cascade_element(attrs=[("class", "md")]), legacy=False, new=True)))
+        self.assertEqual(check.classify_cascade(cascade("\\70", cascade_element("span"))), "escapes")
+
+    def test_namespace_prefixes(self):
+        self.assertEqual(check.classify_cascade(cascade("*|p", cascade_element("p"), legacy=False, new=True)),
+                         "namespace *|p")
+        self.assertIsNone(check.classify_cascade(cascade("*|p", cascade_element("div"), legacy=False, new=True)))
+        self.assertEqual(check.classify_cascade(cascade("svg|rect", api="cascade_validity")), "namespace *|p")
+        self.assertIsNone(check.classify_cascade(cascade("svg rect", api="cascade_validity")))
+
+    def test_attribute_namespace_needs_a_namespaced_attribute(self):
+        el = cascade_element("a", attrs=[("xlink:href", "#t")], local_attrs=[("href", "#t")])
+        self.assertEqual(check.classify_cascade(cascade('a[href^="#"]', el)), "attribute-namespace")
+        plain = cascade_element("a", attrs=[("href", "#t")])
+        self.assertIsNone(check.classify_cascade(cascade('a[href^="#"]', plain)))
+        self.assertIsNone(check.classify_cascade(cascade("[title]", el)))
+        self.assertIsNone(check.classify_cascade(cascade("[href]", el, legacy=False, new=True)))
+
+    def test_pseudo_classes_the_old_engine_dropped(self):
+        for sel, name in [(":read-only", ":read-only/:read-write"), ("input:optional", ":required/:optional"),
+                          ("p:nth-last-child(2)", ":nth-last-*"), (":nth-child(2 of .x)", ":nth-child(An+B of S)"),
+                          ("div:has(> p)", ":has()"), (":lang(en)", "unknown-pseudo"),
+                          ("P:FIRST-CHILD", "unknown-pseudo"), ("a:totallyunknown", "unknown-pseudo")]:
+            self.assertEqual(check.classify_cascade(cascade(sel, cascade_element())), name, sel)
+        self.assertEqual(check.classify_cascade(cascade(":matches(p), .w", api="cascade_validity")),
+                         "unknown-pseudo")
+        self.assertIsNone(check.classify_cascade(cascade("p:first-child", cascade_element())))
+        self.assertIsNone(check.classify_cascade(cascade("[data-x=':lang(en)']", cascade_element())))
+
+    def test_pseudo_elements_never_match(self):
+        self.assertEqual(check.classify_cascade(cascade(".bar::-webkit-scrollbar", cascade_element())),
+                         "pseudo-element")
+        self.assertEqual(check.classify_cascade(
+            cascade("*::before", api="cascade_specificity", legacy=[0, 1, 0], new=[0, 0, 1])), "pseudo-element")
+        self.assertIsNone(check.classify_cascade(cascade(".bar::after", cascade_element(), legacy=False, new=True)))
+
+    def test_specificity_needs_a_functional_pseudo(self):
+        self.assertEqual(check.classify_cascade(
+            cascade("a:where(.new)", api="cascade_specificity", legacy=[0, 1, 1], new=[0, 0, 1])), "specificity")
+        self.assertIsNone(check.classify_cascade(
+            cascade("a.new", api="cascade_specificity", legacy=[0, 1, 1], new=[0, 0, 1])))
+
+    def test_unrelated_cascade_divergence_is_unclassified(self):
+        self.assertIsNone(check.classify_cascade(cascade("div > p", cascade_element("p"))))
+        self.assertIsNone(check.classify_cascade(cascade("a, b", api="cascade_list", legacy=2, new=1)))
+
+
 if __name__ == "__main__":
     unittest.main()
