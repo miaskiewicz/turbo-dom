@@ -179,7 +179,7 @@ fn has_attribute(node: &Handle, local: &str) -> bool {
 
 /// A select's options (with whether each is disabled) and selectedcontent elements, in tree
 /// order: an option counts unless an option, datalist or hr, or a second optgroup, lies
-/// between it and the select; a nested select is its own.
+/// between it and the select.
 fn select_parts(select: &Handle) -> (Vec<(Handle, bool)>, Vec<Handle>) {
     let (mut options, mut contents) = (Vec::new(), Vec::new());
     // (node, blocked, inside an optgroup, inside a disabled optgroup)
@@ -191,9 +191,7 @@ fn select_parts(select: &Handle) -> (Vec<(Handle, bool)>, Vec<Handle>) {
         .map(|child| (child.clone(), false, false, false))
         .collect();
     while let Some((node, mut blocked, mut grouped, mut group_disabled)) = pending.pop() {
-        if html_element(&node, "select") {
-            continue;
-        }
+        // (the parser never nests a select: a `<select>` start tag closes an open one)
         if html_element(&node, "selectedcontent") {
             contents.push(node);
             continue;

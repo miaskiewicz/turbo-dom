@@ -255,6 +255,7 @@ const DOCUMENTS = [
   { id: "fragment_svg_cdata_eof", context: "svg svg", html: "<![CDATA[x]" },
   { id: "fragment_svg_cdata_eof_bracket", context: "svg svg", html: "<![CDATA[x]]" },
   { id: "fragment_svg_cdata_nul", context: "svg svg", html: "<![CDATA[a\0b]]>" },
+  { id: "fragment_selectedcontent", context: "div", html: "<select><button><selectedcontent></selectedcontent></button><option>A</option><option selected>B</option></select>" },
   { id: "fragment_html_frameset_comment", context: "html", html: "<frameset></frameset></html><!--x-->" },
 ];
 

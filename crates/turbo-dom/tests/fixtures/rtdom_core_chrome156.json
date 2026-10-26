@@ -1168,6 +1168,12 @@
    "dump": "| \"a�b\""
   },
   {
+   "id": "fragment_selectedcontent",
+   "context": "div",
+   "html": "<select><button><selectedcontent></selectedcontent></button><option>A</option><option selected>B</option></select>",
+   "dump": "| <select>\n|   <button>\n|     <selectedcontent>\n|       \"B\"\n|   <option>\n|     \"A\"\n|   <option>\n|     selected=\"\"\n|     \"B\""
+  },
+  {
    "id": "fragment_html_frameset_comment",
    "context": "html",
    "html": "<frameset></frameset></html><!--x-->",
