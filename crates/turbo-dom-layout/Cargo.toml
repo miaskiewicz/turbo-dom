@@ -32,11 +32,6 @@ perf = []
 # reproducible output; 0.46+ changes raster output) into the RGBA image pipeline.
 svg = ["dep:resvg"]
 
-# TEMPORARY consolidation gate (S3b, turbo-dom docs/selector-dual-gate.md): run the old
-# html2pdf selector parser + matcher next to turbo-dom's engine on every cascade decision
-# and log the divergences (forwards turbo-dom's gate). Never enable outside the gate.
-selector-dual = ["turbo-dom/selector-dual"]
-
 # Test fixtures for downstream crates' tests (`FontFace::collection_fixture_faces`). Never
 # enable in a production build.
 test-support = []

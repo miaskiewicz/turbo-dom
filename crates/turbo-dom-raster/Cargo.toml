@@ -72,9 +72,6 @@ coretext = ["dep:core-graphics", "dep:core-text", "dep:core-foundation"]
 # WebGL draw batch). On any GPU failure both transparently fall back, so enabling it never
 # regresses correctness — only the pixel backend changes.
 gpu-metal = ["dep:wgpu", "dep:pollster", "dep:lyon_tessellation", "dep:naga", "dep:base64"]
-# TEMPORARY consolidation gate (S3b, docs/selector-dual-gate.md): forwards the selector-dual
-# gate to the layout cascade. Never enable outside the gate.
-selector-dual = ["turbo-dom-layout/selector-dual"]
 
 [dev-dependencies]
 # Screenshot tests build a fixture PNG and decode the rendered output to sample

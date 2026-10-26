@@ -7,9 +7,6 @@
 mod cascade;
 mod parser;
 mod quad_shorthand;
-// The old html2pdf selector parser: the `selector-dual` gate's legacy engine only.
-#[cfg(feature = "selector-dual")]
-mod selector;
 mod token;
 
 pub(crate) use cascade::is_non_visual;

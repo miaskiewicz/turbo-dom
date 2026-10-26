@@ -205,7 +205,7 @@ impl<'t> TreeView<'t> {
 
     /// The element's local name as the matcher sees it (`None` for markers, which
     /// type selectors never match).
-    pub(crate) fn match_name(&self, h: Handle) -> Option<&'t str> {
+    fn match_name(&self, h: Handle) -> Option<&'t str> {
         match self.marker(h) {
             None => self.tree.local_name(h),
             Some(_) => None,
@@ -291,9 +291,6 @@ pub struct Navigator<'v, 't> {
     roots: Vec<Handle>,
     shells: Vec<Handle>,
     positions: PositionCache,
-    /// The `selector-dual` gate's legacy match path of the element being styled.
-    #[cfg(feature = "selector-dual")]
-    pub(crate) legacy_path: super::selector_dual::PathCache<'t>,
 }
 
 impl<'v, 't> Navigator<'v, 't> {
@@ -331,15 +328,7 @@ impl<'v, 't> Navigator<'v, 't> {
             roots,
             shells,
             positions: PositionCache::default(),
-            #[cfg(feature = "selector-dual")]
-            legacy_path: std::cell::RefCell::new(None),
         }
-    }
-
-    /// The viewed tree.
-    #[cfg(feature = "selector-dual")]
-    pub(crate) fn view(&self) -> &'v TreeView<'t> {
-        self.view
     }
 
     /// The styled top-level nodes.
@@ -354,7 +343,7 @@ impl<'v, 't> Navigator<'v, 't> {
         &self.shells
     }
 
-    pub(crate) fn is_shell(&self, h: Handle) -> bool {
+    fn is_shell(&self, h: Handle) -> bool {
         self.shells.contains(&h)
     }
 

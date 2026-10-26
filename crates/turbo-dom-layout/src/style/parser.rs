@@ -33,10 +33,6 @@ pub struct Rule {
 pub struct RuleSelectors {
     prelude: String,
     list: Option<SelectorList>,
-    /// The old html2pdf parse of the same prelude (the `selector-dual` gate's legacy
-    /// engine).
-    #[cfg(feature = "selector-dual")]
-    pub(crate) legacy: Vec<super::selector::Selector>,
 }
 
 impl PartialEq for RuleSelectors {
@@ -51,14 +47,9 @@ impl RuleSelectors {
     /// Parse a rule prelude (see [`parse_for_cascade`]).
     #[must_use]
     pub fn parse(prelude: &str) -> Self {
-        let list = parse_for_cascade(prelude).ok();
-        #[cfg(feature = "selector-dual")]
-        let legacy = super::cascade::selector_dual::parse(prelude, list.as_ref());
         RuleSelectors {
             prelude: prelude.to_string(),
-            list,
-            #[cfg(feature = "selector-dual")]
-            legacy,
+            list: parse_for_cascade(prelude).ok(),
         }
     }
 
@@ -82,15 +73,11 @@ impl RuleSelectors {
 
     /// The highest specificity among the selectors matching `h` through `nav`.
     pub(crate) fn best_match(&self, nav: &super::Navigator, h: Handle) -> Option<Specificity> {
-        let best = self
-            .selectors()
+        self.selectors()
             .iter()
             .filter(|s| match_for_cascade(nav, h, s))
             .map(CascadeSelector::specificity)
-            .max();
-        #[cfg(feature = "selector-dual")]
-        let best = super::cascade::selector_dual::best_match(self, nav, h, best);
-        best
+            .max()
     }
 }
 

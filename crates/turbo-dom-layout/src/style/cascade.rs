@@ -847,10 +847,6 @@ pub use tree_view::{
     style_input, Navigator, Roots, SiblingPosition, StyleInput, StyleOptions, TreeView,
 };
 
-#[cfg(feature = "selector-dual")]
-#[path = "selector_dual.rs"]
-pub(crate) mod selector_dual;
-
 #[cfg(test)]
 mod dimension_hint_tests {
     #[test]

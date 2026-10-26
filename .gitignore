@@ -20,3 +20,4 @@ NPM-PUBLISH-TURBODOM.md
 /npm
 pkg-spike/
 .serena/
+__pycache__/

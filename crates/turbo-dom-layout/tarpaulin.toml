@@ -5,8 +5,9 @@
 # (The coverage + cc gate thresholds for this crate are decided from the P0
 # partition data; this file only keeps the feature-gated-module excludes. At S1
 # the crate's own tests covered 97.05% (7889/8129 lines); the rest — cascade
-# tokens, parts of the selector matcher — is covered by turbo-html2pdf-core's
-# templating / directive tests. Since S2 the `t:` directives are html2pdf's.)
+# tokens, parts of the old selector matcher — was covered by turbo-html2pdf-core's
+# templating / directive tests. Since S2 the `t:` directives are html2pdf's; since S3b
+# selectors are turbo-dom's engine.)
 [default]
 packages = ["turbo-dom-layout"]
 # Pin the LLVM source-based engine on every platform (tarpaulin's `Auto` picks

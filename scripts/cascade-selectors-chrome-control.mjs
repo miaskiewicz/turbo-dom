@@ -188,8 +188,8 @@ const CASES = [
 ];
 
 
-// S3b cascade cases: `class` names the old-engine quirk class (turbo-dom
-// docs/selector-dual-gate.md, "S3b quirk classes") whose Chrome behaviour the case pins.
+// S3b cascade cases: `class` names the old html2pdf engine's quirk class (docs/selector-engine.md,
+// "What S3b changed") whose Chrome behaviour the case pins.
 const CASCADE_CASES = [
   {
     id: "unknown-pseudo-class",

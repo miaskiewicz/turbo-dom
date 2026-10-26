@@ -57,9 +57,12 @@ Relocated **verbatim** from `turbo-html2pdf-core` 0.3.9
 `git archive` and diffs them against the S1 tree (`VERIFY_REF`, default the S1 merge
 commit), allowing only the rewrites listed in `scripts/verify-copied-layout.rules`.
 Step S2 then switched the cascade onto the turbo-dom `Tree` and replaced the
-temporary `xref`/`pdf-ua`/`print-color` features with runtime options; those edits
-are ordinary reviewed changes on top of S1. The per-test move manifest is
-`docs/CONSOLIDATION-TESTS.md`.
+temporary `xref`/`pdf-ua`/`print-color` features with runtime options, and step S3b
+replaced html2pdf's own selector parser and matcher with turbo-dom's selector engine
+(`parse_for_cascade` / `match_for_cascade` over the scope `style::Navigator`; Chrome 156
+control end to end in `tests/cascade_selectors_chrome.rs`, see turbo-dom's
+`docs/selector-engine.md`); those edits are ordinary reviewed changes on top of S1. The
+per-test move manifest is `docs/CONSOLIDATION-TESTS.md`.
 
 ## Tests
 
