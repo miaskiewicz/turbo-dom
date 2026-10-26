@@ -27,11 +27,11 @@ fn defined(tree: &Tree, h: Handle) -> bool {
 
 #[test]
 fn creation_time_state_without_an_embedder() {
+    use CustomElementState::{Uncustomized, Undefined};
     let mut tree = Tree::parse(&format!(
         "<head>{SHEET}</head><body><x-a id=a></x-a><button id=b is=x-b></button><button id=e is></button>\
          <div id=d></div><svg><x-a id=s></x-a></svg><template id=t><x-a id=ta></x-a></template></body>"
     ));
-    use CustomElementState::{Uncustomized, Undefined};
     for (name, state) in [
         ("a", Undefined),
         ("b", Undefined),
