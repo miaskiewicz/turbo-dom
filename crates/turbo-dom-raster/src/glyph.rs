@@ -84,3 +84,107 @@ pub fn trace_glyph<T: Tracer>(face: &Face, glyph_id: u16, pen: Pen, sink: &mut T
     let mut adapter = Adapter { pen, sink };
     face.outline_glyph(GlyphId(glyph_id), &mut adapter);
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use turbo_dom_layout::text::FontRegistry;
+
+    /// Every segment a trace emits, as text.
+    #[derive(Default)]
+    struct Record(Vec<String>);
+
+    impl Tracer for Record {
+        fn move_to(&mut self, x: f32, y: f32) {
+            self.0.push(format!("M {x} {y}"));
+        }
+        fn line_to(&mut self, x: f32, y: f32) {
+            self.0.push(format!("L {x} {y}"));
+        }
+        fn quad_to(&mut self, cx: f32, cy: f32, x: f32, y: f32) {
+            self.0.push(format!("Q {cx} {cy} {x} {y}"));
+        }
+        fn cubic_to(&mut self, c1x: f32, c1y: f32, c2x: f32, c2y: f32, x: f32, y: f32) {
+            self.0.push(format!("C {c1x} {c1y} {c2x} {c2y} {x} {y}"));
+        }
+        fn close(&mut self) {
+            self.0.push("Z".into());
+        }
+    }
+
+    /// The same outline straight from ttf-parser, mapped by hand: x' = 10 + 0.5x,
+    /// y' = 100 - 0.5y.
+    struct Raw(Vec<String>);
+
+    impl OutlineBuilder for Raw {
+        fn move_to(&mut self, x: f32, y: f32) {
+            self.0
+                .push(format!("M {} {}", 10.0 + x * 0.5, 100.0 - y * 0.5));
+        }
+        fn line_to(&mut self, x: f32, y: f32) {
+            self.0
+                .push(format!("L {} {}", 10.0 + x * 0.5, 100.0 - y * 0.5));
+        }
+        fn quad_to(&mut self, cx: f32, cy: f32, x: f32, y: f32) {
+            let m = |x: f32, y: f32| (10.0 + x * 0.5, 100.0 - y * 0.5);
+            let ((a, b), (c, d)) = (m(cx, cy), m(x, y));
+            self.0.push(format!("Q {a} {b} {c} {d}"));
+        }
+        fn curve_to(&mut self, c1x: f32, c1y: f32, c2x: f32, c2y: f32, x: f32, y: f32) {
+            let m = |x: f32, y: f32| (10.0 + x * 0.5, 100.0 - y * 0.5);
+            let ((a, b), (c, d), (e, f)) = (m(c1x, c1y), m(c2x, c2y), m(x, y));
+            self.0.push(format!("C {a} {b} {c} {d} {e} {f}"));
+        }
+        fn close(&mut self) {
+            self.0.push("Z".into());
+        }
+    }
+
+    #[test]
+    fn traces_map_every_segment_through_the_pen_y_flipped() {
+        let reg = FontRegistry::new();
+        // Inter (CFF: cubic curves) and Liberation Serif (TrueType: quadratic curves).
+        for (family, curve) in [("Inter", "C "), ("Liberation Serif", "Q ")] {
+            let face = reg.select(&[family], 400, false).unwrap();
+            let ttf = outline_face(face);
+            for ch in ['o', 'A', '%'] {
+                let id = ttf.glyph_index(ch).unwrap();
+                let pen = Pen {
+                    origin_x: 10.0,
+                    baseline_y: 100.0,
+                    scale: 0.5,
+                };
+                let mut got = Record::default();
+                trace_glyph(&ttf, id.0, pen, &mut got);
+                let mut want = Raw(Vec::new());
+                ttf.outline_glyph(id, &mut want);
+                assert_eq!(got.0, want.0, "{family} {ch}");
+                let closes = got.0.iter().filter(|s| *s == "Z").count();
+                let moves = got.0.iter().filter(|s| s.starts_with("M ")).count();
+                assert!(
+                    moves > 0 && closes == moves,
+                    "{family} {ch}: every contour closes"
+                );
+                if ch == 'o' {
+                    assert!(
+                        got.0.iter().any(|s| s.starts_with(curve)),
+                        "{family}: {curve}"
+                    );
+                }
+            }
+            // A glyph with no outline (space) traces nothing.
+            let mut space = Record::default();
+            trace_glyph(
+                &ttf,
+                ttf.glyph_index(' ').unwrap().0,
+                Pen {
+                    origin_x: 0.0,
+                    baseline_y: 0.0,
+                    scale: 1.0,
+                },
+                &mut space,
+            );
+            assert!(space.0.is_empty());
+        }
+    }
+}
