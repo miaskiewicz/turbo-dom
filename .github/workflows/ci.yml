@@ -8,6 +8,7 @@ name: CI
 #   msrv         Rust 1.89 for turbo-dom, -layout, -raster
 #   guards       version agreement, retired-gate guard, verify-copied reviews, script self-tests
 #   coverage     tarpaulin per crate with fail-under floors (raised by the coverage phase)
+#   complexity   cyclomatic complexity <= 15 per function: Rust (cc-check) and JS (oxlint)
 # publish.yml calls this whole workflow before it publishes anything.
 
 on:
@@ -389,6 +390,64 @@ jobs:
           fetch turbo-surf b1de4ebf74e87d73ed128ee3b36e13a40000c3fc
           HTML2PDF_REPO="$RUNNER_TEMP/turbo-html2pdf.git" SURF_REPO="$RUNNER_TEMP/turbo-surf.git" \
             bash scripts/verify-copied-layout.sh
+
+  # ---- complexity: cyclomatic complexity <= 15 per function, no allow-list, no baseline ----
+  # EXPECTED RED until the post-coverage refactor: the functions above 15 when the gate landed
+  # are the refactor backlog (docs/CONSOLIDATION.md "Complexity"); refactoring waits until
+  # unit-test coverage is complete so it cannot break behaviour silently. Never raise the limit
+  # or skip a file to turn it green. Rust: turbo-html2pdf's tools/cc-check installed from its
+  # home at a pinned rev (not copied here) over every tracked .rs file; JS: oxlint's
+  # `complexity` rule (.oxlintrc.complexity.json) over src/ (the npm runtime).
+  # `continue-on-error` keeps the red jobs from failing the workflow (publish.yml runs it via
+  # workflow_call) while the backlog exists; the failing job and its step summary list every
+  # function over the limit. Drop `continue-on-error` (and make both checks required) once
+  # the backlog is cleared.
+  complexity-rust:
+    name: complexity / rust (cc <= 15)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    env:
+      CC_CHECK_REV: 923c89f791f3a89cb089a59626a25cef0a9cbd5f
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cc-check
+          key: cc-check-${{ runner.os }}-${{ env.CC_CHECK_REV }}
+      - name: Install cc-check (turbo-html2pdf tools/cc-check @ CC_CHECK_REV)
+        run: |
+          if [ ! -x "$HOME/.cc-check/bin/cc-check" ]; then
+            cargo install --locked --root "$HOME/.cc-check" \
+              --git https://github.com/miaskiewicz/turbo-html2pdf --rev "$CC_CHECK_REV" cc-check
+          fi
+          echo "$HOME/.cc-check/bin" >> "$GITHUB_PATH"
+      - name: cc-check --max 15 (every tracked .rs file)
+        shell: bash  # -eo pipefail: tee must not mask the gate's exit code
+        run: npm run -s complexity:rust 2>&1 | tee complexity.txt
+      - name: List the functions over the limit (refactor backlog)
+        if: failure()
+        run: |
+          { echo '### Rust functions above cc 15'; echo '```'; grep 'cyclomatic complexity' complexity.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+
+  complexity-js:
+    name: complexity / js (cc <= 15)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: oxlint complexity max 15 (src/)
+        shell: bash  # -eo pipefail: tee must not mask the gate's exit code
+        run: npm run -s complexity:js 2>&1 | tee complexity.txt
+      - name: List the functions over the limit (refactor backlog)
+        if: failure()
+        run: |
+          { echo '### JS functions above cc 15'; echo '```'; grep 'complexity of' complexity.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
 
   # ---- coverage floors (tarpaulin, LLVM engine, macOS arm64 where they were measured) ----
   # Each gate is the crate's CURRENT measured line coverage (rounded down; measured at the

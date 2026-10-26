@@ -189,14 +189,14 @@ turbo-dom-layout --all-targets [--all-features | --no-default-features] -- -D wa
 
 ## Complexity
 
-`cargo run --manifest-path <turbo-html2pdf>/tools/cc-check/Cargo.toml -- --max 5
-crates/turbo-dom-layout/src` reports nothing outside `src/cssom_view/`. The surf-origin
-`cssom_view` modules are allow-listed (plan §7.3) with their functions above 5 as moved:
-`range::{visit 7, select 18}`, `scroll::{scroll_metrics 34, contained 9,
-scroll_translation 12, propagated_body 6, viewport_metrics 16, expose 11}`,
-`metrics::{element_geometry 16, offset_position 33}`, `hit::{contains 6,
-elements_at_point 30, clipped 12}`, `inline::{check_style 6, geometry 10}`,
-`composition::scopes 7`, `text::caret 16`, `visibility::check 18`.
+Gated with the rest of the repo at cyclomatic complexity <= 15 per function (CI jobs
+`complexity / rust (cc <= 15)`, `npm run complexity:rust`; no allow-list): turbo-html2pdf's
+`cc-check`, installed from its home at a pinned rev (see the repo's CLAUDE.md "Complexity
+gates"). This replaces the earlier cc <= 5 allow-list for the surf-origin `cssom_view`
+modules. The crate's functions above 15 are all in `src/cssom_view/` (`hit::elements_at_point`
+30, `metrics::{element_geometry 16, offset_position 33}`, `range::select 18`,
+`scroll::{scroll_metrics 34, viewport_metrics 16}`, `text::caret 16`, `visibility::check 18`)
+and are on the post-coverage refactor backlog (docs/CONSOLIDATION.md "Complexity").
 
 ## Tests
 
