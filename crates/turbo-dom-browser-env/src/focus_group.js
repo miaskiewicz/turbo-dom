@@ -26,7 +26,7 @@
   };
   const keyOf = accessor(g.KeyboardEvent.prototype, 'key');
   const modifiers = ['altKey', 'ctrlKey', 'metaKey', 'shiftKey'].map(name => accessor(g.KeyboardEvent.prototype, name));
-  for (const [constructor, space] of [[g.HTMLElement, 'http://www.w3.org/1999/xhtml'], [g.SVGElement, 'http://www.w3.org/2000/svg']]) {
+  for (const [constructor, space] of [[g.HTMLElement, 'http://www.w3.org/1999/xhtml'], [g.SVGElement, 'http://www.w3.org/2000/svg'], [g.MathMLElement, 'http://www.w3.org/1998/Math/MathML']]) {
     if (typeof constructor !== 'function') continue;
     const check = receiver => { let valid = false; try { valid = nodeType.call(receiver) === 1 && namespace.call(receiver) === space; } catch {} if (!valid) throw new TypeError('Illegal invocation'); };
     Object.defineProperty(constructor.prototype, 'focusGroupStart', {

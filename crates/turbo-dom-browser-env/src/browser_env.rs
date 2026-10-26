@@ -6358,6 +6358,8 @@ fn dom_accessor_dispatch(
                     "Attr" => kind == 2,
                     "DocumentType" => kind == 10,
                     "HTMLElement" => kind == 1 && tree.namespace_id(h) == 0,
+                    "SVGElement" => kind == 1 && tree.namespace_id(h) == 1,
+                    "MathMLElement" => kind == 1 && tree.namespace_id(h) == 2,
                     "CharacterData" => matches!(kind, 3 | 4 | 7 | 8),
                     "Text" => matches!(kind, 3 | 4),
                     "Document" => kind == 9,

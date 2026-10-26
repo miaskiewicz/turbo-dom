@@ -7,6 +7,17 @@ at the time); this file reconstructs them from history.
 
 ## [Unreleased]
 
+### Fixed — turbo-dom-browser-env: SVG and MathML inline style (miaskiewicz/turbo-dom#87, Chrome 156 control)
+- `style` (getter + `cssText`-forwarding setter) is now an accessor of `SVGElement.prototype`
+  and of the new `MathMLElement.prototype`, as Chrome puts `ElementCSSInlineStyle` on
+  `HTMLElement`, `SVGElement` and `MathMLElement`: `svg.style` was `undefined`, so React
+  components rendering an inline-styled SVG icon threw `Cannot set properties of undefined`
+  (miaskiewicz/turbo-test#79 item 4). Each getter brand-checks its namespace.
+- `MathMLElement` exists: MathML elements get its prototype (they had `Element.prototype`),
+  with `style`, `dataset`, `focusGroup` / `focusGroupStart` and `attributeStyleMap`, so the
+  focusgroup control's MathML row (a documented known gap) now matches Chrome.
+- Control: `src/svg_inline_style_probe.js` / `svg_inline_style_chrome156.json`.
+
 ## [0.6.0] — turbo-dom consolidation
 
 turbo-dom becomes the home of the shared browser engine of turbo-html2pdf, turbo-test

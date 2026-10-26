@@ -80,7 +80,7 @@
     },true,true);
     apply(datasetSet,datasetValues,[owner,value]);return value;
   };
-  for(const name of ['HTMLElement','SVGElement'])if(g[name])property(g[name].prototype,'dataset',dataset);
+  for(const name of ['HTMLElement','SVGElement','MathMLElement'])if(g[name])property(g[name].prototype,'dataset',dataset);
   const uint = value => (+value) >>> 0;
   const character = receiver => { check(receiver, [3, 4, 7, 8]); return apply(data.get, receiver, []); };
   const range = (value, offset) => { if (offset > value.length) throw new g.DOMException('Character-data offset is out of range', 'IndexSizeError'); };

@@ -2,9 +2,8 @@ use super::*;
 use sha2::{Digest, Sha256};
 
 /// turbo-dom#87 (from miaskiewicz/turbo-test#79): `style` and `dataset` live on HTMLElement,
-/// SVGElement and MathMLElement (Chrome 156 control), so `svg.style.flex = '1'` works.
+/// SVGElement and MathMLElement (Chrome 156 control), so `svg.style.flexGrow = '1'` works (turbo-test#79 item 4).
 #[test]
-#[ignore = "turbo-dom#87: fails until the fix"]
 fn svg_and_mathml_elements_have_inline_style_and_dataset_like_chrome() {
     super::tests::init_v8();
     let probe = include_str!("svg_inline_style_probe.js");
