@@ -173,13 +173,113 @@ changes in `tools/parity/expected/p5b-w1-*.json`.
   table is shrink-to-fit — no wider than its columns' max-content plus border-spacing,
   padding and borders (`min-width`/`max-width` still apply, and it never drops below its
   min-content) — so a one-cell table is `[8,8,13.109375,24]` as in Chrome, not the full
-  1264px line, and `margin: 0 auto` centres it. The PDF / screenshot paths keep filling
-  the containing block (unchanged output). Control: `live-geometry` `table-auto-*`.
+  1264px line, and `margin: 0 auto` centres it. The PDF / screenshot paths
+  follow in P5b-W3 (miaskiewicz/turbo-dom#28 item 7, below). Control: `live-geometry` `table-auto-*`.
 - `<template>` is `display: none` in the user-agent sheet (miaskiewicz/turbo-surf#36 item
   4), as in Chrome: a live `<template>` (also one inside a table cell) has the all-zero
   rect of a boxless element instead of an empty box at its flow position. Embedders that
   match `user_agent_css()` (turbo-surf) get the rule too; the HTML drive already stripped
   `<template>`. Control: `live-geometry` `template-in-*`.
+
+### Fixed — turbo-dom-layout bug fixes (P5b-W3, miaskiewicz/turbo-dom#28, Chrome 156 controls)
+Each fix is backed by a Chrome for Testing 156 control and lists the corpus outputs it
+changes in `tools/parity/expected/p5b-w3-turbo-dom-28-*.json`.
+- `clip: rect()` in hit testing (item 1): `cssom_view::hit::elements_at_point` (surf's
+  `elementFromPoint` / `elementsFromPoint`) and the caret query skip the parts of an
+  absolutely positioned box — and of its descendants and text — that its
+  `clip: rect(top, right, bottom, left)` cuts away (offsets from the border-box corner,
+  `auto` = the border-box edge), as Chrome does: a point over a `.sr-only` span hits
+  the element underneath instead of the span. `clip` on a box that is not absolutely
+  positioned is ignored. Control: `live-geometry` `clip-rect-*` cases (`hits`).
+- Out-of-flow margins (item 2): an absolutely positioned box's own margins are added
+  once. Its static position is the margin edge of its hypothetical box — the flow's
+  content edge and the margins collapsed before it — so `margin-left` is no longer
+  doubled (in `place_special_kid` and the deferred pass) and its `margin-top` no longer
+  also joins the preceding margin run; a `right`-anchored box keeps its `margin-right`
+  inside the inset instead of being shifted by `margin-left`. Every layout path.
+  Control: `abs-static-position-*` / `abs-inset-margins` in `live-geometry` and
+  `html-document`.
+- Anonymous block style (item 3): the anonymous block box wrapping an inline run next to
+  block-level siblings takes only its parent's inherited properties (CSS 2.1 §9.2.1.1) on
+  every path. The PDF / screenshot path copied the parent's whole style, so the run was
+  padded, bordered, sized (`height`, `width`) and offset by the parent's margins a second
+  time — `<div style="padding:10px">x<p>…</p></div>` pushed the `<p>` down by 20px. Control:
+  `anonymous-block-*` in `html-document` and `live-geometry`.
+- Floats and `inline-table` (item 4): `display_of` blockifies a float like an absolutely
+  positioned box (CSS 2.1 §9.7) — a floated `<span>` is a shrink-to-fit block float
+  instead of an inline laid out in the line — and `inline-table` is its own
+  `Display::InlineTable`, an atomic inline-level table (`table` once blockified) instead of
+  a block. A float met inside line content (after inline content, or inside an inline
+  element) no longer splits the line or its inline ancestor: it takes a place in the run
+  and is placed at the top of the line it lands on, the lines beside it narrowed (the
+  paragraph is re-laid until the floats settle), as in Chrome; in live snapshots such a
+  float is supported instead of failing as a "positioned/floating block-in-inline
+  split". A table's intrinsic widths (`flex::natural_width` / `min_content_width`:
+  inline tables, floats, flex items, inline-blocks around tables) are its columns plus
+  border-spacing (`table::max_content_width` / `min_content_width`), not its widest
+  row. Control: `float-*` / `inline-table-*` in `live-geometry` and `html-document`.
+- Empty row groups in live geometry (item 5): a `<tbody></tbody>` (`<thead>`, `<tfoot>`)
+  gets a zero-height box as wide as the table's rows, at the bottom of the rows before it
+  (the first row edge when none precede it; zero-size at the content-box origin of a
+  table without columns), as in Chrome, instead of no box (its reads failed with "native
+  empty inline placement is pending"). Control: `live-geometry` `empty-row-group-*`.
+- Zero-height lines (item 6): a line box holding no text, preserved white space, framed
+  inline (horizontal margin/border/padding), in-flow atom or `<br>` — only the places of
+  absolutely positioned or floated boxes, collapsible spaces and empty inlines — is
+  zero-height (CSS 2.1 §9.4.2), on every path, instead of one strut tall:
+  `<div><span><span style="position:absolute"></span></span></div>` is 0px high as in
+  Chrome (was 18px live / 19.36px PDF). `layout::inline::InlineAtom` gains `placeholder`
+  (set for those places). Control: `abs-only-line-*` / `float-only-line-in-inline` in
+  `live-geometry` and `html-document`.
+- Auto-width tables on every path (item 7): a `width: auto` table is shrink-to-fit in
+  PDFs and screenshots too (turbo-surf#36 item 3 did it for live geometry only) — its
+  columns' max-content plus border-spacing, padding and borders, `min-width` /
+  `max-width` applied, never below its min-content — so the table box (background,
+  borders, `layoutBoxes`) hugs its columns as in Chrome instead of spanning the
+  containing block, and `margin: 0 auto` centres it. `table-layout: fixed` applies only
+  to a table with a definite width (a `width: auto` one uses the automatic algorithm, as
+  in Chrome), and the columns of an auto table fill its box (a `min-width` or stretched
+  table no longer leaves them at their natural widths). Changes many html2pdf PDFs: the
+  exact list is `tools/parity/expected/p5b-w3-turbo-dom-28-item7.json`. Control:
+  `table-auto-*` in `html-document` and `live-geometry`.
+- `inline-flex` / `inline-grid` (miaskiewicz/turbo-dom#53, found while fixing #28 item 4):
+  `Display::InlineFlex` / `InlineGrid` are atomic inline-level flex / grid containers that
+  sit in the line and shrink to fit (`flex` / `grid` once blockified), instead of
+  block-level boxes filling the line; a grid's intrinsic width is its `px` column tracks
+  plus gaps (else its widest item). Control: `inline-flex-*` / `inline-grid-*` in
+  `live-geometry` and `html-document`.
+- Absolutely positioned `width: auto` boxes (miaskiewicz/turbo-dom#48, found while fixing
+  #28 item 2): a non-replaced one is shrink-to-fit (CSS 2.1 §10.3.7) — `min(max(min-content,
+  available), max-content)`, available from its set inset or static position to the far
+  edge of the containing block, then `min-width` / `max-width` — on every path, and one
+  with both `left` and `right` set stretches between them on the PDF / screenshot path
+  too (live already did); a `right`-anchored box is placed by that width. It used to take
+  the whole containing block (`<div style="position:absolute;right:0">` of a 30px child
+  was 1280px wide at x=0). Control: `abs-auto-width-*` / `fixed-auto-width-shrinks` in
+  `live-geometry` and `html-document`.
+- Percentage columns (miaskiewicz/turbo-dom#50, found while fixing #28 item 7): in the
+  automatic table layout a column whose cell has `width: N%` (or `width="N%"`) takes that
+  share of the table (never below its min-content; the other columns share the rest), and
+  an auto table's max-content grows so it can — the largest of the plain sum, each
+  percentage column's max-content over its share and the other columns' over theirs;
+  unbounded (the table fills the line) at 100% or more beside other content — as in
+  Chrome. Control: `table-percent-*` in `live-geometry` and `html-document`.
+- Auto-layout collapsed tables (miaskiewicz/turbo-dom#49, found while fixing #28 item 5):
+  a `border-collapse: collapse` table with the automatic layout (and a `width: auto`
+  `table-layout: fixed` one) now merges shared borders like a fixed-layout one — one
+  border per grid line at the widest abutting width, half on each side, the table's own
+  border as the outer line — with content+padding column tracks from the automatic
+  algorithm (percentages honoured; a spanning cell widens its columns in proportion).
+  Cells, rows and row groups sit at the grid-line centres as in Chrome instead of each
+  cell keeping its full borders (`68x20` for two 2px-bordered cells, was `70x20`), and a
+  collapsed table with its own border no longer counts it twice (also fixed layout).
+  Control: `table-collapse-auto-*` in `live-geometry` and `html-document`.
+- Spanning cells in separated tables (miaskiewicz/turbo-dom#56, found while fixing #49):
+  a `colspan` cell wider than its columns spreads the excess over them in proportion to
+  their widths (evenly when empty) instead of widening only the last one, the
+  border-spacing between them counting towards the span — for the max-content and the
+  min-content — and the cell is laid out over that spacing too, as in Chrome.
+  Control: `table-colspan-*` in `live-geometry` and `html-document`.
 
 ### Changed — selector follow-ups (P5b-X2, miaskiewicz/turbo-dom#24, Chrome 156 controls)
 - `rtdom::cascade` (`getComputedStyle`) and the npm `cascade.mjs` rank rules by the

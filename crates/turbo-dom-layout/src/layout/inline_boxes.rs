@@ -100,10 +100,12 @@ fn block_in_inline_node(node: &crate::StyledNode) -> bool {
     }
     display == Display::Inline && !atomic_element(element) && contains_block(&element.children)
 }
-/// A box that never splits an inline: one not rendered, or an absolutely positioned
-/// one (it stays in its inline run).
+/// A box that never splits an inline: one not rendered, an absolutely positioned one
+/// or a float (it stays in its inline run).
 fn splits_nothing(display: Display, style: &ComputedStyle) -> bool {
-    display == Display::None || super::value::position_of(style).is_out_of_flow()
+    display == Display::None
+        || super::value::position_of(style).is_out_of_flow()
+        || super::value::float_of(style) != super::value::Float::None
 }
 fn displaced_inline(style: &ComputedStyle) -> bool {
     style.get("position") == Some("relative")
@@ -133,14 +135,20 @@ fn validate_context(
 fn unsupported_block_split(display: Display, inside: bool, style: &ComputedStyle) -> bool {
     inside && is_block_split(display) && displaced_block(style)
 }
-/// A block split out of an inline that the producer cannot place: a `sticky` or
-/// floated one (an absolutely positioned box is not split out; it stays in the run).
+/// A block split out of an inline that the producer cannot place: a `sticky` one
+/// (an absolutely positioned box or a float is not split out; it stays in the run).
 fn displaced_block(style: &ComputedStyle) -> bool {
     style.get("position") == Some("sticky")
-        || style.get("float").is_some_and(|value| value != "none")
 }
 fn is_block_split(display: Display) -> bool {
-    !matches!(display, Display::Inline | Display::InlineBlock)
+    !matches!(
+        display,
+        Display::Inline
+            | Display::InlineBlock
+            | Display::InlineTable
+            | Display::InlineFlex
+            | Display::InlineGrid
+    )
 }
 /// An ordinary inline's own unsupported style. `absolute` / `fixed` never reach here:
 /// they blockify ([`super::value::display_of`]).

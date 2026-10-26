@@ -29,14 +29,19 @@ fn hex(c: Rgba) -> String {
     format!("#{:02x}{:02x}{:02x}", mix(c.r), mix(c.g), mix(c.b))
 }
 
-#[test]
-fn html_documents_lay_out_as_chrome_156() {
+/// Lay out every fixture case `select` picks and compare it with Chrome.
+fn compare_cases(select: impl Fn(&str) -> bool) {
     let fixture = fixture();
     let fonts = FontRegistry::new();
     let mut failures = Vec::new();
     let cases = fixture["cases"].as_array().unwrap();
+    let mut compared = 0;
     for case in cases {
         let id = case["id"].as_str().unwrap();
+        if !select(id) {
+            continue;
+        }
+        compared += 1;
         let html = case["html"].as_str().unwrap();
         let measure = case["measure"].as_str().unwrap();
         let mut diags = Diagnostics::default();
@@ -75,11 +80,91 @@ fn html_documents_lay_out_as_chrome_156() {
             failures.push(format!("{id}: canvas {canvas}, Chrome {}", case["canvas"]));
         }
     }
+    assert!(compared > 0);
     assert!(
         failures.is_empty(),
-        "{} of {} cases differ from Chrome 156:\n{}",
+        "{} of {compared} cases differ from Chrome 156:\n{}",
         failures.len(),
-        cases.len(),
         failures.join("\n")
     );
+}
+
+/// The miaskiewicz/turbo-dom#28 item 7 cases (`width: auto` tables shrink to fit on the
+/// HTML path), held out of [`html_documents_lay_out_as_chrome_156`] until the fix lands.
+fn auto_table_case(id: &str) -> bool {
+    id.starts_with("table-auto-")
+}
+
+/// miaskiewicz/turbo-dom#53: `inline-flex` / `inline-grid` are atomic inline-level boxes.
+fn inline_flex_grid_case(id: &str) -> bool {
+    id.starts_with("inline-flex-") || id.starts_with("inline-grid-")
+}
+
+/// The control cases of an open bug, each asserted by its own test (`#[ignore]`d until
+/// its fix lands) and held out of [`html_documents_lay_out_as_chrome_156`].
+fn held_out(id: &str) -> bool {
+    let groups: [fn(&str) -> bool; 6] = [
+        auto_table_case,
+        inline_flex_grid_case,
+        abs_auto_width_case,
+        percent_column_case,
+        collapsed_auto_case,
+        colspan_case,
+    ];
+    groups.iter().any(|group| group(id))
+}
+
+#[test]
+fn html_documents_lay_out_as_chrome_156() {
+    compare_cases(|id| !held_out(id));
+}
+
+#[test]
+fn inline_flex_and_grid_are_inline_level_like_chrome_156() {
+    compare_cases(inline_flex_grid_case);
+}
+
+#[test]
+fn auto_width_tables_shrink_to_fit_like_chrome_156() {
+    compare_cases(auto_table_case);
+}
+
+/// miaskiewicz/turbo-dom#48: absolutely positioned `width: auto` boxes shrink to fit.
+fn abs_auto_width_case(id: &str) -> bool {
+    id.starts_with("abs-auto-width-") || id == "fixed-auto-width-shrinks"
+}
+
+#[test]
+fn absolutely_positioned_auto_widths_shrink_to_fit_like_chrome_156() {
+    compare_cases(abs_auto_width_case);
+}
+
+/// miaskiewicz/turbo-dom#50: percentage column widths in the automatic table layout.
+fn percent_column_case(id: &str) -> bool {
+    id.starts_with("table-percent-")
+}
+
+#[test]
+fn percentage_columns_size_auto_tables_like_chrome_156() {
+    compare_cases(percent_column_case);
+}
+
+/// miaskiewicz/turbo-dom#49: auto-layout `border-collapse: collapse` tables.
+fn collapsed_auto_case(id: &str) -> bool {
+    id.starts_with("table-collapse-auto-")
+}
+
+#[test]
+fn auto_layout_collapsed_tables_merge_borders_like_chrome_156() {
+    compare_cases(collapsed_auto_case);
+}
+
+/// miaskiewicz/turbo-dom#56: spanning cells in separated auto tables.
+fn colspan_case(id: &str) -> bool {
+    id.starts_with("table-colspan-")
+}
+
+#[test]
+fn spanning_cells_spread_over_their_columns_like_chrome_156() {
+    compare_cases(colspan_case);
 }

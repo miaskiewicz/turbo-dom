@@ -5,13 +5,12 @@
 //! repeatable (`BreakMeta.repeatable`) so the fragmenter can re-emit them on each
 //! page a table spans (§6.3, AC-5.8).
 //!
-//! A fixed-layout `border-collapse: collapse` table merges shared cell edges onto a
-//! collapsed grid (each shared border counted once, half on each side, CSS 2.1
-//! §17.6.2) so table/row/cell boxes size correctly across a `colspan`; see the
-//! collapsed-border section below. Deferred in v1 (documented): `<caption>`,
-//! `border-spacing`, and collapsed-border merging for AUTO-layout tables (those
-//! still lay out with each cell's full borders); a cell taller than its row span
-//! expands the last spanned row.
+//! A `border-collapse: collapse` table (fixed or automatic layout) merges shared cell
+//! edges onto a collapsed grid (each shared border counted once, half on each side,
+//! CSS 2.1 §17.6.2; the table's own border is the outer grid line) so table/row/cell
+//! boxes size correctly across a `colspan`; see the collapsed-border section below.
+//! Deferred (documented): `<caption>` (miaskiewicz/turbo-dom#51); a cell taller than
+//! its row span expands the last spanned row.
 
 use crate::style::ComputedStyle;
 use crate::tag::Attr;
@@ -96,7 +95,7 @@ struct GroupRef {
 }
 
 /// The row groups among a table's children (every child that is not itself a row,
-/// as [`collect_rows`] flattens them) with at least one row, in order, indexed into
+/// as [`collect_rows`] flattens them), empty ones included, in order, indexed into
 /// [`collect_rows`]' rows.
 fn row_groups(items: &[LayoutBox]) -> Vec<GroupRef> {
     let mut out = Vec::new();
@@ -104,7 +103,7 @@ fn row_groups(items: &[LayoutBox]) -> Vec<GroupRef> {
     for child in items {
         let row = matches!(child.display, Display::TableRow);
         let count = if row { 1 } else { rows_of(child).len() };
-        if count > 0 && !row {
+        if !row {
             out.push(GroupRef {
                 node_id: child.node_id,
                 position: position_of(&child.style),
@@ -223,6 +222,30 @@ fn is_fixed(style: &ComputedStyle) -> bool {
     style.get("table-layout").map(str::trim) == Some("fixed")
 }
 
+/// Whether the fixed table layout governs: `table-layout: fixed` with a definite
+/// (non-`auto`) width; a `width: auto` fixed table uses the automatic layout (Chrome
+/// 156).
+fn fixed_layout(style: &ComputedStyle) -> bool {
+    is_fixed(style)
+        && style
+            .get("width")
+            .is_some_and(|width| !width.trim().eq_ignore_ascii_case("auto"))
+}
+
+/// The table's own left + right border widths. In the collapsed model they are the
+/// outer grid lines, part of the grid (miaskiewicz/turbo-dom#49).
+fn table_border(style: &ComputedStyle) -> Edges {
+    resolve_box_style(
+        style,
+        ResolveCtx {
+            parent_font_size: DEFAULT_FONT_SIZE,
+            cb_width: 0.0,
+        },
+    )
+    .border
+    .widths()
+}
+
 fn collapsed(style: &ComputedStyle) -> bool {
     style.get("border-collapse").map(str::trim) == Some("collapse")
 }
@@ -242,7 +265,9 @@ fn cell_span_width(cols: &[f32], col: usize, span: usize) -> f32 {
     cols[col..col + span].iter().sum()
 }
 
-fn auto_columns(placed: &[Placed], ncols: usize, fonts: &FontRegistry) -> Vec<f32> {
+/// Each column's max-content for a separated table with horizontal border-spacing
+/// `hs`.
+fn auto_columns(placed: &[Placed], ncols: usize, hs: f32, fonts: &FontRegistry) -> Vec<f32> {
     let mut w = vec![0.0_f32; ncols];
     for p in placed {
         if p.colspan == 1 {
@@ -250,17 +275,20 @@ fn auto_columns(placed: &[Placed], ncols: usize, fonts: &FontRegistry) -> Vec<f3
         }
     }
     for p in placed {
-        fit_span(&mut w, p, fonts);
+        fit_span(&mut w, p, hs, fonts);
     }
     w
 }
 
-fn fit_span(w: &mut [f32], p: &Placed, fonts: &FontRegistry) {
+/// Widen the columns a spanning cell covers to its max-content: the spacing between
+/// them counts towards the span and the excess spreads in proportion to the columns'
+/// widths, evenly when they are empty (Chrome 156; miaskiewicz/turbo-dom#56).
+fn fit_span(w: &mut [f32], p: &Placed, hs: f32, fonts: &FontRegistry) {
     if p.colspan > 1 {
-        let have = cell_span_width(w, p.col, p.colspan);
-        let need = natural_width(p.lb, fonts);
-        if need > have {
-            w[p.col + p.colspan - 1] += need - have;
+        let have = cell_span_width(w, p.col, p.colspan) + hs * (p.colspan - 1) as f32;
+        let need = natural_width(p.lb, fonts) - have;
+        if need > 0.0 {
+            spread(&mut w[p.col..p.col + p.colspan], need);
         }
     }
 }
@@ -300,6 +328,105 @@ fn min_columns(placed: &[Placed], ncols: usize, fonts: &FontRegistry) -> Vec<f32
         }
     }
     w
+}
+
+/// Each column's percentage width: the largest `width: N%` of its single-column cells
+/// (miaskiewicz/turbo-dom#50).
+fn column_percents(placed: &[Placed], ncols: usize) -> Vec<Option<f32>> {
+    let mut pct = vec![None; ncols];
+    for p in placed.iter().filter(|p| p.colspan == 1) {
+        if let Some(v) = cell_percent(p.lb) {
+            pct[p.col] = Some(pct[p.col].map_or(v, |w: f32| w.max(v)));
+        }
+    }
+    pct
+}
+
+/// A cell's positive `width` percentage.
+fn cell_percent(lb: &LayoutBox) -> Option<f32> {
+    let bs = lb.resolved(ResolveCtx {
+        parent_font_size: DEFAULT_FONT_SIZE,
+        cb_width: 0.0,
+    });
+    match bs.width {
+        LengthPct::Pct(p) if p > 0.0 => Some(p),
+        _ => None,
+    }
+}
+
+/// The columns' max-content total honouring percentage columns, as Chrome 156 sizes an
+/// auto table: the largest of the plain sum, each percentage column's max-content
+/// over its share, and the other columns' over the share left to them — and whether
+/// it is unbounded (percentages total 100% or more beside other content: the table
+/// then fills the line).
+fn percent_aware_total(cols: &[f32], pcts: &[Option<f32>]) -> (f32, bool) {
+    let sum: f32 = cols.iter().sum();
+    let pct_total = pcts.iter().flatten().sum::<f32>().min(100.0);
+    if pct_total <= 0.0 {
+        return (sum, false);
+    }
+    let paired = || cols.iter().zip(pcts);
+    let from_pct = paired()
+        .filter_map(|(c, p)| p.map(|p| c * 100.0 / p))
+        .fold(0.0_f32, f32::max);
+    let rest: f32 = paired().filter(|(_, p)| p.is_none()).map(|(c, _)| c).sum();
+    let from_rest = if pct_total < 100.0 {
+        rest * 100.0 / (100.0 - pct_total)
+    } else {
+        0.0
+    };
+    (
+        sum.max(from_pct).max(from_rest),
+        pct_total >= 100.0 && rest > 0.0,
+    )
+}
+
+/// Fit the auto `cols` to the table's `target` width: a percentage column takes its
+/// share of `target` (never below its min-content; shares over 100% scale down), the
+/// other columns share the rest as [`scale_to`] does, taking back from the percentage
+/// columns what their minima need (miaskiewicz/turbo-dom#50). Without percentages this
+/// is [`scale_to`].
+fn fit_columns(cols: &mut [f32], mins: &[f32], pcts: &[Option<f32>], target: f32) {
+    if pcts.iter().all(Option::is_none) {
+        return scale_to(cols, target, mins);
+    }
+    let total: f32 = pcts.iter().flatten().sum();
+    let scale = 100.0_f32.min(total) / total / 100.0;
+    let (pct_cols, auto_cols): (Vec<usize>, Vec<usize>) =
+        (0..cols.len()).partition(|&i| pcts[i].is_some());
+    for &i in &pct_cols {
+        cols[i] = mins[i].max(target * pcts[i].unwrap_or(0.0) * scale);
+    }
+    let auto_min: f32 = auto_cols.iter().map(|&i| mins[i]).sum();
+    let taken: f32 = pct_cols.iter().map(|&i| cols[i]).sum();
+    if taken > target - auto_min {
+        shrink_subset(cols, mins, &pct_cols, taken - (target - auto_min).max(0.0));
+    }
+    // Only percentage columns: they fill the table between them.
+    let (idx, target) = if auto_cols.is_empty() {
+        (&pct_cols, target)
+    } else {
+        let rest = target - pct_cols.iter().map(|&i| cols[i]).sum::<f32>();
+        (&auto_cols, rest.max(auto_min))
+    };
+    let mut subset: Vec<f32> = idx.iter().map(|&i| cols[i]).collect();
+    let subset_mins: Vec<f32> = idx.iter().map(|&i| mins[i]).collect();
+    scale_to(&mut subset, target, &subset_mins);
+    scatter(cols, idx, &subset);
+}
+
+/// [`shrink_columns`] over the columns `idx` of `cols`.
+fn shrink_subset(cols: &mut [f32], mins: &[f32], idx: &[usize], reduce: f32) {
+    let mut subset: Vec<f32> = idx.iter().map(|&i| cols[i]).collect();
+    let subset_mins: Vec<f32> = idx.iter().map(|&i| mins[i]).collect();
+    shrink_columns(&mut subset, &subset_mins, reduce);
+    scatter(cols, idx, &subset);
+}
+
+fn scatter(cols: &mut [f32], idx: &[usize], values: &[f32]) {
+    for (&i, &v) in idx.iter().zip(values) {
+        cols[i] = v;
+    }
 }
 
 /// Fit `cols` to `target`. Growing scales up proportionally; shrinking takes only
@@ -360,18 +487,17 @@ fn column_widths(
     // the `width` declaration upstream), so a table with an explicit width fills
     // `cw`. Re-resolving the `width` value here would apply a percentage twice
     // (e.g. an 85%-wide table's columns collapsing to 85% of 85%).
-    let has_width = explicit_table_width(style, cw).is_some();
-    if is_fixed(style) {
+    // `table-layout: fixed` applies to a table with a definite width; a `width: auto`
+    // one uses the automatic algorithm (Chrome 156; miaskiewicz/turbo-dom#28 item 7).
+    if is_fixed(style) && explicit_table_width(style, cw).is_some() {
         return fixed_columns(placed, ncols, cw);
     }
-    let mut cols = auto_columns(placed, ncols, fonts);
-    let target = if has_width {
-        cw
-    } else {
-        cols.iter().sum::<f32>().min(cw)
-    };
+    // The columns fill the table box: an auto table is already shrink-to-fit (its
+    // columns' max-content, wider under `min-width` or when stretched), an explicit
+    // width is `cw` itself.
+    let mut cols = auto_columns(placed, ncols, border_spacing(style).0, fonts);
     let mins = min_columns(placed, ncols, fonts);
-    scale_to(&mut cols, target, &mins);
+    fit_columns(&mut cols, &mins, &column_percents(placed, ncols), cw);
     cols
 }
 
@@ -549,6 +675,51 @@ fn assign_fixed_col(w: &mut [f32], fixed: &mut [bool], j: usize, per: f32, expli
     }
 }
 
+/// Content+padding widths per column of an auto-layout collapsed table, each cell
+/// measured by `measure` (its natural or min-content border-box width) less its own
+/// borders, which live on the grid lines; a spanning cell wider than its columns
+/// (and the lines between them) widens them in proportion (evenly when empty).
+fn collapse_columns(
+    placed: &[Placed],
+    vert: &[f32],
+    fonts: &FontRegistry,
+    measure: fn(&LayoutBox, &FontRegistry) -> f32,
+) -> Vec<f32> {
+    let cp = |p: &Placed| (measure(p.lb, fonts) - cell_border(p.lb).horizontal()).max(0.0);
+    let mut w = vec![0.0_f32; vert.len() - 1];
+    for p in placed.iter().filter(|p| p.colspan == 1) {
+        w[p.col] = w[p.col].max(cp(p));
+    }
+    for p in placed.iter().filter(|p| p.colspan > 1) {
+        let span = p.col..p.col + p.colspan;
+        let lines: f32 = vert[p.col + 1..p.col + p.colspan].iter().sum();
+        let need = cp(p) - lines - w[span.clone()].iter().sum::<f32>();
+        if need > 0.0 {
+            spread(&mut w[span], need);
+        }
+    }
+    w
+}
+
+/// Add `extra` to `cols` in proportion to their widths (evenly when all are zero).
+fn spread(cols: &mut [f32], extra: f32) {
+    let sum: f32 = cols.iter().sum();
+    let n = cols.len() as f32;
+    for c in cols.iter_mut() {
+        *c += if sum > 0.0 {
+            extra * *c / sum
+        } else {
+            extra / n
+        };
+    }
+}
+
+/// A collapsed table's content width from its column tracks and grid lines: their sum
+/// less the table's own left/right border (the box frame adds it back).
+fn collapsed_width(tracks: &[f32], vert: &[f32], style: &ComputedStyle) -> f32 {
+    tracks.iter().sum::<f32>() + vert.iter().sum::<f32>() - table_border(style).horizontal()
+}
+
 /// Lay out the cells of a collapsed-border table into the grid defined by the
 /// vertical grid-line centres `line_x` and their border widths `vert`. Each cell's
 /// content is laid at the width its content region truly gets — the collapsed
@@ -635,9 +806,24 @@ fn layout_table_collapsed(
         ..
     } = grid;
     let nrows = rows.len();
+    // The grid spans the table's border box: its own borders are the outer lines.
+    let own = table_border(&table.style);
+    let (cx, cy) = (cx - own.left, cy - own.top);
     let vert = vborders(placed, ncols, &table.style);
-    let vert_total: f32 = vert.iter().sum();
-    let col_cp = fixed_collapse_columns(placed, ncols, (cw - vert_total).max(1.0));
+    let avail = cw + own.horizontal() - vert.iter().sum::<f32>();
+    let col_cp = if fixed_layout(&table.style) {
+        fixed_collapse_columns(placed, ncols, avail.max(1.0))
+    } else {
+        let mut cols = collapse_columns(placed, &vert, ctx.fonts, natural_width);
+        let mins = collapse_columns(placed, &vert, ctx.fonts, super::flex::min_content_width);
+        fit_columns(
+            &mut cols,
+            &mins,
+            &column_percents(placed, ncols),
+            avail.max(0.0),
+        );
+        cols
+    };
     let line_x = line_centers(&col_cp, &vert);
     let laid = layout_cells_collapsed(placed, &line_x, &vert, fs, ctx);
     let horiz = hborders(placed, nrows, &table.style);
@@ -650,11 +836,12 @@ fn layout_table_collapsed(
         row_x: line_x[0],
         row_w: line_x[ncols] - line_x[0],
     };
-    let height = row_cp.iter().sum::<f32>() + horiz.iter().sum::<f32>();
+    let height = row_cp.iter().sum::<f32>() + horiz.iter().sum::<f32>() - own.vertical();
     record_rows(rows, ctx);
     let frags = finalize(rows, laid, &geom, cx, cy);
     record_row_metrics(rows, &frags, ctx);
-    (wrap_row_groups(frags, grid.groups, ctx), height)
+    let frame = GroupFrame::of(&geom, cx, cy + geom.row_y[0]);
+    (wrap_row_groups(frags, grid.groups, frame, ctx), height)
 }
 
 // --------------------------------------------------------------------------
@@ -668,8 +855,14 @@ struct LaidCell<'a> {
     content_h: f32,
 }
 
-fn layout_one<'a>(p: &'a Placed<'a>, cols: &[f32], fs: f32, ctx: &mut Ctx) -> LaidCell<'a> {
-    let w = cell_span_width(cols, p.col, p.colspan);
+fn layout_one<'a>(
+    p: &'a Placed<'a>,
+    cols: &[f32],
+    hs: f32,
+    fs: f32,
+    ctx: &mut Ctx,
+) -> LaidCell<'a> {
+    let w = cell_span_width(cols, p.col, p.colspan) + hs * (p.colspan - 1) as f32;
     let bs = p.lb.resolved(ResolveCtx {
         parent_font_size: fs,
         cb_width: w,
@@ -684,15 +877,18 @@ fn layout_one<'a>(p: &'a Placed<'a>, cols: &[f32], fs: f32, ctx: &mut Ctx) -> La
     }
 }
 
+/// Lay out every cell at its columns' width (a spanning cell also over the
+/// border-spacing `hs` between them; miaskiewicz/turbo-dom#56).
 fn layout_cells<'a>(
     placed: &'a [Placed],
     cols: &[f32],
+    hs: f32,
     fs: f32,
     ctx: &mut Ctx,
 ) -> Vec<LaidCell<'a>> {
     placed
         .iter()
-        .map(|p| layout_one(p, cols, fs, ctx))
+        .map(|p| layout_one(p, cols, hs, fs, ctx))
         .collect()
 }
 
@@ -817,22 +1013,64 @@ fn empty_box_metrics(frag: &Fragment, position: Position, display: Display) -> U
     }
 }
 
+/// Where the rows of a table sit (galley-absolute): their left edge and width, and the
+/// block offset an empty row group takes when no row precedes it.
+#[derive(Clone, Copy)]
+struct GroupFrame {
+    x: f32,
+    width: f32,
+    top: f32,
+}
+
+impl GroupFrame {
+    fn of(geom: &Geom, cx: f32, top: f32) -> Self {
+        Self {
+            x: cx + geom.row_x,
+            width: geom.row_w,
+            top,
+        }
+    }
+}
+
 /// In live geometry, nest each row group's rows under a transparent box for the group:
 /// the union of its rows, with frameless used metrics (miaskiewicz/turbo-surf#31), so
-/// a `<tbody>` answers its CSSOM reads. Other layouts keep the rows flat (the PDF
-/// fragmenter repeats `<thead>`/`<tfoot>` rows from the table's own children).
-fn wrap_row_groups(frags: Vec<Fragment>, groups: &[GroupRef], ctx: &mut Ctx) -> Vec<Fragment> {
+/// a `<tbody>` answers its CSSOM reads. An empty row group is a zero-height box as
+/// wide as the rows, at the bottom of the rows before it — the table's first row edge
+/// when there are none (miaskiewicz/turbo-dom#28 item 5, Chrome 156). Other layouts keep
+/// the rows flat (the PDF fragmenter repeats `<thead>`/`<tfoot>` rows from the table's
+/// own children).
+fn wrap_row_groups(
+    frags: Vec<Fragment>,
+    groups: &[GroupRef],
+    frame: GroupFrame,
+    ctx: &mut Ctx,
+) -> Vec<Fragment> {
     let Some(metrics) = &mut ctx.used_metrics else {
         return frags;
     };
+    let mut bottom = frame.top;
     let mut rows: Vec<Option<Fragment>> = frags.into_iter().map(Some).collect();
     let mut out = Vec::new();
     let mut next = 0;
     for group in groups {
         out.extend(rows[next..group.start].iter_mut().filter_map(Option::take));
+        if let Some(row) = out.last() {
+            bottom = row.y + row.height;
+        }
         next = group.start + group.count;
-        let children = rows[group.start..next].iter_mut().filter_map(Option::take);
-        let frag = group_fragment(group.node_id, children.collect());
+        let children: Vec<Fragment> = rows[group.start..next]
+            .iter_mut()
+            .filter_map(Option::take)
+            .collect();
+        let frag = if children.is_empty() {
+            let mut frag = group_fragment(group.node_id, Vec::new());
+            (frag.x, frag.y, frag.width) = (frame.x, bottom, frame.width);
+            frag
+        } else {
+            let frag = group_fragment(group.node_id, children);
+            bottom = frag.y + frag.height;
+            frag
+        };
         metrics.insert(
             group.node_id,
             empty_box_metrics(&frag, group.position, group.display),
@@ -843,14 +1081,19 @@ fn wrap_row_groups(frags: Vec<Fragment>, groups: &[GroupRef], ctx: &mut Ctx) -> 
     out
 }
 
-/// A transparent box over `rows` (their union).
+/// A transparent box over `rows` (their union; zero-size at the origin for none).
 fn group_fragment(node_id: NodeId, rows: Vec<Fragment>) -> Fragment {
-    let (first, last) = (&rows[0], &rows[rows.len() - 1]);
-    let x = rows.iter().map(|r| r.x).fold(f32::INFINITY, f32::min);
-    let right = rows
-        .iter()
-        .map(|r| r.x + r.width)
-        .fold(f32::NEG_INFINITY, f32::max);
+    let (x, y, width, height) = match (rows.first(), rows.last()) {
+        (Some(first), Some(last)) => {
+            let x = rows.iter().map(|r| r.x).fold(f32::INFINITY, f32::min);
+            let right = rows
+                .iter()
+                .map(|r| r.x + r.width)
+                .fold(f32::NEG_INFINITY, f32::max);
+            (x, first.y, right - x, last.y + last.height - first.y)
+        }
+        _ => (0.0, 0.0, 0.0, 0.0),
+    };
     let content = FragmentContent::Box {
         background: None,
         border: BorderEdges::default(),
@@ -859,14 +1102,7 @@ fn group_fragment(node_id: NodeId, rows: Vec<Fragment>) -> Fragment {
         gradient: None,
         transform: None,
     };
-    let mut frag = Fragment::new(
-        node_id,
-        x,
-        first.y,
-        right - x,
-        last.y + last.height - first.y,
-        content,
-    );
+    let mut frag = Fragment::new(node_id, x, y, width, height, content);
     frag.children = rows;
     frag
 }
@@ -930,11 +1166,17 @@ pub(crate) fn min_content_width(
     if ncols == 0 {
         return 0.0;
     }
-    // Fixed collapsed table: floor = first-row columns (colspan-distributed) plus one
-    // border per grid line — the used-width basis, not each cell's full borders.
-    if is_fixed(style) && collapsed(style) {
-        let vert: f32 = vborders(&placed, ncols, style).iter().sum();
-        return fixed_min_cp(&placed, ncols, fonts).iter().sum::<f32>() + vert;
+    // Collapsed table: floor = its columns' content+padding minima (a fixed one's
+    // first row) plus one border per grid line — the used-width basis, not each cell's
+    // full borders — less the table's own border, which its box frame adds back.
+    if collapsed(style) {
+        let vert = vborders(&placed, ncols, style);
+        let cp = if fixed_layout(style) {
+            fixed_min_cp(&placed, ncols, fonts)
+        } else {
+            collapse_columns(&placed, &vert, fonts, super::flex::min_content_width)
+        };
+        return collapsed_width(&cp, &vert, style);
     }
     let (hs, _) = border_spacing(style);
     separated_min_content(&placed, ncols, hs, fonts)
@@ -948,32 +1190,54 @@ pub(crate) fn max_content_width(
     style: &ComputedStyle,
     fonts: &FontRegistry,
 ) -> f32 {
+    max_content(items, style, fonts).0
+}
+
+/// [`max_content_width`] and whether the table's max-content is unbounded (a
+/// percentage column of 100% or more beside other content; see
+/// [`percent_aware_total`]): a `width: auto` table then fills its line.
+pub(crate) fn max_content(
+    items: &[LayoutBox],
+    style: &ComputedStyle,
+    fonts: &FontRegistry,
+) -> (f32, bool) {
     let rows = collect_rows(items);
     let (placed, ncols) = build_grid(&rows);
-    if ncols == 0 || is_fixed(style) && collapsed(style) {
-        return min_content_width(items, style, fonts);
+    if ncols == 0 || fixed_layout(style) && collapsed(style) {
+        return (min_content_width(items, style, fonts), false);
+    }
+    let pcts = column_percents(&placed, ncols);
+    if collapsed(style) {
+        let vert = vborders(&placed, ncols, style);
+        let cp = collapse_columns(&placed, &vert, fonts, natural_width);
+        let (total, unbounded) = percent_aware_total(&cp, &pcts);
+        return (collapsed_width(&[total], &vert, style), unbounded);
     }
     let (hs, _) = border_spacing(style);
-    auto_columns(&placed, ncols, fonts).iter().sum::<f32>() + hs * (ncols as f32 + 1.0)
+    let cols = auto_columns(&placed, ncols, hs, fonts);
+    let (total, unbounded) = percent_aware_total(&cols, &pcts);
+    (total + hs * (ncols as f32 + 1.0), unbounded)
 }
 
 /// Separated-border table min-content. Each column's min-content is the widest
 /// single-column cell (text wraps to its longest word; a fixed-width cell keeps its
-/// size). The table is at least the sum of those, and at least any spanning cell's
-/// own min-content (e.g. the infobox's 267px cat-image row that spans both columns),
-/// plus the border-spacing between and around the columns.
+/// size); a spanning cell wider than its columns and the spacing between them (e.g.
+/// the infobox's 267px cat-image row that spans both columns) widens them in
+/// proportion, as for the max-content (miaskiewicz/turbo-dom#56). Plus the
+/// border-spacing between and around the columns.
 fn separated_min_content(placed: &[Placed], ncols: usize, hs: f32, fonts: &FontRegistry) -> f32 {
     let mut w = vec![0.0_f32; ncols];
     for p in placed.iter().filter(|p| p.colspan == 1) {
         w[p.col] = w[p.col].max(super::flex::min_content_width(p.lb, fonts));
     }
-    let base: f32 = w.iter().sum();
-    let span_max = placed
-        .iter()
-        .filter(|p| p.colspan > 1)
-        .map(|p| super::flex::min_content_width(p.lb, fonts))
-        .fold(0.0_f32, f32::max);
-    base.max(span_max) + hs * (ncols as f32 + 1.0)
+    for p in placed.iter().filter(|p| p.colspan > 1) {
+        let have = cell_span_width(&w, p.col, p.colspan) + hs * (p.colspan - 1) as f32;
+        let need = super::flex::min_content_width(p.lb, fonts) - have;
+        if need > 0.0 {
+            spread(&mut w[p.col..p.col + p.colspan], need);
+        }
+    }
+    w.iter().sum::<f32>() + hs * (ncols as f32 + 1.0)
 }
 
 /// Returns the row fragments (galley-absolute) and the table content height.
@@ -989,11 +1253,21 @@ pub(crate) fn layout_table(
     let rows = collect_rows(items);
     let (placed, ncols) = build_grid(&rows);
     if ncols == 0 {
-        return (Vec::new(), 0.0);
+        // No columns: (empty) row groups sit at the content-box origin, zero-size.
+        let frame = GroupFrame {
+            x: cx,
+            width: 0.0,
+            top: cy,
+        };
+        return (
+            wrap_row_groups(Vec::new(), &row_groups(items), frame, ctx),
+            0.0,
+        );
     }
-    // Fixed-layout collapsed borders need the merged-grid geometry (shared edges
-    // counted once). Auto/separate tables keep the track+spacing model below.
-    if is_fixed(&table.style) && collapsed(&table.style) {
+    // Collapsed borders need the merged-grid geometry (shared edges counted once;
+    // miaskiewicz/turbo-dom#49 for auto layout). Separated tables keep the
+    // track+spacing model below.
+    if collapsed(&table.style) {
         let grid = Grid {
             rows: &rows,
             placed: &placed,
@@ -1007,7 +1281,7 @@ pub(crate) fn layout_table(
     // columns + gaps still fit the table box.
     let inner = (cw - hs * (ncols as f32 + 1.0)).max(1.0);
     let cols = column_widths(&table.style, &placed, ncols, inner, ctx.fonts);
-    let laid = layout_cells(&placed, &cols, fs, ctx);
+    let laid = layout_cells(&placed, &cols, hs, fs, ctx);
     let row_h = row_heights(&laid, &rows);
     let nrows = row_h.len();
     let geom = Geom {
@@ -1021,5 +1295,85 @@ pub(crate) fn layout_table(
     record_rows(&rows, ctx);
     let frags = finalize(&rows, laid, &geom, cx, cy);
     record_row_metrics(&rows, &frags, ctx);
-    (wrap_row_groups(frags, &row_groups(items), ctx), height)
+    let frame = GroupFrame::of(&geom, cx, cy);
+    (
+        wrap_row_groups(frags, &row_groups(items), frame, ctx),
+        height,
+    )
+}
+
+#[cfg(test)]
+mod percent_tests {
+    use super::{fit_columns, percent_aware_total};
+
+    #[test]
+    fn percent_aware_total_matches_chromes_auto_table_max_content() {
+        assert_eq!(
+            percent_aware_total(&[32.0, 22.0], &[None, None]),
+            (54.0, false)
+        );
+        // 50%: the 32px column must be half of the table.
+        assert_eq!(
+            percent_aware_total(&[32.0, 22.0], &[Some(50.0), None]),
+            (64.0, false)
+        );
+        // Two 25% columns: 32 / 0.25 = 128 wins over 22 / 0.5 = 44.
+        let two = percent_aware_total(&[32.0, 22.0, 22.0], &[Some(25.0), Some(25.0), None]);
+        assert_eq!(two, (128.0, false));
+        // 100% beside other content is unbounded; alone it is not.
+        assert!(percent_aware_total(&[32.0, 22.0], &[Some(100.0), None]).1);
+        assert!(!percent_aware_total(&[32.0, 22.0], &[Some(60.0), Some(40.0)]).1);
+        assert!(!percent_aware_total(&[32.0, 0.0], &[Some(100.0), None]).1);
+    }
+
+    #[test]
+    fn fit_columns_gives_percentage_columns_their_share() {
+        let fit = |cols: &[f32], mins: &[f32], pcts: &[Option<f32>], target| {
+            let mut cols = cols.to_vec();
+            fit_columns(&mut cols, mins, pcts, target);
+            cols
+        };
+        // No percentages: plain proportional growth.
+        assert_eq!(
+            fit(&[10.0, 30.0], &[10.0, 30.0], &[None, None], 80.0),
+            [20.0, 60.0]
+        );
+        // 25% + 25% of 128, the rest to the auto column.
+        let quarters = fit(
+            &[32.0, 22.0, 22.0],
+            &[32.0, 22.0, 22.0],
+            &[Some(25.0), Some(25.0), None],
+            128.0,
+        );
+        assert_eq!(quarters, [32.0, 32.0, 64.0]);
+        // 100%: the other column keeps its min-content.
+        assert_eq!(
+            fit(&[32.0, 22.0], &[32.0, 22.0], &[Some(100.0), None], 1274.0),
+            [1252.0, 22.0]
+        );
+        // Shares over 100% scale down; percentage-only tables fill the target.
+        assert_eq!(
+            fit(
+                &[10.0, 10.0],
+                &[10.0, 10.0],
+                &[Some(100.0), Some(100.0)],
+                100.0
+            ),
+            [50.0, 50.0]
+        );
+        assert_eq!(
+            fit(
+                &[10.0, 10.0],
+                &[10.0, 10.0],
+                &[Some(20.0), Some(30.0)],
+                200.0
+            ),
+            [80.0, 120.0]
+        );
+        // A share below the column's min-content keeps the min-content.
+        assert_eq!(
+            fit(&[50.0, 10.0], &[50.0, 10.0], &[Some(10.0), None], 100.0),
+            [50.0, 50.0]
+        );
+    }
 }

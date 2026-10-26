@@ -128,6 +128,19 @@ impl LayoutBox {
         super::value::position_of(&self.style).is_out_of_flow()
     }
 
+    /// Whether the box floats (`float: left | right`; an absolutely positioned box
+    /// ignores `float`, see [`LayoutBox::out_of_flow`]).
+    pub(crate) fn floated(&self) -> bool {
+        super::value::float_of(&self.style) != super::value::Float::None
+    }
+
+    /// Whether the box takes only a place in surrounding inline content instead of
+    /// splitting it: an absolutely positioned box (its static position) or a float
+    /// (placed at the top of its line; miaskiewicz/turbo-dom#28 item 4).
+    pub(crate) fn line_placeholder(&self) -> bool {
+        self.out_of_flow() || self.floated()
+    }
+
     pub(crate) fn is_replaced(&self) -> bool {
         self.native_iframe()
             || self.svg_viewport.is_some()
@@ -638,9 +651,11 @@ fn classify_display(el: &StyledElement, ids: &mut Ids) -> Option<Level> {
     // never reach here — no `Display::None` arm (it would be dead code).
     match display_of(&el.style) {
         Display::Inline => Some(native_inline_items(el, ids)),
-        Display::InlineBlock => Some(Level::Inline(vec![InlineItem::Atomic(build_block_box(
-            el, ids,
-        ))])),
+        Display::InlineBlock | Display::InlineTable | Display::InlineFlex | Display::InlineGrid => {
+            Some(Level::Inline(vec![InlineItem::Atomic(build_block_box(
+                el, ids,
+            ))]))
+        }
         _ => Some(Level::Block(build_block_box(el, ids))),
     }
 }
@@ -711,9 +726,12 @@ fn native_inline_flow(el: &StyledElement, ids: &mut Ids) -> Level {
     for child in children {
         match child {
             FlowLevel::Inline(items) => run.extend(items),
-            // An absolutely positioned box does not split its inline ancestor: it
-            // stays in the run as a placeholder at its static position.
-            FlowLevel::Block(block) if block.out_of_flow() => run.push(InlineItem::Atomic(block)),
+            // An absolutely positioned box or a float does not split its inline
+            // ancestor: it stays in the run as a placeholder (its static position /
+            // the top of its line).
+            FlowLevel::Block(block) if block.line_placeholder() => {
+                run.push(InlineItem::Atomic(block));
+            }
             FlowLevel::Block(block) => {
                 out.push(FlowLevel::Inline(native_inline_run(
                     std::mem::take(&mut run),
@@ -798,9 +816,9 @@ fn box_kind_for(display: Display, el: &StyledElement, ids: &mut Ids) -> BoxKind 
         return build_flow(&text, &el.style, ids);
     }
     match display {
-        Display::Flex => BoxKind::Flex(flex_grid_children(el, ids)),
-        Display::Grid => BoxKind::Grid(flex_grid_children(el, ids)),
-        Display::Table => BoxKind::Table(child_block_boxes(el, ids)),
+        Display::Flex | Display::InlineFlex => BoxKind::Flex(flex_grid_children(el, ids)),
+        Display::Grid | Display::InlineGrid => BoxKind::Grid(flex_grid_children(el, ids)),
+        Display::Table | Display::InlineTable => BoxKind::Table(child_block_boxes(el, ids)),
         _ => build_flow(&el.children, &el.style, ids),
     }
 }
@@ -1030,10 +1048,8 @@ fn flush_flex_text(
         text.clear();
         return;
     }
-    let mut anonymous = anon_lines_box(std::mem::take(text), style, ids);
     // The item inherits text properties, never the container's width or frame.
-    anonymous.style = style.inherited_only();
-    boxes.push(anonymous);
+    boxes.push(anon_lines_box(std::mem::take(text), style, ids));
 }
 
 fn block_child(node: &StyledNode, ids: &mut Ids) -> Option<LayoutBox> {
@@ -1052,20 +1068,20 @@ fn is_blank_text(item: &InlineItem) -> bool {
     matches!(item, InlineItem::Text { text, .. } if text.chars().all(|ch| matches!(ch, ' ' | '\t' | '\n' | '\r' | '\x0c')))
 }
 
+/// The anonymous block box wrapping an inline run next to block-level siblings. Its
+/// style is anonymous-box style (CSS 2.1 §9.2.1.1): only what it inherits from its
+/// parent, never the parent's frame, size, margins, background or `position` — on
+/// every layout path (miaskiewicz/turbo-dom#28 item 3; the PDF path used to copy the
+/// parent's whole style, so the run was padded, sized and offset a second time).
 fn anon_lines_box(
     items: Vec<InlineItem>,
     parent_style: &ComputedStyle,
     ids: &mut Ids,
 ) -> LayoutBox {
-    let style = if ids.sources.is_some() {
-        parent_style.inherited_only()
-    } else {
-        parent_style.clone()
-    };
     LayoutBox {
         node_id: ids.alloc(),
         source_role: SourceRole::AnonymousInlineFlow,
-        style,
+        style: parent_style.inherited_only(),
         attrs: Vec::new(),
         display: Display::Block,
         kind: BoxKind::Lines(items),
@@ -1105,9 +1121,10 @@ fn wrap_runs(
     for level in levels {
         match level {
             FlowLevel::Inline(items) => run.extend(items),
-            // An absolutely positioned box inside inline content stays in that line
-            // run (it neither ends nor splits it); one between blocks stays a block.
-            FlowLevel::Block(b) if b.out_of_flow() && !run_is_blank(&run) => {
+            // An absolutely positioned box or a float inside inline content stays in
+            // that line run (it neither ends nor splits it); one between blocks — or
+            // before any inline content — stays a block.
+            FlowLevel::Block(b) if b.line_placeholder() && !run_is_blank(&run) => {
                 run.push(InlineItem::Atomic(b));
             }
             FlowLevel::Block(b) => {

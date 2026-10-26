@@ -1,0 +1,13 @@
+{
+ "id": "miaskiewicz/turbo-dom#53",
+ "reason": "inline-flex / inline-grid are atomic inline-level boxes; a grid's intrinsic width is its px tracks + gaps (6e8e7a9, test f52d6e7). No corpus output changes (parity 935e61d -> 6e8e7a9). Found while fixing turbo-dom#28 item 4. P5b-W3.",
+ "control": "crates/turbo-dom-layout/tests/fixtures/html_document_chrome156.json + crates/turbo-dom-layout/tests/fixtures/live_geometry_chrome156.json inline-flex-* / inline-grid-* cases",
+ "e2e": "crates/turbo-dom-layout/tests/html_document_chrome.rs, crates/turbo-dom-layout/src/live/chrome_tests.rs (inline_flex_and_grid_are_inline_level_like_chrome_156), crates/turbo-dom-layout/src/layout/value.rs, crates/turbo-dom-layout/src/layout/flex.rs (grid_natural_sums_px_tracks_and_gaps)",
+ "changes": {
+  "html2pdf": [],
+  "html2pdf-svg": [],
+  "html2pdf-extra": [],
+  "surf": [],
+  "surf-extra": []
+ }
+}
