@@ -2625,8 +2625,9 @@ fn layout_tree_policy(
 
 #[cfg(test)]
 mod tests {
-    use super::inflow_children;
+    use super::{inflow_children, zero_or_auto};
     use crate::layout::boxgen::{build_box_tree, BoxKind};
+    use crate::layout::value::LengthPct;
     use crate::tag::Tag;
     use crate::{ComputedStyle, StyledElement, StyledNode};
 
@@ -2669,7 +2670,7 @@ mod tests {
     }
 
     #[test]
-    fn inflow_children_are_none_for_a_non_block_box() {
+    fn first_inflow_child_is_none_for_a_non_block_box() {
         // The box-flow "first in-flow child" only applies to a `BoxKind::Block`; a
         // flex box hits the let-else guard and yields `None`.
         let root = build_box_tree(&[flex_div()]);
@@ -2678,5 +2679,23 @@ mod tests {
         };
         assert!(matches!(kids[0].kind, BoxKind::Flex(_)));
         assert!(inflow_children(&kids[0], 100.0, 16.0).next().is_none());
+    }
+
+    #[test]
+    fn bottom_margin_collapse_requires_a_provably_zero_minimum_height() {
+        // A self-collapsing box (its margins collapse through it) needs a zero or `auto`
+        // `height` / `min-height` (miaskiewicz/turbo-dom#76).
+        for value in [LengthPct::Auto, LengthPct::Px(0.0), LengthPct::Pct(0.0)] {
+            assert!(zero_or_auto(value));
+        }
+        for value in [
+            LengthPct::Px(1.0),
+            LengthPct::Pct(10.0),
+            LengthPct::Calc { pct: 10.0, px: 0.0 },
+            LengthPct::Calc { pct: 0.0, px: 2.0 },
+        ] {
+            assert!(!zero_or_auto(value));
+        }
+        assert!(zero_or_auto(LengthPct::Calc { pct: 0.0, px: 0.0 }));
     }
 }
