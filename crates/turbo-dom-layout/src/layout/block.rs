@@ -480,11 +480,13 @@ fn content_box_height(bs: &BoxStyle, content_h: f32, pos_cb_h: f32) -> f32 {
     let mut h = to_content(bs.height)
         .or_else(|| positioned_pct_height(bs, inset, pos_cb_h))
         .unwrap_or(content_h);
-    if let Some(min) = to_content(bs.min_height) {
-        h = h.max(min);
-    }
+    // CSS 2.2 §10.7: `max-height` clamps first, then `min-height` wins over both it and
+    // `height` (miaskiewicz/turbo-dom#77).
     if let Some(max) = to_content(bs.max_height) {
         h = h.min(max);
+    }
+    if let Some(min) = to_content(bs.min_height) {
+        h = h.max(min);
     }
     h
 }

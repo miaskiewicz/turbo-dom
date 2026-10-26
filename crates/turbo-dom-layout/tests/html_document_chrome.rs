@@ -286,7 +286,6 @@ fn min_max_height_case(id: &str) -> bool {
 }
 
 #[test]
-#[ignore = "turbo-dom#77: fails until the fix"]
 fn min_height_wins_over_max_height_like_chrome_156() {
     compare_cases(min_max_height_case);
 }
