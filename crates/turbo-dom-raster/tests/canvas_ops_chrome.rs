@@ -19,12 +19,8 @@ fn fixture() -> serde_json::Value {
     serde_json::from_str(&std::fs::read_to_string(path).expect("fixture")).unwrap()
 }
 
-/// Channel tolerance: Chrome and tiny-skia round premultiplied alpha differently by a
-/// unit or two (probes sit inside shapes, never on an anti-aliased edge).
-const TOLERANCE: u8 = 2;
-
-/// Every probe of the cases `select` picks whose replayed RGBA (or PNG pixel) differs from
-/// Chrome's by more than [`TOLERANCE`] in a channel.
+/// Every probe of the cases `select` picks whose replayed RGBA (or PNG pixel) is not
+/// Chrome's exactly.
 fn differences(select: impl Fn(&str) -> bool) -> Vec<String> {
     let fixture = fixture();
     let mut failures = Vec::new();
@@ -55,11 +51,7 @@ fn differences(select: impl Fn(&str) -> bool) -> Vec<String> {
             let at = ((y * w + x) * 4) as usize;
             let got = &rgba[at..at + 4];
             let want: Vec<u8> = serde_json::from_value(probe["rgba"].clone()).unwrap();
-            let near = |a: &[u8]| {
-                a.iter()
-                    .zip(&want)
-                    .all(|(g, w)| g.abs_diff(*w) <= TOLERANCE)
-            };
+            let near = |a: &[u8]| a == want.as_slice();
             if !near(got) {
                 failures.push(format!("{id} ({x},{y}): rgba {got:?}, Chrome {want:?}"));
             }
@@ -72,20 +64,16 @@ fn differences(select: impl Fn(&str) -> bool) -> Vec<String> {
     failures
 }
 
-/// CSS colour syntaxes the op-log parser did not map (miaskiewicz/turbo-dom#95).
-const PENDING: &[&str] = &["fill-style-css-colours"];
-
 #[test]
 fn op_logs_replay_like_chrome_156() {
-    let failures = differences(|id| !PENDING.contains(&id));
+    let failures = differences(|id| id != "fill-style-css-colours");
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
 
 /// `hsl()`, percentage `rgb()`, fractional channels and every named colour resolve like
 /// Chrome's `fillStyle` (miaskiewicz/turbo-dom#95).
 #[test]
-#[ignore = "turbo-dom#95: fails until the fix"]
 fn css_colour_syntaxes_fill_like_chrome_156() {
-    let failures = differences(|id| PENDING.contains(&id));
+    let failures = differences(|id| id == "fill-style-css-colours");
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }

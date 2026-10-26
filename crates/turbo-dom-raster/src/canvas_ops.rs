@@ -179,108 +179,21 @@ fn push_tuple(v: &serde_json::Value, out: &mut Vec<Op>) {
     out.push(op);
 }
 
-/// Parse a canvas `fillStyle`/`strokeStyle` colour string: `#rgb`, `#rgba`,
-/// `#rrggbb`, `#rrggbbaa`, `rgb()/rgba()`, or a small set of named colours. `None`
-/// for anything we can't map (gradients/patterns are objects, not strings).
+/// Parse a canvas `fillStyle`/`strokeStyle` colour string through turbo-dom's CSS colour
+/// parser ([`parse_color`](turbo_dom_layout::turbo_dom::rtdom::color::parse_color): hex,
+/// every named colour, `rgb()`/`rgba()` with number or percentage channels, `hsl()`/
+/// `hsla()`), each channel and the alpha rounded to a byte as a canvas stores it. `None`
+/// for anything else (gradients/patterns are objects, not strings), which leaves the
+/// previous style, as a canvas ignores an invalid assignment.
 pub(crate) fn parse_css_color(s: &str) -> Option<Rgba> {
-    let t = s.trim();
-    if let Some(hex) = t.strip_prefix('#') {
-        return parse_hex(hex);
-    }
-    if t.starts_with("rgb") {
-        return parse_rgb_fn(t);
-    }
-    named_color(&t.to_ascii_lowercase())
-}
-
-/// `#rgb` / `#rgba` / `#rrggbb` / `#rrggbbaa`.
-fn parse_hex(hex: &str) -> Option<Rgba> {
-    let byte = |s: &str| u8::from_str_radix(s, 16).ok();
-    let dup = |c: &str| byte(&format!("{c}{c}"));
-    match hex.len() {
-        3 => Some(Rgba::new(
-            dup(&hex[0..1])?,
-            dup(&hex[1..2])?,
-            dup(&hex[2..3])?,
-            255,
-        )),
-        4 => Some(Rgba::new(
-            dup(&hex[0..1])?,
-            dup(&hex[1..2])?,
-            dup(&hex[2..3])?,
-            dup(&hex[3..4])?,
-        )),
-        6 => Some(Rgba::new(
-            byte(&hex[0..2])?,
-            byte(&hex[2..4])?,
-            byte(&hex[4..6])?,
-            255,
-        )),
-        8 => Some(Rgba::new(
-            byte(&hex[0..2])?,
-            byte(&hex[2..4])?,
-            byte(&hex[4..6])?,
-            byte(&hex[6..8])?,
-        )),
-        _ => None,
-    }
-}
-
-/// `rgb(r,g,b)` / `rgba(r,g,b,a)` with 0..255 channels and a 0..1 alpha.
-fn parse_rgb_fn(t: &str) -> Option<Rgba> {
-    let inner = t.split_once('(')?.1.strip_suffix(')')?;
-    let parts: Vec<&str> = inner
-        .split([',', '/', ' '])
-        .filter(|p| !p.is_empty())
-        .collect();
-    if parts.len() < 3 {
-        return None;
-    }
-    let chan = |s: &str| {
-        s.trim()
-            .parse::<f32>()
-            .ok()
-            .map(|f| f.clamp(0.0, 255.0) as u8)
-    };
-    let alpha = match parts.get(3) {
-        // Alpha is either a 0..1 number or a `N%` percentage (the CSS4 rgb()/rgba()
-        // slash form yields the same token here since we split on '/' above).
-        Some(a) => {
-            let a = a.trim();
-            let frac = match a.strip_suffix('%') {
-                Some(pct) => pct.trim().parse::<f32>().ok()? / 100.0,
-                None => a.parse::<f32>().ok()?,
-            };
-            (frac.clamp(0.0, 1.0) * 255.0).round() as u8
-        }
-        None => 255,
-    };
+    let c = turbo_dom_layout::turbo_dom::rtdom::color::parse_color(s)?;
+    let byte = |v: f64| v.round() as u8;
     Some(Rgba::new(
-        chan(parts[0])?,
-        chan(parts[1])?,
-        chan(parts[2])?,
-        alpha,
+        byte(c.r),
+        byte(c.g),
+        byte(c.b),
+        byte(c.a * 255.0),
     ))
-}
-
-/// The handful of CSS keyword colours a canvas probe realistically sets.
-fn named_color(name: &str) -> Option<Rgba> {
-    let c = |r, g, b| Some(Rgba::new(r, g, b, 255));
-    match name {
-        "transparent" => Some(Rgba::new(0, 0, 0, 0)),
-        "black" => c(0, 0, 0),
-        "white" => c(255, 255, 255),
-        "red" => c(255, 0, 0),
-        "green" => c(0, 128, 0),
-        "lime" => c(0, 255, 0),
-        "blue" => c(0, 0, 255),
-        "yellow" => c(255, 255, 0),
-        "cyan" | "aqua" => c(0, 255, 255),
-        "magenta" | "fuchsia" => c(255, 0, 255),
-        "gray" | "grey" => c(128, 128, 128),
-        "orange" => c(255, 165, 0),
-        _ => None,
-    }
 }
 
 /// Reduce a CSS `font` shorthand to `(size_px, families)`. We only need the pixel
