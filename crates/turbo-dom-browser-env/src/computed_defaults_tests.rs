@@ -252,27 +252,10 @@ fn form_control_fonts_match_chrome156_control() {
 #[test]
 fn fullscreen_matches_chrome156_control() {
     let found = mismatches(|id| id == "fullscreen");
-    let unexpected: Vec<_> = found
-        .iter()
-        .filter(|row| !FULLSCREEN_KNOWN_GAPS.iter().any(|gap| row.starts_with(gap)))
-        .collect();
-    let resolved: Vec<_> = FULLSCREEN_KNOWN_GAPS
-        .iter()
-        .filter(|gap| !found.iter().any(|row| row.starts_with(*gap)))
-        .collect();
     assert!(
-        unexpected.is_empty() && resolved.is_empty(),
-        "{} unexpected mismatches:\n{}\nresolved gaps: {resolved:?}",
-        unexpected.len(),
-        unexpected
-            .iter()
-            .map(|row| row.as_str())
-            .collect::<Vec<_>>()
-            .join("\n")
+        found.is_empty(),
+        "{} mismatches:\n{}",
+        found.len(),
+        found.join("\n")
     );
 }
-
-/// Case `fullscreen` rows the binding does not reproduce yet, each a filed issue:
-/// - turbo-dom#66: composed events stop at the shadow root, so the fullscreenchange of an
-///   element in a shadow tree never reaches the document (`shadow.1`, the event log);
-const FULLSCREEN_KNOWN_GAPS: &[&str] = &["fullscreen.fullscreen.shadow.1."];

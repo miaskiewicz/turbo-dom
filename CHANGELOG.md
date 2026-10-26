@@ -7,6 +7,26 @@ at the time); this file reconstructs them from history.
 
 ## [Unreleased]
 
+### Fixed — events across shadow trees (P5b-X6, miaskiewicz/turbo-dom#66, Chrome 156 control)
+- turbo-dom-browser-env: `dispatchEvent` used to build its path from DOM parents only, so an
+  event never left a shadow tree, even with `composed: true`, and its target was never
+  retargeted. It now follows the DOM dispatch algorithm:
+  - a composed event crosses each shadow root into the host; an uncomposed one stops at the
+    root of the target's tree;
+  - a slotted node passes through its assigned slot;
+  - every listener sees `target` / `relatedTarget` retargeted against its own tree, and
+    hosts are AT_TARGET;
+  - `composedPath()` hides closed trees the listener is outside of;
+  - propagation stops where the retargeted `relatedTarget` is the host, and nothing is
+    dispatched when it equals the target;
+  - after dispatch `target` / `relatedTarget` are cleared when they stayed inside a shadow
+    tree.
+- Paths that cross no shadow root are unchanged. `MouseEvent` / `FocusEvent` `relatedTarget`
+  reads the dispatch's retargeted value.
+- Control: `src/shadow_events_{probe.js,cases.json,chrome156.json}`. The fullscreen control's
+  shadow `fullscreenchange` row and `reference_target_tests.rs`' invoker known gap now match
+  Chrome.
+
 ### Changed — self-contained binding tests (P5b-X6)
 - The DOM adoption / custom element reactions control moved from the npm tree
   (`test/fixtures/dom_adoption_reactions_{probe.js,cases.json,chrome156.json}`) into
@@ -53,8 +73,7 @@ at the time); this file reconstructs them from history.
     `object-fit: contain`.
   - Its `::backdrop` is fixed at inset 0 and black.
 - Control: async case `fullscreen` of `src/computed_defaults_chrome156.json` (user
-  activation through the collector's trusted CDP click `__cdpGesture()`). Known gap, filed:
-  #66 (composed events stop at the shadow root).
+  activation through the collector's trusted CDP click `__cdpGesture()`).
 
 ### Fixed — UA-styled pseudo-elements in `getComputedStyle` (P5b-X6, miaskiewicz/turbo-dom#47, Chrome 156 control)
 - turbo-dom-browser-env: `getComputedStyle(el, pseudoElt)` computed only `::before`,

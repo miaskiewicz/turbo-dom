@@ -4780,45 +4780,82 @@ fn el_dispatch_event(
         form_checked_state::set(checked_target, next);
     }
 
-    // propagation path: ancestors (root … parent), then the target. Bubbling reverses it.
-    let mut ancestors = Vec::new();
-    let mut cur = with_tree(|t| NodeRef::new(t, target).parent().map(|p| p.handle())).flatten();
-    while let Some(c) = cur {
-        ancestors.push(c);
-        cur = with_tree(|t| NodeRef::new(t, c).parent().map(|p| p.handle())).flatten();
-    }
-
-    let window = if ty != "load"
-        && (ancestors
-            .last()
-            .is_some_and(|node| with_tree(|tree| tree.node_type_id(*node)) == Some(9))
-            || with_tree(|tree| tree.node_type_id(target)) == Some(9))
-    {
-        event_listeners::window(scope)
-    } else {
-        None
+    // The event path (DOM "dispatch", turbo-dom#66): from the target up through its tree;
+    // a slotted node passes through its assigned slot, a shadow root through its host unless
+    // the event is not composed and the root is the target's own, a document to the window.
+    // Each struct keeps its shadow-adjusted target (non-null where the path enters a tree:
+    // the target and each host it crosses) and its retargeted relatedTarget.
+    let composed = get_bool_prop(scope, record, "composed");
+    let related_value =
+        get_prop(scope, record, "relatedTarget").filter(|value| !value.is_null_or_undefined());
+    let related_node = related_value
+        .and_then(|value| v8::Local::<v8::Object>::try_from(value).ok())
+        .and_then(|object| handle_of(scope, object));
+    let path_entries = event_path(scope, target, &ty, composed, related_node);
+    let window = path_entries
+        .iter()
+        .any(|entry| entry.node.is_none())
+        .then(|| event_listeners::window(scope))
+        .flatten();
+    let path_entries: Vec<EventPathEntry> = path_entries
+        .into_iter()
+        .filter(|entry| entry.node.is_some() || window.is_some())
+        .collect();
+    // A relatedTarget retargeted onto the target itself (both inside one shadow tree as seen
+    // from it) dispatches nothing, unless it is the target.
+    let skip = related_node.is_some_and(|related| {
+        related != target
+            && with_tree(|tree| shadow_html::retarget(tree, related, target)) == Some(target)
+    });
+    let shadow = with_tree(|tree| {
+        path_entries
+            .iter()
+            .any(|entry| entry.node.is_some_and(|node| tree.is_shadow_root(node)))
+    })
+    .unwrap_or(false);
+    // composedPath() as seen from `current`: the path minus closed shadow trees `current` is
+    // outside of.
+    let set_path = |scope: &mut v8::PinScope<'_, '_>, current: Option<Handle>| {
+        let visible = path_entries
+            .iter()
+            .filter(|entry| !shadow || event_path_visible(entry.node, current))
+            .map(|entry| entry.node)
+            .collect::<Vec<_>>();
+        let mut values: Vec<v8::Local<v8::Value>> = Vec::with_capacity(visible.len());
+        for node in visible {
+            match (node, window) {
+                (Some(node), _) => values.push(wrap(scope, node).into()),
+                (None, Some(window)) => values.push(window.into()),
+                (None, None) => {}
+            }
+        }
+        let path = v8::Array::new_with_elements(scope, &values);
+        set_prop(scope, record, "path", path.into());
     };
-    let mut values = Vec::with_capacity(ancestors.len() + 2);
-    values.push(target_node.into());
-    for &handle in &ancestors {
-        values.push(wrap(scope, handle).into());
-    }
-    if let Some(window) = window {
-        values.push(window.into());
-    }
-    let path = v8::Array::new_with_elements(scope, &values);
-    set_prop(scope, record, "path", path.into());
-
-    // CAPTURE phase: root → target's parent (capture listeners), then TARGET (both), then BUBBLE:
-    // target's parent → root (non-capture listeners). React 18 registers some delegated root
-    // listeners in capture phase, so a bubble-only dispatch would miss them.
-    let mut capture_path: Vec<Handle> = ancestors.iter().rev().copied().collect();
-    let bubble_path: Vec<Handle> = if bubbles {
-        ancestors.clone()
-    } else {
-        Vec::new()
+    // Before invoking path entry `index`: the target is the shadow-adjusted target of the
+    // nearest entry at or below it that has one; the relatedTarget is the entry's own.
+    let set_targets = |scope: &mut v8::PinScope<'_, '_>, index: usize| {
+        let adjusted = path_entries[..=index]
+            .iter()
+            .rev()
+            .find_map(|entry| entry.adjusted)
+            .unwrap_or(target);
+        let value = wrap(scope, adjusted);
+        set_prop(scope, record, "target", value.into());
+        if let Some(original) = related_value {
+            let related = match (path_entries[index].related, related_node) {
+                (Some(node), Some(_)) => wrap(scope, node).into(),
+                _ => original,
+            };
+            set_prop(scope, record, "adjustedRelatedTarget", related);
+            let yes = v8::Boolean::new(scope, true);
+            set_prop(scope, record, "relatedAdjusted", yes.into());
+        }
+        if shadow {
+            set_path(scope, path_entries[index].node);
+        }
     };
-    capture_path.push(target); // target fires in both phases (handled by the at_target flag below)
+    set_path(scope, Some(target));
 
     let fire =
         |scope: &mut v8::PinScope, node_h: Handle, want_capture: bool, at_target: bool| -> bool {
@@ -4895,31 +4932,66 @@ fn el_dispatch_event(
             true
         };
 
-    if window.is_some() {
-        event_listeners::phase(scope, event_obj, true);
+    // CAPTURE: window → target (capture listeners; entries with a shadow-adjusted target are
+    // AT_TARGET), then BUBBLE: target → window (non-capture listeners; AT_TARGET entries always,
+    // the rest only for bubbling events). The original target ignores stopPropagation between
+    // its capture and bubble listeners, as before.
+    let mut reached_target = false;
+    if !skip {
+        for index in (0..path_entries.len()).rev() {
+            let entry = path_entries[index];
+            if get_bool_prop(scope, record, "stop") {
+                break;
+            }
+            reached_target |= index == 0;
+            set_targets(scope, index);
+            match entry.node {
+                None => event_listeners::phase(scope, event_obj, true),
+                Some(node) => {
+                    fire(scope, node, true, entry.adjusted.is_some());
+                }
+            }
+        }
+        for (index, entry) in path_entries.iter().copied().enumerate() {
+            if !reached_target || index != 0 && get_bool_prop(scope, record, "stop") {
+                break;
+            }
+            if index != 0 && entry.adjusted.is_none() && !bubbles {
+                continue;
+            }
+            set_targets(scope, index);
+            match entry.node {
+                None => event_listeners::phase(scope, event_obj, false),
+                Some(node) => {
+                    fire(scope, node, false, entry.adjusted.is_some());
+                }
+            }
+        }
     }
-    // capture: root → parent
-    for &node_h in capture_path
+    // After dispatch the target / relatedTarget are the outermost entry's, cleared when either
+    // is still inside a shadow tree.
+    if let Some(last) = path_entries
         .iter()
-        .take(capture_path.len().saturating_sub(1))
+        .rev()
+        .position(|entry| entry.adjusted.is_some())
     {
-        if !fire(scope, node_h, true, false) {
-            break;
+        let index = path_entries.len() - 1 - last;
+        set_targets(scope, index);
+        let entry = path_entries[index];
+        let clear = with_tree(|tree| {
+            [entry.adjusted, entry.related]
+                .into_iter()
+                .flatten()
+                .any(|node| tree.is_shadow_root(shadow_html::tree_root(tree, node)))
+        })
+        .unwrap_or(false);
+        if clear {
+            let null = v8::null(scope);
+            set_prop(scope, record, "target", null.into());
+            if related_value.is_some() {
+                set_prop(scope, record, "adjustedRelatedTarget", null.into());
+            }
         }
-    }
-    // at target (both phases)
-    if !get_bool_prop(scope, record, "stop") {
-        fire(scope, target, true, true);
-        fire(scope, target, false, true);
-    }
-    // bubble: parent → root
-    for node_h in bubble_path {
-        if !fire(scope, node_h, false, false) {
-            break;
-        }
-    }
-    if window.is_some() && bubbles && !get_bool_prop(scope, record, "stop") {
-        event_listeners::phase(scope, event_obj, false);
     }
     let not_prevented = !get_bool_prop(scope, record, "defaultPrevented");
     let null = v8::null(scope);
@@ -4991,6 +5063,153 @@ fn el_dispatch_event(
     }
 
     rv.set(v8::Boolean::new(scope, not_prevented).into());
+}
+
+/// One struct of the event path (DOM "dispatch"): the invocation target (`None` = the
+/// window), its shadow-adjusted target and its retargeted relatedTarget node.
+#[derive(Clone, Copy)]
+struct EventPathEntry {
+    node: Option<Handle>,
+    adjusted: Option<Handle>,
+    related: Option<Handle>,
+}
+
+/// The node's "get the parent" for an event (turbo-dom#66): `None` ends the path,
+/// `Some(None)` is the window.
+fn event_parent(
+    scope: &mut v8::PinScope,
+    node: Handle,
+    ty: &str,
+    composed: bool,
+    first_root: Handle,
+) -> Option<Option<Handle>> {
+    let (shadow_host, node_type, parent) = with_tree(|tree| {
+        (
+            tree.is_shadow_root(node)
+                .then(|| tree.shadow_host(node))
+                .flatten(),
+            tree.node_type_id(node),
+            tree.parent(node),
+        )
+    })?;
+    if let Some(host) = shadow_host {
+        return (composed || node != first_root).then_some(Some(host));
+    }
+    if node_type == 9 {
+        return (ty != "load").then_some(None);
+    }
+    let parent = parent?;
+    if with_tree(|tree| tree.shadow_root(parent).is_some()).unwrap_or(false) {
+        if let Some(slot) = shadow_slots::event_slot(scope, node) {
+            return Some(Some(slot));
+        }
+    }
+    Some(Some(parent))
+}
+
+/// Is `ancestor` a shadow-including inclusive ancestor of `node`?
+fn shadow_including_ancestor(tree: &Tree, ancestor: Handle, node: Handle) -> bool {
+    let mut cursor = Some(node);
+    while let Some(current) = cursor {
+        if current == ancestor {
+            return true;
+        }
+        cursor = tree.parent(current).or_else(|| tree.shadow_host(current));
+    }
+    false
+}
+
+/// The event path of an event dispatched at `target` (DOM "dispatch" steps 5.4-5.9, without
+/// touch targets): retargeting at each shadow boundary it crosses, stopping where the
+/// retargeted relatedTarget is the host it would enter.
+fn event_path(
+    scope: &mut v8::PinScope,
+    target: Handle,
+    ty: &str,
+    composed: bool,
+    related: Option<Handle>,
+) -> Vec<EventPathEntry> {
+    let retarget = |node: Handle, against: Option<Handle>| {
+        with_tree(|tree| shadow_html::retarget(tree, node, against.unwrap_or_else(|| tree.root())))
+            .unwrap_or(node)
+    };
+    let first_root = with_tree(|tree| shadow_html::tree_root(tree, target)).unwrap_or(target);
+    let mut entries = vec![EventPathEntry {
+        node: Some(target),
+        adjusted: Some(target),
+        related: related.map(|node| retarget(node, Some(target))),
+    }];
+    let (mut current, mut node) = (target, target);
+    for _ in 0..65_536 {
+        let Some(parent) = event_parent(scope, node, ty, composed, first_root) else {
+            break;
+        };
+        let related = related.map(|related| retarget(related, parent));
+        let inside = parent.is_none_or(|parent| {
+            with_tree(|tree| {
+                shadow_including_ancestor(tree, shadow_html::tree_root(tree, current), parent)
+            })
+            .unwrap_or(false)
+        });
+        if inside {
+            entries.push(EventPathEntry {
+                node: parent,
+                adjusted: None,
+                related,
+            });
+        } else if parent.is_some() && related == parent {
+            break;
+        } else {
+            current = parent.unwrap_or(current);
+            entries.push(EventPathEntry {
+                node: parent,
+                adjusted: parent,
+                related,
+            });
+        }
+        let Some(parent) = parent else {
+            break;
+        };
+        node = parent;
+    }
+    entries
+}
+
+/// Does `composedPath()` called while `current` (`None` = the window) is the current target
+/// include `item`: every closed shadow root `item` is inside must also hold `current`.
+fn event_path_visible(item: Option<Handle>, current: Option<Handle>) -> bool {
+    let Some(item) = item else {
+        return true;
+    };
+    let closed = |root: Handle| {
+        DOM.with(|dom| {
+            dom.borrow()
+                .as_ref()
+                .and_then(|state| state.shadow_modes.get(&root))
+                .is_some_and(|mode| mode == "closed")
+        })
+    };
+    let chain = |tree: &Tree, node: Option<Handle>| {
+        let mut roots = Vec::new();
+        let mut cursor = node;
+        while let Some(node) = cursor {
+            let root = shadow_html::tree_root(tree, node);
+            if !tree.is_shadow_root(root) {
+                break;
+            }
+            roots.push(root);
+            cursor = tree.shadow_host(root);
+        }
+        roots
+    };
+    let Some((item_roots, current_roots)) =
+        with_tree(|tree| (chain(tree, Some(item)), chain(tree, current)))
+    else {
+        return true;
+    };
+    item_roots
+        .into_iter()
+        .all(|root| !closed(root) || current_roots.contains(&root))
 }
 
 #[derive(PartialEq, Eq, Clone, Copy)]
@@ -9609,14 +9828,14 @@ mod html_meta_tests;
 #[path = "computed_defaults_tests.rs"]
 mod computed_defaults_tests;
 #[cfg(test)]
-#[path = "shadow_events_tests.rs"]
-mod shadow_events_tests;
-#[cfg(test)]
 #[path = "dom_reactions_tests.rs"]
 mod dom_reactions_tests;
 #[cfg(test)]
 #[path = "html_image_tests.rs"]
 mod html_image_tests;
+#[cfg(test)]
+#[path = "shadow_events_tests.rs"]
+mod shadow_events_tests;
 
 #[cfg(test)]
 #[path = "css_live_tests.rs"]

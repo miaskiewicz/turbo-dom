@@ -31,7 +31,6 @@ fn rows(prefix: &str, value: &serde_json::Value, out: &mut Vec<(String, String)>
 }
 
 #[test]
-#[ignore = "turbo-dom#66: fails until the fix"]
 fn shadow_event_paths_match_chrome156_control() {
     let control: serde_json::Value = serde_json::from_str(CONTROL).unwrap();
     assert!(control["browser"]
