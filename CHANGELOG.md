@@ -7,6 +7,14 @@ at the time); this file reconstructs them from history.
 
 ## [Unreleased]
 
+### Fixed — `createDocument` qualified names (P5b-X5, miaskiewicz/turbo-dom#57, Chrome 156 control)
+- turbo-dom-browser-env: `document.implementation.createDocument` checked the qualified
+  name against the XML `Name` production and rejected every name with two colons. It now
+  validates and extracts it like `createElementNS`, as Chrome does: `a:b:c` gives a
+  document element with prefix `a` and local name `b`. `a::b`, `:a:b` and `a:1b:c` throw
+  `InvalidCharacterError`. Control: section `documentNames` of
+  `src/dom_reactions_names_chrome156.json`.
+
 ### Fixed — qualified names with several colons (P5b-X5, miaskiewicz/turbo-dom#44, Chrome 156 controls)
 - turbo-dom-browser-env: `createElementNS`, `setAttributeNS` and `createAttributeNS` now
   split the qualified name strictly on `:` (DOM "validate and extract"), as Chrome 156 does.
