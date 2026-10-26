@@ -791,6 +791,8 @@ if(typeof __ns.makeNativeFunction==='function'){
 // page reassigning globalThis.DOMException changes nothing. `new ts.DOMException(message, name)`
 // constructs one; `instanceof ts.DOMException` tests against the current interface.
 var __realmExceptionNative=g.__nativeRealmDOMException,__bindingException=g.DOMException,__exceptionConstruct=Reflect.construct;delete g.__nativeRealmDOMException;
+// URL-reflecting getters and currentSrc parse against the node document's base URL (turbo-dom#73).
+__ns.resolveDocumentURL=g.__nativeResolveDocumentURL;delete g.__nativeResolveDocumentURL;
 __ns.realmDOMException=function(){var constructor=typeof __realmExceptionNative==='function'?__realmExceptionNative():undefined;return typeof constructor==='function'?constructor:__bindingException;};
 __ns.DOMException=function DOMException(){return __exceptionConstruct(__ns.realmDOMException(),arguments);};
 Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value){return value instanceof __ns.realmDOMException();}});
@@ -2502,7 +2504,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     reflectedMember('draggable',function(){var value=(this.getAttribute('draggable')||'').toLowerCase();if(value==='true'||value==='false')return value==='true';var tag=String(getTag.call(this)).toUpperCase();return tag==='IMG'||tag==='A'&&this.hasAttribute('href');},function(value){this.setAttribute('draggable',value?'true':'false');});
     reflectedMember('autocapitalize',function(){var value=this.getAttribute('autocapitalize');if(value===null&&this.form)value=this.form.getAttribute('autocapitalize');value=(value||'').toLowerCase();return value===''?'':value==='off'?'none':value==='on'?'sentences':['none','sentences','words','characters'].indexOf(value)>=0?value:'sentences';},function(value){this.setAttribute('autocapitalize',attributeString(value));});
     reflectedMember('autocorrect',function(){var value=this.getAttribute('autocorrect');if(value===null&&this.form)value=this.form.getAttribute('autocorrect');return (value||'').toLowerCase()!=='off';},function(value){this.setAttribute('autocorrect',value?'on':'off');});
-    var reflectedApply=Reflect.apply,reflectedSetHas=Set.prototype.has;
+    var reflectedApply=Reflect.apply,reflectedSetHas=Set.prototype.has,reflectedGetAttribute=g.Element.prototype.getAttribute;
     // Compatibility control delegates still require genuine interface receivers.
     var controlInterfaces={HTMLInputElement:'input',HTMLTextAreaElement:'textarea',HTMLSelectElement:'select',HTMLOptionElement:'option',HTMLButtonElement:'button',HTMLLabelElement:'label',HTMLCanvasElement:'canvas'};
     Object.keys(controlInterfaces).forEach(function(owner){
@@ -2527,7 +2529,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
         var extraTags={HTMLInputElement:['INPUT'],HTMLButtonElement:['BUTTON'],HTMLAnchorElement:['A'],HTMLImageElement:['IMG'],HTMLIFrameElement:['IFRAME'],HTMLScriptElement:['SCRIPT'],HTMLStyleElement:['STYLE'],HTMLMediaElement:['AUDIO','VIDEO']};
         if(extraTags[owner])ownerTags=ownerTags.concat(extraTags[owner]);
         var ownerLocals=new Set(ownerTags.map(function(tag){return tag.toLowerCase();}));
-        ['get','set'].forEach(function(kind){var delegate=descriptor[kind];if(!delegate)return;copy[kind]=__ns.makeNativeFunction(function(){reflectedApply(check,this,[]);if(!reflectedApply(reflectedSetHas,ownerLocals,[reflectedApply(getLocalTag,this,[])]))throw new TypeError('Illegal invocation');var value=reflectedApply(delegate,this,arguments);if(kind==='get'&&(name==='src'||name==='href')&&value&&typeof g.URL==='function'){try{return new g.URL(value,this.ownerDocument.URL||g.location.href).href;}catch(e){}}return value;},kind+' '+name,kind==='get'?0:1);});
+        ['get','set'].forEach(function(kind){var delegate=descriptor[kind];if(!delegate)return;copy[kind]=__ns.makeNativeFunction(function(){reflectedApply(check,this,[]);if(!reflectedApply(reflectedSetHas,ownerLocals,[reflectedApply(getLocalTag,this,[])]))throw new TypeError('Illegal invocation');var value=reflectedApply(delegate,this,arguments);if(kind==='get'&&(name==='src'||name==='href')){if(owner==='HTMLBaseElement'){if(value&&typeof g.URL==='function'){try{return new g.URL(value,this.ownerDocument.URL||g.location.href).href;}catch(e){}}return value;}var raw=reflectedApply(reflectedGetAttribute,this,[name]);return raw===null?'':__ns.resolveDocumentURL(this,raw);}return value;},kind+' '+name,kind==='get'?0:1);});
         Object.defineProperty(proto,name,copy);
       });
       delete htmlProto[name];

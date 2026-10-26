@@ -1394,8 +1394,8 @@ fn native_realm_dom_exception(
         rv.set(constructor);
     }
 }
-/// html_image.js's URL resolver (miaskiewicz/turbo-dom#71: srcset candidates and
-/// `currentSrc`): `url` (argument 1) parsed against the base URL of the document of `node`
+/// The binding's document-base URL resolver, `ts.resolveDocumentURL` (miaskiewicz/turbo-dom#71
+/// srcset candidates and `currentSrc`, #73 the reflected `src` / `href` getters): `url` (argument 1) parsed against the base URL of the document of `node`
 /// (argument 0) — its first connected `<base href>` resolved against the document URL, else
 /// the document URL — or `url` unchanged when it does not parse.
 fn native_resolve_document_url(
@@ -7254,6 +7254,12 @@ fn install_with_tree(scope: &mut v8::PinScope, mut tree: Tree) {
         "__nativeRealmDOMException",
         native_realm_dom_exception,
     );
+    bind_method(
+        scope,
+        global,
+        "__nativeResolveDocumentURL",
+        native_resolve_document_url,
+    );
     run_js(scope, BOOTSTRAP);
     trusted_types::install(scope);
     script_state::install_text(scope);
@@ -7290,12 +7296,6 @@ fn install_with_tree(scope: &mut v8::PinScope, mut tree: Tree) {
     run_js(scope, include_str!("element_relations.js"));
     // HTMLImageElement image-state accessors + the document record's `imageHost` (needs the
     // collection-record helpers, which document_basics.js retires).
-    bind_method(
-        scope,
-        global,
-        "__nativeResolveDocumentURL",
-        native_resolve_document_url,
-    );
     run_js(scope, include_str!("html_image.js"));
     run_js(scope, include_str!("document_basics.js"));
     document_legacy::install(scope);

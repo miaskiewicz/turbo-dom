@@ -156,7 +156,9 @@ ignored), else the image's own `srcset` plus `src` as `1x`; `w` descriptors divi
 `height` / `aspect-ratio` / `orientation` / `resolution` / `-webkit-device-pixel-ratio`;
 `px`, `em` (16 px), viewport units, `calc()` / `min()` / `max()` / `clamp()`; default
 `100vw`), then the first candidate whose density is at least the device pixel ratio, else
-the densest. URLs are parsed against the document base URL. A host that loads images asks
+the densest. URLs are parsed against the document base URL (the first `<base href>`, else
+the document URL) by the native resolver `ts.resolveDocumentURL`, which the reflected `src` /
+`href` getters use too (miaskiewicz/turbo-dom#73; no embedder `URL` global needed). A host that loads images asks
 for the choice and reports the natural size Chrome derives from it:
 
 ```js

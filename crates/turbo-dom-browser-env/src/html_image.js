@@ -198,8 +198,7 @@
     firstChildOf = accessor("firstChild", false, "Node"),
     nextSiblingOf = accessor("nextSibling", false, "Node"),
     nodeTypeOf = accessor("nodeType", false, "Node");
-  const resolveNative = g.__nativeResolveDocumentURL;
-  delete g.__nativeResolveDocumentURL;
+  const resolveNative = ns.resolveDocumentURL;
   const S = P, SP = g.HTMLSourceElement && g.HTMLSourceElement.prototype;
   const MathFround = Math.fround, MathFloor = Math.floor, MathMin = Math.min, MathMax = Math.max,
     NumberIsFinite = Number.isFinite, parseFloatValue = parseFloat,

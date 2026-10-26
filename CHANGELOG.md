@@ -44,6 +44,15 @@ at the time); this file reconstructs them from history.
   URL, which is Chrome's answer when nothing loads (before: the `src` attribute). The
   `src`-only `currentSrc` is now parsed against the document base URL by a native resolver
   even without an embedder URL global. Control: `src/html_image_srcset_chrome156.json`.
+- turbo-dom-browser-env: the reflected `src` / `href` getters parse the attribute against the
+  document base URL (miaskiewicz/turbo-dom#73, filed here). This covers img, script, iframe,
+  source, embed, input, video, audio, link, a and area. They used to resolve with the
+  embedder's `URL` global against the document URL, so a `<base href>` was ignored, the bare
+  binding returned the raw text, and an empty attribute gave `""` (Chrome gives the base URL).
+  They now go through the native resolver `ts.resolveDocumentURL` (WHATWG `url` crate).
+  `<base>.href` keeps resolving against the document URL. Control:
+  `src/reflected_urls_chrome156.json`. Filed, not fixed: turbo-dom#74 (no
+  `HTMLTrackElement` interface).
 - turbo-dom: a parser-created `is=` element stayed "undefined" (`:not(:defined)`) only
   until native storage collection (miaskiewicz/turbo-surf#41). `Tree::collect_unreachable`
   re-materializes the retained parsed nodes as new ones, and their creation-time state was

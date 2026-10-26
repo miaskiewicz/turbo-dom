@@ -10,7 +10,6 @@ const CASES: &[u8] = include_bytes!("reflected_urls_cases.json");
 const CONTROL: &str = include_str!("reflected_urls_chrome156.json");
 
 #[test]
-#[ignore = "turbo-dom#73: fails until the fix"]
 fn reflected_urls_parse_against_the_document_base_like_chrome156() {
     let control: serde_json::Value = serde_json::from_str(CONTROL).unwrap();
     assert!(control["browser"]
