@@ -147,8 +147,9 @@ package or publish workflow.
 - `crates/turbo-dom-raster` — synthetic screenshots: paints the layout galley to PNG/SVG
   (tiny-skia / SVG), canvas op-log replay, `gpu-metal` WebGL. Relocated verbatim from
   turbo-surf-raster 0.5.5 (S1). Decodes images through turbo-dom-layout's image layer (PNG,
-  SVG at 1x) and the `image` crate (JPEG/GIF/WebP, resize, PNG re-encode for SVG
-  `data:` URIs); `image_paint::shared_layer_tests` gates it byte for byte against the old
+  SVG at 1x) and the `image` crate (JPEG/GIF/WebP/BMP/ICO/CUR, resize, PNG re-encode for
+  SVG `data:` URIs), AVIF via `rav1d` under the off-by-default `avif` feature (P5b
+  turbo-surf#30); `image_paint::shared_layer_tests` gates it byte for byte against the old
   decode over `tools/parity` image inputs.
 - `harness/` — JS conformance tooling (dat parser, serializer, runner). All unit-tested.
 - `src/runtime/` — the lazy COW DOM + window (Layers 2–5). `index.mjs` exports

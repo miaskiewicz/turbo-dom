@@ -68,7 +68,15 @@ fn lay_out(html: &str) -> Result<Fragment, RenderError> {
   how to turn the stored pixels (`Orientation::apply_rgba` for raster; a rotated `cm` in
   the PDF). Chrome-controlled by `tests/image_orientation_chrome.rs`
   (`scripts/image-orientation-chrome-control.mjs`; fixtures from
-  `scripts/make_orientation_fixtures.py`).
+  `scripts/make_orientation_fixtures.py`). Beyond PNG/JPEG/GIF/WebP the probe sizes BMP,
+  ICO/CUR (`ico_entry`: the largest entry, as browsers show) and AVIF (the primary item's
+  `ispe`; `avif_payload` demuxes its AV1 streams for a decoder); the PDF does not embed
+  them (decode emits nothing). `probe_natural` is the browser's `naturalWidth`/`Height`
+  (displayed orientation; SVG under `svg-rasterize` via `svg::natural_size`, Chrome's
+  300x150 default-object rules) and `decode_data_url` the Fetch-standard `data:` decoder
+  (base64 and percent-encoded) — the API a live `<img>` load uses
+  (miaskiewicz/turbo-surf#30); Chrome-controlled by `tests/image_formats_chrome.rs`
+  (`scripts/image-formats-chrome-control.mjs`, `scripts/make_format_fixtures.py`).
 - `FontRegistry::system(SystemFontPolicy)` — the process-wide installed-font registry, loaded
   once per policy (`Default` = `load_system_fonts`, `Html` = `load_system_fonts_for_html`);
   `system_cell` exposes the `OnceLock` for embedders that warm it themselves.

@@ -459,7 +459,8 @@ impl ImageResolver for DataUriImages {
     }
 }
 
-/// Walk the kept content and decode every `<img src="data:...;base64,...">` into
+/// Walk the kept content and decode every `<img src="data:...">` (base64 or
+/// percent-encoded; `image::decode_data_url`) into
 /// `out`, keyed by the full `src` (the name the layout resolves against).
 fn collect_data_uri_images(view: &TreeView, nodes: &[Handle], out: &mut HashMap<String, Vec<u8>>) {
     for &h in nodes.iter().filter(|&&h| is_element(view, h)) {
@@ -468,8 +469,8 @@ fn collect_data_uri_images(view: &TreeView, nodes: &[Handle], out: &mut HashMap<
     }
 }
 
-/// Decode this element's `<img src="data:...;base64,...">` into `out` (keyed by
-/// `src`), if it is an `img` with an as-yet-unseen, decodable base64 data URI.
+/// Decode this element's `<img src="data:...">` into `out` (keyed by `src`), if it is
+/// an `img` with an as-yet-unseen, decodable data URI.
 fn record_img_data_uri(view: &TreeView, h: Handle, out: &mut HashMap<String, Vec<u8>>) {
     if !is_plain(view, h, "img") {
         return;
@@ -478,59 +479,10 @@ fn record_img_data_uri(view: &TreeView, h: Handle, out: &mut HashMap<String, Vec
         return;
     };
     if !out.contains_key(src) {
-        if let Some(bytes) = decode_data_uri(src) {
+        if let Some(bytes) = crate::image::decode_data_url(src).map(|d| d.bytes) {
             out.insert(src.to_string(), bytes);
         }
     }
-}
-
-/// Decode a `data:[<mediatype>];base64,<payload>` URI to bytes. Only base64 data
-/// URIs are handled (the raster fixtures embed encoded images that way); a
-/// percent-encoded/text data URI yields `None`.
-fn decode_data_uri(src: &str) -> Option<Vec<u8>> {
-    let rest = src.strip_prefix("data:")?;
-    let comma = rest.find(',')?;
-    if !rest[..comma].contains(";base64") {
-        return None;
-    }
-    base64_decode(&rest[comma + 1..])
-}
-
-/// Minimal standard-alphabet base64 decoder (no dependency): skips padding and
-/// whitespace, packs 6-bit groups into bytes. `None` on an invalid character.
-fn base64_decode(s: &str) -> Option<Vec<u8>> {
-    let mut out = Vec::with_capacity(s.len() / 4 * 3);
-    let (mut acc, mut bits) = (0u32, 0u32);
-    for &c in s.as_bytes() {
-        base64_feed(c, &mut acc, &mut bits, &mut out)?;
-    }
-    Some(out)
-}
-
-/// Fold one base64 character into the rolling accumulator, emitting a decoded byte
-/// once at least 8 bits are buffered. Padding and whitespace are skipped; an
-/// invalid character yields `None`.
-fn base64_feed(c: u8, acc: &mut u32, bits: &mut u32, out: &mut Vec<u8>) -> Option<()> {
-    fn sextet(c: u8) -> Option<u32> {
-        match c {
-            b'A'..=b'Z' => Some(u32::from(c - b'A')),
-            b'a'..=b'z' => Some(u32::from(c - b'a') + 26),
-            b'0'..=b'9' => Some(u32::from(c - b'0') + 52),
-            b'+' => Some(62),
-            b'/' => Some(63),
-            _ => None,
-        }
-    }
-    if c == b'=' || c.is_ascii_whitespace() {
-        return Some(());
-    }
-    *acc = (*acc << 6) | sextet(c)?;
-    *bits += 6;
-    if *bits >= 8 {
-        *bits -= 8;
-        out.push((*acc >> *bits) as u8);
-    }
-    Some(())
 }
 
 /// A fragment's border-box rect after its CSS 2D `transform`, as the axis-aligned
@@ -686,11 +638,18 @@ mod tests {
         // Round-trips the base64 decoder and the data-URI split on a real 8x6 PNG.
         let uri = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAG\
                    CAIAAABxZ0isAAAAEUlEQVR4nGMI6DmBFTEMpAQA/aBOwe19mXAAAAAASUVORK5CYII=";
-        let bytes = super::decode_data_uri(uri).expect("data uri decodes");
+        let bytes = crate::image::decode_data_url(uri)
+            .expect("data uri decodes")
+            .bytes;
         let intrinsic = crate::image::probe(&bytes).expect("png intrinsic");
         assert_eq!((intrinsic.width, intrinsic.height), (8, 6));
-        // A non-base64 data URI is not handled (returns None, no panic).
-        assert!(super::decode_data_uri("data:text/plain,hello").is_none());
+        // A percent-encoded (non-base64) data URI decodes too (the shared decoder).
+        assert_eq!(
+            crate::image::decode_data_url("data:text/plain,hello%20x")
+                .unwrap()
+                .bytes,
+            b"hello x"
+        );
     }
 
     #[test]
@@ -843,15 +802,6 @@ mod tests {
                 .count(),
             2
         );
-    }
-
-    #[test]
-    fn base64_decode_handles_plus_slash_and_rejects_invalid() {
-        // `+`/`/` are the standard-alphabet's 62/63 sextets; "Tnk+" -> "Ny>".
-        assert_eq!(super::base64_decode("Tnk+").unwrap(), b"Ny>");
-        // whitespace and `=` padding are skipped; an out-of-alphabet char fails.
-        assert_eq!(super::base64_decode("Tm8=").unwrap(), b"No");
-        assert!(super::base64_decode("!!!!").is_none());
     }
 
     #[test]

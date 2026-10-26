@@ -12,13 +12,15 @@
 //! `position`/`z-index` are honored for block flow (out-of-flow boxes are placed
 //! against their containing block and painted back-to-front per CSS 2.2 §9.9),
 //! and `<img>`/`background-image` bytes the caller supplies are decoded + painted
-//! (PNG/JPEG/GIF/WebP + SVG; unknown formats fall back to a placeholder) — but
+//! (PNG/JPEG/GIF/WebP/BMP/ICO/CUR + SVG, AVIF under `avif`; unknown formats fall back to a
+//! placeholder) — but
 //! there is no JS-driven visual state beyond whatever produced the snapshot. It
 //! runs only when asked — never on the fetch/extract hot path.
 //!
 //! Because the input is just an HTML string, any snapshot works: the initial
 //! fetch, or any entry in a hydration trail.
 
+mod avif;
 mod canvas_ops;
 mod glyph;
 mod image_paint;

@@ -53,6 +53,18 @@ turbo-dom-v8 and -browser-env.
   gained a field (`Intrinsic::new`). Control: `scripts/image-orientation-chrome-control.mjs`
   -> `crates/turbo-dom-layout/tests/fixtures/image_orientation_chrome156.json`; corpus diffs:
   `tools/parity/expected/p5b-turbo-html2pdf-30.json`.
+- Image formats (miaskiewicz/turbo-surf#30, layout half): the shared probe sizes BMP,
+  ICO/CUR (the largest entry) and AVIF (`ispe`; `image::avif_payload` demux) — new
+  `Format::{Bmp, Ico, Avif}` (breaking for exhaustive matches); `image::probe_natural`
+  (browser natural size incl. SVG at 1x with Chrome's default-object rules,
+  `svg::natural_size`) and `image::decode_data_url` (base64 + percent-encoded `data:`) for
+  turbo-surf's live image loads; the HTML drive's `data:` `<img>` decode now takes
+  percent-encoded URLs too. turbo-dom-raster decodes BMP and ICO/CUR (`image` crate
+  `bmp`/`ico`, PNG icon entries through the shared PNG decode) and, under the new `avif`
+  feature, AVIF via `rav1d` (pure Rust, no assembly); TIFF stays unsupported as in
+  Chrome. Control: `scripts/image-formats-chrome-control.mjs` ->
+  `crates/turbo-dom-layout/tests/fixtures/image_formats_chrome156.json`; corpus diffs:
+  `tools/parity/expected/p5b-turbo-surf-30.json`.
 
 ### Release (consolidation S5b)
 - Versions: turbo-dom, turbo-dom-parser and npm 0.6.0; intra-workspace path

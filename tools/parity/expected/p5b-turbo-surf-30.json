@@ -1,0 +1,18 @@
+{
+ "id": "turbo-surf#30",
+ "reason": "Image formats Chrome 156 decodes (layout half): the shared probe sizes BMP, ICO/CUR (the largest entry) and AVIF (the primary item's ispe); turbo-dom-raster decodes BMP and ICO/CUR (image crate bmp/ico; PNG icon entries via the shared PNG decode) and, under the new off-by-default avif feature, AVIF (rav1d, pure Rust). Changed: the extra corpus's img-avif page \u2014 layoutBoxes: the AVIF <img> is 64x40 and the sized one 120x75, exactly Chrome's boxes (was 1256x0 / 120x0); surf static (default build, no avif feature): the AVIF background is laid out and painted as the image placeholder. The new probe_natural / decode_data_url / svg::natural_size API (for turbo-surf's live loads) changes no corpus output. P5b-Y.",
+ "control": "crates/turbo-dom-layout/tests/fixtures/image_formats_chrome156.json (scripts/image-formats-chrome-control.mjs over tests/fixtures/images/formats, scripts/make_format_fixtures.py)",
+ "e2e": "crates/turbo-dom-layout/tests/image_formats_chrome.rs, crates/turbo-dom-raster/tests/image_formats_chrome.rs (+ --features avif)",
+ "changes": {
+  "html2pdf": [],
+  "html2pdf-svg": [],
+  "html2pdf-extra": [
+   "extra-img-avif.boxes.json"
+  ],
+  "surf": [],
+  "surf-extra": [
+   "static-extra-img-avif.png",
+   "static-extra-img-avif.svg"
+  ]
+ }
+}

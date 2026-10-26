@@ -360,15 +360,27 @@ pub fn decode(bytes: &[u8]) -> Option<DecodedImage> {
     if is_svg(bytes) {
         return decode_svg(bytes);
     }
-    let rgba = if layout_image::sniff(bytes) == Some(Format::Png) {
-        layout_image::decode_png_rgba(bytes)?
-    } else {
-        let rgba = image::load_from_memory(bytes).ok()?.to_rgba8();
-        Rgba8Image {
-            width: rgba.width(),
-            height: rgba.height(),
-            rgba: rgba.into_raw(),
-        }
+    let format = layout_image::sniff(bytes);
+    let rgba = match format {
+        Some(Format::Png) => layout_image::decode_png_rgba(bytes)?,
+        Some(Format::Avif) => match crate::avif::decode(bytes) {
+            Some(rgba) => rgba,
+            // Without the `avif` feature (or on a bitstream error) the box still lays out
+            // at the image's real size and paints as the placeholder.
+            None => return size_only(bytes),
+        },
+        // The entry a browser shows: a PNG entry through the shared PNG decoder (the
+        // `image` crate's ICO decoder rejects non-RGBA PNG entries, which Chrome shows),
+        // else the `image` crate's ICO decoder — format forced, as a cursor (resource
+        // type 2) has the same layout but not its magic.
+        Some(Format::Ico) => match layout_image::ico_entry(bytes) {
+            Some(entry) if entry.png => layout_image::decode_png_rgba(entry.data)?,
+            _ => image_rgba(image::load_from_memory_with_format(
+                bytes,
+                image::ImageFormat::Ico,
+            ))?,
+        },
+        _ => image_rgba(image::load_from_memory(bytes))?,
     };
     let probed = layout_image::probe(bytes);
     let size = raster_intrinsic(probed, &rgba);
@@ -377,6 +389,31 @@ pub fn decode(bytes: &[u8]) -> Option<DecodedImage> {
     // the box and the painters turn the pixels (`ImagePlacement::orientation`).
     decoded.intrinsic.orientation = probed.map_or(Orientation::IDENTITY, |i| i.orientation);
     Some(decoded)
+}
+
+/// A probe-only entry: the image's layout size with no pixels (the painters draw the
+/// placeholder for it).
+fn size_only(bytes: &[u8]) -> Option<DecodedImage> {
+    let intrinsic = layout_image::probe(bytes)?;
+    Some(DecodedImage {
+        width: 0,
+        height: 0,
+        rgba: Vec::new(),
+        intrinsic: Intrinsic {
+            has_alpha: true,
+            ..intrinsic
+        },
+    })
+}
+
+/// An `image`-crate decode as straight RGBA8.
+fn image_rgba(decoded: image::ImageResult<image::DynamicImage>) -> Option<Rgba8Image> {
+    let rgba = decoded.ok()?.to_rgba8();
+    Some(Rgba8Image {
+        width: rgba.width(),
+        height: rgba.height(),
+        rgba: rgba.into_raw(),
+    })
 }
 
 /// The layout size of a decoded raster image: the shared header probe of its bytes.
@@ -699,6 +736,14 @@ mod shared_layer_tests {
                     "{label}: the shared header probe sizes it directly"
                 );
                 true
+            }
+            // AVIF decodes since P5b (turbo-surf#30) under the `avif` feature; the old
+            // decoder had no AVIF support.
+            (None, Some(_))
+                if turbo_dom_layout::image::sniff(bytes)
+                    == Some(turbo_dom_layout::image::Format::Avif) =>
+            {
+                false
             }
             (old, new) => panic!(
                 "{label}: decodes differ (old {}, new {})",

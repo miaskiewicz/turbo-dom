@@ -149,6 +149,69 @@ pub fn rasterize(bytes: &[u8], scale: f32, oversize: Oversize) -> Option<Rgba8Im
     })
 }
 
+/// The natural size a browser reports for an SVG `<img>` (`naturalWidth`/`naturalHeight`
+/// before rounding — Chrome 156 rounds to the nearest integer), from the root element's
+/// `width`/`height` (absolute lengths: plain numbers or `px`) and `viewBox` ratio:
+/// both lengths as given; one length, the other from the ratio (else the 300x150
+/// default object size's axis); neither, the largest box of the ratio inside 300x150
+/// (else 300x150). `None` if the bytes are not a parseable SVG. turbo-surf's live image
+/// loads size SVGs with this (see [`crate::image::probe_natural`]); the screenshot
+/// painter keeps laying SVGs out at [`css_size`].
+#[must_use]
+pub fn natural_size(bytes: &[u8]) -> Option<(f32, f32)> {
+    parse(bytes)?;
+    let text = std::str::from_utf8(bytes).ok()?;
+    let start = text.find("<svg")?;
+    let tag = &text[start..start + text[start..].find('>')?];
+    let attr = |name: &str| -> Option<&str> {
+        let mut rest = tag;
+        loop {
+            let at = rest.find(name)?;
+            let before = rest[..at].chars().last();
+            rest = &rest[at + name.len()..];
+            if !before.is_some_and(char::is_whitespace) {
+                continue;
+            }
+            let value = rest.trim_start().strip_prefix('=')?.trim_start();
+            let quote = value.chars().next()?;
+            if quote != '"' && quote != '\'' {
+                return None;
+            }
+            return value[1..].split(quote).next();
+        }
+    };
+    let length = |name: &str| -> Option<f32> {
+        let v = attr(name)?.trim();
+        let v = v.strip_suffix("px").unwrap_or(v).trim();
+        v.parse::<f32>().ok().filter(|n| n.is_finite() && *n > 0.0)
+    };
+    let ratio = attr("viewBox").and_then(|vb| {
+        let n: Vec<f32> = vb
+            .split(|c: char| c.is_whitespace() || c == ',')
+            .filter(|t| !t.is_empty())
+            .filter_map(|t| t.parse().ok())
+            .collect();
+        (n.len() == 4 && n[2] > 0.0 && n[3] > 0.0).then(|| n[2] / n[3])
+    });
+    let (width, height) = (length("width"), length("height"));
+    let ratio = ratio.or_else(|| width.zip(height).map(|(w, h)| w / h));
+    Some(match (width, height, ratio) {
+        (Some(w), Some(h), _) => (w, h),
+        (Some(w), None, Some(r)) => (w, w / r),
+        (Some(w), None, None) => (w, 150.0),
+        (None, Some(h), Some(r)) => (h * r, h),
+        (None, Some(h), None) => (300.0, h),
+        (None, None, Some(r)) => {
+            if 300.0 / r <= 150.0 {
+                (300.0, 300.0 / r)
+            } else {
+                (150.0 * r, 150.0)
+            }
+        }
+        (None, None, None) => (300.0, 150.0),
+    })
+}
+
 /// The PDF pipeline's intrinsic size of an SVG: its [`PDF_SVG_SCALE`] pixel size
 /// (the box is laid out at it). Reports `has_alpha = true`: a rasterized SVG always
 /// carries an alpha plane (its background is transparent), so the emitter writes an
