@@ -7,6 +7,35 @@ at the time); this file reconstructs them from history.
 
 ## [Unreleased]
 
+### Fixed — turbo-dom-layout margins, heights and zero-area clips (P5b-W6, miaskiewicz/turbo-dom#75/#76/#77/#78, Chrome 156 controls)
+Each fix is backed by Chrome for Testing 156 cases in `scripts/html-document-chrome-control.mjs`
+and lists the corpus outputs it changes in `tools/parity/expected/p5b-w6-turbo-dom-*.json`
+(new pinned corpus inputs: `tools/parity/inputs/extra/{min-height-margin,
+self-collapsing-margins,min-max-height,percent-height}.html`).
+- A last child's bottom margin and `min-height` / `max-height` (#75 item 1): a non-zero
+  `min-height` kept the margin inside the parent (`max(min-height, content + margin)`).
+  As in Chrome, an auto-height parent lays its content out without it; the margin
+  collapses through when the used height is the content height and is dropped (neither
+  through nor inside) when `min-height` / `max-height` changed it. Bottom padding /
+  border, a definite `height` or an own formatting context still keep it inside.
+  Control: `min-height-margin-*`.
+- Zero-area `clip: rect()` boxes in `layout_boxes` (#75 item 2): an absolutely positioned
+  box whose clip keeps nothing (the sr-only pattern) had no `layoutBoxes` entry. The
+  geometry seam (`layout_boxes`, html2pdf / turbo-pdf-napi `layoutBoxes`) now lays it out
+  with its empty clip region and reports its border box and its descendants' like
+  `getBoundingClientRect()`; renders still leave it out (nothing paints; its text stays
+  out of PDF text and tagging). Control: `clip-zero-area-*` / `clip-sr-only*`.
+- An empty first child's margins (#76, found while fixing #75): the top and bottom
+  margins of an empty (self-collapsing) first child, and the next child's top margin,
+  collapse through the parent's top edge (CSS 2.2 §8.3.1) instead of staying inside it.
+  Control: `self-collapsing-first-child-*`.
+- `min-height` wins over `max-height` (#77, found while fixing #75): the static path
+  clamped by `max-height` last. Control: `min-max-height-*`.
+- Percentage heights on the static path (#78, found while fixing #75): a `%` `height` /
+  `min-height` / `max-height` of an in-flow box resolves against its parent's definite
+  height (positioned boxes: also `min-height` / `max-height`); against an indefinite height
+  they still behave as `auto` / 0 / `none`. Control: `percent-*`.
+
 ### Fixed — turbo-dom-layout tables, clipping and box sizing (P5b-W5, miaskiewicz/turbo-dom#41/#51/#52/#55/#62/#63/#64/#65/#69/#70, Chrome 156 controls)
 Each fix is backed by a Chrome for Testing 156 control and lists the corpus outputs it
 changes in `tools/parity/expected/p5b-w5-turbo-dom-*.json`.
