@@ -238,6 +238,38 @@ shared `src` URL reflection, `readyState` `NONE` (no track is ever loaded) and t
 from the element, `mode` `disabled` / `hidden` / `showing`, empty `TextTrackCueList`s for
 `cues` / `activeCues` once enabled, `oncuechange`; `addCue` / `removeCue` reject non-cues).
 
+### Inline style: shorthands and longhands
+
+`CSSStyleDeclaration` (`element.style`, `CSSStyleRule.style`) follows Chrome 156's CSSOM
+(turbo-dom#90, #97) through turbo-dom's `rtdom::css_shorthand` (`__cssShorthandNative`,
+`src/css_shorthand.rs`): setting one of the 129 shorthands Chrome has (and the 15 shorthand
+aliases such as `-webkit-flex`) sets its longhands in Chrome's order, omitted ones at their
+initial value (`initial` where Blink leaves them implicit) or, for a `var()` value, pending
+on the shorthand; `getPropertyValue(shorthand)` and `cssText` serialize back with Blink's
+rules and shorthand preference; `removeProperty(shorthand)` removes its longhands and
+returns `''`; parsing `cssText` moves a repeated property to the end and lets `!important`
+win; `word-wrap` and the other 101 longhand aliases resolve. A longhand set directly is
+spelled like Chrome (`0` → `0px`, units / keywords lowercase, `url("...")`, double quotes,
+`rgb()`); rtdom's grammar admits or rejects the longhands it knows, the stylesheet grammar the
+rest. The computed cascade expands UA / animation shorthands with the same engine and reads
+the stylesheet grammar's text of longhands set directly. Controls: turbo-dom's
+`crates/turbo-dom/tests/fixtures/css_shorthand_chrome156.json` (2456 scenarios) and
+`css_longhand_chrome156.json` (2190 pairs), run by `src/css_shorthand_tests.rs` and
+`src/css_longhand_tests.rs`.
+
+### SVG and MathML elements
+
+`SVGElement` and `MathMLElement` include the `ElementCSSInlineStyle`, `HTMLOrSVGElement` and
+`GlobalEventHandlers` mixins like Chrome 156 (turbo-dom#87, control
+`src/svg_mathml_element_chrome156.json`): `style` (with the `cssText`-forwarding setter),
+`dataset`, `nonce`, `tabIndex` (an SVG `<a>` defaults to 0), `autofocus`, `focus()`,
+`blur()` and every `on*` handler, each brand-checked against its interface's namespace.
+MathML-namespace elements are `MathMLElement`s. An SVG / MathML element takes script focus
+when connected, rendered (an SVG element other than `<svg>` needs a non-HTML parent, a
+non-SVG element under SVG a `<foreignObject>` parent, nothing under `display: none`) and given
+a valid `tabindex` (an SVG `<a href>` needs none). Internal focusing steps (dialogs,
+focusgroup navigation) use the unchecked native focus.
+
 ### Events across shadow trees
 
 `dispatchEvent` builds the DOM event path through shadow trees (turbo-dom#66): a composed

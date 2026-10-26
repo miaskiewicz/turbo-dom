@@ -283,6 +283,13 @@ it; `docs/CONSOLIDATION-TESTS.md` maps every moved test to its new id.
   (`em`/`rem`→`px`). Only ever returns values from a matched, inline, or inherited declaration —
   never an invented initial value. Style/geometry assertions belong in a real browser
   (Playwright/WebDriver).
+- **`el.style` expands shorthands like Chrome** (miaskiewicz/turbo-dom#90, #97;
+  `src/runtime/css-shorthand.mjs`, the lockstep port of the Rust `rtdom::css_shorthand`):
+  `style.flex = '1'` reads `1 1 0%` with `flexGrow` `1`, `margin: 1px 2px` sets the four
+  margins, `cssText` and the `style` attribute serialize back the way Chrome does
+  (`flex: 1 1 0%;`), longhands are spelled like Chrome (`0` → `0px`) and a value a known grammar
+  rejects is ignored. The npm runtime still keeps longhands it has no grammar for, and its
+  minimal CSSOM rules have no `style` declaration.
 - **`<style>.textContent` reflects rules injected via `sheet.insertRule()`** — CSS-in-JS engines in
   "speedy" mode (emotion/styled-components) inject rules straight into the CSSOM without writing the
   node's text; turbo-dom serializes them back into `textContent` (as browsers/jsdom do), so tests

@@ -100,11 +100,13 @@ focus_group_tests.rs: P5b-X8 turbo-dom#87 the MathMLElement known gap is gone
 html_dialog.js: P5b-X8 turbo-dom#87 dialog focusing steps focus through ts.focusElement
 browser_env.js: P5b-X8 turbo-dom#90 CSSStyleDeclaration expands / serializes shorthands with rtdom::css_shorthand (__cssShorthandNative), cssText parsing moves repeated properties to the end, longhand aliases resolve; the computed cascade expands UA / animation shorthands natively and drops shorthand entries a later longhand outdates
 browser_env.rs: P5b-X8 turbo-dom#90 registers __cssShorthandNative (css_shorthand.rs); css_shorthand control test module
+browser_env.js: P5b-X8 turbo-dom#97 longhands take rtdom::css_shorthand::longhand_value spelling / admission; the computed cascade reads the stylesheet grammar text
+browser_env.rs: P5b-X8 turbo-dom#97 css_longhand control test module
 key_order_tests.rs: P5b-X8 turbo-dom#99 deferred key order moves HTMLTrackElement constants installed before their attributes
 "
 # Crate-owned files under src/ that were not part of the move.
 OWNED="lib.rs crate_surface.rs host_internals.rs test_support.rs css_snapshot.rs option_factory_probe.js option_factory_cases.json option_factory_chrome156.json html_image.js html_image_tests.rs html_image_probe.js html_image_cases.json html_image_chrome156.json custom_elements_defined_probe.js custom_elements_defined_cases.json custom_elements_defined_chrome156.json computed_defaults_probe.js computed_defaults_cases.json computed_defaults_chrome156.json computed_defaults_tests.rs dom_reactions_names_probe.js dom_reactions_names_cases.json dom_reactions_names_chrome156.json dom_reactions_tests.rs dom_adoption_reactions_probe.js dom_adoption_reactions_cases.json dom_adoption_reactions_chrome156.json shadow_events_probe.js shadow_events_cases.json shadow_events_chrome156.json shadow_events_tests.rs html_track_probe.js html_track_cases.json html_track_chrome156.json html_track_tests.rs html_track.js"
-OWNED="$OWNED css_shorthand.rs css_shorthand_tests.rs svg_mathml_element_probe.js svg_mathml_element_cases.json svg_mathml_element_chrome156.json svg_mathml_element_tests.rs"
+OWNED="$OWNED css_shorthand.rs css_shorthand_tests.rs css_longhand_tests.rs svg_mathml_element_probe.js svg_mathml_element_cases.json svg_mathml_element_chrome156.json svg_mathml_element_tests.rs"
 OWNED="$OWNED dom_exception_realm_probe.js dom_exception_realm_cases.json dom_exception_realm_chrome156.json dom_exception_realm_tests.rs custom_elements_collect_tests.rs html_image_srcset_probe.js html_image_srcset_cases.json html_image_srcset_chrome156.json html_image_srcset_tests.rs reflected_urls_probe.js reflected_urls_cases.json reflected_urls_chrome156.json reflected_urls_tests.rs"
 
 repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)

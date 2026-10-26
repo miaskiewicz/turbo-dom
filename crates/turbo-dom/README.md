@@ -74,6 +74,7 @@ Run the worked example: `cargo run --release --example crawl`.
 | `serialize` | inner/outerHTML (void + raw-text, single-pass escaping) |
 | `node_ref` | ergonomic `NodeRef` + `DocumentExt` façade over handles |
 | `color` | CSS color → `rgb()`/`rgba()` (named/hex/hsl) |
+| `css_shorthand` | CSSOM shorthands as Chrome 156 implements them: the shorthand / alias tables, `expand` (a shorthand value → its longhands), `shorthand_value` / `block_text` (getPropertyValue / cssText serialization), `longhand_value` (a longhand's Chrome spelling and admission), `DeclarationBlock` (the reference CSSOM block); checked against `tests/fixtures/css_{shorthand,longhand}_chrome156.json` |
 | `css_values` | Chrome-compatible CSS value grammars: `zoom_value` (Chrome 156 standardized `zoom`, incl. `calc()`), `css_number` (Blink number serialization) |
 | `cssom` | `CssStyleSheet`/`CssStyleRule` + insert/deleteRule + parse |
 | `svg` | SVG length/string/viewBox accessors |
