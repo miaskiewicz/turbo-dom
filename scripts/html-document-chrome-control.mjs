@@ -9,7 +9,8 @@
 // cases of the bugs found while fixing it (one group per issue, labelled). P5b-W6 adds the
 // `min-height` / `max-height` cases of miaskiewicz/turbo-dom#75 item 1
 // (`min-height-margin-*`), zero-area `clip: rect()` boxes of item 2 (`clip-zero-area-*`,
-// `clip-sr-only*`) and cases of the bugs found while fixing them (#76, #77, #78, #79, #88).
+// `clip-sr-only*`) and cases of the bugs found while fixing them (#76, #77, #78, #79, #86,
+// #88).
 //
 // For every case below, Chrome for Testing 156 (viewport 1280x800) records:
 //   - `boxes`: getBoundingClientRect() of every `[data-cid]` element (document order), as
@@ -390,6 +391,17 @@ const CASES = [
   { id: "flow-root-empty", html: DOC(S("body{margin:0}"), `<div data-cid="a" style="height:10px;margin-bottom:10px"></div><div data-cid="c" style="display:flow-root;margin:15px 0"></div><div data-cid="g" style="height:10px;margin-top:5px"></div>`) },
   { id: "empty-formatting-root-overflow", html: DOC(S("body{margin:0}"), `<div data-cid="a" style="height:10px;margin-bottom:10px"></div><div data-cid="c" style="overflow:hidden;margin:15px 0"></div><div data-cid="g" style="height:10px;margin-top:5px"></div>`) },
   { id: "empty-formatting-root-flex", html: DOC(S("body{margin:0}"), `<div data-cid="a" style="height:10px;margin-bottom:10px"></div><div data-cid="c" style="display:flex;margin:15px 0"></div><div data-cid="g" style="height:10px;margin-top:5px"></div>`) },
+  // P5b-W6, miaskiewicz/turbo-dom#86: a column flex item's flex basis is its `height` (the
+  // main size) and its `width` is its cross size (no stretch over an explicit width).
+  { id: "column-flex-item-explicit-widths", html: DOC(S("body{margin:0}"), `<div data-cid="f" style="display:flex;flex-direction:column"><div data-cid="d" style="width:30px;height:15px"></div><div data-cid="e" style="width:40px;height:5px"></div></div><div data-cid="g" style="height:5px"></div>`) },
+  { id: "column-flex-item-border-box", html: DOC(S("body{margin:0}"), `<div data-cid="f" style="display:flex;flex-direction:column"><div data-cid="d" style="box-sizing:border-box;width:30px;height:15px;padding:5px"></div></div><div data-cid="g" style="height:5px"></div>`) },
+  { id: "column-flex-item-auto-width-stretches", html: DOC(S("body{margin:0}"), `<div data-cid="f" style="display:flex;flex-direction:column"><div data-cid="d" style="height:10px"></div></div><div data-cid="g" style="height:5px"></div>`) },
+  { id: "column-flex-item-flex-basis", html: DOC(S("body{margin:0}"), `<div data-cid="f" style="display:flex;flex-direction:column"><div data-cid="d" style="flex-basis:30px;width:10px;height:5px"></div></div><div data-cid="g" style="height:5px"></div>`) },
+  { id: "column-flex-item-reverse", html: DOC(S("body{margin:0}"), `<div data-cid="f" style="display:flex;flex-direction:column;flex-direction:column-reverse"><div data-cid="d" style="width:30px;height:15px"></div><div data-cid="e" style="width:40px;height:5px"></div></div><div data-cid="g" style="height:5px"></div>`) },
+  { id: "column-flex-item-align-center", html: DOC(S("body{margin:0}"), `<div data-cid="f" style="display:flex;flex-direction:column;align-items:center"><div data-cid="d" style="width:30px;height:15px"></div></div><div data-cid="g" style="height:5px"></div>`) },
+  { id: "column-flex-item-content-height", html: DOC(S("body{margin:0}"), `<div data-cid="f" style="display:flex;flex-direction:column"><div data-cid="d" style="width:30px"><div style="height:12px"></div></div></div><div data-cid="g" style="height:5px"></div>`) },
+  { id: "column-flex-item-grow", html: DOC(S("body{margin:0}"), `<div data-cid="f" style="display:flex;flex-direction:column;height:100px"><div data-cid="d" style="width:20px;height:20px"></div><div data-cid="e" style="width:20px;flex-grow:1"></div></div><div data-cid="g" style="height:5px"></div>`) },
+  { id: "column-flex-item-percent-width", html: DOC(S("body{margin:0}"), `<div data-cid="f" style="display:flex;flex-direction:column;width:200px"><div data-cid="d" style="width:50%;height:10px"></div></div><div data-cid="g" style="height:5px"></div>`) },
 ];
 
 /** The RGB of a 1x1 PNG screenshot (any filter: a single pixel's filter adds 0). */
