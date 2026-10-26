@@ -2,12 +2,18 @@
 # The root package (turbo-dom-parser) plus the standalone Rust-native DOM runtime
 # crate published to crates.io as `turbo-dom`. The parser ships to npm.
 members = ["crates/turbo-dom"]
+# turbo-dom-v8 is generated (crates/turbo-dom-v8/scripts/generate.py) into the
+# gitignored crates/turbo-dom-v8/crate/ and built as its own standalone package, so a
+# fresh checkout resolves this workspace without generating V8 first.
+exclude = ["crates/turbo-dom-v8"]
 
 [package]
 name = "turbo-dom-parser"
 version = "0.5.8"
 edition = "2021"
 description = "html5ever-backed native parser for turbo-dom (Layer 1)"
+# Ships to npm only (napi/wasm addon); never published to crates.io.
+publish = false
 
 [lib]
 crate-type = ["cdylib", "rlib"]
