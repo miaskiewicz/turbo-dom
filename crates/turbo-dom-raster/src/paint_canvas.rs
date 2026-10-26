@@ -315,6 +315,38 @@ mod tests {
     }
 
     #[test]
+    fn strokes_need_a_visible_colour_and_a_positive_width() {
+        let line = [SubPath {
+            pts: vec![(0.0, 2.5), (8.0, 2.5)],
+            closed: false,
+        }];
+        let stroked = |color: Rgba, width: f32| {
+            let mut canvas = SkiaCanvas {
+                pm: Pixmap::new(8, 5).unwrap(),
+            };
+            canvas.stroke(&line, color, width);
+            canvas.pm.pixels().iter().filter(|p| p.alpha() > 0).count()
+        };
+        let red = Rgba::new(255, 0, 0, 255);
+        assert_eq!(stroked(red, 1.0), 8, "a 1px line along row 2");
+        assert_eq!(stroked(red, 0.0), 0, "no hairline for a zero width");
+        assert_eq!(stroked(red, -1.0), 0);
+        assert_eq!(stroked(Rgba::new(255, 0, 0, 0), 1.0), 0);
+        // An empty path (and an empty subpath) strokes and fills nothing.
+        let mut canvas = SkiaCanvas {
+            pm: Pixmap::new(8, 5).unwrap(),
+        };
+        let empty = [SubPath {
+            pts: Vec::new(),
+            closed: true,
+        }];
+        canvas.stroke(&empty, red, 1.0);
+        canvas.fill(&empty, red);
+        canvas.fill(&[], red);
+        assert!(canvas.pm.pixels().iter().all(|p| p.alpha() == 0));
+    }
+
+    #[test]
     fn clear_rect_punches_transparent() {
         let ops = canvas_ops::parse_ops(
             r##"[["fillRect",[0,0,16,16],"#0000ff","#000","10px x","alphabetic","start",1,"source-over"],["clearRect",[4,4,8,8],"#0000ff","#000","10px x","alphabetic","start",1,"source-over"]]"##,
