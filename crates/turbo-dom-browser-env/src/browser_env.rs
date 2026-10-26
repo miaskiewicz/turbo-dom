@@ -9609,6 +9609,9 @@ mod html_meta_tests;
 #[path = "computed_defaults_tests.rs"]
 mod computed_defaults_tests;
 #[cfg(test)]
+#[path = "shadow_events_tests.rs"]
+mod shadow_events_tests;
+#[cfg(test)]
 #[path = "dom_reactions_tests.rs"]
 mod dom_reactions_tests;
 #[cfg(test)]
