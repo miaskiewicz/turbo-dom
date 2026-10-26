@@ -115,16 +115,17 @@ fn relative_shifts_box_but_keeps_its_space() {
 #[test]
 fn absolute_is_relative_to_positioned_ancestor() {
     // An absolute box is positioned against its nearest positioned ancestor's
-    // padding box, not the page. Parent is `position:relative` offset 200px down
-    // with 10px padding; child `absolute; top:0; left:0` lands at the parent's
-    // content origin (x = 10, y = 200 + 10).
+    // padding box, not the page. Parent is `position:relative` 60px down with 10px
+    // padding; child `absolute; top:0; left:0` lands at the parent's padding-box
+    // origin (x = 0, y = 60), as in Chrome (miaskiewicz/turbo-dom#100; it used to land
+    // at the content origin, x = 10, y = 70).
     let g = galley(&format!(
         "<div style=\"height:60px\"></div>\
          <div style=\"position:relative;padding:10px;background-color:#cccccc\">{}</div>",
         probe("ff0000", "position:absolute;top:0;left:0"),
     ));
-    approx(box_xy(&g, "ff0000").0, 10.0, "abs left in relative parent");
-    approx(box_xy(&g, "ff0000").1, 70.0, "abs top in relative parent");
+    approx(box_xy(&g, "ff0000").0, 0.0, "abs left in relative parent");
+    approx(box_xy(&g, "ff0000").1, 60.0, "abs top in relative parent");
 }
 
 /// The nearest ancestor whose direct children include a box coloured `color`.

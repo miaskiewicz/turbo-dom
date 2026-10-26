@@ -291,18 +291,24 @@ fn resolved_content_height(bs: &BoxStyle, auto_height: f32, ctx: &Ctx) -> f32 {
 fn positioned_child_block(
     bs: &BoxStyle,
     frame: (f32, f32, f32),
-    content: (f32, f32, f32),
     ctx: &Ctx,
 ) -> (f32, f32, f32, f32) {
+    let border = bs.border.widths();
     if !ctx.live_geometry {
+        // The padding box (miaskiewicz/turbo-dom#100); 0 = an indefinite height.
+        let content_h = definite_content_height(bs, percentage_height_basis(bs, ctx));
+        let height = if content_h > 0.0 {
+            content_h + bs.padding.vertical()
+        } else {
+            0.0
+        };
         return (
-            content.0,
-            content.1,
-            content.2,
-            definite_content_height(bs, percentage_height_basis(bs, ctx)),
+            frame.0 + border.left,
+            frame.1 + border.top,
+            frame.2 - border.horizontal(),
+            height,
         );
     }
-    let border = bs.border.widths();
     let inset = match bs.box_sizing {
         BoxSizing::BorderBox => border.vertical() + bs.padding.vertical(),
         BoxSizing::ContentBox => 0.0,
@@ -317,12 +323,10 @@ fn positioned_child_block(
     )
 }
 
-fn deferred_cb_height(content: f32, bs: &BoxStyle, ctx: &Ctx) -> f32 {
-    if ctx.live_geometry {
-        content + bs.padding.vertical()
-    } else {
-        content
-    }
+/// A positioned box's padding-box height from its laid-out `content` height, for its
+/// deferred absolute children (miaskiewicz/turbo-dom#100: on every path).
+fn deferred_cb_height(content: f32, bs: &BoxStyle) -> f32 {
+    content + bs.padding.vertical()
 }
 
 fn layout_positioned(
@@ -332,15 +336,14 @@ fn layout_positioned(
     fs: f32,
     ctx: &mut Ctx,
 ) -> Fragment {
-    let mut bs = resolve(lb, width, fs);
-    let width = out_of_flow_width(&bs, width, ctx);
+    let width = out_of_flow_width(&resolve(lb, width, fs), ctx);
     if lb.is_replaced() {
         return layout_box(lb, origin.0, origin.1, width, fs, ctx);
     }
+    let mut bs = resolve(lb, width, fs);
     if !ctx.live_geometry {
         return layout_positioned_static(lb, bs, origin, (width, fs), ctx);
     }
-    bs = resolve(lb, width, fs);
     let border = bs.border.widths();
     let frame = match bs.box_sizing {
         BoxSizing::ContentBox => (
@@ -456,12 +459,10 @@ fn stretch_insets(
     available.map_or(value, LengthPct::Px)
 }
 
-fn out_of_flow_width(bs: &BoxStyle, width: f32, ctx: &Ctx) -> f32 {
-    if ctx.live_geometry {
-        containing_block(bs, ctx).2
-    } else {
-        width
-    }
+/// The width an out-of-flow box resolves its `%` width against: its containing block's
+/// (miaskiewicz/turbo-dom#100: on every path, not its parent's).
+fn out_of_flow_width(bs: &BoxStyle, ctx: &Ctx) -> f32 {
+    containing_block(bs, ctx).2
 }
 
 fn out_of_flow_height(bs: &BoxStyle, ctx: &Ctx) -> f32 {
@@ -1458,7 +1459,7 @@ fn layout_block_flow(
         &deferred,
         cw,
         fs,
-        deferred_cb_height(content_h, bs, ctx),
+        deferred_cb_height(content_h, bs),
         &mut frags,
         ctx,
     );
@@ -2155,7 +2156,7 @@ fn layout_box_sized_impl(
     let own_height = resolved_live_height(bs.height, native_height_basis(bs, ctx), 0.0);
     if contains_positioned(bs) {
         (ctx.abs_cb_x, ctx.abs_cb_y, ctx.abs_cb_w, ctx.abs_cb_h) =
-            positioned_child_block(bs, (bx, by, bbw), (content_x, content_y, content_w), ctx);
+            positioned_child_block(bs, (bx, by, bbw), ctx);
         ctx.abs_cb_h_known = own_height.is_some();
         ctx.abs_cb_icb = false;
     }

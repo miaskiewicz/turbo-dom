@@ -108,7 +108,8 @@ fn lay_out(html: &str) -> Result<Fragment, RenderError> {
   bugs found while fixing them: floats are shrink-to-fit (#83), out-of-flow children add
   no intrinsic width (#84), floats sit side by side in a max-content width (#85), column
   flex items take their basis from `height` (#86), `display: flow-root` is a formatting
-  context (#88), `top` + `bottom` stretch an auto-height positioned box (#89).
+  context (#88), `top` + `bottom` stretch an auto-height positioned box (#89), a positioned
+  box resolves `%` widths against and is placed in its containing block's padding box (#100).
 - Fullscreen (turbo-dom#82): while the tree's fullscreen stack (`Tree::fullscreen_stack`,
   reported by the binding) is non-empty, the cascade adds Chrome's `:not(:root):fullscreen`
   UA rules — the HTML drive itself (`Cascade::with_fullscreen`), a live-DOM embedder by

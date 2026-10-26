@@ -292,6 +292,12 @@ self-collapsing-margins,min-max-height,percent-height}.html`).
   `min-height` / `max-height` of an in-flow box resolves against its parent's definite
   height (positioned boxes: also `min-height` / `max-height`); against an indefinite height
   they still behave as `auto` / 0 / `none`. Control: `percent-*`.
+- Positioned boxes against their containing block on the static path
+  (miaskiewicz/turbo-dom#100, found while fixing #89): an absolutely positioned / fixed
+  box resolved a `%` width (and `%` padding / margins) against its parent's content width
+  and was placed against its positioned ancestor's content box; it now uses its
+  containing block, the ancestor's padding box (the viewport for `fixed`), as Chrome and
+  the live path do. Control: `abs-percent-*` in `html-document`.
 
 ### Fixed — turbo-dom-layout tables, clipping and box sizing (P5b-W5, miaskiewicz/turbo-dom#41/#51/#52/#55/#62/#63/#64/#65/#69/#70, Chrome 156 controls)
 Each fix is backed by a Chrome for Testing 156 control and lists the corpus outputs it

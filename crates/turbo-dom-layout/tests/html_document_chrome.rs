@@ -452,7 +452,6 @@ fn abs_percent_case(id: &str) -> bool {
 }
 
 #[test]
-#[ignore = "turbo-dom#100: fails until the fix"]
 fn percentage_widths_of_positioned_boxes_resolve_against_the_containing_block_like_chrome_156() {
     compare_cases(abs_percent_case);
 }
