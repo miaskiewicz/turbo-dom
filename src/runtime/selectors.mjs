@@ -179,8 +179,8 @@ function scanString(src, i) {
 }
 // Parse a `[ … ]` interior: { name, match, ns?, ci? } — `match` = { op: 'present' } or
 // { op, value }; `ns: 'any'` for `[*|a]`; `ci: true` for the `i` modifier. Throws on what
-// Chrome 156 rejects, including the `s` modifier (the Rust engine keeps `s` as a documented
-// extension of its lenient/`_checked` API; this runtime answers like the browser).
+// Chrome 156 rejects, including the `s` modifier (so does the Rust engine since
+// turbo-dom#24).
 function parseAttr(raw, src) {
   const s = stripAttrComments(raw);
   let i = 0;

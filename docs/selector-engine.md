@@ -138,7 +138,7 @@ static screenshots of the surf static inputs to S5.
 |---|---|---|---|
 | cascade order (#21, turbo-dom-layout) | candidates ranked by (importance, level, specificity, rule order + declaration index): `p{margin:0;color:red} p{color:green}` was red | ranked by importance, origin (an `!important` UA declaration beats `!important` author ones), specificity, the rule's source order, then the declaration index | `cascade_cases/declaration-order`, `importance`, `inline-importance` |
 | `:disabled` / `:enabled` | the element's own `disabled`, on any element | HTML "actually disabled": disabled `<fieldset>` ancestors outside the first `<legend>`, `option` via `optgroup` / owner `select`; only form controls match either | `cases/disabled-fieldset` |
-| malformed selectors | `_checked` validated a lexical subset (`[a]div`, `p:nth-child(foo)`, `::before.x` accepted; `""`, `a,,b`, `p >` tolerated) | `_checked` = the `parse_for_cascade` grammar = Chrome's `querySelector` on every control row: type selector first, identifier names, nothing but allowed pseudo-classes after a pseudo-element (per pseudo-element, as Chrome), valid `An+B`, pseudo arity, attribute grammar (unquoted values are identifiers, undeclared prefixes invalid; `[*\|a]` any namespace), no nested `:has()` (a forgiving `:is()` drops such items). The `s` attribute modifier stays a Rust extension (`RUST_CONTRACT_ROWS`). | `cases/malformed` |
+| malformed selectors | `_checked` validated a lexical subset (`[a]div`, `p:nth-child(foo)`, `::before.x` accepted; `""`, `a,,b`, `p >` tolerated) | `_checked` = the `parse_for_cascade` grammar = Chrome's `querySelector` on every control row: type selector first, identifier names, nothing but allowed pseudo-classes after a pseudo-element (per pseudo-element, as Chrome), valid `An+B`, pseudo arity, attribute grammar (unquoted values are identifiers, undeclared prefixes invalid; `[*\|a]` any namespace), no nested `:has()` (a forgiving `:is()` drops such items). The `s` attribute modifier was a Rust extension until P5b-X2 (see below). | `cases/malformed` |
 | pseudo-class case | DOM APIs case-sensitive (`P:FIRST-CHILD` never matched) | ASCII case-insensitive | `cases/malformed`, `cases/lang` |
 | `:lang()` | stylesheet-only; strings and lists accepted | DOM APIs too; one identifier; `lang` on any element (SVG) | `cases/lang` |
 | `:defined` | stylesheet-only | DOM APIs too; `is=` elements are undefined | `cases/defined` |
@@ -151,6 +151,15 @@ static screenshots of the surf static inputs to S5.
 Known limits: through the V8 binding a custom element upgraded by `customElements.define()`
 still matches `:not(:defined)` (the tree does not see the binding's registry);
 `rtdom::cascade` keeps its rough per-item specificity count.
+
+## What P5b-X2 changed (turbo-dom#24)
+
+Follow-ups of P5b found while fixing turbo-dom#18 / #21. Each item has its own commit, a
+Chrome 156 control and a parity expected-diff file `tools/parity/expected/p5b-x2-24-*.json`.
+
+| item | before | now (Chrome 156) | control |
+|---|---|---|---|
+| `s` attribute modifier (#24 item 4) | a documented Rust extension of the lenient / `_checked` / stylesheet parsers (`[a=b s]` compared case-sensitively); the Chrome rows were skipped (`RUST_CONTRACT_ROWS`) | a SyntaxError in the checked APIs, never a match in the lenient ones, an invalid stylesheet rule — like Chrome and the npm engine | `cases/malformed` (`[a=b s]`, `[a=b S]`, `[a="1" s]`), `tests/fixtures/attribute-case` (7 `s` cases) |
 
 ## Regenerating the Chrome control
 
@@ -179,8 +188,8 @@ traversal, `:root` outside the document element) whose named values the Rust tes
 through the Tree API and `test/selectors-chrome.test.mjs` through the JS DOM.
 
 `cargo test -p turbo-dom --test cascade_selectors_chrome` lists the items whose fix has
-not landed in `OPEN` (empty since P5b) and the rows turbo-dom deliberately answers
-differently in `RUST_CONTRACT_ROWS` (the `s` attribute modifier). `node --test
+not landed in `OPEN` (empty since P5b) and asserts every row (P5b-X2 removed the
+`RUST_CONTRACT_ROWS` skip of the `s` attribute modifier). `node --test
 test/selectors-chrome.test.mjs` asserts the same fixture against the npm JS engine.
 
 turbo-dom's test asserts the S3a rows through `matches`, `matches_checked`,
