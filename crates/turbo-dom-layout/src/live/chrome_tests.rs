@@ -5,12 +5,16 @@
 //! CSSOM-View glue reads them (`metrics::element_geometry`, falling back to
 //! `inline::geometry` for a flattened inline), then compared with Chrome's
 //! `getBoundingClientRect()`. Covers turbo-surf#31 (blockified positioned inlines,
-//! per-element inline failures).
+//! per-element inline failures). A case's `hits` are hit tested the way surf answers
+//! `document.elementFromPoint` (`hit::elements_at_point`, no scroll offsets) and
+//! compared with Chrome's (turbo-dom#28 item 1: `clip: rect()`).
+use std::collections::BTreeMap;
+
 use serde_json::Value;
 
 use super::source_id;
 use super::testing::{layout, DOCUMENT};
-use crate::cssom_view::{inline, metrics};
+use crate::cssom_view::{hit, inline, metrics};
 use crate::layout::value::Display;
 use crate::layout_snapshot::{GeometryKind, Rect};
 
@@ -27,8 +31,11 @@ const GAPS: &[(&str, &str, &str)] = &[(
     "native ordinary inline top/bottom/middle alignment is unsupported",
 )];
 
-/// Cases whose compared boxes are laid out with text (the bundled fonts must be there).
+/// Cases whose compared boxes are laid out with text or contain an inline element
+/// (its edges need a font face): the bundled fonts must be there.
 const TEXT_CASES: &[&str] = &[
+    "clip-rect-sr-only-text",
+    "float-in-inline",
     "table-decorated-collapsed",
     "absolute-span-static-position",
     "sr-only-in-link",
@@ -79,12 +86,23 @@ fn check_box(
         return;
     };
     compare_rect(case, want, rect, failures);
-    // A blockified positioned inline lays out as a block box (CSS 2.1 §9.7).
-    if want["display"] == "block" && display.is_some_and(|display| display != Display::Block) {
-        failures.push(format!(
-            "{} used display {display:?}, Chrome block",
-            label(case, want)
-        ));
+    // A blockified positioned or floated inline lays out as a block box (CSS 2.1 §9.7),
+    // a blockified `inline-table` as a table.
+    let chrome = match want["display"].as_str() {
+        Some("block") => Some(Display::Block),
+        Some("table") => Some(Display::Table),
+        Some("inline-table") => Some(Display::InlineTable),
+        Some("flex") => Some(Display::Flex),
+        Some("grid") => Some(Display::Grid),
+        _ => None,
+    };
+    if let (Some(chrome), Some(used)) = (chrome, display) {
+        if used != chrome {
+            failures.push(format!(
+                "{} used display {used:?}, Chrome {chrome:?}",
+                label(case, want)
+            ));
+        }
     }
 }
 
@@ -116,6 +134,40 @@ fn answered(
     None
 }
 
+/// The `data-cid` (else the local name) of the element whose source is `id`.
+fn cid_of(tree: &turbo_dom::Tree, id: crate::layout_snapshot::SourceId) -> Option<String> {
+    let handle = tree.handles().find(|&h| source_id(DOCUMENT, h) == id)?;
+    tree.get_attribute_local(handle, "data-cid")
+        .or_else(|| tree.local_name(handle))
+        .map(str::to_string)
+}
+
+/// Each of the case's hit points against Chrome's `elementFromPoint`.
+fn check_hits(
+    case: &Value,
+    tree: &turbo_dom::Tree,
+    snapshot: &crate::layout_snapshot::LayoutSnapshot,
+    styles: &crate::cssom_view::scroll::SourceStyles,
+    failures: &mut Vec<String>,
+) -> usize {
+    let Some(hits) = case["hits"].as_array() else {
+        return 0;
+    };
+    for want in hits {
+        let point = [want["x"].as_f64().unwrap(), want["y"].as_f64().unwrap()];
+        let got = hit::elements_at_point(snapshot, styles, &BTreeMap::new(), point)
+            .map(|ids| ids.first().and_then(|&id| cid_of(tree, id)));
+        if got.as_ref().ok().and_then(Option::as_deref) != want["hit"].as_str() {
+            failures.push(format!(
+                "{}: elementFromPoint{point:?} = {got:?}, Chrome {}",
+                case["id"].as_str().unwrap(),
+                want["hit"]
+            ));
+        }
+    }
+    hits.len()
+}
+
 fn compare_rect(case: &Value, want: &Value, rect: Rect, failures: &mut Vec<String>) {
     let measure = case["measure"][want["cid"].as_str().unwrap()]
         .as_str()
@@ -136,14 +188,30 @@ fn compare_rect(case: &Value, want: &Value, rect: Rect, failures: &mut Vec<Strin
     }
 }
 
-#[test]
-fn live_geometry_matches_chrome_156() {
+/// The miaskiewicz/turbo-dom#28 item 7 auto-width table cases, held out of
+/// [`live_geometry_matches_chrome_156`] until the fix lands.
+const AUTO_TABLE_CASES: &[&str] = &[
+    "table-auto-fixed-layout",
+    "table-auto-fixed-collapsed",
+    "table-auto-px-cell",
+    "table-auto-min-width",
+    "table-auto-max-width-floors-at-content",
+    "table-auto-in-flex-item",
+    "table-auto-nested",
+];
+
+/// Lay out every fixture case `select` picks and compare it with Chrome: the number
+/// of compared reads and the differences.
+fn compare_cases(select: impl Fn(&str) -> bool) -> (usize, Vec<String>) {
     let fixture: Value = serde_json::from_str(FIXTURE).unwrap();
     assert!(fixture["chrome"].as_str().unwrap().starts_with("156."));
     let cases = fixture["cases"].as_array().unwrap();
     let mut failures = Vec::new();
     let mut compared = 0;
-    for case in cases {
+    for case in cases
+        .iter()
+        .filter(|case| select(case["id"].as_str().unwrap()))
+    {
         let id = case["id"].as_str().unwrap();
         if !cfg!(feature = "bundled-fonts") && TEXT_CASES.contains(&id) {
             continue;
@@ -166,7 +234,12 @@ fn live_geometry_matches_chrome_156() {
             );
             compared += 1;
         }
+        compared += check_hits(case, &tree, &snapshot, &styles, &mut failures);
     }
+    (compared, failures)
+}
+
+fn assert_matches_chrome((compared, failures): (usize, Vec<String>)) {
     assert!(compared > 0);
     assert!(
         failures.is_empty(),
@@ -176,8 +249,82 @@ fn live_geometry_matches_chrome_156() {
     );
 }
 
+/// The control cases of an open bug, each asserted by its own test (`#[ignore]`d until
+/// its fix lands) and held out of [`live_geometry_matches_chrome_156`].
+fn held_out(id: &str) -> bool {
+    let groups: [fn(&str) -> bool; 6] = [
+        |id| AUTO_TABLE_CASES.contains(&id),
+        inline_flex_grid_case,
+        abs_auto_width_case,
+        percent_column_case,
+        collapsed_auto_case,
+        colspan_case,
+    ];
+    groups.iter().any(|group| group(id))
+}
+
+/// miaskiewicz/turbo-dom#53: `inline-flex` / `inline-grid`.
+fn inline_flex_grid_case(id: &str) -> bool {
+    id.starts_with("inline-flex-") || id.starts_with("inline-grid-")
+}
+
+#[test]
+fn live_geometry_matches_chrome_156() {
+    assert_matches_chrome(compare_cases(|id| !held_out(id)));
+}
+
+#[test]
+fn inline_flex_and_grid_are_inline_level_like_chrome_156() {
+    assert_matches_chrome(compare_cases(inline_flex_grid_case));
+}
+
+#[test]
+fn auto_width_tables_shrink_to_fit_like_chrome_156() {
+    assert_matches_chrome(compare_cases(|id| AUTO_TABLE_CASES.contains(&id)));
+}
+
 #[test]
 fn css_of_reads_the_first_style_element() {
     assert_eq!(css_of("<style>a{}</style><style>b{}</style>"), "a{}");
     assert_eq!(css_of("<p>"), "");
+}
+
+/// miaskiewicz/turbo-dom#48: absolutely positioned `width: auto` boxes shrink to fit.
+fn abs_auto_width_case(id: &str) -> bool {
+    id.starts_with("abs-auto-width-") || id == "fixed-auto-width-shrinks"
+}
+
+#[test]
+fn absolutely_positioned_auto_widths_shrink_to_fit_like_chrome_156() {
+    assert_matches_chrome(compare_cases(abs_auto_width_case));
+}
+
+/// miaskiewicz/turbo-dom#50: percentage column widths in the automatic table layout.
+fn percent_column_case(id: &str) -> bool {
+    id.starts_with("table-percent-")
+}
+
+#[test]
+fn percentage_columns_size_auto_tables_like_chrome_156() {
+    assert_matches_chrome(compare_cases(percent_column_case));
+}
+
+/// miaskiewicz/turbo-dom#49: auto-layout `border-collapse: collapse` tables.
+fn collapsed_auto_case(id: &str) -> bool {
+    id.starts_with("table-collapse-auto-")
+}
+
+#[test]
+fn auto_layout_collapsed_tables_merge_borders_like_chrome_156() {
+    assert_matches_chrome(compare_cases(collapsed_auto_case));
+}
+
+/// miaskiewicz/turbo-dom#56: spanning cells in separated auto tables.
+fn colspan_case(id: &str) -> bool {
+    id.starts_with("table-colspan-")
+}
+
+#[test]
+fn spanning_cells_spread_over_their_columns_like_chrome_156() {
+    assert_matches_chrome(compare_cases(colspan_case));
 }

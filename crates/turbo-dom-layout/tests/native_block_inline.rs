@@ -224,8 +224,6 @@ fn unsupported_displaced_splits_fail_their_own_reads_but_boxless_text_does_not()
             "<a style='position:relative;left:5px'><h3>block</h3></a>",
             "a",
         ),
-        ("<a style='float:left'><h3>block</h3></a>", "a"),
-        ("<a><div id=f style='float:left'>block</div></a>", "f"),
     ] {
         let (snapshot, names) = capture(markup);
         let error = SnapshotError::UnsupportedInlineBlockSplit;
@@ -246,6 +244,25 @@ fn unsupported_displaced_splits_fail_their_own_reads_but_boxless_text_does_not()
                 "{markup}"
             );
         }
+    }
+    // miaskiewicz/turbo-dom#28 item 4: a float is blockified and never splits its inline
+    // ancestor — a floated link holding a block is a float, and a float inside a link
+    // takes a place in its line, packed to the left at its top: both answer.
+    for (markup, float) in [
+        ("<a style='float:left'><h3>block</h3></a>", "a"),
+        ("<a>Read<div id=f style='float:left'>block</div></a>", "f"),
+    ] {
+        let (snapshot, names) = capture(markup);
+        for id in [float, "a", "rso"] {
+            assert_eq!(
+                snapshot.unsupported_inline_geometry(names[id]),
+                None,
+                "{markup}"
+            );
+        }
+        let geometry = element_geometry(&snapshot, names[float]).unwrap();
+        assert_eq!(geometry.bounds.x, 8.0, "{markup}");
+        assert_eq!(geometry.bounds.y, rects(&snapshot, names["rso"])[0][1] as f32);
     }
     // An absolutely positioned block does not split its inline: nothing fails, and the
     // box sits at its static position in the link's line.

@@ -1,0 +1,23 @@
+{
+ "id": "turbo-html2pdf#36",
+ "reason": "On a continued page the rows follow the repeated table header directly, not at their galley distance from the header's original place (d445050). Attribution: napi builds (plain + svg, fresh target dirs, git-archived commits) of turbo-html2pdf consol/p5b-w4 against turbo-dom 79a94d3, each step vs the previous: d445050 changes the four template-report variants (plain/svg): 4 pages -> 2 like Chrome 156's page.pdf() of the rendered template (A4 20mm: page 2 = repeated header at 60.4pt (Chrome 62.6pt), rows right below it, then Notes; before, page 2's first row sat at 447pt and page 3 held only the header and the last row at the bottom).",
+ "control": "turbo-html2pdf crates/turbo-html2pdf-core/tests/fixtures/pagination_chrome156.json (scripts/pagination-chrome-control.mjs: Chrome for Testing 156.0.8078.4 page.pdf() of 600x400px @page boxes, pdftoppm -r 96) case table-header-repeat",
+ "e2e": "turbo-html2pdf crates/turbo-html2pdf-core/tests/pagination_chrome.rs (+ tests/paginate.rs); every control case also matches through the emitted PDF (pdftoppm) except exact-fill-child-margin (turbo-dom#41); tests/paginate.rs rows_follow_the_repeated_header_on_a_continued_page",
+ "changes": {
+  "html2pdf": [
+   "template-report-cmyk.pdf",
+   "template-report-pdfa.pdf",
+   "template-report-plain.pdf",
+   "template-report-ua.pdf"
+  ],
+  "html2pdf-svg": [
+   "template-report-cmyk.pdf",
+   "template-report-pdfa.pdf",
+   "template-report-plain.pdf",
+   "template-report-ua.pdf"
+  ],
+  "html2pdf-extra": [],
+  "surf": [],
+  "surf-extra": []
+ }
+}

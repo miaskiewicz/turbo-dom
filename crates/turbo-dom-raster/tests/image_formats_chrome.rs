@@ -57,9 +57,11 @@ fn decoded_pixels_match_chrome_156() {
             decode_data_url(src).unwrap().bytes,
         );
     }
+    // Taller than the control's 800px viewport: its screenshot is the full page, whose
+    // last rows run past 800px (the page has no media/viewport units).
     let viewport = Viewport {
         width: 1280,
-        height: 800,
+        height: 900,
     };
     let png = screenshot_png_with_opts(html, "", viewport, &assets, false, false).expect("png");
     let pm = tiny_skia::Pixmap::decode_png(&png).expect("decode");
