@@ -21,20 +21,9 @@ use turbo_dom::{Handle, Tree};
 const FIXTURE: &str = include_str!("fixtures/rtdom_core_chrome156.json");
 
 /// Recorded Chrome answers rtdom does not give yet, each with its issue; skipped by the
-/// assertions until the fixing commit removes them here.
-/// - miaskiewicz/turbo-dom#92: an RCDATA-context fragment keeps U+0000 as U+FFFD (Chrome
-///   drops it); needs an html5ever tokenizer change.
-const OPEN_DOCUMENTS: &[&str] = &[
-    "fragment_textarea_nul",
-    "fragment_textarea_end_tag",
-    "fragment_textarea_char_ref_split",
-    "fragment_textarea_newlines",
-    "fragment_title_nul",
-    "fragment_title_end_tag",
-    "fragment_title_char_ref_split",
-    "fragment_title_newlines",
-    "fragment_textarea_rcdata",
-];
+/// assertions until the fixing commit removes them here. (turbo-dom#92, RCDATA-context
+/// fragments dropping U+0000, is fixed.)
+const OPEN_DOCUMENTS: &[&str] = &[];
 /// - miaskiewicz/turbo-dom#91: comments, EOF-closed `[attr` / `:state(` and
 ///   `:-webkit-any()` in the DOM selector APIs.
 const OPEN_SELECTORS: &[&str] = &[

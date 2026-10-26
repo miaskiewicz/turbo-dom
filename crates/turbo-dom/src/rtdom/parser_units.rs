@@ -57,6 +57,35 @@ pub(super) fn decode(source: &str) -> Vec<u16> {
 fn parsed(units: &[u16], context: Option<(QualName, Vec<html5ever::Attribute>)>) -> RcDom {
     parsed_with_form(units, context, false, false, QuirksMode::NoQuirks)
 }
+/// A parsed fragment's nodes under a `#document-fragment` root, like
+/// `core::parse_html_fragment_with_context` (RCDATA contexts drop U+0000 like Chrome).
+fn parsed_fragment(
+    units: &[u16],
+    context: (QualName, Vec<html5ever::Attribute>),
+    has_form_ancestor: bool,
+    scripting_enabled: bool,
+    quirks_mode: QuirksMode,
+) -> core::Node {
+    if core::is_rcdata_context(&context.0) && units.contains(&0) {
+        return core::rcdata_fragment(units.split(|&unit| unit == 0).map(|segment| {
+            parsed_fragment(
+                segment,
+                context.clone(),
+                has_form_ancestor,
+                scripting_enabled,
+                quirks_mode,
+            )
+        }));
+    }
+    let dom = parsed_with_form(
+        units,
+        Some(context),
+        has_form_ancestor,
+        scripting_enabled,
+        quirks_mode,
+    );
+    core::fragment_of(core::walk(&dom.document))
+}
 // The iframe srcdoc document flag: a missing or legacy doctype never selects quirks.
 fn parsed_srcdoc(units: &[u16]) -> RcDom {
     let options = TreeBuilderOpts {
@@ -187,9 +216,9 @@ impl Tree {
             }
             ancestor = self.parent(node);
         }
-        let dom = parsed_with_form(
+        let parsed_root = parsed_fragment(
             units,
-            Some(self.fragment_context(context, true)),
+            self.fragment_context(context, true),
             has_form_ancestor,
             scripting_enabled,
             if self.compat_mode == "BackCompat" {
@@ -198,8 +227,6 @@ impl Tree {
                 QuirksMode::NoQuirks
             },
         );
-        let document = core::walk(&dom.document);
-        let parsed_root = document.children.first().unwrap_or(&document);
         let fragment = self.create_document_fragment();
         let recording = self.mutation_log.take();
         let children = parsed_root
@@ -213,7 +240,7 @@ impl Tree {
         self.children_ov.insert(fragment, children.into());
         self.mutation_log = recording;
         self.bump();
-        core::discard_node(document);
+        core::discard_node(parsed_root);
         fragment
     }
 
@@ -326,10 +353,13 @@ impl Tree {
             self.set_inner_html(node, &source);
             return;
         }
-        let dom = parsed(units, Some(self.fragment_context(node, true)));
-        let document = core::walk(&dom.document);
-        // html5ever fragment parsing creates an artificial HTML root.
-        let fragment = document.children.first().unwrap_or(&document);
+        let fragment = parsed_fragment(
+            units,
+            self.fragment_context(node, true),
+            false,
+            false,
+            QuirksMode::NoQuirks,
+        );
         let children = fragment
             .children
             .iter()
@@ -349,7 +379,7 @@ impl Tree {
         if self.is_recording() && (!children.is_empty() || !removed.is_empty()) {
             self.record_child_list_batch(node, children, removed);
         }
-        core::discard_node(document);
+        core::discard_node(fragment);
     }
     pub fn insert_adjacent_html_utf16(&mut self, node: Handle, position: &str, units: &[u16]) {
         if let Some(source) = String::from_utf16(units)
@@ -365,9 +395,13 @@ impl Tree {
         } else {
             node
         };
-        let dom = parsed(units, Some(self.fragment_context(context, true)));
-        let document = core::walk(&dom.document);
-        let fragment = document.children.first().unwrap_or(&document);
+        let fragment = parsed_fragment(
+            units,
+            self.fragment_context(context, true),
+            false,
+            false,
+            QuirksMode::NoQuirks,
+        );
         let children = fragment
             .children
             .iter()
@@ -388,7 +422,7 @@ impl Tree {
                 }
             }
         }
-        core::discard_node(document);
+        core::discard_node(fragment);
     }
     pub fn create_processing_instruction_units(&mut self, target: &[u16], data: &[u16]) -> Handle {
         let node = self.push_node(NewNode::ProcessingInstruction(Box::new(
