@@ -2740,6 +2740,268 @@
      ],
      "winner": "0000000",
      "sheet_valid": true
+    },
+    {
+     "selector": "[href=index.html]",
+     "valid": false,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": false
+    },
+    {
+     "selector": "[a=]",
+     "valid": false,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": false
+    },
+    {
+     "selector": "[x=\"a\"b]",
+     "valid": false,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": false
+    },
+    {
+     "selector": "[a=1]",
+     "valid": false,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": false
+    },
+    {
+     "selector": "[a=\"1\"]",
+     "valid": true,
+     "matches": "0001000",
+     "qsa": [
+      3
+     ],
+     "winner": "0001000",
+     "sheet_valid": true
+    },
+    {
+     "selector": "[a=-x]",
+     "valid": true,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": true
+    },
+    {
+     "selector": "[a=\"1\" i]",
+     "valid": true,
+     "matches": "0001000",
+     "qsa": [
+      3
+     ],
+     "winner": "0001000",
+     "sheet_valid": true
+    },
+    {
+     "selector": "[a=b S]",
+     "valid": false,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": false
+    },
+    {
+     "selector": "[a=\"b\" x]",
+     "valid": false,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": false
+    },
+    {
+     "selector": "[*|a]",
+     "valid": true,
+     "matches": "0001000",
+     "qsa": [
+      3
+     ],
+     "winner": "0001000",
+     "sheet_valid": true
+    },
+    {
+     "selector": "[|a]",
+     "valid": true,
+     "matches": "0001000",
+     "qsa": [
+      3
+     ],
+     "winner": "0001000",
+     "sheet_valid": true
+    },
+    {
+     "selector": "[ns|a]",
+     "valid": false,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": false
+    },
+    {
+     "selector": "[a|=b]",
+     "valid": true,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": true
+    },
+    {
+     "selector": "[ a ]",
+     "valid": true,
+     "matches": "0001000",
+     "qsa": [
+      3
+     ],
+     "winner": "0001000",
+     "sheet_valid": true
+    },
+    {
+     "selector": "[a =\"1\"]",
+     "valid": true,
+     "matches": "0001000",
+     "qsa": [
+      3
+     ],
+     "winner": "0001000",
+     "sheet_valid": true
+    },
+    {
+     "selector": "[1a]",
+     "valid": false,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": false
+    },
+    {
+     "selector": "[a='1'][class]",
+     "valid": true,
+     "matches": "0001000",
+     "qsa": [
+      3
+     ],
+     "winner": "0001000",
+     "sheet_valid": true
+    },
+    {
+     "selector": "[a=b c]",
+     "valid": false,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": false
+    },
+    {
+     "selector": "[a=b s]",
+     "valid": false,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": false
+    },
+    {
+     "selector": "[a=b I]",
+     "valid": true,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": true
+    },
+    {
+     "selector": "[a=\"1\" s]",
+     "valid": false,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": false
+    },
+    {
+     "selector": "[class=X i]",
+     "valid": true,
+     "matches": "0001100",
+     "qsa": [
+      3,
+      4
+     ],
+     "winner": "0001100",
+     "sheet_valid": true
+    },
+    {
+     "selector": "[A]",
+     "valid": true,
+     "matches": "0001000",
+     "qsa": [
+      3
+     ],
+     "winner": "0001000",
+     "sheet_valid": true
+    },
+    {
+     "selector": "[a=\\31]",
+     "valid": true,
+     "matches": "0001000",
+     "qsa": [
+      3
+     ],
+     "winner": "0001000",
+     "sheet_valid": true
+    },
+    {
+     "selector": ":has(:has(p))",
+     "valid": false,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": false
+    },
+    {
+     "selector": "div:has(> p:has(x))",
+     "valid": false,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": false
+    },
+    {
+     "selector": ":not(:has(p))",
+     "valid": true,
+     "matches": "0100111",
+     "qsa": [
+      1,
+      4,
+      5,
+      6
+     ],
+     "winner": "0100111",
+     "sheet_valid": true
+    },
+    {
+     "selector": ":has(::before)",
+     "valid": false,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": false
+    },
+    {
+     "selector": ":is(:has(p))",
+     "valid": true,
+     "matches": "1011000",
+     "qsa": [
+      0,
+      2,
+      3
+     ],
+     "winner": "1011000",
+     "sheet_valid": true
     }
    ]
   },

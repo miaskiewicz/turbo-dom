@@ -162,18 +162,63 @@ pub(super) fn lang_range(arg: &[u16]) -> Option<String> {
     super::scan_name(&chars, &mut end, super::is_name_char);
     (end == chars.len()).then(|| identifier(arg).to_ascii_lowercase())
 }
+/// Is `units` exactly one CSS identifier (escapes allowed)?
+fn is_ident(units: &[u16]) -> bool {
+    let chars: Vec<char> = String::from_utf16_lossy(units).chars().collect();
+    let mut end = 0;
+    super::starts_ident(&chars, 0) && {
+        super::scan_name(&chars, &mut end, super::is_name_char);
+        end == chars.len()
+    }
+}
+/// An attribute selector's (trimmed) name split at its unescaped namespace bar: `*|a` (any
+/// namespace: `Some((true, a))`), `|a` and `a` (no namespace). `None` — invalid, as in
+/// Chrome 156 — for an undeclared prefix (`ns|a`) or a name that is not an identifier
+/// (`[1a]`).
+fn attribute_name(raw: &[u16]) -> Option<(bool, String)> {
+    let mut i = 0;
+    let bar = loop {
+        match raw.get(i) {
+            None => break None,
+            Some(92) => i = escaped_end(raw, i),
+            Some(124) => break Some(i),
+            Some(_) => i += 1,
+        }
+    };
+    let (any, local) = match bar {
+        None => (false, raw),
+        Some(bar) => match &raw[..bar] {
+            [42] => (true, &raw[bar + 1..]),
+            [] => (false, &raw[bar + 1..]),
+            _ => return None,
+        },
+    };
+    is_ident(local).then(|| (any, identifier(local)))
+}
+/// The units record of an attribute that cannot match (an invalid selector).
+fn invalid_attr(name: String) -> Attr {
+    Attr::new(
+        name,
+        AttrMatch::Units(UnitAttrMatch {
+            op: u16::MAX,
+            value: Vec::new(),
+            insensitive: false,
+            sensitive: false,
+        }),
+    )
+}
 pub(super) fn attr(inner: &[u16]) -> Attr {
     let cleaned = attribute_comments(inner);
     let inner = cleaned.as_deref().unwrap_or(inner);
     let Some(eq) = inner.iter().position(|&u| u == 61) else {
-        return Attr::new(
-            identifier(trim(inner)),
+        let Some((any, name)) = attribute_name(trim(inner)) else {
+            return invalid_attr(identifier(trim(inner)));
+        };
+        return Attr::namespaced(
+            any,
+            name,
             AttrMatch::Units(UnitAttrMatch {
-                op: if unquoted_end(trim(inner)) == trim(inner).len() {
-                    0
-                } else {
-                    u16::MAX
-                },
+                op: 0,
                 value: Vec::new(),
                 insensitive: false,
                 sensitive: false,
@@ -188,11 +233,18 @@ pub(super) fn attr(inner: &[u16]) -> Attr {
     let name = operator.map_or(raw, |_| &raw[..raw.len() - 1]);
     let source = trim(&inner[eq + 1..]);
     let (value, quoted, modifier) = attribute_value(source);
-    let valid = modifier
-        .as_deref()
-        .is_some_and(|m| m.is_empty() || m == [105] || m == [73] || m == [115] || m == [83]);
-    Attr::new(
-        identifier(trim(name)),
+    // an unquoted value is an identifier (Chrome: `[a=1]`, `[a=]`, `[href=a.html]` throw);
+    // the `s` modifier is a Rust contract (tests/attribute_case.rs) Chrome 156 rejects
+    let valid = (quoted || is_ident(value))
+        && modifier
+            .as_deref()
+            .is_some_and(|m| m.is_empty() || m == [105] || m == [73] || m == [115] || m == [83]);
+    let Some((any, name)) = attribute_name(trim(name)) else {
+        return invalid_attr(identifier(trim(name)));
+    };
+    Attr::namespaced(
+        any,
+        name,
         AttrMatch::Units(UnitAttrMatch {
             op: if valid {
                 operator.unwrap_or(61)
@@ -310,7 +362,8 @@ pub(super) fn specialized_attribute(inner: &str) -> Option<Attr> {
                 || m.op == u16::MAX
                 || parsed.name.eq_ignore_ascii_case("type")
                 || inner.contains("/*")
-                || inner.contains('\\') =>
+                || inner.contains('\\')
+                || inner.contains('|') =>
         {
             Some(parsed)
         }

@@ -32,7 +32,11 @@ outputs it changes in `tools/parity/expected/p5b-*.json`.
   (`parse_for_cascade`) drop the same rules, and a pseudo-class after a pseudo-element is
   allowed only where Chrome allows it (`::-webkit-scrollbar:hover`, `::part(x):hover`,
   `::selection:window-inactive`; not `::before:hover`). The lenient APIs never match an
-  invalid nth argument or wrong-arity pseudo.
+  invalid nth argument or wrong-arity pseudo. Attribute selectors follow Chrome's grammar
+  too: the name and an unquoted value are identifiers (`[1a]`, `[a=1]`, `[a=]`,
+  `[href=a.html]` are invalid), `[*|a]` matches the attribute in any namespace and `[|a]`
+  in none (an undeclared `[ns|a]` is invalid), and `:has()` cannot nest. The `s`
+  (case-sensitive) modifier stays a documented Rust extension (Chrome 156 rejects it).
 - `:lang()` (miaskiewicz/turbo-dom#18) is evaluated by the DOM APIs too (it was
   stylesheet-only and never matched in `matches` / `querySelector*`). As in Chrome 156 it
   takes exactly one identifier (`:lang("de")` and `:lang(en, de)` are invalid, also in

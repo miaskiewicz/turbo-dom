@@ -137,15 +137,26 @@ impl AttrMatch {
 struct Attr {
     name: String,
     html_name: Option<String>,
+    /// `[*|a]`: the attribute in any namespace (no prefix or `[|a]`: no namespace).
+    any_namespace: bool,
     m: AttrMatch,
 }
 impl Attr {
     fn new(name: String, m: AttrMatch) -> Self {
+        Self::namespaced(false, name, m)
+    }
+
+    fn namespaced(any_namespace: bool, name: String, m: AttrMatch) -> Self {
         let html_name = name
             .bytes()
             .any(|b| b.is_ascii_uppercase())
             .then(|| name.to_ascii_lowercase());
-        Self { name, html_name, m }
+        Self {
+            name,
+            html_name,
+            any_namespace,
+            m,
+        }
     }
 }
 
@@ -1630,6 +1641,19 @@ fn matches_compound<N: Navigator + ?Sized>(nav: &N, h: Handle, c: &Compound) -> 
         } else {
             &a.name
         };
+        if a.any_namespace {
+            let found = tree.local_attributes(h).any(|(local, value)| {
+                local == name
+                    && match &a.m {
+                        AttrMatch::Units(m) => m.matches(&value.encode_utf16().collect::<Vec<_>>()),
+                        m => m.matches(value),
+                    }
+            });
+            if !found {
+                return false;
+            }
+            continue;
+        }
         match &a.m {
             AttrMatch::Units(m)
                 if tree
@@ -3040,6 +3064,38 @@ mod tests {
         }
         assert!(tree.matches_checked(el("d"), ":defined()").is_err());
         assert!(!tree.matches(el("d"), ":defined(x)"));
+    }
+
+    /// turbo-dom#18 (P5b): attribute selectors follow Chrome's grammar — `[*|a]` is any
+    /// namespace, `[|a]` none, undeclared prefixes / non-identifier names and unquoted
+    /// values are invalid — and `:has()` does not nest.
+    #[test]
+    fn attribute_grammar_and_nested_has() {
+        let tree = Tree::parse("<svg><a id=x xlink:href='#y'></a></svg><p id=p data-n=v>p</p>");
+        let x = tree.get_element_by_id("x").unwrap();
+        let p = tree.get_element_by_id("p").unwrap();
+        assert!(tree.matches(x, "[*|href]"));
+        assert!(tree.matches(x, "[*|href='#y']"));
+        assert!(tree.matches(x, "[*|href^='#' i]"));
+        assert!(!tree.matches(x, "[|href]") && !tree.matches(x, "[href]"));
+        assert!(tree.matches(p, "[|data-n=v]") && tree.matches(p, "[*|data-n|=v]"));
+        for bad in [
+            "[ns|a]",
+            "[1a]",
+            "[a=1]",
+            "[a=]",
+            "[href=a.html]",
+            "[|=v]",
+            "[a=b c]",
+            ":has(:has(p))",
+            ":has(:is(:has(p)))",
+            "p:has(> :not(:has(a)))",
+        ] {
+            assert!(tree.matches_checked(p, bad).is_err(), "{bad}");
+            assert!(!tree.matches(p, bad), "{bad}");
+        }
+        assert!(tree.matches_checked(p, ":not(:has(a))").unwrap());
+        assert!(tree.matches_checked(p, "[data-n=\\76]").unwrap());
     }
 
     /// `<an+b>` grammar edges (CSS Syntax 3 §6; Chrome 156 cases in the malformed control).

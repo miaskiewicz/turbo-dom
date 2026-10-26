@@ -37,6 +37,11 @@ fn open(item: &str) -> bool {
     OPEN.contains(&item)
 }
 
+/// Rows where turbo-dom deliberately differs from Chrome 156: the CSS-standard `s`
+/// (case-sensitive) attribute modifier is a Rust contract (`tests/attribute_case.rs`) that
+/// Chrome 156 rejects. Recorded, not asserted.
+const RUST_CONTRACT_ROWS: &[&str] = &["[a=b s]", "[a=b S]", "[a=\"1\" s]"];
+
 /// Elements in document order, template content excluded (Chrome walks `children`).
 fn elements(tree: &Tree) -> Vec<Handle> {
     fn walk(tree: &Tree, h: Handle, out: &mut Vec<Handle>) {
@@ -171,6 +176,9 @@ fn selectors_match_chrome156() {
         );
         for row in case["selectors"].as_array().unwrap() {
             let sel = row["selector"].as_str().unwrap();
+            if RUST_CONTRACT_ROWS.contains(&sel) {
+                continue;
+            }
             let units: Vec<u16> = sel.encode_utf16().collect();
             let valid = row["valid"].as_bool().unwrap();
             let sheet_valid = row["sheet_valid"].as_bool().unwrap();

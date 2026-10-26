@@ -475,11 +475,32 @@ fn check_pseudo(pseudo: &mut Pseudo) -> Result<(), SelectorError> {
             }
             for relative in list {
                 check_nested(&mut relative.complex)?;
+                if contains_has(&relative.complex) {
+                    return Err(invalid(":has() inside :has()"));
+                }
             }
         }
         _ => {}
     }
     Ok(())
+}
+
+/// Does `complex` use `:has()` anywhere (Chrome 156 rejects a nested `:has()`, also through
+/// `:is()` / `:not()`)?
+fn contains_has(complex: &Complex) -> bool {
+    std::iter::once(&complex.first)
+        .chain(complex.rest.iter().map(|(_, c)| c))
+        .flat_map(|c| &c.pseudos)
+        .any(|p| match p {
+            Pseudo::Has(_) => true,
+            Pseudo::Is(list)
+            | Pseudo::Where(list)
+            | Pseudo::Not(list)
+            | Pseudo::WebkitAny(list)
+            | Pseudo::NthChildOf(_, _, list)
+            | Pseudo::NthLastChildOf(_, _, list) => list.iter().any(contains_has),
+            _ => false,
+        })
 }
 
 fn check_nested(complex: &mut Complex) -> Result<(), SelectorError> {
