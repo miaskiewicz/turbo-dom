@@ -160,7 +160,7 @@ pub const SHORTHANDS: &[Entry] = &[
     Entry {
         name: "-webkit-mask-position",
         canonical: "mask-position",
-        grammar: "mask-position",
+        grammar: "-webkit-mask-position",
         allow_initial: false,
         longhands: &["-webkit-mask-position-x", "-webkit-mask-position-y"],
     },

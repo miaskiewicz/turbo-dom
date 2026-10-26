@@ -1,7 +1,8 @@
 //! Shorthand value grammars: each turns the components of a shorthand value into its
 //! longhands' specified values, in the order Chrome 156 adds them, with omitted longhands at
 //! their initial value (`initial` where Blink leaves them implicit).
-use super::components::{join, Comp, Kind};
+use super::components::{components, join, Comp, Kind};
+use std::fmt::Write as _;
 
 pub(super) enum Parsed {
     Values(Vec<(&'static str, String)>),
@@ -465,11 +466,12 @@ pub(super) fn expand(grammar: &str, comps: &[Comp]) -> Option<Parsed> {
         "place-items" => place_items(comps)?,
         "place-self" => place_self(comps)?,
         "background-position" => {
-            let (x, y) = positions(comps)?;
+            let (x, y) = positions(comps, true)?;
             vec![("background-position-x", x), ("background-position-y", y)]
         }
         "mask-position" | "-webkit-mask-position" => {
-            let (x, y) = positions(comps)?;
+            // `-webkit-mask-position` keeps the background syntax's three-value form.
+            let (x, y) = positions(comps, grammar == "-webkit-mask-position")?;
             vec![
                 ("-webkit-mask-position-x", x),
                 ("-webkit-mask-position-y", y),
@@ -888,30 +890,35 @@ fn self_alignment(comps: &[Comp], extra: &[&str]) -> Option<(usize, String)> {
         .or_else(|| overflow_position(comps, SELF_POSITIONS))
 }
 
+/// A `justify-items` value from the front of `comps`: `(used, text)`.
+pub(super) fn justify_items(comps: &[Comp]) -> Option<(usize, String)> {
+    let legacy = match comps {
+        [first] if first.is_ident(&["legacy"]) => Some((1, "legacy".to_string())),
+        [first, second] if first.is_ident(&["legacy"]) => {
+            kw(second, &["left", "right", "center"]).map(|v| (2, format!("legacy {v}")))
+        }
+        [first, second] if second.is_ident(&["legacy"]) => {
+            kw(first, &["left", "right", "center"]).map(|v| (2, format!("legacy {v}")))
+        }
+        _ => None,
+    };
+    legacy
+        .or_else(|| {
+            self_alignment(
+                comps,
+                &["normal", "stretch", "left", "right", "anchor-center"],
+            )
+        })
+        .or_else(|| overflow_position(comps, &["left", "right"]))
+}
+
 fn place_items(comps: &[Comp]) -> Option<Out> {
     let (used, align) = self_alignment(comps, &["normal", "stretch"])?;
     let justify = if used == comps.len() {
         align.clone()
     } else {
         let rest = &comps[used..];
-        let legacy = match rest {
-            [first] if first.is_ident(&["legacy"]) => Some((1, "legacy".to_string())),
-            [first, second] if first.is_ident(&["legacy"]) => {
-                kw(second, &["left", "right", "center"]).map(|v| (2, format!("legacy {v}")))
-            }
-            [first, second] if second.is_ident(&["legacy"]) => {
-                kw(first, &["left", "right", "center"]).map(|v| (2, format!("legacy {v}")))
-            }
-            _ => None,
-        };
-        let (more, justify) = legacy
-            .or_else(|| {
-                self_alignment(
-                    rest,
-                    &["normal", "stretch", "left", "right", "anchor-center"],
-                )
-            })
-            .or_else(|| overflow_position(rest, &["left", "right"]))?;
+        let (more, justify) = justify_items(rest)?;
         if used + more != comps.len() {
             return None;
         }
@@ -973,10 +980,12 @@ pub(super) fn position(comps: &[Comp]) -> Option<(String, String)> {
             Some((b_x, a_y))
         }
         [_, _, _] | [_, _, _, _] => {
-            // Keyword + offset pairs; a lone keyword takes no offset.
+            // Keyword + offset pairs; a lone keyword takes no offset; `center` takes the axis
+            // the other keyword leaves.
             let mut at = 0;
             let mut x = None;
             let mut y = None;
+            let mut center = None;
             while at < comps.len() {
                 let keyword = comps[at].keyword(&["left", "right", "top", "bottom", "center"])?;
                 let offset = comps.get(at + 1).and_then(lp);
@@ -989,28 +998,36 @@ pub(super) fn position(comps: &[Comp]) -> Option<(String, String)> {
                     Some(offset) => format!("{keyword} {offset}"),
                     None => keyword.clone(),
                 };
-                let is_x = match keyword.as_str() {
-                    "left" | "right" => true,
-                    "top" | "bottom" => false,
-                    _ => x.is_none() && (y.is_some() || at == 0),
+                let slot = match keyword.as_str() {
+                    "left" | "right" => &mut x,
+                    "top" | "bottom" => &mut y,
+                    _ => &mut center,
                 };
-                let slot = if is_x { &mut x } else { &mut y };
                 if slot.is_some() {
                     return None;
                 }
                 *slot = Some(text);
                 at += used;
             }
-            Some((x?, y?))
+            match (x, y, center) {
+                (Some(x), Some(y), None) => Some((x, y)),
+                (Some(x), None, Some(center)) => Some((x, center)),
+                (None, Some(y), Some(center)) => Some((center, y)),
+                _ => None,
+            }
         }
         _ => None,
     }
 }
 
-fn positions(comps: &[Comp]) -> Option<(String, String)> {
+/// A comma list of positions; `three`: three-value positions too (background only).
+fn positions(comps: &[Comp], three: bool) -> Option<(String, String)> {
     let mut xs = Vec::new();
     let mut ys = Vec::new();
     for layer in commas(comps)? {
+        if !three && layer.len() == 3 {
+            return None;
+        }
         let (x, y) = position(layer)?;
         xs.push(x);
         ys.push(y);
@@ -1316,13 +1333,7 @@ fn white_space(comps: &[Comp]) -> Option<Out> {
             &one(|c| {
                 kw(
                     c,
-                    &[
-                        "collapse",
-                        "preserve",
-                        "preserve-breaks",
-                        "preserve-spaces",
-                        "break-spaces",
-                    ],
+                    &["collapse", "preserve", "preserve-breaks", "break-spaces"],
                 )
             }),
             &one(|c| kw(c, &["wrap", "nowrap"])),
@@ -1593,34 +1604,40 @@ fn font_variant(comps: &[Comp]) -> Option<Out> {
     let ligatures = |comps: &[Comp]| group_set(comps, LIGATURES);
     let numeric = |comps: &[Comp]| group_set(comps, NUMERIC);
     let east_asian = |comps: &[Comp]| group_set(comps, EAST_ASIAN);
-    let alternates = |comps: &[Comp]| {
-        let first = comps.first()?;
-        first
-            .keyword(&["historical-forms"])
-            .or_else(|| {
-                first.function_named(&[
-                    "stylistic",
-                    "styleset",
-                    "character-variant",
-                    "swash",
-                    "ornaments",
-                    "annotation",
-                ])
-            })
-            .map(|value| (1, value))
+    // The alternates values may sit anywhere among the others.
+    let alternate = |comp: &Comp| {
+        comp.is_ident(&["historical-forms"])
+            || matches!(&comp.kind, Kind::Function(name) if matches!(name.as_str(),
+                "stylistic" | "styleset" | "character-variant" | "swash" | "ornaments" | "annotation"))
     };
-    let parsed = any_order(
-        comps,
-        &[
-            &ligatures,
-            &numeric,
-            &east_asian,
-            &one(|c| kw(c, CAPS)),
-            &alternates,
-            &one(|c| kw(c, &["sub", "super"])),
-            &one(|c| kw(c, &["text", "emoji", "unicode"])),
-        ],
-    )?;
+    let (alternate_comps, others): (Vec<Comp>, Vec<Comp>) =
+        comps.iter().cloned().partition(|comp| alternate(comp));
+    let alternates_value = if alternate_comps.is_empty() {
+        None
+    } else {
+        let (used, value) = alternates(&alternate_comps)?;
+        if used != alternate_comps.len() {
+            return None;
+        }
+        Some(value)
+    };
+    let mut parsed = if others.is_empty() {
+        vec![None; 7]
+    } else {
+        any_order(
+            &others,
+            &[
+                &ligatures,
+                &numeric,
+                &east_asian,
+                &one(|c| kw(c, CAPS)),
+                &|_: &[Comp]| None,
+                &one(|c| kw(c, &["sub", "super"])),
+                &one(|c| kw(c, &["text", "emoji", "unicode"])),
+            ],
+        )?
+    };
+    parsed[4] = alternates_value;
     let names = [
         "font-variant-ligatures",
         "font-variant-numeric",
@@ -1754,35 +1771,68 @@ pub(super) const GENERIC_FAMILIES: &[&str] = &[
     "-webkit-body",
     "-webkit-pictograph",
 ];
-/// A quoted family name: unquoted when it is one valid identifier Chrome would not read as a
-/// keyword (a generic family, a CSS-wide keyword, `default`).
-fn family_string(comp: &Comp) -> String {
-    let Kind::Str(name) = &comp.kind else {
-        return comp.text.clone();
-    };
-    if is_identifier(name) && !reserved(name, GENERIC_FAMILIES) {
-        name.clone()
+/// A family name as Chrome serializes it: unquoted when it is one identifier (an optional
+/// `-`, a name-start character, name characters; no escapes) Chrome would not read as a
+/// keyword (a generic family, a CSS-wide keyword, `default`), a string otherwise.
+fn family_text(name: &str) -> String {
+    let mut chars = name.chars();
+    let start = |c: char| c.is_ascii_alphabetic() || c == '_' || !c.is_ascii();
+    let identifier = match chars.next() {
+        Some('-') => chars.next().is_some_and(start),
+        Some(first) => start(first),
+        None => false,
+    } && name
+        .chars()
+        .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_' || !c.is_ascii());
+    if identifier && !reserved(name, GENERIC_FAMILIES) {
+        name.to_string()
     } else {
-        comp.text.clone()
+        super::components::quoted(name)
     }
 }
-/// Whether `text` tokenizes as exactly one identifier (no escapes needed).
-pub(super) fn is_identifier(text: &str) -> bool {
-    let mut chars = text.chars();
-    let valid_start = |c: char| c.is_ascii_alphabetic() || c == '_' || !c.is_ascii();
-    match chars.next() {
-        Some('-') => {
-            let rest: Vec<char> = chars.collect();
-            !rest.is_empty()
-                && (rest[0] == '-' || valid_start(rest[0]))
-                && rest[1..]
-                    .iter()
-                    .all(|c| c.is_ascii_alphanumeric() || *c == '-' || *c == '_' || !c.is_ascii())
+fn family_string(comp: &Comp) -> String {
+    match &comp.kind {
+        Kind::Str(name) => family_text(name),
+        _ => comp.text.clone(),
+    }
+}
+/// CSSOM "serialize an identifier".
+pub(super) fn serialize_identifier(text: &str) -> String {
+    let chars: Vec<char> = text.chars().collect();
+    let mut out = String::new();
+    for (index, &c) in chars.iter().enumerate() {
+        let code = u32::from(c);
+        if c == '\0' {
+            out.push('\u{fffd}');
+        } else if (0x1..=0x1f).contains(&code)
+            || code == 0x7f
+            || (index == 0 && c.is_ascii_digit())
+            || (index == 1 && c.is_ascii_digit() && chars[0] == '-')
+        {
+            let _ = write!(out, "\\{code:x} ");
+        } else if index == 0 && c == '-' && chars.len() == 1 {
+            out.push_str("\\-");
+        } else if code >= 0x80 || c == '-' || c == '_' || c.is_ascii_alphanumeric() {
+            out.push(c);
+        } else {
+            out.push('\\');
+            out.push(c);
         }
-        Some(first) if valid_start(first) => {
-            chars.all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_' || !c.is_ascii())
-        }
-        _ => false,
+    }
+    out
+}
+/// A quoted animation name: an identifier unless it is empty (invalid) or reads as `none`,
+/// a CSS-wide keyword or `default` (kept quoted).
+pub(super) fn animation_name_string(comp: &Comp) -> Option<String> {
+    let Kind::Str(text) = &comp.kind else {
+        return None;
+    };
+    if text.is_empty() {
+        None
+    } else if reserved(text, &["none"]) {
+        Some(comp.text.clone())
+    } else {
+        Some(serialize_identifier(text))
     }
 }
 pub(super) fn reserved(name: &str, extra: &[&str]) -> bool {
@@ -1790,6 +1840,64 @@ pub(super) fn reserved(name: &str, extra: &[&str]) -> bool {
     super::components::CSS_WIDE.contains(&lower.as_str())
         || lower == "default"
         || extra.contains(&lower.as_str())
+}
+
+/// `oblique <angle>`: Chrome checks a literal angle's number, in its own unit, against
+/// [-90, 90]; a zero angle is `normal`.
+pub(super) fn oblique(angle: &Comp) -> Option<String> {
+    let text = angle.angle()?;
+    match angle.kind {
+        Kind::Dimension { value, .. } if !(-90.0..=90.0).contains(&value) => None,
+        Kind::Dimension { value, .. } | Kind::Number { value, .. } if value == 0.0 => {
+            Some("normal".into())
+        }
+        _ => Some(format!("oblique {text}")),
+    }
+}
+
+/// `font-variant-alternates` values: `historical-forms` and the feature functions, each at
+/// most once, in Chrome's order; `(used, text)` from the front of `comps`.
+pub(super) fn alternates(comps: &[Comp]) -> Option<(usize, String)> {
+    const ORDER: &[&str] = &[
+        "stylistic",
+        "historical-forms",
+        "styleset",
+        "character-variant",
+        "swash",
+        "ornaments",
+        "annotation",
+    ];
+    let mut found: Vec<(usize, String)> = Vec::new();
+    for comp in comps {
+        let (key, text) = if let Some(value) = comp.keyword(&["historical-forms"]) {
+            ("historical-forms", value)
+        } else if let Kind::Function(name) = &comp.kind {
+            match ORDER.iter().find(|candidate| *candidate == name) {
+                Some(&key) if key != "historical-forms" => (key, comp.text.clone()),
+                _ => break,
+            }
+        } else {
+            break;
+        };
+        let rank = ORDER.iter().position(|candidate| *candidate == key)?;
+        if found.iter().any(|(seen, _)| *seen == rank) {
+            return None;
+        }
+        found.push((rank, text));
+    }
+    if found.is_empty() {
+        return None;
+    }
+    let used = found.len();
+    found.sort_by_key(|(rank, _)| *rank);
+    Some((
+        used,
+        found
+            .into_iter()
+            .map(|(_, text)| text)
+            .collect::<Vec<_>>()
+            .join(" "),
+    ))
 }
 
 /// `font-family`: a comma list of strings and identifier sequences.
@@ -1816,12 +1924,12 @@ pub(super) fn font_family(comps: &[Comp]) -> Option<String> {
                 let name = words.join(" ");
                 let lower = name.to_ascii_lowercase();
                 families.push(if words.len() > 1 {
-                    format!("\"{name}\"")
+                    super::components::quoted(&name)
                 } else if GENERIC_FAMILIES.contains(&lower.as_str()) {
                     // A generic family is a keyword: lowercase.
                     lower
                 } else {
-                    name
+                    family_text(&name)
                 });
             }
         }
@@ -1849,17 +1957,11 @@ fn font(comps: &[Comp]) -> Option<Parsed> {
         if style.is_none() {
             if let Some(value) = comp.keyword(&["italic", "oblique"]) {
                 if value == "oblique" {
-                    if let Some(angle) = comps.get(at + 1).and_then(Comp::angle).filter(|_| {
-                        comps
-                            .get(at + 1)
-                            .is_some_and(|c| matches!(c.kind, Kind::Dimension { .. }))
-                    }) {
-                        // `oblique 0deg` is `normal`, the default 14deg angle plain `oblique`.
-                        style = Some(match angle.as_str() {
-                            "0deg" => "normal".to_string(),
-                            "14deg" => "oblique".to_string(),
-                            _ => format!("oblique {angle}"),
-                        });
+                    if let Some(angle) = comps
+                        .get(at + 1)
+                        .filter(|c| matches!(c.kind, Kind::Dimension { .. }) && c.angle().is_some())
+                    {
+                        style = Some(oblique(angle)?);
                         at += 2;
                         continue;
                     }
@@ -2047,19 +2149,11 @@ pub(super) fn track_list(comps: &[Comp]) -> Option<String> {
     let subgrid = comps[0].is_ident(&["subgrid"]);
     for (index, comp) in comps.iter().enumerate() {
         let ok = match &comp.kind {
-            Kind::Function(name) => {
-                name == "["
-                    || matches!(name.as_str(), "repeat" | "minmax" | "fit-content")
-                    || comp.length_percentage(false).is_some()
-            }
-            Kind::Dimension { unit, .. } => unit == "fr" || comp.length(false).is_some(),
-            Kind::Percentage(value) => *value >= 0.0,
-            Kind::Number { value, .. } => *value == 0.0,
             Kind::Ident(_) => {
                 (index == 0 && subgrid)
                     || comp.is_ident(&["auto", "min-content", "max-content", "masonry"])
             }
-            _ => false,
+            _ => track_ok(comp, true),
         };
         if !ok {
             return None;
@@ -2080,6 +2174,57 @@ pub(super) fn track_list(comps: &[Comp]) -> Option<String> {
         })
         .collect();
     Some(join(&spelled))
+}
+
+/// A track breadth: a non-negative `<length-percentage>`, a sizing keyword, or (where `flex`)
+/// a non-negative `fr`.
+fn track_breadth(comp: &Comp, flex: bool) -> bool {
+    match &comp.kind {
+        Kind::Dimension { unit, value } if unit == "fr" => flex && *value >= 0.0,
+        Kind::Ident(_) => comp.is_ident(&["auto", "min-content", "max-content"]),
+        Kind::Function(name) if name == "[" => false,
+        _ => comp.length_percentage(false).is_some(),
+    }
+}
+/// One track-list component: line names, a track size, or (at the top level) `repeat()`.
+fn track_ok(comp: &Comp, repeat_allowed: bool) -> bool {
+    let Kind::Function(name) = &comp.kind else {
+        return track_breadth(comp, true);
+    };
+    let inner = || components(&comp.text[name.len() + 1..comp.text.len() - 1]);
+    match name.as_str() {
+        "[" => true,
+        "minmax" => inner().is_some_and(|inner| match inner.as_slice() {
+            [low, comma, high] if comma.is_comma() => {
+                track_breadth(low, false) && track_breadth(high, true)
+            }
+            _ => false,
+        }),
+        "fit-content" => inner().is_some_and(
+            |inner| matches!(inner.as_slice(), [only] if only.length_percentage(false).is_some()),
+        ),
+        "repeat" if repeat_allowed => inner().is_some_and(|inner| {
+            let Some(comma) = inner.iter().position(Comp::is_comma) else {
+                return false;
+            };
+            let count = match &inner[..comma] {
+                [Comp {
+                    kind:
+                        Kind::Number {
+                            value,
+                            integer: true,
+                        },
+                    ..
+                }] => *value >= 1.0,
+                [only] => only.is_ident(&["auto-fill", "auto-fit"]),
+                _ => false,
+            };
+            let tracks = &inner[comma + 1..];
+            count && !tracks.is_empty() && tracks.iter().all(|track| track_ok(track, false))
+        }),
+        "repeat" => false,
+        _ => comp.length_percentage(false).is_some(),
+    }
 }
 
 /// A `grid-template-areas` string: its cell tokens separated by single spaces.
@@ -2399,6 +2544,8 @@ fn offset(comps: &[Comp]) -> Option<Out> {
     let anchor = match anchor {
         None => "auto".to_string(),
         Some([only]) if only.is_ident(&["auto"]) => "auto".into(),
+        // Three-value positions are background-only.
+        Some([_, _, _]) => return None,
         Some(anchor) => {
             let (x, y) = position(anchor)?;
             format!("{x} {y}")
@@ -2419,6 +2566,9 @@ fn offset(comps: &[Comp]) -> Option<Out> {
                             || c.length_percentage(true).is_some()
                     }) {
                         if let Some((x, y)) = position(slice) {
+                            if len == 3 {
+                                return None;
+                            }
                             position_value = format!("{x} {y}");
                             at = len;
                             break;
@@ -2803,27 +2953,6 @@ fn transition(comps: &[Comp]) -> Option<Out> {
     ])
 }
 
-pub(super) const ANIMATION_KEYWORDS: &[&str] = &[
-    "none",
-    "auto",
-    "infinite",
-    "normal",
-    "reverse",
-    "alternate",
-    "alternate-reverse",
-    "forwards",
-    "backwards",
-    "both",
-    "running",
-    "paused",
-    "linear",
-    "ease",
-    "ease-in",
-    "ease-out",
-    "ease-in-out",
-    "step-start",
-    "step-end",
-];
 fn animation(comps: &[Comp]) -> Option<Out> {
     let items = commas(comps)?;
     let mut columns: [Vec<String>; 8] = Default::default();
@@ -2832,16 +2961,9 @@ fn animation(comps: &[Comp]) -> Option<Out> {
             if c.is_ident(&["none"]) {
                 return Some("none".to_string());
             }
-            // A quoted name serializes as an identifier when it is one Chrome would not
-            // read as a keyword.
-            if let Kind::Str(text) = &c.kind {
-                return Some(
-                    if is_identifier(text) && !reserved(text, ANIMATION_KEYWORDS) {
-                        text.clone()
-                    } else {
-                        c.text.clone()
-                    },
-                );
+            // A quoted name serializes as an identifier.
+            if matches!(c.kind, Kind::Str(_)) {
+                return animation_name_string(c);
             }
             c.custom_ident(&["none"])
         };
@@ -2916,12 +3038,57 @@ fn timeline_trigger(comps: &[Comp]) -> Option<Out> {
             return Some(out);
         }
     }
-    let (name, rest) = comps.split_first()?;
-    let name = name.dashed_ident()?;
-    let (source, rest) = rest.split_first()?;
-    let source = source
-        .function_named(&["view", "scroll"])
-        .or_else(|| kw(source, &["auto", "none"]))?;
+    // A comma list of triggers: each longhand lists its value per trigger.
+    let items = commas(comps)?;
+    if items.len() > 1 {
+        let mut columns: Vec<(&'static str, Vec<String>)> = Vec::new();
+        for item in items {
+            for (index, (name, value)) in timeline_trigger_item(item)?.into_iter().enumerate() {
+                if columns.len() <= index {
+                    columns.push((name, Vec::new()));
+                }
+                columns[index].1.push(value);
+            }
+        }
+        return Some(
+            columns
+                .into_iter()
+                .map(|(name, values)| (name, values.join(", ")))
+                .collect(),
+        );
+    }
+    timeline_trigger_item(comps)
+}
+
+fn timeline_trigger_item(comps: &[Comp]) -> Option<Out> {
+    let defaults = || {
+        vec![
+            ("timeline-trigger-source", "auto".to_string()),
+            (
+                "timeline-trigger-activation-range-start",
+                "normal".to_string(),
+            ),
+            (
+                "timeline-trigger-activation-range-end",
+                "normal".to_string(),
+            ),
+            ("timeline-trigger-active-range-start", "auto".to_string()),
+            ("timeline-trigger-active-range-end", "auto".to_string()),
+        ]
+    };
+    // The name and the source may each be left out (`--t / entry`, `/ entry`).
+    let (name, rest) = match comps.split_first() {
+        Some((first, rest)) if first.dashed_ident().is_some() => (first.dashed_ident()?, rest),
+        _ => ("none".to_string(), comps),
+    };
+    let source_of = |c: &Comp| {
+        c.function_named(&["view", "scroll"])
+            .or_else(|| kw(c, &["auto", "none"]))
+    };
+    let (source, rest) = match rest.split_first() {
+        Some((first, rest)) if source_of(first).is_some() => (source_of(first)?, rest),
+        _ => ("auto".to_string(), rest),
+    };
     let mut out = vec![
         ("timeline-trigger-name", name),
         ("timeline-trigger-source", source),
@@ -2929,14 +3096,17 @@ fn timeline_trigger(comps: &[Comp]) -> Option<Out> {
     let mut more = defaults().split_off(1);
     if !rest.is_empty() {
         let parts = slashes(rest);
-        let activation = range_pair(
-            parts[0],
-            "timeline-trigger-activation-range-start",
-            "timeline-trigger-activation-range-end",
-            "normal",
-        )?;
-        more[0].1.clone_from(&activation[0].1);
-        more[1].1.clone_from(&activation[1].1);
+        // An empty activation range before the slash keeps its default.
+        if !(parts[0].is_empty() && parts.len() == 2) {
+            let activation = range_pair(
+                parts[0],
+                "timeline-trigger-activation-range-start",
+                "timeline-trigger-activation-range-end",
+                "normal",
+            )?;
+            more[0].1.clone_from(&activation[0].1);
+            more[1].1.clone_from(&activation[1].1);
+        }
         if let Some(active) = parts.get(1) {
             let active = range_pair(
                 active,

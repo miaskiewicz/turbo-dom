@@ -42,7 +42,6 @@ fn run(html: &str, probe: &str) -> serde_json::Value {
 }
 
 #[test]
-#[ignore = "turbo-dom#90: round-five Chrome cases fail until the fix"]
 fn inline_style_shorthands_expand_and_serialize_like_chrome156() {
     let probe = fixture("css-shorthand-probe.js");
     let cases = fixture("css-shorthand-cases.json");

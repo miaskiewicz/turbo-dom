@@ -88,7 +88,6 @@ fn differences(path: &str, actual: &Value, expected: &Value, out: &mut Vec<Strin
 }
 
 #[test]
-#[ignore = "turbo-dom#90: round-five Chrome cases fail until the fix"]
 fn shorthands_expand_and_serialize_like_chrome156() {
     let control: Value = serde_json::from_str(CONTROL).unwrap();
     assert_eq!(control["browser"], "Chrome/156.0.8078.4");

@@ -250,7 +250,16 @@ pub(super) fn value(grammar: &str, texts: &[&str]) -> String {
         "background-position" | "mask-position" | "-webkit-mask-position" => {
             let (x, y) = (texts[0], texts[1]);
             let (xs, ys) = (layers(x), layers(y));
-            if xs.len() != ys.len() || xs.iter().chain(&ys).any(|item| *item == INITIAL) {
+            if xs.len() != ys.len() {
+                // Uneven lists: each layer's set parts; layers with none drop out.
+                let count = xs.len().max(ys.len());
+                return (0..count)
+                    .map(|index| joined(&[list_part(&xs, index), list_part(&ys, index)]))
+                    .filter(|layer| !layer.is_empty())
+                    .collect::<Vec<_>>()
+                    .join(", ");
+            }
+            if xs.iter().chain(&ys).any(|item| *item == INITIAL) {
                 return String::new();
             }
             xs.iter()
@@ -276,12 +285,12 @@ pub(super) fn value(grammar: &str, texts: &[&str]) -> String {
             v.get("animation-range-end"),
             "normal",
         ),
-        "timeline-trigger-activation-range" => range(
+        "timeline-trigger-activation-range" => ranges(
             v.get("timeline-trigger-activation-range-start"),
             v.get("timeline-trigger-activation-range-end"),
             "normal",
         ),
-        "timeline-trigger-active-range" => range(
+        "timeline-trigger-active-range" => ranges(
             v.get("timeline-trigger-active-range-start"),
             v.get("timeline-trigger-active-range-end"),
             "auto",
@@ -695,32 +704,24 @@ pub(super) fn value(grammar: &str, texts: &[&str]) -> String {
         "transition" | "-webkit-transition" => transition(&v),
         "animation" | "-webkit-animation" => animation(&v),
         "timeline-trigger" => {
-            let [name, source, a_start, a_end, b_start, b_end] = v.many([
+            let columns = [
                 "timeline-trigger-name",
                 "timeline-trigger-source",
                 "timeline-trigger-activation-range-start",
                 "timeline-trigger-activation-range-end",
                 "timeline-trigger-active-range-start",
                 "timeline-trigger-active-range-end",
-            ]);
-            let activation = range(a_start, a_end, "normal");
-            let active = range(b_start, b_end, "auto");
-            if name == "none" && source == "auto" && activation == "normal" && active == "auto" {
-                return "none".into();
-            }
-            let mut text = joined(&[
-                name,
-                if source == "auto" { "" } else { source },
-                if activation == "normal" && active == "auto" {
-                    ""
-                } else {
-                    &activation
-                },
-            ]);
-            if active != "auto" {
-                text = format!("{text} / {active}");
-            }
-            text
+            ]
+            .map(|name| layers(v.get(name)));
+            let count = columns.iter().map(Vec::len).max().unwrap_or(0);
+            (0..count)
+                .map(|index| {
+                    let [name, source, a_start, a_end, b_start, b_end] = [0, 1, 2, 3, 4, 5]
+                        .map(|column| columns[column].get(index).copied().unwrap_or(""));
+                    trigger(name, source, [a_start, a_end], [b_start, b_end])
+                })
+                .collect::<Vec<_>>()
+                .join(", ")
         }
         _ => String::new(),
     }
@@ -758,6 +759,59 @@ const RANGE_NAMES: &[&str] = &[
     "exit-crossing",
     "scroll",
 ];
+/// The `index`th item of a comma list, `""` past its end or for an implicit initial value.
+fn list_part<'a>(list: &[&'a str], index: usize) -> &'a str {
+    match list.get(index) {
+        Some(&value) if value != INITIAL => value,
+        _ => "",
+    }
+}
+/// One timeline trigger: Chrome writes each part that differs from its initial value; the
+/// active range follows a slash when its start is set, even after nothing.
+fn trigger(name: &str, source: &str, activation: [&str; 2], active: [&str; 2]) -> String {
+    let activation = trigger_parts(activation[0], activation[1], "normal");
+    let mut text = joined(&[
+        if name == "none" { "" } else { name },
+        if source == "auto" { "" } else { source },
+        &activation,
+    ]);
+    if !active[0].is_empty() && active[0] != "auto" {
+        text = format!("{text} / {}", trigger_parts(active[0], active[1], "auto"));
+    } else if !active[1].is_empty() && active[1] != "auto" {
+        text = joined(&[&text, active[1]]);
+    }
+    if text.is_empty() {
+        "none".into()
+    } else {
+        text
+    }
+}
+/// A trigger range's parts that differ from `initial` (the end only when it is not its
+/// start's default).
+fn trigger_parts(start: &str, end: &str, initial: &str) -> String {
+    let name = start.split(' ').next().unwrap_or("");
+    let mut parts = Vec::new();
+    if start != initial {
+        parts.push(start);
+    }
+    if end != initial && end != name {
+        parts.push(end);
+    }
+    parts.join(" ")
+}
+/// [`range`] per item of comma lists (a timeline trigger list).
+fn ranges(start: &str, end: &str, initial: &str) -> String {
+    let (starts, ends) = (layers(start), layers(end));
+    if starts.len() != ends.len() {
+        return String::new();
+    }
+    starts
+        .iter()
+        .zip(ends)
+        .map(|(start, end)| range(start, end, initial))
+        .collect::<Vec<_>>()
+        .join(", ")
+}
 fn range(start: &str, end: &str, initial: &str) -> String {
     let name = start.split(' ').next().unwrap_or("");
     let default = if RANGE_NAMES.contains(&name) {
@@ -767,7 +821,8 @@ fn range(start: &str, end: &str, initial: &str) -> String {
     } else {
         initial
     };
-    if end == default {
+    // An active range's `auto` end is left out too.
+    if end == default || (initial == "auto" && end == "auto") {
         start.to_string()
     } else {
         format!("{start} {end}")
@@ -942,38 +997,33 @@ fn background(v: &Values<'_>) -> String {
         "background-clip",
     ];
     let columns = names.map(|name| layers(v.get(name)));
-    let count = columns[0].len();
-    if columns.iter().any(|column| column.len() != count) {
-        return String::new();
-    }
+    // As many layers as the longest list; a shorter list leaves its value out of the later
+    // layers, and an empty layer past the images is dropped.
+    let count = columns.iter().map(Vec::len).max().unwrap_or(0);
     let color = v.get("background-color");
     let mut out = Vec::new();
     for index in 0..count {
-        let item = |column: usize| {
-            let value = columns[column][index];
-            if value == INITIAL {
-                ""
-            } else {
-                value
-            }
+        let item = |column: usize| match columns[column].get(index) {
+            Some(&value) if value != INITIAL => value,
+            _ => "",
         };
         let (x, y, size) = (item(1), item(2), item(3));
-        let position = if x.is_empty() && y.is_empty() && size.is_empty() {
-            String::new()
-        } else {
-            let position = format!(
-                "{} {}",
-                if x.is_empty() { "0%" } else { x },
-                if y.is_empty() { "0%" } else { y }
-            );
-            if size.is_empty() {
-                position
-            } else {
-                format!("{position} / {size}")
+        // Blink writes the position's parts it has; a size needs a position, and with
+        // neither part set that is `0% 0%` (` 0% 0%` when it starts the layer).
+        let mut position = joined(&[x, y]);
+        if !size.is_empty() {
+            if position.is_empty() {
+                position = if item(0).is_empty() {
+                    " 0% 0%"
+                } else {
+                    "0% 0%"
+                }
+                .into();
             }
-        };
+            position = format!("{position} / {size}");
+        }
         let last = index + 1 == count;
-        let layer = joined(&[
+        let parts = [
             item(0),
             &position,
             item(4),
@@ -981,12 +1031,15 @@ fn background(v: &Values<'_>) -> String {
             item(6),
             item(7),
             if last && color != INITIAL { color } else { "" },
-        ]);
-        out.push(if layer.is_empty() {
-            "none".to_string()
+        ];
+        let layer = joined(&parts);
+        if layer.is_empty() {
+            if index < columns[0].len() {
+                out.push("none".to_string());
+            }
         } else {
-            layer
-        });
+            out.push(layer);
+        }
     }
     out.join(", ")
 }
@@ -1006,14 +1059,14 @@ fn mask(v: &Values<'_>) -> String {
         ("mask-mode", "match-source"),
     ];
     let columns = names.map(|(name, _)| layers(v.get(name)));
-    let count = columns[0].len();
-    if columns.iter().any(|column| column.len() != count) {
-        return String::new();
-    }
+    // As many layers as the longest list; a shorter list leaves its value out of the later
+    // layers.
+    let count = columns.iter().map(Vec::len).max().unwrap_or(0);
     let mut out = Vec::new();
     for index in 0..count {
+        let raw = |column: usize| columns[column].get(index).copied().unwrap_or(INITIAL);
         let item = |column: usize| {
-            let value = columns[column][index];
+            let value = raw(column);
             if value == names[column].1 || value == INITIAL {
                 ""
             } else {
@@ -1021,15 +1074,26 @@ fn mask(v: &Values<'_>) -> String {
             }
         };
         let size = item(3);
-        let (x, y) = (columns[1][index], columns[2][index]);
+        let position_part = |column: usize| match raw(column) {
+            INITIAL => "0%",
+            value => value,
+        };
+        let (x, y) = (position_part(1), position_part(2));
         let position = if item(1).is_empty() && item(2).is_empty() && size.is_empty() {
             String::new()
+        } else if item(1).is_empty() && item(2).is_empty() && item(0).is_empty() {
+            // Blink's position before a size starts its layer with a space.
+            format!(" {x} {y} / {size}")
         } else if size.is_empty() {
             format!("{x} {y}")
         } else {
             format!("{x} {y} / {size}")
         };
-        let (origin, clip) = (columns[5][index], columns[6][index]);
+        let box_part = |column: usize| match raw(column) {
+            INITIAL => "border-box",
+            value => value,
+        };
+        let (origin, clip) = (box_part(5), box_part(6));
         let boxes = if origin == "border-box" && clip == "border-box" {
             String::new()
         } else if origin == clip {
@@ -1056,16 +1120,23 @@ fn transition(v: &Values<'_>) -> String {
     let timings = layers(v.get("transition-timing-function"));
     let delays = layers(v.get("transition-delay"));
     let behaviors = layers(v.get("transition-behavior"));
+    // As many layers as the longest list; a shorter list leaves its value out.
+    let count = [&properties, &durations, &timings, &delays, &behaviors]
+        .iter()
+        .map(|list| list.len())
+        .max()
+        .unwrap_or(0);
     let mut out = Vec::new();
-    for (index, property) in properties.iter().enumerate() {
+    for index in 0..count {
+        let property = properties.get(index).copied().unwrap_or("all");
         let duration = durations.get(index).copied().unwrap_or("0s");
         let timing = timings.get(index).copied().unwrap_or("ease");
         let delay = delays.get(index).copied().unwrap_or("0s");
         let behavior = behaviors.get(index).copied().unwrap_or("normal");
         let zero = |time: &str| time == "0s" || time == "0ms";
         let mut parts = Vec::new();
-        if *property != "all" {
-            parts.push(*property);
+        if property != "all" {
+            parts.push(property);
         }
         if !zero(duration) {
             parts.push(duration);
@@ -1106,15 +1177,13 @@ fn animation(v: &Values<'_>) -> String {
         "animation-name",
     ];
     let columns = names.map(|name| layers(v.get(name)));
-    let count = columns[7].len();
-    if columns.iter().any(|column| column.len() != count) {
-        return String::new();
-    }
+    // As many layers as the longest list; a shorter list leaves its value out.
+    let count = columns.iter().map(Vec::len).max().unwrap_or(0);
     (0..count)
         .map(|index| {
             columns
                 .iter()
-                .map(|column| column[index])
+                .filter_map(|column| column.get(index).copied())
                 .collect::<Vec<_>>()
                 .join(" ")
         })

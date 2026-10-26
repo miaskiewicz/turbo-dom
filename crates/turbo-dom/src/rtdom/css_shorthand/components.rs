@@ -156,7 +156,7 @@ const SYSTEM_COLORS: &[&str] = &[
 /// CSS-wide keywords, lowercase.
 pub(super) const CSS_WIDE: &[&str] = &["initial", "inherit", "unset", "revert", "revert-layer"];
 
-fn quoted(text: &str) -> String {
+pub(super) fn quoted(text: &str) -> String {
     let mut out = String::with_capacity(text.len() + 2);
     out.push('"');
     for character in text.chars() {
@@ -307,6 +307,7 @@ fn read(input: &mut Parser<'_, '_>, out: &mut Vec<Comp>) -> Option<()> {
             | Token::CloseParenthesis
             | Token::CloseSquareBracket
             | Token::CloseCurlyBracket
+            | Token::CurlyBracketBlock
             | Token::Semicolon => return None,
             _ => Comp {
                 text: input.slice_from(start).trim().to_string(),
@@ -321,42 +322,81 @@ fn read(input: &mut Parser<'_, '_>, out: &mut Vec<Comp>) -> Option<()> {
 /// simplifies it: like units combined, numbers first, then percentages, then units in ASCII
 /// order. `None` for anything else.
 fn calc_sum(inner: &[Comp]) -> Option<String> {
+    sum_terms(inner).map(calc_text)
+}
+
+type Terms = Vec<(String, f64)>;
+
+/// The like-unit terms of a sum of products (operands: literals, the constants, nested
+/// parentheses / `calc()`, one-unit `min()` / `max()` / `clamp()`), absolute lengths combined
+/// in px; `None` when Chrome would keep the expression unsimplified.
+fn sum_terms(inner: &[Comp]) -> Option<Vec<(String, f64)>> {
     // Operands alternate with operators; products bind first.
     if inner.len().is_multiple_of(2) {
         return None;
     }
-    let operand = |comp: &Comp| -> Option<(String, f64)> {
-        match &comp.kind {
-            Kind::Number { value, .. } => Some((String::new(), f64::from(*value))),
-            Kind::Percentage(value) => Some(("%".to_string(), f64::from(*value))),
-            Kind::Dimension { value, unit } => Some((unit.clone(), f64::from(*value))),
-            _ => None,
+    let nested = |comp: &Comp, open: usize| components(&comp.text[open..comp.text.len() - 1]);
+    let operand = |comp: &Comp| -> Option<Terms> {
+        Some(match &comp.kind {
+            Kind::Number { value, .. } => vec![(String::new(), f64::from(*value))],
+            Kind::Percentage(value) => vec![("%".to_string(), f64::from(*value))],
+            Kind::Dimension { value, unit } => vec![(unit.clone(), f64::from(*value))],
+            Kind::Ident(name) => {
+                let value = match name.to_ascii_lowercase().as_str() {
+                    "e" => std::f64::consts::E,
+                    "pi" => std::f64::consts::PI,
+                    "infinity" => f64::INFINITY,
+                    "-infinity" => f64::NEG_INFINITY,
+                    "nan" => f64::NAN,
+                    _ => return None,
+                };
+                vec![(String::new(), value)]
+            }
+            Kind::Function(name) if name == "(" => sum_terms(&nested(comp, 1)?)?,
+            // A nested `calc()` / `min()` / `max()` / `clamp()` Chrome simplified already
+            // spells `calc(...)`.
+            Kind::Function(name)
+                if matches!(name.as_str(), "calc" | "min" | "max" | "clamp")
+                    && comp.text.starts_with("calc(") =>
+            {
+                sum_terms(&nested(comp, 5)?)?
+            }
+            _ => return None,
+        })
+    };
+    let scalar = |terms: &Terms| match terms.as_slice() {
+        [(unit, value)] if unit.is_empty() => Some(*value),
+        _ => None,
+    };
+    let scale = |terms: Terms, factor: f64| -> Terms {
+        terms
+            .into_iter()
+            .map(|(unit, value)| (unit, value * factor))
+            .collect()
+    };
+    let mut terms: Terms = Vec::new();
+    let push = |terms: &mut Terms, product: Terms, sign: f64| {
+        for (unit, value) in product {
+            match terms.iter_mut().find(|(existing, _)| *existing == unit) {
+                Some(term) => term.1 += sign * value,
+                None => terms.push((unit, sign * value)),
+            }
         }
     };
-    let mut terms: Vec<(String, f64)> = Vec::new();
     let mut sign = 1.0;
     let mut current = operand(&inner[0])?;
     let mut index = 1;
-    let push = |terms: &mut Vec<(String, f64)>, (unit, value): (String, f64), sign: f64| match terms
-        .iter_mut()
-        .find(|(existing, _)| *existing == unit)
-    {
-        Some(term) => term.1 += sign * value,
-        None => terms.push((unit, sign * value)),
-    };
     while index < inner.len() {
         let next = operand(&inner[index + 1])?;
         match inner[index].kind {
             Kind::Delim('*') => {
-                current = match (current.0.is_empty(), next.0.is_empty()) {
-                    (_, true) => (current.0, current.1 * next.1),
-                    (true, false) => (next.0, current.1 * next.1),
+                current = match (scalar(&current), scalar(&next)) {
+                    (_, Some(factor)) => scale(current, factor),
+                    (Some(factor), None) => scale(next, factor),
                     _ => return None,
                 };
             }
-            Kind::Slash | Kind::Delim('/') if next.0.is_empty() => {
-                current = (current.0, current.1 / next.1);
-            }
+            Kind::Slash | Kind::Delim('/') => current = scale(current, 1.0 / scalar(&next)?),
             Kind::Delim(operator @ ('+' | '-')) => {
                 push(&mut terms, current, sign);
                 sign = if operator == '+' { 1.0 } else { -1.0 };
@@ -390,7 +430,103 @@ fn calc_sum(inner: &[Comp]) -> Option<String> {
         rest.push(("px".to_string(), px));
         terms = rest;
     }
-    Some(calc_text(terms))
+    Some(terms)
+}
+
+/// A `calc()` operand or sum's type: a number, a dimension of a category (percentages fit
+/// any dimension), or unknown (a nested math function).
+#[derive(Clone, Copy, PartialEq)]
+enum CalcType {
+    Number,
+    Percent,
+    Unit(u8),
+    Unknown,
+}
+
+fn unit_category(unit: &str) -> Option<u8> {
+    if LENGTH_UNITS.contains(&unit) {
+        return Some(0);
+    }
+    match unit {
+        "s" | "ms" => Some(1),
+        "deg" | "grad" | "rad" | "turn" => Some(2),
+        "hz" | "khz" => Some(3),
+        "dpi" | "dpcm" | "dppx" | "x" => Some(4),
+        _ => None,
+    }
+}
+
+/// The type of a `calc()` sum, `None` when Chrome rejects it: a sum mixes numbers and
+/// dimensions or two dimension categories, a product multiplies two dimensions, or a divisor
+/// has a unit.
+fn calc_type(inner: &[Comp]) -> Option<CalcType> {
+    let operand = |comp: &Comp| match &comp.kind {
+        Kind::Number { .. } => Some(CalcType::Number),
+        Kind::Percentage(_) => Some(CalcType::Percent),
+        Kind::Dimension { unit, .. } => unit_category(unit).map(CalcType::Unit),
+        Kind::Function(name) if name == "(" => {
+            calc_type(&components(&comp.text[1..comp.text.len() - 1])?)
+        }
+        Kind::Function(name) if MATH_FUNCTIONS.contains(&name.as_str()) => Some(CalcType::Unknown),
+        Kind::Ident(name)
+            if matches!(
+                name.to_ascii_lowercase().as_str(),
+                "e" | "pi" | "infinity" | "-infinity" | "nan"
+            ) =>
+        {
+            Some(CalcType::Number)
+        }
+        _ => None,
+    };
+    let unit = |ty: CalcType| matches!(ty, CalcType::Percent | CalcType::Unit(_));
+    let sum = |a: CalcType, b: CalcType| match (a, b) {
+        (CalcType::Unknown, other) | (other, CalcType::Unknown) => Some(other),
+        (CalcType::Number, CalcType::Number) => Some(CalcType::Number),
+        (CalcType::Percent, other) | (other, CalcType::Percent) if unit(other) => Some(other),
+        (CalcType::Unit(x), CalcType::Unit(y)) if x == y => Some(a),
+        _ => None,
+    };
+    let (first, rest) = inner.split_first()?;
+    let mut total: Option<CalcType> = None;
+    let mut product = operand(first)?;
+    for pair in rest.chunks(2) {
+        let [operator, next] = pair else {
+            return None;
+        };
+        let next = operand(next)?;
+        match operator.kind {
+            Kind::Delim('*') => {
+                product = match (product, next) {
+                    (a, b) if unit(a) && unit(b) => return None,
+                    (CalcType::Number | CalcType::Unknown, other)
+                    | (other, CalcType::Number | CalcType::Unknown) => other,
+                    (a, _) => a,
+                };
+            }
+            Kind::Slash | Kind::Delim('/') => {
+                if unit(next) {
+                    return None;
+                }
+            }
+            Kind::Delim('+' | '-') => {
+                total = Some(match total {
+                    None => product,
+                    Some(total) => sum(total, product)?,
+                });
+                product = next;
+            }
+            _ => return None,
+        }
+    }
+    match total {
+        None => Some(product),
+        Some(total) => sum(total, product),
+    }
+}
+
+/// The comma-separated arguments of a function.
+fn arguments(inner: &[Comp]) -> Vec<&[Comp]> {
+    inner.split(|comp| comp.kind == Kind::Comma).collect()
 }
 
 /// Structural checks Chrome makes before keeping a function: a `calc()` sum alternates
@@ -413,17 +549,82 @@ fn function_valid(name: &str, inner: &[Comp]) -> bool {
                 } else {
                     !matches!(comp.kind, Kind::Comma | Kind::Slash | Kind::Delim(_))
                 }
-            })
+            }) && calc_type(inner).is_some()
+        }
+        "min" | "max" => arguments(inner).iter().all(|argument| !argument.is_empty()),
+        "clamp" => {
+            let arguments = arguments(inner);
+            arguments.len() == 3 && arguments.iter().all(|argument| !argument.is_empty())
         }
         "rgb" | "rgba" | "hsl" | "hsla" => {
             let commas = inner.iter().filter(|comp| comp.kind == Kind::Comma).count();
-            commas == 0
-                || inner
-                    .iter()
-                    .enumerate()
-                    .all(|(index, comp)| (comp.kind == Kind::Comma) == (index % 2 == 1))
+            if inner.first().is_some_and(|comp| comp.is_ident(&["from"])) {
+                // Relative color syntax.
+                true
+            } else if commas > 0 {
+                // The legacy syntax: three or four comma-separated values.
+                (commas == 2 || commas == 3)
+                    && inner.len() == 2 * commas + 1
+                    && inner
+                        .iter()
+                        .enumerate()
+                        .all(|(index, comp)| (comp.kind == Kind::Comma) == (index % 2 == 1))
+            } else {
+                // The modern syntax: three values, then `/ alpha`.
+                match inner.iter().position(|comp| comp.kind == Kind::Slash) {
+                    Some(slash) => slash == 3 && inner.len() == 5,
+                    None => inner.len() == 3,
+                }
+            }
         }
-        "linear" => inner.iter().any(|comp| comp.kind == Kind::Comma),
+        // Each stop is an output and at most two input positions.
+        "linear" => {
+            inner.iter().any(|comp| comp.kind == Kind::Comma)
+                && arguments(inner)
+                    .iter()
+                    .all(|stop| (1..=3).contains(&stop.len()))
+        }
+        "steps" => {
+            // The step count: an integer literal, or a math function Chrome checks later.
+            let count = |comp: &Comp, minimum: f32| match comp.kind {
+                Kind::Number {
+                    value,
+                    integer: true,
+                } => value >= minimum,
+                _ => comp.is_math(),
+            };
+            match inner {
+                [steps] => count(steps, 1.0),
+                [steps, comma, position] if comma.kind == Kind::Comma => {
+                    let Some(position) = position.keyword(&[
+                        "start",
+                        "end",
+                        "jump-start",
+                        "jump-end",
+                        "jump-none",
+                        "jump-both",
+                    ]) else {
+                        return false;
+                    };
+                    let minimum = if position == "jump-none" { 2.0 } else { 1.0 };
+                    count(steps, minimum)
+                }
+                _ => false,
+            }
+        }
+        // The x coordinates are in [0, 1].
+        "cubic-bezier" => {
+            let arguments = arguments(inner);
+            arguments.len() == 4
+                && [0, 2].iter().all(|&index| match arguments[index] {
+                    [Comp {
+                        kind: Kind::Number { value, .. },
+                        ..
+                    }] => (0.0..=1.0).contains(value),
+                    [_] => true,
+                    _ => false,
+                })
+        }
         _ => true,
     }
 }
@@ -517,7 +718,9 @@ fn alpha_text(alpha: f64) -> String {
 }
 
 fn rgb_text(channels: [f64; 3], alpha: f64) -> String {
-    let [r, g, b] = channels.map(|channel| channel.round().clamp(0.0, 255.0) as i64);
+    // Channels computed from hsl() land a hair off a half: round at 1e-9 first.
+    let [r, g, b] =
+        channels.map(|channel| ((channel * 1e9).round() / 1e9).round().clamp(0.0, 255.0) as i64);
     if alpha >= 1.0 {
         format!("rgb({r}, {g}, {b})")
     } else {
@@ -568,13 +771,24 @@ fn color_function(name: &str, inner: &[Comp]) -> Option<String> {
     if parts.len() != 3 || (slash && alpha_part.is_none()) {
         return None;
     }
+    // A channel: a literal, `none` (zero) or a `calc()` that computes to one.
+    let computed = |comp: &Comp, unit: &str| match &comp.kind {
+        Kind::Function(name) if name == "calc" => {
+            match sum_terms(&components(&comp.text[5..comp.text.len() - 1])?)?.as_slice() {
+                [(found, value)] if found == unit => Some(*value),
+                _ => None,
+            }
+        }
+        _ if comp.is_ident(&["none"]) => Some(0.0),
+        _ => None,
+    };
     let number = |comp: &Comp| match comp.kind {
         Kind::Number { value, .. } => Some(f64::from(value)),
-        _ => None,
+        _ => computed(comp, ""),
     };
     let percent = |comp: &Comp| match comp.kind {
         Kind::Percentage(value) => Some(f64::from(value)),
-        _ => None,
+        _ => computed(comp, "%"),
     };
     let alpha = match alpha_part {
         None => 1.0,
@@ -586,6 +800,7 @@ fn color_function(name: &str, inner: &[Comp]) -> Option<String> {
     } else {
         let hue = match &parts[0].kind {
             Kind::Number { value, .. } => f64::from(*value),
+            _ if parts[0].is_ident(&["none"]) => 0.0,
             Kind::Dimension { value, unit } => {
                 f64::from(*value)
                     * match unit.as_str() {
@@ -644,13 +859,16 @@ fn lab_function(name: &str, inner: &[Comp]) -> String {
     format!("{name}({})", parts.join(" "))
 }
 
-/// `steps(n, end | jump-end)` is `steps(n)`.
+/// `steps(n, end | jump-end)` is `steps(n)`; the position keyword lowercase.
 fn steps_text(inner: &[Comp]) -> Option<String> {
     match inner {
-        [count, comma, position]
-            if comma.kind == Kind::Comma && position.is_ident(&["end", "jump-end"]) =>
-        {
-            Some(format!("steps({})", count.text))
+        [count, comma, position] if comma.kind == Kind::Comma => {
+            let position = position.ident()?;
+            Some(if matches!(position.as_str(), "end" | "jump-end") {
+                format!("steps({})", count.text)
+            } else {
+                format!("steps({}, {position})", count.text)
+            })
         }
         _ => None,
     }
@@ -691,6 +909,12 @@ fn linear_text(inner: &[Comp]) -> Option<String> {
     let last = flat.len() - 1;
     flat[0].get_or_insert(0.0);
     flat[last].get_or_insert(100.0);
+    // A position below the largest before it is that largest.
+    let mut largest = f64::NEG_INFINITY;
+    for position in flat.iter_mut().flatten() {
+        largest = largest.max(*position);
+        *position = largest;
+    }
     let mut at = 0;
     while at < flat.len() {
         if flat[at].is_none() {

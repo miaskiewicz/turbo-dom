@@ -7,11 +7,12 @@ use super::components::{
     components, has_substitution, join, substitution_text, Comp, Kind, CSS_WIDE,
 };
 use super::grammar::{
-    area_string, bg_size, color, commas, corner_shape, delay_v, easing, font_family, gap_v,
-    group_set, kw, line_style, line_width, margin_v, marker_v, outline_style, overflow_v,
-    overscroll_v, padding_v, path_text, position, radius, range_value, repeat_style, rule_break_v,
-    rule_inset_v, rule_visibility_v, scroll_margin_v, scroll_padding_v, single, spacing_v,
-    track_list, try_fallbacks, Ty, CAPS, EAST_ASIAN, FONT_SIZES, LIGATURES, NUMERIC, STRETCHES,
+    alternates, area_string, bg_size, collapse4, color, commas, corner_shape, delay_v, easing,
+    font_family, gap_v, group_set, kw, line_style, line_width, margin_v, marker_v, outline_style,
+    overflow_v, overscroll_v, padding_v, path_text, position, radius, range_value, repeat_style,
+    rule_break_v, rule_inset_v, rule_visibility_v, scroll_margin_v, scroll_padding_v, single,
+    spacing_v, track_list, try_fallbacks, Ty, CAPS, EAST_ASIAN, FONT_SIZES, LIGATURES, NUMERIC,
+    STRETCHES,
 };
 
 /// A longhand value's spelling.
@@ -89,14 +90,7 @@ fn font_weight(comps: &[Comp]) -> Option<String> {
 fn font_style(comps: &[Comp]) -> Option<String> {
     match comps {
         [only] => kw(only, &["normal", "italic", "oblique"]),
-        [oblique, angle] if oblique.is_ident(&["oblique"]) => {
-            let angle = angle.angle()?;
-            Some(match angle.as_str() {
-                "0deg" => "normal".into(),
-                "14deg" => "oblique".into(),
-                _ => format!("oblique {angle}"),
-            })
-        }
+        [oblique, angle] if oblique.is_ident(&["oblique"]) => super::grammar::oblique(angle),
         _ => None,
     }
 }
@@ -227,6 +221,10 @@ fn easing_list(comps: &[Comp]) -> Option<String> {
     listed(comps, |item| single(item, easing))
 }
 fn transition_property(comps: &[Comp]) -> Option<String> {
+    // `none` only stands alone.
+    if comps.len() > 1 && comps.iter().any(|comp| comp.is_ident(&["none"])) {
+        return None;
+    }
     listed(comps, |item| {
         single(item, |c| {
             kw(c, &["none", "all"]).or_else(|| {
@@ -394,16 +392,8 @@ fn animation_names(comps: &[Comp]) -> Option<String> {
             if c.is_ident(&["none"]) {
                 return Some("none".into());
             }
-            if let Kind::Str(text) = &c.kind {
-                return Some(
-                    if super::grammar::is_identifier(text)
-                        && !super::grammar::reserved(text, super::grammar::ANIMATION_KEYWORDS)
-                    {
-                        text.clone()
-                    } else {
-                        c.text.clone()
-                    },
-                );
+            if matches!(c.kind, Kind::Str(_)) {
+                return super::grammar::animation_name_string(c);
             }
             c.custom_ident(&["none"])
         })
@@ -421,9 +411,14 @@ fn box_shadow(comps: &[Comp]) -> Option<String> {
         let mut inset = false;
         let mut lengths = Vec::new();
         for comp in item {
+            // The blur radius (the third length) is not negative.
+            let negative = matches!(comp.kind, Kind::Dimension { value, .. } if value < 0.0);
             if comp.is_ident(&["inset"]) && !inset {
                 inset = true;
-            } else if let Some(value) = comp.length(true).filter(|_| lengths.len() < 4) {
+            } else if let Some(value) = comp
+                .length(true)
+                .filter(|_| lengths.len() < 4 && !(lengths.len() == 2 && negative))
+            {
                 lengths.push(value);
             } else {
                 shadow_color = Some(comp.color().filter(|_| shadow_color.is_none())?);
@@ -439,6 +434,44 @@ fn box_shadow(comps: &[Comp]) -> Option<String> {
         }
         Some(parts.join(" "))
     })
+}
+
+/// A position longhand: one, two or (`four`) four values, and for `transform-origin` (`z`)
+/// an optional depth length after two.
+fn origin(comps: &[Comp], four: bool, z: bool) -> Option<String> {
+    let pair = |comps: &[Comp]| position(comps).map(|(x, y)| format!("{x} {y}"));
+    match comps.len() {
+        1 | 2 => pair(comps),
+        3 if z => Some(format!("{} {}", pair(&comps[..2])?, comps[2].length(true)?)),
+        4 if four => pair(comps),
+        _ => None,
+    }
+}
+/// One to four values, collapsed the way Chrome writes a box.
+fn quad(comps: &[Comp], ty: Ty) -> Option<String> {
+    if comps.is_empty() || comps.len() > 4 {
+        return None;
+    }
+    let values = comps.iter().map(ty).collect::<Option<Vec<_>>>()?;
+    Some(collapse4(&values))
+}
+/// `border-image-slice`: up to four numbers / percentages, `fill` (before or after) last.
+fn image_slice(comps: &[Comp]) -> Option<String> {
+    let fill = |comp: &Comp| comp.is_ident(&["fill"]);
+    let (values, filled) = match comps {
+        [first, rest @ ..] if fill(first) => (rest, true),
+        [rest @ .., last] if fill(last) => (rest, true),
+        _ => (comps, false),
+    };
+    if values.is_empty() || values.len() > 4 {
+        return None;
+    }
+    let values = values
+        .iter()
+        .map(|comp| comp.number(false).or_else(|| comp.percentage(false)))
+        .collect::<Option<Vec<_>>>()?;
+    let text = collapse4(&values);
+    Some(if filled { format!("{text} fill") } else { text })
 }
 
 /// The value grammar of `name`, and whether its rejection is final (`strict`): a lenient
@@ -616,17 +649,10 @@ fn grammar_of(name: &str) -> Option<(Parse, bool)> {
             })
         },
         "font-variant-alternates" => |c| match c {
-            [only] => kw(only, &["normal", "historical-forms"]).or_else(|| {
-                only.function_named(&[
-                    "stylistic",
-                    "styleset",
-                    "character-variant",
-                    "swash",
-                    "ornaments",
-                    "annotation",
-                ])
-            }),
-            _ => None,
+            [only] if only.is_ident(&["normal"]) => only.ident(),
+            _ => alternates(c)
+                .filter(|(used, _)| *used == c.len())
+                .map(|(_, text)| text),
         },
         "text-align" => |c| {
             keywords(
@@ -679,20 +705,59 @@ fn grammar_of(name: &str) -> Option<(Parse, bool)> {
         "animation-range-start" => range_start,
         "animation-range-end" => range_end,
         "offset-distance" => |c| single(c, |c| c.length_percentage(true)),
-        "offset-anchor" | "offset-position" => |c| match c {
+        "offset-anchor" => |c| match c {
+            [only] if only.is_ident(&["auto"]) => only.ident(),
+            _ => origin(c, true, false),
+        },
+        "offset-position" => |c| match c {
             [only] if only.is_ident(&["auto", "normal"]) => only.ident(),
-            _ => position(c).map(|(x, y)| format!("{x} {y}")),
+            _ => origin(c, true, false),
+        },
+        "object-position" | "perspective-origin" => |c| origin(c, true, false),
+        "transform-origin" => |c| origin(c, false, true),
+        "border-image-slice" => image_slice,
+        "justify-items" => |c| {
+            super::grammar::justify_items(c)
+                .filter(|(used, _)| *used == c.len())
+                .map(|(_, text)| text)
+        },
+        "border-image-width" => |c| {
+            quad(c, |c| {
+                c.number(false)
+                    .or_else(|| c.length_percentage(false))
+                    .or_else(|| kw(c, &["auto"]))
+            })
+        },
+        "border-image-outset" => |c| quad(c, |c| c.number(false).or_else(|| c.length(false))),
+        // `none`, or a trigger name and one or two actions per item.
+        "animation-trigger" => |c| match c {
+            [only] if only.is_ident(&["none"]) => only.ident(),
+            _ => listed(c, |item| {
+                const ACTIONS: &[&str] = &[
+                    "none",
+                    "play",
+                    "play-once",
+                    "play-forwards",
+                    "play-backwards",
+                    "pause",
+                    "reset",
+                    "replay",
+                ];
+                let (name, actions) = item.split_first()?;
+                if !(1..=2).contains(&actions.len()) {
+                    return None;
+                }
+                let mut parts = vec![name.dashed_ident()?];
+                for action in actions {
+                    parts.push(action.keyword(ACTIONS)?);
+                }
+                Some(parts.join(" "))
+            }),
         },
         "white-space-collapse" => |c| {
             keywords(
                 c,
-                &[
-                    "collapse",
-                    "preserve",
-                    "preserve-breaks",
-                    "preserve-spaces",
-                    "break-spaces",
-                ],
+                &["collapse", "preserve", "preserve-breaks", "break-spaces"],
             )
         },
         "text-wrap-mode" => |c| keywords(c, &["wrap", "nowrap"]),
@@ -708,21 +773,15 @@ fn grammar_of(name: &str) -> Option<(Parse, bool)> {
         "box-shadow" => box_shadow,
         _ => return None,
     };
-    // Sizes, track lists and lists of functions have more forms than the grammar knows.
+    // Image and easing lists and display have more forms than the grammar knows.
     let lenient = matches!(
         name,
-        "grid-template-columns"
-            | "grid-template-rows"
-            | "background-image"
+        "background-image"
             | "mask-image"
             | "list-style-image"
             | "transition-timing-function"
             | "animation-timing-function"
-            | "offset-anchor"
-            | "offset-position"
-            | "font-family"
             | "display"
-            | "box-shadow"
     );
     Some((parse, !lenient))
 }
