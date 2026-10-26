@@ -263,7 +263,7 @@ changes in `tools/parity/expected/p5b-w7-turbo-dom-*.json`.
   (`collect_native_storage` after `install_html` and a GC, then the
   `custom_elements_defined_chrome156.json` probe).
 
-### Fixed — turbo-dom-layout margins, heights, zero-area clips, empty formatting roots and flex item sizes (P5b-W6, miaskiewicz/turbo-dom#75/#76/#77/#78/#88/#93, Chrome 156 controls)
+### Fixed — turbo-dom-layout margins, heights, zero-area clips, empty formatting roots, flex item sizes and blocks in inlines (P5b-W6, miaskiewicz/turbo-dom#75/#76/#77/#78/#88/#93/#100/#101/#102, Chrome 156 controls)
 Each fix is backed by Chrome for Testing 156 cases in `scripts/html-document-chrome-control.mjs`
 and lists the corpus outputs it changes in `tools/parity/expected/p5b-w6-turbo-dom-*.json`
 (new pinned corpus inputs: `tools/parity/inputs/extra/{min-height-margin,
@@ -301,6 +301,17 @@ flex-item-box-sizing}.html`).
   `flex-basis` / `min-*` / `max-*` lengths reached taffy (border boxes) unchanged, so a
   padded or bordered `box-sizing: content-box` item lost its frame. They are now
   border-box lengths. Control: `flex-item-*`.
+- Blocks inside inlines (#101): on the generic / PDF policy a block-level box inside an
+  inline element stayed an atomic inline (shrunk to its content, 0 wide when empty, its
+  child's margins not collapsing through it). The inline is now split around it (CSS 2.2
+  §9.2.1.1), as the native HTML-metrics flow already did: the runs before and after become
+  anonymous line boxes and the block fills the line. Changes four turbo-surf detection
+  screenshots (`embedded-font-range-*`, an `<h3>` inside an `<a>`); pinned by
+  `tools/parity/inputs/extra/block-in-inline.html`. Control: `block-in-inline-*`.
+- Positioned boxes and their containing block (#100, #102; P5b-W7's fix of #100 also
+  gives the static path the padding box, #102): P5b-W6 adds the `positioned-percent-*` and
+  `positioned-padding-box-*` cases, and an out-of-flow box's `%` horizontal margins and
+  padding now resolve against its containing block too where its position is computed.
 
 ### Fixed — selector syntax, :scope and RCDATA fragments (P5-cov, miaskiewicz/turbo-dom#91/#92/#96/#98, Chrome 156 controls)
 Found by the new `scripts/rtdom-core-chrome-control.mjs` control

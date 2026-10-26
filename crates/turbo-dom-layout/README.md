@@ -113,6 +113,7 @@ fn lay_out(html: &str) -> Result<Fragment, RenderError> {
   no intrinsic width (#84), floats sit side by side in a max-content width (#85), `top` +
   `bottom` stretch an auto-height positioned box (#89), a positioned
   box resolves `%` widths against and is placed in its containing block's padding box (#100).
+  Also P5b-W6: a block inside an inline element splits the inline on every policy (#101).
 - Fullscreen (turbo-dom#82): while the tree's fullscreen stack (`Tree::fullscreen_stack`,
   reported by the binding) is non-empty, the cascade adds Chrome's `:not(:root):fullscreen`
   UA rules — the HTML drive itself (`Cascade::with_fullscreen`), a live-DOM embedder by
