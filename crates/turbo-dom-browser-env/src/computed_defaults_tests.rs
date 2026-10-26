@@ -275,6 +275,4 @@ fn fullscreen_matches_chrome156_control() {
 /// Case `fullscreen` rows the binding does not reproduce yet, each a filed issue:
 /// - turbo-dom#66: composed events stop at the shadow root, so the fullscreenchange of an
 ///   element in a shadow tree never reaches the document (`shadow.1`, the event log);
-const FULLSCREEN_KNOWN_GAPS: &[&str] = &[
-    "fullscreen.fullscreen.shadow.1.",
-];
+const FULLSCREEN_KNOWN_GAPS: &[&str] = &["fullscreen.fullscreen.shadow.1."];
