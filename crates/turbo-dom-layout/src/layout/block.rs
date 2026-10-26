@@ -1203,8 +1203,8 @@ fn empty_flow_container(lb: &LayoutBox, bs: &BoxStyle) -> bool {
 /// No vertical border or padding, a zero / `auto` `height` and `min-height`, no
 /// `aspect-ratio`: nothing gives the box a height of its own.
 fn collapsible_extent(bs: &BoxStyle) -> bool {
-    let border = bs.border.widths();
-    let frame = border.top + border.bottom + bs.padding.top + bs.padding.bottom;
+    // Widths and paddings are never negative, so a zero sum means no frame at all.
+    let frame = bs.border.widths().vertical() + bs.padding.vertical();
     frame == 0.0
         && zero_or_auto(bs.height)
         && zero_or_auto(bs.min_height)
