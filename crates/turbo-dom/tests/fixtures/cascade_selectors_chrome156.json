@@ -3002,6 +3002,34 @@
      ],
      "winner": "1011000",
      "sheet_valid": true
+    },
+    {
+     "selector": ":has(:is(:has(p)))",
+     "valid": true,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": true
+    },
+    {
+     "selector": ":has(:is(p, :has(p)))",
+     "valid": true,
+     "matches": "1011000",
+     "qsa": [
+      0,
+      2,
+      3
+     ],
+     "winner": "1011000",
+     "sheet_valid": true
+    },
+    {
+     "selector": "div:has(:not(:has(p)))",
+     "valid": false,
+     "matches": "0000000",
+     "qsa": [],
+     "winner": "0000000",
+     "sheet_valid": false
     }
    ]
   },

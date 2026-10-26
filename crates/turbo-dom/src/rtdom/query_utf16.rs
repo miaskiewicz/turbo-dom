@@ -509,9 +509,12 @@ fn pseudo(name: &str, arg: Option<&[u16]>) -> Pseudo {
                         Some(126) => (Combinator::GeneralSibling, &part[1..]),
                         _ => (Combinator::Descendant, part),
                     };
-                    complex(rest).map(|complex| RelativeSelector {
-                        combinator: leading,
-                        complex,
+                    complex(rest).map(|mut complex| {
+                        super::forgive_nested_has(&mut complex);
+                        RelativeSelector {
+                            combinator: leading,
+                            complex,
+                        }
                     })
                 })
                 .collect(),

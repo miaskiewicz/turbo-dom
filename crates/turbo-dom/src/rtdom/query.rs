@@ -902,12 +902,30 @@ fn parse_relative_selector_list(src: &str) -> Vec<RelativeSelector> {
                 }
                 _ => Combinator::Descendant,
             };
-            parse_complex_tokens(&toks[lo..]).map(|complex| RelativeSelector {
-                combinator,
-                complex,
+            parse_complex_tokens(&toks[lo..]).map(|mut complex| {
+                forgive_nested_has(&mut complex);
+                RelativeSelector {
+                    combinator,
+                    complex,
+                }
             })
         })
         .collect()
+}
+
+/// Inside `:has()`, the forgiving `:is()` / `:where()` / `:-webkit-any()` drop their items
+/// that contain a nested `:has()` (Chrome 156: `:has(:is(p, :has(q)))` is `:has(p)`); a
+/// direct or unforgiving nesting is a stylesheet error (`query_cascade::reject_nested_has`).
+fn forgive_nested_has(complex: &mut Complex) {
+    let compounds =
+        std::iter::once(&mut complex.first).chain(complex.rest.iter_mut().map(|(_, c)| c));
+    for compound in compounds {
+        for pseudo in &mut compound.pseudos {
+            if let Pseudo::Is(list) | Pseudo::Where(list) | Pseudo::WebkitAny(list) = pseudo {
+                list.retain(|c| !cascade::contains_has(c));
+            }
+        }
+    }
 }
 
 /// Map a pseudo `name` + optional `arg` to a `Pseudo`. Unrecognized → `Unknown`
@@ -3088,13 +3106,17 @@ mod tests {
             "[|=v]",
             "[a=b c]",
             ":has(:has(p))",
-            ":has(:is(:has(p)))",
             "p:has(> :not(:has(a)))",
         ] {
             assert!(tree.matches_checked(p, bad).is_err(), "{bad}");
             assert!(!tree.matches(p, bad), "{bad}");
         }
         assert!(tree.matches_checked(p, ":not(:has(a))").unwrap());
+        // a forgiving :is() drops its items that contain :has() (Chrome)
+        assert!(!tree.matches_checked(p, ":has(:is(:has(p)))").unwrap());
+        assert!(tree
+            .matches_checked(tree.query_selector("svg").unwrap(), ":has(:is(a, :has(p)))")
+            .unwrap());
         assert!(tree.matches_checked(p, "[data-n=\\76]").unwrap());
     }
 

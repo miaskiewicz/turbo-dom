@@ -475,9 +475,7 @@ fn check_pseudo(pseudo: &mut Pseudo) -> Result<(), SelectorError> {
             }
             for relative in list {
                 check_nested(&mut relative.complex)?;
-                if contains_has(&relative.complex) {
-                    return Err(invalid(":has() inside :has()"));
-                }
+                reject_nested_has(&mut relative.complex)?;
             }
         }
         _ => {}
@@ -485,9 +483,35 @@ fn check_pseudo(pseudo: &mut Pseudo) -> Result<(), SelectorError> {
     Ok(())
 }
 
-/// Does `complex` use `:has()` anywhere (Chrome 156 rejects a nested `:has()`, also through
-/// `:is()` / `:not()`)?
-fn contains_has(complex: &Complex) -> bool {
+/// Inside `:has()`, a nested `:has()` is invalid (Chrome 156): an error directly or through
+/// the unforgiving `:not()` / `of S`, while the forgiving `:is()` / `:where()` /
+/// `:-webkit-any()` drop the items that contain one (`:has(:is(p, :has(q)))` is `:has(p)`).
+fn reject_nested_has(complex: &mut Complex) -> Result<(), SelectorError> {
+    let compounds =
+        std::iter::once(&mut complex.first).chain(complex.rest.iter_mut().map(|(_, c)| c));
+    for compound in compounds {
+        for pseudo in &mut compound.pseudos {
+            match pseudo {
+                Pseudo::Has(_) => return Err(invalid(":has() inside :has()")),
+                Pseudo::Is(list) | Pseudo::Where(list) | Pseudo::WebkitAny(list) => {
+                    list.retain(|c| !contains_has(c));
+                }
+                Pseudo::Not(list)
+                | Pseudo::NthChildOf(_, _, list)
+                | Pseudo::NthLastChildOf(_, _, list)
+                    if list.iter().any(contains_has) =>
+                {
+                    return Err(invalid(":has() inside :has()"));
+                }
+                _ => {}
+            }
+        }
+    }
+    Ok(())
+}
+
+/// Does `complex` use `:has()` anywhere (through any selector-list argument)?
+pub(super) fn contains_has(complex: &Complex) -> bool {
     std::iter::once(&complex.first)
         .chain(complex.rest.iter().map(|(_, c)| c))
         .flat_map(|c| &c.pseudos)

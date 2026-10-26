@@ -385,6 +385,9 @@ const CASES = [
       ":not(:has(p))",
       ":has(::before)",
       ":is(:has(p))",
+      ":has(:is(:has(p)))",
+      ":has(:is(p, :has(p)))",
+      "div:has(:not(:has(p)))",
     ],
   },
   {
