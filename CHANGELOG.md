@@ -7,6 +7,24 @@ at the time); this file reconstructs them from history.
 
 ## [Unreleased]
 
+### Fixed — `getComputedStyle(el, pseudoElt)` (P5b-X5, miaskiewicz/turbo-dom#47, Chrome 156 control)
+- turbo-dom-browser-env: `pseudoElt` used to be ignored, so every read returned the element's
+  style. `::before` / `::after` (also `:before` / `:after` and a bare `before` / `after`,
+  ASCII case-insensitive, escapes and comments allowed) now compute the pseudo-element:
+  - its own rules apply, and `color`, `visibility` and fonts inherit from the element;
+  - `display` is `inline`, blockified for floats, absolute positioning and when the
+    element is a flex / grid container;
+  - `content` is `none` unless set, and strings serialize double-quoted.
+- An invalid pseudo-element returns an empty declaration (`::foo`, `:backdrop`,
+  `:marker`, `::before:hover`, `x:before`, a trailing space, `::part(x)`). A string
+  without a leading colon reads the element, as do `null` / `undefined`.
+- An element's `content` computes to `normal`.
+- Still the element's style (open in #47): `::marker`, `::placeholder`, `::first-line` /
+  `::first-letter`, `::selection`, `::file-selector-button`, `::view-transition*` and
+  the other UA-styled pseudo-elements.
+- Control: case `pseudo-elements` in `src/computed_defaults_chrome156.json`; no corpus
+  output changes (`tools/parity/expected/p5b-x5-47.json`).
+
 ### Fixed — `getComputedStyle` for modal dialogs, the top layer and `::backdrop` (P5b-X5, miaskiewicz/turbo-dom#30, Chrome 156 control)
 - turbo-dom-browser-env: a `<dialog>` opened with `showModal()` (it matches `:modal`) now
   computes Chrome's `dialog:modal` values: `position: fixed`, `top` / `bottom: 0px`,

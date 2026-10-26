@@ -165,6 +165,14 @@ computes `absolute`. `getComputedStyle(el, '::backdrop')` computes the backdrop:
 inside it (`rgba(0, 0, 0, 0.1)` behind a modal dialog), author `::backdrop` rules,
 inheritance from the element. Control: case `dialog-top-layer` of the same file.
 
+`getComputedStyle(el, pseudoElt)` parses `pseudoElt` like Chrome (turbo-dom#47):
+`::before` / `::after` (and `:before` / `:after` / bare `before` / `after`) compute
+the pseudo-element (own rules, inheritance from the element, `display: inline`
+blockified in flex / grid containers, `content: none` unless set), an invalid
+pseudo-element returns an empty declaration, and a string without a leading colon
+reads the element. Other UA-styled pseudo-elements (`::marker`, `::placeholder`,
+`::first-line`, …) still read the element. Control: case `pseudo-elements`.
+
 ### Custom element state (`:defined`)
 
 `customElements` upgrades, constructions and failed constructors report each

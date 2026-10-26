@@ -159,14 +159,53 @@
   }
   if (typeof g.getComputedStyle === 'undefined') g.getComputedStyle = function computeStyle(el){
     var pseudo=computedPseudoTarget(arguments[1]);
+    // An invalid pseudo-element reads as an empty declaration (turbo-dom#47).
+    if(pseudo===null)return __ns.makeComputedStyleDeclaration({},null,null);
     return computeStyleSnapshot(el,new computedSnapshotMap(),undefined,pseudo||undefined);
   };
-  // The pseudo-element a getComputedStyle(element, pseudoElt) read targets: '' for the element
-  // itself, else the lowercase pseudo-element name the binding computes (turbo-dom#30: ::backdrop).
+  // Chrome 156 pseudo-elements without arguments, and the functional ones getComputedStyle accepts.
+  var computedPseudoNames={__proto__:null},computedPseudoFunctions={__proto__:null};
+  'after backdrop before checkmark column cue details-content file-selector-button first-letter first-line grammar-error marker picker-icon placeholder scroll-marker scroll-marker-group search-text selection spelling-error target-text view-transition'.split(' ').forEach(function(name){computedPseudoNames[name]=true;});
+  'cue highlight picker scroll-button view-transition-group view-transition-image-pair view-transition-new view-transition-old'.split(' ').forEach(function(name){computedPseudoFunctions[name]=true;});
+  // The CSS identifier at the start of `text` (escapes decoded, ASCII-lowercased) and its length.
+  function cssIdentifierPrefix(text){
+    var at=0,name='',start=true;
+    function escape(){
+      var hex=/^[0-9a-fA-F]{1,6}/.exec(text.slice(at+1,at+7));
+      if(hex){var code=parseInt(hex[0],16);at+=1+hex[0].length;if(/[ \t\n\r\f]/.test(text[at]||''))at++;return code===0||code>0x10FFFF||code>=0xD800&&code<=0xDFFF?'\uFFFD':String.fromCodePoint(code);}
+      var next=text[at+1];if(next===undefined||next==='\n')return null;at+=2;return next;
+    }
+    if(text[at]==='-'){name+='-';at++;if(text[at]==='-'){name+='-';at++;start=false;}}
+    while(at<text.length){
+      var c=text[at],part=null;
+      if(c==='\\')part=escape();
+      else if(/[A-Za-z_\u0080-\uFFFF]/.test(c)||!start&&/[0-9-]/.test(c)){part=c;at++;}
+      if(part===null)break;
+      name+=part;start=false;
+    }
+    if(start)return null;
+    return {name:name.replace(/[A-Z]/g,function(c){return c.toLowerCase();}),length:at};
+  }
+  // The pseudo-element a getComputedStyle(element, pseudoElt) read targets (turbo-dom#30, #47),
+  // per Chrome 156: '' reads the element (no argument, or a string without a leading colon that
+  // is not a bare before / after), null is an invalid pseudo-element (an empty declaration),
+  // else the pseudo-element the binding computes. A valid pseudo-element the binding does not
+  // model yet (::marker, ::placeholder, ...) also reads the element.
   function computedPseudoTarget(value){
     if(value===undefined||value===null)return '';
-    var text=''+value;
-    return /^::backdrop$/i.test(text)?'backdrop':'';
+    var text=(''+value).replace(/\/\*[\s\S]*?(?:\*\/|$)/g,'');
+    var colons=0;while(text[colons]===':')colons++;
+    var rest=text.slice(colons),ident=cssIdentifierPrefix(rest),name=ident&&ident.name;
+    var modelled=name==='before'||name==='after';
+    if(colons===0){if(!ident)return '';if(ident.length<rest.length)return null;return modelled?name:'';}
+    if(colons>2||!ident)return null;
+    if(ident.length<rest.length){
+      if(colons!==2||rest[ident.length]!=='('||rest[rest.length-1]!==')'||!computedPseudoFunctions[name])return null;
+      return '';
+    }
+    if(colons===1)return modelled?name:name==='first-line'||name==='first-letter'?'':null;
+    if(modelled||name==='backdrop')return name;
+    return computedPseudoNames[name]||name.slice(0,8)==='-webkit-'?'':null;
   }
   // Page-replaceable numeric and string intrinsics never participate in this read.
   var cssZoomFround=Math.fround,cssZoomExec=RegExp.prototype.exec,cssZoomTrim=String.prototype.trim;
@@ -225,6 +264,13 @@
     if (namespace !== 'http://www.w3.org/1999/xhtml') return '';
     if (tag === 'DIALOG' && computedNativeMatches(el, ':modal')) return 'modal';
     return computedNativeMatches(el, '[popover]') && computedNativeMatches(el, ':popover-open') ? 'popover' : '';
+  }
+  // ::before / ::after are children of `el`: flex / grid items when it is a flex / grid
+  // container (or, as display: contents, when its own parent is).
+  function computedPseudoInContainer(el, parentStyle){
+    var display = computedSnapshotValue(parentStyle(el), 'display');
+    if (display === 'contents') return computedFlexOrGridItem(el, parentStyle);
+    return /^(inline-)?(flex|grid)$/.test(display);
   }
   // CSS Position 4: a top-layer box whose position is static / relative / sticky is absolute.
   function topLayerPosition(position){ return /^(static|relative|sticky)$/.test(position) ? 'absolute' : position; }
@@ -414,7 +460,7 @@
     };
     var keyword = function(value){ var key = value.toLowerCase(); return /^(inherit|initial|unset|revert|revert-layer)$/.test(key) ? key : ''; };
     if (connected) {
-      var ua = pseudo === 'backdrop' ? { display: 'block', position: layer ? 'fixed' : 'absolute', topLayer: layer !== '' } : computedUserAgentBox(el, layer);
+      var ua = pseudo === 'backdrop' ? { display: 'block', position: layer ? 'fixed' : 'absolute', topLayer: layer !== '' } : pseudo ? { display: 'inline', position: 'static', topLayer: false } : computedUserAgentBox(el, layer);
       var displayValue = cascadedValue('display'), displayKey = keyword(displayValue);
       if (!displayValue || displayKey === 'revert' || displayKey === 'revert-layer') displayValue = ua.display;
       else if (displayKey === 'inherit') displayValue = inheritedValue('display') || 'inline';
@@ -427,7 +473,7 @@
       if (ua.topLayer) positionValue = topLayerPosition(positionValue);
       var floatValue = String(decl['float'] == null ? '' : decl['float']).trim().toLowerCase();
       var floated = floatValue !== '' && floatValue !== 'none' && !keyword(floatValue);
-      if (positionValue === 'absolute' || positionValue === 'fixed' || floated || !pseudo && computedFlexOrGridItem(el, parentStyle))
+      if (positionValue === 'absolute' || positionValue === 'fixed' || floated || (pseudo ? pseudo !== 'backdrop' && computedPseudoInContainer(el, parentStyle) : computedFlexOrGridItem(el, parentStyle)))
         displayValue = blockifiedDisplay(displayValue);
       decl.display = displayValue;
       decl.position = positionValue;
@@ -444,6 +490,12 @@
     else if (connected && (visibilityValue === '' || visibilityKey)) { try { visibilityValue = inheritedValue('visibility'); } catch(e){ visibilityValue = ''; } }
     if (!visibilityValue && connected) visibilityValue = 'visible';
     decl.visibility = visibilityValue || '';
+    // `content` computes to normal, and to none on ::before / ::after; strings serialize
+    // double-quoted (turbo-dom#47).
+    if (pseudo === 'before' || pseudo === 'after') {
+      var contentValue = decl.content == null ? '' : String(decl.content).trim();
+      decl.content = contentValue === '' || /^normal$/i.test(contentValue) ? 'none' : contentValue.replace(/'((?:[^'\\\n]|\\[\s\S])*)'/g, function(_, inner){ return '"' + inner.replace(/\\'/g, "'").replace(/"/g, '\\"') + '"'; });
+    } else if (decl.content == null) decl.content = connected ? 'normal' : '';
     // Initial computed values of properties Web Animations commonly animate.
     if (decl.opacity == null) decl.opacity = connected ? '1' : '';
     if (decl.transform == null) { decl.transform = connected ? 'none' : ''; }

@@ -113,7 +113,7 @@ fn dialog_top_layer_matches_chrome156_control() {
 /// forms, escapes, comments), invalid pseudo-elements (empty declaration), strings without a
 /// leading colon (the element), disconnected elements, live reads (case `pseudo-elements`).
 #[test]
-#[ignore = "turbo-dom#47: fails until the fix"]
+
 fn pseudo_elements_match_chrome156_control() {
     let found = mismatches(|id| id == "pseudo-elements");
     assert!(
