@@ -45,42 +45,82 @@
     {
      "x": 70,
      "y": 25,
-     "class": "G"
+     "class": "G",
+     "rgb": [
+      0,
+      255,
+      0
+     ]
     },
     {
      "x": 22,
      "y": 12,
-     "class": "T"
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
     },
     {
      "x": 70,
      "y": 36,
-     "class": "T"
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
     },
     {
      "x": 120,
      "y": 25,
-     "class": "G"
+     "class": "G",
+     "rgb": [
+      0,
+      255,
+      0
+     ]
     },
     {
      "x": 60,
      "y": 47,
-     "class": "R"
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
     },
     {
      "x": 110,
      "y": 47,
-     "class": "R"
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
     },
     {
      "x": 21,
      "y": 47,
-     "class": "B"
+     "class": "B",
+     "rgb": [
+      0,
+      0,
+      255
+     ]
     },
     {
      "x": 70,
      "y": 65,
-     "class": "B"
+     "class": "B",
+     "rgb": [
+      0,
+      0,
+      255
+     ]
     }
    ]
   },
@@ -122,42 +162,82 @@
     {
      "x": 70,
      "y": 20,
-     "class": "R"
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
     },
     {
      "x": 110,
      "y": 20,
-     "class": "R"
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
     },
     {
      "x": 21,
      "y": 20,
-     "class": "B"
+     "class": "B",
+     "rgb": [
+      0,
+      0,
+      255
+     ]
     },
     {
      "x": 70,
      "y": 45,
-     "class": "G"
+     "class": "G",
+     "rgb": [
+      0,
+      255,
+      0
+     ]
     },
     {
      "x": 70,
      "y": 55,
-     "class": "G"
+     "class": "G",
+     "rgb": [
+      0,
+      255,
+      0
+     ]
     },
     {
      "x": 118,
      "y": 45,
-     "class": "G"
+     "class": "G",
+     "rgb": [
+      0,
+      255,
+      0
+     ]
     },
     {
      "x": 70,
      "y": 9,
-     "class": "T"
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
     },
     {
      "x": 70,
      "y": 59,
-     "class": "T"
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
     }
    ]
   },
@@ -199,27 +279,52 @@
     {
      "x": 30,
      "y": 15,
-     "class": "T"
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
     },
     {
      "x": 100,
      "y": 15,
-     "class": "T"
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
     },
     {
      "x": 100,
      "y": 30,
-     "class": "R"
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
     },
     {
      "x": 130,
      "y": 30,
-     "class": "R"
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
     },
     {
      "x": 139,
      "y": 30,
-     "class": "B"
+     "class": "B",
+     "rgb": [
+      0,
+      0,
+      255
+     ]
     }
    ]
   },
@@ -240,47 +345,92 @@
     {
      "x": 25,
      "y": 25,
-     "class": "R"
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
     },
     {
      "x": 11,
      "y": 11,
-     "class": "R"
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
     },
     {
      "x": 38,
      "y": 38,
-     "class": "R"
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
     },
     {
      "x": 5,
      "y": 5,
-     "class": "T"
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
     },
     {
      "x": 45,
      "y": 45,
-     "class": "T"
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
     },
     {
      "x": 25,
      "y": 5,
-     "class": "T"
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
     },
     {
      "x": 25,
      "y": 45,
-     "class": "T"
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
     },
     {
      "x": 5,
      "y": 25,
-     "class": "T"
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
     },
     {
      "x": 45,
      "y": 25,
-     "class": "T"
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
     }
    ]
   },
@@ -301,22 +451,42 @@
     {
      "x": 25,
      "y": 30,
-     "class": "R"
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
     },
     {
      "x": 48,
      "y": 58,
-     "class": "R"
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
     },
     {
      "x": 55,
      "y": 30,
-     "class": "T"
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
     },
     {
      "x": 75,
      "y": 50,
-     "class": "T"
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
     }
    ]
   },
@@ -344,27 +514,52 @@
     {
      "x": 50,
      "y": 50,
-     "class": "G"
+     "class": "G",
+     "rgb": [
+      0,
+      255,
+      0
+     ]
     },
     {
      "x": 75,
      "y": 75,
-     "class": "G"
+     "class": "G",
+     "rgb": [
+      0,
+      255,
+      0
+     ]
     },
     {
      "x": 100,
      "y": 50,
-     "class": "T"
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
     },
     {
      "x": 50,
      "y": 100,
-     "class": "T"
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
     },
     {
      "x": 110,
      "y": 110,
-     "class": "T"
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
     }
    ]
   },
@@ -385,17 +580,32 @@
     {
      "x": 130,
      "y": 45,
-     "class": "R"
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
     },
     {
      "x": 160,
      "y": 45,
-     "class": "T"
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
     },
     {
      "x": 40,
      "y": 45,
-     "class": "T"
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
     }
    ]
   },
@@ -416,17 +626,32 @@
     {
      "x": 45,
      "y": 45,
-     "class": "T"
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
     },
     {
      "x": 110,
      "y": 30,
-     "class": "T"
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
     },
     {
      "x": 101,
      "y": 21,
-     "class": "T"
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
     }
    ]
   },
@@ -447,12 +672,22 @@
     {
      "x": 45,
      "y": 45,
-     "class": "T"
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
     },
     {
      "x": 25,
      "y": 25,
-     "class": "T"
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
     }
    ]
   },
@@ -480,17 +715,32 @@
     {
      "x": 25,
      "y": 25,
-     "class": "R"
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
     },
     {
      "x": 25,
      "y": 75,
-     "class": "B"
+     "class": "B",
+     "rgb": [
+      0,
+      0,
+      255
+     ]
     },
     {
      "x": 40,
      "y": 90,
-     "class": "B"
+     "class": "B",
+     "rgb": [
+      0,
+      0,
+      255
+     ]
     }
    ]
   },
@@ -513,22 +763,534 @@
     {
      "x": 45,
      "y": 40,
-     "class": "R"
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
     },
     {
      "x": 95,
      "y": 40,
-     "class": "T"
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
     },
     {
      "x": 21,
      "y": 21,
-     "class": "R"
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
     },
     {
      "x": 69,
      "y": 59,
-     "class": "R"
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    }
+   ]
+  },
+  {
+   "id": "paint-round-border",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div style=\"position:absolute;left:20px;top:20px;width:60px;height:40px;background:#ff0000;border:4px solid #0000ff;border-radius:12px\"></div></body></html>",
+   "assets": [],
+   "boxes": [],
+   "probes": [
+    {
+     "x": 54,
+     "y": 44,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 54,
+     "y": 21,
+     "class": "B",
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 21,
+     "y": 44,
+     "class": "B",
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 86,
+     "y": 44,
+     "class": "B",
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 54,
+     "y": 66,
+     "class": "B",
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 21,
+     "y": 21,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 86,
+     "y": 66,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    }
+   ]
+  },
+  {
+   "id": "paint-round-gradient",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div style=\"position:absolute;left:20px;top:90px;width:100px;height:50px;border-radius:20px;background:linear-gradient(to right, #ff0000, #0000ff)\"></div></body></html>",
+   "assets": [],
+   "boxes": [],
+   "probes": [
+    {
+     "x": 25,
+     "y": 115,
+     "class": "R",
+     "rgb": [
+      241,
+      0,
+      14
+     ]
+    },
+    {
+     "x": 115,
+     "y": 115,
+     "class": "B",
+     "rgb": [
+      12,
+      0,
+      244
+     ]
+    },
+    {
+     "x": 70,
+     "y": 93,
+     "class": "?",
+     "rgb": [
+      126,
+      0,
+      129
+     ]
+    },
+    {
+     "x": 21,
+     "y": 91,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 118,
+     "y": 138,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    }
+   ]
+  },
+  {
+   "id": "paint-shadow-hard",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div style=\"position:absolute;left:20px;top:160px;width:40px;height:40px;background:#00ff00;box-shadow:10px 10px 0 #ff0000\"></div></body></html>",
+   "assets": [],
+   "boxes": [],
+   "probes": [
+    {
+     "x": 40,
+     "y": 180,
+     "class": "G",
+     "rgb": [
+      0,
+      255,
+      0
+     ]
+    },
+    {
+     "x": 65,
+     "y": 205,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 25,
+     "y": 205,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 65,
+     "y": 165,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    }
+   ]
+  },
+  {
+   "id": "paint-shadow-collapsed",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div style=\"position:absolute;left:100px;top:160px;width:20px;height:20px;background:#00ff00;box-shadow:30px 0 0 -15px #ff0000\"></div></body></html>",
+   "assets": [],
+   "boxes": [],
+   "probes": [
+    {
+     "x": 110,
+     "y": 170,
+     "class": "G",
+     "rgb": [
+      0,
+      255,
+      0
+     ]
+    },
+    {
+     "x": 135,
+     "y": 170,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 145,
+     "y": 170,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    }
+   ]
+  },
+  {
+   "id": "paint-shadow-spread-round",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div style=\"position:absolute;left:200px;top:170px;width:40px;height:40px;background:#00ff00;border-radius:10px;box-shadow:0 0 0 6px #ff0000\"></div></body></html>",
+   "assets": [],
+   "boxes": [],
+   "probes": [
+    {
+     "x": 196,
+     "y": 190,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 220,
+     "y": 190,
+     "class": "G",
+     "rgb": [
+      0,
+      255,
+      0
+     ]
+    },
+    {
+     "x": 243,
+     "y": 190,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 220,
+     "y": 166,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 195,
+     "y": 165,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    }
+   ]
+  },
+  {
+   "id": "paint-text-transparent",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div style=\"position:absolute;left:300px;top:20px;font-size:40px;color:transparent;background:#00ff00\">MMMM</div></body></html>",
+   "assets": [],
+   "boxes": [],
+   "probes": [
+    {
+     "x": 310,
+     "y": 40,
+     "class": "G",
+     "rgb": [
+      0,
+      255,
+      0
+     ]
+    },
+    {
+     "x": 330,
+     "y": 45,
+     "class": "G",
+     "rgb": [
+      0,
+      255,
+      0
+     ]
+    },
+    {
+     "x": 350,
+     "y": 40,
+     "class": "G",
+     "rgb": [
+      0,
+      255,
+      0
+     ]
+    },
+    {
+     "x": 370,
+     "y": 45,
+     "class": "G",
+     "rgb": [
+      0,
+      255,
+      0
+     ]
+    }
+   ]
+  },
+  {
+   "id": "paint-shadow-blur",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div style=\"position:absolute;left:300px;top:100px;width:40px;height:40px;background:#00ff00;box-shadow:50px 0 4px #ff0000\"></div><div style=\"position:absolute;left:300px;top:160px;width:40px;height:40px;background:#00ff00;border-radius:8px;box-shadow:50px 0 4px #0000ff\"></div></body></html>",
+   "assets": [],
+   "boxes": [],
+   "probes": [
+    {
+     "x": 320,
+     "y": 120,
+     "class": "G",
+     "rgb": [
+      0,
+      255,
+      0
+     ]
+    },
+    {
+     "x": 370,
+     "y": 120,
+     "class": "R",
+     "rgb": [
+      255,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 400,
+     "y": 120,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 370,
+     "y": 92,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 370,
+     "y": 180,
+     "class": "B",
+     "rgb": [
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 400,
+     "y": 180,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 352,
+     "y": 162,
+     "class": "?",
+     "rgb": [
+      0,
+      130,
+      255
+     ]
+    }
+   ]
+  },
+  {
+   "id": "paint-alpha",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div style=\"position:absolute;left:420px;top:20px;width:40px;height:40px;background:rgba(255,0,0,0.5);box-shadow:0 50px 0 rgba(0,0,255,0.5)\"></div></body></html>",
+   "assets": [],
+   "boxes": [],
+   "probes": [
+    {
+     "x": 440,
+     "y": 40,
+     "class": "?",
+     "rgb": [
+      128,
+      127,
+      127
+     ]
+    },
+    {
+     "x": 440,
+     "y": 90,
+     "class": "?",
+     "rgb": [
+      0,
+      127,
+      255
+     ]
+    },
+    {
+     "x": 440,
+     "y": 130,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
+    }
+   ]
+  },
+  {
+   "id": "paint-gradient-square",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><div style=\"position:absolute;left:500px;top:20px;width:40px;height:100px;background:linear-gradient(#ff0000, #0000ff)\"></div></body></html>",
+   "assets": [],
+   "boxes": [],
+   "probes": [
+    {
+     "x": 520,
+     "y": 23,
+     "class": "R",
+     "rgb": [
+      246,
+      0,
+      9
+     ]
+    },
+    {
+     "x": 520,
+     "y": 117,
+     "class": "B",
+     "rgb": [
+      6,
+      0,
+      249
+     ]
+    },
+    {
+     "x": 520,
+     "y": 70,
+     "class": "?",
+     "rgb": [
+      126,
+      0,
+      128
+     ]
+    },
+    {
+     "x": 545,
+     "y": 70,
+     "class": "T",
+     "rgb": [
+      0,
+      255,
+      255
+     ]
     }
    ]
   }

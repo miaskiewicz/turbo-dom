@@ -9,8 +9,8 @@
 // Every case is one page (viewport 1280x800, `body{margin:0;background:#00ffff}`). Chrome for
 // Testing 156 records, per case, the getBoundingClientRect() of every `[data-cid]` element
 // (`boxes`: `{cid, x, y, width, height}`) and the colour class at each listed probe point
-// (`probes`: `{x, y, class}`) of a screenshot: R/G/B/Y/W, T = the page's #00ffff backdrop,
-// `?` = anything else. `assets` lists the case's `<img src>` `data:` URLs (the screenshot API
+// (`probes`: `{x, y, class, rgb}`) of a screenshot: R/G/B/Y/W, T = the page's #00ffff
+// backdrop, `?` = anything else; `rgb` is the raw screenshot colour there. `assets` lists the case's `<img src>` `data:` URLs (the screenshot API
 // takes image bytes from the caller, keyed by the raw `src`). Asserted by
 // crates/turbo-dom-raster/tests/paint_chrome.rs (pixels) and
 // crates/turbo-dom-layout/tests/html_document_chrome.rs (boxes, through `layout_boxes`).
@@ -128,6 +128,67 @@ const CASES = [
     assets: [SPRITE],
     probes: [[45, 40], [95, 40], [21, 21], [69, 59]],
   },
+  // P5-cov: the raster painter's box decoration paths.
+  {
+    // A rounded box with a uniform border: the border band follows the radius and the
+    // corners outside it stay the backdrop.
+    id: "paint-round-border",
+    html: DOC(`<div style="${at(20, 20)};width:60px;height:40px;background:#ff0000;border:4px solid #0000ff;border-radius:12px"></div>`),
+    probes: [[54, 44], [54, 21], [21, 44], [86, 44], [54, 66], [21, 21], [86, 66]],
+  },
+  {
+    // A linear gradient clipped to the rounded border box.
+    id: "paint-round-gradient",
+    html: DOC(`<div style="${at(20, 90)};width:100px;height:50px;border-radius:20px;background:linear-gradient(to right, #ff0000, #0000ff)"></div>`),
+    probes: [[25, 115], [115, 115], [70, 93], [21, 91], [118, 138]],
+  },
+  {
+    // An unblurred offset shadow is the box's silhouette in the shadow colour.
+    id: "paint-shadow-hard",
+    html: DOC(`<div style="${at(20, 160)};width:40px;height:40px;background:#00ff00;box-shadow:10px 10px 0 #ff0000"></div>`),
+    probes: [[40, 180], [65, 205], [25, 205], [65, 165]],
+  },
+  {
+    // A negative spread larger than half the box leaves no shadow.
+    id: "paint-shadow-collapsed",
+    html: DOC(`<div style="${at(100, 160)};width:20px;height:20px;background:#00ff00;box-shadow:30px 0 0 -15px #ff0000"></div>`),
+    probes: [[110, 170], [135, 170], [145, 170]],
+  },
+  {
+    // A spread grows the rounded silhouette (radius + spread) on every side.
+    id: "paint-shadow-spread-round",
+    html: DOC(`<div style="${at(200, 170)};width:40px;height:40px;background:#00ff00;border-radius:10px;box-shadow:0 0 0 6px #ff0000"></div>`),
+    probes: [[196, 190], [220, 190], [243, 190], [220, 166], [195, 165]],
+  },
+  {
+    // Transparent text paints nothing over its box.
+    id: "paint-text-transparent",
+    html: DOC(`<div style="${at(300, 20)};font-size:40px;color:transparent;background:#00ff00">MMMM</div>`),
+    probes: [[310, 40], [330, 45], [350, 40], [370, 45]],
+  },
+  {
+    // Blurred shadows, square and rounded: the shadow's core is its colour, the blur
+    // fades out past its edge.
+    id: "paint-shadow-blur",
+    html: DOC(
+      `<div style="${at(300, 100)};width:40px;height:40px;background:#00ff00;box-shadow:50px 0 4px #ff0000"></div>` +
+        `<div style="${at(300, 160)};width:40px;height:40px;background:#00ff00;border-radius:8px;box-shadow:50px 0 4px #0000ff"></div>`,
+    ),
+    probes: [[320, 120], [370, 120], [400, 120], [370, 92], [370, 180], [400, 180], [352, 162]],
+  },
+  {
+    // Translucent colours: a half-transparent background and shadow over the backdrop
+    // (`rgb` carries the composited values).
+    id: "paint-alpha",
+    html: DOC(`<div style="${at(420, 20)};width:40px;height:40px;background:rgba(255,0,0,0.5);box-shadow:0 50px 0 rgba(0,0,255,0.5)"></div>`),
+    probes: [[440, 40], [440, 90], [440, 130]],
+  },
+  {
+    // A gradient in a square box (top to bottom).
+    id: "paint-gradient-square",
+    html: DOC(`<div style="${at(500, 20)};width:40px;height:100px;background:linear-gradient(#ff0000, #0000ff)"></div>`),
+    probes: [[520, 23], [520, 117], [520, 70], [545, 70]],
+  },
 ];
 
 /** Decode an 8-bit RGB/RGBA PNG (all five filters) to px(x, y) -> [r,g,b]. */
@@ -201,7 +262,7 @@ for (const testCase of CASES) {
     });
   });
   const px = decodePng(await page.screenshot());
-  const probes = testCase.probes.map(([x, y]) => ({ x, y, class: classOf(px(x, y)) }));
+  const probes = testCase.probes.map(([x, y]) => ({ x, y, class: classOf(px(x, y)), rgb: px(x, y) }));
   cases.push({ id: testCase.id, html: testCase.html, assets: testCase.assets || [], boxes, probes });
 }
 await browser.close();

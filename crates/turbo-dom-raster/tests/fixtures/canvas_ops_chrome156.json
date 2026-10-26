@@ -1,0 +1,2977 @@
+{
+ "generator": "scripts/canvas-ops-chrome-control.mjs",
+ "chrome": "156.0.8078.4",
+ "playwright_core": "1.61.0",
+ "cases": [
+  {
+   "id": "fill-style-colours",
+   "size": [
+    64,
+    64
+   ],
+   "ops": [
+    [
+     "fillRect",
+     [
+      0,
+      0,
+      8,
+      8
+     ],
+     "#808080",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      0,
+      0,
+      8,
+      8
+     ],
+     "#f00",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      8,
+      0,
+      8,
+      8
+     ],
+     "#808080",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      8,
+      0,
+      8,
+      8
+     ],
+     "#0f08",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      16,
+      0,
+      8,
+      8
+     ],
+     "#808080",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      16,
+      0,
+      8,
+      8
+     ],
+     "#00ff00",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      24,
+      0,
+      8,
+      8
+     ],
+     "#808080",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      24,
+      0,
+      8,
+      8
+     ],
+     "#0000ff80",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      32,
+      0,
+      8,
+      8
+     ],
+     "#808080",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      32,
+      0,
+      8,
+      8
+     ],
+     "rgb(255, 255, 0)",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      40,
+      0,
+      8,
+      8
+     ],
+     "#808080",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      40,
+      0,
+      8,
+      8
+     ],
+     "rgba(255,0,255,0.5)",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      48,
+      0,
+      8,
+      8
+     ],
+     "#808080",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      48,
+      0,
+      8,
+      8
+     ],
+     "rgb(0 255 255 / 50%)",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      56,
+      0,
+      8,
+      8
+     ],
+     "#808080",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      56,
+      0,
+      8,
+      8
+     ],
+     "rgba(10, 20, 30, 25%)",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      0,
+      8,
+      8,
+      8
+     ],
+     "#808080",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      0,
+      8,
+      8,
+      8
+     ],
+     "transparent",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      8,
+      8,
+      8,
+      8
+     ],
+     "#808080",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      8,
+      8,
+      8,
+      8
+     ],
+     "black",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      16,
+      8,
+      8,
+      8
+     ],
+     "#808080",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      16,
+      8,
+      8,
+      8
+     ],
+     "white",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      24,
+      8,
+      8,
+      8
+     ],
+     "#808080",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      24,
+      8,
+      8,
+      8
+     ],
+     "red",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      32,
+      8,
+      8,
+      8
+     ],
+     "#808080",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      32,
+      8,
+      8,
+      8
+     ],
+     "green",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      40,
+      8,
+      8,
+      8
+     ],
+     "#808080",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      40,
+      8,
+      8,
+      8
+     ],
+     "lime",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      48,
+      8,
+      8,
+      8
+     ],
+     "#808080",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      48,
+      8,
+      8,
+      8
+     ],
+     "blue",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      56,
+      8,
+      8,
+      8
+     ],
+     "#808080",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      56,
+      8,
+      8,
+      8
+     ],
+     "yellow",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      0,
+      16,
+      8,
+      8
+     ],
+     "#808080",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      0,
+      16,
+      8,
+      8
+     ],
+     "cyan",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      8,
+      16,
+      8,
+      8
+     ],
+     "#808080",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      8,
+      16,
+      8,
+      8
+     ],
+     "aqua",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      16,
+      16,
+      8,
+      8
+     ],
+     "#808080",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      16,
+      16,
+      8,
+      8
+     ],
+     "magenta",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      24,
+      16,
+      8,
+      8
+     ],
+     "#808080",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      24,
+      16,
+      8,
+      8
+     ],
+     "fuchsia",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      32,
+      16,
+      8,
+      8
+     ],
+     "#808080",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      32,
+      16,
+      8,
+      8
+     ],
+     "gray",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      40,
+      16,
+      8,
+      8
+     ],
+     "#808080",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      40,
+      16,
+      8,
+      8
+     ],
+     "grey",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      48,
+      16,
+      8,
+      8
+     ],
+     "#808080",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      48,
+      16,
+      8,
+      8
+     ],
+     "orange",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      56,
+      16,
+      8,
+      8
+     ],
+     "#808080",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      56,
+      16,
+      8,
+      8
+     ],
+     "  RED  ",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      0,
+      24,
+      8,
+      8
+     ],
+     "#808080",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      0,
+      24,
+      8,
+      8
+     ],
+     "#ABCDEF",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      8,
+      24,
+      8,
+      8
+     ],
+     "#808080",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      8,
+      24,
+      8,
+      8
+     ],
+     "#12345",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      16,
+      24,
+      8,
+      8
+     ],
+     "#808080",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      16,
+      24,
+      8,
+      8
+     ],
+     "rgb(1,2)",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      24,
+      24,
+      8,
+      8
+     ],
+     "#808080",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      24,
+      24,
+      8,
+      8
+     ],
+     "#ggg",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      32,
+      24,
+      8,
+      8
+     ],
+     "#808080",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      32,
+      24,
+      8,
+      8
+     ],
+     "rgb(300, -5, 128)",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      40,
+      24,
+      8,
+      8
+     ],
+     "#808080",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      40,
+      24,
+      8,
+      8
+     ],
+     "rgba(0,0,255,2)",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      48,
+      24,
+      8,
+      8
+     ],
+     "#808080",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      48,
+      24,
+      8,
+      8
+     ],
+     "rgb(10 20 30 / 0.25)",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ]
+   ],
+   "probes": [
+    {
+     "x": 4,
+     "y": 4,
+     "rgba": [
+      255,
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 12,
+     "y": 4,
+     "rgba": [
+      60,
+      196,
+      60,
+      255
+     ]
+    },
+    {
+     "x": 20,
+     "y": 4,
+     "rgba": [
+      0,
+      255,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 28,
+     "y": 4,
+     "rgba": [
+      64,
+      64,
+      192,
+      255
+     ]
+    },
+    {
+     "x": 36,
+     "y": 4,
+     "rgba": [
+      255,
+      255,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 44,
+     "y": 4,
+     "rgba": [
+      192,
+      64,
+      192,
+      255
+     ]
+    },
+    {
+     "x": 52,
+     "y": 4,
+     "rgba": [
+      64,
+      192,
+      192,
+      255
+     ]
+    },
+    {
+     "x": 60,
+     "y": 4,
+     "rgba": [
+      99,
+      101,
+      104,
+      255
+     ]
+    },
+    {
+     "x": 4,
+     "y": 12,
+     "rgba": [
+      128,
+      128,
+      128,
+      255
+     ]
+    },
+    {
+     "x": 12,
+     "y": 12,
+     "rgba": [
+      0,
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 20,
+     "y": 12,
+     "rgba": [
+      255,
+      255,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 28,
+     "y": 12,
+     "rgba": [
+      255,
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 36,
+     "y": 12,
+     "rgba": [
+      0,
+      128,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 44,
+     "y": 12,
+     "rgba": [
+      0,
+      255,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 52,
+     "y": 12,
+     "rgba": [
+      0,
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 60,
+     "y": 12,
+     "rgba": [
+      255,
+      255,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 4,
+     "y": 20,
+     "rgba": [
+      0,
+      255,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 12,
+     "y": 20,
+     "rgba": [
+      0,
+      255,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 20,
+     "y": 20,
+     "rgba": [
+      255,
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 28,
+     "y": 20,
+     "rgba": [
+      255,
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 36,
+     "y": 20,
+     "rgba": [
+      128,
+      128,
+      128,
+      255
+     ]
+    },
+    {
+     "x": 44,
+     "y": 20,
+     "rgba": [
+      128,
+      128,
+      128,
+      255
+     ]
+    },
+    {
+     "x": 52,
+     "y": 20,
+     "rgba": [
+      255,
+      165,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 60,
+     "y": 20,
+     "rgba": [
+      255,
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 4,
+     "y": 28,
+     "rgba": [
+      171,
+      205,
+      239,
+      255
+     ]
+    },
+    {
+     "x": 12,
+     "y": 28,
+     "rgba": [
+      128,
+      128,
+      128,
+      255
+     ]
+    },
+    {
+     "x": 20,
+     "y": 28,
+     "rgba": [
+      128,
+      128,
+      128,
+      255
+     ]
+    },
+    {
+     "x": 28,
+     "y": 28,
+     "rgba": [
+      128,
+      128,
+      128,
+      255
+     ]
+    },
+    {
+     "x": 36,
+     "y": 28,
+     "rgba": [
+      255,
+      0,
+      128,
+      255
+     ]
+    },
+    {
+     "x": 44,
+     "y": 28,
+     "rgba": [
+      0,
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 52,
+     "y": 28,
+     "rgba": [
+      99,
+      101,
+      104,
+      255
+     ]
+    }
+   ]
+  },
+  {
+   "id": "transforms",
+   "size": [
+    96,
+    96
+   ],
+   "ops": [
+    [
+     "save",
+     [],
+     "#000000",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "translate",
+     [
+      40,
+      0
+     ],
+     "#000000",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      0,
+      0,
+      10,
+      10
+     ],
+     "#ff0000",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "restore",
+     [],
+     "#000000",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      0,
+      0,
+      10,
+      10
+     ],
+     "#00ff00",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "restore",
+     [],
+     "#000000",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "save",
+     [],
+     "#000000",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "scale",
+     [
+      2,
+      3
+     ],
+     "#000000",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      0,
+      10,
+      5,
+      5
+     ],
+     "#0000ff",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "restore",
+     [],
+     "#000000",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "save",
+     [],
+     "#000000",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "translate",
+     [
+      70,
+      20
+     ],
+     "#000000",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "rotate",
+     [
+      1.5707963267948966
+     ],
+     "#000000",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      0,
+      0,
+      20,
+      10
+     ],
+     "#ffff00",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "restore",
+     [],
+     "#000000",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "transform",
+     [
+      1,
+      0,
+      0,
+      1,
+      20,
+      60
+     ],
+     "#000000",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "transform",
+     [
+      2,
+      0,
+      0,
+      2,
+      0,
+      0
+     ],
+     "#000000",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      0,
+      0,
+      5,
+      5
+     ],
+     "#ff00ff",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "setTransform",
+     [
+      1,
+      0,
+      0,
+      1,
+      60,
+      60
+     ],
+     "#000000",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      0,
+      0,
+      10,
+      10
+     ],
+     "#00ffff",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "resetTransform",
+     [],
+     "#000000",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      86,
+      86,
+      10,
+      10
+     ],
+     "#000000",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ]
+   ],
+   "probes": [
+    {
+     "x": 45,
+     "y": 5,
+     "rgba": [
+      255,
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 5,
+     "y": 5,
+     "rgba": [
+      0,
+      255,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 5,
+     "y": 35,
+     "rgba": [
+      0,
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 12,
+     "y": 42,
+     "rgba": [
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 65,
+     "y": 30,
+     "rgba": [
+      255,
+      255,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 55,
+     "y": 30,
+     "rgba": [
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 22,
+     "y": 62,
+     "rgba": [
+      255,
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 28,
+     "y": 68,
+     "rgba": [
+      255,
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 65,
+     "y": 65,
+     "rgba": [
+      0,
+      255,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 90,
+     "y": 90,
+     "rgba": [
+      0,
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 30,
+     "y": 5,
+     "rgba": [
+      0,
+      0,
+      0,
+      0
+     ]
+    }
+   ]
+  },
+  {
+   "id": "paths",
+   "size": [
+    96,
+    96
+   ],
+   "ops": [
+    [
+     "beginPath",
+     [],
+     "#000000",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "moveTo",
+     [
+      4,
+      4
+     ],
+     "#000000",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "lineTo",
+     [
+      40,
+      4
+     ],
+     "#000000",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "lineTo",
+     [
+      4,
+      40
+     ],
+     "#000000",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "closePath",
+     [],
+     "#000000",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fill",
+     [],
+     "#ff0000",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "beginPath",
+     [],
+     "#000000",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "rect",
+     [
+      50,
+      4,
+      20,
+      10
+     ],
+     "#000000",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fill",
+     [],
+     "#0000ff",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "beginPath",
+     [],
+     "#000000",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "arc",
+     [
+      70,
+      50,
+      15,
+      0,
+      6.283185307179586
+     ],
+     "#000000",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fill",
+     [],
+     "#00ff00",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "beginPath",
+     [],
+     "#000000",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "lineTo",
+     [
+      4,
+      60.5
+     ],
+     "#000000",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "lineTo",
+     [
+      40,
+      60.5
+     ],
+     "#000000",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "stroke",
+     [],
+     "#000000",
+     "#ff00ff",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "beginPath",
+     [],
+     "#000000",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "rect",
+     [
+      4,
+      70,
+      10,
+      10
+     ],
+     "#000000",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "rect",
+     [
+      20,
+      70,
+      10,
+      10
+     ],
+     "#000000",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fill",
+     [],
+     "#00ffff",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "beginPath",
+     [],
+     "#000000",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "closePath",
+     [],
+     "#000000",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fill",
+     [],
+     "#000000",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ]
+   ],
+   "probes": [
+    {
+     "x": 10,
+     "y": 10,
+     "rgba": [
+      255,
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 35,
+     "y": 30,
+     "rgba": [
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 60,
+     "y": 9,
+     "rgba": [
+      0,
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 75,
+     "y": 50,
+     "rgba": [
+      0,
+      255,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 70,
+     "y": 38,
+     "rgba": [
+      0,
+      255,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 56,
+     "y": 50,
+     "rgba": [
+      0,
+      255,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 88,
+     "y": 50,
+     "rgba": [
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 20,
+     "y": 60,
+     "rgba": [
+      255,
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 20,
+     "y": 62,
+     "rgba": [
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 9,
+     "y": 75,
+     "rgba": [
+      0,
+      255,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 25,
+     "y": 75,
+     "rgba": [
+      0,
+      255,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 17,
+     "y": 75,
+     "rgba": [
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 45,
+     "y": 60,
+     "rgba": [
+      0,
+      0,
+      0,
+      0
+     ]
+    }
+   ]
+  },
+  {
+   "id": "arcs",
+   "size": [
+    96,
+    96
+   ],
+   "ops": [
+    [
+     "beginPath",
+     [],
+     "#000000",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "arc",
+     [
+      20,
+      20,
+      15,
+      0,
+      3.141592653589793,
+      false
+     ],
+     "#000000",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fill",
+     [],
+     "#ff0000",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "beginPath",
+     [],
+     "#000000",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "arc",
+     [
+      60,
+      20,
+      15,
+      0,
+      3.141592653589793,
+      true
+     ],
+     "#000000",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fill",
+     [],
+     "#0000ff",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "beginPath",
+     [],
+     "#000000",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "arc",
+     [
+      20,
+      60,
+      15,
+      0,
+      21.991148575128552,
+      false
+     ],
+     "#000000",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fill",
+     [],
+     "#00ff00",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "beginPath",
+     [],
+     "#000000",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "arc",
+     [
+      60,
+      60,
+      15,
+      1.5707963267948966,
+      -1.5707963267948966,
+      true
+     ],
+     "#000000",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fill",
+     [],
+     "#ffff00",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "beginPath",
+     [],
+     "#000000",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "arc",
+     [
+      85,
+      85,
+      0,
+      0,
+      6.283185307179586
+     ],
+     "#000000",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fill",
+     [],
+     "#000000",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "beginPath",
+     [],
+     "#000000",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "moveTo",
+     [
+      80,
+      5
+     ],
+     "#000000",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "arc",
+     [
+      88,
+      12,
+      5,
+      1.5707963267948966,
+      0,
+      false
+     ],
+     "#000000",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "stroke",
+     [],
+     "#000000",
+     "#ff00ff",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ]
+   ],
+   "probes": [
+    {
+     "x": 20,
+     "y": 28,
+     "rgba": [
+      255,
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 20,
+     "y": 12,
+     "rgba": [
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 60,
+     "y": 12,
+     "rgba": [
+      0,
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 60,
+     "y": 28,
+     "rgba": [
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 20,
+     "y": 52,
+     "rgba": [
+      0,
+      255,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 20,
+     "y": 68,
+     "rgba": [
+      0,
+      255,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 52,
+     "y": 60,
+     "rgba": [
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 68,
+     "y": 60,
+     "rgba": [
+      255,
+      255,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 85,
+     "y": 85,
+     "rgba": [
+      0,
+      0,
+      0,
+      0
+     ]
+    }
+   ]
+  },
+  {
+   "id": "stroke-and-clear",
+   "size": [
+    96,
+    96
+   ],
+   "ops": [
+    [
+     "strokeRect",
+     [
+      4.5,
+      4.5,
+      30,
+      20
+     ],
+     "#000000",
+     "#0000ff",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "strokeRect",
+     [
+      40.5,
+      4.5,
+      30,
+      20
+     ],
+     "#000000",
+     "rgba(0,0,0,0)",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "save",
+     [],
+     "#000000",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "scale",
+     [
+      2,
+      2
+     ],
+     "#000000",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "strokeRect",
+     [
+      2.5,
+      20.5,
+      10,
+      10
+     ],
+     "#000000",
+     "#ff0000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "restore",
+     [],
+     "#000000",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      50,
+      50,
+      40,
+      40
+     ],
+     "#00ff00",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "save",
+     [],
+     "#000000",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "translate",
+     [
+      70,
+      70
+     ],
+     "#000000",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "rotate",
+     [
+      0.7853981633974483
+     ],
+     "#000000",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "clearRect",
+     [
+      -5,
+      -5,
+      10,
+      10
+     ],
+     "#000000",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "restore",
+     [],
+     "#000000",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ]
+   ],
+   "probes": [
+    {
+     "x": 4,
+     "y": 14,
+     "rgba": [
+      0,
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 19,
+     "y": 4,
+     "rgba": [
+      0,
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 34,
+     "y": 14,
+     "rgba": [
+      0,
+      0,
+      255,
+      255
+     ]
+    },
+    {
+     "x": 19,
+     "y": 14,
+     "rgba": [
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 55,
+     "y": 4,
+     "rgba": [
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 5,
+     "y": 50,
+     "rgba": [
+      255,
+      0,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 6,
+     "y": 50,
+     "rgba": [
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 70,
+     "y": 70,
+     "rgba": [
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 52,
+     "y": 52,
+     "rgba": [
+      0,
+      255,
+      0,
+      255
+     ]
+    },
+    {
+     "x": 88,
+     "y": 88,
+     "rgba": [
+      0,
+      255,
+      0,
+      255
+     ]
+    }
+   ]
+  },
+  {
+   "id": "global-alpha",
+   "size": [
+    64,
+    32
+   ],
+   "ops": [
+    [
+     "fillRect",
+     [
+      0,
+      0,
+      16,
+      16
+     ],
+     "#ff0000",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     0.5,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      16,
+      0,
+      16,
+      16
+     ],
+     "rgba(0,0,255,0.5)",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     0.5,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      32,
+      0,
+      16,
+      16
+     ],
+     "#00ff00",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     0,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      48,
+      0,
+      16,
+      16
+     ],
+     "#000000",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     0.25,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      0,
+      16,
+      16,
+      16
+     ],
+     "#0000ff",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     1,
+     "source-over"
+    ],
+    [
+     "fillRect",
+     [
+      0,
+      16,
+      16,
+      16
+     ],
+     "#ff0000",
+     "#000000",
+     "10px sans-serif",
+     "alphabetic",
+     "start",
+     0.5,
+     "source-over"
+    ]
+   ],
+   "probes": [
+    {
+     "x": 8,
+     "y": 8,
+     "rgba": [
+      255,
+      0,
+      0,
+      128
+     ]
+    },
+    {
+     "x": 24,
+     "y": 8,
+     "rgba": [
+      0,
+      0,
+      255,
+      64
+     ]
+    },
+    {
+     "x": 40,
+     "y": 8,
+     "rgba": [
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "x": 56,
+     "y": 8,
+     "rgba": [
+      0,
+      0,
+      0,
+      64
+     ]
+    },
+    {
+     "x": 8,
+     "y": 24,
+     "rgba": [
+      128,
+      0,
+      127,
+      255
+     ]
+    },
+    {
+     "x": 40,
+     "y": 24,
+     "rgba": [
+      0,
+      0,
+      0,
+      0
+     ]
+    }
+   ]
+  }
+ ]
+}
