@@ -7,7 +7,7 @@
 //! no bundled faces, so a registry with no caller fonts can't render — exactly
 //! the no-bundled behaviour the other suites exercise.
 //!
-//! Split at the S1 relocation: the cases that need TKind directives, templating or the
+//! Split at the S1 relocation: the cases that need `TKind` directives, templating or the
 //! PDF emitter stay in turbo-html2pdf-core's `tests/bundled_fonts.rs`.
 #![cfg(feature = "bundled-fonts")]
 

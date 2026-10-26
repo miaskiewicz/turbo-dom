@@ -158,7 +158,7 @@ pub struct ParagraphLayout {
 }
 
 /// Actual shaper cluster and pen advance for one positioned glyph. Byte and
-/// UTF-16 ranges refer to its original InlineRun text, not normalized glyph text.
+/// UTF-16 ranges refer to its original `InlineRun` text, not normalized glyph text.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct GlyphSourceCluster {
     pub byte_start: usize,
@@ -314,6 +314,7 @@ struct CharacterSelection<'a> {
     fonts: &'a FontRegistry,
     coverage: &'a [(usize, bool)],
 }
+#[allow(clippy::needless_pass_by_value)] // signature kept as relocated; borrowing instead changes nothing observable
 fn select_character_face(
     selection: CharacterSelection<'_>,
     previous: &mut NativeFallbacks,
@@ -387,9 +388,7 @@ fn native_character_face(
     let face = fonts
         .native_fallback(&run.face, ch, run.weight, run.italic)
         .or_else(|| registered_fallback(ch, run, fonts));
-    let selected = face
-        .map(|face| (face, false))
-        .unwrap_or_else(|| resolve_face(ch, run, fonts));
+    let selected = face.map_or_else(|| resolve_face(ch, run, fonts), |face| (face, false));
     previous.retain(unit.is_some(), &selected);
     selected
 }
@@ -745,7 +744,7 @@ fn group_leading_space(
         return false;
     }
     let continuation = preceding_inline_content(out);
-    if continuation && !edges.first().is_some_and(|(at, _)| *at == 0) {
+    if continuation && edges.first().is_none_or(|(at, _)| *at != 0) {
         hand_off_leading_space(chars, group, out, capture, true);
     }
     continuation
@@ -803,7 +802,7 @@ impl MarkedWords<'_> {
             SourceItem::Character(c)
                 if collapsible_space(c.ch, self.native) && !self.runs[c.run].nowrap =>
             {
-                self.space(c)
+                self.space(c);
             }
             item => {
                 if matches!(item, SourceItem::Character(_)) {
@@ -813,6 +812,7 @@ impl MarkedWords<'_> {
             }
         }
     }
+    #[allow(clippy::needless_pass_by_value)] // signature kept as relocated; borrowing instead changes nothing observable
     fn space(&mut self, c: CharInfo) {
         let width = if self.in_space {
             0.0
@@ -1610,7 +1610,7 @@ fn atom_margin_top(atom: &InlineAtom, height: f32, baseline: f32) -> f32 {
         VAlign::Bottom => height - outer,
         VAlign::Middle => (height - outer) / 2.0,
         VAlign::Super | VAlign::Sub => baseline - outer - valign_shift(atom.valign, atom.font_size),
-        _ => baseline - outer,
+        VAlign::Baseline => baseline - outer,
     }
 }
 
@@ -1751,6 +1751,7 @@ fn shape_space(
     }
     run
 }
+#[allow(clippy::needless_pass_by_value)] // signature kept as relocated; borrowing instead changes nothing observable
 fn place_line(
     words: Vec<Word>,
     max_width: f32,
@@ -1958,6 +1959,7 @@ pub fn layout_html_paragraph_in_with_sources(
     ))
 }
 
+#[allow(clippy::needless_pass_by_value)] // signature kept as relocated; borrowing instead changes nothing observable
 pub(crate) fn layout_html_paragraph_in_with_sources_at_scale(
     pieces: &[Piece],
     reg: &FontRegistry,

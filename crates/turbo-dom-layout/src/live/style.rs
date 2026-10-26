@@ -10,11 +10,11 @@ use super::{
     MAX_DECLARATIONS,
 };
 use crate::layout_snapshot::SourceId;
-use crate::node::{Attr, Tag};
 use crate::style::{
     presentational_declarations_of, resolve_matched_style, CascadeOrigin, ComputedStyle,
     MatchedDeclaration,
 };
+use crate::tag::{Attr, Tag};
 use crate::{StyledElement, StyledNode, StyledText};
 
 type Matched = HashMap<SourceId, Vec<MatchedDeclaration>>;

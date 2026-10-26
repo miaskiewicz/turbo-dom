@@ -1,20 +1,19 @@
 //! The style system (§4): CSS parsing, selector matching on turbo-dom's selector
 //! engine, named style tokens,
-//! render-time node styles, and cascade + inheritance into a styled tree — from a
-//! turbo-dom [`Tree`](turbo_dom::Tree) ([`style_input`] over a [`TreeView`]) or
-//! from the legacy owned [`Node`](crate::Node) tree ([`style_tree`]).
+//! render-time node styles, and cascade + inheritance into a styled tree from a
+//! turbo-dom [`Tree`](turbo_dom::Tree) ([`style_input`] over a [`TreeView`]; the
+//! live-DOM input is [`crate::live`]).
 
 mod cascade;
 mod parser;
 mod quad_shorthand;
 mod token;
 
-pub(crate) use cascade::{is_non_visual, presentational_declarations_of};
+pub(crate) use cascade::presentational_declarations_of;
 pub use cascade::{
-    presentational_declarations, resolve_matched_style, style_input, style_tree,
-    style_tree_with_options, style_tree_with_roots, style_tree_with_roots_options, Cascade,
-    CascadeOrigin, ComputedStyle, LeveledRule, MatchedDeclaration, Navigator, Roots,
-    SiblingPosition, StyleInput, StyleOptions, StyledElement, StyledNode, StyledText, TreeView,
+    presentational_declarations, resolve_matched_style, style_input, Cascade, CascadeOrigin,
+    ComputedStyle, LeveledRule, MatchedDeclaration, Navigator, Roots, SiblingPosition, StyleInput,
+    StyleOptions, StyledElement, StyledNode, StyledText, TreeView,
 };
 pub use parser::{
     parse_declarations, parse_stylesheet, AtRule, Declaration, Rule, RuleSelectors, Stylesheet,
@@ -206,6 +205,7 @@ mod viewport {
     thread_local!(static WIDTH: Cell<f32> = const { Cell::new(1280.0) });
     thread_local!(static HEIGHT: Cell<f32> = const { Cell::new(800.0) });
     pub(super) struct ViewportWidth;
+    #[allow(clippy::unused_self)] // zero-sized handle: the method form mirrors the thread-local it wraps
     impl ViewportWidth {
         pub(super) fn get(&self) -> f32 {
             WIDTH.with(Cell::get)
@@ -215,6 +215,7 @@ mod viewport {
         }
     }
     pub(super) struct ViewportHeight;
+    #[allow(clippy::unused_self)] // zero-sized handle: the method form mirrors the thread-local it wraps
     impl ViewportHeight {
         pub(super) fn get(&self) -> f32 {
             HEIGHT.with(Cell::get)
@@ -332,6 +333,7 @@ pub fn build_cascade(author_css: &str, node_style_css: &str, tokens: TokenSet) -
 /// Like [`build_cascade`] but evaluates `@media` width conditions against
 /// `viewport_width` px (instead of the 1280px desktop default). The screenshot
 /// tier passes its viewport so responsive stylesheets pick the right breakpoint.
+#[must_use]
 pub fn build_cascade_with_width(
     author_css: &str,
     node_style_css: &str,

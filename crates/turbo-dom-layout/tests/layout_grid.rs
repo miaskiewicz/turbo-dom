@@ -1,13 +1,13 @@
 //! CSS Grid layout (taffy-backed): `grid-template-columns`/`-rows`, `fr`/`px`/`%`
 //! tracks, `repeat()`, gaps, and auto-placement. Driven through boxgen ->
-//! layout_tree, mirroring the flex harness.
+//! `layout_tree`, mirroring the flex harness.
 
 mod common;
 
 use turbo_dom_layout::layout::block::layout_tree;
 use turbo_dom_layout::layout::boxgen::build_box_tree;
 use turbo_dom_layout::layout::fragment::Fragment;
-use turbo_dom_layout::node::Tag;
+use turbo_dom_layout::tag::Tag;
 use turbo_dom_layout::{ComputedStyle, Diagnostics, StyledElement, StyledNode};
 
 fn cs(pairs: &[(&str, &str)]) -> ComputedStyle {

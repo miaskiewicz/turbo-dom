@@ -1119,3 +1119,32 @@ No behaviour change: every cargo result equals 9cac873's except the tests below.
 The `turbo-dom-layout --no-default-features` baseline-red set (44 tests, turbo-html2pdf#28)
 is now a committed list, `scripts/baseline-red/turbo-dom-layout-no-default-features.tsv`,
 checked exactly by `scripts/check-baseline-red.py` in CI.
+
+## S5a — image layer, legacy Node input removal, fonts dedupe, lints (turbo-dom `consol/s5a-image`, turbo-html2pdf `consol/s5a-image`)
+
+S5a moves no test between repos. Every test id not listed keeps its result in every
+configuration (turbo-dom `--workspace`; turbo-dom-layout default / `--all-features` /
+`--no-default-features` / `--features svg`; turbo-dom-raster; turbo-html2pdf
+`--workspace`, core `--all-features` / `--no-default-features` / `--features svg`; per-test
+TSVs against the S4 tips). Categories: **retired@S5** — the test's only job was comparing
+the legacy owned-`Node` input with the Tree input, and that input is gone (the parity
+harness and the TreeView tests cover it); **adapted@S5** — same assertions, the input
+built as a turbo-dom `Tree` (turbo-dom-layout `test_support::literal` tree literals
+instead of `turbo_dom_layout::Node`; `tests/common` `style_nodes` / `style_flow` no
+longer also style through `style_tree` and assert equality) or the font fixtures read
+from turbo-dom-layout's `assets/fonts` through `test_support`; **new**.
+
+| crate | test (binary::name) | category |
+|---|---|---|
+| turbo-dom-layout | `tree_input_equivalence<tests/tree_input_equivalence.rs>::tree_input_matches_the_legacy_node_input` | retired@S5 (the S2 gate) |
+| turbo-dom-layout | `turbo_dom_layout<src/lib.rs>::markup::tests::classifier_marks_rejects_and_shells_stay_plain` | retired@S5 (`markup.rs`, the html5ever -> `Node` converter, is deleted) |
+| turbo-dom-layout | `tree_input_equivalence<tests/tree_input_equivalence.rs>::{shell_styling_records_sources_and_skips_non_content, markers_classify_by_local_name_and_never_strip, navigator_scopes_detached_and_shell_matching}` -> `tree_view<tests/tree_view.rs>::(same)` | adapted@S5 (moved, unchanged: they test the Tree input itself) |
+| turbo-dom-layout | `image`, `layout_block`, `layout_boxgen`, `layout_flex`, `layout_grid`, `layout_snapshot`, `layout_table`, `native_block_inline`, `native_font_run_advances`, `native_iframe_sizing`, `native_inline_borders`, `native_inline_coverage`, `native_inline_spacing_coverage`, `native_range_transform_stages`, `native_serif_policy`, `original_text_units`, `style`, `svg_viewport_snapshot`, `text_source_clusters` (Node literals / legacy `parse_html` -> tree literals; `snapshot_*live_tree*` called with `literal::tree(..).input()`) | adapted@S5 |
+| turbo-dom-layout | `style_matched<tests/style_matched.rs>::attribute_hints_are_explicit_candidates_overridden_by_author_rules` | adapted@S5 (`presentational_declarations(Some("img"), &attrs)`) |
+| turbo-dom-layout | `turbo_dom_layout<src/lib.rs>::html_layout::tests::{parse_html_keeps_body_and_skips_jinja, collect_style_css_empty_without_styles, t_elements_are_unknown_inline_elements_on_the_html_path}`, `::layout::boxgen` reuse-policy tests, `::layout_snapshot::text_budget_contracts::*`, `::layout_snapshot::text_ranges` tests | adapted@S5 (`parse_html_tree` / `collect_style_css_tree` / tree literals) |
+| turbo-dom-layout | `image_layer<tests/image_layer.rs>::{shared_png_decode_matches_the_old_pdf_decode, png_frame_keeps_16_bit_samples_and_gray, png_budget_rejects_frames_above_the_image_crate_limit, malformed_png_decodes_to_none}` (+ with `svg`: `svg_oracle::{shared_svg_rasterizer_matches_the_old_pdf_svg_path, pixel_size_separates_css_size_from_oversample}`) | new (the S5 image-layer differential gate, PDF side) |
+| turbo-dom-layout | `turbo_dom_layout<src/lib.rs>::image::format_tests::png_budgets_keep_each_consumers_limits`, `::text::registry::tests::system_registry_is_loaded_once_per_policy` | new |
+| turbo-dom-raster | `turbo_dom_raster<src/lib.rs>::image_paint::shared_layer_tests::{image_matrix_decodes_and_sizes_byte_identically, every_sample_value_converts_like_to_rgba8}` | new (the S5 image-layer differential gate, raster side: old `image::load_from_memory(..).to_rgba8()` / old 1x resvg == new RGBA, old probe-of-the-PNG-re-encode == new intrinsic, over `tools/parity` image-matrix + extra images and every u8/u16 sample) |
+| turbo-html2pdf-core | `turbo_html2pdf_core<src/lib.rs>::equivalence_tests::tree_input_matches_the_legacy_node_input` | retired@S5 (the S2 gate) |
+| turbo-html2pdf-core | `html_drive<tests/html_drive.rs>::parse_html_returns_the_legacy_node_copy` -> `::parse_html_returns_the_flow_with_directives_as_markers`, `::flow_debug_shows_the_node_copy` -> `::flow_debug_shows_the_markup` | adapted@S5 (renamed: `parse_html` returns the `Flow`; `Flow`'s Debug shows the serialized markup) |
+| turbo-html2pdf-core | `nodes`, `endnotes` (flows read back via `literal::from_tree`), `image`, `svg`, `svg_viewport_snapshot`, `layout_snapshot`, `layout_block`, `layout_boxgen`, `layout_flex`, `native_inline_coverage` (tree literals), `fixtures`, `pdf_a`, `emit`, `layout`, `style`, `conformance_flags` (`style_flow` without the legacy comparison), every `tests/common` font user, `turbo_html2pdf_core<src/lib.rs>::emit::tounicode::tests::reverse_mapping_uses_original_font_and_handles_stripped_cmap` (Go font via `test_support::font_bytes`) | adapted@S5 |

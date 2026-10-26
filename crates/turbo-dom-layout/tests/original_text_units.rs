@@ -2,7 +2,9 @@ use turbo_dom_layout::layout_snapshot::{
     snapshot_html_live_tree_with_native_text, NativeTextOptions, SnapshotInputs, SourceId,
     SourceIdentity,
 };
-use turbo_dom_layout::{Attr, Diagnostics, Element, FontFace, FontRegistry, ImageCtx, Node, Tag};
+use turbo_dom_layout::test_support::literal;
+use turbo_dom_layout::test_support::literal::{Element, Node};
+use turbo_dom_layout::{Attr, Diagnostics, FontFace, FontRegistry, ImageCtx, Tag};
 
 fn nodes(text: &str, family: &str) -> Vec<Node> {
     vec![Node::Element(Element {
@@ -28,12 +30,12 @@ fn snapshot(
         units,
     }];
     snapshot_html_live_tree_with_native_text(
-        &nodes,
+        &literal::tree(&nodes).input(),
         &[SourceIdentity {
             id: SourceId(7),
             path: vec![0, 0],
         }],
-        &turbo_dom_layout::build_cascade("", "", Default::default()),
+        &turbo_dom_layout::build_cascade("", "", turbo_dom_layout::style::TokenSet::default()),
         &NativeTextOptions {
             original_text: &originals,
             svg_viewports: &[],
@@ -93,12 +95,12 @@ fn public_original_units_retain_native_source_identity_and_validation() {
         layout_scale: 2.0,
     };
     assert!(snapshot_html_live_tree_with_native_text(
-        &nodes,
+        &literal::tree(&nodes).input(),
         &[SourceIdentity {
             id: SourceId(7),
             path: vec![0, 0]
         }],
-        &turbo_dom_layout::build_cascade("", "", Default::default()),
+        &turbo_dom_layout::build_cascade("", "", turbo_dom_layout::style::TokenSet::default()),
         &options,
         &SnapshotInputs {
             width: 800.0,

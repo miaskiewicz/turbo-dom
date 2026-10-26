@@ -45,8 +45,8 @@ pub(super) fn prepare(
         .collect();
     Ok(Plan {
         keys,
-        unsupported,
         layout_scale,
+        unsupported,
     })
 }
 
@@ -118,5 +118,5 @@ fn viewport_key(mut nodes: &[StyledNode], path: &[usize]) -> Option<usize> {
     let Tag::Html(name) = &element.tag else {
         return None;
     };
-    (name.rsplit(':').next() == Some("svg")).then_some(element as *const _ as usize)
+    (name.rsplit(':').next() == Some("svg")).then_some(std::ptr::from_ref(element) as usize)
 }

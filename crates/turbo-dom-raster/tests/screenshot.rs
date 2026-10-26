@@ -108,9 +108,9 @@ fn css_in_js_inline_style_blocks_apply() {
     let pm = tiny_skia::Pixmap::decode_png(&png).expect("decode");
     let near = |x: u32, y: u32, c: (u8, u8, u8)| {
         let p = pm.pixel(x, y).unwrap();
-        (p.red() as i32 - c.0 as i32).abs() < 30
-            && (p.green() as i32 - c.1 as i32).abs() < 30
-            && (p.blue() as i32 - c.2 as i32).abs() < 30
+        (i32::from(p.red()) - i32::from(c.0)).abs() < 30
+            && (i32::from(p.green()) - i32::from(c.1)).abs() < 30
+            && (i32::from(p.blue()) - i32::from(c.2)).abs() < 30
     };
     assert!(near(50, 50, (20, 120, 220)), "hashed-class bg (.css-a)");
     assert!(

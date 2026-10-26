@@ -167,6 +167,7 @@ pub fn layout_recorded(
     }
 }
 
+#[allow(clippy::trivially_copy_pass_by_ref)] // mirrors the other `&LayoutOptions` readers
 fn build_options(options: &LayoutOptions, record_sources: bool) -> boxgen::BuildOptions {
     boxgen::BuildOptions {
         atomic_internal_links: options.atomic_internal_links,

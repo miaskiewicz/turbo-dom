@@ -1,4 +1,4 @@
-//! Split at the S1 relocation: the cases that need TKind directives, templating or the
+//! Split at the S1 relocation: the cases that need `TKind` directives, templating or the
 //! PDF emitter stay in turbo-html2pdf-core's `tests/native_inline_coverage.rs`.
 
 use std::collections::HashMap;
@@ -11,10 +11,10 @@ use turbo_dom_layout::layout_snapshot::{
     snapshot_html_live_tree_with_native_text, GeometryKind, LayoutSnapshot, NativeTextOptions,
     SnapshotInputs, SourceId, SourceIdentity,
 };
+use turbo_dom_layout::test_support::literal;
+use turbo_dom_layout::test_support::literal::{parse_html, Node};
 use turbo_dom_layout::text::Align;
-use turbo_dom_layout::{
-    build_cascade, parse_html, Diagnostics, FontRegistry, ImageCtx, NoImages, Node, NodeId,
-};
+use turbo_dom_layout::{build_cascade, Diagnostics, FontRegistry, ImageCtx, NoImages, NodeId};
 
 fn source_pieces(fonts: &FontRegistry, contributes: bool, line_height: Option<f32>) -> Vec<Piece> {
     let face = fonts.select(&["sans-serif"], 400, false).unwrap().clone();
@@ -133,6 +133,7 @@ fn identities(
 fn snapshot(html: &str) -> (LayoutSnapshot, HashMap<String, SourceId>) {
     snapshot_nodes(parse_html(html).unwrap())
 }
+#[allow(clippy::needless_pass_by_value)] // test helper: owned arguments keep the call sites literal
 fn snapshot_nodes(nodes: Vec<Node>) -> (LayoutSnapshot, HashMap<String, SourceId>) {
     let mut ids = Vec::new();
     let mut names = HashMap::new();
@@ -145,10 +146,10 @@ fn snapshot_nodes(nodes: Vec<Node>) -> (LayoutSnapshot, HashMap<String, SourceId
     let cascade = build_cascade(
         "div{font-family:sans-serif;font-size:16px;line-height:24px;width:160px}",
         "",
-        Default::default(),
+        turbo_dom_layout::style::TokenSet::default(),
     );
     let snapshot = snapshot_html_live_tree_with_native_text(
-        &nodes,
+        &literal::tree(&nodes).input(),
         &ids,
         &cascade,
         &NativeTextOptions {
@@ -375,7 +376,7 @@ fn own_atomic_super_and_sub_alignment_shift_once_without_growing_a_dominant_stru
     };
     let (normal, names) = capture("baseline");
     let baseline = first_box(&normal, names["frame"]);
-    for (align, delta) in [("super", -5.828125), ("sub", 3.6953125)] {
+    for (align, delta) in [("super", -5.828_125), ("sub", 3.695_312_5)] {
         let (shifted, shifted_names) = capture(align);
         let actual = first_box(&shifted, shifted_names["frame"]);
         assert_eq!(actual, [baseline[0], baseline[1] + delta, 20.0, 5.0]);

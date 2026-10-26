@@ -12,9 +12,8 @@
 //! `border-collapse` border merging (see `table.rs`).
 
 use crate::error::Diagnostics;
-use crate::image::probe;
 use crate::layout_snapshot::UsedBoxMetrics;
-use crate::node::MarkerKind;
+use crate::tag::MarkerKind;
 use crate::text::{Align, FontRegistry};
 use std::collections::HashMap;
 
@@ -136,7 +135,7 @@ fn out_of_flow_origin(
         (Some(t), _) => cby + t,
         // A `bottom`-only box needs its own (laid) height to anchor; the caller's
         // `anchor_bottom` corrects it once known. Until then keep its static y.
-        (None, Some(_)) | (None, None) => static_pos.1,
+        (None, Some(_) | None) => static_pos.1,
     };
     (x + bs.margin.left, y + bs.margin.top)
 }
@@ -236,10 +235,10 @@ fn positioned_pct_height(bs: &BoxStyle, inset: f32, pos_cb_h: f32) -> Option<f32
 /// The CB height a positioned box resolves its `%` height against (`abs_cb_h`),
 /// or 0 for an in-flow box (whose `%` height stays deferred to measured content).
 fn positioned_cb_height(bs: &BoxStyle, ctx: &Ctx) -> f32 {
-    if bs.position != Position::Static {
-        ctx.abs_cb_h
-    } else {
+    if bs.position == Position::Static {
         0.0
+    } else {
+        ctx.abs_cb_h
     }
 }
 
@@ -290,8 +289,7 @@ fn positioned_child_block(
         BoxSizing::ContentBox => 0.0,
     };
     let height = resolved_live_height(bs.height, native_height_basis(bs, ctx), inset)
-        .map(|h| h + bs.padding.vertical())
-        .unwrap_or(0.0);
+        .map_or(0.0, |h| h + bs.padding.vertical());
     (
         frame.0 + border.left,
         frame.1 + border.top,
@@ -359,7 +357,7 @@ fn stretch_insets(
         .resolve(basis)
         .zip(insets.1.resolve(basis))
         .map(|(start, end)| (basis - start - end - frame).max(0.0));
-    available.map(LengthPct::Px).unwrap_or(value)
+    available.map_or(value, LengthPct::Px)
 }
 
 fn out_of_flow_width(bs: &BoxStyle, width: f32, ctx: &Ctx) -> f32 {
@@ -438,13 +436,13 @@ fn content_box_height(bs: &BoxStyle, content_h: f32, pos_cb_h: f32) -> f32 {
 // --------------------------------------------------------------------------
 
 fn text_run(item: &InlineItem, parent_fs: f32, cw: f32, fonts: &FontRegistry) -> Option<InlineRun> {
-    let (node_id, style, text) = match item {
-        InlineItem::Text {
-            node_id,
-            style,
-            text,
-        } => (node_id, style, text),
-        _ => return None,
+    let InlineItem::Text {
+        node_id,
+        style,
+        text,
+    } = item
+    else {
+        return None;
     };
     let bs = resolve_box_style(
         style,
@@ -469,7 +467,7 @@ fn text_run(item: &InlineItem, parent_fs: f32, cw: f32, fonts: &FontRegistry) ->
         valign: bs.vertical_align,
         nowrap: matches!(
             style.get("white-space").map(str::trim),
-            Some("nowrap") | Some("pre")
+            Some("nowrap" | "pre")
         ),
     })
 }
@@ -746,7 +744,7 @@ fn build_inline_pieces(
                 }
             }
             InlineItem::SourceBreak { node_id, style } => {
-                append_source_break(*node_id, style, bs.font_size, cw, ctx, &mut pieces)
+                append_source_break(*node_id, style, bs.font_size, cw, ctx, &mut pieces);
             }
             InlineItem::LineBreak => pieces.push(inline::Piece::Break),
             InlineItem::Atomic(b) => {
@@ -1643,9 +1641,7 @@ fn layout_box_sized_impl(
     // An `aspect-ratio` box with an auto height derives it from the content width
     // (`width / ratio`); content can still expand it. Used as the auto-height basis
     // so a square media tile is sized by ratio, not by a `min-height` fallback.
-    let auto_h = aspect_auto_height(bs, content_w)
-        .map(|a| a.max(content_h))
-        .unwrap_or(content_h);
+    let auto_h = aspect_auto_height(bs, content_w).map_or(content_h, |a| a.max(content_h));
     let fill_h = resolved_content_height(bs, auto_h, ctx);
     let bbh = fill_h + bs.padding.vertical() + bw.vertical();
     prepend_mask_image(
@@ -1759,7 +1755,9 @@ pub(crate) fn stamp_intrinsic_widths(lb: &LayoutBox, images: &ImageCtx) {
     stamp_replaced_intrinsic(lb, images);
     match &lb.kind {
         BoxKind::Block(k) | BoxKind::Flex(k) | BoxKind::Grid(k) | BoxKind::Table(k) => {
-            k.iter().for_each(|c| stamp_intrinsic_widths(c, images));
+            for c in k {
+                stamp_intrinsic_widths(c, images);
+            }
         }
         BoxKind::Lines(items) => items
             .iter()
@@ -1787,7 +1785,7 @@ fn stamp_replaced_intrinsic(lb: &LayoutBox, images: &ImageCtx) {
     let Some(src) = lb.image.as_ref().filter(|s| s.replaced) else {
         return;
     };
-    if let Some(i) = images.resolver.resolve(&src.name).and_then(probe) {
+    if let Some(i) = images.resolver.intrinsic(&src.name) {
         lb.intrinsic_w.set(Some(i.width as f32));
     }
 }
@@ -1902,10 +1900,10 @@ fn viewport_fragment(
 fn size_ctx<'a>(bs: &'a BoxStyle, cb_width: f32, ctx: &Ctx) -> SizeCtx<'a> {
     // A positioned image resolves `%` height against its nearest positioned ancestor
     // (`abs_cb_h`); an in-flow one against its parent's definite height (`cb_h`).
-    let cbh = if bs.position != Position::Static {
-        ctx.abs_cb_h
-    } else {
+    let cbh = if bs.position == Position::Static {
         ctx.cb_h
+    } else {
+        ctx.abs_cb_h
     };
     SizeCtx {
         style: bs,
@@ -1991,11 +1989,11 @@ fn live_image_fragment(
     outer
 }
 
-/// Probe an image source for its intrinsic size + alpha flag via the resolver,
-/// or `None` if it does not resolve or decode.
+/// Probe an image source for its intrinsic size + alpha flag via the resolver
+/// ([`ImageResolver::intrinsic`](crate::image::ImageResolver::intrinsic)), or `None`
+/// if it does not resolve or decode.
 fn probe_source(src: &ImageSource, ctx: &Ctx) -> Option<crate::image::Intrinsic> {
-    let bytes = ctx.images.resolver.resolve(&src.name)?;
-    probe(bytes)
+    ctx.images.resolver.intrinsic(&src.name)
 }
 
 /// Lay out a box tree (root from `boxgen::build_box_tree`) into a galley fragment
@@ -2153,7 +2151,7 @@ mod tests {
     use super::{first_inflow_child, zero_min_height};
     use crate::layout::boxgen::{build_box_tree, BoxKind};
     use crate::layout::value::LengthPct;
-    use crate::node::Tag;
+    use crate::tag::Tag;
     use crate::{ComputedStyle, StyledElement, StyledNode};
 
     fn flex_div() -> StyledNode {

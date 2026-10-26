@@ -3,6 +3,7 @@
 use super::scroll::{scroll_translation, SourceStyles};
 use crate::layout_snapshot::{GeometryKind, LayoutSnapshot, Rect, SourceId};
 use std::collections::{BTreeMap, BTreeSet};
+#[must_use]
 pub fn contains(rect: Rect, matrix: [f64; 6], translation: [f32; 2], point: [f64; 2]) -> bool {
     let [a, b, c, d, e, f] = matrix;
     let determinant = a * d - b * c;
@@ -20,6 +21,7 @@ pub fn contains(rect: Rect, matrix: [f64; 6], translation: [f32; 2], point: [f64
         && y >= f64::from(rect.y)
         && y < f64::from(rect.y + rect.height)
 }
+#[must_use]
 pub fn property<'a>(styles: &'a SourceStyles, mut id: SourceId, name: &str) -> Option<&'a str> {
     loop {
         let source = styles.get(&id)?;

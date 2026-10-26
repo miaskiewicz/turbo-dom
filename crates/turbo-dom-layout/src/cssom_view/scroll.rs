@@ -1,5 +1,6 @@
 //! Scrollable overflow from real native border fragments and resolved styles.
 //! Clipping and scroll state remain separate from immutable layout provenance.
+use crate::layout::value::Position;
 use crate::layout_snapshot::{GeometryKind, LayoutSnapshot, SourceId};
 use crate::ComputedStyle;
 use std::collections::BTreeMap;
@@ -49,6 +50,7 @@ fn raw_overflow(style: &ComputedStyle, axis: &str) -> &'static str {
         first
     }
 }
+#[must_use]
 pub fn overflow(style: &ComputedStyle, axis: &str) -> &'static str {
     let value = raw_overflow(style, axis);
     let other = raw_overflow(
@@ -59,14 +61,14 @@ pub fn overflow(style: &ComputedStyle, axis: &str) -> &'static str {
             "overflow-x"
         },
     );
-    if !matches!(other, "visible" | "clip") {
+    if matches!(other, "visible" | "clip") {
+        value
+    } else {
         match value {
             "visible" => "auto",
             "clip" => "hidden",
             _ => value,
         }
-    } else {
-        value
     }
 }
 fn permits_scroll(value: &str) -> bool {
@@ -203,9 +205,7 @@ pub fn scroll_metrics(
         // Flow content's ending padding/margin contributes to scroll containers,
         // while out-of-flow boxes and transforms contribute only their edges.
         if let Some(metrics) = fragment.used_box {
-            if metrics.position != crate::layout::value::Position::Absolute
-                && metrics.position != crate::layout::value::Position::Fixed
-            {
+            if metrics.position != Position::Absolute && metrics.position != Position::Fixed {
                 if !blocked_x && permits_scroll(x) {
                     right =
                         right.max(rect.x + rect.width + metrics.margin.right + used.padding.right);
@@ -298,9 +298,7 @@ pub fn scroll_translation(
         .ok_or("native scroll requires placed source provenance")?;
     let position = fragment
         .used_box
-        .map(|used| used.position)
-        .unwrap_or(crate::layout::value::Position::Static);
-    use crate::layout::value::Position;
+        .map_or(Position::Static, |used| used.position);
     if position == Position::Fixed {
         return Ok([0.0; 2]);
     }
@@ -357,6 +355,7 @@ pub fn scroll_translation(
 pub const VIEWPORT: SourceId = SourceId(u64::MAX);
 
 /// The root element has no flat-tree parent; its scrolling box is the viewport.
+#[must_use]
 pub fn is_root(styles: &SourceStyles, id: SourceId) -> bool {
     styles.get(&id).is_some_and(|entry| entry.parent.is_none())
 }
@@ -379,6 +378,7 @@ fn fixed_ancestor(styles: &SourceStyles, ancestors: &[SourceId], own: SourceId) 
 }
 
 /// A body whose overflow propagated to the viewport is not its own scroll container.
+#[must_use]
 pub fn propagated_body(styles: &SourceStyles, id: SourceId) -> bool {
     let Some(entry) = styles.get(&id) else {
         return false;
@@ -395,6 +395,7 @@ pub fn propagated_body(styles: &SourceStyles, id: SourceId) -> bool {
 }
 
 /// Whether an element establishes an element scrolling box (not the viewport).
+#[must_use]
 pub fn element_scroller(styles: &SourceStyles, id: SourceId) -> bool {
     let Some(entry) = styles.get(&id) else {
         return false;
@@ -432,7 +433,6 @@ pub fn viewport_metrics(
             continue;
         }
         let own = fragment.source_id.unwrap_or(root);
-        use crate::layout::value::Position;
         let position = fragment.used_box.map(|used| used.position);
         if position == Some(Position::Fixed)
             || fixed_ancestor(styles, &fragment.source_ancestors, own)
@@ -482,7 +482,7 @@ pub fn viewport_metrics(
     })
 }
 
-/// Chromium ScrollAlignment behaviors for one axis: fully visible, hidden and
+/// Chromium `ScrollAlignment` behaviors for one axis: fully visible, hidden and
 /// partially visible exposure.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Align {
@@ -511,6 +511,7 @@ fn layout_unit(value: f64) -> f64 {
 
 /// Scroll position exposing `[start, start + length)` in one scroller axis whose
 /// visible content range is `[current, current + visible)`.
+#[must_use]
 pub fn expose(start: f64, length: f64, current: f64, visible: f64, behaviors: [Align; 3]) -> f64 {
     let (start, length, current, visible) = (
         layout_unit(start),

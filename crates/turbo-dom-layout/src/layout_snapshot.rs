@@ -28,7 +28,10 @@ mod text_ranges;
 pub(crate) mod text_units;
 
 use crate::layout::{block, boxgen};
-use crate::{Cascade, Diagnostics, FontRegistry, Fragment, ImageCtx, Node, NodeId, StyledNode};
+use crate::{
+    Cascade, Diagnostics, FontRegistry, Fragment, ImageCtx, NodeId, StyleInput, StyleOptions,
+    StyledNode,
+};
 use std::collections::BTreeMap;
 
 pub use geometry::{Point, Rect};
@@ -58,7 +61,7 @@ pub enum SourceKind {
 }
 
 /// Original native DOM code units for one caller-owned text identity. The ordinary
-/// Node/StyledNode string is its scalar projection; these units retain lone values.
+/// `StyledNode` string is its scalar projection; these units retain lone values.
 #[derive(Debug, Clone, Copy)]
 pub struct SourceTextUnits<'a> {
     pub source_id: SourceId,
@@ -154,7 +157,7 @@ pub struct SnapshotSource {
     /// justify manufacturing a zero CSSOM rectangle.
     pub excluded_from_layout: bool,
     /// Actual associated fragments. A split native inline also references the
-    /// lifted block's existing border fragment; its source_id remains the block.
+    /// lifted block's existing border fragment; its `source_id` remains the block.
     pub fragment_indices: Vec<usize>,
     pub descendant_fragment_indices: Vec<usize>,
 }
@@ -178,21 +181,24 @@ pub struct LayoutSnapshot {
 
 impl LayoutSnapshot {
     /// Global native affine coefficients retain double precision. Native box and
-    /// text-selection quads additionally preserve each flat FloatQuad boundary;
+    /// text-selection quads additionally preserve each flat `FloatQuad` boundary;
     /// ordinary inline quads use this accumulated matrix. The legacy fragment
     /// matrix remains available with its original float type.
+    #[must_use]
     pub fn native_world_transform(&self, fragment_index: usize) -> Option<[f64; 6]> {
         self.native_transforms.get(fragment_index).copied()
     }
 
     /// Actual HTML paint/hit scopes retain pixel-snapped origins separately from
     /// layout geometry. Generic snapshots use the layout transform unchanged.
+    #[must_use]
     pub fn native_hit_transform(&self, fragment_index: usize) -> Option<[f64; 6]> {
         self.native_hit_transforms.get(fragment_index).copied()
     }
 
     /// SVG shape/nested-viewport identities stay present, but this viewport-only
     /// producer cannot supply their geometry. Absence is never a zero rectangle.
+    #[must_use]
     pub fn unsupported_svg_source_geometry(&self, source: SourceId) -> bool {
         self.unsupported_svg_sources.contains(&source)
     }
@@ -228,43 +234,53 @@ impl LayoutSnapshot {
     }
 
     /// Actual glyph advance/font boxes, preserving source ranges and transforms.
+    #[must_use]
     pub fn text_cluster_boxes(&self) -> Vec<SourceClusterBox> {
         text_geometry::cluster_boxes(self)
     }
     /// Capture only one source's real cluster boxes without materializing the
     /// rest of the document's glyph geometry. Unknown sources produce no cells.
+    #[must_use]
     pub fn text_cluster_boxes_for_source(&self, source: SourceId) -> Vec<SourceClusterBox> {
         text_geometry::source_cluster_boxes(self, source)
     }
     /// Actual per-glyph source metadata; empty for the original box-only API.
+    #[must_use]
     pub fn text_runs(&self) -> &[SnapshotTextRun] {
         &self.text_runs
     }
     /// Mapped native text before whitespace collapse; empty for box-only snapshots.
+    #[must_use]
     pub fn text_sources(&self) -> &[SnapshotTextSource] {
         &self.text_sources
     }
+    #[must_use]
     pub fn galley(&self) -> &Fragment {
         &self.galley
     }
+    #[must_use]
     pub fn fragments(&self) -> &[SnapshotFragment] {
         &self.fragments
     }
+    #[must_use]
     pub fn sources(&self) -> &[SnapshotSource] {
         &self.sources
     }
+    #[must_use]
     pub fn viewport(&self) -> (f32, f32) {
         self.viewport
     }
+    #[must_use]
     pub fn source(&self, id: SourceId) -> Option<&SnapshotSource> {
         self.source_index.get(&id).map(|&i| &self.sources[i])
     }
 }
 
-/// Style the actual borrowed tree, preserving its forest and child paths. The
-/// cascade must already include the caller's live stylesheet and viewport state.
+/// Style the actual borrowed tree (a turbo-dom [`StyleInput`]), preserving its forest
+/// and child paths (the [`SourceIdentity`] paths index the styled forest). The cascade
+/// must already include the caller's live stylesheet and viewport state.
 pub fn snapshot_live_tree(
-    nodes: &[Node],
+    input: &StyleInput<'_>,
     identities: &[SourceIdentity],
     cascade: &Cascade,
     inputs: &SnapshotInputs,
@@ -272,7 +288,7 @@ pub fn snapshot_live_tree(
 ) -> Result<LayoutSnapshot, SnapshotError> {
     validate_viewport(inputs)?;
     crate::style::set_layout_viewport(inputs.width, inputs.height);
-    let styled = crate::style_tree(nodes, cascade);
+    let styled = crate::style_input(input, cascade, &StyleOptions::default());
     snapshot_styled_tree(&styled, identities, inputs, diags)
 }
 
@@ -327,7 +343,7 @@ pub fn snapshot_styled_tree_with_text(
 
 /// Style a borrowed live forest and capture actual native glyph source metadata.
 pub fn snapshot_live_tree_with_text(
-    nodes: &[Node],
+    input: &StyleInput<'_>,
     identities: &[SourceIdentity],
     cascade: &Cascade,
     inputs: &SnapshotInputs,
@@ -335,7 +351,7 @@ pub fn snapshot_live_tree_with_text(
 ) -> Result<LayoutSnapshot, TextSnapshotError> {
     validate_viewport(inputs)?;
     crate::style::set_layout_viewport(inputs.width, inputs.height);
-    let styled = crate::style_tree(nodes, cascade);
+    let styled = crate::style_input(input, cascade, &StyleOptions::default());
     snapshot_styled_tree_with_text(&styled, identities, inputs, diags)
 }
 
@@ -355,7 +371,7 @@ pub fn snapshot_html_styled_tree_with_text(
 
 /// Style a live forest using the continuous HTML text geometry policy.
 pub fn snapshot_html_live_tree_with_text(
-    nodes: &[Node],
+    input: &StyleInput<'_>,
     identities: &[SourceIdentity],
     cascade: &Cascade,
     inputs: &SnapshotInputs,
@@ -363,7 +379,7 @@ pub fn snapshot_html_live_tree_with_text(
 ) -> Result<LayoutSnapshot, TextSnapshotError> {
     validate_native_viewport(inputs)?;
     crate::style::set_layout_viewport(inputs.width, inputs.height);
-    let styled = crate::style_tree(nodes, cascade);
+    let styled = crate::style_input(input, cascade, &StyleOptions::default());
     snapshot_html_styled_tree_with_text(&styled, identities, inputs, diags)
 }
 
@@ -422,7 +438,7 @@ pub fn snapshot_html_styled_tree_with_native_text(
 }
 
 pub fn snapshot_html_live_tree_with_native_text(
-    nodes: &[Node],
+    input: &StyleInput<'_>,
     identities: &[SourceIdentity],
     cascade: &Cascade,
     options: &NativeTextOptions<'_>,
@@ -431,7 +447,7 @@ pub fn snapshot_html_live_tree_with_native_text(
 ) -> Result<LayoutSnapshot, SvgSnapshotError> {
     validate_native_viewport(inputs)?;
     crate::style::set_layout_viewport(inputs.width, inputs.height);
-    let styled = crate::style_tree(nodes, cascade);
+    let styled = crate::style_input(input, cascade, &StyleOptions::default());
     snapshot_html_styled_tree_with_native_text(&styled, identities, options, inputs, diags)
 }
 
@@ -444,7 +460,7 @@ fn checked_svg_capture(
 
 /// Style the complete caller-owned forest without rewriting/removing SVG nodes.
 pub fn snapshot_html_live_tree_with_svg_viewports(
-    nodes: &[Node],
+    input: &StyleInput<'_>,
     identities: &[SourceIdentity],
     viewports: &[SourceId],
     layout_scale: f32,
@@ -454,7 +470,7 @@ pub fn snapshot_html_live_tree_with_svg_viewports(
 ) -> Result<LayoutSnapshot, SvgSnapshotError> {
     validate_native_viewport(inputs)?;
     crate::style::set_layout_viewport(inputs.width, inputs.height);
-    let styled = crate::style_tree(nodes, cascade);
+    let styled = crate::style_input(input, cascade, &StyleOptions::default());
     snapshot_html_styled_tree_with_svg_viewports(
         &styled,
         identities,
@@ -585,7 +601,7 @@ fn apply_native_plan(
             sources.svg_layout_scale = plan.layout_scale;
             (Some(plan.layout_scale), plan.unsupported)
         }
-        None => (None, Default::default()),
+        None => (None, std::collections::BTreeSet::default()),
     }
 }
 
@@ -613,7 +629,8 @@ mod text_budget_contracts {
     fn native_layout_identity_exhaustion_cannot_publish_partial_text_capture() {
         use super::*;
 
-        use crate::{build_cascade, Diagnostics, FontRegistry, ImageCtx, NoImages, Node};
+        use crate::test_support::literal::{tree, Node};
+        use crate::{build_cascade, Diagnostics, FontRegistry, ImageCtx, NoImages};
         let fonts = FontRegistry::new();
         let images = ImageCtx {
             resolver: &NoImages,
@@ -621,9 +638,9 @@ mod text_budget_contracts {
         };
         let nodes = [Node::Text("ab".into())];
         let snapshot = snapshot_html_live_tree_with_text(
-            &nodes,
+            &tree(&nodes).input(),
             &[],
-            &build_cascade("", "", Default::default()),
+            &build_cascade("", "", crate::style::TokenSet::default()),
             &SnapshotInputs {
                 width: 80.0,
                 height: 40.0,

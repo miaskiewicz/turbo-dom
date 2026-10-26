@@ -1,6 +1,8 @@
-//! Raster image ingestion (§7.4, Phase 9b): the caller-supplied [`ImageResolver`]
-//! and the decode that turns its PNG/JPEG bytes into the pixel data the PDF
-//! emitter embeds as image XObjects.
+//! The shared image layer (§7.4, Phase 9b; consolidation S5): the caller-supplied
+//! [`ImageResolver`], the one header **size probe** every format goes through
+//! ([`probe`]), the one **PNG decode** both painters share ([`PngFrame`]: native
+//! samples for the PDF emitter, straight RGBA for turbo-dom-raster), and, behind
+//! `svg-rasterize`, the one **SVG rasterizer** ([`crate::svg::rasterize`]).
 //!
 //! **No I/O (§0.2).** This module never touches the network or the filesystem.
 //! Every image is named in the template (`<img src>` / `background-image`) and
@@ -9,18 +11,26 @@
 //!
 //! **Layout vs. emit.** Layout needs only the *intrinsic* pixel size to size the
 //! box and apply the overflow caps; the emitter needs the full pixel payload. The
-//! same resolver answers both: [`probe`] reads the header for `(w, h)` cheaply,
-//! [`decode`] produces the embeddable [`RasterImage`]. PNG is decoded to 8-bit
-//! RGB(A) (alpha split off as an SMask); JPEG is passed through verbatim as
-//! `DCTDecode` (§7.4: "JPEG passed through where possible").
+//! same resolver answers both: [`ImageResolver::intrinsic`] (by default [`probe`] of
+//! the resolved bytes) reads the header for `(w, h)` cheaply, [`decode`] produces
+//! the embeddable [`RasterImage`]. PNG is decoded to 8-bit RGB(A) (alpha split off
+//! as an `SMask`); JPEG is passed through verbatim as `DCTDecode` (§7.4: "JPEG passed
+//! through where possible"). turbo-dom-raster decodes its images itself (the
+//! `image` crate for JPEG/GIF/WebP, [`PngFrame::to_rgba8`] for PNG, the shared SVG
+//! rasterizer) and answers [`ImageResolver::intrinsic`] from that decode, so it no
+//! longer re-encodes every image to PNG just to be sized.
 //!
 //! SVG support rides behind the off-by-default `svg` feature (Phase 15b). When
 //! enabled, the gated arms in [`probe`]/[`decode`] (and the [`is_svg`] sniff)
 //! rasterize `image/svg+xml` via `resvg`/`usvg` into a straight-alpha RGBA buffer
-//! and slot a [`RasterImage`] in alongside the raster ones — the XObject path
+//! and slot a [`RasterImage`] in alongside the raster ones — the `XObject` path
 //! already embeds RGBA via the alpha `SMask`, so no new emit code is needed (see
-//! [`crate::svg`]). With the feature off, `resvg` is not a dependency and these
-//! arms are not compiled, so the default decode path is byte-for-byte unchanged.
+//! [`crate::svg`]). With the feature off these arms are not compiled, so the
+//! default decode path is byte-for-byte unchanged. (`svg-rasterize` alone compiles
+//! the rasterizer without routing [`probe`]/[`decode`] through it — what
+//! turbo-dom-raster uses.)
+//!
+//! [`is_svg`]: crate::svg::is_svg
 
 use std::io::Cursor;
 
@@ -35,6 +45,14 @@ pub trait ImageResolver {
     /// `None` result lets the image lay out at zero intrinsic size and emit
     /// nothing, so an unresolved reference degrades gracefully.
     fn resolve(&self, name: &str) -> Option<&[u8]>;
+
+    /// The intrinsic size + alpha flag layout sizes `name` with, or `None` if it
+    /// does not resolve or decode. The default is [`probe`] of the
+    /// [`resolve`](Self::resolve)d bytes; a host that has already decoded its images
+    /// (turbo-dom-raster) answers from that decode instead.
+    fn intrinsic(&self, name: &str) -> Option<Intrinsic> {
+        self.resolve(name).and_then(probe)
+    }
 }
 
 /// The default resolver: every lookup misses, so no images are embedded. Lets
@@ -67,12 +85,13 @@ fn is_gif(bytes: &[u8]) -> bool {
     bytes.starts_with(b"GIF87a") || bytes.starts_with(b"GIF89a")
 }
 
-/// RIFF/WebP magic: `RIFF` … `WEBP` with the FourCC at bytes 8..12.
+/// RIFF/WebP magic: `RIFF` … `WEBP` with the `FourCC` at bytes 8..12.
 fn is_webp(bytes: &[u8]) -> bool {
     bytes.len() >= 12 && bytes.starts_with(b"RIFF") && &bytes[8..12] == b"WEBP"
 }
 
 /// Sniff the encoded format from the leading magic bytes, or `None` if neither.
+#[must_use]
 pub fn sniff(bytes: &[u8]) -> Option<Format> {
     if bytes.starts_with(PNG_MAGIC) {
         return Some(Format::Png);
@@ -101,6 +120,7 @@ pub struct Intrinsic {
 /// Read just the intrinsic size + alpha flag from encoded bytes, without
 /// decoding pixels. Used at layout time to size the image box and apply the
 /// overflow caps.
+#[must_use]
 pub fn probe(bytes: &[u8]) -> Option<Intrinsic> {
     // SVG has no fixed magic, so it is sniffed structurally (gated): an SVG box is
     // sized from its rasterized intrinsic dimensions before the raster sniff runs.
@@ -146,7 +166,7 @@ fn probe_webp(bytes: &[u8]) -> Option<Intrinsic> {
     })
 }
 
-/// Dispatch to the per-chunk size reader for a WebP FourCC; unknown chunks yield
+/// Dispatch to the per-chunk size reader for a WebP `FourCC`; unknown chunks yield
 /// `None`.
 fn webp_size(fourcc: &[u8], bytes: &[u8]) -> Option<(u32, u32)> {
     match fourcc {
@@ -231,6 +251,7 @@ pub enum ColorSpace {
 
 impl ColorSpace {
     /// Samples per pixel in this color space.
+    #[must_use]
     pub fn components(self) -> usize {
         match self {
             ColorSpace::Gray => 1,
@@ -251,7 +272,7 @@ pub enum Payload {
 }
 
 /// A decoded image ready to embed: its pixel size, the color payload, and the
-/// optional 8-bit alpha plane that becomes the XObject's `SMask` (§7.4 AC-7.4).
+/// optional 8-bit alpha plane that becomes the `XObject`'s `SMask` (§7.4 AC-7.4).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RasterImage {
     pub width: u32,
@@ -263,6 +284,7 @@ pub struct RasterImage {
 
 impl RasterImage {
     /// The image's color space (RGB or gray), regardless of payload encoding.
+    #[must_use]
     pub fn color(&self) -> ColorSpace {
         match &self.payload {
             Payload::Raw { color, .. } | Payload::Jpeg { color, .. } => *color,
@@ -272,6 +294,7 @@ impl RasterImage {
 
 /// Decode encoded bytes into an embeddable [`RasterImage`], or `None` if the
 /// format is unrecognized or the data is malformed.
+#[must_use]
 pub fn decode(bytes: &[u8]) -> Option<RasterImage> {
     // SVG (gated): rasterize to RGBA before the raster sniff. The resulting
     // [`RasterImage`] feeds the same XObject/SMask path as a decoded RGBA PNG.
@@ -289,52 +312,242 @@ pub fn decode(bytes: &[u8]) -> Option<RasterImage> {
 }
 
 fn decode_png(bytes: &[u8]) -> Option<RasterImage> {
-    let mut decoder = png::Decoder::new(Cursor::new(bytes));
-    decoder.set_transformations(png::Transformations::normalize_to_color8());
-    let mut reader = decoder.read_info().ok()?;
-    let mut buf = vec![0u8; reader.output_buffer_size()?];
-    let out = reader.next_frame(&mut buf).ok()?;
-    buf.truncate(out.buffer_size());
-    Some(png_to_image(out.width, out.height, out.color_type, &buf))
+    Some(PngFrame::decode(bytes, PngBudget::PngDefault)?.to_raster_image())
 }
 
-/// Split a normalized 8-bit PNG frame into an RGB/gray payload plus an optional
-/// alpha plane. `normalize_to_color8` already expanded palette/low-bit/16-bit
-/// inputs, so only the four 8-bit `ColorType`s reach here.
-fn png_to_image(width: u32, height: u32, color: png::ColorType, buf: &[u8]) -> RasterImage {
-    let (color_space, channels, alpha_idx) = png_layout(color);
-    let pixels = (width * height) as usize;
-    let comps = color_space.components();
-    let mut samples = Vec::with_capacity(pixels * comps);
-    let mut alpha = alpha_idx.map(|_| Vec::with_capacity(pixels));
-    for px in buf.chunks_exact(channels) {
-        samples.extend_from_slice(&px[..comps]);
-        if let (Some(a), Some(i)) = (alpha.as_mut(), alpha_idx) {
-            a.push(px[i]);
+/// The channel layout of a decoded [`PngFrame`]: palette, low-bit and `tRNS` inputs
+/// are already expanded, so only these four remain.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PngColor {
+    Gray,
+    GrayAlpha,
+    Rgb,
+    Rgba,
+}
+
+impl PngColor {
+    /// Samples per pixel.
+    #[must_use]
+    pub fn channels(self) -> usize {
+        match self {
+            PngColor::Gray => 1,
+            PngColor::GrayAlpha => 2,
+            PngColor::Rgb => 3,
+            PngColor::Rgba => 4,
         }
     }
-    RasterImage {
-        width,
-        height,
-        payload: Payload::Raw {
-            samples,
-            color: color_space,
-        },
-        alpha,
+
+    /// The expanded png-crate colour type. `EXPAND` turns `Indexed` into RGB(A), so
+    /// any other value is RGBA.
+    fn of(color: png::ColorType) -> PngColor {
+        match color {
+            png::ColorType::Grayscale => PngColor::Gray,
+            png::ColorType::GrayscaleAlpha => PngColor::GrayAlpha,
+            png::ColorType::Rgb => PngColor::Rgb,
+            _ => PngColor::Rgba,
+        }
+    }
+
+    /// The PDF colour space + alpha sample index of this layout.
+    fn pdf_layout(self) -> (ColorSpace, Option<usize>) {
+        match self {
+            PngColor::Gray => (ColorSpace::Gray, None),
+            PngColor::GrayAlpha => (ColorSpace::Gray, Some(1)),
+            PngColor::Rgb => (ColorSpace::Rgb, None),
+            PngColor::Rgba => (ColorSpace::Rgb, Some(3)),
+        }
     }
 }
 
-/// The `(color space, channels per pixel, alpha-channel index)` for one
-/// normalized PNG color type.
-fn png_layout(color: png::ColorType) -> (ColorSpace, usize, Option<usize>) {
-    match color {
-        png::ColorType::Grayscale => (ColorSpace::Gray, 1, None),
-        png::ColorType::GrayscaleAlpha => (ColorSpace::Gray, 2, Some(1)),
-        png::ColorType::Rgb => (ColorSpace::Rgb, 3, None),
-        // `normalize_to_color8` expands Indexed to Rgb/Rgba, so any remaining
-        // case is RGBA.
-        _ => (ColorSpace::Rgb, 4, Some(3)),
+/// The allocation budget of one [`PngFrame::decode`] — each consumer keeps the
+/// limits its decoder had before the decode was shared.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PngBudget {
+    /// The png crate's own default limits (64 MiB of decoder buffers): the PDF path.
+    PngDefault,
+    /// The `image` crate's default `Limits` (512 MiB `max_alloc`, also checked against
+    /// the decoded frame size) — what `image::load_from_memory` applied to the
+    /// screenshot painter's PNGs.
+    ImageCrate,
+}
+
+/// `image::Limits::default().max_alloc`.
+const IMAGE_CRATE_MAX_ALLOC: usize = 512 * 1024 * 1024;
+
+impl PngBudget {
+    fn limits(self) -> png::Limits {
+        match self {
+            PngBudget::PngDefault => png::Limits::default(),
+            PngBudget::ImageCrate => png::Limits {
+                bytes: IMAGE_CRATE_MAX_ALLOC,
+            },
+        }
     }
+
+    /// Whether a decoded frame of `bytes` fits (the `image` crate reserves the frame
+    /// buffer against its budget; the png crate's own default does not).
+    fn admits_frame(self, bytes: usize) -> bool {
+        self == PngBudget::PngDefault || bytes <= IMAGE_CRATE_MAX_ALLOC
+    }
+}
+
+/// ONE PNG decode shared by the PDF emitter and turbo-dom-raster: palette, low-bit
+/// and `tRNS` are expanded (`png::Transformations::EXPAND`) and 16-bit samples are
+/// KEPT, so each consumer derives its own 8-bit form from the same decode —
+/// [`to_raster_image`](Self::to_raster_image) (native samples, gray stays gray,
+/// 16-bit truncated to the high byte exactly as `STRIP_16` did) and
+/// [`to_rgba8`](Self::to_rgba8) (straight RGBA, reproducing `image::to_rgba8`).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PngFrame {
+    pub width: u32,
+    pub height: u32,
+    pub color: PngColor,
+    /// Whether each sample is 16-bit (big-endian, two bytes) rather than 8-bit.
+    pub sixteen_bit: bool,
+    /// Row-major samples, no padding.
+    pub samples: Vec<u8>,
+}
+
+impl PngFrame {
+    /// Decode the first frame of a PNG under `budget`, or `None` if it is malformed
+    /// or over budget.
+    #[must_use]
+    pub fn decode(bytes: &[u8], budget: PngBudget) -> Option<PngFrame> {
+        let mut decoder = png::Decoder::new_with_limits(Cursor::new(bytes), budget.limits());
+        decoder.set_transformations(png::Transformations::EXPAND);
+        let mut reader = decoder.read_info().ok()?;
+        let size = reader.output_buffer_size()?;
+        if !budget.admits_frame(size) {
+            return None;
+        }
+        let mut samples = vec![0u8; size];
+        let out = reader.next_frame(&mut samples).ok()?;
+        samples.truncate(out.buffer_size());
+        Some(PngFrame {
+            width: out.width,
+            height: out.height,
+            color: PngColor::of(out.color_type),
+            sixteen_bit: out.bit_depth == png::BitDepth::Sixteen,
+            samples,
+        })
+    }
+
+    /// The 8-bit samples: 16-bit ones keep their high byte (`STRIP_16`).
+    fn samples8(&self) -> std::borrow::Cow<'_, [u8]> {
+        if self.sixteen_bit {
+            self.samples.iter().step_by(2).copied().collect()
+        } else {
+            std::borrow::Cow::Borrowed(&self.samples)
+        }
+    }
+
+    /// The PDF form: an RGB/gray payload (gray stays `DeviceGray`) plus the alpha
+    /// plane split off for the `SMask`.
+    #[must_use]
+    pub fn to_raster_image(&self) -> RasterImage {
+        let (color, alpha_idx) = self.color.pdf_layout();
+        let samples8 = self.samples8();
+        let pixels = (self.width * self.height) as usize;
+        let comps = color.components();
+        let mut samples = Vec::with_capacity(pixels * comps);
+        let mut alpha = alpha_idx.map(|_| Vec::with_capacity(pixels));
+        for px in samples8.chunks_exact(self.color.channels()) {
+            samples.extend_from_slice(&px[..comps]);
+            if let (Some(a), Some(i)) = (alpha.as_mut(), alpha_idx) {
+                a.push(px[i]);
+            }
+        }
+        RasterImage {
+            width: self.width,
+            height: self.height,
+            payload: Payload::Raw { samples, color },
+            alpha,
+        }
+    }
+
+    /// Straight RGBA8, byte-for-byte what `image::load_from_memory(png).to_rgba8()`
+    /// (image 0.25) produces from the same file: RGB(A) channels convert numerically
+    /// (8-bit as is, 16-bit `(c + 128) / 257`, missing alpha opaque), gray(+alpha)
+    /// through image's f32 path (`round(c / MAX * 255)`, gray replicated).
+    #[must_use]
+    pub fn to_rgba8(&self) -> Vec<u8> {
+        let mut rgba = Vec::with_capacity((self.width * self.height) as usize * 4);
+        let width = if self.sixteen_bit { 2 } else { 1 };
+        let channels = self.color.channels();
+        for px in self.samples.chunks_exact(channels * width) {
+            let sample = |i: usize| -> u16 {
+                if self.sixteen_bit {
+                    u16::from_be_bytes([px[2 * i], px[2 * i + 1]])
+                } else {
+                    u16::from(px[i])
+                }
+            };
+            let pixel = match self.color {
+                PngColor::Gray => gray_rgba(self.sixteen_bit, sample(0), None),
+                PngColor::GrayAlpha => gray_rgba(self.sixteen_bit, sample(0), Some(sample(1))),
+                PngColor::Rgb => rgb_rgba(
+                    self.sixteen_bit,
+                    [sample(0), sample(1), sample(2), u16::MAX],
+                ),
+                PngColor::Rgba => rgb_rgba(
+                    self.sixteen_bit,
+                    [sample(0), sample(1), sample(2), sample(3)],
+                ),
+            };
+            rgba.extend_from_slice(&pixel);
+        }
+        rgba
+    }
+}
+
+/// image's numeric channel cast to 8-bit: identity for 8-bit, `(c + 128) / 257`
+/// for 16-bit. An absent alpha is passed as `u16::MAX` and maps to 255.
+fn rgb_rgba(sixteen_bit: bool, px: [u16; 4]) -> [u8; 4] {
+    let cast = |c: u16| -> u8 {
+        if sixteen_bit {
+            ((u32::from(c) + 128) / 257) as u8
+        } else {
+            c.min(255) as u8
+        }
+    };
+    px.map(cast)
+}
+
+/// image's gray -> RGBA cast (through f32: `c * (1 / MAX)`, then `round(v * 255)`),
+/// the luma replicated into R, G and B; no alpha is opaque.
+fn gray_rgba(sixteen_bit: bool, luma: u16, alpha: Option<u16>) -> [u8; 4] {
+    let expand = |c: u16| -> f32 {
+        if sixteen_bit {
+            f32::from(c) * (1.0 / f32::from(u16::MAX))
+        } else {
+            f32::from(c) * (1.0 / f32::from(u8::MAX))
+        }
+    };
+    let clamp = |v: f32| -> u8 { (v * f32::from(u8::MAX)).round() as u8 };
+    let l = clamp(expand(luma));
+    let a = alpha.map_or(u8::MAX, |a| clamp(expand(a)));
+    [l, l, l, a]
+}
+
+/// A straight-alpha RGBA8 image (row-major, 4 bytes per pixel) — the form
+/// turbo-dom-raster paints and the shared SVG rasterizer produces.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Rgba8Image {
+    pub width: u32,
+    pub height: u32,
+    pub rgba: Vec<u8>,
+}
+
+/// Decode a PNG to straight RGBA under the `image` crate's limits (what
+/// turbo-dom-raster's `image::load_from_memory(..).to_rgba8()` did), or `None`.
+#[must_use]
+pub fn decode_png_rgba(bytes: &[u8]) -> Option<Rgba8Image> {
+    let frame = PngFrame::decode(bytes, PngBudget::ImageCrate)?;
+    Some(Rgba8Image {
+        width: frame.width,
+        height: frame.height,
+        rgba: frame.to_rgba8(),
+    })
 }
 
 fn decode_jpeg(bytes: &[u8]) -> Option<RasterImage> {
@@ -367,6 +580,20 @@ fn jpeg_color(format: jpeg_decoder::PixelFormat) -> Option<ColorSpace> {
 #[cfg(test)]
 mod format_tests {
     use super::*;
+
+    #[test]
+    fn png_budgets_keep_each_consumers_limits() {
+        // The image-crate budget reserves the decoded frame against 512 MiB; the png
+        // crate's default budget never checked the frame size.
+        assert!(PngBudget::ImageCrate.admits_frame(IMAGE_CRATE_MAX_ALLOC));
+        assert!(!PngBudget::ImageCrate.admits_frame(IMAGE_CRATE_MAX_ALLOC + 1));
+        assert!(PngBudget::PngDefault.admits_frame(usize::MAX));
+        assert_eq!(PngBudget::ImageCrate.limits().bytes, IMAGE_CRATE_MAX_ALLOC);
+        assert_eq!(
+            PngBudget::PngDefault.limits().bytes,
+            png::Limits::default().bytes
+        );
+    }
 
     #[test]
     fn sniff_recognizes_gif_and_webp() {

@@ -11,10 +11,11 @@ use turbo_dom_layout::layout_snapshot::{
     snapshot_html_live_tree_with_native_text, snapshot_live_tree_with_text, GeometryKind,
     LayoutSnapshot, NativeTextOptions, Rect, SnapshotInputs, SourceId, SourceIdentity,
 };
+use turbo_dom_layout::test_support::literal;
+use turbo_dom_layout::test_support::literal::{parse_html, Node};
 use turbo_dom_layout::text::Align;
 use turbo_dom_layout::{
-    build_cascade, parse_html, Diagnostics, FontRegistry, Fragment, FragmentContent, ImageCtx,
-    NoImages, Node, NodeId,
+    build_cascade, Diagnostics, FontRegistry, Fragment, FragmentContent, ImageCtx, NoImages, NodeId,
 };
 
 #[derive(Default)]
@@ -89,7 +90,7 @@ fn capture_html(html: &str, native: bool) -> (LayoutSnapshot, Ids) {
     let nodes = parse_html(html).unwrap();
     let mut ids = Ids::default();
     identities(&nodes, &mut Vec::new(), None, &mut ids);
-    let cascade = build_cascade("", "", Default::default());
+    let cascade = build_cascade("", "", turbo_dom_layout::style::TokenSet::default());
     let images = ImageCtx {
         resolver: &NoImages,
         body_height: None,
@@ -103,7 +104,7 @@ fn capture_html(html: &str, native: bool) -> (LayoutSnapshot, Ids) {
     let mut diagnostics = Diagnostics::default();
     let snapshot = if native {
         snapshot_html_live_tree_with_native_text(
-            &nodes,
+            &literal::tree(&nodes).input(),
             &ids.entries,
             &cascade,
             &NativeTextOptions {
@@ -116,8 +117,14 @@ fn capture_html(html: &str, native: bool) -> (LayoutSnapshot, Ids) {
         )
         .unwrap()
     } else {
-        snapshot_live_tree_with_text(&nodes, &ids.entries, &cascade, &inputs, &mut diagnostics)
-            .unwrap()
+        snapshot_live_tree_with_text(
+            &literal::tree(&nodes).input(),
+            &ids.entries,
+            &cascade,
+            &inputs,
+            &mut diagnostics,
+        )
+        .unwrap()
     };
     assert_actual_font(&snapshot, "IBM Plex Mono");
     (snapshot, ids)
@@ -166,6 +173,7 @@ fn actual(rect: Rect) -> [f64; 4] {
 fn expected(value: &Value) -> [f64; 4] {
     ["x", "y", "width", "height"].map(|key| value[key].as_f64().unwrap())
 }
+#[allow(clippy::needless_pass_by_value)] // test helper: owned arguments keep the call sites literal
 fn compare<T: std::fmt::Debug + PartialEq>(
     actual: T,
     expected: T,

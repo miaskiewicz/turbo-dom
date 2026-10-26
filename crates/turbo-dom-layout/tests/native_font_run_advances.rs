@@ -4,6 +4,7 @@
 use serde_json::Value;
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
+use std::fmt::Write as _;
 use std::sync::OnceLock;
 use turbo_dom_layout::layout::inline::{layout_paragraph, InlineRun, Piece};
 use turbo_dom_layout::layout::value::{Rgba, VAlign};
@@ -11,10 +12,12 @@ use turbo_dom_layout::layout_snapshot::{
     snapshot_html_live_tree_with_native_text, snapshot_live_tree_with_text, GeometryKind,
     LayoutSnapshot, NativeTextOptions, Rect, SnapshotInputs, SourceId, SourceIdentity,
 };
+use turbo_dom_layout::test_support::literal;
+use turbo_dom_layout::test_support::literal::{parse_html, Element, Node};
 use turbo_dom_layout::text::Align;
 use turbo_dom_layout::{
-    build_cascade, parse_html, Attr, Diagnostics, Element, FontRegistry, Fragment, FragmentContent,
-    ImageCtx, NoImages, Node, NodeId, Tag,
+    build_cascade, Attr, Diagnostics, FontRegistry, Fragment, FragmentContent, ImageCtx, NoImages,
+    NodeId, Tag,
 };
 
 #[derive(Default)]
@@ -128,7 +131,7 @@ fn scene(row: &Value, decorated: bool) -> String {
         family,
         "<span id=split-a>a</span><span id=split-bc>bc</span>",
     ));
-    html.push_str(&format!("<div id=rotated style='width:1000px;font-family:\"{family}\";font-size:16px;line-height:24px;transform:rotate(15deg);transform-origin:0 0'><span id=rotated-text>abc</span></div>"));
+    let _ = write!(html, "<div id=rotated style='width:1000px;font-family:\"{family}\";font-size:16px;line-height:24px;transform:rotate(15deg);transform-origin:0 0'><span id=rotated-text>abc</span></div>");
     html
 }
 fn capture(row: &Value, decorated: bool, native: bool) -> (LayoutSnapshot, Ids) {
@@ -145,7 +148,7 @@ fn capture(row: &Value, decorated: bool, native: bool) -> (LayoutSnapshot, Ids) 
     })];
     let mut ids = Ids::default();
     identities(&nodes, &mut Vec::new(), None, &mut ids);
-    let cascade = build_cascade("", "", Default::default());
+    let cascade = build_cascade("", "", turbo_dom_layout::style::TokenSet::default());
     let images = ImageCtx {
         resolver: &NoImages,
         body_height: None,
@@ -159,7 +162,7 @@ fn capture(row: &Value, decorated: bool, native: bool) -> (LayoutSnapshot, Ids) 
     let mut diagnostics = Diagnostics::default();
     let snapshot = if native {
         snapshot_html_live_tree_with_native_text(
-            &nodes,
+            &literal::tree(&nodes).input(),
             &ids.entries,
             &cascade,
             &NativeTextOptions {
@@ -172,8 +175,14 @@ fn capture(row: &Value, decorated: bool, native: bool) -> (LayoutSnapshot, Ids) 
         )
         .unwrap()
     } else {
-        snapshot_live_tree_with_text(&nodes, &ids.entries, &cascade, &inputs, &mut diagnostics)
-            .unwrap()
+        snapshot_live_tree_with_text(
+            &literal::tree(&nodes).input(),
+            &ids.entries,
+            &cascade,
+            &inputs,
+            &mut diagnostics,
+        )
+        .unwrap()
     };
     assert_actual_font(&snapshot, row["geometry"]["family"].as_str().unwrap());
     (snapshot, ids)

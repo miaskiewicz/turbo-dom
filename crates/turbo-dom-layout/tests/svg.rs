@@ -4,12 +4,12 @@
 //! `image/svg+xml` document through `svg::{is_svg, probe_svg, decode_svg}`), the
 //! rasterizer's RGB + alpha-plane output, byte-determinism, malformed/degenerate
 //! handling, and the full layout → emit path (rasterized SVG embeds as an image
-//! XObject with an `SMask`, deterministic, `qpdf --check` clean when available).
+//! `XObject` with an `SMask`, deterministic, `qpdf --check` clean when available).
 //!
 //! All SVG inputs are tiny committed byte strings (shapes only — no external
 //! files, no fonts, so rendering is host-independent and deterministic).
 //!
-//! Split at the S1 relocation: the cases that need TKind directives, templating or the
+//! Split at the S1 relocation: the cases that need `TKind` directives, templating or the
 //! PDF emitter stay in turbo-html2pdf-core's `tests/svg.rs`.
 
 #![cfg(feature = "svg")]
@@ -24,7 +24,7 @@ use turbo_dom_layout::svg::{decode_svg, is_svg, probe_svg};
 // --------------------------------------------------------------------------
 
 /// A 4x4 SVG: a fully-opaque red square covering a half-opaque blue background,
-/// so the raster carries both RGB colour and a varying alpha plane (→ SMask).
+/// so the raster carries both RGB colour and a varying alpha plane (→ `SMask`).
 const SVG_RED_4X4: &str = r##"<svg xmlns="http://www.w3.org/2000/svg" width="4" height="4" viewBox="0 0 4 4">
   <rect x="0" y="0" width="4" height="4" fill="#0000ff" fill-opacity="0.5"/>
   <rect x="1" y="1" width="2" height="2" fill="#ff0000"/>

@@ -1,9 +1,10 @@
 //! Native HTML glyph advances; ordinary PDF shaping keeps its existing units.
 //!
-//! Chromium's Skia glyph callback converts SkScalar advances to signed 16.16
-//! HarfBuzz positions by a clamped integer cast (truncation toward zero).
-//! Source: chromium/chromium tag 155.0.8059.80, third_party/blink/renderer/
-//! platform/fonts/skia/skia_text_metrics.h::SkiaScalarToHarfBuzzPosition.
+//! Chromium's Skia glyph callback converts `SkScalar` advances to signed 16.16
+//! `HarfBuzz` positions by a clamped integer cast (truncation toward zero).
+//! Source: chromium/chromium tag 155.0.8059.80,
+//! `third_party/blink/renderer/platform/fonts/skia/skia_text_metrics.h`
+//! (`SkiaScalarToHarfBuzzPosition`).
 //! Independently captured headed Chrome 155 font controls verify these advances.
 
 use crate::text::FontFace;
@@ -60,10 +61,16 @@ mod tests {
             false,
         )
         .unwrap();
-        assert_eq!(measure(&ibm, 16.0, 0.0, "a", None), 9.599990844726562);
-        assert_eq!(measure(&fira, 16.0, 0.0, "a", None), 9.846145629882812);
-        assert_eq!(measure(&ibm, 16.0, 0.0, "aaaaa", None), 47.99995422363281);
-        assert_eq!(measure(&ibm, 16.0, 0.0, "abc", None), 28.799972534179688);
+        assert_eq!(measure(&ibm, 16.0, 0.0, "a", None), 9.599_990_844_726_562);
+        assert_eq!(measure(&fira, 16.0, 0.0, "a", None), 9.846_145_629_882_812);
+        assert_eq!(
+            measure(&ibm, 16.0, 0.0, "aaaaa", None),
+            47.999_954_223_632_81
+        );
+        assert_eq!(
+            measure(&ibm, 16.0, 0.0, "abc", None),
+            28.799_972_534_179_688
+        );
         assert_ne!(
             measure(&ibm, 16.0, 0.0, "abc", None),
             3.0 * (9.6_f64 * 128.0).ceil() / 128.0

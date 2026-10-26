@@ -21,6 +21,19 @@ use super::font::FontFace;
 type NativeGlyphKey = (usize, u32, char, u16, bool);
 type NativeGlyphCache = std::collections::HashMap<NativeGlyphKey, Option<FontFace>>;
 
+/// Which installed-font policy a system-font registry is loaded with.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum SystemFontPolicy {
+    /// [`FontRegistry::load_system_fonts`]: every installed face under its own family,
+    /// CSS generics aliased to the conventional system families (PDF rendering,
+    /// turbo-dom-raster screenshots).
+    Default,
+    /// [`FontRegistry::load_system_fonts_for_html`]: also admits faces whose family
+    /// exists only in platform name records, generics chosen after them (turbo-surf's
+    /// continuous native HTML layout).
+    Html,
+}
+
 /// A set of font faces: caller-supplied faces plus, when `bundled-fonts` is on,
 /// the embedded fallback faces.
 #[derive(Debug, Clone, Default)]
@@ -170,18 +183,19 @@ impl FontRegistry {
     /// A registry with no caller faces. Carries the bundled fallback faces when
     /// the `bundled-fonts` feature is on, so it can render without any caller
     /// font; identical to [`FontRegistry::default`] otherwise.
+    #[must_use]
     pub fn new() -> Self {
         Self {
             faces: Vec::new(),
             bundled: bundled_faces(),
             platform_faces: Vec::new(),
-            platform_cascades: Default::default(),
-            native_glyphs: Default::default(),
+            platform_cascades: std::sync::Arc::default(),
+            native_glyphs: std::sync::Arc::default(),
         }
     }
 
     pub fn add(&mut self, face: FontFace) {
-        self.native_glyphs = Default::default();
+        self.native_glyphs = std::sync::Arc::default();
         self.faces.push(face);
     }
 
@@ -204,9 +218,46 @@ impl FontRegistry {
         self.load_system_fonts_with_primary_policy(true);
     }
 
+    /// A fresh registry of the bundled faces plus every installed system font under
+    /// `policy` (uncached — see [`Self::system`] for the process-wide one).
+    #[must_use]
+    pub fn load_system(policy: SystemFontPolicy) -> FontRegistry {
+        let mut registry = FontRegistry::new();
+        match policy {
+            SystemFontPolicy::Default => registry.load_system_fonts(),
+            SystemFontPolicy::Html => registry.load_system_fonts_for_html(),
+        }
+        registry
+    }
+
+    /// THE process-wide system-font registry for `policy`: the installed fonts are
+    /// walked and parsed once per process (on first use) and shared — the parsed faces
+    /// are `Arc`s, so a caller that needs an owned registry clones it cheaply. One
+    /// load for every embedder in the process (turbo-dom-raster's `system_fonts`
+    /// screenshots use [`SystemFontPolicy::Default`]; turbo-surf's live layout
+    /// [`SystemFontPolicy::Html`]).
+    #[must_use]
+    pub fn system(policy: SystemFontPolicy) -> &'static FontRegistry {
+        Self::system_cell(policy).get_or_init(|| Self::load_system(policy))
+    }
+
+    /// The cell behind [`Self::system`], for an embedder that warms it itself (on a
+    /// worker thread, or with an instrumented initializer in a test) or asks whether
+    /// it is warm (`get().is_some()`). Initialize it only with
+    /// [`Self::load_system`]`(policy)`.
+    #[must_use]
+    pub fn system_cell(policy: SystemFontPolicy) -> &'static std::sync::OnceLock<FontRegistry> {
+        static DEFAULT: std::sync::OnceLock<FontRegistry> = std::sync::OnceLock::new();
+        static HTML: std::sync::OnceLock<FontRegistry> = std::sync::OnceLock::new();
+        match policy {
+            SystemFontPolicy::Default => &DEFAULT,
+            SystemFontPolicy::Html => &HTML,
+        }
+    }
+
     fn load_system_fonts_with_primary_policy(&mut self, platform_primary: bool) {
-        self.native_glyphs = Default::default();
-        self.platform_cascades = Default::default();
+        self.native_glyphs = std::sync::Arc::default();
+        self.platform_cascades = std::sync::Arc::default();
         for dir in system_font_dirs() {
             let Ok(entries) = std::fs::read_dir(&dir) else {
                 continue;
@@ -286,12 +337,14 @@ impl FontRegistry {
     /// True when the registry has no usable face at all (neither caller nor
     /// bundled). With `bundled-fonts` on this is only true if the bundled set
     /// failed to load, which never happens for the shipped assets.
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.faces.is_empty() && self.bundled.is_empty()
     }
 
     /// The number of caller-supplied faces. Bundled fallbacks are not counted,
     /// so a caller can tell whether *it* registered anything.
+    #[must_use]
     pub fn len(&self) -> usize {
         self.faces.len()
     }
@@ -309,6 +362,7 @@ impl FontRegistry {
 
     /// Select the best face for a family list + weight/style, falling back to the
     /// first available face (caller, else bundled) if no family matches.
+    #[must_use]
     pub fn select(&self, families: &[&str], weight: u16, italic: bool) -> Option<&FontFace> {
         families
             .iter()
@@ -392,6 +446,7 @@ impl FontRegistry {
 
     /// Resolve the face that should render `ch`, walking the (expanded) family
     /// list then any available face. Returns `None` if no face covers it.
+    #[must_use]
     pub fn resolve_glyph(
         &self,
         families: &[&str],
@@ -660,6 +715,29 @@ mod tests {
             std::path::Path::new("/nonexistent-dir/missing-font.ttf"),
         );
         assert!(unreadable.is_empty());
+    }
+
+    #[test]
+    fn system_registry_is_loaded_once_per_policy() {
+        let _g = ENV_LOCK.lock().unwrap();
+        let default = FontRegistry::system(SystemFontPolicy::Default);
+        assert!(std::ptr::eq(
+            default,
+            FontRegistry::system(SystemFontPolicy::Default)
+        ));
+        assert!(FontRegistry::system_cell(SystemFontPolicy::Default)
+            .get()
+            .is_some());
+        assert_eq!(
+            default.len(),
+            FontRegistry::load_system(SystemFontPolicy::Default).len()
+        );
+        let html = FontRegistry::system(SystemFontPolicy::Html);
+        assert!(!std::ptr::eq(default, html), "one registry per policy");
+        assert_eq!(
+            html.len(),
+            FontRegistry::load_system(SystemFontPolicy::Html).len()
+        );
     }
 
     #[test]

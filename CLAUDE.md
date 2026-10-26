@@ -24,8 +24,7 @@ npm run build:rtdom        # cargo build -p turbo-dom --release
 npm run conformance:rtdom  # html5lib-tests gate run THROUGH the rtdom tree (direct, 99.75%)
 npm run profile:churn      # build the CPU-profiling example + print the macOS `sample` hint
 # --- lint + perf gates (CI-enforced) ---
-cargo clippy -p turbo-dom -p turbo-dom-parser --all-targets -- -D warnings   # pedantic-clean (CI base job; --workspace would build V8)
-cargo clippy -p turbo-dom-layout --all-targets -- -D warnings  # layout/raster: default lints (pedantic adoption pending); CI also runs feature variants
+cargo clippy -p turbo-dom -p turbo-dom-parser -p turbo-dom-layout -p turbo-dom-raster --all-targets -- -D warnings   # clippy::pedantic-clean via [workspace.lints] (CI base/layout/raster jobs; --workspace would also build browser-env + V8, which the v8 job covers)
 cargo test -p turbo-dom-layout                           # layout engine (+ --features svg / perf)
 cargo test -p turbo-dom-raster                           # screenshot painter
 scripts/verify-copied-layout.sh                          # S1 moved code (at VERIFY_REF) == its source commits (+ allow-listed rewrites)
@@ -70,8 +69,9 @@ staged, so every commit gates tests + coverage + conformance (conformance.test.m
 suite). Bypass with `git commit --no-verify`. Coverage-ignore a truly-unreachable defensive line
 with `/* node:coverage ignore next */` (sparingly) — prefer restructuring or a test.
 
-**Lint + perf gates (CI-enforced, not pre-commit).** turbo-dom and turbo-dom-parser enable `clippy::pedantic` via
-`[lints.clippy]` in their `Cargo.toml`, with a documented allow-list for the lints that don't fit a
+**Lint + perf gates (CI-enforced, not pre-commit).** The parser and the turbo-dom / -layout /
+-raster crates enable `clippy::pedantic` (the root package via its own `[lints.clippy]`, the
+crates via `[lints] workspace = true` → the root's `[workspace.lints.clippy]`), with a documented allow-list for the lints that don't fit a
 DOM/parse/layout engine (the f64↔int cast family, `float_cmp` on canonical values, single-char
 tokenizer vars, missing-panics/errors-doc, …). CI runs `cargo clippy -p turbo-dom -p turbo-dom-parser
 --all-targets -- -D warnings` plus the root crate's `wasm-bind`/`wasm-runtime` variants, so any pedantic
@@ -124,19 +124,28 @@ package or publish workflow.
   (no PDF features here). Since S3b selectors parse and match with turbo-dom's engine
   (`style::RuleSelectors` = `parse_for_cascade`; the scope `style::Navigator` implements
   turbo-dom's `Navigator`: kept nodes, Detached cutoff, Shell positions, marker type keys);
-  html2pdf's old `style/selector.rs` is gone. `tests/tree_input_equivalence.rs` is the Tree-vs-Node gate
-  (`TURBO_DOM_LAYOUT_EQUIV_DIRS` adds corpora). `scripts/verify-copied-layout.sh` checks the S1
+  html2pdf's old `style/selector.rs` is gone. `scripts/verify-copied-layout.sh` checks the S1
   tree (`VERIFY_REF`) against the source commits; later edits are reviewed changes on top.
   Since S4 `live` is the live-DOM input ("surf mode"): turbo-surf's CSSOM-View layout styles
   the page's own composed `Tree` (embedder-supplied composed children, pre-matched rules,
   inline overrides) under the copier's exact budgets/errors, with no copy; `cssom_view`
   holds surf's pure geometry modules (metrics, hit, scroll, visibility, inline, text, range,
-  the `Composition` scope graph). The legacy owned `Node` input (`node::Node`, `style_tree*`,
-  `snapshot_*live_tree*`) has no production consumer any more; it stays only for
-  turbo-html2pdf-core's re-exports and Node-literal tests (removed when html2pdf drops them).
+  the `Composition` scope graph). Since S5 the legacy owned `Node` input is gone (`node.rs`,
+  `markup.rs`, `style_tree*`; `Tag`/`Attr`/`MarkerKind` live in `tag`); the
+  `snapshot_*live_tree*` entries take a `StyleInput`. `image` is the ONE image layer: the
+  header size probe (`ImageResolver::intrinsic`), the shared PNG decode (`PngFrame`: PDF
+  native samples / raster RGBA = `image::to_rgba8` exactly) and, under `svg-rasterize`, the
+  one SVG rasterizer (`svg::rasterize(bytes, scale, Oversize)`: PDF 2x clamp, raster 1x
+  reject). `FontRegistry::system(policy)` is the process-wide system-font load. The
+  `test-support` feature (`test_support`) carries the font fixtures, `ComputedStyle` pairs
+  and test-only tree literals for this crate's and turbo-html2pdf-core's tests (the crate's
+  own integration tests enable it through a self dev-dependency).
 - `crates/turbo-dom-raster` — synthetic screenshots: paints the layout galley to PNG/SVG
   (tiny-skia / SVG), canvas op-log replay, `gpu-metal` WebGL. Relocated verbatim from
-  turbo-surf-raster 0.5.5 (S1).
+  turbo-surf-raster 0.5.5 (S1). Decodes images through turbo-dom-layout's image layer (PNG,
+  SVG at 1x) and the `image` crate (JPEG/GIF/WebP, resize, PNG re-encode for SVG
+  `data:` URIs); `image_paint::shared_layer_tests` gates it byte for byte against the old
+  decode over `tools/parity` image inputs.
 - `harness/` — JS conformance tooling (dat parser, serializer, runner). All unit-tested.
 - `src/runtime/` — the lazy COW DOM + window (Layers 2–5). `index.mjs` exports
   `createEnvironment(html)` → `{ window, document, reset, touched }`. Nodes inflate lazily

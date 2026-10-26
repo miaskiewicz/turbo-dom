@@ -1,8 +1,18 @@
-//! Vector (SVG) image rasterization (Phase 15b, §7.4). Compiled only under the
-//! `svg` feature. The single job here is: take `image/svg+xml` bytes, rasterize
-//! them deterministically into a straight-alpha RGBA buffer, and hand back a
-//! [`RasterImage`] that the *existing* Phase 9b image XObject pipeline embeds
-//! (RGB body + alpha → `SMask`). No new XObject code, no I/O.
+//! Vector (SVG) image rasterization (Phase 15b, §7.4; consolidation S5): the ONE SVG
+//! rasterizer of the shared image layer. Compiled under `svg-rasterize` (which the
+//! `svg` feature implies). [`rasterize`] turns `image/svg+xml` bytes into a
+//! deterministic straight-alpha RGBA buffer at a caller-chosen oversample:
+//!
+//! - the PDF pipeline ([`probe_svg`] / [`decode_svg`], routed from
+//!   [`crate::image::probe`]/[`crate::image::decode`] under `svg`) rasterizes at
+//!   [`PDF_SVG_SCALE`] (2x) and lays the box out at that 2x pixel size, clamping an
+//!   axis above [`MAX_DIM`] ([`Oversize::Clamp`]); the RGBA is split into an RGB
+//!   payload + alpha plane for the existing image `XObject`/`SMask` emitter;
+//! - turbo-dom-raster rasterizes at 1x and lays out at `ceil(css size)`, rejecting an
+//!   SVG above [`MAX_DIM`] ([`Oversize::Reject`]).
+//!
+//! The intrinsic CSS size ([`css_size`]) is separate from the oversampled pixel size
+//! ([`pixel_size`]), so both behaviours are kept exactly.
 //!
 //! **Determinism (§0.2).** `usvg::Options::default()` is used verbatim: the font
 //! database is left **empty** — no system-font lookup, no filesystem probe, no
@@ -11,27 +21,38 @@
 //! the SVG needs no glyphs to stay deterministic: with an empty `fontdb` glyph
 //! runs simply contribute nothing, the same way an unresolved `<img>` paints
 //! nothing. Shapes, paths, gradients, clips and opacity all render fully.
-//!
-//! **Scale.** SVG is resolution-independent; we rasterize at [`SVG_SCALE`]× the
-//! document's intrinsic CSS-pixel size so logos/icons stay crisp when the PDF is
-//! zoomed, then the layout size caps in `imgsize` scale the result to the box.
 
 use resvg::tiny_skia;
 use resvg::usvg;
 
-use crate::image::{ColorSpace, Intrinsic, Payload, RasterImage};
+use crate::image::{ColorSpace, Intrinsic, Payload, RasterImage, Rgba8Image};
 
-/// Oversampling factor: SVGs rasterize at this multiple of their intrinsic
-/// CSS-pixel size so the embedded raster stays sharp under PDF zoom. A fixed
-/// constant keeps output byte-deterministic.
-const SVG_SCALE: f32 = 2.0;
+/// The PDF pipeline's oversampling factor: SVGs rasterize at this multiple of their
+/// intrinsic CSS-pixel size so the embedded raster stays sharp under PDF zoom (the
+/// layout size caps in `imgsize` scale the result to the box). A fixed constant
+/// keeps output byte-deterministic.
+pub const PDF_SVG_SCALE: f32 = 2.0;
 
-/// Whether `bytes` look like an SVG document (XML with an `<svg` element).
+/// Hard cap on either raster axis (px); a normal logo/icon is far below this.
+pub const MAX_DIM: u32 = 8192;
+
+/// What [`pixel_size`] does with an axis above [`MAX_DIM`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Oversize {
+    /// Clamp the axis to [`MAX_DIM`] (the PDF pipeline).
+    Clamp,
+    /// Reject the SVG (turbo-dom-raster).
+    Reject,
+}
+
+/// Whether `bytes` look like an SVG document (XML with an `<svg` element) — the PDF
+/// pipeline's sniff (turbo-dom-raster keeps its own decode dispatch).
 ///
 /// SVG has no single magic-number signature, so this sniffs the leading,
 /// possibly-BOM/whitespace-prefixed bytes for the XML/SVG markers the way
 /// browsers do. Kept conservative: a false negative just means the bytes fall
 /// through to the raster sniffer (and then paint nothing), never a panic.
+#[must_use]
 pub fn is_svg(bytes: &[u8]) -> bool {
     // Skip a UTF-8 BOM and leading ASCII whitespace.
     let mut rest = bytes.strip_prefix(&[0xEF, 0xBB, 0xBF]).unwrap_or(bytes);
@@ -59,19 +80,83 @@ fn contains_ci(haystack: &[u8], needle: &[u8]) -> bool {
 /// Parse SVG bytes into a usvg tree with the deterministic default options
 /// (empty font database: no system-font lookup, no I/O). `None` on malformed
 /// input.
-fn parse(bytes: &[u8]) -> Option<usvg::Tree> {
+#[must_use]
+pub fn parse(bytes: &[u8]) -> Option<usvg::Tree> {
     // `Options::default()` ships an empty `fontdb`; we deliberately never call
     // `load_system_fonts`, so the parse depends only on the input bytes.
     usvg::Tree::from_data(bytes, &usvg::Options::default()).ok()
 }
 
-/// The intrinsic pixel size of an SVG, read by parsing its root `width`/`height`
-/// (or `viewBox`). Reports `has_alpha = true`: a rasterized SVG always carries an
-/// alpha plane (its background is transparent), so the emitter writes an `SMask`.
+/// The intrinsic CSS-pixel size of a parsed SVG (its root `width`/`height`, or the
+/// `viewBox`), before any oversampling.
+#[must_use]
+pub fn css_size(tree: &usvg::Tree) -> (f32, f32) {
+    let size = tree.size();
+    (size.width(), size.height())
+}
+
+/// The raster dimensions of an SVG of CSS-pixel size `css` oversampled by `scale`,
+/// or `None` if either axis is degenerate (non-finite, ≤ 0, or rounds to 0) or, with
+/// [`Oversize::Reject`], above [`MAX_DIM`].
+#[must_use]
+pub fn pixel_size(css: (f32, f32), scale: f32, oversize: Oversize) -> Option<(u32, u32)> {
+    let axis = |len: f32| match oversize {
+        Oversize::Clamp => clamped_axis(len, scale),
+        Oversize::Reject => bounded_axis(len, scale),
+    };
+    Some((axis(css.0)?, axis(css.1)?))
+}
+
+/// One clamped axis: a finite, positive CSS-pixel length scaled, ceiled and clamped
+/// to [`MAX_DIM`]. `None` for a degenerate length.
+fn clamped_axis(len: f32, scale: f32) -> Option<u32> {
+    if !len.is_finite() || len <= 0.0 {
+        return None;
+    }
+    let px = (len * scale).ceil().min(MAX_DIM as f32) as u32;
+    (px > 0).then_some(px)
+}
+
+/// One bounded axis: scaled and ceiled; `None` if it rounds to 0 (degenerate) or
+/// exceeds [`MAX_DIM`].
+fn bounded_axis(len: f32, scale: f32) -> Option<u32> {
+    let px = (len * scale).ceil() as u32;
+    (px != 0 && px <= MAX_DIM).then_some(px)
+}
+
+/// Rasterize SVG bytes at `scale`× their CSS-pixel size into straight-alpha RGBA,
+/// or `None` if the bytes are not a parseable SVG or the size is degenerate /
+/// rejected by `oversize`.
+#[must_use]
+pub fn rasterize(bytes: &[u8], scale: f32, oversize: Oversize) -> Option<Rgba8Image> {
+    let tree = parse(bytes)?;
+    let (width, height) = pixel_size(css_size(&tree), scale, oversize)?;
+    let mut pixmap = tiny_skia::Pixmap::new(width, height)?;
+    // Scale the unit SVG up to the oversampled buffer, so the transform (and thus
+    // the output) depends only on `scale` and the input.
+    let transform = tiny_skia::Transform::from_scale(scale, scale);
+    resvg::render(&tree, transform, &mut pixmap.as_mut());
+    let mut rgba = Vec::with_capacity((width as usize) * (height as usize) * 4);
+    for px in pixmap.pixels() {
+        // `demultiply` recovers straight (non-premultiplied) colour.
+        let c = px.demultiply();
+        rgba.extend_from_slice(&[c.red(), c.green(), c.blue(), c.alpha()]);
+    }
+    Some(Rgba8Image {
+        width,
+        height,
+        rgba,
+    })
+}
+
+/// The PDF pipeline's intrinsic size of an SVG: its [`PDF_SVG_SCALE`] pixel size
+/// (the box is laid out at it). Reports `has_alpha = true`: a rasterized SVG always
+/// carries an alpha plane (its background is transparent), so the emitter writes an
+/// `SMask`.
+#[must_use]
 pub fn probe_svg(bytes: &[u8]) -> Option<Intrinsic> {
     let tree = parse(bytes)?;
-    let size = tree.size();
-    let (width, height) = raster_size(size.width(), size.height())?;
+    let (width, height) = pixel_size(css_size(&tree), PDF_SVG_SCALE, Oversize::Clamp)?;
     Some(Intrinsic {
         width,
         height,
@@ -79,67 +164,28 @@ pub fn probe_svg(bytes: &[u8]) -> Option<Intrinsic> {
     })
 }
 
-/// The oversampled raster dimensions for an SVG of CSS-pixel size `(w, h)`, or
-/// `None` if either axis is degenerate (non-finite, ≤ 0, or rounds to 0). Sized
-/// at [`SVG_SCALE`]× and clamped so an absurd document cannot request a buffer
-/// that overflows `u32` or exhausts memory.
-fn raster_size(w: f32, h: f32) -> Option<(u32, u32)> {
-    let width = scaled_axis(w)?;
-    let height = scaled_axis(h)?;
-    Some((width, height))
-}
-
-/// One axis of [`raster_size`]: a finite, positive CSS-pixel length scaled by
-/// [`SVG_SCALE`], ceiled, and clamped to a sane maximum. `None` for a degenerate
-/// length (non-finite, ≤ 0, or one that rounds to a zero-pixel axis).
-fn scaled_axis(len: f32) -> Option<u32> {
-    /// Hard cap on either raster axis (px); a normal logo/icon is far below this.
-    const MAX_DIM: f32 = 8192.0;
-    if !len.is_finite() || len <= 0.0 {
-        return None;
-    }
-    let px = (len * SVG_SCALE).ceil().min(MAX_DIM) as u32;
-    (px > 0).then_some(px)
-}
-
-/// Rasterize SVG bytes into an embeddable [`RasterImage`]: RGB samples plus a
-/// straight-alpha plane (→ `SMask`). `None` if the bytes are not a parseable SVG
-/// or its size is degenerate.
+/// Rasterize SVG bytes into an embeddable [`RasterImage`] (PDF pipeline, 2x): RGB
+/// samples plus a straight-alpha plane (→ `SMask`), matching what the PNG path
+/// produces for an RGBA source so the XObject/SMask emitter handles both
+/// identically. `None` if the bytes are not a parseable SVG or its size is
+/// degenerate.
+#[must_use]
 pub fn decode_svg(bytes: &[u8]) -> Option<RasterImage> {
-    let tree = parse(bytes)?;
-    let size = tree.size();
-    let (width, height) = raster_size(size.width(), size.height())?;
-    let mut pixmap = tiny_skia::Pixmap::new(width, height)?;
-    // Scale the unit SVG up to the oversampled buffer; identity otherwise, so the
-    // transform (and thus the output) depends only on `SVG_SCALE` and the input.
-    let transform = tiny_skia::Transform::from_scale(SVG_SCALE, SVG_SCALE);
-    resvg::render(&tree, transform, &mut pixmap.as_mut());
-    Some(pixmap_to_image(width, height, &pixmap))
-}
-
-/// Split a rendered tiny-skia pixmap (premultiplied RGBA) into a straight-alpha
-/// RGB payload plus an 8-bit alpha plane, matching what the PNG path produces for
-/// an RGBA source so the XObject/SMask emitter handles both identically.
-fn pixmap_to_image(width: u32, height: u32, pixmap: &tiny_skia::Pixmap) -> RasterImage {
-    let pixel_count = (width as usize) * (height as usize);
+    let image = rasterize(bytes, PDF_SVG_SCALE, Oversize::Clamp)?;
+    let pixel_count = (image.width as usize) * (image.height as usize);
     let mut samples = Vec::with_capacity(pixel_count * 3);
     let mut alpha = Vec::with_capacity(pixel_count);
-    for px in pixmap.pixels() {
-        // `demultiply` recovers straight (non-premultiplied) colour, which is what
-        // a PDF `/SMask` expects alongside the separate alpha plane.
-        let c = px.demultiply();
-        samples.push(c.red());
-        samples.push(c.green());
-        samples.push(c.blue());
-        alpha.push(c.alpha());
+    for &[r, g, b, a] in image.rgba.as_chunks::<4>().0 {
+        samples.extend_from_slice(&[r, g, b]);
+        alpha.push(a);
     }
-    RasterImage {
-        width,
-        height,
+    Some(RasterImage {
+        width: image.width,
+        height: image.height,
         payload: Payload::Raw {
             samples,
             color: ColorSpace::Rgb,
         },
         alpha: Some(alpha),
-    }
+    })
 }

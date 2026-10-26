@@ -63,6 +63,7 @@ fn justify_content_value(v: &str) -> JustifyContent {
     }
 }
 
+#[allow(clippy::unnecessary_wraps)] // keeps the Option/Result shape its call sites (and sibling helpers) share
 fn justify_content(s: &ComputedStyle) -> Option<JustifyContent> {
     Some(justify_content_value(
         s.get("justify-content").unwrap_or("flex-start"),
@@ -78,6 +79,7 @@ fn justify_content_grid(s: &ComputedStyle) -> Option<JustifyContent> {
     s.get("justify-content").map(justify_content_value)
 }
 
+#[allow(clippy::unnecessary_wraps)] // keeps the Option/Result shape its call sites (and sibling helpers) share
 fn align_items(s: &ComputedStyle) -> Option<AlignItems> {
     Some(match s.get("align-items").unwrap_or("stretch").trim() {
         "flex-start" | "start" => AlignItems::FlexStart,
@@ -93,6 +95,7 @@ fn align_items(s: &ComputedStyle) -> Option<AlignItems> {
 /// and place it in the track. Flex has no `justify-items`, so this is grid-only
 /// (google's home page centers its full-width-cell logo with `justify-items:center`
 /// — without mapping it the 272px logo pinned to the cell's left/padding edge).
+#[allow(clippy::unnecessary_wraps)] // keeps the Option/Result shape its call sites (and sibling helpers) share
 fn justify_items(s: &ComputedStyle) -> Option<AlignItems> {
     Some(match s.get("justify-items").unwrap_or("stretch").trim() {
         "start" | "flex-start" | "left" => AlignItems::Start,
@@ -111,8 +114,8 @@ fn justify_items(s: &ComputedStyle) -> Option<AlignItems> {
 fn justify_self(s: &ComputedStyle) -> Option<AlignItems> {
     match s.get("justify-self").map(str::trim) {
         None | Some("auto") => None,
-        Some("start") | Some("flex-start") | Some("left") => Some(AlignItems::Start),
-        Some("end") | Some("flex-end") | Some("right") => Some(AlignItems::End),
+        Some("start" | "flex-start" | "left") => Some(AlignItems::Start),
+        Some("end" | "flex-end" | "right") => Some(AlignItems::End),
         Some("center") => Some(AlignItems::Center),
         Some(_) => Some(AlignItems::Stretch),
     }
@@ -127,8 +130,8 @@ fn justify_self(s: &ComputedStyle) -> Option<AlignItems> {
 fn align_self(s: &ComputedStyle) -> Option<AlignItems> {
     match s.get("align-self").map(str::trim) {
         None | Some("auto") => None,
-        Some("flex-start") | Some("start") => Some(AlignItems::FlexStart),
-        Some("flex-end") | Some("end") => Some(AlignItems::FlexEnd),
+        Some("flex-start" | "start") => Some(AlignItems::FlexStart),
+        Some("flex-end" | "end") => Some(AlignItems::FlexEnd),
         Some("center") => Some(AlignItems::Center),
         Some("baseline") => Some(AlignItems::Baseline),
         Some(_) => Some(AlignItems::Stretch),
@@ -625,10 +628,7 @@ fn replaced_probe_width(item: &LayoutBox, images: &ImageCtx, fs: f32) -> Option<
     if let LengthPct::Px(w) = bs.width {
         return Some(w + frame);
     }
-    let intrinsic = images
-        .resolver
-        .resolve(&src.name)
-        .and_then(crate::image::probe)?;
+    let intrinsic = images.resolver.intrinsic(&src.name)?;
     Some(intrinsic.width as f32 + frame)
 }
 
@@ -1195,7 +1195,7 @@ fn grid_placement(tok: &str) -> GridPlacement {
     {
         return span(n);
     }
-    tok.parse::<i16>().map(line).unwrap_or(GridPlacement::Auto)
+    tok.parse::<i16>().map_or(GridPlacement::Auto, line)
 }
 
 /// Lay out a grid container's items into the content box at `(cx, cy)` of width
@@ -1259,7 +1259,7 @@ pub(crate) fn layout_flex(
 mod coverage_tests {
     use super::*;
     use crate::layout::boxgen::build_box_tree;
-    use crate::node::{Attr, MarkerKind, Tag};
+    use crate::tag::{Attr, MarkerKind, Tag};
     use crate::text::FontRegistry;
     use crate::{StyledElement, StyledNode};
 

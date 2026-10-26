@@ -74,6 +74,7 @@ fn align_offset(align: Align, width: f32, max_width: f32) -> f32 {
     }
 }
 
+#[allow(clippy::needless_pass_by_value)] // signature kept as relocated; borrowing instead changes nothing observable
 fn make_line(text: String, face: &FontFace, style: &TextStyle, max_width: f32) -> LineBox {
     let trimmed = text.trim_end().to_string();
     let width = face.measure(&trimmed, style.font_size, style.letter_spacing);
@@ -177,6 +178,7 @@ fn layout_nowrap(text: &str, face: &FontFace, style: &TextStyle, max_width: f32)
 }
 
 /// Lay out `text` with `face`/`style` into lines fitting `max_width` pixels.
+#[must_use]
 pub fn layout_text(text: &str, face: &FontFace, style: &TextStyle, max_width: f32) -> Vec<LineBox> {
     match style.white_space {
         WhiteSpace::Pre => layout_pre(text, face, style, max_width),

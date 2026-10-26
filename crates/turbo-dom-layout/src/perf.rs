@@ -40,18 +40,20 @@ mod inner {
     }
 
     /// How many times `label` has fired since the last [`reset`].
+    #[must_use]
     pub fn count(label: &'static str) -> u64 {
         with_counts(|c| c.get(label).copied().unwrap_or(0))
     }
 
     /// A copy of all counters.
+    #[must_use]
     pub fn snapshot() -> BTreeMap<&'static str, u64> {
         with_counts(|c| c.clone())
     }
 
     /// Clear all counters.
     pub fn reset() {
-        with_counts(|c| c.clear());
+        with_counts(std::collections::BTreeMap::clear);
     }
 }
 

@@ -2,7 +2,7 @@ use turbo_dom_layout::style::{
     parse_declarations, presentational_declarations, resolve_matched_style, user_agent_css,
     user_agent_stylesheet, CascadeOrigin, ComputedStyle, MatchedDeclaration,
 };
-use turbo_dom_layout::{Attr, Element, Tag};
+use turbo_dom_layout::Attr;
 
 fn matched(css: &str, origin: CascadeOrigin, depth: u32) -> MatchedDeclaration {
     MatchedDeclaration {
@@ -92,15 +92,11 @@ fn inherited_variables_shorthand_and_font_size_use_existing_resolution() {
 
 #[test]
 fn attribute_hints_are_explicit_candidates_overridden_by_author_rules() {
-    let element = Element {
-        tag: Tag::Html("img".into()),
-        attrs: vec![Attr {
-            name: "width".into(),
-            value: "80".into(),
-        }],
-        children: Vec::new(),
-    };
-    let hints = presentational_declarations(&element);
+    let attrs = [Attr {
+        name: "width".into(),
+        value: "80".into(),
+    }];
+    let hints = presentational_declarations(Some("img"), &attrs);
     let mut declarations: Vec<_> = hints
         .into_iter()
         .map(|declaration| MatchedDeclaration {

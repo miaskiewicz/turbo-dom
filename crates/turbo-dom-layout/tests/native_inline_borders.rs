@@ -4,9 +4,9 @@ use turbo_dom_layout::layout_snapshot::{
     snapshot_html_live_tree_with_native_text, GeometryKind, LayoutSnapshot, NativeTextOptions,
     SnapshotInputs, SourceId, SourceIdentity,
 };
-use turbo_dom_layout::{
-    build_cascade, parse_html, Diagnostics, FontRegistry, ImageCtx, NoImages, Node,
-};
+use turbo_dom_layout::test_support::literal;
+use turbo_dom_layout::test_support::literal::{parse_html, Node};
+use turbo_dom_layout::{build_cascade, Diagnostics, FontRegistry, ImageCtx, NoImages};
 
 fn identities(
     nodes: &[Node],
@@ -29,7 +29,7 @@ fn identities(
     }
 }
 fn record_name(
-    element: &turbo_dom_layout::Element,
+    element: &turbo_dom_layout::test_support::literal::Element,
     id: SourceId,
     names: &mut HashMap<String, SourceId>,
 ) {
@@ -64,9 +64,9 @@ fn capture_result(
         resolver: &NoImages,
         body_height: None,
     };
-    let cascade=build_cascade("#box{font-family:monospace;font-size:16px;line-height:24px;width:75px}span{vertical-align:baseline}","",Default::default());
+    let cascade=build_cascade("#box{font-family:monospace;font-size:16px;line-height:24px;width:75px}span{vertical-align:baseline}","",turbo_dom_layout::style::TokenSet::default());
     let snapshot = snapshot_html_live_tree_with_native_text(
-        &nodes,
+        &literal::tree(&nodes).input(),
         &ids,
         &cascade,
         &NativeTextOptions {
@@ -94,7 +94,12 @@ fn rects(snapshot: &LayoutSnapshot, id: SourceId) -> Vec<[f64; 4]> {
         .filter(|fragment| fragment.kind == GeometryKind::BorderBox)
         .map(|fragment| {
             let r = fragment.rect;
-            [r.x as f64, r.y as f64, r.width as f64, r.height as f64]
+            [
+                f64::from(r.x),
+                f64::from(r.y),
+                f64::from(r.width),
+                f64::from(r.height),
+            ]
         })
         .collect()
 }
@@ -128,6 +133,7 @@ fn transparent_ancestors_reference_child_regions_without_repainting_child_alpha_
         rects(&snapshot, names["outer"]),
         rects(&snapshot, names["inner"])
     );
+    #[allow(clippy::items_after_statements)] // local helper declared next to its only use
     fn paints(fragment: &turbo_dom_layout::Fragment) -> usize {
         let own = usize::from(matches!(
             &fragment.content,

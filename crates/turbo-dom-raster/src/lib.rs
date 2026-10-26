@@ -71,9 +71,9 @@ pub use style_extract::{delazy_images, image_urls, image_urls_in_css, stylesheet
 
 use std::collections::HashMap;
 
-use turbo_dom_layout::text::FontRegistry;
+use turbo_dom_layout::text::{FontRegistry, SystemFontPolicy};
 use turbo_dom_layout::{
-    layout_html_with_images, Diagnostics, Fragment, FragmentContent, ImageCtx, ImageResolver, Rgba,
+    layout_html_with_images, Diagnostics, Fragment, FragmentContent, ImageCtx, Rgba,
 };
 
 /// Fetched image bytes keyed by their reference — the raw `<img src>` /
@@ -86,15 +86,6 @@ pub type ImageAssets = HashMap<String, Vec<u8>>;
 /// out without pixels (as the `*_with_css` entries do).
 fn no_assets() -> ImageAssets {
     HashMap::new()
-}
-
-/// An [`ImageResolver`] backed by an [`ImageAssets`] map (verbatim key lookup).
-struct AssetResolver<'a>(&'a ImageAssets);
-
-impl ImageResolver for AssetResolver<'_> {
-    fn resolve(&self, name: &str) -> Option<&[u8]> {
-        self.0.get(name).map(Vec::as_slice)
-    }
 }
 
 /// The layout viewport a snapshot is rendered against. `width` drives CSS layout
@@ -229,7 +220,7 @@ pub fn screenshot_png_with_opts(
         external_css,
         viewport.width,
         viewport.height,
-        &image_paint::png_map(&decoded),
+        &decoded,
         system_fonts,
     )?;
     let bg = canvas_background(&galley, viewport.width);
@@ -257,7 +248,7 @@ pub fn screenshot_svg_with_opts(
         external_css,
         viewport.width,
         viewport.height,
-        &image_paint::png_map(&decoded),
+        &decoded,
         system_fonts,
     )?;
     let bg = canvas_background(&galley, viewport.width);
@@ -272,19 +263,15 @@ pub fn screenshot_svg_with_opts(
 }
 
 /// The font registry for a render: the bundled fallback set, plus (opt-in) every
-/// installed system font. The system-font set is loaded once and cloned per call
-/// (loading the whole OS font directory is slow; the parsed faces are `Arc`-shared
-/// so the clone is cheap).
+/// installed system font. The system-font set is turbo-dom-layout's process-wide
+/// registry ([`FontRegistry::system`], loaded once per process and shared with every
+/// other embedder) cloned per call (the parsed faces are `Arc`-shared, so the clone is
+/// cheap).
 fn font_registry(system_fonts: bool) -> FontRegistry {
     if !system_fonts {
         return FontRegistry::new();
     }
-    static SYSTEM: std::sync::LazyLock<FontRegistry> = std::sync::LazyLock::new(|| {
-        let mut reg = FontRegistry::new();
-        reg.load_system_fonts();
-        reg
-    });
-    SYSTEM.clone()
+    FontRegistry::system(SystemFontPolicy::Default).clone()
 }
 
 /// Measure the advance width (and an approximate line height) of `text` under a CSS
@@ -292,6 +279,7 @@ fn font_registry(system_fonts: bool) -> FontRegistry {
 /// fonts are loaded so distinct named families (Arial vs Georgia vs Courier) resolve to
 /// distinct faces and yield distinct widths — what a font-detection probe reads. Returns
 /// `(width_px, height_px)`; `(0.0, 0.0)` if no face resolves.
+#[must_use]
 pub fn measure_text(text: &str, family_css: &str, size_px: f32, system_fonts: bool) -> (f32, f32) {
     let families: Vec<String> = family_css
         .split(',')
@@ -303,7 +291,7 @@ pub fn measure_text(text: &str, family_css: &str, size_px: f32, system_fonts: bo
         })
         .filter(|s| !s.is_empty())
         .collect();
-    let refs: Vec<&str> = families.iter().map(|s| s.as_str()).collect();
+    let refs: Vec<&str> = families.iter().map(std::string::String::as_str).collect();
     let reg = font_registry(system_fonts);
     match reg.select(&refs, 400, false) {
         Some(face) => (face.measure(text, size_px, 0.0), size_px * 1.2),
@@ -356,7 +344,7 @@ fn lay_out(
     external_css: &str,
     width: u32,
     height: u32,
-    images: &ImageAssets,
+    images: &image_paint::DecodedAssets,
     system_fonts: bool,
 ) -> Result<Fragment, String> {
     // Tell the cascade the viewport HEIGHT so `@media (min-height/max-height:…)`
@@ -382,7 +370,7 @@ fn lay_out(
     let delazied = style_extract::delazy_images(html);
     let visible_html = style_extract::strip_non_visual(&delazied);
     let mut diags = Diagnostics::default();
-    let resolver = AssetResolver(images);
+    let resolver = image_paint::AssetResolver(images);
     // No page-height basis in a viewport render — only the 100%-width cap applies
     // (images shrink to fit their column, keeping aspect ratio).
     let image_ctx = ImageCtx {

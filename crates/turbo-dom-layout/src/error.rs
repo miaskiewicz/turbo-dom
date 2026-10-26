@@ -19,6 +19,7 @@ pub struct Span {
 
 impl Span {
     /// Construct a span from a 1-based line and an optional byte range.
+    #[must_use]
     pub fn new(line: u32, range: Option<Range<usize>>) -> Self {
         let byte_offset = range.map_or(0, |r| r.start as u32);
         Span {
@@ -106,6 +107,7 @@ impl Diagnostics {
     }
 
     /// True when no lints have been collected.
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.lints.is_empty()
     }

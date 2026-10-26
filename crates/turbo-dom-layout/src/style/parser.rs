@@ -302,6 +302,7 @@ fn absorb(sheet: &mut Stylesheet, chunk: &Chunk) {
 }
 
 /// Parse a CSS stylesheet into qualified rules and at-rules.
+#[must_use]
 pub fn parse_stylesheet(css: &str) -> Stylesheet {
     let cleaned = strip_comments(css);
     let mut sheet = Stylesheet::default();

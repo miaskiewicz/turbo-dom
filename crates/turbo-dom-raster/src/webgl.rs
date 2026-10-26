@@ -17,6 +17,7 @@
 //! the JS recorder must hash on this top-left orientation to stay consistent.)
 
 use std::collections::{HashMap, HashSet};
+use std::fmt::Write as _;
 use std::sync::OnceLock;
 
 use base64::Engine;
@@ -41,6 +42,7 @@ const TEX_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
 /// Execute a recorded WebGL call batch on the GPU; return the framebuffer as RGBA8
 /// bytes (len `width*height*4`, row-major, top-left origin). `None` on any failure
 /// (the caller falls back to its stub). Never panics.
+#[must_use]
 pub fn webgl_readback(width: u32, height: u32, calls_json: &str) -> Option<Vec<u8>> {
     if width == 0 || height == 0 {
         return None;
@@ -107,7 +109,7 @@ struct Program {
     uniforms: HashMap<String, UniformVal>,
 }
 
-/// A bound vertex attribute pointer (captures the ARRAY_BUFFER live at the time).
+/// A bound vertex attribute pointer (captures the `ARRAY_BUFFER` live at the time).
 #[derive(Clone)]
 struct AttribPtr {
     buffer: i64,
@@ -620,7 +622,7 @@ fn rewrite(
                     next_attrib_loc += 1;
                     l
                 });
-                body.push_str(&format!("layout(location={loc}) in {ty} {name};\n"));
+                let _ = writeln!(body, "layout(location={loc}) in {ty} {name};");
                 continue;
             }
         }
@@ -632,7 +634,7 @@ fn rewrite(
             } else {
                 "in"
             };
-            body.push_str(&format!("layout(location={loc}) {dir} {ty} {name};\n"));
+            let _ = writeln!(body, "layout(location={loc}) {dir} {ty} {name};");
             continue;
         }
         if line.starts_with("uniform ") {
@@ -660,7 +662,7 @@ fn rewrite(
     if let Some(ubo) = ubo {
         out.push_str("layout(set=0, binding=0) uniform _Globals {\n");
         for f in &ubo.fields {
-            out.push_str(&format!("    {} {};\n", f.ty.glsl(), f.name));
+            let _ = writeln!(out, "    {} {};", f.ty.glsl(), f.name);
         }
         out.push_str("} _u;\n");
     }
@@ -827,6 +829,7 @@ fn adapter_backend() -> Result<wgpu::Backend, String> {
 
 /// Identity of the actual Metal adapter used for readback, in WebGL's ANGLE
 /// representation. A failed device initialization exposes no fabricated identity.
+#[must_use]
 pub fn webgl_metadata() -> Option<String> {
     let info = &gpu().ok()?.info;
     Some(serde_json::json!({
@@ -860,7 +863,7 @@ fn vertex_format(size: u32, ty: i64) -> Option<wgpu::VertexFormat> {
 }
 
 /// wgpu primitive topology for a GL draw mode. FAN has no wgpu equivalent, so the
-/// caller expands it to an indexed triangle list; here it maps to TriangleList.
+/// caller expands it to an indexed triangle list; here it maps to `TriangleList`.
 fn topology(mode: i64) -> Option<wgpu::PrimitiveTopology> {
     match mode {
         GL_TRIANGLES | GL_TRIANGLE_FAN => Some(wgpu::PrimitiveTopology::TriangleList),
@@ -870,6 +873,7 @@ fn topology(mode: i64) -> Option<wgpu::PrimitiveTopology> {
 }
 
 /// Bytes-per-component for a vertex attribute (only FLOAT supported → 4).
+#[allow(clippy::match_same_arms)] // FLOAT spelled out; other types fall back to its size
 fn component_bytes(ty: i64) -> u64 {
     match ty {
         GL_FLOAT => 4,
@@ -963,10 +967,10 @@ fn render(gpu: &Gpu, width: u32, height: u32, state: &State) -> Result<Vec<u8>, 
     }
 
     let clear = wgpu::Color {
-        r: state.clear_color[0] as f64,
-        g: state.clear_color[1] as f64,
-        b: state.clear_color[2] as f64,
-        a: state.clear_color[3] as f64,
+        r: f64::from(state.clear_color[0]),
+        g: f64::from(state.clear_color[1]),
+        b: f64::from(state.clear_color[2]),
+        a: f64::from(state.clear_color[3]),
     };
 
     let mut encoder =
@@ -1050,9 +1054,9 @@ fn build_draw(
             .ok_or_else(|| format!("unsupported attrib format size={} ty={}", ptr.size, ptr.ty))?;
         let comp = component_bytes(ptr.ty);
         let stride = if ptr.stride > 0 {
-            ptr.stride as u64
+            u64::from(ptr.stride)
         } else {
-            comp * ptr.size as u64
+            comp * u64::from(ptr.size)
         };
         let bytes = state
             .buffers
@@ -1085,13 +1089,13 @@ fn build_draw(
         vertex: wgpu::VertexState {
             module: &vs,
             entry_point: "main",
-            compilation_options: Default::default(),
+            compilation_options: wgpu::PipelineCompilationOptions::default(),
             buffers: &vb_layouts,
         },
         fragment: Some(wgpu::FragmentState {
             module: &fs,
             entry_point: "main",
-            compilation_options: Default::default(),
+            compilation_options: wgpu::PipelineCompilationOptions::default(),
             targets: &[Some(wgpu::ColorTargetState {
                 format: TEX_FORMAT,
                 // WebGL blending defaults to off (opaque overwrite).
@@ -1196,9 +1200,9 @@ fn build_bindings(
 }
 
 /// Produce the index buffer + draw range for a draw. drawArrays with TRIANGLES/
-/// STRIP draws non-indexed; TRIANGLE_FAN is expanded to an indexed triangle list
+/// STRIP draws non-indexed; `TRIANGLE_FAN` is expanded to an indexed triangle list
 /// (wgpu has no fan topology). drawElements builds an index buffer from the bound
-/// ELEMENT_ARRAY_BUFFER (widening U8 → U16, expanding a fan).
+/// `ELEMENT_ARRAY_BUFFER` (widening U8 → U16, expanding a fan).
 fn build_indices(
     device: &wgpu::Device,
     state: &State,
@@ -1245,6 +1249,7 @@ fn build_indices(
 
 /// Expand a fan vertex order (v0, v1, v2, v3, …) to triangle-list indices
 /// (v0,v1,v2, v0,v2,v3, …).
+#[allow(clippy::needless_pass_by_value)] // signature kept as relocated; borrowing instead changes nothing observable
 fn fan_indices(order: Vec<u16>) -> Vec<u16> {
     let mut out = Vec::new();
     if order.len() < 3 {
@@ -1268,7 +1273,7 @@ fn read_indices(bytes: &[u8], ty: i64, count: u32, offset: u64) -> Result<Vec<u1
         GL_UNSIGNED_BYTE => {
             for i in 0..count {
                 let b = *bytes.get(off + i).ok_or("index oob")?;
-                out.push(b as u16);
+                out.push(u16::from(b));
             }
         }
         GL_UNSIGNED_SHORT => {
@@ -1314,7 +1319,7 @@ fn readback<'e>(
     let padded = align_up(unpadded, wgpu::COPY_BYTES_PER_ROW_ALIGNMENT);
     let buffer = gpu.device.create_buffer(&wgpu::BufferDescriptor {
         label: Some("webgl readback"),
-        size: (padded * height) as u64,
+        size: u64::from(padded * height),
         usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
         mapped_at_creation: false,
     });
@@ -1371,7 +1376,7 @@ fn arg_i64(a: Option<&serde_json::Value>, i: usize) -> Option<i64> {
     a.and_then(|a| a.get(i)).and_then(|v| {
         v.as_i64()
             .or_else(|| v.as_f64().map(|f| f as i64))
-            .or_else(|| v.as_bool().map(|b| b as i64))
+            .or_else(|| v.as_bool().map(i64::from))
     })
 }
 

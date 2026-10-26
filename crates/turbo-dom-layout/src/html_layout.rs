@@ -27,26 +27,13 @@ use crate::image::ImageResolver;
 use crate::layout::boxgen::{BoxKind, InlineItem, LayoutBox};
 use crate::layout::fragment::{Fragment, FragmentContent, Transform2D};
 use crate::layout::{ImageCtx, LayoutOptions};
-use crate::node::{Element, MarkerClassifier, Node, Tag};
 use crate::style::{
     build_cascade_with_width, set_media_viewport_height, style_input, Roots, StyleInput,
     StyleOptions, StyledNode, TokenSet, TreeView,
 };
+use crate::tag::MarkerClassifier;
 use crate::text::FontRegistry;
 use crate::{Diagnostics, RenderError};
-
-/// Parse an HTML document/fragment string into the LEGACY owned node tree (the
-/// `<body>` children; no marker classification). Layout itself now works on a
-/// turbo-dom [`Tree`] ([`parse_html_tree`]); this stays for [`Node`] consumers.
-pub fn parse_html(html: &str) -> Result<Vec<Node>, RenderError> {
-    crate::markup::parse(html)
-}
-
-/// [`parse_html`] plus the `<html>`/`<body>` ancestor shells the legacy cascade
-/// seeds for selector matching (see [`crate::markup::parse_with_roots`]).
-pub fn parse_html_with_roots(html: &str) -> Result<(Vec<Node>, Vec<Element>), RenderError> {
-    crate::markup::parse_with_roots(html)
-}
 
 /// Parse `html` into a turbo-dom [`Tree`] the way the HTML drive does (html5ever
 /// defaults: scripting on).
@@ -87,52 +74,10 @@ impl HtmlOptions<'_> {
     }
 }
 
-/// LEGACY: drop non-visual element subtrees (`<style>`/`<script>`/…) from a
-/// [`Node`] forest — what [`TreeView::strip_non_visual`] does on a [`Tree`].
-pub fn strip_non_visual(nodes: Vec<Node>) -> Vec<Node> {
-    nodes
-        .into_iter()
-        .filter_map(|node| match node {
-            Node::Element(mut el) => {
-                if matches!(&el.tag, Tag::Html(name) if crate::style::is_non_visual(name)) {
-                    return None;
-                }
-                el.children = strip_non_visual(el.children);
-                Some(Node::Element(el))
-            }
-            other => Some(other),
-        })
-        .collect()
-}
-
-/// Concatenate the text of every `<style>` element in a node forest, in
-/// document order — the page's author stylesheet. Inline `style=` attributes are
-/// applied separately by the cascade, so they are not collected here.
-pub fn collect_style_css(nodes: &[Node]) -> String {
-    let mut css = String::new();
-    collect_style_into(nodes, &mut css);
-    css
-}
-
-fn collect_style_into(nodes: &[Node], css: &mut String) {
-    for node in nodes {
-        let Some(el) = node.as_element() else {
-            continue;
-        };
-        if matches!(&el.tag, Tag::Html(name) if name == "style") {
-            for child in &el.children {
-                if let Some(text) = child.as_text() {
-                    css.push_str(text);
-                    css.push('\n');
-                }
-            }
-        }
-        collect_style_into(&el.children, css);
-    }
-}
-
-/// [`collect_style_css`] over a [`Tree`]: the `<style>` text in the kept content
-/// under `roots` (nothing stripped), in document order.
+/// Concatenate the text of every `<style>` element in the kept content under `roots`
+/// (nothing stripped), in document order — the page's author stylesheet. Inline
+/// `style=` attributes are applied separately by the cascade, so they are not
+/// collected here.
 #[must_use]
 pub fn collect_style_css_tree(view: &TreeView, roots: &[Handle]) -> String {
     let mut css = String::new();
@@ -579,25 +524,33 @@ fn transformed_rect(frag: &Fragment) -> (f32, f32, f32, f32) {
 
 #[cfg(test)]
 mod tests {
-    use super::{collect_style_css, layout_boxes, parse_html};
+    use super::{collect_style_css_tree, layout_boxes, parse_html_tree};
+    use crate::style::TreeView;
     use crate::text::FontRegistry;
     use crate::Diagnostics;
+
+    /// The `<style>` text of `html`'s `<body>` content.
+    fn body_css(html: &str) -> String {
+        let tree = parse_html_tree(html);
+        let view = TreeView::new(&tree);
+        let body = view.find_element("body").expect("body");
+        collect_style_css_tree(&view, &view.children(body))
+    }
 
     #[test]
     fn parse_html_keeps_body_and_skips_jinja() {
         // Braces are page content, not template syntax — they survive verbatim.
-        let nodes = parse_html("<body><p>a {{ x }} b</p></body>").expect("parse");
-        assert!(!nodes.is_empty());
-        // `collect_style_css` finds a body `<style>` (head is dropped by html5ever).
-        let css =
-            collect_style_css(&parse_html("<body><style>.a{color:red}</style></body>").unwrap());
-        assert!(css.contains(".a{color:red}"));
+        let tree = parse_html_tree("<body><p>a {{ x }} b</p></body>");
+        let view = TreeView::new(&tree);
+        let p = view.find_element("p").expect("p");
+        assert_eq!(view.text(view.children(p)[0]), "a {{ x }} b");
+        // `collect_style_css_tree` finds a body `<style>` (head is dropped by html5ever).
+        assert!(body_css("<body><style>.a{color:red}</style></body>").contains(".a{color:red}"));
     }
 
     #[test]
     fn collect_style_css_empty_without_styles() {
-        let nodes = parse_html("<body><div>plain</div></body>").expect("parse");
-        assert_eq!(collect_style_css(&nodes), "");
+        assert_eq!(body_css("<body><div>plain</div></body>"), "");
     }
 
     #[test]
@@ -831,9 +784,9 @@ mod tests {
         let view = crate::TreeView::new(&tree);
         let p = view.find_element("p").unwrap();
         assert_eq!(
-            view.to_nodes(&view.children(p))
-                .iter()
-                .filter(|n| n.as_element().is_some())
+            view.children(p)
+                .into_iter()
+                .filter(|&h| view.tree().node_type(h) == turbo_dom::rtdom::tree::NodeType::Element)
                 .count(),
             2
         );
@@ -853,7 +806,7 @@ mod tests {
         // A `Marker` box is not a block/flex/grid/table container, so it exposes
         // no block-level children (the `_ => &[]` arm).
         use crate::layout::boxgen::BoxKind;
-        use crate::node::MarkerKind;
+        use crate::tag::MarkerKind;
         let kind = MarkerKind {
             id: 0,
             inline: false,

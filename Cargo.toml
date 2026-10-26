@@ -10,6 +10,37 @@ members = ["crates/turbo-dom", "crates/turbo-dom-browser-env", "crates/turbo-dom
 # fresh checkout resolves this workspace without generating V8 first.
 exclude = ["crates/turbo-dom-v8"]
 
+# The pedantic clippy gate shared by the turbo-dom, turbo-dom-layout and
+# turbo-dom-raster crates (`[lints] workspace = true`; the root parser package keeps its
+# own copy below, which adds one FFI-specific allowance; turbo-dom-browser-env is
+# lint-exempt by design). The allowed lints don't fit a DOM / layout / raster engine —
+# "fixing" them would mangle correct, intentional code, so each is a documented opt-out
+# rather than a silent suppression. Item-level `#[allow]`s in layout/raster carry their
+# reason inline.
+[workspace.lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+# We bridge f64 layout math and integer indices/lengths with bounded, intentional casts.
+cast_possible_truncation = "allow"
+cast_precision_loss = "allow"
+cast_sign_loss = "allow"
+cast_possible_wrap = "allow"
+# Exact float comparisons here test canonical/sentinel values (e.g. `0.0`), not approximations.
+float_cmp = "allow"
+# Single-char names are idiomatic for the tokenizer / loop indices (`i`, `j`, `n`, `c`).
+many_single_char_names = "allow"
+# Test-time DOM oracle: it deliberately doesn't document every panic/error path.
+missing_panics_doc = "allow"
+missing_errors_doc = "allow"
+# A few config-ish structs legitimately carry several independent bool flags.
+struct_excessive_bools = "allow"
+# One large dispatch fn reads better intact than artificially split.
+too_many_lines = "allow"
+# We intentionally pin the concrete FxHashMap hasher rather than generalize over hashers.
+implicit_hasher = "allow"
+# `f32::midpoint` rounds through f64, so `(a + b) / 2.0` -> `a.midpoint(b)` can move the
+# last bit of layout / paint geometry; outputs are pinned byte for byte, keep the f32 math.
+manual_midpoint = "allow"
+
 [package]
 name = "turbo-dom-parser"
 version = "0.6.0"

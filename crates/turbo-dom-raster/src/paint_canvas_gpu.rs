@@ -101,7 +101,7 @@ impl Gpu {
 
 /// Position-only vertex → pass-through colour fragment. Positions arrive in NDC
 /// (the CPU maps device pixels to clip space), so the shader is a straight copy.
-const SHADER: &str = r#"
+const SHADER: &str = r"
 struct VsOut {
     @builtin(position) pos: vec4<f32>,
     @location(0) color: vec4<f32>,
@@ -117,7 +117,7 @@ fn vs(@location(0) pos: vec2<f32>, @location(1) color: vec4<f32>) -> VsOut {
 fn fs(in: VsOut) -> @location(0) vec4<f32> {
     return in.color;
 }
-"#;
+";
 
 /// Source-over blend for straight-alpha source colours over a transparent target.
 fn over_blend() -> wgpu::BlendState {
@@ -161,7 +161,7 @@ fn make_pipeline(
         vertex: wgpu::VertexState {
             module: shader,
             entry_point: "vs",
-            compilation_options: Default::default(),
+            compilation_options: wgpu::PipelineCompilationOptions::default(),
             buffers: &[wgpu::VertexBufferLayout {
                 array_stride: VERTEX_BYTES as wgpu::BufferAddress,
                 step_mode: wgpu::VertexStepMode::Vertex,
@@ -171,7 +171,7 @@ fn make_pipeline(
         fragment: Some(wgpu::FragmentState {
             module: shader,
             entry_point: "fs",
-            compilation_options: Default::default(),
+            compilation_options: wgpu::PipelineCompilationOptions::default(),
             targets: &[Some(wgpu::ColorTargetState {
                 format: TEX_FORMAT,
                 blend,
@@ -253,10 +253,10 @@ impl GpuCanvas {
     fn tri(&mut self, kind: Kind, p: [(f32, f32); 3], c: Rgba) {
         let start = (self.verts.len() / 6) as u32;
         let rgba = [
-            c.r as f32 / 255.0,
-            c.g as f32 / 255.0,
-            c.b as f32 / 255.0,
-            c.a as f32 / 255.0,
+            f32::from(c.r) / 255.0,
+            f32::from(c.g) / 255.0,
+            f32::from(c.b) / 255.0,
+            f32::from(c.a) / 255.0,
         ];
         for &(x, y) in &p {
             let (nx, ny) = self.ndc(x, y);
@@ -422,7 +422,7 @@ fn render(gpu: &Gpu, width: u32, height: u32, canvas: &GpuCanvas) -> Result<Vec<
     let padded = align_up(unpadded, wgpu::COPY_BYTES_PER_ROW_ALIGNMENT);
     let readback = gpu.device.create_buffer(&wgpu::BufferDescriptor {
         label: Some("canvas readback"),
-        size: (padded * height) as u64,
+        size: u64::from(padded * height),
         usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
         mapped_at_creation: false,
     });

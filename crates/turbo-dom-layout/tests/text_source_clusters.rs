@@ -2,6 +2,7 @@ use turbo_dom_layout::layout::inline::{
     layout_paragraph_in, layout_paragraph_in_with_sources, InlineRun, Piece,
 };
 use turbo_dom_layout::layout::value::{Rgba, VAlign};
+use turbo_dom_layout::test_support::literal;
 use turbo_dom_layout::text::Align;
 use turbo_dom_layout::{Diagnostics, FontRegistry, NodeId};
 
@@ -160,7 +161,8 @@ fn capture_snapshot_style(
     use turbo_dom_layout::layout_snapshot::{
         snapshot_live_tree, snapshot_live_tree_with_text, SnapshotInputs, SourceId, SourceIdentity,
     };
-    use turbo_dom_layout::{build_cascade, Attr, Element, ImageCtx, NoImages, Node, Tag};
+    use turbo_dom_layout::test_support::literal::{Element, Node};
+    use turbo_dom_layout::{build_cascade, Attr, ImageCtx, NoImages, Tag};
     let nodes = [Node::Element(Element {
         tag: Tag::Html("div".into()),
         attrs: vec![Attr {
@@ -191,12 +193,25 @@ fn capture_snapshot_style(
         fonts: &fonts,
         images: &images,
     };
-    let css = build_cascade("", "", Default::default());
+    let css = build_cascade("", "", turbo_dom_layout::style::TokenSet::default());
     if enabled {
-        snapshot_live_tree_with_text(&nodes, &ids, &css, &inputs, &mut Diagnostics::default())
-            .unwrap()
+        snapshot_live_tree_with_text(
+            &literal::tree(&nodes).input(),
+            &ids,
+            &css,
+            &inputs,
+            &mut Diagnostics::default(),
+        )
+        .unwrap()
     } else {
-        snapshot_live_tree(&nodes, &ids, &css, &inputs, &mut Diagnostics::default()).unwrap()
+        snapshot_live_tree(
+            &literal::tree(&nodes).input(),
+            &ids,
+            &css,
+            &inputs,
+            &mut Diagnostics::default(),
+        )
+        .unwrap()
     }
 }
 
@@ -248,7 +263,8 @@ fn atom_cloning_and_positioning_preserve_real_nested_text_source_clusters() {
     use turbo_dom_layout::layout_snapshot::{
         snapshot_live_tree_with_text, SnapshotInputs, SourceId, SourceIdentity,
     };
-    use turbo_dom_layout::{build_cascade, Attr, Element, ImageCtx, NoImages, Node, Tag};
+    use turbo_dom_layout::test_support::literal::{Element, Node};
+    use turbo_dom_layout::{build_cascade, Attr, ImageCtx, NoImages, Tag};
     let nodes = [Node::Element(Element {
         tag: Tag::Html("div".into()),
         attrs: vec![],
@@ -293,9 +309,9 @@ fn atom_cloning_and_positioning_preserve_real_nested_text_source_clusters() {
         body_height: None,
     };
     let native = snapshot_live_tree_with_text(
-        &nodes,
+        &literal::tree(&nodes).input(),
         &ids,
-        &build_cascade("", "", Default::default()),
+        &build_cascade("", "", turbo_dom_layout::style::TokenSet::default()),
         &SnapshotInputs {
             width: 200.0,
             height: 100.0,
@@ -363,7 +379,8 @@ fn controlled_font_snapshot(
     use turbo_dom_layout::layout_snapshot::{
         snapshot_html_live_tree_with_svg_viewports, SnapshotInputs, SourceId, SourceIdentity,
     };
-    use turbo_dom_layout::{build_cascade, Attr, Element, Node, Tag};
+    use turbo_dom_layout::test_support::literal::{Element, Node};
+    use turbo_dom_layout::{build_cascade, Attr, Tag};
     let width = case["width"].as_f64().unwrap();
     let font_size = case["fontSize"].as_f64().unwrap_or(64.0);
     let line_height = case["lineHeight"].as_f64().unwrap_or(80.0);
@@ -411,11 +428,11 @@ fn controlled_font_snapshot(
         }
     }
     snapshot_html_live_tree_with_svg_viewports(
-        &nodes,
+        &literal::tree(&nodes).input(),
         &ids,
         &[],
         2.0,
-        &build_cascade("", "", Default::default()),
+        &build_cascade("", "", turbo_dom_layout::style::TokenSet::default()),
         &SnapshotInputs {
             width: 400.0,
             height: 300.0,
@@ -507,7 +524,8 @@ fn text_snapshot_errors_keep_the_original_source_and_viewport_validation() {
         snapshot_live_tree_with_text, SnapshotError, SnapshotInputs, SourceId, SourceIdentity,
         TextSnapshotError,
     };
-    use turbo_dom_layout::{build_cascade, ImageCtx, NoImages, Node};
+    use turbo_dom_layout::test_support::literal::Node;
+    use turbo_dom_layout::{build_cascade, ImageCtx, NoImages};
     let nodes = [Node::Text("ab".into())];
     let fonts = FontRegistry::new();
     let images = ImageCtx {
@@ -530,9 +548,15 @@ fn text_snapshot_errors_keep_the_original_source_and_viewport_validation() {
             path: vec![0],
         },
     ];
-    let css = build_cascade("", "", Default::default());
+    let css = build_cascade("", "", turbo_dom_layout::style::TokenSet::default());
     assert!(matches!(
-        snapshot_live_tree_with_text(&nodes, &ids, &css, &inputs, &mut Diagnostics::default()),
+        snapshot_live_tree_with_text(
+            &literal::tree(&nodes).input(),
+            &ids,
+            &css,
+            &inputs,
+            &mut Diagnostics::default()
+        ),
         Err(TextSnapshotError::Snapshot(SnapshotError::DuplicateId(
             SourceId(9)
         )))
@@ -542,12 +566,23 @@ fn text_snapshot_errors_keep_the_original_source_and_viewport_validation() {
         ..inputs
     };
     assert!(matches!(
-        snapshot_live_tree_with_text(&nodes, &[], &css, &invalid, &mut Diagnostics::default()),
+        snapshot_live_tree_with_text(
+            &literal::tree(&nodes).input(),
+            &[],
+            &css,
+            &invalid,
+            &mut Diagnostics::default()
+        ),
         Err(TextSnapshotError::Snapshot(SnapshotError::InvalidViewport))
     ));
-    let unmapped =
-        snapshot_live_tree_with_text(&nodes, &[], &css, &inputs, &mut Diagnostics::default())
-            .unwrap();
+    let unmapped = snapshot_live_tree_with_text(
+        &literal::tree(&nodes).input(),
+        &[],
+        &css,
+        &inputs,
+        &mut Diagnostics::default(),
+    )
+    .unwrap();
     assert_eq!(unmapped.text_runs()[0].source_id, None);
     assert!(unmapped.text_runs()[0].source_ancestors.is_empty());
 }
@@ -949,7 +984,8 @@ fn physical_font_overflow_fails_before_any_source_geometry_can_be_published() {
         snapshot_html_live_tree_with_svg_viewports, SnapshotInputs, SvgSnapshotError,
         TextSnapshotError,
     };
-    use turbo_dom_layout::{build_cascade, parse_html, ImageCtx, NoImages};
+    use turbo_dom_layout::test_support::literal::parse_html;
+    use turbo_dom_layout::{build_cascade, ImageCtx, NoImages};
     let nodes =
         parse_html("<div style='font-size:300000000000000000000000000000000000000px'>ab</div>")
             .unwrap();
@@ -959,11 +995,11 @@ fn physical_font_overflow_fails_before_any_source_geometry_can_be_published() {
         body_height: None,
     };
     let result = snapshot_html_live_tree_with_svg_viewports(
-        &nodes,
+        &literal::tree(&nodes).input(),
         &[],
         &[],
         16.0,
-        &build_cascade("", "", Default::default()),
+        &build_cascade("", "", turbo_dom_layout::style::TokenSet::default()),
         &SnapshotInputs {
             width: 400.0,
             height: 300.0,

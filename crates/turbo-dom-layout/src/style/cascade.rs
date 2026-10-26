@@ -7,7 +7,7 @@ use std::collections::BTreeMap;
 
 use super::parser::{parse_declarations, Declaration, Rule};
 use super::token::{resolve_tokens, TokenSet};
-use crate::node::{Attr, Element, Node, Tag};
+use crate::tag::{Attr, Tag};
 use turbo_dom::rtdom::query::Specificity;
 use turbo_dom::Handle;
 
@@ -64,6 +64,7 @@ impl ComputedStyle {
     /// is still required to be absolute — see `is_ctx_independent`). Conservative:
     /// any `%`/`em` substring (even inside a value like `lemonchiffon`) just
     /// disables the cache, which is always safe.
+    #[must_use]
     pub fn has_no_relative_units(&self) -> bool {
         self.map
             .values()
@@ -93,9 +94,9 @@ pub struct StyledElement {
     pub attrs: Vec<Attr>,
     pub style: ComputedStyle,
     pub children: Vec<StyledNode>,
-    /// The turbo-dom node this element was styled from (`None` for the legacy
-    /// [`Node`] input and synthetic elements). Layout's source-recording mode
-    /// maps box ids back to it.
+    /// The turbo-dom node this element was styled from (`None` for synthetic
+    /// elements and test-built styled trees). Layout's source-recording mode maps
+    /// box ids back to it.
     pub source: Option<Handle>,
 }
 
@@ -103,7 +104,7 @@ pub struct StyledElement {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StyledText {
     pub text: String,
-    /// The source text node (`None` for the legacy [`Node`] input and synthetic text).
+    /// The source text node (`None` for synthetic text and test-built styled trees).
     pub source: Option<Handle>,
 }
 
@@ -138,6 +139,7 @@ pub enum StyledNode {
 
 impl StyledNode {
     /// Borrow the styled element if this node is one.
+    #[must_use]
     pub fn as_element(&self) -> Option<&StyledElement> {
         match self {
             StyledNode::Element(e) => Some(e),
@@ -145,9 +147,8 @@ impl StyledNode {
         }
     }
 
-    /// This subtree with every `source` cleared — the comparison key between the
-    /// legacy [`Node`] input and the turbo-dom [`TreeView`](super::TreeView) input,
-    /// which differ only in that provenance.
+    /// This subtree with every `source` cleared — styled content compared without its
+    /// provenance (two styled copies of the same content from different trees).
     #[must_use]
     pub fn without_sources(&self) -> StyledNode {
         match self {
@@ -203,12 +204,11 @@ const INHERITED: &[&str] = &[
 // --------------------------------------------------------------------------
 
 /// Where the non-selector cascade inputs (presentational hints, tokens, inline style,
-/// `cellpadding`) read an element's attributes: the legacy owned node's list, or a
-/// turbo-dom element (by local attribute name, in attribute order — the same identities
-/// html5ever's `name.local` gave the legacy conversion).
+/// `cellpadding`) read an element's attributes: an attribute list, or a turbo-dom
+/// element (by local attribute name, in attribute order).
 #[derive(Clone, Copy)]
 pub(crate) enum Attrs<'a> {
-    Node(&'a [Attr]),
+    List(&'a [Attr]),
     Tree(&'a turbo_dom::Tree, Handle),
 }
 
@@ -216,7 +216,7 @@ impl<'a> Attrs<'a> {
     /// The first attribute named exactly `name`.
     pub(crate) fn get(self, name: &str) -> Option<&'a str> {
         match self {
-            Attrs::Node(attrs) => attrs
+            Attrs::List(attrs) => attrs
                 .iter()
                 .find(|a| a.name == name)
                 .map(|a| a.value.as_str()),
@@ -227,7 +227,7 @@ impl<'a> Attrs<'a> {
     /// The first attribute whose name equals `name` ignoring ASCII case.
     pub(crate) fn get_ignore_case(self, name: &str) -> Option<&'a str> {
         match self {
-            Attrs::Node(attrs) => attrs
+            Attrs::List(attrs) => attrs
                 .iter()
                 .find(|a| a.name.eq_ignore_ascii_case(name))
                 .map(|a| a.value.as_str()),
@@ -247,18 +247,6 @@ pub(crate) struct Subject<'a> {
     pub(crate) attrs: Attrs<'a>,
 }
 
-impl<'a> Subject<'a> {
-    pub(crate) fn node(element: &'a Element) -> Self {
-        Subject {
-            tag: match &element.tag {
-                Tag::Html(name) => Some(name),
-                Tag::Marker(_) => None,
-            },
-            attrs: Attrs::Node(&element.attrs),
-        }
-    }
-}
-
 /// The `nth-of-type` grouping key: the element's local name, or a per-kind key for
 /// markers that no element name can equal.
 fn tag_key(tag: &Tag) -> String {
@@ -268,7 +256,7 @@ fn tag_key(tag: &Tag) -> String {
     }
 }
 
-fn marker_key(kind: crate::node::MarkerKind) -> String {
+fn marker_key(kind: crate::tag::MarkerKind) -> String {
     format!("\u{1}marker:{}", kind.id)
 }
 
@@ -509,8 +497,7 @@ fn font_size_px(value: &str, parent_px: f32) -> f32 {
     let split = t
         .char_indices()
         .find(|(_, c)| c.is_ascii_alphabetic() || *c == '%')
-        .map(|(i, _)| i)
-        .unwrap_or(t.len());
+        .map_or(t.len(), |(i, _)| i);
     let Ok(n) = t[..split].parse::<f32>() else {
         return parent_px;
     };
@@ -748,92 +735,6 @@ fn resolve_style(
     inherit(pick_winners(expand_quad_candidates(cands, parent)), parent)
 }
 
-// --------------------------------------------------------------------------
-// the legacy Node input (reference + turbo-html2pdf-core's Node-literal tests)
-// --------------------------------------------------------------------------
-
-/// The element name a [`Tag::Marker`] gets in the turbo-dom copy of a legacy forest (no
-/// parsed or authored element can have it), and its inverse.
-fn bridge_marker_name(kind: crate::node::MarkerKind) -> String {
-    format!("\u{1}marker:{}:{}", kind.id, u8::from(kind.inline))
-}
-
-fn bridge_marker(local: &str) -> Option<crate::node::MarkerKind> {
-    let (id, inline) = local.strip_prefix("\u{1}marker:")?.split_once(':')?;
-    Some(crate::node::MarkerKind {
-        id: id.parse().ok()?,
-        inline: inline == "1",
-    })
-}
-
-/// Style a legacy forest: copy it into a turbo-dom [`Tree`](turbo_dom::Tree)
-/// ([`tree_from_nodes`](crate::tree_from_nodes)) and style the copy like any other Tree
-/// input, so both inputs share one selector engine. `shells` (outermost first) become
-/// match-only ancestors. The result carries no `source` handles.
-fn style_forest(nodes: &[Node], cascade: &Cascade, shells: &[Element]) -> Vec<StyledNode> {
-    let mut copy = crate::tree_from_nodes(nodes, &bridge_marker_name);
-    let mut shell_handles = Vec::with_capacity(shells.len());
-    for shell in shells {
-        let name = match &shell.tag {
-            Tag::Html(name) => name.clone(),
-            Tag::Marker(kind) => bridge_marker_name(*kind),
-        };
-        let h = copy
-            .tree
-            .create_element_ns(&name, turbo_dom::rtdom::tree::Namespace::Html);
-        for attr in &shell.attrs {
-            copy.tree.set_attribute(h, &attr.name, &attr.value);
-        }
-        shell_handles.push(h);
-    }
-    let view = TreeView::new(&copy.tree).markers(&bridge_marker);
-    let nav = Navigator::with_shells(&view, shell_handles, copy.roots.clone());
-    tree_view::style_scope(&nav, cascade)
-        .iter()
-        .map(StyledNode::without_sources)
-        .collect()
-}
-
-/// Build the styled tree for a flow of nodes under the given cascade.
-pub fn style_tree(nodes: &[Node], cascade: &Cascade) -> Vec<StyledNode> {
-    style_forest(nodes, cascade, &[])
-}
-
-/// [`style_tree`] with explicit [`StyleOptions`] (the legacy-input twin of
-/// [`style_input`]'s options).
-pub fn style_tree_with_options(
-    nodes: &[Node],
-    cascade: &Cascade,
-    options: &StyleOptions,
-) -> Vec<StyledNode> {
-    let _cmyk = crate::layout::value::cmyk_scope(options.accept_cmyk);
-    style_tree(nodes, cascade)
-}
-
-/// [`style_tree`] with `<html>`/`<body>` ancestor shells seeded as match-only
-/// contexts, so descendant selectors gated on their classes resolve. The shells
-/// are not laid out; they only participate in selector matching. Each shell's own
-/// style resolves down the chain so the content inherits from the real `<body>`
-/// computed style (nike's `html{box-sizing:border-box}` + `*{box-sizing:inherit}`).
-pub fn style_tree_with_roots(
-    nodes: &[Node],
-    cascade: &Cascade,
-    roots: &[Element],
-) -> Vec<StyledNode> {
-    style_forest(nodes, cascade, roots)
-}
-
-/// [`style_tree_with_roots`] with explicit [`StyleOptions`].
-pub fn style_tree_with_roots_options(
-    nodes: &[Node],
-    cascade: &Cascade,
-    roots: &[Element],
-    options: &StyleOptions,
-) -> Vec<StyledNode> {
-    let _cmyk = crate::layout::value::cmyk_scope(options.accept_cmyk);
-    style_tree_with_roots(nodes, cascade, roots)
-}
-
 #[path = "matched.rs"]
 mod matched;
 
@@ -843,7 +744,6 @@ pub(crate) use matched::presentational_declarations_of;
 pub use matched::{
     presentational_declarations, resolve_matched_style, CascadeOrigin, MatchedDeclaration,
 };
-pub(crate) use tree_view::is_non_visual;
 pub use tree_view::{
     style_input, Navigator, Roots, SiblingPosition, StyleInput, StyleOptions, TreeView,
 };

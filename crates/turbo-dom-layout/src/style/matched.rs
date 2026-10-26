@@ -3,8 +3,7 @@ use super::{
     collect_presentational, expand_quad_candidates, inherit, pick_winners, Attrs, Cand, Subject,
 };
 use super::{ComputedStyle, Declaration};
-use crate::node::Attr;
-use crate::Element;
+use crate::tag::Attr;
 
 /// CSS origin, before encapsulation, specificity and source-order resolution.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -94,11 +93,16 @@ pub fn resolve_matched_style(
     )
 }
 
-/// The same legacy attribute hints used by the ordinary tree cascade. Embedders
-/// can assign these the owning element's scope and an early author source order.
+/// The same legacy attribute hints (`bgcolor`, `width`, `height`, `color`) the
+/// ordinary tree cascade applies, for an element named `local` (`None` = a marker)
+/// with `attrs`. Embedders can assign these the owning element's scope and an early
+/// author source order.
 #[must_use]
-pub fn presentational_declarations(element: &Element) -> Vec<Declaration> {
-    declarations_of(Subject::node(element))
+pub fn presentational_declarations(local: Option<&str>, attrs: &[Attr]) -> Vec<Declaration> {
+    declarations_of(Subject {
+        tag: local,
+        attrs: Attrs::List(attrs),
+    })
 }
 
 /// The attributes [`presentational_declarations`] reads.
@@ -122,7 +126,7 @@ pub(crate) fn presentational_declarations_of(
         .collect();
     declarations_of(Subject {
         tag: Some(local),
-        attrs: Attrs::Node(&attrs),
+        attrs: Attrs::List(&attrs),
     })
 }
 

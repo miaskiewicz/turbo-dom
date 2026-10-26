@@ -1,4 +1,6 @@
 //! Preserve native 2D CSS transform precision separately from PDF float matrices.
+// An extension of `value` (its tests use the parent's items too): glob-import the parent.
+#[allow(clippy::wildcard_imports)]
 use super::*;
 
 #[derive(Debug, Clone, Copy)]
@@ -59,8 +61,7 @@ fn length(value: Option<&&str>, fs: f32, basis: f32) -> f64 {
     value
         .and_then(|value| parse_length_pct(value, fs))
         .and_then(|value| value.resolve(basis))
-        .map(f64::from)
-        .unwrap_or(0.0)
+        .map_or(0.0, f64::from)
 }
 fn translate(name: &str, args: &[&str], fs: f32, size: [f32; 2]) -> Option<[f64; 6]> {
     if name == "translate3d" && length(args.get(2), fs, 0.0) != 0.0 {

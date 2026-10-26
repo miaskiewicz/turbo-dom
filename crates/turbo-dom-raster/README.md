@@ -25,9 +25,23 @@ fn shot(html: &str) -> Result<Vec<u8>, String> {
 | `gpu-metal` | off | rasterize canvas op logs and WebGL batches on the GPU (wgpu → Metal); any GPU failure falls back to the tiny-skia path |
 | `coretext` | off | macOS only: canvas 2D text through CoreText/CoreGraphics (inert elsewhere) |
 
-turbo-dom-layout is used with its default features (`bundled-fonts`); its `svg`
-feature is never enabled from here (SVG images are rasterized by this crate's own
-resvg path).
+turbo-dom-layout is used with explicit features: `bundled-fonts` and `svg-rasterize` (the
+shared SVG rasterizer, at 1x here); its `svg` feature (the PDF SVG pipeline) is never
+enabled from here.
+
+## Images
+
+Fetched image bytes decode once, through turbo-dom-layout's shared image layer where it is
+byte-identical: PNG via `image::decode_png_rgba` (the PDF emitter's decode, RGBA equal to
+`image::to_rgba8`), SVG via `svg::rasterize` at 1x (an axis above 8192 px rejected). JPEG
+(zune-jpeg), GIF (frame 0 composited) and WebP decode with the `image` crate, which also
+does the `Triangle` resize for paint and the PNG re-encode of SVG `data:` URIs. Layout
+sizes each image from the shared header probe through `ImageResolver::intrinsic` (no PNG
+re-encode for sizing). `image_paint::shared_layer_tests` asserts the old decode
+(`image::load_from_memory(..).to_rgba8()`, the old 1x resvg path) and the old
+probe-of-the-re-encode equal the new ones over turbo-dom's `tools/parity` image inputs and
+every 8/16-bit sample value. `system_fonts` renders share turbo-dom-layout's process-wide
+`FontRegistry::system` registry.
 
 ## Provenance
 
@@ -37,8 +51,10 @@ code change is the dependency `turbo-html2pdf-core` -> `turbo-dom-layout` (same 
 same names). `scripts/verify-copied-layout.sh` checks the copy.
 
 ```bash
-cargo test -p turbo-dom-raster        # 40 unit tests + tests/screenshot.rs (24)
+cargo test -p turbo-dom-raster        # 42 unit tests + tests/screenshot.rs (24)
 cargo check -p turbo-dom-raster --features gpu-metal,coretext
 ```
+
+Lints: `clippy::pedantic` via `[workspace.lints]` (see turbo-dom-layout's README).
 
 MSRV 1.89. License: MIT.

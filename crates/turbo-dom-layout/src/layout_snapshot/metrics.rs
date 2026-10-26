@@ -19,6 +19,7 @@ pub struct UsedBoxMetrics {
 }
 
 impl UsedBoxMetrics {
+    #[must_use]
     pub fn content_rect(self, border_box: Rect) -> Rect {
         Rect {
             x: border_box.x + self.border.left + self.padding.left,
@@ -28,6 +29,7 @@ impl UsedBoxMetrics {
         }
     }
 
+    #[must_use]
     pub fn padding_rect(self, border_box: Rect) -> Rect {
         Rect {
             x: border_box.x + self.border.left,

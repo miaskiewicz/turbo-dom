@@ -1,6 +1,6 @@
 //! Unit tests for the public error / diagnostic / option types (§8.1, §9).
 //!
-//! Split at the S1 relocation: the cases that need TKind directives, templating or the
+//! Split at the S1 relocation: the cases that need `TKind` directives, templating or the
 //! PDF emitter stay in turbo-html2pdf-core's `tests/types.rs`.
 
 use turbo_dom_layout::{CompileError, Diagnostics, ErrorCode, Lint, LintCode, RenderError, Span};

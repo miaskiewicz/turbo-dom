@@ -32,6 +32,7 @@ fn invisible(style: &ComputedStyle) -> bool {
 }
 
 /// Chromium decides content-visibility:auto relevance with a 50% viewport margin.
+#[must_use]
 pub fn near_viewport(bounds: Rect, translation: [f32; 2], viewport: [f32; 2]) -> bool {
     let [width, height] = viewport;
     let x = bounds.x - translation[0];

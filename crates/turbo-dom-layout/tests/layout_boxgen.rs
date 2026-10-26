@@ -1,12 +1,12 @@
 //! Box generation (§5.1): styled tree -> box tree, anonymous-block wrapping of
 //! inline runs (AC-5.1), `display:none` dropping, and `t:` directive markers.
 //!
-//! Split at the S1 relocation: the cases that need TKind directives, templating or the
+//! Split at the S1 relocation: the cases that need `TKind` directives, templating or the
 //! PDF emitter stay in turbo-html2pdf-core's `tests/layout_boxgen.rs`.
 
 use turbo_dom_layout::layout::boxgen::*;
 use turbo_dom_layout::layout::value::Display;
-use turbo_dom_layout::node::Tag;
+use turbo_dom_layout::tag::Tag;
 use turbo_dom_layout::{ComputedStyle, StyledElement, StyledNode};
 
 fn cs(pairs: &[(&str, &str)]) -> ComputedStyle {
@@ -84,7 +84,7 @@ fn display_none_is_dropped() {
 #[test]
 fn inline_block_becomes_atomic() {
     let nodes = vec![el("span", &[("display", "inline-block")], vec![txt("x")])];
-    let items = as_lines(&build_box_tree(&nodes).kind).to_vec();
+    let items = as_lines(&build_box_tree(&nodes).kind).clone();
     assert!(matches!(items[0], InlineItem::Atomic(_)));
 }
 
@@ -95,7 +95,7 @@ fn block_nested_in_inline_becomes_atomic() {
         &[("display", "inline")],
         vec![el("div", &[], vec![txt("d")])],
     )];
-    let items = as_lines(&build_box_tree(&nodes).kind).to_vec();
+    let items = as_lines(&build_box_tree(&nodes).kind).clone();
     assert_eq!(items.len(), 1);
     assert!(matches!(items[0], InlineItem::Atomic(_)));
 }
@@ -110,7 +110,7 @@ fn inline_element_drops_hidden_child() {
             txt("vis"),
         ],
     )];
-    let items = as_lines(&build_box_tree(&nodes).kind).to_vec();
+    let items = as_lines(&build_box_tree(&nodes).kind).clone();
     assert_eq!(items.len(), 1); // only "vis"
 }
 
@@ -144,9 +144,8 @@ fn table_structure_preserved() {
         )],
     )];
     let boxes = as_block(&build_box_tree(&nodes).kind);
-    let rows = match &boxes[0].kind {
-        BoxKind::Table(rows) => rows,
-        _ => panic!("expected Table"),
+    let BoxKind::Table(rows) = &boxes[0].kind else {
+        panic!("expected Table")
     };
     assert_eq!(rows[0].display, Display::TableRow);
     let cells = as_block(&rows[0].kind);
@@ -216,7 +215,7 @@ fn mask_shorthand_url_is_extracted_via_token_scan() {
 
 #[test]
 fn img_lazy_data_url_and_srcset_become_replaced_source() {
-    use turbo_dom_layout::node::Attr;
+    use turbo_dom_layout::tag::Attr;
     let img = |attrs: &[(&str, &str)]| {
         StyledNode::Element(StyledElement {
             tag: Tag::Html("img".into()),
@@ -260,7 +259,7 @@ fn img_lazy_data_url_and_srcset_become_replaced_source() {
 
 #[test]
 fn input_button_value_renders_as_text() {
-    use turbo_dom_layout::node::Attr;
+    use turbo_dom_layout::tag::Attr;
     let input = |ty: &str| {
         StyledNode::Element(StyledElement {
             tag: Tag::Html("input".into()),

@@ -20,7 +20,7 @@ fn styled(tree: &Tree, css: &str) -> Vec<StyledNode> {
             view,
             roots: Roots::Detached(&roots),
         },
-        &build_cascade(css, "", Default::default()),
+        &build_cascade(css, "", turbo_dom_layout::style::TokenSet::default()),
         &StyleOptions::default(),
     )
 }
@@ -35,7 +35,7 @@ fn lay(tree: &Tree, css: &str, options: LayoutOptions) -> LaidOut {
             body_height: None,
         },
         &options,
-        &mut Default::default(),
+        &mut turbo_dom_layout::Diagnostics::default(),
     )
 }
 
@@ -124,7 +124,7 @@ fn recorded_sources_cover_elements_texts_rows_and_the_id_range() {
             body_height: None,
         },
         &LayoutOptions::default(),
-        &mut Default::default(),
+        &mut turbo_dom_layout::Diagnostics::default(),
     );
     let shape = |f: &Fragment| (f.x, f.y, f.width, f.height);
     let plain_frags = fragments(&plain);

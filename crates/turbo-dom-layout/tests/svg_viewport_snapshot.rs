@@ -1,13 +1,13 @@
-//! Split at the S1 relocation: the cases that need TKind directives, templating or the
+//! Split at the S1 relocation: the cases that need `TKind` directives, templating or the
 //! PDF emitter stay in turbo-html2pdf-core's `tests/svg_viewport_snapshot.rs`.
 
 use turbo_dom_layout::layout_snapshot::{
     snapshot_html_live_tree_with_svg_viewports, GeometryKind, LayoutSnapshot, SnapshotInputs,
     SourceId, SourceIdentity,
 };
-use turbo_dom_layout::{
-    build_cascade, Attr, Diagnostics, Element, FontRegistry, ImageCtx, NoImages, Node, Tag,
-};
+use turbo_dom_layout::test_support::literal;
+use turbo_dom_layout::test_support::literal::{Element, Node};
+use turbo_dom_layout::{build_cascade, Attr, Diagnostics, FontRegistry, ImageCtx, NoImages, Tag};
 
 fn graph(case: &serde_json::Value) -> Vec<Node> {
     let mut attributes: Vec<Attr> = case["attrs"]
@@ -95,11 +95,11 @@ fn capture_at_scale(
         body_height: None,
     };
     snapshot_html_live_tree_with_svg_viewports(
-        nodes,
+        &literal::tree(nodes).input(),
         identities,
         viewports,
         scale,
-        &build_cascade("", "", Default::default()),
+        &build_cascade("", "", turbo_dom_layout::style::TokenSet::default()),
         &SnapshotInputs {
             width: 400.0,
             height: 300.0,

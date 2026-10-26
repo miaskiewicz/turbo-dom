@@ -1,7 +1,7 @@
 //! Style-system tests (§4): CSS parsing, selector matching + specificity,
 //! tokens, node-style injection, the 6-level cascade, and inheritance.
 //!
-//! Split at the S1 relocation: the cases that need TKind directives, templating or the
+//! Split at the S1 relocation: the cases that need `TKind` directives, templating or the
 //! PDF emitter stay in turbo-html2pdf-core's `tests/style.rs`.
 
 mod common;
@@ -89,7 +89,8 @@ fn root_pseudo_matches_html_element() {
     // `:root` (cascade.rs Root → ctx.tag == Some("html")). The compiler strips the
     // `<html>` wrapper before render, so build a tree with a top-level html element
     // by hand and style it directly.
-    use turbo_dom_layout::{Attr, Element, Node, Tag};
+    use turbo_dom_layout::test_support::literal::{Element, Node};
+    use turbo_dom_layout::{Attr, Tag};
     let html = Node::Element(Element {
         tag: Tag::Html("html".to_string()),
         attrs: vec![Attr {
