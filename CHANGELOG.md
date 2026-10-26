@@ -128,6 +128,15 @@ changes in `tools/parity/expected/p5b-w3-turbo-dom-28-*.json`.
   block-level boxes filling the line; a grid's intrinsic width is its `px` column tracks
   plus gaps (else its widest item). Control: `inline-flex-*` / `inline-grid-*` in
   `live-geometry` and `html-document`.
+- Absolutely positioned `width: auto` boxes (miaskiewicz/turbo-dom#48, found while fixing
+  #28 item 2): a non-replaced one is shrink-to-fit (CSS 2.1 §10.3.7) — `min(max(min-content,
+  available), max-content)`, available from its set inset or static position to the far
+  edge of the containing block, then `min-width` / `max-width` — on every path, and one
+  with both `left` and `right` set stretches between them on the PDF / screenshot path
+  too (live already did); a `right`-anchored box is placed by that width. It used to take
+  the whole containing block (`<div style="position:absolute;right:0">` of a 30px child
+  was 1280px wide at x=0). Control: `abs-auto-width-*` / `fixed-auto-width-shrinks` in
+  `live-geometry` and `html-document`.
 
 ### Changed — selector follow-ups (P5b-X2, miaskiewicz/turbo-dom#24, Chrome 156 controls)
 - `rtdom::cascade` (`getComputedStyle`) and the npm `cascade.mjs` rank rules by the

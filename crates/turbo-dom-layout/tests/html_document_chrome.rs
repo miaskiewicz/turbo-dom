@@ -127,7 +127,6 @@ fn abs_auto_width_case(id: &str) -> bool {
 }
 
 #[test]
-#[ignore = "turbo-dom#48: fails until the fix"]
 fn absolutely_positioned_auto_widths_shrink_to_fit_like_chrome_156() {
     compare_cases(abs_auto_width_case);
 }

@@ -117,13 +117,15 @@ fn containing_block(bs: &BoxStyle, ctx: &Ctx) -> (f32, f32, f32) {
 /// exactly once; a `right`-anchored box sits its `margin-right` inside the inset
 /// (miaskiewicz/turbo-dom#28 item 2).
 fn out_of_flow_origin(
+    lb: &LayoutBox,
     bs: &BoxStyle,
     cb_width: f32,
     ctx: &Ctx,
     static_pos: (f32, f32),
 ) -> (f32, f32) {
     let (cbx, cby, cbw) = containing_block(bs, ctx);
-    let bbw = border_box_width(bs, cbw.max(cb_width));
+    let bbw = auto_positioned_width(lb, bs, static_pos.0 + bs.margin.left, ctx)
+        .unwrap_or_else(|| border_box_width(bs, cbw.max(cb_width)));
     let x = match (bs.inset_left.resolve(cbw), bs.inset_right.resolve(cbw)) {
         (Some(l), _) => cbx + l + bs.margin.left,
         (None, Some(r)) => cbx + cbw - bbw - r - bs.margin.right,
@@ -325,8 +327,14 @@ fn layout_positioned(
 ) -> Fragment {
     let mut bs = resolve(lb, width, fs);
     let width = out_of_flow_width(&bs, width, ctx);
-    if !ctx.live_geometry || lb.is_replaced() {
+    if lb.is_replaced() {
         return layout_box(lb, origin.0, origin.1, width, fs, ctx);
+    }
+    if !ctx.live_geometry {
+        return match auto_positioned_width(lb, &bs, origin.0, ctx) {
+            Some(border_width) => layout_box_sized(lb, &bs, origin.0, origin.1, border_width, ctx),
+            None => layout_box(lb, origin.0, origin.1, width, fs, ctx),
+        };
     }
     bs = resolve(lb, width, fs);
     let border = bs.border.widths();
@@ -349,8 +357,39 @@ fn layout_positioned(
         out_of_flow_height(&bs, ctx),
         bs.margin.vertical() + frame.1,
     );
-    let border_width = border_box_width(&bs, width);
+    let border_width = auto_positioned_width(lb, &bs, origin.0, ctx)
+        .unwrap_or_else(|| border_box_width(&bs, width));
     layout_box_sized(lb, &bs, origin.0, origin.1, border_width, ctx)
+}
+
+/// The used border-box width of an absolutely positioned non-replaced box with
+/// `width: auto` (CSS 2.1 §10.3.7; miaskiewicz/turbo-dom#48): stretched between
+/// `left` and `right` when both are set, else shrink-to-fit —
+/// `min(max(min-content, available), max-content)`, the available width running from
+/// the set inset (or the static position, `border_x` being the border-box x there)
+/// to the far edge of the containing block — then `min-width` / `max-width`. `None`
+/// for any other box.
+fn auto_positioned_width(lb: &LayoutBox, bs: &BoxStyle, border_x: f32, ctx: &Ctx) -> Option<f32> {
+    if bs.width != LengthPct::Auto || lb.is_replaced() {
+        return None;
+    }
+    let (cbx, _, cbw) = containing_block(bs, ctx);
+    let margins = bs.margin.horizontal();
+    let insets = (bs.inset_left.resolve(cbw), bs.inset_right.resolve(cbw));
+    let width = if let (Some(left), Some(right)) = insets {
+        cbw - left - right - margins
+    } else {
+        let start = insets
+            .0
+            .or(insets.1)
+            .unwrap_or(border_x - bs.margin.left - cbx);
+        let available = cbw - start - margins;
+        let fonts = ctx.fonts;
+        let min = super::flex::min_content_width(lb, fonts);
+        super::flex::natural_width(lb, fonts).min(available.max(min))
+    };
+    let extra = bs.padding.horizontal() + bs.border.widths().horizontal();
+    Some(clamp_width(width.max(0.0), bs, cbw, extra))
 }
 
 fn stretch_insets(
@@ -956,7 +995,7 @@ fn place_inline_out_of_flow(
     ctx: &mut Ctx,
 ) -> Fragment {
     let kbs = resolve(kid, cw, fs);
-    let (bx, by) = out_of_flow_origin(&kbs, cw, ctx, static_pos);
+    let (bx, by) = out_of_flow_origin(kid, &kbs, cw, ctx, static_pos);
     let mut frag = layout_positioned(kid, (bx, by), cw, fs, ctx);
     let height = out_of_flow_height(&kbs, ctx);
     if height > 0.0 {
@@ -1316,7 +1355,7 @@ fn place_deferred_abs(
     ctx.abs_cb_h_known = true;
     for (kid, static_pos) in deferred {
         let kbs = resolve(kid, cw, fs);
-        let (bx, by) = out_of_flow_origin(&kbs, cw, ctx, *static_pos);
+        let (bx, by) = out_of_flow_origin(kid, &kbs, cw, ctx, *static_pos);
         let mut frag = layout_positioned(kid, (bx, by), cw, fs, ctx);
         anchor_bottom(&mut frag, &kbs, content_h, ctx);
         frags.push(frag);
@@ -1359,7 +1398,7 @@ fn place_special_kid(
 ) -> Option<Fragment> {
     if kbs.position.is_out_of_flow() {
         let static_pos = block_static_position(cx, flow);
-        let (bx, by) = out_of_flow_origin(kbs, cw, ctx, static_pos);
+        let (bx, by) = out_of_flow_origin(kid, kbs, cw, ctx, static_pos);
         let mut frag = layout_positioned(kid, (bx, by), cw, fs, ctx);
         // A `bottom`-anchored (auto `top`) box left at its static y by
         // `out_of_flow_origin` — because its height wasn't known there — is pulled
