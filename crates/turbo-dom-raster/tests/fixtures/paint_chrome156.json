@@ -1,0 +1,227 @@
+{
+ "generator": "scripts/paint-chrome-control.mjs",
+ "chrome": "156.0.8078.4",
+ "playwright_core": "1.61.0",
+ "viewport": [
+  1280,
+  800
+ ],
+ "cases": [
+  {
+   "id": "caption-top",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><table data-cid=\"t\" style=\"position:absolute;left:20px;top:10px;background:#ff0000;border:4px solid #0000ff;border-spacing:0\"><caption data-cid=\"c\" style=\"margin:5px\"><div data-cid=\"cd\" style=\"width:100px;height:20px;background:#00ff00\"></div></caption><tr><td data-cid=\"td\" style=\"padding:0\"><div style=\"width:40px;height:20px\"></div></td></tr></table></body></html>",
+   "assets": [],
+   "boxes": [
+    {
+     "cid": "t",
+     "x": 20,
+     "y": 10,
+     "width": 110,
+     "height": 58
+    },
+    {
+     "cid": "c",
+     "x": 25,
+     "y": 15,
+     "width": 100,
+     "height": 20
+    },
+    {
+     "cid": "cd",
+     "x": 25,
+     "y": 15,
+     "width": 100,
+     "height": 20
+    },
+    {
+     "cid": "td",
+     "x": 24,
+     "y": 44,
+     "width": 102,
+     "height": 20
+    }
+   ],
+   "probes": [
+    {
+     "x": 70,
+     "y": 25,
+     "class": "G"
+    },
+    {
+     "x": 22,
+     "y": 12,
+     "class": "T"
+    },
+    {
+     "x": 70,
+     "y": 36,
+     "class": "T"
+    },
+    {
+     "x": 120,
+     "y": 25,
+     "class": "G"
+    },
+    {
+     "x": 60,
+     "y": 47,
+     "class": "R"
+    },
+    {
+     "x": 110,
+     "y": 47,
+     "class": "R"
+    },
+    {
+     "x": 21,
+     "y": 47,
+     "class": "B"
+    },
+    {
+     "x": 70,
+     "y": 65,
+     "class": "B"
+    }
+   ]
+  },
+  {
+   "id": "caption-bottom",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><table data-cid=\"t\" style=\"position:absolute;left:20px;top:10px;caption-side:bottom;background:#ff0000;border:4px solid #0000ff;border-spacing:0\"><caption data-cid=\"c\"><div data-cid=\"cd\" style=\"width:100px;height:20px;background:#00ff00\"></div></caption><tr><td data-cid=\"td\" style=\"padding:0\"><div style=\"width:40px;height:20px\"></div></td></tr></table></body></html>",
+   "assets": [],
+   "boxes": [
+    {
+     "cid": "t",
+     "x": 20,
+     "y": 10,
+     "width": 100,
+     "height": 48
+    },
+    {
+     "cid": "c",
+     "x": 20,
+     "y": 38,
+     "width": 100,
+     "height": 20
+    },
+    {
+     "cid": "cd",
+     "x": 20,
+     "y": 38,
+     "width": 100,
+     "height": 20
+    },
+    {
+     "cid": "td",
+     "x": 24,
+     "y": 14,
+     "width": 92,
+     "height": 20
+    }
+   ],
+   "probes": [
+    {
+     "x": 70,
+     "y": 20,
+     "class": "R"
+    },
+    {
+     "x": 110,
+     "y": 20,
+     "class": "R"
+    },
+    {
+     "x": 21,
+     "y": 20,
+     "class": "B"
+    },
+    {
+     "x": 70,
+     "y": 45,
+     "class": "G"
+    },
+    {
+     "x": 70,
+     "y": 55,
+     "class": "G"
+    },
+    {
+     "x": 118,
+     "y": 45,
+     "class": "G"
+    },
+    {
+     "x": 70,
+     "y": 9,
+     "class": "T"
+    },
+    {
+     "x": 70,
+     "y": 59,
+     "class": "T"
+    }
+   ]
+  },
+  {
+   "id": "caption-narrow",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;background:#00ffff}</style></head><body><table data-cid=\"t\" style=\"position:absolute;left:20px;top:10px;width:120px;background:#ff0000;border:4px solid #0000ff;border-spacing:0\"><caption data-cid=\"c\"><div data-cid=\"cd\" style=\"width:30px;height:10px;background:#00ff00\"></div></caption><tr><td data-cid=\"td\" style=\"padding:0\"><div style=\"width:40px;height:20px\"></div></td></tr></table></body></html>",
+   "assets": [],
+   "boxes": [
+    {
+     "cid": "t",
+     "x": 20,
+     "y": 10,
+     "width": 120,
+     "height": 38
+    },
+    {
+     "cid": "c",
+     "x": 20,
+     "y": 10,
+     "width": 120,
+     "height": 10
+    },
+    {
+     "cid": "cd",
+     "x": 65,
+     "y": 10,
+     "width": 30,
+     "height": 10
+    },
+    {
+     "cid": "td",
+     "x": 24,
+     "y": 24,
+     "width": 112,
+     "height": 20
+    }
+   ],
+   "probes": [
+    {
+     "x": 30,
+     "y": 15,
+     "class": "T"
+    },
+    {
+     "x": 100,
+     "y": 15,
+     "class": "T"
+    },
+    {
+     "x": 100,
+     "y": 30,
+     "class": "R"
+    },
+    {
+     "x": 130,
+     "y": 30,
+     "class": "R"
+    },
+    {
+     "x": 139,
+     "y": 30,
+     "class": "B"
+    }
+   ]
+  }
+ ]
+}

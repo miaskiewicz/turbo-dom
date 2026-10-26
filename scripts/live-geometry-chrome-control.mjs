@@ -9,7 +9,8 @@
 //     `<tfoot>`) is a box: the union of its rows;
 //   - miaskiewicz/turbo-surf#36 items 3 and 4: an auto-width table shrinks to fit its
 //     columns, and a `<template>` (display:none) has an all-zero rect.
-// P5b-W3 adds the cases of miaskiewicz/turbo-dom#28 (one group per item, labelled).
+// P5b-W3 adds the cases of miaskiewicz/turbo-dom#28 (one group per item, labelled); P5b-W5
+// the table captions of miaskiewicz/turbo-dom#51 (`caption-*`).
 //
 // For every case, Chrome for Testing 156 (viewport 1280x800) records the
 // getBoundingClientRect() of every `[data-cid]` element (document order) as
@@ -254,6 +255,15 @@ const CASES = [
   { id: "table-colspan-spreads-in-proportion", html: DOC("body{margin:0}td{padding:0}", `<table data-cid="t"><tr><td data-cid="s" colspan="2"><div style="width:102px;height:10px"></div></td></tr><tr><td data-cid="a"><div style="width:20px;height:10px"></div></td><td data-cid="b"><div style="width:60px;height:10px"></div></td></tr></table>`) },
   { id: "table-colspan-counts-inner-spacing", html: DOC("body{margin:0}td{padding:0}table{border-spacing:5px}", `<table data-cid="t"><tr><td data-cid="s" colspan="2"><div style="width:125px;height:10px"></div></td></tr><tr><td data-cid="a"><div style="width:10px;height:10px"></div></td><td data-cid="b"><div style="width:30px;height:10px"></div></td></tr></table>`) },
   { id: "table-colspan-empty-columns-evenly", html: DOC("body{margin:0}td{padding:0}", `<table data-cid="t"><tr><td data-cid="s" colspan="2"><div style="width:62px;height:10px"></div></td><td data-cid="c"></td></tr><tr><td data-cid="a"></td><td data-cid="b"></td><td><div style="width:10px;height:10px"></div></td></tr></table>`) },
+  // P5b-W5, turbo-dom#51: the `<table>`'s box is the table wrapper box: the captions
+  // (`caption-side: top` above the grid, `bottom` below) and the grid box, which stretches to
+  // the widest of the grid and the captions' min-content. A caption has its own box.
+  { id: "caption-wider-than-grid", html: DOC("body{margin:0}", `<table data-cid="t"><caption data-cid="c">${BOX(100, 10)}</caption><tr data-cid="tr">${CELL(30, 10, "td")}</tr></table>`) },
+  { id: "caption-narrower-than-grid", html: DOC("body{margin:0}", `<table data-cid="t"><caption data-cid="c">${BOX(10, 10)}</caption><tr data-cid="tr">${CELL(30, 10, "td")}</tr></table>`) },
+  { id: "caption-side-bottom", html: DOC("body{margin:0}table{caption-side:bottom}", `<table data-cid="t"><caption data-cid="c">${BOX(100, 10)}</caption><tbody data-cid="b"><tr data-cid="tr">${CELL(30, 10, "td")}</tr></tbody></table>${BOX(10, 5, "after")}`) },
+  { id: "caption-frame-margins", html: DOC("body{margin:0}table{border:3px solid #000;padding:5px;margin:7px}caption{padding:2px;border:1px solid #00f;margin:4px}", `<table data-cid="t"><caption data-cid="c">${BOX(100, 10)}</caption><tr data-cid="tr">${CELL(30, 10, "td")}</tr></table>`) },
+  { id: "caption-multiple", html: DOC("body{margin:0}", `<table data-cid="t"><caption data-cid="c">${BOX(40, 10)}</caption><tr data-cid="tr">${CELL(30, 10, "td")}</tr><caption data-cid="c2" style="caption-side:bottom">${BOX(50, 7)}</caption><caption data-cid="c3">${BOX(20, 3)}</caption></table>`) },
+  { id: "caption-no-rows", html: DOC("body{margin:0}", `<table data-cid="t"><caption data-cid="c">${BOX(100, 10)}</caption></table>`) },
 ];
 
 const browser = await chromium.launch({ executablePath: chromePath, headless: true });

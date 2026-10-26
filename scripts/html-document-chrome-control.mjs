@@ -5,6 +5,7 @@
 // miaskiewicz/turbo-dom#24 item 1 (`@media` / `@supports` rules in source order) and
 // miaskiewicz/turbo-dom#25 item 2 (elements the drive does not lay out still count for
 // selectors). P5b-W3 adds the layout cases of miaskiewicz/turbo-dom#28 (one group per item).
+// P5b-W5 adds the table caption cases of miaskiewicz/turbo-dom#51 (`caption-*`).
 //
 // For every case below, Chrome for Testing 156 (viewport 1280x800) records:
 //   - `boxes`: getBoundingClientRect() of every `[data-cid]` element (document order), as
@@ -50,6 +51,8 @@ const DOC = (head, body, htmlAttrs = "", bodyAttrs = "") =>
 const S = (css) => `<style>${css}</style>`;
 const ROOTS = ` data-cid="html"`;
 const BODY = ` data-cid="body"`;
+// A caption's text-free content block.
+const CAP = (w, h) => `<div style="width:${w}px;height:${h}px"></div>`;
 
 // `measure` lists what the test compares per box ("xywh" by default; text boxes skip the
 // font-dependent height).
@@ -172,6 +175,39 @@ const CASES = [
   { id: "table-colspan-spreads-in-proportion", html: DOC(S("body{margin:0}td{padding:0}"), `<table data-cid="t"><tr><td data-cid="s" colspan="2"><div style="width:102px;height:10px"></div></td></tr><tr><td data-cid="a"><div style="width:20px;height:10px"></div></td><td data-cid="b"><div style="width:60px;height:10px"></div></td></tr></table>`) },
   { id: "table-colspan-counts-inner-spacing", html: DOC(S("body{margin:0}td{padding:0}table{border-spacing:5px}"), `<table data-cid="t"><tr><td data-cid="s" colspan="2"><div style="width:125px;height:10px"></div></td></tr><tr><td data-cid="a"><div style="width:10px;height:10px"></div></td><td data-cid="b"><div style="width:30px;height:10px"></div></td></tr></table>`) },
   { id: "table-colspan-empty-columns-evenly", html: DOC(S("body{margin:0}td{padding:0}"), `<table data-cid="t"><tr><td data-cid="s" colspan="2"><div style="width:62px;height:10px"></div></td><td data-cid="c"></td></tr><tr><td data-cid="a"></td><td data-cid="b"></td><td><div style="width:10px;height:10px"></div></td></tr></table>`) },
+  // P5b-W5, miaskiewicz/turbo-dom#51: a caption is not part of the grid. The table wrapper box
+  // (the `<table>`'s box) holds the captions — `caption-side: top` above the grid, `bottom`
+  // below, each in source order — and the grid box, which stretches to the wrapper's width:
+  // the grid's own width or the widest caption's min-content (margin box), whichever is wider.
+  // Caption margins do not collapse with the table's; `height` sizes the grid.
+  ...[
+    ["caption-wider-than-grid", "", `<caption data-cid="c">${CAP(100, 10)}</caption>`],
+    ["caption-narrower-than-grid", "", `<caption data-cid="c">${CAP(10, 10)}</caption>`],
+    ["caption-table-width", "width:100px", `<caption data-cid="c">${CAP(10, 10)}</caption>`],
+    ["caption-wider-than-table-width", "width:100px", `<caption data-cid="c">${CAP(150, 10)}</caption>`],
+    ["caption-frame-margins", "border:3px solid #000;padding:5px;background:#f00;margin:7px", `<caption data-cid="c" style="padding:2px;border:1px solid #00f;margin:4px">${CAP(100, 10)}</caption>`],
+    ["caption-side-bottom", "caption-side:bottom", `<caption data-cid="c">${CAP(100, 10)}</caption>`],
+    ["caption-multiple", "", `<caption data-cid="c">${CAP(40, 10)}</caption>`, `<caption data-cid="c2" style="caption-side:bottom">${CAP(50, 7)}</caption><caption data-cid="c3">${CAP(20, 3)}</caption>`],
+    ["caption-own-width", "", `<caption data-cid="c" style="width:200px">${CAP(10, 10)}</caption>`],
+    ["caption-percent-table-width", "width:50%", `<caption data-cid="c">${CAP(100, 10)}</caption>`],
+    ["caption-centered-table", "margin:0 auto", `<caption data-cid="c">${CAP(100, 10)}</caption>`],
+    ["caption-absolute-table", "position:absolute;left:10px;top:20px", `<caption data-cid="c">${CAP(100, 10)}</caption>`],
+    ["caption-table-height", "height:100px", `<caption data-cid="c">${CAP(100, 10)}</caption>`],
+    ["caption-margins", "", `<caption data-cid="c" style="margin:10px 0 5px">${CAP(100, 10)}</caption>`],
+    ["caption-collapsed-borders", "border-collapse:collapse;border:2px solid #000", `<caption data-cid="c">${CAP(100, 10)}</caption>`, "", "border:1px solid #000"],
+  ].map(([id, table, caption, after = "", cell = ""]) => ({
+    id,
+    html: DOC(S("body{margin:0}"), `<table data-cid="t" style="${table}">${caption}<tr><td data-cid="td" style="${cell}"><div style="width:30px;height:10px"></div></td></tr>${after}</table><div data-cid="after" style="height:5px"></div>`),
+  })),
+  { id: "caption-no-rows", html: DOC(S("body{margin:0}"), `<table data-cid="t"><caption data-cid="c">${CAP(100, 10)}</caption></table>`) },
+  { id: "caption-narrow-container", html: DOC(S("body{margin:0}"), `<div data-cid="d" style="width:60px"><table data-cid="t"><caption data-cid="c">${CAP(100, 10)}</caption><tr><td data-cid="td"><div style="width:30px;height:10px"></div></td></tr></table></div>`) },
+  { id: "caption-inline-table", html: DOC(S("body{margin:0}"), `<div data-cid="d" style="font-size:0"><i style="display:inline-block;width:5px;height:5px"></i><table data-cid="t" style="display:inline-table"><caption data-cid="c">${CAP(100, 10)}</caption><tr><td data-cid="td"><div style="width:30px;height:10px"></div></td></tr></table></div>`) },
+  { id: "caption-in-flex-item", html: DOC(S("body{margin:0}"), `<div data-cid="d" style="display:flex"><table data-cid="t"><caption data-cid="c">${CAP(100, 10)}</caption><tr><td data-cid="td"><div style="width:30px;height:10px"></div></td></tr></table></div>`) },
+  { id: "caption-float-table", html: DOC(S("body{margin:0}"), `<table data-cid="t" style="float:left;width:50px"><caption data-cid="c">${CAP(80, 10)}</caption><tr><td data-cid="td"><div style="width:30px;height:10px"></div></td></tr></table><div data-cid="d" style="overflow:hidden;height:10px"></div>`) },
+  { id: "caption-nested-table", html: DOC(S("body{margin:0}"), `<table data-cid="o"><tr><td data-cid="oc"><table data-cid="t"><caption data-cid="c">${CAP(100, 10)}</caption><tr><td data-cid="td"><div style="width:30px;height:10px"></div></td></tr></table></td></tr></table>`) },
+  { id: "caption-display-table-caption", html: DOC(S("body{margin:0}"), `<div data-cid="t" style="display:table"><div data-cid="c" style="display:table-caption">${CAP(100, 10)}</div><div style="display:table-row"><div data-cid="td" style="display:table-cell"><div style="width:30px;height:10px"></div></div></div></div>`) },
+  // A text caption wraps to its min-content (its widest word): font-dependent sizes.
+  { id: "caption-text", html: DOC(S("body{margin:0}"), `<table data-cid="t"><caption data-cid="c">A rather long caption text that is wider than the table</caption><tr><td data-cid="td"><div style="width:30px;height:10px"></div></td></tr></table>`), measure: "xy" },
 ];
 
 /** The RGB of a 1x1 PNG screenshot (any filter: a single pixel's filter adds 0). */

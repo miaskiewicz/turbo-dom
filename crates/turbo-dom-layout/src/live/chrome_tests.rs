@@ -252,13 +252,14 @@ fn assert_matches_chrome((compared, failures): (usize, Vec<String>)) {
 /// The control cases of an open bug, each asserted by its own test (`#[ignore]`d until
 /// its fix lands) and held out of [`live_geometry_matches_chrome_156`].
 fn held_out(id: &str) -> bool {
-    let groups: [fn(&str) -> bool; 6] = [
+    let groups: [fn(&str) -> bool; 7] = [
         |id| AUTO_TABLE_CASES.contains(&id),
         inline_flex_grid_case,
         abs_auto_width_case,
         percent_column_case,
         collapsed_auto_case,
         colspan_case,
+        caption_case,
     ];
     groups.iter().any(|group| group(id))
 }
@@ -327,4 +328,15 @@ fn colspan_case(id: &str) -> bool {
 #[test]
 fn spanning_cells_spread_over_their_columns_like_chrome_156() {
     assert_matches_chrome(compare_cases(colspan_case));
+}
+
+/// miaskiewicz/turbo-dom#51: table captions in the table wrapper box.
+fn caption_case(id: &str) -> bool {
+    id.starts_with("caption-")
+}
+
+#[test]
+#[ignore = "miaskiewicz/turbo-dom#51: fails until the fix"]
+fn table_captions_lay_out_in_the_table_wrapper_like_chrome_156() {
+    assert_matches_chrome(compare_cases(caption_case));
 }
