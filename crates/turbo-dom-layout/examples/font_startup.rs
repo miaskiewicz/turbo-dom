@@ -1,6 +1,6 @@
 //! Process-cold eager system-font timing and selection/shaping fingerprints.
 //! Run in a fresh process; pass the installed font directories to fingerprint:
-//! `cargo run --release -p turbo-html2pdf-core --example font_startup -- /System/Library/Fonts /System/Library/Fonts/Supplemental /Library/Fonts "$HOME/Library/Fonts"`
+//! `cargo run --release -p turbo-dom-layout --example font_startup -- /System/Library/Fonts /System/Library/Fonts/Supplemental /Library/Fonts "$HOME/Library/Fonts"`
 //! The registry always uses its normal host discovery policy. Directory arguments
 //! select diagnostic inputs only. No arguments measures generic-family controls.
 //! `/usr/bin/time -l` on macOS reports peak RSS, including later fingerprinting;
@@ -11,7 +11,7 @@ use std::time::Instant;
 
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
-use turbo_html2pdf_core::{FontFace, FontRegistry};
+use turbo_dom_layout::{FontFace, FontRegistry};
 
 type Query = (String, u16, bool);
 

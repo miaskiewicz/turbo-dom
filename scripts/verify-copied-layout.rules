@@ -6,3 +6,5 @@ crates/turbo-dom-raster/tests/*.rs	s/\bturbo_html2pdf_core\b/turbo_dom_layout/g
 crates/turbo-dom-layout/src/html_layout.rs	s/\bcrate::template::markup::/crate::markup::/g
 crates/turbo-dom-layout/src/text/font.rs	s/\bcrate::emit::tounicode::reverse_cmap\b/crate::cmap::reverse_cmap/g
 crates/turbo-dom-raster/tests/*.rs	s/\bturbo_surf_raster\b/turbo_dom_raster/g
+crates/turbo-dom-layout/examples/*.rs	s/\bturbo_html2pdf_core\b/turbo_dom_layout/g
+crates/turbo-dom-layout/examples/font_startup.rs	s/-p turbo-html2pdf-core --example font_startup/-p turbo-dom-layout --example font_startup/g
