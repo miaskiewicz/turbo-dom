@@ -200,3 +200,21 @@ fn independent_document_reactions_run_before_the_call_returns() {
     }
     assert_none(&found);
 }
+
+/// turbo-dom#57: DOMImplementation.createDocument validates and extracts its qualified name
+/// like createElementNS (strict ':' split, Chrome's error types).
+#[test]
+#[ignore = "turbo-dom#57: fails until the fix"]
+fn create_document_qualified_names_match_chrome156() {
+    let (binding, chrome) = run(NAMES_PROBE, NAMES_CASES, NAMES_CONTROL);
+    let mut found = Vec::new();
+    for (name, want) in chrome["documentNames"].as_object().unwrap() {
+        if binding["documentNames"][name] != *want {
+            found.push(format!(
+                "documentNames {name}: binding {}, chrome {want}",
+                binding["documentNames"][name]
+            ));
+        }
+    }
+    assert_none(&found);
+}

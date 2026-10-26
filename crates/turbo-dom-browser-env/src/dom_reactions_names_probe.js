@@ -62,5 +62,13 @@
       xmlElement: attempt(() => { const e = document.createElementNS('http://www.w3.org/XML/1998/namespace', name); return [e.prefix, e.localName]; }),
     };
   }
+  // turbo-dom#57: DOMImplementation.createDocument validates and extracts like createElementNS.
+  out.documentNames = {};
+  for (const name of ['a:b:c', 'a:b:c:d', 'a::b', 'a:b:', ':a:b', 'a:1b:c', 'a:b c:d', 'xmlns:a:b', 'xml:a:b', 'p:Root', 'Root', 'bad name']) {
+    out.documentNames[name] = [
+      attempt(() => { const root = document.implementation.createDocument('urn:x', name, null).documentElement; return [root.prefix, root.localName, root.tagName]; }),
+      attempt(() => { const root = document.implementation.createDocument(null, name, null).documentElement; return [root.prefix, root.localName]; }),
+    ];
+  }
   return out;
 })();

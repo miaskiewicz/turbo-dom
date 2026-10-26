@@ -2,7 +2,7 @@
   "browser": "Chrome/156.0.8078.4",
   "v8": "15.6.75",
   "casesSha256": "75652313126034145215b17006244ce344b90e21cc5cf859905c880c9a5ee38c",
-  "probeSha256": "0fb6f6ff60d9fab046d879c70734d930761f75dda248c1a86b23c413cb0a2b5e",
+  "probeSha256": "32c9c83fec2ed453d2eada88dee75b7d06420781c7be797b5acc5320745f7bba",
   "collectorSha256": "7174415de76a891d657bbc3e66952c7b91356030e8fcd9d0ac4f52603d0c3952",
   "flags": [
     "--headless=new",
@@ -318,6 +318,79 @@
               "a"
             ]
           }
+        },
+        "documentNames": {
+          "a:b:c": [
+            [
+              "a",
+              "b",
+              "a:b"
+            ],
+            "NamespaceError"
+          ],
+          "a:b:c:d": [
+            [
+              "a",
+              "b",
+              "a:b"
+            ],
+            "NamespaceError"
+          ],
+          "a::b": [
+            "InvalidCharacterError",
+            "InvalidCharacterError"
+          ],
+          "a:b:": [
+            [
+              "a",
+              "b",
+              "a:b"
+            ],
+            "NamespaceError"
+          ],
+          ":a:b": [
+            "InvalidCharacterError",
+            "InvalidCharacterError"
+          ],
+          "a:1b:c": [
+            "InvalidCharacterError",
+            "InvalidCharacterError"
+          ],
+          "a:b c:d": [
+            "InvalidCharacterError",
+            "InvalidCharacterError"
+          ],
+          "xmlns:a:b": [
+            "NamespaceError",
+            "NamespaceError"
+          ],
+          "xml:a:b": [
+            "NamespaceError",
+            "NamespaceError"
+          ],
+          "p:Root": [
+            [
+              "p",
+              "Root",
+              "p:Root"
+            ],
+            "NamespaceError"
+          ],
+          "Root": [
+            [
+              null,
+              "Root",
+              "Root"
+            ],
+            [
+              null,
+              "Root"
+            ]
+          ],
+          "bad name": [
+            "InvalidCharacterError",
+            "InvalidCharacterError"
+          ]
         }
       }
     }
