@@ -16,7 +16,7 @@ use std::collections::HashMap;
 
 use turbo_dom_layout::image::decode_data_url;
 use turbo_dom_layout::{layout_boxes, Diagnostics, FontRegistry};
-use turbo_dom_raster::{screenshot_png_with_opts, ImageAssets, Viewport};
+use turbo_dom_raster::{screenshot_png_with_opts, screenshot_svg_with_opts, ImageAssets, Viewport};
 
 fn class([r, g, b]: [u8; 3]) -> char {
     let hi = |v: u8| v > 160;
@@ -137,8 +137,35 @@ fn table_captions_paint_outside_the_grid_like_chrome_156() {
 }
 
 #[test]
-#[ignore = "miaskiewicz/turbo-dom#52: fails until the fix"]
 fn clip_rect_clips_the_box_and_its_descendants_like_chrome_156() {
     let failures = differences(|id| id.starts_with("clip-"));
     assert!(failures.is_empty(), "{}", failures.join("\n"));
+}
+
+/// The vector screenshot clips a `clip: rect()` box with a `<clipPath>` of its region and
+/// leaves out a box whose region is empty (miaskiewicz/turbo-dom#52).
+#[test]
+fn svg_screenshot_clips_with_a_clip_path() {
+    let fixture = fixture();
+    let svg = |id: &str| {
+        let case = fixture["cases"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|case| case["id"] == id)
+            .unwrap();
+        let html = case["html"].as_str().unwrap();
+        screenshot_svg_with_opts(html, "", VIEWPORT, &assets(case), false, false).expect("svg")
+    };
+    let partial = svg("clip-partial");
+    assert_eq!(partial.matches("<clipPath").count(), 1, "{partial}");
+    assert!(
+        partial.contains(r#"<rect x="10.00" y="10.00" width="30.00" height="30.00"/></clipPath>"#)
+    );
+    assert!(partial.contains(r##"fill="#ff0000""##));
+    let empty = svg("clip-zero-area-auto");
+    assert!(
+        !empty.contains("<clipPath") && !empty.contains(r##"fill="#ff0000""##),
+        "{empty}"
+    );
 }

@@ -7,7 +7,7 @@ at the time); this file reconstructs them from history.
 
 ## [Unreleased]
 
-### Fixed — turbo-dom-layout table captions (P5b-W5, miaskiewicz/turbo-dom#51, Chrome 156 controls)
+### Fixed — turbo-dom-layout tables and clipping (P5b-W5, miaskiewicz/turbo-dom#51/#52, Chrome 156 controls)
 Each fix is backed by a Chrome for Testing 156 control and lists the corpus outputs it
 changes in `tools/parity/expected/p5b-w5-turbo-dom-*.json`.
 - Table captions (#51): a `<caption>` (UA `caption { display: table-caption; text-align:
@@ -26,6 +26,18 @@ changes in `tools/parity/expected/p5b-w5-turbo-dom-*.json`.
   before. Control: `caption-*` in `html-document`, `live-geometry` and the new pixel
   control `scripts/paint-chrome-control.mjs` (`crates/turbo-dom-raster/tests/
   paint_chrome.rs`).
+- Partial `clip: rect()` (#52): on the PDF and screenshot paths every element whose `clip`
+  started with `rect(` was dropped from layout and paint (it had no box, no
+  `layoutBoxes` entry and no pixels), so a partially clipped box — a CSS sprite, a
+  clipped badge — vanished. Now only an absolutely positioned box whose clip keeps
+  nothing at any size (the sr-only `rect(0,0,0,0)` / `rect(1px,1px,1px,1px)`) is left out
+  (its text stays out of PDF text and tagging); any other box lays out (`clip` does not
+  apply to a box that is not absolutely positioned, as in Chrome), and an absolutely
+  positioned one records its clip region in `Fragment::clip` (`ClipRect`, from the
+  border-box corner, `auto` = the edge). turbo-dom-raster paints the box and its
+  descendants through it (PNG: a masked layer over the region, in the box's transformed
+  space; SVG: a `<clipPath>`), as does turbo-html2pdf's PDF emitter. Control: `clip-*` in
+  `scripts/paint-chrome-control.mjs` (pixels + boxes).
 
 ### Fixed — `getComputedStyle` defaults and no injected `<title>` (P5b-X3, miaskiewicz/turbo-surf#36 items 1–2, Chrome 156 control)
 - turbo-dom-browser-env: `getComputedStyle` used to return `""` for `display`, `position`
