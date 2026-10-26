@@ -1,0 +1,13 @@
+{
+ "id": "miaskiewicz/turbo-dom#85",
+ "reason": "A block container's max-content width adds consecutive floats side by side (per side, until a clear); a float-avoiding block counts beside them. Fresh-target parity builds (git archive of each commit, own CARGO_TARGET_DIR per build; html2pdf refactor 923c89f napi plain + svg; surf static through the napi-free raster harness): 2b985bf -> 5420d3d: no corpus output changes (no corpus input has a shrink-to-fit box around several floats). P5b-W7.",
+ "control": "float-sum-* in scripts/html-document-chrome-control.mjs",
+ "e2e": "crates/turbo-dom-layout/tests/html_document_chrome.rs (floats_sit_side_by_side_in_max_content_like_chrome_156)",
+ "changes": {
+  "html2pdf": [],
+  "html2pdf-svg": [],
+  "html2pdf-extra": [],
+  "surf": [],
+  "surf-extra": []
+ }
+}
