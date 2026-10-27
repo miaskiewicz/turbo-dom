@@ -526,6 +526,47 @@ mod tests {
         assert_eq!(to_rgba(&deep, None, 0, true).rgba, [255, 255, 0, 255]);
     }
 
+    /// Limited ("video") range at any depth is the 8-bit range shifted (H.273): luma
+    /// 16..=235 and chroma 16..=240 times 2^(bits - 8) — 64..=940 / 64..=960 at 10 bits.
+    #[test]
+    #[ignore = "deep limited range: fails until the fix"]
+    fn deep_limited_range_is_the_eight_bit_range_shifted() {
+        let luma = frame(10, None, [vec![64, 940, 502, 0, 1023], vec![], vec![]]);
+        assert_eq!(
+            to_rgba(&luma, None, 1, false).rgba,
+            [
+                0, 0, 0, 255, 255, 255, 255, 255, 128, 128, 128, 255, 0, 0, 0, 255, 255, 255, 255,
+                255
+            ]
+        );
+        // 12 bits: 256..=3760; a BT.601 red from limited 12-bit Y'CbCr.
+        let deep = frame(12, None, [vec![256, 3760], vec![], vec![]]);
+        assert_eq!(
+            to_rgba(&deep, None, 6, false).rgba,
+            [0, 0, 0, 255, 255, 255, 255, 255]
+        );
+        let (y, cb, cr) = (
+            16.0 + 219.0 * 0.299,
+            128.0 - 112.0 * 0.299 / 0.886,
+            128.0 + 112.0,
+        );
+        let q = |v: f64| (v * 16.0).round() as u16;
+        let red = frame(12, Some((0, 0)), [vec![q(y)], vec![q(cb)], vec![q(cr)]]);
+        let px = to_rgba(&red, None, 6, false).rgba;
+        assert!(px[0] >= 254 && px[1] <= 1 && px[2] <= 1, "{px:?}");
+    }
+
+    #[test]
+    fn alpha_scales_by_its_own_depth() {
+        let color = frame(8, None, [vec![255, 255, 255], vec![], vec![]]);
+        let a8 = frame(8, None, [vec![0, 128, 255], vec![], vec![]]);
+        let out = to_rgba(&color, Some(&a8), 1, true).rgba;
+        assert_eq!((out[3], out[7], out[11]), (0, 128, 255));
+        let a10 = frame(10, None, [vec![0, 512, 1023], vec![], vec![]]);
+        let out = to_rgba(&color, Some(&a10), 1, true).rgba;
+        assert_eq!((out[3], out[7], out[11]), (0, 128, 255));
+    }
+
     #[test]
     fn limited_range_and_deep_samples_scale_to_eight_bits() {
         // Limited 8-bit: luma 16..235 is black..white; 10-bit full range: 1023 is white.
