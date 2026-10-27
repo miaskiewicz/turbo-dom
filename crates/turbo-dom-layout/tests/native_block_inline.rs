@@ -366,3 +366,14 @@ fn a_line_break_inside_an_inline_splits_it_across_lines() {
     );
     assert_eq!(rects[2][1], rects[0][1] + rects[0][3], "the next line");
 }
+
+#[test]
+fn an_inline_marker_takes_no_room_in_its_line() {
+    // A classified inline marker (html2pdf's directives) is a zero-size point in the
+    // line: the link around it keeps one fragment as wide as its text alone.
+    let (with, names) = capture("<a id=l>Read<x-marker-1-i></x-marker-1-i>more</a>");
+    let (without, plain) = capture("<a id=l>Readmore</a>");
+    let marked = rects(&with, names["l"]);
+    assert_eq!(marked.len(), 1, "{marked:?}");
+    assert_eq!(marked, rects(&without, plain["l"]));
+}

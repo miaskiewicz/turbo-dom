@@ -268,3 +268,72 @@ fn vertical_align_places_inline_block_atoms() {
     );
     assert!((y(3) - 10.0).abs() < 0.01, "middle centres, got {}", y(3));
 }
+
+/// `data-cid` boxes of `html` through the HTML drive (bundled fonts, 400x300).
+fn cid_boxes(html: &str) -> std::collections::HashMap<String, (f32, f32, f32, f32)> {
+    let tree = turbo_dom_layout::parse_html_tree(html);
+    turbo_dom_layout::layout_boxes_tree(
+        &tree,
+        "",
+        400.0,
+        300.0,
+        &FontRegistry::new(),
+        &turbo_dom_layout::HtmlOptions::default(),
+        &mut Diagnostics::default(),
+    )
+    .into_iter()
+    .map(|b| (b.cid, (b.x, b.y, b.width, b.height)))
+    .collect()
+}
+
+#[test]
+#[ignore = "C2 coverage find: preserved whitespace between blocks is dropped; fails until the fix"]
+fn whitespace_only_inline_runs_collapse_unless_white_space_preserves_them() {
+    // CSS 2.1 §9.2.2.1: only white space that `white-space` collapses away generates no
+    // anonymous inline box. Chrome 156 (one line = 18px there, `a`'s height here):
+    //   <p>a</p><span style="white-space:W"> </span><p>b</p><div><span ...> </span></div>
+    //   normal/nowrap: b.y 18, div height 0; pre/pre-wrap/break-spaces: b.y 36, div 18.
+    //   A pre-line newline between blocks is a line (div 54 = 3 lines), pre-line spaces
+    //   collapse (36); a flex container's white-space-only text is never rendered (0).
+    let doc = |ws: &str| {
+        cid_boxes(&format!(
+            "<body style='margin:0'><p data-cid=a style='margin:0'>a</p><span style='white-space:{ws}'> </span>\
+             <p data-cid=b style='margin:0'>b</p><div data-cid=d><span style='white-space:{ws}'> </span></div></body>"
+        ))
+    };
+    let normal = doc("normal");
+    let line = normal["a"].3;
+    assert!(line > 0.0);
+    assert_eq!(normal["b"].1, line, "the collapsed span takes no height");
+    assert_eq!(normal["d"].3, 0.0, "a whitespace-only block is empty");
+    for ws in ["pre", "pre-wrap", "break-spaces"] {
+        let kept = doc(ws);
+        assert_eq!(
+            kept["b"].1,
+            2.0 * line,
+            "{ws}: the preserved space takes a line"
+        );
+        assert_eq!(kept["d"].3, line, "{ws}");
+    }
+    let nowrap = doc("nowrap");
+    assert_eq!(
+        (nowrap["b"].1, nowrap["d"].3),
+        (line, 0.0),
+        "nowrap still collapses"
+    );
+    let other = cid_boxes(
+        "<body style='margin:0'><div data-cid=f style='display:flex;white-space:pre'> </div>\
+         <div data-cid=g style='white-space:pre-line'><p style='margin:0'>a</p>\n<p style='margin:0'>b</p></div>\
+         <div data-cid=h style='white-space:pre-line'><p style='margin:0'>a</p>  <p style='margin:0'>b</p></div></body>",
+    );
+    assert_eq!(
+        other["f"].3, 0.0,
+        "flex: white-space-only text is not rendered"
+    );
+    assert_eq!(
+        other["g"].3,
+        3.0 * line,
+        "pre-line keeps the newline's line"
+    );
+    assert_eq!(other["h"].3, 2.0 * line, "pre-line collapses spaces");
+}
