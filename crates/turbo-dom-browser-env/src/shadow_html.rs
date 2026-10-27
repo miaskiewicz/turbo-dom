@@ -630,9 +630,7 @@ pub(super) fn ensure_keys(scope: &mut v8::PinScope) {
     if scope.get_slot::<std::rc::Rc<Keys>>().is_none() {
         let mut keys = Vec::new();
         for name in KEY_NAMES {
-            let Some(name) = v8::String::new(scope, &format!("turbo.shadow-root.{name}")) else {
-                return;
-            };
+            let name = v8::String::new(scope, &format!("turbo.shadow-root.{name}")).unwrap();
             let private = v8::Private::for_api(scope, Some(name));
             keys.push(v8::Global::new(scope, private));
         }

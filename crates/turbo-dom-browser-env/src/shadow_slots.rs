@@ -395,9 +395,7 @@ pub(super) fn mutation(scope: &mut v8::PinScope, event: &MutationEvent) {
     }
 }
 fn assign(scope: &mut v8::PinScope, slot: v8::Local<v8::Object>, arguments: v8::Local<v8::Object>) {
-    let Some(length) = v8::String::new(scope, "length") else {
-        return;
-    };
+    let length = v8::String::new(scope, "length").unwrap();
     let Some(length) = arguments
         .get(scope, length.into())
         .and_then(|value| value.uint32_value(scope))
@@ -501,9 +499,7 @@ fn assign(scope: &mut v8::PinScope, slot: v8::Local<v8::Object>, arguments: v8::
     }
 }
 fn illegal(scope: &mut v8::PinScope) {
-    let Some(text) = v8::String::new(scope, "Illegal invocation") else {
-        return;
-    };
+    let text = v8::String::new(scope, "Illegal invocation").unwrap();
     let error = v8::Exception::type_error(scope, text);
     scope.throw_exception(error);
 }
@@ -608,14 +604,10 @@ pub(super) fn fire(scope: &mut v8::PinScope, slot: v8::Local<v8::Object>) {
     let options = v8::Object::new(scope);
     let null = v8::null(scope);
     options.set_prototype(scope, null.into());
-    let Some(name) = v8::String::new(scope, "bubbles") else {
-        return;
-    };
+    let name = v8::String::new(scope, "bubbles").unwrap();
     let yes = v8::Boolean::new(scope, true);
     options.create_data_property(scope, name.into(), yes.into());
-    let Some(name) = v8::String::new(scope, "slotchange") else {
-        return;
-    };
+    let name = v8::String::new(scope, "slotchange").unwrap();
     if let Some(event) = constructor.new_instance(scope, &[name.into(), options.into()]) {
         dispatch_host_event(scope, event, slot);
     }
@@ -625,9 +617,7 @@ pub(super) fn ensure_keys(scope: &mut v8::PinScope) {
     if scope.get_slot::<std::rc::Rc<Keys>>().is_none() {
         let mut keys = Vec::new();
         for name in KEY_NAMES {
-            let Some(name) = v8::String::new(scope, &format!("turbo.shadow.{name}")) else {
-                return;
-            };
+            let name = v8::String::new(scope, &format!("turbo.shadow.{name}")).unwrap();
             let private = v8::Private::for_api(scope, Some(name));
             keys.push(v8::Global::new(scope, private));
         }
@@ -637,9 +627,7 @@ pub(super) fn ensure_keys(scope: &mut v8::PinScope) {
 pub(super) fn install(scope: &mut v8::PinScope) {
     ensure_keys(scope);
     let global = scope.get_current_context().global(scope);
-    let Some(name) = v8::String::new(scope, "Event") else {
-        return;
-    };
+    let name = v8::String::new(scope, "Event").unwrap();
     if let Some(event) = global.get(scope, name.into()) {
         let private = key(scope, "Event");
         global.set_private(scope, private, event);
