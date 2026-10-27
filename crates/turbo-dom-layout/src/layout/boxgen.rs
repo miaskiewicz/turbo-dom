@@ -818,7 +818,7 @@ fn classify_element(el: &StyledElement, ids: &mut Ids) -> Option<Level> {
 /// nested in-flow block splits the inline around it (CSS 2.2 §9.2.1.1,
 /// miaskiewicz/turbo-dom#101): the element becomes a [`Level::Split`] of its inline runs
 /// and the blocks, which its block container wraps into anonymous line boxes and block
-/// boxes; an absolutely positioned or floated box stays in its run.
+/// boxes; an absolutely positioned or floated box stays in its run (a placeholder).
 fn flatten_inline(el: &StyledElement, ids: &mut Ids) -> Level {
     let mut levels = Vec::new();
     super::contents::visit(&el.children, &el.style, &mut |child, style| {
@@ -826,9 +826,8 @@ fn flatten_inline(el: &StyledElement, ids: &mut Ids) -> Level {
             append_level(&mut levels, level);
         }
     });
-    if !levels.iter().any(splits_inline) {
-        return Level::Inline(inline_items_of(levels));
-    }
+    // Without a block the split is a single run (the same as `Level::Inline` to every
+    // consumer, `append_level`).
     let mut out = Vec::new();
     let mut run = Vec::new();
     for level in levels {
@@ -842,12 +841,6 @@ fn flatten_inline(el: &StyledElement, ids: &mut Ids) -> Level {
     }
     out.push(FlowLevel::Inline(run));
     Level::Split(out)
-}
-
-/// Whether a flattened level splits its inline ancestor: an in-flow block (an
-/// absolutely positioned or floated one is a placeholder in the line run).
-fn splits_inline(level: &FlowLevel) -> bool {
-    matches!(level, FlowLevel::Block(block) if !block.line_placeholder())
 }
 
 // --------------------------------------------------------------------------
