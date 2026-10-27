@@ -45,7 +45,6 @@ fn object<'s>(scope: &mut v8::PinScope<'s, '_>, source: &str) -> v8::Local<'s, v
 }
 
 #[test]
-#[ignore = "turbo-test#127: fails until the fix"]
 fn pinning_call_owners_does_not_allocate_and_pins_each_owner_document_once() {
     tests::init_v8();
     let isolate = &mut v8::Isolate::new(Default::default());

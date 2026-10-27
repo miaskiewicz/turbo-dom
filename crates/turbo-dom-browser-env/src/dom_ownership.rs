@@ -176,30 +176,38 @@ pub(super) fn link_style<'s>(
     let key = v8::Private::for_api(scope, Some(name));
     style.set_private(scope, key, node.into());
 }
-/// What `pin_callback_owners` holds for one native call: the owner documents (as Locals, alive
-/// for the call's handle scope) and whether the call's wrappers were pinned for a deferred
-/// reconcile (see `reconcile_after_call`).
-pub(super) struct CallOwners<'s> {
-    _documents: Vec<v8::Local<'s, v8::Object>>,
+/// What `pin_callback_owners` did for one native call: how many owner documents it pinned
+/// (as Locals in the call's handle scope) and whether the call's wrappers were pinned for a
+/// deferred reconcile (see `reconcile_after_call`).
+pub(super) struct CallOwners {
+    documents: usize,
     deferrable: bool,
 }
-
 #[cfg(test)]
-impl CallOwners<'_> {
+impl CallOwners {
     /// Owner documents this call pinned.
     pub(super) fn documents(&self) -> usize {
-        self._documents.len()
+        self.documents
     }
 }
 
+/// Distinct owner documents `pin_callback_owners` deduplicates before it stops bothering: a
+/// call names a handful of nodes, and pinning a document twice is harmless.
+const OWNER_SLOTS: usize = 8;
+
+/// Runs before every native DOM method and setter, so it does no heap allocation
+/// (turbo-test#127): owners are deduplicated in a fixed array and each document is pinned by
+/// localizing it, which keeps it alive for the call's handle scope.
 pub(super) fn pin_callback_owners<'s>(
     scope: &mut v8::PinScope<'s, '_>,
     receiver: v8::Local<'s, v8::Object>,
     arguments: impl IntoIterator<Item = v8::Local<'s, v8::Value>>,
-) -> CallOwners<'s> {
+) -> CallOwners {
     let current = DOM_ID.with(|id| id.get());
     let deferrable = large_tree();
-    let mut owners = std::collections::HashSet::from([current]);
+    let mut seen = [current; OWNER_SLOTS];
+    let mut distinct = 1;
+    let mut documents = usize::from(pin_document(scope, current, current));
     for value in std::iter::once(receiver.into()).chain(arguments) {
         let Ok(object) = v8::Local::<v8::Object>::try_from(value) else {
             continue;
@@ -210,36 +218,45 @@ pub(super) fn pin_callback_owners<'s>(
         if deferrable {
             pin_until_reconciled(scope, object);
         }
-        if let Some(id) = object
+        let Some(owner) = object
             .get_internal_field(scope, 1)
             .and_then(|value| v8::Local::<v8::BigInt>::try_from(value).ok())
-        {
-            owners.insert(id.u64_value().0);
-        }
-    }
-    let mut pins = Vec::with_capacity(owners.len());
-    for owner in owners {
-        let document = if owner == current {
-            DOM.with(|state| {
-                let state = state.borrow();
-                let state = state.as_ref()?;
-                state.cache.get(&state.tree.root())?.to_local(scope)
-            })
-        } else {
-            OTHER_DOMS.with(|states| {
-                let states = states.borrow();
-                let state = states.get(&owner)?.dom.as_ref()?;
-                state.cache.get(&state.tree.root())?.to_local(scope)
-            })
+            .map(|id| id.u64_value().0)
+        else {
+            continue;
         };
-        if let Some(document) = document {
-            pins.push(document);
+        if seen[..distinct].contains(&owner) {
+            continue;
         }
+        if distinct < OWNER_SLOTS {
+            seen[distinct] = owner;
+            distinct += 1;
+        }
+        documents += usize::from(pin_document(scope, owner, current));
     }
     CallOwners {
-        _documents: pins,
+        documents,
         deferrable,
     }
+}
+
+/// Localize `owner`'s document wrapper in the caller's handle scope (Source documents can lose
+/// their last node edge during adoption; this keeps them alive through the call).
+fn pin_document(scope: &mut v8::PinScope, owner: u64, current: u64) -> bool {
+    let document = if owner == current {
+        DOM.with(|state| {
+            let state = state.borrow();
+            let state = state.as_ref()?;
+            state.cache.get(&state.tree.root())?.to_local(scope)
+        })
+    } else {
+        OTHER_DOMS.with(|states| {
+            let states = states.borrow();
+            let state = states.get(&owner)?.dom.as_ref()?;
+            state.cache.get(&state.tree.root())?.to_local(scope)
+        })
+    };
+    document.is_some()
 }
 
 /// Up to this many live wrappers a mutating DOM call reconciles ownership itself (exact

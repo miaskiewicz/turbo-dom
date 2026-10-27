@@ -7,6 +7,14 @@ at the time); this file reconstructs them from history.
 
 ## [Unreleased]
 
+### Fixed — `pin_callback_owners` no longer allocates per native call (miaskiewicz/turbo-test#127)
+- turbo-dom-browser-env's `pin_callback_owners`, which runs before every native DOM method and
+  setter to keep the call's owner documents alive, built a `HashSet` and a `Vec` each time and
+  showed up high in profiles of a React suite. It now deduplicates owners in a fixed array and
+  pins each document by localizing it in the call's handle scope: no heap allocation (test:
+  `dom_ownership_alloc_tests`, a per-thread counting allocator; 200 -> 0 allocations per 100
+  calls), the same documents pinned.
+
 ### Fixed — DOM ownership bookkeeping is linear on large trees (miaskiewicz/turbo-dom#112)
 - turbo-dom-browser-env reconciled DOM wrapper ownership after every mutating native call,
   walking every live wrapper (and rebuilding a V8 Map per ownership component), and swept every
