@@ -152,7 +152,10 @@ changes in `tools/parity/expected/p5b-w7-turbo-dom-*.json`.
   frame context panics inside its `extern "C"` API on a decode error (upstream
   memorysafety/rav1d#1496, fixed after 1.1.0; 1.1.1 is unpublished). The decoder now runs with
   two frame contexts, where the error comes back as a result; AV1 output is bit-exact, so pixels
-  are unchanged. A child-process fuzz test over every AVIF fixture (truncations, bit flips) gates it.
+  are unchanged. A child-process fuzz test over every AVIF fixture (truncations, bit flips) and
+  over their AV1 streams fed to rav1d directly (truncations, the second half overwritten with 0xFF,
+  every byte flipped; P5b-R1) gates it. Still open: Chrome paints nothing for such an image and
+  rejects a truncated AVIF (miaskiewicz/turbo-dom#107).
 - AVIF identity (GBR, matrix 0) samples convert exactly, every plane on the luma scale like libavif
   (they were half a level low, limited range on the chroma scale) (#95).
 - SVG screenshots stroke a rounded box's border along its radius, like the PNG painter (#95).
@@ -161,6 +164,8 @@ changes in `tools/parity/expected/p5b-w7-turbo-dom-*.json`.
 - Canvas op-log colours parse through turbo-dom's new `rtdom::color::parse_color` (hsl()/hsla(),
   percentage rgb() channels and alpha, the full named set; channels rounded like Chrome) instead of a
   local subset; `canonicalize_color`'s output is unchanged (#95).
+  `currentcolor` is resolved by the recorder in Chrome (the canvas's computed colour at assignment),
+  which turbo-dom-browser-env's context does not do yet (miaskiewicz/turbo-dom#108).
 - Canvas `lineTo`/`arc` after `closePath` (or `rect`) starts at the closed subpath's first point, as in
   Chrome (found by the P5-cov mutation pass).
 

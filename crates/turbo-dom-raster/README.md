@@ -11,7 +11,7 @@ decoded and painted; it does no I/O itself.
 
 It also replays a recorded 2D-canvas op log (`canvas_ops_png` / `canvas_ops_rgba`; style
 colours through turbo-dom's CSS colour parser `rtdom::color::parse_color`, so `hsl()`,
-percentage `rgb()` and every named colour resolve as in Chrome)
+percentage `rgb()` and every named colour resolve as in Chrome; `currentcolor` needs the canvas element, so the recorder must resolve it, turbo-dom#108)
 and, under `gpu-metal`, a recorded WebGL call batch (`webgl_readback`).
 
 ```rust
@@ -28,7 +28,7 @@ fn shot(html: &str) -> Result<Vec<u8>, String> {
 |---|---|---|
 | `gpu-metal` | off | rasterize canvas op logs and WebGL batches on the GPU (wgpu → Metal); any GPU failure falls back to the tiny-skia path |
 | `coretext` | off | macOS only: canvas 2D text through CoreText/CoreGraphics (inert elsewhere) |
-| `avif` | off | AVIF screenshot pixels through `rav1d` (BSD-2-Clause pure-Rust dav1d port, assembly off, two frame contexts — with one, rav1d 1.1.0 aborts the process on a corrupt AVIF, turbo-dom#94; `src/avif.rs` records the options assessed). A corrupt AVIF is a broken image (placeholder) Without it an AVIF lays out at its size and paints as the placeholder |
+| `avif` | off | AVIF screenshot pixels through `rav1d` (BSD-2-Clause pure-Rust dav1d port, assembly off, two frame contexts — with one, rav1d 1.1.0 aborts the process on a corrupt AVIF, turbo-dom#94; `src/avif.rs` records the options assessed). A corrupt AVIF decodes to no pixels (laid out at its `ispe` size, painted as the placeholder; Chrome paints nothing there and rejects a truncated one, turbo-dom#107), never an abort. Without it an AVIF lays out at its size and paints as the placeholder |
 | `jxl` | off | JPEG XL screenshot pixels through `jxl-oxide` (MIT OR Apache-2.0, pure Rust, no thread pool; `src/jxl.rs` records the options assessed). Chrome 156 decodes JPEG XL (miaskiewicz/turbo-dom#45). Without it a JPEG XL lays out at its size (turbo-dom-layout's header probe) and paints as the placeholder |
 
 turbo-dom-layout is used with explicit features: `bundled-fonts` and `svg-rasterize` (the
