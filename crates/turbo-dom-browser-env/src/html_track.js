@@ -187,8 +187,13 @@
   // ---- HTMLTrackElement (members in Chrome's key order: kind, src, srclang, label, default,
   // readyState, track, then the constants) ----
   const tracks = new WeakMapType();
+  // `src` (the shared URL reflection) moves behind `kind`. A re-install into a realm that
+  // already has these members (turbo-surf's initial about:blank frame installs twice) leaves
+  // it in place: the constants after it are frozen by then, so it could not move back
+  // (turbo-dom#99).
+  const reinstall = Object.prototype.hasOwnProperty.call(P, "kind");
   const reflectedSource = Object.getOwnPropertyDescriptor(P, "src");
-  if (reflectedSource) delete P.src;
+  if (reflectedSource && !reinstall) delete P.src;
   member(
     P,
     "kind",
@@ -242,7 +247,12 @@
     return track;
   });
   ["NONE", "LOADING", "LOADED", "ERROR"].forEach((name, value) => {
-    // Configurable until key_order.js moves them into Chrome's order and freezes them (turbo-dom#99).
-    for (const owner of [g.HTMLTrackElement, P]) define(owner, name, { value, writable: false, enumerable: true, configurable: true });
+    // Configurable until key_order.js moves them into Chrome's order and freezes them; a
+    // re-install keeps the frozen ones (turbo-dom#99).
+    for (const owner of [g.HTMLTrackElement, P]) {
+      const current = Object.getOwnPropertyDescriptor(owner, name);
+      if (current && !current.configurable) continue;
+      define(owner, name, { value, writable: false, enumerable: true, configurable: true });
+    }
   });
 })();

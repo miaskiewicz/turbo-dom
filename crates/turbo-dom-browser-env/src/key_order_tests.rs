@@ -228,7 +228,6 @@ fn deferred_key_order_moves_track_constants_like_chrome156() {
 /// re-ran over the frozen constants: it moved `src` to the end and then threw on them, and the
 /// next key order could not move `src` back in front of the non-configurable constants.
 #[test]
-#[ignore = "turbo-dom#99: fails until the fix"]
 fn reinstall_into_an_arranged_realm_keeps_track_key_order_like_chrome156() {
     super::tests::init_v8();
     let isolate = &mut v8::Isolate::new(Default::default());
@@ -253,10 +252,10 @@ fn reinstall_into_an_arranged_realm_keeps_track_key_order_like_chrome156() {
     assert_eq!(
         eval(
             scope,
-            "(() => { const t = document.createElement('track'); t.src = 'a.vtt'; t.kind = 'CHAPTERS';
-              return [HTMLTrackElement.LOADED, t.ERROR, t.src.endsWith('/a.vtt') || t.src, t.kind, t.track.kind].join(); })()",
+            "(() => { const t = document.createElement('track'); t.src = 'https://x.test/a.vtt'; t.kind = 'CHAPTERS';
+              return [HTMLTrackElement.LOADED, t.ERROR, t.src, t.kind, t.track.kind].join(); })()",
         ),
-        "2,3,true,chapters,chapters"
+        "2,3,https://x.test/a.vtt,chapters,chapters"
     );
     reset();
 }

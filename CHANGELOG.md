@@ -151,6 +151,11 @@ changes in `tools/parity/expected/p5b-w7-turbo-dom-*.json`.
   non-configurable, so the key-order step could not move them after attributes installed
   later (turbo-surf's child frames listed them before `src`); they are now configurable until
   the key order freezes them.
+- A second install into an already arranged realm (turbo-surf's initial about:blank child
+  frame, `<iframe></iframe>`, installs its document twice) re-ran `html_track.js` over the
+  frozen constants: it moved `src` behind them and then threw redefining them, and the next key
+  order could not move `src` back. The re-run now leaves `src` and the frozen constants in
+  place (P5b-H1); turbo-surf can drop its `interface_key_order.rs` pin.
 
 ### Fixed — turbo-dom-browser-env canvas fillStyle / strokeStyle / shadowColor (P5b-G2, miaskiewicz/turbo-dom#108, Chrome 156 control)
 - The 2D context's `fillStyle` / `strokeStyle` / `shadowColor` are accessors over turbo-dom's
