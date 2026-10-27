@@ -13,13 +13,18 @@
 // (R/G/B/Y/W/T(the backdrop)/?) at the centres of its four quadrants (`points`, `samples`),
 // read from a screenshot, plus `images`: the attributes of every element of
 // `document.images` (the document's `<img>` elements; template content is not in it).
+// 3. An image whose pixels do not decode (miaskiewicz/turbo-dom#107): Chrome loads one it can
+//    size (a frame-corrupt AVIF, a PNG cut inside IDAT, a GIF with an empty LZW stream) and
+//    paints nothing (the backdrop shows through), but rejects an AVIF whose primary item
+//    extent runs past the end of the data (error, naturalWidth 0). `natural` records every
+//    `document.images` element's [naturalWidth, naturalHeight].
 // Asserted by crates/turbo-dom-raster/tests/raster_img_chrome.rs.
 //
 // Usage: node scripts/raster-img-chrome-control.mjs [--chrome PATH] [--out PATH]
 //   --chrome defaults to the Playwright-cached Chrome for Testing 156;
 //   --out    defaults to crates/turbo-dom-raster/tests/fixtures/raster_img_chrome156.json.
 // Needs playwright-core: PLAYWRIGHT_CORE (default: ../turbo-surf/node_modules/playwright-core).
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
@@ -97,6 +102,46 @@ const RED_PNG = base64("image/png", png([255, 0, 0]));
 const GREEN_SVG = base64("image/svg+xml", svg("#00ff00"));
 const BLUE_SVG_PERCENT = `data:image/svg+xml,${encodeURIComponent(svg("#0000ff"))}`;
 const YELLOW_BMP = base64("image/bmp", bmp([255, 255, 0]));
+/** `[start, end)` of the payload of the top-level box `kind` of an ISOBMFF file. */
+function boxPayload(bytes, kind) {
+  for (let off = 0; off + 8 <= bytes.length; ) {
+    const size = bytes.readUInt32BE(off);
+    if (bytes.toString("latin1", off + 4, off + 8) === kind) return [off + 8, off + size];
+    off += size;
+  }
+  throw new Error(`no ${kind} box`);
+}
+// q.avif (64x40): its `mdat` holds only the primary item's AV1 stream.
+const Q_AVIF = readFileSync(join(repo, "crates/turbo-dom-layout/tests/fixtures/images/formats/q.avif"));
+const [mdatStart, mdatEnd] = boxPayload(Q_AVIF, "mdat");
+const mid = mdatStart + Math.floor((mdatEnd - mdatStart) / 2);
+// The colour stream's second half overwritten with 0xFF; the container is intact.
+const AVIF_FRAME_CORRUPT = Buffer.from(Q_AVIF);
+AVIF_FRAME_CORRUPT.fill(0xff, mid, mdatEnd);
+// Cut in the middle of `mdat`: the item extent runs past the end of the data.
+const AVIF_TRUNCATED = Q_AVIF.subarray(0, mid);
+// The red PNG cut 8 bytes into its IDAT data.
+const RED = png([255, 0, 0]);
+const PNG_CUT_IDAT = RED.subarray(0, RED.indexOf("IDAT") + 4 + 8);
+/** A `W x H` GIF (global table red/black) whose one image has an empty LZW stream. */
+function gifEmptyLzw() {
+  const lsd = Buffer.alloc(7);
+  lsd.writeUInt16LE(W, 0);
+  lsd.writeUInt16LE(H, 2);
+  lsd.set([0x80, 0, 0], 4);
+  const desc = Buffer.alloc(10);
+  desc[0] = 0x2c;
+  desc.writeUInt16LE(W, 5);
+  desc.writeUInt16LE(H, 7);
+  return Buffer.concat([
+    Buffer.from("GIF89a", "latin1"),
+    lsd,
+    Buffer.from([255, 0, 0, 0, 0, 0]),
+    desc,
+    Buffer.from([2, 0]), // LZW minimum code size, then the block terminator: no data
+    Buffer.from([0x3b]),
+  ]);
+}
 const img = (cid, src, x, y) => `<img data-cid="${cid}" src="${src}" style="${pos(x, y)}">`;
 
 const CASES = [
@@ -149,6 +194,12 @@ const CASES = [
         `<div data-cid="d" style="${at(20, 10)};background:#ffff00"></div>`,
     ),
   },
+  // Item 3: images whose pixels do not decode.
+  { id: "undecodable-avif-frame-corrupt", html: DOC(img("i", base64("image/avif", AVIF_FRAME_CORRUPT), 20, 10)) },
+  { id: "undecodable-avif-truncated", html: DOC(img("i", base64("image/avif", AVIF_TRUNCATED), 20, 10)) },
+  { id: "undecodable-png-cut-idat", html: DOC(img("i", base64("image/png", PNG_CUT_IDAT), 20, 10)) },
+  { id: "undecodable-gif-empty-lzw", html: DOC(img("i", base64("image/gif", gifEmptyLzw()), 20, 10)) },
+  { id: "undecodable-intact-avif", html: DOC(img("i", base64("image/avif", Q_AVIF), 20, 10)) },
 ];
 
 const browser = await chromium.launch({
@@ -165,7 +216,7 @@ await page.route("**/*", (route) => route.fulfill({ status: 404, body: "" }));
 const cases = [];
 for (const testCase of CASES) {
   await page.setContent(testCase.html, { waitUntil: "load" });
-  const { rects, images } = await page.evaluate(async () => {
+  const { rects, images, natural } = await page.evaluate(async () => {
     for (const image of document.images) await image.decode().catch(() => {});
     return {
       rects: [...document.querySelectorAll("[data-cid]")].map((el) => {
@@ -175,6 +226,7 @@ for (const testCase of CASES) {
       images: [...document.images].map((image) =>
         Object.fromEntries([...image.attributes].map((a) => [a.name, a.value])),
       ),
+      natural: [...document.images].map((image) => [image.naturalWidth, image.naturalHeight]),
     };
   });
   const px = decodePng(await page.screenshot());
@@ -192,7 +244,7 @@ for (const testCase of CASES) {
       samples: points.map(([a, b]) => classOf(px(a, b))).join(""),
     };
   });
-  cases.push({ id: testCase.id, html: testCase.html, boxes, images });
+  cases.push({ id: testCase.id, html: testCase.html, boxes, images, natural });
 }
 await browser.close();
 
@@ -208,5 +260,5 @@ writeFileSync(out, `${JSON.stringify(fixture, null, 1)}\n`);
 console.log(`Chrome ${version}: ${cases.length} cases -> ${out}`);
 for (const c of cases) {
   const boxes = c.boxes.map((b) => `${b.cid}:${b.rect.map((v) => Math.round(v)).join(",")}:${b.samples}`).join("  ");
-  console.log(c.id.padEnd(36), boxes, `images=${c.images.length}`);
+  console.log(c.id.padEnd(36), boxes, `images=${c.images.length}`, JSON.stringify(c.natural));
 }

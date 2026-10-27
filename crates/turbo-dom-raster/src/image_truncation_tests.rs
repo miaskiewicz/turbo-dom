@@ -2,7 +2,9 @@
 //! SVG roots (miaskiewicz/turbo-dom#59), against turbo-dom-layout's Chrome 156 control
 //! `tests/fixtures/image_truncation_chrome156.json` (`scripts/image-truncation-chrome-control.mjs`):
 //! a prefix Chrome loads is laid out at its natural size (painted from whatever the decoder
-//! reads, else as the placeholder), a prefix Chrome rejects is not an image.
+//! reads, else painting nothing), a prefix Chrome rejects is not an image. The control's AVIF
+//! images (`formats/…`, relative to its `images` directory) load once the primary item's
+//! `iloc` extents lie within the data (miaskiewicz/turbo-dom#107).
 use super::decode;
 
 fn layout_fixture(path: &str) -> std::path::PathBuf {
@@ -13,14 +15,36 @@ fn layout_fixture(path: &str) -> std::path::PathBuf {
 
 #[test]
 fn truncated_images_decode_like_chrome_156() {
+    decode_like_chrome(|file| !file.ends_with(".avif"), true);
+}
+
+#[test]
+#[ignore = "turbo-dom#107: fails until the fix"]
+fn truncated_avifs_decode_like_chrome_156() {
+    decode_like_chrome(|file| file.ends_with(".avif"), false);
+}
+
+/// The control's images `pick` selects (and, with `svgs`, its SVG documents) decode as
+/// Chrome loads them.
+fn decode_like_chrome(pick: fn(&str) -> bool, svgs: bool) {
     let fixture: serde_json::Value = serde_json::from_str(
         &std::fs::read_to_string(layout_fixture("image_truncation_chrome156.json")).unwrap(),
     )
     .unwrap();
     let mut failures = Vec::new();
+    let mut checked = 0;
     for image in fixture["images"].as_array().unwrap() {
         let file = image["file"].as_str().unwrap();
-        let bytes = std::fs::read(layout_fixture(&format!("images/truncation/{file}"))).unwrap();
+        if !pick(file) {
+            continue;
+        }
+        checked += 1;
+        let dir = if file.contains('/') {
+            ""
+        } else {
+            "truncation/"
+        };
+        let bytes = std::fs::read(layout_fixture(&format!("images/{dir}{file}"))).unwrap();
         let natural = &image["natural"];
         let natural = (
             natural[0].as_u64().unwrap() as u32,
@@ -34,7 +58,8 @@ fn truncated_images_decode_like_chrome_156() {
             }
         }
     }
-    for case in fixture["svgs"].as_array().unwrap() {
+    assert!(checked > 0);
+    for case in fixture["svgs"].as_array().unwrap().iter().filter(|_| svgs) {
         let id = case["id"].as_str().unwrap();
         if id == "svgz" {
             continue; // covered by turbo-dom-layout's rasterizer test
