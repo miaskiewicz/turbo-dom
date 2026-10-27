@@ -107,6 +107,8 @@ browser_env.js: P5b-H1 turbo-dom#110/#111 the 2D context's save() / restore() ke
 key_order_tests.rs: P5b-H1 turbo-dom#99 a second install into an arranged realm keeps HTMLTrackElement's key order
 css_live_tests.rs: P5b-K1 turbo-test#125 getComputedStyle reuse invalidation tests (tree version, CSSOM epoch, top layer, font context, ancestor styles); P5b-L1 turbo-dom#113 cross-realm CSSOM edits
 dom_ownership.rs: P5b-K3 turbo-dom#112 deferred ownership reconcile above 256 wrappers + flush_ownership, GC tracking in install, reconcile_all in its own handle scope (from turbo-test PR #105); turbo-test#127 pin_callback_owners without per-call allocation; test modules dom_ownership_alloc_tests, dom_ownership_scale_tests
+document_basics.rs: P5-cov-browser-env turbo-dom#137 adoptNode(shadowRoot) throws HierarchyRequestError
+view_transitions.rs: P5-cov-browser-env turbo-dom#136 :active-view-transition-type() admits keyword identifiers
 browser_env.rs: P5-cov-browser-env removes the element template's unreachable constructor / dataset getters and containsNode method (wrappers are projected before page script runs and JS owns those members: the interface prototypes, document_basics.js dataset, selection.js containsNode)
 "
 # Crate-owned files under src/ that were not part of the move.

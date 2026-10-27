@@ -281,49 +281,18 @@ fn sanitizer_edges_match_chrome156() {
     );
 }
 
-/// KNOWN_GAP (miaskiewicz/turbo-dom#136, #137): querySelector rejects keyword view
-/// transition types; adoptNode(shadowRoot) throws the wrong DOMException name.
-const DOCUMENT_GAPS: &[(&str, &str)] = &[
-    ("result.nodes.adoptShadow", "\"NotSupportedError\""),
-    (
-        "result.viewTransition.:active-view-transition-type(inherit)[0]",
-        "\"SyntaxError\"",
-    ),
-    (
-        "result.viewTransition.:active-view-transition-type(inherit)[1]",
-        "\"SyntaxError\"",
-    ),
-    (
-        "result.viewTransition.:active-view-transition-type(inherit)[2]",
-        "\"SyntaxError\"",
-    ),
-    (
-        "result.viewTransition.:active-view-transition-type(none)[0]",
-        "\"SyntaxError\"",
-    ),
-    (
-        "result.viewTransition.:active-view-transition-type(none)[1]",
-        "\"SyntaxError\"",
-    ),
-    (
-        "result.viewTransition.:active-view-transition-type(none)[2]",
-        "\"SyntaxError\"",
-    ),
-];
-
 #[test]
 fn document_edges_match_chrome156() {
     check(
         include_str!("document_edges_probe.js"),
         include_str!("document_edges_chrome156.json"),
-        DOCUMENT_GAPS,
+        &[],
     );
 }
 
 /// Chrome 156 admits every identifier as a view transition type in querySelector (as in
 /// stylesheets); none of them matches outside an active transition.
 #[test]
-#[ignore = "turbo-dom#136: fails until the fix"]
 fn active_view_transition_type_admits_keyword_types() {
     let probe = r#"(async () => ['none', 'NONE', 'initial', 'inherit', 'unset', 'default', 'revert', 'revert-layer', 'auto'].map(type => {
       const selector = `:active-view-transition-type(${type})`;
@@ -337,7 +306,6 @@ fn active_view_transition_type_admits_keyword_types() {
 
 /// DOM adopt: a shadow root throws HierarchyRequestError (a document NotSupportedError).
 #[test]
-#[ignore = "turbo-dom#137: fails until the fix"]
 fn adopting_a_shadow_root_throws_hierarchy_request_error() {
     let probe = r#"(async () => [document.createElement('div').attachShadow({ mode: 'open' }), document.implementation.createHTMLDocument('')].map(node => {
       try { document.adoptNode(node); return 'ok'; } catch (e) { return [e.name, e instanceof DOMException]; }
