@@ -655,7 +655,8 @@ fn contextual_fragments_use_the_nearest_html_form_ancestor_like_chrome() {
 }
 
 /// Recorded Chrome probe answers rtdom does not give yet, each with its issue.
-const OPEN_PROBES: &[&str] = &["textarea_dir_auto"]; // miaskiewicz/turbo-dom#106
+/// (turbo-dom#106, the textarea `dir=auto` value, is fixed.)
+const OPEN_PROBES: &[&str] = &[];
 
 /// A `dir=auto` textarea takes its direction from its value — the child text content
 /// (direct Text children only), not `textContent` (miaskiewicz/turbo-dom#106).

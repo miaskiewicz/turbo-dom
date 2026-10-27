@@ -155,7 +155,7 @@ static screenshots of the surf static inputs to S5.
 | pseudo-class case | DOM APIs case-sensitive (`P:FIRST-CHILD` never matched) | ASCII case-insensitive | `cases/malformed`, `cases/lang` |
 | `:lang()` | stylesheet-only; strings and lists accepted | DOM APIs too; one identifier; `lang` on any element (SVG) | `cases/lang` |
 | `:defined` | stylesheet-only | DOM APIs too; `is=` elements are undefined | `cases/defined` |
-| `:dir()` | valid, never matched | HTML directionality (`dir`, `dir=auto` / `<bdi>` first strong character via `unicode-bidi`, `type=tel`, inheritance across shadow roots) | `cases/dir` |
+| `:dir()` | valid, never matched | HTML directionality (`dir`, `dir=auto` / `<bdi>` first strong character via `unicode-bidi` — a text `input`'s / `textarea`'s value, a textarea's being its child text content (turbo-dom#106) — `type=tel`, inheritance across shadow roots) | `cases/dir` |
 | template content | queries, `:has()` and ancestor walks entered the content fragment | content is a separate fragment (`Tree::for_each_light_child`, `LiveNavigator::parent`) | `cases/template`, `probes/template-traversal` |
 | `:root` | any element without an element parent | the document element only (the binding's internal selector paths anchor with `:not(* > *)`) | `probes/root` |
 | `rtdom::cascade` lists | split on every `,`; invalid rules applied their valid half | `parse_for_cascade` items; an invalid list drops the rule; stylesheet matching (`:scope` = `:root`) | every row's sentinel `winner`, `cases/cascade-comma` |

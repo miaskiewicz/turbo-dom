@@ -834,10 +834,17 @@ function strongRtl(text) {
   }
   return null;
 }
+// A textarea's value: its child text content (direct Text children only; turbo-dom#106).
+function childText(el) {
+  let text = '';
+  const kids = rawChildren(el);
+  for (let i = 0; i < kids.length; i++) if (kids[i].nodeType === 3) text += kids[i].data;
+  return text;
+}
 function autoRtl(el) {
   const ln = el.localName;
   if (ln === 'textarea' || (ln === 'input' && (inputType(el) === null || AUTO_DIR_INPUT_TYPES.has(inputType(el)) || !KNOWN_INPUT_TYPES.has(inputType(el))))) {
-    const value = ln === 'textarea' ? el.textContent : (el.getAttribute('value') || '');
+    const value = ln === 'textarea' ? childText(el) : (el.getAttribute('value') || '');
     const r = strongRtl(value);
     return r !== null ? r : value !== '' ? false : null;
   }

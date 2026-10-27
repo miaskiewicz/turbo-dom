@@ -741,13 +741,23 @@ const AUTO_DIR_INPUT_TYPES: &[&str] = &[
 ];
 
 /// HTML "auto directionality": `Some(rtl)` from the first strong character, `None` when
-/// there is none. A text `input` / `textarea` reads its value (any non-empty value without
+/// there is none. A text `input` / `textarea` reads its value (a textarea's is its child
+/// text content; any non-empty value without
 /// a leading strong RTL character is `ltr`); other elements read their descendant text,
 /// skipping `bdi`, `script`, `style`, `textarea`, template content and any HTML element
 /// with a valid `dir`.
 fn auto_rtl(tree: &Tree, h: Handle) -> Option<bool> {
     let value = match tree.local_name(h) {
-        Some("textarea") => Some(tree.text_content(h)),
+        // its value: the child text content (direct Text children only; turbo-dom#106)
+        Some("textarea") => {
+            let mut value = String::new();
+            tree.for_each_child(h, |c| {
+                if tree.node_type(c) == super::NodeType::Text {
+                    value.push_str(&tree.node_value(c).unwrap_or_default());
+                }
+            });
+            Some(value)
+        }
         Some("input")
             if tree.get_attribute(h, "type").is_none_or(|t| {
                 AUTO_DIR_INPUT_TYPES

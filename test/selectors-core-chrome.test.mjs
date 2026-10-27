@@ -75,7 +75,7 @@ test(':scope is the scoping element like Chrome 156', () => {
 
 // miaskiewicz/turbo-dom#106: a `dir=auto` textarea's direction comes from its value (the
 // child text content: direct Text children only), as the `textarea_dir_auto` probe records.
-const OPEN_PROBES = new Set(['textarea_dir_auto']);
+const OPEN_PROBES = new Set([]);
 test(':dir(auto) on a textarea reads the child text like Chrome 156', () => {
   const want = fixture.probes.find((p) => p.id === 'textarea_dir_auto').values;
   const { document: doc } = createEnvironment('<!DOCTYPE html><html><head></head><body></body></html>');

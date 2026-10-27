@@ -224,7 +224,7 @@ flex-item-box-sizing}.html`).
   padded or bordered `box-sizing: content-box` item lost its frame. They are now
   border-box lengths. Control: `flex-item-*`.
 
-### Fixed — selector syntax, :scope, RCDATA fragments, quirks and selectedcontent (P5-cov, miaskiewicz/turbo-dom#91/#92/#96/#98/#103/#104, Chrome 156 controls)
+### Fixed — selector syntax, :scope, RCDATA fragments, quirks and selectedcontent, textarea :dir (P5-cov, miaskiewicz/turbo-dom#91/#92/#96/#98/#103/#104/#106, Chrome 156 controls)
 Found by the new `scripts/rtdom-core-chrome-control.mjs` control
 (`crates/turbo-dom/tests/fixtures/rtdom_core_chrome156.json`); both engines (rtdom and the
 npm `selectors.mjs` / parser crate) unless noted.
@@ -252,6 +252,9 @@ npm `selectors.mjs` / parser crate) unless noted.
   select; the last `selected` option, else the first enabled one) — markup5ever_rcdom 0.39's
   clone step never fired. html5lib conformance: rtdom-direct 99.75% → 100%, npm 99.72% →
   99.94% (#104).
+- `:dir()` on a `dir=auto` `<textarea>` reads its value — the child text content (direct
+  Text children only) — not `textContent`: a Hebrew letter inside an appended `<span>` no
+  longer makes it `rtl` (#106).
 
 ### Changed — turbo-dom crate coverage 100% (P5-cov-core)
 - CI's turbo-dom coverage floor is 100 (was 88). New behaviour tests: the html5lib fixtures
