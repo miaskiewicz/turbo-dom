@@ -994,3 +994,142 @@ fn adopted_computed_sheet_copy_does_not_expose_private_collection_to_array_sette
         serde_json::json!({"value":"4px","reads":0,"sameAdoption":true})
     );
 }
+
+// turbo-test#125: getComputedStyle reuses an element's computed style until something it reads
+// changes. The work counter is the document sheet scan (`querySelectorAll('style,link')`) every
+// cascade computation starts with; values are the ones a fresh computation reports.
+#[test]
+#[ignore = "turbo-test#125: fails until the fix"]
+fn computed_style_reuses_the_cascade_until_the_document_changes() {
+    let value = run(
+        "<!doctype html><head><style id=s>.box {color:rgb(1, 2, 3);width:200px} .box span {display:block}</style></head><body><div class=box id=a><p><span id=t style='width:50%'>x</span></p></div></body>",
+        r#"(()=>{
+          const query=document.querySelectorAll;let scans=0;
+          document.querySelectorAll=function(selector){if(selector==='style,link')scans++;return Reflect.apply(query,this,arguments);};
+          try {
+            const t=document.getElementById('t'),retained=getComputedStyle(t);
+            const read=style=>[style.color,style.width,style.display,style.visibility,style.getPropertyValue('font-size')];
+            const first=read(retained),warm=scans;scans=0;const rows=[];
+            for(let index=0;index<5;index++)rows.push(read(getComputedStyle(t)).concat(read(retained),[getComputedStyle(t.parentElement).color]));
+            const repeated=scans;
+            const distinct=getComputedStyle(t)!==getComputedStyle(t);
+            t.setAttribute('data-x','1');scans=0;const after=read(retained);const mutated=scans;
+            return JSON.stringify({first,warm:warm>0,repeated,row:rows[0],same:rows.every(row=>JSON.stringify(row)===JSON.stringify(rows[0])),distinct,after,mutated:mutated>0});
+          } finally {document.querySelectorAll=query;}
+        })()"#,
+    );
+    assert_eq!(
+        value,
+        serde_json::json!({
+            "first": ["rgb(1, 2, 3)", "100px", "block", "visible", "16px"],
+            "warm": true,
+            "repeated": 0,
+            "row": ["rgb(1, 2, 3)", "100px", "block", "visible", "16px", "rgb(1, 2, 3)", "100px", "block", "visible", "16px", "rgb(1, 2, 3)"],
+            "same": true,
+            "distinct": true,
+            "after": ["rgb(1, 2, 3)", "100px", "block", "visible", "16px"],
+            "mutated": true
+        })
+    );
+}
+
+// turbo-test#125: a reused computed style is dropped by every input of the cascade — DOM, inline
+// style, stylesheet text, CSSOM rules / declarations / selectors / disabled sheets, adopted
+// sheets, form and top-layer state, animations and disconnection. Each step reads a fresh
+// declaration and one retained from the start.
+#[test]
+fn computed_style_reuse_is_invalidated_by_every_cascade_input() {
+    let value = run(
+        "<!doctype html><head><style id=s>.box {color:rgb(1, 2, 3)} .hot {color:rgb(9, 9, 9)} #b {color:rgb(0, 0, 255)} #c:checked + #l {color:rgb(0, 128, 0)}</style></head><body><div class=box id=a><span id=t>x</span></div><div id=b></div><input type=checkbox id=c><label id=l for=c>l</label><div popover id=p>p</div><dialog id=d>d</dialog></body>",
+        r#"(()=>{
+          const $=id=>document.getElementById(id),t=$('t'),a=$('a'),b=$('b'),s=$('s'),retained=getComputedStyle(t),rows=[];
+          const step=(name,el,prop)=>{const fresh=getComputedStyle(el).getPropertyValue(prop);rows.push([name,fresh,el===t?retained.getPropertyValue(prop):fresh]);};
+          step('warm',t,'color');step('warm-again',t,'color');
+          t.className='hot';step('class',t,'color');t.className='';step('class-removed',t,'color');
+          b.appendChild(t);step('moved',t,'color');a.appendChild(t);step('moved-back',t,'color');
+          t.style.color='rgb(4, 4, 4)';step('inline',t,'color');t.removeAttribute('style');step('inline-removed',t,'color');
+          s.textContent+=' #t {opacity:0.5}';step('style-text',t,'opacity');
+          const sheet=s.sheet;sheet.insertRule('#t {opacity:0.25}',sheet.cssRules.length);step('insert-rule',t,'opacity');
+          const rule=sheet.cssRules[sheet.cssRules.length-1];rule.style.opacity='0.125';step('rule-style',t,'opacity');
+          rule.selectorText='#none';step('selector-text',t,'opacity');
+          sheet.deleteRule(0);step('delete-rule',t,'color');
+          sheet.disabled=true;step('disabled',t,'opacity');sheet.disabled=false;step('enabled',t,'opacity');
+          const adopted=new CSSStyleSheet();adopted.replaceSync('#t {opacity:0.75}');
+          document.adoptedStyleSheets=[adopted];step('adopted',t,'opacity');
+          adopted.replaceSync('#t {opacity:0.625}');step('adopted-replaced',t,'opacity');
+          document.adoptedStyleSheets.pop();step('adopted-popped',t,'opacity');
+          document.adoptedStyleSheets.push(adopted);step('adopted-pushed',t,'opacity');
+          document.adoptedStyleSheets.length=0;step('adopted-cleared',t,'opacity');
+          step('unchecked',$('l'),'color');$('c').checked=true;step('checked',$('l'),'color');$('c').checked=false;step('checked-again',$('l'),'color');
+          step('popover',$('p'),'display');$('p').showPopover();step('popover-open',$('p'),'display');$('p').hidePopover();step('popover-closed',$('p'),'display');
+          step('dialog',$('d'),'position');$('d').showModal();step('dialog-modal',$('d'),'position');$('d').close();step('dialog-closed',$('d'),'position');
+          const animation=t.animate([{opacity:0.1},{opacity:0.1}],{duration:100000});step('animated',t,'opacity');animation.cancel();step('animation-cancelled',t,'opacity');
+          t.remove();step('removed',t,'color');
+          return JSON.stringify(rows);
+        })()"#,
+    );
+    assert_eq!(
+        value,
+        serde_json::json!([
+            ["warm", "rgb(1, 2, 3)", "rgb(1, 2, 3)"],
+            ["warm-again", "rgb(1, 2, 3)", "rgb(1, 2, 3)"],
+            ["class", "rgb(9, 9, 9)", "rgb(9, 9, 9)"],
+            ["class-removed", "rgb(1, 2, 3)", "rgb(1, 2, 3)"],
+            ["moved", "rgb(0, 0, 255)", "rgb(0, 0, 255)"],
+            ["moved-back", "rgb(1, 2, 3)", "rgb(1, 2, 3)"],
+            ["inline", "rgb(4, 4, 4)", "rgb(4, 4, 4)"],
+            ["inline-removed", "rgb(1, 2, 3)", "rgb(1, 2, 3)"],
+            ["style-text", "0.5", "0.5"],
+            ["insert-rule", "0.25", "0.25"],
+            ["rule-style", "0.125", "0.125"],
+            ["selector-text", "0.5", "0.5"],
+            ["delete-rule", "rgb(0, 0, 0)", "rgb(0, 0, 0)"],
+            ["disabled", "1", "1"],
+            ["enabled", "0.5", "0.5"],
+            ["adopted", "0.75", "0.75"],
+            ["adopted-replaced", "0.625", "0.625"],
+            ["adopted-popped", "0.5", "0.5"],
+            ["adopted-pushed", "0.625", "0.625"],
+            ["adopted-cleared", "0.5", "0.5"],
+            ["unchecked", "rgb(0, 0, 0)", "rgb(0, 0, 0)"],
+            ["checked", "rgb(0, 128, 0)", "rgb(0, 128, 0)"],
+            ["checked-again", "rgb(0, 0, 0)", "rgb(0, 0, 0)"],
+            ["popover", "none", "none"],
+            ["popover-open", "block", "block"],
+            ["popover-closed", "none", "none"],
+            ["dialog", "absolute", "absolute"],
+            ["dialog-modal", "fixed", "fixed"],
+            ["dialog-closed", "absolute", "absolute"],
+            ["animated", "0.1", "0.1"],
+            ["animation-cancelled", "0.5", "0.5"],
+            ["removed", "", ""]
+        ])
+    );
+}
+
+// turbo-test#125: an `@import` whose media query decides whether its rules apply is re-evaluated
+// when the media result changes, even though nothing in the document did.
+#[test]
+fn computed_style_reuse_follows_import_media_changes() {
+    let value = run(
+        "<!doctype html><head><style id=s>@import url('child.css') screen; #t {height:17px}</style></head><body><div id=t></div></body>",
+        r#"(()=>{
+          let screen=true;globalThis.matchMedia=query=>({matches:screen,media:query});
+          const sheet=document.getElementById('s').sheet,child=new CSSStyleSheet();
+          __cssTestHost.attachImport(sheet.cssRules[0],child,'http://localhost/child.css','#t {width:33px;height:11px}',true);
+          const t=document.getElementById('t'),retained=getComputedStyle(t),rows=[];
+          const read=()=>rows.push([getComputedStyle(t).width,retained.width,retained.height]);
+          read();read();screen=false;read();screen=true;read();
+          return JSON.stringify(rows);
+        })()"#,
+    );
+    assert_eq!(
+        value,
+        serde_json::json!([
+            ["33px", "33px", "17px"],
+            ["33px", "33px", "17px"],
+            ["", "", "17px"],
+            ["33px", "33px", "17px"]
+        ])
+    );
+}

@@ -260,3 +260,34 @@ fn fullscreen_matches_chrome156_control() {
         found.join("\n")
     );
 }
+
+/// turbo-test#125: a reused computed style follows the viewport: the fullscreen element's width /
+/// height are the viewport's, so a resize changes them although the document did not change.
+#[test]
+fn computed_style_reuse_follows_viewport_changes() {
+    let value = run(
+        "<!doctype html><body><div id=f>f</div></body>",
+        r"(async () => {
+          const f = document.getElementById('f'), retained = getComputedStyle(f), rows = [];
+          const read = () => rows.push([getComputedStyle(f).width, retained.width, retained.height]);
+          read();
+          await new Promise((done) => { globalThis.__cdpGestureDone = done; __cdpGesture('click'); });
+          await f.requestFullscreen();
+          read(); read();
+          innerWidth = 800; innerHeight = 600; read();
+          await document.exitFullscreen();
+          read();
+          return rows;
+        })()",
+    );
+    assert_eq!(
+        value,
+        serde_json::json!([
+            ["", "", ""],
+            ["1024px", "1024px", "768px"],
+            ["1024px", "1024px", "768px"],
+            ["800px", "800px", "600px"],
+            ["", "", ""]
+        ])
+    );
+}
