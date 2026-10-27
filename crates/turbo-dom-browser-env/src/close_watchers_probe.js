@@ -19,7 +19,7 @@
   for (const type of ['cancel', 'close', 'beforetoggle', 'toggle', 'pointerdown', 'pointerup', 'click']) document.addEventListener(type, record, true);
   const style = document.head.appendChild(document.createElement('style'));
   style.textContent = 'body{margin:0} .box{position:fixed;margin:0;padding:0;border:0;width:100px;height:100px;inset:auto;overflow:hidden} dialog::backdrop{background:none}';
-  const place = (element, x, y) => { element.className = 'box'; element.style.left = x + 'px'; element.style.top = y + 'px'; return element; };
+  const place = (element, x, y) => { element.className = 'box'; element.style.cssText = `position:fixed;margin:0;padding:0;border:0;width:100px;height:100px;inset:auto;overflow:hidden;left:${x}px;top:${y}px`; return element; };
   const fixture = html => {
     document.body.innerHTML = html;
     for (const element of document.body.querySelectorAll('[data-x]')) place(element, element.dataset.x, element.dataset.y);
@@ -162,6 +162,47 @@
     await input(esc);
     await input(...click(10, 10, 'out'));
     return [dialog.open, dialog.isConnected];
+  });
+  // A popover inside a shadow tree: a click inside it (retargeted to the host) keeps it open.
+  await scenario('shadowPopover', `<div id=out ${OUT}></div><div id=host></div>`, async () => {
+    const root = document.getElementById('host').attachShadow({ mode: 'open' });
+    root.innerHTML = '<div id=sp popover>s</div>';
+    const popover = place(root.getElementById('sp'), 300, 300);
+    popover.showPopover();
+    await input(...click(310, 310, 'host>sp'));
+    const inside = popover.matches(':popover-open');
+    await input(...click(10, 10, 'out'));
+    return [inside, popover.matches(':popover-open')];
+  });
+  // An invoker inside an open popover makes its target that popover's nested popover.
+  await scenario('invokerInPopover', `<div id=out ${OUT}></div><div id=p1 popover data-x=300 data-y=300><button id=inv popovertarget=p2>i</button></div><div id=p2 popover data-x=420 data-y=300>2</div>`, async () => {
+    place(document.getElementById('inv'), 300, 300);
+    document.getElementById('p1').showPopover();
+    await input(...click(310, 310, 'inv'));
+    const opened = state('p1', 'p2');
+    await input(...click(430, 310, 'p2'));
+    const inside = state('p1', 'p2');
+    await input(...click(10, 10, 'out'));
+    return [opened, inside, state('p1', 'p2')];
+  });
+  // A dialog inside a shadow tree with closedby=any: clicks inside keep it open.
+  await scenario('shadowDialog', `<div id=out ${OUT}></div><div id=host></div>`, async () => {
+    const root = document.getElementById('host').attachShadow({ mode: 'open' });
+    root.innerHTML = '<dialog id=sd closedby=any>d</dialog>';
+    const dialog = place(root.getElementById('sd'), 300, 300);
+    dialog.show();
+    await input(...click(310, 310, 'host>sd'));
+    const inside = dialog.open;
+    await input(...click(10, 10, 'out'));
+    return [inside, dialog.open];
+  });
+  // Removing an open modal dialog's ancestor removes it from the open dialogs list.
+  await scenario('removedAncestor', `<div id=out ${OUT}></div><section id=outer><div id=mid><dialog id=d closedby=any data-x=300 data-y=300>d</dialog></div></section>`, async () => {
+    const dialog = document.getElementById('d');
+    dialog.showModal();
+    document.getElementById('mid').remove();
+    await input(esc);
+    return [dialog.open, document.querySelector(':modal')];
   });
   style.remove();
   document.body.innerHTML = '';

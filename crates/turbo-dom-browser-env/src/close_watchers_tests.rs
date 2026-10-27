@@ -116,7 +116,8 @@ const DRIVER: &str = r#"(() => {
   const chain = node => { const out = []; for (; node; node = node.parentNode) out.push(node); return out; };
   let down = null;
   const pointer = step => {
-    const hit = document.getElementById(step.target), backdrop = host.Backdrop(hit);
+    const [hostId, innerId] = step.target.split('>');
+    const outer = document.getElementById(hostId), hit = innerId ? outer.shadowRoot.getElementById(innerId) : outer, backdrop = host.Backdrop(hit);
     if ((backdrop !== null) !== step.backdrop) throw new Error('backdrop mismatch at ' + step.target);
     const target = backdrop || hit;
     const init = { bubbles: true, cancelable: true, composed: true, clientX: step.x, clientY: step.y, pointerId: 1, pointerType: 'mouse', isPrimary: true, button: 0, buttons: step.type === 'down' ? 1 : 0 };
@@ -236,6 +237,23 @@ fn close_watchers_and_light_dismiss_match_chrome156() {
         }
     }
     assert_eq!(swapped, 9, "dialogs closed by close watchers");
+    // KNOWN_GAP (miaskiewicz/turbo-dom#119): a popover in a shadow tree never opens, and a
+    // closedby=any dialog in a shadow tree is light-dismissed by a click inside it.
+    assert_eq!(
+        expected["shadowPopover"]["states"],
+        serde_json::json!([true, false])
+    );
+    assert_eq!(
+        expected["shadowDialog"]["states"],
+        serde_json::json!([true, false])
+    );
+    for scenario in ["shadowPopover", "shadowDialog"] {
+        assert_eq!(
+            actual[scenario]["states"],
+            serde_json::json!([false, false])
+        );
+        actual[scenario]["states"] = expected[scenario]["states"].clone();
+    }
     let mut out = Vec::new();
     differences("result", &actual, &expected, &mut out);
     assert!(
@@ -244,4 +262,82 @@ fn close_watchers_and_light_dismiss_match_chrome156() {
         out.len(),
         out.join("\n")
     );
+}
+
+/// Light dismiss only acts on trusted pointerdown / pointerup events at a node: page-made
+/// events, other event types and non-events leave an open auto popover alone, while the same
+/// trusted press and release outside it hide it.
+#[test]
+fn light_dismiss_ignores_untrusted_and_other_events() {
+    crate::browser_env::tests::init_v8();
+    let isolate = &mut v8::Isolate::new(Default::default());
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    install_with_html(
+        scope,
+        "<!doctype html><div id=out></div><div id=p popover>p</div>",
+    );
+    let eval = |scope: &mut v8::PinScope, source: &str| -> String {
+        let code = v8::String::new(scope, source).unwrap();
+        let value = v8::Script::compile(scope, code, None)
+            .unwrap()
+            .run(scope)
+            .unwrap();
+        value.to_rust_string_lossy(scope)
+    };
+    eval(scope, "globalThis.p = document.getElementById('p'); globalThis.out = document.getElementById('out'); p.showPopover()");
+    let object = |scope: &mut v8::PinScope<'_, '_>, source: &str| {
+        let code = v8::String::new(scope, source).unwrap();
+        let value = v8::Script::compile(scope, code, None)
+            .unwrap()
+            .run(scope)
+            .unwrap();
+        v8::Global::new(scope, v8::Local::<v8::Object>::try_from(value).unwrap())
+    };
+    let target = object(scope, "out");
+    for source in [
+        "new PointerEvent('pointerdown', { bubbles: true })",
+        "new PointerEvent('pointerup', { bubbles: true })",
+        "({ type: 'pointerdown', isTrusted: true })",
+    ] {
+        let event = object(scope, source);
+        let event = v8::Local::new(scope, &event);
+        if source.starts_with("new") {
+            let target = v8::Local::new(scope, &target);
+            let code = v8::String::new(scope, "(e, t) => t.dispatchEvent(e)").unwrap();
+            let function = v8::Script::compile(scope, code, None)
+                .unwrap()
+                .run(scope)
+                .unwrap();
+            let function = v8::Local::<v8::Function>::try_from(function).unwrap();
+            let undefined = v8::undefined(scope).into();
+            function.call(scope, undefined, &[event.into(), target.into()]);
+        }
+        light_dismiss(scope, event, false);
+    }
+    // Trusted, but neither pointerdown nor pointerup.
+    for kind in ["click", "mousedown"] {
+        let event = object(
+            scope,
+            &format!("new MouseEvent('{kind}', {{ bubbles: true }})"),
+        );
+        let event = v8::Local::new(scope, &event);
+        let target = v8::Local::new(scope, &target);
+        dispatch_host_event(scope, event, target);
+        light_dismiss(scope, event, false);
+    }
+    assert_eq!(eval(scope, "p.matches(':popover-open')"), "true");
+    for kind in ["pointerdown", "pointerup"] {
+        let event = object(
+            scope,
+            &format!("new PointerEvent('{kind}', {{ bubbles: true }})"),
+        );
+        let event = v8::Local::new(scope, &event);
+        let target = v8::Local::new(scope, &target);
+        dispatch_host_event(scope, event, target);
+        light_dismiss(scope, event, false);
+    }
+    assert_eq!(eval(scope, "p.matches(':popover-open')"), "false");
+    reset();
 }
