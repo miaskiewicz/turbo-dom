@@ -223,6 +223,44 @@ fn deferred_key_order_moves_track_constants_like_chrome156() {
     reset();
 }
 
+/// turbo-dom#99: a second install into an already arranged realm (turbo-surf's initial
+/// about:blank child frame installs its document twice) keeps Chrome's order. html_track.js
+/// re-ran over the frozen constants: it moved `src` to the end and then threw on them, and the
+/// next key order could not move `src` back in front of the non-configurable constants.
+#[test]
+#[ignore = "turbo-dom#99: fails until the fix"]
+fn reinstall_into_an_arranged_realm_keeps_track_key_order_like_chrome156() {
+    super::tests::init_v8();
+    let isolate = &mut v8::Isolate::new(Default::default());
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    let control: serde_json::Value =
+        serde_json::from_str(include_str!("key_order_chrome156.json")).unwrap();
+    for pass in ["first install", "second install"] {
+        key_order::defer(scope);
+        install_independent_html(
+            scope,
+            "<!doctype html><html><head></head><body></body></html>",
+        );
+        key_order::finish(scope);
+        let after = probe_result(scope);
+        let (compared, failures) = mismatches(&after, &control["result"]);
+        assert!(compared >= 200, "{pass}: only {compared} shared interfaces");
+        assert!(failures.is_empty(), "{pass}: {}", failures.join("\n"));
+    }
+    // The re-run kept every member working: the constants and the reflected `src`.
+    assert_eq!(
+        eval(
+            scope,
+            "(() => { const t = document.createElement('track'); t.src = 'a.vtt'; t.kind = 'CHAPTERS';
+              return [HTMLTrackElement.LOADED, t.ERROR, t.src.endsWith('/a.vtt') || t.src, t.kind, t.track.kind].join(); })()",
+        ),
+        "2,3,true,chapters,chapters"
+    );
+    reset();
+}
+
 fn eval(scope: &mut v8::PinScope, source: &str) -> String {
     v8::tc_scope!(let scope, scope);
     let code = v8::String::new(scope, source).unwrap();
