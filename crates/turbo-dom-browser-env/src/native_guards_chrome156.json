@@ -3,7 +3,7 @@
   "v8": "15.6.75",
   "probe": "native_guards_probe.js",
   "probeSha256": "fd7fb0e67319560de72d48c8978a5c727adbb67023dd37277eedff1746874bfe",
-  "collectorSha256": "b9a886428961d40ffbc61f650721aeef3e2b26e82361d35a4f8eef005e3b1603",
+  "collectorSha256": "3f964d2cdf0ec8101870a776aaffc3b7dc4522306959c4a40761057beb255eb8",
   "flags": [
     "--headless=new",
     "--remote-debugging-pipe",
