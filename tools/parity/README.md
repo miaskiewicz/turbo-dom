@@ -53,8 +53,11 @@ must then be zero-diff against it.
 
 Checkpoints (`manifests/<name>/`): `b-main` (the released mains: turbo-dom 0.5.8,
 turbo-html2pdf 0.3.9, turbo-surf 0.5.5), `b2-surf` (surf's binding re-vendored at
-turbo-test@cb5c64e — equal to `b-main` for every corpus). Per-test cargo results for
-the same checkpoints are in `manifests/<name>/tests/*.tsv`, produced by
+turbo-test@cb5c64e — equal to `b-main` for every corpus), `b-fixed` (every corpus after the
+consolidation's bug-fix round: turbo-dom f860fea, turbo-html2pdf 55f623a, turbo-surf 27ed802;
+equal to `b-main` plus the 883 declared changes of `expected/*.json`, so later work compares
+against it with no expect files). Per-test cargo results for
+`b-main` and `b2-surf` are in `manifests/<name>/tests/*.tsv`, produced by
 `bin/baseline-cargo.sh` + `bin/cargo-results.py` (binary, test, result).
 
 Environment for every run: rustc 1.98.0, `TZ=UTC LANG=C`, `RUSTY_V8_ARCHIVE` set to the

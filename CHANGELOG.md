@@ -7,6 +7,12 @@ at the time); this file reconstructs them from history.
 
 ## [Unreleased]
 
+### Tests — parity checkpoint `b-fixed`
+- `tools/parity/manifests/b-fixed`: every corpus (html2pdf, html2pdf-svg, html2pdf-extra, surf,
+  surf-extra) after the bug-fix round, at turbo-dom f860fea / turbo-html2pdf 55f623a /
+  turbo-surf 27ed802. It equals `b-main` plus exactly the 883 declared changes of
+  `tools/parity/expected/*.json` (compare: 0 failures), so later work compares against it directly.
+
 ### Changed — the workspace is rustfmt-clean, and CI keeps it so (miaskiewicz/turbo-dom#19)
 - `cargo fmt --all` over the workspace (formatting only; no code change), and a `cargo fmt --all
   --check` step in CI's guards job. `scripts/verify-copied.sh current` lists the turbo-dom#112 /
