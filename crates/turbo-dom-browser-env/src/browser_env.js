@@ -5,6 +5,7 @@
   var canvasColorNative=g.__canvasColorNative;delete g.__canvasColorNative;
   var computedFontContext=g.__computedFontContext;delete g.__computedFontContext;
   var computedStyleVersion=g.__computedStyleVersion;delete g.__computedStyleVersion;
+  var cssomEpoch=g.__cssomEpoch,bumpCssomEpoch=g.__bumpCssomEpoch;delete g.__cssomEpoch;delete g.__bumpCssomEpoch;
   var cssFontNumber=Number,cssFontString=String,cssFontFinite=Number.isFinite,cssFontPrecision=Number.prototype.toPrecision,cssFontLower=String.prototype.toLowerCase;
   var prepareInlineHandler=g.__prepareInlineHandler,noteInlineHandler=g.__noteInlineHandler;delete g.__prepareInlineHandler;delete g.__noteInlineHandler;
   var collectionGet=g.__getCollectionRecord,collectionSet=g.__setCollectionRecord;
@@ -505,19 +506,20 @@
   // computed from changes. The key: the element's tree version (any DOM change: structure,
   // attributes — inline style included — text, form and custom element state the selector
   // engine reads), the CSSOM epoch (every stylesheet, rule, declaration and adoption change
-  // bumps it), the element's owner document, its top-layer state (popover / modal / fullscreen),
-  // its font context (host defaults, composed parent) and, recursively, every ancestor snapshot
+  // bumps it; native and shared by every realm, since a realm reads other realms' elements and
+  // an edit runs in the realm owning the sheet — turbo-dom#113), the element's owner document,
+  // its top-layer state (popover / modal / fullscreen), its font context (host defaults, composed parent) and, recursively, every ancestor snapshot
   // it read. A computation that read something outside the key is volatile and never reused:
   // a rule whose selector depends on live form / popover / dialog state and could match, an
   // animated element, the fullscreen element (viewport-sized), an @import's media query.
-  var computedStyleCache=new computedSnapshotMap(),computedStyleEpoch=0,computedVolatile=false;
-  function invalidateComputedStyles(){computedStyleEpoch++;}
+  var computedStyleCache=new computedSnapshotMap(),computedVolatile=false;
+  function invalidateComputedStyles(){bumpCssomEpoch();}
   __ns.invalidateComputedStyles=invalidateComputedStyles;
   function computedCacheKey(el){
     var version;try{version=computedStyleVersion(el);}catch(e){return null;}
     if(typeof version!=='number')return null;
     var owner=null;try{owner=cssApply(computedStyleNativeOwner,el,[]);}catch(e){return null;}
-    return {__proto__:null,epoch:computedStyleEpoch,version:version,owner:owner};
+    return {__proto__:null,epoch:cssomEpoch(),version:version,owner:owner};
   }
   // What the key cannot see: the element's top layer and font context.
   function computedCacheProbe(el){

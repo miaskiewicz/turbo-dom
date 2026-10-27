@@ -7,6 +7,21 @@ at the time); this file reconstructs them from history.
 
 ## [Unreleased]
 
+### Fixed — getComputedStyle reuse follows CSSOM edits made in another realm (L1, miaskiewicz/turbo-dom#113)
+- The CSSOM epoch the turbo-test#125 reuse key reads was kept per realm, so a live declaration
+  one realm returned for another realm's element (a parent reading an iframe's element, or the
+  reverse) stayed stale after that document's sheet was edited: the edit runs in the realm
+  owning the sheet and bumped only that realm's epoch (turbo-surf
+  `computed-style-owner.test.mjs`: `61px` instead of Chrome's `67px`). The epoch is now native
+  (`__cssomEpoch` / `__bumpCssomEpoch`) and shared by every realm on the thread. The other key
+  inputs were already realm-independent: the tree version, top layer and font context are read
+  natively from the element, and ancestor styles are re-checked through the same key. Repeated
+  reads of an unchanged element still scan no sheets (`css_live_tests`
+  `computed_style_reuse_follows_cssom_edits_in_another_realm`).
+- tools/parity: conformance `58-object-fit-cover` png/svg are no longer declared by turbo-dom#59
+  and turbo-dom#107 — #107 returns them to the `b2-surf` bytes, so `compare` reported both as
+  stale.
+
 ### Changed — getComputedStyle reuses an element's computed style until an input changes (K1, miaskiewicz/turbo-test#125)
 - turbo-dom-browser-env's `getComputedStyle` recomputed the whole cascade — every sheet's
   rules matched against the element and, for inheritance, every ancestor — on each call

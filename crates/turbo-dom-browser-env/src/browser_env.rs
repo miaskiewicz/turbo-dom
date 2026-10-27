@@ -7378,6 +7378,36 @@ pub fn register_css_parser(scope: &mut v8::PinScope) {
         "__computedStyleVersion",
         computed_style_version,
     );
+    bind_method(scope, global, "__cssomEpoch", cssom_epoch);
+    bind_method(scope, global, "__bumpCssomEpoch", bump_cssom_epoch);
+}
+
+thread_local! {
+    /// The CSSOM epoch getComputedStyle keys a reused computed style on (turbo-test#125). It is
+    /// shared by every realm on the thread, not kept per realm (turbo-dom#113): a realm can read
+    /// another realm's element (a parent reading an iframe's), and a CSSOM edit runs in the realm
+    /// that owns the sheet, so a per-realm epoch left the reader's reuse stale.
+    static CSSOM_EPOCH: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
+}
+
+/// The current CSSOM epoch (see `CSSOM_EPOCH`).
+fn cssom_epoch(
+    scope: &mut v8::PinScope,
+    _args: v8::FunctionCallbackArguments,
+    mut result: v8::ReturnValue,
+) {
+    let epoch = CSSOM_EPOCH.with(std::cell::Cell::get);
+    result.set(v8::Number::new(scope, epoch as f64).into());
+}
+
+/// Advance the CSSOM epoch: every stylesheet, rule, declaration and adoption change in any realm
+/// drops every realm's reused computed styles.
+fn bump_cssom_epoch(
+    _scope: &mut v8::PinScope,
+    _args: v8::FunctionCallbackArguments,
+    _result: v8::ReturnValue,
+) {
+    CSSOM_EPOCH.with(|epoch| epoch.set(epoch.get() + 1));
 }
 
 /// The mutation version of the tree that owns `node` (turbo-test#125): getComputedStyle keys a

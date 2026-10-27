@@ -1157,7 +1157,6 @@ fn computed_style_reuse_follows_import_media_changes() {
 // reads of the unchanged element still scan no sheets. Chrome 155 control for the parent → child
 // rows: turbo-surf harness/detection/fixtures/computed-style-owner-chrome155.json.
 #[test]
-#[ignore = "turbo-dom#113: fails until the fix"]
 fn computed_style_reuse_follows_cssom_edits_in_another_realm() {
     tests::init_v8();
     let isolate = &mut v8::Isolate::new(Default::default());
