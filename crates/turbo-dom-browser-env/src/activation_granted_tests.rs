@@ -162,13 +162,6 @@ fn run_probe() -> serde_json::Value {
 const KNOWN_GAPS: &[&str] = &[
     // miaskiewicz/turbo-dom#131: a parser-created `<details open>` fires no toggle event.
     r#"result.details.log = [["toggle","d","closed","open"],["toggle","d","open","closed"],["toggle","e","open","open"]]"#,
-    // miaskiewicz/turbo-dom#130: entering fullscreen blurs the outside focus before resolving.
-    r#"result.focus.result[0] = "BODY""#,
-    // miaskiewicz/turbo-dom#129: a request's change event is lost when its element left.
-    r#"result.removeChildren.log = [["fullscreenchange","f"],["fullscreenchange","document"],["fullscreenchange","document"]]"#,
-    r#"result.removeTop.log = [["fullscreenchange","document"]]"#,
-    r#"result.removedWhileExiting.log = [["fullscreenchange","document"]]"#,
-    r#"result.shadow.log = [["fullscreenchange","document"]]"#,
 ];
 
 #[test]

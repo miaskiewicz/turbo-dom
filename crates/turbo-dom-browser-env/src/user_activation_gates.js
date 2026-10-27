@@ -102,11 +102,19 @@
       // document's frame container becomes that document's fullscreen element.
       for (let node = element; node !== null; node = containerOf(node)) {
         if (!Native('fullscreen-push', node, prefixed)) break;
-        unfocusOutside(node);
         changed[changed.length] = node;
       }
       resolve();
-      for (let index = 0; index < changed.length; index++) { const node = changed[index]; schedule(node, () => fire(node, changeType)); }
+      // Chrome unfocuses outside the fullscreen element just before the change event, which
+      // targets the document once the element has left it (miaskiewicz/turbo-dom#129, #130).
+      for (let index = 0; index < changed.length; index++) {
+        const node = changed[index];
+        schedule(node, () => {
+          if (!connected(node)) return fire(Native('document', node), changeType);
+          unfocusOutside(node);
+          fire(node, changeType);
+        });
+      }
     });
   }
   // Chrome clears focus outside the new fullscreen element.
