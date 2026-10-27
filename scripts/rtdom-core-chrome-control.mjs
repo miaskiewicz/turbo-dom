@@ -822,6 +822,38 @@ const PROBES = [
       };
     },
   },
+  {
+    // a `dir=auto` textarea's direction comes from its value, whose default is the child
+    // text content (direct Text children only; miaskiewicz/turbo-dom#106)
+    id: "textarea_dir_auto",
+    script: (doc) => {
+      const textarea = (...children) => {
+        const el = doc.createElement("textarea");
+        el.setAttribute("dir", "auto");
+        doc.body.append(el);
+        for (const [tag, text] of children) {
+          if (tag) {
+            const child = doc.createElement(tag);
+            child.textContent = text;
+            el.append(child);
+          } else {
+            el.append(text);
+          }
+        }
+        return [el.matches(":dir(rtl)"), el.matches(":dir(ltr)")];
+      };
+      return {
+        empty: textarea(),
+        hebrew: textarea([null, "א"]),
+        digits: textarea([null, "123"]),
+        digitsThenHebrew: textarea([null, "123"], [null, "א"]),
+        latinThenHebrew: textarea([null, "a"], [null, "א"]),
+        spanChild: textarea(["span", "א"]),
+        bdiChild: textarea(["bdi", "א"]),
+        spanThenHebrew: textarea(["span", "a"], [null, "א"]),
+      };
+    },
+  },
 ];
 
 const browser = await chromium.launch({ executablePath: chromePath, headless: true });

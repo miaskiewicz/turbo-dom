@@ -2547,6 +2547,43 @@
     "plainDefined": true,
     "svgIsDefined": true
    }
+  },
+  {
+   "id": "textarea_dir_auto",
+   "values": {
+    "empty": [
+     false,
+     true
+    ],
+    "hebrew": [
+     true,
+     false
+    ],
+    "digits": [
+     false,
+     true
+    ],
+    "digitsThenHebrew": [
+     true,
+     false
+    ],
+    "latinThenHebrew": [
+     false,
+     true
+    ],
+    "spanChild": [
+     false,
+     true
+    ],
+    "bdiChild": [
+     false,
+     true
+    ],
+    "spanThenHebrew": [
+     true,
+     false
+    ]
+   }
   }
  ]
 }

@@ -653,3 +653,46 @@ fn contextual_fragments_use_the_nearest_html_form_ancestor_like_chrome() {
     });
     assert_eq!(got, probe(&fixture(), "contextual_fragment_form"));
 }
+
+/// Recorded Chrome probe answers rtdom does not give yet, each with its issue.
+const OPEN_PROBES: &[&str] = &["textarea_dir_auto"]; // miaskiewicz/turbo-dom#106
+
+/// A `dir=auto` textarea takes its direction from its value — the child text content
+/// (direct Text children only), not `textContent` (miaskiewicz/turbo-dom#106).
+#[test]
+fn textarea_auto_direction_reads_the_child_text_like_chrome() {
+    let mut tree = Tree::parse("");
+    let body = tree.query_selector("body").unwrap();
+    let mut textarea = |children: &[(Option<&str>, &str)]| -> Value {
+        let el = tree.create_element("textarea");
+        tree.set_attribute(el, "dir", "auto");
+        tree.append_child(body, el);
+        for &(tag, text) in children {
+            let data = tree.create_text_node(text);
+            if let Some(tag) = tag {
+                let child = tree.create_element(tag);
+                tree.append_child(child, data);
+                tree.append_child(el, child);
+            } else {
+                tree.append_child(el, data);
+            }
+        }
+        json!([tree.matches(el, ":dir(rtl)"), tree.matches(el, ":dir(ltr)")])
+    };
+    let got = json!({
+        "empty": textarea(&[]),
+        "hebrew": textarea(&[(None, "\u{5d0}")]),
+        "digits": textarea(&[(None, "123")]),
+        "digitsThenHebrew": textarea(&[(None, "123"), (None, "\u{5d0}")]),
+        "latinThenHebrew": textarea(&[(None, "a"), (None, "\u{5d0}")]),
+        "spanChild": textarea(&[(Some("span"), "\u{5d0}")]),
+        "bdiChild": textarea(&[(Some("bdi"), "\u{5d0}")]),
+        "spanThenHebrew": textarea(&[(Some("span"), "a"), (None, "\u{5d0}")]),
+    });
+    let want = probe(&fixture(), "textarea_dir_auto");
+    if OPEN_PROBES.contains(&"textarea_dir_auto") {
+        assert_ne!(got, want, "turbo-dom#106 is fixed: drop it from OPEN_PROBES");
+    } else {
+        assert_eq!(got, want);
+    }
+}
