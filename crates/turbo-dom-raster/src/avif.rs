@@ -280,3 +280,56 @@ pub(crate) mod yuv {
         }
     }
 }
+
+#[cfg(all(test, feature = "avif"))]
+mod tests {
+    use super::decode;
+
+    fn q_avif() -> Vec<u8> {
+        std::fs::read(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../turbo-dom-layout/tests/fixtures/images/formats/q.avif"
+        ))
+        .expect("q.avif")
+    }
+
+    /// `[start, end)` of q.avif's `mdat` payload: the colour item's AV1 stream alone.
+    fn mdat(bytes: &[u8]) -> (usize, usize) {
+        let mut at = 0;
+        while at + 8 <= bytes.len() {
+            let size = u32::from_be_bytes(bytes[at..at + 4].try_into().unwrap()) as usize;
+            if &bytes[at + 4..at + 8] == b"mdat" {
+                return (at + 8, at + size);
+            }
+            at += size;
+        }
+        panic!("no mdat");
+    }
+
+    #[test]
+    #[ignore = "turbo-dom#109: fails (aborts) until the fix"]
+    fn corrupt_av1_data_is_an_error_not_an_abort() {
+        let intact = q_avif();
+        let decoded = decode(&intact).expect("intact q.avif decodes");
+        assert_eq!((decoded.width, decoded.height), (64, 40));
+        let (start, end) = mdat(&intact);
+        // The colour stream overwritten from every offset on with three fills: rav1d 1.1.0
+        // aborted the process on most (its single-frame-context error path unwrapped a
+        // taken frame header) instead of failing the decode.
+        let mut undecodable = 0;
+        for fill in [0xFF, 0x00, 0x55] {
+            for from in start..end {
+                let mut bytes = intact.clone();
+                bytes[from..end].fill(fill);
+                if decode(&bytes).is_none() {
+                    undecodable += 1;
+                }
+            }
+        }
+        assert!(undecodable > 0);
+        // The turbo-dom#107 frame-corrupt variant: the second half filled with 0xFF.
+        let mut corrupt = intact.clone();
+        corrupt[start + (end - start) / 2..end].fill(0xFF);
+        assert!(decode(&corrupt).is_none());
+    }
+}
