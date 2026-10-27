@@ -326,7 +326,8 @@ fn opacity(comps: &[Comp]) -> Option<String> {
     single(comps, |c| {
         c.number(true).or_else(|| match c.kind {
             Kind::Percentage(value) => Some(super::super::css_values::css_number(value / 100.0)),
-            _ => None,
+            // A percentage `calc()` stays as written.
+            _ => c.length_percentage(true).filter(|_| c.text.contains('%')),
         })
     })
 }

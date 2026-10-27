@@ -111,7 +111,7 @@ changes in `tools/parity/expected/p5b-w7-turbo-dom-*.json`.
   `;`; multi-token shorthands set their longhands (the single-token read fallback is gone);
   an invalid shorthand value is ignored.
 - Control: `crates/turbo-dom/tests/fixtures/css-shorthand-{probe.js,cases.json}` →
-  `css_shorthand_chrome156.json` (3088 scenarios, `scripts/make-css-shorthand-cases.py`; round
+  `css_shorthand_chrome156.json` (3110 scenarios, `scripts/make-css-shorthand-cases.py`; round
   five — cases a mutation run showed unpinned — also fixed `calc()` type checks and nested /
   distributed simplification (`calc(2 * (1px + 1em))` → `calc(2em + 2px)`, `pi`, `e`), `min()` /
   `clamp()` arity, `rgb()` / `hsl()` arity, `none` and `calc()` channels, `linear()` stop
@@ -129,7 +129,7 @@ changes in `tools/parity/expected/p5b-w7-turbo-dom-*.json`.
   runtime store that spelling. The binding's computed cascade keeps reading the stylesheet
   grammar's text (full precision).
 - Control: `crates/turbo-dom/tests/fixtures/css-longhand-{probe.js,cases.json}` →
-  `css_longhand_chrome156.json` (2380 pairs, `scripts/make-css-longhand-cases.py`; round two
+  `css_longhand_chrome156.json` (2566 pairs, `scripts/make-css-longhand-cases.py`; round two
   added grammars for `transform-origin`, `perspective-origin`, `object-position`, `offset-anchor`
   / `-position`, `border-image-slice` / `-width` / `-outset`, `justify-items`, `animation-trigger`).
 - Typed OM (`StylePropertyMap.set` / `append`, the map's reads) keeps the value as parsed —

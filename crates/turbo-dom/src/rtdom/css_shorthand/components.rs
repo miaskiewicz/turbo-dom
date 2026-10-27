@@ -153,6 +153,38 @@ const SYSTEM_COLORS: &[&str] = &[
     "-internal-quirk-inherit",
 ];
 
+/// Functions whose identifier arguments are names (kept as written).
+const NAMING_FUNCTIONS: &[&str] = &[
+    "stylistic",
+    "styleset",
+    "character-variant",
+    "swash",
+    "ornaments",
+    "annotation",
+    "local",
+    "format",
+    "attr",
+    "counter",
+    "counters",
+    "symbols",
+    "src",
+    "var",
+    "env",
+];
+
+/// A `calc()` component that computes to a plain number.
+fn calc_number(comp: &Comp) -> Option<f64> {
+    match &comp.kind {
+        Kind::Function(name) if name == "calc" && comp.text.starts_with("calc(") => {
+            match sum_terms(&components(&comp.text[5..comp.text.len() - 1])?)?.as_slice() {
+                [(unit, value)] if unit.is_empty() => Some(*value),
+                _ => None,
+            }
+        }
+        _ => None,
+    }
+}
+
 /// CSS-wide keywords, lowercase.
 pub(super) const CSS_WIDE: &[&str] = &["initial", "inherit", "unset", "revert", "revert-layer"];
 
@@ -265,6 +297,29 @@ fn read(input: &mut Parser<'_, '_>, out: &mut Vec<Comp>) -> Option<()> {
                         kind: Kind::Url(url.clone()),
                     }
                 } else {
+                    let mut inner = inner;
+                    if !NAMING_FUNCTIONS.contains(&name.as_str()) {
+                        // Keyword arguments are case-insensitive: Chrome writes them lowercase.
+                        for comp in &mut inner {
+                            if let Kind::Ident(ident) = &comp.kind {
+                                if !ident.starts_with("--") {
+                                    comp.text = ident.to_ascii_lowercase();
+                                }
+                            }
+                        }
+                    }
+                    if name == "cubic-bezier" {
+                        // A `calc()` argument that computes to a number is that number.
+                        for comp in &mut inner {
+                            if let Some(value) = calc_number(comp) {
+                                comp.text = css_number(value as f32);
+                                comp.kind = Kind::Number {
+                                    value: value as f32,
+                                    integer: false,
+                                };
+                            }
+                        }
+                    }
                     if !function_valid(&name, &inner) {
                         return None;
                     }
@@ -430,6 +485,43 @@ fn sum_terms(inner: &[Comp]) -> Option<Vec<(String, f64)>> {
         rest.push(("px".to_string(), px));
         terms = rest;
     }
+    // Times, angles and frequencies in two units combine in their canonical unit.
+    for (canonical, units) in [
+        ("s", &[("s", 1.0), ("ms", 0.001)][..]),
+        (
+            "deg",
+            &[
+                ("deg", 1.0),
+                ("grad", 0.9),
+                ("rad", 180.0 / std::f64::consts::PI),
+                ("turn", 360.0),
+            ][..],
+        ),
+        ("hz", &[("hz", 1.0), ("khz", 1000.0)][..]),
+    ] {
+        let factor = |unit: &str| {
+            units
+                .iter()
+                .find(|(name, _)| *name == unit)
+                .map(|(_, f)| *f)
+        };
+        if terms
+            .iter()
+            .filter(|(unit, _)| factor(unit).is_some())
+            .count()
+            > 1
+        {
+            let mut total = 0.0;
+            terms.retain(|(unit, value)| match factor(unit) {
+                Some(f) => {
+                    total += value * f;
+                    false
+                }
+                None => true,
+            });
+            terms.push((canonical.to_string(), total));
+        }
+    }
     Some(terms)
 }
 
@@ -579,10 +671,14 @@ fn function_valid(name: &str, inner: &[Comp]) -> bool {
         }
         // Each stop is an output and at most two input positions.
         "linear" => {
+            let output = |comp: &Comp| matches!(comp.kind, Kind::Number { .. }) || comp.is_math();
+            let position = |comp: &Comp| matches!(comp.kind, Kind::Percentage(_)) || comp.is_math();
             inner.iter().any(|comp| comp.kind == Kind::Comma)
-                && arguments(inner)
-                    .iter()
-                    .all(|stop| (1..=3).contains(&stop.len()))
+                && arguments(inner).iter().all(|stop| {
+                    (1..=3).contains(&stop.len())
+                        && output(&stop[0])
+                        && stop[1..].iter().all(position)
+                })
         }
         "steps" => {
             // The step count: an integer literal, or a math function Chrome checks later.
@@ -1071,6 +1167,7 @@ impl Comp {
                 value,
                 integer: true,
             } if f64::from(*value) >= minimum as f64 => Some(self.text.clone()),
+            _ if self.math_of(|_| false, false, true) => Some(self.text.clone()),
             _ => None,
         }
     }

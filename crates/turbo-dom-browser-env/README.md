@@ -255,8 +255,8 @@ rest. The computed cascade expands UA / animation shorthands with the same engin
 the stylesheet grammar's text of longhands set directly. Typed OM writes and reads
 (`StylePropertyMap`) keep the value as parsed, the way Chrome stores the `CSSStyleValue`
 (`calc(10px + 5%)` in its order, `calc(3 * 2px)`, `50%`). Controls: turbo-dom's
-`crates/turbo-dom/tests/fixtures/css_shorthand_chrome156.json` (3088 scenarios) and
-`css_longhand_chrome156.json` (2380 pairs), run by `src/css_shorthand_tests.rs` and
+`crates/turbo-dom/tests/fixtures/css_shorthand_chrome156.json` (3110 scenarios) and
+`css_longhand_chrome156.json` (2566 pairs), run by `src/css_shorthand_tests.rs` and
 `src/css_longhand_tests.rs`.
 
 ### SVG and MathML elements

@@ -843,6 +843,17 @@ mod tests {
         bind_method(scope, global, "nativeTestUpgrade", upgrade);
     }
 
+    /// `nativeTestTerminate()`: terminates execution from inside the guest, at the point the
+    /// test chooses (turbo-dom#105: a wall-clock watchdog could fire before the guest reached
+    /// it on a loaded machine).
+    fn terminate(scope: &mut v8::PinScope, _: v8::FunctionCallbackArguments, _: v8::ReturnValue) {
+        scope.terminate_execution();
+    }
+    fn bind_terminate(scope: &mut v8::PinScope) {
+        let global = scope.get_current_context().global(scope);
+        bind_method(scope, global, "nativeTestTerminate", terminate);
+    }
+
     fn check_chrome_probe(probe: &str, oracle: &str) {
         check_chrome_probe_with_consumers(probe, oracle, false);
     }
@@ -1215,14 +1226,18 @@ mod tests {
         let context = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, context);
         install_with_html(scope, "<!doctype html><body>");
-        for source in [
-            "class Definition extends HTMLElement{};Object.defineProperty(Definition.prototype,'connectedCallback',{get(){while(true){}}});customElements.define('x-budget-definition',Definition)",
-            "globalThis.runaway=true;class Reaction extends HTMLElement{connectedCallback(){if(runaway)while(true){}}};customElements.define('x-budget-reaction',Reaction);document.body.append(document.createElement('x-budget-reaction'))"
+        bind_terminate(scope);
+        // The guest terminates itself inside the definition getter / the reaction, so the
+        // frames are open when it unwinds (turbo-dom#105).
+        for (source, frames) in [
+            ("class Definition extends HTMLElement{};Object.defineProperty(Definition.prototype,'connectedCallback',{get(){nativeTestTerminate();while(true){}}});customElements.define('x-budget-definition',Definition)", "definition"),
+            ("globalThis.runaway=true;class Reaction extends HTMLElement{connectedCallback(){if(runaway){nativeTestTerminate();while(true){}}}};customElements.define('x-budget-reaction',Reaction);document.body.append(document.createElement('x-budget-reaction'))", "reaction"),
         ]{
-            let handle=scope.thread_safe_handle();let watchdog=std::thread::spawn(move||{std::thread::sleep(std::time::Duration::from_millis(50));handle.terminate_execution();});
-            let code=v8::String::new(scope,source).unwrap();assert!(v8::Script::compile(scope,code,None).unwrap().run(scope).is_none());watchdog.join().unwrap();
-            assert!(scope.get_slot::<Rc<DefinitionFrames>>().is_none_or(|frames|frames.0.borrow().is_empty()));
-            assert!(scope.get_slot::<Rc<ReactionFrames>>().is_none_or(|frames|frames.0.borrow().is_empty()));
+            let code=v8::String::new(scope,source).unwrap();assert!(v8::Script::compile(scope,code,None).unwrap().run(scope).is_none());
+            let definition=scope.get_slot::<Rc<DefinitionFrames>>().map(|frames|frames.0.borrow().is_empty());
+            let reaction=scope.get_slot::<Rc<ReactionFrames>>().map(|frames|frames.0.borrow().is_empty());
+            assert_eq!(if frames=="definition"{definition}else{reaction},Some(true),"{frames} frames were opened and unwound");
+            assert!(definition.is_none_or(|empty|empty)&&reaction.is_none_or(|empty|empty));
             scope.cancel_terminate_execution();
         }
         assert!(eval(scope,"runaway=false;customElements.define('x-recovered',class extends HTMLElement{});document.body.replaceChildren();document.body.append(document.createElement('x-recovered'));document.body.firstChild.localName==='x-recovered'").is_true());
@@ -1343,26 +1358,23 @@ mod tests {
     fn interrupted_native_construction_unwinds_without_guest_finally() {
         super::super::tests::init_v8();
         let isolate = &mut v8::Isolate::new(Default::default());
-        let handle = isolate.thread_safe_handle();
         v8::scope!(let scope, isolate);
         let context = v8::Context::new(scope, Default::default());
         let scope = &mut v8::ContextScope::new(scope, context);
         setup(scope);
+        bind_terminate(scope);
+        // The constructor terminates itself inside its `try` (turbo-dom#105: a watchdog
+        // thread could fire before the construction frame existed on a loaded machine).
         let code = v8::String::new(scope, r#"
           globalThis.testFinally=false;
           const Base=nativeTestConstructor((target,prototype,existing)=>existing,'HTMLTestElement');
-          class Runaway extends Base {constructor(){super();try{while(true){}}finally{testFinally=true;}}}
+          class Runaway extends Base {constructor(){super();try{nativeTestTerminate();while(true){}}finally{testFinally=true;}}}
           nativeTestUpgrade(Runaway,document.createElement('div'));
         "#).unwrap();
-        let watchdog = std::thread::spawn(move || {
-            std::thread::sleep(std::time::Duration::from_millis(50));
-            handle.terminate_execution();
-        });
         assert!(v8::Script::compile(scope, code, None)
             .unwrap()
             .run(scope)
             .is_none());
-        watchdog.join().unwrap();
         assert!(scope
             .get_slot::<Rc<ConstructionFrames>>()
             .unwrap()

@@ -1845,6 +1845,10 @@ pub(super) fn reserved(name: &str, extra: &[&str]) -> bool {
 /// `oblique <angle>`: Chrome checks a literal angle's number, in its own unit, against
 /// [-90, 90]; a zero angle is `normal`.
 pub(super) fn oblique(angle: &Comp) -> Option<String> {
+    // A unitless zero is not an angle here.
+    if matches!(angle.kind, Kind::Number { .. }) {
+        return None;
+    }
     let text = angle.angle()?;
     match angle.kind {
         Kind::Dimension { value, .. } if !(-90.0..=90.0).contains(&value) => None,
@@ -2159,18 +2163,14 @@ pub(super) fn track_list(comps: &[Comp]) -> Option<String> {
             return None;
         }
     }
+    if !subgrid && !tracks_valid(comps) {
+        return None;
+    }
     let spelled: Vec<Comp> = comps
         .iter()
-        .map(|comp| match &comp.kind {
-            Kind::Number { .. } => Comp {
-                kind: comp.kind.clone(),
-                text: "0px".into(),
-            },
-            Kind::Ident(name) => Comp {
-                kind: comp.kind.clone(),
-                text: name.to_ascii_lowercase(),
-            },
-            _ => comp.clone(),
+        .map(|comp| Comp {
+            kind: comp.kind.clone(),
+            text: track_text(comp, false),
         })
         .collect();
     Some(join(&spelled))
@@ -2184,6 +2184,57 @@ fn track_breadth(comp: &Comp, flex: bool) -> bool {
         Kind::Ident(_) => comp.is_ident(&["auto", "min-content", "max-content"]),
         Kind::Function(name) if name == "[" => false,
         _ => comp.length_percentage(false).is_some(),
+    }
+}
+/// At least one track, and no two line-name blocks side by side.
+fn tracks_valid(comps: &[Comp]) -> bool {
+    let names = |comp: &Comp| matches!(&comp.kind, Kind::Function(name) if name == "[");
+    comps.iter().any(|comp| !names(comp))
+        && !comps
+            .windows(2)
+            .any(|pair| names(&pair[0]) && names(&pair[1]))
+}
+/// An auto-repeated track: line names or a fixed size (a `<length-percentage>`, or a
+/// `minmax()` with a fixed bound and no flexible minimum).
+fn track_fixed(comp: &Comp) -> bool {
+    let fixed =
+        |c: &Comp| !matches!(c.kind, Kind::Ident(_)) && c.length_percentage(false).is_some();
+    match &comp.kind {
+        Kind::Function(name) if name == "[" => true,
+        Kind::Function(name) if name == "minmax" => components(&comp.text[7..comp.text.len() - 1])
+            .is_some_and(|inner| match inner.as_slice() {
+                [low, _, high] => fixed(low) || fixed(high),
+                _ => false,
+            }),
+        Kind::Function(name) if name == "fit-content" => false,
+        _ => fixed(comp),
+    }
+}
+/// A track component spelled like Chrome: a unitless zero track size as `0px`, keywords
+/// lowercase, inside `minmax()` / `fit-content()` / `repeat()` too.
+fn track_text(comp: &Comp, repeat_count: bool) -> String {
+    match &comp.kind {
+        Kind::Number { .. } if !repeat_count => "0px".into(),
+        Kind::Ident(name) => name.to_ascii_lowercase(),
+        Kind::Function(name) if matches!(name.as_str(), "minmax" | "fit-content" | "repeat") => {
+            let Some(inner) = components(&comp.text[name.len() + 1..comp.text.len() - 1]) else {
+                return comp.text.clone();
+            };
+            let mut seen_comma = false;
+            let spelled: Vec<Comp> = inner
+                .iter()
+                .map(|part| {
+                    let count = name == "repeat" && !seen_comma;
+                    seen_comma |= part.is_comma();
+                    Comp {
+                        kind: part.kind.clone(),
+                        text: track_text(part, count),
+                    }
+                })
+                .collect();
+            format!("{name}({})", join(&spelled))
+        }
+        _ => comp.text.clone(),
     }
 }
 /// One track-list component: line names, a track size, or (at the top level) `repeat()`.
@@ -2207,7 +2258,7 @@ fn track_ok(comp: &Comp, repeat_allowed: bool) -> bool {
             let Some(comma) = inner.iter().position(Comp::is_comma) else {
                 return false;
             };
-            let count = match &inner[..comma] {
+            let (count, auto) = match &inner[..comma] {
                 [Comp {
                     kind:
                         Kind::Number {
@@ -2215,12 +2266,16 @@ fn track_ok(comp: &Comp, repeat_allowed: bool) -> bool {
                             integer: true,
                         },
                     ..
-                }] => *value >= 1.0,
-                [only] => only.is_ident(&["auto-fill", "auto-fit"]),
-                _ => false,
+                }] => (*value >= 1.0, false),
+                [only] => (only.is_ident(&["auto-fill", "auto-fit"]), true),
+                _ => (false, false),
             };
             let tracks = &inner[comma + 1..];
-            count && !tracks.is_empty() && tracks.iter().all(|track| track_ok(track, false))
+            count
+                && tracks_valid(tracks)
+                && tracks
+                    .iter()
+                    .all(|track| track_ok(track, false) && (!auto || track_fixed(track)))
         }),
         "repeat" => false,
         _ => comp.length_percentage(false).is_some(),
