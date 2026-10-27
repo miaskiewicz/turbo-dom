@@ -111,6 +111,15 @@
     await input(esc);
     return [state('d1', 'd2')];
   });
+  // The same two dialogs, then a click (on the top dialog's ::backdrop) grants activation:
+  // the group they share may now cancel.
+  await scenario('groupedThenActivation', `<div id=out ${OUT}></div><dialog id=d1 data-x=300 data-y=300>1</dialog><dialog id=d2 data-x=420 data-y=300>2</dialog>`, async () => {
+    document.getElementById('d1').showModal();
+    document.getElementById('d2').showModal();
+    await input(...click(10, 10, 'out', true));
+    await input(esc);
+    return [state('d1', 'd2')];
+  });
   await scenario('separateEsc', `<div id=out ${OUT}></div><button id=b data-x=120 data-y=0>b</button><dialog id=d1 data-x=300 data-y=300>1</dialog><dialog id=d2 data-x=420 data-y=300>2</dialog>`, async () => {
     document.getElementById('d1').showModal();
     await input(...click(310, 310, 'd1'));

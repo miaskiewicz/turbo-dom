@@ -236,7 +236,7 @@ fn close_watchers_and_light_dismiss_match_chrome156() {
             }
         }
     }
-    assert_eq!(swapped, 9, "dialogs closed by close watchers");
+    assert_eq!(swapped, 10, "dialogs closed by close watchers");
     // KNOWN_GAP (miaskiewicz/turbo-dom#119): a popover in a shadow tree never opens, and a
     // closedby=any dialog in a shadow tree is light-dismissed by a click inside it.
     assert_eq!(

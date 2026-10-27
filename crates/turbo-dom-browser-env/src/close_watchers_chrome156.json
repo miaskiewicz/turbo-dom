@@ -2,7 +2,7 @@
   "browser": "Chrome/156.0.8078.4",
   "v8": "15.6.75",
   "probe": "close_watchers_probe.js",
-  "probeSha256": "d396d00072fc63f561c6f1996b4f45244e92b8ef1a23eec1932b70e538b65e8a",
+  "probeSha256": "659e7fe45f890e1546c5a454768fa86c9ab3e03cfb965ff3e89d564156f0aca7",
   "collectorSha256": "3f964d2cdf0ec8101870a776aaffc3b7dc4522306959c4a40761057beb255eb8",
   "flags": [
     "--headless=new",
@@ -536,6 +536,88 @@
           false,
           true,
           "open"
+        ],
+        [
+          "cancel",
+          "d2",
+          true,
+          true
+        ],
+        [
+          "beforetoggle",
+          "d2",
+          false,
+          true,
+          "closed"
+        ],
+        [
+          "close",
+          "d2",
+          false,
+          true
+        ],
+        [
+          "toggle",
+          "d2",
+          false,
+          true,
+          "closed"
+        ]
+      ]
+    },
+    "groupedThenActivation": {
+      "states": [
+        [
+          true,
+          false
+        ]
+      ],
+      "log": [
+        [
+          "beforetoggle",
+          "d1",
+          true,
+          true,
+          "open"
+        ],
+        [
+          "beforetoggle",
+          "d2",
+          true,
+          true,
+          "open"
+        ],
+        [
+          "toggle",
+          "d1",
+          false,
+          true,
+          "open"
+        ],
+        [
+          "toggle",
+          "d2",
+          false,
+          true,
+          "open"
+        ],
+        [
+          "pointerdown",
+          "d2",
+          true,
+          true
+        ],
+        [
+          "pointerup",
+          "d2",
+          true,
+          true
+        ],
+        [
+          "click",
+          "d2",
+          true,
+          true
         ],
         [
           "cancel",
