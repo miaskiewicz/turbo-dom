@@ -2,6 +2,7 @@
   var g = globalThis;
   var compatibilityElementPrototype,computedStyleNativeMatches,computedStyleNativeGetAttribute,computedStyleNativeOwner,computedStyleNativeTag,computedStyleNativeNamespace,computedStyleNativeConnected,computedStyleNativeRoot;
   var normalizeComputedColor=g.__normalizeComputedColor;delete g.__normalizeComputedColor;
+  var canvasColorNative=g.__canvasColorNative;delete g.__canvasColorNative;
   var computedFontContext=g.__computedFontContext;delete g.__computedFontContext;
   var cssFontNumber=Number,cssFontString=String,cssFontFinite=Number.isFinite,cssFontPrecision=Number.prototype.toPrecision,cssFontLower=String.prototype.toLowerCase;
   var prepareInlineHandler=g.__prepareInlineHandler,noteInlineHandler=g.__noteInlineHandler;delete g.__prepareInlineHandler;delete g.__noteInlineHandler;
@@ -1903,16 +1904,45 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
       var ops = (ctx && ctx._ops) ? ctx._ops : [];
       return __cvHash(w + 'x' + h + '|' + (extra || '') + '|' + JSON.stringify(ops));
     };
+    // fillStyle / strokeStyle / shadowColor (turbo-dom#108, canvas_style_chrome156.json): a
+    // string parses with turbo-dom's CSS colour parser and reads back in Chrome's
+    // serialization; a value the canvas cannot parse is ignored. `currentcolor` resolves once,
+    // at assignment, to the connected canvas's own inline `color` (Chrome 156 ignores
+    // inherited and stylesheet colours), else black. The op log records the resolved colour.
+    var __cvPaints = new WeakSet();
+    var __cvColor = function(canvas, text){
+      if (String(text).trim().toLowerCase() === 'currentcolor') {
+        var connected = false, inline = '';
+        try { connected = computedStyleNativeConnected.call(canvas); } catch(e){}
+        if (connected) { try { inline = canvas.style.getPropertyValue('color'); } catch(e){} }
+        return (inline && canvasColorNative(inline)) || '#000000';
+      }
+      return canvasColorNative(text);
+    };
+    var __cvStyles = function(ctx, canvas){
+      var state = { fillStyle: '#000000', strokeStyle: '#000000', shadowColor: 'rgba(0, 0, 0, 0)' };
+      Object.keys(state).forEach(function(name){
+        var paints = name !== 'shadowColor';
+        Object.defineProperty(ctx, name, { configurable: true, enumerable: true,
+          get: function(){ return state[name]; },
+          set: function(value){
+            if (paints && value !== null && typeof value === 'object' && __cvPaints.has(value)) { state[name] = value; return; }
+            var color = __cvColor(canvas, '' + value);
+            if (color != null) state[name] = color;
+          } });
+      });
+    };
     var mkCanvasCtx = function(canvas){
       var noop = function(){};
+      var paint = function(){ var p = { addColorStop: noop }; __cvPaints.add(p); return p; };
       var ctx = {
         canvas: canvas,
         _ops: [],
         setLineDash: noop, getLineDash: function(){ return []; },
-        createLinearGradient: function(){ return { addColorStop: noop }; },
-        createRadialGradient: function(){ return { addColorStop: noop }; },
-        createConicGradient: function(){ return { addColorStop: noop }; },
-        createPattern: function(){ return {}; },
+        createLinearGradient: paint,
+        createRadialGradient: paint,
+        createConicGradient: paint,
+        createPattern: function(){ var p = {}; __cvPaints.add(p); return p; },
         getImageData: function(x,y,w,h){
           w = w||0; h = h||0;
           var data = new Uint8ClampedArray(Math.max(0, w*h*4));
@@ -1926,11 +1956,12 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
         createImageData: function(w,h){ if (w && w.width != null) { h = w.height; w = w.width; } return { data: new Uint8ClampedArray(Math.max(0,(w||0)*(h||0)*4)), width: w||0, height: h||0, colorSpace: 'srgb' }; },
         measureText: function(s){ this._ops.push(['measureText', String(s||''), this.font]); var wdt = (String(s||'').length)*6; return { width: wdt, actualBoundingBoxAscent: 8, actualBoundingBoxDescent: 2, actualBoundingBoxLeft: 0, actualBoundingBoxRight: wdt, fontBoundingBoxAscent: 8, fontBoundingBoxDescent: 2 }; },
         isPointInPath: function(){ return false; }, isPointInStroke: function(){ return false; },
-        fillStyle: '#000000', strokeStyle: '#000000', lineWidth: 1, lineCap: 'butt', lineJoin: 'miter',
-        miterLimit: 10, lineDashOffset: 0, shadowBlur: 0, shadowColor: 'rgba(0, 0, 0, 0)', shadowOffsetX: 0, shadowOffsetY: 0,
+        lineWidth: 1, lineCap: 'butt', lineJoin: 'miter',
+        miterLimit: 10, lineDashOffset: 0, shadowBlur: 0, shadowOffsetX: 0, shadowOffsetY: 0,
         font: '10px sans-serif', textAlign: 'start', textBaseline: 'alphabetic', direction: 'ltr',
         globalAlpha: 1, globalCompositeOperation: 'source-over', imageSmoothingEnabled: true, imageSmoothingQuality: 'low'
       };
+      __cvStyles(ctx, canvas);
       // Record-only paint/path methods: log the call (args + relevant paint state) so the
       // readback hash reflects what was drawn, but perform no rasterization.
       var recorded = ['fillRect','clearRect','strokeRect','beginPath','closePath','moveTo','lineTo',

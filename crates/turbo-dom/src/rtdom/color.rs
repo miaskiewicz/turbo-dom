@@ -441,6 +441,27 @@ impl Color {
             a: a.clamp(0.0, 1.0),
         }
     }
+
+    /// The colour as a canvas `fillStyle` / `strokeStyle` / `shadowColor` reads it back
+    /// (HTML "serialization of a color", Chrome 156): channels and alpha quantized to 8 bits,
+    /// `#rrggbb` when opaque, else `rgba(r, g, b, a)` with the alpha in the fewest of two or
+    /// three decimals that maps back to the same 8-bit alpha (`0.5`, `0.12`, `0.533`, `0`).
+    #[must_use]
+    pub fn canvas_serialization(&self) -> String {
+        let [r, g, b] = [self.r, self.g, self.b].map(|channel| channel.round() as u8);
+        let alpha = (self.a * 255.0).round();
+        if alpha >= 255.0 {
+            return format!("#{r:02x}{g:02x}{b:02x}");
+        }
+        let exact = alpha / 255.0;
+        let two = (exact * 100.0).round() / 100.0;
+        let a = if (two * 255.0).round() == alpha {
+            two
+        } else {
+            (exact * 1000.0).round() / 1000.0
+        };
+        format!("rgba({r}, {g}, {b}, {a})")
+    }
 }
 
 /// Parse a CSS `<color>` into numbers, as a canvas `fillStyle` resolves it (Chrome 156;
@@ -852,6 +873,39 @@ mod parse_color_tests {
         ] {
             assert_eq!(parse_color(bad), None, "{bad}");
         }
+    }
+
+    #[test]
+    fn canvas_serialization_like_chrome() {
+        let read = |v: &str| parse_color(v).unwrap().canvas_serialization();
+        assert_eq!(read("#AbC"), "#aabbcc");
+        assert_eq!(read("rgba(1, 2, 3, 1)"), "#010203");
+        assert_eq!(read("rgb(12.9, 100.5, 200.4)"), "#0d65c8");
+        assert_eq!(read("rgb(300, -5, 128)"), "#ff0080");
+        assert_eq!(read("rgb(50%, 0%, 100%)"), "#8000ff");
+        assert_eq!(read("hsl(200, 60%, 70%)"), "#85c2e0");
+        assert_eq!(read("rgba(0,0,255,2)"), "#0000ff");
+        assert_eq!(read("#0f08"), "rgba(0, 255, 0, 0.533)");
+        assert_eq!(read("#0000ff80"), "rgba(0, 0, 255, 0.5)");
+        assert_eq!(read("rgba(0, 0, 0, 0.123456)"), "rgba(0, 0, 0, 0.12)");
+        assert_eq!(read("rgba(0, 0, 0, 0.001)"), "rgba(0, 0, 0, 0)");
+        assert_eq!(read("rgb(10% 20% 30% / 50%)"), "rgba(26, 51, 77, 0.5)");
+        assert_eq!(read("transparent"), "rgba(0, 0, 0, 0)");
+        // 254/255 = 0.99607…: two decimals (1) would read back as 255, so three.
+        assert_eq!(
+            c(0.0, 0.0, 0.0, 254.0 / 255.0).canvas_serialization(),
+            "rgba(0, 0, 0, 0.996)"
+        );
+        // 0.4 * 255 = 102 exactly: two decimals suffice.
+        assert_eq!(
+            c(0.0, 0.0, 0.0, 0.4).canvas_serialization(),
+            "rgba(0, 0, 0, 0.4)"
+        );
+        // An alpha just under the opaque rounding boundary stays opaque.
+        assert_eq!(
+            c(1.0, 2.0, 3.0, 254.6 / 255.0).canvas_serialization(),
+            "#010203"
+        );
     }
 
     #[test]

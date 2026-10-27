@@ -173,6 +173,9 @@ mod interest_invokers;
 mod key_order;
 #[path = "reference_target.rs"]
 mod reference_target;
+#[cfg(test)]
+#[path = "canvas_style_tests.rs"]
+mod canvas_style_tests;
 #[path = "select_element.rs"]
 mod select_element;
 #[path = "shadow_html.rs"]
@@ -7244,6 +7247,25 @@ fn normalize_computed_color(
     }
 }
 
+/// `__canvasColorNative(text)`: a canvas `fillStyle` / `strokeStyle` / `shadowColor` value
+/// parsed with turbo-dom's CSS colour parser and serialized as Chrome reads it back, or
+/// `null` for a value the canvas ignores (turbo-dom#108). `currentcolor` is the caller's.
+fn canvas_color_native(
+    scope: &mut v8::PinScope,
+    args: v8::FunctionCallbackArguments,
+    mut rv: v8::ReturnValue,
+) {
+    let value = arg_str(scope, &args, 0);
+    match turbo_dom_parser::rtdom::color::parse_color(&value) {
+        Some(color) => {
+            if let Some(text) = v8::String::new(scope, &color.canvas_serialization()) {
+                rv.set(text.into());
+            }
+        }
+        None => rv.set_null(),
+    }
+}
+
 struct ComputedFontDefaults {
     family: String,
     size: f64,
@@ -7349,6 +7371,7 @@ pub fn register_css_parser(scope: &mut v8::PinScope) {
         "__normalizeComputedColor",
         normalize_computed_color,
     );
+    bind_method(scope, global, "__canvasColorNative", canvas_color_native);
 }
 
 /// Install `window`/`document` + the DOM onto `globalThis` for the current context.
