@@ -1272,36 +1272,31 @@ fn visit(comps: &[Comp], callback: &mut dyn FnMut(&Comp)) {
 
 /// Whether the raw value holds a `var()` / `env()` / `attr()` reference anywhere.
 pub(super) fn has_substitution(value: &str) -> bool {
+    // Reads the whole (nested) input: `parse_nested_block` only keeps a block's result when
+    // the closure exhausted it (turbo-dom#115).
     fn scan(input: &mut Parser<'_, '_>) -> bool {
+        let mut found = false;
         while let Ok(token) = input.next_including_whitespace_and_comments() {
-            match token.clone() {
+            let nested = match token.clone() {
                 Token::Function(name) => {
                     let lower = name.to_ascii_lowercase();
-                    if matches!(lower.as_str(), "var" | "env" | "attr" | "if" | "inherit") {
-                        return true;
-                    }
-                    if input
-                        .parse_nested_block(|input| {
-                            Ok::<_, cssparser::ParseError<'_, ()>>(scan(input))
-                        })
-                        .unwrap_or(false)
-                    {
-                        return true;
-                    }
+                    found |= matches!(lower.as_str(), "var" | "env" | "attr" | "if" | "inherit");
+                    true
                 }
-                Token::ParenthesisBlock | Token::SquareBracketBlock | Token::CurlyBracketBlock
-                    if input
-                        .parse_nested_block(|input| {
-                            Ok::<_, cssparser::ParseError<'_, ()>>(scan(input))
-                        })
-                        .unwrap_or(false) =>
-                {
-                    return true;
+                Token::ParenthesisBlock | Token::SquareBracketBlock | Token::CurlyBracketBlock => {
+                    true
                 }
-                _ => {}
+                _ => false,
+            };
+            if nested {
+                found |= input
+                    .parse_nested_block(|input| {
+                        Ok::<_, cssparser::ParseError<'_, ()>>(scan(input))
+                    })
+                    .unwrap_or(false);
             }
         }
-        false
+        found
     }
     let mut source = ParserInput::new(value);
     let mut input = Parser::new(&mut source);
