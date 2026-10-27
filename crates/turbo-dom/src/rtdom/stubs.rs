@@ -375,13 +375,14 @@ mod tests {
         assert!(!eval_media_query(portrait, &wide));
         assert!(eval_media_query(landscape, &wide));
         assert!(!eval_media_query(landscape, &tall));
-        // Square => landscape (w >= h), matching the JS.
+        // Square => portrait: Media Queries 4 / Chrome 156 say `landscape` only when width is
+        // greater than height (turbo-dom#138; the npm stubs.mjs matches).
         let square = Viewport {
             width: 500.0,
             height: 500.0,
         };
-        assert!(eval_media_query(landscape, &square));
-        assert!(!eval_media_query(portrait, &square));
+        assert!(eval_media_query(portrait, &square));
+        assert!(!eval_media_query(landscape, &square));
     }
 
     #[test]
