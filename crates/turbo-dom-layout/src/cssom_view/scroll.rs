@@ -61,14 +61,12 @@ pub fn overflow(style: &ComputedStyle, axis: &str) -> &'static str {
             "overflow-x"
         },
     );
-    if matches!(other, "visible" | "clip") {
-        value
+    // Chrome 156 pairs `visible` with a scrollable axis as `auto`, but keeps `clip`
+    // (that axis clips without scrolling; miaskiewicz/turbo-dom#124).
+    if value == "visible" && !matches!(other, "visible" | "clip") {
+        "auto"
     } else {
-        match value {
-            "visible" => "auto",
-            "clip" => "hidden",
-            _ => value,
-        }
+        value
     }
 }
 fn permits_scroll(value: &str) -> bool {
@@ -716,7 +714,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "turbo-dom#124: fails until the fix"]
     fn computed_overflow_pairs_match_chrome_156() {
         assert_extents("overflow-computed-pairs");
     }
