@@ -101,9 +101,9 @@ enum AttrMatch {
     Equals(String),   // [attr=v]
     Includes(String), // [attr~=v]  whitespace-separated word
     // (`[attr|=v]` always takes the unit path: `specialized_attribute` claims every `|`)
-    Prefix(String),   // [attr^=v]
-    Suffix(String),   // [attr$=v]
-    Substr(String),   // [attr*=v]
+    Prefix(String), // [attr^=v]
+    Suffix(String), // [attr$=v]
+    Substr(String), // [attr*=v]
 }
 
 #[path = "selector_source.rs"]
@@ -361,7 +361,10 @@ enum Token {
 /// is `ch` a token boundary (the lexer can never put it inside an `Ident`)?
 #[inline]
 fn is_special(ch: char) -> bool {
-    let delimiter = matches!(ch, '>' | '+' | '~' | '#' | '.' | ':' | '[' | ']' | '(' | ')');
+    let delimiter = matches!(
+        ch,
+        '>' | '+' | '~' | '#' | '.' | ':' | '[' | ']' | '(' | ')'
+    );
     ch.is_whitespace() || delimiter
 }
 
@@ -1213,7 +1216,11 @@ fn parse_nth(arg: &str) -> (i64, i64) {
             s => signed_int(s),
         };
         let brest = &a0[npos + 1..];
-        let b = if brest.is_empty() { 0 } else { signed_int(brest) };
+        let b = if brest.is_empty() {
+            0
+        } else {
+            signed_int(brest)
+        };
         return (a, b);
     }
     // bare integer
@@ -3129,7 +3136,10 @@ mod tests {
             Err(SelectorError::UnexpectedChar('!'))
         );
         // the end of a DOM-API selector closes an open `[` (Chrome 156; turbo-dom#91) ...
-        assert_eq!(tree.query_selector_all_checked("[href").map(|l| l.len()), Ok(0));
+        assert_eq!(
+            tree.query_selector_all_checked("[href").map(|l| l.len()),
+            Ok(0)
+        );
         assert_eq!(tree.query_selector_checked("[href"), Ok(None));
         // ... while a stylesheet prelude never ends inside one
         assert_eq!(

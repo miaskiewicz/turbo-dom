@@ -6,7 +6,7 @@ name: CI
 #   raster       turbo-dom-raster (linux + macOS; avif / jxl tests; coretext / gpu-metal checks)
 #   v8           turbo-dom-v8 (generated) + turbo-dom-browser-env, 4 platforms x default/simdutf
 #   msrv         Rust 1.89 for turbo-dom, -layout, -raster
-#   guards       version agreement, retired-gate guard, verify-copied reviews, script self-tests
+#   guards       rustfmt, version agreement, retired-gate guard, verify-copied reviews, script self-tests
 #   coverage     tarpaulin per crate with fail-under floors (raised by the coverage phase)
 # publish.yml calls this whole workflow before it publishes anything.
 
@@ -344,7 +344,7 @@ jobs:
           cargo check -p turbo-dom -p turbo-dom-layout -p turbo-dom-raster --all-targets
           cargo check -p turbo-dom-layout --all-targets --no-default-features --features svg,perf,serde,test-support
 
-  # ---- guards: versions, retired dual selector-engine gate, verify-copied reviews, script self-tests ----
+  # ---- guards: rustfmt, versions, retired dual selector-engine gate, verify-copied reviews, script self-tests ----
   guards:
     name: guards
     runs-on: ubuntu-latest
@@ -360,6 +360,8 @@ jobs:
         with:
           toolchain: ${{ env.RUST_TOOLCHAIN }}
           components: rustfmt
+      - name: rustfmt-clean workspace (turbo-dom#19)
+        run: cargo fmt --all --check
       - name: One release version everywhere
         run: python scripts/check-versions.py
       - name: The retired dual selector-engine gate stays gone

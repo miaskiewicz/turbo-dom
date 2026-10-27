@@ -692,7 +692,10 @@ fn textarea_auto_direction_reads_the_child_text_like_chrome() {
     });
     let want = probe(&fixture(), "textarea_dir_auto");
     if OPEN_PROBES.contains(&"textarea_dir_auto") {
-        assert_ne!(got, want, "turbo-dom#106 is fixed: drop it from OPEN_PROBES");
+        assert_ne!(
+            got, want,
+            "turbo-dom#106 is fixed: drop it from OPEN_PROBES"
+        );
     } else {
         assert_eq!(got, want);
     }

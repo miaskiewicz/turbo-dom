@@ -84,10 +84,19 @@ fn normalize(raw: &HashMap<&str, Vec<String>>) -> DatTest {
         .unwrap_or_default();
     let fragment_context = raw.get("#document-fragment").and_then(|v| {
         let s = trim_trailing_blank(v).join("\n").trim().to_string();
-        if s.is_empty() { None } else { Some(s) }
+        if s.is_empty() {
+            None
+        } else {
+            Some(s)
+        }
     });
     let script_on = raw.contains_key("#script-on");
-    DatTest { data, document, fragment_context, script_on }
+    DatTest {
+        data,
+        document,
+        fragment_context,
+        script_on,
+    }
 }
 
 #[test]
@@ -109,7 +118,9 @@ fn rtdom_html5lib_conformance_full_document() {
     let mut bad: Vec<(String, String, String)> = Vec::new(); // (input, expected, actual)
 
     for path in &dat_files {
-        let Ok(text) = fs::read_to_string(path) else { continue };
+        let Ok(text) = fs::read_to_string(path) else {
+            continue;
+        };
         for t in parse_dat(&text) {
             if t.script_on || t.fragment_context.is_some() {
                 skip += 1;
@@ -131,7 +142,11 @@ fn rtdom_html5lib_conformance_full_document() {
     }
 
     let total = pass + fail;
-    let rate = if total > 0 { pass as f64 / total as f64 * 100.0 } else { 0.0 };
+    let rate = if total > 0 {
+        pass as f64 / total as f64 * 100.0
+    } else {
+        0.0
+    };
     eprintln!(
         "rtdom html5lib conformance (full-document): {pass}/{total} = {rate:.2}%  ({skip} skipped: fragment/script-on)"
     );
@@ -228,10 +243,18 @@ fn units_tokenizer_builds_the_upstream_tree_for_every_fixture() {
     for (input, upstream, native) in divergent.iter().take(5) {
         eprintln!("--- DIVERGENT ---\ninput: {input}\nupstream:\n{upstream}\nnative:\n{native}\n");
     }
-    assert!(divergent.is_empty(), "{} fixtures diverge from upstream html5ever", divergent.len());
+    assert!(
+        divergent.is_empty(),
+        "{} fixtures diverge from upstream html5ever",
+        divergent.len()
+    );
     if !cases.is_empty() {
         assert!(fragments > 0 && documents > 0);
-        assert!(pass * 100 >= cases.len() * 99, "{pass}/{} < 99%", cases.len());
+        assert!(
+            pass * 100 >= cases.len() * 99,
+            "{pass}/{} < 99%",
+            cases.len()
+        );
     }
 }
 

@@ -603,10 +603,7 @@ mod tests {
         assert_eq!(canon("#ffff").as_deref(), Some("rgb(255, 255, 255)"));
         assert_eq!(canon("#ffffffff").as_deref(), Some("rgb(255, 255, 255)"));
         // #00000080 → a = 128/255 = 0.50196... → round(*1000)/1000 = 0.502
-        assert_eq!(
-            canon("#00000080").as_deref(),
-            Some("rgba(0, 0, 0, 0.502)")
-        );
+        assert_eq!(canon("#00000080").as_deref(), Some("rgba(0, 0, 0, 0.502)"));
         // #0000 → all zero, a=0 → rgba(0,0,0,0)
         assert_eq!(canon("#0000").as_deref(), Some("rgba(0, 0, 0, 0)"));
         // half-alpha shorthand: #f008 → r=255 a=88/255=0.533...→0.533
@@ -626,10 +623,7 @@ mod tests {
     #[test]
     fn rgb_passthrough_and_canon() {
         assert_eq!(canon("rgb(255,0,0)").as_deref(), Some("rgb(255, 0, 0)"));
-        assert_eq!(
-            canon("rgb(255, 0, 0)").as_deref(),
-            Some("rgb(255, 0, 0)")
-        );
+        assert_eq!(canon("rgb(255, 0, 0)").as_deref(), Some("rgb(255, 0, 0)"));
         // extra whitespace + space-separated
         assert_eq!(
             canon("rgb(  10   20   30 )").as_deref(),
@@ -684,10 +678,19 @@ mod tests {
     #[test]
     fn parse_edges_and_hsl_hue_segments() {
         // exponent inside rgb() — plain and signed (hits the exponent-sign branch)
-        assert_eq!(canonicalize_color("rgb(1e1, 2, 3)", false).as_deref(), Some("rgb(10, 2, 3)"));
-        assert_eq!(canonicalize_color("rgb(2e+1, 0, 0)", false).as_deref(), Some("rgb(20, 0, 0)"));
+        assert_eq!(
+            canonicalize_color("rgb(1e1, 2, 3)", false).as_deref(),
+            Some("rgb(10, 2, 3)")
+        );
+        assert_eq!(
+            canonicalize_color("rgb(2e+1, 0, 0)", false).as_deref(),
+            Some("rgb(20, 0, 0)")
+        );
         // fractional alpha exercises the decimal trim path (rgba → 0.5)
-        assert_eq!(canonicalize_color("rgba(0,0,0,0.5)", false).as_deref(), Some("rgba(0, 0, 0, 0.5)"));
+        assert_eq!(
+            canonicalize_color("rgba(0,0,0,0.5)", false).as_deref(),
+            Some("rgba(0, 0, 0, 0.5)")
+        );
         // missing closing paren → None (passthrough)
         assert_eq!(canonicalize_color("rgb(1 2 3", false), None);
         // non-numeric component → None
@@ -714,7 +717,10 @@ mod tests {
     #[test]
     fn hsl_conversion() {
         // hsl(0, 100%, 50%) → pure red
-        assert_eq!(canon("hsl(0, 100%, 50%)").as_deref(), Some("rgb(255, 0, 0)"));
+        assert_eq!(
+            canon("hsl(0, 100%, 50%)").as_deref(),
+            Some("rgb(255, 0, 0)")
+        );
         // hsl(120, 100%, 50%) → pure green
         assert_eq!(
             canon("hsl(120, 100%, 50%)").as_deref(),

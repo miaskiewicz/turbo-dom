@@ -440,7 +440,11 @@ fn pseudo(name: &str, arg: Option<&[u16]>) -> Pseudo {
     }
     // the unforgiving lists reject an empty item or one ending in a combinator
     // (`:not(p, )`, `:not(p >)`; Chrome: SyntaxError), the forgiving ones drop it
-    let invalid = |relative| split(arg, 44).into_iter().any(|item| invalid_item(item, relative));
+    let invalid = |relative| {
+        split(arg, 44)
+            .into_iter()
+            .any(|item| invalid_item(item, relative))
+    };
     let forgiving = || {
         split(arg, 44)
             .into_iter()
@@ -462,7 +466,10 @@ fn pseudo(name: &str, arg: Option<&[u16]>) -> Pseudo {
                 return Pseudo::unknown(name, Some(&String::from_utf16_lossy(arg)));
             }
             let of = &arg[at + 2..];
-            if split(of, 44).into_iter().any(|item| invalid_item(item, false)) {
+            if split(of, 44)
+                .into_iter()
+                .any(|item| invalid_item(item, false))
+            {
                 return Pseudo::unknown(name, Some(&String::from_utf16_lossy(arg)));
             }
             let (a, b) = parse_nth(&anb);

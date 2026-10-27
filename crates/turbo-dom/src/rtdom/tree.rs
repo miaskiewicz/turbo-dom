@@ -566,8 +566,8 @@ mod storage;
 
 #[path = "tree_access.rs"]
 mod tree_access;
-pub use tree_access::{LocalAttributes, ParseOptions};
 pub use storage::{CollectionBudget, CollectionError, CollectionReport, StorageStats};
+pub use tree_access::{LocalAttributes, ParseOptions};
 
 pub struct Tree {
     buf: Soa,

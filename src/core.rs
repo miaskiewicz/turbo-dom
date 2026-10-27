@@ -7,11 +7,11 @@
 
 use html5ever::driver::ParseOpts;
 use html5ever::tendril::StrTendril;
-use html5ever::tokenizer::{BufferQueue, Token, TokenSink, TokenSinkResult, Tokenizer};
-use html5ever::TokenizerResult;
-use html5ever::tree_builder::TreeBuilder;
 use html5ever::tendril::TendrilSink;
+use html5ever::tokenizer::{BufferQueue, Token, TokenSink, TokenSinkResult, Tokenizer};
+use html5ever::tree_builder::TreeBuilder;
 use html5ever::tree_builder::TreeBuilderOpts;
+use html5ever::TokenizerResult;
 use html5ever::{ns, parse_fragment, LocalName, QualName};
 use markup5ever_rcdom::{Handle, NodeData, RcDom};
 
@@ -101,7 +101,8 @@ impl<S: TokenSink> TokenSink for ChromeTokens<S> {
         self.0.end();
     }
     fn adjusted_current_node_present_but_not_in_html_namespace(&self) -> bool {
-        self.0.adjusted_current_node_present_but_not_in_html_namespace()
+        self.0
+            .adjusted_current_node_present_but_not_in_html_namespace()
     }
 }
 
@@ -191,7 +192,10 @@ fn select_parts(select: &Handle) -> (Vec<(Handle, bool)>, Vec<Handle>) {
         }
         if html_element(&node, "option") {
             if !blocked {
-                options.push((node.clone(), group_disabled || has_attribute(&node, "disabled")));
+                options.push((
+                    node.clone(),
+                    group_disabled || has_attribute(&node, "disabled"),
+                ));
             }
             blocked = true;
         } else if html_element(&node, "datalist") || html_element(&node, "hr") {
@@ -822,11 +826,23 @@ mod tests {
         let text = |html: &str, ctx: &str| {
             let frag = parse_html_fragment_context(html, ctx);
             assert_eq!(frag.name, "#document-fragment");
-            frag.children.iter().map(|c| (c.node_type, c.value.clone())).collect::<Vec<_>>()
+            frag.children
+                .iter()
+                .map(|c| (c.node_type, c.value.clone()))
+                .collect::<Vec<_>>()
         };
-        assert_eq!(text("a\0b</textarea>c\0d", "textarea"), [(TEXT_NODE, "ab</textarea>cd".into())]);
-        assert_eq!(text("x&am\0p;&not\0in;", "title"), [(TEXT_NODE, "x&amp;\u{ac}in;".into())]);
-        assert_eq!(text("a&#0;b", "textarea"), [(TEXT_NODE, "a\u{fffd}b".into())]);
+        assert_eq!(
+            text("a\0b</textarea>c\0d", "textarea"),
+            [(TEXT_NODE, "ab</textarea>cd".into())]
+        );
+        assert_eq!(
+            text("x&am\0p;&not\0in;", "title"),
+            [(TEXT_NODE, "x&amp;\u{ac}in;".into())]
+        );
+        assert_eq!(
+            text("a&#0;b", "textarea"),
+            [(TEXT_NODE, "a\u{fffd}b".into())]
+        );
         assert_eq!(text("\0", "title"), []);
         // other contexts keep html5ever's answer (data state: dropped; RAWTEXT: U+FFFD)
         assert_eq!(text("a\0b", "style"), [(TEXT_NODE, "a\u{fffd}b".into())]);

@@ -501,4 +501,3 @@ mod tests {
         assert_eq!(tree.query_all(".does-not-exist").len(), 0);
     }
 }
-

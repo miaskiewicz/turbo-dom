@@ -381,10 +381,7 @@ impl Tree {
             queue: queue.clone(),
             input,
         };
-        let tokenizer = Tokenizer::new(
-            sink,
-            TokenizerOpts::default(),
-        );
+        let tokenizer = Tokenizer::new(sink, TokenizerOpts::default());
         while !matches!(tokenizer.feed(&queue), html5ever::TokenizerResult::Done) {}
         tokenizer.end();
         let dom = tokenizer.sink.builder.sink.finish();

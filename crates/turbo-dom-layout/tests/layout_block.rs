@@ -568,7 +568,10 @@ fn text_align_center_and_margin_auto_center_width_constrained_blocks() {
         )],
         500.0,
     );
-    assert!(bg_boxes(&plain)[0].x.abs() < 0.5, "plain center leaves blocks");
+    assert!(
+        bg_boxes(&plain)[0].x.abs() < 0.5,
+        "plain center leaves blocks"
+    );
     let centered = lay(
         &[el(
             "div",

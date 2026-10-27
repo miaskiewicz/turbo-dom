@@ -479,7 +479,10 @@ impl<Sink: TokenSink> Tokenizer<Sink> {
     }
 
     fn start_consuming_character_reference(&self) {
-        debug_assert!(self.char_ref_tokenizer.borrow().is_none(), "nested character reference");
+        debug_assert!(
+            self.char_ref_tokenizer.borrow().is_none(),
+            "nested character reference"
+        );
 
         let is_in_attribute = matches!(self.state.get(), states::AttributeValue(_));
         *self.char_ref_tokenizer.borrow_mut() = Some(CharRefTokenizer::new(is_in_attribute));
@@ -1329,7 +1332,9 @@ impl<Sink: TokenSink> Tokenizer<Sink> {
                         self.bad_char_error();
                         go!(self: create_doctype; force_quirks; emit_doctype; to Data)
                     }
-                    c => go!(self: create_doctype; push_doctype_name (c.to_ascii_lowercase()); to DoctypeName),
+                    c => {
+                        go!(self: create_doctype; push_doctype_name (c.to_ascii_lowercase()); to DoctypeName)
+                    }
                 }
             },
 

@@ -289,7 +289,10 @@ mod tests {
         // rule with '{' but no closing '}' → body is everything after '{'
         let r = CssStyleRule::parse("a { color: red");
         assert_eq!(r.selector_text, "a");
-        assert_eq!(r.declarations, vec![("color".to_string(), "red".to_string())]);
+        assert_eq!(
+            r.declarations,
+            vec![("color".to_string(), "red".to_string())]
+        );
         // rule with no '{' at all → whole string is the selector, no decls
         let r2 = CssStyleRule::parse(".x");
         assert_eq!(r2.selector_text, ".x");

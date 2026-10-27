@@ -28,9 +28,8 @@
 //! [`Navigator`]; [`PositionCache`] memoizes sibling positions for navigators that style a
 //! whole tree (each sibling list is scanned once instead of once per structural pseudo).
 use super::{
-    matches_complex, parse_complex, split_top_level_commas, units,
-    validate_selector_list, Complex, Compound, Handle, Navigator, Pseudo, SelectorError, Tree,
-    UnknownPseudo,
+    matches_complex, parse_complex, split_top_level_commas, units, validate_selector_list, Complex,
+    Compound, Handle, Navigator, Pseudo, SelectorError, Tree, UnknownPseudo,
 };
 use rustc_hash::FxHashMap;
 use std::cell::RefCell;
@@ -351,7 +350,10 @@ fn parse_raw(item: &str) -> Result<Complex, SelectorError> {
     if item.contains('\\') {
         let units: Vec<u16> = item.encode_utf16().collect();
         // one validated item is one complex selector
-        units::list(&units).into_iter().next().ok_or(SelectorError::EmptyCompound)
+        units::list(&units)
+            .into_iter()
+            .next()
+            .ok_or(SelectorError::EmptyCompound)
     } else {
         parse_complex(item).ok_or(SelectorError::EmptyCompound)
     }

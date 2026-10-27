@@ -146,6 +146,8 @@ mod file_inputs;
 #[path = "focus_group.rs"]
 mod focus_group;
 pub use editing::editing_user_input;
+#[path = "css_shorthand.rs"]
+mod css_shorthand;
 #[path = "html_dialog.rs"]
 mod html_dialog;
 #[path = "html_invokers.rs"]
@@ -156,9 +158,10 @@ mod html_popover;
 mod pointer_events;
 #[path = "typed_om.rs"]
 mod typed_om;
-#[path = "css_shorthand.rs"]
-mod css_shorthand;
 pub use pointer_events::{host_pointer, PointerLockPolicy};
+#[cfg(test)]
+#[path = "canvas_style_tests.rs"]
+mod canvas_style_tests;
 #[path = "form_pseudo.rs"]
 mod form_pseudo;
 #[path = "html_text.rs"]
@@ -173,9 +176,6 @@ mod interest_invokers;
 mod key_order;
 #[path = "reference_target.rs"]
 mod reference_target;
-#[cfg(test)]
-#[path = "canvas_style_tests.rs"]
-mod canvas_style_tests;
 #[path = "select_element.rs"]
 mod select_element;
 #[path = "shadow_html.rs"]
@@ -9981,6 +9981,12 @@ mod html_meta_tests;
 #[path = "computed_defaults_tests.rs"]
 mod computed_defaults_tests;
 #[cfg(test)]
+#[path = "css_longhand_tests.rs"]
+mod css_longhand_tests;
+#[cfg(test)]
+#[path = "css_shorthand_tests.rs"]
+mod css_shorthand_tests;
+#[cfg(test)]
 #[path = "dom_reactions_tests.rs"]
 mod dom_reactions_tests;
 #[cfg(test)]
@@ -9995,12 +10001,6 @@ mod shadow_events_tests;
 #[cfg(test)]
 #[path = "svg_mathml_element_tests.rs"]
 mod svg_mathml_element_tests;
-#[cfg(test)]
-#[path = "css_shorthand_tests.rs"]
-mod css_shorthand_tests;
-#[cfg(test)]
-#[path = "css_longhand_tests.rs"]
-mod css_longhand_tests;
 
 #[cfg(test)]
 #[path = "css_live_tests.rs"]

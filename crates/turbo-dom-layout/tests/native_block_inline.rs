@@ -219,12 +219,10 @@ fn unsupported_displaced_splits_fail_their_own_reads_but_boxless_text_does_not()
     use turbo_dom_layout::layout_snapshot::SnapshotError;
     // miaskiewicz/turbo-surf#31: the unsupported construct fails that element's (and
     // its subtree's) reads only; the rest of the document still answers.
-    for (markup, failing) in [
-        (
-            "<a style='position:relative;left:5px'><h3>block</h3></a>",
-            "a",
-        ),
-    ] {
+    for (markup, failing) in [(
+        "<a style='position:relative;left:5px'><h3>block</h3></a>",
+        "a",
+    )] {
         let (snapshot, names) = capture(markup);
         let error = SnapshotError::UnsupportedInlineBlockSplit;
         assert_eq!(
@@ -262,7 +260,10 @@ fn unsupported_displaced_splits_fail_their_own_reads_but_boxless_text_does_not()
         }
         let geometry = element_geometry(&snapshot, names[float]).unwrap();
         assert_eq!(geometry.bounds.x, 8.0, "{markup}");
-        assert_eq!(geometry.bounds.y, rects(&snapshot, names["rso"])[0][1] as f32);
+        assert_eq!(
+            geometry.bounds.y,
+            rects(&snapshot, names["rso"])[0][1] as f32
+        );
     }
     // An absolutely positioned block does not split its inline: nothing fails, and the
     // box sits at its static position in the link's line.

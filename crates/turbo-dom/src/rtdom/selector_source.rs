@@ -109,7 +109,11 @@ pub(super) fn normalize<T: Unit>(source: &[T], mode: Mode) -> Option<Vec<T>> {
                 .is_some_and(|prev: &T| name_like(prev.code()) || prev.code() == u32::from(b'#'))
                 && unit(after).is_some_and(name_like);
             if joins {
-                out.push(T::ascii(if open.last() == Some(&b']') { b' ' } else { b'!' }));
+                out.push(T::ascii(if open.last() == Some(&b']') {
+                    b' '
+                } else {
+                    b'!'
+                }));
             }
             i = after;
             continue;
@@ -240,8 +244,14 @@ mod tests {
     #[test]
     fn unchanged_sources_are_borrowed() {
         for s in ["p", "div > p", "[title=a]", ":is(p)", "\"x\"", "p, a", ""] {
-            assert!(matches!(normalize_str(s, Mode::Dom), std::borrow::Cow::Borrowed(_)), "{s}");
-            assert!(matches!(normalize_str(s, Mode::Sheet), std::borrow::Cow::Borrowed(_)), "{s}");
+            assert!(
+                matches!(normalize_str(s, Mode::Dom), std::borrow::Cow::Borrowed(_)),
+                "{s}"
+            );
+            assert!(
+                matches!(normalize_str(s, Mode::Sheet), std::borrow::Cow::Borrowed(_)),
+                "{s}"
+            );
         }
         assert_eq!(normalize(&['p'], Mode::Dom), None);
         assert_eq!(normalize(&[u16::from(b'[')], Mode::Sheet), None);

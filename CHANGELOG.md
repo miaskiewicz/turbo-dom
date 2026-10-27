@@ -7,6 +7,12 @@ at the time); this file reconstructs them from history.
 
 ## [Unreleased]
 
+### Changed — the workspace is rustfmt-clean, and CI keeps it so (miaskiewicz/turbo-dom#19)
+- `cargo fmt --all` over the workspace (formatting only; no code change), and a `cargo fmt --all
+  --check` step in CI's guards job. `scripts/verify-copied.sh current` lists the turbo-dom#112 /
+  turbo-test#125 / turbo-dom#113 edits of `dom_ownership.rs` and `css_live_tests.rs` and the two
+  new ownership test modules, which the bug-fix rounds had left unlisted.
+
 ### Fixed — getComputedStyle reuse follows CSSOM edits made in another realm (L1, miaskiewicz/turbo-dom#113)
 - The CSSOM epoch the turbo-test#125 reuse key reads was kept per realm, so a live declaration
   one realm returned for another realm's element (a parent reading an iframe's element, or the
