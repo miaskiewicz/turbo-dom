@@ -310,7 +310,7 @@ coverage = {
     "margin": ["/**/", "calc(1em + min(1px, 2%))", "calc(1in + 1em)", "calc((1px 2px))", "calc((1px , 2px))", "calc(1px + abs(1px))",
                "calc(min(1px) * min(2px))", "min(1px 2px)", "min(1px, calc(1px + 1em))",
                "min(1px, 1em + 1px)", "min(1px, min(1px, 1em))", "calc(1px + min(1px, 1em))"],
-    "place-content": ["baseline center", "last baseline end"],
+    "place-content": ["baseline center", "last baseline end", "center start end"],
     "place-items": ["center right legacy", "center start end"],
     "place-self": ["center start end"],
     "background-position": ["left top center"],

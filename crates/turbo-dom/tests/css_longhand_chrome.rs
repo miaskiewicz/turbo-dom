@@ -21,6 +21,7 @@ const KNOWN_GAPS: &[&str] = &[
     "transition-timing-function|linear(0, 1 calc(50%))",
     "color|hsl(1px 50% 50%)",
     "color|hsl(10% 50% 50%)",
+    "color|rgb(from red r g b / 1 1)",
     "text-shadow|1px 1px #ABC",
     "grid-template-areas|\"a\\\"b\"",
     "grid-template-areas|\"a\\\\b\"",

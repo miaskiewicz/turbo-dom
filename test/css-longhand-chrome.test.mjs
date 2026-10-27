@@ -31,6 +31,7 @@ const KEPT = [
   "transition-timing-function|cubic-bezier(a, 0, 1, 1)",
   "color|hsl(1px 50% 50%)",
   "color|hsl(10% 50% 50%)",
+  "color|rgb(from red r g b / 1 1)",
   "display|flow-root flex",
   "display|block inline flow",
   "list-style-type|counter(a)",

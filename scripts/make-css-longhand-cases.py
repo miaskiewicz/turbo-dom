@@ -136,13 +136,13 @@ MUTATION.update({
     "border-image-width": MUTATION["border-image-width"] + ["1 2 3 4 5"], "border-image-outset": MUTATION["border-image-outset"] + ["1 2 3 4 5"],
     "transform": ["translate(calc(1px + 1em), 0)", "rotate(calc(1deg + 1rad))"], "list-style-type": ["symbols(cyclic '*')", "counter(a)"],
     "caret-color": ["#ABC"], "text-shadow": ["1px 1px #ABC"],
-    "width": MUTATION["width"] + [")", "/**/", "var(--a)", "calc(var(--a) + 1px)", "calc((var(--a)))", "(var(--a))", "calc(1em + min(1px, 2%))", "url(a b)", "}"],
+    "width": MUTATION["width"] + [")", "/**/", "var(--a)", "calc(var(--a) + 1px)", "calc((var(--a)))", "(var(--a))", "calc(1em + min(1px, 2%))", "url(a b)", "}", "calc(1px + a)", "calc(1px + 'a')"],
     "transition-duration": MUTATION["transition-duration"] + ["calc(1s + 1ms + 1%)"],
     "grid-template-columns": MUTATION["grid-template-columns"] + ["minmax([a], 1fr)", "repeat(1 2, 1fr)", "repeat(, 1fr)", "calc(10px + 5%)", "repeat(auto-fill, fit-content(10px))", "repeat(auto-fill, minmax(10px, 1fr))", "repeat(auto-fill, [a] 10px)"],
     "grid-template-areas": ["\"a\\\"b\"", "\"a\\\\b\""],
     "font-variant-alternates": ["swash(a) bogus(b)", "historical-forms(a)"],
     "transition-timing-function": MUTATION["transition-timing-function"] + ["cubic-bezier(calc(1px), 0, 1, 1)", "cubic-bezier(min(0.5, 1), 0, 1, 1)", "cubic-bezier(0 0, 0, 1, 1)", "cubic-bezier(calc(1s + 1ms + 1), 0, 1, 1)", "cubic-bezier(a, 0, 1, 1)", "linear(calc(0), 1)", "linear(0, 1 calc(50%))", "steps(1, 2, 3)"],
-    "color": MUTATION["color"] + ["hsl(1px 50% 50%)", "hsl(10% 50% 50%)", "rgb(1 2 3 / 0.5 0.5)"],
+    "color": MUTATION["color"] + ["hsl(1px 50% 50%)", "hsl(10% 50% 50%)", "rgb(1 2 3 / 0.5 0.5)", "rgb(from red r g b / 1 1)"],
     "offset-rotate": ["0", "auto 0", "0 reverse"],
 })
 for name, values in MUTATION.items():

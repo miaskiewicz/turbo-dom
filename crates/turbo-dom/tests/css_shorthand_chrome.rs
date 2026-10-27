@@ -150,7 +150,7 @@ fn shorthands_expand_and_serialize_like_chrome156() {
         assert_eq!(row["id"], id);
         let mut out = Vec::new();
         let (block, returns) = run(scenario["ops"].as_array().unwrap());
-        assert_eq!(block.is_empty(), block.len() == 0, "{id}");
+        assert_eq!(block.is_empty(), block.item(0).is_none(), "{id}");
         let ours = record(&block, table);
         for key in ["cssText", "items", "shorthands"] {
             differences(key, &ours[key], &row[key], &mut out);

@@ -1,7 +1,7 @@
 {
   "browser": "Chrome/156.0.8078.4",
   "v8": "15.6.75",
-  "casesSha256": "d414d13da3b0459a32df0f05a9840c50df5ebebad343c1d132c73060980c81e9",
+  "casesSha256": "066a4c800c8339264b23e0608cafd8fcd0778e8e223ca29f98306dedc7a9bafb",
   "probeSha256": "f811a594ebd666055d2ad7a4fe5b2c829ec1e9e2a1a0725934bad2d814fb51c4",
   "collectorSha256": "7bd6ffb7440d38e05cd2b8fbe0e84e91cf462043577ceada3e276728ad216172",
   "flags": [
@@ -16698,6 +16698,12 @@
           },
           {
             "id": "place-content|last baseline end",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "place-content|center start end",
             "cssText": "",
             "items": [],
             "shorthands": {}
