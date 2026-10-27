@@ -1040,7 +1040,7 @@ fn computed_style_reuses_the_cascade_until_the_document_changes() {
 #[test]
 fn computed_style_reuse_is_invalidated_by_every_cascade_input() {
     let value = run(
-        "<!doctype html><head><style id=s>.box {color:rgb(1, 2, 3)} .hot {color:rgb(9, 9, 9)} #b {color:rgb(0, 0, 255)} #c:checked + #l {color:rgb(0, 128, 0)}</style></head><body><div class=box id=a><span id=t>x</span></div><div id=b></div><input type=checkbox id=c><label id=l for=c>l</label><div popover id=p>p</div><dialog id=d>d</dialog></body>",
+        "<!doctype html><head><style id=s>.box {color:rgb(1, 2, 3)} .hot {color:rgb(9, 9, 9)} #b {color:rgb(0, 0, 255)} #c:checked + #l {color:rgb(0, 128, 0)} #v:invalid {color:rgb(255, 0, 0)} #v:valid + #vl {color:rgb(0, 128, 0)} #q:popover-open {color:rgb(0, 0, 255)}</style></head><body><div class=box id=a><span id=t>x</span></div><div id=b></div><input type=checkbox id=c><label id=l for=c>l</label><input id=v required><label id=vl for=v>v</label><div popover id=p>p</div><div popover=manual id=q><span id=qc>q</span></div><dialog id=d>d</dialog></body>",
         r#"(()=>{
           const $=id=>document.getElementById(id),t=$('t'),a=$('a'),b=$('b'),s=$('s'),retained=getComputedStyle(t),rows=[];
           const step=(name,el,prop)=>{const fresh=getComputedStyle(el).getPropertyValue(prop);rows.push([name,fresh,el===t?retained.getPropertyValue(prop):fresh]);};
@@ -1061,9 +1061,14 @@ fn computed_style_reuse_is_invalidated_by_every_cascade_input() {
           document.adoptedStyleSheets.push(adopted);step('adopted-pushed',t,'opacity');
           document.adoptedStyleSheets.length=0;step('adopted-cleared',t,'opacity');
           step('unchecked',$('l'),'color');$('c').checked=true;step('checked',$('l'),'color');$('c').checked=false;step('checked-again',$('l'),'color');
+          step('invalid',$('v'),'color');step('invalid-label',$('vl'),'color');$('v').value='x';step('valid',$('v'),'color');step('valid-label',$('vl'),'color');$('v').value='';step('invalid-again',$('v'),'color');step('invalid-label-again',$('vl'),'color');
+          step('popover-child',$('qc'),'color');$('q').showPopover();step('popover-child-open',$('qc'),'color');$('q').hidePopover();step('popover-child-closed',$('qc'),'color');
           step('popover',$('p'),'display');$('p').showPopover();step('popover-open',$('p'),'display');$('p').hidePopover();step('popover-closed',$('p'),'display');
           step('dialog',$('d'),'position');$('d').showModal();step('dialog-modal',$('d'),'position');$('d').close();step('dialog-closed',$('d'),'position');
-          const animation=t.animate([{opacity:0.1},{opacity:0.1}],{duration:100000});step('animated',t,'opacity');animation.cancel();step('animation-cancelled',t,'opacity');
+          const animation=t.animate([{opacity:0.1},{opacity:0.1}],{duration:100000,delay:50000});step('animation-delayed',t,'opacity');animation.currentTime=60000;step('animated',t,'opacity');animation.currentTime=0;step('animation-rewound',t,'opacity');animation.currentTime=60000;animation.cancel();step('animation-cancelled',t,'opacity');
+          let clock=1000,frames=[];globalThis[Symbol.for('ts')].installAnimationHost({now:()=>clock,frame(handler){frames.push(handler);}});
+          const frame=()=>{const handlers=frames.splice(0);for(const handler of handlers){handler.update();handler.dispatch();handler.commit();}};
+          const timed=t.animate([{opacity:0.2},{opacity:0.2}],{duration:100000,delay:30});frame();step('timeline-delayed',t,'opacity');clock+=60;step('timeline-animated',t,'opacity');timed.cancel();
           t.remove();step('removed',t,'color');
           return JSON.stringify(rows);
         })()"#,
@@ -1094,14 +1099,27 @@ fn computed_style_reuse_is_invalidated_by_every_cascade_input() {
             ["unchecked", "rgb(0, 0, 0)", "rgb(0, 0, 0)"],
             ["checked", "rgb(0, 128, 0)", "rgb(0, 128, 0)"],
             ["checked-again", "rgb(0, 0, 0)", "rgb(0, 0, 0)"],
+            ["invalid", "rgb(255, 0, 0)", "rgb(255, 0, 0)"],
+            ["invalid-label", "rgb(0, 0, 0)", "rgb(0, 0, 0)"],
+            ["valid", "rgb(0, 0, 0)", "rgb(0, 0, 0)"],
+            ["valid-label", "rgb(0, 128, 0)", "rgb(0, 128, 0)"],
+            ["invalid-again", "rgb(255, 0, 0)", "rgb(255, 0, 0)"],
+            ["invalid-label-again", "rgb(0, 0, 0)", "rgb(0, 0, 0)"],
+            ["popover-child", "rgb(0, 0, 0)", "rgb(0, 0, 0)"],
+            ["popover-child-open", "rgb(0, 0, 255)", "rgb(0, 0, 255)"],
+            ["popover-child-closed", "rgb(0, 0, 0)", "rgb(0, 0, 0)"],
             ["popover", "none", "none"],
             ["popover-open", "block", "block"],
             ["popover-closed", "none", "none"],
             ["dialog", "absolute", "absolute"],
             ["dialog-modal", "fixed", "fixed"],
             ["dialog-closed", "absolute", "absolute"],
+            ["animation-delayed", "0.5", "0.5"],
             ["animated", "0.1", "0.1"],
+            ["animation-rewound", "0.5", "0.5"],
             ["animation-cancelled", "0.5", "0.5"],
+            ["timeline-delayed", "0.5", "0.5"],
+            ["timeline-animated", "0.2", "0.2"],
             ["removed", "", ""]
         ])
     );
