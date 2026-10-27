@@ -107,6 +107,7 @@ browser_env.js: P5b-H1 turbo-dom#110/#111 the 2D context's save() / restore() ke
 key_order_tests.rs: P5b-H1 turbo-dom#99 a second install into an arranged realm keeps HTMLTrackElement's key order
 css_live_tests.rs: P5b-K1 turbo-test#125 getComputedStyle reuse invalidation tests (tree version, CSSOM epoch, top layer, font context, ancestor styles); P5b-L1 turbo-dom#113 cross-realm CSSOM edits
 dom_ownership.rs: P5b-K3 turbo-dom#112 deferred ownership reconcile above 256 wrappers + flush_ownership, GC tracking in install, reconcile_all in its own handle scope (from turbo-test PR #105); turbo-test#127 pin_callback_owners without per-call allocation; test modules dom_ownership_alloc_tests, dom_ownership_scale_tests
+browser_env.rs: P5-cov-browser-env removes the element template's unreachable constructor / dataset getters and containsNode method (wrappers are projected before page script runs and JS owns those members: the interface prototypes, document_basics.js dataset, selection.js containsNode)
 "
 # Crate-owned files under src/ that were not part of the move.
 OWNED="lib.rs crate_surface.rs host_internals.rs test_support.rs css_snapshot.rs option_factory_probe.js option_factory_cases.json option_factory_chrome156.json html_image.js html_image_tests.rs html_image_probe.js html_image_cases.json html_image_chrome156.json custom_elements_defined_probe.js custom_elements_defined_cases.json custom_elements_defined_chrome156.json computed_defaults_probe.js computed_defaults_cases.json computed_defaults_chrome156.json computed_defaults_tests.rs dom_reactions_names_probe.js dom_reactions_names_cases.json dom_reactions_names_chrome156.json dom_reactions_tests.rs dom_adoption_reactions_probe.js dom_adoption_reactions_cases.json dom_adoption_reactions_chrome156.json shadow_events_probe.js shadow_events_cases.json shadow_events_chrome156.json shadow_events_tests.rs html_track_probe.js html_track_cases.json html_track_chrome156.json html_track_tests.rs html_track.js"
@@ -114,7 +115,7 @@ OWNED="$OWNED canvas_style_probe.js canvas_style_chrome156.json canvas_style_tes
 OWNED="$OWNED css_shorthand.rs css_shorthand_tests.rs css_longhand_tests.rs svg_mathml_element_probe.js svg_mathml_element_cases.json svg_mathml_element_chrome156.json svg_mathml_element_tests.rs"
 OWNED="$OWNED dom_exception_realm_probe.js dom_exception_realm_cases.json dom_exception_realm_chrome156.json dom_exception_realm_tests.rs custom_elements_collect_tests.rs html_image_srcset_probe.js html_image_srcset_cases.json html_image_srcset_chrome156.json html_image_srcset_tests.rs reflected_urls_probe.js reflected_urls_cases.json reflected_urls_chrome156.json reflected_urls_tests.rs"
 OWNED="$OWNED dom_ownership_alloc_tests.rs dom_ownership_scale_tests.rs"
-OWNED="$OWNED native_guards_probe.js native_guards_chrome156.json native_guards_tests.rs close_watchers_probe.js close_watchers_chrome156.json close_watchers_tests.rs"
+OWNED="$OWNED native_guards_probe.js native_guards_chrome156.json native_guards_tests.rs close_watchers_probe.js close_watchers_chrome156.json close_watchers_tests.rs host_api_tests.rs"
 
 repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 turbo_test=${TURBO_TEST_REPO:-$repo_root/../turbo-test}

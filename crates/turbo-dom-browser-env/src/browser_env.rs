@@ -3989,34 +3989,6 @@ fn get_is_connected(
     rv.set(v8::Boolean::new(scope, c).into());
 }
 
-/// `parent.contains(node)` — true if node === parent or a descendant.
-fn el_contains_node(
-    scope: &mut v8::PinScope,
-    args: v8::FunctionCallbackArguments,
-    mut rv: v8::ReturnValue,
-) {
-    let _dom = DomScope::for_object(scope, args.this());
-    let Some(p) = receiver_handle(scope, &args, &[]) else {
-        return;
-    };
-    let other = arg_handle(scope, &args, 0);
-    let yes = match other {
-        Some(o) => with_tree(|t| {
-            let mut cur = Some(o);
-            while let Some(c) = cur {
-                if c == p {
-                    return true;
-                }
-                cur = NodeRef::new(t, c).parent().map(|x| x.handle());
-            }
-            false
-        })
-        .unwrap_or(false),
-        None => false,
-    };
-    rv.set(v8::Boolean::new(scope, yes).into());
-}
-
 /// Native Attr snapshot backing the public live NamedNodeMap projection.
 fn get_attributes(
     scope: &mut v8::PinScope,
@@ -4043,47 +4015,6 @@ fn get_attributes(
     bind_method(scope, arr.into(), "item", nodelist_item);
     bind_method(scope, arr.into(), "namedItem", nodelist_named_item);
     rv.set(arr.into());
-}
-
-/// `dataset` → `{ camelCaseKey: value }` for each `data-*` attribute.
-fn get_dataset(
-    scope: &mut v8::PinScope,
-    _name: v8::Local<v8::Name>,
-    args: v8::PropertyCallbackArguments,
-    mut rv: v8::ReturnValue<v8::Value>,
-) {
-    let _dom = DomScope::for_object(scope, args.holder());
-    let Some(h) = handle_of(scope, args.holder()) else {
-        return;
-    };
-    let attrs = with_tree(|tree| tree.attributes_units(h)).unwrap_or_default();
-    let o = v8::Object::new(scope);
-    for attribute in attrs {
-        if let Some(rest) = attribute
-            .qualified_name
-            .strip_prefix(&[100, 97, 116, 97, 45])
-        {
-            let mut camel = Vec::new();
-            let mut index = 0;
-            while index < rest.len() {
-                if rest[index] == 45
-                    && rest
-                        .get(index + 1)
-                        .is_some_and(|unit| (97..=122).contains(unit))
-                {
-                    camel.push(rest[index + 1] - 32);
-                    index += 2;
-                } else {
-                    camel.push(rest[index]);
-                    index += 1;
-                }
-            }
-            let key = unit_string(scope, &camel);
-            let value = unit_string(scope, &attribute.value);
-            o.set(scope, key.into(), value.into());
-        }
-    }
-    rv.set(o.into());
 }
 
 /// `closest(selector)` → nearest ancestor (incl. self) that matches, or null.
@@ -5734,88 +5665,6 @@ fn set_prop(
     }
 }
 
-/// `constructor` → the named global DOM constructor for this node's type, so libraries keying on
-/// `node.constructor.name` (pretty-format's DOMElementFilter regex `/^((HTML|SVG)\w*)?Element$/`)
-/// treat it as a DOM node, not a plain Object they'd recurse into and crash on.
-fn get_constructor(
-    scope: &mut v8::PinScope,
-    _name: v8::Local<v8::Name>,
-    args: v8::PropertyCallbackArguments,
-    mut rv: v8::ReturnValue<v8::Value>,
-) {
-    let _dom = DomScope::for_object(scope, args.holder());
-    let Some(h) = handle_of(scope, args.holder()) else {
-        return;
-    };
-    let (nt, tag) = with_tree(|t| (t.node_type_id(h), t.tag_name(h))).unwrap_or((1, None));
-    let cname = match nt {
-        3 => "Text",
-        7 => "ProcessingInstruction",
-        8 => "Comment",
-        9 => "HTMLDocument",
-        11 => "DocumentFragment",
-        1 => match tag.as_deref().map(|s| s.to_ascii_uppercase()).as_deref() {
-            Some("INPUT") => "HTMLInputElement",
-            Some("TEXTAREA") => "HTMLTextAreaElement",
-            Some("SELECT") => "HTMLSelectElement",
-            Some("OPTION") => "HTMLOptionElement",
-            // Extra elements whose ctor globals the bootstrap registers — keep `.constructor.name`
-            // specific (not generic HTMLElement) so libs keying on it resolve the right interface.
-            Some("DIALOG") => "HTMLDialogElement",
-            Some("DATALIST") => "HTMLDataListElement",
-            Some("FIELDSET") => "HTMLFieldSetElement",
-            Some("LEGEND") => "HTMLLegendElement",
-            Some("OL") => "HTMLOListElement",
-            Some("DL") => "HTMLDListElement",
-            Some("PRE") => "HTMLPreElement",
-            Some("TR") => "HTMLTableRowElement",
-            Some("TD") | Some("TH") => "HTMLTableCellElement",
-            Some("THEAD") | Some("TBODY") | Some("TFOOT") => "HTMLTableSectionElement",
-            Some("COL") | Some("COLGROUP") => "HTMLTableColElement",
-            Some("CAPTION") => "HTMLTableCaptionElement",
-            Some("PROGRESS") => "HTMLProgressElement",
-            Some("METER") => "HTMLMeterElement",
-            Some("DETAILS") => "HTMLDetailsElement",
-            Some("PICTURE") => "HTMLPictureElement",
-            Some("SOURCE") => "HTMLSourceElement",
-            Some("TRACK") => "HTMLTrackElement",
-            Some("VIDEO") => "HTMLVideoElement",
-            Some("AUDIO") => "HTMLAudioElement",
-            Some("TEMPLATE") => "HTMLTemplateElement",
-            Some("SLOT") => "HTMLSlotElement",
-            Some("BODY") => "HTMLBodyElement",
-            Some("HTML") => "HTMLHtmlElement",
-            Some("HEAD") => "HTMLHeadElement",
-            Some("META") => "HTMLMetaElement",
-            Some("LINK") => "HTMLLinkElement",
-            Some("TITLE") => "HTMLTitleElement",
-            Some("BASE") => "HTMLBaseElement",
-            Some("BR") => "HTMLBRElement",
-            Some("HR") => "HTMLHRElement",
-            Some("OPTGROUP") => "HTMLOptGroupElement",
-            Some("MAP") => "HTMLMapElement",
-            Some("AREA") => "HTMLAreaElement",
-            Some("OBJECT") => "HTMLObjectElement",
-            Some("EMBED") => "HTMLEmbedElement",
-            Some("OUTPUT") => "HTMLOutputElement",
-            Some("MENU") => "HTMLMenuElement",
-            Some("DATA") => "HTMLDataElement",
-            Some("TIME") => "HTMLTimeElement",
-            Some("Q") | Some("BLOCKQUOTE") => "HTMLQuoteElement",
-            _ => "HTMLElement",
-        },
-        _ => "HTMLElement",
-    };
-    let global = scope.get_current_context().global(scope);
-    if let Some(key) = v8::String::new(scope, cname) {
-        if let Some(ctor) = global.get(scope, key.into()) {
-            if !ctor.is_undefined() {
-                rv.set(ctor);
-            }
-        }
-    }
-}
-
 fn get_node_type(
     scope: &mut v8::PinScope,
     _name: v8::Local<v8::Name>,
@@ -6483,7 +6332,6 @@ fn build_el_template<'s>(scope: &mut v8::PinScope<'s, '_>) -> v8::Local<'s, v8::
     tmpl_method(scope, tmpl, "hasChildNodes", el_has_child_nodes);
     tmpl_method(scope, tmpl, "cloneNode", el_clone_node);
     tmpl_method(scope, tmpl, "getRootNode", el_get_root_node);
-    tmpl_method(scope, tmpl, "containsNode", el_contains_node);
     tmpl_method(scope, tmpl, "append", el_append);
     tmpl_method(scope, tmpl, "prepend", el_prepend);
     tmpl_method(scope, tmpl, "remove", el_remove_self);
@@ -6539,7 +6387,6 @@ fn build_el_template<'s>(scope: &mut v8::PinScope<'s, '_>) -> v8::Local<'s, v8::
     tmpl_getter(scope, tmpl, "firstChild", get_first_child);
     tmpl_getter(scope, tmpl, "nextSibling", get_next_sibling);
     tmpl_getter(scope, tmpl, "style", get_style);
-    tmpl_getter(scope, tmpl, "constructor", get_constructor);
     tmpl_getter(scope, tmpl, "nodeType", get_node_type);
     tmpl_getter(scope, tmpl, "activeElement", get_active_element);
     tmpl_accessor(scope, tmpl, "data", get_node_data, set_node_data);
@@ -6556,7 +6403,6 @@ fn build_el_template<'s>(scope: &mut v8::PinScope<'s, '_>) -> v8::Local<'s, v8::
     tmpl_getter(scope, tmpl, "prefix", get_prefix);
     tmpl_getter(scope, tmpl, "isConnected", get_is_connected);
     tmpl_getter(scope, tmpl, "attributes", get_attributes);
-    tmpl_getter(scope, tmpl, "dataset", get_dataset);
     tmpl_accessor(scope, tmpl, "innerHTML", get_inner_html, set_inner_html);
 
     tmpl_accessor(
