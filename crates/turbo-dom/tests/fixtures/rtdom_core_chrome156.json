@@ -562,6 +562,120 @@
    "compatMode": "BackCompat"
   },
   {
+   "id": "selectedcontent_first_option",
+   "html": "<select><button><selectedcontent></selectedcontent></button><option>A</option><option>B</option></select>",
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     <select>\n|       <button>\n|         <selectedcontent>\n|           \"A\"\n|       <option>\n|         \"A\"\n|       <option>\n|         \"B\"",
+   "compatMode": "BackCompat"
+  },
+  {
+   "id": "selectedcontent_last_selected",
+   "html": "<select><button><selectedcontent></selectedcontent></button><option selected>A</option><option selected>B</option></select>",
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     <select>\n|       <button>\n|         <selectedcontent>\n|           \"B\"\n|       <option>\n|         selected=\"\"\n|         \"A\"\n|       <option>\n|         selected=\"\"\n|         \"B\"",
+   "compatMode": "BackCompat"
+  },
+  {
+   "id": "selectedcontent_replaces_markup",
+   "html": "<select><button><selectedcontent>old<i>x</i></selectedcontent></button><option><b class=k>A</b> x<!--c--></option></select>",
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     <select>\n|       <button>\n|         <selectedcontent>\n|           <b>\n|             class=\"k\"\n|             \"A\"\n|           \" x\"\n|           <!-- c -->\n|       <option>\n|         <b>\n|           class=\"k\"\n|           \"A\"\n|         \" x\"\n|         <!-- c -->",
+   "compatMode": "BackCompat"
+  },
+  {
+   "id": "selectedcontent_after_option",
+   "html": "<select><option selected>A</option><button><selectedcontent></selectedcontent></button></select>",
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     <select>\n|       <option>\n|         selected=\"\"\n|         \"A\"\n|       <button>\n|         <selectedcontent>\n|           \"A\"",
+   "compatMode": "BackCompat"
+  },
+  {
+   "id": "selectedcontent_multiple",
+   "html": "<select multiple><button><selectedcontent></selectedcontent></button><option selected>A</option></select>",
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     <select>\n|       multiple=\"\"\n|       <button>\n|         <selectedcontent>\n|       <option>\n|         selected=\"\"\n|         \"A\"",
+   "compatMode": "BackCompat"
+  },
+  {
+   "id": "selectedcontent_twice",
+   "html": "<select><button><selectedcontent></selectedcontent><selectedcontent></selectedcontent></button><option selected>A</option></select>",
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     <select>\n|       <button>\n|         <selectedcontent>\n|           \"A\"\n|         <selectedcontent>\n|           \"A\"\n|       <option>\n|         selected=\"\"\n|         \"A\"",
+   "compatMode": "BackCompat"
+  },
+  {
+   "id": "selectedcontent_optgroup",
+   "html": "<select><button><selectedcontent></selectedcontent></button><optgroup><option selected>G</option></optgroup></select>",
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     <select>\n|       <button>\n|         <selectedcontent>\n|           \"G\"\n|       <optgroup>\n|         <option>\n|           selected=\"\"\n|           \"G\"",
+   "compatMode": "BackCompat"
+  },
+  {
+   "id": "selectedcontent_implied_end",
+   "html": "<select><button><selectedcontent></selectedcontent></button><option>A</option><option selected>B<option>C</select>",
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     <select>\n|       <button>\n|         <selectedcontent>\n|           \"B\"\n|       <option>\n|         \"A\"\n|       <option>\n|         selected=\"\"\n|         \"B\"\n|       <option>\n|         \"C\"",
+   "compatMode": "BackCompat"
+  },
+  {
+   "id": "selectedcontent_outside_select",
+   "html": "<div><selectedcontent></selectedcontent><option selected>A</option></div>",
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     <div>\n|       <selectedcontent>\n|       <option>\n|         selected=\"\"\n|         \"A\"",
+   "compatMode": "BackCompat"
+  },
+  {
+   "id": "selectedcontent_nested",
+   "html": "<select><button><span><selectedcontent></selectedcontent></span></button><option selected id=o>A</option></select>",
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     <select>\n|       <button>\n|         <span>\n|           <selectedcontent>\n|             \"A\"\n|       <option>\n|         id=\"o\"\n|         selected=\"\"\n|         \"A\"",
+   "compatMode": "BackCompat"
+  },
+  {
+   "id": "selectedcontent_no_option",
+   "html": "<select><button><selectedcontent>keep</selectedcontent></button></select>",
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     <select>\n|       <button>\n|         <selectedcontent>\n|           \"keep\"",
+   "compatMode": "BackCompat"
+  },
+  {
+   "id": "selectedcontent_disabled_first",
+   "html": "<select><button><selectedcontent></selectedcontent></button><option disabled>A</option><option>B</option></select>",
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     <select>\n|       <button>\n|         <selectedcontent>\n|           \"B\"\n|       <option>\n|         disabled=\"\"\n|         \"A\"\n|       <option>\n|         \"B\"",
+   "compatMode": "BackCompat"
+  },
+  {
+   "id": "selectedcontent_all_disabled",
+   "html": "<select><button><selectedcontent>k</selectedcontent></button><option disabled>A</option></select>",
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     <select>\n|       <button>\n|         <selectedcontent>\n|           \"k\"\n|       <option>\n|         disabled=\"\"\n|         \"A\"",
+   "compatMode": "BackCompat"
+  },
+  {
+   "id": "selectedcontent_disabled_optgroup",
+   "html": "<select><button><selectedcontent></selectedcontent></button><optgroup disabled><option>A</option></optgroup><option>B</option></select>",
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     <select>\n|       <button>\n|         <selectedcontent>\n|           \"B\"\n|       <optgroup>\n|         disabled=\"\"\n|         <option>\n|           \"A\"\n|       <option>\n|         \"B\"",
+   "compatMode": "BackCompat"
+  },
+  {
+   "id": "selectedcontent_disabled_selected",
+   "html": "<select><button><selectedcontent></selectedcontent></button><option disabled selected>A</option><option>B</option></select>",
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     <select>\n|       <button>\n|         <selectedcontent>\n|           \"A\"\n|       <option>\n|         disabled=\"\"\n|         selected=\"\"\n|         \"A\"\n|       <option>\n|         \"B\"",
+   "compatMode": "BackCompat"
+  },
+  {
+   "id": "selectedcontent_datalist",
+   "html": "<select><button><selectedcontent></selectedcontent></button><datalist><option>D</option></datalist><option>B</option></select>",
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     <select>\n|       <button>\n|         <selectedcontent>\n|           \"B\"\n|       <datalist>\n|         <option>\n|           \"D\"\n|       <option>\n|         \"B\"",
+   "compatMode": "BackCompat"
+  },
+  {
+   "id": "selectedcontent_template_option",
+   "html": "<select><button><selectedcontent></selectedcontent></button><template><option selected>T</option></template><option>B</option></select>",
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     <select>\n|       <button>\n|         <selectedcontent>\n|           \"B\"\n|       <template>\n|         content\n|           <option>\n|             selected=\"\"\n|             \"T\"\n|       <option>\n|         \"B\"",
+   "compatMode": "BackCompat"
+  },
+  {
+   "id": "selectedcontent_wrapped_option",
+   "html": "<select><button><selectedcontent></selectedcontent></button><div><option selected>X</option></div></select>",
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     <select>\n|       <button>\n|         <selectedcontent>\n|           \"X\"\n|       <div>\n|         <option>\n|           selected=\"\"\n|           \"X\"",
+   "compatMode": "BackCompat"
+  },
+  {
+   "id": "selectedcontent_uppercase",
+   "html": "<SELECT><BUTTON><SELECTEDCONTENT></SELECTEDCONTENT></BUTTON><OPTION SELECTED>A</OPTION></SELECT>",
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     <select>\n|       <button>\n|         <selectedcontent>\n|           \"A\"\n|       <option>\n|         selected=\"\"\n|         \"A\"",
+   "compatMode": "BackCompat"
+  },
+  {
    "id": "script_end_tags",
    "html": "<script>a</script><script>b</script>c",
    "dump": "| <html>\n|   <head>\n|     <script>\n|       \"a\"\n|     <script>\n|       \"b\"\n|   <body>\n|     \"c\"",
@@ -1052,6 +1166,12 @@
    "context": "svg svg",
    "html": "<![CDATA[a\u0000b]]>",
    "dump": "| \"a�b\""
+  },
+  {
+   "id": "fragment_selectedcontent",
+   "context": "div",
+   "html": "<select><button><selectedcontent></selectedcontent></button><option>A</option><option selected>B</option></select>",
+   "dump": "| <select>\n|   <button>\n|     <selectedcontent>\n|       \"B\"\n|   <option>\n|     \"A\"\n|   <option>\n|     selected=\"\"\n|     \"B\""
   },
   {
    "id": "fragment_html_frameset_comment",

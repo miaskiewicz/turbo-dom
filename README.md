@@ -15,7 +15,7 @@ test touches them, and `window` globals materialize only on first use.
 npm install -D @miaskiewicz/turbo-dom
 ```
 
-- ✅ **More compatible than happy-dom** — 99.72% on html5lib-tests vs happy-dom's 37%.
+- ✅ **More compatible than happy-dom** — 99.94% on html5lib-tests vs happy-dom's 37%.
   Runs React Testing Library, `user-event`, downshift, Radix UI, and Headless UI unmodified.
 - ⚡ **Faster than both** — ~130× jsdom / ~45× happy-dom on a realistic suite (parse-memoized repeated shells), ~8–44× faster HTML parsing on real pages, and ~2.7× happy-dom on repeated queries while staying 99.7% spec-correct.
 - 🎨 **Real computed style** — `getComputedStyle` runs a **partial cascade**: it resolves real
@@ -127,7 +127,7 @@ to set up `document`/`window` on any global object.
 
 | | turbo-dom | happy-dom | jsdom |
 |---|---|---|---|
-| html5lib-tests conformance | **99.72%** | 37.35% | 97.03% |
+| html5lib-tests conformance | **99.94%** | 37.35% | 97.03% |
 | @testing-library/dom + user-event | ✅ | ✅ | ✅ |
 | React + Radix / Headless UI / downshift | ✅ | partial | ✅ |
 | Real layout | ❌ (honest stub) | partial | partial |
@@ -152,7 +152,7 @@ the suite row (ms/file, lower = faster):
 | **parse 56 KB SSR** (ops/s) | **528** | 48 | 65 |
 | **parse 20 KB real page** (ops/s) | **4,353** | 135 | 99 |
 | repeated query throughput (iters/s) | **~1.8M** | 661k | 3.3k |
-| html5lib conformance | **99.72%** | 37.35% | 97.03% |
+| html5lib conformance | **99.94%** | 37.35% | 97.03% |
 
 On a realistic suite — 200 files of construct + queries + events — turbo-dom is
 **~45× happy-dom and ~130× jsdom**, runs repeated queries **~2.7× happy-dom**
@@ -227,7 +227,7 @@ let style = cascade::computed_style(&dom.tree, cards[0]);   // partial honest ca
   `src/rtdom` copy and no `rust-runtime` cargo feature — an earlier feature gated a duplicate copy
   that was consolidated away). Minimal deps (`html5ever`, `rustc-hash`, `smol_str`, `cssparser`;
   no napi/wasm), MSRV 1.89, a runnable `examples/crawl.rs`, a CI coverage floor, and a direct
-  html5lib-tests gate at **99.75%**. From the repo: `npm run build:rtdom` (= `cargo build -p turbo-dom --release`),
+  html5lib-tests gate at **100%**. From the repo: `npm run build:rtdom` (= `cargo build -p turbo-dom --release`),
   `npm run test:rust` (= `cargo test -p turbo-dom`), `npm run conformance:rtdom`.
 - **Browser environment over V8:** [`turbo-dom-browser-env`](./crates/turbo-dom-browser-env)
   binds the `rtdom` tree to V8 with native callbacks (`window`/`document`/CSSOM/forms/events,
