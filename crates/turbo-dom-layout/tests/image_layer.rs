@@ -404,6 +404,7 @@ mod svg_oracle {
 
 #[test]
 fn png_frame_to_rgba8_casts_every_color_type_like_the_image_crate() {
+    use png::{BitDepth::Eight, BitDepth::Sixteen, ColorType::*};
     // image 0.25's `to_rgba8` contract: RGB(A) channels cast numerically (8-bit as is,
     // 16-bit `(c + 128) / 257`, a missing alpha opaque); gray(+alpha) through f32
     // (`round(c / MAX * 255)`), the luma replicated.
@@ -415,7 +416,6 @@ fn png_frame_to_rgba8_casts_every_color_type_like_the_image_crate() {
         .expect("decodes")
         .to_rgba8()
     };
-    use png::{BitDepth::Eight, BitDepth::Sixteen, ColorType::*};
     assert_eq!(rgba(Rgb, Eight, &[10, 20, 30]), [10, 20, 30, 255]);
     assert_eq!(rgba(Rgba, Eight, &[200, 100, 0, 7]), [200, 100, 0, 7]);
     assert_eq!(

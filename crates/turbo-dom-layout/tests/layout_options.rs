@@ -302,6 +302,15 @@ fn an_unknown_initial_containing_block_keeps_the_previous_bases() {
     assert_eq!(rect("s"), (0.0, 10.0, 10.0, 30.0));
 }
 
+fn count(nodes: &[StyledNode], n: &mut usize) {
+    for node in nodes {
+        if let StyledNode::Element(e) = node {
+            *n += usize::from(matches!(e.tag, turbo_dom_layout::Tag::Marker(_)));
+            count(&e.children, n);
+        }
+    }
+}
+
 fn marker_options() -> turbo_dom_layout::HtmlOptions<'static> {
     turbo_dom_layout::HtmlOptions {
         markers: Some(&common::marker_of),
@@ -322,17 +331,14 @@ fn html_drive_classifies_markers_and_they_take_no_intrinsic_width() {
     let f = tree.query_selector("[data-cid=\"f\"]").unwrap();
     let styled = turbo_dom_layout::style_html_tree(&tree, "", 400.0, &marker_options());
     let mut markers = 0;
-    fn count(nodes: &[StyledNode], n: &mut usize) {
-        for node in nodes {
-            if let StyledNode::Element(e) = node {
-                *n += usize::from(matches!(e.tag, turbo_dom_layout::Tag::Marker(_)));
-                count(&e.children, n);
-            }
-        }
-    }
     count(&styled, &mut markers);
     assert_eq!(markers, 2, "both x-marker elements classify");
-    let plain = turbo_dom_layout::style_html_tree(&tree, "", 400.0, &Default::default());
+    let plain = turbo_dom_layout::style_html_tree(
+        &tree,
+        "",
+        400.0,
+        &turbo_dom_layout::HtmlOptions::default(),
+    );
     let mut none = 0;
     count(&plain, &mut none);
     assert_eq!(none, 0, "no classifier, no markers");
@@ -427,7 +433,12 @@ fn canvas_background_needs_an_html_root() {
     use turbo_dom_layout::html_layout::propagate_canvas_background;
     use turbo_dom_layout::Rgba;
     let tree = parse_html_tree("<html style='background:rgb(1, 2, 3)'><body></body></html>");
-    let mut document = turbo_dom_layout::style_html_tree(&tree, "", 100.0, &Default::default());
+    let mut document = turbo_dom_layout::style_html_tree(
+        &tree,
+        "",
+        100.0,
+        &turbo_dom_layout::HtmlOptions::default(),
+    );
     // Another root before the document element is skipped.
     let mut fragment = styled(
         &parse_html_tree("<body><p style='background:red'>x</p></body>"),
@@ -438,7 +449,7 @@ fn canvas_background_needs_an_html_root() {
         None,
         "no <html> root"
     );
-    fragment.extend(document.drain(..));
+    fragment.append(&mut document);
     assert_eq!(
         propagate_canvas_background(&mut fragment),
         Some(Rgba::new(1, 2, 3, 255))

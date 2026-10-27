@@ -270,6 +270,7 @@ fn vertical_align_places_inline_block_atoms() {
 }
 
 /// `data-cid` boxes of `html` through the HTML drive (bundled fonts, 400x300).
+#[cfg(feature = "bundled-fonts")]
 fn cid_boxes(html: &str) -> std::collections::HashMap<String, (f32, f32, f32, f32)> {
     let tree = turbo_dom_layout::parse_html_tree(html);
     turbo_dom_layout::layout_boxes_tree(
@@ -286,6 +287,7 @@ fn cid_boxes(html: &str) -> std::collections::HashMap<String, (f32, f32, f32, f3
     .collect()
 }
 
+#[cfg(feature = "bundled-fonts")]
 #[test]
 fn whitespace_only_inline_runs_collapse_unless_white_space_preserves_them() {
     // CSS 2.1 §9.2.2.1: only white space that `white-space` collapses away generates no
@@ -307,15 +309,9 @@ fn whitespace_only_inline_runs_collapse_unless_white_space_preserves_them() {
     assert_eq!(normal["d"].3, 0.0, "a whitespace-only block is empty");
     // (pre-wrap / break-spaces: the inline layout drops a line holding only
     // preserved spaces — a separate gap, not asserted here.)
-    for ws in ["pre"] {
-        let kept = doc(ws);
-        assert_eq!(
-            kept["b"].1,
-            2.0 * line,
-            "{ws}: the preserved space takes a line"
-        );
-        assert_eq!(kept["d"].3, line, "{ws}");
-    }
+    let kept = doc("pre");
+    assert_eq!(kept["b"].1, 2.0 * line, "the preserved space takes a line");
+    assert_eq!(kept["d"].3, line);
     // (nowrap: a white-space-only span block still gets a line here, Chrome 0 — a
     // separate gap, not asserted here.)
     let other = cid_boxes(

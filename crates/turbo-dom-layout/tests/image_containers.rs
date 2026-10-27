@@ -6,50 +6,50 @@
 //! TIFF header is not a byte-order mark.
 use turbo_dom_layout::image::{avif_payload, ico_entry, probe, Nclx, Orientation};
 
-fn bx(kind: &[u8; 4], body: &[u8]) -> Vec<u8> {
+fn bx(kind: [u8; 4], body: &[u8]) -> Vec<u8> {
     let mut out = u32::try_from(body.len() + 8)
         .unwrap()
         .to_be_bytes()
         .to_vec();
-    out.extend_from_slice(kind);
+    out.extend_from_slice(&kind);
     out.extend_from_slice(body);
     out
 }
 
-fn full(kind: &[u8; 4], version: u8, flags: u32, body: &[u8]) -> Vec<u8> {
+fn full(kind: [u8; 4], version: u8, flags: u32, body: &[u8]) -> Vec<u8> {
     let mut b = vec![version];
     b.extend_from_slice(&flags.to_be_bytes()[1..]);
     b.extend_from_slice(body);
     bx(kind, &b)
 }
 
-fn ftyp(major: &[u8; 4], compatible: &[&[u8; 4]]) -> Vec<u8> {
+fn ftyp(major: [u8; 4], compatible: &[&[u8; 4]]) -> Vec<u8> {
     let mut body = major.to_vec();
     body.extend_from_slice(&0u32.to_be_bytes());
     for brand in compatible {
         body.extend_from_slice(*brand);
     }
-    bx(b"ftyp", &body)
+    bx(*b"ftyp", &body)
 }
 
 fn ispe(w: u32, h: u32) -> Vec<u8> {
     let mut body = w.to_be_bytes().to_vec();
     body.extend_from_slice(&h.to_be_bytes());
-    full(b"ispe", 0, 0, &body)
+    full(*b"ispe", 0, 0, &body)
 }
 
-fn colr(kind: &[u8; 4], codes: [u16; 3], flags: u8) -> Vec<u8> {
+fn colr(kind: [u8; 4], codes: [u16; 3], flags: u8) -> Vec<u8> {
     let mut body = kind.to_vec();
     for c in codes {
         body.extend_from_slice(&c.to_be_bytes());
     }
     body.push(flags);
-    bx(b"colr", &body)
+    bx(*b"colr", &body)
 }
 
 fn alpha_aux() -> Vec<u8> {
     full(
-        b"auxC",
+        *b"auxC",
         0,
         0,
         b"urn:mpeg:mpegB:cicp:systems:auxiliary:alpha\0",
@@ -64,7 +64,7 @@ fn ipma(entries: &[(u16, &[u8])]) -> Vec<u8> {
         body.push(u8::try_from(props.len()).unwrap());
         body.extend(props.iter().map(|p| p | 0x80));
     }
-    full(b"ipma", 0, 0, &body)
+    full(*b"ipma", 0, 0, &body)
 }
 
 /// One `iloc` item: `(id, construction method, [(offset, length)])`.
@@ -94,25 +94,25 @@ fn iloc(version: u8, items: &[Item]) -> Vec<u8> {
             body.extend_from_slice(&length.to_be_bytes());
         }
     }
-    full(b"iloc", version, 0, &body)
+    full(*b"iloc", version, 0, &body)
 }
 
 fn pitm(version: u8, item: u32) -> Vec<u8> {
     if version == 0 {
-        full(b"pitm", 0, 0, &u16::try_from(item).unwrap().to_be_bytes())
+        full(*b"pitm", 0, 0, &u16::try_from(item).unwrap().to_be_bytes())
     } else {
-        full(b"pitm", version, 0, &item.to_be_bytes())
+        full(*b"pitm", version, 0, &item.to_be_bytes())
     }
 }
 
 fn meta(children: &[Vec<u8>]) -> Vec<u8> {
-    full(b"meta", 0, 0, &children.concat())
+    full(*b"meta", 0, 0, &children.concat())
 }
 
 fn iprp(properties: &[Vec<u8>], associations: &[u8]) -> Vec<u8> {
-    let mut body = bx(b"ipco", &properties.concat());
+    let mut body = bx(*b"ipco", &properties.concat());
     body.extend_from_slice(associations);
-    bx(b"iprp", &body)
+    bx(*b"iprp", &body)
 }
 
 /// An AVIF whose major brand is `mif1` (`avif` only among the compatible brands), the
@@ -121,15 +121,15 @@ fn iprp(properties: &[Vec<u8>], associations: &[u8]) -> Vec<u8> {
 /// (it runs to the end of the file), located by a zero-length extent (to the end too).
 fn idat_avif() -> Vec<u8> {
     let head = |mdat_at: u32| {
-        let mut file = ftyp(b"mif1", &[b"miaf", b"avif"]);
+        let mut file = ftyp(*b"mif1", &[b"miaf", b"avif"]);
         file.extend(meta(&[
             pitm(1, 1),
             iloc(1, &[(1, 1, &[(2, 3)]), (2, 0, &[(mdat_at + 8, 0)])]),
             iprp(
-                &[ispe(64, 40), colr(b"nclx", [1, 13, 6], 0x80), alpha_aux()],
+                &[ispe(64, 40), colr(*b"nclx", [1, 13, 6], 0x80), alpha_aux()],
                 &ipma(&[(1, &[1, 2]), (2, &[3])]),
             ),
-            bx(b"idat", b"\0\0COL\0"),
+            bx(*b"idat", b"\0\0COL\0"),
         ]));
         file
     };
@@ -168,13 +168,13 @@ fn avif_items_in_idat_and_a_to_end_mdat_demux_with_their_nclx() {
 /// An AVIF (major brand `avif`) with a 16-bit `pitm`, `iloc` version 2 (32-bit item ids
 /// and count), the colour item in an `mdat` written with a 64-bit `largesize`, and the
 /// given `colr` property.
-fn largesize_avif(colour: Vec<u8>, method: u16) -> Vec<u8> {
+fn largesize_avif(colour: &[u8], method: u16) -> Vec<u8> {
     let head = |mdat_at: u32| {
-        let mut file = ftyp(b"avif", &[]);
+        let mut file = ftyp(*b"avif", &[]);
         file.extend(meta(&[
             pitm(0, 7),
             iloc(2, &[(7, method, &[(mdat_at + 16, 4)])]),
-            iprp(&[ispe(3, 2), colour.clone()], &ipma(&[(7, &[1, 2])])),
+            iprp(&[ispe(3, 2), colour.to_vec()], &ipma(&[(7, &[1, 2])])),
         ]));
         file
     };
@@ -189,7 +189,7 @@ fn largesize_avif(colour: Vec<u8>, method: u16) -> Vec<u8> {
 
 #[test]
 fn avif_version_2_iloc_and_a_largesize_mdat() {
-    let file = largesize_avif(colr(b"nclx", [9, 16, 9], 0x00), 0);
+    let file = largesize_avif(&colr(*b"nclx", [9, 16, 9], 0x00), 0);
     let intrinsic = probe(&file).expect("an AVIF");
     assert_eq!(
         (intrinsic.width, intrinsic.height, intrinsic.has_alpha),
@@ -208,10 +208,10 @@ fn avif_version_2_iloc_and_a_largesize_mdat() {
         })
     );
     // An ICC `colr` is no `nclx` description.
-    let icc = largesize_avif(colr(b"rICC", [9, 16, 9], 0x80), 0);
+    let icc = largesize_avif(&colr(*b"rICC", [9, 16, 9], 0x80), 0);
     assert_eq!(avif_payload(&icc).unwrap().nclx, None);
     // A truncated `nclx` body has no full-range byte.
-    let short = largesize_avif(bx(b"colr", b"nclx\0\x01\0\x02\0\x03"), 0);
+    let short = largesize_avif(&bx(*b"colr", b"nclx\0\x01\0\x02\0\x03"), 0);
     assert_eq!(avif_payload(&short).unwrap().nclx, None);
 }
 
@@ -219,11 +219,11 @@ fn avif_version_2_iloc_and_a_largesize_mdat() {
 fn avif_items_with_an_unknown_construction_method_have_no_data() {
     // Construction method 2 (item offsets) is not supported: the primary item has no
     // data, so the file neither probes nor demuxes (Chrome rejects it too).
-    let file = largesize_avif(colr(b"nclx", [1, 1, 1], 0), 2);
+    let file = largesize_avif(&colr(*b"nclx", [1, 1, 1], 0), 2);
     assert!(probe(&file).is_none());
     assert!(avif_payload(&file).is_none());
     // Method 1 without an `idat` box: nothing to index either.
-    let file = largesize_avif(colr(b"nclx", [1, 1, 1], 0), 1);
+    let file = largesize_avif(&colr(*b"nclx", [1, 1, 1], 0), 1);
     assert!(avif_payload(&file).is_none());
 }
 

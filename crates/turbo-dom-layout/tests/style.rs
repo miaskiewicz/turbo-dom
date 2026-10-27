@@ -297,14 +297,14 @@ fn font_size_keywords_units_and_unparsable_values_resolve_to_px() {
 
 #[test]
 fn var_references_inside_functions_fallbacks_and_unclosed() {
+    use turbo_dom_layout::test_support::literal::{Element, Node};
+    use turbo_dom_layout::{Attr, Tag};
     let cascade = build_cascade(
         ":root{--w:10px} #a{width:calc(var(--w) + 1px)} #b{width:var(--missing, calc(2px + 3px))} \
          #c{width:var(--w, 99px)} #d{height:var(--w}",
         "",
         TokenSet::new(),
     );
-    use turbo_dom_layout::test_support::literal::{Element, Node};
-    use turbo_dom_layout::{Attr, Tag};
     let el = |tag: &str, id: &str, children| {
         Node::Element(Element {
             tag: Tag::Html(tag.to_string()),
