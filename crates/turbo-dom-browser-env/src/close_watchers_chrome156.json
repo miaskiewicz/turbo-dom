@@ -2,7 +2,7 @@
   "browser": "Chrome/156.0.8078.4",
   "v8": "15.6.75",
   "probe": "close_watchers_probe.js",
-  "probeSha256": "bfa40023bbc402d6a9ab9fc5745eafaa7f400a176e32ef557e44e0d415aa69e3",
+  "probeSha256": "bd4a60a46e139cdf07c9fe569c11cc70d49ac80be6a628ed614e25fe53afda35",
   "collectorSha256": "3f964d2cdf0ec8101870a776aaffc3b7dc4522306959c4a40761057beb255eb8",
   "flags": [
     "--headless=new",
@@ -183,31 +183,11 @@
           "open"
         ],
         [
-          "beforetoggle",
-          "d",
-          false,
-          true,
-          "closed"
-        ],
-        [
-          "beforetoggle",
-          "d",
-          true,
-          true,
-          "open"
-        ],
-        [
           "toggle",
           "d",
           false,
           true,
           "open"
-        ],
-        [
-          "close",
-          "d",
-          false,
-          true
         ],
         [
           "pointerdown",

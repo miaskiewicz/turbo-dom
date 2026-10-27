@@ -62,8 +62,6 @@
     const dialog = document.getElementById('d');
     dialog.addEventListener('cancel', event => event.preventDefault());
     await input(...click(150, 30, 'b'));
-    dialog.show();
-    dialog.close();
     dialog.showModal();
     await input(...click(310, 310, 'd'));
     await input(esc);

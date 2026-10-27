@@ -468,6 +468,38 @@ cargo clippy -p turbo-dom-browser-env --all-targets --features host-internals,te
 
 The crate is compiled with `#![allow(unused, clippy::all)]` (see `src/lib.rs`).
 
+### Coverage
+
+CI gates the crate's line coverage in the `host-internals,test-support` configuration
+(`cargo tarpaulin --engine llvm -p turbo-dom-browser-env --features host-internals,test-support
+--include-files 'crates/turbo-dom-browser-env/src/*'`; the current floor is in
+`docs/CONSOLIDATION.md`, "Coverage"). New tests assert behaviour against Chrome 156 controls.
+The coverage phase added:
+
+- `native_guards_probe.js` -> `native_guards_chrome156.json` (`native_guards_tests.rs`):
+  receiver brand checks, argument conversion and the edge results of the native attribute,
+  character-data, tree, collection and shadow-root members.
+- `close_watchers_probe.js` -> `close_watchers_chrome156.json` (`close_watchers_tests.rs`):
+  Esc close requests, close watcher groups and history-action activation, popover and
+  `closedby` light dismiss and the modal `::backdrop`, under trusted input. The offline
+  driver plays the embedder: it calls `notify_user_activation`, `light_dismiss`,
+  `modal_backdrop` and `process_close_watchers` like turbo-surf's host input driver, with an
+  `ActivationHost`.
+- `host_api_tests.rs`: the embedder entry points (nonce hiding, `create_document_element`,
+  `form_submission_base_target`, `event_callback_state`, interface records, the native
+  document census).
+
+Both controls are recorded with the trusted-input collector, whose `__cdpInput` steps are
+mouse moves, presses and releases (`{type: "down" | "up", x, y}`) and keys:
+
+```sh
+node scripts/trusted-input-chrome-control.mjs --chrome /path/to/chrome \
+  --probe src/close_watchers_probe.js --out src/close_watchers_chrome156.json
+```
+
+Leaves where the binding still differs from Chrome are pinned as known gaps with both values
+(miaskiewicz/turbo-dom#114, #116, #118, #119).
+
 ## How consumers use it
 
 - **turbo-test** (runner, bundler, transform, coverage, napi host stay there)
