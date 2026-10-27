@@ -7,6 +7,15 @@ at the time); this file reconstructs them from history.
 
 ## [Unreleased]
 
+### Fixed — undecodable images and corrupt AVIFs (P5b-G1, miaskiewicz/turbo-dom#107/#109, Chrome 156 controls)
+- A corrupt AVIF no longer aborts the process (miaskiewicz/turbo-dom#109): with the
+  `avif` feature, AV1 tile data that fails to decode (q.avif with its colour stream's
+  second half overwritten) hit rav1d 1.1.0's single-frame-context error path, which
+  unwraps a frame header the failed decode already took — a panic inside its
+  `extern "C"` entry point, so a process abort. turbo-dom-raster now opens rav1d with two
+  threads and two frame contexts, whose error path returns the failure (fixed on rav1d's
+  main, not released); the image decodes to nothing.
+
 ### Fixed — turbo-dom-layout intrinsic widths, floats, inline-blocks, column flex, the initial containing block and the fullscreen element (P5b-W7, Chrome 156 controls)
 Each fix is backed by a Chrome for Testing 156 control and lists the corpus outputs it
 changes in `tools/parity/expected/p5b-w7-turbo-dom-*.json`.

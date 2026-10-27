@@ -9,9 +9,10 @@
 //! encodes only; `zenavif` / `rav1d-safe` are AGPL; `rav1d` (1.1, BSD-2-Clause, the ISRG
 //! Prossimo Rust port of dav1d) is pure Rust with its assembly off
 //! (`default-features = false`), at the cost of its C-ABI (`unsafe extern "C"`) entry
-//! points and a large dependency tree. This module uses `rav1d` (no assembly, one
-//! thread) and converts the decoded YUV planes to RGBA itself; without the feature an
-//! AVIF paints as the placeholder of any undecodable image.
+//! points and a large dependency tree. This module uses `rav1d` (no assembly, two
+//! threads: with one, corrupt data aborted the process, turbo-dom#109) and converts the
+//! decoded YUV planes to RGBA itself; without the feature an AVIF paints as the
+//! placeholder.
 
 use turbo_dom_layout::image::Rgba8Image;
 
@@ -58,7 +59,7 @@ pub(crate) struct Frame {
 
 #[cfg(feature = "avif")]
 mod av1 {
-    //! The `rav1d` C-ABI calls: open a one-thread decoder, feed one temporal unit,
+    //! The `rav1d` C-ABI calls: open a two-thread decoder, feed one temporal unit,
     //! take the picture, copy its planes out, release everything.
     use std::ptr::NonNull;
 
@@ -87,8 +88,13 @@ mod av1 {
         unsafe { dav1d_default_settings(NonNull::new(settings.as_mut_ptr())?) };
         // SAFETY: `dav1d_default_settings` initialized every field.
         let mut settings = unsafe { settings.assume_init() };
-        settings.n_threads = 1;
-        settings.max_frame_delay = 1;
+        // Two threads and two frame contexts: rav1d 1.1.0's single-frame-context error path
+        // unwraps a frame header its failed decode already took, so corrupt tile data
+        // aborted the process (a panic inside its `extern "C"` entry point cannot unwind);
+        // with frame threading the error comes back as a result (miaskiewicz/turbo-dom#109;
+        // fixed on rav1d's main, not released).
+        settings.n_threads = 2;
+        settings.max_frame_delay = 2;
         let mut ctx: Option<Dav1dContext> = None;
         // SAFETY: `ctx` is valid to write to and `settings` to read from.
         let opened =
@@ -307,7 +313,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "turbo-dom#109: fails (aborts) until the fix"]
     fn corrupt_av1_data_is_an_error_not_an_abort() {
         let intact = q_avif();
         let decoded = decode(&intact).expect("intact q.avif decodes");
