@@ -20,7 +20,8 @@ import { COLOR_PROPS, canonicalizeColor } from './color.mjs';
 
 const kebab = (s) => s.replace(/[A-Z]/g, (m) => '-' + m.toLowerCase());
 
-// Longhand → shorthand fallback for single-token shorthands (mirrors dom.mjs styleGet).
+// Longhand → shorthand fallback for single-token shorthands of the computed map (the inline
+// el.style itself expands shorthands since turbo-dom#90, css-shorthand.mjs).
 const SHORTHAND_OF = {
   'background-color': 'background',
   'margin-top': 'margin', 'margin-right': 'margin', 'margin-bottom': 'margin', 'margin-left': 'margin',

@@ -931,7 +931,7 @@ test('el.style cssText get/set, cssFloat, iterator, has trap', () => {
   const { document } = fresh();
   const el = document.createElement('div');
   el.style.cssText = 'color: blue; float: left';
-  assert.equal(el.style.cssText, 'color: blue; float: left');
+  assert.equal(el.style.cssText, 'color: blue; float: left;'); // Chrome's declaration-block serialization
   assert.equal(el.style.cssFloat, 'left');
   const keys = [...el.style];
   assert.ok(keys.includes('color'));
@@ -2362,18 +2362,17 @@ test('parentElement is null when the parent is not an element (document child)',
   assert.equal(document.documentElement.parentElement, null);
 });
 
-test('styleGet shorthand fallback: margin single token → margin-top', () => {
+test('el.style shorthands set their longhands (turbo-dom#90, Chrome 156)', () => {
   const { document } = fresh();
   const el = document.createElement('div');
   el.style.cssText = 'margin: 8px';
-  // longhand read falls back to the single-token shorthand
   assert.equal(el.style.marginTop, '8px');
-  // multi-token shorthand → longhand stays '' (honest)
   el.style.cssText = 'margin: 1px 2px';
-  assert.equal(el.style.marginTop, '');
-  // background-color falls back to single-token background
+  assert.deepEqual([el.style.marginTop, el.style.marginRight, el.style.marginBottom, el.style.marginLeft], ['1px', '2px', '1px', '2px']);
   el.style.cssText = 'background: #fff';
-  assert.ok(el.style.backgroundColor.startsWith('rgb'));
+  assert.equal(el.style.backgroundColor, 'rgb(255, 255, 255)');
+  assert.equal(el.style.backgroundImage, 'initial');
+  assert.equal(el.style.cssText, 'background: rgb(255, 255, 255);');
 });
 
 test('SVG element tagName keeps case; attributes expose xlink namespace', () => {

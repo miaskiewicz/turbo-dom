@@ -251,6 +251,13 @@ package or publish workflow.
   `:-webkit-full-screen-ancestor` read `Tree::fullscreen_stack` (empty unless the binding reports
   one; the npm engine never matches them, turbo-dom#58); `rtdom::cascade` / `cascade.mjs` rank
   rules by each item's Selectors 4 `specificity()`. See `docs/selector-engine.md`.
+- **CSSOM shorthands = Chrome 156.** `rtdom/css_shorthand/` (Rust: table, grammars,
+  serializers, `longhand_value`, `DeclarationBlock`) serves turbo-dom-browser-env's
+  `CSSStyleDeclaration`; the npm runtime's `src/runtime/css-shorthand.mjs` (+ `css-shorthand-table.mjs`)
+  is its lockstep port behind `el.style` (`dom.mjs` makeStyle). Both are checked against
+  `crates/turbo-dom/tests/fixtures/css_{shorthand,longhand}_chrome156.json` (regenerate the cases
+  with `scripts/make-css-{shorthand,longhand}-cases.py`, recapture with the binding's
+  `select-element-chrome-control.mjs`); change both together (turbo-dom#90, #97).
 - **Selector parse cache** (`__selectorCache` in selectors.mjs) memoizes selector STRING → AST.
   Pure (DOM-independent) → no mutation invalidation. Never cache *results* without it.
 

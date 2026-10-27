@@ -6,397 +6,566 @@
   {
    "id": "rcdata_nul",
    "html": "<title>a\u0000b</title>",
-   "dump": "| <html>\n|   <head>\n|     <title>\n|       \"a�b\"\n|   <body>"
+   "dump": "| <html>\n|   <head>\n|     <title>\n|       \"a�b\"\n|   <body>",
+   "compatMode": "BackCompat"
   },
   {
    "id": "rawtext_nul",
    "html": "<style>a\u0000b</style>",
-   "dump": "| <html>\n|   <head>\n|     <style>\n|       \"a�b\"\n|   <body>"
+   "dump": "| <html>\n|   <head>\n|     <style>\n|       \"a�b\"\n|   <body>",
+   "compatMode": "BackCompat"
   },
   {
    "id": "script_data_nul",
    "html": "<script>a\u0000b</script>",
-   "dump": "| <html>\n|   <head>\n|     <script>\n|       \"a�b\"\n|   <body>"
+   "dump": "| <html>\n|   <head>\n|     <script>\n|       \"a�b\"\n|   <body>",
+   "compatMode": "BackCompat"
   },
   {
    "id": "plaintext_newlines_nul",
    "html": "<plaintext>a<b>&amp;\r\nc\rd\u0000e",
-   "dump": "| <html>\n|   <head>\n|   <body>\n|     <plaintext>\n|       \"a<b>&amp;\nc\nd�e\""
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     <plaintext>\n|       \"a<b>&amp;\nc\nd�e\"",
+   "compatMode": "BackCompat"
   },
   {
    "id": "tag_name_nul",
    "html": "<a\u0000b>x</a\u0000b>",
-   "dump": "| <html>\n|   <head>\n|   <body>\n|     <a�b>\n|       \"x\""
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     <a�b>\n|       \"x\"",
+   "compatMode": "BackCompat"
   },
   {
    "id": "before_attribute_name_nul",
    "html": "<a \u0000=x>",
-   "dump": "| <html>\n|   <head>\n|   <body>\n|     <a>\n|       �=\"x\""
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     <a>\n|       �=\"x\"",
+   "compatMode": "BackCompat"
   },
   {
    "id": "attribute_name_nul",
    "html": "<a b\u0000c=x>",
-   "dump": "| <html>\n|   <head>\n|   <body>\n|     <a>\n|       b�c=\"x\""
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     <a>\n|       b�c=\"x\"",
+   "compatMode": "BackCompat"
   },
   {
    "id": "after_attribute_name_nul",
    "html": "<a b \u0000>",
-   "dump": "| <html>\n|   <head>\n|   <body>\n|     <a>\n|       b=\"\"\n|       �=\"\""
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     <a>\n|       b=\"\"\n|       �=\"\"",
+   "compatMode": "BackCompat"
   },
   {
    "id": "attribute_value_double_quoted_nul",
    "html": "<a b=\"x\u0000y\">",
-   "dump": "| <html>\n|   <head>\n|   <body>\n|     <a>\n|       b=\"x�y\""
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     <a>\n|       b=\"x�y\"",
+   "compatMode": "BackCompat"
   },
   {
    "id": "attribute_value_single_quoted_nul",
    "html": "<a b='x\u0000y'>",
-   "dump": "| <html>\n|   <head>\n|   <body>\n|     <a>\n|       b=\"x�y\""
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     <a>\n|       b=\"x�y\"",
+   "compatMode": "BackCompat"
   },
   {
    "id": "attribute_value_unquoted_nul",
    "html": "<a b=x\u0000y>",
-   "dump": "| <html>\n|   <head>\n|   <body>\n|     <a>\n|       b=\"x�y\""
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     <a>\n|       b=\"x�y\"",
+   "compatMode": "BackCompat"
   },
   {
    "id": "comment_start_nul",
    "html": "<!--\u0000-->",
-   "dump": "| <!-- � -->\n| <html>\n|   <head>\n|   <body>"
+   "dump": "| <!-- � -->\n| <html>\n|   <head>\n|   <body>",
+   "compatMode": "BackCompat"
   },
   {
    "id": "comment_start_dash_nul",
    "html": "<!---\u0000-->",
-   "dump": "| <!-- -� -->\n| <html>\n|   <head>\n|   <body>"
+   "dump": "| <!-- -� -->\n| <html>\n|   <head>\n|   <body>",
+   "compatMode": "BackCompat"
   },
   {
    "id": "comment_nul",
    "html": "<!--a\u0000b-->",
-   "dump": "| <!-- a�b -->\n| <html>\n|   <head>\n|   <body>"
+   "dump": "| <!-- a�b -->\n| <html>\n|   <head>\n|   <body>",
+   "compatMode": "BackCompat"
   },
   {
    "id": "comment_end_dash_nul",
    "html": "<!--a-\u0000-->",
-   "dump": "| <!-- a-� -->\n| <html>\n|   <head>\n|   <body>"
+   "dump": "| <!-- a-� -->\n| <html>\n|   <head>\n|   <body>",
+   "compatMode": "BackCompat"
   },
   {
    "id": "comment_end_bang_nul",
    "html": "<!--a--!\u0000-->",
-   "dump": "| <!-- a--!� -->\n| <html>\n|   <head>\n|   <body>"
+   "dump": "| <!-- a--!� -->\n| <html>\n|   <head>\n|   <body>",
+   "compatMode": "BackCompat"
   },
   {
    "id": "doctype_before_name_nul",
    "html": "<!DOCTYPE \u0000>",
-   "dump": "| <!DOCTYPE �>\n| <html>\n|   <head>\n|   <body>"
+   "dump": "| <!DOCTYPE �>\n| <html>\n|   <head>\n|   <body>",
+   "compatMode": "BackCompat"
   },
   {
    "id": "doctype_name_nul",
    "html": "<!DOCTYPE h\u0000x>",
-   "dump": "| <!DOCTYPE h�x>\n| <html>\n|   <head>\n|   <body>"
+   "dump": "| <!DOCTYPE h�x>\n| <html>\n|   <head>\n|   <body>",
+   "compatMode": "BackCompat"
   },
   {
    "id": "doctype_public_double_nul",
    "html": "<!DOCTYPE html PUBLIC \"a\u0000b\">",
-   "dump": "| <!DOCTYPE html \"a�b\" \"\">\n| <html>\n|   <head>\n|   <body>"
+   "dump": "| <!DOCTYPE html \"a�b\" \"\">\n| <html>\n|   <head>\n|   <body>",
+   "compatMode": "CSS1Compat"
   },
   {
    "id": "doctype_public_single_nul",
    "html": "<!DOCTYPE html PUBLIC 'a\u0000b'>",
-   "dump": "| <!DOCTYPE html \"a�b\" \"\">\n| <html>\n|   <head>\n|   <body>"
+   "dump": "| <!DOCTYPE html \"a�b\" \"\">\n| <html>\n|   <head>\n|   <body>",
+   "compatMode": "CSS1Compat"
   },
   {
    "id": "bogus_doctype_nul",
    "html": "<!DOCTYPE html x\u0000y>",
-   "dump": "| <!DOCTYPE html>\n| <html>\n|   <head>\n|   <body>"
+   "dump": "| <!DOCTYPE html>\n| <html>\n|   <head>\n|   <body>",
+   "compatMode": "BackCompat"
   },
   {
    "id": "after_attribute_name_whitespace",
    "html": "<a b  c>",
-   "dump": "| <html>\n|   <head>\n|   <body>\n|     <a>\n|       b=\"\"\n|       c=\"\""
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     <a>\n|       b=\"\"\n|       c=\"\"",
+   "compatMode": "BackCompat"
   },
   {
    "id": "after_attribute_name_solidus",
    "html": "<a b />",
-   "dump": "| <html>\n|   <head>\n|   <body>\n|     <a>\n|       b=\"\""
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     <a>\n|       b=\"\"",
+   "compatMode": "BackCompat"
   },
   {
    "id": "after_attribute_name_equals",
    "html": "<a b =x>",
-   "dump": "| <html>\n|   <head>\n|   <body>\n|     <a>\n|       b=\"x\""
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     <a>\n|       b=\"x\"",
+   "compatMode": "BackCompat"
   },
   {
    "id": "after_attribute_name_quote",
    "html": "<a b \"c>",
-   "dump": "| <html>\n|   <head>\n|   <body>\n|     <a>\n|       \"c=\"\"\n|       b=\"\""
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     <a>\n|       \"c=\"\"\n|       b=\"\"",
+   "compatMode": "BackCompat"
   },
   {
    "id": "before_attribute_value_whitespace",
    "html": "<a b= \n\t\"c\">",
-   "dump": "| <html>\n|   <head>\n|   <body>\n|     <a>\n|       b=\"c\""
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     <a>\n|       b=\"c\"",
+   "compatMode": "BackCompat"
   },
   {
    "id": "before_attribute_value_gt",
    "html": "<a b=>x",
-   "dump": "| <html>\n|   <head>\n|   <body>\n|     <a>\n|       b=\"\"\n|       \"x\""
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     <a>\n|       b=\"\"\n|       \"x\"",
+   "compatMode": "BackCompat"
   },
   {
    "id": "attribute_value_newlines",
    "html": "<a b=\"x\ny\r\nz\" c='p\rq'>",
-   "dump": "| <html>\n|   <head>\n|   <body>\n|     <a>\n|       b=\"x\ny\nz\"\n|       c=\"p\nq\""
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     <a>\n|       b=\"x\ny\nz\"\n|       c=\"p\nq\"",
+   "compatMode": "BackCompat"
   },
   {
    "id": "attribute_value_unquoted_specials",
    "html": "<a b=x\"y'z<w=v`u>",
-   "dump": "| <html>\n|   <head>\n|   <body>\n|     <a>\n|       b=\"x\"y'z<w=v`u\""
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     <a>\n|       b=\"x\"y'z<w=v`u\"",
+   "compatMode": "BackCompat"
   },
   {
    "id": "after_attribute_value_quoted_missing_space",
    "html": "<a b=\"x\"c=d>",
-   "dump": "| <html>\n|   <head>\n|   <body>\n|     <a>\n|       b=\"x\"\n|       c=\"d\""
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     <a>\n|       b=\"x\"\n|       c=\"d\"",
+   "compatMode": "BackCompat"
   },
   {
    "id": "attribute_value_char_refs",
    "html": "<a b='&amp;x' c=&lt;y d=&notit;>",
-   "dump": "| <html>\n|   <head>\n|   <body>\n|     <a>\n|       b=\"&x\"\n|       c=\"<y\"\n|       d=\"&notit;\""
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     <a>\n|       b=\"&x\"\n|       c=\"<y\"\n|       d=\"&notit;\"",
+   "compatMode": "BackCompat"
   },
   {
    "id": "eof_before_attribute_value",
    "html": "<a b=",
-   "dump": "| <html>\n|   <head>\n|   <body>"
+   "dump": "| <html>\n|   <head>\n|   <body>",
+   "compatMode": "BackCompat"
   },
   {
    "id": "eof_in_attribute_name",
    "html": "<a b",
-   "dump": "| <html>\n|   <head>\n|   <body>"
+   "dump": "| <html>\n|   <head>\n|   <body>",
+   "compatMode": "BackCompat"
   },
   {
    "id": "comment_less_than_bang",
    "html": "<!--a<!b-->",
-   "dump": "| <!-- a<!b -->\n| <html>\n|   <head>\n|   <body>"
+   "dump": "| <!-- a<!b -->\n| <html>\n|   <head>\n|   <body>",
+   "compatMode": "BackCompat"
   },
   {
    "id": "comment_less_than_less_than",
    "html": "<!--a<<b-->",
-   "dump": "| <!-- a<<b -->\n| <html>\n|   <head>\n|   <body>"
+   "dump": "| <!-- a<<b -->\n| <html>\n|   <head>\n|   <body>",
+   "compatMode": "BackCompat"
   },
   {
    "id": "comment_less_than_bang_dash_other",
    "html": "<!--a<!-b-->",
-   "dump": "| <!-- a<!-b -->\n| <html>\n|   <head>\n|   <body>"
+   "dump": "| <!-- a<!-b -->\n| <html>\n|   <head>\n|   <body>",
+   "compatMode": "BackCompat"
   },
   {
    "id": "comment_nested_open",
    "html": "<!--a<!--b-->",
-   "dump": "| <!-- a<!--b -->\n| <html>\n|   <head>\n|   <body>"
+   "dump": "| <!-- a<!--b -->\n| <html>\n|   <head>\n|   <body>",
+   "compatMode": "BackCompat"
   },
   {
    "id": "comment_nested_open_close",
    "html": "<!--a<!---->",
-   "dump": "| <!-- a<!-- -->\n| <html>\n|   <head>\n|   <body>"
+   "dump": "| <!-- a<!-- -->\n| <html>\n|   <head>\n|   <body>",
+   "compatMode": "BackCompat"
   },
   {
    "id": "comment_nested_open_gt",
    "html": "<!--a<!-->b",
-   "dump": "| <!-- a<! -->\n| <html>\n|   <head>\n|   <body>\n|     \"b\""
+   "dump": "| <!-- a<! -->\n| <html>\n|   <head>\n|   <body>\n|     \"b\"",
+   "compatMode": "BackCompat"
   },
   {
    "id": "comment_end_bang_dash",
    "html": "<!--a--!-b-->",
-   "dump": "| <!-- a--!-b -->\n| <html>\n|   <head>\n|   <body>"
+   "dump": "| <!-- a--!-b -->\n| <html>\n|   <head>\n|   <body>",
+   "compatMode": "BackCompat"
   },
   {
    "id": "comment_end_bang_gt",
    "html": "<!--a--!>b",
-   "dump": "| <!-- a -->\n| <html>\n|   <head>\n|   <body>\n|     \"b\""
+   "dump": "| <!-- a -->\n| <html>\n|   <head>\n|   <body>\n|     \"b\"",
+   "compatMode": "BackCompat"
   },
   {
    "id": "eof_comment_less_than_bang",
    "html": "<!--a<!",
-   "dump": "| <!-- a<! -->\n| <html>\n|   <head>\n|   <body>"
+   "dump": "| <!-- a<! -->\n| <html>\n|   <head>\n|   <body>",
+   "compatMode": "BackCompat"
   },
   {
    "id": "eof_comment_less_than_bang_dash",
    "html": "<!--a<!-",
-   "dump": "| <!-- a<! -->\n| <html>\n|   <head>\n|   <body>"
+   "dump": "| <!-- a<! -->\n| <html>\n|   <head>\n|   <body>",
+   "compatMode": "BackCompat"
   },
   {
    "id": "eof_comment_less_than_bang_dash_dash",
    "html": "<!--a<!--",
-   "dump": "| <!-- a<! -->\n| <html>\n|   <head>\n|   <body>"
+   "dump": "| <!-- a<! -->\n| <html>\n|   <head>\n|   <body>",
+   "compatMode": "BackCompat"
   },
   {
    "id": "markup_declaration_bogus",
    "html": "<!x>y<![CDATA[z]]>",
-   "dump": "| <!-- x -->\n| <html>\n|   <head>\n|   <body>\n|     \"y\"\n|     <!-- [CDATA[z]] -->"
+   "dump": "| <!-- x -->\n| <html>\n|   <head>\n|   <body>\n|     \"y\"\n|     <!-- [CDATA[z]] -->",
+   "compatMode": "BackCompat"
   },
   {
    "id": "markup_declaration_eof_dash",
    "html": "<!-",
-   "dump": "| <!-- - -->\n| <html>\n|   <head>\n|   <body>"
+   "dump": "| <!-- - -->\n| <html>\n|   <head>\n|   <body>",
+   "compatMode": "BackCompat"
   },
   {
    "id": "doctype_uppercase_name",
    "html": "<!DOCTYPE HTML>",
-   "dump": "| <!DOCTYPE html>\n| <html>\n|   <head>\n|   <body>"
+   "dump": "| <!DOCTYPE html>\n| <html>\n|   <head>\n|   <body>",
+   "compatMode": "CSS1Compat"
   },
   {
    "id": "doctype_crlf_before_keyword",
    "html": "<!DOCTYPE html\r\nPUBLIC \"p\" \"s\">",
-   "dump": "| <!DOCTYPE html \"p\" \"s\">\n| <html>\n|   <head>\n|   <body>"
+   "dump": "| <!DOCTYPE html \"p\" \"s\">\n| <html>\n|   <head>\n|   <body>",
+   "compatMode": "CSS1Compat"
   },
   {
    "id": "doctype_eof_in_keyword",
    "html": "<!DOCTYPE html PUBL",
-   "dump": "| <!DOCTYPE html>\n| <html>\n|   <head>\n|   <body>"
+   "dump": "| <!DOCTYPE html>\n| <html>\n|   <head>\n|   <body>",
+   "compatMode": "BackCompat"
   },
   {
    "id": "doctype_public_double_gt",
    "html": "<!DOCTYPE html PUBLIC \"a>b",
-   "dump": "| <!DOCTYPE html \"a\" \"\">\n| <html>\n|   <head>\n|   <body>\n|     \"b\""
+   "dump": "| <!DOCTYPE html \"a\" \"\">\n| <html>\n|   <head>\n|   <body>\n|     \"b\"",
+   "compatMode": "BackCompat"
   },
   {
    "id": "doctype_public_single_gt",
    "html": "<!DOCTYPE html PUBLIC 'a>b",
-   "dump": "| <!DOCTYPE html \"a\" \"\">\n| <html>\n|   <head>\n|   <body>\n|     \"b\""
+   "dump": "| <!DOCTYPE html \"a\" \"\">\n| <html>\n|   <head>\n|   <body>\n|     \"b\"",
+   "compatMode": "BackCompat"
   },
   {
    "id": "doctype_after_public_whitespace",
    "html": "<!DOCTYPE html PUBLIC \"a\"  >",
-   "dump": "| <!DOCTYPE html \"a\" \"\">\n| <html>\n|   <head>\n|   <body>"
+   "dump": "| <!DOCTYPE html \"a\" \"\">\n| <html>\n|   <head>\n|   <body>",
+   "compatMode": "CSS1Compat"
   },
   {
    "id": "doctype_after_system_bogus",
    "html": "<!DOCTYPE html SYSTEM \"a\" x>",
-   "dump": "| <!DOCTYPE html \"\" \"a\">\n| <html>\n|   <head>\n|   <body>"
+   "dump": "| <!DOCTYPE html \"\" \"a\">\n| <html>\n|   <head>\n|   <body>",
+   "compatMode": "CSS1Compat"
   },
   {
    "id": "doctype_after_system_whitespace",
    "html": "<!DOCTYPE html SYSTEM \"a\"  >",
-   "dump": "| <!DOCTYPE html \"\" \"a\">\n| <html>\n|   <head>\n|   <body>"
+   "dump": "| <!DOCTYPE html \"\" \"a\">\n| <html>\n|   <head>\n|   <body>",
+   "compatMode": "CSS1Compat"
   },
   {
    "id": "doctype_between_single_system",
    "html": "<!DOCTYPE html PUBLIC \"a\" 'b'>",
-   "dump": "| <!DOCTYPE html \"a\" \"b\">\n| <html>\n|   <head>\n|   <body>"
+   "dump": "| <!DOCTYPE html \"a\" \"b\">\n| <html>\n|   <head>\n|   <body>",
+   "compatMode": "CSS1Compat"
   },
   {
    "id": "doctype_between_whitespace_gt",
    "html": "<!DOCTYPE html PUBLIC \"a\" \n>",
-   "dump": "| <!DOCTYPE html \"a\" \"\">\n| <html>\n|   <head>\n|   <body>"
+   "dump": "| <!DOCTYPE html \"a\" \"\">\n| <html>\n|   <head>\n|   <body>",
+   "compatMode": "CSS1Compat"
   },
   {
    "id": "eof_before_doctype_name",
    "html": "<!DOCTYPE ",
-   "dump": "| <!DOCTYPE >\n| <html>\n|   <head>\n|   <body>"
+   "dump": "| <!DOCTYPE >\n| <html>\n|   <head>\n|   <body>",
+   "compatMode": "BackCompat"
   },
   {
    "id": "eof_between_doctype_identifiers",
    "html": "<!DOCTYPE html PUBLIC \"a\" ",
-   "dump": "| <!DOCTYPE html \"a\" \"\">\n| <html>\n|   <head>\n|   <body>"
+   "dump": "| <!DOCTYPE html \"a\" \"\">\n| <html>\n|   <head>\n|   <body>",
+   "compatMode": "BackCompat"
   },
   {
    "id": "eof_bogus_doctype",
    "html": "<!DOCTYPE html x",
-   "dump": "| <!DOCTYPE html>\n| <html>\n|   <head>\n|   <body>"
+   "dump": "| <!DOCTYPE html>\n| <html>\n|   <head>\n|   <body>",
+   "compatMode": "BackCompat"
   },
   {
    "id": "eof_doctype_system_single",
    "html": "<!DOCTYPE html SYSTEM 'a",
-   "dump": "| <!DOCTYPE html \"\" \"a\">\n| <html>\n|   <head>\n|   <body>"
+   "dump": "| <!DOCTYPE html \"\" \"a\">\n| <html>\n|   <head>\n|   <body>",
+   "compatMode": "BackCompat"
+  },
+  {
+   "id": "doctype_trailing_space",
+   "html": "<!DOCTYPE html >",
+   "dump": "| <!DOCTYPE html>\n| <html>\n|   <head>\n|   <body>",
+   "compatMode": "CSS1Compat"
+  },
+  {
+   "id": "doctype_lone_cr_before_keyword",
+   "html": "<!DOCTYPE html\rPUBLIC \"-//W3C//DTD XHTML 1.0 Strict//EN\" \"s\">",
+   "dump": "| <!DOCTYPE html \"-//W3C//DTD XHTML 1.0 Strict//EN\" \"s\">\n| <html>\n|   <head>\n|   <body>",
+   "compatMode": "CSS1Compat"
+  },
+  {
+   "id": "doctype_public_strict_no_system",
+   "html": "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Strict//EN\">",
+   "dump": "| <!DOCTYPE html \"-//W3C//DTD XHTML 1.0 Strict//EN\" \"\">\n| <html>\n|   <head>\n|   <body>",
+   "compatMode": "CSS1Compat"
+  },
+  {
+   "id": "doctype_public_strict_space_gt",
+   "html": "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Strict//EN\" >",
+   "dump": "| <!DOCTYPE html \"-//W3C//DTD XHTML 1.0 Strict//EN\" \"\">\n| <html>\n|   <head>\n|   <body>",
+   "compatMode": "CSS1Compat"
+  },
+  {
+   "id": "doctype_transitional_no_system",
+   "html": "<!DOCTYPE html PUBLIC \"-//W3C//DTD HTML 4.01 Transitional//EN\">",
+   "dump": "| <!DOCTYPE html \"-//W3C//DTD HTML 4.01 Transitional//EN\" \"\">\n| <html>\n|   <head>\n|   <body>",
+   "compatMode": "BackCompat"
+  },
+  {
+   "id": "doctype_transitional_empty_system",
+   "html": "<!DOCTYPE html PUBLIC \"-//W3C//DTD HTML 4.01 Transitional//EN\" \"\">",
+   "dump": "| <!DOCTYPE html \"-//W3C//DTD HTML 4.01 Transitional//EN\" \"\">\n| <html>\n|   <head>\n|   <body>",
+   "compatMode": "BackCompat"
+  },
+  {
+   "id": "doctype_transitional_single_empty_system",
+   "html": "<!DOCTYPE html PUBLIC '-//W3C//DTD HTML 4.01 Transitional//EN' ''>",
+   "dump": "| <!DOCTYPE html \"-//W3C//DTD HTML 4.01 Transitional//EN\" \"\">\n| <html>\n|   <head>\n|   <body>",
+   "compatMode": "BackCompat"
+  },
+  {
+   "id": "doctype_transitional_empty_system_table",
+   "html": "<!DOCTYPE html PUBLIC \"-//W3C//DTD HTML 4.01 Transitional//EN\" \"\"><p><table>",
+   "dump": "| <!DOCTYPE html \"-//W3C//DTD HTML 4.01 Transitional//EN\" \"\">\n| <html>\n|   <head>\n|   <body>\n|     <p>\n|       <table>",
+   "compatMode": "BackCompat"
+  },
+  {
+   "id": "doctype_frameset_empty_system",
+   "html": "<!DOCTYPE html PUBLIC \"-//W3C//DTD HTML 4.01 Frameset//EN\" \"\"><p><table>",
+   "dump": "| <!DOCTYPE html \"-//W3C//DTD HTML 4.01 Frameset//EN\" \"\">\n| <html>\n|   <head>\n|   <body>\n|     <p>\n|       <table>",
+   "compatMode": "BackCompat"
+  },
+  {
+   "id": "doctype_empty_public_and_system",
+   "html": "<!DOCTYPE html PUBLIC \"\" \"\"><p><table>",
+   "dump": "| <!DOCTYPE html>\n| <html>\n|   <head>\n|   <body>\n|     <p>\n|     <table>",
+   "compatMode": "CSS1Compat"
+  },
+  {
+   "id": "doctype_system_then_space",
+   "html": "<!DOCTYPE html SYSTEM \"about:legacy-compat\" >",
+   "dump": "| <!DOCTYPE html \"\" \"about:legacy-compat\">\n| <html>\n|   <head>\n|   <body>",
+   "compatMode": "CSS1Compat"
+  },
+  {
+   "id": "doctype_public_empty",
+   "html": "<!DOCTYPE html PUBLIC \"\">",
+   "dump": "| <!DOCTYPE html>\n| <html>\n|   <head>\n|   <body>",
+   "compatMode": "CSS1Compat"
+  },
+  {
+   "id": "doctype_public_space_system",
+   "html": "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Strict//EN\"\n\"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd\">",
+   "dump": "| <!DOCTYPE html \"-//W3C//DTD XHTML 1.0 Strict//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd\">\n| <html>\n|   <head>\n|   <body>",
+   "compatMode": "CSS1Compat"
   },
   {
    "id": "end_tag_open_gt",
    "html": "a</>b",
-   "dump": "| <html>\n|   <head>\n|   <body>\n|     \"ab\""
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     \"ab\"",
+   "compatMode": "BackCompat"
   },
   {
    "id": "eof_end_tag_open",
    "html": "a</",
-   "dump": "| <html>\n|   <head>\n|   <body>\n|     \"a</\""
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     \"a</\"",
+   "compatMode": "BackCompat"
   },
   {
    "id": "eof_tag_open",
    "html": "a<",
-   "dump": "| <html>\n|   <head>\n|   <body>\n|     \"a<\""
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     \"a<\"",
+   "compatMode": "BackCompat"
   },
   {
    "id": "char_ref_named_prefix_semicolon",
    "html": "x&a;y",
-   "dump": "| <html>\n|   <head>\n|   <body>\n|     \"x&a;y\""
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     \"x&a;y\"",
+   "compatMode": "BackCompat"
   },
   {
    "id": "char_ref_bogus_name_space",
    "html": "x&zz y",
-   "dump": "| <html>\n|   <head>\n|   <body>\n|     \"x&zz y\""
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     \"x&zz y\"",
+   "compatMode": "BackCompat"
   },
   {
    "id": "char_ref_bogus_name_semicolon",
    "html": "x&zzq;y",
-   "dump": "| <html>\n|   <head>\n|   <body>\n|     \"x&zzq;y\""
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     \"x&zzq;y\"",
+   "compatMode": "BackCompat"
   },
   {
    "id": "eof_char_ref_bogus_name",
    "html": "x&zzzz",
-   "dump": "| <html>\n|   <head>\n|   <body>\n|     \"x&zzzz\""
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     \"x&zzzz\"",
+   "compatMode": "BackCompat"
   },
   {
    "id": "eof_char_ref_named_prefix",
    "html": "x&noti",
-   "dump": "| <html>\n|   <head>\n|   <body>\n|     \"x¬i\""
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     \"x¬i\"",
+   "compatMode": "BackCompat"
   },
   {
    "id": "eof_char_ref_numeric",
    "html": "x&#x41",
-   "dump": "| <html>\n|   <head>\n|   <body>\n|     \"xA\""
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     \"xA\"",
+   "compatMode": "BackCompat"
   },
   {
    "id": "eof_char_ref_octothorpe",
    "html": "x&#",
-   "dump": "| <html>\n|   <head>\n|   <body>\n|     \"x&#\""
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     \"x&#\"",
+   "compatMode": "BackCompat"
   },
   {
    "id": "char_ref_numeric_no_semicolon",
    "html": "x&#65y&#x42 z",
-   "dump": "| <html>\n|   <head>\n|   <body>\n|     \"xAyB z\""
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     \"xAyB z\"",
+   "compatMode": "BackCompat"
   },
   {
    "id": "char_ref_numeric_invalid",
    "html": "&#0;&#xD800;&#x110000;&#x80;&#x81;&#1;&#xFFFE;&#99999999999;",
-   "dump": "| <html>\n|   <head>\n|   <body>\n|     \"���€\u0001￾�\""
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     \"���€\u0001￾�\"",
+   "compatMode": "BackCompat"
   },
   {
    "id": "char_ref_hex_no_digits",
    "html": "&#xg;&#g;&#X41;",
-   "dump": "| <html>\n|   <head>\n|   <body>\n|     \"&#xg;&#g;A\""
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     \"&#xg;&#g;A\"",
+   "compatMode": "BackCompat"
+  },
+  {
+   "id": "char_ref_numeric_limits",
+   "html": "&#x10FFFF;|&#x110000;|&#4294967393;|&#x100000061;|&#1114111;",
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     \"􏿿|�|�|�|􏿿\"",
+   "compatMode": "BackCompat"
   },
   {
    "id": "declarative_shadow_root_not_attached",
    "html": "<div><template shadowrootmode=\"open\"><b>x</b></template></div>",
-   "dump": "| <html>\n|   <head>\n|   <body>\n|     <div>\n|       <template>\n|         shadowrootmode=\"open\"\n|         content\n|           <b>\n|             \"x\""
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     <div>\n|       <template>\n|         shadowrootmode=\"open\"\n|         content\n|           <b>\n|             \"x\"",
+   "compatMode": "BackCompat"
   },
   {
    "id": "annotation_xml_integration_point",
    "html": "<math><annotation-xml encoding=\"text/html\"><div>x</div></annotation-xml></math>",
-   "dump": "| <html>\n|   <head>\n|   <body>\n|     <math math>\n|       <math annotation-xml>\n|         encoding=\"text/html\"\n|         <div>\n|           \"x\""
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     <math math>\n|       <math annotation-xml>\n|         encoding=\"text/html\"\n|         <div>\n|           \"x\"",
+   "compatMode": "BackCompat"
   },
   {
    "id": "form_association",
    "html": "<form id=f><table><input name=a></table></form>",
-   "dump": "| <html>\n|   <head>\n|   <body>\n|     <form>\n|       id=\"f\"\n|       <input>\n|         name=\"a\"\n|       <table>"
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     <form>\n|       id=\"f\"\n|       <input>\n|         name=\"a\"\n|       <table>",
+   "compatMode": "BackCompat"
   },
   {
    "id": "foreign_attributes_prefixed",
    "html": "<svg xlink:href=\"u\" xml:lang=\"en\"><a xlink:title=\"t\"/></svg>",
-   "dump": "| <html>\n|   <head>\n|   <body>\n|     <svg svg>\n|       xlink href=\"u\"\n|       xml lang=\"en\"\n|       <svg a>\n|         xlink title=\"t\""
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     <svg svg>\n|       xlink href=\"u\"\n|       xml lang=\"en\"\n|       <svg a>\n|         xlink title=\"t\"",
+   "compatMode": "BackCompat"
   },
   {
    "id": "meta_charset",
    "html": "<meta charset=\"utf-8\"><p>x</p>",
-   "dump": "| <html>\n|   <head>\n|     <meta>\n|       charset=\"utf-8\"\n|   <body>\n|     <p>\n|       \"x\""
+   "dump": "| <html>\n|   <head>\n|     <meta>\n|       charset=\"utf-8\"\n|   <body>\n|     <p>\n|       \"x\"",
+   "compatMode": "BackCompat"
+  },
+  {
+   "id": "selectedcontent_clone",
+   "html": "<select><button><selectedcontent></selectedcontent></button><option>A</option><option selected>B</option></select>",
+   "dump": "| <html>\n|   <head>\n|   <body>\n|     <select>\n|       <button>\n|         <selectedcontent>\n|           \"B\"\n|       <option>\n|         \"A\"\n|       <option>\n|         selected=\"\"\n|         \"B\"",
+   "compatMode": "BackCompat"
   },
   {
    "id": "script_end_tags",
    "html": "<script>a</script><script>b</script>c",
-   "dump": "| <html>\n|   <head>\n|     <script>\n|       \"a\"\n|     <script>\n|       \"b\"\n|   <body>\n|     \"c\""
+   "dump": "| <html>\n|   <head>\n|     <script>\n|       \"a\"\n|     <script>\n|       \"b\"\n|   <body>\n|     \"c\"",
+   "compatMode": "BackCompat"
   },
   {
    "id": "fragment_textarea_rcdata",
@@ -2236,10 +2405,27 @@
    }
   },
   {
+   "id": "contextual_fragment_form",
+   "values": {
+    "insideForm": [
+     "b"
+    ],
+    "insideSvgForm": [
+     "form",
+     "b"
+    ],
+    "insideDiv": [
+     "form",
+     "b"
+    ]
+   }
+  },
+  {
    "id": "contextual_fragment_is",
    "values": {
     "isDefined": false,
-    "plainDefined": true
+    "plainDefined": true,
+    "svgIsDefined": true
    }
   }
  ]

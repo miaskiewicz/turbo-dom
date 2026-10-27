@@ -440,3 +440,136 @@ fn utf16_attribute_updates_record_the_replaced_value() {
     );
     assert_eq!(tree.get_attribute(el, "b"), Some("x"));
 }
+
+#[test]
+fn utf16_serializer_escapes_text_and_attributes_differently() {
+    let mut tree = Tree::parse("");
+    let i = tree.create_element("i");
+    tree.set_attribute(i, "title", "a\"<>&\u{a0}");
+    let text = tree.create_text_node("\"<>&\u{a0}");
+    tree.append_child(i, text);
+    let holder = tree.create_element("div");
+    tree.append_child(holder, i);
+    let expected = "<i title=\"a&quot;<>&amp;&nbsp;\">\"&lt;&gt;&amp;&nbsp;</i>";
+    assert_eq!(serialize_inner(&tree, holder), expected);
+    assert_eq!(serialize_inner_utf16(&tree, holder), u(expected));
+}
+
+#[test]
+fn namespace_uris_select_the_namespace_and_lone_unit_names_compare_by_units() {
+    let mut tree = Tree::parse("");
+    for (uri, ns) in [
+        ("http://www.w3.org/1999/xhtml", Namespace::Html),
+        ("http://www.w3.org/2000/svg", Namespace::Svg),
+        ("http://www.w3.org/1998/Math/MathML", Namespace::MathMl),
+        ("urn:other", Namespace::Other),
+    ] {
+        let el = tree.create_element_namespace_units(Some(&u(uri)), &u("x"));
+        assert_eq!(tree.namespace(el), ns, "{uri}");
+        assert_eq!(tree.namespace_uri_utf16(el), Some(u(uri)));
+    }
+    let none = tree.create_element_namespace_units(Some(&[]), &u("x"));
+    assert_eq!(
+        (tree.namespace(none), tree.namespace_uri(none)),
+        (Namespace::Other, None)
+    );
+    // `*-of-type` compares lone-unit local names by their units
+    let host = tree.create_element("div");
+    let kids = [
+        tree.create_element_units(&[0x78, 0xd800]),
+        tree.create_element_units(&[0x78, 0xd800]),
+        tree.create_element_units(&[0x78, 0xdc00]),
+    ];
+    for kid in kids {
+        tree.append_child(host, kid);
+    }
+    let first: Vec<bool> = kids
+        .iter()
+        .map(|&k| tree.matches(k, ":first-of-type"))
+        .collect();
+    assert_eq!(first, [true, false, true]);
+}
+
+#[test]
+fn source_positions_count_a_lone_carriage_return_as_a_line_break() {
+    // a lone CR, a CRLF pair and an LF each end one line; the offset counts every unit
+    let tree = Tree::parse_with_source_positions("a\r<span></span>\r\n<p></p>\n<div></div>");
+    let at = |tag: &str| {
+        let p = tree
+            .source_position(tree.query_selector(tag).unwrap())
+            .unwrap();
+        (p.utf16_offset, p.line, p.column)
+    };
+    assert_eq!(at("span"), (8, 2, 7));
+    assert_eq!(at("p"), (20, 3, 4));
+    assert_eq!(at("div"), (30, 4, 6));
+    // elements an end tag implies have no position (only start tags record one)
+    let implied = Tree::parse_with_source_positions("<div></p></div>");
+    let p = implied.query_selector("p").unwrap();
+    assert_eq!(implied.source_position(p), None);
+    let div = implied.query_selector("div").unwrap();
+    assert_eq!(
+        implied.source_position(div).map(|p| p.utf16_offset),
+        Some(5)
+    );
+    let body = implied.query_selector("body").unwrap();
+    assert_eq!(implied.source_position(body), None);
+}
+
+#[test]
+fn utf16_fragment_insertion_positions_and_records() {
+    let lone = [0x3c, 0x62, 0x3e, 0xd800, 0x3c, 0x2f, 0x62, 0x3e]; // <b>\u{d800}</b>
+    let mut tree = Tree::parse("");
+    let host = tree.create_element("div");
+    let first = tree.create_element("i");
+    tree.append_child(host, first);
+    tree.insert_adjacent_html_utf16(host, "afterbegin", &lone);
+    tree.insert_adjacent_html_utf16(host, "beforeend", &lone);
+    let names: Vec<_> = tree
+        .children(host)
+        .iter()
+        .map(|&c| tree.local_name(c).unwrap().to_string())
+        .collect();
+    assert_eq!(names, ["b", "i", "b"]);
+    let b = tree.first_child(host).unwrap();
+    assert_eq!(tree.text_content_utf16(b), [0xd800]);
+    // set_inner_html_utf16 records one childList batch while recording, none for empty -> empty
+    tree.start_recording();
+    let empty = tree.create_element("p");
+    tree.set_inner_html_utf16(empty, &[0xd800, 0x3c]);
+    tree.set_inner_html_utf16(empty, &[0xdc00]);
+    let full = tree.create_element("p");
+    tree.set_inner_html_utf16(full, &[0xd800]);
+    let events = tree.take_mutation_events();
+    let shapes: Vec<_> = events
+        .iter()
+        .map(|e| {
+            (
+                e.record.target(),
+                e.record.added().len(),
+                e.record.removed().len(),
+            )
+        })
+        .collect();
+    assert_eq!(shapes, [(empty, 1, 0), (empty, 1, 1), (full, 1, 0)]);
+    let silent = tree.create_element("p");
+    tree.set_inner_html_utf16(silent, &[0xd800]);
+    tree.set_inner_html_utf16(silent, &[]);
+    let removed: Vec<_> = tree
+        .take_mutation_events()
+        .iter()
+        .map(|e| (e.record.added().len(), e.record.removed().len()))
+        .collect();
+    assert_eq!(removed, [(1, 0), (0, 1)]);
+    let none = tree.create_element("p");
+    tree.set_inner_html_utf16(none, &[0xd800, 0x3c, 0x21, 0x2d, 0x2d]); // `<!--` comment only
+    tree.set_inner_html_utf16(none, &[]);
+    assert_eq!(tree.take_mutation_events().len(), 2);
+    let quiet = tree.create_element("p");
+    tree.set_inner_html_utf16(quiet, &[]);
+    assert_eq!(
+        tree.take_mutation_events().len(),
+        0,
+        "empty -> empty records nothing (scalar path)"
+    );
+}

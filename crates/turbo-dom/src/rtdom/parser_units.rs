@@ -135,7 +135,7 @@ fn parsed_with_options(
     };
     let initial_state = fragment.then(|| builder.tokenizer_state_for_context_elem(false));
     let tokenizer = Tokenizer::new(
-        builder,
+        core::ChromeTokens(builder),
         TokenizerOpts {
             initial_state,
             ..Default::default()
@@ -146,7 +146,7 @@ fn parsed_with_options(
     // Parser indicators need no host work: this API never executes scripts.
     while !matches!(tokenizer.feed(&queue), html5ever::TokenizerResult::Done) {}
     tokenizer.end();
-    tokenizer.sink.sink
+    tokenizer.sink.0.sink
 }
 impl Tree {
     fn fragment_context(
