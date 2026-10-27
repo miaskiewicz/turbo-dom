@@ -7372,6 +7372,32 @@ pub fn register_css_parser(scope: &mut v8::PinScope) {
         normalize_computed_color,
     );
     bind_method(scope, global, "__canvasColorNative", canvas_color_native);
+    bind_method(
+        scope,
+        global,
+        "__computedStyleVersion",
+        computed_style_version,
+    );
+}
+
+/// The mutation version of the tree that owns `node` (turbo-test#125): getComputedStyle keys a
+/// reused computed style on it, so any DOM change (structure, attributes, text, form and custom
+/// element state the selector engine reads) drops it. `undefined` for anything but a node.
+fn computed_style_version(
+    scope: &mut v8::PinScope,
+    args: v8::FunctionCallbackArguments,
+    mut result: v8::ReturnValue,
+) {
+    let Ok(node) = v8::Local::<v8::Object>::try_from(args.get(0)) else {
+        return;
+    };
+    let _owner = DomScope::for_object(scope, node);
+    if handle_of(scope, node).is_none() {
+        return;
+    }
+    if let Some(version) = with_tree(|tree| tree.version) {
+        result.set(v8::Number::new(scope, version as f64).into());
+    }
 }
 
 /// Install `window`/`document` + the DOM onto `globalThis` for the current context.

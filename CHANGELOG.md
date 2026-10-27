@@ -7,6 +7,22 @@ at the time); this file reconstructs them from history.
 
 ## [Unreleased]
 
+### Changed — getComputedStyle reuses an element's computed style until an input changes (K1, miaskiewicz/turbo-test#125)
+- turbo-dom-browser-env's `getComputedStyle` recomputed the whole cascade — every sheet's
+  rules matched against the element and, for inheritance, every ancestor — on each call
+  and on each property read of a returned declaration (five reads of an unchanged element
+  rescanned the document's sheets 315 times). An element's computed style is now reused
+  until something it was computed from changes, keyed on the element's tree version (a new
+  `__computedStyleVersion` native: any DOM change), a CSSOM epoch (every stylesheet, rule,
+  declaration, disabled-sheet, linked / imported sheet and `adoptedStyleSheets` change),
+  its owner document, its top-layer state and font context, and the ancestor styles it
+  read. A computation that depended on something outside that key is never reused: a rule
+  whose selector reads live form / popover / dialog / view-transition / interest state and
+  could match, an animated element, the fullscreen element (viewport-sized) and an
+  `@import` with a media query. Every call still returns its own declaration. Values are
+  unchanged (all Chrome 156 controls pass); `css_live_tests` / `computed_defaults_tests`
+  pin the reuse (work count) and each invalidation.
+
 ### Fixed — undecodable images paint nothing, truncated AVIFs are broken (P5b-G1, miaskiewicz/turbo-dom#107, Chrome 156 controls)
 - An image whose pixels do not decode paints nothing (miaskiewicz/turbo-dom#107): an
   image Chrome 156 loads and sizes but cannot paint — a frame-corrupt AVIF, a PNG cut

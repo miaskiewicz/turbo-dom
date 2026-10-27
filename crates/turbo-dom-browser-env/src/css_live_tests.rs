@@ -999,7 +999,6 @@ fn adopted_computed_sheet_copy_does_not_expose_private_collection_to_array_sette
 // changes. The work counter is the document sheet scan (`querySelectorAll('style,link')`) every
 // cascade computation starts with; values are the ones a fresh computation reports.
 #[test]
-#[ignore = "turbo-test#125: fails until the fix"]
 fn computed_style_reuses_the_cascade_until_the_document_changes() {
     let value = run(
         "<!doctype html><head><style id=s>.box {color:rgb(1, 2, 3);width:200px} .box span {display:block}</style></head><body><div class=box id=a><p><span id=t style='width:50%'>x</span></p></div></body>",

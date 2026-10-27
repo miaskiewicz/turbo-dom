@@ -960,6 +960,8 @@
   function index(animation, from, to) {
     if (from) { const entries = targets.get(from); if (entries) { const at = entries.indexOf(animation); if (at >= 0) entries.splice(at, 1); } }
     if (to) { let entries = targets.get(to); if (!entries) targets.set(to, entries = []); if (entries.indexOf(animation) < 0) push(entries, animation); }
+    // The targets' computed styles change with their animations (turbo-test#125: drop reuse).
+    if (ns.invalidateComputedStyles) ns.invalidateComputedStyles();
   }
   // https://drafts.csswg.org/web-animations-1/#removing-replaced-animations
   function replaceable(record) {
@@ -1079,6 +1081,9 @@
     return out;
   }
   let suppressStyle = false;
+  // Whether any animation targets `element`: its computed style follows the timeline, so
+  // getComputedStyle never reuses it (turbo-test#125).
+  ns.hasAnimations = function (element) { const entries = targets.get(element); return !!(entries && entries.length); };
   ns.animatedStyle = function (element, read, inherited) {
     if (suppressStyle) return null;
     const stack = effectStack(element, null);

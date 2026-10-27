@@ -4,6 +4,7 @@
   var normalizeComputedColor=g.__normalizeComputedColor;delete g.__normalizeComputedColor;
   var canvasColorNative=g.__canvasColorNative;delete g.__canvasColorNative;
   var computedFontContext=g.__computedFontContext;delete g.__computedFontContext;
+  var computedStyleVersion=g.__computedStyleVersion;delete g.__computedStyleVersion;
   var cssFontNumber=Number,cssFontString=String,cssFontFinite=Number.isFinite,cssFontPrecision=Number.prototype.toPrecision,cssFontLower=String.prototype.toLowerCase;
   var prepareInlineHandler=g.__prepareInlineHandler,noteInlineHandler=g.__noteInlineHandler;delete g.__prepareInlineHandler;delete g.__noteInlineHandler;
   var collectionGet=g.__getCollectionRecord,collectionSet=g.__setCollectionRecord;
@@ -118,7 +119,10 @@
     var pseudo=computedPseudoTarget(arguments[1]);
     // An invalid pseudo-element reads as an empty declaration (turbo-dom#47).
     if(pseudo===null)return __ns.makeComputedStyleDeclaration({},null,null);
-    return computeStyleSnapshot(el,new computedSnapshotMap(),undefined,pseudo||undefined);
+    var snapshot=computeStyleSnapshot(el,new computedSnapshotMap(),undefined,pseudo||undefined);
+    // A reused snapshot is shared: every call still returns its own declaration (Chrome).
+    var entry=!pseudo&&el&&typeof el==='object'?computedSnapshotGet(computedStyleCache,el):null;
+    return entry&&entry.snapshot===snapshot?__ns.cloneComputedStyleDeclaration(snapshot,el):snapshot;
   };
   // Chrome 156 pseudo-elements getComputedStyle computes, without arguments (turbo-dom#47).
   // ::cue and the unknown -webkit- / -internal- names read the element; ::scroll-marker (no
@@ -497,11 +501,96 @@
   // `pseudo` (turbo-dom#30, #47): compute that pseudo-element of `el` instead — its own rules
   // (`sel::pseudo`, the properties it accepts), its UA values, inheritance from `el`
   // (highlights: from the parent's highlight); never cached with `el`'s snapshot.
+  // turbo-test#125: an element's computed style is reused across reads until something it was
+  // computed from changes. The key: the element's tree version (any DOM change: structure,
+  // attributes — inline style included — text, form and custom element state the selector
+  // engine reads), the CSSOM epoch (every stylesheet, rule, declaration and adoption change
+  // bumps it), the element's owner document, its top-layer state (popover / modal / fullscreen),
+  // its font context (host defaults, composed parent) and, recursively, every ancestor snapshot
+  // it read. A computation that read something outside the key is volatile and never reused:
+  // a rule whose selector depends on live form / popover / dialog state and could match, an
+  // animated element, the fullscreen element (viewport-sized), an @import's media query.
+  var computedStyleCache=new computedSnapshotMap(),computedStyleEpoch=0,computedVolatile=false;
+  function invalidateComputedStyles(){computedStyleEpoch++;}
+  __ns.invalidateComputedStyles=invalidateComputedStyles;
+  function computedCacheKey(el){
+    var version;try{version=computedStyleVersion(el);}catch(e){return null;}
+    if(typeof version!=='number')return null;
+    var owner=null;try{owner=cssApply(computedStyleNativeOwner,el,[]);}catch(e){return null;}
+    return {__proto__:null,epoch:computedStyleEpoch,version:version,owner:owner};
+  }
+  // What the key cannot see: the element's top layer and font context.
+  function computedCacheProbe(el){
+    var connected=false;try{connected=cssApply(computedStyleNativeConnected,el,[]);}catch(e){}
+    var layer='';try{if(connected)layer=computedTopLayer(el);}catch(e){}
+    var context=null;try{context=computedFontContext(el);}catch(e){}
+    return context?[layer,context[0],context[1],context[2],context[3],context[4]]:[layer];
+  }
+  function computedProbeEqual(a,b){if(a.length!==b.length)return false;for(var index=0;index<a.length;index++)if(a[index]!==b[index])return false;return true;}
+  function computedCacheHit(el,key,snapshots){
+    var entry=computedSnapshotGet(computedStyleCache,el);
+    if(!entry||entry.epoch!==key.epoch||entry.version!==key.version||entry.owner!==key.owner)return null;
+    if(!computedProbeEqual(entry.probe,computedCacheProbe(el)))return null;
+    for(var index=0;index<entry.deps.length;index+=2)if(computeStyleSnapshot(entry.deps[index],snapshots)!==entry.deps[index+1])return null;
+    return entry.snapshot;
+  }
   function computeStyleSnapshot(el,snapshots,sink,pseudo){
+    if(pseudo||sink||!el||typeof el!=='object')return computeStyleFresh(el,snapshots,sink,pseudo,null);
+    var local=computedSnapshotGet(snapshots,el);if(local)return local;
+    var key=computedCacheKey(el);
+    if(key){var hit=computedCacheHit(el,key,snapshots);if(hit){computedSnapshotSet(snapshots,el,hit);return hit;}}
+    var deps=[],outer=computedVolatile,snapshot,volatile;computedVolatile=false;
+    try{snapshot=computeStyleFresh(el,snapshots,sink,pseudo,deps);volatile=computedVolatile;}finally{computedVolatile=outer;}
+    if(key){
+      var after=computedCacheKey(el);
+      if(volatile||!after||after.epoch!==key.epoch||after.version!==key.version||after.owner!==key.owner)computedSnapshotSet(computedStyleCache,el,null);
+      else computedSnapshotSet(computedStyleCache,el,{__proto__:null,snapshot:snapshot,epoch:key.epoch,version:key.version,owner:key.owner,probe:computedCacheProbe(el),deps:deps});
+    }
+    return snapshot;
+  }
+  // Selector-dependent volatility: the pseudo-classes whose truth is live binding state (form
+  // control state, open popovers, modal dialogs, active view transitions, interest invokers)
+  // rather than the tree. A rule using one makes
+  // the computation volatile when it matches, or when it could match in another state: its
+  // selector with every such pseudo-class (and every non-matching-list function containing one)
+  // relaxed to `:is(*)` matches. Relaxing only widens a selector, so a rule that cannot match
+  // even relaxed cannot match in any state.
+  var computedStatePattern=/:(?:checked|indeterminate|default|placeholder-shown|read-only|read-write|in-range|out-of-range|valid|invalid|user-valid|user-invalid|enabled|disabled|required|optional|popover-open|modal|open|active-view-transition|active-view-transition-type|interest-source|interest-target)(?![\w-])/i;
+  var computedStateName=/^(?:checked|indeterminate|default|placeholder-shown|read-only|read-write|in-range|out-of-range|valid|invalid|user-valid|user-invalid|enabled|disabled|required|optional|popover-open|modal|open|active-view-transition|active-view-transition-type|interest-source|interest-target)$/i;
+  var computedListFunction=/^(?:is|where|has|-webkit-any|matches)$/i;
+  var computedRelaxed={__proto__:null},computedRelaxedCount=0;
+  function computedRelaxSelector(text){
+    var out='',index=0;
+    while(index<text.length){
+      var c=text[index];
+      if(c==='\\')return '*';
+      if(c==='"'||c==="'"){var end=index+1;while(end<text.length&&text[end]!==c){if(text[end]==='\\')end++;end++;}out+=text.slice(index,end+1);index=end+1;continue;}
+      if(c!==':'||text[index+1]===':'){if(c===':'){out+='::';index+=2;continue;}out+=c;index++;continue;}
+      var name=cssApply(cssZoomExec,/^[A-Za-z0-9_-]*/,[text.slice(index+1)])[0],after=index+1+name.length;
+      if(text[after]!=='('){out+=cssApply(cssZoomExec,computedStateName,[name])?':is(*)':':'+name;index=after;continue;}
+      var depth=1,close=after+1;
+      while(close<text.length&&depth){var d=text[close];if(d==='\\')return '*';if(d==='"'||d==="'"){var q=close+1;while(q<text.length&&text[q]!==d)q++;close=q+1;continue;}if(d==='(')depth++;else if(d===')')depth--;close++;}
+      var inner=text.slice(after+1,close-1);
+      if(cssApply(cssZoomExec,computedStateName,[name]))out+=':is(*)';
+      else if(cssApply(cssZoomExec,computedListFunction,[name]))out+=':'+name+'('+computedRelaxSelector(inner)+')';
+      else out+=cssApply(cssZoomExec,computedStatePattern,[inner])?':is(*)':text.slice(index,close);
+      index=close;
+    }
+    return out;
+  }
+  function computedStateVolatile(el,selector,matched){
+    if(computedVolatile||!cssApply(cssZoomExec,computedStatePattern,[selector]))return;
+    if(matched){computedVolatile=true;return;}
+    var relaxed=computedRelaxed[selector];
+    if(relaxed===undefined){if(computedRelaxedCount>=4096){computedRelaxed={__proto__:null};computedRelaxedCount=0;}relaxed=computedRelaxed[selector]=computedRelaxSelector(selector);computedRelaxedCount++;}
+    var could=true;try{could=!!cssApply(computedStyleNativeMatches,el,[relaxed]);}catch(e){}
+    if(could)computedVolatile=true;
+  }
+  function computeStyleFresh(el,snapshots,sink,pseudo,deps){
     var cached=!pseudo&&el&&computedSnapshotGet(snapshots,el);if(cached)return cached;
     // Percentage lookup may visit several ancestors before font inheritance asks
     // for the immediate parent again. Reuse each resolved ancestor only in this read.
-    function parentStyle(node){return computeStyleSnapshot(node,snapshots);}
+    function parentStyle(node){var style=computeStyleSnapshot(node,snapshots);if(deps&&deps[deps.length-2]!==node){deps[deps.length]=node;deps[deps.length]=style;}return style;}
     // A disconnected element has no style (turbo-dom#67): every value reads "" until it is
     // connected again (the declaration stays live). Typed OM's cascade read (`sink`) still
     // reports the cascaded values.
@@ -568,11 +657,12 @@
             // Match the private selector list before touching declarations. Native
             // parsing preserves quoted delimiters that serialized text splitting loses.
             try{matched=cssApply(computedStyleNativeMatches,el,[rule.selectorText]);}catch(e){}
+            if(!pseudo)computedStateVolatile(el,rule.selectorText,matched);
           }else{
             var txt = String(cssRuleText(rule) || ''); var br = txt.indexOf('{'); if (br < 0) continue;
             var sel = txt.slice(0, br).trim(),parts = sel.split(',');
             if(pseudo){try{matched=pseudoRuleMatches(el,sel,pseudo);}catch(e){}parts=[];}
-            for (var pi=0; pi<parts.length; pi++){ var s = parts[pi].trim(); if (!s) continue; try { if (cssApply(computedStyleNativeMatches,el,[s])) { matched = true; break; } } catch(e){} }
+            for (var pi=0; pi<parts.length; pi++){ var s = parts[pi].trim(); if (!s) continue; try { if (cssApply(computedStyleNativeMatches,el,[s])) { matched = true; } } catch(e){} computedStateVolatile(el,s,matched); if (matched) break; }
           }
           if (!matched) continue;
           applyDeclarations(declarationRecord(rule.style),info&&info.accepts);
@@ -598,6 +688,7 @@
     var inheritSnapshot = info && info.parentPseudo ? computeStyleSnapshot(el, snapshots, undefined, info.parentPseudo) : null;
     function inheritedValue(name){ return inheritSnapshot ? computedSnapshotValue(inheritSnapshot,name) : inheritParent ? computedSnapshotValue(parentStyle(inheritParent),name) : ''; }
     // Web Animations compose over cascaded and inline values; !important declarations win.
+    if(!pseudo&&el&&__ns.hasAnimations&&__ns.hasAnimations(el))computedVolatile=true;
     var animated=!pseudo&&el&&__ns.animatedStyle?__ns.animatedStyle(el,function(name){var value=decl[name];return value==null?'':String(value);},inheritedValue):null;
     if(animated)for(var ai=0;ai<animated.length;ai++)if(!priorities[animated[ai][0]])setProp(animated[ai][0],animated[ai][1]);
     var color = decl.color || '';
@@ -708,6 +799,7 @@
     // containing block as a fixed box) are the viewport's innerWidth / innerHeight in px
     // (turbo-dom#58); without a viewport they stay 100%.
     if (!pseudo && layer === 'fullscreen') {
+      computedVolatile = true;
       [['width', g.innerWidth], ['height', g.innerHeight]].forEach(function(pair){
         var size = +pair[1];
         if (size > 0 && cssFontFinite(size)) setProp(pair[0], (Math.round(size * 1000) / 1000) + 'px', true);
@@ -1250,7 +1342,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
   function declarationEntries(name,value){name=propertyAlias(name);if(shorthandName(name))return expandShorthandValue(name,value);var text=longhandText(name,value);return text===null?null:[[name,text[0],null,text[1]]];}
   function parseDeclaration(record,text){if(cssShorthand&&!record.fontFace){record.names=[];record.values=new Map();var list=cssShorthand('declarations',text);for(var index=0;index<list.length;index+=3){var name=list[index];if(name.slice(0,2)!=='--')name=name.toLowerCase();var entries=declarationEntries(name,list[index+1]);if(entries)entries.forEach(function(entry){parsedDeclaration(record,entry[0],entry[1],list[index+2]?'important':'',entry[2],entry[3]);});}return;}parseLegacyDeclaration(record,text);}
   function parseLegacyDeclaration(record,text){record.names=[];record.values=new Map();var selector=record.fontFace?'@font-face':'x',parsed=typeof cssNativeParse==='function'?cssNativeParse(selector+' { '+text+' }'):selector+' { '+text+' }';var body=parsed.slice(parsed.indexOf('{')+1,parsed.lastIndexOf('}'));cssParts(body,';').forEach(function(part){var index=part.indexOf(':');if(index<1)return;var name=part.slice(0,index).trim();if(!record.fontFace&&!name.startsWith('--')&&!knownProperty(name))return;var value=part.slice(index+1).trim(),important=/\s*!important\s*$/i.test(value);if(important)value=value.replace(/\s*!important\s*$/i,'').trim();if(!record.fontFace&&!name.startsWith('--')&&__ns.typedOmValid&&!__ns.typedOmValid(name,value))return;var previous=record.values.get(name);if(previous&&previous.priority&&!important)return;storeDeclaration(record,name,value,important?'important':'');});}
-  function writableDeclaration(record){if(record.readOnly)throw new __ns.DOMException('The declaration is read-only','NoModificationAllowedError');}
+  function writableDeclaration(record){if(record.readOnly)throw new __ns.DOMException('The declaration is read-only','NoModificationAllowedError');invalidateComputedStyles();}
   function commitDeclaration(record){if(record.owner){record.source=declarationText(record);appliedInlineWrite.call(record.owner,record.source);}}
   // removeProperty: a shorthand removes its longhands and returns '' (Chrome).
   function removeDeclaration(record,name){if(!record.fontFace){name=propertyAlias(name);var longhands=shorthandName(name)&&cssShorthand('longhands',name);if(longhands){var removed=false;longhands.forEach(function(longhand){if(record.values.delete(longhand)){record.names.splice(record.names.indexOf(longhand),1);removed=true;}});if(removed)commitDeclaration(record);return '';}}var previous=record.values.get(name);if(!previous)return '';record.values.delete(name);record.names.splice(record.names.indexOf(name),1);commitDeclaration(record);return previous.text;}
@@ -1281,12 +1373,15 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
   var inlineDeclarationReceiver=__ns.domAccessor('nodeType',false,'Element');
   __ns.makeInlineStyleDeclaration=function(element){inlineDeclarationReceiver.call(element);var style=inlineDeclarations.get(element);if(!style){style=cssDeclaration(appliedInlineRead.call(element),element);inlineDeclarations.set(element,style);}return style;};
   var computedStyleReader=g.getComputedStyle;
+  __ns.cloneComputedStyleDeclaration=function(snapshot,element){var source=declarationRecords.get(snapshot),style=cssDeclaration(''),record=declarationRecords.get(style);record.values=source.values;record.names=source.names;record.readOnly=true;record.computed=true;record.fontState=source.fontState;record.refresh=function(){return computedStyleReader(element);};return style;};
   __ns.makeComputedStyleDeclaration=function(values,element,fontState,pseudo){var style=cssDeclaration(''),record=declarationRecords.get(style);Object.keys(values).forEach(function(name){var cssName=cssPropertyName(name),value=values[name];if(typeof value==='string'&&value&&knownProperty(cssName))storeDeclaration(record,cssName,value,'');});record.readOnly=true;record.computed=true;record.fontState=fontState;if(element)record.refresh=pseudo?function(){return computedStyleReader(element,'::'+pseudo);}:function(){return computedStyleReader(element);};return style;};
   var cssRuleStates=cssMap('rule');
   var cssRuleRecord=function(rule,type){var record=cssRuleStates.get(rule);if(!record||type&&record.type!==type)throw new TypeError('Illegal invocation');return record;};
   function cssRuleInterface(name,parent){var ctor=__ns.makeNativeFunction(function(){throw new TypeError('Illegal constructor');},name,0,true);ctor.prototype=Object.create(parent||Object.prototype);Object.defineProperty(ctor.prototype,'constructor',{value:ctor,writable:true,configurable:true});Object.defineProperty(ctor.prototype,Symbol.toStringTag,{value:name,configurable:true});Object.defineProperty(ctor,'prototype',{writable:false});if(parent)Object.setPrototypeOf(ctor,parent.constructor);Object.defineProperty(g,name,{value:ctor,writable:true,configurable:true,enumerable:false});}
   cssRuleInterface('CSSRule');cssRuleInterface('CSSStyleRule',g.CSSRule.prototype);cssRuleInterface('CSSImportRule',g.CSSRule.prototype);
-  function cssRuleMember(owner,name,get,set){var descriptor={enumerable:true,configurable:true,get:__ns.makeNativeFunction(get,'get '+name,0)};if(set)descriptor.set=__ns.makeNativeFunction(set,'set '+name,1);Object.defineProperty(g[owner].prototype,name,descriptor);}
+  // Every CSSOM setter and mutating method drops reused computed styles (turbo-test#125).
+  function cssInvalidating(fn){return function(){try{return cssApply(fn,this,arguments);}finally{invalidateComputedStyles();}};}
+  function cssRuleMember(owner,name,get,set){var descriptor={enumerable:true,configurable:true,get:__ns.makeNativeFunction(get,'get '+name,0)};if(set)descriptor.set=__ns.makeNativeFunction(cssInvalidating(set),'set '+name,1);Object.defineProperty(g[owner].prototype,name,descriptor);}
   ['type','parentRule','parentStyleSheet'].forEach(function(name){cssRuleMember('CSSRule',name,function(){return cssRuleRecord(this)[name];});});
   function cssRuleText(record){if(record.type===1||record.type===5){var text=declarationText(declarationRecord(record.style));return (record.type===1?record.selectorText:record.prelude)+' {'+(text?' '+text+' ':' ')+'}';}return record.cssText;}
   __ns.readCssRuleText=function(rule){return cssRuleText(cssRuleRecord(rule));};
@@ -1327,8 +1422,8 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
   function sheetRecord(sheet){var record=sheetRecords.get(sheet);if(!record)throw new TypeError('Illegal invocation');return record;}
   function mediaRecord(media){var record=mediaRecords.get(media);if(!record)throw new TypeError('Illegal invocation');if(record.owner){var text=sheetNativeAttribute(record.owner,'media')||'';if(text!==record.source){record.source=text;record.items=mediaQueries(text);}}return record;}
   function cssInterface(name,parent,construct){var ctor=__ns.makeNativeFunction(construct||function(){throw new TypeError('Illegal constructor');},name,0,true);ctor.prototype=Object.create(parent?parent.prototype:Object.prototype);Object.defineProperty(ctor.prototype,'constructor',{value:ctor,writable:true,configurable:true});Object.defineProperty(ctor.prototype,Symbol.toStringTag,{value:name,configurable:true});Object.defineProperty(ctor,'prototype',{writable:false});if(parent)Object.setPrototypeOf(ctor,parent);Object.defineProperty(g,name,{value:ctor,writable:true,configurable:true,enumerable:false});return ctor;}
-  function cssMember(proto,name,get,set){var descriptor={enumerable:true,configurable:true,get:__ns.makeNativeFunction(get,'get '+name,0)};if(set)descriptor.set=__ns.makeNativeFunction(set,'set '+name,1);Object.defineProperty(proto,name,descriptor);}
-  function cssMethod(proto,name,length,method){Object.defineProperty(proto,name,{value:__ns.makeNativeFunction(method,name,length),enumerable:true,writable:true,configurable:true});}
+  function cssMember(proto,name,get,set){var descriptor={enumerable:true,configurable:true,get:__ns.makeNativeFunction(get,'get '+name,0)};if(set)descriptor.set=__ns.makeNativeFunction(cssInvalidating(set),'set '+name,1);Object.defineProperty(proto,name,descriptor);}
+  function cssMethod(proto,name,length,method){Object.defineProperty(proto,name,{value:__ns.makeNativeFunction(name==='item'||name==='toString'?method:cssInvalidating(method),name,length),enumerable:true,writable:true,configurable:true});}
   function mediaQueries(text){text=cssString(text).trim();if(!text)return [];return cssParts(text,',').map(function(query){query=query.trim();return cssNativeParse(query,'media');});}
   var mediaConstructor=cssInterface('MediaList');
   cssMember(mediaConstructor.prototype,'length',function(){return mediaRecord(this).items.length;});
@@ -1348,16 +1443,16 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
   cssMember(styleSheetConstructor.prototype,'media',function(){return sheetRecord(this).media;},function(value){mediaRecord(sheetRecord(this).media).items=mediaQueries(value);});
   cssMember(styleSheetConstructor.prototype,'disabled',function(){return sheetRecord(this).disabled;},function(value){sheetRecord(this).disabled=!!value;});
   cssMember(sheetConstructor.prototype,'ownerRule',function(){return sheetRecord(this).ownerRule;});
-  function appliedSheetRuleRecords(sheet,seen){seen=seen||new Set();if(seen.has(sheet))return [];seen.add(sheet);var out=[];for(var rule of cssItems(sheetRecord(sheet).rules)){var record=cssRuleRecord(rule);if(record.type===3){if(record.styleSheet&&(!record.media.mediaText||g.matchMedia(record.media.mediaText).matches))out.push.apply(out,appliedSheetRuleRecords(record.styleSheet,seen));}else out.push(record);}return out;}
+  function appliedSheetRuleRecords(sheet,seen){seen=seen||new Set();if(seen.has(sheet))return [];seen.add(sheet);var out=[];for(var rule of cssItems(sheetRecord(sheet).rules)){var record=cssRuleRecord(rule);if(record.type===3){if(record.styleSheet&&record.media.mediaText)computedVolatile=true;if(record.styleSheet&&(!record.media.mediaText||g.matchMedia(record.media.mediaText).matches))out.push.apply(out,appliedSheetRuleRecords(record.styleSheet,seen));}else out.push(record);}return out;}
   function readableSheet(sheet){var record=sheetRecord(sheet);if(!record.originClean)throw new __ns.DOMException('Cannot access rules of a cross-origin stylesheet','SecurityError');return record;}
   var cssStyleSheetRulesGetter=__ns.makeNativeFunction(function(){return readableSheet(this).rules;},'get cssRules',0);
   Object.defineProperty(sheetConstructor.prototype,'cssRules',{get:cssStyleSheetRulesGetter,enumerable:true,configurable:true});
   cssMember(sheetConstructor.prototype,'rules',function(){return readableSheet(this).rules;});
 
   function detachCssRule(rule,parent){var record=cssRuleRecord(rule);record.parentStyleSheet=null;record.parentRule=parent||null;if(rule.cssRules)for(var child of cssItems(rule.cssRules))detachCssRule(child,rule);}
-  function replaceSheetRules(sheet,record,text,keepImports){var parsed=cssItems(parseCssRules(cssString(text),sheet,null));if(!keepImports)parsed=parsed.filter(function(rule){return cssRuleRecord(rule).type!==3;});var list=cssItems(record.rules);for(var rule of list)detachCssRule(rule);list.splice.apply(list,[0,list.length].concat(parsed));}
-  function insertSheetRule(sheet,text,index){var record=readableSheet(sheet),list=cssItems(record.rules),i=index===undefined?0:Number(index)>>>0;if(record.replacing)throw new __ns.DOMException('The sheet is being replaced','NotAllowedError');if(i>list.length)throw new __ns.DOMException('The rule index is out of range','IndexSizeError');var source=cssNativeParse(cssString(text),false,true),parsed=source===null?cssList():parseCssRules(source,sheet,null,true);if(parsed.length!==1)throw new __ns.DOMException('Expected one CSS rule','SyntaxError');var rule=cssItems(parsed)[0],type=cssRuleRecord(rule).type;if(type===3&&record.constructed)throw new __ns.DOMException('Cannot insert an import into a constructed sheet','SyntaxError');if(type===3&&list.slice(0,i).some(function(prior){return cssRuleRecord(prior).type!==3;}))throw new __ns.DOMException('Imports must precede style rules','HierarchyRequestError');if(type!==3&&list.slice(i).some(function(next){return cssRuleRecord(next).type===3;}))throw new __ns.DOMException('Style rules must follow imports','HierarchyRequestError');list.splice(i,0,rule);return i;}
-  function deleteSheetRule(sheet,index){var record=readableSheet(sheet),list=cssItems(record.rules),i=Number(index)>>>0;if(record.replacing)throw new __ns.DOMException('The sheet is being replaced','NotAllowedError');if(i>=list.length)throw new __ns.DOMException('The rule index is out of range','IndexSizeError');detachCssRule(list[i]);list.splice(i,1);}
+  function replaceSheetRules(sheet,record,text,keepImports){invalidateComputedStyles();var parsed=cssItems(parseCssRules(cssString(text),sheet,null));if(!keepImports)parsed=parsed.filter(function(rule){return cssRuleRecord(rule).type!==3;});var list=cssItems(record.rules);for(var rule of list)detachCssRule(rule);list.splice.apply(list,[0,list.length].concat(parsed));}
+  function insertSheetRule(sheet,text,index){invalidateComputedStyles();var record=readableSheet(sheet),list=cssItems(record.rules),i=index===undefined?0:Number(index)>>>0;if(record.replacing)throw new __ns.DOMException('The sheet is being replaced','NotAllowedError');if(i>list.length)throw new __ns.DOMException('The rule index is out of range','IndexSizeError');var source=cssNativeParse(cssString(text),false,true),parsed=source===null?cssList():parseCssRules(source,sheet,null,true);if(parsed.length!==1)throw new __ns.DOMException('Expected one CSS rule','SyntaxError');var rule=cssItems(parsed)[0],type=cssRuleRecord(rule).type;if(type===3&&record.constructed)throw new __ns.DOMException('Cannot insert an import into a constructed sheet','SyntaxError');if(type===3&&list.slice(0,i).some(function(prior){return cssRuleRecord(prior).type!==3;}))throw new __ns.DOMException('Imports must precede style rules','HierarchyRequestError');if(type!==3&&list.slice(i).some(function(next){return cssRuleRecord(next).type===3;}))throw new __ns.DOMException('Style rules must follow imports','HierarchyRequestError');list.splice(i,0,rule);return i;}
+  function deleteSheetRule(sheet,index){invalidateComputedStyles();var record=readableSheet(sheet),list=cssItems(record.rules),i=Number(index)>>>0;if(record.replacing)throw new __ns.DOMException('The sheet is being replaced','NotAllowedError');if(i>=list.length)throw new __ns.DOMException('The rule index is out of range','IndexSizeError');detachCssRule(list[i]);list.splice(i,1);}
   cssMethod(sheetConstructor.prototype,'insertRule',1,function(text,index){sheetRecord(this);if(!arguments.length)throw new TypeError('insertRule requires 1 argument');return insertSheetRule(this,text,index);});
   cssMethod(sheetConstructor.prototype,'deleteRule',1,function(index){sheetRecord(this);if(!arguments.length)throw new TypeError('deleteRule requires 1 argument');deleteSheetRule(this,index);});
   cssMethod(sheetConstructor.prototype,'addRule',0,function(selector,style,index){var record=sheetRecord(this);insertSheetRule(this,(selector===undefined?'undefined':cssString(selector))+' {'+(style===undefined?'undefined':cssString(style))+'}',index===undefined?cssItems(record.rules).length:index);return -1;});
@@ -1365,9 +1460,9 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
   cssMethod(sheetConstructor.prototype,'replaceSync',1,function(text){var record=sheetRecord(this);if(!arguments.length)throw new TypeError('replaceSync requires 1 argument');if(!record.constructed||record.replacing)throw new __ns.DOMException('The sheet cannot be replaced','NotAllowedError');replaceSheetRules(this,record,text,false);});
   cssMethod(sheetConstructor.prototype,'replace',1,function(text){var record;try{record=sheetRecord(this);if(!arguments.length)throw new TypeError('replace requires 1 argument');if(!record.constructed||record.replacing)throw new __ns.DOMException('The sheet cannot be replaced','NotAllowedError');replaceSheetRules(this,record,text,false);return Promise.resolve(this);}catch(error){return Promise.reject(error);}});
   function linkedSheet(el,text,url){var sheet=Object.create(sheetConstructor.prototype),record=newSheetRecord();record.constructed=false;record.ownerNode=el;record.href=url||null;record.title=sheetNativeAttribute(el,'title')||null;record.media=makeMedia(sheetNativeAttribute(el,'media')||'',el);sheetRecords.set(sheet,record);replaceSheetRules(sheet,record,text,true);return sheet;}
-  function detachSheet(sheet){if(sheet){var record=sheetRecord(sheet);if(record.ownerNode)record.title=sheetNativeAttribute(record.ownerNode,'title')||null;mediaRecord(record.media).owner=null;record.ownerNode=null;}}
-  function attachLinkedStyleSheet(el,text,url,originClean){var sheet=linkedSheet(el,text,url),old=elementSheets.get(el);sheetRecord(sheet).originClean=originClean!==false;if(old)detachSheet(old.sheet);elementSheets.set(el,{sheet:sheet,text:null});return sheet;};
-  function attachImportStyleSheet(rule,sheet,url,text,originClean){var parent=cssRuleRecord(rule,3),record=sheetRecord(sheet);record.constructed=false;record.ownerRule=rule;record.parentStyleSheet=parent.parentStyleSheet;record.href=url||null;record.originClean=originClean!==false;if(text!==undefined)replaceSheetRules(sheet,record,text,true);parent.styleSheet=sheet;};
+  function detachSheet(sheet){invalidateComputedStyles();if(sheet){var record=sheetRecord(sheet);if(record.ownerNode)record.title=sheetNativeAttribute(record.ownerNode,'title')||null;mediaRecord(record.media).owner=null;record.ownerNode=null;}}
+  function attachLinkedStyleSheet(el,text,url,originClean){invalidateComputedStyles();var sheet=linkedSheet(el,text,url),old=elementSheets.get(el);sheetRecord(sheet).originClean=originClean!==false;if(old)detachSheet(old.sheet);elementSheets.set(el,{sheet:sheet,text:null});return sheet;};
+  function attachImportStyleSheet(rule,sheet,url,text,originClean){invalidateComputedStyles();var parent=cssRuleRecord(rule,3),record=sheetRecord(sheet);record.constructed=false;record.ownerRule=rule;record.parentStyleSheet=parent.parentStyleSheet;record.href=url||null;record.originClean=originClean!==false;if(text!==undefined)replaceSheetRules(sheet,record,text,true);parent.styleSheet=sheet;};
   // Private live-layout export never reads page properties or invokes public
   // collection iteration. Imports retain their actual attached sheet graph.
   function cssHostArray(){var value=[];cssSetPrototype(value,null);return value;}
@@ -1403,16 +1498,16 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     function index(key,value){adoptionAllowed(owner,value);if(key>target.length)return true;adoptionDefine(target,String(key),{value:value,writable:true,enumerable:true,configurable:true});return true;}
     state.proxy=new adoptionProxy(target,{
       preventExtensions:function(){return false;},
-      set:function(target,key,value,receiver){var i=cssIndex(key);if(key==='length')return length(value);return i>=0&&i<4294967295?index(i,value):adoptionSet(target,key,value,receiver);},
-      deleteProperty:function(target,key){var i=cssIndex(key);if(i>=0&&i<target.length){target.length=i;return true;}return adoptionDelete(target,key);},
-      defineProperty:function(target,key,descriptor){var i=cssIndex(key);if(i>=0&&i<4294967295){if(adoptionOwn(descriptor,'get')||adoptionOwn(descriptor,'set')||adoptionOwn(descriptor,'configurable')&&!descriptor.configurable||adoptionOwn(descriptor,'enumerable')&&!descriptor.enumerable||adoptionOwn(descriptor,'writable')&&!descriptor.writable)return false;return adoptionOwn(descriptor,'value')?index(i,descriptor.value):true;}if(key==='length'){if(adoptionOwn(descriptor,'get')||adoptionOwn(descriptor,'set')||adoptionOwn(descriptor,'writable')&&!descriptor.writable)return false;return adoptionOwn(descriptor,'value')?length(descriptor.value):true;}return adoptionDefine(target,key,descriptor);}
+      set:function(target,key,value,receiver){invalidateComputedStyles();var i=cssIndex(key);if(key==='length')return length(value);return i>=0&&i<4294967295?index(i,value):adoptionSet(target,key,value,receiver);},
+      deleteProperty:function(target,key){invalidateComputedStyles();var i=cssIndex(key);if(i>=0&&i<target.length){target.length=i;return true;}return adoptionDelete(target,key);},
+      defineProperty:function(target,key,descriptor){invalidateComputedStyles();var i=cssIndex(key);if(i>=0&&i<4294967295){if(adoptionOwn(descriptor,'get')||adoptionOwn(descriptor,'set')||adoptionOwn(descriptor,'configurable')&&!descriptor.configurable||adoptionOwn(descriptor,'enumerable')&&!descriptor.enumerable||adoptionOwn(descriptor,'writable')&&!descriptor.writable)return false;return adoptionOwn(descriptor,'value')?index(i,descriptor.value):true;}if(key==='length'){if(adoptionOwn(descriptor,'get')||adoptionOwn(descriptor,'set')||adoptionOwn(descriptor,'writable')&&!descriptor.writable)return false;return adoptionOwn(descriptor,'value')?length(descriptor.value):true;}return adoptionDefine(target,key,descriptor);}
     });
     return state;
   }
   function adoptionState(receiver){adoptionDocument(receiver);var state=adoptionStates.get(receiver);if(!state){state=createAdoption(receiver);adoptionStates.set(receiver,state);}return state;}
   function readAdoption(){cssApply(adoptionDocumentCheck,this,[]);return adoptionState(this).proxy;}
   function readShadowAdoption(){if(cssApply(adoptionNodeCheck,this,[])!==11||!cssApply(adoptionShadowCheck,this,[]))throw new TypeError('Illegal invocation');return adoptionState(this).proxy;}
-  function replaceAdoption(input){var state=adoptionState(this),converted=cssHostArray();for(var value of input){adoptionRecord(value);converted[converted.length]=value;}state.target.length=0;for(var i=0;i<converted.length;i++){adoptionAllowed(this,converted[i]);adoptionDefine(state.target,String(i),{value:converted[i],writable:true,enumerable:true,configurable:true});}}
+  function replaceAdoption(input){invalidateComputedStyles();var state=adoptionState(this),converted=cssHostArray();for(var value of input){adoptionRecord(value);converted[converted.length]=value;}state.target.length=0;for(var i=0;i<converted.length;i++){adoptionAllowed(this,converted[i]);adoptionDefine(state.target,String(i),{value:converted[i],writable:true,enumerable:true,configurable:true});}}
   var adoptionDescriptor={configurable:true,enumerable:true,get:__ns.makeNativeFunction(readAdoption,'get adoptedStyleSheets',0),set:__ns.makeNativeFunction(function(input){cssApply(adoptionDocumentCheck,this,[]);return cssApply(replaceAdoption,this,[input]);},'set adoptedStyleSheets',1)};
   var shadowAdoptionDescriptor={configurable:true,enumerable:true,get:__ns.makeNativeFunction(readShadowAdoption,'get adoptedStyleSheets',0),set:__ns.makeNativeFunction(function(input){cssApply(readShadowAdoption,this,[]);return cssApply(replaceAdoption,this,[input]);},'set adoptedStyleSheets',1)};
   Object.defineProperty(d,'adoptedStyleSheets',adoptionDescriptor);adoptionState(d);
