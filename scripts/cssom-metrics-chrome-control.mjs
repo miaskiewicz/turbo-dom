@@ -116,6 +116,11 @@ const CASES = [
     id: "inline-in-transformed-block",
     html: DOC(TEXT, `<div data-cid="d" style="transform:translate(30px,10px)">x <span data-cid="s">moved text</span></div>`),
   },
+  {
+    // A line of only preserved spaces (and an empty inline) keeps its line box.
+    id: "preserved-space-only-line",
+    html: DOC(TEXT, `<div data-cid="d" style="white-space:pre"><span data-cid="s"></span>   </div>${BOX(10, 5, "e")}`),
+  },
   // elementsFromPoint.
   {
     id: "hits-boxes-and-outside-viewport",

@@ -1301,6 +1301,102 @@
    ]
   },
   {
+   "id": "preserved-space-only-line",
+   "html": "<!doctype html><style>body{margin:8px;font-family:\"Liberation Serif\";font-size:16px}</style><div data-cid=\"d\" style=\"white-space:pre\"><span data-cid=\"s\"></span>   </div><div data-cid=\"e\" style=\"width:10px;height:5px\"></div>",
+   "boxes": [
+    {
+     "cid": "d",
+     "offset": [
+      8,
+      8,
+      1264,
+      18
+     ],
+     "parent": "body",
+     "client": [
+      0,
+      0,
+      1264,
+      18
+     ],
+     "rects": [
+      [
+       8,
+       8,
+       1264,
+       18
+      ]
+     ],
+     "bounds": [
+      8,
+      8,
+      1264,
+      18
+     ]
+    },
+    {
+     "cid": "s",
+     "offset": [
+      8,
+      8,
+      0,
+      17
+     ],
+     "parent": "body",
+     "client": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "rects": [
+      [
+       8,
+       8,
+       0,
+       17
+      ]
+     ],
+     "bounds": [
+      8,
+      8,
+      0,
+      17
+     ]
+    },
+    {
+     "cid": "e",
+     "offset": [
+      8,
+      26,
+      10,
+      5
+     ],
+     "parent": "body",
+     "client": [
+      0,
+      0,
+      10,
+      5
+     ],
+     "rects": [
+      [
+       8,
+       26,
+       10,
+       5
+      ]
+     ],
+     "bounds": [
+      8,
+      26,
+      10,
+      5
+     ]
+    }
+   ]
+  },
+  {
    "id": "hits-boxes-and-outside-viewport",
    "html": "<!doctype html><style>body{margin:0}</style><div data-cid=\"a\" style=\"width:100px;height:50px\"></div><div data-cid=\"b\" style=\"position:absolute;left:50px;top:20px;width:100px;height:60px\"></div>",
    "boxes": [

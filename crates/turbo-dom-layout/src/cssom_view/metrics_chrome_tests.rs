@@ -250,5 +250,5 @@ fn the_control_covers_every_read() {
     let fixture: Value = serde_json::from_str(FIXTURE).unwrap();
     let cases = fixture["cases"].as_array().unwrap();
     let reads: usize = cases.iter().map(|case| reads(case).1.len()).sum();
-    assert_eq!((cases.len(), reads), (24, 156));
+    assert_eq!((cases.len(), reads), (25, 162));
 }
