@@ -1,0 +1,563 @@
+{
+  "browser": "Chrome/156.0.8078.47",
+  "v8": "15.6.75.19",
+  "probe": "selector_edges_probe.js",
+  "probeSha256": "3fddbca0b10bd0700ab9f9b0e1e3816c4681dec683d8b28069a4a8cbefbf0c78",
+  "collectorSha256": "3f964d2cdf0ec8101870a776aaffc3b7dc4522306959c4a40761057beb255eb8",
+  "flags": [
+    "--headless=new",
+    "--remote-debugging-pipe",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "--disable-background-timer-throttling",
+    "--disable-renderer-backgrounding",
+    "--disable-backgrounding-occluded-windows",
+    "about:blank"
+  ],
+  "result": {
+    "result": {
+      "[a=b]": [
+        "ok",
+        "[a=\"b\"]",
+        "[a=\"b\"]"
+      ],
+      "[a~=b]": [
+        "ok",
+        "[a~=\"b\"]",
+        "[a~=\"b\"]"
+      ],
+      "[a|=b]": [
+        "ok",
+        "[a|=\"b\"]",
+        "[a|=\"b\"]"
+      ],
+      "[a^=b]": [
+        "ok",
+        "[a^=\"b\"]",
+        "[a^=\"b\"]"
+      ],
+      "[a$=b]": [
+        "ok",
+        "[a$=\"b\"]",
+        "[a$=\"b\"]"
+      ],
+      "[a*=b]": [
+        "ok",
+        "[a*=\"b\"]",
+        "[a*=\"b\"]"
+      ],
+      "[a!=b]": [
+        "SyntaxError",
+        "SyntaxError",
+        null
+      ],
+      "[a=b i]": [
+        "ok",
+        "[a=\"b\" i]",
+        "[a=\"b\" i]"
+      ],
+      "[a=b s]": [
+        "SyntaxError",
+        "SyntaxError",
+        null
+      ],
+      "[a=\"b\" x]": [
+        "SyntaxError",
+        "SyntaxError",
+        null
+      ],
+      "[a b]": [
+        "SyntaxError",
+        "SyntaxError",
+        null
+      ],
+      "[*|a]": [
+        "ok",
+        "[*|a]",
+        "[*|a]"
+      ],
+      "[|a]": [
+        "ok",
+        "[a]",
+        "[a]"
+      ],
+      "[*|a=b]": [
+        "ok",
+        "[*|a=\"b\"]",
+        "[*|a=\"b\"]"
+      ],
+      "[ns|a]": [
+        "SyntaxError",
+        "SyntaxError",
+        null
+      ],
+      "[*a]": [
+        "SyntaxError",
+        "SyntaxError",
+        null
+      ],
+      "[a|]": [
+        "SyntaxError",
+        "SyntaxError",
+        null
+      ],
+      "[1]": [
+        "SyntaxError",
+        "SyntaxError",
+        null
+      ],
+      "*|*": [
+        "ok",
+        "*",
+        "*"
+      ],
+      "|b": [
+        "ok",
+        "|b",
+        "|b"
+      ],
+      "*|b": [
+        "ok",
+        "b",
+        "b"
+      ],
+      "ns|b": [
+        "SyntaxError",
+        "SyntaxError",
+        null
+      ],
+      "*|": [
+        "SyntaxError",
+        "SyntaxError",
+        null
+      ],
+      "*b": [
+        "SyntaxError",
+        "SyntaxError",
+        null
+      ],
+      "a|": [
+        "SyntaxError",
+        "SyntaxError",
+        null
+      ],
+      ".": [
+        "SyntaxError",
+        "SyntaxError",
+        null
+      ],
+      ".1": [
+        "SyntaxError",
+        "SyntaxError",
+        null
+      ],
+      "#": [
+        "SyntaxError",
+        "SyntaxError",
+        null
+      ],
+      "a,": [
+        "SyntaxError",
+        "SyntaxError",
+        null
+      ],
+      ",a": [
+        "SyntaxError",
+        "SyntaxError",
+        null
+      ],
+      "a,,b": [
+        "SyntaxError",
+        "SyntaxError",
+        null
+      ],
+      "a b": [
+        "ok",
+        "a b",
+        "a b"
+      ],
+      "a > b": [
+        "ok",
+        "a > b",
+        "a > b"
+      ],
+      "a >": [
+        "SyntaxError",
+        "SyntaxError",
+        null
+      ],
+      "> a": [
+        "SyntaxError",
+        "SyntaxError",
+        null
+      ],
+      "a ~ ~ b": [
+        "SyntaxError",
+        "SyntaxError",
+        null
+      ],
+      "a + > b": [
+        "SyntaxError",
+        "SyntaxError",
+        null
+      ],
+      "a::before b": [
+        "SyntaxError",
+        "SyntaxError",
+        null
+      ],
+      "::before": [
+        "ok",
+        "::before",
+        "::before"
+      ],
+      "a::before.x": [
+        "SyntaxError",
+        "SyntaxError",
+        null
+      ],
+      "::slotted(b)": [
+        "ok",
+        "::slotted(b)",
+        "::slotted(b)"
+      ],
+      "::slotted(*)": [
+        "ok",
+        "::slotted(*)",
+        "::slotted(*)"
+      ],
+      "::slotted(.x)": [
+        "ok",
+        "::slotted(.x)",
+        "::slotted(.x)"
+      ],
+      "::slotted(b c)": [
+        "SyntaxError",
+        "SyntaxError",
+        null
+      ],
+      "::part(x)": [
+        "ok",
+        "::part(x)",
+        "::part(x)"
+      ],
+      "::part()": [
+        "SyntaxError",
+        "SyntaxError",
+        null
+      ],
+      "::highlight(x)": [
+        "ok",
+        "::highlight(x)",
+        "::highlight(x)"
+      ],
+      "::cue(b)": [
+        "ok",
+        "::cue(b)",
+        "::cue(b)"
+      ],
+      ":nth-child(n)": [
+        "ok",
+        ":nth-child(n)",
+        ":nth-child(n)"
+      ],
+      ":nth-child(1n)": [
+        "ok",
+        ":nth-child(n)",
+        ":nth-child(n)"
+      ],
+      ":nth-child(-n)": [
+        "ok",
+        ":nth-child(-n)",
+        ":nth-child(-n)"
+      ],
+      ":nth-child(-1n+0)": [
+        "ok",
+        ":nth-child(-n)",
+        ":nth-child(-n)"
+      ],
+      ":nth-child(+n+1)": [
+        "ok",
+        ":nth-child(n+1)",
+        ":nth-child(n+1)"
+      ],
+      ":nth-child(2n-1)": [
+        "ok",
+        ":nth-child(2n-1)",
+        ":nth-child(2n-1)"
+      ],
+      ":nth-child(0n+3)": [
+        "ok",
+        ":nth-child(3)",
+        ":nth-child(3)"
+      ],
+      ":nth-child(n of b)": [
+        "ok",
+        ":nth-child(n of b)",
+        ":nth-child(n of b)"
+      ],
+      ":nth-child(n off b)": [
+        "SyntaxError",
+        "SyntaxError",
+        null
+      ],
+      ":nth-child(n of ::before)": [
+        "ok",
+        ":nth-child(n of ::before)",
+        ":nth-child(n of ::before)"
+      ],
+      ":nth-last-child(2n of .x, b)": [
+        "ok",
+        ":nth-last-child(2n of .x, b)",
+        ":nth-last-child(2n of .x, b)"
+      ],
+      ":nth-of-type(n of b)": [
+        "SyntaxError",
+        "SyntaxError",
+        null
+      ],
+      ":nth-child(3 x)": [
+        "SyntaxError",
+        "SyntaxError",
+        null
+      ],
+      ":is(a b, c)": [
+        "ok",
+        ":is(a b, c)",
+        ":is(a b, c)"
+      ],
+      ":is()": [
+        "ok",
+        ":is()",
+        ":is()"
+      ],
+      ":where(,a)": [
+        "ok",
+        ":where(a)",
+        ":where(a)"
+      ],
+      ":not(a, ::before)": [
+        "SyntaxError",
+        "SyntaxError",
+        null
+      ],
+      ":has(> a)": [
+        "ok",
+        ":has(> a)",
+        ":has(> a)"
+      ],
+      ":has()": [
+        "SyntaxError",
+        "SyntaxError",
+        null
+      ],
+      ":host(b)": [
+        "ok",
+        ":host(b)",
+        ":host(b)"
+      ],
+      ":host(b c)": [
+        "SyntaxError",
+        "SyntaxError",
+        null
+      ],
+      ":host": [
+        "ok",
+        ":host",
+        ":host"
+      ],
+      ":host-context(b)": [
+        "ok",
+        ":host-context(b)",
+        ":host-context(b)"
+      ],
+      ":state(x)": [
+        "ok",
+        ":state(x)",
+        ":state(x)"
+      ],
+      ":state()": [
+        "SyntaxError",
+        "SyntaxError",
+        null
+      ],
+      ":dir(ltr)": [
+        "ok",
+        ":dir(ltr)",
+        ":dir(ltr)"
+      ],
+      ":lang(en, \"fr\")": [
+        "SyntaxError",
+        "SyntaxError",
+        null
+      ],
+      "svg|a": [
+        "SyntaxError",
+        "SyntaxError",
+        null
+      ],
+      "a::after::before": [
+        "SyntaxError",
+        "SyntaxError",
+        null
+      ],
+      "::before:hover": [
+        "SyntaxError",
+        "SyntaxError",
+        null
+      ],
+      "::-webkit-scrollbar:horizontal": [
+        "ok",
+        "::-webkit-scrollbar:horizontal",
+        "::-webkit-scrollbar:horizontal"
+      ],
+      ":horizontal": [
+        "ok",
+        ":horizontal",
+        ":horizontal"
+      ],
+      "::-webkit-scrollbar-thumb:window-inactive": [
+        "ok",
+        "::-webkit-scrollbar-thumb:window-inactive",
+        "::-webkit-scrollbar-thumb:window-inactive"
+      ],
+      "a:hover::before": [
+        "ok",
+        "a:hover::before",
+        "a:hover::before"
+      ]
+    },
+    "assigned": [
+      "q",
+      "q",
+      "[a~=\"b\"]",
+      "*",
+      ":nth-child(n)"
+    ],
+    "at": {
+      "@keyframes k { from { color: red } }": [
+        "@keyframes k { \n  0% { color: red; }\n}",
+        "@keyframes k { \n  0% { color: red; }\n}"
+      ],
+      "@keyframes \"k2\" { 0% { color: red } }": [
+        "@keyframes k2 { \n  0% { color: red; }\n}",
+        "@keyframes k2 { \n  0% { color: red; }\n}"
+      ],
+      "@keyframes 1k { }": [
+        null,
+        "SyntaxError"
+      ],
+      "@keyframes none { }": [
+        null,
+        "SyntaxError"
+      ],
+      "@keyframes initial { }": [
+        null,
+        "SyntaxError"
+      ],
+      "@font-face { font-feature-settings: \"liga\" 1 }": [
+        "@font-face { font-feature-settings: \"liga\"; }",
+        "@font-face { font-feature-settings: \"liga\"; }"
+      ],
+      "@font-face { font-variation-settings: \"wght\" 400 }": [
+        "@font-face { font-variation-settings: \"wght\" 400; }",
+        "@font-face { font-variation-settings: \"wght\" 400; }"
+      ],
+      "@font-face { font-feature-settings: liga }": [
+        "@font-face { }",
+        "@font-face { }"
+      ],
+      "@font-face { font-variation-settings: normal }": [
+        "@font-face { font-variation-settings: normal; }",
+        "@font-face { font-variation-settings: normal; }"
+      ],
+      "@counter-style c { system: cyclic; symbols: a }": [
+        "@counter-style c { system: cyclic; symbols: a; }",
+        "@counter-style c { system: cyclic; symbols: a; }"
+      ],
+      "@counter-style none { system: cyclic }": [
+        null,
+        "SyntaxError"
+      ],
+      "@property --p { syntax: \"*\"; inherits: false }": [
+        "@property --p { syntax: \"*\"; inherits: false; }",
+        "@property --p { syntax: \"*\"; inherits: false; }"
+      ],
+      "@property p { syntax: \"*\" }": [
+        null,
+        "SyntaxError"
+      ],
+      "@view-transition { navigation: auto }": [
+        "@view-transition { navigation: auto; }",
+        "@view-transition { navigation: auto; }"
+      ],
+      "@view-transition { navigation: bogus }": [
+        "@view-transition { }",
+        "@view-transition { }"
+      ],
+      "@page :first { margin: 1px }": [
+        "@page :first { margin: 1px; }",
+        "@page :first { margin: 1px; }"
+      ],
+      "@page :bogus { }": [
+        null,
+        "SyntaxError"
+      ],
+      "@layer a, b;": [
+        "@layer a, b;",
+        "@layer a, b;"
+      ],
+      "@layer a b;": [
+        null,
+        "SyntaxError"
+      ],
+      "@container (width > 1px) { }": [
+        "@container (width > 1px) {\n}",
+        "@container (width > 1px) {\n}"
+      ],
+      "@container bogus bogus { }": [
+        null,
+        "SyntaxError"
+      ],
+      "@scope (a) to (b) { }": [
+        "@scope (a) to (b) {\n}",
+        "@scope (a) to (b) {\n}"
+      ],
+      "@starting-style { a { color: red } }": [
+        "@starting-style {\n  a { color: red; }\n}",
+        "@starting-style {\n  a { color: red; }\n}"
+      ],
+      "a { zoom: 2 !important }": [
+        "a { zoom: 2 !important; }",
+        "a { zoom: 2 !important; }"
+      ],
+      "a { zoom: 50% }": [
+        "a { zoom: 50%; }",
+        "a { zoom: 50%; }"
+      ],
+      "a { zoom: bogus }": [
+        "a { }",
+        "a { }"
+      ],
+      "a { --x: var(--y) }": [
+        "a { --x: var(--y); }",
+        "a { --x: var(--y); }"
+      ],
+      "a { color: var(--x) !important }": [
+        "a { color: var(--x) !important; }",
+        "a { color: var(--x) !important; }"
+      ],
+      "a { margin: var(--x) 1px }": [
+        "a { margin: var(--x) 1px; }",
+        "a { margin: var(--x) 1px; }"
+      ],
+      "a { scroll-timeline: --t block }": [
+        "a { scroll-timeline: --t; }",
+        "a { scroll-timeline: --t; }"
+      ]
+    }
+  }
+}

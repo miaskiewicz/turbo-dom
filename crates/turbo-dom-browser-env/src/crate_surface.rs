@@ -52,6 +52,9 @@ pub mod test_support;
 #[path = "close_watchers_tests.rs"]
 mod close_watchers_tests;
 #[cfg(test)]
+#[path = "edge_probes_tests.rs"]
+mod edge_probes_tests;
+#[cfg(test)]
 #[path = "host_api_tests.rs"]
 mod host_api_tests;
 #[cfg(test)]
