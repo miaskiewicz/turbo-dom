@@ -17,6 +17,7 @@ const KNOWN_GAPS: &[&str] = &[
     "transition-timing-function|cubic-bezier(calc(1px), 0, 1, 1)",
     "transition-timing-function|cubic-bezier(min(0.5, 1), 0, 1, 1)",
     "transition-timing-function|cubic-bezier(a, 0, 1, 1)",
+    "transition-timing-function|cubic-bezier(calc(2px), 0, 1, 1)",
     "transition-timing-function|linear(calc(0), 1)",
     "transition-timing-function|linear(0, 1 calc(50%))",
     "color|hsl(1px 50% 50%)",

@@ -18,7 +18,7 @@ at the time); this file reconstructs them from history.
   probe also reads a shorthand's `getPropertyPriority`), `tests/css_shorthand_api.rs`
   (`is_shorthand` / `shorthands_of` against Chrome's table, `shorthand_value` of a longhand,
   embedder-admitted values), and `css_shorthand`'s provably dead branches removed or
-  `unreachable!()`: 98.98% → 100% (11912/11912). Rows Chrome spells differently in both
+  `unreachable!()`: 98.98% → 100% (11907/11907). Rows Chrome spells differently in both
   `rtdom::css_shorthand` and `src/runtime/css-shorthand.mjs` are `KNOWN_GAPS` under
   miaskiewicz/turbo-dom#117.
 

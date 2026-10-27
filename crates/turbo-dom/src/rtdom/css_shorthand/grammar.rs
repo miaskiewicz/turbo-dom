@@ -2181,7 +2181,7 @@ fn track_breadth(comp: &Comp, flex: bool) -> bool {
     match &comp.kind {
         Kind::Dimension { unit, value } if unit == "fr" => flex && *value >= 0.0,
         Kind::Ident(_) => comp.is_ident(&["auto", "min-content", "max-content"]),
-        Kind::Function(name) if name == "[" => false,
+        // Line names (`[a]`) are no length-percentage.
         _ => comp.length_percentage(false).is_some(),
     }
 }
@@ -2205,7 +2205,7 @@ fn track_fixed(comp: &Comp) -> bool {
             .is_some_and(|inner| {
                 inner.first().is_some_and(fixed) || inner.last().is_some_and(fixed)
             }),
-        Kind::Function(name) if name == "fit-content" => false,
+        // `fit-content()` is no length-percentage.
         _ => fixed(comp),
     }
 }
@@ -2276,7 +2276,7 @@ fn track_ok(comp: &Comp, repeat_allowed: bool) -> bool {
                     .iter()
                     .all(|track| track_ok(track, false) && (!auto || track_fixed(track)))
         }),
-        "repeat" => false,
+        // A nested `repeat()` is no length-percentage.
         _ => comp.length_percentage(false).is_some(),
     }
 }

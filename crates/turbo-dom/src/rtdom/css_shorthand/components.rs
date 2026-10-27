@@ -976,7 +976,8 @@ fn linear_text(inner: &[Comp]) -> Option<String> {
     let mut stops: Vec<(String, Vec<Option<f64>>)> = Vec::new();
     for item in inner.split(|comp| comp.kind == Kind::Comma) {
         let (output, positions) = item.split_first()?;
-        if !matches!(output.kind, Kind::Number { .. }) || positions.len() > 2 {
+        // `function_valid` admitted at most two positions per stop.
+        if !matches!(output.kind, Kind::Number { .. }) {
             return None;
         }
         let positions = positions

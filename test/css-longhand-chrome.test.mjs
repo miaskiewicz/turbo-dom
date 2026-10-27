@@ -29,6 +29,7 @@ const KEPT = [
   // P5-cov coverage cases (turbo-dom#117 lists the rtdom side).
   "transition-timing-function|cubic-bezier(calc(1px), 0, 1, 1)",
   "transition-timing-function|cubic-bezier(a, 0, 1, 1)",
+  "transition-timing-function|cubic-bezier(calc(2px), 0, 1, 1)",
   "color|hsl(1px 50% 50%)",
   "color|hsl(10% 50% 50%)",
   "color|rgb(from red r g b / 1 1)",

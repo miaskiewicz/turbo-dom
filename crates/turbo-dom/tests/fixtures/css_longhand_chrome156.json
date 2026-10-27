@@ -1,7 +1,7 @@
 {
   "browser": "Chrome/156.0.8078.4",
   "v8": "15.6.75",
-  "casesSha256": "217516f8e8a7ec00b84d2fe286187c0d67b296d821039550035c6f6b0fde34ee",
+  "casesSha256": "078990b86f66cf7cbcf64119d5115472a247930fc5de589218baaf8b215eaad5",
   "probeSha256": "a458463e8721c083a75be76315f0bdaf5cee10e5d0a6fc8d470a0b926d6ee37e",
   "collectorSha256": "7bd6ffb7440d38e05cd2b8fbe0e84e91cf462043577ceada3e276728ad216172",
   "flags": [
@@ -13142,6 +13142,12 @@
           ""
         ],
         [
+          "flex-grow",
+          "min(1, 2)",
+          "calc(1)",
+          "flex-grow: calc(1);"
+        ],
+        [
           "flex-shrink",
           "-1",
           "",
@@ -13616,6 +13622,12 @@
           ""
         ],
         [
+          "transition-timing-function",
+          "cubic-bezier(calc(2px), 0, 1, 1)",
+          "",
+          ""
+        ],
+        [
           "animation-timing-function",
           "ease-in-out, steps(1, start)",
           "ease-in-out, steps(1, start)",
@@ -13812,6 +13824,24 @@
           "repeat(auto-fill, [a] 10px)",
           "repeat(auto-fill, [a] 10px)",
           "grid-template-columns: repeat(auto-fill, [a] 10px);"
+        ],
+        [
+          "grid-template-columns",
+          "minmax(calc(10px + 5%), 1fr)",
+          "minmax(calc(5% + 10px), 1fr)",
+          "grid-template-columns: minmax(calc(5% + 10px), 1fr);"
+        ],
+        [
+          "grid-template-columns",
+          "repeat(auto-fill, calc(10px))",
+          "repeat(auto-fill, calc(10px))",
+          "grid-template-columns: repeat(auto-fill, calc(10px));"
+        ],
+        [
+          "grid-template-columns",
+          "minmax(1px 1fr 2px)",
+          "",
+          ""
         ],
         [
           "grid-template-rows",
@@ -14286,6 +14316,12 @@
           "calc(50%)",
           "calc(50%)",
           "opacity: calc(50%);"
+        ],
+        [
+          "opacity",
+          "max(0.5, 0.25)",
+          "calc(0.5)",
+          "opacity: calc(0.5);"
         ],
         [
           "flex-basis",
@@ -15170,6 +15206,48 @@
           ""
         ],
         [
+          "display",
+          "inline flow-root",
+          "inline-block",
+          "display: inline-block;"
+        ],
+        [
+          "display",
+          "flow-root inline",
+          "inline-block",
+          "display: inline-block;"
+        ],
+        [
+          "display",
+          "ruby block",
+          "block ruby",
+          "display: block ruby;"
+        ],
+        [
+          "display",
+          "ruby inline",
+          "ruby",
+          "display: ruby;"
+        ],
+        [
+          "display",
+          "block flow",
+          "block",
+          "display: block;"
+        ],
+        [
+          "display",
+          "inline flow",
+          "inline",
+          "display: inline;"
+        ],
+        [
+          "display",
+          "flow block",
+          "block",
+          "display: block;"
+        ],
+        [
           "transform",
           "translate(calc(1px + 1em), 0)",
           "translate(calc(1em + 1px), 0px)",
@@ -15180,6 +15258,18 @@
           "rotate(calc(1deg + 1rad))",
           "rotate(calc(58.2958deg))",
           "transform: rotate(calc(58.2958deg));"
+        ],
+        [
+          "transform",
+          "scale(0)",
+          "scale(0)",
+          "transform: scale(0);"
+        ],
+        [
+          "transform",
+          "matrix(1, 0, 0, 1, 0, 0)",
+          "matrix(1, 0, 0, 1, 0, 0)",
+          "transform: matrix(1, 0, 0, 1, 0, 0);"
         ],
         [
           "list-style-type",
@@ -15246,6 +15336,30 @@
           "0 reverse",
           "",
           ""
+        ],
+        [
+          "justify-items",
+          "center start",
+          "",
+          ""
+        ],
+        [
+          "justify-items",
+          "left right",
+          "",
+          ""
+        ],
+        [
+          "justify-items",
+          "legacy left",
+          "legacy left",
+          "justify-items: legacy left;"
+        ],
+        [
+          "justify-items",
+          "right legacy",
+          "legacy right",
+          "justify-items: legacy right;"
         ],
         [
           "width",

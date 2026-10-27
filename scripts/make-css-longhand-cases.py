@@ -145,6 +145,16 @@ MUTATION.update({
     "color": MUTATION["color"] + ["hsl(1px 50% 50%)", "hsl(10% 50% 50%)", "rgb(1 2 3 / 0.5 0.5)", "rgb(from red r g b / 1 1)"],
     "offset-rotate": ["0", "auto 0", "0 reverse"],
 })
+# Mutation run of the coverage round: length-function zeros, track breadths and fixed sizes,
+# the remaining two-keyword display forms, legacy justify-items, numeric min() / max().
+MUTATION.update({
+    "transform": MUTATION["transform"] + ["scale(0)", "matrix(1, 0, 0, 1, 0, 0)"],
+    "grid-template-columns": MUTATION["grid-template-columns"] + ["minmax(calc(10px + 5%), 1fr)", "repeat(auto-fill, calc(10px))", "minmax(1px 1fr 2px)"],
+    "display": MUTATION["display"] + ["inline flow-root", "flow-root inline", "ruby block", "ruby inline", "block flow", "inline flow", "flow block"],
+    "justify-items": ["center start", "left right", "legacy left", "right legacy"],
+    "flex-grow": MUTATION["flex-grow"] + ["min(1, 2)"], "opacity": MUTATION["opacity"] + ["max(0.5, 0.25)"],
+    "transition-timing-function": MUTATION["transition-timing-function"] + ["cubic-bezier(calc(2px), 0, 1, 1)"],
+})
 for name, values in MUTATION.items():
     for value in values:
         if [name, value] not in pairs:

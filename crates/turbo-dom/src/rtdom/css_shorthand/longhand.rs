@@ -874,8 +874,8 @@ const LENGTH_FUNCTIONS: &[&str] = &[
     "perspective",
 ];
 
-/// A function's spelling: keyword arguments lowercase (recursively), a length function's `0`
-/// as `0px`.
+/// A function's spelling: as `components` wrote it (keyword arguments lowercase), a length
+/// function's `0` as `0px`.
 fn function_text(function: &str, comp: &Comp) -> String {
     if NAMING_FUNCTIONS.contains(&function) {
         return comp.text.clone();
@@ -890,10 +890,11 @@ fn function_text(function: &str, comp: &Comp) -> String {
     let spelled: Vec<Comp> = inner
         .iter()
         .map(|part| {
+            // The rest is spelled already: `components` lowercased the keyword arguments of
+            // every function but a naming one (nested ones included), and a length
+            // function's zero only counts at the top level.
             let text = match &part.kind {
-                Kind::Ident(ident) if !ident.starts_with("--") => ident.to_ascii_lowercase(),
                 Kind::Number { value, .. } if lengths && *value == 0.0 => "0px".into(),
-                Kind::Function(name) => function_text(name, part),
                 _ => part.text.clone(),
             };
             Comp {

@@ -1,7 +1,7 @@
 {
   "browser": "Chrome/156.0.8078.4",
   "v8": "15.6.75",
-  "casesSha256": "066a4c800c8339264b23e0608cafd8fcd0778e8e223ca29f98306dedc7a9bafb",
+  "casesSha256": "8caf9b540c0c9a89fa484a8d0fdebb39d9e9ea959ac10b3833c314a25a56794a",
   "probeSha256": "f811a594ebd666055d2ad7a4fe5b2c829ec1e9e2a1a0725934bad2d814fb51c4",
   "collectorSha256": "7bd6ffb7440d38e05cd2b8fbe0e84e91cf462043577ceada3e276728ad216172",
   "flags": [
@@ -3290,6 +3290,12 @@
             "shorthands": {
               "margin": "calc(1px + min(1px, 1em))"
             }
+          },
+          {
+            "id": "margin|calc((1px + 1px) * 2px)",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
           },
           {
             "id": "margin|inherit",
@@ -17249,6 +17255,12 @@
           },
           {
             "id": "place-items|center start end",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "place-items|stretch center start",
             "cssText": "",
             "items": [],
             "shorthands": {}
@@ -52617,6 +52629,28 @@
             "shorthands": {}
           },
           {
+            "id": "flex|min(1, 2)",
+            "cssText": "flex: calc(1) 1 0%;",
+            "items": [
+              [
+                "flex-grow",
+                "calc(1)"
+              ],
+              [
+                "flex-shrink",
+                "1"
+              ],
+              [
+                "flex-basis",
+                "0%"
+              ]
+            ],
+            "shorthands": {
+              "-webkit-flex": "calc(1) 1 0%",
+              "flex": "calc(1) 1 0%"
+            }
+          },
+          {
             "id": "flex|inherit",
             "cssText": "flex: inherit;",
             "items": [
@@ -66246,6 +66280,12 @@
           },
           {
             "id": "offset|path('M 0 0') 10px auto 0",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "offset|path('M 0 0') 10px 5",
             "cssText": "",
             "items": [],
             "shorthands": {}

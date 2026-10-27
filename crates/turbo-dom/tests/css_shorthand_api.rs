@@ -145,3 +145,38 @@ fn background_reads_an_empty_image_layer_as_none() {
         "url(a.png), none, url(b.png)"
     );
 }
+
+#[test]
+fn display_knows_every_two_keyword_form() {
+    // `display` is lenient (its grammar leaves unknown forms to the embedder); the
+    // two-keyword forms Chrome 156 admits are this grammar's own, spelled like Chrome
+    // (`css_longhand_chrome156.json`).
+    for (value, chrome) in [
+        ("block flow", "block"),
+        ("inline flow", "inline"),
+        ("flow block", "block"),
+        ("inline flow-root", "inline-block"),
+        ("flow-root inline", "inline-block"),
+        ("block flow-root", "flow-root"),
+        ("flex block", "flex"),
+        ("inline flex", "inline-flex"),
+        ("block grid", "grid"),
+        ("inline grid", "inline-grid"),
+        ("block table", "table"),
+        ("table inline", "inline-table"),
+        ("block ruby", "block ruby"),
+        ("ruby block", "block ruby"),
+        ("inline ruby", "ruby"),
+        ("ruby inline", "ruby"),
+    ] {
+        assert_eq!(
+            longhand_value("display", value),
+            Spelled::Valid(chrome.into()),
+            "{value}"
+        );
+    }
+    assert_eq!(
+        longhand_value("display", "flow-root flex"),
+        Spelled::Unchecked("flow-root flex".into())
+    );
+}
