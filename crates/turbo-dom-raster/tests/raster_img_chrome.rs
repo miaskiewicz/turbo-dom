@@ -218,7 +218,6 @@ fn natural(case: &serde_json::Value) -> (u64, u64) {
 }
 
 #[test]
-#[ignore = "turbo-dom#107: fails until the fix"]
 fn undecodable_images_paint_nothing_like_chrome_156() {
     let mut failures = Vec::new();
     let undecodable = cases("undecodable-");

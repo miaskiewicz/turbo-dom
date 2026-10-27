@@ -171,8 +171,10 @@ fn paint_subtree(pm: &mut Pixmap, f: &Fragment, images: &DecodedAssets, xf: Tran
     }
 }
 
-/// Draw an image into its layout box: scale the decoded pixels and blit them;
-/// fall back to a neutral placeholder when the image is absent or won't scale.
+/// Draw an image into its layout box: scale the decoded pixels and blit them. An image
+/// laid out at its size whose pixels did not decode paints nothing, as in Chrome
+/// (miaskiewicz/turbo-dom#107); the neutral placeholder stands for an image the caller did
+/// not supply or this build cannot decode (`DecodedImage::placeholder`).
 /// A `mask-image` placement (`tint` set) is stencilled: the source's alpha selects
 /// where the tint colour paints (Wikipedia's monochrome SVG UI glyphs).
 fn paint_image(
@@ -183,9 +185,8 @@ fn paint_image(
     xf: Transform,
 ) {
     let (w, h) = (f.width.round() as u32, f.height.round() as u32);
-    let img = images
-        .get(&placement.name)
-        .and_then(|d| d.oriented(placement.orientation).scaled_pixmap(w, h));
+    let decoded = images.get(&placement.name);
+    let img = decoded.and_then(|d| d.oriented(placement.orientation).scaled_pixmap(w, h));
     // Fold the box's top-left into the transform so a transformed image (a rotated
     // thumbnail, a translated slide) maps correctly; draw the pixmap at (0,0).
     let place = xf.pre_concat(Transform::from_translate(f.x.round(), f.y.round()));
@@ -204,9 +205,11 @@ fn paint_image(
         (Some(src), None) => {
             pm.draw_pixmap(0, 0, src.as_ref(), &PixmapPaint::default(), place, None);
         }
-        // A missing mask paints nothing (no placeholder box for a glyph); a missing
-        // real image shows the neutral placeholder.
+        // A missing mask paints nothing (no placeholder box for a glyph), nor does an
+        // image whose pixels did not decode; a missing real image shows the neutral
+        // placeholder.
         (None, Some(_)) => {}
+        (None, None) if decoded.is_some_and(|d| !d.placeholder) => {}
         (None, None) => fill_rect(pm, f.x, f.y, f.width, f.height, IMAGE_PLACEHOLDER, xf),
     }
 }

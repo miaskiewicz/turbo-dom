@@ -141,8 +141,10 @@ fn paint_subtree(svg: &mut String, f: &Fragment, images: &DecodedAssets) {
     }
 }
 
-/// Embed an image as a base64 `data:` URI `<image>` filling its layout box; fall
-/// back to a neutral placeholder rect when the bytes are absent or unrecognized.
+/// Embed an image as a base64 `data:` URI `<image>` filling its layout box. An image
+/// laid out at its size whose pixels did not decode paints nothing, as in Chrome
+/// (miaskiewicz/turbo-dom#107); a neutral placeholder rect stands for an image the caller
+/// did not supply or this build cannot decode.
 /// `preserveAspectRatio="none"` because layout already sized the box to the
 /// image's aspect ratio.
 fn paint_image(
@@ -151,9 +153,8 @@ fn paint_image(
     placement: &turbo_dom_layout::ImagePlacement,
     images: &DecodedAssets,
 ) {
-    let uri = images
-        .get(&placement.name)
-        .and_then(|img| image_paint::data_uri(&img.oriented(placement.orientation)));
+    let decoded = images.get(&placement.name);
+    let uri = decoded.and_then(|img| image_paint::data_uri(&img.oriented(placement.orientation)));
     match uri {
         Some(uri) => {
             let _ = writeln!(
@@ -163,6 +164,7 @@ fn paint_image(
                 f.x, f.y, f.width, f.height
             );
         }
+        None if decoded.is_some_and(|d| !d.placeholder) => {}
         None => rect(svg, f.x, f.y, f.width, f.height, IMAGE_PLACEHOLDER),
     }
 }

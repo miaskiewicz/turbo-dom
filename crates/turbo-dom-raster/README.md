@@ -48,9 +48,12 @@ does the `Triangle` resize for paint and the PNG re-encode of SVG `data:` URIs. 
 sizes each image from the shared header probe through `ImageResolver::intrinsic` (no PNG
 re-encode for sizing). A PNG, JPEG, GIF or WebP loads exactly when that probe sizes it —
 Blink's size point (miaskiewicz/turbo-dom#59): a cut-short body before it is not an image, one
-past it whose pixels do not decode lays out at its size and paints as the placeholder
-(`image_paint::truncation_tests`, against turbo-dom-layout's
-`tests/fixtures/image_truncation_chrome156.json`). `image_paint::shared_layer_tests` asserts the old decode
+past it whose pixels do not decode lays out at its size and paints nothing, as in Chrome — so
+does a frame-corrupt AVIF; an AVIF loads once its primary item's `iloc` extents lie within the
+data (miaskiewicz/turbo-dom#107). The grey placeholder is for an image the caller did not
+supply or this build has no decoder for (`image_paint::truncation_tests`, against
+turbo-dom-layout's `tests/fixtures/image_truncation_chrome156.json`; the `undecodable-*`
+cases of `tests/fixtures/raster_img_chrome156.json`). `image_paint::shared_layer_tests` asserts the old decode
 (`image::load_from_memory(..).to_rgba8()`, the old 1x resvg path) and the old
 probe-of-the-re-encode equal the new ones over turbo-dom's `tools/parity` image inputs and
 every 8/16-bit sample value. `system_fonts` renders share turbo-dom-layout's process-wide

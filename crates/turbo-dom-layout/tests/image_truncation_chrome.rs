@@ -51,7 +51,9 @@ fn read(file: &str) -> Vec<u8> {
 }
 
 fn is_avif(file: &str) -> bool {
-    file.ends_with(".avif")
+    std::path::Path::new(file)
+        .extension()
+        .is_some_and(|e| e == "avif")
 }
 
 /// The control's images `pick` selects.
@@ -76,7 +78,6 @@ fn the_probes_report_a_size_at_chromes_prefix_lengths() {
 }
 
 #[test]
-#[ignore = "turbo-dom#107: fails until the fix"]
 fn the_avif_probes_report_a_size_once_the_primary_item_is_in_the_data() {
     probes_follow_chrome(is_avif);
 }
@@ -203,7 +204,6 @@ fn truncated_img_boxes_follow_chromes_load_decision() {
 }
 
 #[test]
-#[ignore = "turbo-dom#107: fails until the fix"]
 fn truncated_avif_img_boxes_follow_chromes_load_decision() {
     img_boxes_follow_chrome(is_avif);
 }

@@ -93,7 +93,8 @@ pub enum Format {
     /// Intrinsic-size only here; turbo-dom-raster decodes it for paint.
     Ico,
     /// AVIF (an ISOBMFF `ftyp` with the `avif`/`avis` brand), sized from the primary
-    /// item's `ispe`. Intrinsic-size only here; turbo-dom-raster decodes it for paint
+    /// item's `ispe` once that item's `iloc` extents lie within the data. Intrinsic-size
+    /// only here; turbo-dom-raster decodes it for paint
     /// under its `avif` feature.
     Avif,
     /// JPEG XL (a bare `FF 0A` codestream or the `JXL ` ISOBMFF container), sized from

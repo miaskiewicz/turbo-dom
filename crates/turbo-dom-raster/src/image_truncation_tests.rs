@@ -15,13 +15,18 @@ fn layout_fixture(path: &str) -> std::path::PathBuf {
 
 #[test]
 fn truncated_images_decode_like_chrome_156() {
-    decode_like_chrome(|file| !file.ends_with(".avif"), true);
+    decode_like_chrome(|file| !is_avif(file), true);
 }
 
 #[test]
-#[ignore = "turbo-dom#107: fails until the fix"]
 fn truncated_avifs_decode_like_chrome_156() {
-    decode_like_chrome(|file| file.ends_with(".avif"), false);
+    decode_like_chrome(is_avif, false);
+}
+
+fn is_avif(file: &str) -> bool {
+    std::path::Path::new(file)
+        .extension()
+        .is_some_and(|e| e == "avif")
 }
 
 /// The control's images `pick` selects (and, with `svgs`, its SVG documents) decode as
