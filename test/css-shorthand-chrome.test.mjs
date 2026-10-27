@@ -67,3 +67,13 @@ test('element.style shorthands expand and serialize like Chrome 156 (turbo-dom#9
   assert.deepEqual(stale, [], 'stale KNOWN_GAPS');
   assert.deepEqual(failures, [], `${failures.length} of ${expected.results.length} scenarios differ from Chrome`);
 });
+
+test("the module's shorthand table (shorthandNames / longhands / canonical) is Chrome 156's", async () => {
+  // the same assertion as crates/turbo-dom/tests/css_shorthand_chrome.rs makes of rtdom::css_shorthand
+  const { shorthandNames, longhands, canonical } = await import('../src/runtime/css-shorthand.mjs');
+  const names = shorthandNames();
+  assert.deepEqual(Object.fromEntries(names.map((name) => [name, longhands(name)])), control.result[0].result.table);
+  assert.equal(new Set(names).size, names.length);
+  assert.equal(canonical('-webkit-flex'), 'flex');
+  assert.equal(longhands('color'), null);
+});

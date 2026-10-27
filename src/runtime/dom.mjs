@@ -2207,7 +2207,6 @@ export class Document extends Node {
   get visibilityState() { return 'visible'; }
   get hidden() { return false; }
   get readyState() { return 'complete'; }
-  hasFocus() { return true; }
   get characterSet() { return 'UTF-8'; }
   get compatMode() { return 'CSS1Compat'; }
   get __owner() { return this.defaultView; }

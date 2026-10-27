@@ -45,8 +45,7 @@ export function setParserMode(mode) {
 
 function resolveMode() {
   if (_mode) return _mode;
-  const g = typeof globalThis !== 'undefined' ? globalThis : {};
-  if (g.__TURBO_DOM_PARSER_MODE__) return g.__TURBO_DOM_PARSER_MODE__;
+  if (globalThis.__TURBO_DOM_PARSER_MODE__) return globalThis.__TURBO_DOM_PARSER_MODE__;
   if (typeof process !== 'undefined' && process.env && process.env.TURBO_DOM_PARSER) return process.env.TURBO_DOM_PARSER;
   return 'auto';
 }
@@ -56,8 +55,7 @@ function resolveMode() {
 // freely without caching it themselves.
 export function getParser() {
   if (_parser) return _parser;
-  const g = typeof globalThis !== 'undefined' ? globalThis : {};
-  if (g.__TURBO_DOM_PARSER__) return (_parser = g.__TURBO_DOM_PARSER__);
+  if (globalThis.__TURBO_DOM_PARSER__) return (_parser = globalThis.__TURBO_DOM_PARSER__);
   const mode = resolveMode();
   if (mode === 'wasm') return (_parser = loadWasm());
   if (mode === 'native') return (_parser = loadNative());

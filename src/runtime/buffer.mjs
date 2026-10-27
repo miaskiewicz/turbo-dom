@@ -72,7 +72,6 @@ export class Buffer {
   nodeType(i) { return this.soa.nodeType[i]; }
   ns(i) { return NS_SHORT[this.soa.ns[i]] || ''; }
   tagName(i) { return this.soa.tagNames[this.soa.tagId[i]]; }
-  parent(i) { return this.soa.parent[i]; }
   firstChild(i) { return this.soa.firstChild[i]; }
   nextSib(i) { return this.soa.nextSib[i]; }
   text(i) { const t = this.soa.textId[i]; return t < 0 ? '' : this.soa.strings[t]; }
