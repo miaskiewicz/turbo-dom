@@ -270,3 +270,58 @@ fn native_viewport_layout_scale_is_bounded_and_configurable_before_box_allocatio
         (4161.0 / 128.0, 3109.0 / 128.0)
     );
 }
+
+#[test]
+fn viewport_declarations_must_name_an_html_svg_element() {
+    // A declared viewport whose identity path ends at a text node, at a marker, or
+    // runs through a text node is not an `<svg>` element: the declaration is rejected
+    // (an inline-SVG outer viewport is only ever an element).
+    use turbo_dom_layout::layout_snapshot::SvgSnapshotError;
+    use turbo_dom_layout::MarkerKind;
+    let nodes = vec![Node::Element(Element {
+        tag: Tag::Html("div".into()),
+        attrs: vec![],
+        children: vec![
+            Node::Text("t".into()),
+            Node::Element(Element {
+                tag: Tag::Marker(MarkerKind {
+                    id: 7,
+                    inline: false,
+                }),
+                attrs: vec![],
+                children: vec![],
+            }),
+            Node::Element(Element {
+                tag: Tag::Html("svg".into()),
+                attrs: vec![],
+                children: vec![],
+            }),
+        ],
+    })];
+    let ids = |extra: &[usize]| {
+        vec![
+            SourceIdentity {
+                id: SourceId(1),
+                path: vec![0],
+            },
+            SourceIdentity {
+                id: SourceId(2),
+                path: vec![0, 2],
+            },
+            SourceIdentity {
+                id: SourceId(9),
+                path: extra.to_vec(),
+            },
+        ]
+    };
+    for path in [&[0, 0][..], &[0, 1], &[0, 0, 0], &[3]] {
+        assert!(
+            matches!(
+                capture(&nodes, &ids(path), &[SourceId(9)]),
+                Err(SvgSnapshotError::InvalidViewportSource(SourceId(9)))
+            ),
+            "path {path:?}"
+        );
+    }
+    assert!(capture(&nodes, &ids(&[0, 0]), &[SourceId(2)]).is_ok());
+}

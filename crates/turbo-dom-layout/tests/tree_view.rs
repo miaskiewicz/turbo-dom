@@ -202,3 +202,122 @@ fn stripped_elements_still_count_for_selectors() {
     assert_eq!(get(2, "height").as_deref(), Some("2px"));
     assert_eq!(get(2, "color"), None, "a template follows the p");
 }
+
+#[test]
+fn selector_navigator_siblings_and_types_with_markers() {
+    // The turbo-dom `Navigator` contract over the scope navigator: element siblings step
+    // over text, a non-element has no element neighbours, and a marker is its own
+    // element type (a marker of another kind is a different type again).
+    use turbo_dom::rtdom::query::Navigator as _;
+    use turbo_dom_layout::style::Navigator;
+    let tree = parse_html_tree(
+        "<body><x-marker-3-i>m</x-marker-3-i><p>a</p>t<p></p><x-marker-3-i></x-marker-3-i><x-marker-4-b></x-marker-4-b></body>",
+    );
+    let view = TreeView::new(&tree).markers(&common::marker_of);
+    let nav = Navigator::new(&view, Roots::Document);
+    let body = view.find_element("body").unwrap();
+    let kids = tree.children(body);
+    let [m1, p1, text, p2, m2, m4] = kids[..] else {
+        panic!("six children, got {kids:?}")
+    };
+    assert_eq!(nav.next_element_sibling(m1), Some(p1));
+    assert_eq!(nav.next_element_sibling(p1), Some(p2), "text skipped");
+    assert_eq!(nav.next_element_sibling(m4), None, "last element");
+    assert_eq!(nav.previous_element_sibling(p2), Some(p1));
+    assert_eq!(nav.previous_element_sibling(m1), None, "first element");
+    assert_eq!(
+        nav.next_element_sibling(text),
+        None,
+        "a text node has no index"
+    );
+    assert_eq!(nav.previous_element_sibling(text), None);
+    assert!(nav.same_type(p1, p2) && nav.same_type(m1, m2));
+    assert!(!nav.same_type(m1, p1) && !nav.same_type(m1, m4));
+    assert_eq!(nav.element_siblings(p1), [m1, p1, p2, m2, m4]);
+}
+
+#[test]
+fn marker_siblings_are_their_own_type_for_of_type_selectors() {
+    let tree = parse_html_tree(
+        "<body><x-marker-3-i>m</x-marker-3-i><p id=a>a</p><p id=b>b</p><x-marker-3-i></x-marker-3-i></body>",
+    );
+    let view = TreeView::new(&tree).markers(&common::marker_of);
+    let styled = style_input(
+        &StyleInput {
+            view,
+            roots: Roots::Document,
+        },
+        &turbo_dom_layout::build_cascade(
+            "p:first-of-type{color:red} p:last-of-type{color:blue} p:first-child{width:1px} p:has(+ p){height:2px}",
+            "",
+            TokenSet::default(),
+        ),
+        &StyleOptions::default(),
+    );
+    let StyledNode::Element(html) = &styled[0] else {
+        panic!("html")
+    };
+    let StyledNode::Element(body) = &html.children[1] else {
+        panic!("body")
+    };
+    let get = |i: usize, property: &str| match &body.children[i] {
+        StyledNode::Element(element) => element.style.get(property).map(str::to_string),
+        StyledNode::Text(_) => None,
+    };
+    assert_eq!(get(1, "color").as_deref(), Some("red"));
+    assert_eq!(get(2, "color").as_deref(), Some("blue"));
+    assert_eq!(get(1, "width"), None, "the marker is the first child");
+    assert_eq!(get(1, "height").as_deref(), Some("2px"), "followed by a p");
+    assert_eq!(get(2, "height"), None, "followed by a marker");
+}
+
+#[test]
+fn without_sources_clears_provenance_recursively() {
+    let html = "<p id=a>x<b>y</b></p>";
+    let style = |tree: &turbo_dom::Tree| {
+        let view = TreeView::new(tree);
+        let body = view.find_element("body").unwrap();
+        let roots = tree.children(body);
+        style_input(
+            &StyleInput {
+                view,
+                roots: Roots::Detached(&roots),
+            },
+            &turbo_dom_layout::build_cascade("b{color:red}", "", TokenSet::default()),
+            &StyleOptions::default(),
+        )
+    };
+    let (one, two) = (
+        parse_html_tree(html),
+        parse_html_tree(&format!("<i></i>{html}")),
+    );
+    let a = style(&one);
+    let b = style(&two);
+    let StyledNode::Element(p) = &a[0] else {
+        panic!("p")
+    };
+    assert!(p.source.is_some());
+    let stripped = a[0].without_sources();
+    assert_ne!(a[0], b[1], "different trees, different sources");
+    assert_eq!(stripped, b[1].without_sources());
+    let StyledNode::Element(sp) = &stripped else {
+        panic!("p")
+    };
+    assert_eq!(sp.source, None);
+    assert_eq!(
+        (sp.tag.clone(), sp.style.clone(), sp.attrs.clone()),
+        (p.tag.clone(), p.style.clone(), p.attrs.clone())
+    );
+    let StyledNode::Text(text) = &sp.children[0] else {
+        panic!("text")
+    };
+    assert_eq!((&**text, text.source), ("x", None));
+    let StyledNode::Element(bold) = &sp.children[1] else {
+        panic!("b")
+    };
+    assert_eq!((bold.source, bold.style.get("color")), (None, Some("red")));
+    let StyledNode::Text(y) = &bold.children[0] else {
+        panic!("y")
+    };
+    assert_eq!((&**y, y.source), ("y", None));
+}

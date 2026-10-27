@@ -1352,3 +1352,43 @@ fn margin_inline_start_maps_to_left_offset() {
         root.children[0].x
     );
 }
+
+#[test]
+fn layout_convenience_entry_equals_the_box_tree_pipeline() {
+    // `turbo_dom_layout::layout` = build the box tree, lay it out (no images).
+    let nodes = [el(
+        "div",
+        &[("padding", "10px"), ("width", "100px")],
+        vec![txt("hi")],
+    )];
+    let mut diags = Diagnostics::default();
+    let root = turbo_dom_layout::layout(&nodes, 500.0, &common::registry(), &mut diags);
+    assert_eq!(format!("{root:?}"), format!("{:?}", lay(&nodes, 500.0)));
+    let div = &root.children[0];
+    assert_eq!(
+        (div.width, div.children[0].x, div.children[0].y),
+        (120.0, 10.0, 10.0)
+    );
+}
+
+#[test]
+fn border_edges_any_visible_needs_a_nonzero_width_side() {
+    use turbo_dom_layout::layout::value::{BorderEdges, BorderSide};
+    let side = |width| BorderSide {
+        width,
+        color: Some(turbo_dom_layout::Rgba::BLACK),
+    };
+    assert!(!BorderEdges::default().any_visible());
+    let none = BorderEdges {
+        top: side(0),
+        right: side(0),
+        bottom: side(0),
+        left: side(0),
+    };
+    assert!(!none.any_visible(), "colour alone paints nothing");
+    for i in 0..4 {
+        let mut e = none;
+        *[&mut e.top, &mut e.right, &mut e.bottom, &mut e.left][i] = side(1);
+        assert!(e.any_visible(), "side {i}");
+    }
+}
