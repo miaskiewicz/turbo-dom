@@ -162,7 +162,9 @@ package or publish workflow.
   SVG `data:` URIs), AVIF via `rav1d` under the off-by-default `avif` feature (P5b
   turbo-surf#30) and JPEG XL via `jxl-oxide` under the off-by-default `jxl` feature (P5b
   turbo-dom#45; the size/orientation probe is in turbo-dom-layout, every build); `image_paint::shared_layer_tests` gates it byte for byte against the old
-  decode over `tools/parity` image inputs.
+  decode over `tools/parity` image inputs. 100% line coverage in its default / `avif` / `jxl`
+  configs (CI gate 100 each; Chrome 156 controls `paint-`, `canvas-ops-` and
+  `raster-avif-chrome-control.mjs` back the pixel tests).
 - `harness/` — JS conformance tooling (dat parser, serializer, runner). All unit-tested.
 - `src/runtime/` — the lazy COW DOM + window (Layers 2–5). `index.mjs` exports
   `createEnvironment(html)` → `{ window, document, reset, touched }`. Nodes inflate lazily

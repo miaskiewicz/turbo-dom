@@ -146,6 +146,188 @@ fn fixed_and_icb_boxes_anchor_to_the_viewport_like_chrome_156() {
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
 
+/// The painter's box decoration paths (P5-cov): a rounded border, a gradient in a rounded
+/// box, unblurred / collapsed / spread shadows, transparent text.
+#[test]
+fn box_decorations_paint_like_chrome_156() {
+    let failures = differences(|id| id.starts_with("paint-"));
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+}
+
+/// The PNG and (resvg-rasterized) SVG screenshot's raw colour at each probe of `id`.
+fn probe_rgb(id: &str) -> Vec<([u8; 3], [u8; 3], [u8; 3])> {
+    let fixture = fixture();
+    let case = fixture["cases"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|case| case["id"] == id)
+        .unwrap();
+    let html = case["html"].as_str().unwrap();
+    let png = screenshot_png_with_opts(html, "", VIEWPORT, &assets(case), false, false).unwrap();
+    let png = tiny_skia::Pixmap::decode_png(&png).unwrap();
+    let svg = screenshot_svg_with_opts(html, "", VIEWPORT, &assets(case), false, false).unwrap();
+    let raster = rasterize_svg(&svg);
+    case["probes"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|probe| {
+            let (x, y) = (
+                probe["x"].as_u64().unwrap() as u32,
+                probe["y"].as_u64().unwrap() as u32,
+            );
+            let p = png.pixel(x, y).unwrap();
+            let s = raster.pixel(x, y).unwrap().demultiply();
+            let chrome: [u8; 3] = serde_json::from_value(probe["rgb"].clone()).unwrap();
+            (
+                [p.red(), p.green(), p.blue()],
+                [s.red(), s.green(), s.blue()],
+                chrome,
+            )
+        })
+        .collect()
+}
+
+/// A half-transparent background and shadow composite over the backdrop like Chrome's in
+/// both painters (the SVG one as `fill-opacity`), exactly.
+#[test]
+fn translucent_colours_composite_like_chrome_156() {
+    for (png, svg, chrome) in probe_rgb("paint-alpha") {
+        assert_eq!(png, chrome, "png");
+        assert_eq!(svg, chrome, "svg");
+    }
+}
+
+/// A blurred shadow of a box far wider than the viewport (9000px) paints like Chrome's
+/// (miaskiewicz/turbo-dom#95: it was skipped past an 8192px scratch).
+#[test]
+fn wide_box_shadows_paint_like_chrome_156() {
+    let failures = differences(|id| id == "shadow-wide");
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+}
+
+/// A spread enlarges a shadow's corner radius by the spread scaled by 1 + (r/s - 1)^3 below
+/// it (CSS Backgrounds 3 §7.1): a square box's shadow stays square, in both painters (found
+/// by the P5-cov mutation pass).
+#[test]
+fn shadow_spread_radii_follow_css_like_chrome_156() {
+    let mut failures = differences(|id| id == "shadow-spread-small-radius");
+    failures.extend(svg_differences(|id| id == "shadow-spread-small-radius"));
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+}
+
+/// Chrome paints every shadow blur from 256px up identically (the control's 256px and 400px
+/// cases have equal pixels); so does the raster (miaskiewicz/turbo-dom#95).
+#[test]
+fn shadow_blur_is_capped_at_256px_like_chrome_156() {
+    let (at256, at400) = (probe_rgb("shadow-blur-256"), probe_rgb("shadow-blur-400"));
+    for ((png256, svg256, chrome256), (png400, svg400, chrome400)) in at256.into_iter().zip(at400) {
+        assert_eq!(chrome256, chrome400, "the control");
+        assert_eq!(png256, png400, "png");
+        assert_eq!(svg256, svg400, "svg");
+    }
+    let failures = differences(|id| id.starts_with("shadow-blur-"));
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+}
+
+/// The SVG screenshot rasterized by resvg. This resvg build has no `raster-images` decoders
+/// (turning them on in the dev-dependency would also change turbo-dom-layout's rasterizer
+/// under test), so each embedded PNG `data:` image is first re-embedded as an SVG of its
+/// pixels (one rect per run of equal pixels, crisp edges) — the same image, drawn the same
+/// way into its `<image>` box.
+fn rasterize_svg(svg: &str) -> resvg::tiny_skia::Pixmap {
+    use resvg::{tiny_skia as rsk, usvg};
+    use std::fmt::Write;
+    const PNG: &str = "href=\"data:image/png;base64,";
+    let mut svg = svg.to_string();
+    while let Some(at) = svg.find(PNG) {
+        let start = at + "href=\"".len();
+        let end = start + svg[start..].find('"').unwrap();
+        let png = decode_data_url(&svg[start..end]).unwrap().bytes;
+        let img = image::load_from_memory(&png).unwrap().to_rgba8();
+        let mut pixels = format!(
+            "<svg xmlns='http://www.w3.org/2000/svg' width='{0}' height='{1}' viewBox='0 0 {0} {1}' preserveAspectRatio='none' shape-rendering='crispEdges'>",
+            img.width(),
+            img.height()
+        );
+        for y in 0..img.height() {
+            let mut x = 0;
+            while x < img.width() {
+                let p = img.get_pixel(x, y).0;
+                let run = (x..img.width())
+                    .take_while(|&e| img.get_pixel(e, y).0 == p)
+                    .count() as u32;
+                let _ = write!(
+                    pixels,
+                    "<rect x='{x}' y='{y}' width='{run}' height='1' fill='rgb({},{},{})' fill-opacity='{}'/>",
+                    p[0],
+                    p[1],
+                    p[2],
+                    f32::from(p[3]) / 255.0
+                );
+                x += run;
+            }
+        }
+        pixels.push_str("</svg>");
+        let escaped = pixels.replace('<', "&lt;").replace('>', "&gt;");
+        svg.replace_range(start..end, &format!("data:image/svg+xml;utf8,{escaped}"));
+    }
+    let tree = usvg::Tree::from_str(&svg, &usvg::Options::default()).expect("valid svg");
+    let mut pm = rsk::Pixmap::new(VIEWPORT.width, VIEWPORT.height).unwrap();
+    resvg::render(&tree, rsk::Transform::identity(), &mut pm.as_mut());
+    pm
+}
+
+/// Every probe difference from Chrome of the vector screenshot of the cases `select` picks,
+/// rasterized by resvg (the SVG painter emits the same boxes, borders, shadows, gradients,
+/// transforms and clips as the raster one, as SVG).
+fn svg_differences(select: impl Fn(&str) -> bool) -> Vec<String> {
+    let fixture = fixture();
+    let mut failures = Vec::new();
+    let mut compared = 0;
+    for case in fixture["cases"].as_array().unwrap() {
+        let id = case["id"].as_str().unwrap();
+        if !select(id) {
+            continue;
+        }
+        compared += 1;
+        let html = case["html"].as_str().unwrap();
+        let svg =
+            screenshot_svg_with_opts(html, "", VIEWPORT, &assets(case), false, false).expect("svg");
+        let pm = rasterize_svg(&svg);
+        for probe in case["probes"].as_array().unwrap() {
+            let (x, y) = (
+                probe["x"].as_u64().unwrap() as u32,
+                probe["y"].as_u64().unwrap() as u32,
+            );
+            let c = pm.pixel(x, y).expect("in bounds").demultiply();
+            let got = class([c.red(), c.green(), c.blue()]);
+            let want = probe["class"].as_str().unwrap();
+            if got.to_string() != want {
+                failures.push(format!("{id} ({x},{y}): svg {got}, Chrome {want}"));
+            }
+        }
+    }
+    assert!(compared > 0, "no case selected");
+    failures
+}
+
+/// A rounded box's border follows its radius in the vector screenshot too: the corners
+/// outside the radius stay the backdrop (miaskiewicz/turbo-dom#95).
+#[test]
+fn svg_rounded_borders_follow_the_radius_like_chrome_156() {
+    let failures = svg_differences(|id| id == "paint-round-border");
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+}
+
+/// The vector screenshot of every case, rasterized, against the same Chrome probes.
+#[test]
+fn svg_screenshots_paint_like_chrome_156() {
+    let failures = svg_differences(|id| !pending_case(id));
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+}
+
 /// The vector screenshot clips a `clip: rect()` box with a `<clipPath>` of its region and
 /// leaves out a box whose region is empty (miaskiewicz/turbo-dom#52).
 #[test]
