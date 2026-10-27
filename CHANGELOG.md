@@ -83,7 +83,12 @@ changes in `tools/parity/expected/p5b-w7-turbo-dom-*.json`.
   box resolved a `%` width (and `%` padding / margins) against its parent's content width
   and was placed against its positioned ancestor's content box; it now uses its
   containing block, the ancestor's padding box (the viewport for `fixed`), as Chrome and
-  the live path do. Control: `abs-percent-*` in `html-document`.
+  the live path do. A definite zero-height ancestor's padding box keeps its padding (the
+  `height: 0; padding-bottom: N%` aspect-ratio box). Control: `abs-percent-*` /
+  `abs-padding-box-*` in `html-document`. P5b-W6 fixed #100's insets / margins side too
+  (`positioned_style`) and turbo-dom#101 (a block inside an inline splits it on the
+  generic policy); the merge keeps both, and W6's #102 control
+  (`positioned-padding-box-*`) passes with this padding-box fix.
 - Also found and fixed on this branch (P5b-W7): turbo-dom#86 (column flex items) and #88
   (`display: flow-root`) — P5b-W6 fixed both too; the merge keeps W6's implementations
   (see its section below) and both branches' Chrome 156 cases (`column-flex-*`,

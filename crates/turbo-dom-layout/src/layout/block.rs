@@ -473,8 +473,10 @@ fn positioned_style(kid: &LayoutBox, cw: f32, fs: f32, ctx: &Ctx) -> BoxStyle {
     resolve(kid, out_of_flow_width(&resolve(kid, cw, fs), ctx), fs)
 }
 
-/// The width an out-of-flow box resolves its `%` width against: its containing block's
-/// (miaskiewicz/turbo-dom#100: on every path, not its parent's).
+/// The width an out-of-flow box resolves its percentages (`width`, `min-` / `max-width`,
+/// horizontal padding and margins) against: its containing block's, on every path — the
+/// nearest positioned ancestor's, the viewport's for `fixed` (CSS 2.2 §10.2;
+/// miaskiewicz/turbo-dom#100; the static path used the parent's width).
 fn out_of_flow_width(bs: &BoxStyle, ctx: &Ctx) -> f32 {
     containing_block(bs, ctx).2
 }
