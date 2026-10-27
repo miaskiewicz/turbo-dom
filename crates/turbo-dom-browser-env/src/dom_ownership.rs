@@ -116,6 +116,8 @@ pub(super) fn reconcile_current(scope: &mut v8::PinScope) {
         let graph = state.ownership.clone()?;
         let mut roots = std::collections::HashMap::new();
         let mut connected = std::collections::HashSet::new();
+        #[cfg(test)]
+        WORK.with(|work| work.wrappers_visited.set(work.wrappers_visited.get() + state.cache.len()));
         for handle in state.cache.keys() {
             let mut root = *handle;
             while let Some(parent) = state
@@ -144,6 +146,19 @@ pub(super) fn reconcile_current(scope: &mut v8::PinScope) {
         return;
     }
     graph.reconcile_components(scope, |id| *roots.get(&id).unwrap());
+}
+
+/// Work counters for complexity tests (turbo-dom#112): wrappers walked by `reconcile_current`
+/// and collected-listener/document sweeps run by `reconcile_all`.
+#[cfg(test)]
+#[derive(Default)]
+pub(super) struct Work {
+    pub(super) wrappers_visited: std::cell::Cell<usize>,
+    pub(super) sweeps: std::cell::Cell<usize>,
+}
+#[cfg(test)]
+thread_local! {
+    pub(super) static WORK: Work = Work::default();
 }
 
 pub(super) fn link_style<'s>(
@@ -205,6 +220,8 @@ pub(super) fn reconcile_all(scope: &mut v8::PinScope) {
     if scope.is_execution_terminating() {
         return;
     }
+    #[cfg(test)]
+    WORK.with(|work| work.sweeps.set(work.sweeps.get() + 1));
     super::event_listeners::sweep_collected_listeners(scope);
     sweep_collected();
     let current = DOM_ID.with(|id| id.get());

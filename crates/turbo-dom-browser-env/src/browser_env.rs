@@ -9981,6 +9981,10 @@ mod mutation_observers_tests;
 mod ownership_guard_tests;
 
 #[cfg(test)]
+#[path = "dom_ownership_scale_tests.rs"]
+mod dom_ownership_scale_tests;
+
+#[cfg(test)]
 #[path = "iframe_credentialless_tests.rs"]
 mod iframe_credentialless_tests;
 
