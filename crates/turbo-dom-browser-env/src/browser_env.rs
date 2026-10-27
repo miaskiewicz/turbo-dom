@@ -1705,101 +1705,6 @@ fn replace_character_data(
     units.splice(offset..offset + count, inserted);
     with_tree_mut(|tree| tree.set_text_content_utf16(node, &units));
 }
-fn el_insert_data(
-    scope: &mut v8::PinScope,
-    args: v8::FunctionCallbackArguments,
-    _rv: v8::ReturnValue,
-) {
-    let _dom = DomScope::for_object(scope, args.this());
-    let Some(h) = receiver_handle(scope, &args, &[3, 4, 7, 8]) else {
-        return;
-    };
-    let Some(off) = arg_usize(scope, &args, 0) else {
-        return;
-    };
-    let Some(data) = dom_units(scope, args.get(1)) else {
-        return;
-    };
-    replace_character_data(scope, h, off, 0, &data);
-}
-fn el_delete_data(
-    scope: &mut v8::PinScope,
-    args: v8::FunctionCallbackArguments,
-    _rv: v8::ReturnValue,
-) {
-    let _dom = DomScope::for_object(scope, args.this());
-    let Some(h) = receiver_handle(scope, &args, &[3, 4, 7, 8]) else {
-        return;
-    };
-    let Some(off) = arg_usize(scope, &args, 0) else {
-        return;
-    };
-    let Some(count) = arg_usize(scope, &args, 1) else {
-        return;
-    };
-    replace_character_data(scope, h, off, count, &[]);
-}
-fn el_append_data(
-    scope: &mut v8::PinScope,
-    args: v8::FunctionCallbackArguments,
-    _rv: v8::ReturnValue,
-) {
-    let _dom = DomScope::for_object(scope, args.this());
-    let Some(h) = receiver_handle(scope, &args, &[3, 4, 7, 8]) else {
-        return;
-    };
-    let Some(data) = dom_units(scope, args.get(0)) else {
-        return;
-    };
-    let offset = character_units(h).len();
-    replace_character_data(scope, h, offset, 0, &data);
-}
-fn el_replace_data(
-    scope: &mut v8::PinScope,
-    args: v8::FunctionCallbackArguments,
-    _rv: v8::ReturnValue,
-) {
-    let _dom = DomScope::for_object(scope, args.this());
-    let Some(h) = receiver_handle(scope, &args, &[3, 4, 7, 8]) else {
-        return;
-    };
-    let Some(off) = arg_usize(scope, &args, 0) else {
-        return;
-    };
-    let Some(count) = arg_usize(scope, &args, 1) else {
-        return;
-    };
-    let Some(data) = dom_units(scope, args.get(2)) else {
-        return;
-    };
-    replace_character_data(scope, h, off, count, &data);
-}
-fn el_substring_data(
-    scope: &mut v8::PinScope,
-    args: v8::FunctionCallbackArguments,
-    mut rv: v8::ReturnValue,
-) {
-    let _dom = DomScope::for_object(scope, args.this());
-    let Some(h) = receiver_handle(scope, &args, &[3, 4, 7, 8]) else {
-        return;
-    };
-    let Some(off) = arg_usize(scope, &args, 0) else {
-        return;
-    };
-    let Some(count) = arg_usize(scope, &args, 1) else {
-        return;
-    };
-    if !checked_character_offset(scope, h, off) {
-        return;
-    }
-    let units = character_units(h);
-    let end = off.saturating_add(count).min(units.len());
-    rv.set(
-        v8::String::new_from_two_byte(scope, &units[off..end], v8::NewStringType::Normal)
-            .unwrap()
-            .into(),
-    );
-}
 fn el_split_text(
     scope: &mut v8::PinScope,
     args: v8::FunctionCallbackArguments,
@@ -3462,8 +3367,6 @@ fn get_children(
     })
     .unwrap_or_default();
     let arr = node_array(scope, kids);
-    bind_method(scope, arr.into(), "item", nodelist_item);
-    bind_method(scope, arr.into(), "namedItem", nodelist_named_item);
     rv.set(arr.into());
 }
 
@@ -4011,9 +3914,6 @@ fn get_attributes(
     })
     .unwrap_or_default();
     let arr = node_array(scope, attrs);
-    // NamedNodeMap accessors (`attributes.item(i)` / `attributes.namedItem(name)`).
-    bind_method(scope, arr.into(), "item", nodelist_item);
-    bind_method(scope, arr.into(), "namedItem", nodelist_named_item);
     rv.set(arr.into());
 }
 
@@ -4120,42 +4020,6 @@ fn el_has_child_nodes(
     rv.set(v8::Boolean::new(scope, has).into());
 }
 
-/// `collection.namedItem(name)` for the array-like NodeList/HTMLCollection we hand
-/// back — returns the first element whose `id` (or `name`) matches, else null. Bound
-/// alongside `.item` so libs that call `namedItem` (React-DOM, form-collection code)
-/// don't hit "namedItem is not a function".
-fn nodelist_named_item(
-    scope: &mut v8::PinScope,
-    args: v8::FunctionCallbackArguments,
-    mut rv: v8::ReturnValue,
-) {
-    let _dom = DomScope::for_object(scope, args.this());
-    let name = arg_str(scope, &args, 0);
-    let this = args.this();
-    let len = this
-        .get(scope, v8::String::new(scope, "length").unwrap().into())
-        .and_then(|v| v.uint32_value(scope))
-        .unwrap_or(0);
-    for i in 0..len {
-        let Some(item) = this.get_index(scope, i) else {
-            continue;
-        };
-        let Ok(obj) = v8::Local::<v8::Object>::try_from(item) else {
-            continue;
-        };
-        for attr in ["id", "name"] {
-            let key = v8::String::new(scope, attr).unwrap();
-            if let Some(val) = obj.get(scope, key.into()) {
-                if val.is_string() && val.to_rust_string_lossy(scope) == name {
-                    rv.set(item);
-                    return;
-                }
-            }
-        }
-    }
-    rv.set_null();
-}
-
 fn el_query_selector_all<'s>(
     scope: &mut v8::PinScope<'s, '_>,
     args: v8::FunctionCallbackArguments<'s>,
@@ -4181,8 +4045,6 @@ fn el_query_selector_all<'s>(
     })
     .unwrap_or_default();
     let arr = node_array(scope, handles);
-    bind_method(scope, arr.into(), "item", nodelist_item);
-    bind_method(scope, arr.into(), "namedItem", nodelist_named_item);
     rv.set(arr.into());
 }
 
@@ -5802,29 +5664,7 @@ fn get_child_nodes(
     };
     let kids = with_tree(|t| t.children(h)).unwrap_or_default();
     let arr = node_array(scope, kids);
-    bind_method(scope, arr.into(), "item", nodelist_item);
-    bind_method(scope, arr.into(), "namedItem", nodelist_named_item);
     rv.set(arr.into());
-}
-
-/// `NodeList.item(i)` → the i-th node, or null when out of range. Bound on every node-collection
-/// array we hand back (childNodes / querySelectorAll / getElementsBy*), so libs calling `.item(i)`
-/// instead of `[i]` (e.g. React-DOM's child reconciliation) don't crash.
-fn nodelist_item(
-    scope: &mut v8::PinScope,
-    args: v8::FunctionCallbackArguments,
-    mut rv: v8::ReturnValue,
-) {
-    let _dom = DomScope::for_object(scope, args.this());
-    let i = args.get(0).number_value(scope).unwrap_or(f64::NAN);
-    if i.is_nan() || i < 0.0 {
-        rv.set_null();
-        return;
-    }
-    match args.this().get_index(scope, i as u32) {
-        Some(v) if !v.is_undefined() => rv.set(v),
-        _ => rv.set_null(),
-    }
 }
 
 fn get_owner_document(
@@ -6026,8 +5866,6 @@ fn doc_query_selector_all<'s>(
     })
     .unwrap_or_default();
     let arr = node_array(scope, handles);
-    bind_method(scope, arr.into(), "item", nodelist_item);
-    bind_method(scope, arr.into(), "namedItem", nodelist_named_item);
     rv.set(arr.into());
 }
 
@@ -6355,12 +6193,8 @@ fn build_el_template<'s>(scope: &mut v8::PinScope<'s, '_>) -> v8::Local<'s, v8::
         "getBoundingClientRect",
         el_get_bounding_client_rect,
     );
-    // CharacterData (text/comment node) mutation — native over rtdom's text storage.
-    tmpl_method(scope, tmpl, "insertData", el_insert_data);
-    tmpl_method(scope, tmpl, "deleteData", el_delete_data);
-    tmpl_method(scope, tmpl, "appendData", el_append_data);
-    tmpl_method(scope, tmpl, "replaceData", el_replace_data);
-    tmpl_method(scope, tmpl, "substringData", el_substring_data);
+    // Text.splitText — native over rtdom's text storage (CharacterData's data methods are
+    // document_basics.js's, over the native replaceCharacterData).
     tmpl_method(scope, tmpl, "splitText", el_split_text);
     // native cascade lookup (inherited-property resolution) used by getComputedStyle.
     tmpl_method(scope, tmpl, "__cascadeProp", el_cascade_prop);

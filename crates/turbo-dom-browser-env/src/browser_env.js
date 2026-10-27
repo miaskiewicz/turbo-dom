@@ -2803,7 +2803,6 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
       Node:['appendChild','removeChild','insertBefore','replaceChild','contains','hasChildNodes','cloneNode','getRootNode'],
       Element:['setAttribute','getAttribute','getAttributeNode','getAttributeNodeNS','setAttributeNode','setAttributeNodeNS','removeAttributeNode','hasAttribute','removeAttribute','querySelector','querySelectorAll','matches','closest','append','prepend','remove','before','after','replaceWith','replaceChildren','insertAdjacentElement','insertAdjacentHTML','toggleAttribute','getAttributeNS','hasAttributeNS','setAttributeNS','removeAttributeNS','scrollIntoView','scrollTo','scrollBy','getBoundingClientRect','attachShadow'],
       HTMLElement:['focus','blur','click'],
-      CharacterData:['insertData','deleteData','appendData','replaceData','substringData'],
       Text:['splitText']
     };
     Object.keys(methodOwners).forEach(function(owner){
