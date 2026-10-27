@@ -112,6 +112,20 @@ const DOCUMENTS = [
   { id: "eof_between_doctype_identifiers", html: '<!DOCTYPE html PUBLIC "a" ' },
   { id: "eof_bogus_doctype", html: "<!DOCTYPE html x" },
   { id: "eof_doctype_system_single", html: "<!DOCTYPE html SYSTEM 'a" },
+  // quirks-mode decisions (compatMode) the DOCTYPE states feed
+  { id: "doctype_trailing_space", html: "<!DOCTYPE html >" },
+  { id: "doctype_lone_cr_before_keyword", html: '<!DOCTYPE html\rPUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "s">' },
+  { id: "doctype_public_strict_no_system", html: '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN">' },
+  { id: "doctype_public_strict_space_gt", html: '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" >' },
+  { id: "doctype_transitional_no_system", html: '<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">' },
+  { id: "doctype_transitional_empty_system", html: '<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "">' },
+  { id: "doctype_transitional_single_empty_system", html: "<!DOCTYPE html PUBLIC '-//W3C//DTD HTML 4.01 Transitional//EN' ''>" },
+  { id: "doctype_transitional_empty_system_table", html: '<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" ""><p><table>' },
+  { id: "doctype_frameset_empty_system", html: '<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Frameset//EN" ""><p><table>' },
+  { id: "doctype_empty_public_and_system", html: '<!DOCTYPE html PUBLIC "" ""><p><table>' },
+  { id: "doctype_system_then_space", html: '<!DOCTYPE html SYSTEM "about:legacy-compat" >' },
+  { id: "doctype_public_empty", html: '<!DOCTYPE html PUBLIC "">' },
+  { id: "doctype_public_space_system", html: '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"\n"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">' },
   // tags and end tags
   { id: "end_tag_open_gt", html: "a</>b" },
   { id: "eof_end_tag_open", html: "a</" },
@@ -127,12 +141,14 @@ const DOCUMENTS = [
   { id: "char_ref_numeric_no_semicolon", html: "x&#65y&#x42 z" },
   { id: "char_ref_numeric_invalid", html: "&#0;&#xD800;&#x110000;&#x80;&#x81;&#1;&#xFFFE;&#99999999999;" },
   { id: "char_ref_hex_no_digits", html: "&#xg;&#g;&#X41;" },
+  { id: "char_ref_numeric_limits", html: "&#x10FFFF;|&#x110000;|&#4294967393;|&#x100000061;|&#1114111;" },
   // tree builder hooks the UTF-16 path delegates to upstream
   { id: "declarative_shadow_root_not_attached", html: '<div><template shadowrootmode="open"><b>x</b></template></div>' },
   { id: "annotation_xml_integration_point", html: '<math><annotation-xml encoding="text/html"><div>x</div></annotation-xml></math>' },
   { id: "form_association", html: "<form id=f><table><input name=a></table></form>" },
   { id: "foreign_attributes_prefixed", html: '<svg xlink:href="u" xml:lang="en"><a xlink:title="t"/></svg>' },
   { id: "meta_charset", html: '<meta charset="utf-8"><p>x</p>' },
+  { id: "selectedcontent_clone", html: "<select><button><selectedcontent></selectedcontent></button><option>A</option><option selected>B</option></select>" },
   { id: "script_end_tags", html: "<script>a</script><script>b</script>c" },
   // fragments (innerHTML in a scripting-disabled document)
   // miaskiewicz/turbo-dom#92: Chrome drops a literal U+0000 in an RCDATA-context
@@ -752,14 +768,35 @@ const PROBES = [
     },
   },
   {
+    // the fragment parser's form pointer is the context's nearest HTML form ancestor
+    id: "contextual_fragment_form",
+    script: (doc) => {
+      const range = doc.createRange();
+      const fragmentIn = (container) => {
+        const context = doc.createElement("div");
+        container.append(context);
+        doc.body.append(container);
+        range.selectNodeContents(context);
+        const fragment = range.createContextualFragment("<form id=inner></form><b></b>");
+        return [...fragment.childNodes].map((n) => n.localName);
+      };
+      return {
+        insideForm: fragmentIn(doc.createElement("form")),
+        insideSvgForm: fragmentIn(doc.createElementNS("http://www.w3.org/2000/svg", "form")),
+        insideDiv: fragmentIn(doc.createElement("div")),
+      };
+    },
+  },
+  {
     id: "contextual_fragment_is",
     script: (doc) => {
       const range = doc.createRange();
       range.selectNodeContents(doc.body);
-      const fragment = range.createContextualFragment('<div is="x-y"></div><p></p>');
+      const fragment = range.createContextualFragment('<div is="x-y"></div><p></p><svg is="x-y"></svg>');
       return {
         isDefined: fragment.firstChild.matches(":defined"),
-        plainDefined: fragment.lastChild.matches(":defined"),
+        plainDefined: fragment.childNodes[1].matches(":defined"),
+        svgIsDefined: fragment.lastChild.matches(":defined"),
       };
     },
   },
@@ -817,7 +854,8 @@ const documents = await page.evaluate((cases) => {
   };
   return cases.map((c) => {
     if (!c.context) {
-      return { ...c, dump: dump(new DOMParser().parseFromString(c.html, "text/html")) };
+      const doc = new DOMParser().parseFromString(c.html, "text/html");
+      return { ...c, dump: dump(doc), compatMode: doc.compatMode };
     }
     const doc = document.implementation.createHTMLDocument("");
     const [prefix, local] = c.context.includes(" ") ? c.context.split(" ") : [null, c.context];

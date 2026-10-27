@@ -286,6 +286,7 @@ struct PositionedBuilder {
 impl TokenSink for PositionedBuilder {
     type Handle = RcHandle;
     fn process_token(&self, token: Token, line: u64) -> TokenSinkResult<RcHandle> {
+        let token = crate::core::chrome_doctype(token);
         let name = match &token {
             Token::TagToken(tag) if tag.kind == html5ever::tokenizer::StartTag => {
                 Some(tag.name.clone())

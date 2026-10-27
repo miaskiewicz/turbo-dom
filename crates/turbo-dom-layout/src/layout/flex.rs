@@ -226,11 +226,16 @@ fn flex_grow_shrink(s: &ComputedStyle) -> (f32, f32) {
 }
 
 /// A flex item's main-size basis. `flex-basis:auto` (the initial value) defers to
-/// the item's main size `main` — its `width` in a row, its `height` in a column
-/// (miaskiewicz/turbo-dom#86) — without that fallback a `width:100%` flex item (e.g.
+/// the item's `width` â without that fallback a `width:100%` flex item (e.g.
 /// Wikipedia's `.mw-header`, a `width:100%` grid that is itself a flex child)
 /// shrink-wrapped to its content instead of filling the row.
-fn item_basis(s: &ComputedStyle, main: LengthPct, fs: f32) -> Dimension {
+fn item_basis(s: &ComputedStyle, bs: &BoxStyle, fs: f32) -> Dimension {
+    main_basis(s, bs.width, fs)
+}
+
+/// An item's flex basis, `main` (its main-axis size: `width` in a row, `height` in a
+/// column, miaskiewicz/turbo-dom#86) standing in for `auto`.
+fn main_basis(s: &ComputedStyle, main: LengthPct, fs: f32) -> Dimension {
     match s.get("flex-basis").map(str::trim) {
         // No `flex-basis` longhand: the basis may still live in the `flex`
         // shorthand's third component (`flex: 0 0 60px`), which the grow/shrink
@@ -239,6 +244,26 @@ fn item_basis(s: &ComputedStyle, main: LengthPct, fs: f32) -> Dimension {
         Some("content") => Dimension::auto(),
         Some(b) => parse_basis(b, fs).unwrap_or_else(|| dim(main)),
     }
+}
+
+/// [`item_style`] for an item of a flex container whose main axis is vertical when
+/// `column`: the basis then defaults to the item's `height` and its `width` is its cross
+/// size constraint (miaskiewicz/turbo-dom#86); a row item is [`item_style`]'s.
+fn flex_item_style(item: &LayoutBox, fs: f32, column: bool) -> Style {
+    let mut style = item_style(item, fs);
+    if !column || item.out_of_flow() {
+        return style;
+    }
+    let bs = item.resolved(ResolveCtx {
+        parent_font_size: fs,
+        cb_width: 0.0,
+    });
+    style.flex_basis = main_basis(&item.style, bs.height, fs);
+    style.size = Size {
+        width: dim(bs.width),
+        height: Dimension::auto(),
+    };
+    style
 }
 
 /// The `<basis>` component of the `flex` shorthand (`flex: <grow> <shrink>?
@@ -310,9 +335,7 @@ fn item_margins(bs: &BoxStyle) -> Rect<LengthPercentageAuto> {
     }
 }
 
-/// A flex (or grid: `column` false) item's taffy style; `column`: the container's main
-/// axis is vertical.
-fn item_style(item: &LayoutBox, fs: f32, column: bool) -> Style {
+fn item_style(item: &LayoutBox, fs: f32) -> Style {
     let s = &item.style;
     let bs = item.resolved(ResolveCtx {
         parent_font_size: fs,
@@ -333,18 +356,19 @@ fn item_style(item: &LayoutBox, fs: f32, column: bool) -> Style {
         };
     }
     let (grow, shrink) = flex_grow_shrink(s);
-    let main = if column { bs.height } else { bs.width };
     Style {
         flex_grow: num(s, "flex-grow", grow),
         flex_shrink: num(s, "flex-shrink", shrink),
-        flex_basis: item_basis(s, main, fs),
+        flex_basis: item_basis(s, &bs, fs),
         align_self: align_self(s),
         margin: item_margins(&bs),
-        // A flex item's own `min/max` sizes and explicit cross-axis size (`height` in a
-        // row, `width` in a column) must reach taffy — else an item whose height is only
-        // a `min-height` collapses, and a column item stretches over its `width`.
+        // A flex item's own `min/max-height` (and explicit cross-axis `height`) must
+        // reach taffy â else an item whose height is only a `min-height` collapses.
         // The main axis stays driven by `flex_basis`.
-        size: cross_size(&bs, column),
+        size: Size {
+            width: Dimension::auto(),
+            height: dim(bs.height),
+        },
         min_size: Size {
             width: dim(bs.min_width),
             height: dim(bs.min_height),
@@ -390,21 +414,6 @@ fn border_box(d: Dimension, sizing: BoxSizing, frame: f32) -> Dimension {
         Dimension::length(block::to_border(d.value(), sizing, frame))
     } else {
         d
-    }
-}
-
-/// A flex item's taffy `size`: only its cross-axis size (the main axis is the basis).
-fn cross_size(bs: &BoxStyle, column: bool) -> Size<Dimension> {
-    if column {
-        Size {
-            width: dim(bs.width),
-            height: Dimension::auto(),
-        }
-    } else {
-        Size {
-            width: Dimension::auto(),
-            height: dim(bs.height),
-        }
     }
 }
 
@@ -474,7 +483,9 @@ fn atomics_natural(items: &[InlineItem], fonts: &FontRegistry) -> f32 {
     items
         .iter()
         .filter_map(|it| match it {
-            InlineItem::Atomic(b) if !b.out_of_flow() => Some(natural_width(b, fonts)),
+            InlineItem::Atomic(b) if !b.out_of_flow() => {
+                Some(margin_box(b, natural_width(b, fonts)))
+            }
             _ => None,
         })
         .sum()
@@ -507,10 +518,104 @@ fn lines_natural(
     text + atomics_natural(items, fonts)
 }
 
+/// The widest in-flow child's max-content contribution: its margin box
+/// (miaskiewicz/turbo-dom#79); out-of-flow children contribute nothing (#84).
 fn kids_natural(kids: &[LayoutBox], fonts: &FontRegistry) -> f32 {
-    kids.iter()
-        .map(|k| natural_width(k, fonts))
+    in_flow(kids)
+        .map(|k| margin_box(k, natural_width(k, fonts)))
         .fold(0.0_f32, f32::max)
+}
+
+/// A block container's max-content width (miaskiewicz/turbo-dom#85): consecutive floats
+/// sit side by side, so their margin boxes add up (per side, a `clear` closing the side's
+/// run); an in-flow block ends the run, and one that avoids floats (a formatting-context
+/// root) sits beside it (its contribution adds the run). Otherwise the widest margin box.
+fn block_natural(kids: &[LayoutBox], fonts: &FontRegistry) -> f32 {
+    let mut run = FloatRun::default();
+    for k in in_flow(kids) {
+        let w = margin_box(k, natural_width(k, fonts));
+        run.clear(clear_sides(k));
+        if k.floated() {
+            run.float(super::value::float_of(&k.style), w);
+        } else {
+            run.block(w, block::avoids_floats(k));
+        }
+    }
+    run.end()
+}
+
+/// The `clear` sides of a box: (left, right).
+fn clear_sides(k: &LayoutBox) -> (bool, bool) {
+    match k.style.get("clear").map(str::trim) {
+        Some("both") => (true, true),
+        Some("left") => (true, false),
+        Some("right") => (false, true),
+        _ => (false, false),
+    }
+}
+
+/// [`block_natural`]'s running state: the widest line so far and the current run of
+/// floats on each side.
+#[derive(Default)]
+struct FloatRun {
+    widest: f32,
+    left: f32,
+    right: f32,
+}
+
+impl FloatRun {
+    /// A `clear` ends the cleared sides' runs.
+    fn clear(&mut self, (left, right): (bool, bool)) {
+        if left || right {
+            self.widest = self.widest.max(self.left + self.right);
+        }
+        if left {
+            self.left = 0.0;
+        }
+        if right {
+            self.right = 0.0;
+        }
+    }
+
+    /// A float of margin-box width `w` joins its side's run.
+    fn float(&mut self, side: super::value::Float, w: f32) {
+        match side {
+            super::value::Float::Right => self.right += w,
+            _ => self.left += w,
+        }
+    }
+
+    /// An in-flow block of margin-box width `w` ends the run; one that avoids floats
+    /// (`beside`) sits beside it.
+    fn block(&mut self, w: f32, beside: bool) {
+        let floats = self.left + self.right;
+        let line = if beside { w + floats } else { w };
+        self.widest = self.widest.max(floats).max(line);
+        (self.left, self.right) = (0.0, 0.0);
+    }
+
+    fn end(&self) -> f32 {
+        self.widest.max(self.left + self.right)
+    }
+}
+
+/// The in-flow children of a box: absolutely positioned and fixed ones are out of flow
+/// and add nothing to its intrinsic widths (miaskiewicz/turbo-dom#84).
+fn in_flow(kids: &[LayoutBox]) -> impl Iterator<Item = &LayoutBox> {
+    kids.iter().filter(|k| !k.out_of_flow())
+}
+
+/// A child's intrinsic size contribution: its border-box width `w` plus its horizontal
+/// margins — signed (a negative margin shrinks it), `%` and `auto` margins counting 0
+/// (resolved against no width), as Chrome 156 sizes floats, `width: auto` positioned and
+/// inline-block boxes and table cells (miaskiewicz/turbo-dom#79). The caller's fold
+/// floors the result at 0.
+fn margin_box(k: &LayoutBox, w: f32) -> f32 {
+    let bs = k.resolved(ResolveCtx {
+        parent_font_size: DEFAULT_FONT_SIZE,
+        cb_width: 0.0,
+    });
+    w + bs.margin.left + bs.margin.right
 }
 
 /// Max-content width of a flex container. A **row** flex lays its items side by
@@ -533,11 +638,10 @@ fn flex_natural(kids: &[LayoutBox], s: &ComputedStyle, fonts: &FontRegistry) -> 
         // omitting them undersizes the row and its children overflow (Wikipedia's
         // page-action tabs are margin-spaced; the row measured short and "View
         // history" spilled past the toolbar into the next column).
-        let sum: f32 = kids
-            .iter()
+        let sum: f32 = in_flow(kids)
             .map(|k| natural_width(k, fonts) + item_hmargin(k))
             .sum();
-        sum + gap * kids.len().saturating_sub(1) as f32
+        sum + gap * in_flow(kids).count().saturating_sub(1) as f32
     } else {
         kids_natural(kids, fonts)
     }
@@ -612,7 +716,7 @@ pub(crate) fn natural_width(lb: &LayoutBox, fonts: &FontRegistry) -> f32 {
             // (miaskiewicz/turbo-dom#28 item 4), not its widest row group.
             BoxKind::Table(k) => super::table::max_content_width(k, &lb.style, fonts),
             BoxKind::Grid(k) => grid_natural(k, &lb.style, fonts),
-            BoxKind::Block(k) => kids_natural(k, fonts),
+            BoxKind::Block(k) => block_natural(k, fonts),
             BoxKind::Marker(_) => 0.0,
         };
         inner + frame
@@ -638,7 +742,9 @@ fn lines_min(
     let atom = items
         .iter()
         .filter_map(|it| match it {
-            InlineItem::Atomic(b) if !b.out_of_flow() => Some(min_content_width(b, fonts)),
+            InlineItem::Atomic(b) if !b.out_of_flow() => {
+                Some(margin_box(b, min_content_width(b, fonts)))
+            }
             _ => None,
         })
         .fold(0.0_f32, f32::max);
@@ -671,9 +777,8 @@ pub(crate) fn min_content_width(lb: &LayoutBox, fonts: &FontRegistry) -> f32 {
                 lb.uses_html_font_metrics(),
             ),
             BoxKind::Table(k) => super::table::min_content_width(k, &lb.style, fonts),
-            BoxKind::Flex(k) | BoxKind::Block(k) | BoxKind::Grid(k) => k
-                .iter()
-                .map(|c| min_content_width(c, fonts))
+            BoxKind::Flex(k) | BoxKind::Block(k) | BoxKind::Grid(k) => in_flow(k)
+                .map(|c| margin_box(c, min_content_width(c, fonts)))
                 .fold(0.0_f32, f32::max),
             BoxKind::Marker(_) => 0.0,
         };
@@ -781,6 +886,8 @@ fn measure_item(
             cb_h_known: false,
             root_w: w,
             root_h: crate::style::viewport_px().1,
+            icb_h: 0.0,
+            abs_cb_icb: false,
             live_geometry,
             used_metrics: None,
             text_capture: None,
@@ -816,7 +923,7 @@ fn build_leaves(
         .enumerate()
         .map(|(i, it)| {
             tree.new_leaf_with_context(
-                border_box_sizes(item_style(it, fs, column), it, fs, column),
+                border_box_sizes(flex_item_style(it, fs, column), it, fs, column),
                 i,
             )
             .expect("flex leaf")
@@ -864,8 +971,8 @@ fn solve(
 fn place_one(
     item: &LayoutBox,
     layout: &Layout,
-    (cx, cy, fs): (f32, f32, f32),
-    column: bool,
+    (cx, cy, column): (f32, f32, bool),
+    fs: f32,
     ctx: &mut Ctx,
 ) -> Fragment {
     let mut bs = item.resolved(ResolveCtx {
@@ -878,10 +985,10 @@ fn place_one(
     // fragment height AND is exposed to the item's own content (nested flex,
     // `%` heights) — otherwise the item collapses back to its content height and a
     // `flex:1` / stretched item, and anything it centres, is placed wrong. An item
-    // whose height taffy left at auto keeps its content height (basis == content). In a
-    // column the height is the main size, so taffy's always wins over a `px` `height`
-    // (a `flex-basis`, grow or shrink; miaskiewicz/turbo-dom#86).
-    if column || !matches!(bs.height, LengthPct::Px(_)) {
+    // whose height taffy left at auto keeps its content height (basis == content). In
+    // a column the height is the main size taffy flexed, whatever the item's own
+    // `height` (miaskiewicz/turbo-dom#86).
+    if (column && !item.out_of_flow()) || !matches!(bs.height, LengthPct::Px(_)) {
         let inset_v = bs.padding.vertical() + bs.border.widths().vertical();
         bs.height = LengthPct::Px((layout.size.height - inset_v).max(0.0));
         bs.box_sizing = BoxSizing::ContentBox;
@@ -895,14 +1002,14 @@ fn place_items(
     tree: &TaffyTree<usize>,
     leaves: &[TaffyId],
     items: &[LayoutBox],
-    origin: (f32, f32, f32),
-    column: bool,
+    (cx, cy, column): (f32, f32, bool),
+    fs: f32,
     ctx: &mut Ctx,
 ) -> Vec<Fragment> {
     let mut frags = Vec::new();
     for (i, leaf) in leaves.iter().enumerate() {
         let layout = tree.layout(*leaf).expect("item layout");
-        frags.push(place_one(&items[i], layout, origin, column, ctx));
+        frags.push(place_one(&items[i], layout, (cx, cy, column), fs, ctx));
     }
     frags
 }
@@ -1233,7 +1340,7 @@ fn build_grid_leaves(
         .iter()
         .enumerate()
         .map(|(i, it)| {
-            let mut style = item_style(it, fs, false);
+            let mut style = item_style(it, fs);
             // Grid has no flex-basis: an explicit width must reach its own size
             // constraint instead of becoming the track's stretch width.
             if it.uses_html_font_metrics() {
@@ -1322,7 +1429,7 @@ pub(crate) fn layout_grid(
         .new_with_children(grid_container_style(container, cw, &areas), &leaves)
         .expect("grid root");
     solve(&mut tree, root, items, fs, cw, ctx);
-    let frags = place_items(&tree, &leaves, items, (cx, cy, fs), false, ctx);
+    let frags = place_items(&tree, &leaves, items, (cx, cy, false), fs, ctx);
     let height = tree.layout(root).expect("root layout").size.height;
     (frags, height)
 }
@@ -1351,7 +1458,7 @@ pub(crate) fn layout_flex(
         .new_with_children(container_style(container, cw, fs, ctx.cb_h), &leaves)
         .expect("flex root");
     solve(&mut tree, root, items, fs, cw, ctx);
-    let frags = place_items(&tree, &leaves, items, (cx, cy, fs), column, ctx);
+    let frags = place_items(&tree, &leaves, items, (cx, cy, column), fs, ctx);
     let height = tree.layout(root).expect("root layout").size.height;
     (frags, height)
 }
@@ -1642,13 +1749,13 @@ mod coverage_tests {
         // `flex-basis: 50%` -> a percentage dimension (the `strip_suffix('%')` arm).
         let s = cs(&[("flex-basis", "50%")]);
         let bs = bs_of(&[("flex-basis", "50%")]);
-        assert_eq!(item_basis(&s, bs.width, 16.0), Dimension::percent(0.5_f32));
+        assert_eq!(item_basis(&s, &bs, 16.0), Dimension::percent(0.5_f32));
 
         // A basis that is neither a length nor a percentage (`min-content`) falls back
         // to the item's own `width`.
         let s = cs(&[("flex-basis", "min-content"), ("width", "77px")]);
         let bs = bs_of(&[("flex-basis", "min-content"), ("width", "77px")]);
-        assert_eq!(item_basis(&s, bs.width, 16.0), Dimension::length(77.0_f32));
+        assert_eq!(item_basis(&s, &bs, 16.0), Dimension::length(77.0_f32));
     }
 
     // --- item_inset: a percentage inset edge on an out-of-flow flex child ---

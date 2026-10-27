@@ -41,6 +41,14 @@ fn lay_out(html: &str) -> Result<Fragment, RenderError> {
   PDF/UA roles and links from it.
 - The string HTML entries (`layout_html`, `layout_boxes`) use no markers: `t:*` are
   ordinary unknown elements, as in a browser.
+- `layout_in_viewport` / `layout_html_tree_in_viewport` lay out in a viewport
+  `(width, height)`: the initial containing block has the viewport's height, so a
+  `position: fixed` box and an absolutely positioned box with no positioned ancestor
+  resolve `bottom` / `%` insets and a `%` height against it (turbo-dom#81).
+  `layout_boxes` (its `cb_height`) and turbo-dom-raster's screenshots use it; the other
+  static entries leave that height unknown; `layout_recorded_in_viewport` is the
+  recorded layout with that height (turbo-html2pdf's paged layout passes its page area,
+  turbo-html2pdf#39).
 - `live` — the live-DOM input ("surf mode"): an embedder that owns a live document
   (turbo-surf) supplies its composed children (`Fn(Handle) -> &[Handle]`), pre-matched
   rules per origin (`PreMatched`: declarations, targets with specificity, shadow-scope
@@ -92,11 +100,24 @@ fn lay_out(html: &str) -> Result<Fragment, RenderError> {
   content height, else it is dropped (turbo-dom#75); an empty first child's margins
   collapse through its parent's top with the next child's (#76); `min-height` wins over
   `max-height` and `height` (#77); a percentage `height` / `min-height` / `max-height`
-  resolves against a definite parent height on the static path too (#78); `display:
-  flow-root` establishes a block formatting context and an empty formatting-context root is
-  not self-collapsing (#88); column flex items take their basis from `height` and keep
-  their `width` (#86); content-box flex item sizes include their padding and border when
-  they reach taffy (#93).
+  resolves against a definite parent height on the static path too (#78); an empty
+  formatting-context root is not self-collapsing (#88); content-box flex item sizes
+  include their padding and border when they reach taffy (#93).
+  P5b-W7: a box's intrinsic widths count its children's
+  horizontal margins (signed; `%` / `auto` count 0; turbo-dom#79); an `inline-block` is a
+  block formatting context root, keeping its first / last child's vertical margins
+  (#80); the initial containing block's height on the static path (#81, above); and the
+  bugs found while fixing them: floats are shrink-to-fit (#83), out-of-flow children add
+  no intrinsic width (#84), floats sit side by side in a max-content width (#85), column
+  flex items take their basis from `height` (#86), `display: flow-root` is a formatting
+  context (#88), `top` + `bottom` stretch an auto-height positioned box (#89).
+- Fullscreen (turbo-dom#82): while the tree's fullscreen stack (`Tree::fullscreen_stack`,
+  reported by the binding) is non-empty, the cascade adds Chrome's `:not(:root):fullscreen`
+  UA rules — the HTML drive itself (`Cascade::with_fullscreen`), a live-DOM embedder by
+  appending `style::fullscreen_user_agent_css()` to `user_agent_css()` — and the element's
+  box goes to the top layer: the end of the initial containing block's content, after its
+  black `::backdrop`, above everything, free of its ancestors' offsets, transforms and
+  clips. Control: `fullscreen-*` in `scripts/live-geometry-chrome-control.mjs`.
 - `layout_snapshot::snapshot_{,html_}live_tree*` capture a snapshot of a `StyleInput`
   (identity paths index the styled forest).
 - `image` — the ONE image layer shared by the PDF emitter and turbo-dom-raster:

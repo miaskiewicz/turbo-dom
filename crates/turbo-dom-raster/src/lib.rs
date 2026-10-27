@@ -79,8 +79,8 @@ use std::collections::HashMap;
 use turbo_dom_layout::text::{FontRegistry, SystemFontPolicy};
 use turbo_dom_layout::turbo_dom::Tree;
 use turbo_dom_layout::{
-    layout_html_tree, parse_html_tree, Diagnostics, Fragment, FragmentContent, HtmlOptions,
-    ImageCtx, Rgba,
+    layout_html_tree_in_viewport, parse_html_tree, Diagnostics, Fragment, FragmentContent,
+    HtmlOptions, ImageCtx, Rgba,
 };
 
 /// Fetched image bytes keyed by their reference — the raw `<img src>` /
@@ -387,10 +387,13 @@ fn lay_out(
         linked_css: external_css,
         ..HtmlOptions::default()
     };
-    layout_html_tree(
+    // The initial containing block is the viewport: `position: fixed` boxes and
+    // absolutely positioned ones it contains anchor `bottom` / `%` insets to its
+    // height (miaskiewicz/turbo-dom#81).
+    layout_html_tree_in_viewport(
         tree,
         "",
-        width as f32,
+        (width as f32, height as f32),
         &font_registry(system_fonts),
         &image_ctx,
         &options,

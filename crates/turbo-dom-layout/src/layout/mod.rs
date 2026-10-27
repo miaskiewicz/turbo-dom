@@ -123,7 +123,8 @@ pub fn layout_with_images(
     block::layout_tree_with_images(&tree, cb_width, fonts, images, diags)
 }
 
-/// [`layout_with_images`] with explicit [`LayoutOptions`].
+/// [`layout_with_images`] with explicit [`LayoutOptions`]. The initial containing
+/// block's height is unknown (see [`layout_in_viewport`]).
 pub fn layout_with_options(
     styled: &[StyledNode],
     cb_width: f32,
@@ -132,20 +133,39 @@ pub fn layout_with_options(
     options: &LayoutOptions,
     diags: &mut Diagnostics,
 ) -> Fragment {
+    layout_in_viewport(styled, (cb_width, 0.0), fonts, images, options, diags)
+}
+
+/// [`layout_with_options`] in a viewport `(width, height)` px: the initial containing
+/// block is the viewport, so an absolutely positioned box whose containing block it is
+/// and a `position: fixed` box resolve their `top` / `bottom` insets and `%` height
+/// against `height` (CSS 2.2 §10.1; miaskiewicz/turbo-dom#81) — `bottom: 0` sits at the
+/// viewport's bottom edge, however tall the document. A `height` of 0 leaves the
+/// initial containing block's height unknown, as [`layout_with_options`] does (such
+/// insets keep the box at its static position).
+pub fn layout_in_viewport(
+    styled: &[StyledNode],
+    (cb_width, viewport_height): (f32, f32),
+    fonts: &FontRegistry,
+    images: &ImageCtx,
+    options: &LayoutOptions,
+    diags: &mut Diagnostics,
+) -> Fragment {
     let _cmyk = value::cmyk_scope(options.accept_cmyk);
     let (tree, _, _) = boxgen::build_box_tree_with(styled, build_options(options, false));
-    let mut galley = block::layout_tree_with_images(&tree, cb_width, fonts, images, diags);
+    let mut galley =
+        block::layout_tree_in_viewport(&tree, (cb_width, viewport_height), fonts, images, diags);
     shift_node_ids(&mut galley, options.first_node_id);
     galley
 }
 
-/// [`layout_with_options`] for the geometry seam ([`crate::layout_boxes`]): boxes that
+/// [`layout_in_viewport`] for the geometry seam ([`crate::layout_boxes`]): boxes that
 /// paint nothing at any size (a zero-area `clip: rect()`) are laid out too, so their
 /// border boxes are reported (miaskiewicz/turbo-dom#75). Not a render galley.
 #[allow(clippy::trivially_copy_pass_by_ref)] // mirrors `layout_with_options`
 pub(crate) fn layout_geometry(
     styled: &[StyledNode],
-    cb_width: f32,
+    viewport: (f32, f32),
     fonts: &FontRegistry,
     images: &ImageCtx,
     options: &LayoutOptions,
@@ -154,7 +174,7 @@ pub(crate) fn layout_geometry(
     let _cmyk = value::cmyk_scope(options.accept_cmyk);
     let build = geometry_build_options(options);
     let (tree, _, _) = boxgen::build_box_tree_with(styled, build);
-    let mut galley = block::layout_tree_with_images(&tree, cb_width, fonts, images, diags);
+    let mut galley = block::layout_tree_in_viewport(&tree, viewport, fonts, images, diags);
     shift_node_ids(&mut galley, options.first_node_id);
     galley
 }
@@ -181,9 +201,26 @@ pub fn layout_recorded(
     options: &LayoutOptions,
     diags: &mut Diagnostics,
 ) -> LaidOut {
+    layout_recorded_in_viewport(styled, (cb_width, 0.0), fonts, images, options, diags)
+}
+
+/// [`layout_recorded`] with an initial containing block of `(width, height)` px (see
+/// [`layout_in_viewport`]; height 0 = unknown): a paged layout passes its page area, the
+/// print initial containing block, so `position: fixed` boxes and absolutely positioned
+/// boxes it contains resolve `%` / `bottom` insets and `%` heights against it
+/// (miaskiewicz/turbo-html2pdf#39).
+pub fn layout_recorded_in_viewport(
+    styled: &[StyledNode],
+    (cb_width, viewport_height): (f32, f32),
+    fonts: &FontRegistry,
+    images: &ImageCtx,
+    options: &LayoutOptions,
+    diags: &mut Diagnostics,
+) -> LaidOut {
     let _cmyk = value::cmyk_scope(options.accept_cmyk);
     let (tree, recorded, count) = boxgen::build_box_tree_with(styled, build_options(options, true));
-    let (mut galley, rows) = block::layout_tree_recorded(&tree, cb_width, fonts, images, diags);
+    let (mut galley, rows) =
+        block::layout_tree_recorded(&tree, (cb_width, viewport_height), fonts, images, diags);
     let first = options.first_node_id;
     shift_node_ids(&mut galley, first);
     let shift = |id: NodeId| NodeId(id.0 + first);

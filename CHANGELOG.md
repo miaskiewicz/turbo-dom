@@ -7,6 +7,88 @@ at the time); this file reconstructs them from history.
 
 ## [Unreleased]
 
+### Fixed — turbo-dom-layout intrinsic widths, floats, inline-blocks, column flex, the initial containing block and the fullscreen element (P5b-W7, Chrome 156 controls)
+Each fix is backed by a Chrome for Testing 156 control and lists the corpus outputs it
+changes in `tools/parity/expected/p5b-w7-turbo-dom-*.json`.
+- Intrinsic widths count margins (miaskiewicz/turbo-dom#79): a box's min-/max-content
+  width left out its children's horizontal margins, so a float, a `width: auto`
+  absolutely positioned or inline-block box and an auto table cell were narrower than
+  Chrome's by the child's `margin-left + margin-right` (the child overflowed). Each in-flow
+  child (and each atomic inline) now contributes its margin box: signed (a negative
+  margin shrinks it, the box never below 0), `%` and `auto` margins counting 0. Every
+  layout path. Control: `intrinsic-margins-*` in `scripts/html-document-chrome-control.mjs`.
+- Inline-blocks are formatting-context roots (miaskiewicz/turbo-dom#80): an
+  `inline-block` dropped its first / last child's vertical margins (it was as tall as the
+  child's border box, the child at its top). It now lays its content out as a block
+  formatting context (CSS 2.2 §8.3.1), so those margins stay inside it, as for a float.
+  Every layout path. Control: `inline-block-margins-*` in `html-document` and
+  `live-geometry`.
+- The initial containing block on the static path (miaskiewicz/turbo-dom#81): on the
+  screenshot / `layoutBoxes` path a `position: fixed` box, and an absolutely positioned
+  box whose containing block is the initial containing block, resolved `bottom` (and `%`
+  insets and a `%` height) as if that block had no height — it landed at its static
+  position (y = 0). New entries `layout_in_viewport` and `layout_html_tree_in_viewport`
+  take the viewport `(width, height)`: the initial containing block has the viewport's
+  height, so such a box anchors to the viewport's bottom edge however tall the document
+  (a fixed box ignores positioned ancestors). `layout_boxes` lays out in its
+  `cb_width x cb_height` viewport and turbo-dom-raster's screenshots in their canvas
+  size. `layout_with_options` / `layout_html_tree` (and so turbo-html2pdf's paged
+  layout, whose initial containing block would be the page box) keep an unknown height
+  and lay out as before. The live path already used the viewport. Control: `icb-*` in
+  `html-document` and in the pixel control `scripts/paint-chrome-control.mjs`.
+- `display: flow-root` (miaskiewicz/turbo-dom#88, found while fixing #80) establishes a
+  block formatting context: its children's vertical margins stay inside it, it contains
+  its floats and its box avoids outer floats. Control: `flow-root-*` in `html-document`.
+- Floats are shrink-to-fit (miaskiewicz/turbo-dom#83, found while fixing #79): a
+  `width: auto` float took `min(max-content, container)` — squeezed below its
+  min-content in a narrow container, its `min-width` / `max-width` ignored and its own
+  margins counted as available space. It is now `min(max(min-content, available),
+  max-content)` with `available` net of its margins, then `min-width` / `max-width`
+  (CSS 2.2 §10.3.5). Control: `float-shrink-*` in `html-document`.
+- Out-of-flow children add nothing to intrinsic widths (miaskiewicz/turbo-dom#84, found
+  while fixing #79): an absolutely positioned or fixed child widened its parent's min- /
+  max-content (a float, an inline-block, an auto table cell or a row flex container
+  was as wide as it). Control: `intrinsic-oof-*` in `html-document`.
+- `top` + `bottom` stretch an auto height on the static path (miaskiewicz/turbo-dom#89,
+  found while fixing #81): an absolutely positioned or fixed box with `height: auto`
+  and both insets took its content height (0 when empty); it is now the containing
+  block's height less the insets, its margins and (content-box) its padding and border,
+  then `min-height` / `max-height` (CSS 2.2 §10.6.4), as on the live path. Control:
+  `abs-stretch-*` in `html-document`.
+- Column flex items (miaskiewicz/turbo-dom#86, found while fixing #79): in a
+  `flex-direction: column` container an item's flex basis came from its `width` and its
+  `width` was dropped, so it was stretched to the container despite an explicit width
+  and its main size (height) was its width. The basis now defaults to the item's
+  `height`, its `width` (`%`, `min-width` / `max-width`) is the cross size, and the
+  flexed main size is its used height (`flex-basis`, `flex-grow`). Control:
+  `column-flex-*` in `html-document`.
+- Floats side by side in a max-content width (miaskiewicz/turbo-dom#85, found while
+  fixing #79): a block container's max-content took its widest float, so a
+  shrink-to-fit container (a float, an inline-block, an auto table cell) was too narrow
+  and its floats wrapped onto separate rows. Consecutive floats now add up (per side,
+  a `clear` closing that side's run); an in-flow block ends the run, and one that avoids
+  floats (a formatting-context root, a replaced box) counts beside it. Control:
+  `float-sum-*` in `html-document`.
+- The fullscreen element (miaskiewicz/turbo-dom#82): since #58 the binding reports the
+  fullscreen stack to the tree, but layout applied none of Chrome's UA rules for the
+  fullscreen element, so its rect and `elementFromPoint` over it differed. While a tree's
+  fullscreen stack is non-empty the cascade adds Chrome 156's `:not(:root):fullscreen`
+  rules (`position: fixed; inset: 0; width / height: 100%; margin: 0; box-sizing:
+  border-box; min / max sizes reset; transform: none`, all `!important`, and `object-fit:
+  contain`): the HTML drive adds them itself (`Cascade::with_fullscreen`); a live-DOM
+  embedder appends `style::fullscreen_user_agent_css()` to `user_agent_css()`. The
+  element's box is in the top layer: it moves to the end of the initial containing
+  block's content after its `::backdrop` (a black viewport-filling fixed box), above
+  every other box, out of reach of its ancestors' offsets, transforms, clips and
+  scrolling (its old place collapses). A document without fullscreen pays nothing.
+  Control: `fullscreen-*` in `live-geometry` (a trusted click runs `requestFullscreen()`),
+  asserted on the live and the static path.
+- `layout_recorded_in_viewport` (for miaskiewicz/turbo-html2pdf#39): `layout_recorded` with
+  an initial containing block of a given height — a paged layout passes its page area,
+  the print initial containing block, so fixed boxes and absolutely positioned boxes it
+  contains resolve `%` / `bottom` insets and `%` heights against it (as #81 does for
+  screenshots). `layout_recorded` keeps the height unknown.
+
 ### Fixed — CSSOM shorthands expand and serialize like Chrome (P5b-X8, miaskiewicz/turbo-dom#90, Chrome 156 control)
 - `element.style` (and `CSSStyleRule.style`) stored a shorthand verbatim: `style.flex = '1'`
   read `1` with empty `flex-grow` / `flex-shrink` / `flex-basis` (Chrome `1 1 0%`), and no
@@ -239,7 +321,7 @@ at the time); this file reconstructs them from history.
   (`collect_native_storage` after `install_html` and a GC, then the
   `custom_elements_defined_chrome156.json` probe).
 
-### Fixed — turbo-dom-layout margins, heights, zero-area clips, flow-root and flex item sizes (P5b-W6, miaskiewicz/turbo-dom#75/#76/#77/#78/#86/#88/#93, Chrome 156 controls)
+### Fixed — turbo-dom-layout margins, heights, zero-area clips, empty formatting roots and flex item sizes (P5b-W6, miaskiewicz/turbo-dom#75/#76/#77/#78/#88/#93, Chrome 156 controls)
 Each fix is backed by Chrome for Testing 156 cases in `scripts/html-document-chrome-control.mjs`
 and lists the corpus outputs it changes in `tools/parity/expected/p5b-w6-turbo-dom-*.json`
 (new pinned corpus inputs: `tools/parity/inputs/extra/{min-height-margin,
@@ -268,16 +350,12 @@ flex-item-box-sizing}.html`).
   `min-height` / `max-height` of an in-flow box resolves against its parent's definite
   height (positioned boxes: also `min-height` / `max-height`); against an indefinite height
   they still behave as `auto` / 0 / `none`. Control: `percent-*`.
-- `display: flow-root` (#88): laid out as a plain block, it now establishes a block
-  formatting context — its children's margins stay inside, it contains its floats and
-  avoids outer floats. A zero-height box that establishes a formatting context (flow-root,
-  `overflow`, flex / grid / table) is no longer self-collapsing: margins no longer run
-  through an empty one. Control: `flow-root-*` / `empty-formatting-root-*`.
-- Column flex items (#86): an item's flex basis came from its `width` and its `width` was
-  dropped, so it stretched to the container and its height became its width. In a column
-  the basis falls back to `height` and `width` is the cross size; taffy's main size wins
-  over a `px` `height` (basis, grow, shrink). Control: `column-flex-item-*`.
-- Content-box flex items (#93, found while fixing #86): an item's `width` / `height` /
+- Empty formatting-context roots (#88; P5b-W7 made `display: flow-root` one): a zero-height
+  box that establishes a formatting context (flow-root, `overflow`, flex / grid / table) is
+  never self-collapsing, so margins no longer run through an empty one. Control:
+  `flow-root-*` / `empty-formatting-root-*`; P5b-W6 also adds the `column-flex-item-*`
+  cases of #86 (fixed by P5b-W7).
+- Content-box flex items (#93, found while working on #86): an item's `width` / `height` /
   `flex-basis` / `min-*` / `max-*` lengths reached taffy (border boxes) unchanged, so a
   padded or bordered `box-sizing: content-box` item lost its frame. They are now
   border-box lengths. Control: `flex-item-*`.
