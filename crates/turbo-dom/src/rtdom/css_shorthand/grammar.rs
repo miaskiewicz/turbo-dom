@@ -646,7 +646,7 @@ pub(super) fn expand(grammar: &str, comps: &[Comp]) -> Option<Parsed> {
         "transition" | "-webkit-transition" => transition(comps)?,
         "animation" | "-webkit-animation" => animation(comps)?,
         "timeline-trigger" => timeline_trigger(comps)?,
-        _ => return None,
+        _ => unreachable!("every table entry's grammar has a parser here (table::tests)"),
     };
     Some(Parsed::Values(values))
 }
@@ -763,17 +763,18 @@ fn rule_inset(comps: &[Comp], kind: &str) -> Option<Out> {
 }
 
 fn contain_intrinsic_size(comps: &[Comp]) -> Option<Out> {
+    // Called with the whole (non-empty) value, then with a non-empty rest.
     let axis = |comps: &[Comp]| -> Option<(usize, String)> {
-        match comps {
-            [first, second, ..] if first.is_ident(&["auto"]) => {
+        let first = &comps[0];
+        match comps.get(1) {
+            Some(second) if first.is_ident(&["auto"]) => {
                 let value = second.length(false).or_else(|| kw(second, &["none"]))?;
                 Some((2, format!("auto {value}")))
             }
-            [first, ..] => first
+            _ => first
                 .length(false)
                 .or_else(|| kw(first, &["none"]))
                 .map(|value| (1, value)),
-            [] => None,
         }
     };
     let (used, width) = axis(comps)?;
@@ -811,13 +812,13 @@ fn baseline(comps: &[Comp]) -> Option<(usize, String)> {
 }
 /// `[unsafe | safe]? <position>` from the front.
 fn overflow_position(comps: &[Comp], positions: &[&str]) -> Option<(usize, String)> {
-    match comps {
-        [first, second, ..] if first.is_ident(&["safe", "unsafe"]) => {
+    let first = comps.first()?;
+    match comps.get(1) {
+        Some(second) if first.is_ident(&["safe", "unsafe"]) => {
             let position = kw(second, positions)?;
             Some((2, format!("{} {position}", first.ident()?)))
         }
-        [first, ..] => kw(first, positions).map(|value| (1, value)),
-        [] => None,
+        _ => kw(first, positions).map(|value| (1, value)),
     }
 }
 const CONTENT_POSITIONS: &[&str] = &["center", "start", "end", "flex-start", "flex-end"];
@@ -1615,10 +1616,9 @@ fn font_variant(comps: &[Comp]) -> Option<Out> {
     let alternates_value = if alternate_comps.is_empty() {
         None
     } else {
-        let (used, value) = alternates(&alternate_comps)?;
-        if used != alternate_comps.len() {
-            return None;
-        }
+        // Every partitioned component is one `alternates` takes, so it uses them all (or
+        // rejects a repeated feature).
+        let (_, value) = alternates(&alternate_comps)?;
         Some(value)
     };
     let mut parsed = if others.is_empty() {
@@ -1706,9 +1706,7 @@ fn flex(comps: &[Comp]) -> Option<Out> {
         }
         return None;
     }
-    if grow.is_none() && basis_value.is_none() {
-        return None;
-    }
+    // Each (of at least one) component set the grow factor or the basis, or returned.
     Some(named(
         &names,
         [
@@ -1790,12 +1788,6 @@ fn family_text(name: &str) -> String {
         super::components::quoted(name)
     }
 }
-fn family_string(comp: &Comp) -> String {
-    match &comp.kind {
-        Kind::Str(name) => family_text(name),
-        _ => comp.text.clone(),
-    }
-}
 /// CSSOM "serialize an identifier".
 pub(super) fn serialize_identifier(text: &str) -> String {
     let chars: Vec<char> = text.chars().collect();
@@ -1803,7 +1795,7 @@ pub(super) fn serialize_identifier(text: &str) -> String {
     for (index, &c) in chars.iter().enumerate() {
         let code = u32::from(c);
         if c == '\0' {
-            out.push('\u{fffd}');
+            unreachable!("cssparser reads U+0000 in a string as U+FFFD");
         } else if (0x1..=0x1f).contains(&code)
             || code == 0x7f
             || (index == 0 && c.is_ascii_digit())
@@ -1825,7 +1817,7 @@ pub(super) fn serialize_identifier(text: &str) -> String {
 /// a CSS-wide keyword or `default` (kept quoted).
 pub(super) fn animation_name_string(comp: &Comp) -> Option<String> {
     let Kind::Str(text) = &comp.kind else {
-        return None;
+        unreachable!("callers pass string components");
     };
     if text.is_empty() {
         None
@@ -1850,12 +1842,16 @@ pub(super) fn oblique(angle: &Comp) -> Option<String> {
         return None;
     }
     let text = angle.angle()?;
-    match angle.kind {
-        Kind::Dimension { value, .. } if !(-90.0..=90.0).contains(&value) => None,
-        Kind::Dimension { value, .. } | Kind::Number { value, .. } if value == 0.0 => {
-            Some("normal".into())
-        }
-        _ => Some(format!("oblique {text}")),
+    let Kind::Dimension { value, .. } = angle.kind else {
+        // A math function: its angle is checked when the value is used.
+        return Some(format!("oblique {text}"));
+    };
+    if !(-90.0..=90.0).contains(&value) {
+        None
+    } else if value == 0.0 {
+        Some("normal".into())
+    } else {
+        Some(format!("oblique {text}"))
     }
 }
 
@@ -1909,7 +1905,10 @@ pub(super) fn font_family(comps: &[Comp]) -> Option<String> {
     let mut families = Vec::new();
     for family in commas(comps)? {
         match family {
-            [only] if only.string().is_some() => families.push(family_string(only)),
+            [Comp {
+                kind: Kind::Str(name),
+                ..
+            }] => families.push(family_text(name)),
             idents => {
                 let words: Option<Vec<String>> = idents
                     .iter()
@@ -2201,10 +2200,10 @@ fn track_fixed(comp: &Comp) -> bool {
         |c: &Comp| !matches!(c.kind, Kind::Ident(_)) && c.length_percentage(false).is_some();
     match &comp.kind {
         Kind::Function(name) if name == "[" => true,
+        // `track_ok` admitted it: `minmax(<low>, <high>)`.
         Kind::Function(name) if name == "minmax" => components(&comp.text[7..comp.text.len() - 1])
-            .is_some_and(|inner| match inner.as_slice() {
-                [low, _, high] => fixed(low) || fixed(high),
-                _ => false,
+            .is_some_and(|inner| {
+                inner.first().is_some_and(fixed) || inner.last().is_some_and(fixed)
             }),
         Kind::Function(name) if name == "fit-content" => false,
         _ => fixed(comp),
@@ -2218,7 +2217,7 @@ fn track_text(comp: &Comp, repeat_count: bool) -> String {
         Kind::Ident(name) => name.to_ascii_lowercase(),
         Kind::Function(name) if matches!(name.as_str(), "minmax" | "fit-content" | "repeat") => {
             let Some(inner) = components(&comp.text[name.len() + 1..comp.text.len() - 1]) else {
-                return comp.text.clone();
+                unreachable!("track_ok tokenized the arguments of every track it admitted");
             };
             let mut seen_comma = false;
             let spelled: Vec<Comp> = inner
@@ -2451,7 +2450,7 @@ pub(super) fn collapse4(values: &[String]) -> String {
         [a, b] => [a, b, a, b],
         [a, b, c] => [a, b, c, b],
         [a, b, c, d] => [a, b, c, d],
-        _ => return values.join(" "),
+        _ => unreachable!("every caller passes one to four values"),
     };
     super::serialize::box_text(full)
 }
@@ -2549,12 +2548,7 @@ fn border_image(comps: &[Comp], webkit: bool) -> Option<[Option<String>; 5]> {
         }
         return None;
     }
-    if [&source, &slice, &width, &outset, &repeat]
-        .iter()
-        .all(|value| value.is_none())
-    {
-        return None;
-    }
+    // Each (of at least one) component set a part, or returned.
     Some([source, slice, width, outset, repeat])
 }
 

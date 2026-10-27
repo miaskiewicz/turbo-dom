@@ -881,10 +881,10 @@ fn function_text(function: &str, comp: &Comp) -> String {
         return comp.text.clone();
     }
     let Some(open) = comp.text.find(['(', '[']) else {
-        return comp.text.clone();
+        unreachable!("a function component's text has its opening bracket");
     };
     let Some(inner) = components(&comp.text[open + 1..comp.text.len() - 1]) else {
-        return comp.text.clone();
+        unreachable!("a function component's arguments were tokenized to build it");
     };
     let lengths = LENGTH_FUNCTIONS.contains(&function);
     let spelled: Vec<Comp> = inner

@@ -104,7 +104,7 @@ fn omit(value: &str, initial: &str) -> bool {
 
 pub(super) fn value(grammar: &str, texts: &[&str]) -> String {
     let Some(entry) = table::entry(grammar) else {
-        return String::new();
+        unreachable!("every table entry's grammar names a table entry (table::tests)");
     };
     let v = Values {
         names: entry.longhands,
@@ -960,27 +960,14 @@ fn grid_template(rows: &str, columns: &str, areas: &str) -> String {
     }
 }
 
+/// The quoted rows of a `grid-template-areas` value as `grammar::area_string` spells them
+/// (`"cells" "cells"`, no escapes), quotes included.
 fn quoted_strings(text: &str) -> Vec<String> {
-    let mut out = Vec::new();
-    let mut current = None::<String>;
-    let mut escaped = false;
-    for character in text.chars() {
-        match current.as_mut() {
-            None if character == '"' => current = Some("\"".into()),
-            None => {}
-            Some(value) => {
-                value.push(character);
-                if escaped {
-                    escaped = false;
-                } else if character == '\\' {
-                    escaped = true;
-                } else if character == '"' {
-                    out.push(current.take().unwrap_or_default());
-                }
-            }
-        }
-    }
-    out
+    text.split('"')
+        .skip(1)
+        .step_by(2)
+        .map(|row| format!("\"{row}\""))
+        .collect()
 }
 
 // Each layer reads the same index of every column.
