@@ -1157,7 +1157,9 @@ fn flush_flex_text(
     ids: &mut Ids,
     boxes: &mut Vec<LayoutBox>,
 ) {
-    if text.is_empty() || run_is_blank(text) {
+    // A flex container never renders white-space-only text, whatever its
+    // `white-space` (CSS Flexbox 1 §4).
+    if text.iter().all(is_white_space_text) {
         text.clear();
         return;
     }
@@ -1173,12 +1175,30 @@ fn block_child(node: &StyledNode, ids: &mut Ids) -> Option<LayoutBox> {
     Some(build_block_box(el, ids))
 }
 
+/// Whether an inline run between blocks generates no anonymous box: all its text is
+/// white space its `white-space` collapses away (CSS 2.1 §9.2.2.1).
 fn run_is_blank(run: &[InlineItem]) -> bool {
     run.iter().all(is_blank_text)
 }
 
+fn is_white_space_text(item: &InlineItem) -> bool {
+    matches!(item, InlineItem::Text { text, .. } if text.chars().all(is_white_space))
+}
+
+fn is_white_space(ch: char) -> bool {
+    matches!(ch, ' ' | '\t' | '\n' | '\r' | '\x0c')
+}
+
+/// White-space-only text that collapses away: under `pre`/`pre-wrap`/`break-spaces`
+/// nothing does.
 fn is_blank_text(item: &InlineItem) -> bool {
-    matches!(item, InlineItem::Text { text, .. } if text.chars().all(|ch| matches!(ch, ' ' | '\t' | '\n' | '\r' | '\x0c')))
+    let InlineItem::Text { text, style, .. } = item else {
+        return false;
+    };
+    match style.get("white-space") {
+        Some("pre" | "pre-wrap" | "break-spaces") => text.is_empty(),
+        _ => text.chars().all(is_white_space),
+    }
 }
 
 /// The anonymous block box wrapping an inline run next to block-level siblings. Its
