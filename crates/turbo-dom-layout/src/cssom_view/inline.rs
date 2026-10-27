@@ -140,12 +140,15 @@ mod tests {
     use super::*;
     use crate::live::testing;
 
+    #[cfg(feature = "bundled-fonts")]
     fn read(body: &str) -> Result<ElementGeometry, String> {
         let html = format!("<body style='margin:0;font-family:\"Liberation Serif\"'>{body}</body>");
         let (tree, snapshot, styles) = testing::layout(&html, "", (400.0, 300.0), Some(1.0));
         geometry(&snapshot, &styles, testing::id(&tree, "#t"))
     }
 
+    // Text in the bundled Liberation Serif.
+    #[cfg(feature = "bundled-fonts")]
     #[test]
     fn decorated_positioned_and_vertical_inlines_are_explicit_gaps() {
         const DECORATED: &str = "native decorated inline border production is pending";
@@ -171,6 +174,8 @@ mod tests {
         assert_eq!(nested.unwrap_err(), DECORATED);
     }
 
+    // Text in the bundled Liberation Serif.
+    #[cfg(feature = "bundled-fonts")]
     #[test]
     fn mixed_fonts_and_empty_inlines_are_explicit_gaps() {
         for property in [

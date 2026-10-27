@@ -113,7 +113,7 @@ engine, macOS arm64, `--include-files 'crates/<crate>/src/*'`), rounded down:
 | crate | measured | gate |
 |---|---|---|
 | turbo-dom | 100% (P5-cov-core; 88.33% (6327/7163) at 0.6.0) | 100 |
-| turbo-dom-layout | 90.63% (8450/9324) | 90 |
+| turbo-dom-layout | 90.63% (8450/9324); P5-cov C2: 93.22% (10113/10849) → 96.92% (10631/10969) | 96.9 |
 | turbo-dom-raster | 77.23% (1184/1533); P5-cov: 100% (1533/1533) | 100 |
 | turbo-dom-raster `--features avif` | P5-cov: 79.63% (1337/1679) → 100% (1666/1666) | 100 |
 | turbo-dom-raster `--features jxl` | P5-cov: 79.31% (1246/1571) → 100% (1559/1559) | 100 |

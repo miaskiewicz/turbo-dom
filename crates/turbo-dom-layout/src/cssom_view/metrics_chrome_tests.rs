@@ -5,8 +5,8 @@
 //! and each `[data-cid]` element is read the way surf's CSSOM-View glue reads it —
 //! `offsetLeft`/`offsetTop`/`offsetParent` from [`metrics::offset_position`], the boxes,
 //! client rects, `offsetWidth`/`offsetHeight` and `client*` from
-//! [`metrics::element_geometry`] (falling back to [`inline::geometry`] for a flattened
-//! plain inline) — and compared with Chrome's. A case's `hits` are hit tested like
+//! [`metrics::element_geometry`], plain inlines also through [`inline::geometry`] (the
+//! glue's flattened-inline seam) — and compared with Chrome's. A case's `hits` are hit tested like
 //! `document.elementsFromPoint` ([`hit::elements_at_point`], no scroll offsets) and the
 //! whole topmost-first list is compared.
 use std::collections::BTreeMap;
@@ -19,10 +19,6 @@ use crate::live::source_id;
 use crate::live::testing::{layout_with, DOCUMENT};
 
 const FIXTURE: &str = include_str!("../../tests/fixtures/cssom_metrics_chrome156.json");
-
-/// The flattened-inline error the glue answers with the inline seam instead.
-const NO_BORDER_BOX: &str =
-    "native live layout requires inline border/cluster provenance for this element";
 
 fn css_of(html: &str) -> &str {
     html.split_once("<style>")
@@ -38,7 +34,7 @@ fn cid_of(tree: &turbo_dom::Tree, id: SourceId) -> Option<String> {
         .map(str::to_string)
 }
 
-/// A rect to 1/16 px (Chrome's LayoutUnit is 1/64 px; summed glyph advances differ from
+/// A rect to 1/16 px (Chrome's `LayoutUnit` is 1/64 px; summed glyph advances differ from
 /// Blink's by up to about 1/64 px, which a 1/16 px grid absorbs).
 fn rect_text(rect: Rect) -> String {
     let unit = |v: f32| (v * 16.0).round() / 16.0;
@@ -115,10 +111,9 @@ fn geometry(
     if style.style.get("display") == Some("contents") {
         return Ok(metrics::empty_geometry());
     }
-    let mut geometry = match metrics::element_geometry(snapshot, id) {
-        Err(error) if error == NO_BORDER_BOX => inline::geometry(snapshot, styles, id),
-        result => result,
-    }?;
+    // (Every element of these live snapshots has a border box, so the glue's
+    // flattened-inline fallback to the inline seam is read separately below.)
+    let mut geometry = metrics::element_geometry(snapshot, id)?;
     if style.parent.is_none() {
         let (width, height) = snapshot.viewport();
         geometry.client.width = width as i32;
@@ -234,6 +229,8 @@ fn assert_cases_match(select: impl Fn(&str) -> bool) {
     assert_eq!(got, chrome, "CSSOM-View reads differ from Chrome 156");
 }
 
+// Text in the bundled Liberation Serif.
+#[cfg(feature = "bundled-fonts")]
 #[test]
 fn element_metrics_and_hits_match_chrome_156() {
     assert_cases_match(|id| !MARKER_CASES.contains(&id));
