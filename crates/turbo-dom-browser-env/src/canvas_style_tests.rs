@@ -46,14 +46,19 @@ fn as_pixels(actual: &mut Value, expected: &Value) {
 /// `currentcolor` resolves at assignment against the connected canvas's inline `color`
 /// (else black) and the op log records the resolved colour.
 #[test]
-#[ignore = "turbo-dom#108: fails until the fix"]
 fn canvas_styles_match_chrome156() {
     use sha2::{Digest, Sha256};
     let control: Value = serde_json::from_str(CONTROL).unwrap();
     assert_eq!(control["browser"], "Chrome/156.0.8078.4");
     let digest = Sha256::digest(PROBE.as_bytes());
-    let hex = digest.iter().map(|byte| format!("{byte:02x}")).collect::<String>();
-    assert_eq!(control["probeSha256"], hex, "control was captured from a different probe");
+    let hex = digest
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect::<String>();
+    assert_eq!(
+        control["probeSha256"], hex,
+        "control was captured from a different probe"
+    );
     let expected = &control["result"];
     let mut actual = run(PROBE);
     as_pixels(&mut actual, expected);

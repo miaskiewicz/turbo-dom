@@ -11,7 +11,8 @@ decoded and painted; it does no I/O itself.
 
 It also replays a recorded 2D-canvas op log (`canvas_ops_png` / `canvas_ops_rgba`; style
 colours through turbo-dom's CSS colour parser `rtdom::color::parse_color`, so `hsl()`,
-percentage `rgb()` and every named colour resolve as in Chrome; `currentcolor` needs the canvas element, so the recorder must resolve it, turbo-dom#108)
+percentage `rgb()` and every named colour resolve as in Chrome; `currentcolor` needs the canvas element, so the recorder resolves it: turbo-dom-browser-env's
+context records the resolved colour, turbo-dom#108)
 and, under `gpu-metal`, a recorded WebGL call batch (`webgl_readback`).
 
 ```rust

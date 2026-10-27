@@ -152,6 +152,21 @@ changes in `tools/parity/expected/p5b-w7-turbo-dom-*.json`.
   later (turbo-surf's child frames listed them before `src`); they are now configurable until
   the key order freezes them.
 
+### Fixed — turbo-dom-browser-env canvas fillStyle / strokeStyle / shadowColor (P5b-G2, miaskiewicz/turbo-dom#108, Chrome 156 control)
+- The 2D context's `fillStyle` / `strokeStyle` / `shadowColor` are accessors over turbo-dom's
+  CSS colour parser (`rtdom::color::parse_color`, through the binding's `__canvasColorNative`)
+  instead of plain data properties: reads come back in Chrome's serialization (`#rrggbb`, or
+  `rgba(r, g, b, a)` with Chrome's 8-bit alpha digits — `hsl(0,100%,50%)` reads `#ff0000`,
+  `transparent` `rgba(0, 0, 0, 0)`), a value the canvas cannot parse (or a non-string that does
+  not stringify to a colour) is ignored and the old value stays, gradients / patterns are kept by
+  identity, and `currentcolor` (any case) resolves once, at assignment: Chrome 156 uses the
+  connected canvas's own inline `color` only (an inherited or stylesheet colour, an inline
+  `inherit`, or a detached canvas give black) and later colour changes do not follow. The op
+  log records the resolved colour, so the raster replay paints it (it painted the previous
+  fill for `currentcolor`). New `rtdom::color::Color::canvas_serialization`. Control:
+  `crates/turbo-dom-browser-env/src/canvas_style_probe.js` -> `canvas_style_chrome156.json`
+  (`scripts/invokers-chrome-control.mjs`), asserted by `canvas_style_tests.rs`.
+
 ### Fixed — turbo-dom-raster screenshots and canvas (P5-cov, miaskiewicz/turbo-dom#94/#95, Chrome 156 controls)
 - A corrupt AVIF is a broken image instead of aborting the process (#94): rav1d 1.1.0 with one
   frame context panics inside its `extern "C"` API on a decode error (upstream
@@ -169,8 +184,8 @@ changes in `tools/parity/expected/p5b-w7-turbo-dom-*.json`.
 - Canvas op-log colours parse through turbo-dom's new `rtdom::color::parse_color` (hsl()/hsla(),
   percentage rgb() channels and alpha, the full named set; channels rounded like Chrome) instead of a
   local subset; `canonicalize_color`'s output is unchanged (#95).
-  `currentcolor` is resolved by the recorder in Chrome (the canvas's computed colour at assignment),
-  which turbo-dom-browser-env's context does not do yet (miaskiewicz/turbo-dom#108).
+  `currentcolor` is resolved by the recorder at assignment (in Chrome and, since
+  miaskiewicz/turbo-dom#108, turbo-dom-browser-env's context: the canvas's inline colour).
 - Canvas `lineTo`/`arc` after `closePath` (or `rect`) starts at the closed subpath's first point, as in
   Chrome (found by the P5-cov mutation pass).
 
