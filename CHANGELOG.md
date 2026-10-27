@@ -7,6 +7,22 @@ at the time); this file reconstructs them from history.
 
 ## [Unreleased]
 
+### Fixed — undecodable images paint nothing, truncated AVIFs are broken (P5b-G1, miaskiewicz/turbo-dom#107, Chrome 156 controls)
+- An image whose pixels do not decode paints nothing (miaskiewicz/turbo-dom#107): an
+  image Chrome 156 loads and sizes but cannot paint — a frame-corrupt AVIF, a PNG cut
+  inside `IDAT`, a GIF with an empty LZW stream — painted turbo-dom-raster's grey
+  (220,220,220) placeholder; both painters now leave the box empty (the backdrop shows),
+  as Chrome does. The placeholder stays for an image the caller did not supply and for an
+  AVIF / JPEG XL built without its decoder feature.
+- A truncated AVIF is broken (miaskiewicz/turbo-dom#107): `image::probe` (so layout, the
+  PDF and the raster painter) and `image::probe_natural` sized an AVIF from its `ispe`
+  alone, so one cut inside `mdat` laid out at its full size. An AVIF now loads once its
+  primary item's `iloc` extents lie within the data — Chrome errors (naturalWidth 0)
+  before that, and loads while only the alpha item is incomplete. Controls: the AVIF
+  prefixes (`formats/q.avif`, `formats/q-alpha.avif`) of
+  `scripts/image-truncation-chrome-control.mjs`; the `undecodable-*` cases of
+  `scripts/raster-img-chrome-control.mjs`.
+
 ### Fixed — turbo-dom-layout intrinsic widths, floats, inline-blocks, column flex, the initial containing block and the fullscreen element (P5b-W7, Chrome 156 controls)
 Each fix is backed by a Chrome for Testing 156 control and lists the corpus outputs it
 changes in `tools/parity/expected/p5b-w7-turbo-dom-*.json`.

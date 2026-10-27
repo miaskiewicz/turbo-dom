@@ -137,8 +137,10 @@ fn paint_subtree(svg: &mut String, f: &Fragment, images: &DecodedAssets) {
     }
 }
 
-/// Embed an image as a base64 `data:` URI `<image>` filling its layout box; fall
-/// back to a neutral placeholder rect when the bytes are absent or unrecognized.
+/// Embed an image as a base64 `data:` URI `<image>` filling its layout box. An image
+/// laid out at its size whose pixels did not decode paints nothing, as in Chrome
+/// (miaskiewicz/turbo-dom#107); a neutral placeholder rect stands for an image the caller
+/// did not supply or this build cannot decode.
 /// `preserveAspectRatio="none"` because layout already sized the box to the
 /// image's aspect ratio.
 fn paint_image(
@@ -147,9 +149,8 @@ fn paint_image(
     placement: &turbo_dom_layout::ImagePlacement,
     images: &DecodedAssets,
 ) {
-    let uri = images
-        .get(&placement.name)
-        .and_then(|img| image_paint::data_uri(&img.oriented(placement.orientation)));
+    let decoded = images.get(&placement.name);
+    let uri = decoded.and_then(|img| image_paint::data_uri(&img.oriented(placement.orientation)));
     match uri {
         Some(uri) => {
             let _ = writeln!(
@@ -159,6 +160,7 @@ fn paint_image(
                 f.x, f.y, f.width, f.height
             );
         }
+        None if decoded.is_some_and(|d| !d.placeholder) => {}
         None => rect(svg, f.x, f.y, f.width, f.height, IMAGE_PLACEHOLDER),
     }
 }
@@ -507,7 +509,7 @@ mod tests {
     }
 
     #[test]
-    fn images_embed_as_png_data_uris_else_a_placeholder_rect() {
+    fn images_embed_as_png_data_uris_else_nothing_or_a_placeholder_rect() {
         let mut images = HashMap::new();
         images.insert(
             "red.png".to_string(),
@@ -516,6 +518,7 @@ mod tests {
                 height: 1,
                 rgba: vec![255, 0, 0, 255, 255, 0, 0, 255],
                 intrinsic: Intrinsic::new(2, 1, true),
+                placeholder: false,
             },
         );
         let embedded = body(&image("red.png"), &images);
@@ -525,21 +528,26 @@ mod tests {
             ),
             "{embedded}"
         );
-        // Absent bytes, or pixels that cannot form an image (a size-only entry), are the
-        // placeholder.
-        images.insert(
-            "size-only".to_string(),
-            DecodedImage {
-                width: 0,
-                height: 0,
-                rgba: Vec::new(),
-                intrinsic: Intrinsic::new(2, 1, true),
-            },
-        );
+        // A size-only entry whose pixels did not decode paints nothing, as in Chrome
+        // (turbo-dom#107); absent bytes, or a size-only entry this build has no decoder
+        // for, are the placeholder.
+        for (name, placeholder) in [("undecodable", false), ("no-decoder", true)] {
+            images.insert(
+                name.to_string(),
+                DecodedImage {
+                    width: 0,
+                    height: 0,
+                    rgba: Vec::new(),
+                    intrinsic: Intrinsic::new(2, 1, true),
+                    placeholder,
+                },
+            );
+        }
         let placeholder =
             "<rect x=\"1.00\" y=\"2.00\" width=\"4.00\" height=\"3.00\" fill=\"#dcdcdc\"/>\n";
         assert_eq!(body(&image("absent.png"), &images), placeholder);
-        assert_eq!(body(&image("size-only"), &images), placeholder);
+        assert_eq!(body(&image("no-decoder"), &images), placeholder);
+        assert_eq!(body(&image("undecodable"), &images), "");
     }
 
     #[test]

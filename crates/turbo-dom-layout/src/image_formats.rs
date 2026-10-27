@@ -583,9 +583,15 @@ fn ipma_entry(r: &mut Reader, id_width: usize, wide: bool) -> Option<(u32, Vec<u
 
 /// AVIF intrinsic size: the primary item's `ispe` (image spatial extents); `has_alpha`
 /// when the file carries an alpha auxiliary image; the orientation of its HEIF transform
-/// properties ([`avif_orientation`], miaskiewicz/turbo-dom#45).
+/// properties ([`avif_orientation`], miaskiewicz/turbo-dom#45). `None` until the primary
+/// item's `iloc` extents lie within `bytes`: Chrome 156 (libavif, all data received)
+/// rejects an AVIF whose colour data runs past the end — error, naturalWidth 0 — but loads
+/// one whose alpha item's does (miaskiewicz/turbo-dom#107).
 pub(super) fn probe_avif(bytes: &[u8]) -> Option<Intrinsic> {
     let meta = AvifMeta::parse(bytes)?;
+    let locations = child(&meta.children, *b"iloc").and_then(|b| parse_iloc(bytes, &b.body))?;
+    let idat = child(&meta.children, *b"idat").map(|b| b.body.clone());
+    item_extents(bytes, &locations, idat.as_ref(), meta.primary)?;
     let ispe = meta
         .properties_of(meta.primary)
         .find(|b| b.kind == *b"ispe")?;
@@ -691,13 +697,24 @@ fn item_data(
     idat: Option<&std::ops::Range<usize>>,
     item: u32,
 ) -> Option<Vec<u8>> {
+    Some(item_extents(bytes, locations, idat, item)?.concat())
+}
+
+/// The extents of `item`, each within `bytes`; `None` when the item has no location or
+/// an extent runs past the end of its scope.
+fn item_extents<'b>(
+    bytes: &'b [u8],
+    locations: &[Location],
+    idat: Option<&std::ops::Range<usize>>,
+    item: u32,
+) -> Option<Vec<&'b [u8]>> {
     let location = locations.iter().find(|l| l.item == item)?;
     let scope = item_scope(bytes, location.method, idat)?;
-    let mut out = Vec::new();
-    for &(offset, length) in &location.extents {
-        out.extend_from_slice(extent(bytes, &scope, offset, length)?);
-    }
-    Some(out)
+    location
+        .extents
+        .iter()
+        .map(|&(offset, length)| extent(bytes, &scope, offset, length))
+        .collect()
 }
 
 /// The bytes an item's extents index: the file (construction method 0) or the `idat`

@@ -11,8 +11,8 @@
 //! (`default-features = false`), at the cost of its C-ABI (`unsafe extern "C"`) entry
 //! points and a large dependency tree. This module uses `rav1d` (no assembly, two frame
 //! contexts — see [`av1::decode`] for why not one) and converts the decoded YUV planes to
-//! RGBA itself; without the feature, or for a corrupt AVIF, an AVIF paints as the
-//! placeholder of any undecodable image.
+//! RGBA itself; without the feature an AVIF paints as the placeholder, and a corrupt AVIF
+//! (no pixels) paints nothing, as in Chrome (turbo-dom#107).
 
 use turbo_dom_layout::image::Rgba8Image;
 

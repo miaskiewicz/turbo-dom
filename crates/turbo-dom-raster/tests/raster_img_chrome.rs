@@ -12,6 +12,11 @@
 //! content is not one: the screenshot (and its lazy-image fill) leaves it alone,
 //! `image_urls` returns the URLs of exactly Chrome's images, and `delazy_images` changes
 //! nothing but those images.
+//!
+//! Item 3 (miaskiewicz/turbo-dom#107): an image Chrome sizes but whose pixels do not decode
+//! (a frame-corrupt AVIF, a PNG cut inside IDAT, a GIF with an empty LZW stream) paints
+//! nothing — not the grey placeholder — and an AVIF whose primary item runs past the end of
+//! the data is broken (naturalWidth 0): it renders like an `<img>` that does not resolve.
 use turbo_dom_layout::parse_html_tree;
 use turbo_dom_layout::turbo_dom::rtdom::tree::NodeType;
 use turbo_dom_layout::turbo_dom::{Handle, Tree};
@@ -200,6 +205,56 @@ fn img_text_is_not_an_image_like_chrome_156() {
                 "{id}: delazy srcs {:?}, Chrome's images {:?}",
                 img_srcs(&after),
                 img_srcs(&alone)
+            ));
+        }
+    }
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+}
+
+/// Chrome's `[naturalWidth, naturalHeight]` of the case's one image.
+fn natural(case: &serde_json::Value) -> (u64, u64) {
+    let n = &case["natural"][0];
+    (n[0].as_u64().unwrap(), n[1].as_u64().unwrap())
+}
+
+#[test]
+fn undecodable_images_paint_nothing_like_chrome_156() {
+    let mut failures = Vec::new();
+    let undecodable = cases("undecodable-");
+    assert_eq!(undecodable.len(), 5);
+    for case in undecodable {
+        let id = case["id"].as_str().unwrap();
+        let html = case["html"].as_str().unwrap();
+        if natural(&case) == (0, 0) {
+            // Broken: the screenshots equal those of an `<img>` no decoder reads.
+            let src = case["images"][0]["src"].as_str().unwrap();
+            let unresolved = html.replace(src, "data:image/png;base64,AAAA");
+            assert_ne!(unresolved, html);
+            if screenshot_png(html, VIEWPORT) != screenshot_png(&unresolved, VIEWPORT) {
+                failures.push(format!("{id}: PNG differs from an unresolved <img>"));
+            }
+            if screenshot_svg(html, VIEWPORT) != screenshot_svg(&unresolved, VIEWPORT) {
+                failures.push(format!("{id}: SVG differs from an unresolved <img>"));
+            }
+            continue;
+        }
+        assert_eq!(natural(&case), (64, 40), "{id}");
+        // Without the `avif` feature there is no AVIF decoder: the sized box paints as the
+        // light-grey placeholder (class W).
+        if id.contains("avif") && !cfg!(feature = "avif") {
+            let mut placeholder = case.clone();
+            placeholder["boxes"][0]["samples"] = "WWWW".into();
+            compare_pixels(&placeholder, &mut failures);
+            continue;
+        }
+        compare_pixels(&case, &mut failures);
+        let svg = screenshot_svg(html, VIEWPORT).expect("svg");
+        let painted = svg.matches("<image").count();
+        let want = usize::from(id == "undecodable-intact-avif");
+        if painted != want || svg.contains("#dcdcdc") {
+            failures.push(format!(
+                "{id}: SVG has {painted} <image> (want {want}), placeholder {}",
+                svg.contains("#dcdcdc")
             ));
         }
     }

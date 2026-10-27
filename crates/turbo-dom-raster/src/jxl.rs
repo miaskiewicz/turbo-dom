@@ -8,7 +8,7 @@
 //! `rayon` pool: one thread, deterministic); `jxl` (jxl-rs, BSD-3-Clause — the decoder
 //! Chromium itself vendors — younger API); `jpegxl-rs` (bindings to the C++ libjxl: a
 //! native toolchain); `zune-jpegxl` encodes only. Without the feature a JPEG XL paints
-//! as the placeholder of any undecodable image.
+//! as the placeholder; a corrupt one (no pixels) paints nothing (turbo-dom#107).
 
 use turbo_dom_layout::image::Rgba8Image;
 

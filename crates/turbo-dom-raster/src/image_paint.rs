@@ -35,6 +35,11 @@ pub struct DecodedImage {
     /// The size + alpha flag layout sizes the image box with. `has_alpha` is always
     /// true: the painters draw every image as straight RGBA.
     pub intrinsic: Intrinsic,
+    /// A size-only entry (no pixels) of a format this build has no decoder for (AVIF
+    /// without the `avif` feature, JPEG XL without `jxl`): painted as the neutral
+    /// placeholder. A size-only entry whose pixels did not decode paints nothing, as in
+    /// Chrome (miaskiewicz/turbo-dom#107).
+    pub placeholder: bool,
 }
 
 /// Decoded images keyed by their reference (the same key [`crate::image_urls`]
@@ -440,7 +445,7 @@ pub fn decode(bytes: &[u8]) -> Option<DecodedImage> {
     let format = layout_image::sniff(bytes);
     // Blink's load decision for a cut-short body (turbo-dom#59): a PNG/JPEG/GIF/WebP the
     // shared probe cannot size yet is broken, one it sizes loads even when the pixels do
-    // not decode (laid out at its size, painted as the placeholder).
+    // not decode (laid out at its size, painting nothing: turbo-dom#107).
     let size_point = matches!(
         format,
         Some(Format::Png | Format::Jpeg | Format::Gif | Format::WebP)
@@ -466,12 +471,18 @@ pub fn decode(bytes: &[u8]) -> Option<DecodedImage> {
         _ => image_rgba(image::load_from_memory(bytes)),
     };
     let Some(rgba) = pixels else {
-        // A sized PNG/JPEG/GIF/WebP whose pixels do not decode, an AVIF without the `avif`
-        // feature or a JPEG XL without `jxl` (or either on a bitstream / codestream error)
-        // still lays out at the image's real size (the shared header probe) and paints as
-        // the placeholder; any other undecodable image is dropped.
+        // A sized PNG/JPEG/GIF/WebP whose pixels do not decode, an AVIF or a JPEG XL still
+        // lays out at the image's real size (the shared header probe). It paints nothing,
+        // as in Chrome (turbo-dom#107), except an AVIF without the `avif` feature or a JPEG
+        // XL without `jxl`: no decoder, so the placeholder. Any other undecodable image is
+        // dropped.
+        let no_decoder = match format {
+            Some(Format::Avif) => !cfg!(feature = "avif"),
+            Some(Format::Jxl) => !cfg!(feature = "jxl"),
+            _ => false,
+        };
         return if size_point || matches!(format, Some(Format::Avif | Format::Jxl)) {
-            size_only(bytes)
+            size_only(bytes, no_decoder)
         } else {
             None
         };
@@ -485,9 +496,9 @@ pub fn decode(bytes: &[u8]) -> Option<DecodedImage> {
     Some(decoded)
 }
 
-/// A probe-only entry: the image's layout size with no pixels (the painters draw the
-/// placeholder for it).
-fn size_only(bytes: &[u8]) -> Option<DecodedImage> {
+/// A probe-only entry: the image's layout size with no pixels. The painters draw nothing
+/// for it, or the placeholder when `placeholder` (no decoder for the format).
+fn size_only(bytes: &[u8], placeholder: bool) -> Option<DecodedImage> {
     let intrinsic = layout_image::probe(bytes)?;
     Some(DecodedImage {
         width: 0,
@@ -497,6 +508,7 @@ fn size_only(bytes: &[u8]) -> Option<DecodedImage> {
             has_alpha: true,
             ..intrinsic
         },
+        placeholder,
     })
 }
 
@@ -527,6 +539,7 @@ fn with_intrinsic(rgba: Rgba8Image, (width, height): (u32, u32)) -> DecodedImage
         height: rgba.height,
         rgba: rgba.rgba,
         intrinsic: Intrinsic::new(width, height, true),
+        placeholder: false,
     }
 }
 
@@ -573,6 +586,7 @@ impl DecodedImage {
             height,
             rgba,
             intrinsic: Intrinsic::new(width, height, true),
+            placeholder: self.placeholder,
         })
     }
 
@@ -920,6 +934,7 @@ mod tests {
             height: 1,
             rgba: vec![255, 0, 0, 128],
             intrinsic: Intrinsic::new(1, 1, true),
+            placeholder: false,
         };
         let pm = red.scaled_pixmap(2, 3).unwrap();
         assert_eq!((pm.width(), pm.height()), (2, 3));
@@ -937,6 +952,7 @@ mod tests {
                 height,
                 rgba: Vec::new(),
                 intrinsic: Intrinsic::new(2, 2, true),
+                placeholder: false,
             };
             assert!(empty.scaled_pixmap(4, 4).is_none(), "{width}x{height}");
         }
@@ -1023,7 +1039,12 @@ mod tests {
             .position(|w| w == &stream[..])
             .unwrap();
         avif[at] = 0xff;
-        for (label, bytes) in [("jxl", &jxl[..12]), ("avif", &avif[..])] {
+        // Painted as the placeholder only without the format's decoder; with it, nothing
+        // (turbo-dom#107).
+        for (label, bytes, no_decoder) in [
+            ("jxl", &jxl[..12], !cfg!(feature = "jxl")),
+            ("avif", &avif[..], !cfg!(feature = "avif")),
+        ] {
             let probed = turbo_dom_layout::image::probe(bytes).expect(label);
             let img = decode(bytes).expect(label);
             assert_eq!(
@@ -1037,6 +1058,7 @@ mod tests {
                 "{label}"
             );
             assert!(img.intrinsic.has_alpha, "{label}");
+            assert_eq!(img.placeholder, no_decoder, "{label}");
         }
         // Other undecodable images are dropped.
         assert!(decode(b"\x89PNG\r\n\x1a\n broken").is_none());
@@ -1102,6 +1124,7 @@ mod shared_layer_tests {
             height,
             rgba,
             intrinsic: Intrinsic::new(0, 0, false),
+            placeholder: false,
         };
         probe(&img.to_png()?)
     }
@@ -1145,7 +1168,7 @@ mod shared_layer_tests {
             }
             // A cut-short / corrupt PNG or JPEG whose size point Chrome reads loads there
             // (turbo-dom#59: Chrome 156 loads both tools/parity extra images at 64x40): laid
-            // out at its probed size, painted as the placeholder.
+            // out at its probed size, painting nothing (turbo-dom#107).
             (None, Some(new)) if new.rgba.is_empty() => {
                 assert_eq!(
                     probe(bytes).map(|i| (i.width, i.height)),

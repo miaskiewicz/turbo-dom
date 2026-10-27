@@ -163,8 +163,10 @@ fn paint_subtree(pm: &mut Pixmap, f: &Fragment, images: &DecodedAssets, xf: Tran
     }
 }
 
-/// Draw an image into its layout box: scale the decoded pixels and blit them;
-/// fall back to a neutral placeholder when the image is absent or won't scale.
+/// Draw an image into its layout box: scale the decoded pixels and blit them. An image
+/// laid out at its size whose pixels did not decode paints nothing, as in Chrome
+/// (miaskiewicz/turbo-dom#107); the neutral placeholder stands for an image the caller did
+/// not supply or this build cannot decode (`DecodedImage::placeholder`).
 /// A `mask-image` placement (`tint` set) is stencilled: the source's alpha selects
 /// where the tint colour paints (Wikipedia's monochrome SVG UI glyphs).
 fn paint_image(
@@ -175,9 +177,8 @@ fn paint_image(
     xf: Transform,
 ) {
     let (w, h) = (f.width.round() as u32, f.height.round() as u32);
-    let img = images
-        .get(&placement.name)
-        .and_then(|d| d.oriented(placement.orientation).scaled_pixmap(w, h));
+    let decoded = images.get(&placement.name);
+    let img = decoded.and_then(|d| d.oriented(placement.orientation).scaled_pixmap(w, h));
     // Fold the box's top-left into the transform so a transformed image (a rotated
     // thumbnail, a translated slide) maps correctly; draw the pixmap at (0,0).
     let place = xf.pre_concat(Transform::from_translate(f.x.round(), f.y.round()));
@@ -196,9 +197,11 @@ fn paint_image(
         (Some(src), None) => {
             pm.draw_pixmap(0, 0, src.as_ref(), &PixmapPaint::default(), place, None);
         }
-        // A missing mask paints nothing (no placeholder box for a glyph); a missing
-        // real image shows the neutral placeholder.
+        // A missing mask paints nothing (no placeholder box for a glyph), nor does an
+        // image whose pixels did not decode; a missing real image shows the neutral
+        // placeholder.
         (None, Some(_)) => {}
+        (None, None) if decoded.is_some_and(|d| !d.placeholder) => {}
         (None, None) => fill_rect(pm, f.x, f.y, f.width, f.height, IMAGE_PLACEHOLDER, xf),
     }
 }
@@ -895,6 +898,29 @@ mod tests {
         let img = render(&image("absent.png", None), 10, 10, &images);
         assert_eq!(rgb(&img, 5, 5), [220, 220, 220], "placeholder");
         assert_eq!(rgb(&img, 0, 0), [255, 255, 255]);
+    }
+
+    #[test]
+    fn an_undecodable_image_paints_nothing_and_one_without_a_decoder_the_placeholder() {
+        // Size-only entries (turbo-dom#107): pixels that did not decode paint nothing, as in
+        // Chrome; a format this build has no decoder for paints the placeholder.
+        let mut images = HashMap::new();
+        for (name, placeholder) in [("undecodable", false), ("no-decoder", true)] {
+            images.insert(
+                name.to_string(),
+                crate::image_paint::DecodedImage {
+                    width: 0,
+                    height: 0,
+                    rgba: Vec::new(),
+                    intrinsic: turbo_dom_layout::image::Intrinsic::new(2, 1, true),
+                    placeholder,
+                },
+            );
+        }
+        let none = render(&image("undecodable", None), 10, 10, &images);
+        assert!(all_white(&none), "nothing painted");
+        let grey = render(&image("no-decoder", None), 10, 10, &images);
+        assert_eq!(rgb(&grey, 5, 5), [220, 220, 220], "placeholder");
     }
 
     #[test]

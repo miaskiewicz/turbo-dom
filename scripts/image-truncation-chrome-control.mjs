@@ -1,7 +1,8 @@
 // Chrome-156 control for where Blink first reports an image's size (P5b-X7,
 // miaskiewicz/turbo-dom#59): every byte prefix (0..=len) of each image in
-// crates/turbo-dom-layout/tests/fixtures/images/truncation (scripts/make_truncation_fixtures.py)
-// is loaded as a script-created `<img src="data:…;base64,…">`, plus `image/svg+xml` documents
+// crates/turbo-dom-layout/tests/fixtures/images/truncation (scripts/make_truncation_fixtures.py),
+// plus the AVIF images of images/formats (`formats/q.avif`, `formats/q-alpha.avif`;
+// miaskiewicz/turbo-dom#107: libavif rejects an item extent past the end of the data), is loaded as a script-created `<img src="data:…;base64,…">`, plus `image/svg+xml` documents
 // whose root element is or is not an SVG-namespace `<svg>`. Chrome for Testing 156 records per
 // source: `event` (load / error, from the image's own events), `natural`
 // ([naturalWidth, naturalHeight]) and `complete`. A prefix "loads" exactly when the decoder has
@@ -40,10 +41,16 @@ const { chromium } = require(playwrightCore);
 const playwrightVersion = require(join(playwrightCore, "package.json")).version;
 
 const DIR = join(repo, "crates/turbo-dom-layout/tests/fixtures/images/truncation");
-const MIME = { jpg: "image/jpeg", gif: "image/gif", webp: "image/webp", png: "image/png" };
-const files = readdirSync(DIR)
-  .filter((f) => f !== "IMAGES.sha256")
-  .sort();
+const MIME = { jpg: "image/jpeg", gif: "image/gif", webp: "image/webp", png: "image/png", avif: "image/avif" };
+// File names relative to DIR; `formats/…` names are relative to its parent (images/).
+const files = [
+  ...readdirSync(DIR)
+    .filter((f) => f !== "IMAGES.sha256")
+    .sort(),
+  "formats/q.avif",
+  "formats/q-alpha.avif",
+];
+const path = (file) => (file.includes("/") ? join(DIR, "..", file) : join(DIR, file));
 
 const NS = 'xmlns="http://www.w3.org/2000/svg"';
 // [id, document]: served as `data:image/svg+xml,<percent-encoded document>`.
@@ -62,7 +69,7 @@ const SVGS = [
 
 const sources = [];
 for (const file of files) {
-  const bytes = readFileSync(join(DIR, file));
+  const bytes = readFileSync(path(file));
   const mime = MIME[file.split(".").pop()];
   for (let n = 0; n <= bytes.length; n++)
     sources.push({ id: `${file}@${n}`, src: `data:${mime};base64,${bytes.subarray(0, n).toString("base64")}` });
@@ -94,7 +101,7 @@ await browser.close();
 
 const byId = new Map(measured.map((m) => [m.id, m]));
 const images = files.map((file) => {
-  const bytes = readFileSync(join(DIR, file));
+  const bytes = readFileSync(path(file));
   const full = byId.get(`${file}@${bytes.length}`);
   let loads = "";
   for (let n = 0; n <= bytes.length; n++) {

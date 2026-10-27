@@ -5,11 +5,13 @@
 //! `scripts/image-truncation-chrome-control.mjs`): every byte prefix of each image in
 //! `tests/fixtures/images/truncation` (`scripts/make_truncation_fixtures.py`) loaded as a
 //! `data:` `<img>` — `loads` has one `L` (load, full natural size) or `E` (error) per prefix
-//! length — plus `image/svg+xml` documents with and without an SVG-namespace root. Blink's
+//! length; the AVIF images of `tests/fixtures/images/formats` too (`formats/…` names) — plus `image/svg+xml` documents with and without an SVG-namespace root. Blink's
 //! decoders know the size of a JPEG at the end of its first `SOS` header, of a GIF once the
 //! first image descriptor's position and size are read, of a WebP only with the whole RIFF
 //! payload (the demuxer validates it once all data arrived) and of a PNG at its first `IDAT`
-//! header; before that the image is broken. An SVG image's root must be an `<svg>` in the SVG
+//! header, of an AVIF once the primary item's `iloc` extents lie within the data (libavif
+//! rejects an extent past the end with all data received; the alpha item's need not:
+//! miaskiewicz/turbo-dom#107); before that the image is broken. An SVG image's root must be an `<svg>` in the SVG
 //! namespace (XML, so case-sensitive), never gzip-compressed.
 //!
 //! Here: [`probe_natural`] (the live `<img>` load decision, turbo-surf) and [`probe`] (layout,
@@ -33,12 +35,37 @@ fn fixture() -> Value {
     fixture
 }
 
+/// A control image: `formats/…` names are relative to `tests/fixtures/images`, the others
+/// to its `truncation` directory.
 fn read(file: &str) -> Vec<u8> {
+    let dir = if file.contains('/') {
+        ""
+    } else {
+        "truncation/"
+    };
     std::fs::read(format!(
-        "{}/tests/fixtures/images/truncation/{file}",
+        "{}/tests/fixtures/images/{dir}{file}",
         env!("CARGO_MANIFEST_DIR")
     ))
     .unwrap()
+}
+
+fn is_avif(file: &str) -> bool {
+    std::path::Path::new(file)
+        .extension()
+        .is_some_and(|e| e == "avif")
+}
+
+/// The control's images `pick` selects.
+fn images(fixture: &Value, pick: fn(&str) -> bool) -> Vec<Value> {
+    let all = fixture["images"].as_array().unwrap();
+    let picked: Vec<Value> = all
+        .iter()
+        .filter(|i| pick(i["file"].as_str().unwrap()))
+        .cloned()
+        .collect();
+    assert!(!picked.is_empty());
+    picked
 }
 
 fn size(i: Option<turbo_dom_layout::image::Intrinsic>) -> Option<(u32, u32)> {
@@ -47,9 +74,18 @@ fn size(i: Option<turbo_dom_layout::image::Intrinsic>) -> Option<(u32, u32)> {
 
 #[test]
 fn the_probes_report_a_size_at_chromes_prefix_lengths() {
+    probes_follow_chrome(|f| !is_avif(f));
+}
+
+#[test]
+fn the_avif_probes_report_a_size_once_the_primary_item_is_in_the_data() {
+    probes_follow_chrome(is_avif);
+}
+
+fn probes_follow_chrome(pick: fn(&str) -> bool) {
     let fixture = fixture();
     let mut failures = Vec::new();
-    for image in fixture["images"].as_array().unwrap() {
+    for image in &images(&fixture, pick) {
         let file = image["file"].as_str().unwrap();
         let bytes = read(file);
         assert_eq!(
@@ -164,6 +200,15 @@ fn base64(bytes: &[u8]) -> String {
 
 #[test]
 fn truncated_img_boxes_follow_chromes_load_decision() {
+    img_boxes_follow_chrome(|f| !is_avif(f));
+}
+
+#[test]
+fn truncated_avif_img_boxes_follow_chromes_load_decision() {
+    img_boxes_follow_chrome(is_avif);
+}
+
+fn img_boxes_follow_chrome(pick: fn(&str) -> bool) {
     // Per image: the last broken prefix and the first loadable one, as absolutely positioned
     // `<img>`s, next to an `<img>` whose source no decoder reads (the not-loaded box).
     let fixture = fixture();
@@ -171,13 +216,14 @@ fn truncated_img_boxes_follow_chromes_load_decision() {
         "jpg" => "image/jpeg",
         "gif" => "image/gif",
         "webp" => "image/webp",
+        "avif" => "image/avif",
         _ => "image/png",
     };
     let mut body = String::from(
         r#"<img data-cid="none" src="data:image/png;base64,AAAA" style="position:absolute;left:0;top:0">"#,
     );
     let mut expected = Vec::new();
-    for (i, image) in fixture["images"].as_array().unwrap().iter().enumerate() {
+    for (i, image) in images(&fixture, pick).iter().enumerate() {
         let file = image["file"].as_str().unwrap();
         let bytes = read(file);
         let loads = image["loads"].as_str().unwrap();
