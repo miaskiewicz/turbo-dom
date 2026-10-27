@@ -62,11 +62,8 @@ pub fn caret(
         let Some(source) = run.source_id else {
             continue;
         };
-        if run.source_ancestors.last().is_some_and(|id| {
-            super::hit::property(styles, *id, "visibility").is_some_and(|value| value != "visible")
-        }) {
-            continue;
-        }
+        // visibility:hidden text still takes the caret, like Chrome 156
+        // (miaskiewicz/turbo-dom#126).
         examined = examined
             .checked_add(run.glyphs.len())
             .ok_or("native caret query size overflow")?;
@@ -228,7 +225,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "turbo-dom#126: fails until the fix"]
     fn caret_positions_from_points_match_chrome_156() {
         let failures = caret_failures(|point| !GAPS.contains(&point));
         assert!(failures.is_empty(), "{}", failures.join("\n"));
