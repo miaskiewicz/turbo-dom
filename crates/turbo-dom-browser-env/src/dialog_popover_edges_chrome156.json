@@ -1,0 +1,416 @@
+{
+  "browser": "Chrome/156.0.8078.47",
+  "v8": "15.6.75.19",
+  "probe": "dialog_popover_edges_probe.js",
+  "probeSha256": "045b5a0f9d447d75f982c61f9edde92eda806797ff0d00903b1e4a03934cc007",
+  "collectorSha256": "3f964d2cdf0ec8101870a776aaffc3b7dc4522306959c4a40761057beb255eb8",
+  "flags": [
+    "--headless=new",
+    "--remote-debugging-pipe",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "--disable-background-timer-throttling",
+    "--disable-renderer-backgrounding",
+    "--disable-backgrounding-occluded-windows",
+    "about:blank"
+  ],
+  "result": {
+    "openRemoved": {
+      "result": [
+        false,
+        true
+      ],
+      "log": [
+        [
+          "beforetoggle",
+          "d",
+          "open"
+        ],
+        [
+          "toggle",
+          "d",
+          "open"
+        ]
+      ]
+    },
+    "cancelCloses": {
+      "result": [
+        false,
+        "fromCancel"
+      ],
+      "log": [
+        [
+          "beforetoggle",
+          "d",
+          "open"
+        ],
+        [
+          "toggle",
+          "d",
+          "open"
+        ],
+        [
+          "cancel",
+          "d"
+        ],
+        [
+          "beforetoggle",
+          "d",
+          "closed"
+        ],
+        [
+          "close",
+          "d"
+        ],
+        [
+          "toggle",
+          "d",
+          "closed"
+        ]
+      ]
+    },
+    "invokerInPopover": {
+      "result": [
+        [
+          true,
+          true
+        ],
+        [
+          true,
+          false
+        ],
+        [
+          true,
+          true
+        ],
+        [
+          false,
+          false
+        ]
+      ],
+      "log": [
+        [
+          "beforetoggle",
+          "p1",
+          "open"
+        ],
+        [
+          "toggle",
+          "p1",
+          "open"
+        ],
+        [
+          "beforetoggle",
+          "p2",
+          "open"
+        ],
+        [
+          "toggle",
+          "p2",
+          "open"
+        ],
+        [
+          "beforetoggle",
+          "p2",
+          "closed"
+        ],
+        [
+          "toggle",
+          "p2",
+          "closed"
+        ],
+        [
+          "beforetoggle",
+          "p2",
+          "open"
+        ],
+        [
+          "toggle",
+          "p2",
+          "open"
+        ],
+        [
+          "beforetoggle",
+          "p2",
+          "closed"
+        ],
+        [
+          "beforetoggle",
+          "p1",
+          "closed"
+        ],
+        [
+          "toggle",
+          "p2",
+          "closed"
+        ],
+        [
+          "toggle",
+          "p1",
+          "closed"
+        ]
+      ]
+    },
+    "invokerTargets": {
+      "result": [
+        [
+          false,
+          null
+        ],
+        "plain",
+        false
+      ],
+      "log": []
+    },
+    "reentrantInvoke": {
+      "result": [
+        false,
+        [
+          true
+        ]
+      ],
+      "log": [
+        [
+          "beforetoggle",
+          "p",
+          "open"
+        ],
+        [
+          "toggle",
+          "p",
+          "open"
+        ]
+      ]
+    },
+    "nestedCalls": {
+      "result": [
+        "undefined",
+        [
+          true
+        ],
+        "undefined",
+        [
+          false
+        ],
+        [
+          [
+            "open",
+            [
+              "InvalidStateError",
+              "Failed to execute 'showPopover' on 'HTMLElement': Invalid to show a popover during another show operation"
+            ],
+            [
+              "InvalidStateError",
+              "Failed to execute 'togglePopover' on 'HTMLElement': Invalid to show a popover during another show operation"
+            ],
+            "undefined"
+          ],
+          [
+            "closed",
+            "undefined",
+            false,
+            "undefined"
+          ]
+        ]
+      ],
+      "log": [
+        [
+          "beforetoggle",
+          "p",
+          "open"
+        ],
+        [
+          "beforetoggle",
+          "p",
+          "closed"
+        ],
+        [
+          "toggle",
+          "p",
+          "open"
+        ]
+      ]
+    },
+    "recheckRemoved": {
+      "result": [
+        [
+          "InvalidStateError",
+          "Failed to execute 'showPopover' on 'HTMLElement': Invalid on disconnected popover elements. This might have been the result of the \"beforetoggle\" event handler changing the state of this popover."
+        ],
+        false,
+        [
+          false
+        ],
+        false
+      ],
+      "log": [
+        [
+          "beforetoggle",
+          "p1",
+          "open"
+        ],
+        [
+          "beforetoggle",
+          "p2",
+          "open"
+        ],
+        [
+          "beforetoggle",
+          "p1",
+          "closed"
+        ],
+        [
+          "toggle",
+          "p1",
+          "closed"
+        ]
+      ]
+    },
+    "selectors": {
+      "result": [
+        [
+          ":modal()",
+          "SyntaxError",
+          "SyntaxError"
+        ],
+        [
+          ":open()",
+          "SyntaxError",
+          "SyntaxError"
+        ],
+        [
+          ":popover-open()",
+          "SyntaxError",
+          "SyntaxError"
+        ],
+        [
+          ":is(:modal(), div)",
+          [
+            "p"
+          ],
+          false
+        ],
+        [
+          ":modal/**/",
+          [
+            "d"
+          ],
+          false
+        ],
+        [
+          ":open/* ( */",
+          [
+            "d",
+            "s"
+          ],
+          true
+        ],
+        [
+          ":open, [title=\"a(b\"]",
+          [
+            "d",
+            "s"
+          ],
+          true
+        ],
+        [
+          ":open, [title='a(b']",
+          [
+            "d",
+            "s"
+          ],
+          true
+        ],
+        [
+          ":open, [title=a\\(b]",
+          [
+            "d",
+            "s"
+          ],
+          true
+        ],
+        [
+          ":open, [title",
+          [
+            "d",
+            "s"
+          ],
+          true
+        ],
+        [
+          ":open, :is(details",
+          [
+            "d",
+            "s"
+          ],
+          true
+        ],
+        [
+          ":popover-open, [title",
+          [
+            "p",
+            "s"
+          ],
+          true
+        ],
+        [
+          ":modal!",
+          "SyntaxError",
+          "SyntaxError"
+        ],
+        [
+          ":open:nth-child(",
+          "SyntaxError",
+          "SyntaxError"
+        ],
+        [
+          ":open, [title=\"a(b",
+          [
+            "d",
+            "s"
+          ],
+          true
+        ],
+        [
+          ":modal, :popover-open, :open",
+          [
+            "d",
+            "p",
+            "s"
+          ],
+          true
+        ]
+      ],
+      "log": [
+        [
+          "beforetoggle",
+          "d",
+          "open"
+        ],
+        [
+          "beforetoggle",
+          "p",
+          "open"
+        ],
+        [
+          "toggle",
+          "s",
+          "open"
+        ],
+        [
+          "toggle",
+          "d",
+          "open"
+        ],
+        [
+          "toggle",
+          "p",
+          "open"
+        ]
+      ]
+    }
+  }
+}
