@@ -103,9 +103,12 @@ browser_env.rs: P5b-X8 turbo-dom#90 registers __cssShorthandNative (css_shorthan
 browser_env.js: P5b-X8 turbo-dom#97 longhands take rtdom::css_shorthand::longhand_value spelling / admission; the computed cascade reads the stylesheet grammar text
 browser_env.rs: P5b-X8 turbo-dom#97 css_longhand control test module
 key_order_tests.rs: P5b-X8 turbo-dom#99 deferred key order moves HTMLTrackElement constants installed before their attributes
+browser_env.js: P5b-H1 turbo-dom#110/#111 the 2D context's save() / restore() keep a drawing-state stack, setLineDash stores the dash, the initial direction is inherit
+key_order_tests.rs: P5b-H1 turbo-dom#99 a second install into an arranged realm keeps HTMLTrackElement's key order
 "
 # Crate-owned files under src/ that were not part of the move.
 OWNED="lib.rs crate_surface.rs host_internals.rs test_support.rs css_snapshot.rs option_factory_probe.js option_factory_cases.json option_factory_chrome156.json html_image.js html_image_tests.rs html_image_probe.js html_image_cases.json html_image_chrome156.json custom_elements_defined_probe.js custom_elements_defined_cases.json custom_elements_defined_chrome156.json computed_defaults_probe.js computed_defaults_cases.json computed_defaults_chrome156.json computed_defaults_tests.rs dom_reactions_names_probe.js dom_reactions_names_cases.json dom_reactions_names_chrome156.json dom_reactions_tests.rs dom_adoption_reactions_probe.js dom_adoption_reactions_cases.json dom_adoption_reactions_chrome156.json shadow_events_probe.js shadow_events_cases.json shadow_events_chrome156.json shadow_events_tests.rs html_track_probe.js html_track_cases.json html_track_chrome156.json html_track_tests.rs html_track.js"
+OWNED="$OWNED canvas_style_probe.js canvas_style_chrome156.json canvas_style_tests.rs canvas_state_probe.js canvas_state_chrome156.json"
 OWNED="$OWNED css_shorthand.rs css_shorthand_tests.rs css_longhand_tests.rs svg_mathml_element_probe.js svg_mathml_element_cases.json svg_mathml_element_chrome156.json svg_mathml_element_tests.rs"
 OWNED="$OWNED dom_exception_realm_probe.js dom_exception_realm_cases.json dom_exception_realm_chrome156.json dom_exception_realm_tests.rs custom_elements_collect_tests.rs html_image_srcset_probe.js html_image_srcset_cases.json html_image_srcset_chrome156.json html_image_srcset_tests.rs reflected_urls_probe.js reflected_urls_cases.json reflected_urls_chrome156.json reflected_urls_tests.rs"
 

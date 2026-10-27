@@ -151,6 +151,11 @@ changes in `tools/parity/expected/p5b-w7-turbo-dom-*.json`.
   non-configurable, so the key-order step could not move them after attributes installed
   later (turbo-surf's child frames listed them before `src`); they are now configurable until
   the key order freezes them.
+- A second install into an already arranged realm (turbo-surf's initial about:blank child
+  frame, `<iframe></iframe>`, installs its document twice) re-ran `html_track.js` over the
+  frozen constants: it moved `src` behind them and then threw redefining them, and the next key
+  order could not move `src` back. The re-run now leaves `src` and the frozen constants in
+  place (P5b-H1); turbo-surf can drop its `interface_key_order.rs` pin.
 
 ### Fixed — turbo-dom-browser-env canvas fillStyle / strokeStyle / shadowColor (P5b-G2, miaskiewicz/turbo-dom#108, Chrome 156 control)
 - The 2D context's `fillStyle` / `strokeStyle` / `shadowColor` are accessors over turbo-dom's
@@ -165,6 +170,17 @@ changes in `tools/parity/expected/p5b-w7-turbo-dom-*.json`.
   log records the resolved colour, so the raster replay paints it (it painted the previous
   fill for `currentcolor`). New `rtdom::color::Color::canvas_serialization`. Control:
   `crates/turbo-dom-browser-env/src/canvas_style_probe.js` -> `canvas_style_chrome156.json`
+  (`scripts/invokers-chrome-control.mjs`), asserted by `canvas_style_tests.rs`.
+
+### Fixed — turbo-dom-browser-env canvas save() / restore() (P5b-H1, miaskiewicz/turbo-dom#110, #111, Chrome 156 control)
+- The 2D context keeps a drawing-state stack: `save()` snapshots `fillStyle`, `strokeStyle`,
+  `shadowColor`, `globalAlpha`, `globalCompositeOperation`, the line, shadow, text and
+  image-smoothing attributes and the line dash; `restore()` brings the last snapshot back (an
+  empty stack is a no-op). They only logged their call, so reads after `restore()` (and the
+  paint state later op-log tuples record) kept the latest assignment. `setLineDash` stores
+  the dash (an odd count doubled, a negative or non-finite entry ignored) instead of being a
+  no-op, and the initial `direction` is `inherit` (#111; it was `ltr`). Control:
+  `crates/turbo-dom-browser-env/src/canvas_state_probe.js` -> `canvas_state_chrome156.json`
   (`scripts/invokers-chrome-control.mjs`), asserted by `canvas_style_tests.rs`.
 
 ### Fixed — turbo-dom-raster screenshots and canvas (P5-cov, miaskiewicz/turbo-dom#94/#95, Chrome 156 controls)
