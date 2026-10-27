@@ -2719,7 +2719,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
       DocumentFragment:['children','firstElementChild'],
       ShadowRoot:['host','mode','innerHTML']
     };
-    var writable={nodeValue:1,textContent:1,id:1,className:1,innerHTML:1,outerHTML:1,contentEditable:1,data:1};
+    var writable={nodeValue:1,textContent:1,id:1,className:1,innerHTML:1,outerHTML:1,data:1};
     var nativeKeys=['constructor'];
     Object.keys(accessorOwners).forEach(function(owner){
       accessorOwners[owner].forEach(function(name){
@@ -2790,11 +2790,10 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
       nativeKeys.push(name);
     });
     var controls=['HTMLInputElement','HTMLTextAreaElement','HTMLSelectElement','HTMLButtonElement','HTMLFieldSetElement','HTMLObjectElement','HTMLOutputElement'];
-    ['checkValidity','reportValidity','setCustomValidity','setSelectionRange','setRangeText','select'].forEach(function(name){
+    ['setCustomValidity','setSelectionRange','setRangeText','select'].forEach(function(name){
       var descriptor=Object.getOwnPropertyDescriptor(probe,name);
       nativeKeys.push(name);
       var owners=/^(setSelectionRange|setRangeText|select)$/.test(name)?controls.slice(0,2):controls;
-      if(name!=='setCustomValidity'&&owners===controls)owners=owners.concat('HTMLFormElement');
       owners.forEach(function(owner){var proto=prototypes[owner];if(proto&&!Object.hasOwn(proto,name)&&descriptor)Object.defineProperty(proto,name,{value:descriptor.value,writable:true,configurable:true,enumerable:true});});
     });
     var methodOwners={

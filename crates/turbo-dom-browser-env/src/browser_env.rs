@@ -3524,19 +3524,6 @@ fn el_noop(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, _rv: v
     receiver_handle(scope, &args, &[1]);
 }
 
-/// Constraint-validation predicates (`checkValidity`/`reportValidity`) → always valid
-/// (there is no interactive validation UI to fail against).
-fn el_valid_true(
-    scope: &mut v8::PinScope,
-    args: v8::FunctionCallbackArguments,
-    mut rv: v8::ReturnValue,
-) {
-    let _dom = DomScope::for_object(scope, args.this());
-    if receiver_handle(scope, &args, &[1]).is_none() {
-        return;
-    }
-    rv.set(v8::Boolean::new(scope, true).into());
-}
 fn el_get_bounding_client_rect(
     scope: &mut v8::PinScope,
     args: v8::FunctionCallbackArguments,
@@ -4139,19 +4126,6 @@ fn get_content_editable(
         _ => "inherit",
     };
     rv.set(v8::String::new(scope, out).unwrap().into());
-}
-
-fn set_content_editable(
-    scope: &mut v8::PinScope,
-    _name: v8::Local<v8::Name>,
-    value: v8::Local<v8::Value>,
-    args: v8::PropertyCallbackArguments,
-    _rv: v8::ReturnValue<()>,
-) {
-    let _dom = DomScope::for_object(scope, args.holder());
-    let h = holder_handle(scope, &args);
-    let v = value.to_rust_string_lossy(scope);
-    with_tree_mut(|t| t.set_attribute(h, "contenteditable", &v));
 }
 
 // `element.isContentEditable` — true when the element itself is editable (contenteditable=""|"true")
@@ -5552,25 +5526,16 @@ fn get_node_name(
         rv.set(unit_string(scope, &units).into());
         return;
     }
-    let (nt, tag) = with_tree(|t| (t.node_type_id(h), t.tag_name(h))).unwrap_or((1, None));
-    let name = match nt {
-        2 => with_tree(|tree| tree.qualified_name(h).unwrap_or_default().to_owned())
-            .unwrap_or_default(),
-        3 => "#text".to_string(),
-        7 => with_tree(|tree| {
-            tree.processing_instruction_target(h)
-                .unwrap_or_default()
-                .to_owned()
-        })
-        .unwrap_or_default(),
-        8 => "#comment".to_string(),
-        9 => "#document".to_string(),
-        10 => with_tree(|tree| tree.doctype_name(h).unwrap_or_default().to_owned())
-            .unwrap_or_default(),
-        11 => "#document-fragment".to_string(),
-        _ => tag.unwrap_or_default(),
+    // Elements, attributes, processing instructions and doctypes named themselves above
+    // (the tree has no CDATA sections).
+    let name = match with_tree(|t| t.node_type_id(h)) {
+        Some(3) => "#text",
+        Some(8) => "#comment",
+        Some(9) => "#document",
+        Some(11) => "#document-fragment",
+        kind => unreachable!("node type {kind:?} has a UTF-16 name"),
     };
-    rv.set(v8::String::new(scope, &name).unwrap().into());
+    rv.set(v8::String::new(scope, name).unwrap().into());
 }
 
 fn get_child_nodes(
@@ -6101,8 +6066,6 @@ fn build_el_template<'s>(scope: &mut v8::PinScope<'s, '_>) -> v8::Local<'s, v8::
     tmpl_method(scope, tmpl, "select", el_noop);
     tmpl_method(scope, tmpl, "scrollTo", el_noop);
     tmpl_method(scope, tmpl, "scrollBy", el_noop);
-    tmpl_method(scope, tmpl, "checkValidity", el_valid_true);
-    tmpl_method(scope, tmpl, "reportValidity", el_valid_true);
     tmpl_method(
         scope,
         tmpl,
@@ -6164,13 +6127,8 @@ fn build_el_template<'s>(scope: &mut v8::PinScope<'s, '_>) -> v8::Local<'s, v8::
     );
     tmpl_accessor(scope, tmpl, "id", get_id, set_id);
     tmpl_accessor(scope, tmpl, "className", get_class_name, set_class_name);
-    tmpl_accessor(
-        scope,
-        tmpl,
-        "contentEditable",
-        get_content_editable,
-        set_content_editable,
-    );
+    // editing.js owns contentEditable; it brand-checks through this getter.
+    tmpl_getter(scope, tmpl, "contentEditable", get_content_editable);
     tmpl_getter(scope, tmpl, "isContentEditable", get_is_content_editable);
 
     // Node-type constants on every node (`node.TEXT_NODE === 3`, …). dom-accessibility-api compares
