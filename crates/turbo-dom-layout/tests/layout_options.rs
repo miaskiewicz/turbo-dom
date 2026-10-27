@@ -450,6 +450,19 @@ fn canvas_background_needs_an_html_root() {
         "no <html> root"
     );
     fragment.append(&mut document);
+    // The root paints none: the body's colour moves to the canvas (past <head>).
+    let tree =
+        parse_html_tree("<html><head></head><body style='background:rgb(4, 5, 6)'></body></html>");
+    let mut body_only = turbo_dom_layout::style_html_tree(
+        &tree,
+        "",
+        100.0,
+        &turbo_dom_layout::HtmlOptions::default(),
+    );
+    assert_eq!(
+        propagate_canvas_background(&mut body_only),
+        Some(Rgba::new(4, 5, 6, 255))
+    );
     assert_eq!(
         propagate_canvas_background(&mut fragment),
         Some(Rgba::new(1, 2, 3, 255))

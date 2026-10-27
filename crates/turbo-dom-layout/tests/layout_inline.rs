@@ -326,3 +326,32 @@ fn whitespace_only_inline_runs_collapse_unless_white_space_preserves_them() {
     // here drops a newline-only line — a separate gap, not asserted.)
     assert_eq!(other["h"].3, 2.0 * line, "pre-line collapses spaces");
 }
+
+#[cfg(feature = "bundled-fonts")]
+#[test]
+fn margins_collapse_through_collapsed_white_space_but_not_preserved_space() {
+    // Chrome 156 (18px lines there, `line` here), the same document: a collapsible
+    // white-space-only run between two blocks is no line box, so their 20px margins
+    // collapse through it (b.y 38 = 18 + 20); a preserved space is a line that keeps
+    // them apart (c at 76 = 18 + 20 + 18 + 20 in its div). Text directly in a flex
+    // container is an anonymous flex item (one line). An absolutely positioned box
+    // between inline runs next to a block stays in their line (z: that line + p).
+    let boxes = cid_boxes(
+        "<body style='margin:0'><div data-cid=x><p data-cid=a style='margin:0 0 20px'>a</p><span> </span>\
+         <p data-cid=b style='margin:20px 0 0'>b</p></div><div data-cid=y><p style='margin:0 0 20px'>a</p>\
+         <span style='white-space:pre'> </span><p data-cid=c style='margin:20px 0 0'>b</p></div>\
+         <div data-cid=t style='display:flex'>hello</div><div data-cid=z><span>a</span>\
+         <i style='position:absolute'>q</i><span>b</span><p style='margin:0'>p</p></div></body>",
+    );
+    let line = boxes["a"].3;
+    assert_eq!(boxes["b"].1, line + 20.0);
+    assert_eq!(boxes["x"].3, 2.0 * line + 20.0);
+    assert_eq!(boxes["c"].1 - boxes["y"].1, 2.0 * line + 40.0);
+    // (The flex item's line rounds to a whole pixel here: 19 vs 19.36.)
+    assert!(
+        (boxes["t"].3 - line).abs() < 1.0,
+        "flex text is an item: {:?}",
+        boxes["t"]
+    );
+    assert_eq!(boxes["z"].3, 2.0 * line);
+}
