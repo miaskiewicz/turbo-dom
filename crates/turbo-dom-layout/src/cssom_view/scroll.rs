@@ -234,13 +234,14 @@ fn contained(
     fragment: &crate::layout_snapshot::SnapshotFragment,
     id: SourceId,
 ) -> bool {
-    let Some(start) = fragment
+    // Only called on the element's `descendant_fragment_indices`, which
+    // `layout_snapshot::sources::index_fragments` fills with exactly the fragments
+    // listing the element among their `source_ancestors`.
+    let start = fragment
         .source_ancestors
         .iter()
         .position(|ancestor| *ancestor == id)
-    else {
-        return true;
-    };
+        .expect("a descendant fragment lists its scroller among its source ancestors");
     let own = fragment
         .source_id
         .filter(|own| fragment.source_ancestors.last() != Some(own));
@@ -584,13 +585,99 @@ pub(crate) mod chrome {
             .split_once("<style>")
             .and_then(|(_, rest)| rest.split_once("</style>"))
             .map_or("", |(css, _)| css);
-        let (tree, snapshot, styles) = testing::layout(html, css, (1280.0, 800.0), Some(1.0));
+        let (tree, snapshot, styles) = if html.contains("<img") {
+            with_images(html, css)
+        } else {
+            testing::layout(html, css, (1280.0, 800.0), Some(1.0))
+        };
         Case {
             json,
             tree,
             snapshot,
             styles,
         }
+    }
+
+    /// Every image of a control document is its 150x80 PNG `data:` URI.
+    struct DataImages;
+    impl crate::ImageResolver for DataImages {
+        fn resolve(&self, name: &str) -> Option<&[u8]> {
+            use std::sync::OnceLock;
+            static PNG: OnceLock<Vec<u8>> = OnceLock::new();
+            let encoded = name.strip_prefix("data:image/png;base64,")?;
+            Some(PNG.get_or_init(|| base64_decode(encoded)))
+        }
+    }
+
+    fn base64_decode(text: &str) -> Vec<u8> {
+        let value = |c: u8| match c {
+            b'A'..=b'Z' => c - b'A',
+            b'a'..=b'z' => c - b'a' + 26,
+            b'0'..=b'9' => c - b'0' + 52,
+            b'+' => 62,
+            _ => 63,
+        };
+        let digits: Vec<u8> = text.bytes().filter(|&c| c != b'=').map(value).collect();
+        digits
+            .chunks(4)
+            .flat_map(|chunk| {
+                let bits = chunk
+                    .iter()
+                    .enumerate()
+                    .fold(0u32, |acc, (i, &d)| acc | u32::from(d) << (18 - 6 * i));
+                let bytes = bits.to_be_bytes();
+                bytes[1..chunk.len()].to_vec()
+            })
+            .collect()
+    }
+
+    /// [`testing::layout`] with the control's `data:` images resolved.
+    fn with_images(html: &str, css: &str) -> (Tree, LayoutSnapshot, SourceStyles) {
+        use crate::live::{snapshot, LiveOptions, LiveStyle, LiveTree, OriginRules};
+        let tree = Tree::parse(html);
+        let children = testing::light_children(&tree);
+        let captured = testing::capture_light(&tree, &children);
+        let origins = testing::prematch(&tree, css, 1280.0);
+        let origins: Vec<_> = origins
+            .iter()
+            .map(|(origin, rules)| OriginRules {
+                origin: *origin,
+                rules: rules.iter().map(Some).collect(),
+            })
+            .collect();
+        let provider = |h| children.get(&h).map_or(&[][..], Vec::as_slice);
+        let style = LiveStyle {
+            tree: LiveTree {
+                tree: &tree,
+                document: DOCUMENT,
+                children: &provider,
+            },
+            origins: &origins,
+            scope_depth: &|_| Ok(0),
+            inline_override: &|_| None,
+            inline_declarations: &|text| Ok(crate::style::parse_declarations(text)),
+        };
+        let fonts = crate::FontRegistry::new();
+        let images = crate::ImageCtx {
+            resolver: &DataImages,
+            body_height: None,
+        };
+        let inputs = crate::layout_snapshot::SnapshotInputs {
+            width: 1280.0,
+            height: 800.0,
+            fonts: &fonts,
+            images: &images,
+        };
+        let (snapshot, styles) = snapshot(
+            &style,
+            &captured,
+            &LiveOptions { layout_scale: 1.0 },
+            |styled| Ok(testing::collect(styled)),
+            &inputs,
+            &mut crate::Diagnostics::default(),
+        )
+        .unwrap();
+        (tree, snapshot, styles)
     }
 
     impl Case {
@@ -732,6 +819,12 @@ mod tests {
     }
 
     #[test]
+    fn image_boxes_reach_the_scroll_extents_like_chrome_156() {
+        assert_extents("scroll-extent-image");
+        assert_viewport("scroll-extent-image");
+    }
+
+    #[test]
     fn boxless_elements_have_zero_extents_like_chrome_156() {
         assert_extents("scroll-extent-no-box");
     }
@@ -752,6 +845,48 @@ mod tests {
             "{id}"
         );
         assert!(got.scroll_x && got.scroll_y);
+    }
+
+    /// The body's overflow scrolls the viewport unless the root's own overflow is not
+    /// visible; the root and display:contents boxes are never element scrollers.
+    #[test]
+    fn body_overflow_propagation_matches_chrome_156() {
+        for (id, propagates) in [
+            ("body-overflow-propagates", true),
+            ("body-overflow-own-scroller", false),
+            ("body-visible-not-a-scroller", false),
+        ] {
+            let case = case(id);
+            for want in case.reads("metrics") {
+                let cid = want["cid"].as_str().unwrap();
+                let source = if cid == "body" || cid == "html" {
+                    crate::live::source_id(
+                        crate::live::testing::DOCUMENT,
+                        case.tree.query_selector(cid).unwrap(),
+                    )
+                } else {
+                    case.id(cid)
+                };
+                let scrolls =
+                    want["maxX"].as_f64() != Some(0.0) || want["maxY"].as_f64() != Some(0.0);
+                assert_eq!(
+                    element_scroller(&case.styles, source),
+                    scrolls && cid != "html",
+                    "{id}: {cid}"
+                );
+                assert_eq!(is_root(&case.styles, source), cid == "html", "{id}: {cid}");
+                assert_eq!(
+                    propagated_body(&case.styles, source),
+                    propagates && cid == "body",
+                    "{id}: {cid}"
+                );
+            }
+        }
+        assert_viewport("body-overflow-propagates");
+        let case = case("body-overflow-propagates");
+        assert!(!element_scroller(&case.styles, SourceId(3)));
+        assert!(!propagated_body(&case.styles, SourceId(3)));
+        assert!(!is_root(&case.styles, SourceId(3)));
     }
 
     #[test]

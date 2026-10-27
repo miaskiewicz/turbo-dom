@@ -430,6 +430,37 @@
    ]
   },
   {
+   "id": "scroll-extent-image",
+   "html": "<!doctype html><style>body{margin:0;font-family:\"Fira Code\";font-size:10px;line-height:1}.s{scrollbar-width:none}img{display:block;margin:0 3px 4px 0}</style><div data-cid=\"s\" class=\"s\" style=\"overflow:auto;width:100px;height:50px\"><img src=\"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAJYAAABQCAIAAAB00hscAAAAOUlEQVR42u3BAQ0AAADCoPdPbQ8HFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADwaozwAAH3iqS6AAAAAElFTkSuQmCC\"></div><img src=\"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAJYAAABQCAIAAAB00hscAAAAOUlEQVR42u3BAQ0AAADCoPdPbQ8HFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADwaozwAAH3iqS6AAAAAElFTkSuQmCC\" style=\"position:absolute;left:1300px;top:0\">",
+   "scroll": {},
+   "boxes": [
+    {
+     "cid": "s",
+     "x": 0,
+     "y": 0,
+     "width": 100,
+     "height": 50
+    }
+   ],
+   "metrics": [
+    {
+     "cid": "s",
+     "overflowX": "auto",
+     "overflowY": "auto",
+     "scrollWidth": 153,
+     "scrollHeight": 84,
+     "maxX": 53,
+     "maxY": 34
+    }
+   ],
+   "viewport": {
+    "scrollWidth": 1450,
+    "scrollHeight": 800,
+    "maxX": 170,
+    "maxY": 0
+   }
+  },
+  {
    "id": "viewport-extent",
    "html": "<!doctype html><style>body{margin:0;font-family:\"Fira Code\";font-size:10px;line-height:1}.s{scrollbar-width:none}</style><div data-cid=\"w\" style=\"width:1500px;height:100px;margin-right:20px\"></div><div data-cid=\"t\" style=\"width:100px;height:900px;margin-bottom:30px\"></div><div style=\"position:fixed;left:3000px;top:3000px;width:10px;height:10px\"><div style=\"width:5000px;height:5000px\"></div></div><div style=\"overflow:hidden;width:10px;height:10px\"><div style=\"width:4000px;height:4000px;\"></div></div><div style=\"display:contents\"><div style=\"position:absolute;left:1700px;top:20px;width:30px;height:30px;margin:40px\"></div></div><div style=\"width:10px;height:10px;transform:translate(2000px,0)\"></div>",
    "scroll": {},
@@ -489,8 +520,100 @@
    }
   },
   {
+   "id": "body-overflow-propagates",
+   "html": "<!doctype html><style>body{margin:0;font-family:\"Fira Code\";font-size:10px;line-height:1}.s{scrollbar-width:none}html{height:100px}body{overflow:auto;height:50px}</style><div style=\"width:10px;height:3000px;\"></div>",
+   "scroll": {},
+   "boxes": [],
+   "metrics": [
+    {
+     "cid": "body",
+     "overflowX": "auto",
+     "overflowY": "auto",
+     "scrollWidth": 1280,
+     "scrollHeight": 3000,
+     "maxX": 0,
+     "maxY": 0
+    },
+    {
+     "cid": "html",
+     "overflowX": "visible",
+     "overflowY": "visible",
+     "scrollWidth": 1280,
+     "scrollHeight": 3000,
+     "maxX": 0,
+     "maxY": 2200
+    }
+   ],
+   "viewport": {
+    "scrollWidth": 1280,
+    "scrollHeight": 3000,
+    "maxX": 0,
+    "maxY": 2200
+   }
+  },
+  {
+   "id": "body-overflow-own-scroller",
+   "html": "<!doctype html><style>body{margin:0;font-family:\"Fira Code\";font-size:10px;line-height:1}.s{scrollbar-width:none}html{overflow:hidden;height:100px}body{overflow:auto;height:50px}</style><div style=\"width:10px;height:3000px;\"></div>",
+   "scroll": {},
+   "boxes": [],
+   "metrics": [
+    {
+     "cid": "body",
+     "overflowX": "auto",
+     "overflowY": "auto",
+     "scrollWidth": 1280,
+     "scrollHeight": 3000,
+     "maxX": 0,
+     "maxY": 2950
+    },
+    {
+     "cid": "html",
+     "overflowX": "hidden",
+     "overflowY": "hidden",
+     "scrollWidth": 1280,
+     "scrollHeight": 800,
+     "maxX": 0,
+     "maxY": 0
+    }
+   ]
+  },
+  {
+   "id": "body-visible-not-a-scroller",
+   "html": "<!doctype html><style>body{margin:0;font-family:\"Fira Code\";font-size:10px;line-height:1}.s{scrollbar-width:none}html{overflow:hidden}</style><div data-cid=\"c\" style=\"display:contents;overflow:auto\"><div style=\"width:10px;height:3000px;\"></div></div>",
+   "scroll": {},
+   "boxes": [
+    {
+     "cid": "c",
+     "x": 0,
+     "y": 0,
+     "width": 0,
+     "height": 0
+    }
+   ],
+   "metrics": [
+    {
+     "cid": "body",
+     "overflowX": "visible",
+     "overflowY": "visible",
+     "scrollWidth": 1280,
+     "scrollHeight": 3000,
+     "maxX": 0,
+     "maxY": 0
+    },
+    {
+     "cid": "c",
+     "overflowX": "auto",
+     "overflowY": "auto",
+     "scrollWidth": 0,
+     "scrollHeight": 0,
+     "maxX": 0,
+     "maxY": 0
+    }
+   ]
+  },
+  {
    "id": "translation-nested-scrollers",
-   "html": "<!doctype html><style>body{margin:0;font-family:\"Fira Code\";font-size:10px;line-height:1}.s{scrollbar-width:none}</style><div style=\"width:10px;height:2000px;\"></div><div data-cid=\"o\" class=\"s\" style=\"position:absolute;left:20px;top:30px;overflow:auto;width:200px;height:100px\"><div data-cid=\"i\" class=\"s\" style=\"overflow:auto;width:150px;height:60px;margin-top:10px\"><div data-cid=\"k\" style=\"width:400px;height:400px;\"></div></div><div style=\"width:400px;height:400px;\"></div><div data-cid=\"z\" class=\"s\" style=\"overflow:auto;width:50px;height:50px\"><div data-cid=\"zk\" style=\"width:100px;height:100px;\"></div></div></div><div data-cid=\"fx\" style=\"position:fixed;left:300px;top:10px;width:30px;height:30px\"><div data-cid=\"fk\" style=\"width:10px;height:10px;\"></div></div><div style=\"position:relative;display:contents\"><div data-cid=\"a\" style=\"position:absolute;left:500px;top:50px;width:10px;height:10px\"></div></div>",
+   "html": "<!doctype html><style>body{margin:0;font-family:\"Fira Code\";font-size:10px;line-height:1}.s{scrollbar-width:none}</style><div style=\"width:10px;height:2000px;\"></div><div data-cid=\"o\" class=\"s\" style=\"position:absolute;left:20px;top:30px;overflow:auto;width:200px;height:100px\"><div data-cid=\"i\" class=\"s\" style=\"overflow:auto;width:150px;height:60px;margin-top:10px\"><div data-cid=\"k\" style=\"width:400px;height:400px;\"></div></div><div style=\"width:400px;height:400px;\"></div><div data-cid=\"z\" class=\"s\" style=\"overflow:auto;width:50px;height:50px\"><div data-cid=\"zk\" style=\"width:100px;height:100px;\"></div></div></div><div data-cid=\"none\" style=\"display:none\"></div><div data-cid=\"fx\" style=\"position:fixed;left:300px;top:10px;width:30px;height:30px\"><div data-cid=\"fk\" style=\"width:10px;height:10px;\"></div></div><div style=\"position:relative;display:contents\"><div data-cid=\"a\" style=\"position:absolute;left:500px;top:50px;width:10px;height:10px\"></div></div>",
    "scroll": {
     "viewport": [
      0,
@@ -544,6 +667,13 @@
      "y": 435,
      "width": 100,
      "height": 100
+    },
+    {
+     "cid": "none",
+     "x": 0,
+     "y": 0,
+     "width": 0,
+     "height": 0
     },
     {
      "cid": "fx",
@@ -1826,6 +1956,104 @@
       0,
       0
      ]
+    }
+   ]
+  },
+  {
+   "id": "caret-wrap-and-markers",
+   "html": "<!doctype html><style>body{margin:0;font-family:\"Fira Code\";font-size:10px;line-height:1}.s{scrollbar-width:none}</style><div data-cid=\"w\" style=\"width:30px\">abc def</div><ul style=\"margin:0;padding-left:30px\"><li data-cid=\"li\">xy</li></ul>",
+   "scroll": {},
+   "boxes": [
+    {
+     "cid": "w",
+     "x": 0,
+     "y": 0,
+     "width": 30,
+     "height": 20
+    },
+    {
+     "cid": "li",
+     "x": 30,
+     "y": 20,
+     "width": 1250,
+     "height": 10
+    }
+   ],
+   "carets": [
+    {
+     "x": 1,
+     "y": 15,
+     "cid": "w",
+     "owner": "div",
+     "child": 0,
+     "offset": 4,
+     "rect": [
+      0,
+      9,
+      0,
+      12
+     ]
+    },
+    {
+     "x": 28,
+     "y": 5,
+     "cid": "w",
+     "owner": "div",
+     "child": 0,
+     "offset": 3,
+     "rect": [
+      18.453125,
+      -1,
+      0,
+      12
+     ]
+    },
+    {
+     "x": 20,
+     "y": 5,
+     "cid": "w",
+     "owner": "div",
+     "child": 0,
+     "offset": 3,
+     "rect": [
+      18.453125,
+      -1,
+      0,
+      12
+     ]
+    },
+    {
+     "x": 5,
+     "y": 25,
+     "cid": "li",
+     "owner": "li",
+     "child": 0,
+     "offset": 0,
+     "rect": [
+      30,
+      19,
+      0,
+      12
+     ]
+    },
+    {
+     "x": 40,
+     "y": 25,
+     "cid": "li",
+     "owner": "li",
+     "child": 0,
+     "offset": 2,
+     "rect": [
+      42.296875,
+      19,
+      0,
+      12
+     ]
+    },
+    {
+     "x": -5,
+     "y": -5,
+     "caret": null
     }
    ]
   },

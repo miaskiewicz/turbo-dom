@@ -62,6 +62,9 @@ const playwrightVersion = require(join(playwrightCore, "package.json")).version;
 const fira = readFileSync(join(repo, "crates/turbo-dom-layout/assets/fonts/fira-code/FiraCode-Regular.ttf")).toString("base64");
 const FACE = `@font-face{font-family:"Fira Code";src:url(data:font/ttf;base64,${fira})}`;
 
+// A 150x80 RGB PNG (the native layout sizes it from the same bytes).
+const PNG =
+  "iVBORw0KGgoAAAANSUhEUgAAAJYAAABQCAIAAAB00hscAAAAOUlEQVR42u3BAQ0AAADCoPdPbQ8HFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADwaozwAAH3iqS6AAAAAElFTkSuQmCC";
 const BASE = 'body{margin:0;font-family:"Fira Code";font-size:10px;line-height:1}.s{scrollbar-width:none}';
 const DOC = (css, body) => `<!doctype html><style>${BASE}${css}</style>${body}`;
 const BOX = (w, h, cid = "", style = "") =>
@@ -147,6 +150,13 @@ const CASES = [
     ),
     metrics: ["n", "c", "k"],
   },
+  // An image's border box reaches the scroll extents; its paint fragment adds nothing.
+  {
+    id: "scroll-extent-image",
+    html: DOC("img{display:block;margin:0 3px 4px 0}", `<div data-cid="s" class="s" style="overflow:auto;width:100px;height:50px"><img src="data:image/png;base64,${PNG}"></div><img src="data:image/png;base64,${PNG}" style="position:absolute;left:1300px;top:0">`),
+    metrics: ["s"],
+    viewport: true,
+  },
   // scroll::viewport_metrics: the initial containing block plus the root's overflow,
   // without fixed boxes (or their descendants) and content clipped by a nested box.
   {
@@ -171,6 +181,24 @@ const CASES = [
     html: DOC("body{overflow:hidden}", `${BOX(1400, 900)}<div style="position:absolute;left:0;top:0;overflow:hidden;width:5px;height:5px">${BOX(3000, 3000)}</div>`),
     viewport: true,
   },
+  // scroll::propagated_body / element_scroller: the body's overflow goes to the viewport
+  // unless the root's own overflow is not visible.
+  {
+    id: "body-overflow-propagates",
+    html: DOC("html{height:100px}body{overflow:auto;height:50px}", BOX(10, 3000)),
+    metrics: ["body", "html"],
+    viewport: true,
+  },
+  {
+    id: "body-overflow-own-scroller",
+    html: DOC("html{overflow:hidden;height:100px}body{overflow:auto;height:50px}", BOX(10, 3000)),
+    metrics: ["body", "html"],
+  },
+  {
+    id: "body-visible-not-a-scroller",
+    html: DOC("html{overflow:hidden}", `<div data-cid="c" style="display:contents;overflow:auto">${BOX(10, 3000)}</div>`),
+    metrics: ["body", "c"],
+  },
   // scroll::scroll_translation: boxes move with every scrolled ancestor up to their
   // containing block; fixed boxes and their contents stay with the viewport.
   {
@@ -180,6 +208,7 @@ const CASES = [
       `${BOX(10, 2000)}<div data-cid="o" class="s" style="position:absolute;left:20px;top:30px;overflow:auto;width:200px;height:100px">` +
         `<div data-cid="i" class="s" style="overflow:auto;width:150px;height:60px;margin-top:10px">${BOX(400, 400, "k")}</div>${BOX(400, 400)}` +
         `<div data-cid="z" class="s" style="overflow:auto;width:50px;height:50px">${BOX(100, 100, "zk")}</div></div>` +
+        `<div data-cid="none" style="display:none"></div>` +
         `<div data-cid="fx" style="position:fixed;left:300px;top:10px;width:30px;height:30px">${BOX(10, 10, "fk")}</div>` +
         `<div style="position:relative;display:contents"><div data-cid="a" style="position:absolute;left:500px;top:50px;width:10px;height:10px"></div></div>`,
     ),
@@ -296,6 +325,22 @@ const CASES = [
       [40, 105],
     ],
   },
+  {
+    id: "caret-wrap-and-markers",
+    html: DOC(
+      "",
+      `<div data-cid="w" style="width:30px">abc def</div>` +
+        `<ul style="margin:0;padding-left:30px"><li data-cid="li">xy</li></ul>`,
+    ),
+    carets: [
+      [1, 15],
+      [28, 5],
+      [20, 5],
+      [5, 25],
+      [40, 25],
+      [-5, -5],
+    ],
+  },
   // range::select: fully selected elements contribute their boxes, partially selected
   // text its own boxes (getClientRects()).
   {
@@ -316,7 +361,12 @@ const CASES = [
   },
 ];
 
-const read = (cid) => (cid === "viewport" ? document.scrollingElement : document.querySelector(`[data-cid="${cid}"]`));
+const read = (cid) =>
+  cid === "viewport"
+    ? document.scrollingElement
+    : cid === "body" || cid === "html"
+      ? document.querySelector(cid)
+      : document.querySelector(`[data-cid="${cid}"]`);
 const browser = await chromium.launch({ executablePath: chromePath, headless: true });
 const version = browser.version();
 const page = await browser.newPage({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1 });

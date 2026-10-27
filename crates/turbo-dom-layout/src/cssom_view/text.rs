@@ -54,7 +54,9 @@ pub fn caret(
         return Err("native SVG caret hit testing is unsupported".into());
     }
     let mut best = None;
-    let mut examined = 0usize;
+    // No glyph budget here: a snapshot captures at most 1,000,000 clusters in all its
+    // runs (`layout_snapshot::text::TextCapture::record`, else the snapshot fails with
+    // its text budget error), and one glyph per cluster.
     for run in snapshot.text_runs() {
         if !run.source_ancestors.contains(&owner) {
             continue;
@@ -64,12 +66,6 @@ pub fn caret(
         };
         // visibility:hidden text still takes the caret, like Chrome 156
         // (miaskiewicz/turbo-dom#126).
-        examined = examined
-            .checked_add(run.glyphs.len())
-            .ok_or("native caret query size overflow")?;
-        if examined > 1_000_000 {
-            return Err("native caret query exceeds glyph budget".into());
-        }
         let fragment = &snapshot.fragments()[run.fragment_index];
         let Some(local) = run_rect(snapshot, run) else {
             continue;
@@ -190,8 +186,8 @@ mod tests {
     /// a caret in the element).
     const GAPS: &[[f64; 2]] = &[[50.0, 85.0], [40.0, 105.0]];
 
-    fn caret_failures(select: impl Fn([f64; 2]) -> bool) -> Vec<String> {
-        let case = case("caret-from-point");
+    fn caret_failures(id: &str, select: impl Fn([f64; 2]) -> bool) -> Vec<String> {
+        let case = case(id);
         let offsets = case.offsets();
         let mut failures = Vec::new();
         let mut compared = 0;
@@ -201,6 +197,14 @@ mod tests {
                 continue;
             }
             compared += 1;
+            if want.get("cid").is_none() {
+                // Chrome: no caret (the point hits nothing).
+                let got = caret(&case.snapshot, &case.styles, &offsets, point).unwrap();
+                if got.is_some() {
+                    failures.push(format!("{point:?}: {got:?}, Chrome null"));
+                }
+                continue;
+            }
             if want["child"].is_null() {
                 failures.push(format!("{point:?}: Chrome {want} is an element caret"));
                 continue;
@@ -226,14 +230,41 @@ mod tests {
 
     #[test]
     fn caret_positions_from_points_match_chrome_156() {
-        let failures = caret_failures(|point| !GAPS.contains(&point));
+        let mut failures = caret_failures("caret-from-point", |point| !GAPS.contains(&point));
+        failures.extend(caret_failures("caret-wrap-and-markers", |_| true));
         assert!(failures.is_empty(), "{}", failures.join("\n"));
+    }
+
+    /// Until miaskiewicz/turbo-dom#127: an element without text answers no text caret.
+    #[test]
+    fn an_element_without_text_has_no_text_caret() {
+        let case = case("caret-from-point");
+        let empty = case.bounds("e");
+        let point = [f64::from(empty.x) + 40.0, f64::from(empty.y) + 5.0];
+        assert_eq!(
+            caret(&case.snapshot, &case.styles, &case.offsets(), point).unwrap(),
+            None
+        );
+    }
+
+    #[test]
+    fn svg_carets_are_unsupported() {
+        let (_, snapshot, styles) = crate::live::testing::layout(
+            "<body style='margin:0'><svg width=50 height=50><text y=20>a</text></svg></body>",
+            "",
+            (800.0, 600.0),
+            Some(1.0),
+        );
+        assert_eq!(
+            caret(&snapshot, &styles, &BTreeMap::new(), [10.0, 10.0]).unwrap_err(),
+            "native SVG caret hit testing is unsupported"
+        );
     }
 
     #[test]
     #[ignore = "turbo-dom#127: fails until the fix"]
     fn carets_beside_transformed_lines_and_in_empty_elements_match_chrome_156() {
-        let failures = caret_failures(|point| GAPS.contains(&point));
+        let failures = caret_failures("caret-from-point", |point| GAPS.contains(&point));
         assert!(failures.is_empty(), "{}", failures.join("\n"));
     }
 }
