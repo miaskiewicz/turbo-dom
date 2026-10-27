@@ -163,7 +163,8 @@ mod tests {
             assert_eq!(got.unwrap_err(), error, "{style}");
         }
         // Zero decorations are plain.
-        let plain = read("<p>a <span id=t style='padding:0;margin:0px 0;border-width:0'>b</span></p>");
+        let plain =
+            read("<p>a <span id=t style='padding:0;margin:0px 0;border-width:0'>b</span></p>");
         assert_eq!(plain.unwrap().rects.len(), 1);
         // A decorated descendant fails its ancestor's read too.
         let nested = read("<p><span id=t>a <b style='padding:1px'>b</b></span></p>");
@@ -172,8 +173,16 @@ mod tests {
 
     #[test]
     fn mixed_fonts_and_empty_inlines_are_explicit_gaps() {
-        for property in ["font-size:20px", "font-weight:700", "font-style:italic", "line-height:30px", "font-family:Inter"] {
-            let got = read(&format!("<p><span id=t>a <i style='{property}'>b</i></span></p>"));
+        for property in [
+            "font-size:20px",
+            "font-weight:700",
+            "font-style:italic",
+            "line-height:30px",
+            "font-family:Inter",
+        ] {
+            let got = read(&format!(
+                "<p><span id=t>a <i style='{property}'>b</i></span></p>"
+            ));
             assert_eq!(
                 got.unwrap_err(),
                 "native mixed-font inline border production is pending",

@@ -851,6 +851,72 @@
    ]
   },
   {
+   "id": "offset-positioned-inline-parent",
+   "html": "<!doctype html><style>body{margin:8px;font-family:\"Liberation Serif\";font-size:16px}</style><p style=\"margin:0\">x <span data-cid=\"s\" style=\"position:relative;border-left:3px solid;padding-left:4px\">ab<b data-cid=\"b\" style=\"display:inline-block;width:10px;height:10px\"></b></span></p>",
+   "boxes": [
+    {
+     "cid": "s",
+     "offset": [
+      20,
+      8,
+      32,
+      17
+     ],
+     "parent": "body",
+     "client": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "rects": [
+      [
+       20,
+       8,
+       32.109375,
+       17
+      ]
+     ],
+     "bounds": [
+      20,
+      8,
+      32.109375,
+      17
+     ]
+    },
+    {
+     "cid": "b",
+     "offset": [
+      22,
+      4,
+      10,
+      10
+     ],
+     "parent": "s",
+     "client": [
+      0,
+      0,
+      10,
+      10
+     ],
+     "rects": [
+      [
+       42.109375,
+       12,
+       10,
+       10
+      ]
+     ],
+     "bounds": [
+      42.109375,
+      12,
+      10,
+      10
+     ]
+    }
+   ]
+  },
+  {
    "id": "client-metrics-boxes",
    "html": "<!doctype html><style>body{margin:0}</style><div data-cid=\"a\" style=\"width:50px;height:20px;padding:3px 5px;border-width:1px 2px 3px 4px;border-style:solid\"></div><div data-cid=\"b\" style=\"box-sizing:border-box;width:40px;height:30px;padding:2px;border:6px solid\"></div>",
    "boxes": [
@@ -1895,6 +1961,141 @@
      "y": 9,
      "hits": [
       "p",
+      "body",
+      "html"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "hits-display-contents-overflow",
+   "html": "<!doctype html><style>body{margin:0}</style><div data-cid=\"k\" style=\"display:contents;overflow:hidden\"><div data-cid=\"a\" style=\"width:50px;height:50px\"></div></div>",
+   "boxes": [
+    {
+     "cid": "k",
+     "offset": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "parent": null,
+     "client": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "rects": [],
+     "bounds": [
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "cid": "a",
+     "offset": [
+      0,
+      0,
+      50,
+      50
+     ],
+     "parent": "body",
+     "client": [
+      0,
+      0,
+      50,
+      50
+     ],
+     "rects": [
+      [
+       0,
+       0,
+       50,
+       50
+      ]
+     ],
+     "bounds": [
+      0,
+      0,
+      50,
+      50
+     ]
+    }
+   ],
+   "hits": [
+    {
+     "x": 10,
+     "y": 10,
+     "hits": [
+      "a",
+      "body",
+      "html"
+     ]
+    },
+    {
+     "x": 60,
+     "y": 10,
+     "hits": [
+      "body",
+      "html"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "hits-list-marker",
+   "html": "<!doctype html><style>body{margin:8px;font-family:\"Liberation Serif\";font-size:16px}</style><ol style=\"margin:0\"><li data-cid=\"li\">item</li></ol>",
+   "boxes": [
+    {
+     "cid": "li",
+     "offset": [
+      48,
+      8,
+      1224,
+      18
+     ],
+     "parent": "body",
+     "client": [
+      0,
+      0,
+      1224,
+      18
+     ],
+     "rects": [
+      [
+       48,
+       8,
+       1224,
+       18
+      ]
+     ],
+     "bounds": [
+      48,
+      8,
+      1224,
+      18
+     ]
+    }
+   ],
+   "hits": [
+    {
+     "x": 30,
+     "y": 9,
+     "hits": [
+      "ol",
+      "body",
+      "html"
+     ]
+    },
+    {
+     "x": 45,
+     "y": 9,
+     "hits": [
+      "li",
+      "ol",
       "body",
       "html"
      ]

@@ -472,7 +472,13 @@ mod receiver_tests {
     use super::*;
     use crate::live::{source_id, testing};
 
-    fn lay(html: &str) -> (turbo_dom::Tree, LayoutSnapshot, super::super::scroll::SourceStyles) {
+    fn lay(
+        html: &str,
+    ) -> (
+        turbo_dom::Tree,
+        LayoutSnapshot,
+        super::super::scroll::SourceStyles,
+    ) {
         testing::layout(html, "", (400.0, 300.0), Some(1.0))
     }
 

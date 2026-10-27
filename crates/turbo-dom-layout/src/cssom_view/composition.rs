@@ -128,7 +128,11 @@ mod tests {
         );
         assert_eq!(graph.depths.len(), 3);
         assert_eq!(
-            (graph.depths[&root], graph.depths[&outer], graph.depths[&inner]),
+            (
+                graph.depths[&root],
+                graph.depths[&outer],
+                graph.depths[&inner]
+            ),
             (0, 1, 2)
         );
         // No composed children until the embedder distributes slots.

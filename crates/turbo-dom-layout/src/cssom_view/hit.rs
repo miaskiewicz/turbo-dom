@@ -399,3 +399,53 @@ mod tests {
         );
     }
 }
+
+#[cfg(test)]
+mod clip_tests {
+    use super::*;
+    use crate::live::testing;
+
+    #[test]
+    fn unknown_ancestors_never_clip_and_one_axis_clipping_is_an_explicit_gap() {
+        let (tree, snapshot, styles) = testing::layout(
+            "<body style='margin:0'><div id=x style='width:50px;height:50px;overflow-x:clip'><div id=k style='width:90px;height:90px'></div></div></body>",
+            "",
+            (200.0, 200.0),
+            Some(1.0),
+        );
+        let offsets = BTreeMap::new();
+        let unknown = SourceId(u64::MAX - 1);
+        // A chain entry the styles do not know (no style, no box) clips nothing.
+        assert_eq!(
+            hidden_by_clip(
+                &snapshot,
+                &styles,
+                (&[unknown], Some(unknown)),
+                &offsets,
+                [70.0, 10.0]
+            ),
+            Ok(false)
+        );
+        assert_eq!(
+            clipped(&snapshot, &styles, &[unknown], &offsets, [70.0, 10.0]),
+            Ok(false)
+        );
+        // `overflow-x: clip` alone clips one axis only (`overflow-y` stays visible):
+        // Chrome clips horizontally; native hit testing reports the gap.
+        let x = testing::id(&tree, "#x");
+        assert_eq!(
+            clipped(&snapshot, &styles, &[x], &offsets, [70.0, 10.0]).unwrap_err(),
+            "native hit testing asymmetric overflow clipping pending"
+        );
+        let k = testing::id(&tree, "#k");
+        assert_eq!(
+            elements_at_point(&snapshot, &styles, &offsets, [70.0, 10.0]).unwrap_err(),
+            "native hit testing asymmetric overflow clipping pending"
+        );
+        // The box itself is not its own clipping ancestor.
+        assert_eq!(
+            clipped(&snapshot, &styles, &[k], &offsets, [70.0, 10.0]),
+            Ok(false)
+        );
+    }
+}

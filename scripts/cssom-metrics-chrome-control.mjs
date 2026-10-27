@@ -90,6 +90,10 @@ const CASES = [
     id: "offset-nested-positioned",
     html: DOC("body{margin:0}", `<div data-cid="o" style="position:absolute;left:20px;top:30px;border:4px solid"><div data-cid="i" style="position:relative;left:2px;top:3px;padding:6px">${BOX(8, 8, "c")}</div></div>`),
   },
+  {
+    id: "offset-positioned-inline-parent",
+    html: DOC(TEXT, `<p style="margin:0">x <span data-cid="s" style="position:relative;border-left:3px solid;padding-left:4px">ab<b data-cid="b" style="display:inline-block;width:10px;height:10px"></b></span></p>`),
+  },
   // offsetWidth/Height and client* of boxes.
   {
     id: "client-metrics-boxes",
@@ -145,6 +149,16 @@ const CASES = [
     id: "hits-text-pointer-events-none",
     html: DOC(TEXT, `<p data-cid="p" style="margin:0"><span data-cid="s" style="pointer-events:none">Hello</span> world</p>`),
     hits: [[10, 9]],
+  },
+  {
+    id: "hits-display-contents-overflow",
+    html: DOC("body{margin:0}", `<div data-cid="k" style="display:contents;overflow:hidden">${BOX(50, 50, "a")}</div>`),
+    hits: [[10, 10], [60, 10]],
+  },
+  {
+    id: "hits-list-marker",
+    html: DOC(TEXT, `<ol style="margin:0"><li data-cid="li">item</li></ol>`),
+    hits: [[30, 9], [45, 9]],
   },
   {
     id: "hits-clip-rect",
