@@ -117,7 +117,7 @@ pub fn eval_media_query(query: &str, vp: &Viewport) -> bool {
             "min-height" => matched = matched && parse_px(&val).is_some_and(|n| h >= n),
             "max-height" => matched = matched && parse_px(&val).is_some_and(|n| h <= n),
             "orientation" => {
-                let want = if w >= h { "landscape" } else { "portrait" };
+                let want = if w > h { "landscape" } else { "portrait" };
                 matched = matched && val == want;
             }
             // An unrecognized media feature can never match (browsers treat an
