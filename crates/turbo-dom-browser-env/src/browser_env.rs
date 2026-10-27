@@ -1469,38 +1469,15 @@ fn el_attach_shadow(
     mut rv: v8::ReturnValue,
 ) {
     let _dom = DomScope::for_object(scope, args.this());
-    let Some(host) = receiver_handle(scope, &args, &[1]) else {
-        return;
-    };
-    let Ok(options) = v8::Local::<v8::Object>::try_from(args.get(0)) else {
-        let text = v8::String::new(scope, "attachShadow requires an options dictionary").unwrap();
-        let error = v8::Exception::type_error(scope, text);
-        scope.throw_exception(error);
-        return;
-    };
-    let key = v8::String::new(scope, "mode").unwrap();
-    let Some(mode) = options.get(scope, key.into()) else {
-        return;
-    };
-    let mode = mode.to_rust_string_lossy(scope);
-    if mode != "open" && mode != "closed" {
-        let text = v8::String::new(scope, "mode must be open or closed").unwrap();
-        let error = v8::Exception::type_error(scope, text);
-        scope.throw_exception(error);
-        return;
-    }
-    let key = v8::String::new(scope, "slotAssignment").unwrap();
-    let Some(value) = options.get(scope, key.into()) else {
-        return;
-    };
-    let assignment = if value.is_undefined() {
-        "named".to_string()
-    } else {
-        let Some(value) = value.to_string(scope) else {
-            return;
-        };
-        value.to_rust_string_lossy(scope)
-    };
+    // custom_elements.js's Element.prototype.attachShadow is this native's only caller: it
+    // brand-checks the receiver as an element and passes a plain ShadowRootInit whose mode is
+    // "open" or "closed" and whose slotAssignment is a string.
+    let host =
+        receiver_handle(scope, &args, &[1]).expect("attachShadow's wrapper checks the element");
+    let options = v8::Local::<v8::Object>::try_from(args.get(0)).expect("a ShadowRootInit");
+    let mode = get_str_prop(scope, options, "mode").expect("a validated ShadowRootMode");
+    let assignment =
+        get_str_prop(scope, options, "slotAssignment").expect("a slotAssignment string");
     if assignment != "named" && assignment != "manual" {
         let text = v8::String::new(scope, "Invalid slotAssignment").unwrap();
         let error = v8::Exception::type_error(scope, text);
