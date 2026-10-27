@@ -73,7 +73,6 @@ fn canvas_styles_match_chrome156() {
 /// level of a nested save/restore, restore() on an empty stack changes nothing, a gradient
 /// comes back by identity and the next fillRect paints the restored colour.
 #[test]
-#[ignore = "turbo-dom#110: fails until the fix"]
 fn canvas_save_restore_matches_chrome156() {
     use sha2::{Digest, Sha256};
     const PROBE: &str = include_str!("canvas_state_probe.js");

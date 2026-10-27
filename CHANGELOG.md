@@ -167,6 +167,17 @@ changes in `tools/parity/expected/p5b-w7-turbo-dom-*.json`.
   `crates/turbo-dom-browser-env/src/canvas_style_probe.js` -> `canvas_style_chrome156.json`
   (`scripts/invokers-chrome-control.mjs`), asserted by `canvas_style_tests.rs`.
 
+### Fixed — turbo-dom-browser-env canvas save() / restore() (P5b-H1, miaskiewicz/turbo-dom#110, #111, Chrome 156 control)
+- The 2D context keeps a drawing-state stack: `save()` snapshots `fillStyle`, `strokeStyle`,
+  `shadowColor`, `globalAlpha`, `globalCompositeOperation`, the line, shadow, text and
+  image-smoothing attributes and the line dash; `restore()` brings the last snapshot back (an
+  empty stack is a no-op). They only logged their call, so reads after `restore()` (and the
+  paint state later op-log tuples record) kept the latest assignment. `setLineDash` stores
+  the dash (an odd count doubled, a negative or non-finite entry ignored) instead of being a
+  no-op, and the initial `direction` is `inherit` (#111; it was `ltr`). Control:
+  `crates/turbo-dom-browser-env/src/canvas_state_probe.js` -> `canvas_state_chrome156.json`
+  (`scripts/invokers-chrome-control.mjs`), asserted by `canvas_style_tests.rs`.
+
 ### Fixed — turbo-dom-raster screenshots and canvas (P5-cov, miaskiewicz/turbo-dom#94/#95, Chrome 156 controls)
 - A corrupt AVIF is a broken image instead of aborting the process (#94): rav1d 1.1.0 with one
   frame context panics inside its `extern "C"` API on a decode error (upstream

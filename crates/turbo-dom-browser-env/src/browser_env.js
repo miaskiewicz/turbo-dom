@@ -1935,10 +1935,17 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     var mkCanvasCtx = function(canvas){
       var noop = function(){};
       var paint = function(){ var p = { addColorStop: noop }; __cvPaints.add(p); return p; };
+      var lineDash = [], stack = [];
       var ctx = {
         canvas: canvas,
         _ops: [],
-        setLineDash: noop, getLineDash: function(){ return []; },
+        // A dash with a negative or non-finite entry is ignored; an odd count is doubled.
+        setLineDash: function(segments){
+          var dash = Array.prototype.map.call(segments, Number);
+          for (var i = 0; i < dash.length; i++) if (!isFinite(dash[i]) || dash[i] < 0) return;
+          lineDash = dash.length % 2 ? dash.concat(dash) : dash;
+        },
+        getLineDash: function(){ return lineDash.slice(); },
         createLinearGradient: paint,
         createRadialGradient: paint,
         createConicGradient: paint,
@@ -1958,7 +1965,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
         isPointInPath: function(){ return false; }, isPointInStroke: function(){ return false; },
         lineWidth: 1, lineCap: 'butt', lineJoin: 'miter',
         miterLimit: 10, lineDashOffset: 0, shadowBlur: 0, shadowOffsetX: 0, shadowOffsetY: 0,
-        font: '10px sans-serif', textAlign: 'start', textBaseline: 'alphabetic', direction: 'ltr',
+        font: '10px sans-serif', textAlign: 'start', textBaseline: 'alphabetic', direction: 'inherit',
         globalAlpha: 1, globalCompositeOperation: 'source-over', imageSmoothingEnabled: true, imageSmoothingQuality: 'low'
       };
       __cvStyles(ctx, canvas);
@@ -1974,6 +1981,26 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
           this._ops.push([name, a, this.fillStyle, this.strokeStyle, this.font, this.textBaseline, this.textAlign, this.globalAlpha, this.globalCompositeOperation]);
         };
       });
+      // The drawing-state stack (turbo-dom#110): save() snapshots every state attribute and the
+      // line dash, restore() brings the last snapshot back (an empty stack is a no-op). Both
+      // still log their call first, so the raster replay keeps its own matching stack.
+      var drawingState = ['fillStyle','strokeStyle','shadowColor','globalAlpha','globalCompositeOperation',
+        'lineWidth','lineCap','lineJoin','miterLimit','lineDashOffset','shadowBlur','shadowOffsetX',
+        'shadowOffsetY','font','textAlign','textBaseline','direction','imageSmoothingEnabled','imageSmoothingQuality'];
+      var recordSave = ctx.save, recordRestore = ctx.restore;
+      ctx.save = function(){
+        recordSave.apply(this, arguments);
+        var saved = { lineDash: lineDash };
+        for (var i = 0; i < drawingState.length; i++) saved[drawingState[i]] = ctx[drawingState[i]];
+        stack.push(saved);
+      };
+      ctx.restore = function(){
+        recordRestore.apply(this, arguments);
+        var saved = stack.pop();
+        if (!saved) return;
+        for (var i = 0; i < drawingState.length; i++) ctx[drawingState[i]] = saved[drawingState[i]];
+        lineDash = saved.lineDash;
+      };
       return ctx;
     };
     // WebGL: a COHERENT headless-Chrome SwiftShader context (ANGLE over Vulkan). Headless
