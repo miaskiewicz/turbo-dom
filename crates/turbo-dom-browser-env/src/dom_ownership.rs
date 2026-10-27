@@ -184,6 +184,14 @@ pub(super) struct CallOwners<'s> {
     deferrable: bool,
 }
 
+#[cfg(test)]
+impl CallOwners<'_> {
+    /// Owner documents this call pinned.
+    pub(super) fn documents(&self) -> usize {
+        self._documents.len()
+    }
+}
+
 pub(super) fn pin_callback_owners<'s>(
     scope: &mut v8::PinScope<'s, '_>,
     receiver: v8::Local<'s, v8::Object>,
