@@ -8,6 +8,19 @@ import { createEnvironment } from '../src/runtime/index.mjs';
 
 const both = (html) => [createEnvironment(html), new JSDOM(html)];
 
+test('matchMedia: a square viewport is portrait (Chrome 156, Media Queries 4; turbo-dom#138)', { todo: 'turbo-dom#138' }, () => {
+  const { window } = createEnvironment('<p>x</p>');
+  const orientation = (w, h) => {
+    window.innerWidth = w;
+    window.innerHeight = h;
+    return [window.matchMedia('(orientation: portrait)').matches, window.matchMedia('(orientation: landscape)').matches];
+  };
+  // Chrome 156 headless at 800x800, 800x457 and 600x657 viewports
+  assert.deepEqual(orientation(800, 800), [true, false]);
+  assert.deepEqual(orientation(800, 457), [false, true]);
+  assert.deepEqual(orientation(600, 657), [true, false]);
+});
+
 test('CharacterData textContent setter replaces the data and queues a characterData record', async () => {
   for (const { window } of both('<p>old</p>')) {
     const { document } = window;
