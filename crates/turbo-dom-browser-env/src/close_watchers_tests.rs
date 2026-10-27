@@ -109,7 +109,8 @@ fn host_backdrop(
 const DRIVER: &str = r#"(() => {
   const host = {};
   for (const name of ['Dispatch', 'Activate', 'CloseRequest', 'LightDismiss', 'Backdrop']) { host[name] = globalThis['__host' + name]; delete globalThis['__host' + name]; }
-  const queue = [];
+  const queue = [], closeResults = [];
+  globalThis.__closeResults = closeResults;
   globalThis.__queue = queue;
   globalThis.setTimeout = (callback, delay) => { queue.push({ due: Number(delay) || 0, callback }); return queue.length; };
   const fire = (target, Type, type, init) => { const event = new Type(type, init); if (type === 'pointerdown') host.Activate(document); host.Dispatch(event, target); return event; };
@@ -138,7 +139,7 @@ const DRIVER: &str = r#"(() => {
     const init = { key: step.key, code: step.code, keyCode: step.keyCode, bubbles: true, cancelable: true, composed: true };
     const target = document.activeElement || document.body;
     const event = fire(target, KeyboardEvent, 'keydown', init);
-    if (!event.defaultPrevented && step.key === 'Escape') host.CloseRequest(document);
+    if (!event.defaultPrevented && step.key === 'Escape') closeResults.push(host.CloseRequest(document));
     fire(document.activeElement || document.body, KeyboardEvent, 'keyup', init);
   };
   globalThis.__cdpInput = payload => {
@@ -156,7 +157,7 @@ const DRIVER: &str = r#"(() => {
 
 /// Run the probe with the driver above and a FIFO task queue standing in for timers (each
 /// task runs after the microtasks of the previous one).
-fn run_probe() -> serde_json::Value {
+fn run_probe() -> (serde_json::Value, serde_json::Value) {
     crate::browser_env::tests::init_v8();
     let isolate = &mut v8::Isolate::new(Default::default());
     v8::scope!(let scope, isolate);
@@ -210,15 +211,31 @@ fn run_probe() -> serde_json::Value {
     }
     let value = promise.result(scope).to_rust_string_lossy(scope);
     assert_eq!(promise.state(), v8::PromiseState::Fulfilled, "{value}");
+    let results = v8::String::new(scope, "JSON.stringify(__closeResults)").unwrap();
+    let results = v8::Script::compile(scope, results, None)
+        .unwrap()
+        .run(scope)
+        .unwrap()
+        .to_rust_string_lossy(scope);
     reset();
-    serde_json::from_str(&value).unwrap()
+    (
+        serde_json::from_str(&value).unwrap(),
+        serde_json::from_str(&results).unwrap(),
+    )
 }
 
 #[test]
 fn close_watchers_and_light_dismiss_match_chrome156() {
     let expected = control(include_str!("close_watchers_chrome156.json"), PROBE);
     let mut expected = expected;
-    let mut actual = run_probe();
+    let (mut actual, close_results) = run_probe();
+    // process_close_watchers reports whether an enabled close watcher took each Esc: not for
+    // closedby=none (9th), a non-modal dialog (11th) or removed dialogs (18th, 19th).
+    let mut processed = vec![true; 19];
+    for index in [8, 10, 17, 18] {
+        processed[index] = false;
+    }
+    assert_eq!(close_results, serde_json::json!(processed));
     // `close` events and `toggle` events are tasks on different task sources: Chrome 156
     // interleaves the two sources either way (recordings differ under load), the binding in
     // queueing order. Within each run of consecutive close / toggle events, compare the close
