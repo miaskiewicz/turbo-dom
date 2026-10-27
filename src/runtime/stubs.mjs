@@ -68,7 +68,7 @@ function evalMediaQuery(query, win) {
     else if (feat === 'max-width') matched = matched && W <= parseFloat(val);
     else if (feat === 'min-height') matched = matched && H >= parseFloat(val);
     else if (feat === 'max-height') matched = matched && H <= parseFloat(val);
-    else matched = matched && val === (W >= H ? 'landscape' : 'portrait'); // orientation
+    else matched = matched && val === (H >= W ? 'portrait' : 'landscape'); // orientation: portrait iff height >= width (turbo-dom#138)
   }
   return any && matched;
 }

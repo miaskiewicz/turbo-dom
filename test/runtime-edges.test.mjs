@@ -8,7 +8,7 @@ import { createEnvironment } from '../src/runtime/index.mjs';
 
 const both = (html) => [createEnvironment(html), new JSDOM(html)];
 
-test('matchMedia: a square viewport is portrait (Chrome 156, Media Queries 4; turbo-dom#138)', { todo: 'turbo-dom#138' }, () => {
+test('matchMedia: a square viewport is portrait (Chrome 156, Media Queries 4; turbo-dom#138)', () => {
   const { window } = createEnvironment('<p>x</p>');
   const orientation = (w, h) => {
     window.innerWidth = w;
