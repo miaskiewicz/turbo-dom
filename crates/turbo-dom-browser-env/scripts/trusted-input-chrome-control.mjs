@@ -1,7 +1,8 @@
 // Capture a committed probe that needs TRUSTED input (hover, arrow keys) in independently
 // installed headless Chrome. Self-contained CDP over --remote-debugging-pipe. The probe calls the
 // `__cdpInput(JSON)` binding with {id, steps}; each step is {type:"move", x, y} (Input mouseMoved)
-// or {type:"key", key, code, keyCode, modifiers?} (rawKeyDown + keyUp), then the collector calls
+// {type:"down"|"up", x, y} (Input mousePressed / mouseReleased, left button) or
+// {type:"key", key, code, keyCode, modifiers?} (rawKeyDown + keyUp), then the collector calls
 // `__cdpInputDone(id)`. Offline harnesses implement the same binding over their own trusted driver.
 import { createHash } from "node:crypto";
 import { spawn } from "node:child_process";
@@ -80,7 +81,14 @@ async function trusted(payload, sessionId) {
 	for (const step of steps) {
 		if (step.type === "move")
 			await call("Input.dispatchMouseEvent", { type: "mouseMoved", x: step.x, y: step.y }, sessionId);
-		else if (step.type === "key")
+		else if (step.type === "down" || step.type === "up") {
+			await call("Input.dispatchMouseEvent", { type: "mouseMoved", x: step.x, y: step.y }, sessionId);
+			await call(
+				"Input.dispatchMouseEvent",
+				{ type: step.type === "down" ? "mousePressed" : "mouseReleased", x: step.x, y: step.y, button: "left", buttons: step.type === "down" ? 1 : 0, clickCount: 1 },
+				sessionId,
+			);
+		} else if (step.type === "key")
 			for (const type of ["rawKeyDown", "keyUp"])
 				await call(
 					"Input.dispatchKeyEvent",
