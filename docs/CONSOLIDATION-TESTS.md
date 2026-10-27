@@ -1248,3 +1248,37 @@ Every test id not listed keeps its result (turbo-dom-raster default and `--featu
 | turbo-dom-raster | `turbo_dom_raster<src/lib.rs>::image_paint::tests::{svg_text_outside_elements_is_not_converted, svg_markup_is_namespace_well_formed_xml}`, `::style_extract::tests::{delazy_leaves_a_data_uri_src_with_character_references_verbatim, delazy_escapes_the_lazy_url_it_writes}` | new |
 | turbo-dom-raster | `inline_svg_chrome<tests/inline_svg_chrome.rs>::{inline_svg_pixels_match_chrome_156, svg_screenshot_embeds_one_image_per_parsed_svg_element}` | new (Chrome 156 control) |
 | turbo-dom-raster | `image_formats_chrome<tests/image_formats_chrome.rs>::decoded_pixels_match_chrome_156` | changed (also compares the `svg-utf8` source) |
+
+## P5-cov-raster — turbo-dom-raster 100% line coverage (turbo-dom `consol/cov-raster`)
+
+New tests only (every existing test keeps its id and result in `cargo test -p turbo-dom-raster`,
+`--features avif` and `--features jxl`; 39 / 44 / 39 new ids):
+
+| crate | test (binary::name) | category |
+|---|---|---|
+| turbo-dom-raster | `paint_chrome<tests/paint_chrome.rs>::{box_decorations_paint_like_chrome_156, svg_screenshots_paint_like_chrome_156, translucent_colours_composite_like_chrome_156}` | new (Chrome 156: new `paint-*` cases in `scripts/paint-chrome-control.mjs`, raw `rgb` per probe) |
+| turbo-dom-raster | `canvas_ops_chrome<tests/canvas_ops_chrome.rs>::op_logs_replay_like_chrome_156` | new (Chrome 156 control `scripts/canvas-ops-chrome-control.mjs`) |
+| turbo-dom-raster | `avif_decode_chrome<tests/avif_decode_chrome.rs>::avif_yuv_paths_match_chrome_156` | new (Chrome 156 control `scripts/raster-avif-chrome-control.mjs`; fixtures `scripts/make_raster_avif_fixtures.py`; placeholder without `avif`) |
+| turbo-dom-raster | `screenshot<tests/screenshot.rs>::{measure_text_resolves_the_family_list_against_the_bundled_faces, measure_text_with_system_fonts_still_measures, serif_text_paints_in_png_and_svg, svg_format_dispatch_is_the_svg_document_bytes}` | new |
+| turbo-dom-raster | `turbo_dom_raster<src/lib.rs>::canvas_ops::tests::{a_singular_transform_collapses_text_onto_a_line, carried_state_becomes_state_ops_before_the_op, curves_with_no_current_point_start_at_their_end_point, font_shorthand_defaults_without_a_size_or_family, glyph_subpaths_trace_quadratic_and_cubic_faces_into_the_canvas, tuples_without_a_name_or_a_text_argument_are_skipped}` | new |
+| turbo-dom-raster | `turbo_dom_raster<src/lib.rs>::image_paint::tests::{img_data_urls_decode_only_src_bearing_data_images_not_already_supplied, inline_svg_assets_keep_caller_bytes_and_skip_undecodable_sources, layout_sizes_through_the_resolver_and_never_gets_bytes, svg_markup_keeps_xml_whitespace_and_drops_other_controls, undecodable_avif_and_jpeg_xl_lay_out_at_their_size_without_pixels}` | new |
+| turbo-dom-raster | `turbo_dom_raster<src/lib.rs>::paint_canvas::tests::{straight_alpha_readback_unpremultiplies_with_rounding, stroke_text_outlines_the_glyphs_fill_text_fills, text_under_a_singular_transform_inks_nothing}` | new |
+| turbo-dom-raster | `turbo_dom_raster<src/lib.rs>::paint_png::tests::{a_marker_paints_nothing_but_its_children_do, a_missing_mask_paints_nothing_and_a_missing_image_the_placeholder, a_rounded_box_with_a_non_finite_size_paints_nothing, a_shadow_beyond_the_scratch_bound_is_not_painted, a_zero_or_oversized_canvas_is_an_error, clips_with_no_paintable_region_paint_nothing, gradients_without_a_paintable_line_paint_nothing, round_rects_skip_empty_and_transparent_boxes}` | new |
+| turbo-dom-raster | `turbo_dom_raster<src/lib.rs>::paint_svg::tests::{a_marker_emits_nothing_but_its_children_do, empty_boxes_shadows_and_gradients_emit_nothing, images_embed_as_png_data_uris_else_a_placeholder_rect, text_emits_one_outline_path_unless_nothing_has_an_outline, the_document_is_sized_and_filled_with_the_canvas_background}` | new |
+| turbo-dom-raster | `turbo_dom_raster<src/lib.rs>::style_extract::tests::{hrefs_decode_named_and_numeric_references_and_keep_the_rest, rel_is_matched_as_a_whole_attribute_name, srcset_candidates_without_a_usable_descriptor_score_one}` | new |
+| turbo-dom-raster (`avif`) | `turbo_dom_raster<src/lib.rs>::avif::tests::{a_colour_stream_decodes_to_its_frame, each_matrix_inverts_its_own_forward_transform, identity_and_monochrome_frames_map_planes_directly, limited_range_and_deep_samples_scale_to_eight_bits, malformed_and_incomplete_streams_decode_to_nothing}` | new |
+| turbo-dom-raster | `turbo_dom_raster<src/lib.rs>::image_paint::tests::{base64_decode_is_the_inverse_of_encode, percent_decode_and_css_unescape, url_token_scan_takes_data_uris_whole_ignoring_inner_delimiters}` | extended (more vectors: `+`/`/` sextets, hex case, whitespace after `url(`) |
+
+P5-cov-raster bug fixes (miaskiewicz/turbo-dom#94/#95, each test committed first, ignored until its fix):
+
+| crate | test (binary::name) | category |
+|---|---|---|
+| turbo-dom-raster (`avif`) | `turbo_dom_raster<src/lib.rs>::avif::tests::{corrupt_avifs_are_broken_images_never_a_process_abort, corrupt_avif_fuzz_child (ignored: run by the former in a child process)}` | new (turbo-dom#94, test-first) |
+| turbo-dom-raster (`avif`) | `turbo_dom_raster<src/lib.rs>::avif::tests::identity_gbr_maps_every_sample_exactly`; `::monochrome_frames_are_grey_under_any_matrix` (was `identity_and_monochrome_frames_map_planes_directly`) | new (turbo-dom#95, test-first) / renamed |
+| turbo-dom-raster | `avif_decode_chrome<tests/avif_decode_chrome.rs>::avif_yuv_paths_match_chrome_156` | changed (exact; the tolerance is gone) |
+| turbo-dom-raster | `paint_chrome<tests/paint_chrome.rs>::{svg_rounded_borders_follow_the_radius_like_chrome_156, wide_box_shadows_paint_like_chrome_156, shadow_blur_is_capped_at_256px_like_chrome_156}` | new (turbo-dom#95, test-first; control cases `shadow-*`) |
+| turbo-dom-raster | `paint_chrome<tests/paint_chrome.rs>::{svg_screenshots_paint_like_chrome_156, translucent_colours_composite_like_chrome_156}` | changed (no cases left out; exact) |
+| turbo-dom-raster | `turbo_dom_raster<src/lib.rs>::paint_png::tests::a_box_wider_than_8192px_casts_its_blurred_shadow` (replaces `a_shadow_beyond_the_scratch_bound_is_not_painted`), `::{axis_aligned_shadow_tiles_paint_the_pixels_of_one_whole_scratch, rotated_shadows_blur_in_one_scratch_until_it_would_exceed_its_bound, a_shadow_cropped_to_the_canvas_keeps_its_visible_pixels, shadow_blur_caps_at_256px}`; `::paint_svg::tests::rounded_borders_stroke_one_inset_outline_of_the_widest_side` | new (turbo-dom#95) |
+| turbo-dom-raster | `canvas_ops_chrome<tests/canvas_ops_chrome.rs>::{css_colour_syntaxes_fill_like_chrome_156, closed_paths_restart_at_their_first_point_like_chrome_156}` | new (turbo-dom#95 / closePath, test-first); `op_logs_replay_like_chrome_156` changed (exact) |
+| turbo-dom-raster | `turbo_dom_raster<src/lib.rs>::canvas_ops::tests::{matrices_compose_the_canvas_way, line_widths_scale_by_the_root_of_the_area_scale, arcs_flatten_into_64_segments_per_turn_at_least_6, arc_sweeps_follow_the_direction_and_wrap_once, paths_continue_from_the_current_point, glyphs_are_placed_by_their_advances_and_mark_offsets}` | new (mutation pass) |
+| turbo-dom | `turbo_dom<src/lib.rs>::rtdom::color::parse_color_tests::{hex_forms, rgb_numbers_percentages_and_alpha, hsl_hues_saturations_lightnesses, names_and_transparent}` | new (`parse_color`, turbo-dom#95) |

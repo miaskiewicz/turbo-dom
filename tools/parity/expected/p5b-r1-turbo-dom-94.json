@@ -1,0 +1,14 @@
+{
+ "id": "turbo-dom#94",
+ "class": "avif-corrupt-abort",
+ "reason": "A corrupt AVIF decodes to no pixels instead of aborting the process: rav1d runs with two frame contexts (3338762, from consol/cov-raster); P5b-R1 extends the child-process fuzz to the AV1 streams. No corpus input carries a corrupt AVIF. Measured with fresh target dirs, before = edde7dc (git archive), after = consol/p5b-r1: html2pdf / html2pdf-svg / html2pdf-extra manifests byte-identical (turbo-html2pdf napi built against each side's turbo-dom + turbo-dom-layout); surf static tier (turbo-dom-raster screenshot_png / screenshot_svg at 1280x800 of 133 surf static + image-matrix + extra inputs, plain, caller-assets and system-fonts passes, 477 outputs) byte-identical by default and with avif + jxl. P5b-R1.",
+ "control": "crates/turbo-dom-raster/tests/fixtures/avif_decode_chrome156.json (scripts/raster-avif-chrome-control.mjs, Chrome for Testing 156.0.8078.4; unchanged by the fix)",
+ "e2e": "crates/turbo-dom-raster/src/avif.rs (corrupt_avifs_are_broken_images_never_a_process_abort)",
+ "changes": {
+  "html2pdf": [],
+  "html2pdf-svg": [],
+  "html2pdf-extra": [],
+  "surf": [],
+  "surf-extra": []
+ }
+}
