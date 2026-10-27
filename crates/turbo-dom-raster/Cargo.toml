@@ -61,7 +61,8 @@ base64 = { version = "0.22", optional = true }
 
 # --- `avif` (off by default) -------------------------------------------------
 # AVIF screenshot pixels (miaskiewicz/turbo-surf#30): rav1d, the BSD-2-Clause pure-Rust
-# port of dav1d, with its assembly off (no nasm / C toolchain) and one decode thread;
+# port of dav1d, with its assembly off (no nasm / C toolchain) and two frame contexts (a
+# decode error with one aborts in 1.1.0: turbo-dom#94);
 # `libc` only for its `EAGAIN` result code. See src/avif.rs for the options assessed.
 # Without the feature an AVIF still lays out at its real size (turbo-dom-layout's
 # pure-Rust probe) and paints as the placeholder.

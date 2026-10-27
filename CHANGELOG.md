@@ -147,6 +147,41 @@ changes in `tools/parity/expected/p5b-w7-turbo-dom-*.json`.
   later (turbo-surf's child frames listed them before `src`); they are now configurable until
   the key order freezes them.
 
+### Fixed — turbo-dom-raster screenshots and canvas (P5-cov, miaskiewicz/turbo-dom#94/#95, Chrome 156 controls)
+- A corrupt AVIF is a broken image instead of aborting the process (#94): rav1d 1.1.0 with one
+  frame context panics inside its `extern "C"` API on a decode error (upstream
+  memorysafety/rav1d#1496, fixed after 1.1.0; 1.1.1 is unpublished). The decoder now runs with
+  two frame contexts, where the error comes back as a result; AV1 output is bit-exact, so pixels
+  are unchanged. A child-process fuzz test over every AVIF fixture (truncations, bit flips) gates it.
+- AVIF identity (GBR, matrix 0) samples convert exactly, every plane on the luma scale like libavif
+  (they were half a level low, limited range on the chroma scale) (#95).
+- SVG screenshots stroke a rounded box's border along its radius, like the PNG painter (#95).
+- Blurred box-shadows of any size paint: only the visible part is blurred, in exact tiles (a
+  shadow whose scratch passed 8192px was skipped); the blur radius is capped at 256px like Chrome's (#95).
+- Canvas op-log colours parse through turbo-dom's new `rtdom::color::parse_color` (hsl()/hsla(),
+  percentage rgb() channels and alpha, the full named set; channels rounded like Chrome) instead of a
+  local subset; `canonicalize_color`'s output is unchanged (#95).
+- Canvas `lineTo`/`arc` after `closePath` (or `rect`) starts at the closed subpath's first point, as in
+  Chrome (found by the P5-cov mutation pass).
+
+### Tests — turbo-dom-raster at 100% line coverage (P5-cov)
+- turbo-dom-raster reaches 100% line coverage (tarpaulin, LLVM engine) by default and with
+  `--features avif` / `--features jxl` (79.02% / 79.63% / 79.31% before); the CI `coverage`
+  job gates each configuration at 100. New Chrome 156 controls back the pixel tests:
+  `scripts/canvas-ops-chrome-control.mjs` (the 2D-canvas op log),
+  `scripts/raster-avif-chrome-control.mjs` (every AVIF chroma layout, matrix family and
+  range, fixtures from `scripts/make_raster_avif_fixtures.py`) and new `paint-*` cases in
+  `scripts/paint-chrome-control.mjs` (rounded borders and gradients, shadows, translucency;
+  the SVG screenshot is checked against the same probes through resvg). Every Chrome comparison
+  is exact (no tolerances). Tests were strengthened against `cargo mutants` (see
+  `docs/CONSOLIDATION.md` "Coverage").
+- No behaviour change from the coverage refactors. Dead defensive branches were restructured or removed with their
+  invariant documented: `glyph::outline_face` (a `FontFace` always re-parses at its index),
+  the bundled faces always resolve (`measure_text`, canvas text), clip layers and shadow
+  scratch buffers within their bounds always allocate, the box blur's empty guards (a
+  `Pixmap` is never empty), the AVIF / JPEG XL size-only fallback is one branch, rav1d's
+  open / get-picture results share their exits, and JPEG XL's unreachable empty-sample arm.
+
 ### Fixed — `HTMLTrackElement` and `TextTrack` (P5b-X6, miaskiewicz/turbo-dom#74, Chrome 156 control)
 - turbo-dom-browser-env: `<track>` had no interface, so `track.src`, `kind`, `srclang`,
   `label`, `default`, `readyState`, `track` and `NONE` / `LOADING` / `LOADED` / `ERROR` were

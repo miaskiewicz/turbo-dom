@@ -36,9 +36,10 @@ pub fn stylesheet_hrefs(html: &str) -> Vec<String> {
     let mut cursor = 0;
     while let Some(rel) = lower[cursor..].find("<link") {
         let tag_start = cursor + rel;
-        let end = lower[tag_start..]
-            .find('>')
-            .map_or(html.len(), |g| tag_start + g);
+        // A tag cut off by the end of the document is dropped, as the HTML tokenizer drops it.
+        let Some(end) = lower[tag_start..].find('>').map(|g| tag_start + g) else {
+            break;
+        };
         let tag = &html[tag_start..end];
         let tag_lower = &lower[tag_start..end];
         let rel_val = attr_value(tag, tag_lower, "rel")
@@ -596,6 +597,93 @@ mod tests {
             stylesheet_hrefs(html),
             vec!["/w/load.php?lang=en&only=styles&skin=vector"]
         );
+    }
+
+    #[test]
+    fn hrefs_decode_named_and_numeric_references_and_keep_the_rest() {
+        use super::stylesheet_hrefs;
+        let html = concat!(
+            r#"<link rel="stylesheet" href="/a?l=&lt;&gt;&quot;&apos;&#39;&#38;&#x26;&#X26;"#,
+            r#"&bogus;&#xZZ;&#99999999;&#;&#65&end">"#,
+        );
+        // Unknown names, bad hex, code points past U+10FFFF and an empty `&#;` stay
+        // verbatim; no `;` follows `&#65&end`, so its `&`s stay literal.
+        assert_eq!(
+            stylesheet_hrefs(html),
+            [r#"/a?l=<>"''&&&&bogus;&#xZZ;&#99999999;&#;&#65&end"#]
+        );
+    }
+
+    /// An unterminated `<link` at the end of the document is dropped (the HTML tokenizer
+    /// discards a tag cut off by EOF, so Chrome loads nothing) — the scan must not panic.
+    #[test]
+    fn an_unterminated_link_at_the_end_is_not_a_stylesheet() {
+        use super::stylesheet_hrefs;
+        assert_eq!(
+            stylesheet_hrefs(r#"<link rel="stylesheet" href="a.css""#),
+            Vec::<String>::new()
+        );
+        assert_eq!(
+            stylesheet_hrefs("<link rel=stylesheet href=a.css><link rel=stylesheet href=b.css"),
+            ["a.css"]
+        );
+    }
+
+    #[test]
+    fn a_real_src_wins_over_lazy_attributes() {
+        use super::{delazy_images, image_urls};
+        let html = r#"<img src="real.jpg" data-src="lazy.jpg" srcset="big.jpg 2x">"#;
+        assert_eq!(delazy_images(html), html, "left as is");
+        assert_eq!(image_urls(html), ["real.jpg"]);
+        // A spacer src is not real: the lazy URL replaces it, without a reveal style.
+        let spacer = r#"<img src="/i/1x1.gif" data-src="lazy.jpg">"#;
+        assert_eq!(image_urls(spacer), ["lazy.jpg"]);
+        let out = delazy_images(spacer);
+        assert!(
+            out.contains(r#"<img src="lazy.jpg" data-src="lazy.jpg">"#),
+            "{out}"
+        );
+    }
+
+    #[test]
+    fn css_image_urls_are_deduplicated_and_skip_data_urls() {
+        use super::image_urls_in_css;
+        let css = r#".a{background:url(a.png)}.b{background-image:url("data:image/svg+xml,x")}
+            .c{background:url('a.png')}.d{background:url(b.png)}"#;
+        assert_eq!(image_urls_in_css(css), ["a.png", "b.png"]);
+    }
+
+    #[test]
+    fn a_long_url_is_read_once_and_the_scan_moves_past_it() {
+        use super::image_urls_in_css;
+        let css = ".a{background:url(a-very-long-image-file-name-0123456789-abcdefghij.png)}\
+                   .b{background:url(b.png)}";
+        assert_eq!(
+            image_urls_in_css(css),
+            [
+                "a-very-long-image-file-name-0123456789-abcdefghij.png",
+                "b.png"
+            ]
+        );
+    }
+
+    #[test]
+    fn rel_is_matched_as_a_whole_attribute_name() {
+        use super::stylesheet_hrefs;
+        // `data-rel` is not `rel`; the real `rel` later in the tag is found.
+        let html = r#"<link data-rel="icon" rel="stylesheet" href="a.css"><link href="b.css" data-rel="stylesheet">"#;
+        assert_eq!(stylesheet_hrefs(html), ["a.css"]);
+    }
+
+    #[test]
+    fn srcset_candidates_without_a_usable_descriptor_score_one() {
+        use super::delazy_images;
+        // A bare URL and a descriptor that is neither `w` nor `x` both score 1, so the
+        // first such candidate stands unless a larger one follows; empty candidates skip.
+        let first = delazy_images(r#"<img srcset="a.jpg, b.jpg 1q, ,">"#);
+        assert!(first.contains(r#"src="a.jpg""#), "{first}");
+        let larger = delazy_images(r#"<img srcset="a.jpg 3q, b.jpg 2x">"#);
+        assert!(larger.contains(r#"src="b.jpg""#), "{larger}");
     }
 
     #[test]

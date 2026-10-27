@@ -179,108 +179,21 @@ fn push_tuple(v: &serde_json::Value, out: &mut Vec<Op>) {
     out.push(op);
 }
 
-/// Parse a canvas `fillStyle`/`strokeStyle` colour string: `#rgb`, `#rgba`,
-/// `#rrggbb`, `#rrggbbaa`, `rgb()/rgba()`, or a small set of named colours. `None`
-/// for anything we can't map (gradients/patterns are objects, not strings).
+/// Parse a canvas `fillStyle`/`strokeStyle` colour string through turbo-dom's CSS colour
+/// parser ([`parse_color`](turbo_dom_layout::turbo_dom::rtdom::color::parse_color): hex,
+/// every named colour, `rgb()`/`rgba()` with number or percentage channels, `hsl()`/
+/// `hsla()`), each channel and the alpha rounded to a byte as a canvas stores it. `None`
+/// for anything else (gradients/patterns are objects, not strings), which leaves the
+/// previous style, as a canvas ignores an invalid assignment.
 pub(crate) fn parse_css_color(s: &str) -> Option<Rgba> {
-    let t = s.trim();
-    if let Some(hex) = t.strip_prefix('#') {
-        return parse_hex(hex);
-    }
-    if t.starts_with("rgb") {
-        return parse_rgb_fn(t);
-    }
-    named_color(&t.to_ascii_lowercase())
-}
-
-/// `#rgb` / `#rgba` / `#rrggbb` / `#rrggbbaa`.
-fn parse_hex(hex: &str) -> Option<Rgba> {
-    let byte = |s: &str| u8::from_str_radix(s, 16).ok();
-    let dup = |c: &str| byte(&format!("{c}{c}"));
-    match hex.len() {
-        3 => Some(Rgba::new(
-            dup(&hex[0..1])?,
-            dup(&hex[1..2])?,
-            dup(&hex[2..3])?,
-            255,
-        )),
-        4 => Some(Rgba::new(
-            dup(&hex[0..1])?,
-            dup(&hex[1..2])?,
-            dup(&hex[2..3])?,
-            dup(&hex[3..4])?,
-        )),
-        6 => Some(Rgba::new(
-            byte(&hex[0..2])?,
-            byte(&hex[2..4])?,
-            byte(&hex[4..6])?,
-            255,
-        )),
-        8 => Some(Rgba::new(
-            byte(&hex[0..2])?,
-            byte(&hex[2..4])?,
-            byte(&hex[4..6])?,
-            byte(&hex[6..8])?,
-        )),
-        _ => None,
-    }
-}
-
-/// `rgb(r,g,b)` / `rgba(r,g,b,a)` with 0..255 channels and a 0..1 alpha.
-fn parse_rgb_fn(t: &str) -> Option<Rgba> {
-    let inner = t.split_once('(')?.1.strip_suffix(')')?;
-    let parts: Vec<&str> = inner
-        .split([',', '/', ' '])
-        .filter(|p| !p.is_empty())
-        .collect();
-    if parts.len() < 3 {
-        return None;
-    }
-    let chan = |s: &str| {
-        s.trim()
-            .parse::<f32>()
-            .ok()
-            .map(|f| f.clamp(0.0, 255.0) as u8)
-    };
-    let alpha = match parts.get(3) {
-        // Alpha is either a 0..1 number or a `N%` percentage (the CSS4 rgb()/rgba()
-        // slash form yields the same token here since we split on '/' above).
-        Some(a) => {
-            let a = a.trim();
-            let frac = match a.strip_suffix('%') {
-                Some(pct) => pct.trim().parse::<f32>().ok()? / 100.0,
-                None => a.parse::<f32>().ok()?,
-            };
-            (frac.clamp(0.0, 1.0) * 255.0).round() as u8
-        }
-        None => 255,
-    };
+    let c = turbo_dom_layout::turbo_dom::rtdom::color::parse_color(s)?;
+    let byte = |v: f64| v.round() as u8;
     Some(Rgba::new(
-        chan(parts[0])?,
-        chan(parts[1])?,
-        chan(parts[2])?,
-        alpha,
+        byte(c.r),
+        byte(c.g),
+        byte(c.b),
+        byte(c.a * 255.0),
     ))
-}
-
-/// The handful of CSS keyword colours a canvas probe realistically sets.
-fn named_color(name: &str) -> Option<Rgba> {
-    let c = |r, g, b| Some(Rgba::new(r, g, b, 255));
-    match name {
-        "transparent" => Some(Rgba::new(0, 0, 0, 0)),
-        "black" => c(0, 0, 0),
-        "white" => c(255, 255, 255),
-        "red" => c(255, 0, 0),
-        "green" => c(0, 128, 0),
-        "lime" => c(0, 255, 0),
-        "blue" => c(0, 0, 255),
-        "yellow" => c(255, 255, 0),
-        "cyan" | "aqua" => c(0, 255, 255),
-        "magenta" | "fuchsia" => c(255, 0, 255),
-        "gray" | "grey" => c(128, 128, 128),
-        "orange" => c(255, 165, 0),
-        _ => None,
-    }
 }
 
 /// Reduce a CSS `font` shorthand to `(size_px, families)`. We only need the pixel
@@ -388,10 +301,15 @@ impl Matrix {
 /// Resolve the bundled font face for a canvas `font` family list. Cached: the
 /// bundled registry is parsed once and cloned (faces are `Arc`-shared, so the
 /// clone is cheap) — canvas text never uses system fonts (deterministic/offline).
-pub(crate) fn resolve_face(families: &[String]) -> Option<FontFace> {
+/// Always a face: this crate enables turbo-dom-layout's `bundled-fonts`, and
+/// `FontRegistry::select` falls back to the first bundled face when no family matches.
+pub(crate) fn resolve_face(families: &[String]) -> FontFace {
     static BUNDLED: std::sync::LazyLock<FontRegistry> = std::sync::LazyLock::new(FontRegistry::new);
     let refs: Vec<&str> = families.iter().map(String::as_str).collect();
-    BUNDLED.select(&refs, 400, false).cloned()
+    BUNDLED
+        .select(&refs, 400, false)
+        .cloned()
+        .expect("the bundled faces are registered")
 }
 
 // ---------------------------------------------------------------------------
@@ -581,12 +499,20 @@ fn rect_subpath(m: &Matrix, x: f32, y: f32, w: f32, h: f32) -> SubPath {
     }
 }
 
-/// Append a device point to the open current subpath, starting one if the path is
-/// empty or its last subpath is closed (a bare `lineTo` acts as `moveTo`).
+/// Append a device point to the open current subpath. On an empty path a bare `lineTo`
+/// acts as `moveTo`; after a closed subpath (`closePath`, `rect`) the new subpath starts at
+/// the closed one's first point, as canvas's `closePath` leaves the current point there.
 fn append_point(path: &mut Vec<SubPath>, p: (f32, f32)) {
     match path.last_mut() {
         Some(last) if !last.closed => last.pts.push(p),
-        _ => path.push(SubPath {
+        Some(last) => {
+            let start = last.pts[0];
+            path.push(SubPath {
+                pts: vec![start, p],
+                closed: false,
+            });
+        }
+        None => path.push(SubPath {
             pts: vec![p],
             closed: false,
         }),
@@ -637,21 +563,14 @@ fn arc_into(
     }
 }
 
-/// Shape `text` with the state's font and trace each glyph's outline into
-/// device-space subpaths (flattened) at baseline `(x, y)`. Empty if no bundled
-/// face resolves for the family list.
+/// Shape `text` with the state's font (a bundled face; see [`resolve_face`]) and trace
+/// each glyph's outline into device-space subpaths (flattened) at baseline `(x, y)`.
+/// Empty when no glyph has an outline (spaces, an empty string).
 pub(crate) fn glyph_subpaths(st: &State, text: &str, x: f32, y: f32) -> Vec<SubPath> {
-    let Some(face) = resolve_face(&st.font_families) else {
-        return Vec::new();
-    };
-    let upem = face.units_per_em();
-    if upem == 0 {
-        return Vec::new();
-    }
-    let Some(ttf) = crate::glyph::parse_face(face.data(), face.index()) else {
-        return Vec::new();
-    };
-    let scale = st.font_px / f32::from(upem);
+    let face = resolve_face(&st.font_families);
+    // Non-zero: `ttf-parser` rejects a `head` whose units-per-em is outside 16..=16384.
+    let scale = st.font_px / f32::from(face.units_per_em());
+    let ttf = crate::glyph::outline_face(&face);
     let mut sink = FlattenSink {
         ctm: st.ctm,
         subs: Vec::new(),
@@ -775,6 +694,465 @@ mod tests {
         assert_eq!((s.r, s.g, s.b, s.a), (10, 20, 30, 128));
         let s2 = parse_css_color("rgb(10 20 30 / 0.25)").unwrap();
         assert_eq!(s2.a, 64);
+    }
+
+    /// One tuple with no carried state (only the name and args).
+    fn bare(name: &str, args: &str) -> String {
+        format!(r#"["{name}",{args}]"#)
+    }
+
+    #[test]
+    fn tuples_without_a_name_or_a_text_argument_are_skipped() {
+        let log = format!(
+            "[[1,[2]],[],{},{},{},{},{}]",
+            bare("fillText", "[3,1,2]"),
+            bare("strokeText", "[]"),
+            bare("fillText", r#"["hi",1,2]"#),
+            bare("strokeText", r#"["yo",3]"#),
+            bare("arc", "[1,2,3,0,1,true]"),
+        );
+        assert_eq!(
+            parse_ops(&log).unwrap(),
+            [
+                Op::FillText {
+                    text: "hi".into(),
+                    x: 1.0,
+                    y: 2.0
+                },
+                Op::StrokeText {
+                    text: "yo".into(),
+                    x: 3.0,
+                    y: 0.0
+                },
+                Op::Arc {
+                    x: 1.0,
+                    y: 2.0,
+                    r: 3.0,
+                    start: 0.0,
+                    end: 1.0,
+                    ccw: true
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn carried_state_becomes_state_ops_before_the_op() {
+        let ops = parse_ops(r##"[["save",[],"#00f","bogus","bold 12px Arial",null,null,0.25]]"##)
+            .unwrap();
+        assert_eq!(
+            ops,
+            [
+                Op::FillStyle(Rgba::new(0, 0, 255, 255)),
+                Op::Font {
+                    size_px: 12.0,
+                    families: vec!["Arial".into()]
+                },
+                Op::GlobalAlpha(0.25),
+                Op::Save,
+            ],
+            "an unparseable strokeStyle carries no state"
+        );
+        let clamped = parse_ops(r#"[["restore",[],null,null,null,null,null,7]]"#).unwrap();
+        assert_eq!(clamped, [Op::GlobalAlpha(1.0), Op::Restore]);
+    }
+
+    #[test]
+    fn font_shorthand_defaults_without_a_size_or_family() {
+        let sans = vec!["sans-serif".to_string()];
+        assert_eq!(
+            parse_font("bold Arial"),
+            (10.0, sans.clone()),
+            "no size token"
+        );
+        assert_eq!(parse_font("14px"), (14.0, sans.clone()), "no family");
+        assert_eq!(parse_font("xpx 9px , ''"), (9.0, sans.clone()));
+        assert_eq!(parse_font(""), (10.0, sans));
+    }
+
+    #[test]
+    fn curves_with_no_current_point_start_at_their_end_point() {
+        // A glyph contour always opens with `move_to`; a curve without one starts at its
+        // own end point, so the flattened segment begins (t = 1/8) between it and the
+        // control point.
+        let mut sink = FlattenSink {
+            ctm: Matrix::identity(),
+            subs: Vec::new(),
+            cur: Vec::new(),
+        };
+        crate::glyph::Tracer::quad_to(&mut sink, 8.0, 0.0, 0.0, 0.0);
+        let t = 1.0 / CURVE_STEPS as f32;
+        assert_eq!(sink.cur[0], (2.0 * (1.0 - t) * t * 8.0, 0.0));
+        assert_eq!(sink.cur.last(), Some(&(0.0, 0.0)));
+        crate::glyph::Tracer::close(&mut sink);
+        crate::glyph::Tracer::cubic_to(&mut sink, 0.0, 8.0, 0.0, 8.0, 0.0, 0.0);
+        assert_eq!(sink.cur.len(), CURVE_STEPS);
+        assert_eq!(sink.cur.last(), Some(&(0.0, 0.0)));
+        assert_eq!(sink.subs.len(), 1, "the closed quad");
+    }
+
+    /// Glyph subpaths of `text` at 20px `family` under `ctm`.
+    fn glyphs(text: &str, family: &str, ctm: Matrix) -> Vec<SubPath> {
+        let st = State {
+            ctm,
+            font_px: 20.0,
+            font_families: vec![family.to_string()],
+            ..State::default()
+        };
+        glyph_subpaths(&st, text, 2.0, 20.0)
+    }
+
+    #[test]
+    fn glyph_subpaths_trace_quadratic_and_cubic_faces_into_the_canvas() {
+        for family in ["serif", "sans-serif", "no such family"] {
+            let subs = glyphs("Ag", family, Matrix::identity());
+            assert!(subs.len() >= 2, "{family}: a contour per glyph at least");
+            let pts = subs.iter().flat_map(|s| &s.pts);
+            assert!(
+                pts.clone()
+                    .all(|&(x, y)| (0.0..40.0).contains(&x) && (0.0..=26.0).contains(&y)),
+                "{family}: inside the 20px run at baseline 20"
+            );
+            assert!(subs.iter().all(|s| s.closed), "{family}");
+        }
+        // Under a translation the same outlines move; spaces trace nothing.
+        let at = glyphs("A", "serif", Matrix::identity());
+        let moved = glyphs("A", "serif", Matrix::identity().translate(10.0, 0.0));
+        assert_eq!(moved[0].pts[0], (at[0].pts[0].0 + 10.0, at[0].pts[0].1));
+        assert!(glyphs("  ", "serif", Matrix::identity()).is_empty());
+        assert!(glyphs("", "serif", Matrix::identity()).is_empty());
+    }
+
+    #[test]
+    fn a_singular_transform_collapses_text_onto_a_line() {
+        // `scale(0, 1)`: every outline point lands on x = 0 (a curve's start, unrecoverable
+        // through the singular matrix, falls back to its end point).
+        for family in ["serif", "sans-serif"] {
+            let subs = glyphs("Ag", family, Matrix::identity().scale(0.0, 1.0));
+            assert!(!subs.is_empty(), "{family}");
+            assert!(
+                subs.iter().flat_map(|s| &s.pts).all(|&(x, _)| x == 0.0),
+                "{family}"
+            );
+        }
+    }
+
+    fn sink(ctm: Matrix) -> FlattenSink {
+        FlattenSink {
+            ctm,
+            subs: Vec::new(),
+            cur: Vec::new(),
+        }
+    }
+
+    fn close_to(a: &[(f32, f32)], b: &[(f32, f32)]) -> bool {
+        a.len() == b.len()
+            && a.iter()
+                .zip(b)
+                .all(|(p, q)| (p.0 - q.0).abs() < 1e-3 && (p.1 - q.1).abs() < 1e-3)
+    }
+
+    #[test]
+    fn flattened_contours_split_at_each_move_and_close() {
+        use crate::glyph::Tracer;
+        let mut s = sink(Matrix::identity().translate(10.0, 0.0));
+        s.move_to(1.0, 2.0);
+        s.line_to(3.0, 4.0);
+        s.move_to(5.0, 6.0); // ends the first contour
+        s.line_to(7.0, 8.0);
+        s.close();
+        s.move_to(9.0, 9.0); // a lone point is no contour
+        s.close();
+        s.close();
+        assert_eq!(s.subs.len(), 2);
+        assert_eq!(s.subs[0].pts, [(11.0, 2.0), (13.0, 4.0)]);
+        assert_eq!(s.subs[1].pts, [(15.0, 6.0), (17.0, 8.0)]);
+        assert!(s.subs.iter().all(|sp| sp.closed));
+        assert!(s.cur.is_empty());
+    }
+
+    /// The curve samples a sink emits under `ctm` for a curve drawn from local `start`.
+    fn bezier_samples(ctm: Matrix, curve: impl Fn(f32) -> (f32, f32)) -> Vec<(f32, f32)> {
+        (1..=CURVE_STEPS)
+            .map(|i| {
+                let (x, y) = curve(i as f32 / CURVE_STEPS as f32);
+                ctm.apply(x, y)
+            })
+            .collect()
+    }
+
+    #[test]
+    fn curves_flatten_to_eight_exact_samples_through_the_transform() {
+        use crate::glyph::Tracer;
+        // A general (invertible) matrix: the curve's start comes back out of device space.
+        for ctm in [Matrix::identity(), Matrix([2.0, 1.0, 1.0, 3.0, 5.0, 7.0])] {
+            let mut q = sink(ctm);
+            q.move_to(0.0, 0.0);
+            q.quad_to(8.0, 8.0, 16.0, 0.0);
+            let want = bezier_samples(ctm, |t| (16.0 * t, 16.0 * t * (1.0 - t)));
+            assert!(close_to(&q.cur[1..], &want), "quad {ctm:?}: {:?}", q.cur);
+            let mut c = sink(ctm);
+            c.move_to(0.0, 0.0);
+            c.cubic_to(0.0, 8.0, 8.0, 8.0, 8.0, 0.0);
+            let want = bezier_samples(ctm, |t| {
+                let m = 1.0 - t;
+                (
+                    3.0 * m * t * t * 8.0 + t * t * t * 8.0,
+                    3.0 * m * m * t * 8.0 + 3.0 * m * t * t * 8.0,
+                )
+            });
+            assert!(close_to(&c.cur[1..], &want), "cubic {ctm:?}: {:?}", c.cur);
+            // An asymmetric cubic: every control point weighs in.
+            let mut a = sink(ctm);
+            a.move_to(1.0, 2.0);
+            a.cubic_to(4.0, 9.0, 10.0, -3.0, 12.0, 5.0);
+            let want = bezier_samples(ctm, |t| {
+                let m = 1.0 - t;
+                let b = |p0: f32, p1: f32, p2: f32, p3: f32| {
+                    m * m * m * p0 + 3.0 * m * m * t * p1 + 3.0 * m * t * t * p2 + t * t * t * p3
+                };
+                (b(1.0, 4.0, 10.0, 12.0), b(2.0, 9.0, -3.0, 5.0))
+            });
+            assert!(close_to(&a.cur[1..], &want), "asym {ctm:?}: {:?}", a.cur);
+        }
+    }
+
+    #[test]
+    fn a_curve_start_is_recovered_through_the_inverse_transform() {
+        let m = Matrix([2.0, 1.0, 1.0, 3.0, 5.0, 7.0]);
+        for local in [(0.0, 0.0), (3.0, -2.0), (-1.5, 4.25)] {
+            let got = last_local(&[(0.0, 0.0), m.apply(local.0, local.1)], m, (99.0, 99.0));
+            assert!(close_to(&[got], &[local]), "{local:?}: {got:?}");
+        }
+        // Without a point, or through a singular matrix, the fallback stands.
+        assert_eq!(last_local(&[], m, (1.0, 2.0)), (1.0, 2.0));
+        let singular = Matrix([1.0, 2.0, 2.0, 4.0, 0.0, 0.0]);
+        assert_eq!(last_local(&[(3.0, 3.0)], singular, (1.0, 2.0)), (1.0, 2.0));
+        // A determinant of exactly 1e-9 is still inverted; below it is singular.
+        let tiny = Matrix([1e-9, 0.0, 0.0, 1.0, 0.0, 0.0]);
+        let got = last_local(&[(5e-9, 7.0)], tiny, (0.0, 0.0));
+        assert!((got.0 - 5.0).abs() < 1e-3 && got.1 == 7.0, "{got:?}");
+        let tinier = Matrix([1e-10, 0.0, 0.0, 1.0, 0.0, 0.0]);
+        assert_eq!(last_local(&[(5e-9, 7.0)], tinier, (8.0, 9.0)), (8.0, 9.0));
+    }
+
+    #[test]
+    fn matrices_compose_the_canvas_way() {
+        let m = Matrix([1.0, 2.0, 3.0, 4.0, 5.0, 6.0]);
+        assert_eq!(m.apply(1.0, 1.0), (9.0, 12.0));
+        assert_eq!(m.apply(-2.0, 0.5), (4.5, 4.0));
+        // `m.then(n)` applies `n` first: every term of the 2x3 product.
+        let n = [7.0, 8.0, 9.0, 10.0, 11.0, 12.0];
+        assert_eq!(m.then(n).0, [31.0, 46.0, 39.0, 58.0, 52.0, 76.0]);
+        // The origin maps through `n`'s translation, then `m`.
+        assert_eq!(m.then(n).apply(0.0, 0.0), m.apply(11.0, 12.0));
+        assert_eq!(m.translate(1.0, -1.0).0, [1.0, 2.0, 3.0, 4.0, 3.0, 4.0]);
+        assert_eq!(m.scale(2.0, -3.0).0, [2.0, 4.0, -9.0, -12.0, 5.0, 6.0]);
+        let r = Matrix::identity().rotate(std::f32::consts::FRAC_PI_2).0;
+        let want = [0.0, 1.0, -1.0, 0.0, 0.0, 0.0];
+        assert!(
+            r.iter().zip(want).all(|(a, b)| (a - b).abs() < 1e-6),
+            "{r:?}"
+        );
+    }
+
+    #[test]
+    fn line_widths_scale_by_the_root_of_the_area_scale() {
+        let w = |m: [f32; 4], width: f32| {
+            device_line_width(&Matrix([m[0], m[1], m[2], m[3], 9.0, 9.0]), width)
+        };
+        assert_eq!(w([1.0, 0.0, 0.0, 1.0], 3.0), 3.0);
+        assert_eq!(w([4.0, 0.0, 0.0, 9.0], 1.0), 6.0, "sqrt(36)");
+        assert_eq!(w([2.0, 1.0, 1.0, 3.0], 1.0), 5.0_f32.sqrt(), "ad - bc = 5");
+        assert_eq!(w([0.0, 2.0, 2.0, 0.0], 1.0), 2.0, "|ad - bc| = 4");
+        // A singular matrix keeps the user width; a negative width is no width.
+        assert_eq!(w([0.0, 0.0, 0.0, 0.0], 2.0), 2.0);
+        assert_eq!(w([1.0, 2.0, 2.0, 4.0], 2.0), 2.0);
+        assert_eq!(w([1.0, 0.0, 0.0, 1.0], -1.0), 0.0);
+    }
+
+    /// The flattened points of one arc on an empty path, through the identity.
+    fn arc(start: f32, end: f32, ccw: bool) -> Vec<(f32, f32)> {
+        let mut path = Vec::new();
+        arc_into(
+            &mut path,
+            &Matrix::identity(),
+            10.0,
+            20.0,
+            5.0,
+            start,
+            end,
+            ccw,
+        );
+        path.into_iter().flat_map(|s| s.pts).collect()
+    }
+
+    fn near(a: (f32, f32), b: (f32, f32)) -> bool {
+        (a.0 - b.0).abs() < 1e-4 && (a.1 - b.1).abs() < 1e-4
+    }
+
+    #[test]
+    fn arcs_flatten_into_64_segments_per_turn_at_least_6() {
+        use std::f32::consts::{FRAC_PI_2, PI, TAU};
+        // A full turn: 64 segments (65 points) from and back to angle 0.
+        let full = arc(0.0, TAU, false);
+        assert_eq!(full.len(), 65);
+        assert!(near(full[0], (15.0, 20.0)) && near(full[64], (15.0, 20.0)));
+        assert!(
+            near(full[16], (10.0, 25.0)),
+            "a quarter turn clockwise is +y"
+        );
+        // Half a turn: 32; a quarter: 16; a sliver: the minimum 6.
+        assert_eq!(arc(0.0, PI, false).len(), 33);
+        assert_eq!(arc(0.0, FRAC_PI_2, false).len(), 17);
+        let sliver = arc(0.0, 0.01, false);
+        assert_eq!(sliver.len(), 7);
+        assert!(near(
+            sliver[6],
+            (10.0 + 5.0 * 0.01_f32.cos(), 20.0 + 5.0 * 0.01_f32.sin())
+        ));
+        // Points are evenly spaced in angle: the midpoint of a half turn is at a quarter.
+        assert!(near(arc(0.0, PI, false)[16], (10.0, 25.0)));
+        // More than a turn draws one turn, ending where it started.
+        let laps = arc(0.0, 7.0 * PI, false);
+        assert_eq!(laps.len(), 65);
+        assert!(near(laps[64], (15.0, 20.0)));
+        // A radius of zero or less adds nothing.
+        let mut path = Vec::new();
+        arc_into(
+            &mut path,
+            &Matrix::identity(),
+            1.0,
+            1.0,
+            0.0,
+            0.0,
+            1.0,
+            false,
+        );
+        arc_into(
+            &mut path,
+            &Matrix::identity(),
+            1.0,
+            1.0,
+            -2.0,
+            0.0,
+            1.0,
+            false,
+        );
+        assert!(path.is_empty());
+    }
+
+    #[test]
+    fn arc_sweeps_follow_the_direction_and_wrap_once() {
+        use std::f32::consts::{FRAC_PI_2, PI};
+        // Clockwise from pi to 0 wraps forward through 3pi/2 (up, -y).
+        let cw = arc(PI, 0.0, false);
+        assert_eq!(cw.len(), 33);
+        assert!(
+            near(cw[0], (5.0, 20.0)) && near(cw[16], (10.0, 15.0)) && near(cw[32], (15.0, 20.0))
+        );
+        // Anticlockwise from 0 to pi wraps back through -pi/2 (up).
+        let ccw = arc(0.0, PI, true);
+        assert_eq!(ccw.len(), 33);
+        assert!(near(ccw[16], (10.0, 15.0)) && near(ccw[32], (5.0, 20.0)));
+        // Anticlockwise from pi/2 down to -pi/2 needs no wrap: through 0 (+x).
+        let right = arc(FRAC_PI_2, -FRAC_PI_2, true);
+        assert_eq!(right.len(), 33);
+        assert!(near(right[16], (15.0, 20.0)));
+        // Equal angles are an empty sweep in either direction: the start point only.
+        for ccw in [false, true] {
+            let still = arc(1.0, 1.0, ccw);
+            assert_eq!(still.len(), 7);
+            assert!(still.iter().all(|&p| near(p, still[0])), "{ccw}");
+        }
+    }
+
+    #[test]
+    fn paths_continue_from_the_current_point() {
+        let mut path = Vec::new();
+        append_point(&mut path, (1.0, 1.0));
+        append_point(&mut path, (2.0, 1.0));
+        assert_eq!(
+            path.len(),
+            1,
+            "a bare lineTo opens the path, the next one extends it"
+        );
+        assert_eq!(path[0].pts, [(1.0, 1.0), (2.0, 1.0)]);
+        path[0].closed = true;
+        append_point(&mut path, (5.0, 5.0));
+        assert_eq!(path.len(), 2);
+        assert_eq!(
+            path[1].pts,
+            [(1.0, 1.0), (5.0, 5.0)],
+            "from the closed subpath's start"
+        );
+        assert!(!path[1].closed);
+        // An arc after a moveTo connects from it.
+        let mut arcs = vec![SubPath {
+            pts: vec![(0.0, 0.0)],
+            closed: false,
+        }];
+        arc_into(
+            &mut arcs,
+            &Matrix::identity(),
+            10.0,
+            0.0,
+            1.0,
+            0.0,
+            1.0,
+            false,
+        );
+        assert_eq!(arcs.len(), 1);
+        assert_eq!(arcs[0].pts[0], (0.0, 0.0));
+        assert_eq!(arcs[0].pts[1], (11.0, 0.0));
+    }
+
+    #[test]
+    fn glyphs_are_placed_by_their_advances_and_mark_offsets() {
+        // A combining acute over `q` (no precomposed glyph) is positioned by its shaping
+        // offsets; each glyph traces at x + the advances so far + its x offset, baseline
+        // y - its y offset.
+        let st = State {
+            font_px: 40.0,
+            font_families: vec!["serif".to_string()],
+            ..State::default()
+        };
+        let face = resolve_face(&st.font_families);
+        let shaped = face.shape("q\u{301}x");
+        assert!(
+            shaped.iter().any(|g| g.x_offset != 0 || g.y_offset != 0),
+            "{shaped:?}"
+        );
+        let scale = 40.0 / f32::from(face.units_per_em());
+        let ttf = crate::glyph::outline_face(&face);
+        let mut sink = FlattenSink {
+            ctm: st.ctm,
+            subs: Vec::new(),
+            cur: Vec::new(),
+        };
+        let mut pen = 3.0;
+        for g in &shaped {
+            let at = crate::glyph::Pen {
+                origin_x: pen + g.x_offset as f32 * scale,
+                baseline_y: 50.0 - g.y_offset as f32 * scale,
+                scale,
+            };
+            crate::glyph::trace_glyph(&ttf, g.glyph_id, at, &mut sink);
+            sink.flush();
+            pen += g.x_advance as f32 * scale;
+        }
+        let got = glyph_subpaths(&st, "q\u{301}x", 3.0, 50.0);
+        assert_eq!(got.len(), sink.subs.len());
+        for (a, b) in got.iter().zip(&sink.subs) {
+            assert_eq!(a.pts, b.pts);
+        }
+        // The mark sits above the q's x-height, not below the baseline.
+        let mark_top = got
+            .iter()
+            .flat_map(|s| &s.pts)
+            .map(|p| p.1)
+            .fold(f32::INFINITY, f32::min);
+        assert!(mark_top < 50.0 - 20.0, "{mark_top}");
     }
 
     #[test]

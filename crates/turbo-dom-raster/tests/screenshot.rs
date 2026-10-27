@@ -598,3 +598,76 @@ fn screenshot_renders_fractionally_positioned_one_pixel_border() {
         assert_eq!(image.get_pixel(2, y).0, [255, 255, 255, 255]);
     }
 }
+
+#[test]
+fn svg_format_dispatch_is_the_svg_document_bytes() {
+    let vp = Viewport {
+        width: 320,
+        height: 240,
+    };
+    let bytes = turbo_dom_raster::screenshot(PAGE, vp, Format::Svg).expect("svg");
+    assert_eq!(bytes, screenshot_svg(PAGE, vp).expect("svg").into_bytes());
+}
+
+#[test]
+fn measure_text_resolves_the_family_list_against_the_bundled_faces() {
+    use turbo_dom_raster::measure_text;
+    let (serif, h) = measure_text("Hello world", "serif", 20.0, false);
+    let (mono, _) = measure_text("Hello world", "monospace", 20.0, false);
+    assert!(serif > 0.0 && mono > 0.0 && serif != mono, "{serif} {mono}");
+    assert!((h - 24.0).abs() < 1e-4, "line height is 1.2 x size: {h}");
+    // Quotes and whitespace around each family are stripped; the first resolvable
+    // family wins.
+    assert_eq!(
+        measure_text(
+            "Hello world",
+            r#" 'Liberation Serif' , "Fira Code""#,
+            20.0,
+            false
+        )
+        .0,
+        serif
+    );
+    assert_eq!(
+        measure_text("Hello world", "nope, serif", 20.0, false).0,
+        serif
+    );
+    // No (resolvable) family falls back to the first bundled face (Inter).
+    let inter = measure_text("Hello world", "Inter", 20.0, false).0;
+    assert_eq!(measure_text("Hello world", "", 20.0, false).0, inter);
+    assert_eq!(measure_text("Hello world", " , ''", 20.0, false).0, inter);
+    assert_eq!(
+        measure_text("Hello world", "Not A Font", 20.0, false).0,
+        inter
+    );
+    // Width scales with the size; empty text is zero wide.
+    let double = measure_text("Hello world", "serif", 40.0, false).0;
+    assert!((double - 2.0 * serif).abs() < 0.01, "{double} {serif}");
+    assert_eq!(measure_text("", "serif", 20.0, false).0, 0.0);
+}
+
+#[test]
+fn measure_text_with_system_fonts_still_measures() {
+    // The installed set varies by host; whatever resolves (an installed face or the
+    // bundled fallback) measures a non-zero width at the 1.2 x size line height.
+    let (w, h) = turbo_dom_raster::measure_text("Hello", "Arial, sans-serif", 16.0, true);
+    assert!(w > 0.0, "{w}");
+    assert!((h - 19.2).abs() < 1e-4, "{h}");
+}
+
+#[test]
+fn serif_text_paints_in_png_and_svg() {
+    // The bundled serif faces are TrueType (quadratic outlines): both painters trace them.
+    let page = r#"<html><body style="margin:0;font-family:serif;font-size:40px"><p style="margin:0">Ag</p></body></html>"#;
+    let vp = Viewport {
+        width: 100,
+        height: 60,
+    };
+    let png = screenshot_png(page, vp).expect("png");
+    let pm = tiny_skia::Pixmap::decode_png(&png).expect("decode");
+    let inked = pm.pixels().iter().filter(|p| p.red() < 128).count();
+    assert!(inked > 50, "{inked}");
+    let svg = screenshot_svg(page, vp).expect("svg");
+    let d = svg.split("<path d=\"").nth(1).expect("a glyph path");
+    assert!(d.contains(" Q"), "quadratic segments: {d}");
+}

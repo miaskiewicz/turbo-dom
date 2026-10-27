@@ -336,7 +336,8 @@ fn data_uri_url_tokens(s: &str) -> Vec<String> {
         if name.starts_with("data:") {
             out.push(name.to_string());
         }
-        i = (i + rel + "url(".len()).max(j);
+        // `j` started at the token and only moved forward.
+        i = j;
     }
     out
 }
@@ -447,40 +448,33 @@ pub fn decode(bytes: &[u8]) -> Option<DecodedImage> {
     if size_point && layout_image::probe(bytes).is_none() {
         return None;
     }
-    let rgba = match format {
-        Some(Format::Png) => match layout_image::decode_png_rgba(bytes) {
-            Some(rgba) => rgba,
-            None => return size_only(bytes),
-        },
-        Some(Format::Avif) => match crate::avif::decode(bytes) {
-            Some(rgba) => rgba,
-            // Without the `avif` feature (or on a bitstream error) the box still lays out
-            // at the image's real size and paints as the placeholder.
-            None => return size_only(bytes),
-        },
-        Some(Format::Jxl) => match crate::jxl::decode(bytes) {
-            Some(rgba) => rgba,
-            // Without the `jxl` feature (or on a codestream error) the box still lays out
-            // at the image's real size (the shared header probe) and paints as the
-            // placeholder.
-            None => return size_only(bytes),
-        },
+    let pixels = match format {
+        Some(Format::Png) => layout_image::decode_png_rgba(bytes),
+        Some(Format::Avif) => crate::avif::decode(bytes),
+        Some(Format::Jxl) => crate::jxl::decode(bytes),
         // The entry a browser shows: a PNG entry through the shared PNG decoder (the
         // `image` crate's ICO decoder rejects non-RGBA PNG entries, which Chrome shows),
         // else the `image` crate's ICO decoder — format forced, as a cursor (resource
         // type 2) has the same layout but not its magic.
         Some(Format::Ico) => match layout_image::ico_entry(bytes) {
-            Some(entry) if entry.png => layout_image::decode_png_rgba(entry.data)?,
+            Some(entry) if entry.png => layout_image::decode_png_rgba(entry.data),
             _ => image_rgba(image::load_from_memory_with_format(
                 bytes,
                 image::ImageFormat::Ico,
-            ))?,
+            )),
         },
-        _ => match image_rgba(image::load_from_memory(bytes)) {
-            Some(rgba) => rgba,
-            None if size_point => return size_only(bytes),
-            None => return None,
-        },
+        _ => image_rgba(image::load_from_memory(bytes)),
+    };
+    let Some(rgba) = pixels else {
+        // A sized PNG/JPEG/GIF/WebP whose pixels do not decode, an AVIF without the `avif`
+        // feature or a JPEG XL without `jxl` (or either on a bitstream / codestream error)
+        // still lays out at the image's real size (the shared header probe) and paints as
+        // the placeholder; any other undecodable image is dropped.
+        return if size_point || matches!(format, Some(Format::Avif | Format::Jxl)) {
+            size_only(bytes)
+        } else {
+            None
+        };
     };
     let probed = layout_image::probe(bytes);
     let size = raster_intrinsic(probed, &rgba);
@@ -585,12 +579,13 @@ impl DecodedImage {
     /// Resize into a `w × h` premultiplied pixmap ready to `draw_pixmap` into the
     /// fragment box. `None` on a degenerate target size.
     pub fn scaled_pixmap(&self, w: u32, h: u32) -> Option<Pixmap> {
-        if w == 0 || h == 0 || self.width == 0 || self.height == 0 {
+        // `None` for a zero-size target.
+        let mut pm = Pixmap::new(w, h)?;
+        if self.width == 0 || self.height == 0 {
             return None;
         }
         let src = image::RgbaImage::from_raw(self.width, self.height, self.rgba.clone())?;
         let scaled = image::imageops::resize(&src, w, h, image::imageops::FilterType::Triangle);
-        let mut pm = Pixmap::new(w, h)?;
         for (src, dst) in scaled.pixels().zip(pm.pixels_mut()) {
             let [r, g, b, a] = src.0;
             // premul(c,a) ≤ a always, so the premultiplied invariant holds.
@@ -751,6 +746,8 @@ mod tests {
             b"foo",
             b"foobar",
             &[0u8, 255, 1, 254, 128],
+            // `+` and `/`, the two non-alphanumeric sextets.
+            &[0xfb, 0xff],
         ] {
             assert_eq!(base64_decode(&base64(v)).unwrap(), v, "roundtrip {v:?}");
         }
@@ -763,6 +760,8 @@ mod tests {
     fn percent_decode_and_css_unescape() {
         assert_eq!(percent_decode("fill=%23fff"), b"fill=#fff");
         assert_eq!(percent_decode("100%"), b"100%"); // stray % passed through
+                                                     // Hex digits in either case; a `%` before non-hex digits is passed through.
+        assert_eq!(percent_decode("%2f%2F%7e%zz%4"), b"//~%zz%4");
         assert_eq!(css_unescape(r#"<svg a=\"b\">"#), r#"<svg a="b">"#);
     }
 
@@ -778,6 +777,11 @@ mod tests {
         assert!(toks[0].starts_with("data:image/svg+xml;utf8,<svg"));
         assert!(toks[0].ends_with("</svg>"), "kept whole: {}", toks[0]);
         assert_eq!(toks[1], "data:image/png;base64,iVBORw0=");
+        // Whitespace between `url(` and the quote is skipped (the token is the same).
+        assert_eq!(
+            data_uri_url_tokens(r#"a{mask:url(  'data:x,1') url( "data:y,2")}"#),
+            ["data:x,1", "data:y,2"]
+        );
     }
 
     #[test]
@@ -804,6 +808,239 @@ mod tests {
             .get(key)
             .expect("data-uri mask decoded under its key");
         assert_eq!((img.width, img.height), (4, 4));
+    }
+
+    use super::{add_img_data_urls, add_inline_svg_assets, AssetResolver, DecodedImage};
+    use turbo_dom_layout::image::Intrinsic;
+    use turbo_dom_layout::ImageResolver;
+
+    const SQUARE: &str = r#"<svg xmlns="http://www.w3.org/2000/svg" width="3" height="2"/>"#;
+
+    #[test]
+    fn url_tokens_read_unquoted_quoted_escaped_and_cut_off_values() {
+        let toks = |s: &str| data_uri_url_tokens(s);
+        assert_eq!(
+            toks("a{b:url(data:image/png;base64,QUJD)}"),
+            ["data:image/png;base64,QUJD"]
+        );
+        assert_eq!(
+            toks(r#"url( "data:a,\"x\")" ) url(data:b,1)"#),
+            [r#"data:a,\"x\")"#, "data:b,1"]
+        );
+        // Cut off by the end of the text: what was read so far.
+        assert_eq!(toks("url(\"data:c,1"), ["data:c,1"]);
+        assert_eq!(toks("url(data:d,2"), ["data:d,2"]);
+        assert_eq!(toks("url("), Vec::<String>::new());
+        assert_eq!(toks("url(   "), Vec::<String>::new());
+        assert_eq!(toks("url('"), Vec::<String>::new());
+        assert_eq!(toks("url( x.png ) url(\"y\")"), Vec::<String>::new());
+    }
+
+    #[test]
+    fn percent_escapes_decode_anywhere_with_two_hex_digits_after() {
+        assert_eq!(percent_decode("abcde%41"), b"abcdeA");
+        assert_eq!(percent_decode("%4"), b"%4");
+        assert_eq!(percent_decode("x%41%"), b"xA%");
+    }
+
+    #[test]
+    fn svg_is_sniffed_from_its_start_or_an_xml_or_doctype_preamble() {
+        let svg = r#"<svg xmlns="http://www.w3.org/2000/svg" width="3" height="2"/>"#;
+        for doc in [
+            svg.to_string(),
+            format!(r#"<?xml version="1.0"?>{svg}"#),
+            format!("<!DOCTYPE svg>{svg}"),
+            format!(
+                "  <?XML version='1.0'?>\n<!-- c -->{}",
+                svg.to_uppercase()
+                    .replace("HTTP://WWW.W3.ORG/2000/SVG", "http://www.w3.org/2000/svg")
+            ),
+        ] {
+            assert!(super::is_svg(doc.as_bytes()), "{doc}");
+        }
+        assert_eq!(
+            decode(format!(r#"<?xml version="1.0"?>{svg}"#).as_bytes())
+                .map(|i| (i.width, i.height)),
+            Some((3, 2))
+        );
+        assert_eq!(
+            decode(format!("<!DOCTYPE svg>{svg}").as_bytes()).map(|i| (i.width, i.height)),
+            Some((3, 2))
+        );
+        // `<svg` text in a document that starts otherwise, without a preamble, is not SVG;
+        // nor is an XML preamble without `<svg`.
+        assert!(!super::is_svg(b"<html><svg></svg></html>"));
+        assert!(!super::is_svg(b"<?xml version='1.0'?><note/>"));
+        assert!(!super::is_svg(b""));
+        // Only the first 1024 bytes are looked at.
+        assert!(!super::is_svg(
+            format!("<!doctype x>{}{svg}", " ".repeat(1024)).as_bytes()
+        ));
+    }
+
+    #[test]
+    fn a_png_carrying_xml_metadata_still_decodes_as_png() {
+        // An XMP-style text chunk with an XML preamble (and no `<svg`) right after the
+        // header: the bytes are a PNG, not an SVG.
+        let mut img = image::RgbaImage::new(2, 1);
+        img.put_pixel(1, 0, image::Rgba([1, 2, 3, 255]));
+        let mut png = std::io::Cursor::new(Vec::new());
+        img.write_to(&mut png, image::ImageFormat::Png).unwrap();
+        let png = png.into_inner();
+        let text = b"XML:com.adobe.xmp\0<?xml version='1.0'?><x:xmpmeta/>";
+        let crc = |data: &[u8]| {
+            let mut c = 0xffff_ffff_u32;
+            for &b in data {
+                c ^= u32::from(b);
+                for _ in 0..8 {
+                    c = if c & 1 == 1 {
+                        0xedb8_8320 ^ (c >> 1)
+                    } else {
+                        c >> 1
+                    };
+                }
+            }
+            !c
+        };
+        let mut chunk = (text.len() as u32).to_be_bytes().to_vec();
+        let body = [&b"tEXt"[..], text].concat();
+        chunk.extend_from_slice(&body);
+        chunk.extend_from_slice(&crc(&body).to_be_bytes());
+        // After the 8-byte signature and the 25-byte IHDR chunk.
+        let with_text = [&png[..33], &chunk, &png[33..]].concat();
+        let decoded = decode(&with_text).expect("still a PNG");
+        assert_eq!((decoded.width, decoded.height), (2, 1));
+        assert_eq!(decoded.rgba, [0, 0, 0, 0, 1, 2, 3, 255]);
+    }
+
+    #[test]
+    fn scaled_pixmaps_need_pixels_and_a_target() {
+        let red = DecodedImage {
+            width: 1,
+            height: 1,
+            rgba: vec![255, 0, 0, 128],
+            intrinsic: Intrinsic::new(1, 1, true),
+        };
+        let pm = red.scaled_pixmap(2, 3).unwrap();
+        assert_eq!((pm.width(), pm.height()), (2, 3));
+        let p = pm.pixel(1, 2).unwrap();
+        assert_eq!(
+            [p.red(), p.green(), p.blue(), p.alpha()],
+            [128, 0, 0, 128],
+            "premultiplied"
+        );
+        assert!(red.scaled_pixmap(0, 3).is_none());
+        assert!(red.scaled_pixmap(3, 0).is_none());
+        for (width, height) in [(0, 0), (0, 5), (5, 0)] {
+            let empty = DecodedImage {
+                width,
+                height,
+                rgba: Vec::new(),
+                intrinsic: Intrinsic::new(2, 2, true),
+            };
+            assert!(empty.scaled_pixmap(4, 4).is_none(), "{width}x{height}");
+        }
+    }
+
+    #[test]
+    fn layout_sizes_through_the_resolver_and_never_gets_bytes() {
+        let mut decoded = DecodedAssets::new();
+        decoded.insert("a.svg".into(), decode(SQUARE.as_bytes()).unwrap());
+        let resolver = AssetResolver(&decoded);
+        assert_eq!(resolver.resolve("a.svg"), None);
+        assert_eq!(
+            resolver.intrinsic("a.svg"),
+            Some(Intrinsic::new(3, 2, true))
+        );
+        assert_eq!(resolver.intrinsic("b.svg"), None);
+    }
+
+    #[test]
+    fn img_data_urls_decode_only_src_bearing_data_images_not_already_supplied() {
+        let tree = turbo_dom_layout::parse_html_tree(concat!(
+            r#"<img alt="no src"><img src="b.png">"#,
+            r#"<img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='5' height='4'/%3E">"#,
+            r#"<img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='7' height='7'/%3E">"#,
+            r#"<img src="data:,not-an-image">"#,
+            r#"<embed src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='9'/%3E">"#,
+            r#"<svg><image src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8'/%3E"/></svg>"#,
+        ));
+        let kept =
+            "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='7' height='7'/%3E";
+        let mut decoded = DecodedAssets::new();
+        decoded.insert(kept.into(), decode(SQUARE.as_bytes()).unwrap());
+        add_img_data_urls(&mut decoded, &tree);
+        assert_eq!(decoded.len(), 2, "{:?}", decoded.keys().collect::<Vec<_>>());
+        let added = &decoded["data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='5' height='4'/%3E"];
+        assert_eq!((added.width, added.height), (5, 4));
+        assert_eq!(
+            (decoded[kept].width, decoded[kept].height),
+            (3, 2),
+            "caller bytes win"
+        );
+    }
+
+    #[test]
+    fn inline_svg_assets_keep_caller_bytes_and_skip_undecodable_sources() {
+        let caller: DecodedImage = decode(SQUARE.as_bytes()).unwrap();
+        let mut decoded = DecodedAssets::new();
+        decoded.insert("turbo-inline-svg-0".into(), caller);
+        let svg =
+            |w: u32| format!(r#"<svg xmlns="http://www.w3.org/2000/svg" width="{w}" height="1"/>"#);
+        add_inline_svg_assets(
+            &mut decoded,
+            &[
+                ("turbo-inline-svg-0".into(), svg(9)),
+                ("turbo-inline-svg-1".into(), svg(6)),
+                ("turbo-inline-svg-2".into(), "<svg".into()),
+            ],
+        );
+        assert_eq!(decoded["turbo-inline-svg-0"].width, 3);
+        assert_eq!(decoded["turbo-inline-svg-1"].width, 6);
+        assert!(!decoded.contains_key("turbo-inline-svg-2"));
+    }
+
+    #[test]
+    fn svg_markup_keeps_xml_whitespace_and_drops_other_controls() {
+        let (_, assets) = converted("<svg><text>a\tb\nc\rd\u{1}e\u{fffe}\u{ffff}f</text></svg>");
+        assert!(assets[0].1.contains("<text>a\tb\nc\nd"), "{}", assets[0].1);
+        assert!(assets[0].1.contains("ef</text>"), "{}", assets[0].1);
+    }
+
+    #[test]
+    fn undecodable_avif_and_jpeg_xl_lay_out_at_their_size_without_pixels() {
+        let fixtures = concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../turbo-dom-layout/tests/fixtures/images"
+        );
+        // A truncated JPEG XL keeps its size header; an AVIF whose AV1 stream starts with
+        // an OBU header that has its forbidden bit set keeps its `ispe`.
+        let jxl = std::fs::read(format!("{fixtures}/jxl/modular_rle_fast_path.jxl")).unwrap();
+        let mut avif = std::fs::read(format!("{fixtures}/formats/q.avif")).unwrap();
+        let stream = turbo_dom_layout::image::avif_payload(&avif).unwrap().color;
+        let at = avif
+            .windows(stream.len())
+            .position(|w| w == &stream[..])
+            .unwrap();
+        avif[at] = 0xff;
+        for (label, bytes) in [("jxl", &jxl[..12]), ("avif", &avif[..])] {
+            let probed = turbo_dom_layout::image::probe(bytes).expect(label);
+            let img = decode(bytes).expect(label);
+            assert_eq!(
+                (img.width, img.height, img.rgba.len()),
+                (0, 0, 0),
+                "{label}"
+            );
+            assert_eq!(
+                (img.intrinsic.width, img.intrinsic.height),
+                (probed.width, probed.height),
+                "{label}"
+            );
+            assert!(img.intrinsic.has_alpha, "{label}");
+        }
+        // Other undecodable images are dropped.
+        assert!(decode(b"\x89PNG\r\n\x1a\n broken").is_none());
+        assert!(decode(b"GIF89a").is_none());
     }
 
     #[test]
