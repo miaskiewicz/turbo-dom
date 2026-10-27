@@ -3,5 +3,15 @@
  "reason": "a block inside an inline splits it on the generic policy (block-in-inline, CSS 2.1 §9.2.1.1) instead of becoming a shrink-to-fit atomic; new pinned input tools/parity/inputs/extra/block-in-inline.html (its layoutBoxes match Chrome 156); no existing corpus output changes",
  "control": "scripts/html-document-chrome-control.mjs (turbo-dom#101 cases) -> crates/turbo-dom-layout/tests/fixtures/html_document_chrome156.json",
  "changes": {},
- "added": {"html2pdf-extra": ["extra-block-in-inline.boxes.json", "extra-block-in-inline.pdf", "extra-block-in-inline.ua.pdf"]}
+ "added": {
+  "html2pdf-extra": [
+   "extra-block-in-inline.boxes.json",
+   "extra-block-in-inline.pdf",
+   "extra-block-in-inline.ua.pdf"
+  ],
+  "surf-extra": [
+   "static-extra-block-in-inline.png",
+   "static-extra-block-in-inline.svg"
+  ]
+ }
 }
