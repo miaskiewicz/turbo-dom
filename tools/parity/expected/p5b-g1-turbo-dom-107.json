@@ -1,0 +1,21 @@
+{
+ "id": "turbo-dom#107",
+ "reason": "turbo-dom-raster paints nothing (not the grey placeholder) for an image laid out at its size whose pixels do not decode, as Chrome 156 does; a truncated AVIF is broken (probe needs the primary item's iloc extents in the data). Fresh-target before/after builds: turbo-dom f18eb54 -> a045ec1, html2pdf cf04ba2 napi (plain + svg) and the static surf harness (turbo-dom-raster default features, 133 inputs). html2pdf/svg/extra: 0 changes. surf static: conformance 57/58 embed a 120x60 GIF with an empty LZW stream (Chrome: loads, paints nothing); surf-extra img-png-truncated (PNG cut inside IDAT). P5b-G1.",
+ "control": "crates/turbo-dom-raster/tests/fixtures/raster_img_chrome156.json (scripts/raster-img-chrome-control.mjs, Chrome for Testing 156.0.8078.4) undecodable-* cases; crates/turbo-dom-layout/tests/fixtures/image_truncation_chrome156.json formats/*.avif",
+ "e2e": "crates/turbo-dom-raster/tests/raster_img_chrome.rs undecodable_images_paint_nothing_like_chrome_156; crates/turbo-dom-layout/tests/image_truncation_chrome.rs the_avif_probes_report_a_size_once_the_primary_item_is_in_the_data",
+ "changes": {
+  "html2pdf": [],
+  "html2pdf-svg": [],
+  "html2pdf-extra": [],
+  "surf": [
+   "static-turbo-html2pdf__benches__conformance__fixtures__57-img-intrinsic-in-flex.png",
+   "static-turbo-html2pdf__benches__conformance__fixtures__57-img-intrinsic-in-flex.svg",
+   "static-turbo-html2pdf__benches__conformance__fixtures__58-object-fit-cover.png",
+   "static-turbo-html2pdf__benches__conformance__fixtures__58-object-fit-cover.svg"
+  ],
+  "surf-extra": [
+   "static-extra-img-png-truncated.png",
+   "static-extra-img-png-truncated.svg"
+  ]
+ }
+}
