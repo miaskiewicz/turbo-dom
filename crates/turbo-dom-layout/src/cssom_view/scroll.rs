@@ -519,13 +519,10 @@ pub fn expose(start: f64, length: f64, current: f64, visible: f64, behaviors: [A
     );
     let end = start + length;
     let intersection = (end.min(current + visible) - start.max(current)).max(0.0);
-    let mut behavior = if intersection == length {
+    // A target covering the whole visible range counts as fully visible: Chrome 156
+    // still centers it for `center` (miaskiewicz/turbo-dom#125).
+    let mut behavior = if intersection == length || intersection == visible {
         behaviors[0]
-    } else if intersection == visible {
-        match behaviors[0] {
-            Align::Center => Align::None,
-            other => other,
-        }
     } else if intersection > 0.0 {
         behaviors[2]
     } else {
@@ -792,7 +789,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "turbo-dom#125: fails until the fix"]
     fn scroll_into_view_offsets_match_chrome_156() {
         let case = case("into-view");
         let scroller = case.id("s");
