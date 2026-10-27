@@ -112,7 +112,7 @@ engine, macOS arm64, `--include-files 'crates/<crate>/src/*'`), rounded down:
 
 | crate | measured | gate |
 |---|---|---|
-| turbo-dom | 100% (P5-cov-core; 88.33% (6327/7163) at 0.6.0) | 100 |
+| turbo-dom | 100% (P5-cov-core; 88.33% (6327/7163) at 0.6.0); step 4: 98.98% (11859/11981) after the bug-fix round → 100% (11912/11912) | 100 |
 | turbo-dom-layout | 90.63% (8450/9324) | 90 |
 | turbo-dom-raster | 77.23% (1184/1533); P5-cov: 100% (1533/1533) | 100 |
 | turbo-dom-raster `--features avif` | P5-cov: 79.63% (1337/1679) → 100% (1666/1666) | 100 |
@@ -138,6 +138,15 @@ code the crate provably never runs (upstream tokenizer options it never sets, ht
 paths that never fire, impossible node variants) was removed or became `unreachable!()`
 with its proof in place. Gaps this surfaced were filed and fixed against the control:
 turbo-dom#91, #92, #96, #98.
+
+The bug-fix round's CSSOM work (turbo-dom#90 / #97: `rtdom::css_shorthand`) left it at 98.98%;
+step 4 brought it back to 100% with new rows in the CSSOM controls
+(`scripts/make-css-{shorthand,longhand}-cases.py`, recaptured in Chrome 156), direct tests of
+the table queries and of embedder-admitted values (`tests/css_shorthand_api.rs`), and the
+module's provably dead branches removed or `unreachable!()`. turbo-dom#115 (a `var()` nested
+in `calc()` was rejected) was fixed against the control; the rows still spelled differently —
+math functions, `hsl()` hues, relative colors and a few shorthand spellings, shared with the
+npm port — are `KNOWN_GAPS` under turbo-dom#117.
 
 ## Parity harness
 

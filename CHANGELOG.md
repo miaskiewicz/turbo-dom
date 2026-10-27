@@ -7,6 +7,21 @@ at the time); this file reconstructs them from history.
 
 ## [Unreleased]
 
+### Fixed — a `var()` nested in `calc()` is a pending substitution (P5-cov, miaskiewicz/turbo-dom#115, Chrome 156 control)
+- `rtdom::css_shorthand::longhand_value` / shorthand expansion rejected a value whose `var()` /
+  `env()` / `attr()` sits inside another function or a parenthesis block
+  (`width: calc(var(--a) + 1px)`: `""`, Chrome keeps `calc(var(--a) + 1px)`). The substitution
+  scan now reads every nested block to its end.
+
+### Tests — turbo-dom line coverage back to 100% (P5-cov step 4)
+- New CSSOM control rows (`scripts/make-css-{shorthand,longhand}-cases.py`, Chrome 156; the
+  probe also reads a shorthand's `getPropertyPriority`), `tests/css_shorthand_api.rs`
+  (`is_shorthand` / `shorthands_of` against Chrome's table, `shorthand_value` of a longhand,
+  embedder-admitted values), and `css_shorthand`'s provably dead branches removed or
+  `unreachable!()`: 98.98% → 100% (11912/11912). Rows Chrome spells differently in both
+  `rtdom::css_shorthand` and `src/runtime/css-shorthand.mjs` are `KNOWN_GAPS` under
+  miaskiewicz/turbo-dom#117.
+
 ### Tests — parity checkpoint `b-fixed`
 - `tools/parity/manifests/b-fixed`: every corpus (html2pdf, html2pdf-svg, html2pdf-extra, surf,
   surf-extra) after the bug-fix round, at turbo-dom f860fea / turbo-html2pdf 55f623a /
