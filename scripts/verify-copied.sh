@@ -116,6 +116,7 @@ OWNED="$OWNED css_shorthand.rs css_shorthand_tests.rs css_longhand_tests.rs svg_
 OWNED="$OWNED dom_exception_realm_probe.js dom_exception_realm_cases.json dom_exception_realm_chrome156.json dom_exception_realm_tests.rs custom_elements_collect_tests.rs html_image_srcset_probe.js html_image_srcset_cases.json html_image_srcset_chrome156.json html_image_srcset_tests.rs reflected_urls_probe.js reflected_urls_cases.json reflected_urls_chrome156.json reflected_urls_tests.rs"
 OWNED="$OWNED dom_ownership_alloc_tests.rs dom_ownership_scale_tests.rs"
 OWNED="$OWNED native_guards_probe.js native_guards_chrome156.json native_guards_tests.rs close_watchers_probe.js close_watchers_chrome156.json close_watchers_tests.rs host_api_tests.rs"
+OWNED="$OWNED activation_granted_probe.js activation_granted_chrome156.json activation_granted_tests.rs"
 
 repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 turbo_test=${TURBO_TEST_REPO:-$repo_root/../turbo-test}

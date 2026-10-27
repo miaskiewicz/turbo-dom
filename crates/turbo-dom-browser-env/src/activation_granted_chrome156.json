@@ -1,0 +1,518 @@
+{
+  "browser": "Chrome/156.0.8078.47",
+  "v8": "15.6.75.19",
+  "probe": "activation_granted_probe.js",
+  "probeSha256": "0e92e1775775372288cd9d14bd79716fa3a1c622f7c57119024e3eafb1e2d125",
+  "collectorSha256": "3f964d2cdf0ec8101870a776aaffc3b7dc4522306959c4a40761057beb255eb8",
+  "flags": [
+    "--headless=new",
+    "--remote-debugging-pipe",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "--disable-background-timer-throttling",
+    "--disable-renderer-backgrounding",
+    "--disable-backgrounding-occluded-windows",
+    "about:blank"
+  ],
+  "result": {
+    "inputPicker": {
+      "result": [
+        "undefined",
+        [
+          "NotAllowedError",
+          "Failed to execute 'showPicker' on 'HTMLInputElement': HTMLInputElement::showPicker() requires user activation."
+        ]
+      ],
+      "log": []
+    },
+    "selectNotRendered": {
+      "result": [
+        [
+          "NotSupportedError",
+          "Failed to execute 'showPicker' on 'HTMLSelectElement': showPicker() requires the select is rendered."
+        ],
+        [
+          "NotSupportedError",
+          "Failed to execute 'showPicker' on 'HTMLSelectElement': showPicker() requires the select is rendered."
+        ],
+        [
+          "NotSupportedError",
+          "Failed to execute 'showPicker' on 'HTMLSelectElement': showPicker() requires the select is rendered."
+        ],
+        "undefined"
+      ],
+      "log": []
+    },
+    "request": {
+      "result": [
+        {
+          "element": null,
+          "fullscreen": false,
+          "webkit": null,
+          "matches": [],
+          "modal": []
+        },
+        [
+          "ok",
+          "undefined"
+        ],
+        {
+          "element": "f",
+          "fullscreen": true,
+          "webkit": "f",
+          "matches": [
+            "f"
+          ],
+          "modal": [
+            "f"
+          ]
+        }
+      ],
+      "log": [
+        [
+          "fullscreenchange",
+          "f"
+        ]
+      ]
+    },
+    "nested": {
+      "result": [
+        [
+          "ok",
+          "undefined"
+        ],
+        {
+          "element": "g",
+          "fullscreen": true,
+          "webkit": "g",
+          "matches": [
+            "f",
+            "g"
+          ],
+          "modal": [
+            "g"
+          ]
+        },
+        [
+          "ok",
+          "undefined"
+        ],
+        {
+          "element": "f",
+          "fullscreen": true,
+          "webkit": "f",
+          "matches": [
+            "f"
+          ],
+          "modal": [
+            "f"
+          ]
+        },
+        [
+          "ok",
+          "undefined"
+        ],
+        {
+          "element": null,
+          "fullscreen": false,
+          "webkit": null,
+          "matches": [],
+          "modal": []
+        },
+        [
+          "reject",
+          "TypeError",
+          "Failed to execute 'exitFullscreen' on 'Document': Document not active"
+        ]
+      ],
+      "log": [
+        [
+          "fullscreenchange",
+          "f"
+        ],
+        [
+          "fullscreenchange",
+          "g"
+        ],
+        [
+          "fullscreenchange",
+          "g"
+        ],
+        [
+          "fullscreenchange",
+          "f"
+        ]
+      ]
+    },
+    "rerequest": {
+      "result": [
+        [
+          "ok",
+          "undefined"
+        ],
+        {
+          "element": "f",
+          "fullscreen": true,
+          "webkit": "f",
+          "matches": [
+            "f"
+          ],
+          "modal": [
+            "f"
+          ]
+        },
+        [
+          "ok",
+          "undefined"
+        ],
+        {
+          "element": "f",
+          "fullscreen": true,
+          "webkit": "f",
+          "matches": [
+            "f",
+            "g"
+          ],
+          "modal": [
+            "f"
+          ]
+        },
+        [
+          "ok",
+          "undefined"
+        ],
+        {
+          "element": "g",
+          "fullscreen": true,
+          "webkit": "g",
+          "matches": [
+            "g"
+          ],
+          "modal": [
+            "g"
+          ]
+        }
+      ],
+      "log": [
+        [
+          "fullscreenchange",
+          "f"
+        ],
+        [
+          "fullscreenchange",
+          "g"
+        ],
+        [
+          "fullscreenchange",
+          "f"
+        ],
+        [
+          "fullscreenchange",
+          "f"
+        ]
+      ]
+    },
+    "prefixed": {
+      "result": [
+        "undefined",
+        {
+          "element": "f",
+          "fullscreen": true,
+          "webkit": "f",
+          "matches": [
+            "f"
+          ],
+          "modal": [
+            "f"
+          ]
+        },
+        "undefined",
+        {
+          "element": null,
+          "fullscreen": false,
+          "webkit": null,
+          "matches": [],
+          "modal": []
+        },
+        {
+          "element": "f",
+          "fullscreen": true,
+          "webkit": "f",
+          "matches": [
+            "f"
+          ],
+          "modal": [
+            "f"
+          ]
+        },
+        {
+          "element": null,
+          "fullscreen": false,
+          "webkit": null,
+          "matches": [],
+          "modal": []
+        },
+        "undefined"
+      ],
+      "log": [
+        [
+          "webkitfullscreenchange",
+          "f"
+        ],
+        [
+          "webkitfullscreenchange",
+          "f"
+        ],
+        [
+          "webkitfullscreenchange",
+          "f"
+        ],
+        [
+          "webkitfullscreenchange",
+          "f"
+        ]
+      ]
+    },
+    "focus": {
+      "result": [
+        "outside",
+        "inside"
+      ],
+      "log": [
+        [
+          "fullscreenchange",
+          "f"
+        ],
+        [
+          "fullscreenchange",
+          "f"
+        ],
+        [
+          "fullscreenchange",
+          "f"
+        ]
+      ]
+    },
+    "removeTop": {
+      "result": [
+        {
+          "element": null,
+          "fullscreen": false,
+          "webkit": null,
+          "matches": [],
+          "modal": []
+        },
+        {
+          "element": null,
+          "fullscreen": false,
+          "webkit": null,
+          "matches": [],
+          "modal": []
+        }
+      ],
+      "log": [
+        [
+          "fullscreenchange",
+          "document"
+        ],
+        [
+          "fullscreenchange",
+          "document"
+        ]
+      ]
+    },
+    "removePrefixedTop": {
+      "result": [
+        {
+          "element": null,
+          "fullscreen": false,
+          "webkit": null,
+          "matches": [],
+          "modal": []
+        }
+      ],
+      "log": [
+        [
+          "webkitfullscreenchange",
+          "f"
+        ],
+        [
+          "webkitfullscreenchange",
+          "document"
+        ]
+      ]
+    },
+    "removeChildren": {
+      "result": [
+        {
+          "element": "f",
+          "fullscreen": true,
+          "webkit": "f",
+          "matches": [
+            "f"
+          ],
+          "modal": [
+            "f"
+          ]
+        },
+        {
+          "element": null,
+          "fullscreen": false,
+          "webkit": null,
+          "matches": [],
+          "modal": []
+        }
+      ],
+      "log": [
+        [
+          "fullscreenchange",
+          "f"
+        ],
+        [
+          "fullscreenchange",
+          "document"
+        ],
+        [
+          "fullscreenchange",
+          "document"
+        ],
+        [
+          "fullscreenchange",
+          "document"
+        ]
+      ]
+    },
+    "removeLower": {
+      "result": [
+        {
+          "element": "g",
+          "fullscreen": true,
+          "webkit": "g",
+          "matches": [
+            "g"
+          ],
+          "modal": [
+            "g"
+          ]
+        }
+      ],
+      "log": [
+        [
+          "fullscreenchange",
+          "f"
+        ],
+        [
+          "fullscreenchange",
+          "g"
+        ]
+      ]
+    },
+    "removedWhilePending": {
+      "result": [
+        [
+          "reject",
+          "TypeError",
+          "Element is not connected"
+        ],
+        {
+          "element": null,
+          "fullscreen": false,
+          "webkit": null,
+          "matches": [],
+          "modal": []
+        }
+      ],
+      "log": [
+        [
+          "fullscreenerror",
+          "document"
+        ]
+      ]
+    },
+    "removedWhileExiting": {
+      "result": [
+        [
+          "ok",
+          "undefined"
+        ],
+        {
+          "element": null,
+          "fullscreen": false,
+          "webkit": null,
+          "matches": [],
+          "modal": []
+        }
+      ],
+      "log": [
+        [
+          "fullscreenchange",
+          "document"
+        ],
+        [
+          "fullscreenchange",
+          "document"
+        ]
+      ]
+    },
+    "shadow": {
+      "result": [
+        [
+          "inner",
+          "host"
+        ],
+        {
+          "element": null,
+          "fullscreen": false,
+          "webkit": null,
+          "matches": [],
+          "modal": []
+        }
+      ],
+      "log": [
+        [
+          "fullscreenchange",
+          "document"
+        ],
+        [
+          "fullscreenchange",
+          "document"
+        ]
+      ]
+    },
+    "details": {
+      "result": [
+        false,
+        true
+      ],
+      "log": [
+        [
+          "toggle",
+          "e",
+          "closed",
+          "open"
+        ],
+        [
+          "toggle",
+          "d",
+          "closed",
+          "open"
+        ],
+        [
+          "toggle",
+          "d",
+          "open",
+          "closed"
+        ],
+        [
+          "toggle",
+          "e",
+          "open",
+          "open"
+        ]
+      ]
+    }
+  }
+}
