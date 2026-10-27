@@ -7,6 +7,16 @@ at the time); this file reconstructs them from history.
 
 ## [Unreleased]
 
+### Fixed — turbo-dom-layout CSSOM-View scroll/caret reads follow Chrome 156 (miaskiewicz/turbo-dom#124, #125, #126)
+- `cssom_view::scroll::overflow` keeps `clip` beside a scrollable axis (`overflow:auto;
+  overflow-y:clip` computes auto/clip and the clip axis does not scroll; it was `hidden`).
+- `cssom_view::scroll::expose`: `scrollIntoView({block/inline: 'center'})` centers a target
+  larger than the scrollport (it kept Chromium's old no-scroll special case).
+- `cssom_view::text::caret` lands in `visibility: hidden` text like `caretPositionFromPoint`.
+- New Chrome 156 control `scripts/cssom-view-chrome-control.mjs`
+  (`crates/turbo-dom-layout/tests/fixtures/cssom_view_chrome156.json`); its remaining caret
+  gaps (transformed lines, carets in textless elements) are miaskiewicz/turbo-dom#127.
+
 ### Tests — parity checkpoint `b-fixed`
 - `tools/parity/manifests/b-fixed`: every corpus (html2pdf, html2pdf-svg, html2pdf-extra, surf,
   surf-extra) after the bug-fix round, at turbo-dom f860fea / turbo-html2pdf 55f623a /

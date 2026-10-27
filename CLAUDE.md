@@ -141,7 +141,9 @@ package or publish workflow.
   with used metrics and shrink auto widths, `position:absolute/fixed` blockify and stay in
   their inline run, and unsupported inline constructs fail per element
   (`LayoutSnapshot::unsupported_inline_geometry`; turbo-surf#31/#36, Chrome control
-  `scripts/live-geometry-chrome-control.mjs` -> `src/live/chrome_tests.rs`). Since S5 the legacy owned `Node` input is gone (`node.rs`,
+  `scripts/live-geometry-chrome-control.mjs` -> `src/live/chrome_tests.rs`; the scroll /
+  visibility / caret / Range reads: `scripts/cssom-view-chrome-control.mjs` ->
+  `tests/fixtures/cssom_view_chrome156.json`, asserted in `cssom_view::{scroll, visibility, text, range}`). Since S5 the legacy owned `Node` input is gone (`node.rs`,
   `markup.rs`, `style_tree*`; `Tag`/`Attr`/`MarkerKind` live in `tag`); the
   `snapshot_*live_tree*` entries take a `StyleInput`. `image` is the ONE image layer: the
   header size probe (`ImageResolver::intrinsic`), the shared PNG decode (`PngFrame`: PDF
