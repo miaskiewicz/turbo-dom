@@ -842,6 +842,141 @@ mod tests {
         assert!(!square.contains("rx="), "{square}");
     }
 
+    /// SVG path data of a glyph straight from ttf-parser, mapped by hand.
+    struct Data(String, f32, f32, f32);
+
+    impl ttf_parser::OutlineBuilder for Data {
+        fn move_to(&mut self, x: f32, y: f32) {
+            let (px, py) = (self.1 + x * self.3, self.2 - y * self.3);
+            let _ = write!(self.0, "M{px:.2} {py:.2} ");
+        }
+        fn line_to(&mut self, x: f32, y: f32) {
+            let (px, py) = (self.1 + x * self.3, self.2 - y * self.3);
+            let _ = write!(self.0, "L{px:.2} {py:.2} ");
+        }
+        fn quad_to(&mut self, cx: f32, cy: f32, x: f32, y: f32) {
+            let m = |x: f32, y: f32| (self.1 + x * self.3, self.2 - y * self.3);
+            let ((a, b), (c, d)) = (m(cx, cy), m(x, y));
+            let _ = write!(self.0, "Q{a:.2} {b:.2} {c:.2} {d:.2} ");
+        }
+        fn curve_to(&mut self, ax: f32, ay: f32, bx: f32, by: f32, x: f32, y: f32) {
+            let m = |x: f32, y: f32| (self.1 + x * self.3, self.2 - y * self.3);
+            let ((a, b), (c, d), (e, f)) = (m(ax, ay), m(bx, by), m(x, y));
+            let _ = write!(self.0, "C{a:.2} {b:.2} {c:.2} {d:.2} {e:.2} {f:.2} ");
+        }
+        fn close(&mut self) {
+            self.0 += "Z ";
+        }
+    }
+
+    #[test]
+    fn text_paths_are_every_glyph_outline_at_its_pen_position() {
+        let reg = FontRegistry::new();
+        for family in ["Inter", "Liberation Serif"] {
+            let face = reg.select(&[family], 400, false).unwrap().clone();
+            let ttf = glyph::outline_face(&face);
+            let scale = 24.0 / f32::from(face.units_per_em());
+            let mut x = 0.0;
+            let glyphs: Vec<PositionedGlyph> = face
+                .shape("Ag%")
+                .iter()
+                .map(|g| {
+                    let p = PositionedGlyph {
+                        glyph_id: g.glyph_id,
+                        x,
+                        y: 20.0,
+                    };
+                    x += g.x_advance as f32 * scale;
+                    p
+                })
+                .collect();
+            let line = Fragment::new(
+                NodeId(0),
+                7.0,
+                4.0,
+                x,
+                30.0,
+                FragmentContent::TextLine {
+                    glyphs: glyphs.clone(),
+                    face: face.clone(),
+                    font_size: 24.0,
+                    color: RED,
+                },
+            );
+            let mut d = Data(String::new(), 0.0, 0.0, scale);
+            for g in &glyphs {
+                (d.1, d.2) = (7.0 + g.x, 4.0 + g.y);
+                ttf.outline_glyph(ttf_parser::GlyphId(g.glyph_id), &mut d);
+            }
+            assert_eq!(
+                body(&line, &HashMap::new()),
+                format!("<path d=\"{}\" fill=\"#ff0000\"/>\n", d.0.trim_end()),
+                "{family}"
+            );
+        }
+    }
+
+    #[test]
+    fn square_borders_are_four_edge_bands_of_their_own_widths() {
+        let side = |width: u16, color: Option<Rgba>| BorderSide { width, color };
+        let blue = Some(Rgba::new(0, 0, 255, 255));
+        let mut f = plain(10.0, 20.0, 40.0, 30.0, None);
+        if let FragmentContent::Box { border, .. } = &mut f.content {
+            *border = BorderEdges {
+                top: side(1, blue),
+                right: side(2, blue),
+                bottom: side(3, blue),
+                left: side(4, blue),
+            };
+        }
+        let r = |x: f32, y: f32, w: f32, h: f32| {
+            format!("<rect x=\"{x:.2}\" y=\"{y:.2}\" width=\"{w:.2}\" height=\"{h:.2}\" fill=\"#0000ff\"/>\n")
+        };
+        assert_eq!(
+            body(&f, &HashMap::new()),
+            [
+                r(10.0, 20.0, 40.0, 1.0),
+                r(10.0, 47.0, 40.0, 3.0),
+                r(10.0, 20.0, 4.0, 30.0),
+                r(48.0, 20.0, 2.0, 30.0)
+            ]
+            .concat()
+        );
+        // Zero-width or colourless sides are no band.
+        if let FragmentContent::Box { border, .. } = &mut f.content {
+            *border = BorderEdges {
+                top: side(0, blue),
+                right: side(3, None),
+                bottom: side(0, blue),
+                left: side(0, blue),
+            };
+        }
+        assert_eq!(body(&f, &HashMap::new()), "");
+    }
+
+    #[test]
+    fn backgrounds_need_a_size_a_colour_and_round_past_half_a_pixel() {
+        let bg = |w: f32, h: f32, c: Rgba, radius: f32| {
+            let mut f = plain(1.0, 2.0, w, h, Some(c));
+            if let FragmentContent::Box { border_radius, .. } = &mut f.content {
+                *border_radius = radius;
+            }
+            body(&f, &HashMap::new())
+        };
+        assert_eq!(bg(0.0, 5.0, RED, 0.0), "");
+        assert_eq!(bg(5.0, 0.0, RED, 0.0), "");
+        assert_eq!(bg(5.0, -1.0, RED, 0.0), "");
+        assert_eq!(bg(5.0, 5.0, Rgba::new(255, 0, 0, 0), 0.0), "");
+        assert_eq!(
+            bg(5.0, 5.0, RED, 0.5),
+            "<rect x=\"1.00\" y=\"2.00\" width=\"5.00\" height=\"5.00\" fill=\"#ff0000\"/>\n"
+        );
+        assert_eq!(
+            bg(5.0, 5.0, RED, 0.75),
+            "<rect x=\"1.00\" y=\"2.00\" width=\"5.00\" height=\"5.00\" rx=\"0.75\" ry=\"0.75\" fill=\"#ff0000\"/>\n"
+        );
+    }
+
     #[test]
     fn text_emits_one_outline_path_unless_nothing_has_an_outline() {
         let face = FontRegistry::new()
