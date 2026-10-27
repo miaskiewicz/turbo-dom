@@ -331,7 +331,8 @@ mod tests {
     /// The fuzz body [`corrupt_avifs_are_broken_images_never_a_process_abort`] runs in a
     /// child process (an abort inside the decoder takes the whole process down, which a
     /// test in this process could not observe): every AVIF fixture truncated at each
-    /// sixteenth and with single bytes flipped across the file, decoded end to end.
+    /// sixteenth and with single bytes flipped across the file, decoded end to end, and its
+    /// AV1 streams corrupted the same way and fed to rav1d directly.
     #[test]
     #[ignore = "run in a child process by corrupt_avifs_are_broken_images_never_a_process_abort"]
     fn corrupt_avif_fuzz_child() {
@@ -358,6 +359,41 @@ mod tests {
                         decoded += 1;
                     }
                     None => rejected += 1,
+                }
+            }
+            // Most container-level variants fail in the demuxer before rav1d sees them, so
+            // the AV1 streams themselves are corrupted too: truncated at each sixteenth,
+            // their second half overwritten with 0xFF (the issue's reproduction on q.avif's
+            // colour stream) and every byte flipped with 0x01 / 0x80 / 0xff.
+            let Some(payload) = turbo_dom_layout::image::avif_payload(&avif) else {
+                continue;
+            };
+            for stream in std::iter::once(payload.color).chain(payload.alpha) {
+                let n = stream.len();
+                let mut variants: Vec<Vec<u8>> =
+                    (1..16).map(|i| stream[..n * i / 16].to_vec()).collect();
+                let mut ones = stream.clone();
+                ones[n / 2..].fill(0xff);
+                variants.push(ones);
+                for at in 0..n {
+                    for mask in [0x01, 0x80, 0xff] {
+                        let mut v = stream.clone();
+                        v[at] ^= mask;
+                        variants.push(v);
+                    }
+                }
+                for v in variants {
+                    match av1::decode(&v) {
+                        Some(frame) => {
+                            assert_eq!(
+                                frame.planes[0].len(),
+                                frame.width * frame.height,
+                                "{label}"
+                            );
+                            decoded += 1;
+                        }
+                        None => rejected += 1,
+                    }
                 }
             }
         }
