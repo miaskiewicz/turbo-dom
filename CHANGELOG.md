@@ -7,14 +7,7 @@ at the time); this file reconstructs them from history.
 
 ## [Unreleased]
 
-### Fixed — undecodable images and corrupt AVIFs (P5b-G1, miaskiewicz/turbo-dom#107/#109, Chrome 156 controls)
-- A corrupt AVIF no longer aborts the process (miaskiewicz/turbo-dom#109): with the
-  `avif` feature, AV1 tile data that fails to decode (q.avif with its colour stream's
-  second half overwritten) hit rav1d 1.1.0's single-frame-context error path, which
-  unwraps a frame header the failed decode already took — a panic inside its
-  `extern "C"` entry point, so a process abort. turbo-dom-raster now opens rav1d with two
-  threads and two frame contexts, whose error path returns the failure (fixed on rav1d's
-  main, not released); the image decodes to nothing.
+### Fixed — undecodable images paint nothing, truncated AVIFs are broken (P5b-G1, miaskiewicz/turbo-dom#107, Chrome 156 controls)
 - An image whose pixels do not decode paints nothing (miaskiewicz/turbo-dom#107): an
   image Chrome 156 loads and sizes but cannot paint — a frame-corrupt AVIF, a PNG cut
   inside `IDAT`, a GIF with an empty LZW stream — painted turbo-dom-raster's grey
@@ -174,6 +167,61 @@ changes in `tools/parity/expected/p5b-w7-turbo-dom-*.json`.
   non-configurable, so the key-order step could not move them after attributes installed
   later (turbo-surf's child frames listed them before `src`); they are now configurable until
   the key order freezes them.
+
+### Fixed — turbo-dom-browser-env canvas fillStyle / strokeStyle / shadowColor (P5b-G2, miaskiewicz/turbo-dom#108, Chrome 156 control)
+- The 2D context's `fillStyle` / `strokeStyle` / `shadowColor` are accessors over turbo-dom's
+  CSS colour parser (`rtdom::color::parse_color`, through the binding's `__canvasColorNative`)
+  instead of plain data properties: reads come back in Chrome's serialization (`#rrggbb`, or
+  `rgba(r, g, b, a)` with Chrome's 8-bit alpha digits — `hsl(0,100%,50%)` reads `#ff0000`,
+  `transparent` `rgba(0, 0, 0, 0)`), a value the canvas cannot parse (or a non-string that does
+  not stringify to a colour) is ignored and the old value stays, gradients / patterns are kept by
+  identity, and `currentcolor` (any case) resolves once, at assignment: Chrome 156 uses the
+  connected canvas's own inline `color` only (an inherited or stylesheet colour, an inline
+  `inherit`, or a detached canvas give black) and later colour changes do not follow. The op
+  log records the resolved colour, so the raster replay paints it (it painted the previous
+  fill for `currentcolor`). New `rtdom::color::Color::canvas_serialization`. Control:
+  `crates/turbo-dom-browser-env/src/canvas_style_probe.js` -> `canvas_style_chrome156.json`
+  (`scripts/invokers-chrome-control.mjs`), asserted by `canvas_style_tests.rs`.
+
+### Fixed — turbo-dom-raster screenshots and canvas (P5-cov, miaskiewicz/turbo-dom#94/#95, Chrome 156 controls)
+- A corrupt AVIF is a broken image instead of aborting the process (#94): rav1d 1.1.0 with one
+  frame context panics inside its `extern "C"` API on a decode error (upstream
+  memorysafety/rav1d#1496, fixed after 1.1.0; 1.1.1 is unpublished). The decoder now runs with
+  two frame contexts, where the error comes back as a result; AV1 output is bit-exact, so pixels
+  are unchanged. A child-process fuzz test over every AVIF fixture (truncations, bit flips) and
+  over their AV1 streams fed to rav1d directly (truncations, the second half overwritten with 0xFF,
+  every byte flipped; P5b-R1) gates it. Still open: Chrome paints nothing for such an image and
+  rejects a truncated AVIF (miaskiewicz/turbo-dom#107).
+- AVIF identity (GBR, matrix 0) samples convert exactly, every plane on the luma scale like libavif
+  (they were half a level low, limited range on the chroma scale) (#95).
+- SVG screenshots stroke a rounded box's border along its radius, like the PNG painter (#95).
+- Blurred box-shadows of any size paint: only the visible part is blurred, in exact tiles (a
+  shadow whose scratch passed 8192px was skipped); the blur radius is capped at 256px like Chrome's (#95).
+- Canvas op-log colours parse through turbo-dom's new `rtdom::color::parse_color` (hsl()/hsla(),
+  percentage rgb() channels and alpha, the full named set; channels rounded like Chrome) instead of a
+  local subset; `canonicalize_color`'s output is unchanged (#95).
+  `currentcolor` is resolved by the recorder at assignment (in Chrome and, since
+  miaskiewicz/turbo-dom#108, turbo-dom-browser-env's context: the canvas's inline colour).
+- Canvas `lineTo`/`arc` after `closePath` (or `rect`) starts at the closed subpath's first point, as in
+  Chrome (found by the P5-cov mutation pass).
+
+### Tests — turbo-dom-raster at 100% line coverage (P5-cov)
+- turbo-dom-raster reaches 100% line coverage (tarpaulin, LLVM engine) by default and with
+  `--features avif` / `--features jxl` (79.02% / 79.63% / 79.31% before); the CI `coverage`
+  job gates each configuration at 100. New Chrome 156 controls back the pixel tests:
+  `scripts/canvas-ops-chrome-control.mjs` (the 2D-canvas op log),
+  `scripts/raster-avif-chrome-control.mjs` (every AVIF chroma layout, matrix family and
+  range, fixtures from `scripts/make_raster_avif_fixtures.py`) and new `paint-*` cases in
+  `scripts/paint-chrome-control.mjs` (rounded borders and gradients, shadows, translucency;
+  the SVG screenshot is checked against the same probes through resvg). Every Chrome comparison
+  is exact (no tolerances). Tests were strengthened against `cargo mutants` (see
+  `docs/CONSOLIDATION.md` "Coverage").
+- No behaviour change from the coverage refactors. Dead defensive branches were restructured or removed with their
+  invariant documented: `glyph::outline_face` (a `FontFace` always re-parses at its index),
+  the bundled faces always resolve (`measure_text`, canvas text), clip layers and shadow
+  scratch buffers within their bounds always allocate, the box blur's empty guards (a
+  `Pixmap` is never empty), the AVIF / JPEG XL size-only fallback is one branch, rav1d's
+  open / get-picture results share their exits, and JPEG XL's unreachable empty-sample arm.
 
 ### Fixed — `HTMLTrackElement` and `TextTrack` (P5b-X6, miaskiewicz/turbo-dom#74, Chrome 156 control)
 - turbo-dom-browser-env: `<track>` had no interface, so `track.src`, `kind`, `srclang`,

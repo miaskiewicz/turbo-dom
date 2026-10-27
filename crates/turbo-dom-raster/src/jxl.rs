@@ -8,7 +8,7 @@
 //! `rayon` pool: one thread, deterministic); `jxl` (jxl-rs, BSD-3-Clause — the decoder
 //! Chromium itself vendors — younger API); `jpegxl-rs` (bindings to the C++ libjxl: a
 //! native toolchain); `zune-jpegxl` encodes only. Without the feature a JPEG XL paints
-//! as the placeholder of any undecodable image.
+//! as the placeholder; a corrupt one (no pixels) paints nothing (turbo-dom#107).
 
 use turbo_dom_layout::image::Rgba8Image;
 
@@ -49,12 +49,13 @@ pub fn decode(bytes: &[u8]) -> Option<Rgba8Image> {
 #[cfg(feature = "jxl")]
 fn to_rgba(samples: &[u8], channels: u32) -> Option<Vec<u8>> {
     let px = |p: &[u8]| -> [u8; 4] {
-        match p {
-            [g] => [*g, *g, *g, 255],
-            [g, a] => [*g, *g, *g, *a],
-            [r, g, b] => [*r, *g, *b, 255],
-            [r, g, b, a, ..] => [*r, *g, *b, *a],
-            [] => [0, 0, 0, 0],
+        match *p {
+            [g] => [g, g, g, 255],
+            [g, a] => [g, g, g, a],
+            [r, g, b] => [r, g, b, 255],
+            // Four or more (`chunks_exact` of a non-zero count never yields an empty
+            // chunk): RGB + alpha, any further channel (a CMYK black) dropped.
+            _ => [p[0], p[1], p[2], p[3]],
         }
     };
     let n = usize::try_from(channels).ok().filter(|&n| n > 0)?;

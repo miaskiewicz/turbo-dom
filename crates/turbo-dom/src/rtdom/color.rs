@@ -247,35 +247,9 @@ fn parse_hex_byte(s: &str) -> f64 {
 /// or non-hex digits (JS passthrough).
 fn hex_to_rgb(v: &str) -> Option<String> {
     let h = &v[1..]; // strip leading '#'
-    let n = h.len();
-    if !is_hex(h) {
-        return None;
-    }
-    let bytes = h.as_bytes();
-    if n == 3 || n == 4 {
-        // Each digit doubled: parseInt(h[i]+h[i], 16).
-        let dbl = |i: usize| {
-            let c = bytes[i] as char;
-            parse_hex_byte(&format!("{c}{c}"))
-        };
-        let r = dbl(0);
-        let g = dbl(1);
-        let b = dbl(2);
-        let a = if n == 4 { Some(dbl(3) / 255.0) } else { None };
-        return Some(rgb(r, g, b, a));
-    }
-    if n == 6 || n == 8 {
-        let r = parse_hex_byte(&h[0..2]);
-        let g = parse_hex_byte(&h[2..4]);
-        let b = parse_hex_byte(&h[4..6]);
-        let a = if n == 8 {
-            Some(parse_hex_byte(&h[6..8]) / 255.0)
-        } else {
-            None
-        };
-        return Some(rgb(r, g, b, a));
-    }
-    None
+    let c = parse_hex(h)?;
+    let alpha = matches!(h.len(), 4 | 8).then_some(c.a);
+    Some(rgb(c.r, c.g, c.b, alpha))
 }
 
 /// Split the inside of `xxx(...)` on `,` / whitespace / `/`, dropping empties —
@@ -378,6 +352,18 @@ fn hue(p: f64, q: f64, mut t: f64) -> f64 {
     p
 }
 
+/// HSL (hue in turns, saturation and lightness 0..=1) to RGB channels in 0..=1 (CSS Color 4
+/// `hslToRgb`; a zero saturation is grey at the lightness).
+fn hsl_unit(h: f64, s: f64, l: f64) -> [f64; 3] {
+    let q = if l < 0.5 {
+        l * (1.0 + s)
+    } else {
+        l + s - l * s
+    };
+    let p = 2.0 * l - q;
+    [h + 1.0 / 3.0, h, h - 1.0 / 3.0].map(|t| hue(p, q, t))
+}
+
 fn hsl_to_rgb(v: &str) -> Option<String> {
     let inner = extract_inner(v)?;
     let parts = split_components(inner);
@@ -391,23 +377,7 @@ fn hsl_to_rgb(v: &str) -> Option<String> {
     let a = parts.get(3).and_then(|p| parse_float_js(p));
 
     h = (((h % 360.0) + 360.0) % 360.0) / 360.0;
-
-    let (r, g, b);
-    if s == 0.0 {
-        r = l;
-        g = l;
-        b = l;
-    } else {
-        let q = if l < 0.5 {
-            l * (1.0 + s)
-        } else {
-            l + s - l * s
-        };
-        let p = 2.0 * l - q;
-        r = hue(p, q, h + 1.0 / 3.0);
-        g = hue(p, q, h);
-        b = hue(p, q, h - 1.0 / 3.0);
-    }
+    let [r, g, b] = hsl_unit(h, s, l);
     Some(rgb(
         (r * 255.0).round(),
         (g * 255.0).round(),
@@ -450,6 +420,136 @@ pub fn canonicalize_color(value: &str, include_named: bool) -> Option<String> {
         }
     }
     None
+}
+
+/// A parsed CSS `<color>` for a consumer that paints it: `r`/`g`/`b` channels clamped to
+/// 0..=255 and `a` (alpha) to 0..=1, unrounded (the painter rounds to its pixel format).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Color {
+    pub r: f64,
+    pub g: f64,
+    pub b: f64,
+    pub a: f64,
+}
+
+impl Color {
+    fn new(r: f64, g: f64, b: f64, a: f64) -> Color {
+        Color {
+            r: r.clamp(0.0, 255.0),
+            g: g.clamp(0.0, 255.0),
+            b: b.clamp(0.0, 255.0),
+            a: a.clamp(0.0, 1.0),
+        }
+    }
+
+    /// The colour as a canvas `fillStyle` / `strokeStyle` / `shadowColor` reads it back
+    /// (HTML "serialization of a color", Chrome 156): channels and alpha quantized to 8 bits,
+    /// `#rrggbb` when opaque, else `rgba(r, g, b, a)` with the alpha in the fewest of two or
+    /// three decimals that maps back to the same 8-bit alpha (`0.5`, `0.12`, `0.533`, `0`).
+    #[must_use]
+    pub fn canvas_serialization(&self) -> String {
+        let [r, g, b] = [self.r, self.g, self.b].map(|channel| channel.round() as u8);
+        let alpha = (self.a * 255.0).round();
+        if alpha >= 255.0 {
+            return format!("#{r:02x}{g:02x}{b:02x}");
+        }
+        let exact = alpha / 255.0;
+        let two = (exact * 100.0).round() / 100.0;
+        let a = if (two * 255.0).round() == alpha {
+            two
+        } else {
+            (exact * 1000.0).round() / 1000.0
+        };
+        format!("rgba({r}, {g}, {b}, {a})")
+    }
+}
+
+/// Parse a CSS `<color>` into numbers, as a canvas `fillStyle` resolves it (Chrome 156;
+/// turbo-dom-raster's canvas op log): `#rgb`/`#rgba`/`#rrggbb`/`#rrggbbaa`, every CSS
+/// named colour and `transparent` (any case), `rgb()`/`rgba()` with number or percentage
+/// channels and alpha, `hsl()`/`hsla()` with a number (or `deg`) hue and percentage or
+/// number alpha — comma, space and slash forms. `None` for anything else. The string
+/// form for style read-back is [`canonicalize_color`] (the JS runtime's `color.mjs`
+/// semantics: there a percentage `rgb()` passes through).
+#[must_use]
+pub fn parse_color(value: &str) -> Option<Color> {
+    let v = value.trim();
+    let lower = v.to_ascii_lowercase();
+    if let Some(hex) = v.strip_prefix('#') {
+        return parse_hex(hex);
+    }
+    if lower.starts_with("rgb") {
+        return parse_rgb(v);
+    }
+    if lower.starts_with("hsl") {
+        return parse_hsl(v);
+    }
+    if lower == "transparent" {
+        return Some(Color::new(0.0, 0.0, 0.0, 0.0));
+    }
+    parse_hex(named_color_hex(&lower)?)
+}
+
+/// The digits of a `#` colour (3, 4, 6 or 8 hex digits).
+fn parse_hex(h: &str) -> Option<Color> {
+    if !is_hex(h) {
+        return None;
+    }
+    let byte = |s: &str| parse_hex_byte(s);
+    let digit = |i: usize| byte(&h[i..=i].repeat(2));
+    match h.len() {
+        3 => Some(Color::new(digit(0), digit(1), digit(2), 1.0)),
+        4 => Some(Color::new(digit(0), digit(1), digit(2), digit(3) / 255.0)),
+        6 => Some(Color::new(
+            byte(&h[0..2]),
+            byte(&h[2..4]),
+            byte(&h[4..6]),
+            1.0,
+        )),
+        8 => Some(Color::new(
+            byte(&h[0..2]),
+            byte(&h[2..4]),
+            byte(&h[4..6]),
+            byte(&h[6..8]) / 255.0,
+        )),
+        _ => None,
+    }
+}
+
+/// A number, or a percentage of `full`.
+fn number_or_percent(s: &str, full: f64) -> Option<f64> {
+    match s.strip_suffix('%') {
+        Some(pct) => Some(parse_float_js(pct)? * full / 100.0),
+        None => parse_float_js(s),
+    }
+}
+
+/// The 3 or 4 components of `name(...)`, the fourth (alpha) defaulting to 1.
+fn components(v: &str) -> Option<(Vec<&str>, f64)> {
+    let parts = split_components(extract_inner(v)?);
+    if !(3..=4).contains(&parts.len()) {
+        return None;
+    }
+    let alpha = match parts.get(3) {
+        Some(a) => number_or_percent(a, 1.0)?,
+        None => 1.0,
+    };
+    Some((parts, alpha))
+}
+
+fn parse_rgb(v: &str) -> Option<Color> {
+    let (parts, a) = components(v)?;
+    let channel = |i: usize| number_or_percent(parts[i], 255.0);
+    Some(Color::new(channel(0)?, channel(1)?, channel(2)?, a))
+}
+
+fn parse_hsl(v: &str) -> Option<Color> {
+    let (parts, a) = components(v)?;
+    let h = (((parse_float_js(parts[0])? % 360.0) + 360.0) % 360.0) / 360.0;
+    let s = parse_float_js(parts[1])?.clamp(0.0, 100.0) / 100.0;
+    let l = parse_float_js(parts[2])?.clamp(0.0, 100.0) / 100.0;
+    let [r, g, b] = hsl_unit(h, s, l).map(|c| c * 255.0);
+    Some(Color::new(r, g, b, a))
 }
 
 #[cfg(test)]
@@ -668,5 +768,158 @@ mod tests {
         assert!(!is_color_prop("width"));
         assert!(!is_color_prop("margin"));
         assert_eq!(COLOR_PROPS.len(), 17);
+    }
+}
+
+#[cfg(test)]
+mod parse_color_tests {
+    use super::{parse_color, Color};
+
+    fn c(r: f64, g: f64, b: f64, a: f64) -> Color {
+        Color { r, g, b, a }
+    }
+
+    #[test]
+    fn hex_forms() {
+        assert_eq!(parse_color("#f0a"), Some(c(255.0, 0.0, 170.0, 1.0)));
+        assert_eq!(
+            parse_color("#f0a8"),
+            Some(c(255.0, 0.0, 170.0, 136.0 / 255.0))
+        );
+        assert_eq!(parse_color(" #0A0b0C "), Some(c(10.0, 11.0, 12.0, 1.0)));
+        assert_eq!(
+            parse_color("#0a0b0c80"),
+            Some(c(10.0, 11.0, 12.0, 128.0 / 255.0))
+        );
+        for bad in [
+            "#",
+            "#12",
+            "#12345",
+            "#1234567",
+            "#123456789",
+            "#ggg",
+            "#12345g",
+        ] {
+            assert_eq!(parse_color(bad), None, "{bad}");
+        }
+    }
+
+    #[test]
+    fn rgb_numbers_percentages_and_alpha() {
+        assert_eq!(parse_color("rgb(1, 2, 3)"), Some(c(1.0, 2.0, 3.0, 1.0)));
+        assert_eq!(
+            parse_color("RGBA(12.9, 100.5, 0, 0.25)"),
+            Some(c(12.9, 100.5, 0.0, 0.25))
+        );
+        assert_eq!(
+            parse_color("rgb(50%, 0%, 100%)"),
+            Some(c(127.5, 0.0, 255.0, 1.0))
+        );
+        assert_eq!(
+            parse_color("rgb(10 20 30 / 40%)"),
+            Some(c(10.0, 20.0, 30.0, 0.4))
+        );
+        // Channels clamp to 0..=255, alpha to 0..=1.
+        assert_eq!(
+            parse_color("rgb(300, -5, 255.5, 2)"),
+            Some(c(255.0, 0.0, 255.0, 1.0))
+        );
+        assert_eq!(
+            parse_color("rgba(0, 0, 0, -1)"),
+            Some(c(0.0, 0.0, 0.0, 0.0))
+        );
+        assert_eq!(
+            parse_color("rgb(150%, -10%, 0)"),
+            Some(c(255.0, 0.0, 0.0, 1.0))
+        );
+        for bad in [
+            "rgb(1, 2)",
+            "rgb(1, 2, 3, 4, 5)",
+            "rgb(x, 2, 3)",
+            "rgb(1, 2, 3, y)",
+            "rgb(1 2 3",
+            "rgb(%, 0, 0)",
+        ] {
+            assert_eq!(parse_color(bad), None, "{bad}");
+        }
+    }
+
+    #[test]
+    fn hsl_hues_saturations_lightnesses() {
+        let rgb = |s: &str| parse_color(s).map(|c| [c.r.round(), c.g.round(), c.b.round(), c.a]);
+        assert_eq!(rgb("hsl(0, 100%, 50%)"), Some([255.0, 0.0, 0.0, 1.0]));
+        assert_eq!(rgb("hsl(120deg 100% 25%)"), Some([0.0, 128.0, 0.0, 1.0]));
+        assert_eq!(
+            rgb("HSLA(240, 100%, 50%, 0.5)"),
+            Some([0.0, 0.0, 255.0, 0.5])
+        );
+        assert_eq!(
+            rgb("hsl(60 100% 50% / 25%)"),
+            Some([255.0, 255.0, 0.0, 0.25])
+        );
+        // Hues wrap both ways; zero saturation is grey; s and l clamp to 0..=100%.
+        assert_eq!(rgb("hsl(-120, 100%, 50%)"), Some([0.0, 0.0, 255.0, 1.0]));
+        assert_eq!(rgb("hsl(480, 100%, 50%)"), Some([0.0, 255.0, 0.0, 1.0]));
+        assert_eq!(rgb("hsl(0, 0%, 75%)"), Some([191.0, 191.0, 191.0, 1.0]));
+        assert_eq!(rgb("hsl(200, 60%, 70%)"), Some([133.0, 194.0, 224.0, 1.0]));
+        assert_eq!(rgb("hsl(0, 150%, 120%)"), Some([255.0, 255.0, 255.0, 1.0]));
+        assert_eq!(rgb("hsl(0, -50%, 50%)"), Some([128.0, 128.0, 128.0, 1.0]));
+        for bad in [
+            "hsl(0, 100%)",
+            "hsl(x, 1%, 1%)",
+            "hsl(0, x, 1%)",
+            "hsl(0, 1%, x)",
+            "hsl(0 1% 1% / z)",
+        ] {
+            assert_eq!(parse_color(bad), None, "{bad}");
+        }
+    }
+
+    #[test]
+    fn canvas_serialization_like_chrome() {
+        let read = |v: &str| parse_color(v).unwrap().canvas_serialization();
+        assert_eq!(read("#AbC"), "#aabbcc");
+        assert_eq!(read("rgba(1, 2, 3, 1)"), "#010203");
+        assert_eq!(read("rgb(12.9, 100.5, 200.4)"), "#0d65c8");
+        assert_eq!(read("rgb(300, -5, 128)"), "#ff0080");
+        assert_eq!(read("rgb(50%, 0%, 100%)"), "#8000ff");
+        assert_eq!(read("hsl(200, 60%, 70%)"), "#85c2e0");
+        assert_eq!(read("rgba(0,0,255,2)"), "#0000ff");
+        assert_eq!(read("#0f08"), "rgba(0, 255, 0, 0.533)");
+        assert_eq!(read("#0000ff80"), "rgba(0, 0, 255, 0.5)");
+        assert_eq!(read("rgba(0, 0, 0, 0.123456)"), "rgba(0, 0, 0, 0.12)");
+        assert_eq!(read("rgba(0, 0, 0, 0.001)"), "rgba(0, 0, 0, 0)");
+        assert_eq!(read("rgb(10% 20% 30% / 50%)"), "rgba(26, 51, 77, 0.5)");
+        assert_eq!(read("transparent"), "rgba(0, 0, 0, 0)");
+        // 254/255 = 0.99607…: two decimals (1) would read back as 255, so three.
+        assert_eq!(
+            c(0.0, 0.0, 0.0, 254.0 / 255.0).canvas_serialization(),
+            "rgba(0, 0, 0, 0.996)"
+        );
+        // 0.4 * 255 = 102 exactly: two decimals suffice.
+        assert_eq!(
+            c(0.0, 0.0, 0.0, 0.4).canvas_serialization(),
+            "rgba(0, 0, 0, 0.4)"
+        );
+        // An alpha just under the opaque rounding boundary stays opaque.
+        assert_eq!(
+            c(1.0, 2.0, 3.0, 254.6 / 255.0).canvas_serialization(),
+            "#010203"
+        );
+    }
+
+    #[test]
+    fn names_and_transparent() {
+        assert_eq!(
+            parse_color("rebeccapurple"),
+            Some(c(102.0, 51.0, 153.0, 1.0))
+        );
+        assert_eq!(
+            parse_color(" CornflowerBlue "),
+            Some(c(100.0, 149.0, 237.0, 1.0))
+        );
+        assert_eq!(parse_color("TRANSPARENT"), Some(c(0.0, 0.0, 0.0, 0.0)));
+        assert_eq!(parse_color("notacolour"), None);
+        assert_eq!(parse_color(""), None);
     }
 }
