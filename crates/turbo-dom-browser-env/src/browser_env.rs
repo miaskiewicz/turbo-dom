@@ -173,6 +173,9 @@ mod interest_invokers;
 mod key_order;
 #[path = "reference_target.rs"]
 mod reference_target;
+#[cfg(test)]
+#[path = "canvas_style_tests.rs"]
+mod canvas_style_tests;
 #[path = "select_element.rs"]
 mod select_element;
 #[path = "shadow_html.rs"]
