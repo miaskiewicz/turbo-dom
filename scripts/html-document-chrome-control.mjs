@@ -561,6 +561,8 @@ const CASES = [
   { id: "block-in-inline-nested-spans", html: DOC(S("body{margin:0}i{display:inline-block;width:10px;height:10px}"), `<div style="font-size:0"><b><span><i data-cid="a"></i><div data-cid="d" style="height:5px"></div></span></b><i data-cid="c"></i></div>`) },
   { id: "block-in-inline-margins", html: DOC(S("body{margin:0}i{display:inline-block;width:10px;height:10px}"), `<div style="font-size:0"><span><i data-cid="a"></i><div data-cid="d" style="height:5px;margin:4px 6px"></div><i data-cid="b"></i></span></div><div data-cid="g" style="height:5px"></div>`) },
   { id: "block-in-inline-two-blocks", html: DOC(S("body{margin:0}i{display:inline-block;width:10px;height:10px}"), `<div style="font-size:0"><span><div data-cid="d" style="height:5px"></div><div data-cid="e" style="height:6px;margin-top:3px"></div></span></div>`) },
+  { id: "block-in-inline-abs-after-block", html: DOC(S("body{margin:0}"), `<div style="text-align:center;font-size:0"><span><div data-cid="d" style="height:5px"></div><i data-cid="a" style="position:absolute;width:10px;height:10px"></i><b data-cid="b" style="display:inline-block;width:20px;height:10px"></b></span></div>`) },
+  { id: "block-in-inline-float-after-block", html: DOC(S("body{margin:0}"), `<div style="font-size:0"><span><div data-cid="d" style="height:5px"></div><i data-cid="a" style="float:right;width:10px;height:10px"></i><b data-cid="b" style="display:inline-block;width:20px;height:10px"></b></span></div>`) },
   // P5b-W6, miaskiewicz/turbo-dom#102: an absolutely positioned box's containing block is
   // its positioned ancestor's padding box (insets and percentages; the static position
   // stays in the content box).

@@ -13590,6 +13590,84 @@
    "canvas": "#ffffff"
   },
   {
+   "id": "block-in-inline-abs-after-block",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><div style=\"text-align:center;font-size:0\"><span><div data-cid=\"d\" style=\"height:5px\"></div><i data-cid=\"a\" style=\"position:absolute;width:10px;height:10px\"></i><b data-cid=\"b\" style=\"display:inline-block;width:20px;height:10px\"></b></span></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "d",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 5
+    },
+    {
+     "cid": "a",
+     "x": 630,
+     "y": 5,
+     "width": 10,
+     "height": 10
+    },
+    {
+     "cid": "b",
+     "x": 630,
+     "y": 5,
+     "width": 20,
+     "height": 10
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "block-in-inline-float-after-block",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><div style=\"font-size:0\"><span><div data-cid=\"d\" style=\"height:5px\"></div><i data-cid=\"a\" style=\"float:right;width:10px;height:10px\"></i><b data-cid=\"b\" style=\"display:inline-block;width:20px;height:10px\"></b></span></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "d",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 5
+    },
+    {
+     "cid": "a",
+     "x": 1270,
+     "y": 5,
+     "width": 10,
+     "height": 10
+    },
+    {
+     "cid": "b",
+     "x": 0,
+     "y": 5,
+     "width": 20,
+     "height": 10
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
    "id": "positioned-padding-box-top-left",
    "html": "<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body><div data-cid=\"cb\" style=\"position:relative;width:400px;height:50px;padding:20px\"><div data-cid=\"c\" style=\"position:absolute;left:0;top:0;width:10px;height:5px\"></div></div><div data-cid=\"g\" style=\"height:5px\"></div></body></html>",
    "measure": "xywh",
