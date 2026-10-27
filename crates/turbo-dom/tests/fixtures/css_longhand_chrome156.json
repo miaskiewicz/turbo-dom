@@ -1,7 +1,7 @@
 {
   "browser": "Chrome/156.0.8078.4",
   "v8": "15.6.75",
-  "casesSha256": "0f5002fe466ca2b8eb721d5cd45a285c8b33609ad992d72ef0b95507d3ddbce0",
+  "casesSha256": "688e0f95a42a38c3a1bd9421a9d356ba0ae5f39910bf800ed647a38f11514334",
   "probeSha256": "a458463e8721c083a75be76315f0bdaf5cee10e5d0a6fc8d470a0b926d6ee37e",
   "collectorSha256": "7bd6ffb7440d38e05cd2b8fbe0e84e91cf462043577ceada3e276728ad216172",
   "flags": [
@@ -19,6 +19,24 @@
     {
       "id": "css-longhand",
       "result": [
+        [
+          "--B",
+          "x",
+          "x",
+          "--B: x;"
+        ],
+        [
+          "--B",
+          "X",
+          "X",
+          "--B: X;"
+        ],
+        [
+          "--B",
+          " x ",
+          "x",
+          "--B: x;"
+        ],
         [
           "-webkit-border-horizontal-spacing",
           "1px",
@@ -4410,6 +4428,42 @@
           " auto ",
           "auto",
           "column-wrap: auto;"
+        ],
+        [
+          "column-wrap",
+          "wrap",
+          "wrap",
+          "column-wrap: wrap;"
+        ],
+        [
+          "column-wrap",
+          "WRAP",
+          "wrap",
+          "column-wrap: wrap;"
+        ],
+        [
+          "column-wrap",
+          " wrap ",
+          "wrap",
+          "column-wrap: wrap;"
+        ],
+        [
+          "column-wrap",
+          "nowrap",
+          "nowrap",
+          "column-wrap: nowrap;"
+        ],
+        [
+          "column-wrap",
+          "NOWRAP",
+          "nowrap",
+          "column-wrap: nowrap;"
+        ],
+        [
+          "column-wrap",
+          " nowrap ",
+          "nowrap",
+          "column-wrap: nowrap;"
         ],
         [
           "contain-intrinsic-height",
@@ -10274,6 +10328,24 @@
           "row-rule-color: currentcolor;"
         ],
         [
+          "row-rule-color",
+          "blue",
+          "blue",
+          "row-rule-color: blue;"
+        ],
+        [
+          "row-rule-color",
+          "BLUE",
+          "blue",
+          "row-rule-color: blue;"
+        ],
+        [
+          "row-rule-color",
+          " blue ",
+          "blue",
+          "row-rule-color: blue;"
+        ],
+        [
           "row-rule-inset-cap-end",
           "1px",
           "1px",
@@ -10326,6 +10398,24 @@
           " 1px ",
           "1px",
           "row-rule-inset-cap-start: 1px;"
+        ],
+        [
+          "row-rule-inset-cap-start",
+          "2px",
+          "2px",
+          "row-rule-inset-cap-start: 2px;"
+        ],
+        [
+          "row-rule-inset-cap-start",
+          "2PX",
+          "2px",
+          "row-rule-inset-cap-start: 2px;"
+        ],
+        [
+          "row-rule-inset-cap-start",
+          " 2px ",
+          "2px",
+          "row-rule-inset-cap-start: 2px;"
         ],
         [
           "row-rule-inset-junction-end",
@@ -10524,6 +10614,24 @@
           " medium ",
           "medium",
           "row-rule-width: medium;"
+        ],
+        [
+          "row-rule-width",
+          "2px",
+          "2px",
+          "row-rule-width: 2px;"
+        ],
+        [
+          "row-rule-width",
+          "2PX",
+          "2px",
+          "row-rule-width: 2px;"
+        ],
+        [
+          "row-rule-width",
+          " 2px ",
+          "2px",
+          "row-rule-width: 2px;"
         ],
         [
           "scroll-margin-block-end",
@@ -13460,6 +13568,54 @@
           "transition-timing-function: linear(0 0%, 0 50%, 1 50%, 1 100%);"
         ],
         [
+          "transition-timing-function",
+          "cubic-bezier(calc(1px), 0, 1, 1)",
+          "",
+          ""
+        ],
+        [
+          "transition-timing-function",
+          "cubic-bezier(min(0.5, 1), 0, 1, 1)",
+          "cubic-bezier(0.5, 0, 1, 1)",
+          "transition-timing-function: cubic-bezier(0.5, 0, 1, 1);"
+        ],
+        [
+          "transition-timing-function",
+          "cubic-bezier(0 0, 0, 1, 1)",
+          "",
+          ""
+        ],
+        [
+          "transition-timing-function",
+          "cubic-bezier(calc(1s + 1ms + 1), 0, 1, 1)",
+          "",
+          ""
+        ],
+        [
+          "transition-timing-function",
+          "cubic-bezier(a, 0, 1, 1)",
+          "",
+          ""
+        ],
+        [
+          "transition-timing-function",
+          "linear(calc(0), 1)",
+          "linear(0 0%, 1 100%)",
+          "transition-timing-function: linear(0 0%, 1 100%);"
+        ],
+        [
+          "transition-timing-function",
+          "linear(0, 1 calc(50%))",
+          "linear(0 0%, 1 50%)",
+          "transition-timing-function: linear(0 0%, 1 50%);"
+        ],
+        [
+          "transition-timing-function",
+          "steps(1, 2, 3)",
+          "",
+          ""
+        ],
+        [
           "animation-timing-function",
           "ease-in-out, steps(1, start)",
           "ease-in-out, steps(1, start)",
@@ -13614,6 +13770,48 @@
           "minmax(min-content, max-content)",
           "minmax(min-content, max-content)",
           "grid-template-columns: minmax(min-content, max-content);"
+        ],
+        [
+          "grid-template-columns",
+          "minmax([a], 1fr)",
+          "",
+          ""
+        ],
+        [
+          "grid-template-columns",
+          "repeat(1 2, 1fr)",
+          "",
+          ""
+        ],
+        [
+          "grid-template-columns",
+          "repeat(, 1fr)",
+          "",
+          ""
+        ],
+        [
+          "grid-template-columns",
+          "calc(10px + 5%)",
+          "calc(5% + 10px)",
+          "grid-template-columns: calc(5% + 10px);"
+        ],
+        [
+          "grid-template-columns",
+          "repeat(auto-fill, fit-content(10px))",
+          "",
+          ""
+        ],
+        [
+          "grid-template-columns",
+          "repeat(auto-fill, minmax(10px, 1fr))",
+          "repeat(auto-fill, minmax(10px, 1fr))",
+          "grid-template-columns: repeat(auto-fill, minmax(10px, 1fr));"
+        ],
+        [
+          "grid-template-columns",
+          "repeat(auto-fill, [a] 10px)",
+          "repeat(auto-fill, [a] 10px)",
+          "grid-template-columns: repeat(auto-fill, [a] 10px);"
         ],
         [
           "grid-template-rows",
@@ -13772,6 +13970,12 @@
           ""
         ],
         [
+          "transition-duration",
+          "calc(1s + 1ms + 1%)",
+          "",
+          ""
+        ],
+        [
           "transition-delay",
           "-1s",
           "-1s",
@@ -13808,6 +14012,12 @@
           "border-image-width: 1 2px auto 10%;"
         ],
         [
+          "border-image-width",
+          "1 2 3 4 5",
+          "",
+          ""
+        ],
+        [
           "border-image-outset",
           "-1",
           "",
@@ -13824,6 +14034,12 @@
           "1 2px",
           "1 2px",
           "border-image-outset: 1 2px;"
+        ],
+        [
+          "border-image-outset",
+          "1 2 3 4 5",
+          "",
+          ""
         ],
         [
           "border-image-slice",
@@ -14004,6 +14220,18 @@
           "10px, bottom",
           "10px, bottom",
           "background-position-y: 10px, bottom;"
+        ],
+        [
+          "background-position-y",
+          "left 10px",
+          "",
+          ""
+        ],
+        [
+          "background-position-y",
+          "top 10px 5px",
+          "",
+          ""
         ],
         [
           "background-repeat",
@@ -14576,6 +14804,60 @@
           "width: calc(2px);"
         ],
         [
+          "width",
+          ")",
+          "",
+          ""
+        ],
+        [
+          "width",
+          "/**/",
+          "",
+          ""
+        ],
+        [
+          "width",
+          "var(--a)",
+          "var(--a)",
+          "width: var(--a);"
+        ],
+        [
+          "width",
+          "calc(var(--a) + 1px)",
+          "calc(var(--a) + 1px)",
+          "width: calc(var(--a) + 1px);"
+        ],
+        [
+          "width",
+          "calc((var(--a)))",
+          "calc((var(--a)))",
+          "width: calc((var(--a)));"
+        ],
+        [
+          "width",
+          "(var(--a))",
+          "(var(--a))",
+          "width: (var(--a));"
+        ],
+        [
+          "width",
+          "calc(1em + min(1px, 2%))",
+          "calc(1em + min(1px, 2%))",
+          "width: calc(1em + min(1px, 2%));"
+        ],
+        [
+          "width",
+          "url(a b)",
+          "",
+          ""
+        ],
+        [
+          "width",
+          "}",
+          "",
+          ""
+        ],
+        [
           "color",
           "hsl(60, 100%, 50%)",
           "rgb(255, 255, 0)",
@@ -14730,6 +15012,222 @@
           "hsl(330 100% 50%)",
           "rgb(255, 0, 128)",
           "color: rgb(255, 0, 128);"
+        ],
+        [
+          "color",
+          "hsl(1px 50% 50%)",
+          "",
+          ""
+        ],
+        [
+          "color",
+          "hsl(10% 50% 50%)",
+          "",
+          ""
+        ],
+        [
+          "color",
+          "rgb(1 2 3 / 0.5 0.5)",
+          "",
+          ""
+        ],
+        [
+          "flex-direction",
+          "row column",
+          "",
+          ""
+        ],
+        [
+          "border-top-left-radius",
+          "1px 2px 3px",
+          "",
+          ""
+        ],
+        [
+          "text-decoration-line",
+          "underline underline",
+          "",
+          ""
+        ],
+        [
+          "text-decoration-line",
+          "underline bogus",
+          "",
+          ""
+        ],
+        [
+          "offset-path",
+          "path(M 0 0)",
+          "",
+          ""
+        ],
+        [
+          "offset-path",
+          "path(1)",
+          "",
+          ""
+        ],
+        [
+          "offset-path",
+          "circle(50%)",
+          "circle(50%)",
+          "offset-path: circle(50%);"
+        ],
+        [
+          "offset-path",
+          "url(a.svg)",
+          "url(\"a.svg\")",
+          "offset-path: url(\"a.svg\");"
+        ],
+        [
+          "offset-path",
+          "ray(45deg)",
+          "ray(45deg)",
+          "offset-path: ray(45deg);"
+        ],
+        [
+          "display",
+          "block flow-root",
+          "flow-root",
+          "display: flow-root;"
+        ],
+        [
+          "display",
+          "flow-root block",
+          "flow-root",
+          "display: flow-root;"
+        ],
+        [
+          "display",
+          "flex block",
+          "flex",
+          "display: flex;"
+        ],
+        [
+          "display",
+          "block grid",
+          "grid",
+          "display: grid;"
+        ],
+        [
+          "display",
+          "inline grid",
+          "inline-grid",
+          "display: inline-grid;"
+        ],
+        [
+          "display",
+          "block table",
+          "table",
+          "display: table;"
+        ],
+        [
+          "display",
+          "table inline",
+          "inline-table",
+          "display: inline-table;"
+        ],
+        [
+          "display",
+          "block ruby",
+          "block ruby",
+          "display: block ruby;"
+        ],
+        [
+          "display",
+          "inline ruby",
+          "ruby",
+          "display: ruby;"
+        ],
+        [
+          "display",
+          "flow-root flex",
+          "",
+          ""
+        ],
+        [
+          "display",
+          "block inline flow",
+          "",
+          ""
+        ],
+        [
+          "transform",
+          "translate(calc(1px + 1em), 0)",
+          "translate(calc(1em + 1px), 0px)",
+          "transform: translate(calc(1em + 1px), 0px);"
+        ],
+        [
+          "transform",
+          "rotate(calc(1deg + 1rad))",
+          "rotate(calc(58.2958deg))",
+          "transform: rotate(calc(58.2958deg));"
+        ],
+        [
+          "list-style-type",
+          "symbols(cyclic '*')",
+          "symbols(cyclic \"*\")",
+          "list-style-type: symbols(cyclic \"*\");"
+        ],
+        [
+          "list-style-type",
+          "counter(a)",
+          "",
+          ""
+        ],
+        [
+          "caret-color",
+          "#ABC",
+          "rgb(170, 187, 204)",
+          "caret-color: rgb(170, 187, 204);"
+        ],
+        [
+          "text-shadow",
+          "1px 1px #ABC",
+          "rgb(170, 187, 204) 1px 1px",
+          "text-shadow: rgb(170, 187, 204) 1px 1px;"
+        ],
+        [
+          "grid-template-areas",
+          "\"a\\\"b\"",
+          "",
+          ""
+        ],
+        [
+          "grid-template-areas",
+          "\"a\\\\b\"",
+          "",
+          ""
+        ],
+        [
+          "font-variant-alternates",
+          "swash(a) bogus(b)",
+          "",
+          ""
+        ],
+        [
+          "font-variant-alternates",
+          "historical-forms(a)",
+          "",
+          ""
+        ],
+        [
+          "offset-rotate",
+          "0",
+          "",
+          ""
+        ],
+        [
+          "offset-rotate",
+          "auto 0",
+          "",
+          ""
+        ],
+        [
+          "offset-rotate",
+          "0 reverse",
+          "",
+          ""
         ],
         [
           "width",

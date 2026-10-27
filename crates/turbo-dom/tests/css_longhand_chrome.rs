@@ -12,7 +12,21 @@ const CASES: &str = include_str!("fixtures/css-longhand-cases.json");
 const CONTROL: &str = include_str!("fixtures/css_longhand_chrome156.json");
 
 /// Pairs whose Chrome spelling needs more than this module knows, by `name|value`.
-const KNOWN_GAPS: &[&str] = &[];
+const KNOWN_GAPS: &[&str] = &[
+    // turbo-dom#115: var() nested in a function is rejected.
+    "width|calc(var(--a) + 1px)",
+    // turbo-dom#117: math functions in easings, hsl() hue, text-shadow order, area tokens.
+    "transition-timing-function|cubic-bezier(calc(1px), 0, 1, 1)",
+    "transition-timing-function|cubic-bezier(min(0.5, 1), 0, 1, 1)",
+    "transition-timing-function|cubic-bezier(a, 0, 1, 1)",
+    "transition-timing-function|linear(calc(0), 1)",
+    "transition-timing-function|linear(0, 1 calc(50%))",
+    "color|hsl(1px 50% 50%)",
+    "color|hsl(10% 50% 50%)",
+    "text-shadow|1px 1px #ABC",
+    "grid-template-areas|\"a\\\"b\"",
+    "grid-template-areas|\"a\\\\b\"",
+];
 
 fn sha(text: &str) -> String {
     format!("{:x}", Sha256::digest(text.as_bytes()))
