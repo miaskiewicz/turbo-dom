@@ -35,6 +35,29 @@
   };
   const OUT = 'data-x=0 data-y=0';
 
+  // The first scenarios run before any activation: the close watcher manager allows one group.
+  // Two modal dialogs opened without activation share one close watcher group.
+  await scenario('groupedEsc', `<div id=out ${OUT}></div><dialog id=d1 data-x=300 data-y=300>1</dialog><dialog id=d2 data-x=420 data-y=300>2</dialog>`, async () => {
+    document.getElementById('d1').showModal();
+    document.getElementById('d2').showModal();
+    await input(esc);
+    return [state('d1', 'd2')];
+  });
+  // Two groups at the allowed limit: the top dialog's cancel may not be prevented.
+  await scenario('twoGroupsAtLimit', `<div id=out ${OUT}></div><button id=b data-x=120 data-y=0>b</button><dialog id=d1 data-x=300 data-y=300>1</dialog><dialog id=d2 data-x=420 data-y=300>2</dialog>`, async () => {
+    await input(...click(150, 30, 'b'));
+    document.getElementById('d1').showModal();
+    document.getElementById('d2').showModal();
+    await input(esc);
+    return [state('d1', 'd2')];
+  });
+  // The same, after the previous close request lowered the allowed number of groups again.
+  await scenario('groupedAfterDecrement', `<div id=out ${OUT}></div><dialog id=d1 data-x=300 data-y=300>1</dialog><dialog id=d2 data-x=420 data-y=300>2</dialog>`, async () => {
+    document.getElementById('d1').showModal();
+    document.getElementById('d2').showModal();
+    await input(esc);
+    return [state('d1', 'd2')];
+  });
   // A modal dialog opened without activation: Esc fires an uncancelable cancel, then close.
   await scenario('modalEsc', `<div id=out ${OUT}></div><dialog id=d data-x=300 data-y=300>d</dialog>`, async () => {
     document.getElementById('d').showModal();
@@ -68,6 +91,12 @@
     const first = state('d');
     await input(esc);
     return [first, state('d')];
+  });
+  // The nearest clicked dialog is the nearest open <dialog>, not any element with an open attribute.
+  await scenario('detailsInDialog', `<div id=out ${OUT}></div><dialog id=d closedby=any data-x=300 data-y=300><div id=det open data-x=310 data-y=310>x</div></dialog>`, async () => {
+    document.getElementById('d').show();
+    await input(...click(320, 320, 'det'));
+    return [state('d')];
   });
   // closedby=none: Esc never closes; closedby=any non-modal: a click outside closes it,
   // a click inside does not; closedby=closerequest: clicks never close, Esc does.
@@ -116,14 +145,6 @@
     return [state('d')];
   });
 
-  // Two modal dialogs opened without activation share one close watcher group: one Esc
-  // closes both. Opened with activation in between, each Esc closes one.
-  await scenario('groupedEsc', `<div id=out ${OUT}></div><dialog id=d1 data-x=300 data-y=300>1</dialog><dialog id=d2 data-x=420 data-y=300>2</dialog>`, async () => {
-    document.getElementById('d1').showModal();
-    document.getElementById('d2').showModal();
-    await input(esc);
-    return [state('d1', 'd2')];
-  });
   // The same two dialogs, then a click (on the top dialog's ::backdrop) grants activation:
   // the group they share may now cancel.
   await scenario('groupedThenActivation', `<div id=out ${OUT}></div><dialog id=d1 data-x=300 data-y=300>1</dialog><dialog id=d2 data-x=420 data-y=300>2</dialog>`, async () => {

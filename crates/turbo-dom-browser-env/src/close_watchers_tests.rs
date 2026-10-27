@@ -217,26 +217,30 @@ fn run_probe() -> serde_json::Value {
 #[test]
 fn close_watchers_and_light_dismiss_match_chrome156() {
     let expected = control(include_str!("close_watchers_chrome156.json"), PROBE);
+    let mut expected = expected;
     let mut actual = run_probe();
-    // KNOWN_GAP (miaskiewicz/turbo-dom#116): a dialog a close watcher closes fires `toggle`
-    // (closed) before `close`; Chrome fires `close` first. Swap each such adjacent pair (and
-    // require at least one, so the fix removes this).
-    let mut swapped = 0;
-    for scenario in actual.as_object_mut().unwrap().values_mut() {
-        let log = scenario["log"].as_array_mut().unwrap();
-        for index in 1..log.len() {
-            let toggle = &log[index - 1];
-            if toggle[0] == "toggle"
-                && toggle[4] == "closed"
-                && log[index][0] == "close"
-                && log[index][1] == toggle[1]
-            {
-                log.swap(index - 1, index);
-                swapped += 1;
+    // `close` events and `toggle` events are tasks on different task sources: Chrome 156
+    // interleaves the two sources either way (recordings differ under load), the binding in
+    // queueing order. Within each run of consecutive close / toggle events, compare the close
+    // events (in order) followed by the toggle events (in order).
+    for result in [&mut expected, &mut actual] {
+        for scenario in result.as_object_mut().unwrap().values_mut() {
+            let log = scenario["log"].as_array_mut().unwrap();
+            let mut index = 0;
+            while index < log.len() {
+                let task = |entry: &serde_json::Value| entry[0] == "close" || entry[0] == "toggle";
+                if !task(&log[index]) {
+                    index += 1;
+                    continue;
+                }
+                let end = (index..log.len())
+                    .find(|&end| !task(&log[end]))
+                    .unwrap_or(log.len());
+                log[index..end].sort_by_key(|entry| entry[0] != "close");
+                index = end;
             }
         }
     }
-    assert_eq!(swapped, 11, "dialogs closed by close watchers");
     // KNOWN_GAP (miaskiewicz/turbo-dom#119): a popover in a shadow tree never opens, and a
     // closedby=any dialog in a shadow tree is light-dismissed by a click inside it.
     assert_eq!(

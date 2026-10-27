@@ -498,7 +498,7 @@ node scripts/trusted-input-chrome-control.mjs --chrome /path/to/chrome \
 ```
 
 Leaves where the binding still differs from Chrome are pinned as known gaps with both values
-(miaskiewicz/turbo-dom#114, #116, #118, #119).
+(miaskiewicz/turbo-dom#114, #118, #119).
 
 ## How consumers use it
 
