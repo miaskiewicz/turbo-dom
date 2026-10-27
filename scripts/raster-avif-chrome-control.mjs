@@ -36,7 +36,12 @@ const { chromium } = require(playwrightCore);
 const playwrightVersion = require(join(playwrightCore, "package.json")).version;
 
 const DIR = join(repo, "crates/turbo-dom-raster/tests/fixtures/images/avif");
-const files = readdirSync(DIR).filter((f) => f.endsWith(".avif")).sort();
+// The deep (10/12-bit) images were added later: they come last, so the earlier cells keep
+// their places.
+const deep = (f) => Number(/-\d+bit-/.test(f));
+const files = readdirSync(DIR)
+  .filter((f) => f.endsWith(".avif"))
+  .sort((a, b) => deep(a) - deep(b) || a.localeCompare(b));
 const sources = files.map((f) => [f.replace(/\.avif$/, ""), `data:image/avif;base64,${readFileSync(join(DIR, f)).toString("base64")}`]);
 // One absolutely positioned image per 100x60 cell, four per row.
 const pos = (i) => [10 + (i % 4) * 100, 10 + Math.floor(i / 4) * 60];

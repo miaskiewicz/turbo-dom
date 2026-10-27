@@ -5,8 +5,9 @@
 //! `scripts/make_raster_avif_fixtures.py` (`tests/fixtures/images/avif`): the 64x40
 //! red / green / blue / yellow quadrant image as 4:4:4 identity (lossless), 4:4:4 BT.709
 //! limited range, 4:2:2 BT.601, 4:2:0 FCC, SMPTE 240M and BT.2020 (limited), and without an
-//! `nclx` box (the AV1 sequence header's colour description applies). Chrome's raw colour
-//! at the four quadrant centres equals the screenshot's exactly. Without the `avif`
+//! `nclx` box (the AV1 sequence header's colour description applies), plus 10-bit limited and
+//! 12-bit full range. Chrome's raw colour at the four quadrant centres equals the
+//! screenshot's exactly for the 8-bit images (within 2 levels for the deep ones). Without the `avif`
 //! feature each image still lays out at its size and paints as the light-grey placeholder.
 use std::collections::HashMap;
 
@@ -51,7 +52,16 @@ fn avif_yuv_paths_match_chrome_156() {
             } else {
                 [220, 220, 220]
             };
-            if got != want {
+            // 8-bit images equal Chrome exactly. Chrome converts 10/12-bit images through
+            // its own fixed-point pipeline (not H.273's exact arithmetic, which the raster
+            // implements — `avif::tests::deep_limited_range_is_the_eight_bit_range_shifted`):
+            // a deep quadrant may differ by up to 2 levels.
+            let slack = if cfg!(feature = "avif") && id.contains("bit-") {
+                2
+            } else {
+                0
+            };
+            if got.iter().zip(&want).any(|(g, w)| g.abs_diff(*w) > slack) {
                 failures.push(format!("{id} ({x},{y}): {got:?}, want {want:?}"));
             }
         }

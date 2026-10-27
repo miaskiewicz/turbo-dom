@@ -235,11 +235,12 @@ pub(crate) mod yuv {
         full: bool,
     ) -> Rgba8Image {
         let max = ((1u32 << color.bits) - 1) as f32;
-        let scale = max / 255.0;
+        // Limited ("video") range is the 8-bit range shifted to the depth (H.273).
+        let shift = (1u32 << (color.bits - 8)) as f32;
         let (luma_off, luma_range, chroma_range) = if full {
             (0.0, max, max)
         } else {
-            (16.0 * scale, 219.0 * scale, 224.0 * scale)
+            (16.0 * shift, 219.0 * shift, 224.0 * shift)
         };
         let mid = (1u32 << (color.bits - 1)) as f32;
         let weights = weights(matrix);
@@ -391,6 +392,78 @@ mod tests {
         );
     }
 
+    /// The colour (and alpha) streams of an AVIF fixture of this crate or turbo-dom-layout.
+    fn payload(path: &str) -> turbo_dom_layout::image::AvifPayload {
+        let avif = std::fs::read(format!("{}/{path}", env!("CARGO_MANIFEST_DIR"))).unwrap();
+        turbo_dom_layout::image::avif_payload(&avif).unwrap()
+    }
+
+    #[test]
+    fn frames_carry_each_layouts_planes_at_their_depth() {
+        let raster = "tests/fixtures/images/avif";
+        let layout = "../turbo-dom-layout/tests/fixtures/images/formats";
+        // (fixture, bits, chroma shifts, chroma plane length, sample (Y, Cb, Cr) at (16, 10)).
+        for (file, bits, chroma, uv_len, at) in [
+            (
+                format!("{raster}/q-10bit-limited.avif"),
+                10,
+                Some((0, 0)),
+                64 * 40,
+                (250, 409, 960),
+            ),
+            (
+                format!("{raster}/q-12bit-full.avif"),
+                12,
+                Some((1, 1)),
+                32 * 20,
+                (1224, 1357, 4095),
+            ),
+            (
+                format!("{raster}/q-422-bt601.avif"),
+                8,
+                Some((1, 0)),
+                32 * 40,
+                (0, 0, 0),
+            ),
+            (
+                format!("{raster}/q-lossless.avif"),
+                8,
+                Some((0, 0)),
+                64 * 40,
+                (0, 0, 255),
+            ),
+        ] {
+            let f = av1::decode(&payload(&file).color).expect(&file);
+            assert_eq!(
+                (f.width, f.height, f.bits, f.chroma),
+                (64, 40, bits, chroma),
+                "{file}"
+            );
+            assert_eq!(
+                (f.planes[0].len(), f.planes[1].len(), f.planes[2].len()),
+                (64 * 40, uv_len, uv_len),
+                "{file}"
+            );
+            if at != (0, 0, 0) {
+                let (sx, sy) = chroma.unwrap();
+                let c = (10 >> sy) * ((64 + sx) >> sx) + (16 >> sx);
+                assert_eq!(
+                    (f.planes[0][10 * 64 + 16], f.planes[1][c], f.planes[2][c]),
+                    at,
+                    "{file}"
+                );
+            }
+        }
+        // An alpha auxiliary stream is monochrome: no chroma planes.
+        let alpha =
+            av1::decode(&payload(&format!("{layout}/q-alpha.avif")).alpha.unwrap()).unwrap();
+        assert_eq!(
+            (alpha.chroma, alpha.planes[1].len(), alpha.planes[2].len()),
+            (None, 0, 0)
+        );
+        assert_eq!(alpha.planes[0].len(), 64 * 40);
+    }
+
     #[test]
     fn a_colour_stream_decodes_to_its_frame() {
         let frame = av1::decode(&stream()).expect("decodes");
@@ -529,7 +602,6 @@ mod tests {
     /// Limited ("video") range at any depth is the 8-bit range shifted (H.273): luma
     /// 16..=235 and chroma 16..=240 times 2^(bits - 8) — 64..=940 / 64..=960 at 10 bits.
     #[test]
-    #[ignore = "deep limited range: fails until the fix"]
     fn deep_limited_range_is_the_eight_bit_range_shifted() {
         let luma = frame(10, None, [vec![64, 940, 502, 0, 1023], vec![], vec![]]);
         assert_eq!(
