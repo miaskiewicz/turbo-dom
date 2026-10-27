@@ -1,14 +1,13 @@
 use super::*;
+use crate::browser_env::crate_surface::harness_tests::thrown;
 use sha2::{Digest, Sha256};
 
 fn probe_result(scope: &mut v8::PinScope) -> serde_json::Value {
     v8::tc_scope!(let scope, scope);
     let source = v8::String::new(scope, include_str!("key_order_probe.js")).unwrap();
-    let Some(result) =
-        v8::Script::compile(scope, source, None).and_then(|script| script.run(scope))
-    else {
-        panic!("{}", scope.exception().unwrap().to_rust_string_lossy(scope));
-    };
+    let result = v8::Script::compile(scope, source, None)
+        .and_then(|script| script.run(scope))
+        .unwrap_or_else(|| panic!("{}", thrown(scope.exception(), scope)));
     serde_json::from_str(&result.to_rust_string_lossy(scope)).unwrap()
 }
 
@@ -64,6 +63,30 @@ fn mismatches(actual: &serde_json::Value, chrome: &serde_json::Value) -> (usize,
         }
     }
     (compared, failures)
+}
+
+#[test]
+fn mismatches_report_order_and_constant_differences_of_shared_interfaces() {
+    let chrome = serde_json::json!({
+        "A": {"interface": {"keys": ["x", "y"], "fixed": ["x"]}, "prototype": {"keys": ["p", "q"]}},
+        "B": {"interface": {"keys": []}, "prototype": {"keys": []}},
+    });
+    let actual = serde_json::json!({
+        "A": {"interface": {"keys": ["y", "x", "only"], "fixed": []}, "prototype": {"keys": ["p", "q"]}},
+        "Missing": {"interface": {"keys": ["z"]}, "prototype": {"keys": []}},
+    });
+    assert_eq!(
+        mismatches(&actual, &chrome),
+        (
+            1,
+            vec![
+                "A.interface order\n  binding: [\"y\", \"x\"]\n  chrome:  [\"x\", \"y\"]"
+                    .to_owned(),
+                "A.interface non-configurable\n  binding: []\n  chrome:  [\"x\"]".to_owned(),
+            ]
+        )
+    );
+    assert_eq!(mismatches(&chrome, &chrome), (2, Vec::new()));
 }
 
 #[test]

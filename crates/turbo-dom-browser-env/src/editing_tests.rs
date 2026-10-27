@@ -1,4 +1,5 @@
 use super::*;
+use crate::browser_env::crate_surface::harness_tests::thrown;
 use sha2::{Digest, Sha256};
 
 /// Run an async committed probe against the binding with a FIFO task queue standing in for
@@ -31,14 +32,7 @@ fn run_probe(probe: &str, prelude: &str) -> serde_json::Value {
     let promise = v8::Script::compile(scope, source, None)
         .and_then(|script| script.run(scope))
         .and_then(|value| v8::Local::<v8::Promise>::try_from(value).ok())
-        .unwrap_or_else(|| {
-            panic!(
-                "probe threw: {:?}",
-                scope
-                    .exception()
-                    .map(|error| error.to_rust_string_lossy(scope))
-            )
-        });
+        .unwrap_or_else(|| panic!("probe threw: {}", thrown(scope.exception(), scope)));
     let step = v8::String::new(scope, "__tasks.length&&__tasks.shift()()").unwrap();
     let step = v8::Script::compile(scope, step, None).unwrap();
     for _ in 0..100_000 {
@@ -195,12 +189,7 @@ fn run_input_steps(steps: &serde_json::Value) -> serde_json::Value {
             let source = v8::String::new(tc, code).unwrap();
             let value = v8::Script::compile(tc, source, None)
                 .and_then(|script| script.run(tc))
-                .unwrap_or_else(|| {
-                    panic!(
-                        "step threw: {:?}",
-                        tc.exception().map(|error| error.to_rust_string_lossy(tc))
-                    )
-                });
+                .unwrap_or_else(|| panic!("step threw: {}", thrown(tc.exception(), tc)));
             let json = v8::json::stringify(tc, value)
                 .unwrap()
                 .to_rust_string_lossy(tc);

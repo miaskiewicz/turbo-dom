@@ -66,6 +66,11 @@ pub(super) fn control_mismatches(probe: &str, cases: &str, control: &str) -> Vec
     let (mut want, mut got) = (Vec::new(), Vec::new());
     rows("", &control["result"][0]["result"], &mut want);
     rows("", &actual, &mut got);
+    row_mismatches(want, got)
+}
+
+/// `path: binding …, chrome …` for every wanted row the binding lacks or differs on.
+fn row_mismatches(want: Vec<(String, String)>, got: Vec<(String, String)>) -> Vec<String> {
     let got: std::collections::BTreeMap<_, _> = got.into_iter().collect();
     want.into_iter()
         .filter(|(path, value)| got.get(path) != Some(value))
@@ -77,6 +82,18 @@ pub(super) fn control_mismatches(probe: &str, cases: &str, control: &str) -> Vec
             format!("{path}: binding {binding}, chrome {value}")
         })
         .collect()
+}
+
+#[test]
+fn row_mismatches_report_differing_and_missing_rows() {
+    let row = |path: &str, value: &str| (path.to_owned(), value.to_owned());
+    assert_eq!(
+        row_mismatches(
+            vec![row("a", "1"), row("b", "2"), row("c", "3")],
+            vec![row("a", "1"), row("b", "9"), row("extra", "0")]
+        ),
+        ["b: binding 9, chrome 2", "c: binding <missing>, chrome 3"]
+    );
 }
 
 #[test]

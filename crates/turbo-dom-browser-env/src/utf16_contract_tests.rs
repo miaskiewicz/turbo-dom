@@ -1,18 +1,4 @@
 use super::*;
-fn import<'s>(
-    scope: &mut v8::PinScope<'s, '_>,
-    args: v8::FunctionCallbackArguments<'s>,
-    mut result: v8::ReturnValue,
-) {
-    let target = args.get(0).to_object(scope).unwrap();
-    let node = args.get(1).to_object(scope).unwrap();
-    result.set(
-        import_document_node(scope, target, node, args.get(2).boolean_value(scope))
-            .unwrap()
-            .into(),
-    );
-}
-
 #[test]
 fn native_units_match_fresh_chrome_for_creation_mutation_clone_adoption_and_ranges() {
     super::tests::init_v8();
@@ -21,8 +7,6 @@ fn native_units_match_fresh_chrome_for_creation_mutation_clone_adoption_and_rang
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);
     install_independent_html(scope, "<body>");
-    let global = context.global(scope);
-    bind_method(scope, global, "__utf16HostImport", import);
     let source=format!("globalThis.__utf16Result=null;({}).then(value=>globalThis.__utf16Result=JSON.stringify(value),error=>globalThis.__utf16Result=String(error.stack));",include_str!("utf16_probe.js"));
     let code = v8::String::new(scope, &source).unwrap();
     v8::tc_scope!(let catch,scope);
@@ -189,8 +173,6 @@ fn original_document_factories_metadata_nonce_and_names_match_fresh_chrome() {
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);
     install_independent_html(scope, "<body>");
-    let global = context.global(scope);
-    bind_method(scope, global, "__utf16HostImport", import);
     let source = format!(
         "JSON.stringify({})",
         include_str!("utf16_metadata_probe.js")

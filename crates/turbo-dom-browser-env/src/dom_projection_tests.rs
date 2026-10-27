@@ -1,4 +1,5 @@
 use super::*;
+use crate::browser_env::crate_surface::harness_tests::thrown;
 
 #[test]
 fn replaced_document_preserves_traversal_and_equality_on_all_native_node_kinds() {
@@ -31,9 +32,7 @@ fn replaced_document_preserves_traversal_and_equality_on_all_native_node_kinds()
         v8::tc_scope!(let catch, scope);
         let result = v8::Script::compile(catch, code, None)
             .and_then(|script| script.run(catch))
-            .unwrap_or_else(|| {
-                panic!("{}", catch.exception().unwrap().to_rust_string_lossy(catch))
-            });
+            .unwrap_or_else(|| panic!("{}", thrown(catch.exception(), catch)));
         assert_eq!(result.to_rust_string_lossy(catch), "ok");
     }
     reset();

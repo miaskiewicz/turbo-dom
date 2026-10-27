@@ -4,6 +4,7 @@
 //! (`crates/turbo-dom/tests/fixtures/css-longhand-probe.js` on `css-longhand-cases.json`) and
 //! compares every pair with the Chrome control `css_longhand_chrome156.json`.
 use super::*;
+use crate::browser_env::crate_surface::harness_tests::thrown;
 use sha2::{Digest, Sha256};
 
 /// Pairs whose binding result differs from Chrome for a documented reason, by `name|value`.
@@ -48,12 +49,7 @@ fn inline_style_longhands_spell_values_like_chrome156() {
         v8::tc_scope!(let scope, scope);
         let value = v8::Script::compile(scope, code, None)
             .and_then(|script| script.run(scope))
-            .unwrap_or_else(|| {
-                panic!(
-                    "probe threw: {}",
-                    scope.exception().unwrap().to_rust_string_lossy(scope)
-                )
-            })
+            .unwrap_or_else(|| panic!("probe threw: {}", thrown(scope.exception(), scope)))
             .to_rust_string_lossy(scope);
         serde_json::from_str(&value).unwrap()
     };

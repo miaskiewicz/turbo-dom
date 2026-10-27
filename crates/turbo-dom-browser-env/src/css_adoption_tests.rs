@@ -1,4 +1,5 @@
 use super::*;
+use crate::browser_env::crate_surface::harness_tests::thrown;
 fn check(probe: &str, expected: &str) {
     tests::init_v8();
     let isolate = &mut v8::Isolate::new(Default::default());
@@ -28,14 +29,8 @@ fn check(probe: &str, expected: &str) {
     v8::tc_scope!(let scope,scope);
     let source = v8::String::new(scope, &source).unwrap();
     let actual = v8::Script::compile(scope, source, None).and_then(|script| script.run(scope));
-    let actual = actual.unwrap_or_else(|| {
-        panic!(
-            "adoption control failed: {:?}",
-            scope
-                .exception()
-                .map(|error| error.to_rust_string_lossy(scope))
-        )
-    });
+    let actual =
+        actual.unwrap_or_else(|| panic!("adoption failed: {}", thrown(scope.exception(), scope)));
     let actual: serde_json::Value =
         serde_json::from_str(&actual.to_rust_string_lossy(scope)).unwrap();
     let expected: serde_json::Value = serde_json::from_str(expected).unwrap();

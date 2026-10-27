@@ -1,4 +1,5 @@
 use super::*;
+use crate::browser_env::crate_surface::harness_tests::thrown;
 use sha2::{Digest, Sha256};
 
 /// Run a committed async probe against the binding with `page` as the parsed document.
@@ -18,14 +19,7 @@ fn run_probe(page: &str, probe: &str) -> serde_json::Value {
     let promise = v8::Script::compile(scope, source, None)
         .and_then(|script| script.run(scope))
         .and_then(|value| v8::Local::<v8::Promise>::try_from(value).ok())
-        .unwrap_or_else(|| {
-            panic!(
-                "probe threw: {:?}",
-                scope
-                    .exception()
-                    .map(|error| error.to_rust_string_lossy(scope))
-            )
-        });
+        .unwrap_or_else(|| panic!("probe threw: {}", thrown(scope.exception(), scope)));
     for _ in 0..1000 {
         scope.perform_microtask_checkpoint();
         if promise.state() != v8::PromiseState::Pending {
@@ -40,6 +34,12 @@ fn run_probe(page: &str, probe: &str) -> serde_json::Value {
 
 /// Compare every `section.case` of a Chrome control, reporting all differences at once.
 fn assert_matches_control(actual: &serde_json::Value, control: &serde_json::Value) {
+    assert_eq!(control_differences(actual, control), Vec::<String>::new());
+    assert_eq!(actual, &control["result"]);
+}
+
+/// Every `section.case` (or whole section) where `actual` differs from the control.
+fn control_differences(actual: &serde_json::Value, control: &serde_json::Value) -> Vec<String> {
     let mut differences = Vec::new();
     for (section, cases) in control["result"].as_object().unwrap() {
         match cases.as_object() {
@@ -63,8 +63,23 @@ fn assert_matches_control(actual: &serde_json::Value, control: &serde_json::Valu
             None => {}
         }
     }
-    assert!(differences.is_empty(), "{}", differences.join("\n"));
-    assert_eq!(actual, &control["result"]);
+    differences
+}
+
+#[test]
+fn control_differences_name_cases_case_sets_and_sections() {
+    let control = serde_json::json!({"result": {"a": {"x": 1, "y": 2}, "b": [1]}});
+    let same = control["result"].clone();
+    assert_eq!(control_differences(&same, &control), Vec::<String>::new());
+    let actual = serde_json::json!({"a": {"x": 1, "y": 3, "z": 0}, "b": [2]});
+    assert_eq!(
+        control_differences(&actual, &control),
+        [
+            "a.y\n  binding: 3\n  chrome:  2",
+            "a: case set differs",
+            "b\n  binding: [2]\n  chrome:  [1]",
+        ]
+    );
 }
 
 fn control(json: &str, probe: &str) -> serde_json::Value {

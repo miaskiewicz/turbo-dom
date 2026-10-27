@@ -1,4 +1,5 @@
 use super::*;
+use crate::browser_env::crate_surface::harness_tests::thrown;
 use sha2::{Digest, Sha256};
 
 /// Run an async committed probe against the binding, draining one FIFO timer queue that the
@@ -29,14 +30,7 @@ fn run_probe(probe: &str, prelude: &str) -> serde_json::Value {
     let promise = v8::Script::compile(scope, source, None)
         .and_then(|script| script.run(scope))
         .and_then(|value| v8::Local::<v8::Promise>::try_from(value).ok())
-        .unwrap_or_else(|| {
-            panic!(
-                "probe threw: {:?}",
-                scope
-                    .exception()
-                    .map(|error| error.to_rust_string_lossy(scope))
-            )
-        });
+        .unwrap_or_else(|| panic!("probe threw: {}", thrown(scope.exception(), scope)));
     let step = v8::String::new(scope, "__tasks.length&&__tasks.shift()()").unwrap();
     let step = v8::Script::compile(scope, step, None).unwrap();
     for _ in 0..100_000 {

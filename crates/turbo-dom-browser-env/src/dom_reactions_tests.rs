@@ -114,12 +114,23 @@ fn mismatches(
 }
 
 fn assert_none(found: &[String]) {
-    assert!(
-        found.is_empty(),
-        "{} mismatches:\n{}",
-        found.len(),
-        found.join("\n")
+    assert_eq!(found, &[] as &[String]);
+}
+
+#[test]
+fn mismatches_name_keys_and_log_steps() {
+    let chrome =
+        serde_json::json!({"k": 1, "same": 0, "log": [["--", "a"], ["x"], ["--", "b"], ["y"]]});
+    let binding =
+        serde_json::json!({"k": 2, "same": 0, "log": [["--", "a"], ["z"], ["--", "b"], ["y"]]});
+    assert_eq!(
+        mismatches(&binding, &chrome, &["k", "same"], &["a", "b"]),
+        [
+            "k: binding 2, chrome 1",
+            "log a: binding [[\"z\"]], chrome [[\"x\"]]"
+        ]
     );
+    assert_none(&mismatches(&chrome, &chrome, &["k"], &["a"]));
 }
 
 /// turbo-dom#42: `customElements.upgrade(clone of template contents)` leaves the inert

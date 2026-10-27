@@ -115,6 +115,24 @@ range_contents.rs: P5-cov-browser-env literal v8::String::new keys unwrap (a sho
 reference_target.rs: P5-cov-browser-env literal v8::String::new keys unwrap (a short literal cannot exceed v8::String::kMaxLength, so the else-return arms were unreachable)
 shadow_html.rs: P5-cov-browser-env literal v8::String::new keys unwrap (a short literal cannot exceed v8::String::kMaxLength, so the else-return arms were unreachable)
 shadow_slots.rs: P5-cov-browser-env literal v8::String::new keys unwrap (a short literal cannot exceed v8::String::kMaxLength, so the else-return arms were unreachable)
+animations_tests.rs: P5-cov-browser-env harness failure messages via crate_surface::harness_tests::thrown on the line that runs; compare helpers return their differences and have their own tests
+control_interfaces_tests.rs: P5-cov-browser-env harness failure messages via crate_surface::harness_tests::thrown on the line that runs; compare helpers return their differences and have their own tests
+css_admission_tests.rs: P5-cov-browser-env harness failure messages via crate_surface::harness_tests::thrown on the line that runs; compare helpers return their differences and have their own tests
+css_adoption_tests.rs: P5-cov-browser-env harness failure messages via crate_surface::harness_tests::thrown on the line that runs; compare helpers return their differences and have their own tests
+dom_implementation_tests.rs: P5-cov-browser-env harness failure messages via crate_surface::harness_tests::thrown on the line that runs; compare helpers return their differences and have their own tests
+dom_projection_tests.rs: P5-cov-browser-env harness failure messages via crate_surface::harness_tests::thrown on the line that runs; compare helpers return their differences and have their own tests
+editing_tests.rs: P5-cov-browser-env harness failure messages via crate_surface::harness_tests::thrown on the line that runs; compare helpers return their differences and have their own tests
+file_inputs_tests.rs: P5-cov-browser-env harness failure messages via crate_surface::harness_tests::thrown on the line that runs; compare helpers return their differences and have their own tests
+form_outputs_tests.rs: P5-cov-browser-env harness failure messages via crate_surface::harness_tests::thrown on the line that runs; compare helpers return their differences and have their own tests
+form_pseudo_tests.rs: P5-cov-browser-env harness failure messages via crate_surface::harness_tests::thrown on the line that runs; compare helpers return their differences and have their own tests
+html_dialog_tests.rs: P5-cov-browser-env harness failure messages via crate_surface::harness_tests::thrown on the line that runs; compare helpers return their differences and have their own tests
+key_order_tests.rs: P5-cov-browser-env harness failure messages via crate_surface::harness_tests::thrown on the line that runs; compare helpers return their differences and have their own tests
+pointer_events_tests.rs: P5-cov-browser-env harness failure messages via crate_surface::harness_tests::thrown on the line that runs; compare helpers return their differences and have their own tests
+sanitizer_tests.rs: P5-cov-browser-env harness failure messages via crate_surface::harness_tests::thrown on the line that runs; compare helpers return their differences and have their own tests
+select_element_tests.rs: P5-cov-browser-env harness failure messages via crate_surface::harness_tests::thrown on the line that runs; compare helpers return their differences and have their own tests
+utf16_contract_tests.rs: P5-cov-browser-env harness failure messages via crate_surface::harness_tests::thrown on the line that runs; compare helpers return their differences and have their own tests
+view_transitions_tests.rs: P5-cov-browser-env harness failure messages via crate_surface::harness_tests::thrown on the line that runs; compare helpers return their differences and have their own tests
+probe_harness_tests.rs: P5-cov-browser-env harness failure messages via crate_surface::harness_tests::thrown on the line that runs; compare helpers return their differences and have their own tests
 "
 # Crate-owned files under src/ that were not part of the move.
 OWNED="lib.rs crate_surface.rs host_internals.rs test_support.rs css_snapshot.rs option_factory_probe.js option_factory_cases.json option_factory_chrome156.json html_image.js html_image_tests.rs html_image_probe.js html_image_cases.json html_image_chrome156.json custom_elements_defined_probe.js custom_elements_defined_cases.json custom_elements_defined_chrome156.json computed_defaults_probe.js computed_defaults_cases.json computed_defaults_chrome156.json computed_defaults_tests.rs dom_reactions_names_probe.js dom_reactions_names_cases.json dom_reactions_names_chrome156.json dom_reactions_tests.rs dom_adoption_reactions_probe.js dom_adoption_reactions_cases.json dom_adoption_reactions_chrome156.json shadow_events_probe.js shadow_events_cases.json shadow_events_chrome156.json shadow_events_tests.rs html_track_probe.js html_track_cases.json html_track_chrome156.json html_track_tests.rs html_track.js"
@@ -123,7 +141,7 @@ OWNED="$OWNED css_shorthand.rs css_shorthand_tests.rs css_longhand_tests.rs svg_
 OWNED="$OWNED dom_exception_realm_probe.js dom_exception_realm_cases.json dom_exception_realm_chrome156.json dom_exception_realm_tests.rs custom_elements_collect_tests.rs html_image_srcset_probe.js html_image_srcset_cases.json html_image_srcset_chrome156.json html_image_srcset_tests.rs reflected_urls_probe.js reflected_urls_cases.json reflected_urls_chrome156.json reflected_urls_tests.rs"
 OWNED="$OWNED dom_ownership_alloc_tests.rs dom_ownership_scale_tests.rs"
 OWNED="$OWNED native_guards_probe.js native_guards_chrome156.json native_guards_tests.rs close_watchers_probe.js close_watchers_chrome156.json close_watchers_tests.rs host_api_tests.rs"
-OWNED="$OWNED edge_probes_tests.rs shadow_slots_edges_probe.js shadow_slots_edges_chrome156.json dom_mutation_validity_probe.js dom_mutation_validity_chrome156.json selector_edges_probe.js selector_edges_chrome156.json sanitizer_edges_probe.js sanitizer_edges_chrome156.json document_edges_probe.js document_edges_chrome156.json"
+OWNED="$OWNED edge_probes_tests.rs harness_tests.rs shadow_slots_edges_probe.js shadow_slots_edges_chrome156.json dom_mutation_validity_probe.js dom_mutation_validity_chrome156.json selector_edges_probe.js selector_edges_chrome156.json sanitizer_edges_probe.js sanitizer_edges_chrome156.json document_edges_probe.js document_edges_chrome156.json"
 
 repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 turbo_test=${TURBO_TEST_REPO:-$repo_root/../turbo-test}

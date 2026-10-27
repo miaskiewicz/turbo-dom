@@ -1,4 +1,5 @@
 use super::*;
+use crate::browser_env::crate_surface::harness_tests::thrown;
 
 #[test]
 fn inert_initializer_uses_its_creation_realm_with_shared_embedder_ops() {
@@ -59,14 +60,8 @@ fn independent_factories_and_constructors_match_authored_chrome155_control() {
     v8::tc_scope!(let scope,scope);
     let source = v8::String::new(scope, &source).unwrap();
     let result = v8::Script::compile(scope, source, None).and_then(|script| script.run(scope));
-    let result = result.unwrap_or_else(|| {
-        panic!(
-            "factory probe failed: {:?}",
-            scope
-                .exception()
-                .map(|error| error.to_rust_string_lossy(scope))
-        )
-    });
+    let result = result
+        .unwrap_or_else(|| panic!("factory probe failed: {}", thrown(scope.exception(), scope)));
     let result: serde_json::Value =
         serde_json::from_str(&result.to_rust_string_lossy(scope)).unwrap();
     let expected: serde_json::Value =
@@ -119,14 +114,8 @@ fn xml_element_case_namespaces_and_receivers_match_authored_chrome155_control() 
     v8::tc_scope!(let scope,scope);
     let source = v8::String::new(scope, &source).unwrap();
     let result = v8::Script::compile(scope, source, None).and_then(|script| script.run(scope));
-    let result = result.unwrap_or_else(|| {
-        panic!(
-            "factory probe failed: {:?}",
-            scope
-                .exception()
-                .map(|error| error.to_rust_string_lossy(scope))
-        )
-    });
+    let result = result
+        .unwrap_or_else(|| panic!("factory probe failed: {}", thrown(scope.exception(), scope)));
     let result: serde_json::Value =
         serde_json::from_str(&result.to_rust_string_lossy(scope)).unwrap();
     let expected: serde_json::Value =
