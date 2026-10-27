@@ -6259,7 +6259,7 @@ fn ownership_callback<'s, 'i, F>(
     let scope = &mut caught.init();
     // Source documents can lose their last node edge during adoption. Keep
     // their actual wrappers/realms alive through private record projection.
-    let _owners = dom_ownership::pin_callback_owners(
+    let owners = dom_ownership::pin_callback_owners(
         scope,
         args.this(),
         (0..args.length()).map(|index| args.get(index)),
@@ -6290,7 +6290,7 @@ fn ownership_callback<'s, 'i, F>(
         scope.rethrow();
         return;
     }
-    dom_ownership::reconcile_all(scope);
+    dom_ownership::reconcile_after_call(scope, &owners);
     if scope.has_terminated() {
         scope.rethrow();
         return;
@@ -6384,7 +6384,7 @@ fn ownership_setter<'s, 'i, S>(
 {
     let caught = std::pin::pin!(v8::TryCatch::new(scope));
     let scope = &mut caught.init();
-    let _owners = dom_ownership::pin_callback_owners(scope, args.holder(), [value]);
+    let owners = dom_ownership::pin_callback_owners(scope, args.holder(), [value]);
     if scope.has_terminated() {
         scope.rethrow();
         return;
@@ -6413,7 +6413,7 @@ fn ownership_setter<'s, 'i, S>(
         scope.rethrow();
         return;
     }
-    dom_ownership::reconcile_all(scope);
+    dom_ownership::reconcile_after_call(scope, &owners);
     if scope.has_terminated() {
         scope.rethrow();
         return;
@@ -7420,6 +7420,7 @@ pub fn install_with_utf16_source_positions(scope: &mut v8::PinScope, units: &[u1
 }
 fn install_with_tree(scope: &mut v8::PinScope, mut tree: Tree) {
     dom_isolation::install(scope);
+    dom_ownership::track_gc(scope);
     // The document parser attaches declarative shadow roots (fragment parsing
     // for innerHTML never does); their scripts are ordinary parser scripts.
     let root = tree.root();
@@ -7795,10 +7796,18 @@ pub fn native_document_count_for_testing() -> usize {
     }) + DOM.with(|state| usize::from(state.borrow().is_some()))
 }
 
+/// Settle DOM ownership work that mutating calls on a large tree deferred (turbo-dom#112).
+/// Hosts call this whenever control returns to their event loop (between tasks), so a detached
+/// subtree becomes collectable before the next task; until then the deferral only retains more.
+pub fn flush_ownership(scope: &mut v8::PinScope) {
+    dom_ownership::reconcile_all(scope);
+}
+
 /// Reset the per-thread DOM (call between test files when reusing an isolate).
 pub fn reset() {
     // An embedding's cached runtime may be destroyed after a binding TLS cell.
     // That cell has already released its handles; clear every cell still alive.
+    dom_ownership::forget_deferred();
     let _ = OTHER_DOMS.try_with(|d| d.borrow_mut().clear());
     let _ = DOM_CONTEXTS.try_with(|d| d.borrow_mut().clear());
     let _ = DOM_ID.try_with(|d| d.set(0));
@@ -10005,6 +10014,14 @@ mod mutation_observers_tests;
 #[cfg(test)]
 #[path = "ownership_guard_tests.rs"]
 mod ownership_guard_tests;
+
+#[cfg(test)]
+#[path = "dom_ownership_scale_tests.rs"]
+mod dom_ownership_scale_tests;
+
+#[cfg(test)]
+#[path = "dom_ownership_alloc_tests.rs"]
+mod dom_ownership_alloc_tests;
 
 #[cfg(test)]
 #[path = "iframe_credentialless_tests.rs"]

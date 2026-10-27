@@ -116,6 +116,11 @@ pub(super) fn reconcile_current(scope: &mut v8::PinScope) {
         let graph = state.ownership.clone()?;
         let mut roots = std::collections::HashMap::new();
         let mut connected = std::collections::HashSet::new();
+        #[cfg(test)]
+        WORK.with(|work| {
+            work.wrappers_visited
+                .set(work.wrappers_visited.get() + state.cache.len())
+        });
         for handle in state.cache.keys() {
             let mut root = *handle;
             while let Some(parent) = state
@@ -146,6 +151,19 @@ pub(super) fn reconcile_current(scope: &mut v8::PinScope) {
     graph.reconcile_components(scope, |id| *roots.get(&id).unwrap());
 }
 
+/// Work counters for complexity tests (turbo-dom#112): wrappers walked by `reconcile_current`
+/// and collected-listener/document sweeps run by `reconcile_all`.
+#[cfg(test)]
+#[derive(Default)]
+pub(super) struct Work {
+    pub(super) wrappers_visited: std::cell::Cell<usize>,
+    pub(super) sweeps: std::cell::Cell<usize>,
+}
+#[cfg(test)]
+thread_local! {
+    pub(super) static WORK: Work = Work::default();
+}
+
 pub(super) fn link_style<'s>(
     scope: &mut v8::PinScope<'s, '_>,
     node: v8::Local<'s, v8::Object>,
@@ -158,13 +176,38 @@ pub(super) fn link_style<'s>(
     let key = v8::Private::for_api(scope, Some(name));
     style.set_private(scope, key, node.into());
 }
+/// What `pin_callback_owners` did for one native call: how many owner documents it pinned
+/// (as Locals in the call's handle scope) and whether the call's wrappers were pinned for a
+/// deferred reconcile (see `reconcile_after_call`).
+pub(super) struct CallOwners {
+    documents: usize,
+    deferrable: bool,
+}
+#[cfg(test)]
+impl CallOwners {
+    /// Owner documents this call pinned.
+    pub(super) fn documents(&self) -> usize {
+        self.documents
+    }
+}
+
+/// Distinct owner documents `pin_callback_owners` deduplicates before it stops bothering: a
+/// call names a handful of nodes, and pinning a document twice is harmless.
+const OWNER_SLOTS: usize = 8;
+
+/// Runs before every native DOM method and setter, so it does no heap allocation
+/// (turbo-test#127): owners are deduplicated in a fixed array and each document is pinned by
+/// localizing it, which keeps it alive for the call's handle scope.
 pub(super) fn pin_callback_owners<'s>(
     scope: &mut v8::PinScope<'s, '_>,
     receiver: v8::Local<'s, v8::Object>,
     arguments: impl IntoIterator<Item = v8::Local<'s, v8::Value>>,
-) -> Vec<v8::Local<'s, v8::Object>> {
+) -> CallOwners {
     let current = DOM_ID.with(|id| id.get());
-    let mut owners = std::collections::HashSet::from([current]);
+    let deferrable = large_tree();
+    let mut seen = [current; OWNER_SLOTS];
+    let mut distinct = 1;
+    let mut documents = usize::from(pin_document(scope, current, current));
     for value in std::iter::once(receiver.into()).chain(arguments) {
         let Ok(object) = v8::Local::<v8::Object>::try_from(value) else {
             continue;
@@ -172,41 +215,160 @@ pub(super) fn pin_callback_owners<'s>(
         if object.internal_field_count() != 2 || handle_of(scope, object).is_none() {
             continue;
         }
-        if let Some(id) = object
+        if deferrable {
+            pin_until_reconciled(scope, object);
+        }
+        let Some(owner) = object
             .get_internal_field(scope, 1)
             .and_then(|value| v8::Local::<v8::BigInt>::try_from(value).ok())
-        {
-            owners.insert(id.u64_value().0);
-        }
-    }
-    let mut pins = Vec::with_capacity(owners.len());
-    for owner in owners {
-        let document = if owner == current {
-            DOM.with(|state| {
-                let state = state.borrow();
-                let state = state.as_ref()?;
-                state.cache.get(&state.tree.root())?.to_local(scope)
-            })
-        } else {
-            OTHER_DOMS.with(|states| {
-                let states = states.borrow();
-                let state = states.get(&owner)?.dom.as_ref()?;
-                state.cache.get(&state.tree.root())?.to_local(scope)
-            })
+            .map(|id| id.u64_value().0)
+        else {
+            continue;
         };
-        if let Some(document) = document {
-            pins.push(document);
+        if seen[..distinct].contains(&owner) {
+            continue;
         }
+        if distinct < OWNER_SLOTS {
+            seen[distinct] = owner;
+            distinct += 1;
+        }
+        documents += usize::from(pin_document(scope, owner, current));
     }
-    pins
+    CallOwners {
+        documents,
+        deferrable,
+    }
+}
+
+/// Localize `owner`'s document wrapper in the caller's handle scope (Source documents can lose
+/// their last node edge during adoption; this keeps them alive through the call).
+fn pin_document(scope: &mut v8::PinScope, owner: u64, current: u64) -> bool {
+    let document = if owner == current {
+        DOM.with(|state| {
+            let state = state.borrow();
+            let state = state.as_ref()?;
+            state.cache.get(&state.tree.root())?.to_local(scope)
+        })
+    } else {
+        OTHER_DOMS.with(|states| {
+            let states = states.borrow();
+            let state = states.get(&owner)?.dom.as_ref()?;
+            state.cache.get(&state.tree.root())?.to_local(scope)
+        })
+    };
+    document.is_some()
+}
+
+/// Up to this many live wrappers a mutating DOM call reconciles ownership itself (exact
+/// per-call ownership, what every small GC-exactness test exercises). A reconcile walks every
+/// wrapper and rebuilds a V8 Map per ownership component, so doing it after EVERY call made
+/// building n nodes O(n^2) (turbo-dom#112; approach from turbo-test#105).
+const EAGER_WRAPPER_LIMIT: usize = 256;
+/// Past the limit, reconcile once per `wrappers / DEFER_DIVISOR` mutating calls: amortised
+/// O(DEFER_DIVISOR) wrapper visits per call instead of O(wrappers).
+const DEFER_DIVISOR: usize = 32;
+/// Bound on wrappers pinned while reconciles are deferred.
+const MAX_PINNED: usize = 4096;
+
+thread_local! {
+    static DEFERRED_CALLS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+    /// Wrappers (receivers and arguments) of calls whose reconcile is deferred. A call can attach
+    /// a node whose wrapper (and, through its component edges, the subtree it owns) only the
+    /// pending reconcile would hand to the document; until then this keeps it strongly reachable,
+    /// so a GC between the mutation and the reconcile cannot drop its identity or expandos (e.g.
+    /// React's fiber pointers). Deferral only ever delays releases, never an edge it needs.
+    static DEFERRED_PINS: std::cell::RefCell<Vec<v8::Global<v8::Object>>> =
+        const { std::cell::RefCell::new(Vec::new()) };
+}
+
+fn large_tree() -> bool {
+    DOM.with(|state| {
+        state
+            .borrow()
+            .as_ref()
+            .is_some_and(|state| state.cache.len() > EAGER_WRAPPER_LIMIT)
+    })
+}
+
+fn pin_until_reconciled(scope: &mut v8::PinScope, object: v8::Local<v8::Object>) {
+    let global = v8::Global::new(scope, object);
+    DEFERRED_PINS.with(|pins| pins.borrow_mut().push(global));
+}
+
+/// Epilogue of every mutating native call (`ownership_callback` / `ownership_setter`):
+/// reconcile now, or, on a large tree whose call wrappers `pin_callback_owners` pinned, once
+/// per `wrappers / DEFER_DIVISOR` calls. Hosts settle the rest at their event-loop turn
+/// (`browser_env::flush_ownership`); any full `reconcile_all` does too.
+pub(super) fn reconcile_after_call(scope: &mut v8::PinScope, owners: &CallOwners) {
+    let wrappers = DOM.with(|state| {
+        let state = state.borrow();
+        let state = state.as_ref()?;
+        state.ownership_dirty.then_some(state.cache.len())
+    });
+    let Some(wrappers) = wrappers.filter(|n| owners.deferrable && *n > EAGER_WRAPPER_LIMIT) else {
+        return reconcile_all(scope);
+    };
+    let pinned = DEFERRED_PINS.with(|pins| pins.borrow().len());
+    let calls = DEFERRED_CALLS.with(|calls| {
+        calls.set(calls.get() + 1);
+        calls.get()
+    });
+    if calls >= wrappers / DEFER_DIVISOR || pinned >= MAX_PINNED {
+        reconcile_all(scope);
+    }
+}
+
+/// Drop the deferral state with the DOM it belonged to (`browser_env::reset`).
+pub(super) fn forget_deferred() {
+    let _ = DEFERRED_CALLS.try_with(|calls| calls.set(0));
+    let _ = DEFERRED_PINS.try_with(|pins| std::mem::take(&mut *pins.borrow_mut()));
+}
+
+thread_local! {
+    /// Bumped by every GC on an isolate with an installed DOM (`track_gc`).
+    static GC_EPOCH: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
+    /// `GC_EPOCH` at the last collected-listener/document sweep.
+    static SWEPT_EPOCH: std::cell::Cell<u64> = const { std::cell::Cell::new(u64::MAX) };
+}
+
+struct GcTracked;
+
+unsafe extern "C" fn gc_epilogue(
+    _isolate: v8::UnsafeRawIsolatePtr,
+    _type: v8::GCType,
+    _flags: v8::GCCallbackFlags,
+    _data: *mut std::ffi::c_void,
+) {
+    let _ = GC_EPOCH.try_with(|epoch| epoch.set(epoch.get().wrapping_add(1)));
+}
+
+/// Count this isolate's GCs (once per isolate; `install` calls it). The collected-listener and
+/// document sweeps look for weak handles V8 has emptied, which only a GC does, so
+/// `reconcile_all` runs them only when a GC has happened since the last sweep instead of after
+/// every native call (each walks every registered listener). A new install sweeps once.
+pub(super) fn track_gc(isolate: &mut v8::Isolate) {
+    if isolate.get_slot::<GcTracked>().is_none() {
+        isolate.add_gc_epilogue_callback(gc_epilogue, std::ptr::null_mut(), v8::GCType::kGCTypeAll);
+        isolate.set_slot(GcTracked);
+    }
+    SWEPT_EPOCH.with(|swept| swept.set(GC_EPOCH.with(|epoch| epoch.get()).wrapping_sub(1)));
 }
 
 pub(super) fn reconcile_all(scope: &mut v8::PinScope) {
     if scope.is_execution_terminating() {
         return;
     }
-    super::event_listeners::sweep_collected_listeners(scope);
-    sweep_collected();
+    // The reconcile localizes every live wrapper. Outside a native callback (a host's
+    // `flush_ownership` at its event-loop turn) those Locals would otherwise live in the host's
+    // long-lived handle scope and keep detached wrappers from being collected.
+    v8::scope!(let scope, scope);
+    let epoch = GC_EPOCH.with(|epoch| epoch.get());
+    if SWEPT_EPOCH.with(|swept| swept.replace(epoch)) != epoch {
+        #[cfg(test)]
+        WORK.with(|work| work.sweeps.set(work.sweeps.get() + 1));
+        super::event_listeners::sweep_collected_listeners(scope);
+        sweep_collected();
+    }
     let current = DOM_ID.with(|id| id.get());
     let mut owners = OTHER_DOMS.with(|states| {
         states
@@ -233,6 +395,10 @@ pub(super) fn reconcile_all(scope: &mut v8::PinScope) {
             }
         });
     }
+    // Ownership is exact again: release what deferred calls pinned (`reconcile_after_call`).
+    DEFERRED_CALLS.with(|calls| calls.set(0));
+    let pins = DEFERRED_PINS.with(|pins| std::mem::take(&mut *pins.borrow_mut()));
+    drop(pins);
 }
 
 fn listener_roots<'s>(
