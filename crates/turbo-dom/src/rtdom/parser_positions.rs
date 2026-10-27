@@ -388,6 +388,9 @@ impl Tree {
         while !matches!(tokenizer.feed(&queue), html5ever::TokenizerResult::Done) {}
         tokenizer.end();
         let dom = tokenizer.sink.builder.sink.finish();
+        if crate::core::mentions_selectedcontent(&String::from_utf16_lossy(units)) {
+            crate::core::fill_selectedcontent(&dom.dom.document);
+        }
         let mut tree = Self::from_units_dom(&dom.dom);
         let positions = dom.positions.into_inner();
         let attribute_positions = dom.attribute_positions.into_inner();

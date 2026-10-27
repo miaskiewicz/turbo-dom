@@ -146,7 +146,11 @@ fn parsed_with_options(
     // Parser indicators need no host work: this API never executes scripts.
     while !matches!(tokenizer.feed(&queue), html5ever::TokenizerResult::Done) {}
     tokenizer.end();
-    tokenizer.sink.0.sink
+    let dom = tokenizer.sink.0.sink;
+    if core::mentions_selectedcontent(&String::from_utf16_lossy(units)) {
+        core::fill_selectedcontent(&dom.document);
+    }
+    dom
 }
 impl Tree {
     fn fragment_context(

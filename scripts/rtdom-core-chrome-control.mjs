@@ -148,7 +148,28 @@ const DOCUMENTS = [
   { id: "form_association", html: "<form id=f><table><input name=a></table></form>" },
   { id: "foreign_attributes_prefixed", html: '<svg xlink:href="u" xml:lang="en"><a xlink:title="t"/></svg>' },
   { id: "meta_charset", html: '<meta charset="utf-8"><p>x</p>' },
+  // miaskiewicz/turbo-dom#104: the selected option's content is cloned into every
+  // selectedcontent of a non-multiple select
   { id: "selectedcontent_clone", html: "<select><button><selectedcontent></selectedcontent></button><option>A</option><option selected>B</option></select>" },
+  { id: "selectedcontent_first_option", html: "<select><button><selectedcontent></selectedcontent></button><option>A</option><option>B</option></select>" },
+  { id: "selectedcontent_last_selected", html: "<select><button><selectedcontent></selectedcontent></button><option selected>A</option><option selected>B</option></select>" },
+  { id: "selectedcontent_replaces_markup", html: "<select><button><selectedcontent>old<i>x</i></selectedcontent></button><option><b class=k>A</b> x<!--c--></option></select>" },
+  { id: "selectedcontent_after_option", html: "<select><option selected>A</option><button><selectedcontent></selectedcontent></button></select>" },
+  { id: "selectedcontent_multiple", html: "<select multiple><button><selectedcontent></selectedcontent></button><option selected>A</option></select>" },
+  { id: "selectedcontent_twice", html: "<select><button><selectedcontent></selectedcontent><selectedcontent></selectedcontent></button><option selected>A</option></select>" },
+  { id: "selectedcontent_optgroup", html: "<select><button><selectedcontent></selectedcontent></button><optgroup><option selected>G</option></optgroup></select>" },
+  { id: "selectedcontent_implied_end", html: "<select><button><selectedcontent></selectedcontent></button><option>A</option><option selected>B<option>C</select>" },
+  { id: "selectedcontent_outside_select", html: "<div><selectedcontent></selectedcontent><option selected>A</option></div>" },
+  { id: "selectedcontent_nested", html: "<select><button><span><selectedcontent></selectedcontent></span></button><option selected id=o>A</option></select>" },
+  { id: "selectedcontent_no_option", html: "<select><button><selectedcontent>keep</selectedcontent></button></select>" },
+  { id: "selectedcontent_disabled_first", html: "<select><button><selectedcontent></selectedcontent></button><option disabled>A</option><option>B</option></select>" },
+  { id: "selectedcontent_all_disabled", html: "<select><button><selectedcontent>k</selectedcontent></button><option disabled>A</option></select>" },
+  { id: "selectedcontent_disabled_optgroup", html: "<select><button><selectedcontent></selectedcontent></button><optgroup disabled><option>A</option></optgroup><option>B</option></select>" },
+  { id: "selectedcontent_disabled_selected", html: "<select><button><selectedcontent></selectedcontent></button><option disabled selected>A</option><option>B</option></select>" },
+  { id: "selectedcontent_datalist", html: "<select><button><selectedcontent></selectedcontent></button><datalist><option>D</option></datalist><option>B</option></select>" },
+  { id: "selectedcontent_template_option", html: "<select><button><selectedcontent></selectedcontent></button><template><option selected>T</option></template><option>B</option></select>" },
+  { id: "selectedcontent_wrapped_option", html: "<select><button><selectedcontent></selectedcontent></button><div><option selected>X</option></div></select>" },
+  { id: "selectedcontent_uppercase", html: "<SELECT><BUTTON><SELECTEDCONTENT></SELECTEDCONTENT></BUTTON><OPTION SELECTED>A</OPTION></SELECT>" },
   { id: "script_end_tags", html: "<script>a</script><script>b</script>c" },
   // fragments (innerHTML in a scripting-disabled document)
   // miaskiewicz/turbo-dom#92: Chrome drops a literal U+0000 in an RCDATA-context
@@ -234,6 +255,7 @@ const DOCUMENTS = [
   { id: "fragment_svg_cdata_eof", context: "svg svg", html: "<![CDATA[x]" },
   { id: "fragment_svg_cdata_eof_bracket", context: "svg svg", html: "<![CDATA[x]]" },
   { id: "fragment_svg_cdata_nul", context: "svg svg", html: "<![CDATA[a\0b]]>" },
+  { id: "fragment_selectedcontent", context: "div", html: "<select><button><selectedcontent></selectedcontent></button><option>A</option><option selected>B</option></select>" },
   { id: "fragment_html_frameset_comment", context: "html", html: "<frameset></frameset></html><!--x-->" },
 ];
 
@@ -797,6 +819,38 @@ const PROBES = [
         isDefined: fragment.firstChild.matches(":defined"),
         plainDefined: fragment.childNodes[1].matches(":defined"),
         svgIsDefined: fragment.lastChild.matches(":defined"),
+      };
+    },
+  },
+  {
+    // a `dir=auto` textarea's direction comes from its value, whose default is the child
+    // text content (direct Text children only; miaskiewicz/turbo-dom#106)
+    id: "textarea_dir_auto",
+    script: (doc) => {
+      const textarea = (...children) => {
+        const el = doc.createElement("textarea");
+        el.setAttribute("dir", "auto");
+        doc.body.append(el);
+        for (const [tag, text] of children) {
+          if (tag) {
+            const child = doc.createElement(tag);
+            child.textContent = text;
+            el.append(child);
+          } else {
+            el.append(text);
+          }
+        }
+        return [el.matches(":dir(rtl)"), el.matches(":dir(ltr)")];
+      };
+      return {
+        empty: textarea(),
+        hebrew: textarea([null, "א"]),
+        digits: textarea([null, "123"]),
+        digitsThenHebrew: textarea([null, "123"], [null, "א"]),
+        latinThenHebrew: textarea([null, "a"], [null, "א"]),
+        spanChild: textarea(["span", "א"]),
+        bdiChild: textarea(["bdi", "א"]),
+        spanThenHebrew: textarea(["span", "a"], [null, "א"]),
       };
     },
   },

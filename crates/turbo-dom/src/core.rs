@@ -120,7 +120,137 @@ fn parse_document_dom(html: &str, opts: ParseOpts) -> RcDom {
     input.push_back(StrTendril::from_slice(html));
     while !matches!(tokenizer.feed(&input), TokenizerResult::Done) {}
     tokenizer.end();
-    tokenizer.sink.0.sink
+    let dom = tokenizer.sink.0.sink;
+    if mentions_selectedcontent(html) {
+        fill_selectedcontent(&dom.document);
+    }
+    dom
+}
+
+/// Does `html` mention `<selectedcontent>` (ASCII case-insensitive)? Gates [`fill_selectedcontent`].
+#[must_use]
+pub fn mentions_selectedcontent(html: &str) -> bool {
+    html.as_bytes()
+        .windows(15)
+        .any(|w| w.eq_ignore_ascii_case(b"selectedcontent"))
+}
+
+/// Chrome 156 fills every `<selectedcontent>` of a non-`multiple` `<select>` with a clone of
+/// the selected option's content while it parses (the "maybe clone an option into
+/// selectedcontent" step; miaskiewicz/turbo-dom#104): the last option with `selected`, else
+/// the first option that is not disabled (itself or through its `<optgroup>`); with none,
+/// the element keeps its content. `markup5ever_rcdom` 0.39's step never finds the element (its
+/// descendant search compares the select's own name) and html5ever only runs it on an
+/// explicit `</option>`, so the parsed tree is completed here — the final state Chrome's
+/// per-option runs leave.
+pub fn fill_selectedcontent(root: &Handle) {
+    let mut pending = vec![root.clone()];
+    while let Some(node) = pending.pop() {
+        if html_element(&node, "select") && !has_attribute(&node, "multiple") {
+            let (options, contents) = select_parts(&node);
+            let selected = options
+                .iter()
+                .rev()
+                .find(|(option, _)| has_attribute(option, "selected"))
+                .or_else(|| options.iter().find(|(_, disabled)| !disabled));
+            if let Some((option, _)) = selected {
+                for content in &contents {
+                    for old in content.children.take() {
+                        old.parent.set(None);
+                    }
+                    for child in option.children.borrow().iter() {
+                        append_handle(content, deep_clone(child));
+                    }
+                }
+            }
+        }
+        pending.extend(node.children.borrow().iter().cloned());
+    }
+}
+
+fn html_element(node: &Handle, local: &str) -> bool {
+    matches!(&node.data, NodeData::Element { name, .. } if name.ns == ns!(html) && &*name.local == local)
+}
+
+fn has_attribute(node: &Handle, local: &str) -> bool {
+    matches!(&node.data, NodeData::Element { attrs, .. }
+        if attrs.borrow().iter().any(|a| a.name.ns == ns!() && &*a.name.local == local))
+}
+
+/// A select's options (with whether each is disabled) and selectedcontent elements, in tree
+/// order: an option counts unless an option, datalist or hr, or a second optgroup, lies
+/// between it and the select.
+fn select_parts(select: &Handle) -> (Vec<(Handle, bool)>, Vec<Handle>) {
+    let (mut options, mut contents) = (Vec::new(), Vec::new());
+    // (node, blocked, inside an optgroup, inside a disabled optgroup)
+    let mut pending: Vec<(Handle, bool, bool, bool)> = select
+        .children
+        .borrow()
+        .iter()
+        .rev()
+        .map(|child| (child.clone(), false, false, false))
+        .collect();
+    while let Some((node, mut blocked, mut grouped, mut group_disabled)) = pending.pop() {
+        // (the parser never nests a select: a `<select>` start tag closes an open one)
+        if html_element(&node, "selectedcontent") {
+            contents.push(node);
+            continue;
+        }
+        if html_element(&node, "option") {
+            if !blocked {
+                options.push((node.clone(), group_disabled || has_attribute(&node, "disabled")));
+            }
+            blocked = true;
+        } else if html_element(&node, "datalist") || html_element(&node, "hr") {
+            blocked = true;
+        } else if html_element(&node, "optgroup") {
+            blocked |= grouped;
+            grouped = true;
+            group_disabled |= has_attribute(&node, "disabled");
+        }
+        for child in node.children.borrow().iter().rev() {
+            pending.push((child.clone(), blocked, grouped, group_disabled));
+        }
+    }
+    (options, contents)
+}
+
+fn append_handle(parent: &Handle, child: Handle) {
+    child.parent.set(Some(std::rc::Rc::downgrade(parent)));
+    parent.children.borrow_mut().push(child);
+}
+
+/// A deep copy of a parsed node (element attributes and template contents included).
+fn deep_clone(node: &Handle) -> Handle {
+    let data = match &node.data {
+        NodeData::Element {
+            name,
+            attrs,
+            template_contents,
+            mathml_annotation_xml_integration_point,
+        } => NodeData::Element {
+            name: name.clone(),
+            attrs: std::cell::RefCell::new(attrs.borrow().clone()),
+            template_contents: std::cell::RefCell::new(
+                template_contents.borrow().as_ref().map(deep_clone),
+            ),
+            mathml_annotation_xml_integration_point: *mathml_annotation_xml_integration_point,
+        },
+        NodeData::Text { contents } => NodeData::Text {
+            contents: std::cell::RefCell::new(contents.borrow().clone()),
+        },
+        NodeData::Comment { contents } => NodeData::Comment {
+            contents: contents.clone(),
+        },
+        NodeData::Document | NodeData::Doctype { .. } | NodeData::ProcessingInstruction { .. } => {
+            unreachable!("an option holds elements, text and comments only")
+        }
+    };
+    let copy = markup5ever_rcdom::Node::new(data);
+    for child in node.children.borrow().iter() {
+        append_handle(&copy, deep_clone(child));
+    }
+    copy
 }
 
 /// Parse a full HTML document. Always yields a Document root (nodeType 9).
@@ -442,6 +572,9 @@ pub fn parse_html_fragment_with_context(
     let mut options = opts();
     options.tokenizer.discard_bom = false;
     let dom = parse_fragment(RcDom::default(), options, context, attributes, false).one(html);
+    if mentions_selectedcontent(html) {
+        fill_selectedcontent(&dom.document);
+    }
     fragment_of(walk(&dom.document))
 }
 

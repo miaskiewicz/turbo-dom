@@ -21,7 +21,7 @@ npm run test:rust     # cargo test -p turbo-dom  (rtdom crate tests + conformanc
 npm run conformance   # html5lib-tests gate (parser, JS serializer)
 # --- Rust-native DOM runtime (rtdom) ---
 npm run build:rtdom        # cargo build -p turbo-dom --release
-npm run conformance:rtdom  # html5lib-tests gate run THROUGH the rtdom tree (direct, 99.75%)
+npm run conformance:rtdom  # html5lib-tests gate run THROUGH the rtdom tree (direct, 100%)
 npm run profile:churn      # build the CPU-profiling example + print the macOS `sample` hint
 # --- lint + perf gates (CI-enforced) ---
 cargo clippy -p turbo-dom -p turbo-dom-parser -p turbo-dom-layout -p turbo-dom-raster --all-targets -- -D warnings   # clippy::pedantic-clean via [workspace.lints] (CI base/layout/raster jobs; --workspace would also build browser-env + V8, which the v8 job covers)
@@ -109,7 +109,7 @@ package or publish workflow.
   selectors + version-cached queries (`query.rs`), partial `getComputedStyle` memoized per version
   (`cascade.rs`), event dispatch with the listener-less fast-skip (`events.rs`), serialize, shadow DOM,
   plus `color`/`css_values`/`cssom`/`svg`/`file`/`canvas`/`custom_elements`/`location`/`mutations`/`node_ref`.
-  Test-only harness: `dump.rs` (html5lib tree-dump) + `conformance.rs` (direct gate, 99.75%) +
+  Test-only harness: `dump.rs` (html5lib tree-dump) + `conformance.rs` (direct gate, 100% since turbo-dom#104) +
   `bench.rs`/`gauntlet.rs`. Coverage-gated in CI (floor raised by the coverage phase). Don't expose rtdom to JS (the boundary loses);
   the JS path stays `src/runtime/`. Per-commit perf-win → Rust mapping in `RUST_PORT_PERF_HISTORY.md`.
 - `crates/turbo-dom-browser-env` — the rtdom <-> V8 browser binding (moved from turbo-test
@@ -275,7 +275,7 @@ Latest (darwin-arm64, Node 24, `npm run bench:all`), vs jsdom / happy-dom:
 - cold per-file construct + light query: ~200k ops/s — ~765× jsdom, ~350× happy-dom
 - realistic 200-file suite (construct+query+events): ~0.025 ms/file — ~130× jsdom, ~45× happy-dom
 - parse (parseBuffer): real-page/SSR docs ~8–35× both; small/malformed up to ~75× jsdom
-- conformance: 99.72% vs jsdom 97.03% vs happy-dom 37.35%
+- conformance: 99.94% vs jsdom 97.03% vs happy-dom 37.35% (99.72% before turbo-dom#104)
 - repeated query throughput: ~1.5M iters/s — ~2.2× happy-dom (~680k) and ~460× jsdom.
   querySelectorAll/getElementsBy*/getElementById results are cached per (selector,
   Document.__version); a static querySelectorAll list is safe to reuse until the next
@@ -373,9 +373,11 @@ Numbers in README.md — refresh both (bench against jsdom AND happy-dom) if you
 ## Conformance gate
 
 `test/conformance.test.mjs` locks the rate ≥ 99.5% AND asserts **zero non-`<select>` failures**.
-On `html5ever` 0.39 the 5 known misses are all bleeding-edge `<select>`-family proposals
-(`<selectedcontent>`, `<input>`/`<button>`-in-select) the newest html5lib-tests track but the
-crate hasn't adopted. If a failure appears whose input has no `<select>`, it's likely a
+On `html5ever` 0.39 the 1 remaining miss is a bleeding-edge `<select>`-family proposal
+(`<input>`/`<button>`-in-select) the newest html5lib-tests track but the crate hasn't adopted;
+the `<selectedcontent>` ones pass since turbo-dom#104 (`core::fill_selectedcontent` completes
+markup5ever_rcdom 0.39's broken clone step after parsing, Chrome 156 control rows in
+`rtdom_core_chrome156.json`). If a failure appears whose input has no `<select>`, it's likely a
 marshaling/serializer bug in THIS repo and the test will fail loudly. Investigate before
 touching the threshold. To improve further: bump `html5ever` (picks up upstream fixes) — never
 by loosening the serializer to match.

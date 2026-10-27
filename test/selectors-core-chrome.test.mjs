@@ -72,3 +72,38 @@ test(':scope is the scoping element like Chrome 156', () => {
     closest: [id(s.closest(':scope')), id(s.closest('div:scope')), id(s.closest(':scope span')), id(s.closest('div :scope')), id(s.closest(':not(:scope)'))],
   }, want);
 });
+
+// miaskiewicz/turbo-dom#106: a `dir=auto` textarea's direction comes from its value (the
+// child text content: direct Text children only), as the `textarea_dir_auto` probe records.
+const OPEN_PROBES = new Set([]);
+test(':dir(auto) on a textarea reads the child text like Chrome 156', () => {
+  const want = fixture.probes.find((p) => p.id === 'textarea_dir_auto').values;
+  const { document: doc } = createEnvironment('<!DOCTYPE html><html><head></head><body></body></html>');
+  const textarea = (...children) => {
+    const el = doc.createElement('textarea');
+    el.setAttribute('dir', 'auto');
+    doc.body.append(el);
+    for (const [tag, text] of children) {
+      if (tag) {
+        const child = doc.createElement(tag);
+        child.textContent = text;
+        el.append(child);
+      } else {
+        el.append(text);
+      }
+    }
+    return [el.matches(':dir(rtl)'), el.matches(':dir(ltr)')];
+  };
+  const got = {
+    empty: textarea(),
+    hebrew: textarea([null, 'א']),
+    digits: textarea([null, '123']),
+    digitsThenHebrew: textarea([null, '123'], [null, 'א']),
+    latinThenHebrew: textarea([null, 'a'], [null, 'א']),
+    spanChild: textarea(['span', 'א']),
+    bdiChild: textarea(['bdi', 'א']),
+    spanThenHebrew: textarea(['span', 'a'], [null, 'א']),
+  };
+  if (OPEN_PROBES.has('textarea_dir_auto')) assert.notDeepEqual(got, want, 'turbo-dom#106 is fixed: drop it from OPEN_PROBES');
+  else assert.deepEqual(got, want);
+});
