@@ -66,3 +66,32 @@ fn canvas_styles_match_chrome156() {
     differences("result", &actual, expected, &mut out);
     assert!(out.is_empty(), "{}", out.join("\n"));
 }
+
+/// save() / restore() keep a drawing-state stack like Chrome (miaskiewicz/turbo-dom#110):
+/// `canvas_state_probe.js`, recorded by `scripts/invokers-chrome-control.mjs` into
+/// `canvas_state_chrome156.json`. Every state attribute and the line dash read back at each
+/// level of a nested save/restore, restore() on an empty stack changes nothing, a gradient
+/// comes back by identity and the next fillRect paints the restored colour.
+#[test]
+#[ignore = "turbo-dom#110: fails until the fix"]
+fn canvas_save_restore_matches_chrome156() {
+    use sha2::{Digest, Sha256};
+    const PROBE: &str = include_str!("canvas_state_probe.js");
+    let control: Value = serde_json::from_str(include_str!("canvas_state_chrome156.json")).unwrap();
+    assert_eq!(control["browser"], "Chrome/156.0.8078.4");
+    let digest = Sha256::digest(PROBE.as_bytes());
+    let hex = digest
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect::<String>();
+    assert_eq!(
+        control["probeSha256"], hex,
+        "control was captured from a different probe"
+    );
+    let expected = &control["result"];
+    let mut actual = run(PROBE);
+    as_pixels(&mut actual, expected);
+    let mut out = Vec::new();
+    differences("result", &actual, expected, &mut out);
+    assert!(out.is_empty(), "{}", out.join("\n"));
+}
