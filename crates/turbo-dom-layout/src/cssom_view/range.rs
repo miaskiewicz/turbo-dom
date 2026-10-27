@@ -181,3 +181,66 @@ mod tests {
         assert!(select(&tree, 7, (children[0], 4), (children[0], 4)).is_err());
     }
 }
+
+#[cfg(all(test, feature = "bundled-fonts"))]
+mod chrome_tests {
+    use super::*;
+    use crate::cssom_view::scroll::chrome::{case, close, rect};
+    use crate::live::testing::DOCUMENT;
+    use serde_json::Value;
+
+    #[test]
+    fn range_client_rects_match_chrome_156() {
+        let case = case("range-client-rects");
+        let boundary = |b: &Value| {
+            let element = case
+                .tree
+                .query_selector(&format!("[data-cid=\"{}\"]", b[0].as_str().unwrap()))
+                .unwrap();
+            let node = b[1]
+                .as_u64()
+                .map_or(element, |child| case.tree.children(element)[child as usize]);
+            (node, b[2].as_u64().unwrap() as usize)
+        };
+        let mut failures = Vec::new();
+        for want in case.reads("ranges") {
+            let selections = select(
+                &case.tree,
+                DOCUMENT,
+                boundary(&want["start"]),
+                boundary(&want["end"]),
+            )
+            .unwrap();
+            let mut got = Vec::new();
+            for selection in selections {
+                match selection {
+                    Selection::Element(id) => got.extend(
+                        crate::cssom_view::metrics::element_geometry(&case.snapshot, id)
+                            .unwrap()
+                            .rects,
+                    ),
+                    Selection::Text { source, start, end } => got.extend(
+                        case.snapshot
+                            .text_range_boxes(source, start, end)
+                            .unwrap()
+                            .into_iter()
+                            .map(|cell| cell.transformed_bounds),
+                    ),
+                }
+            }
+            let chrome: Vec<[f32; 4]> =
+                want["rects"].as_array().unwrap().iter().map(rect).collect();
+            let same = got.len() == chrome.len()
+                && got.iter().zip(&chrome).all(|(r, c)| {
+                    close(r.x, c[0])
+                        && close(r.y, c[1])
+                        && close(r.width, c[2])
+                        && close(r.height, c[3])
+                });
+            if !same {
+                failures.push(format!("{want}: got {got:?}"));
+            }
+        }
+        assert!(failures.is_empty(), "{}", failures.join("\n"));
+    }
+}

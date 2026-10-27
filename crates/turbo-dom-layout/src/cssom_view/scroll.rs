@@ -549,3 +549,367 @@ pub fn expose(start: f64, length: f64, current: f64, visible: f64, behaviors: [A
         Align::End => end - visible,
     }
 }
+
+/// The CSSOM-View Chrome 156 control (`tests/fixtures/cssom_view_chrome156.json`, generated
+/// by turbo-dom's `scripts/cssom-view-chrome-control.mjs`): each case laid out through the
+/// live HTML snapshot as turbo-surf takes it (`testing::layout`), shared by the scroll,
+/// visibility, text and range tests.
+#[cfg(test)]
+pub(crate) mod chrome {
+    use super::{SourceStyles, VIEWPORT};
+    use crate::layout_snapshot::{LayoutSnapshot, Rect, SourceId};
+    use crate::live::source_id;
+    use crate::live::testing::{self, DOCUMENT};
+    use serde_json::Value;
+    use std::collections::BTreeMap;
+    use turbo_dom::Tree;
+
+    const FIXTURE: &str = include_str!("../../tests/fixtures/cssom_view_chrome156.json");
+
+    pub(crate) struct Case {
+        pub json: Value,
+        pub tree: Tree,
+        pub snapshot: LayoutSnapshot,
+        pub styles: SourceStyles,
+    }
+
+    /// The control case `id`, laid out at Chrome's 1280x800 viewport.
+    pub(crate) fn case(id: &str) -> Case {
+        let fixture: Value = serde_json::from_str(FIXTURE).unwrap();
+        assert!(fixture["chrome"].as_str().unwrap().starts_with("156."));
+        let json = fixture["cases"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|case| case["id"] == id)
+            .unwrap_or_else(|| panic!("no control case {id}"))
+            .clone();
+        let html = json["html"].as_str().unwrap();
+        let css = html
+            .split_once("<style>")
+            .and_then(|(_, rest)| rest.split_once("</style>"))
+            .map_or("", |(css, _)| css);
+        let (tree, snapshot, styles) = testing::layout(html, css, (1280.0, 800.0), Some(1.0));
+        Case {
+            json,
+            tree,
+            snapshot,
+            styles,
+        }
+    }
+
+    impl Case {
+        /// The source of the `[data-cid]` element (`"viewport"`: the scroll key).
+        pub(crate) fn id(&self, cid: &str) -> SourceId {
+            if cid == "viewport" {
+                return VIEWPORT;
+            }
+            let handle = self
+                .tree
+                .query_selector(&format!("[data-cid=\"{cid}\"]"))
+                .unwrap_or_else(|| panic!("no element {cid}"));
+            source_id(DOCUMENT, handle)
+        }
+        pub(crate) fn root(&self) -> SourceId {
+            source_id(DOCUMENT, self.tree.query_selector("html").unwrap())
+        }
+        /// The case's scroll offsets, keyed like turbo-surf's scroll state.
+        pub(crate) fn offsets(&self) -> BTreeMap<SourceId, [f64; 2]> {
+            self.json["scroll"]
+                .as_object()
+                .unwrap()
+                .iter()
+                .map(|(cid, xy)| {
+                    (
+                        self.id(cid),
+                        [xy[0].as_f64().unwrap(), xy[1].as_f64().unwrap()],
+                    )
+                })
+                .collect()
+        }
+        /// Chrome's `getBoundingClientRect()` of `cid` (after the case's scrolls).
+        pub(crate) fn chrome_box(&self, cid: &str) -> Rect {
+            let want = self.json["boxes"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .find(|b| b["cid"] == cid)
+                .unwrap();
+            let f = |key: &str| want[key].as_f64().unwrap() as f32;
+            Rect {
+                x: f("x"),
+                y: f("y"),
+                width: f("width"),
+                height: f("height"),
+            }
+        }
+        /// The layout border-box bounds of `cid` (unscrolled).
+        pub(crate) fn bounds(&self, cid: &str) -> Rect {
+            super::super::metrics::element_geometry(&self.snapshot, self.id(cid))
+                .unwrap()
+                .bounds
+        }
+        /// The readout list `key` (`metrics`, `visibility`, ...).
+        pub(crate) fn reads(&self, key: &str) -> &[Value] {
+            self.json[key].as_array().unwrap()
+        }
+    }
+
+    /// `[x, y, width, height]` of a Chrome rect readout.
+    pub(crate) fn rect(value: &Value) -> [f32; 4] {
+        std::array::from_fn(|i| value[i].as_f64().unwrap() as f32)
+    }
+
+    pub(crate) fn close(a: f32, b: f32) -> bool {
+        (a - b).abs() <= 0.01
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::chrome::{case, close};
+    use super::*;
+
+    /// turbo-surf's device-pixel snap of a scroll offset (device scale 1).
+    fn snap(value: f64) -> f64 {
+        (value + 0.5).floor()
+    }
+
+    fn assert_extents(id: &str) {
+        let case = case(id);
+        for want in case.reads("metrics") {
+            let cid = want["cid"].as_str().unwrap();
+            let source = case.id(cid);
+            let style = &case.styles[&source].style;
+            assert_eq!(
+                [overflow(style, "overflow-x"), overflow(style, "overflow-y")],
+                [
+                    want["overflowX"].as_str().unwrap(),
+                    want["overflowY"].as_str().unwrap()
+                ],
+                "{id}: {cid} computed overflow"
+            );
+            let got = scroll_metrics(&case.snapshot, &case.styles, source).unwrap();
+            // A non-scrollable axis keeps offset 0 (turbo-surf's clamp).
+            let max = |max: f64, scrolls: bool| if scrolls { snap(max) as i64 } else { 0 };
+            assert_eq!(
+                [
+                    i64::from(got.width),
+                    i64::from(got.height),
+                    max(got.max_x, got.scroll_x),
+                    max(got.max_y, got.scroll_y)
+                ],
+                ["scrollWidth", "scrollHeight", "maxX", "maxY"].map(|k| want[k].as_i64().unwrap()),
+                "{id}: {cid} scroll extents"
+            );
+            // An element without a box scrolls in neither axis.
+            let boxed = want["scrollWidth"].as_i64() != Some(0);
+            assert_eq!(
+                [got.scroll_x, got.scroll_y],
+                [
+                    boxed && permits_scroll(want["overflowX"].as_str().unwrap()),
+                    boxed && permits_scroll(want["overflowY"].as_str().unwrap())
+                ],
+                "{id}: {cid} scrollable axes"
+            );
+        }
+    }
+
+    #[test]
+    #[ignore = "turbo-dom#124: fails until the fix"]
+    fn computed_overflow_pairs_match_chrome_156() {
+        assert_extents("overflow-computed-pairs");
+    }
+
+    #[test]
+    fn scroll_extents_add_flow_margins_and_end_padding_like_chrome_156() {
+        assert_extents("scroll-extent-flow-and-padding");
+        assert_extents("scroll-extent-hidden-and-visible");
+    }
+
+    #[test]
+    fn positioned_descendants_reach_the_scroller_through_their_containing_block_like_chrome_156() {
+        assert_extents("scroll-extent-positioned-children");
+    }
+
+    #[test]
+    fn nested_clips_own_their_overflow_and_transforms_project_like_chrome_156() {
+        assert_extents("scroll-extent-nested-clip-and-transform");
+    }
+
+    #[test]
+    fn boxless_elements_have_zero_extents_like_chrome_156() {
+        assert_extents("scroll-extent-no-box");
+    }
+
+    fn assert_viewport(id: &str) {
+        let case = case(id);
+        let got =
+            viewport_metrics(&case.snapshot, &case.styles, case.root(), [1280.0, 800.0]).unwrap();
+        let want = &case.json["viewport"];
+        assert_eq!(
+            [
+                i64::from(got.width),
+                i64::from(got.height),
+                snap(got.max_x) as i64,
+                snap(got.max_y) as i64
+            ],
+            ["scrollWidth", "scrollHeight", "maxX", "maxY"].map(|k| want[k].as_i64().unwrap()),
+            "{id}"
+        );
+        assert!(got.scroll_x && got.scroll_y);
+    }
+
+    #[test]
+    fn viewport_extents_match_chrome_156() {
+        assert_viewport("viewport-extent");
+        assert_viewport("viewport-extent-fits");
+        assert_viewport("viewport-extent-body-overflow-propagates");
+    }
+
+    fn assert_translated(id: &str) {
+        let case = case(id);
+        let offsets = case.offsets();
+        for want in case.json["boxes"].as_array().unwrap() {
+            let cid = want["cid"].as_str().unwrap();
+            let [dx, dy] =
+                scroll_translation(&case.snapshot, &case.styles, case.id(cid), &offsets).unwrap();
+            let bounds = case.bounds(cid);
+            let chrome = case.chrome_box(cid);
+            assert!(
+                close(bounds.x - dx, chrome.x) && close(bounds.y - dy, chrome.y),
+                "{id}: {cid} at ({}, {}), Chrome ({}, {})",
+                bounds.x - dx,
+                bounds.y - dy,
+                chrome.x,
+                chrome.y
+            );
+        }
+    }
+
+    #[test]
+    fn scrolled_boxes_move_with_their_scrolling_ancestors_like_chrome_156() {
+        assert_translated("translation-nested-scrollers");
+        assert_translated("translation-absolute-skips-static-scroller");
+        assert_translated("translation-transformed-scroller");
+    }
+
+    #[test]
+    #[ignore = "turbo-dom#125: fails until the fix"]
+    fn scroll_into_view_offsets_match_chrome_156() {
+        let case = case("into-view");
+        let scroller = case.id("s");
+        let metrics = scroll_metrics(&case.snapshot, &case.styles, scroller).unwrap();
+        let port = case.bounds("s");
+        for want in case.reads("intoView") {
+            let target = want["target"].as_str().unwrap();
+            let bounds = case.bounds(target);
+            let from = [
+                want["from"][0].as_f64().unwrap(),
+                want["from"][1].as_f64().unwrap(),
+            ];
+            // Chrome clamps the starting offsets first, as the embedder does.
+            let from = [
+                from[0].clamp(0.0, snap(metrics.max_x)),
+                from[1].clamp(0.0, snap(metrics.max_y)),
+            ];
+            let mode = want["mode"].as_u64().unwrap() as u32;
+            let behaviors = [
+                alignment(want["inline"].as_u64().unwrap() as u32, mode).unwrap(),
+                alignment(want["block"].as_u64().unwrap() as u32, mode).unwrap(),
+            ];
+            let max = [snap(metrics.max_x), snap(metrics.max_y)];
+            let start = [bounds.x - port.x, bounds.y - port.y];
+            let length = [bounds.width, bounds.height];
+            let visible = [port.width, port.height];
+            let got: [f64; 2] = std::array::from_fn(|axis| {
+                snap(
+                    expose(
+                        f64::from(start[axis]),
+                        f64::from(length[axis]),
+                        from[axis],
+                        f64::from(visible[axis]),
+                        behaviors[axis],
+                    )
+                    .clamp(0.0, max[axis]),
+                )
+            });
+            let chrome = [
+                want["to"][0].as_f64().unwrap(),
+                want["to"][1].as_f64().unwrap(),
+            ];
+            assert_eq!(got, chrome, "{want}");
+        }
+    }
+
+    #[test]
+    fn alignment_maps_options_to_chromium_behaviors() {
+        use Align::{Center, Closest, End, None, Start};
+        assert_eq!(alignment(0, 0).unwrap(), [Start; 3]);
+        assert_eq!(alignment(1, 0).unwrap(), [Center; 3]);
+        assert_eq!(alignment(2, 0).unwrap(), [End; 3]);
+        assert_eq!(alignment(3, 0).unwrap(), [None, Closest, Closest]);
+        assert_eq!(alignment(7, 2).unwrap(), [None, Closest, Closest]);
+        assert_eq!(alignment(7, 1).unwrap(), [None, Center, Closest]);
+        assert_eq!(
+            alignment(4, 0).unwrap_err(),
+            "native scroll alignment is invalid"
+        );
+        assert_eq!(
+            alignment(0, 3).unwrap_err(),
+            "native scroll alignment is invalid"
+        );
+    }
+
+    #[test]
+    fn rounded_rejects_extents_outside_the_integer_range() {
+        assert_eq!(rounded(2.5).unwrap(), 3);
+        assert_eq!(rounded(0.0).unwrap(), 0);
+        for bad in [-0.5, f32::NAN, f32::INFINITY, 3.0e9] {
+            assert_eq!(
+                rounded(bad).unwrap_err(),
+                "native scroll extent exceeds integer range"
+            );
+        }
+    }
+    fn laid_out(html: &str) -> (turbo_dom::Tree, LayoutSnapshot, SourceStyles) {
+        crate::live::testing::layout(html, "", (800.0, 600.0), Some(1.0))
+    }
+
+    #[test]
+    fn unsupported_scroll_geometry_is_an_error_not_a_guess() {
+        let (tree, snapshot, styles) = laid_out(
+            "<body><div id=r style='direction:rtl;overflow:auto'></div><div id=v style='writing-mode:vertical-rl;overflow:auto'></div><div id=z style='transform:scale(0);overflow:auto'></div><svg><rect id=s width=5 height=5></rect></svg><span id=i>x</span></body>",
+        );
+        let id = |selector| crate::live::testing::id(&tree, selector);
+        let error = |selector| scroll_metrics(&snapshot, &styles, id(selector)).unwrap_err();
+        assert_eq!(
+            error("#r"),
+            "native scroll RTL/vertical writing provenance pending"
+        );
+        assert_eq!(
+            error("#v"),
+            "native scroll RTL/vertical writing provenance pending"
+        );
+        assert_eq!(
+            error("#z"),
+            "native scroll degenerate-container relative transform provenance pending"
+        );
+        assert_eq!(
+            error("#s"),
+            "native SVG descendant scroll geometry is unsupported"
+        );
+        assert_eq!(
+            scroll_metrics(&snapshot, &styles, SourceId(3)).unwrap_err(),
+            "native scroll source missing"
+        );
+        assert_eq!(
+            scroll_translation(&snapshot, &styles, SourceId(3), &BTreeMap::new()).unwrap_err(),
+            "native scroll source missing"
+        );
+        assert_eq!(
+            viewport_metrics(&snapshot, &styles, SourceId(3), [1.0, 1.0]).unwrap_err(),
+            "native scroll source missing"
+        );
+    }
+}

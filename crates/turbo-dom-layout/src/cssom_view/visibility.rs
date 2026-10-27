@@ -129,4 +129,103 @@ mod tests {
         assert!(near_viewport(rect(1201.0), [0.0, 10.0], [1280.0, 800.0]));
         assert!(!near_viewport(rect(-411.0), [0.0; 2], [1280.0, 800.0]));
     }
+    /// turbo-surf's `checkVisibility()`: an element with a box, then [`check`] with
+    /// content-visibility:auto relevance from the scrolled border box.
+    fn chrome_check(case: &crate::cssom_view::scroll::chrome::Case, cid: &str, flags: u32) -> bool {
+        use crate::cssom_view::scroll::scroll_translation;
+        let id = case.id(cid);
+        let offsets = case.offsets();
+        let has_box = !case.snapshot.source(id).unwrap().excluded_from_layout
+            && case.styles[&id].style.get("display") != Some("contents");
+        has_box
+            && check(&case.styles, id, flags, |ancestor| {
+                let bounds =
+                    crate::cssom_view::metrics::element_geometry(&case.snapshot, ancestor)?.bounds;
+                let translation =
+                    scroll_translation(&case.snapshot, &case.styles, ancestor, &offsets)?;
+                Ok(near_viewport(bounds, translation, [1280.0, 800.0]))
+            })
+            .unwrap()
+    }
+
+    #[test]
+    fn check_visibility_matches_chrome_156_for_every_flag_combination() {
+        for id in ["check-visibility", "check-visibility-scrolled-relevance"] {
+            let case = crate::cssom_view::scroll::chrome::case(id);
+            for want in case.reads("visibility") {
+                let cid = want["cid"].as_str().unwrap();
+                let got: Vec<bool> = (0..8)
+                    .map(|flags| chrome_check(&case, cid, flags))
+                    .collect();
+                let chrome: Vec<bool> = want["flags"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .map(|v| v.as_bool().unwrap())
+                    .collect();
+                assert_eq!(got, chrome, "{id}: {cid}");
+            }
+        }
+    }
+
+    #[test]
+    fn missing_styles_and_runaway_ancestry_are_errors() {
+        let (mut styles, tree) = styles("<body><div id=a><i id=b></i></div></body>");
+        let id = |selector| source_id(1, tree.query_selector(selector).unwrap());
+        let a = id("#a");
+        assert_eq!(
+            check(&styles, SourceId(7), 0, |_| Ok(true)).unwrap_err(),
+            "native visibility computed style missing"
+        );
+        let mut orphan = styles.remove(&a).unwrap();
+        assert_eq!(
+            check(&styles, id("#b"), 0, |_| Ok(true)).unwrap_err(),
+            "native visibility ancestor style missing"
+        );
+        // A cycle never terminates by itself: the depth limit stops it.
+        orphan.parent = Some(a);
+        styles.insert(a, orphan);
+        assert_eq!(
+            check(&styles, a, 0, |_| Ok(true)).unwrap_err(),
+            "native visibility ancestry exceeds its depth limit"
+        );
+        // The relevance callback's error propagates.
+        let (styles, tree) = styles_auto();
+        let b = source_id(1, tree.query_selector("#b").unwrap());
+        assert_eq!(
+            check(
+                &styles,
+                b,
+                CONTENT_VISIBILITY_AUTO,
+                |_| Err("no box".into())
+            )
+            .unwrap_err(),
+            "no box"
+        );
+        assert!(check(&styles, b, 0, |_| Err("no box".into())).unwrap());
+    }
+
+    fn styles_auto() -> (SourceStyles, Tree) {
+        styles("<body><div style='content-visibility:auto'><i id=b></i></div></body>")
+    }
+
+    #[test]
+    fn near_viewport_bounds_are_inclusive_on_every_edge() {
+        let rect = |x, y| Rect {
+            x,
+            y,
+            width: 10.0,
+            height: 10.0,
+        };
+        let viewport = [100.0, 200.0];
+        assert!(near_viewport(rect(150.0, 0.0), [0.0; 2], viewport));
+        assert!(!near_viewport(rect(150.1, 0.0), [0.0; 2], viewport));
+        assert!(near_viewport(rect(-60.0, 0.0), [0.0; 2], viewport));
+        assert!(!near_viewport(rect(-60.1, 0.0), [0.0; 2], viewport));
+        assert!(near_viewport(rect(0.0, 300.0), [0.0; 2], viewport));
+        assert!(!near_viewport(rect(0.0, 300.1), [0.0; 2], viewport));
+        assert!(near_viewport(rect(0.0, -110.0), [0.0; 2], viewport));
+        assert!(!near_viewport(rect(0.0, -110.1), [0.0; 2], viewport));
+        assert!(near_viewport(rect(160.0, 0.0), [10.0, 0.0], viewport));
+    }
 }

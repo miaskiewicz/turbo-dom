@@ -161,3 +161,83 @@ pub fn run_rect(
         height: font.ascent + font.descent,
     })
 }
+
+#[cfg(all(test, feature = "bundled-fonts"))]
+mod tests {
+    use super::*;
+    use crate::cssom_view::scroll::chrome::{case, close, rect, Case};
+    use crate::live::{source_id, testing::DOCUMENT};
+    use serde_json::Value;
+
+    /// The text node (or element) Chrome's caret readout names.
+    fn chrome_node(case: &Case, want: &Value) -> SourceId {
+        let tree = &case.tree;
+        let cid = want["cid"].as_str().unwrap();
+        let mut owner = tree
+            .query_selector(&format!("[data-cid=\"{cid}\"]"))
+            .unwrap();
+        let name = want["owner"].as_str().unwrap();
+        if tree.local_name(owner) != Some(name) {
+            owner = tree
+                .query_selector(&format!("[data-cid=\"{cid}\"] {name}"))
+                .unwrap();
+        }
+        match want["child"].as_u64() {
+            Some(child) => source_id(DOCUMENT, tree.children(owner)[child as usize]),
+            None => source_id(DOCUMENT, owner),
+        }
+    }
+
+    /// miaskiewicz/turbo-dom#127: a point beside a transformed line (Chrome descends with
+    /// the untransformed layout position) and a point in an element without text (Chrome:
+    /// a caret in the element).
+    const GAPS: &[[f64; 2]] = &[[50.0, 85.0], [40.0, 105.0]];
+
+    fn caret_failures(select: impl Fn([f64; 2]) -> bool) -> Vec<String> {
+        let case = case("caret-from-point");
+        let offsets = case.offsets();
+        let mut failures = Vec::new();
+        let mut compared = 0;
+        for want in case.reads("carets") {
+            let point = [want["x"].as_f64().unwrap(), want["y"].as_f64().unwrap()];
+            if !select(point) {
+                continue;
+            }
+            compared += 1;
+            if want["child"].is_null() {
+                failures.push(format!("{point:?}: Chrome {want} is an element caret"));
+                continue;
+            }
+            let got = caret(&case.snapshot, &case.styles, &offsets, point).unwrap();
+            let chrome = rect(&want["rect"]);
+            let expected = (
+                chrome_node(&case, want),
+                want["offset"].as_u64().unwrap() as usize,
+            );
+            match got {
+                Some((source, offset, r))
+                    if (source, offset) == expected
+                        && close(r.x, chrome[0])
+                        && close(r.y, chrome[1])
+                        && close(r.height, chrome[3]) => {}
+                got => failures.push(format!("{point:?}: {got:?}, Chrome {want}")),
+            }
+        }
+        assert!(compared > 0);
+        failures
+    }
+
+    #[test]
+    #[ignore = "turbo-dom#126: fails until the fix"]
+    fn caret_positions_from_points_match_chrome_156() {
+        let failures = caret_failures(|point| !GAPS.contains(&point));
+        assert!(failures.is_empty(), "{}", failures.join("\n"));
+    }
+
+    #[test]
+    #[ignore = "turbo-dom#127: fails until the fix"]
+    fn carets_beside_transformed_lines_and_in_empty_elements_match_chrome_156() {
+        let failures = caret_failures(|point| GAPS.contains(&point));
+        assert!(failures.is_empty(), "{}", failures.join("\n"));
+    }
+}

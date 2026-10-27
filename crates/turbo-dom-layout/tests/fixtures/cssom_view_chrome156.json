@@ -1,0 +1,2082 @@
+{
+ "generator": "scripts/cssom-view-chrome-control.mjs",
+ "chrome": "156.0.8078.47",
+ "playwright_core": "1.61.0",
+ "viewport": [
+  1280,
+  800
+ ],
+ "cases": [
+  {
+   "id": "overflow-computed-pairs",
+   "html": "<!doctype html><style>body{margin:0;font-family:\"Fira Code\";font-size:10px;line-height:1}.s{scrollbar-width:none}</style><div data-cid=\"a\" style=\"width:10px;height:10px;overflow:hidden\"></div><div data-cid=\"b\" style=\"width:10px;height:10px;overflow:hidden visible\"></div><div data-cid=\"c\" style=\"width:10px;height:10px;overflow:visible scroll\"></div><div data-cid=\"d\" style=\"width:10px;height:10px;overflow:clip visible\"></div><div data-cid=\"e\" style=\"width:10px;height:10px;overflow:auto;overflow-y:clip\"></div><div data-cid=\"f\" style=\"width:10px;height:10px;overflow-x:scroll\"></div><div data-cid=\"g\" style=\"width:10px;height:10px;overflow:clip\"></div><div data-cid=\"h\" style=\"width:10px;height:10px;\"></div><div data-cid=\"i\" style=\"width:10px;height:10px;overflow:visible clip\"></div><div data-cid=\"j\" class=\"s\" style=\"overflow:auto;overflow-y:clip;width:10px;height:10px\"><div style=\"width:30px;height:30px;\"></div></div><div data-cid=\"k\" class=\"s\" style=\"overflow-x:clip;overflow-y:scroll;width:10px;height:10px\"><div style=\"width:30px;height:30px;\"></div></div>",
+   "scroll": {},
+   "boxes": [
+    {
+     "cid": "a",
+     "x": 0,
+     "y": 0,
+     "width": 10,
+     "height": 10
+    },
+    {
+     "cid": "b",
+     "x": 0,
+     "y": 10,
+     "width": 10,
+     "height": 10
+    },
+    {
+     "cid": "c",
+     "x": 0,
+     "y": 20,
+     "width": 10,
+     "height": 10
+    },
+    {
+     "cid": "d",
+     "x": 0,
+     "y": 30,
+     "width": 10,
+     "height": 10
+    },
+    {
+     "cid": "e",
+     "x": 0,
+     "y": 40,
+     "width": 10,
+     "height": 10
+    },
+    {
+     "cid": "f",
+     "x": 0,
+     "y": 50,
+     "width": 10,
+     "height": 10
+    },
+    {
+     "cid": "g",
+     "x": 0,
+     "y": 60,
+     "width": 10,
+     "height": 10
+    },
+    {
+     "cid": "h",
+     "x": 0,
+     "y": 70,
+     "width": 10,
+     "height": 10
+    },
+    {
+     "cid": "i",
+     "x": 0,
+     "y": 80,
+     "width": 10,
+     "height": 10
+    },
+    {
+     "cid": "j",
+     "x": 0,
+     "y": 90,
+     "width": 10,
+     "height": 10
+    },
+    {
+     "cid": "k",
+     "x": 0,
+     "y": 100,
+     "width": 10,
+     "height": 10
+    }
+   ],
+   "metrics": [
+    {
+     "cid": "a",
+     "overflowX": "hidden",
+     "overflowY": "hidden",
+     "scrollWidth": 10,
+     "scrollHeight": 10,
+     "maxX": 0,
+     "maxY": 0
+    },
+    {
+     "cid": "b",
+     "overflowX": "hidden",
+     "overflowY": "auto",
+     "scrollWidth": 10,
+     "scrollHeight": 10,
+     "maxX": 0,
+     "maxY": 0
+    },
+    {
+     "cid": "c",
+     "overflowX": "auto",
+     "overflowY": "scroll",
+     "scrollWidth": 10,
+     "scrollHeight": 10,
+     "maxX": 0,
+     "maxY": 0
+    },
+    {
+     "cid": "d",
+     "overflowX": "clip",
+     "overflowY": "visible",
+     "scrollWidth": 10,
+     "scrollHeight": 10,
+     "maxX": 0,
+     "maxY": 0
+    },
+    {
+     "cid": "e",
+     "overflowX": "auto",
+     "overflowY": "clip",
+     "scrollWidth": 10,
+     "scrollHeight": 10,
+     "maxX": 0,
+     "maxY": 0
+    },
+    {
+     "cid": "f",
+     "overflowX": "scroll",
+     "overflowY": "auto",
+     "scrollWidth": 10,
+     "scrollHeight": 10,
+     "maxX": 0,
+     "maxY": 0
+    },
+    {
+     "cid": "g",
+     "overflowX": "clip",
+     "overflowY": "clip",
+     "scrollWidth": 10,
+     "scrollHeight": 10,
+     "maxX": 0,
+     "maxY": 0
+    },
+    {
+     "cid": "h",
+     "overflowX": "visible",
+     "overflowY": "visible",
+     "scrollWidth": 10,
+     "scrollHeight": 10,
+     "maxX": 0,
+     "maxY": 0
+    },
+    {
+     "cid": "i",
+     "overflowX": "visible",
+     "overflowY": "clip",
+     "scrollWidth": 10,
+     "scrollHeight": 10,
+     "maxX": 0,
+     "maxY": 0
+    },
+    {
+     "cid": "j",
+     "overflowX": "auto",
+     "overflowY": "clip",
+     "scrollWidth": 30,
+     "scrollHeight": 30,
+     "maxX": 20,
+     "maxY": 0
+    },
+    {
+     "cid": "k",
+     "overflowX": "clip",
+     "overflowY": "scroll",
+     "scrollWidth": 30,
+     "scrollHeight": 30,
+     "maxX": 0,
+     "maxY": 20
+    }
+   ]
+  },
+  {
+   "id": "scroll-extent-flow-and-padding",
+   "html": "<!doctype html><style>body{margin:0;font-family:\"Fira Code\";font-size:10px;line-height:1}.s{scrollbar-width:none}</style><div data-cid=\"s\" class=\"s\" style=\"overflow:auto;width:100px;height:50px;padding:5px 7px;border:2px solid\"><div data-cid=\"c\" style=\"width:150px;height:80px;margin:3px 4px\"></div></div>",
+   "scroll": {},
+   "boxes": [
+    {
+     "cid": "s",
+     "x": 0,
+     "y": 0,
+     "width": 118,
+     "height": 64
+    },
+    {
+     "cid": "c",
+     "x": 13,
+     "y": 10,
+     "width": 150,
+     "height": 80
+    }
+   ],
+   "metrics": [
+    {
+     "cid": "s",
+     "overflowX": "auto",
+     "overflowY": "auto",
+     "scrollWidth": 172,
+     "scrollHeight": 96,
+     "maxX": 58,
+     "maxY": 36
+    },
+    {
+     "cid": "c",
+     "overflowX": "visible",
+     "overflowY": "visible",
+     "scrollWidth": 150,
+     "scrollHeight": 80,
+     "maxX": 0,
+     "maxY": 0
+    }
+   ]
+  },
+  {
+   "id": "scroll-extent-hidden-and-visible",
+   "html": "<!doctype html><style>body{margin:0;font-family:\"Fira Code\";font-size:10px;line-height:1}.s{scrollbar-width:none}</style><div data-cid=\"h\" style=\"overflow:hidden;width:60px;height:30px;padding:4px\"><div style=\"width:100px;height:70px;margin-right:6px;margin-bottom:9px\"></div></div><div data-cid=\"v\" style=\"width:60px;height:30px;padding:4px\"><div style=\"width:100px;height:70px;margin-right:6px;margin-bottom:9px\"></div></div>",
+   "scroll": {},
+   "boxes": [
+    {
+     "cid": "h",
+     "x": 0,
+     "y": 0,
+     "width": 68,
+     "height": 38
+    },
+    {
+     "cid": "v",
+     "x": 0,
+     "y": 38,
+     "width": 68,
+     "height": 38
+    }
+   ],
+   "metrics": [
+    {
+     "cid": "h",
+     "overflowX": "hidden",
+     "overflowY": "hidden",
+     "scrollWidth": 114,
+     "scrollHeight": 87,
+     "maxX": 46,
+     "maxY": 49
+    },
+    {
+     "cid": "v",
+     "overflowX": "visible",
+     "overflowY": "visible",
+     "scrollWidth": 104,
+     "scrollHeight": 74,
+     "maxX": 0,
+     "maxY": 0
+    }
+   ]
+  },
+  {
+   "id": "scroll-extent-positioned-children",
+   "html": "<!doctype html><style>body{margin:0;font-family:\"Fira Code\";font-size:10px;line-height:1}.s{scrollbar-width:none}</style><div data-cid=\"s\" class=\"s\" style=\"position:relative;overflow:auto;width:100px;height:60px;padding:10px\"><div style=\"position:absolute;left:150px;top:120px;width:20px;height:20px;margin:5px\"></div><div style=\"position:relative;left:30px;top:10px;width:110px;height:10px\"></div></div><div data-cid=\"o\" class=\"s\" style=\"overflow:auto;width:100px;height:60px\"><div style=\"position:absolute;left:400px;top:500px;width:20px;height:20px\"></div><div style=\"width:10px;height:10px;\"></div></div><div data-cid=\"f\" class=\"s\" style=\"position:relative;overflow:auto;width:100px;height:60px\"><div style=\"position:fixed;left:300px;top:5px;width:20px;height:20px\"></div><div style=\"position:absolute;left:250px;top:5px;width:20px;height:20px\"><div style=\"position:fixed;left:900px;width:5px;height:5px\"></div></div></div>",
+   "scroll": {},
+   "boxes": [
+    {
+     "cid": "s",
+     "x": 0,
+     "y": 0,
+     "width": 120,
+     "height": 80
+    },
+    {
+     "cid": "o",
+     "x": 0,
+     "y": 80,
+     "width": 100,
+     "height": 60
+    },
+    {
+     "cid": "f",
+     "x": 0,
+     "y": 140,
+     "width": 100,
+     "height": 60
+    }
+   ],
+   "metrics": [
+    {
+     "cid": "s",
+     "overflowX": "auto",
+     "overflowY": "auto",
+     "scrollWidth": 175,
+     "scrollHeight": 145,
+     "maxX": 55,
+     "maxY": 65
+    },
+    {
+     "cid": "o",
+     "overflowX": "auto",
+     "overflowY": "auto",
+     "scrollWidth": 100,
+     "scrollHeight": 60,
+     "maxX": 0,
+     "maxY": 0
+    },
+    {
+     "cid": "f",
+     "overflowX": "auto",
+     "overflowY": "auto",
+     "scrollWidth": 270,
+     "scrollHeight": 60,
+     "maxX": 170,
+     "maxY": 0
+    }
+   ]
+  },
+  {
+   "id": "scroll-extent-nested-clip-and-transform",
+   "html": "<!doctype html><style>body{margin:0;font-family:\"Fira Code\";font-size:10px;line-height:1}.s{scrollbar-width:none}</style><div data-cid=\"s\" class=\"s\" style=\"overflow:auto;width:100px;height:60px\"><div style=\"overflow:hidden;width:80px;height:40px\"><div style=\"width:500px;height:500px;\"></div></div><div style=\"display:contents\"><div style=\"width:20px;height:20px;transform:translate(200px,100px) scale(2)\"></div></div></div><div data-cid=\"t\" class=\"s\" style=\"overflow:auto;width:100px;height:60px;transform:rotate(90deg)\"><div style=\"width:130px;height:20px;\"></div></div>",
+   "scroll": {},
+   "boxes": [
+    {
+     "cid": "s",
+     "x": 0,
+     "y": 0,
+     "width": 100,
+     "height": 60
+    },
+    {
+     "cid": "t",
+     "x": 20,
+     "y": 40,
+     "width": 60,
+     "height": 100
+    }
+   ],
+   "metrics": [
+    {
+     "cid": "s",
+     "overflowX": "auto",
+     "overflowY": "auto",
+     "scrollWidth": 230,
+     "scrollHeight": 170,
+     "maxX": 130,
+     "maxY": 110
+    },
+    {
+     "cid": "t",
+     "overflowX": "auto",
+     "overflowY": "auto",
+     "scrollWidth": 130,
+     "scrollHeight": 60,
+     "maxX": 30,
+     "maxY": 0
+    }
+   ]
+  },
+  {
+   "id": "scroll-extent-no-box",
+   "html": "<!doctype html><style>body{margin:0;font-family:\"Fira Code\";font-size:10px;line-height:1}.s{scrollbar-width:none}</style><div data-cid=\"n\" style=\"display:none;overflow:auto;width:10px\"><div style=\"width:50px;height:50px;\"></div></div><div data-cid=\"c\" style=\"display:contents\"><div data-cid=\"k\" style=\"width:50px;height:50px;\"></div></div>",
+   "scroll": {},
+   "boxes": [
+    {
+     "cid": "n",
+     "x": 0,
+     "y": 0,
+     "width": 0,
+     "height": 0
+    },
+    {
+     "cid": "c",
+     "x": 0,
+     "y": 0,
+     "width": 0,
+     "height": 0
+    },
+    {
+     "cid": "k",
+     "x": 0,
+     "y": 0,
+     "width": 50,
+     "height": 50
+    }
+   ],
+   "metrics": [
+    {
+     "cid": "n",
+     "overflowX": "auto",
+     "overflowY": "auto",
+     "scrollWidth": 0,
+     "scrollHeight": 0,
+     "maxX": 0,
+     "maxY": 0
+    },
+    {
+     "cid": "c",
+     "overflowX": "visible",
+     "overflowY": "visible",
+     "scrollWidth": 0,
+     "scrollHeight": 0,
+     "maxX": 0,
+     "maxY": 0
+    },
+    {
+     "cid": "k",
+     "overflowX": "visible",
+     "overflowY": "visible",
+     "scrollWidth": 50,
+     "scrollHeight": 50,
+     "maxX": 0,
+     "maxY": 0
+    }
+   ]
+  },
+  {
+   "id": "viewport-extent",
+   "html": "<!doctype html><style>body{margin:0;font-family:\"Fira Code\";font-size:10px;line-height:1}.s{scrollbar-width:none}</style><div data-cid=\"w\" style=\"width:1500px;height:100px;margin-right:20px\"></div><div data-cid=\"t\" style=\"width:100px;height:900px;margin-bottom:30px\"></div><div style=\"position:fixed;left:3000px;top:3000px;width:10px;height:10px\"><div style=\"width:5000px;height:5000px\"></div></div><div style=\"overflow:hidden;width:10px;height:10px\"><div style=\"width:4000px;height:4000px;\"></div></div><div style=\"display:contents\"><div style=\"position:absolute;left:1700px;top:20px;width:30px;height:30px;margin:40px\"></div></div><div style=\"width:10px;height:10px;transform:translate(2000px,0)\"></div>",
+   "scroll": {},
+   "boxes": [
+    {
+     "cid": "w",
+     "x": 0,
+     "y": 0,
+     "width": 1500,
+     "height": 100
+    },
+    {
+     "cid": "t",
+     "x": 0,
+     "y": 100,
+     "width": 100,
+     "height": 900
+    }
+   ],
+   "viewport": {
+    "scrollWidth": 2010,
+    "scrollHeight": 1050,
+    "maxX": 730,
+    "maxY": 250
+   }
+  },
+  {
+   "id": "viewport-extent-fits",
+   "html": "<!doctype html><style>body{margin:0;font-family:\"Fira Code\";font-size:10px;line-height:1}.s{scrollbar-width:none}</style><div data-cid=\"a\" style=\"width:10px;height:10px;\"></div>",
+   "scroll": {},
+   "boxes": [
+    {
+     "cid": "a",
+     "x": 0,
+     "y": 0,
+     "width": 10,
+     "height": 10
+    }
+   ],
+   "viewport": {
+    "scrollWidth": 1280,
+    "scrollHeight": 800,
+    "maxX": 0,
+    "maxY": 0
+   }
+  },
+  {
+   "id": "viewport-extent-body-overflow-propagates",
+   "html": "<!doctype html><style>body{margin:0;font-family:\"Fira Code\";font-size:10px;line-height:1}.s{scrollbar-width:none}body{overflow:hidden}</style><div style=\"width:1400px;height:900px;\"></div><div style=\"position:absolute;left:0;top:0;overflow:hidden;width:5px;height:5px\"><div style=\"width:3000px;height:3000px;\"></div></div>",
+   "scroll": {},
+   "boxes": [],
+   "viewport": {
+    "scrollWidth": 1400,
+    "scrollHeight": 900,
+    "maxX": 120,
+    "maxY": 100
+   }
+  },
+  {
+   "id": "translation-nested-scrollers",
+   "html": "<!doctype html><style>body{margin:0;font-family:\"Fira Code\";font-size:10px;line-height:1}.s{scrollbar-width:none}</style><div style=\"width:10px;height:2000px;\"></div><div data-cid=\"o\" class=\"s\" style=\"position:absolute;left:20px;top:30px;overflow:auto;width:200px;height:100px\"><div data-cid=\"i\" class=\"s\" style=\"overflow:auto;width:150px;height:60px;margin-top:10px\"><div data-cid=\"k\" style=\"width:400px;height:400px;\"></div></div><div style=\"width:400px;height:400px;\"></div><div data-cid=\"z\" class=\"s\" style=\"overflow:auto;width:50px;height:50px\"><div data-cid=\"zk\" style=\"width:100px;height:100px;\"></div></div></div><div data-cid=\"fx\" style=\"position:fixed;left:300px;top:10px;width:30px;height:30px\"><div data-cid=\"fk\" style=\"width:10px;height:10px;\"></div></div><div style=\"position:relative;display:contents\"><div data-cid=\"a\" style=\"position:absolute;left:500px;top:50px;width:10px;height:10px\"></div></div>",
+   "scroll": {
+    "viewport": [
+     0,
+     40
+    ],
+    "o": [
+     15,
+     25
+    ],
+    "i": [
+     7,
+     11
+    ],
+    "z": [
+     0,
+     0
+    ]
+   },
+   "boxes": [
+    {
+     "cid": "o",
+     "x": 20,
+     "y": -10,
+     "width": 200,
+     "height": 100
+    },
+    {
+     "cid": "i",
+     "x": 5,
+     "y": -25,
+     "width": 150,
+     "height": 60
+    },
+    {
+     "cid": "k",
+     "x": -2,
+     "y": -36,
+     "width": 400,
+     "height": 400
+    },
+    {
+     "cid": "z",
+     "x": 5,
+     "y": 435,
+     "width": 50,
+     "height": 50
+    },
+    {
+     "cid": "zk",
+     "x": 5,
+     "y": 435,
+     "width": 100,
+     "height": 100
+    },
+    {
+     "cid": "fx",
+     "x": 300,
+     "y": 10,
+     "width": 30,
+     "height": 30
+    },
+    {
+     "cid": "fk",
+     "x": 300,
+     "y": 10,
+     "width": 10,
+     "height": 10
+    },
+    {
+     "cid": "a",
+     "x": 500,
+     "y": 10,
+     "width": 10,
+     "height": 10
+    }
+   ]
+  },
+  {
+   "id": "translation-absolute-skips-static-scroller",
+   "html": "<!doctype html><style>body{margin:0;font-family:\"Fira Code\";font-size:10px;line-height:1}.s{scrollbar-width:none}</style><div data-cid=\"p\" style=\"position:relative;width:300px;height:200px\"><div data-cid=\"s\" class=\"s\" style=\"overflow:auto;width:100px;height:100px\"><div data-cid=\"in\" style=\"width:300px;height:300px;\"></div><div data-cid=\"ab\" style=\"position:absolute;left:5px;top:150px;width:10px;height:10px\"></div></div></div>",
+   "scroll": {
+    "s": [
+     20,
+     30
+    ]
+   },
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 300,
+     "height": 200
+    },
+    {
+     "cid": "s",
+     "x": 0,
+     "y": 0,
+     "width": 100,
+     "height": 100
+    },
+    {
+     "cid": "in",
+     "x": -20,
+     "y": -30,
+     "width": 300,
+     "height": 300
+    },
+    {
+     "cid": "ab",
+     "x": 5,
+     "y": 150,
+     "width": 10,
+     "height": 10
+    }
+   ]
+  },
+  {
+   "id": "translation-transformed-scroller",
+   "html": "<!doctype html><style>body{margin:0;font-family:\"Fira Code\";font-size:10px;line-height:1}.s{scrollbar-width:none}</style><div data-cid=\"s\" class=\"s\" style=\"overflow:auto;width:100px;height:100px;margin:50px;transform:scale(2)\"><div data-cid=\"k\" style=\"width:300px;height:300px;\"></div></div>",
+   "scroll": {
+    "s": [
+     10,
+     20
+    ]
+   },
+   "boxes": [
+    {
+     "cid": "s",
+     "x": 0,
+     "y": 0,
+     "width": 200,
+     "height": 200
+    },
+    {
+     "cid": "k",
+     "x": -20,
+     "y": -40,
+     "width": 600,
+     "height": 600
+    }
+   ]
+  },
+  {
+   "id": "into-view",
+   "html": "<!doctype html><style>body{margin:0;font-family:\"Fira Code\";font-size:10px;line-height:1}.s{scrollbar-width:none}</style><div data-cid=\"s\" class=\"s\" style=\"overflow:auto;width:100px;height:100px;padding:0\"><div style=\"width:400px;height:1000px;position:relative\"><div data-cid=\"t\" style=\"position:absolute;left:150px;top:300px;width:30px;height:40px\"></div><div data-cid=\"big\" style=\"position:absolute;left:0;top:500px;width:300px;height:250px\"></div><div data-cid=\"near\" style=\"position:absolute;left:10px;top:50px;width:20px;height:20px\"></div><div data-cid=\"part\" style=\"position:absolute;left:90px;top:90px;width:30px;height:30px\"></div><div data-cid=\"frac\" style=\"position:absolute;left:0.3px;top:200.3px;width:10.2px;height:10.4px\"></div></div></div>",
+   "scroll": {},
+   "boxes": [
+    {
+     "cid": "s",
+     "x": 0,
+     "y": 0,
+     "width": 100,
+     "height": 100
+    },
+    {
+     "cid": "t",
+     "x": 150,
+     "y": 300,
+     "width": 30,
+     "height": 40
+    },
+    {
+     "cid": "big",
+     "x": 0,
+     "y": 500,
+     "width": 300,
+     "height": 250
+    },
+    {
+     "cid": "near",
+     "x": 10,
+     "y": 50,
+     "width": 20,
+     "height": 20
+    },
+    {
+     "cid": "part",
+     "x": 90,
+     "y": 90,
+     "width": 30,
+     "height": 30
+    },
+    {
+     "cid": "frac",
+     "x": 0.296875,
+     "y": 200.296875,
+     "width": 10.1875,
+     "height": 10.390625
+    }
+   ],
+   "intoView": [
+    {
+     "target": "t",
+     "scroller": "s",
+     "mode": 0,
+     "block": 0,
+     "inline": 0,
+     "from": [
+      0,
+      0
+     ],
+     "to": [
+      150,
+      300
+     ]
+    },
+    {
+     "target": "t",
+     "scroller": "s",
+     "mode": 0,
+     "block": 0,
+     "inline": 1,
+     "from": [
+      0,
+      0
+     ],
+     "to": [
+      115,
+      300
+     ]
+    },
+    {
+     "target": "t",
+     "scroller": "s",
+     "mode": 0,
+     "block": 0,
+     "inline": 2,
+     "from": [
+      0,
+      0
+     ],
+     "to": [
+      80,
+      300
+     ]
+    },
+    {
+     "target": "t",
+     "scroller": "s",
+     "mode": 0,
+     "block": 0,
+     "inline": 3,
+     "from": [
+      0,
+      0
+     ],
+     "to": [
+      80,
+      300
+     ]
+    },
+    {
+     "target": "t",
+     "scroller": "s",
+     "mode": 0,
+     "block": 1,
+     "inline": 0,
+     "from": [
+      0,
+      0
+     ],
+     "to": [
+      150,
+      270
+     ]
+    },
+    {
+     "target": "t",
+     "scroller": "s",
+     "mode": 0,
+     "block": 1,
+     "inline": 1,
+     "from": [
+      0,
+      0
+     ],
+     "to": [
+      115,
+      270
+     ]
+    },
+    {
+     "target": "t",
+     "scroller": "s",
+     "mode": 0,
+     "block": 1,
+     "inline": 2,
+     "from": [
+      0,
+      0
+     ],
+     "to": [
+      80,
+      270
+     ]
+    },
+    {
+     "target": "t",
+     "scroller": "s",
+     "mode": 0,
+     "block": 1,
+     "inline": 3,
+     "from": [
+      0,
+      0
+     ],
+     "to": [
+      80,
+      270
+     ]
+    },
+    {
+     "target": "t",
+     "scroller": "s",
+     "mode": 0,
+     "block": 2,
+     "inline": 0,
+     "from": [
+      0,
+      0
+     ],
+     "to": [
+      150,
+      240
+     ]
+    },
+    {
+     "target": "t",
+     "scroller": "s",
+     "mode": 0,
+     "block": 2,
+     "inline": 1,
+     "from": [
+      0,
+      0
+     ],
+     "to": [
+      115,
+      240
+     ]
+    },
+    {
+     "target": "t",
+     "scroller": "s",
+     "mode": 0,
+     "block": 2,
+     "inline": 2,
+     "from": [
+      0,
+      0
+     ],
+     "to": [
+      80,
+      240
+     ]
+    },
+    {
+     "target": "t",
+     "scroller": "s",
+     "mode": 0,
+     "block": 2,
+     "inline": 3,
+     "from": [
+      0,
+      0
+     ],
+     "to": [
+      80,
+      240
+     ]
+    },
+    {
+     "target": "t",
+     "scroller": "s",
+     "mode": 0,
+     "block": 3,
+     "inline": 0,
+     "from": [
+      0,
+      0
+     ],
+     "to": [
+      150,
+      240
+     ]
+    },
+    {
+     "target": "t",
+     "scroller": "s",
+     "mode": 0,
+     "block": 3,
+     "inline": 1,
+     "from": [
+      0,
+      0
+     ],
+     "to": [
+      115,
+      240
+     ]
+    },
+    {
+     "target": "t",
+     "scroller": "s",
+     "mode": 0,
+     "block": 3,
+     "inline": 2,
+     "from": [
+      0,
+      0
+     ],
+     "to": [
+      80,
+      240
+     ]
+    },
+    {
+     "target": "t",
+     "scroller": "s",
+     "mode": 0,
+     "block": 3,
+     "inline": 3,
+     "from": [
+      0,
+      0
+     ],
+     "to": [
+      80,
+      240
+     ]
+    },
+    {
+     "target": "t",
+     "scroller": "s",
+     "mode": 0,
+     "block": 3,
+     "inline": 3,
+     "from": [
+      200,
+      400
+     ],
+     "to": [
+      150,
+      300
+     ]
+    },
+    {
+     "target": "big",
+     "scroller": "s",
+     "mode": 0,
+     "block": 3,
+     "inline": 3,
+     "from": [
+      0,
+      0
+     ],
+     "to": [
+      0,
+      500
+     ]
+    },
+    {
+     "target": "big",
+     "scroller": "s",
+     "mode": 0,
+     "block": 3,
+     "inline": 3,
+     "from": [
+      100,
+      600
+     ],
+     "to": [
+      100,
+      600
+     ]
+    },
+    {
+     "target": "big",
+     "scroller": "s",
+     "mode": 0,
+     "block": 3,
+     "inline": 3,
+     "from": [
+      50,
+      520
+     ],
+     "to": [
+      50,
+      520
+     ]
+    },
+    {
+     "target": "big",
+     "scroller": "s",
+     "mode": 0,
+     "block": 1,
+     "inline": 1,
+     "from": [
+      50,
+      520
+     ],
+     "to": [
+      100,
+      575
+     ]
+    },
+    {
+     "target": "big",
+     "scroller": "s",
+     "mode": 1,
+     "block": 3,
+     "inline": 3,
+     "from": [
+      50,
+      520
+     ],
+     "to": [
+      50,
+      520
+     ]
+    },
+    {
+     "target": "near",
+     "scroller": "s",
+     "mode": 1,
+     "block": 3,
+     "inline": 3,
+     "from": [
+      0,
+      0
+     ],
+     "to": [
+      0,
+      0
+     ]
+    },
+    {
+     "target": "near",
+     "scroller": "s",
+     "mode": 2,
+     "block": 3,
+     "inline": 3,
+     "from": [
+      0,
+      0
+     ],
+     "to": [
+      0,
+      0
+     ]
+    },
+    {
+     "target": "t",
+     "scroller": "s",
+     "mode": 1,
+     "block": 3,
+     "inline": 3,
+     "from": [
+      0,
+      0
+     ],
+     "to": [
+      115,
+      270
+     ]
+    },
+    {
+     "target": "t",
+     "scroller": "s",
+     "mode": 2,
+     "block": 3,
+     "inline": 3,
+     "from": [
+      0,
+      0
+     ],
+     "to": [
+      80,
+      240
+     ]
+    },
+    {
+     "target": "t",
+     "scroller": "s",
+     "mode": 2,
+     "block": 3,
+     "inline": 3,
+     "from": [
+      300,
+      900
+     ],
+     "to": [
+      150,
+      300
+     ]
+    },
+    {
+     "target": "part",
+     "scroller": "s",
+     "mode": 1,
+     "block": 3,
+     "inline": 3,
+     "from": [
+      0,
+      0
+     ],
+     "to": [
+      20,
+      20
+     ]
+    },
+    {
+     "target": "part",
+     "scroller": "s",
+     "mode": 2,
+     "block": 3,
+     "inline": 3,
+     "from": [
+      0,
+      0
+     ],
+     "to": [
+      20,
+      20
+     ]
+    },
+    {
+     "target": "part",
+     "scroller": "s",
+     "mode": 0,
+     "block": 3,
+     "inline": 3,
+     "from": [
+      0,
+      0
+     ],
+     "to": [
+      20,
+      20
+     ]
+    },
+    {
+     "target": "frac",
+     "scroller": "s",
+     "mode": 0,
+     "block": 0,
+     "inline": 0,
+     "from": [
+      0,
+      0
+     ],
+     "to": [
+      0,
+      200
+     ]
+    },
+    {
+     "target": "frac",
+     "scroller": "s",
+     "mode": 0,
+     "block": 2,
+     "inline": 2,
+     "from": [
+      0,
+      0
+     ],
+     "to": [
+      0,
+      111
+     ]
+    }
+   ]
+  },
+  {
+   "id": "check-visibility",
+   "html": "<!doctype html><style>body{margin:0;font-family:\"Fira Code\";font-size:10px;line-height:1}.s{scrollbar-width:none}</style><div data-cid=\"o\" style=\"opacity:0\"><div data-cid=\"oc\" style=\"width:10px;height:10px;\"></div></div><div data-cid=\"op\" style=\"opacity:0%\"></div><div data-cid=\"oh\" style=\"opacity:0.5\"><div data-cid=\"ohc\" style=\"width:10px;height:10px;\"></div></div><div data-cid=\"v\" style=\"visibility:hidden\"><div data-cid=\"vc\" style=\"width:10px;height:10px;\"></div><div data-cid=\"vv\" style=\"width:10px;height:10px;visibility:visible\"></div></div><div data-cid=\"cl\" style=\"visibility:collapse\"></div><div data-cid=\"ch\" style=\"content-visibility:hidden;height:10px\"><div data-cid=\"chc\" style=\"width:10px;height:10px;\"></div></div><div data-cid=\"ca\" style=\"content-visibility:auto;height:10px\"><div data-cid=\"cac\" style=\"width:10px;height:10px;\"></div></div><div style=\"height:3000px\"></div><div data-cid=\"far\" style=\"content-visibility:auto;height:10px\"><div data-cid=\"farc\" style=\"width:10px;height:10px;\"></div></div>",
+   "scroll": {},
+   "boxes": [
+    {
+     "cid": "o",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 10
+    },
+    {
+     "cid": "oc",
+     "x": 0,
+     "y": 0,
+     "width": 10,
+     "height": 10
+    },
+    {
+     "cid": "op",
+     "x": 0,
+     "y": 10,
+     "width": 1280,
+     "height": 0
+    },
+    {
+     "cid": "oh",
+     "x": 0,
+     "y": 10,
+     "width": 1280,
+     "height": 10
+    },
+    {
+     "cid": "ohc",
+     "x": 0,
+     "y": 10,
+     "width": 10,
+     "height": 10
+    },
+    {
+     "cid": "v",
+     "x": 0,
+     "y": 20,
+     "width": 1280,
+     "height": 20
+    },
+    {
+     "cid": "vc",
+     "x": 0,
+     "y": 20,
+     "width": 10,
+     "height": 10
+    },
+    {
+     "cid": "vv",
+     "x": 0,
+     "y": 30,
+     "width": 10,
+     "height": 10
+    },
+    {
+     "cid": "cl",
+     "x": 0,
+     "y": 40,
+     "width": 1280,
+     "height": 0
+    },
+    {
+     "cid": "ch",
+     "x": 0,
+     "y": 40,
+     "width": 1280,
+     "height": 10
+    },
+    {
+     "cid": "chc",
+     "x": 0,
+     "y": 40,
+     "width": 10,
+     "height": 10
+    },
+    {
+     "cid": "ca",
+     "x": 0,
+     "y": 50,
+     "width": 1280,
+     "height": 10
+    },
+    {
+     "cid": "cac",
+     "x": 0,
+     "y": 50,
+     "width": 10,
+     "height": 10
+    },
+    {
+     "cid": "far",
+     "x": 0,
+     "y": 3060,
+     "width": 1280,
+     "height": 10
+    },
+    {
+     "cid": "farc",
+     "x": 0,
+     "y": 3060,
+     "width": 10,
+     "height": 10
+    }
+   ],
+   "visibility": [
+    {
+     "cid": "o",
+     "flags": [
+      true,
+      false,
+      true,
+      false,
+      true,
+      false,
+      true,
+      false
+     ]
+    },
+    {
+     "cid": "oc",
+     "flags": [
+      true,
+      false,
+      true,
+      false,
+      true,
+      false,
+      true,
+      false
+     ]
+    },
+    {
+     "cid": "op",
+     "flags": [
+      true,
+      false,
+      true,
+      false,
+      true,
+      false,
+      true,
+      false
+     ]
+    },
+    {
+     "cid": "oh",
+     "flags": [
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+     ]
+    },
+    {
+     "cid": "ohc",
+     "flags": [
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+     ]
+    },
+    {
+     "cid": "v",
+     "flags": [
+      true,
+      true,
+      false,
+      false,
+      true,
+      true,
+      false,
+      false
+     ]
+    },
+    {
+     "cid": "vc",
+     "flags": [
+      true,
+      true,
+      false,
+      false,
+      true,
+      true,
+      false,
+      false
+     ]
+    },
+    {
+     "cid": "vv",
+     "flags": [
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+     ]
+    },
+    {
+     "cid": "cl",
+     "flags": [
+      true,
+      true,
+      false,
+      false,
+      true,
+      true,
+      false,
+      false
+     ]
+    },
+    {
+     "cid": "ch",
+     "flags": [
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+     ]
+    },
+    {
+     "cid": "chc",
+     "flags": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+     ]
+    },
+    {
+     "cid": "ca",
+     "flags": [
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+     ]
+    },
+    {
+     "cid": "cac",
+     "flags": [
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+     ]
+    },
+    {
+     "cid": "far",
+     "flags": [
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+     ]
+    },
+    {
+     "cid": "farc",
+     "flags": [
+      true,
+      true,
+      true,
+      true,
+      false,
+      false,
+      false,
+      false
+     ]
+    }
+   ]
+  },
+  {
+   "id": "check-visibility-scrolled-relevance",
+   "html": "<!doctype html><style>body{margin:0;font-family:\"Fira Code\";font-size:10px;line-height:1}.s{scrollbar-width:none}</style><div style=\"height:2000px\"></div><div data-cid=\"ca\" style=\"content-visibility:auto;height:10px\"><div data-cid=\"cac\" style=\"width:10px;height:10px;\"></div></div><div style=\"height:2000px\"></div>",
+   "scroll": {
+    "viewport": [
+     0,
+     1500
+    ]
+   },
+   "boxes": [
+    {
+     "cid": "ca",
+     "x": 0,
+     "y": 500,
+     "width": 1280,
+     "height": 10
+    },
+    {
+     "cid": "cac",
+     "x": 0,
+     "y": 500,
+     "width": 10,
+     "height": 10
+    }
+   ],
+   "visibility": [
+    {
+     "cid": "ca",
+     "flags": [
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+     ]
+    },
+    {
+     "cid": "cac",
+     "flags": [
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+     ]
+    }
+   ]
+  },
+  {
+   "id": "caret-from-point",
+   "html": "<!doctype html><style>body{margin:0;font-family:\"Fira Code\";font-size:10px;line-height:1}.s{scrollbar-width:none}p{margin:0 0 10px}</style><p data-cid=\"a\">hello world</p><p data-cid=\"b\" style=\"padding-left:30px\">ab<span data-cid=\"sp\">cd</span>ef</p><div data-cid=\"hid\" style=\"width:200px;height:30px\">vis<span style=\"visibility:hidden\">hidden</span></div><div data-cid=\"sc\" class=\"s\" style=\"overflow:hidden;width:60px;height:10px\"><div style=\"width:400px\">abcdefghijklmnopqrstuvwxyz</div></div><div data-cid=\"tr\" style=\"transform:translateX(100px)\">moved</div><div data-cid=\"e\" style=\"height:20px\"></div>",
+   "scroll": {
+    "sc": [
+     30,
+     0
+    ]
+   },
+   "boxes": [
+    {
+     "cid": "a",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 10
+    },
+    {
+     "cid": "b",
+     "x": 0,
+     "y": 20,
+     "width": 1280,
+     "height": 10
+    },
+    {
+     "cid": "sp",
+     "x": 42.3125,
+     "y": 19,
+     "width": 12.3125,
+     "height": 12
+    },
+    {
+     "cid": "hid",
+     "x": 0,
+     "y": 40,
+     "width": 200,
+     "height": 30
+    },
+    {
+     "cid": "sc",
+     "x": 0,
+     "y": 70,
+     "width": 60,
+     "height": 10
+    },
+    {
+     "cid": "tr",
+     "x": 100,
+     "y": 80,
+     "width": 1280,
+     "height": 10
+    },
+    {
+     "cid": "e",
+     "x": 0,
+     "y": 90,
+     "width": 1280,
+     "height": 20
+    }
+   ],
+   "carets": [
+    {
+     "x": 0,
+     "y": 0,
+     "cid": "a",
+     "owner": "p",
+     "child": 0,
+     "offset": 0,
+     "rect": [
+      0,
+      -1,
+      0,
+      12
+     ]
+    },
+    {
+     "x": 3,
+     "y": 5,
+     "cid": "a",
+     "owner": "p",
+     "child": 0,
+     "offset": 0,
+     "rect": [
+      0,
+      -1,
+      0,
+      12
+     ]
+    },
+    {
+     "x": 14,
+     "y": 5,
+     "cid": "a",
+     "owner": "p",
+     "child": 0,
+     "offset": 2,
+     "rect": [
+      12.296875,
+      -1,
+      0,
+      12
+     ]
+    },
+    {
+     "x": 62,
+     "y": 5,
+     "cid": "a",
+     "owner": "p",
+     "child": 0,
+     "offset": 10,
+     "rect": [
+      61.53125,
+      -1,
+      0,
+      12
+     ]
+    },
+    {
+     "x": 500,
+     "y": 5,
+     "cid": "a",
+     "owner": "p",
+     "child": 0,
+     "offset": 11,
+     "rect": [
+      67.6875,
+      -1,
+      0,
+      12
+     ]
+    },
+    {
+     "x": 31,
+     "y": 25,
+     "cid": "b",
+     "owner": "p",
+     "child": 0,
+     "offset": 0,
+     "rect": [
+      30,
+      19,
+      0,
+      12
+     ]
+    },
+    {
+     "x": 45,
+     "y": 25,
+     "cid": "sp",
+     "owner": "span",
+     "child": 0,
+     "offset": 0,
+     "rect": [
+      42.3125,
+      19,
+      0,
+      12
+     ]
+    },
+    {
+     "x": 52,
+     "y": 25,
+     "cid": "sp",
+     "owner": "span",
+     "child": 0,
+     "offset": 2,
+     "rect": [
+      54.609375,
+      19,
+      0,
+      12
+     ]
+    },
+    {
+     "x": 100,
+     "y": 25,
+     "cid": "b",
+     "owner": "p",
+     "child": 2,
+     "offset": 2,
+     "rect": [
+      66.921875,
+      19,
+      0,
+      12
+     ]
+    },
+    {
+     "x": 5,
+     "y": 42,
+     "cid": "hid",
+     "owner": "div",
+     "child": 0,
+     "offset": 1,
+     "rect": [
+      6.140625,
+      39,
+      0,
+      12
+     ]
+    },
+    {
+     "x": 30,
+     "y": 42,
+     "cid": "hid",
+     "owner": "span",
+     "child": 0,
+     "offset": 2,
+     "rect": [
+      30.765625,
+      39,
+      0,
+      12
+     ]
+    },
+    {
+     "x": 100,
+     "y": 42,
+     "cid": "hid",
+     "owner": "span",
+     "child": 0,
+     "offset": 6,
+     "rect": [
+      55.390625,
+      39,
+      0,
+      12
+     ]
+    },
+    {
+     "x": 100,
+     "y": 65,
+     "cid": "hid",
+     "owner": "span",
+     "child": 0,
+     "offset": 6,
+     "rect": [
+      55.390625,
+      39,
+      0,
+      12
+     ]
+    },
+    {
+     "x": 3,
+     "y": 85,
+     "cid": "tr",
+     "owner": "div",
+     "child": 0,
+     "offset": 0,
+     "rect": [
+      100,
+      79,
+      0,
+      12
+     ]
+    },
+    {
+     "x": 110,
+     "y": 85,
+     "cid": "tr",
+     "owner": "div",
+     "child": 0,
+     "offset": 2,
+     "rect": [
+      112.296875,
+      79,
+      0,
+      12
+     ]
+    },
+    {
+     "x": 50,
+     "y": 85,
+     "cid": "tr",
+     "owner": "div",
+     "child": 0,
+     "offset": 5,
+     "rect": [
+      130.765625,
+      79,
+      0,
+      12
+     ]
+    },
+    {
+     "x": 40,
+     "y": 105,
+     "cid": "e",
+     "owner": "div",
+     "child": null,
+     "offset": 0,
+     "rect": [
+      0,
+      0,
+      0,
+      0
+     ]
+    }
+   ]
+  },
+  {
+   "id": "range-client-rects",
+   "html": "<!doctype html><style>body{margin:0;font-family:\"Fira Code\";font-size:10px;line-height:1}.s{scrollbar-width:none}</style><div data-cid=\"r\"><div data-cid=\"a\">abc</div><!--c--><div data-cid=\"b\">de<span data-cid=\"s\">fg</span>hi</div><div data-cid=\"x\" style=\"width:20px;height:5px;\"></div></div>",
+   "scroll": {},
+   "boxes": [
+    {
+     "cid": "r",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 25
+    },
+    {
+     "cid": "a",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 10
+    },
+    {
+     "cid": "b",
+     "x": 0,
+     "y": 10,
+     "width": 1280,
+     "height": 10
+    },
+    {
+     "cid": "s",
+     "x": 12.3125,
+     "y": 9,
+     "width": 12.3125,
+     "height": 12
+    },
+    {
+     "cid": "x",
+     "x": 0,
+     "y": 20,
+     "width": 20,
+     "height": 5
+    }
+   ],
+   "ranges": [
+    {
+     "start": [
+      "r",
+      null,
+      0
+     ],
+     "end": [
+      "r",
+      null,
+      4
+     ],
+     "rects": [
+      [
+       0,
+       0,
+       1280,
+       10
+      ],
+      [
+       0,
+       -1,
+       18.46875,
+       12
+      ],
+      [
+       0,
+       10,
+       1280,
+       10
+      ],
+      [
+       0,
+       9,
+       12.3125,
+       12
+      ],
+      [
+       12.3125,
+       9,
+       12.3125,
+       12
+      ],
+      [
+       24.625,
+       9,
+       12.3125,
+       12
+      ],
+      [
+       0,
+       20,
+       20,
+       5
+      ]
+     ]
+    },
+    {
+     "start": [
+      "a",
+      0,
+      1
+     ],
+     "end": [
+      "b",
+      0,
+      1
+     ],
+     "rects": [
+      [
+       6.140625,
+       -1,
+       12.328125,
+       12
+      ],
+      [
+       0,
+       9,
+       6.15625,
+       12
+      ]
+     ]
+    },
+    {
+     "start": [
+      "a",
+      0,
+      1
+     ],
+     "end": [
+      "a",
+      0,
+      2
+     ],
+     "rects": [
+      [
+       6.140625,
+       -1,
+       6.171875,
+       12
+      ]
+     ]
+    },
+    {
+     "start": [
+      "b",
+      0,
+      2
+     ],
+     "end": [
+      "b",
+      2,
+      1
+     ],
+     "rects": [
+      [
+       12.296875,
+       9,
+       0,
+       12
+      ],
+      [
+       12.3125,
+       9,
+       12.3125,
+       12
+      ],
+      [
+       12.3125,
+       9,
+       12.3125,
+       12
+      ],
+      [
+       24.625,
+       9,
+       6.15625,
+       12
+      ]
+     ]
+    },
+    {
+     "start": [
+      "b",
+      null,
+      1
+     ],
+     "end": [
+      "b",
+      null,
+      2
+     ],
+     "rects": [
+      [
+       12.3125,
+       9,
+       12.3125,
+       12
+      ],
+      [
+       12.3125,
+       9,
+       12.3125,
+       12
+      ]
+     ]
+    },
+    {
+     "start": [
+      "r",
+      null,
+      1
+     ],
+     "end": [
+      "r",
+      null,
+      2
+     ],
+     "rects": []
+    },
+    {
+     "start": [
+      "a",
+      0,
+      3
+     ],
+     "end": [
+      "b",
+      0,
+      0
+     ],
+     "rects": [
+      [
+       18.453125,
+       -1,
+       0,
+       12
+      ],
+      [
+       0,
+       9,
+       0,
+       12
+      ]
+     ]
+    }
+   ]
+  }
+ ]
+}
