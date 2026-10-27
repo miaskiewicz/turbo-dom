@@ -7,7 +7,7 @@
   const accessor = (proto, name) => Object.getOwnPropertyDescriptor(proto, name).get;
   const nodeType = accessor(g.Node.prototype, 'nodeType'), namespace = accessor(g.Element.prototype, 'namespaceURI');
   const hasAttribute = g.Element.prototype.hasAttribute, setAttribute = g.Element.prototype.setAttribute, removeAttribute = g.Element.prototype.removeAttribute;
-  const focus = g.HTMLElement.prototype.focus, computed = g.getComputedStyle;
+  const focus = ns.focusElement, computed = g.getComputedStyle;
   const getPropertyValue = g.CSSStyleDeclaration ? g.CSSStyleDeclaration.prototype.getPropertyValue : null;
   const parentNode = accessor(g.Node.prototype, 'parentNode'), hostOf = accessor(g.ShadowRoot.prototype, 'host');
   const slotOf = Object.getOwnPropertyDescriptor(g.Element.prototype, 'assignedSlot');
@@ -26,7 +26,7 @@
   };
   const keyOf = accessor(g.KeyboardEvent.prototype, 'key');
   const modifiers = ['altKey', 'ctrlKey', 'metaKey', 'shiftKey'].map(name => accessor(g.KeyboardEvent.prototype, name));
-  for (const [constructor, space] of [[g.HTMLElement, 'http://www.w3.org/1999/xhtml'], [g.SVGElement, 'http://www.w3.org/2000/svg']]) {
+  for (const [constructor, space] of [[g.HTMLElement, 'http://www.w3.org/1999/xhtml'], [g.SVGElement, 'http://www.w3.org/2000/svg'], [g.MathMLElement, 'http://www.w3.org/1998/Math/MathML']]) {
     if (typeof constructor !== 'function') continue;
     const check = receiver => { let valid = false; try { valid = nodeType.call(receiver) === 1 && namespace.call(receiver) === space; } catch {} if (!valid) throw new TypeError('Illegal invocation'); };
     Object.defineProperty(constructor.prototype, 'focusGroupStart', {

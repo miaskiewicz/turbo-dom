@@ -80,7 +80,22 @@
     },true,true);
     apply(datasetSet,datasetValues,[owner,value]);return value;
   };
-  for(const name of ['HTMLElement','SVGElement'])if(g[name])property(g[name].prototype,'dataset',dataset);
+  // HTMLOrSVGElement (turbo-dom#87): HTMLElement, SVGElement and MathMLElement each own the
+  // mixin's members, and each getter / setter brand-checks its interface's namespace.
+  const spaces = [['HTMLElement', html], ['SVGElement', 'http://www.w3.org/2000/svg'], ['MathMLElement', 'http://www.w3.org/1998/Math/MathML']];
+  const inSpace = (receiver, space) => { check(receiver, [1]); if (apply(namespace, receiver, []) !== space) throw new TypeError('Illegal invocation'); };
+  const localName = Object.getOwnPropertyDescriptor(g.Element.prototype, 'localName').get;
+  for (const [name, space] of spaces) {
+    const proto = g[name].prototype;
+    property(proto, 'dataset', function () { inSpace(this, space); return apply(dataset, this, []); });
+    property(proto, 'nonce', function () { inSpace(this, space); return native('nonce', this); }, function (value) { inSpace(this, space); native('setNonce', this, string(value)); });
+    property(proto, 'tabIndex', function () {
+      inSpace(this, space);
+      const fallback = space === html ? (['A', 'INPUT', 'BUTTON', 'SELECT', 'TEXTAREA', 'IFRAME', 'OBJECT', 'AUDIO', 'VIDEO'].includes(apply(tag, this, [])) ? 0 : -1) : space === spaces[1][1] && apply(localName, this, []) === 'a' ? 0 : -1;
+      const value = apply(getAttribute, this, ['tabindex']); const found = value == null ? null : /^[\t\n\f\r ]*([+-]?[0-9]+)/.exec(value);
+      if (!found) return fallback; const number = Number(found[1]); return number >= -2147483648 && number <= 2147483647 ? number : fallback;
+    }, function (value) { inSpace(this, space); apply(setAttribute, this, ['tabindex', String((+value) >> 0)]); });
+  }
   const uint = value => (+value) >>> 0;
   const character = receiver => { check(receiver, [3, 4, 7, 8]); return apply(data.get, receiver, []); };
   const range = (value, offset) => { if (offset > value.length) throw new ns.DOMException('Character-data offset is out of range', 'IndexSizeError'); };
@@ -305,13 +320,6 @@
   for (const [name, attribute] of Object.entries({ bgColor: 'bgcolor', fgColor: 'text', linkColor: 'link', vlinkColor: 'vlink', alinkColor: 'alink' })) property(g.Document.prototype, name, function () {
     check(this, [9]); return this.body ? getAttribute.call(this.body, attribute) || '' : '';
   }, function (value) { check(this, [9]); if (this.body) setAttribute.call(this.body, attribute, string(value)); });
-  property(g.HTMLElement.prototype, 'nonce', function () { check(this, [1]); if (namespace.call(this) !== html) throw new TypeError('Illegal invocation'); return native('nonce', this); }, function (value) { check(this, [1]); if (namespace.call(this) !== html) throw new TypeError('Illegal invocation'); native('setNonce', this, string(value)); });
-  property(g.HTMLElement.prototype, 'tabIndex', function () {
-    check(this, [1]); if (namespace.call(this) !== html) throw new TypeError('Illegal invocation');
-    const fallback = ['A', 'INPUT', 'BUTTON', 'SELECT', 'TEXTAREA', 'IFRAME', 'OBJECT', 'AUDIO', 'VIDEO'].includes(tag.call(this)) ? 0 : -1;
-    const value = getAttribute.call(this, 'tabindex'); const found = value == null ? null : /^[\t\n\f\r ]*([+-]?[0-9]+)/.exec(value);
-    if (!found) return fallback; const number = Number(found[1]); return number >= -2147483648 && number <= 2147483647 ? number : fallback;
-  }, function (value) { check(this, [1]); if (namespace.call(this) !== html) throw new TypeError('Illegal invocation'); setAttribute.call(this, 'tabindex', String((+value) >> 0)); });
   method(g.Document.prototype, 'importNode', function(node, deep=false) {
     check(this,[9]); if(!arguments.length) throw new TypeError('importNode requires 1 argument');
     apply(type,node,[]); const result=native('import',this,node,!!deep);

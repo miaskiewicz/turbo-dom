@@ -176,3 +176,58 @@ fn termination_during_key_order_is_not_lost() {
     scope.cancel_terminate_execution();
     reset();
 }
+
+/// turbo-dom#99: Web IDL constants installed after their interface's attributes still move
+/// into Chrome's order: `HTMLTrackElement`'s NONE / LOADING / LOADED / ERROR are created
+/// configurable, so a realm whose attributes land after them (turbo-surf's child frames) is
+/// arranged like Chrome 156 and the constants end frozen.
+#[test]
+fn deferred_key_order_moves_track_constants_like_chrome156() {
+    super::tests::init_v8();
+    let isolate = &mut v8::Isolate::new(Default::default());
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    key_order::defer(scope);
+    install_independent_html(
+        scope,
+        "<!doctype html><html><head></head><body></body></html>",
+    );
+    // Re-add the attributes after the constants, as a later install step would.
+    let configurable = eval(
+        scope,
+        "(() => { const P = HTMLTrackElement.prototype, out = [];
+          for (const owner of [HTMLTrackElement, P]) out.push(['NONE','LOADING','LOADED','ERROR'].every(name => Object.getOwnPropertyDescriptor(owner, name).configurable));
+          for (const key of ['kind','src','srclang','label','default','readyState','track']) { const d = Object.getOwnPropertyDescriptor(P, key); delete P[key]; Object.defineProperty(P, key, d); }
+          return JSON.stringify(out); })()",
+    );
+    assert_eq!(configurable, "[true,true]");
+    key_order::finish(scope);
+    let after = probe_result(scope);
+    let control: serde_json::Value =
+        serde_json::from_str(include_str!("key_order_chrome156.json")).unwrap();
+    let chrome = &control["result"]["HTMLTrackElement"];
+    for part in ["interface", "prototype"] {
+        let mine = listed(&after["HTMLTrackElement"][part]["keys"]);
+        let shared: Vec<&str> = mine
+            .iter()
+            .copied()
+            .filter(|key| listed(&chrome[part]["keys"]).contains(key))
+            .collect();
+        assert_eq!(shared, listed(&chrome[part]["keys"]), "{part}");
+        assert_eq!(
+            after["HTMLTrackElement"][part]["fixed"], chrome[part]["fixed"],
+            "{part}"
+        );
+    }
+    reset();
+}
+
+fn eval(scope: &mut v8::PinScope, source: &str) -> String {
+    v8::tc_scope!(let scope, scope);
+    let code = v8::String::new(scope, source).unwrap();
+    v8::Script::compile(scope, code, None)
+        .and_then(|script| script.run(scope))
+        .unwrap_or_else(|| panic!("{}", scope.exception().unwrap().to_rust_string_lossy(scope)))
+        .to_rust_string_lossy(scope)
+}
