@@ -1150,3 +1150,90 @@ fn computed_style_reuse_follows_import_media_changes() {
         ])
     );
 }
+
+// turbo-dom#113: the reuse key covers CSSOM edits made in another realm. A live declaration one
+// realm returned for an element of another realm's document re-reads after that document's
+// sheet is edited (a declaration write, an inserted rule), in both directions, while repeated
+// reads of the unchanged element still scan no sheets. Chrome 155 control for the parent → child
+// rows: turbo-surf harness/detection/fixtures/computed-style-owner-chrome155.json.
+#[test]
+#[ignore = "turbo-dom#113: fails until the fix"]
+fn computed_style_reuse_follows_cssom_edits_in_another_realm() {
+    tests::init_v8();
+    let isolate = &mut v8::Isolate::new(Default::default());
+    v8::scope!(let scope, isolate);
+    let parent = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, parent);
+    install_with_html(
+        scope,
+        "<!doctype html><head><style id=s>.target {width:47px;color:red}</style></head><body><div class=target id=target></div></body>",
+    );
+    let child = v8::Context::new(scope, Default::default());
+    child.set_security_token(parent.get_security_token(scope));
+    {
+        let scope = &mut v8::ContextScope::new(scope, child);
+        install_independent_html(
+            scope,
+            "<!DOCTYPE html><html><head></head><body></body></html>",
+        );
+    }
+    let child_global = child.global(scope);
+    let parent_global = parent.global(scope);
+    set_prop(scope, parent_global, "frameChild", child_global.into());
+    let source = v8::String::new(
+        scope,
+        r#"JSON.stringify((()=>{
+        const read=getComputedStyle,doc=frameChild.document,query=doc.querySelectorAll;let scans=0;
+        const style=doc.createElement('style');style.textContent='.target {width:61px;color:blue}';doc.head.appendChild(style);
+        const target=doc.createElement('div');target.className='target';doc.body.appendChild(target);
+        const sheet=style.sheet,retained=read(target),rows=[];
+        const row=name=>{const fresh=read(target);rows.push([name,retained.width,retained.color,retained.height,fresh.width,fresh.height]);};
+        row('first');
+        doc.querySelectorAll=function(selector){if(selector==='style,link')scans++;return Reflect.apply(query,this,arguments);};
+        try {row('warm');row('warm-again');} finally {delete doc.querySelectorAll;}
+        sheet.cssRules[0].style.width='67px';row('declaration');
+        sheet.insertRule('.target {height:5px}',1);row('insert-rule');
+        sheet.deleteRule(1);row('delete-rule');
+        const own=document.getElementById('target'),childRead=frameChild.getComputedStyle,borrowed=childRead(own),reverse=[];
+        const back=name=>reverse.push([name,borrowed.width,childRead(own).width]);
+        back('first');back('warm');
+        document.getElementById('s').sheet.cssRules[0].style.width='53px';back('declaration');
+        return {rows,scans,reverse};
+    })())"#,
+    )
+    .unwrap();
+    let value = {
+        v8::tc_scope!(let scope, scope);
+        let value = v8::Script::compile(scope, source, None)
+            .and_then(|script| script.run(scope))
+            .unwrap_or_else(|| {
+                panic!(
+                    "{:?}",
+                    scope
+                        .exception()
+                        .map(|value| value.to_rust_string_lossy(scope))
+                )
+            });
+        serde_json::from_str::<serde_json::Value>(&value.to_rust_string_lossy(scope)).unwrap()
+    };
+    assert_eq!(
+        value,
+        serde_json::json!({
+            "rows": [
+                ["first", "61px", "rgb(0, 0, 255)", "", "61px", ""],
+                ["warm", "61px", "rgb(0, 0, 255)", "", "61px", ""],
+                ["warm-again", "61px", "rgb(0, 0, 255)", "", "61px", ""],
+                ["declaration", "67px", "rgb(0, 0, 255)", "", "67px", ""],
+                ["insert-rule", "67px", "rgb(0, 0, 255)", "5px", "67px", "5px"],
+                ["delete-rule", "67px", "rgb(0, 0, 255)", "", "67px", ""]
+            ],
+            "scans": 0,
+            "reverse": [
+                ["first", "47px", "47px"],
+                ["warm", "47px", "47px"],
+                ["declaration", "53px", "53px"]
+            ]
+        })
+    );
+    reset();
+}
