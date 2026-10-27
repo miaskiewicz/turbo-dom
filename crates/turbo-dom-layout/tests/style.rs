@@ -220,7 +220,7 @@ fn legacy_align_font_color_and_cellpadding_hints() {
     // its cells), all overridable by author CSS.
     let cascade = build_cascade("#o { padding: 9px }", "", TokenSet::new());
     let styled = styled_html(
-        "<p id=j align=JUSTIFY>x</p><p id=u align=bogus>x</p><span id=s align=center>x</span>\
+        "<p id=j align=JUSTIFY>x</p><p id=u align=bogus>x</p><h1 id=l align=left>x</h1><div id=r align=' Right '>x</div><div id=m align=middle>x</div><span id=s align=center>x</span>\
          <font id=f color=' red '>x</font><font id=e color='  '>x</font><b id=b color=red>x</b>\
          <table cellpadding=' 3 '><tr><td id=c>x</td><th id=h>y</th><td id=o>z</td></tr></table>\
          <table cellpadding=wide><tr><td id=w>x</td></tr></table>\
@@ -229,6 +229,18 @@ fn legacy_align_font_color_and_cellpadding_hints() {
     );
     assert_eq!(prop(&styled, "j", "text-align").as_deref(), Some("justify"));
     assert_eq!(prop(&styled, "u", "text-align"), None);
+    assert_eq!(
+        prop(&styled, "l", "text-align").as_deref(),
+        Some("-webkit-left")
+    );
+    assert_eq!(
+        prop(&styled, "m", "text-align").as_deref(),
+        Some("-webkit-center")
+    );
+    assert_eq!(
+        prop(&styled, "r", "text-align").as_deref(),
+        Some("-webkit-right")
+    );
     assert_eq!(prop(&styled, "s", "text-align"), None, "not an aligned tag");
     assert_eq!(prop(&styled, "f", "color").as_deref(), Some("red"));
     assert_eq!(prop(&styled, "e", "color"), None);
@@ -269,21 +281,32 @@ fn cell_outside_any_table_gets_no_cellpadding() {
 #[test]
 fn font_size_keywords_units_and_unparsable_values_resolve_to_px() {
     let cascade = build_cascade(
-        "#k{font-size:larger} #s{font-size:smaller} #x{font-size:xx-large} #pt{font-size:12pt} \
+        "#k{font-size:larger} #s{font-size:smaller} #x{font-size:xx-large} \
+         #k1{font-size:xx-small} #k2{font-size:x-small} #k3{font-size:small} #k4{font-size:medium} \
+         #k5{font-size:large} #k6{font-size:x-large} #pt{font-size:12pt} \
          #in{font-size:0.5in} #pc{font-size:2pc} #mm{font-size:25.4mm} #cm{font-size:2.54cm} \
-         #pct{font-size:50%} #em{font-size:2em} #bad{font-size:big} #unit{font-size:2ex}",
+         #pct{font-size:50%} #rem{font-size:2rem} #em{font-size:2em} #bad{font-size:big} #unit{font-size:2ex}",
         "",
         TokenSet::new(),
     );
     let styled = styled_html(
         "<div style='font-size:20px'><i id=k></i><i id=s></i><i id=x></i><i id=pt></i><i id=in></i>\
-         <i id=pc></i><i id=mm></i><i id=cm></i><i id=pct></i><i id=em></i><i id=bad></i><i id=unit></i></div>",
+         <i id=pc></i><i id=mm></i><i id=cm></i><i id=pct></i><i id=em></i><i id=bad></i><i id=unit></i>\
+         <i id=rem></i><i id=k1></i><i id=k2></i><i id=k3></i><i id=k4></i><i id=k5></i><i id=k6></i></div>",
         &cascade,
     );
     let px = |id: &str| prop(&styled, id, "font-size").unwrap();
     assert_eq!(px("k"), "24px", "larger = parent x 1.2");
     assert_eq!(px("s"), format!("{}px", 20.0f32 / 1.2));
     assert_eq!(px("x"), "32px", "xx-large = 2 x medium");
+    // The coarse keyword steps against the 16px initial size (not the parent's 20px).
+    let keyword = |f: f32| format!("{}px", 16.0f32 * f);
+    assert_eq!(px("k1"), keyword(0.6));
+    assert_eq!(px("k2"), keyword(0.75));
+    assert_eq!(px("k3"), keyword(0.89));
+    assert_eq!(px("k4"), "16px");
+    assert_eq!(px("k5"), keyword(1.2));
+    assert_eq!(px("k6"), "24px");
     assert_eq!(px("pt"), "16px");
     assert_eq!(px("in"), "48px");
     assert_eq!(px("pc"), "32px");
@@ -291,6 +314,7 @@ fn font_size_keywords_units_and_unparsable_values_resolve_to_px() {
     assert_eq!(px("cm"), "96px");
     assert_eq!(px("pct"), "10px");
     assert_eq!(px("em"), "40px");
+    assert_eq!(px("rem"), "32px", "rem: the 16px root, not the parent");
     assert_eq!(px("bad"), "20px", "an unparsable size keeps the parent's");
     assert_eq!(px("unit"), "20px", "an unknown unit keeps the parent's");
 }
@@ -301,7 +325,8 @@ fn var_references_inside_functions_fallbacks_and_unclosed() {
     use turbo_dom_layout::{Attr, Tag};
     let cascade = build_cascade(
         ":root{--w:10px} #a{width:calc(var(--w) + 1px)} #b{width:var(--missing, calc(2px + 3px))} \
-         #c{width:var(--w, 99px)} #d{height:var(--w}",
+         #c{width:var(--w, 99px)} #d{height:var(--w} \
+         #e{width:var(--missing, calc(var(--w) + 1px))} #f{--a:var(--a, 5px);width:var(--a)}",
         "",
         TokenSet::new(),
     );
@@ -323,6 +348,8 @@ fn var_references_inside_functions_fallbacks_and_unclosed() {
             el("p", "b", vec![]),
             el("p", "c", vec![]),
             el("p", "d", vec![]),
+            el("p", "e", vec![]),
+            el("p", "f", vec![]),
         ],
     );
     let styled = common::style_nodes(&[html], &cascade);
@@ -339,6 +366,16 @@ fn var_references_inside_functions_fallbacks_and_unclosed() {
         prop(&styled, "d", "height").as_deref(),
         Some("var(--w"),
         "an unclosed var() is kept verbatim"
+    );
+    assert_eq!(
+        prop(&styled, "e", "width").as_deref(),
+        Some("calc(10px + 1px)"),
+        "a fallback's nested parens and var() resolve"
+    );
+    assert_eq!(
+        prop(&styled, "f", "width").as_deref(),
+        Some("5px"),
+        "a self-reference falls back"
     );
 }
 
@@ -378,11 +415,16 @@ fn media_lengths_in_em_and_single_term_calc() {
     };
     let css =
         "@media (max-width: 40em) { .em { a: b } } @media (min-width: 2.5rem) { .rem { a: b } } \
-               @media (max-width: calc(600px)) { .calc { a: b } }";
-    assert_eq!(order(css, 640.0), [".em", ".rem"]);
-    assert_eq!(order(css, 641.0), [".rem"]);
-    assert_eq!(order(css, 600.0), [".em", ".rem", ".calc"]);
-    assert_eq!(order(css, 39.0), [".em", ".calc"]);
+               @media (max-width: calc(600px)) { .calc { a: b } } \
+               @media (min-width: calc(700px - 100px)) { .minus { a: b } } \
+               @media (max-width: calc(100px + 2em)) { .plus { a: b } }";
+    assert_eq!(order(css, 640.0), [".em", ".rem", ".minus"]);
+    assert_eq!(order(css, 641.0), [".rem", ".minus"]);
+    assert_eq!(order(css, 600.0), [".em", ".rem", ".calc", ".minus"]);
+    assert_eq!(order(css, 599.0), [".em", ".rem", ".calc"]);
+    assert_eq!(order(css, 132.0), [".em", ".rem", ".calc", ".plus"]);
+    assert_eq!(order(css, 133.0), [".em", ".rem", ".calc"]);
+    assert_eq!(order(css, 39.0), [".em", ".calc", ".plus"]);
 }
 
 #[test]

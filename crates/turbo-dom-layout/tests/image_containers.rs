@@ -124,10 +124,18 @@ fn idat_avif() -> Vec<u8> {
         let mut file = ftyp(*b"mif1", &[b"miaf", b"avif"]);
         file.extend(meta(&[
             pitm(1, 1),
-            iloc(1, &[(1, 1, &[(2, 3)]), (2, 0, &[(mdat_at + 8, 0)])]),
+            iloc(
+                1,
+                &[
+                    (1, 1, &[(2, 3)]),
+                    (3, 1, &[(0, 2)]),
+                    (2, 0, &[(mdat_at + 8, 0)]),
+                ],
+            ),
+            // Item 3 (associated before the alpha item) is not an alpha auxiliary.
             iprp(
                 &[ispe(64, 40), colr(*b"nclx", [1, 13, 6], 0x80), alpha_aux()],
-                &ipma(&[(1, &[1, 2]), (2, &[3])]),
+                &ipma(&[(1, &[1, 2]), (3, &[1]), (2, &[3])]),
             ),
             bx(*b"idat", b"\0\0COL\0"),
         ]));
@@ -165,17 +173,30 @@ fn avif_items_in_idat_and_a_to_end_mdat_demux_with_their_nclx() {
     );
 }
 
+/// A box written with a 64-bit `largesize` (its `size` field 1).
+fn large(kind: [u8; 4], body: &[u8]) -> Vec<u8> {
+    let mut out = 1u32.to_be_bytes().to_vec();
+    out.extend_from_slice(&kind);
+    out.extend_from_slice(&(u64::try_from(body.len()).unwrap() + 16).to_be_bytes());
+    out.extend_from_slice(body);
+    out
+}
+
 /// An AVIF (major brand `avif`) with a 16-bit `pitm`, `iloc` version 2 (32-bit item ids
-/// and count), the colour item in an `mdat` written with a 64-bit `largesize`, and the
-/// given `colr` property.
+/// and count), its `meta` and the colour item's `mdat` written with a 64-bit
+/// `largesize`, and the given `colr` property.
 fn largesize_avif(colour: &[u8], method: u16) -> Vec<u8> {
     let head = |mdat_at: u32| {
         let mut file = ftyp(*b"avif", &[]);
-        file.extend(meta(&[
+        let mut body = vec![0; 4]; // full box version + flags
+        for child in [
             pitm(0, 7),
             iloc(2, &[(7, method, &[(mdat_at + 16, 4)])]),
             iprp(&[ispe(3, 2), colour.to_vec()], &ipma(&[(7, &[1, 2])])),
-        ]));
+        ] {
+            body.extend(child);
+        }
+        file.extend(large(*b"meta", &body));
         file
     };
     let at = u32::try_from(head(0).len()).unwrap();
@@ -185,6 +206,44 @@ fn largesize_avif(colour: &[u8], method: u16) -> Vec<u8> {
     file.extend_from_slice(&(16u64 + 4).to_be_bytes());
     file.extend_from_slice(b"AV1!");
     file
+}
+
+#[test]
+fn a_last_meta_box_with_size_zero_runs_to_the_end_of_the_file() {
+    // ISO/IEC 14496-12 §4.2: `size` 0 = the box extends to the end of the file. Here the
+    // `meta` box is last (after the `mdat`), with an `iloc` version 0 item (16-bit ids,
+    // file offsets).
+    let mut file = ftyp(*b"avif", &[]);
+    let data_at = u32::try_from(file.len()).unwrap() + 8;
+    file.extend(bx(*b"mdat", b"AV1!"));
+    file.extend_from_slice(&0u32.to_be_bytes());
+    file.extend_from_slice(b"meta");
+    file.extend_from_slice(&[0; 4]);
+    for child in [
+        pitm(0, 1),
+        iloc(0, &[(1, 0, &[(data_at, 4)])]),
+        iprp(&[ispe(5, 6)], &ipma(&[(1, &[1])])),
+    ] {
+        file.extend(child);
+    }
+    let intrinsic = probe(&file).expect("an AVIF");
+    assert_eq!((intrinsic.width, intrinsic.height), (5, 6));
+    assert_eq!(avif_payload(&file).unwrap().color, b"AV1!");
+}
+
+#[test]
+fn avif_needs_an_avif_or_avis_brand() {
+    // `ftyp` brands are 4 bytes: replacing the box keeps every offset.
+    let file = idat_avif();
+    let rebrand = |major: [u8; 4], compatible: &[&[u8; 4]]| {
+        let mut bytes = ftyp(major, compatible);
+        assert_eq!(bytes.len(), 24);
+        bytes.extend_from_slice(&file[24..]);
+        bytes
+    };
+    assert!(avif_payload(&rebrand(*b"heic", &[b"miaf", b"mif1"])).is_none());
+    assert!(avif_payload(&rebrand(*b"avis", &[b"miaf", b"mif1"])).is_some());
+    assert!(avif_payload(&rebrand(*b"mif1", &[b"miaf", b"avis"])).is_some());
 }
 
 #[test]
@@ -239,6 +298,14 @@ fn ico_entries_read_zero_dimension_bytes_as_256() {
     let i = probe(&ico).unwrap();
     assert_eq!((i.width, i.height, i.has_alpha), (256, 256, true));
     assert!(ico_entry(b"\x89PNG\r\n\x1a\n").is_none(), "not an ICO");
+    // Two entries: the larger AREA wins (10x10 = 100 over 30x3 = 90), whichever has the
+    // larger width or the larger width/height sum.
+    let mut two = vec![0, 0, 1, 0, 2, 0];
+    two.extend_from_slice(&[30, 3, 0, 0, 1, 0, 32, 0, 1, 0, 0, 0, 38, 0, 0, 0]);
+    two.extend_from_slice(&[10, 10, 0, 0, 1, 0, 32, 0, 1, 0, 0, 0, 39, 0, 0, 0]);
+    two.extend_from_slice(b"BA");
+    let entry = ico_entry(&two).unwrap();
+    assert_eq!((entry.width, entry.height, entry.data), (10, 10, &b"A"[..]));
     assert!(
         ico_entry(&[0, 0, 1, 0, 0, 0]).is_none(),
         "an empty directory"
