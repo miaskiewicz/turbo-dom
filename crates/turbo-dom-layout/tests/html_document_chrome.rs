@@ -103,7 +103,7 @@ fn inline_flex_grid_case(id: &str) -> bool {
 /// The control cases of an open bug, each asserted by its own test (`#[ignore]`d until
 /// its fix lands) and held out of [`html_documents_lay_out_as_chrome_156`].
 fn held_out(id: &str) -> bool {
-    let groups: [fn(&str) -> bool; 33] = [
+    let groups: [fn(&str) -> bool; 36] = [
         auto_table_case,
         inline_flex_grid_case,
         abs_auto_width_case,
@@ -133,7 +133,10 @@ fn held_out(id: &str) -> bool {
         abs_stretch_case,
         column_flex_case,
         float_sum_case,
+        abs_percent_case,
+        column_flex_item_case,
         flex_item_box_sizing_case,
+        abs_padding_box_case,
         positioned_percent_case,
         block_in_inline_case,
         padding_box_case,
@@ -327,6 +330,28 @@ fn self_collapsing_first_child_margins_like_chrome_156() {
     compare_cases(self_collapsing_first_child_case);
 }
 
+/// miaskiewicz/turbo-dom#88: `display: flow-root` establishes a block formatting context;
+/// an empty formatting-context root is not self-collapsing.
+fn flow_root_case(id: &str) -> bool {
+    id.starts_with("flow-root-") || id.starts_with("empty-formatting-root-")
+}
+
+#[test]
+fn flow_root_establishes_a_formatting_context_like_chrome_156() {
+    compare_cases(flow_root_case);
+}
+
+/// miaskiewicz/turbo-dom#86: a column flex item's basis is its `height`, its `width` its
+/// cross size.
+fn column_flex_item_case(id: &str) -> bool {
+    id.starts_with("column-flex-item-")
+}
+
+#[test]
+fn column_flex_items_size_on_their_axes_like_chrome_156() {
+    compare_cases(column_flex_item_case);
+}
+
 /// miaskiewicz/turbo-dom#93: a content-box flex item's sizes exclude its padding and border.
 fn flex_item_box_sizing_case(id: &str) -> bool {
     id.starts_with("flex-item-")
@@ -365,7 +390,6 @@ fn padding_box_case(id: &str) -> bool {
 }
 
 #[test]
-#[ignore = "turbo-dom#102: fails until the fix"]
 fn positioned_boxes_use_the_padding_box_like_chrome_156() {
     compare_cases(padding_box_case);
 }
@@ -432,17 +456,6 @@ fn initial_containing_block_insets_like_chrome_156() {
     compare_cases(icb_case);
 }
 
-/// miaskiewicz/turbo-dom#88: `display: flow-root` establishes a block formatting context;
-/// an empty formatting-context root is not self-collapsing.
-fn flow_root_case(id: &str) -> bool {
-    id.starts_with("flow-root-") || id.starts_with("empty-formatting-root-")
-}
-
-#[test]
-fn flow_root_establishes_a_formatting_context_like_chrome_156() {
-    compare_cases(flow_root_case);
-}
-
 /// miaskiewicz/turbo-dom#83: a `width: auto` float is shrink-to-fit.
 fn float_shrink_case(id: &str) -> bool {
     id.starts_with("float-shrink-")
@@ -491,6 +504,26 @@ fn float_sum_case(id: &str) -> bool {
 #[test]
 fn floats_sit_side_by_side_in_max_content_like_chrome_156() {
     compare_cases(float_sum_case);
+}
+
+/// miaskiewicz/turbo-dom#100: a positioned box's `%` width resolves against its containing block.
+fn abs_percent_case(id: &str) -> bool {
+    id.starts_with("abs-percent-")
+}
+
+#[test]
+fn percentage_widths_of_positioned_boxes_resolve_against_the_containing_block_like_chrome_156() {
+    compare_cases(abs_percent_case);
+}
+
+/// miaskiewicz/turbo-dom#100: the containing block is the positioned ancestor's padding box.
+fn abs_padding_box_case(id: &str) -> bool {
+    id.starts_with("abs-padding-box-")
+}
+
+#[test]
+fn positioned_boxes_use_the_padding_box_of_their_containing_block_like_chrome_156() {
+    compare_cases(abs_padding_box_case);
 }
 
 /// The first `<th>` of a styled forest.

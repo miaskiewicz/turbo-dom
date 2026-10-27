@@ -1,0 +1,13 @@
+{
+ "id": "miaskiewicz/turbo-dom#100",
+ "reason": "Static path: a positioned box resolves its % width (and padding / margins) against, and is placed in, its containing block's padding box (the viewport for fixed); a definite zero-height ancestor's padding box keeps its padding. Fresh-target parity builds (git archive per commit, own CARGO_TARGET_DIR; html2pdf consol/p5b-w7 e0cdd0b napi plain + svg; surf static through the napi-free raster harness): 89391e8 -> b2354ed and ad66a93 -> 944c36a: no corpus output changes (no corpus input has a %-width or padded-ancestor positioned box). P5b-W6's side of #100 (positioned_style) is declared by its own files. P5b-W7.",
+ "control": "abs-percent-* / abs-padding-box-* in scripts/html-document-chrome-control.mjs",
+ "e2e": "crates/turbo-dom-layout/tests/html_document_chrome.rs (percentage_widths_of_positioned_boxes_resolve_against_the_containing_block_like_chrome_156, positioned_boxes_use_the_padding_box_of_their_containing_block_like_chrome_156); tests/layout_position.rs (absolute_is_relative_to_positioned_ancestor, adapted)",
+ "changes": {
+  "html2pdf": [],
+  "html2pdf-svg": [],
+  "html2pdf-extra": [],
+  "surf": [],
+  "surf-extra": []
+ }
+}

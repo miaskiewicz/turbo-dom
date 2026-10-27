@@ -365,6 +365,8 @@ const CASES = [
   { id: "float-shrink-max-width", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="float:left;max-width:20px"><div data-cid="d" style="width:30px;height:15px"></div></div>`) },
   { id: "float-shrink-min-width", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="float:left;min-width:50px"><div data-cid="d" style="width:30px;height:15px"></div></div>`) },
   { id: "float-shrink-available-minus-margins", html: DOC(S("body{margin:0}"), `<div style="width:60px;font-size:0"><div data-cid="c" style="float:left;margin:0 10px"><span style="display:inline-block;width:30px;height:15px"></span> <span style="display:inline-block;width:20px;height:15px"></span></div></div>`) },
+  { id: "float-shrink-max-width-with-frame", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="float:left;max-width:20px;padding:0 3px;border:2px solid"><div style="width:30px;height:5px"></div></div>`) },
+  { id: "float-shrink-min-width-border-box", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="float:left;min-width:50px;padding:0 3px;border:2px solid;box-sizing:border-box"><div style="width:10px;height:5px"></div></div>`) },
   // P5b-W7, miaskiewicz/turbo-dom#84: absolutely positioned and fixed children are out of
   // flow and add nothing to their parent's intrinsic widths.
   { id: "intrinsic-oof-absolute-child", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="float:left"><div style="position:absolute;width:100px;height:5px"></div><div data-cid="d" style="width:30px;height:15px"></div></div>`) },
@@ -374,6 +376,9 @@ const CASES = [
   { id: "intrinsic-oof-min-content", html: DOC(S("body{margin:0}"), `<table style="border-spacing:0;width:1px"><tr><td data-cid="c" style="padding:0"><div style="position:absolute;width:100px;height:5px"></div><div data-cid="d" style="width:30px;height:15px"></div></td></tr></table>`) },
   { id: "intrinsic-oof-inline-block", html: DOC(S("body{margin:0}"), `<div style="font-size:0"><div data-cid="c" style="display:inline-block"><div style="position:absolute;width:100px;height:5px"></div><div data-cid="d" style="width:30px;height:15px"></div></div></div>`) },
   { id: "intrinsic-oof-row-flex", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="float:left"><div style="display:flex"><div style="position:absolute;width:100px;height:5px"></div><div data-cid="d" style="width:30px;height:15px"></div></div></div>`) },
+  { id: "intrinsic-oof-inline-in-float", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="float:left;font-size:0"><span style="display:inline-block;width:30px;height:5px"></span><span style="position:absolute;width:100px;height:5px"></span></div>`) },
+  { id: "intrinsic-oof-row-flex-gap", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="float:left"><div style="display:flex;column-gap:10px"><div style="width:20px;height:5px"></div><div style="position:absolute;width:100px;height:5px"></div><div style="width:20px;height:5px"></div></div></div>`) },
+  { id: "intrinsic-oof-inline-min-content", html: DOC(S("body{margin:0}"), `<table style="border-spacing:0;width:1px"><tr><td data-cid="c" style="padding:0;font-size:0"><span style="display:inline-block;width:30px;height:5px"></span><span style="position:absolute;width:100px;height:5px"></span></td></tr></table>`) },
   // P5b-W7, miaskiewicz/turbo-dom#89: an absolutely positioned box with `height: auto` and
   // both `top` and `bottom` is stretched between them (CSS 2.2 §10.6.4).
   { id: "abs-stretch-definite-parent", html: DOC(S("body{margin:0}"), `<div style="position:relative;height:100px"><div data-cid="c" style="position:absolute;top:10px;bottom:20px;width:20px"></div></div>`) },
@@ -385,6 +390,7 @@ const CASES = [
   { id: "abs-stretch-explicit-height-wins", html: DOC(S("body{margin:0}"), `<div style="position:relative;height:100px"><div data-cid="c" style="position:absolute;top:10px;bottom:20px;height:15px;width:20px"></div></div>`) },
   { id: "abs-stretch-fixed-viewport", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="position:fixed;top:10px;bottom:20px;width:20px"></div>`) },
   { id: "abs-stretch-initial-containing-block", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="position:absolute;top:10px;bottom:20px;width:20px"></div>`) },
+  { id: "abs-stretch-table-keeps-its-min-content", html: DOC(S("body{margin:0}"), `<div style="position:relative;height:100px"><table data-cid="t" style="position:absolute;top:0;width:10px;border-spacing:0"><tr><td style="padding:0"><div style="width:50px;height:5px"></div></td></tr></table></div>`) },
   // P5b-W7, miaskiewicz/turbo-dom#86: in a column flex container an item's flex basis is
   // its `height` (the main size) and its `width` is its cross size.
   { id: "column-flex-explicit-sizes", html: DOC(S("body{margin:0}"), `<div data-cid="f" style="display:flex;flex-direction:column"><div data-cid="d" style="width:30px;height:15px"></div><div data-cid="e" style="width:40px;height:5px"></div></div>`) },
@@ -407,6 +413,28 @@ const CASES = [
   { id: "float-sum-clear-resets", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="float:left"><div style="float:left;height:5px;width:20px"></div><div style="float:left;height:5px;width:30px;clear:left"></div></div>`) },
   { id: "float-sum-in-inline-block", html: DOC(S("body{margin:0}"), `<div style="font-size:0"><div data-cid="c" style="display:inline-block"><div style="float:left;height:5px;width:20px"></div><div style="float:left;height:5px;width:25px"></div></div></div>`) },
   { id: "float-sum-in-table-cell", html: DOC(S("body{margin:0}"), `<table style="border-spacing:0"><tr><td data-cid="c" style="padding:0"><div style="float:left;height:5px;width:20px"></div><div style="float:left;height:5px;width:25px"></div></td></tr></table>`) },
+  { id: "float-sum-right-run-then-clear-left", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="float:left"><div style="float:right;width:20px;height:5px"></div><div style="float:right;width:25px;height:5px"></div><div style="float:left;clear:left;width:10px;height:5px"></div></div>`) },
+  { id: "float-sum-left-run-then-clear", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="float:left"><div style="float:left;width:20px;height:5px"></div><div style="float:left;width:25px;height:5px"></div><div style="float:left;clear:left;width:10px;height:5px"></div></div>`) },
+  { id: "float-sum-both-sides-then-clear-both", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="float:left"><div style="float:left;width:20px;height:5px"></div><div style="float:right;width:30px;height:5px"></div><div style="float:left;clear:both;width:10px;height:5px"></div></div>`) },
+  { id: "float-sum-right-run-then-clear-right", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="float:left"><div style="float:right;width:20px;height:5px"></div><div style="float:right;width:25px;height:5px"></div><div style="float:right;clear:right;width:10px;height:5px"></div></div>`) },
+  { id: "float-sum-right-float-beside-formatting-context", html: DOC(S("body{margin:0}"), `<div data-cid="c" style="float:left"><div style="float:right;width:20px;height:5px"></div><div style="overflow:hidden;width:40px;height:5px"></div></div>`) },
+  // P5b-W7, miaskiewicz/turbo-dom#100: an absolutely positioned / fixed box's percentage
+  // `width` resolves against its containing block (the positioned ancestor's padding box,
+  // the viewport for `fixed`), not its parent.
+  { id: "abs-percent-width-containing-block", html: DOC(S("body{margin:0}"), `<div style="position:relative;width:400px;height:50px"><div style="width:100px"><div data-cid="c" style="position:absolute;width:50%;height:5px"></div></div></div>`) },
+  { id: "abs-percent-width-padding-box", html: DOC(S("body{margin:0}"), `<div style="position:relative;width:400px;padding:0 50px;height:50px"><div style="width:100px"><div data-cid="c" style="position:absolute;left:0;width:25%;height:5px"></div></div></div>`) },
+  { id: "abs-percent-width-initial-containing-block", html: DOC(S("body{margin:0}"), `<div style="width:100px"><div data-cid="c" style="position:absolute;width:10%;height:5px"></div></div>`) },
+  { id: "abs-percent-width-fixed", html: DOC(S("body{margin:0}"), `<div style="position:relative;width:100px"><div data-cid="c" style="position:fixed;width:50%;height:5px"></div></div>`) },
+  { id: "abs-percent-max-width", html: DOC(S("body{margin:0}"), `<div style="position:relative;width:400px;height:50px"><div style="width:100px"><div data-cid="c" style="position:absolute;width:300px;max-width:50%;height:5px"></div></div></div>`) },
+  // P5b-W7, miaskiewicz/turbo-dom#100: the containing block is the positioned ancestor's
+  // padding box (inside its border; its height includes the padding, a definite zero too).
+  { id: "abs-padding-box-in-bordered-ancestor", html: DOC(S("body{margin:0}"), `<div style="position:relative;border:5px solid;width:200px;height:50px;padding:10px"><div data-cid="c" style="position:absolute;top:0;left:0;width:50%;height:5px"></div></div>`) },
+  { id: "abs-padding-box-bottom-in-padded-ancestor", html: DOC(S("body{margin:0}"), `<div style="position:relative;border:3px solid;height:50px;padding:10px"><div data-cid="c" style="position:absolute;bottom:0;left:0;width:10px;height:5px"></div></div>`) },
+  { id: "abs-padding-box-full-height-zero-height-padded", html: DOC(S("body{margin:0}"), `<div style="position:relative;height:0;padding-bottom:40px"><div style="height:30px"></div><div data-cid="c" style="position:absolute;top:0;width:10px;height:100%"></div></div>`) },
+  { id: "abs-padding-box-full-height-auto-padded", html: DOC(S("body{margin:0}"), `<div style="position:relative;padding:6px 0 4px"><div style="height:30px"></div><div data-cid="c" style="position:absolute;top:0;width:10px;height:100%"></div></div>`) },
+  { id: "abs-padding-box-percent-height-indefinite", html: DOC(S("body{margin:0}"), `<div><div style="position:relative;height:50%;padding:10px 0"><div style="height:30px"></div><div data-cid="c" style="position:absolute;top:0;width:10px;height:100%"></div></div></div>`) },
+  { id: "abs-padding-box-auto-height-in-definite-ancestor", html: DOC(S("body{margin:0}"), `<div style="position:relative;height:100px"><div style="position:relative;padding:10px 0"><div style="height:30px"></div><div data-cid="c" style="position:absolute;top:0;width:10px;height:100%"></div></div></div>`) },
+  { id: "abs-padding-box-percent-height-definite", html: DOC(S("body{margin:0}"), `<div style="position:relative;height:100px"><div style="position:relative;height:50%;padding:10px 0"><div style="height:30px"></div><div data-cid="c" style="position:absolute;top:0;width:10px;height:100%"></div></div></div>`) },
   // P5b-W6, miaskiewicz/turbo-dom#75 item 1: a last child's bottom margin and its parent's
   // `min-height` / `max-height`. The margin collapses through an auto-height parent whose
   // used height is its content height; when `min-height` (or `max-height`) changes the
@@ -533,6 +561,8 @@ const CASES = [
   { id: "block-in-inline-nested-spans", html: DOC(S("body{margin:0}i{display:inline-block;width:10px;height:10px}"), `<div style="font-size:0"><b><span><i data-cid="a"></i><div data-cid="d" style="height:5px"></div></span></b><i data-cid="c"></i></div>`) },
   { id: "block-in-inline-margins", html: DOC(S("body{margin:0}i{display:inline-block;width:10px;height:10px}"), `<div style="font-size:0"><span><i data-cid="a"></i><div data-cid="d" style="height:5px;margin:4px 6px"></div><i data-cid="b"></i></span></div><div data-cid="g" style="height:5px"></div>`) },
   { id: "block-in-inline-two-blocks", html: DOC(S("body{margin:0}i{display:inline-block;width:10px;height:10px}"), `<div style="font-size:0"><span><div data-cid="d" style="height:5px"></div><div data-cid="e" style="height:6px;margin-top:3px"></div></span></div>`) },
+  { id: "block-in-inline-abs-after-block", html: DOC(S("body{margin:0}"), `<div style="text-align:center;font-size:0"><span><div data-cid="d" style="height:5px"></div><i data-cid="a" style="position:absolute;width:10px;height:10px"></i><b data-cid="b" style="display:inline-block;width:20px;height:10px"></b></span></div>`) },
+  { id: "block-in-inline-float-after-block", html: DOC(S("body{margin:0}"), `<div style="font-size:0"><span><div data-cid="d" style="height:5px"></div><i data-cid="a" style="float:right;width:10px;height:10px"></i><b data-cid="b" style="display:inline-block;width:20px;height:10px"></b></span></div>`) },
   // P5b-W6, miaskiewicz/turbo-dom#102: an absolutely positioned box's containing block is
   // its positioned ancestor's padding box (insets and percentages; the static position
   // stays in the content box).

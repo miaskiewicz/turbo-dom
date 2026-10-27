@@ -291,18 +291,31 @@ fn resolved_content_height(bs: &BoxStyle, auto_height: f32, ctx: &Ctx) -> f32 {
 fn positioned_child_block(
     bs: &BoxStyle,
     frame: (f32, f32, f32),
-    content: (f32, f32, f32),
     ctx: &Ctx,
 ) -> (f32, f32, f32, f32) {
+    let border = bs.border.widths();
     if !ctx.live_geometry {
+        // The padding box (miaskiewicz/turbo-dom#100); 0 = an indefinite height. A
+        // definite zero content height (`height: 0; padding-bottom: 56%`) still has its
+        // padding.
+        let basis = percentage_height_basis(bs, ctx);
+        let definite = match bs.height {
+            LengthPct::Px(_) => true,
+            LengthPct::Auto => false,
+            _ => basis > 0.0,
+        };
+        let height = if definite {
+            definite_content_height(bs, basis) + bs.padding.vertical()
+        } else {
+            0.0
+        };
         return (
-            content.0,
-            content.1,
-            content.2,
-            definite_content_height(bs, percentage_height_basis(bs, ctx)),
+            frame.0 + border.left,
+            frame.1 + border.top,
+            frame.2 - border.horizontal(),
+            height,
         );
     }
-    let border = bs.border.widths();
     let inset = match bs.box_sizing {
         BoxSizing::BorderBox => border.vertical() + bs.padding.vertical(),
         BoxSizing::ContentBox => 0.0,
@@ -317,12 +330,10 @@ fn positioned_child_block(
     )
 }
 
-fn deferred_cb_height(content: f32, bs: &BoxStyle, ctx: &Ctx) -> f32 {
-    if ctx.live_geometry {
-        content + bs.padding.vertical()
-    } else {
-        content
-    }
+/// A positioned box's padding-box height from its laid-out `content` height, for its
+/// deferred absolute children (miaskiewicz/turbo-dom#100: on every path).
+fn deferred_cb_height(content: f32, bs: &BoxStyle) -> f32 {
+    content + bs.padding.vertical()
 }
 
 fn layout_positioned(
@@ -333,14 +344,13 @@ fn layout_positioned(
     ctx: &mut Ctx,
 ) -> Fragment {
     let width = out_of_flow_width(&resolve(lb, width, fs), ctx);
-    let mut bs = resolve(lb, width, fs);
     if lb.is_replaced() {
         return layout_box(lb, origin.0, origin.1, width, fs, ctx);
     }
+    let mut bs = resolve(lb, width, fs);
     if !ctx.live_geometry {
         return layout_positioned_static(lb, bs, origin, (width, fs), ctx);
     }
-    bs = resolve(lb, width, fs);
     let border = bs.border.widths();
     let frame = match bs.box_sizing {
         BoxSizing::ContentBox => (
@@ -456,8 +466,9 @@ fn stretch_insets(
     available.map_or(value, LengthPct::Px)
 }
 
-/// An out-of-flow box's style with its percentages resolved against its containing
-/// block's width ([`out_of_flow_width`]); `cw` is its parent's content width.
+/// An out-of-flow box's style with its percentages (horizontal margins and padding too)
+/// resolved against its containing block's width ([`out_of_flow_width`]) where its
+/// origin is computed; `cw` is its parent's content width (miaskiewicz/turbo-dom#100).
 fn positioned_style(kid: &LayoutBox, cw: f32, fs: f32, ctx: &Ctx) -> BoxStyle {
     resolve(kid, out_of_flow_width(&resolve(kid, cw, fs), ctx), fs)
 }
@@ -1464,7 +1475,7 @@ fn layout_block_flow(
         &deferred,
         cw,
         fs,
-        deferred_cb_height(content_h, bs, ctx),
+        deferred_cb_height(content_h, bs),
         &mut frags,
         ctx,
     );
@@ -1718,7 +1729,15 @@ fn auto_x_margins(s: &crate::style::ComputedStyle) -> bool {
 /// flow-root` (miaskiewicz/turbo-dom#88) and the independent formatting roots
 /// (flex/grid/table) all qualify.
 fn intrinsic_formatting_root(lb: &LayoutBox, bs: &BoxStyle) -> bool {
-    lb.document_root() || bs.float != Float::None || bs.position.is_out_of_flow()
+    lb.document_root() || bs.float != Float::None || bs.position.is_out_of_flow() || flow_root(lb)
+}
+
+/// `display: flow-root` (also the two-value `block flow-root`): a block box that
+/// establishes a block formatting context (CSS Display 3; miaskiewicz/turbo-dom#88).
+fn flow_root(lb: &LayoutBox) -> bool {
+    lb.style
+        .get("display")
+        .is_some_and(|display| display.split_whitespace().any(|token| token == "flow-root"))
 }
 
 /// Whether an in-flow block-level box avoids floats (a formatting-context root or a
@@ -1739,8 +1758,7 @@ fn establishes_bfc(lb: &LayoutBox, bs: &BoxStyle) -> bool {
     if matches!(
         lb.kind,
         BoxKind::Flex(_) | BoxKind::Grid(_) | BoxKind::Table(_)
-    ) || lb.style.get("display").map(str::trim) == Some("flow-root")
-    {
+    ) {
         return true;
     }
     ["overflow", "overflow-x", "overflow-y"].iter().any(|p| {
@@ -2164,7 +2182,7 @@ fn layout_box_sized_impl(
     let own_height = resolved_live_height(bs.height, native_height_basis(bs, ctx), 0.0);
     if contains_positioned(bs) {
         (ctx.abs_cb_x, ctx.abs_cb_y, ctx.abs_cb_w, ctx.abs_cb_h) =
-            positioned_child_block(bs, (bx, by, bbw), (content_x, content_y, content_w), ctx);
+            positioned_child_block(bs, (bx, by, bbw), ctx);
         ctx.abs_cb_h_known = own_height.is_some();
         ctx.abs_cb_icb = false;
     }

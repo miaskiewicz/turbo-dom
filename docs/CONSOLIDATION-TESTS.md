@@ -1196,7 +1196,7 @@ Declared behaviour changes (Chrome 156 controls), not moves:
 | turbo-dom-layout | `html_document_chrome<tests/html_document_chrome.rs>::header_cells_are_bold_and_centred_like_chrome_156` | new (turbo-dom#70, test-first) |
 | turbo-dom-layout | `turbo_dom_layout<src/lib.rs>::layout::value::clip_tests::{clip_region_resolves_offsets_auto_edges_and_scale, clip_keeps_nothing_only_when_empty_at_every_size}` | new (turbo-dom#52) |
 
-## P5b-W6 (layout bug fixes, turbo-dom#75/#76/#77/#78/#88/#93; #86 cases): adapted and new tests
+## P5b-W6 (layout bug fixes, turbo-dom#75/#76/#77/#78/#88/#93/#100/#101/#102; #86 cases): adapted and new tests
 
 Declared behaviour changes (Chrome 156 controls), not moves:
 
@@ -1210,6 +1210,9 @@ Declared behaviour changes (Chrome 156 controls), not moves:
 | turbo-dom-layout | `html_document_chrome<tests/html_document_chrome.rs>::self_collapsing_first_child_margins_like_chrome_156` | new (turbo-dom#76, test-first) |
 | turbo-dom-layout | `html_document_chrome<tests/html_document_chrome.rs>::flow_root_establishes_a_formatting_context_like_chrome_156`, `::column_flex_items_size_by_their_height_like_chrome_156` (P5b-W7's) | changed (more control cases: turbo-dom#88 `flow-root-*` / `empty-formatting-root-*` — an empty formatting-context root is not self-collapsing — and #86 `column-flex-item-*`, test-first) |
 | turbo-dom-layout | `html_document_chrome<tests/html_document_chrome.rs>::content_box_flex_items_add_their_frame_like_chrome_156` | new (turbo-dom#93, test-first) |
+| turbo-dom-layout | `html_document_chrome<tests/html_document_chrome.rs>::{positioned_percentages_resolve_against_the_containing_block_like_chrome_156, positioned_boxes_use_the_padding_box_like_chrome_156}` | new (turbo-dom#100 / #102, test-first; the fix is P5b-W7's plus W6's `%` margin / padding resolution) |
+| turbo-dom-layout | `html_document_chrome<tests/html_document_chrome.rs>::blocks_in_inlines_split_them_like_chrome_156` | new (turbo-dom#101, test-first) |
+| turbo-dom-layout | `layout_boxgen<tests/layout_boxgen.rs>::block_nested_in_inline_becomes_atomic` -> `::block_nested_in_inline_splits_the_inline` | adapted@P5b-W6 (turbo-dom#101: a block in an inline splits it; asserts the block box and the anonymous line boxes around it) |
 | turbo-dom-layout | `turbo_dom_layout<src/lib.rs>::layout::block::tests::first_inflow_child_is_none_for_a_non_block_box` | adapted@P5b-W6 (turbo-dom#76: `first_inflow_child` became `inflow_children`; the same assertion on its first item) |
 | turbo-dom-layout | `turbo_dom_layout<src/lib.rs>::layout::block::tests::bottom_margin_collapse_requires_a_provably_zero_minimum_height` | adapted@P5b-W6 (turbo-dom#75: a non-zero `min-height` no longer keeps a last child's margin inside, `zero_min_height` is gone; the same expectations now check `zero_or_auto`, the self-collapsing test of #76, plus `calc()` cases) |
 
@@ -1222,7 +1225,6 @@ Declared behaviour changes (Chrome 156 controls), not moves:
 | turbo-dom-layout | `html_document_chrome<tests/html_document_chrome.rs>::intrinsic_widths_count_child_margins_like_chrome_156` | new (turbo-dom#79, test-first) |
 | turbo-dom-layout | `html_document_chrome<tests/html_document_chrome.rs>::inline_blocks_keep_child_margins_like_chrome_156`, `turbo_dom_layout<src/lib.rs>::live::chrome_tests::inline_blocks_keep_child_margins_like_chrome_156` | new (turbo-dom#80, test-first) |
 | turbo-dom-layout | `html_document_chrome<tests/html_document_chrome.rs>::initial_containing_block_insets_like_chrome_156`, turbo-dom-raster `paint_chrome<tests/paint_chrome.rs>::fixed_and_icb_boxes_anchor_to_the_viewport_like_chrome_156` | new (turbo-dom#81, test-first) |
-| turbo-dom-layout | `html_document_chrome<tests/html_document_chrome.rs>::flow_root_establishes_a_formatting_context_like_chrome_156` | new (turbo-dom#88, test-first) |
 | turbo-dom-layout | `html_document_chrome<tests/html_document_chrome.rs>::floats_shrink_to_fit_like_chrome_156` | new (turbo-dom#83, test-first) |
 | turbo-dom-layout | `html_document_chrome<tests/html_document_chrome.rs>::out_of_flow_children_add_no_intrinsic_width_like_chrome_156` | new (turbo-dom#84, test-first) |
 | turbo-dom-layout | `html_document_chrome<tests/html_document_chrome.rs>::top_and_bottom_stretch_auto_heights_like_chrome_156` | new (turbo-dom#89, test-first) |
@@ -1231,6 +1233,9 @@ Declared behaviour changes (Chrome 156 controls), not moves:
 | turbo-dom-layout | `turbo_dom_layout<src/lib.rs>::live::chrome_tests::the_fullscreen_element_fills_the_viewport_like_chrome_156`, `fullscreen_chrome<tests/fullscreen_chrome.rs>::the_fullscreen_element_fills_the_viewport_on_the_static_path_like_chrome_156` | new (turbo-dom#82, test-first) |
 | turbo-dom-layout | `fullscreen_chrome<tests/fullscreen_chrome.rs>::{the_fullscreen_element_is_in_the_top_layer_above_its_backdrop, without_a_fullscreen_stack_the_element_stays_in_flow}`, `turbo_dom_layout<src/lib.rs>::layout::boxgen::tests::{top_layer_boxes_move_to_the_root_after_their_backdrops, top_layer_boxes_in_line_content_move_to_the_end_of_the_run}` | new (turbo-dom#82) |
 | turbo-dom-layout | `layout_options<tests/layout_options.rs>::recorded_layout_in_a_viewport_resolves_fixed_insets_against_its_height` | new (turbo-html2pdf#39: `layout_recorded_in_viewport`) |
+| turbo-dom-layout | `html_document_chrome<tests/html_document_chrome.rs>::{percentage_widths_of_positioned_boxes_resolve_against_the_containing_block_like_chrome_156, positioned_boxes_use_the_padding_box_of_their_containing_block_like_chrome_156}` | new (turbo-dom#100, test-first) |
+| turbo-dom-layout | `layout_options<tests/layout_options.rs>::an_unknown_initial_containing_block_keeps_the_previous_bases` | new (turbo-dom#81 / #89, mutation coverage) |
+| turbo-dom-layout | `layout_position<tests/layout_position.rs>::absolute_is_relative_to_positioned_ancestor` | adapted@P5b-W7 (turbo-dom#100: `top: 0; left: 0` is the padding-box origin, (0, 60), as in Chrome — it asserted the content origin (10, 70)) |
 
 ## P5b-W2 — raster inline SVG on the tree (turbo-dom `consol/p5b-w2`)
 

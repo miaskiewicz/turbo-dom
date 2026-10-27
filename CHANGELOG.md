@@ -36,9 +36,6 @@ changes in `tools/parity/expected/p5b-w7-turbo-dom-*.json`.
   layout, whose initial containing block would be the page box) keep an unknown height
   and lay out as before. The live path already used the viewport. Control: `icb-*` in
   `html-document` and in the pixel control `scripts/paint-chrome-control.mjs`.
-- `display: flow-root` (miaskiewicz/turbo-dom#88, found while fixing #80) establishes a
-  block formatting context: its children's vertical margins stay inside it, it contains
-  its floats and its box avoids outer floats. Control: `flow-root-*` in `html-document`.
 - Floats are shrink-to-fit (miaskiewicz/turbo-dom#83, found while fixing #79): a
   `width: auto` float took `min(max-content, container)` — squeezed below its
   min-content in a narrow container, its `min-width` / `max-width` ignored and its own
@@ -55,13 +52,6 @@ changes in `tools/parity/expected/p5b-w7-turbo-dom-*.json`.
   block's height less the insets, its margins and (content-box) its padding and border,
   then `min-height` / `max-height` (CSS 2.2 §10.6.4), as on the live path. Control:
   `abs-stretch-*` in `html-document`.
-- Column flex items (miaskiewicz/turbo-dom#86, found while fixing #79): in a
-  `flex-direction: column` container an item's flex basis came from its `width` and its
-  `width` was dropped, so it was stretched to the container despite an explicit width
-  and its main size (height) was its width. The basis now defaults to the item's
-  `height`, its `width` (`%`, `min-width` / `max-width`) is the cross size, and the
-  flexed main size is its used height (`flex-basis`, `flex-grow`). Control:
-  `column-flex-*` in `html-document`.
 - Floats side by side in a max-content width (miaskiewicz/turbo-dom#85, found while
   fixing #79): a block container's max-content took its widest float, so a
   shrink-to-fit container (a float, an inline-block, an auto table cell) was too narrow
@@ -88,6 +78,21 @@ changes in `tools/parity/expected/p5b-w7-turbo-dom-*.json`.
   the print initial containing block, so fixed boxes and absolutely positioned boxes it
   contains resolve `%` / `bottom` insets and `%` heights against it (as #81 does for
   screenshots). `layout_recorded` keeps the height unknown.
+- Positioned boxes against their containing block on the static path
+  (miaskiewicz/turbo-dom#100, found while fixing #89): an absolutely positioned / fixed
+  box resolved a `%` width (and `%` padding / margins) against its parent's content width
+  and was placed against its positioned ancestor's content box; it now uses its
+  containing block, the ancestor's padding box (the viewport for `fixed`), as Chrome and
+  the live path do. A definite zero-height ancestor's padding box keeps its padding (the
+  `height: 0; padding-bottom: N%` aspect-ratio box). Control: `abs-percent-*` /
+  `abs-padding-box-*` in `html-document`. P5b-W6 fixed #100's insets / margins side too
+  (`positioned_style`) and turbo-dom#101 (a block inside an inline splits it on the
+  generic policy); the merge keeps both, and W6's #102 control
+  (`positioned-padding-box-*`) passes with this padding-box fix.
+- Also found and fixed on this branch (P5b-W7): turbo-dom#86 (column flex items) and #88
+  (`display: flow-root`) — P5b-W6 fixed both too; the merge keeps W6's implementations
+  (see its section below) and both branches' Chrome 156 cases (`column-flex-*`,
+  `flow-root-*`).
 
 ### Fixed — CSSOM shorthands expand and serialize like Chrome (P5b-X8, miaskiewicz/turbo-dom#90, Chrome 156 control)
 - `element.style` (and `CSSStyleRule.style`) stored a shorthand verbatim: `style.flex = '1'`
@@ -321,7 +326,7 @@ changes in `tools/parity/expected/p5b-w7-turbo-dom-*.json`.
   (`collect_native_storage` after `install_html` and a GC, then the
   `custom_elements_defined_chrome156.json` probe).
 
-### Fixed — turbo-dom-layout margins, heights, zero-area clips, empty formatting roots and flex item sizes (P5b-W6, miaskiewicz/turbo-dom#75/#76/#77/#78/#88/#93, Chrome 156 controls)
+### Fixed — turbo-dom-layout margins, heights, zero-area clips, empty formatting roots, flex item sizes and blocks in inlines (P5b-W6, miaskiewicz/turbo-dom#75/#76/#77/#78/#88/#93/#100/#101/#102, Chrome 156 controls)
 Each fix is backed by Chrome for Testing 156 cases in `scripts/html-document-chrome-control.mjs`
 and lists the corpus outputs it changes in `tools/parity/expected/p5b-w6-turbo-dom-*.json`
 (new pinned corpus inputs: `tools/parity/inputs/extra/{min-height-margin,
@@ -359,6 +364,17 @@ flex-item-box-sizing}.html`).
   `flex-basis` / `min-*` / `max-*` lengths reached taffy (border boxes) unchanged, so a
   padded or bordered `box-sizing: content-box` item lost its frame. They are now
   border-box lengths. Control: `flex-item-*`.
+- Blocks inside inlines (#101): on the generic / PDF policy a block-level box inside an
+  inline element stayed an atomic inline (shrunk to its content, 0 wide when empty, its
+  child's margins not collapsing through it). The inline is now split around it (CSS 2.2
+  §9.2.1.1), as the native HTML-metrics flow already did: the runs before and after become
+  anonymous line boxes and the block fills the line. Changes four turbo-surf detection
+  screenshots (`embedded-font-range-*`, an `<h3>` inside an `<a>`); pinned by
+  `tools/parity/inputs/extra/block-in-inline.html`. Control: `block-in-inline-*`.
+- Positioned boxes and their containing block (#100, #102; P5b-W7's fix of #100 also
+  gives the static path the padding box, #102): P5b-W6 adds the `positioned-percent-*` and
+  `positioned-padding-box-*` cases, and an out-of-flow box's `%` horizontal margins and
+  padding now resolve against its containing block too where its position is computed.
 
 ### Fixed — selector syntax, :scope and RCDATA fragments (P5-cov, miaskiewicz/turbo-dom#91/#92/#96/#98, Chrome 156 controls)
 Found by the new `scripts/rtdom-core-chrome-control.mjs` control

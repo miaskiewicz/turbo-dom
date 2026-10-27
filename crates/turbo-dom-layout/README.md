@@ -100,17 +100,20 @@ fn lay_out(html: &str) -> Result<Fragment, RenderError> {
   content height, else it is dropped (turbo-dom#75); an empty first child's margins
   collapse through its parent's top with the next child's (#76); `min-height` wins over
   `max-height` and `height` (#77); a percentage `height` / `min-height` / `max-height`
-  resolves against a definite parent height on the static path too (#78); an empty
-  formatting-context root is not self-collapsing (#88); content-box flex item sizes
-  include their padding and border when they reach taffy (#93).
+  resolves against a definite parent height on the static path too (#78); `display:
+  flow-root` establishes a block formatting context and an empty formatting-context root is
+  not self-collapsing (#88); column flex items take their basis from `height` and keep
+  their `width` (#86); content-box flex item sizes include their padding and border when
+  they reach taffy (#93).
   P5b-W7: a box's intrinsic widths count its children's
   horizontal margins (signed; `%` / `auto` count 0; turbo-dom#79); an `inline-block` is a
   block formatting context root, keeping its first / last child's vertical margins
   (#80); the initial containing block's height on the static path (#81, above); and the
   bugs found while fixing them: floats are shrink-to-fit (#83), out-of-flow children add
-  no intrinsic width (#84), floats sit side by side in a max-content width (#85), column
-  flex items take their basis from `height` (#86), `display: flow-root` is a formatting
-  context (#88), `top` + `bottom` stretch an auto-height positioned box (#89).
+  no intrinsic width (#84), floats sit side by side in a max-content width (#85), `top` +
+  `bottom` stretch an auto-height positioned box (#89), a positioned
+  box resolves `%` widths against and is placed in its containing block's padding box (#100).
+  Also P5b-W6: a block inside an inline element splits the inline on every policy (#101).
 - Fullscreen (turbo-dom#82): while the tree's fullscreen stack (`Tree::fullscreen_stack`,
   reported by the binding) is non-empty, the cascade adds Chrome's `:not(:root):fullscreen`
   UA rules — the HTML drive itself (`Cascade::with_fullscreen`), a live-DOM embedder by

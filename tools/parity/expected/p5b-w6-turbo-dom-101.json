@@ -1,7 +1,29 @@
 {
  "id": "miaskiewicz/turbo-dom#101",
- "reason": "a block inside an inline splits it on the generic policy (block-in-inline, CSS 2.1 §9.2.1.1) instead of becoming a shrink-to-fit atomic; new pinned input tools/parity/inputs/extra/block-in-inline.html (its layoutBoxes match Chrome 156); no existing corpus output changes",
- "control": "scripts/html-document-chrome-control.mjs (turbo-dom#101 cases) -> crates/turbo-dom-layout/tests/fixtures/html_document_chrome156.json",
- "changes": {},
- "added": {"html2pdf-extra": ["extra-block-in-inline.boxes.json", "extra-block-in-inline.pdf", "extra-block-in-inline.ua.pdf"]}
+ "reason": "A block-level box inside an inline element splits the inline around it on the generic / PDF policy too (CSS 2.2 \u00a79.2.1.1), so it fills the line and margins collapse through it. Fresh-target parity builds (turbo-html2pdf refactor 923c89f, path-patched; W7 head 085c505 -> W6 merge 104be97, whose only other difference is the %-margin resolution of #100, which changes nothing): the four turbo-surf detection screenshots of embedded-font-range-block-only / -mixed (an <h3> inside an <a>; their geometry now matches Chrome 156 up to font metrics) change; the new extra input block-in-inline.html pins it. P5b-W6.",
+ "control": "scripts/html-document-chrome-control.mjs block-in-inline-* cases",
+ "e2e": "crates/turbo-dom-layout/tests/html_document_chrome.rs (blocks_in_inlines_split_them_like_chrome_156); tests/layout_boxgen.rs (block_nested_in_inline_splits_the_inline)",
+ "changes": {
+  "html2pdf": [],
+  "html2pdf-svg": [],
+  "html2pdf-extra": [],
+  "surf": [
+   "static-turbo-surf__harness__detection__fixtures__embedded-font-range-block-only.png",
+   "static-turbo-surf__harness__detection__fixtures__embedded-font-range-block-only.svg",
+   "static-turbo-surf__harness__detection__fixtures__embedded-font-range-mixed.png",
+   "static-turbo-surf__harness__detection__fixtures__embedded-font-range-mixed.svg"
+  ],
+  "surf-extra": []
+ },
+ "added": {
+  "html2pdf-extra": [
+   "extra-block-in-inline.boxes.json",
+   "extra-block-in-inline.pdf",
+   "extra-block-in-inline.ua.pdf"
+  ],
+  "surf-extra": [
+   "static-extra-block-in-inline.png",
+   "static-extra-block-in-inline.svg"
+  ]
+ }
 }
