@@ -58,9 +58,7 @@ fn decode_like_chrome(pick: fn(&str) -> bool, svgs: bool) {
         for (n, chrome) in image["loads"].as_str().unwrap().bytes().enumerate() {
             let want = (chrome == b'L').then_some(natural);
             let got = decode(&bytes[..n]).map(|d| (d.intrinsic.width, d.intrinsic.height));
-            if got != want {
-                failures.push(format!("{file}@{n}: {got:?}, Chrome {want:?}"));
-            }
+            failures.extend(mismatch(format_args!("{file}@{n}"), got, want));
         }
     }
     assert!(checked > 0);
@@ -75,9 +73,31 @@ fn decode_like_chrome(pick: fn(&str) -> bool, svgs: bool) {
         });
         let got = decode(case["document"].as_str().unwrap().as_bytes())
             .map(|d| (d.intrinsic.width, d.intrinsic.height));
-        if got != want {
-            failures.push(format!("{id}: {got:?}, Chrome {want:?}"));
-        }
+        failures.extend(mismatch(id, got, want));
     }
     assert!(failures.is_empty(), "{}", failures.join("\n"));
+}
+
+/// The failure line for `label` when the decoded size differs from Chrome's (formatted
+/// eagerly, so the passing run executes it too).
+fn mismatch(
+    label: impl std::fmt::Display,
+    got: Option<(u32, u32)>,
+    want: Option<(u32, u32)>,
+) -> Option<String> {
+    let line = format!("{label}: {got:?}, Chrome {want:?}");
+    (got != want).then_some(line)
+}
+
+#[test]
+fn a_size_differing_from_chromes_is_a_failure_line() {
+    assert_eq!(mismatch("a.png@3", Some((4, 5)), Some((4, 5))), None);
+    assert_eq!(
+        mismatch("a.png@3", Some((4, 5)), None).as_deref(),
+        Some("a.png@3: Some((4, 5)), Chrome None")
+    );
+    assert_eq!(
+        mismatch("svg", None, Some((1, 2))).as_deref(),
+        Some("svg: None, Chrome Some((1, 2))")
+    );
 }

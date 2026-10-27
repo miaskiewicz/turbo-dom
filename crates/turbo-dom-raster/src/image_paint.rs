@@ -476,11 +476,8 @@ pub fn decode(bytes: &[u8]) -> Option<DecodedImage> {
         // as in Chrome (turbo-dom#107), except an AVIF without the `avif` feature or a JPEG
         // XL without `jxl`: no decoder, so the placeholder. Any other undecodable image is
         // dropped.
-        let no_decoder = match format {
-            Some(Format::Avif) => !cfg!(feature = "avif"),
-            Some(Format::Jxl) => !cfg!(feature = "jxl"),
-            _ => false,
-        };
+        let no_decoder = (matches!(format, Some(Format::Avif)) && !cfg!(feature = "avif"))
+            || (matches!(format, Some(Format::Jxl)) && !cfg!(feature = "jxl"));
         return if size_point || matches!(format, Some(Format::Avif | Format::Jxl)) {
             size_only(bytes, no_decoder)
         } else {
