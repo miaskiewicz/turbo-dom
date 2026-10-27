@@ -462,3 +462,83 @@ mod tests {
         assert!(integer(f32::MAX).is_err());
     }
 }
+
+#[cfg(test)]
+#[path = "metrics_chrome_tests.rs"]
+mod chrome_tests;
+
+#[cfg(test)]
+mod receiver_tests {
+    use super::*;
+    use crate::live::{source_id, testing};
+
+    fn lay(html: &str) -> (turbo_dom::Tree, LayoutSnapshot, super::super::scroll::SourceStyles) {
+        testing::layout(html, "", (400.0, 300.0), Some(1.0))
+    }
+
+    #[test]
+    fn non_element_and_svg_descendant_receivers_fail_their_reads() {
+        let (tree, snapshot, styles) =
+            lay("<body><p id=p>text</p><svg width=20 height=20><rect id=r width=5 height=5/></svg></body>");
+        let text = source_id(
+            testing::DOCUMENT,
+            tree.children(tree.query_selector("#p").unwrap())[0],
+        );
+        assert_eq!(
+            element_geometry(&snapshot, text).unwrap_err(),
+            "native element geometry requires an Element receiver"
+        );
+        assert_eq!(
+            element_geometry(&snapshot, testing::id(&tree, "#r")).unwrap_err(),
+            "native SVG descendant geometry is unsupported"
+        );
+        // offsetParent reads: a source without a style, then no source at all.
+        assert_eq!(
+            offset_position(&snapshot, &styles, text).unwrap_err(),
+            "native offset computed style missing"
+        );
+        assert_eq!(
+            offset_position(&snapshot, &styles, SourceId(u64::MAX)).unwrap_err(),
+            "native offset source missing"
+        );
+    }
+
+    #[test]
+    fn an_effective_zoom_change_is_an_offset_parent() {
+        // Blink: offsetParent also stops at the nearest ancestor whose effective zoom
+        // differs (the embedder supplies zoom; layout here is unzoomed).
+        let (tree, snapshot, mut styles) = lay(
+            "<body style='margin:8px'><div id=z style='padding:6px'><div id=c style='width:5px;height:5px;margin-left:3px'></div></div></body>",
+        );
+        let (zoomed, child) = (testing::id(&tree, "#z"), testing::id(&tree, "#c"));
+        let body = OffsetPosition {
+            left: 17,
+            top: 14,
+            parent: Some(testing::id(&tree, "body")),
+        };
+        assert_eq!(offset_position(&snapshot, &styles, child).unwrap(), body);
+        styles.get_mut(&child).unwrap().zoom = 2.0;
+        assert_eq!(
+            offset_position(&snapshot, &styles, child).unwrap(),
+            OffsetPosition {
+                left: 9,
+                top: 6,
+                parent: Some(zoomed),
+            }
+        );
+    }
+
+    #[test]
+    fn offset_positions_round_half_up_within_the_integer_range() {
+        assert_eq!(offset_integer(2.5), Ok(3));
+        assert_eq!(offset_integer(-2.5), Ok(-2));
+        assert_eq!(offset_integer(-2.6), Ok(-3));
+        assert_eq!(offset_integer(-2_147_483_648.0), Ok(i32::MIN));
+        for bad in [f32::NAN, f32::INFINITY, -3.0e9, 3.0e9] {
+            assert_eq!(
+                offset_integer(bad).unwrap_err(),
+                "native offset position exceeds integer range"
+            );
+        }
+    }
+}
