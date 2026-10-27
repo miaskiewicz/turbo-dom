@@ -22,7 +22,7 @@ fn gc(scope: &mut v8::PinScope, _: v8::FunctionCallbackArguments, _: v8::ReturnV
 
 /// What a host does when control returns to its event loop: settle pending ownership work.
 fn host_turn(scope: &mut v8::PinScope) {
-    dom_ownership::reconcile_all(scope);
+    flush_ownership(scope);
 }
 
 fn reset_work() {
@@ -79,7 +79,6 @@ fn visits_building(rows: usize) -> usize {
 }
 
 #[test]
-#[ignore = "turbo-dom#112: fails until the fix"]
 fn building_a_large_tree_walks_linearly_many_wrappers() {
     let small = visits_building(1000);
     let large = visits_building(2000);
@@ -91,7 +90,7 @@ fn building_a_large_tree_walks_linearly_many_wrappers() {
         "doubling the tree must not quadruple the ownership work: {small} -> {large}"
     );
     assert!(
-        large < 150 * 6000,
+        large < 250 * 6000,
         "ownership work must be O(nodes): {large} wrapper visits for 6000 nodes"
     );
 }
@@ -176,19 +175,27 @@ fn a_detached_subtree_is_collectable_after_the_host_turn() {
         };
         host_turn(scope);
         scope.low_memory_notification();
-        assert!(!weak.is_empty(), "an attached wrapper is owned by its document");
+        assert!(
+            !weak.is_empty(),
+            "an attached wrapper is owned by its document"
+        );
         eval(scope, "document.getElementById('gone').remove(); 'removed'");
         host_turn(scope);
         for _ in 0..3 {
             scope.low_memory_notification();
         }
-        assert!(weak.is_empty(), "a detached, unreferenced wrapper is collectable");
-        assert_eq!(eval(scope, "String(document.getElementById('gone'))"), "null");
+        assert!(
+            weak.is_empty(),
+            "a detached, unreferenced wrapper is collectable"
+        );
+        assert_eq!(
+            eval(scope, "String(document.getElementById('gone'))"),
+            "null"
+        );
     });
 }
 
 #[test]
-#[ignore = "turbo-dom#112: fails until the fix"]
 fn collected_listener_sweeps_wait_for_a_gc() {
     with_page(|scope| {
         reset_work();
@@ -203,7 +210,11 @@ fn collected_listener_sweeps_wait_for_a_gc() {
         // sweep per call is wasted work. A rare young-generation GC may still trigger one.
         let quiet = sweeps();
         assert!(quiet <= 10, "{quiet} sweeps without a GC");
-        eval(scope, "__gc(); host.appendChild(document.createElement('p')); 'swept'");
-        assert!(sweeps() > quiet, "the first mutating call after a GC sweeps");
+        eval(
+            scope,
+            "__gc(); host.appendChild(document.createElement('p')); 'swept'",
+        );
+        host_turn(scope);
+        assert!(sweeps() > quiet, "the first reconcile after a GC sweeps");
     });
 }

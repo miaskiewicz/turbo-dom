@@ -400,6 +400,14 @@ cross-document adoption before custom-element adopted callbacks. Retained
 `adoptedStyleSheets` arrays keep their identity. Internal adoption reads private
 records instead of page-overridden DOM getters or array methods.
 
+Embedders call `flush_ownership(scope)` whenever control returns to their event
+loop (between tasks). On a tree of more than 256 live wrappers, mutating DOM calls
+reconcile wrapper ownership only once per `wrappers / 32` calls (keeping the call
+wrappers pinned meanwhile), so building n nodes is O(n), not O(n^2); the flush
+settles the rest, so a detached subtree becomes collectable before the next task.
+`install` counts the isolate's GCs, and the collected-listener/document sweeps run
+only after a GC (turbo-dom#112).
+
 Embedders call `retire_custom_element_context(context)` when a frame's browsing
 context is retired. This host-only boundary preserves retained registries,
 definitions and existing element identity while stopping automatic construction

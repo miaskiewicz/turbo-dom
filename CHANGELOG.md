@@ -7,6 +7,20 @@ at the time); this file reconstructs them from history.
 
 ## [Unreleased]
 
+### Fixed — DOM ownership bookkeeping is linear on large trees (miaskiewicz/turbo-dom#112)
+- turbo-dom-browser-env reconciled DOM wrapper ownership after every mutating native call,
+  walking every live wrapper (and rebuilding a V8 Map per ownership component), and swept every
+  registered listener and the document list each time, so building or mutating an n-node tree
+  was O(n^2) (a React suite spent 94% of a worker in `reconcile_all`). Past 256 live wrappers the
+  reconcile now runs once per `wrappers / 32` mutating calls, with the deferred calls'
+  receivers and arguments pinned so an attached wrapper (and its expandos) cannot be collected
+  before it; hosts settle the rest with the new `flush_ownership(scope)` at their event-loop
+  turn. Smaller trees keep the exact per-call path. The listener/document sweeps run only after
+  a GC (`install` registers a GC epilogue per isolate). A reconcile now localizes wrappers in its
+  own handle scope, so one run from host code no longer keeps detached wrappers alive. Approach
+  from miaskiewicz/turbo-test#105 (ethan); tests count wrapper visits and sweeps
+  (`dom_ownership_scale_tests`).
+
 ### Fixed — undecodable images paint nothing, truncated AVIFs are broken (P5b-G1, miaskiewicz/turbo-dom#107, Chrome 156 controls)
 - An image whose pixels do not decode paints nothing (miaskiewicz/turbo-dom#107): an
   image Chrome 156 loads and sizes but cannot paint — a frame-corrupt AVIF, a PNG cut
