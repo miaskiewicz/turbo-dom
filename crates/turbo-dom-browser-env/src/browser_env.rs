@@ -928,6 +928,15 @@ fn handle_of(scope: &mut v8::PinScope, obj: v8::Local<v8::Object>) -> Option<Han
     v.uint32_value(scope).map(Handle::from_raw)
 }
 
+/// The node behind an element-template accessor's holder. Template accessors run only on
+/// element-template instances, and each one carries a node handle in field 0: `wrap_inner`
+/// stores it in every wrapper, and the raw views `dom_accessor_dispatch` builds store the
+/// receiver's handle after validating it (projection deletes the template's own accessors
+/// from wrappers before page script can reach them).
+fn holder_handle(scope: &mut v8::PinScope, args: &v8::PropertyCallbackArguments) -> Handle {
+    handle_of(scope, args.holder()).expect("element-template holders carry a node handle")
+}
+
 /// Read an actual native attribute without consulting guest overrides.
 pub fn node_attribute(
     scope: &mut v8::PinScope,
@@ -2989,42 +2998,6 @@ fn doc_create_attribute_ns<'s, 'i>(
         rv.set(object.into());
     }
 }
-fn get_named_node_name(
-    scope: &mut v8::PinScope,
-    name: v8::Local<v8::Name>,
-    args: v8::PropertyCallbackArguments,
-    rv: v8::ReturnValue<v8::Value>,
-) {
-    get_node_name(scope, name, args, rv);
-}
-fn get_doctype_public(
-    scope: &mut v8::PinScope,
-    _name: v8::Local<v8::Name>,
-    args: v8::PropertyCallbackArguments,
-    mut rv: v8::ReturnValue<v8::Value>,
-) {
-    let _dom = DomScope::for_object(scope, args.holder());
-    let value = handle_of(scope, args.holder())
-        .and_then(|node| {
-            with_tree(|tree| tree.doctype_public_id(node).map(str::to_owned)).flatten()
-        })
-        .unwrap_or_default();
-    rv.set(v8::String::new(scope, &value).unwrap().into());
-}
-fn get_doctype_system(
-    scope: &mut v8::PinScope,
-    _name: v8::Local<v8::Name>,
-    args: v8::PropertyCallbackArguments,
-    mut rv: v8::ReturnValue<v8::Value>,
-) {
-    let _dom = DomScope::for_object(scope, args.holder());
-    let value = handle_of(scope, args.holder())
-        .and_then(|node| {
-            with_tree(|tree| tree.doctype_system_id(node).map(str::to_owned)).flatten()
-        })
-        .unwrap_or_default();
-    rv.set(v8::String::new(scope, &value).unwrap().into());
-}
 fn get_attr_owner(
     scope: &mut v8::PinScope,
     _name: v8::Local<v8::Name>,
@@ -3207,9 +3180,7 @@ fn get_inner_html(
     mut rv: v8::ReturnValue<v8::Value>,
 ) {
     let _dom = DomScope::for_object(scope, args.holder());
-    let Some(h) = handle_of(scope, args.holder()) else {
-        return;
-    };
+    let h = holder_handle(scope, &args);
     let node = wrap(scope, h);
     let html = template_contents::serialize(scope, node, false);
     rv.set(unit_string(scope, &html).into());
@@ -3222,9 +3193,7 @@ fn set_inner_html<'s>(
     _rv: v8::ReturnValue<()>,
 ) {
     let _dom = DomScope::for_object(scope, args.holder());
-    let Some(h) = handle_of(scope, args.holder()) else {
-        return;
-    };
+    let h = holder_handle(scope, &args);
     let Some(html) = trusted_types::units(
         scope,
         args.holder(),
@@ -3262,9 +3231,7 @@ fn get_outer_html(
     mut rv: v8::ReturnValue<v8::Value>,
 ) {
     let _dom = DomScope::for_object(scope, args.holder());
-    let Some(h) = handle_of(scope, args.holder()) else {
-        return;
-    };
+    let h = holder_handle(scope, &args);
     let node = wrap(scope, h);
     let html = template_contents::serialize(scope, node, true);
     rv.set(unit_string(scope, &html).into());
@@ -3356,9 +3323,7 @@ fn get_children(
     mut rv: v8::ReturnValue<v8::Value>,
 ) {
     let _dom = DomScope::for_object(scope, args.holder());
-    let Some(h) = handle_of(scope, args.holder()) else {
-        return;
-    };
+    let h = holder_handle(scope, &args);
     let kids: Vec<Handle> = with_tree(|t| {
         t.children(h)
             .into_iter()
@@ -3377,9 +3342,7 @@ fn get_parent_element(
     mut rv: v8::ReturnValue<v8::Value>,
 ) {
     let _dom = DomScope::for_object(scope, args.holder());
-    let Some(h) = handle_of(scope, args.holder()) else {
-        return;
-    };
+    let h = holder_handle(scope, &args);
     let p = with_tree(|t| {
         NodeRef::new(t, h)
             .parent()
@@ -3398,9 +3361,7 @@ fn get_first_element_child(
     mut rv: v8::ReturnValue<v8::Value>,
 ) {
     let _dom = DomScope::for_object(scope, args.holder());
-    let Some(h) = handle_of(scope, args.holder()) else {
-        return;
-    };
+    let h = holder_handle(scope, &args);
     let c = with_tree(|t| NodeRef::new(t, h).first_element_child().map(|x| x.handle())).flatten();
     let v = wrap_opt(scope, c);
     rv.set(v);
@@ -3413,9 +3374,7 @@ fn get_namespace_uri(
     mut rv: v8::ReturnValue<v8::Value>,
 ) {
     let _dom = DomScope::for_object(scope, args.holder());
-    let Some(h) = handle_of(scope, args.holder()) else {
-        return;
-    };
+    let h = holder_handle(scope, &args);
     let namespace = with_tree(|tree| tree.namespace_uri_utf16(h)).flatten();
     match namespace {
         Some(namespace) => rv.set(unit_string(scope, &namespace).into()),
@@ -3885,9 +3844,7 @@ fn get_is_connected(
     mut rv: v8::ReturnValue<v8::Value>,
 ) {
     let _dom = DomScope::for_object(scope, args.holder());
-    let Some(h) = handle_of(scope, args.holder()) else {
-        return;
-    };
+    let h = holder_handle(scope, &args);
     let c = with_tree(|t| is_connected(t, h)).unwrap_or(false);
     rv.set(v8::Boolean::new(scope, c).into());
 }
@@ -3900,9 +3857,7 @@ fn get_attributes(
     mut rv: v8::ReturnValue<v8::Value>,
 ) {
     let _dom = DomScope::for_object(scope, args.holder());
-    let Some(h) = handle_of(scope, args.holder()) else {
-        return;
-    };
+    let h = holder_handle(scope, &args);
     let attrs = with_tree_mut(|tree| {
         let records = tree.attributes_units(h);
         records
@@ -4059,9 +4014,7 @@ fn get_tag_name(
     mut rv: v8::ReturnValue<v8::Value>,
 ) {
     let _dom = DomScope::for_object(scope, args.holder());
-    let Some(h) = handle_of(scope, args.holder()) else {
-        return;
-    };
+    let h = holder_handle(scope, &args);
     let tag = with_tree(|t| t.tag_name_utf16(h))
         .flatten()
         .unwrap_or_default();
@@ -4075,9 +4028,7 @@ fn get_text_content(
     mut rv: v8::ReturnValue<v8::Value>,
 ) {
     let _dom = DomScope::for_object(scope, args.holder());
-    let Some(h) = handle_of(scope, args.holder()) else {
-        return;
-    };
+    let h = holder_handle(scope, &args);
     let txt = with_tree(|t| t.text_content_utf16(h)).unwrap_or_default();
     rv.set(unit_string(scope, &txt).into());
 }
@@ -4090,9 +4041,7 @@ fn set_text_content<'s>(
     _rv: v8::ReturnValue<()>,
 ) {
     let _dom = DomScope::for_object(scope, args.holder());
-    let Some(h) = handle_of(scope, args.holder()) else {
-        return;
-    };
+    let h = holder_handle(scope, &args);
     let Some(units) = trusted_types::script_units(scope, args.holder(), value, "textContent", true)
     else {
         return;
@@ -4117,9 +4066,7 @@ fn get_id(
     mut rv: v8::ReturnValue<v8::Value>,
 ) {
     let _dom = DomScope::for_object(scope, args.holder());
-    let Some(h) = handle_of(scope, args.holder()) else {
-        return;
-    };
+    let h = holder_handle(scope, &args);
     let id = with_tree(|t| t.get_attribute_utf16(h, "id"))
         .flatten()
         .unwrap_or_default();
@@ -4134,9 +4081,7 @@ fn set_id(
     _rv: v8::ReturnValue<()>,
 ) {
     let _dom = DomScope::for_object(scope, args.holder());
-    let Some(h) = handle_of(scope, args.holder()) else {
-        return;
-    };
+    let h = holder_handle(scope, &args);
     let Some(v) = dom_units(scope, value) else {
         return;
     };
@@ -4152,9 +4097,7 @@ fn get_class_name(
     mut rv: v8::ReturnValue<v8::Value>,
 ) {
     let _dom = DomScope::for_object(scope, args.holder());
-    let Some(h) = handle_of(scope, args.holder()) else {
-        return;
-    };
+    let h = holder_handle(scope, &args);
     let c = with_tree(|t| t.get_attribute_utf16(h, "class"))
         .flatten()
         .unwrap_or_default();
@@ -4169,9 +4112,7 @@ fn set_class_name(
     _rv: v8::ReturnValue<()>,
 ) {
     let _dom = DomScope::for_object(scope, args.holder());
-    let Some(h) = handle_of(scope, args.holder()) else {
-        return;
-    };
+    let h = holder_handle(scope, &args);
     let Some(v) = dom_units(scope, value) else {
         return;
     };
@@ -4189,9 +4130,7 @@ fn get_content_editable(
     mut rv: v8::ReturnValue<v8::Value>,
 ) {
     let _dom = DomScope::for_object(scope, args.holder());
-    let Some(h) = handle_of(scope, args.holder()) else {
-        return;
-    };
+    let h = holder_handle(scope, &args);
     let attr = with_tree(|t| attr_get(t, h, "contenteditable")).flatten();
     let out = match attr.as_deref() {
         Some("") | Some("true") => "true",
@@ -4210,9 +4149,7 @@ fn set_content_editable(
     _rv: v8::ReturnValue<()>,
 ) {
     let _dom = DomScope::for_object(scope, args.holder());
-    let Some(h) = handle_of(scope, args.holder()) else {
-        return;
-    };
+    let h = holder_handle(scope, &args);
     let v = value.to_rust_string_lossy(scope);
     with_tree_mut(|t| t.set_attribute(h, "contenteditable", &v));
 }
@@ -4267,9 +4204,7 @@ fn get_parent_node(
     mut rv: v8::ReturnValue<v8::Value>,
 ) {
     let _dom = DomScope::for_object(scope, args.holder());
-    let Some(h) = handle_of(scope, args.holder()) else {
-        return;
-    };
+    let h = holder_handle(scope, &args);
     let found = with_tree(|t| NodeRef::new(t, h).parent().map(|x| x.handle())).flatten();
     let v = wrap_opt(scope, found);
     rv.set(v);
@@ -4282,9 +4217,7 @@ fn get_first_child(
     mut rv: v8::ReturnValue<v8::Value>,
 ) {
     let _dom = DomScope::for_object(scope, args.holder());
-    let Some(h) = handle_of(scope, args.holder()) else {
-        return;
-    };
+    let h = holder_handle(scope, &args);
     let found = with_tree(|t| NodeRef::new(t, h).first_child().map(|x| x.handle())).flatten();
     let v = wrap_opt(scope, found);
     rv.set(v);
@@ -4297,9 +4230,7 @@ fn get_next_sibling(
     mut rv: v8::ReturnValue<v8::Value>,
 ) {
     let _dom = DomScope::for_object(scope, args.holder());
-    let Some(h) = handle_of(scope, args.holder()) else {
-        return;
-    };
+    let h = holder_handle(scope, &args);
     let found = with_tree(|t| NodeRef::new(t, h).next_sibling().map(|x| x.handle())).flatten();
     let v = wrap_opt(scope, found);
     rv.set(v);
@@ -5534,9 +5465,7 @@ fn get_node_type(
     mut rv: v8::ReturnValue<v8::Value>,
 ) {
     let _dom = DomScope::for_object(scope, args.holder());
-    let Some(h) = handle_of(scope, args.holder()) else {
-        return;
-    };
+    let h = holder_handle(scope, &args);
     let nt = with_tree(|t| t.node_type_id(h)).unwrap_or(1);
     rv.set(v8::Integer::new(scope, nt as i32).into());
 }
@@ -5550,9 +5479,7 @@ fn get_node_data(
     mut rv: v8::ReturnValue<v8::Value>,
 ) {
     let _dom = DomScope::for_object(scope, args.holder());
-    let Some(h) = handle_of(scope, args.holder()) else {
-        return;
-    };
+    let h = holder_handle(scope, &args);
     let nt = with_tree(|t| t.node_type_id(h)).unwrap_or(1);
     if matches!(nt, 2 | 3 | 7 | 8) {
         let data = with_tree(|t| t.node_value_utf16(h))
@@ -5571,9 +5498,7 @@ fn set_node_data(
     _rv: v8::ReturnValue<()>,
 ) {
     let _dom = DomScope::for_object(scope, args.holder());
-    let Some(h) = handle_of(scope, args.holder()) else {
-        return;
-    };
+    let h = holder_handle(scope, &args);
     if !with_tree(|tree| matches!(tree.node_type_id(h), 2 | 3 | 7 | 8)).unwrap_or(false) {
         return;
     }
@@ -5600,9 +5525,7 @@ fn get_local_name(
     mut rv: v8::ReturnValue<v8::Value>,
 ) {
     let _dom = DomScope::for_object(scope, args.holder());
-    let Some(h) = handle_of(scope, args.holder()) else {
-        return;
-    };
+    let h = holder_handle(scope, &args);
     match with_tree(|t| t.local_name_utf16(h)).flatten() {
         Some(ln) => rv.set(unit_string(scope, &ln).into()),
         None => rv.set(v8::null(scope).into()),
@@ -5616,9 +5539,7 @@ fn get_node_name(
     mut rv: v8::ReturnValue<v8::Value>,
 ) {
     let _dom = DomScope::for_object(scope, args.holder());
-    let Some(h) = handle_of(scope, args.holder()) else {
-        return;
-    };
+    let h = holder_handle(scope, &args);
     if let Some(units) = with_tree(|tree| match tree.node_type_id(h) {
         1 => tree.tag_name_utf16(h),
         2 => tree.qualified_name_utf16(h),
@@ -5659,9 +5580,7 @@ fn get_child_nodes(
     mut rv: v8::ReturnValue<v8::Value>,
 ) {
     let _dom = DomScope::for_object(scope, args.holder());
-    let Some(h) = handle_of(scope, args.holder()) else {
-        return;
-    };
+    let h = holder_handle(scope, &args);
     let kids = with_tree(|t| t.children(h)).unwrap_or_default();
     let arr = node_array(scope, kids);
     rv.set(arr.into());
@@ -6152,9 +6071,6 @@ fn build_el_template<'s>(scope: &mut v8::PinScope<'s, '_>) -> v8::Local<'s, v8::
     tmpl_accessor(scope, tmpl, "__attrValue", get_node_data, set_attr_value);
     tmpl_getter(scope, tmpl, "__attrOwner", get_attr_owner);
     tmpl_getter(scope, tmpl, "__attrSpecified", get_attr_specified);
-    tmpl_getter(scope, tmpl, "__nodeName", get_named_node_name);
-    tmpl_getter(scope, tmpl, "publicId", get_doctype_public);
-    tmpl_getter(scope, tmpl, "systemId", get_doctype_system);
     tmpl_method(scope, tmpl, "setAttributeNode", el_set_attribute_node);
     tmpl_method(scope, tmpl, "removeAttributeNode", el_remove_attribute_node);
     tmpl_method(scope, tmpl, "hasAttribute", el_has_attribute);
