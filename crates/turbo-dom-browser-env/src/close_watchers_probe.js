@@ -56,6 +56,21 @@
     return [first, state('d')];
   });
 
+  // A second activation without a new watcher grants no new group: once the prevented
+  // cancel consumed the history-action activation, the next cancel is not cancelable.
+  await scenario('preventAfterTwoClicks', `<div id=out ${OUT}></div><button id=b data-x=120 data-y=0>b</button><dialog id=d data-x=300 data-y=300>d</dialog>`, async () => {
+    const dialog = document.getElementById('d');
+    dialog.addEventListener('cancel', event => event.preventDefault());
+    await input(...click(150, 30, 'b'));
+    dialog.show();
+    dialog.close();
+    dialog.showModal();
+    await input(...click(310, 310, 'd'));
+    await input(esc);
+    const first = state('d');
+    await input(esc);
+    return [first, state('d')];
+  });
   // closedby=none: Esc never closes; closedby=any non-modal: a click outside closes it,
   // a click inside does not; closedby=closerequest: clicks never close, Esc does.
   await scenario('closedbyNone', `<div id=out ${OUT}></div><dialog id=d closedby=none data-x=300 data-y=300>d</dialog>`, async () => {

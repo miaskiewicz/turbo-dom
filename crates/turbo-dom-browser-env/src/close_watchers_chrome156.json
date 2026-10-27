@@ -2,7 +2,7 @@
   "browser": "Chrome/156.0.8078.4",
   "v8": "15.6.75",
   "probe": "close_watchers_probe.js",
-  "probeSha256": "659e7fe45f890e1546c5a454768fa86c9ab3e03cfb965ff3e89d564156f0aca7",
+  "probeSha256": "bfa40023bbc402d6a9ab9fc5745eafaa7f400a176e32ef557e44e0d415aa69e3",
   "collectorSha256": "3f964d2cdf0ec8101870a776aaffc3b7dc4522306959c4a40761057beb255eb8",
   "flags": [
     "--headless=new",
@@ -112,6 +112,120 @@
           false,
           true,
           "open"
+        ],
+        [
+          "cancel",
+          "d",
+          true,
+          true
+        ],
+        [
+          "cancel",
+          "d",
+          false,
+          true
+        ],
+        [
+          "beforetoggle",
+          "d",
+          false,
+          true,
+          "closed"
+        ],
+        [
+          "close",
+          "d",
+          false,
+          true
+        ],
+        [
+          "toggle",
+          "d",
+          false,
+          true,
+          "closed"
+        ]
+      ]
+    },
+    "preventAfterTwoClicks": {
+      "states": [
+        [
+          true
+        ],
+        [
+          false
+        ]
+      ],
+      "log": [
+        [
+          "pointerdown",
+          "b",
+          true,
+          true
+        ],
+        [
+          "pointerup",
+          "b",
+          true,
+          true
+        ],
+        [
+          "click",
+          "b",
+          true,
+          true
+        ],
+        [
+          "beforetoggle",
+          "d",
+          true,
+          true,
+          "open"
+        ],
+        [
+          "beforetoggle",
+          "d",
+          false,
+          true,
+          "closed"
+        ],
+        [
+          "beforetoggle",
+          "d",
+          true,
+          true,
+          "open"
+        ],
+        [
+          "toggle",
+          "d",
+          false,
+          true,
+          "open"
+        ],
+        [
+          "close",
+          "d",
+          false,
+          true
+        ],
+        [
+          "pointerdown",
+          "d",
+          true,
+          true
+        ],
+        [
+          "pointerup",
+          "d",
+          true,
+          true
+        ],
+        [
+          "click",
+          "d",
+          true,
+          true
         ],
         [
           "cancel",
