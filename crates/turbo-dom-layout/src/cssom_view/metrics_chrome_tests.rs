@@ -243,9 +243,19 @@ fn element_metrics_and_hits_match_chrome_156() {
 }
 
 #[test]
-#[ignore = "miaskiewicz/turbo-dom#128, #142: fail until the fixes"]
+#[ignore = "miaskiewicz/turbo-dom#128: fails until the fix"]
 fn held_out_cases_match_chrome_156() {
-    assert_cases_match(|id| HELD_OUT.contains(&id));
+    assert_cases_match(|id| id == "hits-list-marker");
+}
+
+/// miaskiewicz/turbo-dom#142: an `inline-block` holding text sits on its last line
+/// box's baseline (CSS 2.1 §10.8.1), so the text beside it stays at y=8 and the
+/// line box stays 18px tall.
+#[cfg(feature = "bundled-fonts")]
+#[test]
+#[ignore = "miaskiewicz/turbo-dom#142: fails until the fix"]
+fn inline_block_text_baseline_matches_chrome_156() {
+    assert_cases_match(|id| id == "inline-block-text-baseline");
 }
 
 #[test]
