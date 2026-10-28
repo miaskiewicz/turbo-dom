@@ -409,11 +409,9 @@ fn ends_in_number(host: &str) -> bool {
 /// decoded, non-ASCII input takes the IDNA path, a handful of ASCII characters
 /// are escaped rather than rejected, and numeric hosts are IPv4 addresses.
 fn canonical_host(raw: &str) -> Option<String> {
+    // A bracketed host parses as an IPv6 address or fails; it is never a domain.
     if raw.starts_with('[') {
-        return match url::Host::parse(raw).ok()? {
-            host @ url::Host::Ipv6(_) => Some(host.to_string()),
-            _ => None,
-        };
+        return url::Host::parse(raw).ok().map(|host| host.to_string());
     }
     let bytes = raw.as_bytes();
     let mut decoded = Vec::with_capacity(bytes.len());
@@ -465,11 +463,9 @@ fn canonical_host(raw: &str) -> Option<String> {
             _ => host.push(byte.to_ascii_lowercase() as char),
         }
     }
+    // A host that ends in a number parses as an IPv4 address or fails (WHATWG host parser).
     if ends_in_number(&host) {
-        return match url::Host::parse(&host).ok()? {
-            host @ url::Host::Ipv4(_) => Some(host.to_string()),
-            _ => None,
-        };
+        return url::Host::parse(&host).ok().map(|host| host.to_string());
     }
     Some(host)
 }

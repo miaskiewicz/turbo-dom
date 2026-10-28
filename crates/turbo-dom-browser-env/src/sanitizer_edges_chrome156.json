@@ -2,7 +2,7 @@
   "browser": "Chrome/156.0.8078.47",
   "v8": "15.6.75.19",
   "probe": "sanitizer_edges_probe.js",
-  "probeSha256": "c3ea637a7f5af5130340f274507a93352169bfc020d3f7257c6fa59f85b4405c",
+  "probeSha256": "55ec6ba17e48dc04e0092f60d173ba5af7461c00c6d94ba88bf015daba91f336",
   "collectorSha256": "3f964d2cdf0ec8101870a776aaffc3b7dc4522306959c4a40761057beb255eb8",
   "flags": [
     "--headless=new",
@@ -107,7 +107,16 @@
       "badSanitizer": [
         "TypeError",
         true
-      ]
+      ],
+      "proxyReceiver": [
+        "TypeError",
+        true
+      ],
+      "plainReceiver": [
+        "TypeError",
+        true
+      ],
+      "proxySanitizer": "<b>p</b>"
     }
   }
 }

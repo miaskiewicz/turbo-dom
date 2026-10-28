@@ -122,5 +122,23 @@
     disconnected: attempt(() => target.moveBefore(document.createElement('dc'), null)),
     text: attempt(() => { const t = document.body.appendChild(document.createTextNode('mt')); target.moveBefore(t, null); return names(target).join(','); }),
   };
+  // Argument conversion: symbols and throwing toString in DOMString arguments, non-node references.
+  const holder = document.createElement('div');
+  const child = holder.appendChild(document.createElement('span'));
+  const bad = { toString() { throw new RangeError('convert'); } };
+  out.conversions = {
+    appendSymbol: attempt(() => holder.append(Symbol('s'))),
+    prependThrows: attempt(() => holder.prepend('a', bad)),
+    beforeSymbol: attempt(() => child.before(Symbol('s'))),
+    afterThrows: attempt(() => child.after(bad)),
+    replaceWithSymbol: attempt(() => child.replaceWith('x', Symbol('s'))),
+    replaceChildrenThrows: attempt(() => holder.replaceChildren(bad)),
+    insertBeforeString: attempt(() => holder.insertBefore(document.createElement('x'), 'nope')),
+    insertBeforeObject: attempt(() => holder.insertBefore(document.createElement('x'), {})),
+    insertBeforeForeign: attempt(() => holder.insertBefore(document.createElement('x'), document.implementation.createHTMLDocument('').body)),
+    appendChildString: attempt(() => holder.appendChild('text')),
+    afterless: attempt(() => document.createElement('orphan').after(Symbol('s'))),
+    tree: names(holder).join(','),
+  };
   return out;
 })()

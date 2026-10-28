@@ -84,12 +84,11 @@ fn assigned<'s>(
         let reverse = key(scope, "manual-slot");
         let mut result = Vec::new();
         for index in 0..nodes.length() {
-            let Some(node) = nodes
+            // assign() records only wrapped nodes it accepted.
+            let node = nodes
                 .get_index(scope, index)
                 .and_then(|value| v8::Local::<v8::Object>::try_from(value).ok())
-            else {
-                continue;
-            };
+                .expect("assigned records hold nodes");
             if dom_id_of(scope, node) != owner
                 || !node
                     .get_private(scope, reverse)
@@ -97,9 +96,7 @@ fn assigned<'s>(
             {
                 continue;
             }
-            let Some(handle) = handle_of(scope, node) else {
-                continue;
-            };
+            let handle = handle_of(scope, node).expect("a recorded node keeps its handle");
             if with_tree(|tree| slottable(tree, handle) && tree.parent(handle) == Some(host))
                 .unwrap_or(false)
             {
@@ -135,13 +132,10 @@ fn flattened<'s>(
     let mut active = HashSet::new();
     let mut pending = vec![(wrap(scope, handle), false)];
     let mut result = Vec::new();
+    // Only the native's assignedNodes / assignedElements({flatten}) reach this walk (script
+    // runs it, so the isolate is not terminating) and nothing here runs script.
     while let Some((node, leaving)) = pending.pop() {
-        if scope.is_execution_terminating() {
-            return Vec::new();
-        }
-        let Some(handle) = handle_of(scope, node) else {
-            continue;
-        };
+        let handle = handle_of(scope, node).expect("pending entries are wrapped nodes");
         if leaving {
             active.remove(&handle);
             continue;
@@ -284,12 +278,11 @@ fn previous<'s>(
     };
     let mut result = Vec::new();
     for index in 0..rows.length() {
-        let Some(row) = rows
+        // refresh() writes every row as [slot, nodes].
+        let row = rows
             .get_index(scope, index)
             .and_then(|value| v8::Local::<v8::Array>::try_from(value).ok())
-        else {
-            continue;
-        };
+            .expect("distribution rows");
         let slot = row
             .get_index(scope, 0)
             .and_then(|value| v8::Local::<v8::Object>::try_from(value).ok());
@@ -314,26 +307,21 @@ pub(super) fn refresh(scope: &mut v8::PinScope) {
             .unwrap_or_default()
     });
     roots.sort_unstable_by_key(|node| node.raw());
+    // Nothing in this loop runs script, so a termination is never raised inside it.
     for root in roots {
-        if scope.is_execution_terminating() {
-            return;
-        }
         if !with_tree(|tree| tree.is_live(root)).unwrap_or(false) {
             continue;
         }
         let object = wrap(scope, root);
-        let Some(context) = object.get_creation_context(scope) else {
-            continue;
-        };
+        let context = object
+            .get_creation_context(scope)
+            .expect("wrappers have a creation context");
         let scope = &mut v8::ContextScope::new(scope, context);
         let old = previous(scope, object);
         let handles = with_tree(|tree| slots(tree, root)).unwrap_or_default();
         let mut rows = Vec::new();
         let mut current = Vec::new();
         for handle in handles {
-            if scope.is_execution_terminating() {
-                return;
-            }
             let object = wrap(scope, handle);
             let nodes = assigned(scope, handle);
             let before = old
@@ -433,12 +421,10 @@ fn assign(scope: &mut v8::PinScope, slot: v8::Local<v8::Object>, arguments: v8::
         .and_then(|value| v8::Local::<v8::Array>::try_from(value).ok());
     if let Some(previous) = previous {
         for index in 0..previous.length() {
-            let Some(node) = previous
+            let node = previous
                 .get_index(scope, index)
                 .and_then(|value| v8::Local::<v8::Object>::try_from(value).ok())
-            else {
-                continue;
-            };
+                .expect("assigned records hold nodes");
             if !nodes
                 .iter()
                 .any(|retained| retained.strict_equals(node.into()))
@@ -473,9 +459,9 @@ fn assign(scope: &mut v8::PinScope, slot: v8::Local<v8::Object>, arguments: v8::
                             }
                         }
                     }
-                    let Some(context) = old.get_creation_context(scope) else {
-                        return;
-                    };
+                    let context = old
+                        .get_creation_context(scope)
+                        .expect("slot wrapper context");
                     let scope = &mut v8::ContextScope::new(scope, context);
                     let next = v8::Array::new_with_elements(scope, &retained);
                     old.set_private(scope, private, next.into());
@@ -484,9 +470,9 @@ fn assign(scope: &mut v8::PinScope, slot: v8::Local<v8::Object>, arguments: v8::
         }
         node.set_private(scope, reverse, slot.into());
     }
-    let Some(context) = slot.get_creation_context(scope) else {
-        return;
-    };
+    let context = slot
+        .get_creation_context(scope)
+        .expect("slot wrapper context");
     {
         let scope = &mut v8::ContextScope::new(scope, context);
         let next = array(scope, &nodes);
@@ -503,9 +489,7 @@ fn illegal(scope: &mut v8::PinScope) {
     scope.throw_exception(error);
 }
 fn native(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
-    if scope.is_execution_terminating() {
-        return;
-    }
+    // Only shadow_slots.js calls this native, and script cannot run while terminating.
     let operation = args.get(0).to_rust_string_lossy(scope);
     // shadow_slots.js deletes this native from the global and calls it only with a receiver
     // its slot / shadow-root / element / text brand check accepted: always a wrapped node.
@@ -583,13 +567,14 @@ pub(super) fn fire(scope: &mut v8::PinScope, slot: v8::Local<v8::Object>) {
     if scope.is_execution_terminating() {
         return;
     }
-    let Some(context) = slot.get_creation_context(scope) else {
-        return;
-    };
+    let context = slot
+        .get_creation_context(scope)
+        .expect("slot wrapper context");
     let scope = &mut v8::ContextScope::new(scope, context);
     let _owner = DomScope::for_object(scope, slot);
     let global = context.global(scope);
     let private = key(scope, "Event");
+    // A realm whose slots were parsed before (or without) install() has no Event record.
     let Some(constructor) = global
         .get_private(scope, private)
         .and_then(|value| v8::Local::<v8::Function>::try_from(value).ok())

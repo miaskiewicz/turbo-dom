@@ -419,7 +419,7 @@ jobs:
           - { crate: turbo-dom-raster,      floor: 100, features: '' }
           - { crate: turbo-dom-raster,      floor: 100, features: '--features avif', label: turbo-dom-raster-avif }
           - { crate: turbo-dom-raster,      floor: 100, features: '--features jxl', label: turbo-dom-raster-jxl }
-          - { crate: turbo-dom-browser-env, floor: 95.5, features: '--features host-internals,test-support' }
+          - { crate: turbo-dom-browser-env, floor: 95.7, features: '--features host-internals,test-support' }
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@master

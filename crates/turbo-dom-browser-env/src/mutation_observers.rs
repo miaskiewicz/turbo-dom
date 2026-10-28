@@ -184,9 +184,9 @@ pub fn install_mutation_consumer(
     }) {
         return false;
     }
-    let Some(context) = document.get_creation_context(scope) else {
-        return false;
-    };
+    let context = document
+        .get_creation_context(scope)
+        .expect("document wrappers have a creation context");
     if callback.get_creation_context(scope) != Some(context) {
         return false;
     }
@@ -386,9 +386,8 @@ fn native<'s>(
         flush(scope);
         return;
     }
-    let Ok(object) = v8::Local::<v8::Object>::try_from(args.get(1)) else {
-        return;
-    };
+    // mutation_observers.js passes an observer, record target or node here.
+    let object = v8::Local::<v8::Object>::try_from(args.get(1)).expect("an object");
     match operation.as_str() {
         "register" => {
             for (name, index) in [("queue", 2), ("notify", 3)] {
@@ -413,8 +412,8 @@ fn native<'s>(
                 anchor(scope, object, target, args.get(3).is_true());
             }
         }
-        "schedule" => schedule(scope, object),
-        _ => {}
+        // "schedule", the last operation mutation_observers.js names.
+        _ => schedule(scope, object),
     }
 }
 
