@@ -157,7 +157,8 @@ fn native<'s>(
             let value = wrap_opt(scope, found);
             rv.set(value);
         }
-        "get" | "set" => {
+        // "get" / "set": reference_target.js calls only resolve, get and set.
+        _ => {
             if with_tree(|tree| tree.is_shadow_root(node)) != Some(true) {
                 illegal(scope);
                 return;
@@ -175,7 +176,6 @@ fn native<'s>(
                 .map(|value| string_code_units(scope, value));
             store(scope, object, units.as_deref());
         }
-        _ => illegal(scope),
     }
 }
 

@@ -50,12 +50,11 @@ pub(super) fn attribute_changed<'s>(
     if !record.has_own_property(scope, key.into()).unwrap_or(false) {
         return;
     }
-    let Some(references) = record
+    // element_relations.js defines `aria` once, as a null-prototype object.
+    let references = record
         .get(scope, key.into())
         .and_then(|value| value.to_object(scope))
-    else {
-        return;
-    };
+        .expect("aria reference record");
     let key = v8::String::new(scope, name).unwrap();
     references.delete(scope, key.into());
 }

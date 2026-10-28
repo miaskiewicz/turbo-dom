@@ -268,22 +268,23 @@ fn navigate(scope: &mut v8::PinScope, key: &str, mode: &str) -> Option<Handle> {
     let (vertical, block_reversed) = writing_mode(mode);
     let index = items.iter().position(|&node| node == focused)?;
     let rtl = rtl(scope, focused, &policy);
-    // (inline?, forward?) for each arrow in this writing mode.
-    let step = match (key, vertical) {
-        ("ArrowRight", false) => Some((true, !rtl)),
-        ("ArrowLeft", false) => Some((true, rtl)),
-        ("ArrowDown", false) => Some((false, true)),
-        ("ArrowUp", false) => Some((false, false)),
-        ("ArrowDown", true) => Some((true, !rtl)),
-        ("ArrowUp", true) => Some((true, rtl)),
-        ("ArrowLeft", true) => Some((false, block_reversed)),
-        ("ArrowRight", true) => Some((false, !block_reversed)),
-        _ => None,
-    };
-    let next = match (key, step) {
-        ("Home", _) => 0,
-        ("End", _) => items.len() - 1,
-        (_, Some((inline, forward))) => {
+    let next = match key {
+        "Home" => 0,
+        "End" => items.len() - 1,
+        // An arrow: focus_group.js navigates only the four arrows, Home and End.
+        _ => {
+            // (inline?, forward?) for each arrow in this writing mode.
+            let (inline, forward) = match (key, vertical) {
+                ("ArrowRight", false) => (true, !rtl),
+                ("ArrowLeft", false) => (true, rtl),
+                ("ArrowDown", false) => (false, true),
+                ("ArrowUp", false) => (false, false),
+                ("ArrowDown", true) => (true, !rtl),
+                ("ArrowUp", true) => (true, rtl),
+                ("ArrowLeft", true) => (false, block_reversed),
+                // ArrowRight in a vertical writing mode.
+                _ => (false, !block_reversed),
+            };
             if (inline && !group.inline) || (!inline && !group.block) {
                 return None;
             }
@@ -295,7 +296,6 @@ fn navigate(scope: &mut v8::PinScope, key: &str, mode: &str) -> Option<Handle> {
                 _ => return None,
             }
         }
-        _ => return None,
     };
     (items[next] != focused).then_some(items[next])
 }
@@ -334,14 +334,14 @@ fn native<'s>(
             let value = wrap_opt(scope, grouped);
             rv.set(value);
         }
-        "navigate" => {
+        // "navigate", focus_group.js's only other operation.
+        _ => {
             let key = args.get(1).to_rust_string_lossy(scope);
             let mode = args.get(2).to_rust_string_lossy(scope);
             let target = navigate(scope, &key, &mode);
             let value = wrap_opt(scope, target);
             rv.set(value);
         }
-        _ => {}
     }
 }
 
