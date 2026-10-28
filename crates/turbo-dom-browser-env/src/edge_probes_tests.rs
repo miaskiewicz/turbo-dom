@@ -636,7 +636,6 @@ fn add_event_listener_rejects_a_null_signal() {
 /// miaskiewicz/turbo-dom#140: one DOM call queueing thousands of custom element reactions
 /// and mutation records runs to completion (Chrome 156 has no per-call reaction cap).
 #[test]
-#[ignore = "turbo-dom#140: fails until the fix"]
 
 fn custom_element_reaction_volume_matches_chrome156() {
     check(
