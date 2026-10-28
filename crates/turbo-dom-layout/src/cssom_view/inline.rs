@@ -134,3 +134,81 @@ pub fn geometry(
         },
     })
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::live::testing;
+
+    #[cfg(feature = "bundled-fonts")]
+    fn read(body: &str) -> Result<ElementGeometry, String> {
+        let html = format!("<body style='margin:0;font-family:\"Liberation Serif\"'>{body}</body>");
+        let (tree, snapshot, styles) = testing::layout(&html, "", (400.0, 300.0), Some(1.0));
+        geometry(&snapshot, &styles, testing::id(&tree, "#t"))
+    }
+
+    // Text in the bundled Liberation Serif.
+    #[cfg(feature = "bundled-fonts")]
+    #[test]
+    fn decorated_positioned_and_vertical_inlines_are_explicit_gaps() {
+        const DECORATED: &str = "native decorated inline border production is pending";
+        const POSITIONED: &str = "native positioned/vertical inline border production is pending";
+        for (style, error) in [
+            ("padding-left:2px", DECORATED),
+            ("border:1px solid", DECORATED),
+            ("margin:0 3px", DECORATED),
+            ("position:relative", POSITIONED),
+            ("vertical-align:top", POSITIONED),
+            ("writing-mode:vertical-rl", POSITIONED),
+            ("direction:rtl", POSITIONED),
+        ] {
+            let got = read(&format!("<p>a <span id=t style='{style}'>b</span></p>"));
+            assert_eq!(got.unwrap_err(), error, "{style}");
+        }
+        // Zero decorations are plain.
+        let plain =
+            read("<p>a <span id=t style='padding:0;margin:0px 0;border-width:0'>b</span></p>");
+        assert_eq!(plain.unwrap().rects.len(), 1);
+        // A decorated descendant fails its ancestor's read too.
+        let nested = read("<p><span id=t>a <b style='padding:1px'>b</b></span></p>");
+        assert_eq!(nested.unwrap_err(), DECORATED);
+    }
+
+    // Text in the bundled Liberation Serif.
+    #[cfg(feature = "bundled-fonts")]
+    #[test]
+    fn mixed_fonts_and_empty_inlines_are_explicit_gaps() {
+        for property in [
+            "font-size:20px",
+            "font-weight:700",
+            "font-style:italic",
+            "line-height:30px",
+            "font-family:Inter",
+        ] {
+            let got = read(&format!(
+                "<p><span id=t>a <i style='{property}'>b</i></span></p>"
+            ));
+            assert_eq!(
+                got.unwrap_err(),
+                "native mixed-font inline border production is pending",
+                "{property}"
+            );
+        }
+        assert_eq!(
+            read("<p>a<span id=t></span>b</p>").unwrap_err(),
+            "native empty inline placement is pending"
+        );
+    }
+
+    #[test]
+    fn a_receiver_without_a_style_is_an_error() {
+        let html = "<body><p id=t>text</p></body>";
+        let (tree, snapshot, styles) = testing::layout(html, "", (400.0, 300.0), Some(1.0));
+        let text = tree.children(tree.query_selector("#t").unwrap())[0];
+        let id = crate::live::source_id(testing::DOCUMENT, text);
+        assert_eq!(
+            geometry(&snapshot, &styles, id).unwrap_err(),
+            "native inline style is missing"
+        );
+    }
+}

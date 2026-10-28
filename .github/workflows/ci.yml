@@ -415,7 +415,7 @@ jobs:
         include:
           - { crate: turbo-dom,             floor: 100, features: '' }
           - { crate: turbo-dom-parser,      floor: 100, features: '', files: 'src/core.rs' }
-          - { crate: turbo-dom-layout,      floor: 90, features: '' }
+          - { crate: turbo-dom-layout,      floor: 96.9, features: '' }
           - { crate: turbo-dom-raster,      floor: 100, features: '' }
           - { crate: turbo-dom-raster,      floor: 100, features: '--features avif', label: turbo-dom-raster-avif }
           - { crate: turbo-dom-raster,      floor: 100, features: '--features jxl', label: turbo-dom-raster-jxl }

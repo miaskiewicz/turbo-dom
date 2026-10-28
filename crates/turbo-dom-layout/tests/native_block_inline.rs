@@ -219,10 +219,17 @@ fn unsupported_displaced_splits_fail_their_own_reads_but_boxless_text_does_not()
     use turbo_dom_layout::layout_snapshot::SnapshotError;
     // miaskiewicz/turbo-surf#31: the unsupported construct fails that element's (and
     // its subtree's) reads only; the rest of the document still answers.
-    for (markup, failing) in [(
-        "<a style='position:relative;left:5px'><h3>block</h3></a>",
-        "a",
-    )] {
+    // A sticky block split out of an ordinary inline is not placed either.
+    for (markup, failing) in [
+        (
+            "<a style='position:relative;left:5px'><h3>block</h3></a>",
+            "a",
+        ),
+        (
+            "<a>Read<div id=s style='position:sticky'>block</div></a>",
+            "s",
+        ),
+    ] {
         let (snapshot, names) = capture(markup);
         let error = SnapshotError::UnsupportedInlineBlockSplit;
         assert_eq!(
@@ -333,4 +340,40 @@ fn hidden_blocks_do_not_displace_or_reject_a_relative_inline() {
         rects(&hidden, hidden_names["dismiss"]),
         rects(&plain, names["dismiss"])
     );
+}
+
+#[test]
+fn a_line_break_inside_an_inline_splits_it_across_lines() {
+    // `<br>` ends the line inside the link. Chrome 156 `getClientRects()` of
+    // `<a>Read<br>more</a>` (in this harness's `#rso` div at body margin 8):
+    // [8, 8, 32.875, 18], [40.875, 8, 0, 18], [8, 26, 32.875, 18] — the text before the
+    // break, a zero-width rect at the break, the text after it one line lower (x and
+    // widths compared exactly; the line height is font-dependent).
+    let (snapshot, names) = capture("<a id=l>Read<br>more</a>");
+    let rects = rects(&snapshot, names["l"]);
+    let xw: Vec<_> = rects
+        .iter()
+        .map(|r| (r[0], r[1] == rects[0][1], r[2]))
+        .collect();
+    assert_eq!(
+        xw,
+        [
+            (8.0, true, 32.875),
+            (40.875, true, 0.0),
+            (8.0, false, 32.875)
+        ],
+        "{rects:?}"
+    );
+    assert_eq!(rects[2][1], rects[0][1] + rects[0][3], "the next line");
+}
+
+#[test]
+fn an_inline_marker_takes_no_room_in_its_line() {
+    // A classified inline marker (html2pdf's directives) is a zero-size point in the
+    // line: the link around it keeps one fragment as wide as its text alone.
+    let (with, names) = capture("<a id=l>Read<x-marker-1-i></x-marker-1-i>more</a>");
+    let (without, plain) = capture("<a id=l>Readmore</a>");
+    let marked = rects(&with, names["l"]);
+    assert_eq!(marked.len(), 1, "{marked:?}");
+    assert_eq!(marked, rects(&without, plain["l"]));
 }

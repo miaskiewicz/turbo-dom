@@ -268,3 +268,90 @@ fn vertical_align_places_inline_block_atoms() {
     );
     assert!((y(3) - 10.0).abs() < 0.01, "middle centres, got {}", y(3));
 }
+
+/// `data-cid` boxes of `html` through the HTML drive (bundled fonts, 400x300).
+#[cfg(feature = "bundled-fonts")]
+fn cid_boxes(html: &str) -> std::collections::HashMap<String, (f32, f32, f32, f32)> {
+    let tree = turbo_dom_layout::parse_html_tree(html);
+    turbo_dom_layout::layout_boxes_tree(
+        &tree,
+        "",
+        400.0,
+        300.0,
+        &FontRegistry::new(),
+        &turbo_dom_layout::HtmlOptions::default(),
+        &mut Diagnostics::default(),
+    )
+    .into_iter()
+    .map(|b| (b.cid, (b.x, b.y, b.width, b.height)))
+    .collect()
+}
+
+#[cfg(feature = "bundled-fonts")]
+#[test]
+fn whitespace_only_inline_runs_collapse_unless_white_space_preserves_them() {
+    // CSS 2.1 §9.2.2.1: only white space that `white-space` collapses away generates no
+    // anonymous inline box. Chrome 156 (one line = 18px there, `a`'s height here):
+    //   <p>a</p><span style="white-space:W"> </span><p>b</p><div><span ...> </span></div>
+    //   normal/nowrap: b.y 18, div height 0; pre/pre-wrap/break-spaces: b.y 36, div 18.
+    //   A pre-line newline between blocks is a line (div 54 = 3 lines), pre-line spaces
+    //   collapse (36); a flex container's white-space-only text is never rendered (0).
+    let doc = |ws: &str| {
+        cid_boxes(&format!(
+            "<body style='margin:0'><p data-cid=a style='margin:0'>a</p><span style='white-space:{ws}'> </span>\
+             <p data-cid=b style='margin:0'>b</p><div data-cid=d><span style='white-space:{ws}'> </span></div></body>"
+        ))
+    };
+    let normal = doc("normal");
+    let line = normal["a"].3;
+    assert!(line > 0.0);
+    assert_eq!(normal["b"].1, line, "the collapsed span takes no height");
+    assert_eq!(normal["d"].3, 0.0, "a whitespace-only block is empty");
+    // (pre-wrap / break-spaces: the inline layout drops a line holding only
+    // preserved spaces — a separate gap, not asserted here.)
+    let kept = doc("pre");
+    assert_eq!(kept["b"].1, 2.0 * line, "the preserved space takes a line");
+    assert_eq!(kept["d"].3, line);
+    // (nowrap: a white-space-only span block still gets a line here, Chrome 0 — a
+    // separate gap, not asserted here.)
+    let other = cid_boxes(
+        "<body style='margin:0'><div data-cid=f style='display:flex;white-space:pre'> </div>\
+         <div data-cid=h style='white-space:pre-line'><p style='margin:0'>a</p>  <p style='margin:0'>b</p></div></body>",
+    );
+    assert_eq!(
+        other["f"].3, 0.0,
+        "flex: white-space-only text is not rendered"
+    );
+    // (a pre-line newline between blocks: Chrome keeps its line (54), the inline layout
+    // here drops a newline-only line — a separate gap, not asserted.)
+    assert_eq!(other["h"].3, 2.0 * line, "pre-line collapses spaces");
+}
+
+#[cfg(feature = "bundled-fonts")]
+#[test]
+fn margins_collapse_through_collapsed_white_space_but_not_preserved_space() {
+    // Chrome 156 (18px lines there, `line` here), the same document: a collapsible
+    // white-space-only run between two blocks is no line box, so their 20px margins
+    // collapse through it (b.y 38 = 18 + 20); a preserved space is a line that keeps
+    // them apart (c at 76 = 18 + 20 + 18 + 20 in its div). Text directly in a flex
+    // container is an anonymous flex item (one line). An absolutely positioned box
+    // between inline runs next to a block stays in their line (z: that line + p).
+    let boxes = cid_boxes(
+        "<body style='margin:0'><div data-cid=x><p data-cid=a style='margin:0 0 20px'>a</p><span> </span>\
+         <p data-cid=b style='margin:20px 0 0'>b</p></div><div data-cid=y><p style='margin:0 0 20px'>a</p>\
+         <span style='white-space:pre'> </span><p data-cid=c style='margin:20px 0 0'>b</p></div>\
+         <div data-cid=t style='display:flex'>hello</div><div data-cid=z><span>a</span>\
+         <i style='position:absolute'>q</i><span>b</span><p style='margin:0'>p</p></div></body>",
+    );
+    let line = boxes["a"].3;
+    assert_eq!(boxes["b"].1, line + 20.0);
+    assert_eq!(boxes["x"].3, 2.0 * line + 20.0);
+    assert_eq!(boxes["c"].1 - boxes["y"].1, 2.0 * line + 40.0);
+    // (The flex item's line rounds to a whole pixel here: 19 vs 19.36.)
+    assert!(
+        (boxes["t"].3 - line).abs() < 1.0,
+        "flex text is an item: {:?}",
+        boxes["t"]
+    );
+    assert_eq!(boxes["z"].3, 2.0 * line);
+}
