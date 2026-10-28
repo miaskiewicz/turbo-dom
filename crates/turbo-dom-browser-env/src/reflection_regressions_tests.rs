@@ -118,3 +118,23 @@ fn zoom_keeps_deferred_values() {
         r#"[["zoom: var(--z);","zoom: var(--z);","var(--z)",""],["zoom: var(--z) !important;","zoom: var(--z) !important;","var(--z)","important"],["zoom: env(x);","zoom: env(x);","env(x)",""],["zoom: calc(var(--z) * 2);","zoom: calc(var(--z) * 2);","calc(var(--z) * 2)",""]]"#
     );
 }
+
+/// turbo-dom#163: a `<style>` in a document without a browsing context still gets a sheet
+/// (createHTMLDocument, DOMParser); a template's inert contents do not.
+#[test]
+fn inert_document_style_has_sheet() {
+    assert_eq!(
+        page_json(
+            PAGE,
+            "(() => { const doc = document.implementation.createHTMLDocument(); \
+             const s = doc.head.appendChild(doc.createElement('style')); s.textContent = 'p { color: red }'; \
+             const p = new DOMParser().parseFromString('<style>a{b:c} i{color:red}</style>', 'text/html'); \
+             const t = document.createElement('template'); t.innerHTML = '<style>i{color:red}</style>'; \
+             return [String(s.sheet), s.sheet && s.sheet.cssRules.length, s.sheet && s.sheet.cssRules[0].cssText, \
+               doc.styleSheets.length, String(p.querySelector('style').sheet), p.styleSheets.length, \
+               p.querySelector('style').sheet && p.querySelector('style').sheet.cssRules.length, \
+               String(t.content.firstChild.sheet), s.sheet && s.sheet.ownerNode === s, s.sheet && String(s.sheet.href)]; })()",
+        ),
+        r#"["[object CSSStyleSheet]",1,"p { color: red; }",1,"[object CSSStyleSheet]",1,2,"null",true,"null"]"#
+    );
+}
