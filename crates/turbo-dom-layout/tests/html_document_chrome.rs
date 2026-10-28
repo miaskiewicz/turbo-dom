@@ -103,7 +103,7 @@ fn inline_flex_grid_case(id: &str) -> bool {
 /// The control cases of an open bug, each asserted by its own test (`#[ignore]`d until
 /// its fix lands) and held out of [`html_documents_lay_out_as_chrome_156`].
 fn held_out(id: &str) -> bool {
-    let groups: [fn(&str) -> bool; 40] = [
+    let groups: [fn(&str) -> bool; 41] = [
         auto_table_case,
         inline_flex_grid_case,
         abs_auto_width_case,
@@ -144,6 +144,7 @@ fn held_out(id: &str) -> bool {
         pre_line_newline_case,
         nowrap_space_case,
         supports_general_enclosed_case,
+        preserved_newline_case,
     ];
     groups.iter().any(|group| group(id))
 }
@@ -586,4 +587,15 @@ fn find_th(nodes: &[turbo_dom_layout::StyledNode]) -> Option<&turbo_dom_layout::
         }
         turbo_dom_layout::StyledNode::Text(_) => None,
     })
+}
+
+/// miaskiewicz/turbo-dom#166: a preserved newline (`pre` / `pre-wrap` / `break-spaces`)
+/// forces a line break, and `pre-wrap` / `break-spaces` spaces do not collapse.
+fn preserved_newline_case(id: &str) -> bool {
+    id.starts_with("ws-preserved-newline")
+}
+
+#[test]
+fn preserved_newlines_break_lines_like_chrome_156() {
+    compare_cases(preserved_newline_case);
 }

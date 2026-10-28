@@ -14185,6 +14185,87 @@
    "canvas": "#ffffff"
   },
   {
+   "id": "ws-preserved-newline",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;line-height:20px}p,pre{margin:0}</style></head><body><div data-cid=\"p\" style=\"white-space:pre\">a\nb</div><div data-cid=\"w\" style=\"white-space:pre-wrap\">a\nb</div><div data-cid=\"b\" style=\"white-space:break-spaces\">a\nb</div><pre data-cid=\"r\">a\nb</pre><div data-cid=\"l\" style=\"white-space:pre-line\">a\nb</div><div><span data-cid=\"s\" style=\"display:inline-block;white-space:pre-wrap\">a    b</span></div><div><span data-cid=\"t\" style=\"display:inline-block;white-space:break-spaces\">a    b</span></div><div><span data-cid=\"n\" style=\"display:inline-block;white-space:normal\">a    b</span></div><p data-cid=\"f\">f</p></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "p",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 40
+    },
+    {
+     "cid": "w",
+     "x": 0,
+     "y": 40,
+     "width": 1280,
+     "height": 40
+    },
+    {
+     "cid": "b",
+     "x": 0,
+     "y": 80,
+     "width": 1280,
+     "height": 40
+    },
+    {
+     "cid": "r",
+     "x": 0,
+     "y": 120,
+     "width": 1280,
+     "height": 40
+    },
+    {
+     "cid": "l",
+     "x": 0,
+     "y": 160,
+     "width": 1280,
+     "height": 40
+    },
+    {
+     "cid": "s",
+     "x": 0,
+     "y": 200,
+     "width": 31.109,
+     "height": 20
+    },
+    {
+     "cid": "t",
+     "x": 0,
+     "y": 220,
+     "width": 31.109,
+     "height": 20
+    },
+    {
+     "cid": "n",
+     "x": 0,
+     "y": 240,
+     "width": 19.109,
+     "height": 20
+    },
+    {
+     "cid": "f",
+     "x": 0,
+     "y": 260,
+     "width": 1280,
+     "height": 20
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
    "id": "supports-general-enclosed",
    "html": "<!DOCTYPE html><html><head><style>div{width:5px;height:1px}@supports (not foo){#a{width:10px}}@supports ((not foo)){#b{width:11px}}@supports (not){#c{width:12px}}@supports (not foo: bar){#d{width:13px}}@supports (foo){#e{width:14px}}@supports (not a) (b){#f{width:15px}}@supports not (not foo){#g{width:16px}}@supports (not foo) or (display:block){#h{width:17px}}@supports not (foo){#i{width:18px}}@supports (not (foo)){#j{width:19px}}@supports (display:block) and (not foo){#k{width:20px}}@supports (--x: 1){#l{width:21px}}</style></head><body><div id=\"a\" data-cid=\"a\"></div><div id=\"b\" data-cid=\"b\"></div><div id=\"c\" data-cid=\"c\"></div><div id=\"d\" data-cid=\"d\"></div><div id=\"e\" data-cid=\"e\"></div><div id=\"f\" data-cid=\"f\"></div><div id=\"g\" data-cid=\"g\"></div><div id=\"h\" data-cid=\"h\"></div><div id=\"i\" data-cid=\"i\"></div><div id=\"j\" data-cid=\"j\"></div><div id=\"k\" data-cid=\"k\"></div><div id=\"l\" data-cid=\"l\"></div></body></html>",
    "measure": "xywh",

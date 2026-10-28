@@ -584,6 +584,9 @@ const CASES = [
   // miaskiewicz/turbo-dom#122: a white-space-only `nowrap` span collapses away like
   // `normal` (no line box), between blocks and alone in a block.
   { id: "ws-nowrap-space-span", html: DOC(S("body{margin:0;line-height:20px}p{margin:0}"), `<p data-cid="a">a</p><span style="white-space:nowrap"> </span><p data-cid="b">b</p><div data-cid="d"><span style="white-space:nowrap"> </span></div><div data-cid="e" style="white-space:nowrap">  </div><p data-cid="f">f</p>`) },
+  // miaskiewicz/turbo-dom#166: a preserved newline (`pre` / `pre-wrap` / `break-spaces`)
+  // is a forced line break, and `pre-wrap` / `break-spaces` spaces do not collapse.
+  { id: "ws-preserved-newline", html: DOC(S("body{margin:0;line-height:20px}p,pre{margin:0}"), `<div data-cid="p" style="white-space:pre">a\nb</div><div data-cid="w" style="white-space:pre-wrap">a\nb</div><div data-cid="b" style="white-space:break-spaces">a\nb</div><pre data-cid="r">a\nb</pre><div data-cid="l" style="white-space:pre-line">a\nb</div><div><span data-cid="s" style="display:inline-block;white-space:pre-wrap">a    b</span></div><div><span data-cid="t" style="display:inline-block;white-space:break-spaces">a    b</span></div><div><span data-cid="n" style="display:inline-block;white-space:normal">a    b</span></div><p data-cid="f">f</p>`) },
   // miaskiewicz/turbo-dom#123: `@supports` parenthesised text that is neither a declaration
   // nor a condition (`(not foo)`, `(foo)`, ...) is <general-enclosed>: false (CSS
   // Conditional 3 §2.1); a condition that does not parse drops the rule.
