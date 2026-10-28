@@ -211,7 +211,7 @@ cssom_parser.rs: P5-cov-browser-env (C3e) the declaration parsers share importan
 trusted_types.rs: P5-cov-browser-env (C3e) the sink mapping's OnceLock is a module-level static
 cssom_parser.rs: P5-cov-browser-env (C3e) turbo-dom#164 keyframe selectors outside 0%..100% drop their rule
 document_legacy.rs: P5-cov-browser-env (C3e) set_domain's IP test reads as 'parses to a non-domain host'
-browser_env.rs: P5-cov-browser-env (D1) turbo-dom#114 required-argument counts, contains() / removeAttributeNode() parameter types, setAttribute / toggleAttribute name validation, document / doctype textContent is null
+browser_env.rs: P5-cov-browser-env (D1) turbo-dom#114 arg_handle removed (its only caller, contains(), checks its Node argument itself); required-argument counts, contains() / removeAttributeNode() parameter types, setAttribute / toggleAttribute name validation, document / doctype textContent is null
 browser_env.js: P5-cov-browser-env (D1) turbo-dom#114 Element / CharacterData ChildNode copies brand-check their interface; scrollIntoView / scrollTo / scrollBy return a ScrollResult promise and convert their dictionaries
 document_basics.js: P5-cov-browser-env (D1) turbo-dom#114 DocumentType ChildNode copies brand-check a doctype
 css_policy.rs: P5-cov-browser-env (D1) turbo-dom#163 a <style> in a document without a browsing context is allowed a sheet (no policy, nothing cached)

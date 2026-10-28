@@ -1356,33 +1356,6 @@ fn unit_string<'s>(scope: &mut v8::PinScope<'s, '_>, units: &[u16]) -> v8::Local
     v8::String::new_from_two_byte(scope, units, v8::NewStringType::Normal).unwrap()
 }
 
-/// Resolve argument `i` to a node handle, or `None` for null/undefined/non-node. CRITICAL: guards
-/// `to_object()`, which THROWS "Cannot convert undefined or null to object" on null/undefined — and
-/// `insertBefore(node, null)` / `removeChild`-style calls pass that constantly (emotion/react-dom).
-fn arg_handle(
-    scope: &mut v8::PinScope,
-    args: &v8::FunctionCallbackArguments,
-    i: i32,
-) -> Option<Handle> {
-    let v = args.get(i);
-    if v.is_null_or_undefined() {
-        return None;
-    }
-    let object = v.to_object(scope)?;
-    let owner = dom_id_of(scope, object);
-    if owner != DOM_ID.with(|id| id.get()) {
-        let message = v8::String::new(
-            scope,
-            "Cross-document node adoption is not supported by the native DOM",
-        )
-        .unwrap();
-        let error = v8::Exception::type_error(scope, message);
-        scope.throw_exception(error);
-        return None;
-    }
-    handle_of(scope, object)
-}
-
 // ---- with-tree helpers (borrow the thread-local Tree) ----------------------------------------
 
 fn with_tree<R>(f: impl FnOnce(&Tree) -> R) -> Option<R> {
