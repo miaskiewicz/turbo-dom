@@ -273,6 +273,81 @@
   out.geometry = run(() => { const r = document.createElement('i').getBoundingClientRect(); return [r.x, r.y, r.width, r.height, r.top, r.left, r.right, r.bottom]; });
   out.noops = [run(() => span.scrollIntoView()), run(() => span.scrollIntoView(true)), run(() => span.scrollIntoView({ block: 'center' }))];
   out.validity = (() => { const i = document.createElement('input'); i.required = true; return [i.checkValidity(), run(() => i.setCustomValidity('x')), i.validationMessage, i.checkValidity()]; })();
+  // Event listener registration and dispatch edges.
+  {
+    const outer = document.body.appendChild(document.createElement('div')), inner = outer.appendChild(document.createElement('span'));
+    const fire = type => inner.dispatchEvent(new Event(type, { bubbles: true }));
+    const log = [];
+    const throwing = { get capture() { throw new RangeError('options'); } };
+    out.events = {
+      throwingOptions: run(() => inner.addEventListener('a', () => {}, throwing)),
+      throwingRemove: run(() => inner.removeEventListener('a', () => {}, throwing)),
+      nullCallback: run(() => inner.addEventListener('a', null)),
+      nullRemove: run(() => inner.removeEventListener('a', null)),
+      abortedSignal: (() => { const controller = new AbortController(); controller.abort(); let calls = 0; inner.addEventListener('b', () => calls++, { signal: controller.signal }); fire('b'); return calls; })(),
+      abortDuring: (() => { const controller = new AbortController(); const calls = []; inner.addEventListener('c', () => { calls.push(1); controller.abort(); }); inner.addEventListener('c', () => calls.push(2), { signal: controller.signal }); fire('c'); fire('c'); return calls; })(),
+      stopInCapture: (() => { log.length = 0; outer.addEventListener('d', event => { log.push('outer-capture'); event.stopPropagation(); }, true); inner.addEventListener('d', () => log.push('inner')); outer.addEventListener('d', () => log.push('outer-bubble')); fire('d'); return log.slice(); })(),
+      stopImmediate: (() => { log.length = 0; inner.addEventListener('e', event => { log.push(1); event.stopImmediatePropagation(); }); inner.addEventListener('e', () => log.push(2)); outer.addEventListener('e', () => log.push(3)); fire('e'); return log.slice(); })(),
+      once: (() => { let calls = 0; inner.addEventListener('f', () => calls++, { once: true }); fire('f'); fire('f'); return calls; })(),
+      handleEvent: (() => { const listener = { calls: 0, handleEvent(event) { this.calls++; this.self = this === listener; } }; inner.addEventListener('g', listener); fire('g'); return [listener.calls, listener.self]; })(),
+      duplicate: (() => { let calls = 0; const f = () => calls++; inner.addEventListener('h', f); inner.addEventListener('h', f); inner.addEventListener('h', f, true); fire('h'); return calls; })(),
+      removeCaptureOnly: (() => { let calls = 0; const f = () => calls++; inner.addEventListener('i', f); inner.addEventListener('i', f, true); inner.removeEventListener('i', f, { capture: true }); fire('i'); return calls; })(),
+    };
+    outer.remove();
+  }
+  // Attribute nodes carrying style / nonce, foreign-document attributes, removeAttribute('nonce').
+  {
+    const el = document.body.appendChild(document.createElement('div'));
+    const color = () => getComputedStyle(el).color;
+    const other = document.implementation.createHTMLDocument('');
+    const style = document.createAttribute('style'); style.value = 'color: rgb(1, 2, 3)';
+    const nonce = document.createAttribute('nonce'); nonce.value = 'n1';
+    const foreign = other.createAttribute('data-f'); foreign.value = 'f';
+    out.attrNodes = {
+      setNumber: run(() => el.setAttributeNode(5)),
+      removeString: run(() => el.removeAttributeNode('x')),
+      styleSet: [run(() => show(el.setAttributeNode(style))), color(), el.style.color],
+      styleRemoved: [run(() => show(el.removeAttributeNode(style))), color(), el.style.color],
+      nonceSet: [run(() => show(el.setAttributeNode(nonce))), el.nonce],
+      nonceRemoved: [run(() => show(el.removeAttributeNode(nonce))), el.nonce, el.hasAttribute('nonce')],
+      foreignSet: [run(() => show(el.setAttributeNode(foreign))), foreign.ownerDocument === document, el.getAttribute('data-f')],
+      foreignRemove: run(() => el.removeAttributeNode(other.createAttribute('data-f'))),
+      removeNonceAttribute: (() => { el.setAttribute('nonce', 'n2'); const before = el.nonce; el.removeAttribute('nonce'); return [before, el.nonce]; })(),
+      setNonceNS: (() => { el.setAttributeNS(null, 'nonce', 'n3'); const before = el.nonce; el.removeAttributeNS(null, 'nonce'); return [before, el.nonce]; })(),
+      styleNS: (() => { el.setAttributeNS(null, 'style', 'color: rgb(4, 5, 6)'); const before = color(); el.removeAttributeNS(null, 'style'); return [before, color()]; })(),
+    };
+    el.remove();
+  }
+  // Importing and adopting nodes of every kind from another document.
+  {
+    const other = document.implementation.createHTMLDocument('t');
+    const kinds = {
+      attr: () => { const a = other.createAttribute('Data-A'); a.value = 'v'; return a; },
+      attrNS: () => { const a = other.createAttributeNS('urn:x', 'p:q'); a.value = 'w'; return a; },
+      pi: () => other.createProcessingInstruction('target', 'data'),
+      comment: () => other.createComment('note'),
+      text: () => other.createTextNode('words'),
+      doctype: () => other.implementation.createDocumentType('html', 'pub', 'sys'),
+      fragment: () => { const f = other.createDocumentFragment(); f.append(other.createElement('i'), 'x'); return f; },
+      element: () => { const e = other.createElement('b'); e.setAttribute('k', 'v'); e.textContent = 't'; return e; },
+      shadow: () => other.createElement('div').attachShadow({ mode: 'open' }),
+      document: () => other,
+    };
+    const describe = node => node == null ? null : [node.nodeType, node.nodeName, node.nodeValue, node.ownerDocument === document, node.namespaceURI === undefined ? 'undefined' : node.namespaceURI, node.prefix === undefined ? 'undefined' : node.prefix, node.localName === undefined ? 'undefined' : node.localName, node.nodeType === 10 ? [node.publicId, node.systemId] : node.nodeType === 11 ? node.childNodes.length : node.nodeType === 1 ? node.outerHTML : null];
+    out.imports = {};
+    for (const [name, make] of Object.entries(kinds)) {
+      out.imports[name] = [run(() => describe(document.importNode(make(), true))), run(() => describe(document.importNode(make(), false))), run(() => { const node = make(); const adopted = document.adoptNode(node); return [describe(adopted), adopted === node]; })];
+    }
+  }
+  // HTMLInputElement checked / defaultChecked brand checks.
+  {
+    const proto = HTMLInputElement.prototype, input = document.createElement('input');
+    out.checkedBrands = {};
+    for (const name of ['checked', 'defaultChecked']) {
+      const { get, set } = Object.getOwnPropertyDescriptor(proto, name);
+      out.checkedBrands[name] = [plain, 5, document.createElement('div'), input].map(receiver => [run(() => get.call(receiver)), run(() => set.call(receiver, true))]);
+    }
+  }
   host.remove();
   return out;
 })()

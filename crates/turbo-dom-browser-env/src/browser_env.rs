@@ -928,6 +928,15 @@ fn handle_of(scope: &mut v8::PinScope, obj: v8::Local<v8::Object>) -> Option<Han
     v.uint32_value(scope).map(Handle::from_raw)
 }
 
+/// The node behind an element-template accessor's holder. Template accessors run only on
+/// element-template instances, and each one carries a node handle in field 0: `wrap_inner`
+/// stores it in every wrapper, and the raw views `dom_accessor_dispatch` builds store the
+/// receiver's handle after validating it (projection deletes the template's own accessors
+/// from wrappers before page script can reach them).
+fn holder_handle(scope: &mut v8::PinScope, args: &v8::PropertyCallbackArguments) -> Handle {
+    handle_of(scope, args.holder()).expect("element-template holders carry a node handle")
+}
+
 /// Read an actual native attribute without consulting guest overrides.
 pub fn node_attribute(
     scope: &mut v8::PinScope,
@@ -1460,38 +1469,15 @@ fn el_attach_shadow(
     mut rv: v8::ReturnValue,
 ) {
     let _dom = DomScope::for_object(scope, args.this());
-    let Some(host) = receiver_handle(scope, &args, &[1]) else {
-        return;
-    };
-    let Ok(options) = v8::Local::<v8::Object>::try_from(args.get(0)) else {
-        let text = v8::String::new(scope, "attachShadow requires an options dictionary").unwrap();
-        let error = v8::Exception::type_error(scope, text);
-        scope.throw_exception(error);
-        return;
-    };
-    let key = v8::String::new(scope, "mode").unwrap();
-    let Some(mode) = options.get(scope, key.into()) else {
-        return;
-    };
-    let mode = mode.to_rust_string_lossy(scope);
-    if mode != "open" && mode != "closed" {
-        let text = v8::String::new(scope, "mode must be open or closed").unwrap();
-        let error = v8::Exception::type_error(scope, text);
-        scope.throw_exception(error);
-        return;
-    }
-    let key = v8::String::new(scope, "slotAssignment").unwrap();
-    let Some(value) = options.get(scope, key.into()) else {
-        return;
-    };
-    let assignment = if value.is_undefined() {
-        "named".to_string()
-    } else {
-        let Some(value) = value.to_string(scope) else {
-            return;
-        };
-        value.to_rust_string_lossy(scope)
-    };
+    // custom_elements.js's Element.prototype.attachShadow is this native's only caller: it
+    // brand-checks the receiver as an element and passes a plain ShadowRootInit whose mode is
+    // "open" or "closed" and whose slotAssignment is a string.
+    let host =
+        receiver_handle(scope, &args, &[1]).expect("attachShadow's wrapper checks the element");
+    let options = v8::Local::<v8::Object>::try_from(args.get(0)).expect("a ShadowRootInit");
+    let mode = get_str_prop(scope, options, "mode").expect("a validated ShadowRootMode");
+    let assignment =
+        get_str_prop(scope, options, "slotAssignment").expect("a slotAssignment string");
     if assignment != "named" && assignment != "manual" {
         let text = v8::String::new(scope, "Invalid slotAssignment").unwrap();
         let error = v8::Exception::type_error(scope, text);
@@ -1704,101 +1690,6 @@ fn replace_character_data(
     range_live::replacing_data(scope, node, offset, count, inserted.len());
     units.splice(offset..offset + count, inserted);
     with_tree_mut(|tree| tree.set_text_content_utf16(node, &units));
-}
-fn el_insert_data(
-    scope: &mut v8::PinScope,
-    args: v8::FunctionCallbackArguments,
-    _rv: v8::ReturnValue,
-) {
-    let _dom = DomScope::for_object(scope, args.this());
-    let Some(h) = receiver_handle(scope, &args, &[3, 4, 7, 8]) else {
-        return;
-    };
-    let Some(off) = arg_usize(scope, &args, 0) else {
-        return;
-    };
-    let Some(data) = dom_units(scope, args.get(1)) else {
-        return;
-    };
-    replace_character_data(scope, h, off, 0, &data);
-}
-fn el_delete_data(
-    scope: &mut v8::PinScope,
-    args: v8::FunctionCallbackArguments,
-    _rv: v8::ReturnValue,
-) {
-    let _dom = DomScope::for_object(scope, args.this());
-    let Some(h) = receiver_handle(scope, &args, &[3, 4, 7, 8]) else {
-        return;
-    };
-    let Some(off) = arg_usize(scope, &args, 0) else {
-        return;
-    };
-    let Some(count) = arg_usize(scope, &args, 1) else {
-        return;
-    };
-    replace_character_data(scope, h, off, count, &[]);
-}
-fn el_append_data(
-    scope: &mut v8::PinScope,
-    args: v8::FunctionCallbackArguments,
-    _rv: v8::ReturnValue,
-) {
-    let _dom = DomScope::for_object(scope, args.this());
-    let Some(h) = receiver_handle(scope, &args, &[3, 4, 7, 8]) else {
-        return;
-    };
-    let Some(data) = dom_units(scope, args.get(0)) else {
-        return;
-    };
-    let offset = character_units(h).len();
-    replace_character_data(scope, h, offset, 0, &data);
-}
-fn el_replace_data(
-    scope: &mut v8::PinScope,
-    args: v8::FunctionCallbackArguments,
-    _rv: v8::ReturnValue,
-) {
-    let _dom = DomScope::for_object(scope, args.this());
-    let Some(h) = receiver_handle(scope, &args, &[3, 4, 7, 8]) else {
-        return;
-    };
-    let Some(off) = arg_usize(scope, &args, 0) else {
-        return;
-    };
-    let Some(count) = arg_usize(scope, &args, 1) else {
-        return;
-    };
-    let Some(data) = dom_units(scope, args.get(2)) else {
-        return;
-    };
-    replace_character_data(scope, h, off, count, &data);
-}
-fn el_substring_data(
-    scope: &mut v8::PinScope,
-    args: v8::FunctionCallbackArguments,
-    mut rv: v8::ReturnValue,
-) {
-    let _dom = DomScope::for_object(scope, args.this());
-    let Some(h) = receiver_handle(scope, &args, &[3, 4, 7, 8]) else {
-        return;
-    };
-    let Some(off) = arg_usize(scope, &args, 0) else {
-        return;
-    };
-    let Some(count) = arg_usize(scope, &args, 1) else {
-        return;
-    };
-    if !checked_character_offset(scope, h, off) {
-        return;
-    }
-    let units = character_units(h);
-    let end = off.saturating_add(count).min(units.len());
-    rv.set(
-        v8::String::new_from_two_byte(scope, &units[off..end], v8::NewStringType::Normal)
-            .unwrap()
-            .into(),
-    );
 }
 fn el_split_text(
     scope: &mut v8::PinScope,
@@ -3084,42 +2975,6 @@ fn doc_create_attribute_ns<'s, 'i>(
         rv.set(object.into());
     }
 }
-fn get_named_node_name(
-    scope: &mut v8::PinScope,
-    name: v8::Local<v8::Name>,
-    args: v8::PropertyCallbackArguments,
-    rv: v8::ReturnValue<v8::Value>,
-) {
-    get_node_name(scope, name, args, rv);
-}
-fn get_doctype_public(
-    scope: &mut v8::PinScope,
-    _name: v8::Local<v8::Name>,
-    args: v8::PropertyCallbackArguments,
-    mut rv: v8::ReturnValue<v8::Value>,
-) {
-    let _dom = DomScope::for_object(scope, args.holder());
-    let value = handle_of(scope, args.holder())
-        .and_then(|node| {
-            with_tree(|tree| tree.doctype_public_id(node).map(str::to_owned)).flatten()
-        })
-        .unwrap_or_default();
-    rv.set(v8::String::new(scope, &value).unwrap().into());
-}
-fn get_doctype_system(
-    scope: &mut v8::PinScope,
-    _name: v8::Local<v8::Name>,
-    args: v8::PropertyCallbackArguments,
-    mut rv: v8::ReturnValue<v8::Value>,
-) {
-    let _dom = DomScope::for_object(scope, args.holder());
-    let value = handle_of(scope, args.holder())
-        .and_then(|node| {
-            with_tree(|tree| tree.doctype_system_id(node).map(str::to_owned)).flatten()
-        })
-        .unwrap_or_default();
-    rv.set(v8::String::new(scope, &value).unwrap().into());
-}
 fn get_attr_owner(
     scope: &mut v8::PinScope,
     _name: v8::Local<v8::Name>,
@@ -3302,9 +3157,7 @@ fn get_inner_html(
     mut rv: v8::ReturnValue<v8::Value>,
 ) {
     let _dom = DomScope::for_object(scope, args.holder());
-    let Some(h) = handle_of(scope, args.holder()) else {
-        return;
-    };
+    let h = holder_handle(scope, &args);
     let node = wrap(scope, h);
     let html = template_contents::serialize(scope, node, false);
     rv.set(unit_string(scope, &html).into());
@@ -3317,9 +3170,7 @@ fn set_inner_html<'s>(
     _rv: v8::ReturnValue<()>,
 ) {
     let _dom = DomScope::for_object(scope, args.holder());
-    let Some(h) = handle_of(scope, args.holder()) else {
-        return;
-    };
+    let h = holder_handle(scope, &args);
     let Some(html) = trusted_types::units(
         scope,
         args.holder(),
@@ -3357,9 +3208,7 @@ fn get_outer_html(
     mut rv: v8::ReturnValue<v8::Value>,
 ) {
     let _dom = DomScope::for_object(scope, args.holder());
-    let Some(h) = handle_of(scope, args.holder()) else {
-        return;
-    };
+    let h = holder_handle(scope, &args);
     let node = wrap(scope, h);
     let html = template_contents::serialize(scope, node, true);
     rv.set(unit_string(scope, &html).into());
@@ -3451,9 +3300,7 @@ fn get_children(
     mut rv: v8::ReturnValue<v8::Value>,
 ) {
     let _dom = DomScope::for_object(scope, args.holder());
-    let Some(h) = handle_of(scope, args.holder()) else {
-        return;
-    };
+    let h = holder_handle(scope, &args);
     let kids: Vec<Handle> = with_tree(|t| {
         t.children(h)
             .into_iter()
@@ -3462,8 +3309,6 @@ fn get_children(
     })
     .unwrap_or_default();
     let arr = node_array(scope, kids);
-    bind_method(scope, arr.into(), "item", nodelist_item);
-    bind_method(scope, arr.into(), "namedItem", nodelist_named_item);
     rv.set(arr.into());
 }
 
@@ -3474,9 +3319,7 @@ fn get_parent_element(
     mut rv: v8::ReturnValue<v8::Value>,
 ) {
     let _dom = DomScope::for_object(scope, args.holder());
-    let Some(h) = handle_of(scope, args.holder()) else {
-        return;
-    };
+    let h = holder_handle(scope, &args);
     let p = with_tree(|t| {
         NodeRef::new(t, h)
             .parent()
@@ -3495,9 +3338,7 @@ fn get_first_element_child(
     mut rv: v8::ReturnValue<v8::Value>,
 ) {
     let _dom = DomScope::for_object(scope, args.holder());
-    let Some(h) = handle_of(scope, args.holder()) else {
-        return;
-    };
+    let h = holder_handle(scope, &args);
     let c = with_tree(|t| NodeRef::new(t, h).first_element_child().map(|x| x.handle())).flatten();
     let v = wrap_opt(scope, c);
     rv.set(v);
@@ -3510,9 +3351,7 @@ fn get_namespace_uri(
     mut rv: v8::ReturnValue<v8::Value>,
 ) {
     let _dom = DomScope::for_object(scope, args.holder());
-    let Some(h) = handle_of(scope, args.holder()) else {
-        return;
-    };
+    let h = holder_handle(scope, &args);
     let namespace = with_tree(|tree| tree.namespace_uri_utf16(h)).flatten();
     match namespace {
         Some(namespace) => rv.set(unit_string(scope, &namespace).into()),
@@ -3662,19 +3501,6 @@ fn el_noop(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, _rv: v
     receiver_handle(scope, &args, &[1]);
 }
 
-/// Constraint-validation predicates (`checkValidity`/`reportValidity`) → always valid
-/// (there is no interactive validation UI to fail against).
-fn el_valid_true(
-    scope: &mut v8::PinScope,
-    args: v8::FunctionCallbackArguments,
-    mut rv: v8::ReturnValue,
-) {
-    let _dom = DomScope::for_object(scope, args.this());
-    if receiver_handle(scope, &args, &[1]).is_none() {
-        return;
-    }
-    rv.set(v8::Boolean::new(scope, true).into());
-}
 fn el_get_bounding_client_rect(
     scope: &mut v8::PinScope,
     args: v8::FunctionCallbackArguments,
@@ -3982,9 +3808,7 @@ fn get_is_connected(
     mut rv: v8::ReturnValue<v8::Value>,
 ) {
     let _dom = DomScope::for_object(scope, args.holder());
-    let Some(h) = handle_of(scope, args.holder()) else {
-        return;
-    };
+    let h = holder_handle(scope, &args);
     let c = with_tree(|t| is_connected(t, h)).unwrap_or(false);
     rv.set(v8::Boolean::new(scope, c).into());
 }
@@ -3997,9 +3821,7 @@ fn get_attributes(
     mut rv: v8::ReturnValue<v8::Value>,
 ) {
     let _dom = DomScope::for_object(scope, args.holder());
-    let Some(h) = handle_of(scope, args.holder()) else {
-        return;
-    };
+    let h = holder_handle(scope, &args);
     let attrs = with_tree_mut(|tree| {
         let records = tree.attributes_units(h);
         records
@@ -4011,9 +3833,6 @@ fn get_attributes(
     })
     .unwrap_or_default();
     let arr = node_array(scope, attrs);
-    // NamedNodeMap accessors (`attributes.item(i)` / `attributes.namedItem(name)`).
-    bind_method(scope, arr.into(), "item", nodelist_item);
-    bind_method(scope, arr.into(), "namedItem", nodelist_named_item);
     rv.set(arr.into());
 }
 
@@ -4120,42 +3939,6 @@ fn el_has_child_nodes(
     rv.set(v8::Boolean::new(scope, has).into());
 }
 
-/// `collection.namedItem(name)` for the array-like NodeList/HTMLCollection we hand
-/// back — returns the first element whose `id` (or `name`) matches, else null. Bound
-/// alongside `.item` so libs that call `namedItem` (React-DOM, form-collection code)
-/// don't hit "namedItem is not a function".
-fn nodelist_named_item(
-    scope: &mut v8::PinScope,
-    args: v8::FunctionCallbackArguments,
-    mut rv: v8::ReturnValue,
-) {
-    let _dom = DomScope::for_object(scope, args.this());
-    let name = arg_str(scope, &args, 0);
-    let this = args.this();
-    let len = this
-        .get(scope, v8::String::new(scope, "length").unwrap().into())
-        .and_then(|v| v.uint32_value(scope))
-        .unwrap_or(0);
-    for i in 0..len {
-        let Some(item) = this.get_index(scope, i) else {
-            continue;
-        };
-        let Ok(obj) = v8::Local::<v8::Object>::try_from(item) else {
-            continue;
-        };
-        for attr in ["id", "name"] {
-            let key = v8::String::new(scope, attr).unwrap();
-            if let Some(val) = obj.get(scope, key.into()) {
-                if val.is_string() && val.to_rust_string_lossy(scope) == name {
-                    rv.set(item);
-                    return;
-                }
-            }
-        }
-    }
-    rv.set_null();
-}
-
 fn el_query_selector_all<'s>(
     scope: &mut v8::PinScope<'s, '_>,
     args: v8::FunctionCallbackArguments<'s>,
@@ -4181,8 +3964,6 @@ fn el_query_selector_all<'s>(
     })
     .unwrap_or_default();
     let arr = node_array(scope, handles);
-    bind_method(scope, arr.into(), "item", nodelist_item);
-    bind_method(scope, arr.into(), "namedItem", nodelist_named_item);
     rv.set(arr.into());
 }
 
@@ -4197,9 +3978,7 @@ fn get_tag_name(
     mut rv: v8::ReturnValue<v8::Value>,
 ) {
     let _dom = DomScope::for_object(scope, args.holder());
-    let Some(h) = handle_of(scope, args.holder()) else {
-        return;
-    };
+    let h = holder_handle(scope, &args);
     let tag = with_tree(|t| t.tag_name_utf16(h))
         .flatten()
         .unwrap_or_default();
@@ -4213,9 +3992,7 @@ fn get_text_content(
     mut rv: v8::ReturnValue<v8::Value>,
 ) {
     let _dom = DomScope::for_object(scope, args.holder());
-    let Some(h) = handle_of(scope, args.holder()) else {
-        return;
-    };
+    let h = holder_handle(scope, &args);
     let txt = with_tree(|t| t.text_content_utf16(h)).unwrap_or_default();
     rv.set(unit_string(scope, &txt).into());
 }
@@ -4228,9 +4005,7 @@ fn set_text_content<'s>(
     _rv: v8::ReturnValue<()>,
 ) {
     let _dom = DomScope::for_object(scope, args.holder());
-    let Some(h) = handle_of(scope, args.holder()) else {
-        return;
-    };
+    let h = holder_handle(scope, &args);
     let Some(units) = trusted_types::script_units(scope, args.holder(), value, "textContent", true)
     else {
         return;
@@ -4255,9 +4030,7 @@ fn get_id(
     mut rv: v8::ReturnValue<v8::Value>,
 ) {
     let _dom = DomScope::for_object(scope, args.holder());
-    let Some(h) = handle_of(scope, args.holder()) else {
-        return;
-    };
+    let h = holder_handle(scope, &args);
     let id = with_tree(|t| t.get_attribute_utf16(h, "id"))
         .flatten()
         .unwrap_or_default();
@@ -4272,9 +4045,7 @@ fn set_id(
     _rv: v8::ReturnValue<()>,
 ) {
     let _dom = DomScope::for_object(scope, args.holder());
-    let Some(h) = handle_of(scope, args.holder()) else {
-        return;
-    };
+    let h = holder_handle(scope, &args);
     let Some(v) = dom_units(scope, value) else {
         return;
     };
@@ -4290,9 +4061,7 @@ fn get_class_name(
     mut rv: v8::ReturnValue<v8::Value>,
 ) {
     let _dom = DomScope::for_object(scope, args.holder());
-    let Some(h) = handle_of(scope, args.holder()) else {
-        return;
-    };
+    let h = holder_handle(scope, &args);
     let c = with_tree(|t| t.get_attribute_utf16(h, "class"))
         .flatten()
         .unwrap_or_default();
@@ -4307,9 +4076,7 @@ fn set_class_name(
     _rv: v8::ReturnValue<()>,
 ) {
     let _dom = DomScope::for_object(scope, args.holder());
-    let Some(h) = handle_of(scope, args.holder()) else {
-        return;
-    };
+    let h = holder_handle(scope, &args);
     let Some(v) = dom_units(scope, value) else {
         return;
     };
@@ -4327,9 +4094,7 @@ fn get_content_editable(
     mut rv: v8::ReturnValue<v8::Value>,
 ) {
     let _dom = DomScope::for_object(scope, args.holder());
-    let Some(h) = handle_of(scope, args.holder()) else {
-        return;
-    };
+    let h = holder_handle(scope, &args);
     let attr = with_tree(|t| attr_get(t, h, "contenteditable")).flatten();
     let out = match attr.as_deref() {
         Some("") | Some("true") => "true",
@@ -4338,21 +4103,6 @@ fn get_content_editable(
         _ => "inherit",
     };
     rv.set(v8::String::new(scope, out).unwrap().into());
-}
-
-fn set_content_editable(
-    scope: &mut v8::PinScope,
-    _name: v8::Local<v8::Name>,
-    value: v8::Local<v8::Value>,
-    args: v8::PropertyCallbackArguments,
-    _rv: v8::ReturnValue<()>,
-) {
-    let _dom = DomScope::for_object(scope, args.holder());
-    let Some(h) = handle_of(scope, args.holder()) else {
-        return;
-    };
-    let v = value.to_rust_string_lossy(scope);
-    with_tree_mut(|t| t.set_attribute(h, "contenteditable", &v));
 }
 
 // `element.isContentEditable` — true when the element itself is editable (contenteditable=""|"true")
@@ -4405,9 +4155,7 @@ fn get_parent_node(
     mut rv: v8::ReturnValue<v8::Value>,
 ) {
     let _dom = DomScope::for_object(scope, args.holder());
-    let Some(h) = handle_of(scope, args.holder()) else {
-        return;
-    };
+    let h = holder_handle(scope, &args);
     let found = with_tree(|t| NodeRef::new(t, h).parent().map(|x| x.handle())).flatten();
     let v = wrap_opt(scope, found);
     rv.set(v);
@@ -4420,9 +4168,7 @@ fn get_first_child(
     mut rv: v8::ReturnValue<v8::Value>,
 ) {
     let _dom = DomScope::for_object(scope, args.holder());
-    let Some(h) = handle_of(scope, args.holder()) else {
-        return;
-    };
+    let h = holder_handle(scope, &args);
     let found = with_tree(|t| NodeRef::new(t, h).first_child().map(|x| x.handle())).flatten();
     let v = wrap_opt(scope, found);
     rv.set(v);
@@ -4435,9 +4181,7 @@ fn get_next_sibling(
     mut rv: v8::ReturnValue<v8::Value>,
 ) {
     let _dom = DomScope::for_object(scope, args.holder());
-    let Some(h) = handle_of(scope, args.holder()) else {
-        return;
-    };
+    let h = holder_handle(scope, &args);
     let found = with_tree(|t| NodeRef::new(t, h).next_sibling().map(|x| x.handle())).flatten();
     let v = wrap_opt(scope, found);
     rv.set(v);
@@ -4467,13 +4211,8 @@ fn listener_options<'s>(
     args: &v8::FunctionCallbackArguments,
     remove: bool,
 ) -> Option<v8::Local<'s, v8::Object>> {
-    if args.length() < 2 {
-        let message =
-            v8::String::new(scope, "Event listener registration requires 2 arguments").unwrap();
-        let error = v8::Exception::type_error(scope, message);
-        scope.throw_exception(error);
-        return None;
-    }
+    // browser_env.js's EventTarget wrappers call the node natives with at least 2 arguments.
+    debug_assert!(args.length() >= 2);
     let top = with_tree(|tree| {
         handle_of(scope, args.this()).is_some_and(|node| {
             tree.node_type_id(node) == 9 || tree.local_name(node) == Some("body")
@@ -4488,9 +4227,9 @@ fn el_add_event_listener<'s, 'i>(
     _rv: v8::ReturnValue,
 ) {
     let _dom = DomScope::for_object(scope, args.this());
-    let Some(node) = receiver_handle(scope, &args, &[]) else {
-        return;
-    };
+    // browser_env.js's EventTarget wrapper routes only nodes here (others go to the window /
+    // EventTarget callbacks).
+    let node = receiver_handle(scope, &args, &[]).expect("the EventTarget wrapper passes a node");
     let Some(options) = listener_options(scope, &args, false) else {
         return;
     };
@@ -4555,9 +4294,9 @@ fn el_remove_event_listener(
     _rv: v8::ReturnValue,
 ) {
     let _dom = DomScope::for_object(scope, args.this());
-    let Some(node) = receiver_handle(scope, &args, &[]) else {
-        return;
-    };
+    // browser_env.js's EventTarget wrapper routes only nodes here (others go to the window /
+    // EventTarget callbacks).
+    let node = receiver_handle(scope, &args, &[]).expect("the EventTarget wrapper passes a node");
     let Some(options) = listener_options(scope, &args, true) else {
         return;
     };
@@ -4703,10 +4442,9 @@ fn el_dispatch_event(
     mut rv: v8::ReturnValue,
 ) {
     let _dom = DomScope::for_object(scope, args.this());
-    let Some(target) = receiver_handle(scope, &args, &[]) else {
-        rv.set(v8::Boolean::new(scope, true).into());
-        return;
-    };
+    // Callers pass a node: browser_env.js's EventTarget wrapper routes only nodes here and
+    // dispatch_host_event checks the target's handle first.
+    let target = receiver_handle(scope, &args, &[]).expect("dispatchEvent's callers pass a node");
     let event = args.get(0);
     let Ok(event_obj) = v8::Local::<v8::Object>::try_from(event) else {
         let message = v8::String::new(scope, "dispatchEvent requires an Event").unwrap();
@@ -5672,9 +5410,7 @@ fn get_node_type(
     mut rv: v8::ReturnValue<v8::Value>,
 ) {
     let _dom = DomScope::for_object(scope, args.holder());
-    let Some(h) = handle_of(scope, args.holder()) else {
-        return;
-    };
+    let h = holder_handle(scope, &args);
     let nt = with_tree(|t| t.node_type_id(h)).unwrap_or(1);
     rv.set(v8::Integer::new(scope, nt as i32).into());
 }
@@ -5688,9 +5424,7 @@ fn get_node_data(
     mut rv: v8::ReturnValue<v8::Value>,
 ) {
     let _dom = DomScope::for_object(scope, args.holder());
-    let Some(h) = handle_of(scope, args.holder()) else {
-        return;
-    };
+    let h = holder_handle(scope, &args);
     let nt = with_tree(|t| t.node_type_id(h)).unwrap_or(1);
     if matches!(nt, 2 | 3 | 7 | 8) {
         let data = with_tree(|t| t.node_value_utf16(h))
@@ -5709,9 +5443,7 @@ fn set_node_data(
     _rv: v8::ReturnValue<()>,
 ) {
     let _dom = DomScope::for_object(scope, args.holder());
-    let Some(h) = handle_of(scope, args.holder()) else {
-        return;
-    };
+    let h = holder_handle(scope, &args);
     if !with_tree(|tree| matches!(tree.node_type_id(h), 2 | 3 | 7 | 8)).unwrap_or(false) {
         return;
     }
@@ -5738,9 +5470,7 @@ fn get_local_name(
     mut rv: v8::ReturnValue<v8::Value>,
 ) {
     let _dom = DomScope::for_object(scope, args.holder());
-    let Some(h) = handle_of(scope, args.holder()) else {
-        return;
-    };
+    let h = holder_handle(scope, &args);
     match with_tree(|t| t.local_name_utf16(h)).flatten() {
         Some(ln) => rv.set(unit_string(scope, &ln).into()),
         None => rv.set(v8::null(scope).into()),
@@ -5754,9 +5484,7 @@ fn get_node_name(
     mut rv: v8::ReturnValue<v8::Value>,
 ) {
     let _dom = DomScope::for_object(scope, args.holder());
-    let Some(h) = handle_of(scope, args.holder()) else {
-        return;
-    };
+    let h = holder_handle(scope, &args);
     if let Some(units) = with_tree(|tree| match tree.node_type_id(h) {
         1 => tree.tag_name_utf16(h),
         2 => tree.qualified_name_utf16(h),
@@ -5769,25 +5497,16 @@ fn get_node_name(
         rv.set(unit_string(scope, &units).into());
         return;
     }
-    let (nt, tag) = with_tree(|t| (t.node_type_id(h), t.tag_name(h))).unwrap_or((1, None));
-    let name = match nt {
-        2 => with_tree(|tree| tree.qualified_name(h).unwrap_or_default().to_owned())
-            .unwrap_or_default(),
-        3 => "#text".to_string(),
-        7 => with_tree(|tree| {
-            tree.processing_instruction_target(h)
-                .unwrap_or_default()
-                .to_owned()
-        })
-        .unwrap_or_default(),
-        8 => "#comment".to_string(),
-        9 => "#document".to_string(),
-        10 => with_tree(|tree| tree.doctype_name(h).unwrap_or_default().to_owned())
-            .unwrap_or_default(),
-        11 => "#document-fragment".to_string(),
-        _ => tag.unwrap_or_default(),
+    // Elements, attributes, processing instructions and doctypes named themselves above
+    // (the tree has no CDATA sections).
+    let name = match with_tree(|t| t.node_type_id(h)) {
+        Some(3) => "#text",
+        Some(8) => "#comment",
+        Some(9) => "#document",
+        Some(11) => "#document-fragment",
+        kind => unreachable!("node type {kind:?} has a UTF-16 name"),
     };
-    rv.set(v8::String::new(scope, &name).unwrap().into());
+    rv.set(v8::String::new(scope, name).unwrap().into());
 }
 
 fn get_child_nodes(
@@ -5797,34 +5516,10 @@ fn get_child_nodes(
     mut rv: v8::ReturnValue<v8::Value>,
 ) {
     let _dom = DomScope::for_object(scope, args.holder());
-    let Some(h) = handle_of(scope, args.holder()) else {
-        return;
-    };
+    let h = holder_handle(scope, &args);
     let kids = with_tree(|t| t.children(h)).unwrap_or_default();
     let arr = node_array(scope, kids);
-    bind_method(scope, arr.into(), "item", nodelist_item);
-    bind_method(scope, arr.into(), "namedItem", nodelist_named_item);
     rv.set(arr.into());
-}
-
-/// `NodeList.item(i)` → the i-th node, or null when out of range. Bound on every node-collection
-/// array we hand back (childNodes / querySelectorAll / getElementsBy*), so libs calling `.item(i)`
-/// instead of `[i]` (e.g. React-DOM's child reconciliation) don't crash.
-fn nodelist_item(
-    scope: &mut v8::PinScope,
-    args: v8::FunctionCallbackArguments,
-    mut rv: v8::ReturnValue,
-) {
-    let _dom = DomScope::for_object(scope, args.this());
-    let i = args.get(0).number_value(scope).unwrap_or(f64::NAN);
-    if i.is_nan() || i < 0.0 {
-        rv.set_null();
-        return;
-    }
-    match args.this().get_index(scope, i as u32) {
-        Some(v) if !v.is_undefined() => rv.set(v),
-        _ => rv.set_null(),
-    }
 }
 
 fn get_owner_document(
@@ -6026,8 +5721,6 @@ fn doc_query_selector_all<'s>(
     })
     .unwrap_or_default();
     let arr = node_array(scope, handles);
-    bind_method(scope, arr.into(), "item", nodelist_item);
-    bind_method(scope, arr.into(), "namedItem", nodelist_named_item);
     rv.set(arr.into());
 }
 
@@ -6314,9 +6007,6 @@ fn build_el_template<'s>(scope: &mut v8::PinScope<'s, '_>) -> v8::Local<'s, v8::
     tmpl_accessor(scope, tmpl, "__attrValue", get_node_data, set_attr_value);
     tmpl_getter(scope, tmpl, "__attrOwner", get_attr_owner);
     tmpl_getter(scope, tmpl, "__attrSpecified", get_attr_specified);
-    tmpl_getter(scope, tmpl, "__nodeName", get_named_node_name);
-    tmpl_getter(scope, tmpl, "publicId", get_doctype_public);
-    tmpl_getter(scope, tmpl, "systemId", get_doctype_system);
     tmpl_method(scope, tmpl, "setAttributeNode", el_set_attribute_node);
     tmpl_method(scope, tmpl, "removeAttributeNode", el_remove_attribute_node);
     tmpl_method(scope, tmpl, "hasAttribute", el_has_attribute);
@@ -6347,20 +6037,14 @@ fn build_el_template<'s>(scope: &mut v8::PinScope<'s, '_>) -> v8::Local<'s, v8::
     tmpl_method(scope, tmpl, "select", el_noop);
     tmpl_method(scope, tmpl, "scrollTo", el_noop);
     tmpl_method(scope, tmpl, "scrollBy", el_noop);
-    tmpl_method(scope, tmpl, "checkValidity", el_valid_true);
-    tmpl_method(scope, tmpl, "reportValidity", el_valid_true);
     tmpl_method(
         scope,
         tmpl,
         "getBoundingClientRect",
         el_get_bounding_client_rect,
     );
-    // CharacterData (text/comment node) mutation — native over rtdom's text storage.
-    tmpl_method(scope, tmpl, "insertData", el_insert_data);
-    tmpl_method(scope, tmpl, "deleteData", el_delete_data);
-    tmpl_method(scope, tmpl, "appendData", el_append_data);
-    tmpl_method(scope, tmpl, "replaceData", el_replace_data);
-    tmpl_method(scope, tmpl, "substringData", el_substring_data);
+    // Text.splitText — native over rtdom's text storage (CharacterData's data methods are
+    // document_basics.js's, over the native replaceCharacterData).
     tmpl_method(scope, tmpl, "splitText", el_split_text);
     // native cascade lookup (inherited-property resolution) used by getComputedStyle.
     tmpl_method(scope, tmpl, "__cascadeProp", el_cascade_prop);
@@ -6414,13 +6098,8 @@ fn build_el_template<'s>(scope: &mut v8::PinScope<'s, '_>) -> v8::Local<'s, v8::
     );
     tmpl_accessor(scope, tmpl, "id", get_id, set_id);
     tmpl_accessor(scope, tmpl, "className", get_class_name, set_class_name);
-    tmpl_accessor(
-        scope,
-        tmpl,
-        "contentEditable",
-        get_content_editable,
-        set_content_editable,
-    );
+    // editing.js owns contentEditable; it brand-checks through this getter.
+    tmpl_getter(scope, tmpl, "contentEditable", get_content_editable);
     tmpl_getter(scope, tmpl, "isContentEditable", get_is_content_editable);
 
     // Node-type constants on every node (`node.TEXT_NODE === 3`, …). dom-accessibility-api compares

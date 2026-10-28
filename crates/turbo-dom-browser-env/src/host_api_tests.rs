@@ -234,3 +234,86 @@ fn native_document_census() {
     reset();
     assert_eq!(native_document_count_for_testing(), 0);
 }
+
+/// The host's Trusted Types entry points: a sink input converts through the document's
+/// policy (a typed value is unwrapped exactly, a string passes only while the policy allows
+/// it), and the engine's code-generation check reads only genuine TrustedScript values.
+#[test]
+fn trusted_types_host_conversion() {
+    with_page("<!doctype html><body></body>", |scope| {
+        let document = object(scope, "document");
+        let typed = eval(
+            scope,
+            "globalThis.typed = trustedTypes.createPolicy('host', { createScript: s => s + ';' }).createScript('a + 1'); typed",
+        );
+        let text = v8::String::new(scope, "b + 2").unwrap().into();
+        let source = trusted_script_source(scope, typed).unwrap();
+        assert_eq!(source.to_rust_string_lossy(scope), "a + 1;");
+        assert!(trusted_script_source(scope, text).is_none());
+        let html = eval(scope, "trustedTypes.emptyHTML");
+        assert!(trusted_script_source(scope, html).is_none());
+        let converted =
+            trusted_type_string(scope, document, typed, "TrustedScript", "eval", "").unwrap();
+        assert_eq!(converted.to_rust_string_lossy(scope), "a + 1;");
+        let converted =
+            trusted_type_string(scope, document, text, "TrustedScript", "eval", "").unwrap();
+        assert_eq!(converted.to_rust_string_lossy(scope), "b + 2");
+        // A policy that refuses string sinks: the string is rejected (with a TypeError), the
+        // typed value still converts.
+        let deny =
+            v8::Local::<v8::Function>::try_from(eval(scope, "(action => action !== 'sink')"))
+                .unwrap();
+        assert!(install_trusted_types_policy(scope, deny));
+        {
+            v8::tc_scope!(let scope, scope);
+            assert!(
+                trusted_type_string(scope, document, text, "TrustedScript", "eval", "").is_none()
+            );
+            let error = scope
+                .exception()
+                .map(|error| error.to_rust_string_lossy(scope));
+            assert!(
+                error
+                    .as_deref()
+                    .is_some_and(|error| error.starts_with("TypeError")),
+                "{error:?}"
+            );
+        }
+        let converted =
+            trusted_type_string(scope, document, typed, "TrustedScript", "eval", "").unwrap();
+        assert_eq!(converted.to_rust_string_lossy(scope), "a + 1;");
+    });
+}
+
+/// The census counts listeners subscribed to an AbortSignal: adding one with a signal adds
+/// a subscription (a plain listener does not), aborting the signal removes it.
+#[test]
+fn native_listener_census() {
+    with_page("<!doctype html><p id=p></p>", |scope| {
+        let before = native_listener_subscription_count_for_testing();
+        eval(
+            scope,
+            "globalThis.p = document.getElementById('p'); p.addEventListener('click', () => {})",
+        );
+        assert_eq!(native_listener_subscription_count_for_testing(), before);
+        eval(scope, "globalThis.controller = new AbortController(); p.addEventListener('click', () => {}, { signal: controller.signal })");
+        assert_eq!(native_listener_subscription_count_for_testing(), before + 1);
+        eval(scope, "controller.abort()");
+        assert_eq!(native_listener_subscription_count_for_testing(), before);
+    });
+}
+
+/// V8's interceptor inline-cache hazard: a load site that read an absent property through
+/// the missing-member interceptor still sees the property once it becomes a real own one.
+#[test]
+fn absent_member_reads_see_later_own_properties() {
+    with_page("<!doctype html><p id=p></p>", |scope| {
+        assert_eq!(
+            json(
+                scope,
+                "(() => { const p = document.getElementById('p'); const read = n => n.__reactProps$x; const before = []; for (let i = 0; i < 2000; i++) before.push(read(p)); p.__reactProps$x = 7; return [before.every(v => v === undefined), read(p), '__reactProps$x' in document.body]; })()"
+            ),
+            "[true,7,false]"
+        );
+    });
+}

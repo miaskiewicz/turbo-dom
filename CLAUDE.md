@@ -16,7 +16,7 @@ to be the cost (a later bench). Don't SoA-ify `core.rs`.
 npm run build         # native addon → turbo-dom-parser.<platform>.node + index.js/.d.ts (napi codegen)
 npm run build:wasm    # wasm32 fallback
 npm test              # JS: node --test  (MUST glob: 'test/*.mjs' — `node --test test/` is misparsed on Node 24)
-npm run test:cov      # same suite + coverage gate (runtime lines≥99 / funcs≥95 / branches≥95)
+npm run test:cov      # same suite + coverage gate (runtime lines 100 / funcs 100 / branches≥97.3)
 npm run test:rust     # cargo test -p turbo-dom  (rtdom crate tests + conformance)
 npm run conformance   # html5lib-tests gate (parser, JS serializer)
 # --- Rust-native DOM runtime (rtdom) ---
@@ -48,7 +48,10 @@ and the Rust runtime (`crates/turbo-dom`, the workspace-member crate published t
 crate — so there's no duplicated copy to keep in sync (the root parser crate has no rtdom module).
 rtdom's line coverage is gated in CI at 100% (P5-cov-core; it was 88.33% at 0.6.0:
 `cargo tarpaulin --engine llvm -p turbo-dom --include-files 'crates/turbo-dom/src/*'`); every
-other crate's floor rises to >= 99, then 100, in the same phase. Every line is covered by a test
+other crate's floor rises to >= 99, then 100, in the same phase. The root parser package's `src/core.rs` is
+gated at 100% too (`--include-files src/core.rs`; `src/core/conformance_tests.rs` runs html5lib-tests
+and the Chrome 156 control through the `Node` and `Soa` outputs) — its `src/lib.rs` / `src/spike.rs`
+napi / wasm glue only runs in Node / a wasm host, so the JS suite covers it. Every line is covered by a test
 that asserts behaviour (web-observable behaviour against a Chrome 156 control); a provably dead
 defensive line is removed or `unreachable!()` with its proof in a comment — never a no-op test
 or a coverage exclusion. Its

@@ -1,8 +1,8 @@
 {
   "browser": "Chrome/156.0.8078.4",
   "v8": "15.6.75",
-  "casesSha256": "baea269d4736f6cdadba7211af3c48cc1bbf1d7390193aa488e462550eafc861",
-  "probeSha256": "8bf0060c80218bdea8a039ee835919890a534722032811886968abbcdcbbfb64",
+  "casesSha256": "8caf9b540c0c9a89fa484a8d0fdebb39d9e9ea959ac10b3833c314a25a56794a",
+  "probeSha256": "f811a594ebd666055d2ad7a4fe5b2c829ec1e9e2a1a0725934bad2d814fb51c4",
   "collectorSha256": "7bd6ffb7440d38e05cd2b8fbe0e84e91cf462043577ceada3e276728ad216172",
   "flags": [
     "--headless=new",
@@ -3085,6 +3085,217 @@
             "shorthands": {
               "margin": "calc(0.5px)"
             }
+          },
+          {
+            "id": "margin|/**/",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "margin|calc(1em + min(1px, 2%))",
+            "cssText": "margin: calc(1em + min(1px, 2%));",
+            "items": [
+              [
+                "margin-top",
+                "calc(1em + min(1px, 2%))"
+              ],
+              [
+                "margin-right",
+                "calc(1em + min(1px, 2%))"
+              ],
+              [
+                "margin-bottom",
+                "calc(1em + min(1px, 2%))"
+              ],
+              [
+                "margin-left",
+                "calc(1em + min(1px, 2%))"
+              ]
+            ],
+            "shorthands": {
+              "margin": "calc(1em + min(1px, 2%))"
+            }
+          },
+          {
+            "id": "margin|calc(1in + 1em)",
+            "cssText": "margin: calc(1em + 96px);",
+            "items": [
+              [
+                "margin-top",
+                "calc(1em + 96px)"
+              ],
+              [
+                "margin-right",
+                "calc(1em + 96px)"
+              ],
+              [
+                "margin-bottom",
+                "calc(1em + 96px)"
+              ],
+              [
+                "margin-left",
+                "calc(1em + 96px)"
+              ]
+            ],
+            "shorthands": {
+              "margin": "calc(1em + 96px)"
+            }
+          },
+          {
+            "id": "margin|calc((1px 2px))",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "margin|calc((1px , 2px))",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "margin|calc(1px + abs(1px))",
+            "cssText": "margin: calc(2px);",
+            "items": [
+              [
+                "margin-top",
+                "calc(2px)"
+              ],
+              [
+                "margin-right",
+                "calc(2px)"
+              ],
+              [
+                "margin-bottom",
+                "calc(2px)"
+              ],
+              [
+                "margin-left",
+                "calc(2px)"
+              ]
+            ],
+            "shorthands": {
+              "margin": "calc(2px)"
+            }
+          },
+          {
+            "id": "margin|calc(min(1px) * min(2px))",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "margin|min(1px 2px)",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "margin|min(1px, calc(1px + 1em))",
+            "cssText": "margin: min(1px, 1em + 1px);",
+            "items": [
+              [
+                "margin-top",
+                "min(1px, 1em + 1px)"
+              ],
+              [
+                "margin-right",
+                "min(1px, 1em + 1px)"
+              ],
+              [
+                "margin-bottom",
+                "min(1px, 1em + 1px)"
+              ],
+              [
+                "margin-left",
+                "min(1px, 1em + 1px)"
+              ]
+            ],
+            "shorthands": {
+              "margin": "min(1px, 1em + 1px)"
+            }
+          },
+          {
+            "id": "margin|min(1px, 1em + 1px)",
+            "cssText": "margin: min(1px, 1em + 1px);",
+            "items": [
+              [
+                "margin-top",
+                "min(1px, 1em + 1px)"
+              ],
+              [
+                "margin-right",
+                "min(1px, 1em + 1px)"
+              ],
+              [
+                "margin-bottom",
+                "min(1px, 1em + 1px)"
+              ],
+              [
+                "margin-left",
+                "min(1px, 1em + 1px)"
+              ]
+            ],
+            "shorthands": {
+              "margin": "min(1px, 1em + 1px)"
+            }
+          },
+          {
+            "id": "margin|min(1px, min(1px, 1em))",
+            "cssText": "margin: min(1px, min(1px, 1em));",
+            "items": [
+              [
+                "margin-top",
+                "min(1px, min(1px, 1em))"
+              ],
+              [
+                "margin-right",
+                "min(1px, min(1px, 1em))"
+              ],
+              [
+                "margin-bottom",
+                "min(1px, min(1px, 1em))"
+              ],
+              [
+                "margin-left",
+                "min(1px, min(1px, 1em))"
+              ]
+            ],
+            "shorthands": {
+              "margin": "min(1px, min(1px, 1em))"
+            }
+          },
+          {
+            "id": "margin|calc(1px + min(1px, 1em))",
+            "cssText": "margin: calc(1px + min(1px, 1em));",
+            "items": [
+              [
+                "margin-top",
+                "calc(1px + min(1px, 1em))"
+              ],
+              [
+                "margin-right",
+                "calc(1px + min(1px, 1em))"
+              ],
+              [
+                "margin-bottom",
+                "calc(1px + min(1px, 1em))"
+              ],
+              [
+                "margin-left",
+                "calc(1px + min(1px, 1em))"
+              ]
+            ],
+            "shorthands": {
+              "margin": "calc(1px + min(1px, 1em))"
+            }
+          },
+          {
+            "id": "margin|calc((1px + 1px) * 2px)",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
           },
           {
             "id": "margin|inherit",
@@ -16475,6 +16686,35 @@
             "shorthands": {}
           },
           {
+            "id": "place-content|baseline center",
+            "cssText": "place-content: baseline center;",
+            "items": [
+              [
+                "align-content",
+                "baseline"
+              ],
+              [
+                "justify-content",
+                "center"
+              ]
+            ],
+            "shorthands": {
+              "place-content": "baseline center"
+            }
+          },
+          {
+            "id": "place-content|last baseline end",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "place-content|center start end",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
             "id": "place-content|inherit",
             "cssText": "place-content: inherit;",
             "items": [
@@ -16997,6 +17237,35 @@
             "shorthands": {}
           },
           {
+            "id": "place-items|center right legacy",
+            "cssText": "place-items: center legacy right;",
+            "items": [
+              [
+                "align-items",
+                "center"
+              ],
+              [
+                "justify-items",
+                "legacy right"
+              ]
+            ],
+            "shorthands": {
+              "place-items": "center legacy right"
+            }
+          },
+          {
+            "id": "place-items|center start end",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "place-items|stretch center start",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
             "id": "place-items|inherit",
             "cssText": "place-items: inherit;",
             "items": [
@@ -17464,6 +17733,12 @@
             "shorthands": {
               "place-self": "anchor-center end"
             }
+          },
+          {
+            "id": "place-self|center start end",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
           },
           {
             "id": "place-self|inherit",
@@ -18645,6 +18920,12 @@
               "background": "",
               "background-position": "left 5px bottom 10px"
             }
+          },
+          {
+            "id": "background-position|left top center",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
           },
           {
             "id": "background-position|inherit",
@@ -19899,6 +20180,12 @@
               "animation": "",
               "animation-range": "normal cover"
             }
+          },
+          {
+            "id": "animation-range|10% 20% 30%",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
           },
           {
             "id": "animation-range|inherit",
@@ -45953,6 +46240,18 @@
             "shorthands": {}
           },
           {
+            "id": "columns|/ 10px",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "columns|1px 2 auto",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
             "id": "columns|inherit",
             "cssText": "columns: inherit;",
             "items": [
@@ -46821,6 +47120,18 @@
             "shorthands": {
               "container": "none"
             }
+          },
+          {
+            "id": "container|a /",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "container|a / size / x",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
           },
           {
             "id": "container|inherit",
@@ -51190,6 +51501,12 @@
             }
           },
           {
+            "id": "font-variant|swash(a) bogus(b)",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
             "id": "font-variant|inherit",
             "cssText": "font-variant: inherit;",
             "items": [
@@ -52310,6 +52627,28 @@
             "cssText": "",
             "items": [],
             "shorthands": {}
+          },
+          {
+            "id": "flex|min(1, 2)",
+            "cssText": "flex: calc(1) 1 0%;",
+            "items": [
+              [
+                "flex-grow",
+                "calc(1)"
+              ],
+              [
+                "flex-shrink",
+                "1"
+              ],
+              [
+                "flex-basis",
+                "0%"
+              ]
+            ],
+            "shorthands": {
+              "-webkit-flex": "calc(1) 1 0%",
+              "flex": "calc(1) 1 0%"
+            }
           },
           {
             "id": "flex|inherit",
@@ -60988,6 +61327,12 @@
             }
           },
           {
+            "id": "grid-row|1 / 2 / 3",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
             "id": "grid-row|inherit",
             "cssText": "grid-row: inherit;",
             "items": [
@@ -62134,6 +62479,18 @@
             }
           },
           {
+            "id": "grid-template|/ 1fr",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "grid-template|1fr /",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
             "id": "grid-template|inherit",
             "cssText": "grid-template: inherit;",
             "items": [
@@ -63148,6 +63505,18 @@
               "grid": "auto-flow 10% / 1fr",
               "grid-template": "none / 1fr"
             }
+          },
+          {
+            "id": "grid|1fr /",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "grid|/ 1fr",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
           },
           {
             "id": "grid|inherit",
@@ -65890,6 +66259,36 @@
             "shorthands": {
               "offset": "10px 20px"
             }
+          },
+          {
+            "id": "offset|path('M 0 0') 10px 0",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "offset|path('M 0 0') / left / top",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "offset|path(M 0 0)",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "offset|path('M 0 0') 10px auto 0",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "offset|path('M 0 0') 10px 5",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
           },
           {
             "id": "offset|inherit",
@@ -71122,6 +71521,18 @@
             }
           },
           {
+            "id": "background|hsl(1px 50% 50%)",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "background|hsl(10% 50% 50%)",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
             "id": "background|inherit",
             "cssText": "background: inherit;",
             "items": [
@@ -75354,6 +75765,114 @@
             }
           },
           {
+            "id": "transition|opacity cubic-bezier(calc(1px), 0, 1, 1)",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "transition|opacity cubic-bezier(min(0.5, 1), 0, 1, 1)",
+            "cssText": "transition: opacity cubic-bezier(0.5, 0, 1, 1);",
+            "items": [
+              [
+                "transition-behavior",
+                "normal"
+              ],
+              [
+                "transition-duration",
+                "0s"
+              ],
+              [
+                "transition-timing-function",
+                "cubic-bezier(0.5, 0, 1, 1)"
+              ],
+              [
+                "transition-delay",
+                "0s"
+              ],
+              [
+                "transition-property",
+                "opacity"
+              ]
+            ],
+            "shorthands": {
+              "-webkit-transition": "opacity cubic-bezier(0.5, 0, 1, 1)",
+              "transition": "opacity cubic-bezier(0.5, 0, 1, 1)"
+            }
+          },
+          {
+            "id": "transition|opacity cubic-bezier(0 0, 0, 1, 1)",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
+            "id": "transition|opacity linear(calc(0), 1)",
+            "cssText": "transition: opacity linear(0 0%, 1 100%);",
+            "items": [
+              [
+                "transition-behavior",
+                "normal"
+              ],
+              [
+                "transition-duration",
+                "0s"
+              ],
+              [
+                "transition-timing-function",
+                "linear(0 0%, 1 100%)"
+              ],
+              [
+                "transition-delay",
+                "0s"
+              ],
+              [
+                "transition-property",
+                "opacity"
+              ]
+            ],
+            "shorthands": {
+              "-webkit-transition": "opacity linear(0 0%, 1 100%)",
+              "transition": "opacity linear(0 0%, 1 100%)"
+            }
+          },
+          {
+            "id": "transition|opacity linear(0, 1 calc(50%))",
+            "cssText": "transition: opacity linear(0 0%, 1 50%);",
+            "items": [
+              [
+                "transition-behavior",
+                "normal"
+              ],
+              [
+                "transition-duration",
+                "0s"
+              ],
+              [
+                "transition-timing-function",
+                "linear(0 0%, 1 50%)"
+              ],
+              [
+                "transition-delay",
+                "0s"
+              ],
+              [
+                "transition-property",
+                "opacity"
+              ]
+            ],
+            "shorthands": {
+              "-webkit-transition": "opacity linear(0 0%, 1 50%)",
+              "transition": "opacity linear(0 0%, 1 50%)"
+            }
+          },
+          {
+            "id": "transition|opacity steps(1, 2, 3)",
+            "cssText": "",
+            "items": [],
+            "shorthands": {}
+          },
+          {
             "id": "transition|inherit",
             "cssText": "transition: inherit;",
             "items": [
@@ -77849,6 +78368,171 @@
             "shorthands": {
               "-webkit-animation": "1s ease 0s 1.5 normal none running spin",
               "animation": "1s ease 0s 1.5 normal none running spin",
+              "animation-range": "normal"
+            }
+          },
+          {
+            "id": "animation|forwards none",
+            "cssText": "animation: auto ease 0s 1 normal forwards running none;",
+            "items": [
+              [
+                "animation-duration",
+                "auto"
+              ],
+              [
+                "animation-timing-function",
+                "ease"
+              ],
+              [
+                "animation-delay",
+                "0s"
+              ],
+              [
+                "animation-iteration-count",
+                "1"
+              ],
+              [
+                "animation-direction",
+                "normal"
+              ],
+              [
+                "animation-fill-mode",
+                "forwards"
+              ],
+              [
+                "animation-play-state",
+                "running"
+              ],
+              [
+                "animation-name",
+                "none"
+              ],
+              [
+                "animation-timeline",
+                "auto"
+              ],
+              [
+                "animation-range-start",
+                "normal"
+              ],
+              [
+                "animation-range-end",
+                "normal"
+              ]
+            ],
+            "shorthands": {
+              "-webkit-animation": "auto ease 0s 1 normal forwards running none",
+              "animation": "auto ease 0s 1 normal forwards running none",
+              "animation-range": "normal"
+            }
+          },
+          {
+            "id": "animation|none forwards",
+            "cssText": "animation: auto ease 0s 1 normal none running forwards;",
+            "items": [
+              [
+                "animation-duration",
+                "auto"
+              ],
+              [
+                "animation-timing-function",
+                "ease"
+              ],
+              [
+                "animation-delay",
+                "0s"
+              ],
+              [
+                "animation-iteration-count",
+                "1"
+              ],
+              [
+                "animation-direction",
+                "normal"
+              ],
+              [
+                "animation-fill-mode",
+                "none"
+              ],
+              [
+                "animation-play-state",
+                "running"
+              ],
+              [
+                "animation-name",
+                "forwards"
+              ],
+              [
+                "animation-timeline",
+                "auto"
+              ],
+              [
+                "animation-range-start",
+                "normal"
+              ],
+              [
+                "animation-range-end",
+                "normal"
+              ]
+            ],
+            "shorthands": {
+              "-webkit-animation": "auto ease 0s 1 normal none running forwards",
+              "animation": "auto ease 0s 1 normal none running forwards",
+              "animation-range": "normal"
+            }
+          },
+          {
+            "id": "animation|spin 1s, none 2s",
+            "cssText": "animation: 1s ease 0s 1 normal none running spin, 2s ease 0s 1 normal none running none;",
+            "items": [
+              [
+                "animation-duration",
+                "1s, 2s"
+              ],
+              [
+                "animation-timing-function",
+                "ease, ease"
+              ],
+              [
+                "animation-delay",
+                "0s, 0s"
+              ],
+              [
+                "animation-iteration-count",
+                "1, 1"
+              ],
+              [
+                "animation-direction",
+                "normal, normal"
+              ],
+              [
+                "animation-fill-mode",
+                "none, none"
+              ],
+              [
+                "animation-play-state",
+                "running, running"
+              ],
+              [
+                "animation-name",
+                "spin, none"
+              ],
+              [
+                "animation-timeline",
+                "auto"
+              ],
+              [
+                "animation-range-start",
+                "normal"
+              ],
+              [
+                "animation-range-end",
+                "normal"
+              ]
+            ],
+            "shorthands": {
+              "-webkit-animation": "1s ease 0s 1 normal none running spin, 2s ease 0s 1 normal none running none",
+              "animation": "1s ease 0s 1 normal none running spin, 2s ease 0s 1 normal none running none",
               "animation-range": "normal"
             }
           },
@@ -89359,6 +90043,633 @@
               ]
             ],
             "shorthands": {}
+          },
+          {
+            "id": "cov-rule-inset-mismatch",
+            "cssText": "column-rule-inset: 1px; row-rule-inset: 2px;",
+            "items": [
+              [
+                "column-rule-inset-cap-start",
+                "1px"
+              ],
+              [
+                "column-rule-inset-cap-end",
+                "1px"
+              ],
+              [
+                "column-rule-inset-junction-start",
+                "1px"
+              ],
+              [
+                "column-rule-inset-junction-end",
+                "1px"
+              ],
+              [
+                "row-rule-inset-cap-start",
+                "2px"
+              ],
+              [
+                "row-rule-inset-cap-end",
+                "2px"
+              ],
+              [
+                "row-rule-inset-junction-start",
+                "2px"
+              ],
+              [
+                "row-rule-inset-junction-end",
+                "2px"
+              ]
+            ],
+            "shorthands": {
+              "column-rule-inset": "1px",
+              "column-rule-inset-cap": "1px",
+              "column-rule-inset-start": "1px",
+              "rule-inset": "",
+              "rule-inset-cap": "",
+              "rule-inset-start": "",
+              "column-rule-inset-end": "1px",
+              "rule-inset-end": "",
+              "column-rule-inset-junction": "1px",
+              "rule-inset-junction": "",
+              "row-rule-inset": "2px",
+              "row-rule-inset-cap": "2px",
+              "row-rule-inset-start": "2px",
+              "row-rule-inset-end": "2px",
+              "row-rule-inset-junction": "2px"
+            }
+          },
+          {
+            "id": "cov-rule-inset-cap-mismatch",
+            "cssText": "column-rule-inset-cap: 1px; row-rule-inset-cap: 2px;",
+            "items": [
+              [
+                "column-rule-inset-cap-start",
+                "1px"
+              ],
+              [
+                "column-rule-inset-cap-end",
+                "1px"
+              ],
+              [
+                "row-rule-inset-cap-start",
+                "2px"
+              ],
+              [
+                "row-rule-inset-cap-end",
+                "2px"
+              ]
+            ],
+            "shorthands": {
+              "column-rule-inset": "",
+              "column-rule-inset-cap": "1px",
+              "column-rule-inset-start": "",
+              "rule-inset": "",
+              "rule-inset-cap": "",
+              "rule-inset-start": "",
+              "column-rule-inset-end": "",
+              "rule-inset-end": "",
+              "row-rule-inset": "",
+              "row-rule-inset-cap": "2px",
+              "row-rule-inset-start": "",
+              "row-rule-inset-end": ""
+            }
+          },
+          {
+            "id": "cov-border-block-mismatch",
+            "cssText": "border-block-start: 1px solid red; border-block-end: 2px solid blue;",
+            "items": [
+              [
+                "border-block-start-width",
+                "1px"
+              ],
+              [
+                "border-block-start-style",
+                "solid"
+              ],
+              [
+                "border-block-start-color",
+                "red"
+              ],
+              [
+                "border-block-end-width",
+                "2px"
+              ],
+              [
+                "border-block-end-style",
+                "solid"
+              ],
+              [
+                "border-block-end-color",
+                "blue"
+              ]
+            ],
+            "shorthands": {
+              "-webkit-border-before": "1px solid red",
+              "border-block": "",
+              "border-block-start": "1px solid red",
+              "border-block-width": "1px 2px",
+              "border-block-style": "solid",
+              "border-block-color": "red blue",
+              "-webkit-border-after": "2px solid blue",
+              "border-block-end": "2px solid blue"
+            }
+          },
+          {
+            "id": "cov-rule-mismatch",
+            "cssText": "column-rule: 1px solid red; row-rule: 2px solid blue;",
+            "items": [
+              [
+                "column-rule-width",
+                "1px"
+              ],
+              [
+                "column-rule-style",
+                "solid"
+              ],
+              [
+                "column-rule-color",
+                "red"
+              ],
+              [
+                "row-rule-width",
+                "2px"
+              ],
+              [
+                "row-rule-style",
+                "solid"
+              ],
+              [
+                "row-rule-color",
+                "blue"
+              ]
+            ],
+            "shorthands": {
+              "-webkit-column-rule": "1px solid red",
+              "column-rule": "1px solid red",
+              "rule": "",
+              "rule-width": "",
+              "rule-style": "solid",
+              "rule-color": "",
+              "row-rule": "2px solid blue"
+            }
+          },
+          {
+            "id": "cov-text-decoration-initial-line",
+            "cssText": "text-decoration: none;",
+            "items": [
+              [
+                "text-decoration-line",
+                "initial"
+              ],
+              [
+                "text-decoration-thickness",
+                "auto"
+              ],
+              [
+                "text-decoration-style",
+                "solid"
+              ],
+              [
+                "text-decoration-color",
+                "currentcolor"
+              ]
+            ],
+            "shorthands": {
+              "text-decoration": "none"
+            }
+          },
+          {
+            "id": "cov-columns-wrap",
+            "cssText": "columns: 2;",
+            "items": [
+              [
+                "column-width",
+                "auto"
+              ],
+              [
+                "column-count",
+                "2"
+              ],
+              [
+                "column-height",
+                "auto"
+              ],
+              [
+                "column-wrap",
+                "wrap"
+              ]
+            ],
+            "shorthands": {
+              "-webkit-columns": "2",
+              "columns": "2"
+            }
+          },
+          {
+            "id": "cov-columns-nowrap",
+            "cssText": "columns: 2;",
+            "items": [
+              [
+                "column-width",
+                "auto"
+              ],
+              [
+                "column-count",
+                "2"
+              ],
+              [
+                "column-height",
+                "auto"
+              ],
+              [
+                "column-wrap",
+                "nowrap"
+              ]
+            ],
+            "shorthands": {
+              "-webkit-columns": "2",
+              "columns": "2"
+            }
+          },
+          {
+            "id": "cov-white-space-initial",
+            "cssText": "white-space: nowrap;",
+            "items": [
+              [
+                "white-space-collapse",
+                "initial"
+              ],
+              [
+                "text-wrap-mode",
+                "nowrap"
+              ]
+            ],
+            "shorthands": {
+              "white-space": "nowrap",
+              "text-wrap": ""
+            }
+          },
+          {
+            "id": "cov-font-synthesis-initial",
+            "cssText": "font-synthesis-weight: initial; font-synthesis-style: auto; font-synthesis-small-caps: none;",
+            "items": [
+              [
+                "font-synthesis-weight",
+                "initial"
+              ],
+              [
+                "font-synthesis-style",
+                "auto"
+              ],
+              [
+                "font-synthesis-small-caps",
+                "none"
+              ]
+            ],
+            "shorthands": {
+              "font-synthesis": ""
+            }
+          },
+          {
+            "id": "cov-scroll-timeline-mismatch",
+            "cssText": "scroll-timeline-name: --a, --b; scroll-timeline-axis: x;",
+            "items": [
+              [
+                "scroll-timeline-name",
+                "--a, --b"
+              ],
+              [
+                "scroll-timeline-axis",
+                "x"
+              ]
+            ],
+            "shorthands": {
+              "scroll-timeline": ""
+            }
+          },
+          {
+            "id": "cov-view-timeline-mismatch",
+            "cssText": "view-timeline-name: --a, --b; view-timeline-inset: auto, auto; view-timeline-axis: x;",
+            "items": [
+              [
+                "view-timeline-name",
+                "--a, --b"
+              ],
+              [
+                "view-timeline-inset",
+                "auto, auto"
+              ],
+              [
+                "view-timeline-axis",
+                "x"
+              ]
+            ],
+            "shorthands": {
+              "view-timeline": ""
+            }
+          },
+          {
+            "id": "cov-font-variant-none-caps",
+            "cssText": "font-variant-ligatures: none; font-variant-numeric: normal; font-variant-east-asian: normal; font-variant-alternates: normal; font-variant-position: normal; font-variant-emoji: normal; font-variant-caps: small-caps;",
+            "items": [
+              [
+                "font-variant-ligatures",
+                "none"
+              ],
+              [
+                "font-variant-numeric",
+                "normal"
+              ],
+              [
+                "font-variant-east-asian",
+                "normal"
+              ],
+              [
+                "font-variant-alternates",
+                "normal"
+              ],
+              [
+                "font-variant-position",
+                "normal"
+              ],
+              [
+                "font-variant-emoji",
+                "normal"
+              ],
+              [
+                "font-variant-caps",
+                "small-caps"
+              ]
+            ],
+            "shorthands": {
+              "font": "",
+              "font-variant": ""
+            }
+          },
+          {
+            "id": "cov-grid-areas-column-flow",
+            "cssText": "grid-template: \"a\" / 1fr; grid-auto-columns: auto; grid-auto-rows: auto; grid-auto-flow: column;",
+            "items": [
+              [
+                "grid-template-rows",
+                "auto"
+              ],
+              [
+                "grid-template-columns",
+                "1fr"
+              ],
+              [
+                "grid-template-areas",
+                "\"a\""
+              ],
+              [
+                "grid-auto-columns",
+                "auto"
+              ],
+              [
+                "grid-auto-rows",
+                "auto"
+              ],
+              [
+                "grid-auto-flow",
+                "column"
+              ]
+            ],
+            "shorthands": {
+              "grid": "",
+              "grid-template": "\"a\" / 1fr"
+            }
+          },
+          {
+            "id": "cov-trigger-ranges-mismatch",
+            "cssText": "timeline-trigger-name: --t, --u; timeline-trigger-source: view(), view(); timeline-trigger-activation-range-start: normal, normal; timeline-trigger-active-range: auto, auto; timeline-trigger-activation-range-end: normal;",
+            "items": [
+              [
+                "timeline-trigger-name",
+                "--t, --u"
+              ],
+              [
+                "timeline-trigger-source",
+                "view(), view()"
+              ],
+              [
+                "timeline-trigger-activation-range-start",
+                "normal, normal"
+              ],
+              [
+                "timeline-trigger-active-range-start",
+                "auto, auto"
+              ],
+              [
+                "timeline-trigger-active-range-end",
+                "auto, auto"
+              ],
+              [
+                "timeline-trigger-activation-range-end",
+                "normal"
+              ]
+            ],
+            "shorthands": {
+              "timeline-trigger": "",
+              "timeline-trigger-activation-range": "",
+              "timeline-trigger-active-range": "auto, auto"
+            }
+          },
+          {
+            "id": "cov-font-caps",
+            "cssText": "font-style: normal; font-variant: all-small-caps; font-size-adjust: none; font-language-override: normal; font-kerning: auto; font-optical-sizing: auto; font-feature-settings: normal; font-variation-settings: normal; font-weight: normal; font-stretch: normal; font-size: 12px; line-height: normal; font-family: a;",
+            "items": [
+              [
+                "font-style",
+                "normal"
+              ],
+              [
+                "font-variant-ligatures",
+                "normal"
+              ],
+              [
+                "font-variant-numeric",
+                "normal"
+              ],
+              [
+                "font-variant-east-asian",
+                "normal"
+              ],
+              [
+                "font-variant-alternates",
+                "normal"
+              ],
+              [
+                "font-size-adjust",
+                "none"
+              ],
+              [
+                "font-language-override",
+                "normal"
+              ],
+              [
+                "font-kerning",
+                "auto"
+              ],
+              [
+                "font-optical-sizing",
+                "auto"
+              ],
+              [
+                "font-feature-settings",
+                "normal"
+              ],
+              [
+                "font-variation-settings",
+                "normal"
+              ],
+              [
+                "font-variant-position",
+                "normal"
+              ],
+              [
+                "font-variant-emoji",
+                "normal"
+              ],
+              [
+                "font-weight",
+                "normal"
+              ],
+              [
+                "font-stretch",
+                "normal"
+              ],
+              [
+                "font-size",
+                "12px"
+              ],
+              [
+                "line-height",
+                "normal"
+              ],
+              [
+                "font-family",
+                "a"
+              ],
+              [
+                "font-variant-caps",
+                "all-small-caps"
+              ]
+            ],
+            "shorthands": {
+              "font": "",
+              "font-variant": "all-small-caps"
+            }
+          },
+          {
+            "id": "cov-custom-property",
+            "cssText": "--B: x;",
+            "items": [
+              [
+                "--B",
+                "x"
+              ]
+            ],
+            "shorthands": {},
+            "returns": [
+              "1px",
+              "1px"
+            ]
+          },
+          {
+            "id": "cov-remove-missing",
+            "cssText": "color: red;",
+            "items": [
+              [
+                "color",
+                "red"
+              ]
+            ],
+            "shorthands": {},
+            "returns": [
+              ""
+            ]
+          },
+          {
+            "id": "cov-priority-shorthand",
+            "cssText": "margin: 1px !important;",
+            "items": [
+              [
+                "margin-top",
+                "1px",
+                "important"
+              ],
+              [
+                "margin-right",
+                "1px",
+                "important"
+              ],
+              [
+                "margin-bottom",
+                "1px",
+                "important"
+              ],
+              [
+                "margin-left",
+                "1px",
+                "important"
+              ]
+            ],
+            "shorthands": {
+              "margin": "1px"
+            },
+            "returns": [
+              "important",
+              "important",
+              ""
+            ]
+          },
+          {
+            "id": "cov-priority-mixed",
+            "cssText": "margin-top: 2px !important; margin-right: 1px; margin-bottom: 1px; margin-left: 1px;",
+            "items": [
+              [
+                "margin-top",
+                "2px",
+                "important"
+              ],
+              [
+                "margin-right",
+                "1px"
+              ],
+              [
+                "margin-bottom",
+                "1px"
+              ],
+              [
+                "margin-left",
+                "1px"
+              ]
+            ],
+            "shorthands": {
+              "margin": ""
+            },
+            "returns": [
+              "",
+              ""
+            ]
+          },
+          {
+            "id": "cov-priority-partial",
+            "cssText": "margin-top: 2px !important;",
+            "items": [
+              [
+                "margin-top",
+                "2px",
+                "important"
+              ]
+            ],
+            "shorthands": {
+              "margin": ""
+            },
+            "returns": [
+              ""
+            ]
           }
         ],
         "rules": [

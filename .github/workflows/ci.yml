@@ -399,6 +399,13 @@ jobs:
   # each of its default / avif / jxl configs since P5-cov-raster); never lower one to pass a
   # change. A crate measured in several feature configurations has one row (and `label`) per
   # config.
+  # turbo-dom-parser (the root package) gates its parser core only, src/core.rs (`files`):
+  # its src/lib.rs napi / wasm front-ends and src/spike.rs (`napi-bind` / `wasm-bind` /
+  # `wasm-runtime` features) are FFI boundary glue that only runs inside Node / a wasm host
+  # (napi's export registration does not even build under `cfg(test)`), so the JS suite
+  # (`npm test`: conformance.test.mjs, parser.test.mjs, the runtime tests) exercises them
+  # rather than Rust tests; core.rs is 100% from its own behaviour tests (html5lib-tests and
+  # the rtdom_core_chrome156.json control through both the Node and Soa outputs).
   coverage:
     name: coverage (${{ matrix.label || matrix.crate }} >= ${{ matrix.floor }}%)
     runs-on: macos-latest
@@ -407,11 +414,12 @@ jobs:
       matrix:
         include:
           - { crate: turbo-dom,             floor: 100, features: '' }
+          - { crate: turbo-dom-parser,      floor: 100, features: '', files: 'src/core.rs' }
           - { crate: turbo-dom-layout,      floor: 90, features: '' }
           - { crate: turbo-dom-raster,      floor: 100, features: '' }
           - { crate: turbo-dom-raster,      floor: 100, features: '--features avif', label: turbo-dom-raster-avif }
           - { crate: turbo-dom-raster,      floor: 100, features: '--features jxl', label: turbo-dom-raster-jxl }
-          - { crate: turbo-dom-browser-env, floor: 88, features: '--features host-internals,test-support' }
+          - { crate: turbo-dom-browser-env, floor: 93.2, features: '--features host-internals,test-support' }
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@master
@@ -437,7 +445,7 @@ jobs:
       - name: tarpaulin ${{ matrix.label || matrix.crate }} (fail under ${{ matrix.floor }}%)
         run: >-
           cargo tarpaulin --engine llvm -p ${{ matrix.crate }} ${{ matrix.features }}
-          --include-files 'crates/${{ matrix.crate }}/src/*'
+          --include-files '${{ matrix.files || format('crates/{0}/src/*', matrix.crate) }}'
           --timeout 600 --out Json --out Stdout --output-dir coverage/${{ matrix.label || matrix.crate }}
           --fail-under ${{ matrix.floor }}
       - uses: actions/upload-artifact@v4

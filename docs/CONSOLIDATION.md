@@ -112,12 +112,13 @@ engine, macOS arm64, `--include-files 'crates/<crate>/src/*'`), rounded down:
 
 | crate | measured | gate |
 |---|---|---|
-| turbo-dom | 100% (P5-cov-core; 88.33% (6327/7163) at 0.6.0) | 100 |
+| turbo-dom | 100% (P5-cov-core; 88.33% (6327/7163) at 0.6.0); step 4: 98.98% (11859/11981) after the bug-fix round → 100% (11907/11907) | 100 |
 | turbo-dom-layout | 90.63% (8450/9324) | 90 |
 | turbo-dom-raster | 77.23% (1184/1533); P5-cov: 100% (1533/1533) | 100 |
 | turbo-dom-raster `--features avif` | P5-cov: 79.63% (1337/1679) → 100% (1666/1666) | 100 |
 | turbo-dom-raster `--features jxl` | P5-cov: 79.31% (1246/1571) → 100% (1559/1559) | 100 |
-| turbo-dom-browser-env (`host-internals,test-support`) | 88.59% (14538/16411) | 88 |
+| turbo-dom-browser-env (`host-internals,test-support`) | 88.59% (14538/16411); P5-cov (C3): 89.35% (15577/17434) → 93.21% (16086/17257), default features 93.14% | 93.2 |
+| turbo-dom-parser, `src/core.rs` only (`--include-files src/core.rs`) | no gate before step 4: 38.80% (142/366) → 100% (349/349) | 100 |
 
 The coverage phase (P5-cov) adds behaviour-asserting tests and raises every gate to
 >= 99, then 100 per crate as it gets there (turbo-dom-v8: 100% of the fork delta through
@@ -138,6 +139,37 @@ code the crate provably never runs (upstream tokenizer options it never sets, ht
 paths that never fire, impossible node variants) was removed or became `unreachable!()`
 with its proof in place. Gaps this surfaced were filed and fixed against the control:
 turbo-dom#91, #92, #96, #98.
+
+The bug-fix round's CSSOM work (turbo-dom#90 / #97: `rtdom::css_shorthand`) left it at 98.98%;
+step 4 brought it back to 100% with new rows in the CSSOM controls
+(`scripts/make-css-{shorthand,longhand}-cases.py`, recaptured in Chrome 156), direct tests of
+the table queries and of embedder-admitted values (`tests/css_shorthand_api.rs`), and the
+module's provably dead branches removed or `unreachable!()`. turbo-dom#115 (a `var()` nested
+in `calc()` was rejected) was fixed against the control; the rows still spelled differently —
+math functions, `hsl()` hues, relative colors and a few shorthand spellings, shared with the
+npm port — are `KNOWN_GAPS` under turbo-dom#117.
+
+turbo-dom-parser (the root package) is gated on its parser core, `src/core.rs`, since step 4:
+`src/core/conformance_tests.rs` runs every html5lib-tests tree-construction case and every
+`rtdom_core_chrome156.json` document / fragment row through both outputs the front-ends ship
+(the `Node` tree of `parse` / `parseFragment` and the `Soa` buffer of `parseBuffer`, with
+`compatMode` and the node count), plus a Chrome 156-recorded nested-`<optgroup>` case for
+`<selectedcontent>`. The processing-instruction marshaling arms became `unreachable!()`
+(html5ever never calls `create_pi`), the fragment unwrap no longer has a branch for a
+Document child other than the synthetic `<html>` (the fragment case never inserts into the
+Document), and the unused `discard_node` was removed. cargo-mutants on `src/core.rs`: 80
+caught, 22 unviable, 1 timeout, 2 missed — both equivalent (`ChromeTokens::end` delegation
+is unobservable with `RcDom`, whose `pop` is a no-op; `previous < 0` vs `<= 0` in the `Soa`
+sibling links, as index 0 is the root and never a child). Its `src/lib.rs` napi / wasm
+front-ends and `src/spike.rs` are FFI glue that only runs in Node / a wasm host, so the JS
+suite covers them, not tarpaulin.
+
+The npm runtime (`src/runtime/**`, `npm run test:cov`, Node's built-in coverage) went from
+99.61% lines / 97.09% branches / 98.83% functions to 100% / 97.39% / 100% in step 4
+(`test/bare-v8.test.mjs`: the bare-V8 fallbacks in child processes without `node:module` and
+the web globals, against the platform's own answers; `test/runtime-edges.test.mjs`: jsdom /
+Chrome 156 differentials; the shorthand table vs the Chrome control), and its gate (`package.json`
+`test:cov`) rose from 99 / 95 / 95 to 100 / 97.3 / 100.
 
 ## Parity harness
 
