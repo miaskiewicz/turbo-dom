@@ -10,9 +10,7 @@
 //! viewport, comparing each box with Chrome's `getBoundingClientRect()`, and the galley
 //! root's background (the canvas) with Chrome's canvas pixel.
 use serde_json::Value;
-use turbo_dom_layout::{
-    layout_boxes, layout_html, Diagnostics, FontRegistry, FragmentContent, Rgba,
-};
+use turbo_dom_layout::{layout_boxes, layout_html, Diagnostics, FragmentContent, Rgba};
 
 fn fixture() -> Value {
     let path = concat!(
@@ -32,7 +30,7 @@ fn hex(c: Rgba) -> String {
 /// Lay out every fixture case `select` picks and compare it with Chrome.
 fn compare_cases(select: impl Fn(&str) -> bool) {
     let fixture = fixture();
-    let fonts = FontRegistry::new();
+    let fonts = turbo_dom_layout::test_support::fixture_fonts();
     let mut failures = Vec::new();
     let cases = fixture["cases"].as_array().unwrap();
     let mut compared = 0;
@@ -604,7 +602,7 @@ fn preserved_newlines_break_lines_like_chrome_156() {
         .iter()
         .find(|case| case["id"] == "ws-preserved-newline")
         .unwrap();
-    let fonts = FontRegistry::new();
+    let fonts = turbo_dom_layout::test_support::fixture_fonts();
     let width = |html: &str, cid: &str| {
         let mut diags = Diagnostics::default();
         let boxes = layout_boxes(html, "", 1280.0, 800.0, &fonts, &mut diags).unwrap();

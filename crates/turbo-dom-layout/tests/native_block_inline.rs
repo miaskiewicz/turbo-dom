@@ -51,13 +51,30 @@ fn record_names(
         }
     }
 }
+/// The repo's font fixtures (`test_support::fixture_fonts`): text geometry never
+/// depends on the host's installed fonts or on the `bundled-fonts` feature. The macOS Chrome-fixture comparisons, whose
+/// controls were captured with macOS system fonts, opt into the host registry for their
+/// own thread with [`with_host_fonts`].
 fn fonts() -> &'static FontRegistry {
-    static FONTS: OnceLock<FontRegistry> = OnceLock::new();
-    FONTS.get_or_init(|| {
-        let mut fonts = FontRegistry::new();
-        fonts.load_system_fonts_for_html();
-        fonts
-    })
+    static FIXTURE: OnceLock<FontRegistry> = OnceLock::new();
+    static HOST: OnceLock<FontRegistry> = OnceLock::new();
+    if HOST_FONTS.with(std::cell::Cell::get) {
+        HOST.get_or_init(|| {
+            let mut fonts = FontRegistry::new();
+            fonts.load_system_fonts_for_html();
+            fonts
+        })
+    } else {
+        FIXTURE.get_or_init(turbo_dom_layout::test_support::fixture_fonts)
+    }
+}
+thread_local! {
+    static HOST_FONTS: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+#[cfg(target_os = "macos")]
+fn with_host_fonts<T>(body: impl FnOnce() -> T) -> T {
+    HOST_FONTS.with(|host| host.set(true));
+    body()
 }
 type Captured = (LayoutSnapshot, HashMap<String, SourceId>);
 fn capture(markup: &str) -> Captured {
@@ -71,20 +88,6 @@ fn capture_result(
 fn capture_with_partial_identities(
     markup: &str,
     omit_inline: bool,
-) -> Result<Captured, turbo_dom_layout::layout_snapshot::SvgSnapshotError> {
-    capture_with_fonts(markup, omit_inline, fonts())
-}
-/// The bundled faces only, so the host's installed fonts never decide the result
-/// (`serif` is the bundled Liberation Serif on every host).
-#[cfg(feature = "bundled-fonts")]
-fn bundled_fonts() -> &'static FontRegistry {
-    static FONTS: OnceLock<FontRegistry> = OnceLock::new();
-    FONTS.get_or_init(FontRegistry::new)
-}
-fn capture_with_fonts(
-    markup: &str,
-    omit_inline: bool,
-    fonts: &FontRegistry,
 ) -> Result<Captured, turbo_dom_layout::layout_snapshot::SvgSnapshotError> {
     let html = format!("<div id=rso>{markup}</div><button id=dismiss>Reject</button><input name=q type=hidden value=hidden><form><textarea name=q></textarea><button>Search</button></form>");
     let element = |tag: &str, children| {
@@ -115,7 +118,7 @@ fn capture_with_fonts(
     let snapshot = snapshot_html_live_tree_with_native_text(&literal::tree(&nodes).input(), &ids,
         &build_cascade("body{margin:8px;font-family:serif}head,style,script,title,meta,link,base,noscript{display:none}button{font-family:Arial;font-size:13.3333px;line-height:normal;padding:1px 6px;border:2px solid;box-sizing:border-box}", "", turbo_dom_layout::style::TokenSet::default()),
         &NativeTextOptions { original_text: &[], svg_viewports: &[], layout_scale: 2.0 },
-        &SnapshotInputs { width:1280.0, height:800.0, fonts, images:&images },
+        &SnapshotInputs { width:1280.0, height:800.0, fonts:fonts(), images:&images },
         &mut Diagnostics::default())?;
     Ok((snapshot, names))
 }
@@ -155,36 +158,38 @@ fn saved_chrome_probe_provenance_matches_reusable_source() {
 #[cfg(target_os = "macos")]
 #[test]
 fn block_in_inline_fragments_and_neighbor_geometry_match_chrome() {
-    let chrome: serde_json::Value =
-        serde_json::from_str(include_str!("fixtures/block-inline-chrome155.json")).unwrap();
-    for (name, markup) in CASES {
-        let (snapshot, names) = capture(markup);
-        for (label, id) in [
-            ("parent", "rso"),
-            ("link", "a"),
-            ("heading", "h3"),
-            ("nested", "nested"),
-            ("sibling", "sibling"),
-            ("dismiss", "dismiss"),
-        ] {
-            if let Some(id) = names.get(id) {
-                let expected: Vec<[f64; 4]> = serde_json::from_value(
-                    chrome["variants"][name]["rows"][label]["rects"].clone(),
-                )
-                .unwrap();
-                assert_eq!(rects(&snapshot, *id), expected, "{name} {label}");
+    with_host_fonts(|| {
+        let chrome: serde_json::Value =
+            serde_json::from_str(include_str!("fixtures/block-inline-chrome155.json")).unwrap();
+        for (name, markup) in CASES {
+            let (snapshot, names) = capture(markup);
+            for (label, id) in [
+                ("parent", "rso"),
+                ("link", "a"),
+                ("heading", "h3"),
+                ("nested", "nested"),
+                ("sibling", "sibling"),
+                ("dismiss", "dismiss"),
+            ] {
+                if let Some(id) = names.get(id) {
+                    let expected: Vec<[f64; 4]> = serde_json::from_value(
+                        chrome["variants"][name]["rows"][label]["rects"].clone(),
+                    )
+                    .unwrap();
+                    assert_eq!(rects(&snapshot, *id), expected, "{name} {label}");
+                }
             }
+            let heading = snapshot.source(names["h3"]).unwrap();
+            let actual = &snapshot.fragments()[heading.fragment_indices[0]];
+            assert!(actual.source_ancestors.contains(&names["a"]));
+            assert_eq!(actual.source_id, Some(names["h3"]));
+            assert!(snapshot
+                .source(names["a"])
+                .unwrap()
+                .fragment_indices
+                .contains(&actual.index));
         }
-        let heading = snapshot.source(names["h3"]).unwrap();
-        let actual = &snapshot.fragments()[heading.fragment_indices[0]];
-        assert!(actual.source_ancestors.contains(&names["a"]));
-        assert_eq!(actual.source_id, Some(names["h3"]));
-        assert!(snapshot
-            .source(names["a"])
-            .unwrap()
-            .fragment_indices
-            .contains(&actual.index));
-    }
+    });
 }
 #[test]
 fn fragment_ownership_preserves_ids_and_internal_href_does_not_atomize_native_blocks() {
@@ -356,7 +361,6 @@ fn hidden_blocks_do_not_displace_or_reject_a_relative_inline() {
     );
 }
 
-#[cfg(feature = "bundled-fonts")]
 #[test]
 fn a_line_break_inside_an_inline_splits_it_across_lines() {
     // `<br>` ends the line inside the link. Chrome 156 `getClientRects()` of
@@ -365,10 +369,11 @@ fn a_line_break_inside_an_inline_splits_it_across_lines() {
     // the text before the break, a zero-width rect at the break, the text after it
     // one line lower. The font box (ascent 29 + descent 7 device px = 18) and the
     // line pitch (+ line gap 1 = 18.5) differ, so the next line is not at y + height.
-    // Bundled fonts only: the host's serif (macOS Times, Linux fontconfig) would
-    // change both numbers.
+    // The fixture Liberation Serif (`fonts()`; the block's `serif` resolves to it too),
+    // named explicitly: the host's serif (macOS Times, Linux fontconfig) would change
+    // both numbers.
     let (snapshot, names) =
-        capture_with_fonts("<a id=l>Read<br>more</a>", false, bundled_fonts()).unwrap();
+        capture("<a id=l style=\"font-family:'Liberation Serif'\">Read<br>more</a>");
     assert_eq!(
         rects(&snapshot, names["l"]),
         [

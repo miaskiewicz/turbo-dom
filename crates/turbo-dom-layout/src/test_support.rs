@@ -66,6 +66,78 @@ pub fn registry() -> FontRegistry {
     reg
 }
 
+/// The text-geometry test registry: real faces from [`FIXTURE_FONTS_DIR`], each under
+/// its own family name and bound to a CSS generic (`serif` = Liberation Serif,
+/// `sans-serif` = Inter, `monospace` = Fira Code), added as caller faces. Caller faces
+/// win over the bundled set, so a layout is the same with and without `bundled-fonts`
+/// and never reads the host's fonts. Expected geometry comes from Chrome 156 with the
+/// same files loaded through `@font-face`.
+#[must_use]
+pub fn fixture_fonts() -> FontRegistry {
+    const FACES: &[(&str, &str, &str, u16, bool)] = &[
+        (
+            "Liberation Serif",
+            "serif",
+            "liberation-serif/LiberationSerif-Regular.ttf",
+            400,
+            false,
+        ),
+        (
+            "Liberation Serif",
+            "serif",
+            "liberation-serif/LiberationSerif-Bold.ttf",
+            700,
+            false,
+        ),
+        (
+            "Liberation Serif",
+            "serif",
+            "liberation-serif/LiberationSerif-Italic.ttf",
+            400,
+            true,
+        ),
+        (
+            "Liberation Serif",
+            "serif",
+            "liberation-serif/LiberationSerif-BoldItalic.ttf",
+            700,
+            true,
+        ),
+        ("Inter", "sans-serif", "inter/Inter-Regular.otf", 400, false),
+        ("Inter", "sans-serif", "inter/Inter-Bold.otf", 700, false),
+        ("Inter", "sans-serif", "inter/Inter-Italic.otf", 400, true),
+        (
+            "Inter",
+            "sans-serif",
+            "inter/Inter-BoldItalic.otf",
+            700,
+            true,
+        ),
+        (
+            "Fira Code",
+            "monospace",
+            "fira-code/FiraCode-Regular.ttf",
+            400,
+            false,
+        ),
+        (
+            "Fira Code",
+            "monospace",
+            "fira-code/FiraCode-Bold.ttf",
+            700,
+            false,
+        ),
+    ];
+    let mut registry = FontRegistry::new();
+    for &(family, generic, file, weight, italic) in FACES {
+        let face = FontFace::from_bytes(font_bytes(file), family, weight, italic)
+            .unwrap_or_else(|| panic!("{file} parses"));
+        registry.add(face.with_family(generic));
+        registry.add(face);
+    }
+    registry
+}
+
 /// Build a [`ComputedStyle`] from `(property, value)` pairs.
 #[must_use]
 pub fn style(pairs: &[(&str, &str)]) -> ComputedStyle {

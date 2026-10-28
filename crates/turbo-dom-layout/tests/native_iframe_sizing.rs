@@ -7,13 +7,32 @@ use turbo_dom_layout::layout_snapshot::{
 use turbo_dom_layout::test_support::literal;
 use turbo_dom_layout::test_support::literal::{parse_html, Element, Node};
 use turbo_dom_layout::{build_cascade, Attr, Diagnostics, FontRegistry, ImageCtx, NoImages, Tag};
+/// The repo's font fixtures (`test_support::fixture_fonts`): text geometry never
+/// depends on the host's installed fonts or on the `bundled-fonts` feature. The macOS Chrome-fixture comparisons, whose
+/// controls were captured with macOS system fonts, opt into the host registry for their
+/// own thread with [`with_host_fonts`].
 fn fonts() -> &'static FontRegistry {
-    static FONTS: OnceLock<FontRegistry> = OnceLock::new();
-    FONTS.get_or_init(|| {
-        let mut fonts = FontRegistry::new();
-        fonts.load_system_fonts_for_html();
-        fonts
-    })
+    static FIXTURE: OnceLock<FontRegistry> = OnceLock::new();
+    static HOST: OnceLock<FontRegistry> = OnceLock::new();
+    if HOST_FONTS.with(std::cell::Cell::get) {
+        HOST.get_or_init(|| {
+            let mut fonts = FontRegistry::new();
+            fonts.load_system_fonts_for_html();
+            fonts
+        })
+    } else {
+        FIXTURE.get_or_init(turbo_dom_layout::test_support::fixture_fonts)
+    }
+}
+thread_local! {
+    static HOST_FONTS: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+/// Here the Chrome-fixture assertions are macOS-only inside cross-platform tests: the
+/// host registry is used on macOS only, elsewhere the tests' font-independent sizes run
+/// on the bundled faces.
+fn with_host_fonts<T>(body: impl FnOnce() -> T) -> T {
+    HOST_FONTS.with(|host| host.set(cfg!(target_os = "macos")));
+    body()
 }
 fn identities(
     nodes: &[Node],
@@ -125,9 +144,11 @@ fn control() -> serde_json::Value {
 }
 #[test]
 fn native_iframe_default_object_size_attributes_css_and_zero_boxes_match_chrome() {
-    for case in control()["result"].as_array().unwrap() {
-        compare_case(case);
-    }
+    with_host_fonts(|| {
+        for case in control()["result"].as_array().unwrap() {
+            compare_case(case);
+        }
+    });
 }
 fn compare_case(case: &serde_json::Value) {
     let frame = format!(
@@ -179,46 +200,48 @@ fn compare_case(case: &serde_json::Value) {
 }
 #[test]
 fn native_zero_viewport_retains_fixed_descendant_and_viewport_unit_geometry() {
-    let control = control();
-    let case = control["result"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .find(|case| case["name"] == "css-zero-standards")
-        .unwrap();
-    let body = Node::Element(Element {
-        tag: Tag::Html("body".into()),
-        attrs: vec![Attr {
-            name: "id".into(),
-            value: "body".into(),
-        }],
-        children: parse_html(case["childHtml"].as_str().unwrap()).unwrap(),
-    });
-    let html = Node::Element(Element {
-        tag: Tag::Html("html".into()),
-        attrs: vec![],
-        children: vec![body.clone()],
-    });
-    for nodes in [vec![body], vec![html]] {
-        let (snapshot, names) = capture_nodes(nodes, [0.0, 0.0]);
-        for name in ["fixed", "units", "nested", "percentage"] {
-            let source = snapshot.source(names[name]).unwrap();
+    with_host_fonts(|| {
+        let control = control();
+        let case = control["result"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|case| case["name"] == "css-zero-standards")
+            .unwrap();
+        let body = Node::Element(Element {
+            tag: Tag::Html("body".into()),
+            attrs: vec![Attr {
+                name: "id".into(),
+                value: "body".into(),
+            }],
+            children: parse_html(case["childHtml"].as_str().unwrap()).unwrap(),
+        });
+        let html = Node::Element(Element {
+            tag: Tag::Html("html".into()),
+            attrs: vec![],
+            children: vec![body.clone()],
+        });
+        for nodes in [vec![body], vec![html]] {
+            let (snapshot, names) = capture_nodes(nodes, [0.0, 0.0]);
+            for name in ["fixed", "units", "nested", "percentage"] {
+                let source = snapshot.source(names[name]).unwrap();
+                let actual = rect(snapshot.fragments()[source.fragment_indices[0]].rect);
+                let expected: [f64; 4] =
+                    serde_json::from_value(case["children"][name].clone()).unwrap();
+                assert_eq!(actual[2..], expected[2..], "{name}");
+                #[cfg(target_os = "macos")]
+                assert_eq!(actual, expected, "{name}");
+            }
+            let source = snapshot.source(names["body"]).unwrap();
             let actual = rect(snapshot.fragments()[source.fragment_indices[0]].rect);
-            let expected: [f64; 4] =
-                serde_json::from_value(case["children"][name].clone()).unwrap();
-            assert_eq!(actual[2..], expected[2..], "{name}");
             #[cfg(target_os = "macos")]
-            assert_eq!(actual, expected, "{name}");
+            let expected: [f64; 4] = serde_json::from_value(case["body"].clone()).unwrap();
+            #[cfg(target_os = "macos")]
+            assert_eq!(actual, expected);
+            assert_eq!(actual[2], 0.0);
+            assert!(actual[3].is_finite() && actual[3] >= 30.0);
         }
-        let source = snapshot.source(names["body"]).unwrap();
-        let actual = rect(snapshot.fragments()[source.fragment_indices[0]].rect);
-        #[cfg(target_os = "macos")]
-        let expected: [f64; 4] = serde_json::from_value(case["body"].clone()).unwrap();
-        #[cfg(target_os = "macos")]
-        assert_eq!(actual, expected);
-        assert_eq!(actual[2], 0.0);
-        assert!(actual[3].is_finite() && actual[3] >= 30.0);
-    }
+    });
 }
 
 #[test]

@@ -255,6 +255,15 @@ package or publish workflow.
   whole-word string scan, index loops over `__children()`, and the for-loop `getAttribute`.
   This is what makes repeated-query throughput ~2.2× happy-dom / ~460× jsdom; a stray `classList`
   in a matcher tanks it.
+- **Text-geometry tests name a repo font, never a host default.** A layout test that
+  measures text (widths, line height, line pitch) lays out with
+  `turbo_dom_layout::test_support::fixture_fonts()` (the repo's `assets/fonts` files:
+  Liberation Serif / Inter / Fira Code, bound to `serif` / `sans-serif` / `monospace`) — not
+  `load_system_fonts*`, fontconfig or the `bundled-fonts` feature — and its expected values come
+  from Chrome 156 with the same file loaded through `@font-face` (at the harness's device scale
+  factor). Only tests of the host-font policy itself (`native_serif_policy`, CoreText fallback)
+  and the macOS Chrome-fixture comparisons captured with macOS system fonts (`with_host_fonts`)
+  read installed fonts, and those are `cfg(target_os = "macos")`.
 - **Rust selector engine = Chrome 156.** `rtdom/query.rs` (string API) and `query_utf16.rs` (UTF-16
   API; also parses any string selector containing `\`) are checked against
   `crates/turbo-dom/tests/fixtures/cascade_selectors_chrome156.json` (regenerate with
