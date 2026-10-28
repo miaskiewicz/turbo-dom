@@ -215,9 +215,8 @@ pub fn hide_node_nonce(scope: &mut v8::PinScope, node: v8::Local<v8::Object>) {
         return;
     };
     let _dom = DomScope::for_object(scope, node);
-    let Some(handle) = handle_of(scope, node) else {
-        return;
-    };
+    // nonce_units answered, so the node has a handle in this document.
+    let handle = handle_of(scope, node).expect("nonce_units found the node");
     DOM.with(|dom| {
         dom.borrow_mut()
             .as_mut()
@@ -1557,9 +1556,7 @@ fn get_shadow_mode(
     mut rv: v8::ReturnValue<v8::Value>,
 ) {
     let _dom = DomScope::for_object(scope, args.holder());
-    let Some(root) = handle_of(scope, args.holder()) else {
-        return;
-    };
+    let root = holder_handle(scope, &args);
     let mode = DOM.with(|state| {
         state
             .borrow()
@@ -3002,9 +2999,7 @@ fn set_attr_value<'s, 'i, T>(
     _rv: v8::ReturnValue<T>,
 ) {
     let _dom = DomScope::for_object(scope, args.holder());
-    let Some(node) = handle_of(scope, args.holder()) else {
-        return;
-    };
+    let node = holder_handle(scope, &args);
     let Some(value) = dom_units(scope, value) else {
         return;
     };
@@ -3222,9 +3217,7 @@ fn set_outer_html<'s>(
     _rv: v8::ReturnValue<()>,
 ) {
     let _dom = DomScope::for_object(scope, args.holder());
-    let Some(node) = handle_of(scope, args.holder()) else {
-        return;
-    };
+    let node = holder_handle(scope, &args);
     let parent = with_tree(|tree| {
         NodeRef::new(tree, node)
             .parent()
@@ -4114,9 +4107,7 @@ fn get_is_content_editable(
     mut rv: v8::ReturnValue<v8::Value>,
 ) {
     let _dom = DomScope::for_object(scope, args.holder());
-    let Some(mut h) = handle_of(scope, args.holder()) else {
-        return;
-    };
+    let mut h = holder_handle(scope, &args);
     let mut editable = false;
     loop {
         match with_tree(|t| attr_get(t, h, "contenteditable"))
@@ -5542,9 +5533,7 @@ fn get_owner_document(
     mut rv: v8::ReturnValue<v8::Value>,
 ) {
     let _dom = DomScope::for_object(scope, args.holder());
-    let Some(handle) = handle_of(scope, args.holder()) else {
-        return;
-    };
+    let handle = holder_handle(scope, &args);
     if with_tree(|tree| tree.node_type_id(handle)) == Some(9) {
         rv.set_null();
         return;

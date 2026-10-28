@@ -153,6 +153,7 @@ browser_env.rs: P5-cov-browser-env attachShadow's native states the ShadowRootIn
 browser_env.rs: P5-cov-browser-env the node addEventListener / removeEventListener / dispatchEvent natives state that their callers (browser_env.js's EventTarget wrappers, dispatch_host_event) pass a node and enough arguments
 browser_env.rs: P5-cov turbo-dom#149 a listener ended by execution termination ends the dispatch (rethrown, no later listener or default action)
 browser_env.rs: P5-cov turbo-dom#157 a stop set in the target's capture listeners also skips its bubble listeners (Chrome 156)
+browser_env.rs: P5-cov-browser-env round 3: the remaining element-template accessors (mode, __attrValue, outerHTML, ownerDocument, isContentEditable) take holder_handle; hide_node_nonce states nonce_units' handle
 event_listeners.rs: P5-cov turbo-dom#157 the stop contract test expects Chrome 156's target stop (native_guards_chrome156.json events.stopAtTarget)
 user_activation_gates.rs: P5-cov-browser-env turbo-dom#150 each established close watcher has an identity; a request stops when its cancel action closed and reopened the dialog
 html_dialog.rs: P5-cov-browser-env drops close_blocks (valid_selector already closes blocks left open at EOF; its every mutant survived the EOF selector control)

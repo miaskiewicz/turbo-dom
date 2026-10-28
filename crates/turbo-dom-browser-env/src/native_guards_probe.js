@@ -374,11 +374,36 @@
       attrValue: v => { attr.value = v; },
       splitText: v => document.createTextNode('abc').splitText(v),
       outerHTML: v => { document.createElement('p').appendChild(document.createElement('i')).outerHTML = v; },
+      id: v => { document.createElement('i').id = v; },
+      className: v => { document.createElement('i').className = v; },
+      textContent: v => { document.createElement('i').textContent = v; },
+      textTextContent: v => { document.createTextNode('ab').textContent = v; },
+      createElementNSNamespace: v => document.createElementNS(v, 'a'),
+      createElementNSName: v => document.createElementNS('urn:x', v),
+      createComment: v => document.createComment(v),
+      createTextNode: v => document.createTextNode(v),
+      append: v => document.createElement('i').append(v),
+      prepend: v => document.createElement('i').prepend(v),
+      before: v => document.createElement('i').appendChild(document.createElement('b')).before(v),
+      after: v => document.createElement('i').appendChild(document.createElement('b')).after(v),
+      replaceWith: v => document.createElement('i').appendChild(document.createElement('b')).replaceWith(v),
+      replaceChildren: v => document.createElement('i').replaceChildren(v),
+      getElementById: v => document.getElementById(v),
+      documentQuerySelector: v => document.querySelector(v),
+      documentQuerySelectorAll: v => document.querySelectorAll(v),
     };
     out.conversions = {};
     for (const [name, call] of Object.entries(cases)) out.conversions[name] = [run(() => call(sym)), run(() => call(bad))];
     out.conversions.after = [el.getAttribute('a'), el.attributes.length];
     out.conversions.insertAdjacentString = run(() => el.insertAdjacentElement('beforeend', 'text'));
+    out.conversions.valid = (() => {
+      const t = document.createTextNode('ab'); t.textContent = 'xyz';
+      const host = document.createElement('div'); host.innerHTML = '<p class=q><b id=bb>b</b></p>';
+      return [t.data, host.querySelector('\\62 ').id, host.querySelector('b').closest('\\70 ').className, document.createElementNS('urn:x', 'a1-b.c').localName,
+        run(() => document.createElementNS('urn:x', 'a$b')), run(() => document.createElementNS('urn:x', 'a b')), run(() => el.setAttributeNS('urn:x', 'p:a$b', 'v')),
+        run(() => document.createElementNS('urn:x', 'é')), run(() => document.createElementNS('urn:x', 'aé$')),
+        run(() => document.createElementNS()), run(() => document.createElementNS('urn:x')), run(() => document.createComment()), run(() => Document.prototype.createComment.call(el, 'x')), run(() => Document.prototype.createDocumentFragment.call(el)), run(() => Document.prototype.createElementNS.call(el, null, 'a'))];
+    })();
   }
   host.remove();
   return out;

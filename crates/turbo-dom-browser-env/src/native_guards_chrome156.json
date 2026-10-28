@@ -2,7 +2,7 @@
   "browser": "Chrome/156.0.8078.4",
   "v8": "15.6.75",
   "probe": "native_guards_probe.js",
-  "probeSha256": "af9a87486e81a0e1d949e574793296a889c20abcc3e2d666f019671d86b30583",
+  "probeSha256": "6ff81f79279b1b7f22bbb01cad3edff213494f07d731ef3682e97ac0fdd3ff01",
   "collectorSha256": "3f964d2cdf0ec8101870a776aaffc3b7dc4522306959c4a40761057beb255eb8",
   "flags": [
     "--headless=new",
@@ -2073,13 +2073,211 @@
           "RangeError"
         ]
       ],
+      "id": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "RangeError",
+          "RangeError"
+        ]
+      ],
+      "className": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "RangeError",
+          "RangeError"
+        ]
+      ],
+      "textContent": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "RangeError",
+          "RangeError"
+        ]
+      ],
+      "textTextContent": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "RangeError",
+          "RangeError"
+        ]
+      ],
+      "createElementNSNamespace": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "RangeError",
+          "RangeError"
+        ]
+      ],
+      "createElementNSName": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "RangeError",
+          "RangeError"
+        ]
+      ],
+      "createComment": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "RangeError",
+          "RangeError"
+        ]
+      ],
+      "createTextNode": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "RangeError",
+          "RangeError"
+        ]
+      ],
+      "append": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "RangeError",
+          "RangeError"
+        ]
+      ],
+      "prepend": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "RangeError",
+          "RangeError"
+        ]
+      ],
+      "before": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "RangeError",
+          "RangeError"
+        ]
+      ],
       "after": [
         "1",
         1
       ],
+      "replaceWith": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "RangeError",
+          "RangeError"
+        ]
+      ],
+      "replaceChildren": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "RangeError",
+          "RangeError"
+        ]
+      ],
+      "getElementById": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "RangeError",
+          "RangeError"
+        ]
+      ],
+      "documentQuerySelector": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "RangeError",
+          "RangeError"
+        ]
+      ],
+      "documentQuerySelectorAll": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "RangeError",
+          "RangeError"
+        ]
+      ],
       "insertAdjacentString": [
         "TypeError",
         "TypeError"
+      ],
+      "valid": [
+        "xyz",
+        "bb",
+        "q",
+        "a1-b.c",
+        {},
+        [
+          "DOMException",
+          "InvalidCharacterError"
+        ],
+        "undefined",
+        {},
+        {},
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "TypeError",
+          "TypeError"
+        ]
       ]
     }
   }
