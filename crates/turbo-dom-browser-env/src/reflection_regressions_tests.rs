@@ -159,3 +159,39 @@ fn media_booleans_reflect() {
         r#"["controls <audio controls=\"\"></audio> true","<audio></audio>","autoplay <audio autoplay=\"\"></audio> true","<audio></audio>","loop <audio loop=\"\"></audio> true","<audio></audio>","defaultMuted <audio muted=\"\"></audio> true","<audio></audio>","playsInline <video playsinline=\"\"></video> true","<video></video>","disableRemotePlayback <audio disableremoteplayback=\"\"></audio> true","<audio></audio>","inline","true,true,true,true","false","true false"]"#
     );
 }
+
+/// turbo-dom#169: every `name` IDL attribute reflects the `name` content attribute.
+#[test]
+fn name_reflects_on_every_owner() {
+    let tags = [
+        "img", "embed", "object", "form", "iframe", "map", "meta", "slot", "param", "input",
+        "button", "select", "textarea", "output", "fieldset", "a", "details",
+    ];
+    let list = tags
+        .iter()
+        .map(|t| format!("'{t}'"))
+        .collect::<Vec<_>>()
+        .join(",");
+    let expected = tags
+        .iter()
+        .map(|t| {
+            let close = if ["img", "embed", "meta", "param", "input"].contains(t) {
+                String::new()
+            } else {
+                format!("</{t}>")
+            };
+            format!(r#""{t} x <{t} name=\"x\">{close}""#)
+        })
+        .collect::<Vec<_>>()
+        .join(",");
+    assert_eq!(
+        page_json(
+            PAGE,
+            &format!(
+                "[{list}].map(t => {{ const e = document.createElement(t); if (!('name' in e)) return t + ' none'; \
+                 e.name = 'x'; return t + ' ' + e.getAttribute('name') + ' ' + e.outerHTML; }})"
+            ),
+        ),
+        format!("[{expected}]")
+    );
+}
