@@ -138,7 +138,9 @@ pub(super) fn refresh(scope: &mut v8::PinScope, node: Handle, name: &str) {
         let form = with_tree(|tree| {
             let mut parent = tree.parent(node);
             while let Some(current) = parent {
-                if tree.tag_name(current).is_some_and(|name| name == "form") {
+                if tree.local_name(current) == Some("form")
+                    && tree.namespace_uri(current) == Some("http://www.w3.org/1999/xhtml")
+                {
                     return Some(current);
                 }
                 parent = tree.parent(current);

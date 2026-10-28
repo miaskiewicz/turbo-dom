@@ -26,7 +26,6 @@ fn page_json(html: &str, source: &str) -> String {
 
 /// turbo-dom#152: an inline handler's scope chain holds its form owner (Chrome 156).
 #[test]
-#[ignore = "turbo-dom#152: fails until the fix"]
 fn inline_handlers_resolve_their_form_owners_members() {
     assert_eq!(
         page_json(
