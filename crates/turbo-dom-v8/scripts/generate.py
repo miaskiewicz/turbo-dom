@@ -272,7 +272,8 @@ def generate(archive, destination, pins, update_pins=False, compare=None):
     if leftovers:
         raise GenerationError(f"patch left {leftovers}")
     cargo = destination / "Cargo.toml"
-    cargo.write_text(manifest(cargo.read_text(), pins))
+    # Bytes, not write_text: Windows text mode would turn every "\n" into "\r\n".
+    cargo.write_bytes(manifest(cargo.read_text(), pins).encode())
     for name in OWN_TESTS:
         shutil.copyfile(CRATE / "tests" / f"{name}.rs", destination / "tests" / f"{name}.rs")
     shutil.copyfile(CRATE / "rustfmt.toml", destination / "rustfmt.toml")
@@ -359,7 +360,7 @@ def main(argv=None):
                 replace_contents(args.output, generated)
                 compared = f", written to {args.output}"
                 if args.update_pins:
-                    PINS_PATH.write_text(json.dumps(pins, indent=2) + "\n")
+                    PINS_PATH.write_bytes((json.dumps(pins, indent=2) + "\n").encode())
     except GenerationError as error:
         print(f"error: {error}", file=sys.stderr)
         return 1
