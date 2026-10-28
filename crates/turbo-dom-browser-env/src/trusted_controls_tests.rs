@@ -398,3 +398,24 @@ fn custom_elements_edges_match_chrome156() {
     let expected = control(include_str!("custom_elements_edges_chrome156.json"), probe);
     assert_matches_control(&run_probe(probe), &expected, &[]);
 }
+
+#[test]
+fn selection_text_edges_match_chrome156() {
+    let probe = include_str!("selection_text_edges_probe.js");
+    let expected = control(include_str!("selection_text_edges_chrome156.json"), probe);
+    assert_matches_control(
+        &run_probe(probe),
+        &expected,
+        &[
+            // miaskiewicz/turbo-dom#144: the visible-text model's known differences.
+            r##"result.moves = "#text:ab:1 #text:ab:2 #text:ab:2 #text:ab:2 #text:ab:2 #text:ab:2 #text:ab:2 #text:ab:2 #text:ab:1 #text:ab:0 #text:ab:0 #text:ab:0 #text:ab:0 #text:ab:0 #text:ab:0 #text:ab:0""##,
+            r#"result.shadow[0] = "\"L2L3\\nE1\"""#,
+            r#"result.tables[1] = "\"x\\nh\\nt2\\n\"""#,
+            r#"result.tables[2] = "\"c1c2\\ny\"""#,
+            r#"result.transforms[1] = "\"AßB ŉ\"""#,
+            r#"result.transforms[2] = "\"ab cd\"""#,
+            // miaskiewicz/turbo-dom#145: a hidden <br> still breaks the line.
+            r#"result.whitespace[2] = "\"abc\"""#,
+        ],
+    );
+}
