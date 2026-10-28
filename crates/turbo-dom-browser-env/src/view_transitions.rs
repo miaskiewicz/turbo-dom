@@ -351,13 +351,10 @@ fn dispatch<'s>(
     args: v8::FunctionCallbackArguments<'s>,
     mut rv: v8::ReturnValue,
 ) {
-    let Ok(target) = v8::Local::<v8::Object>::try_from(args.get(1)) else {
-        return;
-    };
+    // view_transitions.js passes a transition's document or scope root (a wrapped node).
+    let target = v8::Local::<v8::Object>::try_from(args.get(1)).expect("a document or root");
     let _dom = DomScope::for_object(scope, target);
-    let Some(node) = handle_of(scope, target) else {
-        return;
-    };
+    let node = handle_of(scope, target).expect("a wrapped node");
     match args.get(0).to_rust_string_lossy(scope).as_str() {
         "inert" => rv.set_bool(!DOM.with(|dom| {
             dom.borrow()
@@ -391,13 +388,13 @@ fn dispatch<'s>(
                 rv.set(value);
             }
         }
-        "schedule" => {
+        // "schedule", the last operation view_transitions.js names.
+        _ => {
             if let Ok(callback) = v8::Local::<v8::Function>::try_from(args.get(2)) {
                 let delay = args.get(3).uint32_value(scope).unwrap_or(0);
                 rv.set_bool(html_popover::schedule_after(scope, callback, delay));
             }
         }
-        _ => {}
     }
 }
 

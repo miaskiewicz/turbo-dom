@@ -317,3 +317,116 @@ fn absent_member_reads_see_later_own_properties() {
         );
     });
 }
+
+/// The host's form entry-list transaction: entries read the form's controls; while a
+/// FormData-constructor transaction holds the form, no further entry list is built (the
+/// constructing-entry-list flag) until the host finishes it. Finishing anything but a form
+/// changes nothing. Without a host FormData runtime there is no formdata dispatcher.
+#[test]
+fn form_entry_list_transactions_and_formdata_dispatch() {
+    with_page(
+        "<!doctype html><form id=f><input name=a value=1><button name=b value=2>s</button></form><div id=d></div>",
+        |scope| {
+            let form = object(scope, "globalThis.f = document.getElementById('f')");
+            let none: v8::Local<v8::Value> = v8::undefined(scope).into();
+            let rows = |scope: &mut v8::PinScope, value: Option<v8::Local<v8::Array>>| {
+                value.map(|array| {
+                    let global = scope.get_current_context().global(scope);
+                    let key = v8::String::new(scope, "rows").unwrap();
+                    global.set(scope, key.into(), array.into());
+                    json(scope, "rows")
+                })
+            };
+            let entries = r#"[["a","1"]]"#.to_string();
+            let read = form_submission_entries(scope, form, none);
+            assert_eq!(rows(scope, read), Some(entries.clone()));
+            let submitter = eval(scope, "f.querySelector('button')");
+            let read = form_submission_entries(scope, form, submitter);
+            assert_eq!(rows(scope, read), Some(r#"[["a","1"],["b","2"]]"#.to_string()));
+            let held = begin_form_data_constructor_entries(scope, form.into(), none);
+            assert_eq!(rows(scope, held), Some(entries.clone()));
+            assert!(begin_form_data_constructor_entries(scope, form.into(), none).is_none());
+            assert!(form_submission_entries(scope, form, none).is_none());
+            // Finishing a non-form, a non-node or a non-object leaves the transaction held.
+            let div = eval(scope, "document.getElementById('d')");
+            finish_form_data_constructor(scope, div);
+            let plain = eval(scope, "({})");
+            finish_form_data_constructor(scope, plain);
+            let five = v8::Integer::new(scope, 5).into();
+            finish_form_data_constructor(scope, five);
+            assert!(form_submission_entries(scope, form, none).is_none());
+            finish_form_data_constructor(scope, form.into());
+            let read = begin_form_data_constructor_entries(scope, form.into(), none);
+            assert_eq!(rows(scope, read), Some(entries));
+            finish_form_data_constructor(scope, form.into());
+            eval(scope, "globalThis.seen = []; f.addEventListener('formdata', () => seen.push(1))");
+            let data = eval(scope, "({})");
+            assert!(!dispatch_formdata_event(scope, form, data));
+            assert_eq!(json(scope, "seen"), "[]");
+        },
+    );
+}
+
+/// Both host form callbacks need a native document: without one they do not register.
+#[test]
+fn form_host_callbacks_without_a_document() {
+    crate::browser_env::tests::init_v8();
+    reset();
+    let isolate = &mut v8::Isolate::new(Default::default());
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    let code = v8::String::new(scope, "(() => true)").unwrap();
+    let value = v8::Script::compile(scope, code, None)
+        .unwrap()
+        .run(scope)
+        .unwrap();
+    let callback = v8::Local::<v8::Function>::try_from(value).unwrap();
+    assert!(!install_form_submission_handler(scope, callback));
+    assert!(!install_form_value_reader(scope, callback));
+    install_with_html(scope, "<!doctype html><form></form>");
+    assert!(install_form_submission_handler(scope, callback));
+    assert!(install_form_value_reader(scope, callback));
+    reset();
+}
+
+/// Light-document membership and composed containment answer only for nodes: shadow-tree
+/// nodes are composed descendants of their host but not light document nodes, detached
+/// nodes are neither, and nodes of different realms never contain each other.
+#[test]
+fn light_membership_and_composed_containment() {
+    with_page("<!doctype html><div id=host></div>", |scope| {
+        let host = object(scope, "globalThis.host = document.getElementById('host')");
+        let inner = object(
+            scope,
+            "const root = host.attachShadow({ mode: 'open' }); root.innerHTML = '<b>i</b>'; root.firstChild",
+        );
+        let detached = object(scope, "document.createElement('i')");
+        let body = object(scope, "document.body");
+        let plain = object(scope, "({})");
+        assert!(is_light_document_node(scope, host));
+        assert!(!is_light_document_node(scope, inner));
+        assert!(!is_light_document_node(scope, detached));
+        assert!(!is_light_document_node(scope, plain));
+        assert!(composed_contains_node(scope, body, inner));
+        assert!(composed_contains_node(scope, host, host));
+        assert!(!composed_contains_node(scope, inner, host));
+        assert!(!composed_contains_node(scope, body, detached));
+        assert!(!composed_contains_node(scope, plain, host));
+        assert!(!composed_contains_node(scope, body, plain));
+        let child = v8::Context::new(scope, Default::default());
+        let foreign = {
+            let scope = &mut v8::ContextScope::new(scope, child);
+            install_independent_html(scope, "<p>child</p>");
+            let code = v8::String::new(scope, "document.body").unwrap();
+            let value = v8::Script::compile(scope, code, None)
+                .unwrap()
+                .run(scope)
+                .unwrap();
+            v8::Global::new(scope, v8::Local::<v8::Object>::try_from(value).unwrap())
+        };
+        let foreign = v8::Local::new(scope, &foreign);
+        assert!(!composed_contains_node(scope, body, foreign));
+        assert!(!composed_contains_node(scope, foreign, body));
+    });
+}

@@ -2,7 +2,7 @@
   "browser": "Chrome/156.0.8078.4",
   "v8": "15.6.75",
   "probe": "native_guards_probe.js",
-  "probeSha256": "b4eb7465535f909e0d06919962da4336d8e2a9ebaf03803758f19bb635b54dc5",
+  "probeSha256": "af9a87486e81a0e1d949e574793296a889c20abcc3e2d666f019671d86b30583",
   "collectorSha256": "3f964d2cdf0ec8101870a776aaffc3b7dc4522306959c4a40761057beb255eb8",
   "flags": [
     "--headless=new",
@@ -1440,6 +1440,13 @@
         true
       ],
       "duplicate": 2,
+      "stopAtTarget": [
+        "inner-capture"
+      ],
+      "stopAtOuterBubble": [
+        "inner",
+        "outer"
+      ],
       "removeCaptureOnly": 1
     },
     "attrNodes": {
@@ -1883,6 +1890,196 @@
           false,
           "undefined"
         ]
+      ]
+    },
+    "conversions": {
+      "getAttribute": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "RangeError",
+          "RangeError"
+        ]
+      ],
+      "hasAttribute": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "RangeError",
+          "RangeError"
+        ]
+      ],
+      "getAttributeNode": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "RangeError",
+          "RangeError"
+        ]
+      ],
+      "toggleAttribute": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "RangeError",
+          "RangeError"
+        ]
+      ],
+      "getAttributeNSLocal": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "RangeError",
+          "RangeError"
+        ]
+      ],
+      "hasAttributeNSNamespace": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "RangeError",
+          "RangeError"
+        ]
+      ],
+      "hasAttributeNSLocal": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "RangeError",
+          "RangeError"
+        ]
+      ],
+      "setAttributeNSNamespace": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "RangeError",
+          "RangeError"
+        ]
+      ],
+      "setAttributeNSValue": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "RangeError",
+          "RangeError"
+        ]
+      ],
+      "removeAttributeNSLocal": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "RangeError",
+          "RangeError"
+        ]
+      ],
+      "getAttributeNodeNSNamespace": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "RangeError",
+          "RangeError"
+        ]
+      ],
+      "getAttributeNodeNSLocal": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "RangeError",
+          "RangeError"
+        ]
+      ],
+      "createAttribute": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "RangeError",
+          "RangeError"
+        ]
+      ],
+      "createAttributeNSNamespace": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "RangeError",
+          "RangeError"
+        ]
+      ],
+      "createAttributeNSName": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "RangeError",
+          "RangeError"
+        ]
+      ],
+      "attrValue": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "RangeError",
+          "RangeError"
+        ]
+      ],
+      "splitText": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "RangeError",
+          "RangeError"
+        ]
+      ],
+      "outerHTML": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "RangeError",
+          "RangeError"
+        ]
+      ],
+      "after": [
+        "1",
+        1
+      ],
+      "insertAdjacentString": [
+        "TypeError",
+        "TypeError"
       ]
     }
   }

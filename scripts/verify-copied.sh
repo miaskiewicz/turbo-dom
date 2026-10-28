@@ -151,8 +151,23 @@ browser_env.rs: P5-cov-browser-env drops the template's checkValidity / reportVa
 browser_env.js: P5-cov-browser-env stops copying the removed checkValidity / reportValidity natives and the contentEditable setter
 browser_env.rs: P5-cov-browser-env attachShadow's native states the ShadowRootInit its custom_elements.js wrapper validated (receiver, mode, slotAssignment) instead of re-validating it
 browser_env.rs: P5-cov-browser-env the node addEventListener / removeEventListener / dispatchEvent natives state that their callers (browser_env.js's EventTarget wrappers, dispatch_host_event) pass a node and enough arguments
+browser_env.rs: P5-cov turbo-dom#149 a listener ended by execution termination ends the dispatch (rethrown, no later listener or default action)
+browser_env.rs: P5-cov turbo-dom#157 a stop set in the target's capture listeners also skips its bubble listeners (Chrome 156)
+event_listeners.rs: P5-cov turbo-dom#157 the stop contract test expects Chrome 156's target stop (native_guards_chrome156.json events.stopAtTarget)
+sanitizer.rs: P5-cov-browser-env natives called only by their JS shim drop the termination check (script cannot run while terminating) and state the shim's guarantees with expect() (object receivers, converted markup, canonical records, private records the module writes, wrapper creation contexts); the last named operation is the catch-all arm
+shadow_slots.rs: P5-cov-browser-env natives called only by their JS shim drop the termination check (script cannot run while terminating) and state the shim's guarantees with expect() (object receivers, converted markup, canonical records, private records the module writes, wrapper creation contexts); the last named operation is the catch-all arm
+shadow_html.rs: P5-cov-browser-env natives called only by their JS shim drop the termination check (script cannot run while terminating) and state the shim's guarantees with expect() (object receivers, converted markup, canonical records, private records the module writes, wrapper creation contexts); the last named operation is the catch-all arm
+template_contents.rs: P5-cov-browser-env template walks state their guarantees with expect() (wrapped nodes, the installed document, importable template children); serialize drops the doctype / document / fragment arms no queued node can take
+event_listeners.js: P5-cov-browser-env turbo-dom#156 addEventListener's {signal: null} is a TypeError (its option-order test's signal getter returns undefined)
+event_listeners.rs: P5-cov-browser-env turbo-dom#156 addEventListener's {signal: null} is a TypeError (its option-order test's signal getter returns undefined)
+document_basics.rs: P5-cov-browser-env the dispatch native's converted arguments (uint() offsets / counts, string() data / targets / nonces) are expect()s
+dom_mutations.rs: P5-cov-browser-env natives / mutation planning state their callers' guarantees with expect() (wrapped targets, an installed document, adopted planned nodes); the last named operation is the catch-all arm
+view_transitions.rs: P5-cov-browser-env natives / mutation planning state their callers' guarantees with expect() (wrapped targets, an installed document, adopted planned nodes); the last named operation is the catch-all arm
 user_activation_gates.rs: P5-cov-browser-env turbo-dom#150 each established close watcher has an identity; a request stops when its cancel action closed and reopened the dialog
 html_dialog.rs: P5-cov-browser-env drops close_blocks (valid_selector already closes blocks left open at EOF; its every mutant survived the EOF selector control)
+mutation_observers.rs: P5-cov-browser-env the observer native states mutation_observers.js's object arguments with expect() (schedule is the catch-all); a document wrapper's creation context is an expect()
+document_legacy.rs: P5-cov-browser-env canonical_host's bracketed and ends-in-a-number parses map Ok(host) directly (the WHATWG parser yields only IPv6 / IPv4 there)
+range_contents.rs: P5-cov-browser-env the contextual-fragment native states its caller's guarantees (a node start container, an installed document, fragment adoption) and install reads the ts namespace / makeNativeFunction browser_env.js defined, with expect()
 event_handlers.rs: P5-cov-browser-env turbo-dom#152 an inline handler's form owner is found by HTML local name (tag_name is the uppercase tagName)
 html_text.rs: P5-cov-browser-env turbo-dom#154 content of a closed <details> has an empty innerText (rendered with its contents skipped)
 html_text.rs: P5-cov-browser-env native argument / receiver guards the JS caller makes unreachable become expect() and the last operation it calls is the match's wildcard arm (C3d)
@@ -189,8 +204,9 @@ OWNED="$OWNED css_shorthand.rs css_shorthand_tests.rs css_longhand_tests.rs svg_
 OWNED="$OWNED dom_exception_realm_probe.js dom_exception_realm_cases.json dom_exception_realm_chrome156.json dom_exception_realm_tests.rs custom_elements_collect_tests.rs html_image_srcset_probe.js html_image_srcset_cases.json html_image_srcset_chrome156.json html_image_srcset_tests.rs reflected_urls_probe.js reflected_urls_cases.json reflected_urls_chrome156.json reflected_urls_tests.rs"
 OWNED="$OWNED dom_ownership_alloc_tests.rs dom_ownership_scale_tests.rs"
 OWNED="$OWNED native_guards_probe.js native_guards_chrome156.json native_guards_tests.rs close_watchers_probe.js close_watchers_chrome156.json close_watchers_tests.rs host_api_tests.rs"
-OWNED="$OWNED edge_probes_tests.rs harness_tests.rs termination_tests.rs shadow_slots_edges_probe.js shadow_slots_edges_chrome156.json dom_mutation_validity_probe.js dom_mutation_validity_chrome156.json selector_edges_probe.js selector_edges_chrome156.json sanitizer_edges_probe.js sanitizer_edges_chrome156.json document_edges_probe.js document_edges_chrome156.json receivers_edges_probe.js receivers_edges_chrome156.json"
+OWNED="$OWNED edge_probes_tests.rs harness_tests.rs termination_tests.rs shadow_slots_edges_probe.js shadow_slots_edges_chrome156.json dom_mutation_validity_probe.js dom_mutation_validity_chrome156.json selector_edges_probe.js selector_edges_chrome156.json sanitizer_edges_probe.js sanitizer_edges_chrome156.json document_edges_probe.js document_edges_chrome156.json receivers_edges_probe.js receivers_edges_chrome156.json event_receivers_edges_probe.js event_receivers_edges_chrome156.json"
 OWNED="$OWNED activation_granted_probe.js activation_granted_chrome156.json trusted_controls_tests.rs dialog_popover_edges_probe.js dialog_popover_edges_chrome156.json custom_elements_edges_probe.js custom_elements_edges_chrome156.json selection_text_edges_probe.js selection_text_edges_chrome156.json"
+OWNED="$OWNED private_natives_tests.rs binding_termination_tests.rs"
 OWNED="$OWNED member_edges_tests.rs host_edges_tests.rs member_edges_probe.js member_edges_chrome156.json"
 
 repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)

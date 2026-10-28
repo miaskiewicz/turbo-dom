@@ -58,9 +58,7 @@ fn children<'s>(
     node: v8::Local<'s, v8::Object>,
 ) -> Vec<v8::Local<'s, v8::Object>> {
     let _owner = DomScope::for_object(scope, node);
-    let Some(handle) = handle_of(scope, node) else {
-        return Vec::new();
-    };
+    let handle = handle_of(scope, node).expect("callers pass wrapped nodes");
     with_tree(|tree| tree.children(handle))
         .unwrap_or_default()
         .into_iter()
@@ -152,9 +150,7 @@ pub(super) fn configure(
     options: v8::Local<v8::Object>,
 ) {
     let read = |name: &str| {
-        let Some(key) = v8::String::new(scope, name) else {
-            return false;
-        };
+        let key = v8::String::new(scope, name).unwrap();
         options
             .get(scope, key.into())
             .is_some_and(|value| value.boolean_value(scope))
@@ -364,9 +360,8 @@ pub(super) fn set_html_unsafe<'s>(
 ) {
     let (context, target) = {
         let _owner = DomScope::for_object(scope, receiver);
-        let Some(handle) = handle_of(scope, receiver) else {
-            return;
-        };
+        // Every caller brand-checked the receiver (an Element or a ShadowRoot).
+        let handle = handle_of(scope, receiver).expect("brand-checked receiver");
         let host = with_tree(|tree| tree.shadow_host(handle)).flatten();
         (host.unwrap_or(handle), host.is_none())
     };
@@ -516,14 +511,10 @@ fn native<'s>(
     args: v8::FunctionCallbackArguments<'s>,
     mut rv: v8::ReturnValue,
 ) {
-    if scope.is_execution_terminating() {
-        return;
-    }
+    // Only shadow_html.js calls this native (script cannot run while terminating), always
+    // with the receiver of a makeNativeFunction API callback, which V8 hands over as an object.
     let operation = args.get(0).to_rust_string_lossy(scope);
-    let Ok(object) = v8::Local::<v8::Object>::try_from(args.get(1)) else {
-        illegal(scope);
-        return;
-    };
+    let object = v8::Local::<v8::Object>::try_from(args.get(1)).expect("an object receiver");
     match operation.as_str() {
         "clonable" | "serializable" | "delegatesFocus" => {
             if shadow_root(scope, object).is_none() {
@@ -602,7 +593,8 @@ fn native<'s>(
             };
             rv.set(unit_string(scope, &html).into());
         }
-        "setHTMLUnsafe" => {
+        // "setHTMLUnsafe", the last operation shadow_html.js names.
+        _ => {
             // The markup already passed its Trusted Types check (sanitizer.js).
             // shadow_html.js passes the converted (string) markup.
             let html = v8::Local::<v8::String>::try_from(args.get(2)).expect("converted markup");
@@ -618,7 +610,6 @@ fn native<'s>(
                 config.as_ref().map(|config| (config, false)),
             );
         }
-        _ => illegal(scope),
     }
 }
 /// Capture the root-flag keys (idempotent); parsing may attach roots before install.

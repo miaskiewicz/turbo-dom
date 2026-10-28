@@ -10,6 +10,8 @@
     'html:active-view-transition', ':root:active-view-transition-type(x)', ':is(:active-view-transition, p)', ':where(:active-view-transition-type(none), p)', ':is(:active-view-transition-type(), :active-view-transition)',
     ':not(:active-view-transition)', '::active-view-transition', 'p /* c */ :active-view-transition', ':has(:active-view-transition)', ':is(p, , q):active-view-transition',
     'p:active-view-transition-type(a) > q', ':active-view-transition, [', ':active-view-transition-type(a,)', ':nth-child(1 of :active-view-transition)',
+    ':is(:active-view-transition(), p)', ':where(p, :active-view-transition-type(), q)', ':is(:active-view-transition-type(a b), q)', ':is(p :active-view-transition)', 'p::before:active-view-transition',
+    ':active-view-transition:hover', ':active-view-transition-type(a):not(p)', '[a=":active-view-transition"]', ':active-view-transition /*x*/ p', ':is(:active-view-transition) :is(, p)',
   ];
   document.body.innerHTML = '<p id=p1></p><q id=q1></q>';
   out.viewTransition = {};
@@ -90,6 +92,16 @@
     attempt(() => document.createProcessingInstruction('a', '?>')),
     attempt(() => document.createProcessingInstruction('1a', 'x')),
     attempt(() => document.createProcessingInstruction('a', 'x').target),
+  ];
+  const fragment = document.createDocumentFragment();
+  fragment.append(Object.assign(document.createElement('b'), { id: '5' }), Object.assign(document.createElement('i'), { id: '[object Object]' }));
+  out.fragmentIds = [
+    attempt(() => fragment.getElementById(5).nodeName),
+    attempt(() => fragment.getElementById({}).nodeName),
+    attempt(() => fragment.getElementById(Symbol('s'))),
+    attempt(() => fragment.getElementById({ toString() { throw new RangeError('id'); } })),
+    attempt(() => fragment.getElementById('missing')),
+    attempt(() => fragment.getElementById()),
   ];
   return out;
 })()

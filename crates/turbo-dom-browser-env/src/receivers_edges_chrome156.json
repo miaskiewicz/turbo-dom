@@ -2,7 +2,7 @@
   "browser": "Chrome/156.0.8078.47",
   "v8": "15.6.75.19",
   "probe": "receivers_edges_probe.js",
-  "probeSha256": "e5754091d3c5513602d0a84966dd3cc1cf7aced6a0cb9e209c2d74df5decf6f7",
+  "probeSha256": "5bcfed6908163d36fd6761e6a23b0727f2409c53efd3eef4e639fc8697285f90",
   "collectorSha256": "3f964d2cdf0ec8101870a776aaffc3b7dc4522306959c4a40761057beb255eb8",
   "flags": [
     "--headless=new",
@@ -28,7 +28,9 @@
       "document": "TypeError",
       "root": "boolean",
       "fragment": "TypeError",
-      "slot": "TypeError"
+      "slot": "TypeError",
+      "nodeList": "TypeError",
+      "implementation": "TypeError"
     },
     "ShadowRoot.serializable": {
       "number": "TypeError",
@@ -40,7 +42,9 @@
       "document": "TypeError",
       "root": "boolean",
       "fragment": "TypeError",
-      "slot": "TypeError"
+      "slot": "TypeError",
+      "nodeList": "TypeError",
+      "implementation": "TypeError"
     },
     "ShadowRoot.delegatesFocus": {
       "number": "TypeError",
@@ -52,7 +56,9 @@
       "document": "TypeError",
       "root": "boolean",
       "fragment": "TypeError",
-      "slot": "TypeError"
+      "slot": "TypeError",
+      "nodeList": "TypeError",
+      "implementation": "TypeError"
     },
     "ShadowRoot.activeElement": {
       "number": "TypeError",
@@ -64,7 +70,9 @@
       "document": "TypeError",
       "root": "null",
       "fragment": "TypeError",
-      "slot": "TypeError"
+      "slot": "TypeError",
+      "nodeList": "TypeError",
+      "implementation": "TypeError"
     },
     "ShadowRoot.pointerLockElement": {
       "number": "TypeError",
@@ -76,7 +84,9 @@
       "document": "TypeError",
       "root": "null",
       "fragment": "TypeError",
-      "slot": "TypeError"
+      "slot": "TypeError",
+      "nodeList": "TypeError",
+      "implementation": "TypeError"
     },
     "ShadowRoot.fullscreenElement": {
       "number": "TypeError",
@@ -88,7 +98,9 @@
       "document": "TypeError",
       "root": "null",
       "fragment": "TypeError",
-      "slot": "TypeError"
+      "slot": "TypeError",
+      "nodeList": "TypeError",
+      "implementation": "TypeError"
     },
     "ShadowRoot.slotAssignment": {
       "number": "TypeError",
@@ -100,7 +112,9 @@
       "document": "TypeError",
       "root": "string",
       "fragment": "TypeError",
-      "slot": "TypeError"
+      "slot": "TypeError",
+      "nodeList": "TypeError",
+      "implementation": "TypeError"
     },
     "ShadowRoot.mode": {
       "number": "TypeError",
@@ -112,7 +126,9 @@
       "document": "TypeError",
       "root": "string",
       "fragment": "TypeError",
-      "slot": "TypeError"
+      "slot": "TypeError",
+      "nodeList": "TypeError",
+      "implementation": "TypeError"
     },
     "ShadowRoot.host": {
       "number": "TypeError",
@@ -124,7 +140,9 @@
       "document": "TypeError",
       "root": "DIV",
       "fragment": "TypeError",
-      "slot": "TypeError"
+      "slot": "TypeError",
+      "nodeList": "TypeError",
+      "implementation": "TypeError"
     },
     "ShadowRoot.innerHTML": {
       "number": "TypeError",
@@ -136,7 +154,9 @@
       "document": "TypeError",
       "root": "string",
       "fragment": "TypeError",
-      "slot": "TypeError"
+      "slot": "TypeError",
+      "nodeList": "TypeError",
+      "implementation": "TypeError"
     },
     "ShadowRoot.getHTML()": {
       "number": "TypeError",
@@ -148,7 +168,9 @@
       "document": "TypeError",
       "root": "string",
       "fragment": "TypeError",
-      "slot": "TypeError"
+      "slot": "TypeError",
+      "nodeList": "TypeError",
+      "implementation": "TypeError"
     },
     "ShadowRoot.setHTMLUnsafe()": {
       "number": "TypeError",
@@ -160,7 +182,9 @@
       "document": "TypeError",
       "root": "undefined",
       "fragment": "TypeError",
-      "slot": "TypeError"
+      "slot": "TypeError",
+      "nodeList": "TypeError",
+      "implementation": "TypeError"
     },
     "ShadowRoot.setHTML()": {
       "number": "TypeError",
@@ -172,7 +196,9 @@
       "document": "TypeError",
       "root": "undefined",
       "fragment": "TypeError",
-      "slot": "TypeError"
+      "slot": "TypeError",
+      "nodeList": "TypeError",
+      "implementation": "TypeError"
     },
     "Document.activeElement": {
       "number": "TypeError",
@@ -184,7 +210,9 @@
       "document": "BODY",
       "root": "TypeError",
       "fragment": "TypeError",
-      "slot": "TypeError"
+      "slot": "TypeError",
+      "nodeList": "TypeError",
+      "implementation": "TypeError"
     },
     "Document.pointerLockElement": {
       "number": "TypeError",
@@ -196,7 +224,9 @@
       "document": "null",
       "root": "TypeError",
       "fragment": "TypeError",
-      "slot": "TypeError"
+      "slot": "TypeError",
+      "nodeList": "TypeError",
+      "implementation": "TypeError"
     },
     "Document.fullscreenElement": {
       "number": "TypeError",
@@ -208,7 +238,9 @@
       "document": "null",
       "root": "TypeError",
       "fragment": "TypeError",
-      "slot": "TypeError"
+      "slot": "TypeError",
+      "nodeList": "TypeError",
+      "implementation": "TypeError"
     },
     "Document.doctype": {
       "number": "TypeError",
@@ -220,7 +252,9 @@
       "document": "html",
       "root": "TypeError",
       "fragment": "TypeError",
-      "slot": "TypeError"
+      "slot": "TypeError",
+      "nodeList": "TypeError",
+      "implementation": "TypeError"
     },
     "Document.documentElement": {
       "number": "TypeError",
@@ -232,7 +266,9 @@
       "document": "HTML",
       "root": "TypeError",
       "fragment": "TypeError",
-      "slot": "TypeError"
+      "slot": "TypeError",
+      "nodeList": "TypeError",
+      "implementation": "TypeError"
     },
     "Document.importNode()": {
       "number": "TypeError",
@@ -244,7 +280,9 @@
       "document": "I",
       "root": "TypeError",
       "fragment": "TypeError",
-      "slot": "TypeError"
+      "slot": "TypeError",
+      "nodeList": "TypeError",
+      "implementation": "TypeError"
     },
     "Document.adoptNode()": {
       "number": "TypeError",
@@ -256,7 +294,9 @@
       "document": "I",
       "root": "TypeError",
       "fragment": "TypeError",
-      "slot": "TypeError"
+      "slot": "TypeError",
+      "nodeList": "TypeError",
+      "implementation": "TypeError"
     },
     "Document.createProcessingInstruction()": {
       "number": "TypeError",
@@ -268,7 +308,9 @@
       "document": "InvalidCharacterError",
       "root": "TypeError",
       "fragment": "TypeError",
-      "slot": "TypeError"
+      "slot": "TypeError",
+      "nodeList": "TypeError",
+      "implementation": "TypeError"
     },
     "Document.moveBefore()": {
       "number": "TypeError",
@@ -280,7 +322,9 @@
       "document": "HierarchyRequestError",
       "root": "TypeError",
       "fragment": "TypeError",
-      "slot": "TypeError"
+      "slot": "TypeError",
+      "nodeList": "TypeError",
+      "implementation": "TypeError"
     },
     "Document.normalize()": {
       "number": "TypeError",
@@ -292,7 +336,9 @@
       "document": "undefined",
       "root": "undefined",
       "fragment": "undefined",
-      "slot": "undefined"
+      "slot": "undefined",
+      "nodeList": "TypeError",
+      "implementation": "TypeError"
     },
     "HTMLSlotElement.name": {
       "number": "TypeError",
@@ -304,7 +350,9 @@
       "document": "TypeError",
       "root": "TypeError",
       "fragment": "TypeError",
-      "slot": "string"
+      "slot": "string",
+      "nodeList": "TypeError",
+      "implementation": "TypeError"
     },
     "HTMLSlotElement.assignedNodes()": {
       "number": "TypeError",
@@ -316,7 +364,9 @@
       "document": "TypeError",
       "root": "TypeError",
       "fragment": "TypeError",
-      "slot": "object"
+      "slot": "object",
+      "nodeList": "TypeError",
+      "implementation": "TypeError"
     },
     "HTMLSlotElement.assignedElements()": {
       "number": "TypeError",
@@ -328,7 +378,9 @@
       "document": "TypeError",
       "root": "TypeError",
       "fragment": "TypeError",
-      "slot": "object"
+      "slot": "object",
+      "nodeList": "TypeError",
+      "implementation": "TypeError"
     },
     "HTMLSlotElement.assign()": {
       "number": "TypeError",
@@ -340,7 +392,9 @@
       "document": "TypeError",
       "root": "TypeError",
       "fragment": "TypeError",
-      "slot": "TypeError"
+      "slot": "TypeError",
+      "nodeList": "TypeError",
+      "implementation": "TypeError"
     },
     "Text.assignedSlot": {
       "number": "TypeError",
@@ -352,7 +406,9 @@
       "document": "TypeError",
       "root": "TypeError",
       "fragment": "TypeError",
-      "slot": "TypeError"
+      "slot": "TypeError",
+      "nodeList": "TypeError",
+      "implementation": "TypeError"
     },
     "Text.wholeText": {
       "number": "TypeError",
@@ -364,7 +420,9 @@
       "document": "TypeError",
       "root": "TypeError",
       "fragment": "TypeError",
-      "slot": "TypeError"
+      "slot": "TypeError",
+      "nodeList": "TypeError",
+      "implementation": "TypeError"
     },
     "Text.splitText()": {
       "number": "TypeError",
@@ -376,7 +434,9 @@
       "document": "TypeError",
       "root": "TypeError",
       "fragment": "TypeError",
-      "slot": "TypeError"
+      "slot": "TypeError",
+      "nodeList": "TypeError",
+      "implementation": "TypeError"
     },
     "Element.assignedSlot": {
       "number": "TypeError",
@@ -388,7 +448,9 @@
       "document": "TypeError",
       "root": "TypeError",
       "fragment": "TypeError",
-      "slot": "null"
+      "slot": "null",
+      "nodeList": "TypeError",
+      "implementation": "TypeError"
     },
     "Element.innerHTML": {
       "number": "TypeError",
@@ -400,7 +462,9 @@
       "document": "TypeError",
       "root": "TypeError",
       "fragment": "TypeError",
-      "slot": "string"
+      "slot": "string",
+      "nodeList": "TypeError",
+      "implementation": "TypeError"
     },
     "Element.outerHTML": {
       "number": "TypeError",
@@ -412,7 +476,9 @@
       "document": "TypeError",
       "root": "TypeError",
       "fragment": "TypeError",
-      "slot": "string"
+      "slot": "string",
+      "nodeList": "TypeError",
+      "implementation": "TypeError"
     },
     "Element.getHTML()": {
       "number": "TypeError",
@@ -424,7 +490,9 @@
       "document": "TypeError",
       "root": "TypeError",
       "fragment": "TypeError",
-      "slot": "string"
+      "slot": "string",
+      "nodeList": "TypeError",
+      "implementation": "TypeError"
     },
     "Element.setHTMLUnsafe()": {
       "number": "TypeError",
@@ -436,7 +504,9 @@
       "document": "TypeError",
       "root": "TypeError",
       "fragment": "TypeError",
-      "slot": "undefined"
+      "slot": "undefined",
+      "nodeList": "TypeError",
+      "implementation": "TypeError"
     },
     "Element.setHTML()": {
       "number": "TypeError",
@@ -448,7 +518,9 @@
       "document": "TypeError",
       "root": "TypeError",
       "fragment": "TypeError",
-      "slot": "undefined"
+      "slot": "undefined",
+      "nodeList": "TypeError",
+      "implementation": "TypeError"
     },
     "Element.moveBefore()": {
       "number": "TypeError",
@@ -460,7 +532,9 @@
       "document": "TypeError",
       "root": "TypeError",
       "fragment": "TypeError",
-      "slot": "HierarchyRequestError"
+      "slot": "HierarchyRequestError",
+      "nodeList": "TypeError",
+      "implementation": "TypeError"
     },
     "CharacterData.replaceData()": {
       "number": "TypeError",
@@ -472,7 +546,9 @@
       "document": "TypeError",
       "root": "TypeError",
       "fragment": "TypeError",
-      "slot": "TypeError"
+      "slot": "TypeError",
+      "nodeList": "TypeError",
+      "implementation": "TypeError"
     },
     "CharacterData.appendData()": {
       "number": "TypeError",
@@ -484,7 +560,122 @@
       "document": "TypeError",
       "root": "TypeError",
       "fragment": "TypeError",
-      "slot": "TypeError"
+      "slot": "TypeError",
+      "nodeList": "TypeError",
+      "implementation": "TypeError"
+    },
+    "DOMImplementation.createHTMLDocument()": {
+      "number": "TypeError",
+      "string": "TypeError",
+      "nullish": "TypeError",
+      "plain": "TypeError",
+      "element": "TypeError",
+      "text": "TypeError",
+      "document": "TypeError",
+      "root": "TypeError",
+      "fragment": "TypeError",
+      "slot": "TypeError",
+      "nodeList": "TypeError",
+      "implementation": "#document"
+    },
+    "DOMImplementation.createDocument()": {
+      "number": "TypeError",
+      "string": "TypeError",
+      "nullish": "TypeError",
+      "plain": "TypeError",
+      "element": "TypeError",
+      "text": "TypeError",
+      "document": "TypeError",
+      "root": "TypeError",
+      "fragment": "TypeError",
+      "slot": "TypeError",
+      "nodeList": "TypeError",
+      "implementation": "#document"
+    },
+    "DOMImplementation.createDocumentType()": {
+      "number": "TypeError",
+      "string": "TypeError",
+      "nullish": "TypeError",
+      "plain": "TypeError",
+      "element": "TypeError",
+      "text": "TypeError",
+      "document": "TypeError",
+      "root": "TypeError",
+      "fragment": "TypeError",
+      "slot": "TypeError",
+      "nodeList": "TypeError",
+      "implementation": "TypeError"
+    },
+    "DOMImplementation.hasFeature()": {
+      "number": "TypeError",
+      "string": "TypeError",
+      "nullish": "TypeError",
+      "plain": "TypeError",
+      "element": "TypeError",
+      "text": "TypeError",
+      "document": "TypeError",
+      "root": "TypeError",
+      "fragment": "TypeError",
+      "slot": "TypeError",
+      "nodeList": "TypeError",
+      "implementation": "boolean"
+    },
+    "Document.contentType": {
+      "number": "TypeError",
+      "string": "TypeError",
+      "nullish": "TypeError",
+      "plain": "TypeError",
+      "element": "TypeError",
+      "text": "TypeError",
+      "document": "string",
+      "root": "TypeError",
+      "fragment": "TypeError",
+      "slot": "TypeError",
+      "nodeList": "TypeError",
+      "implementation": "TypeError"
+    },
+    "Document.URL": {
+      "number": "TypeError",
+      "string": "TypeError",
+      "nullish": "TypeError",
+      "plain": "TypeError",
+      "element": "TypeError",
+      "text": "TypeError",
+      "document": "string",
+      "root": "TypeError",
+      "fragment": "TypeError",
+      "slot": "TypeError",
+      "nodeList": "TypeError",
+      "implementation": "TypeError"
+    },
+    "Document.characterSet": {
+      "number": "TypeError",
+      "string": "TypeError",
+      "nullish": "TypeError",
+      "plain": "TypeError",
+      "element": "TypeError",
+      "text": "TypeError",
+      "document": "string",
+      "root": "TypeError",
+      "fragment": "TypeError",
+      "slot": "TypeError",
+      "nodeList": "TypeError",
+      "implementation": "TypeError"
+    },
+    "Document.baseURI": "missing",
+    "Document.implementation": {
+      "number": "TypeError",
+      "string": "TypeError",
+      "nullish": "TypeError",
+      "plain": "TypeError",
+      "element": "TypeError",
+      "text": "TypeError",
+      "document": "object",
+      "root": "TypeError",
+      "fragment": "TypeError",
+      "slot": "TypeError",
+      "nodeList": "TypeError",
+      "implementation": "TypeError"
     }
   }
 }

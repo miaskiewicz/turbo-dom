@@ -2,7 +2,7 @@
   "browser": "Chrome/156.0.8078.47",
   "v8": "15.6.75.19",
   "probe": "document_edges_probe.js",
-  "probeSha256": "b297445e3e55ac3b1551ee129d816342f2225794c73b8d325e72fb07c46af6eb",
+  "probeSha256": "26f222ecf9143a84abdfc38e174237ff631728c91689e81e95cfaa74b0994c63",
   "collectorSha256": "3f964d2cdf0ec8101870a776aaffc3b7dc4522306959c4a40761057beb255eb8",
   "flags": [
     "--headless=new",
@@ -138,6 +138,56 @@
         0,
         false,
         true
+      ],
+      ":is(:active-view-transition(), p)": [
+        1,
+        false,
+        true
+      ],
+      ":where(p, :active-view-transition-type(), q)": [
+        2,
+        false,
+        true
+      ],
+      ":is(:active-view-transition-type(a b), q)": [
+        1,
+        false,
+        true
+      ],
+      ":is(p :active-view-transition)": [
+        0,
+        false,
+        true
+      ],
+      "p::before:active-view-transition": [
+        "SyntaxError",
+        "SyntaxError",
+        "SyntaxError"
+      ],
+      ":active-view-transition:hover": [
+        0,
+        false,
+        true
+      ],
+      ":active-view-transition-type(a):not(p)": [
+        0,
+        false,
+        true
+      ],
+      "[a=\":active-view-transition\"]": [
+        0,
+        false,
+        true
+      ],
+      ":active-view-transition /*x*/ p": [
+        0,
+        false,
+        true
+      ],
+      ":is(:active-view-transition) :is(, p)": [
+        0,
+        false,
+        true
       ]
     },
     "template": {
@@ -219,6 +269,14 @@
       "InvalidCharacterError",
       "InvalidCharacterError",
       "a"
+    ],
+    "fragmentIds": [
+      "B",
+      "I",
+      "TypeError",
+      "RangeError",
+      null,
+      "TypeError"
     ]
   }
 }

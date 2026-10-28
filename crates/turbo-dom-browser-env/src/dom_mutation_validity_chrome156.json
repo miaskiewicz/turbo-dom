@@ -2,7 +2,7 @@
   "browser": "Chrome/156.0.8078.47",
   "v8": "15.6.75.19",
   "probe": "dom_mutation_validity_probe.js",
-  "probeSha256": "2a2b3dcb1f9f3615c94d4a03eee078fb01b617bec580b255c6f6d44979ec7a0a",
+  "probeSha256": "bc418ec6778bf96626ea5875ed58daeafe11f53af0f8a3d7cc0b3f3504368b85",
   "collectorSha256": "3f964d2cdf0ec8101870a776aaffc3b7dc4522306959c4a40761057beb255eb8",
   "flags": [
     "--headless=new",
@@ -1473,6 +1473,20 @@
       "notChild": "NotFoundError",
       "disconnected": "HierarchyRequestError",
       "text": "FF,#text"
+    },
+    "conversions": {
+      "appendSymbol": "TypeError",
+      "prependThrows": "RangeError",
+      "beforeSymbol": "TypeError",
+      "afterThrows": "RangeError",
+      "replaceWithSymbol": "TypeError",
+      "replaceChildrenThrows": "RangeError",
+      "insertBeforeString": "TypeError",
+      "insertBeforeObject": "TypeError",
+      "insertBeforeForeign": "NotFoundError",
+      "appendChildString": "TypeError",
+      "afterless": "TypeError",
+      "tree": "SPAN"
     }
   }
 }

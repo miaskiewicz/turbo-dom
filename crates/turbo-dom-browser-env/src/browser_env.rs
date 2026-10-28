@@ -4576,6 +4576,8 @@ fn el_dispatch_event(
     };
     set_path(scope, Some(target));
 
+    // Set when a listener's call ended by execution termination: the dispatch stops there.
+    let terminated = std::cell::Cell::new(false);
     let fire =
         |scope: &mut v8::PinScope, node_h: Handle, want_capture: bool, at_target: bool| -> bool {
             if get_bool_prop(scope, record, "stop") && !at_target {
@@ -4643,6 +4645,13 @@ fn el_dispatch_event(
                 }
                 let passive = v8::Boolean::new(scope, false);
                 set_prop(scope, record, "passive", passive.into());
+                // A terminated listener ends the dispatch: this TryCatch caught the termination,
+                // so hand it back to the caller (no further listener runs once it is active).
+                if scope.has_terminated() {
+                    scope.rethrow();
+                    terminated.set(true);
+                    break;
+                }
                 if scope.is_execution_terminating() {
                     break;
                 }
@@ -4653,13 +4662,13 @@ fn el_dispatch_event(
 
     // CAPTURE: window → target (capture listeners; entries with a shadow-adjusted target are
     // AT_TARGET), then BUBBLE: target → window (non-capture listeners; AT_TARGET entries always,
-    // the rest only for bubbling events). The original target ignores stopPropagation between
-    // its capture and bubble listeners, as before.
+    // the rest only for bubbling events). A stop set in the target's capture listeners also
+    // skips its bubble listeners, as in Chrome 156 (turbo-dom#157).
     let mut reached_target = false;
     if !skip {
         for index in (0..path_entries.len()).rev() {
             let entry = path_entries[index];
-            if get_bool_prop(scope, record, "stop") {
+            if terminated.get() || get_bool_prop(scope, record, "stop") {
                 break;
             }
             reached_target |= index == 0;
@@ -4672,7 +4681,7 @@ fn el_dispatch_event(
             }
         }
         for (index, entry) in path_entries.iter().copied().enumerate() {
-            if !reached_target || index != 0 && get_bool_prop(scope, record, "stop") {
+            if terminated.get() || !reached_target || get_bool_prop(scope, record, "stop") {
                 break;
             }
             if index != 0 && entry.adjusted.is_none() && !bubbles {
@@ -4721,6 +4730,10 @@ fn el_dispatch_event(
     set_prop(scope, record, "path", path.into());
     for key in ["dispatching", "stop", "stopImmediate", "passive"] {
         set_prop(scope, record, key, no.into());
+    }
+    if terminated.get() {
+        // A terminated dispatch runs no default action; the termination propagates.
+        return;
     }
 
     // DEFAULT ACTION: a non-prevented click on a submit control fires the form's `submit` event
