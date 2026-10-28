@@ -214,6 +214,8 @@ document_legacy.rs: P5-cov-browser-env (C3e) set_domain's IP test reads as 'pars
 browser_env.rs: P5-cov-browser-env (D1) turbo-dom#114 required-argument counts, contains() / removeAttributeNode() parameter types, setAttribute / toggleAttribute name validation, document / doctype textContent is null
 browser_env.js: P5-cov-browser-env (D1) turbo-dom#114 Element / CharacterData ChildNode copies brand-check their interface; scrollIntoView / scrollTo / scrollBy return a ScrollResult promise and convert their dictionaries
 document_basics.js: P5-cov-browser-env (D1) turbo-dom#114 DocumentType ChildNode copies brand-check a doctype
+css_policy.rs: P5-cov-browser-env (D1) turbo-dom#163 a <style> in a document without a browsing context is allowed a sheet (no policy, nothing cached)
+interface_members.js: P5-cov-browser-env (D1) turbo-dom#165 HTMLMediaElement constants are created configurable so key_order.js can place the reflected attributes first
 template_contents.rs: P5-cov-browser-env (D2) turbo-dom#151 serialize leaves a pending termination pending (returns nothing)
 browser_env.rs: P5-cov-browser-env (D2) turbo-dom#151 dispatch_host_event delivers nothing while a termination is pending
 custom_elements.rs: P5-cov-browser-env (D2) turbo-dom#140 no per-call cap on custom element reactions or queued mutation events (Chrome 156 has none; the 4096 caps terminated real pages)
