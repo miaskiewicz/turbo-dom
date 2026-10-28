@@ -16,6 +16,7 @@ tools/parity/bin/cargo-results.py, e.g. `layout_flex<tests/layout_flex.rs>`;
 """
 import argparse
 import importlib.util
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -41,10 +42,14 @@ def load_list(path):
     return entries
 
 
+ANSI = re.compile(r"\x1b\[[0-9;]*m")
+
+
 def parse(output):
-    """(binary, test) -> result for every test line of a cargo test log."""
+    """(binary, test) -> result for every test line of a cargo test log (colored or not:
+    CI sets CARGO_TERM_COLOR=always)."""
     results, current = {}, "?"
-    for line in output.splitlines():
+    for line in ANSI.sub("", output).splitlines():
         m = CARGO_RESULTS.running.match(line)
         if m:
             current = CARGO_RESULTS.binary_name(m.group(1), m.group(2))
