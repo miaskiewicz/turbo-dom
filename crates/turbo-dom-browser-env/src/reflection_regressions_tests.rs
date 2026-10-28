@@ -16,3 +16,22 @@ fn base_target_reflects() {
         r#"["<base target=\"x\">","x",true]"#
     );
 }
+
+/// turbo-dom#143: `Text.prototype.wholeText` joins the contiguous Text siblings and
+/// brand-checks its receiver.
+#[test]
+fn text_whole_text() {
+    assert_eq!(
+        page_json(
+            PAGE,
+            "(() => { const d = document.createElement('div'); d.append('a', 'b', document.createElement('i'), 'c'); \
+             const get = Object.getOwnPropertyDescriptor(Text.prototype, 'wholeText'); \
+             let brand; try { get.get.call(document.createComment('z')); } catch (e) { brand = e.name; } \
+             const e = document.createElement('div'); e.append('a', document.createComment('m'), 'z'); \
+             e.append(document.createProcessingInstruction('x', 'y'), 'w'); \
+             return [d.childNodes[1].wholeText, d.firstChild.wholeText, d.lastChild.wholeText, new Text('q').wholeText, \
+               brand, get.get.name, typeof get.set, get.enumerable, e.firstChild.wholeText, e.lastChild.wholeText]; })()",
+        ),
+        r#"["ab","ab","c","q","TypeError","get wholeText","undefined",true,"a","w"]"#
+    );
+}
