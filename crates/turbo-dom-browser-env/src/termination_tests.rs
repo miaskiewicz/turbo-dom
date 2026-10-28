@@ -239,3 +239,54 @@ fn mutation_consumer_registration_rejects_foreign_receivers_and_callbacks() {
         assert_eq!(json(scope, "records"), "1");
     });
 }
+
+/// The embedder's inert-document initializer runs for every document the realm's factories
+/// create, with the document, `about:blank` and its content type.
+#[test]
+fn inert_document_initializer_sees_each_factory_document() {
+    with_page("", |scope| {
+        let initializer = v8::Local::<v8::Function>::try_from(eval(
+            scope,
+            "globalThis.seen = []; (document, url, type) => seen.push([document.nodeType, url, type])",
+        ))
+        .unwrap();
+        assert!(set_inert_document_initializer(scope, initializer));
+        eval(
+            scope,
+            "document.implementation.createHTMLDocument('t'); \
+             document.implementation.createDocument(null, 'x'); \
+             document.implementation.createDocument('http://www.w3.org/2000/svg', 'svg'); \
+             document.implementation.createDocument('http://www.w3.org/1999/xhtml', 'html')",
+        );
+        assert_eq!(
+            json(scope, "seen"),
+            r#"[[9,"about:blank","text/html"],[9,"about:blank","application/xml"],[9,"about:blank","image/svg+xml"],[9,"about:blank","application/xhtml+xml"]]"#
+        );
+    });
+}
+
+/// Host navigation facts apply only to a browsing context's own document: an inert
+/// document from a factory refuses them and keeps its defaults.
+#[test]
+fn navigation_facts_are_refused_for_inert_documents() {
+    with_page("", |scope| {
+        let inert = object(
+            scope,
+            "globalThis.inert = document.implementation.createHTMLDocument(''); inert",
+        );
+        let before = json(scope, "[inert.lastModified.length > 0, inert.domain]");
+        assert!(!set_document_last_modified(scope, inert, Some(0.0)));
+        assert!(!set_document_domain_sandboxed(scope, inert, true));
+        assert!(!set_document_origin_keyed(scope, inert, true));
+        assert_eq!(
+            json(scope, "[inert.lastModified.length > 0, inert.domain]"),
+            before
+        );
+        let document = object(scope, "document");
+        assert!(set_document_last_modified(scope, document, Some(0.0)));
+        assert_eq!(
+            json(scope, "document.lastModified"),
+            r#""01/01/1970 00:00:00""#
+        );
+    });
+}
