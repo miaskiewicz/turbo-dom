@@ -1,0 +1,1889 @@
+{
+  "browser": "Chrome/156.0.8078.4",
+  "v8": "15.6.75",
+  "probe": "native_guards_probe.js",
+  "probeSha256": "b4eb7465535f909e0d06919962da4336d8e2a9ebaf03803758f19bb635b54dc5",
+  "collectorSha256": "3f964d2cdf0ec8101870a776aaffc3b7dc4522306959c4a40761057beb255eb8",
+  "flags": [
+    "--headless=new",
+    "--remote-debugging-pipe",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "--disable-background-timer-throttling",
+    "--disable-renderer-backgrounding",
+    "--disable-backgrounding-occluded-windows",
+    "about:blank"
+  ],
+  "result": {
+    "receivers": {
+      "Node.appendChild": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "DOMException",
+          "HierarchyRequestError"
+        ]
+      ],
+      "Node.removeChild": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "DOMException",
+          "NotFoundError"
+        ]
+      ],
+      "Node.insertBefore": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "DOMException",
+          "HierarchyRequestError"
+        ]
+      ],
+      "Node.replaceChild": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "DOMException",
+          "HierarchyRequestError"
+        ]
+      ],
+      "Node.contains": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        false
+      ],
+      "Node.hasChildNodes": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        false
+      ],
+      "Node.cloneNode": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          null
+        ]
+      ],
+      "Node.getRootNode": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          null
+        ]
+      ],
+      "Element.setAttribute": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "TypeError",
+          "TypeError"
+        ]
+      ],
+      "Element.getAttribute": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "TypeError",
+          "TypeError"
+        ]
+      ],
+      "Element.getAttributeNode": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "TypeError",
+          "TypeError"
+        ]
+      ],
+      "Element.getAttributeNodeNS": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "TypeError",
+          "TypeError"
+        ]
+      ],
+      "Element.setAttributeNode": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "TypeError",
+          "TypeError"
+        ]
+      ],
+      "Element.setAttributeNodeNS": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "TypeError",
+          "TypeError"
+        ]
+      ],
+      "Element.removeAttributeNode": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "TypeError",
+          "TypeError"
+        ]
+      ],
+      "Element.hasAttribute": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "TypeError",
+          "TypeError"
+        ]
+      ],
+      "Element.removeAttribute": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "TypeError",
+          "TypeError"
+        ]
+      ],
+      "Element.querySelector": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "TypeError",
+          "TypeError"
+        ]
+      ],
+      "Element.querySelectorAll": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "TypeError",
+          "TypeError"
+        ]
+      ],
+      "Element.matches": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "TypeError",
+          "TypeError"
+        ]
+      ],
+      "Element.closest": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "TypeError",
+          "TypeError"
+        ]
+      ],
+      "Element.append": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "TypeError",
+          "TypeError"
+        ]
+      ],
+      "Element.prepend": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "TypeError",
+          "TypeError"
+        ]
+      ],
+      "Element.remove": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "TypeError",
+          "TypeError"
+        ]
+      ],
+      "Element.before": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "TypeError",
+          "TypeError"
+        ]
+      ],
+      "Element.after": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "TypeError",
+          "TypeError"
+        ]
+      ],
+      "Element.replaceWith": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "TypeError",
+          "TypeError"
+        ]
+      ],
+      "Element.replaceChildren": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "TypeError",
+          "TypeError"
+        ]
+      ],
+      "Element.insertAdjacentElement": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "TypeError",
+          "TypeError"
+        ]
+      ],
+      "Element.insertAdjacentHTML": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "TypeError",
+          "TypeError"
+        ]
+      ],
+      "Element.toggleAttribute": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "TypeError",
+          "TypeError"
+        ]
+      ],
+      "Element.getAttributeNS": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "TypeError",
+          "TypeError"
+        ]
+      ],
+      "Element.hasAttributeNS": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "TypeError",
+          "TypeError"
+        ]
+      ],
+      "Element.setAttributeNS": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "TypeError",
+          "TypeError"
+        ]
+      ],
+      "Element.removeAttributeNS": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "TypeError",
+          "TypeError"
+        ]
+      ],
+      "Element.scrollIntoView": [
+        {},
+        "undefined"
+      ],
+      "Element.scrollTo": [
+        {},
+        "undefined"
+      ],
+      "Element.scrollBy": [
+        {},
+        "undefined"
+      ],
+      "Element.getBoundingClientRect": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "TypeError",
+          "TypeError"
+        ]
+      ],
+      "Element.attachShadow": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "TypeError",
+          "TypeError"
+        ]
+      ],
+      "HTMLElement.focus": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "TypeError",
+          "TypeError"
+        ]
+      ],
+      "HTMLElement.blur": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "TypeError",
+          "TypeError"
+        ]
+      ],
+      "HTMLElement.click": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "TypeError",
+          "TypeError"
+        ]
+      ],
+      "Text.splitText": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "TypeError",
+          "TypeError"
+        ]
+      ],
+      "HTMLInputElement.checkValidity": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "TypeError",
+          "TypeError"
+        ]
+      ],
+      "HTMLInputElement.reportValidity": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "TypeError",
+          "TypeError"
+        ]
+      ],
+      "HTMLInputElement.setCustomValidity": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "TypeError",
+          "TypeError"
+        ]
+      ],
+      "HTMLInputElement.select": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "TypeError",
+          "TypeError"
+        ]
+      ],
+      "HTMLInputElement.setSelectionRange": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "TypeError",
+          "TypeError"
+        ]
+      ],
+      "HTMLInputElement.setRangeText": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "TypeError",
+          "TypeError"
+        ]
+      ],
+      "EventTarget.addEventListener": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        "undefined"
+      ],
+      "EventTarget.removeEventListener": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        "undefined"
+      ],
+      "EventTarget.dispatchEvent": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        true
+      ]
+    },
+    "getters": {
+      "Node.nodeType": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        8
+      ],
+      "Node.nodeName": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        "#comment"
+      ],
+      "Node.isConnected": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        true
+      ],
+      "Node.ownerDocument": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        "#document"
+      ],
+      "Node.parentNode": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        "div#host"
+      ],
+      "Node.parentElement": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        "div#host"
+      ],
+      "Node.childNodes": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        []
+      ],
+      "Node.firstChild": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        null
+      ],
+      "Node.nextSibling": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        "span#s"
+      ],
+      "Node.nodeValue": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        "c"
+      ],
+      "Node.textContent": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        "c"
+      ],
+      "Element.namespaceURI": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "TypeError",
+          "TypeError"
+        ]
+      ],
+      "Element.prefix": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "TypeError",
+          "TypeError"
+        ]
+      ],
+      "Element.localName": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "TypeError",
+          "TypeError"
+        ]
+      ],
+      "Element.tagName": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "TypeError",
+          "TypeError"
+        ]
+      ],
+      "Element.id": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "TypeError",
+          "TypeError"
+        ]
+      ],
+      "Element.className": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "TypeError",
+          "TypeError"
+        ]
+      ],
+      "Element.attributes": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "TypeError",
+          "TypeError"
+        ]
+      ],
+      "Element.innerHTML": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "TypeError",
+          "TypeError"
+        ]
+      ],
+      "Element.outerHTML": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "TypeError",
+          "TypeError"
+        ]
+      ],
+      "Element.children": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "TypeError",
+          "TypeError"
+        ]
+      ],
+      "Element.firstElementChild": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "TypeError",
+          "TypeError"
+        ]
+      ],
+      "Element.shadowRoot": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "TypeError",
+          "TypeError"
+        ]
+      ],
+      "HTMLElement.style": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "TypeError",
+          "TypeError"
+        ]
+      ],
+      "HTMLElement.dataset": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "TypeError",
+          "TypeError"
+        ]
+      ],
+      "HTMLElement.contentEditable": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "TypeError",
+          "TypeError"
+        ]
+      ],
+      "HTMLElement.isContentEditable": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "TypeError",
+          "TypeError"
+        ]
+      ],
+      "CharacterData.data": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        "c"
+      ],
+      "DocumentType.publicId": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "TypeError",
+          "TypeError"
+        ]
+      ],
+      "DocumentType.systemId": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "TypeError",
+          "TypeError"
+        ]
+      ],
+      "DocumentType.name": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "TypeError",
+          "TypeError"
+        ]
+      ],
+      "Attr.name": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "TypeError",
+          "TypeError"
+        ]
+      ],
+      "Attr.value": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "TypeError",
+          "TypeError"
+        ]
+      ],
+      "Attr.ownerElement": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "TypeError",
+          "TypeError"
+        ]
+      ],
+      "Attr.specified": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "TypeError",
+          "TypeError"
+        ]
+      ],
+      "Attr.namespaceURI": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "TypeError",
+          "TypeError"
+        ]
+      ],
+      "Attr.prefix": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "TypeError",
+          "TypeError"
+        ]
+      ],
+      "Attr.localName": [
+        [
+          "TypeError",
+          "TypeError"
+        ],
+        [
+          "TypeError",
+          "TypeError"
+        ]
+      ]
+    },
+    "arguments": {
+      "setAttribute1": [
+        "TypeError",
+        "TypeError"
+      ],
+      "setAttributeSym": [
+        "TypeError",
+        "TypeError"
+      ],
+      "setAttributeValueSym": [
+        "TypeError",
+        "TypeError"
+      ],
+      "getAttributeNone": [
+        "TypeError",
+        "TypeError"
+      ],
+      "getAttributeNS1": [
+        "TypeError",
+        "TypeError"
+      ],
+      "getAttributeNSSym": [
+        "TypeError",
+        "TypeError"
+      ],
+      "hasAttributeNS1": [
+        "TypeError",
+        "TypeError"
+      ],
+      "hasAttributeNSSym": [
+        "TypeError",
+        "TypeError"
+      ],
+      "setAttributeNS2": [
+        "TypeError",
+        "TypeError"
+      ],
+      "setAttributeNSSym": [
+        "TypeError",
+        "TypeError"
+      ],
+      "removeAttributeNS1": [
+        "TypeError",
+        "TypeError"
+      ],
+      "removeAttributeNSSym": [
+        "TypeError",
+        "TypeError"
+      ],
+      "removeAttributeNone": [
+        "TypeError",
+        "TypeError"
+      ],
+      "removeAttributeSym": [
+        "TypeError",
+        "TypeError"
+      ],
+      "hasAttributeNone": [
+        "TypeError",
+        "TypeError"
+      ],
+      "toggleAttributeNone": [
+        "TypeError",
+        "TypeError"
+      ],
+      "toggleAttributeBad": [
+        "DOMException",
+        "InvalidCharacterError"
+      ],
+      "getAttributeNodeNone": [
+        "TypeError",
+        "TypeError"
+      ],
+      "getAttributeNodeNS1": [
+        "TypeError",
+        "TypeError"
+      ],
+      "setAttributeNodeNone": [
+        "TypeError",
+        "TypeError"
+      ],
+      "setAttributeNodePlain": [
+        "TypeError",
+        "TypeError"
+      ],
+      "setAttributeNodeElement": [
+        "TypeError",
+        "TypeError"
+      ],
+      "setAttributeNodeNSPlain": [
+        "TypeError",
+        "TypeError"
+      ],
+      "removeAttributeNodeNone": [
+        "TypeError",
+        "TypeError"
+      ],
+      "removeAttributeNodePlain": [
+        "TypeError",
+        "TypeError"
+      ],
+      "removeAttributeNodeElement": [
+        "TypeError",
+        "TypeError"
+      ],
+      "removeAttributeNodeForeign": [
+        "DOMException",
+        "NotFoundError"
+      ],
+      "querySelectorNone": [
+        "TypeError",
+        "TypeError"
+      ],
+      "querySelectorSym": [
+        "TypeError",
+        "TypeError"
+      ],
+      "querySelectorBad": [
+        "DOMException",
+        "SyntaxError"
+      ],
+      "querySelectorAllNone": [
+        "TypeError",
+        "TypeError"
+      ],
+      "querySelectorAllBad": [
+        "DOMException",
+        "SyntaxError"
+      ],
+      "matchesNone": [
+        "TypeError",
+        "TypeError"
+      ],
+      "matchesBad": [
+        "DOMException",
+        "SyntaxError"
+      ],
+      "closestNone": [
+        "TypeError",
+        "TypeError"
+      ],
+      "closestBad": [
+        "DOMException",
+        "SyntaxError"
+      ],
+      "closestSym": [
+        "TypeError",
+        "TypeError"
+      ],
+      "containsNone": [
+        "TypeError",
+        "TypeError"
+      ],
+      "containsPlain": [
+        "TypeError",
+        "TypeError"
+      ],
+      "containsNull": false,
+      "containsSelf": true,
+      "containsText": true,
+      "containsParent": false,
+      "appendChildNone": [
+        "TypeError",
+        "TypeError"
+      ],
+      "appendChildPlain": [
+        "TypeError",
+        "TypeError"
+      ],
+      "removeChildNone": [
+        "TypeError",
+        "TypeError"
+      ],
+      "removeChildPlain": [
+        "TypeError",
+        "TypeError"
+      ],
+      "removeChildStranger": [
+        "DOMException",
+        "NotFoundError"
+      ],
+      "insertBefore1": [
+        "TypeError",
+        "TypeError"
+      ],
+      "insertBeforePlain": [
+        "TypeError",
+        "TypeError"
+      ],
+      "insertBeforeBadRef": [
+        "TypeError",
+        "TypeError"
+      ],
+      "replaceChild1": [
+        "TypeError",
+        "TypeError"
+      ],
+      "replaceChildPlain": [
+        "TypeError",
+        "TypeError"
+      ],
+      "replaceChildBadOld": [
+        "TypeError",
+        "TypeError"
+      ],
+      "insertAdjacentElement1": [
+        "TypeError",
+        "TypeError"
+      ],
+      "insertAdjacentElementPlain": [
+        "TypeError",
+        "TypeError"
+      ],
+      "insertAdjacentElementBadWhere": [
+        "DOMException",
+        "SyntaxError"
+      ],
+      "insertAdjacentElementSym": [
+        "TypeError",
+        "TypeError"
+      ],
+      "insertAdjacentHTML1": [
+        "TypeError",
+        "TypeError"
+      ],
+      "insertAdjacentHTMLBadWhere": [
+        "DOMException",
+        "SyntaxError"
+      ],
+      "insertAdjacentHTMLSym": [
+        "TypeError",
+        "TypeError"
+      ],
+      "insertAdjacentHTMLWhereSym": [
+        "TypeError",
+        "TypeError"
+      ],
+      "replaceChildrenPlain": [
+        "TypeError",
+        "TypeError"
+      ],
+      "appendSym": [
+        "TypeError",
+        "TypeError"
+      ],
+      "prependSym": [
+        "TypeError",
+        "TypeError"
+      ],
+      "beforeSym": [
+        "TypeError",
+        "TypeError"
+      ],
+      "afterSym": [
+        "TypeError",
+        "TypeError"
+      ],
+      "replaceWithSym": [
+        "TypeError",
+        "TypeError"
+      ],
+      "replaceChildrenSym": [
+        "TypeError",
+        "TypeError"
+      ],
+      "attachShadowNone": [
+        "TypeError",
+        "TypeError"
+      ],
+      "attachShadowNull": [
+        "TypeError",
+        "TypeError"
+      ],
+      "attachShadowNumber": [
+        "TypeError",
+        "TypeError"
+      ],
+      "attachShadowBadMode": [
+        "TypeError",
+        "TypeError"
+      ],
+      "attachShadowNoMode": [
+        "TypeError",
+        "TypeError"
+      ],
+      "attachShadowSlotNamed": "named",
+      "attachShadowSlotBad": [
+        "TypeError",
+        "TypeError"
+      ],
+      "attachShadowSpan": [
+        "DOMException",
+        "NotSupportedError"
+      ],
+      "attachShadowTwice": [
+        "DOMException",
+        "NotSupportedError"
+      ],
+      "splitTextNone": [
+        "TypeError",
+        "TypeError"
+      ],
+      "splitTextFar": [
+        "DOMException",
+        "IndexSizeError"
+      ],
+      "splitTextNeg": [
+        "DOMException",
+        "IndexSizeError"
+      ],
+      "splitTextDetached": [
+        "a",
+        "bcd",
+        null
+      ],
+      "cloneNodeComment": [
+        null
+      ],
+      "cloneNodeDeep": "<p id=\"a\" title=\"t\" data-one-two=\"1\" data-x-y=\"2\">text<b id=\"b\">bold</b></p>",
+      "cloneNodeShallow": "<p id=\"a\" title=\"t\" data-one-two=\"1\" data-x-y=\"2\"></p>",
+      "hasChildNodesText": false,
+      "hasChildNodesP": true,
+      "hasChildNodesEmpty": false,
+      "getRootNodeDetached": "i",
+      "addEventListener1": [
+        "TypeError",
+        "TypeError"
+      ],
+      "removeEventListener1": [
+        "TypeError",
+        "TypeError"
+      ],
+      "dispatchEventNone": [
+        "TypeError",
+        "TypeError"
+      ],
+      "dispatchEventPlain": [
+        "TypeError",
+        "TypeError"
+      ],
+      "dispatchEventNull": [
+        "TypeError",
+        "TypeError"
+      ],
+      "dispatchEventTwice": [
+        "DOMException",
+        "InvalidStateError"
+      ]
+    },
+    "attrs": {
+      "inUse": [
+        "DOMException",
+        "InUseAttributeError"
+      ],
+      "sameAgain": "@a=1",
+      "replaced": "@a=1",
+      "oldOwner": [
+        null,
+        "1"
+      ],
+      "value": "2",
+      "nsSet": null,
+      "nsGet": "@p:n=v",
+      "nsGetMissing": null,
+      "nsHas": [
+        true,
+        false,
+        true
+      ],
+      "nsGetValue": [
+        "v",
+        null,
+        "2"
+      ],
+      "removed": "@a=2",
+      "removedOwner": null,
+      "removedAgain": [
+        "DOMException",
+        "NotFoundError"
+      ],
+      "removeNS": 0,
+      "removeNSMissing": 0,
+      "specified": [
+        true,
+        true
+      ],
+      "valueSet": [
+        "z",
+        null
+      ],
+      "ownedValueSet": "w",
+      "createAttributeBad": [
+        "DOMException",
+        "InvalidCharacterError"
+      ],
+      "createAttributeNone": [
+        "TypeError",
+        "TypeError"
+      ],
+      "createAttributeUpper": "abc",
+      "createAttributeNSBad": {},
+      "createAttributeNSXmlns": [
+        "DOMException",
+        "NamespaceError"
+      ],
+      "createAttributeNSNone": [
+        "TypeError",
+        "TypeError"
+      ],
+      "setAttributeNSPrefixNoNs": [
+        "DOMException",
+        "NamespaceError"
+      ],
+      "setAttributeNSXml": [
+        "DOMException",
+        "NamespaceError"
+      ],
+      "setAttributeNSBadName": "undefined",
+      "setAttributeBadName": [
+        "DOMException",
+        "InvalidCharacterError"
+      ],
+      "setAttributeEmpty": [
+        "DOMException",
+        "InvalidCharacterError"
+      ],
+      "upperNS": [
+        null,
+        null,
+        "v"
+      ],
+      "htmlLower": [
+        "1",
+        "up"
+      ]
+    },
+    "doctype": [
+      "html",
+      "-//W3C//DTD XHTML 1.0//EN",
+      "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd",
+      "html",
+      null,
+      null
+    ],
+    "docDoctype": [
+      "html",
+      "",
+      ""
+    ],
+    "names": [
+      "pi",
+      "#comment",
+      "#document-fragment",
+      "ab",
+      "p:Ab",
+      "p:Ab",
+      "P:AB",
+      "#document",
+      "#document-fragment"
+    ],
+    "dataset": [
+      [
+        [
+          "oneTwo",
+          "1"
+        ],
+        [
+          "xY",
+          "2"
+        ]
+      ],
+      "n",
+      "undefined",
+      true,
+      false
+    ],
+    "contentEditable": [
+      "inherit",
+      [
+        "true",
+        "true",
+        true
+      ],
+      "plaintext-only",
+      [
+        "DOMException",
+        "SyntaxError"
+      ],
+      "plaintext-only",
+      [
+        "inherit",
+        false
+      ]
+    ],
+    "collections": {
+      "childrenItem": [
+        "input#i1",
+        null,
+        null,
+        "input",
+        "input#i1",
+        "input#i1"
+      ],
+      "childrenNamed": [
+        "input",
+        "input#i1",
+        null,
+        "img",
+        [
+          "TypeError",
+          "TypeError"
+        ]
+      ],
+      "nodesItem": [
+        "input#i1",
+        null,
+        null
+      ],
+      "allItem": [
+        "input",
+        null,
+        [
+          "TypeError",
+          "TypeError"
+        ]
+      ],
+      "docGetsByName": [
+        0
+      ]
+    },
+    "geometry": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "noops": [
+      {},
+      {},
+      {}
+    ],
+    "validity": [
+      false,
+      "undefined",
+      "x",
+      false
+    ],
+    "events": {
+      "throwingOptions": [
+        "RangeError",
+        "RangeError"
+      ],
+      "throwingRemove": [
+        "RangeError",
+        "RangeError"
+      ],
+      "nullCallback": "undefined",
+      "nullRemove": "undefined",
+      "abortedSignal": 0,
+      "abortDuring": [
+        1,
+        1
+      ],
+      "stopInCapture": [
+        "outer-capture"
+      ],
+      "stopImmediate": [
+        1
+      ],
+      "once": 1,
+      "handleEvent": [
+        1,
+        true
+      ],
+      "duplicate": 2,
+      "removeCaptureOnly": 1
+    },
+    "attrNodes": {
+      "setNumber": [
+        "TypeError",
+        "TypeError"
+      ],
+      "removeString": [
+        "TypeError",
+        "TypeError"
+      ],
+      "styleSet": [
+        null,
+        "rgb(1, 2, 3)",
+        "rgb(1, 2, 3)"
+      ],
+      "styleRemoved": [
+        "@style=color: rgb(1, 2, 3)",
+        "rgb(0, 0, 0)",
+        ""
+      ],
+      "nonceSet": [
+        null,
+        "n1"
+      ],
+      "nonceRemoved": [
+        "@nonce=n1",
+        "",
+        false
+      ],
+      "foreignSet": [
+        null,
+        true,
+        "f"
+      ],
+      "foreignRemove": [
+        "DOMException",
+        "NotFoundError"
+      ],
+      "removeNonceAttribute": [
+        "n2",
+        ""
+      ],
+      "setNonceNS": [
+        "n3",
+        ""
+      ],
+      "styleNS": [
+        "rgb(4, 5, 6)",
+        "rgb(0, 0, 0)"
+      ]
+    },
+    "imports": {
+      "attr": [
+        [
+          2,
+          "data-a",
+          "v",
+          true,
+          null,
+          null,
+          "data-a",
+          null
+        ],
+        [
+          2,
+          "data-a",
+          "v",
+          true,
+          null,
+          null,
+          "data-a",
+          null
+        ],
+        [
+          [
+            2,
+            "data-a",
+            "v",
+            true,
+            null,
+            null,
+            "data-a",
+            null
+          ],
+          true
+        ]
+      ],
+      "attrNS": [
+        [
+          2,
+          "p:q",
+          "w",
+          true,
+          "urn:x",
+          "p",
+          "q",
+          null
+        ],
+        [
+          2,
+          "p:q",
+          "w",
+          true,
+          "urn:x",
+          "p",
+          "q",
+          null
+        ],
+        [
+          [
+            2,
+            "p:q",
+            "w",
+            true,
+            "urn:x",
+            "p",
+            "q",
+            null
+          ],
+          true
+        ]
+      ],
+      "pi": [
+        [
+          7,
+          "target",
+          "data",
+          true,
+          "undefined",
+          "undefined",
+          "undefined",
+          null
+        ],
+        [
+          7,
+          "target",
+          "data",
+          true,
+          "undefined",
+          "undefined",
+          "undefined",
+          null
+        ],
+        [
+          [
+            7,
+            "target",
+            "data",
+            true,
+            "undefined",
+            "undefined",
+            "undefined",
+            null
+          ],
+          true
+        ]
+      ],
+      "comment": [
+        [
+          8,
+          "#comment",
+          "note",
+          true,
+          "undefined",
+          "undefined",
+          "undefined",
+          null
+        ],
+        [
+          8,
+          "#comment",
+          "note",
+          true,
+          "undefined",
+          "undefined",
+          "undefined",
+          null
+        ],
+        [
+          [
+            8,
+            "#comment",
+            "note",
+            true,
+            "undefined",
+            "undefined",
+            "undefined",
+            null
+          ],
+          true
+        ]
+      ],
+      "text": [
+        [
+          3,
+          "#text",
+          "words",
+          true,
+          "undefined",
+          "undefined",
+          "undefined",
+          null
+        ],
+        [
+          3,
+          "#text",
+          "words",
+          true,
+          "undefined",
+          "undefined",
+          "undefined",
+          null
+        ],
+        [
+          [
+            3,
+            "#text",
+            "words",
+            true,
+            "undefined",
+            "undefined",
+            "undefined",
+            null
+          ],
+          true
+        ]
+      ],
+      "doctype": [
+        [
+          10,
+          "html",
+          null,
+          true,
+          "undefined",
+          "undefined",
+          "undefined",
+          [
+            "pub",
+            "sys"
+          ]
+        ],
+        [
+          10,
+          "html",
+          null,
+          true,
+          "undefined",
+          "undefined",
+          "undefined",
+          [
+            "pub",
+            "sys"
+          ]
+        ],
+        [
+          [
+            10,
+            "html",
+            null,
+            true,
+            "undefined",
+            "undefined",
+            "undefined",
+            [
+              "pub",
+              "sys"
+            ]
+          ],
+          true
+        ]
+      ],
+      "fragment": [
+        [
+          11,
+          "#document-fragment",
+          null,
+          true,
+          "undefined",
+          "undefined",
+          "undefined",
+          2
+        ],
+        [
+          11,
+          "#document-fragment",
+          null,
+          true,
+          "undefined",
+          "undefined",
+          "undefined",
+          0
+        ],
+        [
+          [
+            11,
+            "#document-fragment",
+            null,
+            true,
+            "undefined",
+            "undefined",
+            "undefined",
+            2
+          ],
+          true
+        ]
+      ],
+      "element": [
+        [
+          1,
+          "B",
+          null,
+          true,
+          "http://www.w3.org/1999/xhtml",
+          null,
+          "b",
+          "<b k=\"v\">t</b>"
+        ],
+        [
+          1,
+          "B",
+          null,
+          true,
+          "http://www.w3.org/1999/xhtml",
+          null,
+          "b",
+          "<b k=\"v\"></b>"
+        ],
+        [
+          [
+            1,
+            "B",
+            null,
+            true,
+            "http://www.w3.org/1999/xhtml",
+            null,
+            "b",
+            "<b k=\"v\">t</b>"
+          ],
+          true
+        ]
+      ],
+      "shadow": [
+        [
+          "DOMException",
+          "NotSupportedError"
+        ],
+        [
+          "DOMException",
+          "NotSupportedError"
+        ],
+        [
+          "DOMException",
+          "HierarchyRequestError"
+        ]
+      ],
+      "document": [
+        [
+          "DOMException",
+          "NotSupportedError"
+        ],
+        [
+          "DOMException",
+          "NotSupportedError"
+        ],
+        [
+          "DOMException",
+          "NotSupportedError"
+        ]
+      ]
+    },
+    "checkedBrands": {
+      "checked": [
+        [
+          [
+            "TypeError",
+            "TypeError"
+          ],
+          [
+            "TypeError",
+            "TypeError"
+          ]
+        ],
+        [
+          [
+            "TypeError",
+            "TypeError"
+          ],
+          [
+            "TypeError",
+            "TypeError"
+          ]
+        ],
+        [
+          [
+            "TypeError",
+            "TypeError"
+          ],
+          [
+            "TypeError",
+            "TypeError"
+          ]
+        ],
+        [
+          false,
+          "undefined"
+        ]
+      ],
+      "defaultChecked": [
+        [
+          [
+            "TypeError",
+            "TypeError"
+          ],
+          [
+            "TypeError",
+            "TypeError"
+          ]
+        ],
+        [
+          [
+            "TypeError",
+            "TypeError"
+          ],
+          [
+            "TypeError",
+            "TypeError"
+          ]
+        ],
+        [
+          [
+            "TypeError",
+            "TypeError"
+          ],
+          [
+            "TypeError",
+            "TypeError"
+          ]
+        ],
+        [
+          false,
+          "undefined"
+        ]
+      ]
+    }
+  }
+}
