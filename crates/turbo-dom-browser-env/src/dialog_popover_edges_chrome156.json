@@ -2,7 +2,7 @@
   "browser": "Chrome/156.0.8078.47",
   "v8": "15.6.75.19",
   "probe": "dialog_popover_edges_probe.js",
-  "probeSha256": "9a3459ac531a33b67d7cfd355d662270fe71ff48754a904f409a5717a6d59809",
+  "probeSha256": "a9a4303af5de5541278b79a80302d6e7c9e59e4ddafd13a10c16fec4f6e0ed4f",
   "collectorSha256": "3f964d2cdf0ec8101870a776aaffc3b7dc4522306959c4a40761057beb255eb8",
   "flags": [
     "--headless=new",
@@ -41,6 +41,53 @@
           "beforetoggle",
           "d",
           "open"
+        ],
+        [
+          "cancel",
+          "d"
+        ],
+        [
+          "beforetoggle",
+          "d",
+          "closed"
+        ],
+        [
+          "close",
+          "d"
+        ]
+      ]
+    },
+    "cancelReopens": {
+      "result": [
+        [
+          true,
+          "first"
+        ],
+        false
+      ],
+      "log": [
+        [
+          "beforetoggle",
+          "d",
+          "open"
+        ],
+        [
+          "cancel",
+          "d"
+        ],
+        [
+          "beforetoggle",
+          "d",
+          "closed"
+        ],
+        [
+          "beforetoggle",
+          "d",
+          "open"
+        ],
+        [
+          "close",
+          "d"
         ],
         [
           "cancel",

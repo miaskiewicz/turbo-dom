@@ -54,6 +54,17 @@
     await input(esc);
     return [$('d').open, $('d').returnValue];
   });
+  // A cancel listener that closes and reopens the dialog: the reopened dialog has a new close
+  // watcher, so the request stops.
+  await scenario('cancelReopens', `<div id=out ${OUT}></div><button id=b data-x=120 data-y=0>b</button><dialog id=d data-x=300 data-y=300>d</dialog>`, async () => {
+    $('d').addEventListener('cancel', () => { $('d').close('first'); $('d').showModal(); }, { once: true });
+    await input(...click(150, 30, 'b'));
+    $('d').showModal();
+    await input(esc);
+    const after = [$('d').open, $('d').returnValue];
+    await input(esc);
+    return [after, $('d').open];
+  });
   // A click on an invoker inside popover p1 that targets p2 (shown from that invoker): the
   // topmost clicked popover is p2, so nothing is light dismissed and the invoker hides p2.
   await scenario('invokerInPopover', `<div id=out ${OUT}></div><div id=p1 popover data-x=300 data-y=300><button id=inv popovertarget=p2 data-x=310 data-y=310>i</button></div><div id=p2 popover data-x=500 data-y=300>2</div>`, async () => {

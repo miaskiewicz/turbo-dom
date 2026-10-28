@@ -184,6 +184,12 @@
     await wait(10);
     return [d.open, e.open];
   });
+  // A rendered select's picker opens with activation (and consumes it); this runs last since
+  // Chrome then shows the picker.
+  await scenario('selectRendered', '<select id=s><option>1</select>', async () => {
+    await activate('b');
+    return [run(() => $('s').showPicker()), run(() => $('s').showPicker())];
+  });
   for (const type of types) document.removeEventListener(type, record, true);
   document.body.innerHTML = '';
   return out;

@@ -258,6 +258,9 @@ fn dialog_popover_edges_match_chrome156() {
         &run_probe(probe),
         &expected,
         &[
+            // miaskiewicz/turbo-dom#150: a dialog reopened by its cancel listener is closed.
+            r#"result.cancelReopens.log = [["beforetoggle","d","open"],["cancel","d"],["beforetoggle","d","closed"],["beforetoggle","d","open"],["beforetoggle","d","closed"],["close","d"],["close","d"]]"#,
+            r#"result.cancelReopens.result[0][0] = false"#,
             // miaskiewicz/turbo-dom#139: nested popover calls from beforetoggle, messages.
             r#"result.nestedCalls.log[2][2] = "closed""#,
             r#"result.nestedCalls.result[4][0][1] = "undefined""#,

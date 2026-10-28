@@ -740,7 +740,8 @@ fn dispatch(
         // The last operation the hook sends: "details-task".
         operation => {
             debug_assert_eq!(operation, "details-task");
-            let task = args.get(2).number_value(scope).unwrap_or(-1.0) as u64;
+            // The hook passes the numeric task id it was given.
+            let task = args.get(2).number_value(scope).unwrap_or_default() as u64;
             rv.set_bool(take_details_task(node, task));
         }
     }
