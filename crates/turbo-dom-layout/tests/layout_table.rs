@@ -545,3 +545,19 @@ fn row_box_spans_its_cells_inside_the_border_spacing() {
         assert_eq!(row.y, c[0].y, "{pairs:?}");
     }
 }
+
+/// miaskiewicz/turbo-dom#158: a row's `break-inside: avoid` reaches its fragment's break
+/// hints (the fragmenter reads them; html2pdf no longer has to re-read the style).
+#[test]
+fn row_break_inside_avoid_reaches_the_row_fragment() {
+    let avoid = ela(
+        "tr",
+        &[],
+        &[("display", "table-row"), ("break-inside", "avoid")],
+        vec![td(&[], "kept")],
+    );
+    let t = table(vec![tr(vec![td(&[], "a")]), avoid], &[], 500.0);
+    let r = rows(&t);
+    assert!(!r[0].break_meta.break_inside_avoid);
+    assert!(r[1].break_meta.break_inside_avoid);
+}
