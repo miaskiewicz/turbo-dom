@@ -835,6 +835,13 @@ mod tests {
         assert_extents("scroll-extent-hidden-and-visible");
     }
 
+    /// miaskiewicz/turbo-dom#180: a clip axis beside a scrollable one still gets the
+    /// scroll container's end margin and padding.
+    #[test]
+    fn clip_axis_of_a_scroll_container_keeps_end_padding_like_chrome_156() {
+        assert_extents("scroll-extent-clip-axis-padding");
+    }
+
     #[test]
     fn positioned_descendants_reach_the_scroller_through_their_containing_block_like_chrome_156() {
         assert_extents("scroll-extent-positioned-children");

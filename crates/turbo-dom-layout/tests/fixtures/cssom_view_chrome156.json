@@ -234,6 +234,63 @@
    ]
   },
   {
+   "id": "scroll-extent-clip-axis-padding",
+   "html": "<!doctype html><style>body{margin:0;font-family:\"Fira Code\";font-size:10px;line-height:1}.s{scrollbar-width:none}</style><div data-cid=\"x\" class=\"s\" style=\"overflow-x:clip;overflow-y:auto;width:100px;height:50px;padding:5px\"><div style=\"width:150px;height:80px;margin:3px 4px\"></div></div><div data-cid=\"y\" class=\"s\" style=\"overflow-x:auto;overflow-y:clip;width:100px;height:50px;padding:5px\"><div style=\"width:150px;height:80px;margin:3px 4px\"></div></div><div data-cid=\"c\" class=\"s\" style=\"overflow:clip;width:100px;height:50px;padding:5px\"><div style=\"width:150px;height:80px;margin:3px 4px\"></div></div>",
+   "scroll": {},
+   "boxes": [
+    {
+     "cid": "x",
+     "x": 0,
+     "y": 0,
+     "width": 110,
+     "height": 60
+    },
+    {
+     "cid": "y",
+     "x": 0,
+     "y": 60,
+     "width": 110,
+     "height": 60
+    },
+    {
+     "cid": "c",
+     "x": 0,
+     "y": 120,
+     "width": 110,
+     "height": 60
+    }
+   ],
+   "metrics": [
+    {
+     "cid": "x",
+     "overflowX": "clip",
+     "overflowY": "auto",
+     "scrollWidth": 168,
+     "scrollHeight": 96,
+     "maxX": 0,
+     "maxY": 36
+    },
+    {
+     "cid": "y",
+     "overflowX": "auto",
+     "overflowY": "clip",
+     "scrollWidth": 168,
+     "scrollHeight": 96,
+     "maxX": 58,
+     "maxY": 0
+    },
+    {
+     "cid": "c",
+     "overflowX": "clip",
+     "overflowY": "clip",
+     "scrollWidth": 159,
+     "scrollHeight": 88,
+     "maxX": 0,
+     "maxY": 0
+    }
+   ]
+  },
+  {
    "id": "scroll-extent-hidden-and-visible",
    "html": "<!doctype html><style>body{margin:0;font-family:\"Fira Code\";font-size:10px;line-height:1}.s{scrollbar-width:none}</style><div data-cid=\"h\" style=\"overflow:hidden;width:60px;height:30px;padding:4px\"><div style=\"width:100px;height:70px;margin-right:6px;margin-bottom:9px\"></div></div><div data-cid=\"v\" style=\"width:60px;height:30px;padding:4px\"><div style=\"width:100px;height:70px;margin-right:6px;margin-bottom:9px\"></div></div>",
    "scroll": {},

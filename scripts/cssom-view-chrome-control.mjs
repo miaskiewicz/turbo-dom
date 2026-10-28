@@ -106,6 +106,19 @@ const CASES = [
     ),
     metrics: ["s", "c"],
   },
+  // A clip axis beside a scrollable one: the box is a scroll container, so in-flow end
+  // margins and its end padding count on both axes; clip on both axes adds neither
+  // (miaskiewicz/turbo-dom#180).
+  {
+    id: "scroll-extent-clip-axis-padding",
+    html: DOC(
+      "",
+      `<div data-cid="x" class="s" style="overflow-x:clip;overflow-y:auto;width:100px;height:50px;padding:5px">${BOX(150, 80, "", "margin:3px 4px")}</div>` +
+        `<div data-cid="y" class="s" style="overflow-x:auto;overflow-y:clip;width:100px;height:50px;padding:5px">${BOX(150, 80, "", "margin:3px 4px")}</div>` +
+        `<div data-cid="c" class="s" style="overflow:clip;width:100px;height:50px;padding:5px">${BOX(150, 80, "", "margin:3px 4px")}</div>`,
+    ),
+    metrics: ["x", "y", "c"],
+  },
   {
     id: "scroll-extent-hidden-and-visible",
     html: DOC(
