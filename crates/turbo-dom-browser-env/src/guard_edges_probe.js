@@ -23,7 +23,7 @@
       ':has(> a, )', 'div:popover-open', 'dialog:modal', 'dialog:open',
       ':where(:popover-open(x), div)', ':is( :popover-open() , :popover-open)', ':modal, [a', ':open, :state(x', ':popover-open, :-webkit-any(a',
       ':active-view-transition, [a', ':popover-open, [a', ':popover-open /* x', ':modal, a /* x', ':is(:active-view-transition(x))',
-      'a"x"', 'a{}', 'a(b)', 'a#', 'a.b"c"', 'a::before b', 'a[x]"y"'
+      ':/**/popover-open', ':is(/**/:popover-open(x), :popover-open)', 'a"x"', 'a{}', 'a(b)', 'a#', 'a.b"c"', 'a::before b', 'a[x]"y"'
     ];
     for (const selector of selectors) {
       r[selector] = [
@@ -33,7 +33,7 @@
       ];
     }
     pop.showPopover();
-    r.openPopover = [caught(() => document.querySelectorAll(':popover-open').length), caught(() => document.querySelectorAll(':popover-open, )').length)];
+    r.openPopover = [caught(() => document.querySelectorAll(':popover-open').length), caught(() => document.querySelectorAll(':popover-open, )').length), caught(() => document.querySelectorAll(':/**/popover-open').length), caught(() => document.querySelectorAll(':is(/**/:popover-open(x), :popover-open)').length), caught(() => document.querySelectorAll('div:not(:popover-open)').length > 0)];
     pop.hidePopover();
     out.selectors = r;
   }
@@ -132,6 +132,16 @@
       mrow: () => box.appendChild(document.createElementNS(math, 'math')).appendChild(document.createElementNS(math, 'mrow')),
       mathInline: () => { const element = box.appendChild(document.createElementNS(math, 'math')); element.setAttribute('style', 'display: inline'); return element; },
       otherNamespace: () => box.appendChild(document.createElementNS('urn:x', 'svg')),
+      svgRectInDiv: () => box.appendChild(document.createElementNS(svg, 'rect')),
+      slot: () => make('slot'),
+      audio: () => make('audio'),
+      audioControls: () => { const audio = make('audio'); audio.setAttribute('controls', ''); return audio; },
+      openDialog: () => { const dialog = make('dialog'); dialog.open = true; return dialog; },
+      closedDialog: () => make('dialog'),
+      tableRow: () => make('table').appendChild(document.createElement('tbody')).appendChild(document.createElement('tr')),
+      rubyElement: () => make('ruby'),
+      titleInBody: () => make('title'),
+      inlineBlock: () => make('span', 'display: inline-block'),
       inHiddenSvg: () => box.appendChild(document.createElementNS(svg, 'svg')).appendChild(document.createElementNS(svg, 'svg')).appendChild(document.createElement('div')),
     };
     for (const [name, create] of Object.entries(cases)) {

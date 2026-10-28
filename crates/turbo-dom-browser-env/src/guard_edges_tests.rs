@@ -258,8 +258,8 @@ fn out_of_range_keyframe_selectors_drop_the_rule() {
     assert_eq!(
         page_json(
             "<!doctype html>",
-            "['-1%', '101%', '-0%', '100%', '0%, 101%', '100.0001%', '1e2%'].map(key => { const sheet = new CSSStyleSheet(); sheet.replaceSync(`@keyframes k { ${key} {} }`); return sheet.cssRules[0].cssRules.length; })",
+            "['-1%', '101%', '-0%', '100%', '0%, 101%', '100.0001%', '1e2%', 'to', 'FROM, TO', 'top'].map(key => { const sheet = new CSSStyleSheet(); sheet.replaceSync(`@keyframes k { ${key} {} }`); return sheet.cssRules[0].cssRules.length; })",
         ),
-        "[0,0,1,1,0,0,1]"
+        "[0,0,1,1,0,0,1,1,1,0]"
     );
 }
