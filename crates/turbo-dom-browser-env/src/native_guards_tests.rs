@@ -83,7 +83,8 @@ const KNOWN_GAPS: &[(&str, &str)] = &[
     (
         "result.receivers.Element.scrollTo[1]",
         "[\"TypeError\",\"TypeError\"]",
-    ),
+    ), // miaskiewicz/turbo-dom#141: adoptNode(shadow root) throws NotSupportedError.
+    ("result.imports.shadow[2][1]", "\"NotSupportedError\""),
 ];
 
 #[test]

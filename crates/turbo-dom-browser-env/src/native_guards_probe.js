@@ -318,6 +318,27 @@
     };
     el.remove();
   }
+  // Importing and adopting nodes of every kind from another document.
+  {
+    const other = document.implementation.createHTMLDocument('t');
+    const kinds = {
+      attr: () => { const a = other.createAttribute('Data-A'); a.value = 'v'; return a; },
+      attrNS: () => { const a = other.createAttributeNS('urn:x', 'p:q'); a.value = 'w'; return a; },
+      pi: () => other.createProcessingInstruction('target', 'data'),
+      comment: () => other.createComment('note'),
+      text: () => other.createTextNode('words'),
+      doctype: () => other.implementation.createDocumentType('html', 'pub', 'sys'),
+      fragment: () => { const f = other.createDocumentFragment(); f.append(other.createElement('i'), 'x'); return f; },
+      element: () => { const e = other.createElement('b'); e.setAttribute('k', 'v'); e.textContent = 't'; return e; },
+      shadow: () => other.createElement('div').attachShadow({ mode: 'open' }),
+      document: () => other,
+    };
+    const describe = node => node == null ? null : [node.nodeType, node.nodeName, node.nodeValue, node.ownerDocument === document, node.namespaceURI === undefined ? 'undefined' : node.namespaceURI, node.prefix === undefined ? 'undefined' : node.prefix, node.localName === undefined ? 'undefined' : node.localName, node.nodeType === 10 ? [node.publicId, node.systemId] : node.nodeType === 11 ? node.childNodes.length : node.nodeType === 1 ? node.outerHTML : null];
+    out.imports = {};
+    for (const [name, make] of Object.entries(kinds)) {
+      out.imports[name] = [run(() => describe(document.importNode(make(), true))), run(() => describe(document.importNode(make(), false))), run(() => { const node = make(); const adopted = document.adoptNode(node); return [describe(adopted), adopted === node]; })];
+    }
+  }
   host.remove();
   return out;
 })()

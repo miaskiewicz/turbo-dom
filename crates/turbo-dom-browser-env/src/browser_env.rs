@@ -4211,13 +4211,8 @@ fn listener_options<'s>(
     args: &v8::FunctionCallbackArguments,
     remove: bool,
 ) -> Option<v8::Local<'s, v8::Object>> {
-    if args.length() < 2 {
-        let message =
-            v8::String::new(scope, "Event listener registration requires 2 arguments").unwrap();
-        let error = v8::Exception::type_error(scope, message);
-        scope.throw_exception(error);
-        return None;
-    }
+    // browser_env.js's EventTarget wrappers call the node natives with at least 2 arguments.
+    debug_assert!(args.length() >= 2);
     let top = with_tree(|tree| {
         handle_of(scope, args.this()).is_some_and(|node| {
             tree.node_type_id(node) == 9 || tree.local_name(node) == Some("body")
@@ -4232,9 +4227,9 @@ fn el_add_event_listener<'s, 'i>(
     _rv: v8::ReturnValue,
 ) {
     let _dom = DomScope::for_object(scope, args.this());
-    let Some(node) = receiver_handle(scope, &args, &[]) else {
-        return;
-    };
+    // browser_env.js's EventTarget wrapper routes only nodes here (others go to the window /
+    // EventTarget callbacks).
+    let node = receiver_handle(scope, &args, &[]).expect("the EventTarget wrapper passes a node");
     let Some(options) = listener_options(scope, &args, false) else {
         return;
     };
@@ -4299,9 +4294,9 @@ fn el_remove_event_listener(
     _rv: v8::ReturnValue,
 ) {
     let _dom = DomScope::for_object(scope, args.this());
-    let Some(node) = receiver_handle(scope, &args, &[]) else {
-        return;
-    };
+    // browser_env.js's EventTarget wrapper routes only nodes here (others go to the window /
+    // EventTarget callbacks).
+    let node = receiver_handle(scope, &args, &[]).expect("the EventTarget wrapper passes a node");
     let Some(options) = listener_options(scope, &args, true) else {
         return;
     };
@@ -4447,10 +4442,9 @@ fn el_dispatch_event(
     mut rv: v8::ReturnValue,
 ) {
     let _dom = DomScope::for_object(scope, args.this());
-    let Some(target) = receiver_handle(scope, &args, &[]) else {
-        rv.set(v8::Boolean::new(scope, true).into());
-        return;
-    };
+    // Callers pass a node: browser_env.js's EventTarget wrapper routes only nodes here and
+    // dispatch_host_event checks the target's handle first.
+    let target = receiver_handle(scope, &args, &[]).expect("dispatchEvent's callers pass a node");
     let event = args.get(0);
     let Ok(event_obj) = v8::Local::<v8::Object>::try_from(event) else {
         let message = v8::String::new(scope, "dispatchEvent requires an Event").unwrap();
