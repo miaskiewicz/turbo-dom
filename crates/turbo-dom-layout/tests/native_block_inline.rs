@@ -52,29 +52,12 @@ fn record_names(
     }
 }
 /// The repo's font fixtures (`test_support::fixture_fonts`): text geometry never
-/// depends on the host's installed fonts or on the `bundled-fonts` feature. The macOS Chrome-fixture comparisons, whose
-/// controls were captured with macOS system fonts, opt into the host registry for their
-/// own thread with [`with_host_fonts`].
+/// depends on the host's installed fonts or on the `bundled-fonts` feature, and the Chrome
+/// controls were captured with the same files loaded through `@font-face`
+/// (`scripts/fixture-font-chrome-controls.mjs`), so every comparison runs on every OS.
 fn fonts() -> &'static FontRegistry {
     static FIXTURE: OnceLock<FontRegistry> = OnceLock::new();
-    static HOST: OnceLock<FontRegistry> = OnceLock::new();
-    if HOST_FONTS.with(std::cell::Cell::get) {
-        HOST.get_or_init(|| {
-            let mut fonts = FontRegistry::new();
-            fonts.load_system_fonts_for_html();
-            fonts
-        })
-    } else {
-        FIXTURE.get_or_init(turbo_dom_layout::test_support::fixture_fonts)
-    }
-}
-thread_local! {
-    static HOST_FONTS: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
-}
-#[cfg(target_os = "macos")]
-fn with_host_fonts<T>(body: impl FnOnce() -> T) -> T {
-    HOST_FONTS.with(|host| host.set(true));
-    body()
+    FIXTURE.get_or_init(turbo_dom_layout::test_support::fixture_fonts)
 }
 type Captured = (LayoutSnapshot, HashMap<String, SourceId>);
 fn capture(markup: &str) -> Captured {
@@ -116,7 +99,7 @@ fn capture_with_partial_identities(
         body_height: None,
     };
     let snapshot = snapshot_html_live_tree_with_native_text(&literal::tree(&nodes).input(), &ids,
-        &build_cascade("body{margin:8px;font-family:serif}head,style,script,title,meta,link,base,noscript{display:none}button{font-family:Arial;font-size:13.3333px;line-height:normal;padding:1px 6px;border:2px solid;box-sizing:border-box}", "", turbo_dom_layout::style::TokenSet::default()),
+        &build_cascade("body{margin:8px;font-family:\"Liberation Serif\"}textarea{font-family:\"Fira Code\"}head,style,script,title,meta,link,base,noscript{display:none}button{font-family:Inter;font-size:13.3333px;line-height:normal;padding:1px 6px;border:2px solid;box-sizing:border-box}", "", turbo_dom_layout::style::TokenSet::default()),
         &NativeTextOptions { original_text: &[], svg_viewports: &[], layout_scale: 2.0 },
         &SnapshotInputs { width:1280.0, height:800.0, fonts:fonts(), images:&images },
         &mut Diagnostics::default())?;
@@ -144,52 +127,50 @@ fn rects(snapshot: &LayoutSnapshot, source: SourceId) -> Vec<[f64; 4]> {
 #[test]
 fn saved_chrome_probe_provenance_matches_reusable_source() {
     let chrome: serde_json::Value =
-        serde_json::from_str(include_str!("fixtures/block-inline-chrome155.json")).unwrap();
+        serde_json::from_str(include_str!("fixtures/block-inline-chrome156.json")).unwrap();
     assert_eq!(
-        chrome["provenance"]["repositoryProbeSha256"],
+        chrome["probeSha256"],
         format!(
             "{:x}",
             Sha256::digest(include_bytes!("fixtures/block-inline-probe.js"))
         )
     );
-    assert_eq!(chrome["provenance"]["browser"], "Chrome/155.0.8059.85");
-    assert_eq!(chrome["provenance"]["v8"], "15.5.35.25");
+    assert_eq!(chrome["browser"], "Chrome/156.0.8078.47");
+    assert_eq!(chrome["errors"], serde_json::json!([]));
+    assert_eq!(chrome["environment"]["deviceScaleFactor"], 2);
 }
-#[cfg(target_os = "macos")]
 #[test]
 fn block_in_inline_fragments_and_neighbor_geometry_match_chrome() {
-    with_host_fonts(|| {
-        let chrome: serde_json::Value =
-            serde_json::from_str(include_str!("fixtures/block-inline-chrome155.json")).unwrap();
-        for (name, markup) in CASES {
-            let (snapshot, names) = capture(markup);
-            for (label, id) in [
-                ("parent", "rso"),
-                ("link", "a"),
-                ("heading", "h3"),
-                ("nested", "nested"),
-                ("sibling", "sibling"),
-                ("dismiss", "dismiss"),
-            ] {
-                if let Some(id) = names.get(id) {
-                    let expected: Vec<[f64; 4]> = serde_json::from_value(
-                        chrome["variants"][name]["rows"][label]["rects"].clone(),
-                    )
-                    .unwrap();
-                    assert_eq!(rects(&snapshot, *id), expected, "{name} {label}");
-                }
+    let chrome: serde_json::Value =
+        serde_json::from_str(include_str!("fixtures/block-inline-chrome156.json")).unwrap();
+    for (name, markup) in CASES {
+        let (snapshot, names) = capture(markup);
+        for (label, id) in [
+            ("parent", "rso"),
+            ("link", "a"),
+            ("heading", "h3"),
+            ("nested", "nested"),
+            ("sibling", "sibling"),
+            ("dismiss", "dismiss"),
+        ] {
+            if let Some(id) = names.get(id) {
+                let expected: Vec<[f64; 4]> = serde_json::from_value(
+                    chrome["result"]["variants"][name]["rows"][label]["rects"].clone(),
+                )
+                .unwrap();
+                assert_eq!(rects(&snapshot, *id), expected, "{name} {label}");
             }
-            let heading = snapshot.source(names["h3"]).unwrap();
-            let actual = &snapshot.fragments()[heading.fragment_indices[0]];
-            assert!(actual.source_ancestors.contains(&names["a"]));
-            assert_eq!(actual.source_id, Some(names["h3"]));
-            assert!(snapshot
-                .source(names["a"])
-                .unwrap()
-                .fragment_indices
-                .contains(&actual.index));
         }
-    });
+        let heading = snapshot.source(names["h3"]).unwrap();
+        let actual = &snapshot.fragments()[heading.fragment_indices[0]];
+        assert!(actual.source_ancestors.contains(&names["a"]));
+        assert_eq!(actual.source_id, Some(names["h3"]));
+        assert!(snapshot
+            .source(names["a"])
+            .unwrap()
+            .fragment_indices
+            .contains(&actual.index));
+    }
 }
 #[test]
 fn fragment_ownership_preserves_ids_and_internal_href_does_not_atomize_native_blocks() {

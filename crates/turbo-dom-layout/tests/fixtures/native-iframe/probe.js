@@ -52,12 +52,17 @@
         parentStyle === null
           ? frameHtml
           : `<div id="parent" style="${parentStyle}">${frameHtml}</div>`;
-      document.body.innerHTML = `<style>body{margin:0;font:16px/24px monospace}#host{width:400px;height:200px}</style><div id="host" style="${hostStyle}">${contents}</div>`;
+      document.body.innerHTML = `<style>body{margin:0;font:16px/24px "Fira Code"}#host{width:400px;height:200px}</style><div id="host" style="${hostStyle}">${contents}</div>`;
       const frame = document.getElementById("frame");
       if (srcdoc !== null) {
         const loaded = new Promise((resolve) => (frame.onload = resolve));
-        frame.srcdoc = srcdoc;
+        frame.srcdoc =
+          srcdoc.replace(
+            "<body",
+            '<style>' + FIXTURE_FONTS_CSS + 'body{font-family:"Liberation Serif"}</style><body',
+          );
         await loaded;
+        await fixtureFontsReady(frame.contentDocument);
       }
       const win = frame.contentWindow;
       const row = {

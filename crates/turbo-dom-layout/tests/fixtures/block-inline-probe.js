@@ -72,7 +72,6 @@
       viewport: [innerWidth, innerHeight],
       deviceScaleFactor: devicePixelRatio,
     },
-    originalFixture: read(document),
     variants: {},
   };
   const variants = {
@@ -89,11 +88,14 @@
     frame.style = "position:absolute;left:0;top:0;width:1280px;height:800px;border:0";
     const loaded = new Promise((resolve) => (frame.onload = resolve));
     frame.srcdoc =
-      '<!doctype html><body><div id="rso">' +
+      "<!doctype html><style>" +
+      FIXTURE_FONTS_CSS +
+      'body{font-family:"Liberation Serif"}button{font-family:Inter}textarea{font-family:"Fira Code"}</style><body><div id="rso">' +
       markup +
       '</div><button id="dismiss">Reject</button><input name="q" type="hidden" value="hidden"><form><textarea name="q"></textarea><button>Search</button></form>';
     document.body.append(frame);
     await loaded;
+    await fixtureFontsReady(frame.contentDocument);
     result.variants[name] = read(frame.contentDocument);
     frame.remove();
   }

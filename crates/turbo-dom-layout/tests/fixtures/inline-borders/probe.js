@@ -139,7 +139,7 @@
   const out = [];
   for (const [name, html] of cases) {
     document.body.innerHTML =
-      '<style>body{margin:0;font:16px/24px monospace}#box{width:75px}span{vertical-align:baseline}</style><div id="box">' +
+      '<style>body{margin:0;font:16px/24px \u0022Fira Code\u0022}#box{width:75px}span{vertical-align:baseline}</style><div id="box">' +
       html +
       "</div>";
     if (name.startsWith("parent24")) {

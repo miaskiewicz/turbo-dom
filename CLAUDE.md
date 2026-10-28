@@ -261,9 +261,12 @@ package or publish workflow.
   Liberation Serif / Inter / Fira Code, bound to `serif` / `sans-serif` / `monospace`) — not
   `load_system_fonts*`, fontconfig or the `bundled-fonts` feature — and its expected values come
   from Chrome 156 with the same file loaded through `@font-face` (at the harness's device scale
-  factor). Only tests of the host-font policy itself (`native_serif_policy`, CoreText fallback)
-  and the macOS Chrome-fixture comparisons captured with macOS system fonts (`with_host_fonts`)
-  read installed fonts, and those are `cfg(target_os = "macos")`.
+  factor; `scripts/fixture-font-chrome-controls.mjs` recaptures the block-in-inline, inline-border
+  and iframe-sizing controls, at a real `--force-device-scale-factor=2`, since emulated DSF rounds
+  font metrics in CSS pixels). Only tests of the host-font policy itself read installed fonts and
+  stay `cfg(target_os = "macos")`: `native_serif_policy` (serif resolves to the physical Times
+  face) and `original_text_units`' script-fallback comparison (CoreText picks the fallback face);
+  what they test is the host lookup, so fixture fonts would test nothing.
 - **Rust selector engine = Chrome 156.** `rtdom/query.rs` (string API) and `query_utf16.rs` (UTF-16
   API; also parses any string selector containing `\`) are checked against
   `crates/turbo-dom/tests/fixtures/cascade_selectors_chrome156.json` (regenerate with

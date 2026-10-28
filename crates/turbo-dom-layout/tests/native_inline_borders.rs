@@ -40,29 +40,12 @@ fn record_name(
     }
 }
 /// The repo's font fixtures (`test_support::fixture_fonts`): text geometry never
-/// depends on the host's installed fonts or on the `bundled-fonts` feature. The macOS Chrome-fixture comparisons, whose
-/// controls were captured with macOS system fonts, opt into the host registry for their
-/// own thread with [`with_host_fonts`].
+/// depends on the host's installed fonts or on the `bundled-fonts` feature, and the Chrome
+/// controls were captured with the same files loaded through `@font-face`
+/// (`scripts/fixture-font-chrome-controls.mjs`), so every comparison runs on every OS.
 fn fonts() -> &'static FontRegistry {
     static FIXTURE: OnceLock<FontRegistry> = OnceLock::new();
-    static HOST: OnceLock<FontRegistry> = OnceLock::new();
-    if HOST_FONTS.with(std::cell::Cell::get) {
-        HOST.get_or_init(|| {
-            let mut fonts = FontRegistry::new();
-            fonts.load_system_fonts_for_html();
-            fonts
-        })
-    } else {
-        FIXTURE.get_or_init(turbo_dom_layout::test_support::fixture_fonts)
-    }
-}
-thread_local! {
-    static HOST_FONTS: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
-}
-#[cfg(target_os = "macos")]
-fn with_host_fonts<T>(body: impl FnOnce() -> T) -> T {
-    HOST_FONTS.with(|host| host.set(true));
-    body()
+    FIXTURE.get_or_init(turbo_dom_layout::test_support::fixture_fonts)
 }
 fn capture(html: &str) -> (LayoutSnapshot, HashMap<String, SourceId>) {
     capture_result(html).unwrap()
@@ -81,7 +64,7 @@ fn capture_result(
         resolver: &NoImages,
         body_height: None,
     };
-    let cascade=build_cascade("#box{font-family:monospace;font-size:16px;line-height:24px;width:75px}span{vertical-align:baseline}","",turbo_dom_layout::style::TokenSet::default());
+    let cascade=build_cascade("#box{font-family:\"Fira Code\";font-size:16px;line-height:24px;width:75px}span{vertical-align:baseline}","",turbo_dom_layout::style::TokenSet::default());
     let snapshot = snapshot_html_live_tree_with_native_text(
         &literal::tree(&nodes).input(),
         &ids,
@@ -164,28 +147,25 @@ fn transparent_ancestors_reference_child_regions_without_repainting_child_alpha_
     assert_eq!(paints(snapshot.galley()), 1);
 }
 
-#[cfg(target_os = "macos")]
 #[test]
 fn authored_native_inline_fragments_match_independent_chrome_boundaries_fonts_and_slices() {
-    with_host_fonts(|| {
-        use sha2::{Digest, Sha256};
-        let cases: serde_json::Value =
-            serde_json::from_str(include_str!("fixtures/inline-borders/cases.json")).unwrap();
-        let control: serde_json::Value =
-            serde_json::from_str(include_str!("fixtures/inline-borders/chrome155.json")).unwrap();
-        assert_eq!(control["browser"], "Chrome/155.0.8059.80");
-        assert_eq!(control["errors"], serde_json::json!([]));
-        assert_eq!(
-            control["probeSha256"],
-            format!(
-                "{:x}",
-                Sha256::digest(include_bytes!("fixtures/inline-borders/probe.js"))
-            )
-        );
-        for case in cases.as_array().unwrap() {
-            compare_case(case, &control);
-        }
-    });
+    use sha2::{Digest, Sha256};
+    let cases: serde_json::Value =
+        serde_json::from_str(include_str!("fixtures/inline-borders/cases.json")).unwrap();
+    let control: serde_json::Value =
+        serde_json::from_str(include_str!("fixtures/inline-borders/chrome156.json")).unwrap();
+    assert_eq!(control["browser"], "Chrome/156.0.8078.47");
+    assert_eq!(control["errors"], serde_json::json!([]));
+    assert_eq!(
+        control["probeSha256"],
+        format!(
+            "{:x}",
+            Sha256::digest(include_bytes!("fixtures/inline-borders/probe.js"))
+        )
+    );
+    for case in cases.as_array().unwrap() {
+        compare_case(case, &control);
+    }
 }
 #[test]
 fn authored_inline_graphs_retain_actual_source_roles_on_every_platform() {
@@ -267,7 +247,6 @@ fn relative_inline_offsets_move_descendants_without_changing_following_flow() {
         rects(&shifted, shifted_names["after"])
     );
 }
-#[cfg(target_os = "macos")]
 fn compare_case(case: &serde_json::Value, control: &serde_json::Value) {
     let (snapshot, names) = case_snapshot(case);
     let expected = control["result"]
