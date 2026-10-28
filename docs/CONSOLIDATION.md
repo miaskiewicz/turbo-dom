@@ -117,7 +117,7 @@ engine, macOS arm64, `--include-files 'crates/<crate>/src/*'`), rounded down:
 | turbo-dom-raster | 77.23% (1184/1533); P5-cov: 100% (1533/1533) | 100 |
 | turbo-dom-raster `--features avif` | P5-cov: 79.63% (1337/1679) → 100% (1666/1666) | 100 |
 | turbo-dom-raster `--features jxl` | P5-cov: 79.31% (1246/1571) → 100% (1559/1559) | 100 |
-| turbo-dom-browser-env (`host-internals,test-support`) | 88.59% (14538/16411); P5-cov (C3): 89.35% (15577/17434) → 93.21% (16086/17257), default features 93.14%; C3c: → 94.35% (16258/17231); C3c round 2: → 95.71% (16486/17225); merged C3/C3b/C3c/C3d: → 96.99% (16740/17259); C3 round 4: → 97.19% (16779/17264), default features 97.12% | 97.1 |
+| turbo-dom-browser-env (`host-internals,test-support`) | 88.59% (14538/16411); P5-cov (C3): 89.35% (15577/17434) → 93.21% (16086/17257), default features 93.14%; C3c: → 94.35% (16258/17231); C3c round 2: → 95.71% (16486/17225); merged C3/C3b/C3c/C3d: → 96.99% (16740/17259); C3 round 4: → 97.19% (16779/17264), default features 97.12%; C3 round 5: → 97.32% (16851/17315), default features 97.25% | 97.3 |
 | turbo-dom-parser, `src/core.rs` only (`--include-files src/core.rs`) | no gate before step 4: 38.80% (142/366) → 100% (349/349) | 100 |
 
 The coverage phase (P5-cov) adds behaviour-asserting tests and raises every gate to
