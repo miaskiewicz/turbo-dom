@@ -181,9 +181,8 @@ fn dispatch(
         rv.set(v8::String::new(scope, &stamp).unwrap().into());
         return;
     }
-    let Some(result) = with_tree_mut(|tree| snapshot(tree, node)) else {
-        return;
-    };
+    // handle_of found the node in the scoped document, so its tree is installed.
+    let result = with_tree_mut(|tree| snapshot(tree, node)).expect("scoped document tree");
     let snapshot = match result {
         Ok(snapshot) => snapshot,
         Err(message) => {

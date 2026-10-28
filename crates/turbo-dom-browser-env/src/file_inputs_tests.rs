@@ -129,10 +129,9 @@ fn differences(
         }
         (Object(a), Object(b)) if a.len() == b.len() => {
             for (key, b) in b {
-                match a.get(key) {
-                    Some(a) => differences(&format!("{path}.{key}"), a, b, out),
-                    None => out.push(format!("{path}.{key}: missing")),
-                }
+                // A key missing from the binding compares as null.
+                let a = a.get(key).unwrap_or(&serde_json::Value::Null);
+                differences(&format!("{path}.{key}"), a, b, out);
             }
         }
         _ if actual != expected => out.push(format!("{path} = {actual} (Chrome {expected})")),
@@ -161,21 +160,20 @@ fn control(fixture: &str, probe: &str, cases: &[u8]) -> serde_json::Value {
 fn assert_matches(actual: &serde_json::Value, expected: &serde_json::Value, known: &[&str]) {
     let mut out = Vec::new();
     differences("", actual, expected, &mut out);
-    let mut unexpected = Vec::new();
-    for difference in &out {
-        if !known.iter().any(|gap| difference.starts_with(gap)) {
-            unexpected.push(difference.clone());
-        }
-    }
+    let unexpected = out
+        .iter()
+        .filter(|difference| !known.iter().any(|gap| difference.starts_with(gap)))
+        .cloned()
+        .collect::<Vec<_>>();
     let missing = known
         .iter()
         .filter(|gap| !out.iter().any(|difference| difference.starts_with(*gap)))
         .collect::<Vec<_>>();
-    assert!(
-        unexpected.is_empty() && missing.is_empty(),
+    let report = format!(
         "unexpected:\n{}\nresolved known gaps: {missing:?}",
         unexpected.join("\n")
     );
+    assert!(unexpected.is_empty() && missing.is_empty(), "{report}");
 }
 
 #[test]

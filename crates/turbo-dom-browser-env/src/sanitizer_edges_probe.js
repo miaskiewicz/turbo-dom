@@ -40,6 +40,9 @@
     setHTMLOnScript: attempt(() => { const s = document.createElement('script'); s.setHTML('x'); return s.textContent; }),
     receiver: attempt(() => Element.prototype.setHTML.call(document, 'x')),
     badSanitizer: attempt(() => target.setHTML('x', { sanitizer: 1 })),
+    proxyReceiver: attempt(() => Sanitizer.prototype.get.call(new Proxy(new Sanitizer(), {}))),
+    plainReceiver: attempt(() => Sanitizer.prototype.get.call({})),
+    proxySanitizer: attempt(() => { target.setHTML('<b>p</b>', { sanitizer: new Proxy(new Sanitizer(), {}) }); return target.innerHTML; }),
   };
   return out;
 })()

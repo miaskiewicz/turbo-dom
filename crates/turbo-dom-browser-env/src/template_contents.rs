@@ -165,9 +165,7 @@ fn children<'s>(
     node: v8::Local<'s, v8::Object>,
 ) -> Vec<v8::Local<'s, v8::Object>> {
     let _owner = DomScope::for_object(scope, node);
-    let Some(handle) = handle_of(scope, node) else {
-        return Vec::new();
-    };
+    let handle = handle_of(scope, node).expect("callers pass wrapped nodes");
     with_tree(|tree| tree.children(handle))
         .unwrap_or_default()
         .into_iter()
@@ -201,9 +199,7 @@ pub(super) fn realize<'s>(scope: &mut v8::PinScope<'s, '_>, root: v8::Local<'s, 
         if scope.is_execution_terminating() {
             return;
         }
-        let Some(handle) = handle_of(scope, node) else {
-            continue;
-        };
+        let handle = handle_of(scope, node).expect("pending entries are wrapped nodes");
         if !seen.insert((dom_id_of(scope, node), handle)) {
             continue;
         }
@@ -278,9 +274,7 @@ pub(super) fn install(scope: &mut v8::PinScope) {
             dom.template_contents.enabled = true
         }
     });
-    let Some(root) = with_tree(Tree::root) else {
-        return;
-    };
+    let root = with_tree(Tree::root).expect("install runs on an installed document");
     let document = wrap(scope, root);
     realize(scope, document);
 }
@@ -297,21 +291,17 @@ pub(super) fn set_html<'s>(
         // Parse without observable active-document mutations. Its elements must
         // reach the template's inert owner before custom-element upgrade checks.
         let scripting_enabled = node_has_window_owner(scope, host);
-        let placeholder = handle_of(scope, host).and_then(|context| {
-            with_tree_mut(|tree| {
-                tree.create_contextual_fragment_utf16(context, html, scripting_enabled)
-            })
-        });
-        let Some(fragment) = placeholder else {
-            return true;
-        };
+        // ensure() accepted `host`: a wrapped template of an installed document.
+        let context = handle_of(scope, host).expect("template handle");
+        let fragment = with_tree_mut(|tree| {
+            tree.create_contextual_fragment_utf16(context, html, scripting_enabled)
+        })
+        .expect("installed document");
         wrap(scope, fragment)
     };
     realize(scope, source);
     let _target = DomScope::for_object(scope, content);
-    let Some(target) = handle_of(scope, content) else {
-        return true;
-    };
+    let target = handle_of(scope, content).expect("template contents are wrapped fragments");
     html_popover::disconnect(scope, target, false);
     range_live::replacing_children(scope, target);
     let existing = with_tree(|tree| tree.children(target)).unwrap_or_default();
@@ -390,20 +380,14 @@ pub(super) fn copy_contents<'s>(
         }
         let source_children = children(scope, source);
         if copy_children {
-            let Some(owner) = document(scope, target) else {
-                return;
-            };
+            let owner = document(scope, target).expect("installed document");
             let _target = DomScope::for_object(scope, target);
-            let Some(parent) = handle_of(scope, target) else {
-                return;
-            };
+            let parent = handle_of(scope, target).expect("a wrapped clone");
             for child in source_children {
-                let Ok(copy) = import_document_node(scope, owner, child, false) else {
-                    return;
-                };
-                let Some(node) = handle_of(scope, copy) else {
-                    return;
-                };
+                // Template contents hold elements, text, comments and processing
+                // instructions only, which import always copies.
+                let copy = import_document_node(scope, owner, child, false).expect("importable");
+                let node = handle_of(scope, copy).expect("a wrapped copy");
                 with_tree_mut(|tree| tree.append_child(parent, node));
                 pending.push((child, copy, true));
             }
@@ -531,24 +515,19 @@ pub(super) fn serialize_with<'s>(
             }
         };
         let _owner = DomScope::for_object(scope, node);
-        let Some(handle) = handle_of(scope, node) else {
-            continue;
-        };
-        let Some(kind) = with_tree(|tree| tree.node_type_id(handle)) else {
-            continue;
-        };
+        let handle = handle_of(scope, node).expect("queued nodes are wrapped");
+        let kind = with_tree(|tree| tree.node_type_id(handle)).expect("installed document");
         match kind {
             1 => {
-                let Some((name, local, html, attributes)) = with_tree(|tree| {
+                let (name, local, html, attributes) = with_tree(|tree| {
                     (
                         tree.qualified_name_utf16(handle).unwrap_or_default(),
                         tree.local_name(handle).unwrap_or("").to_owned(),
                         tree.namespace_id(handle) == 0,
                         tree.attributes_units(handle),
                     )
-                }) else {
-                    continue;
-                };
+                })
+                .expect("installed document");
                 scalar(&mut out, "<");
                 out.extend_from_slice(&name);
                 if !attributes
@@ -615,20 +594,8 @@ pub(super) fn serialize_with<'s>(
                 );
                 scalar(&mut out, "-->");
             }
-            10 => {
-                scalar(&mut out, "<!DOCTYPE ");
-                out.extend(
-                    with_tree(|tree| tree.doctype_name_utf16(handle))
-                        .flatten()
-                        .unwrap_or_default(),
-                );
-                scalar(&mut out, ">");
-            }
-            9 | 11 => {
-                for child in children(scope, node).into_iter().rev() {
-                    pending.push(Task::Node(child, false));
-                }
-            }
+            // Only element / template-content / shadow-root children and an outerHTML element
+            // root are queued, so no doctype, document or fragment reaches this walk.
             _ => {}
         }
     }

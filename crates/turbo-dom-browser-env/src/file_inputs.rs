@@ -40,7 +40,8 @@ fn dispatch<'s>(
                 html_popover::schedule(scope, callback);
             }
         }
-        "type-hook" => {
+        // "type-hook", the last operation file_inputs.js calls.
+        _ => {
             if let Ok(hook) = v8::Local::<v8::Function>::try_from(args.get(1)) {
                 if let Some(hook) = dom_ownership::helper_function(scope, hook) {
                     scope
@@ -49,7 +50,6 @@ fn dispatch<'s>(
                 }
             }
         }
-        _ => {}
     }
 }
 

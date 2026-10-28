@@ -107,9 +107,9 @@ fn insert_mode(
     remove: &[Handle],
     replace_all: bool,
 ) -> bool {
-    let Some(result) = with_tree(|tree| plan(tree, parent, incoming, reference, remove)) else {
-        return false;
-    };
+    // Mutations run inside an entered, installed DOM.
+    let result = with_tree(|tree| plan(tree, parent, incoming, reference, remove))
+        .expect("installed document");
     let plan = match result {
         Ok(plan) => plan,
         Err(name) => {
@@ -575,14 +575,11 @@ fn insert_inputs_mode<'s>(
         }
     }
     let owner = DOM_ID.with(|id| id.get());
-    let Some(prepared) = prepare(scope, incoming) else {
-        return false;
-    };
-    let Some(planned) =
+    // incoming_node() admitted every Incoming::Node as a wrapped node, so view() succeeds.
+    let prepared = prepare(scope, incoming).expect("wrapped incoming nodes");
+    let planned =
         with_tree(|tree| incoming_plan(tree, owner, parent, &prepared, reference, remove))
-    else {
-        return false;
-    };
+            .expect("installed document");
     let planned = match planned {
         Ok(nodes) => nodes,
         Err(name) => {
@@ -619,13 +616,9 @@ fn insert_inputs_mode<'s>(
     for node in planned {
         match node {
             Prepared::Node(node) => {
-                if dom_id_of(scope, node.object) != owner {
-                    return false;
-                }
-                let Some(handle) = handle_of(scope, node.object) else {
-                    return false;
-                };
-                handles.push(handle);
+                // Every planned node was adopted into this document above.
+                debug_assert_eq!(dom_id_of(scope, node.object), owner);
+                handles.push(handle_of(scope, node.object).expect("adopted node"));
             }
             Prepared::Text(text) => {
                 handles.push(with_tree_mut(|tree| tree.create_text_node_utf16(&text)).unwrap())

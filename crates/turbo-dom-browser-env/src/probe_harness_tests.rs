@@ -10,12 +10,9 @@ fn host_dispatch(
     args: v8::FunctionCallbackArguments,
     _rv: v8::ReturnValue,
 ) {
-    let (Ok(event), Ok(target)) = (
-        v8::Local::<v8::Object>::try_from(args.get(0)),
-        v8::Local::<v8::Object>::try_from(args.get(1)),
-    ) else {
-        return;
-    };
+    // DRIVER dispatches its own events at the probe's targets.
+    let event = v8::Local::<v8::Object>::try_from(args.get(0)).expect("driver event");
+    let target = v8::Local::<v8::Object>::try_from(args.get(1)).expect("driver target");
     dispatch_host_event(scope, event, target);
 }
 /// The focused element itself (not retargeted out of shadow trees), else the body.
@@ -101,19 +98,18 @@ pub(in super::super) fn run(probe: &str) -> serde_json::Value {
     )
     .unwrap();
     let step = v8::Script::compile(scope, step, None).unwrap();
+    // Run the earliest timer until the probe settles or no timer is left (or one threw).
     for _ in 0..100_000 {
         scope.perform_microtask_checkpoint();
-        if promise.state() != v8::PromiseState::Pending {
-            break;
-        }
-        if !step.run(scope).is_some_and(|value| value.is_true()) {
-            scope.perform_microtask_checkpoint();
+        if promise.state() != v8::PromiseState::Pending
+            || !step.run(scope).is_some_and(|value| value.is_true())
+        {
             break;
         }
     }
-    if let Some(error) = scope.exception() {
-        panic!("probe task threw: {}", error.to_rust_string_lossy(scope));
-    }
+    scope.perform_microtask_checkpoint();
+    let error = thrown(scope.exception(), scope);
+    assert_eq!(error, "no exception", "probe task threw");
     let value = promise.result(scope).to_rust_string_lossy(scope);
     assert_eq!(promise.state(), v8::PromiseState::Fulfilled, "{value}");
     reset();

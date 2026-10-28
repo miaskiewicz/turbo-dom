@@ -65,13 +65,20 @@ fn slot_projection_and_slotchange_stop_while_terminating() {
         scope.perform_microtask_checkpoint();
         // The parsed child's assignment already fired one slotchange.
         assert_eq!(json(scope, "events"), "1");
+        eval(
+            scope,
+            "globalThis.seen = 0; s.addEventListener('ping', () => seen++)",
+        );
         terminate(scope);
         shadow_slots::refresh(scope);
         shadow_slots::fire(scope, slot);
         assert!(shadow_slots::composed_children(scope, host).is_none());
         assert!(shadow_slots::composed_parent(scope, child).is_none());
         resume(scope);
-        assert_eq!(json(scope, "events"), "1");
+        assert_eq!(json(scope, "[events, seen]"), "[1,0]");
+        let ping = object(scope, "new Event('ping', {bubbles: true})");
+        dispatch_host_event(scope, ping, child);
+        assert_eq!(json(scope, "seen"), "1");
         // Cancelled: the same calls project the slot and fire the event.
         let children = shadow_slots::composed_children(scope, host).unwrap();
         assert_eq!(children.len(), 1);
@@ -200,4 +207,91 @@ fn host_css_policy_lists_blocked_sheets_and_inline_overrides() {
             assert_eq!(next.inline_overrides.len(), 2);
         },
     );
+}
+
+/// The embedder's mutation consumer registers only on its own document node with a callback
+/// of that document's realm; anything else is refused and receives nothing.
+#[test]
+fn mutation_consumer_registration_rejects_foreign_receivers_and_callbacks() {
+    with_page("<p id=p></p>", |scope| {
+        let document = object(scope, "document");
+        let callback = v8::Local::<v8::Function>::try_from(eval(
+            scope,
+            "globalThis.records = 0; () => records++",
+        ))
+        .unwrap();
+        let plain = object(scope, "({})");
+        let element = object(scope, "document.getElementById('p')");
+        assert!(!install_mutation_consumer(scope, plain, callback));
+        assert!(!install_mutation_consumer(scope, element, callback));
+        let other = v8::Context::new(scope, Default::default());
+        let foreign = {
+            let scope = &mut v8::ContextScope::new(scope, other);
+            v8::Local::<v8::Function>::try_from(eval(scope, "() => 0")).unwrap()
+        };
+        assert!(!install_mutation_consumer(scope, document, foreign));
+        eval(scope, "document.getElementById('p').append('x')");
+        scope.perform_microtask_checkpoint();
+        assert_eq!(json(scope, "records"), "0");
+        assert!(install_mutation_consumer(scope, document, callback));
+        eval(scope, "document.getElementById('p').append('y')");
+        scope.perform_microtask_checkpoint();
+        assert_eq!(json(scope, "records"), "1");
+    });
+}
+
+/// The embedder's inert-document initializer runs for every document the realm's factories
+/// create, with the document, `about:blank` and its content type.
+#[test]
+fn inert_document_initializer_sees_each_factory_document() {
+    with_page("", |scope| {
+        let initializer = v8::Local::<v8::Function>::try_from(eval(
+            scope,
+            "globalThis.seen = []; (document, url, type) => seen.push([document.nodeType, url, type])",
+        ))
+        .unwrap();
+        assert!(set_inert_document_initializer(scope, initializer));
+        eval(
+            scope,
+            "document.implementation.createHTMLDocument('t'); \
+             document.implementation.createDocument(null, 'x'); \
+             document.implementation.createDocument('http://www.w3.org/2000/svg', 'svg'); \
+             document.implementation.createDocument('http://www.w3.org/1999/xhtml', 'html')",
+        );
+        assert_eq!(
+            json(scope, "seen"),
+            r#"[[9,"about:blank","text/html"],[9,"about:blank","application/xml"],[9,"about:blank","image/svg+xml"],[9,"about:blank","application/xhtml+xml"]]"#
+        );
+    });
+}
+
+/// Host navigation facts apply only to a browsing context's own document: an inert
+/// document from a factory refuses them and keeps its defaults.
+#[test]
+fn navigation_facts_are_refused_for_inert_documents() {
+    with_page("", |scope| {
+        let inert = object(
+            scope,
+            "globalThis.inert = document.implementation.createHTMLDocument(''); inert",
+        );
+        let before = json(scope, "[inert.lastModified.length > 0, inert.domain]");
+        assert!(!set_document_last_modified(scope, inert, Some(0.0)));
+        assert!(!set_document_domain_sandboxed(scope, inert, true));
+        assert!(!set_document_origin_keyed(scope, inert, true));
+        assert_eq!(
+            json(scope, "[inert.lastModified.length > 0, inert.domain]"),
+            before
+        );
+        let document = object(scope, "document");
+        assert!(set_document_last_modified(scope, document, Some(0.0)));
+        // lastModified is local time: the expected string is the epoch formatted the same
+        // way in this realm's time zone (CI runs TZ=UTC; a developer machine may not).
+        assert_eq!(
+            json(scope, "document.lastModified"),
+            json(
+                scope,
+                "(d => [d.getMonth() + 1, d.getDate()].map(n => String(n).padStart(2, '0')).join('/') + '/' + d.getFullYear() + ' ' + [d.getHours(), d.getMinutes(), d.getSeconds()].map(n => String(n).padStart(2, '0')).join(':'))(new Date(0))"
+            )
+        );
+    });
 }

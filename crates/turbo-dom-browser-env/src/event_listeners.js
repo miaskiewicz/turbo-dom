@@ -58,7 +58,7 @@
     let capture=false,once=false,passive=passiveDefault&&(type==='touchstart'||type==='touchmove'||type==='wheel'||type==='mousewheel'),signal=null;
     if(options!=null&&(typeof options==='object'||typeof options==='function')){
       capture=!!options.capture;
-      if(!remove){once=!!options.once;const value=options.passive;if(value!==undefined)passive=!!value;signal=options.signal??null;if(signal!==null)aborted(signal);}
+      if(!remove){once=!!options.once;const value=options.passive;if(value!==undefined)passive=!!value;signal=options.signal;if(signal===undefined)signal=null;else aborted(signal);}
     }else capture=!!options;
     return {__proto__:null,type,callback:callback??null,capture,once,passive,signal,removed:false,abortHook:null};
   }

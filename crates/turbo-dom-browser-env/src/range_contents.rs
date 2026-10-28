@@ -8,19 +8,17 @@ fn contextual_fragment<'s>(
     args: v8::FunctionCallbackArguments<'s>,
     mut result: v8::ReturnValue,
 ) {
-    let Ok(start) = v8::Local::<v8::Object>::try_from(args.get(0)) else {
-        return;
-    };
+    // range_contents.js passes the range's start container (a node).
+    let start = v8::Local::<v8::Object>::try_from(args.get(0)).expect("start container");
     let _owner = super::DomScope::for_object(scope, start);
-    let Some(start_handle) = super::handle_of(scope, start) else {
-        return;
-    };
+    let start_handle = super::handle_of(scope, start).expect("a wrapped node");
+    // The converted markup may still be a TrustedHTML whose (page-patchable) toString throws.
     let Some(source) = args.get(1).to_string(scope) else {
         return;
     };
     let units = super::string_code_units(scope, source);
     let scripting_enabled = super::node_has_window_owner(scope, start);
-    let Some((context, fragment)) = super::with_tree_mut(|tree| {
+    let (context, fragment) = super::with_tree_mut(|tree| {
         let context = if tree.node_type_id(start_handle) == 1 {
             Some(start_handle)
         } else {
@@ -34,22 +32,18 @@ fn contextual_fragment<'s>(
         let context = context.unwrap_or_else(|| tree.create_element("body"));
         let fragment = tree.create_contextual_fragment_utf16(context, &units, scripting_enabled);
         (context, fragment)
-    }) else {
-        return;
-    };
+    })
+    .expect("installed document");
     let context = super::wrap(scope, context);
     let fragment = super::wrap(scope, fragment);
     if let Some(content) = super::template_contents::ensure(scope, context) {
         let target = {
             let _owner = super::DomScope::for_object(scope, content);
-            let Some(root) = super::with_tree(super::Tree::root) else {
-                return;
-            };
+            let root = super::with_tree(super::Tree::root).expect("template contents owner");
             super::wrap(scope, root)
         };
-        if super::document_basics::adopt(scope, target, fragment).is_err() {
-            return;
-        }
+        // A parsed fragment (never a shadow root) always adopts.
+        super::document_basics::adopt(scope, target, fragment).expect("fragment adoption");
     }
     super::template_contents::realize(scope, fragment);
     super::template_contents::mark_parsed(scope, fragment, false);
@@ -110,16 +104,15 @@ pub(super) fn install(scope: &mut v8::PinScope) {
     let global = scope.get_current_context().global(scope);
     let name = v8::String::new(scope, "ts").unwrap();
     let key = v8::Symbol::for_key(scope, name);
-    let Some(namespace) = global
+    // browser_env.js installed the internal namespace and its factory earlier in install().
+    let namespace = global
         .get(scope, key.into())
         .and_then(|value| v8::Local::<v8::Object>::try_from(value).ok())
-    else {
-        return;
-    };
+        .expect("the ts namespace");
     let name = v8::String::new(scope, "makeNativeFunction").unwrap();
-    let Some(factory) = namespace.get(scope, name.into()) else {
-        return;
-    };
+    let factory = namespace
+        .get(scope, name.into())
+        .expect("makeNativeFunction");
     let source = v8::String::new(scope, include_str!("range_contents.js")).unwrap();
     if let Some(initializer) = v8::Script::compile(scope, source, None)
         .and_then(|script| script.run(scope))

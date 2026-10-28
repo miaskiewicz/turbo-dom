@@ -17,8 +17,8 @@ fn component(url: &url::Url, name: &str) -> String {
         "port" => quirks::port(url).to_owned(),
         "pathname" => quirks::pathname(url).to_owned(),
         "search" => quirks::search(url).to_owned(),
-        "hash" => quirks::hash(url).to_owned(),
-        _ => String::new(),
+        // "hash": hyperlink_utils.js reads only the components above.
+        _ => quirks::hash(url).to_owned(),
     }
 }
 
@@ -40,11 +40,11 @@ fn update(url: &mut url::Url, name: &str, value: &str) {
             quirks::set_search(url, value);
             Ok(())
         }
-        "hash" => {
+        // "hash": hyperlink_utils.js sets only the components above.
+        _ => {
             quirks::set_hash(url, value);
             Ok(())
         }
-        _ => Ok(()),
     };
 }
 
@@ -73,9 +73,8 @@ fn dispatch<'s>(
     mut rv: v8::ReturnValue,
 ) {
     let operation = arg_str(scope, &args, 0);
-    let Ok(element) = v8::Local::<v8::Object>::try_from(args.get(1)) else {
-        return rv.set_null();
-    };
+    // hyperlink_utils.js brand-checks the receiver before every call.
+    let element = v8::Local::<v8::Object>::try_from(args.get(1)).expect("hyperlink element");
     let parsed = element_url(scope, element);
     let name = arg_str(scope, &args, 2);
     match (operation.as_str(), parsed) {

@@ -11,6 +11,7 @@
 //! ([`process_close_watchers`]). The embedder's [`ActivationHost`] answers from the window's
 //! transient and history-action activation flags, which a press sets and consumers clear.
 use super::native_guards_tests::control;
+use crate::browser_env::crate_surface::harness_tests::thrown;
 use crate::browser_env::reference_target::probe_harness::differences;
 use crate::browser_env::*;
 
@@ -196,19 +197,18 @@ fn run_probe() -> (serde_json::Value, serde_json::Value) {
     )
     .unwrap();
     let step = v8::Script::compile(scope, step, None).unwrap();
+    // Run queued tasks until the probe settles or none is left (or one threw).
     for _ in 0..100_000 {
         scope.perform_microtask_checkpoint();
-        if promise.state() != v8::PromiseState::Pending {
-            break;
-        }
-        if !step.run(scope).is_some_and(|value| value.is_true()) {
-            scope.perform_microtask_checkpoint();
+        if promise.state() != v8::PromiseState::Pending
+            || !step.run(scope).is_some_and(|value| value.is_true())
+        {
             break;
         }
     }
-    if let Some(error) = scope.exception() {
-        panic!("probe task threw: {}", error.to_rust_string_lossy(scope));
-    }
+    scope.perform_microtask_checkpoint();
+    let error = thrown(scope.exception(), scope);
+    assert_eq!(error, "no exception", "probe task threw");
     let value = promise.result(scope).to_rust_string_lossy(scope);
     assert_eq!(promise.state(), v8::PromiseState::Fulfilled, "{value}");
     let results = v8::String::new(scope, "JSON.stringify(__closeResults)").unwrap();
@@ -360,5 +360,42 @@ fn light_dismiss_ignores_untrusted_and_other_events() {
         light_dismiss(scope, event, false);
     }
     assert_eq!(eval(scope, "p.matches(':popover-open')"), "false");
+    reset();
+}
+
+/// The stand-in embedder's activation answers: the window's flags, consumed by the consume
+/// queries; never a cross-origin frame; fullscreen always allowed.
+#[test]
+fn activation_host_answers_from_the_window_flags() {
+    super::tests::init_v8();
+    let isolate = &mut v8::Isolate::new(Default::default());
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    install_with_html(scope, "<!doctype html><body>");
+    let code = v8::String::new(
+        scope,
+        "globalThis.__transient = true; globalThis.__history = true; document",
+    )
+    .unwrap();
+    let document = v8::Script::compile(scope, code, None)
+        .unwrap()
+        .run(scope)
+        .unwrap();
+    let document = v8::Local::<v8::Object>::try_from(document).unwrap();
+    let mut answers = Vec::new();
+    for query in [
+        ActivationQuery::Transient,
+        ActivationQuery::CrossOriginFrame,
+        ActivationQuery::FullscreenAllowed,
+        ActivationQuery::ConsumeTransient,
+        ActivationQuery::Transient,
+        ActivationQuery::HistoryAction,
+        ActivationQuery::ConsumeHistoryAction,
+        ActivationQuery::HistoryAction,
+    ] {
+        answers.push(activation_host(scope, document, query));
+    }
+    assert_eq!(answers, [true, false, true, true, false, true, true, false]);
     reset();
 }

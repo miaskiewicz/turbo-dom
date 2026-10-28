@@ -13,22 +13,19 @@ fn dispatch(
 ) {
     match args.get(0).to_rust_string_lossy(scope).as_str() {
         "dispatch" => {
-            let (Ok(target), Ok(event)) = (
-                v8::Local::<v8::Object>::try_from(args.get(1)),
-                v8::Local::<v8::Object>::try_from(args.get(2)),
-            ) else {
-                return;
-            };
+            // editing.js / edit_context.js dispatch their own events at an element or an
+            // EditContext.
+            let target = v8::Local::<v8::Object>::try_from(args.get(1)).expect("edit target");
+            let event = v8::Local::<v8::Object>::try_from(args.get(2)).expect("edit event");
             let _dom = DomScope::for_object(scope, target);
             dispatch_host_event(scope, event, target);
             let continued = event_record(scope, event)
                 .is_some_and(|record| !get_bool_prop(scope, record, "defaultPrevented"));
             rv.set_bool(continued);
         }
-        "capture" => {
-            let Ok(function) = v8::Local::<v8::Function>::try_from(args.get(1)) else {
-                return;
-            };
+        // "capture", editing.js's only other call, with its user input function.
+        _ => {
+            let function = v8::Local::<v8::Function>::try_from(args.get(1)).expect("user input");
             if scope
                 .get_current_context()
                 .get_slot::<EditingInput>()
@@ -42,7 +39,6 @@ fn dispatch(
                     .set_slot(std::rc::Rc::new(EditingInput(function)));
             }
         }
-        _ => {}
     }
 }
 
