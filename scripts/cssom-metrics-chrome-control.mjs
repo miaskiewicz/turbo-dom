@@ -135,7 +135,7 @@ const CASES = [
   {
     id: "hits-text",
     html: DOC(TEXT, `<p data-cid="p" style="margin:0">Hello <span data-cid="s">brave new</span> world</p>`),
-    hits: [[3, 9], [60, 9], [300, 9], [60, 40]],
+    hits: [[3, 9], [12, 9], [60, 9], [300, 9], [60, 40]],
   },
   {
     // Text hits its inline ancestors up to the first non-inline one (whose box hits).
@@ -148,6 +148,13 @@ const CASES = [
     id: "inline-block-text-baseline",
     html: DOC(TEXT, `<p data-cid="p" style="margin:0"><span data-cid="o">a</span> <span data-cid="ib" style="display:inline-block"><span data-cid="t">box</span></span></p>`),
     hits: [[3, 9], [12, 9], [30, 9]],
+  },
+  {
+    // Text overflowing its block hits its inline ancestors but not the block (whose box
+    // the point is outside); a display:contents ancestor has no box of its own.
+    id: "hits-overflowing-text",
+    html: DOC(TEXT, `<p data-cid="p" style="margin:0;width:10px;white-space:nowrap">Hello <span data-cid="s">world</span></p><div data-cid="d" style="width:10px;white-space:nowrap"><span data-cid="c" style="display:contents">contents text</span></div>`),
+    hits: [[5, 9], [30, 9], [50, 9], [200, 9], [5, 27], [40, 27]],
   },
   {
     id: "hits-hidden-text",

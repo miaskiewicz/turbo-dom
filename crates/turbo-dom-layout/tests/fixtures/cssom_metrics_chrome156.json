@@ -1692,6 +1692,15 @@
      ]
     },
     {
+     "x": 12,
+     "y": 9,
+     "hits": [
+      "p",
+      "body",
+      "html"
+     ]
+    },
+    {
      "x": 60,
      "y": 9,
      "hits": [
@@ -2030,6 +2039,174 @@
       "t",
       "ib",
       "p",
+      "body",
+      "html"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "hits-overflowing-text",
+   "html": "<!doctype html><style>body{margin:8px;font-family:\"Liberation Serif\";font-size:16px}</style><p data-cid=\"p\" style=\"margin:0;width:10px;white-space:nowrap\">Hello <span data-cid=\"s\">world</span></p><div data-cid=\"d\" style=\"width:10px;white-space:nowrap\"><span data-cid=\"c\" style=\"display:contents\">contents text</span></div>",
+   "boxes": [
+    {
+     "cid": "p",
+     "offset": [
+      8,
+      8,
+      10,
+      18
+     ],
+     "parent": "body",
+     "client": [
+      0,
+      0,
+      10,
+      18
+     ],
+     "rects": [
+      [
+       8,
+       8,
+       10,
+       18
+      ]
+     ],
+     "bounds": [
+      8,
+      8,
+      10,
+      18
+     ]
+    },
+    {
+     "cid": "s",
+     "offset": [
+      48,
+      8,
+      37,
+      17
+     ],
+     "parent": "body",
+     "client": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "rects": [
+      [
+       47.546875,
+       8,
+       37.328125,
+       17
+      ]
+     ],
+     "bounds": [
+      47.546875,
+      8,
+      37.328125,
+      17
+     ]
+    },
+    {
+     "cid": "d",
+     "offset": [
+      8,
+      26,
+      10,
+      18
+     ],
+     "parent": "body",
+     "client": [
+      0,
+      0,
+      10,
+      18
+     ],
+     "rects": [
+      [
+       8,
+       26,
+       10,
+       18
+      ]
+     ],
+     "bounds": [
+      8,
+      26,
+      10,
+      18
+     ]
+    },
+    {
+     "cid": "c",
+     "offset": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "parent": null,
+     "client": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "rects": [],
+     "bounds": [
+      0,
+      0,
+      0,
+      0
+     ]
+    }
+   ],
+   "hits": [
+    {
+     "x": 5,
+     "y": 9,
+     "hits": [
+      "html"
+     ]
+    },
+    {
+     "x": 30,
+     "y": 9,
+     "hits": [
+      "body",
+      "html"
+     ]
+    },
+    {
+     "x": 50,
+     "y": 9,
+     "hits": [
+      "s",
+      "body",
+      "html"
+     ]
+    },
+    {
+     "x": 200,
+     "y": 9,
+     "hits": [
+      "body",
+      "html"
+     ]
+    },
+    {
+     "x": 5,
+     "y": 27,
+     "hits": [
+      "html"
+     ]
+    },
+    {
+     "x": 40,
+     "y": 27,
+     "hits": [
       "body",
       "html"
      ]

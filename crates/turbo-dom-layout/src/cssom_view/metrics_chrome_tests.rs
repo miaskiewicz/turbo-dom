@@ -216,6 +216,9 @@ fn reads(case: &Value) -> (Vec<String>, Vec<String>) {
 /// inline-block holding text sits on the wrong baseline).
 const HELD_OUT: &[&str] = &["hits-list-marker", "inline-block-text-baseline"];
 
+/// miaskiewicz/turbo-dom#146: text overflowing its block hits only its inline ancestors.
+const OVERFLOWING_TEXT: &[&str] = &["hits-overflowing-text"];
+
 /// The reads of every fixture case `select` picks, compared with Chrome's.
 fn assert_cases_match(select: impl Fn(&str) -> bool) {
     let fixture: Value = serde_json::from_str(FIXTURE).unwrap();
@@ -239,7 +242,7 @@ fn assert_cases_match(select: impl Fn(&str) -> bool) {
 #[cfg(feature = "bundled-fonts")]
 #[test]
 fn element_metrics_and_hits_match_chrome_156() {
-    assert_cases_match(|id| !HELD_OUT.contains(&id));
+    assert_cases_match(|id| !HELD_OUT.contains(&id) && !OVERFLOWING_TEXT.contains(&id));
 }
 
 #[test]
@@ -248,10 +251,17 @@ fn held_out_cases_match_chrome_156() {
     assert_cases_match(|id| HELD_OUT.contains(&id));
 }
 
+#[cfg(feature = "bundled-fonts")]
+#[test]
+#[ignore = "miaskiewicz/turbo-dom#146: fails until the fix"]
+fn overflowing_text_hits_its_inline_ancestors_only_like_chrome_156() {
+    assert_cases_match(|id| OVERFLOWING_TEXT.contains(&id));
+}
+
 #[test]
 fn the_control_covers_every_read() {
     let fixture: Value = serde_json::from_str(FIXTURE).unwrap();
     let cases = fixture["cases"].as_array().unwrap();
     let reads: usize = cases.iter().map(|case| reads(case).1.len()).sum();
-    assert_eq!((cases.len(), reads), (29, 201));
+    assert_eq!((cases.len(), reads), (30, 216));
 }
