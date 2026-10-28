@@ -385,7 +385,6 @@ fn custom_elements_edges_match_chrome156() {
 }
 
 #[test]
-#[ignore = "turbo-dom#144: fails until the fix"]
 fn selection_text_edges_match_chrome156() {
     let probe = include_str!("selection_text_edges_probe.js");
     let expected = control(include_str!("selection_text_edges_chrome156.json"), probe);

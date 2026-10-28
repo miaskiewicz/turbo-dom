@@ -206,6 +206,9 @@ enum Piece {
         offset: usize,
         unit: u16,
         collapsible: bool,
+        /// Further units of a case mapping that lengthens the text (0 = none): `ß` uppercases
+        /// to `SS`. Only the plain text (toString) carries them; caret slots stay per unit.
+        more: [u16; 2],
     },
     /// A replaced element (U+FFFC in text content).
     Atomic { node: Handle },
@@ -231,6 +234,8 @@ struct Flow<'t> {
     /// Text-content state of the current inline formatting context.
     line_start: bool,
     space: bool,
+    /// The last rendered source unit (capitalize's word boundaries).
+    previous: u16,
     /// Hosts whose slot assignments were collected, and the light nodes assigned to slots.
     assigned: HashSet<Handle>,
     slots: HashSet<Handle>,
@@ -252,20 +257,34 @@ fn display_of(tree: &Tree, node: Handle, style: &HashMap<String, String>) -> Str
     }
 }
 
-/// Case transforms that keep one UTF-16 unit (layout text for TextIterator).
-fn transformed(unit: u16, transform: Option<&str>) -> u16 {
+/// A text-transform applied to one UTF-16 unit: the first unit of the mapping and up to two
+/// more (a mapping can change the length: `ß` -> `SS`, `ŉ` -> `ʼN`). `word_start` says
+/// whether `capitalize` uppercases this unit.
+fn transformed(unit: u16, transform: Option<&str>, word_start: bool) -> (u16, [u16; 2]) {
     let Some(character) = char::from_u32(u32::from(unit)) else {
-        return unit;
+        return (unit, [0; 2]);
     };
     let mapped: Vec<char> = match transform {
         Some("uppercase") => character.to_uppercase().collect(),
         Some("lowercase") => character.to_lowercase().collect(),
-        _ => return unit,
+        Some("capitalize") if word_start => character.to_uppercase().collect(),
+        _ => return (unit, [0; 2]),
     };
-    match mapped.as_slice() {
-        [single] if (*single as u32) < 0x10000 => *single as u16,
-        _ => unit,
-    }
+    let mut units = mapped.iter().flat_map(|c| {
+        let mut buffer = [0u16; 2];
+        c.encode_utf16(&mut buffer).to_vec()
+    });
+    let first = units.next().unwrap_or(unit);
+    (
+        first,
+        [units.next().unwrap_or(0), units.next().unwrap_or(0)],
+    )
+}
+
+/// Units inside a word for `capitalize` (letters, digits and apostrophes).
+fn word_unit(unit: u16) -> bool {
+    char::from_u32(u32::from(unit))
+        .is_some_and(|c| c.is_alphanumeric() || c == '\'' || c == '\u{2019}')
 }
 
 fn atomic(tree: &Tree, node: Handle) -> bool {
@@ -338,13 +357,21 @@ impl Flow<'_> {
         self.markers(node, kids.len());
     }
     fn slotted(&mut self, host: Handle, child: Handle) -> bool {
+        let tree = self.tree;
         if !self.assigned.contains(&host) {
             self.assigned.insert(host);
-            let tree = self.tree;
             if let Some(root) = tree.shadow_root(host) {
                 for slot in tree.descendants(root) {
                     if tree.local_name(slot) == Some("slot") {
                         self.slots.extend(tree.assigned_nodes(slot));
+                        // A default slot also takes the host's text children (turbo-dom#144).
+                        if tree.get_attribute(slot, "name").unwrap_or("").is_empty() {
+                            self.slots.extend(
+                                tree.children(host)
+                                    .into_iter()
+                                    .filter(|&node| tree.node_type_id(node) == 3),
+                            );
+                        }
                     }
                 }
             }
@@ -395,6 +422,7 @@ impl Flow<'_> {
                     offset,
                     unit,
                     collapsible: false,
+                    more: [0; 2],
                 });
                 self.line_start = true;
                 self.space = false;
@@ -405,17 +433,21 @@ impl Flow<'_> {
                         offset,
                         unit: 32,
                         collapsible: true,
+                        more: [0; 2],
                     });
                     self.space = true;
                 }
             } else {
-                let unit = transformed(unit, transform.as_deref());
+                let word_start = self.line_start || self.space || !word_unit(self.previous);
+                let (shown_unit, more) = transformed(unit, transform.as_deref(), word_start);
                 self.piece(Piece::Text {
                     node,
                     offset,
-                    unit,
+                    unit: shown_unit,
                     collapsible: false,
+                    more,
                 });
+                self.previous = unit;
                 self.line_start = false;
                 self.space = false;
             }
@@ -498,6 +530,7 @@ fn flow(
         queries,
         line_start: true,
         space: false,
+        previous: 0,
         assigned: HashSet::new(),
         slots: HashSet::new(),
     };
@@ -663,7 +696,21 @@ fn plain_text(
         }
         false
     };
+    let cells: HashSet<Handle> = events
+        .iter()
+        .filter_map(|event| match event {
+            Event::Start(node, Kind::Cell) => Some(*node),
+            _ => None,
+        })
+        .collect();
+    // A row / table end's newline, held until more content follows.
+    let mut row_end = false;
     for event in events.iter().take(end).skip(begin) {
+        if row_end && matches!(event, Event::Piece(_) | Event::Start(..)) {
+            out.push(10);
+            last = 10;
+            row_end = false;
+        }
         if another {
             out.push(10);
             last = 10;
@@ -676,6 +723,12 @@ fn plain_text(
                     piece => {
                         last = unit_of(&piece);
                         out.push(last);
+                        if let Piece::Text { more, .. } = piece {
+                            for unit in more.into_iter().filter(|unit| *unit != 0) {
+                                out.push(unit);
+                                last = unit;
+                            }
+                        }
                         text_node = true;
                     }
                 }
@@ -701,10 +754,17 @@ fn plain_text(
                     }
                 }
                 Kind::Cell => {
-                    let previous_cell = tree.previous_sibling(node).is_some_and(|sibling| {
-                        tree.node_type_id(sibling) == 1
-                            && matches!(html_text::tag(tree, sibling), "td" | "th")
-                    });
+                    // A tab before every rendered table cell (any display: table-cell box)
+                    // but its row's first.
+                    let mut sibling = tree.previous_sibling(node);
+                    let mut previous_cell = false;
+                    while let Some(current) = sibling {
+                        if cells.contains(&current) {
+                            previous_cell = true;
+                            break;
+                        }
+                        sibling = tree.previous_sibling(current);
+                    }
                     if emitted && previous_cell {
                         out.push(9);
                         last = 9;
@@ -714,6 +774,8 @@ fn plain_text(
             },
             Event::End(kind) => {
                 if let Kind::Block { body: false, extra } = kind {
+                    // The block's own line end carries a pending row end.
+                    row_end = false;
                     if emitted && text_node {
                         if last != 10 {
                             out.push(10);
@@ -728,8 +790,9 @@ fn plain_text(
                     && text_node
                     && last != 10
                 {
-                    out.push(10);
-                    last = 10;
+                    // Emitted only when content follows: no newline after a table that
+                    // ends the range (Chrome 156).
+                    row_end = true;
                 }
             }
             Event::Edge(..) => edge = true,
