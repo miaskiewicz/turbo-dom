@@ -99,61 +99,60 @@ fn shadow_slot_edges_match_chrome156() {
     );
 }
 
-/// KNOWN_GAP (miaskiewicz/turbo-dom#132): Document pre-insert validity of replaceChildren.
-const MUTATION_GAPS: &[(&str, &str)] = &[
-    (
-        "result.matrix.replaceChildren.withBoth<doctype[0]",
-        "\"ok\"",
-    ),
-    (
-        "result.matrix.replaceChildren.withBoth<doctype[1]",
-        "\"html\"",
-    ),
-    (
-        "result.matrix.replaceChildren.withBoth<element[0]",
-        "\"ok\"",
-    ),
-    ("result.matrix.replaceChildren.withBoth<element[1]", "\"B\""),
-    (
-        "result.matrix.replaceChildren.withDoctype<doctype[0]",
-        "\"ok\"",
-    ),
-    (
-        "result.matrix.replaceChildren.withDoctype<doctype[1]",
-        "\"html\"",
-    ),
-    (
-        "result.matrix.replaceChildren.withElement<doctype[0]",
-        "\"ok\"",
-    ),
-    (
-        "result.matrix.replaceChildren.withElement<doctype[1]",
-        "\"html\"",
-    ),
-    (
-        "result.matrix.replaceChildren.withElement<element[0]",
-        "\"ok\"",
-    ),
-    (
-        "result.matrix.replaceChildren.withElement<element[1]",
-        "\"b\"",
-    ),
-    (
-        "result.placement.replaceChildrenDoctypeElement[0]",
-        "\"ok\"",
-    ),
-    (
-        "result.placement.replaceChildrenDoctypeElement[1]",
-        "\"y,A\"",
-    ),
-];
-
 #[test]
+#[ignore = "miaskiewicz/turbo-dom#132: fails until the fix"]
 fn dom_mutation_validity_matches_chrome156() {
     check(
         include_str!("dom_mutation_validity_probe.js"),
         include_str!("dom_mutation_validity_chrome156.json"),
-        MUTATION_GAPS,
+        &[],
+    );
+}
+
+/// Document pre-insert validity counts the parent's current children: a single node argument
+/// that is already a child still counts as one, and replaceChildren does not first remove the
+/// existing children (miaskiewicz/turbo-dom#132). Expected values: Chrome 156.0.8078.47.
+#[test]
+#[ignore = "miaskiewicz/turbo-dom#132: fails until the fix"]
+fn document_pre_insert_validity_counts_current_children() {
+    let probe = r#"(async () => {
+      const attempt = run => { try { run(); return 'ok'; } catch (e) { return e.name; } };
+      const names = p => Array.from(p.childNodes, n => n.nodeName).join(',');
+      const cases = {
+        append: d => d.append(d.documentElement),
+        appendChild: d => d.appendChild(d.documentElement),
+        prepend: d => d.prepend(d.documentElement),
+        rcHtml: d => d.replaceChildren(d.documentElement),
+        rcDoctype: d => d.replaceChildren(d.doctype),
+        rcBoth: d => d.replaceChildren(d.doctype, d.documentElement),
+        rcFrag: d => { const f = d.createDocumentFragment(); f.append(d.createElement('q')); d.replaceChildren(f); },
+        doctypeReplaceWithHtml: d => d.doctype.replaceWith(d.documentElement),
+        replaceChildHtmlForDoctype: d => d.replaceChild(d.documentElement, d.doctype),
+        insertBeforeDoctype: d => d.insertBefore(d.doctype, d.documentElement),
+        htmlReplaceWithSelf: d => d.documentElement.replaceWith(d.documentElement),
+        moveBeforeHtml: d => d.moveBefore(d.documentElement, null),
+      };
+      const out = {};
+      for (const [k, f] of Object.entries(cases)) { const d = document.implementation.createHTMLDocument(''); out[k] = [attempt(() => f(d)), names(d)]; }
+      return out;
+    })()"#;
+    let error = |name: &str| serde_json::json!([name, "html,HTML"]);
+    assert_eq!(
+        run(probe),
+        serde_json::json!({
+            "append": error("HierarchyRequestError"),
+            "appendChild": error("HierarchyRequestError"),
+            "prepend": error("HierarchyRequestError"),
+            "rcHtml": error("HierarchyRequestError"),
+            "rcDoctype": error("HierarchyRequestError"),
+            "rcBoth": error("ok"),
+            "rcFrag": error("HierarchyRequestError"),
+            "doctypeReplaceWithHtml": error("HierarchyRequestError"),
+            "replaceChildHtmlForDoctype": error("HierarchyRequestError"),
+            "insertBeforeDoctype": error("HierarchyRequestError"),
+            "htmlReplaceWithSelf": error("ok"),
+            "moveBeforeHtml": error("HierarchyRequestError"),
+        })
     );
 }
 
