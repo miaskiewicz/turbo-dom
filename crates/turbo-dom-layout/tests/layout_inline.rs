@@ -372,3 +372,22 @@ fn margins_collapse_through_collapsed_white_space_but_not_preserved_space() {
     );
     assert_eq!(boxes["z"].3, 2.0 * line);
 }
+
+#[cfg(feature = "bundled-fonts")]
+#[test]
+fn preserved_newlines_and_spaces_inside_edged_inline_boxes() {
+    // miaskiewicz/turbo-dom#166 through the inline-edge word builder (a padded span):
+    // a preserved newline breaks the line, pre-wrap spaces stay glyphs and the line may
+    // break after them.
+    let boxes = cid_boxes(
+        "<body style='margin:0;line-height:20px'>\
+         <div data-cid=n style='white-space:pre'><span style='padding:0 2px'>a\nb</span></div>\
+         <div data-cid=w style='white-space:pre-wrap'><span style='padding:0 2px'>ab    cd</span></div>\
+         <div data-cid=c style='white-space:normal'><span style='padding:0 2px'>ab    cd</span></div>\
+         <div data-cid=x style='white-space:pre-wrap;width:1px'><span style='padding:0 2px'>ab cd</span></div></body>",
+    );
+    assert_eq!(boxes["n"].3, 40.0, "the newline is a forced break");
+    assert_eq!(boxes["w"].3, 20.0);
+    assert_eq!(boxes["x"].3, 40.0, "pre-wrap breaks after its spaces");
+    assert_eq!(boxes["c"].3, 20.0);
+}

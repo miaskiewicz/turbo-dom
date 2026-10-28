@@ -2406,4 +2406,36 @@ mod tests {
         assert!((valign_shift(VAlign::Sub, 100.0) + 20.0).abs() < 0.01);
         assert_eq!(valign_shift(VAlign::Middle, 100.0), 0.0);
     }
+
+    /// miaskiewicz/turbo-dom#166 on the live path (inline edges: a padded span): a
+    /// preserved newline breaks the line, and a pre-wrap run breaks after its spaces.
+    #[cfg(feature = "bundled-fonts")]
+    #[test]
+    fn edged_runs_break_at_preserved_newlines_and_after_pre_wrap_spaces() {
+        let lines = |body: &str| {
+            let (_, snapshot, _) = crate::live::testing::layout(
+                &format!("<body style='margin:0;line-height:20px'>{body}</body>"),
+                "",
+                (800.0, 600.0),
+                Some(1.0),
+            );
+            let mut tops: Vec<i32> = snapshot
+                .text_runs()
+                .iter()
+                .map(|run| snapshot.fragments()[run.fragment_index].rect.y as i32)
+                .collect();
+            tops.dedup();
+            tops.len()
+        };
+        let span = |ws: &str, width: &str, text: &str| {
+            format!(
+                "<div style='white-space:{ws};width:{width}'>x<span style='padding:0 2px'>{text}</span></div>"
+            )
+        };
+        assert_eq!(lines(&span("pre", "auto", "a\nb")), 2);
+        assert_eq!(lines(&span("pre-line", "auto", "a \n b")), 2);
+        assert_eq!(lines(&span("pre-wrap", "auto", "ab    cd")), 1);
+        assert_eq!(lines(&span("pre-wrap", "1px", "ab  cd")), 2);
+        assert_eq!(lines(&span("nowrap", "1px", " ab cd")), 1);
+    }
 }
