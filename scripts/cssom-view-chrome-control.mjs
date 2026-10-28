@@ -148,9 +148,21 @@ const CASES = [
       `<div data-cid="m" class="s" style="overflow:auto;width:100px;height:60px;transform:matrix(1,0.5,0,2,10,5)">` +
         `<div style="width:20px;height:20px;transform:translate(150px,90px)"></div></div>` +
         `<div data-cid="b" class="s" style="overflow:auto;width:100px;height:60px">` +
-        `<div style="width:130px;height:90px;transform:translate(-50px,-40px)"></div></div>`,
+        `<div style="width:130px;height:90px;transform:translate(-50px,-40px)"></div></div>` +
+        `<div data-cid="k" class="s" style="overflow:auto;width:100px;height:60px;transform:matrix(1,0.5,0.25,2,10,5)">` +
+        `<div style="width:20px;height:20px;transform:translate(150px,90px)"></div></div>`,
     ),
-    metrics: ["m", "b"],
+    metrics: ["m", "b", "k"],
+  },
+  // An absolute box's untransformed rect is not scrollable overflow (turbo-dom#147).
+  {
+    id: "scroll-extent-transformed-absolute",
+    html: DOC(
+      "",
+      `<div data-cid="s" class="s" style="position:relative;overflow:auto;width:100px;height:60px">` +
+        `<div style="position:absolute;width:130px;height:90px;transform:translate(-50px,-40px)"></div></div>`,
+    ),
+    metrics: ["s"],
   },
   {
     id: "scroll-extent-no-box",
@@ -367,11 +379,12 @@ const CASES = [
       "p{margin:0 0 10px}",
       `<p data-cid="a">hello world</p><p data-cid="b" style="padding-left:30px">ab<span data-cid="sp">cd</span>ef</p>` +
         `<div data-cid="hid" style="width:200px;height:30px">vis<span style="visibility:hidden">hidden</span></div>` +
-        `<div data-cid="sc" class="s" style="overflow:hidden;width:60px;height:10px"><div style="width:400px">abcdefghijklmnopqrstuvwxyz</div></div>` +
+        `<div data-cid="sc" class="s" style="overflow:hidden;width:60px;height:10px"><div style="width:400px">abcdefghijklm<b>nopqrstuvwxyz</b></div></div>` +
         `<div data-cid="tr" style="transform:translateX(100px)">moved</div>` +
-        `<div data-cid="e" style="height:20px"></div>`,
+        `<div data-cid="e" style="height:20px"></div>` +
+        `<div data-cid="vs" class="s" style="overflow:hidden;width:200px;height:10px">one<br>two<br>three</div>`,
     ),
-    scroll: { sc: [30, 0] },
+    scroll: { sc: [30, 0], vs: [0, 10] },
     carets: [
       [5, 13],
       [5, 17],
@@ -386,6 +399,9 @@ const CASES = [
       [100, 25],
       [5, 75],
       [40, 75],
+      [55, 75],
+      [8, 115],
+      [8, 112],
       [5, 42],
       [30, 42],
       [100, 42],

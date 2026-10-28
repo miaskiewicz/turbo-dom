@@ -919,6 +919,18 @@ mod tests {
 
     /// miaskiewicz/turbo-dom#147: viewport overflow counts a block's inline-end margin
     /// and a transformed box's untransformed rect; Chrome counts neither.
+    const SCROLLER_GAPS: &[&str] = &["scroll-extent-transformed-absolute"];
+
+    /// miaskiewicz/turbo-dom#147 for element scrollers: an absolute box's untransformed
+    /// rect.
+    #[test]
+    #[ignore = "turbo-dom#147: fails until the fix"]
+    fn absolute_untransformed_boxes_are_not_scroller_overflow_like_chrome_156() {
+        for id in SCROLLER_GAPS {
+            assert_extents(id);
+        }
+    }
+
     const VIEWPORT_GAPS: &[&str] = &[
         "viewport-extent-block-margins",
         "viewport-extent-float-margin",

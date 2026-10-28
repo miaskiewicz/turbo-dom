@@ -374,7 +374,7 @@
   },
   {
    "id": "scroll-extent-transforms",
-   "html": "<!doctype html><style>body{margin:0;font-family:\"Fira Code\";font-size:10px;line-height:1}.s{scrollbar-width:none}</style><div data-cid=\"m\" class=\"s\" style=\"overflow:auto;width:100px;height:60px;transform:matrix(1,0.5,0,2,10,5)\"><div style=\"width:20px;height:20px;transform:translate(150px,90px)\"></div></div><div data-cid=\"b\" class=\"s\" style=\"overflow:auto;width:100px;height:60px\"><div style=\"width:130px;height:90px;transform:translate(-50px,-40px)\"></div></div>",
+   "html": "<!doctype html><style>body{margin:0;font-family:\"Fira Code\";font-size:10px;line-height:1}.s{scrollbar-width:none}</style><div data-cid=\"m\" class=\"s\" style=\"overflow:auto;width:100px;height:60px;transform:matrix(1,0.5,0,2,10,5)\"><div style=\"width:20px;height:20px;transform:translate(150px,90px)\"></div></div><div data-cid=\"b\" class=\"s\" style=\"overflow:auto;width:100px;height:60px\"><div style=\"width:130px;height:90px;transform:translate(-50px,-40px)\"></div></div><div data-cid=\"k\" class=\"s\" style=\"overflow:auto;width:100px;height:60px;transform:matrix(1,0.5,0.25,2,10,5)\"><div style=\"width:20px;height:20px;transform:translate(150px,90px)\"></div></div>",
    "scroll": {},
    "boxes": [
     {
@@ -390,6 +390,13 @@
      "y": 60,
      "width": 100,
      "height": 60
+    },
+    {
+     "cid": "k",
+     "x": 2.5,
+     "y": 70,
+     "width": 115,
+     "height": 170
     }
    ],
    "metrics": [
@@ -410,6 +417,40 @@
      "scrollHeight": 90,
      "maxX": 30,
      "maxY": 30
+    },
+    {
+     "cid": "k",
+     "overflowX": "auto",
+     "overflowY": "auto",
+     "scrollWidth": 170,
+     "scrollHeight": 110,
+     "maxX": 70,
+     "maxY": 50
+    }
+   ]
+  },
+  {
+   "id": "scroll-extent-transformed-absolute",
+   "html": "<!doctype html><style>body{margin:0;font-family:\"Fira Code\";font-size:10px;line-height:1}.s{scrollbar-width:none}</style><div data-cid=\"s\" class=\"s\" style=\"position:relative;overflow:auto;width:100px;height:60px\"><div style=\"position:absolute;width:130px;height:90px;transform:translate(-50px,-40px)\"></div></div>",
+   "scroll": {},
+   "boxes": [
+    {
+     "cid": "s",
+     "x": 0,
+     "y": 0,
+     "width": 100,
+     "height": 60
+    }
+   ],
+   "metrics": [
+    {
+     "cid": "s",
+     "overflowX": "auto",
+     "overflowY": "auto",
+     "scrollWidth": 100,
+     "scrollHeight": 60,
+     "maxX": 0,
+     "maxY": 0
     }
    ]
   },
@@ -1966,11 +2007,15 @@
   },
   {
    "id": "caret-from-point",
-   "html": "<!doctype html><style>body{margin:0;font-family:\"Fira Code\";font-size:10px;line-height:1}.s{scrollbar-width:none}p{margin:0 0 10px}</style><p data-cid=\"a\">hello world</p><p data-cid=\"b\" style=\"padding-left:30px\">ab<span data-cid=\"sp\">cd</span>ef</p><div data-cid=\"hid\" style=\"width:200px;height:30px\">vis<span style=\"visibility:hidden\">hidden</span></div><div data-cid=\"sc\" class=\"s\" style=\"overflow:hidden;width:60px;height:10px\"><div style=\"width:400px\">abcdefghijklmnopqrstuvwxyz</div></div><div data-cid=\"tr\" style=\"transform:translateX(100px)\">moved</div><div data-cid=\"e\" style=\"height:20px\"></div>",
+   "html": "<!doctype html><style>body{margin:0;font-family:\"Fira Code\";font-size:10px;line-height:1}.s{scrollbar-width:none}p{margin:0 0 10px}</style><p data-cid=\"a\">hello world</p><p data-cid=\"b\" style=\"padding-left:30px\">ab<span data-cid=\"sp\">cd</span>ef</p><div data-cid=\"hid\" style=\"width:200px;height:30px\">vis<span style=\"visibility:hidden\">hidden</span></div><div data-cid=\"sc\" class=\"s\" style=\"overflow:hidden;width:60px;height:10px\"><div style=\"width:400px\">abcdefghijklm<b>nopqrstuvwxyz</b></div></div><div data-cid=\"tr\" style=\"transform:translateX(100px)\">moved</div><div data-cid=\"e\" style=\"height:20px\"></div><div data-cid=\"vs\" class=\"s\" style=\"overflow:hidden;width:200px;height:10px\">one<br>two<br>three</div>",
    "scroll": {
     "sc": [
      30,
      0
+    ],
+    "vs": [
+     0,
+     10
     ]
    },
    "boxes": [
@@ -2022,6 +2067,13 @@
      "y": 90,
      "width": 1280,
      "height": 20
+    },
+    {
+     "cid": "vs",
+     "x": 0,
+     "y": 110,
+     "width": 200,
+     "height": 10
     }
    ],
    "carets": [
@@ -2207,6 +2259,51 @@
      "rect": [
       37.6875,
       69,
+      0,
+      12
+     ]
+    },
+    {
+     "x": 55,
+     "y": 75,
+     "cid": "sc",
+     "path": [
+      0,
+      1
+     ],
+     "child": 0,
+     "offset": 1,
+     "rect": [
+      56.140625,
+      69,
+      0,
+      12
+     ]
+    },
+    {
+     "x": 8,
+     "y": 115,
+     "cid": "vs",
+     "path": [],
+     "child": 2,
+     "offset": 1,
+     "rect": [
+      6.140625,
+      109,
+      0,
+      12
+     ]
+    },
+    {
+     "x": 8,
+     "y": 112,
+     "cid": "vs",
+     "path": [],
+     "child": 2,
+     "offset": 1,
+     "rect": [
+      6.140625,
+      109,
       0,
       12
      ]
