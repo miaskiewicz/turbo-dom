@@ -327,3 +327,23 @@ fn native_member_receivers_match_chrome156() {
         RECEIVER_GAPS,
     );
 }
+
+#[test]
+fn event_member_receivers_and_listener_signals_match_chrome156() {
+    check(
+        include_str!("event_receivers_edges_probe.js"),
+        include_str!("event_receivers_edges_chrome156.json"),
+        // KNOWN_GAP (miaskiewicz/turbo-dom#156): {signal: null} is accepted.
+        &[("result.badSignal[1]", "\"undefined\"")],
+    );
+}
+
+/// AddEventListenerOptions.signal is a non-nullable AbortSignal.
+#[test]
+#[ignore = "turbo-dom#156: fails until the fix"]
+fn add_event_listener_rejects_a_null_signal() {
+    let probe = r#"(async () => [new EventTarget(), document.createElement('p')].map(target => {
+      try { target.addEventListener('a', () => {}, { signal: null }); return 'ok'; } catch (e) { return e.name; }
+    }))()"#;
+    assert_eq!(run(probe), serde_json::json!(["TypeError", "TypeError"]));
+}
