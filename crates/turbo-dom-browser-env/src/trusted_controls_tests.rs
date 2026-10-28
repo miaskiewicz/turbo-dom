@@ -11,6 +11,7 @@
 //! dialog ([`modal_backdrop`]) and an uncanceled Esc is a close request
 //! ([`process_close_watchers`]).
 use super::native_guards_tests::control;
+use crate::browser_env::crate_surface::harness_tests::thrown;
 use crate::browser_env::reference_target::probe_harness::differences;
 use crate::browser_env::*;
 
@@ -89,10 +90,9 @@ fn host_backdrop(
     mut rv: v8::ReturnValue,
 ) {
     let node = v8::Local::<v8::Object>::try_from(args.get(0)).unwrap();
-    match modal_backdrop(scope, node) {
-        Some(dialog) => rv.set(dialog.into()),
-        None => rv.set_null(),
-    }
+    let backdrop = modal_backdrop(scope, node);
+    let null = v8::null(scope).into();
+    rv.set(backdrop.map_or(null, Into::into));
 }
 
 const DRIVER: &str = r#"(() => {
@@ -187,19 +187,18 @@ fn run_probe(probe: &str) -> serde_json::Value {
         .unwrap();
     let step = v8::String::new(scope, "__step()").unwrap();
     let step = v8::Script::compile(scope, step, None).unwrap();
+    // Run the earliest timer until the probe settles or no timer is left (or one threw).
     for _ in 0..100_000 {
         scope.perform_microtask_checkpoint();
-        if promise.state() != v8::PromiseState::Pending {
-            break;
-        }
-        if !step.run(scope).is_some_and(|value| value.is_true()) {
-            scope.perform_microtask_checkpoint();
+        if promise.state() != v8::PromiseState::Pending
+            || !step.run(scope).is_some_and(|value| value.is_true())
+        {
             break;
         }
     }
-    if let Some(error) = scope.exception() {
-        panic!("probe task threw: {}", error.to_rust_string_lossy(scope));
-    }
+    scope.perform_microtask_checkpoint();
+    let error = thrown(scope.exception(), scope);
+    assert_eq!(error, "no exception", "probe task threw");
     let value = promise.result(scope).to_rust_string_lossy(scope);
     assert_eq!(promise.state(), v8::PromiseState::Fulfilled, "{value}");
     reset();
@@ -229,11 +228,10 @@ fn assert_matches_control(actual: &serde_json::Value, expected: &serde_json::Val
         .iter()
         .filter(|gap| !found.iter().any(|line| line == *gap))
         .collect::<Vec<_>>();
-    assert!(
-        unexpected.is_empty() && resolved.is_empty(),
-        "{} differences:\n{}\nresolved gaps: {resolved:?}",
-        unexpected.len(),
-        unexpected.join("\n")
+    assert_eq!(
+        (unexpected, resolved),
+        (Vec::<String>::new(), Vec::<&&str>::new()),
+        "(differences, resolved gaps)"
     );
 }
 
@@ -317,14 +315,13 @@ fn run_host_script(source: &str) -> serde_json::Value {
     let step = v8::Script::compile(scope, step, None).unwrap();
     for _ in 0..10_000 {
         scope.perform_microtask_checkpoint();
-        if promise.state() != v8::PromiseState::Pending {
-            break;
-        }
-        if !step.run(scope).is_some_and(|value| value.is_true()) {
-            scope.perform_microtask_checkpoint();
+        if promise.state() != v8::PromiseState::Pending
+            || !step.run(scope).is_some_and(|value| value.is_true())
+        {
             break;
         }
     }
+    scope.perform_microtask_checkpoint();
     let value = promise.result(scope).to_rust_string_lossy(scope);
     assert_eq!(promise.state(), v8::PromiseState::Fulfilled, "{value}");
     reset();
