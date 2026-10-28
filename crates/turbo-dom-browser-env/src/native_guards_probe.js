@@ -348,6 +348,36 @@
       out.checkedBrands[name] = [plain, 5, document.createElement('div'), input].map(receiver => [run(() => get.call(receiver)), run(() => set.call(receiver, true))]);
     }
   }
+  // Argument conversions that throw: Symbols and throwing toString in every position.
+  {
+    const el = document.createElement('div'), bad = { toString() { throw new RangeError('toString'); } };
+    el.setAttribute('a', '1');
+    const attr = el.getAttributeNode('a');
+    const cases = {
+      getAttribute: v => el.getAttribute(v),
+      hasAttribute: v => el.hasAttribute(v),
+      getAttributeNode: v => el.getAttributeNode(v),
+      toggleAttribute: v => el.toggleAttribute(v),
+      getAttributeNSLocal: v => el.getAttributeNS(null, v),
+      hasAttributeNSNamespace: v => el.hasAttributeNS(v, 'a'),
+      hasAttributeNSLocal: v => el.hasAttributeNS(null, v),
+      setAttributeNSNamespace: v => el.setAttributeNS(v, 'a', 'v'),
+      setAttributeNSValue: v => el.setAttributeNS(null, 'a', v),
+      removeAttributeNSLocal: v => el.removeAttributeNS(null, v),
+      getAttributeNodeNSNamespace: v => el.getAttributeNodeNS(v, 'a'),
+      getAttributeNodeNSLocal: v => el.getAttributeNodeNS(null, v),
+      createAttribute: v => document.createAttribute(v),
+      createAttributeNSNamespace: v => document.createAttributeNS(v, 'a'),
+      createAttributeNSName: v => document.createAttributeNS('urn:x', v),
+      attrValue: v => { attr.value = v; },
+      splitText: v => document.createTextNode('abc').splitText(v),
+      outerHTML: v => { document.createElement('p').appendChild(document.createElement('i')).outerHTML = v; },
+    };
+    out.conversions = {};
+    for (const [name, call] of Object.entries(cases)) out.conversions[name] = [run(() => call(sym)), run(() => call(bad))];
+    out.conversions.after = [el.getAttribute('a'), el.attributes.length];
+    out.conversions.insertAdjacentString = run(() => el.insertAdjacentElement('beforeend', 'text'));
+  }
   host.remove();
   return out;
 })()
