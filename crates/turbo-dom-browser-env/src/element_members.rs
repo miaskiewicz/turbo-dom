@@ -59,8 +59,10 @@ fn webkit_matches<'s>(
     rv: v8::ReturnValue,
 ) {
     let _dom = DomScope::for_object(scope, args.this());
-    // element_members.js checks the receiver is an element and passes String(selectors).
-    receiver_handle(scope, &args, &[1]).expect("webkitMatchesSelector receiver element");
+    if receiver_handle(scope, &args, &[1]).is_none() {
+        return;
+    }
+    // element_members.js passes String(selectors), a string primitive.
     let units = dom_units(scope, args.get(0)).expect("converted selectors");
     let selector = String::from_utf16_lossy(&units);
     let prefix = "Failed to execute 'webkitMatchesSelector' on 'Element': ";

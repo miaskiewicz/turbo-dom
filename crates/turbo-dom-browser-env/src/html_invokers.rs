@@ -13,7 +13,9 @@ fn dispatch<'s>(
     // html_invokers.js passes an element target (and its CommandEvent) for every operation.
     let target = v8::Local::<v8::Object>::try_from(args.get(1)).expect("invoker target");
     let _dom = DomScope::for_object(scope, target);
-    let node = handle_of(scope, target).expect("invoker target element");
+    let Some(node) = handle_of(scope, target) else {
+        return;
+    };
     match args.get(0).to_rust_string_lossy(scope).as_str() {
         "dispatch" => {
             let event = v8::Local::<v8::Object>::try_from(args.get(2)).expect("command event");

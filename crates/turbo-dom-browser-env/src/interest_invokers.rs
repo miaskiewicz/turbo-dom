@@ -230,7 +230,9 @@ fn native<'s>(
     // remaining operations.
     let target = v8::Local::<v8::Object>::try_from(args.get(1)).expect("interest target");
     let _dom = DomScope::for_object(scope, target);
-    let node = handle_of(scope, target).expect("interest target element");
+    let Some(node) = handle_of(scope, target) else {
+        return;
+    };
     match operation.as_str() {
         "disabled" => rv.set_bool(html_invokers::disabled_control(node)),
         "open" => rv.set_bool(html_popover::opened(node)),

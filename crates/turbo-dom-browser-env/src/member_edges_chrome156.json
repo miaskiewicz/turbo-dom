@@ -2,7 +2,7 @@
   "browser": "Chrome/156.0.8078.47",
   "v8": "15.6.75.19",
   "probe": "member_edges_probe.js",
-  "probeSha256": "cda376ce343237f04988d9d185b0f6f62948e1d9ec5b366274e5570c65c44406",
+  "probeSha256": "52ef4610726d7a4ca775d043ff99adc0b6716f45bd887f21bacc5218d9712591",
   "collectorSha256": "3f964d2cdf0ec8101870a776aaffc3b7dc4522306959c4a40761057beb255eb8",
   "flags": [
     "--headless=new",
@@ -329,6 +329,12 @@
       "verticalLr": [
         "a",
         "b",
+        "b"
+      ],
+      "horizontalBlock": [
+        "a",
+        "b",
+        "c",
         "b"
       ]
     }

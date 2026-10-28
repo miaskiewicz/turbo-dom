@@ -66,9 +66,8 @@ pub(super) fn copy<'s>(
 ) {
     let flags = {
         let _source = DomScope::for_object(scope, source);
-        let Some(root) = handle_of(scope, source) else {
-            return;
-        };
+        // cloneNode / importNode pass the source node and its freshly wrapped clone.
+        let root = handle_of(scope, source).expect("cloned source node");
         let nodes = if deep { preorder(root) } else { vec![root] };
         nodes.into_iter().map(indeterminate).collect::<Vec<_>>()
     };
@@ -76,9 +75,7 @@ pub(super) fn copy<'s>(
         return;
     }
     let _clone = DomScope::for_object(scope, clone);
-    let Some(root) = handle_of(scope, clone) else {
-        return;
-    };
+    let root = handle_of(scope, clone).expect("clone node");
     let nodes = if deep { preorder(root) } else { vec![root] };
     for (node, flag) in nodes.into_iter().zip(flags) {
         if flag && with_tree(|tree| html_input(tree, node)).unwrap_or(false) {
@@ -125,10 +122,13 @@ pub(super) fn dispatch<'s>(
     mut rv: v8::ReturnValue,
 ) {
     let operation = args.get(0).to_rust_string_lossy(scope);
-    // input_members.js passes a brand-checked input (or a form-internals element).
-    let receiver = v8::Local::<v8::Object>::try_from(args.get(1)).expect("input element");
+    let Ok(receiver) = v8::Local::<v8::Object>::try_from(args.get(1)) else {
+        return;
+    };
     let _dom = DomScope::for_object(scope, receiver);
-    let node = handle_of(scope, receiver).expect("input element node");
+    let Some(node) = handle_of(scope, receiver) else {
+        return;
+    };
     if !with_tree(|tree| html_input(tree, node)).unwrap_or(false) {
         return;
     }

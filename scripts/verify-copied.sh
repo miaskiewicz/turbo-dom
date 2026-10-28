@@ -169,9 +169,10 @@ focus_group.rs: P5-cov-browser-env native argument / receiver guards the JS call
 reference_target.rs: P5-cov-browser-env native argument / receiver guards the JS caller makes unreachable become expect() and the last operation it calls is the match's wildcard arm (C3d)
 element_members.rs: P5-cov-browser-env native argument / receiver guards the JS caller makes unreachable become expect() and the last operation it calls is the match's wildcard arm (C3d)
 file_inputs.rs: P5-cov-browser-env native argument / receiver guards the JS caller makes unreachable become expect() and the last operation it calls is the match's wildcard arm (C3d)
-element_relations.rs: P5-cov-browser-env native argument / receiver guards the JS caller makes unreachable become expect() and the last operation it calls is the match's wildcard arm (C3d)
 event_handlers.rs: P5-cov-browser-env native argument / receiver guards the JS caller makes unreachable become expect() and the last operation it calls is the match's wildcard arm (C3d)
 script_state.rs: P5-cov-browser-env (C3d) the text setter's Trusted Types conversion binds its result before the let-else
+script_state.rs: P5-cov-browser-env (C3d) copy takes the cloneNode / importNode source and clone nodes (their handles always exist)
+input_members.rs: P5-cov-browser-env (C3d) copy takes the cloneNode / importNode source and clone nodes (their handles always exist)
 editing_tests.rs: P5-cov-browser-env (C3d) harness failure branches run on their passing line (eager messages, unwrap_or_else(thrown), one drain checkpoint after the task loop); stand-in hooks and compare helpers have their own tests
 file_inputs_tests.rs: P5-cov-browser-env (C3d) harness failure branches run on their passing line (eager messages, unwrap_or_else(thrown), one drain checkpoint after the task loop); stand-in hooks and compare helpers have their own tests
 computed_defaults_tests.rs: P5-cov-browser-env (C3d) harness failure branches run on their passing line (eager messages, unwrap_or_else(thrown), one drain checkpoint after the task loop); stand-in hooks and compare helpers have their own tests

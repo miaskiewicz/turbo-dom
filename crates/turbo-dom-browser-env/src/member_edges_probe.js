@@ -204,6 +204,7 @@
     r.unknownDir = await scenario('<div dir=rtl><div dir=bogus focusgroup=toolbar>' + three + '</div></div>', 'a', ['ArrowRight', 'ArrowLeft']);
     r.verticalLeft = await scenario('<div style="writing-mode:vertical-rl" focusgroup="toolbar wrap">' + three + '</div>', 'b', ['ArrowLeft', 'ArrowLeft', 'ArrowRight']);
     r.verticalLr = await scenario('<div style="writing-mode:vertical-lr" focusgroup="listbox">' + three + '</div>', 'b', ['ArrowLeft', 'ArrowRight', 'ArrowDown']);
+    r.horizontalBlock = await scenario('<div focusgroup=listbox>' + three + '</div>', 'b', ['ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowUp']);
     out.focusgroup = r;
   }
   box.remove();

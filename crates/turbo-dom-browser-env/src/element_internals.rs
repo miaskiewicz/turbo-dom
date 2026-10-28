@@ -43,7 +43,9 @@ fn dispatch(
     // element_internals.js passes its record's host element for every other operation.
     let host = v8::Local::<v8::Object>::try_from(args.get(1)).expect("internals host");
     let _dom = DomScope::for_object(scope, host);
-    let handle = handle_of(scope, host).expect("internals host element");
+    let Some(handle) = handle_of(scope, host) else {
+        return;
+    };
     let operation = args.get(0).to_rust_string_lossy(scope);
     if operation == "shadow" {
         if let Some(root) = with_tree(|tree| tree.shadow_root(handle)).flatten() {

@@ -14,8 +14,9 @@ fn source(node: Handle, name: &str) -> Option<Vec<u16>> {
 }
 fn note(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, _rv: v8::ReturnValue) {
     let _dom = DomScope::for_object(scope, args.this());
-    // element_members.js / browser_env.js check the receiver is an element first.
-    let node = handle_of(scope, args.this()).expect("handler receiver element");
+    let Some(node) = handle_of(scope, args.this()) else {
+        return;
+    };
     let name = arg_str(scope, &args, 0);
     let source = source(node, &name);
     DOM.with(|dom| {
@@ -29,8 +30,9 @@ fn note(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, _rv: v8::
 }
 fn prepare(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, _rv: v8::ReturnValue) {
     let _dom = DomScope::for_object(scope, args.this());
-    // element_members.js / browser_env.js check the receiver is an element first.
-    let node = handle_of(scope, args.this()).expect("handler receiver element");
+    let Some(node) = handle_of(scope, args.this()) else {
+        return;
+    };
     let name = arg_str(scope, &args, 0);
     refresh(scope, node, &name);
 }
