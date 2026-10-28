@@ -610,6 +610,11 @@ pub(super) fn parser_inserted(
     nodes: &[v8::Local<v8::Object>],
     mark: Option<u32>,
 ) {
+    let handles = nodes
+        .iter()
+        .filter_map(|node| handle_of(scope, *node))
+        .collect::<Vec<_>>();
+    user_activation_gates::created_details(scope, &handles);
     if nodes.is_empty() || scope.get_slot::<DefinitionsActive>().is_none() {
         return;
     }

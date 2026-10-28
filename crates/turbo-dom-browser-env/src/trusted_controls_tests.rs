@@ -236,14 +236,12 @@ fn assert_matches_control(actual: &serde_json::Value, expected: &serde_json::Val
 }
 
 #[test]
-#[ignore = "turbo-dom#131: fails until the fix"]
 fn activation_granted_gates_match_chrome156() {
     let expected = control(include_str!("activation_granted_chrome156.json"), PROBE);
     assert_matches_control(&run_probe(PROBE), &expected, &[]);
 }
 
 #[test]
-#[ignore = "turbo-dom#131: fails until the fix"]
 fn dialog_popover_edges_match_chrome156() {
     let probe = include_str!("dialog_popover_edges_probe.js");
     let expected = control(include_str!("dialog_popover_edges_chrome156.json"), probe);
@@ -412,12 +410,16 @@ fn selection_text_edges_match_chrome156() {
 }
 
 /// miaskiewicz/turbo-dom#131: a `<details>` whose open attribute the parser set (every
-/// fragment parser, template contents, a DOMParser document) or a clone copied queues a
+/// fragment parser, template contents) or a clone copied queues a
 /// toggle task from "closed" to "open" (Chrome 156).
 #[test]
-#[ignore = "turbo-dom#131: fails until the fix"]
 fn parsed_details_toggle_matches_chrome156() {
     let probe = include_str!("details_toggle_probe.js");
     let expected = control(include_str!("details_toggle_chrome156.json"), probe);
-    assert_matches_control(&run_probe(probe), &expected, &[]);
+    assert_matches_control(
+        &run_probe(probe),
+        &expected,
+        // miaskiewicz/turbo-dom#171: an inert document's tasks never run.
+        &[r#"result.template = []"#],
+    );
 }

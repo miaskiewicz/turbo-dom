@@ -3809,6 +3809,8 @@ fn el_clone_node<'s>(
         let clone = wrap(scope, new_h);
         script_state::copy(scope, source, clone, deep);
         template_contents::copy_contents(scope, source, clone, deep);
+        // turbo-dom#131: copied open attributes run the details attribute changed steps.
+        user_activation_gates::created_details(scope, &[new_h]);
         let node = wrap(scope, new_h);
         // Carry over the source's JS prototype so a cloned control element keeps its interface
         // accessors (type/value/checked/selected). createElement applies these protos, but cloneNode

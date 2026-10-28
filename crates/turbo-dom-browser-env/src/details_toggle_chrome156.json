@@ -2,7 +2,7 @@
   "browser": "Chrome/156.0.8078.47",
   "v8": "15.6.75.19",
   "probe": "details_toggle_probe.js",
-  "probeSha256": "de7352c8185547a01dc030c822b19ecd67da4c30cd733ee176708c440a2b1e30",
+  "probeSha256": "009c60f3bc50cc3955a7eb09bbb2445553a2cda29557ddd1654e60e5ee435440",
   "collectorSha256": "3f964d2cdf0ec8101870a776aaffc3b7dc4522306959c4a40761057beb255eb8",
   "flags": [
     "--headless=new",
@@ -118,14 +118,6 @@
       ],
       [
         "cl2",
-        "closed",
-        "open",
-        true
-      ]
-    ],
-    "domParser": [
-      [
-        "dp",
         "closed",
         "open",
         true

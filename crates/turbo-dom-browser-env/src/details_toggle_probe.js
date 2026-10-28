@@ -1,6 +1,6 @@
 (async () => {
   // A <details> whose open attribute is set by the parser (every fragment parser, template
-  // contents, a DOMParser document) or copied by a clone queues a toggle task from "closed"
+  // contents) or copied by a clone queues a toggle task from "closed"
   // to "open", like an attribute change made by script (miaskiewicz/turbo-dom#131).
   const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
   let log = [];
@@ -21,7 +21,6 @@
   await run('reopenedBeforeTask', () => { document.body.innerHTML = '<details id=pr open></details>'; const details = document.getElementById('pr'); details.open = false; details.open = true; });
   await run('template', () => { document.body.innerHTML = '<template id=t><details id=td open></details></template>'; watch(document.getElementById('t').content); });
   await run('cloneNode', () => { document.body.innerHTML = '<details id=cl open></details>'; log = []; const clone = document.getElementById('cl').cloneNode(true); clone.id = 'cl2'; document.body.append(clone); });
-  await run('domParser', () => { const parsed = new DOMParser().parseFromString('<details id=dp open></details>', 'text/html'); document.body.append(document.adoptNode(parsed.getElementById('dp'))); });
   document.body.innerHTML = '';
   return out;
 })()

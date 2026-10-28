@@ -284,6 +284,51 @@ pub(super) fn observe(handle: Handle) {
     }
 }
 
+/// Details elements whose `open` attribute was set without the binding's attribute-change
+/// steps (the parser, a clone's copied attributes): each new one (no queued toggle) runs the
+/// attribute changed steps from "closed", queueing its toggle task (Chrome 156,
+/// turbo-dom#131). `roots` and their descendants are walked, template contents included.
+pub(super) fn created_details(scope: &mut v8::PinScope, roots: &[Handle]) {
+    let mut stack = roots.iter().rev().copied().collect::<Vec<_>>();
+    let mut contents = Vec::new();
+    while let Some(node) = stack.pop() {
+        if scope.is_execution_terminating() {
+            return;
+        }
+        let Some((details, template, children)) = with_tree(|tree| {
+            let element = tree.node_type_id(node) == 1;
+            (
+                element
+                    && html(tree, node, "details")
+                    && tree.get_attribute_ns(node, None, "open").is_some(),
+                element && html(tree, node, "template"),
+                tree.children(node),
+            )
+        }) else {
+            return;
+        };
+        // The nodes are new: a recorded state came from wrapper creation after the parse.
+        if details && state(|state| !state.details_tasks.contains_key(&node)).unwrap_or(false) {
+            state(|state| state.details.insert(node, false));
+            attribute_changed(scope, node, "open");
+        }
+        stack.extend(children.into_iter().rev());
+        if template {
+            let object = wrap(scope, node);
+            if let Some(content) = template_contents::ensure(scope, object) {
+                contents.push(content);
+            }
+        }
+    }
+    // Template contents belong to their template's inert document.
+    for content in contents {
+        let _owner = DomScope::for_object(scope, content);
+        if let Some(handle) = handle_of(scope, content) {
+            created_details(scope, &[handle]);
+        }
+    }
+}
+
 /// https://html.spec.whatwg.org/#the-details-element attribute changed steps for `open`.
 pub(super) fn attribute_changed(scope: &mut v8::PinScope, handle: Handle, name: &str) {
     if name != "open" {
