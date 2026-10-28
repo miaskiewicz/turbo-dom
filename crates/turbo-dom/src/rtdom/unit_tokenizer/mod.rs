@@ -479,10 +479,8 @@ impl<Sink: TokenSink> Tokenizer<Sink> {
     }
 
     fn start_consuming_character_reference(&self) {
-        debug_assert!(
-            self.char_ref_tokenizer.borrow().is_none(),
-            "nested character reference"
-        );
+        // A character reference never nests in another.
+        debug_assert!(self.char_ref_tokenizer.borrow().is_none());
 
         let is_in_attribute = matches!(self.state.get(), states::AttributeValue(_));
         *self.char_ref_tokenizer.borrow_mut() = Some(CharRefTokenizer::new(is_in_attribute));

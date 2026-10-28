@@ -19,7 +19,7 @@
   for (const type of ['cancel', 'close', 'beforetoggle', 'toggle', 'pointerdown', 'pointerup', 'click']) document.addEventListener(type, record, true);
   const style = document.head.appendChild(document.createElement('style'));
   style.textContent = 'body{margin:0} .box{position:fixed;margin:0;padding:0;border:0;width:100px;height:100px;inset:auto;overflow:hidden} dialog::backdrop{background:none}';
-  const place = (element, x, y) => { element.className = 'box'; element.style.left = x + 'px'; element.style.top = y + 'px'; return element; };
+  const place = (element, x, y) => { element.className = 'box'; element.style.cssText = `position:fixed;margin:0;padding:0;border:0;width:100px;height:100px;inset:auto;overflow:hidden;left:${x}px;top:${y}px`; return element; };
   const fixture = html => {
     document.body.innerHTML = html;
     for (const element of document.body.querySelectorAll('[data-x]')) place(element, element.dataset.x, element.dataset.y);
@@ -35,6 +35,29 @@
   };
   const OUT = 'data-x=0 data-y=0';
 
+  // The first scenarios run before any activation: the close watcher manager allows one group.
+  // Two modal dialogs opened without activation share one close watcher group.
+  await scenario('groupedEsc', `<div id=out ${OUT}></div><dialog id=d1 data-x=300 data-y=300>1</dialog><dialog id=d2 data-x=420 data-y=300>2</dialog>`, async () => {
+    document.getElementById('d1').showModal();
+    document.getElementById('d2').showModal();
+    await input(esc);
+    return [state('d1', 'd2')];
+  });
+  // Two groups at the allowed limit: the top dialog's cancel may not be prevented.
+  await scenario('twoGroupsAtLimit', `<div id=out ${OUT}></div><button id=b data-x=120 data-y=0>b</button><dialog id=d1 data-x=300 data-y=300>1</dialog><dialog id=d2 data-x=420 data-y=300>2</dialog>`, async () => {
+    await input(...click(150, 30, 'b'));
+    document.getElementById('d1').showModal();
+    document.getElementById('d2').showModal();
+    await input(esc);
+    return [state('d1', 'd2')];
+  });
+  // The same, after the previous close request lowered the allowed number of groups again.
+  await scenario('groupedAfterDecrement', `<div id=out ${OUT}></div><dialog id=d1 data-x=300 data-y=300>1</dialog><dialog id=d2 data-x=420 data-y=300>2</dialog>`, async () => {
+    document.getElementById('d1').showModal();
+    document.getElementById('d2').showModal();
+    await input(esc);
+    return [state('d1', 'd2')];
+  });
   // A modal dialog opened without activation: Esc fires an uncancelable cancel, then close.
   await scenario('modalEsc', `<div id=out ${OUT}></div><dialog id=d data-x=300 data-y=300>d</dialog>`, async () => {
     document.getElementById('d').showModal();
@@ -56,6 +79,25 @@
     return [first, state('d')];
   });
 
+  // A second activation without a new watcher grants no new group: once the prevented
+  // cancel consumed the history-action activation, the next cancel is not cancelable.
+  await scenario('preventAfterTwoClicks', `<div id=out ${OUT}></div><button id=b data-x=120 data-y=0>b</button><dialog id=d data-x=300 data-y=300>d</dialog>`, async () => {
+    const dialog = document.getElementById('d');
+    dialog.addEventListener('cancel', event => event.preventDefault());
+    await input(...click(150, 30, 'b'));
+    dialog.showModal();
+    await input(...click(310, 310, 'd'));
+    await input(esc);
+    const first = state('d');
+    await input(esc);
+    return [first, state('d')];
+  });
+  // The nearest clicked dialog is the nearest open <dialog>, not any element with an open attribute.
+  await scenario('detailsInDialog', `<div id=out ${OUT}></div><dialog id=d closedby=any data-x=300 data-y=300><div id=det open data-x=310 data-y=310>x</div></dialog>`, async () => {
+    document.getElementById('d').show();
+    await input(...click(320, 320, 'det'));
+    return [state('d')];
+  });
   // closedby=none: Esc never closes; closedby=any non-modal: a click outside closes it,
   // a click inside does not; closedby=closerequest: clicks never close, Esc does.
   await scenario('closedbyNone', `<div id=out ${OUT}></div><dialog id=d closedby=none data-x=300 data-y=300>d</dialog>`, async () => {
@@ -103,11 +145,12 @@
     return [state('d')];
   });
 
-  // Two modal dialogs opened without activation share one close watcher group: one Esc
-  // closes both. Opened with activation in between, each Esc closes one.
-  await scenario('groupedEsc', `<div id=out ${OUT}></div><dialog id=d1 data-x=300 data-y=300>1</dialog><dialog id=d2 data-x=420 data-y=300>2</dialog>`, async () => {
+  // The same two dialogs, then a click (on the top dialog's ::backdrop) grants activation:
+  // the group they share may now cancel.
+  await scenario('groupedThenActivation', `<div id=out ${OUT}></div><dialog id=d1 data-x=300 data-y=300>1</dialog><dialog id=d2 data-x=420 data-y=300>2</dialog>`, async () => {
     document.getElementById('d1').showModal();
     document.getElementById('d2').showModal();
+    await input(...click(10, 10, 'out', true));
     await input(esc);
     return [state('d1', 'd2')];
   });
@@ -162,6 +205,47 @@
     await input(esc);
     await input(...click(10, 10, 'out'));
     return [dialog.open, dialog.isConnected];
+  });
+  // A popover inside a shadow tree: a click inside it (retargeted to the host) keeps it open.
+  await scenario('shadowPopover', `<div id=out ${OUT}></div><div id=host></div>`, async () => {
+    const root = document.getElementById('host').attachShadow({ mode: 'open' });
+    root.innerHTML = '<div id=sp popover>s</div>';
+    const popover = place(root.getElementById('sp'), 300, 300);
+    popover.showPopover();
+    await input(...click(310, 310, 'host>sp'));
+    const inside = popover.matches(':popover-open');
+    await input(...click(10, 10, 'out'));
+    return [inside, popover.matches(':popover-open')];
+  });
+  // An invoker inside an open popover makes its target that popover's nested popover.
+  await scenario('invokerInPopover', `<div id=out ${OUT}></div><div id=p1 popover data-x=300 data-y=300><button id=inv popovertarget=p2>i</button></div><div id=p2 popover data-x=420 data-y=300>2</div>`, async () => {
+    place(document.getElementById('inv'), 300, 300);
+    document.getElementById('p1').showPopover();
+    await input(...click(310, 310, 'inv'));
+    const opened = state('p1', 'p2');
+    await input(...click(430, 310, 'p2'));
+    const inside = state('p1', 'p2');
+    await input(...click(10, 10, 'out'));
+    return [opened, inside, state('p1', 'p2')];
+  });
+  // A dialog inside a shadow tree with closedby=any: clicks inside keep it open.
+  await scenario('shadowDialog', `<div id=out ${OUT}></div><div id=host></div>`, async () => {
+    const root = document.getElementById('host').attachShadow({ mode: 'open' });
+    root.innerHTML = '<dialog id=sd closedby=any>d</dialog>';
+    const dialog = place(root.getElementById('sd'), 300, 300);
+    dialog.show();
+    await input(...click(310, 310, 'host>sd'));
+    const inside = dialog.open;
+    await input(...click(10, 10, 'out'));
+    return [inside, dialog.open];
+  });
+  // Removing an open modal dialog's ancestor removes it from the open dialogs list.
+  await scenario('removedAncestor', `<div id=out ${OUT}></div><section id=outer><div id=mid><dialog id=d closedby=any data-x=300 data-y=300>d</dialog></div></section>`, async () => {
+    const dialog = document.getElementById('d');
+    dialog.showModal();
+    document.getElementById('mid').remove();
+    await input(esc);
+    return [dialog.open, document.querySelector(':modal')];
   });
   style.remove();
   document.body.innerHTML = '';

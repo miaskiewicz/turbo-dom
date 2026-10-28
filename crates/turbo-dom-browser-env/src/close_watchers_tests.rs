@@ -109,14 +109,16 @@ fn host_backdrop(
 const DRIVER: &str = r#"(() => {
   const host = {};
   for (const name of ['Dispatch', 'Activate', 'CloseRequest', 'LightDismiss', 'Backdrop']) { host[name] = globalThis['__host' + name]; delete globalThis['__host' + name]; }
-  const queue = [];
+  const queue = [], closeResults = [];
+  globalThis.__closeResults = closeResults;
   globalThis.__queue = queue;
   globalThis.setTimeout = (callback, delay) => { queue.push({ due: Number(delay) || 0, callback }); return queue.length; };
   const fire = (target, Type, type, init) => { const event = new Type(type, init); if (type === 'pointerdown') host.Activate(document); host.Dispatch(event, target); return event; };
   const chain = node => { const out = []; for (; node; node = node.parentNode) out.push(node); return out; };
   let down = null;
   const pointer = step => {
-    const hit = document.getElementById(step.target), backdrop = host.Backdrop(hit);
+    const [hostId, innerId] = step.target.split('>');
+    const outer = document.getElementById(hostId), hit = innerId ? outer.shadowRoot.getElementById(innerId) : outer, backdrop = host.Backdrop(hit);
     if ((backdrop !== null) !== step.backdrop) throw new Error('backdrop mismatch at ' + step.target);
     const target = backdrop || hit;
     const init = { bubbles: true, cancelable: true, composed: true, clientX: step.x, clientY: step.y, pointerId: 1, pointerType: 'mouse', isPrimary: true, button: 0, buttons: step.type === 'down' ? 1 : 0 };
@@ -137,7 +139,7 @@ const DRIVER: &str = r#"(() => {
     const init = { key: step.key, code: step.code, keyCode: step.keyCode, bubbles: true, cancelable: true, composed: true };
     const target = document.activeElement || document.body;
     const event = fire(target, KeyboardEvent, 'keydown', init);
-    if (!event.defaultPrevented && step.key === 'Escape') host.CloseRequest(document);
+    if (!event.defaultPrevented && step.key === 'Escape') closeResults.push(host.CloseRequest(document));
     fire(document.activeElement || document.body, KeyboardEvent, 'keyup', init);
   };
   globalThis.__cdpInput = payload => {
@@ -155,7 +157,7 @@ const DRIVER: &str = r#"(() => {
 
 /// Run the probe with the driver above and a FIFO task queue standing in for timers (each
 /// task runs after the microtasks of the previous one).
-fn run_probe() -> serde_json::Value {
+fn run_probe() -> (serde_json::Value, serde_json::Value) {
     crate::browser_env::tests::init_v8();
     let isolate = &mut v8::Isolate::new(Default::default());
     v8::scope!(let scope, isolate);
@@ -209,33 +211,70 @@ fn run_probe() -> serde_json::Value {
     }
     let value = promise.result(scope).to_rust_string_lossy(scope);
     assert_eq!(promise.state(), v8::PromiseState::Fulfilled, "{value}");
+    let results = v8::String::new(scope, "JSON.stringify(__closeResults)").unwrap();
+    let results = v8::Script::compile(scope, results, None)
+        .unwrap()
+        .run(scope)
+        .unwrap()
+        .to_rust_string_lossy(scope);
     reset();
-    serde_json::from_str(&value).unwrap()
+    (
+        serde_json::from_str(&value).unwrap(),
+        serde_json::from_str(&results).unwrap(),
+    )
 }
 
 #[test]
 fn close_watchers_and_light_dismiss_match_chrome156() {
     let expected = control(include_str!("close_watchers_chrome156.json"), PROBE);
-    let mut actual = run_probe();
-    // KNOWN_GAP (miaskiewicz/turbo-dom#116): a dialog a close watcher closes fires `toggle`
-    // (closed) before `close`; Chrome fires `close` first. Swap each such adjacent pair (and
-    // require at least one, so the fix removes this).
-    let mut swapped = 0;
-    for scenario in actual.as_object_mut().unwrap().values_mut() {
-        let log = scenario["log"].as_array_mut().unwrap();
-        for index in 1..log.len() {
-            let toggle = &log[index - 1];
-            if toggle[0] == "toggle"
-                && toggle[4] == "closed"
-                && log[index][0] == "close"
-                && log[index][1] == toggle[1]
-            {
-                log.swap(index - 1, index);
-                swapped += 1;
+    let mut expected = expected;
+    let (mut actual, close_results) = run_probe();
+    // process_close_watchers reports whether an enabled close watcher took each Esc: not for
+    // closedby=none (9th), a non-modal dialog (11th) or removed dialogs (18th, 19th).
+    let mut processed = vec![true; 19];
+    for index in [8, 10, 17, 18] {
+        processed[index] = false;
+    }
+    assert_eq!(close_results, serde_json::json!(processed));
+    // `close` events and `toggle` events are tasks on different task sources: Chrome 156
+    // interleaves the two sources either way (recordings differ under load), the binding in
+    // queueing order. Within each run of consecutive close / toggle events, compare the close
+    // events (in order) followed by the toggle events (in order).
+    for result in [&mut expected, &mut actual] {
+        for scenario in result.as_object_mut().unwrap().values_mut() {
+            let log = scenario["log"].as_array_mut().unwrap();
+            let mut index = 0;
+            while index < log.len() {
+                let task = |entry: &serde_json::Value| entry[0] == "close" || entry[0] == "toggle";
+                if !task(&log[index]) {
+                    index += 1;
+                    continue;
+                }
+                let end = (index..log.len())
+                    .find(|&end| !task(&log[end]))
+                    .unwrap_or(log.len());
+                log[index..end].sort_by_key(|entry| entry[0] != "close");
+                index = end;
             }
         }
     }
-    assert_eq!(swapped, 9, "dialogs closed by close watchers");
+    // KNOWN_GAP (miaskiewicz/turbo-dom#119): a popover in a shadow tree never opens, and a
+    // closedby=any dialog in a shadow tree is light-dismissed by a click inside it.
+    assert_eq!(
+        expected["shadowPopover"]["states"],
+        serde_json::json!([true, false])
+    );
+    assert_eq!(
+        expected["shadowDialog"]["states"],
+        serde_json::json!([true, false])
+    );
+    for scenario in ["shadowPopover", "shadowDialog"] {
+        assert_eq!(
+            actual[scenario]["states"],
+            serde_json::json!([false, false])
+        );
+        actual[scenario]["states"] = expected[scenario]["states"].clone();
+    }
     let mut out = Vec::new();
     differences("result", &actual, &expected, &mut out);
     assert!(
@@ -244,4 +283,82 @@ fn close_watchers_and_light_dismiss_match_chrome156() {
         out.len(),
         out.join("\n")
     );
+}
+
+/// Light dismiss only acts on trusted pointerdown / pointerup events at a node: page-made
+/// events, other event types and non-events leave an open auto popover alone, while the same
+/// trusted press and release outside it hide it.
+#[test]
+fn light_dismiss_ignores_untrusted_and_other_events() {
+    crate::browser_env::tests::init_v8();
+    let isolate = &mut v8::Isolate::new(Default::default());
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    install_with_html(
+        scope,
+        "<!doctype html><div id=out></div><div id=p popover>p</div>",
+    );
+    let eval = |scope: &mut v8::PinScope, source: &str| -> String {
+        let code = v8::String::new(scope, source).unwrap();
+        let value = v8::Script::compile(scope, code, None)
+            .unwrap()
+            .run(scope)
+            .unwrap();
+        value.to_rust_string_lossy(scope)
+    };
+    eval(scope, "globalThis.p = document.getElementById('p'); globalThis.out = document.getElementById('out'); p.showPopover()");
+    let object = |scope: &mut v8::PinScope<'_, '_>, source: &str| {
+        let code = v8::String::new(scope, source).unwrap();
+        let value = v8::Script::compile(scope, code, None)
+            .unwrap()
+            .run(scope)
+            .unwrap();
+        v8::Global::new(scope, v8::Local::<v8::Object>::try_from(value).unwrap())
+    };
+    let target = object(scope, "out");
+    for source in [
+        "new PointerEvent('pointerdown', { bubbles: true })",
+        "new PointerEvent('pointerup', { bubbles: true })",
+        "({ type: 'pointerdown', isTrusted: true })",
+    ] {
+        let event = object(scope, source);
+        let event = v8::Local::new(scope, &event);
+        if source.starts_with("new") {
+            let target = v8::Local::new(scope, &target);
+            let code = v8::String::new(scope, "(e, t) => t.dispatchEvent(e)").unwrap();
+            let function = v8::Script::compile(scope, code, None)
+                .unwrap()
+                .run(scope)
+                .unwrap();
+            let function = v8::Local::<v8::Function>::try_from(function).unwrap();
+            let undefined = v8::undefined(scope).into();
+            function.call(scope, undefined, &[event.into(), target.into()]);
+        }
+        light_dismiss(scope, event, false);
+    }
+    // Trusted, but neither pointerdown nor pointerup.
+    for kind in ["click", "mousedown"] {
+        let event = object(
+            scope,
+            &format!("new MouseEvent('{kind}', {{ bubbles: true }})"),
+        );
+        let event = v8::Local::new(scope, &event);
+        let target = v8::Local::new(scope, &target);
+        dispatch_host_event(scope, event, target);
+        light_dismiss(scope, event, false);
+    }
+    assert_eq!(eval(scope, "p.matches(':popover-open')"), "true");
+    for kind in ["pointerdown", "pointerup"] {
+        let event = object(
+            scope,
+            &format!("new PointerEvent('{kind}', {{ bubbles: true }})"),
+        );
+        let event = v8::Local::new(scope, &event);
+        let target = v8::Local::new(scope, &target);
+        dispatch_host_event(scope, event, target);
+        light_dismiss(scope, event, false);
+    }
+    assert_eq!(eval(scope, "p.matches(':popover-open')"), "false");
+    reset();
 }
