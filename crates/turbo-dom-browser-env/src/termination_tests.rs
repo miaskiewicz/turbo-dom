@@ -3,7 +3,8 @@
 //! host or a callback can enter must stop without touching the tree: no projection for the
 //! embedder, no template realization, no normalization, no slot events. Each operation runs
 //! once while terminating and once after the termination is cancelled, which proves the
-//! guard (and not the input) made the difference.
+//! guard (and not the input) made the difference. The host CSS policy's cascade view, which
+//! only an embedder reads, is checked here too.
 use crate::browser_env::*;
 
 fn with_page(html: &str, body: impl FnOnce(&mut v8::PinScope)) {
@@ -159,4 +160,44 @@ fn normalize_and_listener_records_stop_while_terminating() {
         );
         assert!(event_brands::register_native_event_target(scope, target));
     });
+}
+
+/// The host CSS policy's cascade view (turbo-surf's native layout): with a callback that
+/// blocks one `<style>` and every inline style, the policy lists the blocked sheet and the
+/// inline override (the applied text: empty for the blocked declaration), and is cached
+/// until the tree version changes.
+#[test]
+fn host_css_policy_lists_blocked_sheets_and_inline_overrides() {
+    with_page(
+        "<style id=ok>p{color:red}</style><style id=no>p{color:blue}</style><p id=a style='opacity:0.5'>x</p><p id=b>y</p>",
+        |scope| {
+            let callback = v8::Local::<v8::Function>::try_from(eval(
+                scope,
+                "globalThis.calls = []; (document, element, kind, text) => { calls.push([kind, element.id, String(text)]); return kind === 'style-src-attr' ? false : element.id !== 'no'; }",
+            ))
+            .unwrap();
+            install_css_policy(scope, callback);
+            let handle = |id: &str| {
+                with_tree(|tree| tree.query_selector(&format!("#{id}")))
+                    .flatten()
+                    .unwrap()
+            };
+            let (no, a, b) = (handle("no"), handle("a"), handle("b"));
+            let policy = css_policy::cascade_policy(scope);
+            assert_eq!(policy.blocked_stylesheets.iter().copied().collect::<Vec<_>>(), [no]);
+            assert_eq!(policy.inline_overrides.len(), 1);
+            assert_eq!(policy.inline_overrides.get(&a).map(String::as_str), Some(""));
+            assert_eq!(json(scope, "document.getElementById('a').style.opacity"), r#""""#);
+            let calls = json(scope, "calls.length");
+            // Cached per tree version: a second read asks the callback nothing.
+            let again = css_policy::cascade_policy(scope);
+            assert_eq!(again.inline_overrides, policy.inline_overrides);
+            assert_eq!(json(scope, "calls.length"), calls);
+            // A new version recomputes: a second blocked inline style joins the overrides.
+            eval(scope, "document.getElementById('b').setAttribute('style', 'color: green')");
+            let next = css_policy::cascade_policy(scope);
+            assert_eq!(next.inline_overrides.get(&b).map(String::as_str), Some(""));
+            assert_eq!(next.inline_overrides.len(), 2);
+        },
+    );
 }
