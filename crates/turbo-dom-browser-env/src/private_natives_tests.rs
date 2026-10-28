@@ -130,3 +130,109 @@ fn event_target_natives_survive_a_patched_apply() {
         );
     });
 }
+
+/// Natives the binding's JS calls through the page-patchable Function.prototype.apply /
+/// call: a page that patches them captures each native and can call it with a foreign
+/// receiver, a Proxy, a text node, no arguments, a Symbol or a throwing toString. Every such
+/// call ends in a TypeError / DOMException or a plain result, never an abort.
+const CAPTURE: &str = "(() => { const oa = Function.prototype.apply, oc = Function.prototype.call, seen = []; const note = f => { if (!seen.includes(f)) seen.push(f); }; Function.prototype.apply = function (t, a) { note(this); return Reflect.apply(oa, this, [t, a]); }; Function.prototype.call = function (t, ...a) { note(this); return Reflect.apply(oa, this, [t, a]); }; try { const d = document; const e = d.createElement('div'); d.body.append(e); e.innerHTML = '<b id=x>t</b>'; e.querySelectorAll('b'); e.style.color = 'red'; getComputedStyle(e).color; e.setAttribute('onclick', 'void 0'); e.focus(); e.blur(); e.click(); e.remove(); } finally { Function.prototype.apply = oa; Function.prototype.call = oc; } return seen; })()";
+
+const HOSTILE: &str = "(natives => { const names = ['__cascadeProp', '__noteInlineHandler', '__readAppliedInlineStyle', '__writeAppliedInlineStyle', 'blur', 'click', 'createElement', 'focus', 'hasAttribute', 'querySelectorAll']; const p = document.getElementById('p'), bad = { toString() { throw new RangeError('toString'); } }; const receivers = [['plain', {}], ['proxy', new Proxy(p, {})], ['text', document.createTextNode('t')], ['document', document], ['element', p]]; const argsets = [['none', []], ['symbol', [Symbol('s'), Symbol('s')]], ['throwing', [bad, bad]]]; const out = {}; const counts = {}; for (const f of natives) { if (!names.includes(f.name)) continue; const key = f.name + '#' + (counts[f.name] = (counts[f.name] || 0) + 1); out[key] = []; for (const [rn, r] of receivers) for (const [an, a] of argsets) { let v; try { const x = Reflect.apply(f, r, a); v = x === undefined ? 'undefined' : x === null ? 'null' : typeof x === 'object' ? 'object' : x; } catch (e) { v = [e.constructor.name, e.name, e.message]; } out[key].push(rn + '/' + an + ': ' + JSON.stringify(v)); } } return out; })";
+
+#[test]
+fn captured_natives_refuse_hostile_calls() {
+    with_page(|scope| {
+        let out: serde_json::Value =
+            serde_json::from_str(&json(scope, &format!("{HOSTILE}({CAPTURE})"))).unwrap();
+        let illegal = r#"["TypeError","TypeError","Illegal invocation"]"#;
+        let symbol = r#"["TypeError","TypeError","Cannot convert a Symbol to a string"]"#;
+        let symbol_value =
+            r#"["TypeError","TypeError","Cannot convert a Symbol value to a string"]"#;
+        let throwing = r#"["RangeError","RangeError","toString"]"#;
+        // (native, its valid receiver, results there for no arguments / a Symbol / a throwing
+        // toString); every other receiver is an Illegal invocation.
+        let natives: &[(&str, &str, [&str; 3])] = &[
+            (
+                "createElement#1",
+                "document",
+                [r#""object""#, symbol, throwing],
+            ),
+            (
+                "createElement#2",
+                "document",
+                [r#""object""#, symbol, throwing],
+            ),
+            (
+                "querySelectorAll#1",
+                "element",
+                [r#""object""#, symbol, throwing],
+            ),
+            (
+                "querySelectorAll#2",
+                "document",
+                [r#""object""#, symbol, throwing],
+            ),
+            (
+                "__readAppliedInlineStyle#1",
+                "element",
+                [r#""""#, r#""""#, r#""""#],
+            ),
+            (
+                "__writeAppliedInlineStyle#1",
+                "element",
+                [r#""undefined""#, symbol_value, throwing],
+            ),
+            (
+                "__cascadeProp#1",
+                "element",
+                [r#""""#, symbol_value, throwing],
+            ),
+            ("focus#1", "element", [r#""undefined""#; 3]),
+            ("blur#1", "element", [r#""undefined""#; 3]),
+            ("click#1", "element", [r#""undefined""#; 3]),
+            ("hasAttribute#1", "element", ["false", symbol, throwing]),
+        ];
+        let mut keys: Vec<_> = out.as_object().unwrap().keys().cloned().collect();
+        keys.sort();
+        let mut expected_keys: Vec<_> = natives
+            .iter()
+            .map(|native| native.0.to_string())
+            .chain(["__noteInlineHandler#1".to_string()])
+            .collect();
+        expected_keys.sort();
+        assert_eq!(keys, expected_keys);
+        for (name, valid, results) in natives {
+            let mut expected = Vec::new();
+            for receiver in ["plain", "proxy", "text", "document", "element"] {
+                for (index, args) in ["none", "symbol", "throwing"].iter().enumerate() {
+                    let value = if receiver == *valid {
+                        results[index]
+                    } else {
+                        illegal
+                    };
+                    expected.push(format!("{receiver}/{args}: {value}"));
+                }
+            }
+            assert_eq!(out[*name], serde_json::json!(expected), "{name}");
+        }
+        // The inline-handler note ignores receivers that are not nodes and converts its
+        // arguments only for nodes.
+        let mut expected = Vec::new();
+        for receiver in ["plain", "proxy", "text", "document", "element"] {
+            for (args, value) in [
+                ("none", r#""undefined""#),
+                ("symbol", symbol_value),
+                ("throwing", throwing),
+            ] {
+                let node = matches!(receiver, "text" | "document" | "element");
+                let value = if node || args == "none" {
+                    value
+                } else {
+                    r#""undefined""#
+                };
+                expected.push(format!("{receiver}/{args}: {value}"));
+            }
+        }
+        assert_eq!(out["__noteInlineHandler#1"], serde_json::json!(expected));
+    });
+}
