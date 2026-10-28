@@ -258,23 +258,6 @@ fn close_watchers_and_light_dismiss_match_chrome156() {
             }
         }
     }
-    // KNOWN_GAP (miaskiewicz/turbo-dom#119): a popover in a shadow tree never opens, and a
-    // closedby=any dialog in a shadow tree is light-dismissed by a click inside it.
-    assert_eq!(
-        expected["shadowPopover"]["states"],
-        serde_json::json!([true, false])
-    );
-    assert_eq!(
-        expected["shadowDialog"]["states"],
-        serde_json::json!([true, false])
-    );
-    for scenario in ["shadowPopover", "shadowDialog"] {
-        assert_eq!(
-            actual[scenario]["states"],
-            serde_json::json!([false, false])
-        );
-        actual[scenario]["states"] = expected[scenario]["states"].clone();
-    }
     let mut out = Vec::new();
     differences("result", &actual, &expected, &mut out);
     assert!(

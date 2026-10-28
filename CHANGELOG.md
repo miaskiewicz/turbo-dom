@@ -7,6 +7,23 @@ at the time); this file reconstructs them from history.
 
 ## [Unreleased]
 
+### Fixed — browser-env getKeyframes() spells a shorthand member from its longhands (miaskiewicz/turbo-dom#167)
+- `animations.rs keyframe_value` serializes a shorthand through `rtdom::css_shorthand` the way
+  Chrome 156 does (`flex: '0'` is `0 1 0%`, `margin: '0'` is `0px`); var() values keep their text.
+
+### Fixed — CSSOM shorthand / longhand spelling of math functions and grammars follows Chrome 156 (miaskiewicz/turbo-dom#117)
+- `rtdom::css_shorthand` and its npm port `css-shorthand.mjs` (in lockstep): `abs()` / `sign()` /
+  `min()` / `max()` / `clamp()` (`none` bounds) simplify when Chrome resolves their units, single
+  times / angles resolve to `s` / `deg`, math functions are typed (`calc(min(1px) * min(2px))`
+  and `min(1px 2px)` are invalid) and keep their arguments as sums (`min(1px, 1em + 1px)`).
+- `cubic-bezier()` takes four numbers, `linear()` resolves math stops; `hsl()` rejects a hue that
+  is not a number / angle; relative colors check their channels; `text-shadow` puts the color
+  first; `grid-template-areas` tokenizes its strings (trash tokens, `.` runs, rectangles);
+  `place-content: baseline <justify>`; `offset` / `offset-rotate` reject a unitless `0` angle and
+  bad `path()` data; `columns` ignores `column-wrap`; `timeline-trigger` lists of different
+  lengths have no shorthand spelling. The binding picks the longhand grammars up from rtdom
+  (`transform: scale(sign(-1px))` there is turbo-dom#170).
+
 ### Fixed — browser-env manual slots re-entering a shadow root signal like Chrome 156 (miaskiewicz/turbo-dom#133)
 - A slot inserted into a manual-assignment root no longer fires slotchange (Chrome signals only
   the removal, and named roots still signal an inserted slot); a slot leaving a manual root

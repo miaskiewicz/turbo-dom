@@ -11,16 +11,7 @@ const PROBE: &str = include_str!("member_edges_probe.js");
 
 /// KNOWN_GAP rows `(path, binding value)`: leaves where the binding still differs from
 /// Chrome 156. Each must still differ exactly so; a fix removes its row.
-const KNOWN_GAPS: &[(&str, &str)] = &[
-    // miaskiewicz/turbo-dom#153: handler compile errors are not reported.
-    ("result.handlers.reported", "[]"),
-    // miaskiewicz/turbo-dom#155: getKeyframes() value spelling.
-    ("result.keyframes.negativeSmall[0].translate", "\"0px\""),
-    ("result.keyframes.negativeZero[0].opacity", "\"0\""),
-    ("result.keyframes.paren[0].width", "\"var(--w,  (1px))\""),
-    ("result.keyframes.zeros[0].columnWidth", "null"),
-    ("result.keyframes.zeros[0].outlineOffset", "null"),
-];
+const KNOWN_GAPS: &[(&str, &str)] = &[];
 
 /// The differing leaves of `actual` that are not a listed gap, then the listed gaps that no
 /// longer differ exactly so.
@@ -121,7 +112,6 @@ fn inline_handlers_resolve_their_form_owners_members() {
 /// turbo-dom#153: a handler body that does not compile is reported to the window as its
 /// SyntaxError (Chrome 156), and the handler is null.
 #[test]
-#[ignore = "turbo-dom#153: fails until the fix"]
 fn inline_handler_syntax_errors_are_reported() {
     assert_eq!(
         page_json(
@@ -142,5 +132,38 @@ fn closed_details_content_has_empty_inner_text() {
             "['p', 'b', 'i'].map(id => document.getElementById(id).innerText)",
         ),
         r#"["","",""]"#
+    );
+}
+
+/// miaskiewicz/turbo-dom#155: getKeyframes() member values spell numbers, var() text and
+/// bare zeros like Chrome 156 (`keyframe_values_probe.js` → `keyframe_values_chrome156.json`).
+#[test]
+fn keyframe_values_match_chrome156() {
+    let probe = include_str!("keyframe_values_probe.js");
+    let expected = control(include_str!("keyframe_values_chrome156.json"), probe);
+    assert_eq!(
+        unexpected(&run(probe), &expected, &[]),
+        Vec::<String>::new()
+    );
+}
+
+/// turbo-dom#153: a handler that fails to compile reports once, when its event is first
+/// dispatched along the path (or the handler is read); a replaced attribute never reports
+/// (Chrome 156: `{"dispatch":["SyntaxError"],"afterDispatch":[null,[]],"replaced":
+/// ["function",[]],"otherType":[],"ancestor":["SyntaxError"],"again":[]}`).
+#[test]
+fn inline_handler_syntax_errors_report_lazily() {
+    assert_eq!(
+        page_json(
+            "<div id=a onclick='}'></div><div id=b onclick='}'></div><div id=c onclick='}'></div><p id=p onclick='}'><i id=i></i></p>",
+            "(() => { const errors = []; addEventListener('error', e => { errors.push(e.error.name); e.preventDefault(); }); const $ = id => document.getElementById(id); const out = {}; \
+             $('a').click(); out.dispatch = errors.splice(0); \
+             out.afterDispatch = [$('a').onclick, errors.splice(0)]; \
+             $('b').setAttribute('onclick', 'return 1'); out.replaced = [typeof $('b').onclick, errors.splice(0)]; \
+             $('c').dispatchEvent(new Event('focus')); out.otherType = errors.splice(0); \
+             $('i').click(); out.ancestor = errors.splice(0); \
+             $('i').click(); out.again = errors.splice(0); return out; })()",
+        ),
+        r#"{"dispatch":["SyntaxError"],"afterDispatch":[null,[]],"replaced":["function",[]],"otherType":[],"ancestor":["SyntaxError"],"again":[]}"#
     );
 }

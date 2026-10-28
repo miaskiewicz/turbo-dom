@@ -15,27 +15,7 @@ const CASES: &str = include_str!("fixtures/css-shorthand-cases.json");
 const CONTROL: &str = include_str!("fixtures/css_shorthand_chrome156.json");
 
 /// Scenarios whose Chrome result differs for a documented reason, by id.
-const KNOWN_GAPS: &[&str] = &[
-    // turbo-dom#117: math functions, hsl() hue, place-content / offset / columns /
-    // timeline-trigger spellings (the npm port shares them).
-    "margin|calc(1px + abs(1px))",
-    "margin|calc(min(1px) * min(2px))",
-    "margin|min(1px 2px)",
-    "margin|min(1px, calc(1px + 1em))",
-    "place-content|baseline center",
-    "offset|path('M 0 0') 10px 0",
-    "offset|path(M 0 0)",
-    "offset|path('M 0 0') 10px auto 0",
-    "background|hsl(1px 50% 50%)",
-    "background|hsl(10% 50% 50%)",
-    "transition|opacity cubic-bezier(calc(1px), 0, 1, 1)",
-    "transition|opacity cubic-bezier(min(0.5, 1), 0, 1, 1)",
-    "transition|opacity linear(calc(0), 1)",
-    "transition|opacity linear(0, 1 calc(50%))",
-    "cov-columns-wrap",
-    "cov-columns-nowrap",
-    "cov-trigger-ranges-mismatch",
-];
+const KNOWN_GAPS: &[&str] = &[];
 
 fn sha(text: &str) -> String {
     format!("{:x}", Sha256::digest(text.as_bytes()))

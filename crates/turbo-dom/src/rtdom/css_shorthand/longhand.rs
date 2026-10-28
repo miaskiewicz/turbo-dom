@@ -7,12 +7,12 @@ use super::components::{
     components, has_substitution, join, substitution_text, Comp, Kind, CSS_WIDE,
 };
 use super::grammar::{
-    alternates, area_string, bg_size, collapse4, color, commas, corner_shape, delay_v, easing,
-    font_family, gap_v, group_set, kw, line_style, line_width, margin_v, marker_v, outline_style,
-    overflow_v, overscroll_v, padding_v, path_text, position, radius, range_value, repeat_style,
-    rule_break_v, rule_inset_v, rule_visibility_v, scroll_margin_v, scroll_padding_v, single,
-    spacing_v, track_list, try_fallbacks, Ty, CAPS, EAST_ASIAN, FONT_SIZES, LIGATURES, NUMERIC,
-    STRETCHES,
+    alternates, area_row, areas_text, bg_size, collapse4, color, commas, corner_shape, delay_v,
+    easing, font_family, gap_v, group_set, kw, line_style, line_width, margin_v, marker_v,
+    outline_style, overflow_v, overscroll_v, padding_v, path_data_valid, path_text, position,
+    radius, range_value, repeat_style, rotate_part, rule_break_v, rule_inset_v, rule_visibility_v,
+    scroll_margin_v, scroll_padding_v, single, spacing_v, track_list, try_fallbacks, Ty, CAPS,
+    EAST_ASIAN, FONT_SIZES, LIGATURES, NUMERIC, STRETCHES,
 };
 
 /// A longhand value's spelling.
@@ -32,7 +32,7 @@ fn one_of(comps: &[Comp], ty: Ty) -> Option<String> {
     single(comps, ty)
 }
 /// A comma list of `item`s.
-fn listed(comps: &[Comp], item: fn(&[Comp]) -> Option<String>) -> Option<String> {
+fn listed(comps: &[Comp], item: impl Fn(&[Comp]) -> Option<String>) -> Option<String> {
     commas(comps)?
         .into_iter()
         .map(item)
@@ -287,22 +287,8 @@ fn text_decoration_line(comps: &[Comp]) -> Option<String> {
 fn grid_areas(comps: &[Comp]) -> Option<String> {
     match comps {
         [only] if only.is_ident(&["none"]) => Some("none".into()),
-        _ => comps
-            .iter()
-            .map(area_string)
-            .collect::<Option<Vec<_>>>()
-            .map(|areas| areas.join(" ")),
+        _ => areas_text(&comps.iter().map(area_row).collect::<Option<Vec<_>>>()?),
     }
-}
-/// `path()`'s string holds only path data characters.
-fn path_data_valid(text: &str) -> bool {
-    let (Some(start), Some(end)) = (text.find('"'), text.rfind('"')) else {
-        return false;
-    };
-    end > start
-        && text[start + 1..end]
-            .chars()
-            .all(|c| c.is_ascii_whitespace() || "MmLlHhVvCcSsQqTtAaZz0123456789.,+-eE".contains(c))
 }
 fn offset_path(comps: &[Comp]) -> Option<String> {
     single(comps, |c| {
@@ -400,8 +386,21 @@ fn animation_names(comps: &[Comp]) -> Option<String> {
         })
     })
 }
-/// `box-shadow`: each shadow as Chrome orders it (color, lengths, `inset`).
 fn box_shadow(comps: &[Comp]) -> Option<String> {
+    shadow(comps, true)
+}
+fn text_shadow(comps: &[Comp]) -> Option<String> {
+    shadow(comps, false)
+}
+fn offset_rotate(comps: &[Comp]) -> Option<String> {
+    match rotate_part(comps)? {
+        (used, text) if used == comps.len() => Some(text),
+        _ => None,
+    }
+}
+/// `box-shadow` / `text-shadow` (`r#box`: a spread length and `inset`): each shadow as Chrome
+/// orders it (color, lengths, `inset`).
+fn shadow(comps: &[Comp], r#box: bool) -> Option<String> {
     if let [only] = comps {
         if only.is_ident(&["none"]) {
             return Some("none".into());
@@ -414,12 +413,11 @@ fn box_shadow(comps: &[Comp]) -> Option<String> {
         for comp in item {
             // The blur radius (the third length) is not negative.
             let negative = matches!(comp.kind, Kind::Dimension { value, .. } if value < 0.0);
-            if comp.is_ident(&["inset"]) && !inset {
+            if r#box && comp.is_ident(&["inset"]) && !inset {
                 inset = true;
-            } else if let Some(value) = comp
-                .length(true)
-                .filter(|_| lengths.len() < 4 && !(lengths.len() == 2 && negative))
-            {
+            } else if let Some(value) = comp.length(true).filter(|_| {
+                lengths.len() < if r#box { 4 } else { 3 } && !(lengths.len() == 2 && negative)
+            }) {
                 lengths.push(value);
             } else {
                 shadow_color = Some(comp.color().filter(|_| shadow_color.is_none())?);
@@ -772,6 +770,8 @@ fn grammar_of(name: &str) -> Option<(Parse, bool)> {
         "display" => display,
         "animation-name" => animation_names,
         "box-shadow" => box_shadow,
+        "text-shadow" => text_shadow,
+        "offset-rotate" => offset_rotate,
         _ => return None,
     };
     // Image and easing lists and display have more forms than the grammar knows.

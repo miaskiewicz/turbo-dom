@@ -8,6 +8,10 @@ pub(super) struct State {
     policy: Option<v8::Weak<v8::Function>>,
     base: String,
     sources: HashMap<SourceKey, SourceValue>,
+    /// Compile errors of content-attribute handlers not yet read or dispatched to. Chrome
+    /// compiles lazily and reports the error then; the eager compile keeps it until that
+    /// point (turbo-dom#153).
+    errors: HashMap<SourceKey, v8::Global<v8::Value>>,
 }
 fn source(node: Handle, name: &str) -> Option<Vec<u16>> {
     with_tree(|tree| tree.get_attribute_utf16(node, name)).flatten()
@@ -35,6 +39,39 @@ fn prepare(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, _rv: v
     };
     let name = arg_str(scope, &args, 0);
     refresh(scope, node, &name);
+    report(scope, node, &name);
+}
+/// Report `node`'s pending compile error of handler `name` to the window, once.
+pub(super) fn report(scope: &mut v8::PinScope, node: Handle, name: &str) {
+    let error = DOM.with(|dom| {
+        dom.borrow_mut()
+            .as_mut()?
+            .event_handlers
+            .errors
+            .remove(&(node, name.to_owned()))
+    });
+    if let Some(error) = error {
+        let error = v8::Local::new(scope, error);
+        custom_elements::report_value(scope, error);
+    }
+}
+/// Dispatch reaches the `on<type>` handlers of `nodes`: report their pending errors.
+pub(super) fn report_dispatch(scope: &mut v8::PinScope, nodes: &[Handle], ty: &str) {
+    let name = format!("on{ty}");
+    let pending = DOM.with(|dom| {
+        dom.borrow().as_ref().is_some_and(|dom| {
+            nodes.iter().any(|node| {
+                dom.event_handlers
+                    .errors
+                    .contains_key(&(*node, name.clone()))
+            })
+        })
+    });
+    if pending {
+        for node in nodes {
+            report(scope, *node, &name);
+        }
+    }
 }
 pub(super) fn changed(scope: &mut v8::PinScope, node: Handle, name: &str) {
     if !name.starts_with("on") {
@@ -46,6 +83,14 @@ pub(super) fn changed(scope: &mut v8::PinScope, node: Handle, name: &str) {
             .unwrap()
             .event_handlers
             .sources
+            .remove(&(node, name.to_owned()));
+    });
+    DOM.with(|dom| {
+        dom.borrow_mut()
+            .as_mut()
+            .unwrap()
+            .event_handlers
+            .errors
             .remove(&(node, name.to_owned()));
     });
     refresh(scope, node, name);
@@ -162,7 +207,17 @@ pub(super) fn refresh(scope: &mut v8::PinScope, node: Handle, name: &str) {
             v8::script_compiler::CompileOptions::NoCompileOptions,
             v8::script_compiler::NoCacheReason::NoReason,
         );
-        if function.is_none() {
+        if function.is_none() && !scope.has_terminated() {
+            if let Some(error) = scope.exception() {
+                let error = v8::Global::new(scope, error);
+                DOM.with(|dom| {
+                    if let Some(dom) = dom.borrow_mut().as_mut() {
+                        dom.event_handlers
+                            .errors
+                            .insert((node, name.to_owned()), error);
+                    }
+                });
+            }
             scope.reset();
         }
         if let Some(function) = function {
@@ -197,6 +252,7 @@ pub(super) fn install(
             policy,
             base: base.to_owned(),
             sources: HashMap::new(),
+            errors: HashMap::new(),
         };
     });
     let attrs = with_tree(|tree| {
@@ -249,6 +305,7 @@ pub(super) fn restore_adopted_sources(sources: Vec<AdoptedSource>) {
 impl State {
     pub(super) fn sweep_storage(&mut self, tree: &Tree) {
         self.sources.retain(|(node, _), _| tree.is_live(*node));
+        self.errors.retain(|(node, _), _| tree.is_live(*node));
     }
 }
 

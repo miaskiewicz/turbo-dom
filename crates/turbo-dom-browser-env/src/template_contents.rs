@@ -463,6 +463,11 @@ pub(super) fn serialize_with<'s>(
         Node(v8::Local<'s, v8::Object>, bool),
         Close(Vec<u16>),
     }
+    // turbo-dom#151: the realm lookups below enter V8 and would consume a pending
+    // termination; serialize nothing and leave it pending.
+    if scope.is_execution_terminating() {
+        return Vec::new();
+    }
     let mut out = Vec::new();
     let mut pending = Vec::new();
     // noscript text is literal when scripting is enabled for the node.

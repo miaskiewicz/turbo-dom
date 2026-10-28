@@ -238,14 +238,7 @@ fn assert_matches_control(actual: &serde_json::Value, expected: &serde_json::Val
 #[test]
 fn activation_granted_gates_match_chrome156() {
     let expected = control(include_str!("activation_granted_chrome156.json"), PROBE);
-    assert_matches_control(
-        &run_probe(PROBE),
-        &expected,
-        &[
-            // miaskiewicz/turbo-dom#131: a parser-created `<details open>` fires no toggle.
-            r#"result.details.log = [["toggle","d","closed","open"],["toggle","d","open","closed"],["toggle","e","open","open"]]"#,
-        ],
-    );
+    assert_matches_control(&run_probe(PROBE), &expected, &[]);
 }
 
 #[test]
@@ -256,17 +249,9 @@ fn dialog_popover_edges_match_chrome156() {
         &run_probe(probe),
         &expected,
         &[
-            // miaskiewicz/turbo-dom#139: nested popover calls from beforetoggle, messages.
-            r#"result.nestedCalls.log[2][2] = "closed""#,
-            r#"result.nestedCalls.result[4][0][1] = "undefined""#,
-            r#"result.nestedCalls.result[4][0][2] = false"#,
-            r#"result.nestedCalls.result[4][1][2] = true"#,
-            r#"result.recheckRemoved.result[0][1] = "The popover is not connected to a document""#,
             // miaskiewicz/turbo-dom#148: `::slotted(div):open` is accepted.
             r#"result.selectors.result[18][1] = []"#,
             r#"result.selectors.result[18][2] = false"#,
-            // miaskiewicz/turbo-dom#131: a parser-created `<details open>` fires no toggle.
-            r#"result.selectors.log = [["beforetoggle","d","open"],["beforetoggle","p","open"],["toggle","p","open"]]"#,
         ],
     );
 }
@@ -407,13 +392,32 @@ fn selection_text_edges_match_chrome156() {
         &run_probe(probe),
         &expected,
         &[
-            // miaskiewicz/turbo-dom#144: the visible-text model's known differences.
+            // miaskiewicz/turbo-dom#144: caret moves into a table stop at its edge.
             r##"result.moves = "#text:ab:1 #text:ab:2 #text:ab:2 #text:ab:2 #text:ab:2 #text:ab:2 #text:ab:2 #text:ab:2 #text:ab:1 #text:ab:0 #text:ab:0 #text:ab:0 #text:ab:0 #text:ab:0 #text:ab:0 #text:ab:0""##,
-            r#"result.shadow[0] = "\"L2L3\\nE1\"""#,
-            r#"result.tables[1] = "\"x\\nh\\nt2\\n\"""#,
-            r#"result.tables[2] = "\"c1c2\\ny\"""#,
-            r#"result.transforms[1] = "\"AßB ŉ\"""#,
-            r#"result.transforms[2] = "\"ab cd\"""#,
         ],
     );
+}
+
+/// miaskiewicz/turbo-dom#131: a `<details>` whose open attribute the parser set (every
+/// fragment parser, template contents) or a clone copied queues a
+/// toggle task from "closed" to "open" (Chrome 156).
+#[test]
+fn parsed_details_toggle_matches_chrome156() {
+    let probe = include_str!("details_toggle_probe.js");
+    let expected = control(include_str!("details_toggle_chrome156.json"), probe);
+    assert_matches_control(
+        &run_probe(probe),
+        &expected,
+        // miaskiewicz/turbo-dom#171: an inert document's tasks never run.
+        &[r#"result.template = []"#],
+    );
+}
+
+/// miaskiewicz/turbo-dom#139: popover method exceptions (Chrome 156 messages) and nested
+/// show / hide / toggle calls from beforetoggle.
+#[test]
+fn popover_exceptions_match_chrome156() {
+    let probe = include_str!("popover_exceptions_probe.js");
+    let expected = control(include_str!("popover_exceptions_chrome156.json"), probe);
+    assert_matches_control(&run_probe(probe), &expected, &[]);
 }

@@ -412,15 +412,8 @@ pub(super) fn value(grammar: &str, texts: &[&str]) -> String {
                 .map(|value| if value == INITIAL { "" } else { value }),
         ),
         "columns" | "-webkit-columns" => {
-            let [width, count, height, wrap] = v.many([
-                "column-width",
-                "column-count",
-                "column-height",
-                "column-wrap",
-            ]);
-            if wrap != "auto" {
-                return String::new();
-            }
+            // Chrome 156 leaves `column-wrap` out of the spelling, whatever its value.
+            let [width, count, height] = v.many(["column-width", "column-count", "column-height"]);
             let main = match (width, count) {
                 ("auto", "auto") => "auto".to_string(),
                 ("auto", count) => count.to_string(),
@@ -713,11 +706,15 @@ pub(super) fn value(grammar: &str, texts: &[&str]) -> String {
                 "timeline-trigger-active-range-end",
             ]
             .map(|name| layers(v.get(name)));
-            let count = columns.iter().map(Vec::len).max().unwrap_or(0);
+            // Lists of different lengths have no shorthand spelling.
+            let count = columns[0].len();
+            if columns.iter().any(|column| column.len() != count) {
+                return String::new();
+            }
             (0..count)
                 .map(|index| {
-                    let [name, source, a_start, a_end, b_start, b_end] = [0, 1, 2, 3, 4, 5]
-                        .map(|column| columns[column].get(index).copied().unwrap_or(""));
+                    let [name, source, a_start, a_end, b_start, b_end] =
+                        [0, 1, 2, 3, 4, 5].map(|column| columns[column][index]);
                     trigger(name, source, [a_start, a_end], [b_start, b_end])
                 })
                 .collect::<Vec<_>>()
@@ -960,7 +957,7 @@ fn grid_template(rows: &str, columns: &str, areas: &str) -> String {
     }
 }
 
-/// The quoted rows of a `grid-template-areas` value as `grammar::area_string` spells them
+/// The quoted rows of a `grid-template-areas` value as `grammar::areas_text` spells them
 /// (`"cells" "cells"`, no escapes), quotes included.
 fn quoted_strings(text: &str) -> Vec<String> {
     text.split('"')
