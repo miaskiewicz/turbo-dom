@@ -65,13 +65,20 @@ fn slot_projection_and_slotchange_stop_while_terminating() {
         scope.perform_microtask_checkpoint();
         // The parsed child's assignment already fired one slotchange.
         assert_eq!(json(scope, "events"), "1");
+        eval(
+            scope,
+            "globalThis.seen = 0; s.addEventListener('ping', () => seen++)",
+        );
         terminate(scope);
         shadow_slots::refresh(scope);
         shadow_slots::fire(scope, slot);
         assert!(shadow_slots::composed_children(scope, host).is_none());
         assert!(shadow_slots::composed_parent(scope, child).is_none());
         resume(scope);
-        assert_eq!(json(scope, "events"), "1");
+        assert_eq!(json(scope, "[events, seen]"), "[1,0]");
+        let ping = object(scope, "new Event('ping', {bubbles: true})");
+        dispatch_host_event(scope, ping, child);
+        assert_eq!(json(scope, "seen"), "1");
         // Cancelled: the same calls project the slot and fire the event.
         let children = shadow_slots::composed_children(scope, host).unwrap();
         assert_eq!(children.len(), 1);

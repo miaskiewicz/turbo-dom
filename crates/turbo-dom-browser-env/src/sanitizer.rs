@@ -454,16 +454,10 @@ fn filter_attributes(
     }
 }
 
-fn throw_type_error(scope: &mut v8::PinScope, message: &str) {
-    if let Some(message) = v8::String::new(scope, message) {
-        let error = v8::Exception::type_error(scope, message);
-        scope.throw_exception(error);
-    }
-}
-fn record_key<'s>(scope: &mut v8::PinScope<'s, '_>) -> Option<v8::Local<'s, v8::Private>> {
+fn record_key<'s>(scope: &mut v8::PinScope<'s, '_>) -> v8::Local<'s, v8::Private> {
     // Isolate-wide private name: a Sanitizer from any realm brands in every realm.
-    let name = v8::String::new(scope, "turbo.sanitizer.configuration")?;
-    Some(v8::Private::for_api(scope, Some(name)))
+    let name = v8::String::new(scope, "turbo.sanitizer.configuration").unwrap();
+    v8::Private::for_api(scope, Some(name))
 }
 /// The current realm's document, for Trusted Types enforcement of static sinks.
 fn realm_document<'s>(scope: &mut v8::PinScope<'s, '_>) -> Option<v8::Local<'s, v8::Object>> {
@@ -501,19 +495,15 @@ fn native<'s>(
     args: v8::FunctionCallbackArguments<'s>,
     mut rv: v8::ReturnValue,
 ) {
-    if scope.is_execution_terminating() {
-        return;
-    }
+    // Only sanitizer.js calls this native (it deletes it from the global), and script cannot
+    // run while the isolate is terminating, so no termination check is needed here.
     let operation = args.get(0).to_rust_string_lossy(scope);
     match operation.as_str() {
-        // The private configuration record of a Sanitizer (brand + state).
+        // The private configuration record of a Sanitizer (brand + state). sanitizer.js
+        // passes only objects (`object(value)`), proxies included.
         "record" => {
-            let (Ok(object), Some(key)) = (
-                v8::Local::<v8::Object>::try_from(args.get(1)),
-                record_key(scope),
-            ) else {
-                return;
-            };
+            let object = v8::Local::<v8::Object>::try_from(args.get(1)).expect("an object");
+            let key = record_key(scope);
             if object.is_proxy() {
                 return;
             }
@@ -535,23 +525,13 @@ fn native<'s>(
         // Element/ShadowRoot setHTML: arguments are converted and the safe
         // configuration (remove-unsafe applied) is resolved by the caller.
         "setHTML" => {
-            let Ok(receiver) = v8::Local::<v8::Object>::try_from(args.get(1)) else {
-                throw_type_error(scope, "Illegal invocation");
-                return;
-            };
-            if !html_target(scope, receiver) {
-                throw_type_error(scope, "Illegal invocation");
-                return;
-            }
-            let (Some(html), Ok(record)) = (
-                units(scope, args.get(2)),
-                v8::Local::<v8::Object>::try_from(args.get(3)),
-            ) else {
-                return;
-            };
-            let Some(config) = Config::read(scope, record) else {
-                return;
-            };
+            // sanitizer.js brand-checks the receiver (Element or ShadowRoot), converts the
+            // markup to a DOMString and resolves a canonical configuration record.
+            let receiver = v8::Local::<v8::Object>::try_from(args.get(1)).expect("receiver");
+            debug_assert!(html_target(scope, receiver));
+            let html = units(scope, args.get(2)).expect("converted markup");
+            let record = v8::Local::<v8::Object>::try_from(args.get(3)).expect("record");
+            let config = Config::read(scope, record).expect("canonical configuration");
             shadow_html::set_html_unsafe(scope, receiver, &html, Some((&config, true)));
         }
         // (TrustedHTML or DOMString) through the Trusted Types check of `sink`,
@@ -560,12 +540,8 @@ fn native<'s>(
         "trustedHTML.convert" => {
             let node = match v8::Local::<v8::Object>::try_from(args.get(1)) {
                 Ok(node) => node,
-                Err(_) => {
-                    let Some(document) = realm_document(scope) else {
-                        return;
-                    };
-                    document
-                }
+                // A static sink (parseHTMLUnsafe): the calling realm always has a document.
+                Err(_) => realm_document(scope).expect("realm document"),
             };
             let sink = args.get(3).to_rust_string_lossy(scope);
             let prefix = args.get(4).to_rust_string_lossy(scope);
@@ -584,11 +560,10 @@ fn native<'s>(
         }
         // Both markups arrive converted (parseHTMLUnsafe's already passed its
         // Trusted Types check).
-        "parse" => {
+        // "parse", the last operation sanitizer.js names; the markup arrives converted.
+        _ => {
             let safe = args.get(1).is_true();
-            let Some(html) = units(scope, args.get(2)) else {
-                return;
-            };
+            let html = units(scope, args.get(2)).expect("converted markup");
             let config = v8::Local::<v8::Object>::try_from(args.get(3))
                 .ok()
                 .and_then(|record| Config::read(scope, record));
@@ -603,7 +578,6 @@ fn native<'s>(
                 rv.set(document.into());
             }
         }
-        _ => throw_type_error(scope, "Illegal invocation"),
     }
 }
 
@@ -614,9 +588,7 @@ pub(super) fn install(scope: &mut v8::PinScope) {
         ("__sanitizerDefault", DEFAULT_JSON),
         ("__sanitizerBaseline", BASELINE_JSON),
     ] {
-        let Some(value) = v8::String::new(scope, json) else {
-            return;
-        };
+        let value = v8::String::new(scope, json).unwrap();
         set_prop(scope, global, name, value.into());
     }
     run_js(scope, include_str!("sanitizer.js"));
