@@ -10,7 +10,9 @@
   const media = g.HTMLMediaElement;
   if (media) {
     const constants = [['NETWORK_EMPTY', 0], ['NETWORK_IDLE', 1], ['NETWORK_LOADING', 2], ['NETWORK_NO_SOURCE', 3], ['HAVE_NOTHING', 0], ['HAVE_METADATA', 1], ['HAVE_CURRENT_DATA', 2], ['HAVE_FUTURE_DATA', 3], ['HAVE_ENOUGH_DATA', 4]];
-    for (const [name, value] of constants) for (const object of [media, media.prototype]) define(object, name, { value, writable: false, enumerable: true, configurable: false });
+    // Created configurable so key_order.js can place the reflected attributes before them; it
+    // re-adds them frozen (turbo-dom#165).
+    for (const [name, value] of constants) for (const object of [media, media.prototype]) define(object, name, { value, writable: false, enumerable: true, configurable: true });
     // loading: an enumerated attribute limited to lazy/eager, missing and invalid default eager.
     const brand = ns.domAccessor('nodeType', false, 'HTML:audio|video');
     define(media.prototype, 'loading', {

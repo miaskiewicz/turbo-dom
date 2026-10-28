@@ -3014,6 +3014,8 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     var reflectedContent=[];
     // turbo-dom#118: HTMLBaseElement.target.
     reflectedContent.push(['HTMLBaseElement','target',false,'target']);
+    // turbo-dom#165: HTMLMediaElement's boolean attributes (muted through defaultMuted).
+    reflectedContent.push(['HTMLMediaElement','controls',true,'controls'],['HTMLMediaElement','autoplay',true,'autoplay'],['HTMLMediaElement','loop',true,'loop'],['HTMLMediaElement','defaultMuted',true,'muted'],['HTMLMediaElement','disableRemotePlayback',true,'disableremoteplayback'],['HTMLVideoElement','playsInline',true,'playsinline']);
     reflectedContent.forEach(function(entry){
       var owner=entry[0],name=entry[1],flag=entry[2],attribute=entry[3],proto=prototypes[owner];if(!proto||Object.hasOwn(proto,name))return;
       var check=__ns.domAccessor('nodeType',false,'HTMLElement'),locals=new Set(reflectedTags[owner]);
@@ -3022,6 +3024,14 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
         get:__ns.makeNativeFunction(function(){brand(this);if(flag)return reflectedApply(reflectedHasAttribute,this,[attribute]);var value=reflectedApply(reflectedGetAttribute,this,[attribute]);return value===null?'':value;},'get '+name,0),
         set:__ns.makeNativeFunction(function(value){brand(this);if(arguments.length<1)throw new TypeError("Failed to set the '"+name+"' property on '"+owner+"': 1 argument required, but only 0 present.");if(!flag){reflectedApply(reflectedSetAttribute,this,[attribute,attributeString(value)]);return;}if(value)reflectedApply(reflectedSetAttribute,this,[attribute,'']);else reflectedApply(reflectedRemoveAttribute,this,[attribute]);},'set '+name,1)});
     });
+    // The muted IDL attribute is media state, not a reflection: it starts false.
+    if(prototypes.HTMLMediaElement&&!Object.hasOwn(prototypes.HTMLMediaElement,'muted')){
+      var mediaMuted=new WeakMap(),mutedGet=WeakMap.prototype.get,mutedSet=WeakMap.prototype.set,mediaLocals=new Set(['audio','video']),mediaCheck=__ns.domAccessor('nodeType',false,'HTMLElement');
+      var mediaBrand=function(receiver){reflectedApply(mediaCheck,receiver,[]);if(!reflectedApply(reflectedSetHas,mediaLocals,[reflectedApply(getLocalTag,receiver,[])]))throw new TypeError('Illegal invocation');};
+      Object.defineProperty(prototypes.HTMLMediaElement,'muted',{configurable:true,enumerable:true,
+        get:__ns.makeNativeFunction(function(){mediaBrand(this);return reflectedApply(mutedGet,mediaMuted,[this])===true;},'get muted',0),
+        set:__ns.makeNativeFunction(function(value){mediaBrand(this);reflectedApply(mutedSet,mediaMuted,[this,!!value]);},'set muted',1)});
+    }
     // Text.wholeText (turbo-dom#143): the data of the contiguous Text siblings, in tree order.
     if(g.Text&&!Object.hasOwn(g.Text.prototype,'wholeText')){
       var wholeCheck=__ns.domAccessor('nodeType',false,'Text'),wholeType=Object.getOwnPropertyDescriptor(nodeProto,'nodeType').get,wholePrevious=Object.getOwnPropertyDescriptor(nodeProto,'previousSibling').get,wholeNext=Object.getOwnPropertyDescriptor(nodeProto,'nextSibling').get,wholeData=Object.getOwnPropertyDescriptor(g.CharacterData.prototype,'data').get;
