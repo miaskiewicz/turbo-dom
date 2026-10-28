@@ -344,9 +344,9 @@ pub fn dispatch<'s>(
     args: v8::FunctionCallbackArguments<'s>,
     mut rv: v8::ReturnValue,
 ) {
-    let Ok(object) = v8::Local::<v8::Object>::try_from(args.get(1)) else {
-        return type_error(scope);
-    };
+    // html_text.js passes the receiver of its makeNativeFunction accessors, an object
+    // (an API function boxes a primitive receiver).
+    let object = v8::Local::<v8::Object>::try_from(args.get(1)).expect("boxed receiver");
     let _dom = DomScope::for_object(scope, object);
     let Some(node) = handle_of(scope, object) else {
         return type_error(scope);
@@ -368,11 +368,8 @@ pub fn dispatch<'s>(
             rv.set(unit_string(scope, &value).into());
         }
         "inner" => {
-            let Some(value) =
-                trusted_types::script_units(scope, object, args.get(2), "innerText", false)
-            else {
-                return;
-            };
+            let value = trusted_types::script_units(scope, object, args.get(2), "innerText", false);
+            let Some(value) = value else { return };
             html_popover::disconnect(scope, node, false);
             range_live::replacing_children(scope, node);
             with_tree_mut(|tree| set_inner(tree, node, &value));

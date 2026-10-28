@@ -134,21 +134,12 @@ fn native<'s>(
         return;
     }
     let operation = args.get(0).to_rust_string_lossy(scope);
-    let Ok(object) = v8::Local::<v8::Object>::try_from(args.get(1)) else {
-        if operation == "resolve" {
-            rv.set_null();
-        } else {
-            illegal(scope);
-        }
-        return;
-    };
+    // The accessors run inside makeNativeFunction wrappers, whose API-function receiver is
+    // always an object (primitives arrive boxed); resolve is called with elements only.
+    let object = v8::Local::<v8::Object>::try_from(args.get(1)).expect("boxed receiver");
     let _owner = DomScope::for_object(scope, object);
     let Some(node) = handle_of(scope, object) else {
-        if operation == "resolve" {
-            rv.set_null();
-        } else {
-            illegal(scope);
-        }
+        illegal(scope);
         return;
     };
     match operation.as_str() {

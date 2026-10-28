@@ -218,6 +218,15 @@ fn script_text_sinks_require_trusted_scripts() {
             ),
             r#"["TypeError: Failed to set the 'innerText' property on 'HTMLScriptElement': This document requires 'TrustedScript' assignment.","TypeError: Failed to set the 'text' property on 'HTMLScriptElement': This document requires 'TrustedScript' assignment.","void 0","ok"]"#
         );
+        // An SVG <script>'s href (plain or xlink) is a TrustedScriptURL sink; other SVG
+        // attributes are not.
+        assert_eq!(
+            json(
+                scope,
+                "(() => { const script = document.createElementNS('http://www.w3.org/2000/svg', 'script'); const run = assign => { try { assign(); return 'ok'; } catch (error) { return error.name + ': ' + error.message; } }; return [run(() => script.setAttribute('href', 'a.js')), run(() => script.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', 'b.js')), run(() => script.setAttribute('type', 'text/x')), script.getAttributeNames()]; })()"
+            ),
+            r#"["TypeError: Failed to execute 'setAttribute' on 'Element': This document requires 'TrustedScriptURL' assignment.","TypeError: Failed to execute 'setAttributeNS' on 'Element': This document requires 'TrustedScriptURL' assignment.","ok",["type"]]"#
+        );
     });
 }
 

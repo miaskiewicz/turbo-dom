@@ -149,6 +149,7 @@
     r.lookalike = caught(() => [...box.querySelectorAll('.interest-source, [interestfor]')].map(e => e.id));
     r.comment = caught(() => [...box.querySelectorAll('button:not(:interest-source/* c */)')].map(e => e.id));
     r.matches = caught(() => box.firstChild.matches(':interest-source'));
+    r.topComment = caught(() => [...box.querySelectorAll('/*a*/button/*b*/:not(:interest-source),:interest-target')].map(e => e.id));
     out.interest = r;
   }
 
@@ -177,6 +178,13 @@
     style.cssText = 'margin: 1px 2px; font: 12px serif';
     r.shorthand = [style.margin, style.getPropertyValue('margin-top'), style.font, style.cssText];
     style.setProperty('inset', '1px'); r.inset = [style.inset, style.top];
+    // Indexed definitions on a non-select element and on the select prototype pass through.
+    r.defineDiv = caught(() => { const div = document.createElement('div'); Object.defineProperty(div, 0, { value: 'v', configurable: true }); return [div[0], div.hasOwnProperty(0)]; });
+    r.defineProto = caught(() => { const done = Reflect.defineProperty(HTMLSelectElement.prototype, 0, { value: 'p', configurable: true }); const own = HTMLSelectElement.prototype.hasOwnProperty(0); delete HTMLSelectElement.prototype[0]; return [done, own]; });
+    const cleared = document.createElement('div'); cleared.textContent = 'x'; cleared.textContent = null;
+    r.textNull = [cleared.textContent, cleared.childNodes.length];
+    r.states = [caught(() => CustomStateSet.prototype.add.call(1, 'x')), caught(() => CustomStateSet.prototype.has.call({}, 'x')), caught(() => CustomStateSet.prototype.delete.call('s', 'x'))];
+    r.capture = [caught(() => Element.prototype.setPointerCapture.call(1, 1)), caught(() => Element.prototype.hasPointerCapture.call({}, 1))];
     out.members = r;
   }
 

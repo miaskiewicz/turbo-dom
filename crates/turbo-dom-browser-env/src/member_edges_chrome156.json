@@ -2,7 +2,7 @@
   "browser": "Chrome/156.0.8078.47",
   "v8": "15.6.75.19",
   "probe": "member_edges_probe.js",
-  "probeSha256": "6e693e4adcc8258129dd9076b4df67bdeadf01a513bdfcf3eddaed9047150480",
+  "probeSha256": "cda376ce343237f04988d9d185b0f6f62948e1d9ec5b366274e5570c65c44406",
   "collectorSha256": "3f964d2cdf0ec8101870a776aaffc3b7dc4522306959c4a40761057beb255eb8",
   "flags": [
     "--headless=new",
@@ -219,7 +219,10 @@
       "comment": [
         "i"
       ],
-      "matches": false
+      "matches": false,
+      "topComment": [
+        "i"
+      ]
     },
     "members": {
       "link": [
@@ -281,6 +284,27 @@
       "inset": [
         "1px",
         "1px"
+      ],
+      "defineDiv": [
+        "v",
+        true
+      ],
+      "defineProto": [
+        true,
+        true
+      ],
+      "textNull": [
+        "",
+        0
+      ],
+      "states": [
+        "E:TypeError",
+        "E:TypeError",
+        "E:TypeError"
+      ],
+      "capture": [
+        "E:TypeError",
+        "E:TypeError"
       ]
     },
     "focusgroup": {

@@ -867,11 +867,8 @@ fn text<'s>(
         return text_type_error(scope);
     }
     if args.length() > 0 {
-        let Some(units) =
-            trusted_types::script_units(scope, args.this(), args.get(0), "text", false)
-        else {
-            return;
-        };
+        let units = trusted_types::script_units(scope, args.this(), args.get(0), "text", false);
+        let Some(units) = units else { return };
         html_popover::disconnect(scope, node, false);
         range_live::replacing_children(scope, node);
         with_tree_mut(|tree| tree.set_text_content_utf16(node, &units));
