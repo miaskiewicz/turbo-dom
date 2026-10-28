@@ -7,6 +7,23 @@ at the time); this file reconstructs them from history.
 
 ## [Unreleased]
 
+### Fixed — layout white-space preserves spaces and newlines like Chrome 156 (miaskiewicz/turbo-dom#120, #121, #122, #166)
+- A preserved newline (`pre` / `pre-wrap` / `break-spaces` / `pre-line`) is a forced line
+  break; `pre-wrap` / `break-spaces` spaces no longer collapse (a space-only line is a line
+  box); a `pre-line` newline between blocks is a line; a white-space-only `nowrap` run
+  renders nothing. `InlineRun` gains `preserve_spaces` / `forced_newlines`, and the UA
+  sheet gives `pre, listing, xmp, plaintext` `white-space: pre`. Control:
+  `scripts/html-document-chrome-control.mjs` cases `ws-*`.
+
+### Fixed — layout cssom_view caret and viewport extents follow Chrome 156 (miaskiewicz/turbo-dom#127, #147)
+- `caret` descends from the hit element with untransformed positions, a point in the gap
+  below a block lands on the next block's first line, and an element without text takes
+  the caret itself (offset 0, empty rect).
+- `viewport_metrics` ignores a block's (or float's) inline-end margin and a transformed
+  box's untransformed rect; `scroll_metrics` ignores an absolute box's untransformed rect.
+
+### Fixed — layout table rows carry `break-inside: avoid` in their break hints (miaskiewicz/turbo-dom#158)
+
 ### Fixed — layout cascade: `@supports` <general-enclosed> is false (miaskiewicz/turbo-dom#123, Chrome 156 control)
 - A parenthesised `@supports` condition that is neither a `property: value` declaration nor a
   nested condition (`(not foo)`, `((not foo))`, `(not)`, `(foo)`, `(not foo: bar)`) is

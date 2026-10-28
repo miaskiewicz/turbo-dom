@@ -628,7 +628,10 @@ fn preserved_newlines_break_lines_like_chrome_156() {
         "a",
     );
     for cid in ["s", "t"] {
-        assert!((chrome(cid) - chrome("n") - 12.0).abs() < 0.01, "Chrome: 3 spaces of 4px");
+        assert!(
+            (chrome(cid) - chrome("n") - 12.0).abs() < 0.01,
+            "Chrome: 3 spaces of 4px"
+        );
         assert_eq!(width(html, cid), pre, "{cid}");
         assert!(width(html, cid) > width(html, "n") + 6.0, "{cid}");
     }

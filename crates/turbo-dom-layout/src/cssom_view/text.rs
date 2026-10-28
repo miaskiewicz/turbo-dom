@@ -98,21 +98,27 @@ pub fn caret(
         // A line wholly above the point ranks after every line at or below it: Chrome
         // takes the first block whose end is past the point (a point in the gap below
         // a block lands on the next block's first line, miaskiewicz/turbo-dom#127).
-        let gap = distance(point, rect);
-        let above = f64::from(rect.y + rect.height) < point[1];
-        let key = (above, gap);
-        if best.as_ref().is_none_or(
-            |(_, previous, _, _, _): &(SourceId, (bool, [f64; 2]), usize, [f32; 2], [f64; 6])| {
-                key.0 < previous.0
-                    || key.0 == previous.0
-                        && (gap[0] < previous.1[0]
-                            || (gap[0] == previous.1[0] && gap[1] < previous.1[1]))
-            },
-        ) {
-            best = Some((source, key, run.fragment_index, translation, run_matrix));
+        let candidate = Candidate {
+            source,
+            above: f64::from(rect.y + rect.height) < point[1],
+            gap: distance(point, rect),
+            translation,
+            matrix: run_matrix,
+        };
+        if best
+            .as_ref()
+            .is_none_or(|previous| candidate.before(previous))
+        {
+            best = Some(candidate);
         }
     }
-    let Some((source, _, _, translation, run_matrix)) = best else {
+    let Some(Candidate {
+        source,
+        translation,
+        matrix: run_matrix,
+        ..
+    }) = best
+    else {
         // An element without text takes the caret itself, at offset 0 with an empty
         // rect, like Chrome 156 (miaskiewicz/turbo-dom#127).
         return Ok(Some((
@@ -162,6 +168,32 @@ pub fn caret(
             ..rect
         },
     )))
+}
+
+/// A text run the caret may land in, ranked by [`Candidate::before`].
+struct Candidate {
+    source: SourceId,
+    /// The run's line lies wholly above the point.
+    above: bool,
+    /// Vertical, then horizontal distance from the point.
+    gap: [f64; 2],
+    translation: [f32; 2],
+    matrix: [f64; 6],
+}
+
+impl Candidate {
+    /// A line at or below the point before one above it, then the nearer line (by
+    /// vertical, then horizontal distance); the first of equals wins.
+    fn before(&self, other: &Self) -> bool {
+        match (self.above, other.above) {
+            (false, true) => true,
+            (true, false) => false,
+            _ => {
+                self.gap[0] < other.gap[0]
+                    || self.gap[0] == other.gap[0] && self.gap[1] < other.gap[1]
+            }
+        }
+    }
 }
 
 /// The world point a run's transform maps from the point the hit element's
@@ -363,5 +395,22 @@ mod tests {
     fn carets_beside_transformed_lines_and_in_empty_elements_match_chrome_156() {
         let failures = caret_failures("caret-from-point", |point| GAPS.contains(&point));
         assert!(failures.is_empty(), "{}", failures.join("\n"));
+    }
+
+    #[test]
+    fn caret_candidates_rank_lines_below_the_point_first() {
+        let line = |above: bool, gap: [f64; 2]| Candidate {
+            source: SourceId(1),
+            above,
+            gap,
+            translation: [0.0; 2],
+            matrix: [1.0, 0.0, 0.0, 1.0, 0.0, 0.0],
+        };
+        assert!(line(false, [9.0, 9.0]).before(&line(true, [1.0, 1.0])));
+        assert!(!line(true, [1.0, 1.0]).before(&line(false, [9.0, 9.0])));
+        assert!(line(true, [1.0, 9.0]).before(&line(true, [2.0, 0.0])));
+        assert!(line(false, [1.0, 1.0]).before(&line(false, [1.0, 2.0])));
+        assert!(!line(false, [1.0, 2.0]).before(&line(false, [1.0, 2.0])));
+        assert!(!line(false, [2.0, 0.0]).before(&line(false, [1.0, 9.0])));
     }
 }

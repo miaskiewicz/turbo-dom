@@ -311,12 +311,22 @@ fn whitespace_only_inline_runs_collapse_unless_white_space_preserves_them() {
     assert_eq!(normal["d"].3, 0.0, "a whitespace-only block is empty");
     for ws in ["pre", "pre-wrap", "break-spaces"] {
         let kept = doc(ws);
-        assert_eq!(kept["b"].1, 2.0 * line, "{ws}: the preserved space takes a line");
+        assert_eq!(
+            kept["b"].1,
+            2.0 * line,
+            "{ws}: the preserved space takes a line"
+        );
         assert_eq!(kept["d"].3, line, "{ws}");
     }
     let nowrap = doc("nowrap");
-    assert_eq!(nowrap["b"].1, line, "nowrap: the collapsed span takes no height");
-    assert_eq!(nowrap["d"].3, 0.0, "nowrap: a whitespace-only block is empty");
+    assert_eq!(
+        nowrap["b"].1, line,
+        "nowrap: the collapsed span takes no height"
+    );
+    assert_eq!(
+        nowrap["d"].3, 0.0,
+        "nowrap: a whitespace-only block is empty"
+    );
     let other = cid_boxes(
         "<body style='margin:0'><div data-cid=f style='display:flex;white-space:pre'> </div>\
          <div data-cid=h style='white-space:pre-line'><p style='margin:0'>a</p>  <p style='margin:0'>b</p></div>\
@@ -327,7 +337,11 @@ fn whitespace_only_inline_runs_collapse_unless_white_space_preserves_them() {
         "flex: white-space-only text is not rendered"
     );
     assert_eq!(other["h"].3, 2.0 * line, "pre-line collapses spaces");
-    assert_eq!(other["n"].3, 3.0 * line, "a pre-line newline between blocks is a line");
+    assert_eq!(
+        other["n"].3,
+        3.0 * line,
+        "a pre-line newline between blocks is a line"
+    );
 }
 
 #[cfg(feature = "bundled-fonts")]

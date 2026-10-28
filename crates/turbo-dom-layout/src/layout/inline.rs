@@ -1006,7 +1006,8 @@ fn hand_off_leading_space(
     let (Some(first), Some(last)) = (chars.first(), out.last_mut()) else {
         return;
     };
-    let breakable = separating_space(first, group, capture_sources) && !forced_newline(first, group);
+    let breakable =
+        separating_space(first, group, capture_sources) && !forced_newline(first, group);
     if breakable && last.space_after == 0.0 {
         last.space_after = space_width(first, group);
         if native_advances {
