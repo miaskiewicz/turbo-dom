@@ -11,8 +11,7 @@ const PROBE: &str = include_str!("member_edges_probe.js");
 
 /// KNOWN_GAP rows `(path, binding value)`: leaves where the binding still differs from
 /// Chrome 156. Each must still differ exactly so; a fix removes its row.
-const KNOWN_GAPS: &[(&str, &str)] = &[
-];
+const KNOWN_GAPS: &[(&str, &str)] = &[];
 
 /// The differing leaves of `actual` that are not a listed gap, then the listed gaps that no
 /// longer differ exactly so.
