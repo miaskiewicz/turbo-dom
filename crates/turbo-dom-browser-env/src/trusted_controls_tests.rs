@@ -205,47 +205,24 @@ fn run_probe(probe: &str) -> serde_json::Value {
     serde_json::from_str(&value).unwrap()
 }
 
-/// Compare a probe result with its control: every difference must be a listed gap
-/// (`path = binding value`) and every listed gap must still differ.
-fn assert_matches_control(actual: &serde_json::Value, expected: &serde_json::Value, gaps: &[&str]) {
+/// Compare a probe result with its control: no differences (every known gap is fixed).
+fn assert_matches_control(actual: &serde_json::Value, expected: &serde_json::Value) {
     let mut out = Vec::new();
     differences("result", actual, expected, &mut out);
-    let found = out
-        .iter()
-        .map(|line| {
-            let (path, rest) = line.split_once("\n  binding: ").unwrap_or((line, ""));
-            let binding = rest.split_once('\n').map_or(rest, |(binding, _)| binding);
-            format!("{path} = {binding}")
-        })
-        .collect::<Vec<_>>();
-    let unexpected = found
-        .iter()
-        .zip(&out)
-        .filter(|(line, _)| !gaps.contains(&line.as_str()))
-        .map(|(_, full)| full.clone())
-        .collect::<Vec<_>>();
-    let resolved = gaps
-        .iter()
-        .filter(|gap| !found.iter().any(|line| line == *gap))
-        .collect::<Vec<_>>();
-    assert_eq!(
-        (unexpected, resolved),
-        (Vec::<String>::new(), Vec::<&&str>::new()),
-        "(differences, resolved gaps)"
-    );
+    assert_eq!(out, Vec::<String>::new(), "differences from the control");
 }
 
 #[test]
 fn activation_granted_gates_match_chrome156() {
     let expected = control(include_str!("activation_granted_chrome156.json"), PROBE);
-    assert_matches_control(&run_probe(PROBE), &expected, &[]);
+    assert_matches_control(&run_probe(PROBE), &expected);
 }
 
 #[test]
 fn dialog_popover_edges_match_chrome156() {
     let probe = include_str!("dialog_popover_edges_probe.js");
     let expected = control(include_str!("dialog_popover_edges_chrome156.json"), probe);
-    assert_matches_control(&run_probe(probe), &expected, &[]);
+    assert_matches_control(&run_probe(probe), &expected);
 }
 
 /// Run `source` (an async function body's value) with the host entry points exposed as
@@ -373,7 +350,7 @@ fn reentrant_close_request_during_cancel_is_absorbed() {
 fn custom_elements_edges_match_chrome156() {
     let probe = include_str!("custom_elements_edges_probe.js");
     let expected = control(include_str!("custom_elements_edges_chrome156.json"), probe);
-    assert_matches_control(&run_probe(probe), &expected, &[]);
+    assert_matches_control(&run_probe(probe), &expected);
 }
 
 #[test]
@@ -381,7 +358,7 @@ fn selection_text_edges_match_chrome156() {
     let probe = include_str!("selection_text_edges_probe.js");
     let expected = control(include_str!("selection_text_edges_chrome156.json"), probe);
     // miaskiewicz/turbo-dom#144: caret moves step through a table's edges and cells.
-    assert_matches_control(&run_probe(probe), &expected, &[]);
+    assert_matches_control(&run_probe(probe), &expected);
 }
 
 /// miaskiewicz/turbo-dom#131: a `<details>` whose open attribute the parser set (every
@@ -391,7 +368,7 @@ fn selection_text_edges_match_chrome156() {
 fn parsed_details_toggle_matches_chrome156() {
     let probe = include_str!("details_toggle_probe.js");
     let expected = control(include_str!("details_toggle_chrome156.json"), probe);
-    assert_matches_control(&run_probe(probe), &expected, &[]);
+    assert_matches_control(&run_probe(probe), &expected);
 }
 
 /// miaskiewicz/turbo-dom#139: popover method exceptions (Chrome 156 messages) and nested
@@ -400,7 +377,7 @@ fn parsed_details_toggle_matches_chrome156() {
 fn popover_exceptions_match_chrome156() {
     let probe = include_str!("popover_exceptions_probe.js");
     let expected = control(include_str!("popover_exceptions_chrome156.json"), probe);
-    assert_matches_control(&run_probe(probe), &expected, &[]);
+    assert_matches_control(&run_probe(probe), &expected);
 }
 
 /// turbo-dom#171: a task queued for a node of an inert document (template contents) runs
