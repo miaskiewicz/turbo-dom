@@ -318,6 +318,9 @@ pub(super) fn refresh(scope: &mut v8::PinScope) {
             .expect("wrappers have a creation context");
         let scope = &mut v8::ContextScope::new(scope, context);
         let old = previous(scope, object);
+        // Chrome 156 signals nothing when a slot enters a manual-assignment root, even with
+        // nodes already assigned to it (turbo-dom#133); a named root signals the new slot.
+        let manual_root = manual(scope, root);
         let handles = with_tree(|tree| slots(tree, root)).unwrap_or_default();
         let mut rows = Vec::new();
         let mut current = Vec::new();
@@ -336,7 +339,10 @@ pub(super) fn refresh(scope: &mut v8::PinScope) {
                             .is_some_and(|old| old.strict_equals((*node).into()))
                     })
             });
-            if !equal && (!nodes.is_empty() || before.is_some_and(|nodes| nodes.length() != 0)) {
+            if !equal
+                && !(manual_root && before.is_none())
+                && (!nodes.is_empty() || before.is_some_and(|nodes| nodes.length() != 0))
+            {
                 mutation_observers::signal_slot(scope, object);
             }
             let nodes = array(scope, &nodes);
@@ -345,7 +351,15 @@ pub(super) fn refresh(scope: &mut v8::PinScope) {
             current.push(object);
         }
         for (slot, nodes) in old {
-            if nodes.length() != 0
+            // A slot leaving a manual root signals when assign() recorded nodes for it, even
+            // ones this root never slotted (Chrome 156, turbo-dom#133).
+            let recorded = manual_root && {
+                let private = key(scope, "assigned");
+                slot.get_private(scope, private)
+                    .and_then(|value| v8::Local::<v8::Array>::try_from(value).ok())
+                    .is_some_and(|records| records.length() != 0)
+            };
+            if (nodes.length() != 0 || recorded)
                 && !current
                     .iter()
                     .any(|current| current.strict_equals(slot.into()))

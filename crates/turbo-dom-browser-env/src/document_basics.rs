@@ -494,9 +494,9 @@ fn move_node(
             let children = tree.children(parent);
             let reference =
                 child.and_then(|child| children.iter().position(|value| *value == child));
-            if children
-                .iter()
-                .any(|child| *child != node && tree.node_type_id(*child) == 1)
+            // Pre-move validity counts the current children, the moved element included
+            // (Chrome 156: moving the document element within its document throws).
+            if children.iter().any(|child| tree.node_type_id(*child) == 1)
                 || reference.is_some_and(|reference| {
                     children[reference..]
                         .iter()

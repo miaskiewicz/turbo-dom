@@ -7,6 +7,29 @@ at the time); this file reconstructs them from history.
 
 ## [Unreleased]
 
+### Fixed — browser-env manual slots re-entering a shadow root signal like Chrome 156 (miaskiewicz/turbo-dom#133)
+- A slot inserted into a manual-assignment root no longer fires slotchange (Chrome signals only
+  the removal, and named roots still signal an inserted slot); a slot leaving a manual root
+  signals whenever assign() recorded nodes for it. Chrome's stale `assignedSlot` of a removed
+  manual slot (Blink lazy recalc, order-dependent) stays a documented KNOWN_GAP.
+
+### Fixed — browser-env Document pre-insert validity counts the current children (miaskiewicz/turbo-dom#132, Chrome 156 control)
+- `dom_mutations` validated a Document parent against the simulated final child list, so
+  `d.append(d.documentElement)`, `d.replaceChildren(d.doctype)` or `d.replaceChildren(element)`
+  succeeded. As in Chrome 156 (Blink `Document::CanAcceptChild`), the current children count: a
+  single node that is already a child counts twice, replaceChildren keeps the children it will
+  remove, and only the replaced child is left out (replaceWith / replaceChild). `moveBefore`'s
+  pre-move check counts the moved element too.
+
+### Fixed — browser-env CSSOM at-rule cssText follows Chrome 156 (miaskiewicz/turbo-dom#134)
+- `@keyframes` (also `@-webkit-keyframes`, now type 7): one keyframe per line, normalized keys
+  (`from` → `0%`, `50.0%` → `50%`), a string name serialized as an identifier; keyframe blocks
+  drop `!important` and the `animation-*` declarations Blink ignores there.
+- Grouping rules (`@media`, `@supports`, `@container`, `@scope`, `@starting-style`, `@layer`
+  blocks) serialize one child rule per line (`{\n}` when empty); empty descriptor blocks are `{ }`.
+- `@font-face` `font-feature-settings` / `font-variation-settings` validate and serialize like
+  Chrome; `@counter-style` rejects reserved names; `@layer a, b;` statements are rules.
+
 ### Fixed — turbo-dom-layout CSSOM-View scroll/caret reads follow Chrome 156 (miaskiewicz/turbo-dom#124, #125, #126)
 - `cssom_view::scroll::overflow` keeps `clip` beside a scrollable axis (`overflow:auto;
   overflow-y:clip` computes auto/clip and the clip axis does not scroll; it was `hidden`).
