@@ -231,7 +231,7 @@ browser_env.rs: P5-cov-browser-env (D2) turbo-dom#119 the event record keeps the
 user_activation_gates.rs: P5-cov-browser-env (D2) turbo-dom#119 light dismiss reads the record's hitTarget
 selection.rs: P5-cov-browser-env (D2) turbo-dom#144 text model: default-slot text children, tabs before any rendered table cell, a row / table end's newline only before more content, length-changing and capitalize text-transform in toString
 html_invokers.js: D5 turbo-dom#172 activation helpers call captured accessors through a captured Reflect.apply
-browser_env.js: D5 turbo-dom#172 the insertion / event / handler paths use intrinsics captured at install
+browser_env.js: D5 turbo-dom#172 the insertion / event / handler paths and turbo-dom#175 the CSSOM use intrinsics captured at install
 document_basics.js: D5 turbo-dom#172 check / collection / document element helpers use intrinsics captured at install
 selection.js: D5 turbo-dom#144 both table edges keep their caret edge flag
 browser_env.rs: D5 turbo-dom#173 Blink's call-without-new messages; turbo-dom#172 captured_intrinsics.js + InlineHandlerSetter

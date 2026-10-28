@@ -13,8 +13,9 @@ at the time); this file reconstructs them from history.
   so a page that replaces `Object.defineProperty`, `Function.prototype.call`,
   `Array.prototype.includes`, `RegExp.prototype.exec`, … still creates, inserts and
   dispatches like Chrome 156. Inline handler compilation sets `on*` through the setters
-  captured at install (`captured_intrinsics.js`). Remaining: the CSSOM sheet parser
-  (`<style>` insertion).
+  captured at install (`captured_intrinsics.js`). The CSSOM sheet parser (`<style>`
+  insertion) dispatches through uncurried captured members and grows its lists through own
+  definitions (miaskiewicz/turbo-dom#175).
 
 ### Fixed — browser-env tasks of an inert document run on its creating window (miaskiewicz/turbo-dom#171)
 - `<details open>` parsed into template contents queues its toggle task like Chrome 156.

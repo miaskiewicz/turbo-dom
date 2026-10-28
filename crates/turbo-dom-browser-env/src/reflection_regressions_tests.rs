@@ -223,7 +223,6 @@ fn page_patched_intrinsics_keep_insertion_working() {
 /// The same with a `<style>` inserted: the CSSOM's sheet parsing uses captured intrinsics
 /// too (miaskiewicz/turbo-dom#175).
 #[test]
-#[ignore = "turbo-dom#175: fails until the fix"]
 fn page_patched_intrinsics_keep_style_insertion_working() {
     let probe = include_str!("page_patched_intrinsics_probe.js");
     assert_eq!(
