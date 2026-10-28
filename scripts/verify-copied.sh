@@ -211,6 +211,9 @@ cssom_parser.rs: P5-cov-browser-env (C3e) the declaration parsers share importan
 trusted_types.rs: P5-cov-browser-env (C3e) the sink mapping's OnceLock is a module-level static
 cssom_parser.rs: P5-cov-browser-env (C3e) turbo-dom#164 keyframe selectors outside 0%..100% drop their rule
 document_legacy.rs: P5-cov-browser-env (C3e) set_domain's IP test reads as 'parses to a non-domain host'
+browser_env.rs: P5-cov-browser-env (D1) turbo-dom#114 required-argument counts, contains() / removeAttributeNode() parameter types, setAttribute / toggleAttribute name validation, document / doctype textContent is null
+browser_env.js: P5-cov-browser-env (D1) turbo-dom#114 Element / CharacterData ChildNode copies brand-check their interface; scrollIntoView / scrollTo / scrollBy return a ScrollResult promise and convert their dictionaries
+document_basics.js: P5-cov-browser-env (D1) turbo-dom#114 DocumentType ChildNode copies brand-check a doctype
 "
 # Crate-owned files under src/ that were not part of the move.
 OWNED="lib.rs crate_surface.rs host_internals.rs test_support.rs css_snapshot.rs option_factory_probe.js option_factory_cases.json option_factory_chrome156.json html_image.js html_image_tests.rs html_image_probe.js html_image_cases.json html_image_chrome156.json custom_elements_defined_probe.js custom_elements_defined_cases.json custom_elements_defined_chrome156.json computed_defaults_probe.js computed_defaults_cases.json computed_defaults_chrome156.json computed_defaults_tests.rs dom_reactions_names_probe.js dom_reactions_names_cases.json dom_reactions_names_chrome156.json dom_reactions_tests.rs dom_adoption_reactions_probe.js dom_adoption_reactions_cases.json dom_adoption_reactions_chrome156.json shadow_events_probe.js shadow_events_cases.json shadow_events_chrome156.json shadow_events_tests.rs html_track_probe.js html_track_cases.json html_track_chrome156.json html_track_tests.rs html_track.js"

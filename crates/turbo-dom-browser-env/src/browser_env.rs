@@ -1741,6 +1741,9 @@ fn el_split_text(
     let Some(h) = receiver_handle(scope, &args, &[3, 4]) else {
         return;
     };
+    if !require_arguments(scope, &args, 1) {
+        return;
+    }
     let Some(off) = arg_usize(scope, &args, 0) else {
         return;
     };
@@ -2307,9 +2310,15 @@ fn el_toggle_attribute<'s>(
     let Some(h) = receiver_handle(scope, &args, &[1]) else {
         return;
     };
+    if !require_arguments(scope, &args, 1) {
+        return;
+    }
     let Some(mut units) = dom_units(scope, args.get(0)) else {
         return;
     };
+    if !valid_attribute_name(scope, &units) {
+        return;
+    }
     if with_tree(|tree| tree.namespace_id(h) == 0).unwrap_or(false) {
         lower_ascii_units(&mut units);
     }
@@ -2627,9 +2636,15 @@ fn el_set_attribute<'s>(
     let Some(h) = receiver_handle(scope, &args, &[1]) else {
         return;
     };
+    if !require_arguments(scope, &args, 2) {
+        return;
+    }
     let Some(mut name) = dom_units(scope, args.get(0)) else {
         return;
     };
+    if !valid_attribute_name(scope, &name) {
+        return;
+    }
     let units_input = args.get(1);
     // HTML setAttribute lowercases the qualified name (React calls setAttribute('colSpan', …); jsdom
     // stores 'colspan'). Lowercase for HTML-namespace elements only (ns 0); SVG (ns 1) keeps camelCase
@@ -2708,6 +2723,9 @@ fn el_get_attribute<'s>(
     let Some(h) = receiver_handle(scope, &args, &[1]) else {
         return;
     };
+    if !require_arguments(scope, &args, 1) {
+        return;
+    }
     let Some(mut name) = dom_units(scope, args.get(0)) else {
         return;
     };
@@ -2884,6 +2902,16 @@ fn el_remove_attribute_node<'s, 'i>(
         attr_type_error(scope, "An Attr node is required");
         return;
     };
+    let is_attr = {
+        let _source = DomScope::for_object(scope, attribute);
+        handle_of(scope, attribute)
+            .and_then(|node| with_tree(|tree| tree.node_type_id(node)))
+            .is_some_and(|kind| kind == 2)
+    };
+    if !is_attr {
+        attr_type_error(scope, "An Attr node is required");
+        return;
+    }
     if dom_id_of(scope, attribute) != dom_id_of(scope, args.this()) {
         throw_dom_error(
             scope,
@@ -2953,6 +2981,19 @@ fn sync_attr_nonce(scope: &mut v8::PinScope, owner: v8::Local<v8::Object>, attri
         update_node_nonce_units(scope, owner, &value);
     }
 }
+/// https://dom.spec.whatwg.org/#valid-attribute-local-name: non-empty, without ASCII
+/// whitespace, NULL, '/', '=' or '>'. Throws InvalidCharacterError otherwise.
+fn valid_attribute_name(scope: &mut v8::PinScope, name: &[u16]) -> bool {
+    if !name.is_empty()
+        && !name
+            .iter()
+            .any(|c| matches!(c, 0 | 9 | 10 | 12 | 13 | 32 | 47 | 61 | 62))
+    {
+        return true;
+    }
+    throw_dom_error(scope, "InvalidCharacterError", "Invalid attribute name");
+    false
+}
 fn doc_create_attribute<'s, 'i>(
     scope: &mut v8::PinScope<'s, 'i>,
     args: v8::FunctionCallbackArguments<'s>,
@@ -2965,13 +3006,7 @@ fn doc_create_attribute<'s, 'i>(
     let Some(mut name) = dom_units(scope, args.get(0)) else {
         return;
     };
-    if name.is_empty()
-        || name
-            .iter()
-            .copied()
-            .any(|c| matches!(c, 0 | 9 | 10 | 12 | 13 | 32 | 47 | 61 | 62))
-    {
-        throw_dom_error(scope, "InvalidCharacterError", "Invalid attribute name");
+    if !valid_attribute_name(scope, &name) {
         return;
     }
     lower_ascii_units(&mut name);
@@ -3082,6 +3117,9 @@ fn el_has_attribute<'s>(
     let Some(h) = receiver_handle(scope, &args, &[1]) else {
         return;
     };
+    if !require_arguments(scope, &args, 1) {
+        return;
+    }
     let Some(mut name) = dom_units(scope, args.get(0)) else {
         return;
     };
@@ -3104,6 +3142,9 @@ fn el_remove_attribute<'s>(
     let Some(h) = receiver_handle(scope, &args, &[1]) else {
         return;
     };
+    if !require_arguments(scope, &args, 1) {
+        return;
+    }
     let Some(mut name) = dom_units(scope, args.get(0)) else {
         return;
     };
@@ -3138,6 +3179,9 @@ fn selector_argument<'s>(
     args: &v8::FunctionCallbackArguments<'s>,
     node: Handle,
 ) -> Option<(String, Vec<u16>, bool)> {
+    if !require_arguments(scope, args, 1) {
+        return None;
+    }
     let units = dom_units(scope, args.get(0))?;
     let scalar = String::from_utf16_lossy(&units);
     // The matcher is lenient; admission uses the same grammar as stylesheets.
@@ -3673,7 +3717,7 @@ fn doc_create_comment(
     mut rv: v8::ReturnValue,
 ) {
     let _dom = DomScope::for_object(scope, args.this());
-    if receiver_handle(scope, &args, &[9]).is_none() {
+    if receiver_handle(scope, &args, &[9]).is_none() || !require_arguments(scope, &args, 1) {
         return;
     }
     let Some(data) = dom_units(scope, args.get(0)) else {
@@ -3940,7 +3984,26 @@ fn el_contains(
     let Some(h) = receiver_handle(scope, &args, &[]) else {
         return;
     };
-    let other = arg_handle(scope, &args, 0);
+    if !require_arguments(scope, &args, 1) {
+        return;
+    }
+    let value = args.get(0);
+    let other = if value.is_null_or_undefined() {
+        None
+    } else {
+        let node = v8::Local::<v8::Object>::try_from(value)
+            .ok()
+            .and_then(|object| handle_of(scope, object).map(|node| (object, node)));
+        let Some((object, node)) = node else {
+            attr_type_error(
+                scope,
+                "Failed to execute 'contains' on 'Node': parameter 1 is not of type 'Node'.",
+            );
+            return;
+        };
+        // A node of another document is never an inclusive descendant.
+        (dom_id_of(scope, object) == DOM_ID.with(|id| id.get())).then_some(node)
+    };
     let contains = match other {
         Some(o) => with_tree(|t| {
             // walk up from `o` to see if `h` is an ancestor (or equal).
@@ -4030,6 +4093,12 @@ fn get_text_content(
 ) {
     let _dom = DomScope::for_object(scope, args.holder());
     let h = holder_handle(scope, &args);
+    // A document's and a doctype's textContent is null and setting it does nothing
+    // (https://dom.spec.whatwg.org/#dom-node-textcontent).
+    if with_tree(|t| matches!(t.node_type_id(h), 9 | 10)).unwrap_or(false) {
+        rv.set_null();
+        return;
+    }
     let txt = with_tree(|t| t.text_content_utf16(h)).unwrap_or_default();
     rv.set(unit_string(scope, &txt).into());
 }
@@ -4047,6 +4116,9 @@ fn set_text_content<'s>(
     else {
         return;
     };
+    if with_tree(|t| matches!(t.node_type_id(h), 9 | 10)).unwrap_or(false) {
+        return;
+    }
     let txt = String::from_utf16_lossy(&units);
     html_popover::attribute_node_change(scope, h, Some(&txt));
     html_popover::disconnect(scope, h, false);

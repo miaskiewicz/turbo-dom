@@ -31,7 +31,6 @@ pub(super) fn control(json: &str, probe: &str) -> serde_json::Value {
 const KNOWN_GAPS: &[(&str, &str)] = &[];
 
 #[test]
-#[ignore = "miaskiewicz/turbo-dom#114: fails until the fix"]
 fn native_guards_match_chrome156() {
     let expected = control(include_str!("native_guards_chrome156.json"), PROBE);
     let actual = run(PROBE);
@@ -70,7 +69,6 @@ fn native_guards_match_chrome156() {
 /// (`native_guards_hostile_probe.js`): proxies, revoked proxies, foreign-document nodes,
 /// throwing conversions and dictionary getters reach the guards without aborting.
 #[test]
-#[ignore = "miaskiewicz/turbo-dom#114: fails until the fix"]
 fn native_guard_hostile_inputs_match_chrome156() {
     let probe = include_str!("native_guards_hostile_probe.js");
     let expected = control(include_str!("native_guards_hostile_chrome156.json"), probe);

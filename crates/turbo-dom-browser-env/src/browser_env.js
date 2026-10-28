@@ -2853,8 +2853,47 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
       if(descriptor)Object.defineProperty(documentProto,name,descriptor);
       if(name!=='getElementById')Object.defineProperty(prototypes.DocumentFragment,name,Object.getOwnPropertyDescriptor(elementProto,name));
     });
+    // ChildNode members: Element's and CharacterData's own copies of the shared native operation
+    // brand-check their interface (Chrome 156: TypeError, Illegal invocation).
+    var childNodeApply=Reflect.apply;
+    // DocumentType's copies (document_basics.js) wrap the same shared operations.
+    __ns.childNodeOperations=Object.create(null);
     ['before','after','remove','replaceWith'].forEach(function(name){
-      Object.defineProperty(characterProto,name,Object.getOwnPropertyDescriptor(elementProto,name));
+      var native=Object.getOwnPropertyDescriptor(elementProto,name).value;
+      __ns.childNodeOperations[name]=native;
+      [['Element',elementProto],['CharacterData',characterProto]].forEach(function(owner){
+        var check=__ns.domAccessor('nodeType',false,owner[0]);
+        Object.defineProperty(owner[1],name,{value:__ns.makeNativeFunction(function(){childNodeApply(check,this,[]);return childNodeApply(native,this,arguments);},name,0),writable:true,enumerable:true,configurable:true});
+      });
+    });
+    // CSSOM View scrolling operations return a promise of a ScrollResult (Chrome 156); a bad
+    // receiver or argument rejects it instead of throwing. Headless scrolling never moves, so
+    // the operation only converts its arguments (IDL order) and resolves.
+    var scrollPromise=g.Promise,scrollResolve=g.Promise.resolve,scrollReject=g.Promise.reject,ScrollTypeError=TypeError,scrollString=String;
+    var scrollEnums={behavior:['ScrollOptions','ScrollBehavior',['auto','instant','smooth']],block:['ScrollIntoViewOptions','ScrollLogicalPosition',['start','center','end','nearest']],container:['ScrollIntoViewOptions','ScrollContainer',['all','nearest']]};
+    scrollEnums.inline=scrollEnums.block;
+    var scrollMembers=function(operation,options,keys,dictionary){
+      if(options==null)return;
+      if(typeof options!=='object'&&typeof options!=='function')throw new ScrollTypeError("Failed to execute '"+operation+"' on 'Element': The provided value is not of type '"+dictionary+"'.");
+      keys.forEach(function(key){
+        var value=options[key];if(value===undefined)return;
+        var spec=scrollEnums[key],owner=spec?spec[0]:dictionary,read="Failed to execute '"+operation+"' on 'Element': Failed to read the '"+key+"' property from '"+owner+"': ";
+        if(typeof value==='symbol')throw new ScrollTypeError(read+'Cannot convert a Symbol value to a '+(spec?'string':'number'));
+        if(!spec){+value;return;}
+        value=scrollString(value);
+        if(spec[2].indexOf(value)<0)throw new ScrollTypeError(read+"The provided value '"+value+"' is not a valid enum value of type "+spec[1]+'.');
+      });
+    };
+    var scrollArguments={
+      scrollIntoView:function(args){var arg=args[0];if(arg!==null&&(typeof arg==='object'||typeof arg==='function'))scrollMembers('scrollIntoView',arg,['behavior','block','container','inline'],'ScrollIntoViewOptions');},
+      scrollTo:function(args){if(args.length>=2){+args[0];+args[1];return;}scrollMembers(this,args[0],['behavior','left','top'],'ScrollToOptions');}
+    };
+    ['scrollIntoView','scrollTo','scrollBy'].forEach(function(name){
+      var native=Object.getOwnPropertyDescriptor(elementProto,name).value,check=__ns.domAccessor('nodeType',false,'Element'),convert=scrollArguments[name==='scrollBy'?'scrollTo':name];
+      Object.defineProperty(elementProto,name,{value:__ns.makeNativeFunction(function(){
+        try{childNodeApply(check,this,[]);childNodeApply(native,this,[]);childNodeApply(convert,name,[arguments]);}catch(error){return childNodeApply(scrollReject,scrollPromise,[error]);}
+        return childNodeApply(scrollResolve,scrollPromise,[{interrupted:false}]);
+      },name,0),writable:true,enumerable:true,configurable:true});
     });
     function projectCompatibility(owner,names,source){
       var proto=prototypes[owner],check=__ns.domAccessor('nodeType',false,owner);
