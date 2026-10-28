@@ -180,6 +180,95 @@ fn consume(input: &mut Parser<'_, '_>) -> String {
     input.slice_from(start).trim().to_string()
 }
 
+/// Chrome's CSSKeyframeRule.keyText: `from` / `to` become `0%` / `100%` and each percentage
+/// is a CSS number (`50.0%` -> `50%`, `1e1%` -> `10%`), joined by `", "`.
+fn keyframe_keys(prelude: &str) -> Option<String> {
+    let mut source = ParserInput::new(prelude);
+    let mut input = Parser::new(&mut source);
+    let keys = input
+        .parse_comma_separated(|input| {
+            let location = input.current_source_location();
+            match input.next()?.clone() {
+                cssparser::Token::Ident(name) if name.eq_ignore_ascii_case("from") => {
+                    Ok("0%".to_owned())
+                }
+                cssparser::Token::Ident(name) if name.eq_ignore_ascii_case("to") => {
+                    Ok("100%".to_owned())
+                }
+                cssparser::Token::Percentage { unit_value, .. } => {
+                    Ok(format!("{}%", css_number(unit_value * 100.0)))
+                }
+                _ => Err(location.new_custom_error::<(), ()>(())),
+            }
+        })
+        .ok()?;
+    Some(keys.join(", "))
+}
+
+/// A @keyframes name as Chrome serializes it: a `<string>` name becomes an identifier
+/// (escaped as needed: `"a b"` -> `a\ b`); an identifier keeps its case.
+fn keyframes_name(prelude: &str) -> Option<String> {
+    let mut source = ParserInput::new(prelude);
+    let mut input = Parser::new(&mut source);
+    let name = match input.next().ok()?.clone() {
+        cssparser::Token::Ident(name) => name.to_string(),
+        cssparser::Token::QuotedString(name) if !name.is_empty() => {
+            let mut text = String::new();
+            cssparser::serialize_identifier(&name, &mut text).ok()?;
+            text
+        }
+        _ => return None,
+    };
+    input.expect_exhausted().ok()?;
+    Some(name)
+}
+
+/// The animation properties a keyframe block drops (Blink's IsValidForKeyframe).
+fn keyframe_ignored(name: &str) -> bool {
+    let name = name.to_ascii_lowercase();
+    name.starts_with("animation")
+        && !matches!(
+            name.as_str(),
+            "animation-timing-function" | "animation-composition" | "animation-timeline"
+        )
+}
+
+/// The names @counter-style may not define (CSS Counter Styles 3 §3.1, Chrome 156):
+/// `none`, the CSS-wide keywords and the predefined styles that cannot be overridden.
+fn reserved_counter_style(name: &str) -> bool {
+    [
+        "none",
+        "inherit",
+        "initial",
+        "unset",
+        "default",
+        "revert",
+        "revert-layer",
+        "decimal",
+        "disc",
+        "square",
+        "circle",
+        "disclosure-open",
+        "disclosure-closed",
+    ]
+    .iter()
+    .any(|reserved| name.eq_ignore_ascii_case(reserved))
+}
+
+/// `@layer a , b ;` -> `@layer a, b;` (Chrome's CSSLayerStatementRule.cssText).
+fn layer_names(prelude: &str) -> Option<String> {
+    let mut source = ParserInput::new(prelude);
+    let mut input = Parser::new(&mut source);
+    let names = input
+        .parse_comma_separated(|input| {
+            let start = input.position();
+            while input.next().is_ok() {}
+            Ok::<_, ParseError<'_, ()>>(input.slice_from(start).trim().to_owned())
+        })
+        .ok()?;
+    Some(names.join(", "))
+}
+
 impl<'i> QualifiedRuleParser<'i> for CssParser {
     type Prelude = String;
     type QualifiedRule = String;
@@ -199,7 +288,7 @@ impl<'i> QualifiedRuleParser<'i> for CssParser {
         if !valid_rule(&format!("@keyframes test {{ {prelude} {{}} }}")) {
             return Err(input.new_custom_error(()));
         }
-        Ok(prelude)
+        keyframe_keys(&prelude).ok_or_else(|| input.new_custom_error(()))
     }
     fn parse_block<'t>(
         &mut self,
@@ -250,15 +339,62 @@ fn font_descriptor(name: &str, value: &str) -> Option<String> {
                     .is_ok())
                 || input.expect_percentage().is_ok_and(|value| value >= 0.0)
         }
-        "font-feature-settings" | "font-variation-settings" => Property::parse(
-            PropertyId::from(name),
-            &mut input,
-            &ParserOptions::default(),
-        )
-        .is_ok_and(|property| !matches!(property, Property::Unparsed(_) | Property::Custom(_))),
+        "font-feature-settings" | "font-variation-settings" => {
+            return font_settings(name == "font-feature-settings", &mut input)
+                .filter(|_| input.expect_exhausted().is_ok())
+                .map(|value| format!("{name}: {value};"));
+        }
         _ => false,
     };
     (valid && input.expect_exhausted().is_ok()).then(|| format!("{name}: {value};"))
+}
+
+/// `font-feature-settings` (`normal | [<string> [<integer> | on | off]?]#`) or
+/// `font-variation-settings` (`normal | [<string> <number>?]#`) in Chrome 156's serialization:
+/// four-character printable-ASCII tags, double-quoted; a feature value of 1 (`on`) is omitted
+/// and `off` is 0; a variation value defaults to 1 and prints as a CSS number.
+fn font_settings(feature: bool, input: &mut Parser<'_, '_>) -> Option<String> {
+    if input
+        .try_parse(|input| input.expect_ident_matching("normal"))
+        .is_ok()
+    {
+        return Some("normal".to_owned());
+    }
+    let settings = input
+        .parse_comma_separated(|input| {
+            let location = input.current_source_location();
+            let invalid = || location.new_custom_error::<(), ()>(());
+            let tag = input.expect_string_cloned()?;
+            if tag.chars().count() != 4 || !tag.chars().all(|c| (' '..='~').contains(&c)) {
+                return Err(invalid());
+            }
+            let mut text = String::new();
+            cssparser::serialize_string(&tag, &mut text).map_err(|_| invalid())?;
+            if feature {
+                let value = if input
+                    .try_parse(|input| input.expect_ident_matching("on"))
+                    .is_ok()
+                {
+                    1
+                } else if input
+                    .try_parse(|input| input.expect_ident_matching("off"))
+                    .is_ok()
+                {
+                    0
+                } else {
+                    input.try_parse(Parser::expect_integer).unwrap_or(1)
+                };
+                if value != 1 {
+                    text.push_str(&format!(" {value}"));
+                }
+            } else {
+                let value = input.try_parse(Parser::expect_number).unwrap_or(1.0);
+                text.push_str(&format!(" {}", css_number(value)));
+            }
+            Ok(text)
+        })
+        .ok()?;
+    Some(settings.join(", "))
 }
 
 impl<'i> DeclarationParser<'i> for CssParser {
@@ -351,6 +487,11 @@ impl<'i> DeclarationParser<'i> for CssParser {
         let value = input.slice_from(start).trim().to_string();
         let important = input.try_parse(parse_important).is_ok();
         input.expect_exhausted()?;
+        if self.keyframes && (important || keyframe_ignored(&name)) {
+            // Keyframe blocks ignore !important declarations and the animation properties
+            // other than timing-function / composition / timeline (Chrome 156).
+            return Err(input.new_custom_error(()));
+        }
         let name = if name.starts_with("--") {
             name.to_string()
         } else {
@@ -453,6 +594,11 @@ impl<'i> AtRuleParser<'i> for CssParser {
     ) -> Result<String, ()> {
         let rule = format!("@{name} {prelude};");
         if valid_rule(&rule) {
+            if name == "layer" {
+                return layer_names(&prelude)
+                    .map(|names| format!("@layer {names};"))
+                    .ok_or(());
+            }
             Ok(rule)
         } else {
             Err(())
@@ -470,9 +616,14 @@ impl<'i> AtRuleParser<'i> for CssParser {
                 .ok_or_else(|| input.new_custom_error(()));
         }
         let test = format!("@{name} {prelude} {{}}");
-        if !valid_rule(&test) {
+        if !valid_rule(&test) || (name == "counter-style" && reserved_counter_style(&prelude)) {
             return Err(input.new_custom_error(()));
         }
+        let prelude = if name == "keyframes" || name.ends_with("-keyframes") {
+            keyframes_name(&prelude).ok_or_else(|| input.new_custom_error(()))?
+        } else {
+            prelude
+        };
         let body = if matches!(
             name.as_str(),
             "font-face"

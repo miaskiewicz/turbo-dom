@@ -173,7 +173,6 @@ fn document_pre_insert_validity_counts_current_children() {
 }
 
 #[test]
-#[ignore = "miaskiewicz/turbo-dom#134: fails until the fix"]
 fn selector_and_at_rule_edges_match_chrome156() {
     check(
         include_str!("selector_edges_probe.js"),
@@ -187,7 +186,6 @@ fn selector_and_at_rule_edges_match_chrome156() {
 /// settings, reserved @counter-style names, @layer statements, grouping-rule bodies and
 /// empty descriptor blocks. Expected: Chrome 156.0.8078.47 (frozen, headless).
 #[test]
-#[ignore = "miaskiewicz/turbo-dom#134: fails until the fix"]
 fn at_rule_css_text_matches_chrome156() {
     let probe = r###"(async () => {
   // CSSOM at-rule cssText (turbo-dom#134): each text through a <style> and insertRule.
