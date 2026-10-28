@@ -1,7 +1,56 @@
-//! Guard edges of the binding (crate-owned): hostile selectors and declarations, and the
-//! regression tests of the bugs they found.
+//! Guard edges of the binding (crate-owned): hostile selectors, declarations, keyframe values
+//! and view-transition roots against their Chrome 156 control (`guard_edges_probe.js` →
+//! `guard_edges_chrome156.json`, recorded by `scripts/trusted-input-chrome-control.mjs`), and
+//! the regression tests of the bugs they found.
 use crate::browser_env::crate_surface::harness_tests::thrown;
+use crate::browser_env::crate_surface::member_edges_tests::unexpected;
+use crate::browser_env::reference_target::probe_harness::{control, run};
 use crate::browser_env::*;
+
+const PROBE: &str = include_str!("guard_edges_probe.js");
+
+/// KNOWN_GAP rows `(path, binding value)`: leaves where the binding still differs from
+/// Chrome 156. Each must still differ exactly so; a fix removes its row.
+const KNOWN_GAPS: &[(&str, &str)] = &[
+    // miaskiewicz/turbo-dom#162: deferred zoom values are dropped.
+    ("result.declarations.zoom: var(--z) !important[0]", "\"\""),
+    ("result.declarations.zoom: var(--z) !important[1]", "\"\""),
+    ("result.declarations.zoom: var(--z)[0]", "\"\""),
+    ("result.declarations.zoom: var(--z)[1]", "\"\""),
+    ("result.declarations.zoom: env(x)[0]", "\"\""),
+    ("result.declarations.zoom: env(x)[1]", "\"\""),
+    // miaskiewicz/turbo-dom#134: @keyframes cssText.
+    (
+        "result.declarations.@keyframes k { 0% {} }",
+        "\"@keyframes k { 0% {  } }\"",
+    ),
+    (
+        "result.declarations.@keyframes k { x {} }",
+        "\"@keyframes k { x {  } }\"",
+    ),
+    (
+        "result.declarations.@keyframes k { 10%, 20% {} from {} }",
+        "\"@keyframes k { 10%, 20% {  } from {  } }\"",
+    ),
+    (
+        "result.declarations.@keyframes k { -1% {} }",
+        "\"@keyframes k { -1% {  } }\"",
+    ),
+    (
+        "result.declarations.@keyframes k { 101% {} }",
+        "\"@keyframes k { 101% {  } }\"",
+    ),
+];
+
+#[test]
+#[ignore = "turbo-dom#161: fails until the fix"]
+fn guard_edges_match_chrome156() {
+    let expected = control(include_str!("guard_edges_chrome156.json"), PROBE);
+    assert_eq!(
+        unexpected(&run(PROBE), &expected, KNOWN_GAPS),
+        Vec::<String>::new()
+    );
+}
 
 /// Run `source` (an expression) in a fresh page and return its JSON serialization.
 fn page_json(html: &str, source: &str) -> String {

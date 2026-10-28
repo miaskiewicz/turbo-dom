@@ -24,7 +24,7 @@ const KNOWN_GAPS: &[(&str, &str)] = &[
 
 /// The differing leaves of `actual` that are not a listed gap, then the listed gaps that no
 /// longer differ exactly so.
-fn unexpected(
+pub(super) fn unexpected(
     actual: &serde_json::Value,
     expected: &serde_json::Value,
     gaps: &[(&str, &str)],

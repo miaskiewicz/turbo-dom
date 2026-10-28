@@ -71,7 +71,7 @@ mod host_api_tests;
 mod host_edges_tests;
 #[cfg(test)]
 #[path = "member_edges_tests.rs"]
-mod member_edges_tests;
+pub(super) mod member_edges_tests;
 #[cfg(test)]
 #[path = "native_guards_tests.rs"]
 mod native_guards_tests;
