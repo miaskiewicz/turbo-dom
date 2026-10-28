@@ -603,8 +603,8 @@ fn adopting_a_shadow_root_throws_hierarchy_request_error() {
     );
 }
 
-/// KNOWN_GAP (miaskiewicz/turbo-dom#143): Text.prototype.wholeText is missing.
-const RECEIVER_GAPS: &[(&str, &str)] = &[("result.Text.wholeText", "\"missing\"")];
+/// KNOWN_GAP rows of the receivers probe (none left).
+const RECEIVER_GAPS: &[(&str, &str)] = &[];
 
 #[test]
 fn native_member_receivers_match_chrome156() {
