@@ -6372,15 +6372,10 @@ fn native_dom_function_dispatch(
     if require_new && !args.is_construct_call() {
         // An interface may name its own call-without-new message (Blink's legacy
         // factory functions say "Failed to construct 'Option': Please use the 'new' …").
-        let message = match data
-            .get_index(scope, 4)
-            .and_then(|value| v8::Local::<v8::String>::try_from(value).ok())
-        {
-            Some(message) => message,
-            None => v8::String::new(scope, "Constructor requires 'new'").unwrap(),
-        };
-        let error = v8::Exception::type_error(scope, message);
-        scope.throw_exception(error);
+        if let Some(message) = data.get_index(scope, 4).and_then(|m| m.to_string(scope)) {
+            let error = v8::Exception::type_error(scope, message);
+            scope.throw_exception(error);
+        }
         return;
     }
     let values: Vec<_> = (0..args.length()).map(|index| args.get(index)).collect();
@@ -6457,6 +6452,21 @@ fn native_range_record(
     scope.throw_exception(error);
 }
 
+/// Interfaces without a constructor: Chrome 156 throws "Illegal constructor" when one is
+/// called without `new` (probed on 156.0.8078.47); every other interface constructor says
+/// "Failed to construct 'X': Please use the 'new' operator, …".
+const ILLEGAL_CONSTRUCTORS: &[&str] = &[
+    "Node", "Element", "HTMLDocument", "ShadowRoot", "SVGElement", "SVGSVGElement",
+    "MathMLElement", "CharacterData", "Attr", "DocumentType", "CDATASection",
+    "ProcessingInstruction", "NodeList", "HTMLCollection", "DOMTokenList", "NamedNodeMap",
+    "CSSStyleDeclaration", "CSSRule", "StyleSheet", "MediaList", "MutationRecord",
+    "HTMLUnknownElement", "CSSRuleList", "StyleSheetList", "CSSStyleRule", "CSSImportRule",
+    "TextTrackCueList", "TextTrack", "DOMImplementation", "XMLDocument", "AbstractRange",
+    "NodeRange", "XPathExpression", "XPathResult", "ValidityState", "HTMLFormControlsCollection",
+    "RadioNodeList", "HTMLOptionsCollection", "ElementInternals", "CustomStateSet",
+    "FragmentDirective", "CSSPseudoElement",
+];
+
 // The implementation closure stays in V8's private function data. This is a
 // native callable over the facade's live guest state, not a source-string mask.
 fn make_native_dom_function(
@@ -6484,7 +6494,13 @@ fn make_native_dom_function(
     let call_message = if args.get(6).is_string() {
         args.get(6)
     } else {
-        v8::undefined(scope).into()
+        // Blink's message for an interface constructor called as a function (turbo-dom#173).
+        let message = if ILLEGAL_CONSTRUCTORS.contains(&name.as_str()) {
+            "Illegal constructor".to_owned()
+        } else {
+            format!("Failed to construct '{name}': Please use the 'new' operator, this DOM object constructor cannot be called as a function.")
+        };
+        v8::String::new(scope, &message).unwrap().into()
     };
     let data = v8::Array::new_with_elements(
         scope,
