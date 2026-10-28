@@ -634,7 +634,15 @@ pub(super) fn schedule_after(
     callback: v8::Local<v8::Function>,
     delay: u32,
 ) -> bool {
-    let Some(scheduler) = DOM.with(|dom| dom.borrow().as_ref()?.popover.scheduler.clone()) else {
+    let current = || DOM.with(|dom| dom.borrow().as_ref()?.popover.scheduler.clone());
+    // An inert document (template contents, DOMParser, createHTMLDocument) has no event
+    // loop of its own: its tasks run on its creating window's (turbo-dom#171).
+    let scheduler = current().or_else(|| {
+        let context = scope.get_current_context();
+        let _owner = DomScope::enter(context.get_slot::<DomContextId>().map_or(0, |id| id.0));
+        current()
+    });
+    let Some(scheduler) = scheduler else {
         return false;
     };
     let scheduler = dom_ownership::local(scope, &scheduler);

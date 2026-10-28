@@ -400,8 +400,7 @@ fn parsed_details_toggle_matches_chrome156() {
     assert_matches_control(
         &run_probe(probe),
         &expected,
-        // miaskiewicz/turbo-dom#171: an inert document's tasks never run.
-        &[r#"result.template = []"#],
+        &[],
     );
 }
 
@@ -418,7 +417,6 @@ fn popover_exceptions_match_chrome156() {
 /// on the creating window's event loop: `<details open>` parsed into a template gets its
 /// toggle task (Chrome 156: one toggle, "closed" -> "open").
 #[test]
-#[ignore = "turbo-dom#171: fails until the fix"]
 fn template_contents_details_toggle_runs() {
     let got = run_probe(
         "(async () => { document.body.innerHTML = '<template id=t><details id=td open></details></template>'; \
