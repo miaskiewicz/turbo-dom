@@ -291,6 +291,8 @@
       once: (() => { let calls = 0; inner.addEventListener('f', () => calls++, { once: true }); fire('f'); fire('f'); return calls; })(),
       handleEvent: (() => { const listener = { calls: 0, handleEvent(event) { this.calls++; this.self = this === listener; } }; inner.addEventListener('g', listener); fire('g'); return [listener.calls, listener.self]; })(),
       duplicate: (() => { let calls = 0; const f = () => calls++; inner.addEventListener('h', f); inner.addEventListener('h', f); inner.addEventListener('h', f, true); fire('h'); return calls; })(),
+      stopAtTarget: (() => { log.length = 0; inner.addEventListener('j', event => { log.push('inner-capture'); event.stopPropagation(); }, true); inner.addEventListener('j', () => log.push('inner-bubble')); outer.addEventListener('j', () => log.push('outer-bubble')); fire('j'); return log.slice(); })(),
+      stopAtOuterBubble: (() => { log.length = 0; inner.addEventListener('k', () => log.push('inner')); outer.addEventListener('k', event => { log.push('outer'); event.stopPropagation(); }); document.body.addEventListener('k', () => log.push('body')); fire('k'); return log.slice(); })(),
       removeCaptureOnly: (() => { let calls = 0; const f = () => calls++; inner.addEventListener('i', f); inner.addEventListener('i', f, true); inner.removeEventListener('i', f, { capture: true }); fire('i'); return calls; })(),
     };
     outer.remove();

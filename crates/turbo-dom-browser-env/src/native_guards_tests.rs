@@ -85,6 +85,12 @@ const KNOWN_GAPS: &[(&str, &str)] = &[
         "[\"TypeError\",\"TypeError\"]",
     ), // miaskiewicz/turbo-dom#141: adoptNode(shadow root) throws NotSupportedError.
     ("result.imports.shadow[2][1]", "\"NotSupportedError\""),
+    // miaskiewicz/turbo-dom#157: a target's bubble listeners run after its capture listener
+    // stopped propagation.
+    (
+        "result.events.stopAtTarget",
+        "[\"inner-capture\",\"inner-bubble\"]",
+    ),
 ];
 
 #[test]

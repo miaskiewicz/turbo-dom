@@ -2,7 +2,7 @@
   "browser": "Chrome/156.0.8078.4",
   "v8": "15.6.75",
   "probe": "native_guards_probe.js",
-  "probeSha256": "c7575120a4fc51d39d2a56d612459336306b2046ff06ed8142a8a14cb946855a",
+  "probeSha256": "af9a87486e81a0e1d949e574793296a889c20abcc3e2d666f019671d86b30583",
   "collectorSha256": "3f964d2cdf0ec8101870a776aaffc3b7dc4522306959c4a40761057beb255eb8",
   "flags": [
     "--headless=new",
@@ -1440,6 +1440,13 @@
         true
       ],
       "duplicate": 2,
+      "stopAtTarget": [
+        "inner-capture"
+      ],
+      "stopAtOuterBubble": [
+        "inner",
+        "outer"
+      ],
       "removeCaptureOnly": 1
     },
     "attrNodes": {
