@@ -242,7 +242,6 @@ fn activation_granted_gates_match_chrome156() {
 }
 
 #[test]
-#[ignore = "turbo-dom#139: fails until the fix"]
 fn dialog_popover_edges_match_chrome156() {
     let probe = include_str!("dialog_popover_edges_probe.js");
     let expected = control(include_str!("dialog_popover_edges_chrome156.json"), probe);
@@ -422,7 +421,6 @@ fn parsed_details_toggle_matches_chrome156() {
 /// miaskiewicz/turbo-dom#139: popover method exceptions (Chrome 156 messages) and nested
 /// show / hide / toggle calls from beforetoggle.
 #[test]
-#[ignore = "turbo-dom#139: fails until the fix"]
 fn popover_exceptions_match_chrome156() {
     let probe = include_str!("popover_exceptions_probe.js");
     let expected = control(include_str!("popover_exceptions_chrome156.json"), probe);
