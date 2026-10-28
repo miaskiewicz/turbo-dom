@@ -104,7 +104,7 @@ Manifests always name the registry version (`turbo-dom = "0.6"`,
 | msrv | `cargo +1.89 check --all-targets` for turbo-dom, -layout, -raster |
 | guards | `check-versions.py`, `check-no-selector-dual.sh`, turbo-dom-v8 generator/release self-tests + `generate.py --check`, `scripts/` and `tools/parity` self-tests, `verify-copied.sh` (verbatim + current), `verify-copied-collectors.sh`, `verify-copied-layout.sh` |
 | coverage | tarpaulin (LLVM, macOS) per crate with `--fail-under` floors |
-| complexity (rust, js) | cyclomatic complexity <= 15 per function: `cc-check` (turbo-html2pdf, pinned rev) over every tracked `.rs` file, oxlint `complexity` over `src/`; expected red until the post-coverage refactor (below) |
+| complexity (rust, js) | cyclomatic complexity <= 15 per function: `cc-check` (turbo-html2pdf, pinned rev) over every tracked `.rs` file, oxlint `complexity` over `src/` and `crates/turbo-dom-browser-env/src` (the binding's shipped JS); expected red until the post-coverage refactor (below) |
 
 ### Coverage
 

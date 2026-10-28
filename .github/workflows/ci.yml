@@ -397,7 +397,7 @@ jobs:
   # unit-test coverage is complete so it cannot break behaviour silently. Never raise the limit
   # or skip a file to turn it green. Rust: turbo-html2pdf's tools/cc-check installed from its
   # home at a pinned rev (not copied here) over every tracked .rs file; JS: oxlint's
-  # `complexity` rule (.oxlintrc.complexity.json) over src/ (the npm runtime).
+  # `complexity` rule (.oxlintrc.complexity.json) over src/ (the npm runtime) and the browser-env crate's shipped JS (crates/turbo-dom-browser-env/src, runs in V8 on every page).
   # `continue-on-error` keeps the red jobs from failing the workflow (publish.yml runs it via
   # workflow_call) while the backlog exists; the failing job and its step summary list every
   # function over the limit. Drop `continue-on-error` (and make both checks required) once
@@ -441,7 +441,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-      - name: oxlint complexity max 15 (src/)
+      - name: oxlint complexity max 15 (src/ + crates/turbo-dom-browser-env/src)
         shell: bash  # -eo pipefail: tee must not mask the gate's exit code
         run: npm run -s complexity:js 2>&1 | tee complexity.txt
       - name: List the functions over the limit (refactor backlog)

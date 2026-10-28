@@ -37,7 +37,7 @@ python3 scripts/check-versions.py                        # one release version i
 python3 -m unittest discover -s scripts -p 'test_*.py'   # release helper (publish-crates.py) self-tests
 python3 -m unittest discover -s tools/parity -p 'test_*.py'  # parity harness self-test
 npm run complexity:rust   # cc-check --max 15 over every tracked .rs file (needs cc-check on PATH, below)
-npm run complexity:js     # oxlint `complexity` max 15 over src/ (.oxlintrc.complexity.json)
+npm run complexity:js     # oxlint `complexity` max 15 over src/ + crates/turbo-dom-browser-env/src (.oxlintrc.complexity.json)
 ```
 
 CI (`.github/workflows/ci.yml`) has one job family per crate (base / layout / raster / v8 +

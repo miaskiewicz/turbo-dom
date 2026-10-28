@@ -99,7 +99,7 @@
     "bench:compare": "node bench/dom-compare.mjs",
     "bench:compare:all": "RTDOM_JSON=\"$(cargo test -p turbo-dom --release rtdom::bench::compare_all -- --ignored --nocapture 2>/dev/null | sed -n 's/.*RTDOM_JSON //p')\" node --expose-gc --max-old-space-size=8192 bench/compare-all.mjs",
     "complexity:rust": "git ls-files -z '*.rs' | xargs -0 cc-check --max 15",
-    "complexity:js": "npx --yes oxlint@1.87.0 -c .oxlintrc.complexity.json src"
+    "complexity:js": "npx --yes oxlint@1.87.0 -c .oxlintrc.complexity.json src crates/turbo-dom-browser-env/src"
   },
   "keywords": [
     "dom",
