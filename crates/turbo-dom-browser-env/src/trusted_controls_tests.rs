@@ -413,3 +413,17 @@ fn popover_exceptions_match_chrome156() {
     let expected = control(include_str!("popover_exceptions_chrome156.json"), probe);
     assert_matches_control(&run_probe(probe), &expected, &[]);
 }
+
+/// turbo-dom#171: a task queued for a node of an inert document (template contents) runs
+/// on the creating window's event loop: `<details open>` parsed into a template gets its
+/// toggle task (Chrome 156: one toggle, "closed" -> "open").
+#[test]
+#[ignore = "turbo-dom#171: fails until the fix"]
+fn template_contents_details_toggle_runs() {
+    let got = run_probe(
+        "(async () => { document.body.innerHTML = '<template id=t><details id=td open></details></template>'; \
+         const log = []; document.getElementById('t').content.firstChild.addEventListener('toggle', e => log.push(e.oldState + '>' + e.newState)); \
+         await new Promise(resolve => setTimeout(resolve, 20)); return log; })()",
+    );
+    assert_eq!(got.to_string(), r#"["closed>open"]"#);
+}
