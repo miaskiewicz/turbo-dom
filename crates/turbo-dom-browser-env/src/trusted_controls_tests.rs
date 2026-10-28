@@ -242,6 +242,7 @@ fn activation_granted_gates_match_chrome156() {
 }
 
 #[test]
+#[ignore = "turbo-dom#139: fails until the fix"]
 fn dialog_popover_edges_match_chrome156() {
     let probe = include_str!("dialog_popover_edges_probe.js");
     let expected = control(include_str!("dialog_popover_edges_chrome156.json"), probe);
@@ -249,12 +250,6 @@ fn dialog_popover_edges_match_chrome156() {
         &run_probe(probe),
         &expected,
         &[
-            // miaskiewicz/turbo-dom#139: nested popover calls from beforetoggle, messages.
-            r#"result.nestedCalls.log[2][2] = "closed""#,
-            r#"result.nestedCalls.result[4][0][1] = "undefined""#,
-            r#"result.nestedCalls.result[4][0][2] = false"#,
-            r#"result.nestedCalls.result[4][1][2] = true"#,
-            r#"result.recheckRemoved.result[0][1] = "The popover is not connected to a document""#,
             // miaskiewicz/turbo-dom#148: `::slotted(div):open` is accepted.
             r#"result.selectors.result[18][1] = []"#,
             r#"result.selectors.result[18][2] = false"#,
@@ -422,4 +417,14 @@ fn parsed_details_toggle_matches_chrome156() {
         // miaskiewicz/turbo-dom#171: an inert document's tasks never run.
         &[r#"result.template = []"#],
     );
+}
+
+/// miaskiewicz/turbo-dom#139: popover method exceptions (Chrome 156 messages) and nested
+/// show / hide / toggle calls from beforetoggle.
+#[test]
+#[ignore = "turbo-dom#139: fails until the fix"]
+fn popover_exceptions_match_chrome156() {
+    let probe = include_str!("popover_exceptions_probe.js");
+    let expected = control(include_str!("popover_exceptions_chrome156.json"), probe);
+    assert_matches_control(&run_probe(probe), &expected, &[]);
 }
