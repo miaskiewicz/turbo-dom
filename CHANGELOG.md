@@ -7,6 +7,12 @@ at the time); this file reconstructs them from history.
 
 ## [Unreleased]
 
+### Fixed — browser-env manual slots re-entering a shadow root signal like Chrome 156 (miaskiewicz/turbo-dom#133)
+- A slot inserted into a manual-assignment root no longer fires slotchange (Chrome signals only
+  the removal, and named roots still signal an inserted slot); a slot leaving a manual root
+  signals whenever assign() recorded nodes for it. Chrome's stale `assignedSlot` of a removed
+  manual slot (Blink lazy recalc, order-dependent) stays a documented KNOWN_GAP.
+
 ### Fixed — browser-env Document pre-insert validity counts the current children (miaskiewicz/turbo-dom#132, Chrome 156 control)
 - `dom_mutations` validated a Document parent against the simulated final child list, so
   `d.append(d.documentElement)`, `d.replaceChildren(d.doctype)` or `d.replaceChildren(element)`

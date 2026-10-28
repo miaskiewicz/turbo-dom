@@ -90,7 +90,6 @@ const SLOT_GAPS: &[(&str, &str)] = &[
 ];
 
 #[test]
-#[ignore = "miaskiewicz/turbo-dom#133: fails until the fix"]
 fn shadow_slot_edges_match_chrome156() {
     check(
         include_str!("shadow_slots_edges_probe.js"),
@@ -104,7 +103,6 @@ fn shadow_slot_edges_match_chrome156() {
 /// into a manual root signals nothing (a named root still signals). Expected: Chrome
 /// 156.0.8078.47 (frozen, headless).
 #[test]
-#[ignore = "miaskiewicz/turbo-dom#133: fails until the fix"]
 fn manual_slot_reinsertion_signals_like_chrome156() {
     let probe = r###"(async () => {
   // Manual-assignment slots leaving and re-entering their shadow root (turbo-dom#133):
