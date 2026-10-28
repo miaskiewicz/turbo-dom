@@ -225,12 +225,12 @@ fn native<'s>(
                 state.pending = None;
             });
         }
-        "schedule" => {
+        // "schedule", the last operation pointer_events.js calls.
+        _ => {
             if let Ok(callback) = v8::Local::<v8::Function>::try_from(args.get(2)) {
                 html_popover::schedule(scope, callback);
             }
         }
-        _ => {}
     }
 }
 

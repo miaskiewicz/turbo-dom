@@ -160,9 +160,8 @@ fn collect(tree: &Tree, node: Handle, policy: &StylePolicy, out: &mut TextOutput
         return;
     }
     if kind == 3 {
-        let Some(owner) = tree.parent(node) else {
-            return;
-        };
+        // collect only visits children, so a text node always has its parent.
+        let owner = tree.parent(node).expect("collected text has a parent");
         let style = computed_style_with_policy(tree, owner, policy);
         if matches!(
             style.get("visibility").map(String::as_str),
@@ -378,10 +377,10 @@ pub fn dispatch<'s>(
             range_live::replacing_children(scope, node);
             with_tree_mut(|tree| set_inner(tree, node, &value));
         }
-        "outer" => {
-            let Some(value) = dom_units(scope, args.get(2)) else {
-                return;
-            };
+        // "outer": html_text.js calls only check / read / inner / outer.
+        _ => {
+            // html_text.js passes the converted (string) value.
+            let value = dom_units(scope, args.get(2)).expect("converted outerText value");
             if with_tree(|tree| tree.parent(node).is_some()).unwrap_or(false) {
                 html_popover::disconnect(scope, node, true);
             }
@@ -389,7 +388,6 @@ pub fn dispatch<'s>(
                 rv.set(v8::String::new(scope, error).unwrap().into());
             }
         }
-        _ => type_error(scope),
     }
 }
 fn type_error(scope: &mut v8::PinScope) {

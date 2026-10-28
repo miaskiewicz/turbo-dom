@@ -226,32 +226,28 @@ fn native<'s>(
         }
         _ => {}
     }
-    let Ok(target) = v8::Local::<v8::Object>::try_from(args.get(1)) else {
-        return;
-    };
+    // interest_invokers.js passes an element target (and its InterestEvent) for the
+    // remaining operations.
+    let target = v8::Local::<v8::Object>::try_from(args.get(1)).expect("interest target");
     let _dom = DomScope::for_object(scope, target);
-    let Some(node) = handle_of(scope, target) else {
-        return;
-    };
+    let node = handle_of(scope, target).expect("interest target element");
     match operation.as_str() {
         "disabled" => rv.set_bool(html_invokers::disabled_control(node)),
         "open" => rv.set_bool(html_popover::opened(node)),
         "dispatch" => {
-            let Ok(event) = v8::Local::<v8::Object>::try_from(args.get(2)) else {
-                return;
-            };
+            let event = v8::Local::<v8::Object>::try_from(args.get(2)).expect("interest event");
             dispatch_host_event(scope, event, target);
             let continued = event_record(scope, event)
                 .is_some_and(|record| !get_bool_prop(scope, record, "defaultPrevented"));
             rv.set_bool(continued);
         }
-        "popover" => {
+        // "popover", the last operation interest_invokers.js calls.
+        _ => {
             let action = args.get(2).to_rust_string_lossy(scope);
             if let Ok(source) = v8::Local::<v8::Object>::try_from(args.get(3)) {
                 html_popover::invoke(scope, node, &action, source);
             }
         }
-        _ => {}
     }
 }
 

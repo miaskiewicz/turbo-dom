@@ -125,24 +125,21 @@ pub(super) fn dispatch<'s>(
     mut rv: v8::ReturnValue,
 ) {
     let operation = args.get(0).to_rust_string_lossy(scope);
-    let Ok(receiver) = v8::Local::<v8::Object>::try_from(args.get(1)) else {
-        return;
-    };
+    // input_members.js passes a brand-checked input (or a form-internals element).
+    let receiver = v8::Local::<v8::Object>::try_from(args.get(1)).expect("input element");
     let _dom = DomScope::for_object(scope, receiver);
-    let Some(node) = handle_of(scope, receiver) else {
-        return;
-    };
+    let node = handle_of(scope, receiver).expect("input element node");
     if !with_tree(|tree| html_input(tree, node)).unwrap_or(false) {
         return;
     }
     match operation.as_str() {
         "indeterminate" => rv.set_bool(indeterminate(node)),
         "set-indeterminate" => set_indeterminate(node, args.get(2).boolean_value(scope)),
-        "list" => match datalist(scope, node) {
+        // "list", the only other operation input_members.js calls.
+        _ => match datalist(scope, node) {
             Some(list) => rv.set(wrap(scope, list).into()),
             None => rv.set(v8::null(scope).into()),
         },
-        _ => {}
     }
 }
 
