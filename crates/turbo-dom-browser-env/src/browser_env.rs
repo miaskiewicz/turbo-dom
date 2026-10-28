@@ -5026,18 +5026,28 @@ fn invalid_form_action(raw: &str) -> String {
     }
     let split = rest.find(['/', '?', '#']).unwrap_or(rest.len());
     let (authority, suffix) = rest.split_at(split);
-    let bytes = authority.as_bytes();
     let mut result = format!("{}://", scheme.to_ascii_lowercase());
-    for (index, ch) in authority.char_indices() {
-        if ch == ' ' {
-            result.push_str("%20");
-        } else if ch == '%'
-            && !(bytes.get(index + 1).is_some_and(u8::is_ascii_hexdigit)
-                && bytes.get(index + 2).is_some_and(u8::is_ascii_hexdigit))
-        {
-            result.push_str("%25");
-        } else {
-            result.push(ch);
+    // The host still canonicalizes: ASCII letters lowercase, %-escapes of unreserved
+    // characters decode, other escapes keep uppercase hex, a lone `%` escapes (turbo-dom#159).
+    let mut chars = authority.char_indices();
+    while let Some((index, ch)) = chars.next() {
+        let escape = (ch == '%')
+            .then(|| authority.get(index + 1..index + 3))
+            .flatten()
+            .filter(|hex| hex.bytes().all(|byte| byte.is_ascii_hexdigit()))
+            .and_then(|hex| u8::from_str_radix(hex, 16).ok());
+        match (ch, escape) {
+            ('%', Some(byte)) => {
+                chars.nth(1);
+                if byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'.' | b'_' | b'~') {
+                    result.push(char::from(byte.to_ascii_lowercase()));
+                } else {
+                    result.push_str(&format!("%{byte:02X}"));
+                }
+            }
+            ('%', None) => result.push_str("%25"),
+            (' ', _) => result.push_str("%20"),
+            _ => result.push(ch.to_ascii_lowercase()),
         }
     }
     if !suffix.starts_with('/') {
