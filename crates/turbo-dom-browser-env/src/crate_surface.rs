@@ -66,3 +66,6 @@ mod native_guards_tests;
 #[cfg(test)]
 #[path = "termination_tests.rs"]
 mod termination_tests;
+#[cfg(test)]
+#[path = "trusted_controls_tests.rs"]
+mod trusted_controls_tests;
