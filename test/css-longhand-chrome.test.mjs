@@ -18,10 +18,6 @@ const sha = (text) => createHash('sha256').update(text).digest('hex');
 // Pairs whose npm result differs from Chrome for a documented reason, by `name|value`.
 const KNOWN_GAPS = new Set([
   // turbo-dom#117 (shared with rtdom::css_shorthand).
-  "transition-timing-function|cubic-bezier(min(0.5, 1), 0, 1, 1)",
-  "transition-timing-function|linear(calc(0), 1)",
-  "transition-timing-function|linear(0, 1 calc(50%))",
-  "text-shadow|1px 1px #ABC",
 ]);
 // Values of the lenient grammars (image / easing lists, display) Chrome rejects, kept as spelled.
 const KEPT = [
