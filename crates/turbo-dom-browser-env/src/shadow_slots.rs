@@ -574,11 +574,13 @@ pub(super) fn fire(scope: &mut v8::PinScope, slot: v8::Local<v8::Object>) {
     let _owner = DomScope::for_object(scope, slot);
     let global = context.global(scope);
     let private = key(scope, "Event");
-    // install() records the realm's Event constructor before any slot exists.
-    let constructor = global
+    // A realm whose slots were parsed before (or without) install() has no Event record.
+    let Some(constructor) = global
         .get_private(scope, private)
         .and_then(|value| v8::Local::<v8::Function>::try_from(value).ok())
-        .expect("the realm's Event constructor");
+    else {
+        return;
+    };
     let options = v8::Object::new(scope);
     let null = v8::null(scope);
     options.set_prototype(scope, null.into());
