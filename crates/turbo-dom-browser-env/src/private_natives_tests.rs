@@ -190,7 +190,13 @@ fn captured_natives_refuse_hostile_calls() {
         keys.sort();
         // turbo-dom#172: createElement, querySelectorAll, the applied inline style natives
         // and the inline handler note are reached through captured intrinsics now.
-        let captured = ["__cascadeProp#1", "blur#1", "click#1", "focus#1", "hasAttribute#1"];
+        let captured = [
+            "__cascadeProp#1",
+            "blur#1",
+            "click#1",
+            "focus#1",
+            "hasAttribute#1",
+        ];
         assert_eq!(keys, captured);
         for (name, valid, results) in natives.iter().filter(|native| captured.contains(&native.0)) {
             let mut expected = Vec::new();
