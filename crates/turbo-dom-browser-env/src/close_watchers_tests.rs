@@ -225,7 +225,6 @@ fn run_probe() -> (serde_json::Value, serde_json::Value) {
 }
 
 #[test]
-#[ignore = "turbo-dom#119: fails until the fix"]
 fn close_watchers_and_light_dismiss_match_chrome156() {
     let expected = control(include_str!("close_watchers_chrome156.json"), PROBE);
     let mut expected = expected;

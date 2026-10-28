@@ -663,8 +663,14 @@ pub fn light_dismiss(scope: &mut v8::PinScope, event: v8::Local<v8::Object>, bac
         "pointerup" => false,
         _ => return,
     };
-    let Some(target) = get_prop(scope, record, "target")
+    // The hit-tested node (turbo-dom#119): `target` is retargeted out of shadow trees by the
+    // dispatch, or cleared after it.
+    let Some(target) = get_prop(scope, record, "hitTarget")
         .and_then(|value| v8::Local::<v8::Object>::try_from(value).ok())
+        .or_else(|| {
+            get_prop(scope, record, "target")
+                .and_then(|value| v8::Local::<v8::Object>::try_from(value).ok())
+        })
     else {
         return;
     };

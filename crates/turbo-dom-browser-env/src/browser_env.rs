@@ -4487,6 +4487,9 @@ fn el_dispatch_event(
     set_prop(scope, record, "trusted", trusted.into());
     let target_node = wrap(scope, target);
     set_prop(scope, record, "target", target_node.into());
+    // The dispatch target before shadow retargeting: light dismiss reads the hit-tested node
+    // after the dispatch (turbo-dom#119).
+    set_prop(scope, record, "hitTarget", target_node.into());
 
     // PRE-CLICK ACTIVATION: a checkbox/radio toggles `checked` BEFORE the click listeners run (per
     // the activation-behavior spec), so React's ChangeEventPlugin — which detects checkbox change on

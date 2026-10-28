@@ -222,6 +222,8 @@ html_popover.rs: P5-cov-browser-env (D2) turbo-dom#139 Chrome 156 exception mess
 browser_env.js: P5-cov-browser-env (D2) turbo-dom#170 an unchecked longhand the native parser rejects is accepted when its rtdom spelling (math simplified) parses
 event_handlers.rs: P5-cov-browser-env (D2) turbo-dom#153 a failed handler compile is kept and reported when the handler is read or its event dispatched
 browser_env.rs: P5-cov-browser-env (D2) turbo-dom#153 dispatch reports the path's pending handler compile errors
+browser_env.rs: P5-cov-browser-env (D2) turbo-dom#119 the event record keeps the pre-retargeting hitTarget
+user_activation_gates.rs: P5-cov-browser-env (D2) turbo-dom#119 light dismiss reads the record's hitTarget
 "
 # Crate-owned files under src/ that were not part of the move.
 OWNED="lib.rs crate_surface.rs host_internals.rs test_support.rs css_snapshot.rs option_factory_probe.js option_factory_cases.json option_factory_chrome156.json html_image.js html_image_tests.rs html_image_probe.js html_image_cases.json html_image_chrome156.json custom_elements_defined_probe.js custom_elements_defined_cases.json custom_elements_defined_chrome156.json computed_defaults_probe.js computed_defaults_cases.json computed_defaults_chrome156.json computed_defaults_tests.rs dom_reactions_names_probe.js dom_reactions_names_cases.json dom_reactions_names_chrome156.json dom_reactions_tests.rs dom_adoption_reactions_probe.js dom_adoption_reactions_cases.json dom_adoption_reactions_chrome156.json shadow_events_probe.js shadow_events_cases.json shadow_events_chrome156.json shadow_events_tests.rs html_track_probe.js html_track_cases.json html_track_chrome156.json html_track_tests.rs html_track.js"
