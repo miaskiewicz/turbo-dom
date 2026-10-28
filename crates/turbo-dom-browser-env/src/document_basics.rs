@@ -227,6 +227,8 @@ fn materialize(
     nodes[0]
 }
 
+const SHADOW_ROOT_ADOPTED: &str = "A shadow root cannot be adopted";
+
 // Every already-visible node remains the SAME V8 object. Uncached handles are
 // reconstructed in the destination tree; source cache entries cannot alias them.
 pub fn adopt<'s>(
@@ -247,7 +249,7 @@ pub fn adopt<'s>(
     let source = {
         let _source = DomScope::for_object(scope, node);
         if with_tree(|tree| tree.is_shadow_root(source_handle)).unwrap_or(false) {
-            return Err("A shadow root cannot be adopted");
+            return Err(SHADOW_ROOT_ADOPTED);
         }
         html_popover::attribute_node_change(scope, source_handle, None);
         with_tree_mut(|tree| capture(tree, source_handle)).ok_or("Node tree unavailable")??
@@ -729,6 +731,10 @@ pub fn dispatch<'s>(
             };
             match adopt(scope, node, source) {
                 Ok(node) => rv.set(node.into()),
+                // DOM adopt: a shadow root is a HierarchyRequestError (turbo-dom#137).
+                Err(error @ SHADOW_ROOT_ADOPTED) => {
+                    throw_dom_error(scope, "HierarchyRequestError", error)
+                }
                 Err(error) => rv.set(v8::String::new(scope, error).unwrap().into()),
             }
         }

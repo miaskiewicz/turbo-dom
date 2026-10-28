@@ -1,0 +1,113 @@
+{
+  "browser": "Chrome/156.0.8078.47",
+  "v8": "15.6.75.19",
+  "probe": "sanitizer_edges_probe.js",
+  "probeSha256": "c3ea637a7f5af5130340f274507a93352169bfc020d3f7257c6fa59f85b4405c",
+  "collectorSha256": "3f964d2cdf0ec8101870a776aaffc3b7dc4522306959c4a40761057beb255eb8",
+  "flags": [
+    "--headless=new",
+    "--remote-debugging-pipe",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "--disable-background-timer-throttling",
+    "--disable-renderer-backgrounding",
+    "--disable-backgrounding-occluded-windows",
+    "about:blank"
+  ],
+  "result": {
+    "configs": {
+      "allow": [
+        [
+          {
+            "target": "x"
+          },
+          {
+            "target": "y"
+          }
+        ],
+        null,
+        true
+      ],
+      "remove": [
+        null,
+        [
+          {
+            "target": "w"
+          },
+          {
+            "target": "z"
+          }
+        ],
+        true
+      ],
+      "both": [
+        "TypeError",
+        true
+      ],
+      "badItem": [
+        "TypeError",
+        true
+      ],
+      "nullItem": [
+        "TypeError",
+        true
+      ],
+      "empty": [
+        [],
+        null,
+        true
+      ]
+    },
+    "setHTMLPi": [
+      "<div id=\"h\"><span>light</span></div><?pi x?>",
+      "<b>in</b><i>keep</i>"
+    ],
+    "setHTMLDefault": [
+      "<div><span>light</span></div>",
+      null
+    ],
+    "setHTMLComments": [
+      "<div id=\"h\"><span>light</span></div><!--c-->",
+      "<b>in</b><i>keep</i>"
+    ],
+    "setHTMLUnsafe": [
+      "<div id=\"h\"><span onclick=\"y\">light</span></div><!--c--><?pi x?>",
+      "<b onclick=\"x\">in</b><script>1</script>"
+    ],
+    "shadowTarget": "<p>p</p>",
+    "parseHTML": [
+      3,
+      [
+        "html",
+        "#comment",
+        "HTML"
+      ],
+      [
+        "<div id=\"h\"><span>light</span></div><!--c-->",
+        "<b>in</b><i>keep</i>"
+      ]
+    ],
+    "parseHTMLUnsafe": [
+      [
+        "#comment",
+        "HTML"
+      ],
+      "<p>x</p>"
+    ],
+    "errors": {
+      "setHTMLOnTemplate": 1,
+      "setHTMLOnScript": "",
+      "receiver": [
+        "TypeError",
+        true
+      ],
+      "badSanitizer": [
+        "TypeError",
+        true
+      ]
+    }
+  }
+}

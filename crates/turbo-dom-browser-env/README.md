@@ -380,7 +380,7 @@ read probes and write controls):
 | `scripts/animations-chrome-control.mjs`, `scripts/select-element-chrome-control.mjs`, `scripts/typed-om-chrome-control.mjs` | probe + cases controls (`animations*`, `select_element*`/form pseudo-classes, `option_factory*` (`new Option()`, `HTMLOptionsCollection` definer), `typed_om*`) |
 | `scripts/typed-om-registry.mjs` | `typed_om_registry_cases.json` and the production registry `typed_om_properties.json` (from Blink's json5 metadata + the registry control) |
 | `scripts/view-transitions-chrome-control.mjs`, `scripts/shadow-html-chrome-control.mjs` | `view_transitions_chrome156.json`; shadow-root / HTML serialization / sanitizer controls |
-| `scripts/invokers-chrome-control.mjs`, `scripts/editing-input-chrome-control.mjs`, `scripts/trusted-input-chrome-control.mjs` | invokers/popover, editing, pointer and other trusted-input controls; `canvas_style_chrome156.json` (2D context `fillStyle` / `strokeStyle` / `shadowColor`, `currentcolor`), `canvas_state_chrome156.json` (2D context `save()` / `restore()` drawing-state stack) |
+| `scripts/invokers-chrome-control.mjs`, `scripts/editing-input-chrome-control.mjs`, `scripts/trusted-input-chrome-control.mjs` | invokers/popover, editing, pointer and other trusted-input controls; `canvas_style_chrome156.json` (2D context `fillStyle` / `strokeStyle` / `shadowColor`, `currentcolor`), `canvas_state_chrome156.json` (2D context `save()` / `restore()` drawing-state stack); the edge probes of `edge_probes_tests.rs` (`shadow_slots_edges`, `dom_mutation_validity`, `selector_edges`, `sanitizer_edges`, `document_edges`, `receivers_edges`) |
 | `scripts/image-srcset-chrome-control.mjs` | `html_image_srcset_chrome156.json` (Playwright, DPR 1 / 2, local image server; cases from `scripts/make-image-srcset-cases.py`) |
 | `scripts/document-legacy-chrome-control.mjs` | `document_legacy_chrome156.json` (loopback HTTP/HTTPS cases) |
 | `scripts/trusted-types-control/` | Trusted Types controls (`trusted_types*_chrome155.json`); `cdp-connection.mjs` is shared with the document-legacy collector |
@@ -476,6 +476,10 @@ CI gates the crate's line coverage in the `host-internals,test-support` configur
 `docs/CONSOLIDATION.md`, "Coverage"). New tests assert behaviour against Chrome 156 controls.
 The coverage phase added:
 
+- `edge_probes_tests.rs`: `shadow_slots_edges`, `dom_mutation_validity`, `selector_edges`, `sanitizer_edges`,
+  `document_edges`, `receivers_edges` probes -> `*_chrome156.json` (KNOWN_GAP rows name their issues).
+- `termination_tests.rs`: native walks under a pending termination; the host CSS policy cascade view.
+- `harness_tests.rs`: `thrown`, the shared failure-message helper of the probe runners.
 - `native_guards_probe.js` -> `native_guards_chrome156.json` (`native_guards_tests.rs`):
   receiver brand checks, argument conversion and the edge results of the native attribute,
   character-data, tree, collection and shadow-root members.

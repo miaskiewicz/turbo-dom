@@ -1,4 +1,5 @@
 use super::*;
+use crate::browser_env::crate_surface::harness_tests::thrown;
 use sha2::{Digest, Sha256};
 
 /// A deterministic event loop for the bare binding: virtual-time timers, rendering frames on a
@@ -55,10 +56,9 @@ pub(super) fn run_probe(html: &str, probe: &str, frozen: bool) -> serde_json::Va
     run_js(scope, LOOP);
     v8::tc_scope!(let scope, scope);
     let source = v8::String::new(scope, probe).unwrap();
-    let Some(value) = v8::Script::compile(scope, source, None).and_then(|script| script.run(scope))
-    else {
-        panic!("{}", scope.exception().unwrap().to_rust_string_lossy(scope));
-    };
+    let value = v8::Script::compile(scope, source, None)
+        .and_then(|script| script.run(scope))
+        .unwrap_or_else(|| panic!("{}", thrown(scope.exception(), scope)));
     let promise = v8::Local::<v8::Promise>::try_from(value).unwrap();
     let step = v8::String::new(scope, "__step()").unwrap();
     let step = v8::Script::compile(scope, step, None).unwrap();
@@ -67,9 +67,9 @@ pub(super) fn run_probe(html: &str, probe: &str, frozen: bool) -> serde_json::Va
         if promise.state() != v8::PromiseState::Pending {
             break;
         }
-        let Some(more) = step.run(scope) else {
-            panic!("{}", scope.exception().unwrap().to_rust_string_lossy(scope));
-        };
+        let more = step
+            .run(scope)
+            .unwrap_or_else(|| panic!("{}", thrown(scope.exception(), scope)));
         if !more.is_true() {
             scope.perform_microtask_checkpoint();
             break;

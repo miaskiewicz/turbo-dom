@@ -107,7 +107,34 @@ browser_env.js: P5b-H1 turbo-dom#110/#111 the 2D context's save() / restore() ke
 key_order_tests.rs: P5b-H1 turbo-dom#99 a second install into an arranged realm keeps HTMLTrackElement's key order
 css_live_tests.rs: P5b-K1 turbo-test#125 getComputedStyle reuse invalidation tests (tree version, CSSOM epoch, top layer, font context, ancestor styles); P5b-L1 turbo-dom#113 cross-realm CSSOM edits
 dom_ownership.rs: P5b-K3 turbo-dom#112 deferred ownership reconcile above 256 wrappers + flush_ownership, GC tracking in install, reconcile_all in its own handle scope (from turbo-test PR #105); turbo-test#127 pin_callback_owners without per-call allocation; test modules dom_ownership_alloc_tests, dom_ownership_scale_tests
+document_basics.rs: P5-cov-browser-env turbo-dom#137 adoptNode(shadowRoot) throws HierarchyRequestError
+view_transitions.rs: P5-cov-browser-env turbo-dom#136 :active-view-transition-type() admits keyword identifiers
 browser_env.rs: P5-cov-browser-env removes the element template's unreachable constructor / dataset getters and containsNode method (wrappers are projected before page script runs and JS owns those members: the interface prototypes, document_basics.js dataset, selection.js containsNode)
+event_brands.rs: P5-cov-browser-env literal v8::String::new keys unwrap (a short literal cannot exceed v8::String::kMaxLength, so the else-return arms were unreachable)
+range_contents.rs: P5-cov-browser-env literal v8::String::new keys unwrap (a short literal cannot exceed v8::String::kMaxLength, so the else-return arms were unreachable)
+reference_target.rs: P5-cov-browser-env literal v8::String::new keys unwrap (a short literal cannot exceed v8::String::kMaxLength, so the else-return arms were unreachable)
+shadow_html.rs: P5-cov-browser-env literal v8::String::new keys unwrap (a short literal cannot exceed v8::String::kMaxLength, so the else-return arms were unreachable)
+shadow_slots.rs: P5-cov-browser-env literal v8::String::new keys unwrap (a short literal cannot exceed v8::String::kMaxLength, so the else-return arms were unreachable)
+animations_tests.rs: P5-cov-browser-env harness failure messages via crate_surface::harness_tests::thrown on the line that runs; compare helpers return their differences and have their own tests
+control_interfaces_tests.rs: P5-cov-browser-env harness failure messages via crate_surface::harness_tests::thrown on the line that runs; compare helpers return their differences and have their own tests
+css_admission_tests.rs: P5-cov-browser-env harness failure messages via crate_surface::harness_tests::thrown on the line that runs; compare helpers return their differences and have their own tests
+css_adoption_tests.rs: P5-cov-browser-env harness failure messages via crate_surface::harness_tests::thrown on the line that runs; compare helpers return their differences and have their own tests
+dom_implementation_tests.rs: P5-cov-browser-env harness failure messages via crate_surface::harness_tests::thrown on the line that runs; compare helpers return their differences and have their own tests
+dom_projection_tests.rs: P5-cov-browser-env harness failure messages via crate_surface::harness_tests::thrown on the line that runs; compare helpers return their differences and have their own tests
+editing_tests.rs: P5-cov-browser-env harness failure messages via crate_surface::harness_tests::thrown on the line that runs; compare helpers return their differences and have their own tests
+file_inputs_tests.rs: P5-cov-browser-env harness failure messages via crate_surface::harness_tests::thrown on the line that runs; compare helpers return their differences and have their own tests
+form_outputs_tests.rs: P5-cov-browser-env harness failure messages via crate_surface::harness_tests::thrown on the line that runs; compare helpers return their differences and have their own tests
+form_pseudo_tests.rs: P5-cov-browser-env harness failure messages via crate_surface::harness_tests::thrown on the line that runs; compare helpers return their differences and have their own tests
+html_dialog_tests.rs: P5-cov-browser-env harness failure messages via crate_surface::harness_tests::thrown on the line that runs; compare helpers return their differences and have their own tests
+key_order_tests.rs: P5-cov-browser-env harness failure messages via crate_surface::harness_tests::thrown on the line that runs; compare helpers return their differences and have their own tests
+pointer_events_tests.rs: P5-cov-browser-env harness failure messages via crate_surface::harness_tests::thrown on the line that runs; compare helpers return their differences and have their own tests
+sanitizer_tests.rs: P5-cov-browser-env harness failure messages via crate_surface::harness_tests::thrown on the line that runs; compare helpers return their differences and have their own tests
+select_element_tests.rs: P5-cov-browser-env harness failure messages via crate_surface::harness_tests::thrown on the line that runs; compare helpers return their differences and have their own tests
+utf16_contract_tests.rs: P5-cov-browser-env harness failure messages via crate_surface::harness_tests::thrown on the line that runs; compare helpers return their differences and have their own tests
+view_transitions_tests.rs: P5-cov-browser-env harness failure messages via crate_surface::harness_tests::thrown on the line that runs; compare helpers return their differences and have their own tests
+probe_harness_tests.rs: P5-cov-browser-env harness failure messages via crate_surface::harness_tests::thrown on the line that runs; compare helpers return their differences and have their own tests
+shadow_slots.rs: P5-cov-browser-env native receiver / argument guards the JS caller makes unreachable become expect() (brand-checked receivers, the arguments object, converted markup; the last operation is the catch-all)
+shadow_html.rs: P5-cov-browser-env native receiver / argument guards the JS caller makes unreachable become expect() (brand-checked receivers, the arguments object, converted markup; the last operation is the catch-all)
 browser_env.rs: P5-cov-browser-env removes the unreachable native CharacterData data methods (document_basics.js owns them) and the item / namedItem methods bound on raw node arrays (every public collection copies the rows into its own live collection)
 browser_env.js: P5-cov-browser-env no longer copies the removed native CharacterData data methods onto CharacterData.prototype
 browser_env.rs: P5-cov-browser-env element-template accessors read their holder's handle through holder_handle (template instances always carry one); the unreachable DocumentType publicId / systemId / __nodeName template getters are gone (document_basics.js defines DocumentType)
@@ -124,6 +151,7 @@ OWNED="$OWNED css_shorthand.rs css_shorthand_tests.rs css_longhand_tests.rs svg_
 OWNED="$OWNED dom_exception_realm_probe.js dom_exception_realm_cases.json dom_exception_realm_chrome156.json dom_exception_realm_tests.rs custom_elements_collect_tests.rs html_image_srcset_probe.js html_image_srcset_cases.json html_image_srcset_chrome156.json html_image_srcset_tests.rs reflected_urls_probe.js reflected_urls_cases.json reflected_urls_chrome156.json reflected_urls_tests.rs"
 OWNED="$OWNED dom_ownership_alloc_tests.rs dom_ownership_scale_tests.rs"
 OWNED="$OWNED native_guards_probe.js native_guards_chrome156.json native_guards_tests.rs close_watchers_probe.js close_watchers_chrome156.json close_watchers_tests.rs host_api_tests.rs"
+OWNED="$OWNED edge_probes_tests.rs harness_tests.rs termination_tests.rs shadow_slots_edges_probe.js shadow_slots_edges_chrome156.json dom_mutation_validity_probe.js dom_mutation_validity_chrome156.json selector_edges_probe.js selector_edges_chrome156.json sanitizer_edges_probe.js sanitizer_edges_chrome156.json document_edges_probe.js document_edges_chrome156.json receivers_edges_probe.js receivers_edges_chrome156.json"
 
 repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 turbo_test=${TURBO_TEST_REPO:-$repo_root/../turbo-test}

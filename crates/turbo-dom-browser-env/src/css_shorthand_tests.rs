@@ -4,6 +4,7 @@
 //! the binding and compares every scenario with the Chrome control
 //! `css_shorthand_chrome156.json` (the same fixture `rtdom::css_shorthand` is checked against).
 use super::*;
+use crate::browser_env::crate_surface::harness_tests::thrown;
 use sha2::{Digest, Sha256};
 
 /// Scenarios whose binding result differs from Chrome for a documented reason, by id.
@@ -50,12 +51,7 @@ fn run(html: &str, probe: &str) -> serde_json::Value {
     v8::tc_scope!(let scope, scope);
     let value = v8::Script::compile(scope, code, None)
         .and_then(|script| script.run(scope))
-        .unwrap_or_else(|| {
-            panic!(
-                "probe threw: {}",
-                scope.exception().unwrap().to_rust_string_lossy(scope)
-            )
-        })
+        .unwrap_or_else(|| panic!("probe threw: {}", thrown(scope.exception(), scope)))
         .to_rust_string_lossy(scope);
     reset();
     serde_json::from_str(&value).unwrap()
