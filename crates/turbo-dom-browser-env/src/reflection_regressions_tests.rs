@@ -138,3 +138,24 @@ fn inert_document_style_has_sheet() {
         r#"["[object CSSStyleSheet]",1,"p { color: red; }",1,"[object CSSStyleSheet]",1,2,"null",true,"null"]"#
     );
 }
+
+/// turbo-dom#165: HTMLMediaElement's boolean attributes reflect (`muted` through
+/// `defaultMuted`); a scripted `controls = true` gives an audio element a box.
+#[test]
+fn media_booleans_reflect() {
+    assert_eq!(
+        page_json(
+            PAGE,
+            "(() => { const a = document.body.appendChild(document.createElement('audio')); const out = []; \
+             for (const n of ['controls', 'autoplay', 'loop', 'defaultMuted', 'playsInline', 'disableRemotePlayback']) { \
+               const v = n === 'playsInline' ? document.createElement('video') : a; \
+               v[n] = true; out.push(n + ' ' + v.outerHTML + ' ' + v[n]); v[n] = false; out.push(v.outerHTML); } \
+             a.controls = true; out.push(getComputedStyle(a).display); \
+             out.push(['controls', 'autoplay', 'loop', 'defaultMuted'].map(n => Object.hasOwn(HTMLMediaElement.prototype, n)).join()); \
+             out.push(String('playsInline' in HTMLAudioElement.prototype)); \
+             const v = document.createElement('video'); v.setAttribute('muted', ''); out.push(String(v.defaultMuted) + ' ' + v.muted); \
+             return out; })()",
+        ),
+        r#"["controls <audio controls=\"\"></audio> true","<audio></audio>","autoplay <audio autoplay=\"\"></audio> true","<audio></audio>","loop <audio loop=\"\"></audio> true","<audio></audio>","defaultMuted <audio muted=\"\"></audio> true","<audio></audio>","playsInline <video playsinline=\"\"></video> true","<video></video>","disableRemotePlayback <audio disableremoteplayback=\"\"></audio> true","<audio></audio>","inline","true,true,true,true","false","true false"]"#
+    );
+}
