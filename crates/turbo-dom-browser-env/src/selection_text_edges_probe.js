@@ -2,7 +2,8 @@
   // Selection.toString's visible-text model edges: case transforms that change length, a
   // pre-line newline, a hidden <br>, floats and absolutely positioned blocks, a shadow host's
   // slotted children and slot fallbacks, text directly in a shadow root, and tables; plus
-  // caret moves across a table's edges.
+  // caret moves across a table's edges and in an empty body, select()'s focusability, and a
+  // selection inside a shadow tree with slots.
   const selection = getSelection();
   const out = {};
   const text = html => {
@@ -51,6 +52,26 @@
     moves.push([selection.focusNode.nodeName, selection.focusNode.nodeType === 3 ? selection.focusNode.data : null, selection.focusOffset]);
   }
   out.moves = moves.map(move => move.join(':')).join(' ');
+  // select() focuses only a focusable control: not a disabled one, one in a disabled
+  // fieldset outside its first legend, or one without a box.
+  document.body.innerHTML = '<input id=d disabled value=dd><fieldset disabled><legend><input id=l1 value=l1></legend><legend><input id=l2 value=l2></legend><input id=f value=ff></fieldset><div style=display:none><input id=n value=nn></div><input id=ok value=ok>';
+  out.focus = ['d', 'l1', 'l2', 'f', 'n', 'ok'].map(id => {
+    document.activeElement.blur();
+    const control = document.getElementById(id);
+    control.select();
+    return [id, document.activeElement.id || document.activeElement.nodeName, control.selectionStart, control.selectionEnd];
+  });
+  // A selection inside a shadow tree: an assigned slot hides its fallback.
+  document.body.innerHTML = '<div id=h3><i>L</i></div>';
+  const root3 = document.getElementById('h3').attachShadow({ mode: 'open' });
+  root3.innerHTML = '<span>a</span><slot>fallback</slot><slot name=n>shown</slot><span>b</span>';
+  selection.setBaseAndExtent(root3.firstChild.firstChild, 0, root3.lastChild.firstChild, 1);
+  out.shadowSlots = [JSON.stringify(selection.toString())];
+  // Caret moves in an empty body.
+  document.body.innerHTML = '';
+  selection.collapse(document.body, 0);
+  selection.modify('move', 'forward', 'character');
+  out.empty = [selection.focusNode.nodeName, selection.focusOffset];
   selection.removeAllRanges();
   document.body.innerHTML = '';
   return out;

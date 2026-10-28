@@ -62,6 +62,7 @@
     const opened = state('p1', 'p2');
     await input(...click(320, 320, 'inv'));
     const toggled = state('p1', 'p2');
+    await wait(30);
     $('p2').showPopover({ source: $('inv') });
     await input(...click(510, 310, 'p2'));
     const inside = state('p1', 'p2');
@@ -128,7 +129,7 @@
   await scenario('selectors', '<dialog id=d>d</dialog><div id=p popover>p</div><details id=s open title="a(b"><summary>s</summary></details>', async () => {
     $('d').showModal();
     $('p').showPopover();
-    const selectors = [':modal()', ':open()', ':popover-open()', ':is(:modal(), div)', ':modal/**/', ':open/* ( */', ':open, [title="a(b"]', ":open, [title='a(b']", ':open, [title=a\\(b]', ':open, [title', ':open, :is(details', ':popover-open, [title', ':modal!', ':open:nth-child(', ':open, [title="a(b', ':modal, :popover-open, :open'];
+    const selectors = [':modal()', ':open()', ':popover-open()', ':is(:modal(), div)', ':modal/**/', ':open/* ( */', ':open, [title="a(b"]', ":open, [title='a(b']", ':open, [title=a\\(b]', ':open, [title', ':open, :is(details', ':popover-open, [title', ':modal!', ':open:nth-child(', ':open, [title="a(b', ':modal, :popover-open, :open', '::part(x):modal', '::part(x):popover-open', '::slotted(div):open', '::before:modal', '::before:popover-open', ':host(:modal)'];
     const name = f => { try { return f(); } catch (e) { return e.name; } };
     return selectors.map(selector => [selector, name(() => [...document.querySelectorAll(selector)].map(tag)), name(() => $('s').matches(selector))]);
   });

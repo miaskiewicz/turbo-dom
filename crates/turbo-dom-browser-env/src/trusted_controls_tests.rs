@@ -264,6 +264,9 @@ fn dialog_popover_edges_match_chrome156() {
             r#"result.nestedCalls.result[4][0][2] = false"#,
             r#"result.nestedCalls.result[4][1][2] = true"#,
             r#"result.recheckRemoved.result[0][1] = "The popover is not connected to a document""#,
+            // miaskiewicz/turbo-dom#148: `::slotted(div):open` is accepted.
+            r#"result.selectors.result[18][1] = []"#,
+            r#"result.selectors.result[18][2] = false"#,
             // miaskiewicz/turbo-dom#131: a parser-created `<details open>` fires no toggle.
             r#"result.selectors.log = [["beforetoggle","d","open"],["beforetoggle","p","open"],["toggle","p","open"]]"#,
         ],

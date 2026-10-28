@@ -2,7 +2,7 @@
   "browser": "Chrome/156.0.8078.47",
   "v8": "15.6.75.19",
   "probe": "dialog_popover_edges_probe.js",
-  "probeSha256": "eff543f3ee3a2a8a6051ffaca81179c3035917d6ed34fd0371f38fd64a8437cc",
+  "probeSha256": "9a3459ac531a33b67d7cfd355d662270fe71ff48754a904f409a5717a6d59809",
   "collectorSha256": "3f964d2cdf0ec8101870a776aaffc3b7dc4522306959c4a40761057beb255eb8",
   "flags": [
     "--headless=new",
@@ -427,6 +427,36 @@
             "s"
           ],
           true
+        ],
+        [
+          "::part(x):modal",
+          [],
+          false
+        ],
+        [
+          "::part(x):popover-open",
+          [],
+          false
+        ],
+        [
+          "::slotted(div):open",
+          "SyntaxError",
+          "SyntaxError"
+        ],
+        [
+          "::before:modal",
+          "SyntaxError",
+          "SyntaxError"
+        ],
+        [
+          "::before:popover-open",
+          "SyntaxError",
+          "SyntaxError"
+        ],
+        [
+          ":host(:modal)",
+          [],
+          false
         ]
       ],
       "log": [

@@ -2,7 +2,7 @@
   "browser": "Chrome/156.0.8078.47",
   "v8": "15.6.75.19",
   "probe": "selection_text_edges_probe.js",
-  "probeSha256": "aed0d78ed0d7b92ff96df89698dad53376d6be67f63197c2f155399ab63169bc",
+  "probeSha256": "2218b17a7bc582c480697d43fd189aad3d889922f6c5ed85d6c1505a69353bbc",
   "collectorSha256": "3f964d2cdf0ec8101870a776aaffc3b7dc4522306959c4a40761057beb255eb8",
   "flags": [
     "--headless=new",
@@ -42,6 +42,51 @@
       "\"x\\nh\\nt2\"",
       "\"c1\\tc2\\ny\""
     ],
-    "moves": "#text:ab:1 #text:ab:2 BODY::1 #text:c:0 #text:c:1 #text:d:0 #text:d:1 BODY::2 #text:d:1 #text:d:0 #text:c:1 #text:c:0 BODY::1 #text:ab:2 #text:ab:1 #text:ab:0"
+    "moves": "#text:ab:1 #text:ab:2 BODY::1 #text:c:0 #text:c:1 #text:d:0 #text:d:1 BODY::2 #text:d:1 #text:d:0 #text:c:1 #text:c:0 BODY::1 #text:ab:2 #text:ab:1 #text:ab:0",
+    "focus": [
+      [
+        "d",
+        "BODY",
+        0,
+        2
+      ],
+      [
+        "l1",
+        "l1",
+        0,
+        2
+      ],
+      [
+        "l2",
+        "BODY",
+        0,
+        2
+      ],
+      [
+        "f",
+        "BODY",
+        0,
+        2
+      ],
+      [
+        "n",
+        "BODY",
+        0,
+        2
+      ],
+      [
+        "ok",
+        "ok",
+        0,
+        2
+      ]
+    ],
+    "shadowSlots": [
+      "\"ashownb\""
+    ],
+    "empty": [
+      "BODY",
+      0
+    ]
   }
 }

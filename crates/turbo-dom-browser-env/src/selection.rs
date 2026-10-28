@@ -937,9 +937,10 @@ fn dispatch<'s>(
         }
         return;
     }
-    let Ok(target) = v8::Local::<v8::Object>::try_from(args.get(1)) else {
-        return;
-    };
+    // selection.js (the only caller; it receives the native as an argument, never exposed to
+    // guest code) passes a document, a control or a model root for every other operation.
+    let target =
+        v8::Local::<v8::Object>::try_from(args.get(1)).expect("the selection hook passes a node");
     let _dom = DomScope::for_object(scope, target);
     match operation.as_str() {
         "track" => {
@@ -992,12 +993,13 @@ fn dispatch<'s>(
                 rv.set(value);
             }
         }
-        "text" => {
+        // The last operation the hook sends: "text".
+        operation => {
+            debug_assert_eq!(operation, "text");
             if let Some(value) = text(scope, &args) {
                 rv.set(value);
             }
         }
-        _ => {}
     }
 }
 
@@ -1008,9 +1010,8 @@ pub(super) fn install(scope: &mut v8::PinScope) {
     let Some(native) = v8::Function::new(scope, dispatch) else {
         return;
     };
-    let Some(source) = v8::String::new(scope, include_str!("selection.js")) else {
-        return;
-    };
+    let source = v8::String::new(scope, include_str!("selection.js"))
+        .expect("selection.js is far below V8's string length limit");
     let Some(initializer) = v8::Script::compile(scope, source, None)
         .and_then(|script| script.run(scope))
         .and_then(|value| v8::Local::<v8::Function>::try_from(value).ok())
