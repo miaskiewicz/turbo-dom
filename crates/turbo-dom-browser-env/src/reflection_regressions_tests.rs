@@ -102,3 +102,19 @@ fn slotted_admits_chrome156_set() {
         format!("[{expected}]")
     );
 }
+
+/// turbo-dom#162: deferred `zoom` values (`var()` / `env()`) are kept, inline and in sheets.
+#[test]
+fn zoom_keeps_deferred_values() {
+    assert_eq!(
+        page_json(
+            PAGE,
+            "['zoom: var(--z)', 'zoom: var(--z) !important', 'zoom: env(x)', 'zoom: calc(var(--z) * 2)'].map(d => { \
+             const e = document.createElement('div'); e.style.cssText = d; \
+             const st = document.head.appendChild(document.createElement('style')); st.textContent = 'p{' + d + '}'; \
+             const r = st.sheet.cssRules[0].style.cssText; st.remove(); \
+             return [e.style.cssText, r, e.style.zoom, e.style.getPropertyPriority('zoom')]; })",
+        ),
+        r#"[["zoom: var(--z);","zoom: var(--z);","var(--z)",""],["zoom: var(--z) !important;","zoom: var(--z) !important;","var(--z)","important"],["zoom: env(x);","zoom: env(x);","env(x)",""],["zoom: calc(var(--z) * 2);","zoom: calc(var(--z) * 2);","calc(var(--z) * 2)",""]]"#
+    );
+}
