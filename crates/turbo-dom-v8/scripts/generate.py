@@ -10,7 +10,7 @@ Inputs (all in this repository except the checksum-pinned upstream archive):
    rust/vendor/rusty-v8-150.patch): src/function.rs interceptor ShouldThrowOnError fix,
    src/isolate.rs weak teardown fix, build.rs source-build guard, MIT LICENSE.
 3. the turbo-dom deltas: ``patches/{build-rs,fork-marker,v8-teardown-tests,
-   lib-test-init}.patch``, the manifest transform in ``manifest()``, the reserved-file
+   lib-test-init,doctests}.patch``, the manifest transform in ``manifest()``, the reserved-file
    removal and our regression tests (``tests/``) and ``rustfmt.toml``.
 Every stage is checked against ``pins.json`` before anything is written.
 
@@ -51,6 +51,7 @@ PATCHES = [
     "fork-marker.patch",        # pub const FORK_SHOULD_THROW_FIX + crate-level lint allows
     "v8-teardown-tests.patch",  # turbo-surf release-deps teardown tests (tests/test_api.rs)
     "lib-test-init.patch",      # upstream lib tests both initialized V8; share the Once
+    "doctests.patch",           # src/scope.rs doc examples compile and run (turbo-dom#182)
 ]
 # Our regression tests, copied into the generated crate as explicit [[test]]
 # targets (upstream sets autotests = false).

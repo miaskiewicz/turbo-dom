@@ -40,11 +40,12 @@
     "build-rs.patch": "51e992f627e5c42cd81ee63cae9302814773061ebdc77842b2730a6d22acc4de",
     "fork-marker.patch": "ff9a325c3c83afcf6ee73aaec4f9d166408b18c38acb9664fd43068315babbcf",
     "v8-teardown-tests.patch": "d5185408eb43c657f10dab2f0683c6797b2302d82a95823039164ac15df7e87c",
-    "lib-test-init.patch": "c6ff2657b257348214f32a737ee0125c3ba4e5bc57d0e52ef578e9f2e56a39b0"
+    "lib-test-init.patch": "c6ff2657b257348214f32a737ee0125c3ba4e5bc57d0e52ef578e9f2e56a39b0",
+    "doctests.patch": "c771b47979ab2d933a0481ca851276088cd7241860fe1dbe7982afbc342d9514"
   },
   "generated": {
     "files": 188,
-    "tree_sha256": "75f51a873ca927738ac991816bcda890b4bb1f4517778631948e8cf2b8fe5089",
+    "tree_sha256": "2bd026d8c78c4e49e5e79f3306b7c006ee2d85606d39102c7c053aa80d9b2dfc",
     "teardown_tests_sha256": "f057b3486c3d9140123bab8ecd6840cae8486e75cf79cfb8fc2ed20e05bdf63d",
     "key_files": {
       "Cargo.toml": "df276df62448220cc8d2408aba411c2c235acbdfa25531954e64768c4be46216",
