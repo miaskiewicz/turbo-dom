@@ -604,13 +604,9 @@ fn native<'s>(
         }
         "setHTMLUnsafe" => {
             // The markup already passed its Trusted Types check (sanitizer.js).
-            let Some(html) = v8::Local::<v8::String>::try_from(args.get(2))
-                .ok()
-                .map(|html| string_code_units(scope, html))
-            else {
-                illegal(scope);
-                return;
-            };
+            // shadow_html.js passes the converted (string) markup.
+            let html = v8::Local::<v8::String>::try_from(args.get(2)).expect("converted markup");
+            let html = string_code_units(scope, html);
             // SetHTMLUnsafeOptions.sanitizer, already converted and validated.
             let config = v8::Local::<v8::Object>::try_from(args.get(3))
                 .ok()

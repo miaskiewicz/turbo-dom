@@ -396,12 +396,11 @@ pub(super) fn mutation(scope: &mut v8::PinScope, event: &MutationEvent) {
 }
 fn assign(scope: &mut v8::PinScope, slot: v8::Local<v8::Object>, arguments: v8::Local<v8::Object>) {
     let length = v8::String::new(scope, "length").unwrap();
-    let Some(length) = arguments
+    // A function's `arguments` object: an own data property `length` holding a uint32.
+    let length = arguments
         .get(scope, length.into())
         .and_then(|value| value.uint32_value(scope))
-    else {
-        return;
-    };
+        .expect("arguments.length");
     let mut nodes = Vec::new();
     for index in 0..length {
         let Some(node) = arguments
@@ -508,15 +507,11 @@ fn native(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv:
         return;
     }
     let operation = args.get(0).to_rust_string_lossy(scope);
-    let Ok(object) = v8::Local::<v8::Object>::try_from(args.get(1)) else {
-        illegal(scope);
-        return;
-    };
+    // shadow_slots.js deletes this native from the global and calls it only with a receiver
+    // its slot / shadow-root / element / text brand check accepted: always a wrapped node.
+    let object = v8::Local::<v8::Object>::try_from(args.get(1)).expect("brand-checked receiver");
     let _owner = DomScope::for_object(scope, object);
-    let Some(handle) = handle_of(scope, object) else {
-        illegal(scope);
-        return;
-    };
+    let handle = handle_of(scope, object).expect("brand-checked receivers are wrapped nodes");
     match operation.as_str() {
         "mode" => {
             let mode = if manual(scope, handle) {
@@ -576,12 +571,12 @@ fn native(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv:
             let result = array(scope, &nodes);
             rv.set(result.into());
         }
-        "assign" => {
-            if let Ok(arguments) = v8::Local::<v8::Object>::try_from(args.get(2)) {
-                assign(scope, object, arguments);
-            }
+        // "assign", the last operation shadow_slots.js names; its third argument is the
+        // method's `arguments` object.
+        _ => {
+            let arguments = v8::Local::<v8::Object>::try_from(args.get(2)).expect("arguments");
+            assign(scope, object, arguments);
         }
-        _ => {}
     }
 }
 pub(super) fn fire(scope: &mut v8::PinScope, slot: v8::Local<v8::Object>) {

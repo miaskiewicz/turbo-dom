@@ -315,3 +315,15 @@ fn adopting_a_shadow_root_throws_hierarchy_request_error() {
         serde_json::json!([["HierarchyRequestError", true], ["NotSupportedError", true]])
     );
 }
+
+/// KNOWN_GAP (miaskiewicz/turbo-dom#143): Text.prototype.wholeText is missing.
+const RECEIVER_GAPS: &[(&str, &str)] = &[("result.Text.wholeText", "\"missing\"")];
+
+#[test]
+fn native_member_receivers_match_chrome156() {
+    check(
+        include_str!("receivers_edges_probe.js"),
+        include_str!("receivers_edges_chrome156.json"),
+        RECEIVER_GAPS,
+    );
+}
