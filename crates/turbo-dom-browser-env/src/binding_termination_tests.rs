@@ -120,3 +120,32 @@ fn termination_in_a_setter_reaction_keeps_the_mutation() {
         r#"[["connected"],2]"#
     );
 }
+
+/// An install that runs while the isolate is terminating (an embedder's watchdog fired just
+/// before a frame was set up) leaves no projected document and does not panic; once the
+/// termination is cancelled, installing again yields a working document.
+#[test]
+fn install_while_terminating_unwinds() {
+    crate::browser_env::tests::init_v8();
+    let isolate = &mut v8::Isolate::new(Default::default());
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    {
+        v8::tc_scope!(let scope, scope);
+        scope.terminate_execution();
+        install_with_html(scope, "<!doctype html><p id=p>x</p>");
+        scope.cancel_terminate_execution();
+        scope.reset();
+    }
+    reset();
+    install_with_html(scope, "<!doctype html><p id=p>x</p>");
+    let code = v8::String::new(scope, "document.getElementById('p').textContent").unwrap();
+    let value = v8::Script::compile(scope, code, None)
+        .unwrap()
+        .run(scope)
+        .unwrap()
+        .to_rust_string_lossy(scope);
+    assert_eq!(value, "x");
+    reset();
+}
