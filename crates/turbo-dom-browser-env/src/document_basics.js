@@ -311,7 +311,11 @@
   Object.defineProperty(documentType, 'prototype', { writable: false });
   Object.defineProperty(g, 'DocumentType', { value: documentType, writable: true, configurable: true });
   for (const [index, name] of ['name', 'publicId', 'systemId'].entries()) property(documentTypeProto, name, function () { return native('doctypeFields', this)[index]; });
-  for (const name of ['before', 'after', 'remove', 'replaceWith']) Object.defineProperty(documentTypeProto, name, Object.getOwnPropertyDescriptor(g.Element.prototype, name));
+  // ChildNode: DocumentType's own copies brand-check a doctype receiver (turbo-dom#114).
+  for (const name of ['before', 'after', 'remove', 'replaceWith']) {
+    const operation = ns.childNodeOperations[name];
+    method(documentTypeProto, name, function () { check(this, [10]); return apply(operation, this, arguments); }, 0);
+  }
   if(Object.hasOwn(g.document,'title'))delete g.document.title;
   property(g.Document.prototype, 'designMode', function () { return state(this).designMode || 'off'; }, function (value) {
     const record = state(this); value = string(value).toLowerCase(); if (value === 'on' || value === 'off') record.designMode = value;

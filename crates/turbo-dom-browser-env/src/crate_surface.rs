@@ -59,7 +59,7 @@ mod close_watchers_tests;
 mod edge_probes_tests;
 #[cfg(test)]
 #[path = "guard_edges_tests.rs"]
-mod guard_edges_tests;
+pub(super) mod guard_edges_tests;
 #[cfg(test)]
 #[path = "harness_tests.rs"]
 pub(super) mod harness_tests;
@@ -78,6 +78,9 @@ mod native_guards_tests;
 #[cfg(test)]
 #[path = "private_natives_tests.rs"]
 mod private_natives_tests;
+#[cfg(test)]
+#[path = "reflection_regressions_tests.rs"]
+mod reflection_regressions_tests;
 #[cfg(test)]
 #[path = "termination_tests.rs"]
 mod termination_tests;

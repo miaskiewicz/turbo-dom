@@ -149,6 +149,8 @@ fn captured_natives_refuse_hostile_calls() {
         let symbol_value =
             r#"["TypeError","TypeError","Cannot convert a Symbol value to a string"]"#;
         let throwing = r#"["RangeError","RangeError","toString"]"#;
+        // turbo-dom#114: a missing required argument is a TypeError.
+        let arity = r#"["TypeError","TypeError","Not enough arguments"]"#;
         // (native, its valid receiver, results there for no arguments / a Symbol / a throwing
         // toString); every other receiver is an Illegal invocation.
         let natives: &[(&str, &str, [&str; 3])] = &[
@@ -162,16 +164,8 @@ fn captured_natives_refuse_hostile_calls() {
                 "document",
                 [r#""object""#, symbol, throwing],
             ),
-            (
-                "querySelectorAll#1",
-                "element",
-                [r#""object""#, symbol, throwing],
-            ),
-            (
-                "querySelectorAll#2",
-                "document",
-                [r#""object""#, symbol, throwing],
-            ),
+            ("querySelectorAll#1", "element", [arity, symbol, throwing]),
+            ("querySelectorAll#2", "document", [arity, symbol, throwing]),
             (
                 "__readAppliedInlineStyle#1",
                 "element",
@@ -190,7 +184,7 @@ fn captured_natives_refuse_hostile_calls() {
             ("focus#1", "element", [r#""undefined""#; 3]),
             ("blur#1", "element", [r#""undefined""#; 3]),
             ("click#1", "element", [r#""undefined""#; 3]),
-            ("hasAttribute#1", "element", ["false", symbol, throwing]),
+            ("hasAttribute#1", "element", [arity, symbol, throwing]),
         ];
         let mut keys: Vec<_> = out.as_object().unwrap().keys().cloned().collect();
         keys.sort();

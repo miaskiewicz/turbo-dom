@@ -211,6 +211,11 @@ cssom_parser.rs: P5-cov-browser-env (C3e) the declaration parsers share importan
 trusted_types.rs: P5-cov-browser-env (C3e) the sink mapping's OnceLock is a module-level static
 cssom_parser.rs: P5-cov-browser-env (C3e) turbo-dom#164 keyframe selectors outside 0%..100% drop their rule
 document_legacy.rs: P5-cov-browser-env (C3e) set_domain's IP test reads as 'parses to a non-domain host'
+browser_env.rs: P5-cov-browser-env (D1) turbo-dom#114 arg_handle removed (its only caller, contains(), checks its Node argument itself); required-argument counts, contains() / removeAttributeNode() parameter types, setAttribute / toggleAttribute name validation, document / doctype textContent is null
+browser_env.js: P5-cov-browser-env (D1) turbo-dom#114 Element / CharacterData ChildNode copies brand-check their interface; scrollIntoView / scrollTo / scrollBy return a ScrollResult promise and convert their dictionaries
+document_basics.js: P5-cov-browser-env (D1) turbo-dom#114 DocumentType ChildNode copies brand-check a doctype
+css_policy.rs: P5-cov-browser-env (D1) turbo-dom#163 a <style> in a document without a browsing context is allowed a sheet (no policy, nothing cached)
+interface_members.js: P5-cov-browser-env (D1) turbo-dom#165 HTMLMediaElement constants are created configurable so key_order.js can place the reflected attributes first
 template_contents.rs: P5-cov-browser-env (D2) turbo-dom#151 serialize leaves a pending termination pending (returns nothing)
 browser_env.rs: P5-cov-browser-env (D2) turbo-dom#151 dispatch_host_event delivers nothing while a termination is pending
 custom_elements.rs: P5-cov-browser-env (D2) turbo-dom#140 no per-call cap on custom element reactions or queued mutation events (Chrome 156 has none; the 4096 caps terminated real pages)
@@ -238,6 +243,8 @@ OWNED="$OWNED activation_granted_probe.js activation_granted_chrome156.json trus
 OWNED="$OWNED private_natives_tests.rs binding_termination_tests.rs"
 OWNED="$OWNED member_edges_tests.rs host_edges_tests.rs member_edges_probe.js member_edges_chrome156.json"
 OWNED="$OWNED guard_edges_tests.rs guard_edges_probe.js guard_edges_chrome156.json"
+OWNED="$OWNED reflection_regressions_tests.rs"
+OWNED="$OWNED native_guards_hostile_probe.js native_guards_hostile_chrome156.json"
 OWNED="$OWNED reaction_volume_probe.js reaction_volume_chrome156.json"
 OWNED="$OWNED keyframe_values_probe.js keyframe_values_chrome156.json"
 OWNED="$OWNED details_toggle_probe.js details_toggle_chrome156.json"

@@ -1205,7 +1205,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     LINK:'HTMLLinkElement', TITLE:'HTMLTitleElement', BASE:'HTMLBaseElement', BR:'HTMLBRElement',
     HR:'HTMLHRElement', OPTGROUP:'HTMLOptGroupElement', MAP:'HTMLMapElement', AREA:'HTMLAreaElement',
     OBJECT:'HTMLObjectElement', EMBED:'HTMLEmbedElement', OUTPUT:'HTMLOutputElement',
-    MENU:'HTMLMenuElement', DATA:'HTMLDataElement', TIME:'HTMLTimeElement',
+    MENU:'HTMLMenuElement', DATA:'HTMLDataElement', TIME:'HTMLTimeElement', PARAM:'HTMLParamElement',
   };
   // abstract base / multi-tag interfaces (no single tag → generic nodeType-1 instanceof).
   var htmlAbstract = ['HTMLMediaElement','HTMLTableCellElement','HTMLTableSectionElement','HTMLQuoteElement','HTMLUnknownElement'];
@@ -1339,7 +1339,10 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
   // admits (or rejects) and spells the longhands it knows; any other value the stylesheet
   // grammar admits, rtdom spells context-free. `raw` is the stylesheet grammar's text.
   function longhandText(name,value){var key=name+'\u0000'+value,cached=longhandTexts.get(key);if(cached!==undefined)return cached;var raw=parseLonghandText(name,value),result=raw===null?null:[raw,raw];if(cssShorthand&&name.slice(0,2)!=='--'){var spelled=cssShorthand('longhand',name,value);if(spelled[0]==='valid')result=[spelled[1],raw===null?spelled[1]:raw];else if(spelled[0]==='invalid')result=null;else if(raw!==null)result=[spelled[1],raw];else if(spelled[1]!==value&&parseLonghandText(name,spelled[1])!==null)result=[spelled[1],spelled[1]];}if(longhandTexts.size>=4096)longhandTexts.clear();longhandTexts.set(key,result);return result;}
-  function parseLonghandText(name,value){if(!name.startsWith('--')&&!knownProperty(name))return null;var parsed=typeof cssNativeParse==='function'?cssNativeParse('x { '+name+': '+value+' }'):'x { '+name+': '+value+' }';var body=parsed.slice(parsed.indexOf('{')+1,parsed.lastIndexOf('}')),accepted=null;cssParts(body,';').forEach(function(part){var index=part.indexOf(':');if(index<1||part.slice(0,index).trim()!==name)return;var text=part.slice(index+1).trim();if(/\s*!important\s*$/i.test(text))return;if(!name.startsWith('--')&&__ns.typedOmValid&&!__ns.typedOmValid(name,text))return;accepted=text;});return accepted;}
+  // A var() / env() value is accepted at parse time once the native parser kept it; Typed OM
+  // has no typed reading of it (turbo-dom#162).
+  function deferredCssText(text){return /(^|[^-\w])(var|env)\(/i.test(text);}
+  function parseLonghandText(name,value){if(!name.startsWith('--')&&!knownProperty(name))return null;var parsed=typeof cssNativeParse==='function'?cssNativeParse('x { '+name+': '+value+' }'):'x { '+name+': '+value+' }';var body=parsed.slice(parsed.indexOf('{')+1,parsed.lastIndexOf('}')),accepted=null;cssParts(body,';').forEach(function(part){var index=part.indexOf(':');if(index<1||part.slice(0,index).trim()!==name)return;var text=part.slice(index+1).trim();if(/\s*!important\s*$/i.test(text))return;if(!name.startsWith('--')&&!deferredCssText(text)&&__ns.typedOmValid&&!__ns.typedOmValid(name,text))return;accepted=text;});return accepted;}
   // The [[name, text, pending, raw], ...] a declaration sets, or null when it is invalid.
   function declarationEntries(name,value){name=propertyAlias(name);if(shorthandName(name))return expandShorthandValue(name,value);var text=longhandText(name,value);return text===null?null:[[name,text[0],null,text[1]]];}
   function parseDeclaration(record,text){if(cssShorthand&&!record.fontFace){record.names=[];record.values=new Map();var list=cssShorthand('declarations',text);for(var index=0;index<list.length;index+=3){var name=list[index];if(name.slice(0,2)!=='--')name=name.toLowerCase();var entries=declarationEntries(name,list[index+1]);if(entries)entries.forEach(function(entry){parsedDeclaration(record,entry[0],entry[1],list[index+2]?'important':'',entry[2],entry[3]);});}return;}parseLegacyDeclaration(record,text);}
@@ -2306,6 +2309,14 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
         };
       Object.defineProperty(baseProto, 'sheet', {configurable:true,get:currentSheetGetter});
       var docProto = Object.getPrototypeOf(d) || baseProto;
+      // Documents without a browsing context list their own sheets too (turbo-dom#163).
+      var otherDocumentSheets=new WeakMap(),otherSheetsGet=WeakMap.prototype.get,otherSheetsSet=WeakMap.prototype.set,sheetsQuery=d.querySelectorAll;
+      __ns.documentSheetsDescriptor={configurable:true,enumerable:true,get:function(){
+        if(this===d)return documentSheets;
+        var doc=this,list=cssApply(otherSheetsGet,otherDocumentSheets,[doc]);
+        if(!list){list=cssList('StyleSheetList',function(){var out=[],found=cssApply(sheetsQuery,doc,['style,link']);for(var i=0;i<found.length;i++){var sheet=cssApply(currentSheetGetter,found[i],[]);if(sheet)out.push(sheet);}return out;});cssApply(otherSheetsSet,otherDocumentSheets,[doc,list]);}
+        return list;
+      }};
       if (g.Document) g.Document.prototype = docProto;
       if (g.HTMLDocument) g.HTMLDocument.prototype = docProto;
       // NB: define these directly (NOT guarded by Object.getOwnPropertyDescriptor) — the all-Rust
@@ -2853,8 +2864,47 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
       if(descriptor)Object.defineProperty(documentProto,name,descriptor);
       if(name!=='getElementById')Object.defineProperty(prototypes.DocumentFragment,name,Object.getOwnPropertyDescriptor(elementProto,name));
     });
+    // ChildNode members: Element's and CharacterData's own copies of the shared native operation
+    // brand-check their interface (Chrome 156: TypeError, Illegal invocation).
+    var childNodeApply=Reflect.apply;
+    // DocumentType's copies (document_basics.js) wrap the same shared operations.
+    __ns.childNodeOperations=Object.create(null);
     ['before','after','remove','replaceWith'].forEach(function(name){
-      Object.defineProperty(characterProto,name,Object.getOwnPropertyDescriptor(elementProto,name));
+      var native=Object.getOwnPropertyDescriptor(elementProto,name).value;
+      __ns.childNodeOperations[name]=native;
+      [['Element',elementProto],['CharacterData',characterProto]].forEach(function(owner){
+        var check=__ns.domAccessor('nodeType',false,owner[0]);
+        Object.defineProperty(owner[1],name,{value:__ns.makeNativeFunction(function(){childNodeApply(check,this,[]);return childNodeApply(native,this,arguments);},name,0),writable:true,enumerable:true,configurable:true});
+      });
+    });
+    // CSSOM View scrolling operations return a promise of a ScrollResult (Chrome 156); a bad
+    // receiver or argument rejects it instead of throwing. Headless scrolling never moves, so
+    // the operation only converts its arguments (IDL order) and resolves.
+    var scrollPromise=g.Promise,scrollResolve=g.Promise.resolve,scrollReject=g.Promise.reject,ScrollTypeError=TypeError,scrollString=String;
+    var scrollEnums={behavior:['ScrollOptions','ScrollBehavior',['auto','instant','smooth']],block:['ScrollIntoViewOptions','ScrollLogicalPosition',['start','center','end','nearest']],container:['ScrollIntoViewOptions','ScrollContainer',['all','nearest']]};
+    scrollEnums.inline=scrollEnums.block;
+    var scrollMembers=function(operation,options,keys,dictionary){
+      if(options==null)return;
+      if(typeof options!=='object'&&typeof options!=='function')throw new ScrollTypeError("Failed to execute '"+operation+"' on 'Element': The provided value is not of type '"+dictionary+"'.");
+      keys.forEach(function(key){
+        var value=options[key];if(value===undefined)return;
+        var spec=scrollEnums[key],owner=spec?spec[0]:dictionary,read="Failed to execute '"+operation+"' on 'Element': Failed to read the '"+key+"' property from '"+owner+"': ";
+        if(typeof value==='symbol')throw new ScrollTypeError(read+'Cannot convert a Symbol value to a '+(spec?'string':'number'));
+        if(!spec){+value;return;}
+        value=scrollString(value);
+        if(spec[2].indexOf(value)<0)throw new ScrollTypeError(read+"The provided value '"+value+"' is not a valid enum value of type "+spec[1]+'.');
+      });
+    };
+    var scrollArguments={
+      scrollIntoView:function(args){var arg=args[0];if(arg!==null&&(typeof arg==='object'||typeof arg==='function'))scrollMembers('scrollIntoView',arg,['behavior','block','container','inline'],'ScrollIntoViewOptions');},
+      scrollTo:function(args){if(args.length>=2){+args[0];+args[1];return;}scrollMembers(this,args[0],['behavior','left','top'],'ScrollToOptions');}
+    };
+    ['scrollIntoView','scrollTo','scrollBy'].forEach(function(name){
+      var native=Object.getOwnPropertyDescriptor(elementProto,name).value,check=__ns.domAccessor('nodeType',false,'Element'),convert=scrollArguments[name==='scrollBy'?'scrollTo':name];
+      Object.defineProperty(elementProto,name,{value:__ns.makeNativeFunction(function(){
+        try{childNodeApply(check,this,[]);childNodeApply(native,this,[]);childNodeApply(convert,name,[arguments]);}catch(error){return childNodeApply(scrollReject,scrollPromise,[error]);}
+        return childNodeApply(scrollResolve,scrollPromise,[{interrupted:false}]);
+      },name,0),writable:true,enumerable:true,configurable:true});
     });
     function projectCompatibility(owner,names,source){
       var proto=prototypes[owner],check=__ns.domAccessor('nodeType',false,owner);
@@ -2869,7 +2919,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
       });
     }
     projectCompatibility('Document',['getElementsByTagName','getElementsByClassName','getElementsByName'],htmlProto);
-    Object.defineProperty(documentProto,'adoptedStyleSheets',adoptionDescriptor);Object.defineProperty(g.ShadowRoot.prototype,'adoptedStyleSheets',shadowAdoptionDescriptor);delete d.adoptedStyleSheets;
+    Object.defineProperty(documentProto,'adoptedStyleSheets',adoptionDescriptor);if(__ns.documentSheetsDescriptor){Object.defineProperty(documentProto,'styleSheets',__ns.documentSheetsDescriptor);delete __ns.documentSheetsDescriptor;}Object.defineProperty(g.ShadowRoot.prototype,'adoptedStyleSheets',shadowAdoptionDescriptor);delete d.adoptedStyleSheets;
     projectCompatibility('Node',['isEqualNode','isSameNode','lastChild','previousSibling'],htmlProto);
     projectCompatibility('Element',['classList','getClientRects','getElementsByTagName','getElementsByClassName','nextElementSibling','previousElementSibling','requestFullscreen'],htmlProto);
     ['isEqualNode','isSameNode','lastChild','previousSibling','replaceChild','classList','getClientRects','getElementsByTagName','getElementsByClassName','getElementsByName','nextElementSibling','previousElementSibling','requestFullscreen','lastElementChild','cookie','exitFullscreen'].forEach(function(name){delete htmlProto[name];});
@@ -2957,6 +3007,44 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
       });
       delete htmlProto[name];
     });
+    // Reflected content attributes the copies above do not cover: [interface, IDL name,
+    // boolean?, content attribute]. Only interfaces lacking the member get it.
+    var reflectedSetAttribute=g.Element.prototype.setAttribute,reflectedRemoveAttribute=g.Element.prototype.removeAttribute,reflectedHasAttribute=g.Element.prototype.hasAttribute;
+    var reflectedTags={HTMLBaseElement:['base'],HTMLMediaElement:['audio','video'],HTMLVideoElement:['video'],HTMLImageElement:['img'],HTMLEmbedElement:['embed'],HTMLObjectElement:['object'],HTMLIFrameElement:['iframe'],HTMLMapElement:['map'],HTMLFieldSetElement:['fieldset'],HTMLAnchorElement:['a'],HTMLDetailsElement:['details'],HTMLParamElement:['param']};
+    var reflectedContent=[];
+    // turbo-dom#118: HTMLBaseElement.target.
+    reflectedContent.push(['HTMLBaseElement','target',false,'target']);
+    // turbo-dom#165: HTMLMediaElement's boolean attributes (muted through defaultMuted).
+    reflectedContent.push(['HTMLMediaElement','controls',true,'controls'],['HTMLMediaElement','autoplay',true,'autoplay'],['HTMLMediaElement','loop',true,'loop'],['HTMLMediaElement','defaultMuted',true,'muted'],['HTMLMediaElement','disableRemotePlayback',true,'disableremoteplayback'],['HTMLVideoElement','playsInline',true,'playsinline']);
+    // turbo-dom#169: the name attribute of every owner the form-control copies do not cover.
+    ['HTMLImageElement','HTMLEmbedElement','HTMLObjectElement','HTMLIFrameElement','HTMLMapElement','HTMLFieldSetElement','HTMLAnchorElement','HTMLDetailsElement'].forEach(function(owner){reflectedContent.push([owner,'name',false,'name']);});
+    // turbo-dom#174: HTMLParamElement.
+    reflectedContent.push(['HTMLParamElement','name',false,'name'],['HTMLParamElement','value',false,'value'],['HTMLParamElement','type',false,'type'],['HTMLParamElement','valueType',false,'valuetype']);
+    reflectedContent.forEach(function(entry){
+      var owner=entry[0],name=entry[1],flag=entry[2],attribute=entry[3],proto=prototypes[owner];if(!proto||Object.hasOwn(proto,name))return;
+      var check=__ns.domAccessor('nodeType',false,'HTMLElement'),locals=new Set(reflectedTags[owner]);
+      var brand=function(receiver){reflectedApply(check,receiver,[]);if(!reflectedApply(reflectedSetHas,locals,[reflectedApply(getLocalTag,receiver,[])]))throw new TypeError('Illegal invocation');};
+      Object.defineProperty(proto,name,{configurable:true,enumerable:true,
+        get:__ns.makeNativeFunction(function(){brand(this);if(flag)return reflectedApply(reflectedHasAttribute,this,[attribute]);var value=reflectedApply(reflectedGetAttribute,this,[attribute]);return value===null?'':value;},'get '+name,0),
+        set:__ns.makeNativeFunction(function(value){brand(this);if(arguments.length<1)throw new TypeError("Failed to set the '"+name+"' property on '"+owner+"': 1 argument required, but only 0 present.");if(!flag){reflectedApply(reflectedSetAttribute,this,[attribute,attributeString(value)]);return;}if(value)reflectedApply(reflectedSetAttribute,this,[attribute,'']);else reflectedApply(reflectedRemoveAttribute,this,[attribute]);},'set '+name,1)});
+    });
+    // The muted IDL attribute is media state, not a reflection: it starts false.
+    if(prototypes.HTMLMediaElement&&!Object.hasOwn(prototypes.HTMLMediaElement,'muted')){
+      var mediaMuted=new WeakMap(),mutedGet=WeakMap.prototype.get,mutedSet=WeakMap.prototype.set,mediaLocals=new Set(['audio','video']),mediaCheck=__ns.domAccessor('nodeType',false,'HTMLElement');
+      var mediaBrand=function(receiver){reflectedApply(mediaCheck,receiver,[]);if(!reflectedApply(reflectedSetHas,mediaLocals,[reflectedApply(getLocalTag,receiver,[])]))throw new TypeError('Illegal invocation');};
+      Object.defineProperty(prototypes.HTMLMediaElement,'muted',{configurable:true,enumerable:true,
+        get:__ns.makeNativeFunction(function(){mediaBrand(this);return reflectedApply(mutedGet,mediaMuted,[this])===true;},'get muted',0),
+        set:__ns.makeNativeFunction(function(value){mediaBrand(this);reflectedApply(mutedSet,mediaMuted,[this,!!value]);},'set muted',1)});
+    }
+    // Text.wholeText (turbo-dom#143): the data of the contiguous Text siblings, in tree order.
+    if(g.Text&&!Object.hasOwn(g.Text.prototype,'wholeText')){
+      var wholeCheck=__ns.domAccessor('nodeType',false,'Text'),wholeType=Object.getOwnPropertyDescriptor(nodeProto,'nodeType').get,wholePrevious=Object.getOwnPropertyDescriptor(nodeProto,'previousSibling').get,wholeNext=Object.getOwnPropertyDescriptor(nodeProto,'nextSibling').get,wholeData=Object.getOwnPropertyDescriptor(g.CharacterData.prototype,'data').get;
+      var isText=function(node){if(node===null)return false;var type=reflectedApply(wholeType,node,[]);return type===3||type===4;};
+      Object.defineProperty(g.Text.prototype,'wholeText',{configurable:true,enumerable:true,get:__ns.makeNativeFunction(function(){
+        reflectedApply(wholeCheck,this,[]);var first=this,previous;while(isText(previous=reflectedApply(wholePrevious,first,[])))first=previous;
+        var text='';for(var node=first;isText(node);node=reflectedApply(wholeNext,node,[]))text+=reflectedApply(wholeData,node,[]);return text;
+      },'get wholeText',0)});
+    }
     var elementOperations={getAttributeNames(){return Array.from(this.attributes,function(attribute){return attribute.name;});},hasAttributes(){return this.attributes.length>0;},insertAdjacentText(position,text){if(typeof position==='symbol'||typeof text==='symbol')throw new TypeError('Cannot convert a Symbol to a string');position=String(position).toLowerCase();var node=this.ownerDocument.createTextNode(String(text));if(position==='beforebegin'){if(this.parentNode)this.parentNode.insertBefore(node,this);}else if(position==='afterend'){if(this.parentNode)this.parentNode.insertBefore(node,this.nextSibling);}else if(position==='afterbegin')this.insertBefore(node,this.firstChild);else if(position==='beforeend')this.appendChild(node);else throw new __ns.DOMException('Invalid adjacent position','SyntaxError');}};
     Object.keys(elementOperations).forEach(function(name){var delegate=elementOperations[name],check=__ns.domAccessor('nodeType',false,'Element');Object.defineProperty(elementProto,name,{value:__ns.makeNativeFunction(function(){check.call(this);if(arguments.length<delegate.length)throw new TypeError(name+' requires '+delegate.length+' arguments');return delegate.apply(this,arguments);},name,delegate.length),writable:true,enumerable:true,configurable:true});});
     // GlobalEventHandlers: HTMLElement, SVGElement and MathMLElement each brand-check (turbo-dom#87).

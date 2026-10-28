@@ -169,7 +169,10 @@ fn applied_inline(scope: &mut v8::PinScope, node: Handle) -> String {
 fn sheet_allowed(scope: &mut v8::PinScope, node: Handle, initial: Option<&[String]>) -> bool {
     let element = wrap(scope, node);
     if !node_has_window_owner(scope, element) {
-        return false;
+        // A document without a browsing context (createHTMLDocument, DOMParser) has no
+        // policy to enforce and still parses its <style> sheets (turbo-dom#163). Nothing is
+        // cached, so the element is re-checked once it is adopted into a window's document.
+        return true;
     }
     let text = source(node, true);
     let cached = DOM.with(|dom| {

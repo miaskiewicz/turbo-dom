@@ -1,0 +1,321 @@
+{
+  "browser": "Chrome/156.0.8078.47",
+  "v8": "15.6.75.19",
+  "probe": "native_guards_hostile_probe.js",
+  "probeSha256": "0c844366be2e21b848cbe7943eefdfe83d91120c250f0eafe3bfee42ad732272",
+  "collectorSha256": "3f964d2cdf0ec8101870a776aaffc3b7dc4522306959c4a40761057beb255eb8",
+  "flags": [
+    "--headless=new",
+    "--remote-debugging-pipe",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "--disable-background-timer-throttling",
+    "--disable-renderer-backgrounding",
+    "--disable-backgrounding-occluded-windows",
+    "about:blank"
+  ],
+  "result": {
+    "scrolls": [
+      [
+        "fulfilled",
+        {
+          "interrupted": false
+        }
+      ],
+      [
+        "fulfilled",
+        {
+          "interrupted": false
+        }
+      ],
+      [
+        "fulfilled",
+        {
+          "interrupted": false
+        }
+      ],
+      [
+        "fulfilled",
+        {
+          "interrupted": false
+        }
+      ],
+      [
+        "fulfilled",
+        {
+          "interrupted": false
+        }
+      ],
+      [
+        "fulfilled",
+        {
+          "interrupted": false
+        }
+      ],
+      [
+        "rejected",
+        "TypeError",
+        "TypeError"
+      ],
+      [
+        "rejected",
+        "TypeError",
+        "TypeError"
+      ],
+      [
+        "rejected",
+        "TypeError",
+        "TypeError"
+      ],
+      [
+        "fulfilled",
+        {
+          "interrupted": false
+        }
+      ],
+      [
+        "rejected",
+        "TypeError",
+        "TypeError"
+      ],
+      [
+        "fulfilled",
+        {
+          "interrupted": false
+        }
+      ],
+      [
+        "rejected",
+        "TypeError",
+        "TypeError"
+      ],
+      [
+        "rejected",
+        "TypeError",
+        "TypeError"
+      ],
+      [
+        "fulfilled",
+        {
+          "interrupted": false
+        }
+      ],
+      [
+        "rejected",
+        "TypeError",
+        "TypeError"
+      ],
+      [
+        "rejected",
+        "TypeError",
+        "TypeError"
+      ],
+      [
+        "rejected",
+        "TypeError",
+        "TypeError"
+      ],
+      [
+        "rejected",
+        "TypeError",
+        "TypeError"
+      ],
+      [
+        "fulfilled",
+        {
+          "interrupted": false
+        }
+      ],
+      [
+        "fulfilled",
+        {
+          "interrupted": false
+        }
+      ],
+      [
+        "fulfilled",
+        {
+          "interrupted": false
+        }
+      ],
+      [
+        "rejected",
+        "TypeError",
+        "TypeError"
+      ],
+      [
+        "rejected",
+        "RangeError",
+        "RangeError"
+      ],
+      [
+        "fulfilled",
+        {
+          "interrupted": false
+        }
+      ],
+      [
+        "fulfilled",
+        {
+          "interrupted": false
+        }
+      ],
+      [
+        "fulfilled",
+        [
+          "behavior",
+          "block",
+          "container",
+          "inline"
+        ]
+      ],
+      [
+        "fulfilled",
+        [
+          "behavior",
+          "left",
+          "top"
+        ]
+      ]
+    ],
+    "contains": [
+      false,
+      false,
+      [
+        "TypeError",
+        "TypeError"
+      ],
+      [
+        "TypeError",
+        "TypeError"
+      ],
+      [
+        "TypeError",
+        "TypeError"
+      ],
+      true,
+      false
+    ],
+    "removeAttributeNode": [
+      [
+        "TypeError",
+        "TypeError"
+      ],
+      [
+        "TypeError",
+        "TypeError"
+      ],
+      [
+        "TypeError",
+        "TypeError"
+      ],
+      [
+        "DOMException",
+        "NotFoundError"
+      ]
+    ],
+    "names": [
+      [
+        "RangeError",
+        "RangeError"
+      ],
+      [
+        "DOMException",
+        "InvalidCharacterError"
+      ],
+      [
+        "DOMException",
+        "InvalidCharacterError"
+      ],
+      [
+        "DOMException",
+        "InvalidCharacterError"
+      ],
+      [
+        "DOMException",
+        "InvalidCharacterError"
+      ],
+      "undefined",
+      [
+        "DOMException",
+        "InvalidCharacterError"
+      ],
+      [
+        "DOMException",
+        "InvalidCharacterError"
+      ],
+      true,
+      "v",
+      true,
+      [
+        "DOMException",
+        "InvalidCharacterError"
+      ]
+    ],
+    "arity": [
+      [
+        "TypeError",
+        "TypeError"
+      ],
+      true,
+      "",
+      "undefined",
+      false,
+      "ab"
+    ],
+    "childNode": [
+      [
+        "TypeError",
+        "TypeError"
+      ],
+      [
+        "TypeError",
+        "TypeError"
+      ],
+      false,
+      0,
+      0,
+      "before",
+      "tu"
+    ],
+    "scroll": [
+      [
+        "rejected",
+        "RangeError",
+        "RangeError"
+      ],
+      [
+        "rejected",
+        "TypeError",
+        "TypeError"
+      ],
+      [
+        "fulfilled",
+        {
+          "interrupted": false
+        }
+      ],
+      [
+        "rejected",
+        "TypeError",
+        "TypeError"
+      ],
+      [
+        "rejected",
+        "TypeError",
+        "TypeError"
+      ],
+      true,
+      0,
+      "scrollTo"
+    ],
+    "textContent": [
+      null,
+      null,
+      null
+    ]
+  }
+}

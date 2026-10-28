@@ -30,6 +30,14 @@ at the time); this file reconstructs them from history.
   <general-enclosed> and evaluates false, so `not (not foo)` / `not (foo)` now hold; text that
   is not one group (`(not a) (b)`) does not parse and drops the rule. Control:
   `scripts/html-document-chrome-control.mjs` case `supports-general-enclosed`.
+### Fixed — browser-env reflections, ::slotted() admission, deferred zoom, inert sheets (miaskiewicz/turbo-dom#118, #143, #148, #162, #163, #165, #168, #169, #174)
+- `HTMLBaseElement.target`, HTMLMediaElement's booleans (`controls`, `autoplay`, `loop`, `defaultMuted`,
+  `disableRemotePlayback`, video `playsInline`) and `name` on img / embed / object / iframe / map /
+  fieldset / a / details reflect their content attributes; `muted` is media state; new
+  `HTMLParamElement`; `Text.prototype.wholeText`.
+- After `::slotted()` only Chrome 156's pseudo-elements are admitted, and no pseudo-class.
+- `zoom: var(--z)` / `env()` declarations are kept; a `<style>` in a document without a browsing
+  context gets a sheet and `Document.prototype.styleSheets` lists it.
 
 ### Fixed — browser-env getKeyframes() spells a shorthand member from its longhands (miaskiewicz/turbo-dom#167)
 - `animations.rs keyframe_value` serializes a shorthand through `rtdom::css_shorthand` the way

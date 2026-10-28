@@ -245,15 +245,7 @@ fn activation_granted_gates_match_chrome156() {
 fn dialog_popover_edges_match_chrome156() {
     let probe = include_str!("dialog_popover_edges_probe.js");
     let expected = control(include_str!("dialog_popover_edges_chrome156.json"), probe);
-    assert_matches_control(
-        &run_probe(probe),
-        &expected,
-        &[
-            // miaskiewicz/turbo-dom#148: `::slotted(div):open` is accepted.
-            r#"result.selectors.result[18][1] = []"#,
-            r#"result.selectors.result[18][2] = false"#,
-        ],
-    );
+    assert_matches_control(&run_probe(probe), &expected, &[]);
 }
 
 /// Run `source` (an async function body's value) with the host entry points exposed as
