@@ -11,7 +11,7 @@
   const g = globalThis, ns = g[Symbol.for('ts')], make = ns.makeNativeFunction;
   const apply = Reflect.apply, define = Object.defineProperty, ErrorType = TypeError, Exception = g[Symbol.for('ts')].DOMException;
   const PromiseType = Promise, reject = Promise.reject.bind(Promise), StringValue = String;
-  const TRANSIENT = 0, CONSUME = 1, CROSS_ORIGIN = 4, FULLSCREEN = 5;
+  const TRANSIENT = 0, CONSUME = 1, CROSS_ORIGIN = 2, FULLSCREEN = 3;
   const HTML = 'http://www.w3.org/1999/xhtml', SVG = 'http://www.w3.org/2000/svg';
   const accessor = (proto, name) => Object.getOwnPropertyDescriptor(proto, name).get;
   const nodeType = accessor(g.Node.prototype, 'nodeType'), connectedOf = accessor(g.Node.prototype, 'isConnected');
@@ -102,11 +102,19 @@
       // document's frame container becomes that document's fullscreen element.
       for (let node = element; node !== null; node = containerOf(node)) {
         if (!Native('fullscreen-push', node, prefixed)) break;
-        unfocusOutside(node);
         changed[changed.length] = node;
       }
       resolve();
-      for (let index = 0; index < changed.length; index++) { const node = changed[index]; schedule(node, () => fire(node, changeType)); }
+      // Chrome unfocuses outside the fullscreen element just before the change event, which
+      // targets the document once the element has left it (miaskiewicz/turbo-dom#129, #130).
+      for (let index = 0; index < changed.length; index++) {
+        const node = changed[index];
+        schedule(node, () => {
+          if (!connected(node)) return fire(Native('document', node), changeType);
+          unfocusOutside(node);
+          fire(node, changeType);
+        });
+      }
     });
   }
   // Chrome clears focus outside the new fullscreen element.

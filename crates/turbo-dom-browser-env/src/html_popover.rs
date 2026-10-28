@@ -106,9 +106,8 @@ fn event_target<'s>(
     event_record(scope, event).map(|record| !get_bool_prop(scope, record, "defaultPrevented"))
 }
 fn flush(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, _rv: v8::ReturnValue) {
-    let Ok(data) = v8::Local::<v8::Array>::try_from(args.data()) else {
-        return;
-    };
+    // `queue` builds each flush function with its [owner, node, task, record] array as data.
+    let data = v8::Local::<v8::Array>::try_from(args.data()).expect("the flush data is an array");
     let owner = data
         .get_index(scope, 0)
         .and_then(|value| value.integer_value(scope))
@@ -392,9 +391,10 @@ pub(super) fn disconnect(scope: &mut v8::PinScope, root: Handle, include_root: b
     user_activation_gates::disconnect(scope, root, include_root);
     let nodes = DOM.with(|dom| {
         let dom = dom.borrow();
-        let Some(dom) = dom.as_ref() else {
-            return Vec::new();
-        };
+        // Callers remove a node of the current DOM.
+        let dom = dom
+            .as_ref()
+            .expect("the popover removing steps run inside a DOM scope");
         dom.popover
             .open
             .iter()
@@ -445,18 +445,12 @@ pub(super) fn dispatch<'s>(
     args: v8::FunctionCallbackArguments<'s>,
     mut rv: v8::ReturnValue,
 ) {
-    let Ok(receiver) = v8::Local::<v8::Object>::try_from(args.get(0)) else {
-        return;
-    };
+    // html_popover.js (the only caller; the native is deleted from the global before guest
+    // code runs) passes its receiver after `html()` checked it is an HTML-namespace element.
+    let receiver =
+        v8::Local::<v8::Object>::try_from(args.get(0)).expect("the popover hook passes an element");
     let _dom = DomScope::for_object(scope, receiver);
-    let Some(node) = handle_of(scope, receiver) else {
-        return;
-    };
-    if with_tree(|tree| tree.node_type_id(node) != 1 || tree.namespace_id(node) != 0)
-        .unwrap_or(true)
-    {
-        return;
-    }
+    let node = handle_of(scope, receiver).expect("the popover hook passes an element");
     let operation = args.get(1).to_rust_string_lossy(scope);
     if operation == "read" {
         if let Some(mode) = with_tree(|tree| mode(tree, node)).flatten() {
@@ -584,9 +578,8 @@ pub(super) fn topmost_of(first: Handle, second: Handle) -> Handle {
 pub(super) fn hide_until(scope: &mut v8::PinScope, endpoint: Option<Handle>) {
     let closing = DOM.with(|dom| {
         let dom = dom.borrow();
-        let Some(dom) = dom.as_ref() else {
-            return Vec::new();
-        };
+        // Light dismiss resolved the clicked node in the current DOM.
+        let dom = dom.as_ref().expect("light dismiss runs inside a DOM scope");
         let open = &dom.popover.open;
         let start = endpoint
             .and_then(|endpoint| open.iter().position(|entry| entry.node == endpoint))

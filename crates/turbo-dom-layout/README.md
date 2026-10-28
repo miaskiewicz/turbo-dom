@@ -64,7 +64,11 @@ fn lay_out(html: &str) -> Result<Fragment, RenderError> {
   that element's reads (`LayoutSnapshot::unsupported_inline_geometry`), not the snapshot
   (P5b, turbo-surf#31/#36, turbo-dom#28; Chrome 156 control
   `scripts/live-geometry-chrome-control.mjs` in turbo-dom, asserted by
-  `src/live/chrome_tests.rs`).
+  `src/live/chrome_tests.rs`). `cssom_view`'s scroll, visibility, caret and Range reads
+  (computed overflow pairs, scrollWidth/Height and max offsets, scrollIntoView offsets,
+  `checkVisibility()`, `caretPositionFromPoint`, `Range.getClientRects()`) follow the
+  Chrome 156 control `scripts/cssom-view-chrome-control.mjs`
+  (`tests/fixtures/cssom_view_chrome156.json`, asserted in those modules' tests).
 - Layout semantics shared by every path (Chrome 156-controlled, turbo-dom#28): a
   `width: auto` table is shrink-to-fit (`table-layout: fixed` needs a definite width);
   absolutely positioned and floated boxes are blockified (`inline-table` -> `table`;

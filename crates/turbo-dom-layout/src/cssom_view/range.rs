@@ -126,10 +126,8 @@ pub fn select(
                 result.push(Selection::Element(source));
             }
         }
-        if span.kind != 3 {
-            continue;
-        }
-        let Some((base, units)) = span.data else {
+        // Only Text contributes character boxes (its span always records its data).
+        let (3, Some((base, units))) = (span.kind, span.data) else {
             continue;
         };
         if units == 0 {
@@ -179,5 +177,146 @@ mod tests {
         );
         assert!(select(&tree, 7, (div, 2), (div, 2)).unwrap().is_empty());
         assert!(select(&tree, 7, (children[0], 4), (children[0], 4)).is_err());
+    }
+
+    /// DOM boundary rules (Chrome's Range would throw before getClientRects for each):
+    /// reversed ends, an offset past the node's length, a node outside the tree.
+    #[test]
+    fn invalid_boundaries_are_errors() {
+        let mut tree = Tree::parse("<div>ab<i></i></div>");
+        let div = tree.query_selector("div").unwrap();
+        let text = tree.children(div)[0];
+        let error = |tree: &Tree, start, end| select(tree, 1, start, end).unwrap_err();
+        assert_eq!(
+            error(&tree, (text, 2), (text, 1)),
+            "native Range boundaries are reversed"
+        );
+        assert_eq!(
+            error(&tree, (text, 0), (text, 3)),
+            "native Range UTF-16 boundary exceeds source"
+        );
+        assert_eq!(
+            error(&tree, (div, 0), (div, 3)),
+            "native Range child boundary exceeds source"
+        );
+        let detached = tree.create_element("p");
+        assert_eq!(
+            error(&tree, (div, 0), (detached, 0)),
+            "native Range boundary is outside connected tree"
+        );
+        assert_eq!(select(&tree, 1, (div, 2), (div, 2)).unwrap(), vec![]);
+        // A collapsed range between the Text and its next sibling touches no text.
+        assert_eq!(select(&tree, 1, (div, 1), (div, 1)).unwrap(), vec![]);
+        assert_eq!(select(&tree, 1, (text, 2), (text, 2)).unwrap().len(), 1);
+    }
+
+    /// An empty Text node has no character boxes (Chrome: no client rect) even when it
+    /// holds a boundary; the element around it is still selected.
+    #[test]
+    fn empty_text_contributes_nothing() {
+        let mut tree = Tree::parse("<div><b></b></div>");
+        let b = tree.query_selector("b").unwrap();
+        let empty = tree.create_text_node("");
+        tree.append_child(b, empty);
+        let div = tree.query_selector("div").unwrap();
+        assert_eq!(
+            select(&tree, 1, (div, 0), (div, 1)).unwrap(),
+            vec![Selection::Element(source_id(1, b))]
+        );
+        assert_eq!(select(&tree, 1, (empty, 0), (empty, 0)).unwrap(), vec![]);
+    }
+
+    #[test]
+    fn source_budgets_bound_the_walk() {
+        // document 0 > html 1 > body 2 > spans 3.. > the text: depth 256 is the limit.
+        let deep = |spans| Tree::parse(&format!("{}x", "<span>".repeat(spans)));
+        let tree = deep(253);
+        assert!(select(&tree, 1, (tree.root(), 0), (tree.root(), 0)).is_ok());
+        let tree = deep(254);
+        assert_eq!(
+            select(&tree, 1, (tree.root(), 0), (tree.root(), 0)).unwrap_err(),
+            "native Range ordering exceeds source budget"
+        );
+        let wide = "<i></i>".repeat(50_001);
+        let tree = Tree::parse(&wide);
+        let root = tree.root();
+        assert_eq!(
+            select(&tree, 1, (root, 0), (root, 0)).unwrap_err(),
+            "native Range ordering exceeds source budget"
+        );
+        let long = format!("<p>{}</p>", "a".repeat(2_000_001));
+        let tree = Tree::parse(&long);
+        let root = tree.root();
+        assert_eq!(
+            select(&tree, 1, (root, 0), (root, 0)).unwrap_err(),
+            "native Range ordering exceeds character-data budget"
+        );
+        // At the limits the walk still succeeds.
+        let tree = Tree::parse(&format!("<p>{}</p>", "a".repeat(1_999_999)));
+        assert!(select(&tree, 1, (tree.root(), 0), (tree.root(), 0)).is_ok());
+    }
+}
+
+#[cfg(test)]
+#[cfg(feature = "bundled-fonts")]
+mod chrome_tests {
+    use super::*;
+    use crate::cssom_view::scroll::chrome::{case, close, rect};
+    use crate::live::testing::DOCUMENT;
+    use serde_json::Value;
+
+    #[test]
+    fn range_client_rects_match_chrome_156() {
+        let case = case("range-client-rects");
+        let boundary = |b: &Value| {
+            let element = case
+                .tree
+                .query_selector(&format!("[data-cid=\"{}\"]", b[0].as_str().unwrap()))
+                .unwrap();
+            let node = b[1]
+                .as_u64()
+                .map_or(element, |child| case.tree.children(element)[child as usize]);
+            (node, b[2].as_u64().unwrap() as usize)
+        };
+        let mut failures = Vec::new();
+        for want in case.reads("ranges") {
+            let selections = select(
+                &case.tree,
+                DOCUMENT,
+                boundary(&want["start"]),
+                boundary(&want["end"]),
+            )
+            .unwrap();
+            let mut got = Vec::new();
+            for selection in selections {
+                match selection {
+                    Selection::Element(id) => got.extend(
+                        crate::cssom_view::metrics::element_geometry(&case.snapshot, id)
+                            .unwrap()
+                            .rects,
+                    ),
+                    Selection::Text { source, start, end } => got.extend(
+                        case.snapshot
+                            .text_range_boxes(source, start, end)
+                            .unwrap()
+                            .into_iter()
+                            .map(|cell| cell.transformed_bounds),
+                    ),
+                }
+            }
+            let chrome: Vec<[f32; 4]> =
+                want["rects"].as_array().unwrap().iter().map(rect).collect();
+            let same = got.len() == chrome.len()
+                && got.iter().zip(&chrome).all(|(r, c)| {
+                    close(r.x, c[0])
+                        && close(r.y, c[1])
+                        && close(r.width, c[2])
+                        && close(r.height, c[3])
+                });
+            if !same {
+                failures.push(format!("{want}: got {got:?}"));
+            }
+        }
+        assert!(failures.is_empty(), "{}", failures.join("\n"));
     }
 }
