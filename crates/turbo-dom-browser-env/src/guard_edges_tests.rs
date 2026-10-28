@@ -11,11 +11,7 @@ const PROBE: &str = include_str!("guard_edges_probe.js");
 
 /// KNOWN_GAP rows `(path, binding value)`: leaves where the binding still differs from
 /// Chrome 156. Each must still differ exactly so; a fix removes its row.
-const KNOWN_GAPS: &[(&str, &str)] = &[
-    // miaskiewicz/turbo-dom#163: an inert document's <style> has no sheet.
-    ("result.misc.inertSheet[0]", "\"null\""),
-    ("result.misc.inertSheet[1]", "null"),
-];
+const KNOWN_GAPS: &[(&str, &str)] = &[];
 
 #[test]
 fn guard_edges_match_chrome156() {

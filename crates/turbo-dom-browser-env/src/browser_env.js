@@ -2309,6 +2309,14 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
         };
       Object.defineProperty(baseProto, 'sheet', {configurable:true,get:currentSheetGetter});
       var docProto = Object.getPrototypeOf(d) || baseProto;
+      // Documents without a browsing context list their own sheets too (turbo-dom#163).
+      var otherDocumentSheets=new WeakMap(),otherSheetsGet=WeakMap.prototype.get,otherSheetsSet=WeakMap.prototype.set,sheetsQuery=d.querySelectorAll;
+      __ns.documentSheetsDescriptor={configurable:true,enumerable:true,get:function(){
+        if(this===d)return documentSheets;
+        var doc=this,list=cssApply(otherSheetsGet,otherDocumentSheets,[doc]);
+        if(!list){list=cssList('StyleSheetList',function(){var out=[],found=cssApply(sheetsQuery,doc,['style,link']);for(var i=0;i<found.length;i++){var sheet=cssApply(currentSheetGetter,found[i],[]);if(sheet)out.push(sheet);}return out;});cssApply(otherSheetsSet,otherDocumentSheets,[doc,list]);}
+        return list;
+      }};
       if (g.Document) g.Document.prototype = docProto;
       if (g.HTMLDocument) g.HTMLDocument.prototype = docProto;
       // NB: define these directly (NOT guarded by Object.getOwnPropertyDescriptor) — the all-Rust
@@ -2911,7 +2919,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
       });
     }
     projectCompatibility('Document',['getElementsByTagName','getElementsByClassName','getElementsByName'],htmlProto);
-    Object.defineProperty(documentProto,'adoptedStyleSheets',adoptionDescriptor);Object.defineProperty(g.ShadowRoot.prototype,'adoptedStyleSheets',shadowAdoptionDescriptor);delete d.adoptedStyleSheets;
+    Object.defineProperty(documentProto,'adoptedStyleSheets',adoptionDescriptor);if(__ns.documentSheetsDescriptor){Object.defineProperty(documentProto,'styleSheets',__ns.documentSheetsDescriptor);delete __ns.documentSheetsDescriptor;}Object.defineProperty(g.ShadowRoot.prototype,'adoptedStyleSheets',shadowAdoptionDescriptor);delete d.adoptedStyleSheets;
     projectCompatibility('Node',['isEqualNode','isSameNode','lastChild','previousSibling'],htmlProto);
     projectCompatibility('Element',['classList','getClientRects','getElementsByTagName','getElementsByClassName','nextElementSibling','previousElementSibling','requestFullscreen'],htmlProto);
     ['isEqualNode','isSameNode','lastChild','previousSibling','replaceChild','classList','getClientRects','getElementsByTagName','getElementsByClassName','getElementsByName','nextElementSibling','previousElementSibling','requestFullscreen','lastElementChild','cookie','exitFullscreen'].forEach(function(name){delete htmlProto[name];});
