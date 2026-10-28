@@ -338,3 +338,20 @@ fn form_controls_native_operations() {
         );
     });
 }
+
+/// Named-property objects (`ts.makeNamedObject`, the interceptor under DOMStringMap /
+/// NamedNodeMap-style facades) route `in`, assignment and defineProperty through their
+/// dispatcher: a `has` answer makes the name present, a `set` answer is the assignment's
+/// success, and a data descriptor reaches the dispatcher with its value.
+#[test]
+fn named_objects_route_queries_sets_and_definitions() {
+    with_page(|scope| {
+        assert_eq!(
+            json(
+                scope,
+                "(() => { const log = []; const o = ts.makeNamedObject(Object.prototype, function (op, name, value, throws) { log.push([op, name, op === 'define' ? [value.value, value.writable, 'get' in value, throws] : value === undefined ? null : value]); if (op === 'has') return name === 'present'; if (op === 'set') return name === 'ok'; if (op === 'define') return name === 'fine'; return undefined; }); const r = ['present' in o, 'absent' in o, Reflect.set(o, 'ok', 1), Reflect.set(o, 'no', 2), Reflect.defineProperty(o, 'fine', { value: 3, writable: true }), Reflect.defineProperty(o, 'bad', { value: 4 }), run(() => Object.defineProperty(o, 'bad', { value: 5 }))]; return [r, log.filter(entry => entry[0] !== 'descriptor')]; })()"
+            ),
+            r#"[[true,false,true,false,true,false,["TypeError","Cannot create property 'bad' on object '#<Object>'"]],[["has","present",null],["has","absent",null],["set","ok",1],["set","no",2],["define","fine",[3,true,false,false]],["define","bad",[4,null,false,false]],["define","bad",[5,null,false,true]]]]"#
+        );
+    });
+}
