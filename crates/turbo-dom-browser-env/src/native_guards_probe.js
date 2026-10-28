@@ -339,6 +339,15 @@
       out.imports[name] = [run(() => describe(document.importNode(make(), true))), run(() => describe(document.importNode(make(), false))), run(() => { const node = make(); const adopted = document.adoptNode(node); return [describe(adopted), adopted === node]; })];
     }
   }
+  // HTMLInputElement checked / defaultChecked brand checks.
+  {
+    const proto = HTMLInputElement.prototype, input = document.createElement('input');
+    out.checkedBrands = {};
+    for (const name of ['checked', 'defaultChecked']) {
+      const { get, set } = Object.getOwnPropertyDescriptor(proto, name);
+      out.checkedBrands[name] = [plain, 5, document.createElement('div'), input].map(receiver => [run(() => get.call(receiver)), run(() => set.call(receiver, true))]);
+    }
+  }
   host.remove();
   return out;
 })()
