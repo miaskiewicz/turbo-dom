@@ -7,6 +7,19 @@ at the time); this file reconstructs them from history.
 
 ## [Unreleased]
 
+### Fixed — elementsFromPoint on overflowing text (C2, miaskiewicz/turbo-dom#146)
+- `cssom_view::hit::elements_at_point`: text hits its inline ancestors only (passing over a
+  `display: contents` one) up to the first block-level ancestor, which only its own box hits,
+  so text overflowing its block no longer hits the block (Chrome 156 control
+  `scripts/cssom-metrics-chrome-control.mjs`, case `hits-overflowing-text`).
+
+### Tests — turbo-dom-layout coverage (C2)
+- `scripts/cssom-metrics-chrome-control.mjs` -> `crates/turbo-dom-layout/tests/fixtures/
+  cssom_metrics_chrome156.json`: offsetLeft/Top/Parent, offset/client sizes, client rects and
+  `elementsFromPoint` asserted through `cssom_view::{metrics, inline, hit}`; the `Composition`
+  scope graph; turbo-dom-layout's CI coverage floor rises from 90 to the measured value
+  (open differences held out as miaskiewicz/turbo-dom#128, #142).
+
 ### Tests — parity checkpoint `b-fixed`
 - `tools/parity/manifests/b-fixed`: every corpus (html2pdf, html2pdf-svg, html2pdf-extra, surf,
   surf-extra) after the bug-fix round, at turbo-dom f860fea / turbo-html2pdf 55f623a /

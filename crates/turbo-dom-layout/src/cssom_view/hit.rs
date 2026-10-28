@@ -75,13 +75,14 @@ pub fn elements_at_point(
                 translation,
                 point,
             ) {
-                for (index, id) in run.source_ancestors.iter().rev().enumerate() {
-                    if index != 0
-                        && styles
-                            .get(id)
-                            .is_none_or(|style| style.style.get("display") != Some("inline"))
-                    {
-                        continue;
+                // Text hits its inline ancestors (a `display: contents` one has no box
+                // and is passed over), up to the first block-level one, which only its
+                // own box hits — not text overflowing it (Chrome; turbo-dom#146).
+                for id in run.source_ancestors.iter().rev() {
+                    match styles.get(id).and_then(|style| style.style.get("display")) {
+                        Some("inline") => {}
+                        Some("contents") => continue,
+                        _ => break,
                     }
                     if seen.contains(id)
                         || property(styles, *id, "pointer-events") == Some("none")
