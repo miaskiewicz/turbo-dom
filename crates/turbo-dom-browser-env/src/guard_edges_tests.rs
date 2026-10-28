@@ -22,15 +22,6 @@ const KNOWN_GAPS: &[(&str, &str)] = &[
     // miaskiewicz/turbo-dom#163: an inert document's <style> has no sheet.
     ("result.misc.inertSheet[0]", "\"null\""),
     ("result.misc.inertSheet[1]", "null"),
-    // miaskiewicz/turbo-dom#164: out-of-range keyframe selectors are kept.
-    (
-        "result.declarations.@keyframes k { -1% {} }",
-        "\"@keyframes k { \\n  -1% { }\\n}\"",
-    ),
-    (
-        "result.declarations.@keyframes k { 101% {} }",
-        "\"@keyframes k { \\n  101% { }\\n}\"",
-    ),
 ];
 
 #[test]
@@ -263,7 +254,6 @@ fn termination_in_a_slotchange_listener_skips_later_slots() {
 
 /// turbo-dom#164: a keyframe selector outside 0%..100% drops its keyframe rule (Chrome 156).
 #[test]
-#[ignore = "turbo-dom#164: fails until the fix"]
 fn out_of_range_keyframe_selectors_drop_the_rule() {
     assert_eq!(
         page_json(

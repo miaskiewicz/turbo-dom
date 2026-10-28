@@ -195,7 +195,10 @@ fn keyframe_keys(prelude: &str) -> Option<String> {
                 cssparser::Token::Ident(name) if name.eq_ignore_ascii_case("to") => {
                     Ok("100%".to_owned())
                 }
-                cssparser::Token::Percentage { unit_value, .. } => {
+                // A keyframe selector is a percentage in 0%..100%.
+                cssparser::Token::Percentage { unit_value, .. }
+                    if (0.0..=1.0).contains(&unit_value) =>
+                {
                     Ok(format!("{}%", css_number(unit_value * 100.0)))
                 }
                 _ => Err(location.new_custom_error::<(), ()>(())),
