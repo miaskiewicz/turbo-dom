@@ -43,7 +43,6 @@ const KNOWN_GAPS: &[(&str, &str)] = &[
 ];
 
 #[test]
-#[ignore = "turbo-dom#161: fails until the fix"]
 fn guard_edges_match_chrome156() {
     let expected = control(include_str!("guard_edges_chrome156.json"), PROBE);
     assert_eq!(
