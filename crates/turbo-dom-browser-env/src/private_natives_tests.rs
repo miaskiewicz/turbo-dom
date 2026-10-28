@@ -236,3 +236,36 @@ fn captured_natives_refuse_hostile_calls() {
         assert_eq!(out["__noteInlineHandler#1"], serde_json::json!(expected));
     });
 }
+
+/// Natives the binding's JS wraps behind its own checks (captured with Reflect.apply, so a
+/// page cannot reach them): called directly, each still refuses a foreign receiver or a
+/// throwing / Symbol argument with a TypeError instead of trusting its wrapper.
+#[test]
+fn wrapped_natives_refuse_hostile_calls_directly() {
+    with_page(|scope| {
+        let global = scope.get_current_context().global(scope);
+        bind_method(scope, global, "__t_createElementNS", doc_create_element_ns);
+        bind_method(scope, global, "__t_createElement", doc_create_element);
+        bind_method(scope, global, "__t_createTextNode", doc_create_text_node);
+        bind_method(scope, global, "__t_getElementById", doc_get_element_by_id);
+        bind_method(scope, global, "__t_querySelector", doc_query_selector);
+        bind_method(scope, global, "__t_replaceChildren", el_replace_children);
+        bind_method(
+            scope,
+            global,
+            "__t_insertAdjacentElement",
+            el_insert_adjacent_element,
+        );
+        bind_method(scope, global, "__t_splitText", el_split_text);
+        bind_method(scope, global, "__t_attachShadow", el_attach_shadow);
+        bind_method(scope, global, "__t_setAttribute", el_set_attribute);
+        let out = json(
+            scope,
+            "(() => { const p = document.getElementById('p'), t = document.createTextNode('abc'), bad = { toString() { throw new RangeError('toString'); } }, sym = Symbol('s'); const at = (name, receiver, ...args) => { const r = run(() => globalThis['__t_' + name].call(receiver, ...args)); return r && typeof r === 'object' && !Array.isArray(r) ? 'object' : r; }; return { createElementNS: [at('createElementNS', p, null, 'a'), at('createElementNS', document, null), at('createElementNS', document, sym, 'a'), at('createElementNS', document, null, bad), at('createElementNS', document, 'urn:x', 'a')], createElement: [at('createElement', p, 'a'), at('createElement', document, bad), at('createElement', document, 'a')], createTextNode: [at('createTextNode', p, 'a'), at('createTextNode', document, sym), at('createTextNode', document, 'a')], getElementById: [at('getElementById', p, 'p'), at('getElementById', document, bad), at('getElementById', document, 'p')], querySelector: [at('querySelector', p, 'b'), at('querySelector', document, '\\\\70 ')], replaceChildren: [at('replaceChildren', t, 'x'), at('replaceChildren', document.createElement('i'), bad)], insertAdjacentElement: [at('insertAdjacentElement', t, 'beforeend', p), at('insertAdjacentElement', document.createElement('i'), 'beforeend', 'text')], splitText: [at('splitText', p, 1), at('splitText', t, sym), at('splitText', t, 9)], attachShadow: [at('attachShadow', t, { mode: 'open', slotAssignment: 'named' })], setAttribute: [at('setAttribute', t, 'a', 'b'), at('setAttribute', p, sym, 'b')] }; })()",
+        );
+        assert_eq!(
+            out,
+            r#"{"createElementNS":[["TypeError","Illegal invocation"],["TypeError","Not enough arguments"],["TypeError","Cannot convert a Symbol to a string"],["RangeError","toString"],"object"],"createElement":[["TypeError","Illegal invocation"],["RangeError","toString"],"object"],"createTextNode":[["TypeError","Illegal invocation"],["TypeError","Cannot convert a Symbol to a string"],"object"],"getElementById":[["TypeError","Illegal invocation"],["RangeError","toString"],"object"],"querySelector":[["TypeError","Illegal invocation"],"object"],"replaceChildren":[["TypeError","Illegal invocation"],["RangeError","toString"]],"insertAdjacentElement":[["TypeError","Illegal invocation"],["TypeError","The argument must be a native Node"]],"splitText":[["TypeError","Illegal invocation"],["TypeError","Cannot convert a Symbol value to a number"],["DOMException","CharacterData offset exceeds its length"]],"attachShadow":[["TypeError","Illegal invocation"]],"setAttribute":[["TypeError","Illegal invocation"],["TypeError","Cannot convert a Symbol to a string"]]}"#
+        );
+    });
+}

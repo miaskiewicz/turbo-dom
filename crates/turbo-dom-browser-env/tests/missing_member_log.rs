@@ -17,7 +17,9 @@ fn child() {
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);
     browser_env::install_with_html(scope, "<!doctype html><p id=p></p>");
-    // Drop whatever the bootstrap itself read.
+    // Drop whatever the bootstrap itself read; a dump of the empty log prints nothing.
+    browser_env::dump_missing();
+    eprintln!("--- empty");
     browser_env::dump_missing();
     eprintln!("--- reads");
     let code = v8::String::new(
@@ -59,6 +61,8 @@ fn missing_member_log_counts_and_prints_unimplemented_reads() {
         .unwrap();
     let stderr = String::from_utf8_lossy(&output.stderr);
     assert!(output.status.success(), "{stderr}");
+    let empty = stderr.find("--- empty\n").expect("child ran") + "--- empty\n".len();
+    assert!(stderr[empty..].starts_with("--- reads\n"), "{stderr}");
     let start = stderr.find("--- reads\n").expect("child ran") + "--- reads\n".len();
     let end = stderr.find("--- done\n").expect("child finished");
     assert_eq!(
