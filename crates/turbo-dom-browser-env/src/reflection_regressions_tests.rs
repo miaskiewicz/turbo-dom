@@ -193,3 +193,18 @@ fn name_reflects_on_every_owner() {
         format!("[{expected}]")
     );
 }
+
+/// turbo-dom#174: `<param>` is an HTMLParamElement with Chrome 156's reflected members, in
+/// Chrome's own-key order.
+#[test]
+fn param_element_interface() {
+    assert_eq!(
+        page_json(
+            PAGE,
+            "(() => { const e = document.createElement('param'); e.value = 'v'; e.type = 't'; e.valueType = 'ref'; \
+             return [String(e), typeof HTMLParamElement, Reflect.ownKeys(HTMLParamElement.prototype).map(String), \
+               e.outerHTML, e.valueType]; })()",
+        ),
+        r#"["[object HTMLParamElement]","function",["name","value","type","valueType","constructor","Symbol(Symbol.toStringTag)"],"<param value=\"v\" type=\"t\" valuetype=\"ref\">","ref"]"#
+    );
+}
