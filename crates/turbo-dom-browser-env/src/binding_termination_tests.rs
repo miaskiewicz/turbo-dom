@@ -149,3 +149,41 @@ fn install_while_terminating_unwinds() {
     assert_eq!(value, "x");
     reset();
 }
+
+/// A realm whose binding namespace was frozen before install (an embedder or an earlier
+/// script defined `globalThis[Symbol.for('ts')]`) cannot receive the node projector: the
+/// install still completes without panicking and the document is reachable.
+#[test]
+fn install_into_a_frozen_namespace_degrades_without_panicking() {
+    crate::browser_env::tests::init_v8();
+    let isolate = &mut v8::Isolate::new(Default::default());
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    let code = v8::String::new(
+        scope,
+        "Object.defineProperty(globalThis, Symbol.for('ts'), { value: Object.freeze({}), configurable: false, writable: false })",
+    )
+    .unwrap();
+    v8::Script::compile(scope, code, None)
+        .unwrap()
+        .run(scope)
+        .unwrap();
+    {
+        v8::tc_scope!(let scope, scope);
+        install_with_html(scope, "<!doctype html><p id=p>x</p>");
+        scope.reset();
+    }
+    let code = v8::String::new(
+        scope,
+        "[typeof globalThis[Symbol.for('ts')].projectNativeNode, typeof document].join()",
+    )
+    .unwrap();
+    let value = v8::Script::compile(scope, code, None)
+        .unwrap()
+        .run(scope)
+        .unwrap()
+        .to_rust_string_lossy(scope);
+    assert_eq!(value, "undefined,object");
+    reset();
+}
