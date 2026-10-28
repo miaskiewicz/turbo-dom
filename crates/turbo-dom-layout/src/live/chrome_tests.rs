@@ -40,6 +40,10 @@ const TEXT_CASES: &[&str] = &[
     "absolute-span-static-position",
     "sr-only-in-link",
     "unsupported-inline-is-per-element",
+    "ws-space-line-pre-wrap",
+    "ws-space-line-break-spaces",
+    "ws-pre-line-newline",
+    "ws-nowrap-space-span",
 ];
 
 /// The `<style>` text of a control document (the testing cascade takes the CSS apart
@@ -263,7 +267,7 @@ fn assert_matches_chrome((compared, failures): (usize, Vec<String>)) {
 /// The control cases of an open bug, each asserted by its own test (`#[ignore]`d until
 /// its fix lands) and held out of [`live_geometry_matches_chrome_156`].
 fn held_out(id: &str) -> bool {
-    let groups: [fn(&str) -> bool; 9] = [
+    let groups: [fn(&str) -> bool; 11] = [
         |id| AUTO_TABLE_CASES.contains(&id),
         inline_flex_grid_case,
         abs_auto_width_case,
@@ -273,6 +277,8 @@ fn held_out(id: &str) -> bool {
         caption_case,
         inline_block_margin_case,
         fullscreen_case,
+        space_line_case,
+        pre_line_newline_case,
     ];
     groups.iter().any(|group| group(id))
 }
@@ -361,6 +367,30 @@ fn inline_block_margin_case(id: &str) -> bool {
 #[test]
 fn inline_blocks_keep_child_margins_like_chrome_156() {
     assert_matches_chrome(compare_cases(inline_block_margin_case));
+}
+
+/// miaskiewicz/turbo-dom#120: a line holding only preserved spaces is a line box.
+fn space_line_case(id: &str) -> bool {
+    id.starts_with("ws-space-line-")
+}
+
+#[cfg(feature = "bundled-fonts")]
+#[test]
+#[ignore = "turbo-dom#120: fails until the fix"]
+fn lines_of_only_preserved_spaces_are_line_boxes_like_chrome_156() {
+    assert_matches_chrome(compare_cases(space_line_case));
+}
+
+/// miaskiewicz/turbo-dom#121: a `pre-line` newline between blocks is a line box.
+fn pre_line_newline_case(id: &str) -> bool {
+    id.starts_with("ws-pre-line-")
+}
+
+#[cfg(feature = "bundled-fonts")]
+#[test]
+#[ignore = "turbo-dom#121: fails until the fix"]
+fn pre_line_newlines_between_blocks_are_line_boxes_like_chrome_156() {
+    assert_matches_chrome(compare_cases(pre_line_newline_case));
 }
 
 /// miaskiewicz/turbo-dom#82: the fullscreen element's UA box, in the top layer.

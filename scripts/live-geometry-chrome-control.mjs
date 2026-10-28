@@ -303,8 +303,25 @@ const CASES = [
     measure: {},
     hits: [[5, 5], [640, 400]],
   },
+  // miaskiewicz/turbo-dom#120: a line holding only preserved spaces (`pre-wrap` /
+  // `break-spaces`) is a line box; #121: a `pre-line` newline between blocks is one; #122:
+  // a white-space-only `nowrap` run collapses away (no line box).
+  ...["pre-wrap", "break-spaces"].map((ws) => ({
+    id: `ws-space-line-${ws}`,
+    html: DOC("body{margin:0;line-height:20px}p{margin:0}", `<p data-cid="a">a</p><span style="white-space:${ws}"> </span><p data-cid="b">b</p><div data-cid="d"><span style="white-space:${ws}"> </span></div><div data-cid="e" style="white-space:${ws}">  </div><p data-cid="f">f</p>`),
+    measure: { a: "xyh", b: "xyh", f: "xyh" },
+  })),
+  {
+    id: "ws-pre-line-newline",
+    html: DOC("body{margin:0;line-height:20px}p{margin:0}div{white-space:pre-line}", `<div data-cid="s"><p>a</p>  <p>b</p></div><div data-cid="n"><p>a</p>\n<p>b</p></div><div data-cid="m"><p>a</p>  \n  <p>b</p></div><div data-cid="nn"><p>a</p>\n\n<p>b</p></div><p data-cid="f">f</p>`),
+    measure: { f: "xyh" },
+  },
+  {
+    id: "ws-nowrap-space-span",
+    html: DOC("body{margin:0;line-height:20px}p{margin:0}", `<p data-cid="a">a</p><span style="white-space:nowrap"> </span><p data-cid="b">b</p><div data-cid="d"><span style="white-space:nowrap"> </span></div><div data-cid="e" style="white-space:nowrap">  </div><p data-cid="f">f</p>`),
+    measure: { a: "xyh", b: "xyh", f: "xyh" },
+  },
 ];
-
 const browser = await chromium.launch({ executablePath: chromePath, headless: true });
 const version = browser.version();
 const page = await browser.newPage({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1 });
