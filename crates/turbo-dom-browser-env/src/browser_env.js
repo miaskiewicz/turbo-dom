@@ -1205,7 +1205,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     LINK:'HTMLLinkElement', TITLE:'HTMLTitleElement', BASE:'HTMLBaseElement', BR:'HTMLBRElement',
     HR:'HTMLHRElement', OPTGROUP:'HTMLOptGroupElement', MAP:'HTMLMapElement', AREA:'HTMLAreaElement',
     OBJECT:'HTMLObjectElement', EMBED:'HTMLEmbedElement', OUTPUT:'HTMLOutputElement',
-    MENU:'HTMLMenuElement', DATA:'HTMLDataElement', TIME:'HTMLTimeElement',
+    MENU:'HTMLMenuElement', DATA:'HTMLDataElement', TIME:'HTMLTimeElement', PARAM:'HTMLParamElement',
   };
   // abstract base / multi-tag interfaces (no single tag → generic nodeType-1 instanceof).
   var htmlAbstract = ['HTMLMediaElement','HTMLTableCellElement','HTMLTableSectionElement','HTMLQuoteElement','HTMLUnknownElement'];
@@ -3010,7 +3010,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     // Reflected content attributes the copies above do not cover: [interface, IDL name,
     // boolean?, content attribute]. Only interfaces lacking the member get it.
     var reflectedSetAttribute=g.Element.prototype.setAttribute,reflectedRemoveAttribute=g.Element.prototype.removeAttribute,reflectedHasAttribute=g.Element.prototype.hasAttribute;
-    var reflectedTags={HTMLBaseElement:['base'],HTMLMediaElement:['audio','video'],HTMLVideoElement:['video'],HTMLImageElement:['img'],HTMLEmbedElement:['embed'],HTMLObjectElement:['object'],HTMLIFrameElement:['iframe'],HTMLMapElement:['map'],HTMLFieldSetElement:['fieldset'],HTMLAnchorElement:['a'],HTMLDetailsElement:['details']};
+    var reflectedTags={HTMLBaseElement:['base'],HTMLMediaElement:['audio','video'],HTMLVideoElement:['video'],HTMLImageElement:['img'],HTMLEmbedElement:['embed'],HTMLObjectElement:['object'],HTMLIFrameElement:['iframe'],HTMLMapElement:['map'],HTMLFieldSetElement:['fieldset'],HTMLAnchorElement:['a'],HTMLDetailsElement:['details'],HTMLParamElement:['param']};
     var reflectedContent=[];
     // turbo-dom#118: HTMLBaseElement.target.
     reflectedContent.push(['HTMLBaseElement','target',false,'target']);
@@ -3018,6 +3018,8 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     reflectedContent.push(['HTMLMediaElement','controls',true,'controls'],['HTMLMediaElement','autoplay',true,'autoplay'],['HTMLMediaElement','loop',true,'loop'],['HTMLMediaElement','defaultMuted',true,'muted'],['HTMLMediaElement','disableRemotePlayback',true,'disableremoteplayback'],['HTMLVideoElement','playsInline',true,'playsinline']);
     // turbo-dom#169: the name attribute of every owner the form-control copies do not cover.
     ['HTMLImageElement','HTMLEmbedElement','HTMLObjectElement','HTMLIFrameElement','HTMLMapElement','HTMLFieldSetElement','HTMLAnchorElement','HTMLDetailsElement'].forEach(function(owner){reflectedContent.push([owner,'name',false,'name']);});
+    // turbo-dom#174: HTMLParamElement.
+    reflectedContent.push(['HTMLParamElement','name',false,'name'],['HTMLParamElement','value',false,'value'],['HTMLParamElement','type',false,'type'],['HTMLParamElement','valueType',false,'valuetype']);
     reflectedContent.forEach(function(entry){
       var owner=entry[0],name=entry[1],flag=entry[2],attribute=entry[3],proto=prototypes[owner];if(!proto||Object.hasOwn(proto,name))return;
       var check=__ns.domAccessor('nodeType',false,'HTMLElement'),locals=new Set(reflectedTags[owner]);
