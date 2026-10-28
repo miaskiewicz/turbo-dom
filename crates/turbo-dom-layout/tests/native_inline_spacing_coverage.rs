@@ -454,6 +454,7 @@ fn generic_snapshot_and_pdf_atom_caption_keep_raw_font_advances() {
             margin_left: 0.0,
             margin_right: 0.0,
             placeholder: false,
+            baseline: None,
         }),
         Piece::Run(InlineRun {
             node_id: NodeId(7),

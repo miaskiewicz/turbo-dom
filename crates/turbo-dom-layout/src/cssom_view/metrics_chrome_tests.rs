@@ -211,10 +211,9 @@ fn reads(case: &Value) -> (Vec<String>, Vec<String>) {
 }
 
 /// Cases of open bugs, held out of [`element_metrics_and_hits_match_chrome_156`] and
-/// asserted by [`held_out_cases_match_chrome_156`] (`#[ignore]`d until the fixes land):
-/// miaskiewicz/turbo-dom#128 (a list marker hits its list item) and #142 (text beside an
-/// inline-block holding text sits on the wrong baseline).
-const HELD_OUT: &[&str] = &["hits-list-marker", "inline-block-text-baseline"];
+/// asserted by [`held_out_cases_match_chrome_156`] (`#[ignore]`d until the fix lands):
+/// miaskiewicz/turbo-dom#128 (a list marker hits its list item).
+const HELD_OUT: &[&str] = &["hits-list-marker"];
 
 /// The reads of every fixture case `select` picks, compared with Chrome's.
 fn assert_cases_match(select: impl Fn(&str) -> bool) {
@@ -245,7 +244,7 @@ fn element_metrics_and_hits_match_chrome_156() {
 #[test]
 #[ignore = "miaskiewicz/turbo-dom#128: fails until the fix"]
 fn held_out_cases_match_chrome_156() {
-    assert_cases_match(|id| id == "hits-list-marker");
+    assert_cases_match(|id| HELD_OUT.contains(&id));
 }
 
 /// miaskiewicz/turbo-dom#142: an `inline-block` holding text sits on its last line
@@ -253,7 +252,6 @@ fn held_out_cases_match_chrome_156() {
 /// line box stays 18px tall.
 #[cfg(feature = "bundled-fonts")]
 #[test]
-#[ignore = "miaskiewicz/turbo-dom#142: fails until the fix"]
 fn inline_block_text_baseline_matches_chrome_156() {
     assert_cases_match(|id| id == "inline-block-text-baseline");
 }

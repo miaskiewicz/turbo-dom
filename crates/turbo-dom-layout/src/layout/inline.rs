@@ -76,6 +76,12 @@ pub struct InlineAtom {
     /// content, so a line holding nothing else is a zero-height line box (CSS 2.1
     /// §9.4.2; miaskiewicz/turbo-dom#28 item 6).
     pub placeholder: bool,
+    /// An `inline-block`'s own baseline, as an offset below its border-box top: its
+    /// last in-flow line box's baseline (CSS 2.1 §10.8.1,
+    /// miaskiewicz/turbo-dom#142). `None` (a replaced box, an empty box, or one
+    /// whose `overflow` is not `visible`) puts the bottom margin edge on the
+    /// baseline.
+    pub baseline: Option<f32>,
 }
 
 impl InlineAtom {
@@ -83,6 +89,12 @@ impl InlineAtom {
     /// contributes to the line box.
     fn outer_height(&self) -> f32 {
         self.height + self.margin_top + self.margin_bottom
+    }
+    /// How far the atom's baseline sits below its margin-box top: its own baseline
+    /// when it has one, else its bottom margin edge.
+    fn ascent(&self) -> f32 {
+        self.baseline
+            .map_or(self.outer_height(), |baseline| self.margin_top + baseline)
     }
 }
 
@@ -1354,7 +1366,8 @@ fn fold_atom_metrics(atom: &InlineAtom, m: &mut Metrics) {
     if matches!(atom.valign, VAlign::Top | VAlign::Bottom) {
         m.height = m.height.max(outer);
     } else {
-        m.ascent = m.ascent.max(outer);
+        m.ascent = m.ascent.max(atom.ascent());
+        m.descent = m.descent.max(outer - atom.ascent());
         m.height = m.height.max(outer);
     }
 }
@@ -1425,8 +1438,10 @@ fn fold_native_atom(atom: &InlineAtom, shift: f32, metrics: &mut Metrics) {
         fold_atom_metrics(atom, metrics);
         return;
     }
-    metrics.ascent = metrics.ascent.max(atom.outer_height() + shift);
-    metrics.descent = metrics.descent.max(-shift);
+    metrics.ascent = metrics.ascent.max(atom.ascent() + shift);
+    metrics.descent = metrics
+        .descent
+        .max(atom.outer_height() - atom.ascent() - shift);
 }
 fn fold_native_edge(edge: &InlineEdge, metrics: &mut Metrics, scale: Option<f32>) {
     if !edge.contributes_metrics {
@@ -1699,8 +1714,10 @@ fn atom_margin_top(atom: &InlineAtom, height: f32, baseline: f32) -> f32 {
         VAlign::Top => 0.0,
         VAlign::Bottom => height - outer,
         VAlign::Middle => (height - outer) / 2.0,
-        VAlign::Super | VAlign::Sub => baseline - outer - valign_shift(atom.valign, atom.font_size),
-        VAlign::Baseline => baseline - outer,
+        VAlign::Super | VAlign::Sub => {
+            baseline - atom.ascent() - valign_shift(atom.valign, atom.font_size)
+        }
+        VAlign::Baseline => baseline - atom.ascent(),
     }
 }
 
@@ -2260,6 +2277,7 @@ mod tests {
             margin_left: 0.0,
             margin_right: 0.0,
             placeholder: false,
+            baseline: None,
         }
     }
 
@@ -2396,6 +2414,45 @@ mod tests {
         let sub = atom_margin_top(&atom(VAlign::Sub), h, base);
         assert!((sup - (15.0 - 20.0 * 0.33)).abs() < 0.01);
         assert!((sub - (15.0 + 20.0 * 0.2)).abs() < 0.01);
+    }
+
+    // An atom with its own baseline (an inline-block holding text, turbo-dom#142)
+    // aligns that baseline, not its bottom margin edge, and the part below it
+    // grows the line's descent.
+    #[test]
+    fn an_atom_with_a_baseline_sits_on_it() {
+        let own = InlineAtom {
+            baseline: Some(7.0),
+            margin_top: 2.0,
+            margin_bottom: 1.0,
+            ..atom(VAlign::Baseline)
+        };
+        assert_eq!(own.ascent(), 9.0);
+        assert_eq!(atom(VAlign::Baseline).ascent(), 10.0);
+        assert_eq!(atom_margin_top(&own, 30.0, 25.0), 16.0);
+        let sup = atom_margin_top(
+            &InlineAtom {
+                valign: VAlign::Super,
+                ..own
+            },
+            30.0,
+            25.0,
+        );
+        assert!((sup - (16.0 - 20.0 * 0.33)).abs() < 0.01);
+        let mut m = Metrics {
+            ascent: 3.0,
+            descent: 1.0,
+            height: 0.0,
+        };
+        fold_atom_metrics(&own, &mut m);
+        assert_eq!((m.ascent, m.descent, m.height), (9.0, 4.0, 13.0));
+        let mut m = Metrics {
+            ascent: 3.0,
+            descent: 1.0,
+            height: 0.0,
+        };
+        fold_native_atom(&own, 2.0, &mut m);
+        assert_eq!((m.ascent, m.descent, m.height), (11.0, 2.0, 0.0));
     }
 
     // The super/sub baseline-shift factors (asserted against Chromium's measured

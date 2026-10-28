@@ -234,6 +234,7 @@ fn atom(id: usize, valign: VAlign, height: f32) -> InlineAtom {
         margin_left: 0.0,
         margin_right: 0.0,
         placeholder: false,
+        baseline: None,
     }
 }
 

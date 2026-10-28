@@ -1086,6 +1086,44 @@ fn out_of_flow_atom(id: usize) -> inline::InlineAtom {
         margin_left: 0.0,
         margin_right: 0.0,
         placeholder: true,
+        baseline: None,
+    }
+}
+
+/// An atomic inline's own baseline below its border-box top (CSS 2.1 §10.8.1,
+/// miaskiewicz/turbo-dom#142): an `inline-block` with `overflow: visible` sits on
+/// its last in-flow line box's baseline; a replaced box, a box without line boxes,
+/// or one establishing a scroll container has none (its bottom margin edge
+/// aligns instead).
+fn atom_baseline(b: &LayoutBox, f: &Fragment) -> Option<f32> {
+    if b.is_replaced() || !inline_block(b) {
+        return None;
+    }
+    let scrolls = ["overflow", "overflow-x", "overflow-y"].iter().any(|p| {
+        matches!(
+            b.style.get(p).map(str::trim),
+            Some("hidden" | "auto" | "scroll" | "clip")
+        )
+    });
+    if scrolls {
+        return None;
+    }
+    let mut last: Option<(f32, f32)> = None;
+    last_line(f, &mut last);
+    last.map(|(_, baseline)| baseline - f.y)
+}
+
+/// The `(top, baseline)` of the lowest in-flow text line in `f`'s subtree.
+fn last_line(f: &Fragment, last: &mut Option<(f32, f32)>) {
+    for child in f.children.iter().filter(|child| !child.is_positioned) {
+        if let FragmentContent::TextLine { glyphs, .. } = &child.content {
+            if let Some(glyph) = glyphs.first() {
+                if last.is_none_or(|(top, _)| child.y >= top) {
+                    *last = Some((child.y, child.y + glyph.y));
+                }
+            }
+        }
+        last_line(child, last);
     }
 }
 
@@ -1196,6 +1234,7 @@ fn build_inline_pieces(
                     margin_left: abs.margin.left,
                     margin_right: abs.margin.right,
                     placeholder: false,
+                    baseline: atom_baseline(b, &f),
                 }));
                 atom_frags.push(f);
             }
