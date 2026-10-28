@@ -53,6 +53,15 @@ pub fn caret(
     if styles.get(&owner).is_some_and(|style| style.tag == "svg") {
         return Err("native SVG caret hit testing is unsupported".into());
     }
+    // Chrome descends from the hit element with untransformed layout positions
+    // (miaskiewicz/turbo-dom#127): every run is placed by the hit element's own
+    // transform, not by a transform between the element and the run.
+    let owner_matrix = snapshot.source(owner).and_then(|source| {
+        source
+            .fragment_indices
+            .iter()
+            .find_map(|&index| snapshot.native_hit_transform(snapshot.fragments()[index].index))
+    });
     let mut best = None;
     // No glyph budget here: a snapshot captures at most 1,000,000 clusters in all its
     // runs (`layout_snapshot::text::TextCapture::record`, else the snapshot fails with
@@ -80,29 +89,54 @@ pub fn caret(
         )? {
             continue;
         }
-        let mut rect = world_rect(
-            local,
-            snapshot
-                .native_hit_transform(fragment.index)
-                .ok_or("native caret transform unavailable")?,
-        );
+        let run_matrix = snapshot
+            .native_hit_transform(fragment.index)
+            .ok_or("native caret transform unavailable")?;
+        let mut rect = world_rect(local, owner_matrix.unwrap_or(run_matrix));
         rect.x -= translation[0];
         rect.y -= translation[1];
+        // A line wholly above the point ranks after every line at or below it: Chrome
+        // takes the first block whose end is past the point (a point in the gap below
+        // a block lands on the next block's first line, miaskiewicz/turbo-dom#127).
         let gap = distance(point, rect);
+        let above = f64::from(rect.y + rect.height) < point[1];
+        let key = (above, gap);
         if best.as_ref().is_none_or(
-            |(_, previous, _, _): &(SourceId, [f64; 2], usize, [f32; 2])| {
-                gap[0] < previous[0] || (gap[0] == previous[0] && gap[1] < previous[1])
+            |(_, previous, _, _, _): &(SourceId, (bool, [f64; 2]), usize, [f32; 2], [f64; 6])| {
+                key.0 < previous.0
+                    || key.0 == previous.0
+                        && (gap[0] < previous.1[0]
+                            || (gap[0] == previous.1[0] && gap[1] < previous.1[1]))
             },
         ) {
-            best = Some((source, gap, run.fragment_index, translation));
+            best = Some((source, key, run.fragment_index, translation, run_matrix));
         }
     }
-    let Some((source, _, _, translation)) = best else {
-        return Ok(None);
+    let Some((source, _, _, translation, run_matrix)) = best else {
+        // An element without text takes the caret itself, at offset 0 with an empty
+        // rect, like Chrome 156 (miaskiewicz/turbo-dom#127).
+        return Ok(Some((
+            owner,
+            0,
+            Rect {
+                x: 0.0,
+                y: 0.0,
+                width: 0.0,
+                height: 0.0,
+            },
+        )));
+    };
+    let world = [
+        point[0] + f64::from(translation[0]),
+        point[1] + f64::from(translation[1]),
+    ];
+    let world = match owner_matrix {
+        Some(matrix) if matrix != run_matrix => through(world, matrix, run_matrix),
+        _ => world,
     };
     let query = Point {
-        x: point[0] as f32 + translation[0],
-        y: point[1] as f32 + translation[1],
+        x: world[0] as f32,
+        y: world[1] as f32,
     };
     let offset = snapshot
         .text_caret_offset_from_point(source, query)
@@ -128,6 +162,22 @@ pub fn caret(
             ..rect
         },
     )))
+}
+
+/// The world point a run's transform maps from the point the hit element's
+/// transform `from` maps to `world` (the run is placed as if untransformed below the
+/// hit element). `from` is invertible: an element under a singular transform paints
+/// nothing, so it is never the hit element.
+fn through(world: [f64; 2], from: [f64; 6], to: [f64; 6]) -> [f64; 2] {
+    let [a, b, c, d, e, f] = from;
+    let determinant = a * d - b * c;
+    let (x, y) = (world[0] - e, world[1] - f);
+    let local = [(d * x - c * y) / determinant, (a * y - b * x) / determinant];
+    let [a, b, c, d, e, f] = to;
+    [
+        a * local[0] + c * local[1] + e,
+        b * local[0] + d * local[1] + f,
+    ]
 }
 
 #[must_use]
@@ -204,10 +254,6 @@ mod tests {
                 }
                 continue;
             }
-            if want["child"].is_null() {
-                failures.push(format!("{point:?}: Chrome {want} is an element caret"));
-                continue;
-            }
             let got = caret(&case.snapshot, &case.styles, &offsets, point).unwrap();
             let chrome = chrome_rect(&want["rect"]);
             let expected = (
@@ -232,18 +278,6 @@ mod tests {
         let mut failures = caret_failures("caret-from-point", |point| !GAPS.contains(&point));
         failures.extend(caret_failures("caret-wrap-and-markers", |_| true));
         assert!(failures.is_empty(), "{}", failures.join("\n"));
-    }
-
-    /// Until miaskiewicz/turbo-dom#127: an element without text answers no text caret.
-    #[test]
-    fn an_element_without_text_has_no_text_caret() {
-        let case = case("caret-from-point");
-        let empty = case.bounds("e");
-        let point = [f64::from(empty.x) + 40.0, f64::from(empty.y) + 5.0];
-        assert_eq!(
-            caret(&case.snapshot, &case.styles, &case.offsets(), point).unwrap(),
-            None
-        );
     }
 
     fn rect(x: f32, y: f32, width: f32, height: f32) -> Rect {
@@ -326,7 +360,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "turbo-dom#127: fails until the fix"]
     fn carets_beside_transformed_lines_and_in_empty_elements_match_chrome_156() {
         let failures = caret_failures("caret-from-point", |point| GAPS.contains(&point));
         assert!(failures.is_empty(), "{}", failures.join("\n"));
