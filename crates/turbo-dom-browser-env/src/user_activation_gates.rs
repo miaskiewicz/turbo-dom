@@ -59,6 +59,10 @@ struct Manager {
     allowed: usize,
     next_allows_new_group: bool,
     canceling: std::collections::HashSet<Watcher>,
+    /// Each established watcher's identity: a node closed and reopened gets a new close
+    /// watcher, which an earlier request no longer reaches (turbo-dom#150).
+    ids: HashMap<Watcher, u64>,
+    next_id: u64,
 }
 impl Default for Manager {
     fn default() -> Self {
@@ -67,6 +71,8 @@ impl Default for Manager {
             allowed: 1,
             next_allows_new_group: true,
             canceling: Default::default(),
+            ids: HashMap::new(),
+            next_id: 0,
         }
     }
 }
@@ -98,6 +104,9 @@ impl State {
         self.watchers
             .canceling
             .retain(|watcher| tree.is_live(watcher.node()));
+        self.watchers
+            .ids
+            .retain(|watcher, _| tree.is_live(watcher.node()));
         for target in [&mut self.dialog_pointerdown, &mut self.popover_pointerdown] {
             if target.is_some_and(|node| !tree.is_live(node)) {
                 *target = None;
@@ -345,6 +354,8 @@ fn establish(watcher: Watcher) {
             group.push(watcher);
         }
         manager.next_allows_new_group = true;
+        manager.next_id += 1;
+        manager.ids.insert(watcher, manager.next_id);
     });
 }
 
@@ -355,6 +366,7 @@ fn destroy(watcher: Watcher) {
             group.retain(|entry| *entry != watcher);
         }
         manager.groups.retain(|group| !group.is_empty());
+        manager.ids.remove(&watcher);
     });
 }
 
@@ -461,6 +473,7 @@ fn request_close(scope: &mut v8::PinScope, watcher: Watcher, require_history: bo
     let can_prevent = !require_history
         || (state(|state| state.watchers.groups.len() < state.watchers.allowed).unwrap_or(false)
             && query(scope, ActivationQuery::HistoryAction));
+    let id = state(|state| state.watchers.ids.get(&watcher).copied()).flatten();
     state(|state| state.watchers.canceling.insert(watcher));
     let proceed = match watcher {
         Watcher::Dialog(node) => {
@@ -476,7 +489,9 @@ fn request_close(scope: &mut v8::PinScope, watcher: Watcher, require_history: bo
         query(scope, ActivationQuery::ConsumeHistoryAction);
         return false;
     }
-    if !watching(watcher) || !fully_active() {
+    // The cancel action may have destroyed the watcher, or closed and reopened its dialog.
+    let current = state(|state| state.watchers.ids.get(&watcher).copied()).flatten();
+    if current != id || !fully_active() {
         return true;
     }
     destroy(watcher);
@@ -815,6 +830,8 @@ mod tests {
         ];
         state.watchers.canceling.insert(Watcher::Popover(dead));
         state.watchers.canceling.insert(Watcher::Dialog(live));
+        state.watchers.ids.insert(Watcher::Popover(dead), 1);
+        state.watchers.ids.insert(Watcher::Dialog(live), 2);
         state.sweep_storage(&tree);
         let fullscreen = state
             .fullscreen
@@ -834,6 +851,8 @@ mod tests {
         assert!(state.watchers.groups == [vec![Watcher::Dialog(live)]]);
         assert!(state.watchers.canceling.len() == 1);
         assert!(state.watchers.canceling.contains(&Watcher::Dialog(live)));
+        assert!(state.watchers.ids.len() == 1);
+        assert_eq!(state.watchers.ids.get(&Watcher::Dialog(live)), Some(&2));
         assert_eq!(state.dialog_pointerdown, None);
         assert_eq!(state.popover_pointerdown, Some(live));
     }
