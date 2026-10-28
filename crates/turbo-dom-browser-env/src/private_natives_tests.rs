@@ -116,17 +116,22 @@ fn cascade_lookup_brand_checks_its_element() {
 }
 
 /// The EventTarget wrapper hands nodes to the native add / remove / dispatch functions
-/// through the Reflect.apply captured at install (turbo-dom#172): a page that patches
-/// Function.prototype.apply captures none of them, and the calls still work.
+/// through the Reflect.apply captured at install (turbo-dom#172), so a page that patches
+/// Function.prototype.apply captures none of them. Called directly with any receiver and
+/// arguments, they refuse with TypeErrors, never abort.
 #[test]
 fn event_target_natives_survive_a_patched_apply() {
     with_page(|scope| {
+        let global = scope.get_current_context().global(scope);
+        bind_method(scope, global, "__t_add", el_add_event_listener);
+        bind_method(scope, global, "__t_remove", el_remove_event_listener);
+        bind_method(scope, global, "__t_dispatch", el_dispatch_event);
         assert_eq!(
             json(
                 scope,
-                "(() => { const original = Function.prototype.apply, natives = []; Function.prototype.apply = function (receiver, args) { natives.push(this); return Reflect.apply(original, this, [receiver, args]); }; const p = document.getElementById('p'); try { p.addEventListener('x', () => {}); p.removeEventListener('x', () => {}); p.dispatchEvent(new Event('x')); } finally { Function.prototype.apply = original; } let fired = 0; Function.prototype.apply = function (receiver, args) { natives.push(this); return Reflect.apply(original, this, [receiver, args]); }; try { p.addEventListener('z', () => { fired++; }); p.dispatchEvent(new Event('z')); } finally { Function.prototype.apply = original; } return [natives.length, fired]; })()"
+                "(() => { const original = Function.prototype.apply, natives = []; Function.prototype.apply = function (receiver, args) { natives.push(this); return Reflect.apply(original, this, [receiver, args]); }; const p = document.getElementById('p'); try { p.addEventListener('x', () => {}); p.removeEventListener('x', () => {}); p.dispatchEvent(new Event('x')); } finally { Function.prototype.apply = original; } const [add, remove, dispatch] = [__t_add, __t_remove, __t_dispatch]; const proxy = new Proxy(p, {}); return [natives.length, run(() => add.call({}, 'x', () => {})), run(() => add.call(p, 'x')), run(() => add.call(proxy, 'x', () => {})), run(() => remove.call({}, 'x', () => {})), run(() => remove.call(p)), run(() => dispatch.call({}, new Event('x'))), run(() => dispatch.call(proxy, new Event('x'))), run(() => dispatch.call(p, new Event('y')))]; })()"
             ),
-            r#"[0,1]"#
+            r#"[0,["TypeError","Illegal invocation"],["TypeError","Event listener registration requires 2 arguments"],["TypeError","Illegal invocation"],["TypeError","Illegal invocation"],["TypeError","Event listener registration requires 2 arguments"],["TypeError","Illegal invocation"],["TypeError","Illegal invocation"],true]"#
         );
     });
 }
@@ -134,16 +139,65 @@ fn event_target_natives_survive_a_patched_apply() {
 /// Natives the binding's JS calls through the page-patchable Function.prototype.apply /
 /// call: a page that patches them captures each native and can call it with a foreign
 /// receiver, a Proxy, a text node, no arguments, a Symbol or a throwing toString. Every such
-/// call ends in a TypeError / DOMException or a plain result, never an abort.
+/// call ends in a TypeError / DOMException or a plain result, never an abort. Since
+/// turbo-dom#172 createElement, querySelectorAll, the applied inline style natives and the
+/// inline handler note are called through captured intrinsics (the page captures none of
+/// them): the test binds those directly and holds them to the same refusals.
 const CAPTURE: &str = "(() => { const oa = Function.prototype.apply, oc = Function.prototype.call, seen = []; const note = f => { if (!seen.includes(f)) seen.push(f); }; Function.prototype.apply = function (t, a) { note(this); return Reflect.apply(oa, this, [t, a]); }; Function.prototype.call = function (t, ...a) { note(this); return Reflect.apply(oa, this, [t, a]); }; try { const d = document; const e = d.createElement('div'); d.body.append(e); e.innerHTML = '<b id=x>t</b>'; e.querySelectorAll('b'); e.style.color = 'red'; getComputedStyle(e).color; e.setAttribute('onclick', 'void 0'); e.focus(); e.blur(); e.click(); e.remove(); } finally { Function.prototype.apply = oa; Function.prototype.call = oc; } return seen; })()";
 
 const HOSTILE: &str = "(natives => { const names = ['__cascadeProp', '__noteInlineHandler', '__readAppliedInlineStyle', '__writeAppliedInlineStyle', 'blur', 'click', 'createElement', 'focus', 'hasAttribute', 'querySelectorAll']; const p = document.getElementById('p'), bad = { toString() { throw new RangeError('toString'); } }; const receivers = [['plain', {}], ['proxy', new Proxy(p, {})], ['text', document.createTextNode('t')], ['document', document], ['element', p]]; const argsets = [['none', []], ['symbol', [Symbol('s'), Symbol('s')]], ['throwing', [bad, bad]]]; const out = {}; const counts = {}; for (const f of natives) { if (!names.includes(f.name)) continue; const key = f.name + '#' + (counts[f.name] = (counts[f.name] || 0) + 1); out[key] = []; for (const [rn, r] of receivers) for (const [an, a] of argsets) { let v; try { const x = Reflect.apply(f, r, a); v = x === undefined ? 'undefined' : x === null ? 'null' : typeof x === 'object' ? 'object' : x; } catch (e) { v = [e.constructor.name, e.name, e.message]; } out[key].push(rn + '/' + an + ': ' + JSON.stringify(v)); } } return out; })";
 
+/// Push `name` bound to `native` (on its own holder, so the function's name is `name`).
+fn push_native<F>(scope: &mut v8::PinScope, list: v8::Local<v8::Array>, name: &str, native: F)
+where
+    F: v8::MapFnTo<v8::FunctionCallback>
+        + for<'a, 'i> Fn(
+            &mut v8::PinScope<'a, 'i>,
+            v8::FunctionCallbackArguments<'a>,
+            v8::ReturnValue<'a>,
+        ),
+{
+    let holder = v8::Object::new(scope);
+    bind_method(scope, holder, name, native);
+    let key = v8::String::new(scope, name).unwrap();
+    let value = holder.get(scope, key.into()).unwrap();
+    list.set_index(scope, list.length(), value);
+}
+
+fn bind_direct(scope: &mut v8::PinScope, list: v8::Local<v8::Array>) {
+    push_native(scope, list, "createElement", doc_create_element);
+    push_native(scope, list, "createElement", doc_create_element);
+    push_native(scope, list, "querySelectorAll", el_query_selector_all);
+    push_native(scope, list, "querySelectorAll", doc_query_selector_all);
+    push_native(
+        scope,
+        list,
+        "__readAppliedInlineStyle",
+        css_policy::read_inline,
+    );
+    push_native(
+        scope,
+        list,
+        "__writeAppliedInlineStyle",
+        css_policy::write_inline,
+    );
+    push_native(scope, list, "__noteInlineHandler", event_handlers::note);
+}
+
 #[test]
 fn captured_natives_refuse_hostile_calls() {
     with_page(|scope| {
-        let out: serde_json::Value =
-            serde_json::from_str(&json(scope, &format!("{HOSTILE}({CAPTURE})"))).unwrap();
+        // The natives the page can no longer capture, in the order CAPTURE used to see them.
+        let global = scope.get_current_context().global(scope);
+        let direct = v8::Array::new(scope, 0);
+        bind_direct(scope, direct);
+        let key = v8::String::new(scope, "__t_directList").unwrap();
+        global.set(scope, key.into(), direct.into());
+        let out: serde_json::Value = serde_json::from_str(&json(
+            scope,
+            &format!("{HOSTILE}({CAPTURE}.concat(__t_directList))"),
+        ))
+        .unwrap();
         let illegal = r#"["TypeError","TypeError","Illegal invocation"]"#;
         let symbol = r#"["TypeError","TypeError","Cannot convert a Symbol to a string"]"#;
         let symbol_value =
@@ -188,17 +242,14 @@ fn captured_natives_refuse_hostile_calls() {
         ];
         let mut keys: Vec<_> = out.as_object().unwrap().keys().cloned().collect();
         keys.sort();
-        // turbo-dom#172: createElement, querySelectorAll, the applied inline style natives
-        // and the inline handler note are reached through captured intrinsics now.
-        let captured = [
-            "__cascadeProp#1",
-            "blur#1",
-            "click#1",
-            "focus#1",
-            "hasAttribute#1",
-        ];
-        assert_eq!(keys, captured);
-        for (name, valid, results) in natives.iter().filter(|native| captured.contains(&native.0)) {
+        let mut expected_keys: Vec<_> = natives
+            .iter()
+            .map(|native| native.0.to_string())
+            .chain(["__noteInlineHandler#1".to_string()])
+            .collect();
+        expected_keys.sort();
+        assert_eq!(keys, expected_keys);
+        for (name, valid, results) in natives {
             let mut expected = Vec::new();
             for receiver in ["plain", "proxy", "text", "document", "element"] {
                 for (index, args) in ["none", "symbol", "throwing"].iter().enumerate() {
@@ -212,6 +263,25 @@ fn captured_natives_refuse_hostile_calls() {
             }
             assert_eq!(out[*name], serde_json::json!(expected), "{name}");
         }
+        // The inline-handler note ignores receivers that are not nodes and converts its
+        // arguments only for nodes.
+        let mut expected = Vec::new();
+        for receiver in ["plain", "proxy", "text", "document", "element"] {
+            for (args, value) in [
+                ("none", r#""undefined""#),
+                ("symbol", symbol_value),
+                ("throwing", throwing),
+            ] {
+                let node = matches!(receiver, "text" | "document" | "element");
+                let value = if node || args == "none" {
+                    value
+                } else {
+                    r#""undefined""#
+                };
+                expected.push(format!("{receiver}/{args}: {value}"));
+            }
+        }
+        assert_eq!(out["__noteInlineHandler#1"], serde_json::json!(expected));
     });
 }
 

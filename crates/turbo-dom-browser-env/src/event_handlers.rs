@@ -16,7 +16,11 @@ pub(super) struct State {
 fn source(node: Handle, name: &str) -> Option<Vec<u16>> {
     with_tree(|tree| tree.get_attribute_utf16(node, name)).flatten()
 }
-fn note(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, _rv: v8::ReturnValue) {
+pub(super) fn note(
+    scope: &mut v8::PinScope,
+    args: v8::FunctionCallbackArguments,
+    _rv: v8::ReturnValue,
+) {
     let _dom = DomScope::for_object(scope, args.this());
     let Some(node) = handle_of(scope, args.this()) else {
         return;

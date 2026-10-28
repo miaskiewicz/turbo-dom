@@ -360,7 +360,7 @@ pub(super) fn shadow_cascade_policy(scope: &mut v8::PinScope) -> StylePolicy {
     });
     policy
 }
-fn read_inline(
+pub(super) fn read_inline(
     scope: &mut v8::PinScope,
     args: v8::FunctionCallbackArguments,
     mut rv: v8::ReturnValue,
@@ -372,7 +372,7 @@ fn read_inline(
     let text = applied_inline(scope, node);
     rv.set(v8::String::new(scope, &text).unwrap().into());
 }
-fn write_inline(
+pub(super) fn write_inline(
     scope: &mut v8::PinScope,
     args: v8::FunctionCallbackArguments,
     _rv: v8::ReturnValue,
