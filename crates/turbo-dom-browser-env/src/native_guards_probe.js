@@ -405,6 +405,11 @@
         run(() => document.createElementNS()), run(() => document.createElementNS('urn:x')), run(() => document.createComment()), run(() => Document.prototype.createComment.call(el, 'x')), run(() => Document.prototype.createDocumentFragment.call(el)), run(() => Document.prototype.createElementNS.call(el, null, 'a'))];
     })();
   }
+  // form.action / formAction for actions that do not parse as URLs.
+  {
+    const form = document.createElement('form'), button = form.appendChild(document.createElement('button'));
+    out.formActions = ['http://a%zz b/', 'http://a%4 1/', 'http://a b%41/p', 'http://A B/', 'http://a b%2F/', 'http://a b%7e%7E/', 'http://a b%25/', 'https://[::1', 'ftp://x y', 'wss://'].map(raw => { form.setAttribute('action', raw); button.setAttribute('formaction', raw); return [form.action, button.formAction]; });
+  }
   host.remove();
   return out;
 })()

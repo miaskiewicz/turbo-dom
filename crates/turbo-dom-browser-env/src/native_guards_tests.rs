@@ -84,6 +84,13 @@ const KNOWN_GAPS: &[(&str, &str)] = &[
         "result.receivers.Element.scrollTo[1]",
         "[\"TypeError\",\"TypeError\"]",
     ),
+    // miaskiewicz/turbo-dom#159: an invalid special action keeps its host's case and escapes.
+    ("result.formActions[2][0]", "\"http://a%20b%41/p\""),
+    ("result.formActions[2][1]", "\"http://a%20b%41/p\""),
+    ("result.formActions[3][0]", "\"http://A%20B/\""),
+    ("result.formActions[3][1]", "\"http://A%20B/\""),
+    ("result.formActions[5][0]", "\"http://a%20b%7e%7E/\""),
+    ("result.formActions[5][1]", "\"http://a%20b%7e%7E/\""),
     // miaskiewicz/turbo-dom#114: document.createComment() without its argument.
     ("result.conversions.valid[11]", "{}"),
 ];
