@@ -7,6 +7,12 @@ at the time); this file reconstructs them from history.
 
 ## [Unreleased]
 
+### Fixed — layout cascade expands the `font` shorthand (miaskiewicz/turbo-dom#176)
+The layout cascade now expands `font` (via turbo-dom's shorthand grammar) into its
+longhands at the shorthand's cascade position, so `font: 16px/20px serif` lays lines out
+20px apart like Chrome 156 (it was ~19.4px: size, line-height and family were ignored).
+An invalid `font` value contributes nothing.
+
 ### Fixed — browser-env engine JS ignores page-replaced builtins on the insertion path (miaskiewicz/turbo-dom#172)
 - The bootstrap's document helpers, element creation, traversal, event construction, event
   handler IDL attributes and invoker activation use intrinsics captured at install time,

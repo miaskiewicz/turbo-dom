@@ -748,7 +748,7 @@ fn quad_variable_context(cands: &[Cand], parent: &ComputedStyle) -> BTreeMap<Str
 fn expand_quad_candidates(cands: Vec<Cand>, parent: &ComputedStyle) -> Vec<Cand> {
     if !cands
         .iter()
-        .any(|cand| super::quad_shorthand::is_quad(&cand.property))
+        .any(|cand| super::quad_shorthand::is_quad(&cand.property) || cand.property == "font")
     {
         return cands;
     }
@@ -756,9 +756,30 @@ fn expand_quad_candidates(cands: Vec<Cand>, parent: &ComputedStyle) -> Vec<Cand>
     let mut expanded = Vec::new();
     for cand in cands {
         expanded.extend(expanded_quad(&cand, &variables).into_iter().flatten());
+        expanded.extend(expanded_font(&cand, &variables));
         expanded.push(cand);
     }
     expanded
+}
+
+/// The `font` shorthand's longhands (miaskiewicz/turbo-dom#176), parsed by turbo-dom's
+/// shorthand grammar, at the shorthand's cascade position. An invalid value (or a
+/// system-font keyword, which has no longhand values here) contributes nothing.
+fn expanded_font(cand: &Cand, variables: &BTreeMap<String, String>) -> Vec<Cand> {
+    if cand.property != "font" {
+        return Vec::new();
+    }
+    let value = substitute_vars(&cand.value, variables, 0, &[]);
+    turbo_dom::rtdom::css_shorthand::expand("font", &value)
+        .unwrap_or_default()
+        .into_iter()
+        .filter(|longhand| longhand.pending.is_none())
+        .map(|longhand| Cand {
+            key: cand.key,
+            property: longhand.name.into(),
+            value: longhand.value,
+        })
+        .collect()
 }
 
 fn expanded_quad(cand: &Cand, variables: &BTreeMap<String, String>) -> Option<[Cand; 4]> {

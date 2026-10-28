@@ -395,7 +395,6 @@ fn preserved_newlines_and_spaces_inside_edged_inline_boxes() {
 
 #[cfg(feature = "bundled-fonts")]
 #[test]
-#[ignore = "miaskiewicz/turbo-dom#176: fails until the fix"]
 fn font_shorthand_line_height_sets_the_line_pitch() {
     // miaskiewicz/turbo-dom#176. Chrome 156: `font: 16px/20px serif` stacks lines exactly
     // 20px apart (five wrapped words in a 30px-wide div = 100px); the shorthand's size,
