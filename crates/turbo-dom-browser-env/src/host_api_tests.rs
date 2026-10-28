@@ -317,3 +317,75 @@ fn absent_member_reads_see_later_own_properties() {
         );
     });
 }
+
+/// The host's form entry-list transaction: entries read the form's controls; while a
+/// FormData-constructor transaction holds the form, no further entry list is built (the
+/// constructing-entry-list flag) until the host finishes it. Finishing anything but a form
+/// changes nothing. Without a host FormData runtime there is no formdata dispatcher.
+#[test]
+fn form_entry_list_transactions_and_formdata_dispatch() {
+    with_page(
+        "<!doctype html><form id=f><input name=a value=1><button name=b value=2>s</button></form><div id=d></div>",
+        |scope| {
+            let form = object(scope, "globalThis.f = document.getElementById('f')");
+            let none: v8::Local<v8::Value> = v8::undefined(scope).into();
+            let rows = |scope: &mut v8::PinScope, value: Option<v8::Local<v8::Array>>| {
+                value.map(|array| {
+                    let global = scope.get_current_context().global(scope);
+                    let key = v8::String::new(scope, "rows").unwrap();
+                    global.set(scope, key.into(), array.into());
+                    json(scope, "rows")
+                })
+            };
+            let entries = r#"[["a","1"]]"#.to_string();
+            let read = form_submission_entries(scope, form, none);
+            assert_eq!(rows(scope, read), Some(entries.clone()));
+            let submitter = eval(scope, "f.querySelector('button')");
+            let read = form_submission_entries(scope, form, submitter);
+            assert_eq!(rows(scope, read), Some(r#"[["a","1"],["b","2"]]"#.to_string()));
+            let held = begin_form_data_constructor_entries(scope, form.into(), none);
+            assert_eq!(rows(scope, held), Some(entries.clone()));
+            assert!(begin_form_data_constructor_entries(scope, form.into(), none).is_none());
+            assert!(form_submission_entries(scope, form, none).is_none());
+            // Finishing a non-form, a non-node or a non-object leaves the transaction held.
+            let div = eval(scope, "document.getElementById('d')");
+            finish_form_data_constructor(scope, div);
+            let plain = eval(scope, "({})");
+            finish_form_data_constructor(scope, plain);
+            let five = v8::Integer::new(scope, 5).into();
+            finish_form_data_constructor(scope, five);
+            assert!(form_submission_entries(scope, form, none).is_none());
+            finish_form_data_constructor(scope, form.into());
+            let read = begin_form_data_constructor_entries(scope, form.into(), none);
+            assert_eq!(rows(scope, read), Some(entries));
+            finish_form_data_constructor(scope, form.into());
+            eval(scope, "globalThis.seen = []; f.addEventListener('formdata', () => seen.push(1))");
+            let data = eval(scope, "({})");
+            assert!(!dispatch_formdata_event(scope, form, data));
+            assert_eq!(json(scope, "seen"), "[]");
+        },
+    );
+}
+
+/// The submission handler registers only for a realm with a native document; the value
+/// reader lands on the callback's own realm either way.
+#[test]
+fn form_host_callbacks_need_a_native_document() {
+    with_page("<!doctype html><form></form>", |scope| {
+        let bare = v8::Context::new(scope, Default::default());
+        let callback = {
+            let scope = &mut v8::ContextScope::new(scope, bare);
+            let code = v8::String::new(scope, "(() => true)").unwrap();
+            let value = v8::Script::compile(scope, code, None)
+                .unwrap()
+                .run(scope)
+                .unwrap();
+            v8::Local::<v8::Function>::try_from(value).unwrap()
+        };
+        assert!(install_form_value_reader(scope, callback));
+        assert!(!install_form_submission_handler(scope, callback));
+        let own = v8::Local::<v8::Function>::try_from(eval(scope, "(() => true)")).unwrap();
+        assert!(install_form_value_reader(scope, own));
+        assert!(install_form_submission_handler(scope, own));
+    });
+}
