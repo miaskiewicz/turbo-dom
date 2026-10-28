@@ -414,8 +414,6 @@ fn selection_text_edges_match_chrome156() {
             r#"result.tables[2] = "\"c1c2\\ny\"""#,
             r#"result.transforms[1] = "\"AßB ŉ\"""#,
             r#"result.transforms[2] = "\"ab cd\"""#,
-            // miaskiewicz/turbo-dom#145: a hidden <br> still breaks the line.
-            r#"result.whitespace[2] = "\"abc\"""#,
         ],
     );
 }

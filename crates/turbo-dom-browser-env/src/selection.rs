@@ -434,14 +434,9 @@ impl Flow<'_> {
         }
         let name = html_text::tag(tree, node);
         if tree.namespace_id(node) == 0 && name == "br" {
+            // A `visibility: hidden` <br> still breaks the line (Chrome 156, turbo-dom#145).
             self.end_line();
-            let hidden = matches!(
-                style.get("visibility").map(String::as_str),
-                Some("hidden" | "collapse")
-            );
-            if !hidden {
-                self.piece(Piece::Break { node });
-            }
+            self.piece(Piece::Break { node });
             self.line_start = true;
             return self.children(node, false);
         }
