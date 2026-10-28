@@ -35,6 +35,7 @@ pub use token::{StyleToken, TokenSet};
 const UA_CSS: &str = "
 body { font-family: sans-serif }
 code, kbd, samp, pre { font-family: monospace }
+pre, listing, xmp, plaintext { white-space: pre }
 b { font-weight: bold }
 strong { font-weight: bold }
 i { font-style: italic }

@@ -1190,13 +1190,15 @@ fn is_white_space(ch: char) -> bool {
 }
 
 /// White-space-only text that collapses away: under `pre`/`pre-wrap`/`break-spaces`
-/// nothing does.
+/// nothing does, under `pre-line` everything but a newline.
 fn is_blank_text(item: &InlineItem) -> bool {
     let InlineItem::Text { text, style, .. } = item else {
         return false;
     };
     match style.get("white-space") {
         Some("pre" | "pre-wrap" | "break-spaces") => text.is_empty(),
+        // A pre-line newline is a forced line break (miaskiewicz/turbo-dom#121).
+        Some("pre-line") => text.chars().all(|ch| ch != '\n' && is_white_space(ch)),
         _ => text.chars().all(is_white_space),
     }
 }

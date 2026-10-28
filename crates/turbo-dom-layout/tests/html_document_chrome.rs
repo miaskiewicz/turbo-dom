@@ -538,7 +538,6 @@ fn space_line_case(id: &str) -> bool {
 }
 
 #[test]
-#[ignore = "turbo-dom#120: fails until the fix"]
 fn lines_of_only_preserved_spaces_are_line_boxes_like_chrome_156() {
     compare_cases(space_line_case);
 }
@@ -549,7 +548,6 @@ fn pre_line_newline_case(id: &str) -> bool {
 }
 
 #[test]
-#[ignore = "turbo-dom#121: fails until the fix"]
 fn pre_line_newlines_between_blocks_are_line_boxes_like_chrome_156() {
     compare_cases(pre_line_newline_case);
 }
@@ -560,7 +558,6 @@ fn nowrap_space_case(id: &str) -> bool {
 }
 
 #[test]
-#[ignore = "turbo-dom#122: fails until the fix"]
 fn white_space_only_nowrap_runs_collapse_away_like_chrome_156() {
     compare_cases(nowrap_space_case);
 }
@@ -598,4 +595,41 @@ fn preserved_newline_case(id: &str) -> bool {
 #[test]
 fn preserved_newlines_break_lines_like_chrome_156() {
     compare_cases(preserved_newline_case);
+    // The spans' widths carry the font's metrics, so compare the preserved spaces. Chrome:
+    // `pre-wrap` / `break-spaces` `a    b` is `normal` `a b` plus three spaces.
+    let fixture = fixture();
+    let case = fixture["cases"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|case| case["id"] == "ws-preserved-newline")
+        .unwrap();
+    let fonts = FontRegistry::new();
+    let width = |html: &str, cid: &str| {
+        let mut diags = Diagnostics::default();
+        let boxes = layout_boxes(html, "", 1280.0, 800.0, &fonts, &mut diags).unwrap();
+        boxes.iter().find(|b| b.cid == cid).unwrap().width
+    };
+    let html = case["html"].as_str().unwrap();
+    let chrome = |cid: &str| {
+        case["boxes"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|b| b["cid"] == cid)
+            .unwrap()["width"]
+            .as_f64()
+            .unwrap() as f32
+    };
+    // Here: each matches the same text under `pre` (spaces kept, not wrapped), wider
+    // than the collapsed `normal` span.
+    let pre = width(
+        "<span data-cid=a style='display:inline-block;white-space:pre'>a    b</span>",
+        "a",
+    );
+    for cid in ["s", "t"] {
+        assert!((chrome(cid) - chrome("n") - 12.0).abs() < 0.01, "Chrome: 3 spaces of 4px");
+        assert_eq!(width(html, cid), pre, "{cid}");
+        assert!(width(html, cid) > width(html, "n") + 6.0, "{cid}");
+    }
 }

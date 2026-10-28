@@ -386,16 +386,19 @@ fn visible_inline_item(item: &InlineItem, font: f32, width: f32, ctx: &Ctx) -> b
         InlineItem::Text { text, style, .. } => {
             text.chars()
                 .any(|character| !matches!(character, ' ' | '\t' | '\r' | '\n' | '\u{c}'))
-                || preserved_space(style) && !text.is_empty()
+                || preserved_space(style, text)
         }
         _ => true,
     }
 }
-fn preserved_space(style: &ComputedStyle) -> bool {
-    matches!(
-        style.get("white-space"),
-        Some("pre" | "pre-wrap" | "break-spaces")
-    )
+/// Whether white-space-only `text` renders: preserved spaces do, and so does a
+/// `pre-line` newline (a forced line break, miaskiewicz/turbo-dom#121).
+fn preserved_space(style: &ComputedStyle, text: &str) -> bool {
+    match style.get("white-space") {
+        Some("pre" | "pre-wrap" | "break-spaces") => !text.is_empty(),
+        Some("pre-line") => text.contains('\n'),
+        _ => false,
+    }
 }
 fn collapse_text_sources(items: &[InlineItem], ctx: &mut Ctx) {
     if let Some(capture) = &mut ctx.text_capture {
@@ -425,7 +428,10 @@ pub(super) fn collapsible_run(items: &[InlineItem], font: f32, width: f32) -> bo
             !has_horizontal_edges(&style(source, font, width, None))
         }
         InlineItem::Text { text, style, .. } => {
-            !preserved_space(style)
+            !matches!(
+                style.get("white-space"),
+                Some("pre" | "pre-wrap" | "break-spaces")
+            ) && !preserved_space(style, text)
                 && text
                     .chars()
                     .all(|c| matches!(c, ' ' | '\t' | '\r' | '\n' | '\u{c}'))

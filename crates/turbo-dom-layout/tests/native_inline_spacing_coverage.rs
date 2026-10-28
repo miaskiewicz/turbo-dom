@@ -473,6 +473,8 @@ fn generic_snapshot_and_pdf_atom_caption_keep_raw_font_advances() {
             },
             valign: VAlign::Baseline,
             nowrap: false,
+            preserve_spaces: false,
+            forced_newlines: false,
         }),
     ];
     let paragraph = layout_paragraph(

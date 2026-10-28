@@ -38,6 +38,14 @@ pub struct InlineRun {
     /// labels). Modeled by folding those spaces into the word rather than emitting a
     /// breakable gap.
     pub nowrap: bool,
+    /// `white-space: pre` / `pre-wrap` / `break-spaces`: the run's spaces do not
+    /// collapse; each is a glyph of its word. A wrapping run (`pre-wrap` /
+    /// `break-spaces`) may break after a run of them (CSS Text 3 §4.1.2).
+    pub preserve_spaces: bool,
+    /// `white-space: pre` / `pre-wrap` / `break-spaces` / `pre-line`: a newline is a
+    /// preserved segment break, a forced line break (CSS Text 3 §4.1.1,
+    /// miaskiewicz/turbo-dom#121 / #166).
+    pub forced_newlines: bool,
 }
 
 /// An atomic inline box (an `inline-block` or replaced `<img>`) that flows within
@@ -558,6 +566,34 @@ fn collapsible_space(character: char, capture_sources: bool) -> bool {
     matches!(character, ' ' | '\t' | '\n' | '\r' | '\u{c}')
 }
 
+/// A preserved newline: a forced line break (miaskiewicz/turbo-dom#121 / #166).
+fn forced_newline(c: &CharInfo, runs: &[InlineRun]) -> bool {
+    c.ch == '\n' && runs[c.run].forced_newlines
+}
+
+/// A collapsible space that separates words: its run neither preserves its spaces nor
+/// (`nowrap`) keeps them inside the word.
+fn separating_space(c: &CharInfo, runs: &[InlineRun], capture_sources: bool) -> bool {
+    let run = &runs[c.run];
+    collapsible_space(c.ch, capture_sources) && !run.nowrap && !run.preserve_spaces
+        || forced_newline(c, runs)
+}
+
+/// A `nowrap` run's collapsible space at a word start collapses away instead of
+/// opening a word (a white-space-only `nowrap` run renders nothing,
+/// miaskiewicz/turbo-dom#122).
+fn leading_nowrap_space(c: &CharInfo, runs: &[InlineRun], capture_sources: bool) -> bool {
+    let run = &runs[c.run];
+    run.nowrap && !run.preserve_spaces && collapsible_space(c.ch, capture_sources)
+}
+
+/// A preserved space of a wrapping run (`pre-wrap` / `break-spaces`): the line may
+/// break after it.
+fn wrapping_preserved_space(c: &CharInfo, runs: &[InlineRun]) -> bool {
+    let run = &runs[c.run];
+    run.preserve_spaces && !run.nowrap && matches!(c.ch, ' ' | '\t')
+}
+
 fn build_words(
     chars: &[CharInfo],
     runs: &[InlineRun],
@@ -566,19 +602,34 @@ fn build_words(
 ) -> Vec<Word> {
     // A space is a line-break opportunity only when its run wraps; a `nowrap` run's
     // spaces stay inside the word so its whole text is one unbreakable unit.
-    let breakable = |c: &CharInfo| collapsible_space(c.ch, capture_sources) && !runs[c.run].nowrap;
+    let breakable = |c: &CharInfo| separating_space(c, runs, capture_sources);
     let mut words = Vec::new();
     let mut i = 0;
     while i < chars.len() {
-        if breakable(&chars[i]) {
+        if forced_newline(&chars[i], runs) {
+            words.push(break_word());
+            i += 1;
+            continue;
+        }
+        if breakable(&chars[i]) || leading_nowrap_space(&chars[i], runs, capture_sources) {
             i += 1;
             continue;
         }
         let start = i;
         while i < chars.len() && !breakable(&chars[i]) {
             i += 1;
+            if wrapping_preserved_space(&chars[i - 1], runs)
+                && chars
+                    .get(i)
+                    .is_none_or(|next| !wrapping_preserved_space(next, runs))
+            {
+                break;
+            }
         }
-        let space_after = chars.get(i).map_or(0.0, |c| space_width(c, runs));
+        let space_after = chars
+            .get(i)
+            .filter(|c| breakable(c) && !forced_newline(c, runs))
+            .map_or(0.0, |c| space_width(c, runs));
         let mut word = make_word(&chars[start..i], runs, space_after);
         word.spaces = native_word_spaces(&chars[i..], runs, native_advances);
         words.push(word);
@@ -592,7 +643,7 @@ fn native_word_spaces(chars: &[CharInfo], runs: &[InlineRun], enabled: bool) -> 
     }
     chars
         .iter()
-        .take_while(|c| collapsible_space(c.ch, true) && !runs[c.run].nowrap)
+        .take_while(|c| separating_space(c, runs, true) && !forced_newline(c, runs))
         .map(|c| make_seg(std::slice::from_ref(c), runs))
         .collect()
 }
@@ -797,24 +848,57 @@ struct MarkedWords<'a> {
     words: Vec<Word>,
     current: Vec<SourceItem>,
     in_space: bool,
+    /// The last character was a wrapping preserved space: the next other character
+    /// opens a new word (a break opportunity, `pre-wrap` / `break-spaces`).
+    after_wrap_space: bool,
     runs: &'a [InlineRun],
     native: bool,
 }
 impl MarkedWords<'_> {
     fn push(&mut self, item: SourceItem) {
         match item {
+            SourceItem::Character(c) if forced_newline(&c, self.runs) => {
+                if !self.current.is_empty() {
+                    self.words.push(marked_word(
+                        std::mem::take(&mut self.current),
+                        self.runs,
+                        0.0,
+                    ));
+                }
+                self.words.push(break_word());
+                self.in_space = true;
+                self.after_wrap_space = false;
+            }
             SourceItem::Character(c)
-                if collapsible_space(c.ch, self.native) && !self.runs[c.run].nowrap =>
+                if separating_space(&c, self.runs, self.native)
+                    || self.opens_word() && leading_nowrap_space(&c, self.runs, self.native) =>
             {
+                self.after_wrap_space = false;
                 self.space(c);
             }
             item => {
-                if matches!(item, SourceItem::Character(_)) {
+                if let SourceItem::Character(c) = &item {
+                    let wrap_space = wrapping_preserved_space(c, self.runs);
+                    if self.after_wrap_space && !wrap_space {
+                        self.words.push(marked_word(
+                            std::mem::take(&mut self.current),
+                            self.runs,
+                            0.0,
+                        ));
+                    }
+                    self.after_wrap_space = wrap_space;
                     self.in_space = false;
                 }
                 self.current.push(item);
             }
         }
+    }
+    /// No character of the current word yet (edges only).
+    fn opens_word(&self) -> bool {
+        !self
+            .current
+            .iter()
+            .any(|item| matches!(item, SourceItem::Character(_)))
     }
     #[allow(clippy::needless_pass_by_value)] // signature kept as relocated; borrowing instead changes nothing observable
     fn space(&mut self, c: CharInfo) {
@@ -855,6 +939,7 @@ fn build_marked_words(
         words: Vec::new(),
         current: Vec::new(),
         in_space,
+        after_wrap_space: false,
         runs,
         native,
     };
@@ -921,7 +1006,7 @@ fn hand_off_leading_space(
     let (Some(first), Some(last)) = (chars.first(), out.last_mut()) else {
         return;
     };
-    let breakable = collapsible_space(first.ch, capture_sources) && !group[first.run].nowrap;
+    let breakable = separating_space(first, group, capture_sources) && !forced_newline(first, group);
     if breakable && last.space_after == 0.0 {
         last.space_after = space_width(first, group);
         if native_advances {
@@ -930,7 +1015,7 @@ fn hand_off_leading_space(
                 chars
                     .iter()
                     .take_while(|c| {
-                        collapsible_space(c.ch, capture_sources) && !group[c.run].nowrap
+                        separating_space(c, group, capture_sources) && !forced_newline(c, group)
                     })
                     .map(|c| make_seg(std::slice::from_ref(c), group)),
             );
@@ -2157,6 +2242,8 @@ mod tests {
             },
             valign: VAlign::Baseline,
             nowrap: false,
+            preserve_spaces: false,
+            forced_newlines: false,
         })
     }
 

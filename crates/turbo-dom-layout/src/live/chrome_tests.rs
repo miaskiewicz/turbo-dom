@@ -376,7 +376,6 @@ fn space_line_case(id: &str) -> bool {
 
 #[cfg(feature = "bundled-fonts")]
 #[test]
-#[ignore = "turbo-dom#120: fails until the fix"]
 fn lines_of_only_preserved_spaces_are_line_boxes_like_chrome_156() {
     assert_matches_chrome(compare_cases(space_line_case));
 }
@@ -388,7 +387,6 @@ fn pre_line_newline_case(id: &str) -> bool {
 
 #[cfg(feature = "bundled-fonts")]
 #[test]
-#[ignore = "turbo-dom#121: fails until the fix"]
 fn pre_line_newlines_between_blocks_are_line_boxes_like_chrome_156() {
     assert_matches_chrome(compare_cases(pre_line_newline_case));
 }

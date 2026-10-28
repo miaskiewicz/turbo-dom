@@ -602,6 +602,14 @@ fn text_run(item: &InlineItem, parent_fs: f32, cw: f32, fonts: &FontRegistry) ->
             style.get("white-space").map(str::trim),
             Some("nowrap" | "pre")
         ),
+        preserve_spaces: matches!(
+            style.get("white-space").map(str::trim),
+            Some("pre" | "pre-wrap" | "break-spaces")
+        ),
+        forced_newlines: matches!(
+            style.get("white-space").map(str::trim),
+            Some("pre" | "pre-wrap" | "break-spaces" | "pre-line")
+        ),
     })
 }
 

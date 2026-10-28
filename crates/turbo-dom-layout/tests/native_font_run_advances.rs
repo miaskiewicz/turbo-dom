@@ -432,6 +432,8 @@ fn ordinary_run(face: turbo_dom_layout::FontFace) -> InlineRun {
         },
         valign: VAlign::Baseline,
         nowrap: false,
+        preserve_spaces: false,
+        forced_newlines: false,
     }
 }
 #[test]

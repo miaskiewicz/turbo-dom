@@ -24,6 +24,8 @@ fn run(text: &str, face: &FontFace) -> InlineRun {
         color: Rgba::BLACK,
         valign: VAlign::Baseline,
         nowrap: false,
+        preserve_spaces: false,
+        forced_newlines: false,
     }
 }
 
@@ -307,24 +309,25 @@ fn whitespace_only_inline_runs_collapse_unless_white_space_preserves_them() {
     assert!(line > 0.0);
     assert_eq!(normal["b"].1, line, "the collapsed span takes no height");
     assert_eq!(normal["d"].3, 0.0, "a whitespace-only block is empty");
-    // (pre-wrap / break-spaces: the inline layout drops a line holding only
-    // preserved spaces — a separate gap, not asserted here.)
-    let kept = doc("pre");
-    assert_eq!(kept["b"].1, 2.0 * line, "the preserved space takes a line");
-    assert_eq!(kept["d"].3, line);
-    // (nowrap: a white-space-only span block still gets a line here, Chrome 0 — a
-    // separate gap, not asserted here.)
+    for ws in ["pre", "pre-wrap", "break-spaces"] {
+        let kept = doc(ws);
+        assert_eq!(kept["b"].1, 2.0 * line, "{ws}: the preserved space takes a line");
+        assert_eq!(kept["d"].3, line, "{ws}");
+    }
+    let nowrap = doc("nowrap");
+    assert_eq!(nowrap["b"].1, line, "nowrap: the collapsed span takes no height");
+    assert_eq!(nowrap["d"].3, 0.0, "nowrap: a whitespace-only block is empty");
     let other = cid_boxes(
         "<body style='margin:0'><div data-cid=f style='display:flex;white-space:pre'> </div>\
-         <div data-cid=h style='white-space:pre-line'><p style='margin:0'>a</p>  <p style='margin:0'>b</p></div></body>",
+         <div data-cid=h style='white-space:pre-line'><p style='margin:0'>a</p>  <p style='margin:0'>b</p></div>\
+         <div data-cid=n style='white-space:pre-line'><p style='margin:0'>a</p>\n<p style='margin:0'>b</p></div></body>",
     );
     assert_eq!(
         other["f"].3, 0.0,
         "flex: white-space-only text is not rendered"
     );
-    // (a pre-line newline between blocks: Chrome keeps its line (54), the inline layout
-    // here drops a newline-only line — a separate gap, not asserted.)
     assert_eq!(other["h"].3, 2.0 * line, "pre-line collapses spaces");
+    assert_eq!(other["n"].3, 3.0 * line, "a pre-line newline between blocks is a line");
 }
 
 #[cfg(feature = "bundled-fonts")]

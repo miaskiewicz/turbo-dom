@@ -52,6 +52,8 @@ fn source_pieces(fonts: &FontRegistry, contributes: bool, line_height: Option<f3
             },
             valign: VAlign::Baseline,
             nowrap: false,
+            preserve_spaces: false,
+            forced_newlines: false,
         }),
         Piece::Edge(end),
     ]

@@ -14187,7 +14187,7 @@
   {
    "id": "ws-preserved-newline",
    "html": "<!DOCTYPE html><html><head><style>body{margin:0;line-height:20px}p,pre{margin:0}</style></head><body><div data-cid=\"p\" style=\"white-space:pre\">a\nb</div><div data-cid=\"w\" style=\"white-space:pre-wrap\">a\nb</div><div data-cid=\"b\" style=\"white-space:break-spaces\">a\nb</div><pre data-cid=\"r\">a\nb</pre><div data-cid=\"l\" style=\"white-space:pre-line\">a\nb</div><div><span data-cid=\"s\" style=\"display:inline-block;white-space:pre-wrap\">a    b</span></div><div><span data-cid=\"t\" style=\"display:inline-block;white-space:break-spaces\">a    b</span></div><div><span data-cid=\"n\" style=\"display:inline-block;white-space:normal\">a    b</span></div><p data-cid=\"f\">f</p></body></html>",
-   "measure": "xywh",
+   "measure": "xyh",
    "boxes": [
     {
      "cid": "p",
