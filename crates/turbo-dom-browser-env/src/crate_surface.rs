@@ -58,6 +58,9 @@ mod close_watchers_tests;
 #[path = "edge_probes_tests.rs"]
 mod edge_probes_tests;
 #[cfg(test)]
+#[path = "guard_edges_tests.rs"]
+mod guard_edges_tests;
+#[cfg(test)]
 #[path = "harness_tests.rs"]
 pub(super) mod harness_tests;
 #[cfg(test)]

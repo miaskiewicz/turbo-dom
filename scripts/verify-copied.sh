@@ -212,6 +212,7 @@ OWNED="$OWNED edge_probes_tests.rs harness_tests.rs termination_tests.rs shadow_
 OWNED="$OWNED activation_granted_probe.js activation_granted_chrome156.json trusted_controls_tests.rs dialog_popover_edges_probe.js dialog_popover_edges_chrome156.json custom_elements_edges_probe.js custom_elements_edges_chrome156.json selection_text_edges_probe.js selection_text_edges_chrome156.json"
 OWNED="$OWNED private_natives_tests.rs binding_termination_tests.rs"
 OWNED="$OWNED member_edges_tests.rs host_edges_tests.rs member_edges_probe.js member_edges_chrome156.json"
+OWNED="$OWNED guard_edges_tests.rs guard_edges_probe.js guard_edges_chrome156.json"
 
 repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 turbo_test=${TURBO_TEST_REPO:-$repo_root/../turbo-test}
