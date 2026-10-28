@@ -299,7 +299,6 @@ fn navigation_facts_are_refused_for_inert_documents() {
 /// turbo-dom#151: serializing (outer and template contents) under a pending termination
 /// emits nothing and leaves the termination pending; cancelled, the same calls serialize.
 #[test]
-#[ignore = "turbo-dom#151: fails until the fix"]
 fn template_serialize_leaves_termination_pending() {
     with_page(
         "<template id=t><b>x</b></template><div id=d><p>z</p></div>",
@@ -326,7 +325,6 @@ fn template_serialize_leaves_termination_pending() {
 /// turbo-dom#151 (dispatch path): a host-delivered event under a pending termination runs
 /// no listener and leaves the termination pending; cancelled, the same event is delivered.
 #[test]
-#[ignore = "turbo-dom#151: fails until the fix"]
 fn host_event_dispatch_leaves_termination_pending() {
     with_page("<div id=h><b id=c></b></div>", |scope| {
         let child = object(

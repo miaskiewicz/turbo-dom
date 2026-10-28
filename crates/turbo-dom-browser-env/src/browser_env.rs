@@ -4380,6 +4380,11 @@ pub fn dispatch_host_event(
     event: v8::Local<v8::Object>,
     target: v8::Local<v8::Object>,
 ) {
+    // turbo-dom#151: never deliver an event (or consume the termination) while a
+    // termination is pending.
+    if scope.is_execution_terminating() {
+        return;
+    }
     if handle_of(scope, target).is_some() {
         let host = v8::Boolean::new(scope, true);
         if let Some(function) = v8::FunctionTemplate::builder(el_dispatch_event)
