@@ -7,6 +7,13 @@ at the time); this file reconstructs them from history.
 
 ## [Unreleased]
 
+### Fixed — layout cascade: `@supports` <general-enclosed> is false (miaskiewicz/turbo-dom#123, Chrome 156 control)
+- A parenthesised `@supports` condition that is neither a `property: value` declaration nor a
+  nested condition (`(not foo)`, `((not foo))`, `(not)`, `(foo)`, `(not foo: bar)`) is
+  <general-enclosed> and evaluates false, so `not (not foo)` / `not (foo)` now hold; text that
+  is not one group (`(not a) (b)`) does not parse and drops the rule. Control:
+  `scripts/html-document-chrome-control.mjs` case `supports-general-enclosed`.
+
 ### Fixed — browser-env manual slots re-entering a shadow root signal like Chrome 156 (miaskiewicz/turbo-dom#133)
 - A slot inserted into a manual-assignment root no longer fires slotchange (Chrome signals only
   the removal, and named roots still signal an inserted slot); a slot leaving a manual root

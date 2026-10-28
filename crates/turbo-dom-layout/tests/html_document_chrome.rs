@@ -570,7 +570,6 @@ fn supports_general_enclosed_case(id: &str) -> bool {
 }
 
 #[test]
-#[ignore = "turbo-dom#123: fails until the fix"]
 fn supports_general_enclosed_is_false_like_chrome_156() {
     compare_cases(supports_general_enclosed_case);
 }

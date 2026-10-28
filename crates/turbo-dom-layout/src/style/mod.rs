@@ -271,11 +271,28 @@ fn supports_unary(s: &str) -> bool {
         return !supports_unary(inner);
     }
     match strip_group(s) {
-        // A parenthesised group holding an operator expression → recurse. A leaf
-        // `(property: value)` or a bare/unrecognised condition → assume supported.
+        // A parenthesised group holding an operator expression → recurse.
         Some(inner) if is_group_expr(inner) => supports_or(inner),
-        _ => true,
+        // A leaf `(property: value)` → assume supported; any other parenthesised text
+        // (`(not foo)`, `(foo)`) is <general-enclosed>, which is false (CSS Conditional
+        // 3 §2.1; Chrome 156, miaskiewicz/turbo-dom#123).
+        Some(inner) => is_declaration(inner),
+        // Parenthesised text that is not one group (`(not a) (b)`) does not parse, so
+        // Chrome drops the rule; a bare function (`selector(...)`) → assume supported.
+        None => !s.starts_with('('),
     }
+}
+
+/// Whether a leaf group's inside is a `property: value` declaration: an identifier
+/// (custom properties included) before the colon.
+fn is_declaration(inner: &str) -> bool {
+    inner.split_once(':').is_some_and(|(name, _)| {
+        let name = name.trim();
+        !name.is_empty()
+            && name
+                .bytes()
+                .all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'_')
+    })
 }
 
 /// Whether a group's inside is a nested operator expression (holds a sub-group or a
