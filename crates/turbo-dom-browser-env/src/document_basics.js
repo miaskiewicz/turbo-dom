@@ -16,7 +16,7 @@
   const html = 'http://www.w3.org/1999/xhtml';
   const StringValue = String;
   const string = value => { if (typeof value === 'symbol') throw new TypeError('Cannot convert a Symbol to a string'); return StringValue(value); };
-  const check = (receiver, allowed) => { if (!allowed.includes(apply(type, receiver, []))) throw new TypeError('Illegal invocation'); };
+  const check = (receiver, allowed) => { const kind = apply(type, receiver, []); for (let i = 0; i < allowed.length; i++) if (allowed[i] === kind) return; throw new TypeError('Illegal invocation'); };
   const state = document => native('state', document);
   const property = (proto, name, read, write) => {
     const descriptor = { configurable: true, enumerable: true, get: make(read, 'get ' + name, 0) };
@@ -25,6 +25,16 @@
   };
   const method = (proto, name, delegate, arity) => Object.defineProperty(proto, name, { value: make(delegate, name, arity), writable: true, enumerable: true, configurable: true });
   const apply = Reflect.apply, ErrorType = TypeError;
+  // Intrinsics captured at install time: page-replaced builtins never reach the engine's
+  // own paths (miaskiewicz/turbo-dom#172).
+  const call = (f, receiver, ...rest) => apply(f, receiver, rest);
+  const regExec = RegExp.prototype.exec, charCodeAt = String.prototype.charCodeAt, fromCharCode = String.fromCharCode;
+  const localNameOf = Object.getOwnPropertyDescriptor(g.Element.prototype, 'localName').get;
+  const local = node => apply(localNameOf, node, []);
+  const test = (pattern, text) => { pattern.lastIndex = 0; return apply(regExec, pattern, [text]) !== null; };
+  const asciiUpper = text => { let out = ''; for (let i = 0; i < text.length; i++) { const c = apply(charCodeAt, text, [i]); out += c >= 97 && c <= 122 ? fromCharCode(c - 32) : text[i]; } return out; };
+  const firstChild = (node, match) => { const children = call(rawChildren, node); for (let i = 0; i < children.length; i++) { const child = children[i]; if (match(child)) return child; } return null; };
+  const documentElementOf = document => firstChild(document, node => call(type, node) === 1);
   // HTML's obsolete Document methods explicitly preserve the document and ignore arguments.
   for (const name of ['clear', 'captureEvents', 'releaseEvents']) {
     method(g.Document.prototype, name, function () {
@@ -37,7 +47,7 @@
     check(this, [9]);
     if (arguments.length < 2) throw new TypeError('createProcessingInstruction requires 2 arguments');
     target = string(target); data = string(data);
-    if (!xmlName.test(target) || /[\ud800-\udfff\ufffd]/u.test(target) || data.includes('?>')) throw new ns.DOMException('Invalid processing instruction', 'InvalidCharacterError');
+    if (!test(xmlName, target) || test(/[\ud800-\udfff\ufffd]/u, target) || data.includes('?>')) throw new ns.DOMException('Invalid processing instruction', 'InvalidCharacterError');
     return native('createPI', this, target, data);
   }, 2);
   method(g.Document.prototype, 'createCDATASection', function (data) {
@@ -48,8 +58,8 @@
   }, 1);
   property(g.ProcessingInstruction.prototype, 'target', function () { check(this, [7]); return native('piTarget', this); });
   const data = Object.getOwnPropertyDescriptor(g.CharacterData.prototype, 'data');
-  property(g.CharacterData.prototype, 'length', function () { check(this, [3, 4, 7, 8]); return data.get.call(this).length; });
-  method(g.Node.prototype, 'normalize', function () { type.call(this); native('normalize', this); }, 0);
+  property(g.CharacterData.prototype, 'length', function () { check(this, [3, 4, 7, 8]); return call(data.get, this).length; });
+  method(g.Node.prototype, 'normalize', function () { call(type, this); native('normalize', this); }, 0);
   const datasetValues = new WeakMap(), datasetGet=WeakMap.prototype.get, datasetSet=WeakMap.prototype.set;
   const nativeAttributes = Object.getOwnPropertyDescriptor(g.Element.prototype,'attributes').get;
   const nativeAttrName = Object.getOwnPropertyDescriptor(g.Attr.prototype,'name').get;
@@ -116,10 +126,10 @@
   function descendants(receiver, match) {
     const result = [];
     function visit(node) {
-      const children = rawChildren.call(node);
+      const children = call(rawChildren, node);
       for (let i = 0; i < children.length; i++) {
         const child = children[i];
-        if (type.call(child) === 1 && match(child)) collectionOwn(result,result.length,child);
+        if (call(type, child) === 1 && match(child)) collectionOwn(result,result.length,child);
         visit(child);
       }
     }
@@ -143,7 +153,7 @@
   const collection = collectionInterface('HTMLCollection');
   const nodeList = collectionInterface('NodeList');
   // An id match anywhere in the collection wins over an earlier name match.
-  const named = (list,name)=>{if(name==='')return null;for(let index=0;index<list.length;index++){const node=list[index];if(getAttribute.call(node,'id')===name)return node;}for(let index=0;index<list.length;index++){const node=list[index];if(namespace.call(node)===html&&getAttribute.call(node,'name')===name)return node;}return null;};
+  const named = (list,name)=>{if(name==='')return null;for(let index=0;index<list.length;index++){const node=list[index];if(call(getAttribute, node,'id')===name)return node;}for(let index=0;index<list.length;index++){const node=list[index];if(call(namespace, node)===html&&call(getAttribute, node,'name')===name)return node;}return null;};
   method(collection.proto, 'namedItem', function (name) { if (!arguments.length) throw new TypeError('namedItem requires 1 argument'); return named(collection.record(this)(), string(name)); }, 1);
   for (const [name,implementation] of [['entries',collectionEntries],['keys',collectionKeys],['values',collectionValues]]) method(nodeList.proto,name,function(){nodeList.record(this);return collectionApply(implementation,this,[]);},0);
   Object.defineProperty(nodeList.proto, Symbol.iterator, {value: nodeList.proto.values, writable: true, configurable: true});
@@ -152,7 +162,7 @@
     const proto = options ? options.prototype : namedProperties ? collection.proto : nodeList.proto;
     const namedLookup = options && options.named || named;
     const object = ns.makeNamedObject(proto, function (operation, key, value, throws) {
-      const indexed = /^(0|[1-9][0-9]*)$/.test(key) && Number(key) < 4294967295;
+      const indexed = test(/^(0|[1-9][0-9]*)$/, key) && Number(key) < 4294967295;
       // An indexed setter (HTMLOptionsCollection) owns every index, supported or not. A define
       // also carries V8's should-throw mode (Object.defineProperty vs Reflect.defineProperty).
       if(indexed&&options&&options.setIndex&&(operation==='set'||operation==='define'))return options.setIndex(Number(key),value,operation==='define',throws===true);
@@ -164,11 +174,11 @@
       if (operation === 'keys') {
         const names = [];
         if (namedProperties) for (let index=0;index<rows.length;index++) {
-          const node=rows[index],values=[getAttribute.call(node,'id'),namespace.call(node)===html?getAttribute.call(node,'name'):null];
+          const node=rows[index],values=[call(getAttribute, node,'id'),call(namespace, node)===html?call(getAttribute, node,'name'):null];
           for(let at=0;at<values.length;at++){
             const value=values[at];let duplicate=false;
             for(let existing=0;existing<names.length;existing++)if(names[existing]===value){duplicate=true;break;}
-            if(value&&(hiddenNames||!/^(0|[1-9][0-9]*)$/.test(value)&&!(value in proto))&&!duplicate)collectionOwn(names,names.length,value);
+            if(value&&(hiddenNames||!test(/^(0|[1-9][0-9]*)$/, value)&&!(value in proto))&&!duplicate)collectionOwn(names,names.length,value);
           }
         }
         return names;
@@ -201,12 +211,12 @@
   property(g.Node.prototype, 'childNodes', function () {
     check(this, [1, 2, 3, 4, 7, 8, 9, 10, 11]);
     const receiver = this;
-    return cached(receiver, 'childNodes', () => copyRows(rawChildren.call(receiver)), false);
+    return cached(receiver, 'childNodes', () => copyRows(call(rawChildren, receiver)), false);
   });
   for (const owner of ['Element', 'Document', 'DocumentFragment']) property(g[owner].prototype, 'children', function () {
     check(this, owner === 'Element' ? [1] : owner === 'Document' ? [9] : [11]);
     const receiver = this;
-    return cached(receiver, 'children', () => copyRows(rawChildren.call(receiver),node=>type.call(node)===1));
+    return cached(receiver, 'children', () => copyRows(call(rawChildren, receiver),node=>call(type, node)===1));
   });
   for (const owner of ['Document', 'Element', 'DocumentFragment']) {
     const proto = g[owner].prototype;
@@ -214,7 +224,7 @@
     method(proto, 'querySelectorAll', function (selector) {
       check(this, owner === 'Document' ? [9] : owner === 'Element' ? [1] : [11]);
       if (!arguments.length) throw new TypeError('querySelectorAll requires 1 argument');
-      const rows = copyRows(query.call(this,string(selector)));
+      const rows = copyRows(call(query, this,string(selector)));
       return live(() => rows, false);
     }, 1);
   }
@@ -224,12 +234,12 @@
     return native('fragmentById', this, elementId);
   }, 1);
   const selectors = {
-    forms: node => tag.call(node) === 'FORM' && namespace.call(node) === html,
-    images: node => tag.call(node) === 'IMG' && namespace.call(node) === html,
-    links: node => ['A', 'AREA'].includes(tag.call(node)) && namespace.call(node) === html && hasAttribute.call(node, 'href'),
-    anchors: node => tag.call(node) === 'A' && namespace.call(node) === html && hasAttribute.call(node, 'name'),
-    embeds: node => tag.call(node) === 'EMBED' && namespace.call(node) === html,
-    scripts: node => tag.call(node) === 'SCRIPT' && namespace.call(node) === html,
+    forms: node => call(tag, node) === 'FORM' && call(namespace, node) === html,
+    images: node => call(tag, node) === 'IMG' && call(namespace, node) === html,
+    links: node => ['A', 'AREA'].includes(call(tag, node)) && call(namespace, node) === html && call(hasAttribute, node, 'href'),
+    anchors: node => call(tag, node) === 'A' && call(namespace, node) === html && call(hasAttribute, node, 'name'),
+    embeds: node => call(tag, node) === 'EMBED' && call(namespace, node) === html,
+    scripts: node => call(tag, node) === 'SCRIPT' && call(namespace, node) === html,
     // Applet support was removed from HTML; Chrome's legacy collection stays empty.
     applets: () => false,
   };
@@ -246,30 +256,30 @@
     const valid = owner === 'Document' ? [9] : [1];
     method(g[owner].prototype, 'getElementsByTagName', function (name) {
       check(this, valid); if (!arguments.length) throw new TypeError('getElementsByTagName requires 1 argument');
-      name = string(name); const folded = name.replace(/[a-z]/g, value=>value.toUpperCase()), receiver = this;
-      return cached(receiver, 'tag:' + name, () => descendants(receiver, node => name === '*' || tag.call(node) === (namespace.call(node) === html ? folded : name)));
+      name = string(name); const folded = asciiUpper(name), receiver = this;
+      return cached(receiver, 'tag:' + name, () => descendants(receiver, node => name === '*' || call(tag, node) === (call(namespace, node) === html ? folded : name)));
     }, 1);
     method(g[owner].prototype, 'getElementsByTagNameNS', function (uri, local) {
       check(this, valid); if (arguments.length < 2) throw new TypeError('getElementsByTagNameNS requires 2 arguments');
       uri = uri == null || uri === '' ? null : string(uri); local = string(local); const receiver = this;
-      return cached(receiver, JSON.stringify(['ns', uri, local]), () => descendants(receiver, node => (uri === '*' || namespace.call(node) === uri) && (local === '*' || node.localName === local)));
+      return cached(receiver, JSON.stringify(['ns', uri, local]), () => descendants(receiver, node => (uri === '*' || call(namespace, node) === uri) && (local === '*' || node.localName === local)));
     }, 2);
     method(g[owner].prototype, 'getElementsByClassName', function (classes) {
       check(this, valid); if (!arguments.length) throw new TypeError('getElementsByClassName requires 1 argument');
       classes = string(classes); const receiver=this;
       const tokens = classes.replace(/^[\t\n\f\r ]+|[\t\n\f\r ]+$/g,'').split(/[\t\n\f\r ]+/).filter(Boolean);
       return cached(receiver, 'class:' + classes, () => {
-        const document=type.call(receiver)===9?receiver:receiver.ownerDocument, insensitive=document&&native('compatMode',document)==='BackCompat';
+        const document=call(type, receiver)===9?receiver:receiver.ownerDocument, insensitive=document&&native('compatMode',document)==='BackCompat';
         const fold=value=>insensitive?value.replace(/[A-Z]/g,value=>value.toLowerCase()):value;
         const wanted=tokens.map(fold);
-        return wanted.length ? descendants(receiver,node=>{const actual=(getAttribute.call(node,'class')||'').split(/[\t\n\f\r ]+/).map(fold);return wanted.every(value=>actual.includes(value));}):[];
+        return wanted.length ? descendants(receiver,node=>{const actual=(call(getAttribute, node,'class')||'').split(/[\t\n\f\r ]+/).map(fold);return wanted.every(value=>actual.includes(value));}):[];
       });
     }, 1);
   }
   method(g.Document.prototype, 'getElementsByName', function (name) {
     check(this, [9]); if (!arguments.length) throw new TypeError('getElementsByName requires 1 argument');
     name = string(name); const receiver = this;
-    return cached(receiver, 'name:' + name, () => descendants(receiver, node => namespace.call(node) === html && getAttribute.call(node, 'name') === name), false);
+    return cached(receiver, 'name:' + name, () => descendants(receiver, node => call(namespace, node) === html && call(getAttribute, node, 'name') === name), false);
   }, 1);
   for (const name of ['createElement','createAttribute','createAttributeNS']) {
     const descriptor=Object.getOwnPropertyDescriptor(g.document,name);
@@ -278,25 +288,25 @@
   const createElement=g.Document.prototype.createElement;
   method(g.Document.prototype,'createElement',function(name){
     check(this,[9]);if(!arguments.length)throw new TypeError('createElement requires 1 argument');
-    name=string(name);if(!xmlName.test(name))throw new ns.DOMException('Invalid element name','InvalidCharacterError');
-    return apply(createElement,this,[name,arguments[1]]);
+    name=string(name);if(!test(xmlName, name))throw new ns.DOMException('Invalid element name','InvalidCharacterError');
+    return apply(createElement,this,arguments.length>1?[name,arguments[1]]:[name]);
   },1);
   method(g.Document.prototype,'createNSResolver',function(node){
     check(this,[9]);if(!arguments.length)throw new TypeError('createNSResolver requires 1 argument');
-    type.call(node);return node;
+    call(type, node);return node;
   },1);
   for (const [owner, localName] of [['HTMLScriptElement','script'],['HTMLLinkElement','link']]) {
-    const branded = receiver => { check(receiver,[1]); if(namespace.call(receiver)!==html||receiver.localName!==localName)throw new TypeError('Illegal invocation'); };
-    property(g[owner].prototype,'integrity',function(){branded(this);return getAttribute.call(this,'integrity')||'';},function(value){branded(this);setAttribute.call(this,'integrity',string(value));});
+    const branded = receiver => { check(receiver,[1]); if(call(namespace, receiver)!==html||receiver.localName!==localName)throw new TypeError('Illegal invocation'); };
+    property(g[owner].prototype,'integrity',function(){branded(this);return call(getAttribute, this,'integrity')||'';},function(value){branded(this);call(setAttribute, this,'integrity',string(value));});
   }
-  property(g.Document.prototype, 'documentElement', function () { check(this, [9]); return Array.from(rawChildren.call(this)).find(node => type.call(node) === 1) || null; });
-  property(g.Document.prototype, 'head', function () { check(this, [9]); const root=this.documentElement; return root ? Array.from(rawChildren.call(root)).find(node => type.call(node) === 1 && node.localName === 'head' && namespace.call(node) === html) || null : null; });
-  property(g.Document.prototype, 'body', function () { check(this, [9]); const root=this.documentElement; return root ? Array.from(rawChildren.call(root)).find(node => type.call(node) === 1 && ['body','frameset'].includes(node.localName) && namespace.call(node) === html) || null : null; }, function (value) {
-    check(this,[9]); if (!value || type.call(value)!==1 || !['body','frameset'].includes(value.localName) || namespace.call(value)!==html) throw new ns.DOMException('The new body is not a body or frameset element','HierarchyRequestError');
+  property(g.Document.prototype, 'documentElement', function () { check(this, [9]); return documentElementOf(this); });
+  property(g.Document.prototype, 'head', function () { check(this, [9]); const root=documentElementOf(this); return root ? firstChild(root, node => call(type, node) === 1 && local(node) === 'head' && call(namespace, node) === html) : null; });
+  property(g.Document.prototype, 'body', function () { check(this, [9]); const root=documentElementOf(this); return root ? firstChild(root, node => { if (call(type, node) !== 1 || call(namespace, node) !== html) return false; const name = local(node); return name === 'body' || name === 'frameset'; }) : null; }, function (value) {
+    check(this,[9]); if (!value || call(type, value)!==1 || !['body','frameset'].includes(value.localName) || call(namespace, value)!==html) throw new ns.DOMException('The new body is not a body or frameset element','HierarchyRequestError');
     const current=this.body;if(value===current)return;if(current)current.parentNode.replaceChild(value,current);else if(this.documentElement)this.documentElement.appendChild(value);else throw new ns.DOMException('The document has no document element','HierarchyRequestError');
   });
   for (const name of ['documentElement','head','body']) if(Object.hasOwn(g.document,name))delete g.document[name];
-  property(g.Document.prototype, 'title', function () { check(this,[9]); const title=descendants(this,node=>namespace.call(node)===html&&node.localName==='title')[0];return title?(title.textContent||'').replace(/[\t\n\f\r ]+/g,' ').trim():''; },function(value){check(this,[9]);value=string(value);let title=descendants(this,node=>namespace.call(node)===html&&node.localName==='title')[0];if(!title){if(!this.head)return;title=this.createElement('title');this.head.append(title);}title.textContent=value;});
+  property(g.Document.prototype, 'title', function () { check(this,[9]); const title=descendants(this,node=>call(namespace, node)===html&&node.localName==='title')[0];return title?(title.textContent||'').replace(/[\t\n\f\r ]+/g,' ').trim():''; },function(value){check(this,[9]);value=string(value);let title=descendants(this,node=>call(namespace, node)===html&&node.localName==='title')[0];if(!title){if(!this.head)return;title=this.createElement('title');this.head.append(title);}title.textContent=value;});
   property(g.Document.prototype, 'compatMode', function () { return native('compatMode', this); });
   property(g.Document.prototype, 'doctype', function () {
     const node = native('doctype', this);
@@ -322,8 +332,8 @@
   });
   property(g.Document.prototype, 'dir', function () { check(this, [9]); return this.documentElement ? this.documentElement.dir : ''; }, function (value) { check(this, [9]); if (this.documentElement) this.documentElement.dir = string(value); });
   for (const [name, attribute] of Object.entries({ bgColor: 'bgcolor', fgColor: 'text', linkColor: 'link', vlinkColor: 'vlink', alinkColor: 'alink' })) property(g.Document.prototype, name, function () {
-    check(this, [9]); return this.body ? getAttribute.call(this.body, attribute) || '' : '';
-  }, function (value) { check(this, [9]); if (this.body) setAttribute.call(this.body, attribute, string(value)); });
+    check(this, [9]); return this.body ? call(getAttribute, this.body, attribute) || '' : '';
+  }, function (value) { check(this, [9]); if (this.body) call(setAttribute, this.body, attribute, string(value)); });
   method(g.Document.prototype, 'importNode', function(node, deep=false) {
     check(this,[9]); if(!arguments.length) throw new TypeError('importNode requires 1 argument');
     apply(type,node,[]); const result=native('import',this,node,!!deep);
@@ -371,7 +381,7 @@
       const record = state(this); const handlers = record.handlers || (record.handlers = new Map());
       value = typeof value === 'function' ? value : null;
       let entry = handlers.get(name);
-      if (!entry) { entry = { value: null, callback: make(function (event) { const handler = state(this).handlers.get(name).value; if (handler && handler.call(this, event) === false) event.preventDefault(); }, name, 1) }; handlers.set(name, entry); }
+      if (!entry) { entry = { value: null, callback: make(function (event) { const handler = state(this).handlers.get(name).value; if (handler && call(handler, this, event) === false) event.preventDefault(); }, name, 1) }; handlers.set(name, entry); }
       if (value && !entry.value) this.addEventListener(event, entry.callback);
       if (!value && entry.value) this.removeEventListener(event, entry.callback);
       entry.value = value;

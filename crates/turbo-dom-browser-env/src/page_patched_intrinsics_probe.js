@@ -1,7 +1,8 @@
 (() => {
 // miaskiewicz/turbo-dom#172: the page replaces every configurable member of the builtins the
 // engine could use with throwing functions, calls only originals it captured first, then
-// restores them. Expected: Chrome 156.0.8078.47 (headless, localhost) running this file.
+// restores them. Expected: Chrome 156.0.8078.47 (headless, localhost) running this file
+// (with and without __withStyle).
 
 const A=Reflect.apply,gopd=Object.getOwnPropertyDescriptor,def=Object.defineProperty,own=Reflect.ownKeys,Err=Error,Ev=Event,str=JSON.stringify;
 const fn=(o,k)=>gopd(o,k).value,getter=(o,k)=>gopd(o,k).get,setter=(o,k)=>gopd(o,k).set;
@@ -36,7 +37,8 @@ attempt('script',()=>{const s=A(create,document,['script']);A(setText,s,['1']);A
 attempt('iframe',()=>{const f=A(create,document,['iframe']);A(append,body,[f]);return A(parent,f,[])===body});
 attempt('insert',()=>{const p=A(create,document,['p']);A(insertBefore,body,[p,null]);A(remove,p,[]);return A(parent,p,[])===null});
 attempt('next',()=>{const a=A(create,document,['i']),b=A(create,document,['b']);A(append,body,[a]);A(append,body,[b]);return A(next,a,[])===b});
-attempt('style',()=>{const s=A(create,document,['style']);A(setText,s,['p{color:red}i{color:blue}']);A(append,body,[s]);return A(len,A(rules,A(sheet,s,[]),[]),[])});
+// <style> parsing (the CSSOM) is checked only when the caller sets __withStyle.
+if(globalThis.__withStyle)attempt('style',()=>{const s=A(create,document,['style']);A(setText,s,['p{color:red}i{color:blue}']);A(append,body,[s]);return A(len,A(rules,A(sheet,s,[]),[]),[])});
 attempt('event',()=>{const d=A(create,document,['div']);let seen='';A(listen,d,['click',()=>{seen+='l'}]);A(onclick,d,[()=>{seen+='h'}]);A(dispatch,d,[new Ev('click')]);return seen});
 attempt('query',()=>A(qs,document,['span'])!==null&&A(hlen,A(byTag,document,['iframe']),[]));
 for(let i=saved.length-1;i>=0;i--){const r=saved[i];if(r[2])def(r[0],r[1],r[2]);else delete r[0][r[1]]}

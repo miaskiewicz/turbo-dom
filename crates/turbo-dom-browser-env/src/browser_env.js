@@ -1,5 +1,10 @@
 (function(){
   var g = globalThis;
+  // Intrinsics captured at install time: the engine's load / insertion paths never call a
+  // page-replaced builtin (miaskiewicz/turbo-dom#172).
+  var $apply=Reflect.apply,$gopd=Object.getOwnPropertyDescriptor,$def=Object.defineProperty,$create=Object.create;
+  var $wmGet=WeakMap.prototype.get,$wmSet=WeakMap.prototype.set,$lower=String.prototype.toLowerCase;
+  var $call=function(f,receiver,...rest){return $apply(f,receiver,rest);};
   var compatibilityElementPrototype,computedStyleNativeMatches,computedStyleNativeGetAttribute,computedStyleNativeOwner,computedStyleNativeTag,computedStyleNativeNamespace,computedStyleNativeConnected,computedStyleNativeRoot;
   var normalizeComputedColor=g.__normalizeComputedColor;delete g.__normalizeComputedColor;
   var canvasColorNative=g.__canvasColorNative;delete g.__canvasColorNative;
@@ -26,6 +31,7 @@
   computedStyleNativeTag=__ns.domAccessor('tagName',false,'Element');
   computedStyleNativeNamespace=__ns.domAccessor('namespaceURI',false,'Element');
   computedStyleNativeConnected=__ns.domAccessor('isConnected',false,'Node');
+  var createdLocalName=__ns.domAccessor('localName',false,'Element');
   if (typeof g.__nativeDOMFunction === 'function') { __ns.makeNativeFunction = g.__nativeDOMFunction; delete g.__nativeDOMFunction; }
   if (typeof g.__nativeNamedObject === 'function') { __ns.makeNamedObject = g.__nativeNamedObject; delete g.__nativeNamedObject; }
   if (typeof g.navigator === 'undefined') g.navigator = { userAgent: 'turbo-test', platform: 'rust', language: 'en-US', languages: ['en-US'], clipboard: {}, maxTouchPoints: 0 };
@@ -872,9 +878,9 @@
         trusted:false, dispatching:false, passive:false, path:[]};
       setEventRecord(this,state);
       var get = ({get isTrusted(){return eventRecord(this).trusted;}});
-      var trustedGetter=Object.getOwnPropertyDescriptor(get,'isTrusted').get;
+      var trustedGetter=$gopd(get,'isTrusted').get;
       if(__ns.makeNativeFunction)trustedGetter=__ns.makeNativeFunction(trustedGetter,'get isTrusted',0);
-      Object.defineProperty(this,'isTrusted',{get:trustedGetter,enumerable:true});
+      $def(this,'isTrusted',{__proto__:null,get:trustedGetter,enumerable:true});
     }
     function eventMember(name, descriptor) {
       descriptor.enumerable=true;descriptor.configurable=true;
@@ -918,7 +924,7 @@
     var intValue=function(value){return numberValue(value)>>0;};
     var shortValue=function(value){return (intValue(value)<<16)>>16;};
     var stringValue=function(value,fallback=''){return value===undefined?fallback:eventString(value);};
-    var stateOf=function(states,receiver){var state=states.get(receiver);if(!state)throw new TypeError('Illegal invocation');return state;};
+    var stateOf=function(states,receiver){var state=$call($wmGet,states,receiver);if(!state)throw new TypeError('Illegal invocation');return state;};
     var modifierNames={Alt:'altKey',Control:'ctrlKey',Meta:'metaKey',Shift:'shiftKey',AltGraph:'modifierAltGraph',CapsLock:'modifierCapsLock',Fn:'modifierFn',FnLock:'modifierFnLock',Hyper:'modifierHyper',NumLock:'modifierNumLock',ScrollLock:'modifierScrollLock',Super:'modifierSuper',Symbol:'modifierSymbol',SymbolLock:'modifierSymbolLock'};
     function modifiers(init){var state={};Object.keys(modifierNames).forEach(function(name){state[modifierNames[name]]=!!init[modifierNames[name]];});return state;}
     function member(prototype,name,descriptor){descriptor.configurable=true;descriptor.enumerable=true;if(descriptor.value){descriptor.writable=true;if(__ns.makeNativeFunction)descriptor.value=__ns.makeNativeFunction(descriptor.value,name,descriptor.value.length);}if(descriptor.get&&__ns.makeNativeFunction)descriptor.get=__ns.makeNativeFunction(descriptor.get,'get '+name,0);Object.defineProperty(prototype,name,descriptor);}
@@ -1743,7 +1749,8 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     defTrav('lastElementChild', function(){ var c = this.children || []; return c.length ? c[c.length-1] : null; });
     defTrav('previousSibling', function(){ var p = this.parentNode; if (!p) return null; var c = p.childNodes || []; var i = idxIn(c, this); return i > 0 ? c[i-1] : null; });
     defTrav('previousElementSibling', function(){ var p = this.parentNode; if (!p) return null; var c = p.children || []; var i = idxIn(c, this); return i > 0 ? c[i-1] : null; });
-    defTrav('nextElementSibling', function(){ var p = this.parentNode; if (!p) return null; var c = p.children || []; var i = idxIn(c, this); return (i >= 0 && i+1 < c.length) ? c[i+1] : null; });
+    var travNext=__ns.domAccessor('nextSibling',false,'Node'),travType=__ns.domAccessor('nodeType',false,'Node');
+    defTrav('nextElementSibling', function(){ for (var node = $call(travNext, this); node; node = $call(travNext, node)) if ($call(travType, node) === 1) return node; return null; });
     // classList on the shared element prototype (every element inherits it), backed by className.
     if (baseProto && !Object.getOwnPropertyDescriptor(baseProto, 'classList')) {
       try { Object.defineProperty(baseProto, 'classList', { configurable: true, get: function(){
@@ -1956,9 +1963,10 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
       // a framework falls back to its own checked path.
       el._valueTracker = { getValue: function(){ return current; }, setValue: function(v){ current = '' + v; }, stopTracking: function(){ el._valueTracker = null; try { Object.defineProperty(el, field, protoDesc); } catch(e){} } };
     };
+    var controlTagName=__ns.domAccessor('tagName',false,'Element');
     var applyControlProto = function(el){
       try {
-        var t = String(el.tagName || '').toLowerCase();
+        var t = $call($lower, String($call(controlTagName, el) || ''));
         if (CTRL[t]) {
           Object.setPrototypeOf(el, protoFor[CTRL[t]]);
           // value uses a spec internal dirty-value slot (valDesc, distinct from the content attribute);
@@ -2259,7 +2267,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
       cp.getBoundingClientRect = function(){ return { x:0, y:0, top:0, left:0, right:0, bottom:0, width:0, height:0, toJSON:function(){ return this; } }; };
     })();
     d.createElement = ({ createElement(tag){
-      var el = orig.apply(this,arguments); var t = String(el.localName).toLowerCase();
+      var el = $apply(orig,this,arguments); var t = $call($lower, String($call(createdLocalName, el)));
       applyControlProto(el);
       // canvas: drop the own native getBoundingClientRect so it resolves to the (mockable)
       // HTMLCanvasElement.prototype version; getContext/toDataURL/toBlob are on the proto too.
@@ -2609,13 +2617,13 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     // the lazy build means an unused iframe costs nothing.
     var origCreateEl = d.createElement;
     d.createElement = ({ createElement(tag){
-      var el = origCreateEl.apply(this,arguments);
-      if (el && String(el.localName).toLowerCase() === 'iframe' && !el.__iframeWired) {
+      var el = $apply(origCreateEl,this,arguments);
+      if (el && $call($lower, String($call(createdLocalName, el))) === 'iframe' && !el.__iframeWired) {
         el.__iframeWired = true;
         try {
-          Object.defineProperty(el, 'contentWindow', { configurable: true,
+          $def(el, 'contentWindow', { __proto__: null, configurable: true,
             get: function(){ return el.__realm || __ns.makeFrameRealm(el, g); } });
-          Object.defineProperty(el, 'contentDocument', { configurable: true,
+          $def(el, 'contentDocument', { __proto__: null, configurable: true,
             get: function(){ return (el.__realm || __ns.makeFrameRealm(el, g)).document; } });
         } catch(e){
           // Native element rejected the accessor → fall back to an eager realm.
@@ -2795,9 +2803,9 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
       var minimum=name==='dispatchEvent'?1:2;
       var method=__ns.makeNativeFunction(function(){
         if(arguments.length<minimum)throw new TypeError(name+' requires '+minimum+' arguments');
-        if(this===g)return windowCallbacks[name].apply(this,arguments);
-        var node=false;try{getType.call(this);node=true;}catch(e){}
-        if(node)return native.apply(this,arguments);
+        if(this===g)return $apply(windowCallbacks[name],this,arguments);
+        var node=false;try{$call(getType,this);node=true;}catch(e){}
+        if(node)return $apply(native,this,arguments);
         if(__ns.eventTargetNativeBrand?!__ns.eventTargetNativeBrand(this):!eventTargets.has(this))throw new TypeError('Illegal invocation');
         return eventCallbacks[name].apply(this,arguments);
       },name,minimum);
@@ -2913,7 +2921,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
         if(!descriptor)return;
         ['get','set','value'].forEach(function(key){
           var delegate=descriptor[key];if(typeof delegate!=='function')return;
-          descriptor[key]=__ns.makeNativeFunction(function(){check.call(this);return delegate.apply(this,arguments);},key==='get'?'get '+name:key==='set'?'set '+name:name,delegate.length);
+          descriptor[key]=__ns.makeNativeFunction(function(){$call(check,this);return $apply(delegate,this,arguments);},key==='get'?'get '+name:key==='set'?'set '+name:name,delegate.length);
         });
         descriptor.enumerable=true;Object.defineProperty(proto,name,descriptor);
       });
@@ -3048,20 +3056,20 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     var elementOperations={getAttributeNames(){return Array.from(this.attributes,function(attribute){return attribute.name;});},hasAttributes(){return this.attributes.length>0;},insertAdjacentText(position,text){if(typeof position==='symbol'||typeof text==='symbol')throw new TypeError('Cannot convert a Symbol to a string');position=String(position).toLowerCase();var node=this.ownerDocument.createTextNode(String(text));if(position==='beforebegin'){if(this.parentNode)this.parentNode.insertBefore(node,this);}else if(position==='afterend'){if(this.parentNode)this.parentNode.insertBefore(node,this.nextSibling);}else if(position==='afterbegin')this.insertBefore(node,this.firstChild);else if(position==='beforeend')this.appendChild(node);else throw new __ns.DOMException('Invalid adjacent position','SyntaxError');}};
     Object.keys(elementOperations).forEach(function(name){var delegate=elementOperations[name],check=__ns.domAccessor('nodeType',false,'Element');Object.defineProperty(elementProto,name,{value:__ns.makeNativeFunction(function(){check.call(this);if(arguments.length<delegate.length)throw new TypeError(name+' requires '+delegate.length+' arguments');return delegate.apply(this,arguments);},name,delegate.length),writable:true,enumerable:true,configurable:true});});
     // GlobalEventHandlers: HTMLElement, SVGElement and MathMLElement each brand-check (turbo-dom#87).
-    var eventHandlers=new WeakMap();
+    var eventHandlers=new WeakMap(),handlerAdd=g.EventTarget.prototype.addEventListener,handlerRemove=g.EventTarget.prototype.removeEventListener;
     var handlerNames='abort animationcancel animationend animationiteration animationstart auxclick beforeinput beforematch beforetoggle beforexrselect blur cancel canplay canplaythrough change click close command contentvisibilityautostatechange contextlost contextmenu contextrestored copy cuechange cut dblclick drag dragend dragenter dragleave dragover dragstart drop durationchange emptied ended error focus formdata gotpointercapture input invalid keydown keypress keyup load loadeddata loadedmetadata loadstart lostpointercapture mousedown mouseenter mouseleave mousemove mouseout mouseover mouseup mousewheel paste pause play playing pointercancel pointerdown pointerenter pointerleave pointermove pointerout pointerover pointerrawupdate pointerup progress ratechange reset resize scroll scrollend scrollsnapchange scrollsnapchanging securitypolicyviolation seeked seeking select selectionchange selectstart slotchange stalled submit suspend timeupdate toggle transitioncancel transitionend transitionrun transitionstart volumechange waiting webkitanimationend webkitanimationiteration webkitanimationstart webkittransitionend wheel'.split(' ');
     [['HTMLElement',htmlProto],['SVGElement',prototypes.SVGElement],['MathMLElement',prototypes.MathMLElement]].forEach(function(owner){var checkHandlerReceiver=__ns.domAccessor('nodeType',false,owner[0]);
     handlerNames.forEach(function(type){
       var name='on'+type;
       Object.defineProperty(owner[1],name,{configurable:true,enumerable:true,
-        get:__ns.makeNativeFunction(function(){checkHandlerReceiver.call(this);if(prepareInlineHandler)prepareInlineHandler.call(this,name);var handlers=eventHandlers.get(this);return handlers&&handlers[name]&&handlers[name].value||null;},'get '+name,0),
+        get:__ns.makeNativeFunction(function(){$call(checkHandlerReceiver,this);if(prepareInlineHandler)$call(prepareInlineHandler,this,name);var handlers=$call($wmGet,eventHandlers,this);return handlers&&handlers[name]&&handlers[name].value||null;},'get '+name,0),
         set:__ns.makeNativeFunction(function(value){
-          checkHandlerReceiver.call(this);if(noteInlineHandler)noteInlineHandler.call(this,name);value=typeof value==='function'?value:null;
-          var handlers=eventHandlers.get(this);if(!handlers){handlers=Object.create(null);eventHandlers.set(this,handlers);}
+          $call(checkHandlerReceiver,this);if(noteInlineHandler)$call(noteInlineHandler,this,name);value=typeof value==='function'?value:null;
+          var handlers=$call($wmGet,eventHandlers,this);if(!handlers){handlers=$create(null);$call($wmSet,eventHandlers,this,handlers);}
           var entry=handlers[name];
-          if(!entry){entry={value:null,callback:__ns.makeNativeFunction(function(event){var current=eventHandlers.get(this)[name].value;if(current&&current.call(this,event)===false)event.preventDefault();},name,1)};handlers[name]=entry;}
-          if(value&&!entry.value)this.addEventListener(type,entry.callback);
-          if(!value&&entry.value)this.removeEventListener(type,entry.callback);
+          if(!entry){entry={value:null,callback:__ns.makeNativeFunction(function(event){var current=$call($wmGet,eventHandlers,this)[name].value;if(current&&$call(current,this,event)===false)event.preventDefault();},name,1)};handlers[name]=entry;}
+          if(value&&!entry.value)$call(__ns.handlerAdd||handlerAdd,this,type,entry.callback);
+          if(!value&&entry.value)$call(__ns.handlerRemove||handlerRemove,this,type,entry.callback);
           entry.value=value;
         },'set '+name,1)});
     });

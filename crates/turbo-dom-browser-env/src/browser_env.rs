@@ -92,6 +92,7 @@ pub fn clear_context_capabilities(scope: &mut v8::PinScope) {
         if let Some(context) = context.to_local(scope) {
             context.remove_slot::<EventRecordAccessor>();
             context.remove_slot::<HostEventDispatcher>();
+            context.remove_slot::<InlineHandlerSetter>();
             event_listeners::clear_context(context);
             range_contents::clear_context(context);
         }
@@ -4378,6 +4379,9 @@ fn el_remove_event_listener(
 
 struct EventRecordAccessor(v8::Weak<v8::Function>);
 struct HostEventDispatcher(v8::Weak<v8::Function>);
+/// Sets an `on*` IDL attribute through the setter installed at bootstrap, never a
+/// page-replaced one (turbo-dom#172).
+struct InlineHandlerSetter(v8::Weak<v8::Function>);
 
 fn event_record<'s>(
     scope: &mut v8::PinScope<'s, '_>,
@@ -7347,6 +7351,21 @@ fn install_with_tree(scope: &mut v8::PinScope, mut tree: Tree) {
     element_internals::install(scope);
     // After custom_elements re-creates the HTML constructors, so static members stay on them.
     run_js(scope, include_str!("interface_members.js"));
+    // The event handler IDL attributes register through the final EventTarget methods,
+    // captured before any page script runs (turbo-dom#172).
+    run_js(scope, include_str!("captured_intrinsics.js"));
+    let key = v8::String::new(scope, "__setInlineHandler").unwrap();
+    if let Some(setter) = global
+        .get(scope, key.into())
+        .and_then(|value| v8::Local::<v8::Function>::try_from(value).ok())
+    {
+        if let Some(setter) = dom_ownership::helper_function(scope, setter) {
+            scope
+                .get_current_context()
+                .set_slot(std::rc::Rc::new(InlineHandlerSetter(setter)));
+        }
+        global.delete(scope, key.into());
+    }
     // Last: reorder every interface's own keys to Chrome's order.
     key_order::installed(scope);
 }

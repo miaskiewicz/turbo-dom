@@ -7,6 +7,22 @@ at the time); this file reconstructs them from history.
 
 ## [Unreleased]
 
+### Fixed — browser-env engine JS ignores page-replaced builtins on the insertion path (miaskiewicz/turbo-dom#172)
+- The bootstrap's document helpers, element creation, traversal, event construction, event
+  handler IDL attributes and invoker activation use intrinsics captured at install time,
+  so a page that replaces `Object.defineProperty`, `Function.prototype.call`,
+  `Array.prototype.includes`, `RegExp.prototype.exec`, … still creates, inserts and
+  dispatches like Chrome 156. Inline handler compilation sets `on*` through the setters
+  captured at install (`captured_intrinsics.js`). Remaining: the CSSOM sheet parser
+  (`<style>` insertion).
+
+### Fixed — browser-env tasks of an inert document run on its creating window (miaskiewicz/turbo-dom#171)
+- `<details open>` parsed into template contents queues its toggle task like Chrome 156.
+
+### Fixed — browser-env interface constructors called without `new` throw Blink's messages (miaskiewicz/turbo-dom#173)
+- "Illegal constructor" for interfaces without a constructor, "Failed to construct 'X':
+  Please use the 'new' operator, …" for the others (was V8's "Constructor requires 'new'").
+
 ### Fixed — browser-env caret moves step through table edges and cells (miaskiewicz/turbo-dom#144)
 - `Selection.modify('move', …, 'character')` stops on the positions before and after a table
   (`BODY:1`, `BODY:2`) and in its cells like Chrome 156, instead of sticking at the text

@@ -226,7 +226,19 @@ pub(super) fn refresh(scope: &mut v8::PinScope, node: Handle, name: &str) {
         function
     });
     let value = function.map_or_else(|| v8::null(scope).into(), Into::into);
-    element.set(scope, key.into(), value);
+    let setter = element
+        .get_creation_context(scope)
+        .and_then(|context| context.get_slot::<InlineHandlerSetter>())
+        .map(|setter| dom_ownership::local(scope, &setter.0));
+    match setter {
+        Some(setter) => {
+            let receiver = v8::undefined(scope).into();
+            setter.call(scope, receiver, &[element.into(), key.into(), value]);
+        }
+        None => {
+            element.set(scope, key.into(), value);
+        }
+    }
 }
 pub(super) fn register(scope: &mut v8::PinScope) {
     let global = scope.get_current_context().global(scope);
