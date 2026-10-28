@@ -83,7 +83,6 @@ fn wrapping_while_terminating_returns_the_global_and_caches_nothing() {
 
 /// A listener that terminates inside dispatchEvent: later listeners do not run.
 #[test]
-#[ignore = "miaskiewicz/turbo-dom#149: fails until the fix"]
 fn termination_inside_dispatch_stops_the_remaining_listeners() {
     assert_eq!(
         terminated(
