@@ -1468,11 +1468,13 @@ fn el_attach_shadow(
     mut rv: v8::ReturnValue,
 ) {
     let _dom = DomScope::for_object(scope, args.this());
-    // custom_elements.js's Element.prototype.attachShadow is this native's only caller: it
-    // brand-checks the receiver as an element and passes a plain ShadowRootInit whose mode is
-    // "open" or "closed" and whose slotAssignment is a string.
-    let host =
-        receiver_handle(scope, &args, &[1]).expect("attachShadow's wrapper checks the element");
+    // custom_elements.js's Element.prototype.attachShadow is this native's only caller (it
+    // calls through its captured Reflect.apply): it passes a plain object literal it built,
+    // whose mode it validated as "open" or "closed" and whose slotAssignment is a string. The
+    // receiver is still checked, since the wrapper runs page getters after its own check.
+    let Some(host) = receiver_handle(scope, &args, &[1]) else {
+        return;
+    };
     let options = v8::Local::<v8::Object>::try_from(args.get(0)).expect("a ShadowRootInit");
     let mode = get_str_prop(scope, options, "mode").expect("a validated ShadowRootMode");
     let assignment =
@@ -4202,8 +4204,13 @@ fn listener_options<'s>(
     args: &v8::FunctionCallbackArguments,
     remove: bool,
 ) -> Option<v8::Local<'s, v8::Object>> {
-    // browser_env.js's EventTarget wrappers call the node natives with at least 2 arguments.
-    debug_assert!(args.length() >= 2);
+    if args.length() < 2 {
+        let message =
+            v8::String::new(scope, "Event listener registration requires 2 arguments").unwrap();
+        let error = v8::Exception::type_error(scope, message);
+        scope.throw_exception(error);
+        return None;
+    }
     let top = with_tree(|tree| {
         handle_of(scope, args.this()).is_some_and(|node| {
             tree.node_type_id(node) == 9 || tree.local_name(node) == Some("body")
@@ -4218,9 +4225,9 @@ fn el_add_event_listener<'s, 'i>(
     _rv: v8::ReturnValue,
 ) {
     let _dom = DomScope::for_object(scope, args.this());
-    // browser_env.js's EventTarget wrapper routes only nodes here (others go to the window /
-    // EventTarget callbacks).
-    let node = receiver_handle(scope, &args, &[]).expect("the EventTarget wrapper passes a node");
+    let Some(node) = receiver_handle(scope, &args, &[]) else {
+        return;
+    };
     let Some(options) = listener_options(scope, &args, false) else {
         return;
     };
@@ -4285,9 +4292,9 @@ fn el_remove_event_listener(
     _rv: v8::ReturnValue,
 ) {
     let _dom = DomScope::for_object(scope, args.this());
-    // browser_env.js's EventTarget wrapper routes only nodes here (others go to the window /
-    // EventTarget callbacks).
-    let node = receiver_handle(scope, &args, &[]).expect("the EventTarget wrapper passes a node");
+    let Some(node) = receiver_handle(scope, &args, &[]) else {
+        return;
+    };
     let Some(options) = listener_options(scope, &args, true) else {
         return;
     };
@@ -4433,9 +4440,10 @@ fn el_dispatch_event(
     mut rv: v8::ReturnValue,
 ) {
     let _dom = DomScope::for_object(scope, args.this());
-    // Callers pass a node: browser_env.js's EventTarget wrapper routes only nodes here and
-    // dispatch_host_event checks the target's handle first.
-    let target = receiver_handle(scope, &args, &[]).expect("dispatchEvent's callers pass a node");
+    let Some(target) = receiver_handle(scope, &args, &[]) else {
+        rv.set(v8::Boolean::new(scope, true).into());
+        return;
+    };
     let event = args.get(0);
     let Ok(event_obj) = v8::Local::<v8::Object>::try_from(event) else {
         let message = v8::String::new(scope, "dispatchEvent requires an Event").unwrap();

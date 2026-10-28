@@ -149,8 +149,7 @@ browser_env.rs: P5-cov-browser-env element-template accessors read their holder'
 browser_env.js: P5-cov-browser-env drops the DocumentType accessors of the replaced interface (document_basics.js defines DocumentType)
 browser_env.rs: P5-cov-browser-env drops the template's checkValidity / reportValidity natives and contentEditable setter (form_controls.js and editing.js own them); nodeName's string fallback names only the constant-named kinds
 browser_env.js: P5-cov-browser-env stops copying the removed checkValidity / reportValidity natives and the contentEditable setter
-browser_env.rs: P5-cov-browser-env attachShadow's native states the ShadowRootInit its custom_elements.js wrapper validated (receiver, mode, slotAssignment) instead of re-validating it
-browser_env.rs: P5-cov-browser-env the node addEventListener / removeEventListener / dispatchEvent natives state that their callers (browser_env.js's EventTarget wrappers, dispatch_host_event) pass a node and enough arguments
+browser_env.rs: P5-cov-browser-env attachShadow's native states the ShadowRootInit object literal its custom_elements.js wrapper built and validated (mode, slotAssignment) instead of re-validating it
 browser_env.rs: P5-cov turbo-dom#149 a listener ended by execution termination ends the dispatch (rethrown, no later listener or default action)
 browser_env.rs: P5-cov turbo-dom#157 a stop set in the target's capture listeners also skips its bubble listeners (Chrome 156)
 browser_env.rs: P5-cov-browser-env round 3: the remaining element-template accessors (mode, __attrValue, outerHTML, ownerDocument, isContentEditable) take holder_handle; hide_node_nonce states nonce_units' handle
