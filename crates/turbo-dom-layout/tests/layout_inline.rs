@@ -392,3 +392,30 @@ fn preserved_newlines_and_spaces_inside_edged_inline_boxes() {
     assert_eq!(boxes["x"].3, 40.0, "pre-wrap breaks after its spaces");
     assert_eq!(boxes["c"].3, 20.0);
 }
+
+#[cfg(feature = "bundled-fonts")]
+#[test]
+#[ignore = "miaskiewicz/turbo-dom#176: fails until the fix"]
+fn font_shorthand_line_height_sets_the_line_pitch() {
+    // miaskiewicz/turbo-dom#176. Chrome 156: `font: 16px/20px serif` stacks lines exactly
+    // 20px apart (five wrapped words in a 30px-wide div = 100px); the shorthand's size,
+    // line-height and family match the longhand spelling. `font: 10px/3 serif` resolves the
+    // number against the shorthand's own size (30px); `font: bold 2em/1.5 serif` is a 32px
+    // size (48px pitch). A later longhand overrides the shorthand's line-height; an invalid
+    // shorthand (no family) is dropped.
+    let b = cid_boxes(
+        "<body style='margin:0'>\
+         <div data-cid=s style='font:16px/20px serif;width:30px'>aa bb cc dd ee</div>\
+         <div data-cid=l style='font-size:16px;line-height:20px;font-family:serif;width:30px'>aa bb cc dd ee</div>\
+         <div data-cid=n style='font:10px/3 serif'>a</div>\
+         <div data-cid=e style='font:bold 2em/1.5 serif'>a</div>\
+         <div data-cid=o style='font:16px/20px serif;line-height:30px'>a</div>\
+         <div data-cid=i style='line-height:33px;font:16px/20px'>a</div></body>",
+    );
+    assert_eq!(b["s"].3, 100.0);
+    assert_eq!(b["s"].3, b["l"].3);
+    assert_eq!(b["n"].3, 30.0);
+    assert_eq!(b["e"].3, 48.0);
+    assert_eq!(b["o"].3, 30.0);
+    assert_eq!(b["i"].3, 33.0);
+}
