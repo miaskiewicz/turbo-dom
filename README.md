@@ -318,7 +318,13 @@ npm run conformance:rtdom  # html5lib-tests gate run through the rtdom tree
 npm run bench:all       # JS-runtime benchmarks
 npm run build:wasm      # wasm32 parser fallback
 npm run build:rtdom     # pure-Rust DOM runtime (no napi/wasm) — the Rust-consumer build
+npm run complexity:rust # cyclomatic complexity <= 15 per Rust function (needs cc-check, see CLAUDE.md)
+npm run complexity:js   # cyclomatic complexity <= 15 per JS function in src/ (oxlint)
 ```
+
+CI gates every crate's line coverage at a floor and every function's cyclomatic complexity
+at <= 15 (no allow-list). The complexity jobs are expected red until the post-coverage
+refactor clears the backlog listed in [docs/CONSOLIDATION.md](docs/CONSOLIDATION.md#complexity).
 
 The JS runtime (`src/runtime/*.mjs`) and the Rust runtime (the `crates/turbo-dom` crate) are
 independent — touching one never affects the other. See

@@ -36,10 +36,12 @@ python3 scripts/check-baseline-red.py scripts/baseline-red/turbo-dom-layout-no-d
 python3 scripts/check-versions.py                        # one release version in every manifest (CI guard; --tag in publish)
 python3 -m unittest discover -s scripts -p 'test_*.py'   # release helper (publish-crates.py) self-tests
 python3 -m unittest discover -s tools/parity -p 'test_*.py'  # parity harness self-test
+npm run complexity:rust   # cc-check --max 15 over every tracked .rs file (needs cc-check on PATH, below)
+npm run complexity:js     # oxlint `complexity` max 15 over src/ + crates/turbo-dom-browser-env/src (.oxlintrc.complexity.json)
 ```
 
 CI (`.github/workflows/ci.yml`) has one job family per crate (base / layout / raster / v8 +
-browser-env matrix / msrv 1.89 / guards / coverage floors); `publish.yml` runs it on a `v*`
+browser-env matrix / msrv 1.89 / guards / coverage floors / complexity); `publish.yml` runs it on a `v*`
 tag and then publishes every package in dependency order. See `docs/CONSOLIDATION.md`.
 
 **Two independent runtimes, one repo.** The JS runtime (`src/runtime/*.mjs`, the npm/vitest path)
@@ -87,6 +89,22 @@ stays ≤ 380 allocs/op (measured 363 — the count is load- and opt-level-indep
 on CI where wall-clock would flake). It's `#[ignore]`'d and run ALONE in its own CI step
 (`cargo test -p turbo-dom churn_alloc_gate -- --ignored`) because `CountingAlloc` is a process-
 global allocator that a parallel test would pollute. Don't loosen either threshold to pass a change.
+
+**Complexity gates (CI jobs `complexity / rust (cc <= 15)` and `complexity / js (cc <= 15)`).**
+Every function's cyclomatic complexity must be <= 15 — one limit for the whole repo, no
+allow-list, no baseline (turbo-html2pdf's own crates stay at its stricter cc < 6). Rust is
+measured by turbo-html2pdf's `cc-check` (a `match` counts once; `if`/loops/`?`/`&&`/`||` add 1;
+closures are scored on their own), installed from its home rather than copied here:
+`cargo install --locked --git https://github.com/miaskiewicz/turbo-html2pdf --rev
+923c89f791f3a89cb089a59626a25cef0a9cbd5f cc-check` (CI pins the same rev). It scans every
+tracked `.rs` file (`git ls-files`, so the generated `crates/turbo-dom-v8/crate/` is never
+scanned). JS uses oxlint's ESLint-compatible `complexity` rule (pinned `oxlint@1.87.0` via npx,
+no devDependency) over `src/`. **Both jobs are expected red** until the post-coverage refactor:
+the functions above 15 when the gate landed (48 Rust, 24 JS; `docs/CONSOLIDATION.md`
+"Complexity") are the refactor backlog, refactored only once their unit-test coverage is
+complete. Until then both jobs run with `continue-on-error` (red job, green workflow, so
+`publish.yml` is not blocked) and are not required checks. Don't add new ones, and never raise
+the limit to turn the jobs green.
 
 ## Releasing (`vX.Y.Z`)
 

@@ -104,6 +104,7 @@ Manifests always name the registry version (`turbo-dom = "0.6"`,
 | msrv | `cargo +1.89 check --all-targets` for turbo-dom, -layout, -raster |
 | guards | `check-versions.py`, `check-no-selector-dual.sh`, turbo-dom-v8 generator/release self-tests + `generate.py --check`, `scripts/` and `tools/parity` self-tests, `verify-copied.sh` (verbatim + current), `verify-copied-collectors.sh`, `verify-copied-layout.sh` |
 | coverage | tarpaulin (LLVM, macOS) per crate with `--fail-under` floors |
+| complexity (rust, js) | cyclomatic complexity <= 15 per function: `cc-check` (turbo-html2pdf, pinned rev) over every tracked `.rs` file, oxlint `complexity` over `src/` and `crates/turbo-dom-browser-env/src` (the binding's shipped JS); expected red until the post-coverage refactor (below) |
 
 ### Coverage
 
@@ -170,6 +171,74 @@ The npm runtime (`src/runtime/**`, `npm run test:cov`, Node's built-in coverage)
 the web globals, against the platform's own answers; `test/runtime-edges.test.mjs`: jsdom /
 Chrome 156 differentials; the shorthand table vs the Chrome control), and its gate (`package.json`
 `test:cov`) rose from 99 / 95 / 95 to 100 / 97.3 / 100.
+
+### Complexity
+
+One limit for the whole repo: every function's cyclomatic complexity is <= 15, with no
+allow-list and no baseline (CLAUDE.md "Complexity gates" has the tools and commands;
+turbo-html2pdf's own crates stay at cc < 6). The limit was chosen from the distribution
+measured when the gate landed (functions above each threshold):
+
+| scope | functions | > 5 | > 10 | > 15 | > 20 | > 25 | > 30 | > 40 | max |
+|---|---|---|---|---|---|---|---|---|---|
+| Rust, all tracked `.rs` | 10137 | 380 | 113 | 48 | 21 | 11 | 8 | 4 | 145 |
+| JS, `src/` | 1136 | 141 | 50 | 24 | 10 | 7 | 4 | 2 | 50 |
+
+At 15 the backlog is 72 functions (0.6% of the code's functions); 10 would triple it (163)
+and reach into ordinary dispatch code, while 20 would leave a 16-20 band whose branch sets
+are already too large to test exhaustively. Both jobs are red (with `continue-on-error`,
+so the workflow and `publish.yml` stay green; not required checks yet) until the backlog is
+refactored, which happens only after the coverage phase (refactoring before full tests could
+break behaviour silently). The backlog (`function:line=cc`):
+
+Rust (48):
+- `crates/turbo-dom-browser-env/src/browser_env.rs`: validate_namespace_name:2453=21, el_dispatch_event:4763=36, form_controls_native:5400=18
+- `crates/turbo-dom-browser-env/src/css_selector_syntax.rs`: attribute:448=18, pseudo:594=28, class_arguments:672=18, element_arguments:773=20
+- `crates/turbo-dom-browser-env/src/document_xpath.rs`: snapshot:31=22
+- `crates/turbo-dom-browser-env/src/dom_implementation.rs`: invoke:111=61
+- `crates/turbo-dom-browser-env/src/dom_mutations.rs`: plan:12=17, incoming_plan:398=21
+- `crates/turbo-dom-browser-env/src/html_dialog.rs`: focusable:151=24
+- `crates/turbo-dom-browser-env/src/html_text.rs`: collect:146=21
+- `crates/turbo-dom-browser-env/src/sanitizer.rs`: sanitize:299=18, filter_attributes:413=19
+- `crates/turbo-dom-browser-env/src/script_state.rs`: (closure):194=20
+- `crates/turbo-dom-browser-env/src/selection.rs`: plain_text:640=29
+- `crates/turbo-dom-browser-env/src/shadow_slots.rs`: assign:397=17
+- `crates/turbo-dom-browser-env/src/template_contents.rs`: serialize_with:472=18
+- `crates/turbo-dom-browser-env/src/trusted_types.rs`: attribute_units:199=25
+- `crates/turbo-dom-browser-env/src/view_transitions.rs`: (closure):254=17
+- `crates/turbo-dom-layout/src/cssom_view/hit.rs`: elements_at_point:39=30
+- `crates/turbo-dom-layout/src/cssom_view/metrics.rs`: element_geometry:27=16, offset_position:226=33
+- `crates/turbo-dom-layout/src/cssom_view/range.rs`: select:93=18
+- `crates/turbo-dom-layout/src/cssom_view/scroll.rs`: scroll_metrics:86=34, viewport_metrics:412=16
+- `crates/turbo-dom-layout/src/cssom_view/text.rs`: caret:43=16
+- `crates/turbo-dom-layout/src/cssom_view/visibility.rs`: check:48=18
+- `crates/turbo-dom-raster/src/canvas_ops.rs`: parse_hex:197=16
+- `crates/turbo-dom-raster/src/webgl.rs`: apply:166=16, rewrite:597=16
+- `crates/turbo-dom-raster/tests/image_formats_chrome.rs`: class:15=19
+- `crates/turbo-dom-raster/tests/inline_svg_chrome.rs`: class:17=19
+- `crates/turbo-dom-raster/tests/paint_chrome.rs`: class:21=19
+- `crates/turbo-dom-raster/tests/raster_img_chrome.rs`: class:20=19
+- `crates/turbo-dom/src/rtdom/cascade.rs`: parse_stylesheet:338=16, computed_style_with_policy:565=31
+- `crates/turbo-dom/src/rtdom/color.rs`: parse_float_js:302=20
+- `crates/turbo-dom/src/rtdom/events.rs`: dispatch_event:139=22
+- `crates/turbo-dom/src/rtdom/query.rs`: lex_strict:489=41, matches_compound:1625=21
+- `crates/turbo-dom/src/rtdom/query_utf16.rs`: decoded:93=16, state_argument:730=16
+- `crates/turbo-dom/src/rtdom/storage.rs`: collect_unreachable:121=47
+- `crates/turbo-dom/src/rtdom/svg.rs`: parse_leading_float:61=22
+- `crates/turbo-dom/src/rtdom/unit_tokenizer/mod.rs`: step:737=145
+- `crates/turbo-dom/tests/cascade_selectors_chrome.rs`: selectors_match_chrome156:145=21
+
+JS (24; `function:<line>` is an anonymous function):
+- `src/runtime/cascade.mjs`: setProp:45=17, parseStylesheet:81=17, collectMatched:147=17, function:232=21
+- `src/runtime/custom-elements.mjs`: createCustomElement:276=16
+- `src/runtime/dom.mjs`: validLocalName:107=26, insertBefore:206=16, sanitizeInputValue:1662=18, queueRecords:1765=23, __inflateNested:1908=17, createElementNS:1985=18
+- `src/runtime/events.mjs`: dispatchEvent:181=41, function:231=17
+- `src/runtime/html-serialize.mjs`: serializeNode:18=19
+- `src/runtime/selectors.mjs`: parseAttr:186=20, parseAnB:285=26, tokenize:334=36, parsePseudo:400=28, parseComplexTokens:459=36, disabledState:707=17, matchPseudo:861=50, matchCompound:924=21, matchChain:960=16
+- `src/runtime/stubs.mjs`: evalMediaQuery:58=17
+
+`crates/turbo-dom-layout`'s old cc <= 5 allow-list for the surf-origin `cssom_view` modules
+is superseded by this gate; its functions above 15 are in the list above.
 
 ## Parity harness
 
