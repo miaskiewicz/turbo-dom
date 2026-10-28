@@ -2,7 +2,7 @@
   "browser": "Chrome/156.0.8078.47",
   "v8": "15.6.75.19",
   "probe": "dialog_popover_edges_probe.js",
-  "probeSha256": "a9a4303af5de5541278b79a80302d6e7c9e59e4ddafd13a10c16fec4f6e0ed4f",
+  "probeSha256": "f4bf4f94212cff8e4a6b263e0e775f19fc05888915a3d248b1c496f535c5d9b8",
   "collectorSha256": "3f964d2cdf0ec8101870a776aaffc3b7dc4522306959c4a40761057beb255eb8",
   "flags": [
     "--headless=new",
@@ -314,6 +314,14 @@
         [
           "host",
           "inner"
+        ],
+        [
+          "after4",
+          null
+        ],
+        [
+          "after5",
+          null
         ]
       ],
       "log": [
@@ -348,6 +356,26 @@
           "closed"
         ],
         [
+          "beforetoggle",
+          "d4",
+          "open"
+        ],
+        [
+          "beforetoggle",
+          "d4",
+          "closed"
+        ],
+        [
+          "beforetoggle",
+          "d5",
+          "open"
+        ],
+        [
+          "beforetoggle",
+          "d5",
+          "closed"
+        ],
+        [
           "close",
           "d1"
         ],
@@ -358,6 +386,14 @@
         [
           "close",
           "d3"
+        ],
+        [
+          "close",
+          "d4"
+        ],
+        [
+          "close",
+          "d5"
         ]
       ]
     },

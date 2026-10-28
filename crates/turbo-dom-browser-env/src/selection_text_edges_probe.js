@@ -54,8 +54,8 @@
   out.moves = moves.map(move => move.join(':')).join(' ');
   // select() focuses only a focusable control: not a disabled one, one in a disabled
   // fieldset outside its first legend, or one without a box.
-  document.body.innerHTML = '<input id=d disabled value=dd><fieldset disabled><legend><input id=l1 value=l1></legend><legend><input id=l2 value=l2></legend><input id=f value=ff></fieldset><div style=display:none><input id=n value=nn></div><input id=ok value=ok>';
-  out.focus = ['d', 'l1', 'l2', 'f', 'n', 'ok'].map(id => {
+  document.body.innerHTML = '<input id=d disabled value=dd><fieldset disabled><legend><input id=l1 value=l1></legend><legend><input id=l2 value=l2></legend><input id=f value=ff></fieldset><div style=display:none><input id=n value=nn></div><input id=ok value=ok><fieldset><input id=e1 value=e1></fieldset><fieldset disabled> text <legend><input id=l3 value=l3></legend></fieldset><fieldset disabled><span>s</span><legend><input id=l4 value=l4></legend></fieldset>';
+  out.focus = ['d', 'l1', 'l2', 'f', 'n', 'ok', 'e1', 'l3', 'l4'].map(id => {
     document.activeElement.blur();
     const control = document.getElementById(id);
     control.select();

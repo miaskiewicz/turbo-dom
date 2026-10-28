@@ -2,7 +2,7 @@
   "browser": "Chrome/156.0.8078.47",
   "v8": "15.6.75.19",
   "probe": "selection_text_edges_probe.js",
-  "probeSha256": "2218b17a7bc582c480697d43fd189aad3d889922f6c5ed85d6c1505a69353bbc",
+  "probeSha256": "e4fb23025f7a18919dfd2745f06da498b2e1ac5a5356154d6f659d3ebb12712d",
   "collectorSha256": "3f964d2cdf0ec8101870a776aaffc3b7dc4522306959c4a40761057beb255eb8",
   "flags": [
     "--headless=new",
@@ -77,6 +77,24 @@
       [
         "ok",
         "ok",
+        0,
+        2
+      ],
+      [
+        "e1",
+        "e1",
+        0,
+        2
+      ],
+      [
+        "l3",
+        "l3",
+        0,
+        2
+      ],
+      [
+        "l4",
+        "l4",
         0,
         2
       ]

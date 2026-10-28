@@ -123,12 +123,13 @@
 
   // The dialog focusing steps: an SVG link with only xlink:href is focusable, a control in a
   // closed details body is not (the summary is), and shadow trees precede light children.
-  await scenario('focusDelegate', '<dialog id=d1><p>x</p><svg><a id=svga><text>t</text></a></svg></dialog><dialog id=d2><details><summary id=sum>s</summary><button id=hiddenb autofocus>b</button></details></dialog><dialog id=d3><div id=host><button id=light>l</button></div></dialog>', async () => {
+  await scenario('focusDelegate', '<dialog id=d1><p>x</p><svg><a id=svga><text>t</text></a></svg></dialog><dialog id=d2><details><summary id=sum>s</summary><button id=hiddenb autofocus>b</button></details></dialog><dialog id=d3><div id=host><button id=light>l</button></div></dialog><dialog id=d4><a id=htmlx>x</a><button id=after4>b</button></dialog><dialog id=d5><div><summary id=loose>s</summary></div><button id=after5>b</button></dialog>', async () => {
+    $('htmlx').setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', '#x');
     $('svga').setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', '#x');
     const root = $('host').attachShadow({ mode: 'open' });
     root.innerHTML = '<button id=inner>i</button><slot></slot>';
     const focused = [];
-    for (const id of ['d1', 'd2', 'd3']) {
+    for (const id of ['d1', 'd2', 'd3', 'd4', 'd5']) {
       $(id).showModal();
       focused.push([tag(document.activeElement), tag(root.activeElement)]);
       $(id).close();

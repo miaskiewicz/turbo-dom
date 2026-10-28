@@ -443,36 +443,6 @@ fn pseudo_ranges<'i, 't>(
     Ok(())
 }
 
-/// CSS closes blocks left open at EOF; close them explicitly for selector validation.
-fn close_blocks(source: &str) -> String {
-    let mut open = Vec::new();
-    let mut chars = source.chars();
-    let mut quote = None;
-    while let Some(c) = chars.next() {
-        match (quote, c) {
-            (_, '\\') => {
-                chars.next();
-            }
-            (Some(q), c) if c == q => quote = None,
-            (Some(_), _) => (),
-            (None, '"' | '\'') => quote = Some(c),
-            (None, '/') if chars.as_str().starts_with('*') => {
-                let rest = chars.as_str();
-                chars = rest[rest.find("*/").map_or(rest.len(), |end| end + 2)..].chars();
-            }
-            (None, '(') => open.push(')'),
-            (None, '[') => open.push(']'),
-            (None, ')' | ']') => {
-                open.pop();
-            }
-            _ => (),
-        }
-    }
-    let mut result = source.to_owned();
-    result.extend(open.into_iter().rev());
-    result
-}
-
 /// Represent private dialog state as structural selectors within this exact DOM root, as
 /// `:popover-open` does. `:open` is the dialog/details open attribute (no select picker is
 /// ever shown); `:modal` is the is-modal flag, which outlives a removed `open` attribute,
@@ -536,8 +506,9 @@ pub(super) fn selector(scope: &mut v8::PinScope, anchor: Handle, source: &str) -
         start = to;
     }
     result.push_str(&source[start..]);
-    // Validate what the engine will match, after dropping forgiven invalid arguments.
-    if !cssom_parser::valid_selector(&close_blocks(&result)) {
+    // Validate what the engine will match, after dropping forgiven invalid arguments (blocks
+    // left open at EOF close as in CSS: valid_selector already accepts them).
+    if !cssom_parser::valid_selector(&result) {
         throw_dom_error(scope, "SyntaxError", "Invalid selector");
         return None;
     }
