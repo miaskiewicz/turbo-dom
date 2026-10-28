@@ -5544,9 +5544,7 @@ fn get_style(
         .unwrap_or_else(|| scope.get_current_context());
     let scope = &mut v8::ContextScope::new(scope, context);
     let _dom = DomScope::for_object(scope, receiver);
-    let Some(h) = handle_of(scope, receiver) else {
-        return;
-    };
+    let h = holder_handle(scope, &args);
     if let Some(object) = STYLE.with(|s| s.borrow().get(&h).and_then(|weak| weak.to_local(scope))) {
         rv.set(object.into());
         return;

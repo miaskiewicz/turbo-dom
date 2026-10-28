@@ -269,3 +269,72 @@ fn wrapped_natives_refuse_hostile_calls_directly() {
         );
     });
 }
+
+/// The inline style accessor builds each element's declaration through the binding's
+/// namespace (`globalThis[Symbol.for('ts')]`), which page script can reach and tamper
+/// with: a removed namespace, a replaced factory or a throwing factory leave `style`
+/// undefined or a TypeError / the factory's error, never an abort.
+#[test]
+fn inline_style_survives_a_tampered_namespace() {
+    for (tamper, expected) in [
+        (
+            "delete globalThis[Symbol.for('ts')]",
+            r#"[["TypeError","Cannot convert undefined or null to object"],"string"]"#,
+        ),
+        (
+            "ts.makeInlineStyleDeclaration = 5",
+            r#"["undefined","string"]"#,
+        ),
+        // A factory result is used as the declaration object (a primitive is boxed).
+        ("ts.makeInlineStyleDeclaration = () => 5", r#"[5,"string"]"#),
+        (
+            "ts.makeInlineStyleDeclaration = () => { throw new RangeError('factory'); }",
+            r#"[["RangeError","factory"],"string"]"#,
+        ),
+    ] {
+        with_page(|scope| {
+            let out = json(
+                scope,
+                &format!("(() => {{ const old = document.getElementById('p'); const before = typeof old.style.cssText; const fresh = document.createElement('i'); {tamper}; return [run(() => fresh.style), before]; }})()"),
+            );
+            assert_eq!(out, expected, "{tamper}");
+        });
+    }
+}
+
+/// The computed-style font context native answers only for nodes.
+#[test]
+fn computed_font_context_needs_a_node() {
+    with_page(|scope| {
+        let global = scope.get_current_context().global(scope);
+        bind_method(scope, global, "__t_font", computed_font_context);
+        assert_eq!(
+            json(
+                scope,
+                "[run(() => __t_font(5)), run(() => __t_font({})), typeof __t_font(document.getElementById('p'))]"
+            ),
+            r#"["undefined","undefined","object"]"#
+        );
+    });
+}
+
+/// The form-control module's native answers each operation for a form-associated node and
+/// ignores calls without one.
+#[test]
+fn form_controls_native_operations() {
+    with_page(|scope| {
+        let global = scope.get_current_context().global(scope);
+        bind_method(scope, global, "__t_form", form_controls_native);
+        let out = json(
+            scope,
+            "(() => { const f = document.createElement('form'); f.setAttribute('action', 'http://A b/x'); const b = f.appendChild(document.createElement('button')); b.setAttribute('formaction', 'https://ok.test/a/../b'); const v = x => { const r = run(x); return r && typeof r === 'object' && !Array.isArray(r) ? 'object' : r; }; return [v(() => __t_form('labels-list', 5)), v(() => __t_form('labels-list', b)), v(() => __t_form('install-labels', b, n => 'labels:' + n.localName)), v(() => __t_form('labels-list', b)), v(() => __t_form('value-snapshot', b, 'x')), v(() => __t_form('active', f, b)), v(() => __t_form('submit', f, b)), v(() => __t_form('action-url', f)), v(() => __t_form('submitter-action-url', b)), v(() => __t_form('absolute-url', f, 'https://x.test/')), v(() => __t_form('absolute-url', f, 'nope')), v(() => __t_form('allowed', f)), v(() => __t_form('emit', f, 5)), v(() => __t_form('emit', f, new Event('submit', { cancelable: true }))), v(() => __t_form('nonsense', f))]; })()",
+        );
+        // No node: nothing. The bootstrap's labels factory answers until a host installs
+        // another; without a value reader or submission handler the standalone binding
+        // answers null / active / not submitted.
+        assert_eq!(
+            out,
+            r#"["undefined","object","undefined","labels:button",null,true,false,"http://a%20b/x","https://ok.test/b",true,false,true,"undefined",true,"undefined"]"#
+        );
+    });
+}

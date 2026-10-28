@@ -155,6 +155,7 @@ browser_env.rs: P5-cov turbo-dom#157 a stop set in the target's capture listener
 browser_env.rs: P5-cov-browser-env round 3: the remaining element-template accessors (mode, __attrValue, outerHTML, ownerDocument, isContentEditable) take holder_handle; hide_node_nonce states nonce_units' handle
 browser_env.rs: P5-cov-browser-env drops the template isContentEditable getter (editing.js defines it and only brand-checked through the old getter, discarding its value)
 browser_env.rs: P5-cov turbo-dom#159 an invalid special form action canonicalizes its host (lowercase, unreserved escapes decoded, other escapes uppercase)
+browser_env.rs: P5-cov-browser-env the inline style accessor takes holder_handle (an element-template accessor)
 browser_env.js: P5-cov-browser-env no longer defines the replaced isContentEditable accessor (editing.js brand-checks through contentEditable)
 event_listeners.rs: P5-cov turbo-dom#157 the stop contract test expects Chrome 156's target stop (native_guards_chrome156.json events.stopAtTarget)
 sanitizer.rs: P5-cov-browser-env natives called only by their JS shim drop the termination check (script cannot run while terminating) and state the shim's guarantees with expect() (object receivers, converted markup, canonical records, private records the module writes, wrapper creation contexts); the last named operation is the catch-all arm
