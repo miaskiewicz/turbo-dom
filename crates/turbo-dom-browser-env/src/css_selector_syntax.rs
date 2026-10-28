@@ -229,12 +229,29 @@ const SCROLL_BUTTONS: &[&str] = &[
     "up",
 ];
 
+/// The pseudo-elements Chrome 156 admits after `::slotted()` (turbo-dom#148 / #168); no
+/// pseudo-class may follow `::slotted()`.
+const AFTER_SLOTTED: &[&str] = &[
+    "after",
+    "backdrop",
+    "before",
+    "checkmark",
+    "details-content",
+    "file-selector-button",
+    "marker",
+    "picker",
+    "picker-icon",
+    "placeholder",
+    "view-transition",
+];
+
 /// The pseudo-element that ends a compound decides which pseudos may follow it.
 #[derive(Clone, Copy, PartialEq)]
 enum Element {
     Generated,
     Marker,
     Shadow,
+    Slotted,
     Scrollbar,
     Selection,
     WebKit,
@@ -570,6 +587,7 @@ fn element_follows(previous: Element, next: &str) -> bool {
     match previous {
         Element::Generated => next == "marker",
         Element::Shadow => !matches!(next, "part" | "slotted"),
+        Element::Slotted => AFTER_SLOTTED.contains(&next),
         _ => false,
     }
 }
@@ -578,7 +596,8 @@ fn element_kind(name: &str) -> Element {
     match name {
         "before" | "after" => Element::Generated,
         "marker" => Element::Marker,
-        "part" | "slotted" => Element::Shadow,
+        "part" => Element::Shadow,
+        "slotted" => Element::Slotted,
         "selection" => Element::Selection,
         "-webkit-resizer" => Element::Scrollbar,
         _ if name.starts_with("-webkit-scrollbar") => Element::Scrollbar,
