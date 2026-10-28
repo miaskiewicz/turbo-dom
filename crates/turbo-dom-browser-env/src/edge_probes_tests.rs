@@ -172,99 +172,204 @@ fn document_pre_insert_validity_counts_current_children() {
     );
 }
 
-/// KNOWN_GAP (miaskiewicz/turbo-dom#134): CSSOM at-rule cssText.
-const SELECTOR_GAPS: &[(&str, &str)] = &[
-    (
-        "result.at.@container (width > 1px) { }[0]",
-        "\"@container (width > 1px) {  }\"",
-    ),
-    (
-        "result.at.@container (width > 1px) { }[1]",
-        "\"@container (width > 1px) {  }\"",
-    ),
-    (
-        "result.at.@counter-style none { system: cyclic }[0]",
-        "\"@counter-style none { system: cyclic; }\"",
-    ),
-    (
-        "result.at.@counter-style none { system: cyclic }[1]",
-        "\"@counter-style none { system: cyclic; }\"",
-    ),
-    (
-        "result.at.@font-face { font-feature-settings: \"liga\" 1 }[0]",
-        "\"@font-face { }\"",
-    ),
-    (
-        "result.at.@font-face { font-feature-settings: \"liga\" 1 }[1]",
-        "\"@font-face { }\"",
-    ),
-    (
-        "result.at.@font-face { font-variation-settings: \"wght\" 400 }[0]",
-        "\"@font-face { }\"",
-    ),
-    (
-        "result.at.@font-face { font-variation-settings: \"wght\" 400 }[1]",
-        "\"@font-face { }\"",
-    ),
-    (
-        "result.at.@font-face { font-variation-settings: normal }[0]",
-        "\"@font-face { }\"",
-    ),
-    (
-        "result.at.@font-face { font-variation-settings: normal }[1]",
-        "\"@font-face { }\"",
-    ),
-    (
-        "result.at.@keyframes \"k2\" { 0% { color: red } }[0]",
-        "\"@keyframes \\\"k2\\\" { 0% { color: red; } }\"",
-    ),
-    (
-        "result.at.@keyframes \"k2\" { 0% { color: red } }[1]",
-        "\"@keyframes \\\"k2\\\" { 0% { color: red; } }\"",
-    ),
-    (
-        "result.at.@keyframes k { from { color: red } }[0]",
-        "\"@keyframes k { from { color: red; } }\"",
-    ),
-    (
-        "result.at.@keyframes k { from { color: red } }[1]",
-        "\"@keyframes k { from { color: red; } }\"",
-    ),
-    ("result.at.@layer a, b;[0]", "null"),
-    ("result.at.@layer a, b;[1]", "\"SyntaxError\""),
-    (
-        "result.at.@scope (a) to (b) { }[0]",
-        "\"@scope (a) to (b) {  }\"",
-    ),
-    (
-        "result.at.@scope (a) to (b) { }[1]",
-        "\"@scope (a) to (b) {  }\"",
-    ),
-    (
-        "result.at.@starting-style { a { color: red } }[0]",
-        "\"@starting-style { a { color: red; } }\"",
-    ),
-    (
-        "result.at.@starting-style { a { color: red } }[1]",
-        "\"@starting-style { a { color: red; } }\"",
-    ),
-    (
-        "result.at.@view-transition { navigation: bogus }[0]",
-        "\"@view-transition {  }\"",
-    ),
-    (
-        "result.at.@view-transition { navigation: bogus }[1]",
-        "\"@view-transition {  }\"",
-    ),
-];
-
 #[test]
+#[ignore = "miaskiewicz/turbo-dom#134: fails until the fix"]
 fn selector_and_at_rule_edges_match_chrome156() {
     check(
         include_str!("selector_edges_probe.js"),
         include_str!("selector_edges_chrome156.json"),
-        SELECTOR_GAPS,
+        &[],
     );
+}
+
+/// CSSOM at-rule cssText (miaskiewicz/turbo-dom#134): @keyframes key / name / per-line
+/// serialization and the declarations a keyframe drops, @font-face feature / variation
+/// settings, reserved @counter-style names, @layer statements, grouping-rule bodies and
+/// empty descriptor blocks. Expected: Chrome 156.0.8078.47 (frozen, headless).
+#[test]
+#[ignore = "miaskiewicz/turbo-dom#134: fails until the fix"]
+fn at_rule_css_text_matches_chrome156() {
+    let probe = r###"(async () => {
+  // CSSOM at-rule cssText (turbo-dom#134): each text through a <style> and insertRule.
+  const sheet = document.head.appendChild(document.createElement('style')).sheet;
+  const read = text => {
+    const style = document.head.appendChild(document.createElement('style'));
+    style.textContent = text;
+    const parsed = style.sheet.cssRules.length ? style.sheet.cssRules[0].cssText : null;
+    style.remove();
+    let inserted;
+    try { sheet.insertRule(text, 0); inserted = sheet.cssRules[0].cssText; sheet.deleteRule(0); } catch (e) { inserted = e.name; }
+    return parsed === inserted ? parsed : [parsed, inserted];
+  };
+  const at = {};
+  for (const text of ['@keyframes k { }', '@keyframes k { from { color: red } to { color: blue } }', '@keyframes k { from, to { color: red } 50.0% { color: blue } }',
+    '@keyframes "a b" { }', '@keyframes "none" { }', '@keyframes "k" { }', '@keyframes K { 10% { } }', '@-webkit-keyframes w { from { color: red } }',
+    '@keyframes k { 0% { color: red; color: blue } }', '@keyframes k { 0% { color: red !important } }', '@keyframes k { 0% { margin: 1px } }',
+    '@font-face { font-feature-settings: "liga" on }', '@font-face { font-feature-settings: "liga" off }', '@font-face { font-feature-settings: "liga" 2, "kern" }',
+    '@font-face { font-feature-settings: normal }', '@font-face { font-feature-settings: "lig" 1 }', '@font-face { font-feature-settings: "liga" -1 }', '@font-face { font-feature-settings: "liga" 1.5 }',
+    '@font-face { font-feature-settings: "liga" 01 }', '@font-face { font-feature-settings: "LIGA" 1 }', "@font-face { font-feature-settings: 'liga' 0 }",
+    '@font-face { font-variation-settings: "wght" 400.0, "wdth" -1e2 }', '@font-face { font-variation-settings: "wgh" 1 }', '@font-face { font-variation-settings: "wght" }', '@font-face { font-variation-settings: "wght" 4E2 }',
+    '@font-face { font-family: x; font-feature-settings: "liga" 1; src: url(a) }',
+    '@counter-style decimal { system: cyclic }', '@counter-style disc { system: cyclic }', '@counter-style NONE { system: cyclic }', '@counter-style inherit { system: cyclic }', '@counter-style default { system: cyclic }', '@counter-style square { system: cyclic }', '@counter-style Decimal { system: cyclic }',
+    '@layer a;', '@layer a.b, c;', '@layer  a ,b ;', '@layer;', '@layer a { }', '@layer a { b { color: red } }', '@layer { }',
+    '@media screen { }', '@media screen { a { color: red } b { color: blue } }', '@supports (color: red) { }', '@supports (color: red) { a { color: red } }',
+    '@container (width > 1px) { a { color: red } }', '@container name (width > 1px) { }', '@scope (a) { }', '@scope { }', '@starting-style { }',
+    '@starting-style { a { color: red } b { color: blue } }', '@media screen { @media print { a { color: red } } }',
+    '@view-transition { }', '@view-transition { navigation: auto; types: a b }', '@page { }', '@page { margin: 1px }', '@font-face { }', '@counter-style c { }', '@property --q { syntax: "*"; inherits: true }',
+    '@font-palette-values --p { font-family: x }', '@position-try --t { top: 1px }',
+    "@counter-style circle { system: cyclic }","@counter-style disclosure-open { system: cyclic }","@counter-style unset { system: cyclic }","@counter-style revert-layer { system: cyclic }","@counter-style revert { system: cyclic }","@keyframes k { 12.5% { color: red } 33.3333% { color: red } TO { color: red } 0.0001% { color: red } }","@keyframes k { 1e1% { color: red } }","@layer a , b.c ;","@keyframes k { 0% { animation-name: x; color: red } }","@media screen { @font-face { font-family: x } }","@supports (color: red) { @keyframes q { } }","@keyframes k { 0% { color: red } 0% { color: blue } }","@keyframes \"\" { }","@keyframes \"1x\" { }","@keyframes \"inherit\" { }","@keyframes k { 50% { color: red; } from{color:blue} }","@keyframes k { 0% { color: red } } a { color: red }"]) at[text] = read(text);
+  const keyframe = {};
+  for (const declaration of ['animation-timing-function: linear', 'animation-composition: add', 'animation-timeline: none', 'animation-duration: 1s', 'animation: x 1s', 'animation-range: normal', 'ANIMATION-DELAY: 1s', 'transition: color 1s', '--x: 1']) keyframe[declaration] = read('@keyframes k { 0% { ' + declaration + '; color: red } }');
+  return { at, keyframe };
+})()"###;
+    let expected: serde_json::Value = serde_json::from_str(
+        r###"{
+ "at": {
+  "@keyframes k { }": "@keyframes k { \n}",
+  "@keyframes k { from { color: red } to { color: blue } }": "@keyframes k { \n  0% { color: red; }\n  100% { color: blue; }\n}",
+  "@keyframes k { from, to { color: red } 50.0% { color: blue } }": "@keyframes k { \n  0%, 100% { color: red; }\n  50% { color: blue; }\n}",
+  "@keyframes \"a b\" { }": "@keyframes a\\ b { \n}",
+  "@keyframes \"none\" { }": "@keyframes none { \n}",
+  "@keyframes \"k\" { }": "@keyframes k { \n}",
+  "@keyframes K { 10% { } }": "@keyframes K { \n  10% { }\n}",
+  "@-webkit-keyframes w { from { color: red } }": "@-webkit-keyframes w { \n  0% { color: red; }\n}",
+  "@keyframes k { 0% { color: red; color: blue } }": "@keyframes k { \n  0% { color: blue; }\n}",
+  "@keyframes k { 0% { color: red !important } }": "@keyframes k { \n  0% { }\n}",
+  "@keyframes k { 0% { margin: 1px } }": "@keyframes k { \n  0% { margin: 1px; }\n}",
+  "@font-face { font-feature-settings: \"liga\" on }": "@font-face { font-feature-settings: \"liga\"; }",
+  "@font-face { font-feature-settings: \"liga\" off }": "@font-face { font-feature-settings: \"liga\" 0; }",
+  "@font-face { font-feature-settings: \"liga\" 2, \"kern\" }": "@font-face { font-feature-settings: \"liga\" 2, \"kern\"; }",
+  "@font-face { font-feature-settings: normal }": "@font-face { font-feature-settings: normal; }",
+  "@font-face { font-feature-settings: \"lig\" 1 }": "@font-face { }",
+  "@font-face { font-feature-settings: \"liga\" -1 }": "@font-face { font-feature-settings: \"liga\" -1; }",
+  "@font-face { font-feature-settings: \"liga\" 1.5 }": "@font-face { }",
+  "@font-face { font-feature-settings: \"liga\" 01 }": "@font-face { font-feature-settings: \"liga\"; }",
+  "@font-face { font-feature-settings: \"LIGA\" 1 }": "@font-face { font-feature-settings: \"LIGA\"; }",
+  "@font-face { font-feature-settings: 'liga' 0 }": "@font-face { font-feature-settings: \"liga\" 0; }",
+  "@font-face { font-variation-settings: \"wght\" 400.0, \"wdth\" -1e2 }": "@font-face { font-variation-settings: \"wght\" 400, \"wdth\" -100; }",
+  "@font-face { font-variation-settings: \"wgh\" 1 }": "@font-face { }",
+  "@font-face { font-variation-settings: \"wght\" }": "@font-face { font-variation-settings: \"wght\" 1; }",
+  "@font-face { font-variation-settings: \"wght\" 4E2 }": "@font-face { font-variation-settings: \"wght\" 400; }",
+  "@font-face { font-family: x; font-feature-settings: \"liga\" 1; src: url(a) }": "@font-face { font-family: x; font-feature-settings: \"liga\"; src: url(\"a\"); }",
+  "@counter-style decimal { system: cyclic }": [
+   null,
+   "SyntaxError"
+  ],
+  "@counter-style disc { system: cyclic }": [
+   null,
+   "SyntaxError"
+  ],
+  "@counter-style NONE { system: cyclic }": [
+   null,
+   "SyntaxError"
+  ],
+  "@counter-style inherit { system: cyclic }": [
+   null,
+   "SyntaxError"
+  ],
+  "@counter-style default { system: cyclic }": [
+   null,
+   "SyntaxError"
+  ],
+  "@counter-style square { system: cyclic }": [
+   null,
+   "SyntaxError"
+  ],
+  "@counter-style Decimal { system: cyclic }": [
+   null,
+   "SyntaxError"
+  ],
+  "@layer a;": "@layer a;",
+  "@layer a.b, c;": "@layer a.b, c;",
+  "@layer  a ,b ;": "@layer a, b;",
+  "@layer;": [
+   null,
+   "SyntaxError"
+  ],
+  "@layer a { }": "@layer a {\n}",
+  "@layer a { b { color: red } }": "@layer a {\n  b { color: red; }\n}",
+  "@layer { }": "@layer {\n}",
+  "@media screen { }": "@media screen {\n}",
+  "@media screen { a { color: red } b { color: blue } }": "@media screen {\n  a { color: red; }\n  b { color: blue; }\n}",
+  "@supports (color: red) { }": "@supports (color: red) {\n}",
+  "@supports (color: red) { a { color: red } }": "@supports (color: red) {\n  a { color: red; }\n}",
+  "@container (width > 1px) { a { color: red } }": "@container (width > 1px) {\n  a { color: red; }\n}",
+  "@container name (width > 1px) { }": "@container name (width > 1px) {\n}",
+  "@scope (a) { }": "@scope (a) {\n}",
+  "@scope { }": "@scope {\n}",
+  "@starting-style { }": "@starting-style {\n}",
+  "@starting-style { a { color: red } b { color: blue } }": "@starting-style {\n  a { color: red; }\n  b { color: blue; }\n}",
+  "@media screen { @media print { a { color: red } } }": "@media screen {\n  @media print {\n  a { color: red; }\n}\n}",
+  "@view-transition { }": "@view-transition { }",
+  "@view-transition { navigation: auto; types: a b }": "@view-transition { navigation: auto; types: a b; }",
+  "@page { }": "@page { }",
+  "@page { margin: 1px }": "@page { margin: 1px; }",
+  "@font-face { }": "@font-face { }",
+  "@counter-style c { }": "@counter-style c { }",
+  "@property --q { syntax: \"*\"; inherits: true }": "@property --q { syntax: \"*\"; inherits: true; }",
+  "@font-palette-values --p { font-family: x }": "@font-palette-values --p { font-family: x; }",
+  "@position-try --t { top: 1px }": "@position-try --t { top: 1px; }",
+  "@counter-style circle { system: cyclic }": [
+   null,
+   "SyntaxError"
+  ],
+  "@counter-style disclosure-open { system: cyclic }": [
+   null,
+   "SyntaxError"
+  ],
+  "@counter-style unset { system: cyclic }": [
+   null,
+   "SyntaxError"
+  ],
+  "@counter-style revert-layer { system: cyclic }": [
+   null,
+   "SyntaxError"
+  ],
+  "@counter-style revert { system: cyclic }": [
+   null,
+   "SyntaxError"
+  ],
+  "@keyframes k { 12.5% { color: red } 33.3333% { color: red } TO { color: red } 0.0001% { color: red } }": "@keyframes k { \n  12.5% { color: red; }\n  33.3333% { color: red; }\n  100% { color: red; }\n  0.0001% { color: red; }\n}",
+  "@keyframes k { 1e1% { color: red } }": "@keyframes k { \n  10% { color: red; }\n}",
+  "@layer a , b.c ;": "@layer a, b.c;",
+  "@keyframes k { 0% { animation-name: x; color: red } }": "@keyframes k { \n  0% { color: red; }\n}",
+  "@media screen { @font-face { font-family: x } }": "@media screen {\n  @font-face { font-family: x; }\n}",
+  "@supports (color: red) { @keyframes q { } }": "@supports (color: red) {\n  @keyframes q { \n}\n}",
+  "@keyframes k { 0% { color: red } 0% { color: blue } }": "@keyframes k { \n  0% { color: red; }\n  0% { color: blue; }\n}",
+  "@keyframes \"\" { }": [
+   null,
+   "SyntaxError"
+  ],
+  "@keyframes \"1x\" { }": "@keyframes \\31 x { \n}",
+  "@keyframes \"inherit\" { }": "@keyframes inherit { \n}",
+  "@keyframes k { 50% { color: red; } from{color:blue} }": "@keyframes k { \n  50% { color: red; }\n  0% { color: blue; }\n}",
+  "@keyframes k { 0% { color: red } } a { color: red }": [
+   "@keyframes k { \n  0% { color: red; }\n}",
+   "SyntaxError"
+  ]
+ },
+ "keyframe": {
+  "animation-timing-function: linear": "@keyframes k { \n  0% { animation-timing-function: linear; color: red; }\n}",
+  "animation-composition: add": "@keyframes k { \n  0% { animation-composition: add; color: red; }\n}",
+  "animation-timeline: none": "@keyframes k { \n  0% { animation-timeline: none; color: red; }\n}",
+  "animation-duration: 1s": "@keyframes k { \n  0% { color: red; }\n}",
+  "animation: x 1s": "@keyframes k { \n  0% { color: red; }\n}",
+  "animation-range: normal": "@keyframes k { \n  0% { color: red; }\n}",
+  "ANIMATION-DELAY: 1s": "@keyframes k { \n  0% { color: red; }\n}",
+  "transition: color 1s": "@keyframes k { \n  0% { transition: color 1s; color: red; }\n}",
+  "--x: 1": "@keyframes k { \n  0% { --x: 1; color: red; }\n}"
+ }
+}"###,
+    )
+    .unwrap();
+    let actual = run(probe);
+    assert_eq!(differences_of(&actual, &expected), Vec::<String>::new());
+}
+
+fn differences_of(actual: &serde_json::Value, expected: &serde_json::Value) -> Vec<String> {
+    let mut out = Vec::new();
+    differences("result", actual, expected, &mut out);
+    out
 }
 
 /// KNOWN_GAP (miaskiewicz/turbo-dom#135): `<?target data?>` parses as a bogus comment.
