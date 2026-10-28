@@ -427,3 +427,13 @@ fn template_contents_details_toggle_runs() {
     );
     assert_eq!(got.to_string(), r#"["closed>open"]"#);
 }
+
+/// turbo-dom#144: caret `modify('move', …, 'character')` steps into and out of a table's
+/// cells (Chrome 156), with no known gaps left in the control.
+#[test]
+#[ignore = "turbo-dom#144: fails until the fix"]
+fn selection_caret_moves_into_tables_match_chrome156() {
+    let probe = include_str!("selection_text_edges_probe.js");
+    let expected = control(include_str!("selection_text_edges_chrome156.json"), probe);
+    assert_matches_control(&run_probe(probe), &expected, &[]);
+}
