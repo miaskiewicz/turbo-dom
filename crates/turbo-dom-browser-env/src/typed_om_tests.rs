@@ -1,4 +1,5 @@
 use super::*;
+use crate::browser_env::crate_surface::harness_tests::thrown;
 use sha2::{Digest, Sha256};
 
 fn run_probe(html: &str, probe: &str) -> serde_json::Value {
@@ -13,13 +14,9 @@ fn run_probe(html: &str, probe: &str) -> serde_json::Value {
     install_independent_html(scope, html);
     v8::tc_scope!(let scope,scope);
     let source = v8::String::new(scope, probe).unwrap();
-    let Some(result) =
-        v8::Script::compile(scope, source, None).and_then(|script| script.run(scope))
-    else {
-        let message = scope.exception().unwrap().to_rust_string_lossy(scope);
-        reset();
-        panic!("{message}");
-    };
+    let result = v8::Script::compile(scope, source, None)
+        .and_then(|script| script.run(scope))
+        .unwrap_or_else(|| panic!("{}", thrown(scope.exception(), scope)));
     let actual = v8::json::stringify(scope, result)
         .unwrap()
         .to_rust_string_lossy(scope);
@@ -58,10 +55,8 @@ fn pin(
         .iter()
         .find(|row| row[0] == label)
         .unwrap();
-    assert_ne!(
-        &*row, chrome,
-        "{section}/{label} now matches Chrome; drop the pin"
-    );
+    let pin = format!("{section}/{label} now matches Chrome; drop the pin");
+    assert_ne!(&*row, chrome, "{pin}");
     check(row, chrome);
     *row = chrome.clone();
 }

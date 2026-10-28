@@ -1,4 +1,5 @@
 use super::*;
+use crate::browser_env::crate_surface::harness_tests::thrown;
 
 /// Host navigation facts for the current realm's document, as an embedder
 /// installs them after parsing.
@@ -80,12 +81,9 @@ pub(super) fn run_probe(
         let source = format!("(async()=>({probe}))().then(value=>globalThis.legacyResult=JSON.stringify(value),error=>globalThis.legacyResult='ERROR '+String(error&&error.stack||error));");
         let code = v8::String::new(scope, &source).unwrap();
         v8::tc_scope!(let scope, scope);
-        if v8::Script::compile(scope, code, None)
+        v8::Script::compile(scope, code, None)
             .and_then(|script| script.run(scope))
-            .is_none()
-        {
-            panic!("{}", scope.exception().unwrap().to_rust_string_lossy(scope));
-        }
+            .unwrap_or_else(|| panic!("{}", thrown(scope.exception(), scope)));
         scope.perform_microtask_checkpoint();
         let code = v8::String::new(scope, "globalThis.legacyResult||'unsettled'").unwrap();
         v8::Script::compile(scope, code, None)
@@ -194,8 +192,13 @@ fn navigation(case: &serde_json::Value) -> Navigation {
     // The embedder parses the HTTP date; these are the instants of the fixtures' headers.
     let last_modified = header("Last-Modified").map(|value| match value.as_str() {
         "Wed, 21 Oct 2015 07:28:00 GMT" => 1_445_412_480_000.0,
-        "Thu, 29 Feb 2024 23:59:59 GMT" => 1_709_251_199_000.0,
-        other => panic!("unparsed fixture date {other}"),
+        other => {
+            assert_eq!(
+                other, "Thu, 29 Feb 2024 23:59:59 GMT",
+                "unparsed fixture date"
+            );
+            1_709_251_199_000.0
+        }
     });
     let keyed = header("Origin-Agent-Cluster").map(|value| value == "?1");
     Navigation {

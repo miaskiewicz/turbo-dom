@@ -168,6 +168,34 @@ html_dialog.rs: P5-cov-browser-env drops close_blocks (valid_selector already cl
 mutation_observers.rs: P5-cov-browser-env the observer native states mutation_observers.js's object arguments with expect() (schedule is the catch-all); a document wrapper's creation context is an expect()
 document_legacy.rs: P5-cov-browser-env canonical_host's bracketed and ends-in-a-number parses map Ok(host) directly (the WHATWG parser yields only IPv6 / IPv4 there)
 range_contents.rs: P5-cov-browser-env the contextual-fragment native states its caller's guarantees (a node start container, an installed document, fragment adoption) and install reads the ts namespace / makeNativeFunction browser_env.js defined, with expect()
+event_handlers.rs: P5-cov-browser-env turbo-dom#152 an inline handler's form owner is found by HTML local name (tag_name is the uppercase tagName)
+html_text.rs: P5-cov-browser-env turbo-dom#154 content of a closed <details> has an empty innerText (rendered with its contents skipped)
+html_text.rs: P5-cov-browser-env native argument / receiver guards the JS caller makes unreachable become expect() and the last operation it calls is the match's wildcard arm (C3d)
+animations.rs: P5-cov-browser-env native argument / receiver guards the JS caller makes unreachable become expect() and the last operation it calls is the match's wildcard arm (C3d)
+document_xpath.rs: P5-cov-browser-env native argument / receiver guards the JS caller makes unreachable become expect() and the last operation it calls is the match's wildcard arm (C3d)
+html_invokers.rs: P5-cov-browser-env native argument / receiver guards the JS caller makes unreachable become expect() and the last operation it calls is the match's wildcard arm (C3d)
+interest_invokers.rs: P5-cov-browser-env native argument / receiver guards the JS caller makes unreachable become expect() and the last operation it calls is the match's wildcard arm (C3d)
+pointer_events.rs: P5-cov-browser-env native argument / receiver guards the JS caller makes unreachable become expect() and the last operation it calls is the match's wildcard arm (C3d)
+element_internals.rs: P5-cov-browser-env native argument / receiver guards the JS caller makes unreachable become expect() and the last operation it calls is the match's wildcard arm (C3d)
+input_members.rs: P5-cov-browser-env native argument / receiver guards the JS caller makes unreachable become expect() and the last operation it calls is the match's wildcard arm (C3d)
+hyperlink_utils.rs: P5-cov-browser-env native argument / receiver guards the JS caller makes unreachable become expect() and the last operation it calls is the match's wildcard arm (C3d)
+editing.rs: P5-cov-browser-env native argument / receiver guards the JS caller makes unreachable become expect() and the last operation it calls is the match's wildcard arm (C3d)
+focus_group.rs: P5-cov-browser-env native argument / receiver guards the JS caller makes unreachable become expect() and the last operation it calls is the match's wildcard arm (C3d)
+reference_target.rs: P5-cov-browser-env native argument / receiver guards the JS caller makes unreachable become expect() and the last operation it calls is the match's wildcard arm (C3d)
+element_members.rs: P5-cov-browser-env native argument / receiver guards the JS caller makes unreachable become expect() and the last operation it calls is the match's wildcard arm (C3d)
+file_inputs.rs: P5-cov-browser-env native argument / receiver guards the JS caller makes unreachable become expect() and the last operation it calls is the match's wildcard arm (C3d)
+event_handlers.rs: P5-cov-browser-env native argument / receiver guards the JS caller makes unreachable become expect() and the last operation it calls is the match's wildcard arm (C3d)
+script_state.rs: P5-cov-browser-env (C3d) the text setter's Trusted Types conversion binds its result before the let-else
+script_state.rs: P5-cov-browser-env (C3d) copy takes the cloneNode / importNode source and clone nodes (their handles always exist)
+input_members.rs: P5-cov-browser-env (C3d) copy takes the cloneNode / importNode source and clone nodes (their handles always exist)
+editing_tests.rs: P5-cov-browser-env (C3d) harness failure branches run on their passing line (eager messages, unwrap_or_else(thrown), one drain checkpoint after the task loop); stand-in hooks and compare helpers have their own tests
+file_inputs_tests.rs: P5-cov-browser-env (C3d) harness failure branches run on their passing line (eager messages, unwrap_or_else(thrown), one drain checkpoint after the task loop); stand-in hooks and compare helpers have their own tests
+computed_defaults_tests.rs: P5-cov-browser-env (C3d) harness failure branches run on their passing line (eager messages, unwrap_or_else(thrown), one drain checkpoint after the task loop); stand-in hooks and compare helpers have their own tests
+typed_om_tests.rs: P5-cov-browser-env (C3d) harness failure branches run on their passing line (eager messages, unwrap_or_else(thrown), one drain checkpoint after the task loop); stand-in hooks and compare helpers have their own tests
+animations_tests.rs: P5-cov-browser-env (C3d) harness failure branches run on their passing line (eager messages, unwrap_or_else(thrown), one drain checkpoint after the task loop); stand-in hooks and compare helpers have their own tests
+probe_harness_tests.rs: P5-cov-browser-env (C3d) harness failure branches run on their passing line (eager messages, unwrap_or_else(thrown), one drain checkpoint after the task loop); stand-in hooks and compare helpers have their own tests
+document_legacy_tests.rs: P5-cov-browser-env (C3d) harness failure branches run on their passing line (eager messages, unwrap_or_else(thrown), one drain checkpoint after the task loop); stand-in hooks and compare helpers have their own tests
+ownership_guard_tests.rs: P5-cov-browser-env (C3d) harness failure branches run on their passing line (eager messages, unwrap_or_else(thrown), one drain checkpoint after the task loop); stand-in hooks and compare helpers have their own tests
 "
 # Crate-owned files under src/ that were not part of the move.
 OWNED="lib.rs crate_surface.rs host_internals.rs test_support.rs css_snapshot.rs option_factory_probe.js option_factory_cases.json option_factory_chrome156.json html_image.js html_image_tests.rs html_image_probe.js html_image_cases.json html_image_chrome156.json custom_elements_defined_probe.js custom_elements_defined_cases.json custom_elements_defined_chrome156.json computed_defaults_probe.js computed_defaults_cases.json computed_defaults_chrome156.json computed_defaults_tests.rs dom_reactions_names_probe.js dom_reactions_names_cases.json dom_reactions_names_chrome156.json dom_reactions_tests.rs dom_adoption_reactions_probe.js dom_adoption_reactions_cases.json dom_adoption_reactions_chrome156.json shadow_events_probe.js shadow_events_cases.json shadow_events_chrome156.json shadow_events_tests.rs html_track_probe.js html_track_cases.json html_track_chrome156.json html_track_tests.rs html_track.js"
@@ -179,6 +207,7 @@ OWNED="$OWNED native_guards_probe.js native_guards_chrome156.json native_guards_
 OWNED="$OWNED edge_probes_tests.rs harness_tests.rs termination_tests.rs shadow_slots_edges_probe.js shadow_slots_edges_chrome156.json dom_mutation_validity_probe.js dom_mutation_validity_chrome156.json selector_edges_probe.js selector_edges_chrome156.json sanitizer_edges_probe.js sanitizer_edges_chrome156.json document_edges_probe.js document_edges_chrome156.json receivers_edges_probe.js receivers_edges_chrome156.json event_receivers_edges_probe.js event_receivers_edges_chrome156.json"
 OWNED="$OWNED activation_granted_probe.js activation_granted_chrome156.json trusted_controls_tests.rs dialog_popover_edges_probe.js dialog_popover_edges_chrome156.json custom_elements_edges_probe.js custom_elements_edges_chrome156.json selection_text_edges_probe.js selection_text_edges_chrome156.json"
 OWNED="$OWNED private_natives_tests.rs binding_termination_tests.rs"
+OWNED="$OWNED member_edges_tests.rs host_edges_tests.rs member_edges_probe.js member_edges_chrome156.json"
 
 repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 turbo_test=${TURBO_TEST_REPO:-$repo_root/../turbo-test}

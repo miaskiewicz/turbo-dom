@@ -22,9 +22,7 @@ fn probe_activation(
     document: v8::Local<v8::Object>,
     query: ActivationQuery,
 ) -> bool {
-    let Some(context) = document.get_creation_context(scope) else {
-        return false;
-    };
+    let context = document.get_creation_context(scope).expect("page document");
     let global = context.global(scope);
     let key = v8::String::new(scope, "__probeActivation").unwrap();
     let active = global
@@ -138,15 +136,10 @@ fn mismatches(select: impl Fn(&str) -> bool) -> Vec<String> {
         rows(id, &expected["result"], &mut want);
         rows(id, &actual, &mut got);
         let got: std::collections::BTreeMap<_, _> = got.into_iter().collect();
-        for (path, value) in want {
-            let binding = got
-                .get(&path)
-                .cloned()
-                .unwrap_or_else(|| "<missing>".into());
-            if binding != value {
-                found.push(format!("{path}: binding {binding}, chrome {value}"));
-            }
-        }
+        found.extend(want.into_iter().filter_map(|(path, value)| {
+            let binding = got.get(&path).map_or("<missing>", String::as_str);
+            (binding != value).then(|| format!("{path}: binding {binding}, chrome {value}"))
+        }));
     }
     found
 }
@@ -290,4 +283,35 @@ fn computed_style_reuse_follows_viewport_changes() {
             ["", "", ""]
         ])
     );
+}
+
+/// The stand-in embedder answers from `__probeActivation`; consuming clears it.
+#[test]
+fn probe_activation_answers_from_the_gesture_flag() {
+    super::tests::init_v8();
+    let isolate = &mut v8::Isolate::new(Default::default());
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    install_with_html(scope, "<!doctype html><body>");
+    let code = v8::String::new(scope, "globalThis.__probeActivation = true; document").unwrap();
+    let document = v8::Script::compile(scope, code, None)
+        .unwrap()
+        .run(scope)
+        .unwrap();
+    let document = v8::Local::<v8::Object>::try_from(document).unwrap();
+    let mut answers = Vec::new();
+    for query in [
+        ActivationQuery::Transient,
+        ActivationQuery::HistoryAction,
+        ActivationQuery::CrossOriginFrame,
+        ActivationQuery::FullscreenAllowed,
+        ActivationQuery::ConsumeTransient,
+        ActivationQuery::Transient,
+        ActivationQuery::ConsumeHistoryAction,
+    ] {
+        answers.push(probe_activation(scope, document, query));
+    }
+    assert_eq!(answers, [true, true, false, true, true, false, true]);
+    reset();
 }

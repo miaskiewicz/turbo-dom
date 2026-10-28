@@ -23,9 +23,8 @@ fn block(
     scope: &mut v8::PinScope,
     value: v8::Local<v8::Value>,
 ) -> Vec<(String, String, bool, Option<(String, String)>)> {
-    let Ok(array) = v8::Local::<v8::Array>::try_from(value) else {
-        return Vec::new();
-    };
+    // browser_env.js passes blockEntries(record), always an array.
+    let array = v8::Local::<v8::Array>::try_from(value).expect("block entries array");
     let mut out = Vec::new();
     let length = array.length();
     let mut index = 0;
@@ -82,10 +81,8 @@ fn native(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv:
         }
         "longhands" => {
             let name = args.get(1).to_rust_string_lossy(scope);
-            let Some(list) = longhands(&name) else {
-                rv.set_null();
-                return;
-            };
+            // browser_env.js asks only for a name shorthandName() admitted.
+            let list = longhands(&name).expect("a shorthand's longhands");
             let items: Vec<v8::Local<v8::Value>> =
                 list.iter().map(|name| string(scope, name)).collect();
             rv.set(v8::Array::new_with_elements(scope, &items).into());
@@ -149,8 +146,9 @@ fn native(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv:
             let value = string(scope, &text);
             rv.set(value);
         }
-        // A declaration list's declarations as flat `[name, value, important, ...]`.
-        "declarations" => {
+        // "declarations", the last operation browser_env.js calls: a declaration list's
+        // declarations as flat `[name, value, important, ...]`.
+        _ => {
             let text = args.get(1).to_rust_string_lossy(scope);
             let mut items = Vec::new();
             for (name, value, important) in declarations(&text) {
@@ -160,7 +158,6 @@ fn native(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv:
             }
             rv.set(v8::Array::new_with_elements(scope, &items).into());
         }
-        _ => rv.set_undefined(),
     }
 }
 

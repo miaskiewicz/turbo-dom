@@ -66,9 +66,8 @@ pub(super) fn copy<'s>(
 ) {
     let flags = {
         let _source = DomScope::for_object(scope, source);
-        let Some(root) = handle_of(scope, source) else {
-            return;
-        };
+        // cloneNode / importNode pass the source node and its freshly wrapped clone.
+        let root = handle_of(scope, source).expect("cloned source node");
         let nodes = if deep { preorder(root) } else { vec![root] };
         nodes.into_iter().map(indeterminate).collect::<Vec<_>>()
     };
@@ -76,9 +75,7 @@ pub(super) fn copy<'s>(
         return;
     }
     let _clone = DomScope::for_object(scope, clone);
-    let Some(root) = handle_of(scope, clone) else {
-        return;
-    };
+    let root = handle_of(scope, clone).expect("clone node");
     let nodes = if deep { preorder(root) } else { vec![root] };
     for (node, flag) in nodes.into_iter().zip(flags) {
         if flag && with_tree(|tree| html_input(tree, node)).unwrap_or(false) {
@@ -138,11 +135,11 @@ pub(super) fn dispatch<'s>(
     match operation.as_str() {
         "indeterminate" => rv.set_bool(indeterminate(node)),
         "set-indeterminate" => set_indeterminate(node, args.get(2).boolean_value(scope)),
-        "list" => match datalist(scope, node) {
+        // "list", the only other operation input_members.js calls.
+        _ => match datalist(scope, node) {
             Some(list) => rv.set(wrap(scope, list).into()),
             None => rv.set(v8::null(scope).into()),
         },
-        _ => {}
     }
 }
 

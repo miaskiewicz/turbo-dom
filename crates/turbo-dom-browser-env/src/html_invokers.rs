@@ -10,18 +10,15 @@ fn dispatch<'s>(
     args: v8::FunctionCallbackArguments<'s>,
     mut rv: v8::ReturnValue,
 ) {
-    let Ok(target) = v8::Local::<v8::Object>::try_from(args.get(1)) else {
-        return;
-    };
+    // html_invokers.js passes an element target (and its CommandEvent) for every operation.
+    let target = v8::Local::<v8::Object>::try_from(args.get(1)).expect("invoker target");
     let _dom = DomScope::for_object(scope, target);
     let Some(node) = handle_of(scope, target) else {
         return;
     };
     match args.get(0).to_rust_string_lossy(scope).as_str() {
         "dispatch" => {
-            let Ok(event) = v8::Local::<v8::Object>::try_from(args.get(2)) else {
-                return;
-            };
+            let event = v8::Local::<v8::Object>::try_from(args.get(2)).expect("command event");
             dispatch_host_event(scope, event, target);
             let continued = event_record(scope, event)
                 .is_some_and(|record| !get_bool_prop(scope, record, "defaultPrevented"));
@@ -35,13 +32,13 @@ fn dispatch<'s>(
                 .is_some_and(|record| get_bool_prop(scope, record, "trusted"));
             synthetic_click(scope, target, node, trusted);
         }
-        "popover" => {
+        // "popover", the remaining operation html_invokers.js calls.
+        _ => {
             let action = args.get(2).to_rust_string_lossy(scope);
             if let Ok(source) = v8::Local::<v8::Object>::try_from(args.get(3)) {
                 html_popover::invoke(scope, node, &action, source);
             }
         }
-        _ => {}
     }
 }
 

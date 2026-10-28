@@ -40,9 +40,8 @@ fn dispatch(
         }
         return;
     }
-    let Ok(host) = v8::Local::<v8::Object>::try_from(args.get(1)) else {
-        return;
-    };
+    // element_internals.js passes its record's host element for every other operation.
+    let host = v8::Local::<v8::Object>::try_from(args.get(1)).expect("internals host");
     let _dom = DomScope::for_object(scope, host);
     let Some(handle) = handle_of(scope, host) else {
         return;
@@ -60,21 +59,20 @@ fn dispatch(
         with_tree_mut(|tree| tree.clear_custom_states(handle));
         return;
     }
-    let Some(key) = args.get(2).to_string(scope) else {
-        return;
-    };
+    // add / delete pass the state already converted to a string.
+    let key = v8::Local::<v8::String>::try_from(args.get(2)).expect("converted custom state");
     let key = string_code_units(scope, key);
     match operation.as_str() {
         "add" => {
             with_tree_mut(|tree| tree.set_custom_state_utf16(handle, &key, true));
         }
-        "delete" => {
+        // "delete", the only other operation element_internals.js calls.
+        _ => {
             let present =
                 with_tree(|tree| tree.has_custom_state_utf16(handle, &key)).unwrap_or(false);
             with_tree_mut(|tree| tree.set_custom_state_utf16(handle, &key, false));
             rv.set(v8::Boolean::new(scope, present).into());
         }
-        _ => {}
     }
 }
 pub(super) fn install(scope: &mut v8::PinScope) {

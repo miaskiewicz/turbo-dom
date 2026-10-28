@@ -418,9 +418,8 @@ pub(super) fn copy(
 ) {
     let values = {
         let _owner = DomScope::for_object(scope, source);
-        let Some(handle) = handle_of(scope, source) else {
-            return;
-        };
+        // cloneNode / importNode pass the source node and its freshly wrapped clone.
+        let handle = handle_of(scope, source).expect("cloned source node");
         let mut nodes = Vec::new();
         with_tree(|tree| flatten_script_copy(tree, handle, deep, &mut nodes));
         DOM.with(|dom| {
@@ -445,9 +444,7 @@ pub(super) fn copy(
         })
     };
     let _owner = DomScope::for_object(scope, target);
-    let Some(handle) = handle_of(scope, target) else {
-        return;
-    };
+    let handle = handle_of(scope, target).expect("clone node");
     let mut nodes = Vec::new();
     with_tree(|tree| flatten_script_copy(tree, handle, deep, &mut nodes));
     DOM.with(|dom| {
@@ -867,11 +864,8 @@ fn text<'s>(
         return text_type_error(scope);
     }
     if args.length() > 0 {
-        let Some(units) =
-            trusted_types::script_units(scope, args.this(), args.get(0), "text", false)
-        else {
-            return;
-        };
+        let units = trusted_types::script_units(scope, args.this(), args.get(0), "text", false);
+        let Some(units) = units else { return };
         html_popover::disconnect(scope, node, false);
         range_live::replacing_children(scope, node);
         with_tree_mut(|tree| tree.set_text_content_utf16(node, &units));

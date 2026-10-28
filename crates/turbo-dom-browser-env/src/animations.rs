@@ -298,12 +298,9 @@ fn native(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv:
         };
     match arg_str(scope, &args, 0).as_str() {
         "dispatch" => {
-            let (Ok(target), Ok(event)) = (
-                v8::Local::<v8::Object>::try_from(args.get(1)),
-                v8::Local::<v8::Object>::try_from(args.get(2)),
-            ) else {
-                return;
-            };
+            // animations.js dispatches its Animation objects' events.
+            let target = v8::Local::<v8::Object>::try_from(args.get(1)).expect("animation");
+            let event = v8::Local::<v8::Object>::try_from(args.get(2)).expect("event");
             dispatch_host_event(scope, event, target);
         }
         "property" => {
@@ -326,11 +323,10 @@ fn native(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv:
             let value = arg_str(scope, &args, 1);
             set_string(scope, &mut rv, pseudo_element(&value));
         }
-        "active" => {
-            let Ok(document) = v8::Local::<v8::Object>::try_from(args.get(1)) else {
-                rv.set_bool(false);
-                return;
-            };
+        // "active", the only other operation animations.js calls, with a timeline's
+        // document (the realm document object).
+        _ => {
+            let document = v8::Local::<v8::Object>::try_from(args.get(1)).expect("document");
             let _dom = DomScope::for_object(scope, document);
             rv.set_bool(DOM.with(|dom| {
                 dom.borrow()
@@ -338,7 +334,6 @@ fn native(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv:
                     .is_some_and(|dom| dom.browsing_context)
             }));
         }
-        _ => {}
     }
 }
 

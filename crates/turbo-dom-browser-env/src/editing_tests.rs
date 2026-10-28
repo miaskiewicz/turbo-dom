@@ -33,15 +33,8 @@ fn run_probe(probe: &str, prelude: &str) -> serde_json::Value {
         .and_then(|script| script.run(scope))
         .and_then(|value| v8::Local::<v8::Promise>::try_from(value).ok())
         .unwrap_or_else(|| panic!("probe threw: {}", thrown(scope.exception(), scope)));
-    let step = v8::String::new(scope, "__tasks.length&&__tasks.shift()()").unwrap();
-    let step = v8::Script::compile(scope, step, None).unwrap();
-    for _ in 0..100_000 {
-        scope.perform_microtask_checkpoint();
-        if promise.state() != v8::PromiseState::Pending {
-            break;
-        }
-        step.run(scope);
-    }
+    // The probes settle within their microtasks: no queued task ever has to run.
+    scope.perform_microtask_checkpoint();
     let value = promise.result(scope).to_rust_string_lossy(scope);
     assert_eq!(promise.state(), v8::PromiseState::Fulfilled, "{value}");
     reset();
@@ -106,24 +99,65 @@ fn assert_matches_control(
     let actual = run_probe(probe, "");
     let mut found = Vec::new();
     differences("", &control["result"], &actual, known_gaps, &mut found);
-    let mut unexplained = Vec::new();
-    for (path, chrome, ours) in &found {
-        match known_gaps.iter().find(|gap| gap.0 == path) {
-            Some((_, pinned, why)) => assert_eq!(
-                ours, pinned,
-                "known gap {path} changed ({why})\n  chrome: {chrome}"
-            ),
-            None => unexplained.push(format!("{path}\n  chrome:  {chrome}\n  binding: {ours}")),
+    assert_eq!(triage(&found, known_gaps), Vec::<String>::new());
+}
+
+/// The found differences that are not a known gap at its pinned binding value, then the
+/// known gaps that no longer differ.
+fn triage(
+    found: &[(String, serde_json::Value, serde_json::Value)],
+    known_gaps: &[(&str, serde_json::Value, &str)],
+) -> Vec<String> {
+    let mut out = Vec::new();
+    for (path, chrome, ours) in found {
+        let pinned = known_gaps.iter().find(|gap| gap.0 == path);
+        if pinned.is_none_or(|(_, pinned, _)| pinned != ours) {
+            out.push(format!("{path}\n  chrome:  {chrome}\n  binding: {ours}"));
         }
     }
     for gap in known_gaps {
-        assert!(
-            found.iter().any(|(path, _, _)| path == gap.0),
-            "known gap {} now matches Chrome: remove the pin",
-            gap.0
-        );
+        if !found.iter().any(|(path, _, _)| path == gap.0) {
+            out.push(format!(
+                "known gap {} now matches Chrome: remove the pin",
+                gap.0
+            ));
+        }
     }
-    assert!(unexplained.is_empty(), "{}", unexplained.join("\n"));
+    out
+}
+
+#[test]
+fn compare_helpers_report_differences_changed_pins_and_closed_gaps() {
+    use serde_json::json;
+    let mut found = Vec::new();
+    // A key missing from the binding's object of the same size is reported as null.
+    differences(
+        "",
+        &json!({"a": 1, "b": [["x", 2]]}),
+        &json!({"a": 1, "c": 0}),
+        &[],
+        &mut found,
+    );
+    assert_eq!(
+        found,
+        vec![("/b".to_owned(), json!([["x", 2]]), json!(null))]
+    );
+    let found = vec![
+        ("/a".to_owned(), json!(1), json!(2)),
+        ("/b".to_owned(), json!(3), json!(4)),
+    ];
+    let gaps = [
+        ("/a", json!(2), "pinned"),
+        ("/b", json!(5), "stale pin"),
+        ("/c", json!(0), "closed"),
+    ];
+    assert_eq!(
+        triage(&found, &gaps),
+        vec![
+            "/b\n  chrome:  3\n  binding: 4".to_owned(),
+            "known gap /c now matches Chrome: remove the pin".to_owned(),
+        ]
+    );
 }
 
 /// execCommand / queryCommand* over a fixture matrix captured in a fresh headless Chrome 156 profile
@@ -212,10 +246,10 @@ fn run_input_steps(steps: &serde_json::Value) -> serde_json::Value {
             (None, Some("Backspace")) => {
                 editing_user_input(scope, document, "deleteContentBackward", None);
             }
-            (None, Some("Delete")) => {
+            (None, key) => {
+                assert_eq!(key, Some("Delete"), "unknown step {step}");
                 editing_user_input(scope, document, "deleteContentForward", None);
             }
-            _ => panic!("unknown step {step}"),
         }
     }
     reset();
