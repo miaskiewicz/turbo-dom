@@ -53,7 +53,6 @@ fn inline_handler_syntax_errors_are_reported() {
 /// turbo-dom#154: content of a closed `<details>` is rendered with its contents skipped, so
 /// its innerText is empty (Chrome 156), a display:none descendant's too.
 #[test]
-#[ignore = "turbo-dom#154: fails until the fix"]
 fn closed_details_content_has_empty_inner_text() {
     assert_eq!(
         page_json(

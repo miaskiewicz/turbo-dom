@@ -101,15 +101,25 @@ fn rendered(tree: &Tree, mut node: Handle, policy: &StylePolicy) -> bool {
         {
             return false;
         }
-        if closed_details_child(tree, node) {
-            return false;
-        }
         let Some(owner) = parent(tree, node) else {
             break;
         };
         node = owner;
     }
     true
+}
+/// Content of a closed `<details>` (outside its summary) is rendered with its contents
+/// skipped (Chrome 156: `content-visibility: hidden` on the details content slot).
+fn in_closed_details(tree: &Tree, mut node: Handle) -> bool {
+    loop {
+        if closed_details_child(tree, node) {
+            return true;
+        }
+        let Some(owner) = parent(tree, node) else {
+            return false;
+        };
+        node = owner;
+    }
 }
 pub(super) fn whitespace(tree: &Tree, mut node: Handle, style: &HashMap<String, String>) -> String {
     if let Some(value) = style.get("white-space") {
@@ -228,6 +238,9 @@ fn display_for_cell(tree: &Tree, node: Handle, style: &HashMap<String, String>) 
     display(tree, node, style) == "table-cell"
 }
 fn inner_text(tree: &Tree, node: Handle, policy: &StylePolicy) -> Vec<u16> {
+    if is_connected(tree, node) && in_closed_details(tree, node) {
+        return Vec::new();
+    }
     if !rendered(tree, node, policy) {
         return tree.text_content_utf16(node);
     }
