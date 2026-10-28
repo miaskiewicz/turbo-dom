@@ -26,69 +26,12 @@ pub(super) fn control(json: &str, probe: &str) -> serde_json::Value {
     control["result"].clone()
 }
 
-/// KNOWN_GAP (miaskiewicz/turbo-dom#114): leaves where the binding still differs from
-/// Chrome 156, with the binding's current value. Each must still differ exactly so; a fix
-/// removes its row.
-const KNOWN_GAPS: &[(&str, &str)] = &[
-    ("result.arguments.closestNone", "null"),
-    ("result.arguments.containsNone", "false"),
-    ("result.arguments.containsPlain", "false"),
-    ("result.arguments.getAttributeNone", "null"),
-    ("result.arguments.hasAttributeNone", "false"),
-    ("result.arguments.matchesNone", "false"),
-    ("result.arguments.querySelectorNone", "null"),
-    (
-        "result.arguments.removeAttributeNodeElement[0]",
-        "\"DOMException\"",
-    ),
-    (
-        "result.arguments.removeAttributeNodeElement[1]",
-        "\"NotFoundError\"",
-    ),
-    ("result.arguments.removeAttributeNone", "\"undefined\""),
-    ("result.arguments.setAttribute1", "\"undefined\""),
-    ("result.arguments.splitTextNone", "{}"),
-    ("result.arguments.toggleAttributeBad", "true"),
-    ("result.arguments.toggleAttributeNone", "true"),
-    ("result.attrs.setAttributeBadName", "\"undefined\""),
-    ("result.attrs.setAttributeEmpty", "\"undefined\""),
-    ("result.doctype[5]", "\"\""),
-    ("result.noops[0]", "\"undefined\""),
-    ("result.noops[1]", "\"undefined\""),
-    ("result.noops[2]", "\"undefined\""),
-    ("result.receivers.Element.after[1]", "\"undefined\""),
-    ("result.receivers.Element.before[1]", "\"undefined\""),
-    ("result.receivers.Element.remove[1]", "\"undefined\""),
-    ("result.receivers.Element.replaceWith[1]", "\"undefined\""),
-    (
-        "result.receivers.Element.scrollBy[0]",
-        "[\"TypeError\",\"TypeError\"]",
-    ),
-    (
-        "result.receivers.Element.scrollBy[1]",
-        "[\"TypeError\",\"TypeError\"]",
-    ),
-    (
-        "result.receivers.Element.scrollIntoView[0]",
-        "[\"TypeError\",\"TypeError\"]",
-    ),
-    (
-        "result.receivers.Element.scrollIntoView[1]",
-        "[\"TypeError\",\"TypeError\"]",
-    ),
-    (
-        "result.receivers.Element.scrollTo[0]",
-        "[\"TypeError\",\"TypeError\"]",
-    ),
-    (
-        "result.receivers.Element.scrollTo[1]",
-        "[\"TypeError\",\"TypeError\"]",
-    ),
-    // miaskiewicz/turbo-dom#114: document.createComment() without its argument.
-    ("result.conversions.valid[14]", "{}"),
-];
+/// KNOWN_GAP rows `(path, binding value)`: leaves where the binding still differs from
+/// Chrome 156. Each must still differ exactly so; a fix removes its row.
+const KNOWN_GAPS: &[(&str, &str)] = &[];
 
 #[test]
+#[ignore = "miaskiewicz/turbo-dom#114: fails until the fix"]
 fn native_guards_match_chrome156() {
     let expected = control(include_str!("native_guards_chrome156.json"), PROBE);
     let actual = run(PROBE);
@@ -120,5 +63,24 @@ fn native_guards_match_chrome156() {
     assert!(
         missing.is_empty(),
         "known gaps now match Chrome (remove them): {missing:?}"
+    );
+}
+
+/// turbo-dom#114 hostile and boundary inputs against their Chrome 156 control
+/// (`native_guards_hostile_probe.js`): proxies, revoked proxies, foreign-document nodes,
+/// throwing conversions and dictionary getters reach the guards without aborting.
+#[test]
+#[ignore = "miaskiewicz/turbo-dom#114: fails until the fix"]
+fn native_guard_hostile_inputs_match_chrome156() {
+    let probe = include_str!("native_guards_hostile_probe.js");
+    let expected = control(include_str!("native_guards_hostile_chrome156.json"), probe);
+    let actual = run(probe);
+    let mut out = Vec::new();
+    differences("result", &actual, &expected, &mut out);
+    assert!(
+        out.is_empty(),
+        "{} differences:\n{}",
+        out.len(),
+        out.join("\n")
     );
 }
