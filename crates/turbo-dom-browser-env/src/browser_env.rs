@@ -4662,8 +4662,8 @@ fn el_dispatch_event(
 
     // CAPTURE: window → target (capture listeners; entries with a shadow-adjusted target are
     // AT_TARGET), then BUBBLE: target → window (non-capture listeners; AT_TARGET entries always,
-    // the rest only for bubbling events). The original target ignores stopPropagation between
-    // its capture and bubble listeners, as before.
+    // the rest only for bubbling events). A stop set in the target's capture listeners also
+    // skips its bubble listeners, as in Chrome 156 (turbo-dom#157).
     let mut reached_target = false;
     if !skip {
         for index in (0..path_entries.len()).rev() {
@@ -4681,10 +4681,7 @@ fn el_dispatch_event(
             }
         }
         for (index, entry) in path_entries.iter().copied().enumerate() {
-            if terminated.get()
-                || !reached_target
-                || index != 0 && get_bool_prop(scope, record, "stop")
-            {
+            if terminated.get() || !reached_target || get_bool_prop(scope, record, "stop") {
                 break;
             }
             if index != 0 && entry.adjusted.is_none() && !bubbles {
