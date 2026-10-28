@@ -155,6 +155,20 @@ MUTATION.update({
     "flex-grow": MUTATION["flex-grow"] + ["min(1, 2)"], "opacity": MUTATION["opacity"] + ["max(0.5, 0.25)"],
     "transition-timing-function": MUTATION["transition-timing-function"] + ["cubic-bezier(calc(2px), 0, 1, 1)"],
 })
+# Round five (turbo-dom#117): math functions Chrome resolves while parsing (abs() / sign() /
+# min() / max() / clamp() with `none` bounds, canonical units), cubic-bezier() / linear()
+# arguments, hsl() hues, relative colors, text-shadow, grid area tokens, offset-rotate angles.
+MUTATION.update({
+    "margin-top": MUTATION.get("margin-top", []) + ["abs(-1in)", "abs(-1em)", "clamp(1px, 2px, none)", "clamp(none, 1em, none)", "clamp(none, 1px 2px, none)", "clamp(1px, none, 2px)", "min(1px, none)", "max(calc(1px + 1em))", "min(1em, 2em)", "min(1px, 1px + 1em)", "min(1em, min(2px))", "abs(1px + 1em)", "abs(1px, 2px)", "sign(-2)", "calc(1px * sign(-2in))", "calc(1px * sign(1em))", "calc(1px + round(1em, 1px))", "max(1px, 2s)"],
+    "transform": MUTATION["transform"] + ["scale(sign(-1px))", "scale(sign(0px))", "scale(abs(-2))", "rotate(abs(-1turn))"],
+    "transition-duration": MUTATION["transition-duration"] + ["calc(1ms)", "abs(-1ms)", "min(1ms, 2ms)"],
+    "transition-timing-function": MUTATION["transition-timing-function"] + ["cubic-bezier(0, calc(1px), 1, 1)", "cubic-bezier(calc(2), 0, 1, 1)", "linear(calc(1px), 1)", "linear(0, 1 calc(10% + 1px))", "linear(abs(-0.5), 1)"],
+    "color": MUTATION["color"] + ["hsl(calc(10deg) 50% 50%)", "hsl(calc(10) 50% 50%)", "hsl(min(10deg, 20deg) 50% 50%)", "hsl(calc(10%) 50% 50%)", "hsl(none, 50%, 50%)", "hsl(none 50% 50%)", "hsl(1s 50% 50%)", "rgb(from red r g)", "rgb(from red r g b / 1)", "rgb(from red r, g, b)"],
+    "text-shadow": MUTATION["text-shadow"] + ["1px 1px 1px 1px red", "red 1px 1px inset", "1px 1px -1px red", "1px 1px red, 2px 2px", "none", "1px", "1px 1px 2px blue"],
+    "grid-template-areas": MUTATION["grid-template-areas"] + ["\"a.b\"", "\"...\"", "\"a ... b\"", "\"a b a\"", "\"a a\" \"a b\"", "\"a a\" \"b b\"", "\"\"", "\"a\" \"b c\"", "\"-a\"", "\"a\\62\"", "\"1 2\"", "\"a#\"", "\"\u00e9\""],
+    "offset-rotate": MUTATION["offset-rotate"] + ["0deg", "reverse 0", "calc(0)", "0 auto", "10deg auto", "auto calc(1deg)", "reverse auto", "45deg reverse"],
+    "offset-path": MUTATION["offset-path"] + ["path('')", "path(' ')"],
+})
 for name, values in MUTATION.items():
     for value in values:
         if [name, value] not in pairs:

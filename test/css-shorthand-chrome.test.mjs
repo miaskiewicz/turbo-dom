@@ -18,7 +18,6 @@ const sha = (text) => createHash('sha256').update(text).digest('hex');
 
 // Scenarios whose npm result differs from Chrome for a documented reason, by id.
 const KNOWN_GAPS = new Set([
-  // turbo-dom#117 (shared with rtdom::css_shorthand).
 ]);
 
 test('element.style shorthands expand and serialize like Chrome 156 (turbo-dom#90)', () => {

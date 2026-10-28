@@ -1,7 +1,7 @@
 {
   "browser": "Chrome/156.0.8078.4",
   "v8": "15.6.75",
-  "casesSha256": "078990b86f66cf7cbcf64119d5115472a247930fc5de589218baaf8b215eaad5",
+  "casesSha256": "5ae700800a1d1829e9c9c423a9fdc014f2dbd3f2443797efe5f12acc15dc13bd",
   "probeSha256": "a458463e8721c083a75be76315f0bdaf5cee10e5d0a6fc8d470a0b926d6ee37e",
   "collectorSha256": "7bd6ffb7440d38e05cd2b8fbe0e84e91cf462043577ceada3e276728ad216172",
   "flags": [
@@ -13628,6 +13628,36 @@
           ""
         ],
         [
+          "transition-timing-function",
+          "cubic-bezier(0, calc(1px), 1, 1)",
+          "",
+          ""
+        ],
+        [
+          "transition-timing-function",
+          "cubic-bezier(calc(2), 0, 1, 1)",
+          "",
+          ""
+        ],
+        [
+          "transition-timing-function",
+          "linear(calc(1px), 1)",
+          "",
+          ""
+        ],
+        [
+          "transition-timing-function",
+          "linear(0, 1 calc(10% + 1px))",
+          "",
+          ""
+        ],
+        [
+          "transition-timing-function",
+          "linear(abs(-0.5), 1)",
+          "linear(0.5 0%, 1 100%)",
+          "transition-timing-function: linear(0.5 0%, 1 100%);"
+        ],
+        [
           "animation-timing-function",
           "ease-in-out, steps(1, start)",
           "ease-in-out, steps(1, start)",
@@ -14004,6 +14034,24 @@
           "calc(1s + 1ms + 1%)",
           "",
           ""
+        ],
+        [
+          "transition-duration",
+          "calc(1ms)",
+          "calc(0.001s)",
+          "transition-duration: calc(0.001s);"
+        ],
+        [
+          "transition-duration",
+          "abs(-1ms)",
+          "calc(0.001s)",
+          "transition-duration: calc(0.001s);"
+        ],
+        [
+          "transition-duration",
+          "min(1ms, 2ms)",
+          "calc(0.001s)",
+          "transition-duration: calc(0.001s);"
         ],
         [
           "transition-delay",
@@ -15086,6 +15134,66 @@
           ""
         ],
         [
+          "color",
+          "hsl(calc(10deg) 50% 50%)",
+          "rgb(191, 85, 64)",
+          "color: rgb(191, 85, 64);"
+        ],
+        [
+          "color",
+          "hsl(calc(10) 50% 50%)",
+          "rgb(191, 85, 64)",
+          "color: rgb(191, 85, 64);"
+        ],
+        [
+          "color",
+          "hsl(min(10deg, 20deg) 50% 50%)",
+          "rgb(191, 85, 64)",
+          "color: rgb(191, 85, 64);"
+        ],
+        [
+          "color",
+          "hsl(calc(10%) 50% 50%)",
+          "",
+          ""
+        ],
+        [
+          "color",
+          "hsl(none, 50%, 50%)",
+          "",
+          ""
+        ],
+        [
+          "color",
+          "hsl(none 50% 50%)",
+          "rgb(191, 64, 64)",
+          "color: rgb(191, 64, 64);"
+        ],
+        [
+          "color",
+          "hsl(1s 50% 50%)",
+          "",
+          ""
+        ],
+        [
+          "color",
+          "rgb(from red r g)",
+          "",
+          ""
+        ],
+        [
+          "color",
+          "rgb(from red r g b / 1)",
+          "rgb(from red r g b / 1)",
+          "color: rgb(from red r g b / 1);"
+        ],
+        [
+          "color",
+          "rgb(from red r, g, b)",
+          "",
+          ""
+        ],
+        [
           "flex-direction",
           "row column",
           "",
@@ -15138,6 +15246,18 @@
           "ray(45deg)",
           "ray(45deg)",
           "offset-path: ray(45deg);"
+        ],
+        [
+          "offset-path",
+          "path('')",
+          "",
+          ""
+        ],
+        [
+          "offset-path",
+          "path(' ')",
+          "",
+          ""
         ],
         [
           "display",
@@ -15272,6 +15392,30 @@
           "transform: matrix(1, 0, 0, 1, 0, 0);"
         ],
         [
+          "transform",
+          "scale(sign(-1px))",
+          "scale(calc(-1))",
+          "transform: scale(calc(-1));"
+        ],
+        [
+          "transform",
+          "scale(sign(0px))",
+          "scale(calc(0))",
+          "transform: scale(calc(0));"
+        ],
+        [
+          "transform",
+          "scale(abs(-2))",
+          "scale(calc(2))",
+          "transform: scale(calc(2));"
+        ],
+        [
+          "transform",
+          "rotate(abs(-1turn))",
+          "rotate(calc(360deg))",
+          "transform: rotate(calc(360deg));"
+        ],
+        [
           "list-style-type",
           "symbols(cyclic '*')",
           "symbols(cyclic \"*\")",
@@ -15296,6 +15440,48 @@
           "text-shadow: rgb(170, 187, 204) 1px 1px;"
         ],
         [
+          "text-shadow",
+          "1px 1px 1px 1px red",
+          "",
+          ""
+        ],
+        [
+          "text-shadow",
+          "red 1px 1px inset",
+          "",
+          ""
+        ],
+        [
+          "text-shadow",
+          "1px 1px -1px red",
+          "",
+          ""
+        ],
+        [
+          "text-shadow",
+          "1px 1px red, 2px 2px",
+          "red 1px 1px, 2px 2px",
+          "text-shadow: red 1px 1px, 2px 2px;"
+        ],
+        [
+          "text-shadow",
+          "none",
+          "none",
+          "text-shadow: none;"
+        ],
+        [
+          "text-shadow",
+          "1px",
+          "",
+          ""
+        ],
+        [
+          "text-shadow",
+          "1px 1px 2px blue",
+          "blue 1px 1px 2px",
+          "text-shadow: blue 1px 1px 2px;"
+        ],
+        [
           "grid-template-areas",
           "\"a\\\"b\"",
           "",
@@ -15306,6 +15492,84 @@
           "\"a\\\\b\"",
           "",
           ""
+        ],
+        [
+          "grid-template-areas",
+          "\"a.b\"",
+          "\"a . b\"",
+          "grid-template-areas: \"a . b\";"
+        ],
+        [
+          "grid-template-areas",
+          "\"...\"",
+          "\".\"",
+          "grid-template-areas: \".\";"
+        ],
+        [
+          "grid-template-areas",
+          "\"a ... b\"",
+          "\"a . b\"",
+          "grid-template-areas: \"a . b\";"
+        ],
+        [
+          "grid-template-areas",
+          "\"a b a\"",
+          "",
+          ""
+        ],
+        [
+          "grid-template-areas",
+          "\"a a\" \"a b\"",
+          "",
+          ""
+        ],
+        [
+          "grid-template-areas",
+          "\"a a\" \"b b\"",
+          "\"a a\" \"b b\"",
+          "grid-template-areas: \"a a\" \"b b\";"
+        ],
+        [
+          "grid-template-areas",
+          "\"\"",
+          "",
+          ""
+        ],
+        [
+          "grid-template-areas",
+          "\"a\" \"b c\"",
+          "",
+          ""
+        ],
+        [
+          "grid-template-areas",
+          "\"-a\"",
+          "\"-a\"",
+          "grid-template-areas: \"-a\";"
+        ],
+        [
+          "grid-template-areas",
+          "\"a\\62\"",
+          "\"ab\"",
+          "grid-template-areas: \"ab\";"
+        ],
+        [
+          "grid-template-areas",
+          "\"1 2\"",
+          "\"1 2\"",
+          "grid-template-areas: \"1 2\";"
+        ],
+        [
+          "grid-template-areas",
+          "\"a#\"",
+          "",
+          ""
+        ],
+        [
+          "grid-template-areas",
+          "\"é\"",
+          "\"é\"",
+          "grid-template-areas: \"é\";"
         ],
         [
           "font-variant-alternates",
@@ -15338,6 +15602,54 @@
           ""
         ],
         [
+          "offset-rotate",
+          "0deg",
+          "0deg",
+          "offset-rotate: 0deg;"
+        ],
+        [
+          "offset-rotate",
+          "reverse 0",
+          "",
+          ""
+        ],
+        [
+          "offset-rotate",
+          "calc(0)",
+          "",
+          ""
+        ],
+        [
+          "offset-rotate",
+          "0 auto",
+          "",
+          ""
+        ],
+        [
+          "offset-rotate",
+          "10deg auto",
+          "auto 10deg",
+          "offset-rotate: auto 10deg;"
+        ],
+        [
+          "offset-rotate",
+          "auto calc(1deg)",
+          "auto calc(1deg)",
+          "offset-rotate: auto calc(1deg);"
+        ],
+        [
+          "offset-rotate",
+          "reverse auto",
+          "",
+          ""
+        ],
+        [
+          "offset-rotate",
+          "45deg reverse",
+          "reverse 45deg",
+          "offset-rotate: reverse 45deg;"
+        ],
+        [
           "justify-items",
           "center start",
           "",
@@ -15360,6 +15672,114 @@
           "right legacy",
           "legacy right",
           "justify-items: legacy right;"
+        ],
+        [
+          "margin-top",
+          "abs(-1in)",
+          "calc(96px)",
+          "margin-top: calc(96px);"
+        ],
+        [
+          "margin-top",
+          "abs(-1em)",
+          "abs(-1em)",
+          "margin-top: abs(-1em);"
+        ],
+        [
+          "margin-top",
+          "clamp(1px, 2px, none)",
+          "calc(2px)",
+          "margin-top: calc(2px);"
+        ],
+        [
+          "margin-top",
+          "clamp(none, 1em, none)",
+          "calc(1em)",
+          "margin-top: calc(1em);"
+        ],
+        [
+          "margin-top",
+          "clamp(none, 1px 2px, none)",
+          "",
+          ""
+        ],
+        [
+          "margin-top",
+          "clamp(1px, none, 2px)",
+          "",
+          ""
+        ],
+        [
+          "margin-top",
+          "min(1px, none)",
+          "",
+          ""
+        ],
+        [
+          "margin-top",
+          "max(calc(1px + 1em))",
+          "calc(1em + 1px)",
+          "margin-top: calc(1em + 1px);"
+        ],
+        [
+          "margin-top",
+          "min(1em, 2em)",
+          "min(1em, 2em)",
+          "margin-top: min(1em, 2em);"
+        ],
+        [
+          "margin-top",
+          "min(1px, 1px + 1em)",
+          "min(1px, 1em + 1px)",
+          "margin-top: min(1px, 1em + 1px);"
+        ],
+        [
+          "margin-top",
+          "min(1em, min(2px))",
+          "min(1em, 2px)",
+          "margin-top: min(1em, 2px);"
+        ],
+        [
+          "margin-top",
+          "abs(1px + 1em)",
+          "abs(1em + 1px)",
+          "margin-top: abs(1em + 1px);"
+        ],
+        [
+          "margin-top",
+          "abs(1px, 2px)",
+          "",
+          ""
+        ],
+        [
+          "margin-top",
+          "sign(-2)",
+          "",
+          ""
+        ],
+        [
+          "margin-top",
+          "calc(1px * sign(-2in))",
+          "calc(-1px)",
+          "margin-top: calc(-1px);"
+        ],
+        [
+          "margin-top",
+          "calc(1px * sign(1em))",
+          "calc(1px * sign(1em))",
+          "margin-top: calc(1px * sign(1em));"
+        ],
+        [
+          "margin-top",
+          "calc(1px + round(1em, 1px))",
+          "calc(1px + round(1em, 1px))",
+          "margin-top: calc(1px + round(1em, 1px));"
+        ],
+        [
+          "margin-top",
+          "max(1px, 2s)",
+          "",
+          ""
         ],
         [
           "width",

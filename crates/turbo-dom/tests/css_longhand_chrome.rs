@@ -12,9 +12,7 @@ const CASES: &str = include_str!("fixtures/css-longhand-cases.json");
 const CONTROL: &str = include_str!("fixtures/css_longhand_chrome156.json");
 
 /// Pairs whose Chrome spelling needs more than this module knows, by `name|value`.
-const KNOWN_GAPS: &[&str] = &[
-    // turbo-dom#117: math functions in easings, hsl() hue, text-shadow order, area tokens.
-];
+const KNOWN_GAPS: &[&str] = &[];
 
 fn sha(text: &str) -> String {
     format!("{:x}", Sha256::digest(text.as_bytes()))

@@ -865,17 +865,18 @@ fn place_content(comps: &[Comp]) -> Option<Out> {
             })
     };
     let (used, a) = align(comps)?;
-    let is_baseline = a.ends_with("baseline");
+    // `[first] baseline` takes a justify value (`start` when there is none); Chrome 156
+    // rejects `last baseline` here.
+    if a == "last baseline" {
+        return None;
+    }
     let j = if used == comps.len() {
-        if is_baseline {
+        if a == "baseline" {
             "start".to_string()
         } else {
             a.clone()
         }
     } else {
-        if is_baseline {
-            return None;
-        }
         let (more, j) = justify(&comps[used..])?;
         if used + more != comps.len() {
             return None;
@@ -2281,15 +2282,69 @@ fn track_ok(comp: &Comp, repeat_allowed: bool) -> bool {
     }
 }
 
-/// A `grid-template-areas` string: its cell tokens separated by single spaces.
-pub(super) fn area_string(comp: &Comp) -> Option<String> {
+/// A `grid-template-areas` string's cell tokens: runs of name code points, a run of `.` one
+/// null cell `.`; `None` for a row without cells or with any other character.
+pub(super) fn area_row(comp: &Comp) -> Option<Vec<String>> {
     let Kind::Str(text) = &comp.kind else {
         return None;
     };
-    Some(format!(
-        "\"{}\"",
-        text.split_whitespace().collect::<Vec<_>>().join(" ")
-    ))
+    let name = |c: &char| c.is_ascii_alphanumeric() || matches!(c, '_' | '-') || *c >= '\u{80}';
+    let mut cells = Vec::new();
+    let mut chars = text.chars().peekable();
+    while let Some(&c) = chars.peek() {
+        if matches!(c, ' ' | '\t' | '\n' | '\r' | '\x0c') {
+            chars.next();
+        } else if c == '.' {
+            while chars.next_if_eq(&'.').is_some() {}
+            cells.push(".".to_string());
+        } else if name(&c) {
+            let mut cell = String::new();
+            while let Some(c) = chars.next_if(name) {
+                cell.push(c);
+            }
+            cells.push(cell);
+        } else {
+            // A trash token.
+            return None;
+        }
+    }
+    (!cells.is_empty()).then_some(cells)
+}
+
+/// `grid-template-areas` rows Chrome accepts (as many cells each, every named area a filled
+/// rectangle) as quoted rows.
+pub(super) fn areas_text(rows: &[Vec<String>]) -> Option<String> {
+    let width = rows.first()?.len();
+    if rows.iter().any(|row| row.len() != width) {
+        return None;
+    }
+    let cells = || {
+        rows.iter().enumerate().flat_map(|(y, row)| {
+            row.iter()
+                .enumerate()
+                .filter(|(_, cell)| *cell != ".")
+                .map(move |(x, cell)| (cell, x, y))
+        })
+    };
+    for (name, _, _) in cells() {
+        let own: Vec<(usize, usize)> = cells()
+            .filter(|(cell, _, _)| *cell == name)
+            .map(|(_, x, y)| (x, y))
+            .collect();
+        let span = |pick: fn(&(usize, usize)) -> usize| {
+            let values = own.iter().map(pick);
+            values.clone().max().unwrap_or(0) - values.min().unwrap_or(0) + 1
+        };
+        if span(|cell| cell.0) * span(|cell| cell.1) != own.len() {
+            return None;
+        }
+    }
+    Some(
+        rows.iter()
+            .map(|row| format!("\"{}\"", row.join(" ")))
+            .collect::<Vec<_>>()
+            .join(" "),
+    )
 }
 
 /// `grid-template`: rows, columns, areas.
@@ -2332,8 +2387,7 @@ fn grid_template(comps: &[Comp]) -> Option<(String, String, String)> {
     };
     while at < rows.len() {
         names(&mut at, &mut tracks);
-        let area = area_string(rows.get(at)?)?;
-        areas.push(area);
+        areas.push(area_row(rows.get(at)?)?);
         at += 1;
         let size = rows.get(at).and_then(|c| {
             (c.string().is_none() && c.kind != Kind::Function("[".into()))
@@ -2370,7 +2424,7 @@ fn grid_template(comps: &[Comp]) -> Option<(String, String, String)> {
     Some((
         merged.join(" "),
         columns.unwrap_or_else(|| "none".into()),
-        areas.join(" "),
+        areas_text(&areas)?,
     ))
 }
 
@@ -2555,7 +2609,7 @@ fn border_image(comps: &[Comp], webkit: bool) -> Option<[Option<String>; 5]> {
 /// `path()` data with Chrome's spacing (commands and numbers separated by one space).
 pub(super) fn path_text(text: &str) -> String {
     let Some(start) = text.find('"') else {
-        return text.to_string();
+        unreachable!("path_data_valid found the quoted data")
     };
     let inner = &text[start + 1..text.rfind('"').unwrap_or(text.len())];
     let mut tokens = Vec::new();
@@ -2642,25 +2696,14 @@ fn offset(comps: &[Comp]) -> Option<Out> {
         };
         if let Some(value) = found {
             path = if value.starts_with("path(") {
+                if !path_data_valid(&value) {
+                    return None;
+                }
                 path_text(&value)
             } else {
                 value
             };
             at += 1;
-            let rotate_part = |comps: &[Comp]| -> Option<(usize, String)> {
-                let first = comps.first()?;
-                if let Some(keyword) = first.keyword(&["auto", "reverse"]) {
-                    if let Some(angle) = comps.get(1).and_then(Comp::angle) {
-                        return Some((2, format!("{keyword} {angle}")));
-                    }
-                    return Some((1, keyword));
-                }
-                let angle = first.angle()?;
-                if let Some(keyword) = comps.get(1).and_then(|c| c.keyword(&["auto", "reverse"])) {
-                    return Some((2, format!("{keyword} {angle}")));
-                }
-                Some((1, angle))
-            };
             let parsed = any_order(
                 &main[at..],
                 &[&one(|c| c.length_percentage(true)), &rotate_part],
@@ -2684,6 +2727,34 @@ fn offset(comps: &[Comp]) -> Option<Out> {
         ("offset-rotate", rotate),
         ("offset-anchor", anchor),
     ])
+}
+
+/// `<offset-rotate>` from the front: `[auto | reverse] || <angle>` (an angle has a unit).
+pub(super) fn rotate_part(comps: &[Comp]) -> Option<(usize, String)> {
+    let first = comps.first()?;
+    if let Some(keyword) = first.keyword(&["auto", "reverse"]) {
+        if let Some(angle) = comps.get(1).and_then(Comp::angle_strict) {
+            return Some((2, format!("{keyword} {angle}")));
+        }
+        return Some((1, keyword));
+    }
+    let angle = first.angle_strict()?;
+    if let Some(keyword) = comps.get(1).and_then(|c| c.keyword(&["auto", "reverse"])) {
+        return Some((2, format!("{keyword} {angle}")));
+    }
+    Some((1, angle))
+}
+
+/// `path()`'s string holds path data: at least one command, only path data characters.
+pub(super) fn path_data_valid(text: &str) -> bool {
+    let (Some(start), Some(end)) = (text.find('"'), text.rfind('"')) else {
+        return false;
+    };
+    let data = &text[(start + 1).min(end)..end];
+    !data.trim().is_empty()
+        && data
+            .chars()
+            .all(|c| c.is_ascii_whitespace() || "MmLlHhVvCcSsQqTtAaZz0123456789.,+-eE".contains(c))
 }
 
 /// `<repeat-style>`: Chrome's canonical spelling.

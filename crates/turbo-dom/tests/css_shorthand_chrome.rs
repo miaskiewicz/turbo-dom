@@ -15,10 +15,7 @@ const CASES: &str = include_str!("fixtures/css-shorthand-cases.json");
 const CONTROL: &str = include_str!("fixtures/css_shorthand_chrome156.json");
 
 /// Scenarios whose Chrome result differs for a documented reason, by id.
-const KNOWN_GAPS: &[&str] = &[
-    // turbo-dom#117: math functions, hsl() hue, place-content / offset / columns /
-    // timeline-trigger spellings (the npm port shares them).
-];
+const KNOWN_GAPS: &[&str] = &[];
 
 fn sha(text: &str) -> String {
     format!("{:x}", Sha256::digest(text.as_bytes()))

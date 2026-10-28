@@ -9,9 +9,9 @@ use sha2::{Digest, Sha256};
 
 /// Pairs whose binding result differs from Chrome for a documented reason, by `name|value`.
 const KNOWN_GAPS: &[&str] = &[
-    // turbo-dom#117: math functions in easings, hsl() hue, text-shadow order, area tokens.
-    // turbo-dom#117 (offset rotate `0`): the binding's declaration layer accepts a unitless 0
-    // angle in offset-rotate, which Chrome 156 rejects.
+    // turbo-dom#170: the declaration layer rejects a `sign()` of a dimension in a number slot.
+    "transform|scale(sign(-1px))",
+    "transform|scale(sign(0px))",
 ];
 
 fn fixture(name: &str) -> String {
