@@ -284,9 +284,14 @@ fn navigation_facts_are_refused_for_inert_documents() {
         );
         let document = object(scope, "document");
         assert!(set_document_last_modified(scope, document, Some(0.0)));
+        // lastModified is local time: the expected string is the epoch formatted the same
+        // way in this realm's time zone (CI runs TZ=UTC; a developer machine may not).
         assert_eq!(
             json(scope, "document.lastModified"),
-            r#""01/01/1970 00:00:00""#
+            json(
+                scope,
+                "(d => [d.getMonth() + 1, d.getDate()].map(n => String(n).padStart(2, '0')).join('/') + '/' + d.getFullYear() + ' ' + [d.getHours(), d.getMinutes(), d.getSeconds()].map(n => String(n).padStart(2, '0')).join(':'))(new Date(0))"
+            )
         );
     });
 }
