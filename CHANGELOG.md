@@ -7,6 +7,11 @@ at the time); this file reconstructs them from history.
 
 ## [Unreleased]
 
+### Fixed — browser-env caret moves step through table edges and cells (miaskiewicz/turbo-dom#144)
+- `Selection.modify('move', …, 'character')` stops on the positions before and after a table
+  (`BODY:1`, `BODY:2`) and in its cells like Chrome 156, instead of sticking at the text
+  next to the table.
+
 ### Fixed — layout white-space preserves spaces and newlines like Chrome 156 (miaskiewicz/turbo-dom#120, #121, #122, #166)
 - A preserved newline (`pre` / `pre-wrap` / `break-spaces` / `pre-line`) is a forced line
   break; `pre-wrap` / `break-spaces` spaces no longer collapse (a space-only line is a line

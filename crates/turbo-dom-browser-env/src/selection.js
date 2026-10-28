@@ -283,9 +283,10 @@
     const last = layout.texts.length - 1;
     return last < 0 ? null : [last, layout.texts[last].length];
   }
-  // `edge`: the position was produced by caret movement onto the after-table candidate.
+  // `edge`: the position was produced by caret movement onto a table-edge candidate (before
+  // or after a table: Chrome keeps it distinct from the adjacent text, turbo-dom#144).
   function locate(layout, index, position, edge) {
-    if (edge) for (let i = 0; i < layout.edges.length; i++) if (layout.edges[i] === 2 && samePoint(slotPoint(layout, i, 0), position)) return [i, 0];
+    if (edge) for (let i = 0; i < layout.edges.length; i++) if (layout.edges[i] !== 0 && samePoint(slotPoint(layout, i, 0), position)) return [i, 0];
     return located(layout, layout.queries[index]);
   }
   function canonical(position, edge) {
@@ -808,8 +809,8 @@
     else { newAnchor = baseFirst ? target : base; newFocus = baseFirst ? extent : target; }
     const anchorPosition = at(layout, newAnchor[0], newAnchor[1]), focusPosition = at(layout, newFocus[0], newFocus[1]);
     const options = create(null);
-    options.edgeAnchor = !layout.control && layout.edges[newAnchor[0]] === 2;
-    options.edgeFocus = !layout.control && layout.edges[newFocus[0]] === 2;
+    options.edgeAnchor = !layout.control && layout.edges[newAnchor[0]] !== 0;
+    options.edgeFocus = !layout.control && layout.edges[newFocus[0]] !== 0;
     setSelection(state, anchorPosition, focusPosition, extend, undefined, null, options);
     if (xpos !== null) state.xpos = xpos;
   }

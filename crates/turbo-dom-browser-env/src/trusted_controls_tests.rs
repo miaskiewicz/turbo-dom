@@ -380,14 +380,8 @@ fn custom_elements_edges_match_chrome156() {
 fn selection_text_edges_match_chrome156() {
     let probe = include_str!("selection_text_edges_probe.js");
     let expected = control(include_str!("selection_text_edges_chrome156.json"), probe);
-    assert_matches_control(
-        &run_probe(probe),
-        &expected,
-        &[
-            // miaskiewicz/turbo-dom#144: caret moves into a table stop at its edge.
-            r##"result.moves = "#text:ab:1 #text:ab:2 #text:ab:2 #text:ab:2 #text:ab:2 #text:ab:2 #text:ab:2 #text:ab:2 #text:ab:1 #text:ab:0 #text:ab:0 #text:ab:0 #text:ab:0 #text:ab:0 #text:ab:0 #text:ab:0""##,
-        ],
-    );
+    // miaskiewicz/turbo-dom#144: caret moves step through a table's edges and cells.
+    assert_matches_control(&run_probe(probe), &expected, &[]);
 }
 
 /// miaskiewicz/turbo-dom#131: a `<details>` whose open attribute the parser set (every
@@ -424,14 +418,4 @@ fn template_contents_details_toggle_runs() {
          await new Promise(resolve => setTimeout(resolve, 20)); return log; })()",
     );
     assert_eq!(got.to_string(), r#"["closed>open"]"#);
-}
-
-/// turbo-dom#144: caret `modify('move', …, 'character')` steps into and out of a table's
-/// cells (Chrome 156), with no known gaps left in the control.
-#[test]
-#[ignore = "turbo-dom#144: fails until the fix"]
-fn selection_caret_moves_into_tables_match_chrome156() {
-    let probe = include_str!("selection_text_edges_probe.js");
-    let expected = control(include_str!("selection_text_edges_chrome156.json"), probe);
-    assert_matches_control(&run_probe(probe), &expected, &[]);
 }
