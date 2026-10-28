@@ -70,26 +70,48 @@ fn keyframe_property(name: &str) -> Option<String> {
             css
         }
     };
-    // Lightning CSS does not model the motion-path `offset` shorthand Chrome animates.
-    ((super::cssom_parser::is_supported_property(&css) || css == "offset")
+    // Lightning CSS does not model the motion-path `offset` shorthand Chrome animates, nor
+    // the LENGTH_ONLY properties.
+    ((super::cssom_parser::is_supported_property(&css)
+        || css == "offset"
+        || LENGTH_ONLY.iter().any(|row| row.0 == css))
         && !NOT_ANIMATABLE.contains(&css.as_str()))
     .then_some(css)
 }
 
-fn number(value: f32) -> String {
-    let value = f64::from(value);
-    if value == 0.0 {
+/// Chrome's specified-value number text: printf `%.6g` (six significant digits, exponent
+/// form below 1e-4 and from 1e6 with a two-digit exponent), and `0` for either zero.
+fn number(value: f64) -> String {
+    let trim = |text: &str| {
+        if text.contains('.') {
+            text.trim_end_matches('0').trim_end_matches('.').to_owned()
+        } else {
+            text.to_owned()
+        }
+    };
+    if value == 0.0 || !value.is_finite() {
         return "0".into();
     }
-    let digits = 5 - value.abs().log10().floor() as i32;
-    let scale = 10f64.powi(digits.clamp(0, 12));
-    let rounded = (value * scale).round() / scale;
-    let text = format!("{rounded}");
-    if text == "-0" {
-        "0".into()
+    let scientific = format!("{value:.5e}");
+    let (mantissa, exponent) = scientific.split_once('e').unwrap_or((&scientific, "0"));
+    let exponent: i32 = exponent.parse().unwrap_or(0);
+    if (-4..6).contains(&exponent) {
+        trim(&format!("{value:.*}", (5 - exponent) as usize))
     } else {
-        text
+        let sign = if exponent < 0 { '-' } else { '+' };
+        format!("{}e{sign}{:02}", trim(mantissa), exponent.abs())
     }
+}
+
+/// The numeric value of a number-bearing token from its source text (the token's f32 loses
+/// precision Chrome keeps); `suffix` is the unit or `%` the text ends with.
+fn token_number(text: &str, suffix: &str, fallback: f32) -> f64 {
+    text.len()
+        .checked_sub(suffix.len())
+        .and_then(|end| text.get(..end))
+        .filter(|_| text[text.len() - suffix.len()..].eq_ignore_ascii_case(suffix))
+        .and_then(|number| number.parse::<f64>().ok())
+        .unwrap_or_else(|| f64::from(fallback))
 }
 
 /// Canonical spelling of a transform function name; other function names lowercase.
@@ -128,16 +150,22 @@ fn serialize_tokens(input: &mut Parser<'_, '_>, out: &mut String, zero_length: b
         *space = false;
         out.push_str(text);
     };
-    while let Ok(token) = input.next_including_whitespace() {
+    loop {
+        let start = input.position();
+        let Ok(token) = input.next_including_whitespace_and_comments() else {
+            break;
+        };
         let token = token.clone();
+        let text = input.slice_from(start);
         match token {
+            Token::Comment(_) => {}
             Token::WhiteSpace(_) => space = true,
             Token::Comma => {
                 out.push_str(", ");
                 space = false;
             }
             Token::Number { value, .. } => {
-                let text = number(value);
+                let text = number(token_number(text, "", value));
                 let text = if zero_length && text == "0" {
                     "0px".into()
                 } else {
@@ -145,13 +173,19 @@ fn serialize_tokens(input: &mut Parser<'_, '_>, out: &mut String, zero_length: b
                 };
                 push(out, &mut space, &text)
             }
-            Token::Percentage { unit_value, .. } => {
-                push(out, &mut space, &format!("{}%", number(unit_value * 100.0)))
-            }
+            Token::Percentage { unit_value, .. } => push(
+                out,
+                &mut space,
+                &format!("{}%", number(token_number(text, "%", unit_value * 100.0))),
+            ),
             Token::Dimension { value, unit, .. } => push(
                 out,
                 &mut space,
-                &format!("{}{}", number(value), unit.to_ascii_lowercase()),
+                &format!(
+                    "{}{}",
+                    number(token_number(text, &unit, value)),
+                    unit.to_ascii_lowercase()
+                ),
             ),
             Token::Ident(name) => push(out, &mut space, &name.to_ascii_lowercase()),
             Token::Function(name) => {
@@ -186,13 +220,97 @@ fn serialize_tokens(input: &mut Parser<'_, '_>, out: &mut String, zero_length: b
     }
 }
 
+/// Whether a declaration value has a `var()` / `env()` reference at any depth (its
+/// validity is deferred to computed-value time), or None when it holds a token no
+/// declaration value can (an unmatched closing bracket, a bad string / URL, `;`).
+fn deferred(input: &mut Parser<'_, '_>) -> Option<bool> {
+    let mut found = false;
+    while let Ok(token) = input.next_including_whitespace_and_comments() {
+        match token.clone() {
+            Token::CloseParenthesis
+            | Token::CloseSquareBracket
+            | Token::CloseCurlyBracket
+            | Token::BadString(_)
+            | Token::BadUrl(_)
+            | Token::Semicolon => return None,
+            token @ (Token::Function(_)
+            | Token::ParenthesisBlock
+            | Token::SquareBracketBlock
+            | Token::CurlyBracketBlock) => {
+                if let Token::Function(name) = &token {
+                    found |= name.eq_ignore_ascii_case("var") || name.eq_ignore_ascii_case("env");
+                }
+                let nested = input
+                    .parse_nested_block(|input| {
+                        Ok::<_, cssparser::ParseError<'_, ()>>(deferred(input))
+                    })
+                    .ok()
+                    .flatten()?;
+                found |= nested;
+            }
+            _ => {}
+        }
+    }
+    Some(found)
+}
+
+/// A declaration value's specified text: the source between its first and last significant
+/// tokens (whitespace and comments trimmed, a trailing `!important` dropped), or None when
+/// the value cannot be a declaration value at all.
+fn specified_text(value: &str) -> Option<String> {
+    let mut input = ParserInput::new(value);
+    let mut parser = Parser::new(&mut input);
+    deferred(&mut parser)?;
+    let mut input = ParserInput::new(value);
+    let mut parser = Parser::new(&mut input);
+    // (start, end, is `!`, is the `important` keyword) of each top-level significant token.
+    let mut spans = Vec::new();
+    loop {
+        let start = parser.position();
+        let Ok(token) = parser.next_including_whitespace_and_comments() else {
+            break;
+        };
+        let (bang, important, block) = match token {
+            Token::WhiteSpace(_) | Token::Comment(_) => continue,
+            Token::Delim('!') => (true, false, false),
+            Token::Ident(name) => (false, name.eq_ignore_ascii_case("important"), false),
+            Token::Function(_)
+            | Token::ParenthesisBlock
+            | Token::SquareBracketBlock
+            | Token::CurlyBracketBlock => (false, false, true),
+            _ => (false, false, false),
+        };
+        if block {
+            // Consume the block: its end is the position after its closing bracket (or the
+            // end of the input when it is unclosed).
+            let _ = parser.parse_nested_block(|input| {
+                while input.next_including_whitespace_and_comments().is_ok() {}
+                Ok::<(), cssparser::ParseError<'_, ()>>(())
+            });
+        }
+        spans.push((
+            start.byte_index(),
+            parser.position().byte_index(),
+            bang,
+            important,
+        ));
+    }
+    if let [.., (_, _, true, false), (_, _, false, true)] = spans.as_slice() {
+        spans.truncate(spans.len() - 2);
+    }
+    Some(match (spans.first(), spans.last()) {
+        (Some(first), Some(last)) => value[first.0..last.1].to_owned(),
+        _ => String::new(),
+    })
+}
+
 /// The value Chrome keeps for a keyframe property, or None when the declaration is invalid
 /// (Chrome drops invalid members from getKeyframes()).
 fn keyframe_value(property: &str, value: &str) -> Option<String> {
-    let value = value.trim();
     if property.starts_with("--") {
-        return Some(value.to_owned());
+        return Some(specified_text(value).unwrap_or_else(|| value.trim().to_owned()));
     }
+    let value = value.trim();
     if value.is_empty() {
         return None;
     }
@@ -202,6 +320,19 @@ fn keyframe_value(property: &str, value: &str) -> Option<String> {
         "inherit" | "initial" | "unset" | "revert" | "revert-layer"
     ) {
         return Some(lower);
+    }
+    // A var() / env() reference keeps the specified text (Chrome 156).
+    let mut input = ParserInput::new(value);
+    if deferred(&mut Parser::new(&mut input))? {
+        return specified_text(value);
+    }
+    if let Some(&row) = LENGTH_ONLY.iter().find(|row| row.0 == property) {
+        if !length_only(value, row) {
+            return None;
+        }
+    }
+    if property == "line-height" && negative(value) {
+        return None;
     }
     let id = PropertyId::from(lightningcss::values::string::CowArcStr::from(
         property.to_owned(),
@@ -239,9 +370,93 @@ fn keyframe_value(property: &str, value: &str) -> Option<String> {
     Some(out)
 }
 
+/// One LENGTH_ONLY row: (name, keyword values, non-negative, percentages allowed).
+type LengthOnly = (&'static str, &'static [&'static str], bool, bool);
+
+/// Animatable length properties Lightning CSS does not model. Chrome 156 keeps them as
+/// keyframe members.
+const LENGTH_ONLY: &[LengthOnly] = &[
+    ("column-width", &["auto"], true, false),
+    (
+        "column-rule-width",
+        &["thin", "medium", "thick"],
+        true,
+        false,
+    ),
+    ("outline-offset", &[], false, false),
+    ("offset-distance", &[], false, true),
+    ("shape-margin", &[], true, true),
+    ("text-underline-offset", &["auto"], false, true),
+    ("x", &[], false, true),
+    ("r", &[], true, true),
+];
+
+/// Whether `value` is one of the property's keywords, a zero, a length or percentage
+/// (non-negative when required) or a math function.
+fn length_only(value: &str, (_, keywords, non_negative, percentage): LengthOnly) -> bool {
+    const UNITS: &[&str] = &[
+        "px", "em", "rem", "ex", "rex", "ch", "rch", "ic", "ric", "cap", "rcap", "lh", "rlh", "vw",
+        "vh", "vi", "vb", "vmin", "vmax", "svw", "svh", "svi", "svb", "svmin", "svmax", "lvw",
+        "lvh", "lvi", "lvb", "lvmin", "lvmax", "dvw", "dvh", "dvi", "dvb", "dvmin", "dvmax", "cqw",
+        "cqh", "cqi", "cqb", "cqmin", "cqmax", "cm", "mm", "q", "in", "pt", "pc",
+    ];
+    let mut input = ParserInput::new(value);
+    let mut parser = Parser::new(&mut input);
+    parser
+        .parse_entirely(|input| {
+            let valid = match input.next()?.clone() {
+                Token::Ident(name) => keywords.iter().any(|k| name.eq_ignore_ascii_case(k)),
+                Token::Number { value, .. } => value == 0.0,
+                Token::Dimension { value, unit, .. } => {
+                    UNITS.iter().any(|u| unit.eq_ignore_ascii_case(u))
+                        && !(non_negative && value < 0.0)
+                }
+                Token::Percentage { unit_value, .. } => {
+                    percentage && !(non_negative && unit_value < 0.0)
+                }
+                Token::Function(name) => {
+                    ["calc", "min", "max", "clamp"]
+                        .iter()
+                        .any(|f| name.eq_ignore_ascii_case(f))
+                        && input
+                            .parse_nested_block(|input| {
+                                while input.next().is_ok() {}
+                                Ok::<(), cssparser::ParseError<'_, ()>>(())
+                            })
+                            .is_ok()
+                }
+                _ => false,
+            };
+            if valid {
+                Ok(())
+            } else {
+                Err(input.new_custom_error::<(), ()>(()))
+            }
+        })
+        .is_ok()
+}
+
+/// Whether `value` is one negative number, percentage or dimension (Lightning CSS admits a
+/// negative line-height, Chrome 156 does not).
+fn negative(value: &str) -> bool {
+    let mut input = ParserInput::new(value);
+    let mut parser = Parser::new(&mut input);
+    parser
+        .parse_entirely(|input| match input.next()? {
+            Token::Number { value, .. } | Token::Dimension { value, .. } => Ok(*value < 0.0),
+            Token::Percentage { unit_value, .. } => Ok(*unit_value < 0.0),
+            _ => Err(input.new_custom_error::<(), ()>(())),
+        })
+        .unwrap_or(false)
+}
+
 /// Length-valued properties whose bare zero serializes as `0px` (the computed-style
 /// snapshot's length set).
 fn length_property(property: &str) -> bool {
+    // Number-valued despite their names (Chrome 156 keeps a bare `0`).
+    if matches!(property, "line-height" | "stroke-width" | "tab-size") {
+        return false;
+    }
     [
         "width",
         "height",
@@ -257,6 +472,7 @@ fn length_property(property: &str) -> bool {
     .any(|part| property.contains(part))
         || property.ends_with("size")
         || property.starts_with("inset")
+        || property.starts_with("background-position-")
         || matches!(
             property,
             "top"
@@ -264,9 +480,19 @@ fn length_property(property: &str) -> bool {
                 | "bottom"
                 | "left"
                 | "flex-basis"
+                | "outline"
                 | "outline-offset"
+                | "offset-distance"
+                | "shape-margin"
+                | "text-underline-offset"
+                | "x"
+                | "r"
                 | "column-width"
                 | "column-gap"
+                | "perspective"
+                | "border-spacing"
+                | "vertical-align"
+                | "text-decoration-thickness"
         )
 }
 

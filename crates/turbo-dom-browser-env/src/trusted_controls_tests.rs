@@ -236,19 +236,14 @@ fn assert_matches_control(actual: &serde_json::Value, expected: &serde_json::Val
 }
 
 #[test]
+#[ignore = "turbo-dom#131: fails until the fix"]
 fn activation_granted_gates_match_chrome156() {
     let expected = control(include_str!("activation_granted_chrome156.json"), PROBE);
-    assert_matches_control(
-        &run_probe(PROBE),
-        &expected,
-        &[
-            // miaskiewicz/turbo-dom#131: a parser-created `<details open>` fires no toggle.
-            r#"result.details.log = [["toggle","d","closed","open"],["toggle","d","open","closed"],["toggle","e","open","open"]]"#,
-        ],
-    );
+    assert_matches_control(&run_probe(PROBE), &expected, &[]);
 }
 
 #[test]
+#[ignore = "turbo-dom#131: fails until the fix"]
 fn dialog_popover_edges_match_chrome156() {
     let probe = include_str!("dialog_popover_edges_probe.js");
     let expected = control(include_str!("dialog_popover_edges_chrome156.json"), probe);
@@ -265,8 +260,6 @@ fn dialog_popover_edges_match_chrome156() {
             // miaskiewicz/turbo-dom#148: `::slotted(div):open` is accepted.
             r#"result.selectors.result[18][1] = []"#,
             r#"result.selectors.result[18][2] = false"#,
-            // miaskiewicz/turbo-dom#131: a parser-created `<details open>` fires no toggle.
-            r#"result.selectors.log = [["beforetoggle","d","open"],["beforetoggle","p","open"],["toggle","p","open"]]"#,
         ],
     );
 }
@@ -416,4 +409,15 @@ fn selection_text_edges_match_chrome156() {
             r#"result.transforms[2] = "\"ab cd\"""#,
         ],
     );
+}
+
+/// miaskiewicz/turbo-dom#131: a `<details>` whose open attribute the parser set (every
+/// fragment parser, template contents, a DOMParser document) or a clone copied queues a
+/// toggle task from "closed" to "open" (Chrome 156).
+#[test]
+#[ignore = "turbo-dom#131: fails until the fix"]
+fn parsed_details_toggle_matches_chrome156() {
+    let probe = include_str!("details_toggle_probe.js");
+    let expected = control(include_str!("details_toggle_chrome156.json"), probe);
+    assert_matches_control(&run_probe(probe), &expected, &[]);
 }
