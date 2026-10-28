@@ -42,6 +42,9 @@ struct RowRef<'a> {
     /// like Hacker News) reserves its space instead of collapsing to zero.
     min_height: f32,
     repeat: Option<RepeatKind>,
+    /// The row's `break-inside: avoid`, carried to its fragment's break hints
+    /// (miaskiewicz/turbo-dom#158).
+    avoid_break_inside: bool,
 }
 
 fn cells_of(row: &LayoutBox) -> Vec<&LayoutBox> {
@@ -73,6 +76,7 @@ fn row_ref(row: &LayoutBox, repeat: Option<RepeatKind>) -> RowRef<'_> {
         cells: cells_of(row),
         min_height: row_min_height(row),
         repeat,
+        avoid_break_inside: row.style.get("break-inside").map(str::trim) == Some("avoid"),
     }
 }
 
@@ -1163,6 +1167,7 @@ fn make_row_frag(row: &RowRef, r: usize, geom: &Geom, cx: f32, cy: f32) -> Fragm
         content,
     );
     f.break_meta.repeatable = row.repeat;
+    f.break_meta.break_inside_avoid = row.avoid_break_inside;
     f
 }
 
