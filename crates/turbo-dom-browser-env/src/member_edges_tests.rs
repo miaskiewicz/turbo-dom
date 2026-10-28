@@ -145,10 +145,8 @@ fn closed_details_content_has_empty_inner_text() {
 fn keyframe_values_match_chrome156() {
     let probe = include_str!("keyframe_values_probe.js");
     let expected = control(include_str!("keyframe_values_chrome156.json"), probe);
-    // miaskiewicz/turbo-dom#167: the flex shorthand is not expanded.
-    let gaps = [("result.zeros[35][1]", "\"0\"")];
     assert_eq!(
-        unexpected(&run(probe), &expected, &gaps),
+        unexpected(&run(probe), &expected, &[]),
         Vec::<String>::new()
     );
 }
