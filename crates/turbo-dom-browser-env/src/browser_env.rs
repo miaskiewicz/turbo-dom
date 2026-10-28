@@ -4585,6 +4585,12 @@ fn el_dispatch_event(
         }
     };
     set_path(scope, Some(target));
+    // turbo-dom#153: handlers on the path whose compile failed report it now.
+    let nodes = path_entries
+        .iter()
+        .filter_map(|entry| entry.node)
+        .collect::<Vec<_>>();
+    event_handlers::report_dispatch(scope, &nodes, &ty);
 
     // Set when a listener's call ended by execution termination: the dispatch stops there.
     let terminated = std::cell::Cell::new(false);
