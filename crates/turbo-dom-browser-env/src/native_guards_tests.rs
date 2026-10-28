@@ -85,7 +85,7 @@ const KNOWN_GAPS: &[(&str, &str)] = &[
         "[\"TypeError\",\"TypeError\"]",
     ),
     // miaskiewicz/turbo-dom#114: document.createComment() without its argument.
-    ("result.conversions.valid[11]", "{}"),
+    ("result.conversions.valid[14]", "{}"),
 ];
 
 #[test]
