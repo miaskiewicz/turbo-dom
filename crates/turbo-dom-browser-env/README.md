@@ -476,6 +476,10 @@ CI gates the crate's line coverage in the `host-internals,test-support` configur
 `docs/CONSOLIDATION.md`, "Coverage"). New tests assert behaviour against Chrome 156 controls.
 The coverage phase added:
 
+- `edge_probes_tests.rs`: `shadow_slots_edges`, `dom_mutation_validity`, `selector_edges`, `sanitizer_edges`,
+  `document_edges`, `receivers_edges` probes -> `*_chrome156.json` (KNOWN_GAP rows name their issues).
+- `termination_tests.rs`: native walks under a pending termination; the host CSS policy cascade view.
+- `harness_tests.rs`: `thrown`, the shared failure-message helper of the probe runners.
 - `native_guards_probe.js` -> `native_guards_chrome156.json` (`native_guards_tests.rs`):
   receiver brand checks, argument conversion and the edge results of the native attribute,
   character-data, tree, collection and shadow-root members.
