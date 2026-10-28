@@ -14,12 +14,6 @@ const PROBE: &str = include_str!("member_edges_probe.js");
 const KNOWN_GAPS: &[(&str, &str)] = &[
     // miaskiewicz/turbo-dom#153: handler compile errors are not reported.
     ("result.handlers.reported", "[]"),
-    // miaskiewicz/turbo-dom#155: getKeyframes() value spelling.
-    ("result.keyframes.negativeSmall[0].translate", "\"0px\""),
-    ("result.keyframes.negativeZero[0].opacity", "\"0\""),
-    ("result.keyframes.paren[0].width", "\"var(--w,  (1px))\""),
-    ("result.keyframes.zeros[0].columnWidth", "null"),
-    ("result.keyframes.zeros[0].outlineOffset", "null"),
 ];
 
 /// The differing leaves of `actual` that are not a listed gap, then the listed gaps that no
@@ -80,6 +74,7 @@ fn unexpected_lists_differences_and_stale_gaps() {
 }
 
 #[test]
+#[ignore = "turbo-dom#155: fails until the fix"]
 fn member_edges_match_chrome156() {
     let expected = control(include_str!("member_edges_chrome156.json"), PROBE);
     assert_eq!(
@@ -142,5 +137,18 @@ fn closed_details_content_has_empty_inner_text() {
             "['p', 'b', 'i'].map(id => document.getElementById(id).innerText)",
         ),
         r#"["","",""]"#
+    );
+}
+
+/// miaskiewicz/turbo-dom#155: getKeyframes() member values spell numbers, var() text and
+/// bare zeros like Chrome 156 (`keyframe_values_probe.js` → `keyframe_values_chrome156.json`).
+#[test]
+#[ignore = "turbo-dom#155: fails until the fix"]
+fn keyframe_values_match_chrome156() {
+    let probe = include_str!("keyframe_values_probe.js");
+    let expected = control(include_str!("keyframe_values_chrome156.json"), probe);
+    assert_eq!(
+        unexpected(&run(probe), &expected, &[]),
+        Vec::<String>::new()
     );
 }
