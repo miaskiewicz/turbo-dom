@@ -208,3 +208,34 @@ fn host_css_policy_lists_blocked_sheets_and_inline_overrides() {
         },
     );
 }
+
+/// The embedder's mutation consumer registers only on its own document node with a callback
+/// of that document's realm; anything else is refused and receives nothing.
+#[test]
+fn mutation_consumer_registration_rejects_foreign_receivers_and_callbacks() {
+    with_page("<p id=p></p>", |scope| {
+        let document = object(scope, "document");
+        let callback = v8::Local::<v8::Function>::try_from(eval(
+            scope,
+            "globalThis.records = 0; () => records++",
+        ))
+        .unwrap();
+        let plain = object(scope, "({})");
+        let element = object(scope, "document.getElementById('p')");
+        assert!(!install_mutation_consumer(scope, plain, callback));
+        assert!(!install_mutation_consumer(scope, element, callback));
+        let other = v8::Context::new(scope, Default::default());
+        let foreign = {
+            let scope = &mut v8::ContextScope::new(scope, other);
+            v8::Local::<v8::Function>::try_from(eval(scope, "() => 0")).unwrap()
+        };
+        assert!(!install_mutation_consumer(scope, document, foreign));
+        eval(scope, "document.getElementById('p').append('x')");
+        scope.perform_microtask_checkpoint();
+        assert_eq!(json(scope, "records"), "0");
+        assert!(install_mutation_consumer(scope, document, callback));
+        eval(scope, "document.getElementById('p').append('y')");
+        scope.perform_microtask_checkpoint();
+        assert_eq!(json(scope, "records"), "1");
+    });
+}
