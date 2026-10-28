@@ -1172,9 +1172,10 @@ fn wrap<'s>(scope: &mut v8::PinScope<'s, '_>, handle: Handle) -> v8::Local<'s, v
 #[cfg(test)]
 thread_local! {
     /// Test-only: the named checkpoint at which `termination_checkpoint` terminates execution,
-    /// and whether the termination lands in a nested call (so the enclosing TryCatch sees an
-    /// active termination it did not catch) or directly under the enclosing TryCatch.
-    pub(super) static TERMINATE_AT: std::cell::Cell<Option<(&'static str, bool)>> =
+    /// and where the interrupt lands: `Some(true)` in a nested call (the enclosing TryCatch
+    /// sees an active termination it did not catch), `Some(false)` directly under the
+    /// enclosing TryCatch, `None` not yet (the next guest call meets it).
+    pub(super) static TERMINATE_AT: std::cell::Cell<Option<(&'static str, Option<bool>)>> =
         const { std::cell::Cell::new(None) };
 }
 
@@ -1182,7 +1183,7 @@ thread_local! {
 /// let the interrupt land in guest code, as an embedder's watchdog does mid-call.
 #[cfg(test)]
 fn termination_checkpoint(scope: &mut v8::PinScope, name: &'static str) {
-    let Some((_, nested)) = TERMINATE_AT
+    let Some((_, lands)) = TERMINATE_AT
         .with(|at| at.get())
         .filter(|(at, _)| *at == name)
     else {
@@ -1190,6 +1191,9 @@ fn termination_checkpoint(scope: &mut v8::PinScope, name: &'static str) {
     };
     TERMINATE_AT.with(|at| at.set(None));
     scope.terminate_execution();
+    let Some(nested) = lands else {
+        return;
+    };
     let code = v8::String::new(scope, "(function () { return 0; })()").unwrap();
     if nested {
         v8::tc_scope!(let scope, scope);

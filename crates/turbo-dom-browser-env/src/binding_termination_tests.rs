@@ -190,7 +190,12 @@ fn install_into_a_frozen_namespace_degrades_without_panicking() {
 
 /// Arm the test-only watchdog at `checkpoint`, run `source` (which must end by termination),
 /// cancel the termination and return `after`'s JSON.
-fn at_checkpoint(checkpoint: &'static str, nested: bool, source: &str, after: &str) -> String {
+fn at_checkpoint(
+    checkpoint: &'static str,
+    nested: Option<bool>,
+    source: &str,
+    after: &str,
+) -> String {
     crate::browser_env::tests::init_v8();
     let isolate = &mut v8::Isolate::new(Default::default());
     v8::scope!(let scope, isolate);
@@ -229,24 +234,26 @@ fn watchdog_checkpoints_unwind_and_leave_a_working_document() {
     let setter_after = "[typeof done, document.querySelector('p').id]";
     let mut rows = Vec::new();
     for (checkpoint, nested, source, after) in [
-        ("wrap:instance", false, wrap, wrap_after),
-        ("wrap:cache", false, wrap, wrap_after),
-        ("wrap:project", false, wrap, wrap_after),
-        ("method:pinned", false, method, method_after),
-        ("method:pinned", true, method, method_after),
-        ("method:called", false, method, method_after),
-        ("method:called", true, method, method_after),
-        ("method:flushed", false, method, method_after),
-        ("method:reconciled", false, method, method_after),
-        ("setter:pinned", false, setter, setter_after),
-        ("setter:pinned", true, setter, setter_after),
-        ("setter:called", false, setter, setter_after),
-        ("setter:called", true, setter, setter_after),
-        ("setter:flushed", false, setter, setter_after),
-        ("setter:reconciled", false, setter, setter_after),
+        ("wrap:instance", Some(false), wrap, wrap_after),
+        ("wrap:cache", Some(false), wrap, wrap_after),
+        ("wrap:project", Some(false), wrap, wrap_after),
+        ("wrap:instance", None, wrap, wrap_after),
+        ("wrap:project", None, wrap, wrap_after),
+        ("method:pinned", Some(false), method, method_after),
+        ("method:pinned", Some(true), method, method_after),
+        ("method:called", Some(false), method, method_after),
+        ("method:called", Some(true), method, method_after),
+        ("method:flushed", Some(false), method, method_after),
+        ("method:reconciled", Some(false), method, method_after),
+        ("setter:pinned", Some(false), setter, setter_after),
+        ("setter:pinned", Some(true), setter, setter_after),
+        ("setter:called", Some(false), setter, setter_after),
+        ("setter:called", Some(true), setter, setter_after),
+        ("setter:flushed", Some(false), setter, setter_after),
+        ("setter:reconciled", Some(false), setter, setter_after),
     ] {
         rows.push(format!(
-            "{checkpoint}/{nested}: {}",
+            "{checkpoint}/{nested:?}: {}",
             at_checkpoint(checkpoint, nested, source, after)
         ));
     }
@@ -254,21 +261,23 @@ fn watchdog_checkpoints_unwind_and_leave_a_working_document() {
     // method rows terminate in the first native method the setAttribute path calls, before the
     // attribute is set); wrapper identity and fresh wrapping keep working.
     let expected = [
-        r#"wrap:instance/false: ["undefined","undefined","aside",true]"#,
-        r#"wrap:cache/false: ["undefined","undefined","aside",true]"#,
-        r#"wrap:project/false: ["undefined","undefined","aside",true]"#,
-        r#"method:pinned/false: ["undefined",null,true]"#,
-        r#"method:pinned/true: ["undefined",null,true]"#,
-        r#"method:called/false: ["undefined",null,true]"#,
-        r#"method:called/true: ["undefined",null,true]"#,
-        r#"method:flushed/false: ["undefined",null,true]"#,
-        r#"method:reconciled/false: ["undefined",null,true]"#,
-        r#"setter:pinned/false: ["undefined","p"]"#,
-        r#"setter:pinned/true: ["undefined","p"]"#,
-        r#"setter:called/false: ["undefined","q"]"#,
-        r#"setter:called/true: ["undefined","q"]"#,
-        r#"setter:flushed/false: ["undefined","q"]"#,
-        r#"setter:reconciled/false: ["undefined","q"]"#,
+        r#"wrap:instance/Some(false): ["undefined","undefined","aside",true]"#,
+        r#"wrap:cache/Some(false): ["undefined","undefined","aside",true]"#,
+        r#"wrap:project/Some(false): ["undefined","undefined","aside",true]"#,
+        r#"wrap:instance/None: ["undefined","undefined","aside",true]"#,
+        r#"wrap:project/None: ["undefined","undefined","aside",true]"#,
+        r#"method:pinned/Some(false): ["undefined",null,true]"#,
+        r#"method:pinned/Some(true): ["undefined",null,true]"#,
+        r#"method:called/Some(false): ["undefined",null,true]"#,
+        r#"method:called/Some(true): ["undefined",null,true]"#,
+        r#"method:flushed/Some(false): ["undefined",null,true]"#,
+        r#"method:reconciled/Some(false): ["undefined",null,true]"#,
+        r#"setter:pinned/Some(false): ["undefined","p"]"#,
+        r#"setter:pinned/Some(true): ["undefined","p"]"#,
+        r#"setter:called/Some(false): ["undefined","q"]"#,
+        r#"setter:called/Some(true): ["undefined","q"]"#,
+        r#"setter:flushed/Some(false): ["undefined","q"]"#,
+        r#"setter:reconciled/Some(false): ["undefined","q"]"#,
     ];
     assert_eq!(rows, expected);
 }
