@@ -80,12 +80,17 @@ per variant:
 ```sh
 cd crates/turbo-dom-v8/crate
 RUSTY_V8_ARCHIVE=.../librusty_v8_release_<target>.a CARGO_TARGET_DIR=target-default \
-  cargo test
+  cargo nextest run --all-targets
 RUSTY_V8_ARCHIVE=.../librusty_v8_simdutf_release_<target>.a CARGO_TARGET_DIR=target-simdutf \
-  cargo test --features simdutf
+  cargo nextest run --all-targets --features simdutf
 cargo test --test interceptor_should_throw -- --list --ignored   # 0 tests
 nm <target>/debug/deps/interceptor_should_throw-* | grep _ZN2v88internal18ShouldThrowOnErrorEPNS0_7IsolateE
 ```
+
+Run the suite with cargo-nextest, as upstream rusty_v8's CI does: each test gets its own
+process. Upstream's tests (slots.rs and others) are not safe to share one process, and a
+plain parallel `cargo test` aborts now and then (libc++ hardening `vector[] index out of
+bounds`, SIGSEGV) on the unpatched upstream 150.4.0 crate as well.
 
 Without `RUSTY_V8_ARCHIVE`, build.rs downloads the upstream v150.4.0 archive as upstream
 does. `V8_FROM_SOURCE` is unsupported: the crate ships no C++ sources.

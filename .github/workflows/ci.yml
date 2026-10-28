@@ -314,10 +314,18 @@ jobs:
           key: v8-${{ matrix.variant }}
           workspaces: . -> target-browser-env-${{ matrix.variant }}
           cache-directories: target-v8-${{ matrix.variant }}
+      # Upstream rusty_v8 runs its suite with cargo-nextest (one process per test,
+      # `nextest run --all-targets`, ci.yml at v150.4.0); its tests are not safe to share a
+      # process: in-process parallel `cargo test` aborts nondeterministically (libc++
+      # hardening `vector[] index out of bounds` / SIGSEGV in slots.rs, release_v8_teardown)
+      # on the unpatched upstream crate too. Same runner as upstream, same targets (no doctests).
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-nextest
       - name: turbo-dom-v8 tests (fork regression tests + build.rs pin test)
         working-directory: crates/turbo-dom-v8/crate
         run: |
-          CARGO_TARGET_DIR="$V8_TARGET_DIR" cargo test $V8_FEATURES
+          CARGO_TARGET_DIR="$V8_TARGET_DIR" cargo nextest run --all-targets --no-fail-fast $V8_FEATURES
           ignored=$(CARGO_TARGET_DIR="$V8_TARGET_DIR" cargo test $V8_FEATURES --test interceptor_should_throw -- --list --ignored | grep -c ': test$' || true)
           [ "$ignored" = 0 ] || { echo "interceptor_should_throw has $ignored ignored tests"; exit 1; }
       - name: turbo-dom-browser-env tests (default features)
