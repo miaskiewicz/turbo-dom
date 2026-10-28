@@ -511,23 +511,12 @@ fn zoom_declaration<'i>(input: &mut Parser<'i, '_>) -> Result<String, ParseError
     }
     input.reset(&start);
     let start = input.position();
-    // Property::parse knows only the typed grammar; a var() / env() value is an unparsed
-    // declaration, as Lightning CSS's declaration parser treats it (turbo-dom#162).
-    let state = input.state();
-    let deferred = match Property::parse(PropertyId::from("zoom"), input, &ParserOptions::default())
-    {
-        Ok(Property::Custom(property)) => deferred_value(&property.value),
-        Ok(Property::Unparsed(property)) => deferred_value(&property.value),
-        Ok(_) => false,
-        Err(_) => {
-            input.reset(&state);
-            lightningcss::properties::custom::UnparsedProperty::parse(
-                PropertyId::from("zoom"),
-                input,
-                &ParserOptions::default(),
-            )
-            .is_ok_and(|property| deferred_value(&property.value))
-        }
+    let property = Property::parse(PropertyId::from("zoom"), input, &ParserOptions::default())
+        .map_err(|_| input.new_custom_error(()))?;
+    let deferred = match &property {
+        Property::Custom(property) => deferred_value(&property.value),
+        Property::Unparsed(property) => deferred_value(&property.value),
+        _ => false,
     };
     if !deferred {
         return Err(input.new_custom_error(()));
