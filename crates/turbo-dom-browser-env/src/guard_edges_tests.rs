@@ -24,7 +24,6 @@ fn page_json(html: &str, source: &str) -> String {
 /// turbo-dom#160: an invalid `:popover-open(...)` inside a forgiving `:is()` / `:where()`
 /// list drops only its branch (Chrome 156); outside one it is still a SyntaxError.
 #[test]
-#[ignore = "turbo-dom#160: fails until the fix"]
 fn forgiving_lists_drop_invalid_popover_open_branches() {
     assert_eq!(
         page_json(
