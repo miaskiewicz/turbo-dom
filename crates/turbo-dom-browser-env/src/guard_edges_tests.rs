@@ -19,6 +19,9 @@ const KNOWN_GAPS: &[(&str, &str)] = &[
     ("result.declarations.zoom: var(--z)[1]", "\"\""),
     ("result.declarations.zoom: env(x)[0]", "\"\""),
     ("result.declarations.zoom: env(x)[1]", "\"\""),
+    // miaskiewicz/turbo-dom#163: an inert document's <style> has no sheet.
+    ("result.misc.inertSheet[0]", "\"null\""),
+    ("result.misc.inertSheet[1]", "null"),
     // miaskiewicz/turbo-dom#134: @keyframes cssText.
     (
         "result.declarations.@keyframes k { 0% {} }",
@@ -169,4 +172,103 @@ fn inline_handlers_without_a_base_compile_as_about_blank() {
         .to_rust_string_lossy(scope);
     assert_eq!(value, "at HTMLDivElement.onclick (about:blank:1:20)");
     reset();
+}
+
+fn terminate_now(
+    scope: &mut v8::PinScope,
+    _args: v8::FunctionCallbackArguments,
+    _rv: v8::ReturnValue,
+) {
+    scope.terminate_execution();
+}
+
+/// Run `source` in a fresh page with `__terminate()` bound (and its microtasks); it must end
+/// by termination. Then cancel it, run the microtasks and return `after`'s JSON.
+fn terminated(html: &str, source: &str, after: &str) -> String {
+    crate::browser_env::tests::init_v8();
+    let isolate = &mut v8::Isolate::new(Default::default());
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    install_with_html(scope, html);
+    let global = context.global(scope);
+    bind_method(scope, global, "__terminate", terminate_now);
+    {
+        v8::tc_scope!(let scope, scope);
+        let code = v8::String::new(scope, source).unwrap();
+        if v8::Script::compile(scope, code, None)
+            .unwrap()
+            .run(scope)
+            .is_some()
+        {
+            // The termination lands in a microtask (an observer callback).
+            scope.perform_microtask_checkpoint();
+        }
+        assert!(
+            scope.is_execution_terminating() || scope.has_terminated(),
+            "{source} did not terminate"
+        );
+        scope.cancel_terminate_execution();
+        scope.reset();
+    }
+    scope.perform_microtask_checkpoint();
+    let code = v8::String::new(scope, &format!("JSON.stringify({after})")).unwrap();
+    let value = v8::Script::compile(scope, code, None)
+        .unwrap()
+        .run(scope)
+        .unwrap()
+        .to_rust_string_lossy(scope);
+    reset();
+    value
+}
+
+/// A beforetoggle listener that terminates while a popover hides: the popover stays open and
+/// is no longer busy, so it hides normally once the termination is cancelled.
+#[test]
+fn termination_in_a_hiding_beforetoggle_keeps_the_popover_open() {
+    assert_eq!(
+        terminated(
+            "<!doctype html><div id=p popover=manual></div>",
+            "globalThis.p = document.getElementById('p'); p.showPopover(); globalThis.log = []; \
+             p.addEventListener('beforetoggle', event => { log.push(event.newState); if (log.length === 1) __terminate(); }); \
+             p.hidePopover(); log.push('end')",
+            "[log.slice(), p.matches(':popover-open'), (p.hidePopover(), p.matches(':popover-open')), log]"
+        ),
+        r#"[["closed"],true,false,["closed","closed"]]"#
+    );
+}
+
+/// A mutation observer callback that terminates ends the notification: the next observer
+/// is not notified in that checkpoint.
+#[test]
+fn termination_in_an_observer_callback_skips_later_observers() {
+    assert_eq!(
+        terminated(
+            "<!doctype html><div id=t></div>",
+            "globalThis.log = []; const t = document.getElementById('t'); \
+             new MutationObserver(() => { log.push('first'); __terminate(); }).observe(t, { attributes: true }); \
+             new MutationObserver(() => log.push('second')).observe(t, { attributes: true }); \
+             t.id = 'u'; Promise.resolve().then(() => log.push('microtask'))",
+            "log"
+        ),
+        r#"["first"]"#
+    );
+}
+
+/// A slotchange listener that terminates ends the slot signals of that checkpoint.
+#[test]
+fn termination_in_a_slotchange_listener_skips_later_slots() {
+    assert_eq!(
+        terminated(
+            "<!doctype html><div id=h></div>",
+            "globalThis.log = []; const h = document.getElementById('h'); const root = h.attachShadow({ mode: 'open' }); \
+             const a = root.appendChild(document.createElement('slot')); a.name = 'a'; \
+             const b = root.appendChild(document.createElement('slot')); b.name = 'b'; \
+             a.addEventListener('slotchange', () => { log.push('a'); __terminate(); }); \
+             b.addEventListener('slotchange', () => log.push('b')); \
+             const x = document.createElement('i'); x.slot = 'a'; const y = document.createElement('i'); y.slot = 'b'; h.append(x, y)",
+            "log"
+        ),
+        r#"["a"]"#
+    );
 }

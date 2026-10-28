@@ -60,6 +60,8 @@ pub(super) fn install(scope: &mut v8::PinScope) {
     set_prop(scope, global, "__trustedTypesMapping", mapping.into());
     run_js(scope, include_str!("trusted_types.js"));
 }
+/// The Trusted Types sink mapping (`trusted_types_mapping.json`), parsed once.
+static MAPPING: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
 
 fn private_record<'s>(
     scope: &mut v8::PinScope<'s, '_>,
@@ -215,7 +217,6 @@ pub(super) fn attribute_units<'s>(
     let html = ns == "http://www.w3.org/1999/xhtml";
     let svg = ns == "http://www.w3.org/2000/svg";
     let local = attribute.rsplit(':').next().unwrap_or(attribute);
-    static MAPPING: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
     let mapping = MAPPING.get_or_init(|| {
         serde_json::from_str(include_str!("trusted_types_mapping.json"))
             .expect("recorded trusted sinks")

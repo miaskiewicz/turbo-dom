@@ -22,7 +22,8 @@
       '::view-transition-group(.)', '::view-transition-group(*.a)', ':is(a!)', ':where(a)b', ':not(a, )',
       ':has(> a, )', 'div:popover-open', 'dialog:modal', 'dialog:open',
       ':where(:popover-open(x), div)', ':is( :popover-open() , :popover-open)', ':modal, [a', ':open, :state(x', ':popover-open, :-webkit-any(a',
-      ':active-view-transition, [a', ':popover-open, [a', ':popover-open /* x', ':modal, a /* x', ':is(:active-view-transition(x))'
+      ':active-view-transition, [a', ':popover-open, [a', ':popover-open /* x', ':modal, a /* x', ':is(:active-view-transition(x))',
+      'a"x"', 'a{}', 'a(b)', 'a#', 'a.b"c"', 'a::before b', 'a[x]"y"'
     ];
     for (const selector of selectors) {
       r[selector] = [
@@ -60,6 +61,33 @@
       r[rule] = caught(() => { sheet.replaceSync(rule); return sheet.cssRules.length ? sheet.cssRules[0].cssText : 'none'; });
     }
     out.declarations = r;
+  }
+
+  // createDocument's doctype argument, unnamed radio groups, labels of foreign elements and
+  // an inert document's style sheet.
+  {
+    const r = {};
+    r.createDocument = [
+      caught(() => String(document.implementation.createDocument(null, 'a', document.createElement('x')))),
+      caught(() => String(document.implementation.createDocument(null, 'a', document.createTextNode('x')))),
+      caught(() => String(document.implementation.createDocument(null, 'a', {}))),
+    ];
+    const form = box.appendChild(document.createElement('form'));
+    form.innerHTML = '<input type=radio name=""><input type=radio name=""><input type=radio><input type=radio>';
+    const radios = [...form.querySelectorAll('input')];
+    radios.forEach(radio => { radio.checked = true; });
+    r.radios = [...radios.map(radio => radio.checked), form.querySelectorAll(':checked').length];
+    radios[0].click();
+    r.radiosClick = [radios[0].checked, radios[1].checked];
+    form.remove();
+    box.innerHTML = '<label id=gl for=gs>x</label><svg><circle id=gs /></svg><label id=gm for=gt>y</label><math id=gt></math>';
+    r.labels = [String(document.getElementById('gl').control), String(document.getElementById('gm').control)];
+    box.replaceChildren();
+    const doc = document.implementation.createHTMLDocument();
+    const style = doc.head.appendChild(doc.createElement('style'));
+    style.textContent = 'p { color: red }';
+    r.inertSheet = [String(style.sheet), style.sheet && style.sheet.cssRules.length];
+    out.misc = r;
   }
 
   // Keyframe values that do not tokenize as a declaration value are dropped.

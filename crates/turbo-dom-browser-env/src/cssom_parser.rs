@@ -286,12 +286,8 @@ impl<'i> DeclarationParser<'i> for CssParser {
         if name.eq_ignore_ascii_case("zoom") {
             // Lightning CSS has no typed `zoom`; Chrome serializes its own grammar.
             let value = input.parse_until_before(Delimiter::Bang, zoom_declaration)?;
-            let important = input.try_parse(parse_important).is_ok();
-            input.expect_exhausted()?;
-            return Ok(format!(
-                "zoom: {value}{};",
-                if important { " !important" } else { "" }
-            ));
+            let important = important(input)?;
+            return Ok(format!("zoom: {value}{important};"));
         }
         let property = name.to_ascii_lowercase();
         if SCROLL_KEYWORD_PROPERTIES.contains(&property.as_str()) {
@@ -300,12 +296,8 @@ impl<'i> DeclarationParser<'i> for CssParser {
             })?;
             let value =
                 scroll_keyword_value(&property, &text).ok_or_else(|| input.new_custom_error(()))?;
-            let important = input.try_parse(parse_important).is_ok();
-            input.expect_exhausted()?;
-            return Ok(format!(
-                "{property}: {value}{};",
-                if important { " !important" } else { "" }
-            ));
+            let important = important(input)?;
+            return Ok(format!("{property}: {value}{important};"));
         }
         let valid = input.parse_until_before(Delimiter::Bang, |input| {
             // Lightning CSS does not model the CSS2 font-variant shorthand.
@@ -349,18 +341,21 @@ impl<'i> DeclarationParser<'i> for CssParser {
             return Err(input.new_custom_error(()));
         }
         let value = input.slice_from(start).trim().to_string();
-        let important = input.try_parse(parse_important).is_ok();
-        input.expect_exhausted()?;
+        let important = important(input)?;
         let name = if name.starts_with("--") {
             name.to_string()
         } else {
             name.to_ascii_lowercase()
         };
-        Ok(format!(
-            "{name}: {value}{};",
-            if important { " !important" } else { "" }
-        ))
+        Ok(format!("{name}: {value}{important};"))
     }
+}
+
+/// A declaration's optional `!important` and the end of its value: the suffix to serialize.
+fn important<'i>(input: &mut Parser<'i, '_>) -> Result<&'static str, ParseError<'i, ()>> {
+    let important = input.try_parse(parse_important).is_ok();
+    input.expect_exhausted()?;
+    Ok(if important { " !important" } else { "" })
 }
 
 fn zoom_declaration<'i>(input: &mut Parser<'i, '_>) -> Result<String, ParseError<'i, ()>> {

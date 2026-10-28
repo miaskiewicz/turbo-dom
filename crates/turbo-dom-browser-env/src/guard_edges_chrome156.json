@@ -2,7 +2,7 @@
   "browser": "Chrome/156.0.8078.47",
   "v8": "15.6.75.19",
   "probe": "guard_edges_probe.js",
-  "probeSha256": "fe62b33d2e47781ac690ad5e343083e419cbe3cf41b2d9e8e069ebdf71c422d0",
+  "probeSha256": "4f6fe6c8740a3054a0c812584b3290ae8fc0a75dcbcc144011e08ba5251ef9c5",
   "collectorSha256": "3f964d2cdf0ec8101870a776aaffc3b7dc4522306959c4a40761057beb255eb8",
   "flags": [
     "--headless=new",
@@ -254,6 +254,41 @@
         false,
         "null"
       ],
+      "a\"x\"": [
+        "E:SyntaxError",
+        "E:SyntaxError",
+        "E:SyntaxError"
+      ],
+      "a{}": [
+        "E:SyntaxError",
+        "E:SyntaxError",
+        "E:SyntaxError"
+      ],
+      "a(b)": [
+        "E:SyntaxError",
+        "E:SyntaxError",
+        "E:SyntaxError"
+      ],
+      "a#": [
+        "E:SyntaxError",
+        "E:SyntaxError",
+        "E:SyntaxError"
+      ],
+      "a.b\"c\"": [
+        "E:SyntaxError",
+        "E:SyntaxError",
+        "E:SyntaxError"
+      ],
+      "a::before b": [
+        "E:SyntaxError",
+        "E:SyntaxError",
+        "E:SyntaxError"
+      ],
+      "a[x]\"y\"": [
+        "E:SyntaxError",
+        "E:SyntaxError",
+        "E:SyntaxError"
+      ],
       "openPopover": [
         1,
         "E:SyntaxError"
@@ -332,6 +367,32 @@
       "@view-transition { types: a b }": "@view-transition { types: a b; }",
       "@property --p { syntax: \"<length>\"; inherits: false; initial-value: 1px }": "@property --p { syntax: \"<length>\"; inherits: false; initial-value: 1px; }",
       "@counter-style c { system: cyclic; symbols: a }": "@counter-style c { system: cyclic; symbols: a; }"
+    },
+    "misc": {
+      "createDocument": [
+        "E:TypeError",
+        "E:TypeError",
+        "E:TypeError"
+      ],
+      "radios": [
+        true,
+        true,
+        true,
+        true,
+        4
+      ],
+      "radiosClick": [
+        true,
+        true
+      ],
+      "labels": [
+        "null",
+        "null"
+      ],
+      "inertSheet": [
+        "[object CSSStyleSheet]",
+        1
+      ]
     },
     "keyframes": {
       "1px)": [
