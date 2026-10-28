@@ -103,7 +103,7 @@ fn inline_flex_grid_case(id: &str) -> bool {
 /// The control cases of an open bug, each asserted by its own test (`#[ignore]`d until
 /// its fix lands) and held out of [`html_documents_lay_out_as_chrome_156`].
 fn held_out(id: &str) -> bool {
-    let groups: [fn(&str) -> bool; 36] = [
+    let groups: [fn(&str) -> bool; 40] = [
         auto_table_case,
         inline_flex_grid_case,
         abs_auto_width_case,
@@ -140,6 +140,10 @@ fn held_out(id: &str) -> bool {
         positioned_percent_case,
         block_in_inline_case,
         padding_box_case,
+        space_line_case,
+        pre_line_newline_case,
+        nowrap_space_case,
+        supports_general_enclosed_case,
     ];
     groups.iter().any(|group| group(id))
 }
@@ -524,6 +528,51 @@ fn abs_padding_box_case(id: &str) -> bool {
 #[test]
 fn positioned_boxes_use_the_padding_box_of_their_containing_block_like_chrome_156() {
     compare_cases(abs_padding_box_case);
+}
+
+/// miaskiewicz/turbo-dom#120: a line holding only preserved spaces (`pre-wrap` /
+/// `break-spaces`) is a line box.
+fn space_line_case(id: &str) -> bool {
+    id.starts_with("ws-space-line-")
+}
+
+#[test]
+#[ignore = "turbo-dom#120: fails until the fix"]
+fn lines_of_only_preserved_spaces_are_line_boxes_like_chrome_156() {
+    compare_cases(space_line_case);
+}
+
+/// miaskiewicz/turbo-dom#121: a `pre-line` newline between blocks is a line box.
+fn pre_line_newline_case(id: &str) -> bool {
+    id.starts_with("ws-pre-line-")
+}
+
+#[test]
+#[ignore = "turbo-dom#121: fails until the fix"]
+fn pre_line_newlines_between_blocks_are_line_boxes_like_chrome_156() {
+    compare_cases(pre_line_newline_case);
+}
+
+/// miaskiewicz/turbo-dom#122: a white-space-only `nowrap` run collapses away.
+fn nowrap_space_case(id: &str) -> bool {
+    id.starts_with("ws-nowrap-")
+}
+
+#[test]
+#[ignore = "turbo-dom#122: fails until the fix"]
+fn white_space_only_nowrap_runs_collapse_away_like_chrome_156() {
+    compare_cases(nowrap_space_case);
+}
+
+/// miaskiewicz/turbo-dom#123: `@supports` <general-enclosed> is false.
+fn supports_general_enclosed_case(id: &str) -> bool {
+    id.starts_with("supports-general-enclosed")
+}
+
+#[test]
+#[ignore = "turbo-dom#123: fails until the fix"]
+fn supports_general_enclosed_is_false_like_chrome_156() {
+    compare_cases(supports_general_enclosed_case);
 }
 
 /// The first `<th>` of a styled forest.

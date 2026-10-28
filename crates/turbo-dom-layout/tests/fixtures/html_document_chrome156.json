@@ -1,6 +1,6 @@
 {
  "generator": "scripts/html-document-chrome-control.mjs",
- "chrome": "156.0.8078.4",
+ "chrome": "156.0.8078.47",
  "playwright_core": "1.61.0",
  "viewport": [
   1280,
@@ -13958,6 +13958,320 @@
      "y": 35,
      "width": 10,
      "height": 35
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "ws-space-line-pre-wrap",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;line-height:20px}p{margin:0}</style></head><body><p data-cid=\"a\">a</p><span style=\"white-space:pre-wrap\"> </span><p data-cid=\"b\">b</p><div data-cid=\"d\"><span style=\"white-space:pre-wrap\"> </span></div><div data-cid=\"e\" style=\"white-space:pre-wrap\">  </div><p data-cid=\"f\">f</p></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "a",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 20
+    },
+    {
+     "cid": "b",
+     "x": 0,
+     "y": 40,
+     "width": 1280,
+     "height": 20
+    },
+    {
+     "cid": "d",
+     "x": 0,
+     "y": 60,
+     "width": 1280,
+     "height": 20
+    },
+    {
+     "cid": "e",
+     "x": 0,
+     "y": 80,
+     "width": 1280,
+     "height": 20
+    },
+    {
+     "cid": "f",
+     "x": 0,
+     "y": 100,
+     "width": 1280,
+     "height": 20
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "ws-space-line-break-spaces",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;line-height:20px}p{margin:0}</style></head><body><p data-cid=\"a\">a</p><span style=\"white-space:break-spaces\"> </span><p data-cid=\"b\">b</p><div data-cid=\"d\"><span style=\"white-space:break-spaces\"> </span></div><div data-cid=\"e\" style=\"white-space:break-spaces\">  </div><p data-cid=\"f\">f</p></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "a",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 20
+    },
+    {
+     "cid": "b",
+     "x": 0,
+     "y": 40,
+     "width": 1280,
+     "height": 20
+    },
+    {
+     "cid": "d",
+     "x": 0,
+     "y": 60,
+     "width": 1280,
+     "height": 20
+    },
+    {
+     "cid": "e",
+     "x": 0,
+     "y": 80,
+     "width": 1280,
+     "height": 20
+    },
+    {
+     "cid": "f",
+     "x": 0,
+     "y": 100,
+     "width": 1280,
+     "height": 20
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "ws-pre-line-newline",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;line-height:20px}p{margin:0}div{white-space:pre-line}</style></head><body><div data-cid=\"s\"><p>a</p>  <p>b</p></div><div data-cid=\"n\"><p>a</p>\n<p>b</p></div><div data-cid=\"m\"><p>a</p>  \n  <p>b</p></div><div data-cid=\"nn\"><p>a</p>\n\n<p>b</p></div><p data-cid=\"f\">f</p></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "s",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 40
+    },
+    {
+     "cid": "n",
+     "x": 0,
+     "y": 40,
+     "width": 1280,
+     "height": 60
+    },
+    {
+     "cid": "m",
+     "x": 0,
+     "y": 100,
+     "width": 1280,
+     "height": 60
+    },
+    {
+     "cid": "nn",
+     "x": 0,
+     "y": 160,
+     "width": 1280,
+     "height": 80
+    },
+    {
+     "cid": "f",
+     "x": 0,
+     "y": 240,
+     "width": 1280,
+     "height": 20
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "ws-nowrap-space-span",
+   "html": "<!DOCTYPE html><html><head><style>body{margin:0;line-height:20px}p{margin:0}</style></head><body><p data-cid=\"a\">a</p><span style=\"white-space:nowrap\"> </span><p data-cid=\"b\">b</p><div data-cid=\"d\"><span style=\"white-space:nowrap\"> </span></div><div data-cid=\"e\" style=\"white-space:nowrap\">  </div><p data-cid=\"f\">f</p></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "a",
+     "x": 0,
+     "y": 0,
+     "width": 1280,
+     "height": 20
+    },
+    {
+     "cid": "b",
+     "x": 0,
+     "y": 20,
+     "width": 1280,
+     "height": 20
+    },
+    {
+     "cid": "d",
+     "x": 0,
+     "y": 40,
+     "width": 1280,
+     "height": 0
+    },
+    {
+     "cid": "e",
+     "x": 0,
+     "y": 40,
+     "width": 1280,
+     "height": 0
+    },
+    {
+     "cid": "f",
+     "x": 0,
+     "y": 40,
+     "width": 1280,
+     "height": 20
+    }
+   ],
+   "computed": {
+    "html": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    },
+    "body": {
+     "background-color": "rgba(0, 0, 0, 0)",
+     "font-size": "16px"
+    }
+   },
+   "canvas": "#ffffff"
+  },
+  {
+   "id": "supports-general-enclosed",
+   "html": "<!DOCTYPE html><html><head><style>div{width:5px;height:1px}@supports (not foo){#a{width:10px}}@supports ((not foo)){#b{width:11px}}@supports (not){#c{width:12px}}@supports (not foo: bar){#d{width:13px}}@supports (foo){#e{width:14px}}@supports (not a) (b){#f{width:15px}}@supports not (not foo){#g{width:16px}}@supports (not foo) or (display:block){#h{width:17px}}@supports not (foo){#i{width:18px}}@supports (not (foo)){#j{width:19px}}@supports (display:block) and (not foo){#k{width:20px}}@supports (--x: 1){#l{width:21px}}</style></head><body><div id=\"a\" data-cid=\"a\"></div><div id=\"b\" data-cid=\"b\"></div><div id=\"c\" data-cid=\"c\"></div><div id=\"d\" data-cid=\"d\"></div><div id=\"e\" data-cid=\"e\"></div><div id=\"f\" data-cid=\"f\"></div><div id=\"g\" data-cid=\"g\"></div><div id=\"h\" data-cid=\"h\"></div><div id=\"i\" data-cid=\"i\"></div><div id=\"j\" data-cid=\"j\"></div><div id=\"k\" data-cid=\"k\"></div><div id=\"l\" data-cid=\"l\"></div></body></html>",
+   "measure": "xywh",
+   "boxes": [
+    {
+     "cid": "a",
+     "x": 8,
+     "y": 8,
+     "width": 5,
+     "height": 1
+    },
+    {
+     "cid": "b",
+     "x": 8,
+     "y": 9,
+     "width": 5,
+     "height": 1
+    },
+    {
+     "cid": "c",
+     "x": 8,
+     "y": 10,
+     "width": 5,
+     "height": 1
+    },
+    {
+     "cid": "d",
+     "x": 8,
+     "y": 11,
+     "width": 5,
+     "height": 1
+    },
+    {
+     "cid": "e",
+     "x": 8,
+     "y": 12,
+     "width": 5,
+     "height": 1
+    },
+    {
+     "cid": "f",
+     "x": 8,
+     "y": 13,
+     "width": 5,
+     "height": 1
+    },
+    {
+     "cid": "g",
+     "x": 8,
+     "y": 14,
+     "width": 16,
+     "height": 1
+    },
+    {
+     "cid": "h",
+     "x": 8,
+     "y": 15,
+     "width": 17,
+     "height": 1
+    },
+    {
+     "cid": "i",
+     "x": 8,
+     "y": 16,
+     "width": 18,
+     "height": 1
+    },
+    {
+     "cid": "j",
+     "x": 8,
+     "y": 17,
+     "width": 19,
+     "height": 1
+    },
+    {
+     "cid": "k",
+     "x": 8,
+     "y": 18,
+     "width": 5,
+     "height": 1
+    },
+    {
+     "cid": "l",
+     "x": 8,
+     "y": 19,
+     "width": 21,
+     "height": 1
     }
    ],
    "computed": {

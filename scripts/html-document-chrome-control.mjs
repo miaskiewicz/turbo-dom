@@ -574,8 +574,26 @@ const CASES = [
   { id: "positioned-padding-box-percent-height", html: DOC(S("body{margin:0}"), `<div data-cid="cb" style="position:relative;width:400px;height:50px;padding:20px"><div data-cid="c" style="position:absolute;left:0;top:0;width:10px;height:50%"></div></div><div data-cid="g" style="height:5px"></div>`) },
   { id: "positioned-padding-box-stretch", html: DOC(S("body{margin:0}"), `<div data-cid="cb" style="position:relative;width:400px;height:50px;padding:20px"><div data-cid="c" style="position:absolute;left:5px;right:5px;top:0;height:5px"></div></div><div data-cid="g" style="height:5px"></div>`) },
   { id: "positioned-padding-box-auto-height-cb", html: DOC(S("body{margin:0}"), `<div data-cid="cb" style="position:relative;width:400px;padding:20px"><div style="height:30px"></div><div data-cid="c" style="position:absolute;left:0;bottom:0;width:10px;height:50%"></div></div>`) },
+  // miaskiewicz/turbo-dom#120: a line holding only preserved spaces (`pre-wrap` /
+  // `break-spaces`) is a line box, between blocks and alone in a block.
+  { id: "ws-space-line-pre-wrap", html: DOC(S("body{margin:0;line-height:20px}p{margin:0}"), `<p data-cid="a">a</p><span style="white-space:pre-wrap"> </span><p data-cid="b">b</p><div data-cid="d"><span style="white-space:pre-wrap"> </span></div><div data-cid="e" style="white-space:pre-wrap">  </div><p data-cid="f">f</p>`) },
+  { id: "ws-space-line-break-spaces", html: DOC(S("body{margin:0;line-height:20px}p{margin:0}"), `<p data-cid="a">a</p><span style="white-space:break-spaces"> </span><p data-cid="b">b</p><div data-cid="d"><span style="white-space:break-spaces"> </span></div><div data-cid="e" style="white-space:break-spaces">  </div><p data-cid="f">f</p>`) },
+  // miaskiewicz/turbo-dom#121: a `pre-line` newline between blocks is a line box (spaces
+  // alone collapse away; each further newline adds a line).
+  { id: "ws-pre-line-newline", html: DOC(S("body{margin:0;line-height:20px}p{margin:0}div{white-space:pre-line}"), `<div data-cid="s"><p>a</p>  <p>b</p></div><div data-cid="n"><p>a</p>\n<p>b</p></div><div data-cid="m"><p>a</p>  \n  <p>b</p></div><div data-cid="nn"><p>a</p>\n\n<p>b</p></div><p data-cid="f">f</p>`) },
+  // miaskiewicz/turbo-dom#122: a white-space-only `nowrap` span collapses away like
+  // `normal` (no line box), between blocks and alone in a block.
+  { id: "ws-nowrap-space-span", html: DOC(S("body{margin:0;line-height:20px}p{margin:0}"), `<p data-cid="a">a</p><span style="white-space:nowrap"> </span><p data-cid="b">b</p><div data-cid="d"><span style="white-space:nowrap"> </span></div><div data-cid="e" style="white-space:nowrap">  </div><p data-cid="f">f</p>`) },
+  // miaskiewicz/turbo-dom#123: `@supports` parenthesised text that is neither a declaration
+  // nor a condition (`(not foo)`, `(foo)`, ...) is <general-enclosed>: false (CSS
+  // Conditional 3 §2.1); a condition that does not parse drops the rule.
+  { id: "supports-general-enclosed", html: DOC(S("div{width:5px;height:1px}" + [
+    ["a", "(not foo)"], ["b", "((not foo))"], ["c", "(not)"], ["d", "(not foo: bar)"], ["e", "(foo)"],
+    ["f", "(not a) (b)"], ["g", "not (not foo)"], ["h", "(not foo) or (display:block)"],
+    ["i", "not (foo)"], ["j", "(not (foo))"], ["k", "(display:block) and (not foo)"], ["l", "(--x: 1)"],
+  ].map(([id, cond], i) => `@supports ${cond}{#${id}{width:${10 + i}px}}`).join("")),
+    "abcdefghijkl".split("").map((id) => `<div id="${id}" data-cid="${id}"></div>`).join("")) },
 ];
-
 /** The RGB of a 1x1 PNG screenshot (any filter: a single pixel's filter adds 0). */
 function onePixel(png) {
   let off = 8;
