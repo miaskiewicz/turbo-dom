@@ -12,13 +12,6 @@ const PROBE: &str = include_str!("guard_edges_probe.js");
 /// KNOWN_GAP rows `(path, binding value)`: leaves where the binding still differs from
 /// Chrome 156. Each must still differ exactly so; a fix removes its row.
 const KNOWN_GAPS: &[(&str, &str)] = &[
-    // miaskiewicz/turbo-dom#162: deferred zoom values are dropped.
-    ("result.declarations.zoom: var(--z) !important[0]", "\"\""),
-    ("result.declarations.zoom: var(--z) !important[1]", "\"\""),
-    ("result.declarations.zoom: var(--z)[0]", "\"\""),
-    ("result.declarations.zoom: var(--z)[1]", "\"\""),
-    ("result.declarations.zoom: env(x)[0]", "\"\""),
-    ("result.declarations.zoom: env(x)[1]", "\"\""),
     // miaskiewicz/turbo-dom#163: an inert document's <style> has no sheet.
     ("result.misc.inertSheet[0]", "\"null\""),
     ("result.misc.inertSheet[1]", "null"),
