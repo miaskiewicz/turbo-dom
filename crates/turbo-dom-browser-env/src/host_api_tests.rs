@@ -367,25 +367,25 @@ fn form_entry_list_transactions_and_formdata_dispatch() {
     );
 }
 
-/// The submission handler registers only for a realm with a native document; the value
-/// reader lands on the callback's own realm either way.
+/// Both host form callbacks need a native document: without one they do not register.
 #[test]
-fn form_host_callbacks_need_a_native_document() {
-    with_page("<!doctype html><form></form>", |scope| {
-        let bare = v8::Context::new(scope, Default::default());
-        let callback = {
-            let scope = &mut v8::ContextScope::new(scope, bare);
-            let code = v8::String::new(scope, "(() => true)").unwrap();
-            let value = v8::Script::compile(scope, code, None)
-                .unwrap()
-                .run(scope)
-                .unwrap();
-            v8::Local::<v8::Function>::try_from(value).unwrap()
-        };
-        assert!(install_form_value_reader(scope, callback));
-        assert!(!install_form_submission_handler(scope, callback));
-        let own = v8::Local::<v8::Function>::try_from(eval(scope, "(() => true)")).unwrap();
-        assert!(install_form_value_reader(scope, own));
-        assert!(install_form_submission_handler(scope, own));
-    });
+fn form_host_callbacks_without_a_document() {
+    crate::browser_env::tests::init_v8();
+    reset();
+    let isolate = &mut v8::Isolate::new(Default::default());
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    let code = v8::String::new(scope, "(() => true)").unwrap();
+    let value = v8::Script::compile(scope, code, None)
+        .unwrap()
+        .run(scope)
+        .unwrap();
+    let callback = v8::Local::<v8::Function>::try_from(value).unwrap();
+    assert!(!install_form_submission_handler(scope, callback));
+    assert!(!install_form_value_reader(scope, callback));
+    install_with_html(scope, "<!doctype html><form></form>");
+    assert!(install_form_submission_handler(scope, callback));
+    assert!(install_form_value_reader(scope, callback));
+    reset();
 }
