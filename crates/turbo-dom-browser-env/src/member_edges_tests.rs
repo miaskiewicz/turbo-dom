@@ -4,7 +4,89 @@
 //! `scripts/trusted-input-chrome-control.mjs`), plus the regression tests of the bugs that
 //! probe found.
 use crate::browser_env::crate_surface::harness_tests::thrown;
+use crate::browser_env::reference_target::probe_harness::{control, differences, run};
 use crate::browser_env::*;
+
+const PROBE: &str = include_str!("member_edges_probe.js");
+
+/// KNOWN_GAP rows `(path, binding value)`: leaves where the binding still differs from
+/// Chrome 156. Each must still differ exactly so; a fix removes its row.
+const KNOWN_GAPS: &[(&str, &str)] = &[
+    // miaskiewicz/turbo-dom#153: handler compile errors are not reported.
+    ("result.handlers.reported", "[]"),
+    // miaskiewicz/turbo-dom#155: getKeyframes() value spelling.
+    ("result.keyframes.negativeSmall[0].translate", "\"0px\""),
+    ("result.keyframes.negativeZero[0].opacity", "\"0\""),
+    ("result.keyframes.paren[0].width", "\"var(--w,  (1px))\""),
+    ("result.keyframes.zeros[0].columnWidth", "null"),
+    ("result.keyframes.zeros[0].outlineOffset", "null"),
+];
+
+/// The differing leaves of `actual` that are not a listed gap, then the listed gaps that no
+/// longer differ exactly so.
+fn unexpected(
+    actual: &serde_json::Value,
+    expected: &serde_json::Value,
+    gaps: &[(&str, &str)],
+) -> Vec<String> {
+    let mut found = Vec::new();
+    differences("result", actual, expected, &mut found);
+    let mut out = Vec::new();
+    let mut seen = Vec::new();
+    for entry in found {
+        let (path, rest) = entry.split_once('\n').unwrap_or((&entry, ""));
+        let binding = rest
+            .lines()
+            .find_map(|line| line.trim().strip_prefix("binding: "))
+            .unwrap_or("");
+        match gaps.iter().find(|gap| gap.0 == path && gap.1 == binding) {
+            Some(gap) => seen.push(gap.0),
+            None => out.push(entry),
+        }
+    }
+    out.extend(
+        gaps.iter()
+            .filter(|gap| !seen.contains(&gap.0))
+            .map(|gap| format!("stale known gap: {}", gap.0)),
+    );
+    out
+}
+
+#[test]
+fn unexpected_lists_differences_and_stale_gaps() {
+    let expected = serde_json::json!({"a": 1, "b": "x", "c": [true]});
+    assert_eq!(unexpected(&expected, &expected, &[]), Vec::<String>::new());
+    let actual = serde_json::json!({"a": 2, "b": "y", "c": [true]});
+    assert_eq!(
+        unexpected(
+            &actual,
+            &expected,
+            &[("result.b", "\"y\""), ("result.c[0]", "true")]
+        ),
+        vec![
+            "result.a\n  binding: 2\n  chrome:  1".to_owned(),
+            "stale known gap: result.c[0]".to_owned(),
+        ]
+    );
+    // A row excuses only the binding value it names.
+    assert_eq!(
+        unexpected(&actual, &expected, &[("result.a", "3")]),
+        vec![
+            "result.a\n  binding: 2\n  chrome:  1".to_owned(),
+            "result.b\n  binding: \"y\"\n  chrome:  \"x\"".to_owned(),
+            "stale known gap: result.a".to_owned(),
+        ]
+    );
+}
+
+#[test]
+fn member_edges_match_chrome156() {
+    let expected = control(include_str!("member_edges_chrome156.json"), PROBE);
+    assert_eq!(
+        unexpected(&run(PROBE), &expected, KNOWN_GAPS),
+        Vec::<String>::new()
+    );
+}
 
 /// Run `source` (an expression) in a fresh page and return its JSON serialization.
 fn page_json(html: &str, source: &str) -> String {
