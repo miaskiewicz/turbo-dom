@@ -35,3 +35,70 @@ fn text_whole_text() {
         r#"["ab","ab","c","q","TypeError","get wholeText","undefined",true,"a","w"]"#
     );
 }
+
+/// turbo-dom#148 / turbo-dom#168: after `::slotted()` Chrome 156 admits only its own short
+/// list of pseudo-elements (no pseudo-classes, no pseudo-class after them).
+#[test]
+fn slotted_admits_chrome156_set() {
+    let cases = [
+        (":open", false),
+        (":hover", false),
+        (":first-child", false),
+        ("::before", true),
+        ("::after", true),
+        ("::marker", true),
+        ("::placeholder", true),
+        ("::first-line", false),
+        ("::first-letter", false),
+        ("::selection", false),
+        ("::part(x)", false),
+        ("::backdrop", true),
+        ("::file-selector-button", true),
+        ("::highlight(x)", false),
+        ("::slotted(p)", false),
+        ("::details-content", true),
+        ("::search-text", false),
+        ("::view-transition", true),
+        ("::target-text", false),
+        ("::grammar-error", false),
+        ("::spelling-error", false),
+        ("::cue", false),
+        ("::scroll-marker", false),
+        ("::column", false),
+        ("::checkmark", true),
+        ("::picker-icon", true),
+        ("::picker(select)", true),
+        ("::-webkit-scrollbar", false),
+        ("::before:hover", false),
+        ("::marker:hover", false),
+        (":not(p)", false),
+        (":popover-open", false),
+        (":modal", false),
+        ("::before::marker", true),
+        ("::after::marker", true),
+        ("::scroll-button(left)", false),
+        ("::interest-hint", false),
+        ("::search-text:current", false),
+    ];
+    let list = cases
+        .iter()
+        .map(|(tail, _)| format!("'::slotted(div){tail}'"))
+        .collect::<Vec<_>>()
+        .join(",");
+    let expected = cases
+        .iter()
+        .map(|(_, ok)| if *ok { "\"ok 1\"" } else { "\"SyntaxError 0\"" })
+        .collect::<Vec<_>>()
+        .join(",");
+    assert_eq!(
+        page_json(
+            PAGE,
+            &format!(
+                "[{list}].map(s => {{ let a; try {{ document.querySelectorAll(s); a = 'ok'; }} catch (e) {{ a = e.name; }} \
+                 const st = document.head.appendChild(document.createElement('style')); st.textContent = s + '{{color:red}}'; \
+                 const n = st.sheet.cssRules.length; st.remove(); return a + ' ' + n; }})"
+            ),
+        ),
+        format!("[{expected}]")
+    );
+}
