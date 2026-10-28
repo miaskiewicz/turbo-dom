@@ -61,6 +61,9 @@ pub(super) mod harness_tests;
 #[path = "host_api_tests.rs"]
 mod host_api_tests;
 #[cfg(test)]
+#[path = "host_edges_tests.rs"]
+mod host_edges_tests;
+#[cfg(test)]
 #[path = "member_edges_tests.rs"]
 mod member_edges_tests;
 #[cfg(test)]
