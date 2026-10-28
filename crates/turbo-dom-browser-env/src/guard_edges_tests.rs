@@ -86,3 +86,87 @@ fn forgiving_lists_drop_invalid_popover_open_branches() {
         r#"[null,true,false,true,false,1,"SyntaxError"]"#
     );
 }
+
+fn function<'s>(scope: &mut v8::PinScope<'s, '_>, source: &str) -> v8::Local<'s, v8::Function> {
+    let code = v8::String::new(scope, source).unwrap();
+    let value = v8::Script::compile(scope, code, None)
+        .and_then(|script| script.run(scope))
+        .unwrap();
+    v8::Local::<v8::Function>::try_from(value).unwrap()
+}
+
+/// Install the document and every host hook that retains a helper, with the test-only
+/// watchdog armed to terminate at the `at`-th retained helper. Returns `None` when fewer
+/// helpers were retained (the watchdog never fired), else whether the realm still runs
+/// script once the termination is cancelled.
+fn install_terminated_at_helper(at: usize) -> Option<String> {
+    crate::browser_env::tests::init_v8();
+    let isolate = &mut v8::Isolate::new(Default::default());
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    let fired = {
+        v8::tc_scope!(let scope, scope);
+        dom_ownership::TERMINATE_AT_HELPER.with(|helper| helper.set(Some(at)));
+        install_with_html(scope, "<!doctype html><p id=p>x</p>");
+        let allow = function(scope, "(() => true)");
+        install_inline_event_handlers(scope, allow, "");
+        install_css_policy(scope, allow);
+        install_form_value_reader(scope, allow);
+        install_form_submission_handler(scope, allow);
+        install_trusted_types_policy(scope, allow);
+        let armed = dom_ownership::TERMINATE_AT_HELPER.with(|helper| helper.replace(None));
+        let fired = armed.is_none();
+        scope.cancel_terminate_execution();
+        scope.reset();
+        fired
+    };
+    let after = fired.then(|| {
+        let code = v8::String::new(scope, "String(1 + 1)").unwrap();
+        v8::Script::compile(scope, code, None)
+            .and_then(|script| script.run(scope))
+            .map_or("threw".to_owned(), |value| {
+                value.to_rust_string_lossy(scope)
+            })
+    });
+    reset();
+    after
+}
+
+/// An embedder's watchdog firing while the binding retains any of its helpers (during
+/// install or a host hook's install) unwinds the install without panicking, and once the
+/// termination is cancelled the realm runs script again.
+#[test]
+fn termination_at_every_install_helper_unwinds() {
+    let mut count = 0;
+    while let Some(after) = install_terminated_at_helper(count) {
+        assert_eq!(after, "2", "helper {count}");
+        count += 1;
+    }
+    // The install and the five host hooks retain dozens of helpers.
+    assert!(count > 30, "{count} helpers");
+}
+
+/// Inline event handlers installed without a document base compile with Chrome's
+/// about:blank resource name.
+#[test]
+fn inline_handlers_without_a_base_compile_as_about_blank() {
+    crate::browser_env::tests::init_v8();
+    let isolate = &mut v8::Isolate::new(Default::default());
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    install_with_html(
+        scope,
+        "<!doctype html><div id=d onclick=\"globalThis.where = new Error().stack.split('\\n')[1].trim()\"></div>",
+    );
+    let allow = function(scope, "(() => true)");
+    install_inline_event_handlers(scope, allow, "");
+    let code = v8::String::new(scope, "document.getElementById('d').click(); where").unwrap();
+    let value = v8::Script::compile(scope, code, None)
+        .and_then(|script| script.run(scope))
+        .unwrap()
+        .to_rust_string_lossy(scope);
+    assert_eq!(value, "at HTMLDivElement.onclick (about:blank:1:20)");
+    reset();
+}

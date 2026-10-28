@@ -20,10 +20,34 @@ pub(super) fn helper_object<'s>(
     retain_helper(scope, object.into())?;
     Some(v8::Weak::new(scope, object))
 }
+#[cfg(test)]
+thread_local! {
+    /// Test-only watchdog: the number of helpers still retained before execution terminates
+    /// (at the next one), so a test can terminate at every helper an install retains.
+    pub(super) static TERMINATE_AT_HELPER: std::cell::Cell<Option<usize>> =
+        const { std::cell::Cell::new(None) };
+}
+/// Test-only: terminate at the helper `TERMINATE_AT_HELPER` counts down to, and let the
+/// interrupt land as an embedder's watchdog does mid-install.
+#[cfg(test)]
+fn helper_checkpoint(scope: &mut v8::PinScope) {
+    let Some(remaining) = TERMINATE_AT_HELPER.with(|at| at.get()) else {
+        return;
+    };
+    TERMINATE_AT_HELPER.with(|at| at.set(remaining.checked_sub(1)));
+    if remaining == 0 {
+        scope.terminate_execution();
+        let code = v8::String::new(scope, "0").unwrap();
+        let script = v8::Script::compile(scope, code, None);
+        assert!(script.and_then(|script| script.run(scope)).is_none());
+    }
+}
 fn retain_helper<'s>(
     scope: &mut v8::PinScope<'s, '_>,
     value: v8::Local<'s, v8::Value>,
 ) -> Option<()> {
+    #[cfg(test)]
+    helper_checkpoint(scope);
     if scope.is_execution_terminating() {
         return None;
     }
