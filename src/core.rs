@@ -97,6 +97,9 @@ impl<S: TokenSink> TokenSink for ChromeTokens<S> {
     fn process_token(&self, token: Token, line_number: u64) -> TokenSinkResult<S::Handle> {
         self.0.process_token(chrome_doctype(token), line_number)
     }
+    // (html5ever's `TreeBuilder::end` only pops the open elements into the sink, and
+    // `RcDom` ignores pops, so no tree here observes this delegation; it keeps the wrapper
+    // transparent for any sink.)
     fn end(&self) {
         self.0.end();
     }
@@ -293,6 +296,11 @@ pub struct Soa {
     pub strings: Vec<String>,     // text/comment/doctype data, pooled
 }
 
+/// Why the marshalers have no processing-instruction arm: `markup5ever_rcdom` builds a
+/// `NodeData::ProcessingInstruction` only from `TreeSink::create_pi`, which html5ever 0.39's
+/// tree builder never calls (only xml5ever does); HTML's `<?x?>` is a bogus comment.
+const NO_PI: &str = "html5ever never creates a processing instruction";
+
 struct SoaBuilder {
     soa: Soa,
     tag_map: rustc_hash::FxHashMap<String, u32>,
@@ -382,11 +390,7 @@ impl SoaBuilder {
                 self.soa.node_type[idx] = COMMENT_NODE;
                 self.soa.text_id[idx] = self.push_string(contents);
             }
-            NodeData::ProcessingInstruction { target, contents } => {
-                self.soa.node_type[idx] = PROCESSING_INSTRUCTION_NODE;
-                self.soa.tag_id[idx] = self.intern_tag(target);
-                self.soa.text_id[idx] = self.push_string(contents);
-            }
+            NodeData::ProcessingInstruction { .. } => unreachable!("{NO_PI}"),
             NodeData::Element {
                 name,
                 attrs,
@@ -445,6 +449,7 @@ impl SoaBuilder {
             }
             if parent >= 0 {
                 let previous = last_child[parent as usize];
+                // (-1: no child yet; index 0 is the root, never anyone's child)
                 if previous < 0 {
                     self.soa.first_child[parent as usize] = index;
                 } else {
@@ -554,7 +559,7 @@ pub fn parse_html_fragment_in(html: &str, context_ns: &str, context_local: &str)
             .flat_map(|segment| parse_html_fragment_in(segment, context_ns, context_local).children)
             .map(|text| text.value)
             .collect();
-        let text = Node {
+        let text = (!value.is_empty()).then(|| Node {
             node_type: TEXT_NODE,
             name: "#text".to_string(),
             value,
@@ -563,18 +568,8 @@ pub fn parse_html_fragment_in(html: &str, context_ns: &str, context_local: &str)
             system_id: String::new(),
             attrs: Vec::new(),
             children: Vec::new(),
-        };
-        let mut frag = Node {
-            node_type: DOCUMENT_NODE,
-            name: "#document-fragment".to_string(),
-            value: String::new(),
-            children: Vec::new(),
-            ..text.clone()
-        };
-        if !text.value.is_empty() {
-            frag.children.push(text);
-        }
-        return frag;
+        });
+        return fragment_root(text.into_iter().collect());
     }
     let ctx = QualName::new(None, ns, LocalName::from(context_local));
     let dom = parse_fragment(RcDom::default(), opts(), ctx, vec![], false)
@@ -584,9 +579,20 @@ pub fn parse_html_fragment_in(html: &str, context_ns: &str, context_local: &str)
     if mentions_selectedcontent(html) {
         fill_selectedcontent(&dom.document);
     }
-    // parse_fragment wraps results under a synthetic <html> element; unwrap it.
+    // parse_fragment wraps results under a synthetic <html> element, the Document's only
+    // child: in the fragment case nothing is inserted into the Document itself (its comment
+    // inserts are the "after after body / frameset" modes, entered only from `</html>` in
+    // "after body" — ignored when fragment parsing — and from "after frameset", which
+    // `</frameset>` never enters when fragment parsing).
     let root = walk(&dom.document);
-    let mut frag = Node {
+    let [html] =
+        <[Node; 1]>::try_from(root.children).expect("a parsed fragment has one <html> root");
+    fragment_root(html.children)
+}
+
+/// The synthetic root a fragment parse returns (nodeType 9, `#document-fragment`).
+fn fragment_root(children: Vec<Node>) -> Node {
+    Node {
         node_type: DOCUMENT_NODE,
         name: "#document-fragment".to_string(),
         value: String::new(),
@@ -594,16 +600,8 @@ pub fn parse_html_fragment_in(html: &str, context_ns: &str, context_local: &str)
         public_id: String::new(),
         system_id: String::new(),
         attrs: Vec::new(),
-        children: Vec::new(),
-    };
-    for child in root.children {
-        if child.node_type == ELEMENT_NODE && child.name == "html" {
-            frag.children.extend(child.children);
-        } else {
-            frag.children.push(child);
-        }
+        children,
     }
-    frag
 }
 
 fn shallow_node(handle: &Handle) -> Node {
@@ -647,13 +645,7 @@ fn shallow_node(handle: &Handle) -> Node {
             String::new(),
             Vec::new(),
         ),
-        NodeData::ProcessingInstruction { target, contents } => (
-            PROCESSING_INSTRUCTION_NODE,
-            target.to_string(),
-            contents.to_string(),
-            String::new(),
-            Vec::new(),
-        ),
+        NodeData::ProcessingInstruction { .. } => unreachable!("{NO_PI}"),
         NodeData::Element { name, attrs, .. } => {
             let a = attrs
                 .borrow()
@@ -735,14 +727,8 @@ fn walk(handle: &Handle) -> Node {
     complete.pop().expect("one parsed root")
 }
 
-/// Drain nested parser intermediates without recursive destructor calls.
-/// This leaves the public marshaled Node representation unchanged.
-pub fn discard_node(mut root: Node) {
-    let mut pending = std::mem::take(&mut root.children);
-    while let Some(mut node) = pending.pop() {
-        pending.append(&mut node.children);
-    }
-}
+#[cfg(test)]
+mod conformance_tests;
 
 #[cfg(test)]
 mod tests {
@@ -825,7 +811,10 @@ mod tests {
         // miaskiewicz/turbo-dom#92 (Chrome 156): a literal U+0000 is dropped, &#0; is U+FFFD
         let text = |html: &str, ctx: &str| {
             let frag = parse_html_fragment_context(html, ctx);
-            assert_eq!(frag.name, "#document-fragment");
+            assert_eq!(
+                (frag.node_type, frag.name.as_str(), frag.value.as_str()),
+                (DOCUMENT_NODE, "#document-fragment", "")
+            );
             frag.children
                 .iter()
                 .map(|c| (c.node_type, c.value.clone()))
@@ -848,6 +837,105 @@ mod tests {
         assert_eq!(text("a\0b", "style"), [(TEXT_NODE, "a\u{fffd}b".into())]);
         assert_eq!(text("a\0b", "div"), [(TEXT_NODE, "ab".into())]);
         assert_eq!(text("a\0b", "svg title"), [(TEXT_NODE, "ab".into())]);
+    }
+
+    #[test]
+    fn fragment_context_strings_pick_namespace_and_element() {
+        let dump = |html: &str, ctx: &str| {
+            conformance_tests::dump_node(&parse_html_fragment_context(html, ctx))
+        };
+        // body context ("" too): a stray <td> is dropped, its text kept
+        assert_eq!(dump("<td>x", ""), "| \"x\"");
+        assert_eq!(dump("<td>x", "body"), "| \"x\"");
+        // a <tr> context (bare, or with any prefix other than svg / math: an HTML element)
+        let cell = "| <td>\n|   \"x\"";
+        assert_eq!(dump("<td>x", "tr"), cell);
+        assert_eq!(dump("<td>x", "html tr"), cell);
+        // foreign contexts: <mi> stays SVG under svg, is HTML in a MathML text
+        // integration point (<ms>), and MathML under math <math>
+        assert_eq!(dump("<mi/>", "svg path"), "| <svg mi>");
+        assert_eq!(dump("<mi/>", "math ms"), "| <mi>");
+        assert_eq!(dump("<mi/>", "math math"), "| <math mi>");
+        let frag = parse_html_fragment("<b>y</b>");
+        assert_eq!(
+            (frag.node_type, frag.name.as_str(), frag.children.len()),
+            (DOCUMENT_NODE, "#document-fragment", 1)
+        );
+        assert_eq!(conformance_tests::dump_node(&frag), "| <b>\n|   \"y\"");
+    }
+
+    #[test]
+    fn soa_interns_names_values_and_prefixes_once() {
+        let soa =
+            parse_html_soa("<p class=a></p><p class=a id=b></p><svg><a xlink:href=b></a></svg>");
+        assert_eq!(
+            soa.tag_names,
+            ["html", "head", "body", "p", "svg", "a"].map(String::from)
+        );
+        assert_eq!(soa.attr_names, ["class", "id", "href"].map(String::from));
+        assert_eq!(soa.attr_values, ["a", "b"].map(String::from));
+        assert_eq!(soa.attr_prefixes, ["", "xlink"].map(String::from));
+        assert_eq!(soa.attr_name_id, [0, 0, 1, 2]);
+        assert_eq!(soa.attr_value_id, [0, 0, 1, 1]);
+        assert_eq!(soa.attr_prefix_id, [0, 0, 0, 1]);
+        // document, html, head, body, p, p, svg, a
+        assert_eq!(soa.node_type, [9, 1, 1, 1, 1, 1, 1, 1]);
+        assert_eq!(soa.ns, [0, 0, 0, 0, 0, 0, 1, 1]);
+        assert_eq!(soa.tag_id, [0, 0, 1, 2, 3, 3, 4, 5]);
+        assert_eq!(soa.parent, [-1, 0, 1, 1, 3, 3, 3, 6]);
+        assert_eq!(soa.first_child, [1, 2, -1, 4, -1, -1, 7, -1]);
+        assert_eq!(soa.next_sib, [-1, -1, 3, -1, 5, 6, -1, -1]);
+        assert_eq!(soa.attr_start, [-1, -1, -1, -1, 0, 1, -1, 3]);
+        assert_eq!(soa.attr_count, [0, 0, 0, 0, 1, 2, 0, 1]);
+        assert_eq!(soa.text_id, [-1; 8]);
+        assert!(soa.strings.is_empty());
+    }
+
+    #[test]
+    fn soa_strings_doctype_text_comment_and_template_content() {
+        let (soa, mode) = parse_html_soa_with_compat_mode(
+            "<!DOCTYPE html PUBLIC \"p\" \"s\"><!--c--><template>t</template>",
+        );
+        assert_eq!(mode, "CSS1Compat");
+        // document, doctype, comment, html, head, template, content, "t", body
+        assert_eq!(soa.node_type, [9, 10, 8, 1, 1, 1, 11, 3, 1]);
+        assert_eq!(soa.strings, ["html", "p", "s", "c", "t"].map(String::from));
+        assert_eq!(soa.text_id, [-1, 0, 3, -1, -1, -1, -1, 4, -1]);
+        assert_eq!(soa.pub_id, [-1, 1, -1, -1, -1, -1, -1, -1, -1]);
+        assert_eq!(soa.sys_id, [-1, 2, -1, -1, -1, -1, -1, -1, -1]);
+        assert_eq!(soa.tag_names[soa.tag_id[6] as usize], "content");
+        assert_eq!(soa.parent[6..8], [5, 6]);
+        assert_eq!(soa.first_child[5], 6);
+        assert_eq!(parse_html_soa_with_compat_mode("<p>").1, "BackCompat");
+        assert_eq!(parse_html_document_count("<!--c--><p>x"), 7);
+    }
+
+    #[test]
+    fn selectedcontent_skips_options_in_a_nested_optgroup() {
+        // Chrome 156 (headless DOMParser, recorded for this test): an option below a second
+        // optgroup is not one of the select's options, so the next option fills
+        // <selectedcontent>; Chrome's tree is the same and its innerHTML is "b".
+        let html = "<select><optgroup><div><optgroup><option>a</option></optgroup></div></optgroup>\
+                    <option>b</option><button><selectedcontent></selectedcontent></button></select>";
+        let want = "| <html>\n|   <head>\n|   <body>\n|     <select>\n|       <optgroup>\n\
+                    |         <div>\n|           <optgroup>\n|             <option>\n\
+                    |               \"a\"\n|       <option>\n|         \"b\"\n|       <button>\n\
+                    |         <selectedcontent>\n|           \"b\"";
+        assert_eq!(
+            conformance_tests::dump_node(&parse_html_document(html)),
+            want
+        );
+        assert_eq!(conformance_tests::dump_soa(&parse_html_soa(html)), want);
+    }
+
+    #[test]
+    fn mentions_selectedcontent_is_an_ascii_case_insensitive_substring_test() {
+        assert!(mentions_selectedcontent("selectedcontent"));
+        assert!(mentions_selectedcontent("<b></b><SelectedContent>"));
+        assert!(mentions_selectedcontent("xSELECTEDCONTENTx"));
+        assert!(!mentions_selectedcontent("selectedconten"));
+        assert!(!mentions_selectedcontent("<select><option>"));
+        assert!(!mentions_selectedcontent(""));
     }
 
     #[test]

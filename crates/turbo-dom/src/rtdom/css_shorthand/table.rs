@@ -1310,3 +1310,21 @@ pub fn preferred() -> &'static [&'static Entry] {
         entries
     })
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{entry, SHORTHANDS};
+
+    /// `grammar::expand` and `serialize::value` take an entry's grammar key: each one names
+    /// an entry (whose longhands the serializer reads) and has a parser.
+    #[test]
+    fn every_grammar_names_an_entry_with_a_parser() {
+        let comps = super::super::components::components("bogus").unwrap();
+        for shorthand in SHORTHANDS {
+            let grammar = entry(shorthand.grammar).unwrap_or_else(|| panic!("{}", shorthand.name));
+            assert_eq!(grammar.longhands, shorthand.longhands, "{}", shorthand.name);
+            // Every key reaches its parser (an unknown one is `unreachable!`).
+            let _ = super::super::grammar::expand(shorthand.grammar, &comps);
+        }
+    }
+}

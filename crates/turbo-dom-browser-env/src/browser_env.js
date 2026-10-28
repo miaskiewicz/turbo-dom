@@ -2715,12 +2715,11 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
       SVGElement:['style'],
       MathMLElement:['style'],
       CharacterData:['data'],
-      DocumentType:['publicId','systemId'],
       Document:['activeElement','children','firstElementChild'],
       DocumentFragment:['children','firstElementChild'],
       ShadowRoot:['host','mode','innerHTML']
     };
-    var writable={nodeValue:1,textContent:1,id:1,className:1,innerHTML:1,outerHTML:1,contentEditable:1,data:1};
+    var writable={nodeValue:1,textContent:1,id:1,className:1,innerHTML:1,outerHTML:1,data:1};
     var nativeKeys=['constructor'];
     Object.keys(accessorOwners).forEach(function(owner){
       accessorOwners[owner].forEach(function(name){
@@ -2736,7 +2735,6 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
       if(name==='value'){var set=__ns.domAccessor(raw,true,'Attr');descriptor.set=__ns.makeNativeFunction(function(value){set.call(this,value);},'set value',1);}
       Object.defineProperty(prototypes.Attr,name,descriptor);
     });
-    var doctypeName=__ns.domAccessor('__nodeName',false,'DocumentType');Object.defineProperty(prototypes.DocumentType,'name',{get:__ns.makeNativeFunction(function(){return doctypeName.call(this);},'get name',0),enumerable:true,configurable:true});
     [htmlProto,prototypes.SVGElement,prototypes.MathMLElement].forEach(function(proto){var inlineStyle=Object.getOwnPropertyDescriptor(proto,'style');inlineStyle.set=__ns.makeNativeFunction(function(value){var style=inlineStyle.get.call(this);Object.getOwnPropertyDescriptor(declarationPrototype,'cssText').set.call(style,value);},'set style',1);Object.defineProperty(proto,'style',inlineStyle);});
     ['Element','Document','DocumentFragment'].forEach(function(owner){
       var children=Object.getOwnPropertyDescriptor(prototypes[owner],'children').get;
@@ -2771,7 +2769,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     var isShadowRoot=__ns.domAccessor('__isShadowRoot',false,'Node');
     var probe=d.createElement('div');
     __ns.cascadeProp=Object.getOwnPropertyDescriptor(probe,'__cascadeProp').value;
-    nativeKeys.push('__nodeName','__attrValue','__attrOwner','__attrSpecified','__cascadeProp','__isShadowRoot','host','mode','containsNode','activeElement');
+    nativeKeys.push('__attrValue','__attrOwner','__attrSpecified','__cascadeProp','__isShadowRoot','host','mode','containsNode','activeElement');
     var constants={ELEMENT_NODE:1,ATTRIBUTE_NODE:2,TEXT_NODE:3,CDATA_SECTION_NODE:4,ENTITY_REFERENCE_NODE:5,ENTITY_NODE:6,PROCESSING_INSTRUCTION_NODE:7,COMMENT_NODE:8,DOCUMENT_NODE:9,DOCUMENT_TYPE_NODE:10,DOCUMENT_FRAGMENT_NODE:11,NOTATION_NODE:12,DOCUMENT_POSITION_DISCONNECTED:1,DOCUMENT_POSITION_PRECEDING:2,DOCUMENT_POSITION_FOLLOWING:4,DOCUMENT_POSITION_CONTAINS:8,DOCUMENT_POSITION_CONTAINED_BY:16,DOCUMENT_POSITION_IMPLEMENTATION_SPECIFIC:32};
     Object.keys(constants).forEach(function(name){
       nativeKeys.push(name);
@@ -2792,18 +2790,16 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
       nativeKeys.push(name);
     });
     var controls=['HTMLInputElement','HTMLTextAreaElement','HTMLSelectElement','HTMLButtonElement','HTMLFieldSetElement','HTMLObjectElement','HTMLOutputElement'];
-    ['checkValidity','reportValidity','setCustomValidity','setSelectionRange','setRangeText','select'].forEach(function(name){
+    ['setCustomValidity','setSelectionRange','setRangeText','select'].forEach(function(name){
       var descriptor=Object.getOwnPropertyDescriptor(probe,name);
       nativeKeys.push(name);
       var owners=/^(setSelectionRange|setRangeText|select)$/.test(name)?controls.slice(0,2):controls;
-      if(name!=='setCustomValidity'&&owners===controls)owners=owners.concat('HTMLFormElement');
       owners.forEach(function(owner){var proto=prototypes[owner];if(proto&&!Object.hasOwn(proto,name)&&descriptor)Object.defineProperty(proto,name,{value:descriptor.value,writable:true,configurable:true,enumerable:true});});
     });
     var methodOwners={
       Node:['appendChild','removeChild','insertBefore','replaceChild','contains','hasChildNodes','cloneNode','getRootNode'],
       Element:['setAttribute','getAttribute','getAttributeNode','getAttributeNodeNS','setAttributeNode','setAttributeNodeNS','removeAttributeNode','hasAttribute','removeAttribute','querySelector','querySelectorAll','matches','closest','append','prepend','remove','before','after','replaceWith','replaceChildren','insertAdjacentElement','insertAdjacentHTML','toggleAttribute','getAttributeNS','hasAttributeNS','setAttributeNS','removeAttributeNS','scrollIntoView','scrollTo','scrollBy','getBoundingClientRect','attachShadow'],
       HTMLElement:['focus','blur','click'],
-      CharacterData:['insertData','deleteData','appendData','replaceData','substringData'],
       Text:['splitText']
     };
     Object.keys(methodOwners).forEach(function(owner){

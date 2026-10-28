@@ -386,9 +386,10 @@ type Terms = Vec<(String, f64)>;
 /// parentheses / `calc()`, one-unit `min()` / `max()` / `clamp()`), absolute lengths combined
 /// in px; `None` when Chrome would keep the expression unsimplified.
 fn sum_terms(inner: &[Comp]) -> Option<Vec<(String, f64)>> {
-    // Operands alternate with operators; products bind first.
+    // Operands alternate with operators (`function_valid` / `calc_type` checked every sum
+    // before it gets here); products bind first.
     if inner.len().is_multiple_of(2) {
-        return None;
+        unreachable!("a checked calc() sum has an odd number of components");
     }
     let nested = |comp: &Comp, open: usize| components(&comp.text[open..comp.text.len() - 1]);
     let operand = |comp: &Comp| -> Option<Terms> {
@@ -396,14 +397,14 @@ fn sum_terms(inner: &[Comp]) -> Option<Vec<(String, f64)>> {
             Kind::Number { value, .. } => vec![(String::new(), f64::from(*value))],
             Kind::Percentage(value) => vec![("%".to_string(), f64::from(*value))],
             Kind::Dimension { value, unit } => vec![(unit.clone(), f64::from(*value))],
+            // `calc_type` admits only the constants as identifiers: the last one is `nan`.
             Kind::Ident(name) => {
                 let value = match name.to_ascii_lowercase().as_str() {
                     "e" => std::f64::consts::E,
                     "pi" => std::f64::consts::PI,
                     "infinity" => f64::INFINITY,
                     "-infinity" => f64::NEG_INFINITY,
-                    "nan" => f64::NAN,
-                    _ => return None,
+                    _ => f64::NAN,
                 };
                 vec![(String::new(), value)]
             }
@@ -457,7 +458,7 @@ fn sum_terms(inner: &[Comp]) -> Option<Vec<(String, f64)>> {
                 sign = if operator == '+' { 1.0 } else { -1.0 };
                 current = next;
             }
-            _ => return None,
+            _ => unreachable!("a checked calc() sum has only * / + - operators"),
         }
         index += 2;
     }
@@ -590,9 +591,8 @@ fn calc_type(inner: &[Comp]) -> Option<CalcType> {
             Kind::Delim('*') => {
                 product = match (product, next) {
                     (a, b) if unit(a) && unit(b) => return None,
-                    (CalcType::Number | CalcType::Unknown, other)
-                    | (other, CalcType::Number | CalcType::Unknown) => other,
-                    (a, _) => a,
+                    // At most one side carries a unit: the product has its type.
+                    (CalcType::Number | CalcType::Unknown, other) | (other, _) => other,
                 };
             }
             Kind::Slash | Kind::Delim('/') => {
@@ -795,7 +795,7 @@ fn min_max(name: &str, inner: &[Comp]) -> Option<String> {
         ("min", [_, ..]) => values.iter().copied().fold(f64::INFINITY, f64::min),
         ("max", [_, ..]) => values.iter().copied().fold(f64::NEG_INFINITY, f64::max),
         ("clamp", [low, value, high]) => value.min(*high).max(*low),
-        _ => return None,
+        _ => unreachable!("function_valid admits min() / max() with arguments, clamp() with three"),
     };
     Some(calc_text(vec![(unit?, value)]))
 }
@@ -976,7 +976,8 @@ fn linear_text(inner: &[Comp]) -> Option<String> {
     let mut stops: Vec<(String, Vec<Option<f64>>)> = Vec::new();
     for item in inner.split(|comp| comp.kind == Kind::Comma) {
         let (output, positions) = item.split_first()?;
-        if !matches!(output.kind, Kind::Number { .. }) || positions.len() > 2 {
+        // `function_valid` admitted at most two positions per stop.
+        if !matches!(output.kind, Kind::Number { .. }) {
             return None;
         }
         let positions = positions
@@ -996,7 +997,7 @@ fn linear_text(inner: &[Comp]) -> Option<String> {
         }
     }
     if stops.len() < 2 {
-        return None;
+        unreachable!("function_valid admits linear() with a comma: two stops or more");
     }
     let mut flat: Vec<Option<f64>> = stops
         .iter()
@@ -1105,7 +1106,7 @@ impl Comp {
             .find('(')
             .and_then(|at| components(&self.text[at + 1..self.text.len() - 1]))
         else {
-            return false;
+            unreachable!("a math function's text is its tokenized arguments re-joined");
         };
         let mut found = false;
         let mut bad = false;
@@ -1272,36 +1273,29 @@ fn visit(comps: &[Comp], callback: &mut dyn FnMut(&Comp)) {
 
 /// Whether the raw value holds a `var()` / `env()` / `attr()` reference anywhere.
 pub(super) fn has_substitution(value: &str) -> bool {
+    // Reads the whole (nested) input: `parse_nested_block` only keeps a block's result when
+    // the closure exhausted it (turbo-dom#115).
     fn scan(input: &mut Parser<'_, '_>) -> bool {
+        let mut found = false;
         while let Ok(token) = input.next_including_whitespace_and_comments() {
-            match token.clone() {
+            let nested = match token.clone() {
                 Token::Function(name) => {
                     let lower = name.to_ascii_lowercase();
-                    if matches!(lower.as_str(), "var" | "env" | "attr" | "if" | "inherit") {
-                        return true;
-                    }
-                    if input
-                        .parse_nested_block(|input| {
-                            Ok::<_, cssparser::ParseError<'_, ()>>(scan(input))
-                        })
-                        .unwrap_or(false)
-                    {
-                        return true;
-                    }
+                    found |= matches!(lower.as_str(), "var" | "env" | "attr" | "if" | "inherit");
+                    true
                 }
-                Token::ParenthesisBlock | Token::SquareBracketBlock | Token::CurlyBracketBlock
-                    if input
-                        .parse_nested_block(|input| {
-                            Ok::<_, cssparser::ParseError<'_, ()>>(scan(input))
-                        })
-                        .unwrap_or(false) =>
-                {
-                    return true;
+                Token::ParenthesisBlock | Token::SquareBracketBlock | Token::CurlyBracketBlock => {
+                    true
                 }
-                _ => {}
+                _ => false,
+            };
+            if nested {
+                found |= input
+                    .parse_nested_block(|input| Ok::<_, cssparser::ParseError<'_, ()>>(scan(input)))
+                    .unwrap_or(false);
             }
         }
-        false
+        found
     }
     let mut source = ParserInput::new(value);
     let mut input = Parser::new(&mut source);

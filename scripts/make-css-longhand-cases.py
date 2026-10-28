@@ -124,6 +124,37 @@ MUTATION.update({
     "background-position-x": ["left 10px right", "center 10px", "right -10%"],
     "border-image-slice": ["fill", "10% 20% fill 30%", "1 2 3 4", "1 2 3 4 fill", "fill 1 2 3 4"],
 })
+# Round four (coverage, P5-cov): the grammar branches no earlier pair reached -- two-keyword
+# display forms, list lengths past a grammar's limit, path() data, nested functions and hex
+# colors in the context-free spelling, var() inside functions, empty / untokenizable values.
+MUTATION.update({
+    "flex-direction": ["row column"], "border-top-left-radius": ["1px 2px 3px"],
+    "background-position-y": MUTATION.get("background-position-y", []) + ["left 10px", "top 10px 5px"],
+    "text-decoration-line": ["underline underline", "underline bogus"],
+    "offset-path": ["path(M 0 0)", "path(1)", "circle(50%)", "url(a.svg)", "ray(45deg)", "path('M 0 0')"],
+    "display": ["block flow-root", "flow-root block", "flex block", "block grid", "inline grid", "block table", "table inline", "block ruby", "inline ruby", "flow-root flex", "block inline flow"],
+    "border-image-width": MUTATION["border-image-width"] + ["1 2 3 4 5"], "border-image-outset": MUTATION["border-image-outset"] + ["1 2 3 4 5"],
+    "transform": ["translate(calc(1px + 1em), 0)", "rotate(calc(1deg + 1rad))"], "list-style-type": ["symbols(cyclic '*')", "counter(a)"],
+    "caret-color": ["#ABC"], "text-shadow": ["1px 1px #ABC"],
+    "width": MUTATION["width"] + [")", "/**/", "var(--a)", "calc(var(--a) + 1px)", "calc((var(--a)))", "(var(--a))", "calc(1em + min(1px, 2%))", "url(a b)", "}", "calc(1px + a)", "calc(1px + 'a')"],
+    "transition-duration": MUTATION["transition-duration"] + ["calc(1s + 1ms + 1%)"],
+    "grid-template-columns": MUTATION["grid-template-columns"] + ["minmax([a], 1fr)", "repeat(1 2, 1fr)", "repeat(, 1fr)", "calc(10px + 5%)", "repeat(auto-fill, fit-content(10px))", "repeat(auto-fill, minmax(10px, 1fr))", "repeat(auto-fill, [a] 10px)"],
+    "grid-template-areas": ["\"a\\\"b\"", "\"a\\\\b\""],
+    "font-variant-alternates": ["swash(a) bogus(b)", "historical-forms(a)"],
+    "transition-timing-function": MUTATION["transition-timing-function"] + ["cubic-bezier(calc(1px), 0, 1, 1)", "cubic-bezier(min(0.5, 1), 0, 1, 1)", "cubic-bezier(0 0, 0, 1, 1)", "cubic-bezier(calc(1s + 1ms + 1), 0, 1, 1)", "cubic-bezier(a, 0, 1, 1)", "linear(calc(0), 1)", "linear(0, 1 calc(50%))", "steps(1, 2, 3)"],
+    "color": MUTATION["color"] + ["hsl(1px 50% 50%)", "hsl(10% 50% 50%)", "rgb(1 2 3 / 0.5 0.5)", "rgb(from red r g b / 1 1)"],
+    "offset-rotate": ["0", "auto 0", "0 reverse"],
+})
+# Mutation run of the coverage round: length-function zeros, track breadths and fixed sizes,
+# the remaining two-keyword display forms, legacy justify-items, numeric min() / max().
+MUTATION.update({
+    "transform": MUTATION["transform"] + ["scale(0)", "matrix(1, 0, 0, 1, 0, 0)"],
+    "grid-template-columns": MUTATION["grid-template-columns"] + ["minmax(calc(10px + 5%), 1fr)", "repeat(auto-fill, calc(10px))", "minmax(1px 1fr 2px)"],
+    "display": MUTATION["display"] + ["inline flow-root", "flow-root inline", "ruby block", "ruby inline", "block flow", "inline flow", "flow block"],
+    "justify-items": ["center start", "left right", "legacy left", "right legacy"],
+    "flex-grow": MUTATION["flex-grow"] + ["min(1, 2)"], "opacity": MUTATION["opacity"] + ["max(0.5, 0.25)"],
+    "transition-timing-function": MUTATION["transition-timing-function"] + ["cubic-bezier(calc(2px), 0, 1, 1)"],
+})
 for name, values in MUTATION.items():
     for value in values:
         if [name, value] not in pairs:

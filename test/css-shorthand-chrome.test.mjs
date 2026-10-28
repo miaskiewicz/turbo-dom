@@ -17,7 +17,26 @@ const control = JSON.parse(read('css_shorthand_chrome156.json'));
 const sha = (text) => createHash('sha256').update(text).digest('hex');
 
 // Scenarios whose npm result differs from Chrome for a documented reason, by id.
-const KNOWN_GAPS = new Set([]);
+const KNOWN_GAPS = new Set([
+  // turbo-dom#117 (shared with rtdom::css_shorthand).
+  "margin|calc(1px + abs(1px))",
+  "margin|calc(min(1px) * min(2px))",
+  "margin|min(1px 2px)",
+  "margin|min(1px, calc(1px + 1em))",
+  "place-content|baseline center",
+  "offset|path('M 0 0') 10px 0",
+  "offset|path(M 0 0)",
+  "offset|path('M 0 0') 10px auto 0",
+  "background|hsl(1px 50% 50%)",
+  "background|hsl(10% 50% 50%)",
+  "transition|opacity cubic-bezier(calc(1px), 0, 1, 1)",
+  "transition|opacity cubic-bezier(min(0.5, 1), 0, 1, 1)",
+  "transition|opacity linear(calc(0), 1)",
+  "transition|opacity linear(0, 1 calc(50%))",
+  "cov-columns-wrap",
+  "cov-columns-nowrap",
+  "cov-trigger-ranges-mismatch",
+]);
 
 test('element.style shorthands expand and serialize like Chrome 156 (turbo-dom#90)', () => {
   assert.equal(control.browser, 'Chrome/156.0.8078.4');
@@ -47,4 +66,14 @@ test('element.style shorthands expand and serialize like Chrome 156 (turbo-dom#9
   const stale = [...KNOWN_GAPS].filter((id) => !failed.includes(id));
   assert.deepEqual(stale, [], 'stale KNOWN_GAPS');
   assert.deepEqual(failures, [], `${failures.length} of ${expected.results.length} scenarios differ from Chrome`);
+});
+
+test("the module's shorthand table (shorthandNames / longhands / canonical) is Chrome 156's", async () => {
+  // the same assertion as crates/turbo-dom/tests/css_shorthand_chrome.rs makes of rtdom::css_shorthand
+  const { shorthandNames, longhands, canonical } = await import('../src/runtime/css-shorthand.mjs');
+  const names = shorthandNames();
+  assert.deepEqual(Object.fromEntries(names.map((name) => [name, longhands(name)])), control.result[0].result.table);
+  assert.equal(new Set(names).size, names.length);
+  assert.equal(canonical('-webkit-flex'), 'flex');
+  assert.equal(longhands('color'), null);
 });

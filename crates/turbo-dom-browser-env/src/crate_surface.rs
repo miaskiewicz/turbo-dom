@@ -46,3 +46,14 @@ pub mod host_internals;
 #[cfg(feature = "test-support")]
 #[path = "test_support.rs"]
 pub mod test_support;
+
+// Coverage-phase Chrome 156 control tests (crate-owned, not part of the move).
+#[cfg(test)]
+#[path = "close_watchers_tests.rs"]
+mod close_watchers_tests;
+#[cfg(test)]
+#[path = "host_api_tests.rs"]
+mod host_api_tests;
+#[cfg(test)]
+#[path = "native_guards_tests.rs"]
+mod native_guards_tests;

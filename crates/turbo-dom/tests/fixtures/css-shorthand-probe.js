@@ -32,6 +32,7 @@
       else if (op === "set") element.style.setProperty(name, value, priority);
       else if (op === "remove") returns.push(element.style.removeProperty(name));
       else if (op === "get") returns.push(element.style.getPropertyValue(name));
+      else if (op === "priority") returns.push(element.style.getPropertyPriority(name));
       else if (op === "recss") { const copy = document.createElement("div"); copy.setAttribute("style", element.style.cssText); returns.push(copy.style.cssText); }
     }
     const out = record(element.style);
