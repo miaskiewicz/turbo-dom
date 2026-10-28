@@ -559,15 +559,10 @@ pub fn dispatch<'s>(
         }
         "normalize" => range_live::normalize(scope, handle),
         "replaceCharacterData" if matches!(kind, 3 | 4 | 7 | 8) => {
-            let Some(offset) = args.get(2).uint32_value(scope) else {
-                return;
-            };
-            let Some(count) = args.get(3).uint32_value(scope) else {
-                return;
-            };
-            let Some(data) = dom_units(scope, args.get(4)) else {
-                return;
-            };
+            // document_basics.js passes uint() offsets / counts and a string() data.
+            let offset = args.get(2).uint32_value(scope).expect("uint offset");
+            let count = args.get(3).uint32_value(scope).expect("uint count");
+            let data = dom_units(scope, args.get(4)).expect("string data");
             replace_character_data(scope, handle, offset as usize, count as usize, &data);
         }
         "stamp" => {
@@ -648,12 +643,9 @@ pub fn dispatch<'s>(
             }
         }
         "createPI" if kind == 9 => {
-            let Some(target) = dom_units(scope, args.get(2)) else {
-                return;
-            };
-            let Some(data) = dom_units(scope, args.get(3)) else {
-                return;
-            };
+            // createProcessingInstruction converted and validated both with string().
+            let target = dom_units(scope, args.get(2)).expect("string target");
+            let data = dom_units(scope, args.get(3)).expect("string data");
             let node =
                 with_tree_mut(|tree| tree.create_processing_instruction_units(&target, &data))
                     .unwrap();
@@ -701,9 +693,7 @@ pub fn dispatch<'s>(
             rv.set(unit_string(scope, &value).into());
         }
         "setNonce" if kind == 1 => {
-            let Some(value) = dom_units(scope, args.get(2)) else {
-                return;
-            };
+            let value = dom_units(scope, args.get(2)).expect("string() nonce");
             DOM.with(|dom| {
                 dom.borrow_mut()
                     .as_mut()
