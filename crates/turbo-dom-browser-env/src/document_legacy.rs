@@ -495,10 +495,7 @@ fn set_domain<'s>(
     // The match runs against the origin's own host, so a relaxed document may
     // restore any suffix of it; the message names the current effective domain.
     let host = origin_host(&owner.url).map(|host| host.to_string());
-    let ip = matches!(
-        url::Host::parse(&new_domain),
-        Ok(url::Host::Ipv4(_) | url::Host::Ipv6(_))
-    );
+    let ip = url::Host::parse(&new_domain).is_ok_and(|host| !matches!(host, url::Host::Domain(_)));
     let exact = host.as_deref() == Some(new_domain.as_str());
     let suffix = !ip
         && host.as_deref().is_some_and(|host| {

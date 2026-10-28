@@ -78,13 +78,12 @@ enum Display {
 
 /// The UA stylesheet's display for an element without an authored one.
 fn ua_display(tree: &Tree, node: Handle) -> Display {
-    let Some(name) = tree.local_name(node) else {
-        return Display::Inline;
-    };
+    // Only elements reach here (their local name exists); anything else is an inline box.
+    let name = tree.local_name(node).unwrap_or_default();
     match tree.namespace_id(node) {
         0 => {}
         // An outermost <svg> is a replaced element; SVG content has no CSS box of its own.
-        _ if name == "svg" => {
+        1 if name == "svg" => {
             let parent_svg = tree.parent(node).is_some_and(|parent| {
                 tree.node_type_id(parent) == 1 && tree.namespace_id(parent) != 0
             });
@@ -92,6 +91,14 @@ fn ua_display(tree: &Tree, node: Handle) -> Display {
                 Display::None
             } else {
                 Display::Atomic
+            };
+        }
+        // MathML's UA sheet: <math> is `math` (an atomic inline), the rest `block math`.
+        2 => {
+            return if name == "math" {
+                Display::Atomic
+            } else {
+                Display::Block
             };
         }
         _ => return Display::Inline,
@@ -138,9 +145,9 @@ fn authored_display(value: &str) -> Option<Display> {
         ["ruby"] | ["inline", "ruby"] | ["ruby", "inline"] => Display::Ruby,
         ["table-row" | "table-row-group" | "table-header-group" | "table-footer-group"
         | "table-column" | "table-column-group"] => Display::TableTrack,
-        ["ruby-base" | "ruby-text" | "ruby-base-container" | "ruby-text-container"] => {
-            Display::Inline
-        }
+        ["ruby-text"] => Display::Inline,
+        // Chrome 156 does not support these internal ruby values: the declaration is invalid.
+        ["ruby-base" | "ruby-base-container" | "ruby-text-container"] => return None,
         [first, ..] if first.starts_with("inline") => Display::Atomic,
         _ => Display::Block,
     })

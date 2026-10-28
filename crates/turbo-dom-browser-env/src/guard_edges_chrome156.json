@@ -1,0 +1,567 @@
+{
+  "browser": "Chrome/156.0.8078.47",
+  "v8": "15.6.75.19",
+  "probe": "guard_edges_probe.js",
+  "probeSha256": "af4ace2db373e1dbf7de5710fcf00592b7210c66146f6b524f484a603d09ed95",
+  "collectorSha256": "3f964d2cdf0ec8101870a776aaffc3b7dc4522306959c4a40761057beb255eb8",
+  "flags": [
+    "--headless=new",
+    "--remote-debugging-pipe",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "--disable-background-timer-throttling",
+    "--disable-renderer-backgrounding",
+    "--disable-backgrounding-occluded-windows",
+    "about:blank"
+  ],
+  "result": {
+    "selectors": {
+      ":popover-open(x)": [
+        "E:SyntaxError",
+        "E:SyntaxError",
+        "E:SyntaxError"
+      ],
+      ":POPOVER-OPEN()": [
+        "E:SyntaxError",
+        "E:SyntaxError",
+        "E:SyntaxError"
+      ],
+      ":popover-open, )": [
+        "E:SyntaxError",
+        "E:SyntaxError",
+        "E:SyntaxError"
+      ],
+      ":popover-open:is(": [
+        "null",
+        false,
+        "null"
+      ],
+      "div:popover-open)": [
+        "E:SyntaxError",
+        "E:SyntaxError",
+        "E:SyntaxError"
+      ],
+      ":is(:popover-open(x))": [
+        "null",
+        false,
+        "null"
+      ],
+      ":modal(x)": [
+        "E:SyntaxError",
+        "E:SyntaxError",
+        "E:SyntaxError"
+      ],
+      ":open(x)": [
+        "E:SyntaxError",
+        "E:SyntaxError",
+        "E:SyntaxError"
+      ],
+      ":modal, )": [
+        "E:SyntaxError",
+        "E:SyntaxError",
+        "E:SyntaxError"
+      ],
+      ":open, )": [
+        "E:SyntaxError",
+        "E:SyntaxError",
+        "E:SyntaxError"
+      ],
+      ":modal)": [
+        "E:SyntaxError",
+        "E:SyntaxError",
+        "E:SyntaxError"
+      ],
+      ":is(:modal(x))": [
+        "null",
+        false,
+        "null"
+      ],
+      ":where(:open(x), div)": [
+        "[object HTMLDivElement]",
+        true,
+        "[object HTMLDivElement]"
+      ],
+      ":active-view-transition(x)": [
+        "E:SyntaxError",
+        "E:SyntaxError",
+        "E:SyntaxError"
+      ],
+      ":active-view-transition, )": [
+        "E:SyntaxError",
+        "E:SyntaxError",
+        "E:SyntaxError"
+      ],
+      ":active-view-transition)": [
+        "E:SyntaxError",
+        "E:SyntaxError",
+        "E:SyntaxError"
+      ],
+      ":active-view-transition-type(a), )": [
+        "E:SyntaxError",
+        "E:SyntaxError",
+        "E:SyntaxError"
+      ],
+      ":active-view-transition-type(a))": [
+        "E:SyntaxError",
+        "E:SyntaxError",
+        "E:SyntaxError"
+      ],
+      ":active-view-transition-type()": [
+        "E:SyntaxError",
+        "E:SyntaxError",
+        "E:SyntaxError"
+      ],
+      "a!": [
+        "E:SyntaxError",
+        "E:SyntaxError",
+        "E:SyntaxError"
+      ],
+      "a)": [
+        "E:SyntaxError",
+        "E:SyntaxError",
+        "E:SyntaxError"
+      ],
+      "a]": [
+        "E:SyntaxError",
+        "E:SyntaxError",
+        "E:SyntaxError"
+      ],
+      "*|1": [
+        "E:SyntaxError",
+        "E:SyntaxError",
+        "E:SyntaxError"
+      ],
+      "svg|1": [
+        "E:SyntaxError",
+        "E:SyntaxError",
+        "E:SyntaxError"
+      ],
+      "*|*": [
+        "[object HTMLHtmlElement]",
+        true,
+        "[object HTMLDialogElement]"
+      ],
+      "|a": [
+        "null",
+        false,
+        "null"
+      ],
+      "::view-transition-group(1)": [
+        "E:SyntaxError",
+        "E:SyntaxError",
+        "E:SyntaxError"
+      ],
+      "::view-transition-group()": [
+        "E:SyntaxError",
+        "E:SyntaxError",
+        "E:SyntaxError"
+      ],
+      "::view-transition-group(.)": [
+        "E:SyntaxError",
+        "E:SyntaxError",
+        "E:SyntaxError"
+      ],
+      "::view-transition-group(*.a)": [
+        "null",
+        false,
+        "null"
+      ],
+      ":is(a!)": [
+        "null",
+        false,
+        "null"
+      ],
+      ":where(a)b": [
+        "E:SyntaxError",
+        "E:SyntaxError",
+        "E:SyntaxError"
+      ],
+      ":not(a, )": [
+        "E:SyntaxError",
+        "E:SyntaxError",
+        "E:SyntaxError"
+      ],
+      ":has(> a, )": [
+        "E:SyntaxError",
+        "E:SyntaxError",
+        "E:SyntaxError"
+      ],
+      "div:popover-open": [
+        "null",
+        false,
+        "null"
+      ],
+      "dialog:modal": [
+        "null",
+        false,
+        "null"
+      ],
+      "dialog:open": [
+        "null",
+        false,
+        "null"
+      ],
+      ":where(:popover-open(x), div)": [
+        "[object HTMLDivElement]",
+        true,
+        "[object HTMLDivElement]"
+      ],
+      ":is( :popover-open() , :popover-open)": [
+        "null",
+        false,
+        "null"
+      ],
+      ":modal, [a": [
+        "null",
+        false,
+        "null"
+      ],
+      ":open, :state(x": [
+        "null",
+        false,
+        "null"
+      ],
+      ":popover-open, :-webkit-any(a": [
+        "null",
+        false,
+        "null"
+      ],
+      ":active-view-transition, [a": [
+        "null",
+        false,
+        "null"
+      ],
+      ":popover-open, [a": [
+        "null",
+        false,
+        "null"
+      ],
+      ":popover-open /* x": [
+        "null",
+        false,
+        "null"
+      ],
+      ":modal, a /* x": [
+        "null",
+        false,
+        "null"
+      ],
+      ":is(:active-view-transition(x))": [
+        "null",
+        false,
+        "null"
+      ],
+      ":/**/popover-open": [
+        "null",
+        false,
+        "null"
+      ],
+      ":is(/**/:popover-open(x), :popover-open)": [
+        "null",
+        false,
+        "null"
+      ],
+      "a\"x\"": [
+        "E:SyntaxError",
+        "E:SyntaxError",
+        "E:SyntaxError"
+      ],
+      "a{}": [
+        "E:SyntaxError",
+        "E:SyntaxError",
+        "E:SyntaxError"
+      ],
+      "a(b)": [
+        "E:SyntaxError",
+        "E:SyntaxError",
+        "E:SyntaxError"
+      ],
+      "a#": [
+        "E:SyntaxError",
+        "E:SyntaxError",
+        "E:SyntaxError"
+      ],
+      "a.b\"c\"": [
+        "E:SyntaxError",
+        "E:SyntaxError",
+        "E:SyntaxError"
+      ],
+      "a::before b": [
+        "E:SyntaxError",
+        "E:SyntaxError",
+        "E:SyntaxError"
+      ],
+      "a[x]\"y\"": [
+        "E:SyntaxError",
+        "E:SyntaxError",
+        "E:SyntaxError"
+      ],
+      "openPopover": [
+        1,
+        "E:SyntaxError",
+        1,
+        1,
+        true
+      ]
+    },
+    "declarations": {
+      "zoom: 2": [
+        "zoom: 2;",
+        "zoom: 2;"
+      ],
+      "zoom: 2 !important": [
+        "zoom: 2 !important;",
+        "zoom: 2 !important;"
+      ],
+      "zoom: 200% !IMPORTANT": [
+        "zoom: 200% !important;",
+        "zoom: 200% !important;"
+      ],
+      "zoom: var(--z) !important": [
+        "zoom: var(--z) !important;",
+        "zoom: var(--z) !important;"
+      ],
+      "zoom: var(--z)": [
+        "zoom: var(--z);",
+        "zoom: var(--z);"
+      ],
+      "zoom: env(x)": [
+        "zoom: env(x);",
+        "zoom: env(x);"
+      ],
+      "zoom: 2 !important x": [
+        "",
+        ""
+      ],
+      "scroll-behavior: smooth !important": [
+        "scroll-behavior: smooth !important;",
+        "scroll-behavior: smooth !important;"
+      ],
+      "scroll-snap-align: start end !important": [
+        "scroll-snap-align: start end !important;",
+        "scroll-snap-align: start end !important;"
+      ],
+      "scroll-behavior: smooth": [
+        "scroll-behavior: smooth;",
+        "scroll-behavior: smooth;"
+      ],
+      "color: red !important": [
+        "color: red !important;",
+        "color: red !important;"
+      ],
+      "--x: 1 !important": [
+        "--x: 1 !important;",
+        "--x: 1 !important;"
+      ],
+      "COLOR: red": [
+        "color: red;",
+        "color: red;"
+      ],
+      "font-variant: small-caps !important": [
+        "font-variant: small-caps !important;",
+        "font-variant: small-caps !important;"
+      ],
+      "writing-mode: vertical-rl !important": [
+        "writing-mode: vertical-rl !important;",
+        "writing-mode: vertical-rl !important;"
+      ],
+      "@keyframes k { 0% {} }": "@keyframes k { \n  0% { }\n}",
+      "@keyframes k { x {} }": "@keyframes k { \n}",
+      "@keyframes k { 10%, 20% {} from {} }": "@keyframes k { \n  10%, 20% { }\n  0% { }\n}",
+      "@keyframes k { -1% {} }": "@keyframes k { \n}",
+      "@keyframes k { 101% {} }": "@keyframes k { \n}",
+      "@font-face { font-family: f; src: url(a) }": "@font-face { font-family: f; src: url(\"a\"); }",
+      "@font-face { font-weight: 300 }": "@font-face { font-weight: 300; }",
+      "@font-face { color: red }": "@font-face { }",
+      "@view-transition { navigation: auto }": "@view-transition { navigation: auto; }",
+      "@view-transition { types: a b }": "@view-transition { types: a b; }",
+      "@property --p { syntax: \"<length>\"; inherits: false; initial-value: 1px }": "@property --p { syntax: \"<length>\"; inherits: false; initial-value: 1px; }",
+      "@counter-style c { system: cyclic; symbols: a }": "@counter-style c { system: cyclic; symbols: a; }"
+    },
+    "misc": {
+      "createDocument": [
+        "E:TypeError",
+        "E:TypeError",
+        "E:TypeError"
+      ],
+      "radios": [
+        true,
+        true,
+        true,
+        true,
+        4
+      ],
+      "radiosClick": [
+        true,
+        true
+      ],
+      "labels": [
+        "null",
+        "null"
+      ],
+      "inertSheet": [
+        "[object CSSStyleSheet]",
+        1
+      ]
+    },
+    "keyframes": {
+      "1px)": [
+        "none",
+        2
+      ],
+      "1px]": [
+        "none",
+        2
+      ],
+      "1px}": [
+        "none",
+        2
+      ],
+      "1px;": [
+        "none",
+        2
+      ],
+      "var(--x))": [
+        "none",
+        2
+      ],
+      "(1px": [
+        "none",
+        2
+      ],
+      "red !important": [
+        "none",
+        2
+      ]
+    },
+    "transitions": {
+      "inheritBlock": [
+        "ok",
+        "ok"
+      ],
+      "inheritInline": [
+        "E:InvalidStateError",
+        "ok"
+      ],
+      "inheritFromFlex": [
+        "ok",
+        "ok"
+      ],
+      "rubyBase": [
+        "ok",
+        "ok"
+      ],
+      "rubyText": [
+        "ok",
+        "ok"
+      ],
+      "revert": [
+        "ok",
+        "ok"
+      ],
+      "unknown": [
+        "ok",
+        "ok"
+      ],
+      "hiddenInput": [
+        "E:InvalidStateError",
+        "ok"
+      ],
+      "textInput": [
+        "ok",
+        "ok"
+      ],
+      "nestedSvg": [
+        "E:InvalidStateError",
+        "ok"
+      ],
+      "svgRect": [
+        "E:InvalidStateError",
+        "ok"
+      ],
+      "mathml": [
+        "ok",
+        "ok"
+      ],
+      "mathmlBlock": [
+        "ok",
+        "ok"
+      ],
+      "rubyBaseSpan": [
+        "E:InvalidStateError",
+        "ok"
+      ],
+      "rubyTextDiv": [
+        "E:InvalidStateError",
+        "ok"
+      ],
+      "rubyBaseContainer": [
+        "ok",
+        "ok"
+      ],
+      "mathInSpan": [
+        "ok",
+        "ok"
+      ],
+      "mrow": [
+        "ok",
+        "ok"
+      ],
+      "mathInline": [
+        "E:InvalidStateError",
+        "ok"
+      ],
+      "otherNamespace": [
+        "E:InvalidStateError",
+        "ok"
+      ],
+      "svgRectInDiv": [
+        "E:InvalidStateError",
+        "ok"
+      ],
+      "slot": [
+        "E:InvalidStateError",
+        "ok"
+      ],
+      "audio": [
+        "E:InvalidStateError",
+        "ok"
+      ],
+      "audioControls": [
+        "ok",
+        "ok"
+      ],
+      "openDialog": [
+        "ok",
+        "ok"
+      ],
+      "closedDialog": [
+        "E:InvalidStateError",
+        "ok"
+      ],
+      "tableRow": [
+        "E:InvalidStateError",
+        "ok"
+      ],
+      "rubyElement": [
+        "E:InvalidStateError",
+        "ok"
+      ],
+      "titleInBody": [
+        "E:InvalidStateError",
+        "ok"
+      ],
+      "inlineBlock": [
+        "ok",
+        "ok"
+      ],
+      "inHiddenSvg": [
+        "E:InvalidStateError",
+        "ok"
+      ]
+    }
+  }
+}

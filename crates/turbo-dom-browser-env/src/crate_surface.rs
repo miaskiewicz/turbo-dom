@@ -58,6 +58,9 @@ mod close_watchers_tests;
 #[path = "edge_probes_tests.rs"]
 mod edge_probes_tests;
 #[cfg(test)]
+#[path = "guard_edges_tests.rs"]
+mod guard_edges_tests;
+#[cfg(test)]
 #[path = "harness_tests.rs"]
 pub(super) mod harness_tests;
 #[cfg(test)]
@@ -68,7 +71,7 @@ mod host_api_tests;
 mod host_edges_tests;
 #[cfg(test)]
 #[path = "member_edges_tests.rs"]
-mod member_edges_tests;
+pub(super) mod member_edges_tests;
 #[cfg(test)]
 #[path = "native_guards_tests.rs"]
 mod native_guards_tests;

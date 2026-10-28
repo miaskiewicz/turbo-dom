@@ -3,7 +3,7 @@
   "v8": "15.6.75.19",
   "timeZone": "UTC",
   "casesSha256": "72535892dd440ee7a67f1f51fd89b297ff7fef451580b4d3f0a390b4bb6a2aae",
-  "probeSha256": "daaf173bdb57b41c439271acf6bbb884585a5f36a6490b487289e1f05effd83f",
+  "probeSha256": "a28fd2078bbc04a88ca5e0e561517366007589137a7ac19924deaa2eb4dea2ca",
   "collectorSha256": "85844539831be26d1ae72c0b643fc2968ddf277c82efc540e5baa867c013c3e2",
   "flags": [
     "--remote-debugging-port=0",
@@ -339,6 +339,21 @@
               {
                 "name": "SecurityError",
                 "message": "Failed to set the 'domain' property on 'Document': '256.0.0.1' could not be parsed properly.",
+                "type": "[object DOMException]",
+                "sameRealm": true
+              }
+            ],
+            [
+              "１２７.０.０.１",
+              {
+                "value": "127.0.0.1"
+              }
+            ],
+            [
+              "１.２.３.４",
+              {
+                "name": "SecurityError",
+                "message": "Failed to set the 'domain' property on 'Document': '1.2.3.4' is not a suffix of '127.0.0.1'.",
                 "type": "[object DOMException]",
                 "sameRealm": true
               }
@@ -1426,6 +1441,24 @@
               }
             ],
             [
+              "１２７.０.０.１",
+              {
+                "name": "SecurityError",
+                "message": "Failed to set the 'domain' property on 'Document': '127.0.0.1' is not a suffix of 'example.co.uk'.",
+                "type": "[object DOMException]",
+                "sameRealm": true
+              }
+            ],
+            [
+              "１.２.３.４",
+              {
+                "name": "SecurityError",
+                "message": "Failed to set the 'domain' property on 'Document': '1.2.3.4' is not a suffix of 'example.co.uk'.",
+                "type": "[object DOMException]",
+                "sameRealm": true
+              }
+            ],
+            [
               "[::1]",
               {
                 "name": "SecurityError",
@@ -2502,6 +2535,24 @@
               }
             ],
             [
+              "１２７.０.０.１",
+              {
+                "name": "SecurityError",
+                "message": "Failed to set the 'domain' property on 'Document': '127.0.0.1' is not a suffix of 'y.github.io'.",
+                "type": "[object DOMException]",
+                "sameRealm": true
+              }
+            ],
+            [
+              "１.２.３.４",
+              {
+                "name": "SecurityError",
+                "message": "Failed to set the 'domain' property on 'Document': '1.2.3.4' is not a suffix of 'y.github.io'.",
+                "type": "[object DOMException]",
+                "sameRealm": true
+              }
+            ],
+            [
               "[::1]",
               {
                 "name": "SecurityError",
@@ -3567,6 +3618,24 @@
               {
                 "name": "SecurityError",
                 "message": "Failed to set the 'domain' property on 'Document': '256.0.0.1' could not be parsed properly.",
+                "type": "[object DOMException]",
+                "sameRealm": true
+              }
+            ],
+            [
+              "１２７.０.０.１",
+              {
+                "name": "SecurityError",
+                "message": "Failed to set the 'domain' property on 'Document': '127.0.0.1' is not a suffix of 'a.b.example.com'.",
+                "type": "[object DOMException]",
+                "sameRealm": true
+              }
+            ],
+            [
+              "１.２.３.４",
+              {
+                "name": "SecurityError",
+                "message": "Failed to set the 'domain' property on 'Document': '1.2.3.4' is not a suffix of 'a.b.example.com'.",
                 "type": "[object DOMException]",
                 "sameRealm": true
               }
@@ -4642,6 +4711,24 @@
               }
             ],
             [
+              "１２７.０.０.１",
+              {
+                "name": "SecurityError",
+                "message": "Failed to set the 'domain' property on 'Document': '127.0.0.1' is not a suffix of 'example.com'.",
+                "type": "[object DOMException]",
+                "sameRealm": true
+              }
+            ],
+            [
+              "１.２.３.４",
+              {
+                "name": "SecurityError",
+                "message": "Failed to set the 'domain' property on 'Document': '1.2.3.4' is not a suffix of 'example.com'.",
+                "type": "[object DOMException]",
+                "sameRealm": true
+              }
+            ],
+            [
               "[::1]",
               {
                 "name": "SecurityError",
@@ -5691,6 +5778,24 @@
               }
             ],
             [
+              "１２７.０.０.１",
+              {
+                "name": "SecurityError",
+                "message": "Failed to set the 'domain' property on 'Document': '127.0.0.1' is not a suffix of 'localhost'.",
+                "type": "[object DOMException]",
+                "sameRealm": true
+              }
+            ],
+            [
+              "１.２.３.４",
+              {
+                "name": "SecurityError",
+                "message": "Failed to set the 'domain' property on 'Document': '1.2.3.4' is not a suffix of 'localhost'.",
+                "type": "[object DOMException]",
+                "sameRealm": true
+              }
+            ],
+            [
               "[::1]",
               {
                 "name": "SecurityError",
@@ -6705,6 +6810,24 @@
               }
             ],
             [
+              "１２７.０.０.１",
+              {
+                "name": "SecurityError",
+                "message": "Failed to set the 'domain' property on 'Document': Assignment is forbidden for sandboxed iframes.",
+                "type": "[object DOMException]",
+                "sameRealm": true
+              }
+            ],
+            [
+              "１.２.３.４",
+              {
+                "name": "SecurityError",
+                "message": "Failed to set the 'domain' property on 'Document': Assignment is forbidden for sandboxed iframes.",
+                "type": "[object DOMException]",
+                "sameRealm": true
+              }
+            ],
+            [
               "[::1]",
               {
                 "name": "SecurityError",
@@ -7654,6 +7777,24 @@
               {
                 "name": "SecurityError",
                 "message": "Failed to set the 'domain' property on 'Document': '256.0.0.1' could not be parsed properly.",
+                "type": "[object DOMException]",
+                "sameRealm": true
+              }
+            ],
+            [
+              "１２７.０.０.１",
+              {
+                "name": "SecurityError",
+                "message": "Failed to set the 'domain' property on 'Document': '127.0.0.1' is not a suffix of ''.",
+                "type": "[object DOMException]",
+                "sameRealm": true
+              }
+            ],
+            [
+              "１.２.３.４",
+              {
+                "name": "SecurityError",
+                "message": "Failed to set the 'domain' property on 'Document': '1.2.3.4' is not a suffix of ''.",
                 "type": "[object DOMException]",
                 "sameRealm": true
               }

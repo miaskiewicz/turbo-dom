@@ -669,9 +669,33 @@ pub(super) fn selector_path(tree: &Tree, mut node: Handle) -> String {
     path.reverse();
     format!(":not(* > *){}", path.join(" > "))
 }
+/// The items of a forgiving `:is()` / `:where()` list: an item that fails to parse (an
+/// invalid `:popover-open()`) is dropped as a never-matching range, as Chrome drops it.
+fn forgiving_list<'i, 't>(
+    input: &mut cssparser::Parser<'i, 't>,
+    ranges: &mut Vec<(usize, usize, bool)>,
+) -> Result<(), cssparser::ParseError<'i, ()>> {
+    loop {
+        let start = input.position().byte_index();
+        let mut item = Vec::new();
+        let parsed = input.parse_until_before(cssparser::Delimiter::Comma, |nested| {
+            pseudo_ranges(nested, &mut item)
+        });
+        match parsed {
+            Ok(()) => ranges.append(&mut item),
+            Err(_) => ranges.push((start, input.position().byte_index(), true)),
+        }
+        if input.is_exhausted() {
+            return Ok(());
+        }
+        input.next()?;
+    }
+}
+/// `(start, end, never)` byte ranges to replace: `:popover-open` (never = false) or a
+/// dropped forgiving-list item (never = true).
 fn pseudo_ranges<'i, 't>(
     input: &mut cssparser::Parser<'i, 't>,
-    ranges: &mut Vec<(usize, usize)>,
+    ranges: &mut Vec<(usize, usize, bool)>,
 ) -> Result<(), cssparser::ParseError<'i, ()>> {
     use cssparser::Token;
     let mut colon = None;
@@ -687,7 +711,7 @@ fn pseudo_ranges<'i, 't>(
             Token::Ident(name) => {
                 if !double_colon && name.eq_ignore_ascii_case("popover-open") {
                     if let Some(start) = colon {
-                        ranges.push((start, input.position().byte_index()));
+                        ranges.push((start, input.position().byte_index(), false));
                     }
                 }
                 colon = None;
@@ -696,8 +720,15 @@ fn pseudo_ranges<'i, 't>(
             Token::Function(ref name)
                 if name.eq_ignore_ascii_case("popover-open") && colon.is_some() =>
             {
-                ranges.push((colon.unwrap(), input.position().byte_index()));
                 return Err(input.new_custom_error(()));
+            }
+            Token::Function(ref name)
+                if colon.is_some()
+                    && (name.eq_ignore_ascii_case("is") || name.eq_ignore_ascii_case("where")) =>
+            {
+                colon = None;
+                double_colon = false;
+                input.parse_nested_block(|nested| forgiving_list(nested, ranges))?;
             }
             Token::Function(_) | Token::ParenthesisBlock => {
                 colon = None;
@@ -746,9 +777,9 @@ pub(super) fn selector(scope: &mut v8::PinScope, anchor: Handle, source: &str) -
     });
     let mut result = String::new();
     let mut start = 0;
-    for (from, to) in ranges {
+    for (from, to, never) in ranges {
         result.push_str(&source[start..from]);
-        result.push_str(&replacement);
+        result.push_str(if never { ":not(*)" } else { &replacement });
         start = to;
     }
     result.push_str(&source[start..]);
