@@ -272,3 +272,68 @@ fn watchdog_checkpoints_unwind_and_leave_a_working_document() {
     ];
     assert_eq!(rows, expected);
 }
+
+/// Listener records hold their callback and AbortSignal weakly. When the collector has taken
+/// a callback, dispatch skips that listener; when a signal was aborted without its abort
+/// hook running (the hook's realm was collected), dispatch drops the listener on sight.
+#[test]
+fn dispatch_skips_collected_callbacks_and_drops_listeners_of_aborted_signals() {
+    crate::browser_env::tests::init_v8();
+    let isolate = &mut v8::Isolate::new(Default::default());
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    install_with_html(scope, "<!doctype html><p id=p>x</p>");
+    let run = |scope: &mut v8::PinScope, source: &str| -> String {
+        let code = v8::String::new(scope, source).unwrap();
+        v8::Script::compile(scope, code, None)
+            .unwrap()
+            .run(scope)
+            .unwrap()
+            .to_rust_string_lossy(scope)
+    };
+    run(
+        scope,
+        "globalThis.log = []; globalThis.p = document.getElementById('p'); p.addEventListener('gone', () => log.push('gone')); p.addEventListener('gone', () => log.push('kept')); p.addEventListener('stale', () => log.push('stale')); globalThis.aborted = new AbortController(); aborted.abort();",
+    );
+    let signal = {
+        let code = v8::String::new(scope, "aborted.signal").unwrap();
+        let value = v8::Script::compile(scope, code, None)
+            .unwrap()
+            .run(scope)
+            .unwrap();
+        v8::Local::<v8::Object>::try_from(value).unwrap()
+    };
+    let signal = v8::Weak::new(scope, signal);
+    LISTENERS.with(|listeners| {
+        for ((_, kind), list) in listeners.borrow_mut().iter_mut() {
+            match kind.as_str() {
+                // The collector took the first 'gone' callback.
+                "gone" => list[0].callback = v8::Weak::empty(scope),
+                "stale" => list[0].signal = Some(signal.clone()),
+                _ => {}
+            }
+        }
+    });
+    assert_eq!(
+        run(
+            scope,
+            "p.dispatchEvent(new Event('gone')); p.dispatchEvent(new Event('stale')); p.dispatchEvent(new Event('stale')); JSON.stringify(log)"
+        ),
+        r#"["kept"]"#
+    );
+    let stale = LISTENERS.with(|listeners| {
+        listeners
+            .borrow()
+            .iter()
+            .filter(|((_, kind), _)| kind == "stale")
+            .map(|(_, list)| {
+                list.iter()
+                    .filter(|listener| !listener.removed.get())
+                    .count()
+            })
+            .sum::<usize>()
+    });
+    assert_eq!(stale, 0);
+    reset();
+}
