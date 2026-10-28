@@ -230,6 +230,13 @@ browser_env.rs: P5-cov-browser-env (D2) turbo-dom#153 dispatch reports the path'
 browser_env.rs: P5-cov-browser-env (D2) turbo-dom#119 the event record keeps the pre-retargeting hitTarget
 user_activation_gates.rs: P5-cov-browser-env (D2) turbo-dom#119 light dismiss reads the record's hitTarget
 selection.rs: P5-cov-browser-env (D2) turbo-dom#144 text model: default-slot text children, tabs before any rendered table cell, a row / table end's newline only before more content, length-changing and capitalize text-transform in toString
+html_invokers.js: D5 turbo-dom#172 activation helpers call captured accessors through a captured Reflect.apply
+browser_env.js: D5 turbo-dom#172 the insertion / event / handler paths use intrinsics captured at install
+document_basics.js: D5 turbo-dom#172 check / collection / document element helpers use intrinsics captured at install
+selection.js: D5 turbo-dom#144 both table edges keep their caret edge flag
+browser_env.rs: D5 turbo-dom#173 Blink's call-without-new messages; turbo-dom#172 captured_intrinsics.js + InlineHandlerSetter
+event_handlers.rs: D5 turbo-dom#172 inline handlers set on* through the setter captured at install
+html_popover.rs: D5 turbo-dom#171 an inert document schedules on its realm's scheduler
 "
 # Crate-owned files under src/ that were not part of the move.
 OWNED="lib.rs crate_surface.rs host_internals.rs test_support.rs css_snapshot.rs option_factory_probe.js option_factory_cases.json option_factory_chrome156.json html_image.js html_image_tests.rs html_image_probe.js html_image_cases.json html_image_chrome156.json custom_elements_defined_probe.js custom_elements_defined_cases.json custom_elements_defined_chrome156.json computed_defaults_probe.js computed_defaults_cases.json computed_defaults_chrome156.json computed_defaults_tests.rs dom_reactions_names_probe.js dom_reactions_names_cases.json dom_reactions_names_chrome156.json dom_reactions_tests.rs dom_adoption_reactions_probe.js dom_adoption_reactions_cases.json dom_adoption_reactions_chrome156.json shadow_events_probe.js shadow_events_cases.json shadow_events_chrome156.json shadow_events_tests.rs html_track_probe.js html_track_cases.json html_track_chrome156.json html_track_tests.rs html_track.js"

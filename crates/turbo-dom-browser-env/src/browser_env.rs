@@ -6459,17 +6459,15 @@ fn native_range_record(
 /// Interfaces without a constructor: Chrome 156 throws "Illegal constructor" when one is
 /// called without `new` (probed on 156.0.8078.47); every other interface constructor says
 /// "Failed to construct 'X': Please use the 'new' operator, …".
-const ILLEGAL_CONSTRUCTORS: &[&str] = &[
-    "Node", "Element", "HTMLDocument", "ShadowRoot", "SVGElement", "SVGSVGElement",
-    "MathMLElement", "CharacterData", "Attr", "DocumentType", "CDATASection",
-    "ProcessingInstruction", "NodeList", "HTMLCollection", "DOMTokenList", "NamedNodeMap",
-    "CSSStyleDeclaration", "CSSRule", "StyleSheet", "MediaList", "MutationRecord",
-    "HTMLUnknownElement", "CSSRuleList", "StyleSheetList", "CSSStyleRule", "CSSImportRule",
-    "TextTrackCueList", "TextTrack", "DOMImplementation", "XMLDocument", "AbstractRange",
-    "NodeRange", "XPathExpression", "XPathResult", "ValidityState", "HTMLFormControlsCollection",
-    "RadioNodeList", "HTMLOptionsCollection", "ElementInternals", "CustomStateSet",
-    "FragmentDirective", "CSSPseudoElement",
-];
+const ILLEGAL_CONSTRUCTORS: &str =
+    "Node Element HTMLDocument ShadowRoot SVGElement SVGSVGElement MathMLElement \
+     CharacterData Attr DocumentType CDATASection ProcessingInstruction NodeList \
+     HTMLCollection DOMTokenList NamedNodeMap CSSStyleDeclaration CSSRule StyleSheet \
+     MediaList MutationRecord HTMLUnknownElement CSSRuleList StyleSheetList \
+     CSSStyleRule CSSImportRule TextTrackCueList TextTrack DOMImplementation \
+     XMLDocument AbstractRange NodeRange XPathExpression XPathResult ValidityState \
+     HTMLFormControlsCollection RadioNodeList HTMLOptionsCollection ElementInternals \
+     CustomStateSet FragmentDirective CSSPseudoElement";
 
 // The implementation closure stays in V8's private function data. This is a
 // native callable over the facade's live guest state, not a source-string mask.
@@ -6499,7 +6497,10 @@ fn make_native_dom_function(
         args.get(6)
     } else {
         // Blink's message for an interface constructor called as a function (turbo-dom#173).
-        let message = if ILLEGAL_CONSTRUCTORS.contains(&name.as_str()) {
+        let message = if ILLEGAL_CONSTRUCTORS
+            .split_whitespace()
+            .any(|known| known == name)
+        {
             "Illegal constructor".to_owned()
         } else {
             format!("Failed to construct '{name}': Please use the 'new' operator, this DOM object constructor cannot be called as a function.")

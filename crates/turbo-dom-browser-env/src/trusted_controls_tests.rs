@@ -391,11 +391,7 @@ fn selection_text_edges_match_chrome156() {
 fn parsed_details_toggle_matches_chrome156() {
     let probe = include_str!("details_toggle_probe.js");
     let expected = control(include_str!("details_toggle_chrome156.json"), probe);
-    assert_matches_control(
-        &run_probe(probe),
-        &expected,
-        &[],
-    );
+    assert_matches_control(&run_probe(probe), &expected, &[]);
 }
 
 /// miaskiewicz/turbo-dom#139: popover method exceptions (Chrome 156 messages) and nested
