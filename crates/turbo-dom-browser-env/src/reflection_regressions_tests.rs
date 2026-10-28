@@ -208,3 +208,15 @@ fn param_element_interface() {
         r#"["[object HTMLParamElement]","function",["name","value","type","valueType","constructor","Symbol(Symbol.toStringTag)"],"<param value=\"v\" type=\"t\" valuetype=\"ref\">","ref"]"#
     );
 }
+
+/// turbo-dom#172: the engine's own JS uses intrinsics captured at install time, so a page
+/// that replaces the builtins (and calls only originals it captured) can still insert
+/// nodes, style sheets and dispatch events, like Chrome 156.
+#[test]
+#[ignore = "turbo-dom#172: fails until the fix"]
+fn page_patched_intrinsics_keep_insertion_working() {
+    assert_eq!(
+        page_json(PAGE, include_str!("page_patched_intrinsics_probe.js")),
+        r#"{"div":true,"text":true,"script":true,"iframe":true,"insert":true,"next":true,"style":2,"event":"lh","query":1,"patched":true}"#
+    );
+}
