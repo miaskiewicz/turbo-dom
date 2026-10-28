@@ -2996,6 +2996,21 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
       });
       delete htmlProto[name];
     });
+    // Reflected content attributes the copies above do not cover: [interface, IDL name,
+    // boolean?, content attribute]. Only interfaces lacking the member get it.
+    var reflectedSetAttribute=g.Element.prototype.setAttribute,reflectedRemoveAttribute=g.Element.prototype.removeAttribute,reflectedHasAttribute=g.Element.prototype.hasAttribute;
+    var reflectedTags={HTMLBaseElement:['base'],HTMLMediaElement:['audio','video'],HTMLVideoElement:['video'],HTMLImageElement:['img'],HTMLEmbedElement:['embed'],HTMLObjectElement:['object'],HTMLIFrameElement:['iframe'],HTMLMapElement:['map'],HTMLFieldSetElement:['fieldset'],HTMLAnchorElement:['a'],HTMLDetailsElement:['details']};
+    var reflectedContent=[];
+    // turbo-dom#118: HTMLBaseElement.target.
+    reflectedContent.push(['HTMLBaseElement','target',false,'target']);
+    reflectedContent.forEach(function(entry){
+      var owner=entry[0],name=entry[1],flag=entry[2],attribute=entry[3],proto=prototypes[owner];if(!proto||Object.hasOwn(proto,name))return;
+      var check=__ns.domAccessor('nodeType',false,'HTMLElement'),locals=new Set(reflectedTags[owner]);
+      var brand=function(receiver){reflectedApply(check,receiver,[]);if(!reflectedApply(reflectedSetHas,locals,[reflectedApply(getLocalTag,receiver,[])]))throw new TypeError('Illegal invocation');};
+      Object.defineProperty(proto,name,{configurable:true,enumerable:true,
+        get:__ns.makeNativeFunction(function(){brand(this);if(flag)return reflectedApply(reflectedHasAttribute,this,[attribute]);var value=reflectedApply(reflectedGetAttribute,this,[attribute]);return value===null?'':value;},'get '+name,0),
+        set:__ns.makeNativeFunction(function(value){brand(this);if(arguments.length<1)throw new TypeError("Failed to set the '"+name+"' property on '"+owner+"': 1 argument required, but only 0 present.");if(!flag){reflectedApply(reflectedSetAttribute,this,[attribute,attributeString(value)]);return;}if(value)reflectedApply(reflectedSetAttribute,this,[attribute,'']);else reflectedApply(reflectedRemoveAttribute,this,[attribute]);},'set '+name,1)});
+    });
     var elementOperations={getAttributeNames(){return Array.from(this.attributes,function(attribute){return attribute.name;});},hasAttributes(){return this.attributes.length>0;},insertAdjacentText(position,text){if(typeof position==='symbol'||typeof text==='symbol')throw new TypeError('Cannot convert a Symbol to a string');position=String(position).toLowerCase();var node=this.ownerDocument.createTextNode(String(text));if(position==='beforebegin'){if(this.parentNode)this.parentNode.insertBefore(node,this);}else if(position==='afterend'){if(this.parentNode)this.parentNode.insertBefore(node,this.nextSibling);}else if(position==='afterbegin')this.insertBefore(node,this.firstChild);else if(position==='beforeend')this.appendChild(node);else throw new __ns.DOMException('Invalid adjacent position','SyntaxError');}};
     Object.keys(elementOperations).forEach(function(name){var delegate=elementOperations[name],check=__ns.domAccessor('nodeType',false,'Element');Object.defineProperty(elementProto,name,{value:__ns.makeNativeFunction(function(){check.call(this);if(arguments.length<delegate.length)throw new TypeError(name+' requires '+delegate.length+' arguments');return delegate.apply(this,arguments);},name,delegate.length),writable:true,enumerable:true,configurable:true});});
     // GlobalEventHandlers: HTMLElement, SVGElement and MathMLElement each brand-check (turbo-dom#87).
