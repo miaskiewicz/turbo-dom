@@ -84,6 +84,8 @@ const KNOWN_GAPS: &[(&str, &str)] = &[
         "result.receivers.Element.scrollTo[1]",
         "[\"TypeError\",\"TypeError\"]",
     ),
+    // miaskiewicz/turbo-dom#114: document.createComment() without its argument.
+    ("result.conversions.valid[11]", "{}"),
 ];
 
 #[test]

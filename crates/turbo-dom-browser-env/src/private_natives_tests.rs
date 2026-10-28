@@ -114,3 +114,19 @@ fn cascade_lookup_brand_checks_its_element() {
         );
     });
 }
+
+/// The EventTarget wrapper hands nodes to the native add / remove / dispatch functions
+/// through Function.prototype.apply, which a page can patch to capture the natives and call
+/// them on any receiver with any arguments: they refuse with TypeErrors, never abort.
+#[test]
+fn event_target_natives_survive_a_patched_apply() {
+    with_page(|scope| {
+        assert_eq!(
+            json(
+                scope,
+                "(() => { const original = Function.prototype.apply, natives = []; Function.prototype.apply = function (receiver, args) { natives.push(this); return Reflect.apply(original, this, [receiver, args]); }; const p = document.getElementById('p'); try { p.addEventListener('x', () => {}); p.removeEventListener('x', () => {}); p.dispatchEvent(new Event('x')); } finally { Function.prototype.apply = original; } const [add, remove, dispatch] = natives; const proxy = new Proxy(p, {}); return [natives.length, run(() => add.call({}, 'x', () => {})), run(() => add.call(p, 'x')), run(() => add.call(proxy, 'x', () => {})), run(() => remove.call({}, 'x', () => {})), run(() => remove.call(p)), run(() => dispatch.call({}, new Event('x'))), run(() => dispatch.call(proxy, new Event('x'))), run(() => dispatch.call(p, new Event('y')))]; })()"
+            ),
+            r#"[3,["TypeError","Illegal invocation"],["TypeError","Event listener registration requires 2 arguments"],["TypeError","Illegal invocation"],["TypeError","Illegal invocation"],["TypeError","Event listener registration requires 2 arguments"],["TypeError","Illegal invocation"],["TypeError","Illegal invocation"],true]"#
+        );
+    });
+}

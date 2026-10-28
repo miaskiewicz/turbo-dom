@@ -149,10 +149,12 @@ browser_env.rs: P5-cov-browser-env element-template accessors read their holder'
 browser_env.js: P5-cov-browser-env drops the DocumentType accessors of the replaced interface (document_basics.js defines DocumentType)
 browser_env.rs: P5-cov-browser-env drops the template's checkValidity / reportValidity natives and contentEditable setter (form_controls.js and editing.js own them); nodeName's string fallback names only the constant-named kinds
 browser_env.js: P5-cov-browser-env stops copying the removed checkValidity / reportValidity natives and the contentEditable setter
-browser_env.rs: P5-cov-browser-env attachShadow's native states the ShadowRootInit its custom_elements.js wrapper validated (receiver, mode, slotAssignment) instead of re-validating it
-browser_env.rs: P5-cov-browser-env the node addEventListener / removeEventListener / dispatchEvent natives state that their callers (browser_env.js's EventTarget wrappers, dispatch_host_event) pass a node and enough arguments
+browser_env.rs: P5-cov-browser-env attachShadow's native states the ShadowRootInit object literal its custom_elements.js wrapper built and validated (mode, slotAssignment) instead of re-validating it
 browser_env.rs: P5-cov turbo-dom#149 a listener ended by execution termination ends the dispatch (rethrown, no later listener or default action)
 browser_env.rs: P5-cov turbo-dom#157 a stop set in the target's capture listeners also skips its bubble listeners (Chrome 156)
+browser_env.rs: P5-cov-browser-env round 3: the remaining element-template accessors (mode, __attrValue, outerHTML, ownerDocument, isContentEditable) take holder_handle; hide_node_nonce states nonce_units' handle
+browser_env.rs: P5-cov-browser-env drops the template isContentEditable getter (editing.js defines it and only brand-checked through the old getter, discarding its value)
+browser_env.js: P5-cov-browser-env no longer defines the replaced isContentEditable accessor (editing.js brand-checks through contentEditable)
 event_listeners.rs: P5-cov turbo-dom#157 the stop contract test expects Chrome 156's target stop (native_guards_chrome156.json events.stopAtTarget)
 sanitizer.rs: P5-cov-browser-env natives called only by their JS shim drop the termination check (script cannot run while terminating) and state the shim's guarantees with expect() (object receivers, converted markup, canonical records, private records the module writes, wrapper creation contexts); the last named operation is the catch-all arm
 shadow_slots.rs: P5-cov-browser-env natives called only by their JS shim drop the termination check (script cannot run while terminating) and state the shim's guarantees with expect() (object receivers, converted markup, canonical records, private records the module writes, wrapper creation contexts); the last named operation is the catch-all arm

@@ -215,9 +215,8 @@ pub fn hide_node_nonce(scope: &mut v8::PinScope, node: v8::Local<v8::Object>) {
         return;
     };
     let _dom = DomScope::for_object(scope, node);
-    let Some(handle) = handle_of(scope, node) else {
-        return;
-    };
+    // nonce_units answered, so the node has a handle in this document.
+    let handle = handle_of(scope, node).expect("nonce_units found the node");
     DOM.with(|dom| {
         dom.borrow_mut()
             .as_mut()
@@ -1469,11 +1468,13 @@ fn el_attach_shadow(
     mut rv: v8::ReturnValue,
 ) {
     let _dom = DomScope::for_object(scope, args.this());
-    // custom_elements.js's Element.prototype.attachShadow is this native's only caller: it
-    // brand-checks the receiver as an element and passes a plain ShadowRootInit whose mode is
-    // "open" or "closed" and whose slotAssignment is a string.
-    let host =
-        receiver_handle(scope, &args, &[1]).expect("attachShadow's wrapper checks the element");
+    // custom_elements.js's Element.prototype.attachShadow is this native's only caller (it
+    // calls through its captured Reflect.apply): it passes a plain object literal it built,
+    // whose mode it validated as "open" or "closed" and whose slotAssignment is a string. The
+    // receiver is still checked, since the wrapper runs page getters after its own check.
+    let Some(host) = receiver_handle(scope, &args, &[1]) else {
+        return;
+    };
     let options = v8::Local::<v8::Object>::try_from(args.get(0)).expect("a ShadowRootInit");
     let mode = get_str_prop(scope, options, "mode").expect("a validated ShadowRootMode");
     let assignment =
@@ -1557,9 +1558,7 @@ fn get_shadow_mode(
     mut rv: v8::ReturnValue<v8::Value>,
 ) {
     let _dom = DomScope::for_object(scope, args.holder());
-    let Some(root) = handle_of(scope, args.holder()) else {
-        return;
-    };
+    let root = holder_handle(scope, &args);
     let mode = DOM.with(|state| {
         state
             .borrow()
@@ -3002,9 +3001,7 @@ fn set_attr_value<'s, 'i, T>(
     _rv: v8::ReturnValue<T>,
 ) {
     let _dom = DomScope::for_object(scope, args.holder());
-    let Some(node) = handle_of(scope, args.holder()) else {
-        return;
-    };
+    let node = holder_handle(scope, &args);
     let Some(value) = dom_units(scope, value) else {
         return;
     };
@@ -3222,9 +3219,7 @@ fn set_outer_html<'s>(
     _rv: v8::ReturnValue<()>,
 ) {
     let _dom = DomScope::for_object(scope, args.holder());
-    let Some(node) = handle_of(scope, args.holder()) else {
-        return;
-    };
+    let node = holder_handle(scope, &args);
     let parent = with_tree(|tree| {
         NodeRef::new(tree, node)
             .parent()
@@ -4107,46 +4102,6 @@ fn get_content_editable(
 
 // `element.isContentEditable` — true when the element itself is editable (contenteditable=""|"true")
 // or it inherits editability from an ancestor.
-fn get_is_content_editable(
-    scope: &mut v8::PinScope,
-    _name: v8::Local<v8::Name>,
-    args: v8::PropertyCallbackArguments,
-    mut rv: v8::ReturnValue<v8::Value>,
-) {
-    let _dom = DomScope::for_object(scope, args.holder());
-    let Some(mut h) = handle_of(scope, args.holder()) else {
-        return;
-    };
-    let mut editable = false;
-    loop {
-        match with_tree(|t| attr_get(t, h, "contenteditable"))
-            .flatten()
-            .as_deref()
-        {
-            Some("") | Some("true") | Some("plaintext-only") => {
-                editable = true;
-                break;
-            }
-            Some("false") => {
-                editable = false;
-                break;
-            }
-            _ => {}
-        }
-        match with_tree(|t| {
-            NodeRef::new(t, h)
-                .parent()
-                .map(|p| p.handle())
-                .filter(|&ph| t.node_type_id(ph) == 1)
-        })
-        .flatten()
-        {
-            Some(p) => h = p,
-            None => break,
-        }
-    }
-    rv.set(v8::Boolean::new(scope, editable).into());
-}
 
 fn get_parent_node(
     scope: &mut v8::PinScope,
@@ -4211,8 +4166,13 @@ fn listener_options<'s>(
     args: &v8::FunctionCallbackArguments,
     remove: bool,
 ) -> Option<v8::Local<'s, v8::Object>> {
-    // browser_env.js's EventTarget wrappers call the node natives with at least 2 arguments.
-    debug_assert!(args.length() >= 2);
+    if args.length() < 2 {
+        let message =
+            v8::String::new(scope, "Event listener registration requires 2 arguments").unwrap();
+        let error = v8::Exception::type_error(scope, message);
+        scope.throw_exception(error);
+        return None;
+    }
     let top = with_tree(|tree| {
         handle_of(scope, args.this()).is_some_and(|node| {
             tree.node_type_id(node) == 9 || tree.local_name(node) == Some("body")
@@ -4227,9 +4187,9 @@ fn el_add_event_listener<'s, 'i>(
     _rv: v8::ReturnValue,
 ) {
     let _dom = DomScope::for_object(scope, args.this());
-    // browser_env.js's EventTarget wrapper routes only nodes here (others go to the window /
-    // EventTarget callbacks).
-    let node = receiver_handle(scope, &args, &[]).expect("the EventTarget wrapper passes a node");
+    let Some(node) = receiver_handle(scope, &args, &[]) else {
+        return;
+    };
     let Some(options) = listener_options(scope, &args, false) else {
         return;
     };
@@ -4294,9 +4254,9 @@ fn el_remove_event_listener(
     _rv: v8::ReturnValue,
 ) {
     let _dom = DomScope::for_object(scope, args.this());
-    // browser_env.js's EventTarget wrapper routes only nodes here (others go to the window /
-    // EventTarget callbacks).
-    let node = receiver_handle(scope, &args, &[]).expect("the EventTarget wrapper passes a node");
+    let Some(node) = receiver_handle(scope, &args, &[]) else {
+        return;
+    };
     let Some(options) = listener_options(scope, &args, true) else {
         return;
     };
@@ -4442,9 +4402,10 @@ fn el_dispatch_event(
     mut rv: v8::ReturnValue,
 ) {
     let _dom = DomScope::for_object(scope, args.this());
-    // Callers pass a node: browser_env.js's EventTarget wrapper routes only nodes here and
-    // dispatch_host_event checks the target's handle first.
-    let target = receiver_handle(scope, &args, &[]).expect("dispatchEvent's callers pass a node");
+    let Some(target) = receiver_handle(scope, &args, &[]) else {
+        rv.set(v8::Boolean::new(scope, true).into());
+        return;
+    };
     let event = args.get(0);
     let Ok(event_obj) = v8::Local::<v8::Object>::try_from(event) else {
         let message = v8::String::new(scope, "dispatchEvent requires an Event").unwrap();
@@ -5542,9 +5503,7 @@ fn get_owner_document(
     mut rv: v8::ReturnValue<v8::Value>,
 ) {
     let _dom = DomScope::for_object(scope, args.holder());
-    let Some(handle) = handle_of(scope, args.holder()) else {
-        return;
-    };
+    let handle = holder_handle(scope, &args);
     if with_tree(|tree| tree.node_type_id(handle)) == Some(9) {
         rv.set_null();
         return;
@@ -6113,7 +6072,6 @@ fn build_el_template<'s>(scope: &mut v8::PinScope<'s, '_>) -> v8::Local<'s, v8::
     tmpl_accessor(scope, tmpl, "className", get_class_name, set_class_name);
     // editing.js owns contentEditable; it brand-checks through this getter.
     tmpl_getter(scope, tmpl, "contentEditable", get_content_editable);
-    tmpl_getter(scope, tmpl, "isContentEditable", get_is_content_editable);
 
     // Node-type constants on every node (`node.TEXT_NODE === 3`, …). dom-accessibility-api compares
     // `node.nodeType === node.TEXT_NODE`, so without these the accessible-name walk skips all text
