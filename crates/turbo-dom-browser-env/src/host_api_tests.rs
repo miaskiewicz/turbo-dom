@@ -389,3 +389,44 @@ fn form_host_callbacks_without_a_document() {
     assert!(install_form_value_reader(scope, callback));
     reset();
 }
+
+/// Light-document membership and composed containment answer only for nodes: shadow-tree
+/// nodes are composed descendants of their host but not light document nodes, detached
+/// nodes are neither, and nodes of different realms never contain each other.
+#[test]
+fn light_membership_and_composed_containment() {
+    with_page("<!doctype html><div id=host></div>", |scope| {
+        let host = object(scope, "globalThis.host = document.getElementById('host')");
+        let inner = object(
+            scope,
+            "const root = host.attachShadow({ mode: 'open' }); root.innerHTML = '<b>i</b>'; root.firstChild",
+        );
+        let detached = object(scope, "document.createElement('i')");
+        let body = object(scope, "document.body");
+        let plain = object(scope, "({})");
+        assert!(is_light_document_node(scope, host));
+        assert!(!is_light_document_node(scope, inner));
+        assert!(!is_light_document_node(scope, detached));
+        assert!(!is_light_document_node(scope, plain));
+        assert!(composed_contains_node(scope, body, inner));
+        assert!(composed_contains_node(scope, host, host));
+        assert!(!composed_contains_node(scope, inner, host));
+        assert!(!composed_contains_node(scope, body, detached));
+        assert!(!composed_contains_node(scope, plain, host));
+        assert!(!composed_contains_node(scope, body, plain));
+        let child = v8::Context::new(scope, Default::default());
+        let foreign = {
+            let scope = &mut v8::ContextScope::new(scope, child);
+            install_independent_html(scope, "<p>child</p>");
+            let code = v8::String::new(scope, "document.body").unwrap();
+            let value = v8::Script::compile(scope, code, None)
+                .unwrap()
+                .run(scope)
+                .unwrap();
+            v8::Global::new(scope, v8::Local::<v8::Object>::try_from(value).unwrap())
+        };
+        let foreign = v8::Local::new(scope, &foreign);
+        assert!(!composed_contains_node(scope, body, foreign));
+        assert!(!composed_contains_node(scope, foreign, body));
+    });
+}
