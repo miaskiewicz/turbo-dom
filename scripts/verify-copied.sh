@@ -241,6 +241,7 @@ OWNED="$OWNED activation_granted_probe.js activation_granted_chrome156.json trus
 OWNED="$OWNED private_natives_tests.rs binding_termination_tests.rs"
 OWNED="$OWNED member_edges_tests.rs host_edges_tests.rs member_edges_probe.js member_edges_chrome156.json"
 OWNED="$OWNED guard_edges_tests.rs guard_edges_probe.js guard_edges_chrome156.json"
+OWNED="$OWNED reflection_regressions_tests.rs"
 OWNED="$OWNED native_guards_hostile_probe.js native_guards_hostile_chrome156.json"
 OWNED="$OWNED reaction_volume_probe.js reaction_volume_chrome156.json"
 OWNED="$OWNED keyframe_values_probe.js keyframe_values_chrome156.json"
