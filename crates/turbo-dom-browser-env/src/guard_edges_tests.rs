@@ -22,26 +22,14 @@ const KNOWN_GAPS: &[(&str, &str)] = &[
     // miaskiewicz/turbo-dom#163: an inert document's <style> has no sheet.
     ("result.misc.inertSheet[0]", "\"null\""),
     ("result.misc.inertSheet[1]", "null"),
-    // miaskiewicz/turbo-dom#134: @keyframes cssText.
-    (
-        "result.declarations.@keyframes k { 0% {} }",
-        "\"@keyframes k { 0% {  } }\"",
-    ),
-    (
-        "result.declarations.@keyframes k { x {} }",
-        "\"@keyframes k { x {  } }\"",
-    ),
-    (
-        "result.declarations.@keyframes k { 10%, 20% {} from {} }",
-        "\"@keyframes k { 10%, 20% {  } from {  } }\"",
-    ),
+    // miaskiewicz/turbo-dom#164: out-of-range keyframe selectors are kept.
     (
         "result.declarations.@keyframes k { -1% {} }",
-        "\"@keyframes k { -1% {  } }\"",
+        "\"@keyframes k { \\n  -1% { }\\n}\"",
     ),
     (
         "result.declarations.@keyframes k { 101% {} }",
-        "\"@keyframes k { 101% {  } }\"",
+        "\"@keyframes k { \\n  101% { }\\n}\"",
     ),
 ];
 
@@ -270,5 +258,18 @@ fn termination_in_a_slotchange_listener_skips_later_slots() {
             "log"
         ),
         r#"["a"]"#
+    );
+}
+
+/// turbo-dom#164: a keyframe selector outside 0%..100% drops its keyframe rule (Chrome 156).
+#[test]
+#[ignore = "turbo-dom#164: fails until the fix"]
+fn out_of_range_keyframe_selectors_drop_the_rule() {
+    assert_eq!(
+        page_json(
+            "<!doctype html>",
+            "['-1%', '101%', '-0%', '100%', '0%, 101%', '100.0001%', '1e2%'].map(key => { const sheet = new CSSStyleSheet(); sheet.replaceSync(`@keyframes k { ${key} {} }`); return sheet.cssRules[0].cssRules.length; })",
+        ),
+        "[0,0,1,1,0,0,1]"
     );
 }
