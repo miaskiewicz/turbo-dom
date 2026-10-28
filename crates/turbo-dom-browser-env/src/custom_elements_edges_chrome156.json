@@ -1,0 +1,56 @@
+{
+  "browser": "Chrome/156.0.8078.47",
+  "v8": "15.6.75.19",
+  "probe": "custom_elements_edges_probe.js",
+  "probeSha256": "d60dfa6f1650e7c0cb4c13901abccdacc580a427c427bcb2cc70139eff5c9f75",
+  "collectorSha256": "3f964d2cdf0ec8101870a776aaffc3b7dc4522306959c4a40761057beb255eb8",
+  "flags": [
+    "--headless=new",
+    "--remote-debugging-pipe",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "--disable-background-timer-throttling",
+    "--disable-renderer-backgrounding",
+    "--disable-backgrounding-occluded-windows",
+    "about:blank"
+  ],
+  "result": {
+    "nested": [
+      [
+        true,
+        false
+      ],
+      true,
+      true,
+      "x-b",
+      false,
+      true,
+      [
+        [
+          "a",
+          true
+        ],
+        [
+          "b",
+          false
+        ]
+      ]
+    ],
+    "fragments": [
+      0,
+      11,
+      2,
+      true,
+      true,
+      [
+        [
+          "b",
+          false
+        ]
+      ]
+    ]
+  }
+}

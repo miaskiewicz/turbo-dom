@@ -7,6 +7,16 @@ at the time); this file reconstructs them from history.
 
 ## [Unreleased]
 
+### Fixed — turbo-dom-layout CSSOM-View scroll/caret reads follow Chrome 156 (miaskiewicz/turbo-dom#124, #125, #126)
+- `cssom_view::scroll::overflow` keeps `clip` beside a scrollable axis (`overflow:auto;
+  overflow-y:clip` computes auto/clip and the clip axis does not scroll; it was `hidden`).
+- `cssom_view::scroll::expose`: `scrollIntoView({block/inline: 'center'})` centers a target
+  larger than the scrollport (it kept Chromium's old no-scroll special case).
+- `cssom_view::text::caret` lands in `visibility: hidden` text like `caretPositionFromPoint`.
+- New Chrome 156 control `scripts/cssom-view-chrome-control.mjs`
+  (`crates/turbo-dom-layout/tests/fixtures/cssom_view_chrome156.json`); its remaining caret
+  gaps (transformed lines, carets in textless elements) are miaskiewicz/turbo-dom#127.
+
 ### Fixed — a `var()` nested in `calc()` is a pending substitution (P5-cov, miaskiewicz/turbo-dom#115, Chrome 156 control)
 - `rtdom::css_shorthand::longhand_value` / shorthand expansion rejected a value whose `var()` /
   `env()` / `attr()` sits inside another function or a parenthesis block
