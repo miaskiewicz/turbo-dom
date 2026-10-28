@@ -220,3 +220,32 @@ fn page_patched_intrinsics_keep_insertion_working() {
         r#"{"div":true,"text":true,"script":true,"iframe":true,"insert":true,"next":true,"style":2,"event":"lh","query":1,"patched":true}"#
     );
 }
+
+/// turbo-dom#173: an interface constructor called without `new` throws Blink's message
+/// (Chrome 156): "Failed to construct" for interfaces with a constructor, "Illegal
+/// constructor" for the others.
+#[test]
+#[ignore = "turbo-dom#173: fails until the fix"]
+fn constructors_called_without_new_throw_blink_messages() {
+    const CONSTRUCTIBLE: &str = "UIEvent MouseEvent KeyboardEvent InputEvent FocusEvent PointerEvent WheelEvent CustomEvent PopStateEvent HashChangeEvent ProgressEvent CloseEvent Document DocumentFragment Text Comment EventTarget CSSStyleSheet Range StaticRange ToggleEvent XPathEvaluator MutationObserver SubmitEvent FormDataEvent CommandEvent CustomElementRegistry";
+    const ILLEGAL: &str = "Node Element HTMLDocument ShadowRoot SVGElement SVGSVGElement MathMLElement CharacterData Attr DocumentType CDATASection ProcessingInstruction NodeList HTMLCollection DOMTokenList NamedNodeMap CSSStyleDeclaration CSSRule StyleSheet MediaList MutationRecord HTMLUnknownElement CSSRuleList StyleSheetList CSSStyleRule CSSImportRule TextTrackCueList TextTrack DOMImplementation XMLDocument AbstractRange NodeRange XPathExpression XPathResult ValidityState HTMLFormControlsCollection RadioNodeList HTMLOptionsCollection ElementInternals CustomStateSet FragmentDirective CSSPseudoElement";
+    let got = page_json(
+        PAGE,
+        &format!(
+            "(() => {{ const out = {{}}; for (const name of '{CONSTRUCTIBLE} {ILLEGAL}'.split(' ')) {{ \
+             try {{ globalThis[name](); out[name] = 'no throw'; }} catch (e) {{ out[name] = e.constructor.name + ': ' + e.message; }} }} \
+             return out; }})()"
+        ),
+    );
+    let got: serde_json::Value = serde_json::from_str(&got).unwrap();
+    for name in CONSTRUCTIBLE.split(' ') {
+        assert_eq!(
+            got[name],
+            format!("TypeError: Failed to construct '{name}': Please use the 'new' operator, this DOM object constructor cannot be called as a function."),
+            "{name}"
+        );
+    }
+    for name in ILLEGAL.split(' ') {
+        assert_eq!(got[name], "TypeError: Illegal constructor", "{name}");
+    }
+}
