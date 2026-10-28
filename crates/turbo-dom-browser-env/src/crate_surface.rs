@@ -49,9 +49,6 @@ pub mod test_support;
 
 // Coverage-phase Chrome 156 control tests (crate-owned, not part of the move).
 #[cfg(test)]
-#[path = "activation_granted_tests.rs"]
-mod activation_granted_tests;
-#[cfg(test)]
 #[path = "close_watchers_tests.rs"]
 mod close_watchers_tests;
 #[cfg(test)]
@@ -60,3 +57,6 @@ mod host_api_tests;
 #[cfg(test)]
 #[path = "native_guards_tests.rs"]
 mod native_guards_tests;
+#[cfg(test)]
+#[path = "trusted_controls_tests.rs"]
+mod trusted_controls_tests;

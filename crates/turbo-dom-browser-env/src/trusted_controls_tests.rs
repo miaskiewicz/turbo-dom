@@ -1,7 +1,8 @@
-//! Activation-gated members with transient activation, and dialog / popover edge steps,
-//! against the Chrome 156 controls `activation_granted_chrome156.json` and
-//! `dialog_popover_edges_chrome156.json` (their `_probe.js`, recorded by
-//! `scripts/trusted-input-chrome-control.mjs` with trusted CDP mouse and key input).
+//! Activation-gated members with transient activation, dialog / popover edge steps and
+//! custom element edges, against the Chrome 156 controls `activation_granted_chrome156.json`,
+//! `dialog_popover_edges_chrome156.json` and `custom_elements_edges_chrome156.json` (their
+//! `_probe.js`, recorded by `scripts/trusted-input-chrome-control.mjs`, which also delivers
+//! trusted CDP mouse and key input).
 //!
 //! The offline driver plays the embedder: a trusted press sets the window's transient and
 //! history-action activation and notifies the close watcher manager
@@ -257,9 +258,6 @@ fn dialog_popover_edges_match_chrome156() {
         &run_probe(probe),
         &expected,
         &[
-            // miaskiewicz/turbo-dom#116: a dialog a close watcher closes fires toggle before close.
-            r#"result.cancelCloses.log[4] = ["toggle","d","closed"]"#,
-            r#"result.cancelCloses.log[5] = ["close","d"]"#,
             // miaskiewicz/turbo-dom#139: nested popover calls from beforetoggle, messages.
             r#"result.nestedCalls.log[2][2] = "closed""#,
             r#"result.nestedCalls.result[4][0][1] = "undefined""#,
@@ -267,7 +265,7 @@ fn dialog_popover_edges_match_chrome156() {
             r#"result.nestedCalls.result[4][1][2] = true"#,
             r#"result.recheckRemoved.result[0][1] = "The popover is not connected to a document""#,
             // miaskiewicz/turbo-dom#131: a parser-created `<details open>` fires no toggle.
-            r#"result.selectors.log = [["beforetoggle","d","open"],["beforetoggle","p","open"],["toggle","d","open"],["toggle","p","open"]]"#,
+            r#"result.selectors.log = [["beforetoggle","d","open"],["beforetoggle","p","open"],["toggle","p","open"]]"#,
         ],
     );
 }
@@ -392,4 +390,11 @@ fn reentrant_close_request_during_cancel_is_absorbed() {
         result,
         serde_json::json!([true, true, false, [["cancel", true], ["close", false]]])
     );
+}
+
+#[test]
+fn custom_elements_edges_match_chrome156() {
+    let probe = include_str!("custom_elements_edges_probe.js");
+    let expected = control(include_str!("custom_elements_edges_chrome156.json"), probe);
+    assert_matches_control(&run_probe(probe), &expected, &[]);
 }

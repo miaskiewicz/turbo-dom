@@ -2,7 +2,7 @@
   "browser": "Chrome/156.0.8078.47",
   "v8": "15.6.75.19",
   "probe": "dialog_popover_edges_probe.js",
-  "probeSha256": "045b5a0f9d447d75f982c61f9edde92eda806797ff0d00903b1e4a03934cc007",
+  "probeSha256": "eff543f3ee3a2a8a6051ffaca81179c3035917d6ed34fd0371f38fd64a8437cc",
   "collectorSha256": "3f964d2cdf0ec8101870a776aaffc3b7dc4522306959c4a40761057beb255eb8",
   "flags": [
     "--headless=new",
@@ -28,11 +28,6 @@
           "beforetoggle",
           "d",
           "open"
-        ],
-        [
-          "toggle",
-          "d",
-          "open"
         ]
       ]
     },
@@ -48,11 +43,6 @@
           "open"
         ],
         [
-          "toggle",
-          "d",
-          "open"
-        ],
-        [
           "cancel",
           "d"
         ],
@@ -64,11 +54,6 @@
         [
           "close",
           "d"
-        ],
-        [
-          "toggle",
-          "d",
-          "closed"
         ]
       ]
     },
@@ -269,6 +254,66 @@
         ]
       ]
     },
+    "focusDelegate": {
+      "result": [
+        [
+          "svga",
+          null
+        ],
+        [
+          "sum",
+          null
+        ],
+        [
+          "host",
+          "inner"
+        ]
+      ],
+      "log": [
+        [
+          "beforetoggle",
+          "d1",
+          "open"
+        ],
+        [
+          "beforetoggle",
+          "d1",
+          "closed"
+        ],
+        [
+          "beforetoggle",
+          "d2",
+          "open"
+        ],
+        [
+          "beforetoggle",
+          "d2",
+          "closed"
+        ],
+        [
+          "beforetoggle",
+          "d3",
+          "open"
+        ],
+        [
+          "beforetoggle",
+          "d3",
+          "closed"
+        ],
+        [
+          "close",
+          "d1"
+        ],
+        [
+          "close",
+          "d2"
+        ],
+        [
+          "close",
+          "d3"
+        ]
+      ]
+    },
     "selectors": {
       "result": [
         [
@@ -398,11 +443,6 @@
         [
           "toggle",
           "s",
-          "open"
-        ],
-        [
-          "toggle",
-          "d",
           "open"
         ],
         [

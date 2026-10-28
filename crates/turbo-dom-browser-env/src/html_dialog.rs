@@ -25,9 +25,8 @@ fn modal(node: Handle) -> bool {
 fn set_modal(node: Handle, value: bool) {
     DOM.with(|dom| {
         let mut dom = dom.borrow_mut();
-        let Some(dom) = dom.as_mut() else {
-            return;
-        };
+        // `dispatch` resolved `node` in the current DOM.
+        let dom = dom.as_mut().expect("set-modal runs inside a DOM scope");
         dom.dialog.modal.retain(|entry| *entry != node);
         if value {
             dom.dialog.modal.push(node);
@@ -53,9 +52,10 @@ fn within(tree: &Tree, node: Handle, ancestor: Handle) -> bool {
 pub(super) fn disconnect(root: Handle, include_root: bool) {
     DOM.with(|dom| {
         let mut dom = dom.borrow_mut();
-        let Some(dom) = dom.as_mut() else {
-            return;
-        };
+        // html_popover::disconnect's callers remove a node of the current DOM.
+        let dom = dom
+            .as_mut()
+            .expect("the dialog removing steps run inside a DOM scope");
         let tree = &dom.tree;
         dom.dialog.modal.retain(|&entry| {
             let (mut previous, mut current) = (None, Some(entry));
@@ -96,9 +96,8 @@ pub(super) fn blocking_dialog(node: Handle) -> Option<Handle> {
 pub(super) fn blocks_focus(node: Handle) -> bool {
     DOM.with(|dom| {
         let dom = dom.borrow();
-        let Some(dom) = dom.as_ref() else {
-            return false;
-        };
+        // focus() resolved `node` in the current DOM.
+        let dom = dom.as_ref().expect("focus runs inside a DOM scope");
         dom.dialog
             .modal
             .iter()
@@ -297,18 +296,16 @@ fn dispatch(
     args: v8::FunctionCallbackArguments,
     mut rv: v8::ReturnValue,
 ) {
-    let Ok(target) = v8::Local::<v8::Object>::try_from(args.get(1)) else {
-        return;
-    };
+    // html_dialog.js (the only caller; the native is deleted from the global before guest code
+    // runs) passes a dialog it brand-checked, or a node of its document, and its own Events.
+    let target =
+        v8::Local::<v8::Object>::try_from(args.get(1)).expect("the dialog hook passes a node");
     let _dom = DomScope::for_object(scope, target);
-    let Some(node) = handle_of(scope, target) else {
-        return;
-    };
+    let node = handle_of(scope, target).expect("the dialog hook passes a node");
     match args.get(0).to_rust_string_lossy(scope).as_str() {
         "dispatch" => {
-            let Ok(event) = v8::Local::<v8::Object>::try_from(args.get(2)) else {
-                return;
-            };
+            let event = v8::Local::<v8::Object>::try_from(args.get(2))
+                .expect("the dialog hook dispatches an Event it constructed");
             dispatch_host_event(scope, event, target);
             let continued = event_record(scope, event)
                 .is_some_and(|record| !get_bool_prop(scope, record, "defaultPrevented"));
@@ -340,11 +337,12 @@ fn dispatch(
             });
             rv.set_bool(inside);
         }
-        "delegate" => {
+        // The last operation the hook sends: "delegate".
+        operation => {
+            debug_assert_eq!(operation, "delegate");
             let delegate = focus_delegate(scope, node);
             rv.set(wrap(scope, delegate).into());
         }
-        _ => {}
     }
 }
 

@@ -70,21 +70,14 @@ fn upgrade(
     args: v8::FunctionCallbackArguments,
     mut result: v8::ReturnValue,
 ) {
-    let Ok(constructor) = v8::Local::<v8::Function>::try_from(args.get(0)) else {
-        type_error(scope, "Invalid custom element constructor");
-        return;
-    };
-    let Ok(node) = v8::Local::<v8::Object>::try_from(args.get(1)) else {
-        type_error(scope, "Invalid custom element node");
-        return;
-    };
+    // custom_elements.js (the only caller; the natives are deleted from the global before
+    // guest code runs) upgrades an element with its definition's validated constructor.
+    let constructor = v8::Local::<v8::Function>::try_from(args.get(0))
+        .expect("upgrades pass the definition's constructor");
+    let node = v8::Local::<v8::Object>::try_from(args.get(1)).expect("upgrades pass the element");
     let _owner = DomScope::for_object(scope, node);
     if scope.get_slot::<DefinitionsActive>().is_some() {
         activate();
-    }
-    if handle_of(scope, node).is_none() {
-        type_error(scope, "Invalid custom element node");
-        return;
     }
     let frames = scope
         .get_slot::<Rc<ConstructionFrames>>()
@@ -128,9 +121,9 @@ fn construct(
         type_error(scope, "Illegal constructor");
         return;
     }
-    let Ok(delegate) = v8::Local::<v8::Function>::try_from(args.data()) else {
-        return;
-    };
+    // `constructor` below builds every such function with its delegate as the data.
+    let delegate =
+        v8::Local::<v8::Function>::try_from(args.data()).expect("the delegate is the data");
     let prototype = args
         .this()
         .get_prototype(scope)
@@ -170,9 +163,8 @@ fn constructor(
     args: v8::FunctionCallbackArguments,
     mut result: v8::ReturnValue,
 ) {
-    let Ok(delegate) = v8::Local::<v8::Function>::try_from(args.get(0)) else {
-        return;
-    };
+    let delegate = v8::Local::<v8::Function>::try_from(args.get(0))
+        .expect("custom_elements.js passes its construction delegate");
     let name = args.get(1).to_rust_string_lossy(scope);
     if let Some(function) = v8::Function::builder(construct)
         .data(delegate.into())
@@ -190,16 +182,14 @@ fn nodes(
     args: v8::FunctionCallbackArguments,
     mut result: v8::ReturnValue,
 ) {
-    let Ok(node) = v8::Local::<v8::Object>::try_from(args.get(0)) else {
-        return;
-    };
+    // custom_elements.js walks element and shadow-root trees it holds.
+    let node =
+        v8::Local::<v8::Object>::try_from(args.get(0)).expect("children are read from a node");
     let _dom = DomScope::for_object(scope, node);
     if scope.get_slot::<DefinitionsActive>().is_some() {
         activate();
     }
-    let Some(handle) = handle_of(scope, node) else {
-        return;
-    };
+    let handle = handle_of(scope, node).expect("children are read from a node");
     let handles = with_tree(|tree| {
         let mut children = Vec::new();
         if let Some(shadow) = tree.shadow_root(handle) {
@@ -220,9 +210,8 @@ fn private(
     args: v8::FunctionCallbackArguments,
     mut result: v8::ReturnValue,
 ) {
-    let Ok(node) = v8::Local::<v8::Object>::try_from(args.get(0)) else {
-        return;
-    };
+    // The key is an element or a WeakMap key object of custom_elements.js.
+    let node = v8::Local::<v8::Object>::try_from(args.get(0)).expect("private keys are objects");
     let key = if args.get(2).is_string() {
         let family = args.get(2).to_rust_string_lossy(scope);
         let name = v8::String::new(scope, &format!("turbo.custom-elements.{family}")).unwrap();
@@ -293,9 +282,9 @@ fn defining(
     args: v8::FunctionCallbackArguments,
     mut result: v8::ReturnValue,
 ) {
-    let Ok(registry) = v8::Local::<v8::Object>::try_from(args.get(0)) else {
-        return;
-    };
+    // define() passes its brand-checked registry receiver.
+    let registry =
+        v8::Local::<v8::Object>::try_from(args.get(0)).expect("define passes its registry");
     let frames = scope
         .get_slot::<Rc<DefinitionFrames>>()
         .cloned()
@@ -313,9 +302,8 @@ fn defining(
     }
     scope.set_slot(DefinitionsActive);
     activate();
-    let Ok(callback) = v8::Local::<v8::Function>::try_from(args.get(1)) else {
-        return;
-    };
+    let callback = v8::Local::<v8::Function>::try_from(args.get(1))
+        .expect("define passes its definition callback");
     frames.0.borrow_mut().push(v8::Weak::new(scope, registry));
     let _guard = DefinitionGuard(frames);
     let receiver = v8::undefined(scope);
@@ -759,15 +747,18 @@ fn element_state(
     _result: v8::ReturnValue,
 ) {
     use turbo_dom_parser::rtdom::tree::CustomElementState;
-    let Ok(node) = v8::Local::<v8::Object>::try_from(args.get(0)) else {
-        return;
-    };
+    // custom_elements.js reports an element's record status: undefined, constructing, custom
+    // or failed (a pending upgrade is never reported).
+    let node =
+        v8::Local::<v8::Object>::try_from(args.get(0)).expect("states are reported for elements");
     let state = match args.get(1).to_rust_string_lossy(scope).as_str() {
         "undefined" => CustomElementState::Undefined,
         "failed" => CustomElementState::Failed,
         "constructing" => CustomElementState::Precustomized,
-        "custom" => CustomElementState::Custom,
-        _ => return,
+        status => {
+            debug_assert_eq!(status, "custom");
+            CustomElementState::Custom
+        }
     };
     let _dom = DomScope::for_object(scope, node);
     if let Some(handle) = handle_of(scope, node) {

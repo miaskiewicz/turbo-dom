@@ -1,5 +1,5 @@
 (async () => {
-  // Dialog and popover edge steps: close requests for a dialog whose open attribute was
+  // Dialog and popover edge steps: the dialog focusing steps, close requests for a dialog whose open attribute was
   // removed or whose cancel listener closes it, light dismiss through an invoker inside a
   // popover, invokers whose target is detached or no popover, reentrant invoker activation
   // and show/hide calls from beforetoggle, the show steps' validity recheck after hiding
@@ -17,7 +17,9 @@
   const tag = n => n == null ? null : n === document ? 'document' : n === window ? 'window' : n.id || n.nodeName;
   const run = f => { try { const v = f(); return v === undefined ? 'undefined' : v; } catch (e) { return [e.name, e.message]; } };
   let log = [];
-  const record = event => log.push([event.type, tag(event.target)].concat(event.newState ? [event.newState] : []));
+  // A dialog's close and toggle tasks run in either order in Chrome (separate task sources,
+  // miaskiewicz/turbo-dom#116): dialog toggle events are not recorded.
+  const record = event => { if (event.type === 'toggle' && event.target.localName === 'dialog') return; log.push([event.type, tag(event.target)].concat(event.newState ? [event.newState] : [])); };
   const types = ['cancel', 'close', 'beforetoggle', 'toggle'];
   for (const type of types) document.addEventListener(type, record, true);
   const style = document.head.appendChild(document.createElement('style'));
@@ -105,6 +107,21 @@
     $('p1').showPopover();
     $('p1').addEventListener('beforetoggle', event => { if (event.newState === 'closed') p2.remove(); });
     return [run(() => p2.showPopover()), p2.matches(':popover-open'), state('p1'), p2.isConnected];
+  });
+
+  // The dialog focusing steps: an SVG link with only xlink:href is focusable, a control in a
+  // closed details body is not (the summary is), and shadow trees precede light children.
+  await scenario('focusDelegate', '<dialog id=d1><p>x</p><svg><a id=svga><text>t</text></a></svg></dialog><dialog id=d2><details><summary id=sum>s</summary><button id=hiddenb autofocus>b</button></details></dialog><dialog id=d3><div id=host><button id=light>l</button></div></dialog>', async () => {
+    $('svga').setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', '#x');
+    const root = $('host').attachShadow({ mode: 'open' });
+    root.innerHTML = '<button id=inner>i</button><slot></slot>';
+    const focused = [];
+    for (const id of ['d1', 'd2', 'd3']) {
+      $(id).showModal();
+      focused.push([tag(document.activeElement), tag(root.activeElement)]);
+      $(id).close();
+    }
+    return focused;
   });
 
   // Selectors: invalid functional forms, and blocks / strings / comments left open at EOF.
