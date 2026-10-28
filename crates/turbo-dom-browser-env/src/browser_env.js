@@ -3016,6 +3016,8 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     reflectedContent.push(['HTMLBaseElement','target',false,'target']);
     // turbo-dom#165: HTMLMediaElement's boolean attributes (muted through defaultMuted).
     reflectedContent.push(['HTMLMediaElement','controls',true,'controls'],['HTMLMediaElement','autoplay',true,'autoplay'],['HTMLMediaElement','loop',true,'loop'],['HTMLMediaElement','defaultMuted',true,'muted'],['HTMLMediaElement','disableRemotePlayback',true,'disableremoteplayback'],['HTMLVideoElement','playsInline',true,'playsinline']);
+    // turbo-dom#169: the name attribute of every owner the form-control copies do not cover.
+    ['HTMLImageElement','HTMLEmbedElement','HTMLObjectElement','HTMLIFrameElement','HTMLMapElement','HTMLFieldSetElement','HTMLAnchorElement','HTMLDetailsElement'].forEach(function(owner){reflectedContent.push([owner,'name',false,'name']);});
     reflectedContent.forEach(function(entry){
       var owner=entry[0],name=entry[1],flag=entry[2],attribute=entry[3],proto=prototypes[owner];if(!proto||Object.hasOwn(proto,name))return;
       var check=__ns.domAccessor('nodeType',false,'HTMLElement'),locals=new Set(reflectedTags[owner]);
