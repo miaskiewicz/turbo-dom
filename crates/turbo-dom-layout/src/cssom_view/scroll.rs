@@ -737,7 +737,9 @@ pub(crate) mod chrome {
         }
     }
 
-    /// `[x, y, width, height]` of a Chrome rect readout.
+    /// `[x, y, width, height]` of a Chrome rect readout (read by the text-laid range /
+    /// caret controls, which need the bundled fonts).
+    #[cfg(feature = "bundled-fonts")]
     pub(crate) fn rect(value: &Value) -> [f32; 4] {
         std::array::from_fn(|i| value[i].as_f64().unwrap() as f32)
     }
