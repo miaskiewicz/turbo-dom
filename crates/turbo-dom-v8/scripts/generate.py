@@ -204,10 +204,6 @@ def manifest(source, pins):
             body = body.replace('edition = "2024"\n', f'edition = "2024"\nrust-version = "{pins["rust_version"]}"\n', 1)
             if 'links = "rusty_v8"' not in body or "rust-version" not in body:
                 raise GenerationError("upstream [package] layout changed")
-        elif header == "[lib]\n":
-            # Upstream doc examples do not compile (e.g. src/scope.rs imports Object
-            # twice); upstream never runs them.
-            body = body.rstrip("\n") + "\ndoctest = false\n\n"
         elif header == "[[test]]\n":
             if tomllib.loads(body)["name"] in STRIPPED_TESTS:
                 continue

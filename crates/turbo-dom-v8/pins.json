@@ -44,10 +44,10 @@
   },
   "generated": {
     "files": 188,
-    "tree_sha256": "00754df15f17edd3a5aff7df713538b624aa6e0a7d5a8f5894edea226cc8a689",
+    "tree_sha256": "75f51a873ca927738ac991816bcda890b4bb1f4517778631948e8cf2b8fe5089",
     "teardown_tests_sha256": "f057b3486c3d9140123bab8ecd6840cae8486e75cf79cfb8fc2ed20e05bdf63d",
     "key_files": {
-      "Cargo.toml": "1201979a35a5205f22a3bde650aaae760009522b1d19f08b087de602e8c63c95",
+      "Cargo.toml": "df276df62448220cc8d2408aba411c2c235acbdfa25531954e64768c4be46216",
       "build.rs": "5f47149bd30592fef7620aa82bca23389d40d519285794c6920fb3d8214de5ee",
       "src/lib.rs": "647aea9ba7621934b5d7ee3d3ab344f1534f456ac06c56ebc27b0898bfb15b65",
       "src/function.rs": "b12f0237fcb8622171a5d8ffd23407b04c860fa188ef96f26e53fcf6a79de05f",

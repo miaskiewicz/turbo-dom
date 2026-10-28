@@ -114,7 +114,7 @@ class ManifestTransformTests(unittest.TestCase):
         self.assertNotIn("Cargo.toml.orig", self.text)
 
     def test_library_keeps_the_v8_crate_name(self):
-        self.assertEqual(self.result["lib"], {"name": "v8", "path": "src/lib.rs", "doctest": False})
+        self.assertEqual(self.result["lib"], {"name": "v8", "path": "src/lib.rs"})  # doctests run (turbo-dom#182)
 
     def test_icu_and_trybuild_targets_are_stripped_and_own_tests_added(self):
         names = [test["name"] for test in self.result["test"]]

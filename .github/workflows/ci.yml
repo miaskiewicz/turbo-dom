@@ -317,7 +317,9 @@ jobs:
       # `nextest run --all-targets`, ci.yml at v150.4.0); its tests are not safe to share a
       # process: in-process parallel `cargo test` aborts nondeterministically (libc++
       # hardening `vector[] index out of bounds` / SIGSEGV in slots.rs, release_v8_teardown)
-      # on the unpatched upstream crate too. Same runner as upstream, same targets (no doctests).
+      # on the unpatched upstream crate too. Same runner as upstream, same targets. nextest does
+      # not run doctests (each doctest is its own process anyway): `cargo test --doc` does
+      # (turbo-dom#182; upstream never runs them, doctests.patch makes scope.rs's compile).
       - uses: taiki-e/install-action@v2
         with:
           tool: cargo-nextest
@@ -327,6 +329,9 @@ jobs:
           CARGO_TARGET_DIR="$V8_TARGET_DIR" cargo nextest run --all-targets --no-fail-fast $V8_FEATURES
           ignored=$(CARGO_TARGET_DIR="$V8_TARGET_DIR" cargo test $V8_FEATURES --test interceptor_should_throw -- --list --ignored | grep -c ': test$' || true)
           [ "$ignored" = 0 ] || { echo "interceptor_should_throw has $ignored ignored tests"; exit 1; }
+      - name: turbo-dom-v8 doctests
+        working-directory: crates/turbo-dom-v8/crate
+        run: CARGO_TARGET_DIR="$V8_TARGET_DIR" cargo test --doc $V8_FEATURES
       - name: turbo-dom-browser-env tests (default features)
         run: CARGO_TARGET_DIR="$ENV_TARGET_DIR" cargo test -p turbo-dom-browser-env --config "$V8_PATCH" --features "${ENV_V8_FEATURE}"
       - name: turbo-dom-browser-env tests (host-internals, test-support)
