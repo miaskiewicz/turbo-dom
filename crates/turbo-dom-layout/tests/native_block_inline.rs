@@ -72,6 +72,20 @@ fn capture_with_partial_identities(
     markup: &str,
     omit_inline: bool,
 ) -> Result<Captured, turbo_dom_layout::layout_snapshot::SvgSnapshotError> {
+    capture_with_fonts(markup, omit_inline, fonts())
+}
+/// The bundled faces only, so the host's installed fonts never decide the result
+/// (`serif` is the bundled Liberation Serif on every host).
+#[cfg(feature = "bundled-fonts")]
+fn bundled_fonts() -> &'static FontRegistry {
+    static FONTS: OnceLock<FontRegistry> = OnceLock::new();
+    FONTS.get_or_init(FontRegistry::new)
+}
+fn capture_with_fonts(
+    markup: &str,
+    omit_inline: bool,
+    fonts: &FontRegistry,
+) -> Result<Captured, turbo_dom_layout::layout_snapshot::SvgSnapshotError> {
     let html = format!("<div id=rso>{markup}</div><button id=dismiss>Reject</button><input name=q type=hidden value=hidden><form><textarea name=q></textarea><button>Search</button></form>");
     let element = |tag: &str, children| {
         Node::Element(turbo_dom_layout::test_support::literal::Element {
@@ -101,7 +115,7 @@ fn capture_with_partial_identities(
     let snapshot = snapshot_html_live_tree_with_native_text(&literal::tree(&nodes).input(), &ids,
         &build_cascade("body{margin:8px;font-family:serif}head,style,script,title,meta,link,base,noscript{display:none}button{font-family:Arial;font-size:13.3333px;line-height:normal;padding:1px 6px;border:2px solid;box-sizing:border-box}", "", turbo_dom_layout::style::TokenSet::default()),
         &NativeTextOptions { original_text: &[], svg_viewports: &[], layout_scale: 2.0 },
-        &SnapshotInputs { width:1280.0, height:800.0, fonts:fonts(), images:&images },
+        &SnapshotInputs { width:1280.0, height:800.0, fonts, images:&images },
         &mut Diagnostics::default())?;
     Ok((snapshot, names))
 }
@@ -342,29 +356,27 @@ fn hidden_blocks_do_not_displace_or_reject_a_relative_inline() {
     );
 }
 
+#[cfg(feature = "bundled-fonts")]
 #[test]
 fn a_line_break_inside_an_inline_splits_it_across_lines() {
     // `<br>` ends the line inside the link. Chrome 156 `getClientRects()` of
-    // `<a>Read<br>more</a>` (in this harness's `#rso` div at body margin 8):
-    // [8, 8, 32.875, 18], [40.875, 8, 0, 18], [8, 26, 32.875, 18] — the text before the
-    // break, a zero-width rect at the break, the text after it one line lower (x and
-    // widths compared exactly; the line height is font-dependent).
-    let (snapshot, names) = capture("<a id=l>Read<br>more</a>");
-    let rects = rects(&snapshot, names["l"]);
-    let xw: Vec<_> = rects
-        .iter()
-        .map(|r| (r[0], r[1] == rects[0][1], r[2]))
-        .collect();
+    // `<a>Read<br>more</a>` (in this harness's `#rso` div at body margin 8) in
+    // Liberation Serif 16px at device scale factor 2 (this harness's layout_scale):
+    // the text before the break, a zero-width rect at the break, the text after it
+    // one line lower. The font box (ascent 29 + descent 7 device px = 18) and the
+    // line pitch (+ line gap 1 = 18.5) differ, so the next line is not at y + height.
+    // Bundled fonts only: the host's serif (macOS Times, Linux fontconfig) would
+    // change both numbers.
+    let (snapshot, names) =
+        capture_with_fonts("<a id=l>Read<br>more</a>", false, bundled_fonts()).unwrap();
     assert_eq!(
-        xw,
+        rects(&snapshot, names["l"]),
         [
-            (8.0, true, 32.875),
-            (40.875, true, 0.0),
-            (8.0, false, 32.875)
-        ],
-        "{rects:?}"
+            [8.0, 8.0, 32.875, 18.0],
+            [40.875, 8.0, 0.0, 18.0],
+            [8.0, 26.5, 32.875, 18.0]
+        ]
     );
-    assert_eq!(rects[2][1], rects[0][1] + rects[0][3], "the next line");
 }
 
 #[test]
