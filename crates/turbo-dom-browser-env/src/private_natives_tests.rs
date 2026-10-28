@@ -116,17 +116,17 @@ fn cascade_lookup_brand_checks_its_element() {
 }
 
 /// The EventTarget wrapper hands nodes to the native add / remove / dispatch functions
-/// through Function.prototype.apply, which a page can patch to capture the natives and call
-/// them on any receiver with any arguments: they refuse with TypeErrors, never abort.
+/// through the Reflect.apply captured at install (turbo-dom#172): a page that patches
+/// Function.prototype.apply captures none of them, and the calls still work.
 #[test]
 fn event_target_natives_survive_a_patched_apply() {
     with_page(|scope| {
         assert_eq!(
             json(
                 scope,
-                "(() => { const original = Function.prototype.apply, natives = []; Function.prototype.apply = function (receiver, args) { natives.push(this); return Reflect.apply(original, this, [receiver, args]); }; const p = document.getElementById('p'); try { p.addEventListener('x', () => {}); p.removeEventListener('x', () => {}); p.dispatchEvent(new Event('x')); } finally { Function.prototype.apply = original; } const [add, remove, dispatch] = natives; const proxy = new Proxy(p, {}); return [natives.length, run(() => add.call({}, 'x', () => {})), run(() => add.call(p, 'x')), run(() => add.call(proxy, 'x', () => {})), run(() => remove.call({}, 'x', () => {})), run(() => remove.call(p)), run(() => dispatch.call({}, new Event('x'))), run(() => dispatch.call(proxy, new Event('x'))), run(() => dispatch.call(p, new Event('y')))]; })()"
+                "(() => { const original = Function.prototype.apply, natives = []; Function.prototype.apply = function (receiver, args) { natives.push(this); return Reflect.apply(original, this, [receiver, args]); }; const p = document.getElementById('p'); try { p.addEventListener('x', () => {}); p.removeEventListener('x', () => {}); p.dispatchEvent(new Event('x')); } finally { Function.prototype.apply = original; } let fired = 0; Function.prototype.apply = function (receiver, args) { natives.push(this); return Reflect.apply(original, this, [receiver, args]); }; try { p.addEventListener('z', () => { fired++; }); p.dispatchEvent(new Event('z')); } finally { Function.prototype.apply = original; } return [natives.length, fired]; })()"
             ),
-            r#"[3,["TypeError","Illegal invocation"],["TypeError","Event listener registration requires 2 arguments"],["TypeError","Illegal invocation"],["TypeError","Illegal invocation"],["TypeError","Event listener registration requires 2 arguments"],["TypeError","Illegal invocation"],["TypeError","Illegal invocation"],true]"#
+            r#"[0,1]"#
         );
     });
 }
@@ -188,14 +188,11 @@ fn captured_natives_refuse_hostile_calls() {
         ];
         let mut keys: Vec<_> = out.as_object().unwrap().keys().cloned().collect();
         keys.sort();
-        let mut expected_keys: Vec<_> = natives
-            .iter()
-            .map(|native| native.0.to_string())
-            .chain(["__noteInlineHandler#1".to_string()])
-            .collect();
-        expected_keys.sort();
-        assert_eq!(keys, expected_keys);
-        for (name, valid, results) in natives {
+        // turbo-dom#172: createElement, querySelectorAll, the applied inline style natives
+        // and the inline handler note are reached through captured intrinsics now.
+        let captured = ["__cascadeProp#1", "blur#1", "click#1", "focus#1", "hasAttribute#1"];
+        assert_eq!(keys, captured);
+        for (name, valid, results) in natives.iter().filter(|native| captured.contains(&native.0)) {
             let mut expected = Vec::new();
             for receiver in ["plain", "proxy", "text", "document", "element"] {
                 for (index, args) in ["none", "symbol", "throwing"].iter().enumerate() {
@@ -209,25 +206,6 @@ fn captured_natives_refuse_hostile_calls() {
             }
             assert_eq!(out[*name], serde_json::json!(expected), "{name}");
         }
-        // The inline-handler note ignores receivers that are not nodes and converts its
-        // arguments only for nodes.
-        let mut expected = Vec::new();
-        for receiver in ["plain", "proxy", "text", "document", "element"] {
-            for (args, value) in [
-                ("none", r#""undefined""#),
-                ("symbol", symbol_value),
-                ("throwing", throwing),
-            ] {
-                let node = matches!(receiver, "text" | "document" | "element");
-                let value = if node || args == "none" {
-                    value
-                } else {
-                    r#""undefined""#
-                };
-                expected.push(format!("{receiver}/{args}: {value}"));
-            }
-        }
-        assert_eq!(out["__noteInlineHandler#1"], serde_json::json!(expected));
     });
 }
 
