@@ -57,3 +57,6 @@ mod host_api_tests;
 #[cfg(test)]
 #[path = "native_guards_tests.rs"]
 mod native_guards_tests;
+#[cfg(test)]
+#[path = "termination_tests.rs"]
+mod termination_tests;
