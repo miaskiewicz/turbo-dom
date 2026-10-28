@@ -331,7 +331,6 @@ struct ReactionQueue {
     order: RefCell<Option<v8::Weak<v8::Array>>>,
     callbacks: RefCell<Option<v8::Weak<v8::Map>>>,
     collecting: std::cell::Cell<bool>,
-    count: std::cell::Cell<usize>,
 }
 pub(super) struct ReactionScope<'s> {
     frames: Rc<ReactionFrames>,
@@ -363,7 +362,6 @@ pub(super) fn reactions<'s>(scope: &mut v8::PinScope<'s, '_>) -> ReactionScope<'
         order: RefCell::new(None),
         callbacks: RefCell::new(None),
         collecting: std::cell::Cell::new(false),
-        count: std::cell::Cell::new(0),
     });
     frames.0.borrow_mut().push(entry.clone());
     ReactionScope {
@@ -398,11 +396,6 @@ fn react(
     ) else {
         return;
     };
-    if entry.count.get() >= 4096 {
-        scope.terminate_execution();
-        return;
-    }
-    entry.count.set(entry.count.get() + 1);
     let node = args.get(0);
     let existing = callbacks
         .get(scope, node)
@@ -546,10 +539,6 @@ pub(super) fn mutation(scope: &mut v8::PinScope, event: v8::Local<v8::Object>) {
             .and_then(|entry| entry.events.to_local(scope))
     });
     if let Some(queue) = queue {
-        if queue.length() >= 4096 {
-            scope.terminate_execution();
-            return;
-        }
         append(scope, queue, event.into());
     } else {
         deliver_mutation(scope, event);
@@ -621,6 +610,11 @@ pub(super) fn parser_inserted(
     nodes: &[v8::Local<v8::Object>],
     mark: Option<u32>,
 ) {
+    let handles = nodes
+        .iter()
+        .filter_map(|node| handle_of(scope, *node))
+        .collect::<Vec<_>>();
+    user_activation_gates::created_details(scope, &handles);
     if nodes.is_empty() || scope.get_slot::<DefinitionsActive>().is_none() {
         return;
     }
@@ -641,7 +635,7 @@ pub(super) fn parser_inserted(
             .and_then(|entry| entry.events.to_local(scope))
     });
     match (queue, mark) {
-        (Some(queue), Some(mark)) if mark < queue.length() && queue.length() < 4096 => {
+        (Some(queue), Some(mark)) if mark < queue.length() => {
             // Shift the setter's own mutations up one slot and deliver this event first.
             let mut index = queue.length();
             while index > mark {

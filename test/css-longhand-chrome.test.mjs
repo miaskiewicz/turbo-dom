@@ -17,30 +17,14 @@ const sha = (text) => createHash('sha256').update(text).digest('hex');
 
 // Pairs whose npm result differs from Chrome for a documented reason, by `name|value`.
 const KNOWN_GAPS = new Set([
-  // turbo-dom#117 (shared with rtdom::css_shorthand).
-  "transition-timing-function|cubic-bezier(min(0.5, 1), 0, 1, 1)",
-  "transition-timing-function|linear(calc(0), 1)",
-  "transition-timing-function|linear(0, 1 calc(50%))",
-  "text-shadow|1px 1px #ABC",
 ]);
 // Values of the lenient grammars (image / easing lists, display) Chrome rejects, kept as spelled.
 const KEPT = [
   'list-style-image|bogus', 'background-image|url(a.png),', 'background-image|bogus', 'transition-timing-function|bogus',
-  // P5-cov coverage cases (turbo-dom#117 lists the rtdom side).
-  "transition-timing-function|cubic-bezier(calc(1px), 0, 1, 1)",
-  "transition-timing-function|cubic-bezier(a, 0, 1, 1)",
-  "transition-timing-function|cubic-bezier(calc(2px), 0, 1, 1)",
-  "color|hsl(1px 50% 50%)",
-  "color|hsl(10% 50% 50%)",
-  "color|rgb(from red r g b / 1 1)",
+  // P5-cov coverage cases.
   "display|flow-root flex",
   "display|block inline flow",
   "list-style-type|counter(a)",
-  "grid-template-areas|\"a\\\"b\"",
-  "grid-template-areas|\"a\\\\b\"",
-  "offset-rotate|0",
-  "offset-rotate|auto 0",
-  "offset-rotate|0 reverse",
   'display|bogus',
 ];
 

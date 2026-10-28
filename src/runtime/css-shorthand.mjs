@@ -198,8 +198,8 @@ function sumTerms(inner) {
     if (comp.kind === 'dimension') return [[comp.unit, comp.value]];
     if (comp.kind === 'ident') { const name = comp.value.toLowerCase(); return name in CONSTANTS ? [['', CONSTANTS[name]]] : null; }
     if (comp.kind === 'function' && comp.name === '(') { const nested = components(comp.text.slice(1, -1)); return nested && sumTerms(nested); }
-    // A nested calc() / min() / max() / clamp() Chrome simplified already spells `calc(...)`.
-    if (comp.kind === 'function' && ['calc', 'min', 'max', 'clamp'].includes(comp.name) && comp.text.startsWith('calc(')) {
+    // A nested math function Chrome simplified already spells `calc(...)`.
+    if (isMath(comp) && comp.text.startsWith('calc(')) {
       const nested = components(comp.text.slice(5, -1));
       return nested && sumTerms(nested);
     }
@@ -219,10 +219,9 @@ function sumTerms(inner) {
     if (!next) return null;
     const op = inner[index];
     if (op.kind === 'delim' && op.value === '*') {
-      const b = scalar(next), a = scalar(current);
-      if (b !== null) current = scale(current, b);
-      else if (a !== null) current = scale(next, a);
-      else return null;
+      // calcType admitted at most one dimension: when the right side is not the scalar, the left is.
+      const b = scalar(next);
+      current = b !== null ? scale(current, b) : scale(next, scalar(current));
     } else if (op.kind === 'slash' || (op.kind === 'delim' && op.value === '/')) {
       const b = scalar(next);
       if (b === null) return null;
@@ -248,9 +247,9 @@ function sumTerms(inner) {
     terms.length = 0;
     terms.push(...rest);
   }
-  // Times, angles and frequencies in two units combine in their canonical unit.
+  // Times, angles and frequencies resolve to their canonical unit (`calc(1ms)` is `calc(0.001s)`).
   for (const [canonical, factors] of [['s', { s: 1, ms: 0.001 }], ['deg', { deg: 1, grad: 0.9, rad: 180 / Math.PI, turn: 360 }], ['hz', { hz: 1, khz: 1000 }]]) {
-    if (terms.filter(([unit]) => unit in factors).length < 2) continue;
+    if (!terms.some(([unit]) => unit in factors)) continue;
     let total = 0;
     for (let index = terms.length - 1; index >= 0; index--) if (terms[index][0] in factors) { total += terms[index][1] * factors[terms[index][0]]; terms.splice(index, 1); }
     terms.push([canonical, total]);
@@ -273,19 +272,11 @@ function calcType(inner) {
     if (comp.kind === 'percentage') return 'percent';
     if (comp.kind === 'dimension') { const category = unitCategory(comp.unit); return category === null ? null : `unit${category}`; }
     if (comp.kind === 'function' && comp.name === '(') { const nested = components(comp.text.slice(1, -1)); return nested && calcType(nested); }
-    if (comp.kind === 'function' && MATH_FUNCTIONS.has(comp.name)) return 'unknown';
+    if (isMath(comp)) return mathType(comp);
     if (comp.kind === 'ident' && ['e', 'pi', 'infinity', '-infinity', 'nan'].includes(comp.value.toLowerCase())) return 'number';
     return null;
   };
-  const unit = (type) => type === 'percent' || type.startsWith('unit');
-  const sum = (a, b) => {
-    if (a === 'unknown') return b;
-    if (b === 'unknown') return a;
-    if (a === 'number' && b === 'number') return 'number';
-    if (a === 'percent' && unit(b)) return b;
-    if (b === 'percent' && unit(a)) return a;
-    return a.startsWith('unit') && a === b ? a : null;
-  };
+  const unit = unitType, sum = sumType;
   if (!inner.length) return null;
   let total = null;
   let product = operand(inner[0]);
@@ -306,8 +297,62 @@ function calcType(inner) {
   }
   return total === null ? product : sum(total, product);
 }
+const unitType = (type) => type === 'percent' || type.startsWith('unit');
+/** The type of a sum of two types (`null`: Chrome rejects adding them). */
+function sumType(a, b) {
+  if (a === 'unknown') return b;
+  if (b === 'unknown') return a;
+  if (a === 'number' && b === 'number') return 'number';
+  if (a === 'percent' && unitType(b)) return b;
+  if (b === 'percent' && unitType(a)) return a;
+  return a.startsWith('unit') && a === b ? a : null;
+}
+const isMath = (c) => c.kind === 'function' && MATH_FUNCTIONS.has(c.name);
+/**
+ * A math function's type: a simplified one's `calc()` sum, `min()` / `max()` / `clamp()` /
+ * `abs()` their arguments' common type, `sign()` a number, the others unknown.
+ */
+function mathType(comp) {
+  const inner = innerOf(comp);
+  if (comp.text.startsWith('calc(')) return calcType(inner);
+  if (comp.name === 'sign') return 'number';
+  return ['min', 'max', 'clamp', 'abs'].includes(comp.name) ? argumentsType(inner) : 'unknown';
+}
 /** A function's comma-separated arguments. */
 const argumentsOf = (inner) => split(inner, isComma);
+/**
+ * A `calc()` sum's type when Chrome accepts it: operands alternate with operators (a literal
+ * product has at most one unit) and the types add up.
+ */
+function checkedSum(inner) {
+  if (!inner.length || inner.length % 2 === 0) return null;
+  const unit = (c) => c.kind === 'dimension' || c.kind === 'percentage';
+  const alternates = inner.every((comp, index) => {
+    if (index % 2 === 1) {
+      const product = comp.kind === 'delim' && comp.value === '*';
+      const operator = product || (comp.kind === 'delim' && ['+', '-', '/'].includes(comp.value)) || comp.kind === 'slash';
+      return operator && !(product && unit(inner[index - 1]) && unit(inner[index + 1]));
+    }
+    return comp.kind !== 'comma' && comp.kind !== 'slash' && comp.kind !== 'delim';
+  });
+  const type = calcType(inner);
+  return alternates ? type : null;
+}
+const isNone = (argument) => argument.length === 1 && isIdent(argument[0], ['none']);
+/**
+ * The common type of a math function's comma-separated `calc()` sums (`clamp()`'s `none`
+ * bounds left out); `null` when an argument is not a sum or the types do not add up.
+ */
+function argumentsType(inner) {
+  let total = 'unknown';
+  for (const argument of argumentsOf(inner)) {
+    if (isNone(argument)) continue;
+    const type = checkedSum(argument);
+    total = type === null ? null : sumType(total, type);
+    if (total === null) return null;
+  }
+  return total;
+}
 /**
  * Structural checks Chrome makes before keeping a function: a `calc()` sum alternates operands
  * and operators and type-checks, `min()` / `max()` / `clamp()` have their arguments, `rgb()` /
@@ -315,31 +360,25 @@ const argumentsOf = (inner) => split(inner, isComma);
  * positions, `steps()` counts and `cubic-bezier()` x coordinates are in range.
  */
 function functionValid(name, inner) {
-  if (name === 'calc') {
-    if (!inner.length || inner.length % 2 === 0) return false;
-    const unit = (c) => c.kind === 'dimension' || c.kind === 'percentage';
-    return inner.every((comp, index) => {
-      if (index % 2 === 1) {
-        const product = comp.kind === 'delim' && comp.value === '*';
-        const operator = product || (comp.kind === 'delim' && ['+', '-', '/'].includes(comp.value)) || comp.kind === 'slash';
-        return operator && !(product && unit(inner[index - 1]) && unit(inner[index + 1]));
-      }
-      return comp.kind !== 'comma' && comp.kind !== 'slash' && comp.kind !== 'delim';
-    }) && calcType(inner) !== null;
-  }
-  if (name === 'min' || name === 'max') return argumentsOf(inner).every((argument) => argument.length);
-  if (name === 'clamp') { const args = argumentsOf(inner); return args.length === 3 && args.every((argument) => argument.length); }
+  if (name === 'calc') return checkedSum(inner) !== null;
+  if (name === 'min' || name === 'max') return !argumentsOf(inner).some(isNone) && argumentsType(inner) !== null;
+  if (name === 'clamp') { const args = argumentsOf(inner); return args.length === 3 && !isNone(args[1]) && argumentsType(inner) !== null; }
+  if (name === 'abs' || name === 'sign') return !inner.some(isComma) && checkedSum(inner) !== null;
   if (['rgb', 'rgba', 'hsl', 'hsla'].includes(name)) {
-    if (inner.length && isIdent(inner[0], ['from'])) return true; // relative color syntax
     const commasCount = inner.filter((c) => c.kind === 'comma').length;
+    // Relative color syntax: `from <color>`, three channels, then `/ alpha`.
+    if (inner.length && isIdent(inner[0], ['from'])) return commasCount === 0 && (inner.length === 5 || (inner.length === 7 && inner[5].kind === 'slash'));
+    // A hue: a number, an angle, `none` (modern syntax) or a math function of those.
+    const hue = (c) => c.kind === 'number' || (c.kind === 'dimension' && unitCategory(c.unit) === 2) || (commasCount === 0 && isIdent(c, ['none'])) || (isMath(c) && ['number', 'unit2', 'unknown'].includes(mathType(c)));
+    if (name.startsWith('hsl') && inner.length && !hue(inner[0])) return false;
     if (commasCount) return (commasCount === 2 || commasCount === 3) && inner.length === 2 * commasCount + 1 && inner.every((c, index) => (c.kind === 'comma') === (index % 2 === 1));
     const slash = inner.findIndex((c) => c.kind === 'slash');
     return slash < 0 ? inner.length === 3 : slash === 3 && inner.length === 5;
   }
   if (name === 'linear') {
-    // Each stop: a number output and at most two percentage positions.
-    const math = (c) => c.kind === 'function' && MATH_FUNCTIONS.has(c.name);
-    return inner.some((c) => c.kind === 'comma') && argumentsOf(inner).every((stop) => stop.length >= 1 && stop.length <= 3 && (stop[0].kind === 'number' || math(stop[0])) && stop.slice(1).every((c) => c.kind === 'percentage' || math(c)));
+    // Each stop: a number output and at most two percentage positions (literals once `read`
+    // resolved the math functions).
+    return inner.some((c) => c.kind === 'comma') && argumentsOf(inner).every((stop) => stop.length >= 1 && stop.length <= 3 && stop[0].kind === 'number' && stop.slice(1).every((c) => c.kind === 'percentage'));
   }
   if (name === 'steps') {
     // The step count: an integer literal, or a math function Chrome checks later.
@@ -352,9 +391,9 @@ function functionValid(name, inner) {
     return false;
   }
   if (name === 'cubic-bezier') {
-    // The x coordinates are in [0, 1].
+    // Four numbers (literals once `read` resolved the math functions); the x coordinates are in [0, 1].
     const args = argumentsOf(inner);
-    return args.length === 4 && [0, 2].every((index) => args[index].length === 1 && (args[index][0].kind !== 'number' || (args[index][0].value >= 0 && args[index][0].value <= 1)));
+    return args.length === 4 && args.every((arg, index) => arg.length === 1 && arg[0].kind === 'number' && (index % 2 === 1 || (arg[0].value >= 0 && arg[0].value <= 1)));
   }
   return true;
 }
@@ -377,25 +416,54 @@ function calcText(terms) {
   });
   return `${out})`;
 }
-/** `min()` / `max()` / `clamp()` of literals in one unit: their `calc()` value. */
+/**
+ * Units whose values Chrome resolves while parsing (absolute lengths, times, angles and
+ * frequencies after `sumTerms` canonicalized them): `abs()` / `sign()` / `min()` / `max()` /
+ * `clamp()` of them simplify; relative lengths and percentages stay as written.
+ */
+const RESOLVED_UNITS = ['', 'px', 's', 'deg', 'hz'];
+/** Math functions whose arguments are `calc()` sums. */
+const SUM_FUNCTIONS = ['min', 'max', 'clamp', 'abs', 'sign'];
+/** A sum's single term when Chrome resolves it while parsing, else null. */
+const resolved = (terms) => (terms && terms.length === 1 && RESOLVED_UNITS.includes(terms[0][0]) ? terms[0] : null);
+/**
+ * `min()` / `max()` / `clamp()` Chrome simplifies: one argument (`clamp()`'s `none` bounds
+ * left out) is its `calc()` sum, arguments that all resolve in one unit their value.
+ */
 function minMax(name, inner) {
+  const args = argumentsOf(inner);
+  const present = args.filter((argument) => !isNone(argument));
+  if (present.length === 1) { const terms = sumTerms(present[0]); return terms && calcText(terms); }
   let unit = null;
   const values = [];
-  const operand = (comp) => (comp.kind === 'number' ? ['', comp.value] : comp.kind === 'percentage' ? ['%', comp.value] : comp.kind === 'dimension' ? [comp.unit, comp.value] : null);
-  for (let index = 0; index < inner.length; index++) {
-    const comp = inner[index];
-    if (index % 2 === 1) { if (comp.kind !== 'comma') return null; continue; }
-    const o = operand(comp);
-    if (!o) return null;
-    if (unit === null) unit = o[0]; else if (unit !== o[0]) return null;
-    values.push(o[1]);
+  for (const argument of args) {
+    if (isNone(argument)) { values.push(null); continue; }
+    // functionValid type-checked the arguments: resolved ones share the unit.
+    const term = resolved(sumTerms(argument));
+    if (!term) return null;
+    unit = term[0];
+    values.push(term[1]);
   }
-  let value;
-  if (name === 'min' && values.length) value = Math.min(...values);
-  else if (name === 'max' && values.length) value = Math.max(...values);
-  else if (name === 'clamp' && values.length === 3) value = Math.max(values[0], Math.min(values[1], values[2]));
-  else return null;
+  const given = values.filter((value) => value !== null);
+  const value = name === 'min' ? Math.min(...given) : name === 'max' ? Math.max(...given) : Math.max(values[0] ?? -Infinity, Math.min(values[1], values[2] ?? Infinity));
   return calcText([[unit, value]]);
+}
+/** `abs()` / `sign()` of a sum Chrome resolves: its `calc()` value (`sign()` a number). */
+function absSign(name, inner) {
+  const term = resolved(sumTerms(inner));
+  if (!term) return null;
+  // `sign()` keeps a (signed) zero and NaN.
+  return name === 'abs' ? calcText([[term[0], Math.abs(term[1])]]) : calcText([['', term[1] === 0 || Number.isNaN(term[1]) ? term[1] : Math.sign(term[1])]]);
+}
+/**
+ * The arguments of a math function Chrome keeps: each a simplified sum without the `calc()`
+ * wrapper (`min(1px, calc(1px + 1em))` is `min(1px, 1em + 1px)`), or as written.
+ */
+function sumArguments(inner) {
+  return argumentsOf(inner).map((argument) => {
+    const terms = isNone(argument) ? null : sumTerms(argument);
+    return terms ? calcText(terms).slice(5, -1) : join(argument);
+  }).join(', ');
 }
 /** Blink's alpha spelling: the shortest of two or three decimals naming the same 8-bit alpha. */
 function alphaText(alpha) {
@@ -421,26 +489,15 @@ function hexColor(hex) {
 }
 /** `rgb()` / `hsl()` in the legacy (commas) or modern (spaces, `/ alpha`) syntax. */
 function colorFunction(name, inner) {
-  const parts = [];
-  let alphaPart = null, slash = false;
-  const commasUsed = inner.some((c) => c.kind === 'comma');
-  for (let index = 0; index < inner.length; index++) {
-    const comp = inner[index];
-    if (comp.kind === 'comma' && commasUsed && index % 2 === 1) continue;
-    if (comp.kind === 'slash' && !commasUsed && !slash) { slash = true; continue; }
-    if (commasUsed && index % 2 === 1) return null;
-    if (slash) { if (alphaPart !== null) return null; alphaPart = comp; continue; }
-    parts.push(comp);
-  }
-  if (commasUsed && parts.length === 4) alphaPart = parts.pop();
-  if (parts.length !== 3 || (slash && alphaPart === null)) return null;
-  // A channel: a literal, `none` (zero) or a calc() that computes to one.
+  // functionValid admitted three channels and an optional alpha, or the relative syntax (kept as written).
+  const values = inner.filter((c) => c.kind !== 'comma' && c.kind !== 'slash');
+  if (values.length > 4) return null;
+  const parts = values.slice(0, 3), alphaPart = values[3] ?? null;
+  // A channel: a literal, `none` (zero) or a math function that computes to one.
   const computed = (c, unit) => {
-    if (c.kind === 'function' && c.name === 'calc') {
-      const nested = components(c.text.slice(5, -1)), terms = nested && sumTerms(nested);
-      return terms && terms.length === 1 && terms[0][0] === unit ? terms[0][1] : null;
-    }
-    return isIdent(c, ['none']) ? 0 : null;
+    if (isIdent(c, ['none'])) return 0;
+    const term = mathValue(c);
+    return term && term[0] === unit ? term[1] : null;
   };
   const num = (c) => (c.kind === 'number' ? c.value : computed(c, ''));
   const pct = (c) => (c.kind === 'percentage' ? c.value : computed(c, '%'));
@@ -454,7 +511,9 @@ function colorFunction(name, inner) {
     const h = parts[0];
     let hue;
     const turns = { deg: 1, grad: 0.9, rad: 180 / Math.PI, turn: 360 };
-    if (h.kind === 'number') hue = h.value; else if (isIdent(h, ['none'])) hue = 0; else if (h.kind === 'dimension' && h.unit in turns) hue = h.value * turns[h.unit]; else return null;
+    // functionValid admitted a number, an angle, `none` or a math function hue.
+    if (h.kind === 'number') hue = h.value; else if (h.kind === 'dimension') hue = h.value * turns[h.unit]; else hue = computed(h, '') ?? computed(h, 'deg');
+    if (hue === null) return null;
     const sat = pct(parts[1]), light = pct(parts[2]);
     if (sat === null || light === null) return null;
     const S = sat / 100, L = light / 100, H = (((hue % 360) + 360) % 360) / 360;
@@ -478,14 +537,12 @@ function stepsText(inner) {
 function linearText(inner) {
   const stops = [];
   for (const item of split(inner, isComma)) {
-    if (!item.length || item[0].kind !== 'number' || item.length > 3) return null;
-    const positions = item.slice(1).map((c) => (c.kind === 'percentage' ? c.value : undefined));
-    if (positions.some((p) => p === undefined)) return null;
+    // functionValid admitted a number and at most two percentages per stop.
+    const positions = item.slice(1).map((c) => c.value);
     if (!positions.length) stops.push([item[0].text, [null]]);
     // A stop with two input positions is two stops.
     else for (const position of positions) stops.push([item[0].text, [position]]);
   }
-  if (stops.length < 2) return null;
   const flat = stops.flatMap(([, positions]) => positions);
   if (flat[0] === null) flat[0] = 0;
   if (flat[flat.length - 1] === null) flat[flat.length - 1] = 100;
@@ -506,11 +563,11 @@ function linearText(inner) {
 
 /** Functions whose identifier arguments are names (kept as written). */
 const NAMING_ARGUMENTS = new Set(['stylistic', 'styleset', 'character-variant', 'swash', 'ornaments', 'annotation', 'local', 'format', 'attr', 'counter', 'counters', 'symbols', 'src', 'var', 'env']);
-/** A calc() component that computes to a plain number, else null. */
-function calcNumber(comp) {
-  if (comp.kind !== 'function' || comp.name !== 'calc' || !comp.text.startsWith('calc(')) return null;
-  const nested = components(comp.text.slice(5, -1)), terms = nested && sumTerms(nested);
-  return terms && terms.length === 1 && terms[0][0] === '' ? terms[0][1] : null;
+/** A math function Chrome simplified to one term (its text spells `calc(...)`): `[unit, value]`, else null. */
+function mathValue(comp) {
+  if (!isMath(comp) || !comp.text.startsWith('calc(')) return null;
+  const terms = sumTerms(components(comp.text.slice(5, -1)));
+  return terms && terms.length === 1 ? terms[0] : null;
 }
 /** Tokens -> components (a function / block is one component); `null` on bad input. */
 function read(tokens, state, close) {
@@ -545,11 +602,15 @@ function read(tokens, state, close) {
         } else {
           // Keyword arguments are case-insensitive: Chrome writes them lowercase.
           if (!NAMING_ARGUMENTS.has(name)) for (const comp of inner) if (comp.kind === 'ident' && !comp.value.startsWith('--')) comp.text = comp.value.toLowerCase();
-          // A calc() argument of cubic-bezier() that computes to a number is that number.
-          if (name === 'cubic-bezier') inner.forEach((comp, index) => { const value = calcNumber(comp); if (value !== null) inner[index] = { kind: 'number', value: f32(value), integer: false, text: cssNumber(value) }; });
+          // A math argument Chrome resolves to a number (or, in linear(), a percentage) is that literal.
+          if (name === 'cubic-bezier' || name === 'linear') inner.forEach((comp, index) => {
+            const term = mathValue(comp);
+            if (term && term[0] === '') inner[index] = { kind: 'number', value: f32(term[1]), integer: false, text: cssNumber(term[1]) };
+            else if (term && term[0] === '%' && name === 'linear') inner[index] = { kind: 'percentage', value: f32(term[1]), text: `${cssNumber(term[1])}%` };
+          });
           if (!functionValid(name, inner)) return null;
-          const special = name === 'calc' ? calcSum(inner) : name === 'min' || name === 'max' || name === 'clamp' ? minMax(name, inner) : name === 'rgb' || name === 'rgba' || name === 'hsl' || name === 'hsla' ? colorFunction(name, inner) : name === 'lab' || name === 'lch' || name === 'oklab' || name === 'oklch' ? labFunction(name, inner) : name === 'steps' ? stepsText(inner) : name === 'linear' ? linearText(inner) : null;
-          const text = special ?? `${name}(${join(inner)})`;
+          const special = name === 'calc' ? calcSum(inner) : name === 'min' || name === 'max' || name === 'clamp' ? minMax(name, inner) : name === 'abs' || name === 'sign' ? absSign(name, inner) : name === 'rgb' || name === 'rgba' || name === 'hsl' || name === 'hsla' ? colorFunction(name, inner) : name === 'lab' || name === 'lch' || name === 'oklab' || name === 'oklch' ? labFunction(name, inner) : name === 'steps' ? stepsText(inner) : name === 'linear' ? linearText(inner) : null;
+          const text = special ?? `${name}(${SUM_FUNCTIONS.includes(name) ? sumArguments(inner) : join(inner)})`;
           out.push({ kind: 'function', name, text });
         }
         break;
@@ -628,6 +689,8 @@ function angle(c) {
   if (c.kind === 'number' && c.value === 0) return '0deg';
   return mathOf(c, (unit) => ANGLES.includes(unit), false, false) ? c.text : null;
 }
+/** `<angle>` without the unitless zero (`offset-rotate`). */
+const angleStrict = (c) => (c.kind === 'number' ? null : angle(c));
 function color(c) {
   if (c.kind === 'hash') return hexColor(c.value);
   if (c.kind === 'ident') {
@@ -806,11 +869,12 @@ function placeContent(comps) {
   const justify = (comps) => firstKeyword(comps, ['normal', 'left', 'right', ...DISTRIBUTIONS]) ?? overflowPosition(comps, ['center', 'start', 'end', 'flex-start', 'flex-end', 'left', 'right']);
   const a = align(comps);
   if (!a) return null;
-  const isBaseline = a[1].endsWith('baseline');
+  // `[first] baseline` takes a justify value (`start` when there is none); Chrome 156 rejects
+  // `last baseline` here.
+  if (a[1] === 'last baseline') return null;
   let j;
-  if (a[0] === comps.length) j = isBaseline ? 'start' : a[1];
+  if (a[0] === comps.length) j = a[1] === 'baseline' ? 'start' : a[1];
   else {
-    if (isBaseline) return null;
     const rest = justify(comps.slice(a[0]));
     if (!rest || a[0] + rest[0] !== comps.length) return null;
     j = rest[1];
@@ -1410,9 +1474,31 @@ function trackList(comps) {
   if (!subgrid && !tracksValid(comps)) return null;
   return join(comps.map((c) => ({ ...c, text: trackText(c, false) })));
 }
-/** A `grid-template-areas` string: its cell tokens separated by single spaces. */
-function areaString(comp) {
-  return comp.kind === 'string' ? `"${comp.value.trim().split(/\s+/).filter(Boolean).join(' ')}"` : null;
+/**
+ * A `grid-template-areas` string's cell tokens: runs of name code points, a run of `.` one null
+ * cell `.`; null for a row without cells or with any other character.
+ */
+function areaRow(comp) {
+  if (comp.kind !== 'string') return null;
+  const tokens = comp.value.match(/[A-Za-z0-9_\-\u0080-\uffff]+|\.+|[^ \t\n\r\f]/g) ?? [];
+  if (!tokens.length || tokens.some((token) => !/^([A-Za-z0-9_\-\u0080-\uffff]+|\.+)$/.test(token))) return null;
+  return tokens.map((token) => (token[0] === '.' ? '.' : token));
+}
+/**
+ * `grid-template-areas` rows Chrome accepts (as many cells each, every named area a filled
+ * rectangle) as quoted rows.
+ */
+function areasText(rows) {
+  if (rows.some((row) => row === null || row.length !== rows[0].length)) return null;
+  const boxes = new Map();
+  rows.forEach((row, y) => row.forEach((cell, x) => {
+    if (cell === '.') return;
+    const box = boxes.get(cell) ?? { x0: x, x1: x, y0: y, y1: y, count: 0 };
+    Object.assign(box, { x0: Math.min(box.x0, x), x1: Math.max(box.x1, x), y0: Math.min(box.y0, y), y1: Math.max(box.y1, y), count: box.count + 1 });
+    boxes.set(cell, box);
+  }));
+  for (const box of boxes.values()) if ((box.x1 - box.x0 + 1) * (box.y1 - box.y0 + 1) !== box.count) return null;
+  return rows.map((row) => `"${row.join(' ')}"`).join(' ');
 }
 function gridTemplate(comps) {
   if (comps.length === 1 && isIdent(comps[0], ['none'])) return ['none', 'none', 'none'];
@@ -1434,7 +1520,7 @@ function gridTemplate(comps) {
   const names = () => { if (rows[at] && isNames(rows[at])) { tracks.push(rows[at].text); at++; } };
   while (at < rows.length) {
     names();
-    const area = rows[at] ? areaString(rows[at]) : null;
+    const area = rows[at] ? areaRow(rows[at]) : null;
     if (area === null) return null;
     areas.push(area);
     at++;
@@ -1450,7 +1536,8 @@ function gridTemplate(comps) {
     if (last !== undefined && track.startsWith('[') && last.startsWith('[')) { merged[merged.length - 1] = `${last.slice(0, -1)} ${track.slice(1)}`; continue; }
     merged.push(track);
   }
-  return [merged.join(' '), cols ?? 'none', areas.join(' ')];
+  const areasValue = areasText(areas);
+  return areasValue === null ? null : [merged.join(' '), cols ?? 'none', areasValue];
 }
 function grid(comps) {
   const parts = slashes(comps);
@@ -1541,9 +1628,25 @@ function borderImage(comps, webkit) {
   if ([source, slice, width, outset, repeat].every((v) => v === null)) return null;
   return [source, slice, width, outset, repeat];
 }
+/** `path()`'s string holds path data: at least one command, only path data characters. */
+function pathDataValid(text) {
+  const start = text.indexOf('"'), end = text.lastIndexOf('"');
+  return end > start && start >= 0 && /^[\sMmLlHhVvCcSsQqTtAaZz0-9.,+eE-]*$/.test(text.slice(start + 1, end)) && text.slice(start + 1, end).trim() !== '';
+}
+/** `<offset-rotate>` from the front: `[auto | reverse] || <angle>` (an angle has a unit). */
+function rotatePart(comps) {
+  if (!comps.length) return null;
+  const first = comps[0];
+  const kw = keyword(first, ['auto', 'reverse']);
+  if (kw !== null) { const a = comps[1] ? angleStrict(comps[1]) : null; return a !== null ? [2, `${kw} ${a}`] : [1, kw]; }
+  const a = angleStrict(first);
+  if (a === null) return null;
+  const kw2 = comps[1] ? keyword(comps[1], ['auto', 'reverse']) : null;
+  return kw2 !== null ? [2, `${kw2} ${a}`] : [1, a];
+}
 function pathText(text) {
+  // pathDataValid found the quoted data.
   const start = text.indexOf('"');
-  if (start < 0) return text;
   const end = text.lastIndexOf('"');
   const inner = text.slice(start + 1, end > start ? end : text.length);
   const tokens = [];
@@ -1589,18 +1692,9 @@ function offset(comps) {
     {
       const value = isIdent(comp, ['none']) ? 'none' : functionNamed(comp, ['path', 'ray', 'url', 'circle', 'ellipse', 'inset', 'polygon', 'xywh', 'rect', 'shape']) ?? url(comp);
       if (value !== null) {
+        if (value.startsWith('path(') && !pathDataValid(value)) return null;
         path = value.startsWith('path(') ? pathText(value) : value;
         at++;
-        const rotatePart = (comps) => {
-          if (!comps.length) return null;
-          const first = comps[0];
-          const kw = keyword(first, ['auto', 'reverse']);
-          if (kw !== null) { const a = comps[1] ? angle(comps[1]) : null; return a !== null ? [2, `${kw} ${a}`] : [1, kw]; }
-          const a = angle(first);
-          if (a === null) return null;
-          const kw2 = comps[1] ? keyword(comps[1], ['auto', 'reverse']) : null;
-          return kw2 !== null ? [2, `${kw2} ${a}`] : [1, a];
-        };
         const parsed = anyOrder(main.slice(at), [one((c) => lengthPercentage(c, true)), rotatePart]);
         if (!parsed) return null;
         at = main.length;
@@ -2183,8 +2277,8 @@ function serializeValue(grammar, entry, texts) {
     }
     case 'list-style': return joined(['list-style-position', 'list-style-image', 'list-style-type'].map((name) => omitIf(v(name), null)));
     case 'columns': {
+      // Chrome 156 leaves `column-wrap` out of the spelling, whatever its value.
       const width = v('column-width'), count = v('column-count'), height = v('column-height');
-      if (v('column-wrap') !== 'auto') return '';
       const main = width === 'auto' && count === 'auto' ? 'auto' : width === 'auto' ? count : count === 'auto' ? width : `${width} ${count}`;
       return height === 'auto' ? main : `${main} / ${height}`;
     }
@@ -2268,9 +2362,11 @@ function serializeValue(grammar, entry, texts) {
     case 'animation': return animationText(v);
     case 'timeline-trigger': {
       const columns = ['timeline-trigger-name', 'timeline-trigger-source', 'timeline-trigger-activation-range-start', 'timeline-trigger-activation-range-end', 'timeline-trigger-active-range-start', 'timeline-trigger-active-range-end'].map((name) => layers(v(name)));
-      const count = Math.max(...columns.map((column) => column.length));
+      // Lists of different lengths have no shorthand spelling.
+      const count = columns[0].length;
+      if (columns.some((column) => column.length !== count)) return '';
       return Array.from({ length: count }, (_, index) => {
-        const [name, source, as, ae, bs, be] = columns.map((column) => column[index] ?? '');
+        const [name, source, as, ae, bs, be] = columns.map((column) => column[index]);
         return triggerText(name, source, [as, ae], [bs, be]);
       }).join(', ');
     }
@@ -2477,12 +2573,7 @@ function textDecorationLine(comps) {
 }
 function gridAreas(comps) {
   if (comps.length === 1 && isIdent(comps[0], ['none'])) return 'none';
-  const areas = comps.map(areaString);
-  return areas.some((a) => a === null) ? null : areas.join(' ');
-}
-function pathDataValid(text) {
-  const start = text.indexOf('"'), end = text.lastIndexOf('"');
-  return start >= 0 && end > start && /^[\sMmLlHhVvCcSsQqTtAaZz0-9.,+eE-]*$/.test(text.slice(start + 1, end));
+  return areasText(comps.map(areaRow));
 }
 const offsetPath = (comps) => single(comps, (c) => {
   if (isIdent(c, ['none'])) return 'none';
@@ -2506,16 +2597,17 @@ const animationNames = (comps) => listed(comps, (item) => single(item, (c) => {
   if (c.kind === 'string') return animationNameString(c);
   return customIdent(c, ['none']);
 }));
-function boxShadow(comps) {
+/** `box-shadow` / `text-shadow` (`box`: a spread length and `inset`): each shadow as Chrome orders it (color, lengths, `inset`). */
+function shadow(comps, box) {
   if (comps.length === 1 && isIdent(comps[0], ['none'])) return 'none';
   return listed(comps, (item) => {
     let shadowColor = null, inset = false;
     const lengths = [];
     for (const comp of item) {
-      if (isIdent(comp, ['inset']) && !inset) { inset = true; continue; }
+      if (box && isIdent(comp, ['inset']) && !inset) { inset = true; continue; }
       // The blur radius (the third length) is not negative.
       const negative = comp.kind === 'dimension' && comp.value < 0;
-      const l = lengths.length < 4 && !(lengths.length === 2 && negative) ? length(comp, true) : null;
+      const l = lengths.length < (box ? 4 : 3) && !(lengths.length === 2 && negative) ? length(comp, true) : null;
       if (l !== null) { lengths.push(l); continue; }
       const c = shadowColor === null ? color(comp) : null;
       if (c === null) return null;
@@ -2647,7 +2739,9 @@ add(['offset-path'], offsetPath);
 add(['opacity'], opacityV);
 add(['display'], display, false);
 add(['animation-name'], animationNames);
-add(['box-shadow'], boxShadow);
+add(['box-shadow'], (c) => shadow(c, true));
+add(['text-shadow'], (c) => shadow(c, false));
+add(['offset-rotate'], (c) => { const r = rotatePart(c); return r && r[0] === c.length ? r[1] : null; });
 
 // Properties whose identifiers are names (kept as written) rather than keywords.
 const NAMED = ['animation-name', 'font-family', 'container-name', 'counter-reset', 'counter-increment', 'counter-set', 'grid-area', 'grid-row-start', 'grid-row-end', 'grid-column-start', 'grid-column-end', 'grid-template-areas', 'view-transition-name', 'view-transition-class', 'anchor-name', 'position-anchor', 'anchor-scope', 'timeline-scope', 'font-palette', 'will-change', 'page', 'quotes', 'content'];

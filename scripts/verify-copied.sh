@@ -211,6 +211,20 @@ cssom_parser.rs: P5-cov-browser-env (C3e) the declaration parsers share importan
 trusted_types.rs: P5-cov-browser-env (C3e) the sink mapping's OnceLock is a module-level static
 cssom_parser.rs: P5-cov-browser-env (C3e) turbo-dom#164 keyframe selectors outside 0%..100% drop their rule
 document_legacy.rs: P5-cov-browser-env (C3e) set_domain's IP test reads as 'parses to a non-domain host'
+template_contents.rs: P5-cov-browser-env (D2) turbo-dom#151 serialize leaves a pending termination pending (returns nothing)
+browser_env.rs: P5-cov-browser-env (D2) turbo-dom#151 dispatch_host_event delivers nothing while a termination is pending
+custom_elements.rs: P5-cov-browser-env (D2) turbo-dom#140 no per-call cap on custom element reactions or queued mutation events (Chrome 156 has none; the 4096 caps terminated real pages)
+animations.rs: P5-cov-browser-env (D2) turbo-dom#155 keyframe values: %g number text from the token source, var() / env() values keep their specified text, length-only properties Lightning CSS lacks, bare-zero spelling per property grammar, no negative line-height
+user_activation_gates.rs: P5-cov-browser-env (D2) turbo-dom#131 created_details: parser-created / cloned open details run the attribute changed steps from closed
+custom_elements.rs: P5-cov-browser-env (D2) turbo-dom#131 parser_inserted reports the parsed subtrees' open details
+browser_env.rs: P5-cov-browser-env (D2) turbo-dom#131 cloneNode reports the clone's open details
+html_popover.rs: P5-cov-browser-env (D2) turbo-dom#139 Chrome 156 exception messages; show / toggle during a show (or a nested hide) throw; a nested hide runs without events; busy is tracked by show / hide themselves
+browser_env.js: P5-cov-browser-env (D2) turbo-dom#170 an unchecked longhand the native parser rejects is accepted when its rtdom spelling (math simplified) parses
+event_handlers.rs: P5-cov-browser-env (D2) turbo-dom#153 a failed handler compile is kept and reported when the handler is read or its event dispatched
+browser_env.rs: P5-cov-browser-env (D2) turbo-dom#153 dispatch reports the path's pending handler compile errors
+browser_env.rs: P5-cov-browser-env (D2) turbo-dom#119 the event record keeps the pre-retargeting hitTarget
+user_activation_gates.rs: P5-cov-browser-env (D2) turbo-dom#119 light dismiss reads the record's hitTarget
+selection.rs: P5-cov-browser-env (D2) turbo-dom#144 text model: default-slot text children, tabs before any rendered table cell, a row / table end's newline only before more content, length-changing and capitalize text-transform in toString
 "
 # Crate-owned files under src/ that were not part of the move.
 OWNED="lib.rs crate_surface.rs host_internals.rs test_support.rs css_snapshot.rs option_factory_probe.js option_factory_cases.json option_factory_chrome156.json html_image.js html_image_tests.rs html_image_probe.js html_image_cases.json html_image_chrome156.json custom_elements_defined_probe.js custom_elements_defined_cases.json custom_elements_defined_chrome156.json computed_defaults_probe.js computed_defaults_cases.json computed_defaults_chrome156.json computed_defaults_tests.rs dom_reactions_names_probe.js dom_reactions_names_cases.json dom_reactions_names_chrome156.json dom_reactions_tests.rs dom_adoption_reactions_probe.js dom_adoption_reactions_cases.json dom_adoption_reactions_chrome156.json shadow_events_probe.js shadow_events_cases.json shadow_events_chrome156.json shadow_events_tests.rs html_track_probe.js html_track_cases.json html_track_chrome156.json html_track_tests.rs html_track.js"
@@ -224,6 +238,10 @@ OWNED="$OWNED activation_granted_probe.js activation_granted_chrome156.json trus
 OWNED="$OWNED private_natives_tests.rs binding_termination_tests.rs"
 OWNED="$OWNED member_edges_tests.rs host_edges_tests.rs member_edges_probe.js member_edges_chrome156.json"
 OWNED="$OWNED guard_edges_tests.rs guard_edges_probe.js guard_edges_chrome156.json"
+OWNED="$OWNED reaction_volume_probe.js reaction_volume_chrome156.json"
+OWNED="$OWNED keyframe_values_probe.js keyframe_values_chrome156.json"
+OWNED="$OWNED details_toggle_probe.js details_toggle_chrome156.json"
+OWNED="$OWNED popover_exceptions_probe.js popover_exceptions_chrome156.json"
 
 repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 turbo_test=${TURBO_TEST_REPO:-$repo_root/../turbo-test}

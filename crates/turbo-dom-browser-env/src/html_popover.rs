@@ -216,21 +216,57 @@ fn queue<'s>(
     let delay = v8::Integer::new(scope, 0);
     scheduler.call(scope, receiver.into(), &[function.into(), delay.into()]);
 }
-fn check(scope: &mut v8::PinScope, node: Handle, showing: bool) -> Option<String> {
+/// Chrome 156's suffix for a check that may have failed because of a beforetoggle handler.
+const RECHECK: &str = " This might have been the result of the \"beforetoggle\" event handler changing the state of this popover.";
+fn busy(node: Handle) -> bool {
+    DOM.with(|dom| {
+        dom.borrow()
+            .as_ref()
+            .is_some_and(|dom| dom.popover.busy.contains(&node))
+    })
+}
+fn set_busy(node: Handle, value: bool) {
+    DOM.with(|dom| {
+        if let Some(dom) = dom.borrow_mut().as_mut() {
+            if value {
+                dom.popover.busy.insert(node);
+            } else {
+                dom.popover.busy.remove(&node);
+            }
+        }
+    });
+}
+/// The popover validity check: the element's popover mode, or None after throwing Chrome's
+/// exception for `operation` (a missing popover attribute; a disconnected popover when
+/// `connected` is required). `recheck` adds the beforetoggle suffix.
+fn check(
+    scope: &mut v8::PinScope,
+    node: Handle,
+    operation: &str,
+    connected: bool,
+    recheck: bool,
+) -> Option<String> {
+    let prefix = format!("Failed to execute '{operation}' on 'HTMLElement': ");
+    let suffix = if recheck { RECHECK } else { "" };
     let Some(mode) = with_tree(|tree| mode(tree, node)).flatten() else {
+        let suffix = if operation == "hidePopover" {
+            RECHECK
+        } else {
+            suffix
+        };
         throw_dom_error(
             scope,
             "NotSupportedError",
-            "The element does not have a popover attribute",
+            &format!("{prefix}Not supported on elements that are not popovers.{suffix}"),
         );
         return None;
     };
     let active = DOM.with(|dom| dom.borrow().as_ref().is_some_and(|dom| dom.popover.active));
-    if showing && (!active || !with_tree(|tree| is_connected(tree, node)).unwrap_or(false)) {
+    if connected && (!active || !with_tree(|tree| is_connected(tree, node)).unwrap_or(false)) {
         throw_dom_error(
             scope,
             "InvalidStateError",
-            "The popover is not connected to a document",
+            &format!("{prefix}Invalid on disconnected popover elements.{suffix}"),
         );
         return None;
     }
@@ -239,6 +275,8 @@ fn check(scope: &mut v8::PinScope, node: Handle, showing: bool) -> Option<String
 fn hide(scope: &mut v8::PinScope, node: Handle, events: bool) {
     hide_from(scope, node, events, None);
 }
+/// The hide popover algorithm. A hide nested in another show or hide of the same popover
+/// runs without events (and the outer hide then finds it hidden).
 fn hide_from<'s>(
     scope: &mut v8::PinScope<'s, '_>,
     node: Handle,
@@ -248,18 +286,18 @@ fn hide_from<'s>(
     if !opened(node) {
         return;
     }
-    let busy = DOM.with(|dom| dom.borrow_mut().as_mut().unwrap().popover.busy.insert(node));
-    if events && event(scope, node, "beforetoggle", true, false, source).is_none() {
-        if busy {
-            DOM.with(|dom| {
-                dom.borrow_mut()
-                    .as_mut()
-                    .unwrap()
-                    .popover
-                    .busy
-                    .remove(&node);
-            });
+    let nested = busy(node);
+    let events = events && !nested;
+    set_busy(node, true);
+    let finish = |node| {
+        if !nested {
+            set_busy(node, false);
         }
+    };
+    if events
+        && (event(scope, node, "beforetoggle", true, false, source).is_none() || !opened(node))
+    {
+        finish(node);
         return;
     }
     DOM.with(|dom| {
@@ -274,32 +312,42 @@ fn hide_from<'s>(
     if events {
         queue(scope, node, true, false, source);
     }
-    if busy {
-        DOM.with(|dom| {
-            dom.borrow_mut()
-                .as_mut()
-                .unwrap()
-                .popover
-                .busy
-                .remove(&node);
-        });
-    }
+    finish(node);
 }
+/// The show popover algorithm for `operation` (its exceptions name the method).
 fn show<'s>(
     scope: &mut v8::PinScope<'s, '_>,
     node: Handle,
     source: Option<v8::Local<'s, v8::Object>>,
+    operation: &str,
 ) {
-    if check(scope, node, true).is_none() {
+    if check(scope, node, operation, true, false).is_none() || opened(node) {
         return;
     }
-    if opened(node) {
+    if busy(node) {
+        throw_dom_error(
+            scope,
+            "InvalidStateError",
+            &format!(
+                "Failed to execute '{operation}' on 'HTMLElement': Invalid to show a popover during another show operation"
+            ),
+        );
         return;
     }
+    set_busy(node, true);
+    show_steps(scope, node, source, operation);
+    set_busy(node, false);
+}
+fn show_steps<'s>(
+    scope: &mut v8::PinScope<'s, '_>,
+    node: Handle,
+    source: Option<v8::Local<'s, v8::Object>>,
+    operation: &str,
+) {
     if event(scope, node, "beforetoggle", false, true, source) != Some(true) {
         return;
     }
-    let Some(mode) = check(scope, node, true) else {
+    let Some(mode) = check(scope, node, operation, true, true) else {
         return;
     };
     if opened(node) {
@@ -334,7 +382,7 @@ fn show<'s>(
             hide(scope, entry, true);
         }
     }
-    if check(scope, node, true).is_none() {
+    if check(scope, node, operation, true, true).is_none() {
         return;
     }
     DOM.with(|dom| {
@@ -360,29 +408,18 @@ pub(super) fn invoke<'s>(
         return;
     }
     let open = opened(node);
-    if (action == "show" && open) || (action == "hide" && !open) {
+    if (action == "show" && open) || (action == "hide" && !open) || busy(node) {
         return;
     }
-    let busy = DOM.with(|dom| dom.borrow_mut().as_mut().unwrap().popover.busy.insert(node));
-    if !busy {
-        return;
+    v8::tc_scope!(let scope, scope);
+    if open {
+        hide_from(scope, node, true, Some(source));
+    } else {
+        show(scope, node, Some(source), "showPopover");
     }
-    {
-        v8::tc_scope!(let scope, scope);
-        if open {
-            hide_from(scope, node, true, Some(source));
-        } else {
-            show(scope, node, Some(source));
-        }
-        if scope.has_caught() && !scope.has_terminated() {
-            scope.reset();
-        }
+    if scope.has_caught() && !scope.has_terminated() {
+        scope.reset();
     }
-    DOM.with(|dom| {
-        if let Some(dom) = dom.borrow_mut().as_mut() {
-            dom.popover.busy.remove(&node);
-        }
-    });
 }
 pub(super) fn disconnect(scope: &mut v8::PinScope, root: Handle, include_root: bool) {
     html_dialog::disconnect(root, include_root);
@@ -460,40 +497,31 @@ pub(super) fn dispatch<'s>(
         }
         return;
     }
-    let busy = DOM.with(|dom| dom.borrow_mut().as_mut().unwrap().popover.busy.insert(node));
-    if !busy {
-        rv.set_bool(opened(node));
-        return;
-    }
-    let showing = match operation.as_str() {
-        "show" => true,
-        "hide" => false,
+    let source = v8::Local::<v8::Object>::try_from(args.get(3)).ok();
+    match operation.as_str() {
+        "show" => show(scope, node, source, "showPopover"),
+        "hide" => {
+            if check(scope, node, "hidePopover", false, false).is_some() {
+                hide(scope, node, true);
+            }
+        }
+        // The last operation the hook sends: "toggle".
         _ => {
-            if args.get(2).is_undefined() {
+            let showing = if args.get(2).is_undefined() {
                 !opened(node)
             } else {
                 args.get(2).boolean_value(scope)
+            };
+            if check(scope, node, "togglePopover", true, false).is_none() {
+                return;
             }
+            if showing && !opened(node) {
+                show(scope, node, source, "togglePopover");
+            } else if !showing {
+                hide(scope, node, true);
+            }
+            rv.set_bool(opened(node));
         }
-    };
-    if check(scope, node, showing && !opened(node)).is_some() {
-        let source = v8::Local::<v8::Object>::try_from(args.get(3)).ok();
-        if showing {
-            show(scope, node, source);
-        } else {
-            hide(scope, node, true);
-        }
-    }
-    DOM.with(|dom| {
-        dom.borrow_mut()
-            .as_mut()
-            .unwrap()
-            .popover
-            .busy
-            .remove(&node);
-    });
-    if operation == "toggle" {
-        rv.set_bool(opened(node));
     }
 }
 pub(super) fn install(scope: &mut v8::PinScope) {

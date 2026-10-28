@@ -3809,6 +3809,8 @@ fn el_clone_node<'s>(
         let clone = wrap(scope, new_h);
         script_state::copy(scope, source, clone, deep);
         template_contents::copy_contents(scope, source, clone, deep);
+        // turbo-dom#131: copied open attributes run the details attribute changed steps.
+        user_activation_gates::created_details(scope, &[new_h]);
         let node = wrap(scope, new_h);
         // Carry over the source's JS prototype so a cloned control element keeps its interface
         // accessors (type/value/checked/selected). createElement applies these protos, but cloneNode
@@ -4380,6 +4382,11 @@ pub fn dispatch_host_event(
     event: v8::Local<v8::Object>,
     target: v8::Local<v8::Object>,
 ) {
+    // turbo-dom#151: never deliver an event (or consume the termination) while a
+    // termination is pending.
+    if scope.is_execution_terminating() {
+        return;
+    }
     if handle_of(scope, target).is_some() {
         let host = v8::Boolean::new(scope, true);
         if let Some(function) = v8::FunctionTemplate::builder(el_dispatch_event)
@@ -4480,6 +4487,9 @@ fn el_dispatch_event(
     set_prop(scope, record, "trusted", trusted.into());
     let target_node = wrap(scope, target);
     set_prop(scope, record, "target", target_node.into());
+    // The dispatch target before shadow retargeting: light dismiss reads the hit-tested node
+    // after the dispatch (turbo-dom#119).
+    set_prop(scope, record, "hitTarget", target_node.into());
 
     // PRE-CLICK ACTIVATION: a checkbox/radio toggles `checked` BEFORE the click listeners run (per
     // the activation-behavior spec), so React's ChangeEventPlugin — which detects checkbox change on
@@ -4578,6 +4588,12 @@ fn el_dispatch_event(
         }
     };
     set_path(scope, Some(target));
+    // turbo-dom#153: handlers on the path whose compile failed report it now.
+    let nodes = path_entries
+        .iter()
+        .filter_map(|entry| entry.node)
+        .collect::<Vec<_>>();
+    event_handlers::report_dispatch(scope, &nodes, &ty);
 
     // Set when a listener's call ended by execution termination: the dispatch stops there.
     let terminated = std::cell::Cell::new(false);

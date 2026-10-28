@@ -295,3 +295,50 @@ fn navigation_facts_are_refused_for_inert_documents() {
         );
     });
 }
+
+/// turbo-dom#151: serializing (outer and template contents) under a pending termination
+/// emits nothing and leaves the termination pending; cancelled, the same calls serialize.
+#[test]
+fn template_serialize_leaves_termination_pending() {
+    with_page(
+        "<template id=t><b>x</b></template><div id=d><p>z</p></div>",
+        |scope| {
+            let template = object(scope, "document.getElementById('t')");
+            let div = object(scope, "document.getElementById('d')");
+            for (node, outer) in [(div, true), (template, false)] {
+                terminate(scope);
+                assert!(template_contents::serialize(scope, node, outer).is_empty());
+                assert!(scope.is_execution_terminating());
+                resume(scope);
+            }
+            let outer = template_contents::serialize(scope, div, true);
+            assert_eq!(
+                String::from_utf16(&outer).unwrap(),
+                "<div id=\"d\"><p>z</p></div>"
+            );
+            let inner = template_contents::serialize(scope, template, false);
+            assert_eq!(String::from_utf16(&inner).unwrap(), "<b>x</b>");
+        },
+    );
+}
+
+/// turbo-dom#151 (dispatch path): a host-delivered event under a pending termination runs
+/// no listener and leaves the termination pending; cancelled, the same event is delivered.
+#[test]
+fn host_event_dispatch_leaves_termination_pending() {
+    with_page("<div id=h><b id=c></b></div>", |scope| {
+        let child = object(
+            scope,
+            "globalThis.seen = 0; const c = document.getElementById('c'); \
+             document.getElementById('h').addEventListener('ping', () => seen++); c",
+        );
+        let ping = object(scope, "new Event('ping', {bubbles: true})");
+        terminate(scope);
+        dispatch_host_event(scope, ping, child);
+        assert!(scope.is_execution_terminating());
+        resume(scope);
+        assert_eq!(json(scope, "seen"), "0");
+        dispatch_host_event(scope, ping, child);
+        assert_eq!(json(scope, "seen"), "1");
+    });
+}
