@@ -62,27 +62,25 @@ pub(super) fn run_probe(html: &str, probe: &str, frozen: bool) -> serde_json::Va
     let promise = v8::Local::<v8::Promise>::try_from(value).unwrap();
     let step = v8::String::new(scope, "__step()").unwrap();
     let step = v8::Script::compile(scope, step, None).unwrap();
+    // Step until the probe settles or the loop has nothing left to run.
     for _ in 0..200_000 {
         scope.perform_microtask_checkpoint();
-        if promise.state() != v8::PromiseState::Pending {
-            break;
-        }
-        let more = step
-            .run(scope)
-            .unwrap_or_else(|| panic!("{}", thrown(scope.exception(), scope)));
-        if !more.is_true() {
-            scope.perform_microtask_checkpoint();
+        if promise.state() != v8::PromiseState::Pending
+            || !step
+                .run(scope)
+                .unwrap_or_else(|| panic!("{}", thrown(scope.exception(), scope)))
+                .is_true()
+        {
             break;
         }
     }
-    match promise.state() {
-        v8::PromiseState::Fulfilled => {}
-        v8::PromiseState::Rejected => {
-            let error = promise.result(scope);
-            panic!("probe rejected: {}", error.to_rust_string_lossy(scope));
-        }
-        v8::PromiseState::Pending => panic!("probe never settled"),
-    }
+    scope.perform_microtask_checkpoint();
+    let settled = promise.result(scope).to_rust_string_lossy(scope);
+    assert_eq!(
+        promise.state(),
+        v8::PromiseState::Fulfilled,
+        "probe: {settled}"
+    );
     let result = promise.result(scope);
     let json = v8::json::stringify(scope, result)
         .unwrap()
@@ -345,8 +343,19 @@ fn animations_without_frame_host_are_inactive() {
 fn eval(scope: &mut v8::PinScope, source: &str) -> String {
     v8::tc_scope!(let scope, scope);
     let code = v8::String::new(scope, source).unwrap();
-    match v8::Script::compile(scope, code, None).and_then(|script| script.run(scope)) {
-        Some(value) => value.to_rust_string_lossy(scope),
-        None => panic!("{}", scope.exception().unwrap().to_rust_string_lossy(scope)),
-    }
+    v8::Script::compile(scope, code, None)
+        .and_then(|script| script.run(scope))
+        .unwrap_or_else(|| panic!("{}", thrown(scope.exception(), scope)))
+        .to_rust_string_lossy(scope)
+}
+
+#[test]
+fn mismatches_report_differences_and_unexpected_keys() {
+    let expected = serde_json::json!({"a": [1, 2], "b": "x"});
+    let actual = serde_json::json!({"a": [1, 3], "b": "x", "c": true});
+    let mut out = Vec::new();
+    mismatches(&actual, &expected, "", &mut out);
+    assert_eq!(out.len(), 2, "{out:?}");
+    assert!(out[0].starts_with(".a[1]"), "{out:?}");
+    assert_eq!(out[1], ".c: unexpected true");
 }

@@ -94,3 +94,14 @@ fn canvas_save_restore_matches_chrome156() {
     differences("result", &actual, expected, &mut out);
     assert!(out.is_empty(), "{}", out.join("\n"));
 }
+
+#[test]
+fn as_pixels_converts_op_log_colours_and_flags_unparsable_ones() {
+    let expected = json!({"a": [0, 0, 0, 255], "b": [[1, 2, 3, 4]], "c": "x"});
+    let mut actual = json!({"a": "rgb(255, 0, 0)", "b": ["not a colour"], "c": "x"});
+    as_pixels(&mut actual, &expected);
+    assert_eq!(
+        actual,
+        json!({"a": [255, 0, 0, 255], "b": ["unparsable op-log colour \"not a colour\""], "c": "x"})
+    );
+}

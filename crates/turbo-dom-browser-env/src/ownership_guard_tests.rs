@@ -159,6 +159,10 @@ fn native_setter_guard_preserves_materialized_termination() {
     context
         .global(scope)
         .create_data_property(scope, key.into(), object.into());
+    // The getter leaves the value undefined; only the setter terminates.
+    let read = v8::String::new(scope, "boxed.value === undefined").unwrap();
+    let read = v8::Script::compile(scope, read, None).unwrap().run(scope);
+    assert!(read.unwrap().is_true());
     v8::tc_scope!(let catch, scope);
     let source = v8::String::new(catch, "boxed.value=1; 'resumed'").unwrap();
     let result = v8::Script::compile(catch, source, None).and_then(|script| script.run(catch));
