@@ -4102,44 +4102,6 @@ fn get_content_editable(
 
 // `element.isContentEditable` — true when the element itself is editable (contenteditable=""|"true")
 // or it inherits editability from an ancestor.
-fn get_is_content_editable(
-    scope: &mut v8::PinScope,
-    _name: v8::Local<v8::Name>,
-    args: v8::PropertyCallbackArguments,
-    mut rv: v8::ReturnValue<v8::Value>,
-) {
-    let _dom = DomScope::for_object(scope, args.holder());
-    let mut h = holder_handle(scope, &args);
-    let mut editable = false;
-    loop {
-        match with_tree(|t| attr_get(t, h, "contenteditable"))
-            .flatten()
-            .as_deref()
-        {
-            Some("") | Some("true") | Some("plaintext-only") => {
-                editable = true;
-                break;
-            }
-            Some("false") => {
-                editable = false;
-                break;
-            }
-            _ => {}
-        }
-        match with_tree(|t| {
-            NodeRef::new(t, h)
-                .parent()
-                .map(|p| p.handle())
-                .filter(|&ph| t.node_type_id(ph) == 1)
-        })
-        .flatten()
-        {
-            Some(p) => h = p,
-            None => break,
-        }
-    }
-    rv.set(v8::Boolean::new(scope, editable).into());
-}
 
 fn get_parent_node(
     scope: &mut v8::PinScope,
@@ -6110,7 +6072,6 @@ fn build_el_template<'s>(scope: &mut v8::PinScope<'s, '_>) -> v8::Local<'s, v8::
     tmpl_accessor(scope, tmpl, "className", get_class_name, set_class_name);
     // editing.js owns contentEditable; it brand-checks through this getter.
     tmpl_getter(scope, tmpl, "contentEditable", get_content_editable);
-    tmpl_getter(scope, tmpl, "isContentEditable", get_is_content_editable);
 
     // Node-type constants on every node (`node.TEXT_NODE === 3`, …). dom-accessibility-api compares
     // `node.nodeType === node.TEXT_NODE`, so without these the accessible-name walk skips all text

@@ -2709,7 +2709,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     var accessorOwners={
       Node:['nodeType','nodeName','isConnected','ownerDocument','parentNode','parentElement','childNodes','firstChild','nextSibling','nodeValue','textContent'],
       Element:['namespaceURI','prefix','localName','tagName','id','className','attributes','innerHTML','outerHTML','children','firstElementChild','shadowRoot'],
-      HTMLElement:['style','dataset','contentEditable','isContentEditable'],
+      HTMLElement:['style','dataset','contentEditable'],
       // ElementCSSInlineStyle: Chrome puts `style` on each of the three (`dataset`, from
       // HTMLOrSVGElement, is document_basics.js's).
       SVGElement:['style'],
