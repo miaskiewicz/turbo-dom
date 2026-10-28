@@ -151,8 +151,11 @@ fn compare_reports_sections_cases_and_case_counts_except_known_gaps() {
     let expected = serde_json::json!({"flat": 1, "gapped": 2, "cases": {"a": 1, "b": 2, "g": 3}});
     let expected = expected.as_object().unwrap();
     let actual = serde_json::json!({"flat": 9, "gapped": 8, "cases": {"a": 1, "b": 5, "g": 0}});
+    // Sorted: serde_json's map order depends on whether `preserve_order` is unified in.
+    let mut differences = compare(&actual, expected, &[("gapped", ""), ("cases", "g")]);
+    differences.sort();
     assert_eq!(
-        compare(&actual, expected, &[("gapped", ""), ("cases", "g")]),
+        differences,
         [
             "cases.b\n  binding: 5\n  chrome:  2",
             "flat\n  binding: 9\n  chrome:  1"
