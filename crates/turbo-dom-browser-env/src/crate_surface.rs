@@ -52,14 +52,26 @@ pub mod test_support;
 #[path = "close_watchers_tests.rs"]
 mod close_watchers_tests;
 #[cfg(test)]
+#[path = "edge_probes_tests.rs"]
+mod edge_probes_tests;
+#[cfg(test)]
+#[path = "harness_tests.rs"]
+pub(super) mod harness_tests;
+#[cfg(test)]
 #[path = "host_api_tests.rs"]
 mod host_api_tests;
 #[cfg(test)]
 #[path = "native_guards_tests.rs"]
 mod native_guards_tests;
 #[cfg(test)]
+#[path = "termination_tests.rs"]
+mod termination_tests;
+#[cfg(test)]
+#[path = "trusted_controls_tests.rs"]
+mod trusted_controls_tests;
+#[cfg(test)]
 #[path = "private_natives_tests.rs"]
 mod private_natives_tests;
 #[cfg(test)]
-#[path = "termination_tests.rs"]
-mod termination_tests;
+#[path = "binding_termination_tests.rs"]
+mod binding_termination_tests;

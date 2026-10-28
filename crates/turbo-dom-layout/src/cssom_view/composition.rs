@@ -82,3 +82,128 @@ impl Composition {
         node
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// `<div id=h>` hosting a shadow tree (`<span id=s>` and a nested host `<p id=n>`
+    /// whose own shadow tree holds `<b>`): the tree, both shadow roots, and the nodes.
+    fn nested() -> (Tree, [Handle; 6]) {
+        let mut tree = Tree::parse("<div id=h><i id=light></i></div>");
+        let host = tree.get_element_by_id("h").unwrap();
+        let light = tree.get_element_by_id("light").unwrap();
+        let outer = tree.attach_shadow(host);
+        let span = tree.create_element("span");
+        let inner_host = tree.create_element("p");
+        tree.append_child(outer, span);
+        tree.append_child(outer, inner_host);
+        let inner = tree.attach_shadow(inner_host);
+        let bold = tree.create_element("b");
+        tree.append_child(inner, bold);
+        (tree, [host, light, outer, span, inner, bold])
+    }
+
+    #[test]
+    fn scopes_map_every_node_to_its_tree_scope_root_with_encapsulation_depths() {
+        let (tree, [host, light, outer, span, inner, bold]) = nested();
+        let inner_host = tree.shadow_host(inner).unwrap();
+        let graph = Composition::scopes(&tree).unwrap();
+        let root = tree.root();
+        for (node, scope) in [
+            (root, root),
+            (host, root),
+            (light, root),
+            (outer, outer),
+            (span, outer),
+            (inner_host, outer),
+            (inner, inner),
+            (bold, inner),
+        ] {
+            assert_eq!(graph.scopes[&node], scope, "{node:?}");
+        }
+        assert_eq!(
+            graph.hosts,
+            BTreeMap::from([(outer, host), (inner, inner_host)])
+        );
+        assert_eq!(graph.depths.len(), 3);
+        assert_eq!(
+            (
+                graph.depths[&root],
+                graph.depths[&outer],
+                graph.depths[&inner]
+            ),
+            (0, 1, 2)
+        );
+        // No composed children until the embedder distributes slots.
+        assert!(graph.children.is_empty() && graph.parents.is_empty());
+        let all = tree.handles().count();
+        assert_eq!(graph.scopes.len(), all);
+    }
+
+    #[test]
+    fn retarget_climbs_the_host_chain_into_the_requested_scope() {
+        let (mut tree, [host, light, outer, span, inner, bold]) = nested();
+        let inner_host = tree.shadow_host(inner).unwrap();
+        let graph = Composition::scopes(&tree).unwrap();
+        let root = tree.root();
+        assert_eq!(graph.retarget(bold, root), host);
+        assert_eq!(graph.retarget(bold, outer), inner_host);
+        assert_eq!(graph.retarget(bold, inner), bold);
+        assert_eq!(graph.retarget(span, root), host);
+        assert_eq!(graph.retarget(span, outer), span);
+        assert_eq!(graph.retarget(light, root), light);
+        // A document node cannot be retargeted into a shadow scope: it stays itself.
+        assert_eq!(graph.retarget(light, outer), light);
+        // A node the graph never saw is its own target.
+        let stray = tree.create_element("em");
+        assert_eq!(graph.retarget(stray, root), stray);
+    }
+
+    #[test]
+    fn composed_children_and_sorted_cache_edges() {
+        let (tree, [host, light, _, span, _, bold]) = nested();
+        let mut graph = Composition::scopes(&tree).unwrap();
+        assert_eq!(graph.children_of(host), &[] as &[Handle]);
+        assert!(graph.cache_edges().is_empty());
+        graph.children.insert(span, vec![bold]);
+        graph.children.insert(host, vec![span, light]);
+        assert_eq!(graph.children_of(host), &[span, light]);
+        assert_eq!(graph.children_of(bold), &[] as &[Handle]);
+        let mut want = vec![
+            (host.raw(), vec![span.raw(), light.raw()]),
+            (span.raw(), vec![bold.raw()]),
+        ];
+        want.sort_by_key(|(node, _)| *node);
+        assert_eq!(graph.cache_edges(), want);
+        assert!(want[0].0 < want[1].0);
+    }
+
+    #[test]
+    fn scope_graph_budgets_depth_and_nodes() {
+        const BUDGET: &str = "native layout scope graph exceeds source budget";
+        // The document, <html>, <body> and the divs: a div at depth 257 is too deep,
+        // one at depth 256 is not.
+        let deep = |divs: usize| Tree::parse(&"<div>".repeat(divs));
+        assert!(Composition::scopes(&deep(254)).is_ok());
+        assert_eq!(Composition::scopes(&deep(255)).unwrap_err(), BUDGET);
+        // A shadow root is one level below its host: an (empty) one on the deepest
+        // div of the deepest tree that fits is too deep.
+        let mut tree = deep(254);
+        let deepest = tree
+            .handles()
+            .filter(|&h| tree.local_name(h) == Some("div"))
+            .last()
+            .unwrap();
+        assert!(Composition::scopes(&tree).is_ok());
+        tree.attach_shadow(deepest);
+        assert_eq!(Composition::scopes(&tree).unwrap_err(), BUDGET);
+        // 50,000 nodes fit; the 50,001st does not (document, html, head, body + <i>s).
+        let wide = |n: usize| Tree::parse(&"<i></i>".repeat(n));
+        assert_eq!(
+            Composition::scopes(&wide(49_996)).unwrap().scopes.len(),
+            50_000
+        );
+        assert_eq!(Composition::scopes(&wide(49_997)).unwrap_err(), BUDGET);
+    }
+}

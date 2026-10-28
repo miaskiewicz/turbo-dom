@@ -419,25 +419,8 @@ enum Pseudo {
 fn type_list<'i, 't>(
     input: &mut cssparser::Parser<'i, 't>,
 ) -> Result<Vec<String>, cssparser::ParseError<'i, ()>> {
-    input.parse_comma_separated(|item| {
-        let location = item.current_source_location();
-        let ident = item.expect_ident()?.to_string();
-        if ident.eq_ignore_ascii_case("none")
-            || [
-                "initial",
-                "inherit",
-                "unset",
-                "default",
-                "revert",
-                "revert-layer",
-            ]
-            .iter()
-            .any(|keyword| ident.eq_ignore_ascii_case(keyword))
-        {
-            return Err(location.new_custom_error(()));
-        }
-        Ok(ident)
-    })
+    // Chrome 156 admits every identifier, keywords included (turbo-dom#136).
+    input.parse_comma_separated(|item| Ok(item.expect_ident()?.to_string()))
 }
 
 fn forgiving_list<'i, 't>(

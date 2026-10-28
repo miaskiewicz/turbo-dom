@@ -1,122 +1,203 @@
-//! Execution termination (an embedder's watchdog calling `terminate_execution`) while the
-//! binding is inside a DOM call: the call unwinds without running further guest code, the
-//! DOM change the call made stays made, and once the embedder cancels the termination the
-//! realm keeps working. Guest code ends the script through `__terminate()`.
+//! Native walks under a terminating isolate (crate-owned). When page script is being
+//! terminated (an embedder's watchdog calls `TerminateExecution`), every native traversal the
+//! host or a callback can enter must stop without touching the tree: no projection for the
+//! embedder, no template realization, no normalization, no slot events. Each operation runs
+//! once while terminating and once after the termination is cancelled, which proves the
+//! guard (and not the input) made the difference. The host CSS policy's cascade view, which
+//! only an embedder reads, is checked here too.
 use crate::browser_env::*;
 
-fn terminate(scope: &mut v8::PinScope, _args: v8::FunctionCallbackArguments, _rv: v8::ReturnValue) {
-    scope.terminate_execution();
-}
-
-thread_local! {
-    static WRAPPED: std::cell::Cell<Option<bool>> = const { std::cell::Cell::new(None) };
-}
-
-/// Terminates, lets the interrupt land in a guest call, then wraps a node that has no
-/// wrapper yet: wrapping while terminating yields the global object and caches nothing.
-fn wrap_while_terminating(
-    scope: &mut v8::PinScope,
-    args: v8::FunctionCallbackArguments,
-    _rv: v8::ReturnValue,
-) {
-    scope.terminate_execution();
-    let callback = v8::Local::<v8::Function>::try_from(args.get(0)).unwrap();
-    let receiver = v8::undefined(scope).into();
-    assert!(callback.call(scope, receiver, &[]).is_none());
-    assert!(scope.is_execution_terminating());
-    let handle = with_tree_mut(|tree| tree.create_element("aside")).unwrap();
-    let object = wrap_inner(scope, handle);
-    let global = scope.get_current_context().global(scope);
-    let cached = DOM.with(|dom| dom.borrow().as_ref().unwrap().cache.contains_key(&handle));
-    WRAPPED.with(|wrapped| wrapped.set(Some(object == global && !cached)));
-}
-
-/// Run `source` in a fresh page; it must end by termination. Then cancel it and return
-/// `after`'s JSON.
-fn terminated(html: &str, source: &str, after: &str) -> String {
+fn with_page(html: &str, body: impl FnOnce(&mut v8::PinScope)) {
     crate::browser_env::tests::init_v8();
     let isolate = &mut v8::Isolate::new(Default::default());
     v8::scope!(let scope, isolate);
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);
     install_with_html(scope, html);
-    let global = context.global(scope);
-    bind_method(scope, global, "__terminate", terminate);
-    bind_method(
-        scope,
-        global,
-        "__wrapWhileTerminating",
-        wrap_while_terminating,
-    );
-    {
-        v8::tc_scope!(let scope, scope);
-        let code = v8::String::new(scope, source).unwrap();
-        let result = v8::Script::compile(scope, code, None).unwrap().run(scope);
-        assert!(result.is_none(), "{source} completed");
-        assert!(scope.has_terminated(), "{source} did not terminate");
-        scope.cancel_terminate_execution();
-        scope.reset();
-    }
-    let code = v8::String::new(scope, &format!("JSON.stringify({after})")).unwrap();
-    let value = v8::Script::compile(scope, code, None)
+    // A pending termination stays observable while a TryCatch is on the stack.
+    v8::tc_scope!(let scope, scope);
+    body(scope);
+    reset();
+}
+
+fn eval<'s>(scope: &mut v8::PinScope<'s, '_>, source: &str) -> v8::Local<'s, v8::Value> {
+    let code = v8::String::new(scope, source).unwrap();
+    v8::Script::compile(scope, code, None)
         .unwrap()
         .run(scope)
         .unwrap()
-        .to_rust_string_lossy(scope);
-    reset();
-    value
+}
+
+fn json(scope: &mut v8::PinScope, source: &str) -> String {
+    let value = eval(scope, &format!("JSON.stringify({source})"));
+    value.to_rust_string_lossy(scope)
+}
+
+fn object<'s>(scope: &mut v8::PinScope<'s, '_>, source: &str) -> v8::Local<'s, v8::Object> {
+    v8::Local::<v8::Object>::try_from(eval(scope, source)).unwrap()
+}
+
+/// Make the isolate's termination pending (as a watchdog's `TerminateExecution` does).
+fn terminate(scope: &mut v8::PinScope) {
+    let code = v8::String::new(scope, "0").unwrap();
+    let script = v8::Script::compile(scope, code, None).unwrap();
+    scope.terminate_execution();
+    assert!(script.run(scope).is_none());
+    assert!(scope.is_execution_terminating());
+}
+
+fn resume(scope: &mut v8::PinScope) {
+    scope.cancel_terminate_execution();
+    assert!(!scope.is_execution_terminating());
 }
 
 #[test]
-fn wrapping_while_terminating_returns_the_global_and_caches_nothing() {
-    WRAPPED.with(|wrapped| wrapped.set(None));
-    assert_eq!(
-        terminated(
-            "<!doctype html><p id=p></p>",
-            "globalThis.ran = 0; __wrapWhileTerminating(() => { ran++; }); ran = 99",
-            "[ran, document.getElementById('p').id]"
-        ),
-        r#"[0,"p"]"#
+fn slot_projection_and_slotchange_stop_while_terminating() {
+    with_page("<div id=h><b id=c></b></div>", |scope| {
+        let host = object(
+            scope,
+            "globalThis.h = document.getElementById('h'); globalThis.events = 0; \
+             const root = h.attachShadow({mode: 'open'}); globalThis.s = root.appendChild(document.createElement('slot')); \
+             s.addEventListener('slotchange', () => events++); h",
+        );
+        let child = object(scope, "document.getElementById('c')");
+        let slot = object(scope, "s");
+        scope.perform_microtask_checkpoint();
+        // The parsed child's assignment already fired one slotchange.
+        assert_eq!(json(scope, "events"), "1");
+        terminate(scope);
+        shadow_slots::refresh(scope);
+        shadow_slots::fire(scope, slot);
+        assert!(shadow_slots::composed_children(scope, host).is_none());
+        assert!(shadow_slots::composed_parent(scope, child).is_none());
+        resume(scope);
+        assert_eq!(json(scope, "events"), "1");
+        // Cancelled: the same calls project the slot and fire the event.
+        let children = shadow_slots::composed_children(scope, host).unwrap();
+        assert_eq!(children.len(), 1);
+        assert!(children[0].strict_equals(slot.into()));
+        let parent = shadow_slots::composed_parent(scope, child).unwrap();
+        assert!(parent.strict_equals(slot.into()));
+        shadow_slots::fire(scope, slot);
+        assert_eq!(json(scope, "events"), "2");
+    });
+}
+
+#[test]
+fn template_walks_stop_while_terminating() {
+    with_page(
+        "<template id=t><b>x</b><template><i>y</i></template></template><div id=d><p>z</p></div>",
+        |scope| {
+            let template = object(scope, "globalThis.t = document.getElementById('t')");
+            let div = object(scope, "document.getElementById('d')");
+            let document = object(scope, "document");
+            let copy = object(scope, "document.createElement('template')");
+            // Each walk is entered with the termination pending and leaves it pending.
+            macro_rules! stopped {
+                ($walk:expr) => {{
+                    terminate(scope);
+                    let result = $walk;
+                    assert!(scope.is_execution_terminating());
+                    resume(scope);
+                    result
+                }};
+            }
+            stopped!(template_contents::realize(scope, document));
+            stopped!(template_contents::mark_parsed(scope, document, true));
+            stopped!(template_contents::relocate(scope, div));
+            stopped!(template_contents::copy_contents(
+                scope, template, copy, true
+            ));
+            assert!(stopped!(
+                template_contents::ensure(scope, template).is_none()
+            ));
+            assert!(stopped!(template_contents::parser_policy_nodes(
+                scope, document
+            )
+            .is_empty()));
+            let serialized = template_contents::serialize(scope, div, true);
+            assert_eq!(
+                String::from_utf16(&serialized).unwrap(),
+                "<div id=\"d\"><p>z</p></div>"
+            );
+            assert!(template_contents::ensure(scope, template).is_some());
+            assert_eq!(
+                json(scope, "[t.content.childNodes.length, t.innerHTML]"),
+                r#"[2,"<b>x</b><template><i>y</i></template>"]"#
+            );
+        },
     );
-    assert_eq!(WRAPPED.with(|wrapped| wrapped.get()), Some(true));
 }
 
-/// A listener that terminates inside dispatchEvent: later listeners do not run.
 #[test]
-fn termination_inside_dispatch_stops_the_remaining_listeners() {
-    assert_eq!(
-        terminated(
-            "<!doctype html><p id=p></p>",
-            "globalThis.log = []; const p = document.getElementById('p'); p.addEventListener('x', () => { log.push(1); __terminate(); log.push('after'); }); p.addEventListener('x', () => log.push(2)); document.body.addEventListener('x', () => log.push(3)); p.dispatchEvent(new Event('x', { bubbles: true })); log.push('end')",
-            "log"
-        ),
-        "[1]"
-    );
+fn normalize_and_listener_records_stop_while_terminating() {
+    with_page("<p id=p></p>", |scope| {
+        eval(
+            scope,
+            "globalThis.p = document.getElementById('p'); p.append('a', 'b', document.createElement('i'), 'c', ''); \
+             p.lastElementChild.append('d', 'e')",
+        );
+        let paragraph = object(scope, "p");
+        let handle = with_tree(|tree| tree.query_selector("#p"))
+            .flatten()
+            .unwrap();
+        let target = object(scope, "new EventTarget()");
+        terminate(scope);
+        range_live::normalize(scope, handle);
+        assert!(!event_brands::register_native_event_target(scope, target));
+        assert!(!event_brands::native_event_target_has_listener(
+            scope, paragraph, "click"
+        ));
+        resume(scope);
+        assert_eq!(json(scope, "p.childNodes.length"), "5");
+        range_live::normalize(scope, handle);
+        assert_eq!(
+            json(
+                scope,
+                "[p.childNodes.length, p.firstChild.data, p.lastElementChild.childNodes.length]"
+            ),
+            r#"[3,"ab",1]"#
+        );
+        assert!(event_brands::register_native_event_target(scope, target));
+    });
 }
 
-/// A custom element reaction that terminates when a method's [CEReactions] scope ends: the
-/// attribute is set, nothing after the reaction runs.
+/// The host CSS policy's cascade view (turbo-surf's native layout): with a callback that
+/// blocks one `<style>` and every inline style, the policy lists the blocked sheet and the
+/// inline override (the applied text: empty for the blocked declaration), and is cached
+/// until the tree version changes.
 #[test]
-fn termination_in_a_method_reaction_keeps_the_mutation() {
-    assert_eq!(
-        terminated(
-            "<!doctype html>",
-            "globalThis.log = []; customElements.define('x-term', class extends HTMLElement { static observedAttributes = ['a']; attributeChangedCallback(name, old, value) { log.push(value); if (value === 'stop') __terminate(); } }); globalThis.el = document.body.appendChild(document.createElement('x-term')); el.setAttribute('a', 'stop'); log.push('end')",
-            "[log, el.getAttribute('a')]"
-        ),
-        r#"[["stop"],"stop"]"#
-    );
-}
-
-/// The same for a setter's reaction (an upgrade the innerHTML setter queued).
-#[test]
-fn termination_in_a_setter_reaction_keeps_the_mutation() {
-    assert_eq!(
-        terminated(
-            "<!doctype html><div id=host></div>",
-            "globalThis.log = []; customElements.define('x-stop', class extends HTMLElement { connectedCallback() { log.push('connected'); __terminate(); } }); globalThis.host = document.getElementById('host'); host.innerHTML = '<x-stop></x-stop><x-stop></x-stop>'; log.push('end')",
-            "[log, host.children.length]"
-        ),
-        r#"[["connected"],2]"#
+fn host_css_policy_lists_blocked_sheets_and_inline_overrides() {
+    with_page(
+        "<style id=ok>p{color:red}</style><style id=no>p{color:blue}</style><p id=a style='opacity:0.5'>x</p><p id=b>y</p>",
+        |scope| {
+            let callback = v8::Local::<v8::Function>::try_from(eval(
+                scope,
+                "globalThis.calls = []; (document, element, kind, text) => { calls.push([kind, element.id, String(text)]); return kind === 'style-src-attr' ? false : element.id !== 'no'; }",
+            ))
+            .unwrap();
+            install_css_policy(scope, callback);
+            let handle = |id: &str| {
+                with_tree(|tree| tree.query_selector(&format!("#{id}")))
+                    .flatten()
+                    .unwrap()
+            };
+            let (no, a, b) = (handle("no"), handle("a"), handle("b"));
+            let policy = css_policy::cascade_policy(scope);
+            assert_eq!(policy.blocked_stylesheets.iter().copied().collect::<Vec<_>>(), [no]);
+            assert_eq!(policy.inline_overrides.len(), 1);
+            assert_eq!(policy.inline_overrides.get(&a).map(String::as_str), Some(""));
+            assert_eq!(json(scope, "document.getElementById('a').style.opacity"), r#""""#);
+            let calls = json(scope, "calls.length");
+            // Cached per tree version: a second read asks the callback nothing.
+            let again = css_policy::cascade_policy(scope);
+            assert_eq!(again.inline_overrides, policy.inline_overrides);
+            assert_eq!(json(scope, "calls.length"), calls);
+            // A new version recomputes: a second blocked inline style joins the overrides.
+            eval(scope, "document.getElementById('b').setAttribute('style', 'color: green')");
+            let next = css_policy::cascade_policy(scope);
+            assert_eq!(next.inline_overrides.get(&b).map(String::as_str), Some(""));
+            assert_eq!(next.inline_overrides.len(), 2);
+        },
     );
 }

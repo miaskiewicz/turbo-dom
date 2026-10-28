@@ -321,3 +321,34 @@ fn input_button_value_renders_as_text() {
         "text input value is not flowed as content"
     );
 }
+
+#[test]
+fn background_image_longhand_wins_over_the_shorthand() {
+    let root = build_box_tree(&[
+        el(
+            "div",
+            &[
+                ("background-image", "url( 'long.png' )"),
+                ("background", "url(short.png) no-repeat"),
+            ],
+            vec![],
+        ),
+        el(
+            "div",
+            &[
+                ("background-image", "none"),
+                ("background", "url(short.png) no-repeat"),
+            ],
+            vec![],
+        ),
+    ]);
+    let divs = as_block(&root.kind);
+    let img = divs[0].image.as_ref().expect("longhand image source");
+    assert_eq!(img.name, "long.png");
+    assert!(!img.replaced);
+    assert_eq!(
+        divs[1].image.as_ref().unwrap().name,
+        "short.png",
+        "a non-url longhand falls through"
+    );
+}

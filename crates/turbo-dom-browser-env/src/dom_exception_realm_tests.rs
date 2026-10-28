@@ -97,6 +97,16 @@ fn mismatches(
     found
 }
 
+#[test]
+fn mismatches_name_each_differing_case_of_a_section() {
+    let expected = serde_json::json!({"s": {"a": 1, "b": 2}});
+    let actual = serde_json::json!({"s": {"a": 1, "b": 3}});
+    assert_eq!(
+        mismatches(&actual, &expected, "s"),
+        ["s/b: binding 3, Chrome 2"]
+    );
+}
+
 /// turbo-surf#42: with an embedder's DOMException installed and registered after the binding,
 /// every exception the binding raises is an instance of it.
 #[test]

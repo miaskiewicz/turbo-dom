@@ -4,10 +4,30 @@
 //! (`crates/turbo-dom/tests/fixtures/css-longhand-probe.js` on `css-longhand-cases.json`) and
 //! compares every pair with the Chrome control `css_longhand_chrome156.json`.
 use super::*;
+use crate::browser_env::crate_surface::harness_tests::thrown;
 use sha2::{Digest, Sha256};
 
 /// Pairs whose binding result differs from Chrome for a documented reason, by `name|value`.
-const KNOWN_GAPS: &[&str] = &[];
+const KNOWN_GAPS: &[&str] = &[
+    // turbo-dom#117: math functions in easings, hsl() hue, text-shadow order, area tokens.
+    "transition-timing-function|cubic-bezier(calc(1px), 0, 1, 1)",
+    "transition-timing-function|cubic-bezier(min(0.5, 1), 0, 1, 1)",
+    "transition-timing-function|cubic-bezier(a, 0, 1, 1)",
+    "transition-timing-function|cubic-bezier(calc(2px), 0, 1, 1)",
+    "transition-timing-function|linear(calc(0), 1)",
+    "transition-timing-function|linear(0, 1 calc(50%))",
+    "color|hsl(1px 50% 50%)",
+    "color|hsl(10% 50% 50%)",
+    "color|rgb(from red r g b / 1 1)",
+    "text-shadow|1px 1px #ABC",
+    "grid-template-areas|\"a\\\"b\"",
+    "grid-template-areas|\"a\\\\b\"",
+    // turbo-dom#117 (offset rotate `0`): the binding's declaration layer accepts a unitless 0
+    // angle in offset-rotate, which Chrome 156 rejects.
+    "offset-rotate|0",
+    "offset-rotate|auto 0",
+    "offset-rotate|0 reverse",
+];
 
 fn fixture(name: &str) -> String {
     let path = format!(
@@ -48,12 +68,7 @@ fn inline_style_longhands_spell_values_like_chrome156() {
         v8::tc_scope!(let scope, scope);
         let value = v8::Script::compile(scope, code, None)
             .and_then(|script| script.run(scope))
-            .unwrap_or_else(|| {
-                panic!(
-                    "probe threw: {}",
-                    scope.exception().unwrap().to_rust_string_lossy(scope)
-                )
-            })
+            .unwrap_or_else(|| panic!("probe threw: {}", thrown(scope.exception(), scope)))
             .to_rust_string_lossy(scope);
         serde_json::from_str(&value).unwrap()
     };

@@ -59,6 +59,10 @@ struct Manager {
     allowed: usize,
     next_allows_new_group: bool,
     canceling: std::collections::HashSet<Watcher>,
+    /// Each established watcher's identity: a node closed and reopened gets a new close
+    /// watcher, which an earlier request no longer reaches (turbo-dom#150).
+    ids: HashMap<Watcher, u64>,
+    next_id: u64,
 }
 impl Default for Manager {
     fn default() -> Self {
@@ -67,6 +71,8 @@ impl Default for Manager {
             allowed: 1,
             next_allows_new_group: true,
             canceling: Default::default(),
+            ids: HashMap::new(),
+            next_id: 0,
         }
     }
 }
@@ -98,6 +104,9 @@ impl State {
         self.watchers
             .canceling
             .retain(|watcher| tree.is_live(watcher.node()));
+        self.watchers
+            .ids
+            .retain(|watcher, _| tree.is_live(watcher.node()));
         for target in [&mut self.dialog_pointerdown, &mut self.popover_pointerdown] {
             if target.is_some_and(|node| !tree.is_live(node)) {
                 *target = None;
@@ -123,9 +132,9 @@ fn document_object<'s>(scope: &mut v8::PinScope<'s, '_>) -> Option<v8::Local<'s,
 
 /// Ask the embedder about the current DOM's document. Absent a host nothing is active.
 fn query(scope: &mut v8::PinScope, kind: ActivationQuery) -> bool {
-    let Some(document) = document_object(scope) else {
-        return false;
-    };
+    // Callers run inside a DOM scope: `dispatch` resolved its receiver's node and
+    // `request_close` holds a watched one.
+    let document = document_object(scope).expect("activation queries run inside a DOM scope");
     let host = document
         .get_creation_context(scope)
         .and_then(|context| context.get_slot::<HostSlot>().map(|slot| slot.0));
@@ -345,6 +354,8 @@ fn establish(watcher: Watcher) {
             group.push(watcher);
         }
         manager.next_allows_new_group = true;
+        manager.next_id += 1;
+        manager.ids.insert(watcher, manager.next_id);
     });
 }
 
@@ -355,6 +366,7 @@ fn destroy(watcher: Watcher) {
             group.retain(|entry| *entry != watcher);
         }
         manager.groups.retain(|group| !group.is_empty());
+        manager.ids.remove(&watcher);
     });
 }
 
@@ -417,9 +429,10 @@ pub(super) fn popover_hidden(node: Handle) {
 fn disconnect_dialogs(root: Handle, include_root: bool) {
     let removed = DOM.with(|dom| {
         let dom = dom.borrow();
-        let Some(dom) = dom.as_ref() else {
-            return Vec::new();
-        };
+        // Removal runs on a node of the current DOM (html_popover::disconnect's callers).
+        let dom = dom
+            .as_ref()
+            .expect("the dialog removing steps run inside a DOM scope");
         let tree = &dom.tree;
         dom.activation
             .open_dialogs
@@ -460,6 +473,7 @@ fn request_close(scope: &mut v8::PinScope, watcher: Watcher, require_history: bo
     let can_prevent = !require_history
         || (state(|state| state.watchers.groups.len() < state.watchers.allowed).unwrap_or(false)
             && query(scope, ActivationQuery::HistoryAction));
+    let id = state(|state| state.watchers.ids.get(&watcher).copied()).flatten();
     state(|state| state.watchers.canceling.insert(watcher));
     let proceed = match watcher {
         Watcher::Dialog(node) => {
@@ -475,7 +489,9 @@ fn request_close(scope: &mut v8::PinScope, watcher: Watcher, require_history: bo
         query(scope, ActivationQuery::ConsumeHistoryAction);
         return false;
     }
-    if !watching(watcher) || !fully_active() {
+    // The cancel action may have destroyed the watcher, or closed and reopened its dialog.
+    let current = state(|state| state.watchers.ids.get(&watcher).copied()).flatten();
+    if current != id || !fully_active() {
         return true;
     }
     destroy(watcher);
@@ -622,18 +638,15 @@ pub fn light_dismiss(scope: &mut v8::PinScope, event: v8::Local<v8::Object>, bac
             }
         }
     }
-    if state(|state| state.open_dialogs.is_empty()).unwrap_or(true) {
+    let Some(topmost) = state(|state| state.open_dialogs.last().copied()).flatten() else {
         return;
-    }
+    };
     let ancestor = nearest_clicked_dialog(node, backdrop);
     if down {
         state(|state| state.dialog_pointerdown = ancestor);
         return;
     }
     let same = state(|state| state.dialog_pointerdown.take() == ancestor).unwrap_or(false);
-    let Some(topmost) = state(|state| state.open_dialogs.last().copied()).flatten() else {
-        return;
-    };
     if !same || ancestor == Some(topmost) {
         return;
     }
@@ -676,26 +689,24 @@ fn dispatch(
     args: v8::FunctionCallbackArguments,
     mut rv: v8::ReturnValue,
 ) {
-    let Ok(target) = v8::Local::<v8::Object>::try_from(args.get(1)) else {
-        return;
-    };
+    // user_activation_gates.js (the only caller; the native is deleted from the global before
+    // guest code runs) passes a node: an element brand-checked by its member, the document,
+    // or `Native('document', node)`'s result.
+    let target =
+        v8::Local::<v8::Object>::try_from(args.get(1)).expect("the activation hook passes a node");
     let _dom = DomScope::for_object(scope, target);
-    let Some(node) = handle_of(scope, target) else {
-        return;
-    };
-    let query_kind = |index: i32| match index {
-        0 => Some(ActivationQuery::Transient),
-        1 => Some(ActivationQuery::ConsumeTransient),
-        2 => Some(ActivationQuery::HistoryAction),
-        3 => Some(ActivationQuery::ConsumeHistoryAction),
-        4 => Some(ActivationQuery::CrossOriginFrame),
-        5 => Some(ActivationQuery::FullscreenAllowed),
-        _ => None,
-    };
+    let node = handle_of(scope, target).expect("the activation hook passes a node");
     match args.get(0).to_rust_string_lossy(scope).as_str() {
         "query" => {
-            let index = args.get(2).int32_value(scope).unwrap_or(-1);
-            if let Some(kind) = query_kind(index) {
+            // The JS TRANSIENT / CONSUME / CROSS_ORIGIN / FULLSCREEN constants.
+            const QUERIES: [ActivationQuery; 4] = [
+                ActivationQuery::Transient,
+                ActivationQuery::ConsumeTransient,
+                ActivationQuery::CrossOriginFrame,
+                ActivationQuery::FullscreenAllowed,
+            ];
+            let index = args.get(2).uint32_value(scope).unwrap_or(u32::MAX) as usize;
+            if let Some(&kind) = QUERIES.get(index) {
                 let answer = query(scope, kind);
                 rv.set_bool(answer);
             }
@@ -712,9 +723,8 @@ fn dispatch(
             }
         }
         "dispatch" => {
-            let Ok(event) = v8::Local::<v8::Object>::try_from(args.get(2)) else {
-                return;
-            };
+            let event = v8::Local::<v8::Object>::try_from(args.get(2))
+                .expect("the activation hook dispatches an Event it constructed");
             dispatch_host_event(scope, event, target);
         }
         "schedule" => {
@@ -742,13 +752,13 @@ fn dispatch(
             }
             None => rv.set(v8::null(scope).into()),
         },
-        "details-task" => {
-            let task = args.get(2).number_value(scope).unwrap_or(-1.0) as u64;
+        // The last operation the hook sends: "details-task".
+        operation => {
+            debug_assert_eq!(operation, "details-task");
+            // The hook passes the numeric task id it was given.
+            let task = args.get(2).number_value(scope).unwrap_or_default() as u64;
             rv.set_bool(take_details_task(node, task));
         }
-        "dialog-opened" => dialog_opened(node),
-        "dialog-closed" => dialog_closed(node),
-        _ => {}
     }
 }
 
@@ -778,6 +788,74 @@ pub(super) fn install(scope: &mut v8::PinScope) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Storage collection drops every reference to a reclaimed node and keeps live ones.
+    #[test]
+    fn sweep_storage_forgets_reclaimed_nodes_only() {
+        use turbo_dom_parser::rtdom::tree::CollectionBudget;
+        let mut tree = Tree::parse("<body></body>");
+        let body = tree.query_selector("body").unwrap();
+        let (live, dead) = (tree.create_element("dialog"), tree.create_element("div"));
+        tree.append_child(body, live);
+        let budget = CollectionBudget {
+            max_nodes: 1 << 20,
+            max_edges: 1 << 20,
+            max_payload_bytes: 1 << 30,
+        };
+        tree.collect_unreachable(&[], budget).unwrap();
+        assert!(tree.is_live(live) && !tree.is_live(dead));
+        let mut state = State {
+            fullscreen: vec![
+                FullscreenEntry {
+                    node: dead,
+                    prefixed: true,
+                },
+                FullscreenEntry {
+                    node: live,
+                    prefixed: false,
+                },
+            ],
+            open_dialogs: vec![dead, live],
+            dialog_pointerdown: Some(dead),
+            popover_pointerdown: Some(live),
+            ..State::default()
+        };
+        state.details.insert(dead, true);
+        state.details.insert(live, false);
+        state.details_tasks.insert(dead, (true, 1));
+        state.details_tasks.insert(live, (false, 2));
+        state.watchers.groups = vec![
+            vec![Watcher::Popover(dead)],
+            vec![Watcher::Dialog(live), Watcher::Popover(dead)],
+        ];
+        state.watchers.canceling.insert(Watcher::Popover(dead));
+        state.watchers.canceling.insert(Watcher::Dialog(live));
+        state.watchers.ids.insert(Watcher::Popover(dead), 1);
+        state.watchers.ids.insert(Watcher::Dialog(live), 2);
+        state.sweep_storage(&tree);
+        let fullscreen = state
+            .fullscreen
+            .iter()
+            .map(|entry| (entry.node, entry.prefixed))
+            .collect::<Vec<_>>();
+        assert_eq!(fullscreen, [(live, false)]);
+        assert_eq!(state.open_dialogs, [live]);
+        assert_eq!(
+            state.details.into_iter().collect::<Vec<_>>(),
+            [(live, false)]
+        );
+        assert_eq!(
+            state.details_tasks.into_iter().collect::<Vec<_>>(),
+            [(live, (false, 2))]
+        );
+        assert!(state.watchers.groups == [vec![Watcher::Dialog(live)]]);
+        assert!(state.watchers.canceling.len() == 1);
+        assert!(state.watchers.canceling.contains(&Watcher::Dialog(live)));
+        assert!(state.watchers.ids.len() == 1);
+        assert_eq!(state.watchers.ids.get(&Watcher::Dialog(live)), Some(&2));
+        assert_eq!(state.dialog_pointerdown, None);
+        assert_eq!(state.popover_pointerdown, Some(live));
+    }
 
     /// Run the committed async probe, draining a FIFO task queue standing in for timers.
     fn run_probe(probe: &str) -> serde_json::Value {

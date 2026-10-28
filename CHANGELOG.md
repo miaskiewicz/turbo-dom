@@ -7,6 +7,16 @@ at the time); this file reconstructs them from history.
 
 ## [Unreleased]
 
+### Fixed — turbo-dom-layout CSSOM-View scroll/caret reads follow Chrome 156 (miaskiewicz/turbo-dom#124, #125, #126)
+- `cssom_view::scroll::overflow` keeps `clip` beside a scrollable axis (`overflow:auto;
+  overflow-y:clip` computes auto/clip and the clip axis does not scroll; it was `hidden`).
+- `cssom_view::scroll::expose`: `scrollIntoView({block/inline: 'center'})` centers a target
+  larger than the scrollport (it kept Chromium's old no-scroll special case).
+- `cssom_view::text::caret` lands in `visibility: hidden` text like `caretPositionFromPoint`.
+- New Chrome 156 control `scripts/cssom-view-chrome-control.mjs`
+  (`crates/turbo-dom-layout/tests/fixtures/cssom_view_chrome156.json`); its remaining caret
+  gaps (transformed lines, carets in textless elements) are miaskiewicz/turbo-dom#127.
+
 ### Fixed — a `var()` nested in `calc()` is a pending substitution (P5-cov, miaskiewicz/turbo-dom#115, Chrome 156 control)
 - `rtdom::css_shorthand::longhand_value` / shorthand expansion rejected a value whose `var()` /
   `env()` / `attr()` sits inside another function or a parenthesis block
@@ -21,6 +31,19 @@ at the time); this file reconstructs them from history.
   `unreachable!()`: 98.98% → 100% (11907/11907). Rows Chrome spells differently in both
   `rtdom::css_shorthand` and `src/runtime/css-shorthand.mjs` are `KNOWN_GAPS` under
   miaskiewicz/turbo-dom#117.
+
+### Fixed — elementsFromPoint on overflowing text (C2, miaskiewicz/turbo-dom#146)
+- `cssom_view::hit::elements_at_point`: text hits its inline ancestors only (passing over a
+  `display: contents` one) up to the first block-level ancestor, which only its own box hits,
+  so text overflowing its block no longer hits the block (Chrome 156 control
+  `scripts/cssom-metrics-chrome-control.mjs`, case `hits-overflowing-text`).
+
+### Tests — turbo-dom-layout coverage (C2)
+- `scripts/cssom-metrics-chrome-control.mjs` -> `crates/turbo-dom-layout/tests/fixtures/
+  cssom_metrics_chrome156.json`: offsetLeft/Top/Parent, offset/client sizes, client rects and
+  `elementsFromPoint` asserted through `cssom_view::{metrics, inline, hit}`; the `Composition`
+  scope graph; turbo-dom-layout's CI coverage floor rises from 90 to the measured value
+  (open differences held out as miaskiewicz/turbo-dom#128, #142).
 
 ### Tests — parity checkpoint `b-fixed`
 - `tools/parity/manifests/b-fixed`: every corpus (html2pdf, html2pdf-svg, html2pdf-extra, surf,

@@ -1,4 +1,5 @@
 use super::*;
+use crate::browser_env::crate_surface::harness_tests::thrown;
 use sha2::{Digest, Sha256};
 
 // The control was captured by running the same probe in a fresh Chrome 156 profile through
@@ -29,10 +30,9 @@ fn meter_progress_and_output_reflection_match_chrome_156() {
     install_independent_html(scope, cases[0]["html"].as_str().unwrap());
     v8::tc_scope!(let scope,scope);
     let source = v8::String::new(scope, probe).unwrap();
-    let Some(value) = v8::Script::compile(scope, source, None).and_then(|script| script.run(scope))
-    else {
-        panic!("{}", scope.exception().unwrap().to_rust_string_lossy(scope));
-    };
+    let value = v8::Script::compile(scope, source, None)
+        .and_then(|script| script.run(scope))
+        .unwrap_or_else(|| panic!("{}", thrown(scope.exception(), scope)));
     let actual = v8::json::stringify(scope, value)
         .unwrap()
         .to_rust_string_lossy(scope);

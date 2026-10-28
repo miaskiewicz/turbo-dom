@@ -28,9 +28,7 @@ pub fn register_native_event_target(
     if scope.is_execution_terminating() {
         return false;
     }
-    let Some(name) = v8::String::new(scope, "turbo-dom.Abort.target") else {
-        return false;
-    };
+    let name = v8::String::new(scope, "turbo-dom.Abort.target").unwrap();
     let key = v8::Private::for_api(scope, Some(name));
     if target
         .get_private(scope, key)
@@ -93,9 +91,7 @@ pub fn native_event_target_has_listener(
     target: v8::Local<v8::Object>,
     event_type: &str,
 ) -> bool {
-    let Some(name) = v8::String::new(scope, "turbo-dom.Abort.target") else {
-        return false;
-    };
+    let name = v8::String::new(scope, "turbo-dom.Abort.target").unwrap();
     let key = v8::Private::for_api(scope, Some(name));
     let Some(record) = target
         .get_private(scope, key)
@@ -103,21 +99,15 @@ pub fn native_event_target_has_listener(
     else {
         return false;
     };
-    let Some(name) = v8::String::new(scope, "listeners") else {
-        return false;
-    };
+    let name = v8::String::new(scope, "listeners").unwrap();
     let Some(listeners) = record
         .get(scope, name.into())
         .and_then(|value| v8::Local::<v8::Array>::try_from(value).ok())
     else {
         return false;
     };
-    let Some(type_key) = v8::String::new(scope, "type") else {
-        return false;
-    };
-    let Some(removed_key) = v8::String::new(scope, "removed") else {
-        return false;
-    };
+    let type_key = v8::String::new(scope, "type").unwrap();
+    let removed_key = v8::String::new(scope, "removed").unwrap();
     let Some(wanted) = v8::String::new(scope, event_type) else {
         return false;
     };

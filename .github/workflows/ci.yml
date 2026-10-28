@@ -415,11 +415,11 @@ jobs:
         include:
           - { crate: turbo-dom,             floor: 100, features: '' }
           - { crate: turbo-dom-parser,      floor: 100, features: '', files: 'src/core.rs' }
-          - { crate: turbo-dom-layout,      floor: 90, features: '' }
+          - { crate: turbo-dom-layout,      floor: 99.8, features: '' }
           - { crate: turbo-dom-raster,      floor: 100, features: '' }
           - { crate: turbo-dom-raster,      floor: 100, features: '--features avif', label: turbo-dom-raster-avif }
           - { crate: turbo-dom-raster,      floor: 100, features: '--features jxl', label: turbo-dom-raster-jxl }
-          - { crate: turbo-dom-browser-env, floor: 93.2, features: '--features host-internals,test-support' }
+          - { crate: turbo-dom-browser-env, floor: 94.3, features: '--features host-internals,test-support' }
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@master

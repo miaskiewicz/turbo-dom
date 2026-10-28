@@ -236,3 +236,56 @@ fn line_height_override_is_used() {
     let lines = layout_text("hi", &f, &s, 500.0);
     assert_eq!(lines[0].height, 40.0);
 }
+
+// --------------------------------------------------------------------------
+// PDF font-program accessors (design units; values decoded independently from
+// the font tables: hhea/OS-2, hmtx, cmap)
+// --------------------------------------------------------------------------
+
+fn go() -> FontFace {
+    FontFace::from_bytes(load("Go-Regular.ttf"), "Go", 400, false).unwrap()
+}
+
+#[test]
+fn ascent_and_descent_units_follow_the_metrics_tables() {
+    // Go: hhea 1935/-432 (USE_TYPO_METRICS off).
+    assert_eq!((go().ascent_units(), go().descent_units()), (1935, -432));
+    // Evolventa sets USE_TYPO_METRICS: OS/2 typo 1638/-410, not hhea 2171/-553.
+    let e = evolventa();
+    assert_eq!((e.ascent_units(), e.descent_units()), (1638, -410));
+}
+
+#[test]
+fn glyph_advance_reads_hmtx_and_defaults_to_zero() {
+    let go = go();
+    assert_eq!(go.glyph_advance(0), 1536);
+    assert_eq!(go.glyph_advance(3), 569);
+    assert_eq!(go.glyph_advance(36), 1366);
+    assert_eq!(go.glyph_advance(68), 1139);
+    assert_eq!(go.glyph_advance(712), 0, "past numGlyphs (712)");
+}
+
+#[test]
+fn glyph_to_unicode_maps_used_glyphs_in_order_and_omits_unmapped() {
+    assert_eq!(
+        go().glyph_to_unicode(&[68, 36, 0, 171, 9999, 3]),
+        [(68, 0x61), (36, 0x41), (171, 0xE9), (3, 0x20)]
+    );
+    let pt = FontFace::from_bytes(load("pt-serif/PTSerif-Regular.ttf"), "PT", 400, false).unwrap();
+    assert_eq!(
+        pt.glyph_to_unicode(&[119]),
+        [(119, 0xB5)],
+        "lowest codepoint"
+    );
+    assert!(go().glyph_to_unicode(&[]).is_empty());
+}
+
+#[test]
+fn is_cff_tells_cff_outlines_from_truetype() {
+    assert!(!go().is_cff());
+    assert!(!evolventa().is_cff());
+    let inter = FontFace::from_bytes(load("inter/Inter-Regular.otf"), "Inter", 400, false).unwrap();
+    assert!(inter.is_cff());
+    let warsaw = FontFace::from_bytes(load("WarsawGothic-BnBV.otf"), "Warsaw", 400, false).unwrap();
+    assert!(warsaw.is_cff());
+}

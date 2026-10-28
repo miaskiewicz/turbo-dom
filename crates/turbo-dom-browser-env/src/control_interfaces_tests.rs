@@ -1,4 +1,5 @@
 use super::*;
+use crate::browser_env::crate_surface::harness_tests::thrown;
 use sha2::{Digest, Sha256};
 
 // Leaf paths where the binding and the Chrome control disagree, for readable failures.
@@ -56,11 +57,9 @@ pub(crate) fn observe_against_control(
     }
     v8::tc_scope!(let scope,scope);
     let source = v8::String::new(scope, probe).unwrap();
-    let Some(result) =
-        v8::Script::compile(scope, source, None).and_then(|script| script.run(scope))
-    else {
-        panic!("{}", scope.exception().unwrap().to_rust_string_lossy(scope));
-    };
+    let result = v8::Script::compile(scope, source, None)
+        .and_then(|script| script.run(scope))
+        .unwrap_or_else(|| panic!("{}", thrown(scope.exception(), scope)));
     let actual = v8::json::stringify(scope, result)
         .unwrap()
         .to_rust_string_lossy(scope);

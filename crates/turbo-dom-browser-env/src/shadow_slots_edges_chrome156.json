@@ -1,0 +1,168 @@
+{
+  "browser": "Chrome/156.0.8078.47",
+  "v8": "15.6.75.19",
+  "probe": "shadow_slots_edges_probe.js",
+  "probeSha256": "18225c8da119d66d14c49aa25ac2d3ee3ab99af6c16703188c568c8b941da14d",
+  "collectorSha256": "3f964d2cdf0ec8101870a776aaffc3b7dc4522306959c4a40761057beb255eb8",
+  "flags": [
+    "--headless=new",
+    "--remote-debugging-pipe",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "--disable-background-timer-throttling",
+    "--disable-renderer-backgrounding",
+    "--disable-backgrounding-occluded-windows",
+    "about:blank"
+  ],
+  "result": {
+    "unassigned": [
+      0,
+      0,
+      0,
+      "manual"
+    ],
+    "assignErrors": {
+      "number": [
+        "TypeError",
+        true
+      ],
+      "plain": [
+        "TypeError",
+        true
+      ],
+      "nullish": [
+        "TypeError",
+        true
+      ],
+      "document": [
+        "TypeError",
+        true
+      ],
+      "comment": [
+        "TypeError",
+        true
+      ],
+      "second": [
+        "TypeError",
+        true
+      ]
+    },
+    "afterErrors": [],
+    "assigned": [
+      [
+        "b1",
+        "i1",
+        "#text"
+      ],
+      [
+        "b1",
+        "i1"
+      ],
+      "s1",
+      "s1"
+    ],
+    "moved": [
+      [
+        "b1",
+        "#text"
+      ],
+      [
+        "i1"
+      ],
+      "s2"
+    ],
+    "removed": [
+      [
+        "#text"
+      ],
+      null
+    ],
+    "readded": [
+      [
+        "b1",
+        "#text"
+      ],
+      "s1"
+    ],
+    "stray": [
+      [
+        "#text"
+      ],
+      null,
+      null
+    ],
+    "strayMoved": [
+      [
+        "EM",
+        "#text"
+      ],
+      "s1"
+    ],
+    "slotRemoved": [
+      [],
+      "s1",
+      "s1"
+    ],
+    "slotReadded": [
+      [
+        "EM",
+        "#text"
+      ],
+      "s1"
+    ],
+    "changes": [
+      "s1",
+      "s1",
+      "s2",
+      "s1",
+      "s1",
+      "s1",
+      "s1"
+    ],
+    "closed": [
+      null,
+      [
+        "c1"
+      ],
+      [
+        "c2"
+      ],
+      "named"
+    ],
+    "flatten": [
+      [
+        "pass",
+        "empty"
+      ],
+      [
+        "u1",
+        "fallback",
+        "#text"
+      ],
+      [
+        "u1",
+        "fallback"
+      ],
+      [
+        "fallback",
+        "#text"
+      ]
+    ],
+    "detachedSlot": [
+      0,
+      [
+        "TypeError",
+        true
+      ]
+    ],
+    "mode": [
+      [
+        "TypeError",
+        true
+      ]
+    ]
+  }
+}

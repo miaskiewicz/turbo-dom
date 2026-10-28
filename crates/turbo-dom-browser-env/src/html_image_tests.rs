@@ -2,6 +2,7 @@
 //! (`html_image_probe.js` + `html_image_cases.json` -> `html_image_chrome156.json`, recorded by
 //! scripts/select-element-chrome-control.mjs), with and without host load state.
 use super::*;
+use crate::browser_env::crate_surface::harness_tests::thrown;
 use sha2::{Digest, Sha256};
 
 const PROBE: &str = include_str!("html_image_probe.js");
@@ -39,10 +40,9 @@ fn run(scope: &mut v8::PinScope, source: &str) -> serde_json::Value {
         source.trim().trim_end_matches(';')
     );
     let code = v8::String::new(scope, &code).unwrap();
-    let Some(_) = v8::Script::compile(scope, code, None).and_then(|script| script.run(scope))
-    else {
-        panic!("{}", scope.exception().unwrap().to_rust_string_lossy(scope));
-    };
+    let _ = v8::Script::compile(scope, code, None)
+        .and_then(|script| script.run(scope))
+        .unwrap_or_else(|| panic!("{}", thrown(scope.exception(), scope)));
     scope.perform_microtask_checkpoint();
     let key = v8::String::new(scope, "imageResult").unwrap();
     let global = scope.get_current_context().global(scope);

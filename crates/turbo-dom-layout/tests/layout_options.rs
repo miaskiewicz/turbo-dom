@@ -301,3 +301,170 @@ fn an_unknown_initial_containing_block_keeps_the_previous_bases() {
     assert_eq!(rect("f"), (0.0, 80.0, 10.0, 20.0));
     assert_eq!(rect("s"), (0.0, 10.0, 10.0, 30.0));
 }
+
+fn count(nodes: &[StyledNode], n: &mut usize) {
+    for node in nodes {
+        if let StyledNode::Element(e) = node {
+            *n += usize::from(matches!(e.tag, turbo_dom_layout::Tag::Marker(_)));
+            count(&e.children, n);
+        }
+    }
+}
+
+fn marker_options() -> turbo_dom_layout::HtmlOptions<'static> {
+    turbo_dom_layout::HtmlOptions {
+        markers: Some(&common::marker_of),
+        ..turbo_dom_layout::HtmlOptions::default()
+    }
+}
+
+#[test]
+fn html_drive_classifies_markers_and_they_take_no_intrinsic_width() {
+    // A block marker is a zero-size box: as a flex item it adds nothing to its
+    // shrink-to-fit ancestor's max-content width, and a fullscreen sibling still hoists
+    // to the top layer around it (the marker stays in place).
+    let html = "<body style='margin:0'>\
+        <div data-cid=w style='float:left'><div style='display:flex'>\
+        <x-marker-2-b></x-marker-2-b><p data-cid=p style='margin:0;width:30px;height:5px'></p></div></div>\
+        <div><x-marker-3-b data-cid=m></x-marker-3-b><div data-cid=f style='height:7px'></div></div></body>";
+    let mut tree = parse_html_tree(html);
+    let f = tree.query_selector("[data-cid=\"f\"]").unwrap();
+    let styled = turbo_dom_layout::style_html_tree(&tree, "", 400.0, &marker_options());
+    let mut markers = 0;
+    count(&styled, &mut markers);
+    assert_eq!(markers, 2, "both x-marker elements classify");
+    let plain = turbo_dom_layout::style_html_tree(
+        &tree,
+        "",
+        400.0,
+        &turbo_dom_layout::HtmlOptions::default(),
+    );
+    let mut none = 0;
+    count(&plain, &mut none);
+    assert_eq!(none, 0, "no classifier, no markers");
+
+    assert!(tree.set_fullscreen_stack(&[f]));
+    let boxes = turbo_dom_layout::layout_boxes_tree(
+        &tree,
+        "",
+        400.0,
+        300.0,
+        &common::registry(),
+        &marker_options(),
+        &mut turbo_dom_layout::Diagnostics::default(),
+    );
+    let get = |cid: &str| {
+        let b = boxes.iter().find(|b| b.cid == cid).unwrap();
+        (b.x, b.y, b.width, b.height)
+    };
+    assert_eq!(get("w"), (0.0, 0.0, 30.0, 5.0));
+    assert_eq!(get("p"), (0.0, 0.0, 30.0, 5.0));
+    assert_eq!(
+        get("f"),
+        (0.0, 0.0, 400.0, 300.0),
+        "fullscreen fills the viewport"
+    );
+}
+
+#[test]
+fn snapshot_records_marker_fragments_as_marker_geometry() {
+    use turbo_dom_layout::layout_snapshot::{
+        snapshot_live_tree, GeometryKind, SnapshotInputs, SourceId, SourceIdentity,
+    };
+    use turbo_dom_layout::test_support::literal::{tree, Element, Node};
+    use turbo_dom_layout::{MarkerKind, Tag};
+    let nodes = vec![Node::Element(Element {
+        tag: Tag::Html("div".into()),
+        attrs: vec![],
+        children: vec![Node::Element(Element {
+            tag: Tag::Marker(MarkerKind {
+                id: 4,
+                inline: false,
+            }),
+            attrs: vec![],
+            children: vec![],
+        })],
+    })];
+    let fonts = turbo_dom_layout::FontRegistry::new();
+    let images = ImageCtx {
+        resolver: &NoImages,
+        body_height: None,
+    };
+    let snapshot = snapshot_live_tree(
+        &tree(&nodes).input(),
+        &[
+            SourceIdentity {
+                id: SourceId(1),
+                path: vec![0],
+            },
+            SourceIdentity {
+                id: SourceId(2),
+                path: vec![0, 0],
+            },
+        ],
+        &build_cascade("", "", turbo_dom_layout::style::TokenSet::default()),
+        &SnapshotInputs {
+            width: 100.0,
+            height: 100.0,
+            fonts: &fonts,
+            images: &images,
+        },
+        &mut turbo_dom_layout::Diagnostics::default(),
+    )
+    .unwrap();
+    let kinds: Vec<_> = snapshot
+        .source(SourceId(2))
+        .unwrap()
+        .fragment_indices
+        .iter()
+        .map(|&i| snapshot.fragments()[i].kind)
+        .collect();
+    assert_eq!(kinds, [GeometryKind::Marker]);
+    let marker = &snapshot.fragments()[snapshot.source(SourceId(2)).unwrap().fragment_indices[0]];
+    assert_eq!(
+        (marker.rect.width, marker.rect.height),
+        (100.0, 0.0),
+        "a block marker is a zero-height block"
+    );
+}
+
+#[test]
+fn canvas_background_needs_an_html_root() {
+    use turbo_dom_layout::html_layout::propagate_canvas_background;
+    use turbo_dom_layout::Rgba;
+    let tree = parse_html_tree("<html style='background:rgb(1, 2, 3)'><body></body></html>");
+    let mut document = turbo_dom_layout::style_html_tree(
+        &tree,
+        "",
+        100.0,
+        &turbo_dom_layout::HtmlOptions::default(),
+    );
+    // Another root before the document element is skipped.
+    let mut fragment = styled(
+        &parse_html_tree("<body><p style='background:red'>x</p></body>"),
+        "",
+    );
+    assert_eq!(
+        propagate_canvas_background(&mut fragment),
+        None,
+        "no <html> root"
+    );
+    fragment.append(&mut document);
+    // The root paints none: the body's colour moves to the canvas (past <head>).
+    let tree =
+        parse_html_tree("<html><head></head><body style='background:rgb(4, 5, 6)'></body></html>");
+    let mut body_only = turbo_dom_layout::style_html_tree(
+        &tree,
+        "",
+        100.0,
+        &turbo_dom_layout::HtmlOptions::default(),
+    );
+    assert_eq!(
+        propagate_canvas_background(&mut body_only),
+        Some(Rgba::new(4, 5, 6, 255))
+    );
+    assert_eq!(
+        propagate_canvas_background(&mut fragment),
+        Some(Rgba::new(1, 2, 3, 255))
+    );
+}

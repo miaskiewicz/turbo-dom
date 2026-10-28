@@ -1318,14 +1318,12 @@ fn finalize(rows: &[RowRef], laid: Vec<LaidCell>, geom: &Geom, cx: f32, cy: f32)
 /// table layout), so a fixed-width infobox still grows to fit a wide image row
 /// instead of overflowing it.
 /// `(horizontal, vertical)` `border-spacing` in px — the gap around/between cells
-/// in the default `separate` model; `border-collapse:collapse` removes it. The property
+/// in the default `separate` model (`border-collapse:collapse` has none: every caller
+/// takes the collapsed model's own path before it reads this). The property
 /// is inherited and initially 0: a `<table>` has `2px` from the UA `table` rule
 /// (miaskiewicz/turbo-dom#63). Without it a table's cells butt together (the infobox
 /// label ran straight into its value: "`SpeciesF`. catus").
 fn border_spacing(style: &ComputedStyle) -> (f32, f32) {
-    if collapsed(style) {
-        return (0.0, 0.0);
-    }
     let mut it = style
         .get("border-spacing")
         .map(str::split_whitespace)

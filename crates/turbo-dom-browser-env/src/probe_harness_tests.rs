@@ -3,6 +3,7 @@
 //! `__cdpInput` binding of `scripts/trusted-input-chrome-control.mjs` implemented over the
 //! engine's trusted host dispatch, like turbo-surf's host input driver.
 use super::*;
+use crate::browser_env::crate_surface::harness_tests::thrown;
 
 fn host_dispatch(
     scope: &mut v8::PinScope,
@@ -92,14 +93,7 @@ pub(in super::super) fn run(probe: &str) -> serde_json::Value {
     let promise = v8::Script::compile(scope, source, None)
         .and_then(|script| script.run(scope))
         .and_then(|value| v8::Local::<v8::Promise>::try_from(value).ok())
-        .unwrap_or_else(|| {
-            panic!(
-                "probe threw: {:?}",
-                scope
-                    .exception()
-                    .map(|error| error.to_rust_string_lossy(scope))
-            )
-        });
+        .unwrap_or_else(|| panic!("probe threw: {}", thrown(scope.exception(), scope)));
     // The earliest due timer runs next; ties keep scheduling order.
     let step = v8::String::new(
         scope,

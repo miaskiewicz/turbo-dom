@@ -43,9 +43,7 @@ pub(super) fn configure(
     root: v8::Local<v8::Object>,
     options: v8::Local<v8::Object>,
 ) {
-    let Some(name) = v8::String::new(scope, "referenceTarget") else {
-        return;
-    };
+    let name = v8::String::new(scope, "referenceTarget").unwrap();
     let value = options
         .get(scope, name.into())
         .and_then(|value| v8::Local::<v8::String>::try_from(value).ok())
@@ -183,9 +181,7 @@ fn native<'s>(
 
 pub(super) fn install(scope: &mut v8::PinScope) {
     if scope.get_slot::<std::rc::Rc<Key>>().is_none() {
-        let Some(name) = v8::String::new(scope, "turbo.shadow-root.reference-target") else {
-            return;
-        };
+        let name = v8::String::new(scope, "turbo.shadow-root.reference-target").unwrap();
         let private = v8::Private::for_api(scope, Some(name));
         let key = v8::Global::new(scope, private);
         scope.set_slot(std::rc::Rc::new(Key(key)));

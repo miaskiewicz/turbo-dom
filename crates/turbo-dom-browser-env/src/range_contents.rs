@@ -87,9 +87,7 @@ fn static_record(
 
 pub(super) fn capture(scope: &mut v8::PinScope) {
     let global = scope.get_current_context().global(scope);
-    let Some(name) = v8::String::new(scope, "__nativeRangeRecord") else {
-        return;
-    };
+    let name = v8::String::new(scope, "__nativeRangeRecord").unwrap();
     let Some(function) = global
         .get(scope, name.into())
         .and_then(|value| v8::Local::<v8::Function>::try_from(value).ok())
@@ -110,9 +108,7 @@ pub(super) fn install(scope: &mut v8::PinScope) {
     };
     let accessor = super::dom_ownership::local(scope, &accessor.0);
     let global = scope.get_current_context().global(scope);
-    let Some(name) = v8::String::new(scope, "ts") else {
-        return;
-    };
+    let name = v8::String::new(scope, "ts").unwrap();
     let key = v8::Symbol::for_key(scope, name);
     let Some(namespace) = global
         .get(scope, key.into())
@@ -120,15 +116,11 @@ pub(super) fn install(scope: &mut v8::PinScope) {
     else {
         return;
     };
-    let Some(name) = v8::String::new(scope, "makeNativeFunction") else {
-        return;
-    };
+    let name = v8::String::new(scope, "makeNativeFunction").unwrap();
     let Some(factory) = namespace.get(scope, name.into()) else {
         return;
     };
-    let Some(source) = v8::String::new(scope, include_str!("range_contents.js")) else {
-        return;
-    };
+    let source = v8::String::new(scope, include_str!("range_contents.js")).unwrap();
     if let Some(initializer) = v8::Script::compile(scope, source, None)
         .and_then(|script| script.run(scope))
         .and_then(|value| v8::Local::<v8::Function>::try_from(value).ok())
@@ -170,9 +162,7 @@ pub(super) fn capture_interfaces(scope: &mut v8::PinScope) {
     };
     let function = super::dom_ownership::local(scope, &updater.0);
     let global = scope.get_current_context().global(scope);
-    let Some(name) = v8::String::new(scope, "DOMException") else {
-        return;
-    };
+    let name = v8::String::new(scope, "DOMException").unwrap();
     if let Some(constructor) = global.get(scope, name.into()) {
         let receiver = v8::undefined(scope);
         function.call(scope, receiver.into(), &[constructor]);

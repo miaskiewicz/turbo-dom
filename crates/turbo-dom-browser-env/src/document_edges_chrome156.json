@@ -1,0 +1,224 @@
+{
+  "browser": "Chrome/156.0.8078.47",
+  "v8": "15.6.75.19",
+  "probe": "document_edges_probe.js",
+  "probeSha256": "b297445e3e55ac3b1551ee129d816342f2225794c73b8d325e72fb07c46af6eb",
+  "collectorSha256": "3f964d2cdf0ec8101870a776aaffc3b7dc4522306959c4a40761057beb255eb8",
+  "flags": [
+    "--headless=new",
+    "--remote-debugging-pipe",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "--disable-background-timer-throttling",
+    "--disable-renderer-backgrounding",
+    "--disable-backgrounding-occluded-windows",
+    "about:blank"
+  ],
+  "result": {
+    "viewTransition": {
+      ":active-view-transition": [
+        0,
+        false,
+        true
+      ],
+      ":ACTIVE-VIEW-TRANSITION": [
+        0,
+        false,
+        true
+      ],
+      ":active-view-transition()": [
+        "SyntaxError",
+        "SyntaxError",
+        "SyntaxError"
+      ],
+      ":active-view-transition-type(a)": [
+        0,
+        false,
+        true
+      ],
+      ":active-view-transition-type(a, b)": [
+        0,
+        false,
+        true
+      ],
+      ":active-view-transition-type()": [
+        "SyntaxError",
+        "SyntaxError",
+        "SyntaxError"
+      ],
+      ":active-view-transition-type(none)": [
+        0,
+        false,
+        true
+      ],
+      ":active-view-transition-type(inherit)": [
+        0,
+        false,
+        true
+      ],
+      ":active-view-transition-type(1)": [
+        "SyntaxError",
+        "SyntaxError",
+        "SyntaxError"
+      ],
+      ":active-view-transition-type(a b)": [
+        "SyntaxError",
+        "SyntaxError",
+        "SyntaxError"
+      ],
+      "html:active-view-transition": [
+        0,
+        false,
+        true
+      ],
+      ":root:active-view-transition-type(x)": [
+        0,
+        false,
+        true
+      ],
+      ":is(:active-view-transition, p)": [
+        1,
+        false,
+        true
+      ],
+      ":where(:active-view-transition-type(none), p)": [
+        1,
+        false,
+        true
+      ],
+      ":is(:active-view-transition-type(), :active-view-transition)": [
+        0,
+        false,
+        true
+      ],
+      ":not(:active-view-transition)": [
+        5,
+        true,
+        false
+      ],
+      "::active-view-transition": [
+        "SyntaxError",
+        "SyntaxError",
+        "SyntaxError"
+      ],
+      "p /* c */ :active-view-transition": [
+        0,
+        false,
+        true
+      ],
+      ":has(:active-view-transition)": [
+        0,
+        false,
+        true
+      ],
+      ":is(p, , q):active-view-transition": [
+        0,
+        false,
+        true
+      ],
+      "p:active-view-transition-type(a) > q": [
+        0,
+        false,
+        true
+      ],
+      ":active-view-transition, [": [
+        "SyntaxError",
+        "SyntaxError",
+        "SyntaxError"
+      ],
+      ":active-view-transition-type(a,)": [
+        "SyntaxError",
+        "SyntaxError",
+        "SyntaxError"
+      ],
+      ":nth-child(1 of :active-view-transition)": [
+        0,
+        false,
+        true
+      ]
+    },
+    "template": {
+      "inner": "<b>x</b><template id=\"t2\"><i>y</i>&amp;&nbsp;\"</template><!--c-->",
+      "outer": "<template id=\"t1\"><b>x</b><template id=\"t2\"><i>y</i>&amp;&nbsp;\"</template><!--c--></template>",
+      "nested": "I",
+      "cloneDeep": [
+        3,
+        2,
+        true
+      ],
+      "cloneShallow": 0,
+      "contentOwner": false,
+      "contentOwnerShared": true,
+      "adopted": [
+        "U",
+        false,
+        false,
+        "<u>z</u>"
+      ],
+      "imported": [
+        "<u>z</u>",
+        true
+      ],
+      "xml": [
+        "#document-fragment",
+        true
+      ],
+      "cleared": [
+        "",
+        0
+      ],
+      "reparsed": [
+        "<template><template><s></s></template></template>",
+        "S"
+      ]
+    },
+    "nodes": {
+      "adoptShadow": "HierarchyRequestError",
+      "adoptDocument": "NotSupportedError",
+      "importDocument": "NotSupportedError",
+      "importShadow": "NotSupportedError",
+      "importAttr": [
+        "v",
+        true
+      ],
+      "adoptAttr": [
+        false,
+        null,
+        true
+      ],
+      "importDoctype": "html",
+      "adoptDoctype": [
+        true,
+        null
+      ],
+      "importPi": "b",
+      "importFragment": 2
+    },
+    "move": {
+      "foreignNode": "HierarchyRequestError",
+      "foreignChild": "NotFoundError",
+      "notAChild": "NotFoundError",
+      "notANode": "TypeError",
+      "noChild": "TypeError",
+      "disconnectedParent": "HierarchyRequestError",
+      "textIntoDocument": "HierarchyRequestError",
+      "elementIntoDocument": "HierarchyRequestError",
+      "ancestor": "HierarchyRequestError",
+      "commentIntoDocument": true,
+      "self": true
+    },
+    "characterData": [
+      "hXYlo",
+      "IndexSizeError",
+      "IndexSizeError",
+      "hX",
+      "Qcd",
+      "InvalidCharacterError",
+      "InvalidCharacterError",
+      "a"
+    ]
+  }
+}

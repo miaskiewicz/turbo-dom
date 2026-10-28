@@ -1,4 +1,5 @@
 use super::*;
+use crate::browser_env::crate_surface::harness_tests::thrown;
 use sha2::{Digest, Sha256};
 
 // Runs the SAME probe that scripts/select-element-chrome-control.mjs captured in Chrome 156 and
@@ -16,11 +17,9 @@ fn select_element_members_match_chrome156_control() {
     install_independent_html(scope, cases[0]["html"].as_str().unwrap());
     v8::tc_scope!(let scope,scope);
     let source = v8::String::new(scope, probe).unwrap();
-    let Some(result) =
-        v8::Script::compile(scope, source, None).and_then(|script| script.run(scope))
-    else {
-        panic!("{}", scope.exception().unwrap().to_rust_string_lossy(scope));
-    };
+    let result = v8::Script::compile(scope, source, None)
+        .and_then(|script| script.run(scope))
+        .unwrap_or_else(|| panic!("{}", thrown(scope.exception(), scope)));
     let actual = v8::json::stringify(scope, result)
         .unwrap()
         .to_rust_string_lossy(scope);
@@ -73,11 +72,9 @@ fn select_indexed_interceptor_leaves_other_nodes_ordinary() {
         })()"#,
     )
     .unwrap();
-    let Some(result) =
-        v8::Script::compile(scope, source, None).and_then(|script| script.run(scope))
-    else {
-        panic!("{}", scope.exception().unwrap().to_rust_string_lossy(scope));
-    };
+    let result = v8::Script::compile(scope, source, None)
+        .and_then(|script| script.run(scope))
+        .unwrap_or_else(|| panic!("{}", thrown(scope.exception(), scope)));
     assert_eq!(
         result.to_rust_string_lossy(scope),
         r#"["x","y",["0","7"],1,"undefined",false,true,1]"#
@@ -97,11 +94,9 @@ fn run_option_probe() -> (serde_json::Value, serde_json::Value) {
     install_independent_html(scope, cases[0]["html"].as_str().unwrap());
     v8::tc_scope!(let scope,scope);
     let source = v8::String::new(scope, probe).unwrap();
-    let Some(result) =
-        v8::Script::compile(scope, source, None).and_then(|script| script.run(scope))
-    else {
-        panic!("{}", scope.exception().unwrap().to_rust_string_lossy(scope));
-    };
+    let result = v8::Script::compile(scope, source, None)
+        .and_then(|script| script.run(scope))
+        .unwrap_or_else(|| panic!("{}", thrown(scope.exception(), scope)));
     let actual = v8::json::stringify(scope, result)
         .unwrap()
         .to_rust_string_lossy(scope);

@@ -401,3 +401,41 @@ mod svg_oracle {
         assert_eq!(img.rgba, vec![255, 0, 0, 255, 255, 0, 0, 255]);
     }
 }
+
+#[test]
+fn png_frame_to_rgba8_casts_every_color_type_like_the_image_crate() {
+    use png::{BitDepth::Eight, BitDepth::Sixteen, ColorType::*};
+    // image 0.25's `to_rgba8` contract: RGB(A) channels cast numerically (8-bit as is,
+    // 16-bit `(c + 128) / 257`, a missing alpha opaque); gray(+alpha) through f32
+    // (`round(c / MAX * 255)`), the luma replicated.
+    let rgba = |color, depth, data: &[u8]| {
+        PngFrame::decode(
+            &encode((1, 1), color, depth, &|_| {}, data),
+            PngBudget::PngDefault,
+        )
+        .expect("decodes")
+        .to_rgba8()
+    };
+    assert_eq!(rgba(Rgb, Eight, &[10, 20, 30]), [10, 20, 30, 255]);
+    assert_eq!(rgba(Rgba, Eight, &[200, 100, 0, 7]), [200, 100, 0, 7]);
+    assert_eq!(
+        rgba(Rgb, Sixteen, &[0xff, 0xff, 0x00, 0x00, 0x01, 0x01]),
+        [255, 0, 1, 255]
+    );
+    // (128 + 128) / 257 = 0, (129 + 128) / 257 = 1, (32640 + 128) / 257 = 127.
+    assert_eq!(
+        rgba(
+            Rgba,
+            Sixteen,
+            &[0x00, 0x80, 0x00, 0x81, 0x7f, 0x80, 0xff, 0xff]
+        ),
+        [0, 1, 127, 255]
+    );
+    assert_eq!(rgba(Grayscale, Eight, &[77]), [77, 77, 77, 255]);
+    assert_eq!(rgba(GrayscaleAlpha, Eight, &[77, 128]), [77, 77, 77, 128]);
+    // 32768 / 65535 * 255 = 127.502 -> 128; 16384 / 65535 * 255 = 63.751 -> 64.
+    assert_eq!(
+        rgba(GrayscaleAlpha, Sixteen, &[0x80, 0x00, 0x40, 0x00]),
+        [128, 128, 128, 64]
+    );
+}

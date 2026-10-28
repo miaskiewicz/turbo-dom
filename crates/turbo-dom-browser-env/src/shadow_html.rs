@@ -604,13 +604,9 @@ fn native<'s>(
         }
         "setHTMLUnsafe" => {
             // The markup already passed its Trusted Types check (sanitizer.js).
-            let Some(html) = v8::Local::<v8::String>::try_from(args.get(2))
-                .ok()
-                .map(|html| string_code_units(scope, html))
-            else {
-                illegal(scope);
-                return;
-            };
+            // shadow_html.js passes the converted (string) markup.
+            let html = v8::Local::<v8::String>::try_from(args.get(2)).expect("converted markup");
+            let html = string_code_units(scope, html);
             // SetHTMLUnsafeOptions.sanitizer, already converted and validated.
             let config = v8::Local::<v8::Object>::try_from(args.get(3))
                 .ok()
@@ -630,9 +626,7 @@ pub(super) fn ensure_keys(scope: &mut v8::PinScope) {
     if scope.get_slot::<std::rc::Rc<Keys>>().is_none() {
         let mut keys = Vec::new();
         for name in KEY_NAMES {
-            let Some(name) = v8::String::new(scope, &format!("turbo.shadow-root.{name}")) else {
-                return;
-            };
+            let name = v8::String::new(scope, &format!("turbo.shadow-root.{name}")).unwrap();
             let private = v8::Private::for_api(scope, Some(name));
             keys.push(v8::Global::new(scope, private));
         }
