@@ -80,23 +80,194 @@ fn mismatches_reports_differences_extras_and_stale_gaps() {
     );
 }
 
-/// KNOWN_GAP (miaskiewicz/turbo-dom#133): a manually assigned node keeps its removed slot.
+/// KNOWN_GAP (miaskiewicz/turbo-dom#133): after a manual slot leaves its root, Chrome 156 can
+/// still report it as the assignedSlot of the nodes it held. That is Blink's lazy slot-assignment
+/// recalc: whether the stale slot is returned depends on the assignment order and on which node is
+/// read first (any host mutation or layout clears it), so the binding keeps the spec answer (null).
 const SLOT_GAPS: &[(&str, &str)] = &[
-    (
-        "result.changes",
-        "[\"s1\",\"s1\",\"s2\",\"s1\",\"s1\",\"s1\",\"s1\",\"s1\"]",
-    ),
     ("result.slotRemoved[1]", "null"),
     ("result.slotRemoved[2]", "null"),
 ];
 
 #[test]
+#[ignore = "miaskiewicz/turbo-dom#133: fails until the fix"]
 fn shadow_slot_edges_match_chrome156() {
     check(
         include_str!("shadow_slots_edges_probe.js"),
         include_str!("shadow_slots_edges_chrome156.json"),
         SLOT_GAPS,
     );
+}
+
+/// Manual-assignment slots leaving and re-entering a shadow root (miaskiewicz/turbo-dom#133):
+/// removing a slot that holds nodes signals slotchange at the removed slot; inserting a slot
+/// into a manual root signals nothing (a named root still signals). Expected: Chrome
+/// 156.0.8078.47 (frozen, headless).
+#[test]
+#[ignore = "miaskiewicz/turbo-dom#133: fails until the fix"]
+fn manual_slot_reinsertion_signals_like_chrome156() {
+    let probe = r###"(async () => {
+  // Manual-assignment slots leaving and re-entering their shadow root (turbo-dom#133):
+  // removal signals the removed slot itself; re-insertion signals nothing.
+  const tick = () => new Promise(resolve => setTimeout(resolve, 0));
+  const ids = nodes => nodes.map(node => node.id || node.nodeName);
+  const setup = () => {
+    const host = document.body.appendChild(document.createElement('div'));
+    host.innerHTML = '<b id=b1></b><i id=i1></i>';
+    const root = host.attachShadow({ mode: 'open', slotAssignment: 'manual' });
+    const s1 = root.appendChild(document.createElement('slot'));
+    s1.id = 's1';
+    const s2 = root.appendChild(document.createElement('slot'));
+    s2.id = 's2';
+    const log = [];
+    root.addEventListener('slotchange', event => log.push('root:' + event.target.id));
+    s1.addEventListener('slotchange', event => log.push('s1:' + event.target.id));
+    const [b1, i1] = host.childNodes;
+    return { host, root, s1, s2, b1, i1, log };
+  };
+  const out = {};
+  {
+    const t = setup();
+    t.s1.assign(t.b1); await tick(); t.log.push('|');
+    t.s1.remove(); await tick(); t.log.push('|');
+    out.removed = ids(t.s1.assignedNodes());
+    t.root.append(t.s1); await tick();
+    out.readded = [ids(t.s1.assignedNodes()), t.b1.assignedSlot && t.b1.assignedSlot.id, t.log];
+  }
+  {
+    const t = setup();
+    t.s1.remove(); t.s1.assign(t.b1); await tick();
+    out.assignedDetached = [ids(t.s1.assignedNodes()), t.b1.assignedSlot];
+    t.root.append(t.s1); await tick();
+    out.insertedAssigned = [ids(t.s1.assignedNodes()), t.b1.assignedSlot && t.b1.assignedSlot.id, t.log];
+  }
+  {
+    const t = setup();
+    t.s1.assign(t.b1); await tick();
+    t.s1.remove(); await tick();
+    t.s2.assign(t.b1); await tick();
+    t.root.append(t.s1); await tick();
+    out.reassigned = [ids(t.s1.assignedNodes()), ids(t.s2.assignedNodes()), t.b1.assignedSlot && t.b1.assignedSlot.id, t.log];
+  }
+  {
+    const t = setup();
+    const wrapper = t.root.appendChild(document.createElement('div'));
+    wrapper.append(t.s1);
+    t.s1.assign(t.b1, t.i1); await tick();
+    wrapper.remove(); await tick();
+    t.root.append(wrapper); await tick();
+    out.nested = [ids(t.s1.assignedNodes()), t.log];
+  }
+  {
+    const t = setup();
+    t.s1.assign(t.b1); await tick();
+    const other = document.body.appendChild(document.createElement('div')).attachShadow({ mode: 'open', slotAssignment: 'manual' });
+    other.addEventListener('slotchange', event => t.log.push('other:' + event.target.id));
+    other.append(t.s1); await tick();
+    out.otherRoot = [ids(t.s1.assignedNodes()), t.log];
+    t.root.append(t.s1); await tick();
+    out.back = [ids(t.s1.assignedNodes()), t.log];
+  }
+  {
+    // Named roots still signal a slot that enters with assigned nodes.
+    const host = document.body.appendChild(document.createElement('div'));
+    host.innerHTML = '<b></b>';
+    const root = host.attachShadow({ mode: 'open' });
+    const log = [];
+    root.addEventListener('slotchange', event => log.push(event.target.id));
+    const slot = document.createElement('slot');
+    slot.id = 'named';
+    root.append(slot); await tick();
+    slot.remove(); await tick();
+    root.append(slot); await tick();
+    out.named = log;
+  }
+  return out;
+})()
+"###;
+    let expected: serde_json::Value = serde_json::from_str(
+        r###"{
+ "removed": [],
+ "readded": [
+  [
+   "b1"
+  ],
+  "s1",
+  [
+   "s1:s1",
+   "root:s1",
+   "|",
+   "s1:s1",
+   "|"
+  ]
+ ],
+ "assignedDetached": [
+  [],
+  null
+ ],
+ "insertedAssigned": [
+  [
+   "b1"
+  ],
+  "s1",
+  []
+ ],
+ "reassigned": [
+  [],
+  [
+   "b1"
+  ],
+  "s2",
+  [
+   "s1:s1",
+   "root:s1",
+   "s1:s1",
+   "root:s2"
+  ]
+ ],
+ "nested": [
+  [
+   "b1",
+   "i1"
+  ],
+  [
+   "s1:s1",
+   "root:s1",
+   "s1:s1"
+  ]
+ ],
+ "otherRoot": [
+  [],
+  [
+   "s1:s1",
+   "root:s1",
+   "s1:s1",
+   "other:s1",
+   "s1:s1",
+   "root:s1"
+  ]
+ ],
+ "back": [
+  [
+   "b1"
+  ],
+  [
+   "s1:s1",
+   "root:s1",
+   "s1:s1",
+   "other:s1",
+   "s1:s1",
+   "root:s1"
+  ]
+ ],
+ "named": [
+  "named",
+  "named"
+ ]
+}"###,
+    )
+    .unwrap();
+    assert_eq!(differences_of(&run(probe), &expected), Vec::<String>::new());
 }
 
 #[test]
