@@ -15,6 +15,7 @@ fn plan(
     incoming: &[Handle],
     reference: Option<Handle>,
     remove: &[Handle],
+    replace_all: bool,
 ) -> Result<Plan, &'static str> {
     if !matches!(tree.node_type_id(parent), 1 | 9 | 11) {
         return Err("HierarchyRequestError");
@@ -52,7 +53,7 @@ fn plan(
     }
     let original = tree.children(parent);
     let retained = |node: &Handle| !nodes.contains(node) && !remove.contains(node);
-    let reference = reference.and_then(|reference| {
+    let viable = reference.and_then(|reference| {
         original
             .iter()
             .position(|&node| node == reference)
@@ -63,30 +64,68 @@ fn plan(
                     .copied()
             })
     });
-    let mut final_children: Vec<_> = original.into_iter().filter(retained).collect();
-    let index = reference
-        .and_then(|reference| final_children.iter().position(|&node| node == reference))
-        .unwrap_or(final_children.len());
-    final_children.splice(index..index, nodes.iter().copied());
     if tree.node_type_id(parent) == 9 {
-        let mut element = false;
-        let mut doctype = false;
-        for &node in &final_children {
-            match tree.node_type_id(node) {
-                1 if !element => element = true,
-                10 if !doctype && !element => doctype = true,
-                7 | 8 => (),
-                _ => return Err("HierarchyRequestError"),
-            }
-        }
+        let kinds = |nodes: &[Handle]| {
+            nodes
+                .iter()
+                .map(|&node| (Some(node), tree.node_type_id(node)))
+                .collect::<Vec<_>>()
+        };
+        document_validity(
+            kinds(&original),
+            &kinds(&nodes),
+            reference,
+            remove,
+            replace_all,
+        )?;
     } else if nodes.iter().any(|&node| tree.node_type_id(node) == 10) {
         return Err("HierarchyRequestError");
     }
     Ok(Plan {
         nodes,
         remove: remove.to_vec(),
-        reference,
+        reference: viable,
     })
+}
+
+/// DOM "ensure pre-insert validity" (and replace validity) for a Document parent, as Blink's
+/// `Document::CanAcceptChild`: the parent's **current** children count, so a single node that
+/// is already a child counts twice and replaceChildren keeps the children it will remove.
+/// Only the child being replaced (replaceWith / replaceChild: `remove` without `replace_all`)
+/// is left out. `incoming` lands before `reference` (or last); the resulting sequence must hold
+/// at most one doctype, before at most one element, and otherwise only comments and PIs.
+fn document_validity(
+    original: Vec<(Option<Handle>, u8)>,
+    incoming: &[(Option<Handle>, u8)],
+    reference: Option<Handle>,
+    remove: &[Handle],
+    replace_all: bool,
+) -> Result<(), &'static str> {
+    let mut children = Vec::new();
+    let mut placed = false;
+    for (node, kind) in original {
+        if !placed && node.is_some() && node == reference {
+            children.extend(incoming.iter().map(|(_, kind)| *kind));
+            placed = true;
+        }
+        if replace_all || node.is_none_or(|node| !remove.contains(&node)) {
+            children.push(kind);
+        }
+    }
+    if !placed {
+        children.extend(incoming.iter().map(|(_, kind)| *kind));
+    }
+    let mut element = false;
+    let mut doctype = false;
+    for kind in children {
+        match kind {
+            1 if !element => element = true,
+            10 if !doctype && !element => doctype = true,
+            7 | 8 => (),
+            _ => return Err("HierarchyRequestError"),
+        }
+    }
+    Ok(())
 }
 
 pub(super) fn insert(
@@ -108,7 +147,7 @@ fn insert_mode(
     replace_all: bool,
 ) -> bool {
     // Mutations run inside an entered, installed DOM.
-    let result = with_tree(|tree| plan(tree, parent, incoming, reference, remove))
+    let result = with_tree(|tree| plan(tree, parent, incoming, reference, remove, replace_all))
         .expect("installed document");
     let plan = match result {
         Ok(plan) => plan,
@@ -402,6 +441,7 @@ fn incoming_plan<'s>(
     incoming: &[Prepared<'s>],
     reference: Option<Handle>,
     remove: &[Handle],
+    replace_all: bool,
 ) -> Result<Vec<Prepared<'s>>, &'static str> {
     if !matches!(tree.node_type_id(parent), 1 | 9 | 11) {
         return Err("HierarchyRequestError");
@@ -455,40 +495,16 @@ fn incoming_plan<'s>(
         }
     }
     if tree.node_type_id(parent) == 9 {
-        let moving: std::collections::HashSet<_> =
-            result.iter().filter_map(Prepared::identity).collect();
-        let original = tree.children(parent);
-        let retain =
-            |node: &Handle| !remove.contains(node) && !moving.contains(&NodeIdentity(owner, *node));
-        let adjusted = reference.and_then(|reference| {
-            original
-                .iter()
-                .position(|node| *node == reference)
-                .and_then(|index| original[index..].iter().find(|node| retain(node)).copied())
-        });
-        let mut final_kinds = original
+        let original = tree
+            .children(parent)
             .into_iter()
-            .filter(retain)
             .map(|node| (Some(node), tree.node_type_id(node)))
+            .collect();
+        let incoming = result
+            .iter()
+            .map(|node| (None, node.kind()))
             .collect::<Vec<_>>();
-        let index = adjusted
-            .and_then(|node| {
-                final_kinds
-                    .iter()
-                    .position(|(handle, _)| *handle == Some(node))
-            })
-            .unwrap_or(final_kinds.len());
-        final_kinds.splice(index..index, result.iter().map(|node| (None, node.kind())));
-        let mut element = false;
-        let mut doctype = false;
-        for (_, kind) in final_kinds {
-            match kind {
-                1 if !element => element = true,
-                10 if !doctype && !element => doctype = true,
-                7 | 8 => (),
-                _ => return Err("HierarchyRequestError"),
-            }
-        }
+        document_validity(original, &incoming, reference, remove, replace_all)?;
     } else if result.iter().any(|node| node.kind() == 10) {
         return Err("HierarchyRequestError");
     }
@@ -577,9 +593,18 @@ fn insert_inputs_mode<'s>(
     let owner = DOM_ID.with(|id| id.get());
     // incoming_node() admitted every Incoming::Node as a wrapped node, so view() succeeds.
     let prepared = prepare(scope, incoming).expect("wrapped incoming nodes");
-    let planned =
-        with_tree(|tree| incoming_plan(tree, owner, parent, &prepared, reference, remove))
-            .expect("installed document");
+    let planned = with_tree(|tree| {
+        incoming_plan(
+            tree,
+            owner,
+            parent,
+            &prepared,
+            reference,
+            remove,
+            replace_all,
+        )
+    })
+    .expect("installed document");
     let planned = match planned {
         Ok(nodes) => nodes,
         Err(name) => {
@@ -829,7 +854,8 @@ mod tests {
           if(fragment.childNodes.length!==2||first.parentNode!==fragment||second.parentNode!==fragment)throw new Error('failed fragment drained');
           const next=document.createElement('html');
           if(document.replaceChild(next,root)!==root||document.documentElement!==next||root.parentNode!==null||document.doctype!==doctype)throw new Error('document root replacement');
-          if(document.insertBefore(next,next)!==next||document.documentElement!==next)throw new Error('self reference');
+          // Chrome 156: pre-insert validity counts the element itself (turbo-dom#132).
+          reject(()=>document.insertBefore(next,next));if(document.documentElement!==next)throw new Error('self reference');
           next.appendChild(root);let error;try{next.appendChild(doctype)}catch(caught){error=caught.name;}
           if(error!=='HierarchyRequestError'||doctype.parentNode!==document)throw new Error('doctype element child');
           return true;

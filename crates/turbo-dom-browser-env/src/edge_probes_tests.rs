@@ -100,7 +100,6 @@ fn shadow_slot_edges_match_chrome156() {
 }
 
 #[test]
-#[ignore = "miaskiewicz/turbo-dom#132: fails until the fix"]
 fn dom_mutation_validity_matches_chrome156() {
     check(
         include_str!("dom_mutation_validity_probe.js"),
@@ -113,7 +112,6 @@ fn dom_mutation_validity_matches_chrome156() {
 /// that is already a child still counts as one, and replaceChildren does not first remove the
 /// existing children (miaskiewicz/turbo-dom#132). Expected values: Chrome 156.0.8078.47.
 #[test]
-#[ignore = "miaskiewicz/turbo-dom#132: fails until the fix"]
 fn document_pre_insert_validity_counts_current_children() {
     let probe = r#"(async () => {
       const attempt = run => { try { run(); return 'ok'; } catch (e) { return e.name; } };
@@ -131,6 +129,15 @@ fn document_pre_insert_validity_counts_current_children() {
         insertBeforeDoctype: d => d.insertBefore(d.doctype, d.documentElement),
         htmlReplaceWithSelf: d => d.documentElement.replaceWith(d.documentElement),
         moveBeforeHtml: d => d.moveBefore(d.documentElement, null),
+        moveBeforeSelf: d => d.moveBefore(d.documentElement, d.documentElement),
+        moveBeforeComment: d => { d.appendChild(d.createComment('c')); d.moveBefore(d.lastChild, d.documentElement); },
+        moveBeforePi: d => { d.appendChild(d.createProcessingInstruction('a', 'b')); d.moveBefore(d.lastChild, d.doctype); },
+        moveBeforeLone: d => { d.doctype.remove(); d.moveBefore(d.documentElement, null); },
+        ibSelf: d => d.insertBefore(d.documentElement, d.documentElement),
+        ibDoctypeSelf: d => d.insertBefore(d.doctype, d.doctype),
+        rcSelf: d => d.replaceChild(d.documentElement, d.documentElement),
+        rcDoctypeSelf: d => d.replaceChild(d.doctype, d.doctype),
+        commentSelf: d => { const c = d.appendChild(d.createComment('c')); d.insertBefore(c, c); },
       };
       const out = {};
       for (const [k, f] of Object.entries(cases)) { const d = document.implementation.createHTMLDocument(''); out[k] = [attempt(() => f(d)), names(d)]; }
@@ -152,6 +159,15 @@ fn document_pre_insert_validity_counts_current_children() {
             "insertBeforeDoctype": error("HierarchyRequestError"),
             "htmlReplaceWithSelf": error("ok"),
             "moveBeforeHtml": error("HierarchyRequestError"),
+            "moveBeforeSelf": error("HierarchyRequestError"),
+            "moveBeforeComment": ["ok", "html,#comment,HTML"],
+            "moveBeforePi": ["ok", "a,html,HTML"],
+            "moveBeforeLone": ["HierarchyRequestError", "HTML"],
+            "ibSelf": error("HierarchyRequestError"),
+            "ibDoctypeSelf": error("HierarchyRequestError"),
+            "rcSelf": error("ok"),
+            "rcDoctypeSelf": error("ok"),
+            "commentSelf": ["ok", "html,HTML,#comment"],
         })
     );
 }
