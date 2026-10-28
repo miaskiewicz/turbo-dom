@@ -187,3 +187,88 @@ fn install_into_a_frozen_namespace_degrades_without_panicking() {
     assert_eq!(value, "undefined,object");
     reset();
 }
+
+/// Arm the test-only watchdog at `checkpoint`, run `source` (which must end by termination),
+/// cancel the termination and return `after`'s JSON.
+fn at_checkpoint(checkpoint: &'static str, nested: bool, source: &str, after: &str) -> String {
+    crate::browser_env::tests::init_v8();
+    let isolate = &mut v8::Isolate::new(Default::default());
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    install_with_html(scope, "<!doctype html><p id=p class=c>x</p>");
+    {
+        v8::tc_scope!(let scope, scope);
+        TERMINATE_AT.with(|at| at.set(Some((checkpoint, nested))));
+        let code = v8::String::new(scope, source).unwrap();
+        let result = v8::Script::compile(scope, code, None).unwrap().run(scope);
+        let armed = TERMINATE_AT.with(|at| at.replace(None));
+        assert!(armed.is_none(), "{checkpoint} was never reached");
+        assert!(result.is_none(), "{checkpoint}: {source} completed");
+        assert!(scope.has_terminated(), "{checkpoint}: no termination");
+        scope.cancel_terminate_execution();
+        scope.reset();
+    }
+    let code = v8::String::new(scope, &format!("JSON.stringify({after})")).unwrap();
+    let value = v8::Script::compile(scope, code, None)
+        .unwrap()
+        .run(scope)
+        .unwrap()
+        .to_rust_string_lossy(scope);
+    reset();
+    value
+}
+
+#[test]
+fn watchdog_checkpoints_unwind_and_leave_a_working_document() {
+    let wrap = "globalThis.made = document.createElement('aside'); globalThis.done = true";
+    let wrap_after = "[typeof made, typeof done, document.createElement('aside').localName, document.getElementById('p') === document.getElementById('p')]";
+    let method = "const p = document.getElementById('p'); p.setAttribute('data-a', '1'); globalThis.done = true";
+    let method_after = "[typeof done, document.getElementById('p').getAttribute('data-a'), document.getElementById('p').hasAttribute('class')]";
+    let setter = "const p = document.getElementById('p'); p.id = 'q'; globalThis.done = true";
+    let setter_after = "[typeof done, document.querySelector('p').id]";
+    let mut rows = Vec::new();
+    for (checkpoint, nested, source, after) in [
+        ("wrap:instance", false, wrap, wrap_after),
+        ("wrap:cache", false, wrap, wrap_after),
+        ("wrap:project", false, wrap, wrap_after),
+        ("method:pinned", false, method, method_after),
+        ("method:pinned", true, method, method_after),
+        ("method:called", false, method, method_after),
+        ("method:called", true, method, method_after),
+        ("method:flushed", false, method, method_after),
+        ("method:reconciled", false, method, method_after),
+        ("setter:pinned", false, setter, setter_after),
+        ("setter:pinned", true, setter, setter_after),
+        ("setter:called", false, setter, setter_after),
+        ("setter:called", true, setter, setter_after),
+        ("setter:flushed", false, setter, setter_after),
+        ("setter:reconciled", false, setter, setter_after),
+    ] {
+        rows.push(format!(
+            "{checkpoint}/{nested}: {}",
+            at_checkpoint(checkpoint, nested, source, after)
+        ));
+    }
+    // The script never finishes; a setter terminated after it ran keeps its change (the
+    // method rows terminate in the first native method the setAttribute path calls, before the
+    // attribute is set); wrapper identity and fresh wrapping keep working.
+    let expected = [
+        r#"wrap:instance/false: ["undefined","undefined","aside",true]"#,
+        r#"wrap:cache/false: ["undefined","undefined","aside",true]"#,
+        r#"wrap:project/false: ["undefined","undefined","aside",true]"#,
+        r#"method:pinned/false: ["undefined",null,true]"#,
+        r#"method:pinned/true: ["undefined",null,true]"#,
+        r#"method:called/false: ["undefined",null,true]"#,
+        r#"method:called/true: ["undefined",null,true]"#,
+        r#"method:flushed/false: ["undefined",null,true]"#,
+        r#"method:reconciled/false: ["undefined",null,true]"#,
+        r#"setter:pinned/false: ["undefined","p"]"#,
+        r#"setter:pinned/true: ["undefined","p"]"#,
+        r#"setter:called/false: ["undefined","q"]"#,
+        r#"setter:called/true: ["undefined","q"]"#,
+        r#"setter:flushed/false: ["undefined","q"]"#,
+        r#"setter:reconciled/false: ["undefined","q"]"#,
+    ];
+    assert_eq!(rows, expected);
+}
