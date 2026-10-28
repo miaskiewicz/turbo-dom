@@ -1,6 +1,6 @@
 //! Scrollable overflow from real native border fragments and resolved styles.
 //! Clipping and scroll state remain separate from immutable layout provenance.
-use crate::layout::value::Position;
+use crate::layout::value::{Display, Position};
 use crate::layout_snapshot::{GeometryKind, LayoutSnapshot, SourceId};
 use crate::ComputedStyle;
 use std::collections::BTreeMap;
@@ -194,11 +194,21 @@ pub fn scroll_metrics(
         }
         let transformed = projected(fragment);
         let rect = fragment.rect;
+        // An absolute / fixed box's untransformed rect is not scrollable overflow; a
+        // flow box's is (miaskiewicz/turbo-dom#147, Chrome 156).
+        let out_of_flow = fragment.used_box.is_some_and(|metrics| {
+            matches!(metrics.position, Position::Absolute | Position::Fixed)
+        });
+        let untransformed = if out_of_flow {
+            [f32::NEG_INFINITY; 2]
+        } else {
+            [rect.x + rect.width, rect.y + rect.height]
+        };
         if !blocked_x {
-            right = right.max(transformed[0]).max(rect.x + rect.width);
+            right = right.max(transformed[0]).max(untransformed[0]);
         }
         if !blocked_y {
-            bottom = bottom.max(transformed[1]).max(rect.y + rect.height);
+            bottom = bottom.max(transformed[1]).max(untransformed[1]);
         }
         // Flow content's ending padding/margin contributes to scroll containers,
         // while out-of-flow boxes and transforms contribute only their edges.
@@ -452,7 +462,9 @@ pub fn viewport_metrics(
                 blocked[1] |= clips(overflow(&entry.style, "overflow-y"));
             }
         }
-        let rect = fragment.rect;
+        // Chrome counts only the painted (transformed) box, plus a flow box's block-end
+        // margin and an inline-level box's inline-end margin; a block's (or float's)
+        // inline-end margin is not viewport overflow (miaskiewicz/turbo-dom#147).
         let quad = |axis: usize| {
             fragment
                 .quad
@@ -463,12 +475,25 @@ pub fn viewport_metrics(
         let flow = fragment
             .used_box
             .filter(|_| position != Some(Position::Absolute))
-            .map_or([0.0; 2], |used| [used.margin.right, used.margin.bottom]);
+            .map_or([0.0; 2], |used| {
+                let inline_level = matches!(
+                    used.display,
+                    Display::Inline
+                        | Display::InlineBlock
+                        | Display::InlineTable
+                        | Display::InlineFlex
+                        | Display::InlineGrid
+                );
+                [
+                    if inline_level { used.margin.right } else { 0.0 },
+                    used.margin.bottom,
+                ]
+            });
         if !blocked[0] {
-            right = right.max(quad(0)).max(rect.x + rect.width + flow[0]);
+            right = right.max(quad(0) + flow[0]);
         }
         if !blocked[1] {
-            bottom = bottom.max(quad(1)).max(rect.y + rect.height + flow[1]);
+            bottom = bottom.max(quad(1) + flow[1]);
         }
     }
     Ok(ScrollMetrics {
@@ -919,14 +944,13 @@ mod tests {
         assert!(!is_root(&case.styles, SourceId(3)));
     }
 
-    /// miaskiewicz/turbo-dom#147: viewport overflow counts a block's inline-end margin
-    /// and a transformed box's untransformed rect; Chrome counts neither.
+    /// miaskiewicz/turbo-dom#147: neither a block's inline-end margin nor a transformed
+    /// box's untransformed rect is viewport overflow (nor an absolute box's for a scroller).
     const SCROLLER_GAPS: &[&str] = &["scroll-extent-transformed-absolute"];
 
     /// miaskiewicz/turbo-dom#147 for element scrollers: an absolute box's untransformed
     /// rect.
     #[test]
-    #[ignore = "turbo-dom#147: fails until the fix"]
     fn absolute_untransformed_boxes_are_not_scroller_overflow_like_chrome_156() {
         for id in SCROLLER_GAPS {
             assert_extents(id);
@@ -941,7 +965,6 @@ mod tests {
     ];
 
     #[test]
-    #[ignore = "turbo-dom#147: fails until the fix"]
     fn viewport_extents_skip_block_margins_and_untransformed_boxes_like_chrome_156() {
         for id in VIEWPORT_GAPS {
             assert_viewport(id);
