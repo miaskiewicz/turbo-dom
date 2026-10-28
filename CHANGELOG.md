@@ -7,6 +7,10 @@ at the time); this file reconstructs them from history.
 
 ## [Unreleased]
 
+### Fixed — browser-env getKeyframes() spells a shorthand member from its longhands (miaskiewicz/turbo-dom#167)
+- `animations.rs keyframe_value` serializes a shorthand through `rtdom::css_shorthand` the way
+  Chrome 156 does (`flex: '0'` is `0 1 0%`, `margin: '0'` is `0px`); var() values keep their text.
+
 ### Fixed — CSSOM shorthand / longhand spelling of math functions and grammars follows Chrome 156 (miaskiewicz/turbo-dom#117)
 - `rtdom::css_shorthand` and its npm port `css-shorthand.mjs` (in lockstep): `abs()` / `sign()` /
   `min()` / `max()` / `clamp()` (`none` bounds) simplify when Chrome resolves their units, single

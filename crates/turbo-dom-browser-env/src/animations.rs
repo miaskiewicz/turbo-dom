@@ -358,7 +358,11 @@ fn keyframe_value(property: &str, value: &str) -> Option<String> {
                     return None;
                 }
             }
-            Ok(_) => {}
+            Ok(_) => {
+                if let Some(text) = shorthand_text(property, value) {
+                    return Some(text);
+                }
+            }
             Err(_) => return None,
         }
     }
@@ -448,6 +452,26 @@ fn negative(value: &str) -> bool {
             _ => Err(input.new_custom_error::<(), ()>(())),
         })
         .unwrap_or(false)
+}
+
+/// A shorthand member's value as Chrome 156 serializes the shorthand from the longhands it
+/// sets (`flex: 0` is `0 1 0%`, `margin: 0` is `0px`), through turbo-dom's
+/// `rtdom::css_shorthand` (turbo-dom#167); `None` for a longhand or a value it does not expand.
+fn shorthand_text(property: &str, value: &str) -> Option<String> {
+    let longhands = turbo_dom_parser::rtdom::css_shorthand::expand(property, value)?;
+    let declarations: Vec<_> = longhands
+        .iter()
+        .map(
+            |longhand| turbo_dom_parser::rtdom::css_shorthand::Declaration {
+                name: longhand.name,
+                value: &longhand.value,
+                important: false,
+                pending: None,
+            },
+        )
+        .collect();
+    let text = turbo_dom_parser::rtdom::css_shorthand::shorthand_value(property, &declarations);
+    (!text.is_empty()).then_some(text)
 }
 
 /// Length-valued properties whose bare zero serializes as `0px` (the computed-style
