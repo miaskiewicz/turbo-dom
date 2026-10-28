@@ -2,7 +2,7 @@
   "browser": "Chrome/156.0.8078.4",
   "v8": "15.6.75",
   "probe": "native_guards_probe.js",
-  "probeSha256": "1117618fb8f433700aaf41b374284e5edc7ed2182ac03efe83e07d264b75685e",
+  "probeSha256": "3ddea7a0b76626b74323d4f7af7baf5af910d3bfbb77218de48c31e3fafd37bf",
   "collectorSha256": "3f964d2cdf0ec8101870a776aaffc3b7dc4522306959c4a40761057beb255eb8",
   "flags": [
     "--headless=new",
@@ -2254,6 +2254,15 @@
         "undefined",
         {},
         {},
+        [
+          "DOMException",
+          "InvalidCharacterError"
+        ],
+        "d",
+        [
+          "DOMException",
+          "InvalidCharacterError"
+        ],
         [
           "TypeError",
           "TypeError"

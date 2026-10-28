@@ -40,6 +40,22 @@ fn child() {
         .unwrap();
     browser_env::reset();
     eprintln!("--- done");
+    // A bootstrap script that throws (here: the binding namespace was frozen before
+    // install) is logged, and the install still completes.
+    let frozen = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, frozen);
+    let code = v8::String::new(
+        scope,
+        "Object.defineProperty(globalThis, Symbol.for('ts'), { value: Object.freeze({}) })",
+    )
+    .unwrap();
+    v8::Script::compile(scope, code, None)
+        .unwrap()
+        .run(scope)
+        .unwrap();
+    browser_env::install_with_html(scope, "<!doctype html>");
+    browser_env::reset();
+    eprintln!("--- bootstrap done");
 }
 
 #[test]
@@ -65,6 +81,12 @@ fn missing_member_log_counts_and_prints_unimplemented_reads() {
     assert!(stderr[empty..].starts_with("--- reads\n"), "{stderr}");
     let start = stderr.find("--- reads\n").expect("child ran") + "--- reads\n".len();
     let end = stderr.find("--- done\n").expect("child finished");
+    let tail = &stderr[end..stderr.find("--- bootstrap done\n").expect("bootstrap ran")];
+    assert!(
+        tail.lines()
+            .any(|line| line.starts_with("[rust-dom] bootstrap threw: TypeError")),
+        "{tail}"
+    );
     assert_eq!(
         &stderr[start..end],
         "[rust-dom] 3 missing DOM members (name×accesses):\n\

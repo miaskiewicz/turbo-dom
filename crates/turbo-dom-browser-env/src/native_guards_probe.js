@@ -401,7 +401,7 @@
       const host = document.createElement('div'); host.innerHTML = '<p class=q><b id=bb>b</b></p>';
       return [t.data, host.querySelector('\\62 ').id, host.querySelector('b').closest('\\70 ').className, document.createElementNS('urn:x', 'a1-b.c').localName,
         run(() => document.createElementNS('urn:x', 'a$b')), run(() => document.createElementNS('urn:x', 'a b')), run(() => el.setAttributeNS('urn:x', 'p:a$b', 'v')),
-        run(() => document.createElementNS('urn:x', 'é')), run(() => document.createElementNS('urn:x', 'aé$')),
+        run(() => document.createElementNS('urn:x', 'é')), run(() => document.createElementNS('urn:x', 'aé$')), run(() => document.createElementNS('urn:x', '_a$').localName), run(() => document.createElementNS('urn:x', 'é-a.b_c:d').localName), run(() => document.createElementNS('urn:x', ':a')),
         run(() => document.createElementNS()), run(() => document.createElementNS('urn:x')), run(() => document.createComment()), run(() => Document.prototype.createComment.call(el, 'x')), run(() => Document.prototype.createDocumentFragment.call(el)), run(() => Document.prototype.createElementNS.call(el, null, 'a'))];
     })();
   }
