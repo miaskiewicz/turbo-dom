@@ -209,6 +209,31 @@ mod tests {
         styles("<body><div style='content-visibility:auto'><i id=b></i></div></body>")
     }
 
+    /// The ancestry walk allows 4096 ancestors and fails beyond.
+    #[test]
+    fn the_ancestry_depth_limit_is_4096() {
+        let chain = |ancestors: u64| -> SourceStyles {
+            (0..=ancestors)
+                .map(|i| {
+                    (
+                        SourceId(i),
+                        crate::cssom_view::scroll::SourceStyle {
+                            style: ComputedStyle::default(),
+                            parent: i.checked_sub(1).map(SourceId),
+                            tag: "div".into(),
+                            zoom: 1.0,
+                        },
+                    )
+                })
+                .collect()
+        };
+        assert!(check(&chain(4096), SourceId(4096), 0, |_| Ok(true)).unwrap());
+        assert_eq!(
+            check(&chain(4097), SourceId(4097), 0, |_| Ok(true)).unwrap_err(),
+            "native visibility ancestry exceeds its depth limit"
+        );
+    }
+
     #[test]
     fn near_viewport_bounds_are_inclusive_on_every_edge() {
         let rect = |x, y| Rect {

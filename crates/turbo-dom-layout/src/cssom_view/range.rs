@@ -205,6 +205,8 @@ mod tests {
             "native Range boundary is outside connected tree"
         );
         assert_eq!(select(&tree, 1, (div, 2), (div, 2)).unwrap(), vec![]);
+        // A collapsed range between the Text and its next sibling touches no text.
+        assert_eq!(select(&tree, 1, (div, 1), (div, 1)).unwrap(), vec![]);
         assert_eq!(select(&tree, 1, (text, 2), (text, 2)).unwrap().len(), 1);
     }
 
@@ -226,11 +228,13 @@ mod tests {
 
     #[test]
     fn source_budgets_bound_the_walk() {
-        let deep = format!("{}x", "<span>".repeat(300));
-        let tree = Tree::parse(&deep);
-        let root = tree.root();
+        // document 0 > html 1 > body 2 > spans 3.. > the text: depth 256 is the limit.
+        let deep = |spans| Tree::parse(&format!("{}x", "<span>".repeat(spans)));
+        let tree = deep(253);
+        assert!(select(&tree, 1, (tree.root(), 0), (tree.root(), 0)).is_ok());
+        let tree = deep(254);
         assert_eq!(
-            select(&tree, 1, (root, 0), (root, 0)).unwrap_err(),
+            select(&tree, 1, (tree.root(), 0), (tree.root(), 0)).unwrap_err(),
             "native Range ordering exceeds source budget"
         );
         let wide = "<i></i>".repeat(50_001);
@@ -253,7 +257,8 @@ mod tests {
     }
 }
 
-#[cfg(all(test, feature = "bundled-fonts"))]
+#[cfg(test)]
+#[cfg(feature = "bundled-fonts")]
 mod chrome_tests {
     use super::*;
     use crate::cssom_view::scroll::chrome::{case, close, rect};

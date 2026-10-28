@@ -155,10 +155,11 @@ pub fn run_rect(
     })
 }
 
-#[cfg(all(test, feature = "bundled-fonts"))]
+#[cfg(test)]
+#[cfg(feature = "bundled-fonts")]
 mod tests {
     use super::*;
-    use crate::cssom_view::scroll::chrome::{case, close, rect, Case};
+    use crate::cssom_view::scroll::chrome::{case, close, rect as chrome_rect, Case};
     use crate::live::{source_id, testing::DOCUMENT};
     use serde_json::Value;
 
@@ -169,11 +170,8 @@ mod tests {
         let mut owner = tree
             .query_selector(&format!("[data-cid=\"{cid}\"]"))
             .unwrap();
-        let name = want["owner"].as_str().unwrap();
-        if tree.local_name(owner) != Some(name) {
-            owner = tree
-                .query_selector(&format!("[data-cid=\"{cid}\"] {name}"))
-                .unwrap();
+        for step in want["path"].as_array().unwrap() {
+            owner = tree.children(owner)[step.as_u64().unwrap() as usize];
         }
         match want["child"].as_u64() {
             Some(child) => source_id(DOCUMENT, tree.children(owner)[child as usize]),
@@ -182,9 +180,10 @@ mod tests {
     }
 
     /// miaskiewicz/turbo-dom#127: a point beside a transformed line (Chrome descends with
-    /// the untransformed layout position) and a point in an element without text (Chrome:
-    /// a caret in the element).
-    const GAPS: &[[f64; 2]] = &[[50.0, 85.0], [40.0, 105.0]];
+    /// the untransformed layout position), a point in an element without text (Chrome:
+    /// a caret in the element) and a point in the gap below a block (Chrome: the next
+    /// block's first line).
+    const GAPS: &[[f64; 2]] = &[[50.0, 85.0], [40.0, 105.0], [5.0, 13.0]];
 
     fn caret_failures(id: &str, select: impl Fn([f64; 2]) -> bool) -> Vec<String> {
         let case = case(id);
@@ -210,7 +209,7 @@ mod tests {
                 continue;
             }
             let got = caret(&case.snapshot, &case.styles, &offsets, point).unwrap();
-            let chrome = rect(&want["rect"]);
+            let chrome = chrome_rect(&want["rect"]);
             let expected = (
                 chrome_node(&case, want),
                 want["offset"].as_u64().unwrap() as usize,
@@ -245,6 +244,71 @@ mod tests {
             caret(&case.snapshot, &case.styles, &case.offsets(), point).unwrap(),
             None
         );
+    }
+
+    fn rect(x: f32, y: f32, width: f32, height: f32) -> Rect {
+        Rect {
+            x,
+            y,
+            width,
+            height,
+        }
+    }
+
+    /// The axis-aligned bounds of a transformed rect, as `getBoundingClientRect()` bounds a
+    /// transformed box.
+    #[test]
+    fn world_rect_bounds_every_transformed_corner() {
+        let r = rect(1.0, 2.0, 3.0, 4.0);
+        assert_eq!(
+            world_rect(r, [2.0, 0.5, 0.25, 3.0, 10.0, 20.0]),
+            rect(12.5, 26.5, 7.0, 13.5)
+        );
+        assert_eq!(
+            world_rect(r, [0.0, 1.0, -1.0, 0.0, 0.0, 0.0]),
+            rect(-6.0, 1.0, 4.0, 3.0)
+        );
+        assert_eq!(world_rect(r, [1.0, 0.0, 0.0, 1.0, 0.0, 0.0]), r);
+    }
+
+    /// `[vertical, horizontal]` gaps from a point to a rect (0 inside or on an edge).
+    #[test]
+    fn distance_is_the_per_axis_gap_outside_the_rect() {
+        let r = rect(10.0, 20.0, 30.0, 40.0);
+        assert_eq!(distance([15.0, 30.0], r), [0.0, 0.0]);
+        assert_eq!(distance([4.0, 30.0], r), [0.0, 6.0]);
+        assert_eq!(distance([47.0, 30.0], r), [0.0, 7.0]);
+        assert_eq!(distance([15.0, 12.0], r), [8.0, 0.0]);
+        assert_eq!(distance([15.0, 65.0], r), [5.0, 0.0]);
+        assert_eq!(distance([40.0, 60.0], r), [0.0, 0.0]);
+        assert_eq!(distance([1.0, 2.0], r), [18.0, 9.0]);
+    }
+
+    /// A run's rect is its text's content area: Chrome's client rect of a Range over the
+    /// whole Text node.
+    #[test]
+    fn run_rects_match_chrome_156_text_client_rects() {
+        let case = case("range-client-rects");
+        let all = &case.reads("ranges")[0]["rects"];
+        let got: Vec<Rect> = case
+            .snapshot
+            .text_runs()
+            .iter()
+            .map(|run| run_rect(&case.snapshot, run).unwrap())
+            .collect();
+        // [r: 0..4] lists div a, "abc", div b, "de", "fg" (the span's box is the same
+        // rect, listed once), "hi", div x.
+        let chrome: Vec<[f32; 4]> = [1, 3, 4, 5].map(|i| chrome_rect(&all[i])).into();
+        assert_eq!(got.len(), chrome.len());
+        for (r, c) in got.iter().zip(&chrome) {
+            assert!(
+                close(r.x, c[0])
+                    && close(r.y, c[1])
+                    && close(r.width, c[2])
+                    && close(r.height, c[3]),
+                "{r:?}, Chrome {c:?}"
+            );
+        }
     }
 
     #[test]

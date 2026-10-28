@@ -814,6 +814,11 @@ mod tests {
     }
 
     #[test]
+    fn absolute_boxes_count_only_inside_their_containing_block_like_chrome_156() {
+        assert_extents("scroll-extent-containing-blocks");
+    }
+
+    #[test]
     fn nested_clips_own_their_overflow_and_transforms_project_like_chrome_156() {
         assert_extents("scroll-extent-nested-clip-and-transform");
     }
@@ -822,6 +827,11 @@ mod tests {
     fn image_boxes_reach_the_scroll_extents_like_chrome_156() {
         assert_extents("scroll-extent-image");
         assert_viewport("scroll-extent-image");
+    }
+
+    #[test]
+    fn transformed_scrollers_and_children_project_their_extents_like_chrome_156() {
+        assert_extents("scroll-extent-transforms");
     }
 
     #[test]
@@ -855,6 +865,8 @@ mod tests {
             ("body-overflow-propagates", true),
             ("body-overflow-own-scroller", false),
             ("body-visible-not-a-scroller", false),
+            ("body-overflow-one-axis-propagates", true),
+            ("body-visible-stays", false),
         ] {
             let case = case(id);
             for want in case.reads("metrics") {
@@ -880,6 +892,22 @@ mod tests {
                     propagates && cid == "body",
                     "{id}: {cid}"
                 );
+                // The extents themselves (the embedder addresses a propagated body's and
+                // the root's scrolling through the viewport).
+                let got = if cid == "html" {
+                    viewport_metrics(&case.snapshot, &case.styles, source, [1280.0, 800.0])
+                } else {
+                    scroll_metrics(&case.snapshot, &case.styles, source)
+                }
+                .unwrap();
+                assert_eq!(
+                    [i64::from(got.width), i64::from(got.height)],
+                    [
+                        want["scrollWidth"].as_i64().unwrap(),
+                        want["scrollHeight"].as_i64().unwrap()
+                    ],
+                    "{id}: {cid} extents"
+                );
             }
         }
         assert_viewport("body-overflow-propagates");
@@ -889,8 +917,27 @@ mod tests {
         assert!(!is_root(&case.styles, SourceId(3)));
     }
 
+    /// miaskiewicz/turbo-dom#147: viewport overflow counts a block's inline-end margin
+    /// and a transformed box's untransformed rect; Chrome counts neither.
+    const VIEWPORT_GAPS: &[&str] = &[
+        "viewport-extent-block-margins",
+        "viewport-extent-float-margin",
+        "viewport-extent-transformed-flow",
+        "viewport-extent-transformed-absolute",
+    ];
+
+    #[test]
+    #[ignore = "turbo-dom#147: fails until the fix"]
+    fn viewport_extents_skip_block_margins_and_untransformed_boxes_like_chrome_156() {
+        for id in VIEWPORT_GAPS {
+            assert_viewport(id);
+        }
+    }
+
     #[test]
     fn viewport_extents_match_chrome_156() {
+        assert_viewport("viewport-extent-root-hidden");
+        assert_viewport("viewport-extent-inline-block-margin");
         assert_viewport("viewport-extent");
         assert_viewport("viewport-extent-fits");
         assert_viewport("viewport-extent-body-overflow-propagates");

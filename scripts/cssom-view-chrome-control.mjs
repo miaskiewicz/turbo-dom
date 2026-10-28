@@ -23,9 +23,9 @@
 //   viewport  true to read document.scrollingElement's extents;
 //   visibility cids whose checkVisibility() is read (index = flags: 1 opacity,
 //             2 visibility, 4 content-visibility:auto);
-//   carets    viewport points; each records the caret's parent cid, the text node's
-//             child index (null when the caret is in an element), the offset and the
-//             caret rect;
+//   carets    viewport points; each records the nearest [data-cid] around the caret, the
+//             child-index path from it to the caret's element, the text node's child
+//             index (null when the caret is in an element), the offset and the caret rect;
 //   ranges    {start, end}: [cid, child index or null, offset]; records getClientRects();
 //   intoView  {target, scroller, mode, block, inline, from}: mode 0 =
 //             scrollIntoView({block, inline}), 1/2 = scrollIntoViewIfNeeded(true/false);
@@ -142,6 +142,17 @@ const CASES = [
     metrics: ["s", "t"],
   },
   {
+    id: "scroll-extent-transforms",
+    html: DOC(
+      "",
+      `<div data-cid="m" class="s" style="overflow:auto;width:100px;height:60px;transform:matrix(1,0.5,0,2,10,5)">` +
+        `<div style="width:20px;height:20px;transform:translate(150px,90px)"></div></div>` +
+        `<div data-cid="b" class="s" style="overflow:auto;width:100px;height:60px">` +
+        `<div style="width:130px;height:90px;transform:translate(-50px,-40px)"></div></div>`,
+    ),
+    metrics: ["m", "b"],
+  },
+  {
     id: "scroll-extent-no-box",
     html: DOC(
       "",
@@ -171,6 +182,28 @@ const CASES = [
     ),
     viewport: true,
   },
+  // The root's own overflow belongs to the viewport and clips nothing.
+  { id: "viewport-extent-root-hidden", html: DOC("html{overflow:hidden}", BOX(2000, 900)), viewport: true },
+  // A block's inline-end margin and a transformed box's untransformed rect are not
+  // viewport overflow; an inline-block's margin and a block-end margin are
+  // (miaskiewicz/turbo-dom#147).
+  { id: "viewport-extent-block-margins", html: DOC("", BOX(1500, 900, "", "margin-right:20px;margin-bottom:30px")), viewport: true },
+  { id: "viewport-extent-float-margin", html: DOC("", BOX(1400, 10, "", "float:left;margin-right:30px")), viewport: true },
+  { id: "viewport-extent-inline-block-margin", html: DOC("", BOX(1400, 10, "", "display:inline-block;margin-right:30px")), viewport: true },
+  {
+    id: "viewport-extent-transformed-flow",
+    html: DOC("", '<div style="width:1600px;height:950px;transform:translate(-400px,-300px)"></div>'),
+    viewport: true,
+  },
+  {
+    id: "viewport-extent-transformed-absolute",
+    html: DOC(
+      "",
+      '<div style="position:absolute;top:900px;width:10px;height:100px;transform:translateY(-500px)"></div>' +
+        '<div style="position:absolute;left:1500px;width:100px;height:10px;transform:translateX(-500px)"></div>',
+    ),
+    viewport: true,
+  },
   {
     id: "viewport-extent-fits",
     html: DOC("", BOX(10, 10, "a")),
@@ -196,8 +229,22 @@ const CASES = [
   },
   {
     id: "body-visible-not-a-scroller",
-    html: DOC("html{overflow:hidden}", `<div data-cid="c" style="display:contents;overflow:auto">${BOX(10, 3000)}</div>`),
-    metrics: ["body", "c"],
+    html: DOC(
+      "html{overflow:hidden}",
+      `<div data-cid="c" style="display:contents;overflow:auto">${BOX(10, 3000)}</div>` +
+        `<div data-cid="one" class="s" style="overflow-x:scroll;overflow-y:clip;width:50px;height:50px">${BOX(80, 80)}</div>`,
+    ),
+    metrics: ["body", "c", "one"],
+  },
+  {
+    id: "body-overflow-one-axis-propagates",
+    html: DOC("body{overflow-x:clip}", BOX(2000, 10)),
+    metrics: ["body"],
+  },
+  {
+    id: "body-visible-stays",
+    html: DOC("", BOX(2000, 10)),
+    metrics: ["body"],
   },
   // scroll::scroll_translation: boxes move with every scrolled ancestor up to their
   // containing block; fixed boxes and their contents stay with the viewport.
@@ -210,9 +257,13 @@ const CASES = [
         `<div data-cid="z" class="s" style="overflow:auto;width:50px;height:50px">${BOX(100, 100, "zk")}</div></div>` +
         `<div data-cid="none" style="display:none"></div>` +
         `<div data-cid="fx" style="position:fixed;left:300px;top:10px;width:30px;height:30px">${BOX(10, 10, "fk")}</div>` +
-        `<div style="position:relative;display:contents"><div data-cid="a" style="position:absolute;left:500px;top:50px;width:10px;height:10px"></div></div>`,
+        `<div style="position:relative;display:contents"><div data-cid="a" style="position:absolute;left:500px;top:50px;width:10px;height:10px"></div></div>` +
+        `<div data-cid="rs" class="s" style="position:relative;overflow:auto;width:100px;height:100px;margin-left:600px">` +
+        `${BOX(300, 300)}<div data-cid="rsa" style="position:absolute;left:10px;top:20px;width:10px;height:10px"></div></div>` +
+        `<div data-cid="sk" class="s" style="overflow:auto;width:100px;height:100px;margin-left:800px;transform:matrix(1,0.5,0.25,2,0,0)">${BOX(300, 300, "skc")}</div>` +
+        `<div style="width:3000px;height:10px"></div>`,
     ),
-    scroll: { viewport: [0, 40], o: [15, 25], i: [7, 11], z: [0, 0] },
+    scroll: { viewport: [15, 40], o: [15, 25], i: [7, 11], z: [0, 0], rs: [5, 7], sk: [10, 20] },
   },
   {
     id: "translation-absolute-skips-static-scroller",
@@ -230,6 +281,20 @@ const CASES = [
       `<div data-cid="s" class="s" style="overflow:auto;width:100px;height:100px;margin:50px;transform:scale(2)">${BOX(300, 300, "k")}</div>`,
     ),
     scroll: { s: [10, 20] },
+  },
+  // scroll::contained: an absolute box counts toward the scroller only when its
+  // containing block is the scroller or inside it (a transform makes one).
+  {
+    id: "scroll-extent-containing-blocks",
+    html: DOC(
+      "",
+      `<div style="position:relative"><div data-cid="st" class="s" style="overflow:auto;width:100px;height:60px">` +
+        `<div style="position:absolute;left:300px;top:0;width:20px;height:20px"></div></div></div>` +
+        `<div data-cid="tf" class="s" style="overflow:auto;width:100px;height:60px;transform:translateX(0)">` +
+        `<div style="position:absolute;left:300px;top:0;width:20px;height:20px"></div></div>` +
+        `<div data-cid="ab" class="s" style="position:absolute;left:0;top:300px;overflow:auto;width:100px;height:60px">${BOX(250, 150)}</div>`,
+    ),
+    metrics: ["st", "tf", "ab"],
   },
   // scroll::alignment + scroll::expose: the offsets scrollIntoView/IfNeeded leave.
   {
@@ -263,6 +328,8 @@ const CASES = [
       { target: "part", scroller: "s", mode: 1, block: 3, inline: 3, from: [0, 0] },
       { target: "part", scroller: "s", mode: 2, block: 3, inline: 3, from: [0, 0] },
       { target: "part", scroller: "s", mode: 0, block: 3, inline: 3, from: [0, 0] },
+      { target: "big", scroller: "s", mode: 0, block: 3, inline: 3, from: [0, 700] },
+      { target: "t", scroller: "s", mode: 0, block: 3, inline: 3, from: [3, 5] },
       { target: "frac", scroller: "s", mode: 0, block: 0, inline: 0, from: [0, 0] },
       { target: "frac", scroller: "s", mode: 0, block: 2, inline: 2, from: [0, 0] },
     ],
@@ -274,7 +341,7 @@ const CASES = [
     html: DOC(
       "",
       `<div data-cid="o" style="opacity:0">${BOX(10, 10, "oc")}</div>` +
-        `<div data-cid="op" style="opacity:0%"></div><div data-cid="oh" style="opacity:0.5">${BOX(10, 10, "ohc")}</div>` +
+        `<div data-cid="op" style="opacity:0%"></div><div data-cid="o100" style="opacity:100%"></div><div data-cid="oh" style="opacity:0.5">${BOX(10, 10, "ohc")}</div>` +
         `<div data-cid="v" style="visibility:hidden">${BOX(10, 10, "vc")}${BOX(10, 10, "vv", "visibility:visible")}</div>` +
         `<div data-cid="cl" style="visibility:collapse"></div>` +
         `<div data-cid="ch" style="content-visibility:hidden;height:10px">${BOX(10, 10, "chc")}</div>` +
@@ -282,7 +349,7 @@ const CASES = [
         `<div style="height:3000px"></div>` +
         `<div data-cid="far" style="content-visibility:auto;height:10px">${BOX(10, 10, "farc")}</div>`,
     ),
-    visibility: ["o", "oc", "op", "oh", "ohc", "v", "vc", "vv", "cl", "ch", "chc", "ca", "cac", "far", "farc"],
+    visibility: ["o", "oc", "op", "o100", "oh", "ohc", "v", "vc", "vv", "cl", "ch", "chc", "ca", "cac", "far", "farc"],
   },
   {
     id: "check-visibility-scrolled-relevance",
@@ -306,6 +373,8 @@ const CASES = [
     ),
     scroll: { sc: [30, 0] },
     carets: [
+      [5, 13],
+      [5, 17],
       [0, 0],
       [3, 5],
       [14, 5],
@@ -315,6 +384,8 @@ const CASES = [
       [45, 25],
       [52, 25],
       [100, 25],
+      [5, 75],
+      [40, 75],
       [5, 42],
       [30, 42],
       [100, 42],
@@ -421,11 +492,14 @@ for (const testCase of CASES) {
         const node = caret.offsetNode;
         const text = node.nodeType === Node.TEXT_NODE;
         const owner = text ? node.parentElement : node;
+        const anchor = owner.closest("[data-cid]");
+        const path = [];
+        for (let el = owner; el !== anchor; el = el.parentNode) path.unshift([...el.parentNode.childNodes].indexOf(el));
         return {
           x,
           y,
-          cid: owner.closest("[data-cid]")?.dataset.cid ?? null,
-          owner: owner.localName,
+          cid: anchor?.dataset.cid ?? null,
+          path,
           child: text ? [...owner.childNodes].indexOf(node) : null,
           offset: caret.offset,
           rect: rect(caret.getClientRect()),
