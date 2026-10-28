@@ -430,3 +430,27 @@ fn light_membership_and_composed_containment() {
         assert!(!composed_contains_node(scope, foreign, body));
     });
 }
+
+/// A host submission handler that throws while a click submits a form: the error is
+/// reported to the window (as an uncaught exception would be) and the click completes.
+#[test]
+fn throwing_submission_handler_is_reported() {
+    with_page(
+        "<!doctype html><form id=f action=/go><button id=b>go</button></form>",
+        |scope| {
+            let handler = v8::Local::<v8::Function>::try_from(eval(
+                scope,
+                "(operation => { if (operation === 'submit') throw new RangeError('host handler'); return true; })",
+            ))
+            .unwrap();
+            assert!(install_form_submission_handler(scope, handler));
+            assert_eq!(
+                json(
+                    scope,
+                    "(() => { const seen = []; window.onerror = (message, source, line, column, error) => { seen.push(error && error.message); return true; }; document.getElementById('f').addEventListener('submit', () => seen.push('submit')); document.getElementById('b').click(); window.onerror = null; return seen; })()"
+                ),
+                r#"["submit","host handler"]"#
+            );
+        },
+    );
+}

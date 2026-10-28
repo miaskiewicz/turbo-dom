@@ -1169,6 +1169,45 @@ fn wrap<'s>(scope: &mut v8::PinScope<'s, '_>, handle: Handle) -> v8::Local<'s, v
     }
     object
 }
+#[cfg(test)]
+thread_local! {
+    /// Test-only: the named checkpoint at which `termination_checkpoint` terminates execution,
+    /// and where the interrupt lands: `Some(true)` in a nested call (the enclosing TryCatch
+    /// sees an active termination it did not catch), `Some(false)` directly under the
+    /// enclosing TryCatch, `None` not yet (the next guest call meets it).
+    pub(super) static TERMINATE_AT: std::cell::Cell<Option<(&'static str, Option<bool>)>> =
+        const { std::cell::Cell::new(None) };
+}
+
+/// Test-only deterministic watchdog: at the checkpoint a test armed, terminate execution and
+/// let the interrupt land in guest code, as an embedder's watchdog does mid-call.
+#[cfg(test)]
+fn termination_checkpoint(scope: &mut v8::PinScope, name: &'static str) {
+    let Some((_, lands)) = TERMINATE_AT
+        .with(|at| at.get())
+        .filter(|(at, _)| *at == name)
+    else {
+        return;
+    };
+    TERMINATE_AT.with(|at| at.set(None));
+    scope.terminate_execution();
+    let Some(nested) = lands else {
+        return;
+    };
+    let code = v8::String::new(scope, "(function () { return 0; })()").unwrap();
+    if nested {
+        v8::tc_scope!(let scope, scope);
+        if let Some(script) = v8::Script::compile(scope, code, None) {
+            script.run(scope);
+        }
+    } else if let Some(script) = v8::Script::compile(scope, code, None) {
+        script.run(scope);
+    }
+}
+#[cfg(not(test))]
+#[inline(always)]
+fn termination_checkpoint(_scope: &mut v8::PinScope, _name: &'static str) {}
+
 fn wrap_inner<'s>(scope: &mut v8::PinScope<'s, '_>, handle: Handle) -> v8::Local<'s, v8::Object> {
     script_state::observe(handle);
     if scope.is_execution_terminating() {
@@ -1194,6 +1233,7 @@ fn wrap_inner<'s>(scope: &mut v8::PinScope<'s, '_>, handle: Handle) -> v8::Local
     let scope = &mut v8::ContextScope::new(scope, context);
     let tmpl_g = DOM.with(|d| d.borrow().as_ref().unwrap().el_template.clone());
     let tmpl = dom_ownership::local(scope, &tmpl_g);
+    termination_checkpoint(scope, "wrap:instance");
     let Some(obj) = tmpl.new_instance(scope) else {
         // Preserve the pending guest exception/termination without a Rust panic.
         let context = scope.get_current_context();
@@ -1239,6 +1279,7 @@ fn wrap_inner<'s>(scope: &mut v8::PinScope<'s, '_>, handle: Handle) -> v8::Local
             }
         }
     }
+    termination_checkpoint(scope, "wrap:cache");
     if scope.is_execution_terminating() {
         return obj;
     }
@@ -1252,6 +1293,7 @@ fn wrap_inner<'s>(scope: &mut v8::PinScope<'s, '_>, handle: Handle) -> v8::Local
     // Projection runs after caching, since accessors such as ownerDocument and
     // childNodes may synchronously wrap this node again.
     if let Some(function) = projector {
+        termination_checkpoint(scope, "wrap:project");
         let undefined = v8::undefined(scope);
         if function
             .call(scope, undefined.into(), &[obj.into()])
@@ -5786,6 +5828,7 @@ fn ownership_callback<'s, 'i, F>(
         args.this(),
         (0..args.length()).map(|index| args.get(index)),
     );
+    termination_checkpoint(scope, "method:pinned");
     if scope.has_terminated() {
         scope.rethrow();
         return;
@@ -5795,6 +5838,7 @@ fn ownership_callback<'s, 'i, F>(
     }
     let reactions = custom_elements::reactions(scope);
     F::get()(scope, args, rv);
+    termination_checkpoint(scope, "method:called");
     if scope.has_terminated() {
         scope.rethrow();
         return;
@@ -5808,11 +5852,13 @@ fn ownership_callback<'s, 'i, F>(
     }
     mutation_observers::flush(scope);
     reactions.flush(scope);
+    termination_checkpoint(scope, "method:flushed");
     if scope.has_terminated() || scope.is_execution_terminating() {
         scope.rethrow();
         return;
     }
     dom_ownership::reconcile_after_call(scope, &owners);
+    termination_checkpoint(scope, "method:reconciled");
     if scope.has_terminated() {
         scope.rethrow();
         return;
@@ -5907,6 +5953,7 @@ fn ownership_setter<'s, 'i, S>(
     let caught = std::pin::pin!(v8::TryCatch::new(scope));
     let scope = &mut caught.init();
     let owners = dom_ownership::pin_callback_owners(scope, args.holder(), [value]);
+    termination_checkpoint(scope, "setter:pinned");
     if scope.has_terminated() {
         scope.rethrow();
         return;
@@ -5918,6 +5965,7 @@ fn ownership_setter<'s, 'i, S>(
     // custom element reactions run when the setter returns, element by element (turbo-dom#43).
     let reactions = custom_elements::reactions(scope);
     S::get()(scope, name, value, args, rv);
+    termination_checkpoint(scope, "setter:called");
     if scope.has_terminated() {
         scope.rethrow();
         return;
@@ -5931,11 +5979,13 @@ fn ownership_setter<'s, 'i, S>(
     }
     mutation_observers::flush(scope);
     reactions.flush(scope);
+    termination_checkpoint(scope, "setter:flushed");
     if scope.has_terminated() || scope.is_execution_terminating() {
         scope.rethrow();
         return;
     }
     dom_ownership::reconcile_after_call(scope, &owners);
+    termination_checkpoint(scope, "setter:reconciled");
     if scope.has_terminated() {
         scope.rethrow();
         return;
