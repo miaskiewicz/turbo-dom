@@ -17,6 +17,13 @@ on:
   pull_request:
     branches: [main]
   workflow_call:
+    inputs:
+      darwin:
+        # macOS runners are scarce, so PR / push CI runs on Linux (and Windows) only. The
+        # release (publish.yml) passes darwin: true to add the aarch64-apple-darwin builds
+        # and the macOS layout / raster / v8 jobs its published binaries need.
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -38,12 +45,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - { os: ubuntu-latest,  target: x86_64-unknown-linux-gnu }
-          - { os: ubuntu-latest,  target: x86_64-unknown-linux-musl }
-          - { os: ubuntu-24.04-arm, target: aarch64-unknown-linux-gnu }
-          - { os: macos-latest,   target: aarch64-apple-darwin }
-          - { os: windows-latest, target: x86_64-pc-windows-msvc }
+        # aarch64-apple-darwin only in the release run (inputs.darwin, see `on`).
+        include: ${{ fromJSON(inputs.darwin && '[{"os":"ubuntu-latest","target":"x86_64-unknown-linux-gnu"},{"os":"ubuntu-latest","target":"x86_64-unknown-linux-musl"},{"os":"ubuntu-24.04-arm","target":"aarch64-unknown-linux-gnu"},{"os":"macos-latest","target":"aarch64-apple-darwin"},{"os":"windows-latest","target":"x86_64-pc-windows-msvc"}]' || '[{"os":"ubuntu-latest","target":"x86_64-unknown-linux-gnu"},{"os":"ubuntu-latest","target":"x86_64-unknown-linux-musl"},{"os":"ubuntu-24.04-arm","target":"aarch64-unknown-linux-gnu"},{"os":"windows-latest","target":"x86_64-pc-windows-msvc"}]') }}
     steps:
       - uses: actions/checkout@v4
 
@@ -170,7 +173,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: ${{ fromJSON(inputs.darwin && '["ubuntu-latest","macos-latest"]' || '["ubuntu-latest"]') }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -217,7 +220,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: ${{ fromJSON(inputs.darwin && '["ubuntu-latest","macos-latest"]' || '["ubuntu-latest"]') }}
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@master
@@ -256,11 +259,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        platform:
-          - { os: ubuntu-latest,    target: x86_64-unknown-linux-gnu }
-          - { os: ubuntu-24.04-arm, target: aarch64-unknown-linux-gnu }
-          - { os: macos-latest,     target: aarch64-apple-darwin }
-          - { os: windows-latest,   target: x86_64-pc-windows-msvc }
+        platform: ${{ fromJSON(inputs.darwin && '[{"os":"ubuntu-latest","target":"x86_64-unknown-linux-gnu"},{"os":"ubuntu-24.04-arm","target":"aarch64-unknown-linux-gnu"},{"os":"macos-latest","target":"aarch64-apple-darwin"},{"os":"windows-latest","target":"x86_64-pc-windows-msvc"}]' || '[{"os":"ubuntu-latest","target":"x86_64-unknown-linux-gnu"},{"os":"ubuntu-24.04-arm","target":"aarch64-unknown-linux-gnu"},{"os":"windows-latest","target":"x86_64-pc-windows-msvc"}]') }}
         variant: [default, simdutf]
     defaults:
       run:
@@ -475,7 +474,7 @@ jobs:
   # the rtdom_core_chrome156.json control through both the Node and Soa outputs).
   coverage:
     name: coverage (${{ matrix.label || matrix.crate }} >= ${{ matrix.floor }}%)
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
@@ -506,7 +505,7 @@ jobs:
         run: |
           mkdir -p "$RUNNER_TEMP/rusty_v8"
           curl -fsSL --retry 3 -o "$RUNNER_TEMP/rusty_v8/v8.a.gz" \
-            "https://github.com/denoland/rusty_v8/releases/download/v${RUSTY_V8_VERSION}/librusty_v8_release_aarch64-apple-darwin.a.gz"
+            "https://github.com/denoland/rusty_v8/releases/download/v${RUSTY_V8_VERSION}/librusty_v8_release_x86_64-unknown-linux-gnu.a.gz"
           gunzip -f "$RUNNER_TEMP/rusty_v8/v8.a.gz"
           echo "RUSTY_V8_ARCHIVE=$RUNNER_TEMP/rusty_v8/v8.a" >> "$GITHUB_ENV"
       - name: tarpaulin ${{ matrix.label || matrix.crate }} (fail under ${{ matrix.floor }}%)
