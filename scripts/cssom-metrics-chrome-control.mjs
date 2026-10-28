@@ -94,6 +94,11 @@ const CASES = [
     id: "offset-positioned-inline-parent",
     html: DOC(TEXT, `<p style="margin:0">x <span data-cid="s" style="position:relative;border-left:3px solid;padding-left:4px">ab<b data-cid="b" style="display:inline-block;width:10px;height:10px"></b></span></p>`),
   },
+  {
+    // `transform` does not apply to a non-replaced inline: it is no offsetParent.
+    id: "offset-transformed-inline-is-not-a-parent",
+    html: DOC(TEXT, `<p style="margin:0">x <span data-cid="s" style="transform:translateX(5px)">ab<b data-cid="b" style="display:inline-block;width:10px;height:10px"></b></span></p>`),
+  },
   // offsetWidth/Height and client* of boxes.
   {
     id: "client-metrics-boxes",
@@ -125,12 +130,29 @@ const CASES = [
   {
     id: "hits-boxes-and-outside-viewport",
     html: DOC("body{margin:0}", `${BOX(100, 50, "a")}<div data-cid="b" style="position:absolute;left:50px;top:20px;width:100px;height:60px"></div>`),
-    hits: [[10, 10], [60, 30], [120, 70], [500, 500], [-1, 10], [10, -1], [1280, 10], [10, 800], [1279, 799]],
+    hits: [[10, 10], [60, 30], [120, 70], [500, 500], [0, 0], [0, 10], [10, 0], [-1, 10], [10, -1], [1280, 10], [10, 800], [1279, 799]],
   },
   {
     id: "hits-text",
     html: DOC(TEXT, `<p data-cid="p" style="margin:0">Hello <span data-cid="s">brave new</span> world</p>`),
     hits: [[3, 9], [60, 9], [300, 9], [60, 40]],
+  },
+  {
+    // Text hits its inline ancestors up to the first non-inline one (whose box hits).
+    id: "hits-nested-inline-text",
+    html: DOC(TEXT, `<p data-cid="p" style="margin:0"><span data-cid="o">a <span data-cid="i">bold</span></span> <span data-cid="ib" style="display:inline-block;width:30px;height:10px"></span></p>`),
+    hits: [[20, 9], [3, 9], [60, 9]],
+  },
+  {
+    // miaskiewicz/turbo-dom#142: an inline-block's baseline is its last line box's.
+    id: "inline-block-text-baseline",
+    html: DOC(TEXT, `<p data-cid="p" style="margin:0"><span data-cid="o">a</span> <span data-cid="ib" style="display:inline-block"><span data-cid="t">box</span></span></p>`),
+    hits: [[3, 9], [12, 9], [30, 9]],
+  },
+  {
+    id: "hits-hidden-text",
+    html: DOC(TEXT, `<p data-cid="p" style="margin:0"><span data-cid="s" style="visibility:hidden">Hello</span> <span data-cid="v">world</span></p>`),
+    hits: [[10, 9], [50, 9]],
   },
   {
     id: "hits-overflow-clip",

@@ -187,6 +187,17 @@ mod tests {
         let deep = |divs: usize| Tree::parse(&"<div>".repeat(divs));
         assert!(Composition::scopes(&deep(254)).is_ok());
         assert_eq!(Composition::scopes(&deep(255)).unwrap_err(), BUDGET);
+        // A shadow root is one level below its host: an (empty) one on the deepest
+        // div of the deepest tree that fits is too deep.
+        let mut tree = deep(254);
+        let deepest = tree
+            .handles()
+            .filter(|&h| tree.local_name(h) == Some("div"))
+            .last()
+            .unwrap();
+        assert!(Composition::scopes(&tree).is_ok());
+        tree.attach_shadow(deepest);
+        assert_eq!(Composition::scopes(&tree).unwrap_err(), BUDGET);
         // 50,000 nodes fit; the 50,001st does not (document, html, head, body + <i>s).
         let wide = |n: usize| Tree::parse(&"<i></i>".repeat(n));
         assert_eq!(

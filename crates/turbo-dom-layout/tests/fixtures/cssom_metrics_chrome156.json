@@ -917,6 +917,72 @@
    ]
   },
   {
+   "id": "offset-transformed-inline-is-not-a-parent",
+   "html": "<!doctype html><style>body{margin:8px;font-family:\"Liberation Serif\";font-size:16px}</style><p style=\"margin:0\">x <span data-cid=\"s\" style=\"transform:translateX(5px)\">ab<b data-cid=\"b\" style=\"display:inline-block;width:10px;height:10px\"></b></span></p>",
+   "boxes": [
+    {
+     "cid": "s",
+     "offset": [
+      20,
+      8,
+      25,
+      17
+     ],
+     "parent": "body",
+     "client": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "rects": [
+      [
+       20,
+       8,
+       25.109375,
+       17
+      ]
+     ],
+     "bounds": [
+      20,
+      8,
+      25.109375,
+      17
+     ]
+    },
+    {
+     "cid": "b",
+     "offset": [
+      35,
+      12,
+      10,
+      10
+     ],
+     "parent": "body",
+     "client": [
+      0,
+      0,
+      10,
+      10
+     ],
+     "rects": [
+      [
+       35.109375,
+       12,
+       10,
+       10
+      ]
+     ],
+     "bounds": [
+      35.109375,
+      12,
+      10,
+      10
+     ]
+    }
+   ]
+  },
+  {
    "id": "client-metrics-boxes",
    "html": "<!doctype html><style>body{margin:0}</style><div data-cid=\"a\" style=\"width:50px;height:20px;padding:3px 5px;border-width:1px 2px 3px 4px;border-style:solid\"></div><div data-cid=\"b\" style=\"box-sizing:border-box;width:40px;height:30px;padding:2px;border:6px solid\"></div>",
    "boxes": [
@@ -1497,6 +1563,33 @@
      ]
     },
     {
+     "x": 0,
+     "y": 0,
+     "hits": [
+      "a",
+      "body",
+      "html"
+     ]
+    },
+    {
+     "x": 0,
+     "y": 10,
+     "hits": [
+      "a",
+      "body",
+      "html"
+     ]
+    },
+    {
+     "x": 10,
+     "y": 0,
+     "hits": [
+      "a",
+      "body",
+      "html"
+     ]
+    },
+    {
      "x": -1,
      "y": 10,
      "hits": []
@@ -1621,6 +1714,440 @@
      "x": 60,
      "y": 40,
      "hits": [
+      "html"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "hits-nested-inline-text",
+   "html": "<!doctype html><style>body{margin:8px;font-family:\"Liberation Serif\";font-size:16px}</style><p data-cid=\"p\" style=\"margin:0\"><span data-cid=\"o\">a <span data-cid=\"i\">bold</span></span> <span data-cid=\"ib\" style=\"display:inline-block;width:30px;height:10px\"></span></p>",
+   "boxes": [
+    {
+     "cid": "p",
+     "offset": [
+      8,
+      8,
+      1264,
+      18
+     ],
+     "parent": "body",
+     "client": [
+      0,
+      0,
+      1264,
+      18
+     ],
+     "rects": [
+      [
+       8,
+       8,
+       1264,
+       18
+      ]
+     ],
+     "bounds": [
+      8,
+      8,
+      1264,
+      18
+     ]
+    },
+    {
+     "cid": "o",
+     "offset": [
+      8,
+      8,
+      40,
+      17
+     ],
+     "parent": "body",
+     "client": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "rects": [
+      [
+       8,
+       8,
+       11.109375,
+       17
+      ],
+      [
+       19.109375,
+       8,
+       28.453125,
+       17
+      ]
+     ],
+     "bounds": [
+      8,
+      8,
+      39.5625,
+      17
+     ]
+    },
+    {
+     "cid": "i",
+     "offset": [
+      19,
+      8,
+      28,
+      17
+     ],
+     "parent": "body",
+     "client": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "rects": [
+      [
+       19.109375,
+       8,
+       28.453125,
+       17
+      ]
+     ],
+     "bounds": [
+      19.109375,
+      8,
+      28.453125,
+      17
+     ]
+    },
+    {
+     "cid": "ib",
+     "offset": [
+      52,
+      12,
+      30,
+      10
+     ],
+     "parent": "body",
+     "client": [
+      0,
+      0,
+      30,
+      10
+     ],
+     "rects": [
+      [
+       51.5625,
+       12,
+       30,
+       10
+      ]
+     ],
+     "bounds": [
+      51.5625,
+      12,
+      30,
+      10
+     ]
+    }
+   ],
+   "hits": [
+    {
+     "x": 20,
+     "y": 9,
+     "hits": [
+      "i",
+      "o",
+      "p",
+      "body",
+      "html"
+     ]
+    },
+    {
+     "x": 3,
+     "y": 9,
+     "hits": [
+      "html"
+     ]
+    },
+    {
+     "x": 60,
+     "y": 9,
+     "hits": [
+      "p",
+      "body",
+      "html"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "inline-block-text-baseline",
+   "html": "<!doctype html><style>body{margin:8px;font-family:\"Liberation Serif\";font-size:16px}</style><p data-cid=\"p\" style=\"margin:0\"><span data-cid=\"o\">a</span> <span data-cid=\"ib\" style=\"display:inline-block\"><span data-cid=\"t\">box</span></span></p>",
+   "boxes": [
+    {
+     "cid": "p",
+     "offset": [
+      8,
+      8,
+      1264,
+      18
+     ],
+     "parent": "body",
+     "client": [
+      0,
+      0,
+      1264,
+      18
+     ],
+     "rects": [
+      [
+       8,
+       8,
+       1264,
+       18
+      ]
+     ],
+     "bounds": [
+      8,
+      8,
+      1264,
+      18
+     ]
+    },
+    {
+     "cid": "o",
+     "offset": [
+      8,
+      8,
+      7,
+      17
+     ],
+     "parent": "body",
+     "client": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "rects": [
+      [
+       8,
+       8,
+       7.109375,
+       17
+      ]
+     ],
+     "bounds": [
+      8,
+      8,
+      7.109375,
+      17
+     ]
+    },
+    {
+     "cid": "ib",
+     "offset": [
+      19,
+      8,
+      24,
+      18
+     ],
+     "parent": "body",
+     "client": [
+      0,
+      0,
+      24,
+      18
+     ],
+     "rects": [
+      [
+       19.109375,
+       8,
+       24,
+       18
+      ]
+     ],
+     "bounds": [
+      19.109375,
+      8,
+      24,
+      18
+     ]
+    },
+    {
+     "cid": "t",
+     "offset": [
+      19,
+      8,
+      24,
+      17
+     ],
+     "parent": "body",
+     "client": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "rects": [
+      [
+       19.109375,
+       8,
+       24,
+       17
+      ]
+     ],
+     "bounds": [
+      19.109375,
+      8,
+      24,
+      17
+     ]
+    }
+   ],
+   "hits": [
+    {
+     "x": 3,
+     "y": 9,
+     "hits": [
+      "html"
+     ]
+    },
+    {
+     "x": 12,
+     "y": 9,
+     "hits": [
+      "o",
+      "p",
+      "body",
+      "html"
+     ]
+    },
+    {
+     "x": 30,
+     "y": 9,
+     "hits": [
+      "t",
+      "ib",
+      "p",
+      "body",
+      "html"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "hits-hidden-text",
+   "html": "<!doctype html><style>body{margin:8px;font-family:\"Liberation Serif\";font-size:16px}</style><p data-cid=\"p\" style=\"margin:0\"><span data-cid=\"s\" style=\"visibility:hidden\">Hello</span> <span data-cid=\"v\">world</span></p>",
+   "boxes": [
+    {
+     "cid": "p",
+     "offset": [
+      8,
+      8,
+      1264,
+      18
+     ],
+     "parent": "body",
+     "client": [
+      0,
+      0,
+      1264,
+      18
+     ],
+     "rects": [
+      [
+       8,
+       8,
+       1264,
+       18
+      ]
+     ],
+     "bounds": [
+      8,
+      8,
+      1264,
+      18
+     ]
+    },
+    {
+     "cid": "s",
+     "offset": [
+      8,
+      8,
+      36,
+      17
+     ],
+     "parent": "body",
+     "client": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "rects": [
+      [
+       8,
+       8,
+       35.546875,
+       17
+      ]
+     ],
+     "bounds": [
+      8,
+      8,
+      35.546875,
+      17
+     ]
+    },
+    {
+     "cid": "v",
+     "offset": [
+      48,
+      8,
+      37,
+      17
+     ],
+     "parent": "body",
+     "client": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "rects": [
+      [
+       47.546875,
+       8,
+       37.328125,
+       17
+      ]
+     ],
+     "bounds": [
+      47.546875,
+      8,
+      37.328125,
+      17
+     ]
+    }
+   ],
+   "hits": [
+    {
+     "x": 10,
+     "y": 9,
+     "hits": [
+      "p",
+      "body",
+      "html"
+     ]
+    },
+    {
+     "x": 50,
+     "y": 9,
+     "hits": [
+      "v",
+      "p",
+      "body",
       "html"
      ]
     }

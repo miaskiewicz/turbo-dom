@@ -145,7 +145,10 @@ fn reads(case: &Value) -> (Vec<String>, Vec<String>) {
         // answer for a flattened inline): its bounds and offset size agree with
         // Chrome's (the seam unions a line's runs into one client rect per line, where
         // Chrome keeps one per inline box fragment).
-        if name.starts_with("inline-") && tree.local_name(handle) == Some("span") {
+        if name.starts_with("inline-")
+            && tree.local_name(handle) == Some("span")
+            && styles[&id].style.get("display") == Some("inline")
+        {
             let offset = ints(&want["offset"]);
             got.push(format!(
                 "{label} seam {}",
@@ -207,8 +210,11 @@ fn reads(case: &Value) -> (Vec<String>, Vec<String>) {
     (got, chrome)
 }
 
-/// miaskiewicz/turbo-dom#128: a list marker's (source-less) text run hits its list item.
-const MARKER_CASES: &[&str] = &["hits-list-marker"];
+/// Cases of open bugs, held out of [`element_metrics_and_hits_match_chrome_156`] and
+/// asserted by [`held_out_cases_match_chrome_156`] (`#[ignore]`d until the fixes land):
+/// miaskiewicz/turbo-dom#128 (a list marker hits its list item) and #142 (text beside an
+/// inline-block holding text sits on the wrong baseline).
+const HELD_OUT: &[&str] = &["hits-list-marker", "inline-block-text-baseline"];
 
 /// The reads of every fixture case `select` picks, compared with Chrome's.
 fn assert_cases_match(select: impl Fn(&str) -> bool) {
@@ -233,13 +239,13 @@ fn assert_cases_match(select: impl Fn(&str) -> bool) {
 #[cfg(feature = "bundled-fonts")]
 #[test]
 fn element_metrics_and_hits_match_chrome_156() {
-    assert_cases_match(|id| !MARKER_CASES.contains(&id));
+    assert_cases_match(|id| !HELD_OUT.contains(&id));
 }
 
 #[test]
-#[ignore = "miaskiewicz/turbo-dom#128: fails until the fix"]
-fn list_markers_hit_their_list_item_like_chrome_156() {
-    assert_cases_match(|id| MARKER_CASES.contains(&id));
+#[ignore = "miaskiewicz/turbo-dom#128, #142: fail until the fixes"]
+fn held_out_cases_match_chrome_156() {
+    assert_cases_match(|id| HELD_OUT.contains(&id));
 }
 
 #[test]
@@ -247,5 +253,5 @@ fn the_control_covers_every_read() {
     let fixture: Value = serde_json::from_str(FIXTURE).unwrap();
     let cases = fixture["cases"].as_array().unwrap();
     let reads: usize = cases.iter().map(|case| reads(case).1.len()).sum();
-    assert_eq!((cases.len(), reads), (25, 162));
+    assert_eq!((cases.len(), reads), (29, 201));
 }
