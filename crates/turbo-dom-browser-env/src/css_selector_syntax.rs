@@ -299,17 +299,14 @@ fn list<'i>(
             Err(_) if forgiving => state.supported = false,
             Err(error) => return Err(error),
         }
-        match input.next() {
-            Ok(Token::Comma) => {}
-            Ok(_) => return fail(input),
-            Err(_) => break,
+        // parse_until_before stops before the next comma or at the end, so the next token is
+        // the comma (an unforgiving list returned its first failure, so it is never empty).
+        if input.next().is_err() {
+            break;
         }
     }
-    if forgiving && items.is_empty() {
+    if items.is_empty() {
         state.supported = false;
-    }
-    if !forgiving && items.is_empty() {
-        return fail(input);
     }
     Ok(items)
 }
