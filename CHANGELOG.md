@@ -110,6 +110,8 @@ An invalid `font` value contributes nothing.
 ### Fixed — turbo-dom-layout CSSOM-View scroll/caret reads follow Chrome 156 (miaskiewicz/turbo-dom#124, #125, #126)
 - `cssom_view::scroll::overflow` keeps `clip` beside a scrollable axis (`overflow:auto;
   overflow-y:clip` computes auto/clip and the clip axis does not scroll; it was `hidden`).
+- `cssom_view::scroll::scroll_metrics`: that clip axis of a scroll container still counts
+  in-flow end margins and the scroller's end padding in scrollWidth/Height (#180).
 - `cssom_view::scroll::expose`: `scrollIntoView({block/inline: 'center'})` centers a target
   larger than the scrollport (it kept Chromium's old no-scroll special case).
 - `cssom_view::text::caret` lands in `visibility: hidden` text like `caretPositionFromPoint`.

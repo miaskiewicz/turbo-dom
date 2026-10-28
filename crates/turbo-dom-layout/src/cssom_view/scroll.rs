@@ -154,6 +154,7 @@ pub fn scroll_metrics(
                 .fold(f32::NEG_INFINITY, f32::max),
         ]
     };
+    let scroll_container = permits_scroll(x) || permits_scroll(y);
     let mut right = padding.x + padding.width;
     let mut bottom = padding.y + padding.height;
     for &index in &source.descendant_fragment_indices {
@@ -210,15 +211,16 @@ pub fn scroll_metrics(
         if !blocked_y {
             bottom = bottom.max(transformed[1]).max(untransformed[1]);
         }
-        // Flow content's ending padding/margin contributes to scroll containers,
-        // while out-of-flow boxes and transforms contribute only their edges.
+        // Flow content's ending padding/margin contributes to scroll containers (on
+        // both axes, a clip axis included: miaskiewicz/turbo-dom#180), while
+        // out-of-flow boxes and transforms contribute only their edges.
         if let Some(metrics) = fragment.used_box {
             if metrics.position != Position::Absolute && metrics.position != Position::Fixed {
-                if !blocked_x && permits_scroll(x) {
+                if !blocked_x && scroll_container {
                     right =
                         right.max(rect.x + rect.width + metrics.margin.right + used.padding.right);
                 }
-                if !blocked_y && permits_scroll(y) {
+                if !blocked_y && scroll_container {
                     bottom = bottom
                         .max(rect.y + rect.height + metrics.margin.bottom + used.padding.bottom);
                 }
