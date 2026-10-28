@@ -34,7 +34,7 @@ fn guard_edges_match_chrome156() {
 }
 
 /// Run `source` (an expression) in a fresh page and return its JSON serialization.
-fn page_json(html: &str, source: &str) -> String {
+pub(super) fn page_json(html: &str, source: &str) -> String {
     crate::browser_env::tests::init_v8();
     let isolate = &mut v8::Isolate::new(Default::default());
     v8::scope!(let scope, isolate);
