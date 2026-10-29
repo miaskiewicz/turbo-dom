@@ -1703,14 +1703,16 @@ impl Tree {
         }
     }
 
-    fn fragment_insertion_would_cycle(&self, parent: Handle, fragment: Handle) -> bool {
-        let children = self.children(fragment);
+    /// DOM pre-insert validity step 2: `node` is a host-including inclusive ancestor of
+    /// `parent`, so inserting it there would build a parent cycle (Chrome:
+    /// `HierarchyRequestError`).
+    fn is_inclusive_ancestor(&self, node: Handle, parent: Handle) -> bool {
         let mut ancestor = Some(parent);
-        while let Some(node) = ancestor {
-            if children.contains(&node) {
+        while let Some(n) = ancestor {
+            if n == node {
                 return true;
             }
-            ancestor = self.parent(node);
+            ancestor = self.parent(n).or_else(|| self.shadow_host(n));
         }
         false
     }
@@ -1718,13 +1720,11 @@ impl Tree {
     pub fn append_child(&mut self, parent: Handle, child: Handle) {
         if self.node_type(child) == NodeType::Attribute
             || self.node_type(parent) == NodeType::Attribute
+            || self.is_inclusive_ancestor(child, parent)
         {
             return;
         }
         if self.node_type(child) == NodeType::Fragment {
-            if parent == child || self.fragment_insertion_would_cycle(parent, child) {
-                return;
-            }
             for node in self.children(child) {
                 self.append_child(parent, node);
             }
@@ -1748,18 +1748,22 @@ impl Tree {
     pub fn insert_before(&mut self, parent: Handle, child: Handle, reference: Option<Handle>) {
         if self.node_type(child) == NodeType::Attribute
             || self.node_type(parent) == NodeType::Attribute
+            || self.is_inclusive_ancestor(child, parent)
         {
             return;
         }
         if self.node_type(child) == NodeType::Fragment {
-            if parent == child || self.fragment_insertion_would_cycle(parent, child) {
-                return;
-            }
             for node in self.children(child) {
                 self.insert_before(parent, node, reference);
             }
             return;
         }
+        // A node inserted before itself goes before its next sibling (DOM pre-insert).
+        let reference = if reference == Some(child) {
+            self.next_sibling(child)
+        } else {
+            reference
+        };
         self.detach(child);
         let list = self.ensure_children(parent);
         match reference.and_then(|r| list.iter().position(|&x| x == r)) {
@@ -2077,6 +2081,9 @@ impl Tree {
     /// Replace `h` with `nodes` (in order) in `h`'s parent.
     pub fn replace_with(&mut self, h: Handle, nodes: &[Handle]) {
         let Some(p) = self.parent(h) else { return };
+        if nodes.iter().any(|&n| self.is_inclusive_ancestor(n, p)) {
+            return;
+        }
         let next = self.viable_next_sibling(h, nodes);
         // Insert before the viable next sibling so order is preserved, then remove h. (If a
         // node in `nodes` is h itself it is first detached by insert_before — harmless; spec
@@ -2090,6 +2097,9 @@ impl Tree {
     }
     /// Replace all children of `h` with `nodes` (in order).
     pub fn replace_children(&mut self, h: Handle, nodes: &[Handle]) {
+        if nodes.iter().any(|&n| self.is_inclusive_ancestor(n, h)) {
+            return;
+        }
         for c in self.children(h) {
             self.remove_child(h, c);
         }
@@ -2100,7 +2110,16 @@ impl Tree {
     /// `insertAdjacentElement(position, element)` — position is beforebegin | afterbegin | beforeend
     /// | afterend (case-insensitive). Returns true if inserted.
     pub fn insert_adjacent_element(&mut self, h: Handle, position: &str, el: Handle) -> bool {
-        match position.to_ascii_lowercase().as_str() {
+        let position = position.to_ascii_lowercase();
+        // The node `el` goes into: `h`'s parent for beforebegin/afterend, else `h`.
+        let target = match position.as_str() {
+            "beforebegin" | "afterend" => self.parent(h),
+            _ => Some(h),
+        };
+        if target.is_some_and(|t| self.is_inclusive_ancestor(el, t)) {
+            return false;
+        }
+        match position.as_str() {
             "beforebegin" => {
                 if self.parent(h).is_some() {
                     self.before(h, &[el]);

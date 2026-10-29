@@ -594,6 +594,16 @@ mod integrity_tests {
     }
 
     #[test]
+    fn a_parent_cycle_is_rejected() {
+        let mut tree = Tree::parse("");
+        let a = tree.create_element("a");
+        tree.ensure_children(a).push(a);
+        tree.parent_ov.insert(a, Some(a));
+        refused(&mut tree, &[a], CollectionError::InvalidGraph);
+        assert!(tree.is_live(a));
+    }
+
+    #[test]
     fn a_dead_child_is_rejected() {
         let mut tree = Tree::parse("<p></p>");
         let p = tree.query_selector("p").unwrap();

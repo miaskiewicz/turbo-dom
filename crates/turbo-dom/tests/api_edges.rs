@@ -573,3 +573,79 @@ fn utf16_fragment_insertion_positions_and_records() {
         "empty -> empty records nothing (scalar path)"
     );
 }
+
+/// Chrome 156 throws `HierarchyRequestError`, leaving the tree unchanged, when a node is
+/// inserted into itself or one of its descendants; the Tree API (which has no errors on
+/// these paths) must leave the tree unchanged instead of building a parent cycle.
+#[test]
+fn inserting_a_node_into_its_own_subtree_is_a_no_op() {
+    fn setup() -> (Tree, Handle, Handle, Handle) {
+        let tree = Tree::parse("<div id=p><a></a><b></b><i></i></div>");
+        let p = tree.query_selector("#p").unwrap();
+        let kids = tree.children(p);
+        (tree, p, kids[0], kids[1])
+    }
+    type Case = fn(&mut Tree, Handle, Handle, Handle);
+    let cases: [(&str, Case); 10] = [
+        ("adjacent beforebegin of child", |t, p, a, _| {
+            assert!(!t.insert_adjacent_element(a, "beforebegin", p));
+        }),
+        ("append self", |t, p, _, _| t.append_child(p, p)),
+        ("append into child", |t, p, a, _| t.append_child(a, p)),
+        ("insert into child", |t, p, a, _| {
+            t.insert_before(a, p, None);
+        }),
+        ("before child", |t, p, a, _| t.before(a, &[p])),
+        ("after child", |t, p, a, _| t.after(a, &[p])),
+        ("replace child with ancestor", |t, p, _, b| {
+            t.replace_with(b, &[p]);
+        }),
+        ("replace children of child", |t, p, a, _| {
+            t.replace_children(a, &[p]);
+        }),
+        ("adjacent afterbegin", |t, p, a, _| {
+            assert!(!t.insert_adjacent_element(a, "afterbegin", p));
+        }),
+        ("adjacent beforeend", |t, p, a, _| {
+            assert!(!t.insert_adjacent_element(a, "beforeend", p));
+        }),
+    ];
+    for (name, case) in cases {
+        let (mut tree, p, a, b) = setup();
+        let body = tree.parent(p);
+        case(&mut tree, p, a, b);
+        assert_eq!(tree.parent(p), body, "{name}");
+        assert_eq!(serialize_inner(&tree, p), "<a></a><b></b><i></i>", "{name}");
+    }
+}
+
+/// DOM pre-insert: a reference child that is the node itself becomes its next sibling, so
+/// `p.insertBefore(b, b)` leaves the order alone (Chrome 156: `<a></a><b></b><i></i>`).
+#[test]
+fn insert_before_itself_keeps_the_node_in_place() {
+    let mut tree = Tree::parse("<div id=p><a></a><b></b><i></i></div>");
+    let p = tree.query_selector("#p").unwrap();
+    let b = tree.children(p)[1];
+    tree.insert_before(p, b, Some(b));
+    assert_eq!(serialize_inner(&tree, p), "<a></a><b></b><i></i>");
+    // ...and an element may still be placed next to itself (not an ancestor of the parent).
+    assert!(tree.insert_adjacent_element(b, "beforebegin", b));
+    assert!(tree.insert_adjacent_element(b, "afterend", b));
+    assert_eq!(serialize_inner(&tree, p), "<a></a><b></b><i></i>");
+}
+
+/// Host-including: a shadow root cannot take its host or the host's ancestors (Chrome 156:
+/// `HierarchyRequestError`, tree unchanged).
+#[test]
+fn a_shadow_root_cannot_take_an_ancestor_of_its_host() {
+    let mut tree = Tree::parse("<div id=p><span></span></div>");
+    let p = tree.query_selector("#p").unwrap();
+    let host = tree.children(p)[0];
+    let body = tree.parent(p);
+    let shadow = tree.attach_shadow(host);
+    tree.append_child(shadow, p);
+    tree.append_child(shadow, host);
+    assert_eq!(tree.parent(p), body);
+    assert_eq!(tree.parent(host), Some(p));
+    assert!(tree.children(shadow).is_empty());
+}

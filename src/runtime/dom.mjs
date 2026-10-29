@@ -102,6 +102,13 @@ function domError(name, message) {
   error.name = name;
   return error;
 }
+// DOM pre-insert / replace validity step 2: `node` must not be a host-including inclusive
+// ancestor of `parent` (inserting a node into its own subtree would build a parent cycle).
+function assertNotAncestor(parent, node) {
+  for (let n = parent; n; n = n.parentNode || (n.__isShadowRoot ? n.host : null)) {
+    if (n === node) throw domError('HierarchyRequestError', 'The new child element contains the parent.');
+  }
+}
 // DOM "valid element local name" (createElement / createElementNS, Chrome 156): an ASCII
 // letter followed by anything but ASCII whitespace, NULL, '/' and '>'; or ':', '_' or a
 // non-ASCII code point followed by ASCII alphanumerics, '-', '.', ':', '_' and non-ASCII.
@@ -208,6 +215,7 @@ export class Node extends EventTarget {
     if ((this.ownerDocument.__ceRegistry !== undefined || node.ownerDocument.__ceRegistry !== undefined) && reactionDepth === 0) return withReactions(METHOD.insertBefore, this, [node, ref]);
     // DOM "pre-insert": check the reference child before touching the tree, and a node
     // inserted before itself goes before its next sibling (miaskiewicz/turbo-dom#34)
+    assertNotAncestor(this, node);
     if (ref && ref.parentNode !== this) throw new Error('NotFoundError: ref is not a child');
     if (ref === node) ref = node.nextSibling;
     if (node.nodeType === DOCUMENT_FRAGMENT_NODE) {
@@ -248,6 +256,7 @@ export class Node extends EventTarget {
   // node with itself leaves it in place (miaskiewicz/turbo-dom#34)
   replaceChild(newNode, oldNode) {
     if ((this.ownerDocument.__ceRegistry !== undefined || newNode.ownerDocument.__ceRegistry !== undefined) && reactionDepth === 0) return withReactions(METHOD.replaceChild, this, [newNode, oldNode]);
+    assertNotAncestor(this, newNode);
     if (oldNode.parentNode !== this) throw new Error('NotFoundError: node is not a child');
     let ref = oldNode.nextSibling;
     if (ref === newNode) ref = newNode.nextSibling;
@@ -305,6 +314,7 @@ export class Node extends EventTarget {
   }
   replaceChildren(...nodes) {
     if (ceScope(this.ownerDocument)) return withReactions(METHOD.replaceChildren, this, nodes);
+    for (const n of nodes) assertNotAncestor(this, n);
     this.__detachKids(); this.__kids = []; this.__touch(); for (const n of nodes) this.appendChild(toNode(this.ownerDocument, n));
   }
   // bitmask: 1 DISCONNECTED, 2 PRECEDING, 4 FOLLOWING, 8 CONTAINS, 16 CONTAINED_BY
@@ -1288,6 +1298,7 @@ function childReplaceWith(child, nodes) {
   const p = child.parentNode;
   if (!p) return;
   if (ceScope(child.ownerDocument)) { withReactions(childReplaceWith, null, [child, nodes]); return; }
+  for (const n of nodes) assertNotAncestor(p, n);
   const ref = viableNextSibling(child, nodes);
   if (!nodes.includes(child)) p.removeChild(child);
   for (const n of nodes) p.insertBefore(toNode(child.ownerDocument, n), ref);
