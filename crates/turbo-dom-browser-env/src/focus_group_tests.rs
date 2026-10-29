@@ -19,7 +19,10 @@ fn focus_groups_match_chrome156() {
 #[test]
 fn members_survive_page_patched_builtins() {
     let probe = include_str!("patched_builtins_members_probe.js");
-    let expected = control(include_str!("patched_builtins_members_chrome156.json"), probe);
+    let expected = control(
+        include_str!("patched_builtins_members_chrome156.json"),
+        probe,
+    );
     let actual = run(probe);
     let mut out = Vec::new();
     differences("result", &actual, &expected, &mut out);
