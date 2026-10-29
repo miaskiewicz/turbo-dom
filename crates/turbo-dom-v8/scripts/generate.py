@@ -235,6 +235,17 @@ def apply_patches(target, pins, names):
                         "-i", str(patch)], cwd=target, check=True, stdout=subprocess.DEVNULL)
 
 
+REPOSITORY_BLOB = "https://github.com/miaskiewicz/turbo-dom/blob/main/"
+
+
+def fork_readme():
+    """The fork README for the package (turbo-dom#215), relative links made absolute for crates.io."""
+    text = (CRATE / "README.md").read_text()
+    text = text.replace("](../../", "](" + REPOSITORY_BLOB)
+    text = text.replace("](../", "](" + REPOSITORY_BLOB + "crates/")
+    return text
+
+
 def generate(archive, destination, pins, update_pins=False, compare=None):
     """Write the generated crate into the empty directory destination; return its tree."""
     expected = pins["input"]
@@ -274,6 +285,8 @@ def generate(archive, destination, pins, update_pins=False, compare=None):
     for name in OWN_TESTS:
         shutil.copyfile(CRATE / "tests" / f"{name}.rs", destination / "tests" / f"{name}.rs")
     shutil.copyfile(CRATE / "rustfmt.toml", destination / "rustfmt.toml")
+    # Upstream's README.md stays the manifest's `readme`; replace it with the fork's.
+    (destination / "README.md").write_bytes(fork_readme().encode())
     generated = files(destination)
     build = generated["build.rs"].decode()
     if 'env::var("CARGO_PKG_VERSION")' in build or \
