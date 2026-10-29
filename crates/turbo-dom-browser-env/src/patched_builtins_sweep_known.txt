@@ -2,7 +2,6 @@
 # every_member_avoids_page_patched_builtins requires the sweep to equal this list exactly:
 # a new entry is a regression; a fixed one must be deleted here. Shrink only.
 Animation.cancel -> get Promise.@@Symbol.species
-Animation.commitStyles -> Document.prototype.querySelectorAll
 Animation.commitStyles -> String.prototype.trim
 Animation.currentTime -> Array.prototype.indexOf
 Animation.effect -> Array.prototype.indexOf
@@ -45,22 +44,10 @@ HTMLMeterElement.high -> String.prototype.slice
 HTMLMeterElement.low -> String.prototype.slice
 HTMLMeterElement.max -> String.prototype.slice
 HTMLMeterElement.optimum -> String.prototype.slice
-HTMLOptionElement.index -> get Node.prototype.parentNode
 HTMLOptionElement.label -> RegExp.prototype.@@Symbol.replace
-HTMLOptionElement.selected -> get Node.prototype.parentNode
 HTMLOptionElement.text -> RegExp.prototype.@@Symbol.replace
 HTMLOptionElement.value -> RegExp.prototype.@@Symbol.replace
-HTMLOptionsCollection.length -> get Node.prototype.firstChild
-HTMLOptionsCollection.remove -> get Node.prototype.firstChild
-HTMLOptionsCollection.selectedIndex -> get Node.prototype.firstChild
 HTMLProgressElement.position -> String.prototype.slice
-HTMLSelectElement.item -> get Node.prototype.firstChild
-HTMLSelectElement.length -> get Node.prototype.firstChild
-HTMLSelectElement.namedItem -> get Node.prototype.firstChild
-HTMLSelectElement.remove -> get Node.prototype.firstChild
-HTMLSelectElement.selectedIndex -> get Node.prototype.firstChild
-HTMLSelectElement.validationMessage -> get Node.prototype.firstChild
-HTMLSelectElement.value -> get Node.prototype.firstChild
 HTMLTrackElement.track -> WeakSet.prototype.add
 MathMLElement.focus -> get Node.prototype.isConnected
 NamedNodeMap.getNamedItem -> Element.prototype.getAttributeNode
@@ -84,22 +71,13 @@ Selection.setPosition -> Object.create
 ShadowRoot.adoptedStyleSheets -> String.prototype.@@Symbol.iterator
 ShadowRoot.getAnimations -> %IteratorPrototype%.@@Symbol.iterator
 ShadowRoot.getHTML -> Array.prototype.@@Symbol.iterator
-StylePropertyMapReadOnly.entries -> Document.prototype.querySelectorAll
 StylePropertyMapReadOnly.entries -> String.prototype.trim
-StylePropertyMapReadOnly.get -> Document.prototype.querySelectorAll
 StylePropertyMapReadOnly.get -> String.prototype.trim
-StylePropertyMapReadOnly.getAll -> Document.prototype.querySelectorAll
 StylePropertyMapReadOnly.getAll -> String.prototype.trim
-StylePropertyMapReadOnly.has -> Document.prototype.querySelectorAll
 StylePropertyMapReadOnly.has -> String.prototype.trim
-StylePropertyMapReadOnly.keys -> Document.prototype.querySelectorAll
 StylePropertyMapReadOnly.keys -> String.prototype.trim
-StylePropertyMapReadOnly.size -> Document.prototype.querySelectorAll
 StylePropertyMapReadOnly.size -> String.prototype.trim
-StylePropertyMapReadOnly.values -> Document.prototype.querySelectorAll
 StylePropertyMapReadOnly.values -> String.prototype.trim
-StyleSheetList.item -> Document.prototype.querySelectorAll
-StyleSheetList.length -> Document.prototype.querySelectorAll
 Text.wholeText -> get Node.prototype.parentNode
 new AbortController -> WeakSet.prototype.add
 new Animation -> WeakSet.prototype.add
