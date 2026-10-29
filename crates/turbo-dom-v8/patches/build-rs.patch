@@ -12,16 +12,18 @@
  fn main() {
    println!("cargo:rerun-if-changed=.gn");
    println!("cargo:rerun-if-changed=BUILD.gn");
-@@ -102,7 +107,7 @@
+@@ -102,7 +107,9 @@
    // Build from source
    if env_bool("V8_FROM_SOURCE") {
      if !Path::new("v8/BUILD.gn").is_file() {
 -      panic!("This reviewed vendor contains Rust/prebuilt SDK sources. Run python3 rust/vendor/update-rusty-v8.py --write --full-source before V8_FROM_SOURCE.");
-+      panic!("turbo-dom-v8 ships Rust sources for the official prebuilt SDK only; V8_FROM_SOURCE needs the complete upstream v8 {UPSTREAM_V8_VERSION} source payload (crates/turbo-dom-v8/README.md in miaskiewicz/turbo-dom).");
++      panic!(
++        "turbo-dom-v8 ships Rust sources for the official prebuilt SDK only; V8_FROM_SOURCE needs the complete upstream v8 {UPSTREAM_V8_VERSION} source payload (crates/turbo-dom-v8/README.md in miaskiewicz/turbo-dom)."
++      );
      }
      if is_asan && env::var_os("OPT_LEVEL").unwrap_or_default() == "0" {
        panic!(
-@@ -710,7 +715,7 @@
+@@ -710,7 +717,7 @@
    let default_base = "https://github.com/denoland/rusty_v8/releases/download";
    let base =
      env::var("RUSTY_V8_MIRROR").unwrap_or_else(|_| default_base.into());
@@ -30,7 +32,7 @@
    let target = env::var("TARGET").unwrap();
    let profile = prebuilt_profile();
    let features = prebuilt_features_suffix();
-@@ -1021,7 +1026,7 @@
+@@ -1021,7 +1028,7 @@
    let src_binding_path = get_dirs().root.join("gen").join(name.clone());
  
    if let Ok(base) = env::var("RUSTY_V8_MIRROR") {
@@ -39,7 +41,7 @@
      let url = format!("{base}/v{version}/{name}");
      download_file(&url, &src_binding_path);
    }
-@@ -1418,6 +1423,17 @@
+@@ -1418,6 +1425,17 @@
    "#;
  
    #[test]
