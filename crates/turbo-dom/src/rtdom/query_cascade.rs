@@ -1466,7 +1466,7 @@ mod tests {
         assert_eq!(group.type_position(ul), (0, 0));
         // a key absent from the list it builds still maps to that list
         let lonely = cache.group(ul, Vec::<(Handle, u8)>::new);
-        assert!(lonely.elements().is_empty());
+        assert_eq!(lonely.elements().len(), 0);
         assert!(Rc::ptr_eq(
             &lonely,
             &cache.group(ul, Vec::<(Handle, u8)>::new)

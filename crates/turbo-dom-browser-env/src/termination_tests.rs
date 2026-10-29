@@ -307,7 +307,7 @@ fn template_serialize_leaves_termination_pending() {
             let div = object(scope, "document.getElementById('d')");
             for (node, outer) in [(div, true), (template, false)] {
                 terminate(scope);
-                assert!(template_contents::serialize(scope, node, outer).is_empty());
+                assert_eq!(template_contents::serialize(scope, node, outer).len(), 0);
                 assert!(scope.is_execution_terminating());
                 resume(scope);
             }

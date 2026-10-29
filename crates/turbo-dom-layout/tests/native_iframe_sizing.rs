@@ -231,7 +231,7 @@ fn native_iframe_fallback_sources_remain_identifiable_without_rendered_glyphs() 
         .unwrap();
     let source = native.source(text.source_id).unwrap();
     assert!(source.excluded_from_layout);
-    assert!(source.fragment_indices.is_empty());
+    assert_eq!(source.fragment_indices.len(), 0);
     assert_eq!(
         native.text_range_boxes(text.source_id, 0, 8),
         Err(turbo_dom_layout::layout_snapshot::TextGeometryError::UnresolvedSource)
@@ -247,8 +247,5 @@ fn native_iframe_fallback_sources_remain_identifiable_without_rendered_glyphs() 
         .find(|source| source.text == "fallback")
         .unwrap();
     assert!(!pdf.source(text.source_id).unwrap().excluded_from_layout);
-    assert!(!pdf
-        .text_range_boxes(text.source_id, 0, 8)
-        .unwrap()
-        .is_empty());
+    assert_ne!(pdf.text_range_boxes(text.source_id, 0, 8).unwrap().len(), 0);
 }

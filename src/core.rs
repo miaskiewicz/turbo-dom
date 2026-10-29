@@ -888,7 +888,7 @@ mod tests {
         assert_eq!(soa.attr_start, [-1, -1, -1, -1, 0, 1, -1, 3]);
         assert_eq!(soa.attr_count, [0, 0, 0, 0, 1, 2, 0, 1]);
         assert_eq!(soa.text_id, [-1; 8]);
-        assert!(soa.strings.is_empty());
+        assert_eq!(soa.strings.len(), 0);
     }
 
     #[test]

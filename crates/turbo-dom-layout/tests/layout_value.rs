@@ -324,7 +324,7 @@ fn font_families_split() {
             "Helvetica".to_string()
         ]
     );
-    assert!(resolve(&[]).font_families.is_empty());
+    assert_eq!(resolve(&[]).font_families.len(), 0);
 }
 
 #[test]

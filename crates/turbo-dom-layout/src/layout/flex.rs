@@ -1934,7 +1934,7 @@ mod coverage_tests {
         assert!(!map.contains_key("."));
 
         // An unterminated quote stops row scanning cleanly (no infinite loop).
-        assert!(quoted_rows("'unterminated").is_empty());
+        assert_eq!(quoted_rows("'unterminated").len(), 0);
 
         // `strip_quoted` drops the quoted area-row segment, keeping the track list.
         assert_eq!(strip_quoted("10px 'a b' 1fr").trim(), "10px  1fr".trim());

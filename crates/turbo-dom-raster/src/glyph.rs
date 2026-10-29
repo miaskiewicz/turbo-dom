@@ -184,7 +184,7 @@ mod tests {
                 },
                 &mut space,
             );
-            assert!(space.0.is_empty());
+            assert_eq!(space.0.len(), 0);
         }
     }
 }

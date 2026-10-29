@@ -868,7 +868,7 @@ mod tests {
         assert_eq!(s.subs[0].pts, [(11.0, 2.0), (13.0, 4.0)]);
         assert_eq!(s.subs[1].pts, [(15.0, 6.0), (17.0, 8.0)]);
         assert!(s.subs.iter().all(|sp| sp.closed));
-        assert!(s.cur.is_empty());
+        assert_eq!(s.cur.len(), 0);
     }
 
     /// The curve samples a sink emits under `ctm` for a curve drawn from local `start`.

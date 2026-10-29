@@ -537,7 +537,7 @@ mod tests {
         let bytes = std::fs::read("/System/Library/Fonts/Times.ttc").unwrap();
         let face = FontFace::from_bytes_index(bytes, 1, "an-author-alias", 400, false).unwrap();
         assert!(face.native_postscript_name().is_some());
-        assert!(!super::super::platform_fallback::families(&face).is_empty());
+        assert_ne!(super::super::platform_fallback::families(&face).len(), 0);
         let go = FontFace::from_bytes(
             include_bytes!("../../assets/fonts/Go-Regular.ttf").to_vec(),
             "an-author-alias",
@@ -546,7 +546,7 @@ mod tests {
         )
         .unwrap();
         assert!(go.native_postscript_name().is_some());
-        assert!(!super::super::platform_fallback::families(&go).is_empty());
+        assert_ne!(super::super::platform_fallback::families(&go).len(), 0);
     }
     #[test]
     fn platform_only_fonts_require_html_opt_in_and_keep_caller_priority() {

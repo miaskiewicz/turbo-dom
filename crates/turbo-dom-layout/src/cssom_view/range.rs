@@ -175,7 +175,7 @@ mod tests {
                 },
             ]
         );
-        assert!(select(&tree, 7, (div, 2), (div, 2)).unwrap().is_empty());
+        assert_eq!(select(&tree, 7, (div, 2), (div, 2)).unwrap().len(), 0);
         assert!(select(&tree, 7, (children[0], 4), (children[0], 4)).is_err());
     }
 

@@ -64,7 +64,7 @@ fn images(fixture: &Value, pick: fn(&str) -> bool) -> Vec<Value> {
         .filter(|i| pick(i["file"].as_str().unwrap()))
         .cloned()
         .collect();
-    assert!(!picked.is_empty());
+    assert_ne!(picked.len(), 0);
     picked
 }
 

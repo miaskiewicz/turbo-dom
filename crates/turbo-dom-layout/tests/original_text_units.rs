@@ -72,10 +72,10 @@ fn public_original_units_retain_native_source_identity_and_validation() {
         Some(units.as_slice())
     );
     assert_eq!(captured.text_original_units(SourceId(99)), None);
-    assert!(!captured
-        .text_range_boxes(SourceId(7), 0, 5)
-        .unwrap()
-        .is_empty());
+    assert_ne!(
+        captured.text_range_boxes(SourceId(7), 0, 5).unwrap().len(),
+        0
+    );
     assert!(captured.text_range_boxes(SourceId(7), 0, 6).is_err());
     assert!(captured.native_hit_transform(0).is_some());
     assert!(captured.native_hit_transform(usize::MAX).is_none());
@@ -191,10 +191,10 @@ fn real_registered_fallback_tables_keep_source_line_ranges_on_hosts_without_core
         invalid.text_original_units(SourceId(7)),
         Some([0x61, 0xd800, 0x62, 0xdcff, 0x63].as_slice())
     );
-    assert!(!invalid
-        .text_range_boxes(SourceId(7), 0, 5)
-        .unwrap()
-        .is_empty());
+    assert_ne!(
+        invalid.text_range_boxes(SourceId(7), 0, 5).unwrap().len(),
+        0
+    );
     let units: Vec<u16> = format!("a{character}{character}b").encode_utf16().collect();
     let captured = snapshot(&units, &fonts, "Primary").unwrap();
     let cells = captured.text_cluster_boxes_for_source(SourceId(7));

@@ -109,11 +109,14 @@ fn hidden_and_clipped_boxes_keep_geometry_but_display_none_has_no_fragments() {
     assert_eq!(border(&snapshot, 101).rect.y, 10.0);
     assert_eq!(border(&snapshot, 102).rect.y, 30.0);
     assert_eq!(border(&snapshot, 104).rect.y, 31.0);
-    assert!(snapshot
-        .source(SourceId(103))
-        .unwrap()
-        .fragment_indices
-        .is_empty());
+    assert_eq!(
+        snapshot
+            .source(SourceId(103))
+            .unwrap()
+            .fragment_indices
+            .len(),
+        0
+    );
     // Legacy PDF rendering deliberately retains its previous nonpainting filter.
     let fonts = FontRegistry::new();
     let images = ImageCtx {
@@ -176,7 +179,7 @@ fn all_text_lines_keep_source_and_flattened_inline_ancestry_without_fake_range_r
     let text = snapshot.source(SourceId(3)).unwrap();
     assert_eq!(inline.kind, SourceKind::Element);
     assert_eq!(text.kind, SourceKind::Text);
-    assert!(inline.fragment_indices.is_empty());
+    assert_eq!(inline.fragment_indices.len(), 0);
     assert!(text.fragment_indices.len() > 2);
     assert_eq!(inline.descendant_fragment_indices, text.fragment_indices);
     for &index in &text.fragment_indices {
@@ -479,7 +482,7 @@ fn partial_source_maps_do_not_invent_missing_identities_and_empty_tree_is_valid(
         .all(|f| f.source_ancestors.is_empty()));
     let empty = capture(&[], &[]);
     assert_eq!(empty.fragments().len(), 1);
-    assert!(empty.sources().is_empty());
+    assert_eq!(empty.sources().len(), 0);
     assert!(empty.galley().children.is_empty());
 }
 
@@ -647,7 +650,7 @@ fn compare_chrome_boxes(snapshot: &LayoutSnapshot, chrome: &serde_json::Value) {
         let id = expected["sourceId"].as_u64().unwrap();
         let source = snapshot.source(SourceId(id)).unwrap();
         if expected["clientRects"].as_array().unwrap().is_empty() {
-            assert!(source.fragment_indices.is_empty());
+            assert_eq!(source.fragment_indices.len(), 0);
         } else {
             let actual = border(snapshot, id);
             assert_chrome_rect(
@@ -818,11 +821,11 @@ fn zero_fragment_provenance_distinguishes_excluded_subtrees_from_empty_visible_i
     for id in [1, 2] {
         let source = snapshot.source(SourceId(id)).unwrap();
         assert!(source.excluded_from_layout);
-        assert!(source.fragment_indices.is_empty());
+        assert_eq!(source.fragment_indices.len(), 0);
     }
     let empty = snapshot.source(SourceId(3)).unwrap();
     assert!(!empty.excluded_from_layout);
-    assert!(empty.fragment_indices.is_empty());
+    assert_eq!(empty.fragment_indices.len(), 0);
 }
 
 #[test]
@@ -875,7 +878,7 @@ fn transformed_fixed_admission_is_identity_independent_and_shared_by_both_entry_
         .iter()
         .all(|f| f.source_id.is_none()));
     let text = vec![Node::Text("test".into())];
-    assert!(!capture(&text, &[]).fragments().is_empty());
+    assert_ne!(capture(&text, &[]).fragments().len(), 0);
 }
 
 #[test]
@@ -1074,7 +1077,7 @@ fn contents_ancestors_keep_source_identity_without_frame_or_transform() {
     for id in [1, 2] {
         let source = snapshot.source(SourceId(id)).unwrap();
         assert_eq!(source.fragment_indices, [] as [usize; 0]);
-        assert!(!source.descendant_fragment_indices.is_empty());
+        assert_ne!(source.descendant_fragment_indices.len(), 0);
         assert!(!source.excluded_from_layout);
     }
     let child = border(&snapshot, 3);

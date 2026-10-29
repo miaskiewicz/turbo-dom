@@ -53,7 +53,7 @@ fn raw_html_to_positioned_fragment() {
             _ => None,
         })
         .expect("a TextLine fragment");
-    assert!(!glyphs.is_empty());
+    assert_ne!(glyphs.len(), 0);
     assert_eq!(font_size, 20.0);
     assert_eq!(
         color,

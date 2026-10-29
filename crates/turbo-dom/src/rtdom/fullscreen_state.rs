@@ -81,8 +81,8 @@ mod tests {
             tree.get_element_by_id("b").unwrap(),
             tree.get_element_by_id("d").unwrap(),
         );
-        assert!(ids(&tree, ":fullscreen").is_empty());
-        assert!(ids(&tree, ":-webkit-full-screen-ancestor").is_empty());
+        assert_eq!(ids(&tree, ":fullscreen").len(), 0);
+        assert_eq!(ids(&tree, ":-webkit-full-screen-ancestor").len(), 0);
         assert_eq!(tree.fullscreen_element(), None);
         let version = tree.version;
         assert!(tree.set_fullscreen_stack(&[a]));
@@ -127,6 +127,6 @@ mod tests {
         assert!(!tree.matches(host, ":fullscreen"));
         assert!(tree.matches(inner, ":fullscreen"));
         // The document's query never reaches the shadow tree.
-        assert!(ids(&tree, ":fullscreen").is_empty());
+        assert_eq!(ids(&tree, ":fullscreen").len(), 0);
     }
 }

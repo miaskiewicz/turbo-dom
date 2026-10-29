@@ -525,7 +525,7 @@ mod tests {
         // turbo-dom#27: only the document's <img> elements are images.
         let html = r#"<template><img data-src="t.jpg"></template><script>"<img data-src='s.jpg'>"</script><!-- <img data-src="c.jpg"> --><p title="<img data-src='a.jpg'>"></p>"#;
         assert_eq!(delazy_images(html), html);
-        assert!(image_urls(html).is_empty());
+        assert_eq!(image_urls(html).len(), 0);
     }
 
     #[test]

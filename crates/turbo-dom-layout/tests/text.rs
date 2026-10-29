@@ -47,7 +47,7 @@ fn loads_otf_cff_outlines() {
     let f =
         FontFace::from_bytes(load("WarsawGothic-BnBV.otf"), "Warsaw Gothic", 400, false).unwrap();
     assert!(f.has_glyph('A'));
-    assert!(!f.shape("Abc").is_empty());
+    assert_ne!(f.shape("Abc").len(), 0);
 }
 
 #[test]
@@ -175,14 +175,20 @@ fn short_text_is_one_line() {
 
 #[test]
 fn empty_text_yields_no_lines() {
-    assert!(layout_text("   ", &evolventa(), &TextStyle::default(), 100.0).is_empty());
-    assert!(layout_text(
-        "",
-        &evolventa(),
-        &style(WhiteSpace::NoWrap, Align::Left),
-        100.0
-    )
-    .is_empty());
+    assert_eq!(
+        layout_text("   ", &evolventa(), &TextStyle::default(), 100.0).len(),
+        0
+    );
+    assert_eq!(
+        layout_text(
+            "",
+            &evolventa(),
+            &style(WhiteSpace::NoWrap, Align::Left),
+            100.0
+        )
+        .len(),
+        0
+    );
 }
 
 #[test]
@@ -277,7 +283,7 @@ fn glyph_to_unicode_maps_used_glyphs_in_order_and_omits_unmapped() {
         [(119, 0xB5)],
         "lowest codepoint"
     );
-    assert!(go().glyph_to_unicode(&[]).is_empty());
+    assert_eq!(go().glyph_to_unicode(&[]).len(), 0);
 }
 
 #[test]

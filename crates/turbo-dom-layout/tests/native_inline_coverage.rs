@@ -201,10 +201,10 @@ fn collapsed_empty_inline_sources_keep_zero_boxes_and_relative_position() {
         .iter()
         .find(|text| text.text == "  ")
         .unwrap();
-    assert!(plain
-        .text_range_boxes(text.source_id, 0, 2)
-        .unwrap()
-        .is_empty());
+    assert_eq!(
+        plain.text_range_boxes(text.source_id, 0, 2).unwrap().len(),
+        0
+    );
 }
 
 #[test]
@@ -216,11 +216,14 @@ fn hidden_subtrees_and_contents_wrappers_preserve_visible_source_geometry() {
             .unwrap()
             .excluded_from_layout
     );
-    assert!(snapshot
-        .source(names["contents"])
-        .unwrap()
-        .fragment_indices
-        .is_empty());
+    assert_eq!(
+        snapshot
+            .source(names["contents"])
+            .unwrap()
+            .fragment_indices
+            .len(),
+        0
+    );
     assert!(first_box(&snapshot, names["visible"])[2] > 6.0);
 }
 
@@ -235,10 +238,10 @@ fn zero_advance_cells_do_not_add_empty_rectangles_to_a_nonempty_selection() {
     let cells = snapshot.text_cluster_boxes_for_source(text.source_id);
     assert!(cells.iter().any(|cell| cell.rect.width == 0.0));
     let full = snapshot.text_range_boxes(text.source_id, 0, 3).unwrap();
-    assert!(!full.is_empty());
+    assert_ne!(full.len(), 0);
     assert!(full.iter().all(|rect| rect.rect.width > 0.0));
     let zero = snapshot.text_range_boxes(text.source_id, 1, 2).unwrap();
-    assert!(!zero.is_empty());
+    assert_ne!(zero.len(), 0);
     assert!(zero.iter().all(|rect| rect.rect.width == 0.0));
 }
 
@@ -359,7 +362,7 @@ fn an_unmatched_public_closing_edge_keeps_its_advance_without_inventing_glyphs()
     assert_eq!(paragraph.layout.lines[0].inline_edges.len(), 1);
     assert!(!paragraph.layout.lines[0].inline_edges[0].edge.start);
     assert!(paragraph.layout.lines[0].runs.is_empty());
-    assert!(paragraph.clusters[0].is_empty());
+    assert_eq!(paragraph.clusters[0].len(), 0);
 }
 
 #[test]

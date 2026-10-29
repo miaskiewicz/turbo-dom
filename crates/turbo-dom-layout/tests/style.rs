@@ -60,7 +60,7 @@ fn malformed_declarations_are_skipped() {
     let sheet = parse_stylesheet(".a { ; color: red; novalue: ; :bad ; width: 10px }");
     assert_eq!(sheet.rules[0].declarations.len(), 2);
     let empty = parse_stylesheet("{ color: red }");
-    assert!(empty.rules.is_empty());
+    assert_eq!(empty.rules.len(), 0);
 }
 
 #[test]
@@ -128,7 +128,7 @@ fn conditional_rules_cascade_at_their_source_position() {
 #[test]
 fn empty_selector_list_produces_no_rule() {
     let sheet = parse_stylesheet(", { color: red }");
-    assert!(sheet.rules.is_empty());
+    assert_eq!(sheet.rules.len(), 0);
 }
 
 #[test]

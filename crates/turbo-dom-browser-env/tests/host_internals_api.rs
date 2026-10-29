@@ -133,7 +133,7 @@ fn host_internals_cover_native_layout_capture_and_link_discovery() {
     // host's (empty) light tree.
     let host = object(scope, "document.getElementById('host')");
     let composed = host_composed_children(scope, host).unwrap();
-    assert!(!composed.is_empty());
+    assert_ne!(composed.len(), 0);
     let body = object(scope, "document.body");
     let body_children = host_composed_children(scope, body).unwrap();
     assert_eq!(body_children.len(), 2);

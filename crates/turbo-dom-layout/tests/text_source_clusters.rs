@@ -245,8 +245,8 @@ fn actual_snapshot_run_ids_distinguish_identical_wrapped_words_and_keep_source_a
 fn existing_box_only_snapshots_keep_output_and_do_not_allocate_text_provenance() {
     let old = capture_snapshot(&["one two", "three"], 80.0, false);
     let traced = capture_snapshot(&["one two", "three"], 80.0, true);
-    assert!(old.text_runs().is_empty());
-    assert!(!traced.text_runs().is_empty());
+    assert_eq!(old.text_runs().len(), 0);
+    assert_ne!(traced.text_runs().len(), 0);
     assert_eq!(old.fragments().len(), traced.fragments().len());
     for (a, b) in old.fragments().iter().zip(traced.fragments()) {
         assert_eq!(
@@ -586,7 +586,7 @@ fn text_snapshot_errors_keep_the_original_source_and_viewport_validation() {
     )
     .unwrap();
     assert_eq!(unmapped.text_runs()[0].source_id, None);
-    assert!(unmapped.text_runs()[0].source_ancestors.is_empty());
+    assert_eq!(unmapped.text_runs()[0].source_ancestors.len(), 0);
 }
 
 #[test]
@@ -640,9 +640,12 @@ fn actual_text_source_keeps_collapsed_whitespace_and_distinct_owner_inputs() {
     assert_eq!(inputs[0].text, "  a  b ");
     assert_eq!(inputs[1].source_id, SourceId(101));
     assert_eq!(inputs[1].text.encode_utf16().count(), 3);
-    assert!(capture_snapshot(&["  a  b "], 80.0, false)
-        .text_sources()
-        .is_empty());
+    assert_eq!(
+        capture_snapshot(&["  a  b "], 80.0, false)
+            .text_sources()
+            .len(),
+        0
+    );
 }
 
 #[test]
@@ -687,7 +690,7 @@ fn source_clusters_preserve_native_shaper_direction_without_claiming_bidi_itemiz
         .iter()
         .flatten()
         .all(|c| !c.right_to_left));
-    assert!(!native.clusters[1].is_empty());
+    assert_ne!(native.clusters[1].len(), 0);
     assert!(native.clusters[1].iter().flatten().all(|c| c.right_to_left));
 }
 

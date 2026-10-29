@@ -230,7 +230,7 @@ fn assert_cases_match(select: impl Fn(&str) -> bool) {
         got.extend(ours);
         chrome.extend(theirs);
     }
-    assert!(!chrome.is_empty());
+    assert_ne!(chrome.len(), 0);
     assert_eq!(got, chrome, "CSSOM-View reads differ from Chrome 156");
 }
 

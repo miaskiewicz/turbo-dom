@@ -165,7 +165,7 @@ mod tests {
         let (tree, [host, light, _, span, _, bold]) = nested();
         let mut graph = Composition::scopes(&tree).unwrap();
         assert_eq!(graph.children_of(host), &[] as &[Handle]);
-        assert!(graph.cache_edges().is_empty());
+        assert_eq!(graph.cache_edges().len(), 0);
         graph.children.insert(span, vec![bold]);
         graph.children.insert(host, vec![span, light]);
         assert_eq!(graph.children_of(host), &[span, light]);
