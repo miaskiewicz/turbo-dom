@@ -1,0 +1,13 @@
+{
+ "id": "P5b-X4/turbo-dom#29",
+ "class": "npm JS runtime: createElementNS namespaces, cross-document adoption, template contents, custom element reactions (+ turbo-dom#31-#40 found on the way)",
+ "reason": "Only the npm JS runtime (src/runtime) changes. The html2pdf corpora render through turbo-dom-layout (the Rust engine) and run no scripts, and no Rust crate is touched, so no output is expected to change. The surf corpus is not measured by this slice.",
+ "control": "crates/turbo-dom-browser-env/src/dom_adoption_reactions_chrome156.json",
+ "e2e": "test/dom-adoption-reactions-chrome.test.mjs, test/namespaces.test.mjs, test/adoption.test.mjs, test/template-contents.test.mjs, test/custom-element-reactions.test.mjs",
+ "changes": {
+  "html2pdf": [],
+  "html2pdf-svg": [],
+  "html2pdf-extra": [],
+  "surf": []
+ }
+}

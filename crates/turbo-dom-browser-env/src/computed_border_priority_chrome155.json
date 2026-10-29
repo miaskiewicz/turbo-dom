@@ -1,0 +1,104 @@
+{
+  "schemaVersion": 1,
+  "scope": "Genuine Chrome exactnine border shorthand, source-order, important and inline precedence controls from native regression; no native engine execution.",
+  "browserVersion": "Chrome/155.0.8059.85",
+  "browserV8Version": "15.5.35.25",
+  "probeSha256": "0f5a9f2e99020cafaa15b874240377260944b0f7af01dbbf826ac712f345f54c",
+  "htmlSha256": "dd8e15b836c467a1e7359b2d7a0237a879611ab2f4501c214cb3588b1843d601",
+  "sourceNativeRegressionSha256": "ada9121f8e4c41ad7de6eff5032862b0820b171b9f5678d229dc99d84aff7cc6",
+  "sourceControlSha256": "13584632d9d82045270a3dd9269e90c734c1741db2a7c2908c1c3c217bc82d04",
+  "sourceTraceSha256": "1122824c30ee8365eca5f5a01ef8ab8ef53f5d83ae1d806e4c4c20665a66bf71",
+  "sourceReceiptSha256": "e3321062f768bb372b198ae64cc0b1df60be015ed7822b33ca3dec18239fe410",
+  "chromeBundleSha256": "bb503dca511c156891ab90c35489a2d100bd3d163a4f8198e26d13e8c3ac8330",
+  "collectorSourcesSha256": {
+    "chrome-cdp-trace.mjs": "62eb7f0c47923b6e3569d58dd5f84d126b0bab02ae94badc80ca456fd9755e19",
+    "cdp-connection.mjs": "7b9f522db23484f79575ee46cf320277a4a516de53becba1eef5730d5a5549a0",
+    "input-state.js": "b3ff2009d74d1c2b92671c398f870a0138d7a84105a0a660e8082f88062922e1",
+    "collector-lifecycle.mjs": "ce110114bae9e8eea3c1b21081598809f63e36eb34103cc7b062c34553455b7a",
+    "effective-input.mjs": "090613d6430405193eca5a639cb044f855c9a5aa05520f28a541192079d56f82",
+    "observation-window.mjs": "474c88c02a8ad355c3e6da5b38d8227e5ed5d2efcc84e7c5c189aa99e50f8ddf",
+    "main-navigation.mjs": "80854a5399aaeeb5bdf38b75f0679865a0c445429142dce173ad74002ccffe9e",
+    "chrome-launch-policy.mjs": "6961d1c3ff7011216b77a6850c361e31a20fe9686fb63aa02346cb8803970cb0",
+    "chrome-network-metadata.mjs": "1fb12b172f939cda179f0fe1e9794879c970ba14820ade57e3a8d2315269d9d2",
+    "protocol-headers.mjs": "763b85da53476f6352dfd6e2dbaed07eb2571b2bca4fe7f934b165ae9da5b5e1",
+    "child-supervision.mjs": "0047d191db5f2b2a0936903fb72d6f8d7a117eab36146f0ff315d49438c8ba9c"
+  },
+  "sourceUnchanged": true,
+  "chromeBundleUnchanged": true,
+  "captureComplete": true,
+  "collectorErrors": [],
+  "errors": [],
+  "process": {
+    "code": 0,
+    "signal": null,
+    "timedOut": false,
+    "aborted": false,
+    "error": null
+  },
+  "html": "<!doctype html><html><head><style>#aggregate{border:4px solid}#later-shorthand{border-left-width:7px;border:4px solid}#later-longhand{border:4px solid;border-left-width:7px}#later-width{border:4px solid;border-width:6px}#earlier-width{border-width:6px;border:4px solid}#side{border-left:7px solid;border-top:5px solid}#important-shorthand{border:4px solid!important}#important-longhand{border-left-width:7px!important;border:4px solid}#inline{border:4px solid}</style></head><body><button id=aggregate>x</button><button id=later-shorthand>x</button><button id=later-longhand>x</button><button id=later-width>x</button><button id=earlier-width>x</button><button id=side>x</button><button id=important-shorthand style='border:8px solid'>x</button><button id=important-longhand>x</button><button id=inline style='border:8px solid'>x</button></body></html>",
+  "result": [
+    [
+      "aggregate",
+      4,
+      4,
+      "4px",
+      "4px"
+    ],
+    [
+      "later-shorthand",
+      4,
+      4,
+      "4px",
+      "4px"
+    ],
+    [
+      "later-longhand",
+      7,
+      4,
+      "7px",
+      "4px"
+    ],
+    [
+      "later-width",
+      6,
+      6,
+      "6px",
+      "6px"
+    ],
+    [
+      "earlier-width",
+      4,
+      4,
+      "4px",
+      "4px"
+    ],
+    [
+      "side",
+      7,
+      5,
+      "7px",
+      "5px"
+    ],
+    [
+      "important-shorthand",
+      4,
+      4,
+      "4px",
+      "4px"
+    ],
+    [
+      "important-longhand",
+      7,
+      4,
+      "7px",
+      "4px"
+    ],
+    [
+      "inline",
+      8,
+      8,
+      "8px",
+      "8px"
+    ]
+  ]
+}

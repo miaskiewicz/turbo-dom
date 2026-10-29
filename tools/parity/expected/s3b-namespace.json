@@ -1,0 +1,13 @@
+{
+ "id": "S3b/namespace",
+ "class": "namespace *|p",
+ "reason": "`*|` / `|` type prefixes and undeclared prefixes (`svg|rect`): unknown to the old parser; Chrome reads `*|p` as `p`, `|p` as no-namespace `p`, and drops a rule with an undeclared prefix. Consolidation S3b: the html2pdf / surf-static cascade parses and matches with turbo-dom's selector engine.",
+ "control": "crates/turbo-dom/tests/fixtures/cascade_selectors_chrome156.json (cases/namespace)",
+ "e2e": "crates/turbo-dom-layout/tests/cascade_selectors_chrome.rs",
+ "changes": {
+  "html2pdf": [],
+  "html2pdf-svg": [],
+  "html2pdf-extra": [],
+  "surf": []
+ }
+}

@@ -1,0 +1,72 @@
+{
+  "browser": "Chrome/155.0.8059.80",
+  "v8": "15.5.35.23",
+  "probeSha256": "17fe54af083bf0246682da24fb4a1d9a3e6547e826dbf83f4a511f14bf59203d",
+  "collectorSha256": "09c6f14e992b00cc8f5fe5bd4c6f71e22648cf3244ba9cf8ee91dc187e422b15",
+  "errors": [],
+  "result": {
+    "active": [
+      true,
+      true,
+      [
+        [
+          "constructor",
+          true
+        ],
+        [
+          "connected",
+          true
+        ],
+        [
+          "attribute",
+          null,
+          "active"
+        ]
+      ]
+    ],
+    "inert": [
+      true,
+      false,
+      true
+    ],
+    "retirement": [
+      true,
+      true,
+      true,
+      true
+    ],
+    "retirementRows": [],
+    "creation": [
+      false,
+      true,
+      true,
+      []
+    ],
+    "parsing": [
+      false,
+      true,
+      []
+    ],
+    "existingRetired": [],
+    "existingAdopted": [
+      true,
+      true,
+      []
+    ],
+    "borrowedCallbacks": [],
+    "fragment": [
+      false,
+      true,
+      []
+    ],
+    "explicitUpgrade": [
+      false,
+      []
+    ],
+    "definitionRetained": true,
+    "queuedRetirement": [
+      "constructor",
+      "a"
+    ]
+  }
+}

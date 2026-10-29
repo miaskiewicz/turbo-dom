@@ -374,10 +374,11 @@ test('Range: text-container toString + detach is a no-op', () => {
   const r = document.createRange();
   r.setStart(t, 0); r.setEnd(t, 5);
   assert.equal(r.toString(), 'hello');
-  // partial (different end container path)
+  // an end in another tree collapses the range there (Chrome 156: '', turbo-dom#207)
   const r2 = document.createRange();
   r2.setStart(t, 6); r2.setEnd(document.createTextNode('x'), 0);
-  assert.equal(r2.toString(), 'world');
+  assert.equal(r2.toString(), '');
+  assert.equal(r2.collapsed, true);
   r.detach(); // no throw
 });
 

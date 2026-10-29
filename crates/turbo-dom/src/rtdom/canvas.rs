@@ -73,13 +73,7 @@ impl Canvas2dContext {
     }
 
     #[must_use]
-    pub fn create_linear_gradient(
-        &self,
-        _x0: f64,
-        _y0: f64,
-        _x1: f64,
-        _y1: f64,
-    ) -> CanvasGradient {
+    pub fn create_linear_gradient(&self, _x0: f64, _y0: f64, _x1: f64, _y1: f64) -> CanvasGradient {
         CanvasGradient
     }
 

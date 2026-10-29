@@ -1,0 +1,125 @@
+{
+  "browser": "Chrome/155.0.8059.79",
+  "v8": "15.5.35.23",
+  "recordedAt": "2026-10-14T17:09:54.049Z",
+  "result": {
+    "shape": {
+      "get": "get text",
+      "set": "set text",
+      "getLength": 0,
+      "setLength": 1,
+      "enumerable": true,
+      "configurable": true,
+      "getSource": "function get text() { [native code] }",
+      "setSource": "function set text() { [native code] }"
+    },
+    "original": {
+      "text": [
+        55296,
+        55357,
+        56960
+      ],
+      "content": [
+        55296,
+        55357,
+        56960
+      ],
+      "child": [
+        55296,
+        55357,
+        56960
+      ],
+      "children": 1,
+      "own": false
+    },
+    "direct": {
+      "text": [
+        55296,
+        55357,
+        56960,
+        116,
+        97,
+        105,
+        108
+      ],
+      "content": [
+        55296,
+        55357,
+        56960,
+        104,
+        105,
+        100,
+        100,
+        101,
+        110,
+        116,
+        97,
+        105,
+        108
+      ],
+      "children": 3
+    },
+    "cloneValue": {
+      "text": [
+        55296,
+        55357,
+        56960,
+        116,
+        97,
+        105,
+        108
+      ],
+      "content": [
+        55296,
+        55357,
+        56960,
+        104,
+        105,
+        100,
+        100,
+        101,
+        110,
+        116,
+        97,
+        105,
+        108
+      ],
+      "children": 3
+    },
+    "nullValue": "null",
+    "undefinedValue": "undefined",
+    "coerced": {
+      "calls": 1,
+      "text": [
+        55296
+      ],
+      "children": 1
+    },
+    "symbol": "TypeError",
+    "afterSymbol": [
+      55296
+    ],
+    "brands": [
+      [
+        "TypeError",
+        "TypeError"
+      ],
+      [
+        "TypeError",
+        "TypeError"
+      ],
+      [
+        "TypeError",
+        "TypeError"
+      ],
+      [
+        "TypeError",
+        "TypeError"
+      ],
+      [
+        "TypeError",
+        "TypeError"
+      ]
+    ]
+  }
+}

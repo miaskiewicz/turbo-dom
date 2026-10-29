@@ -1,0 +1,13 @@
+{
+ "id": "S3b/pseudo-element",
+ "class": "pseudo-element",
+ "reason": "Pseudo-element selectors never match an element; the old engine matched the ones it did not know (`::-webkit-scrollbar`) and counted pseudo-elements as pseudo-classes in specificity. Consolidation S3b: the html2pdf / surf-static cascade parses and matches with turbo-dom's selector engine.",
+ "control": "crates/turbo-dom/tests/fixtures/cascade_selectors_chrome156.json (cascade_cases/specificity-pseudo-element)",
+ "e2e": "crates/turbo-dom-layout/tests/cascade_selectors_chrome.rs",
+ "changes": {
+  "html2pdf": [],
+  "html2pdf-svg": [],
+  "html2pdf-extra": [],
+  "surf": []
+ }
+}

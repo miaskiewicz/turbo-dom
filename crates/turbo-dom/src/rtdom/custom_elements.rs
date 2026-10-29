@@ -1,6 +1,6 @@
-//! Pure-Rust port of the customElements registry (`makeCustomElements` in
-//! `src/runtime/stubs.mjs`). NO wasm/napi, no `Tree` dependency — a standalone
-//! name→definition map.
+//! Pure-Rust port of the customElements registry's name map (`makeCustomElements` in
+//! `src/runtime/custom-elements.mjs`, which also upgrades elements). NO wasm/napi, no
+//! `Tree` dependency — a standalone name→definition map.
 //!
 //! The JS version maps a tag name to a JS *class constructor* and exposes
 //! `define`/`get`/`getName`/`whenDefined`/`upgrade`. A JS class constructor is not
@@ -47,7 +47,7 @@ impl CustomElementDefinition {
 
 /// A portable customElements registry: name → opaque definition record.
 ///
-/// Mirrors the portable parts of the JS `makeCustomElements` stub
+/// Mirrors the portable parts of the JS `makeCustomElements` registry
 /// (`define`/`get`, plus `is_defined`/`defined_names`). The JS-class constructor
 /// and the `whenDefined` Promise are the embedder's concern (see module docs).
 #[derive(Debug, Clone, Default)]

@@ -1,0 +1,13 @@
+{
+ "id": "turbo-html2pdf#32 item 6",
+ "reason": "A block's last content moves to the next page with the bottom padding/border of its ancestors (body included) when they do not fit with it; a trailing margin alone does not move it (3e1de14). No corpus input exercises it: Attribution: napi builds (plain + svg, fresh target dirs, git-archived commits) of turbo-html2pdf consol/p5b-w4 against turbo-dom 79a94d3, each step vs the previous: 3e1de14 vs its parent = 0 outputs in every corpus. P5b-W4.",
+ "control": "turbo-html2pdf crates/turbo-html2pdf-core/tests/fixtures/pagination_chrome156.json (scripts/pagination-chrome-control.mjs: Chrome for Testing 156.0.8078.4 page.pdf() of 600x400px @page boxes, pdftoppm -r 96) cases exact-fill-parent-padding, -parent-border, -body-padding, -grandparent-padding, -no-padding, -body-margin (exact-fill-child-margin pending turbo-dom#41)",
+ "e2e": "turbo-html2pdf crates/turbo-html2pdf-core/tests/pagination_chrome.rs (+ tests/paginate.rs); every control case also matches through the emitted PDF (pdftoppm) except exact-fill-child-margin (turbo-dom#41)",
+ "changes": {
+  "html2pdf": [],
+  "html2pdf-svg": [],
+  "html2pdf-extra": [],
+  "surf": [],
+  "surf-extra": []
+ }
+}

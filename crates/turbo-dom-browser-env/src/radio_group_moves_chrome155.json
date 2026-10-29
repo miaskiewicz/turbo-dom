@@ -1,0 +1,278 @@
+{
+  "browser": "Chrome/155.0.8059.80",
+  "v8": "15.5.35.23",
+  "casesSha256": "96345c459d1e1ba6acc95502476654ac4e55bb2cc1f693fdf9564fbebc89e74a",
+  "probeSha256": "8501b254802b1c8a3c9bb5625a9cb3d58d5594546e0f7c5b532412fdfc794a8d",
+  "collectorSha256": "700a755df1701cfa30a95ca9f20800e81724f50ca7aafd6b46f77e87b2b91351",
+  "flags": [
+    "--remote-debugging-port=0",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "about:blank"
+  ],
+  "errors": [],
+  "result": [
+    {
+      "id": "radio-dirty-lifecycle",
+      "result": {
+        "container": [
+          false,
+          true
+        ],
+        "fragment": [
+          false,
+          true
+        ],
+        "shadow": [
+          true,
+          true
+        ],
+        "external": [
+          [
+            true,
+            true
+          ],
+          [
+            false,
+            true
+          ],
+          [
+            false,
+            true
+          ],
+          [
+            false,
+            true
+          ]
+        ],
+        "fragmentOrder": [
+          [
+            false,
+            false,
+            true
+          ],
+          "last"
+        ],
+        "ownerRemovalDetached": [
+          [
+            true,
+            true
+          ],
+          false,
+          true
+        ],
+        "ownerRemoval": [
+          [
+            true,
+            true
+          ],
+          [
+            true,
+            false
+          ]
+        ],
+        "brands": [
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError"
+        ],
+        "unresolved": [
+          [
+            true,
+            true
+          ],
+          [
+            true,
+            true
+          ],
+          [
+            true,
+            true
+          ],
+          [
+            false,
+            true
+          ]
+        ],
+        "detachedForm": [
+          [
+            false,
+            true
+          ],
+          [
+            true,
+            false
+          ]
+        ],
+        "detachedFragment": [
+          [
+            true,
+            true
+          ],
+          [
+            true,
+            true
+          ]
+        ],
+        "detachedShadow": [
+          [
+            true,
+            true
+          ],
+          [
+            true,
+            true
+          ],
+          [
+            false,
+            true
+          ]
+        ],
+        "shadowFormBoundary": [
+          true,
+          true,
+          [
+            false,
+            true
+          ]
+        ],
+        "shadowInternalForm": [
+          true,
+          [
+            true,
+            true
+          ]
+        ],
+        "formGetterBrands": [
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError",
+          "TypeError"
+        ],
+        "formGetters": [
+          [
+            "HTMLInputElement",
+            true,
+            true,
+            "get form",
+            0,
+            true,
+            true,
+            true
+          ],
+          [
+            "HTMLButtonElement",
+            true,
+            true,
+            "get form",
+            0,
+            true,
+            true,
+            true
+          ],
+          [
+            "HTMLTextAreaElement",
+            true,
+            true,
+            "get form",
+            0,
+            true,
+            true,
+            true
+          ],
+          [
+            "HTMLSelectElement",
+            true,
+            true,
+            "get form",
+            0,
+            true,
+            true,
+            true
+          ],
+          [
+            "HTMLFieldSetElement",
+            true,
+            true,
+            "get form",
+            0,
+            true,
+            true,
+            true
+          ],
+          [
+            "HTMLOutputElement",
+            true,
+            true,
+            "get form",
+            0,
+            true,
+            true,
+            true
+          ],
+          [
+            "HTMLObjectElement",
+            true,
+            true,
+            "get form",
+            0,
+            true,
+            true,
+            true
+          ]
+        ]
+      }
+    }
+  ]
+}

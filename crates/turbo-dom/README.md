@@ -1,32 +1,45 @@
 # turbo-dom
 
-A **pure-Rust DOM runtime** for in-process Rust consumers (crawlers, extractors,
-SSR, scraping). A lazy, copy-on-write DOM tree built directly over an
-[`html5ever`](https://github.com/servo/html5ever) Structure-of-Arrays parse
-buffer, with a **native Rust API and zero JS boundary**.
+A **pure-Rust DOM**: a lazy, copy-on-write tree built over an
+[html5ever](https://github.com/servo/html5ever) Structure-of-Arrays parse buffer, with
+turbo-dom's one Chrome 156-checked selector engine, a CSSOM, a partial `getComputedStyle`,
+events, shadow DOM, mutation records and UTF-16-exact parsing. It is a plain Rust API with no
+JS boundary. On a chatty per-node workload it measured ~2.7x turbo-dom's JS runtime, while a JS
+caller going through WASM measured ~0.55x, so this crate serves Rust consumers only (numbers
+from before 0.6.0; see [BENCHMARKS-history](../../docs/BENCHMARKS-history.md)).
 
-This is the Rust-native runtime of the [turbo-dom](https://github.com/miaskiewicz/turbo-dom)
-project (the npm package `@miaskiewicz/turbo-dom` is the JS-consumer path). No napi,
-no wasm-bindgen, no JavaScript — those exist only on the JS-consumer path (where an
-in-process JS runtime beats a WASM/napi boundary anyway). This crate is the path for
-a **Rust** consumer, where the DOM lives in-process and every read / mutation is a
-plain Rust call.
+## Where it sits
 
-## Why
+The base of the turbo-dom 0.6.0 crate family
+([docs/CONSOLIDATION.md](../../docs/CONSOLIDATION.md)):
 
-On the chatty per-node workload (querySelectorAll + getAttribute + tagName +
-parent-walk, 300-card fixture), the native Rust runtime measured **~2.7× the
-optimized JS runtime** — because there's no boundary to cross. (A JS caller going
-through WASM/napi measured ~0.55×, i.e. *slower* than the JS runtime — which is
-exactly why this is Rust-only.)
+```
+turbo-dom ──► turbo-dom-layout ──► turbo-dom-raster
+    └───────► turbo-dom-browser-env (+ turbo-dom-v8)
+```
+
+Consumers: **turbo-test** and **turbo-surf** (through turbo-dom-browser-env and directly),
+**turbo-html2pdf** (through turbo-dom-layout's cascade). The npm package
+`@miaskiewicz/turbo-dom` is the separate JS-consumer path; it does not use this crate.
 
 ## Install
 
 ```bash
-cargo add turbo-dom
+cargo add turbo-dom        # turbo-dom = "0.6"; MSRV 1.89
 ```
 
-## Use
+Dependencies: html5ever / markup5ever_rcdom 0.39, cssparser 0.37, rustc-hash, smol_str,
+smallvec, unicode-bidi, log. No napi, no wasm-bindgen.
+
+## Features
+
+None.
+
+## API
+
+Crate root: `Dom`, `Tree`, `Handle`, `Event`, `ParseOptions`, `NodeRef`, `DocumentExt`; the
+parser core is `turbo_dom::core` (`parse_html_document`, `parse_html_soa`,
+`parse_html_soa_with_compat_mode`, `Soa`, `Node`).
 
 ```rust
 use turbo_dom::{Dom, DocumentExt, Event};
@@ -57,19 +70,21 @@ dom.dispatch_event(cards[0], &mut Event::new("click", true, true));
 let html = serialize::serialize_inner(&dom.tree, dom.tree.root());
 ```
 
-Run the worked example: `cargo run --release --example crawl`.
+Worked example: `cargo run --release -p turbo-dom --example crawl`.
 
-## What's inside (`turbo_dom::rtdom::*`)
+Modules (`turbo_dom::rtdom::*`):
 
 | module | role |
 |---|---|
-| `tree` | COW tree over the immutable SoA + `version` counter; lazy attrs; mutations; `set_inner_html`; shadow DOM; mutation recording |
-| `query` | selectors (tag/`.class`/`#id`/`[attr]` with `^=`/`$=`/`*=`/`~=`/`\|=`, descendant + child, comma, full pseudo-class set, `:not`); version-cached `querySelectorAll` / `getElementById` |
-| `cascade` | partial `getComputedStyle` — inline + matched `<style>` rules with specificity/order, curated inheritance, `:host`/`::slotted` shadow scoping, color canonicalization; memoized per version |
+| `tree` | COW tree over the immutable SoA + `version` counter; lazy attrs; mutations; `set_inner_html`; shadow DOM; mutation recording; custom element state (`CustomElementState`, read by `:defined`; embedders report upgrades) |
+| `query` | selectors (tag incl. `*\|`/`\|` prefixes/`.class`/`#id`/`[attr]` with `^=`/`$=`/`*=`/`~=`/`\|=`, CSS escapes, all four combinators, comma, structural/form/link pseudo-classes incl. `:nth-child(An+B of S)`, `:is`/`:where`/`:not`/`:has`), checked against a Chrome 156 control; version-cached `querySelectorAll` / `getElementById` |
+| `cascade` | partial `getComputedStyle` — inline + matched `<style>` rules with Selectors 4 specificity / source order, curated inheritance, `:host`/`::slotted` shadow scoping, color canonicalization; memoized per version |
 | `events` | `Dom` (owns the tree + listeners); capture/target/bubble dispatch, listener-less fast-skip, `stopPropagation`/`preventDefault`, tree-mutating handlers |
 | `serialize` | inner/outerHTML (void + raw-text, single-pass escaping) |
 | `node_ref` | ergonomic `NodeRef` + `DocumentExt` façade over handles |
 | `color` | CSS color → `rgb()`/`rgba()` (named/hex/hsl) |
+| `css_shorthand` | CSSOM shorthands as Chrome 156 implements them: the shorthand / alias tables, `expand` (a shorthand value → its longhands), `shorthand_value` / `block_text` (getPropertyValue / cssText serialization), `longhand_value` (a longhand's Chrome spelling and admission), `DeclarationBlock` (the reference CSSOM block); checked against `tests/fixtures/css_{shorthand,longhand}_chrome156.json` |
+| `css_values` | Chrome-compatible CSS value grammars: `zoom_value` (Chrome 156 standardized `zoom`, incl. `calc()`), `css_number` (Blink number serialization) |
 | `cssom` | `CssStyleSheet`/`CssStyleRule` + insert/deleteRule + parse |
 | `svg` | SVG length/string/viewBox accessors |
 | `file` | Blob/File + sync FileReader (text / data-URL base64 / array-buffer) |
@@ -80,91 +95,71 @@ Run the worked example: `cargo run --release --example crawl`.
 
 ## Status
 
-- **100% line coverage** on every runtime module; **192 unit tests** (`cargo test`).
-- The parser core (`turbo_dom::core`) is byte-identical to the parser crate's and
-  passes html5lib-tests tree-construction conformance at **99.72%** there.
+- Line coverage is gated in CI at **100%** (tarpaulin LLVM over `src/`, blocking),
+  with behaviour-asserting tests: Chrome 156 controls for what a page can observe
+  (`tests/rtdom_core_chrome.rs`, `tests/cascade_selectors_chrome.rs`, …) and the html5lib
+  tree-construction fixtures through both parsers (upstream html5ever and the UTF-16
+  tokenizer fork).
+- The parser core (`turbo_dom::core`) shares the parser crate's html5ever options and
+  passes html5lib-tests tree-construction conformance at **99.94%** there (the rtdom-direct
+  gate: 100%).
+- CI: Pull-request CI runs this crate's jobs on Linux; macOS arm64 is added in the release run only (`publish.yml` calls `ci.yml` with `darwin: true`). Complexity (<= 15 per function) is report-only until the post-release refactor.
 - Honest by design: `getComputedStyle` only returns values a real rule/inline/
   inherited declaration set (no invented initial values, no layout/`@media`/state).
 
-MIT.
+Embedder entry points beyond the browser-facing API:
 
-### Native observer event seam (0.5.3)
+- **Parsing:** `Tree::parse_with(html, ParseOptions)` (scripting flag);
+  `Tree::parse_utf16` and `parse_srcdoc_utf16` keep the original UTF-16 units. `srcdoc` is
+  no-quirks, as in Chrome. `parse_with_source_positions` and
+  `parse_utf16_with_source_positions` record token positions, read with
+  `source_position` / `source_attribute_position`.
+- **Fragments:** `Tree::create_contextual_fragment_utf16(context, units, scripting_enabled)`
+  parses against a real context element (Range `createContextualFragment`).
+- **Selectors for other engines:** `rtdom::query::{parse_for_cascade, match_for_cascade,
+  parse_for_supports}`, generic over the `rtdom::query::Navigator` trait. turbo-dom-layout's
+  cascade uses these, so the DOM APIs and layout share one engine
+  ([docs/selector-engine.md](../../docs/selector-engine.md)).
+- **Mutation events:** `Tree::start_recording()`, then `take_mutation_events()` (records plus
+  ancestry and sibling positions for an embedder's observer queues) or
+  `take_mutation_records()`.
+- **Storage:** `Tree::collect_unreachable(&pins, budget)` reclaims detached storage at a
+  quiescent point. Handles are never reused: check `is_live()`, and iterate `handles()`
+  rather than `0..node_count()`. `storage_stats()` reports usage
+  ([docs/native-storage-collection.md](../../docs/native-storage-collection.md)).
 
-Call `Tree::start_recording()` and drain `Tree::take_mutation_events()` to fan out
-events into an embedder's private observer queues. Each event includes the existing
-record plus inclusive light-tree ancestry at mutation time, child-list sibling
-positions and the actual attribute namespace. Ancestry stops at shadow roots.
-`take_mutation_records()` remains supported and consumes the same buffer. Recording
-is opt-in; the ordinary mutation path does not allocate event metadata.
+## Gates
 
-The embedder still implements observer registrations/options, transient removed-tree
-registrations, private callback ownership and microtask delivery according to the
-[DOM observer algorithms](https://dom.spec.whatwg.org/#mutation-observers). This
-additive seam does not establish complete browser MutationObserver parity.
+- Line coverage **100%**, blocking (CI `coverage` job: `cargo tarpaulin --engine llvm -p
+  turbo-dom --include-files 'crates/turbo-dom/src/*' --fail-under 100`). Dead defensive lines
+  are removed or `unreachable!()` with a proof, never excluded.
+- html5lib-tests tree construction through the rtdom tree: **100%**
+  (`npm run conformance:rtdom`). The perf gate `churn_alloc_gate` (≤ 380 allocs/op) runs alone:
+  `cargo test -p turbo-dom churn_alloc_gate -- --ignored`.
+- clippy pedantic `-D warnings`, rustfmt, MSRV 1.89 check.
+- Cyclomatic complexity ≤ 15 per function is **report-only** until the post-release refactor.
+- CI runs on Linux for pull requests; macOS arm64 is added only in the release run.
 
-## Native storage collection
+## Testing
 
-Long-lived embedders can call `Tree::collect_unreachable(&pins, budget)` at a
-quiescent boundary. Pass every independently retained native handle, including
-ranges, iterators, XPath results, queued work and live wrapper components. The
-connected document and undrained native mutation events are implicit roots.
-A pinned detached descendant retains its ancestors, siblings, shadow trees and
-attached Attr nodes. Collection rejects invalid pins or exhausted node/edge/string
-budgets before replacing storage. It preserves the DOM version and emits no
-mutation record.
-
-`Tree::storage_stats()` reports live nodes, parsed/runtime slots and logical
-string payload bytes. Successful collection drops unreachable parsed payloads and
-uses sparse native storage for retained identities. New handles are monotonically
-minted and never reused. After collection, `node_count()` counts live nodes and
-identities can have holes: iterate `handles()` instead of constructing
-`0..node_count()` handles. Use `is_live()` before passing an externally retained
-handle to a DOM read; omitted pins can be reclaimed. `NodeRef` borrowing protects
-concurrent safe Rust mutation but cannot discover external copied handles.
-
-## Parser provenance
-
-`Tree::parse_with_source_positions` and `parse_utf16_with_source_positions` opt
-into original-input positions without changing the normal parse path. The
-original UTF-16 offset and one-based line/column come from the actual tokenizer
-queue at token emission. CRLF counts as one line break and two original units.
-Sparse source checkpoints bound position lookup work; metadata does not retain
-the input after parsing.
-
-`source_position(node)` identifies the token that created an actual lexical
-node. Synthetic and reconstructed nodes return `None`.
-`source_attribute_position(node, name)` and its UTF-16 name variant identify the
-parser context where an attribute was installed, including later html/body tags
-and formatting reconstruction. This differs from the node's lexical provenance.
-Mutations do not fabricate new positions; native storage collection prunes
-metadata for reclaimed handles.
-
-The independent normal Chrome controls and their pinned probe/case/collector
-sources live in `tests/controls/parser_positions`. Recollect with:
-
-```sh
-node crates/turbo-dom/tests/controls/parser_positions/csp-document-chrome.mjs \
-  crates/turbo-dom/tests/controls/parser_positions/parser-source-position-cases.json \
-  crates/turbo-dom/tests/controls/parser_positions/parser-source-position-probe.js \
-  crates/turbo-dom/tests/controls/parser_positions/parser-source-position-chrome155.json
+```bash
+cargo test -p turbo-dom
+cargo test -p turbo-dom --test cascade_selectors_chrome   # selector engine vs Chrome 156
+cargo test -p turbo-dom --test rtdom_core_chrome          # tokenizer / fragments / DOM edges vs Chrome 156
 ```
 
-The backend test compares13 mainframe cases. Inert-template report metadata
-requires the browser binding's actual owner-document context; its full14th
-control is preserved rather than represented as a backend lexical-position rule.
+Web-observable behaviour is asserted against **Chrome 156 controls**: JSON fixtures recorded
+by the collectors in the repository's `scripts/`, stored in `tests/fixtures/` and
+`tests/controls/`. Examples: `cascade_selectors_chrome156.json`,
+`rtdom_core_chrome156.json` and `css_{shorthand,longhand}_chrome156.json`. A behaviour
+change needs a new control row. The npm runtime asserts the same selector and shorthand
+fixtures, so the two engines stay in lockstep.
 
-## Contextual HTML fragments
+## Links
 
-`Tree::create_contextual_fragment_utf16(context, units, scripting_enabled)`
-returns a detached fragment parsed against the actual context element. It uses
-its namespace, integration-point attributes, nearest ordinary-tree form ancestor
-and owner document quirks mode. Original UTF-16 units survive parsing. Existing
-context children and pending mutation events are preserved; no custom-element
-constructor or page script runs in the parser.
+[turbo-dom repository](https://github.com/miaskiewicz/turbo-dom) ·
+[CHANGELOG](../../CHANGELOG.md) · [UTF16.md](UTF16.md) ·
+[turbo-dom-layout](../turbo-dom-layout/README.md) ·
+[turbo-dom-browser-env](../turbo-dom-browser-env/README.md)
 
-The scripting flag controls HTML `noscript` tokenization. Embedders still choose
-the context element for a Range boundary, handle HTML-root/body fallback and
-XML parsing, establish the template-associated owner document, and deliver
-custom-element upgrades and script preparation at the correct lifecycle point.
-Retain the returned fragment as a native collection pin until it is adopted or
-its wrapper ownership is established.
+License: MIT.

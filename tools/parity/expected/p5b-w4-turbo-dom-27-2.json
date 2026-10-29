@@ -1,0 +1,13 @@
+{
+ "id": "turbo-dom#27 item 2",
+ "reason": "image_urls and the lazy-image fill (delazy_images / new delazy_tree) walk the parsed document's HTML <img> elements (template content excluded), never <img text in attribute values, scripts, comments or templates (599d9a0). static harness (surf static screenshot_png/screenshot_svg at 1280x800, plain + caller-assets passes, 123 inputs; base = git rev, new = git-archived tree): bd19fd7 -> 599d9a0: 0 outputs in every pass (no corpus input has lazy <img text outside an element). P5b-W4.",
+ "control": "crates/turbo-dom-raster/tests/fixtures/raster_img_chrome156.json (scripts/raster-img-chrome-control.mjs, Chrome for Testing 156.0.8078.4) img-text-* cases",
+ "e2e": "crates/turbo-dom-raster/tests/raster_img_chrome.rs img_text_is_not_an_image_like_chrome_156, src/style_extract.rs unit tests",
+ "changes": {
+  "html2pdf": [],
+  "html2pdf-svg": [],
+  "html2pdf-extra": [],
+  "surf": [],
+  "surf-extra": []
+ }
+}

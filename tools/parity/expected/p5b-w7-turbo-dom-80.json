@@ -1,0 +1,13 @@
+{
+ "id": "miaskiewicz/turbo-dom#80",
+ "reason": "An inline-block lays its content out as a block formatting context root: its first / last child's vertical margins stay inside it. Fresh-target parity builds (git archive of each commit, own CARGO_TARGET_DIR per build; html2pdf refactor 923c89f napi plain + svg; surf static through the napi-free raster harness): e80e26a -> e202db4: no corpus output changes (no corpus input has an inline-block whose first or last child has a vertical margin). P5b-W7.",
+ "control": "inline-block-margins-* in scripts/html-document-chrome-control.mjs and scripts/live-geometry-chrome-control.mjs",
+ "e2e": "crates/turbo-dom-layout/tests/html_document_chrome.rs + src/live/chrome_tests.rs (inline_blocks_keep_child_margins_like_chrome_156)",
+ "changes": {
+  "html2pdf": [],
+  "html2pdf-svg": [],
+  "html2pdf-extra": [],
+  "surf": [],
+  "surf-extra": []
+ }
+}

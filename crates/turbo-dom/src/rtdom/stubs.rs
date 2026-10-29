@@ -11,7 +11,8 @@
 //! Skipped (inherently JS-host / DOM-bound, no clean pure-Rust value API):
 //!   * `FileReader` — async `Promise`/event-driven Blob reading.
 //!   * `makeCanvasStub` — a JS `Proxy` no-op 2D context.
-//!   * `makeCustomElements` — registry returning JS constructors + Promises.
+//!   * `makeCustomElements` (now `custom-elements.mjs`) — registry returning JS constructors +
+//!     Promises (the name map is `rtdom::custom_elements`).
 //!   * `MutationObserver` — queue keyed to live DOM mutations.
 //!   * `makeLocation` / `makeHistory` — `URL`-backed navigation models.
 //!
@@ -116,7 +117,7 @@ pub fn eval_media_query(query: &str, vp: &Viewport) -> bool {
             "min-height" => matched = matched && parse_px(&val).is_some_and(|n| h >= n),
             "max-height" => matched = matched && parse_px(&val).is_some_and(|n| h <= n),
             "orientation" => {
-                let want = if w >= h { "landscape" } else { "portrait" };
+                let want = if w > h { "landscape" } else { "portrait" };
                 matched = matched && val == want;
             }
             // An unrecognized media feature can never match (browsers treat an
@@ -323,42 +324,106 @@ mod tests {
     #[test]
     fn mq_min_width() {
         let q = "(min-width: 600px)";
-        assert!(eval_media_query(q, &Viewport { width: 800.0, height: 600.0 }));
-        assert!(!eval_media_query(q, &Viewport { width: 500.0, height: 600.0 }));
+        assert!(eval_media_query(
+            q,
+            &Viewport {
+                width: 800.0,
+                height: 600.0
+            }
+        ));
+        assert!(!eval_media_query(
+            q,
+            &Viewport {
+                width: 500.0,
+                height: 600.0
+            }
+        ));
     }
 
     #[test]
     fn mq_max_width() {
         let q = "(max-width: 600px)";
-        assert!(eval_media_query(q, &Viewport { width: 500.0, height: 600.0 }));
-        assert!(!eval_media_query(q, &Viewport { width: 800.0, height: 600.0 }));
+        assert!(eval_media_query(
+            q,
+            &Viewport {
+                width: 500.0,
+                height: 600.0
+            }
+        ));
+        assert!(!eval_media_query(
+            q,
+            &Viewport {
+                width: 800.0,
+                height: 600.0
+            }
+        ));
     }
 
     #[test]
     fn mq_orientation() {
         let portrait = "(orientation: portrait)";
         let landscape = "(orientation: landscape)";
-        let tall = Viewport { width: 400.0, height: 800.0 };
-        let wide = Viewport { width: 800.0, height: 400.0 };
+        let tall = Viewport {
+            width: 400.0,
+            height: 800.0,
+        };
+        let wide = Viewport {
+            width: 800.0,
+            height: 400.0,
+        };
         assert!(eval_media_query(portrait, &tall));
         assert!(!eval_media_query(portrait, &wide));
         assert!(eval_media_query(landscape, &wide));
         assert!(!eval_media_query(landscape, &tall));
-        // Square => landscape (w >= h), matching the JS.
-        let square = Viewport { width: 500.0, height: 500.0 };
-        assert!(eval_media_query(landscape, &square));
-        assert!(!eval_media_query(portrait, &square));
+        // Square => portrait: Media Queries 4 / Chrome 156 say `landscape` only when width is
+        // greater than height (turbo-dom#138; the npm stubs.mjs matches).
+        let square = Viewport {
+            width: 500.0,
+            height: 500.0,
+        };
+        assert!(eval_media_query(portrait, &square));
+        assert!(!eval_media_query(landscape, &square));
     }
 
     #[test]
     fn mq_multi_feature_and() {
         let q = "(min-width: 600px) and (max-width: 900px)";
-        assert!(eval_media_query(q, &Viewport { width: 800.0, height: 600.0 }));
-        assert!(!eval_media_query(q, &Viewport { width: 500.0, height: 600.0 }));
-        assert!(!eval_media_query(q, &Viewport { width: 1000.0, height: 600.0 }));
+        assert!(eval_media_query(
+            q,
+            &Viewport {
+                width: 800.0,
+                height: 600.0
+            }
+        ));
+        assert!(!eval_media_query(
+            q,
+            &Viewport {
+                width: 500.0,
+                height: 600.0
+            }
+        ));
+        assert!(!eval_media_query(
+            q,
+            &Viewport {
+                width: 1000.0,
+                height: 600.0
+            }
+        ));
         let q2 = "(min-width: 600px) and (orientation: landscape)";
-        assert!(eval_media_query(q2, &Viewport { width: 800.0, height: 400.0 }));
-        assert!(!eval_media_query(q2, &Viewport { width: 800.0, height: 900.0 }));
+        assert!(eval_media_query(
+            q2,
+            &Viewport {
+                width: 800.0,
+                height: 400.0
+            }
+        ));
+        assert!(!eval_media_query(
+            q2,
+            &Viewport {
+                width: 800.0,
+                height: 900.0
+            }
+        ));
     }
 
     #[test]
@@ -366,13 +431,22 @@ mod tests {
         // No recognized feature => false (JS returns `any && matched`).
         assert!(!eval_media_query("screen", &Viewport::default()));
         assert!(!eval_media_query("", &Viewport::default()));
-        assert!(!eval_media_query("(unknown-feature: 1)", &Viewport::default()));
+        assert!(!eval_media_query(
+            "(unknown-feature: 1)",
+            &Viewport::default()
+        ));
     }
 
     #[test]
     fn mq_height_orientation_pxedges_and_unknown() {
-        let landscape = Viewport { width: 800.0, height: 600.0 };
-        let portrait = Viewport { width: 400.0, height: 900.0 };
+        let landscape = Viewport {
+            width: 800.0,
+            height: 600.0,
+        };
+        let portrait = Viewport {
+            width: 400.0,
+            height: 900.0,
+        };
         // height features
         assert!(eval_media_query("(min-height: 500px)", &landscape));
         assert!(!eval_media_query("(min-height: 700px)", &landscape));
@@ -382,11 +456,14 @@ mod tests {
         assert!(eval_media_query("(orientation: portrait)", &portrait));
         assert!(!eval_media_query("(orientation: portrait)", &landscape));
         // parse_px edges: decimal, signed, and non-numeric (→ feature fails)
-        assert!(eval_media_query("(min-width: 1.5px)", &landscape));   // decimal path
-        assert!(eval_media_query("(min-width: -5px)", &landscape));    // leading-sign path
-        assert!(!eval_media_query("(min-width: abc)", &landscape));    // no digits → None → false
-        // unknown feature fails the query (the `_` arm)
-        assert!(!eval_media_query("(min-width: 1px) and (foo: bar)", &landscape));
+        assert!(eval_media_query("(min-width: 1.5px)", &landscape)); // decimal path
+        assert!(eval_media_query("(min-width: -5px)", &landscape)); // leading-sign path
+        assert!(!eval_media_query("(min-width: abc)", &landscape)); // no digits → None → false
+                                                                    // unknown feature fails the query (the `_` arm)
+        assert!(!eval_media_query(
+            "(min-width: 1px) and (foo: bar)",
+            &landscape
+        ));
     }
 
     #[test]

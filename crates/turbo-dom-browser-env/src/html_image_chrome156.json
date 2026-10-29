@@ -1,0 +1,1691 @@
+{
+  "browser": "Chrome/156.0.8078.4",
+  "v8": "15.6.75",
+  "casesSha256": "50af99efbdf571dedf01ec73e78479c098fa15637e1fcd85f8cce8b0e9e54bca",
+  "probeSha256": "a4545745ec4c8dc661b9d6e67e27f8751931d28970a2c61bf1b36a81c2d73f05",
+  "collectorSha256": "7174415de76a891d657bbc3e66952c7b91356030e8fcd9d0ac4f52603d0c3952",
+  "flags": [
+    "--headless=new",
+    "--remote-debugging-pipe",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "about:blank"
+  ],
+  "errors": [],
+  "result": [
+    {
+      "id": "html-image-state",
+      "result": {
+        "shape": {
+          "complete": {
+            "keys": [
+              "get",
+              "set",
+              "enumerable",
+              "configurable"
+            ],
+            "enumerable": true,
+            "configurable": true,
+            "get": [
+              "get complete",
+              0,
+              "function get complete() { [native code] }",
+              false
+            ],
+            "set": "undefined"
+          },
+          "currentSrc": {
+            "keys": [
+              "get",
+              "set",
+              "enumerable",
+              "configurable"
+            ],
+            "enumerable": true,
+            "configurable": true,
+            "get": [
+              "get currentSrc",
+              0,
+              "function get currentSrc() { [native code] }",
+              false
+            ],
+            "set": "undefined"
+          },
+          "naturalHeight": {
+            "keys": [
+              "get",
+              "set",
+              "enumerable",
+              "configurable"
+            ],
+            "enumerable": true,
+            "configurable": true,
+            "get": [
+              "get naturalHeight",
+              0,
+              "function get naturalHeight() { [native code] }",
+              false
+            ],
+            "set": "undefined"
+          },
+          "naturalWidth": {
+            "keys": [
+              "get",
+              "set",
+              "enumerable",
+              "configurable"
+            ],
+            "enumerable": true,
+            "configurable": true,
+            "get": [
+              "get naturalWidth",
+              0,
+              "function get naturalWidth() { [native code] }",
+              false
+            ],
+            "set": "undefined"
+          }
+        },
+        "inPrototype": [
+          true,
+          true,
+          true,
+          true
+        ],
+        "inElement": [
+          false,
+          false,
+          false,
+          false
+        ],
+        "prototypeRead": [
+          [
+            "throw",
+            "TypeError",
+            "Illegal invocation"
+          ],
+          [
+            "throw",
+            "TypeError",
+            "Illegal invocation"
+          ],
+          [
+            "throw",
+            "TypeError",
+            "Illegal invocation"
+          ],
+          [
+            "throw",
+            "TypeError",
+            "Illegal invocation"
+          ]
+        ],
+        "receivers": {
+          "plain": [
+            [
+              "throw",
+              "TypeError",
+              "Illegal invocation"
+            ],
+            [
+              "throw",
+              "TypeError",
+              "Illegal invocation"
+            ],
+            [
+              "throw",
+              "TypeError",
+              "Illegal invocation"
+            ],
+            [
+              "throw",
+              "TypeError",
+              "Illegal invocation"
+            ]
+          ],
+          "inherited": [
+            [
+              "throw",
+              "TypeError",
+              "Illegal invocation"
+            ],
+            [
+              "throw",
+              "TypeError",
+              "Illegal invocation"
+            ],
+            [
+              "throw",
+              "TypeError",
+              "Illegal invocation"
+            ],
+            [
+              "throw",
+              "TypeError",
+              "Illegal invocation"
+            ]
+          ],
+          "div": [
+            [
+              "throw",
+              "TypeError",
+              "Illegal invocation"
+            ],
+            [
+              "throw",
+              "TypeError",
+              "Illegal invocation"
+            ],
+            [
+              "throw",
+              "TypeError",
+              "Illegal invocation"
+            ],
+            [
+              "throw",
+              "TypeError",
+              "Illegal invocation"
+            ]
+          ],
+          "input": [
+            [
+              "throw",
+              "TypeError",
+              "Illegal invocation"
+            ],
+            [
+              "throw",
+              "TypeError",
+              "Illegal invocation"
+            ],
+            [
+              "throw",
+              "TypeError",
+              "Illegal invocation"
+            ],
+            [
+              "throw",
+              "TypeError",
+              "Illegal invocation"
+            ]
+          ],
+          "svgImage": [
+            [
+              "throw",
+              "TypeError",
+              "Illegal invocation"
+            ],
+            [
+              "throw",
+              "TypeError",
+              "Illegal invocation"
+            ],
+            [
+              "throw",
+              "TypeError",
+              "Illegal invocation"
+            ],
+            [
+              "throw",
+              "TypeError",
+              "Illegal invocation"
+            ]
+          ],
+          "foreignImg": [
+            [
+              "throw",
+              "TypeError",
+              "Illegal invocation"
+            ],
+            [
+              "throw",
+              "TypeError",
+              "Illegal invocation"
+            ],
+            [
+              "throw",
+              "TypeError",
+              "Illegal invocation"
+            ],
+            [
+              "throw",
+              "TypeError",
+              "Illegal invocation"
+            ]
+          ],
+          "document": [
+            [
+              "throw",
+              "TypeError",
+              "Illegal invocation"
+            ],
+            [
+              "throw",
+              "TypeError",
+              "Illegal invocation"
+            ],
+            [
+              "throw",
+              "TypeError",
+              "Illegal invocation"
+            ],
+            [
+              "throw",
+              "TypeError",
+              "Illegal invocation"
+            ]
+          ]
+        },
+        "nullReceiver": [
+          "throw",
+          "TypeError",
+          "Illegal invocation"
+        ],
+        "parsed": {
+          "nosrc": {
+            "complete": true,
+            "naturalWidth": 0,
+            "naturalHeight": 0,
+            "currentSrc": "",
+            "own": [],
+            "ownState": [],
+            "enumerated": [
+              "complete",
+              "currentSrc",
+              "naturalHeight",
+              "naturalWidth"
+            ]
+          },
+          "empty": {
+            "complete": true,
+            "naturalWidth": 0,
+            "naturalHeight": 0,
+            "currentSrc": "",
+            "own": [],
+            "ownState": [],
+            "enumerated": [
+              "complete",
+              "currentSrc",
+              "naturalHeight",
+              "naturalWidth"
+            ]
+          },
+          "loaded": {
+            "complete": true,
+            "naturalWidth": 3,
+            "naturalHeight": 2,
+            "currentSrc": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAMAAAACCAYAAACddGYaAAAAEUlEQVR4nGP4z8DwH4YZkDkAm34L9XKwuTwAAAAASUVORK5CYII=",
+            "own": [],
+            "ownState": [],
+            "enumerated": [
+              "complete",
+              "currentSrc",
+              "naturalHeight",
+              "naturalWidth"
+            ]
+          },
+          "broken": {
+            "complete": true,
+            "naturalWidth": 0,
+            "naturalHeight": 0,
+            "currentSrc": "data:image/png;base64,AAAA",
+            "own": [],
+            "ownState": [],
+            "enumerated": [
+              "complete",
+              "currentSrc",
+              "naturalHeight",
+              "naturalWidth"
+            ]
+          }
+        },
+        "created": {
+          "complete": true,
+          "naturalWidth": 0,
+          "naturalHeight": 0,
+          "currentSrc": "",
+          "own": [],
+          "ownState": [],
+          "enumerated": [
+            "complete",
+            "currentSrc",
+            "naturalHeight",
+            "naturalWidth"
+          ]
+        },
+        "createdNS": {
+          "complete": true,
+          "naturalWidth": 0,
+          "naturalHeight": 0,
+          "currentSrc": "",
+          "own": [],
+          "ownState": [],
+          "enumerated": [
+            "complete",
+            "currentSrc",
+            "naturalHeight",
+            "naturalWidth"
+          ]
+        },
+        "innerHTML": {
+          "complete": true,
+          "naturalWidth": 0,
+          "naturalHeight": 0,
+          "currentSrc": "",
+          "own": [],
+          "ownState": [],
+          "enumerated": [
+            "complete",
+            "currentSrc",
+            "naturalHeight",
+            "naturalWidth"
+          ]
+        },
+        "assignStrict": [
+          "throw",
+          "TypeError",
+          "Cannot set property naturalWidth of #<HTMLImageElement> which has only a getter"
+        ],
+        "assignSloppy": [
+          true,
+          "",
+          []
+        ],
+        "defineOwn": [
+          7,
+          0
+        ],
+        "factory": {
+          "type": "function",
+          "name": "Image",
+          "length": 0,
+          "ownKeys": [
+            "length",
+            "name",
+            "prototype"
+          ],
+          "nameShape": {
+            "enumerable": false,
+            "configurable": true,
+            "writable": false
+          },
+          "lengthShape": {
+            "enumerable": false,
+            "configurable": true,
+            "writable": false
+          },
+          "prototypeShape": {
+            "enumerable": false,
+            "configurable": false,
+            "writable": false
+          },
+          "globalShape": {
+            "enumerable": false,
+            "configurable": true,
+            "writable": true
+          },
+          "sameProto": true,
+          "protoConstructor": true,
+          "notInterface": true,
+          "functionProto": true,
+          "source": "function Image() { [native code] }",
+          "call": [
+            "throw",
+            "TypeError",
+            "Failed to construct 'Image': Please use the 'new' operator, this DOM object constructor cannot be called as a function."
+          ],
+          "callArgs": [
+            "throw",
+            "TypeError",
+            "Failed to construct 'Image': Please use the 'new' operator, this DOM object constructor cannot be called as a function."
+          ],
+          "instance": true,
+          "distinct": true,
+          "empty": {
+            "proto": true,
+            "tag": "img",
+            "ns": "http://www.w3.org/1999/xhtml",
+            "owner": true,
+            "parent": null,
+            "widthAttr": null,
+            "heightAttr": null,
+            "attrs": 0,
+            "src": "",
+            "complete": true,
+            "own": [],
+            "keys": [],
+            "symbols": 0,
+            "html": "<img>"
+          },
+          "width": {
+            "proto": true,
+            "tag": "img",
+            "ns": "http://www.w3.org/1999/xhtml",
+            "owner": true,
+            "parent": null,
+            "widthAttr": "5",
+            "heightAttr": null,
+            "attrs": 1,
+            "src": "",
+            "complete": true,
+            "own": [],
+            "keys": [],
+            "symbols": 0,
+            "html": "<img width=\"5\">"
+          },
+          "both": {
+            "proto": true,
+            "tag": "img",
+            "ns": "http://www.w3.org/1999/xhtml",
+            "owner": true,
+            "parent": null,
+            "widthAttr": "5",
+            "heightAttr": "7",
+            "attrs": 2,
+            "src": "",
+            "complete": true,
+            "own": [],
+            "keys": [],
+            "symbols": 0,
+            "html": "<img width=\"5\" height=\"7\">"
+          },
+          "undefinedWidth": {
+            "proto": true,
+            "tag": "img",
+            "ns": "http://www.w3.org/1999/xhtml",
+            "owner": true,
+            "parent": null,
+            "widthAttr": "0",
+            "heightAttr": "3",
+            "attrs": 2,
+            "src": "",
+            "complete": true,
+            "own": [],
+            "keys": [],
+            "symbols": 0,
+            "html": "<img width=\"0\" height=\"3\">"
+          },
+          "undefinedOnly": {
+            "proto": true,
+            "tag": "img",
+            "ns": "http://www.w3.org/1999/xhtml",
+            "owner": true,
+            "parent": null,
+            "widthAttr": null,
+            "heightAttr": null,
+            "attrs": 0,
+            "src": "",
+            "complete": true,
+            "own": [],
+            "keys": [],
+            "symbols": 0,
+            "html": "<img>"
+          },
+          "undefinedBoth": {
+            "proto": true,
+            "tag": "img",
+            "ns": "http://www.w3.org/1999/xhtml",
+            "owner": true,
+            "parent": null,
+            "widthAttr": null,
+            "heightAttr": null,
+            "attrs": 0,
+            "src": "",
+            "complete": true,
+            "own": [],
+            "keys": [],
+            "symbols": 0,
+            "html": "<img>"
+          },
+          "nulls": {
+            "proto": true,
+            "tag": "img",
+            "ns": "http://www.w3.org/1999/xhtml",
+            "owner": true,
+            "parent": null,
+            "widthAttr": "0",
+            "heightAttr": "0",
+            "attrs": 2,
+            "src": "",
+            "complete": true,
+            "own": [],
+            "keys": [],
+            "symbols": 0,
+            "html": "<img width=\"0\" height=\"0\">"
+          },
+          "range": {
+            "proto": true,
+            "tag": "img",
+            "ns": "http://www.w3.org/1999/xhtml",
+            "owner": true,
+            "parent": null,
+            "widthAttr": "0",
+            "heightAttr": "0",
+            "attrs": 2,
+            "src": "",
+            "complete": true,
+            "own": [],
+            "keys": [],
+            "symbols": 0,
+            "html": "<img width=\"0\" height=\"0\">"
+          },
+          "max": {
+            "proto": true,
+            "tag": "img",
+            "ns": "http://www.w3.org/1999/xhtml",
+            "owner": true,
+            "parent": null,
+            "widthAttr": "2147483647",
+            "heightAttr": "0",
+            "attrs": 2,
+            "src": "",
+            "complete": true,
+            "own": [],
+            "keys": [],
+            "symbols": 0,
+            "html": "<img width=\"2147483647\" height=\"0\">"
+          },
+          "fractions": {
+            "proto": true,
+            "tag": "img",
+            "ns": "http://www.w3.org/1999/xhtml",
+            "owner": true,
+            "parent": null,
+            "widthAttr": "1",
+            "heightAttr": "0",
+            "attrs": 2,
+            "src": "",
+            "complete": true,
+            "own": [],
+            "keys": [],
+            "symbols": 0,
+            "html": "<img width=\"1\" height=\"0\">"
+          },
+          "strings": {
+            "proto": true,
+            "tag": "img",
+            "ns": "http://www.w3.org/1999/xhtml",
+            "owner": true,
+            "parent": null,
+            "widthAttr": "12",
+            "heightAttr": "0",
+            "attrs": 2,
+            "src": "",
+            "complete": true,
+            "own": [],
+            "keys": [],
+            "symbols": 0,
+            "html": "<img width=\"12\" height=\"0\">"
+          },
+          "wrap": {
+            "proto": true,
+            "tag": "img",
+            "ns": "http://www.w3.org/1999/xhtml",
+            "owner": true,
+            "parent": null,
+            "widthAttr": "5",
+            "heightAttr": "0",
+            "attrs": 2,
+            "src": "",
+            "complete": true,
+            "own": [],
+            "keys": [],
+            "symbols": 0,
+            "html": "<img width=\"5\" height=\"0\">"
+          },
+          "extra": {
+            "proto": true,
+            "tag": "img",
+            "ns": "http://www.w3.org/1999/xhtml",
+            "owner": true,
+            "parent": null,
+            "widthAttr": "1",
+            "heightAttr": "2",
+            "attrs": 2,
+            "src": "",
+            "complete": true,
+            "own": [],
+            "keys": [],
+            "symbols": 0,
+            "html": "<img width=\"1\" height=\"2\">"
+          },
+          "symbol": [
+            "throw",
+            "TypeError",
+            "Failed to construct 'Image': Cannot convert a Symbol value to a number"
+          ],
+          "symbolHeight": [
+            "throw",
+            "TypeError",
+            "Failed to construct 'Image': Cannot convert a Symbol value to a number"
+          ],
+          "throwingValueOf": [
+            "throw",
+            "RangeError",
+            "w"
+          ],
+          "bigint": [
+            "throw",
+            "TypeError",
+            "Failed to construct 'Image': Cannot convert a BigInt value to a number"
+          ],
+          "subclass": [
+            true,
+            true,
+            "img",
+            "4"
+          ],
+          "reflect": true,
+          "reflectPrimitive": "Object"
+        },
+        "own": {
+          "factorySrc": [
+            "http://localhost/a.png",
+            "http://localhost/a.png",
+            [],
+            []
+          ],
+          "factoryOnload": [
+            "function",
+            [],
+            []
+          ],
+          "createdSrc": [
+            "http://localhost/b.png",
+            "http://localhost/b.png",
+            [],
+            []
+          ],
+          "parsed": [
+            [],
+            []
+          ],
+          "srcShape": {
+            "enumerable": true,
+            "configurable": true,
+            "get": "function",
+            "set": "function"
+          },
+          "decode": [
+            "function",
+            true,
+            false,
+            0
+          ],
+          "onload": [
+            false,
+            true,
+            false
+          ],
+          "patchedMarker": [
+            false,
+            false
+          ]
+        },
+        "decode": {
+          "shape": {
+            "enumerable": true,
+            "configurable": true,
+            "writable": true
+          },
+          "fn": [
+            "decode",
+            0,
+            "function decode() { [native code] }",
+            false
+          ],
+          "parsed": {
+            "nosrc": [
+              "rejected",
+              "EncodingError",
+              "The source image cannot be decoded."
+            ],
+            "empty": [
+              "rejected",
+              "EncodingError",
+              "The source image cannot be decoded."
+            ],
+            "loaded": "resolved",
+            "broken": [
+              "rejected",
+              "EncodingError",
+              "The source image cannot be decoded."
+            ]
+          },
+          "factory": [
+            "rejected",
+            "EncodingError",
+            "The source image cannot be decoded."
+          ],
+          "receiver": [
+            "rejected",
+            "TypeError",
+            "Failed to execute 'decode' on 'HTMLImageElement': Illegal invocation"
+          ],
+          "returnsPromise": true
+        },
+        "dimensions": {
+          "shape": {
+            "width": {
+              "keys": [
+                "get",
+                "set",
+                "enumerable",
+                "configurable"
+              ],
+              "enumerable": true,
+              "configurable": true,
+              "get": [
+                "get width",
+                0,
+                "function get width() { [native code] }",
+                false
+              ],
+              "set": [
+                "set width",
+                1,
+                "function set width() { [native code] }"
+              ]
+            },
+            "height": {
+              "keys": [
+                "get",
+                "set",
+                "enumerable",
+                "configurable"
+              ],
+              "enumerable": true,
+              "configurable": true,
+              "get": [
+                "get height",
+                0,
+                "function get height() { [native code] }",
+                false
+              ],
+              "set": [
+                "set height",
+                1,
+                "function set height() { [native code] }"
+              ]
+            },
+            "x": {
+              "keys": [
+                "get",
+                "set",
+                "enumerable",
+                "configurable"
+              ],
+              "enumerable": true,
+              "configurable": true,
+              "get": [
+                "get x",
+                0,
+                "function get x() { [native code] }",
+                false
+              ],
+              "set": "undefined"
+            },
+            "y": {
+              "keys": [
+                "get",
+                "set",
+                "enumerable",
+                "configurable"
+              ],
+              "enumerable": true,
+              "configurable": true,
+              "get": [
+                "get y",
+                0,
+                "function get y() { [native code] }",
+                false
+              ],
+              "set": "undefined"
+            }
+          },
+          "inElement": [
+            false,
+            false,
+            false,
+            false
+          ],
+          "prototypeRead": [
+            [
+              "throw",
+              "TypeError",
+              "Illegal invocation"
+            ],
+            [
+              "throw",
+              "TypeError",
+              "Illegal invocation"
+            ],
+            [
+              "throw",
+              "TypeError",
+              "Illegal invocation"
+            ],
+            [
+              "throw",
+              "TypeError",
+              "Illegal invocation"
+            ]
+          ],
+          "receivers": {
+            "plain": [
+              [
+                "throw",
+                "TypeError",
+                "Illegal invocation"
+              ],
+              [
+                "throw",
+                "TypeError",
+                "Illegal invocation"
+              ],
+              [
+                "throw",
+                "TypeError",
+                "Illegal invocation"
+              ],
+              [
+                "throw",
+                "TypeError",
+                "Illegal invocation"
+              ]
+            ],
+            "inherited": [
+              [
+                "throw",
+                "TypeError",
+                "Illegal invocation"
+              ],
+              [
+                "throw",
+                "TypeError",
+                "Illegal invocation"
+              ],
+              [
+                "throw",
+                "TypeError",
+                "Illegal invocation"
+              ],
+              [
+                "throw",
+                "TypeError",
+                "Illegal invocation"
+              ]
+            ],
+            "div": [
+              [
+                "throw",
+                "TypeError",
+                "Illegal invocation"
+              ],
+              [
+                "throw",
+                "TypeError",
+                "Illegal invocation"
+              ],
+              [
+                "throw",
+                "TypeError",
+                "Illegal invocation"
+              ],
+              [
+                "throw",
+                "TypeError",
+                "Illegal invocation"
+              ]
+            ],
+            "input": [
+              [
+                "throw",
+                "TypeError",
+                "Illegal invocation"
+              ],
+              [
+                "throw",
+                "TypeError",
+                "Illegal invocation"
+              ],
+              [
+                "throw",
+                "TypeError",
+                "Illegal invocation"
+              ],
+              [
+                "throw",
+                "TypeError",
+                "Illegal invocation"
+              ]
+            ],
+            "svgImage": [
+              [
+                "throw",
+                "TypeError",
+                "Illegal invocation"
+              ],
+              [
+                "throw",
+                "TypeError",
+                "Illegal invocation"
+              ],
+              [
+                "throw",
+                "TypeError",
+                "Illegal invocation"
+              ],
+              [
+                "throw",
+                "TypeError",
+                "Illegal invocation"
+              ]
+            ],
+            "foreignImg": [
+              [
+                "throw",
+                "TypeError",
+                "Illegal invocation"
+              ],
+              [
+                "throw",
+                "TypeError",
+                "Illegal invocation"
+              ],
+              [
+                "throw",
+                "TypeError",
+                "Illegal invocation"
+              ],
+              [
+                "throw",
+                "TypeError",
+                "Illegal invocation"
+              ]
+            ],
+            "document": [
+              [
+                "throw",
+                "TypeError",
+                "Illegal invocation"
+              ],
+              [
+                "throw",
+                "TypeError",
+                "Illegal invocation"
+              ],
+              [
+                "throw",
+                "TypeError",
+                "Illegal invocation"
+              ],
+              [
+                "throw",
+                "TypeError",
+                "Illegal invocation"
+              ]
+            ]
+          },
+          "setReceivers": {
+            "plain": [
+              [
+                "throw",
+                "TypeError",
+                "Illegal invocation"
+              ],
+              [
+                "throw",
+                "TypeError",
+                "Illegal invocation"
+              ]
+            ],
+            "inherited": [
+              [
+                "throw",
+                "TypeError",
+                "Illegal invocation"
+              ],
+              [
+                "throw",
+                "TypeError",
+                "Illegal invocation"
+              ]
+            ],
+            "div": [
+              [
+                "throw",
+                "TypeError",
+                "Illegal invocation"
+              ],
+              [
+                "throw",
+                "TypeError",
+                "Illegal invocation"
+              ]
+            ],
+            "input": [
+              [
+                "throw",
+                "TypeError",
+                "Illegal invocation"
+              ],
+              [
+                "throw",
+                "TypeError",
+                "Illegal invocation"
+              ]
+            ],
+            "svgImage": [
+              [
+                "throw",
+                "TypeError",
+                "Illegal invocation"
+              ],
+              [
+                "throw",
+                "TypeError",
+                "Illegal invocation"
+              ]
+            ],
+            "foreignImg": [
+              [
+                "throw",
+                "TypeError",
+                "Illegal invocation"
+              ],
+              [
+                "throw",
+                "TypeError",
+                "Illegal invocation"
+              ]
+            ],
+            "document": [
+              [
+                "throw",
+                "TypeError",
+                "Illegal invocation"
+              ],
+              [
+                "throw",
+                "TypeError",
+                "Illegal invocation"
+              ]
+            ]
+          },
+          "placed": {
+            "sized": [
+              40,
+              30,
+              20,
+              10,
+              3,
+              2
+            ],
+            "styled": [
+              10,
+              5,
+              23,
+              40,
+              3,
+              2
+            ],
+            "intrinsic": [
+              3,
+              2,
+              20,
+              45,
+              3,
+              2
+            ],
+            "hidden": [
+              40,
+              30,
+              0,
+              0,
+              3,
+              2
+            ],
+            "hiddenIntrinsic": [
+              3,
+              2,
+              0,
+              0,
+              3,
+              2
+            ],
+            "hiddenEmpty": [
+              7,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "hiddenNone": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ]
+          },
+          "detached": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "attributeRead": [
+            [
+              "null",
+              0,
+              0,
+              0,
+              0
+            ],
+            [
+              "",
+              0,
+              0,
+              0,
+              0
+            ],
+            [
+              "5",
+              5,
+              5,
+              0,
+              0
+            ],
+            [
+              " 7",
+              7,
+              7,
+              0,
+              0
+            ],
+            [
+              "+3",
+              3,
+              3,
+              0,
+              0
+            ],
+            [
+              "-1",
+              0,
+              0,
+              0,
+              0
+            ],
+            [
+              "-0",
+              0,
+              0,
+              0,
+              0
+            ],
+            [
+              "0",
+              0,
+              0,
+              0,
+              0
+            ],
+            [
+              "05",
+              5,
+              5,
+              0,
+              0
+            ],
+            [
+              "5 ",
+              5,
+              5,
+              0,
+              0
+            ],
+            [
+              "\t9",
+              9,
+              9,
+              0,
+              0
+            ],
+            [
+              "\n9",
+              9,
+              9,
+              0,
+              0
+            ],
+            [
+              "\f9",
+              9,
+              9,
+              0,
+              0
+            ],
+            [
+              "\r9",
+              9,
+              9,
+              0,
+              0
+            ],
+            [
+              "　9",
+              0,
+              0,
+              0,
+              0
+            ],
+            [
+              "1e2",
+              1,
+              1,
+              0,
+              0
+            ],
+            [
+              "12abc",
+              12,
+              12,
+              0,
+              0
+            ],
+            [
+              "12.5",
+              12,
+              12,
+              0,
+              0
+            ],
+            [
+              "12px",
+              12,
+              12,
+              0,
+              0
+            ],
+            [
+              "50%",
+              50,
+              50,
+              0,
+              0
+            ],
+            [
+              "0x10",
+              0,
+              0,
+              0,
+              0
+            ],
+            [
+              "+",
+              0,
+              0,
+              0,
+              0
+            ],
+            [
+              "-",
+              0,
+              0,
+              0,
+              0
+            ],
+            [
+              "2147483647",
+              2147483647,
+              2147483647,
+              0,
+              0
+            ],
+            [
+              "2147483648",
+              2147483648,
+              2147483648,
+              0,
+              0
+            ],
+            [
+              "4294967295",
+              4294967295,
+              4294967295,
+              0,
+              0
+            ],
+            [
+              "4294967296",
+              0,
+              0,
+              0,
+              0
+            ],
+            [
+              "99999999999",
+              0,
+              0,
+              0,
+              0
+            ]
+          ],
+          "write": [
+            [
+              "0",
+              "ok",
+              "0",
+              0,
+              "0",
+              0
+            ],
+            [
+              "5",
+              "ok",
+              "5",
+              5,
+              "5",
+              5
+            ],
+            [
+              "-1",
+              "ok",
+              "0",
+              0,
+              "0",
+              0
+            ],
+            [
+              "0",
+              "ok",
+              "0",
+              0,
+              "0",
+              0
+            ],
+            [
+              "1.9",
+              "ok",
+              "1",
+              1,
+              "1",
+              1
+            ],
+            [
+              "-1.9",
+              "ok",
+              "0",
+              0,
+              "0",
+              0
+            ],
+            [
+              "NaN",
+              "ok",
+              "0",
+              0,
+              "0",
+              0
+            ],
+            [
+              "Infinity",
+              "ok",
+              "0",
+              0,
+              "0",
+              0
+            ],
+            [
+              "-Infinity",
+              "ok",
+              "0",
+              0,
+              "0",
+              0
+            ],
+            [
+              "2147483647",
+              "ok",
+              "2147483647",
+              2147483647,
+              "2147483647",
+              2147483647
+            ],
+            [
+              "2147483648",
+              "ok",
+              "0",
+              0,
+              "0",
+              0
+            ],
+            [
+              "4294967295",
+              "ok",
+              "0",
+              0,
+              "0",
+              0
+            ],
+            [
+              "4294967296",
+              "ok",
+              "0",
+              0,
+              "0",
+              0
+            ],
+            [
+              "4294967301",
+              "ok",
+              "5",
+              5,
+              "5",
+              5
+            ],
+            [
+              "-4294967291",
+              "ok",
+              "5",
+              5,
+              "5",
+              5
+            ],
+            [
+              "7",
+              "ok",
+              "7",
+              7,
+              "7",
+              7
+            ],
+            [
+              " 8 ",
+              "ok",
+              "8",
+              8,
+              "8",
+              8
+            ],
+            [
+              "x",
+              "ok",
+              "0",
+              0,
+              "0",
+              0
+            ],
+            [
+              "",
+              "ok",
+              "0",
+              0,
+              "0",
+              0
+            ],
+            [
+              "null",
+              "ok",
+              "0",
+              0,
+              "0",
+              0
+            ],
+            [
+              "undefined",
+              "ok",
+              "0",
+              0,
+              "0",
+              0
+            ],
+            [
+              "true",
+              "ok",
+              "1",
+              1,
+              "1",
+              1
+            ],
+            [
+              "false",
+              "ok",
+              "0",
+              0,
+              "0",
+              0
+            ],
+            [
+              "",
+              "ok",
+              "0",
+              0,
+              "0",
+              0
+            ],
+            [
+              "4",
+              "ok",
+              "4",
+              4,
+              "4",
+              4
+            ],
+            [
+              "[object Object]",
+              "ok",
+              "6",
+              6,
+              "6",
+              6
+            ]
+          ],
+          "writeErrors": [
+            [
+              [
+                "throw",
+                "TypeError",
+                "Failed to set the 'width' property on 'HTMLImageElement': Cannot convert a Symbol value to a number"
+              ],
+              [
+                "throw",
+                "TypeError",
+                "Failed to set the 'height' property on 'HTMLImageElement': Cannot convert a Symbol value to a number"
+              ],
+              0
+            ],
+            [
+              [
+                "throw",
+                "TypeError",
+                "Failed to set the 'width' property on 'HTMLImageElement': Cannot convert a BigInt value to a number"
+              ],
+              [
+                "throw",
+                "TypeError",
+                "Failed to set the 'height' property on 'HTMLImageElement': Cannot convert a BigInt value to a number"
+              ],
+              0
+            ],
+            [
+              [
+                "throw",
+                "RangeError",
+                "w"
+              ],
+              [
+                "throw",
+                "RangeError",
+                "w"
+              ],
+              0
+            ]
+          ],
+          "writeOwn": [
+            [],
+            [],
+            "<img width=\"9\">"
+          ],
+          "readonlyStrict": [
+            "throw",
+            "TypeError",
+            "Cannot set property x of #<HTMLImageElement> which has only a getter"
+          ],
+          "readonlySloppy": [
+            0,
+            0,
+            []
+          ],
+          "removed": [
+            [
+              11,
+              12,
+              0,
+              0
+            ],
+            [
+              0,
+              12,
+              0,
+              0
+            ]
+          ],
+          "factory": [
+            [
+              0,
+              0,
+              0,
+              0
+            ],
+            [
+              5,
+              7,
+              0,
+              0
+            ],
+            [
+              0,
+              3,
+              0,
+              0
+            ]
+          ],
+          "cloned": [
+            40,
+            30,
+            0,
+            0
+          ]
+        }
+      }
+    }
+  ]
+}

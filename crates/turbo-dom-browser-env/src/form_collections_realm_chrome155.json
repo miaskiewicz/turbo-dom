@@ -1,0 +1,38 @@
+{
+  "browser": "Chrome/155.0.8059.80",
+  "v8": "15.5.35.23",
+  "casesSha256": "f9256b5b3547b609a60ad50e207527febcf8f15646045ed40972d32d885d932c",
+  "probeSha256": "8ce5fb622d335aa53ea882ad17155be87362415896d08ccc47e65117eb356a67",
+  "collectorSha256": "700a755df1701cfa30a95ca9f20800e81724f50ca7aafd6b46f77e87b2b91351",
+  "flags": [
+    "--remote-debugging-port=0",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "about:blank"
+  ],
+  "errors": [],
+  "result": [
+    {
+      "id": "live-form-collections",
+      "result": {
+        "realm": {
+          "distinct": true,
+          "childBrand": true,
+          "childRadio": true,
+          "borrowedLength": 2,
+          "borrowedNamed": true
+        },
+        "retained": {
+          "length": 2,
+          "ids": [
+            "child-one",
+            "child-two"
+          ]
+        }
+      }
+    }
+  ]
+}

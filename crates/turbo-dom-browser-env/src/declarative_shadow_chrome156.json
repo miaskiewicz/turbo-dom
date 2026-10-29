@@ -1,0 +1,530 @@
+{
+  "browser": "Chrome/156.0.8078.47",
+  "v8": "15.6.75.19",
+  "recordedAt": "2026-10-25T14:24:59.878Z",
+  "fixture": "declarative_shadow_probe.js",
+  "probeSha256": "72cff6a5f22a8ec09aa4d091eebf0cb88c062d64c5f7ff45e99ec0534ece8f2c",
+  "page": "declarative_shadow_page.html",
+  "pageSha256": "db4898c2e639bd85124014e97d75bcdab0b8c74453ac6084ddade91f43127086",
+  "flags": [
+    "--headless=new",
+    "--disable-extensions"
+  ],
+  "result": {
+    "document": {
+      "open": {
+        "shadow": [
+          "open",
+          false,
+          false,
+          false,
+          "named",
+          "<span>open</span><slot></slot>",
+          "div"
+        ],
+        "html": "<i>light</i>",
+        "serialized": "<i>light</i>"
+      },
+      "closed": {
+        "shadow": null,
+        "html": "",
+        "serialized": ""
+      },
+      "flags": {
+        "shadow": null,
+        "html": "",
+        "serialized": "<template shadowrootmode=\"closed\" shadowrootdelegatesfocus=\"\" shadowrootserializable=\"\" shadowrootclonable=\"\"><span>flags</span></template>"
+      },
+      "upper": {
+        "shadow": [
+          "open",
+          true,
+          true,
+          false,
+          "named",
+          "<span>upper</span>",
+          "div"
+        ],
+        "html": "",
+        "serialized": "<template shadowrootmode=\"open\" shadowrootserializable=\"\" shadowrootclonable=\"\"><span>upper</span></template>"
+      },
+      "bad": {
+        "shadow": null,
+        "html": "<template shadowrootmode=\"nope\"><span>bad</span></template>",
+        "serialized": "<template shadowrootmode=\"nope\"><span>bad</span></template>"
+      },
+      "badhost": {
+        "shadow": null,
+        "html": "<template shadowrootmode=\"open\"><span>a</span></template>",
+        "serialized": "<template shadowrootmode=\"open\"><span>a</span></template>"
+      },
+      "twice": {
+        "shadow": [
+          "open",
+          false,
+          false,
+          false,
+          "named",
+          "<span>one</span>",
+          "div"
+        ],
+        "html": "<template shadowrootmode=\"open\"><span>two</span></template>",
+        "serialized": "<template shadowrootmode=\"open\"><span>two</span></template>"
+      },
+      "nested": {
+        "shadow": [
+          "open",
+          false,
+          false,
+          false,
+          "named",
+          "<section id=\"inner\"></section>",
+          "div"
+        ],
+        "html": "",
+        "serialized": ""
+      },
+      "script": {
+        "shadow": [
+          "open",
+          false,
+          false,
+          false,
+          "named",
+          "<script>window.dsdScriptRan = 1;</script><b>after</b>",
+          "div"
+        ],
+        "html": "",
+        "serialized": ""
+      },
+      "custom": {
+        "shadow": [
+          "open",
+          false,
+          false,
+          false,
+          "named",
+          "<b>c</b>",
+          "custom-host"
+        ],
+        "html": "",
+        "serialized": ""
+      },
+      "later": {
+        "shadow": [
+          "open",
+          true,
+          false,
+          false,
+          "named",
+          "<b>late</b>",
+          "div"
+        ],
+        "html": "<span>before</span><span>after</span>",
+        "serialized": "<span>before</span><span>after</span>"
+      },
+      "cell": {
+        "shadow": null,
+        "html": "<template shadowrootmode=\"open\"><b>cell</b></template>",
+        "serialized": "<template shadowrootmode=\"open\"><b>cell</b></template>"
+      },
+      "manual": {
+        "shadow": [
+          "open",
+          false,
+          false,
+          false,
+          "manual",
+          "<slot></slot>",
+          "div"
+        ],
+        "html": "x",
+        "serialized": "x"
+      },
+      "manualUpper": {
+        "shadow": [
+          "open",
+          false,
+          false,
+          false,
+          "manual",
+          "<slot></slot>",
+          "div"
+        ],
+        "html": "x",
+        "serialized": "x"
+      },
+      "named": {
+        "shadow": [
+          "open",
+          false,
+          false,
+          false,
+          "named",
+          "<slot></slot>",
+          "div"
+        ],
+        "html": "x",
+        "serialized": "x"
+      },
+      "para": {
+        "shadow": null,
+        "html": "",
+        "serialized": "<template shadowrootmode=\"closed\" shadowrootserializable=\"\"><em>p</em><template shadowrootmode=\"open\"><b>stays</b></template></template>"
+      },
+      "withform": {
+        "shadow": [
+          "open",
+          false,
+          false,
+          false,
+          "named",
+          "<input id=\"field\" value=\"v\"><style>b{color:red}</style>",
+          "span"
+        ],
+        "html": "",
+        "serialized": ""
+      }
+    },
+    "documentState": {
+      "templates": 6,
+      "scripts": 0,
+      "inHead": {
+        "value": [
+          "template",
+          "<title>dsd</title><template shadowrootmode=\"open\" id=\"inhead\"><b>head</b></template>"
+        ]
+      },
+      "plainTemplate": {
+        "value": [
+          [
+            "open",
+            false,
+            false,
+            false,
+            "named",
+            "<b>tpl</b>",
+            "div"
+          ],
+          "",
+          false
+        ]
+      },
+      "nestedInner": {
+        "value": [
+          "open",
+          false,
+          true,
+          false,
+          "named",
+          "<p>deep</p>",
+          "section"
+        ]
+      },
+      "shadowScript": {
+        "value": [
+          "window.dsdScriptRan = 1;",
+          true,
+          true
+        ]
+      },
+      "shadowForm": {
+        "value": [
+          "v",
+          true,
+          1,
+          null
+        ]
+      },
+      "closedReattach": {
+        "value": [
+          "",
+          "closed",
+          0
+        ]
+      },
+      "flagsMismatch": {
+        "error": "NotSupportedError",
+        "message": "Failed to execute 'attachShadow' on 'Element': The requested mode does not match the existing declarative shadow root's mode"
+      },
+      "openReattach": {
+        "value": [
+          true,
+          "",
+          [
+            "open",
+            false,
+            false,
+            false,
+            "named",
+            "",
+            "div"
+          ]
+        ]
+      },
+      "openReattachTwice": {
+        "error": "NotSupportedError",
+        "message": "Failed to execute 'attachShadow' on 'Element': Shadow root cannot be created on a host which already hosts a shadow tree."
+      },
+      "clone": {
+        "value": "<template shadowrootmode=\"closed\" shadowrootdelegatesfocus=\"\" shadowrootserializable=\"\" shadowrootclonable=\"\"><span>flags</span></template>"
+      },
+      "cloneClonableOpen": {
+        "value": [
+          [
+            "open",
+            true,
+            false,
+            false,
+            "named",
+            "<b>late</b>",
+            "div"
+          ],
+          "<span>before</span><span>after</span>"
+        ]
+      },
+      "cloneUnclonable": {
+        "value": [
+          null,
+          "<template shadowrootmode=\"open\"><span>two</span></template>"
+        ]
+      },
+      "slotted": {
+        "error": "TypeError",
+        "message": "Cannot read properties of null (reading 'assignedNodes')"
+      }
+    },
+    "fragments": {
+      "innerHTML": {
+        "value": [
+          null,
+          "<div id=\"h\"><template shadowrootmode=\"open\"><b>x</b></template></div>"
+        ]
+      },
+      "outerHTML": {
+        "value": [
+          null,
+          "<div id=\"h\"><template shadowrootmode=\"open\"><b>x</b></template></div>"
+        ]
+      },
+      "insertAdjacentHTML": {
+        "value": [
+          null,
+          "<div id=\"h\"><template shadowrootmode=\"open\"><b>x</b></template></div>"
+        ]
+      },
+      "createContextualFragment": {
+        "value": [
+          null,
+          "<template shadowrootmode=\"open\"><b>x</b></template>"
+        ]
+      },
+      "templateInnerHTML": {
+        "value": [
+          null,
+          "<div id=\"h\"><template shadowrootmode=\"open\"><b>x</b></template></div>"
+        ]
+      },
+      "createdDocument": {
+        "value": [
+          null,
+          "<div id=\"h\"><template shadowrootmode=\"open\"><b>x</b></template></div>"
+        ]
+      },
+      "setHTMLUnsafe": {
+        "value": [
+          [
+            "open",
+            false,
+            false,
+            false,
+            "named",
+            "<b>x</b>",
+            "div"
+          ],
+          "<div id=\"h\"></div>"
+        ]
+      }
+    },
+    "parsed": {
+      "unsafeMatrix": {
+        "value": [
+          "<div id=\"a\">light</div><div id=\"b\"><template shadowrootmode=\"closed\" shadowrootdelegatesfocus=\"\" shadowrootserializable=\"\" shadowrootclonable=\"\"><b>b</b></template></div><div id=\"c\"></div><a id=\"d\"><template shadowrootmode=\"open\">no</template></a><div id=\"e\"><template shadowrootmode=\"open\">2</template></div><div id=\"f\"></div>",
+          [
+            [
+              "a",
+              "open",
+              false,
+              false,
+              false,
+              "named",
+              "<b>a</b><slot></slot>",
+              "div"
+            ],
+            [
+              "c",
+              "open",
+              false,
+              false,
+              false,
+              "named",
+              "<span id=\"c2\"></span>",
+              "div"
+            ],
+            [
+              "c2",
+              "open",
+              false,
+              true,
+              false,
+              "named",
+              "<i>deep</i>",
+              "span"
+            ],
+            [
+              "e",
+              "open",
+              false,
+              false,
+              false,
+              "named",
+              "1",
+              "div"
+            ],
+            [
+              "f",
+              "open",
+              false,
+              false,
+              false,
+              "manual",
+              "<slot></slot>",
+              "div"
+            ]
+          ],
+          2
+        ]
+      },
+      "unsafeBody": {
+        "value": [
+          "text",
+          [
+            [
+              "body",
+              "open",
+              false,
+              false,
+              false,
+              "named",
+              "<b>body root</b>",
+              "body"
+            ]
+          ],
+          0
+        ]
+      },
+      "unsafeHead": {
+        "value": [
+          "x",
+          [],
+          1
+        ]
+      },
+      "unsafeTemplateContents": {
+        "value": [
+          "",
+          [],
+          1
+        ]
+      },
+      "unsafeSanitized": {
+        "value": [
+          "<div id=\"s\"><template shadowrootmode=\"open\" shadowrootserializable=\"\"><b onclick=\"x\">s</b><script>y</script></template></div>",
+          [
+            [
+              "s",
+              "open",
+              false,
+              true,
+              false,
+              "named",
+              "<b onclick=\"x\">s</b><script>y</script>",
+              "div"
+            ]
+          ],
+          0
+        ]
+      },
+      "safeDefault": {
+        "value": [
+          "<div></div>",
+          [],
+          0
+        ]
+      },
+      "safeEmpty": {
+        "value": [
+          "<div id=\"s\"><template shadowrootmode=\"open\" shadowrootserializable=\"\"><b>s</b></template></div>",
+          [
+            [
+              "s",
+              "open",
+              false,
+              true,
+              false,
+              "named",
+              "<b>s</b>",
+              "div"
+            ]
+          ],
+          0
+        ]
+      },
+      "pageReparse": {
+        "value": [
+          "\n<div id=\"open\"><i>light</i></div>\n<div id=\"closed\"></div>\n<div id=\"flags\"></div>\n<div id=\"upper\"></div>\n<div id=\"bad\"><template shadowrootmode=\"nope\"><span>bad</span></template></div>\n<a id=\"badhost\"><template shadowrootmode=\"open\"><span>a</span></template></a>\n<div id=\"twice\"></div>\n<div id=\"nested\"></div>\n<div id=\"script\"></div>\n<custom-host id=\"custom\"></custom-host>\n<template id=\"plain\"><div id=\"intpl\"></div></template>\n<div id=\"later\"><span>before</span><span>after</span></div>\n<table><tbody><tr><td id=\"cell\"><template shadowrootmode=\"open\"><b>cell</b></template></td></tr></tbody></table>\n<div id=\"manual\">x</div>\n<div id=\"manualUpper\">x</div>\n<div id=\"named\">x</div>\n<p id=\"para\"></p>\n<span id=\"withform\"></span>\n\n<section><div id=\"h\"></div></section>",
+          [
+            [
+              "twice",
+              "open",
+              false,
+              false,
+              false,
+              "named",
+              "<span>two</span>",
+              "div"
+            ]
+          ],
+          5
+        ]
+      }
+    },
+    "parsedState": {
+      "closedReattach": {
+        "value": [
+          "",
+          null
+        ]
+      },
+      "mismatch": {
+        "error": "NotSupportedError",
+        "message": "Failed to execute 'attachShadow' on 'Element': The requested mode does not match the existing declarative shadow root's mode"
+      },
+      "adopted": {
+        "value": [
+          [
+            "open",
+            true,
+            false,
+            false,
+            "named",
+            "<b>x</b>",
+            "div"
+          ],
+          true,
+          true
+        ]
+      }
+    }
+  }
+}

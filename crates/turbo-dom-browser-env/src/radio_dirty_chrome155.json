@@ -1,0 +1,148 @@
+{
+  "browser": "Chrome/155.0.8059.80",
+  "v8": "15.5.35.23",
+  "casesSha256": "96345c459d1e1ba6acc95502476654ac4e55bb2cc1f693fdf9564fbebc89e74a",
+  "probeSha256": "c1741dfa87ed083d9f9b40d3fcef742819d6f9cdc6db24a2b764e6953b52f4f3",
+  "collectorSha256": "700a755df1701cfa30a95ca9f20800e81724f50ca7aafd6b46f77e87b2b91351",
+  "flags": [
+    "--remote-debugging-port=0",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "about:blank"
+  ],
+  "errors": [],
+  "result": [
+    {
+      "id": "radio-dirty-lifecycle",
+      "result": {
+        "cleanPeer": [
+          [
+            false,
+            true,
+            true,
+            false
+          ],
+          [
+            false,
+            true,
+            true,
+            false
+          ],
+          [
+            false,
+            true,
+            false,
+            false
+          ],
+          [
+            false,
+            true,
+            true,
+            false
+          ],
+          [
+            true,
+            false,
+            true,
+            false
+          ]
+        ],
+        "dirtyPeer": [
+          [
+            false,
+            true,
+            true,
+            false
+          ],
+          [
+            false,
+            true,
+            true,
+            false
+          ],
+          [
+            false,
+            true,
+            false,
+            false
+          ],
+          [
+            false,
+            true,
+            true,
+            false
+          ],
+          [
+            true,
+            false,
+            true,
+            false
+          ]
+        ],
+        "cleanClone": [
+          false,
+          true,
+          false
+        ],
+        "dirtyClone": [
+          true,
+          false,
+          true
+        ],
+        "canceledClick": [
+          true,
+          false,
+          true,
+          false,
+          true,
+          false,
+          true,
+          false,
+          true,
+          false
+        ],
+        "adoptClean": [
+          false,
+          true,
+          false
+        ],
+        "adoptDirty": [
+          true,
+          false,
+          true
+        ],
+        "rename": [
+          false,
+          true,
+          true,
+          false,
+          false,
+          true
+        ],
+        "adoptLive": [
+          1,
+          "",
+          2,
+          "on",
+          true,
+          false,
+          "target"
+        ],
+        "parsedDefaults": [
+          false,
+          true,
+          false,
+          true
+        ],
+        "untouchedPeer": [
+          false,
+          false,
+          true
+        ]
+      }
+    }
+  ]
+}

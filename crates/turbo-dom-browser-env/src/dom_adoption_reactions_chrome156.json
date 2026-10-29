@@ -1,0 +1,805 @@
+{
+  "browser": "Chrome/156.0.8078.4",
+  "v8": "15.6.75",
+  "casesSha256": "6390d35780d5d7b9012578c76f9409a521ab1d3837b428e045089c5611fc3f07",
+  "probeSha256": "56a9ba3d1acb987eec0561b44f7eb9a0cc07ae71626408e3e08f5b87867e453d",
+  "collectorSha256": "7174415de76a891d657bbc3e66952c7b91356030e8fcd9d0ac4f52603d0c3952",
+  "flags": [
+    "--headless=new",
+    "--remote-debugging-pipe",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "about:blank"
+  ],
+  "errors": [],
+  "result": [
+    {
+      "id": "dom-adoption-reactions",
+      "result": {
+        "ns": {
+          "unknown": [
+            "urn:x",
+            null,
+            "Foo",
+            "Foo",
+            "Foo",
+            false,
+            true
+          ],
+          "prefixed": [
+            "urn:x",
+            "p",
+            "Foo",
+            "p:Foo",
+            "p:Foo",
+            false,
+            true
+          ],
+          "nullNs": [
+            null,
+            null,
+            "Bar",
+            "Bar",
+            "Bar",
+            false,
+            true
+          ],
+          "emptyNs": [
+            null,
+            null,
+            "baz",
+            "baz",
+            "baz",
+            false,
+            true
+          ],
+          "svgPrefixed": [
+            "http://www.w3.org/2000/svg",
+            "svg",
+            "rect",
+            "svg:rect",
+            "svg:rect",
+            false,
+            true
+          ],
+          "svgCamel": [
+            "http://www.w3.org/2000/svg",
+            null,
+            "foreignObject",
+            "foreignObject",
+            "foreignObject",
+            false,
+            true
+          ],
+          "math": [
+            "http://www.w3.org/1998/Math/MathML",
+            null,
+            "mi",
+            "mi",
+            "mi",
+            false,
+            true
+          ],
+          "html": [
+            "http://www.w3.org/1999/xhtml",
+            null,
+            "section",
+            "SECTION",
+            "SECTION",
+            true,
+            true
+          ],
+          "customName": [
+            "urn:x",
+            null,
+            "x-foo",
+            "x-foo",
+            "x-foo",
+            false,
+            true
+          ]
+        },
+        "nsAttrs": [
+          [
+            "Data-X"
+          ],
+          null,
+          "1",
+          false
+        ],
+        "nsClone": [
+          "urn:x",
+          "p",
+          "Foo",
+          "p:Foo",
+          "p:Foo",
+          false,
+          true
+        ],
+        "nsImport": [
+          "urn:x",
+          "p",
+          "Foo",
+          "p:Foo",
+          "p:Foo",
+          false,
+          true
+        ],
+        "nsSerialized": "<Foo></Foo><p:Foo Data-X=\"1\"></p:Foo><Bar></Bar>",
+        "nsInner": [
+          "http://www.w3.org/1999/xhtml",
+          "b",
+          "<b>x</b>"
+        ],
+        "nsErrors": {
+          "nullPrefix": "NamespaceError",
+          "xmlPrefix": "NamespaceError",
+          "xmlNs": "ok",
+          "xmlnsName": "NamespaceError",
+          "xmlnsPrefix": "NamespaceError",
+          "xmlnsNs": "ok",
+          "xmlnsNsOther": "NamespaceError",
+          "twoColons": "ok",
+          "emptyPrefix": "InvalidCharacterError",
+          "emptyLocal": "InvalidCharacterError",
+          "empty": "InvalidCharacterError",
+          "space": "InvalidCharacterError",
+          "slash": "InvalidCharacterError",
+          "digit": "InvalidCharacterError",
+          "underscore": "ok",
+          "nonAscii": "ok",
+          "htmlSpace": "InvalidCharacterError",
+          "htmlDigit": "InvalidCharacterError",
+          "htmlEmpty": "InvalidCharacterError"
+        },
+        "nsTwoColons": [
+          "urn:x",
+          "a",
+          "b",
+          "a:b",
+          "a:b",
+          false,
+          true
+        ],
+        "nsByTag": [
+          [
+            "Foo",
+            1,
+            1
+          ],
+          [
+            "foo",
+            0,
+            0
+          ],
+          [
+            "p:Foo",
+            1,
+            1
+          ],
+          [
+            "Bar",
+            1,
+            1
+          ],
+          [
+            "foreignObject",
+            1,
+            1
+          ],
+          [
+            "foreignobject",
+            0,
+            0
+          ],
+          [
+            "FOREIGNOBJECT",
+            0,
+            0
+          ],
+          [
+            "DIV",
+            2,
+            0
+          ]
+        ],
+        "adopt": {
+          "before": [
+            2,
+            2
+          ],
+          "after": [
+            0,
+            0
+          ],
+          "oldLookup": [
+            null,
+            null,
+            true
+          ],
+          "oldBody": "<span id=\"keep\"></span>",
+          "owners": [
+            true,
+            true,
+            true,
+            true
+          ],
+          "newLookup": [
+            true,
+            true
+          ],
+          "read": [
+            "oneboldtwo",
+            "<div id=\"src\" class=\"c\"><p id=\"p1\" title=\"t\">one<b>bold</b></p><p id=\"p2\">two</p></div>",
+            "bold",
+            "t"
+          ]
+        },
+        "adoptFragment": [
+          "u",
+          true,
+          true,
+          0
+        ],
+        "inert": [
+          true,
+          true,
+          true,
+          null,
+          false
+        ],
+        "contentClone": [
+          true,
+          true,
+          false
+        ],
+        "upgradeInert": false,
+        "detached": [
+          true,
+          false
+        ],
+        "connected": [
+          true,
+          true
+        ],
+        "imported": [
+          true,
+          true,
+          true
+        ],
+        "templateInner": [
+          0,
+          1,
+          false,
+          "<x-r id=\"w1\"></x-r>",
+          true
+        ],
+        "intoContent": [
+          true,
+          true
+        ],
+        "templateClone": [
+          1,
+          0,
+          false,
+          true,
+          "<x-r id=\"u1\" a=\"1\"><x-r id=\"u2\"></x-r></x-r>"
+        ],
+        "moveContent": [
+          0,
+          true
+        ],
+        "cloneDeep": [
+          true,
+          true
+        ],
+        "moverInOther": [
+          true,
+          true
+        ],
+        "mover": [
+          true,
+          false
+        ],
+        "otherCreate": false,
+        "insertSelf": [
+          "ok",
+          true,
+          "ok",
+          3,
+          true
+        ],
+        "doctypeClone": [
+          "svg",
+          "-//W3C//DTD SVG 1.1//EN",
+          "urn:dtd",
+          "html"
+        ],
+        "foreignVoid": "<br>x</br>",
+        "contentProperty": [
+          "",
+          "width=device-width",
+          "width=device-width",
+          "undefined",
+          5,
+          true,
+          "undefined"
+        ],
+        "shadowAdopt": [
+          true,
+          true
+        ],
+        "replaceWithSelf": [
+          "i",
+          "b"
+        ],
+        "insertAdjacent": [
+          "http://www.w3.org/2000/svg",
+          "NoModificationAllowedError",
+          "SyntaxError",
+          "ok",
+          "<i></i>",
+          "NoModificationAllowedError"
+        ],
+        "log": [
+          [
+            "--",
+            "define"
+          ],
+          [
+            "--",
+            "content-clone"
+          ],
+          [
+            "--",
+            "upgrade-inert"
+          ],
+          [
+            "--",
+            "append-detached"
+          ],
+          [
+            "--",
+            "connect"
+          ],
+          [
+            "ctor",
+            "u1",
+            true,
+            1,
+            true
+          ],
+          [
+            "attr",
+            "u1",
+            "a",
+            null,
+            "1"
+          ],
+          [
+            "conn",
+            "u1",
+            1
+          ],
+          [
+            "ctor",
+            "u2",
+            true,
+            0,
+            true
+          ],
+          [
+            "conn",
+            "u2",
+            1
+          ],
+          [
+            "disc",
+            "u1",
+            0
+          ],
+          [
+            "disc",
+            "u2",
+            0
+          ],
+          [
+            "--",
+            "import"
+          ],
+          [
+            "ctor",
+            "u1",
+            false,
+            1,
+            true
+          ],
+          [
+            "attr",
+            "u1",
+            "a",
+            null,
+            "1"
+          ],
+          [
+            "ctor",
+            "u2",
+            false,
+            0,
+            true
+          ],
+          [
+            "--",
+            "template-innerHTML"
+          ],
+          [
+            "--",
+            "into-content"
+          ],
+          [
+            "ctor",
+            "x-r",
+            false,
+            0,
+            false
+          ],
+          [
+            "adopt",
+            "fresh",
+            "document",
+            "inert"
+          ],
+          [
+            "--",
+            "template-clone"
+          ],
+          [
+            "--",
+            "move-content"
+          ],
+          [
+            "ctor",
+            "v1",
+            true,
+            0,
+            true
+          ],
+          [
+            "conn",
+            "v1",
+            1
+          ],
+          [
+            "disc",
+            "v1",
+            0
+          ],
+          [
+            "--",
+            "innerHTML"
+          ],
+          [
+            "ctor",
+            "r1",
+            true,
+            1,
+            true
+          ],
+          [
+            "attr",
+            "r1",
+            "a",
+            null,
+            "1"
+          ],
+          [
+            "conn",
+            "r1",
+            2
+          ],
+          [
+            "attr",
+            "r1",
+            "a",
+            "1",
+            "nested"
+          ],
+          [
+            "ctor",
+            "r2",
+            true,
+            0,
+            true
+          ],
+          [
+            "attr",
+            "r2",
+            "a",
+            null,
+            "2"
+          ],
+          [
+            "conn",
+            "r2",
+            1
+          ],
+          [
+            "ctor",
+            "r3",
+            true,
+            0,
+            true
+          ],
+          [
+            "conn",
+            "r3",
+            2
+          ],
+          [
+            "--",
+            "innerHTML-replace"
+          ],
+          [
+            "ctor",
+            "r4",
+            true,
+            0,
+            true
+          ],
+          [
+            "conn",
+            "r4",
+            1
+          ],
+          [
+            "disc",
+            "r1",
+            1
+          ],
+          [
+            "disc",
+            "r2",
+            1
+          ],
+          [
+            "disc",
+            "r3",
+            1
+          ],
+          [
+            "--",
+            "append-many"
+          ],
+          [
+            "ctor",
+            "x-r",
+            false,
+            0,
+            false
+          ],
+          [
+            "ctor",
+            "x-r",
+            false,
+            0,
+            false
+          ],
+          [
+            "--",
+            "append-many-insert"
+          ],
+          [
+            "conn",
+            "m1",
+            3
+          ],
+          [
+            "conn",
+            "m2",
+            3
+          ],
+          [
+            "--",
+            "replaceChildren"
+          ],
+          [
+            "disc",
+            "r4",
+            1
+          ],
+          [
+            "disc",
+            "m1",
+            1
+          ],
+          [
+            "disc",
+            "m2",
+            1
+          ],
+          [
+            "--",
+            "detached-innerHTML"
+          ],
+          [
+            "ctor",
+            "c1",
+            false,
+            2,
+            true
+          ],
+          [
+            "ctor",
+            "c2",
+            false,
+            0,
+            true
+          ],
+          [
+            "--",
+            "clone-deep"
+          ],
+          [
+            "ctor",
+            "c1",
+            false,
+            2,
+            true
+          ],
+          [
+            "ctor",
+            "c2",
+            false,
+            0,
+            true
+          ],
+          [
+            "--",
+            "insertAdjacentHTML"
+          ],
+          [
+            "ctor",
+            "h1",
+            true,
+            0,
+            true
+          ],
+          [
+            "conn",
+            "h1",
+            2
+          ],
+          [
+            "--",
+            "insertAdjacentHTML-custom"
+          ],
+          [
+            "--",
+            "attributes"
+          ],
+          [
+            "attr",
+            "h1",
+            "a",
+            null,
+            "x"
+          ],
+          [
+            "attr",
+            "h1",
+            "a",
+            "x",
+            null
+          ],
+          [
+            "--",
+            "replaceChild"
+          ],
+          [
+            "ctor",
+            "x-r",
+            false,
+            0,
+            false
+          ],
+          [
+            "disc",
+            "h1",
+            2
+          ],
+          [
+            "conn",
+            "repl",
+            2
+          ],
+          [
+            "--",
+            "cross-document"
+          ],
+          [
+            "ctor",
+            "x-r",
+            false,
+            0,
+            false
+          ],
+          [
+            "conn",
+            "mv",
+            3
+          ],
+          [
+            "disc",
+            "mv",
+            2
+          ],
+          [
+            "adopt",
+            "mv",
+            "document",
+            "other"
+          ],
+          [
+            "conn",
+            "mv",
+            2
+          ],
+          [
+            "disc",
+            "mv",
+            3
+          ],
+          [
+            "adopt",
+            "mv",
+            "other",
+            "document"
+          ],
+          [
+            "conn",
+            "mv",
+            3
+          ],
+          [
+            "--",
+            "adoptNode"
+          ],
+          [
+            "disc",
+            "mv",
+            2
+          ],
+          [
+            "adopt",
+            "mv",
+            "document",
+            "other"
+          ],
+          [
+            "adopt",
+            "mv",
+            "other",
+            "document"
+          ],
+          [
+            "--",
+            "other-createElement"
+          ],
+          [
+            "--",
+            "end"
+          ],
+          [
+            "disc",
+            "repl",
+            0
+          ]
+        ],
+        "errors": {}
+      }
+    }
+  ]
+}

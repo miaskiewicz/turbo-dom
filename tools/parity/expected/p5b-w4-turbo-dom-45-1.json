@@ -1,0 +1,13 @@
+{
+ "id": "turbo-dom#45 item 1",
+ "reason": "AVIF irot/imir transform properties orient the image like EXIF orientation (probe, box, raster pixels, PDF placement), composed in association order (316ec9b). No corpus AVIF carries them: static harness (surf static screenshot_png/screenshot_svg at 1280x800, plain + caller-assets passes, 123 inputs; base = git rev, new = git-archived tree): 599d9a0 -> 316ec9b 0 outputs; html2pdf napi of turbo-html2pdf d445050 against turbo-dom 316ec9b vs 79a94d3: 0 outputs. P5b-W4.",
+ "control": "crates/turbo-dom-layout/tests/fixtures/image_formats_chrome156.json (scripts/image-formats-chrome-control.mjs, avif-irot*/avif-imir* cases; fixtures from scripts/make_format_fixtures.py --avif-orientation)",
+ "e2e": "crates/turbo-dom-layout/tests/image_formats_chrome.rs, crates/turbo-dom-raster/tests/image_formats_chrome.rs (--features avif)",
+ "changes": {
+  "html2pdf": [],
+  "html2pdf-svg": [],
+  "html2pdf-extra": [],
+  "surf": [],
+  "surf-extra": []
+ }
+}

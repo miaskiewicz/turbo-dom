@@ -1,0 +1,668 @@
+{
+  "browser": "Chrome/155.0.8059.80",
+  "v8": "15.5.35.23",
+  "casesSha256": "1c42707e9c72e617859bd5063b9e3750716834a75d4a08d495b9b3a5aabfe5f7",
+  "probeSha256": "8307da56a043e17cb034f7ea9cf88561a38ea3d9975bf3fef248da9bfec4a6f6",
+  "collectorSha256": "700a755df1701cfa30a95ca9f20800e81724f50ca7aafd6b46f77e87b2b91351",
+  "flags": [
+    "--remote-debugging-port=0",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "about:blank"
+  ],
+  "errors": [],
+  "result": [
+    {
+      "id": "submitter-reflections",
+      "result": {
+        "HTMLButtonElement": {
+          "fields": {
+            "formAction": {
+              "descriptor": [
+                true,
+                true,
+                "get formAction",
+                0,
+                "set formAction",
+                1
+              ],
+              "missing": "<document>",
+              "values": [
+                [
+                  "<document>",
+                  ""
+                ],
+                [
+                  "<origin>/POST",
+                  "POST"
+                ],
+                [
+                  "<origin>/dialog",
+                  "dialog"
+                ],
+                [
+                  "<origin>/invalid",
+                  "invalid"
+                ],
+                [
+                  "<origin>/TEXT/PLAIN",
+                  "TEXT/PLAIN"
+                ],
+                [
+                  "<origin>/multipart/form-data",
+                  "multipart/form-data"
+                ],
+                [
+                  "<origin>/_blank",
+                  "_blank"
+                ],
+                [
+                  "<origin>/null",
+                  "null"
+                ],
+                [
+                  "<origin>/undefined",
+                  "undefined"
+                ],
+                [
+                  "<origin>/a%EF%BF%BDb",
+                  "a�b"
+                ]
+              ],
+              "errors": [
+                "TypeError",
+                "TypeError",
+                "TypeError",
+                "TypeError",
+                "TypeError",
+                "TypeError",
+                "TypeError",
+                "TypeError",
+                "TypeError",
+                "TypeError"
+              ],
+              "symbol": "TypeError",
+              "attributeWrite": "<origin>/POST",
+              "borrowed": "<document>"
+            },
+            "formEnctype": {
+              "descriptor": [
+                true,
+                true,
+                "get formEnctype",
+                0,
+                "set formEnctype",
+                1
+              ],
+              "missing": "",
+              "values": [
+                [
+                  "application/x-www-form-urlencoded",
+                  ""
+                ],
+                [
+                  "application/x-www-form-urlencoded",
+                  "POST"
+                ],
+                [
+                  "application/x-www-form-urlencoded",
+                  "dialog"
+                ],
+                [
+                  "application/x-www-form-urlencoded",
+                  "invalid"
+                ],
+                [
+                  "text/plain",
+                  "TEXT/PLAIN"
+                ],
+                [
+                  "multipart/form-data",
+                  "multipart/form-data"
+                ],
+                [
+                  "application/x-www-form-urlencoded",
+                  "_blank"
+                ],
+                [
+                  "application/x-www-form-urlencoded",
+                  "null"
+                ],
+                [
+                  "application/x-www-form-urlencoded",
+                  "undefined"
+                ],
+                [
+                  "application/x-www-form-urlencoded",
+                  {
+                    "utf16": [
+                      97,
+                      55296,
+                      98
+                    ]
+                  }
+                ]
+              ],
+              "errors": [
+                "TypeError",
+                "TypeError",
+                "TypeError",
+                "TypeError",
+                "TypeError",
+                "TypeError",
+                "TypeError",
+                "TypeError",
+                "TypeError",
+                "TypeError"
+              ],
+              "symbol": "TypeError",
+              "attributeWrite": "application/x-www-form-urlencoded",
+              "borrowed": ""
+            },
+            "formMethod": {
+              "descriptor": [
+                true,
+                true,
+                "get formMethod",
+                0,
+                "set formMethod",
+                1
+              ],
+              "missing": "",
+              "values": [
+                [
+                  "get",
+                  ""
+                ],
+                [
+                  "post",
+                  "POST"
+                ],
+                [
+                  "dialog",
+                  "dialog"
+                ],
+                [
+                  "get",
+                  "invalid"
+                ],
+                [
+                  "get",
+                  "TEXT/PLAIN"
+                ],
+                [
+                  "get",
+                  "multipart/form-data"
+                ],
+                [
+                  "get",
+                  "_blank"
+                ],
+                [
+                  "get",
+                  "null"
+                ],
+                [
+                  "get",
+                  "undefined"
+                ],
+                [
+                  "get",
+                  {
+                    "utf16": [
+                      97,
+                      55296,
+                      98
+                    ]
+                  }
+                ]
+              ],
+              "errors": [
+                "TypeError",
+                "TypeError",
+                "TypeError",
+                "TypeError",
+                "TypeError",
+                "TypeError",
+                "TypeError",
+                "TypeError",
+                "TypeError",
+                "TypeError"
+              ],
+              "symbol": "TypeError",
+              "attributeWrite": "post",
+              "borrowed": ""
+            },
+            "formTarget": {
+              "descriptor": [
+                true,
+                true,
+                "get formTarget",
+                0,
+                "set formTarget",
+                1
+              ],
+              "missing": "",
+              "values": [
+                [
+                  "",
+                  ""
+                ],
+                [
+                  "POST",
+                  "POST"
+                ],
+                [
+                  "dialog",
+                  "dialog"
+                ],
+                [
+                  "invalid",
+                  "invalid"
+                ],
+                [
+                  "TEXT/PLAIN",
+                  "TEXT/PLAIN"
+                ],
+                [
+                  "multipart/form-data",
+                  "multipart/form-data"
+                ],
+                [
+                  "_blank",
+                  "_blank"
+                ],
+                [
+                  "null",
+                  "null"
+                ],
+                [
+                  "undefined",
+                  "undefined"
+                ],
+                [
+                  {
+                    "utf16": [
+                      97,
+                      55296,
+                      98
+                    ]
+                  },
+                  {
+                    "utf16": [
+                      97,
+                      55296,
+                      98
+                    ]
+                  }
+                ]
+              ],
+              "errors": [
+                "TypeError",
+                "TypeError",
+                "TypeError",
+                "TypeError",
+                "TypeError",
+                "TypeError",
+                "TypeError",
+                "TypeError",
+                "TypeError",
+                "TypeError"
+              ],
+              "symbol": "TypeError",
+              "attributeWrite": "POST",
+              "borrowed": ""
+            }
+          },
+          "actions": [
+            "<document>",
+            "<document>",
+            "https://base.example/dir/child?q=1",
+            "https://base.example/up",
+            "http://[/",
+            "https:",
+            "http://bad%20host/",
+            "https://[::1/",
+            "http://%25zz/",
+            "https://a:bad/",
+            "nosuch:abc",
+            "https://base.example/dir/#fragment"
+          ],
+          "poison": {
+            "before": "https://base.example/dir/safe",
+            "after": "https://base.example/dir/after",
+            "reads": 0
+          }
+        },
+        "HTMLInputElement": {
+          "fields": {
+            "formAction": {
+              "descriptor": [
+                true,
+                true,
+                "get formAction",
+                0,
+                "set formAction",
+                1
+              ],
+              "missing": "<document>",
+              "values": [
+                [
+                  "<document>",
+                  ""
+                ],
+                [
+                  "<origin>/POST",
+                  "POST"
+                ],
+                [
+                  "<origin>/dialog",
+                  "dialog"
+                ],
+                [
+                  "<origin>/invalid",
+                  "invalid"
+                ],
+                [
+                  "<origin>/TEXT/PLAIN",
+                  "TEXT/PLAIN"
+                ],
+                [
+                  "<origin>/multipart/form-data",
+                  "multipart/form-data"
+                ],
+                [
+                  "<origin>/_blank",
+                  "_blank"
+                ],
+                [
+                  "<origin>/null",
+                  "null"
+                ],
+                [
+                  "<origin>/undefined",
+                  "undefined"
+                ],
+                [
+                  "<origin>/a%EF%BF%BDb",
+                  {
+                    "utf16": [
+                      97,
+                      55296,
+                      98
+                    ]
+                  }
+                ]
+              ],
+              "errors": [
+                "TypeError",
+                "TypeError",
+                "TypeError",
+                "TypeError",
+                "TypeError",
+                "TypeError",
+                "TypeError",
+                "TypeError",
+                "TypeError",
+                "TypeError"
+              ],
+              "symbol": "TypeError",
+              "attributeWrite": "<origin>/POST",
+              "borrowed": "<document>"
+            },
+            "formEnctype": {
+              "descriptor": [
+                true,
+                true,
+                "get formEnctype",
+                0,
+                "set formEnctype",
+                1
+              ],
+              "missing": "",
+              "values": [
+                [
+                  "application/x-www-form-urlencoded",
+                  ""
+                ],
+                [
+                  "application/x-www-form-urlencoded",
+                  "POST"
+                ],
+                [
+                  "application/x-www-form-urlencoded",
+                  "dialog"
+                ],
+                [
+                  "application/x-www-form-urlencoded",
+                  "invalid"
+                ],
+                [
+                  "text/plain",
+                  "TEXT/PLAIN"
+                ],
+                [
+                  "multipart/form-data",
+                  "multipart/form-data"
+                ],
+                [
+                  "application/x-www-form-urlencoded",
+                  "_blank"
+                ],
+                [
+                  "application/x-www-form-urlencoded",
+                  "null"
+                ],
+                [
+                  "application/x-www-form-urlencoded",
+                  "undefined"
+                ],
+                [
+                  "application/x-www-form-urlencoded",
+                  {
+                    "utf16": [
+                      97,
+                      55296,
+                      98
+                    ]
+                  }
+                ]
+              ],
+              "errors": [
+                "TypeError",
+                "TypeError",
+                "TypeError",
+                "TypeError",
+                "TypeError",
+                "TypeError",
+                "TypeError",
+                "TypeError",
+                "TypeError",
+                "TypeError"
+              ],
+              "symbol": "TypeError",
+              "attributeWrite": "application/x-www-form-urlencoded",
+              "borrowed": ""
+            },
+            "formMethod": {
+              "descriptor": [
+                true,
+                true,
+                "get formMethod",
+                0,
+                "set formMethod",
+                1
+              ],
+              "missing": "",
+              "values": [
+                [
+                  "get",
+                  ""
+                ],
+                [
+                  "post",
+                  "POST"
+                ],
+                [
+                  "dialog",
+                  "dialog"
+                ],
+                [
+                  "get",
+                  "invalid"
+                ],
+                [
+                  "get",
+                  "TEXT/PLAIN"
+                ],
+                [
+                  "get",
+                  "multipart/form-data"
+                ],
+                [
+                  "get",
+                  "_blank"
+                ],
+                [
+                  "get",
+                  "null"
+                ],
+                [
+                  "get",
+                  "undefined"
+                ],
+                [
+                  "get",
+                  {
+                    "utf16": [
+                      97,
+                      55296,
+                      98
+                    ]
+                  }
+                ]
+              ],
+              "errors": [
+                "TypeError",
+                "TypeError",
+                "TypeError",
+                "TypeError",
+                "TypeError",
+                "TypeError",
+                "TypeError",
+                "TypeError",
+                "TypeError",
+                "TypeError"
+              ],
+              "symbol": "TypeError",
+              "attributeWrite": "post",
+              "borrowed": ""
+            },
+            "formTarget": {
+              "descriptor": [
+                true,
+                true,
+                "get formTarget",
+                0,
+                "set formTarget",
+                1
+              ],
+              "missing": "",
+              "values": [
+                [
+                  "",
+                  ""
+                ],
+                [
+                  "POST",
+                  "POST"
+                ],
+                [
+                  "dialog",
+                  "dialog"
+                ],
+                [
+                  "invalid",
+                  "invalid"
+                ],
+                [
+                  "TEXT/PLAIN",
+                  "TEXT/PLAIN"
+                ],
+                [
+                  "multipart/form-data",
+                  "multipart/form-data"
+                ],
+                [
+                  "_blank",
+                  "_blank"
+                ],
+                [
+                  "null",
+                  "null"
+                ],
+                [
+                  "undefined",
+                  "undefined"
+                ],
+                [
+                  {
+                    "utf16": [
+                      97,
+                      55296,
+                      98
+                    ]
+                  },
+                  {
+                    "utf16": [
+                      97,
+                      55296,
+                      98
+                    ]
+                  }
+                ]
+              ],
+              "errors": [
+                "TypeError",
+                "TypeError",
+                "TypeError",
+                "TypeError",
+                "TypeError",
+                "TypeError",
+                "TypeError",
+                "TypeError",
+                "TypeError",
+                "TypeError"
+              ],
+              "symbol": "TypeError",
+              "attributeWrite": "POST",
+              "borrowed": ""
+            }
+          },
+          "actions": [
+            "<document>",
+            "<document>",
+            "https://base.example/dir/child?q=1",
+            "https://base.example/up",
+            "http://[/",
+            "https:",
+            "http://bad%20host/",
+            "https://[::1/",
+            "http://%25zz/",
+            "https://a:bad/",
+            "nosuch:abc",
+            "https://base.example/dir/#fragment"
+          ],
+          "poison": {
+            "before": "https://base.example/dir/safe",
+            "after": "https://base.example/dir/after",
+            "reads": 0
+          }
+        }
+      }
+    }
+  ]
+}

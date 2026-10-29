@@ -6,9 +6,13 @@
 //! marshaling proving to be the actual cost. Do not SoA-ify here yet.
 
 use html5ever::driver::ParseOpts;
+use html5ever::tendril::StrTendril;
 use html5ever::tendril::TendrilSink;
+use html5ever::tokenizer::{BufferQueue, Token, TokenSink, TokenSinkResult, Tokenizer};
+use html5ever::tree_builder::TreeBuilder;
 use html5ever::tree_builder::TreeBuilderOpts;
-use html5ever::{ns, parse_document, parse_fragment, LocalName, QualName};
+use html5ever::TokenizerResult;
+use html5ever::{ns, parse_fragment, LocalName, QualName};
 use markup5ever_rcdom::{Handle, NodeData, RcDom};
 
 /// DOM nodeType constants (subset html5ever can emit).
@@ -60,22 +64,207 @@ pub struct Node {
 /// Parse options matching html5lib-tests defaults (scripting flag off, so
 /// `<noscript>` content is parsed as markup rather than rawtext).
 fn opts() -> ParseOpts {
+    opts_with_scripting(false)
+}
+
+/// html5ever's default options with an explicit scripting flag. With scripting
+/// on (html5ever's own default) `<noscript>` content is raw text, as in a
+/// browser with JavaScript enabled.
+fn opts_with_scripting(scripting_enabled: bool) -> ParseOpts {
     ParseOpts {
         tree_builder: TreeBuilderOpts {
-            scripting_enabled: false,
+            scripting_enabled,
             ..Default::default()
         },
         ..Default::default()
     }
 }
 
+/// Chrome 156 treats an empty DOCTYPE system identifier as missing when it picks the
+/// document's quirks mode (miaskiewicz/turbo-dom#103): `<!DOCTYPE html PUBLIC "-//W3C//DTD
+/// HTML 4.01 Transitional//EN" "">` is quirks (a `<table>` stays in an open `<p>`), where the
+/// HTML spec (and html5ever) reads a present identifier. `doctype.systemId` is `""` both ways.
+#[must_use]
+pub fn chrome_doctype(token: Token) -> Token {
+    match token {
+        Token::DoctypeToken(mut doctype) if doctype.system_id.as_deref() == Some("") => {
+            doctype.system_id = None;
+            Token::DoctypeToken(doctype)
+        }
+        token => token,
+    }
+}
+
+/// A token sink that applies [`chrome_doctype`] before the wrapped sink (html5ever's tree
+/// builder) sees a token.
+pub struct ChromeTokens<S>(pub S);
+
+impl<S: TokenSink> TokenSink for ChromeTokens<S> {
+    type Handle = S::Handle;
+    fn process_token(&self, token: Token, line_number: u64) -> TokenSinkResult<S::Handle> {
+        self.0.process_token(chrome_doctype(token), line_number)
+    }
+    fn end(&self) {
+        self.0.end();
+    }
+    fn adjusted_current_node_present_but_not_in_html_namespace(&self) -> bool {
+        self.0
+            .adjusted_current_node_present_but_not_in_html_namespace()
+    }
+}
+
+/// `html5ever::parse_document` over a whole string, with [`ChromeTokens`].
+fn parse_document_dom(html: &str, opts: ParseOpts) -> RcDom {
+    let builder = TreeBuilder::new(RcDom::default(), opts.tree_builder);
+    let tokenizer = Tokenizer::new(ChromeTokens(builder), opts.tokenizer);
+    let input = BufferQueue::default();
+    input.push_back(StrTendril::from_slice(html));
+    while !matches!(tokenizer.feed(&input), TokenizerResult::Done) {}
+    tokenizer.end();
+    let dom = tokenizer.sink.0.sink;
+    if mentions_selectedcontent(html) {
+        fill_selectedcontent(&dom.document);
+    }
+    dom
+}
+
+/// Does `html` mention `<selectedcontent>` (ASCII case-insensitive)? Gates [`fill_selectedcontent`].
+#[must_use]
+pub fn mentions_selectedcontent(html: &str) -> bool {
+    html.as_bytes()
+        .windows(15)
+        .any(|w| w.eq_ignore_ascii_case(b"selectedcontent"))
+}
+
+/// Chrome 156 fills every `<selectedcontent>` of a non-`multiple` `<select>` with a clone of
+/// the selected option's content while it parses (the "maybe clone an option into
+/// selectedcontent" step; miaskiewicz/turbo-dom#104): the last option with `selected`, else
+/// the first option that is not disabled (itself or through its `<optgroup>`); with none,
+/// the element keeps its content. `markup5ever_rcdom` 0.39's step never finds the element (its
+/// descendant search compares the select's own name) and html5ever only runs it on an
+/// explicit `</option>`, so the parsed tree is completed here — the final state Chrome's
+/// per-option runs leave.
+pub fn fill_selectedcontent(root: &Handle) {
+    let mut pending = vec![root.clone()];
+    while let Some(node) = pending.pop() {
+        if html_element(&node, "select") && !has_attribute(&node, "multiple") {
+            let (options, contents) = select_parts(&node);
+            let selected = options
+                .iter()
+                .rev()
+                .find(|(option, _)| has_attribute(option, "selected"))
+                .or_else(|| options.iter().find(|(_, disabled)| !disabled));
+            if let Some((option, _)) = selected {
+                for content in &contents {
+                    for old in content.children.take() {
+                        old.parent.set(None);
+                    }
+                    for child in option.children.borrow().iter() {
+                        append_handle(content, deep_clone(child));
+                    }
+                }
+            }
+        }
+        pending.extend(node.children.borrow().iter().cloned());
+    }
+}
+
+fn html_element(node: &Handle, local: &str) -> bool {
+    matches!(&node.data, NodeData::Element { name, .. } if name.ns == ns!(html) && &*name.local == local)
+}
+
+fn has_attribute(node: &Handle, local: &str) -> bool {
+    matches!(&node.data, NodeData::Element { attrs, .. }
+        if attrs.borrow().iter().any(|a| a.name.ns == ns!() && &*a.name.local == local))
+}
+
+/// A select's options (with whether each is disabled) and selectedcontent elements, in tree
+/// order: an option counts unless an option, datalist or hr, or a second optgroup, lies
+/// between it and the select; a selectedcontent inside an option is not the select's
+/// (Chrome 156 leaves it as parsed).
+fn select_parts(select: &Handle) -> (Vec<(Handle, bool)>, Vec<Handle>) {
+    let (mut options, mut contents) = (Vec::new(), Vec::new());
+    // (node, blocked, inside an option, inside an optgroup, inside a disabled optgroup)
+    let mut pending: Vec<(Handle, bool, bool, bool, bool)> = select
+        .children
+        .borrow()
+        .iter()
+        .rev()
+        .map(|child| (child.clone(), false, false, false, false))
+        .collect();
+    while let Some((node, mut blocked, mut in_option, mut grouped, mut group_disabled)) =
+        pending.pop()
+    {
+        // (the parser never nests a select: a `<select>` start tag closes an open one)
+        if html_element(&node, "selectedcontent") && !in_option {
+            contents.push(node);
+            continue;
+        }
+        if html_element(&node, "option") {
+            if !blocked {
+                options.push((
+                    node.clone(),
+                    group_disabled || has_attribute(&node, "disabled"),
+                ));
+            }
+            blocked = true;
+            in_option = true;
+        } else if html_element(&node, "datalist") || html_element(&node, "hr") {
+            blocked = true;
+        } else if html_element(&node, "optgroup") {
+            blocked |= grouped;
+            grouped = true;
+            group_disabled |= has_attribute(&node, "disabled");
+        }
+        for child in node.children.borrow().iter().rev() {
+            pending.push((child.clone(), blocked, in_option, grouped, group_disabled));
+        }
+    }
+    (options, contents)
+}
+
+fn append_handle(parent: &Handle, child: Handle) {
+    child.parent.set(Some(std::rc::Rc::downgrade(parent)));
+    parent.children.borrow_mut().push(child);
+}
+
+/// A deep copy of a parsed node (element attributes and template contents included).
+fn deep_clone(node: &Handle) -> Handle {
+    let data = match &node.data {
+        NodeData::Element {
+            name,
+            attrs,
+            template_contents,
+            mathml_annotation_xml_integration_point,
+        } => NodeData::Element {
+            name: name.clone(),
+            attrs: std::cell::RefCell::new(attrs.borrow().clone()),
+            template_contents: std::cell::RefCell::new(
+                template_contents.borrow().as_ref().map(deep_clone),
+            ),
+            mathml_annotation_xml_integration_point: *mathml_annotation_xml_integration_point,
+        },
+        NodeData::Text { contents } => NodeData::Text {
+            contents: std::cell::RefCell::new(contents.borrow().clone()),
+        },
+        NodeData::Comment { contents } => NodeData::Comment {
+            contents: contents.clone(),
+        },
+        NodeData::Document | NodeData::Doctype { .. } | NodeData::ProcessingInstruction { .. } => {
+            unreachable!("an option holds elements, text and comments only")
+        }
+    };
+    let copy = markup5ever_rcdom::Node::new(data);
+    for child in node.children.borrow().iter() {
+        append_handle(&copy, deep_clone(child));
+    }
+    copy
+}
+
 /// Parse a full HTML document. Always yields a Document root (nodeType 9).
 #[must_use]
 pub fn parse_html_document(html: &str) -> Node {
-    let dom = parse_document(RcDom::default(), opts())
-        .from_utf8()
-        .read_from(&mut html.as_bytes())
-        .expect("RcDom read_from is infallible over a byte slice");
+    let dom = parse_document_dom(html, opts());
     walk(&dom.document)
 }
 
@@ -204,10 +393,8 @@ impl SoaBuilder {
                 self.soa.node_type[idx] = COMMENT_NODE;
                 self.soa.text_id[idx] = self.push_string(contents);
             }
-            NodeData::ProcessingInstruction { target, contents } => {
-                self.soa.node_type[idx] = PROCESSING_INSTRUCTION_NODE;
-                self.soa.tag_id[idx] = self.intern_tag(target);
-                self.soa.text_id[idx] = self.push_string(contents);
+            NodeData::ProcessingInstruction { .. } => {
+                unreachable!("html5ever's HTML tree builder never creates processing instructions")
             }
             NodeData::Element {
                 name,
@@ -294,10 +481,15 @@ pub fn parse_html_soa(html: &str) -> Soa {
 /// Parse once and retain html5ever's document compatibility mode.
 #[must_use]
 pub fn parse_html_soa_with_compat_mode(html: &str) -> (Soa, &'static str) {
-    let dom = parse_document(RcDom::default(), opts())
-        .from_utf8()
-        .read_from(&mut html.as_bytes())
-        .expect("RcDom read_from is infallible over a byte slice");
+    parse_html_soa_with_scripting(html, false)
+}
+
+/// [`parse_html_soa_with_compat_mode`] with an explicit tree-builder scripting
+/// flag (`false` everywhere else in this crate; `true` is html5ever's default and
+/// what native layout consumers that render `<noscript>` as raw text use).
+#[must_use]
+pub fn parse_html_soa_with_scripting(html: &str, scripting: bool) -> (Soa, &'static str) {
+    let dom = parse_document_dom(html, opts_with_scripting(scripting));
     let mut b = SoaBuilder {
         soa: Soa::default(),
         // pre-reserve typical intern-table sizes so the build loop doesn't rehash:
@@ -329,10 +521,7 @@ pub fn parse_html_soa_with_compat_mode(html: &str) -> (Soa, &'static str) {
 /// marshaling. Isolates raw html5ever parse cost from tree-build + boundary cost.
 #[must_use]
 pub fn parse_html_document_count(html: &str) -> u32 {
-    let dom = parse_document(RcDom::default(), opts())
-        .from_utf8()
-        .read_from(&mut html.as_bytes())
-        .expect("RcDom read_from is infallible over a byte slice");
+    let dom = parse_document_dom(html, opts());
     count(&dom.document)
 }
 
@@ -383,29 +572,79 @@ pub fn parse_html_fragment_with_context(
     context: QualName,
     attributes: Vec<html5ever::Attribute>,
 ) -> Node {
+    if is_rcdata_context(&context) && html.contains('\0') {
+        return rcdata_fragment(html.split('\0').map(|segment| {
+            parse_html_fragment_with_context(segment, context.clone(), attributes.clone())
+        }));
+    }
     let mut options = opts();
     options.tokenizer.discard_bom = false;
     let dom = parse_fragment(RcDom::default(), options, context, attributes, false).one(html);
-    // parse_fragment wraps results under a synthetic <html> element; unwrap it.
-    let root = walk(&dom.document);
-    let mut frag = Node {
-        node_type: DOCUMENT_NODE,
-        name: "#document-fragment".to_string(),
-        value: String::new(),
-        namespace: String::new(),
-        public_id: String::new(),
-        system_id: String::new(),
-        attrs: Vec::new(),
-        children: Vec::new(),
-    };
-    for child in root.children {
-        if child.node_type == ELEMENT_NODE && child.name == "html" {
-            frag.children.extend(child.children);
-        } else {
-            frag.children.push(child);
-        }
+    if mentions_selectedcontent(html) {
+        fill_selectedcontent(&dom.document);
+    }
+    fragment_of(walk(&dom.document))
+}
+
+/// An HTML `textarea` / `title` fragment context: the tokenizer starts (and, a fragment
+/// having no appropriate end tag, stays) in RCDATA, so the whole input is text.
+pub(crate) fn is_rcdata_context(context: &QualName) -> bool {
+    context.ns == ns!(html) && matches!(&*context.local, "textarea" | "title")
+}
+
+/// Chrome 156 drops a literal U+0000 in an RCDATA-context fragment (Blink replaces it
+/// only in the "text" insertion mode, which the fragment case never enters;
+/// miaskiewicz/turbo-dom#92), while html5ever's RCDATA state emits U+FFFD. U+0000 can only
+/// end a character reference there, so each NUL-free segment is parsed alone and the
+/// segments' texts joined: one text node, or none.
+pub(crate) fn rcdata_fragment(segments: impl Iterator<Item = Node>) -> Node {
+    let mut frag = fragment_of(Node::default_document());
+    let value: String = segments
+        .flat_map(|segment| segment.children)
+        .map(|text| text.value)
+        .collect();
+    if !value.is_empty() {
+        frag.children.push(Node {
+            node_type: TEXT_NODE,
+            name: "#text".to_string(),
+            value,
+            ..Node::default_document()
+        });
     }
     frag
+}
+
+/// The fragment root (`#document-fragment`) of a walked fragment-parse document:
+/// `parse_fragment` wraps results under a synthetic `<html>` element; unwrap it.
+pub(crate) fn fragment_of(document: Node) -> Node {
+    let mut frag = Node {
+        name: "#document-fragment".to_string(),
+        ..Node::default_document()
+    };
+    // The document's only child is that <html> root: the fragment case never enters
+    // an insertion mode that appends to the Document (initial / before html, after
+    // after body, after after frameset).
+    for child in document.children {
+        debug_assert!(child.node_type == ELEMENT_NODE && child.name == "html");
+        frag.children.extend(child.children);
+    }
+    frag
+}
+
+impl Node {
+    /// An empty document node (`#document`, no data, no children).
+    fn default_document() -> Node {
+        Node {
+            node_type: DOCUMENT_NODE,
+            name: "#document".to_string(),
+            value: String::new(),
+            namespace: String::new(),
+            public_id: String::new(),
+            system_id: String::new(),
+            attrs: Vec::new(),
+            children: Vec::new(),
+        }
+    }
 }
 
 fn shallow_node(handle: &Handle) -> Node {
@@ -449,13 +688,9 @@ fn shallow_node(handle: &Handle) -> Node {
             String::new(),
             Vec::new(),
         ),
-        NodeData::ProcessingInstruction { target, contents } => (
-            PROCESSING_INSTRUCTION_NODE,
-            target.to_string(),
-            contents.to_string(),
-            String::new(),
-            Vec::new(),
-        ),
+        NodeData::ProcessingInstruction { .. } => {
+            unreachable!("html5ever's HTML tree builder never creates processing instructions")
+        }
         NodeData::Element { name, attrs, .. } => {
             let a = attrs
                 .borrow()

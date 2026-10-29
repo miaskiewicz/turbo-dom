@@ -1,0 +1,94 @@
+{
+ "chain": [
+  {
+   "tag": "Window",
+   "ctor": "Window",
+   "own": 4,
+   "syms": [
+    "Symbol(Symbol.toStringTag)"
+   ]
+  },
+  {
+   "tag": "WindowProperties",
+   "ctor": null,
+   "own": 1,
+   "syms": [
+    "Symbol(Symbol.toStringTag)"
+   ]
+  },
+  {
+   "tag": "EventTarget",
+   "ctor": "EventTarget",
+   "own": 6,
+   "syms": [
+    "Symbol(Symbol.toStringTag)"
+   ]
+  },
+  {
+   "tag": null,
+   "ctor": "Object",
+   "own": 12,
+   "syms": []
+  }
+ ],
+ "winSyms": [],
+ "instWindow": true,
+ "instET": true,
+ "wp": [
+  "TEMPORARY",
+  "PERSISTENT",
+  "constructor",
+  "Symbol(Symbol.toStringTag)"
+ ],
+ "wpd": {
+  "TEMPORARY": "{\"value\":0,\"writable\":false,\"enumerable\":true,\"configurable\":false}",
+  "PERSISTENT": "{\"value\":1,\"writable\":false,\"enumerable\":true,\"configurable\":false}",
+  "constructor": "{\"writable\":true,\"enumerable\":false,\"configurable\":true}",
+  "Symbol(Symbol.toStringTag)": "{\"value\":\"Window\",\"writable\":false,\"enumerable\":false,\"configurable\":true}"
+ },
+ "wps": [
+  "Symbol(Symbol.toStringTag)"
+ ],
+ "wpsd": "{\"value\":\"WindowProperties\",\"writable\":false,\"enumerable\":false,\"configurable\":true}",
+ "wdesc": "{\"writable\":true,\"enumerable\":false,\"configurable\":true}",
+ "wlen": 0,
+ "wname": "Window",
+ "newW": "TypeError: Failed to construct 'Window': Illegal constructor",
+ "callW": "TypeError: Illegal constructor",
+ "own": [
+  [
+   "addEventListener",
+   false
+  ],
+  [
+   "removeEventListener",
+   false
+  ],
+  [
+   "dispatchEvent",
+   false
+  ],
+  [
+   "window",
+   true
+  ],
+  [
+   "self",
+   true
+  ],
+  [
+   "document",
+   true
+  ],
+  [
+   "location",
+   true
+  ]
+ ],
+ "str": "[object Window]",
+ "ots": "[object Window]",
+ "wpProtoStr": "[object Window]",
+ "wpsStr": "[object WindowProperties]",
+ "WPcons": [],
+ "etOk": 1
+}

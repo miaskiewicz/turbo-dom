@@ -111,3 +111,29 @@ test('SVG built via innerHTML also gets wrappers', () => {
   assert.ok(rect instanceof window.SVGElement);
   assert.equal(rect.width.baseVal.value, 4);
 });
+
+// turbo-dom#87: MathML-namespace elements are MathMLElements (Chrome 156, the binding's
+// svg_mathml_element_chrome156.json control: parsed and createElementNS math/mi are
+// instances, an SVG element is not, MathMLElement.prototype extends Element.prototype),
+// with a working inline style and dataset like SVG / HTML elements.
+test('MathML elements are MathMLElement instances (turbo-dom#87)', () => {
+  const { window, document } = createEnvironment('<!doctype html><body><math style="color: red" data-m="w"><mi>x</mi></math><svg></svg></body>');
+  const { MathMLElement, SVGElement, Element } = window;
+  assert.equal(typeof MathMLElement, 'function');
+  assert.equal(MathMLElement.name, 'MathMLElement');
+  assert.equal(Object.getPrototypeOf(MathMLElement.prototype), Element.prototype);
+  const math = document.querySelector('math'), mi = document.querySelector('mi');
+  assert.equal(Object.getPrototypeOf(math), MathMLElement.prototype);
+  assert.ok(mi instanceof MathMLElement);
+  const created = document.createElementNS('http://www.w3.org/1998/Math/MathML', 'mi');
+  assert.equal(Object.getPrototypeOf(created), MathMLElement.prototype);
+  assert.ok(!(math instanceof SVGElement));
+  assert.ok(!(document.querySelector('svg') instanceof MathMLElement));
+  assert.ok(!(document.createElement('div') instanceof MathMLElement));
+  assert.ok(!(document.createElementNS('urn:x', 'math') instanceof MathMLElement));
+  assert.equal(Object.getPrototypeOf(math.cloneNode(true)), MathMLElement.prototype);
+  assert.equal(math.style.color, 'red');
+  assert.equal(math.dataset.m, 'w');
+  created.style.color = 'blue';
+  assert.equal(created.style.color, 'blue');
+});

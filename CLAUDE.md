@@ -4,11 +4,15 @@ Dev guide for this repo. See `turbo-dom-spec.md` for the full design and `README
 
 ## What this is
 
-Layer 1 of turboDom: a native HTML parser (Rust + `html5ever`) with napi-rs (native) and
-wasm-bindgen (fallback) front-ends over **one shared core**. Parser produces a complete
-nested tree and crosses the JS boundary once ("full marshaling"). The SoA flat-buffer from
-the architecture doc is **intentionally not built yet** — it's gated on marshaling proving
-to be the cost (a later bench). Don't SoA-ify `core.rs`.
+The shared browser-engine base of turbo-test, turbo-html2pdf and turbo-surf (0.6.0):
+
+- the npm package `@miaskiewicz/turbo-dom` — a lazy JS DOM runtime (`src/runtime/`) over a
+  native html5ever parser (`turbo-dom-parser`: napi-rs addon + wasm-bindgen fallback over one
+  shared `src/core.rs`; `parse` returns a nested tree, `parseBuffer` the SoA typed-array buffer
+  the runtime inflates from);
+- five crates.io crates: `turbo-dom` (Rust DOM, selector engine, CSSOM), `turbo-dom-layout`,
+  `turbo-dom-raster`, `turbo-dom-browser-env` (rtdom <-> V8) and `turbo-dom-v8` (generated
+  rusty_v8 fork). Crate map and dependency graph: `docs/CONSOLIDATION.md`.
 
 ## Build & test
 
@@ -16,28 +20,63 @@ to be the cost (a later bench). Don't SoA-ify `core.rs`.
 npm run build         # native addon → turbo-dom-parser.<platform>.node + index.js/.d.ts (napi codegen)
 npm run build:wasm    # wasm32 fallback
 npm test              # JS: node --test  (MUST glob: 'test/*.mjs' — `node --test test/` is misparsed on Node 24)
-npm run test:cov      # same suite + coverage gate (runtime lines≥99 / funcs≥95 / branches≥95)
-npm run test:rust     # cargo test -p turbo-dom  (rtdom crate: 227 tests + conformance)
+npm run test:cov      # same suite + coverage gate (runtime lines 100 / funcs 100 / branches≥97.3)
+npm run test:rust     # cargo test -p turbo-dom  (rtdom crate tests + conformance)
 npm run conformance   # html5lib-tests gate (parser, JS serializer)
 # --- Rust-native DOM runtime (rtdom) ---
 npm run build:rtdom        # cargo build -p turbo-dom --release
-npm run conformance:rtdom  # html5lib-tests gate run THROUGH the rtdom tree (direct, 99.75%)
+npm run conformance:rtdom  # html5lib-tests gate run THROUGH the rtdom tree (direct, 100%)
 npm run profile:churn      # build the CPU-profiling example + print the macOS `sample` hint
 # --- lint + perf gates (CI-enforced) ---
-cargo clippy --workspace --all-targets -- -D warnings   # both crates: clippy::pedantic-clean
+cargo clippy -p turbo-dom -p turbo-dom-parser -p turbo-dom-layout -p turbo-dom-raster --all-targets -- -D warnings   # clippy::pedantic-clean via [workspace.lints] (CI base/layout/raster jobs; --workspace would also build browser-env + V8, which the v8 job covers)
+cargo test -p turbo-dom-layout                           # layout engine (+ --features svg / perf)
+cargo test -p turbo-dom-raster                           # screenshot painter
+scripts/verify-copied-layout.sh                          # S1 moved code (at VERIFY_REF) == its source commits (+ allow-listed rewrites)
 cargo test -p turbo-dom churn_alloc_gate -- --ignored    # perf gate: churn allocs/op ≤ 380 (≈363)
+cargo test -p turbo-dom --test cascade_selectors_chrome  # selector engine vs the Chrome 156 control
+cargo test -p turbo-dom-layout --test cascade_selectors_chrome  # the same control end to end (HTML-path cascade)
+scripts/check-no-selector-dual.sh                        # the retired selector-dual gate must not come back
+python3 scripts/check-baseline-red.py scripts/baseline-red/turbo-dom-layout-no-default-features.tsv -- -p turbo-dom-layout --no-default-features
+python3 scripts/check-versions.py                        # one release version in every manifest (CI guard; --tag in publish)
+python3 -m unittest discover -s scripts -p 'test_*.py'   # release helper (publish-crates.py) self-tests
+python3 -m unittest discover -s tools/parity -p 'test_*.py'  # parity harness self-test
+npm run complexity:rust   # cc-check --max 15 over every tracked .rs file (needs cc-check on PATH, below)
+npm run complexity:js     # oxlint `complexity` max 15 over src/ + crates/turbo-dom-browser-env/src (.oxlintrc.complexity.json)
 ```
+
+CI (`.github/workflows/ci.yml`) has one job family per crate (base / layout / raster / v8 +
+browser-env matrix / msrv 1.89 / guards / coverage floors / complexity). PRs and pushes run on
+Linux + Windows; `publish.yml` runs it on a `v*` tag with `darwin: true` (adds the macOS arm64
+builds and jobs) and then publishes every package in dependency order. See `docs/CONSOLIDATION.md`.
 
 **Two independent runtimes, one repo.** The JS runtime (`src/runtime/*.mjs`, the npm/vitest path)
 and the Rust runtime (`crates/turbo-dom`, the workspace-member crate published to crates.io as
 `turbo-dom`) never touch each other. The Rust DOM engine lives in **one place** — that published
 crate — so there's no duplicated copy to keep in sync (the root parser crate has no rtdom module).
-rtdom is held to **100% line coverage** (`cargo tarpaulin -p turbo-dom --skip-clean`); its
-`bench`/`dump`/`conformance`/`gauntlet` modules are `#[cfg(test)]` gate harness, not shipped. The
-crate (clean deps, vendorable) publishes via the `publish-crate` CI job on a `v*` tag. See
+rtdom's line coverage is gated in CI at 100%
+(`cargo tarpaulin --engine llvm -p turbo-dom --include-files 'crates/turbo-dom/src/*'`); the
+other floors are turbo-dom-layout 99.8, turbo-dom-raster 100 (default / avif / jxl) and
+turbo-dom-browser-env 97.6 (`ci.yml` `coverage` matrix; blocking). The root parser package's `src/core.rs` is
+gated at 100% too (`--include-files src/core.rs`; `src/core/conformance_tests.rs` runs html5lib-tests
+and the Chrome 156 control through the `Node` and `Soa` outputs) — its `src/lib.rs` / `src/spike.rs`
+napi / wasm glue only runs in Node / a wasm host, so the JS suite covers it. Every line is covered by a test
+that asserts behaviour (web-observable behaviour against a Chrome 156 control); a provably dead
+defensive line is removed or `unreachable!()` with its proof in a comment — never a no-op test
+or a coverage exclusion. Its
+`bench`/`dump`/`conformance`/`gauntlet` modules are `#[cfg(test)]` gate harness, not shipped
+(tarpaulin skips them). The
+crate publishes from `publish.yml` on a `v*` tag (after turbo-dom-v8, before turbo-dom-layout). See
 `RUST_PORT_PLAN.md`.
 
-Toolchain: Node ≥ 24, Rust stable via rustup (`source $HOME/.cargo/env` if cargo isn't on PATH).
+**`crates/turbo-dom-v8` is generated, not vendored.** turbo-dom's rusty_v8 150.4 fork (interceptor
+ShouldThrowOnError + isolate weak-teardown fixes, `v8::FORK_SHOULD_THROW_FIX`) is kept as pins +
+patches + `scripts/generate.py`; the crate is written to the gitignored `crates/turbo-dom-v8/crate/`
+and built standalone (the root workspace excludes it, so the base gates never need V8). See
+[crates/turbo-dom-v8/README.md](crates/turbo-dom-v8/README.md) for generate/check/test/release.
+Generator tests: `python3 -m unittest discover -s crates/turbo-dom-v8/scripts -p 'test_*.py'`.
+
+Toolchain: Node ≥ 24, Rust 1.98.0 via rustup (CI's pin; MSRV 1.89 for turbo-dom/-layout/-raster, 1.91
+for -v8/-browser-env; `source $HOME/.cargo/env` if cargo isn't on PATH).
 
 **Pre-commit hook** (`.githooks/pre-commit`, zero-dep — wired via the `prepare` script setting
 `core.hooksPath=.githooks` on `npm install`): runs `npm run test:cov` when `src/`/`test/` is
@@ -45,23 +84,42 @@ staged, so every commit gates tests + coverage + conformance (conformance.test.m
 suite). Bypass with `git commit --no-verify`. Coverage-ignore a truly-unreachable defensive line
 with `/* node:coverage ignore next */` (sparingly) — prefer restructuring or a test.
 
-**Lint + perf gates (CI-enforced, not pre-commit).** Both crates enable `clippy::pedantic` via
-`[lints.clippy]` in their `Cargo.toml`, with a documented allow-list for the lints that don't fit a
+**Lint + perf gates (CI-enforced, not pre-commit).** The parser and the turbo-dom / -layout /
+-raster crates enable `clippy::pedantic` (the root package via its own `[lints.clippy]`, the
+crates via `[lints] workspace = true` → the root's `[workspace.lints.clippy]`), with a documented allow-list for the lints that don't fit a
 DOM/parse/layout engine (the f64↔int cast family, `float_cmp` on canonical values, single-char
-tokenizer vars, missing-panics/errors-doc, …). CI runs `cargo clippy --workspace --all-targets --
--D warnings` plus the root crate's `wasm-bind`/`wasm-runtime` variants, so any pedantic warning
-fails. A deterministic perf gate, `rtdom::bench::churn_alloc_gate`, asserts the mutation-churn path
+tokenizer vars, missing-panics/errors-doc, …). CI runs `cargo clippy -p turbo-dom -p turbo-dom-parser
+--all-targets -- -D warnings` plus the root crate's `wasm-bind`/`wasm-runtime` variants, so any pedantic
+warning fails (the layout, raster and browser-env jobs lint their crates the same way, at default lints). A deterministic perf gate, `rtdom::bench::churn_alloc_gate`, asserts the mutation-churn path
 stays ≤ 380 allocs/op (measured 363 — the count is load- and opt-level-independent, so it's stable
 on CI where wall-clock would flake). It's `#[ignore]`'d and run ALONE in its own CI step
 (`cargo test -p turbo-dom churn_alloc_gate -- --ignored`) because `CountingAlloc` is a process-
 global allocator that a parallel test would pollute. Don't loosen either threshold to pass a change.
+
+**Complexity gates (CI jobs `complexity / rust (cc <= 15)` and `complexity / js (cc <= 15)`).**
+Every function's cyclomatic complexity must be <= 15 — one limit for the whole repo, no
+allow-list, no baseline (turbo-html2pdf's own crates stay at its stricter cc < 6). Rust is
+measured by turbo-html2pdf's `cc-check` (a `match` counts once; `if`/loops/`?`/`&&`/`||` add 1;
+closures are scored on their own), installed from its home rather than copied here:
+`cargo install --locked --git https://github.com/miaskiewicz/turbo-html2pdf --rev
+923c89f791f3a89cb089a59626a25cef0a9cbd5f cc-check` (CI pins the same rev). It scans every
+tracked `.rs` file (`git ls-files`, so the generated `crates/turbo-dom-v8/crate/` is never
+scanned). JS uses oxlint's ESLint-compatible `complexity` rule (pinned `oxlint@1.87.0` via npx,
+no devDependency) over `src/` and `crates/turbo-dom-browser-env/src`. **Both jobs are
+report-only for 0.6.0**: the functions above 15 (59 Rust, 228 JS measured 2026-10-28;
+`docs/CONSOLIDATION.md` "Complexity"; a failing job writes the current list to its step
+summary) are the refactor backlog, refactored after the release. Until then both jobs run
+with `continue-on-error` (red job, green workflow, so `publish.yml` is not blocked) and are
+not required checks. Don't add new ones, and never raise
+the limit to turn the jobs green.
 
 ## Releasing (`vX.Y.Z`)
 
 Follow [PUBLISHING.md](./PUBLISHING.md). Versions must agree across npm, Cargo,
 lockfiles, generated WASM packages and the README. Run the full documented gates,
 merge the green release PR with a merge commit, and create an annotated tag on
-that actual merge commit. Pushing the tag publishes npm and the Rust DOM crate;
+that actual merge commit. Pushing the tag runs `publish.yml`: turbo-dom-v8, turbo-dom,
+turbo-dom-layout, turbo-dom-raster, turbo-dom-browser-env (crates.io, in that order) and npm;
 only do this with explicit release authorization. This repository has no PyPI
 package or publish workflow.
 
@@ -78,17 +136,78 @@ package or publish workflow.
   design as the JS runtime: lazy COW `Tree` over the SoA (`tree.rs`, `version` counter = cache key),
   selectors + version-cached queries (`query.rs`), partial `getComputedStyle` memoized per version
   (`cascade.rs`), event dispatch with the listener-less fast-skip (`events.rs`), serialize, shadow DOM,
-  plus `color`/`cssom`/`svg`/`file`/`canvas`/`custom_elements`/`location`/`mutations`/`node_ref`.
-  Test-only harness: `dump.rs` (html5lib tree-dump) + `conformance.rs` (direct gate, 99.75%) +
-  `bench.rs`/`gauntlet.rs`. **100% line coverage.** Don't expose rtdom to JS (the boundary loses);
+  plus `color`/`css_values`/`cssom`/`svg`/`file`/`canvas`/`custom_elements`/`location`/`mutations`/`node_ref`.
+  Test-only harness: `dump.rs` (html5lib tree-dump) + `conformance.rs` (direct gate, 100% since turbo-dom#104) +
+  `bench.rs`/`gauntlet.rs`. Coverage-gated in CI (floor raised by the coverage phase). Don't expose rtdom to JS (the boundary loses);
   the JS path stays `src/runtime/`. Per-commit perf-win → Rust mapping in `RUST_PORT_PERF_HISTORY.md`.
+- `crates/turbo-dom-browser-env` — the rtdom <-> V8 browser binding (moved from turbo-test
+  @cb5c64e; `scripts/verify-copied.sh` re-derives that one-time move for review; its Chrome-control
+  collectors moved into the crate's `scripts/` in S5, `scripts/verify-copied-collectors.sh`). Shared by
+  turbo-test and turbo-surf; features `host-internals` (doc-hidden host access),
+  `test-support` (probe/control consts), `native-sdk-frame-read` (interceptor mode source).
+  Needs a V8 archive (`RUSTY_V8_ARCHIVE`). Lint-exempt by design (`#![allow(unused, clippy::all)]`);
+  see its README. The shared `zoom` grammar lives in base `rtdom::css_values`.
+- `crates/turbo-dom-layout` — the native HTML/CSS layout engine (style cascade, block/inline/
+  flex/grid/table layout → `Fragment` galley, fonts, image sizing, layout snapshots,
+  `layout_html`). Relocated verbatim from turbo-html2pdf-core 0.3.9 (S1); turbo-html2pdf-core
+  depends on it and re-exports it at its old paths. Since S2 the cascade styles a turbo-dom
+  `Tree` directly (`style::TreeView` + `Roots::{Detached, Document}`; since P5b the HTML
+  drive styles the whole document like Chrome — head `<style>`s, real `<html>`/`<body>` boxes
+  with `body { margin: 8px }`, root-relative `rem`, canvas background; turbo-html2pdf#29); html2pdf's `t:` directives are opaque `MarkerKind` markers
+  from a caller classifier, and its PDF switches are runtime `LayoutOptions`/`StyleOptions`
+  (no PDF features here). Since S3b selectors parse and match with turbo-dom's engine
+  (`style::RuleSelectors` = `parse_for_cascade`; the scope `style::Navigator` implements
+  turbo-dom's `Navigator`: element/text nodes — stripped non-visual elements still count for
+  selectors, turbo-dom#25 — Detached cutoff, the document scope, marker type keys);
+  html2pdf's old `style/selector.rs` is gone. `scripts/verify-copied-layout.sh` checks the S1
+  tree (`VERIFY_REF`) against the source commits; later edits are reviewed changes on top.
+  Since S4 `live` is the live-DOM input ("surf mode"): turbo-surf's CSSOM-View layout styles
+  the page's own composed `Tree` (embedder-supplied composed children, pre-matched rules,
+  inline overrides) under the copier's exact budgets/errors, with no copy; `cssom_view`
+  holds surf's pure geometry modules (metrics, hit, scroll, visibility, inline, text, range,
+  the `Composition` scope graph). Since P5b-W1 live tables give rows and row groups boxes
+  with used metrics and shrink auto widths, `position:absolute/fixed` blockify and stay in
+  their inline run, and unsupported inline constructs fail per element
+  (`LayoutSnapshot::unsupported_inline_geometry`; turbo-surf#31/#36, Chrome control
+  `scripts/live-geometry-chrome-control.mjs` -> `src/live/chrome_tests.rs`; the scroll /
+  visibility / caret / Range reads: `scripts/cssom-view-chrome-control.mjs` ->
+  `tests/fixtures/cssom_view_chrome156.json`, asserted in `cssom_view::{scroll, visibility, text, range}`). Since S5 the legacy owned `Node` input is gone (`node.rs`,
+  `markup.rs`, `style_tree*`; `Tag`/`Attr`/`MarkerKind` live in `tag`); the
+  `snapshot_*live_tree*` entries take a `StyleInput`. `image` is the ONE image layer: the
+  header size probe (`ImageResolver::intrinsic`), the shared PNG decode (`PngFrame`: PDF
+  native samples / raster RGBA = `image::to_rgba8` exactly) and, under `svg-rasterize`, the
+  one SVG rasterizer (`svg::rasterize(bytes, scale, Oversize)`: PDF 2x clamp, raster 1x
+  reject); since P5b it also reads EXIF orientation —
+  `Intrinsic::orientation`, laid out displayed unless `image-orientation: none`, painted via
+  `ImagePlacement::orientation`; turbo-html2pdf#30); both probes follow Blink's size points for
+  cut-short bodies and SVG images need an SVG-namespace root (turbo-dom#59,
+  `scripts/image-truncation-chrome-control.mjs`). `FontRegistry::system(policy)` is the process-wide system-font load. The
+  `test-support` feature (`test_support`) carries the font fixtures, `ComputedStyle` pairs
+  and test-only tree literals for this crate's and turbo-html2pdf-core's tests (the crate's
+  own integration tests enable it through a self dev-dependency).
+- `crates/turbo-dom-raster` — synthetic screenshots: paints the layout galley to PNG/SVG
+  (tiny-skia / SVG), canvas op-log replay, `gpu-metal` WebGL. Relocated verbatim from
+  turbo-surf-raster 0.5.5 (S1). Decodes images through turbo-dom-layout's image layer (PNG,
+  SVG at 1x) and the `image` crate (JPEG/GIF/WebP/BMP/ICO/CUR, resize, PNG re-encode for
+  SVG `data:` URIs), AVIF via `rav1d` under the off-by-default `avif` feature (P5b
+  turbo-surf#30) and JPEG XL via `jxl-oxide` under the off-by-default `jxl` feature (P5b
+  turbo-dom#45; the size/orientation probe is in turbo-dom-layout, every build); `image_paint::shared_layer_tests` gates it byte for byte against the old
+  decode over `tools/parity` image inputs. 100% line coverage in its default / `avif` / `jxl`
+  configs (CI gate 100 each; Chrome 156 controls `paint-`, `canvas-ops-` and
+  `raster-avif-chrome-control.mjs` back the pixel tests).
 - `harness/` — JS conformance tooling (dat parser, serializer, runner). All unit-tested.
 - `src/runtime/` — the lazy COW DOM + window (Layers 2–5). `index.mjs` exports
   `createEnvironment(html)` → `{ window, document, reset, touched }`. Nodes inflate lazily
   from the parser tree and memoize for identity (`dom.mjs` `Document.__inflate`); the window
   Proxy (`window.mjs`) self-replaces lazy globals and traces touched ones. Selectors read the
   internal `node.__children()` array, NOT the live `childNodes` Proxy. Honest stubs in
-  `stubs.mjs`. Two deliberate non-honest areas (both test-time only, see notes below):
+  `stubs.mjs`; custom elements (state, registry, upgrades, lifecycle callbacks) in
+  `custom-elements.mjs`, hooked into `dom.mjs` only once a registry exists (`Document.__ceRegistry`;
+  `null` = hooks armed without a registry, for a document a custom element was adopted into).
+  Reactions are queued per element and run when the outermost DOM call returns ([CEReactions]):
+  each DOM call that can queue them re-enters itself through `withReactions(METHOD.x, …)` when
+  `ceScope(doc)` — one predicted-false read otherwise; a new such DOM path needs the same gate
+  (turbo-dom#29 item 4). Two deliberate non-honest areas (both test-time only, see notes below):
   the partial style cascade in `cascade.mjs`, and the **synthetic geometry** in `dom.mjs`
   (`getBoundingClientRect`/offset/client/scroll **size** are non-zero — positions stay 0 —
   because honest-zero deadlocks React's measure→setState→re-measure loop). Validated by `test/differential.test.mjs`
@@ -108,6 +227,9 @@ package or publish workflow.
   Wrappers are built lazily on access (live over the attribute, no snapshot). `newElement()`
   picks the subclass by ns at every construction site (inflate/innerHTML/cloneNode/createElementNS)
   — HTML elements stay plain `Element` (no SVG getters, no regression, no hot-path cost).
+  An element's `__ns` is `''` (HTML), `'svg'`, `'math'`, or — only from `createElementNS` in any
+  other namespace — `'ns:' + URI` (`'ns:'` = the null namespace), so "HTML or not" stays one
+  string test; `__prefix` exists only on prefixed elements (turbo-dom#29 item 1).
 - **CSSOM is minimal + test-time only** (`cssom.mjs`): `<style>.sheet` (lazy `__sheet`, only
   emotion-touched styles allocate one) + live `document.styleSheets` + `insertRule`/`deleteRule`.
   `insertRule` bumps `Document.__version` (via owner `__touch()`), and `cascade.mjs` reads
@@ -122,7 +244,13 @@ package or publish workflow.
   default, so `<noscript>` content is parsed as markup, not rawtext. Don't flip it.
 - **`<template>` content** is NOT in `children` — html5ever puts it in `template_contents`.
   `walk()` appends it as a synthetic `nodeType 11` `content` fragment node. html5lib prints it
-  as the literal word `content`.
+  as the literal word `content`. In the JS runtime that fragment (and every template's
+  contents — created lazily by the `content` accessor) belongs to the document's inert
+  "template contents owner document" (`Document.__templateDocument()`: no window, no custom
+  element registry, so contents and their clones never upgrade). It shares the document's
+  buffer, so contents move to and from the document by switching owners (`rehome`), still
+  lazy; `template.innerHTML` parses into the contents, `cloneNode(true)` clones them, and
+  `importNode` clones into the importing document (`__clone(doc, deep)`; turbo-dom#29 item 3).
 - **Foreign content:** elements carry `namespace` ("svg"/"math", else ""); foreign attrs carry
   `prefix` ("xlink" etc). The serializer renders `<svg svg>` and `xlink href="…"`.
 - **Fragment context:** `parseFragment(html, context)` where context is `"td"` or namespaced
@@ -132,8 +260,48 @@ package or publish workflow.
   element: no `el.classList` (allocates a ClassList + splits), no `Array.find`/`.some`/`.filter`
   closures, no regex, no per-node filtered child arrays. Use the `hasClass`/`elHasClass`
   whole-word string scan, index loops over `__children()`, and the for-loop `getAttribute`.
-  This is what makes repeated-query throughput ~2.2× happy-dom / ~460× jsdom; a stray `classList`
+  This is what made repeated-query throughput ~2.7× happy-dom at v0.1.55; a stray `classList`
   in a matcher tanks it.
+- **Text-geometry tests name a repo font, never a host default.** A layout test that
+  measures text (widths, line height, line pitch) lays out with
+  `turbo_dom_layout::test_support::fixture_fonts()` (the repo's `assets/fonts` files:
+  Liberation Serif / Inter / Fira Code, bound to `serif` / `sans-serif` / `monospace`) — not
+  `load_system_fonts*`, fontconfig or the `bundled-fonts` feature — and its expected values come
+  from Chrome 156 with the same file loaded through `@font-face` (at the harness's device scale
+  factor; `scripts/fixture-font-chrome-controls.mjs` recaptures the block-in-inline, inline-border
+  and iframe-sizing controls, at a real `--force-device-scale-factor=2`, since emulated DSF rounds
+  font metrics in CSS pixels). Only tests of the host-font policy itself read installed fonts and
+  stay `cfg(target_os = "macos")`: `native_serif_policy` (serif resolves to the physical Times
+  face) and `original_text_units`' script-fallback comparison (CoreText picks the fallback face);
+  what they test is the host lookup, so fixture fonts would test nothing.
+- **Rust selector engine = Chrome 156.** `rtdom/query.rs` (string API) and `query_utf16.rs` (UTF-16
+  API; also parses any string selector containing `\`) are checked against
+  `crates/turbo-dom/tests/fixtures/cascade_selectors_chrome156.json` (regenerate with
+  `scripts/cascade-selectors-chrome-control.mjs`) and the selector rows of
+  `rtdom_core_chrome156.json` (`scripts/rtdom-core-chrome-control.mjs`: comments, EOF closing,
+  list items, `:-webkit-any()`, `:scope`, An+B limits; both engines). Selector source is
+  CSS-preprocessed once (`rtdom/selector_source.rs` / `normalizeSource` in selectors.mjs).
+  Behaviour changes there need a Chrome control.
+  It is the ONE engine: `query_cascade.rs` (`parse_for_cascade` / `match_for_cascade`, matching
+  generic over a `Navigator`; `LiveNavigator` = the DOM APIs' semantics: template content is
+  a separate fragment, `:root` is the document element) also serves turbo-dom-layout's cascade
+  (html2pdf PDFs, raster screenshots) and `rtdom::cascade`. `_checked` validity = Chrome's
+  `querySelector` (the `parse_for_cascade` grammar). The npm JS engine `src/runtime/selectors.mjs`
+  is kept in lockstep: `test/selectors-chrome.test.mjs` asserts the same fixture (every
+  invalid selector throws `SyntaxError`). `:defined` reads `Tree::custom_element_state` (creation-time
+  state unless an embedder — the V8 binding — reports an upgrade); the npm engine reads the same state
+  from `src/runtime/custom-elements.mjs` (its registry upgrades / constructs like Chrome; both checked
+  against `custom_elements_defined_chrome156.json`); `:fullscreen` / `:-webkit-full-screen` /
+  `:-webkit-full-screen-ancestor` read `Tree::fullscreen_stack` (empty unless the binding reports
+  one; the npm engine never matches them, turbo-dom#58); `rtdom::cascade` / `cascade.mjs` rank
+  rules by each item's Selectors 4 `specificity()`. See `docs/selector-engine.md`.
+- **CSSOM shorthands = Chrome 156.** `rtdom/css_shorthand/` (Rust: table, grammars,
+  serializers, `longhand_value`, `DeclarationBlock`) serves turbo-dom-browser-env's
+  `CSSStyleDeclaration`; the npm runtime's `src/runtime/css-shorthand.mjs` (+ `css-shorthand-table.mjs`)
+  is its lockstep port behind `el.style` (`dom.mjs` makeStyle). Both are checked against
+  `crates/turbo-dom/tests/fixtures/css_{shorthand,longhand}_chrome156.json` (regenerate the cases
+  with `scripts/make-css-{shorthand,longhand}-cases.py`, recapture with the binding's
+  `select-element-chrome-control.mjs`); change both together (turbo-dom#90, #97).
 - **Selector parse cache** (`__selectorCache` in selectors.mjs) memoizes selector STRING → AST.
   Pure (DOM-independent) → no mutation invalidation. Never cache *results* without it.
 
@@ -147,13 +315,10 @@ npm run bench:query     # query-heavy DOM work (RTL-style) vs jsdom
 npm run bench:wasm      # wasm vs native parseBuffer
 npm run bench:all       # all of the above
 ```
-Latest (darwin-arm64, Node 24, `npm run bench:all`), vs jsdom / happy-dom:
-- cold per-file construct + light query: ~200k ops/s — ~765× jsdom, ~350× happy-dom
-- realistic 200-file suite (construct+query+events): ~0.025 ms/file — ~130× jsdom, ~45× happy-dom
-- parse (parseBuffer): real-page/SSR docs ~8–35× both; small/malformed up to ~75× jsdom
-- conformance: 99.72% vs jsdom 97.03% vs happy-dom 37.35%
-- repeated query throughput: ~1.5M iters/s — ~2.2× happy-dom (~680k) and ~460× jsdom.
-  querySelectorAll/getElementsBy*/getElementById results are cached per (selector,
+0.6.0 is not re-benchmarked yet (re-run of all four repos planned after the release); the last
+measured numbers (v0.1.55, 2026-06-07, darwin-arm64) are in `docs/BENCHMARKS-history.md`.
+Conformance: 99.94% vs jsdom 97.03% vs happy-dom 37.35% (99.72% before turbo-dom#104).
+- querySelectorAll/getElementsBy*/getElementById results are cached per (selector,
   Document.__version); a static querySelectorAll list is safe to reuse until the next
   mutation. cachedQSA/cachedQS + Document.__byTag/__byClass/__idCache.
 - **Per-node memoized live views.** `childNodes`/`children` are cached on the node
@@ -222,11 +387,15 @@ Latest (darwin-arm64, Node 24, `npm run bench:all`), vs jsdom / happy-dom:
 - **Cache invalidation = Document.__version.** EVERY mutation must bump it: notifyMutation
   bumps it unconditionally (insert/remove/setAttribute), and __touch() covers direct __kids
   rewrites (innerHTML/textContent/replaceChildren). If you add a new mutation path that
-  bypasses these, bump __version or queries go stale. Covered by
-  test/liveness.test.mjs "query/getElementById caches invalidate on mutation".
+  bypasses these, bump __version (call `__touch()`; never `+ 1` by hand) or queries go stale.
+  Version values come from ONE process-wide counter (`VERSION` in dom.mjs), so a node adopted
+  into another document can never match a cache entry keyed on its old document's version;
+  cross-document insertion adopts (`adopt()`: re-home, bump the old document). Covered by
+  test/liveness.test.mjs "query/getElementById caches invalidate on mutation" and
+  test/adoption.test.mjs.
 - `getByLabelText` was O(n²) (element.labels → getElementsByTagName('label') per element);
   the caches took it 1342→~270µs.
-Numbers in README.md — refresh both (bench against jsdom AND happy-dom) if you touch hot paths.
+Benchmark numbers live in docs/BENCHMARKS-history.md (README links it) — re-measure against jsdom AND happy-dom if you touch hot paths; never extrapolate.
 - **Parse memoization (index.mjs `parseBufferCached`).** The SoA buffer is READ-ONLY — every
   mutation goes to a Document's own `__kids`/`__attrs`/`__cache` overlay, never the buffer — so
   the same buffer backs many Documents. Suites call setup with the same shell HTML per file →
@@ -245,9 +414,11 @@ Numbers in README.md — refresh both (bench against jsdom AND happy-dom) if you
 ## Conformance gate
 
 `test/conformance.test.mjs` locks the rate ≥ 99.5% AND asserts **zero non-`<select>` failures**.
-On `html5ever` 0.39 the 5 known misses are all bleeding-edge `<select>`-family proposals
-(`<selectedcontent>`, `<input>`/`<button>`-in-select) the newest html5lib-tests track but the
-crate hasn't adopted. If a failure appears whose input has no `<select>`, it's likely a
+On `html5ever` 0.39 the 1 remaining miss is a bleeding-edge `<select>`-family proposal
+(`<input>`/`<button>`-in-select) the newest html5lib-tests track but the crate hasn't adopted;
+the `<selectedcontent>` ones pass since turbo-dom#104 (`core::fill_selectedcontent` completes
+markup5ever_rcdom 0.39's broken clone step after parsing, Chrome 156 control rows in
+`rtdom_core_chrome156.json`). If a failure appears whose input has no `<select>`, it's likely a
 marshaling/serializer bug in THIS repo and the test will fail loudly. Investigate before
 touching the threshold. To improve further: bump `html5ever` (picks up upstream fixes) — never
 by loosening the serializer to match.

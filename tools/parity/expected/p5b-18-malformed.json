@@ -1,0 +1,14 @@
+{
+ "id": "P5b/turbo-dom#18/malformed",
+ "class": "malformed",
+ "reason": "_checked and stylesheets reject what Chrome rejects: a type selector after another simple selector, non-identifier names, simple selectors after a pseudo-element, invalid An+B, wrong pseudo arity, unknown pseudos, empty items, a trailing combinator, the attribute grammar (unquoted values are identifiers, undeclared prefixes) and nested :has(); [*|a] / [|a] match by namespace (f2cc53f, 2b96ef7, 14b7d48). Measured: no parity-corpus output changes (html2pdf, html2pdf-svg, html2pdf-extra vs b-main; surf static vs S5).",
+ "control": "crates/turbo-dom/tests/fixtures/cascade_selectors_chrome156.json (cases/malformed)",
+ "e2e": "crates/turbo-dom/tests/cascade_selectors_chrome.rs",
+ "surf_static": "turbo-dom-raster static screenshots (the surf static tier) of every surf static + extra input: byte-identical to S5 (74bcc5c), PNG + SVG + system-fonts passes.",
+ "changes": {
+  "html2pdf": [],
+  "html2pdf-svg": [],
+  "html2pdf-extra": [],
+  "surf": []
+ }
+}

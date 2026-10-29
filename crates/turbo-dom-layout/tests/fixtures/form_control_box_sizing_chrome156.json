@@ -1,0 +1,116 @@
+{
+ "chrome": "156.0.8078.47",
+ "source": "frozen headless Chrome 156 at http://localhost, getBoundingClientRect() of each [data-cid] (miaskiewicz/turbo-dom#193); computed box-sizing: border-box for button, select, meter, progress, input[type=button|submit|reset|color|checkbox|radio|search]; content-box for input[type=text|file], textarea",
+ "viewport": [
+  1280,
+  800
+ ],
+ "html": "<!doctype html><html><head><style>body{margin:0}.c{display:block;width:120px;height:36px;padding:3px 7px;border:2px solid #000;margin:0}</style></head><body><button class=c data-cid=button></button><select class=c data-cid=select></select><select multiple class=c data-cid=select-multiple></select><meter class=c data-cid=meter></meter><progress class=c data-cid=progress></progress><input class=c data-cid=input-button type=button><input class=c data-cid=input-submit type=submit><input class=c data-cid=input-reset type=reset><input class=c data-cid=input-color type=color><input class=c data-cid=input-checkbox type=checkbox><input class=c data-cid=input-radio type=radio><input class=c data-cid=input-search type=search><input class=c data-cid=input-text type=text><textarea class=c data-cid=textarea></textarea><input class=c data-cid=input-file type=file></body></html>",
+ "boxes": [
+  {
+   "cid": "button",
+   "x": 0,
+   "y": 0,
+   "width": 120,
+   "height": 36
+  },
+  {
+   "cid": "select",
+   "x": 0,
+   "y": 36,
+   "width": 120,
+   "height": 36
+  },
+  {
+   "cid": "select-multiple",
+   "x": 0,
+   "y": 72,
+   "width": 120,
+   "height": 36
+  },
+  {
+   "cid": "meter",
+   "x": 0,
+   "y": 108,
+   "width": 120,
+   "height": 36
+  },
+  {
+   "cid": "progress",
+   "x": 0,
+   "y": 144,
+   "width": 120,
+   "height": 36
+  },
+  {
+   "cid": "input-button",
+   "x": 0,
+   "y": 180,
+   "width": 120,
+   "height": 36
+  },
+  {
+   "cid": "input-submit",
+   "x": 0,
+   "y": 216,
+   "width": 120,
+   "height": 36
+  },
+  {
+   "cid": "input-reset",
+   "x": 0,
+   "y": 252,
+   "width": 120,
+   "height": 36
+  },
+  {
+   "cid": "input-color",
+   "x": 0,
+   "y": 288,
+   "width": 120,
+   "height": 36
+  },
+  {
+   "cid": "input-checkbox",
+   "x": 0,
+   "y": 324,
+   "width": 120,
+   "height": 36
+  },
+  {
+   "cid": "input-radio",
+   "x": 0,
+   "y": 360,
+   "width": 120,
+   "height": 36
+  },
+  {
+   "cid": "input-search",
+   "x": 0,
+   "y": 396,
+   "width": 120,
+   "height": 36
+  },
+  {
+   "cid": "input-text",
+   "x": 0,
+   "y": 432,
+   "width": 138,
+   "height": 46
+  },
+  {
+   "cid": "textarea",
+   "x": 0,
+   "y": 478,
+   "width": 138,
+   "height": 46
+  },
+  {
+   "cid": "input-file",
+   "x": 0,
+   "y": 524,
+   "width": 138,
+   "height": 46
+  }
+ ]
+}

@@ -1,0 +1,297 @@
+{
+  "browser": "Chrome/155.0.8059.80",
+  "v8": "15.5.35.23",
+  "casesSha256": "c640ab697c2d86b2fc2bff67678ab77c99dd6f7eaa9add1a939bdd092e017d54",
+  "probeSha256": "e9cf1b9175b3f1cc8f24dd2c599da53d5266f630bb0071e0744d28f53bfcbf5e",
+  "collectorSha256": "4e61b029135dacd18fdb68e4194fea875766edc7f203f7560bd3b826ad6aa0cb",
+  "flags": [
+    "--remote-debugging-port=0",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "about:blank"
+  ],
+  "errors": [],
+  "result": [
+    {
+      "result": {
+        "members": [
+          "form",
+          "willValidate",
+          "validity",
+          "validationMessage",
+          "labels",
+          "states",
+          "shadowRoot",
+          "role",
+          "ariaAtomic",
+          "ariaAutoComplete",
+          "ariaBusy",
+          "ariaBrailleLabel",
+          "ariaBrailleRoleDescription",
+          "ariaChecked",
+          "ariaColCount",
+          "ariaColIndex",
+          "ariaColSpan",
+          "ariaCurrent",
+          "ariaDescription",
+          "ariaDisabled",
+          "ariaExpanded",
+          "ariaHasPopup",
+          "ariaHidden",
+          "ariaInvalid",
+          "ariaKeyShortcuts",
+          "ariaLabel",
+          "ariaLevel",
+          "ariaLive",
+          "ariaModal",
+          "ariaMultiLine",
+          "ariaMultiSelectable",
+          "ariaOrientation",
+          "ariaPlaceholder",
+          "ariaPosInSet",
+          "ariaPressed",
+          "ariaReadOnly",
+          "ariaRelevant",
+          "ariaRequired",
+          "ariaRoleDescription",
+          "ariaRowCount",
+          "ariaRowIndex",
+          "ariaRowSpan",
+          "ariaSelected",
+          "ariaSetSize",
+          "ariaSort",
+          "ariaValueMax",
+          "ariaValueMin",
+          "ariaValueNow",
+          "ariaValueText",
+          "checkValidity",
+          "reportValidity",
+          "setFormValue",
+          "setValidity",
+          "ariaColIndexText",
+          "ariaRowIndexText",
+          "ariaActionsElements",
+          "ariaActiveDescendantElement",
+          "ariaControlsElements",
+          "ariaDescribedByElements",
+          "ariaDetailsElements",
+          "ariaErrorMessageElements",
+          "ariaFlowToElements",
+          "ariaLabelledByElements",
+          "constructor"
+        ],
+        "statesMembers": [
+          "size",
+          "add",
+          "clear",
+          "delete",
+          "entries",
+          "forEach",
+          "has",
+          "keys",
+          "values",
+          "constructor"
+        ],
+        "div": {
+          "error": "NotSupportedError"
+        },
+        "undefined": {
+          "error": "NotSupportedError"
+        },
+        "identity": [
+          true,
+          "[object ElementInternals]",
+          true
+        ],
+        "again": {
+          "error": "NotSupportedError"
+        },
+        "formless": {
+          "form": {
+            "error": "NotSupportedError"
+          },
+          "labels": {
+            "error": "NotSupportedError"
+          },
+          "willValidate": {
+            "error": "NotSupportedError"
+          },
+          "validity": {
+            "error": "NotSupportedError"
+          },
+          "validationMessage": {
+            "error": "NotSupportedError"
+          },
+          "setFormValue": {
+            "error": "NotSupportedError"
+          },
+          "setValidity": {
+            "error": "NotSupportedError"
+          },
+          "checkValidity": {
+            "error": "NotSupportedError"
+          },
+          "reportValidity": {
+            "error": "NotSupportedError"
+          }
+        },
+        "shadow": [
+          null,
+          true,
+          true
+        ],
+        "aria": [
+          "button",
+          "private",
+          null,
+          null,
+          "button",
+          null,
+          null
+        ],
+        "states": [
+          [
+            "foo",
+            {
+              "value": "undefined",
+              "error": null
+            }
+          ],
+          [
+            "--bar",
+            {
+              "value": "undefined",
+              "error": null
+            }
+          ],
+          [
+            "has space",
+            {
+              "value": "undefined",
+              "error": null
+            }
+          ],
+          [
+            "",
+            {
+              "value": "undefined",
+              "error": null
+            }
+          ],
+          [
+            "foo",
+            "--bar",
+            "has space",
+            ""
+          ],
+          4,
+          true,
+          true,
+          [
+            [
+              "--bar",
+              "--bar"
+            ],
+            [
+              "has space",
+              "has space"
+            ],
+            [
+              "",
+              ""
+            ]
+          ],
+          {
+            "error": "TypeError"
+          },
+          0
+        ],
+        "disabled": {
+          "error": "NotSupportedError"
+        },
+        "builtin": {
+          "error": "NotSupportedError"
+        },
+        "associated": [
+          true,
+          true,
+          true,
+          ""
+        ],
+        "missingMessage": {
+          "error": "TypeError"
+        },
+        "invalid": [
+          true,
+          false,
+          "custom issue",
+          false,
+          false,
+          [
+            [
+              true,
+              true,
+              false
+            ],
+            [
+              true,
+              true,
+              false
+            ]
+          ]
+        ],
+        "outsideAnchor": {
+          "error": "NotFoundError"
+        },
+        "cleared": [
+          true,
+          "",
+          true
+        ],
+        "labels": [
+          "[object NodeList]",
+          1,
+          true,
+          true,
+          0
+        ],
+        "disabledHost": [
+          false
+        ],
+        "externalForm": true,
+        "events": [
+          [
+            "form",
+            "first"
+          ],
+          [
+            "form",
+            null
+          ],
+          [
+            "form",
+            "second"
+          ],
+          [
+            "disabled",
+            true
+          ],
+          [
+            "disabled",
+            false
+          ],
+          [
+            "reset"
+          ],
+          [
+            "form",
+            "first"
+          ]
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+ "id": "turbo-dom#61",
+ "reason": "turbo-dom-browser-env getComputedStyle computes html.css's form-control font (font: -webkit-small-control) for <input> (every type), <select> and <textarea> as it already did for <button>: 13.3333px Arial, monospace for textarea and the date / time inputs; optgroup bolder, option normal; author rules win. The surf live dump reads font-size / font-weight / font-family of every document element (bin/corpus-surf.mjs PROPS): of the 117 pinned live pages only harness/detection/fixtures/lifecycle.html has such an element in the document (<input type=hidden>; declarative_shadow_page.html's <input> is inside a shadow root, which document.querySelectorAll does not reach), so that dump is predicted to change (UNMEASURED: the surf corpus is rebuilt at surf integration). Static screenshots and the html2pdf corpora do not run the binding. P5b-X6.",
+ "control": "crates/turbo-dom-browser-env/src/computed_defaults_chrome156.json (case form-control-fonts; scripts/select-element-chrome-control.mjs, Chrome for Testing 156.0.8078.4)",
+ "e2e": "crates/turbo-dom-browser-env/src/computed_defaults_tests.rs",
+ "changes": {
+  "html2pdf": [],
+  "html2pdf-svg": [],
+  "html2pdf-extra": [],
+  "surf": [
+   "live-turbo-surf__harness__detection__fixtures__lifecycle.html"
+  ],
+  "surf-extra": []
+ }
+}

@@ -148,3 +148,21 @@ test('focus/blur dispatch focus + focusin/focusout', () => {
   assert.deepEqual(events, ['focus', 'focusin']);
   assert.equal(document.activeElement, a);
 });
+
+// Chrome 156: basefont, bgsound, frame and keygen serialize as void elements (HTML
+// "serializes as void"), children dropped, like wbr.
+test('innerHTML serializes the legacy void elements without an end tag', () => {
+  const { document } = fresh();
+  const d = document.createElement('div');
+  d.innerHTML = '<basefont><bgsound><keygen>x';
+  assert.equal(d.innerHTML, '<basefont><bgsound><keygen>x');
+  for (const t of ['basefont', 'bgsound', 'frame', 'keygen']) {
+    const e = document.createElement(t);
+    e.appendChild(document.createTextNode('a'));
+    const box = document.createElement('div');
+    box.appendChild(e);
+    assert.equal(box.innerHTML, `<${t}>`);
+  }
+  const { document: frames } = createEnvironment('<frameset><frame></frameset>');
+  assert.equal(frames.documentElement.outerHTML, '<html><head></head><frameset><frame></frameset></html>');
+});

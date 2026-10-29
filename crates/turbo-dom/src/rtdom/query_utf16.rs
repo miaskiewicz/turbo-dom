@@ -1,15 +1,14 @@
 //! Parse original DOM string units into native selector records. Identifiers use
 //! CSS replacement rules; raw quoted attribute strings preserve their units.
 use super::{
-    parse_pseudo, Attr, AttrMatch, Combinator, Complex, Compound, Handle, NodeType, Pseudo,
-    RelativeSelector, Tree,
+    nth_of_position, parse_nth, parse_pseudo, valid_anb, Attr, AttrMatch, Combinator, Complex,
+    Compound, Handle, NodeType, Pseudo, RelativeSelector, Tree, TypeNamespace,
 };
 #[derive(Debug, Clone)]
 pub(super) struct UnitAttrMatch {
     op: u16,
     value: Vec<u16>,
     insensitive: bool,
-    sensitive: bool,
 }
 impl UnitAttrMatch {
     pub(super) fn scalar(source: &AttrMatch) -> Self {
@@ -17,17 +16,15 @@ impl UnitAttrMatch {
             AttrMatch::Present => (0, ""),
             AttrMatch::Equals(value) => (61, value.as_str()),
             AttrMatch::Includes(value) => (126, value.as_str()),
-            AttrMatch::Dash(value) => (124, value.as_str()),
             AttrMatch::Prefix(value) => (94, value.as_str()),
             AttrMatch::Suffix(value) => (36, value.as_str()),
             AttrMatch::Substr(value) => (42, value.as_str()),
-            AttrMatch::Units(value) => return value.clone(),
+            AttrMatch::Units(_) => unreachable!("only scalar records are converted"),
         };
         Self {
             op,
             value: value.encode_utf16().collect(),
             insensitive: false,
-            sensitive: false,
         }
     }
 
@@ -36,7 +33,7 @@ impl UnitAttrMatch {
     }
     pub(super) fn matches_case(&self, got: &[u16], implicit: bool) -> bool {
         let value = &self.value;
-        let insensitive = !self.sensitive && (self.insensitive || implicit);
+        let insensitive = self.insensitive || implicit;
         let equal = |a: &[u16], b: &[u16]| equal_units(a, b, insensitive);
         match self.op {
             0 => true,
@@ -103,6 +100,10 @@ fn decoded(units: &[u16], quoted: bool) -> Vec<u16> {
             continue;
         }
         if i == units.len() {
+            // an escape at the end: U+FFFD in a name, nothing in a string (CSS Syntax)
+            if !quoted {
+                out.push(0xfffd);
+            }
             continue;
         }
         if matches!(units[i], 10 | 12 | 13) {
@@ -149,21 +150,75 @@ fn decoded(units: &[u16], quoted: bool) -> Vec<u16> {
 fn identifier(units: &[u16]) -> String {
     String::from_utf16_lossy(&decoded(units, false))
 }
+/// A `:lang()` (or `:dir()`) argument: exactly one CSS identifier (escapes decoded, ASCII-lowercased),
+/// surrounded by optional whitespace. Chrome 156 rejects strings (`:lang("de")`), lists
+/// (`:lang(en, de)`), numbers and the empty argument.
+pub(super) fn lang_range(arg: &[u16]) -> Option<String> {
+    let arg = trim(arg);
+    let chars: Vec<char> = String::from_utf16_lossy(arg).chars().collect();
+    let mut end = 0;
+    if !super::starts_ident(&chars, 0) {
+        return None;
+    }
+    super::scan_name(&chars, &mut end, super::is_name_char);
+    (end == chars.len()).then(|| identifier(arg).to_ascii_lowercase())
+}
+/// Is `units` exactly one CSS identifier (escapes allowed)?
+fn is_ident(units: &[u16]) -> bool {
+    let chars: Vec<char> = String::from_utf16_lossy(units).chars().collect();
+    let mut end = 0;
+    super::starts_ident(&chars, 0) && {
+        super::scan_name(&chars, &mut end, super::is_name_char);
+        end == chars.len()
+    }
+}
+/// An attribute selector's (trimmed) name split at its unescaped namespace bar: `*|a` (any
+/// namespace: `Some((true, a))`), `|a` and `a` (no namespace). `None` — invalid, as in
+/// Chrome 156 — for an undeclared prefix (`ns|a`) or a name that is not an identifier
+/// (`[1a]`).
+fn attribute_name(raw: &[u16]) -> Option<(bool, String)> {
+    let mut i = 0;
+    let bar = loop {
+        match raw.get(i) {
+            None => break None,
+            Some(92) => i = escaped_end(raw, i),
+            Some(124) => break Some(i),
+            Some(_) => i += 1,
+        }
+    };
+    let (any, local) = match bar {
+        None => (false, raw),
+        Some(bar) => match &raw[..bar] {
+            [42] => (true, &raw[bar + 1..]),
+            [] => (false, &raw[bar + 1..]),
+            _ => return None,
+        },
+    };
+    is_ident(local).then(|| (any, identifier(local)))
+}
+/// The units record of an attribute that cannot match (an invalid selector).
+fn invalid_attr(name: String) -> Attr {
+    Attr::new(
+        name,
+        AttrMatch::Units(UnitAttrMatch {
+            op: u16::MAX,
+            value: Vec::new(),
+            insensitive: false,
+        }),
+    )
+}
 pub(super) fn attr(inner: &[u16]) -> Attr {
-    let cleaned = attribute_comments(inner);
-    let inner = cleaned.as_deref().unwrap_or(inner);
     let Some(eq) = inner.iter().position(|&u| u == 61) else {
-        return Attr::new(
-            identifier(trim(inner)),
+        let Some((any, name)) = attribute_name(trim(inner)) else {
+            return invalid_attr(identifier(trim(inner)));
+        };
+        return Attr::namespaced(
+            any,
+            name,
             AttrMatch::Units(UnitAttrMatch {
-                op: if unquoted_end(trim(inner)) == trim(inner).len() {
-                    0
-                } else {
-                    u16::MAX
-                },
+                op: 0,
                 value: Vec::new(),
                 insensitive: false,
-                sensitive: false,
             }),
         );
     };
@@ -175,11 +230,18 @@ pub(super) fn attr(inner: &[u16]) -> Attr {
     let name = operator.map_or(raw, |_| &raw[..raw.len() - 1]);
     let source = trim(&inner[eq + 1..]);
     let (value, quoted, modifier) = attribute_value(source);
-    let valid = modifier
-        .as_deref()
-        .is_some_and(|m| m.is_empty() || m == [105] || m == [73] || m == [115] || m == [83]);
-    Attr::new(
-        identifier(trim(name)),
+    // an unquoted value is an identifier (Chrome: `[a=1]`, `[a=]`, `[href=a.html]` throw);
+    // the only modifier is `i` (Chrome 156 rejects the CSS `s` modifier: turbo-dom#24)
+    let valid = (quoted || is_ident(value))
+        && modifier
+            .as_deref()
+            .is_some_and(|m| m.is_empty() || m == [105] || m == [73]);
+    let Some((any, name)) = attribute_name(trim(name)) else {
+        return invalid_attr(identifier(trim(name)));
+    };
+    Attr::namespaced(
+        any,
+        name,
         AttrMatch::Units(UnitAttrMatch {
             op: if valid {
                 operator.unwrap_or(61)
@@ -188,46 +250,8 @@ pub(super) fn attr(inner: &[u16]) -> Attr {
             },
             value: decoded(value, quoted),
             insensitive: modifier.as_deref().is_some_and(|m| m == [105] || m == [73]),
-            sensitive: modifier.as_deref().is_some_and(|m| m == [115] || m == [83]),
         }),
     )
-}
-fn attribute_comments(source: &[u16]) -> Option<Vec<u16>> {
-    if !source.windows(2).any(|p| p == [47, 42]) {
-        return None;
-    }
-    let mut out = Vec::new();
-    let (mut index, mut quote) = (0, 0);
-    while index < source.len() {
-        let unit = source[index];
-        if unit == 92 {
-            let end = escaped_end(source, index);
-            out.extend_from_slice(&source[index..end]);
-            index = end;
-            continue;
-        }
-        if quote == 0 && source[index..].starts_with(&[47, 42]) {
-            let end = source[index + 2..].windows(2).position(|p| p == [42, 47]);
-            let Some(end) = end else {
-                return Some(vec![0]);
-            };
-            index += end + 4;
-            out.push(32);
-            continue;
-        }
-        if matches!(unit, 34 | 39) {
-            quote = if quote == unit {
-                0
-            } else if quote == 0 {
-                unit
-            } else {
-                quote
-            };
-        }
-        out.push(unit);
-        index += 1;
-    }
-    Some(out)
 }
 fn attribute_value(source: &[u16]) -> (&[u16], bool, Option<Vec<u16>>) {
     if source.first().is_some_and(|u| matches!(u, 34 | 39)) {
@@ -243,7 +267,9 @@ fn attribute_value(source: &[u16]) -> (&[u16], bool, Option<Vec<u16>>) {
             }
             end = escaped_end(source, end);
         }
-        return (source, true, None);
+        // the bracket scanner only closes `[` outside a string, and DOM-API sources are
+        // EOF-closed string first (`selector_source`): the quote always ends here
+        unreachable!("unterminated quoted attribute value");
     }
     let end = unquoted_end(source);
     (
@@ -293,11 +319,10 @@ pub(super) fn specialized_attribute(inner: &str) -> Option<Attr> {
     match &parsed.m {
         AttrMatch::Units(m)
             if m.insensitive
-                || m.sensitive
                 || m.op == u16::MAX
                 || parsed.name.eq_ignore_ascii_case("type")
-                || inner.contains("/*")
-                || inner.contains('\\') =>
+                || inner.contains('\\')
+                || inner.contains('|') =>
         {
             Some(parsed)
         }
@@ -405,13 +430,56 @@ fn pseudo(name: &str, arg: Option<&[u16]>) -> Pseudo {
     let Some(arg) = arg else {
         return parse_pseudo(name, None);
     };
+    let lower = name.to_ascii_lowercase();
+    let name = lower.as_str();
     if name.eq_ignore_ascii_case("state") {
-        return state_argument(arg).map_or(Pseudo::Unknown, Pseudo::State);
+        return state_argument(arg).map_or_else(
+            || Pseudo::unknown(name, Some(&String::from_utf16_lossy(arg))),
+            Pseudo::State,
+        );
     }
+    // the unforgiving lists reject an empty item or one ending in a combinator
+    // (`:not(p, )`, `:not(p >)`; Chrome: SyntaxError), the forgiving ones drop it
+    let invalid = |relative| {
+        split(arg, 44)
+            .into_iter()
+            .any(|item| invalid_item(item, relative))
+    };
+    let forgiving = || {
+        split(arg, 44)
+            .into_iter()
+            .filter(|item| !invalid_item(item, false))
+            .filter_map(complex)
+            .collect()
+    };
     match name {
-        "is" => Pseudo::Is(list(arg)),
-        "where" => Pseudo::Where(list(arg)),
+        "is" => Pseudo::Is(forgiving()),
+        "where" => Pseudo::Where(forgiving()),
+        "not" if invalid(false) => Pseudo::unknown(name, Some(&String::from_utf16_lossy(arg))),
+        "has" if invalid(true) => Pseudo::unknown(name, Some(&String::from_utf16_lossy(arg))),
         "not" => Pseudo::Not(list(arg)),
+        // `An+B of S`: S keeps its original units (escapes decoded by `list`).
+        "nth-child" | "nth-last-child" if nth_of_position(arg).is_some() => {
+            let at = nth_of_position(arg).unwrap_or_default();
+            let anb = String::from_utf16_lossy(&arg[..at]);
+            if !valid_anb(&anb) {
+                return Pseudo::unknown(name, Some(&String::from_utf16_lossy(arg)));
+            }
+            let of = &arg[at + 2..];
+            if split(of, 44)
+                .into_iter()
+                .any(|item| invalid_item(item, false))
+            {
+                return Pseudo::unknown(name, Some(&String::from_utf16_lossy(arg)));
+            }
+            let (a, b) = parse_nth(&anb);
+            let of = list(of);
+            if name == "nth-child" {
+                Pseudo::NthChildOf(a, b, of)
+            } else {
+                Pseudo::NthLastChildOf(a, b, of)
+            }
+        }
         "has" => Pseudo::Has(
             split(arg, 44)
                 .into_iter()
@@ -423,15 +491,27 @@ fn pseudo(name: &str, arg: Option<&[u16]>) -> Pseudo {
                         Some(126) => (Combinator::GeneralSibling, &part[1..]),
                         _ => (Combinator::Descendant, part),
                     };
-                    complex(rest).map(|complex| RelativeSelector {
-                        combinator: leading,
-                        complex,
+                    complex(rest).map(|mut complex| {
+                        super::forgive_nested_has(&mut complex);
+                        RelativeSelector {
+                            combinator: leading,
+                            complex,
+                        }
                     })
                 })
                 .collect(),
         ),
         _ => parse_pseudo(name, Some(&String::from_utf16_lossy(arg))),
     }
+}
+/// A list item that is empty, ends in an unescaped combinator (`p >`) or — unless
+/// `relative` (`:has()`) — starts with one (`> p`).
+fn invalid_item(item: &[u16], relative: bool) -> bool {
+    let item = trim(item);
+    item.is_empty()
+        || (matches!(item.last(), Some(62 | 43 | 126))
+            && item.len().checked_sub(2).and_then(|at| item.get(at)) != Some(&92))
+        || (!relative && matches!(item.first(), Some(62 | 43 | 126)))
 }
 fn complex(source: &[u16]) -> Option<Complex> {
     let mut index = 0;
@@ -464,8 +544,12 @@ fn complex(source: &[u16]) -> Option<Complex> {
         let begin = index;
         let mut compound = Compound::default();
         if !matches!(source[index], 35 | 46 | 58 | 91) {
+            let start = index;
             let tag = ident(source, &mut index);
-            if tag != "*" && !tag.is_empty() {
+            if let Some((namespace, name)) = namespaced_type(&source[start..index]) {
+                compound.namespace = namespace;
+                compound.tag = name;
+            } else if tag != "*" && !tag.is_empty() {
                 compound.tag = Some(tag);
             }
         }
@@ -512,8 +596,38 @@ fn complex(source: &[u16]) -> Option<Complex> {
     }
     first.map(|first| Complex { first, rest })
 }
-fn list(source: &[u16]) -> Vec<Complex> {
+/// A type selector's raw units split at an unescaped namespace bar: `*|p`, `|p`, `*|*`.
+/// `None` when there is no bar (an escaped `\|` is part of the name). Only `*` (any) and
+/// the empty prefix (no namespace) are declared for DOM selector APIs.
+fn namespaced_type(raw: &[u16]) -> Option<(TypeNamespace, Option<String>)> {
+    let mut i = 0;
+    let bar = loop {
+        match raw.get(i) {
+            None => return None,
+            Some(92) => i = escaped_end(raw, i),
+            Some(124) => break i,
+            Some(_) => i += 1,
+        }
+    };
+    let (prefix, name) = (&raw[..bar], &raw[bar + 1..]);
+    let namespace = match prefix {
+        _ if name.is_empty() => TypeNamespace::Invalid,
+        [42] => TypeNamespace::Any,
+        [] => TypeNamespace::Null,
+        _ => TypeNamespace::Invalid,
+    };
+    let name = (name != [42]).then(|| identifier(name));
+    Some((namespace, name))
+}
+pub(super) fn list(source: &[u16]) -> Vec<Complex> {
     split(source, 44).into_iter().filter_map(complex).collect()
+}
+/// [`list`] of a DOM-API selector: comments removed, EOF-closed (`selector_source`).
+fn dom_list(source: &[u16]) -> Vec<Complex> {
+    match super::source::normalize(source, super::source::Mode::Dom) {
+        Some(normalized) => list(&normalized),
+        None => list(source),
+    }
 }
 impl Tree {
     /// Original-unit selector path; its parsed records are not cached under a
@@ -526,20 +640,24 @@ impl Tree {
         root: Handle,
         source: &[u16],
     ) -> std::rc::Rc<[Handle]> {
-        let selectors = list(source);
+        let selectors = dom_list(source);
+        // `:scope` is the element the query is called on (the document element otherwise)
+        let scope = (self.node_type(root) == NodeType::Element).then_some(root);
         let mut result = Vec::new();
-        let mut stack = self.children(root);
+        let mut stack = Vec::new();
+        self.for_each_light_child(root, |child| stack.push(child));
         stack.reverse();
         while let Some(node) = stack.pop() {
             if self.node_type(node) == NodeType::Element
-                && selectors
-                    .iter()
-                    .any(|selector| self.matches_complex(node, selector))
+                && selectors.iter().any(|selector| match scope {
+                    Some(scope) => self.matches_complex_in(node, selector, scope),
+                    None => self.matches_complex(node, selector),
+                })
             {
                 result.push(node);
             }
             let begin = stack.len();
-            self.for_each_child(node, |child| stack.push(child));
+            self.for_each_light_child(node, |child| stack.push(child));
             stack[begin..].reverse();
         }
         result.into()
@@ -547,10 +665,31 @@ impl Tree {
     pub fn query_selector_units(&self, source: &[u16]) -> Option<Handle> {
         self.query_selector_all_units(source).first().copied()
     }
+    /// `element.matches()` for original units: `:scope` is `node`.
     pub fn matches_units(&self, node: Handle, source: &[u16]) -> bool {
-        list(source)
+        self.matches_units_scoped(node, source, node)
+    }
+    /// [`Tree::matches_units`] with `scope` as the `:scope` element.
+    pub fn matches_units_scoped(&self, node: Handle, source: &[u16], scope: Handle) -> bool {
+        dom_list(source)
             .iter()
-            .any(|selector| self.matches_complex(node, selector))
+            .any(|selector| self.matches_complex_in(node, selector, scope))
+    }
+    /// [`Tree::closest`] for original units.
+    #[must_use]
+    pub fn closest_units(&self, node: Handle, source: &[u16]) -> Option<Handle> {
+        let selectors = dom_list(source);
+        let mut current = Some(node);
+        while let Some(element) = current.filter(|&n| self.node_type(n) == NodeType::Element) {
+            if selectors
+                .iter()
+                .any(|selector| self.matches_complex_in(element, selector, node))
+            {
+                return Some(element);
+            }
+            current = self.parent(element);
+        }
+        None
     }
     pub fn get_element_by_id_units(&self, id: &[u16]) -> Option<Handle> {
         let mut stack = vec![self.root()];
@@ -561,30 +700,19 @@ impl Tree {
                 return Some(node);
             }
             let begin = stack.len();
-            self.for_each_child(node, |child| stack.push(child));
+            self.for_each_light_child(node, |child| stack.push(child));
             stack[begin..].reverse();
         }
         None
     }
 }
 
-fn skip_state_trivia(source: &[u16], mut index: usize) -> Option<usize> {
-    loop {
-        while source.get(index).is_some_and(|&unit| whitespace(unit)) {
-            index += 1;
-        }
-        if source.get(index..index + 2) != Some(&[47, 42]) {
-            return Some(index);
-        }
-        index += 2;
-        while source.get(index..index + 2) != Some(&[42, 47]) {
-            if index >= source.len() {
-                return None;
-            }
-            index += 1;
-        }
-        index += 2;
+// Comments are already gone (`selector_source`), so only whitespace surrounds the name.
+fn skip_state_trivia(source: &[u16], mut index: usize) -> usize {
+    while source.get(index).is_some_and(|&unit| whitespace(unit)) {
+        index += 1;
     }
+    index
 }
 fn state_name_start(unit: u16) -> bool {
     unit >= 128 || unit == 95 || (65..=90).contains(&unit) || (97..=122).contains(&unit)
@@ -619,7 +747,7 @@ fn state_escape_end(source: &[u16], mut index: usize) -> Option<usize> {
 pub(super) fn state_argument(units: &[u16]) -> Option<Vec<u16>> {
     let normalized = String::from_utf16_lossy(units).replace('\0', "\u{fffd}");
     let source: Vec<u16> = normalized.encode_utf16().collect();
-    let start = skip_state_trivia(&source, 0)?;
+    let start = skip_state_trivia(&source, 0);
     let first = *source.get(start)?;
     let valid_start = state_name_start(first)
         || first == 92 && state_escape_end(&source, start).is_some()
@@ -642,7 +770,7 @@ pub(super) fn state_argument(units: &[u16]) -> Option<Vec<u16>> {
             break;
         }
     }
-    if skip_state_trivia(&source, index)? != source.len() {
+    if skip_state_trivia(&source, index) != source.len() {
         return None;
     }
     Some(decoded(&source[start..index], false))

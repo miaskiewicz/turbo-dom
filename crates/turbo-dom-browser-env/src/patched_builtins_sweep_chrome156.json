@@ -1,0 +1,124 @@
+{
+  "browser": "Chrome/156.0.8078.47",
+  "v8": "15.6.75.19",
+  "probe": "patched_builtins_sweep_probe.js",
+  "probeSha256": "4e571a1cc5a4964385f0c5ccc6b33c8b7ea02d592aa31e9847286176b89478b5",
+  "collectorSha256": "3f964d2cdf0ec8101870a776aaffc3b7dc4522306959c4a40761057beb255eb8",
+  "flags": [
+    "--headless=new",
+    "--remote-debugging-pipe",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "--disable-background-timer-throttling",
+    "--disable-renderer-backgrounding",
+    "--disable-backgrounding-occluded-windows",
+    "about:blank"
+  ],
+  "result": {
+    "hits": {
+      "webkitRTCPeerConnection.createDataChannel": {
+        "get Element.prototype.id": 1
+      },
+      "WebKitMutationObserver.observe": {
+        "get Element.prototype.attributes": 1
+      },
+      "StyleSheet.media": {
+        "get StyleSheet.prototype.media": 1
+      },
+      "ShadowRoot.adoptedStyleSheets": {
+        "Array.prototype.@@Symbol.iterator": 1
+      },
+      "SVGElement.style": {
+        "get SVGElement.prototype.style": 1
+      },
+      "SVGElement.focusGroup": {
+        "get SVGElement.prototype.focusGroup": 1
+      },
+      "MutationObserver.observe": {
+        "get Element.prototype.attributes": 1
+      },
+      "MathMLElement.style": {
+        "get MathMLElement.prototype.style": 1
+      },
+      "MathMLElement.focusGroup": {
+        "get MathMLElement.prototype.focusGroup": 1
+      },
+      "HTMLStyleElement.blocking": {
+        "get HTMLStyleElement.prototype.blocking": 1
+      },
+      "HTMLOutputElement.htmlFor": {
+        "get HTMLOutputElement.prototype.htmlFor": 1
+      },
+      "HTMLMediaElement.controlsList": {
+        "get HTMLMediaElement.prototype.controlsList": 1
+      },
+      "HTMLLinkElement.relList": {
+        "get HTMLLinkElement.prototype.relList": 1
+      },
+      "HTMLLinkElement.sizes": {
+        "get HTMLLinkElement.prototype.sizes": 1
+      },
+      "HTMLLinkElement.blocking": {
+        "get HTMLLinkElement.prototype.blocking": 1
+      },
+      "HTMLIFrameElement.sandbox": {
+        "get HTMLIFrameElement.prototype.sandbox": 1
+      },
+      "HTMLFormElement.relList": {
+        "get HTMLFormElement.prototype.relList": 1
+      },
+      "HTMLElement.style": {
+        "get HTMLElement.prototype.style": 1
+      },
+      "HTMLElement.focusGroup": {
+        "get HTMLElement.prototype.focusGroup": 1
+      },
+      "HTMLAreaElement.relList": {
+        "get HTMLAreaElement.prototype.relList": 1
+      },
+      "HTMLAnchorElement.relList": {
+        "get HTMLAnchorElement.prototype.relList": 1
+      },
+      "Element.classList": {
+        "get Element.prototype.classList": 1
+      },
+      "Element.part": {
+        "get Element.prototype.part": 1
+      },
+      "Element.animate": {
+        "get Element.prototype.id": 1
+      },
+      "Element.attachShadow": {
+        "get Element.prototype.customElementRegistry": 1
+      },
+      "CSSStyleRule.style": {
+        "get CSSStyleRule.prototype.style": 1
+      },
+      "CSSMediaRule.media": {
+        "get CSSMediaRule.prototype.media": 1
+      },
+      "Blob.textStream": {
+        "Promise.prototype.then": 1
+      },
+      "SpeechRecognition.phrases": {
+        "Array.prototype.@@Symbol.iterator": 1
+      },
+      "webkitSpeechRecognition.phrases": {
+        "Array.prototype.@@Symbol.iterator": 1
+      },
+      "new TransformStream": {
+        "Promise.prototype.then": 1
+      },
+      "new TextEncoderStream": {
+        "Promise.prototype.then": 1
+      },
+      "new TextDecoderStream": {
+        "Promise.prototype.then": 1
+      }
+    },
+    "patched": true
+  }
+}

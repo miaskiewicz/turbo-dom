@@ -1,0 +1,24 @@
+{
+ "id": "miaskiewicz/turbo-dom#86",
+ "reason": "Column flex items take their basis from height and keep their width (P5b-W6 f9e5a60; on merging P5b-W7, which fixed #86 too, W7's implementation is kept). No existing corpus output changes; this file declares the outputs of the extra input column-flex.html that P5b-W6 added to pin the behaviour. P5b-W6.",
+ "control": "scripts/html-document-chrome-control.mjs column-flex-item-* cases",
+ "e2e": "crates/turbo-dom-layout/tests/html_document_chrome.rs (column_flex_items_size_by_their_height_like_chrome_156, P5b-W7's, also over the column-flex-item-* cases)",
+ "changes": {
+  "html2pdf": [],
+  "html2pdf-svg": [],
+  "html2pdf-extra": [],
+  "surf": [],
+  "surf-extra": []
+ },
+ "added": {
+  "html2pdf-extra": [
+   "extra-column-flex.boxes.json",
+   "extra-column-flex.pdf",
+   "extra-column-flex.ua.pdf"
+  ],
+  "surf-extra": [
+   "static-extra-column-flex.png",
+   "static-extra-column-flex.svg"
+  ]
+ }
+}

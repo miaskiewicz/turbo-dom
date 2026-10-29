@@ -31,5 +31,5 @@ pub mod core;
 /// The pure-Rust DOM runtime.
 pub mod rtdom;
 
-pub use rtdom::{Dom, Event, Handle, Tree};
 pub use rtdom::node_ref::{DocumentExt, NodeRef};
+pub use rtdom::{Dom, Event, Handle, ParseOptions, Tree};

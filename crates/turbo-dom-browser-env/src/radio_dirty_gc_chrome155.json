@@ -1,0 +1,36 @@
+{
+  "browser": "Chrome/155.0.8059.80",
+  "v8": "15.5.35.23",
+  "casesSha256": "96345c459d1e1ba6acc95502476654ac4e55bb2cc1f693fdf9564fbebc89e74a",
+  "probeSha256": "52948bddf24f81cc8e238e3938f89dea56b7dbd4583d605a8850754ca126b38a",
+  "collectorSha256": "5586fe9d89a94f54616bec022bdb810ac2c02553b3465ef0139afd4c884e3725",
+  "flags": [
+    "--remote-debugging-port=0",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "about:blank"
+  ],
+  "errors": [],
+  "result": [
+    {
+      "id": "radio-dirty-lifecycle",
+      "result": {
+        "first": {
+          "wrapperAlive": true,
+          "before": false,
+          "after": false,
+          "defaultChecked": true
+        },
+        "afterRelease": {
+          "wrapperAlive": true,
+          "before": false,
+          "after": false,
+          "defaultChecked": true
+        }
+      }
+    }
+  ]
+}

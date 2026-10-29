@@ -1,0 +1,391 @@
+//! Native walks under a terminating isolate (crate-owned). When page script is being
+//! terminated (an embedder's watchdog calls `TerminateExecution`), every native traversal the
+//! host or a callback can enter must stop without touching the tree: no projection for the
+//! embedder, no template realization, no normalization, no slot events. Each operation runs
+//! once while terminating and once after the termination is cancelled, which proves the
+//! guard (and not the input) made the difference. The host CSS policy's cascade view, which
+//! only an embedder reads, is checked here too.
+use crate::browser_env::*;
+
+fn with_page(html: &str, body: impl FnOnce(&mut v8::PinScope)) {
+    crate::browser_env::tests::init_v8();
+    let isolate = &mut v8::Isolate::new(Default::default());
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    install_with_html(scope, html);
+    // A pending termination stays observable while a TryCatch is on the stack.
+    v8::tc_scope!(let scope, scope);
+    body(scope);
+    reset();
+}
+
+fn eval<'s>(scope: &mut v8::PinScope<'s, '_>, source: &str) -> v8::Local<'s, v8::Value> {
+    let code = v8::String::new(scope, source).unwrap();
+    v8::Script::compile(scope, code, None)
+        .unwrap()
+        .run(scope)
+        .unwrap()
+}
+
+fn json(scope: &mut v8::PinScope, source: &str) -> String {
+    let value = eval(scope, &format!("JSON.stringify({source})"));
+    value.to_rust_string_lossy(scope)
+}
+
+fn object<'s>(scope: &mut v8::PinScope<'s, '_>, source: &str) -> v8::Local<'s, v8::Object> {
+    v8::Local::<v8::Object>::try_from(eval(scope, source)).unwrap()
+}
+
+/// Make the isolate's termination pending (as a watchdog's `TerminateExecution` does).
+fn terminate(scope: &mut v8::PinScope) {
+    let code = v8::String::new(scope, "0").unwrap();
+    let script = v8::Script::compile(scope, code, None).unwrap();
+    scope.terminate_execution();
+    assert!(script.run(scope).is_none());
+    assert!(scope.is_execution_terminating());
+}
+
+fn resume(scope: &mut v8::PinScope) {
+    scope.cancel_terminate_execution();
+    assert!(!scope.is_execution_terminating());
+}
+
+#[test]
+fn slot_projection_and_slotchange_stop_while_terminating() {
+    with_page("<div id=h><b id=c></b></div>", |scope| {
+        let host = object(
+            scope,
+            "globalThis.h = document.getElementById('h'); globalThis.events = 0; \
+             const root = h.attachShadow({mode: 'open'}); globalThis.s = root.appendChild(document.createElement('slot')); \
+             s.addEventListener('slotchange', () => events++); h",
+        );
+        let child = object(scope, "document.getElementById('c')");
+        let slot = object(scope, "s");
+        scope.perform_microtask_checkpoint();
+        // The parsed child's assignment already fired one slotchange.
+        assert_eq!(json(scope, "events"), "1");
+        eval(
+            scope,
+            "globalThis.seen = 0; s.addEventListener('ping', () => seen++)",
+        );
+        terminate(scope);
+        shadow_slots::refresh(scope);
+        shadow_slots::fire(scope, slot);
+        assert!(shadow_slots::composed_children(scope, host).is_none());
+        assert!(shadow_slots::composed_parent(scope, child).is_none());
+        resume(scope);
+        assert_eq!(json(scope, "[events, seen]"), "[1,0]");
+        let ping = object(scope, "new Event('ping', {bubbles: true})");
+        dispatch_host_event(scope, ping, child);
+        assert_eq!(json(scope, "seen"), "1");
+        // Cancelled: the same calls project the slot and fire the event.
+        let children = shadow_slots::composed_children(scope, host).unwrap();
+        assert_eq!(children.len(), 1);
+        assert!(children[0].strict_equals(slot.into()));
+        let parent = shadow_slots::composed_parent(scope, child).unwrap();
+        assert!(parent.strict_equals(slot.into()));
+        shadow_slots::fire(scope, slot);
+        assert_eq!(json(scope, "events"), "2");
+    });
+}
+
+#[test]
+fn template_walks_stop_while_terminating() {
+    with_page(
+        "<template id=t><b>x</b><template><i>y</i></template></template><div id=d><p>z</p></div>",
+        |scope| {
+            let template = object(scope, "globalThis.t = document.getElementById('t')");
+            let div = object(scope, "document.getElementById('d')");
+            let document = object(scope, "document");
+            let copy = object(scope, "document.createElement('template')");
+            // Each walk is entered with the termination pending and leaves it pending.
+            macro_rules! stopped {
+                ($walk:expr) => {{
+                    terminate(scope);
+                    let result = $walk;
+                    assert!(scope.is_execution_terminating());
+                    resume(scope);
+                    result
+                }};
+            }
+            stopped!(template_contents::realize(scope, document));
+            stopped!(template_contents::mark_parsed(scope, document, true));
+            stopped!(template_contents::relocate(scope, div));
+            stopped!(template_contents::copy_contents(
+                scope, template, copy, true
+            ));
+            assert!(stopped!(
+                template_contents::ensure(scope, template).is_none()
+            ));
+            assert!(stopped!(template_contents::parser_policy_nodes(
+                scope, document
+            )
+            .is_empty()));
+            let serialized = template_contents::serialize(scope, div, true);
+            assert_eq!(
+                String::from_utf16(&serialized).unwrap(),
+                "<div id=\"d\"><p>z</p></div>"
+            );
+            assert!(template_contents::ensure(scope, template).is_some());
+            assert_eq!(
+                json(scope, "[t.content.childNodes.length, t.innerHTML]"),
+                r#"[2,"<b>x</b><template><i>y</i></template>"]"#
+            );
+        },
+    );
+}
+
+#[test]
+fn normalize_and_listener_records_stop_while_terminating() {
+    with_page("<p id=p></p>", |scope| {
+        eval(
+            scope,
+            "globalThis.p = document.getElementById('p'); p.append('a', 'b', document.createElement('i'), 'c', ''); \
+             p.lastElementChild.append('d', 'e')",
+        );
+        let paragraph = object(scope, "p");
+        let handle = with_tree(|tree| tree.query_selector("#p"))
+            .flatten()
+            .unwrap();
+        let target = object(scope, "new EventTarget()");
+        terminate(scope);
+        range_live::normalize(scope, handle);
+        assert!(!event_brands::register_native_event_target(scope, target));
+        assert!(!event_brands::native_event_target_has_listener(
+            scope, paragraph, "click"
+        ));
+        resume(scope);
+        assert_eq!(json(scope, "p.childNodes.length"), "5");
+        range_live::normalize(scope, handle);
+        assert_eq!(
+            json(
+                scope,
+                "[p.childNodes.length, p.firstChild.data, p.lastElementChild.childNodes.length]"
+            ),
+            r#"[3,"ab",1]"#
+        );
+        assert!(event_brands::register_native_event_target(scope, target));
+    });
+}
+
+/// The host CSS policy's cascade view (turbo-surf's native layout): with a callback that
+/// blocks one `<style>` and every inline style, the policy lists the blocked sheet and the
+/// inline override (the applied text: empty for the blocked declaration), and is cached
+/// until the tree version changes.
+#[test]
+fn host_css_policy_lists_blocked_sheets_and_inline_overrides() {
+    with_page(
+        "<style id=ok>p{color:red}</style><style id=no>p{color:blue}</style><p id=a style='opacity:0.5'>x</p><p id=b>y</p>",
+        |scope| {
+            let callback = v8::Local::<v8::Function>::try_from(eval(
+                scope,
+                "globalThis.calls = []; (document, element, kind, text) => { calls.push([kind, element.id, String(text)]); return kind === 'style-src-attr' ? false : element.id !== 'no'; }",
+            ))
+            .unwrap();
+            install_css_policy(scope, callback);
+            let handle = |id: &str| {
+                with_tree(|tree| tree.query_selector(&format!("#{id}")))
+                    .flatten()
+                    .unwrap()
+            };
+            let (no, a, b) = (handle("no"), handle("a"), handle("b"));
+            let policy = css_policy::cascade_policy(scope);
+            assert_eq!(policy.blocked_stylesheets.iter().copied().collect::<Vec<_>>(), [no]);
+            assert_eq!(policy.inline_overrides.len(), 1);
+            assert_eq!(policy.inline_overrides.get(&a).map(String::as_str), Some(""));
+            assert_eq!(json(scope, "document.getElementById('a').style.opacity"), r#""""#);
+            let calls = json(scope, "calls.length");
+            // Cached per tree version: a second read asks the callback nothing.
+            let again = css_policy::cascade_policy(scope);
+            assert_eq!(again.inline_overrides, policy.inline_overrides);
+            assert_eq!(json(scope, "calls.length"), calls);
+            // A new version recomputes: a second blocked inline style joins the overrides.
+            eval(scope, "document.getElementById('b').setAttribute('style', 'color: green')");
+            let next = css_policy::cascade_policy(scope);
+            assert_eq!(next.inline_overrides.get(&b).map(String::as_str), Some(""));
+            assert_eq!(next.inline_overrides.len(), 2);
+        },
+    );
+}
+
+/// The embedder's mutation consumer registers only on its own document node with a callback
+/// of that document's realm; anything else is refused and receives nothing.
+#[test]
+fn mutation_consumer_registration_rejects_foreign_receivers_and_callbacks() {
+    with_page("<p id=p></p>", |scope| {
+        let document = object(scope, "document");
+        let callback = v8::Local::<v8::Function>::try_from(eval(
+            scope,
+            "globalThis.records = 0; () => records++",
+        ))
+        .unwrap();
+        let plain = object(scope, "({})");
+        let element = object(scope, "document.getElementById('p')");
+        assert!(!install_mutation_consumer(scope, plain, callback));
+        assert!(!install_mutation_consumer(scope, element, callback));
+        let other = v8::Context::new(scope, Default::default());
+        let foreign = {
+            let scope = &mut v8::ContextScope::new(scope, other);
+            v8::Local::<v8::Function>::try_from(eval(scope, "() => 0")).unwrap()
+        };
+        assert!(!install_mutation_consumer(scope, document, foreign));
+        eval(scope, "document.getElementById('p').append('x')");
+        scope.perform_microtask_checkpoint();
+        assert_eq!(json(scope, "records"), "0");
+        assert!(install_mutation_consumer(scope, document, callback));
+        eval(scope, "document.getElementById('p').append('y')");
+        scope.perform_microtask_checkpoint();
+        assert_eq!(json(scope, "records"), "1");
+    });
+}
+
+/// The embedder's inert-document initializer runs for every document the realm's factories
+/// create, with the document, `about:blank` and its content type.
+#[test]
+fn inert_document_initializer_sees_each_factory_document() {
+    with_page("", |scope| {
+        let initializer = v8::Local::<v8::Function>::try_from(eval(
+            scope,
+            "globalThis.seen = []; (document, url, type) => seen.push([document.nodeType, url, type])",
+        ))
+        .unwrap();
+        assert!(set_inert_document_initializer(scope, initializer));
+        eval(
+            scope,
+            "document.implementation.createHTMLDocument('t'); \
+             document.implementation.createDocument(null, 'x'); \
+             document.implementation.createDocument('http://www.w3.org/2000/svg', 'svg'); \
+             document.implementation.createDocument('http://www.w3.org/1999/xhtml', 'html')",
+        );
+        assert_eq!(
+            json(scope, "seen"),
+            r#"[[9,"about:blank","text/html"],[9,"about:blank","application/xml"],[9,"about:blank","image/svg+xml"],[9,"about:blank","application/xhtml+xml"]]"#
+        );
+    });
+}
+
+/// Host navigation facts apply only to a browsing context's own document: an inert
+/// document from a factory refuses them and keeps its defaults.
+#[test]
+fn navigation_facts_are_refused_for_inert_documents() {
+    with_page("", |scope| {
+        let inert = object(
+            scope,
+            "globalThis.inert = document.implementation.createHTMLDocument(''); inert",
+        );
+        let before = json(scope, "[inert.lastModified.length > 0, inert.domain]");
+        assert!(!set_document_last_modified(scope, inert, Some(0.0)));
+        assert!(!set_document_domain_sandboxed(scope, inert, true));
+        assert!(!set_document_origin_keyed(scope, inert, true));
+        assert_eq!(
+            json(scope, "[inert.lastModified.length > 0, inert.domain]"),
+            before
+        );
+        let document = object(scope, "document");
+        assert!(set_document_last_modified(scope, document, Some(0.0)));
+        // lastModified is local time: the expected string is the epoch formatted the same
+        // way in this realm's time zone (CI runs TZ=UTC; a developer machine may not).
+        assert_eq!(
+            json(scope, "document.lastModified"),
+            json(
+                scope,
+                "(d => [d.getMonth() + 1, d.getDate()].map(n => String(n).padStart(2, '0')).join('/') + '/' + d.getFullYear() + ' ' + [d.getHours(), d.getMinutes(), d.getSeconds()].map(n => String(n).padStart(2, '0')).join(':'))(new Date(0))"
+            )
+        );
+    });
+}
+
+/// turbo-dom#151: serializing (outer and template contents) under a pending termination
+/// emits nothing and leaves the termination pending; cancelled, the same calls serialize.
+#[test]
+fn template_serialize_leaves_termination_pending() {
+    with_page(
+        "<template id=t><b>x</b></template><div id=d><p>z</p></div>",
+        |scope| {
+            let template = object(scope, "document.getElementById('t')");
+            let div = object(scope, "document.getElementById('d')");
+            for (node, outer) in [(div, true), (template, false)] {
+                terminate(scope);
+                assert_eq!(template_contents::serialize(scope, node, outer).len(), 0);
+                assert!(scope.is_execution_terminating());
+                resume(scope);
+            }
+            let outer = template_contents::serialize(scope, div, true);
+            assert_eq!(
+                String::from_utf16(&outer).unwrap(),
+                "<div id=\"d\"><p>z</p></div>"
+            );
+            let inner = template_contents::serialize(scope, template, false);
+            assert_eq!(String::from_utf16(&inner).unwrap(), "<b>x</b>");
+        },
+    );
+}
+
+/// turbo-dom#151 (dispatch path): a host-delivered event under a pending termination runs
+/// no listener and leaves the termination pending; cancelled, the same event is delivered.
+#[test]
+fn host_event_dispatch_leaves_termination_pending() {
+    with_page("<div id=h><b id=c></b></div>", |scope| {
+        let child = object(
+            scope,
+            "globalThis.seen = 0; const c = document.getElementById('c'); \
+             document.getElementById('h').addEventListener('ping', () => seen++); c",
+        );
+        let ping = object(scope, "new Event('ping', {bubbles: true})");
+        terminate(scope);
+        dispatch_host_event(scope, ping, child);
+        assert!(scope.is_execution_terminating());
+        resume(scope);
+        assert_eq!(json(scope, "seen"), "0");
+        dispatch_host_event(scope, ping, child);
+        assert_eq!(json(scope, "seen"), "1");
+    });
+}
+
+/// Install with a termination landing as the `at`-th install script starts; returns whether
+/// the termination fired (false once `at` is past the last script).
+fn install_terminated_at(at: usize) -> bool {
+    crate::browser_env::tests::init_v8();
+    let isolate = &mut v8::Isolate::new(Default::default());
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    TERMINATE_AT_RUN_JS.with(|hook| hook.set(Some(at)));
+    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        try_install_with_html(scope, "<p id=p>x</p>")
+    }));
+    let fired = TERMINATE_AT_RUN_JS.with(|hook| hook.take()).is_none();
+    if let Ok(outcome) = result {
+        // The error reports exactly the installs a termination cut short.
+        assert_eq!(
+            outcome,
+            if fired { Err(SetupTerminated) } else { Ok(()) },
+            "at {at}"
+        );
+    }
+    scope.cancel_terminate_execution();
+    reset();
+    assert!(
+        result.is_ok(),
+        "install panicked with termination at script {at}"
+    );
+    fired
+}
+
+/// turbo-dom#184 (surf F10): a watchdog's `TerminateExecution` landing while install runs its
+/// trusted JS. Setup must give up cleanly at every landing point instead of panicking at a
+/// later lookup (`range_contents` "the ts namespace").
+#[test]
+fn install_terminated_at_any_script_does_not_panic() {
+    let mut at = 0;
+    while install_terminated_at(at) {
+        at += 1;
+    }
+    assert_eq!(
+        SetupTerminated.to_string(),
+        "V8 execution was terminated while installing the document"
+    );
+    // Every install script was a landing point.
+    assert!(at > 40, "only {at} install scripts");
+}

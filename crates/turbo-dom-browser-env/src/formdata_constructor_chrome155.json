@@ -1,0 +1,73 @@
+{
+  "browser": "Chrome/155.0.8059.80",
+  "v8": "15.5.35.23",
+  "casesSha256": "ab612289620d9f43b789b41e3b52a68ed25d65a81aa363746e257aae20f3ca4f",
+  "probeSha256": "1b4a5ee9b73b103a5e35418eb3efbe55341431fc26f8bb29d6a6213fd63e46cd",
+  "collectorSha256": "4e61b029135dacd18fdb68e4194fea875766edc7f203f7560bd3b826ad6aa0cb",
+  "flags": [
+    "--remote-debugging-port=0",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "about:blank"
+  ],
+  "errors": [],
+  "result": [
+    {
+      "result": {
+        "none": {
+          "entries": [],
+          "error": null
+        },
+        "undefined": {
+          "entries": [],
+          "error": null
+        },
+        "null": {
+          "error": "TypeError"
+        },
+        "undefinedBad": {
+          "error": "TypeError"
+        },
+        "nullBad": {
+          "error": "TypeError"
+        },
+        "badFirst": {
+          "error": "TypeError"
+        },
+        "normal": {
+          "entries": [],
+          "error": null
+        },
+        "nullSubmitter": {
+          "entries": [],
+          "error": null
+        },
+        "undefinedSubmitter": {
+          "entries": [],
+          "error": null
+        },
+        "badSubmitter": {
+          "error": "TypeError"
+        },
+        "submitter": {
+          "entries": [
+            [
+              "submit",
+              "yes"
+            ]
+          ],
+          "error": null
+        },
+        "outside": {
+          "error": "NotFoundError"
+        },
+        "notSubmitter": {
+          "error": "TypeError"
+        }
+      }
+    }
+  ]
+}

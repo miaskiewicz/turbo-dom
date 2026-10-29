@@ -57,6 +57,35 @@ pub(super) fn decode(source: &str) -> Vec<u16> {
 fn parsed(units: &[u16], context: Option<(QualName, Vec<html5ever::Attribute>)>) -> RcDom {
     parsed_with_form(units, context, false, false, QuirksMode::NoQuirks)
 }
+/// A parsed fragment's nodes under a `#document-fragment` root, like
+/// `core::parse_html_fragment_with_context` (RCDATA contexts drop U+0000 like Chrome).
+fn parsed_fragment(
+    units: &[u16],
+    context: (QualName, Vec<html5ever::Attribute>),
+    has_form_ancestor: bool,
+    scripting_enabled: bool,
+    quirks_mode: QuirksMode,
+) -> core::Node {
+    if core::is_rcdata_context(&context.0) && units.contains(&0) {
+        return core::rcdata_fragment(units.split(|&unit| unit == 0).map(|segment| {
+            parsed_fragment(
+                segment,
+                context.clone(),
+                has_form_ancestor,
+                scripting_enabled,
+                quirks_mode,
+            )
+        }));
+    }
+    let dom = parsed_with_form(
+        units,
+        Some(context),
+        has_form_ancestor,
+        scripting_enabled,
+        quirks_mode,
+    );
+    core::fragment_of(core::walk(&dom.document))
+}
 // The iframe srcdoc document flag: a missing or legacy doctype never selects quirks.
 fn parsed_srcdoc(units: &[u16]) -> RcDom {
     let options = TreeBuilderOpts {
@@ -106,9 +135,8 @@ fn parsed_with_options(
     };
     let initial_state = fragment.then(|| builder.tokenizer_state_for_context_elem(false));
     let tokenizer = Tokenizer::new(
-        builder,
+        core::ChromeTokens(builder),
         TokenizerOpts {
-            discard_bom: false,
             initial_state,
             ..Default::default()
         },
@@ -118,7 +146,11 @@ fn parsed_with_options(
     // Parser indicators need no host work: this API never executes scripts.
     while !matches!(tokenizer.feed(&queue), html5ever::TokenizerResult::Done) {}
     tokenizer.end();
-    tokenizer.sink.sink
+    let dom = tokenizer.sink.0.sink;
+    if core::mentions_selectedcontent(&String::from_utf16_lossy(units)) {
+        core::fill_selectedcontent(&dom.document);
+    }
+    dom
 }
 impl Tree {
     fn fragment_context(
@@ -188,9 +220,9 @@ impl Tree {
             }
             ancestor = self.parent(node);
         }
-        let dom = parsed_with_form(
+        let parsed_root = parsed_fragment(
             units,
-            Some(self.fragment_context(context, true)),
+            self.fragment_context(context, true),
             has_form_ancestor,
             scripting_enabled,
             if self.compat_mode == "BackCompat" {
@@ -199,8 +231,6 @@ impl Tree {
                 QuirksMode::NoQuirks
             },
         );
-        let document = core::walk(&dom.document);
-        let parsed_root = document.children.first().unwrap_or(&document);
         let fragment = self.create_document_fragment();
         let recording = self.mutation_log.take();
         let children = parsed_root
@@ -214,7 +244,7 @@ impl Tree {
         self.children_ov.insert(fragment, children.into());
         self.mutation_log = recording;
         self.bump();
-        core::discard_node(document);
+        core::discard_node(parsed_root);
         fragment
     }
 
@@ -297,6 +327,15 @@ impl Tree {
                         &decode(&attribute.value),
                     );
                 }
+                // fragment parsing reads the `is` value at creation, like the initial parse
+                if self.namespace(target) == Namespace::Html
+                    && node.attrs.iter().any(|attribute| {
+                        attribute.prefix.is_empty() && decode(&attribute.name) == [105, 115]
+                    })
+                {
+                    self.custom_element_states
+                        .insert(target, super::CustomElementState::Undefined);
+                }
                 target
             }
             NodeType::Doctype => self.create_document_type_units(
@@ -305,9 +344,6 @@ impl Tree {
                 &decode(&node.system_id),
             ),
             NodeType::Comment => self.create_comment_utf16(&decode(&node.value)),
-            NodeType::ProcessingInstruction => {
-                self.create_processing_instruction_units(&decode(&node.name), &decode(&node.value))
-            }
             NodeType::Fragment => self.create_document_fragment(),
             _ => self.create_text_node_utf16(&decode(&node.value)),
         };
@@ -321,10 +357,13 @@ impl Tree {
             self.set_inner_html(node, &source);
             return;
         }
-        let dom = parsed(units, Some(self.fragment_context(node, true)));
-        let document = core::walk(&dom.document);
-        // html5ever fragment parsing creates an artificial HTML root.
-        let fragment = document.children.first().unwrap_or(&document);
+        let fragment = parsed_fragment(
+            units,
+            self.fragment_context(node, true),
+            false,
+            false,
+            QuirksMode::NoQuirks,
+        );
         let children = fragment
             .children
             .iter()
@@ -344,7 +383,7 @@ impl Tree {
         if self.is_recording() && (!children.is_empty() || !removed.is_empty()) {
             self.record_child_list_batch(node, children, removed);
         }
-        core::discard_node(document);
+        core::discard_node(fragment);
     }
     pub fn insert_adjacent_html_utf16(&mut self, node: Handle, position: &str, units: &[u16]) {
         if let Some(source) = String::from_utf16(units)
@@ -360,9 +399,13 @@ impl Tree {
         } else {
             node
         };
-        let dom = parsed(units, Some(self.fragment_context(context, true)));
-        let document = core::walk(&dom.document);
-        let fragment = document.children.first().unwrap_or(&document);
+        let fragment = parsed_fragment(
+            units,
+            self.fragment_context(context, true),
+            false,
+            false,
+            QuirksMode::NoQuirks,
+        );
         let children = fragment
             .children
             .iter()
@@ -383,7 +426,7 @@ impl Tree {
                 }
             }
         }
-        core::discard_node(document);
+        core::discard_node(fragment);
     }
     pub fn create_processing_instruction_units(&mut self, target: &[u16], data: &[u16]) -> Handle {
         let node = self.push_node(NewNode::ProcessingInstruction(Box::new(
@@ -410,17 +453,15 @@ impl Tree {
         node
     }
     #[must_use]
+    /// None for every other node (only created nodes are processing instructions).
     pub fn processing_instruction_target_utf16(&self, node: Handle) -> Option<Vec<u16>> {
-        if self.node_type(node) != NodeType::ProcessingInstruction {
+        if !self.is_new(node) {
             return None;
         }
-        if self.is_new(node) {
-            if let NewNode::ProcessingInstruction(data) = self.new_ref(node) {
-                return Some(data.target.units());
-            }
+        match self.new_ref(node) {
+            NewNode::ProcessingInstruction(data) => Some(data.target.units()),
+            _ => None,
         }
-        self.processing_instruction_target(node)
-            .map(|target| target.encode_utf16().collect())
     }
     #[must_use]
     pub fn doctype_name_utf16(&self, node: Handle) -> Option<Vec<u16>> {

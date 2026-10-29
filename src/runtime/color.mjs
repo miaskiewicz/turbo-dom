@@ -3,7 +3,7 @@
 // `toHaveStyle` compares the element's computed value against the expected value
 // AS STRINGS, after each is run through the DOM's own normalization — so to match
 // a browser (and jsdom) both getComputedStyle (cascade.mjs) and inline style
-// read-back (dom.mjs styleGet) must canonicalize. This module is the shared core.
+// read-back (dom.mjs makeStyle) must canonicalize. This module is the shared core.
 //
 // PERF: only ever called from getComputedStyle + el.style reads (test/app time),
 // and only for properties in COLOR_PROPS. Parse/query/match/event hot paths never

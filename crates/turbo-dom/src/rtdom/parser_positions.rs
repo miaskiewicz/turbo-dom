@@ -118,29 +118,10 @@ impl SourceInput {
         let checkpoint = &self.checkpoints[index];
         let mut position = checkpoint.position;
         let mut prior_cr = checkpoint.prior_cr;
+        // Positions are taken when a start tag is emitted, right after its `>` was
+        // consumed, so `byte` is always on an original-unit boundary: never between the
+        // two characters of the private unit transport (`parser_units::encode`).
         let prefix = &self.encoded[checkpoint.byte..byte];
-        let completed;
-        let prefix = if prefix
-            .chars()
-            .rev()
-            .take_while(|&c| c == parser_units::ESCAPE)
-            .count()
-            % 2
-            == 1
-        {
-            // A scalar tokenizer can emit the first half of the private unit
-            // transport separately. Project it to its original logical unit.
-            completed = format!(
-                "{prefix}{}",
-                self.encoded[byte..]
-                    .chars()
-                    .next()
-                    .expect("complete internal unit transport")
-            );
-            completed.as_str()
-        } else {
-            prefix
-        };
         advance(&mut position, &mut prior_cr, &parser_units::decode(prefix));
         position
     }
@@ -207,8 +188,9 @@ impl TreeSink for PositionedDom {
     fn create_comment(&self, text: StrTendril) -> RcHandle {
         self.dom.create_comment(text)
     }
-    fn create_pi(&self, target: StrTendril, data: StrTendril) -> RcHandle {
-        self.dom.create_pi(target, data)
+    // html5ever's HTML tree builder never creates processing instructions.
+    fn create_pi(&self, _target: StrTendril, _data: StrTendril) -> RcHandle {
+        unreachable!("the HTML tree builder never creates processing instructions")
     }
     fn append(&self, parent: &RcHandle, child: NodeOrText<RcHandle>) {
         self.dom.append(parent, child);
@@ -240,8 +222,10 @@ impl TreeSink for PositionedDom {
     fn set_quirks_mode(&self, mode: QuirksMode) {
         self.dom.set_quirks_mode(mode);
     }
-    fn append_before_sibling(&self, sibling: &RcHandle, node: NodeOrText<RcHandle>) {
-        self.dom.append_before_sibling(sibling, node);
+    // html5ever 0.39 never constructs `InsertionPoint::BeforeSibling` (foster parenting
+    // goes through `append_based_on_parent_node`).
+    fn append_before_sibling(&self, _sibling: &RcHandle, _node: NodeOrText<RcHandle>) {
+        unreachable!("html5ever never inserts before a sibling")
     }
     fn add_attrs_if_missing(&self, target: &RcHandle, attrs: Vec<Attribute>) {
         if self.lexical_name.borrow().is_some() {
@@ -302,6 +286,7 @@ struct PositionedBuilder {
 impl TokenSink for PositionedBuilder {
     type Handle = RcHandle;
     fn process_token(&self, token: Token, line: u64) -> TokenSinkResult<RcHandle> {
+        let token = crate::core::chrome_doctype(token);
         let name = match &token {
             Token::TagToken(tag) if tag.kind == html5ever::tokenizer::StartTag => {
                 Some(tag.name.clone())
@@ -396,16 +381,13 @@ impl Tree {
             queue: queue.clone(),
             input,
         };
-        let tokenizer = Tokenizer::new(
-            sink,
-            TokenizerOpts {
-                discard_bom: false,
-                ..Default::default()
-            },
-        );
+        let tokenizer = Tokenizer::new(sink, TokenizerOpts::default());
         while !matches!(tokenizer.feed(&queue), html5ever::TokenizerResult::Done) {}
         tokenizer.end();
-        let dom = tokenizer.sink.builder.sink;
+        let dom = tokenizer.sink.builder.sink.finish();
+        if crate::core::mentions_selectedcontent(&String::from_utf16_lossy(units)) {
+            crate::core::fill_selectedcontent(&dom.dom.document);
+        }
         let mut tree = Self::from_units_dom(&dom.dom);
         let positions = dom.positions.into_inner();
         let attribute_positions = dom.attribute_positions.into_inner();

@@ -1,0 +1,9 @@
+{
+ "id": "S2/surf-static-t-elements",
+ "class": "t-elements",
+ "reason": "Approved exception #2 (consolidation plan §1.3): turbo-surf's static screenshot tier (turbo-dom-raster `layout_html`) no longer treats `t:*` as html2pdf directives; `<t:anchor/>` is an unknown, empty inline element as in Chrome. The extra xref input is the only surf corpus input containing `t:`; with `<t:anchor/>` removed or replaced by an empty `<span>` the S2+ and B2 SVGs are byte-identical (the PNG is unchanged). First observable here: surf could not build against the S2 layout API until S4.",
+ "control": "crates/turbo-dom-layout/src/html_layout.rs (tests::t_elements_are_unknown_inline_elements_on_the_html_path)",
+ "changes": {
+  "surf-extra": ["static-extra-xref-anchors.svg"]
+ }
+}
