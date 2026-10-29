@@ -7479,7 +7479,23 @@ fn bind_document(scope: &mut v8::PinScope) {
 }
 
 /// Compile + run a JS snippet in the current context (best-effort).
+#[cfg(test)]
+thread_local! {
+    /// Test hook (turbo-dom#184): terminate execution as the N-th install script starts, the
+    /// way an embedder's watchdog can land in the middle of setup.
+    pub(crate) static TERMINATE_AT_RUN_JS: std::cell::Cell<Option<usize>> = const { std::cell::Cell::new(None) };
+}
+
 fn run_js(scope: &mut v8::PinScope, src: &str) {
+    #[cfg(test)]
+    TERMINATE_AT_RUN_JS.with(|at| match at.get() {
+        Some(0) => {
+            at.set(None);
+            scope.terminate_execution();
+        }
+        Some(n) => at.set(Some(n - 1)),
+        None => {}
+    });
     let tc = std::pin::pin!(v8::TryCatch::new(scope));
     let tc = &mut tc.init();
     if let Some(code) = v8::String::new(tc, src) {

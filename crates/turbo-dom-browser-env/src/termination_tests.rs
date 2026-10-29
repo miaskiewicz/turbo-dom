@@ -342,3 +342,39 @@ fn host_event_dispatch_leaves_termination_pending() {
         assert_eq!(json(scope, "seen"), "1");
     });
 }
+
+/// Install with a termination landing as the `at`-th install script starts; returns whether
+/// the termination fired (false once `at` is past the last script).
+fn install_terminated_at(at: usize) -> bool {
+    crate::browser_env::tests::init_v8();
+    let isolate = &mut v8::Isolate::new(Default::default());
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    TERMINATE_AT_RUN_JS.with(|hook| hook.set(Some(at)));
+    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        install_with_html(scope, "<p id=p>x</p>")
+    }));
+    let fired = TERMINATE_AT_RUN_JS.with(|hook| hook.take()).is_none();
+    scope.cancel_terminate_execution();
+    reset();
+    assert!(
+        result.is_ok(),
+        "install panicked with termination at script {at}"
+    );
+    fired
+}
+
+/// turbo-dom#184 (surf F10): a watchdog's `TerminateExecution` landing while install runs its
+/// trusted JS. Setup must give up cleanly at every landing point instead of panicking at a
+/// later lookup (`range_contents` "the ts namespace").
+#[test]
+#[ignore = "turbo-dom#184: fails until the fix"]
+fn install_terminated_at_any_script_does_not_panic() {
+    let mut at = 0;
+    while install_terminated_at(at) {
+        at += 1;
+    }
+    // Every install script was a landing point.
+    assert!(at > 40, "only {at} install scripts");
+}
