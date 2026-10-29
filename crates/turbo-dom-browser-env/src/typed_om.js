@@ -13,7 +13,9 @@
   const ErrorType = TypeError, RangeType = RangeError;
   const isFiniteNumber = Number.isFinite, isNaNValue = Number.isNaN, mathAbs = Math.abs, mathMin = Math.min, mathMax = Math.max, mathRound = Math.round, mathTrunc = Math.trunc, mathTan = Math.tan, mathPI = Math.PI, mathE = Math.E, mathPow = Math.pow, mathSqrt = Math.sqrt, mathSin = Math.sin, mathCos = Math.cos, mathAsin = Math.asin, mathAcos = Math.acos, mathAtan = Math.atan, mathAtan2 = Math.atan2, mathLog = Math.log, mathExp = Math.exp, mathFloor = Math.floor, mathCeil = Math.ceil, mathSign = Math.sign;
   const lowerCase = Function.prototype.call.bind(String.prototype.toLowerCase);
-  const charCode = Function.prototype.call.bind(String.prototype.charCodeAt), sliceText = Function.prototype.call.bind(String.prototype.slice), startsWith = Function.prototype.call.bind(String.prototype.startsWith), indexOfText = Function.prototype.call.bind(String.prototype.indexOf), trimText = Function.prototype.call.bind(String.prototype.trim), replaceText = Function.prototype.call.bind(String.prototype.replace), testRegExp = Function.prototype.call.bind(RegExp.prototype.test), execRegExp = Function.prototype.call.bind(RegExp.prototype.exec);
+  const charCode = Function.prototype.call.bind(String.prototype.charCodeAt), sliceText = Function.prototype.call.bind(String.prototype.slice), startsWith = Function.prototype.call.bind(String.prototype.startsWith), indexOfText = Function.prototype.call.bind(String.prototype.indexOf), trimText = Function.prototype.call.bind(String.prototype.trim), replaceText = Function.prototype.call.bind(String.prototype.replace), execRegExp = Function.prototype.call.bind(RegExp.prototype.exec);
+  // RegExp.prototype.test / String.prototype.replace(regexp) look up page-replaceable members; exec does not (turbo-dom#194).
+  const testRegExp = (pattern, text) => execRegExp(pattern, text) !== null;
   const weakGet = Function.prototype.call.bind(WeakMap.prototype.get), weakSet = Function.prototype.call.bind(WeakMap.prototype.set);
   const mapGet = Function.prototype.call.bind(Map.prototype.get), mapSet = Function.prototype.call.bind(Map.prototype.set);
   const arrayIterator = Array.prototype[Symbol.iterator], symbolIterator = Symbol.iterator, symbolTag = Symbol.toStringTag;
@@ -135,7 +137,7 @@
 
   // %.6g: six significant digits, exponent form outside [1e-4, 1e6), trailing zeros dropped.
   const toExponential = Function.prototype.call.bind(Number.prototype.toExponential);
-  const stripZeros = (text) => indexOfText(text, '.') >= 0 ? replaceText(replaceText(text, /0+$/, ''), /\.$/, '') : text;
+  const stripZeros = (text) => { if (indexOfText(text, '.') < 0) return text; let end = text.length; while (end > 0 && text[end - 1] === '0') end--; if (end > 0 && text[end - 1] === '.') end--; return sliceText(text, 0, end); };
   // Round to six significant digits half-to-even on the exact binary value, as %.6g does.
   function formatG(number) {
     if (number === 0) return 1 / number < 0 ? '-0' : '0';

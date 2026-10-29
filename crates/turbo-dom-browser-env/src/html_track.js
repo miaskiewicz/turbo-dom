@@ -27,11 +27,13 @@
     mapSet = WeakMapType.prototype.set,
     setHas = WeakSetType.prototype.has,
     setAdd = WeakSetType.prototype.add;
+  // Captured, not page-replaceable String members (turbo-dom#194).
+  const charCodeAt = Function.prototype.call.bind(String.prototype.charCodeAt), fromCharCode = StringValue.fromCharCode;
   const lower = (value) => {
     let out = "";
     for (let index = 0; index < value.length; index++) {
-      const code = value.charCodeAt(index);
-      out += code >= 65 && code <= 90 ? StringValue.fromCharCode(code + 32) : value[index];
+      const code = charCodeAt(value, index);
+      out += code >= 65 && code <= 90 ? fromCharCode(code + 32) : value[index];
     }
     return out;
   };

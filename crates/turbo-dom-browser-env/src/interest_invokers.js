@@ -20,11 +20,15 @@
   const setAdd = SetValue.prototype.add, setDelete = SetValue.prototype.delete, setValues = SetValue.prototype.values;
   const sizeOf = Object.getOwnPropertyDescriptor(SetValue.prototype, 'size').get;
   const MapValue = Map, ownerGet = MapValue.prototype.get, ownerSet = MapValue.prototype.set, ownerDelete = MapValue.prototype.delete;
+  const getProto = Object.getPrototypeOf, setNext = getProto(new SetValue()[Symbol.iterator]()).next, mapNext = getProto(new MapValue()[Symbol.iterator]()).next;
+  const trim = StringValue.prototype.trim, lower = StringValue.prototype.toLowerCase, exec = RegExp.prototype.exec;
+  // Drains a captured Set / Map iterator without the page-replaceable %SetIteratorPrototype%.next.
+  const drain = (iterator, next) => { const list = []; for (let step = apply(next, iterator, []); !step.done; step = apply(next, iterator, [])) list[list.length] = step.value; return list; };
   const ownerKeys = MapValue.prototype.keys, ownerEntries = MapValue.prototype.entries, ownerSize = Object.getOwnPropertyDescriptor(MapValue.prototype, 'size').get;
   const HTML = 'http://www.w3.org/1999/xhtml', SVG = 'http://www.w3.org/2000/svg', XLINK = 'http://www.w3.org/1999/xlink';
   const string = value => { if (typeof value === 'symbol') throw new TypeError('Cannot convert a Symbol to a string'); return StringValue(value); };
-  const element = value => { try { return nodeType.call(value) === 1; } catch { return false; } };
-  const is = (value, ns, name) => element(value) && namespace.call(value) === ns && localName.call(value) === name;
+  const element = value => { try { return apply(nodeType, value, []) === 1; } catch { return false; } };
+  const is = (value, ns, name) => element(value) && apply(namespace, value, []) === ns && apply(localName, value, []) === name;
 
   // HTMLButtonElement, HTMLAnchorElement and HTMLAreaElement reflect `interestfor` as an
   // element reference sharing the scoped explicit-reference state of popovertarget/commandfor.
@@ -80,31 +84,31 @@
   const recordOf = invoker => apply(mapGet, state, [invoker]);
   const ownerOf = target => apply(ownerGet, owners, [target]);
   let tokens = 0;
-  const shadowHost = root => { try { return hostOf.call(root); } catch { return null; } };
-  const up = node => parentNode.call(node) || shadowHost(node);
+  const shadowHost = root => { try { return apply(hostOf, root, []); } catch { return null; } };
+  const up = node => apply(parentNode, node, []) || shadowHost(node);
   const within = (node, ancestor) => { for (let current = node; current; current = up(current)) if (current === ancestor) return true; return false; };
   const chain = node => { const list = []; for (let current = node; current; current = up(current)) if (element(current)) list[list.length] = current; return list; };
   const includes = (list, value) => { for (let index = 0; index < list.length; index++) if (list[index] === value) return true; return false; };
   // Interest-invoker elements: an enabled HTML button, or an HTML a/area or SVG a with href.
-  const linked = node => hasAttribute.call(node, 'href') || namespace.call(node) === SVG && hasAttributeNS.call(node, XLINK, 'href');
+  const linked = node => apply(hasAttribute, node, ['href']) || apply(namespace, node, []) === SVG && apply(hasAttributeNS, node, [XLINK, 'href']);
   const invokerElement = node => (is(node, HTML, 'button') && !Native('disabled', node)) || ((is(node, HTML, 'a') || is(node, HTML, 'area') || is(node, SVG, 'a')) && linked(node));
   const targetOf = node => {
     if (!invokerElement(node)) return null;
     const target = resolve(reference.read(node, 'interestfor'));
-    return target !== null && connected.call(node) && connected.call(target) ? target : null;
+    return target !== null && apply(connected, node, []) && apply(connected, target, []) ? target : null;
   };
   // `normal` start/end delays are 0.5s and 0.25s; other values are CSS <time>s.
   function delay(invoker, edge) {
     let text = '';
     try { const style = computed(invoker); text = getPropertyValue ? apply(getPropertyValue, style, ['interest-delay-' + edge]) : style['interest-delay-' + edge]; } catch {}
-    text = StringValue(text || '').trim().toLowerCase();
-    const match = /^(-?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?)(ms|s)$/.exec(text);
+    text = apply(lower, apply(trim, StringValue(text || ''), []), []);
+    const match = apply(exec, /^(-?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?)(ms|s)$/, [text]);
     if (!match) return edge === 'start' ? 500 : 250;
     const value = +match[1] * (match[2] === 's' ? 1000 : 1);
     return value > 0 ? value : 0;
   }
   const fire = (target, type, source, cancelable) => Native('dispatch', target, new InterestEvent(type, { cancelable, composed: true, source }));
-  const popover = node => namespace.call(node) === HTML && popoverOf.call(node) !== null;
+  const popover = node => apply(namespace, node, []) === HTML && apply(popoverOf, node, []) !== null;
   const engaged = () => Native('engaged', apply(sizeOf, active, []) > 0 || apply(ownerSize, owners, []) > 0);
   function clear(invoker, keepTarget) {
     const record = recordOf(invoker);
@@ -159,27 +163,31 @@
     clear(invoker);
     if (record.opened && popover(record.target)) Native('popover', record.target, 'hide', invoker);
   }
-  const each = callback => { const list = []; for (const invoker of apply(setValues, active, [])) list[list.length] = invoker; for (let index = 0; index < list.length; index++) callback(list[index]); };
+  const each = callback => { const list = drain(apply(setValues, active, []), setNext); for (let index = 0; index < list.length; index++) callback(list[index]); };
   function enter(node, leaving) {
     const left = leaving ? chain(leaving) : [];
-    for (const current of chain(node)) {
+    const nodes = chain(node);
+    for (let at = 0; at < nodes.length; at++) {
+      const current = nodes[at];
       if (includes(left, current)) continue;
       const owner = ownerOf(current);
       if (owner && recordOf(owner)) gain(owner);
       // Explicit element references also set the (empty) attribute.
-      if (hasAttribute.call(current, 'interestfor')) gain(current);
+      if (apply(hasAttribute, current, ['interestfor'])) gain(current);
     }
   }
   function leave(node, entering) {
     const kept = entering ? chain(entering) : [];
-    for (const current of chain(node)) {
+    const nodes = chain(node);
+    for (let at = 0; at < nodes.length; at++) {
+      const current = nodes[at];
       if (includes(kept, current)) continue;
       const owner = ownerOf(current);
       if (owner) lose(owner);
       if (recordOf(current)) lose(current);
     }
   }
-  const related = event => { try { return relatedOf.call(event); } catch { return null; } };
+  const related = event => { try { return apply(relatedOf, event, []); } catch { return null; } };
   // Native hooks: trusted focus/blur/mouseover/mouseout/keydown, removal and attribute changes.
   const hook = (kind, node, event, extra) => {
     switch (kind) {
@@ -189,7 +197,7 @@
       case 'mouseout': leave(node, related(event)); return;
       case 'keydown': {
         let key = '', prevented = true;
-        try { key = keyOf.call(event); prevented = preventedOf.call(event); } catch {}
+        try { key = apply(keyOf, event, []); prevented = apply(preventedOf, event, []); } catch {}
         // An unprevented Escape ends every shown interest at once, without the end delay;
         // the loseinterest it fires cannot be canceled.
         if (key === 'Escape' && !prevented) each(invoker => { const record = recordOf(invoker); if (record) end(invoker, record, false); });
@@ -198,14 +206,15 @@
       case 'disconnect': {
         const inside = target => within(target, node) && (extra || target !== node);
         each(invoker => { const record = recordOf(invoker); if (record && (inside(invoker) || inside(record.target))) clear(invoker); });
-        for (const [target, invoker] of apply(ownerEntries, owners, [])) if (!recordOf(invoker) && (inside(target) || inside(invoker))) apply(ownerDelete, owners, [target]);
+        const entries = drain(apply(ownerEntries, owners, []), mapNext);
+        for (let at = 0; at < entries.length; at++) { const target = entries[at][0], invoker = entries[at][1]; if (!recordOf(invoker) && (inside(target) || inside(invoker))) apply(ownerDelete, owners, [target]); }
         engaged();
         return;
       }
       // Removing `interestfor` ends the interest; pointing it elsewhere ends only the source.
-      case 'attribute': if (recordOf(node)) clear(node, hasAttribute.call(node, 'interestfor')); return;
+      case 'attribute': if (recordOf(node)) clear(node, apply(hasAttribute, node, ['interestfor'])); return;
       case 'sources': { const list = new ArrayValue(); each(invoker => { list[list.length] = invoker; }); return list; }
-      case 'targets': { const list = new ArrayValue(); for (const target of apply(ownerKeys, owners, [])) list[list.length] = target; return list; }
+      case 'targets': { const list = new ArrayValue(); const keys = drain(apply(ownerKeys, owners, []), mapNext); for (let at = 0; at < keys.length; at++) list[list.length] = keys[at]; return list; }
     }
   };
   g.__captureInterestHook = hook;

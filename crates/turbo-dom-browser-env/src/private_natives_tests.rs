@@ -182,6 +182,12 @@ fn bind_direct(scope: &mut v8::PinScope, list: v8::Local<v8::Array>) {
         css_policy::write_inline,
     );
     push_native(scope, list, "__noteInlineHandler", event_handlers::note);
+    // Since turbo-dom#194 the focus / blur / click wrappers no longer leak these through a
+    // page-replaced `Function.prototype.call`/`apply`.
+    push_native(scope, list, "focus", el_focus);
+    push_native(scope, list, "blur", el_blur);
+    push_native(scope, list, "click", el_click);
+    push_native(scope, list, "hasAttribute", el_has_attribute);
 }
 
 #[test]

@@ -4,7 +4,7 @@
   'use strict';
   const g = globalThis, ns = g[Symbol.for('ts')], make = ns.makeNativeFunction;
   const Native = g.__referenceTargetNative; delete g.__referenceTargetNative;
-  const StringValue = String, TypeErrorValue = TypeError;
+  const StringValue = String, TypeErrorValue = TypeError, apply = Reflect.apply;
   const nodeType = Object.getOwnPropertyDescriptor(g.Node.prototype, 'nodeType').get;
   const namespace = Object.getOwnPropertyDescriptor(g.Element.prototype, 'namespaceURI').get;
   const localName = Object.getOwnPropertyDescriptor(g.Element.prototype, 'localName').get;
@@ -22,17 +22,17 @@
   });
   const template = receiver => {
     let element = false;
-    try { element = nodeType.call(receiver) === 1 && namespace.call(receiver) === 'http://www.w3.org/1999/xhtml' && localName.call(receiver) === 'template'; } catch {}
+    try { element = apply(nodeType, receiver, []) === 1 && apply(namespace, receiver, []) === 'http://www.w3.org/1999/xhtml' && apply(localName, receiver, []) === 'template'; } catch {}
     if (!element) throw new TypeErrorValue('Illegal invocation');
   };
   Object.defineProperty(g.HTMLTemplateElement.prototype, 'shadowRootReferenceTarget', {
     enumerable: true, configurable: true,
-    get: make(function () { template(this); return getAttribute.call(this, 'shadowrootreferencetarget'); }, 'get shadowRootReferenceTarget', 0),
+    get: make(function () { template(this); return apply(getAttribute, this, ['shadowrootreferencetarget']); }, 'get shadowRootReferenceTarget', 0),
     set: make(function (value) {
       template(this);
       const converted = nullable(value, 'HTMLTemplateElement', 'shadowRootReferenceTarget');
-      if (converted === null) removeAttribute.call(this, 'shadowrootreferencetarget');
-      else setAttribute.call(this, 'shadowrootreferencetarget', converted);
+      if (converted === null) apply(removeAttribute, this, ['shadowrootreferencetarget']);
+      else apply(setAttribute, this, ['shadowrootreferencetarget', converted]);
     }, 'set shadowRootReferenceTarget', 1),
   });
   ns.resolveReferenceTarget = element => element === null ? null : Native('resolve', element);

@@ -23,7 +23,9 @@
   const isDocument = value => { try { return apply(nodeType, value, []) === 9; } catch (_) { return false; } };
   const query = (node, kind) => Native('query', node, kind);
   const connected = node => apply(connectedOf, node, []);
-  const lower = value => { let result = ''; for (let index = 0; index < value.length; index++) { const code = value.charCodeAt(index); result += code >= 65 && code <= 90 ? StringValue.fromCharCode(code + 32) : value[index]; } return result; };
+  // Captured, not page-replaceable String members (turbo-dom#194).
+  const charCodeAt = Function.prototype.call.bind(String.prototype.charCodeAt), fromCharCode = StringValue.fromCharCode;
+  const lower = value => { let result = ''; for (let index = 0; index < value.length; index++) { const code = charCodeAt(value, index); result += code >= 65 && code <= 90 ? fromCharCode(code + 32) : value[index]; } return result; };
   const method = (proto, name, body, length) => define(proto, name, { value: make(body, name, length), writable: true, enumerable: true, configurable: true });
 
   // https://html.spec.whatwg.org/#dom-input-showpicker: Chrome checks the cross-origin
