@@ -28,6 +28,10 @@ var CASES = {
   ccfScript: function(d){ var s=mk(d), r=d.createRange(); r.selectNodeContents(s); var f=r.createContextualFragment('<script>window.__ccf=1<\/script>'); return [ser(f), f.firstChild.nodeName].join('|'); },
   ccfArgs: function(d){ var r=d.createRange(); var o=[]; try { r.createContextualFragment(); } catch(e){ o.push(e.name); } o.push(ser(r.createContextualFragment(null))); return o.join('|'); },
   ccfDetachedFrag: function(d){ var f=d.createDocumentFragment(), r=d.createRange(); r.setStart(f,0); return ser(r.createContextualFragment('<tr><td>1')); },
+  splitTextBig: function(d){ var t=d.createTextNode('ab'); try { t.splitText(5); return 'no'; } catch(e){ return e.name; } },
+  substringBig: function(d){ var t=d.createTextNode('ab'); try { return t.substringData(5,1); } catch(e){ return e.name; } },
+  substringCount: function(d){ var t=d.createTextNode('abcd'); return t.substringData(1,99); },
+  deleteDataNeg: function(d){ var t=d.createTextNode('abc'); t.deleteData(1,-1); return t.data; },
 };
 function mk(d){ var s=d.createElement('section'); s.innerHTML='<p>ab<b>cd</b>ef</p><i>gh</i>'; d.body.appendChild(s); return s; }
 function ser(f){ var t=d0.createElement('div'); t.appendChild(f.cloneNode(true)); return t.innerHTML; }

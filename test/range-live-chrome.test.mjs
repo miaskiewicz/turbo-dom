@@ -36,7 +36,11 @@ const EXPECTED = {
   "ccfDocument": "<p>a</p>x",
   "ccfScript": "<script>window.__ccf=1</script>|SCRIPT",
   "ccfArgs": "TypeError|null",
-  "ccfDetachedFrag": "1"
+  "ccfDetachedFrag": "1",
+  "splitTextBig": "IndexSizeError",
+  "substringBig": "IndexSizeError",
+  "substringCount": "bcd",
+  "deleteDataNeg": "a"
 };
 
 for (const name of Object.keys(EXPECTED)) {
