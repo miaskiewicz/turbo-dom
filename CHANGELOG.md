@@ -38,6 +38,37 @@ turbo-dom, -layout and -raster; 1.91 for turbo-dom-v8 and -browser-env.
   post-release refactor clears the backlog.
 - PR and push CI run on Linux and Windows; the macOS (aarch64-apple-darwin) builds and
   jobs run only in the release workflow (`ci.yml` called with `darwin: true`).
+### Fixed — attribute values escape `<` and `>` when serialized (Chrome 156 control)
+`innerHTML` / `outerHTML` (the `./runtime` serializer and rtdom `serialize_*`, scalar and
+UTF-16) now write `<` and `>` in attribute values as `&lt;` / `&gt;`, as Chrome 156 does.
+
+### Fixed — MutationObserver childList records match Chrome (Chrome 156 controls)
+- `./runtime`: `innerHTML` (element and shadow root) queued no record, and `textContent` /
+  `replaceChildren` dropped the removed children. They now queue one record with both
+  lists. `previousSibling` was always `null`; it is now set. `append`/`prepend`/`before`/
+  `after`/`replaceWith`/`replaceChildren`, `insertAdjacentHTML` and fragment inserts queue
+  ONE record for all their nodes, as Chrome does, instead of one per node. `normalize()`
+  queues a characterData change plus a removal record per merged Text, not an empty record.
+  `Element.outerHTML` is settable (it was a getter only, so assigning threw in strict code).
+- rtdom `Tree`: `before`, `after`, `replace_with`, `replace_children`, `insert_adjacent_html`
+  and fragment inserts record one childList event with Chrome's siblings, not one per node.
+
+### Fixed — JS-runtime `Range` boundary points (miaskiewicz/turbo-dom#207, Chrome 156 controls)
+The `./runtime` Range now follows the DOM boundary-point algorithms instead of only the
+single-container case. `extractContents`, `cloneContents`, `deleteContents` and `toString`
+handle ranges across containers and inside Text/Comment nodes. `insertNode` splits a Text
+start and moves the end offset. `surroundContents` throws `InvalidStateError` on a partially
+selected element. `setStart`/`setEnd` throw `IndexSizeError`/`InvalidNodeTypeError` and
+reorder the range, and `compareBoundaryPoints`, `comparePoint`, `isPointInRange`,
+`intersectsNode` and the `START_TO_START`... constants are added. The range is still not
+live: mutations made outside its own methods do not move its boundary points.
+
+### Fixed — prefixed elements in HTML serialization (Chrome 156 controls)
+`innerHTML`/`outerHTML` keep a `createElementNS` prefix on HTML, SVG and MathML elements
+(`<svg:g>`, `<h:br>`), as Chrome 156 does; the `./runtime` serializer dropped it. In both
+the runtime and the rtdom serializers a prefixed `<h:script>` (or other raw-text name)
+escapes its text, while void elements still key on the local name.
+
 ### Fixed — layout grid auto-repetition, forced page breaks and `opacity` (miaskiewicz/turbo-dom#201/#204/#206, Chrome 156 controls)
 
 - `grid-template-columns/-rows: repeat(auto-fill | auto-fit, ...)` creates as many tracks as

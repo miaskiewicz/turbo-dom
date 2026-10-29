@@ -450,7 +450,8 @@ fn utf16_serializer_escapes_text_and_attributes_differently() {
     tree.append_child(i, text);
     let holder = tree.create_element("div");
     tree.append_child(holder, i);
-    let expected = "<i title=\"a&quot;<>&amp;&nbsp;\">\"&lt;&gt;&amp;&nbsp;</i>";
+    // Chrome 156 escapes < and > in attribute values too; only the quote is attribute-only.
+    let expected = "<i title=\"a&quot;&lt;&gt;&amp;&nbsp;\">\"&lt;&gt;&amp;&nbsp;</i>";
     assert_eq!(serialize_inner(&tree, holder), expected);
     assert_eq!(serialize_inner_utf16(&tree, holder), u(expected));
 }

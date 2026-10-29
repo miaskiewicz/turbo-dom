@@ -218,10 +218,7 @@ export class Node extends EventTarget {
     assertNotAncestor(this, node);
     if (ref && ref.parentNode !== this) throw new Error('NotFoundError: ref is not a child');
     if (ref === node) ref = node.nextSibling;
-    if (node.nodeType === DOCUMENT_FRAGMENT_NODE) {
-      for (const c of node.__children().slice()) this.insertBefore(c, ref);
-      return node;
-    }
+    if (node.nodeType === DOCUMENT_FRAGMENT_NODE) { insertBatch(this, [node], ref, EMPTY_NODES); return node; }
     if (node.parentNode) node.parentNode.removeChild(node);
     const kids = this.__children();
     const i = ref ? kids.indexOf(ref) : -1;
@@ -229,7 +226,8 @@ export class Node extends EventTarget {
     if (node.ownerDocument !== this.ownerDocument) adopt(node, this.ownerDocument);
     if (ref) kids.splice(i, 0, node); else kids.push(node);
     node.parentNode = this;
-    notifyMutation(this, 'childList', node, null, ref || null);
+    if (moQuiet === 0) notifyMutation(this, 'childList', node, null, ref || null, null, null, ref ? kids[i - 1] ?? null : kids[kids.length - 2] ?? null);
+    else this.__touch();
     // custom elements (custom-elements.mjs): upgrades + connectedCallback, only once a
     // registry exists — one predicted-false read otherwise
     const doc = this.ownerDocument;
@@ -242,11 +240,12 @@ export class Node extends EventTarget {
     const kids = this.__children();
     const i = kids.indexOf(node);
     if (i === -1) throw new Error('NotFoundError: node is not a child');
-    const next = kids[i + 1] || null;
+    const next = kids[i + 1] || null, previous = kids[i - 1] ?? null;
     const doc = this.ownerDocument, ce = doc !== null && doc.__ceRegistry !== undefined && this.isConnected;
     kids.splice(i, 1);
     node.parentNode = null;
-    notifyMutation(this, 'childList', null, node, next);
+    if (moQuiet === 0) notifyMutation(this, 'childList', null, node, next, null, null, previous);
+    else this.__touch();
     if (ce) removedNode(node);
     return node;
   }
@@ -296,26 +295,28 @@ export class Node extends EventTarget {
     while (n.parentNode) n = n.parentNode;
     return n;
   }
+  // DOM normalize: an empty Text is removed; a Text takes the data of the Text siblings
+  // after it (one characterData change), which are then removed (childList records).
   normalize() {
     const kids = this.__children();
-    let changed = false;
-    for (let i = kids.length - 1; i > 0; i--) {
-      if (kids[i].nodeType === TEXT_NODE && kids[i - 1].nodeType === TEXT_NODE) {
-        kids[i - 1]._data += kids[i].data; kids[i].parentNode = null; kids.splice(i, 1); changed = true;
-      }
+    for (let i = 0; i < kids.length;) {
+      const k = kids[i];
+      if (k.nodeType === TEXT_NODE) {
+        if (k.data === '') { this.removeChild(k); continue; }
+        let more = '';
+        for (let j = i + 1; j < kids.length && kids[j].nodeType === TEXT_NODE; j++) more += kids[j].data;
+        if (more !== '') k.data = k.data + more;
+        while (i + 1 < kids.length && kids[i + 1].nodeType === TEXT_NODE) this.removeChild(kids[i + 1]);
+      } else if (k.nodeType === ELEMENT_NODE) k.normalize();
+      i++;
     }
-    for (let i = kids.length - 1; i >= 0; i--) {
-      if (kids[i].nodeType === TEXT_NODE && kids[i].data === '') { kids[i].parentNode = null; kids.splice(i, 1); changed = true; }
-      else if (kids[i].nodeType === ELEMENT_NODE) kids[i].normalize();
-    }
-    // normalize mutates __kids in place — bump __version (invalidate cached queries)
-    // and feed MutationObservers, like every other childList mutation path.
-    if (changed) notifyMutation(this, 'childList', null, null, null);
   }
   replaceChildren(...nodes) {
     if (ceScope(this.ownerDocument)) return withReactions(METHOD.replaceChildren, this, nodes);
     for (const n of nodes) assertNotAncestor(this, n);
-    this.__detachKids(); this.__kids = []; this.__touch(); for (const n of nodes) this.appendChild(toNode(this.ownerDocument, n));
+    const doc = this.ownerDocument, added = nodes.map((n) => toNode(doc, n));
+    if (observed(this)) { insertBatch(this, added, null, this.__children().slice()); return; }
+    this.__detachKids(); this.__kids = []; this.__touch(); for (const n of added) this.appendChild(n);
   }
   // bitmask: 1 DISCONNECTED, 2 PRECEDING, 4 FOLLOWING, 8 CONTAINS, 16 CONTAINED_BY
   compareDocumentPosition(other) {
@@ -366,10 +367,13 @@ export class Node extends EventTarget {
   }
   set textContent(value) {
     if (ceScope(this.ownerDocument)) { withReactions(METHOD.setTextContent, this, [value]); return; }
+    const removed = observed(this) ? this.__children().slice() : null;
     this.__detachKids();
     this.__kids = [];
     this.__touch();
-    if (value !== '') this.appendChild(this.ownerDocument.createTextNode(String(value)));
+    const text = value === '' || value == null ? null : this.ownerDocument.createTextNode(String(value));
+    if (text !== null) { moQuiet++; try { this.appendChild(text); } finally { moQuiet--; } }
+    if (removed !== null && (text !== null || removed.length !== 0)) notifyMutation(this, 'childList', text === null ? EMPTY_NODES : [text], removed, null, null, null, null);
   }
 
   // bump the document version so getElementsBy* caches invalidate after direct
@@ -849,7 +853,7 @@ export class Element extends Node {
   append(...nodes) { parentAppend(this, nodes); }
   prepend(...nodes) {
     if (ceScope(this.ownerDocument)) { withReactions(METHOD.prepend, this, nodes); return; }
-    const first = this.firstChild; for (const n of nodes) this.insertBefore(toNode(this.ownerDocument, n), first);
+    insertBatch(this, nodes.map((n) => toNode(this.ownerDocument, n)), viablePreviousSibling(this, null, nodes), EMPTY_NODES, true);
   }
   before(...nodes) { childBefore(this, nodes); }
   after(...nodes) { childAfter(this, nodes); }
@@ -880,6 +884,7 @@ export class Element extends Node {
     replaceAllWithMarkup(target, this, html);
   }
   get outerHTML() { return serializeOuter(this); }
+  set outerHTML(html) { setOuterHTML(this, html); }
   get innerText() { return this.textContent; }
   set innerText(v) { this.textContent = v; }
 
@@ -900,7 +905,7 @@ export class Element extends Node {
     }
     if (parent === null || parent.nodeType === DOCUMENT_NODE) throw domError('NoModificationAllowedError', 'The element has no parent.');
     const nodes = parseMarkup(parent.nodeType === ELEMENT_NODE ? parent : null, html, this.ownerDocument);
-    for (const n of nodes) parent.insertBefore(n, ref);
+    insertBatch(parent, nodes, ref, EMPTY_NODES);
   }
 
   __clone(doc, deep) {
@@ -1267,30 +1272,31 @@ function parseMarkup(context, html, doc) {
 // upgrades queue before the old children's disconnectedCallbacks, as in Chrome).
 function replaceAllWithMarkup(target, context, html) {
   const kids = parseMarkup(context, html, target.ownerDocument);
+  const removed = observed(target) ? target.__children().slice() : null;
   target.__detachKids();
   for (let i = 0; i < kids.length; i++) kids[i].parentNode = target;
   target.__kids = kids;
   target.__touch();
+  if (removed !== null && (kids.length !== 0 || removed.length !== 0)) notifyMutation(target, 'childList', kids.slice(), removed, null, null, null, null);
 }
 
 // ParentNode append / ChildNode before / after / replaceWith, shared by elements, text,
 // comments and fragments; one reaction scope for the whole call.
 function parentAppend(parent, nodes) {
   if (ceScope(parent.ownerDocument)) { withReactions(parentAppend, null, [parent, nodes]); return; }
-  for (const n of nodes) parent.appendChild(toNode(parent.ownerDocument, n));
+  insertBatch(parent, nodes.map((n) => toNode(parent.ownerDocument, n)), null, EMPTY_NODES);
 }
 function childBefore(child, nodes) {
   const p = child.parentNode;
   if (!p) return;
   if (ceScope(child.ownerDocument)) { withReactions(childBefore, null, [child, nodes]); return; }
-  for (const n of nodes) p.insertBefore(toNode(child.ownerDocument, n), child);
+  insertBatch(p, nodes.map((n) => toNode(child.ownerDocument, n)), viablePreviousSibling(p, child, nodes), EMPTY_NODES, true);
 }
 function childAfter(child, nodes) {
   const p = child.parentNode;
   if (!p) return;
   if (ceScope(child.ownerDocument)) { withReactions(childAfter, null, [child, nodes]); return; }
-  const ref = viableNextSibling(child, nodes);
-  for (const n of nodes) p.insertBefore(toNode(child.ownerDocument, n), ref);
+  insertBatch(p, nodes.map((n) => toNode(child.ownerDocument, n)), viableNextSibling(child, nodes), EMPTY_NODES);
 }
 // DOM "replaceWith": the node is removed before the replacements go in (a node passed among
 // its own replacements just moves; turbo-dom#40)
@@ -1298,10 +1304,59 @@ function childReplaceWith(child, nodes) {
   const p = child.parentNode;
   if (!p) return;
   if (ceScope(child.ownerDocument)) { withReactions(childReplaceWith, null, [child, nodes]); return; }
-  for (const n of nodes) assertNotAncestor(p, n);
-  const ref = viableNextSibling(child, nodes);
-  if (!nodes.includes(child)) p.removeChild(child);
-  for (const n of nodes) p.insertBefore(toNode(child.ownerDocument, n), ref);
+  insertBatch(p, nodes.map((n) => toNode(child.ownerDocument, n)), viableNextSibling(child, nodes), nodes.includes(child) ? EMPTY_NODES : [child]);
+}
+
+// outerHTML setter: the parsed markup replaces the element (no-op when detached).
+function setOuterHTML(el, html) {
+  const parent = el.parentNode;
+  if (parent === null) return;
+  if (parent.nodeType === DOCUMENT_NODE) throw domError('NoModificationAllowedError', 'The element\'s parent is the document.');
+  if (ceScope(el.ownerDocument)) { withReactions(setOuterHTML, null, [el, html]); return; }
+  const nodes = parseMarkup(parent.nodeType === ELEMENT_NODE ? parent : null, html, el.ownerDocument);
+  insertBatch(parent, nodes, el.nextSibling, [el]);
+}
+
+// ChildNode before()/prepend(): the first preceding sibling of `child` (null: from the
+// end) that is not one of the nodes being moved.
+function viablePreviousSibling(parent, child, nodes) {
+  let n = child === null ? null : child.previousSibling;
+  while (n !== null && nodes.includes(n)) n = n.previousSibling;
+  return n;
+}
+
+// childList records are batched by insertBatch while this is non-zero.
+let moQuiet = 0;
+const observed = (node) => { const d = node.ownerDocument; return d !== null && d.__mo != null && d.__mo.length !== 0; };
+
+// DOM "insert a fragment" / "replace all" for the multi-node APIs: the nodes leave their old
+// parents (recorded there), \`replaced\` children of \`parent\` go, and the nodes go in before
+// \`ref\` (after it when \`afterRef\`; null = at the start) — ONE childList record, as in Chrome.
+function insertBatch(parent, nodes, ref, replaced, afterRef = false) {
+  for (const n of nodes) assertNotAncestor(parent, n);
+  const flat = [];
+  for (const n of nodes) {
+    if (n.nodeType === DOCUMENT_FRAGMENT_NODE) {
+      const kids = n.__children().slice();
+      moQuiet++;
+      try { for (const k of kids) n.removeChild(k); } finally { moQuiet--; }
+      if (kids.length !== 0) notifyMutation(n, 'childList', EMPTY_NODES, kids, null, null, null, null);
+      for (const k of kids) flat.push(k);
+    } else {
+      if (n.parentNode) n.parentNode.removeChild(n);
+      flat.push(n);
+    }
+  }
+  const before = afterRef ? (ref === null ? parent.firstChild : ref.nextSibling) : ref;
+  const gone = replaced.filter((c) => c.parentNode === parent);
+  let previous;
+  moQuiet++;
+  try {
+    for (const c of gone) parent.removeChild(c);
+    previous = before === null ? parent.lastChild : before.previousSibling;
+    for (const n of flat) parent.insertBefore(n, before);
+  } finally { moQuiet--; }
+  if (flat.length !== 0 || gone.length !== 0) notifyMutation(parent, 'childList', flat, gone, before, null, null, previous);
 }
 
 // Deep clones of `source`'s children, created in `doc` and parented to `parent`.
@@ -1438,88 +1493,242 @@ function nodeIndex(node) {
   return p.__children().indexOf(node);
 }
 
-// Range — functional DOM Range. Tree-mutating ops (extract/clone/delete/insert/
-// surround) implement the common case (a single container with element/text
-// children, offsets as child indices). Zero geometry (no layout).
+// Range — DOM Range boundary-point algorithms (DOM §5.2–5.5, miaskiewicz/turbo-dom#207).
+// Boundary points are (node, offset); offsets are child indices, or code-unit offsets in a
+// CharacterData node. Not live: a mutation made outside the range's own methods does not
+// update its boundary points. Zero geometry (no layout).
+const isCharData = (n) => n.nodeType === TEXT_NODE || n.nodeType === COMMENT_NODE;
+const nodeLength = (n) => (n.nodeType === DOCUMENT_TYPE_NODE ? 0 : isCharData(n) ? n.length : n.__children().length);
+function rootOf(n) { while (n.parentNode) n = n.parentNode; return n; }
+const isInclusiveAncestor = (a, n) => { for (; n; n = n.parentNode) if (n === a) return true; return false; };
+// tree order: true when `a` precedes `b` (same root assumed).
+function precedes(a, b) {
+  const chain = (n) => { const c = []; for (; n; n = n.parentNode) c.unshift(n); return c; };
+  const ca = chain(a), cb = chain(b);
+  let i = 0;
+  while (i < ca.length && i < cb.length && ca[i] === cb[i]) i++;
+  if (i === ca.length) return i !== cb.length; // a is an ancestor of b (or b itself)
+  if (i === cb.length) return false; // b is an ancestor of a
+  return nodeIndex(ca[i]) < nodeIndex(cb[i]);
+}
+// -1 before, 0 equal, 1 after: the position of (nA, oA) relative to (nB, oB).
+function compareBoundary(nA, oA, nB, oB) {
+  if (nA === nB) return Math.sign(oA - oB);
+  if (precedes(nB, nA)) return -compareBoundary(nB, oB, nA, oA);
+  if (isInclusiveAncestor(nA, nB)) {
+    let child = nB;
+    while (child.parentNode !== nA) child = child.parentNode;
+    if (nodeIndex(child) < oA) return 1;
+  }
+  return -1;
+}
+function checkPoint(node, offset) {
+  if (node.nodeType === DOCUMENT_TYPE_NODE) throw domError('InvalidNodeTypeError', 'The node is a doctype.');
+  if (offset > nodeLength(node)) throw domError('IndexSizeError', `There is no child at offset ${offset}.`);
+}
+function parentOrThrow(node) {
+  const p = node.parentNode;
+  if (!p) throw domError('InvalidNodeTypeError', 'The node has no parent.');
+  return p;
+}
+
 class Range {
+  static START_TO_START = 0; static START_TO_END = 1; static END_TO_END = 2; static END_TO_START = 3;
+  get START_TO_START() { return 0; }
+  get START_TO_END() { return 1; }
+  get END_TO_END() { return 2; }
+  get END_TO_START() { return 3; }
   constructor(doc) {
     this.__doc = doc;
     this.startContainer = doc; this.endContainer = doc;
-    this.startOffset = 0; this.endOffset = 0; this.collapsed = true;
+    this.startOffset = 0; this.endOffset = 0;
   }
-  setStart(node, offset) { this.startContainer = node; this.startOffset = offset; this.__sync(); }
-  setEnd(node, offset) { this.endContainer = node; this.endOffset = offset; this.__sync(); }
-  setStartBefore(node) { this.setStart(node.parentNode, nodeIndex(node)); }
-  setStartAfter(node) { this.setStart(node.parentNode, nodeIndex(node) + 1); }
-  setEndBefore(node) { this.setEnd(node.parentNode, nodeIndex(node)); }
-  setEndAfter(node) { this.setEnd(node.parentNode, nodeIndex(node) + 1); }
+  get collapsed() { return this.startContainer === this.endContainer && this.startOffset === this.endOffset; }
+  __set(isStart, node, offset) {
+    offset >>>= 0;
+    checkPoint(node, offset);
+    const [n, o] = isStart ? [this.endContainer, this.endOffset] : [this.startContainer, this.startOffset];
+    const otherRoot = rootOf(n) !== rootOf(node);
+    if (isStart) {
+      if (otherRoot || compareBoundary(node, offset, n, o) > 0) { this.endContainer = node; this.endOffset = offset; }
+      this.startContainer = node; this.startOffset = offset;
+    } else {
+      if (otherRoot || compareBoundary(node, offset, n, o) < 0) { this.startContainer = node; this.startOffset = offset; }
+      this.endContainer = node; this.endOffset = offset;
+    }
+  }
+  setStart(node, offset) { this.__set(true, node, offset); }
+  setEnd(node, offset) { this.__set(false, node, offset); }
+  setStartBefore(node) { this.setStart(parentOrThrow(node), nodeIndex(node)); }
+  setStartAfter(node) { this.setStart(parentOrThrow(node), nodeIndex(node) + 1); }
+  setEndBefore(node) { this.setEnd(parentOrThrow(node), nodeIndex(node)); }
+  setEndAfter(node) { this.setEnd(parentOrThrow(node), nodeIndex(node) + 1); }
   // selectNode: container is the node's parent, offsets bracket the node.
-  selectNode(node) { const p = node.parentNode, i = nodeIndex(node); this.startContainer = this.endContainer = p; this.startOffset = i; this.endOffset = i + 1; this.__sync(); }
-  selectNodeContents(node) { this.startContainer = this.endContainer = node; this.startOffset = 0; this.endOffset = node.nodeType === TEXT_NODE || node.nodeType === COMMENT_NODE ? node.length : node.__children().length; this.__sync(); }
-  collapse(toStart) { if (toStart) { this.endContainer = this.startContainer; this.endOffset = this.startOffset; } else { this.startContainer = this.endContainer; this.startOffset = this.endOffset; } this.collapsed = true; }
-  __sync() { this.collapsed = this.startContainer === this.endContainer && this.startOffset === this.endOffset; }
+  selectNode(node) { const p = parentOrThrow(node), i = nodeIndex(node); this.startContainer = this.endContainer = p; this.startOffset = i; this.endOffset = i + 1; }
+  selectNodeContents(node) {
+    if (node.nodeType === DOCUMENT_TYPE_NODE) throw domError('InvalidNodeTypeError', 'The node is a doctype.');
+    this.startContainer = this.endContainer = node; this.startOffset = 0; this.endOffset = nodeLength(node);
+  }
+  collapse(toStart) { if (toStart) { this.endContainer = this.startContainer; this.endOffset = this.startOffset; } else { this.startContainer = this.endContainer; this.startOffset = this.endOffset; } }
   // common ancestor: walk up from start until it contains end (per spec).
   get commonAncestorContainer() {
     let container = this.startContainer;
-    while (container && !(container === this.endContainer || (container.contains && container.contains(this.endContainer)))) {
-      container = container.parentNode;
-    }
-    return container || this.startContainer;
+    while (!isInclusiveAncestor(container, this.endContainer)) container = container.parentNode;
+    return container;
   }
-  cloneRange() { const r = new Range(this.__doc); r.startContainer = this.startContainer; r.endContainer = this.endContainer; r.startOffset = this.startOffset; r.endOffset = this.endOffset; r.collapsed = this.collapsed; return r; }
-  // The common single-container case: start === end container, offsets are child
-  // indices (element children) or string offsets (a text/comment container).
-  __sameContainerKids() { return this.startContainer === this.endContainer; }
-  cloneContents() {
+  cloneRange() { const r = new Range(this.__doc); r.startContainer = this.startContainer; r.endContainer = this.endContainer; r.startOffset = this.startOffset; r.endOffset = this.endOffset; return r; }
+  compareBoundaryPoints(how, source) {
+    how = Number(how);
+    if (!(how >= 0 && how <= 3)) throw domError('NotSupportedError', 'The comparison method is not supported.');
+    if (rootOf(this.startContainer) !== rootOf(source.startContainer)) throw domError('WrongDocumentError', 'The two ranges are in different trees.');
+    const thisEnd = how === 1 || how === 2, srcEnd = how === 2 || how === 3;
+    return compareBoundary(
+      thisEnd ? this.endContainer : this.startContainer, thisEnd ? this.endOffset : this.startOffset,
+      srcEnd ? source.endContainer : source.startContainer, srcEnd ? source.endOffset : source.startOffset);
+  }
+  comparePoint(node, offset) {
+    if (rootOf(node) !== rootOf(this.startContainer)) throw domError('WrongDocumentError', 'The node is in a different tree.');
+    offset >>>= 0;
+    checkPoint(node, offset);
+    if (compareBoundary(node, offset, this.startContainer, this.startOffset) < 0) return -1;
+    if (compareBoundary(node, offset, this.endContainer, this.endOffset) > 0) return 1;
+    return 0;
+  }
+  isPointInRange(node, offset) {
+    if (rootOf(node) !== rootOf(this.startContainer)) return false;
+    return this.comparePoint(node, offset) === 0;
+  }
+  intersectsNode(node) {
+    if (rootOf(node) !== rootOf(this.startContainer)) return false;
+    const p = node.parentNode;
+    if (!p) return true;
+    const i = nodeIndex(node);
+    return compareBoundary(p, i, this.endContainer, this.endOffset) < 0 && compareBoundary(p, i + 1, this.startContainer, this.startOffset) > 0;
+  }
+  // a node is contained when it lies wholly between the two boundary points.
+  __contains(n) {
+    return rootOf(n) === rootOf(this.startContainer) && compareBoundary(n, 0, this.startContainer, this.startOffset) > 0
+      && compareBoundary(n, nodeLength(n), this.endContainer, this.endOffset) < 0;
+  }
+  // where a range collapses after extract/delete: the start, or just after its
+  // highest ancestor that does not contain the end.
+  __collapsePoint() {
+    const sc = this.startContainer;
+    if (isInclusiveAncestor(sc, this.endContainer)) return [sc, this.startOffset];
+    let ref = sc;
+    while (!isInclusiveAncestor(ref.parentNode, this.endContainer)) ref = ref.parentNode;
+    return [ref.parentNode, nodeIndex(ref) + 1];
+  }
+  // DOM "extract" (move = true) and "clone the contents" (move = false).
+  __extract(move) {
     const frag = this.__doc.createDocumentFragment();
-    const c = this.startContainer;
-    if (this.__sameContainerKids() && c && c.nodeType !== TEXT_NODE && c.nodeType !== COMMENT_NODE && c.__children) {
-      const kids = c.__children();
-      for (let i = this.startOffset; i < this.endOffset && i < kids.length; i++) frag.appendChild(kids[i].cloneNode(true));
+    if (this.collapsed) return frag;
+    const sc = this.startContainer, so = this.startOffset, ec = this.endContainer, eo = this.endOffset;
+    const cutData = (node, from, to) => {
+      const copy = node.cloneNode(false);
+      copy.data = node.substringData(from, to - from);
+      frag.appendChild(copy);
+      if (move) node.replaceData(from, to - from, '');
+    };
+    if (sc === ec && isCharData(sc)) { cutData(sc, so, eo); if (move) this.collapse(true); return frag; }
+    const common = this.commonAncestorContainer;
+    const childOf = (n) => { while (n.parentNode !== common) n = n.parentNode; return n; };
+    const firstPartial = isInclusiveAncestor(sc, ec) ? null : childOf(sc);
+    const lastPartial = isInclusiveAncestor(ec, sc) ? null : childOf(ec);
+    const contained = common.__children().filter((c) => this.__contains(c));
+    if (contained.some((c) => c.nodeType === DOCUMENT_TYPE_NODE)) throw domError('HierarchyRequestError', 'A doctype cannot be extracted.');
+    const [newNode, newOffset] = move ? this.__collapsePoint() : [null, 0];
+    const partial = (node, from, fromOff, to, toOff) => {
+      const copy = node.cloneNode(false);
+      frag.appendChild(copy);
+      const sub = new Range(this.__doc);
+      sub.startContainer = from; sub.startOffset = fromOff; sub.endContainer = to; sub.endOffset = toOff;
+      copy.appendChild(sub.__extract(move));
+    };
+    if (firstPartial) {
+      if (isCharData(firstPartial)) cutData(firstPartial, so, nodeLength(firstPartial));
+      else partial(firstPartial, sc, so, firstPartial, nodeLength(firstPartial));
     }
+    for (const c of contained) frag.appendChild(move ? c : c.cloneNode(true));
+    if (lastPartial) {
+      if (isCharData(lastPartial)) cutData(lastPartial, 0, eo);
+      else partial(lastPartial, lastPartial, 0, ec, eo);
+    }
+    if (move) { this.startContainer = this.endContainer = newNode; this.startOffset = this.endOffset = newOffset; }
     return frag;
   }
+  cloneContents() { return this.__extract(false); }
   extractContents() {
     if (ceScope(this.__doc)) return withReactions(METHOD.extractContents, this, []);
-    const frag = this.__doc.createDocumentFragment();
-    const c = this.startContainer;
-    if (this.__sameContainerKids() && c && c.nodeType !== TEXT_NODE && c.nodeType !== COMMENT_NODE && c.__children) {
-      const kids = c.__children().slice(this.startOffset, this.endOffset);
-      for (const k of kids) frag.appendChild(k); // moves out of the tree
-    }
-    this.collapse(true);
-    return frag;
+    return this.__extract(true);
   }
   deleteContents() {
     if (ceScope(this.__doc)) { withReactions(METHOD.deleteContents, this, []); return; }
-    const c = this.startContainer;
-    if (this.__sameContainerKids() && c && c.nodeType !== TEXT_NODE && c.nodeType !== COMMENT_NODE && c.__children) {
-      const kids = c.__children().slice(this.startOffset, this.endOffset);
-      for (const k of kids) c.removeChild(k);
-    }
-    this.collapse(true);
+    if (this.collapsed) return;
+    const sc = this.startContainer, so = this.startOffset, ec = this.endContainer, eo = this.endOffset;
+    if (sc === ec && isCharData(sc)) { sc.replaceData(so, eo - so, ''); this.collapse(true); return; }
+    // contained nodes whose parent is not contained, in tree order
+    const doomed = [];
+    (function walk(r, n) { for (const c of n.__children()) { if (r.__contains(c)) doomed.push(c); else walk(r, c); } })(this, this.commonAncestorContainer);
+    const [newNode, newOffset] = this.__collapsePoint();
+    if (isCharData(sc)) sc.replaceData(so, sc.length - so, '');
+    for (const n of doomed) n.parentNode.removeChild(n);
+    if (isCharData(ec)) ec.replaceData(0, eo, '');
+    this.startContainer = this.endContainer = newNode; this.startOffset = this.endOffset = newOffset;
   }
-  insertNode(node) { if (this.startContainer && this.startContainer.insertBefore) this.startContainer.insertBefore(node, this.startContainer.__children ? (this.startContainer.__children()[this.startOffset] ?? null) : null); }
+  // DOM "insert": splits a Text start node; the end point follows the insertion
+  // (the live-range steps for the split and the insert, applied to this range).
+  insertNode(node) {
+    const sc = this.startContainer, so = this.startOffset;
+    if (sc.nodeType === COMMENT_NODE || (sc.nodeType === TEXT_NODE && !sc.parentNode) || sc === node) {
+      throw domError('HierarchyRequestError', 'The node cannot be inserted at the range start.');
+    }
+    const wasCollapsed = this.collapsed;
+    let ref = sc.nodeType === TEXT_NODE ? sc : (sc.__children()[so] ?? null);
+    const parent = ref ? ref.parentNode : sc;
+    if (sc.nodeType === TEXT_NODE) {
+      const at = nodeIndex(sc);
+      ref = sc.splitText(so);
+      if (this.endContainer === sc && this.endOffset > so) { this.endContainer = ref; this.endOffset -= so; }
+      else if (this.endContainer === parent && this.endOffset > at) this.endOffset++;
+    }
+    if (node === ref) ref = ref.nextSibling;
+    if (node.parentNode) {
+      // the live-range removal steps for a node moved from inside this range's containers
+      const from = node.parentNode, i = nodeIndex(node);
+      if (from === this.startContainer && i < this.startOffset) this.startOffset--;
+      if (from === this.endContainer && i < this.endOffset) this.endOffset--;
+      from.removeChild(node);
+    }
+    const at = ref ? nodeIndex(ref) : nodeLength(parent);
+    const count = node.nodeType === DOCUMENT_FRAGMENT_NODE ? nodeLength(node) : 1;
+    parent.insertBefore(node, ref);
+    if (wasCollapsed) { this.endContainer = parent; this.endOffset = at + count; }
+    else if (this.endContainer === parent && this.endOffset > at) this.endOffset += count;
+  }
   surroundContents(node) {
     if (ceScope(this.__doc)) { withReactions(METHOD.surroundContents, this, [node]); return; }
-    const frag = this.extractContents();
+    // a non-Text node partially contained: an ancestor of one boundary but not the other
+    const partly = (from, other) => { for (let n = from; n; n = n.parentNode) if (!isInclusiveAncestor(n, other) && n.nodeType !== TEXT_NODE) return true; return false; };
+    if (partly(this.startContainer, this.endContainer) || partly(this.endContainer, this.startContainer)) {
+      throw domError('InvalidStateError', 'The range partially selects a non-Text node.');
+    }
+    const t = node.nodeType;
+    if (t === DOCUMENT_NODE || t === DOCUMENT_TYPE_NODE || t === DOCUMENT_FRAGMENT_NODE) throw domError('InvalidNodeTypeError', 'The node cannot surround a range.');
+    const frag = this.__extract(true);
+    while (node.firstChild) node.removeChild(node.firstChild);
     this.insertNode(node);
     node.appendChild(frag);
+    this.selectNode(node);
   }
-  // textual content of the range: the common single-container case.
+  // the range's text: the Text data between the boundary points, in tree order.
   toString() {
-    const c = this.startContainer;
-    if (c && (c.nodeType === TEXT_NODE || c.nodeType === COMMENT_NODE)) {
-      if (this.__sameContainerKids()) return c.data.slice(this.startOffset, this.endOffset);
-      return c.data.slice(this.startOffset);
-    }
-    if (this.__sameContainerKids() && c && c.__children) {
-      let s = '';
-      const kids = c.__children();
-      for (let i = this.startOffset; i < this.endOffset && i < kids.length; i++) s += kids[i].textContent;
-      return s;
-    }
-    return '';
+    const sc = this.startContainer, so = this.startOffset, ec = this.endContainer, eo = this.endOffset;
+    if (sc === ec && sc.nodeType === TEXT_NODE) return sc.data.slice(so, eo);
+    let s = sc.nodeType === TEXT_NODE ? sc.data.slice(so) : '';
+    (function walk(r, n) { for (const c of n.__children()) { if (c.nodeType === TEXT_NODE && r.__contains(c)) s += c.data; walk(r, c); } })(this, this.commonAncestorContainer);
+    if (ec.nodeType === TEXT_NODE) s += ec.data.slice(0, eo);
+    return s;
   }
   getBoundingClientRect() { return zeroRect(); }
   getClientRects() { return []; }
@@ -1816,20 +2025,21 @@ const EMPTY_NODES = []; // shared read-only addedNodes/removedNodes for empty re
 // the common case (no MutationObservers — most test files) allocates NOTHING: it
 // only bumps __version and returns. The MutationRecord object + its node arrays
 // are built solely when an observer is actually registered.
-function notifyMutation(target, type, added, removed, nextSibling, attributeName, oldValue) {
+function notifyMutation(target, type, added, removed, nextSibling, attributeName, oldValue, previousSibling = null) {
   const doc = target.ownerDocument;
   if (!doc) return;
   // bump the DOM version on every structural/attribute mutation — invalidates
   // the document's getElementsBy* caches. Unconditional (independent of observers).
   doc.__version = ++VERSION;
   const mo = doc.__mo;
-  if (mo && mo.length !== 0) queueRecords(mo, doc, target, type, added, removed, nextSibling, attributeName, oldValue);
+  if (mo && mo.length !== 0) queueRecords(mo, doc, target, type, added, removed, nextSibling, attributeName, oldValue, previousSibling);
   // attributeChangedCallback: queued after the mutation record, like Chrome
   if (type === 'attributes' && doc.__ceRegistry !== undefined) attributeChanged(target, attributeName, oldValue);
 }
-function queueRecords(mo, doc, target, type, added, removed, nextSibling, attributeName, oldValue) {
-  const addedNodes = added ? [added] : EMPTY_NODES;
-  const removedNodes = removed ? [removed] : EMPTY_NODES;
+function queueRecords(mo, doc, target, type, added, removed, nextSibling, attributeName, oldValue, previousSibling) {
+  // one node, or the node list of a batched change (insertBatch, innerHTML, textContent)
+  const addedNodes = Array.isArray(added) ? added : added ? [added] : EMPTY_NODES;
+  const removedNodes = Array.isArray(removed) ? removed : removed ? [removed] : EMPTY_NODES;
   for (const reg of mo) {
     const { obs, target: obsTarget, options } = reg;
     const onTarget = target === obsTarget;
@@ -1842,7 +2052,7 @@ function queueRecords(mo, doc, target, type, added, removed, nextSibling, attrib
     const rec = {
       type, target,
       addedNodes, removedNodes,
-      previousSibling: null, nextSibling: nextSibling || null,
+      previousSibling: previousSibling || null, nextSibling: nextSibling || null,
       attributeName: attributeName || null, attributeNamespace: null,
       oldValue: (type === 'attributes' && options.attributeOldValue) ||
                 (type === 'characterData' && options.characterDataOldValue) ? (oldValue ?? null) : null,
