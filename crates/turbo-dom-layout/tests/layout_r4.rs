@@ -280,7 +280,6 @@ fn hidden_inline_text_paints_nothing() {
 }
 
 #[test]
-#[ignore = "miaskiewicz/turbo-dom#216: sticky is shifted like relative"]
 fn sticky_box_below_its_threshold_is_not_shifted() {
     // Chrome 156 (unscrolled): a `position:sticky; top:10px` box whose normal-flow
     // position (50) is already below the 10px threshold stays at 50.
@@ -290,4 +289,55 @@ fn sticky_box_below_its_threshold_is_not_shifted() {
          <div style='height:2000px'></div>",
     );
     assert_eq!(b["s"].1, 50.0);
+}
+
+#[test]
+fn sticky_box_above_its_threshold_is_pushed_down_to_it() {
+    // Chrome 156: at y=0 a `top:10px` sticky box sits at 10 (miaskiewicz/turbo-dom#216).
+    let b = cid_boxes(
+        "<div data-cid=s style='position:sticky;top:10px;height:20px'></div>\
+         <div style='height:2000px'></div>",
+    );
+    assert_eq!((b["s"].0, b["s"].1), (0.0, 10.0));
+}
+
+#[test]
+fn sticky_left_shift_is_clamped_to_its_containing_block() {
+    // Chrome 156: a 100px-wide `left:4px` sticky box moves to x=4; a full-width one
+    // has no room in its containing block and stays at x=0 (#216).
+    let b = cid_boxes(
+        "<div data-cid=n style='position:sticky;top:10px;left:4px;width:100px;height:20px'></div>\
+         <div data-cid=f style='position:sticky;left:4px;height:20px'></div>\
+         <div style='height:2000px'></div>",
+    );
+    assert_eq!((b["n"].0, b["n"].1), (4.0, 10.0));
+    assert_eq!((b["f"].0, b["f"].1), (0.0, 20.0));
+}
+
+#[test]
+fn sticky_negative_top_below_threshold_is_not_shifted() {
+    // Chrome 156: y=0 is already below a -10px threshold, so the box stays at 0 (#216).
+    let b = cid_boxes(
+        "<div style='height:2000px'><div data-cid=s style='position:sticky;top:-10px;height:20px'></div></div>",
+    );
+    assert_eq!(b["s"].1, 0.0);
+}
+
+#[test]
+fn a_scrolling_inline_block_has_its_bottom_margin_edge_as_baseline() {
+    // Chrome 156: next to an inline-block holding a line of text, `x` sits on that
+    // line's baseline (y=0); with `overflow:hidden` the inline-block's baseline is its
+    // bottom margin edge (40), so `x` drops to y=25.
+    let at = |overflow: &str| {
+        cid_boxes(&format!(
+            "<div><span data-cid=t style='display:inline-block'>x</span><div style='display:inline-block;\
+             overflow:{overflow};height:40px;width:20px'>y</div></div>"
+        ))["t"]
+            .1
+    };
+    // turbo-dom gives 24.6 for the hidden case: Chrome snaps the inline-block's
+    // baseline offset to whole pixels (filed as a Low follow-up), hence the 0.5 slack.
+    let (visible, hidden) = (at("visible"), at("hidden"));
+    assert_eq!(visible, 0.0);
+    assert!((hidden - 25.0).abs() < 0.5, "{hidden}");
 }

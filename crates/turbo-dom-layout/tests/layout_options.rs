@@ -6,9 +6,9 @@ mod common;
 
 use turbo_dom_layout::turbo_dom::Tree;
 use turbo_dom_layout::{
-    build_cascade, layout_recorded, layout_with_options, parse_html_tree, style_input, Fragment,
-    FragmentContent, ImageCtx, LaidOut, LayoutOptions, NoImages, NodeId, Roots, StyleInput,
-    StyleOptions, StyledNode, TreeView,
+    build_cascade, layout_recorded, layout_with_options, parse_html_tree, style_input, BreakRule,
+    Fragment, FragmentContent, ImageCtx, LaidOut, LayoutOptions, NoImages, NodeId, Roots,
+    StyleInput, StyleOptions, StyledNode, TreeView,
 };
 
 fn styled(tree: &Tree, css: &str) -> Vec<StyledNode> {
@@ -76,6 +76,142 @@ fn internal_links_get_their_own_box_only_when_asked() {
         ..LayoutOptions::default()
     };
     assert_eq!(boxed(on), 1, "only the non-empty #target link is atomic");
+}
+
+fn link_boxes(html: &str) -> Vec<(f32, f32)> {
+    let tree = parse_html_tree(html);
+    let laid = lay(
+        &tree,
+        "",
+        LayoutOptions {
+            atomic_internal_links: true,
+            ..LayoutOptions::default()
+        },
+    );
+    fragments(&laid.galley)
+        .iter()
+        .filter(|f| matches!(f.content, FragmentContent::Box { .. }))
+        .filter(|f| source_name(&tree, &laid, f.node_id).as_deref() == Some("a"))
+        .map(|f| (f.x, f.width))
+        .collect()
+}
+
+#[test]
+fn a_block_level_internal_link_keeps_its_full_width_block_box() {
+    // miaskiewicz/turbo-dom#210: Chrome 156 gives a `display:block` link the full
+    // container width (here the 400px galley), not its shrink-to-fit text width.
+    let boxes =
+        link_boxes(r##"<body><div><a href="#s" style="display:block">in div</a></div></body>"##);
+    assert_eq!(boxes, vec![(0.0, 400.0)]);
+}
+
+#[test]
+fn inline_external_links_get_their_own_box_but_relative_ones_do_not() {
+    // miaskiewicz/turbo-dom#210: an absolute-URL href needs its own fragment for a
+    // /URI annotation; a scheme-less relative href does not.
+    let boxes = link_boxes(
+        r#"<body><p>a <a href="https://x.test/">ext</a> <a href="mailto:a@x.test">m</a> <a href="rel.html">r</a> <a href="1:2">d</a></p></body>"#,
+    );
+    assert_eq!(boxes.len(), 2, "{boxes:?}");
+    assert!(
+        boxes.iter().all(|&(_, w)| w > 0.0 && w < 100.0),
+        "{boxes:?}"
+    );
+}
+
+/// Each recorded table row's `(id attribute, break hints)`, in layout order.
+fn row_breaks(html: &str) -> Vec<(String, turbo_dom_layout::BreakMeta)> {
+    let tree = parse_html_tree(html);
+    let laid = lay(&tree, "", LayoutOptions::default());
+    fragments(&laid.galley)
+        .into_iter()
+        .filter(|f| laid.sources.table_rows.contains(&f.node_id))
+        .map(|f| {
+            let h = laid.sources.elements[&f.node_id];
+            (
+                tree.get_attribute(h, "id").unwrap_or("").to_string(),
+                f.break_meta,
+            )
+        })
+        .collect()
+}
+
+#[test]
+fn table_rows_carry_every_break_inside_avoid_spelling() {
+    // Chrome 156 --print-to-pdf (600x400 page, 40px margin): a 5-line row after a
+    // 250px row moves whole to page 2 under `break-inside: avoid`, `avoid-page` and
+    // `page-break-inside: avoid` (it splits 3/2 without them).
+    for style in [
+        "break-inside:avoid",
+        "break-inside:avoid-page",
+        "page-break-inside:avoid",
+    ] {
+        let rows = row_breaks(&format!(
+            "<body><table><tr id=a><td>a</td></tr><tr id=b style='{style}'><td>b</td></tr></table></body>"
+        ));
+        let avoid: Vec<_> = rows
+            .iter()
+            .map(|(id, m)| (id.as_str(), m.break_inside_avoid))
+            .collect();
+        assert_eq!(avoid, [("a", false), ("b", true)], "{style}");
+    }
+}
+
+#[test]
+fn table_rows_and_row_groups_carry_forced_breaks() {
+    use BreakRule::{Auto, Page};
+    // Chrome 156 --print-to-pdf: `break-before: page` on a row or a <tbody>,
+    // `page-break-before: always` on a row, and `break-after: page` on a middle row
+    // each print 2 pages.
+    let forced = |html: &str| -> Vec<(String, BreakRule, BreakRule)> {
+        row_breaks(html)
+            .into_iter()
+            .map(|(id, m)| (id, m.break_before, m.break_after))
+            .collect()
+    };
+    let s = |id: &str| id.to_string();
+    assert_eq!(
+        forced("<body><table><tr id=a><td>a</td></tr><tr id=b style='break-before:page'><td>b</td></tr></table></body>"),
+        [(s("a"), Auto, Auto), (s("b"), Page, Auto)]
+    );
+    assert_eq!(
+        forced("<body><table><tr id=a><td>a</td></tr><tr id=b style='page-break-before:always'><td>b</td></tr></table></body>"),
+        [(s("a"), Auto, Auto), (s("b"), Page, Auto)]
+    );
+    assert_eq!(
+        forced("<body><table><tr id=a><td>a</td></tr><tr id=b style='break-after:page'><td>b</td></tr><tr id=c><td>c</td></tr></table></body>"),
+        [(s("a"), Auto, Auto), (s("b"), Auto, Page), (s("c"), Auto, Auto)]
+    );
+    assert_eq!(
+        forced("<body><table><tbody><tr id=a><td>a</td></tr></tbody><tbody style='break-before:page;break-after:page'><tr id=b><td>b</td></tr><tr id=c><td>c</td></tr></tbody></table></body>"),
+        [(s("a"), Auto, Auto), (s("b"), Page, Auto), (s("c"), Auto, Page)]
+    );
+}
+
+#[test]
+fn a_row_groups_break_before_avoid_reaches_its_first_row() {
+    // Chrome 156 --print-to-pdf: with `break-before: avoid` (or the legacy
+    // `page-break-before: avoid`) on the second <tbody>, the last row of the first
+    // one moves to page 2 with it instead of the break falling between the groups.
+    for style in ["break-before:avoid", "page-break-before:avoid"] {
+        let rows = row_breaks(&format!(
+            "<body><table><tbody><tr id=x><td>x</td></tr></tbody>\
+             <tbody style='{style}'><tr id=y><td>y</td></tr><tr id=z><td>z</td></tr></tbody></table></body>"
+        ));
+        let before: Vec<_> = rows
+            .iter()
+            .map(|(id, m)| (id.as_str(), m.break_before))
+            .collect();
+        assert_eq!(
+            before,
+            [
+                ("x", BreakRule::Auto),
+                ("y", BreakRule::Avoid),
+                ("z", BreakRule::Auto)
+            ],
+            "{style}"
+        );
+    }
 }
 
 #[test]

@@ -513,7 +513,8 @@ enum FlowLevel {
 /// Box-generation options (the layout-level switches of [`super::LayoutOptions`]).
 #[derive(Debug, Clone, Copy, Default)]
 pub(crate) struct BuildOptions {
-    /// Lay an `<a href="#name">` out as an atomic inline box (its own fragment).
+    /// Lay an inline `<a>` with an internal (`#name`) or absolute-URL href out as an
+    /// atomic inline box (its own fragment); block-level links keep their block box.
     pub(crate) atomic_internal_links: bool,
     /// Record each box's source [`turbo_dom::Handle`] (see [`super::NodeSources`]).
     pub(crate) record_sources: bool,
@@ -720,7 +721,7 @@ fn classify_html(el: &StyledElement, ids: &mut Ids) -> Option<Level> {
         return Some(Level::Inline(vec![line_break(el, ids)]));
     }
     if atomic_link(el, ids) {
-        // An `<a href="#name">` is laid out as an atomic inline box so it carries
+        // An inline `<a>` link (`#name` or absolute URL) is an atomic inline box so it carries
         // its own fragment (and thus a link rectangle) through layout (AC-3.25).
         return Some(Level::Inline(vec![InlineItem::Atomic(build_block_box(
             el, ids,
@@ -733,19 +734,32 @@ fn classify_html(el: &StyledElement, ids: &mut Ids) -> Option<Level> {
 /// tree is not a native-inline snapshot.
 fn atomic_link(el: &StyledElement, ids: &Ids) -> bool {
     ids.atomic_internal_links
-        && is_internal_link(el)
+        && display_of(&el.style) == Display::Inline
+        && is_link(el)
         && !ids
             .sources
             .as_ref()
             .is_some_and(|sources| sources.inline_borders)
 }
 
-/// An `<a href="#name">` (a non-empty fragment-only target).
-fn is_internal_link(el: &StyledElement) -> bool {
+/// An `<a>` whose href is an internal `#name` (non-empty fragment) or an absolute
+/// URL (`scheme:…`): the links html2pdf annotates (miaskiewicz/turbo-dom#210).
+fn is_link(el: &StyledElement) -> bool {
     matches!(&el.tag, Tag::Html(name) if name == "a")
-        && attr_value(&el.attrs, "href")
-            .and_then(|href| href.strip_prefix('#'))
-            .is_some_and(|target| !target.is_empty())
+        && attr_value(&el.attrs, "href").is_some_and(|href| {
+            href.strip_prefix('#')
+                .map_or_else(|| has_scheme(href), |target| !target.is_empty())
+        })
+}
+
+/// Whether `href` starts with a URL scheme (`ALPHA *( ALPHA / DIGIT / "+" / "-" / "." ) ":"`).
+fn has_scheme(href: &str) -> bool {
+    href.split_once(':').is_some_and(|(scheme, _)| {
+        scheme.starts_with(|c: char| c.is_ascii_alphabetic())
+            && scheme
+                .chars()
+                .all(|c| c.is_ascii_alphanumeric() || matches!(c, '+' | '-' | '.'))
+    })
 }
 
 #[allow(clippy::unnecessary_wraps)] // keeps the Option/Result shape its call sites (and sibling helpers) share

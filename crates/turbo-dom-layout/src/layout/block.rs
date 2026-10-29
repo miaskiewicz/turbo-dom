@@ -1757,7 +1757,11 @@ fn layout_in_flow_kid(
     } else {
         leading
     };
-    let (dx, dy) = flow_relative_offset(kbs, cw, ctx);
+    let (dx, dy) = if kbs.position == Position::Sticky {
+        (0.0, 0.0) // shifted below, once its static rect is known
+    } else {
+        flow_relative_offset(kbs, cw, ctx)
+    };
     // `leading` is the box's `margin-top` already collapsed with any margin escaping
     // its borderless top (parent/child collapse); collapse it into the running margin.
     flow.pending = collapse_margins(flow.pending, leading);
@@ -1779,6 +1783,10 @@ fn layout_in_flow_kid(
     if hx != 0.0 {
         frag.translate(hx, 0.0);
     }
+    if kbs.position == Position::Sticky {
+        let (sx, sy) = sticky_offset(kbs, &frag, cx, cw);
+        frag.translate(sx, sy);
+    }
     // Advance the cursor by the box's height at its *unshifted* flow position. A
     // zero-height box lets the margins run through it — unless it establishes a
     // formatting context, which is never self-collapsing (miaskiewicz/turbo-dom#88).
@@ -1792,6 +1800,25 @@ fn layout_in_flow_kid(
         flow.pending = trailing_margin(kid, kbs, cw, &ctx.dropped_end_margins);
     }
     frag
+}
+
+/// The shift of an in-flow block `position: sticky` box in an unscrolled document
+/// (CSS Position 3 §3.4, miaskiewicz/turbo-dom#216): it moves only when its static
+/// border edge is above its `top` / `left` threshold (the scrollport origin plus the
+/// inset), and horizontally never past its containing block's content edge
+/// (`cx + cw`). `bottom` / `right` thresholds sit at the far viewport edge and never
+/// pull a box of an unscrolled document back, so they contribute no shift.
+fn sticky_offset(kbs: &BoxStyle, frag: &Fragment, cx: f32, cw: f32) -> (f32, f32) {
+    let room = (cx + cw - (frag.x + frag.width)).max(0.0);
+    let dx = kbs
+        .inset_left
+        .resolve(cw)
+        .map_or(0.0, |left| (left - frag.x).clamp(0.0, room));
+    let dy = match kbs.inset_top {
+        LengthPct::Px(top) => (top - frag.y).max(0.0),
+        _ => 0.0,
+    };
+    (dx, dy)
 }
 
 /// The paint-time shift for a `relative`/`sticky` box: it flows normally (its

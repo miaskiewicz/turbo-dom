@@ -23,8 +23,9 @@ use super::boxgen::{BoxKind, LayoutBox};
 use super::flex::natural_width;
 use super::fragment::{Fragment, FragmentContent, NodeId, RepeatKind};
 use super::value::{
-    parse_px, position_of, resolve_box_style, BorderEdges, BoxSizing, BoxStyle, Display, Edges,
-    LengthPct, Position, ResolveCtx, VAlign, DEFAULT_FONT_SIZE,
+    break_inside_avoid_of, break_rule_of, parse_px, position_of, resolve_box_style, BorderEdges,
+    BoxSizing, BoxStyle, BreakRule, Display, Edges, LengthPct, Position, ResolveCtx, VAlign,
+    DEFAULT_FONT_SIZE,
 };
 use crate::layout_snapshot::UsedBoxMetrics;
 
@@ -45,6 +46,11 @@ struct RowRef<'a> {
     /// The row's `break-inside: avoid`, carried to its fragment's break hints
     /// (miaskiewicz/turbo-dom#158).
     avoid_break_inside: bool,
+    /// The row's forced/avoid breaks, with its row group's `break-before` on its
+    /// first row and `break-after` on its last (Chrome 156 honours both on rows
+    /// and `<tbody>`s; a row group has no fragment of its own).
+    break_before: BreakRule,
+    break_after: BreakRule,
 }
 
 fn cells_of(row: &LayoutBox) -> Vec<&LayoutBox> {
@@ -76,7 +82,9 @@ fn row_ref(row: &LayoutBox, repeat: Option<RepeatKind>) -> RowRef<'_> {
         cells: cells_of(row),
         min_height: row_min_height(row),
         repeat,
-        avoid_break_inside: row.style.get("break-inside").map(str::trim) == Some("avoid"),
+        avoid_break_inside: break_inside_avoid_of(&row.style),
+        break_before: break_rule_of(&row.style, "break-before"),
+        break_after: break_rule_of(&row.style, "break-after"),
     }
 }
 
@@ -231,6 +239,16 @@ fn shares(total: f32, weights: &[f32]) -> Vec<f32> {
     out
 }
 
+/// The group's break value where it is set, else the row's own (a forced `Page`
+/// on either side wins over `Avoid`, CSS Fragmentation 3 §3.1).
+fn stronger(group: BreakRule, row: BreakRule) -> BreakRule {
+    match (group, row) {
+        (BreakRule::Page, _) | (_, BreakRule::Page) => BreakRule::Page,
+        (BreakRule::Avoid, _) | (_, BreakRule::Avoid) => BreakRule::Avoid,
+        _ => BreakRule::Auto,
+    }
+}
+
 fn collect_rows(items: &[LayoutBox]) -> Vec<RowRef<'_>> {
     let mut out = Vec::new();
     for child in items {
@@ -238,7 +256,21 @@ fn collect_rows(items: &[LayoutBox]) -> Vec<RowRef<'_>> {
             out.push(row_ref(child, None));
         } else {
             let repeat = group_repeat(child.display);
-            out.extend(rows_of(child).into_iter().map(|r| row_ref(r, repeat)));
+            let mut rows: Vec<_> = rows_of(child)
+                .into_iter()
+                .map(|r| row_ref(r, repeat))
+                .collect();
+            if let Some(first) = rows.first_mut() {
+                first.break_before = stronger(
+                    break_rule_of(&child.style, "break-before"),
+                    first.break_before,
+                );
+            }
+            if let Some(last) = rows.last_mut() {
+                last.break_after =
+                    stronger(break_rule_of(&child.style, "break-after"), last.break_after);
+            }
+            out.extend(rows);
         }
     }
     out
@@ -1168,6 +1200,8 @@ fn make_row_frag(row: &RowRef, r: usize, geom: &Geom, cx: f32, cy: f32) -> Fragm
     );
     f.break_meta.repeatable = row.repeat;
     f.break_meta.break_inside_avoid = row.avoid_break_inside;
+    f.break_meta.break_before = row.break_before;
+    f.break_meta.break_after = row.break_after;
     f
 }
 
